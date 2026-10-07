@@ -77,7 +77,7 @@ hermes
 
 ## 代码规范与测试入口
 
-通用规则与闭环流程见 [AGENTS.md](AGENTS.md)。修改各区域前还须阅读相应分区 `AGENTS.md`。沿用 Hermes facade / sibling 结构、profile isolation、prompt-cache 约束、依赖锁定和现有代码风格。
+通用规则与闭环流程以 [AGENTS.md](AGENTS.md) 的冻结约定为准。分区 `AGENTS.md` 和上游贡献指南供架构、接口及环境参考，不自动增加项目约束。沿用已确认的 Hermes facade / sibling 结构、profile isolation、prompt-cache 约束、依赖锁定和代码检查；核心文档不设字数 / 行数硬门槛。
 
 测试使用独立环境，按 [Development Setup](CONTRIBUTING.md#development-setup) 和 PM 文档准备。使用已准备的项目解释器构建全新测试环境：
 
@@ -91,18 +91,34 @@ python scripts/check
 
 `.venv/` 与 `.hermes-dev/` 不进入版本控制。PM 底层使用 UV，环境依赖按官方现有锁文件安装，不迁移包管理方式。
 
+本项目不运行 GitHub CI / CD；GitHub Actions 关闭，质量门禁在本地执行。日常只选择相关检查及小范围回归；集成收敛后，主会话派生独立 Verification / Validation，在交付前统一安排一次必要扩大测试，共享同版本证据，避免重复的时间和上下文开销。具体范围、门禁职责和复测约束见 [本地 CI / CD 与回归防护](AGENTS.md)。
+
+```bash
+.venv/bin/python scripts/check --staged --only <相关检查>
+HERMES_PYTHON="$PWD/.venv/bin/python" scripts/run_tests.sh tests/<相关分区>/
+# 以下入口仅在交付前唯一一次扩大测试中按实际影响选择：
+.venv/bin/python scripts/check --staged
+HERMES_PYTHON="$PWD/.venv/bin/python" scripts/run_tests.sh
+# 修改相应前端时，在官方 PM 准备的 Node / npm 环境中运行：
+npm run --workspace web check
+npm run --workspace ui-tui check
+npm run --workspace apps/desktop check
+```
+
+根目录三份核心文档不做递归扩展；现有分区文档非必要不修改。所有任务看板和动态进度只记录在根 `CLAUDE.md`。
+
 ## 重要文档索引
 
 | 文档 | 内容 | 路径 |
 |---|---|---|
 | V1 实施总纲 | 公开首轮目标、边界、依赖顺序与完成定义 | [docs/01-personal-hermes-v1-first-fork-iteration.md](docs/01-personal-hermes-v1-first-fork-iteration.md) |
 | Notebook / Noting 实现规格 | Identity、History、Notebook、Noting、Schedule、Reminder 的权威契约 | [docs/02-noting-system-specification.md](docs/02-noting-system-specification.md) |
-| 协作规则 | 用户规则、文档职责、范围隔离、开发测试 SOP、分区规则入口 | [AGENTS.md](AGENTS.md) |
+| 协作规则 | 用户规则、冻结约定、上游干扰隔离、文档保护和开发测试 SOP | [AGENTS.md](AGENTS.md) |
 | 当前阶段 | 当前目标、任务看板、已确认口径和验证状态 | [CLAUDE.md](CLAUDE.md) |
-| 上游贡献指南 | 运行及测试环境准备、代码规范与检查命令 | [CONTRIBUTING.md](CONTRIBUTING.md) |
+| 上游贡献指南 | 运行及测试环境准备、现有检查命令的参考，不引入上游协作流程 | [CONTRIBUTING.md](CONTRIBUTING.md) |
 | PM 参考 | 开发激活、依赖及隔离环境管理 | [website/docs/reference/package-management.md](website/docs/reference/package-management.md) |
 | Hermes 架构 | Agent、Gateway、工具与状态层的架构说明 | [website/docs/developer-guide/architecture.md](website/docs/developer-guide/architecture.md) |
-| 测试规则 | canonical runner、测试布局、隔离与行为契约 | [tests/AGENTS.md](tests/AGENTS.md) |
+| 上游测试参考 | canonical runner、测试布局、隔离与行为契约的实现背景 | [tests/AGENTS.md](tests/AGENTS.md) |
 | 安全策略 | 继承的安全边界和报告规范 | [SECURITY.md](SECURITY.md) |
 
 Secretary 专项规格放在 `docs/`；继承的 Hermes 文档保留在 `website/docs/`。规格权威与当前任务分别按 01 / 02 和 `CLAUDE.md` 的职责查阅。
