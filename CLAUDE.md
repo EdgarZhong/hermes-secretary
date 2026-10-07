@@ -2,7 +2,7 @@
 
 ## 当前目标与阶段
 
-截至 2026-10-08 凌晨，**Ask and Align、文档基线冻结与实施规划已完成；首批 T1/T2A/T3A 与第二批 T2B/T3B/T3C/T4 全部交回、经主会话 review 接收，主会话集中接线已完成并通过五轮回的定向复测（run1–run5 收敛全绿，含 health 门禁全集与一处 cache-parity 回归修复）；按用户边界 A28，本批次阶段快照提交后本轮暂停，不继续 T5/T6、独立 Verification / Validation 与后续实现。整体目标未完成**。当日早些时候 Codex 主会话因额度耗尽中断，Kimi 主会话接手托管并完成 T1 review、首批快照与第二批四任务的接收与接线。恢复条件见本轮 `final-delivery.md`。目标仍是在 `main` 完成现行 01 / 02 定义的公开 Hermes Secretary V1 完整链路，并少量调优通用 System Prompt。
+截至 2026-10-08，**用户已按 A29 恢复首轮完整目标；Codex 主会话已从 Kimi 提交的 `2ba9b34193` 完成进展复核，进入增量修复与后续实现。整体目标未完成**。工作区恢复时干净；T1/T2A/T3A 与 T2B/T3B/T3C/T4 的已交回实现和有效证据保留，不重新派遣这些任务。当前优先关闭正式执行、身份生命周期和 Notebook/Schedule 一致性缺口，再完成 T5/T6 与独立 Verification / Validation。原目标仍是在 `main` 完成现行 01 / 02 定义的公开 Hermes Secretary V1 完整链路，并少量调优通用 System Prompt。
 
 两任主会话均已完整阅读根 `AGENTS.md`、`README.md`、现行 01 / 02（02 共 1,978 行）及自主套件全部七份技能。三份核心文档与本轮索引已一并提交为冻结基线 `5346cd094b6a1bb6c6d9ce69e83b3a1570cf46bd`，完整哈希存本轮 `baseline.txt`；实施计划见本轮 `plan.md`；停止判定简报见本轮 `final-delivery.md`。
 
@@ -33,7 +33,7 @@
 - 已冻结通用规则继续按根 `AGENTS.md` 执行；后续确认口径写索引，本文件只维护任务状态与必要摘要。
 - 主会话错误提出的“按 Anchor 新旧淘汰迟到任务结果”方案已撤回，不作为实施要求；索引仅保留用户明确澄清的 pointer 口径 A10。
 - 用户已澄清 pointer 的选择依据，见索引 A10：按当前 Full Foreground 的最新有效 Snapshot Anchor 选择，不按完成 / 提交时间；较早 Anchor 的迟到合法 Snapshot 可以提交，但不能使 current 倒退。该口径需纳入 persistence 实现、rewind reconciliation 与并发验收。
-- 真实模型验收选择已确认，见索引 A11–A12：本机 Codex Proxy、GPT6 Luna、High，仅用于必要实际测试，Hermes 不参与编码。用户要求准确模型 ID 与 Proxy 接线到实际配置时再核实；尚未调查或写入运行配置。
+- 真实模型验收选择已确认，见索引 A11–A12：本机 Codex Proxy、GPT6 Luna、High，仅用于必要实际测试，Hermes 不参与编码。用户要求准确模型 ID 与 Proxy 接线到实际配置时再核实；2026-10-08 开始核实模型 ID 与隔离配置，详见下方环境记录。
 - `propose persistence` 的 global-on / local-off 行为已确认，见索引 A14：仍可提议已有候选，不触发或重启 Noting，缺少 Snapshot / 候选时明确提示。
 - global-off 行为已确认，见索引 A15：全局 `noting.enabled=false` 时，`propose persistence` 不可用。
 - 旧 Background Self-Improvement Review 开关明确删除，见索引 A16：同步清理其独立启用通路与对应设置 / 帮助入口，Noting 关闭不恢复旧 Review；保留并抽取 02 要求复用的 cache-parity helper。
@@ -46,7 +46,7 @@
 - Force 固定边界单位已确认，见 A23：K＝1,000 tokens，三个整数分别为 64,000 / 66,000 / 128,000；公式与两种 capability failure 原样遵循 02。
 - 两轮边界进一步明确，见 A26：首轮 Core correctness＋shared slash surface＋官方 Dashboard E2E；优先零 Dashboard-specific patch，仅有实际 consumer 缺口时补兼容层。结构化 Notebook / Snapshot / Noting / Full Foreground / Schedule API 及产品面板留第二轮。
 - 剩余执行层口径授权已确认，见 A27：规格未尽之处由主会话自行合理收敛、逐项记录依据并最终统一汇报；不变更已冻结一级 / 二级依据的明确要求。集成期收敛（取舍 S3）记录于 `plan.md`。
-- 本轮批次边界已确认，见 A28：第二批四任务交回、主会话 review 与集中接线完成后暂停本轮，不再继续 T5/T6、独立门禁与后续实现；恢复条件随 `final-delivery.md` 记录。
+- A28 记录此前第二批交回后的暂停边界；用户已在 2026-10-08 按 A29 明确恢复，继续增量修复、T5/T6 和独立门禁。历史暂停简报保留来源，不能作为当前停止授权。
 
 ## 后续接线调查与环境工作
 
@@ -55,7 +55,7 @@
 | 议题 | 来源 / 影响 | 当前状态 |
 |---|---|---|
 | 官方 Dashboard Web UI 共享 Slash consumer | A24–A26 已确定本地入口、方法及零补丁目标 | 只读调查完成：现有 send union/completion/rendering可复用；需注册原生命令和TUI pending-input集合，未发现React缺口 |
-| 本机 Codex Proxy 与隔离环境接线 | 模型选择与测试用途已确认；须核实准确模型 ID、High 配置及实际入口 | 按用户要求留到实际配置时调查 |
+| 本机 Codex Proxy 与隔离环境接线 | 模型选择、High 与实际测试用途已确认 | `/v1/models` 已核实 `gpt-6-luna-high`；loopback endpoint `http://127.0.0.1:9879/v1`，真实连通请求已成功；隔离验收配置位于 `.hermes-dev/acceptance/config.yaml`，凭据只在忽略路径 |
 
 其他问题先查现行文档与实现；A27 起剩余执行层口径由主会话自行收敛并记录于 plan.md 与 final-delivery.md（批次边界见 A28），仅影响冻结依据解释或范围变更的事项才提交用户。本轮口径已收敛，文档基线提交一并纳入三份核心文档与索引。
 
@@ -69,13 +69,13 @@
 | Identity / Foreground / History foundation | 已交回、review 接收、薄接线已接 | 身份边界、真实历史读取与正式工具接线成立；新 Session newly_created 接线待集成（已列入遗留） |
 | Notebook persistence / semantic control | T2A/T2B 已接收并接线 | immutable Snapshot、原子 pointer（A10）、local 开关、branch 独立 Notebook、rewind 重选、commit reconcile 成立；slash 形态（`/notebook`、`/propose-persistence`）留 T5 |
 | Persistence 提议 Slash 命令 | 口径已确认，待实施（T5） | 按索引中的正式拼写、Prompt-trigger、自然语言批准及开关边界接入正式 Slash 路径，不修改 02 |
-| Noting Trigger / runtime | T3A/T3B/T3C 已接收并接线 | admission（same-Anchor 幂等）、两层 gate、Force 公式（A23）、persistent child、受限 dispatch、compact_parent、timestamp/wrapper、request 注入+成功 ACK 成立；turn hooks 与 TUI Idle poll、Force seam 已接；messaging/CLI Idle 接缝列入遗留 |
-| Schedule / Reminder | T4 已接收并接线 | due scan/原子 claim/重启恢复/off→on 一次/ACK 幂等/busy 转 pending 成立；messaging 与 TUI 两 host 路径已接；branch 继承 schedule reconcile 列入遗留 |
-| 跨模块集成与少量 Prompt 调优 | 集成接线完成；Prompt 调优（T6）留待恢复 | wrapper、关闭回退、并发与失败路径已由各任务证据覆盖；T6 少量 Prompt 文本未动 |
-| 官方 Dashboard Web UI E2E acceptance surface | 入口与方法已确认，待实施（T5/T7） | 共享 Slash 命令自然可用；优先零 Dashboard 补丁，必要才补薄兼容层；本地内置浏览器验收 |
-| 独立 Verification | 待启动（按 A28 留待恢复） | 集成收敛后全新审查者按冻结依据核对机制、正式路径和证据；关闭范围内阻断 |
-| 独立 Validation | 待启动（按 A28 留待恢复） | Verification 通过后，另一全新验收者通过产品入口执行适用用户场景 |
-| 主会话交付判定 | 用户暂停简报已交付 | `final-delivery.md` 记录当前证据、停止原因与恢复条件，不声明整轮完成 |
+| Noting Trigger / runtime | 已交回实现保留；正式执行缺口由 F3 修复 | admission（same-Anchor 幂等）、两层 gate、Force 公式（A23）、persistent child、受限 dispatch、compact_parent、timestamp/wrapper、request 注入+成功 ACK 成立；turn hooks 与 TUI Idle poll、Force seam 已接；messaging/CLI Idle 接缝列入遗留 |
+| Schedule / Reminder | 已交回实现保留；pointer/registry 与 stale-claim 原子性由 F2 修复 | due scan/原子 claim/重启恢复/off→on 一次/ACK 幂等/busy 转 pending 成立；messaging 与 TUI 两 host 路径已接；branch 继承 schedule reconcile 列入遗留 |
+| 跨模块集成与少量 Prompt 调优 | 增量修复与接线中；T6 少量文本已实现、75项定向通过 | wrapper、关闭回退、并发与失败路径已由各任务证据覆盖；T6 少量 Prompt 文本未动 |
+| 官方 Dashboard Web UI E2E acceptance surface | 官方 TUI/Web 产物已构建；shared Slash 与验收待 T5/T7 | 共享 Slash 命令自然可用；优先零 Dashboard 补丁，必要才补薄兼容层；本地内置浏览器验收 |
+| 独立 Verification | 待启动（增量修复与 T5/T6 收敛后） | 集成收敛后全新审查者按冻结依据核对机制、正式路径和证据；关闭范围内阻断 |
+| 独立 Validation | 待启动（增量修复与 T5/T6 收敛后） | Verification 通过后，另一全新验收者通过产品入口执行适用用户场景 |
+| 主会话交付判定 | 自主目标已恢复，待最终核验 | `final-delivery.md` 记录当前证据、停止原因与恢复条件，不声明整轮完成 |
 
 ## 当前编排与风险
 
@@ -92,6 +92,19 @@
 | T3A纯parity抽取 | 已实现、review接收 | 原 constructor 复用 helper；`/btw` 入口未改 | 四文件35通过；定向8通过；Ruff/health通过 | 未验收 |
 | T2B/T3B/T3C/T4 | 已实现、review接收、集中接线完成 | MRO/schema/turn hooks/commit reconcile/rewind/branch/force seam/TUI Idle/工具面 | run1 31文件1033通过；run2/run3 修复后全绿（详见下） | 未验收 |
 
+## 恢复后的复核与修复编排
+
+恢复审查基线：`2ba9b34193`；原始文档冻结仍为 `5346cd094b`，01/02 未变。已核对第二批实际 DB、child、request、host 接线及任务证据摘要；测试全绿仅在既有覆盖范围内有效，以下正式链路缺口仍须关闭。
+
+| 增量任务 | 状态 / 修改边界 | 完成条件 |
+|---|---|---|
+| F1 身份与历史生命周期 | `fix_identity_lifecycle` 实施中；Identity/Foreground/原生创建与 rewrite/branch、host Reminder ownership | 新 Session 成功创建冻结 generation；branch 即时冻结且空路径幂等；rewrite 与 pointer 同事务；Full audit 与路由 ownership 可证 |
+| F2 Notebook/Schedule 一致性 | `fix_notebook_schedule` 实施中；Notebook DB/store、Schedule registry/service、pending 原子性 | Registry 同步 current pointer 的完整 state；迟到旧 Anchor 不覆盖调度；rewind/null/branch 同事务 reconcile；失败不吞半写；stale claim 不生成 pending |
+| F3 Noting 正式执行 | `fix_noting_execution` 实施中；child/runtime/policy/request/原生 compaction/Idle host seam/受限工具 | 线程真正运行、冻结时机正确、mutation 正式可调用并提交；安全检查后 native admission ACK；Force/Idle、gate、profile 与 cache divergence 边界闭环 |
+| T5/T6 后续 surface/Prompt | 等待上述接线稳定后实施 | shared Slash/旧 surface 清理、少量通用文本；不重做 T2B/T3B/T3C/T4 |
+
+主会话待三项完整交回后集中 review；无必要全局工作时等待，不检查零碎文件增长。独立门禁仅在全轮集成收敛后派遣。
+
 ## 起点与验证摘要
 
 - 本轮起点：`main`，提交 `ef1f0e909c7f8b438a2121aa9d9d07b0f7697eb6`；进入对齐前工作区干净。冻结检查基线按 `AGENTS.md` 的官方提交 `d02f211858ab202d6d4d34ea59774591a5f14cbd`。
@@ -99,9 +112,17 @@
 - 沿用已有证据：初始化阶段本地保留检查执行一次，10 项通过；GitHub Actions 已关闭。这些证据不证明 Secretary 功能或完整 Python suite 通过。
 - 本轮文档基线及计划阶段：01 / 02 原文未改，差异检查通过；计划/RTK授权指导阶段快照 `56d5adee6d057afa35cd5cae99a5f12e66371b2a`，初始冻结哈希保留在 `baseline.txt`。尚未运行完整suite或两个独立门禁。
 - T2A：canonical runner两文件119通过（0.9秒）；最后Schedule校验修改后定向一文件37通过（0.5秒）。证据：`.hermes-dev/evidence/t2a/`。仅证明语义和输出边界，不证明持久化或产品闭环。
-- T3A：canonical runner四文件35通过（6.4秒）；补充真实request assembly后新测试文件8通过（4.7秒）；Ruff/health通过。证据：`.hermes-dev/evidence/t3a/`。尚无Noting生产runtime（现已由 T3B/T3C 补齐）。
+- T3A：canonical runner四文件35通过（6.4秒）；补充真实request assembly后新测试文件8通过（4.7秒）；Ruff/health通过。证据：`.hermes-dev/evidence/t3a/`。T3B/T3C 增加 runtime，恢复复核发现正式 spawn/mutation 接线缺口，当前由 F3 修复。
 - T1：canonical runner Foundation 16通过（3.4秒）；相关5文件89通过（4秒）；Ruff/diff/health定向通过。证据：`.hermes-dev/evidence/t1/summary.md`。
 - T2B/T3B/T3C/T4（各 Agent 交回证据）：T2B 20新测试+353 邻域通过+指针鉴别力探针；T3B 59新测试+280/283 受影响（3 项改动前既存）+512 配置套件+223 邻域；T3C 29新测试+476 受影响+`tests/agent/` 全目录 10759 通过（34 项干净 HEAD 复现的既存失败）；T4 33新测试+231 受影响+57 交叉。证据：`.hermes-dev/evidence/{t2b,t3b,t3c,t4}/`。
 - 集成定向复测（Kimi 主会话，2026-10-08 凌晨）：run1 31 文件 **1033 通过 / 2 失败 + 7 collection error**（tui toolset 断言 + 手动 mixin 子类与中央 MRO 冲突）；修复后 run2 9 文件 **775 通过 / 1 失败**；补 CONFIGURABLE 登记后 run3 2 文件 **719 通过 / 0 失败**；本地保留检查全集 **10 项全绿**（staged，health 0 blocking；FILE_LINES 棘轮以提取 `agent/agent_init_config.py` 与两处 facade 调用点回退修复）。run4 42 文件 **1178 通过 / 1 失败**（cache-parity byte 不变量回归：surface gate 曾在 request 期经 reminder 路径懒触发切换工具面——用仪表复现脚本定位，已改为**仅构造期**执行 + registry 直取）＋ 1 个 flaky；run5 42 文件 **1179 通过 / 0 失败**（flaky 重试通过）；随后 flake 根因修复（due scan 改在 claim 时刻断言，消除 `(now, now+1]` 微溢出窗口），定向复跑 **3×9/9 绿**。证据：`.hermes-dev/evidence/integration/run{1,2,3,4,5}.log`。
 - 阶段快照：`cd79cf6c46`（T1/T2A/T3A）；`6432913cbe`（文档与授权）；随后一次集成批次提交（T2B/T3B/T3C/T4 + 接线 + 测试适配，哈希见 git log）。
 - 大型检查执行方、版本、范围、次数、耗时与结果待实际执行后记录；当前平台及真实模型覆盖尚未验收，不声明跨平台通过。
+
+- 2026-10-08 真实测试授权再次确认：本机 Codex Proxy / GPT6 Luna，沿用 A11 的 High；Hermes 仅被测、不参与编码。正式 CLI 子命令入口为 `.venv/bin/python -m hermes_cli.main dashboard ...`；直接 `cli.py web --help` 曾误入无关对话并已结束，不作为验收证据。
+
+- 恢复期模型连通证据：`.hermes-dev/evidence/provider/connectivity.json`，请求 `gpt-6-luna-high` / `reasoning_effort=high`，返回 `SECRETARY_PROVIDER_OK`；尚不证明产品功能。验收配置显式测试上下文窗口196,000 tokens，不冒充Proxy未公布的模型固有能力。
+
+- 主会话增量接线：`run_agent.py::_ensure_db_session`成功create后调用 `initialize_conversation_identity(self,newly_created=True)`；F1将通过实际出生generation路径补接线证据。
+- T6少量通用Prompt：`agent/system_prompt.py`稳定guidance层说明current history事实源、main只读Notebook、persistence候选经来源核对与明确批准；无新运行机制、不重建会话中root prompt。canonical runner两个相关文件75通过/0失败（9.4秒），日志`.hermes-dev/evidence/provider/prompt-tests.log`。
+- 官方前端构建：主会话经 `source_build_env` / `prepare_launch_dependencies` / `build_source_tui` / `build_source_web`准备PM Node/Python/JS依赖并构建TUI和Web，成功。日志`.hermes-dev/evidence/provider/frontend-build.log`；未改前端源码/锁文件、未启动Dashboard用户验收。

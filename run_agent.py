@@ -350,6 +350,8 @@ class AIAgent(
                 cwd=_launch_cwd_for_session(source), profile_name=profile_for_session,
             )
             self._session_db_created = True
+            from agent.prompt_cache_scope import initialize_conversation_identity
+            initialize_conversation_identity(self, newly_created=True)
         except Exception as e:
             # Transient failure (e.g. SQLite lock): _session_db_created stays False so the next turn retries.
             logger.warning("Session DB creation failed (will retry next turn): %s", e)

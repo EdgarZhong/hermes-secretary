@@ -31,6 +31,12 @@ from hermes_constants import get_default_hermes_root, get_hermes_home
 from utils import is_truthy_value
 
 logger = logging.getLogger(__name__)
+SECRETARY_GUIDANCE = (
+    "Conversation history is the source of truth; use session_history to check current-conversation evidence. "
+    "In the main conversation, Notebook is derived working state that you may read when notebook_show is available; "
+    "semantic maintenance belongs to Noting. Persistence candidates are proposals: present their source evidence "
+    "and obtain explicit user approval before applying proposed Memory, Rule, or Skill changes."
+)
 _PLUGIN_SECTION_FRAME_RE = re.compile(
     r"^## Plugin Context: (?P<id>[a-z0-9][a-z0-9._-]{0,127})\n<!-- hermes-plugin-section-chars:(?P<chars>[0-9]{1,4}) -->\n\n",
     re.MULTILINE,
@@ -561,6 +567,8 @@ def _guidance_parts(agent: Any) -> List[str]:
             ) if getattr(agent, flag, True)
         ]
     parts.append(_tool_guidance_block(agent))  # None/empty entries are dropped by _join_tier
+    if "session_history" in (agent.valid_tool_names or set()):
+        parts.append(SECRETARY_GUIDANCE)
     if not agent.valid_tool_names:
         return parts
     # Steering only lands inside tool results, so only reachable with tools.

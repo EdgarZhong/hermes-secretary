@@ -47,7 +47,8 @@ hermes-secretary/
 ├── CLAUDE.md                  # 当前目标、任务与动态状态
 ├── docs/                      # Secretary 现行专项规格
 ├── run_agent.py、agent/        # Agent facade、Turn、prompt、压缩与模型调用
-├── hermes_state*.py           # SessionDB 与状态持久化模块
+├── hermes_state*.py           # SessionDB 与 Secretary 自有状态表
+├── secretary/                 # Notebook、Noting 与 Schedule/Reminder 服务模块
 ├── cli.py、hermes_cli/         # CLI、配置、插件加载与服务入口
 ├── gateway/                   # 消息 ingress、路由与会话 admission
 ├── tools/、plugins/、skills/   # 工具及能力扩展
