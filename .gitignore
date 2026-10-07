@@ -1,4 +1,5 @@
 .DS_Store
+/.hermes-dev/
 /venv/
 /venv.old/
 /venv.stale.runtime-*/
