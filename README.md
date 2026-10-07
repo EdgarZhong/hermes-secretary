@@ -8,6 +8,8 @@ Hermes Secretary 是基于 [Nous Research 的 Hermes Agent](https://github.com/N
 
 沿用 Hermes 的 Agent Turn、physical Session、Gateway、tool/runtime、原生压缩与状态持久化机制，在已确认接口上增量扩展。
 
+项目最终部署形态为云端运行，通过官方 Dashboard Web UI 使用。Dashboard 对应浏览器 Web 界面（`web/` 与 `hermes_cli/web_server*.py`），沿用其现有 Hermes 对话运行路径。该部署口径与本地开发测试环境分开；实际部署与验收进度见 `CLAUDE.md`。
+
 | 能力 | 公开规格约定 |
 |---|---|
 | Conversation Identity | Secretary-owned `conversation_ref` 作为稳定 ownership；physical Session、compression lineage 和 Gateway scope 作为 locator |
@@ -59,6 +61,8 @@ hermes-secretary/
 ```
 
 ## 运行与开发环境
+
+开发测试期间，前端与后端均在本机 localhost 运行；浏览器验收访问本地 Web UI。最终云端部署形态不改变本地开发测试口径。
 
 开发运行目标为 Python 3.14，由 Hermes PM 提供固定版本解释器和依赖。`pyproject.toml` 对较旧 Python 的声明兼容范围用于上游更新路径，不表示旧版本是开发运行目标。Git、Git LFS 和 Node.js 要求见 [CONTRIBUTING.md](CONTRIBUTING.md)；Node 接受版本以 `package.json` 为准。
 

@@ -1,70 +1,91 @@
-# 当前阶段与任务同步
+# 首轮自主实现：当前阶段与任务同步
 
-## 当前目标
+## 当前目标与阶段
 
-截至 2026-10-07，公开仓库、独立上游分支和官方 PM 开发环境已初始化；用户一次性确认的规则冻结、上游干扰隔离和本地 CI / CD 流程已完成。保留工作区现有 01 / 02 规格，尚未启动 Secretary 功能的自主实现。
+截至 2026-10-07，**Ask and Align 已完成，进入文档基线冻结与实施规划**。目标是在 `main` 完成现行 01 / 02 定义的公开 Hermes Secretary V1 完整链路，并少量调优通用 System Prompt。
 
-## 已确认口径
+主会话已完整阅读根 `AGENTS.md`、`README.md`、现行 01 / 02（02 共 1,978 行）及自主套件全部七份技能。用户已授权进入下一阶段；当前准备提交文档冻结基线，随后编制实施计划，尚未修改功能代码。
 
-- 公开 Hermes Secretary = 工作区 01 的首轮范围 + System Prompt 调优；02 是核心能力实现的权威规格。
-- 先完成公开核心，后续个人化改造使用个人分支，与公开发布范围隔离。
-- 个人分支无需私有可见性；敏感凭据绝不提交或上传云端。
-- 首轮 focus on `main`，直接在 `main` 演进；当前不创建个人分支。
-- `main` 的三份核心文档按用户全局规则维护；`hermes-upstream` 不用于开发，保留上游代码和文档原样。以后合并上游不得覆盖开发分支的三份核心文档，按 `AGENTS.md` 的保护 SOP 执行。
-- GitHub 简介面向公开用户，只介绍 Hermes Secretary，不包含个人后续改造计划。
-- 下载目录旧版 01 和 03 已阅读，仅用来识别后续个人化范围；不复制进公开仓库，不作为本轮公开实现或验收依据。
-- System Prompt 调优属于公开范围，但具体目标、接线点与验收口径尚待确认。
-- 工作区 `.venv` 使用官方 PM 创建，包含 `dev` / `test` groups，按官方解释器与现有锁文件安装；不迁移管理方式，不改变全局 Python，也不改写锁文件。
-- 用户已一次性确认开发约定并追加“排除上游规则干扰”：只保留根 `AGENTS.md` 中列明的冻结规则，分区文档不自动增加约束，移除文档长度门禁。进入自主实现后 Agent 不得改变规则、阈值或门禁。
-- 不运行 GitHub CI / CD；保留已采纳的本地检查及分区、集成、交付回归流程，结果由根 `CLAUDE.md` 记录。
-- 三份核心文档仅在根目录维护，不做递归扩展；分区 `AGENTS.md` 非必要不修改。任务看板和动态进度只放根 `CLAUDE.md`。
-- 自主实现沿用 `autonomous-run`：日常小范围验证；必要扩大测试只在集成收敛、交付前，由主会话派生独立 Verification / Validation 后统一安排一次。两个门禁专注各自职责，共享同版本大型检查证据，不重复全量运行，同时控制时间和上下文开销。
+本轮编号为 `20261007-v1-first-implementation`。会话确认口径的权威入口为 [.autonomous/20261007-v1-first-implementation/index.md](.autonomous/20261007-v1-first-implementation/index.md)，按用户指定命名，承担自主套件的 Snapshot Index 职责；02 本轮保持原文不变。
 
-## 当前任务看板
+稳定项目事实与入口见 `README.md`；通用规则与协作约束见 `AGENTS.md`。本文件只维护本轮动态状态，不保留已结束的建仓流水账。
 
-| 任务 | 状态 | 完成条件 |
+## 本轮范围与完成目标
+
+| 能力面 | 本轮目标 | 主要依据 |
 |---|---|---|
-| 理解现行 01 与旧版 01 / 03 的边界 | 已完成 | 确认公开核心与个人化范围，现行 02 保持权威 |
-| 记录范围隔离与协作规则 | 已完成 | `AGENTS.md` 写入确认口径与全局规则 |
-| 拉取官方 Hermes 基线 | 已完成 | 基线 `d02f211858ab202d6d4d34ea59774591a5f14cbd`，保留官方历史 |
-| 创建公开 GitHub 仓库与简介 | 已完成 | `EdgarZhong/hermes-secretary` 为公开 Fork，默认 `main`，简介只描述公开项目 |
-| 建立 `main` 与纯上游分支 | 已完成 | 远端两个分支已核实，`main` 跟踪 `origin/main`，`hermes-upstream` 跟踪 `upstream/main` |
-| 重写三份核心文档 | 已完成 | 文档职责、开发分支、上游文档保护 SOP 及稳定索引已核对 |
-| 创建工作区 `.venv` | 已完成 | 官方 PM 创建 Python 3.14.7 环境，安装 `dev` / `test`；官方锁文件未变 |
-| 审查并提交、推送初始化内容 | 已完成 | 初始化提交及上游合并已推送，GitHub 默认分支和简介已核实 |
-| 冻结开发规则并排除上游干扰 | 已完成 | 冻结规则、分区参考权限和核心文档保护已落盘；文档长度门禁退出本地与 CI 入口 |
-| 本地 CI / CD 与回归流程 | 已完成 | 本地检查执行一次，10 项通过；Actions 关闭；定向验证、交付前一次扩大测试和两个独立门禁职责已明确 |
+| Conversation Identity | durable opaque Conversation Ref、可信 alias reconciliation、压缩延续保持身份、branch/reset 隔离、冲突与路由 ownership fail closed | 02 §1、§6.2–6.3、§6.13 |
+| Foreground / History Search | 区分 Active / History / Full Foreground；跨压缩读取真实有效历史，排除 rewrite superseded 路径；主会话与 Noting 复用同一 search/read 能力，独立于 Noting 开关 | 02 §2.1–2.4、§6.4、§6.14 |
+| Notebook | 四区十类型、完整 immutable Snapshot、原子 current pointer、Noting-only semantic mutation、主 Assistant 只读、人类 Notebook slash 控制与查看、rewind/edit/branch reconciliation | 02 §2.5–2.7、§3.1–3.7、§6.11、§6.18 |
+| Noting | 两层 enable gate、Idle / Force、规定阈值公式、DB-backed same-Anchor admission、不同 Anchor 可并发、persistent one-shot child、Parent cache parity、两种 profile、受限 dispatch、commit-time Anchor validation | 02 §4–5、§6.6–6.7、§6.15–6.16 |
+| Schedule / Reminder | Notebook-owned durable registry、due claim 与重启恢复、被动 Reminder request-time 注入与成功响应 ACK、主动 Reminder 复用 Gateway admission、busy 转被动提醒 | 02 §3.8–3.12、§6.8–6.10、§6.17 |
+| 时间标记、回退与正式接线 | source-event timestamp、三种完整 `role=user` wrapper；关闭 Noting 的原生回退；身份、权限、并发、失败与重启路径证据；Slash 命令及必要的既有入口接线 | 02 §4.3、§5.6、§6，加本轮 Frontend / API 排除口径及索引 A24 的有限补充 |
+| Persistence 提议 Slash 命令 | `/propose-persistence` 无结构化参数，可跟普通 user message；主 Assistant 核对当前 Notebook persistence 候选与原文依据，只输出提议；后续自然语言批准 / 修改 / 否决，没有批准 UI | 本轮索引 A06–A07、A14–A15、A17、A19；补充 02 §2.5 |
+| 通用 System Prompt 调优 | 主会话自行选择少量通用文本调优，不引入额外机制 | 本轮用户明确授权，作为 02 之外的补充范围 |
+| E2E 验收入口 | 前端、后端在本机 localhost 运行；官方 Dashboard Web UI 目标为零专属补丁，通过共享 Slash 链路自然提供命令；仅查证 consumer 缺口后补薄兼容层。Codex 内置浏览器验收，Personal UI 与产品化 API 留第二轮 | 本轮索引 A24–A26；macOS 实测边界按 A20 |
 
-## 后续公开实施队列
+完成定义：上述能力通过真实正式入口形成可用闭环，满足 01 的 Definition of Done 与 02 的适用条款；独立 Verification、Validation 均关闭范围内缺陷与必要证据缺口，由主会话核验并交付。Helper、阶段提交或局部测试通过不等于整轮完成。
 
-以下是待实施的 Secretary 工作，不表示已有功能：
+## 口径收敛状态
 
-1. Conversation Ref / Identity Registry 与 History Foreground / History Search。
-2. Notebook immutable Snapshot、current pointer、只读主会话工具与 Slash Command。
-3. Noting runtime、Idle / Force Trigger、cache parity、Anchor admission 与 commit gate。
-4. Notebook Schedule、passive System Reminder、active User Reminder 与 busy fallback。
-5. Timestamp / wrapper contract、关闭行为回归、并发与失败路径、最小 Frontend / API 接线。
-6. System Prompt 调优：先确认范围与验收，再实施。
+- 本轮范围按上表和 01 / 02 查阅；少量 Prompt 调优授权、Frontend / API 排除范围、Persistence 提议与自然语言批准边界见索引 A02、A05–A07。Development 精确阅读分派及提问、文档冻结规则归根 `AGENTS.md`，不再混入产品口径问答表。
+- 02 原文不变；索引补充与收敛本轮适用口径，不再安排“同步修改 02”。旧稿和仓库外 03 不作为本轮依据。
+- 已冻结通用规则继续按根 `AGENTS.md` 执行；后续确认口径写索引，本文件只维护任务状态与必要摘要。
+- 主会话错误提出的“按 Anchor 新旧淘汰迟到任务结果”方案已撤回，不作为实施要求；索引仅保留用户明确澄清的 pointer 口径 A10。
+- 用户已澄清 pointer 的选择依据，见索引 A10：按当前 Full Foreground 的最新有效 Snapshot Anchor 选择，不按完成 / 提交时间；较早 Anchor 的迟到合法 Snapshot 可以提交，但不能使 current 倒退。该口径需纳入 persistence 实现、rewind reconciliation 与并发验收。
+- 真实模型验收选择已确认，见索引 A11–A12：本机 Codex Proxy、GPT6 Luna、High，仅用于必要实际测试，Hermes 不参与编码。用户要求准确模型 ID 与 Proxy 接线到实际配置时再核实；当前停止环境调查，专注口径提问，尚未写入运行配置。
+- `propose persistence` 的 global-on / local-off 行为已确认，见索引 A14：仍可提议已有候选，不触发或重启 Noting，缺少 Snapshot / 候选时明确提示。
+- global-off 行为已确认，见索引 A15：全局 `noting.enabled=false` 时，`propose persistence` 不可用。
+- 旧 Background Self-Improvement Review 开关明确删除，见索引 A16：同步清理其独立启用通路与对应设置 / 帮助入口，Noting 关闭不恢复旧 Review；保留并抽取 02 要求复用的 cache-parity helper。
+- Slash 正式拼写已确定为 `/propose-persistence`，见索引 A17。
+- 命令调用形式已确认，见 A19：无结构化参数的普通 Prompt-trigger Slash，可在命令后跟自然语言 user message；正式接线复用既有主 Conversation 路径。
+- 平台验收边界已确认，见 A20：本机 macOS 实测，Linux / Windows 如实记录未验证范围，保留既有跨平台实现约束。
+- 验收入口与方法已确认，见 A24–A25：官方 Dashboard Web UI 最小专属改造作为首轮 E2E acceptance surface，通过 Codex 内置浏览器操作，不使用 Computer Use；Personal UI 选择和产品化留到第二轮。A05 的 Frontend 排除范围据此有限补充，具体必要接线经调查后纳入计划。
+- 最终云端运行、通过 Web UI 使用属于用户此前已确定的部署口径；开发测试期间前端、后端均在本机 localhost 运行，内置浏览器访问本地 Web UI。两者已分别写入根 `README.md` 的架构与开发环境说明，不把最终部署形态当开发测试环境要求。
+- 旧 Review 清理范围进一步确认，见 A22：删除 `/refine` 及其旧 Review 接线，保留另一项独立工作审查功能 `/review`。
+- Force 固定边界单位已确认，见 A23：K＝1,000 tokens，三个整数分别为 64,000 / 66,000 / 128,000；公式与两种 capability failure 原样遵循 02。
+- 两轮边界进一步明确，见 A26：首轮 Core correctness＋shared slash surface＋官方 Dashboard E2E；优先零 Dashboard-specific patch，仅有实际 consumer 缺口时补兼容层。结构化 Notebook / Snapshot / Noting / Full Foreground / Schedule API 及产品面板留第二轮。
 
-正式实现前重新核对官方基线的符号和接线点；依赖顺序与正确性要求以 02 为准。
+## 后续接线调查与环境工作
 
-## 编排、风险与交付条件
+当前没有影响冻结的待确认问题；以下属于实施规划及按用户要求留待后续的环境工作，尚未调查的细节不作为已冻结行为：
 
-- 本阶段由主会话直接执行，未启用子 Agent 或 worktree。
-- 修改范围：Git 配置、GitHub 仓库元数据、三份核心文档、必要的仓库忽略规则、本地开发环境，以及移除本地 / CI 文档长度阻断入口；未自行修改功能代码，不改写现有 01 / 02 正文或官方锁文件。功能代码变动仅来自已审查的官方基线增量。
-- 风险：旧版文档中的 Schedule、busy queue、Noting 设计不可覆盖当前 02；公开分支均可见，不承载敏感凭据。
-- 初始化完成定义：官方代码历史保留，现有规格保留，公开 GitHub 默认 `main` 已推送，纯上游分支存在，简介及三份核心文档符合已确认口径。
-- 验证范围：文档、Git 差异、基线一致性、远端默认分支与简介；本阶段不宣称 Secretary 功能已实现或上游测试已通过。
+| 议题 | 来源 / 影响 | 当前状态 |
+|---|---|---|
+| 官方 Dashboard Web UI 共享 Slash consumer | A24–A26 已确定本地入口、方法及零补丁目标；调查 catalog / completion / dispatch 与文本结果路径，确认是否有 consumer 缺口 | 在规划阶段只读调查；查证必要才安排薄兼容补丁 |
+| 本机 Codex Proxy 与隔离环境接线 | 模型选择与测试用途已确认；须核实准确模型 ID、High 配置及实际入口 | 按用户要求留到实际配置时调查 |
 
-## 已完成验证
+其他问题先查现行文档与实现；只把仍影响产品行为、范围或完成判据的歧义提交用户。每次询问一个关键问题并提供建议，回答后立即更新本轮 `index.md`。本轮口径已收敛，文档基线提交一并纳入三份核心文档与索引。
 
-- 官方 PM 成功创建 `.venv`；解释器为 Python 3.14.7，来源与 `pm/lock.json` 的 `3.14.7+20260901` 固定版本一致。
-- 当前平台适用的 36 项 core 依赖均满足官方 `pyproject.toml`；`dev` / `test` groups 已安装。
-- 官方 Python / PM 锁文件及依赖定义未变；`.venv/`、`.hermes-dev/` 和 `.DS_Store` 均被忽略。
-- 初始化时三份核心文档本地链接与空白检查通过；原始规格保留 Markdown 两空格换行，按该格式检查。曾检查上游文档长度诊断，但用户已明确该项不作为本项目验收门禁。
-- 工作区 01 / 02 与初始化前 SHA-256 相同，下载目录旧稿未复制到仓库。
-- Fork 创建时官方新增 10 个提交，增量只涉及 Cron / Gateway 及相关测试，不涉及核心文档或锁文件；已按上游文档保护 SOP 集成，恢复后核实三份核心文档与本项目合并前版本一致，再人工更新本进度记录。
-- 规则冻结调整：`.venv/bin/python scripts/check --staged` 已运行一次，10 项检查通过，未运行完整 Python suite；后续仅更新文档，不重复这批检查。
-- GitHub Actions 仓库权限已核实为 `enabled=false`，不运行云端 CI / CD。
-- 最终轻量审查通过：三份核心文档本地链接有效，检查器 Python 语法及 workflow YAML 可解析，两个文档长度阻断入口已移除；14 份现有分区 `AGENTS.md` 与纯上游一致，未新增分区核心文档。
-- 本阶段未启动功能自主实现或派遣 Verification / Validation，未运行完整 Python suite；这些门禁与必要扩大测试在后续正式自主轮次按冻结流程执行。
+## 首轮任务看板
+
+| 任务 | 状态 | 完成条件 / 依赖 |
+|---|---|---|
+| Ask and Align | 已完成 | 四项输入核对完成；用户确认进入下一阶段，无影响冻结的未决问题 |
+| Snapshot Index 与冻结基线 | 准备提交 | 将本轮三份核心文档与索引一并提交，记录完整冻结哈希 |
+| 实施计划与精确阅读分派 | 进入规划 | 要求→任务→正式路径→验证→用户场景可追溯；文件白名单、接口、依赖与 02 行范围明确 |
+| Identity / Foreground / History foundation | 待实施 | 身份边界、真实历史读取与正式工具接线成立 |
+| Notebook persistence / semantic control | 待实施 | immutable Snapshot、原子 pointer、权限与 slash、路径变更 reconciliation 成立 |
+| Persistence 提议 Slash 命令 | 口径已确认，待实施 | 按索引中的正式拼写、Prompt-trigger、自然语言批准及开关边界接入正式 Slash 路径，不修改 02 |
+| Noting Trigger / runtime | 待实施 | admission、阈值、child、cache parity、受限工具与 commit gate 完整接线；移除旧 Background Review 开关与 `/refine`，保留独立 `/review` |
+| Schedule / Reminder | 待实施 | due scan、持久状态、request injection / ACK、Gateway busy fallback 成立 |
+| 跨模块集成与少量 Prompt 调优 | 待实施 | wrapper、关闭回退、并发与失败路径及 Slash 接线完成；Frontend 范围限于 A24 授权的官方 Dashboard 最小验收改造 |
+| 官方 Dashboard Web UI E2E acceptance surface | 入口与方法已确认，待调查与实施 | 共享 Slash 命令自然可用；优先零 Dashboard 补丁，必要才补薄兼容层；本地内置浏览器验收 |
+| 独立 Verification | 待启动 | 集成收敛后全新审查者按冻结依据核对机制、正式路径和证据；关闭范围内阻断 |
+| 独立 Validation | 待启动 | Verification 通过后，另一全新验收者通过产品入口执行适用用户场景 |
+| 主会话交付判定 | 待启动 | 当前版本证据、两门禁与整改状态支持完成声明，交付 `final-delivery.md` |
+
+## 当前编排与风险
+
+- Ask and Align 已由主会话完成；规划按需委派独立只读接线研究，尚未创建 worktree。正式实施按自主套件分派，主会话负责全局覆盖、返回 review 与接线集成。
+- 当前修改为三份根核心文档整理、已确认协作规则与本轮 `index.md`；01 / 02 正文、功能代码和锁文件未改。下次文档基线提交将一并纳入三份核心文档的本轮变更。
+- 正式实施前核对现有符号与正式接线。02 将 `session_history` 描述为既有 Secretary 能力，但当前对 `agent/`、`tools/` 等入口的初步检索尚未定位同名工具；不能据规格文字宣称基线已实现该能力，需在规划时确认并补齐。
+- 文档未冻结前不把建议视为已确认行为；官方 Dashboard 验收入口已确定，先调查最小接线范围。模型 ID 与隔离环境接线按用户要求在实际配置阶段核实。以本轮索引定位补充口径，保持 02 原文不变，冻结前核对依据一致性。
+
+## 起点与验证摘要
+
+- 本轮起点：`main`，提交 `ef1f0e909c7f8b438a2121aa9d9d07b0f7697eb6`；进入对齐前工作区干净。冻结检查基线按 `AGENTS.md` 的官方提交 `d02f211858ab202d6d4d34ea59774591a5f14cbd`。
+- 已有环境：官方 PM 工作区 `.venv`，Python 3.14.7，已纳入 `dev` / `test` groups；初始化记录确认官方依赖定义与锁文件未改。测试使用隔离状态及 canonical runner。
+- 沿用已有证据：初始化阶段本地保留检查执行一次，10 项通过；GitHub Actions 已关闭。这些证据不证明 Secretary 功能或完整 Python suite 通过。
+- 本轮：01 / 02 已完整阅读；文档整理及后续口径更新按差异与格式检查；修改范围为根 `README.md`、`AGENTS.md`、`CLAUDE.md` 和本轮索引，未修改 02。未运行功能测试、完整 Python suite 或两个独立门禁。
+- 大型检查执行方、版本、范围、次数、耗时与结果待实际执行后记录；当前平台及真实模型覆盖尚未验收，不声明跨平台通过。
