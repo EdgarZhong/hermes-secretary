@@ -37,6 +37,8 @@
 | A24 | 第一轮使用官方 Dashboard Web UI，做最小专属改造作为 E2E acceptance surface；Personal UI 的选择和产品化改造推迟到第二轮 | 用户明确 Dashboard 指 Web UI；对 A05 作有限补充，允许验收必需的官方 Web UI 最小改造，具体接线范围经现有实现调查后纳入规划。既有云端运行、Web UI 使用的部署口径见根 `README.md` | 2026-10-07 用户“第一轮用官方 Dashboard 做最小专属改造的 E2E acceptance surface……”；随后澄清“Dashboard指的是那个Web UI……部署形式最终就是云端运行，走Web UI……早就敲定的” |
 | A25 | 开发期间前端、后端均在本机 localhost 运行；首轮通过 Codex 内置浏览器访问本地官方 Dashboard Web UI 进行实际验收，不使用 Computer Use | 开发测试与最终云端部署分别处理；按用户指定方式安排独立 Validation，浏览器入口与真实操作证据在实施及验收阶段落实 | 2026-10-07 用户“验收方法，用内置浏览器即可，不需要 Computer Use”；随后明确“那是部署口径，不是……开发……测试口径。开发的时候都在本地local host……不管是前端还是后端” |
 | A26 | 第一轮以 Core correctness＋共享 Slash surface＋官方 Dashboard E2E 验收为边界，目标为零 Dashboard-specific patch：新增 Hermes Slash 命令通过现有 catalog、complete.slash、slash.exec / command.dispatch 自然获得补全、执行和文本结果；仅在查证 consumer whitelist / rendering gap 后补薄兼容层 | 不预先改 Web React，不为 UI 提前设计 API，不让未来 Personal UI 反向约束后端架构。Notebook structured / Snapshot history / Noting status-event / Full Foreground audit / Schedule presentation API 与产品面板留第二轮；首轮核心验收仍完整覆盖 01 / 02 及本表补充 | 2026-10-07 用户明确共享 Slash 链路、两种前端补丁情形及两轮边界，并强调“第1种为目标”“第一轮用官方Dashboard做零/最小专属改造的E2E acceptance surface” |
+| A27 | 本轮剩余未冻结的规格口径由主会话自行合理收敛，不再逐项请示；每项自主收敛记录依据与理由，最终随交付统一向用户汇报 | 适用于规格未尽善尽美之处的执行层判断；不得变更已冻结一级 / 二级依据的明确要求；自主收敛记录写入 plan.md 取舍节与 final-delivery.md | 2026-10-07 用户“我知道规格肯定不是尽善尽美，剩余口径你自行合理收敛，最后统一向我汇报就行” |
+| A28 | 第二批 T2B/T3B/T3C/T4 交回、主会话完成 review 与集中接线后，本轮先暂停；不再继续 T5/T6、独立门禁与后续实现 | 用户明确本轮边界；后续任务与两个独立门禁留待恢复；不改变既有冻结要求与完成定义 | 2026-10-07 用户“本轮subagent返回，你完成验收与接线之后，就先到此为止,不再继续往后” |
 
 明确排除：除共享 Slash 及经查证必要的 Dashboard 薄兼容补丁之外的 Frontend / API 增量、批准 UI、Personal UI 选型与产品化（A05、A07、A24、A26）；第二轮 API 与面板边界按 A26。其余既有排除范围直接按 01 与根 `AGENTS.md` 查阅，不作为本次新增问答口径。
 

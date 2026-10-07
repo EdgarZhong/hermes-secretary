@@ -41,6 +41,8 @@
 
 所有 Development 完整读根 `AGENTS.md`、`CLAUDE.md`、本计划、索引、baseline、`executing-plans/SKILL.md`及分派冻结原文。02固定1,978行；章节名与行数均基于冻结提交核对，文件不改。共同必读最终不变量1942–1978，分区文档只架构参考。相应测试文件可新增/修改，但不改runner/checker/门禁规则或安装依赖。
 
+2026-10-07 晚批次调整（Kimi 主会话接手后）：T1/T2A/T3A 已于 `cd79cf6c46` 提交；T2 拆分为 T2A（已完成）与 T2B（Notebook 持久化）；T3 拆分为 T3A（已完成）、T3B（触发与准入）与 T3C（child runtime 与请求接缝）。T2B/T3B/T3C/T4 四任务并行派遣，跨任务接口名称在派遣 prompt 中锁定（`notebook_commit_snapshot_conn`、`notebook_current_conn`、`notebook_reselect_pointer_conn`、`notebook_local_enabled_conn`、`noting_admit_conn`、`noting_child_register_conn`、`noting_child_finish_conn`、`reminder_pull_pending_conn`、`reminder_ack_conn`、各 `init_secretary_*_schema`）；`hermes_state.py`/`hermes_state_schema.py`/`run_agent.py`/`toolsets.py`/`model_tools.py` 的正式接线统归主会话在返回后集中完成。子 Agent 模型按用户最新全局规则显式为 deepseek/deepseek-flash；四任务曾因额度中断在写码前被终止，经用户要求后以等价任务与原锁定接口重新派遣（旧 Agent 无法变更模型）。A27 授权主会话自行收敛剩余执行层口径；A28 用户边界为四任务交回、主会话 review 与集中接线完成后暂停本轮、不再继续往后（二者均逐项记录于本文取舍节与 `final-delivery.md`）。
+
 - **T1 Foundation**：02 §1–2（13–634）、§3.1（637–668）、§6.1–6.4（1666–1724）、§6.11/13/14（1813–1821、1841–1866），跨章 §3.3–3.4（681–730）、§4.8（1199–1218）、§5.10（1632–1650）。薄接线白名单 `hermes_state.py` MRO、`hermes_state_schema.py::_init_schema`、`agent/prompt_cache_scope.py`可信locator、`agent/inline_tool_executors.py`、`model_tools.py`、`toolsets.py`、`agent/agent_init.py`；与T3共享后者串行。若需新增具体原生lifecycle hook，报告主会话后交集中接线，不扩大白名单。
 - **T2 Notebook**：02 §2.5–3.7（362–811）、§3.8–3.10（812–928，与T4intent接口）、§4.1–4.3（1027–1095）、§4.8（1199–1218）、§5.7（1522–1564）、§5.10（1632–1650）、§6.1（1670–1679）、§6.11–6.14（1813–1866）、§6.16/18（1878–1890、1906–1917）；索引A10/A14/A15。MRO/schema/rewind/branch薄接线由主会话基于返回接口集中完成。
 - **T3 Noting**：02 §2.1–2.4（249–361）、§2.6–2.7（567–634）、§3.1–3.4（635–730）、§3.7（797–811）、§3.11（929–969）、§4–5全篇（1027–1665）、§6.5–6.8（1725–1783）、§6.12/15–17（1822–1840、1867–1905）；索引A11/A12/A16/A22/A23。正式接线白名单为 `agent/background_review.py`、`review_idle_queue.py`、`turn_facade.py`、`turn_finalizer.py`、`turn_context.py`、`turn_context_compaction.py`、`turn_preflight.py`、`turn_request_assembly.py`、`session_persistence.py`、`message_metadata.py`、tool execution/invoke siblings、native compression siblings、`hermes_cli/config_defaults.py`及既有config验证/hotreload。`agent/side_question.py` 默认不改，现有constructor签名与返回值继续有效。`run_agent.py` 仅由主会话按实际必要薄接线；旧surface清理由T5完成，避免共享改动。
@@ -52,9 +54,9 @@
 
 ## 当前状态与编排
 
-初始基线只证明文档冻结；首批实现与定向证据已产生，真实模型尚未运行。每个任务的**机制实现、正式接线、针对性验证、用户结果**四项状态及负责Agent在根 `CLAUDE.md` 维护，不在此建立第二看板。2026-10-07用户要求等待现有任务交回后收尾并提交快照，不再派遣新子Agent；恢复时沿用下列依赖顺序，阶段停止判定见同目录`final-delivery.md`。
+初始基线只证明文档冻结；首批实现与定向证据已产生并提交为阶段快照 `cd79cf6c46`，真实模型尚未运行。每个任务的**机制实现、正式接线、针对性验证、用户结果**四项状态及负责Agent在根 `CLAUDE.md` 维护，不在此建立第二看板。2026-10-07 晚 Kimi 主会话派遣 T2B/T3B/T3C/T4 并行实施；因额度中断一度被终止（写码前，无实现残留），随后按用户指示以 deepseek/deepseek-flash 等价重新派遣，实施中。返回后主会话 review 并集中接线，随后按 A28 暂停本轮。
 
-执行序列：T1先行 → 主会话review/ref与path接口 → T2完整Notebook → T3/T4在独立siblings内并行 → 共享core接线串行 → T5 shared Slash与旧surface清理 → T6最终Prompt文本 → 集成收敛 → T8 Verification → 独立Validation（T7入口）→ 主会话交付判定。T3A纯parity抽取可以与T1并行，但不修改T1正在接线的初始化/core文件；T2 semantic model可提前独立准备，但正式DB/commit交付须等待T1接口。任何共享文件修改必须主会话明确切换ownership后进行。
+执行序列：T1先行（已完成） → T2A/T3A（已完成） → T2B/T3B/T3C/T4 并行（已暂停，待恢复重新派遣） → 主会话集中接线（schema/MRO/run_agent/toolsets/model_tools/turn hook） → T5 shared Slash与旧surface清理（待 T2B/T4/T3B 返回，串行） → T6最终Prompt文本（主会话） → 集成收敛 → T8 Verification → 独立Validation（T7入口）→ 主会话交付判定。任何共享文件修改必须主会话明确切换ownership后进行。
 
 主会话亲自核对返回的原文覆盖、机制/约束、接口、真实上下游、状态/失败路径与证据；不复跑有效测试。集成代码变化、失败修复或证据存疑才定向复验。缺口形成下节整改，不启动碎片级独立门禁。
 
@@ -73,5 +75,10 @@
 | P07 | 新request-onlyReminder成本可能被usage-anchor覆盖，提前ACK会丢失败请求提醒 | T3/T4正确accounting与success receipt ACK、fail/retry同source time证据 |
 
 以上是基线缺口与必须防止的偏离，不是已发生实现缺陷。后续实际缺陷在本节追加要求、触发输入、版本/位置、负责人和关闭/复验证据；动态状态同步根CLAUDE，不擅自改要求或门禁。
+
+授权取舍（用户明确）：
+
+- 取舍-S1（A27）：本轮剩余未冻结的执行层口径由主会话自行合理收敛，逐项记录依据与理由，停止时随 `final-delivery.md` 统一汇报；不变更已冻结一级 / 二级依据的明确要求。
+- 取舍-S2（A28）：第二批四任务交回、主会话 review 与集中接线完成后暂停本轮；T5/T6、独立 Verification / Validation 与后续实现留待恢复。恢复第一步见 `final-delivery.md`。
 
 初始可回退快照为冻结提交 `5346cd094b6a1bb6c6d9ce69e83b3a1570cf46bd`。后续主会话在review后的集成节点本地提交，准确声明已验证范围与剩余项；`baseline.txt`始终保留初始文档基线。索引/一级02不可随实现设计漂移；发现要求变更走授权流程，执行设计调整只影响本文与根CLAUDE。首批定向功能测试已有证据，定位见根CLAUDE；当前未运行真实模型、完整suite或独立门禁，也未部署/发布。

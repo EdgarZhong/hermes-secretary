@@ -2,9 +2,9 @@
 
 ## 当前目标与阶段
 
-截至 2026-10-07，**Ask and Align、文档基线冻结与实施规划已完成；首批 T1/T2A/T3A 实现已交回并全部经主会话 review 接收，后续任务按依赖序列继续派遣，整体目标未完成**。Codex 主会话因额度耗尽中断后，用户于当日晚将本轮托管给 Kimi 主会话继续自主执行（不再暂停；停止判定与交付按套件执行）；后续实现子 Agent 显式使用 kimi-code/kimi-for-coding。目标仍是在 `main` 完成现行 01 / 02 定义的公开 Hermes Secretary V1 完整链路，并少量调优通用 System Prompt。
+截至 2026-10-07 深夜，**Ask and Align、文档基线冻结与实施规划已完成；首批 T1/T2A/T3A 实现已提交并接收；第二批 T2B/T3B/T3C/T4 因额度中断一度被终止（写码前，无实现残留），已按用户指示以 deepseek/deepseek-flash 等价重新派遣并实施中；按用户本轮边界（索引 A28），四任务交回并完成主会话 review 与集中接线后暂停本轮，不再继续 T5/T6 与独立门禁。整体目标未完成**。当日早些时候 Codex 主会话因额度耗尽中断，Kimi 主会话接手托管并完成 T1 review 与首批快照。目标仍是在 `main` 完成现行 01 / 02 定义的公开 Hermes Secretary V1 完整链路，并少量调优通用 System Prompt。
 
-两任主会话均已完整阅读根 `AGENTS.md`、`README.md`、现行 01 / 02（02 共 1,978 行）及自主套件全部七份技能。三份核心文档与本轮索引已一并提交为冻结基线 `5346cd094b6a1bb6c6d9ce69e83b3a1570cf46bd`，完整哈希存本轮 `baseline.txt`；实施计划见本轮 `plan.md`。
+两任主会话均已完整阅读根 `AGENTS.md`、`README.md`、现行 01 / 02（02 共 1,978 行）及自主套件全部七份技能。三份核心文档与本轮索引已一并提交为冻结基线 `5346cd094b6a1bb6c6d9ce69e83b3a1570cf46bd`，完整哈希存本轮 `baseline.txt`；实施计划见本轮 `plan.md`；停止判定简报将在本轮暂停时写入 `final-delivery.md`。
 
 本轮编号为 `20261007-v1-first-implementation`。会话确认口径的权威入口为 [.autonomous/20261007-v1-first-implementation/index.md](.autonomous/20261007-v1-first-implementation/index.md)，按用户指定命名，承担自主套件的 Snapshot Index 职责；02 本轮保持原文不变。
 
@@ -45,6 +45,8 @@
 - 旧 Review 清理范围进一步确认，见 A22：删除 `/refine` 及其旧 Review 接线，保留另一项独立工作审查功能 `/review`。
 - Force 固定边界单位已确认，见 A23：K＝1,000 tokens，三个整数分别为 64,000 / 66,000 / 128,000；公式与两种 capability failure 原样遵循 02。
 - 两轮边界进一步明确，见 A26：首轮 Core correctness＋shared slash surface＋官方 Dashboard E2E；优先零 Dashboard-specific patch，仅有实际 consumer 缺口时补兼容层。结构化 Notebook / Snapshot / Noting / Full Foreground / Schedule API 及产品面板留第二轮。
+- 剩余执行层口径授权已确认，见 A27：规格未尽之处由主会话自行合理收敛、逐项记录依据并最终统一汇报；不变更已冻结一级 / 二级依据的明确要求。
+- 本轮批次边界已确认，见 A28：第二批四任务交回、主会话 review 与集中接线完成后暂停本轮，不再继续 T5/T6、独立门禁与后续实现；恢复条件随 `final-delivery.md` 记录。
 
 ## 后续接线调查与环境工作
 
@@ -55,7 +57,7 @@
 | 官方 Dashboard Web UI 共享 Slash consumer | A24–A26 已确定本地入口、方法及零补丁目标 | 只读调查完成：现有 send union/completion/rendering可复用；需注册原生命令和TUI pending-input集合，未发现React缺口 |
 | 本机 Codex Proxy 与隔离环境接线 | 模型选择与测试用途已确认；须核实准确模型 ID、High 配置及实际入口 | 按用户要求留到实际配置时调查 |
 
-其他问题先查现行文档与实现；只把仍影响产品行为、范围或完成判据的歧义提交用户。每次询问一个关键问题并提供建议，回答后立即更新本轮 `index.md`。本轮口径已收敛，文档基线提交一并纳入三份核心文档与索引。
+其他问题先查现行文档与实现；A27 起剩余执行层口径由主会话自行收敛并记录于 plan.md 与 final-delivery.md（批次边界见 A28），仅影响冻结依据解释或范围变更的事项才提交用户。本轮口径已收敛，文档基线提交一并纳入三份核心文档与索引。
 
 ## 首轮任务看板
 
@@ -63,32 +65,33 @@
 |---|---|---|
 | Ask and Align | 已完成 | 四项输入核对完成；用户确认进入下一阶段，无影响冻结的未决问题 |
 | Snapshot Index 与冻结基线 | 已完成 | 冻结提交 `5346cd094b6a1bb6c6d9ce69e83b3a1570cf46bd`，三份核心文档与索引同批提交，完整哈希已写 `baseline.txt` |
-| 实施计划与精确阅读分派 | 已完成 | 本轮 `plan.md` 记录 R01–R22 覆盖、T1–T8任务、S01–S22场景、接口/依赖/白名单/精确02阅读范围 |
-| Identity / Foreground / History foundation | `dev_foundation` 实施中 | 身份边界、真实历史读取与正式工具接线成立 |
-| Notebook persistence / semantic control | T2A语义模型与renderer已交回、主会话review接收；T2B未启动 | immutable Snapshot、原子 pointer、权限与 slash、路径变更 reconciliation 尚未实现 |
+| 实施计划与精确阅读分派 | 已完成 | 本轮 `plan.md` 记录 R01–R22 覆盖、任务、S01–S22 场景、接口/依赖/白名单/精确02阅读范围；Kimi 接手后 T2/T3 拆分、接口锁定与 A27/A28 已补记 |
+| Identity / Foreground / History foundation | 已交回、Kimi 主会话 review 接收（快照 `cd79cf6c46`） | 身份边界、真实历史读取与正式工具接线成立；新 Session newly_created 接线、rewrite/branch hooks 与 Notebook reconciliation 待集成 |
+| Notebook persistence / semantic control | T2A 已接收；T2B 重新派遣实施中（deepseek/deepseek-flash） | immutable Snapshot、原子 pointer、权限、reconciliation；接口已锁定（`notebook_*_conn`） |
 | Persistence 提议 Slash 命令 | 口径已确认，待实施 | 按索引中的正式拼写、Prompt-trigger、自然语言批准及开关边界接入正式 Slash 路径，不修改 02 |
-| Noting Trigger / runtime | T3A纯helper抽取已交回、主会话review接收；runtime未启动 | admission、阈值、child、受限工具与 commit gate 待实现；旧 Background Review 开关与 `/refine` 尚未移除 |
-| Schedule / Reminder | 待实施 | due scan、持久状态、request injection / ACK、Gateway busy fallback 成立 |
-| 跨模块集成与少量 Prompt 调优 | 待实施 | wrapper、关闭回退、并发与失败路径及 Slash 接线完成；Frontend 范围限于 A24 授权的官方 Dashboard 最小验收改造 |
-| 官方 Dashboard Web UI E2E acceptance surface | 入口与方法已确认，待调查与实施 | 共享 Slash 命令自然可用；优先零 Dashboard 补丁，必要才补薄兼容层；本地内置浏览器验收 |
-| 独立 Verification | 待启动 | 集成收敛后全新审查者按冻结依据核对机制、正式路径和证据；关闭范围内阻断 |
-| 独立 Validation | 待启动 | Verification 通过后，另一全新验收者通过产品入口执行适用用户场景 |
-| 主会话交付判定 | 正在整理阶段暂停简报 | `final-delivery.md`记录当前证据、未完成项与恢复条件，不声明整轮完成 |
+| Noting Trigger / runtime | T3A 已接收；T3B/T3C 重新派遣实施中（deepseek/deepseek-flash） | admission、阈值、child、受限工具与 commit gate；旧 Background Review 开关与 `/refine` 移除在途 |
+| Schedule / Reminder | T4 重新派遣实施中（deepseek/deepseek-flash） | due scan、持久状态、request injection / ACK、Gateway busy fallback |
+| 跨模块集成与少量 Prompt 调优 | 待实施 | wrapper、关闭回退、并发与失败路径及 Slash 接线完成；集中接线点已在 plan.md 锁定；Frontend 范围限于 A24 授权的官方 Dashboard 最小验收改造 |
+| 官方 Dashboard Web UI E2E acceptance surface | 入口与方法已确认，待实施 | 共享 Slash 命令自然可用；优先零 Dashboard 补丁，必要才补薄兼容层；本地内置浏览器验收 |
+| 独立 Verification | 待启动（按 A28 留待本轮恢复后） | 集成收敛后全新审查者按冻结依据核对机制、正式路径和证据；关闭范围内阻断 |
+| 独立 Validation | 待启动（按 A28 留待本轮恢复后） | Verification 通过后，另一全新验收者通过产品入口执行适用用户场景 |
+| 主会话交付判定 | 待本批次收尾 | 四任务 review 与接线完成后按 A28 暂停并写 `final-delivery.md`，不声明整轮完成 |
 
 ## 当前编排与风险
 
-- 三项只读接线研究已完成，结论已由主会话核对并纳入计划：Foundation、Noting、Schedule / Reminder / shared Slash / Dashboard。首批三个 Development 已派遣：`dev_foundation`（T1 DB/Foreground/History tool与正式接线），`dev_notebook_model`（T2A仅 `secretary/notebook*` 模型/renderer），`dev_parity`（T3A仅 `agent/cache_parity*` 与原constructor内部）。均为 `gpt-6.1-sol` / `high`、无主会话历史，不派生、不提交、不运行Hermes模型。未建worktree，修改白名单互不相交；返回后主会话review，不提前派独立门禁。
-- 三份根核心文档与本轮索引已在冻结提交中一并纳入；后续文档变化为获用户授权的RTK透明使用一句规则、`baseline.txt`、`plan.md`和动态状态。01 / 02 正文和锁文件未改。
-- 已查证基线没有02要求的`session_history`模型工具，UI同名module与跨会话`session_search`不等价。T1须新增当前Conversation History Foreground search/read并正式接线。
-- 文档基线已冻结；以本轮索引定位补充口径，保持 02 原文不变。官方 Dashboard 验收目标为零专属补丁，规划阶段调查共享 Slash consumer；模型 ID 与隔离环境接线按用户要求在实际配置阶段核实。
+- 三项只读接线研究已完成，结论已由主会话核对并纳入计划：Foundation、Noting、Schedule / Reminder / shared Slash / Dashboard。首批三个 Development（T1/T2A/T3A，Codex 派遣，gpt-6.1-sol / high）已完成并接收，提交于 `cd79cf6c46`。Codex 额度耗尽后 Kimi 主会话接手；第二批 T2B（Notebook 持久化）、T3B（Noting 触发与准入）、T3C（child runtime 与请求接缝）、T4（Schedule/Reminder）按用户最新全局规则以 deepseek/deepseek-flash 派遣（无主会话历史、不派生、不提交、不运行 Hermes 模型），跨任务接口名称已在 plan.md 锁定；四任务曾因额度中断在写码前被终止，用户要求恢复后以等价任务重新派遣（旧 Agent 模型不可变更），界面显示为实施中。
+- 三份根核心文档与本轮索引已在冻结提交中一并纳入；后续文档变化为获用户授权的RTK透明使用一句规则、A27/A28 授权、`baseline.txt`、`plan.md`和动态状态。01 / 02 正文和锁文件未改。
+- 基线没有02要求的`session_history`模型工具的缺口已由 T1 关闭：当前 Conversation History Foreground search/read 已新增并正式接线。
 - Parity 抽取的实施设计按 02 §5.3：`/btw` 现有调用点与 detached constructor 默认不改；原 constructor 内部调用纯 parity helper，Noting 的独立 persistent constructor 也复用该 helper。不是将原 constructor 加 flags 改成通用工厂；该设计写入计划，不追加为用户问答口径。
+- 已知集成遗留（恢复时处理）：`agent/agent_init.py` 新 Session 成功创建后接 `initialize_conversation_identity(agent, newly_created=True)`；原生 rewrite/edit/branch hooks 与 Notebook pointer/Snapshot reconciliation；SessionStore route healing、host routing/admission ownership 验证；T1 在 agent_init.py 顺带删除的三处既有注释待恢复。
 
 | 当前交付范围 | 机制实现 | 正式接线 | 针对性验证 | 用户结果 |
 |---|---|---|---|---|
-| T1 Identity/Foreground/History | 开发中 | 开发中，待review | 尚未交回 | 未验收 |
+| T1 Identity/Foreground/History | 已实现、主会话review接收 | 薄接线已接；新Session/rewrite/branch等集成接线待续 | Foundation 16通过（3.4s）+相关5文件89通过（4s）；Ruff/diff/health通过 | 未验收 |
 | T2A语义模型/renderer | 已实现、主会话review接收 | 纯模型/renderer；DB/runtime/slash未接 | 两文件119通过；最后Schedule边界修改后定向37通过 | 未验收 |
 | T3A纯parity抽取 | 已实现、主会话review接收 | 原detached constructor内部复用helper；`/btw`入口未改 | 四文件35通过；补充真实request assembly后定向8通过；Ruff/health通过 | 未验收 |
-| T3其余/T4/T5/T6 | 待实施 | 待实施 | 未执行 | 未验收 |
+| T2B/T3B/T3C/T4 | 实施中（deepseek/deepseek-flash 重新派遣） | 待返回后集中接线 | 未执行 | 未验收 |
+| T5/T6 | 待实施（按 A28 本轮暂不启动） | 待实施 | 未执行 | 未验收 |
 
 ## 起点与验证摘要
 
@@ -98,4 +101,6 @@
 - 本轮文档基线及计划阶段：01 / 02 原文未改，差异检查通过；计划/RTK授权指导阶段快照 `56d5adee6d057afa35cd5cae99a5f12e66371b2a`，初始冻结哈希保留在 `baseline.txt`。尚未运行完整suite或两个独立门禁。
 - T2A：canonical runner两文件119通过（0.9秒）；最后Schedule校验修改后定向一文件37通过（0.5秒）。证据：`.hermes-dev/evidence/t2a/notebook-tests.log`、`schedule-review-tests.log`。主会话阅读实际模型、renderer、测试与日志后接收；仅证明语义和输出边界，不证明持久化或产品闭环。
 - T3A：canonical runner四文件35通过（6.4秒）；补充真实request assembly后新测试文件8通过（4.7秒）；独立临时Git index上的Ruff/health三文件通过（0.6秒）。证据：`.hermes-dev/evidence/t3a/parity-tests.log`、`request-parity-tests.log`、`parity-checks.log`。主会话核对helper、原constructor、真实请求与持久化隔离测试后接收；尚无Noting生产runtime。
+- T1：canonical runner Foundation 16通过（3.4秒）；相关5文件89通过（4秒）；Ruff/diff/health定向通过。证据：`.hermes-dev/evidence/t1/summary.md`。Kimi 主会话核对实现、正式接线、测试与日志后接收。
+- 阶段快照：`cd79cf6c46`（T1/T2A/T3A 全部实现与当时文档）；其后一次文档提交记录 A27/A28 授权、T2/T3 任务拆分、接口锁定与第二批恢复实施状态（哈希见 git log）。
 - 大型检查执行方、版本、范围、次数、耗时与结果待实际执行后记录；当前平台及真实模型覆盖尚未验收，不声明跨平台通过。
