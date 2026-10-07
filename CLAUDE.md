@@ -2,9 +2,9 @@
 
 ## 当前目标与阶段
 
-截至 2026-10-07，**Ask and Align 已完成，进入文档基线冻结与实施规划**。目标是在 `main` 完成现行 01 / 02 定义的公开 Hermes Secretary V1 完整链路，并少量调优通用 System Prompt。
+截至 2026-10-07，**Ask and Align、文档基线冻结与实施规划已完成，开始实施**。目标是在 `main` 完成现行 01 / 02 定义的公开 Hermes Secretary V1 完整链路，并少量调优通用 System Prompt。
 
-主会话已完整阅读根 `AGENTS.md`、`README.md`、现行 01 / 02（02 共 1,978 行）及自主套件全部七份技能。用户已授权进入下一阶段；当前准备提交文档冻结基线，随后编制实施计划，尚未修改功能代码。
+主会话已完整阅读根 `AGENTS.md`、`README.md`、现行 01 / 02（02 共 1,978 行）及自主套件全部七份技能。三份核心文档与本轮索引已一并提交为冻结基线 `5346cd094b6a1bb6c6d9ce69e83b3a1570cf46bd`，完整哈希存本轮 `baseline.txt`；实施计划见本轮 `plan.md`。用户明确要求继续自主实现，首批实施将按互不相交的白名单派遣。
 
 本轮编号为 `20261007-v1-first-implementation`。会话确认口径的权威入口为 [.autonomous/20261007-v1-first-implementation/index.md](.autonomous/20261007-v1-first-implementation/index.md)，按用户指定命名，承担自主套件的 Snapshot Index 职责；02 本轮保持原文不变。
 
@@ -33,7 +33,7 @@
 - 已冻结通用规则继续按根 `AGENTS.md` 执行；后续确认口径写索引，本文件只维护任务状态与必要摘要。
 - 主会话错误提出的“按 Anchor 新旧淘汰迟到任务结果”方案已撤回，不作为实施要求；索引仅保留用户明确澄清的 pointer 口径 A10。
 - 用户已澄清 pointer 的选择依据，见索引 A10：按当前 Full Foreground 的最新有效 Snapshot Anchor 选择，不按完成 / 提交时间；较早 Anchor 的迟到合法 Snapshot 可以提交，但不能使 current 倒退。该口径需纳入 persistence 实现、rewind reconciliation 与并发验收。
-- 真实模型验收选择已确认，见索引 A11–A12：本机 Codex Proxy、GPT6 Luna、High，仅用于必要实际测试，Hermes 不参与编码。用户要求准确模型 ID 与 Proxy 接线到实际配置时再核实；当前停止环境调查，专注口径提问，尚未写入运行配置。
+- 真实模型验收选择已确认，见索引 A11–A12：本机 Codex Proxy、GPT6 Luna、High，仅用于必要实际测试，Hermes 不参与编码。用户要求准确模型 ID 与 Proxy 接线到实际配置时再核实；尚未调查或写入运行配置。
 - `propose persistence` 的 global-on / local-off 行为已确认，见索引 A14：仍可提议已有候选，不触发或重启 Noting，缺少 Snapshot / 候选时明确提示。
 - global-off 行为已确认，见索引 A15：全局 `noting.enabled=false` 时，`propose persistence` 不可用。
 - 旧 Background Self-Improvement Review 开关明确删除，见索引 A16：同步清理其独立启用通路与对应设置 / 帮助入口，Noting 关闭不恢复旧 Review；保留并抽取 02 要求复用的 cache-parity helper。
@@ -52,7 +52,7 @@
 
 | 议题 | 来源 / 影响 | 当前状态 |
 |---|---|---|
-| 官方 Dashboard Web UI 共享 Slash consumer | A24–A26 已确定本地入口、方法及零补丁目标；调查 catalog / completion / dispatch 与文本结果路径，确认是否有 consumer 缺口 | 在规划阶段只读调查；查证必要才安排薄兼容补丁 |
+| 官方 Dashboard Web UI 共享 Slash consumer | A24–A26 已确定本地入口、方法及零补丁目标 | 只读调查完成：现有 send union/completion/rendering可复用；需注册原生命令和TUI pending-input集合，未发现React缺口 |
 | 本机 Codex Proxy 与隔离环境接线 | 模型选择与测试用途已确认；须核实准确模型 ID、High 配置及实际入口 | 按用户要求留到实际配置时调查 |
 
 其他问题先查现行文档与实现；只把仍影响产品行为、范围或完成判据的歧义提交用户。每次询问一个关键问题并提供建议，回答后立即更新本轮 `index.md`。本轮口径已收敛，文档基线提交一并纳入三份核心文档与索引。
@@ -62,8 +62,8 @@
 | 任务 | 状态 | 完成条件 / 依赖 |
 |---|---|---|
 | Ask and Align | 已完成 | 四项输入核对完成；用户确认进入下一阶段，无影响冻结的未决问题 |
-| Snapshot Index 与冻结基线 | 准备提交 | 将本轮三份核心文档与索引一并提交，记录完整冻结哈希 |
-| 实施计划与精确阅读分派 | 进入规划 | 要求→任务→正式路径→验证→用户场景可追溯；文件白名单、接口、依赖与 02 行范围明确 |
+| Snapshot Index 与冻结基线 | 已完成 | 冻结提交 `5346cd094b6a1bb6c6d9ce69e83b3a1570cf46bd`，三份核心文档与索引同批提交，完整哈希已写 `baseline.txt` |
+| 实施计划与精确阅读分派 | 已完成 | 本轮 `plan.md` 记录 R01–R22 覆盖、T1–T8任务、S01–S22场景、接口/依赖/白名单/精确02阅读范围 |
 | Identity / Foreground / History foundation | 待实施 | 身份边界、真实历史读取与正式工具接线成立 |
 | Notebook persistence / semantic control | 待实施 | immutable Snapshot、原子 pointer、权限与 slash、路径变更 reconciliation 成立 |
 | Persistence 提议 Slash 命令 | 口径已确认，待实施 | 按索引中的正式拼写、Prompt-trigger、自然语言批准及开关边界接入正式 Slash 路径，不修改 02 |
@@ -77,10 +77,11 @@
 
 ## 当前编排与风险
 
-- Ask and Align 已由主会话完成；规划按需委派独立只读接线研究，尚未创建 worktree。正式实施按自主套件分派，主会话负责全局覆盖、返回 review 与接线集成。
-- 当前修改为三份根核心文档整理、已确认协作规则与本轮 `index.md`；01 / 02 正文、功能代码和锁文件未改。下次文档基线提交将一并纳入三份核心文档的本轮变更。
-- 正式实施前核对现有符号与正式接线。02 将 `session_history` 描述为既有 Secretary 能力，但当前对 `agent/`、`tools/` 等入口的初步检索尚未定位同名工具；不能据规格文字宣称基线已实现该能力，需在规划时确认并补齐。
-- 文档未冻结前不把建议视为已确认行为；官方 Dashboard 验收入口已确定，先调查最小接线范围。模型 ID 与隔离环境接线按用户要求在实际配置阶段核实。以本轮索引定位补充口径，保持 02 原文不变，冻结前核对依据一致性。
+- 三项只读接线研究已完成，结论已由主会话核对并纳入计划：Foundation、Noting、Schedule / Reminder / shared Slash / Dashboard。首批实施分派为 T1 Foundation、T2 semantic model、T3A pure parity helper；默认 `gpt-6.1-sol` / `high`、无主会话历史，不派生、不提交、不运行Hermes模型。非必要不建worktree，修改白名单互不相交。
+- 三份根核心文档与本轮索引已在冻结提交中一并纳入；后续文档变化为获用户授权的RTK透明使用一句规则、`baseline.txt`、`plan.md`和动态状态。01 / 02 正文和锁文件未改。
+- 已查证基线没有02要求的`session_history`模型工具，UI同名module与跨会话`session_search`不等价。T1须新增当前Conversation History Foreground search/read并正式接线。
+- 文档基线已冻结；以本轮索引定位补充口径，保持 02 原文不变。官方 Dashboard 验收目标为零专属补丁，规划阶段调查共享 Slash consumer；模型 ID 与隔离环境接线按用户要求在实际配置阶段核实。
+- Parity 抽取的实施设计按 02 §5.3：`/btw` 现有调用点与 detached constructor 默认不改；原 constructor 内部调用纯 parity helper，Noting 的独立 persistent constructor 也复用该 helper。不是将原 constructor 加 flags 改成通用工厂；该设计写入计划，不追加为用户问答口径。
 
 ## 起点与验证摘要
 
