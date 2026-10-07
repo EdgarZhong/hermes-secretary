@@ -22,7 +22,7 @@ _HERMES_CORE_TOOLS = [
     "browser_exec",  # replaces the other browser tools when browser.backend is "browser-use"
     "text_to_speech",
     "todo_list", "memory",
-    "session_search",
+    "session_search", "session_history",
     "clarify",
     "execute_code", "delegate_task",
     "cronjob_manage",
@@ -129,6 +129,7 @@ TOOLSETS = {
     "memory": _ts("Persistent memory across sessions (personal notes + user profile)", ["memory"]),
     "context_engine": _ts("Runtime tools exposed by the active context engine"),
     "session_search": _ts("Search and recall past conversations with summarization", ["session_search"]),
+    "session_history": _ts("Read/search current Conversation history across compaction", ["session_history"]),
     "connections": _ts("Remote connector discovery, execution, and account authorization", ["manage_connections"]),
     "project": _ts("Desktop Projects — create/switch named workspaces (GUI sessions only)", ["desktop_project"]),
     "bot_room": _ts("Verified text-only Group Chat turn capabilities"),

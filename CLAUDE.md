@@ -2,9 +2,9 @@
 
 ## 当前目标与阶段
 
-截至 2026-10-07，**Ask and Align、文档基线冻结与实施规划已完成，开始实施**。目标是在 `main` 完成现行 01 / 02 定义的公开 Hermes Secretary V1 完整链路，并少量调优通用 System Prompt。
+截至 2026-10-07，**Ask and Align、文档基线冻结与实施规划已完成；首批 T1/T2A/T3A 实现已交回并全部经主会话 review 接收，后续任务按依赖序列继续派遣，整体目标未完成**。Codex 主会话因额度耗尽中断后，用户于当日晚将本轮托管给 Kimi 主会话继续自主执行（不再暂停；停止判定与交付按套件执行）；后续实现子 Agent 显式使用 kimi-code/kimi-for-coding。目标仍是在 `main` 完成现行 01 / 02 定义的公开 Hermes Secretary V1 完整链路，并少量调优通用 System Prompt。
 
-主会话已完整阅读根 `AGENTS.md`、`README.md`、现行 01 / 02（02 共 1,978 行）及自主套件全部七份技能。三份核心文档与本轮索引已一并提交为冻结基线 `5346cd094b6a1bb6c6d9ce69e83b3a1570cf46bd`，完整哈希存本轮 `baseline.txt`；实施计划见本轮 `plan.md`。用户明确要求继续自主实现，首批实施将按互不相交的白名单派遣。
+两任主会话均已完整阅读根 `AGENTS.md`、`README.md`、现行 01 / 02（02 共 1,978 行）及自主套件全部七份技能。三份核心文档与本轮索引已一并提交为冻结基线 `5346cd094b6a1bb6c6d9ce69e83b3a1570cf46bd`，完整哈希存本轮 `baseline.txt`；实施计划见本轮 `plan.md`。
 
 本轮编号为 `20261007-v1-first-implementation`。会话确认口径的权威入口为 [.autonomous/20261007-v1-first-implementation/index.md](.autonomous/20261007-v1-first-implementation/index.md)，按用户指定命名，承担自主套件的 Snapshot Index 职责；02 本轮保持原文不变。
 
@@ -64,29 +64,38 @@
 | Ask and Align | 已完成 | 四项输入核对完成；用户确认进入下一阶段，无影响冻结的未决问题 |
 | Snapshot Index 与冻结基线 | 已完成 | 冻结提交 `5346cd094b6a1bb6c6d9ce69e83b3a1570cf46bd`，三份核心文档与索引同批提交，完整哈希已写 `baseline.txt` |
 | 实施计划与精确阅读分派 | 已完成 | 本轮 `plan.md` 记录 R01–R22 覆盖、T1–T8任务、S01–S22场景、接口/依赖/白名单/精确02阅读范围 |
-| Identity / Foreground / History foundation | 待实施 | 身份边界、真实历史读取与正式工具接线成立 |
-| Notebook persistence / semantic control | 待实施 | immutable Snapshot、原子 pointer、权限与 slash、路径变更 reconciliation 成立 |
+| Identity / Foreground / History foundation | `dev_foundation` 实施中 | 身份边界、真实历史读取与正式工具接线成立 |
+| Notebook persistence / semantic control | T2A语义模型与renderer已交回、主会话review接收；T2B未启动 | immutable Snapshot、原子 pointer、权限与 slash、路径变更 reconciliation 尚未实现 |
 | Persistence 提议 Slash 命令 | 口径已确认，待实施 | 按索引中的正式拼写、Prompt-trigger、自然语言批准及开关边界接入正式 Slash 路径，不修改 02 |
-| Noting Trigger / runtime | 待实施 | admission、阈值、child、cache parity、受限工具与 commit gate 完整接线；移除旧 Background Review 开关与 `/refine`，保留独立 `/review` |
+| Noting Trigger / runtime | T3A纯helper抽取已交回、主会话review接收；runtime未启动 | admission、阈值、child、受限工具与 commit gate 待实现；旧 Background Review 开关与 `/refine` 尚未移除 |
 | Schedule / Reminder | 待实施 | due scan、持久状态、request injection / ACK、Gateway busy fallback 成立 |
 | 跨模块集成与少量 Prompt 调优 | 待实施 | wrapper、关闭回退、并发与失败路径及 Slash 接线完成；Frontend 范围限于 A24 授权的官方 Dashboard 最小验收改造 |
 | 官方 Dashboard Web UI E2E acceptance surface | 入口与方法已确认，待调查与实施 | 共享 Slash 命令自然可用；优先零 Dashboard 补丁，必要才补薄兼容层；本地内置浏览器验收 |
 | 独立 Verification | 待启动 | 集成收敛后全新审查者按冻结依据核对机制、正式路径和证据；关闭范围内阻断 |
 | 独立 Validation | 待启动 | Verification 通过后，另一全新验收者通过产品入口执行适用用户场景 |
-| 主会话交付判定 | 待启动 | 当前版本证据、两门禁与整改状态支持完成声明，交付 `final-delivery.md` |
+| 主会话交付判定 | 正在整理阶段暂停简报 | `final-delivery.md`记录当前证据、未完成项与恢复条件，不声明整轮完成 |
 
 ## 当前编排与风险
 
-- 三项只读接线研究已完成，结论已由主会话核对并纳入计划：Foundation、Noting、Schedule / Reminder / shared Slash / Dashboard。首批实施分派为 T1 Foundation、T2 semantic model、T3A pure parity helper；默认 `gpt-6.1-sol` / `high`、无主会话历史，不派生、不提交、不运行Hermes模型。非必要不建worktree，修改白名单互不相交。
+- 三项只读接线研究已完成，结论已由主会话核对并纳入计划：Foundation、Noting、Schedule / Reminder / shared Slash / Dashboard。首批三个 Development 已派遣：`dev_foundation`（T1 DB/Foreground/History tool与正式接线），`dev_notebook_model`（T2A仅 `secretary/notebook*` 模型/renderer），`dev_parity`（T3A仅 `agent/cache_parity*` 与原constructor内部）。均为 `gpt-6.1-sol` / `high`、无主会话历史，不派生、不提交、不运行Hermes模型。未建worktree，修改白名单互不相交；返回后主会话review，不提前派独立门禁。
 - 三份根核心文档与本轮索引已在冻结提交中一并纳入；后续文档变化为获用户授权的RTK透明使用一句规则、`baseline.txt`、`plan.md`和动态状态。01 / 02 正文和锁文件未改。
 - 已查证基线没有02要求的`session_history`模型工具，UI同名module与跨会话`session_search`不等价。T1须新增当前Conversation History Foreground search/read并正式接线。
 - 文档基线已冻结；以本轮索引定位补充口径，保持 02 原文不变。官方 Dashboard 验收目标为零专属补丁，规划阶段调查共享 Slash consumer；模型 ID 与隔离环境接线按用户要求在实际配置阶段核实。
 - Parity 抽取的实施设计按 02 §5.3：`/btw` 现有调用点与 detached constructor 默认不改；原 constructor 内部调用纯 parity helper，Noting 的独立 persistent constructor 也复用该 helper。不是将原 constructor 加 flags 改成通用工厂；该设计写入计划，不追加为用户问答口径。
+
+| 当前交付范围 | 机制实现 | 正式接线 | 针对性验证 | 用户结果 |
+|---|---|---|---|---|
+| T1 Identity/Foreground/History | 开发中 | 开发中，待review | 尚未交回 | 未验收 |
+| T2A语义模型/renderer | 已实现、主会话review接收 | 纯模型/renderer；DB/runtime/slash未接 | 两文件119通过；最后Schedule边界修改后定向37通过 | 未验收 |
+| T3A纯parity抽取 | 已实现、主会话review接收 | 原detached constructor内部复用helper；`/btw`入口未改 | 四文件35通过；补充真实request assembly后定向8通过；Ruff/health通过 | 未验收 |
+| T3其余/T4/T5/T6 | 待实施 | 待实施 | 未执行 | 未验收 |
 
 ## 起点与验证摘要
 
 - 本轮起点：`main`，提交 `ef1f0e909c7f8b438a2121aa9d9d07b0f7697eb6`；进入对齐前工作区干净。冻结检查基线按 `AGENTS.md` 的官方提交 `d02f211858ab202d6d4d34ea59774591a5f14cbd`。
 - 已有环境：官方 PM 工作区 `.venv`，Python 3.14.7，已纳入 `dev` / `test` groups；初始化记录确认官方依赖定义与锁文件未改。测试使用隔离状态及 canonical runner。
 - 沿用已有证据：初始化阶段本地保留检查执行一次，10 项通过；GitHub Actions 已关闭。这些证据不证明 Secretary 功能或完整 Python suite 通过。
-- 本轮：01 / 02 已完整阅读；文档整理及后续口径更新按差异与格式检查；修改范围为根 `README.md`、`AGENTS.md`、`CLAUDE.md` 和本轮索引，未修改 02。未运行功能测试、完整 Python suite 或两个独立门禁。
+- 本轮文档基线及计划阶段：01 / 02 原文未改，差异检查通过；计划/RTK授权指导阶段快照 `56d5adee6d057afa35cd5cae99a5f12e66371b2a`，初始冻结哈希保留在 `baseline.txt`。尚未运行完整suite或两个独立门禁。
+- T2A：canonical runner两文件119通过（0.9秒）；最后Schedule校验修改后定向一文件37通过（0.5秒）。证据：`.hermes-dev/evidence/t2a/notebook-tests.log`、`schedule-review-tests.log`。主会话阅读实际模型、renderer、测试与日志后接收；仅证明语义和输出边界，不证明持久化或产品闭环。
+- T3A：canonical runner四文件35通过（6.4秒）；补充真实request assembly后新测试文件8通过（4.7秒）；独立临时Git index上的Ruff/health三文件通过（0.6秒）。证据：`.hermes-dev/evidence/t3a/parity-tests.log`、`request-parity-tests.log`、`parity-checks.log`。主会话核对helper、原constructor、真实请求与持久化隔离测试后接收；尚无Noting生产runtime。
 - 大型检查执行方、版本、范围、次数、耗时与结果待实际执行后记录；当前平台及真实模型覆盖尚未验收，不声明跨平台通过。

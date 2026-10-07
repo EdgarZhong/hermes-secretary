@@ -134,6 +134,43 @@ def declared_conversation_scope(agent: Any) -> Optional[str]:
     return f"{_DECLARED_SCOPE_PREFIX}{digest}"
 
 
+def trusted_declared_conversation_locator(agent: Any, *, newly_created: bool = False):
+    """Secretary tuple using Hermes fork/source/generation rules.
+
+    A cache scope is not an ownership ID. Durable bindings win, and a retired
+    Session never receives the current peer generation as its birth generation.
+    """
+    db, sid = getattr(agent, "_session_db", None), getattr(agent, "session_id", None)
+    key = str(getattr(agent, "_gateway_session_key", "") or "").strip()
+    if not db or not sid or not key or getattr(agent, "_persist_disabled", False) or getattr(agent, "side_agent", False):
+        return None
+    row = db.get_session(sid)
+    if not row or db._is_explicit_fork_child_row(row) or row.get("source") in {"tool", "subagent"}:
+        return None
+    with db._read_ctx() as conn:
+        binding = conn.execute("SELECT * FROM secretary_session_bindings WHERE session_id = ?", (sid,)).fetchone()
+    if binding is not None and binding["declared_generation"] is not None:
+        return binding["declared_source"], binding["declared_key"], binding["declared_generation"]
+    if row.get("ended_at") is not None or row.get("end_reason"):
+        return None
+    source = _agent_source(agent, sid, db, str(row.get("source") or ""))
+    generation = int(_conversation_generation(key, source, db) or 0)
+    if generation > 0 and not newly_created:
+        return None
+    return source, key, generation
+
+
+def initialize_conversation_identity(agent: Any, *, newly_created: bool = False):
+    """Bind an existing main Session; persistence repeats this for a new row."""
+    db, sid = getattr(agent, "_session_db", None), getattr(agent, "session_id", None)
+    agent._secretary_conversation_ref = None
+    if not db or not sid or getattr(agent, "_persist_disabled", False) or not db.get_session(sid):
+        return None
+    ref = db.resolve_conversation_ref(sid, trusted_declared_conversation_locator(agent, newly_created=newly_created))
+    agent._secretary_conversation_ref = ref
+    return ref
+
+
 def resolve_prompt_cache_scope(agent: Any) -> str:
     """Rotation-stable cache-scope id: the inherited parent scope of a same-model cache-parity
     fork, else the declared scope, else the compression-lineage root of ``agent.session_id``

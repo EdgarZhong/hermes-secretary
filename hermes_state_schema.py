@@ -936,6 +936,8 @@ class SessionSchemaMixin:
         report_startup_progress(600.0, phase="state_db_init_schema")
         cursor = self._conn.cursor()
         cursor.executescript(SCHEMA_SQL)
+        from hermes_state_secretary_schema import init_secretary_schema
+        init_secretary_schema(cursor)
 
         # Column reconciliation, then the two table-shape repairs ADD COLUMN cannot express.
         self._reconcile_columns(cursor)

@@ -139,6 +139,17 @@ def _session_search(agent, args: dict, ctx: InlineToolContext) -> Any:
     )
 
 
+def _session_history(agent, args: dict, ctx: InlineToolContext) -> Any:
+    from tools.session_history_tool import session_history
+    from agent.prompt_cache_scope import initialize_conversation_identity
+    # Noting binds its frozen Parent ownership; its own child Session is audit only.
+    db = getattr(agent, "_secretary_history_db", None) or getattr(agent, "_session_db", None)
+    if not getattr(agent, "_secretary_parent_conversation_ref", None):
+        initialize_conversation_identity(agent)
+    return session_history(args, db=db, current_session_id=agent.session_id,
+                           conversation_ref=getattr(agent, "_secretary_parent_conversation_ref", None))
+
+
 def _memory(agent, args: dict, ctx: InlineToolContext) -> Any:
     result = _call_tool(
         "tools.memory_tool", "memory_tool", args,
@@ -246,6 +257,7 @@ _RAW_INLINE_TOOL_EXECUTORS: Dict[str, InlineToolExecutor] = {
         task_id=lambda agent, ctx: ctx.effective_task_id, agent=lambda agent, ctx: agent,
     ),
     "session_search": _session_search,
+    "session_history": _session_history,
     "memory": _memory,
     "clarify": _tool(
         "tools.clarify_tool", "clarify_tool", ("questions", "questions"),
@@ -290,10 +302,10 @@ INLINE_TOOL_EXECUTORS: Dict[str, InlineToolExecutor] = {
     name: _coerced(name, executor) for name, executor in _RAW_INLINE_TOOL_EXECUTORS.items()
 }
 
-# ``invoke_tool`` (concurrent path) consults the memory manager right after these three
+# ``invoke_tool`` (concurrent path) consults the memory manager right after these
 # names and before the remaining inline tools; ``message_agent`` falls through to the
 # registry there (Bot Mode DM is only injected into the sequential path's schema).
-INVOKE_TOOL_PRE_MEMORY_MANAGER_NAMES = frozenset({"todo_list", "session_search", "memory"})
+INVOKE_TOOL_PRE_MEMORY_MANAGER_NAMES = frozenset({"todo_list", "session_search", "session_history", "memory"})
 
 
 def resolve_invoke_tool_executor(agent, function_name: str) -> Optional[InlineToolExecutor]:

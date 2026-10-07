@@ -1190,7 +1190,6 @@ def _init_session_state(agent, session_id, session_db, parent_session_id, reason
     agent.logs_dir.mkdir(parents=True, exist_ok=True)
     _set_defaults(agent, _SESSION_STATE)
 
-    # Filesystem checkpoint manager (transparent — not a tool)
     from tools.checkpoint_manager import CheckpointManager
     agent._checkpoint_mgr = CheckpointManager(
         enabled=checkpoints_enabled, max_snapshots=checkpoint_max_snapshots,
@@ -1198,7 +1197,9 @@ def _init_session_state(agent, session_id, session_db, parent_session_id, reason
         max_file_size_mb=checkpoint_max_file_size_mb,
     )
 
-    agent._session_db = session_db  # optional SQLite store (CLI/gateway-provided)
+    from agent.prompt_cache_scope import initialize_conversation_identity
+    agent._session_db = session_db
+    initialize_conversation_identity(agent)
     agent._parent_session_id = parent_session_id
     agent._session_init_model_config = {
         "max_iterations": agent.max_iterations,
@@ -1212,7 +1213,6 @@ def _init_session_state(agent, session_id, session_db, parent_session_id, reason
         if _YOLO_MODE_FROZEN:
             agent._session_init_model_config["yolo_mode"] = True
 
-    # In-memory todo list for task planning (one per agent/session)
     from tools.todo_tool import TodoStore
     agent._todo_store = TodoStore()
 

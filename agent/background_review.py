@@ -7,7 +7,6 @@ so it hits the same prefix cache, and runs under a dispatch-side tool whitelist.
 
 from __future__ import annotations
 
-import copy
 import json
 import logging
 import os
@@ -17,7 +16,10 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 from agent.i18n import t
-from agent.prompt_cache_scope import resolve_prompt_cache_scope_safe
+from agent.cache_parity import (
+    apply_cache_parity_from_parent,
+    parent_prompt_cache_kwargs as _same_model_parity_kwargs,
+)
 from agent.thread_scoped_output import thread_scoped_silence
 
 logger = logging.getLogger(__name__)
@@ -811,35 +813,6 @@ def _log_review_completion(usage: Dict[str, Any], result: str) -> None:
     )
 
 
-# OpenRouter provider-routing pins: prompt caches live per UPSTREAM provider, so a fork without
-# the parent's pins can land on a different upstream and miss the warm cache even with
-# byte-identical prompt/tools bytes.
-_PROVIDER_PIN_ATTRS = (
-    "providers_allowed", "providers_ignored", "providers_order", "provider_sort",
-    "provider_require_parameters", "provider_data_collection",
-)
-
-
-def _same_model_parity_kwargs(agent: Any) -> Dict[str, Any]:
-    """AIAgent kwargs that keep a SAME-model fork's request bytes identical to the parent's. Only
-    for the un-routed path: on a different model the cache is cold anyway, and the parent's
-    reasoning-effort vocabulary may be invalid for the routed provider (OpenRouter forwards
-    ``reasoning.effort`` unclamped; codex_responses passes ``max``/``ultra`` through unmapped)."""
-    kwargs: Dict[str, Any] = {
-        # Anthropic's cache key is namespaced by ``thinking`` presence; the gateway session context
-        # is appended to the cached system prompt at API-call time (without it the prompt diverges).
-        "reasoning_config": getattr(agent, "reasoning_config", None),
-        "ephemeral_system_prompt": getattr(agent, "ephemeral_system_prompt", None),
-        **{attr: val for attr in _PROVIDER_PIN_ATTRS if (val := getattr(agent, attr, None))},
-    }
-    # Prefill sits right after the system message, so a parent with prefill would diverge at
-    # index 1. Deep copy: unicode-error recovery sanitizes prefill entries IN PLACE and must not
-    # rewrite the parent's bytes.
-    if parent_prefill := copy.deepcopy(getattr(agent, "prefill_messages", None) or []):
-        kwargs["prefill_messages"] = parent_prefill
-    return kwargs
-
-
 def _warn_ignored_reasoning_effort(agent: Any, task_cfg: Optional[Dict[str, Any]] = None) -> None:
     """One-shot user-visible notice: ``auxiliary.background_review.reasoning_effort`` is IGNORED on
     the same-model path (#104116). The fork inherits the parent's ``reasoning_config`` verbatim so
@@ -936,23 +909,6 @@ def _fork_init_kwargs(agent: Any, rt: Dict[str, Any], routed: bool, max_iteratio
     return kwargs
 
 
-# Above any live registry generation: _publish_tool_snapshot refuses an older-generation rebuild,
-# so the compaction-boundary refresh_agent_mcp_tools(content_aware=True) cannot rebuild the fork's
-# tools[] from the live registry and drop the inherited provider/plugin tools (#103579).
-_FROZEN_TOOL_SNAPSHOT_GENERATION = 2_147_483_647
-
-
-def _inherit_parent_tool_surface(review_agent: Any, agent: Any) -> None:
-    """Same-model fork: advertise the parent's exact tools[] (its last outbound payload — an
-    empty list included) so the request prefix matches byte-for-byte, then freeze the snapshot
-    generation. Dispatch stays behind the review whitelist; advertising is not permission."""
-    # getattr: /btw and review callers build bare object.__new__ agents in tests without ``tools``.
-    review_agent.tools = copy.deepcopy(getattr(agent, "tools", None) or [])
-    review_agent.valid_tool_names = {tool["function"]["name"] for tool in review_agent.tools}
-    review_agent._tool_snapshot_generation = _FROZEN_TOOL_SNAPSHOT_GENERATION
-
-
-
 def build_cache_parity_fork(
     agent: Any, task_cfg: Optional[Dict[str, Any]] = None, *, max_iterations: int,
     write_origin: str = "background_review",
@@ -994,41 +950,12 @@ def build_cache_parity_fork(
     review_agent._end_session_on_close = False
     review_agent._session_db = None
     review_agent.session_id = agent.session_id
-    # Same model only: share the warm cached system prompt (~26% cost cut; a rebuilt prompt misses
-    # the byte-exact prefix key) and pin session_start so any re-render (compression, plugin
-    # hooks) stays byte-identical.
-    # Inherit the parent's cached system prompt verbatim so the review fork's outbound HTTP request hits the
-    # same Anthropic/OpenRouter prefix cache the parent warmed. Without this, the fork rebuilds the system
-    # prompt from scratch (fresh _hermes_now() timestamp, fresh session_id, narrower toolset → different
-    # skills_prompt) and the byte-exact prefix-cache key misses. See issue #25322 and PR #17276 for the full
-    # analysis + measured impact (~26% end-to-end cost reduction on Sonnet 4.5). When routed to a different
-    # model the parent's cached prompt is for the wrong model/cache key and would miss anyway, so let the
-    # routed fork build its own.
+    # Same-model prefix inheritance is lifecycle-free and can also serve persistent Noting
+    # children. Routed forks retain their own prompt/runtime. /btw never forks the cache slot.
     if not _routed:
-        review_agent._cached_system_prompt = agent._cached_system_prompt
-        review_agent.session_start = agent.session_start
-        # Cache-scope parity (#109964): the fork shares the parent's physical session_id and
-        # byte-identical prefix, but is _persist_disabled (declared scope fails closed) and
-        # _session_db=None (lineage walk skipped) — so BOTH cache-identity resolvers keyed it
-        # into a different bucket than the gateway parent, costing one cold ~full-context
-        # request per review. Inherit the parent's ALREADY-RESOLVED scope once, here: no DB
-        # access from the fork, persistence stays fully detached, and both consumers (the
-        # affinity header via set_affinity_scope and the body prompt_cache_key via
-        # cache_scope_id) resolve the parent's bucket together. Routed (different-model)
-        # forks do NOT inherit: their prefix is cache-cold anyway.
-        inherited_scope = resolve_prompt_cache_scope_safe(agent)
-        if inherited_scope:
-            review_agent._inherited_cache_scope = inherited_scope
-        # Slot-keyed caches (xAI): once the review's OWN compaction rewrites its transcript, its
-        # divergent stream would evict the parent's server slot, so the resolver then derives
-        # ``<scope>::review``. /btw never tags: one prefix-extension call cannot diverge.
-        if write_origin == "background_review":
-            review_agent._prompt_cache_fork_tag = "review"
-        # Same reason for the Portal ``conversation=`` tag: with no DB the fork's own
-        # _conversation_root_id() falls back to the parent's PHYSICAL id, so after a compression
-        # rotation the review's usage was attributed to a different conversation than its parent.
-        review_agent._cached_conversation_root = agent._conversation_root_id()
-        _inherit_parent_tool_surface(review_agent, agent)
+        apply_cache_parity_from_parent(
+            review_agent, agent, fork_tag="review" if write_origin == "background_review" else None,
+        )
     _detach_fork_compression(review_agent)
     # Compaction bounds a single request; this bounds the WHOLE review (checked in
     # conversation_loop via _review_input_budget_exhausted).
