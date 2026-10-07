@@ -831,6 +831,13 @@ class GatewayBusySessionMixin:
             return True
         event._bot_loop_admitted = True
 
+        # Secretary User Reminder policy (02 §3.12): a due user_reminder that lost the idle race is
+        # NOT a second queued Turn; it converts to a durable pending System Reminder under the
+        # narrow policy at this existing busy gate.
+        from gateway.secretary_reminders import convert_busy_reminder_event
+        if convert_busy_reminder_event(self, event):
+            return True
+
         effective_mode = self._effective_busy_input_mode(event.source)
         if self._draining:  # gateway restarting/stopping
             await self._send_busy_drain_notice(event, session_key, effective_mode)

@@ -7,6 +7,7 @@ behind the dict before it.
 """
 
 from types import SimpleNamespace
+import re
 
 import pytest
 
@@ -16,6 +17,13 @@ from tests.agent import test_in_place_preflight_rewind as _rewind
 from tests.agent.test_in_place_preflight_rewind import _replies_displayed, _turn
 
 session = _rewind.session  # shared fixture
+
+_USER_MARKER_RE = re.compile(r"<timestamp>[^\n<]+</timestamp>\n")
+
+
+def _untimed(text):
+    """*text* without §5.6 timestamp lines (a merged carrier absorbs the later turn's line)."""
+    return _USER_MARKER_RE.sub("", text)
 
 
 def _call(call_id):
@@ -65,7 +73,7 @@ def test_compaction_over_an_unanswered_prompt_keeps_one_copy_of_every_row(sessio
     assert {f"A{n}" for n in range(1, 16)} <= _replies_displayed(db)
     live = [m["content"] for m in db.get_messages_as_conversation("sid") if isinstance(m.get("content"), str)]
     # The rows the killed turn left are live exactly once (an unanswered prompt only as the merged carried copy).
-    assert [c for c in live if "U12x" in c] == expected
+    assert [_untimed(c) for c in live if "U12x" in c] == expected
     recalled = [row["content"] for row in db._conn.execute(
         "SELECT content FROM messages WHERE session_id = 'sid' AND (active = 1 OR compacted = 1)").fetchall()]
     carried = live[next(i for i, c in enumerate(live) if "Numbered steps" in c) + 1:]

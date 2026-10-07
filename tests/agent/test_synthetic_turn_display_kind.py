@@ -27,6 +27,7 @@ from unittest.mock import patch
 import pytest
 
 from agent.turn_context import build_turn_context
+from tests.agent.test_api_content_sidecar import _user_text
 from hermes_state import SessionDB
 from run_agent import AIAgent
 
@@ -93,8 +94,8 @@ def test_row_is_typed_by_the_turn_start_persist(agent_db):
     # Typed before the turn ran — a crash from here on still reads as an event.
     assert row["display_kind"] == "auto_continue"
     assert row["display_metadata"] == {"attempt": 2}
-    # The model's copy is untouched: same role, same content.
-    assert row["content"] == NOTE
+    # Same role, same text — under the §5.6 source-event timestamp line.
+    assert _user_text(row["content"]) == NOTE
 
 
 def test_a_real_user_turn_stays_untyped(agent_db):

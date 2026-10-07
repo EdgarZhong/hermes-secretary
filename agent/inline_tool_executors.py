@@ -150,6 +150,32 @@ def _session_history(agent, args: dict, ctx: InlineToolContext) -> Any:
                            conversation_ref=getattr(agent, "_secretary_parent_conversation_ref", None))
 
 
+def _notebook_show(agent, args: dict, ctx: InlineToolContext) -> Any:
+    from tools.notebook_tool import notebook_show
+    # Noting children bind their frozen Parent ownership; the main Assistant uses its own.
+    db = getattr(agent, "_secretary_history_db", None) or getattr(agent, "_session_db", None)
+    ref = getattr(agent, "_secretary_parent_conversation_ref", None)
+    if not ref:
+        from agent.prompt_cache_scope import initialize_conversation_identity
+        ref = getattr(agent, "_secretary_conversation_ref", None) or initialize_conversation_identity(agent)
+    effective_enabled = False
+    if db is not None and ref:
+        from secretary.noting_runtime import noting_trigger_gate
+        effective_enabled, _reason = noting_trigger_gate(db, ref)
+    return notebook_show(args, db=db, conversation_ref=ref, effective_enabled=effective_enabled)
+
+
+def _compact_parent(agent, args: dict, ctx: InlineToolContext) -> Any:
+    """``compact_parent`` for the NOTING_WITH_COMPACTION child (02 §5.9).
+
+    Resolves the Parent from the child's own binding (construction-time), never from
+    model arguments. Success marks the child's terminal action as satisfied.
+    """
+    from secretary.noting_compact import compact_parent_from_child
+
+    return compact_parent_from_child(agent)
+
+
 def _memory(agent, args: dict, ctx: InlineToolContext) -> Any:
     result = _call_tool(
         "tools.memory_tool", "memory_tool", args,
@@ -258,6 +284,8 @@ _RAW_INLINE_TOOL_EXECUTORS: Dict[str, InlineToolExecutor] = {
     ),
     "session_search": _session_search,
     "session_history": _session_history,
+    "notebook_show": _notebook_show,
+    "compact_parent": _compact_parent,
     "memory": _memory,
     "clarify": _tool(
         "tools.clarify_tool", "clarify_tool", ("questions", "questions"),
@@ -305,7 +333,7 @@ INLINE_TOOL_EXECUTORS: Dict[str, InlineToolExecutor] = {
 # ``invoke_tool`` (concurrent path) consults the memory manager right after these
 # names and before the remaining inline tools; ``message_agent`` falls through to the
 # registry there (Bot Mode DM is only injected into the sequential path's schema).
-INVOKE_TOOL_PRE_MEMORY_MANAGER_NAMES = frozenset({"todo_list", "session_search", "session_history", "memory"})
+INVOKE_TOOL_PRE_MEMORY_MANAGER_NAMES = frozenset({"todo_list", "session_search", "session_history", "notebook_show", "memory"})
 
 
 def resolve_invoke_tool_executor(agent, function_name: str) -> Optional[InlineToolExecutor]:

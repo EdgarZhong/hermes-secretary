@@ -5,6 +5,7 @@ summary + live human ask in one row) keeps its hidden handoff scaffold as the ne
 
 from __future__ import annotations
 
+from contextlib import suppress
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
@@ -129,6 +130,11 @@ class SessionRewindMixin:
                     warm["_row_id"] = row_id
                 if uid := message_uid_or_none(durable_message):
                     warm[MESSAGE_UID] = uid
+        # Notebook reconciliation (02 §2.7): the rewound path may have dropped the current
+        # Snapshot's Anchor; reselect the pointer so it follows the surviving path (or goes null).
+        with suppress(Exception):
+            self._execute_write(lambda conn: self.notebook_reselect_pointer_conn(
+                conn, self.resolve_conversation_ref_conn(conn, session_id)))
         return RewindOutcome(
             prefix=prefix, live_view=live_view,
             live_text=live_text if live_text is not None else flatten_message_text(live_view.get("content")),

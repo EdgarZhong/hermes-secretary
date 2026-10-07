@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from collections import Counter
+from datetime import datetime
 from time import time as wall_time
 from uuid import uuid4
-from typing import Any, List, Mapping, MutableMapping, Optional, TypeVar
+from typing import Any, List, Mapping, MutableMapping, Optional, Tuple, TypeVar
 
 from agent.conversation_compression_archive import MERGED_DURABLE_ROWS, RETIRED_DURABLE_ROWS, UNNAMED_DURABLE_ROWS
 
@@ -265,3 +266,139 @@ def append_message(
     """Stamp and append one live transcript message."""
     messages.append(stamp_message_timestamp(message, timestamp=timestamp))
     return message
+
+
+# ── Source-event timestamp markers and Secretary role=user wrappers (02 §5.6) ──
+#
+# One model-visible timestamp format for every genuine/synthetic user-side input, all
+# derived from the message's own ``timestamp`` (the existing single clock/source of truth;
+# no second DB column). The real-user marker is a standalone first line; the three
+# synthetic carriers put it as the first line inside their wrapper. Replay, retry and
+# request-time injection re-use the stored source time instead of minting a new one.
+
+_TIMESTAMP_TAG = "timestamp"
+_REAL_USER_MARKER_PREFIX = f"<{_TIMESTAMP_TAG}>"
+_REAL_USER_MARKER_SUFFIX = f"</{_TIMESTAMP_TAG}>"
+
+# Secretary synthetic carriers own their full wrapper (02 §5.6): the timestamp is already
+# the first line inside them, so the standalone real-user marker is never added outside.
+_SYNTHETIC_CARRIER_PREFIXES = ("<noting-task>", "<system-reminder>", "<user-reminder>")
+
+
+def format_user_timestamp_marker(timestamp: Optional[float] = None) -> str:
+    """The standalone ``<timestamp>ISO8601</timestamp>\\n`` marker line for one source time.
+
+    Exact ISO 8601 with a UTC offset, rendered from the message's stored epoch (the
+    arrival/persistence time for a real user message; the source-event time for a
+    synthetic carrier). ``None`` falls back to the local wall clock.
+    """
+    moment = wall_time() if timestamp is None else float(timestamp)
+    try:
+        iso = datetime.fromtimestamp(moment).astimezone().isoformat()
+    except (OverflowError, OSError, ValueError):
+        iso = datetime.now().astimezone().isoformat()
+    return f"{_REAL_USER_MARKER_PREFIX}{iso}{_REAL_USER_MARKER_SUFFIX}\n"
+
+
+def _is_timestamp_marker_part(part: Any) -> bool:
+    return (
+        isinstance(part, dict) and part.get("type") == "text"
+        and isinstance(part.get("text"), str)
+        and part["text"].lstrip().startswith(_REAL_USER_MARKER_PREFIX)
+    )
+
+
+def strip_user_timestamp_marker(content: Any) -> Any:
+    """*content* without a leading timestamp marker (idempotent; non-marker content unchanged).
+
+    Inspection helper: the marker stays in durable content, but identity comparisons and
+    title/preview derivations want the text the user actually wrote.
+    """
+    if isinstance(content, str):
+        if not content.lstrip().startswith(_REAL_USER_MARKER_PREFIX):
+            return content
+        line, _, remainder = content.partition("\n")
+        if line.rstrip().endswith(_REAL_USER_MARKER_SUFFIX):
+            return remainder
+        return content
+    if isinstance(content, list) and content and _is_timestamp_marker_part(content[0]):
+        return list(content[1:])
+    return content
+
+
+def prepend_user_timestamp_marker(content: Any, marker: str) -> Any:
+    """Idempotently put *marker* first in *content*: one leading line (str) / text part (list).
+
+    A content already carrying the marker, or one that is itself a Secretary synthetic
+    carrier (whose timestamp sits inside its own wrapper), is returned unchanged.
+    """
+    if not marker or user_input_already_stamped(content):
+        return content
+    if isinstance(content, str):
+        return marker + content
+    if isinstance(content, list):
+        return [{"type": "text", "text": marker.rstrip("\n")}, *content]
+    return content
+
+
+def user_input_already_stamped(content: Any) -> bool:
+    """True when *content* already begins with a timestamp marker or a Secretary wrapper."""
+    text = None
+    if isinstance(content, str):
+        text = content.lstrip()
+    elif isinstance(content, list) and content:
+        first = content[0]
+        if isinstance(first, dict) and first.get("type") == "text" and isinstance(first.get("text"), str):
+            text = first["text"].lstrip()
+    if text is None:
+        return False
+    return text.startswith(_REAL_USER_MARKER_PREFIX) or text.startswith(_SYNTHETIC_CARRIER_PREFIXES)
+
+
+def user_input_timestamp_marker(msg: Mapping[str, Any]) -> str:
+    """The standalone marker line for one user-input row, or ``""`` when it must not be stamped.
+
+    Shared by the wire builder and the durable flush so the model-visible bytes and the
+    stored content agree. Skipped: non-user rows, empty/undatable rows, rows already
+    carrying a marker or a Secretary wrapper, and compaction handoff carriers — those are
+    working state, not genuine user input, and a leading line would break their detection.
+    """
+    if not isinstance(msg, Mapping) or msg.get("role") != "user":
+        return ""
+    content = msg.get("content")
+    if content is None or content == "" or content == [] or user_input_already_stamped(content):
+        return ""
+    timestamp = msg.get("timestamp")
+    if timestamp is None:
+        return ""
+    if msg.get("_compressed_summary"):
+        return ""
+    try:
+        from agent.context_compressor import ContextCompressor
+    except ImportError:
+        ContextCompressor = None
+    if ContextCompressor is not None and ContextCompressor.classify_summary_content(content) is not None:
+        return ""
+    return format_user_timestamp_marker(timestamp)
+
+
+def build_user_wrapper(tag: str, body: Any, *, timestamp: Optional[float] = None) -> str:
+    """One Secretary synthetic carrier: opening/closing tags with the timestamp first inside."""
+    stamp = format_user_timestamp_marker(timestamp).rstrip("\n")
+    text = body if isinstance(body, str) else "" if body is None else str(body)
+    return f"<{tag}>\n{stamp}\n{text}\n</{tag}>"
+
+
+def build_noting_task_wrapper(body: Any, *, timestamp: Optional[float] = None) -> str:
+    """The Noting Task transition/control message (first child-owned durable user row)."""
+    return build_user_wrapper("noting-task", body, timestamp=timestamp)
+
+
+def build_system_reminder_wrapper(body: Any, *, timestamp: Optional[float] = None) -> str:
+    """The request-only passive System Reminder carrier."""
+    return build_user_wrapper("system-reminder", body, timestamp=timestamp)
+
+
+def build_user_reminder_wrapper(body: Any, *, timestamp: Optional[float] = None) -> str:
+    """The active User Reminder carrier (durable user row when admitted idle)."""
+    return build_user_wrapper("user-reminder", body, timestamp=timestamp)

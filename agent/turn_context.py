@@ -22,7 +22,10 @@ from agent.iteration_budget import IterationBudget
 from agent.memory_manager import build_memory_context_block
 from agent.memory_provider import is_trivial_prompt
 from agent.message_content import flatten_message_text
-from agent.message_metadata import PERSISTENCE_ONLY_MESSAGE_FIELDS, append_message, stamp_message_timestamp
+from agent.message_metadata import (
+    PERSISTENCE_ONLY_MESSAGE_FIELDS, append_message, prepend_user_timestamp_marker,
+    stamp_message_timestamp, user_input_timestamp_marker,
+)
 from agent.model_metadata import (
     estimate_messages_tokens_rough,
     estimate_native_anthropic_request_tokens_rough,
@@ -926,13 +929,17 @@ def _stamp_api_content_sidecar(
     API copy, so stamp the exact sent bytes on the live dict for replay."""
     _turn_user_msg = messages[current_turn_user_idx]
     live_content = _turn_user_msg.get("content")
+    from agent.message_metadata import user_input_timestamp_marker
     from agent.session_persistence import _persist_lock, durable_user_row_content
     # Match the row the flush wrote (persist override = clean transcript), not the live bytes.
     durable_content, _api_content = durable_user_row_content(
         agent, _turn_user_msg, live_content,
         compose_user_api_content(live_content or "", ext_prefetch_cache, plugin_user_context),
     )
-    if _api_content is None or _api_content == durable_content:
+    # A marker-bearing genuine turn always keeps its exact sent bytes on the live dict, even
+    # when they equal the durable content: the next in-process turn replays the sidecar.
+    _marker_applied = bool(user_input_timestamp_marker(_turn_user_msg))
+    if _api_content is None or (_api_content == durable_content and not _marker_applied):
         return
     _turn_user_msg["api_content"] = _api_content
 
@@ -1288,6 +1295,18 @@ def build_api_messages(
             # prefix stays byte-stable. User rows carry the injection sidecar; user
             # and assistant rows may carry a sanitize-divergence sidecar.
             api_msg["content"] = _api_content
+
+        # Source-event timestamp marker (02 §5.6): the turn's own user message begins with
+        # one standalone marker line derived from its stored timestamp, so every request this
+        # turn sends carries identical bytes and the durable row records the same line.
+        # Historical rows replay their persisted marker (content or sidecar); synthetic
+        # control rows appended mid-turn are not user inputs and are never stamped.
+        if msg is current_turn_message and msg.get("role") == "user":
+            _timestamp_marker = user_input_timestamp_marker(msg)
+            if _timestamp_marker:
+                api_msg["content"] = prepend_user_timestamp_marker(
+                    api_msg.get("content"), _timestamp_marker
+                )
 
         # Pass reasoning back to the API for ALL assistant messages so multi-turn
         # reasoning context is preserved.

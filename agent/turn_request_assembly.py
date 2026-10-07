@@ -229,6 +229,16 @@ def assemble_api_request(
         api_messages = _initial_cache_plan.messages
         tools_for_api = _initial_cache_plan.tools
 
+    # Request-only Secretary System Reminder delivery (02 §3.11/§6.8): after ordinary
+    # repair/merge and the cache plan, before provider-specific adaptation and accounting,
+    # append the pending reminders of this Conversation as standalone role=user carriers.
+    # Durable history and the prefix plan are untouched; the carriers ride this request.
+    from secretary.reminder_request import inject_pending_reminders
+
+    _reminder_count, _reminder_tokens = inject_pending_reminders(agent, api_messages)
+    if _reminder_count:
+        logger.debug("Carried %d pending System Reminder(s) on this request", _reminder_count)
+
     # Prepare the persistent-MoA request before measuring compression pressure: the
     # ephemeral advisor output is absent from ``messages``; ``create()`` reuses the
     # prepared request instead of running the advisors again.
@@ -271,7 +281,9 @@ def assemble_api_request(
     _anchored_pressure = anchored_context_tokens(messages, getattr(agent, "_usage_anchor", None))
     agent._request_pressure_anchored = _anchored_pressure is not None
     if _anchored_pressure is not None:
-        request_pressure_tokens = _anchored_pressure
+        # Request-only carriers are NOT in ``messages``: the anchor's delta cannot see
+        # them, so their measured price rides the anchored figure too (02 §3.11).
+        request_pressure_tokens = _anchored_pressure + _reminder_tokens
     else:
         # Rough fallback only: floor at the provider's last REAL prompt size (an anchored
         # figure is provider-exact and is never floored — on MoA turns that would re-add

@@ -25,7 +25,7 @@ from agent.tool_dispatch_helpers import _is_multimodal_tool_result, _multimodal_
 from agent.trajectory import save_trajectory as _save_trajectory_to_file
 from agent.message_metadata import (
     DB_ROW_SNAPSHOT, MERGED_TURN_PREFIX, REPAIR_BOOKKEEPING_FIELDS, TOOL_CALL_UID, copy_identity_fields,
-    tool_call_uid_from_history)
+    prepend_user_timestamp_marker, tool_call_uid_from_history, user_input_timestamp_marker)
 from agent.transcript_repair import sync_flushed_message_markers
 
 
@@ -91,16 +91,43 @@ def _content_with_turn_override(msg: Dict, content: Any, override: Any) -> Any:
     return override
 
 
+def _row_already_durable(msg: Dict) -> bool:
+    """Whether this dict already has a durable row (so its stored content is settled)."""
+    return isinstance(msg.get("_row_id"), int) or bool(msg.get(_DB_PERSISTED_MARKER))
+
+
 def durable_user_row_content(agent, msg: Dict, content: Any, api_content: Any) -> Tuple[Any, Any]:
     """``(content, api_content)`` as the current turn's user row is written: the persist override is the
     clean transcript, the live content is what the wire sent — so when they differ and nothing else was
     injected, the live bytes ARE the sidecar. Shared by the flush and the turn-start stamp so the stamp
-    matches the row the flush wrote."""
+    matches the row the flush wrote.
+
+    The source-event timestamp marker (02 §5.6) is prepended to BOTH the durable content and the
+    sidecar — but only for a row this turn is about to write. A dict that already has a durable row
+    (a close/early flush raced the prologue and wrote the clean content before the timestamp was
+    stamped) keeps the row's stored bytes intact: the marker still reaches every request from the
+    wire-side rule, and rewriting the content here would break the row-addressed backfill that
+    restores the exact sent bytes.
+    """
     override = getattr(agent, "_persist_user_message_override", None)
+    marker = user_input_timestamp_marker(msg)
+    if api_content is None and marker:
+        # Nothing was injected, so the live content IS what the wire sends; the sidecar
+        # keeps those bytes (plus the marker) on the live dict for the next in-process turn.
+        api_content = content
     if _override_replaces_content(msg, content, override):
         if api_content is None and isinstance(content, str) and content != override:
             api_content = content
         content = _content_with_turn_override(msg, content, override)
+    if marker:
+        # The sidecar always carries the marker (it is the exact bytes sent); the durable
+        # content gets it only when this turn is writing the row — a dict whose row already
+        # exists (a close/early flush raced the prologue before the timestamp was stamped)
+        # keeps its stored content, or the row-addressed backfill that restores the sent
+        # bytes would refuse the mismatch and the replay prefix would diverge.
+        api_content = prepend_user_timestamp_marker(api_content, marker)
+        if not _row_already_durable(msg):
+            content = prepend_user_timestamp_marker(content, marker)
     return content, api_content
 
 

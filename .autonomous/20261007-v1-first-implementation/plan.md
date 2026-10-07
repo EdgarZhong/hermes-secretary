@@ -54,9 +54,9 @@
 
 ## 当前状态与编排
 
-初始基线只证明文档冻结；首批实现与定向证据已产生并提交为阶段快照 `cd79cf6c46`，真实模型尚未运行。每个任务的**机制实现、正式接线、针对性验证、用户结果**四项状态及负责Agent在根 `CLAUDE.md` 维护，不在此建立第二看板。2026-10-07 晚 Kimi 主会话派遣 T2B/T3B/T3C/T4 并行实施；因额度中断一度被终止（写码前，无实现残留），随后按用户指示以 deepseek/deepseek-flash 等价重新派遣，实施中。返回后主会话 review 并集中接线，随后按 A28 暂停本轮。
+初始基线只证明文档冻结；首批实现与定向证据已产生并提交为阶段快照 `cd79cf6c46`，真实模型尚未运行。每个任务的**机制实现、正式接线、针对性验证、用户结果**四项状态及负责Agent在根 `CLAUDE.md` 维护，不在此建立第二看板。2026-10-08 凌晨：T2B（Notebook 持久化）、T3B（触发与准入）、T3C（child runtime）与 T4（Schedule/Reminder）四任务全部交回并经主会话 review 接收（详见根 `CLAUDE.md`）；主会话集中接线已完成（MRO/schema/turn hooks/notebook commit reconcile/rewind/branch/force seam/TUI Idle poll/工具面，见取舍 S3），集成定向复测与阶段快照提交进行中。按 A28，本批次提交后本轮暂停，不继续 T5/T6 与独立门禁。
 
-执行序列：T1先行（已完成） → T2A/T3A（已完成） → T2B/T3B/T3C/T4 并行（已暂停，待恢复重新派遣） → 主会话集中接线（schema/MRO/run_agent/toolsets/model_tools/turn hook） → T5 shared Slash与旧surface清理（待 T2B/T4/T3B 返回，串行） → T6最终Prompt文本（主会话） → 集成收敛 → T8 Verification → 独立Validation（T7入口）→ 主会话交付判定。任何共享文件修改必须主会话明确切换ownership后进行。
+执行序列：T1（已完成） → T2A/T3A（已完成） → T2B/T3B/T3C/T4（已完成并交回） → 主会话集中接线（本批次已完成） → T5 shared Slash与旧surface清理（按 A28 暂停，留待恢复） → T6最终Prompt文本（主会话） → 集成收敛 → T8 Verification → 独立Validation（T7入口）→ 主会话交付判定。任何共享文件修改必须主会话明确切换ownership后进行。
 
 主会话亲自核对返回的原文覆盖、机制/约束、接口、真实上下游、状态/失败路径与证据；不复跑有效测试。集成代码变化、失败修复或证据存疑才定向复验。缺口形成下节整改，不启动碎片级独立门禁。
 
@@ -80,5 +80,8 @@
 
 - 取舍-S1（A27）：本轮剩余未冻结的执行层口径由主会话自行合理收敛，逐项记录依据与理由，停止时随 `final-delivery.md` 统一汇报；不变更已冻结一级 / 二级依据的明确要求。
 - 取舍-S2（A28）：第二批四任务交回、主会话 review 与集中接线完成后暂停本轮；T5/T6、独立 Verification / Validation 与后续实现留待恢复。恢复第一步见 `final-delivery.md`。
+- 取舍-S3（A27 执行层，集成期）：Force 接缝采用 `agent/turn_preflight.py` 的 `request_pressure_tokens`（与 native 压缩同源计量）且仅对真实 main Conversation 生效；Noting task 默认 instruction 文本取 `"Maintain the Notebook."`；`notebook_show` 表面 gating 只在 **agent 构造期**执行（`agent/agent_init.py`，经 registry 直取 schema，不触碰 model_tools 进程级 memo；不得从懒加载的身份再解析触发——运行中切换工具面会破坏 byte parity 与 prompt-cache 前缀不变量），branch 继承引导（freeze parent path + Branch Notebook 种子，insert-once）挂在 `initialize_conversation_identity` 身份引导接缝（durable 状态，不动请求字节）；Idle 轮询接入 TUI/Web 会话 poller（`tui_gateway/session_notifications.py`，与 reminder 扫描同一 5s 节奏）；`session_history` 按仓库既有机制登记为 CONFIGURABLE + `_RECENTLY_SHIPPED_TOOLSETS`（首个发布版回填 saved list，后续版本按该机制契约清空）；health FILE_LINES 棘轮以「搬代增」修复（提取 `agent/agent_init_config.py` 五个 config 助手并在 facade re-export，两个 facade 的 branch 调用点回退到身份引导接缝）。
+- 集成遗留（恢复后处理）：messaging gateway（`gateway/run_watchers.py` housekeeping）与纯 CLI 的 Idle 触发接缝；CLI `/branch` 中途切换后的身份再解析时序（下一次工具调用触发 `initialize_conversation_identity` 时引导）与 branch 继承时 Schedule registry 的 reconcile（T4 标可选）复核；T4 `build_system_reminder_text` 与 `agent.message_metadata.build_system_reminder_wrapper` 的双实现收敛（已有字节一致性契约测试护栏）。
+- 集成期测试适配（随 MRO 中央接线完成）：7 个测试文件中 "central MRO wiring pending" 的手动 mixin 子类改回普通 `SessionDB`；`tests/tui_gateway/test_tui_gateway_server.py` 两个 toolset 断言由 CONFIGURABLE + `_RECENTLY_SHIPPED_TOOLSETS` 登记处置。
 
 初始可回退快照为冻结提交 `5346cd094b6a1bb6c6d9ce69e83b3a1570cf46bd`。后续主会话在review后的集成节点本地提交，准确声明已验证范围与剩余项；`baseline.txt`始终保留初始文档基线。索引/一级02不可随实现设计漂移；发现要求变更走授权流程，执行设计调整只影响本文与根CLAUDE。首批定向功能测试已有证据，定位见根CLAUDE；当前未运行真实模型、完整suite或独立门禁，也未部署/发布。

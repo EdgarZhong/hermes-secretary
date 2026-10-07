@@ -16,6 +16,8 @@ from unittest.mock import patch
 
 import pytest
 
+from tests.agent.test_api_content_sidecar import _user_text
+
 from agent.turn_context import (
     append_notes_to_multimodal_content,
     build_turn_context,
@@ -155,9 +157,10 @@ class TestStringContentSidecarDelivery:
             ctx = _build(agent)
         msg = ctx.messages[ctx.current_turn_user_idx]
         assert msg["content"] == "hello"
-        assert msg["api_content"] == "hello\n\n" + RESET_NOTE
+        # The sidecar is the exact sent bytes: the §5.6 timestamp line + note.
+        assert _user_text(msg["api_content"]) == "hello\n\n" + RESET_NOTE
         # The composed bytes match what conversation_loop would send.
-        assert msg["api_content"] == compose_user_api_content(
+        assert _user_text(msg["api_content"]) == compose_user_api_content(
             "hello", ctx.ext_prefetch_cache, ctx.plugin_user_context
         )
         # Consumed: a later turn on the same cached agent replays nothing.
@@ -172,13 +175,14 @@ class TestStringContentSidecarDelivery:
         ):
             ctx = _build(agent)
         msg = ctx.messages[ctx.current_turn_user_idx]
-        assert msg["api_content"] == "hello\n\nPLUGIN-CTX\n\n" + VC_NOTE
+        assert _user_text(msg["api_content"]) == "hello\n\nPLUGIN-CTX\n\n" + VC_NOTE
 
-    def test_no_notes_means_no_stamp(self):
+    def test_no_notes_means_only_the_timestamp_line_is_stamped(self):
         agent = _FakeAgent()
         with patch("hermes_cli.plugins.invoke_hook", return_value=[]):
             ctx = _build(agent)
-        assert "api_content" not in ctx.messages[ctx.current_turn_user_idx]
+        msg = ctx.messages[ctx.current_turn_user_idx]
+        assert _user_text(msg["api_content"]) == "hello"
 
 
 class TestMultimodalFallback:

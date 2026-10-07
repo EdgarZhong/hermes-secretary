@@ -160,14 +160,47 @@ def trusted_declared_conversation_locator(agent: Any, *, newly_created: bool = F
     return source, key, generation
 
 
+def _bootstrap_branch_conversation(db: Any, session_id: str, row: Any) -> None:
+    """A freshly created explicit branch freezes the parent path and seeds its Notebook (02 §2.7).
+
+    Runs from the identity bootstrap so every surface (CLI/TUI/gateway) is covered without a
+    per-surface call site; the freeze itself is insert-once, so re-initialization no-ops.
+    """
+    try:
+        if not row or row.get("source") in {"tool", "subagent"} or not db._is_explicit_fork_child_row(row):
+            return
+        parent_id = row.get("parent_session_id")
+        config = row.get("model_config")
+        if isinstance(config, str):
+            import json
+
+            try:
+                config = json.loads(config)
+            except ValueError:
+                return
+        if not parent_id or not isinstance(config, dict) or config.get("_branched_from") != parent_id:
+            return
+        db.secretary_inherit_branch(parent_id, session_id)
+    except Exception:
+        logger.debug("Branch Notebook bootstrap skipped for %s", session_id, exc_info=True)
+
+
 def initialize_conversation_identity(agent: Any, *, newly_created: bool = False):
-    """Bind an existing main Session; persistence repeats this for a new row."""
+    """Bind an existing main Session; persistence repeats this for a new row.
+
+    Also the Conversation bootstrap seam: a branch freezes its inherited path here (insert-once),
+    and the Notebook tool surface re-resolves its effective-Noting gate after binding (02 §3.5).
+    """
     db, sid = getattr(agent, "_session_db", None), getattr(agent, "session_id", None)
     agent._secretary_conversation_ref = None
-    if not db or not sid or getattr(agent, "_persist_disabled", False) or not db.get_session(sid):
+    if not db or not sid or getattr(agent, "_persist_disabled", False):
+        return None
+    row = db.get_session(sid)
+    if not row:
         return None
     ref = db.resolve_conversation_ref(sid, trusted_declared_conversation_locator(agent, newly_created=newly_created))
     agent._secretary_conversation_ref = ref
+    _bootstrap_branch_conversation(db, sid, row)
     return ref
 
 

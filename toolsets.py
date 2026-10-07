@@ -130,6 +130,7 @@ TOOLSETS = {
     "context_engine": _ts("Runtime tools exposed by the active context engine"),
     "session_search": _ts("Search and recall past conversations with summarization", ["session_search"]),
     "session_history": _ts("Read/search current Conversation history across compaction", ["session_history"]),
+    "notebook": _ts("Noting Notebook: read this Conversation's committed Snapshot", ["notebook_show"]),
     "connections": _ts("Remote connector discovery, execution, and account authorization", ["manage_connections"]),
     "project": _ts("Desktop Projects — create/switch named workspaces (GUI sessions only)", ["desktop_project"]),
     "bot_room": _ts("Verified text-only Group Chat turn capabilities"),

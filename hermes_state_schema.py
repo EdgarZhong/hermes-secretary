@@ -938,6 +938,12 @@ class SessionSchemaMixin:
         cursor.executescript(SCHEMA_SQL)
         from hermes_state_secretary_schema import init_secretary_schema
         init_secretary_schema(cursor)
+        from hermes_state_secretary_notebook import init_secretary_notebook_schema
+        from hermes_state_secretary_noting import init_secretary_noting_schema
+        from hermes_state_secretary_schedule import init_secretary_schedule_schema
+        init_secretary_notebook_schema(cursor)
+        init_secretary_noting_schema(cursor)
+        init_secretary_schedule_schema(cursor)
 
         # Column reconciliation, then the two table-shape repairs ADD COLUMN cannot express.
         self._reconcile_columns(cursor)

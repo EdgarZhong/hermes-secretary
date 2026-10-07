@@ -13,7 +13,20 @@ runtime via a thread-local whitelist on the existing
 that caused the prefix-cache miss.
 """
 
+import pytest
 from unittest.mock import patch
+
+
+@pytest.fixture(autouse=True)
+def _review_gate_open(monkeypatch):
+    """A16 / 02 §5.1 retires the review product; these tests cover the RETAINED fork machinery
+    with the retired gate opened explicitly. The closed product path is covered by
+    tests/agent/test_background_review_retired.py."""
+    from agent.background_review import _background_review_task_config
+
+    monkeypatch.setattr(
+        "agent.background_review.load_background_review_settings",
+        lambda: (True, _background_review_task_config()))
 
 
 def _make_agent_stub(agent_cls):

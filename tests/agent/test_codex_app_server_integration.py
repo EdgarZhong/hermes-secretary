@@ -571,11 +571,17 @@ class TestReviewForkApiModeDowngrade:
     can't dispatch agent-loop tools (memory, skill_manage) which is the
     whole point of the review."""
 
-    def test_codex_app_server_parent_downgrades_review_fork(self):
+    def test_codex_app_server_parent_downgrades_review_fork(self, monkeypatch):
         """Live test against the real _spawn_background_review code path:
         verify the review_agent gets api_mode=codex_responses when the
         parent is codex_app_server."""
         from unittest.mock import MagicMock, patch as _patch
+        # A16 / 02 §5.1 retires the review product; this test covers the RETAINED fork runtime
+        # with the retired gate opened explicitly (closed-path coverage:
+        # tests/agent/test_background_review_retired.py).
+        from agent.background_review import _background_review_task_config
+        monkeypatch.setattr("agent.background_review.load_background_review_settings",
+                            lambda: (True, _background_review_task_config()))
         agent = _make_codex_agent()
         # Pretend memory + skills are configured so the review fork
         # reaches the AIAgent constructor.

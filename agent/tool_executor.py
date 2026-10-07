@@ -652,6 +652,22 @@ _PRUNED_TOOL_ARGUMENTS_MESSAGE = (
 )
 
 
+def _noting_dispatch_block(agent, tool_name: str) -> Optional[str]:
+    """Noting-runtime dispatch policy, enforced at the one choke point both execution paths share.
+
+    The marker comes from the child's construction parameters (``_secretary_noting_profile``),
+    never from model-supplied arguments; non-Noting agents are unaffected.
+    """
+    try:
+        from secretary.noting_child import noting_dispatch_block
+
+        return noting_dispatch_block(agent, tool_name)
+    except Exception:
+        # Fail open: the policy itself must never break ordinary tool dispatch.
+        logger.debug("Noting dispatch policy check failed; allowing the tool", exc_info=True)
+        return None
+
+
 def _blocked_tool_result(agent, ref: _ToolCallRef, *, block_body: dict[str, Any] | None, block_error_type: str, guardrail_decision) -> str:
     """Synthesize the result for a call blocked by scope/plugin/pruned-args (``block_body``, the
     JSON the model sees) or by guardrail policy (``guardrail_decision``) and emit its terminal post_tool_call."""
@@ -707,6 +723,11 @@ def _dispatch_authorized_once(
             callback()
 
     block_message, block_error_type = scope_block, "tool_scope_block"
+    if block_message is None:
+        # Noting runtime policy first: a denied tool must not reach plugin hooks or guardrails.
+        noting_block = _noting_dispatch_block(agent, ref.name)
+        if noting_block is not None:
+            block_message, block_error_type = noting_block, "noting_dispatch_blocked"
     if block_message is None:
         block_error_type = "plugin_block"
         resolve = lambda: _pre_tool_block(agent, ref)  # noqa: E731

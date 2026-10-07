@@ -93,6 +93,15 @@ def run_preflight_compression(
     if _eligible:
         # Aux clamp must land before the first compaction fires on the main-window threshold (#114707).
         ensure_compression_feasibility_checked(agent, request_pressure_tokens)
+    # Secretary Force trigger (02 §4.7/§4.11): evaluate on the same pressure figure native
+    # compaction uses, before any compression branch, so Force fires under its lower threshold
+    # without blocking this turn (the child runs off-thread on admission).
+    try:
+        from secretary.noting_runtime import maybe_admit_force_from_pressure
+
+        maybe_admit_force_from_pressure(agent, request_pressure_tokens)
+    except Exception:
+        logger.debug("Noting Force seam failed", exc_info=True)
     if (
         _eligible
         and not _review_fork_first_request_pending(agent)

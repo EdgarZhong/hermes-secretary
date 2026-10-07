@@ -8,7 +8,7 @@ redirect ``_model_request_active`` bracket and the response-vs-redirect crossing
 
 from __future__ import annotations
 
-from contextlib import nullcontext
+from contextlib import nullcontext, suppress
 from dataclasses import dataclass
 import logging
 import time
@@ -154,6 +154,12 @@ def perform_api_call(
         else:
             interrupted = True
         return _verdict("break")
+    # The provider answered THIS request: acknowledge the System Reminders it carried
+    # (02 §3.11). A raised call never reaches here, so request failure leaves them pending.
+    with suppress(Exception):
+        from secretary.reminder_request import acknowledge_carried_reminders
+
+        acknowledge_carried_reminders(agent)
     return _verdict("fallthrough")
 
 

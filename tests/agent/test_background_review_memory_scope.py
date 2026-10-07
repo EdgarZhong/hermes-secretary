@@ -23,6 +23,15 @@ if _REPO_ROOT not in sys.path:
 import agent.background_review as bg  # noqa: E402
 
 
+@pytest.fixture(autouse=True)
+def _review_gate_open(monkeypatch):
+    """A16 / 02 §5.1 retires the review product; these tests cover the RETAINED spawn→worker
+    plumbing with the retired gate opened explicitly. The closed product path is covered by
+    tests/agent/test_background_review_retired.py."""
+    monkeypatch.setattr(bg, "load_background_review_settings",
+                        lambda: (True, bg._background_review_task_config()))
+
+
 def _review_agent(memory_enabled=True, user_profile_enabled=False) -> SimpleNamespace:
     """The whitelist only reads the profile's memory flags off the fork."""
     return SimpleNamespace(_memory_enabled=memory_enabled, _user_profile_enabled=user_profile_enabled)

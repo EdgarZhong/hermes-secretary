@@ -252,8 +252,9 @@ def test_review_input_token_budget_default_tracks_forks_context_window():
     assert _review_input_token_budget({}, None) == 120_000
 
 
-def test_background_review_config_does_not_freeze_a_fixed_input_budget():
-    """The config default must leave the budget resolver access to the active runtime."""
+def test_background_review_config_block_is_removed_from_the_defaults():
+    """A16 / 02 §5.1: the retired review's config block (switch and routing knobs) is gone, so
+    the shipped defaults no longer describe a budget — or an enabling path — for it."""
     from hermes_cli.config_defaults import DEFAULT_CONFIG
 
-    assert "max_input_tokens" not in DEFAULT_CONFIG["auxiliary"]["background_review"]
+    assert "background_review" not in DEFAULT_CONFIG["auxiliary"]

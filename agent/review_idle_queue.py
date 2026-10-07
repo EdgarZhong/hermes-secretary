@@ -8,6 +8,10 @@ explicit /refine never defers). One slot per session, newest snapshot wins (a re
 the whole conversation, so coalescing is dedup, not loss); aged-out items (defer_max_age_s,
 default 30 min) dispatch regardless of idleness; in-memory best-effort like the immediate
 fork. Idle truth is the supervisor's /slots held for a settle window.
+
+A16 / 02 §5.1 retires the product: the gate that fed this queue is permanently disabled, so
+nothing reaches ``enqueue`` from Hermes, and the dispatcher drops whatever it pops
+(``_still_enabled`` below). The queue itself is retained machinery, not an enabling path.
 """
 
 from __future__ import annotations
@@ -163,7 +167,7 @@ class ReviewIdleQueue:
     def _dispatch(self, item: _PendingReview) -> None:
         if not self._still_enabled(item):
             logger.info(
-                "Deferred background review dropped: reviews were disabled while it was queued (session=%s)",
+                "Deferred background review dropped: the legacy review path is retired (session=%s)",
                 item.session_key[-12:])
             return
         logger.info(
@@ -173,13 +177,13 @@ class ReviewIdleQueue:
 
     @staticmethod
     def _still_enabled(item: _PendingReview) -> bool:
-        """Re-check the enabled gate at DISPATCH time (disabling reviews while queued must stick). Fail-open."""
-        try:
-            from agent.background_review import load_background_review_settings
+        """The retired dispatch gate: a queued review is never resurrected (A16 / 02 §5.1).
 
-            return load_background_review_settings()[0]
-        except Exception:  # noqa: BLE001
-            return True
+        Formerly re-checked ``auxiliary.background_review.enabled`` at dispatch time; the switch
+        and its independent enabling path are removed fork-wide, so this reports disabled and
+        the dispatcher above drops every item it pops.
+        """
+        return False
 
 
 def _managed_server_idle() -> bool:

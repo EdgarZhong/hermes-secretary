@@ -805,4 +805,8 @@ def finalize_turn(
 
     agent._turn_preflight_display_snapshot = None
     agent._turn_received_provider_response = False
+    # Reminders carried by this turn's requests were acknowledged at their successful
+    # response; anything still staged stays pending durably and redelivers on the next
+    # eligible request. Drop the request-scoped slot so it never leaks across turns.
+    agent._secretary_inflight_reminders = []
     return result

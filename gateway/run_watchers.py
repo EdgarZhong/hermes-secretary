@@ -13,6 +13,7 @@ import time
 from collections import Counter
 from typing import Any, Dict, Optional
 
+from gateway.secretary_reminders import SCAN_INTERVAL_SECONDS as _SECRETARY_SCAN_INTERVAL_SECONDS
 from gateway.session_stall import (
     format_session_stall_notification,
     resolve_session_idle_seconds_from_activity,
@@ -23,7 +24,8 @@ from gateway.session_stall import (
 # Log-record parity with the origin module.
 logger = logging.getLogger("gateway.run")
 
-_SESSION_STORE_PRUNE_INTERVAL = 3600.0  # once per hour
+# Once per hour; the Secretary Schedule due scan rides the same housekeeping loop (02 §3.10).
+_SESSION_STORE_PRUNE_INTERVAL = 3600.0
 
 
 async def _interruptible_sleep(runner, seconds: int) -> None:
@@ -38,14 +40,32 @@ class GatewaySessionWatchersMixin:
     """Session housekeeping / stall / catalog-refresh watcher loops for GatewayRunner."""
 
     async def _session_housekeeping_watcher(self, interval: int = 300):
-        """Reclaim resources without ending durable conversations."""
+        """Reclaim resources without ending durable conversations.
+
+        The same loop carries the thin Secretary Schedule due scan at its own sub-cadence: due
+        occurrences become pending System Reminders / active reminders through the existing
+        ingress, never through a Cron job or a second scheduler.
+        """
         await asyncio.sleep(60)
+        tick = max(1, min(int(_SECRETARY_SCAN_INTERVAL_SECONDS), max(1, int(interval))))
+        next_housekeeping = time.monotonic()
+        next_scan = time.monotonic() + _SECRETARY_SCAN_INTERVAL_SECONDS
         while self._running:
-            try:
-                await self._session_housekeeping()
-            except Exception as e:
-                logger.debug("Session housekeeping error: %s", e)
-            await _interruptible_sleep(self, interval)
+            now = time.monotonic()
+            if now >= next_housekeeping:
+                next_housekeeping = now + max(1, int(interval))
+                try:
+                    await self._session_housekeeping()
+                except Exception as e:
+                    logger.debug("Session housekeeping error: %s", e)
+            if now >= next_scan:
+                next_scan = now + _SECRETARY_SCAN_INTERVAL_SECONDS
+                try:
+                    from gateway.secretary_reminders import scan_due_secretary_schedules
+                    await scan_due_secretary_schedules(self)
+                except Exception as e:
+                    logger.debug("Secretary schedule scan error: %s", e, exc_info=True)
+            await _interruptible_sleep(self, tick)
 
     async def _session_housekeeping(self) -> None:
         """Idle/pressure agent-cache sweeps plus the hourly SessionStore prune."""

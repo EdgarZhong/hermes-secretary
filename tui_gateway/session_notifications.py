@@ -5,8 +5,15 @@ desktop UI wiring, HUD surface note. Bodies are rebound onto server.py's globals
 from __future__ import annotations
 
 import contextlib
+import logging
+import os
+import time
 
 from .method_ctx import bind_module
+
+# Module-scoped traceback logger for this module's new boundary catches (the bound handlers
+# otherwise resolve ``logger`` from server.py's namespace).
+_secretary_logger = logging.getLogger(__name__)
 
 
 def _notif_locked_sessions(fn, default):
@@ -260,6 +267,126 @@ def _maybe_fire_tui_heartbeat_tick(sid: str, session: dict) -> None:
         _notif_release_turn(session)
         with contextlib.suppress(Exception):
             mgr.abandon_fire()
+
+
+def _secretary_deliver_claim(sid: str, session: dict, db, claim: dict, reminders) -> None:
+    """Dispatch one claimed Secretary occurrence for this TUI/Web/Desktop session (02 §3.11/§3.12)."""
+    if claim.get("delivery_semantics") != "user_reminder":
+        # Due commitment/task/watchpoint (or a Force notice): pending only, never a Turn.
+        reminders.queue_pending_for_claim(db, claim)
+        return
+    if not _notif_claim_turn(session):
+        # Busy: the occurrence converts to a durable pending System Reminder (no queued second Turn).
+        reminders.convert_claim_to_pending(db, claim)
+        return
+    text = reminders.user_reminder_text(
+        reminders.occurrence_content(claim), reminders.occurrence_timestamp(claim))
+    started = False
+    try:
+        started = bool(_run_prompt_submit(f"__secretary_reminder__{int(time.time() * 1000)}", sid, session, text))
+    except Exception:
+        # Boundary: a turn-submit failure must not end the session poller; the occurrence is
+        # preserved as a pending System Reminder below.
+        _secretary_logger.warning("secretary reminder dispatch failed", exc_info=True)
+    if started:
+        reminders.finalize_claim(db, claim)
+    else:
+        _notif_release_turn(session)
+        reminders.convert_claim_to_pending(db, claim)
+
+
+def _maybe_fire_tui_secretary_reminder(sid: str, session: dict) -> None:
+    """Fire due Secretary Schedule occurrences for THIS session's Conversation.
+
+    Web (in-memory TUI gateway for the default profile attach) and an explicitly spawned
+    per-profile TUI gateway both ride this poller; the session's own profile store and scope are
+    used (``_session_db`` under ``_session_profile_runtime_scope``) — never the launch profile's.
+
+    ``system_reminder`` deliveries queue durably; ``user_reminder`` deliveries go through the
+    session's normal turn admission when idle, and convert to pending when busy.
+    """
+    try:
+        from secretary import reminders as reminders
+        from secretary import schedules as schedules
+    except ImportError:
+        return
+    # Function-local imports: these bodies are rebound onto server.py's namespace at install,
+    # so a module-level import of another module's symbol would not resolve there.
+    import sqlite3
+
+    from hermes_state_secretary_identity import ConversationIdentityError
+
+    agent = session.get("agent")
+    live_session_id = str(getattr(agent, "session_id", "") or "")
+    if not live_session_id:
+        return
+    with _session_db(session) as db:
+        if db is None:
+            return
+        conversation_ref = getattr(agent, "_secretary_conversation_ref", None)
+        cached = session.get("_secretary_reminder_ref")
+        if not conversation_ref and cached and cached[0] == live_session_id:
+            conversation_ref = cached[1]
+        if not conversation_ref:
+            try:
+                conversation_ref = db.resolve_conversation_ref(live_session_id)
+            except (ConversationIdentityError, sqlite3.Error):
+                return
+            session["_secretary_reminder_ref"] = (live_session_id, conversation_ref)
+        try:
+            claims = schedules.scan_and_claim_due(
+                db, owner=f"tui:{os.getpid()}", conversation_ref=conversation_ref, limit=5,
+                is_enabled=schedules.default_enablement(db),
+            )
+        except Exception:
+            # Boundary: one bad store must not end the session's only notification path.
+            _secretary_logger.warning("secretary reminder scan failed", exc_info=True)
+            return
+        for claim in claims:
+            try:
+                _secretary_deliver_claim(sid, session, db, claim, reminders)
+            except Exception:
+                _secretary_logger.warning("secretary reminder delivery failed", exc_info=True)
+                with contextlib.suppress(Exception):
+                    reminders.release_claim(db, claim)
+
+
+def _maybe_fire_tui_noting_idle(sid: str, session: dict) -> None:
+    """Idle Trigger check for THIS session's Conversation (02 §4.5): admit off-thread when due.
+
+    Rides the same per-session poller as the reminder scan; the admitted child runs on a
+    context-scoped worker, so a due Idle never blocks this loop or starts a main Turn.
+    """
+    import sqlite3
+
+    from hermes_state_secretary_identity import ConversationIdentityError
+
+    try:
+        from secretary import noting_runtime
+    except ImportError:
+        return
+    agent = session.get("agent")
+    if agent is None:
+        return
+    live_session_id = str(getattr(agent, "session_id", "") or "")
+    if not live_session_id:
+        return
+    with _session_db(session) as db:
+        if db is None:
+            return
+        conversation_ref = getattr(agent, "_secretary_conversation_ref", None)
+        cached = session.get("_secretary_reminder_ref")
+        if not conversation_ref and cached and cached[0] == live_session_id:
+            conversation_ref = cached[1]
+        if not conversation_ref:
+            try:
+                conversation_ref = db.resolve_conversation_ref(live_session_id)
+            except (ConversationIdentityError, sqlite3.Error):
+                return
+            session["_secretary_reminder_ref"] = (live_session_id, conversation_ref)
+        outcome = noting_runtime.maybe_run_idle_noting(agent, db, conversation_ref)
+        if outcome.split(":", 1)[0] in ("admitted", "compact_parent", "error"):
+            _secretary_logger.info("secretary noting idle %s: %s", sid, outcome)
 
 
 def _loop_route_is_gateway_chat(state) -> bool:
@@ -741,7 +868,10 @@ def _notification_poller_scoped_loop(stop_event: threading.Event, sid: str, sess
         # as kanban dispatch). An active non-parked /goal owns the idle boundary and defers the loop tick.
         if now - last_loop_poll >= _LOOP_POLL_SECONDS:
             last_loop_poll = now
-            for what, fire in (("loop wakeup", _maybe_fire_tui_loop_tick), ("heartbeat", _maybe_fire_tui_heartbeat_tick)):
+            for what, fire in (("loop wakeup", _maybe_fire_tui_loop_tick),
+                               ("heartbeat", _maybe_fire_tui_heartbeat_tick),
+                               ("secretary reminder", _maybe_fire_tui_secretary_reminder),
+                               ("noting idle", _maybe_fire_tui_noting_idle)):
                 try:
                     fire(sid, session)
                 except Exception as tick_exc:

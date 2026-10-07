@@ -346,9 +346,11 @@ def test_requeue_skips_non_managed(monkeypatch):
     assert calls["enqueued"] == []
 
 
-def test_dispatch_runs_under_the_enqueuing_profile_context(tmp_path, monkeypatch):
-    """#108537: the enabled re-check and the spawn must run under the contextvars captured at
-    enqueue (that profile's home + secret scope), not the shared dispatcher thread's ambient ones."""
+def test_retired_queue_drops_every_item_regardless_of_profile_config(tmp_path, monkeypatch):
+    """A16 / 02 §5.1: the dispatcher is retired, so a queued review is dropped at dispatch — even
+    for a profile whose leftover ``auxiliary.background_review.enabled`` still says true. The
+    contextvars captured at enqueue (#108537) are preserved for the retained machinery but no
+    longer have a product to dispatch."""
     from agent import secret_scope as ss
     from hermes_constants import get_hermes_home, reset_hermes_home_override, set_hermes_home_override
 
@@ -393,4 +395,4 @@ def test_dispatch_runs_under_the_enqueuing_profile_context(tmp_path, monkeypatch
         ss.set_multiplex_active(False)
 
     assert q.pending_count() == 0
-    assert seen == [(on_home, on_home, "on")]
+    assert seen == []

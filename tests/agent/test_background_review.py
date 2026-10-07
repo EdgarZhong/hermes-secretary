@@ -1,11 +1,27 @@
-"""Regression tests for background review agent cleanup."""
+"""Regression tests for background review agent cleanup.
+
+A16 / 02 §5.1 retires the review product. This file drives the RETAINED fork machinery with the
+retired gate opened explicitly (see ``_review_gate_open`` below); the closed product path is
+covered by ``test_background_review_retired.py``.
+"""
 
 from __future__ import annotations
 
 import threading
 
+import pytest
+
 import run_agent as run_agent_module
 from run_agent import AIAgent
+
+
+@pytest.fixture(autouse=True)
+def _review_gate_open(monkeypatch):
+    from agent.background_review import _background_review_task_config
+
+    monkeypatch.setattr(
+        "agent.background_review.load_background_review_settings",
+        lambda: (True, _background_review_task_config()))
 
 
 _REAL_THREAD = threading.Thread
@@ -309,11 +325,10 @@ def test_background_review_skipped_in_delegation_subagent(monkeypatch):
 
 
 
-def test_background_review_disabled_skips_automatic_spawn(monkeypatch):
-    """``auxiliary.background_review.enabled: false`` must skip automatic
-    post-turn forks while leaving ``/refine`` (focus set) working (#87250)."""
-    from unittest.mock import patch
-
+def test_background_review_retired_gate_skips_automatic_spawn(monkeypatch):
+    """The retired gate (A16 / 02 §5.1) skips the automatic post-turn review outright; the old
+    ``auxiliary.background_review.enabled`` key no longer has any effect. Everything else in this
+    file drives the retained machinery with ``_review_gate_open``."""
     forks = []
 
     class FakeReviewAgent:
@@ -331,26 +346,18 @@ def test_background_review_disabled_skips_automatic_spawn(monkeypatch):
 
     monkeypatch.setattr(run_agent_module, "AIAgent", FakeReviewAgent)
     monkeypatch.setattr(run_agent_module.threading, "Thread", ImmediateThread)
+    monkeypatch.setattr(
+        "agent.background_review.load_background_review_settings", lambda: (False, {}))
 
     agent = _bare_agent()
     agent._delegate_depth = 0
-    cfg = {"auxiliary": {"background_review": {"enabled": False}}}
+    AIAgent._spawn_background_review(
+        agent,
+        messages_snapshot=[{"role": "user", "content": "hello"}],
+        review_memory=True,
+    )
 
-    with patch("hermes_cli.config.load_config_readonly", return_value=cfg):
-        AIAgent._spawn_background_review(
-            agent,
-            messages_snapshot=[{"role": "user", "content": "hello"}],
-            review_memory=True,
-        )
-        assert forks == [], "automatic review must not spawn when disabled"
-
-        AIAgent._spawn_background_review(
-            agent,
-            messages_snapshot=[{"role": "user", "content": "hello"}],
-            review_memory=True,
-            focus="save the deploy workflow",
-        )
-        assert len(forks) == 1, "/refine must still run when enabled=false"
+    assert forks == [], "the retired review path must not spawn"
 
 
 def test_background_review_explicit_focus_runs_even_in_subagent(monkeypatch):

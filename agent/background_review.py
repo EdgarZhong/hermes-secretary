@@ -228,20 +228,15 @@ def _review_input_token_budget(
 
 
 def load_background_review_settings() -> tuple[bool, Dict[str, Any]]:
-    """Single config read -> ``(enabled, task_cfg)``. Fail-open (``enabled=True``) so a broken
-    config never silently disables reviews — but WARN so the cost is visible."""
-    try:
-        from hermes_cli.config import load_config_readonly
-        from utils import is_truthy_value
-        task = _task_block(load_config_readonly())
-        return is_truthy_value(task.get("enabled"), default=True), task
-    except Exception:
-        logger.warning(
-            "Failed to read background_review.enabled; leaving automatic "
-            "review enabled (fail-open)",
-            exc_info=True,
-        )
-        return True, {}
+    """``(enabled, task_cfg)`` for the retired Background Self-Improvement Review path.
+
+    A16 / 02 §5.1: the old automatic Background Self-Improvement Review is retired fork-wide.
+    Its config switch and independent enabling path are removed, so this gate reports disabled
+    unconditionally — whatever a leftover config file still says — and the retained call sites
+    (``AIAgent._spawn_background_review``, the idle queue) can never start a review. Noting is
+    the product replacement; Noting being off does not restore the old behavior.
+    """
+    return False, {}
 
 
 def _resolve_review_runtime(agent: Any, task_cfg: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -1231,12 +1226,15 @@ def spawn_background_review_thread(
     task_cfg: Optional[Dict[str, Any]] = None, review_run: Optional[_BackgroundReviewRun] = None,
     explicit: bool = False,
 ):
-    """Return ``(target, prompt)``; the caller builds the ``threading.Thread`` so test patches of
-    ``run_agent.threading.Thread`` keep working. ``focus`` (``/refine [instructions]``) is appended
-    to the chosen prompt; automatic reviews pass ``None``. ``task_cfg`` is the pre-loaded
-    ``auxiliary.background_review`` block; when omitted it is read once here. ``explicit``
-    (/refine) propagates to the fork's write origin so user-requested reviews keep the full
-    memory operation set."""
+    """Return ``(target, prompt)`` for the review-spawn entry, now behind the retired gate.
+
+    A16 / 02 §5.1: the old automatic Background Self-Improvement Review and its ``/refine``
+    entry no longer spawn anything — the gate is permanently disabled, so the returned target
+    only completes the run handshake (the live-turn cancellation path must not wait on a review
+    that will never start) and logs the refusal. The fork machinery below the gate (cache
+    parity, fork construction, the run worker) is retained for the Noting child runtime and for
+    ``/btw``; a caller that deliberately patches the gate open still reaches it unchanged.
+    """
     if task_cfg is None:
         task_cfg = _background_review_task_config()
     # Per-agent overrides (agent._MEMORY_REVIEW_PROMPT etc.) keep working.
@@ -1247,6 +1245,16 @@ def spawn_background_review_thread(
             f"{prompt}\n\nThe user explicitly requested this review with the following "
             f"focus — prioritize it over the general instructions above:\n{focus}"
         )
+
+    if not load_background_review_settings()[0]:
+        def _retired_target() -> None:
+            logger.info(
+                "Background Self-Improvement Review is retired (02 §5.1); spawn refused for session=%s",
+                str(getattr(agent, "session_id", "") or "")[-12:],
+            )
+            finish_background_review_run(agent, review_run)
+
+        return _retired_target, prompt
 
     def _target() -> None:  # resolves _run_review_in_thread at call time (tests patch it)
         _run_review_in_thread(

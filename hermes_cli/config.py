@@ -51,6 +51,9 @@ from hermes_cli.config_read_errors import (
     _CONFIG_PARSE_FAILURES, _FIX_PERMS, _FIX_YAML, FailedConfigRead, _backups_dir_display,
     _refuse_failed_read, _refuse_overwrite, _warn_config_parse_failure, _yaml_error_details,
     _yaml_error_location)
+# Config-structure validators moved to a topical sibling (this module is over the file-lines
+# cap and may only shrink); re-exported so existing importers and patch targets keep working.
+from hermes_cli.config_validation import _validate_timezone, _validate_voice
 
 logger = logging.getLogger(__name__)
 
@@ -1011,48 +1014,32 @@ _FB_SINGLE_REQUIRED_FIELDS = (
     ("model", "Add: model: anthropic/claude-sonnet-4 (or another model)"))
 
 
-def _validate_voice(config: Dict[str, Any], issues: List[ConfigIssue]) -> None:
-    voice_cfg = config.get("voice")
-    if not (isinstance(voice_cfg, dict) and "submit_mode" in voice_cfg):
+def _validate_noting(config: Dict[str, Any], issues: List["ConfigIssue"]) -> None:
+    """``noting`` shape check (02 §4.1): a malformed block must not silently mis-gate Noting."""
+    block = config.get("noting")
+    if block is None:
         return
-    submit_mode = voice_cfg.get("submit_mode")
-    normalized = submit_mode.strip().lower() if isinstance(submit_mode, str) else None
-    if normalized not in {"direct", "draft"}:
-        _issue(issues, "error", f"voice.submit_mode must be 'direct' or 'draft', got {submit_mode!r}",
-               "Set voice.submit_mode to direct (submit immediately) or draft (edit before sending)")
-
-
-def _validate_timezone(config: Dict[str, Any], issues: List[ConfigIssue]) -> None:
-    """``timezone`` must be an IANA name the runtime can load.
-
-    ``hermes_time._get_zoneinfo()`` swallows an invalid name behind a single WARNING in the
-    gateway log, then runs the agent clock AND every cron schedule on server-local time.
-    Surface it here, where doctor and the startup check both look. Silent when the
-    interpreter has no tz database at all (bare Windows without ``tzdata``) — nothing can be
-    judged there.
-    """
-    if "timezone" not in config:
+    if not isinstance(block, dict):
+        _issue(issues, "error", f"noting must be a mapping, got {block!r}",
+               "Use the documented block:\n  noting:\n    enabled: true\n    idle_delay_seconds: 500")
         return
-    tz = config.get("timezone")
-    hint = ("Use an IANA zone name such as America/New_York or Asia/Tokyo (see "
-            "`timedatectl list-timezones`). With an invalid value the agent clock and cron "
-            "schedules silently fall back to server-local time. HERMES_TIMEZONE overrides "
-            "this key when set.")
-    if tz is not None and not isinstance(tz, str):
-        _issue(issues, "error", f"timezone must be an IANA zone name string, got {tz!r}", hint)
+    delay = block.get("idle_delay_seconds")
+    if delay is not None and (isinstance(delay, bool) or not isinstance(delay, (int, float)) or delay < 0):
+        _issue(issues, "error", f"noting.idle_delay_seconds must be a nonnegative number, got {delay!r}",
+               "Seconds the main Conversation must stay turn-free after a main Turn ends before an "
+               "Idle Trigger exists (default 500)")
+    selection = block.get("auto_trigger_compaction_after_noting")
+    if selection is not None and not isinstance(selection, dict):
+        _issue(issues, "error", "noting.auto_trigger_compaction_after_noting must be a mapping",
+               "It carries 'enabled' and 'threshold_tokens'; it selects the Idle runtime profile "
+               "and is not itself a Trigger")
         return
-    if not (isinstance(tz, str) and tz.strip()):
-        return
-    name = tz.strip()
-    try:
-        import zoneinfo
-        zoneinfo.ZoneInfo("UTC")  # is a tz database available at all?
-    except Exception:
-        return
-    try:
-        zoneinfo.ZoneInfo(name)
-    except Exception:
-        _issue(issues, "error", f"timezone {name!r} is not a valid IANA zone name", hint)
+    threshold = selection.get("threshold_tokens") if isinstance(selection, dict) else None
+    if threshold is not None and (isinstance(threshold, bool) or not isinstance(threshold, int) or threshold <= 0):
+        _issue(issues, "error",
+               "noting.auto_trigger_compaction_after_noting.threshold_tokens must be a positive "
+               f"token count or null, got {threshold!r}",
+               "Use null to disable the profile selection, e.g. threshold_tokens: 120000")
 
 
 def _validate_entry_list(
@@ -1187,6 +1174,7 @@ def validate_config_structure(config: Optional[Dict[str, Any]] = None) -> List["
     issues: List[ConfigIssue] = []
     _validate_voice(config, issues)
     _validate_timezone(config, issues)
+    _validate_noting(config, issues)
     cp = config.get("custom_providers")
     fb = config.get("fallback_model")
     for value, validator in ((cp, _validate_custom_providers), (fb, _validate_fallback_model)):

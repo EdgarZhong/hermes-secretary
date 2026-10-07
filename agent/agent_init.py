@@ -23,6 +23,10 @@ from typing import Any, Callable, Dict, List, Optional
 from urllib.parse import parse_qs, urlparse, urlunparse
 
 from agent.context_compressor import ContextCompressor
+from agent.agent_init_config import (
+    _cfg_dict, _cfg_flag, _normalize_run_budget_seconds, _parse_config_int,
+    _refuse_checkpoint_required_on_codex_app_server,
+)
 from agent.agent_init_fallback import _fallback_entries, _init_fallback_chain, recompute_init_fallback_api_mode
 from agent.agent_runtime_helpers import _ra
 from agent.iteration_budget import IterationBudget, normalize_budget_warning_ratio
@@ -316,60 +320,6 @@ def _merge_custom_provider_extra_body(agent, custom_providers: List[Dict[str, An
         merged_extra_body.update(existing_extra_body)
     overrides["extra_body"] = merged_extra_body
     agent.request_overrides = overrides
-
-
-def _normalize_run_budget_seconds(value) -> Optional[float]:
-    """Positive float or None (feature off). ``bool`` rejected: YAML ``true`` → 1s budget."""
-    if value is None or isinstance(value, bool):
-        return None
-    try:
-        seconds = float(value)
-    except (TypeError, ValueError):
-        return None
-    return seconds if seconds > 0 else None  # NaN compares False → None
-
-
-
-def _refuse_checkpoint_required_on_codex_app_server(
-    checkpoint_required: bool, api_mode: Optional[str]
-) -> None:
-    """Fail closed at init: the codex app-server compacts its own thread without a truthful
-    pre-compaction boundary (default "native" mode), so a required checkpoint can't be
-    guaranteed — the compress_context() guard alone cannot cover native turns."""
-    if checkpoint_required and api_mode == "codex_app_server":
-        raise RuntimeError(
-            "BLOCKED_MISSING_PREREQUISITE: compression.checkpoint_required "
-            "is incompatible with the codex_app_server API mode: the codex "
-            "agent compacts its own thread without a truthful pre-compaction "
-            "transcript boundary, so a required pre-compress checkpoint "
-            "cannot be guaranteed. Disable compression.checkpoint_required "
-            "or use a non-app-server API mode."
-        )
-
-
-def _parse_config_int(raw: Any, default: int) -> int:
-    """Strict int coercion: rejects bool (YAML ``true`` → 1) and fractional floats."""
-    if isinstance(raw, bool):
-        return default
-    if isinstance(raw, int):
-        return raw
-    if isinstance(raw, float):
-        return int(raw) if raw.is_integer() else default
-    try:
-        return int(str(raw).strip())
-    except (TypeError, ValueError):
-        return default
-
-
-def _cfg_flag(cfg: Dict[str, Any], key: str, default: bool) -> bool:
-    """Legacy string-set truthiness used by the ``compression`` section."""
-    return str(cfg.get(key, default)).lower() in {"true", "1", "yes"}
-
-
-def _cfg_dict(cfg: Dict[str, Any], key: str) -> Dict[str, Any]:
-    """``cfg[key]`` if it is a mapping, else ``{}`` (malformed sections are ignored)."""
-    section = cfg.get(key, {})
-    return section if isinstance(section, dict) else {}
 
 
 class CompressionSettings(SimpleNamespace):
@@ -1190,6 +1140,7 @@ def _init_session_state(agent, session_id, session_db, parent_session_id, reason
     agent.logs_dir.mkdir(parents=True, exist_ok=True)
     _set_defaults(agent, _SESSION_STATE)
 
+    # Filesystem checkpoint manager (transparent — not a tool)
     from tools.checkpoint_manager import CheckpointManager
     agent._checkpoint_mgr = CheckpointManager(
         enabled=checkpoints_enabled, max_snapshots=checkpoint_max_snapshots,
@@ -1198,7 +1149,7 @@ def _init_session_state(agent, session_id, session_db, parent_session_id, reason
     )
 
     from agent.prompt_cache_scope import initialize_conversation_identity
-    agent._session_db = session_db
+    agent._session_db = session_db  # optional SQLite store (CLI/gateway-provided)
     initialize_conversation_identity(agent)
     agent._parent_session_id = parent_session_id
     agent._session_init_model_config = {
@@ -1213,6 +1164,7 @@ def _init_session_state(agent, session_id, session_db, parent_session_id, reason
         if _YOLO_MODE_FROZEN:
             agent._session_init_model_config["yolo_mode"] = True
 
+    # In-memory todo list for task planning (one per agent/session)
     from tools.todo_tool import TodoStore
     agent._todo_store = TodoStore()
 
@@ -2487,6 +2439,12 @@ def init_agent(
     _enforce_minimum_context(agent)
     _warn_nonagentic_hermes_model(agent)
     _inject_context_engine_tools(agent)
+    with suppress(Exception):
+        # Construction-time surface decision only: the gate never runs from lazy
+        # re-initializations, so a live request can't see its tool surface change mid-flight.
+        from secretary.noting_runtime import apply_notebook_surface_gate
+
+        apply_notebook_surface_gate(agent)
     _init_usage_state(agent)
     _clamp_compressor_to_ollama_num_ctx(agent)
     _emit_compression_summary(agent, cs)

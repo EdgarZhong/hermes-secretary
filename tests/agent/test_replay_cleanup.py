@@ -96,6 +96,7 @@ def test_sanitize_replay_history_noop_on_clean_history():
 import copy
 import json
 
+from agent.message_metadata import format_user_timestamp_marker
 from agent.replay_cleanup import canonicalize_replay_history
 from agent.transports.chat_completions import ChatCompletionsTransport
 from agent.turn_context import build_api_messages
@@ -162,7 +163,11 @@ def test_send_wire_matches_replay_wire_after_db_round_trip(tmp_path):
     request = _send(_SendAgent(), live)
 
     assert live == frozen
-    assert _wire(request) == _wire(replay + [{"role": "user", "content": "now"}])
+    assert _wire(request) == _wire(replay + [{
+        "role": "user",
+        # The current turn's wire copy carries the §5.6 source-event timestamp line.
+        "content": format_user_timestamp_marker(now) + "now",
+    }])
     assert "[with memory]" in request[0]["content"] and "EXPIRED" in request[2]["content"]
     assert [m["role"] for m in request] == ["user", "assistant", "user", "assistant", "tool", "tool", "user"]
     assert (request[4]["content"], request[5]["content"]) == (grep_hit, doc_text)

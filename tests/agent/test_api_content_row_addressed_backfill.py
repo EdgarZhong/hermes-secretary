@@ -27,7 +27,7 @@ import pytest
 from agent.session_persistence import SessionPersistenceMixin
 from agent.turn_context import _stamp_api_content_sidecar, compose_user_api_content
 from hermes_state import SessionDB
-from tests.agent.test_api_content_sidecar import _FakeAgent, _build
+from tests.agent.test_api_content_sidecar import _FakeAgent, _build, _user_text
 
 
 class TestSetMessageApiContent:
@@ -94,7 +94,7 @@ class TestPrologueRowAddressedBackfill:
             ctx = _build(agent)
 
         assert (
-            ctx.messages[ctx.current_turn_user_idx]["api_content"]
+            _user_text(ctx.messages[ctx.current_turn_user_idx]["api_content"])
             == "hello\n\nPLUGIN-CTX"
         )
         agent._session_db.set_message_api_content.assert_not_called()
@@ -145,9 +145,9 @@ class TestRealEarlyFlushAndOverrideLifecycle:
                 ctx = _build(agent)
 
             expected = compose_user_api_content("hello", "", "PLUGIN-CTX")
-            assert ctx.messages[ctx.current_turn_user_idx]["api_content"] == expected
+            assert _user_text(ctx.messages[ctx.current_turn_user_idx]["api_content"]) == expected
             # Backfilled to the exact row in SQLite!
-            assert db.get_messages(sid)[-1]["api_content"] == expected
+            assert _user_text(db.get_messages(sid)[-1]["api_content"]) == expected
         finally:
             db.close()
 
@@ -182,22 +182,24 @@ class TestRealEarlyFlushAndOverrideLifecycle:
             # Live user message has the API text and api_content
             turn_msg = ctx.messages[ctx.current_turn_user_idx]
             assert turn_msg["content"] == api_text
-            assert turn_msg["api_content"] == api_text
+            assert _user_text(turn_msg["api_content"]) == api_text
 
-            # Database row has clean text as content, but api_text as api_content!
+            # Database row has clean text as content, but the exact sent bytes as api_content
+            # (the §5.6 timestamp line included; this turn's row was pre-flushed with the
+            # clean content, so the CONTENT column keeps it and the sidecar carries the rest).
             db_rows = db.get_messages(sid)
             assert len(db_rows) == 1
             assert db_rows[0]["content"] == clean_text
-            assert db_rows[0]["api_content"] == api_text
+            assert _user_text(db_rows[0]["api_content"]) == api_text
 
             # Replay via get_messages_as_conversation preserves clean content
             # alongside the api_content sidecar.
             conv = db.get_messages_as_conversation(sid)
             assert conv[0]["content"] == clean_text
-            assert conv[0]["api_content"] == api_text
+            assert _user_text(conv[0]["api_content"]) == api_text
             from agent.turn_context import substitute_api_content
             substitute_api_content(conv[0])
-            assert conv[0]["content"] == api_text
+            assert _user_text(conv[0]["content"]) == api_text
         finally:
             db.close()
 
@@ -233,6 +235,6 @@ class TestRealEarlyFlushAndOverrideLifecycle:
 
             rows = {r["id"]: r for r in db.get_messages(sid)}
             assert rows[t1_user_row["id"]]["api_content"] == "ok\n\nTURN-1-CTX"
-            assert rows[t2_user_row["id"]]["api_content"] == "ok\n\nTURN-2-CTX"
+            assert _user_text(rows[t2_user_row["id"]]["api_content"]) == "ok\n\nTURN-2-CTX"
         finally:
             db.close()

@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import sqlite3
 import tempfile
@@ -35,6 +36,19 @@ from agent.turn_context import (
     compose_user_api_content,
 )
 from hermes_state import SessionDB
+
+
+# 02 §5.6: every genuine user input exposed to the model starts with one standalone
+# ``<timestamp>…</timestamp>`` line derived from the row's own timestamp.
+_USER_TIMESTAMP_MARKER_RE = re.compile(r"^<timestamp>[^\n<]+</timestamp>\n")
+
+
+def _user_text(content):
+    """The user's own text under that leading marker (asserts the marker exists)."""
+    assert isinstance(content, str), content
+    match = _USER_TIMESTAMP_MARKER_RE.match(content)
+    assert match, f"a genuine user input must start with the timestamp marker: {content!r}"
+    return content[match.end():]
 
 
 # ---------------------------------------------------------------------------
@@ -263,19 +277,22 @@ class TestPrologueStamping:
             ctx = _build(agent)
         msg = ctx.messages[ctx.current_turn_user_idx]
         assert msg["content"] == "hello"  # clean content untouched
-        assert msg["api_content"] == compose_user_api_content(
+        assert _user_text(msg["api_content"]) == compose_user_api_content(
             "hello", ctx.ext_prefetch_cache, ctx.plugin_user_context
         )
-        assert msg["api_content"] == "hello\n\nPLUGIN-CTX"
+        assert _user_text(msg["api_content"]) == "hello\n\nPLUGIN-CTX"
         # The early persist saw the stamped sidecar (written in one insert).
-        assert agent.api_content_at_persist == "hello\n\nPLUGIN-CTX"
+        assert _user_text(agent.api_content_at_persist) == "hello\n\nPLUGIN-CTX"
 
-    def test_no_stamp_without_injections(self):
+    def test_no_stamp_without_injections_beyond_the_timestamp_line(self):
+        """Nothing injected: the sidecar still equals the sent bytes — the §5.6 timestamp
+        line is part of every genuine user turn, so the stored sidecar carries exactly it."""
         agent = _FakeAgent()
         with patch("hermes_cli.plugins.invoke_hook", return_value=[]):
             ctx = _build(agent)
-        assert "api_content" not in ctx.messages[ctx.current_turn_user_idx]
-        assert agent.api_content_at_persist is None
+        msg = ctx.messages[ctx.current_turn_user_idx]
+        assert _user_text(msg["api_content"]) == "hello"
+        assert _user_text(agent.api_content_at_persist) == "hello"
 
     def test_no_stamp_for_codex_app_server(self):
         """codex_app_server turns bypass the api_messages build, so the
@@ -537,7 +554,7 @@ class TestWireInvariant:
         assert len(reqs) == 2
         sent_1 = _user_messages(reqs[0])[0]["content"]
         sent_2 = _user_messages(reqs[1])[0]["content"]
-        assert sent_1 == "hello please\n\nPLUGIN-CTX"
+        assert _user_text(sent_1) == "hello please\n\nPLUGIN-CTX"
         assert sent_2 == sent_1  # repeated builds: identical bytes
 
         # The sidecar never reaches the provider.
@@ -545,9 +562,10 @@ class TestWireInvariant:
             for m in req.get("messages", []):
                 assert "api_content" not in m
 
-        # Persisted row: clean content + exact sent bytes in the sidecar.
+        # Persisted row: clean content (with its timestamp marker) + exact sent bytes
+        # in the sidecar.
         user_rows = [r for r in db.get_messages(sid) if r["role"] == "user"]
-        assert user_rows[0]["content"] == "hello please"
+        assert _user_text(user_rows[0]["content"]) == "hello please"
         assert user_rows[0]["api_content"] == sent_1
 
     def test_next_turn_replays_previous_turn_bytes(self, wire_env):
@@ -564,7 +582,7 @@ class TestWireInvariant:
         # ── Turn N+1: fresh agent, history reloaded from the store ──
         history = db.get_messages_as_conversation(sid)
         # The stored history carries the sidecar, not the injected content.
-        assert history[0]["content"] == "hello please"
+        assert _user_text(history[0]["content"]) == "hello please"
         assert history[0]["api_content"] == turn_n_user["content"]
 
         handler.captured_requests = []
@@ -578,7 +596,7 @@ class TestWireInvariant:
 
         # And the new current-turn message got its own injection + sidecar.
         current = _user_messages(_chat_requests(handler)[0])[-1]
-        assert current["content"] == "second question\n\nPLUGIN-CTX"
+        assert _user_text(current["content"]) == "second question\n\nPLUGIN-CTX"
 
     def test_multimodal_turn_sends_persists_and_replays_context_part(self, wire_env):
         """#71998: on a list-content (image) turn the ``pre_llm_call`` context reaches the
@@ -594,7 +612,9 @@ class TestWireInvariant:
             agent1.run_conversation(list(turn), conversation_history=[], task_id="t1")
 
         sent = _user_messages(_chat_requests(handler)[0])[0]["content"]
-        assert sent == [*turn, {"type": "text", "text": "PLUGIN-CTX"}]
+        # The §5.6 marker heads the turn as its own leading text part.
+        assert sent[0]["type"] == "text" and sent[0]["text"].startswith("<timestamp>")
+        assert sent[1:] == [*turn, {"type": "text", "text": "PLUGIN-CTX"}]
 
         history = db.get_messages_as_conversation(sid)
         assert "PLUGIN-CTX" in history[0]["content"]  # persisted with the turn, not dropped
@@ -680,9 +700,10 @@ class TestPrologueMoaAndInPlaceBackfill:
 
         msg = ctx.messages[ctx.current_turn_user_idx]
         assert msg["content"] == "hello"
-        assert msg["api_content"] == "hello\n\nPLUGIN-CTX"
+        assert _user_text(msg["api_content"]) == "hello\n\nPLUGIN-CTX"
+        marker = msg["api_content"][: len(msg["api_content"]) - len(_user_text(msg["api_content"]))]
         agent._session_db.set_latest_user_api_content.assert_called_once_with(
-            "sess-1", "hello", "hello\n\nPLUGIN-CTX"
+            "sess-1", marker + "hello", marker + "hello\n\nPLUGIN-CTX"
         )
 
 

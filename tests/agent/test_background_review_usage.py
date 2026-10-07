@@ -140,10 +140,8 @@ def test_classify_review_result():
         == "memory"
     )
 
-def test_enabled_config_failure_logs_warning(caplog):
-    with patch(
-        "hermes_cli.config.load_config_readonly",
-        side_effect=RuntimeError("boom"),
-    ), caplog.at_level(logging.WARNING, logger="agent.background_review"):
-        assert background_review.load_background_review_settings()[0] is True
-    assert any(r.levelno >= logging.WARNING for r in caplog.records)
+def test_retired_gate_is_never_fail_open():
+    """A16 / 02 §5.1: no config switch is read any more, so a broken config can never fail OPEN
+    into an automatic review; the gate reports disabled unconditionally."""
+    with patch("hermes_cli.config.load_config_readonly", side_effect=RuntimeError("boom")):
+        assert background_review.load_background_review_settings() == (False, {})

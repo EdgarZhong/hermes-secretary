@@ -167,3 +167,25 @@ class SecretaryForegroundMixin:
     def inherit_foreground_branch(self, parent_session_id, branch_session_id, *, through_message_uid=None):
         return self._execute_write(lambda conn: self.inherit_foreground_branch_conn(
             conn, parent_session_id, branch_session_id, through_message_uid=through_message_uid))
+
+    def secretary_inherit_branch(self, parent_session_id, branch_session_id):
+        """Branch bootstrap (02 §2.7): freeze the parent path and seed the Branch Notebook.
+
+        Insert-once per branch — safe to call on every identity (re)initialization; a branch
+        whose foreground is already frozen returns None without touching anything.
+        """
+
+        def _run(conn):
+            branch_ref = self.resolve_conversation_ref_conn(conn, branch_session_id)
+            frozen = conn.execute(
+                "SELECT 1 FROM secretary_branch_messages WHERE conversation_ref = ? LIMIT 1",
+                (branch_ref,),
+            ).fetchone()
+            if frozen is not None:
+                return None
+            branch_ref = self.inherit_foreground_branch_conn(conn, parent_session_id, branch_session_id)
+            self.notebook_inherit_branch_conn(
+                conn, self.resolve_conversation_ref_conn(conn, parent_session_id), branch_ref)
+            return branch_ref
+
+        return self._execute_write(_run)

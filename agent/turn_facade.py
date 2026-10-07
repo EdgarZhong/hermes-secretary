@@ -79,6 +79,9 @@ class TurnFacadeMixin:
         try:
             # First statement of the try so the finally's note_turn_finished balances every exit.
             _review_queue.note_turn_started()
+            with suppress(Exception):
+                from secretary.noting_runtime import note_main_turn_started
+                note_main_turn_started(self)
             admission = admit_durable_turn_lease(
                 self, session_id=session_id, relay_turn_id=relay_turn_id, task_context=task_context,
                 conversation_history=conversation_history,
@@ -214,6 +217,9 @@ class TurnFacadeMixin:
                     # Balance note_turn_started so the idle queue's live-turn count cannot leak.
                     with suppress(Exception):
                         _review_queue.note_turn_finished()
+                    with suppress(Exception):
+                        from secretary.noting_runtime import note_main_turn_finished
+                        note_main_turn_finished(self)
 
     def chat(self, message: str, stream_callback: Optional[callable] = None) -> str:
         """Final response string of one turn; ``stream_callback`` receives each text delta."""
