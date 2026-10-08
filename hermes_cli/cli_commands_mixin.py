@@ -26,6 +26,7 @@ from rich import box as rich_box
 from rich.markup import escape as _escape
 from rich.panel import Panel
 
+from hermes_cli.cli_secretary_commands import CLISecretaryCommandsMixin
 from hermes_constants import display_hermes_home
 from hermes_state_ids import new_session_id as mint_session_id
 from agent.i18n import t
@@ -245,6 +246,8 @@ def _sync_agent_to_session(cli, session_id: str, *, parent_session_id: str, reas
         return
     cli.agent.session_id = session_id
     cli.agent.reset_session_state()
+    from agent.prompt_cache_scope import initialize_conversation_identity
+    initialize_conversation_identity(cli.agent)
     if hasattr(cli.agent, "_last_flushed_db_idx"):
         cli.agent._last_flushed_db_idx = len(cli.conversation_history)
     if hasattr(cli.agent, "_todo_store"):
@@ -255,13 +258,6 @@ def _sync_agent_to_session(cli, session_id: str, *, parent_session_id: str, reas
         cli.agent._invalidate_system_prompt()
     with suppress(Exception):
         _mm = getattr(cli.agent, "_memory_manager", None)
-        # Notify memory providers that session_id rotated to a fresh conversation. reset=True signals
-        # providers to flush accumulated per-session state (_session_turns, _turn_counter, _document_id).
-        # Fires BEFORE the plugin on_session_reset hook (shell hooks only see the new id; Python providers
-        # see the transition). See #6672. When the old session has history, end-of-session extraction
-        # (LLM-bound, seconds) and this switch are queued as ONE task on the memory manager's serialized
-        # worker — end strictly before switch, without blocking /new (#16454). With no history there is
-        # nothing to extract; switch inline as before.
         # Notify memory providers that session_id rotated to a resumed session. reset=False — the provider's
         # accumulated state is still valid; it just needs to target the new session_id for subsequent
         # writes. See #6672.
@@ -522,7 +518,7 @@ _BROWSER_SUBCOMMANDS = {
 }
 
 
-class CLICommandsMixin(CLICommandsSessionToolsMixin):
+class CLICommandsMixin(CLISecretaryCommandsMixin, CLICommandsSessionToolsMixin):
     """Mixin holding the interactive-CLI slash-command handlers."""
 
     # ---- /rollback ------------------------------------------------------------------------
@@ -1874,7 +1870,7 @@ class CLICommandsMixin(CLICommandsSessionToolsMixin):
             return
         handler(self, rest.strip())
 
-    # ---- /heartbeat, /refine, /review -----------------------------------------------------
+    # ---- /heartbeat, /review -----------------------------------------------------
     def _session_manager(self, getter, label: str):
         """The session-scoped manager from ``getter()``, or None after the standard dim
         "<label> unavailable (no active session)." line."""
@@ -1936,27 +1932,6 @@ class CLICommandsMixin(CLICommandsSessionToolsMixin):
         self._start_heartbeat_watchdog()
         _cp(f"  {_t('heartbeat.set', interval=format_interval(state.interval_seconds), prompt=state.prompt)}",
             _dim_line(_t("heartbeat.set_note")))
-
-    def _handle_refine_command(self, cmd: str) -> None:
-        """Dispatch /refine — run the memory/skill review fork on demand (same machinery as the
-        automatic post-turn ``_spawn_background_review``), with optional focus text. Background
-        fork; the live conversation and prompt cache are never touched."""
-        focus = _command_arg(cmd)
-        agent = getattr(self, "agent", None)
-        if agent is None:
-            return _cp(_dim_line(_t("refine.nothing_yet")))
-        snapshot = list(getattr(self, "conversation_history", None) or [])
-        if not snapshot:
-            return _cp(_dim_line(_t("refine.empty")))
-        try:
-            agent._spawn_background_review(
-                messages_snapshot=snapshot, review_memory=True,
-                review_skills="skill_manage" in getattr(agent, "valid_tool_names", set()),
-                focus=focus or None, explicit=True)
-        except Exception as exc:
-            return _cp(f"  {_t('refine.failed', error=exc)}")
-        tail = _t("refine.focus_suffix", focus=focus) if focus else ""
-        _cp(f"  {_t('refine.started', focus=tail)}")
 
     def _handle_review_command(self, cmd: str) -> None:
         """Dispatch /review — snapshot the last N messages (+ argument text as instructions) and

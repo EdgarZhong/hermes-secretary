@@ -21,6 +21,39 @@ def _persisted_source_identities(payload):
             for source in entry.get("source_message_identities") or [] if isinstance(source, dict)}
 
 
+def _source_validator_conn(db, conn, conversation_ref):
+    """New citations use the current path; already committed provenance remains auditable.
+
+    Include older immutable Snapshots because a concurrently admitted task may have loaded
+    an earlier base Snapshot before a newer task committed. Supersession does not turn
+    those existing citations into newly invented evidence.
+    """
+    import json
+
+    on_path = set(db._notebook_anchor_positions_conn(conn, conversation_ref))
+    persisted = set()
+    for row in conn.execute(
+        "SELECT payload_json FROM secretary_notebook_snapshots WHERE conversation_ref = ?",
+        (conversation_ref,),
+    ):
+        persisted.update(_persisted_source_identities(json.loads(row[0])))
+
+    def valid_source(source):
+        return (isinstance(source, dict) and source.get("conversation_ref") == conversation_ref
+                and (source.get("message_uid") in on_path
+                     or (conversation_ref, source.get("message_uid")) in persisted))
+
+    return valid_source
+
+
+def validate_snapshot_state_conn(db, conn, conversation_ref, payload):
+    """Apply the same full semantic/provenance/intent validation at the durable DB gate."""
+    return NotebookWorkingState(
+        conversation_ref, payload,
+        validate_source_identity=_source_validator_conn(db, conn, conversation_ref),
+    ).show()
+
+
 class NotebookStore:
     """The Noting runtime's semantic control surface; never a raw JSON or SQL replacement."""
 
@@ -40,17 +73,8 @@ class NotebookStore:
         """(Re)build the working state from the current committed Snapshot; none starts empty."""
         with self._db._read_ctx() as conn:
             snapshot = self._db.notebook_current_conn(conn, self.conversation_ref)
-            on_path = {row["message_uid"] for row in self._db.get_full_foreground_conn(conn, self.conversation_ref)}
+            valid_source = _source_validator_conn(self._db, conn, self.conversation_ref)
         payload = snapshot["payload"] if snapshot else None
-        # New evidence must be an Anchor-eligible Message of the current Full Foreground;
-        # provenance already committed stays auditable after Hermes supersedes the citation.
-        persisted = _persisted_source_identities(payload)
-
-        def valid_source(source):
-            if not isinstance(source, dict):
-                return False
-            return (source.get("message_uid") in on_path
-                    or (source.get("conversation_ref"), source.get("message_uid")) in persisted)
 
         self._state = NotebookWorkingState(self.conversation_ref, payload,
                                            validate_source_identity=valid_source,

@@ -26,6 +26,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional, Sequence
 from uuid import uuid4
+from types import SimpleNamespace
 
 from agent.message_metadata import build_noting_task_wrapper
 from hermes_state_secretary_notebook import RUNTIME_PROFILES, TRIGGER_TYPES
@@ -50,8 +51,7 @@ _NOTING_CONTINUATION_MESSAGE = (
 # the special profile. The marker lives on the agent (set from construction parameters);
 # it is never derived from model-supplied arguments.
 
-NOTING_ALLOWED_TOOL_NAMES = frozenset({"session_history"})
-NOTING_TOOL_NAME_PREFIXES = ("notebook",)
+NOTING_ALLOWED_TOOL_NAMES = frozenset({"session_history", "notebook_show", "notebook_mutate"})
 NOTING_COMPACTION_TOOL_NAME = "compact_parent"
 
 
@@ -68,7 +68,7 @@ def noting_dispatch_block(agent: Any, tool_name: str) -> Optional[str]:
     profile = getattr(agent, "_secretary_noting_profile", None)
     if not profile:
         return None
-    if tool_name in NOTING_ALLOWED_TOOL_NAMES or tool_name.startswith(NOTING_TOOL_NAME_PREFIXES):
+    if tool_name in NOTING_ALLOWED_TOOL_NAMES:
         return None
     if tool_name == NOTING_COMPACTION_TOOL_NAME and profile == "NOTING_WITH_COMPACTION":
         return None
@@ -175,8 +175,9 @@ def _dedicated_child_session_db(parent: Any) -> Any:
 def build_noting_child(
     parent: Any, *, runtime_profile: str, session_id: Optional[str] = None,
     parent_conversation_ref: Optional[str] = None,
+    frozen_runtime: Optional[dict] = None,
 ) -> Any:
-    """Construct the durable Noting child on the Parent's live runtime.
+    """Construct the durable Noting child from the Parent's frozen runtime.
 
     Cache parity comes from the shared T3A helper: same model/provider/reasoning/tools and
     the Parent's cached system prompt / prompt-cache scope, with ``fork_tag="noting"``.
@@ -184,16 +185,15 @@ def build_noting_child(
     """
     from run_agent import AIAgent
 
-    from agent.cache_parity import apply_cache_parity_from_parent, parent_cache_parity_kwargs
-
     if runtime_profile not in RUNTIME_PROFILES:
         raise NotingChildError("Unknown Noting runtime profile")
+    frozen_runtime = frozen_runtime or freeze_parent_runtime(parent)
     child_session_db = _dedicated_child_session_db(parent)
-    kwargs = parent_cache_parity_kwargs(parent)
+    kwargs = dict(frozen_runtime["kwargs"])
     kwargs.update(
         session_id=session_id or f"noting_{uuid4().hex[:16]}",
         session_db=child_session_db,
-        parent_session_id=getattr(parent, "session_id", None),
+        parent_session_id=frozen_runtime["session_id"],
         platform="subagent",
         quiet_mode=True,
         skip_context_files=True,
@@ -213,12 +213,31 @@ def build_noting_child(
             logger.debug("noting child db release after failed construction", exc_info=True)
         raise
     child._owns_session_db = True
-    apply_cache_parity_from_parent(child, parent, fork_tag="noting")
-    _bind_child_identity(child, parent, runtime_profile=runtime_profile,
-                         parent_conversation_ref=parent_conversation_ref)
-    _disable_child_auto_compaction(child)
-    _expose_compaction_tool(child, runtime_profile)
+    try:
+        for attr, value in vars(frozen_runtime["parity"]).items():
+            setattr(child, attr, copy.deepcopy(value))
+        _bind_child_identity(child, parent, runtime_profile=runtime_profile,
+                             parent_conversation_ref=parent_conversation_ref)
+        child._parent_session_id = frozen_runtime["session_id"]
+        child._session_init_model_config["_delegate_from"] = frozen_runtime["session_id"]
+        child._secretary_history_db = child_session_db
+        _disable_child_auto_compaction(child)
+        child._secretary_noting_request_count = 0
+        child._secretary_noting_parent_tools = copy.deepcopy(child.tools)
+    except BaseException:
+        _close_child(child)
+        raise
     return child
+
+
+def freeze_parent_runtime(parent: Any) -> dict:
+    """Capture all parity/runtime facts before dispatch, never in a delayed worker."""
+    from agent.cache_parity import apply_cache_parity_from_parent, parent_cache_parity_kwargs
+
+    parity = SimpleNamespace()
+    apply_cache_parity_from_parent(parity, parent, fork_tag="noting")
+    return {"kwargs": parent_cache_parity_kwargs(parent), "parity": parity,
+            "session_id": parent.session_id}
 
 
 def _bind_child_identity(
@@ -251,20 +270,6 @@ def _disable_child_auto_compaction(child: Any) -> None:
     child.compression_in_place = True
 
 
-def _expose_compaction_tool(child: Any, runtime_profile: str) -> None:
-    """Special profile additionally exposes ``compact_parent`` (appended, prefix-preserving)."""
-    if runtime_profile != "NOTING_WITH_COMPACTION":
-        return
-    from secretary.noting_compact import COMPACT_PARENT_SCHEMA
-
-    tools = list(getattr(child, "tools", None) or [])
-    if not any(isinstance(t, dict) and (t.get("function") or {}).get("name") == NOTING_COMPACTION_TOOL_NAME
-               for t in tools):
-        tools.append({"type": "function", "function": copy.deepcopy(COMPACT_PARENT_SCHEMA)})
-    child.tools = tools
-    child.valid_tool_names = {t["function"]["name"] for t in tools if isinstance(t, dict) and t.get("function")}
-
-
 # ── Admission bookkeeping (T3B locked interface) ──────────────────────────────────────
 
 
@@ -289,7 +294,7 @@ def _admission_hook(db: Any, name: str) -> Optional[Callable]:
     return None
 
 
-def register_child_admission(db: Any, admission_id: Any, *, child_session_id: str, profile: str) -> None:
+def register_child_admission(db: Any, admission_id: Any, *, child_session_id: str, profile: Optional[str]) -> None:
     """``noting_child_register_conn(conn, admission_id, *, child_session_id, profile)``.
 
     Fails closed when the hook exists but errors: an unregistered child must not run.
@@ -310,7 +315,15 @@ def finish_child_admission(db: Any, admission_id: Any, *, status: str) -> None:
                        admission_id, status)
         return
     try:
-        db._execute_write(lambda conn: fn(conn, admission_id, status=status))
+        def finish(conn):
+            if not fn(conn, admission_id, status=status):
+                conn.execute(
+                    "INSERT OR IGNORE INTO secretary_noting_children "
+                    "(admission_id, status, registered_at, finished_at) "
+                    "SELECT admission_id, ?, ?, ? FROM secretary_noting_admissions WHERE admission_id = ?",
+                    (status, time.time(), time.time(), admission_id),
+                )
+        db._execute_write(finish)
     except Exception:
         logger.warning("Failed to record Noting admission status for %s", admission_id, exc_info=True)
 
@@ -395,6 +408,7 @@ def run_noting_task(
     session_id: Optional[str] = None,
     state_provider: Optional[Callable[[Any], Optional[dict]]] = None,
     owning_profile: Optional[str] = None,
+    frozen_runtime: Optional[dict] = None,
 ) -> NotingTaskOutcome:
     """Run one admitted Noting Task to its one-shot conclusion (02 §5.4, §5.8).
 
@@ -409,36 +423,43 @@ def run_noting_task(
         raise NotingChildError("Unknown Noting trigger type")
     if runtime_profile not in RUNTIME_PROFILES:
         raise NotingChildError("Unknown Noting runtime profile")
-    prefix = freeze_parent_active_prefix(parent, anchor_message_uid, parent_active_messages)
-    child = build_noting_child(
-        parent, runtime_profile=runtime_profile, session_id=session_id,
-        parent_conversation_ref=conversation_ref,
-    )
+    parent_db = getattr(parent, "_session_db", None)
+    try:
+        if admission_timestamp is None:
+            admission_timestamp = parent_db.noting_admission(admission_id)["admitted_at"]
+        prefix = freeze_parent_active_prefix(parent, anchor_message_uid, parent_active_messages)
+        child = build_noting_child(
+            parent, runtime_profile=runtime_profile, session_id=session_id,
+            parent_conversation_ref=conversation_ref, frozen_runtime=frozen_runtime,
+        )
+    except Exception:
+        finish_child_admission(parent_db, admission_id, status="failed")
+        raise
     child._secretary_noting_anchor_uid = anchor_message_uid
     child_session_id = child.session_id
-    parent_db = getattr(parent, "_session_db", None)
+    task_db = child._session_db
     provider = state_provider or _default_state_provider
     register_active_noting_task(child_session_id, child)
     outcome = NotingTaskOutcome(status="incomplete", child_session_id=child_session_id)
     try:
         owning = owning_profile if owning_profile is not None else owning_profile_for(parent_db)
         register_child_admission(
-            parent_db, admission_id, child_session_id=child_session_id,
-            profile=owning or runtime_profile,
+            task_db, admission_id, child_session_id=child_session_id,
+            profile=owning or None,
         )
+        from secretary.noting_tools import initialize_notebook_work
+        initialize_notebook_work(child, trigger_type=trigger_type)
         wrapper = build_noting_task_wrapper(
             task_instruction, timestamp=admission_timestamp if admission_timestamp is not None else time.time(),
         )
         _run_child_turns(child, prefix, wrapper, runtime_profile, outcome)
-        _commit_when_complete(parent_db, conversation_ref, anchor_message_uid, trigger_type,
+        _commit_when_complete(task_db, conversation_ref, anchor_message_uid, trigger_type,
                               runtime_profile, child, provider, outcome)
-    except NotingChildError:
-        raise
     except Exception as exc:  # a crashed task never commits and never resumes
         outcome.status, outcome.error = "failed", str(exc)
         logger.error("Noting task %s failed: %s", admission_id, exc, exc_info=True)
     finally:
-        finish_child_admission(parent_db, admission_id, status=outcome.status)
+        finish_child_admission(task_db, admission_id, status=outcome.status)
         unregister_active_noting_task(child_session_id, child)
         _close_child(child)
     return outcome
@@ -479,6 +500,11 @@ def _commit_when_complete(
 ) -> None:
     if outcome.status != "completed":
         return
+    from secretary.noting_runtime import noting_trigger_gate
+    enabled, reason = noting_trigger_gate(parent_db, conversation_ref)
+    if not enabled:
+        outcome.status, outcome.error = "abandoned", reason
+        return
     try:
         state = provider(child)
     except Exception as exc:
@@ -486,7 +512,7 @@ def _commit_when_complete(
         outcome.status, outcome.error = "failed", f"Notebook state unavailable: {exc}"
         return
     if state is None:
-        outcome.status = "no_notebook_work"
+        outcome.status, outcome.error = "failed", "The completed Turn performed no Notebook read or semantic work"
         return
     try:
         outcome.snapshot_id = commit_noting_snapshot(
@@ -511,7 +537,14 @@ def _close_child(child: Any) -> None:
 
 # ── Host-seam spawn glue (main-session wiring) ────────────────────────────────
 
-DEFAULT_NOTING_TASK_INSTRUCTION = "Maintain the Notebook."
+DEFAULT_NOTING_TASK_INSTRUCTION = (
+    "Maintain the Notebook from the frozen Conversation. First call notebook_show or "
+    "session_history to inspect current state or original evidence; do not end with a text-only "
+    "answer. After that tool response, notebook_mutate is available in this same Turn for "
+    "create/edit/archive/restore/status and Schedule-intent maintenance. Read notebook_show "
+    "after changes to verify the complete state. Never replace raw JSON or write SQL. "
+    "For NOTING_WITH_COMPACTION, call compact_parent after Notebook work before completion."
+)
 
 
 def spawn_noting_task(
@@ -525,20 +558,38 @@ def spawn_noting_task(
     Turn; the admission record keeps same-Anchor idempotence while the worker runs (02 §4.8/§5.11).
     """
     instruction = instruction or DEFAULT_NOTING_TASK_INSTRUCTION
+    parent_db = getattr(parent, "_session_db", None)
+    try:
+        prefix = freeze_parent_active_prefix(parent, admission.anchor_message_uid, parent_active_messages)
+        frozen_runtime = freeze_parent_runtime(parent)
+        admitted_at = parent_db.noting_admission(admission.admission_id)["admitted_at"]
+    except Exception:
+        finish_child_admission(parent_db, admission.admission_id, status="failed")
+        raise
 
     def _run() -> None:
         try:
-            run_noting_task(
-                parent, admission_id=admission.admission_id,
-                conversation_ref=admission.conversation_ref,
-                anchor_message_uid=admission.anchor_message_uid,
-                trigger_type=admission.kind, runtime_profile=admission.task_profile,
-                task_instruction=instruction, parent_active_messages=parent_active_messages,
-                owning_profile=owning_profile if owning_profile is not None else admission.profile,
-            )
+            from secretary.noting_scope import owning_db_scope
+            with owning_db_scope(parent_db):
+                run_noting_task(
+                    parent, admission_id=admission.admission_id,
+                    conversation_ref=admission.conversation_ref,
+                    anchor_message_uid=admission.anchor_message_uid,
+                    trigger_type=admission.kind, runtime_profile=admission.task_profile,
+                    task_instruction=instruction, parent_active_messages=prefix,
+                    admission_timestamp=admitted_at, frozen_runtime=frozen_runtime,
+                    owning_profile=owning_profile if owning_profile is not None else admission.profile,
+                )
         except Exception:
+            finish_child_admission(parent_db, admission.admission_id, status="failed")
             logger.warning("Noting task %s failed", getattr(admission, "admission_id", None),
                            exc_info=True)
 
     from agent.memory_provider import spawn_context_thread
-    return spawn_context_thread(_run, name=f"noting-task-{admission.admission_id}", daemon=True)
+    worker = spawn_context_thread(_run, name=f"noting-task-{admission.admission_id}", daemon=True)
+    try:
+        worker.start()
+    except Exception:
+        finish_child_admission(parent_db, admission.admission_id, status="failed")
+        raise
+    return worker

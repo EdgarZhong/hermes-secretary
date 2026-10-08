@@ -1,6 +1,7 @@
 """Reminder service: pending carriers, busy conversion, route-proven active delivery, ACK."""
 
 import time
+import sqlite3
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -53,7 +54,7 @@ def test_busy_conversion_is_atomic_and_deduplicated(db, ref):
     claim = arm_due(db, ref)
     first = reminders.convert_claim_to_pending(db, claim)
     second = reminders.convert_claim_to_pending(db, claim)
-    assert first == second
+    assert first is not None and second is None  # consumed token cannot append again
     items = pending(db, ref)
     assert len(items) == 1
     assert items[0]["text"].startswith("<system-reminder>\n<timestamp>")
@@ -140,3 +141,146 @@ def test_finalize_after_busy_conversion_is_a_noop(db, ref):
     assert reminders.finalize_claim(db, claim2) is True
     assert reminders.finalize_claim(db, claim2) is False
     assert finalize_delivery(db, claim2["schedule_id"], claim2["claim_token"]) is None
+
+
+def test_reclaimed_token_cannot_append_pending_or_finalize_new_owner(db, ref):
+    old = arm_due(db, ref)
+    other = SessionDB(db.db_path)
+    try:
+        after_expiry = old["claim_expires_at"] + 1
+        current = claim_due(other, old["schedule_id"], owner="new-owner", now=after_expiry)
+        assert current["claim_token"] != old["claim_token"]
+        assert reminders.queue_pending_for_claim(db, old, now=after_expiry) is None
+        assert pending(db, ref) == []
+        row = dict(db._read_one("SELECT * FROM secretary_schedule_registry WHERE schedule_id = ?",
+                               (old["schedule_id"],)))
+        assert row["claim_token"] == current["claim_token"]
+        assert row["next_run_at"] == old["next_run_at"]
+        assert reminders.queue_pending_for_claim(other, current, now=after_expiry) is not None
+        assert pending(db, ref)[0]["source_timestamp"] == old["next_run_at"]
+        print({"stale_token_rejected": True, "new_owner_pending": 1,
+               "source_occurrence_preserved": True})
+    finally:
+        other.close()
+
+
+def test_token_with_wrong_occurrence_is_rejected_atomically(db, ref):
+    current = arm_due(db, ref)
+    altered = {**current, "next_run_at": current["next_run_at"] - 60}
+    assert reminders.queue_pending_for_claim(db, altered) is None
+    assert pending(db, ref) == []
+    assert reminders.queue_pending_for_claim(db, current) is not None
+
+
+def test_pending_and_finalize_failure_roll_back_together(db, ref, monkeypatch):
+    claim = arm_due(db, ref)
+    original = reminders.schedule_finalize_conn
+
+    def fail_after_finalize(conn, *args, **kwargs):
+        original(conn, *args, **kwargs)
+        raise sqlite3.OperationalError("injected finalize failure")
+
+    monkeypatch.setattr(reminders, "schedule_finalize_conn", fail_after_finalize)
+    with pytest.raises(sqlite3.OperationalError, match="injected"):
+        reminders.queue_pending_for_claim(db, claim)
+    assert pending(db, ref) == []
+    row = dict(db._read_one("SELECT * FROM secretary_schedule_registry WHERE schedule_id = ?",
+                           (claim["schedule_id"],)))
+    assert row["state"] == "pending" and row["claim_token"] == claim["claim_token"]
+    assert row["next_run_at"] == claim["next_run_at"]
+    monkeypatch.undo()
+    assert reminders.queue_pending_for_claim(db, claim) is not None
+
+
+def test_recurring_pending_occurrences_survive_restart_and_ack_independently(db, ref):
+    first = arm_due(db, ref, minutes=30)
+    first_id = reminders.queue_pending_for_claim(db, first)
+    next_time = db._read_one("SELECT next_run_at FROM secretary_schedule_registry WHERE schedule_id = ?",
+                            (first["schedule_id"],))[0]
+    second = claim_due(db, first["schedule_id"], owner="second", now=next_time)
+    second_id = reminders.queue_pending_for_claim(db, second, now=next_time)
+    assert second_id != first_id
+    assert [item["source_timestamp"] for item in pending(db, ref)] == [first["next_run_at"], next_time]
+    reopened = SessionDB(db.db_path)
+    try:
+        assert len(reminders.pull_pending(reopened, ref)) == 2
+        assert reminders.ack(reopened, first_id, now=next_time)
+        items = reminders.pull_pending(reopened, ref)
+        assert [item["reminder_id"] for item in items] == [second_id]
+        assert items[0]["source_timestamp"] == next_time
+        assert reminders.queue_pending_for_claim(reopened, first, now=next_time) is None
+        assert len(reminders.pull_pending(reopened, ref)) == 1
+        print({"recurring_pending_before_ack": 2, "pending_after_one_ack": 1,
+               "restart_preserved_occurrences": True})
+    finally:
+        reopened.close()
+
+
+def test_busy_host_minimal_claim_keeps_original_occurrence_bytes(db, ref):
+    claim = arm_due(db, ref)
+    minimal = {key: claim[key] for key in ("schedule_id", "conversation_ref", "claim_token", "next_run_at")}
+    minimal["reminder_text"] = claim["reminder_text"]
+    identifier = reminders.convert_claim_to_pending(db, minimal)
+    item = pending(db, ref)[0]
+    assert item["reminder_id"] == identifier
+    assert item["source_timestamp"] == claim["next_run_at"]
+    assert item["text"] == reminders.system_reminder_text(claim["reminder_text"], claim["next_run_at"])
+    print({"minimal_host_claim": "accepted", "source_occurrence": item["source_timestamp"],
+           "carrier": item["text"]})
+
+
+def test_expired_claim_stays_due_until_reclaimed_then_queues_once(db, ref):
+    old = arm_due(db, ref)
+    after_expiry = old["claim_expires_at"] + 1
+    assert reminders.queue_pending_for_claim(db, old, now=after_expiry) is None
+    assert pending(db, ref) == []
+    current = claim_due(db, old["schedule_id"], owner="retry", now=after_expiry)
+    assert current["next_run_at"] == old["next_run_at"]
+    assert reminders.queue_pending_for_claim(db, current, now=after_expiry) is not None
+    assert len(pending(db, ref)) == 1
+    print({"expired_claim_pending": 0, "reclaimed_pending": 1,
+           "source_occurrence_preserved": current["next_run_at"] == old["next_run_at"]})
+
+
+def test_disabled_runtime_invalidates_its_inflight_claim_without_losing_intent(db, ref):
+    old = arm_due(db, ref)
+    row = db._execute_write(lambda conn: schedule_sync_conn(conn, ref, "entry_1", active=False))
+    assert row["claim_token"] is None
+    assert reminders.queue_pending_for_claim(db, old) is None
+    assert pending(db, ref) == []
+    assert row["canonical_schedule"] == old["canonical_schedule"]
+    assert row["next_run_at"] == old["next_run_at"]
+    print({"disabled_runtime_claim": None, "pending": 0, "intent_and_due_preserved": True})
+
+
+def test_scan_then_local_off_releases_claim_and_on_recovers_original_due(db, ref):
+    old = arm_due(db, ref)
+    db.notebook_set_local_enabled(ref, False)
+    assert reminders.queue_pending_for_claim(db, old) is None
+    row = dict(db._read_one("SELECT * FROM secretary_schedule_registry WHERE schedule_id = ?",
+                           (old["schedule_id"],)))
+    assert pending(db, ref) == []
+    assert row["state"] == "pending" and row["claim_token"] is None
+    assert row["next_run_at"] == old["next_run_at"]
+    db.notebook_set_local_enabled(ref, True)
+    recovered = claim_due(db, old["schedule_id"], owner="after-on")
+    assert recovered["next_run_at"] == old["next_run_at"]
+    assert reminders.queue_pending_for_claim(db, recovered) is not None
+    assert len(pending(db, ref)) == 1
+    print({"scan_then_off_pending": 0, "after_on_pending": 1, "original_due_preserved": True})
+
+
+def test_cross_conversation_claim_cannot_release_another_owners_token(db, ref):
+    current = arm_due(db, ref)
+    db.create_session("other", source="test")
+    other_ref = db.resolve_conversation_ref("other")
+    db.notebook_set_local_enabled(other_ref, False)
+    forged = {**current, "conversation_ref": other_ref}
+    assert reminders.queue_pending_for_claim(db, forged) is None
+    row = db._read_one("SELECT claim_token FROM secretary_schedule_registry WHERE schedule_id = ?",
+                       (current["schedule_id"],))
+    assert row[0] == current["claim_token"]
+    assert reminders.queue_pending_for_claim(db, current) is not None
+    assert reminders.pending_count(db, other_ref) == 0
+    print({"foreign_owner_claim": "rejected", "legitimate_token_preserved": True,
+           "legitimate_owner_pending": 1, "foreign_owner_pending": 0})

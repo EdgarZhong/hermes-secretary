@@ -10,7 +10,6 @@ on the caller's connection inside its transaction.
 """
 
 import json
-import sqlite3
 import time
 import uuid
 from copy import deepcopy
@@ -151,6 +150,11 @@ class SecretaryNotebookMixin:
         positions = self._notebook_anchor_positions_conn(conn, conversation_ref)
         snapshot_id = self._notebook_latest_valid_snapshot_id_conn(conn, conversation_ref, positions)
         self._notebook_move_pointer_conn(conn, conversation_ref, snapshot_id)
+        # Reconcile the selected Snapshot, not the task that happened to finish last.
+        # Null pointers disable runtime rows without deleting immutable intent/history.
+        from secretary.schedules import reconcile_payload
+        current = self.notebook_current_conn(conn, conversation_ref)
+        reconcile_payload(conn, conversation_ref, current["payload"] if current else None)
         return snapshot_id
 
     # ── Current state (02 §3.3-3.4) ────────────────────────────────────────
@@ -181,6 +185,8 @@ class SecretaryNotebookMixin:
                                       trigger_type="idle", runtime_profile="NOTING"):
         """Revalidate the frozen Anchor, INSERT one Snapshot and re-derive the pointer here."""
         self._notebook_require_conversation_conn(conn, conversation_ref)
+        if not self.notebook_local_enabled_conn(conn, conversation_ref):
+            raise NotebookError("Conversation-local Noting is disabled")
         if trigger_type not in TRIGGER_TYPES:
             raise NotebookError("Unknown Noting trigger type")
         if runtime_profile not in RUNTIME_PROFILES:
@@ -191,6 +197,11 @@ class SecretaryNotebookMixin:
         if self.anchor_position_conn(conn, conversation_ref, anchor_message_uid) is None:
             raise NotebookError("The frozen Anchor is not on the current Full Foreground")
         payload = _complete_state(state)
+        from secretary.notebook_store import validate_snapshot_state_conn
+        try:
+            payload = validate_snapshot_state_conn(self, conn, conversation_ref, payload)
+        except ValueError as exc:
+            raise NotebookError(str(exc)) from exc
         try:
             payload_json = json.dumps(payload, ensure_ascii=False, sort_keys=True)
         except (TypeError, ValueError) as exc:
@@ -202,13 +213,6 @@ class SecretaryNotebookMixin:
         ))
         # An earlier Anchor's late Snapshot stays committed while the pointer keeps the newer one.
         self._notebook_reselect_pointer_conn(conn, conversation_ref)
-        # Mirror Schedule-carrying entries into the runtime registry in the same transaction
-        # (02 §3.9). A DB without the Schedule sibling installed has nothing to mirror.
-        try:
-            from secretary.schedules import reconcile_payload
-            reconcile_payload(conn, conversation_ref, payload)
-        except sqlite3.OperationalError:
-            pass
         return snapshot_id
 
     # ── Branch inheritance (02 §2.7) ───────────────────────────────────────
@@ -226,18 +230,22 @@ class SecretaryNotebookMixin:
         if existing is not None:
             raise NotebookError("A branch Notebook is inherited only once")
         positions = self._notebook_anchor_positions_conn(conn, branch_conversation_ref)
-        source_id = self._notebook_latest_valid_snapshot_id_conn(conn, parent_conversation_ref, positions)
-        if source_id is None:
-            return None
-        source = conn.execute(_SNAPSHOT_BY_ID_SQL, (source_id,)).fetchone()
-        payload = _rebind_source_identities(json.loads(source["payload_json"]), branch_conversation_ref)
-        snapshot_id = "snap_" + uuid.uuid4().hex
-        conn.execute(_INSERT_SNAPSHOT_SQL, (
-            snapshot_id, branch_conversation_ref, source["anchor_message_uid"], source["trigger_type"],
-            source["runtime_profile"], json.dumps(payload, ensure_ascii=False, sort_keys=True),
-            source["created_at"],
-        ))
-        self._notebook_move_pointer_conn(conn, branch_conversation_ref, snapshot_id)
+        sources = conn.execute(
+            "SELECT * FROM secretary_notebook_snapshots WHERE conversation_ref = ? ORDER BY rowid",
+            (parent_conversation_ref,),
+        ).fetchall()
+        for source in sources:
+            if source["anchor_message_uid"] not in positions:
+                continue
+            payload = _rebind_source_identities(json.loads(source["payload_json"]), branch_conversation_ref)
+            conn.execute(_INSERT_SNAPSHOT_SQL, (
+                "snap_" + uuid.uuid4().hex, branch_conversation_ref, source["anchor_message_uid"],
+                source["trigger_type"], source["runtime_profile"],
+                json.dumps(payload, ensure_ascii=False, sort_keys=True), source["created_at"],
+            ))
+        snapshot_id = self._notebook_reselect_pointer_conn(conn, branch_conversation_ref)
+        from secretary.schedules import inherit_runtime_conn
+        inherit_runtime_conn(conn, parent_conversation_ref, branch_conversation_ref)
         return snapshot_id
 
     # ── Conversation-local participation (02 §3.2, §4.2) ───────────────────

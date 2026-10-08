@@ -61,6 +61,11 @@ class GatewaySessionWatchersMixin:
             if now >= next_scan:
                 next_scan = now + _SECRETARY_SCAN_INTERVAL_SECONDS
                 try:
+                    from secretary.noting_hosts import poll_gateway_noting
+                    await poll_gateway_noting(self)
+                except Exception:
+                    logger.debug("Secretary Noting idle poll failed", exc_info=True)
+                try:
                     from gateway.secretary_reminders import scan_due_secretary_schedules
                     await scan_due_secretary_schedules(self)
                 except Exception as e:

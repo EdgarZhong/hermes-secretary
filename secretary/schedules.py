@@ -97,13 +97,37 @@ def reconcile_payload(conn, conversation_ref, payload, *, active=True, now=None,
     )
 
 
+def inherit_runtime_conn(conn, parent_ref, branch_ref):
+    """Keep independent branch rows, preserving accounting only for identical inherited intent.
+
+    A fulfilled one-shot must not be re-fired solely by branching. Claims and pending
+    delivery belong to their original Conversation and are never copied to the branch.
+    An older branch-point intent differing from the parent's current runtime starts fresh.
+    """
+    rows = conn.execute(
+        "SELECT b.schedule_id, p.state, p.next_run_at, p.last_fired_at "
+        "FROM secretary_schedule_registry b JOIN secretary_schedule_registry p "
+        "ON p.notebook_entry_id = b.notebook_entry_id "
+        "AND p.canonical_schedule = b.canonical_schedule "
+        "AND p.delivery_semantics = b.delivery_semantics "
+        "WHERE p.conversation_ref = ? AND b.conversation_ref = ? "
+        "AND b.enabled = 1 AND p.state IN ('pending', 'done')",
+        (parent_ref, branch_ref),
+    ).fetchall()
+    for row in rows:
+        conn.execute(
+            "UPDATE secretary_schedule_registry SET state = ?, next_run_at = ?, last_fired_at = ? "
+            "WHERE schedule_id = ?",
+            (row["state"], row["next_run_at"], row["last_fired_at"], row["schedule_id"]),
+        )
+
+
 def default_enablement(db):
     """Effective Noting gate predicate (global config AND Conversation-local state, 02 §4.2).
 
     Consumes the Noting runtime's own gate (``noting_trigger_gate``), which already resolves
-    global config AND the Notebook sibling's conversation-local participation. While those
-    modules are absent the lane stays open (rows only exist when the Schedule lane is live);
-    once installed, an evaluation error fails CLOSED for scanning — the occurrence stays due
+    global config AND the Notebook sibling's conversation-local participation. An unavailable
+    gate or evaluation error fails CLOSED for scanning — the occurrence stays due
     and fires after the gate is evaluable again, so nothing is lost.
     """
 
@@ -111,7 +135,8 @@ def default_enablement(db):
         try:
             from secretary.noting_runtime import noting_trigger_gate
         except ImportError:
-            return True
+            logger.warning("Noting gate unavailable; skipping Schedule scan", exc_info=True)
+            return False
         try:
             enabled, _reason = noting_trigger_gate(db, conversation_ref)
             return bool(enabled)

@@ -90,8 +90,12 @@ def resolve_noting_settings() -> NotingSettings:
     """Read the live config; an unreadable config disables Noting rather than guessing."""
     try:
         from hermes_cli.config import load_config_readonly
+        from hermes_cli.config_read_errors import FailedConfigRead
 
-        return noting_settings_from_config(load_config_readonly())
+        config = load_config_readonly()
+        if isinstance(config, FailedConfigRead):
+            return disabled_noting_settings()
+        return noting_settings_from_config(config)
     except Exception:
         logger.warning("noting config unreadable; treating Noting as disabled", exc_info=True)
         return disabled_noting_settings()

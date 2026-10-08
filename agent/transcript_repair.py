@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import hashlib
 import sqlite3
-from typing import Any, Callable, Dict, List, Mapping
+from typing import Any, Callable, Dict, List, Mapping, Optional
 
 from agent.context_compressor import _DB_PERSISTED_MARKER
 from agent.message_metadata import (
@@ -115,6 +115,7 @@ def resolve_and_repair_transcript_batch(
     decode_content_fn: Callable[[Any], Any],
     serialize_message_fn: Callable[[Dict[str, Any], float], Mapping[str, Any]],
     decode_row_fn: Callable[[Mapping[str, Any]], Dict[str, Any]],
+    before_rewrite: Optional[Callable[[sqlite3.Connection, int], None]] = None,
 ) -> List[Dict[str, Any]]:
     """Resolve row-addressed rewrites without appending duplicates or replacing concurrent winners.
 
@@ -160,6 +161,7 @@ def resolve_and_repair_transcript_batch(
                     # "unknown", not NULL.
                     serialized = {**serialized, "token_count": target_row["token_count"]}
                 if any(target_row[column] != serialized[column] for column in _OWNED_COLUMNS):
+                    _before_native_rewrite(conn, target_id, before_rewrite)
                     _rewrite_row(conn, session_id, target_row, serialized)
                     wrote = True
                 missing = {c: target_row[c] for c in _LIVE_MISSING_METADATA if msg.get(c) is None}
@@ -170,6 +172,7 @@ def resolve_and_repair_transcript_batch(
         elif role == "assistant" and is_content_blank(decode_content_fn(target_row["content"])):
             # Legacy dict (no digest) over a blank assistant row: the interrupted-stream repair. Fill the row
             # from live content with a content-only CAS and never adopt the blank row onto the live dict.
+            _before_native_rewrite(conn, target_id, before_rewrite)
             wrote = conn.execute(
                 "UPDATE messages SET content = ? WHERE id = ? AND session_id = ? AND content IS ?",
                 (encode_content_fn(msg.get("content")), target_id, session_id, target_row["content"]),
@@ -197,6 +200,12 @@ def resolve_and_repair_transcript_batch(
         else:
             msg.pop(CANONICAL_ROW, None)
     return inserted_rows
+
+
+def _before_native_rewrite(conn, row_id, callback):
+    """Optional caller-owned transactional extensions; default native behavior is unchanged."""
+    if callback is not None:
+        callback(conn, row_id)
 
 
 def _rewrite_row(

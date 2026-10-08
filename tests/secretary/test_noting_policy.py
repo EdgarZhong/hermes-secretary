@@ -63,6 +63,28 @@ def test_settings_parse_spec_defaults_and_overrides():
     assert malformed.auto_trigger_compaction_threshold_tokens is None
 
 
+@pytest.mark.parametrize("load_good_first", [False, True])
+def test_native_config_failed_read_disables_noting(tmp_path, load_good_first):
+    from hermes_cli.config import load_config_readonly
+    from hermes_cli.config_read_errors import FailedConfigRead
+    from hermes_constants import reset_hermes_home_override, set_hermes_home_override
+    from secretary.noting_policy import resolve_noting_settings
+
+    token = set_hermes_home_override(tmp_path)
+    try:
+        config_path = tmp_path / "config.yaml"
+        if load_good_first:
+            config_path.write_text("noting:\n  enabled: true\n", encoding="utf-8")
+            assert resolve_noting_settings().enabled
+        config_path.write_text("noting: [broken\n", encoding="utf-8")
+        assert isinstance(load_config_readonly(), FailedConfigRead)
+        assert resolve_noting_settings().enabled is False
+        config_path.write_text("noting:\n  enabled: true\n", encoding="utf-8")
+        assert resolve_noting_settings().enabled
+    finally:
+        reset_hermes_home_override(token)
+
+
 # ── Idle due (02 §4.5) ────────────────────────────────────────────────────
 
 

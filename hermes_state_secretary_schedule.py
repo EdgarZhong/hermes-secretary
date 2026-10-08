@@ -138,7 +138,8 @@ def schedule_sync_conn(
     if cancelled or not active or canonical_schedule is None or delivery_semantics is None:
         state = SCHEDULE_STATE_CANCELLED if cancelled else row["state"]
         conn.execute(
-            "UPDATE secretary_schedule_registry SET state = ?, enabled = 0, updated_at = ? WHERE schedule_id = ?",
+            "UPDATE secretary_schedule_registry SET state = ?, enabled = 0, claim_owner = NULL, "
+            "claim_token = NULL, claim_expires_at = NULL, updated_at = ? WHERE schedule_id = ?",
             (state, timestamp, row["schedule_id"]),
         )
         return _schedule_row(conn, row["schedule_id"])
@@ -241,7 +242,8 @@ def schedule_finalize_conn(conn, schedule_id, claim_token, *, now):
     if not claim_token:
         return None
     row = _schedule_row(conn, schedule_id)
-    if row is None or row["claim_token"] != claim_token:
+    if (row is None or row["claim_token"] != claim_token
+            or row["state"] != SCHEDULE_STATE_PENDING or not row["enabled"]):
         return None
     try:
         canonical = json.loads(row["canonical_schedule"])
@@ -355,22 +357,16 @@ def reminder_pending_count_conn(conn, conversation_ref):
 
 def build_system_reminder_text(content, source_timestamp):
     """The §5.6 request-only carrier: complete wrapper, timestamp as the first line inside."""
-    return (
-        "<system-reminder>\n"
-        f"<timestamp>{render_source_timestamp(source_timestamp)}</timestamp>\n"
-        f"{content}\n"
-        "</system-reminder>"
-    )
+    from agent.message_metadata import build_system_reminder_wrapper
+
+    return build_system_reminder_wrapper(content, timestamp=source_timestamp)
 
 
 def build_user_reminder_text(content, source_timestamp):
     """The §5.6 active carrier for an idle User Reminder admission."""
-    return (
-        "<user-reminder>\n"
-        f"<timestamp>{render_source_timestamp(source_timestamp)}</timestamp>\n"
-        f"{content}\n"
-        "</user-reminder>"
-    )
+    from agent.message_metadata import build_user_reminder_wrapper
+
+    return build_user_reminder_wrapper(content, timestamp=source_timestamp)
 
 
 class SecretaryScheduleMixin:

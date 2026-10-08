@@ -121,7 +121,6 @@ def test_store_continues_a_branch_notebook(db):
 
     make(db, "b", "p", "_branched_from")
     branch_ref = db.inherit_foreground_branch("p", "b")
-    db.notebook_inherit_branch(parent_ref, branch_ref)
     branch_store = NotebookStore(db, branch_ref)
     assert branch_store.show()["consultation"][0]["entry_id"] == entry["entry_id"]
 
@@ -130,3 +129,36 @@ def test_store_continues_a_branch_notebook(db):
     branch_store.commit("b1")
     assert db.notebook_current(branch_ref)["payload"]["consultation"][-1] == decision
     assert db.notebook_current(parent_ref)["payload"]["consultation"][-1]["entry_id"] == entry["entry_id"]
+
+
+def test_committed_superseded_provenance_can_be_loaded_edited_and_recommitted(db):
+    make(db, "s")
+    add(db, "s", "valid anchor", "a")
+    rewritten = add(db, "s", "candidate evidence", "b")
+    ref = ref_of(db, "s")
+    store = NotebookStore(db, ref)
+    candidate = store.create("memory_candidate", {"draft": "morning"},
+                             source_message_identities=[{"conversation_ref": ref, "message_uid": "b"}])
+    store.commit("a")
+    db.rewind_to_message("s", rewritten)
+    db.notebook_reselect_pointer(ref)
+    again = NotebookStore(db, ref)
+    edited = again.edit(candidate["entry_id"], {"draft": "prefers mornings"})
+    assert edited["source_message_identities"][0]["message_uid"] == "b"
+    again.commit("a")
+    assert db.notebook_current(ref)["payload"]["persistence"][0] == edited
+
+
+def test_new_source_that_left_path_after_task_load_is_refused_at_commit(db):
+    make(db, "s")
+    add(db, "s", "anchor", "a")
+    rewritten = add(db, "s", "new evidence", "b")
+    ref = ref_of(db, "s")
+    store = NotebookStore(db, ref)
+    store.create("memory_candidate", {"draft": "x"},
+                 source_message_identities=[{"conversation_ref": ref, "message_uid": "b"}])
+    db.rewind_to_message("s", rewritten)
+    db.notebook_reselect_pointer(ref)
+    with pytest.raises(NotebookError, match="Source Message Identity"):
+        store.commit("a")
+    assert db.notebook_current(ref) is None

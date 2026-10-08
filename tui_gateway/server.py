@@ -1042,9 +1042,10 @@ def _deferred_build_agent_kwargs(current: dict, session_db) -> dict:
 
 
 def _wire_session_agent(sid: str, key: str, agent) -> bool:
-    """Post-build wiring; returns whether the approval notify got registered. Approval prompts route to the
-    client; the self-improvement "💾 …" summary is emitted as review.summary (no print surface), honoring
-    display.memory_notifications."""
+    """Post-build wiring; returns whether the client approval notify got registered.
+
+    Memory persistence notices use the existing display.memory_notifications setting.
+    """
     notify_registered = False
     with contextlib.suppress(Exception):
         from tools.approval import load_permanent_allowlist, register_gateway_notify
@@ -1053,7 +1054,6 @@ def _wire_session_agent(sid: str, key: str, agent) -> bool:
         load_permanent_allowlist()
     _wire_callbacks(sid)
     with contextlib.suppress(Exception):  # bare agents without the attribute must not break startup
-        agent.background_review_callback = lambda message, _sid=sid: _emit("review.summary", _sid, {"text": str(message)})
         agent.memory_notifications = _load_memory_notifications()
     return notify_registered
 
@@ -3548,7 +3548,7 @@ _TUI_EXTRA: list[tuple[str, str, str]] = [
 # slash.exec routes them to command.dispatch instead.
 _PENDING_INPUT_COMMANDS: frozenset[str] = frozenset({
     "retry", "queue", "q", "steer", "plan", "goal", "loop", "proactive", "moa", "undo", "learn",
-    "init", "compress", "compact",
+    "init", "compress", "compact", "notebook", "propose-persistence",
 })
 
 _WORKER_BLOCKED_COMMANDS: frozenset[str] = frozenset({"snapshot", "snap"})

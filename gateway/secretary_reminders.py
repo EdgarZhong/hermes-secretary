@@ -45,6 +45,11 @@ def _acquire_db(home):
     return acquire(Path(home) / "state.db")
 
 
+def _release_db(db):
+    from hermes_state_registry import release
+    release(db)
+
+
 def _delivery_scope(home):
     """Bind the owning profile's runtime scope (home + secrets + terminal), never ambient env."""
     from gateway.run import _async_profile_runtime_scope
@@ -71,20 +76,40 @@ def _route_session_key(runner, conversation_ref, db):
     return str((route or {}).get("session_key") or "")
 
 
-def _source_for_session_key(runner, session_key):
-    """The persisted origin of a live gateway session; None fails closed (no heuristic source)."""
+def _proven_source(runner, route, conversation_ref, db, profile, home):
+    """Prove the live routing entry, physical tip, generation and owning profile together."""
+    session_key = str(route.get("session_key") or "")
     if not session_key:
         return None
     try:
-        runner.session_store._ensure_loaded()
-        entry = runner.session_store._entries.get(session_key)
+        entry = runner.session_store.lookup_by_session_key(session_key)
+        if entry is None or entry.session_key != session_key or getattr(entry, "suspended", False):
+            return None
+        if db.get_compression_tip(entry.session_id) != route["id"]:
+            return None
+        if route.get("profile_name") != profile:
+            return None
+        with db._read_ctx() as conn:
+            owner = conn.execute("SELECT conversation_ref FROM secretary_session_bindings WHERE session_id=?",
+                                 (entry.session_id,)).fetchone()
+            current = db.resolve_conversation_route_conn(conn, conversation_ref)
+        if owner is None or owner[0] != conversation_ref or not current or current["id"] != route["id"]:
+            return None
+        source = runner._restored_source(entry)
+        if source is None or getattr(getattr(source, "platform", None), "value", None) != route.get("source"):
+            return None
+        if Path(runner._resolve_profile_home_for_source(source)).resolve() != Path(home).resolve():
+            return None
+        if Path(db.db_path).resolve() != (Path(home) / "state.db").resolve():
+            return None
+        if entry.session_id != route["id"]:
+            entry = runner.session_store.advance_compression_session(session_key, entry.session_id, route["id"])
+            if entry is None or entry.session_id != route["id"]:
+                return None
+        return source
     except Exception as exc:
         logger.debug("Secretary reminder session-store lookup failed for %s: %s", session_key, exc, exc_info=True)
         return None
-    if entry is None:
-        return None
-    with contextlib.suppress(Exception):
-        return runner._restored_source(entry)
     return None
 
 
@@ -99,30 +124,40 @@ async def scan_due_secretary_schedules(runner) -> int:
     """Claim and dispatch every due occurrence; returns the number dispatched this pass."""
     dispatched = 0
     for profile, home in _profile_homes(runner):
+        db = None
         try:
             db = _acquire_db(home)
             claims = await _run_blocking(runner, _claim_store, db, profile)
+        except asyncio.CancelledError:
+            if db is not None:
+                _release_db(db)
+            raise
         except Exception as exc:
             logger.debug("Secretary schedule scan failed for profile %s: %s", profile, exc, exc_info=True)
+            if db is not None:
+                _release_db(db)
             continue
-        for claim in claims:
-            try:
-                if claim["delivery_semantics"] == "user_reminder":
-                    if not _route_session_key(runner, claim["conversation_ref"], db):
-                        # No live messaging session for this Conversation: keep the occurrence
-                        # claimable so the surface that owns it (TUI/Web poller) delivers it.
+        try:
+            for claim in claims:
+                try:
+                    if claim["delivery_semantics"] == "user_reminder":
+                        if not _route_session_key(runner, claim["conversation_ref"], db):
+                            # No live messaging session for this Conversation: keep the occurrence
+                            # claimable so the surface that owns it (TUI/Web poller) delivers it.
+                            await _run_blocking(runner, _release, db, claim)
+                            continue
+                        _spawn_delivery(runner, db, claim, profile, home)
+                    else:
+                        from secretary import reminders as secretary_reminders
+                        await _run_blocking(runner, secretary_reminders.queue_pending_for_claim, db, claim)
+                    dispatched += 1
+                except Exception as exc:
+                    logger.warning("Secretary reminder dispatch failed for %s: %s", claim.get("schedule_id"), exc,
+                                   exc_info=True)
+                    with contextlib.suppress(Exception):
                         await _run_blocking(runner, _release, db, claim)
-                        continue
-                    _spawn_delivery(runner, db, claim, profile, home)
-                else:
-                    from secretary import reminders as secretary_reminders
-                    await _run_blocking(runner, secretary_reminders.queue_pending_for_claim, db, claim)
-                dispatched += 1
-            except Exception as exc:
-                logger.warning("Secretary reminder dispatch failed for %s: %s", claim.get("schedule_id"), exc,
-                               exc_info=True)
-                with contextlib.suppress(Exception):
-                    await _run_blocking(runner, _release, db, claim)
+        finally:
+            _release_db(db)
     return dispatched
 
 
@@ -133,12 +168,20 @@ def _release(db, claim):
 
 def _spawn_delivery(runner, db, claim, profile, home):
     """Deliver one active reminder off the scan path: a full Turn may run inside handle_message."""
-    task = asyncio.create_task(_deliver_active_claim(runner, db, claim, profile, home))
+    task = asyncio.create_task(_deliver_with_owned_db(runner, claim, profile, home))
     tasks = getattr(runner, "_secretary_delivery_tasks", None)
     if tasks is None:
         tasks = runner._secretary_delivery_tasks = set()
     tasks.add(task)
     task.add_done_callback(tasks.discard)
+
+
+async def _deliver_with_owned_db(runner, claim, profile, home):
+    db = _acquire_db(home)
+    try:
+        await _deliver_active_claim(runner, db, claim, profile, home)
+    finally:
+        _release_db(db)
 
 
 async def _warn_unroutable(runner, key: str, message: str) -> None:
@@ -163,7 +206,7 @@ async def _deliver_active_claim(runner, db, claim, profile, home) -> None:
             await _run_blocking(runner, _release, db, claim)
             return
         session_key = str(resolved["route"].get("session_key") or "")
-        source = _source_for_session_key(runner, session_key)
+        source = _proven_source(runner, resolved["route"], claim["conversation_ref"], db, profile, home)
         if source is None:
             await _warn_unroutable(
                 runner, claim["conversation_ref"],
@@ -184,6 +227,8 @@ async def _deliver_active_claim(runner, db, claim, profile, home) -> None:
         # branch queue it as a future Turn when busy: the narrow busy policy converts it instead.
         event.allow_gateway_control = False
         metadata = dict(getattr(event, "metadata", None) or {})
+        metadata.update(gateway_session_key=session_key, gateway_session_id=resolved["route"]["id"],
+                        gateway_session_strict=True)
         metadata["secretary_user_reminder"] = {
             "conversation_ref": claim["conversation_ref"],
             "schedule_id": claim["schedule_id"],
@@ -193,10 +238,18 @@ async def _deliver_active_claim(runner, db, claim, profile, home) -> None:
         }
         event.metadata = metadata
         async with _delivery_scope(home):
+            from secretary.schedules import default_enablement
+            if (not default_enablement(db)(claim["conversation_ref"])
+                    or _proven_source(runner, resolved["route"], claim["conversation_ref"], db, profile, home) is None):
+                await _run_blocking(runner, _release, db, claim)
+                return
             await adapter.handle_message(event)
         # The busy gate finalizes the claim itself when it converted the occurrence; a still-owned
         # claim means the ingress accepted the Turn.
-        await _run_blocking(runner, secretary_reminders.finalize_claim, db, claim)
+        if getattr(event, "_gateway_accepted", False) is True:
+            await _run_blocking(runner, secretary_reminders.finalize_claim, db, claim)
+        else:
+            await _run_blocking(runner, _release, db, claim)
     except Exception as exc:
         logger.warning("Secretary active reminder delivery failed for %s: %s", claim.get("schedule_id"), exc,
                        exc_info=True)
@@ -240,4 +293,6 @@ def convert_busy_reminder_event(runner, event) -> bool:
     except Exception as exc:
         logger.warning("Secretary busy reminder conversion failed for %s: %s", reminder.get("schedule_id"), exc,
                        exc_info=True)
+    finally:
+        _release_db(db)
     return True

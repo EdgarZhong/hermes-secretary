@@ -48,7 +48,7 @@ const REGISTRY_CATALOG = registryCatalog(
   {
     '/approvals': 'options',
     '/review': 'text',
-    '/refine': 'text',
+    '/propose-persistence': 'text',
     '/usage': null,
     '/version': null,
     '/agents': null,
@@ -80,8 +80,8 @@ describe('desktop slash command curation', () => {
   })
 
   it('treats registry and plugin commands as exec when the catalog says so', () => {
-    expect(resolveDesktopCommand('/refine')?.argumentMode).toBe('text')
-    expect(isDesktopSlashSuggestion('/refine')).toBe(true)
+    expect(resolveDesktopCommand('/propose-persistence')?.argumentMode).toBe('text')
+    expect(isDesktopSlashSuggestion('/propose-persistence')).toBe(true)
     expect(isDesktopSlashSuggestion('/background')).toBe(false)
     expect(isDesktopSlashCommand('/bg')).toBe(true)
     expect(desktopSlashCommandArgumentMode('/bg')).toBe('text')
@@ -139,7 +139,7 @@ describe('desktop slash command curation', () => {
 
   it('groups complete.slash rows by backend kind, not the desktop table', () => {
     // A registry command the table has never heard of is still a command.
-    expect(slashCompletionGroup('/refine', 'command')).toBe('Commands')
+    expect(slashCompletionGroup('/propose-persistence', 'command')).toBe('Commands')
     expect(slashCompletionGroup('/docx', 'skill')).toBe('Skills')
     // Older backends omit kind — fall back to the table.
     expect(slashCompletionGroup('/new')).toBe('Commands')

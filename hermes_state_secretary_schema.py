@@ -31,6 +31,23 @@ CREATE TABLE IF NOT EXISTS secretary_branch_messages (
     is_compaction INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY(conversation_ref, position)
 );
+CREATE TABLE IF NOT EXISTS secretary_branch_freezes (
+    conversation_ref TEXT PRIMARY KEY REFERENCES secretary_conversations(conversation_ref),
+    parent_session_id TEXT NOT NULL,
+    through_message_uid TEXT,
+    created_at REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_secretary_branch_source ON secretary_branch_messages(message_id);
+CREATE TABLE IF NOT EXISTS secretary_branch_exclusions (
+    conversation_ref TEXT NOT NULL REFERENCES secretary_conversations(conversation_ref),
+    message_uid TEXT NOT NULL,
+    PRIMARY KEY(conversation_ref, message_uid)
+);
+INSERT OR IGNORE INTO secretary_branch_freezes
+    SELECT DISTINCT b.conversation_ref, json_extract(s.model_config, '$._branched_from'), NULL, s.started_at
+    FROM secretary_session_bindings b JOIN sessions s ON s.id=b.session_id
+    WHERE json_valid(s.model_config) AND json_extract(s.model_config, '$._branched_from') IS NOT NULL
+    AND EXISTS(SELECT 1 FROM secretary_branch_messages m WHERE m.conversation_ref=b.conversation_ref);
 """
 
 

@@ -13,7 +13,6 @@ import json
 import logging
 import queue
 import re
-import threading
 import time
 from contextlib import suppress
 from datetime import datetime
@@ -1196,43 +1195,6 @@ class TurnRunner:
         render_notification(present, platform=self._ctx.source.platform,
                             user_config=self._ctx.user_config, diagnostic=diagnostic)
 
-    def _make_bg_review_callbacks(self):
-        """(send, release): background-review messages ("💾 Memory updated") are held until the
-        adapter's post-delivery hook releases them after the main response lands."""
-        from gateway.run import _interim_metadata, _non_conversational_metadata
-        ctx = self._ctx
-        release_evt = threading.Event()
-        pending: list[str] = []
-        pending_lock = threading.Lock()
-
-        def deliver(message: str) -> None:
-            if self._status_live():
-                self._send_status_text(
-                    message,
-                    _interim_metadata(_non_conversational_metadata(ctx._status_thread_metadata, platform=ctx.source.platform)),
-                    "background_review_callback scheduling error",
-                )
-
-        def release() -> None:
-            release_evt.set()
-            with pending_lock:
-                queued = list(pending)
-                pending.clear()
-            for message in queued:
-                deliver(message)
-
-        def send(message: str) -> None:
-            if not self._status_live():
-                return
-            if not release_evt.is_set():
-                with pending_lock:
-                    if not release_evt.is_set():
-                        pending.append(message)
-                        return
-            deliver(message)
-
-        return send, release
-
     @staticmethod
     def _merge_turn_request_overrides(agent, turn_route) -> None:
         """Merge, never overwrite: init-time request overrides (e.g. a custom provider's extra_body)
@@ -1276,16 +1238,6 @@ class TurnRunner:
         # Must-deliver notes for THIS turn ride the current user message (api_content sidecar), never
         # the system prompt. Assigned unconditionally so a reused agent never replays a stale note.
         agent._gateway_turn_context_notes = "\n\n".join(runner._consume_pending_turn_sidecar_notes(ctx.session_key))
-        agent.background_review_callback, bg_release = self._make_bg_review_callbacks()
-        # Register the release hook on the adapter so base.py's finally block fires it after the
-        # main response is delivered.
-        if ctx._status_adapter and ctx.session_key:
-            if getattr(type(ctx._status_adapter), "register_post_delivery_callback", None) is not None:
-                ctx._status_adapter.register_post_delivery_callback(ctx.session_key, bg_release, generation=ctx.run_generation)
-            else:
-                pdc = getattr(ctx._status_adapter, "_post_delivery_callbacks", None)
-                if pdc is not None:
-                    pdc[ctx.session_key] = bg_release
         # display.memory_notifications: off | on (generic "💾 Memory updated", default) | verbose.
         # `display:` present-but-null yields None, not the {} default (same `or {}` guard as
         # display_config.py / runtime_footer.py).

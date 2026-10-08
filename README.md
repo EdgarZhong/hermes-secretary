@@ -22,6 +22,18 @@ Hermes Secretary 是基于 [Nous Research 的 Hermes Agent](https://github.com/N
 
 Conversation 原文是事实来源，Notebook 是派生工作状态。Secretary 持久化在原有 profile-scoped `state.db` 中增加自有表，不修改 Hermes 原有表的 schema 或 ownership。Notebook Schedule 与 Hermes Cron 的职责区分见实现规格。
 
+## 对话中的 Secretary 命令
+
+这些命令沿用 Hermes 共享 Slash catalog、补全和执行链路，在 CLI、Gateway 与官方 Dashboard Web UI 中使用。
+
+| 命令 | 行为 |
+|---|---|
+| `/notebook` | 查看当前 Conversation 的 Notebook 与 Snapshot 创建时间；尚无 Snapshot 时明确提示 |
+| `/notebook on`、`/notebook off` | 只修改当前 Conversation 的 Noting 参与状态；保留 Snapshot 与 Schedule 意图 |
+| `/propose-persistence` | 核对 Notebook 的 Memory／Rule／Skill 候选及原文，向用户提出持久化草稿；可在命令后附普通自然语言 |
+
+全局 Noting 开启时，local off 仍允许人类查看已有 Notebook 和提议已有候选；全局关闭时这两项命令不可用。提议本身不执行持久化，后续由用户以自然语言批准、修改或否决，获批操作使用 Hermes 已有能力。旧 `/refine` 已移除，独立工作审查 `/review` 保留。
+
 ## 仓库与分支
 
 | 入口 | 用途 |
@@ -79,6 +91,8 @@ hermes
 ```
 
 激活可能准备或同步运行依赖，不会安装全部 JS workspace。Gateway 入口为 `hermes gateway`；详细使用方式见继承的 [Gateway 文档](website/docs/user-guide/messaging/index.md)。源码开发不使用官方安装脚本替代当前 checkout。
+
+本地官方 Dashboard Web UI 入口为 `hermes dashboard --host 127.0.0.1 --no-open`，默认端口 9119。直接调用源码的子命令入口是 `.venv/bin/python -m hermes_cli.main dashboard ...`；`cli.py` 是交互对话入口。
 
 ## 代码规范与测试入口
 

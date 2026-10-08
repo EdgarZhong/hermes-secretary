@@ -80,11 +80,11 @@
 
 - 取舍-S1（A27）：本轮剩余未冻结的执行层口径由主会话自行合理收敛，逐项记录依据与理由，停止时随 `final-delivery.md` 统一汇报；不变更已冻结一级 / 二级依据的明确要求。
 - 取舍-S2（A28，历史）：第二批交回后的暂停已由 A29 明确解除；保留原始授权来源，当前按完整目标继续。
-- 取舍-S3（A27 执行层，集成期）：Force 接缝采用 `agent/turn_preflight.py` 的 `request_pressure_tokens`（与 native 压缩同源计量）且仅对真实 main Conversation 生效；Noting task 默认 instruction 文本取 `"Maintain the Notebook."`；`notebook_show` 表面 gating 只在 **agent 构造期**执行（`agent/agent_init.py`，经 registry 直取 schema，不触碰 model_tools 进程级 memo；不得从懒加载的身份再解析触发——运行中切换工具面会破坏 byte parity 与 prompt-cache 前缀不变量），branch 继承引导（freeze parent path + Branch Notebook 种子，insert-once）挂在 `initialize_conversation_identity` 身份引导接缝（durable 状态，不动请求字节）；Idle 轮询接入 TUI/Web 会话 poller（`tui_gateway/session_notifications.py`，与 reminder 扫描同一 5s 节奏）；`session_history` 按仓库既有机制登记为 CONFIGURABLE + `_RECENTLY_SHIPPED_TOOLSETS`（首个发布版回填 saved list，后续版本按该机制契约清空）；health FILE_LINES 棘轮以「搬代增」修复（提取 `agent/agent_init_config.py` 五个 config 助手并在 facade re-export，两个 facade 的 branch 调用点回退到身份引导接缝）。
-- 集成遗留（恢复后处理）：messaging gateway（`gateway/run_watchers.py` housekeeping）与纯 CLI 的 Idle 触发接缝；CLI `/branch` 中途切换后的身份再解析时序（下一次工具调用触发 `initialize_conversation_identity` 时引导）与 branch 继承时 Schedule registry 的 reconcile（T4 标可选）复核；T4 `build_system_reminder_text` 与 `agent.message_metadata.build_system_reminder_wrapper` 的双实现收敛（已有字节一致性契约测试护栏）。
+- 取舍-S3（A27 执行层，集成期）：Force 接缝采用 `agent/turn_preflight.py` 的 `request_pressure_tokens`（与 native 压缩同源计量）且仅对真实 main Conversation 生效；Noting task 默认 instruction 文本取 `"Maintain the Notebook."`；最初的 `notebook_show` 仅构造期 gating 已由 P15 收尾替代：在构造期与主 Turn 起点、身份绑定后决定基础 History / Notebook 只读工具面，经 registry 直取 schema；不触碰 model_tools 进程级 memo、root System Prompt 或同一 Turn 请求循环。关闭后的下一主 Turn 移除 Notebook，未知身份 fail closed；Noting child 首请求仍冻结 exact Parent tools，branch 继承引导（freeze parent path + Branch Notebook 种子，insert-once）挂在 `initialize_conversation_identity` 身份引导接缝（durable 状态，不动请求字节）；Idle 轮询接入 TUI/Web 会话 poller（`tui_gateway/session_notifications.py`，与 reminder 扫描同一 5s 节奏）；`session_history` 按仓库既有机制登记为 CONFIGURABLE + `_RECENTLY_SHIPPED_TOOLSETS`（首个发布版回填 saved list，后续版本按该机制契约清空）；health FILE_LINES 棘轮以「搬代增」修复（提取 `agent/agent_init_config.py` 五个 config 助手并在 facade re-export，两个 facade 的 branch 调用点回退到身份引导接缝）。
+- 原集成遗留已分别关闭：F3 接入 messaging housekeeping 与纯 CLI Idle，F1 在 CLI branch/resume 切换后立即重新绑定身份，F2 同事务 reconcile branch Schedule 并将 Reminder wrapper 收敛到已有 `agent.message_metadata` helper。正式路径与失败证据见各任务报告，独立门禁仍需核查全轮。
 - 集成期测试适配（随 MRO 中央接线完成）：7 个测试文件中 "central MRO wiring pending" 的手动 mixin 子类改回普通 `SessionDB`；`tests/tui_gateway/test_tui_gateway_server.py` 两个 toolset 断言由 CONFIGURABLE + `_RECENTLY_SHIPPED_TOOLSETS` 登记处置。
 
-初始可回退快照为冻结提交 `5346cd094b6a1bb6c6d9ce69e83b3a1570cf46bd`。后续主会话在review后的集成节点本地提交，准确声明已验证范围与剩余项；`baseline.txt`始终保留初始文档基线。索引/一级02不可随实现设计漂移；发现要求变更走授权流程，执行设计调整只影响本文与根CLAUDE。首批定向功能测试已有证据，定位见根CLAUDE；当前未运行真实模型、完整suite或独立门禁，也未部署/发布。
+初始可回退快照为冻结提交 `5346cd094b6a1bb6c6d9ce69e83b3a1570cf46bd`。后续主会话在review后的集成节点本地提交，准确声明已验证范围与剩余项；`baseline.txt`始终保留初始文档基线。索引/一级02不可随实现设计漂移；发现要求变更走授权流程，执行设计调整只影响本文与根CLAUDE。首批定向功能测试已有证据，定位见根CLAUDE；恢复期真实 Proxy 模型链路与各任务定向证据已产生；当前完整集成版本的扩大检查及两个独立门禁待执行，未部署/发布。
 
 
 ### 2026-10-08 恢复基线复核：增量修复契约
@@ -100,6 +100,7 @@
 | P12 | successful native Session create 的 newly_created hook、rewrite 同事务、branch freeze时序/空path幂等、Full annotations及host route验证仍缺 | F1：按02 §1/2/6关口修复，不复制原文或改 core schema；跨 Session/branch/host/profile 证据 |
 | P13 | Idle 只有 TUI poller；Force 只一个 preflight hook；child suffix divergence 未参与 fork-tag；reminder gate 错误可 fail-open | F3：补现有测量/host seam、profile绑定、fail-closed 与原生 fork-tag（同文件由主会话串行接）；不新通用调度器 |
 | P14 | queue_pending_for_claim 先 append 再 finalize，stale claim finalize=None仍能产生 pending | F2：同事务核对当前 claim token/occurrence，失败不append；concurrent reclaim负对照 |
+| P15 | main notebook surface 只构造期gating，未知ref会保留schema；真实local off之后只有handler拒绝，不能证明下一Turn advertised surface absent。基础History也不能仅依赖saved toolsets | F3增量：实际AIAgent birth/主Turn边界及local/global开关定向证据；registry-direct，不触碰process memo/rootPrompt或flight中的工具面；同Turn request稳定，child首request exactParent |
 
 F1 白名单：`hermes_state_secretary_{identity,foreground,schema}.py`、原生 `hermes_state_messages.py`/`hermes_state_rewind.py`/`hermes_state_sessions.py` 必要事务接缝、`agent/prompt_cache_scope.py`/`session_persistence.py`、CLI/TUI已有branch薄调用点（不改shared Slash registry）、`gateway/secretary_reminders.py`、对应测试。与 F3 共享 `prompt_cache_scope` 的 fork-tag 由主会话待交回后串行接，不同时编辑。
 
@@ -107,9 +108,16 @@ F2 白名单：`hermes_state_secretary_notebook.py`/`hermes_state_secretary_sche
 
 F3 白名单：`secretary/noting_{child,compact,policy,runtime}.py`、`secretary/reminder_request.py`、新增受限工具 sibling、`agent/inline_tool_executors.py`/`tool_executor.py`/`turn_preflight.py`/`turn_request_assembly.py`/`turn_context.py`/`turn_api_call.py`/`compression_facade.py`/`conversation_compression.py`、`gateway/run_watchers.py`、`tui_gateway/session_notifications.py`、纯 CLI 既有 idle lifecycle 接缝及对应测试。不得改 F1/F2 文件；主会话接 fork-tag信号。深功能修复交子 Agent；共享 facade/过长函数只能薄接线，遵守健康棘轮。
 
-各任务完整读 executing-plans、根 AGENTS/CLAUDE、index/baseline/本文；派遣 prompt 精确列02章节行数。完成以当前基线实际路径和失败反证为准，不复跑整个 agent/ 或完整suite。日志保存 `.hermes-dev/evidence/f1|f2|f3/`；不改规则/锁/02，不提交，不派生，不调用真实模型。
+各任务完整读 executing-plans、根 AGENTS/CLAUDE、index/baseline/本文；派遣 prompt 精确列02章节行数。完成以当前基线实际路径和失败反证为准，不复跑整个 agent/ 或完整suite。日志保存 `.hermes-dev/evidence/f1|f2|f3/`；不改规则/锁/02，不提交，不派生。按 A11–A12/A30，F3 可使用主会话已核实的隔离 Proxy 配置做必要真实闭环测试；Hermes 仅被测，禁止参与编码。
+
+F3 恢复期补充：Force admission 同事务使用已有 pending Reminder helper 落入 §4.13 System Reminder，source timestamp 为 admitted_at、同任务 dedup；不新增调度器或通用锁。T5 派遣时 F1 尚占用 `hermes_cli/cli_commands_mixin.py`，T5 对该文件只交本地薄 patch，主会话待 F1 完整交回后串行应用；其他 shared Slash 白名单保持原计划。
+
+F3 原生 app-server 补充白名单：`agent/transports/codex_app_server_session.py::compact_thread` 仅增加默认 None 的可选 admission callback，在 `thread/compact/start` 成功 RPC ACK 后调用；原生安全检查和等待完成路径不变。不把 lock/commit fence 或 mode 检查当 provider 接受，不新增 gate。主会话清理 `hermes_cli/config_defaults.py` 中通用 Memory notices 的旧 Review 注释，保留该通用配置。
+
+T5 已批准的必要共享接缝：`gateway/run_turn_runner.py` 精确删除旧 Review callback/release；`tui_gateway/host_supervisor.py::MUTATOR_ROUTE_TABLE` 移除旧 refine 并分类两条新 Slash，`compute_host.py` / `methods_tools.py` 沿现有 control→command.dispatch→exec/send 回执接通。`gateway/slash_commands.py` import/MRO、`gateway/run_inbound.py` canonical resolver及提议薄委托、CLI commands facade 由 T5 分文件交 patch、主会话串行应用；没有新增公开 RPC/API/DTO。已有 desktop refine registry/i18n 仅清理旧功能。
 
 - 取舍-S4（A27，恢复期原文版本保留）：branch 仅引用 Hermes raw message facts；原生原位 edit/delete 即将破坏存活 branch 引用时，复用官方 `_clone_message_rows` 在 branch 原生 Session 保留受影响原文版本（active=0、compacted=0），同事务重绑定 frozen refs 后执行原 mutation。不增 Secretary transcript/payload 表、不复制无关全历史、不改 core schema 或 ownership；必须验证普通 Active/display 不含版本行、parent 与 branch 删除行为及清理保护。
 - 取舍-S5（A27，branch Schedule）：branch 建独立 schedule_id，若继承相同 intent，同事务继承 parent 的 next_run/state/last_fired，不复制 claim/pending。依据 §2.7 Notebook 继承、§3.10 due 恢复/one-shot 与分支独立性，避免已兑现 once 因建分支重新发送；以定向行为证据复核。
+- 取舍-S6（A27，Persistence 提议）：当前未 archived 的候选进入提议；已不在当前 History Foreground 的来源标 unavailable，要求不推广缺少原文支持的候选。依据候选审查/explicit approval与History当前有效路径，保留历史Snapshot，不把过时来源重新放回current path。
 
 F1 恢复期补充薄接缝白名单：`agent/transcript_repair.py` 正式 CAS rewrite 的可选 before_rewrite callback，以及 `hermes_state_maintenance.py` 原生 prune 事务中的存活 branch raw 版本保护。`run_agent.py::_ensure_db_session`由主会话接新born hook；`agent/system_prompt.py`由主会话执行 T6 少量稳定文本。其他白名单不扩大。

@@ -203,6 +203,8 @@ def assemble_api_request(
     # the canonical tool registry stays undecorated. Marked ``content`` becomes text
     # blocks the whitespace pass skips, so the same row's bytes vary across turns.
     tools_for_api = agent.tools
+    from secretary.noting_tools import record_noting_request
+    record_noting_request(agent, tools_for_api)
     if agent._use_prompt_caching and agent.provider != "moa":
         from agent.prompt_caching import envelope_tool_part_cache_markers_supported
 

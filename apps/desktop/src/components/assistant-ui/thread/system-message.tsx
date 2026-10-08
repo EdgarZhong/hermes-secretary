@@ -85,8 +85,7 @@ export const SystemMessage: FC = () => {
     )
   }
 
-  // The self-improvement review saved something to memory/skills — the same
-  // kind of event as a landed `memory` write, so it wears the same chrome:
+  // Historical review notices share the rendering of a landed `memory` write:
   // brain glyph with the gold→purple glow, gradient label, purple detail,
   // left-aligned in the reading column like every other scaffold line.
   const reviewNote = text.match(REVIEW_NOTE_RE)

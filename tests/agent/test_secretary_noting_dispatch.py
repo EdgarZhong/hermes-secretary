@@ -100,3 +100,12 @@ def test_unmarked_agents_keep_the_normal_dispatch(runtime):
     messages = [{"role": "user", "content": "go"}]
     execute_tool_calls_sequential(agent, SimpleNamespace(tool_calls=[tool_call("write_file")]), messages, "task")
     recorder.assert_called_once()
+
+
+@pytest.mark.parametrize("name", ["notebook_sql", "notebook_replace", "terminal", "delegate_task"])
+def test_direct_invoke_cannot_bypass_narrow_guard(runtime, name):
+    agent, _db, recorder = runtime
+    agent._secretary_noting_profile = "NOTING"
+    result = agent._invoke_tool(name, {}, "direct", pre_tool_block_checked=True)
+    assert "denied non-whitelisted tool" in result
+    recorder.assert_not_called()

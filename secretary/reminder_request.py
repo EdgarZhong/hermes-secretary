@@ -72,24 +72,15 @@ def injection_eligible(agent: Any) -> bool:
 def _effective_noting_enabled(db: Any, conversation_ref: str) -> bool:
     """Noting/Schedule gate for delivery: global Noting AND Conversation-local participation.
 
-    Consumes T3B's policy (``resolve_noting_settings`` + ``effective_noting_enabled``); a
-    local-state read that is unavailable keeps the lane open rather than silently stranding
-    an already-durable pending reminder.
+    Unavailable policy/local state fails closed; durable pending state remains for retry.
     """
     try:
-        from secretary.noting_policy import effective_noting_enabled, resolve_noting_settings
-
-        settings = resolve_noting_settings()
-        local = True
-        try:
-            with db._read_ctx() as conn:
-                local = bool(db.notebook_local_enabled_conn(conn, conversation_ref))
-        except Exception:
-            logger.debug("Conversation-local Noting state unavailable; assuming enabled", exc_info=True)
-        return bool(effective_noting_enabled(settings, local))
+        from secretary.noting_runtime import noting_trigger_gate
+        enabled, _reason = noting_trigger_gate(db, conversation_ref)
+        return enabled
     except Exception:
-        logger.debug("Noting policy gate unavailable; leaving the reminder lane open", exc_info=True)
-        return True
+        logger.debug("Noting policy gate unavailable; reminder lane disabled", exc_info=True)
+        return False
 
 
 def _row_field(row: Dict[str, Any], keys: Tuple[str, ...]) -> Any:

@@ -1,4 +1,4 @@
-"""Autonomy-loop gateway commands: /goal, /subgoal, /heartbeat, /loop, /refine, /review.
+"""Autonomy-loop gateway commands: /goal, /subgoal, /heartbeat, /loop, /review.
 Bound onto ``GatewayRunner`` through ``GatewaySlashCommandsMixin``."""
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ def _mgr_call(prefix: str, fn, *args, errors=(RuntimeError, ValueError)):
 
 
 class GatewayGoalCommandsMixin:
-    """Autonomy-loop gateway commands: /goal, /subgoal, /heartbeat, /loop, /refine, /review."""
+    """Autonomy-loop gateway commands: /goal, /subgoal, /heartbeat, /loop, /review."""
 
     async def _handle_goal_command(self, event: MessageEvent) -> str:
         from hermes_cli.goal_command import dispatch_goal_command
@@ -144,9 +144,9 @@ class GatewayGoalCommandsMixin:
         return t("gateway.heartbeat.set", interval=format_interval(state.interval_seconds), prompt=state.prompt)
 
     def _idle_cached_agent_or_error(self, event: MessageEvent, verb: str):
-        """``(session_key, cached_agent, None)`` for /refine and /review, or ``(_, _, error_text)``:
+        """``(session_key, cached_agent, None)`` for /review, or ``(_, _, error_text)``:
         both need a cached agent from a completed turn and refuse while a run is in flight.
-        ``verb`` is the command name (``refine`` / ``review``) and selects ``gateway.<verb>.*`` copy."""
+        ``verb`` is the command name (``review``) and selects ``gateway.<verb>.*`` copy."""
         quick_key = self._session_key_for_source(event.source) if event.source else None
         if not quick_key:
             return None, None, t(f"gateway.{verb}.unavailable")
@@ -156,26 +156,6 @@ class GatewayGoalCommandsMixin:
         if agent is None:
             return quick_key, None, t(f"gateway.{verb}.nothing_yet")
         return quick_key, agent, None
-
-    async def _handle_refine_command(self, event: MessageEvent) -> str:
-        """Handle /refine — run the memory/skill review fork on demand, in a daemon thread against a
-        snapshot of the cached AIAgent's conversation (live session and prompt cache untouched)."""
-        args = (event.get_command_args() or "").strip()
-        _quick_key, agent, error = self._idle_cached_agent_or_error(event, "refine")
-        if error:
-            return error
-        snapshot = list(getattr(agent, "_session_messages", None) or [])
-        if not snapshot:
-            return t("gateway.refine.empty")
-        try:
-            agent._spawn_background_review(
-                messages_snapshot=snapshot, review_memory=True,
-                review_skills="skill_manage" in getattr(agent, "valid_tool_names", set()), focus=args or None,
-            )
-        except Exception as exc:
-            return t("gateway.refine.start_failed", error=exc)
-        tail = t("gateway.refine.focus_suffix", focus=args) if args else ""
-        return t("gateway.refine.started", focus_suffix=tail)
 
     async def _handle_review_command(self, event: MessageEvent) -> str:
         """Handle /review — spawn an independent reviewer subagent. The approval session-key

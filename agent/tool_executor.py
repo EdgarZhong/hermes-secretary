@@ -663,9 +663,8 @@ def _noting_dispatch_block(agent, tool_name: str) -> Optional[str]:
 
         return noting_dispatch_block(agent, tool_name)
     except Exception:
-        # Fail open: the policy itself must never break ordinary tool dispatch.
-        logger.debug("Noting dispatch policy check failed; allowing the tool", exc_info=True)
-        return None
+        logger.debug("Noting dispatch policy unavailable", exc_info=True)
+        return "Noting dispatch policy unavailable" if getattr(agent, "_secretary_noting_profile", None) else None
 
 
 def _blocked_tool_result(agent, ref: _ToolCallRef, *, block_body: dict[str, Any] | None, block_error_type: str, guardrail_decision) -> str:

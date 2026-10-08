@@ -58,7 +58,8 @@ def _admission_count(db):
 
 
 def test_global_off_hooks_and_admissions_are_inert(db):
-    _write_config("noting:\n  enabled: false\n")
+    from pathlib import Path
+    (Path(db.db_path).parent / "config.yaml").write_text("noting:\n  enabled: false\n")
     make(db, "s")
     add(db, "s", "one turn", "m1")
     ref = ref_of(db, "s")
@@ -261,14 +262,14 @@ def test_no_admission_without_a_frozen_anchor(db):
     assert _admission_count(db) == 0
 
 
-def test_missing_notebook_reader_means_default_participation(db, monkeypatch):
-    """Before the Notebook sibling is installed, a Conversation participates by default (02 §4.2)."""
+def test_missing_notebook_reader_fails_closed(db, monkeypatch):
+    """Unavailable local policy cannot bypass an already-persisted off state."""
     make(db, "s")
     add(db, "s", "turn", "m1")
     ref = ref_of(db, "s")
     monkeypatch.setattr(db, "notebook_local_enabled_conn", None)
 
-    assert rt.noting_local_enabled(db, ref) is True
+    assert rt.noting_local_enabled(db, ref) is False
 
 
 def test_trigger_failures_and_write_failures_fail_safe(db, monkeypatch):

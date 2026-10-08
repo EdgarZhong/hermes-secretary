@@ -38,7 +38,7 @@ from agent.session_activity import ActivityProvenance, normalize_activity_proven
 from agent.usage_anchor import set_usage_anchor
 from hermes_state_ids import new_session_id as mint_session_id
 from hermes_state_pidns import holder_namespace_token
-
+from secretary.noting_admission_receipt import dispatch_codex_compaction, observe_native_admission
 logger = logging.getLogger(__name__)
 
 
@@ -4016,7 +4016,7 @@ def _begin_compression_attempt(
 
 def _route_codex_compaction(
     agent: Any, messages: list, system_message: str, *, commit_fence: Optional[CompressionCommitFence],
-    attempt: _Attempt, approx_tokens: Optional[int], task_id: str, force: bool,
+    attempt: _Attempt, approx_tokens: Optional[int], task_id: str, force: bool, admission_receipt=None, snapshot_is_current=None,
 ) -> Tuple[list, str]:
     """Codex owns the real thread: run its own compact under the commit fence bracket."""
     if commit_fence is not None and not commit_fence.begin_commit(getattr(agent, "_hard_interrupt_requested", None)):
@@ -4024,7 +4024,8 @@ def _route_codex_compaction(
         return messages, _existing_system_prompt(agent, system_message)
     try:
         return _compress_context_via_codex_app_server(
-            agent, messages, system_message, approx_tokens=approx_tokens, task_id=task_id, force=force
+            agent, messages, system_message, approx_tokens=approx_tokens, task_id=task_id, force=force,
+            admission_receipt=admission_receipt, commit_fence=commit_fence, snapshot_is_current=snapshot_is_current,
         )
     finally:
         if commit_fence is not None:
@@ -4065,7 +4066,7 @@ def compress_context(
     task_id: str = "default", focus_topic: Optional[str] = None, force: bool = False,
     bypass_cooldown: bool = False, defer_context_engine_notification: bool = False,
     commit_fence: Optional[CompressionCommitFence] = None, verbatim_tail: Optional[list] = None,
-    trigger: Optional[str] = None, snapshot_is_current: Optional[Callable[[], bool]] = None,
+    trigger: Optional[str] = None, snapshot_is_current: Optional[Callable[[], bool]] = None, admission_receipt=None,
 ) -> Tuple[list, str]:
     """Compress conversation context and split the session in SQLite.
     ``force`` (manual /compress) clears the summary-failure cooldown; ``bypass_cooldown`` (provider-proven
@@ -4109,7 +4110,7 @@ def compress_context(
             )
         return _route_codex_compaction(
             agent, messages, system_message, commit_fence=commit_fence, attempt=attempt, approx_tokens=approx_tokens,
-            task_id=task_id, force=force,
+            task_id=task_id, force=force, admission_receipt=admission_receipt, snapshot_is_current=snapshot_is_current,
         )
 
     # All automatic entrypoints honor compressor cooldown/breaker state; hygiene's
@@ -4163,7 +4164,7 @@ def compress_context(
     if _adopted is not None:
         return _adopted
 
-    # Snapshot durable cooldown only once we own the lease. Runs for force=True
+    # Snapshot durable cooldown once we own the lease. Runs for force=True
     # too but skips the automatic breaker gate: manual compression retries now.
     attempt.durable_cooldown_authoritative, attempt.durable_cooldown_state = (
         _capture_authoritative_cooldown_under_lease(agent.context_compressor, attempt.snapshot)
@@ -4173,20 +4174,19 @@ def compress_context(
         # clear an unknown newer row before cancellation could restore it. Abort.
         lease.release()
         return messages, _existing_system_prompt(agent, system_message)
-
     # Another path may have compacted this session in place since construction;
     # re-read breaker state under the lock, not the bind_session_state() snapshot.
     if not force and _automatic_compression_gate_blocks(agent, bypass_cooldown, include_cooldown=False):
         lease.release()
         return messages, _existing_system_prompt(agent, system_message)
-
     # Interrupts/redirects must not tear a summary in half. Use the explicit stop
     # Event (message fields race) + fence timeout so pool slots free promptly.
-    # Explicit stop surfaces set a separate Event atomically; never infer cause from the racy message
+    # Explicit stop surfaces set a separate Event atomically; never infer cause from racy message
     # fields. A host timeout also cancels the attempt's commit fence. Feed BOTH into the protected
     # auxiliary-call seam so the compression owner unwinds promptly while an isolated provider stream
     # finishes or closes in its daemon worker. Otherwise four timed-out streams retain all four shared
     # compression-pool slots until the auxiliary stream's longer absolute ceiling expires. See #23975.
+    observe_native_admission(agent, commit_fence, admission_receipt)
     _hard_cancel_event = getattr(agent, "_hard_interrupt_requested", None)
     phase = _run_summary_phase(
         agent, messages, lease=lease, in_place=in_place, checkpoint_required=checkpoint_required,
@@ -4314,7 +4314,7 @@ def _record_codex_compaction_failure(agent: Any, error: str) -> None:
 
 def _compress_context_via_codex_app_server(
     agent: Any, messages: list, system_message: Optional[str], *, approx_tokens: Optional[int] = None,
-    task_id: str = "default", force: bool = False,
+    task_id: str = "default", force: bool = False, admission_receipt=None, commit_fence=None, snapshot_is_current=None,
 ) -> Tuple[list, str]:
     """Route compaction to Codex app-server for Codex-owned threads.
     Rewriting the local transcript would not shrink the Codex thread, so Codex compacts its own thread and
@@ -4347,7 +4347,7 @@ def _compress_context_via_codex_app_server(
         agent._emit_status(COMPACTION_STATUS)
     _activity_heartbeat = _CompressionActivityHeartbeat(agent, emit_client_status=True).start()
     try:
-        result = codex_session.compact_thread()
+        result = dispatch_codex_compaction(agent, codex_session, commit_fence, admission_receipt, snapshot_is_current)
     except BaseException:
         _activity_heartbeat.stop("context compression failed")
         raise

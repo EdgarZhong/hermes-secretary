@@ -3996,7 +3996,6 @@ export const esOverrides = {
       '/steer': 'Insertar un mensaje tras la siguiente llamada a herramienta sin interrumpir',
       '/goal': 'Fijar un objetivo permanente en el que Hermes trabaja durante varios turnos hasta cumplirlo',
       '/heartbeat': 'Configurar un prompt recurrente que vuelve a esta sesión cuando está inactiva',
-      '/refine': 'Revisar esta conversación ahora y guardar lo aprendido en memoria/skills',
       '/review':
         'Lanzar un subagente independiente para revisar el trabajo que se acaba de comentar (PR, código, docs)',
       '/loop': 'Volver a ejecutar un prompt a intervalos regulares en esta sesión',

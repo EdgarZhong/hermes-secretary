@@ -99,7 +99,7 @@ def run_preflight_compression(
     try:
         from secretary.noting_runtime import maybe_admit_force_from_pressure
 
-        maybe_admit_force_from_pressure(agent, request_pressure_tokens)
+        maybe_admit_force_from_pressure(agent, request_pressure_tokens, messages=v.messages)
     except Exception:
         logger.debug("Noting Force seam failed", exc_info=True)
     if (
@@ -305,6 +305,8 @@ def compress_after_tool_results(
 
     if agent.compression_enabled and compression_attempts < max_compression_attempts:
         ensure_compression_feasibility_checked(agent, _real_tokens)
+    from secretary.noting_runtime import maybe_admit_force_from_pressure
+    maybe_admit_force_from_pressure(agent, _real_tokens, messages=messages)
     if (
         agent.compression_enabled
         and compression_attempts < max_compression_attempts

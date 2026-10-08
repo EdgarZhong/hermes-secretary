@@ -81,7 +81,7 @@ def test_generation_and_retired_session_fail_closed(db):
 
 def test_conflicting_aliases_rollback_without_merge(db):
     make(db, "a", key="peer")
-    make(db, "b", key="peer")
+    make(db, "b")
     first = db.resolve_conversation_ref("a", ("test", "peer", 0))
     second = db.resolve_conversation_ref("b")
     with pytest.raises(ConversationIdentityError, match="conflict"):
@@ -154,7 +154,8 @@ def test_branch_freezes_cross_compaction_refs_and_rebinds(db):
     make(db, "tip", "root")
     middle = add(db, "tip", "branch point", "middle")
     add(db, "tip", "later", "later")
-    make(db, "branch", "tip", "_branched_from")
+    db.create_session("branch", source="test", parent_session_id="tip", model_config={"_branched_from": "tip"},
+                      branch_point_message_uid="middle")
     branch_ref = db.inherit_foreground_branch("tip", "branch", through_message_uid="middle")
     parent_ref = db.resolve_conversation_ref("tip")
     db.rewind_to_message("tip", middle)
@@ -213,7 +214,9 @@ def test_per_response_sessions_and_concurrent_alias_binding(db):
 
 
 def test_old_unregistered_session_is_not_retagged_with_current_generation(db):
-    make(db, "old-unbound", key="peer")
+    # Simulate a genuine pre-Secretary Session, not a native birth after the extension was installed.
+    db._execute_write(lambda conn: conn.execute(
+        "INSERT INTO sessions(id,source,session_key,started_at) VALUES ('old-unbound','test','peer',1)"))
     make(db, "old-tip", key="peer")
     db.end_session("old-tip", "session_reset")
     make(db, "new", key="peer")

@@ -53,3 +53,28 @@ def test_xai_fork_sends_distinct_conv_id_and_cache_key():
     assert parent["extra_headers"]["x-grok-conv-id"] == "parent-sess"
     assert fork["extra_headers"]["x-grok-conv-id"] == "parent-sess::review"
     assert parent["extra_body"]["prompt_cache_key"] != fork["extra_body"]["prompt_cache_key"]
+
+
+def test_noting_followup_isolates_slot_without_faking_compaction():
+    from agent.transports.codex import ResponsesApiTransport
+
+    def request(agent):
+        return ResponsesApiTransport().build_kwargs(
+            model=agent.model, messages=SYS, tools=[], session_id=agent.session_id,
+            cache_scope_id=resolve_prompt_cache_scope(agent), is_xai_responses=True,
+        )
+
+    parent = _agent("xai-oauth")
+    child = _agent("xai-oauth", tag="noting")
+    child._inherited_cache_scope = resolve_prompt_cache_scope(parent)
+    parent_request = request(parent)
+    assert request(child)["extra_headers"] == parent_request["extra_headers"]
+    assert request(child)["extra_body"] == parent_request["extra_body"]
+    child._secretary_noting_suffix_diverged = True
+    followup = request(child)
+    assert followup["extra_headers"]["x-grok-conv-id"] != parent_request["extra_headers"]["x-grok-conv-id"]
+    assert followup["extra_body"]["prompt_cache_key"] != parent_request["extra_body"]["prompt_cache_key"]
+    assert child.context_compressor.compression_count == 0
+    assert request(parent) == parent_request
+    child.provider, child.model = "anthropic", "claude-opus-4-8"
+    assert resolve_prompt_cache_scope(child) == resolve_prompt_cache_scope(parent)

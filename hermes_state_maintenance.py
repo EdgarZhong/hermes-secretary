@@ -338,6 +338,7 @@ class SessionMaintenanceMixin:
                 session_ids -= self._guarded_ids(conn, session_ids)
             if not session_ids:
                 return 0
+            self.secretary_preserve_session_sources_conn(conn, session_ids, deleting_sessions=True)
             # Batched: a cron-heavy store prunes tens of thousands of ids in one call.
             for chunk in _id_chunks(session_ids):
                 ph = _placeholders(chunk)

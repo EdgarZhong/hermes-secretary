@@ -160,36 +160,11 @@ def trusted_declared_conversation_locator(agent: Any, *, newly_created: bool = F
     return source, key, generation
 
 
-def _bootstrap_branch_conversation(db: Any, session_id: str, row: Any) -> None:
-    """A freshly created explicit branch freezes the parent path and seeds its Notebook (02 §2.7).
-
-    Runs from the identity bootstrap so every surface (CLI/TUI/gateway) is covered without a
-    per-surface call site; the freeze itself is insert-once, so re-initialization no-ops.
-    """
-    try:
-        if not row or row.get("source") in {"tool", "subagent"} or not db._is_explicit_fork_child_row(row):
-            return
-        parent_id = row.get("parent_session_id")
-        config = row.get("model_config")
-        if isinstance(config, str):
-            import json
-
-            try:
-                config = json.loads(config)
-            except ValueError:
-                return
-        if not parent_id or not isinstance(config, dict) or config.get("_branched_from") != parent_id:
-            return
-        db.secretary_inherit_branch(parent_id, session_id)
-    except Exception:
-        logger.debug("Branch Notebook bootstrap skipped for %s", session_id, exc_info=True)
-
-
 def initialize_conversation_identity(agent: Any, *, newly_created: bool = False):
-    """Bind an existing main Session; persistence repeats this for a new row.
+    """Bind a main Session with frozen birth locators; resume defaults to no new-birth proof.
 
-    Also the Conversation bootstrap seam: a branch freezes its inherited path here (insert-once),
-    and the Notebook tool surface re-resolves its effective-Noting gate after binding (02 §3.5).
+    Native SessionDB INSERT owns transactional branch freezing/inheritance. Identity reads do
+    not reconstruct an old branch from a Parent that may have advanced since the branch point.
     """
     db, sid = getattr(agent, "_session_db", None), getattr(agent, "session_id", None)
     agent._secretary_conversation_ref = None
@@ -200,7 +175,6 @@ def initialize_conversation_identity(agent: Any, *, newly_created: bool = False)
         return None
     ref = db.resolve_conversation_ref(sid, trusted_declared_conversation_locator(agent, newly_created=newly_created))
     agent._secretary_conversation_ref = ref
-    _bootstrap_branch_conversation(db, sid, row)
     return ref
 
 
@@ -264,13 +238,16 @@ def is_fork_cache_scope(scope: Any) -> bool:
 
 
 def _apply_fork_tag(agent: Any, scope: str) -> str:
-    """``<scope>::<tag>`` for a tagged fork on a slot-keyed route, once the fork's OWN compaction
-    committed: before it the fork extends the parent's prefix (warm read, #109964); after it the
-    rewritten stream would evict the parent's xAI slot. Read per call, so fallbacks re-evaluate."""
+    """Isolate a tagged fork's slot after its own compaction or Noting suffix divergence.
+
+    The first request extends the parent's warm prefix; divergent follow-ups must not evict
+    the parent's slot. Read per call so provider fallbacks re-evaluate the route.
+    """
     tag = getattr(agent, "_prompt_cache_fork_tag", None)
     if not scope or not isinstance(tag, str) or not tag:
         return scope
-    if getattr(getattr(agent, "context_compressor", None), "compression_count", 0) < 1:
+    if (getattr(getattr(agent, "context_compressor", None), "compression_count", 0) < 1
+            and not getattr(agent, "_secretary_noting_suffix_diverged", False)):
         return scope
     if not is_slot_keyed_cache_route(
         getattr(agent, "provider", ""), getattr(agent, "model", ""), getattr(agent, "base_url", ""),

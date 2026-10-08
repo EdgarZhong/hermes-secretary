@@ -13,6 +13,28 @@ class ConversationIdentityError(ValueError):
 
 
 class SecretaryIdentityMixin:
+    def secretary_reconcile_session_conn(self, conn, session_id):
+        """A native no-op against a vanished Session remains a no-op."""
+        if conn.execute("SELECT 1 FROM sessions WHERE id=?", (session_id,)).fetchone() is not None:
+            self.notebook_reselect_pointer_conn(conn, self.resolve_conversation_ref_conn(conn, session_id))
+
+    def secretary_session_created_conn(self, conn, session_id, *, branch_point_message_uid=None):
+        """Freeze locators only at a proven native INSERT, never at an old-row upsert."""
+        session = self._secretary_session_conn(conn, session_id)
+        config = session.get("model_config")
+        config = json.loads(config) if isinstance(config, str) else (config or {})
+        if config.get("_branched_from"):
+            return self.secretary_inherit_branch_conn(
+                conn, config["_branched_from"], session_id, through_message_uid=branch_point_message_uid)
+        locator = None
+        if session.get("session_key") and not self._is_explicit_fork_child_row(session) and session["source"] not in {"tool", "subagent"}:
+            generation = conn.execute(
+                "SELECT generation FROM conversation_generations WHERE source=? AND session_key=?",
+                (session["source"], session["session_key"]),
+            ).fetchone()
+            locator = (session["source"], session["session_key"], int(generation[0]) if generation else 0)
+        return self.resolve_conversation_ref_conn(conn, session_id, locator)
+
     def _secretary_session_conn(self, conn, session_id):
         row = conn.execute("SELECT * FROM sessions WHERE id = ?", (session_id,)).fetchone()
         if row is None:

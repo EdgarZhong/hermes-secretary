@@ -363,6 +363,7 @@ class SessionSessionsMixin:
         parent_session_id: str = None, cwd: str = None, profile_name: Optional[str] = None,
         git_repo_root: str = None, origin_json: str = None, display_name: str = None,
         transport_profile: Optional[str] = None,
+        branch_point_message_uid: Optional[str] = None,
     ) -> None:
         """Upsert a session row, never overwriting what an earlier writer set (the gateway creates a
         bare row before create_session carries the real model/prompt) — the one exception is the
@@ -396,6 +397,7 @@ class SessionSessionsMixin:
         if not (profile_name or "").strip():
             profile_name = self._own_profile_name()
         def _do(conn):
+            newly_created = conn.execute("SELECT 1 FROM sessions WHERE id=?", (session_id,)).fetchone() is None
             system_prompt_hash = self._store_system_prompt(conn, system_prompt)
             conn.execute(
                 """INSERT INTO sessions (
@@ -453,6 +455,8 @@ class SessionSessionsMixin:
                 self._delete_unreferenced_system_prompts(conn)
             if parent_session_id:
                 self._inherit_parent_session_metadata(conn, session_id)
+            if newly_created:
+                self.secretary_session_created_conn(conn, session_id, branch_point_message_uid=branch_point_message_uid)
         # Transcript-critical: a failed row creation aborts the turn.
         self._execute_write(_do, patience_s=self._TRANSCRIPT_WRITE_PATIENCE_S)
 
@@ -1735,6 +1739,7 @@ class SessionSessionsMixin:
                 for covered_id, expected in expected_display_messages.items()
             ):
                 return False
+            self.secretary_preserve_session_sources_conn(conn, [session_id, *_collect_delegate_child_ids(conn, [session_id])], deleting_sessions=True)
             removed_ids.extend(_delete_delegate_children(conn, [session_id]))
             conn.execute(  # orphan remaining children (branches) so FK is satisfied
                 "UPDATE sessions SET parent_session_id = NULL WHERE parent_session_id = ?", (session_id,),
@@ -1843,6 +1848,7 @@ class SessionSessionsMixin:
                     expanded = self._expand_compression_lineage(conn, existing)
                 else:
                     expanded = existing
+            self.secretary_preserve_session_sources_conn(conn, [*expanded, *_collect_delegate_child_ids(conn, expanded)], deleting_sessions=True)
             removed_ids.extend(_delete_delegate_children(conn, expanded))
             for chunk in _id_chunks(expanded):
                 ph = _session_ids_placeholders(chunk)

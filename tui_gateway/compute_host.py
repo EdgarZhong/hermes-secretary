@@ -467,6 +467,14 @@ class ComputeHost:
         sid = str(frame.get("sid") or "")
         route_name = str(frame.get("route_name") or "")
         command = str(frame.get("command") or "")
+        if route_name in {"slash.notebook", "slash.propose-persistence"}:
+            parts = command.lstrip("/").split(maxsplit=1)
+            response = server._methods["command.dispatch"](frame.get("request_id"), {
+                "session_id": sid, "name": route_name.removeprefix("slash."),
+                "arg": parts[1] if len(parts) > 1 else ""})
+            if "error" in response:
+                return {"error": str(response["error"].get("message") or "Secretary command unavailable.")}
+            return {"result": response.get("result") or {}}
         if route_name in {"session.save", "session.compress"}:
             params = {"session_id": sid}
             if route_name == "session.compress":
@@ -483,12 +491,7 @@ class ComputeHost:
             with session["history_lock"]:
                 ack.update(_history_meta(session))
         else:
-            if route_name == "slash.refine":
-                parts = command.lstrip("/").split(maxsplit=1)
-                focus = parts[1] if len(parts) > 1 else ""
-                output = server._live_slash_command_output(sid, session, "refine", focus) or ""
-            else:
-                output = server._mirror_slash_side_effects(sid, session, command) if command else ""
+            output = server._mirror_slash_side_effects(sid, session, command) if command else ""
             with session["history_lock"]:
                 messages = server._history_to_messages(list(session.get("history") or []), profile_home=session.get("profile_home"))
                 ack = {"output": output, **_history_meta(session), "messages": messages}

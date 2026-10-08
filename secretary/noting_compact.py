@@ -9,11 +9,11 @@ Native state only — no parallel admission flag, no second lock:
 
 * usage is re-read from the Parent's live compressor right before the decision;
 * "already below threshold" is the compressor's own verdict;
-* "already in flight" is the native durable compression lock (or an admitted commit fence);
+* "already in flight" requires the native fence's receipt after its safety checks;
 * cooldown / anti-thrash gates are the compressor's own block reason, never bypassed;
 * the request runs the Parent's native ``_compress_context`` entry (routing, locks, fences,
   retries, fallback and in-place-vs-rotating semantics all stay Hermes'); admission is
-  proven by the native lock/commit evidence, not by a thread having been started.
+  proven by its safe admission receipt before summary execution.
 """
 
 from __future__ import annotations
@@ -37,8 +37,7 @@ COMPACT_PARENT_SCHEMA = {
     "parameters": {"type": "object", "properties": {}, "additionalProperties": False},
 }
 
-# Bounded wait for NATIVE admission evidence (lock / admitted commit / completion). Long
-# enough to cover the durable lock acquisition, short enough not to wait out a summary.
+# Bounded wait for the native safety-check receipt or a completed native outcome.
 _ADMISSION_WAIT_SECONDS = 5.0
 _ADMISSION_POLL_SECONDS = 0.05
 
@@ -65,10 +64,17 @@ class CompactParentResult:
 
 def compact_parent_from_child(child: Any) -> str:
     """Tool entry for the Noting child: dispatch to the Parent this child belongs to."""
+    if getattr(child, "_secretary_noting_profile", None) != "NOTING_WITH_COMPACTION":
+        return json.dumps({"success": False, "status": "permission_denied"})
     parent = getattr(child, "_secretary_noting_parent", None)
     if parent is None:
         return json.dumps({"success": False, "status": "no_parent",
                            "detail": "This Noting child has no Parent binding"}, ensure_ascii=False)
+    from secretary.noting_runtime import _main_conversation_ref, noting_trigger_gate
+    ref = getattr(child, "_secretary_parent_conversation_ref", None)
+    if (not ref or _main_conversation_ref(parent) != ref
+            or not noting_trigger_gate(child._session_db, ref)[0]):
+        return json.dumps({"success": False, "status": "parent_ownership_or_gate_changed"})
     result = compact_parent(parent)
     if result.ok:
         child._secretary_noting_terminal_action_done = True
@@ -86,20 +92,10 @@ def _reread_usage(compressor: Any) -> tuple[int, int]:
 
 def _native_inflight_evidence(parent: Any) -> str:
     """Native evidence that a materialization is already owned by the compaction lifecycle."""
-    if getattr(parent, "_active_compression_lock_holder", None):
-        return "compression_lock"
     fence = getattr(parent, "_active_compression_commit_fence", None)
-    if fence is not None and getattr(fence, "commit_in_flight", False) is True:
-        return "commit_in_flight"
-    # Another writer's live durable lock: that compaction is already in flight (02 §5.9).
-    db, session_id = getattr(parent, "_session_db", None), getattr(parent, "session_id", None)
-    holder_getter = getattr(db, "get_compression_lock_holder", None)
-    if callable(holder_getter) and session_id:
-        try:
-            if holder_getter(session_id):
-                return "durable_compression_lock"
-        except Exception:
-            logger.debug("durable compression-lock probe failed", exc_info=True)
+    if (fence is not None and getattr(fence, "_secretary_native_admitted", False) is True
+            and not fence.is_cancelled):
+        return "native_safe_admission"
     return ""
 
 
@@ -132,13 +128,18 @@ def _request_native_compaction(
     from agent.memory_provider import spawn_context_thread
 
     state: dict = {}
+    receipt = threading.Event()
     prompt = getattr(parent, "_cached_system_prompt", None) or ""
+    session_id = parent.session_id
 
     def _run() -> None:
         try:
-            state["result"] = parent._compress_context(
-                messages, prompt, approx_tokens=usage, trigger="noting_compact_parent",
-            )
+            from secretary.noting_scope import owning_db_scope
+            with owning_db_scope(parent._session_db):
+                state["result"] = parent._compress_context(
+                    messages, prompt, approx_tokens=usage, trigger="noting_compact_parent",
+                    admission_receipt=receipt, snapshot_is_current=lambda: parent.session_id == session_id,
+                )
         except BaseException as exc:  # the native entry owns retries/fallbacks; this is terminal
             logger.debug("native compaction attempt ended with an error", exc_info=True)
             state["error"] = exc
@@ -148,9 +149,8 @@ def _request_native_compaction(
     worker.start()
     deadline = time.monotonic() + (_ADMISSION_WAIT_SECONDS if wait_seconds is None else wait_seconds)
     while True:
-        evidence = _native_inflight_evidence(parent)
-        if evidence:
-            return CompactParentResult(True, "admitted", usage, threshold, evidence)
+        if receipt.is_set():
+            return CompactParentResult(True, "admitted", usage, threshold, "native_safe_admission")
         if not worker.is_alive():
             break
         if time.monotonic() >= deadline:
@@ -171,8 +171,6 @@ def _classify_finished_attempt(
     result = state.get("result")
     result_messages = result[0] if isinstance(result, tuple) and result else None
     if isinstance(result_messages, list) and result_messages is not messages:
-        return CompactParentResult(True, "compacted", usage, threshold)
-    if getattr(parent, "_last_compaction_in_place", None) is True:
         return CompactParentResult(True, "compacted", usage, threshold)
     compressor = getattr(parent, "context_compressor", None)
     should, reason = compressor.should_compress_info() if compressor is not None else (False, None)

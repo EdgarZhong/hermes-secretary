@@ -46,6 +46,16 @@ def _str_attr(agent: Any, name: str) -> str:
 def _preflight_request_tokens(
     agent: Any, messages: List[Dict[str, Any]], system_prompt: str
 ) -> int:
+    """Observe Force at the same turn-start measurement used by native compression."""
+    tokens = _resolved_preflight_request_tokens(agent, messages, system_prompt)
+    from secretary.noting_runtime import maybe_admit_force_from_pressure
+    maybe_admit_force_from_pressure(agent, tokens, messages=messages)
+    return tokens
+
+
+def _resolved_preflight_request_tokens(
+    agent: Any, messages: List[Dict[str, Any]], system_prompt: str
+) -> int:
     """Token estimate for automatic preflight compression: a valid provider usage anchor,
     else the checkpoint-pruned native wire payload, else the generic estimator."""
     anchored = anchored_context_tokens(messages, getattr(agent, "_usage_anchor", None))
@@ -1141,7 +1151,8 @@ def build_turn_context(
         logger.debug("message_agent injection skipped", exc_info=True)
 
     _ensure_session_row(agent, pending_cli_message)
-
+    from secretary.noting_runtime import apply_notebook_surface_gate
+    apply_notebook_surface_gate(agent)
     # A turn interrupted before admission could not write its accepted input because
     # it did not own the session lease. Persist that carried-forward row now, before
     # compaction can rewrite or drop it.

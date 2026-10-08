@@ -4011,7 +4011,6 @@ export const frOverrides = {
       '/goal':
         'Définir un objectif permanent sur lequel Hermes travaille au fil des tours jusqu’à ce qu’il soit atteint',
       '/heartbeat': 'Définir un prompt récurrent qui revient dans cette session lorsqu’elle est inactive',
-      '/refine': 'Passer en revue cette conversation maintenant et enregistrer les leçons en mémoire/skills',
       '/review': 'Lancer un sous-agent indépendant pour relire le travail qui vient d’être discuté (PR, code, docs)',
       '/loop': 'Relancer un prompt à intervalle régulier dans cette session',
       '/plan': 'Écrire un plan d’implémentation markdown dans .hermes/plans/ sans rien exécuter',

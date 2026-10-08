@@ -151,6 +151,9 @@ def _session_history(agent, args: dict, ctx: InlineToolContext) -> Any:
 
 
 def _notebook_show(agent, args: dict, ctx: InlineToolContext) -> Any:
+    if getattr(agent, "_secretary_noting_child", False):
+        from secretary.noting_tools import notebook_work_show
+        return notebook_work_show(agent, args)
     from tools.notebook_tool import notebook_show
     # Noting children bind their frozen Parent ownership; the main Assistant uses its own.
     db = getattr(agent, "_secretary_history_db", None) or getattr(agent, "_session_db", None)
@@ -174,6 +177,11 @@ def _compact_parent(agent, args: dict, ctx: InlineToolContext) -> Any:
     from secretary.noting_compact import compact_parent_from_child
 
     return compact_parent_from_child(agent)
+
+
+def _notebook_mutate(agent, args: dict, ctx: InlineToolContext) -> Any:
+    from secretary.noting_tools import notebook_mutate
+    return notebook_mutate(agent, args)
 
 
 def _memory(agent, args: dict, ctx: InlineToolContext) -> Any:
@@ -285,6 +293,7 @@ _RAW_INLINE_TOOL_EXECUTORS: Dict[str, InlineToolExecutor] = {
     "session_search": _session_search,
     "session_history": _session_history,
     "notebook_show": _notebook_show,
+    "notebook_mutate": _notebook_mutate,
     "compact_parent": _compact_parent,
     "memory": _memory,
     "clarify": _tool(
@@ -342,6 +351,10 @@ def resolve_invoke_tool_executor(agent, function_name: str) -> Optional[InlineTo
     Precedence: todo_list/session_search/memory, then memory-manager tools, then the
     remaining inline tools (``message_agent`` excluded).
     """
+    from agent.tool_executor import _noting_dispatch_block
+    refusal = _noting_dispatch_block(agent, function_name)
+    if refusal is not None:
+        return lambda agent, args, ctx: json.dumps({"error": refusal}, ensure_ascii=False)
     if function_name in INVOKE_TOOL_PRE_MEMORY_MANAGER_NAMES:
         return INLINE_TOOL_EXECUTORS[function_name]
     memory_manager = agent._memory_manager

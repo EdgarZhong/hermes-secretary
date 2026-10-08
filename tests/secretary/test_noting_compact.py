@@ -79,7 +79,7 @@ def test_cooldown_refuses_without_forcing_and_without_starting_an_attempt(tmp_pa
         db.close()
 
 
-def test_live_durable_compression_lock_counts_as_already_in_flight(tmp_path, monkeypatch):
+def test_early_durable_compression_lock_is_not_safe_admission(tmp_path, monkeypatch):
     parent, db = make_parent(tmp_path, monkeypatch)
     try:
         parent.context_compressor.last_prompt_tokens = 500_000
@@ -87,13 +87,13 @@ def test_live_durable_compression_lock_counts_as_already_in_flight(tmp_path, mon
         assert db.try_acquire_compression_lock("S17", "pid=99999:turn=other", ttl_seconds=300.0) is True
         calls = _never_compress(monkeypatch, parent)
         result = compact_parent(parent)
-        assert (result.ok, result.status) == (True, "already_in_flight")
-        assert calls["n"] == 0
+        assert result.ok is False
+        assert calls["n"] == 1
     finally:
         db.close()
 
 
-def test_admission_is_proven_by_native_lock_publication_not_by_thread_start(tmp_path, monkeypatch):
+def test_admission_requires_receipt_not_early_lock_publication(tmp_path, monkeypatch):
     parent, db = make_parent(tmp_path, monkeypatch)
     try:
         parent.context_compressor.last_prompt_tokens = 500_000
@@ -104,6 +104,7 @@ def test_admission_is_proven_by_native_lock_publication_not_by_thread_start(tmp_
         def _native_entry(messages, prompt, **kwargs):
             entered.set()
             parent._active_compression_lock_holder = "test-holder"  # native admission publication
+            kwargs["admission_receipt"].set()
             release.wait(timeout=10)
             parent._active_compression_lock_holder = None
             return messages, prompt
@@ -157,4 +158,53 @@ def test_missing_compressor_fails_clearly(tmp_path, monkeypatch):
 
 def test_tool_entry_requires_the_parent_binding(tmp_path, monkeypatch):
     payload = compact_parent_from_child(object())
-    assert '"success": false' in payload and "no_parent" in payload
+    assert '"success": false' in payload and "permission_denied" in payload
+
+
+def test_real_native_safety_checks_precede_receipt(tmp_path, monkeypatch):
+    from agent.conversation_compression import CompressionCommitFence, compress_context
+
+    parent, db = make_parent(tmp_path, monkeypatch)
+    try:
+        parent._compression_feasibility_checked = True
+        parent.context_compressor.last_prompt_tokens = 500_000
+        parent.context_compressor.threshold_tokens = 100_000
+        receipt = threading.Event()
+        messages = parent._session_messages
+        unchanged, _ = compress_context(parent, messages, "prompt", commit_fence=CompressionCommitFence(),
+                                         snapshot_is_current=lambda: False, admission_receipt=receipt)
+        assert unchanged is messages and not receipt.is_set()
+        assert db.get_compression_lock_holder(parent.session_id) is None
+        monkeypatch.setattr("agent.conversation_compression._capture_authoritative_cooldown_under_lease", lambda *a: (False, {}))
+        unchanged, _ = compress_context(parent, messages, "prompt", commit_fence=CompressionCommitFence(),
+                                         admission_receipt=receipt)
+        assert unchanged is messages and not receipt.is_set()
+        assert db.get_compression_lock_holder(parent.session_id) is None
+    finally:
+        db.close()
+
+
+def test_real_native_admission_returns_before_summary_finishes(tmp_path, monkeypatch):
+    parent, db = make_parent(tmp_path, monkeypatch)
+    release = threading.Event()
+    entered = threading.Event()
+    try:
+        parent._compression_feasibility_checked = True
+        parent.context_compressor.last_prompt_tokens = 500_000
+        parent.context_compressor.threshold_tokens = 100_000
+        def summary(*args, **kwargs):
+            entered.set()
+            release.wait(timeout=10)
+            raise RuntimeError("ultimate summary failure")
+        monkeypatch.setattr("agent.conversation_compression._run_summary_phase", summary)
+        result = compact_parent(parent, wait_seconds=2)
+        assert entered.is_set()
+        assert result.ok and result.status == "admitted"
+        # Native safe admission also supports a different concurrent Noting task.
+        assert compact_parent(parent).status == "already_in_flight"
+    finally:
+        release.set()
+        deadline = time.monotonic() + 3
+        while db.get_compression_lock_holder(parent.session_id) and time.monotonic() < deadline:
+            time.sleep(0.01)
+        db.close()

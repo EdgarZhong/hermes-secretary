@@ -27,8 +27,8 @@ from secretary.noting_policy import (
     force_thresholds,
     idle_due,
     idle_task_profile,
-    resolve_noting_settings,
 )
+from secretary.noting_scope import settings_for_db
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +85,7 @@ def noting_local_enabled(db: Any, conversation_ref: str) -> bool:
     """
     reader = getattr(db, "notebook_local_enabled_conn", None)
     if not callable(reader):
-        return True
+        return False
     try:
         with db._read_ctx() as conn:
             return bool(reader(conn, conversation_ref))
@@ -98,7 +98,7 @@ def noting_trigger_gate(
     db: Any, conversation_ref: str, *, settings: Optional[NotingSettings] = None,
 ) -> tuple[bool, str]:
     """``(enabled, reason)`` for global AND conversation-local Noting (02 §4.2, §6.6)."""
-    settings = resolve_noting_settings() if settings is None else settings
+    settings = settings_for_db(db) if settings is None else settings
     if not settings.enabled:
         return False, "global_disabled"
     if not noting_local_enabled(db, conversation_ref):
@@ -193,7 +193,7 @@ def _record_main_turn_event(agent: Any, at: Optional[float], *, started: bool) -
     ref = _main_conversation_ref(agent)
     if db is None or not ref:
         return False
-    settings = resolve_noting_settings()
+    settings = settings_for_db(db)
     if not settings.enabled:
         return False  # global off: no Noting-specific idle-timer behavior (02 §4.3)
     if not noting_local_enabled(db, ref):
@@ -225,7 +225,7 @@ def note_main_turn_finished(agent: Any, *, at: Optional[float] = None) -> bool:
 
 def idle_candidates(db: Any, *, settings: Optional[NotingSettings] = None, now: Optional[float] = None) -> list:
     """Conversations whose Idle delay has elapsed with no newer main Turn (02 §4.5)."""
-    settings = resolve_noting_settings() if settings is None else settings
+    settings = settings_for_db(db) if settings is None else settings
     if not settings.enabled:
         return []
     now = time.time() if now is None else now
@@ -233,25 +233,28 @@ def idle_candidates(db: Any, *, settings: Optional[NotingSettings] = None, now: 
 
 
 def _freeze_and_admit(db: Any, conversation_ref: str, *, kind: str, task_profile: str) -> NotingDecision:
-    with db._read_ctx() as conn:
-        identity = db.get_foreground_anchor_conn(conn, conversation_ref)
-    if identity is None:
-        # Empty path, Compaction-Message head, or system-only head: nothing to freeze (02 §4.8).
-        return _skip("no_frozen_anchor")
-    admit = getattr(db, "noting_admit", None)
-    if not callable(admit):
+    if not callable(getattr(db, "noting_admit_conn", None)):
         return _skip("noting_schema_unavailable")
-    admission_id = admit(conversation_ref, identity["message_uid"], kind=kind)
-    if admission_id is None:
-        return _skip("same_anchor_admitted")
-    return NotingDecision("admit", "admitted", NotingAdmission(
-        admission_id=admission_id,
-        conversation_ref=conversation_ref,
-        anchor_message_uid=identity["message_uid"],
-        kind=kind,
-        profile=owning_profile(db),
-        task_profile=task_profile,
-    ))
+    def admit(conn):
+        if not db.notebook_local_enabled_conn(conn, conversation_ref):
+            return _skip("local_disabled")
+        identity = db.get_foreground_anchor_conn(conn, conversation_ref)
+        if identity is None:
+            return _skip("no_frozen_anchor")
+        admission_id = db.noting_admit_conn(conn, conversation_ref, identity["message_uid"], kind=kind)
+        if admission_id is None:
+            return _skip("same_anchor_admitted")
+        if kind == "force":
+            from hermes_state_secretary_schedule import reminder_append_pending_conn
+            row = db.noting_admission_conn(conn, admission_id)
+            reminder_append_pending_conn(
+                conn, conversation_ref, "Force Noting was admitted to maintain this Conversation's Notebook.",
+                source_timestamp=row["admitted_at"], dedup_key=f"force-noting:{admission_id}",
+            )
+        return NotingDecision("admit", "admitted", NotingAdmission(
+            admission_id, conversation_ref, identity["message_uid"], kind, owning_profile(db), task_profile,
+        ))
+    return db._execute_write(admit)
 
 
 def _threshold_skip(measurement: ContextMeasurement) -> Optional[NotingDecision]:
@@ -272,7 +275,7 @@ def _force_decision(
     settings: Optional[NotingSettings],
     force_snapshot_in_segment: Optional[bool],
 ) -> NotingDecision:
-    settings = resolve_noting_settings() if settings is None else settings
+    settings = settings_for_db(db) if settings is None else settings
     enabled, reason = noting_trigger_gate(db, conversation_ref, settings=settings)
     if not enabled:
         return _skip(reason)
@@ -314,7 +317,7 @@ def _idle_decision(
     settings: Optional[NotingSettings],
     now: Optional[float],
 ) -> NotingDecision:
-    settings = resolve_noting_settings() if settings is None else settings
+    settings = settings_for_db(db) if settings is None else settings
     enabled, reason = noting_trigger_gate(db, conversation_ref, settings=settings)
     if not enabled:
         return _skip(reason)
@@ -367,45 +370,12 @@ def try_admit_idle(
 
 
 def apply_notebook_surface_gate(agent: Any) -> bool:
-    """02 §3.5: ``notebook_show`` sits on the main Assistant's surface only under effective
-    Noting (global AND conversation-local). Removes it otherwise, restores it when missing."""
-    try:
-        tools = getattr(agent, "tools", None)
-        if not isinstance(tools, list):
-            return False
-        db = getattr(agent, "_secretary_history_db", None) or getattr(agent, "_session_db", None)
-        ref = (getattr(agent, "_secretary_parent_conversation_ref", None)
-               or getattr(agent, "_secretary_conversation_ref", None))
-        if db is None or not ref:
-            # Ownership is not provable yet (e.g. a Noting child binding its parent post-init):
-            # leave the surface exactly as built — never strip tools on missing evidence.
-            return False
-        enabled, _reason = noting_trigger_gate(db, ref)
-        name = "notebook_show"
-        present = any(isinstance(t, dict) and t.get("function", {}).get("name") == name
-                      for t in tools)
-        if not enabled:
-            if present:
-                agent.tools = [t for t in tools if not (
-                    isinstance(t, dict) and t.get("function", {}).get("name") == name)]
-            return False
-        if not present:
-            # Registry-direct: never touch model_tools' process-global memo or
-            # _last_resolved_tool_names — a request-time tool_search assembly reads them.
-            import copy
-
-            from tools.registry import registry
-
-            schema = registry.get_schema(name)
-            if isinstance(schema, dict):
-                agent.tools.append({"type": "function", "function": copy.deepcopy(schema)})
-        return True
-    except Exception:
-        logger.debug("Notebook surface gating failed", exc_info=True)
-        return False
+    """Main lifecycle facade: unconditional History plus effective-gated Notebook (02 §2.3/3.5)."""
+    from secretary.noting_surface import apply_main_read_surface
+    return apply_main_read_surface(agent)
 
 
-def maybe_admit_force_from_pressure(agent: Any, measured_tokens: Any) -> str:
+def maybe_admit_force_from_pressure(agent: Any, measured_tokens: Any, *, messages=None) -> str:
     """Force admission from the turn preflight's own pressure figure (02 §4.7/§4.11).
 
     Returns an outcome string for the caller's debug log; never raises into the turn path.
@@ -427,7 +397,7 @@ def maybe_admit_force_from_pressure(agent: Any, measured_tokens: Any) -> str:
         decision = try_admit_force(db, ref, measurement)
         if decision.action == "admit":
             from secretary.noting_child import spawn_noting_task
-            spawn_noting_task(agent, decision.admission)
+            spawn_noting_task(agent, decision.admission, parent_active_messages=messages)
         return decision.action + (f":{decision.reason}" if decision.reason else "")
     except Exception:
         logger.warning("Noting Force evaluation failed", exc_info=True)
@@ -442,6 +412,12 @@ def maybe_run_idle_noting(parent: Any, db: Any, conversation_ref: str, *,
     child off-thread on admit; never raises into the poller.
     """
     try:
+        from pathlib import Path
+        parent_db = getattr(parent, "_session_db", None)
+        if (not is_main_conversation_agent(parent) or parent_db is None
+                or Path(parent_db.db_path).resolve() != Path(db.db_path).resolve()
+                or _main_conversation_ref(parent) != conversation_ref):
+            return "skip:not_main_owner"
         measurement = None
         compressor = getattr(parent, "context_compressor", None)
         if compressor is not None:

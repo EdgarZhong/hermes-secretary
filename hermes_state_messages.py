@@ -485,9 +485,11 @@ class SessionMessagesMixin:
                     session_id, msg, timestamp
                 ),
                 decode_row_fn=self._decoded_repair_row,
+                before_rewrite=lambda conn, row_id: self.secretary_preserve_branch_sources_conn(conn, [row_id]),
             )
             inserted, tool_calls_total = self._insert_message_rows(conn, session_id, inserted_rows)
             self._bump_session_counters(conn, session_id, inserted, tool_calls_total, unit=False)
+            self.secretary_reconcile_session_conn(conn, session_id)
             return inserted
         return self._execute_transcript_write(_do, messages, patience_s=self._TRANSCRIPT_WRITE_PATIENCE_S)
 
@@ -849,13 +851,17 @@ class SessionMessagesMixin:
                 kept_tool_calls = sum(_tool_calls_len(row[4], scalar=1) for row in live[:kept])
                 if kept < len(live):
                     # FTS triggers don't fire on `active`: replaced turns stay searchable (include_inactive=True).
+                    self.secretary_exclude_branch_path_conn(conn, session_id, from_message_id=live[kept][0])
                     conn.execute("UPDATE messages SET active = 0 WHERE session_id = ? AND active = 1 AND id >= ?",
                                  (session_id, live[kept][0]))
             else:
+                self.secretary_exclude_branch_path_conn(conn, session_id, clear_all=True, kept_messages=messages, active_only=active_only)
+                self.secretary_preserve_session_sources_conn(conn, [session_id], active_only=active_only)
                 conn.execute(f"DELETE FROM messages WHERE session_id = ?{' AND active = 1' if active_only else ''}", (session_id,))
             inserted, inserted_tool_calls = self._insert_message_rows(conn, session_id, messages[kept:])
             conn.execute(f"{_SET_COUNTERS_SQL} WHERE id = ?",
                          (kept + inserted, kept_tool_calls + inserted_tool_calls, session_id))
+            self.secretary_reconcile_session_conn(conn, session_id)
         self._execute_transcript_write(_do, messages)
 
     @classmethod
@@ -1133,9 +1139,7 @@ class SessionMessagesMixin:
         raw keystrokes, and the turn must not append a second row for the same input."""
         if not session_id or isinstance(row_id, bool) or not isinstance(row_id, int) or row_id <= 0:
             return 0
-        return self._write_rowcount(
-            "UPDATE messages SET content = ? WHERE id = ? AND session_id = ? AND role = 'user' AND active = 1",
-            (self._encode_content(content), row_id, session_id))
+        return self.secretary_set_user_content(session_id, row_id, content)
 
     def deactivate_message(self, session_id: str, row_id: int) -> int:
         """Deactivate ONE known row (id-addressed, idempotent; returns the affected row count). Used by
@@ -1863,6 +1867,7 @@ class SessionMessagesMixin:
             ids = [r[0] for r in conn.execute("SELECT id FROM messages WHERE session_id = ? AND id >= ? AND active = 1",
                                              (session_id, target_message_id)).fetchall()]
             if ids:
+                self.secretary_exclude_branch_path_conn(conn, session_id, from_message_id=target_message_id)
                 conn.execute(f"UPDATE messages SET active = 0 WHERE id IN ({_placeholders(ids)})", ids)
             if replacement is not None:
                 self._insert_message_rows(conn, session_id, [replacement])  # stamps _row_id and message_uid
@@ -1872,6 +1877,7 @@ class SessionMessagesMixin:
             conn.execute(f"{_SET_COUNTERS_SQL} WHERE id = ?", (message_count, tool_call_count, session_id))
             head_id = conn.execute(
                 "SELECT MAX(id) FROM messages WHERE session_id = ? AND active = 1", (session_id,)).fetchone()[0]
+            self.secretary_reconcile_session_conn(conn, session_id)
             return target_row, ids, head_id, replacement
         target_row, rewound, new_head_id, replacement = self._execute_write(_do)
         # Decode for the prompt-buffer prefill without a second fallible DB operation.
@@ -1952,10 +1958,7 @@ class SessionMessagesMixin:
 
     def clear_messages(self, session_id: str) -> None:
         """Delete all messages for a session and reset its counters."""
-        def _do(conn):
-            conn.execute("DELETE FROM messages WHERE session_id = ?", (session_id,))
-            conn.execute(_RESET_COUNTERS_SQL, (session_id,))
-        self._execute_write(_do)
+        self.secretary_clear_messages(session_id)
 
     def purge_stale_tool_call_markers(self, *, dry_run: bool = False, backup: bool = True) -> Dict[str, Any]:
         """Permanently clear bare tool-call marker content ("[memory]") left by pre-fix sessions
@@ -1984,6 +1987,7 @@ class SessionMessagesMixin:
         def _do(conn):
             ids = _find_affected(conn)
             if ids:
+                self.secretary_preserve_branch_sources_conn(conn, ids)
                 conn.execute(f"UPDATE messages SET content = '' WHERE id IN ({_placeholders(ids)})", ids)
             return ids
         affected_ids = self._execute_write(_do)

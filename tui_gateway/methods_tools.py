@@ -750,17 +750,7 @@ def _dispatch_skill(rid, params, session, name, arg):
 # reader for that queue, so they are handled here and return a structured payload.
 
 
-def _cmd_queue(rid, params, session, name, arg):
-    return _ok(rid, {"type": "send", "message": arg}) if arg else _err(rid, 4004, "usage: /queue <prompt>")
-
-
-def _prompt_builtin(module: str, fn: str, kw: str = ""):
-    """/learn, /plan, /init: submit ``module.fn(arg)`` as a normal turn (the live agent does the work)."""
-
-    def cmd(rid, params, session, name, arg):
-        build = getattr(_tools_mod(module), fn)
-        return _ok(rid, {"type": "send", "message": build(**{kw: arg}) if kw else build(arg)})
-    return cmd
+from .methods_secretary import _cmd_queue, _cmd_secretary, _prompt_builtin
 
 
 _cmd_learn = _prompt_builtin("agent.learn_prompt", "build_learn_prompt")
@@ -1088,7 +1078,8 @@ _SLASH_BUILTINS = {
     "moa": _cmd_moa, "focus": _cmd_focus, "retry": _cmd_retry, "steer": _cmd_steer, "goal": _cmd_goal,
     "loop": _cmd_loop, "undo": _cmd_undo, "snapshot": _cmd_snapshot, "snap": _cmd_snapshot,
     "compress": _cmd_compress, "compact": _cmd_compress,
-    "memory": _cmd_memory, "skills": _cmd_skills}
+    "memory": _cmd_memory, "skills": _cmd_skills,
+    "notebook": _cmd_secretary, "propose-persistence": _cmd_secretary}
 
 @method("command.dispatch")
 def _(rid, params: dict) -> dict:

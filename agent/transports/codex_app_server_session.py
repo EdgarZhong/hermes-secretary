@@ -622,7 +622,7 @@ class CodexAppServerSession:
             result.should_retire = True
 
     def compact_thread(
-        self, *, turn_timeout: float = 600.0, notification_poll_timeout: float = 0.25
+        self, *, turn_timeout: float = 600.0, notification_poll_timeout: float = 0.25, on_admitted=None,
     ) -> TurnResult:
         """Trigger Codex-native history compaction for the current thread.
 
@@ -637,7 +637,8 @@ class CodexAppServerSession:
 
         if self._request_for(result, "thread/compact/start", {"threadId": self._thread_id}, "thread/compact/start") is None:
             return result
-
+        if on_admitted is not None:
+            on_admitted()
         def pre_scope_filter(note: dict, method: str) -> bool:
             if result.turn_id is not None:
                 return True

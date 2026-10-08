@@ -40,6 +40,16 @@ class _FakeStore:
     def _ensure_loaded(self):
         return None
 
+    def lookup_by_session_key(self, key):
+        return self._entries.get(key)
+
+    def advance_compression_session(self, key, expected, target):
+        entry = self._entries.get(key)
+        if entry is None or entry.session_id != expected:
+            return None
+        entry.session_id = target
+        return entry
+
 
 class _FakeAdapter:
     supports_async_delivery = True
@@ -59,7 +69,8 @@ class _Host:
         self._session_source = source
         self._adapter = adapter
         self.config = SimpleNamespace()
-        self.session_store = _FakeStore({session_key: SimpleNamespace(origin=source, transport_profile=None)})
+        self.session_store = _FakeStore({session_key: SimpleNamespace(origin=source, session_key=session_key,
+                                                                     session_id="s1", transport_profile=None)})
         self._running = True
 
     def make_runner(self):
@@ -69,6 +80,7 @@ class _Host:
         runner.session_store = self.session_store
         runner._restored_source = lambda entry: self._session_source
         runner._delivery_adapter_for = lambda source: self._adapter
+        runner._resolve_profile_home_for_source = lambda source: self.home
         runner._synthetic_prompt_event = GatewayRunner._synthetic_prompt_event
         return runner
 
@@ -79,8 +91,8 @@ def host_env(tmp_path, monkeypatch):
     home.mkdir()
     db = SessionDB(home / "state.db")
     db._execute_write(init_secretary_schedule_schema)
-    db.create_session("s1", source="test", session_key="peer")
-    ref = db.resolve_conversation_ref("s1", ("test", "peer", 0))
+    db.create_session("s1", source="telegram", session_key="peer", profile_name="default")
+    ref = db.resolve_conversation_ref("s1", ("telegram", "peer", 0))
     source = SessionSource(platform=Platform.TELEGRAM, chat_id="123", chat_type="dm", user_id="user1")
     adapter = _FakeAdapter()
     h = _Host(db, home, source, adapter, "peer")
@@ -183,7 +195,7 @@ async def test_busy_gate_converts_secretary_reminder_to_pending_not_a_second_tur
         message_type=MessageType.TEXT, source=source, internal=True, allow_gateway_control=False,
         metadata={"secretary_user_reminder": {
             "conversation_ref": ref, "schedule_id": row["schedule_id"],
-            "claim_token": claim["claim_token"], "source_timestamp": time.time() - 5,
+            "claim_token": claim["claim_token"], "source_timestamp": claim["next_run_at"],
             "content": "ping the user",
         }},
     )
@@ -198,3 +210,113 @@ def test_busy_conversion_helper_ignores_other_events():
     runner = SimpleNamespace()
     assert host.convert_busy_reminder_event(runner, SimpleNamespace(metadata={})) is False
     assert host.convert_busy_reminder_event(runner, SimpleNamespace(metadata=None)) is False
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('failure', ['physical_session', 'profile', 'source', 'suspended'])
+async def test_session_store_must_prove_live_owner_before_native_ingress(host_env, failure):
+    h, db, ref, adapter, _source = host_env
+    row = arm_due(db, ref)
+    runner = h.make_runner()
+    entry = runner.session_store.lookup_by_session_key('peer')
+    if failure == 'physical_session':
+        db.create_session('foreign', source='telegram', profile_name='default')
+        entry.session_id = 'foreign'
+    elif failure == 'profile':
+        runner._resolve_profile_home_for_source = lambda source: h.home / 'different-profile'
+    elif failure == 'source':
+        runner._restored_source = lambda entry: SessionSource(platform=Platform.DISCORD, chat_id='123')
+    else:
+        entry.suspended = True
+    await host.scan_due_secretary_schedules(runner)
+    await asyncio.gather(*runner._secretary_delivery_tasks)
+    assert adapter.events == []
+    current = registry(db, row['schedule_id'])
+    assert current['state'] == 'pending' and current['claim_token'] is None
+
+
+@pytest.mark.asyncio
+async def test_compression_tip_proof_accepts_owned_ancestor_entry(host_env):
+    h, db, ref, adapter, _source = host_env
+    arm_due(db, ref)
+    db.end_session('s1', 'compression')
+    db.create_session('s2', source='telegram', parent_session_id='s1', profile_name='default')
+    runner = h.make_runner()
+    await host.scan_due_secretary_schedules(runner)
+    await asyncio.gather(*runner._secretary_delivery_tasks)
+    assert len(adapter.events) == 1
+
+
+@pytest.mark.asyncio
+async def test_scan_and_delivery_release_their_own_registry_handles(host_env, monkeypatch):
+    h, db, ref, adapter, _source = host_env
+    arm_due(db, ref)
+    acquired, released = [], []
+    acquire, release = host._acquire_db, host._release_db
+    def record_acquire(home):
+        handle = acquire(home)
+        acquired.append(handle)
+        return handle
+    def record_release(handle):
+        released.append(handle)
+        release(handle)
+    monkeypatch.setattr(host, '_acquire_db', record_acquire)
+    monkeypatch.setattr(host, '_release_db', record_release)
+    runner = h.make_runner()
+    await host.scan_due_secretary_schedules(runner)
+    await asyncio.gather(*runner._secretary_delivery_tasks)
+    assert len(adapter.events) == 1
+    assert len(acquired) == len(released) == 2
+    assert sorted(map(id, acquired)) == sorted(map(id, released))
+
+
+@pytest.mark.asyncio
+async def test_scan_cancellation_releases_acquired_registry_handle(host_env, monkeypatch):
+    h, _db, _ref, _adapter, _source = host_env
+    started = asyncio.Event()
+    released = []
+    release = host._release_db
+    async def blocked(*args, **kwargs):
+        started.set()
+        await asyncio.Future()
+    def record_release(handle):
+        released.append(handle)
+        release(handle)
+    monkeypatch.setattr(host, '_run_blocking', blocked)
+    monkeypatch.setattr(host, '_release_db', record_release)
+    task = asyncio.create_task(host.scan_due_secretary_schedules(h.make_runner()))
+    await started.wait()
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    assert len(released) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('rejection', ['global_off', 'local_off', 'admission'])
+async def test_scan_to_ingress_rechecks_gate_and_requires_native_receipt(host_env, monkeypatch, rejection):
+    h, db, ref, adapter, _source = host_env
+    row = arm_due(db, ref)
+    runner = h.make_runner()
+    if rejection == 'local_off':
+        original = host._spawn_delivery
+        def disable_then_spawn(*args):
+            db.notebook_set_local_enabled(ref, False)
+            return original(*args)
+        monkeypatch.setattr(host, '_spawn_delivery', disable_then_spawn)
+    elif rejection == 'global_off':
+        from secretary import schedules
+        calls = []
+        def gate(_db):
+            calls.append(True)
+            return lambda _ref: len(calls) == 1
+        monkeypatch.setattr(schedules, 'default_enablement', gate)
+    else:
+        async def refuse(event):
+            event._gateway_accepted = False
+        adapter.handle_message = refuse
+    await host.scan_due_secretary_schedules(runner)
+    await asyncio.gather(*runner._secretary_delivery_tasks)
+    assert adapter.events == []
+    current = registry(db, row['schedule_id'])
+    assert current['state'] == 'pending' and current['claim_token'] is None

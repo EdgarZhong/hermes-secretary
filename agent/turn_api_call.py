@@ -157,6 +157,9 @@ def perform_api_call(
     # The provider answered THIS request: acknowledge the System Reminders it carried
     # (02 §3.11). A raised call never reaches here, so request failure leaves them pending.
     with suppress(Exception):
+        from secretary.noting_tools import after_noting_response
+        after_noting_response(agent)
+    with suppress(Exception):
         from secretary.reminder_request import acknowledge_carried_reminders
 
         acknowledge_carried_reminders(agent)

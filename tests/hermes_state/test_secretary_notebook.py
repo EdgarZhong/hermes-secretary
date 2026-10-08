@@ -202,10 +202,11 @@ def test_branch_gets_an_independent_notebook(db):
                            source_message_identities=[evidence])
     parent_snapshot = db.notebook_commit_snapshot(parent_ref, working, anchor_message_uid="middle")
 
-    make(db, "branch", "parent", "_branched_from")
+    db.create_session("branch", source="test", parent_session_id="parent", model_config={"_branched_from": "parent"},
+                      branch_point_message_uid="middle")
     branch_ref = db.inherit_foreground_branch("parent", "branch", through_message_uid="middle")
     assert branch_ref != parent_ref
-    inherited = db.notebook_inherit_branch(parent_ref, branch_ref)
+    inherited = db.notebook_current(branch_ref)["snapshot_id"]
     assert inherited is not None
 
     branch_state = db.notebook_current(branch_ref)

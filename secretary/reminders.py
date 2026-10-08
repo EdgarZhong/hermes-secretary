@@ -50,12 +50,31 @@ def queue_pending_for_claim(db, claim, *, now=None, content=None):
     timestamp = time.time() if now is None else float(now)
 
     def _queue(conn):
+        # Reclaim, intent changes and pointer reconciliation may have invalidated the
+        # caller's claim. Validate both its token and exact occurrence under the write lock.
+        row = conn.execute(
+            "SELECT * FROM secretary_schedule_registry WHERE schedule_id = ? AND conversation_ref = ? "
+            "AND claim_token = ? AND next_run_at = ? "
+            "AND state = 'pending' AND enabled = 1 AND claim_expires_at > ?",
+            (claim["schedule_id"], claim["conversation_ref"], claim["claim_token"],
+             claim["next_run_at"], timestamp),
+        ).fetchone()
+        if row is None:
+            return None
+        current = dict(row)
+        if not db.notebook_local_enabled_conn(conn, current["conversation_ref"]):
+            # The switch can change after scanning. Release only our proven token so the
+            # same occurrence remains due when eligibility returns; never finalize it.
+            schedule_release_conn(conn, current["schedule_id"], current["claim_token"], now=timestamp)
+            return None
         reminder_id = reminder_append_pending_conn(
-            conn, claim["conversation_ref"], content or occurrence_content(claim),
-            source_timestamp=occurrence_timestamp(claim, now=timestamp), schedule_id=claim["schedule_id"],
+            conn, current["conversation_ref"], content or occurrence_content(current),
+            source_timestamp=occurrence_timestamp(current), schedule_id=current["schedule_id"],
+            dedup_key=f"{current['schedule_id']}:{current['next_run_at']}",
             now=timestamp,
         )
-        schedule_finalize_conn(conn, claim["schedule_id"], claim["claim_token"], now=timestamp)
+        if schedule_finalize_conn(conn, current["schedule_id"], current["claim_token"], now=timestamp) is None:
+            raise RuntimeError("Schedule claim changed inside its pending transaction")
         return reminder_id
 
     return db._execute_write(_queue)
