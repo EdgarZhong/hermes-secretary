@@ -1,6 +1,6 @@
 # Snapshot Index：20261007-v1-first-implementation
 
-本文件按用户指定命名为 `index.md`，承担自主套件的 Snapshot Index 职责；不另建重复索引。Ask and Align 已完成；冻结文档提交的完整哈希写入同目录 `baseline.txt`。任务看板与动态编排仅在根 `CLAUDE.md` 维护。
+本文件是已结束的首轮索引，按用户指定命名为 `index.md`。实际结束状态见同目录 `final-delivery.md`；冻结提交保留在 `baseline.txt`。旧报告须对照当时的 Git 提交树，不以工作区已修订的 01 / 02 重判历史结论。用户已解冻文档并进入 [1.5 轮](../20261008-v1.5-adjustment-and-acceptance/index.md)；当前任务与编排只在根 `CLAUDE.md` 维护。
 
 ## 审查依据索引
 
@@ -11,7 +11,7 @@
 | 编码指导 | `AGENTS.md` | 二级；已冻结规则不得由 Agent 自行变更 |
 | 会话确认口径 | 本文件“口径与决策” | 二级 |
 
-本索引自身为二级；用户明确授权在本索引持续记录本轮收敛口径。一级文件本轮不可修改；二级文件须有用户明确授权才可修改。会话确认口径补充或收敛现行规格的本轮适用范围，必须与相关原文共同阅读；不能因为补充未写进 02 而漏实现或漏审。
+本索引自身为二级；用户明确授权在本索引持续记录本轮收敛口径。一级文件本轮不可修改；二级文件须有用户明确授权才可修改。会话确认口径补充或收敛现行规格的本轮适用范围，必须与相关原文共同阅读；不能因为补充未写进 02 而漏实现或漏审。用户后续明确修订的功能契约按最新授权执行，在本索引注明被修订的原文条款，不改写 02，也不把 Agent 的推断当作用户修订。
 
 ## 口径与决策
 
@@ -26,7 +26,7 @@
 | A10 | current Notebook pointer 由当前 Full Foreground 视图下最新的 Anchor 决定，不按任务完成或 Snapshot 提交时间决定 | 结合 02 §2.7、§3.3–3.4、§4.8、§5.10：选择有效路径上最新 Anchor 对应的已提交 Snapshot；较早 Anchor 仍有效则可提交，但 pointer 不倒退；原子事务、rewind 重选及无有效 Snapshot 时为 null 属于原有规格要求 | 2026-10-07 用户“指针指向谁？……它是由 for foreground 视图下最新的那个 anchor 锚点决定的” |
 | A11 | 本轮真实模型验收使用本机 Codex Proxy，GPT6 Luna、High 思考强度；实际配置前核实准确模型 ID | 用户指定 provider / 模型 / 强度；配置调查时机见 `CLAUDE.md`。Parent / Noting 的模型、provider、reasoning parity 仍按 02，不是新问答要求 | 2026-10-07 用户“使用本机 Codex Proxy,GPT6Luna，加 High，思考强度……实际配置的时候，先去看清楚模型ID” |
 | A12 | 本机 Codex Proxy / GPT6 Luna 仅用于必要的实际测试；禁止 Hermes 自己参与编码 | Hermes 作为被测产品，不作为代码实现者；实现与测试代码由 Codex 主会话和 Development 子 Agent 完成 | 2026-10-07 用户“只用于必要的实际测试,禁止 Hermes 自己参与编码” |
-| A14 | 全局 Noting 开启、当前 Conversation 已 `/notebook off` 时，`propose persistence` 仍可读取已保存的 persistence 候选并生成提议；不触发 Noting，不重新开启它；没有 Snapshot 或候选时明确提示 | 与裸 `/notebook` 的 local-off 已存状态查看原则一致；命令不恢复 main Assistant 的常驻 Notebook 工具权限，不修改 Notebook，批准仍通过后续自然语言 | 2026-10-07 主会话针对 global-on / local-off 提出上述方案，用户明确回复“同意” |
+| A14 | 全局 Noting 开启、当前 Conversation 已 `/notebook off` 时，`propose persistence` 仍可读取已保存的 persistence 候选并生成提议；不触发 Noting，不重新开启它；没有 Snapshot 或候选时明确提示 | 与裸 `/notebook` 的 local-off 已存状态查看原则一致；不修改 Notebook，批准仍通过后续自然语言。本条历史口径中的“local off 不恢复常驻 Notebook 工具”限制已由 A33 修订；局部开关命名按后续 A35 | 2026-10-07 主会话针对 global-on / local-off 提出上述方案，用户明确回复“同意” |
 | A15 | 全局 `noting.enabled=false` 时，`propose persistence` 不可用；不能绕过全局开关读取已有候选并启动提议 | 与 02 的 `/notebook` 全局开关一致；与 A14 的 global-on / local-off 场景区分 | 2026-10-07 主会话询问 global-off 可用性，用户明确回复“不可以用” |
 | A16 | Hermes Secretary 移除旧 Background Self-Improvement Review 的开关及独立启用入口，旧自动 Review 不再作为可选产品功能存在；不能只设为默认关闭或简单改名。Noting 在产品生态位上完整替代它 | 用户进一步明确 02 §5.1 的 fork-wide 替代边界；清理对应配置定义、实际启用接线及设置 / 帮助入口，防止旧开关继续有效。Noting 全局或局部关闭均不恢复旧 Review。02 §5.2–5.3 要求保留并抽取的纯 cache-parity machinery 继续复用，不能将底层 helper 一并误删。清理旧设置入口不属于新增 Frontend / API 能力 | 2026-10-07 用户“Secretary里面不再设有那个 Background Self Improvement Review 的那个开关，删掉它……Noting机制在生态位上已经彻底替换掉了那个东西” |
 | A17 | Persistence 提议 Slash 命令的正式拼写为 `/propose-persistence`，使用短横线连接，采用一个完整命令 token | 用户明确选择短横线形式，替代主会话先前建议的 `/propose persistence`；索引此前的名称 `propose persistence` 均指此功能 | 2026-10-07 用户“中间不能断吧？能用空格吗？还是用短横线连接一下吧？” |
@@ -44,6 +44,16 @@
 | A31 | 继续自主实现，直到完成本轮既定目标 | 额度中断后恢复原 F1/F3/T5 子 Agent；原冻结范围与两个独立门禁继续有效，不重复已交回任务 | 2026-10-08 用户“现在继续自主实现，直到完成本轮既定目标” |
 | A32 | 额度中断后继续并重设首轮完整自主目标 | 原冻结范围、既有实现、有效证据和两个独立门禁保留；从原子 Agent 断点续接，直到完成本轮既定目标 | 2026-10-08 用户“继续，恢复执行，重设目标”，随后“继续”；额度再次中断后“继续，恢复目标与自主实现” |
 
+## 首轮结束后的移交口径
+
+以下记录首轮停止后的用户消息，不属于首轮已验收要求。当前功能依据与文档权限按 1.5 轮索引，不追改首轮独立报告。本表中的“02 原文保留”等权限是这些消息发生时的历史边界，已由进入 1.5 轮时的解冻授权取代。
+
+| 口径编号 | 用户明确确认或授权的内容 | 依据与适用边界 | 用户消息定位与授权来源 |
+|---|---|---|---|
+| A33 | Conversation-local Noting 开关只控制后台行为，不改变主 Assistant 对 Notebook 的正常只读访问；`notebook_show` 的暴露与读取权限只受全局配置控制，局部关闭时仍可读取已提交的 Notebook | 用户明确修订 02 §3.5（L735–745）、§4.3（L1085）、§6.12（L1835）关于 local off 移除主读取工具的要求，以及 A14 对常驻读取权限的旧限制。后台 Noting 的全局 AND 局部门禁与主读取门禁分开；不新增桥接工具、缓存操作或其他机制。02 原文保留，命令命名按 A35；全局配置变化的生效方式与缓存处置尚未在本条确定 | 2026-10-08 用户“我们要改的是自己的设计……Notebook on off，以后只变成一个行为开关，不影响主会话，正常访问 Notebook……工具……只和全局配置有关” |
+| A34 | 当前只修改文档，不实施代码，不提交，等待用户下一步指令 | 自主实现继续暂停；记录新功能契约与待实施差异，不启动子 Agent、测试或阶段提交。既有完成定义与门禁保留，旧版本证据不作为新契约已完成的证明 | 2026-10-08 用户“你先别着急去实现。把文档改好就行，也不用着急提交，等我指令” |
+| A35 | Slash 命令分为 `/notebook` 与 `/noting on`、`/noting off`：前者保持原有人类可读的 Notebook 展示和正常历史行为，AI 也能看到；后两者只控制当前 Conversation 的后台 Noting 参与状态 | 替换原 `/notebook on`、`/notebook off` 的开关入口；不改变裸 `/notebook` 的 Snapshot 展示、null 提示、created_at、普通 transcript 语义。`notebook_show` 是主 Assistant 的只读工具，按 A33 与局部 Noting 开关解耦。未授权新增别名、UI、API 或工作流；实现仍按 A34 等待指令 | 2026-10-08 用户“把 slash 命令改成 notebook，以及 noting on 和 off……notebook 还是一样的逻辑……以人类可读的方式展示……AI 也能看到……noting on off 只决定在一个会话里边是否开启这个 background noting 功能” |
+
 明确排除：除共享 Slash 及经查证必要的 Dashboard 薄兼容补丁之外的 Frontend / API 增量、批准 UI、Personal UI 选型与产品化（A05、A07、A24、A26）；第二轮 API 与面板边界按 A26。其余既有排除范围直接按 01 与根 `AGENTS.md` 查阅，不作为本次新增问答口径。
 
-未决事项：当前没有影响冻结的待确认问题，用户已授权进入下一阶段。验收入口、方法及两轮边界按 A24–A26 确定，平台覆盖按 A20、模型选择与用途按 A11–A12。共享 Slash consumer 调查与实际模型配置时机见 `CLAUDE.md`；调查中出现新的范围或产品歧义按既有对齐规则处理。冻结时按 `AGENTS.md` 将本轮核心文档变更与索引一并提交。
+当前执行边界按 A34：只整理文档，不实施、不提交，等待用户指令。Notebook 读取与后台 Noting 的分层、命令命名按 A33 / A35；全局配置改变工具面时的生效方式与缓存处置留待后续收敛。验收入口、方法及两轮边界按 A24–A26，平台覆盖按 A20，模型选择与用途按 A11–A12。MCP 固定桥接模式及删除统一缓存失效提示目前仅为用户提议，状态见 `CLAUDE.md`，不冒充已确认的实施要求。后续获授权冻结或提交时，仍按 `AGENTS.md` 核对核心文档与索引一致。

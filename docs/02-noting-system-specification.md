@@ -1,6 +1,6 @@
 # Hermes Secretary V1 — Session Notebook / Noting System Implementation Specification
 
-> **Status:** V1 authoritative English specification  
+> **Status:** V1 / iteration 1.5 authoritative English specification
 > **Scope:** Conversation Identity, History Search, Session Notebook, Noting, Notebook Schedule, and Reminder Delivery  
 > **Related documents:**
 > - `01-personal-hermes-v1-first-fork-iteration.md` — V1 goals, first-fork scope, and project boundary
@@ -246,6 +246,14 @@ Where Hermes already owns the underlying mechanism, Secretary reuses it:
 
 ---
 
+## 1.9 Runtime eligibility and general read tools
+
+Notebook, Noting, Notebook Schedule, and their main-Assistant exposure belong only to a main Conversation that directly communicates with the user. Cron Tasks, Dreaming, Skill refinement, generic subagents/delegates, and other auxiliary/background runtimes do not participate, regardless of global Noting configuration. Their tool lists must never contain notebook_show; ordinary toolset inheritance or an explicit Notebook toolset must not grant it.
+
+The dedicated Noting Runtime in §5 maintains an eligible Parent Conversation under its frozen ownership and narrow dispatch contract. It does not acquire a separate Notebook or enable Noting for its own child Session.
+
+History Search is separate: it is a general read-only tool managed like native read_file through the normal registry, configuration, Agent templates, and read-only permission rules. It is not restricted to user-facing main Conversations. An auxiliary Agent may use it when its normal read/tool configuration permits, without acquiring Notebook, Noting, or another Agent's history scope.
+
 # 2. Foreground, History Search, and the Notebook Semantic Model
 
 ## 2.1 Active Foreground
@@ -279,7 +287,7 @@ History Foreground is not Active Foreground and is not Full Foreground.
 
 ## 2.3 History Search Suite: a Secretary base capability, not a Noting capability
 
-History Search is a main-Conversation capability already added by Hermes Secretary. It is independent of `noting.enabled`, `/notebook on|off`, and whether a Notebook Snapshot exists. Every main Conversation retains History Search even when Noting is off.
+History Search is a first-class read-only capability managed like native read_file. It is independent of noting.enabled, Conversation-local Noting participation, and Notebook state. Its exposure follows normal tool configuration and Agent templates, including auxiliary runtimes; Secretary hooks must not force it back into an excluded surface. It searches authentic current uncompacted history as well as valid compressed history, supporting proactive recall and attention in the authorized history scope.
 
 History Search reads **History Foreground only**. Noting must reuse the same capability rather than introducing a second History Search implementation or placing History Search behind the Noting feature gate.
 
@@ -676,7 +684,7 @@ noting_enabled
 updated_at
 ```
 
-`/notebook on` and `/notebook off` only change this local state. They do not duplicate global Noting policy and do not rewrite Hermes global configuration.
+`/noting on` and `/noting off` only change this local state. They do not duplicate global Noting policy and do not rewrite Hermes global configuration.
 
 ## 3.3 Immutable Notebook Snapshot
 
@@ -730,30 +738,30 @@ The Conversation Identity Registry does not store `current_snapshot_id`. Convers
 
 ## 3.5 Main Assistant Notebook Control
 
-### `notebook show`
+### `notebook_show`
 
-When the current Conversation has **effective Noting enabled**, the main Assistant receives a read-only capability:
+When the runtime belongs to an eligible user-facing main Conversation (§1.9) and global noting.enabled=true, the main Assistant receives the read-only notebook_show capability:
 
 ```text
-notebook show
+notebook_show
 ```
 
 It returns the current Snapshot as the complete AI-facing structured JSON. It does not run the human `/notebook` renderer.
 
 The main Assistant may inspect the current Notebook but does not receive Notebook create/edit/status/Schedule mutation tools and never mutates Notebook directly.
 
-When effective Noting is disabled for the Conversation, `notebook show` is absent from the main Assistant tool surface.
+Conversation-local Noting on/off never adds or removes this tool, rewrites its schema, or prevents reading the last committed Snapshot. It is absent when global Noting is disabled. Generic auxiliary/background runtimes never receive it, even when global Noting is enabled. This read gate is separate from the effective background Noting gate.
 
 History Search is unaffected by this gate.
 
-## 3.6 `/notebook` Slash Command
+## 3.6 Notebook inspection and Noting participation commands
 
-When global `noting.enabled=true`, the following slash forms are available:
+In an eligible user-facing main Conversation with global noting.enabled=true, the following slash forms are available:
 
 ```text
 /notebook
-/notebook on
-/notebook off
+/noting on
+/noting off
 ```
 
 ### Bare `/notebook`
@@ -772,7 +780,7 @@ It does **not** display the Anchor and does **not** display the pointer ID.
 
 If the pointer is null, it returns an explicit “this Conversation has no Notebook Snapshot yet” style result. It does not fabricate an empty Snapshot.
 
-Conversation-local `/notebook off` does not disable bare `/notebook`. Therefore, with:
+Conversation-local `/noting off` does not disable bare `/notebook`. Therefore, with:
 
 ```text
 global noting.enabled = true
@@ -786,13 +794,13 @@ The rendered `/notebook` result follows normal Hermes slash/message persistence 
 - no new `display_kind` is introduced;
 - there is no special “UI-visible but model-hidden” transcript semantics;
 - no new transcript role is introduced;
-- the result may enter later model context through normal Hermes history behavior.
+- the result remains visible to the AI through normal Hermes history/context behavior.
 
 When Noting later sees a Notebook rendering in the transcript, it should treat it as a rendering of already-existing Notebook state rather than as fresh user evidence to duplicate into new entries.
 
-### `/notebook on|off`
+### `/noting on|off`
 
-`/notebook on` and `/notebook off` only change Conversation-local Noting participation. They do not delete Snapshots, Schedule intent, or audit history.
+`/noting on` and `/noting off` only change Conversation-local background Noting participation. They do not delete Snapshots, Schedule intent, or audit history, or change the main tool list, notebook_show read permission, or root System Prompt. They replace the former Notebook participation forms; /notebook remains the inspection command.
 
 ## 3.7 Notebook Mutation Control
 
@@ -922,7 +930,7 @@ When Conversation-local Noting is off:
 
 - the Schedule row and Notebook intent remain stored;
 - the scanner does not fire that Conversation's Schedule;
-- `/notebook on` makes it eligible again;
+- `/noting on` makes it eligible again;
 - an overdue one-shot is delivered at most once when eligibility returns;
 - recurring schedules do not replay an unbounded backlog of missed occurrences; they advance according to the canonical schedule to a reasonable next execution point.
 
@@ -1053,8 +1061,8 @@ noting:
 Conversation-local participation is controlled by:
 
 ```text
-/notebook on
-/notebook off
+/noting on
+/noting off
 ```
 
 ## 4.2 Effective enable state
@@ -1067,7 +1075,7 @@ AND
 conversation-local noting_enabled
 ```
 
-A new Conversation participates by default when global Noting is enabled unless the user turns it off with `/notebook off`.
+An eligible user-facing main Conversation participates by default when global Noting is enabled unless the user turns it off with /noting off. Non-eligible auxiliary/background runtimes never participate. This effective gate controls background behavior, not the main Notebook read surface.
 
 Schedule is an adjunct of Noting and is governed by the same effective gate.
 
@@ -1082,14 +1090,14 @@ When effective Noting is false for a Conversation:
 - Notebook mutation does not occur;
 - Notebook Schedule does not fire;
 - no Noting-owned System/User Reminder is created;
-- `notebook show` is absent from the main Assistant tool surface.
+- main Notebook reading is governed separately by user-facing main eligibility and global configuration, not this local background gate.
 
 At the same time:
 
-- **History Search remains available**;
+- **History Search remains independent and follows normal read/tool configuration**;
 - the Secretary base timestamp contract remains active even when local Noting is off;
-- if global `noting.enabled=true`, bare `/notebook` can still inspect an existing Snapshot;
-- `/notebook on|off` remains available to change local participation.
+- in an eligible main Conversation with global noting.enabled=true, both /notebook and AI notebook_show can inspect an existing Snapshot;
+- `/noting on|off` remains available to change local participation.
 
 Apart from explicitly defined Secretary-wide configuration choices/conflicts, every Hermes execution seam touched by Noting returns directly to Hermes's existing behavior when the effective gate is false. Conversation-local off must not leave behind Noting-specific request assembly, busy admission, compaction, idle-timer, or background-work behavior.
 
@@ -1308,7 +1316,7 @@ compression:
 
 Secretary idle lifecycle and Hermes idle compaction are conflicting mechanisms. This is a configuration conflict, not one of the two Force capability failures.
 
-Conversation-local `/notebook off` does not dynamically rewrite Hermes global config. It only makes Noting hooks inert for that Conversation.
+Conversation-local `/noting off` does not dynamically rewrite Hermes global config. It only makes Noting hooks inert for that Conversation.
 
 ## 4.13 Force admission Reminder side effect
 
@@ -1329,7 +1337,7 @@ In the Secretary fork:
 - if no other upstream dependency needs that independent path, it may be disabled or removed;
 - the useful cache-parity machinery from that implementation is retained and generalized.
 
-This is a fork-wide product decision. Conversation-local `/notebook off` does not dynamically restore the old Background Review behavior.
+This is a fork-wide product decision. Conversation-local `/noting off` does not dynamically restore the old Background Review behavior.
 
 ## 5.2 Runtime composition
 
@@ -1529,7 +1537,7 @@ The main Conversation always has:
 
 When effective Noting is enabled, it additionally has:
 
-- `notebook show`, read-only, returning the complete AI-facing Notebook JSON.
+- `notebook_show`, read-only, returning the complete AI-facing Notebook JSON.
 
 The main Assistant never receives Notebook mutation tools.
 
@@ -1710,12 +1718,12 @@ Current mechanisms that can be reused include equivalents of:
 
 ## 6.4 History Search wiring
 
-History Search is a Secretary base capability and is not reimplemented or feature-gated by Noting.
+History Search is a general first-class read-only capability, not reimplemented or feature-gated by Noting. Register, configure, enable/disable, template, and classify it using the same native paths as read_file. Main-Turn Secretary hooks must not force it into a surface excluded by normal tool configuration. Background Agents and subagents follow the same configuration/template rules without acquiring Notebook or Noting.
 
 It continues to:
 
 - read History Foreground;
-- cross compression continuation;
+- search current uncompacted history and valid compression continuation;
 - exclude rewind/edit-superseded rows;
 - preserve the existing `session_history search/read` contract;
 - normalize an old `message_id` result to canonical Message Identity when durable provenance is needed.
@@ -1825,18 +1833,18 @@ Test at least:
 
 ```text
 global noting.enabled = true
-conversation /notebook off
+conversation /noting off
 ```
 
 Expected behavior:
 
-- History Search remains present;
+- History Search follows normal read/tool configuration independently of Noting;
 - bare `/notebook` can still read the latest Snapshot;
-- main Assistant `notebook show` is absent;
+- main Assistant notebook_show remains present and can read the latest committed Snapshot;
 - Noting Trigger / child / Schedule / Reminder behavior is inert;
 - request, compaction, and admission paths show no Noting-specific behavior beyond Secretary-wide base capabilities.
 
-Also test global `noting.enabled=false`: all Noting-specific runtime hooks are no-ops.
+Also test global noting.enabled=false: all Noting-specific runtime hooks are no-ops and the main Notebook read tool is absent. With either global value, Cron, Dreaming, Skill-refinement, and generic subagent runtimes have no notebook_show and do not start Noting. The dedicated Noting Runtime retains only its explicit Parent maintenance contract.
 
 ## 6.13 Identity / persistence acceptance
 
@@ -1905,7 +1913,7 @@ Cover at least:
 
 ## 6.18 `/notebook` acceptance
 
-- `/notebook on|off` persists Conversation-local participation correctly;
+- `/noting on|off` persists Conversation-local participation correctly;
 - local off still allows bare `/notebook` to read an existing Snapshot;
 - a null pointer produces an explicit no-Snapshot result;
 - the human view displays Snapshot `created_at`;
@@ -1913,7 +1921,10 @@ Cover at least:
 - it does not display the pointer ID;
 - it does not introduce a new `display_kind`;
 - it follows normal Hermes persistence/context behavior;
-- AI `notebook show` returns complete structured JSON rather than the human renderer.
+- AI notebook_show returns complete structured JSON rather than the human renderer;
+- local Noting on/off preserves the complete main tool-schema bytes and read access, including after cold reconstruction;
+- non-user-facing auxiliary runtimes never receive notebook_show, including through composite/inherited toolsets;
+- History Search follows normal read configuration/templates and finds authentic current-segment history independently of Noting gates.
 
 ## 6.19 Open issue: additive Frontend / API contract
 
@@ -1947,17 +1958,20 @@ Hermes Conversation transcript is the source of truth.
 Secretary Conversation Ref is the stable ownership identity.
 Hermes Session / lineage / declared scopes are locators, not ownership IDs.
 
-History Search is a main-Conversation base capability over History Foreground.
-It exists independently of Noting.
+History Search is a general first-class read-only capability over authorized History Foreground.
+It follows native read configuration/templates independently of Noting.
+It searches current uncompacted and valid compressed history.
 
-Notebook is one Conversation's derived working state.
+Notebook is one eligible user-facing main Conversation's derived working state.
+Generic auxiliary/background runtimes never acquire Notebook or Noting.
 Each successful Noting commits a complete immutable Snapshot.
 
 Noting is gated by global config AND Conversation-local state.
 Schedule is an adjunct of Noting/Notebook and is inert when Noting is effectively off.
 
-Main Assistant can read Notebook only when Noting is enabled,
-but never mutates it directly.
+Eligible main Assistant Notebook reading is gated only by global configuration,
+independently of Conversation-local background Noting participation.
+The main Assistant never mutates Notebook directly.
 User intent takes effect immediately through the Conversation foreground;
 Noting later reconciles that intent into Notebook.
 

@@ -1,6 +1,6 @@
 # Hermes Secretary V1：首次 Fork 实施总纲
 
-> **状态：** V1 首轮实施总纲  
+> **状态：** V1 核心实施总纲，已纳入 1.5 轮用户确认的补充调整
 > **用途：** 定义本轮 Fork 的目标、边界、能力关系、实施顺序与验收口径；不替代具体实现规格。  
 > **权威实现规格：** `02-noting-system-specification.md`。凡 Notebook / Noting / Conversation Identity / Schedule / Reminder / History Search 的实现细节与本文冲突，以 02 为准。  
 > **后续路线材料：** 03 保存在仓库外，本轮不纳入考量，也不作为实现依赖或验收依据。
@@ -13,7 +13,7 @@ Hermes Secretary V1 的第一次 Fork，不是把 Hermes 重写成另一套 Harn
 
 - 为用户语义上的 Conversation 建立稳定身份；
 - 让主 Conversation 可以可靠检索自己跨 Compaction 的真实历史；
-- 为每条 Conversation 提供跨 Compaction 持续存在的结构化 Notebook；
+- 为每条直接与用户交流的主 Conversation 提供跨 Compaction 持续存在的结构化 Notebook；
 - 通过后台 Noting 持续维护 Notebook，而不是让主 Assistant 在聊天过程中随手写状态；
 - 为 Notebook entry 提供 Conversation 内的 Schedule、Reminder 与后续跟进能力；
 - 保持这些改造尽可能 additive，并在 Noting 不生效时最大限度恢复 Hermes 自己的已知行为。
@@ -101,7 +101,9 @@ physical Session -> Conversation : single-valued
 
 ## 2.2 History Search：独立于 Noting 的基础能力
 
-History Search 是 Hermes Secretary 对每条 main Conversation 提供的基础能力，不是 Noting 的附属工具。
+History Search 是通用的一等只读工具，与原生 read 对齐工具注册、配置选择、Agent 模板、权限分类和可用性规则；不是 Noting 的附属工具，也不只供 main Conversation 使用。它通过正常工具配置提供，遵守模板和工具限制，不通过 Secretary 接缝强制注入或绕过关闭配置。
+
+它既能检索当前未压缩段的真实历史，也能跨压缩读取已归档历史，用于 Agent 主动召回与注意力补充，并非只查上一次 compaction。Cron、Dreaming、Skill 打磨及 Subagent 可按与 read 相同的正常配置规则使用它，但不会因此获得 Notebook 或 Noting；读取仍限于该 runtime 已获授权的历史范围。
 
 它始终读取 **History Foreground**：
 
@@ -113,11 +115,11 @@ History Search 是 Hermes Secretary 对每条 main Conversation 提供的基础�
 
 已有 History Search 工具契约继续有效，包括 search/read、keyword/regex、role filter、bounded history/time-range read，以及围绕 Message Identity 的前后读取。
 
-无论 Noting 全局或 Conversation-local 状态是否关闭，History Search 都继续存在。
+History Search 的配置与可用性独立于 Noting 全局及局部开关；是否暴露遵循与 read 相同的普通工具配置和 Agent 模板规则。
 
 ## 2.3 Session Notebook
 
-每条 Conversation 恰好拥有一份 current Notebook working state。
+只有直接与用户交流的 main Conversation 拥有 Notebook / Noting System；每条这样的 Conversation 恰好拥有一份 current Notebook working state。Cron Task、Dreaming、Skill 打磨、通用 Subagent 等后台或辅助 runtime 不参与该系统，全局配置 on/off 均不改变这一资格边界，其工具列表绝不出现 notebook_show。专用 Noting Runtime 仅维护所属主 Conversation 的 Notebook，不为自己创建独立 Notebook。
 
 Notebook 使用四区十类型：
 
@@ -145,19 +147,19 @@ Notebook 不是 mutable master JSON。每次成功 Noting 提交完整 immutable
 
 主 Assistant：
 
-- 可以在 Noting 对当前 Conversation effective enabled 时使用只读 `notebook show`；
-- `notebook show` 返回完整结构化 Notebook JSON；
+- 在直接与用户交流的主会话资格成立且全局 noting.enabled=true 时获得只读 notebook_show；局部 Noting on/off 不影响该工具的暴露或已有 Notebook 的读取；
+- `notebook_show` 返回完整结构化 Notebook JSON；
 - 永远不获得 Notebook mutation tools。
 
 人类通过 Slash Command 使用：
 
 ```text
 /notebook
-/notebook on
-/notebook off
+/noting on
+/noting off
 ```
 
-裸 `/notebook` 面向人类展示 current Notebook 的可读投影，并显示该 Snapshot 的 timestamp。Conversation-local `/notebook off` 不删除已有 Notebook；当全局 Noting 仍开启时，裸 `/notebook` 仍可查看已有 Snapshot，pointer 为空则明确报错。
+裸 `/notebook` 面向人类展示 current Notebook 的可读投影，并显示该 Snapshot 的 timestamp；结果沿用正常 Hermes 历史语义，AI 也能看到。/noting on、/noting off 只控制当前主 Conversation 的后台 Noting 参与状态，不改变主 Assistant 工具 schema。Conversation-local `/noting off` 不删除已有 Notebook；当全局 Noting 仍开启时，裸 `/notebook` 仍可查看已有 Snapshot，pointer 为空则明确报错。
 
 ## 2.4 Noting
 
@@ -262,11 +264,11 @@ Conversation-local 状态持久化在 Secretary 自己的 state 中。
 - 不执行 Notebook mutation；
 - Notebook Schedule 不参与 due processing；
 - 不产生 Noting-owned Reminder delivery；
-- main Assistant 不暴露 `notebook show`。
+- 后台行为门禁不改变主 Assistant 的 Notebook 只读工具面；notebook_show 只由主会话资格和全局配置决定。
 
 History Search 不受影响。
 
-在全局 Noting 开启但当前 Conversation 被 `/notebook off` 的情况下，bare `/notebook` 仍然允许人类查看已有 Snapshot；它不是 main Assistant 的 tool capability。
+在全局 Noting 开启但当前主 Conversation 局部 Noting 关闭时，人类 /notebook 和 AI notebook_show 都仍可读取已有 Snapshot。后台 Noting、Schedule 和 Reminder 的有效门禁继续按 02；读取权限不再使用这个局部门禁。
 
 除此之外，Secretary 不应为该 Conversation 引入新的行为差异。与 Hermes 全局配置存在的少数已知冲突，只在相关 Noting 能力启用时按 02 的规则处理。
 
@@ -327,8 +329,8 @@ Frontend / API 的更大范围增量 contract 仍保持 Open。本轮只实现�
 2. immutable Snapshot + current pointer；
 3. 四区十类型 semantic model；
 4. Noting-only semantic mutation tools；
-5. main Assistant `notebook show`；
-6. `/notebook`、`/notebook on|off`；
+5. main Assistant `notebook_show`；
+6. `/notebook`、`/noting on`、`/noting off`；
 7. branch/rewind/edit pointer reconciliation。
 
 ## Phase 3 — Noting runtime
@@ -376,9 +378,9 @@ Frontend / API 的更大范围增量 contract 仍保持 Open。本轮只实现�
 | 能力 | 最低验收结果 |
 |---|---|
 | Conversation Identity | 一个 Conversation 在 compression rotation、普通继续以及未来新增 declared session-key locator 时保持同一 Conversation Ref；branch/reset 创建新 Conversation；identity conflict fail closed。 |
-| History Search | 每条 main Conversation 始终可以通过 History Foreground 跨 Compaction search/read；关闭 Noting 不影响该能力。 |
-| Notebook | 每个 Conversation 有独立 current Notebook；Snapshot immutable；pointer 原子更新；主 Assistant 只读；branch/rewind/edit 后 ownership 与 pointer 正确。 |
-| Noting Enablement | global + Conversation-local 两层 gating 正确；local off 后 `/notebook` 仍可查看已有 Snapshot，而 main Assistant 不再获得 `notebook show`。 |
+| History Search | 与 read 相同的工具配置、模板与只读权限规则生效；当前未压缩历史与跨 Compaction 历史都可 search/read；Noting 开关不控制该能力。 |
+| Notebook | 用户主 Conversation 有独立 current Notebook；Snapshot immutable；pointer 原子更新；主 Assistant 只读；branch/rewind/edit 后 ownership 与 pointer 正确；通用后台与 Subagent 不暴露 Notebook。 |
+| Noting Enablement | global + Conversation-local 两层后台 gating 正确；局部开关不改变主会话工具 schema；global on 时人类 /notebook 与 AI notebook_show 仍能读取已有 Snapshot。 |
 | Idle / Force Noting | 两个 Trigger 均按 02 规则运行；同 Anchor 不重复 admit；不同 Anchor 可以合法并发；Force 与 Hermes compaction 不互相替代。 |
 | Noting Runtime | persistent child、cache parity、narrow dispatch、one-shot lifecycle、commit-time Anchor validation 均正确；失败/崩溃不提交 Snapshot。 |
 | Schedule | Notebook-owned registry 持久化可靠；Noting disabled 时不 fire；restart 后恢复；不创建 Hermes Cron Job。 |

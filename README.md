@@ -24,7 +24,7 @@ Conversation 原文是事实来源，Notebook 是派生工作状态。Secretary 
 
 ## 对话中的 Secretary 命令
 
-这些命令沿用 Hermes 共享 Slash catalog、补全和执行链路，在 CLI、Gateway 与官方 Dashboard Web UI 中使用。
+这些命令沿用 Hermes 共享 Slash catalog、补全和执行链路，在 CLI、Gateway 与官方 Dashboard Web UI 中使用。下表记录当前已实现入口；功能契约与用户确认的命令修订统一查阅 [1.5 轮口径索引](.autonomous/20261008-v1.5-adjustment-and-acceptance/index.md)，实现状态见 [CLAUDE.md](CLAUDE.md)。
 
 | 命令 | 行为 |
 |---|---|
@@ -134,6 +134,8 @@ npm run --workspace apps/desktop check
 | Notebook / Noting 实现规格 | Identity、History、Notebook、Noting、Schedule、Reminder 的权威契约 | [docs/02-noting-system-specification.md](docs/02-noting-system-specification.md) |
 | 协作规则 | 用户规则、冻结约定、上游干扰隔离、文档保护和开发测试 SOP | [AGENTS.md](AGENTS.md) |
 | 当前阶段 | 当前目标、任务看板、已确认口径和验证状态 | [CLAUDE.md](CLAUDE.md) |
+| 首轮状态记录 | 实际交付、独立审查、未验收范围与移交项 | [.autonomous/20261007-v1-first-implementation/final-delivery.md](.autonomous/20261007-v1-first-implementation/final-delivery.md) |
+| 1.5 轮口径索引 | 补充调整的需求来源、文档权限与确认口径 | [.autonomous/20261008-v1.5-adjustment-and-acceptance/index.md](.autonomous/20261008-v1.5-adjustment-and-acceptance/index.md) |
 | 上游贡献指南 | 运行及测试环境准备、现有检查命令的参考，不引入上游协作流程 | [CONTRIBUTING.md](CONTRIBUTING.md) |
 | PM 参考 | 开发激活、依赖及隔离环境管理 | [website/docs/reference/package-management.md](website/docs/reference/package-management.md) |
 | Hermes 架构 | Agent、Gateway、工具与状态层的架构说明 | [website/docs/developer-guide/architecture.md](website/docs/developer-guide/architecture.md) |

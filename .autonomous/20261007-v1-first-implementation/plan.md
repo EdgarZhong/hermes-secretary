@@ -1,5 +1,7 @@
 # 首轮实施计划：20261007-v1-first-implementation
 
+> 本轮已按用户要求结束，以下保留首轮执行与整改历史。实际结束状态见 `final-delivery.md`；剩余项和设计调整移交 1.5 轮，不再按本计划启动任务。
+
 ## 目标与依据
 
 审查入口为本目录 `index.md`；冻结提交 `5346cd094b6a1bb6c6d9ce69e83b3a1570cf46bd` 见 `baseline.txt`。依据是现行 01、02、根 `AGENTS.md` 与索引中的用户确认口径。本文是执行设计，不增加产品要求或公开 API；内部接口名称可由实现者按现有风格调整，跨任务调整先向主会话报告。
@@ -135,6 +137,7 @@ F1 恢复期补充薄接缝白名单：`agent/transcript_repair.py` 正式 CAS r
 | V07 | 02 §4.10/§5.9：110k usage、100k Idle selection、130k Force、147k Auto 选 special，却以 Auto 判 below 而没有 native request | 原 F3：按取舍 S7 的相关阈值闭环；保持实际计量、force=False、native gate/cooldown/fence/receipt。反证 `idle-compact-threshold-probe.log`。 |
 | V08 | 02 §4.8：冻结 head 后记录 attempt，再 skip/dedupe；初审未发现可观察的被跳过记录 | 原 F3：复用既有 logger 记录 attempt 与 skip/dedupe/compaction head 原因、对应正式路径证据；不新增持久表、计数机制或公开 event。 |
 | V09 | 02 §3.10–3.12/§6.17：active admission 已消费Schedule而normal durable user row尚未提交，硬崩溃可能丢一次Reminder | 原active Agent：按S10将canonical user carrier与Schedule finalize放同原生batch事务；三宿主真实native lane在事务前/中/后SIGKILL及重启scan证明无丢失，failed write无SDK/残留，ordinary user负对照；实施证据已由主会话review接收，184不同case，仍待新独立全范围审查。 |
+| V10 | 新独立V2反证：02 §2.4 L348 latest effective root System Prompt provenance 在Full Foreground审计投影缺失；native Session v2/hash存在但Full无来源字段/按需入口 | 待V2完整报告接收后原F1增量：薄复用原生root/hash事实，隔离History/Anchor与Noting上下文，覆盖当前root更新/续接/branch/无root及合法路径证明；不新增Frontend/API层。证据verification-v2/full-root-observation.json、full-root-probe.log；未关闭。 |
 | CI01 | 扩大回归 `6a75369`：legacy schema 缺 model_config、settled reopen 仍写、branch child continuation 被当新branch等9项，另3项Identity提前写库干扰native压缩锁fail-closed（guest synchronous 属既有macOS边界） | F1 增量任务：按 Secretary 新表/native迁移与身份边界修复；旧schema/settled reopen/锁/branch继承正式行为反证，不能改变 core schema/ownership。 |
 | CI02 | 扩大回归：64 provider snapshot、3旧refine、3 no-tools、1reasoning-only、33历史重合与4平台用例 | T5/主会话按原责任分区区分产品回归、旧假设与环境/基线；保留实际 provider wire、cache-parity、enforcement 契约，不盲目重生全部 golden；定向验证。 |
 
