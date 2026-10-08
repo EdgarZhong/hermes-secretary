@@ -75,7 +75,7 @@ def compact_parent_from_child(child: Any) -> str:
     if (not ref or _main_conversation_ref(parent) != ref
             or not noting_trigger_gate(child._session_db, ref)[0]):
         return json.dumps({"success": False, "status": "parent_ownership_or_gate_changed"})
-    result = compact_parent(parent)
+    result = compact_parent(parent, relevant_threshold_tokens=getattr(child, "_secretary_noting_compaction_threshold_tokens", None))
     if result.ok:
         child._secretary_noting_terminal_action_done = True
     return result.as_tool_result()
@@ -99,20 +99,22 @@ def _native_inflight_evidence(parent: Any) -> str:
     return ""
 
 
-def compact_parent(parent: Any, *, wait_seconds: Optional[float] = None) -> CompactParentResult:
+def compact_parent(parent: Any, *, wait_seconds: Optional[float] = None,
+                   relevant_threshold_tokens: Optional[float] = None) -> CompactParentResult:
     """One ``compact_parent`` call against the Parent agent (see module docstring)."""
     compressor = getattr(parent, "context_compressor", None)
     if compressor is None or not hasattr(compressor, "should_compress_info"):
         return CompactParentResult(False, "no_compressor", detail="The Parent has no context compressor")
-    usage, threshold = _reread_usage(compressor)
-    should, reason = compressor.should_compress_info(usage)
-    if not should and reason is None:
+    usage, native_threshold = _reread_usage(compressor)
+    threshold = native_threshold if relevant_threshold_tokens is None else relevant_threshold_tokens
+    if usage < threshold:
         return CompactParentResult(True, "already_below_threshold", usage, threshold)
     inflight = _native_inflight_evidence(parent)
     if inflight:
         return CompactParentResult(True, "already_in_flight", usage, threshold, inflight)
-    if not should:
-        # Cooldown / anti-thrash / structural backoff: never forced (02 §5.9, R14).
+    reason = _native_block_reason(parent)
+    if reason:
+        # Query native guards directly; no invented usage or threshold mutation.
         return CompactParentResult(False, f"blocked:{reason}", usage, threshold)
     messages = getattr(parent, "_session_messages", None)
     if not isinstance(messages, list):
@@ -173,12 +175,23 @@ def _classify_finished_attempt(
     if isinstance(result_messages, list) and result_messages is not messages:
         return CompactParentResult(True, "compacted", usage, threshold)
     compressor = getattr(parent, "context_compressor", None)
-    should, reason = compressor.should_compress_info() if compressor is not None else (False, None)
-    if not should and reason is None:
-        return CompactParentResult(True, "already_below_threshold", usage, threshold)
+    current_usage, _native_threshold = _reread_usage(compressor) if compressor is not None else (usage, 0)
+    if current_usage < threshold:
+        return CompactParentResult(True, "already_below_threshold", current_usage, threshold)
+    reason = _native_block_reason(parent)
     if reason:
         return CompactParentResult(False, f"blocked:{reason}", usage, threshold)
     return CompactParentResult(
         False, "not_admitted", usage, threshold,
         "Still above the compaction threshold and the native lifecycle did not admit the request",
     )
+
+
+def _native_block_reason(parent: Any) -> str:
+    """The same refreshed automatic safety guard the native entry enforces, without token inputs."""
+    from agent.conversation_compression import _automatic_compression_gate_blocks
+
+    if not _automatic_compression_gate_blocks(parent, False):
+        return ""
+    reason = getattr(parent.context_compressor, "_compression_block_reason", None)
+    return (reason() if callable(reason) else None) or "native_guard"

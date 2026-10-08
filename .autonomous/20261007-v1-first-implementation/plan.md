@@ -84,7 +84,7 @@
 - 原集成遗留已分别关闭：F3 接入 messaging housekeeping 与纯 CLI Idle，F1 在 CLI branch/resume 切换后立即重新绑定身份，F2 同事务 reconcile branch Schedule 并将 Reminder wrapper 收敛到已有 `agent.message_metadata` helper。正式路径与失败证据见各任务报告，独立门禁仍需核查全轮。
 - 集成期测试适配（随 MRO 中央接线完成）：7 个测试文件中 "central MRO wiring pending" 的手动 mixin 子类改回普通 `SessionDB`；`tests/tui_gateway/test_tui_gateway_server.py` 两个 toolset 断言由 CONFIGURABLE + `_RECENTLY_SHIPPED_TOOLSETS` 登记处置。
 
-初始可回退快照为冻结提交 `5346cd094b6a1bb6c6d9ce69e83b3a1570cf46bd`。后续主会话在review后的集成节点本地提交，准确声明已验证范围与剩余项；`baseline.txt`始终保留初始文档基线。索引/一级02不可随实现设计漂移；发现要求变更走授权流程，执行设计调整只影响本文与根CLAUDE。首批定向功能测试已有证据，定位见根CLAUDE；恢复期真实 Proxy 模型链路与各任务定向证据已产生；当前完整集成版本的扩大检查及两个独立门禁待执行，未部署/发布。
+初始可回退快照为冻结提交 `5346cd094b6a1bb6c6d9ce69e83b3a1570cf46bd`。后续主会话在review后的集成节点本地提交，准确声明已验证范围与剩余项；`baseline.txt`始终保留初始文档基线。索引/一级02不可随实现设计漂移；发现要求变更走授权流程，执行设计调整只影响本文与根CLAUDE。首批定向功能测试已有证据，定位见根CLAUDE；恢复期真实 Proxy 模型链路与各任务定向证据已产生；当前完整集成版本扩大检查已产生失败、初次独立 Verification 有阻断；修复与复审、Validation 待完成，未部署/发布。
 
 
 ### 2026-10-08 恢复基线复核：增量修复契约
@@ -121,3 +121,38 @@ T5 已批准的必要共享接缝：`gateway/run_turn_runner.py` 精确删除旧
 - 取舍-S6（A27，Persistence 提议）：当前未 archived 的候选进入提议；已不在当前 History Foreground 的来源标 unavailable，要求不推广缺少原文支持的候选。依据候选审查/explicit approval与History当前有效路径，保留历史Snapshot，不把过时来源重新放回current path。
 
 F1 恢复期补充薄接缝白名单：`agent/transcript_repair.py` 正式 CAS rewrite 的可选 before_rewrite callback，以及 `hermes_state_maintenance.py` 原生 prune 事务中的存活 branch raw 版本保护。`run_agent.py::_ensure_db_session`由主会话接新born hook；`agent/system_prompt.py`由主会话执行 T6 少量稳定文本。其他白名单不扩大。
+
+### 独立 Verification 首轮发现（待审 `6a75369`）
+
+| 编号 | 条款与真实触发 | 整改完成条件 / 证据 / 负责人 |
+|---|---|---|
+| V01 | 02 §3.9–3.10、§4.3、§6.3/6.9/6.17：active scan/claim后 local-off、取消或 lease过期并reclaim；Gateway仅route校验、TUI直接旧claim提交，仍启动旧User Reminder Turn | `fix_active_reminder`：在现有admission正式关口重查effective gate和当前claim/occurrence/state/expiry，无效不发Turn、不推进错误schedule；合法idle、busy→passive、重试/off-on保持。独立反证三项失败见 `.hermes-dev/evidence/verification/active-claim-probe.log`。扩大suite已结束；原Agent从中断续接，白名单及阅读契约已精确派遣。 |
+| V02 | 02 §4.6/§6.6：真实 Hermes 128k/96k 产生 Force62k；400k/250k 产生 reserve180k；两个 capability failure 仍启用/advertise Notebook | 原 F3：消费实际已解析窗口/阈值，在真实 main 启用、工具面、trigger、Schedule 路径 fail closed，并给规定提高窗口/减少 reserve 的指导。反证 `config-contract-probe.log`、`config-reserve-probe2.log`。 |
+| V03 | 02 §4.12：global Noting 开启与 idle_compact_after_seconds=300 并存 | 原 F3：现有配置验证及 runtime conflict 防护，local-off 不改全局配置；与两类 Force failure 分开诊断。 |
+| V04 | 02 §5.6/§6.5：真实 user 输入以 wrapper/timestamp 字面量开头，wire/durable 缺少真实 arrival timestamp | 原 F3：仅宿主可信 synthetic 来源可保留内嵌 source stamp；真实文本始终添加实际到达 stamp。反证 `timestamp-origin-probe.log`。 |
+| V05 | 02 §3.6/§6.14：已存在 Notebook rendering 不可作为 fresh evidence 重复入账，缺必要实证 | 原 F3：已有 Noting task suffix 明确派生渲染规则，必要真实模型以既有 entry＋渲染＋无关新 Anchor 验证不会重复生成。 |
+| V06 | 02 §3.10–3.12/§4.5：纯 CLI queue-empty tick 只有 Noting，没有完整 Schedule/Reminder 入口 | 原 active Agent：既有 REPL Idle 与 busy monitor tick、原正式输入 lane，active native admission 与 passive request/ACK，关闭与重试边界。 |
+| V07 | 02 §4.10/§5.9：110k usage、100k Idle selection、130k Force、147k Auto 选 special，却以 Auto 判 below 而没有 native request | 原 F3：按取舍 S7 的相关阈值闭环；保持实际计量、force=False、native gate/cooldown/fence/receipt。反证 `idle-compact-threshold-probe.log`。 |
+| V08 | 02 §4.8：冻结 head 后记录 attempt，再 skip/dedupe；初审未发现可观察的被跳过记录 | 原 F3：复用既有 logger 记录 attempt 与 skip/dedupe/compaction head 原因、对应正式路径证据；不新增持久表、计数机制或公开 event。 |
+| V09 | 02 §3.10–3.12/§6.17：active admission 已消费Schedule而normal durable user row尚未提交，硬崩溃可能丢一次Reminder | 原active Agent：按S10将canonical user carrier与Schedule finalize放同原生batch事务；三宿主真实native lane在事务前/中/后SIGKILL及重启scan证明无丢失，failed write无SDK/残留，ordinary user负对照；实施证据已由主会话review接收，184不同case，仍待新独立全范围审查。 |
+| CI01 | 扩大回归 `6a75369`：legacy schema 缺 model_config、settled reopen 仍写、branch child continuation 被当新branch等9项，另3项Identity提前写库干扰native压缩锁fail-closed（guest synchronous 属既有macOS边界） | F1 增量任务：按 Secretary 新表/native迁移与身份边界修复；旧schema/settled reopen/锁/branch继承正式行为反证，不能改变 core schema/ownership。 |
+| CI02 | 扩大回归：64 provider snapshot、3旧refine、3 no-tools、1reasoning-only、33历史重合与4平台用例 | T5/主会话按原责任分区区分产品回归、旧假设与环境/基线；保留实际 provider wire、cache-parity、enforcement 契约，不盲目重生全部 golden；定向验证。 |
+
+初次独立审查已完整接收，钉住6a75369；V09追加自主会话review，不改写旧报告。修复后全新独立审查者重新提取全轮要求再复核旧发现，不用局部测试代替门禁。
+
+
+- 取舍-S7（A27，Idle relevant threshold）：special child 使用触发时被冻结的实际 Idle selection threshold；Force成功后按配置直接请求 Parent compaction 时使用 Force threshold。依据 §4.10 不要求 Idle/Force/Auto 排序、§5.9 的 relevant threshold；否则低于 Auto 的合法 special profile 会空成功。继续消费真实 Hermes usage，并保留 force=False、原生 gate/cooldown/锁/fence 与 admission receipt；不回馈或改变 native Auto 公式。
+- 取舍-S8（A27，cold Schedule capability）：复用原生配置解析与 ContextCompressor 构造，解析正确 profile / 当前 route 的 model/provider/runtime，得到 Hermes 已解析窗口及阈值；已有 main binding 优先。仅能力解析 sibling，无 SDK 请求、Agent Loop、root prompt 或持久阈值状态。过程缓存必须对 DB/ref/tip/generation/model/provider/配置变化失效，未知 fail closed，合法重启后 due 能通过实际 native admission。
+
+
+- 取舍-S9（A27，用户输入来源）：保留 native live user content 清洁语义，真实新输入只在 wire/durable 添加 source stamp；受信 fresh timestamp witness 使用已有 persistence-only message metadata，trusted synthetic 使用内部 str 类型与可选 source_timestamp，serialized 仍为普通字符串。现有 CLI/Gateway/TUI 清洗末端薄保留来源，普通字符串即使完整伪造相同 wrapper/marker 也不能被当作受信输入；resume/replay 既有历史不改写。不增加 DB schema、RPC/DTO、公开 event 或通用来源框架。
+
+V01 追加正式接线边界：Gateway既有 native busy 分支转换Secretary reminder为pending，不走人类 interrupt/queue；路由/preparation拒绝按窄receipt CAS恢复due。pure CLI复用已有queue-empty Idle与busy monitor、正式输入lane；不同宿主的 cold restart 证据分别记录，不用Gateway结果外推TUI/CLI。
+
+- CI01/F05/F06实施证据已由主会话review接收：ci-state/handoff.md，原12失败最终定向全通过；6所有权＋15依赖hash一致。V02–V05/V07/V08实施证据已接收：v02-v03/report.md，112不同case及最终Slash9通过；两Force边界/idle冲突/cold解析/来源/compact/attempt正式链路已核。CI02实施证据已接收：ci-requests/report.md，120不同case，117逐项归因、109skip来源完成。上述是实施接收，独立门禁仍待全轮复审。
+- 取舍-S10（A27，active durable input与Schedule同事务）：§3.12接受后走normal durable transcript，§3.10不丢失并支持重启；主动路径消费以正常user carrier持久化为证据，被动§3.11仍用provider成功响应ACK。复用append_messages_batch默认None的可选before_commit callback，canonical row和existing schedule_finalize_conn同原write txn；仅内部typed admission witness携带权利，普通str/JSON不能构造。仅此active输入在可能写库/SDK的native preflight compaction前required earlyflush；失败沿既有partial-result路径保留旧history且无SDK，无未提交staging残留。原普通用户best-effort行为不变，不新增outbox/receipt持久状态、ACK/renewal、loop、输入gate或压缩机制。
+- S10新增白名单：agent/turn_context.py existing early-persist/build context，agent/session_persistence.py::_db_flush_write，hermes_state_messages.py::append_messages_batch，agent/message_metadata.py typed witness preserve，agent/conversation_loop.py build_turn_context既有异常结果接点；原active Agent串行修改F3已交回metadata薄接缝，必要定向回归保留fresh source/cache契约。实际02必读§3.10–3.12（895–1027）、§4.3（1074–1095）、§5.6（1435–1521）、§6.8–6.10（1765–1812）、§6.17（1891–1905），以章节名与当前1978行版双定位。
+
+- S10恢复标记补接：tui_gateway/prompt_turn.py既有_record_turn_marker点仅凭typed active witness设置原生auto_continue=False，防止JSON序列化丢失内部授权后重放旧Reminder并绕过Schedule gate；普通输入不变，无新marker字段/恢复协议。事务前崩溃由原due scanner重新校验，事务后native user row保留；三host实际marker边界纳入V09故障证据。
+
+- V01/V06/V09实施接收：v01/report.md＋manifest（9028e00e81292ebb9b0729503e249e756b0f41dbcfba99c935fa3fd61f25e75a），23所有权/15依赖/6当前证据核对一致；184不同case通过、23文件Ruff/health无阻断提示。unknown COMMIT曾出现重复插入，现按真正canonical user UID/content/source epoch和settlement proof采用native marker，最终唯一carrier；不靠候选row_id或内存标志证明成功。三宿主SQL前/中/COMMIT后硬崩溃及真实fresh process scan、TUI marker off/cancel、普通input best-effort均取证。本轮不承诺active模型回应与DB分布式原子性。

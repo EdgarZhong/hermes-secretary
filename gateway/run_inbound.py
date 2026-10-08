@@ -1286,6 +1286,7 @@ class GatewayInboundMixin(GatewayPluginInjectionMixin):
         """Handle an incoming message from any platform: auth → command check → running-agent
         interrupt → get/create session → build context → run agent → return response."""
         from gateway.run import _AGENT_PENDING_SENTINEL
+        from gateway.secretary_reminders import admit_secretary_reminder_event, finish_secretary_reminder_event, handle_running_reminder_event
         _admitted = await self._hm_admit_event(event)
         if _admitted is None:
             return None
@@ -1293,14 +1294,8 @@ class GatewayInboundMixin(GatewayPluginInjectionMixin):
         if not is_internal:
             from hermes_cli.observability.shared_metrics_events import record_gateway_slash_command
             record_gateway_slash_command(event)
-        # TERMINAL-DECLINE LATCH TEARDOWN. Deliberately placed AFTER admission,
-        # not on the adapter's raw inbound: profile routing, the ignored-channel
-        # guard, plugin hooks and user authorization all reject events above,
-        # and a rejected event must not be able to clear a refusal belonging to
-        # an active turn. This is also the single entry point every lane shares
-        # — Discord interaction passthrough builds its own MessageEvent and
-        # calls handle_message directly, so a teardown on the relay's inbound
-        # handler left those turns muted.
+        # Teardown follows authorization/admission; rejected traffic cannot clear an active refusal.
+        # All entry lanes (including Discord passthrough) share this guard.
 
         _paused_notice = self._hm_estop_gate(event, source, is_internal)
         if _paused_notice is not None:
@@ -1316,7 +1311,7 @@ class GatewayInboundMixin(GatewayPluginInjectionMixin):
         if self._is_session_running(_quick_key):
             self._hm_evict_reaped_agent(_quick_key)
         if self._is_session_running(_quick_key):
-            return await self._hm_handle_running_session_message(event, source, _quick_key)
+            return await handle_running_reminder_event(self, event, source, _quick_key)
 
         _handled, _result = await self._hm_dispatch_idle_commands(event, source, _quick_key)
         if _handled:
@@ -1359,6 +1354,8 @@ class GatewayInboundMixin(GatewayPluginInjectionMixin):
         _run_generation = self._begin_session_run_generation(_quick_key)
 
         try:
+            if not admit_secretary_reminder_event(self, event):
+                return None
             if not is_internal:  # fail-open plugin consume, inside the claimed slot (#129958)
                 from gateway.run_inbound_consumer import run_post_admission_hook
                 _consumed, _consumer_reply = await run_post_admission_hook(self, event, source, _quick_key)
@@ -1366,6 +1363,7 @@ class GatewayInboundMixin(GatewayPluginInjectionMixin):
                     return _consumer_reply
             try:
                 _agent_result = await self._handle_message_with_agent(event, source, _quick_key, _run_generation)
+                event._secretary_turn_completed = bool(getattr(event, "_heartbeat_execution_started", False))
             except TurnLeaseTimeoutError as exc:
                 # A rejected message, not a completed turn: return before the /goal judge so it
                 # cannot consume the resend notice and enqueue a synthetic continuation loop.
@@ -1384,6 +1382,8 @@ class GatewayInboundMixin(GatewayPluginInjectionMixin):
                 logger.debug("post-turn hook failed: %s", _goal_exc)
             return _agent_result
         finally:
+            with suppress(Exception):
+                finish_secretary_reminder_event(event)
             # One-shot restore (/moa, /model --once) must run on EVERY exit path (success,
             # exception, interrupt); the generation guard makes a displaced turn's finalizer a no-op.
             self._restore_pending_one_turn_model_override(_quick_key, _run_generation)

@@ -16,6 +16,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from hermes_state import SessionDB
+from agent.message_metadata import build_noting_task_wrapper
 from hermes_state_secretary_notebook import init_secretary_notebook_schema
 from hermes_state_secretary_noting import init_secretary_noting_schema
 from secretary.notebook_model import SECTIONS
@@ -126,7 +127,7 @@ def test_child_persists_only_the_suffix_and_not_the_parent_prefix(parent, db, st
     child = build_noting_child(parent, runtime_profile="NOTING", parent_conversation_ref=parent._secretary_conversation_ref)
     try:
         result = child.run_conversation(
-            user_message="<noting-task>\n<timestamp>2026-10-07T21:34:18+08:00</timestamp>\nMaintain the Notebook.\n</noting-task>",
+            user_message=build_noting_task_wrapper("Maintain the Notebook.", timestamp=1791370458),
             conversation_history=prefix, title_user_message="",
         )
         assert result["completed"] is True
@@ -212,7 +213,8 @@ def test_special_profile_advertises_compact_parent_and_reuses_the_same_child(par
     ]
     # Below the threshold: the native verdict is "no compaction required" -> terminal action done.
     parent.context_compressor.last_prompt_tokens = 10
-    parent.context_compressor.threshold_tokens = 100_000
+    parent.context_compressor.context_length = 196_000
+    parent.context_compressor.threshold_tokens = 147_000
     child = build_noting_child(parent, runtime_profile="NOTING_WITH_COMPACTION",
                                parent_conversation_ref=parent._secretary_conversation_ref)
     try:
@@ -223,7 +225,7 @@ def test_special_profile_advertises_compact_parent_and_reuses_the_same_child(par
         assert noting_dispatch_block(child, "compact_parent") is None
         prefix = freeze_parent_active_prefix(parent, "m2")
         result = child.run_conversation(
-            user_message="<noting-task>\n<timestamp>x</timestamp>\nwork\n</noting-task>",
+            user_message=build_noting_task_wrapper("work", timestamp=2000),
             conversation_history=prefix, title_user_message="",
         )
         assert result["completed"] is True
@@ -291,7 +293,8 @@ def test_dispatch_freezes_prefix_runtime_before_worker(parent, db, stub_client, 
     monkeypatch.setattr(noting_child, "run_noting_task", held)
     stub_client.chat.completions.create.side_effect = _read_then_mutate_responses()
     admission_id = db.noting_admit(parent._secretary_conversation_ref, "m2", kind="force")
-    admission = NotingAdmission(admission_id, parent._secretary_conversation_ref, "m2", "force", None, "NOTING")
+    admission = NotingAdmission(admission_id, parent._secretary_conversation_ref, "m2", "force", None, "NOTING",
+                               compaction_threshold_tokens=100000)
     worker = noting_child.spawn_noting_task(parent, admission)
     assert entered.wait(timeout=5)
     parent._session_messages.clear()
@@ -300,6 +303,7 @@ def test_dispatch_freezes_prefix_runtime_before_worker(parent, db, stub_client, 
     release.set()
     worker.join(timeout=15)
     assert captured["frozen_runtime"]["parity"]._cached_system_prompt == "You are helpful."
+    assert captured["frozen_runtime"]["noting_compaction_threshold_tokens"] == 100000
     assert [row["message_uid"] for row in captured["parent_active_messages"]] == ["m1", "m2"]
     assert db.noting_child(admission_id)["status"] == "completed"
 
@@ -370,8 +374,9 @@ def test_special_profile_admitted_compaction_precedes_snapshot(parent, db, stub_
 
     release, summarizing = threading.Event(), threading.Event()
     parent._compression_feasibility_checked = True
-    parent.context_compressor.last_prompt_tokens = 500_000
-    parent.context_compressor.threshold_tokens = 100_000
+    parent.context_compressor.last_prompt_tokens = 110_000
+    parent.context_compressor.context_length = 196_000
+    parent.context_compressor.threshold_tokens = 147_000
     def summary(*args, **kwargs):
         summarizing.set()
         release.wait(timeout=10)
@@ -382,9 +387,13 @@ def test_special_profile_admitted_compaction_precedes_snapshot(parent, db, stub_
         id="compact", type="function", function=SimpleNamespace(name="compact_parent", arguments="{}"))]))
     stub_client.chat.completions.create.side_effect = responses
     admission = db.noting_admit(parent._secretary_conversation_ref, "m2", kind="idle")
+    from secretary.noting_child import freeze_parent_runtime
+    frozen = freeze_parent_runtime(parent)
+    frozen["noting_compaction_threshold_tokens"] = 100_000
     try:
         outcome = run_noting_task(parent, admission_id=admission, conversation_ref=parent._secretary_conversation_ref,
                                   anchor_message_uid="m2", trigger_type="idle", runtime_profile="NOTING_WITH_COMPACTION",
+                                  frozen_runtime=frozen,
                                   task_instruction="Maintain Notebook then compact_parent")
         assert outcome.committed and summarizing.is_set()
         assert not release.is_set()

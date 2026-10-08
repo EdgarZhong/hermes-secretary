@@ -799,8 +799,9 @@ def _invoke_agent(
     _usage_stop, _usage_thread = _start_usage_ticker(sid, agent)
     try:
         from agent.notification_presentation import notification_turn, event_presentation_muted
+        from agent.message_metadata import preserve_user_input_origin
         with notification_turn(agent, muted=event_presentation_muted("message.delta", sid), session_id=sid):
-            st.result = agent.run_conversation(run_message, **st.run_kwargs)
+            st.result = agent.run_conversation(preserve_user_input_origin(text, run_message), **st.run_kwargs)
     finally:
         # Stop AND join before anything emits: a tick surviving past message.complete would
         # roll the client's usage back to a stale snapshot (unbounded join: same worst case).
@@ -1161,7 +1162,9 @@ def _run_prompt_submit(
         st = _TurnRun(
             session["agent"], session.pop("one_turn_model_restore", None), terminal_callback,
             receipt_committed=terminal_callback is None)
-        st.marker_key = _record_turn_marker(session, text, auto_continue=terminal_callback is None,
+        from secretary.reminders import active_delivery_auto_continue
+        st.marker_key = _record_turn_marker(session, text,
+            auto_continue=active_delivery_auto_continue(text, terminal_callback is None),
             notification_category=(display_metadata or {}).get("notification_category"))
         goal_followup = None
         try:

@@ -29,7 +29,10 @@ def db(tmp_path):
 
 @pytest.fixture
 def ref(db):
-    return db.resolve_conversation_ref("s1", ("test", "peer", 0))
+    ref = db.resolve_conversation_ref("s1", ("test", "peer", 0))
+    from tests.secretary.reminder_runtime import bind_reminder_runtime
+    bind_reminder_runtime(db, ref, "s1")
+    return ref
 
 
 def iso(offset_seconds):
@@ -153,6 +156,8 @@ def test_conversation_local_off_skips_scan_and_reenable_delivers_once(tmp_path):
         db._execute_write(init_secretary_notebook_schema)
         db.create_session("s1", source="test", session_key="peer")
         ref = db.resolve_conversation_ref("s1", ("test", "peer", 0))
+        from tests.secretary.reminder_runtime import bind_reminder_runtime
+        bind_reminder_runtime(db, ref, "s1")
         state = NotebookWorkingState(ref)
         entry = state.create("user_reminder", {"message": "call the bank"})
         state.schedule_create(entry["entry_id"], "every 1h")

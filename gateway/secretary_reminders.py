@@ -120,6 +120,64 @@ def _claim_store(db, profile):
     )
 
 
+def _prime_owner_runtime(runner, db, conversation_ref, route, source):
+    """Read capability from the target's existing main Agent or native cold runtime resolver."""
+    from gateway.run_agent_cache import _first_agent
+    from hermes_cli.config import load_config_readonly
+    from hermes_cli.config_read_errors import FailedConfigRead
+    from secretary.noting_capability import prime_cold_main_capability
+    from secretary.noting_policy import configuration_guidance, noting_settings_from_config
+    from secretary.noting_scope import bind_main_runtime, owning_db_scope
+
+    with owning_db_scope(db):
+        config = load_config_readonly()
+        settings = noting_settings_from_config(config)
+        if settings.configuration_failure:
+            logger.warning("%s", configuration_guidance(settings.configuration_failure))
+        if (isinstance(config, FailedConfigRead) or not settings.enabled
+                or not db.notebook_local_enabled(conversation_ref)):
+            return False
+        key = str(route.get("session_key") or "")
+        model, runtime = runner._resolve_session_agent_runtime(source=source, session_key=key, user_config=config)
+        lock = getattr(runner, "_agent_cache_lock", None)
+        with lock if lock is not None else contextlib.nullcontext():
+            parent = _first_agent((getattr(runner, "_agent_cache", None) or {}).get(key))
+        fields = ("provider", "base_url", "api_mode", "max_tokens")
+        matches = parent is not None and all(
+            (getattr(parent, name, None) or "") == (runtime.get(name) or "") for name in fields)
+        if (matches and getattr(parent, "model", None) == model
+                and getattr(parent, "_secretary_conversation_ref", None) == conversation_ref
+                and str(getattr(parent, "session_id", "")) == route["id"]
+                and Path(getattr(getattr(parent, "_session_db", None), "db_path", "")).resolve()
+                == Path(db.db_path).resolve()):
+            return bind_main_runtime(parent)
+        return prime_cold_main_capability(db, conversation_ref, model, runtime)
+
+
+async def _prime_due_capabilities(runner, db, profile, home):
+    """Resolve cold capability on the existing due-scan tick after proving runtime ownership."""
+    from secretary import reminders, schedules
+
+    rows = await _run_blocking(runner, schedules.due_rows, db, profile=profile)
+    seen = set()
+    for row in rows:
+        ref = row["conversation_ref"]
+        if ref in seen:
+            continue
+        seen.add(ref)
+        route = reminders.active_route(db, ref)
+        source = _proven_source(runner, route, ref, db, profile, home) if route else None
+        if source is None:
+            continue
+        try:
+            async with _delivery_scope(home):
+                await _run_blocking(runner, _prime_owner_runtime, runner, db, ref, route, source)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.debug("Secretary target runtime unavailable for %s; deferring its Schedule", ref, exc_info=True)
+
+
 async def scan_due_secretary_schedules(runner) -> int:
     """Claim and dispatch every due occurrence; returns the number dispatched this pass."""
     dispatched = 0
@@ -127,6 +185,7 @@ async def scan_due_secretary_schedules(runner) -> int:
         db = None
         try:
             db = _acquire_db(home)
+            await _prime_due_capabilities(runner, db, profile, home)
             claims = await _run_blocking(runner, _claim_store, db, profile)
         except asyncio.CancelledError:
             if db is not None:
@@ -244,17 +303,84 @@ async def _deliver_active_claim(runner, db, claim, profile, home) -> None:
                 await _run_blocking(runner, _release, db, claim)
                 return
             await adapter.handle_message(event)
-        # The busy gate finalizes the claim itself when it converted the occurrence; a still-owned
-        # claim means the ingress accepted the Turn.
-        if getattr(event, "_gateway_accepted", False) is True:
-            await _run_blocking(runner, secretary_reminders.finalize_claim, db, claim)
-        else:
+        # Adapter ACK reserves its dispatch task only. The native Gateway admission below
+        # consumes the claim; expiry/cancellation before that point must still refuse the Turn.
+        if getattr(event, "_gateway_accepted", False) is not True:
             await _run_blocking(runner, _release, db, claim)
     except Exception as exc:
         logger.warning("Secretary active reminder delivery failed for %s: %s", claim.get("schedule_id"), exc,
                        exc_info=True)
         with contextlib.suppress(Exception):
             await _run_blocking(runner, _release, db, claim)
+
+
+async def handle_running_reminder_event(runner, event, source, session_key):
+    """The adapter's idle task may reach the runner after another Turn wins its native slot."""
+    if convert_busy_reminder_event(runner, event):
+        return None
+    return await runner._hm_handle_running_session_message(event, source, session_key)
+
+
+def _event_claim(event):
+    reminder = (getattr(event, "metadata", None) or {}).get("secretary_user_reminder")
+    if not reminder:
+        return None
+    return {"conversation_ref": reminder.get("conversation_ref"), "schedule_id": reminder.get("schedule_id"),
+            "claim_token": reminder.get("claim_token"), "next_run_at": reminder.get("source_timestamp")}
+
+
+def admit_secretary_reminder_event(runner, event):
+    """Narrow policy at the existing Gateway slot/sentinel admission, after all ingress awaits."""
+    claim = _event_claim(event)
+    if claim is None:
+        return True
+    from secretary import reminders
+    home = Path(runner._resolve_profile_home_for_source(event.source))
+    profile = next((name for name, served_home in _profile_homes(runner)
+                    if Path(served_home).resolve() == home.resolve()), None)
+    db = _acquire_db(home)
+    try:
+        expected = str((event.metadata or {}).get("gateway_session_id") or "")
+        route = reminders.active_route(db, claim["conversation_ref"])
+        source = _proven_source(runner, route, claim["conversation_ref"], db, profile, home) if route else None
+        if source is None or not _prime_owner_runtime(runner, db, claim["conversation_ref"], route, source):
+            reminders.release_claim(db, claim)
+            return False
+        receipt = reminders.admit_active_reminder(
+            db, claim, session_id=expected,
+            route_validator=lambda route: _proven_source(runner, route, claim["conversation_ref"], db, profile, home)
+            is not None,
+        )
+        if receipt is None:
+            reminders.release_claim(db, claim)
+            return False
+        event.text = receipt["resolved"]["text"]
+        event._secretary_admission_receipt = (home, receipt)
+        return True
+    except Exception:
+        with contextlib.suppress(Exception):
+            reminders.release_claim(db, claim)
+        raise
+    finally:
+        _release_db(db)
+
+
+def finish_secretary_reminder_event(event):
+    """Restore a failed native invoke only while its admission receipt still owns settlement."""
+    owned = getattr(event, "_secretary_admission_receipt", None)
+    if owned is None:
+        return
+    from secretary import reminders
+    home, receipt = owned
+    db = _acquire_db(home)
+    try:
+        reminders.recover_active_reminder(db, receipt)
+    except Exception:
+        logger.warning("Secretary active admission recovery failed for %s", receipt["before"]["schedule_id"],
+                       exc_info=True)
+        raise
+    finally:
+        _release_db(db)
 
 
 def convert_busy_reminder_event(runner, event) -> bool:

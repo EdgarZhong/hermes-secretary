@@ -79,7 +79,10 @@ def _init_repo(path, first_commit):
     (path / "main.py").write_text("print(1)\n")
     subprocess.run(["git", "add", "-A"], cwd=path, check=True)
     subprocess.run(["git", "commit", "-qm", first_commit], cwd=path, check=True)
-    return path
+    # Git/workspace probes canonicalize their root. On macOS /var is a symlink
+    # to /private/var; use the same real directory for the launch/persisted cwd
+    # fixture so byte-equal pin assertions test one workspace across rebuilds.
+    return path.resolve()
 
 
 

@@ -17,6 +17,12 @@ import tui_gateway.session_notifications as sn
 from hermes_state import SessionDB
 from hermes_state_secretary_schedule import init_secretary_schedule_schema, schedule_sync_conn
 from tui_gateway.session_lifecycle import _session_turn_admission
+from tests.secretary.test_noting_surface import _agent, _requests, runtime as _native_runtime
+
+
+@pytest.fixture
+def native_runtime(tmp_path, monkeypatch):
+    yield from _native_runtime.__wrapped__(tmp_path, monkeypatch)
 
 
 def iso(offset_seconds):
@@ -32,6 +38,9 @@ class _Submitter:
 
     def __call__(self, rid, sid, session, text, **kwargs):
         self.calls.append((sid, text))
+        if self.result:
+            from tests.secretary.reminder_runtime import persist_native_carrier
+            persist_native_carrier(session["agent"]._session_db, session["agent"].session_id, text)
         session["running"] = False  # a completed turn releases the claim
         return self.result
 
@@ -42,7 +51,8 @@ def tui_env(tmp_path, monkeypatch):
     db._execute_write(init_secretary_schedule_schema)
     db.create_session("s1", source="test", session_key="peer")
     ref = db.resolve_conversation_ref("s1", ("test", "peer", 0))
-    agent = SimpleNamespace(session_id="s1", _secretary_conversation_ref=ref)
+    from tests.secretary.reminder_runtime import bind_reminder_runtime
+    agent = bind_reminder_runtime(db, ref, "s1")
     session = {"session_key": "peer", "history_lock": threading.RLock(), "running": False, "agent": agent}
     monkeypatch.setattr(sn, "_session_db", lambda session: contextlib.nullcontext(db), raising=False)
     monkeypatch.setattr(sn, "_session_turn_admission", _session_turn_admission, raising=False)
@@ -53,6 +63,9 @@ def tui_env(tmp_path, monkeypatch):
 
 
 def arm_due(db, ref, *, semantics="user_reminder", text="ping the user", entry_id="entry_1"):
+    if semantics == "user_reminder":
+        from tests.secretary.reminder_runtime import arm_native_reminder
+        return arm_native_reminder(db, ref, {"kind": "once", "run_at": iso(-30)}, text, entry_id)
     row = db._execute_write(lambda conn: schedule_sync_conn(
         conn, ref, entry_id, active=True, canonical_schedule={"kind": "once", "run_at": iso(-30)},
         delivery_semantics=semantics, reminder_text=text,
@@ -111,7 +124,7 @@ def test_due_commitment_only_queues_a_passive_reminder(tui_env):
     assert registry(db, row["schedule_id"])["state"] == "done"
 
 
-def test_refused_admission_preserves_the_occurrence_as_pending(tui_env):
+def test_refused_admission_releases_the_original_occurrence(tui_env):
     db, ref, session, submitter = tui_env
     submitter.result = False  # e.g. the cancel latch refuses an automatic turn
     row = arm_due(db, ref)
@@ -119,8 +132,9 @@ def test_refused_admission_preserves_the_occurrence_as_pending(tui_env):
     assert len(submitter.calls) == 1
     assert session["running"] is False
     items = pending(db, ref)
-    assert len(items) == 1 and "ping the user" in items[0]["text"]
-    assert registry(db, row["schedule_id"])["state"] == "done"
+    assert items == []
+    current = registry(db, row["schedule_id"])
+    assert current["state"] == "pending" and current["claim_token"] is None
 
 
 def test_only_this_sessions_conversation_is_claimed(tui_env):
@@ -133,3 +147,37 @@ def test_only_this_sessions_conversation_is_claimed(tui_env):
     assert pending(db, ref) == []
     assert pending(db, other_ref) == []
     assert registry(db, other_row["schedule_id"])["state"] == "pending"
+
+
+def test_cold_reopen_constructed_main_fires_due_without_a_human_turn(native_runtime, monkeypatch):
+    from secretary import noting_scope
+    from secretary.noting_capability import _cold_capabilities
+    db, config = native_runtime
+    config.write_text("model:\n  context_length: 196000\nnoting:\n  enabled: true\n")
+    db.create_session("surface-main", source="cli")
+    ref = db.resolve_conversation_ref("surface-main")
+    row = arm_due(db, ref)
+    due = registry(db, row["schedule_id"])["next_run_at"]
+    noting_scope._main_runtimes.pop(noting_scope._runtime_key(db, ref), None)
+    _cold_capabilities.pop(noting_scope._runtime_key(db, ref), None)
+    agent = _agent(db, existing=False)
+    seen = _requests(agent)
+    session = {"session_key": "peer", "history_lock": threading.RLock(), "running": False, "agent": agent}
+    monkeypatch.setattr(sn, "_session_db", lambda _session: contextlib.nullcontext(db), raising=False)
+    monkeypatch.setattr(sn, "_session_turn_admission", _session_turn_admission, raising=False)
+    def submit(_rid, _sid, _session, text):
+        result = agent.run_conversation(user_message=text, title_user_message="")
+        _session["running"] = False
+        return result["completed"]
+    monkeypatch.setattr(sn, "_run_prompt_submit", submit, raising=False)
+    try:
+        assert not any(m["role"] == "user" for m in db.get_messages(agent.session_id))
+        sn._maybe_fire_tui_secretary_reminder("cold-ui", session)
+        assert len(seen) == 1 and registry(db, row["schedule_id"])["state"] == "done"
+        wire = next(r["content"] for r in seen[0]["messages"] if r["role"] == "user")
+        durable_row = next(r for r in db.get_messages(agent.session_id) if r["role"] == "user")
+        durable = durable_row["content"]
+        assert wire == durable and wire.splitlines()[0] == "<user-reminder>"
+        assert durable_row["timestamp"] == due
+    finally:
+        agent.close()

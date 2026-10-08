@@ -24,7 +24,7 @@ from agent.memory_provider import is_trivial_prompt
 from agent.message_content import flatten_message_text
 from agent.message_metadata import (
     PERSISTENCE_ONLY_MESSAGE_FIELDS, append_message, prepend_user_timestamp_marker,
-    stamp_message_timestamp, user_input_timestamp_marker,
+    stamp_message_timestamp, user_input_timestamp_marker, preserve_user_input_origin, stamp_fresh_turn_input,
 )
 from agent.model_metadata import (
     estimate_messages_tokens_rough,
@@ -687,14 +687,17 @@ def _stage_turn_user_message(
         user_msg = pending_cli_message
         # CLI-staged value is the clean text; restore the API-facing variant (e.g. voice
         # prefix) on the same dict, keeping any close-path durable marker.
-        user_msg["content"] = user_message
+        from agent.message_metadata import preserve_user_input_origin
+        user_msg["content"] = preserve_user_input_origin(expected_persist_content, user_message)
     else:
-        user_msg = {"role": "user", "content": user_message}
+        from agent.message_metadata import preserve_user_input_origin
+        user_msg = {"role": "user", "content": preserve_user_input_origin(expected_persist_content, user_message)}
         if isinstance(pending_cli_message, dict):
             agent._pending_cli_user_message = None
     # CLI input is stamped when staged; gateway input may carry the platform event
     # time. Preserve either value and cover any legacy unstamped handoff.
     stamp_message_timestamp(user_msg, timestamp=persist_user_timestamp)
+    stamp_fresh_turn_input(agent, user_msg)
 
     # Synthesized turns stamp their transcript type so the crash persist writes a typed
     # row; the model still receives role/content unchanged (api_messages strips both).
@@ -1029,6 +1032,8 @@ def _persist_turn_start(
         agent, _ensure_and_persist,
         "Early turn-start session persistence failed for session=%s", pending_cli_message,
     )
+    from secretary.reminders import require_active_delivery_persisted
+    require_active_delivery_persisted(agent, messages)
 
 
 def build_turn_context(
@@ -1079,7 +1084,7 @@ def build_turn_context(
     _refresh_mcp_tools_between_turns(agent)
 
     if isinstance(user_message, str):
-        user_message = sanitize_surrogates(user_message)
+        user_message = preserve_user_input_origin(user_message, sanitize_surrogates(user_message))
     if isinstance(persist_user_message, str):
         persist_user_message = sanitize_surrogates(persist_user_message)
 
@@ -1164,6 +1169,8 @@ def build_turn_context(
     ):
         agent._flush_messages_to_session_db(conversation_history, conversation_history)
 
+    from secretary.reminders import persist_active_before_compaction
+    persist_active_before_compaction(agent, user_message, messages, conversation_history, pending_cli_message)
     compaction = run_turn_start_compaction(
         agent, messages=messages, system_message=system_message,
         active_system_prompt=active_system_prompt, conversation_history=conversation_history,

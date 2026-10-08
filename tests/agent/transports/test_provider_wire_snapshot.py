@@ -153,6 +153,10 @@ def _wire(provider: str, model: str, base_url: str) -> dict[str, Any]:
          patch("agent.process_bootstrap.OpenAI"):
         agent = AIAgent(provider=provider, model=model, base_url=base_url, api_key="sk-test-0000000000",
                         quiet_mode=True, skip_context_files=True, skip_memory=True, session_id="wire-snapshot")
+    # Record the real main surface: History is a Secretary base capability even
+    # when the configurable tools fixture contains only terminal. No Notebook
+    # may be advertised without a proven Conversation and effective Noting gate.
+    assert agent.valid_tool_names == {"terminal", "session_history"}
     for name, value in _PER_TURN_RESET_STATE:
         setattr(agent, name, value)
     out: dict[str, Any] = {"api_mode": agent.api_mode}

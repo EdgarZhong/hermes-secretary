@@ -20,7 +20,7 @@ from secretary.noting_policy import (
     ContextMeasurement,
     NotingSettings,
 )
-from tests.hermes_state._secretary_noting_harness import add, empty_state, make, open_noting_db, ref_of
+from tests.hermes_state._secretary_noting_harness import add, empty_state, make as _make, open_noting_db, ref_of
 
 
 # Hermes-resolved pairs exercised below: reserve = max((window - threshold) * 1.20, 66K).
@@ -45,7 +45,25 @@ def _measurement(measured, window=FORCE_WINDOW, hermes=FORCE_HERMES):
 
 
 def _agent(db, sid):
-    return SimpleNamespace(_session_db=db, session_id=sid, platform="telegram")
+    from agent.context_compressor import ContextCompressor
+    from secretary.noting_scope import bind_main_runtime
+    agent = SimpleNamespace(_session_db=db, session_id=sid, platform="telegram",
+                            _secretary_conversation_ref=ref_of(db, sid), context_compressor=ContextCompressor(
+                                model="test/runtime", config_context_length=FORCE_WINDOW,
+                                threshold_percent=.75, threshold_tokens_cap=FORCE_HERMES, quiet_mode=True))
+    # SimpleNamespace is not weak-referenceable; use a normal runtime object retained by the host fixture.
+    class Runtime:
+        pass
+    runtime = Runtime()
+    runtime.__dict__.update(vars(agent))
+    bind_main_runtime(runtime)
+    db._test_runtime_agents = [*getattr(db, "_test_runtime_agents", []), runtime]
+    return runtime
+
+
+def make(db, *args, **kwargs):
+    _make(db, *args, **kwargs)
+    _agent(db, args[0])
 
 
 def _write_config(text):
@@ -176,6 +194,7 @@ def test_idle_selection_picks_the_runtime_profile(db):
     at = rt.try_admit_idle(db, at_ref, measurement=_measurement(55_000), settings=settings, now=2000.0)
     assert below.admission.task_profile == TASK_PROFILE_NOTING
     assert at.admission.task_profile == TASK_PROFILE_NOTING_WITH_COMPACTION
+    assert at.admission.compaction_threshold_tokens == 50_000
 
 
 def test_idle_defers_to_the_force_path_in_a_covered_segment(db):
@@ -305,6 +324,7 @@ def test_state_survives_reopen_and_still_dedupes(tmp_path):
     db.close()
 
     reopened = open_noting_db(path)
+    _agent(reopened, "s")  # The restarted host resolves its native main runtime before admission.
     try:
         assert rt.try_admit_force(reopened, ref, _measurement(64_000)).reason == "same_anchor_admitted"
         assert rt.idle_candidates(reopened, now=1600.0) == [ref]

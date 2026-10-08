@@ -60,9 +60,8 @@ class CLIChatTurnMixin:
         """
         from cli import ChatConsole, _ChatTurn, _DIM, _RST, _accent_hex, _cprint, set_secret_capture_callback
         from tools.process_registry_notifications import TimelineNotification
-        # Single-query and direct chat callers do not go through run().
+        from agent.message_metadata import preserve_user_input_origin
         set_secret_capture_callback(self._secret_capture_callback)
-        # Reset per turn; only a real interrupt flips it, so early returns leave it False.
         self._last_turn_interrupted = False
 
         if not self._ensure_runtime_credentials():
@@ -80,7 +79,7 @@ class CLIChatTurnMixin:
         if agent is None:
             return None
         self._sync_fallback_chain_with_config(agent)  # chain added after this chat opened reaches this turn
-        message = self._chat_route_images(message, images)
+        input_origin, message = message, self._chat_route_images(message, images)
 
         if isinstance(message, str) and not isinstance(message, TimelineNotification):
             message, blocked = self._chat_expand_context_references(message)
@@ -88,7 +87,7 @@ class CLIChatTurnMixin:
                 return blocked
             # Lone surrogates (rich-text clipboard paste) crash the OpenAI SDK's JSON serialization.
             from agent.message_sanitization import _sanitize_surrogates
-            message = _sanitize_surrogates(message)
+            message = preserve_user_input_origin(input_origin, _sanitize_surrogates(message))
 
         self._chat_stage_user_message(agent, message)
         if isinstance(message, TimelineNotification):
@@ -420,9 +419,9 @@ class CLIChatTurnMixin:
             try:
                 interrupt_msg = self._interrupt_queue.get(timeout=0.1)
             except queue.Empty:
-                # Flush the StdoutProxy buffer: it otherwise only flushes on input-triggered
-                # renderer passes, so on macOS the CLI looks frozen until the user types.
-                # Force prompt_toolkit to flush any pending stdout output from the agent thread. (#1624)
+                from secretary.cli_reminders import poll_cli_reminders
+                poll_cli_reminders(self, busy=True)
+                # Flush pending stdout without waiting for input (#1624).
                 self._invalidate(min_interval=0.15)
                 continue
             if not interrupt_msg:

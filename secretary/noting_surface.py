@@ -39,7 +39,19 @@ def _notebook_enabled(agent):
     try:
         db = getattr(agent, "_secretary_history_db", None) or getattr(agent, "_session_db", None)
         ref = getattr(agent, "_secretary_conversation_ref", None)
-        return bool(db is not None and ref and noting_trigger_gate(db, ref)[0])
+        if db is None or not ref:
+            return False
+        from secretary.noting_scope import bind_main_runtime
+        from secretary.noting_policy import configuration_guidance
+
+        bind_main_runtime(agent)
+        enabled, reason = noting_trigger_gate(db, ref)
+        guidance = configuration_guidance(reason)
+        issue = {"reason": reason, "guidance": guidance}
+        if getattr(agent, "_secretary_noting_configuration_issue", None) != issue and guidance:
+            logger.warning("%s", guidance)
+        agent._secretary_noting_configuration_issue = issue
+        return enabled
     except Exception:
         logger.debug("Notebook ownership or policy unavailable at main-turn boundary", exc_info=True)
         return False

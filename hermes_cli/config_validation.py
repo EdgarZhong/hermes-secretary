@@ -62,3 +62,37 @@ def _validate_timezone(config: Dict[str, Any], issues: List["ConfigIssue"]) -> N
         zoneinfo.ZoneInfo(name)
     except Exception:
         _issue(issues, "error", f"timezone {name!r} is not a valid IANA zone name", hint)
+
+
+def _validate_noting(config: Dict[str, Any], issues: List["ConfigIssue"]) -> None:
+    """``noting`` shape check (02 §4.1): a malformed block must not silently mis-gate Noting."""
+    from secretary.noting_policy import configuration_guidance, noting_settings_from_config
+
+    settings = noting_settings_from_config(config)
+    if settings.configuration_failure:
+        _issue(issues, "error", "Noting conflicts with Hermes idle compaction",
+               configuration_guidance(settings.configuration_failure))
+    block = config.get("noting")
+    if block is None:
+        return
+    if not isinstance(block, dict):
+        _issue(issues, "error", f"noting must be a mapping, got {block!r}",
+               "Use the documented block:\n  noting:\n    enabled: true\n    idle_delay_seconds: 500")
+        return
+    delay = block.get("idle_delay_seconds")
+    if delay is not None and (isinstance(delay, bool) or not isinstance(delay, (int, float)) or delay < 0):
+        _issue(issues, "error", f"noting.idle_delay_seconds must be a nonnegative number, got {delay!r}",
+               "Seconds the main Conversation must stay turn-free after a main Turn ends before an "
+               "Idle Trigger exists (default 500)")
+    selection = block.get("auto_trigger_compaction_after_noting")
+    if selection is not None and not isinstance(selection, dict):
+        _issue(issues, "error", "noting.auto_trigger_compaction_after_noting must be a mapping",
+               "It carries 'enabled' and 'threshold_tokens'; it selects the Idle runtime profile "
+               "and is not itself a Trigger")
+        return
+    threshold = selection.get("threshold_tokens") if isinstance(selection, dict) else None
+    if threshold is not None and (isinstance(threshold, bool) or not isinstance(threshold, int) or threshold <= 0):
+        _issue(issues, "error",
+               "noting.auto_trigger_compaction_after_noting.threshold_tokens must be a positive "
+               f"token count or null, got {threshold!r}",
+               "Use null to disable the profile selection, e.g. threshold_tokens: 120000")

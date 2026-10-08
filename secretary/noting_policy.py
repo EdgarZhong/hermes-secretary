@@ -47,6 +47,7 @@ class NotingSettings:
     auto_trigger_compaction_enabled: bool
     auto_trigger_compaction_threshold_tokens: Optional[int]
     auto_compact_after_force_noting_idle: bool
+    configuration_failure: str = ""
 
 
 def _number(value: Any) -> Optional[float]:
@@ -72,12 +73,14 @@ def noting_settings_from_config(config: Any) -> NotingSettings:
         delay = DEFAULT_IDLE_DELAY_SECONDS
     selection = block.get("auto_trigger_compaction_after_noting")
     selection = selection if isinstance(selection, dict) else {}
+    conflict = idle_compaction_conflict(config) if enabled else ""
     return NotingSettings(
-        enabled=bool(enabled),
+        enabled=bool(enabled) and not conflict,
         idle_delay_seconds=delay,
         auto_trigger_compaction_enabled=bool(selection.get("enabled", False)),
         auto_trigger_compaction_threshold_tokens=_positive_int(selection.get("threshold_tokens")),
         auto_compact_after_force_noting_idle=bool(block.get("auto_compact_after_force_noting_idle", False)),
+        configuration_failure=conflict,
     )
 
 
@@ -229,3 +232,24 @@ def idle_task_profile(settings: NotingSettings, measurement: Optional[ContextMea
     if measurement.measured_tokens >= threshold:
         return TASK_PROFILE_NOTING_WITH_COMPACTION
     return TASK_PROFILE_NOTING
+
+
+def idle_compaction_conflict(config: Any) -> str:
+    """The independent §4.12 configuration conflict; never rewrite Hermes settings."""
+    block = config.get("compression") if isinstance(config, dict) else None
+    raw = block.get("idle_compact_after_seconds", 0) if isinstance(block, dict) else 0
+    try:
+        return "idle_compaction_conflict" if int(raw) > 0 else ""
+    except (TypeError, ValueError):
+        return "idle_compaction_config_unreadable"
+
+
+def configuration_guidance(reason: str) -> str:
+    """User-visible actions for §4.6 capability failures and §4.12 conflicts."""
+    return {
+        CAPABILITY_THRESHOLD_BELOW_64K: "Noting cannot be enabled: increase the Context Window (Force threshold is below 64K).",
+        CAPABILITY_RESERVE_ABOVE_128K: "Noting cannot be enabled: reduce the Hermes Auto Compaction reserve / move the Hermes threshold later (Force reserve exceeds 128K).",
+        "idle_compaction_conflict": "Noting is disabled: set compression.idle_compact_after_seconds to 0, or set noting.enabled to false; these idle mechanisms conflict.",
+        "idle_compaction_config_unreadable": "Noting is disabled: correct compression.idle_compact_after_seconds.",
+        "runtime_unresolved": "Noting is disabled until the Conversation's native Hermes context window and threshold have been resolved.",
+    }.get(reason, "")

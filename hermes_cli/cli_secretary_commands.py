@@ -5,7 +5,7 @@ import json
 import logging
 
 from secretary.notebook_render import render_notebook
-from secretary.noting_policy import resolve_noting_settings
+from secretary.noting_policy import configuration_guidance, resolve_noting_settings
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,14 @@ class SecretaryCommandResult:
 
 
 def _available():
-    return resolve_noting_settings().enabled
+    from hermes_cli.config import load_config_readonly
+    from hermes_cli.config_read_errors import FailedConfigRead
+    from utils import is_truthy_value
+    config = load_config_readonly()
+    if isinstance(config, FailedConfigRead):
+        return False
+    block = config.get("noting") or {}
+    return is_truthy_value(block.get("enabled"), default=True) if isinstance(block, dict) else True
 
 
 def _current(db, session_id):
@@ -31,7 +38,7 @@ def _current(db, session_id):
 def notebook_command(db, session_id, arg="", *, source="cli"):
     """Human inspection is global-gated; on/off changes only durable local participation."""
     if not _available():
-        return SecretaryCommandResult("Notebook unavailable: global noting.enabled is false.")
+        return SecretaryCommandResult("Notebook unavailable: global Noting configuration is disabled or unreadable.")
     action = arg.strip().lower()
     if action not in {"", "on", "off"}:
         return SecretaryCommandResult("Usage: /notebook [on|off]")
@@ -43,6 +50,11 @@ def notebook_command(db, session_id, arg="", *, source="cli"):
         if action:
             if ref is None:
                 raise ValueError("Current Conversation state is unavailable.")
+            if action == "on":
+                from secretary.noting_scope import runtime_configuration_failure
+                failure = resolve_noting_settings().configuration_failure or runtime_configuration_failure(db, ref)
+                if failure:
+                    return SecretaryCommandResult("Notebook Noting unavailable: " + configuration_guidance(failure))
             db.notebook_set_local_enabled(ref, action == "on")
             return SecretaryCommandResult(f"Notebook Noting is {action} for this Conversation.")
         return SecretaryCommandResult(render_notebook(snapshot))
@@ -54,7 +66,7 @@ def notebook_command(db, session_id, arg="", *, source="cli"):
 def propose_persistence_command(db, session_id, extra=""):
     """Build a normal main-Turn prompt; never enable Noting or perform a persistence write."""
     if not _available():
-        return SecretaryCommandResult("Persistence proposal unavailable: global noting.enabled is false.")
+        return SecretaryCommandResult("Persistence proposal unavailable: global Noting configuration is disabled or unreadable.")
     try:
         ref, snapshot = _current(db, session_id)
         if snapshot is None:

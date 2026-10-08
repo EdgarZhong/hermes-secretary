@@ -432,6 +432,9 @@ def test_a_branch_copy_writes_the_uids_its_live_history_keeps(tmp_path):
     try:
         db.create_session("parent", source="desktop", model="m")
         history = [{"role": "user", "content": "hello", "message_uid": "a" * 32}, {"role": "assistant", "content": "hi"}]
+        # The UID-bearing branch point must be a durable parent fact. The not-yet-flushed
+        # assistant dict still exercises minting its UID on both branch sides.
+        db.append_messages_batch("parent", history[:1])
         server._persist_branch(db, "child", "parent", "Branch", history, source="desktop", cwd=str(tmp_path),
                                profile_name="default", model="m")
         assert [r["message_uid"] for r in _rows(db, "child")] == [m.get("message_uid") for m in history]

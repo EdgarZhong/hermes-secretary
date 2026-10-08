@@ -1459,10 +1459,8 @@ class GatewayTurnMixin:
             )
 
     def _hmwa_apply_message_timestamp(self, event, message_text):
-        """Capture the platform event time as message metadata and keep the persisted transcript
-        clean — strip any leading timestamp prefix and the Discord triggering-message note (a
-        model instruction, not authored text) — regardless of the toggle; only the in-context
-        RENDER is gated behind gateway.message_timestamps.enabled (default OFF)."""
+        """Keep platform time as metadata; strip timestamp prefixes and the Discord triggering note.
+        Only in-context rendering is gated by gateway.message_timestamps.enabled (default OFF)."""
         from gateway.run import _load_gateway_config, _message_timestamps_enabled
         from gateway.run_inbound import strip_discord_triggering_note
         persist_user_message = None
@@ -1487,6 +1485,8 @@ class GatewayTurnMixin:
                     message_text = _clean_message_text
         except Exception as _ts_err:
             logger.debug("Message timestamp injection failed (non-fatal): %s", _ts_err)
+        from agent.message_metadata import preserve_user_input_origin
+        message_text = preserve_user_input_origin(event.text, message_text)
         return message_text, persist_user_message, persist_user_timestamp
 
     async def _hmwa_stop_typing_for_turn(self, event, source):

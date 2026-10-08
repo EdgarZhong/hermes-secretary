@@ -23,11 +23,13 @@ class SecretaryIdentityMixin:
         session = self._secretary_session_conn(conn, session_id)
         config = session.get("model_config")
         config = json.loads(config) if isinstance(config, str) else (config or {})
-        if config.get("_branched_from"):
+        if config.get("_branched_from") and self._is_explicit_fork_child_row(session) and config["_branched_from"] == session.get("parent_session_id"):
             return self.secretary_inherit_branch_conn(
                 conn, config["_branched_from"], session_id, through_message_uid=branch_point_message_uid)
         locator = None
-        if session.get("session_key") and not self._is_explicit_fork_child_row(session) and session["source"] not in {"tool", "subagent"}:
+        if (session.get("session_key") and not self._is_explicit_fork_child_row(session)
+                and session["source"] not in {"tool", "subagent"}
+                and len(self._compression_ancestors_conn(conn, session_id)) == 1):
             generation = conn.execute(
                 "SELECT generation FROM conversation_generations WHERE source=? AND session_key=?",
                 (session["source"], session["session_key"]),
@@ -108,7 +110,7 @@ class SecretaryIdentityMixin:
             raise ConversationIdentityError("Declared generation is no longer current")
         return locator
 
-    def resolve_conversation_ref_conn(self, conn, session_id, trusted_declared_locator=None):
+    def resolve_conversation_ref_conn(self, conn, session_id, trusted_declared_locator=None, *, read_only=False):
         session = self._secretary_session_conn(conn, session_id)
         ancestors = self._compression_ancestors_conn(conn, session_id)
         bindings = conn.execute(
@@ -122,6 +124,10 @@ class SecretaryIdentityMixin:
         if declared is not None:
             aliases.append(("declared", json.dumps(declared, ensure_ascii=False, separators=(",", ":"))))
         known = {row["conversation_ref"] for row in bindings}
+        tip = self._compression_path_conn(conn, session_id)[-1]
+        tip_binding = conn.execute("SELECT conversation_ref FROM secretary_session_bindings WHERE session_id=?", (tip,)).fetchone()
+        if tip_binding:
+            known.add(tip_binding[0])
         for kind, value in aliases:
             row = conn.execute(
                 "SELECT conversation_ref FROM secretary_conversation_aliases WHERE alias_kind = ? AND alias_value = ?",
@@ -132,6 +138,8 @@ class SecretaryIdentityMixin:
         if len(known) > 1:
             raise ConversationIdentityError("Trusted Conversation aliases conflict; refusing automatic merge")
         ref = next(iter(known)) if known else "conv_" + uuid.uuid4().hex
+        if read_only:
+            return ref if self._secretary_bindings_complete_conn(conn, ref, aliases, ancestors, declared) else None
         now = time.time()
         conn.execute("INSERT OR IGNORE INTO secretary_conversations VALUES (?, ?)", (ref, now))
         for kind, value in aliases:
@@ -146,7 +154,29 @@ class SecretaryIdentityMixin:
             )
         return ref
 
+    @staticmethod
+    def _secretary_bindings_complete_conn(conn, ref, aliases, ancestors, declared):
+        """A read-only resolution is valid only when every proven locator is already bound."""
+        if conn.execute("SELECT 1 FROM secretary_conversations WHERE conversation_ref=?", (ref,)).fetchone() is None:
+            return False
+        for kind, value in aliases:
+            row = conn.execute("SELECT conversation_ref FROM secretary_conversation_aliases WHERE alias_kind=? AND alias_value=?",
+                               (kind, value)).fetchone()
+            if row is None or row[0] != ref:
+                return False
+        for sid in ancestors:
+            row = conn.execute("SELECT * FROM secretary_session_bindings WHERE session_id=?", (sid,)).fetchone()
+            if row is None or row["conversation_ref"] != ref:
+                return False
+            if declared is not None and tuple(row[key] for key in ("declared_source", "declared_key", "declared_generation")) != declared:
+                return False
+        return True
+
     def resolve_conversation_ref(self, session_id, trusted_declared_locator=None):
+        with self._read_ctx() as conn:
+            ref = self.resolve_conversation_ref_conn(conn, session_id, trusted_declared_locator, read_only=True)
+        if ref is not None:
+            return ref
         return self._execute_write(lambda conn: self.resolve_conversation_ref_conn(conn, session_id, trusted_declared_locator))
 
     def resolve_conversation_route_conn(self, conn, conversation_ref):

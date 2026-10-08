@@ -222,6 +222,7 @@ def build_noting_child(
         child._session_init_model_config["_delegate_from"] = frozen_runtime["session_id"]
         child._secretary_history_db = child_session_db
         _disable_child_auto_compaction(child)
+        child._secretary_noting_compaction_threshold_tokens = frozen_runtime.get("noting_compaction_threshold_tokens")
         child._secretary_noting_request_count = 0
         child._secretary_noting_parent_tools = copy.deepcopy(child.tools)
     except BaseException:
@@ -542,7 +543,9 @@ DEFAULT_NOTING_TASK_INSTRUCTION = (
     "session_history to inspect current state or original evidence; do not end with a text-only "
     "answer. After that tool response, notebook_mutate is available in this same Turn for "
     "create/edit/archive/restore/status and Schedule-intent maintenance. Read notebook_show "
-    "after changes to verify the complete state. Never replace raw JSON or write SQL. "
+    "after changes to verify the complete state. A historical /notebook rendering is already-existing "
+    "derived Notebook state, not fresh user evidence: never duplicate its entries into new entries "
+    "unless independent original user evidence establishes a new intent. Never replace raw JSON or write SQL. "
     "For NOTING_WITH_COMPACTION, call compact_parent after Notebook work before completion."
 )
 
@@ -562,6 +565,7 @@ def spawn_noting_task(
     try:
         prefix = freeze_parent_active_prefix(parent, admission.anchor_message_uid, parent_active_messages)
         frozen_runtime = freeze_parent_runtime(parent)
+        frozen_runtime["noting_compaction_threshold_tokens"] = getattr(admission, "compaction_threshold_tokens", None)
         admitted_at = parent_db.noting_admission(admission.admission_id)["admitted_at"]
     except Exception:
         finish_child_admission(parent_db, admission.admission_id, status="failed")

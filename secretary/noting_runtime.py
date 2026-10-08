@@ -28,7 +28,7 @@ from secretary.noting_policy import (
     idle_due,
     idle_task_profile,
 )
-from secretary.noting_scope import settings_for_db
+from secretary.noting_scope import bind_main_runtime, runtime_configuration_failure, settings_for_db
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +49,7 @@ class NotingAdmission:
     kind: str
     profile: Optional[str]
     task_profile: str
+    compaction_threshold_tokens: Optional[int] = None
 
 
 @dataclass(frozen=True)
@@ -67,7 +68,14 @@ def _skip(reason: str) -> NotingDecision:
 def _guarded(conversation_ref: str, decide: Callable[[], NotingDecision]) -> NotingDecision:
     """A trigger evaluation must never take down its host loop; a failure is a logged skip."""
     try:
-        return decide()
+        result = decide()
+        if result.action != "skip" or result.reason in {
+            "same_anchor_admitted", "force_snapshot_in_segment", "force_path_owns_segment",
+            "force_snapshot_present", "no_frozen_anchor", "anchor_invalid",
+        }:
+            logger.info("Noting attempt outcome ref=%s action=%s reason=%s",
+                        conversation_ref, result.action, result.reason)
+        return result
     except Exception:
         logger.warning("Noting trigger evaluation failed for %s", conversation_ref, exc_info=True)
         return _skip("trigger_error")
@@ -100,10 +108,11 @@ def noting_trigger_gate(
     """``(enabled, reason)`` for global AND conversation-local Noting (02 §4.2, §6.6)."""
     settings = settings_for_db(db) if settings is None else settings
     if not settings.enabled:
-        return False, "global_disabled"
+        return False, settings.configuration_failure or "global_disabled"
     if not noting_local_enabled(db, conversation_ref):
         return False, "local_disabled"
-    return True, ""
+    failure = runtime_configuration_failure(db, conversation_ref)
+    return (False, failure) if failure else (True, "")
 
 
 def owning_profile(db: Any) -> Optional[str]:
@@ -193,11 +202,9 @@ def _record_main_turn_event(agent: Any, at: Optional[float], *, started: bool) -
     ref = _main_conversation_ref(agent)
     if db is None or not ref:
         return False
-    settings = settings_for_db(db)
-    if not settings.enabled:
-        return False  # global off: no Noting-specific idle-timer behavior (02 §4.3)
-    if not noting_local_enabled(db, ref):
-        return False  # local off: no Noting-specific idle-timer behavior (02 §4.3)
+    bind_main_runtime(agent)
+    if not noting_trigger_gate(db, ref)[0]:
+        return False  # disabled/invalid config: no Noting-specific idle-timer behavior
     when = time.time() if at is None else float(at)
     try:
         if started:
@@ -232,15 +239,18 @@ def idle_candidates(db: Any, *, settings: Optional[NotingSettings] = None, now: 
     return db.noting_idle_due_conversations(now=now, delay_seconds=settings.idle_delay_seconds)
 
 
-def _freeze_and_admit(db: Any, conversation_ref: str, *, kind: str, task_profile: str) -> NotingDecision:
+def _freeze_and_admit(db: Any, conversation_ref: str, *, kind: str, task_profile: str,
+                      compaction_threshold_tokens: Optional[int] = None, frozen_identity=None) -> NotingDecision:
     if not callable(getattr(db, "noting_admit_conn", None)):
         return _skip("noting_schema_unavailable")
     def admit(conn):
         if not db.notebook_local_enabled_conn(conn, conversation_ref):
             return _skip("local_disabled")
-        identity = db.get_foreground_anchor_conn(conn, conversation_ref)
+        identity = frozen_identity or db.get_foreground_anchor_conn(conn, conversation_ref)
         if identity is None:
             return _skip("no_frozen_anchor")
+        if db.anchor_position_conn(conn, conversation_ref, identity["message_uid"]) is None:
+            return _skip("anchor_invalid")
         admission_id = db.noting_admit_conn(conn, conversation_ref, identity["message_uid"], kind=kind)
         if admission_id is None:
             return _skip("same_anchor_admitted")
@@ -253,6 +263,7 @@ def _freeze_and_admit(db: Any, conversation_ref: str, *, kind: str, task_profile
             )
         return NotingDecision("admit", "admitted", NotingAdmission(
             admission_id, conversation_ref, identity["message_uid"], kind, owning_profile(db), task_profile,
+            compaction_threshold_tokens,
         ))
     return db._execute_write(admit)
 
@@ -282,11 +293,14 @@ def _force_decision(
     skip = _threshold_skip(measurement)
     if skip is not None:
         return skip
+    identity = _freeze_and_log_attempt(db, conversation_ref, "force")
+    if identity is None:
+        return _skip("no_frozen_anchor")
     if force_snapshot_in_segment is None:
         force_snapshot_in_segment = db.noting_force_snapshot_since_boundary(conversation_ref)
     if force_snapshot_in_segment:
         return _skip("force_snapshot_in_segment")
-    return _freeze_and_admit(db, conversation_ref, kind="force", task_profile=TASK_PROFILE_NOTING)
+    return _freeze_and_admit(db, conversation_ref, kind="force", task_profile=TASK_PROFILE_NOTING, frozen_identity=identity)
 
 
 def try_admit_force(
@@ -328,6 +342,9 @@ def _idle_decision(
         now=now, delay_seconds=settings.idle_delay_seconds,
     ):
         return _skip("not_idle")
+    identity = _freeze_and_log_attempt(db, conversation_ref, "idle")
+    if identity is None:
+        return _skip("no_frozen_anchor")
     if measurement is not None:
         threshold_skip = _threshold_skip(measurement)
         if threshold_skip is not None:
@@ -343,6 +360,7 @@ def _idle_decision(
             return _skip("force_path_owns_segment")
     return _freeze_and_admit(
         db, conversation_ref, kind="idle", task_profile=idle_task_profile(settings, measurement),
+        compaction_threshold_tokens=settings.auto_trigger_compaction_threshold_tokens, frozen_identity=identity,
     )
 
 
@@ -391,6 +409,7 @@ def maybe_admit_force_from_pressure(agent: Any, measured_tokens: Any, *, message
             return "no_ref"
         from secretary.noting_policy import measurement_from_agent
 
+        bind_main_runtime(agent)
         measurement = measurement_from_agent(agent, measured_tokens)
         if measurement is None:
             return "no_measurement"
@@ -418,6 +437,7 @@ def maybe_run_idle_noting(parent: Any, db: Any, conversation_ref: str, *,
                 or Path(parent_db.db_path).resolve() != Path(db.db_path).resolve()
                 or _main_conversation_ref(parent) != conversation_ref):
             return "skip:not_main_owner"
+        bind_main_runtime(parent)
         measurement = None
         compressor = getattr(parent, "context_compressor", None)
         if compressor is not None:
@@ -439,9 +459,22 @@ def maybe_run_idle_noting(parent: Any, db: Any, conversation_ref: str, *,
         if decision.action == "compact_parent":
             from secretary.noting_compact import compact_parent
 
-            result = compact_parent(parent)
+            thresholds = force_thresholds(measurement.resolved_context_window, measurement.hermes_auto_compaction_threshold)
+            result = compact_parent(parent, relevant_threshold_tokens=thresholds.force_noting_threshold)
             return "compact_parent:" + str(getattr(result, "status", ""))
         return "skip:" + decision.reason
     except Exception:
         logger.warning("Noting Idle evaluation failed for %s", conversation_ref, exc_info=True)
         return "error"
+
+
+def _freeze_and_log_attempt(db: Any, conversation_ref: str, kind: str):
+    """§4.8: freeze Full Foreground head, observe the attempt before skip/dedupe/admission."""
+    with db._read_ctx() as conn:
+        rows = db.get_full_foreground_conn(conn, conversation_ref)
+    head = rows[-1] if rows else None
+    logger.info("Noting trigger attempt ref=%s kind=%s anchor=%s compaction_head=%s", conversation_ref, kind,
+                head.get("message_uid") if head else None, bool(head and head.get("is_compaction")))
+    if not head or head.get("is_compaction") or head.get("role") == "system":
+        return None
+    return dict(head["message_identity"])

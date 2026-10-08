@@ -149,8 +149,12 @@ def trusted_declared_conversation_locator(agent: Any, *, newly_created: bool = F
         return None
     with db._read_ctx() as conn:
         binding = conn.execute("SELECT * FROM secretary_session_bindings WHERE session_id = ?", (sid,)).fetchone()
+        birth = db._secretary_session_conn(conn, db._compression_ancestors_conn(conn, sid)[0])
     if binding is not None and binding["declared_generation"] is not None:
         return binding["declared_source"], binding["declared_key"], binding["declared_generation"]
+    if db._is_explicit_fork_child_row(birth):
+        # Compression inherits routing metadata, not proof that a branch owns the parent's peer alias.
+        return None
     if row.get("ended_at") is not None or row.get("end_reason"):
         return None
     source = _agent_source(agent, sid, db, str(row.get("source") or ""))

@@ -275,24 +275,25 @@ def _secretary_deliver_claim(sid: str, session: dict, db, claim: dict, reminders
         # Due commitment/task/watchpoint (or a Force notice): pending only, never a Turn.
         reminders.queue_pending_for_claim(db, claim)
         return
-    if not _notif_claim_turn(session):
-        # Busy: the occurrence converts to a durable pending System Reminder (no queued second Turn).
-        reminders.convert_claim_to_pending(db, claim)
-        return
-    text = reminders.user_reminder_text(
-        reminders.occurrence_content(claim), reminders.occurrence_timestamp(claim))
+    with _session_turn_admission(session) as admitted:
+        if not admitted or session.get("running") or session.get("_turn_cancel_requested"):
+            reminders.convert_claim_to_pending(db, claim)
+            return
+        receipt = reminders.admit_active_reminder(
+            db, claim, session_id=str(getattr(session.get("agent"), "session_id", "") or ""))
+        if receipt is None:
+            reminders.release_claim(db, claim)
+            return
+        session["running"] = True
     started = False
     try:
-        started = bool(_run_prompt_submit(f"__secretary_reminder__{int(time.time() * 1000)}", sid, session, text))
+        started = bool(_run_prompt_submit(f"__secretary_reminder__{int(time.time() * 1000)}", sid, session,
+                                          receipt["resolved"]["text"]))
     except Exception:
-        # Boundary: a turn-submit failure must not end the session poller; the occurrence is
-        # preserved as a pending System Reminder below.
         _secretary_logger.warning("secretary reminder dispatch failed", exc_info=True)
-    if started:
-        reminders.finalize_claim(db, claim)
-    else:
+    if not started:
         _notif_release_turn(session)
-        reminders.convert_claim_to_pending(db, claim)
+        reminders.recover_active_reminder(db, receipt, passive=True)
 
 
 def _maybe_fire_tui_secretary_reminder(sid: str, session: dict) -> None:

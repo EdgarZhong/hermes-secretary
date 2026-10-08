@@ -1,16 +1,9 @@
-"""Every review path hands the fork a snapshot that cannot alias the live transcript.
+"""Retained cache machinery structurally isolates snapshots from the live transcript.
 
-``AIAgent._spawn_background_review`` is the single chokepoint the automatic
-post-turn review, the idle-queue deferral and both explicit ``/refine`` entry
-points (CLI mixin + gateway slash command) go through; it clones the snapshot
-structurally there. A shallow ``list()`` would share the nested
-``tool_calls`` / ``content`` containers with the persisted history, so the
-fork's in-place transcript sanitization would rewrite the parent's messages
-(#100795). These tests drive the real /refine handlers into the real
-chokepoint and capture what reaches the spawn.
+A16/A22 retire the CLI/Gateway refine handlers. The underlying clone and internal
+compatibility chokepoint still protect nested tool/content containers from sanitizers.
 """
 
-import threading
 from unittest.mock import MagicMock
 
 import pytest
@@ -71,59 +64,17 @@ def _assert_isolated(live, snapshot):
     assert live[1]["tool_calls"][0]["function"]["arguments"] == '{"path":"x"}'
 
 
-def test_cli_refine_snapshot_does_not_alias_live_history(monkeypatch):
-    from hermes_cli.cli_commands_mixin import CLICommandsMixin
+def test_snapshot_clone_does_not_alias_live_history():
+    from agent.turn_finalizer import _clone_background_review_messages
 
-    monkeypatch.setattr("cli._cprint", lambda *a, **k: None, raising=False)
+    live = _nested_history()
+    _assert_isolated(live, _clone_background_review_messages(live))
+
+
+def test_retained_chokepoint_isolates_snapshot():
     agent = _agent_with_real_chokepoint()
-    cli = object.__new__(CLICommandsMixin)
-    cli.agent = agent
-    cli.conversation_history = _nested_history()
-
-    cli._handle_refine_command("/refine")
-
+    live = _nested_history()
+    agent._spawn_background_review(live, explicit=True)
     agent._spawn_background_review_now.assert_called_once()
     snapshot = agent._spawn_background_review_now.call_args.kwargs["messages_snapshot"]
-    _assert_isolated(cli.conversation_history, snapshot)
-
-
-def test_cli_refine_reaches_spawn_as_explicit(monkeypatch):
-    """The explicit /refine path must reach the spawn with ``explicit=True`` so the fork runs
-    is marked attended and keeps the full memory operation set (#105921 review)."""
-    from hermes_cli.cli_commands_mixin import CLICommandsMixin
-
-    monkeypatch.setattr("cli._cprint", lambda *a, **k: None, raising=False)
-    agent = _agent_with_real_chokepoint()
-    cli = object.__new__(CLICommandsMixin)
-    cli.agent = agent
-    cli.conversation_history = _nested_history()
-
-    cli._handle_refine_command("/refine")
-
-    agent._spawn_background_review_now.assert_called_once()
-    assert agent._spawn_background_review_now.call_args.kwargs["explicit"] is True
-
-
-@pytest.mark.asyncio
-async def test_gateway_refine_snapshot_does_not_alias_live_history():
-    from gateway.run import GatewayRunner
-
-    key = "agent:main:test:dm:1"
-    agent = _agent_with_real_chokepoint()
-    agent._session_messages = _nested_history()
-
-    runner = object.__new__(GatewayRunner)
-    runner._running_agents = {}
-    runner._agent_cache = {key: agent}
-    runner._agent_cache_lock = threading.Lock()
-    runner._session_key_for_source = lambda source: key
-
-    event = MagicMock()
-    event.source = object()
-    event.get_command_args.return_value = ""
-
-    await runner._handle_refine_command(event)
-
-    agent._spawn_background_review_now.assert_called_once()
-    snapshot = agent._spawn_background_review_now.call_args.kwargs["messages_snapshot"]
-    _assert_isolated(agent._session_messages, snapshot)
+    _assert_isolated(live, snapshot)

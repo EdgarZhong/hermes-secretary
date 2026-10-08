@@ -44,7 +44,7 @@ PERSISTENCE_ONLY_MESSAGE_FIELDS = frozenset(
     # Membership is the real contract, NOT the leading underscore: the chat-completions transport happens
     # to sweep underscore keys, but turn_context.py pops this set from every outgoing copy and a strict
     # backend 400s on any key it does not know.
-    {"timestamp", "display_kind", "display_metadata", "_row_id", "_submit_row_session_id",
+    {"timestamp", "_fresh_user_timestamp", "display_kind", "display_metadata", "_row_id", "_submit_row_session_id",
      MERGED_TURN_PREFIX, MESSAGE_UID, ABSORBED_MESSAGE_UIDS, TOOL_CALL_UIDS, TOOL_CALL_UID,
      # The alternation repair's row counts: an in-place compaction reads them off the live dict.
      MERGED_DURABLE_ROWS, UNNAMED_DURABLE_ROWS, RETIRED_DURABLE_ROWS}
@@ -332,6 +332,14 @@ def prepend_user_timestamp_marker(content: Any, marker: str) -> Any:
     A content already carrying the marker, or one that is itself a Secretary synthetic
     carrier (whose timestamp sits inside its own wrapper), is returned unchanged.
     """
+    if isinstance(marker, FreshUserTimestampMarker):
+        if isinstance(content, (TimestampedUserContent, TimestampedUserParts)):
+            return content
+        if isinstance(content, str):
+            return TimestampedUserContent(marker + content)
+        if isinstance(content, list):
+            return TimestampedUserParts([{"type": "text", "text": marker.rstrip("\n")}, *content])
+        return content
     if not marker or user_input_already_stamped(content):
         return content
     if isinstance(content, str):
@@ -365,6 +373,9 @@ def user_input_timestamp_marker(msg: Mapping[str, Any]) -> str:
     """
     if not isinstance(msg, Mapping) or msg.get("role") != "user":
         return ""
+    fresh = msg.get("_fresh_user_timestamp")
+    if isinstance(fresh, FreshUserTimestampMarker):
+        return fresh
     content = msg.get("content")
     if content is None or content == "" or content == [] or user_input_already_stamped(content):
         return ""
@@ -384,9 +395,10 @@ def user_input_timestamp_marker(msg: Mapping[str, Any]) -> str:
 
 def build_user_wrapper(tag: str, body: Any, *, timestamp: Optional[float] = None) -> str:
     """One Secretary synthetic carrier: opening/closing tags with the timestamp first inside."""
-    stamp = format_user_timestamp_marker(timestamp).rstrip("\n")
+    source = wall_time() if timestamp is None else timestamp
+    stamp = format_user_timestamp_marker(source).rstrip("\n")
     text = body if isinstance(body, str) else "" if body is None else str(body)
-    return f"<{tag}>\n{stamp}\n{text}\n</{tag}>"
+    return trusted_user_input(f"<{tag}>\n{stamp}\n{text}\n</{tag}>", source_timestamp=source)
 
 
 def build_noting_task_wrapper(body: Any, *, timestamp: Optional[float] = None) -> str:
@@ -402,3 +414,53 @@ def build_system_reminder_wrapper(body: Any, *, timestamp: Optional[float] = Non
 def build_user_reminder_wrapper(body: Any, *, timestamp: Optional[float] = None) -> str:
     """The active User Reminder carrier (durable user row when admitted idle)."""
     return build_user_wrapper("user-reminder", body, timestamp=timestamp)
+
+
+class TrustedUserInput(str):
+    """Internal source provenance for a freshly built synthetic carrier; never inferred from text."""
+
+    def __new__(cls, text: str, *, source_timestamp: Optional[float] = None):
+        value = super().__new__(cls, text)
+        value.source_timestamp = source_timestamp
+        return value
+
+
+def trusted_user_input(text: str, *, source_timestamp: Optional[float] = None) -> TrustedUserInput:
+    """Mark only an internal, admitted synthetic input; durable/wire serialization stays plain text."""
+    return TrustedUserInput(text, source_timestamp=source_timestamp)
+
+
+def preserve_user_input_origin(original: Any, sanitized: Any) -> Any:
+    """String sanitization must preserve the internal source witness, not grant one to user text."""
+    if not isinstance(original, TrustedUserInput):
+        return sanitized
+    value = trusted_user_input(sanitized, source_timestamp=original.source_timestamp)
+    value._secretary_active_admission = getattr(original, "_secretary_active_admission", None)
+    return value
+
+
+def stamp_fresh_turn_input(agent: Any, msg: MutableMapping[str, Any]) -> None:
+    """Stamp fresh genuine input unconditionally, including user-pasted tags or handoff text.
+
+    Historical rows never pass through this stage. Synthetic builders provide a trusted
+    source witness; matching a timestamp/wrapper prefix is never evidence of that origin.
+    """
+    content = msg.get("content")
+    if isinstance(content, TrustedUserInput):
+        if content.source_timestamp is not None:
+            msg["timestamp"] = content.source_timestamp
+            agent._persist_user_message_timestamp = content.source_timestamp
+        return
+    msg["_fresh_user_timestamp"] = FreshUserTimestampMarker(format_user_timestamp_marker(msg["timestamp"]))
+
+
+class FreshUserTimestampMarker(str):
+    """Current Turn's arrival witness, created only by fresh staging and stripped before SDK serialization."""
+
+
+class TimestampedUserContent(str):
+    """Internal api_content already stamped from a fresh arrival; serializes as plain text."""
+
+
+class TimestampedUserParts(list):
+    """Multimodal equivalent of the internal stamped api_content witness."""

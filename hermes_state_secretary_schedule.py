@@ -160,8 +160,10 @@ def schedule_sync_conn(
             next_run_at = schedule_initial_next_run(canonical_schedule, now=timestamp)
         conn.execute(
             "UPDATE secretary_schedule_registry SET delivery_semantics = ?, reminder_text = ?, enabled = 1, "
-            "next_run_at = ?, updated_at = ? WHERE schedule_id = ?",
-            (delivery_semantics, reminder_text, next_run_at, timestamp, row["schedule_id"]),
+            "next_run_at = ?, updated_at = CASE WHEN delivery_semantics IS ? AND reminder_text IS ? "
+            "AND enabled = 1 AND next_run_at IS ? THEN updated_at ELSE ? END WHERE schedule_id = ?",
+            (delivery_semantics, reminder_text, next_run_at, delivery_semantics, reminder_text,
+             next_run_at, timestamp, row["schedule_id"]),
         )
     return _schedule_row(conn, row["schedule_id"])
 

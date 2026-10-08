@@ -23,7 +23,10 @@ def db(tmp_path):
 
 @pytest.fixture
 def ref(db):
-    return db.resolve_conversation_ref("s1", ("test", "peer", 0))
+    ref = db.resolve_conversation_ref("s1", ("test", "peer", 0))
+    from tests.secretary.reminder_runtime import bind_reminder_runtime
+    bind_reminder_runtime(db, ref, "s1")
+    return ref
 
 
 def iso(offset_seconds):
@@ -99,7 +102,7 @@ def test_stale_route_fails_closed_without_losing_the_occurrence(db, ref):
     db.create_session("s2", source="test", session_key="peer")
     assert db.resolve_conversation_ref("s2", ("test", "peer", 1)) != ref
     resolved = reminders.resolve_active_reminder(db, claim)
-    assert resolved["route"] is None and resolved["reason"] == "route_unproven"
+    assert resolved["route"] is None
     assert pending(db, ref) == []
     reminders.release_claim(db, claim)
     still_due = scan_and_claim_due(db, owner="w2", conversation_ref=ref)

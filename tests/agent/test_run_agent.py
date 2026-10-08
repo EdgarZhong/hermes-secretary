@@ -950,6 +950,7 @@ class TestBuildSystemPrompt:
             "skills_list": "skills",
             "skill_view": "skills",
             "skill_manage": "skills",
+            "session_history": "session_history",
         }
 
         with (
@@ -974,7 +975,7 @@ class TestBuildSystemPrompt:
 
         assert "SKILLS_PROMPT" in prompt
         assert mock_skills.call_args.kwargs["available_tools"] == set(toolset_map)
-        assert mock_skills.call_args.kwargs["available_toolsets"] == {"web", "skills"}
+        assert mock_skills.call_args.kwargs["available_toolsets"] == {"web", "skills", "session_history"}
 
 
 class TestToolUseEnforcementConfig:
@@ -988,13 +989,8 @@ class TestToolUseEnforcementConfig:
             patch("model_tools.get_tool_definitions", return_value=[]),
             patch("model_tools.check_toolset_requirements", return_value={}),
             patch("agent.process_bootstrap.OpenAI"),
-            patch(
-                "hermes_cli.config.load_config",
-                return_value={"agent": {"tool_use_enforcement": True}},
-            ), patch(
-                "hermes_cli.config.load_config_readonly",
-                return_value={"agent": {"tool_use_enforcement": True}},
-            ),
+            patch("hermes_cli.config.load_config", return_value={"agent": {"tool_use_enforcement": True}}),
+            patch("hermes_cli.config.load_config_readonly", return_value={"agent": {"tool_use_enforcement": True}}),
         ):
             a = AIAgent(
                 api_key="test-key-1234567890",
@@ -1005,6 +1001,11 @@ class TestToolUseEnforcementConfig:
                 enabled_toolsets=[],
             )
             a.client = MagicMock()
+            # Exercise the native no-tool prompt gate explicitly. Main Secretary agents
+            # retain History even when the configurable toolsets list is empty.
+            assert "session_history" in a.valid_tool_names
+            a.tools = []
+            a.valid_tool_names = set()
             prompt = a._build_system_prompt()
             assert TOOL_USE_ENFORCEMENT_GUIDANCE not in prompt
 
@@ -1122,13 +1123,8 @@ class TestTaskCompletionGuidance:
             patch("model_tools.get_tool_definitions", return_value=[]),
             patch("model_tools.check_toolset_requirements", return_value={}),
             patch("agent.process_bootstrap.OpenAI"),
-            patch(
-                "hermes_cli.config.load_config",
-                return_value={"agent": {"task_completion_guidance": True}},
-            ), patch(
-                "hermes_cli.config.load_config_readonly",
-                return_value={"agent": {"task_completion_guidance": True}},
-            ),
+            patch("hermes_cli.config.load_config", return_value={"agent": {"task_completion_guidance": True}}),
+            patch("hermes_cli.config.load_config_readonly", return_value={"agent": {"task_completion_guidance": True}}),
         ):
             a = AIAgent(
                 api_key="test-key-1234567890",
@@ -1139,6 +1135,9 @@ class TestTaskCompletionGuidance:
                 enabled_toolsets=[],
             )
             a.client = MagicMock()
+            assert "session_history" in a.valid_tool_names
+            a.tools = []
+            a.valid_tool_names = set()
             assert TASK_COMPLETION_GUIDANCE not in a._build_system_prompt()
 
 

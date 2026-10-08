@@ -35,6 +35,7 @@ from agent.surface_switch import (
     identity_line_value, note_inert_pinned_tools, runtime_host_value, stage_surface_switch_note,
 )
 from agent.turn_context import PreflightCompressionTimedOut, build_turn_context
+from secretary.reminders import ActiveReminderPersistenceError, active_delivery_failure_result
 from hermes_cli.observability.shared_metrics_efficiency import record_cache_break, record_prompt_rebuild
 from agent.turn_retry_state import TurnRetryState
 # Phase helpers of the turn loop, bound at import so a source-tree swap cannot load a
@@ -1360,6 +1361,8 @@ def _decode_inline_moa_turn(user_message, persist_user_message):
 def _preflight_timeout_result(agent, exc, conversation_history) -> Dict[str, Any]:
     """Typed recovery result when turn-start preflight compression timed out (#98424): no
     provider call was sent, and surfaces would otherwise hide the actionable guidance."""
+    if isinstance(exc, ActiveReminderPersistenceError):
+        return active_delivery_failure_result(agent, exc, conversation_history)
     logger.warning(
         "Turn-start preflight compression timed out — ending turn with typed recovery result: %s", exc,
     )
@@ -1589,7 +1592,7 @@ def _run_conversation_turn(
             moa_active=bool(moa_config),
             title_user_message=title_user_message,
         )
-    except PreflightCompressionTimedOut as _preflight_timeout_exc:
+    except (PreflightCompressionTimedOut, ActiveReminderPersistenceError) as _preflight_timeout_exc:
         return _preflight_timeout_result(agent, _preflight_timeout_exc, conversation_history)
     # Voice turns may run on auxiliary.voice_chat: bound after the prompt/row/compaction were settled
     # against the main model, undone in finalize_turn (and run_conversation's finally on early exits).

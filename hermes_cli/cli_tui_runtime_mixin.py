@@ -49,12 +49,14 @@ class CLITuiRuntimeMixin:
     def _tui_idle_tick(self):
         """Idle housekeeping between inputs (agent not running)."""
         from secretary.noting_hosts import poll_cli_noting
+        from secretary.cli_reminders import poll_cli_reminders
         self._check_config_mcp_changes()  # auto-reload MCP on mcp_servers change
         # Termios drift heal first: a drifted tty makes the CLI look dead while the loop is healthy.
         for step in (
             self._check_termios_drift,
             lambda: self._drain_process_notifications("cli-idle"),
             lambda: poll_cli_noting(self),
+            lambda: poll_cli_reminders(self),
             self._maybe_fire_loop_tick,
             self._maybe_resume_parked_goal,
         ):
@@ -67,6 +69,9 @@ class CLITuiRuntimeMixin:
         from tools.process_registry_notifications import TimelineNotification
         user_input, is_voice_input, is_seeded_query = self._tui_unwrap_input(user_input)
         if not user_input:
+            return
+        from secretary.cli_reminders import cli_reminder_input_text, dispatch_cli_reminder_input, finish_cli_reminder_input
+        if dispatch_cli_reminder_input(self, user_input):
             return
         notification_preview = user_input if isinstance(user_input, TimelineNotification) else None
         self._status_bar_suppressed_after_resize = False  # input ends post-resize suppression
@@ -124,7 +129,9 @@ class CLITuiRuntimeMixin:
         self._turn_summary_begin()
         self._app.invalidate()
         try:
-            self.chat(notification_preview or user_input, images=submit_images or None, voice_input=is_voice_input)
+            result = self.chat(cli_reminder_input_text(self, notification_preview or user_input),
+                               images=submit_images or None, voice_input=is_voice_input)
+            finish_cli_reminder_input(self, result)
         finally:
             self._tui_after_turn()
 

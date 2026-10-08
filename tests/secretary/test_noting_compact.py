@@ -208,3 +208,52 @@ def test_real_native_admission_returns_before_summary_finishes(tmp_path, monkeyp
         while db.get_compression_lock_holder(parent.session_id) and time.monotonic() < deadline:
             time.sleep(0.01)
         db.close()
+
+
+def test_low_idle_selection_threshold_requests_real_native_safe_admission(tmp_path, monkeypatch):
+    """§4.10 has no ordering constraint: 100K < usage110K < Force130K < Auto147K."""
+    parent, db = make_parent(tmp_path, monkeypatch)
+    release = threading.Event()
+    entered = threading.Event()
+    observed = {}
+    try:
+        parent._compression_feasibility_checked = True
+        parent.context_compressor.context_length = 196000
+        parent.context_compressor.threshold_tokens = 147000
+        parent.context_compressor.last_prompt_tokens = 110000
+        def summary(*args, **kwargs):
+            observed.update(kwargs)
+            entered.set()
+            release.wait(timeout=10)
+            raise RuntimeError("controlled summary completion failure")
+        monkeypatch.setattr("agent.conversation_compression._run_summary_phase", summary)
+        result = compact_parent(parent, relevant_threshold_tokens=100000, wait_seconds=2)
+        assert entered.is_set() and result.ok and result.status == "admitted"
+        assert result.threshold_tokens == 100000 and result.usage_tokens == 110000
+        assert observed["approx_tokens"] == 110000 and observed["force"] is False
+        assert observed["bypass_cooldown"] is False
+        assert parent.context_compressor.threshold_tokens == 147000
+        assert compact_parent(parent, relevant_threshold_tokens=100000).status == "already_in_flight"
+    finally:
+        release.set()
+        deadline = time.monotonic() + 3
+        while db.get_compression_lock_holder(parent.session_id) and time.monotonic() < deadline:
+            time.sleep(.01)
+        db.close()
+
+
+def test_low_idle_threshold_preserves_cooldown_and_no_receipt(tmp_path, monkeypatch):
+    parent, db = make_parent(tmp_path, monkeypatch)
+    try:
+        parent.context_compressor.context_length = 196000
+        parent.context_compressor.threshold_tokens = 147000
+        parent.context_compressor.last_prompt_tokens = 110000
+        parent.context_compressor.record_timeout_failure("controlled", failure_kind="stalled")
+        calls = _never_compress(monkeypatch, parent)
+        result = compact_parent(parent, relevant_threshold_tokens=100000)
+        assert not result.ok and result.status.startswith("blocked:cooldown") and calls["n"] == 0
+        assert parent.context_compressor.threshold_tokens == 147000
+        parent.context_compressor.last_prompt_tokens = 99999
+        assert compact_parent(parent, relevant_threshold_tokens=100000).status == "already_below_threshold"
+    finally:
+        db.close()

@@ -32,7 +32,7 @@ Conversation 原文是事实来源，Notebook 是派生工作状态。Secretary 
 | `/notebook on`、`/notebook off` | 只修改当前 Conversation 的 Noting 参与状态；保留 Snapshot 与 Schedule 意图 |
 | `/propose-persistence` | 核对 Notebook 的 Memory／Rule／Skill 候选及原文，向用户提出持久化草稿；可在命令后附普通自然语言 |
 
-全局 Noting 开启时，local off 仍允许人类查看已有 Notebook 和提议已有候选；全局关闭时这两项命令不可用。提议本身不执行持久化，后续由用户以自然语言批准、修改或否决，获批操作使用 Hermes 已有能力。旧 `/refine` 已移除，独立工作审查 `/review` 保留。
+全局 Noting 开启时，local off 仍允许人类查看已有 Notebook 和提议已有候选；全局关闭时这两项命令不可用。提议本身不执行持久化，后续由用户以自然语言批准、修改或否决，获批操作使用 Hermes 已有能力。 `/notebook on` 会验证当前模型的实际上下文能力及原生 Idle 配置；无法启用时给出具体指导，不写入虚假的开启状态。旧 `/refine` 已移除，独立工作审查 `/review` 保留。
 
 ## 仓库与分支
 

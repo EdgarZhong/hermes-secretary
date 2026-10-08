@@ -458,11 +458,13 @@ class SessionMessagesMixin:
     def append_messages_batch(
         self, session_id: str, messages: List[Dict[str, Any]], compression_lock_holder: Optional[str] = None,
         turn_lease_holder: Optional[str] = None, chunk_rows: Optional[int] = None,
-        turn_lease_ttl_seconds: float = 300.0) -> int:
+        turn_lease_ttl_seconds: float = 300.0, *, before_commit=None) -> int:
         """Append *messages* in ONE write txn (all rows land or none, guards run once); returns the inserted
         count. ``chunk_rows`` bounds txn size for LARGE copies (branch seeds; FTS triggers run per row)."""
         if not messages:
             return 0
+        if before_commit is not None and chunk_rows is not None:
+            raise ValueError("Atomic transcript callback cannot use chunk_rows")
         if chunk_rows is not None and len(messages) > chunk_rows:
             tool_uid_index: Dict[str, str] = {}
             for msg in messages:  # each chunk indexes only its own rows: pair results across chunk boundaries
@@ -490,6 +492,8 @@ class SessionMessagesMixin:
             inserted, tool_calls_total = self._insert_message_rows(conn, session_id, inserted_rows)
             self._bump_session_counters(conn, session_id, inserted, tool_calls_total, unit=False)
             self.secretary_reconcile_session_conn(conn, session_id)
+            if before_commit is not None:
+                before_commit(conn, session_id, inserted_rows)
             return inserted
         return self._execute_transcript_write(_do, messages, patience_s=self._TRANSCRIPT_WRITE_PATIENCE_S)
 

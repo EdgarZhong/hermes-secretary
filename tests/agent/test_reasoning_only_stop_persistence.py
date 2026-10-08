@@ -55,6 +55,12 @@ def _run(agent, responses, user_message="hello", conversation_history=None):
 def test_promoted_reasoning_is_returned_but_persisted_row_keeps_content_empty(loop_agent):
     from tests.agent.test_run_agent import _mock_response
 
+    # Isolate the original parser-only no-tool contract from Secretary's main History
+    # surface. A side agent legitimately has no automatic main-Conversation tools.
+    assert "session_history" in loop_agent.valid_tool_names
+    loop_agent.side_agent = True
+    loop_agent.tools = []
+    loop_agent.valid_tool_names = set()
     result = _run(loop_agent, [_mock_response(content="", finish_reason="stop", reasoning_content=REASONING)])
 
     # Return contract from the parser-compat fix survives: one call, the reasoning is the answer.
@@ -75,6 +81,25 @@ def test_promoted_reasoning_is_returned_but_persisted_row_keeps_content_empty(lo
     assert [m["role"] for m in sent] == ["system", "user", "assistant", "user"]
     assert assistant_rows[0]["content"] == REASONING
     assert "api_content" not in assistant_rows[0]
+
+
+def test_main_history_planning_reasoning_continues_and_preserves_sidecar(loop_agent):
+    """The main History tool makes a planning-only stop eligible for the native stall guard."""
+    from tests.agent.test_run_agent import _mock_response
+
+    assert "session_history" in loop_agent.valid_tool_names
+    result = _run(loop_agent, [
+        _mock_response(content="", finish_reason="stop", reasoning_content=REASONING),
+        _mock_response(content="The evidence is sufficient.", finish_reason="stop"),
+    ])
+    assert result["api_calls"] == 2
+    assert result["final_response"] == "The evidence is sufficient."
+    interim = [m for m in result["messages"] if m.get("role") == "assistant"][0]
+    assert not interim.get("content")
+    assert interim["reasoning"] == interim["api_content"] == REASONING
+    second = loop_agent.client.chat.completions.create.call_args_list[1].kwargs
+    assert "session_history" in {tool["function"]["name"] for tool in second["tools"]}
+    assert [m for m in second["messages"] if m.get("role") == "assistant"][0]["content"] == REASONING
 
 
 def test_stall_guard_interim_row_carries_promoted_text_as_sidecar(loop_agent):
