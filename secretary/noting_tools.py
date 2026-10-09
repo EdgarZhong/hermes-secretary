@@ -139,7 +139,9 @@ def finish_noting(child, args):
     """Ordinary-profile terminal marker. Snapshot commit remains framework-owned."""
     if getattr(child, "_secretary_noting_profile", None) != "NOTING":
         return json.dumps({"success": False, "error": "finish_noting is ordinary-Noting only"})
-    reason = args.get("reason") if isinstance(args, dict) else None
+    if not isinstance(args, dict) or set(args) != {"reason"}:
+        return json.dumps({"success": False, "error": "finish_noting accepts only the required reason"})
+    reason = args.get("reason")
     if not isinstance(reason, str) or not reason.strip():
         return json.dumps({"success": False, "error": "finish_noting requires a nonempty reason"})
     child._secretary_noting_terminal_action_done = True
