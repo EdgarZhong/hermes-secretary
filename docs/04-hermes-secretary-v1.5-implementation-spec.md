@@ -232,7 +232,7 @@ persistence    → memory_candidate, rule_candidate, skill_candidate
 
 V1 的两种 Trigger、Force 公式／阈值、同 Anchor 准入、`NOTING`／`NOTING_WITH_COMPACTION`、原生 Compaction 交互、Commit gate、process-lifetime child 及权限白名单继续有效，不因 1.5 重写。
 
-### 4.4 Noting Task 指导：**只增必要句子**（M14、M15）
+### 4.4 Noting Task 指导：**保持原结构、按定案必要增补**（M14、M15、M27）
 
 保留现有`secretary/noting_child.py::DEFAULT_NOTING_TASK_INSTRUCTION`的结构、`NOTING_WITH_COMPACTION`约定、原始消息与`/notebook` rendering的区别；**不得整体替换或重新设计驱动Prompt**。对Candidate与Schedule语义只追加以下两句（合适地接入原英文段落）；另按C06/C11在`<noting-task>`及后续新增的系统提示/控制消息中重新给出当前可用History/Notebook工具列表和完整Schema（特殊profile另含compact_parent），明确“以此工具列表和Schema为准，取代此前工具可用性说明”。完整冻结父快照前缀包括root、原工具列表/Schema、到Anchor的消息，始终原样携带；不得在首请求或后续请求改写头部tools/schema。实际dispatch独立限制Noting白名单。模型继承、API/provider直接使用Hermes原生；中间层只保证上下文复用，不新增独立路由或provider改造。原“首次响应后扩顶层工具”的使用顺序不能覆盖这一纠偏契约：
 

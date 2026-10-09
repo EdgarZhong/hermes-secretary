@@ -43,7 +43,7 @@
 
 - 文档冻结 d5acc2cc27c6053ff198448fa3502bd8dd47e415，原附件 SHA256 3e7dd22ecd196527136a9051809f93e2ff177535cc70da622519ef397df85bbe；三核心文档和同步 01/02 已同批提交，AGENTS 仅入口变更。
 - T0 对照原首轮基线 5346cd094b6a1bb6c6d9ce69e83b3a1570cf46bd..7533173，agent/system_prompt.py 仅 8 行混合增量；必须先回退核查再加入新模块。
-- 04 §7.4 提及 M01–M24 不缩减强制索引中的 M25；此为原文交叉核对，不新增功能。
+- 历史04 §7.4 曾误写 M01–M24；现已统一 M01–M28，须覆盖 M25 Foreground 节点不变量以及 M26–M28 新定案；这属于现行规格对齐。
 - 本轮保留首轮失败/跳过/macOS-only/未测真实缓存命中率边界，新的证据不得夸大；环境或工具阻塞如实记录并持续尝试范围内可行解决。
 
 主会话必要白名单协调（实现边界，非规则变更）：T1 增 hermes_state_secretary_notebook.py / hermes_state_secretary_noting.py 的 Full 消费者 Prelude 适配；T2 增 agent/inline_tool_executors.py 的 notebook_show 实际 dispatch 与 secretary/noting_runtime.py 的 Full 迭代适配；T3 增 tui_gateway/methods_tools.py 的 Secretary dispatch/bypass 集合与 gateway/run_busy.py 的既有 idle allowlist，以及 tests/hermes_cli 的实际目录。各 Agent 仍不修改其他 Agent 的文件。
@@ -58,4 +58,4 @@ T2b 历史委派（已按C07撤销并恢复专属文件，不继续）：白名�
 
 C10暂停：不继续代码修改、模型调用或验收。最新详细接续编排、修改边界、依赖和完成条件只在根CLAUDE的H0–H8看板，不在本计划另建动态看板。保留的普通实现与最新文档一起提交现状快照；本轮以暂停final-delivery交付，用户恢复时新建接续轮次。
 
-C12历史交接更新：当时外部Agent runtime继承仅列为04 §4.5 D01待论证；后续C14已定稿为最近真实请求的Native/External唯一准入；不启动独立模型路由或外部执行器兼容。原V1/V1.5与实施的静态核对结论、P0等待条件和后续编排只在根CLAUDE；查实的头部Schema变化属于实施/测试预期/审查偏差，不能由这一规格缺口合理化。现行C05/C11保持有效，全部实施和验收继续暂停。
+C12历史交接更新：当时外部Agent runtime继承仅列为04 §4.5 D01待论证；后续C14已定稿为最近真实请求的Native/External唯一准入；不启动独立模型路由或外部执行器兼容。原V1/V1.5与实施的静态核对结论、P0已定稿接线和后续编排只在根CLAUDE；查实的头部Schema变化属于实施/测试预期/审查偏差，不能由这一规格缺口合理化。现行C05/C11保持有效，全部实施和验收继续暂停。

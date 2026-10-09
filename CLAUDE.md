@@ -13,7 +13,7 @@
 2026-10-09 用户此前暂停所有代码修改与继续验收。**此后明确单独授权 GitHub main 上一次 V1.5 全范围文档新提交，不授权恢复编码、真实模型调用、测试或验收。** D01、两个 Profile 的五 Turn 终止／强制提交及 Snapshot 结束审计均已由用户定稿，不能再让 Coding Agent 自选准入、另设路由或把强制结束改成不提交。V1.5 代码实施／独立验收依然 **paused / 未完成**。
 
 
-- 本轮权威索引：[index.md](.autonomous/20261009-v1.5-implementation/index.md)，snapshot-index.md为同正文链接；C05–C13是最新用户口径；C11纠正工具Schema承载位置，C12授权待论证记录和静态核对，C13明确授权加强现行02/04的完整生命周期表述。
+- 本轮权威索引：[index.md](.autonomous/20261009-v1.5-implementation/index.md)，snapshot-index.md为同正文链接；C05–C17是最新用户口径；C11纠正工具Schema承载位置，C12授权待论证记录和静态核对，C13明确授权加强现行02/04的完整生命周期表述。
 - 最新规格：[04](docs/04-hermes-secretary-v1.5-implementation-spec.md)；未修订契约沿用[02](docs/02-noting-system-specification.md)。原附件原样保留于 d5acc2cc27c6053ff198448fa3502bd8dd47e415 历史树，不追改首轮报告。
 - 原代码起点：main / 41f7057a28f8e9bf2fc6c8fb769748d9f2534012；产品承接 7533173ca315d6308b121d313f0dd281777c8604。
 - 原文档冻结：d5acc2cc27c6053ff198448fa3502bd8dd47e415；计划基线：5dc152f0dfa4086134a79e6366bfbcc1d615784a。暂停代码快照：b0f260afe1a4e09f86725d800b109939953e45b2，完整哈希见baseline.txt；C11文档纠偏提交4f940cda0d，后续C12只增加待论证问题和调查交接。暂停快照保存当时的普通实现及文档，不代表当前全部口径或最终发布版本。
@@ -92,11 +92,11 @@
 | H4 Hermes缓存观察 | 主会话统一取证；沿既有Hermes日志/响应接缝，证据integration/cache/ | H1–H3后通过原生Hermes真实路径观察Main→Noting：首次、工具请求、continuation、Parent并发，记录完整父前缀指纹、后缀工具列表/Schema、原生返回的缓存统计；不改provider缓存策略或新增日志/缓存管理器 | 我方中间层冻结/追加机制逐次成立；真实命中另按原生响应记录，0或不可见如实报告。屏蔽认证头，只观察隔离Hermes流量，不用Codex日志 |
 | H2b 有界结案与审计 | 待恢复 Noting/State 实现 Agent；Noting Child/Tools/Session Snapshot/日常读投影 | 两Profile最多五Turn，正常结束各自工具，超限强制有效Snapshot提交，特殊框架直接调用父原生Compaction；审计termination仅内部可见 | 不以终止工具缺失当Snapshot拒绝条件；旧Snapshot/Branch兼容、真实工具调用、权限与原Commit Gate回归 |
 | H5 接收集成与定向证据 | 主会话亲自review、微小接线；深入修复重新分派 | 接收七项报告、正式请求/权限/状态/失败与上下游；同时对本次Foreground兼容字段清理做必要定向复测，然后按DeepSeek重新验证global on↔off、local schema稳定、Warm/Cold/pinned、Full latestsource。更新README稳定事实、CLAUDE状态，创建明确待审提交 | 新口径代码与文档一致；未改V1未修订机制；凭据/个人内容不进Git；版本与证据匹配，不用反复复跑已有tests代替review |
-| H6 一次必要扩大回归+独立Verification | 全新fork_turns=none reviewer；产品只读，仅verification.md与证据；主会话统一安排测试执行方 | H5收敛后按冻结输入独立重新提取V1未改要求+M01–M25+C05–C13及用户后续已定稿修订；统一一次10类检查及实际影响的Secretary/Agent/State/Gateway/CLI/TUI/History分区、必要共享catalog验证；不无差别重测无关能力 | 六节完整矩阵与原文→路径→条件→方法→观察→判定闭环，无违规/证据不足；macOS边界明确。已知失败与新回归区分；修复仅定向复测，不能关闭规则让结果变绿 |
+| H6 一次必要扩大回归+独立Verification | 全新fork_turns=none reviewer；产品只读，仅verification.md与证据；主会话统一安排测试执行方 | H5收敛后按冻结输入独立重新提取V1未改要求+M01–M28+C05–C17及用户后续已定稿修订；统一一次10类检查及实际影响的Secretary/Agent/State/Gateway/CLI/TUI/History分区、必要共享catalog验证；不无差别重测无关能力 | 六节完整矩阵与原文→路径→条件→方法→观察→判定闭环，无违规/证据不足；macOS边界明确。已知失败与新回归区分；修复仅定向复测，不能关闭规则让结果变绿 |
 | H7 官方Dashboard独立Validation | 另一个全新fork_turns=none validator；产品只读，validation.md与隔离runtime/证据 | H6通过后先写场景供主会话过目，再用官方Dashboard+localhost native gateway+真实DeepSeek Main/Noting操作：跨compaction查原文、global/local/cold、真实Candidate自主搜证/后续更正、修订不写、明确批准限定写、Noting归档、Schedule idle/busy、Full Prelude/身份/Anchor审计 | 全部适用用户场景真实输入到输出通过，保留失败序列；构建/CLI/mock不替代，平台未测不冒称；无个人UI/新API/云部署 |
 | H8 交付判定 | 主会话delivery-evidence-review；根状态及新轮次final-delivery | 两独立门禁关闭、范围内整改清空、最新版本无新增必要缺口；对照本轮暂停历史与新轮次原始要求 | 才能标goal complete并交付实际commit/证据；未关闭继续修复，不以阶段测试通过替代整体完成 |
 
-恢复实现时D01及生命周期/审计已定稿，只需用户另行明确恢复编码与验收授权，再按autonomous-run建立新的接续轮次索引，引用暂停代码快照、原始5346cd/d5acc和C05–C13，复核本表已查明偏差；未定稿范围不能自行补方案。保留本轮暂停交付和历史结论，不追改为后来已通过。
+恢复实现时D01及生命周期/审计已定稿，只需用户另行明确恢复编码与验收授权，再按autonomous-run建立新的接续轮次索引，引用暂停代码快照、原始5346cd/d5acc和C05–C17，复核本表已查明偏差；不得重新发明D01模型路由方案，也不得自行补设产品准入条件。保留本轮暂停交付和历史结论，不追改为后来已通过。
 
 ## 已知验证边界
 
