@@ -47,3 +47,8 @@
 3. 更新本轮 `verification.md`，执行 H6 独立 Verification；只有通过后进入真实模型/用户验收。
 4. 使用既定 DeepSeek 官方 Anthropic / deepseek-flash 原生 Hermes 路径，取得真实 prefix/cache-read 证据，再执行官方 Dashboard H7 Validation。
 5. H6/H7 均通过后更新 `final-delivery.md`、`CLAUDE.md`、README，才标记整体完成。
+
+
+## 2026-10-09 本地接续
+
+依据 R06 沿用本轮基线和计划。当前产品 c4b45bdf9b，首批三文件定向55项通过（17.4秒），日志见根 CLAUDE。主会话接收云端变更并取得接线证据；native_evidence 只读产品准备 Native DeepSeek 脚本与隔离运行条件。相关 Agent/cache 定向回归后安排一次影响范围内扩大回归和10类检查，独立 Verification 重新提取全范围要求；真实 Native请求/缓存证据与官方 Dashboard Validation 分别记录，不用历史 Codex结果代替。

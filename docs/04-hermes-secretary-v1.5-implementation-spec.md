@@ -2,7 +2,7 @@
 
 > **2026-10-09 用户补充授权及纠偏：** 本轮索引C05–C17（D01已定稿）：Noting每次请求保留完整冻结父快照前缀，包括root、原工具列表/Schema与到Anchor的消息，不改写头部。在`<noting-task>`及后续新增的系统提示/控制消息中追加当前可用History/Notebook工具列表和完整Schema，强调以此为准；特殊profile另含compact_parent，实际dispatch按Noting白名单限制。此前“从首请求改实际顶层Schema、撤销父工具前缀parity”是Agent理解偏差，现撤销。机制停留在Hermes中间层上下文复用，模型继承、API/provider直接使用Hermes原生，不新增独立模型路由、provider改造或App Server Noting执行器。本轮真实运行选择仍为DeepSeek官方Anthropic/deepseek-flash思考模式；缓存观察使用Hermes自身日志或抓包。原始附件保留在d5acc冻结树，以下正文按最新用户澄清同步。
 
-> **规格状态：** 本次在 V1.5 内定稿 D01（实际执行来源门禁）、Noting 五 Turn 目标驱动结案及 Snapshot 结束审计。**仅文档获授权提交，代码实施和独立验收仍暂停，当前行为不能被称为已实现。**
+> **规格状态：** 本次在 V1.5 内定稿 D01（实际执行来源门禁）、Noting 五 Turn 目标驱动结案及 Snapshot 结束审计。**规格已定稿；实施与独立验收的动态状态见根 CLAUDE.md，不以规格状态代替实现或验收证据。**
 
 ## 1. 规格定位、继承关系与实施边界
 

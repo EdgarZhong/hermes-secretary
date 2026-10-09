@@ -1,4 +1,4 @@
-# V1.5 云端恢复实施与接续看板
+# V1.5 本地接续实施与门禁看板
 
 ## 自主口径收敛 · 待用户追认（下次用户交互优先报告）
 
@@ -10,8 +10,11 @@
 
 ## 当前状态与恢复条件
 
-2026-10-09 用户已明确恢复 V1.5 编码授权：由当前云端主会话直接在 GitHub main 完成可远程完成的编码、静态核对与自主实现过程文档，并提交可由本地 Coding Agent 直接续接的版本；无需 subagent。此前暂停状态到 70c772180d1bb2aaf8bba8d27a8a64f7c2fabb12 为止，现已解除。D01、两个 Profile 的五 Turn 终止／强制提交及 Snapshot 结束审计均已定稿，不得重新设计。真实 DeepSeek、Dashboard 用户验收及必须独立执行的 Verification/Validation 若云端条件不具备，必须保留为本地接续门禁，不得伪装通过。
+2026-10-09 用户指令「拉取最新提交，然后根据现状继续1.5轮自主实现」已恢复本地全流程执行。工作区原为干净 main / b24c558f15，fetch 后快进到 origin/main / c4b45bdf9bcc6bdedfb63897ae289c281a0c41ce（18 个提交）。沿用现有 `.autonomous/20261009-v1.5-cloud-resume/` 轮次及冻结依据，不重开轮次、不重新设计 D01/M27/M28。V1.5 整体仍未完成，独立 Verification/Validation 尚未通过。本地阶段提交沿用自主套件授权；不 push、不部署。
 
+本地准备与当前编排：官方 PM `.venv` Python 3.14.7、既有锁文件不变；隔离状态仅在 ignored `.hermes-dev/`。主会话负责全局 review、接线集成与交付；`native_evidence`（gpt-6.1-sol/high，无主会话历史）只读产品、准备真实 Native DeepSeek 取证，写入隔离证据/runtime，模型运行前由主会话安排。H6/H7 各由新独立 Agent 执行。
+
+首批定向运行证据：`HERMES_HOME="$PWD/.hermes-dev" HERMES_PYTHON="$PWD/.venv/bin/python" scripts/run_tests.sh tests/secretary/test_noting_runtime.py tests/secretary/test_noting_child.py tests/hermes_state/test_secretary_notebook.py`，c4b45bdf9b 上 **55 passed / 0 failed，17.4 秒**；日志 `.hermes-dev/evidence/v1.5/local-resume-initial.log`。仅覆盖三文件，非全轮验收。下一步补相关 Agent/cache/生命周期证据，再统一一次必要扩大回归与独立门禁。
 
 - 历史暂停轮次权威索引：[index.md](.autonomous/20261009-v1.5-implementation/index.md)，C05–C17继续作为定稿规格来源。当前恢复实施轮次权威索引：[index.md](.autonomous/20261009-v1.5-cloud-resume/index.md)，snapshot-index.md 同正文；本轮基线固定为 70c772180d1bb2aaf8bba8d27a8a64f7c2fabb12。
 - 最新规格：[04](docs/04-hermes-secretary-v1.5-implementation-spec.md)；未修订契约沿用[02](docs/02-noting-system-specification.md)。原附件原样保留于 d5acc2cc27c6053ff198448fa3502bd8dd47e415 历史树，不追改首轮报告。
@@ -93,7 +96,7 @@
 
 当前云端实现提交链从 `a84ce76769` 开始；核心代码/测试包括 `aefd94b6f0`、`0edf956211`、`c5a4405fab`、`db88b6ce48`、`27d4463472`、`0fb3e8cf96`、`32349fc25f`、`2a58d3e49e`。后续文档提交只更新交接事实，不改变产品规格。
 
-## 已知验证边界
+## 已知验证边界（云端交接历史；本地新证据见顶部）
 
 - GitHub 连接器可读写仓库但当前会话没有可执行仓库工作树；因此本轮**没有实际运行** Python tests、ruff、health 或其它冻结检查。新增 tests 是待执行回归，不是已通过证据。
 - 独立 Verification 与 Validation 均未启动；网页端当前没有本流程要求的独立 fork/subagent 条件，必须由本地 Coding Agent 接续。
