@@ -35,8 +35,8 @@ logger = logging.getLogger(__name__)
 # Turn kinds that must never touch the per-Conversation Idle timer (02 §4.5): Noting children,
 # delegate/subagent Turns, review/`/btw` forks, background utility work and side agents are all
 # excluded before any read, so their activity cannot reset a main Conversation's timer.
-_NON_MAIN_PLATFORMS = ("subagent", "gateway_hygiene")
-_CHILD_SOURCES = ("tool", "subagent")
+_NON_MAIN_PLATFORMS = ("subagent", "gateway_hygiene", "cron", "dreaming", "skill_refinement", "background", "noting")
+_CHILD_SOURCES = ("tool", "subagent", "cron", "cron_output", "dreaming", "skill_refinement", "background", "noting")
 
 
 @dataclass(frozen=True)
@@ -388,7 +388,7 @@ def try_admit_idle(
 
 
 def apply_notebook_surface_gate(agent: Any) -> bool:
-    """Main lifecycle facade: unconditional History plus effective-gated Notebook (02 §2.3/3.5)."""
+    """Main lifecycle facade: mandatory Main History plus global-gated Notebook (02 §2.3/3.5)."""
     from secretary.noting_surface import apply_main_read_surface
     return apply_main_read_surface(agent)
 
@@ -472,7 +472,8 @@ def _freeze_and_log_attempt(db: Any, conversation_ref: str, kind: str):
     """§4.8: freeze Full Foreground head, observe the attempt before skip/dedupe/admission."""
     with db._read_ctx() as conn:
         rows = db.get_full_foreground_conn(conn, conversation_ref)
-    head = rows[-1] if rows else None
+    messages = [row for row in rows if row.get("message_identity")]
+    head = messages[-1] if messages else None
     logger.info("Noting trigger attempt ref=%s kind=%s anchor=%s compaction_head=%s", conversation_ref, kind,
                 head.get("message_uid") if head else None, bool(head and head.get("is_compaction")))
     if not head or head.get("is_compaction") or head.get("role") == "system":

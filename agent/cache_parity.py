@@ -63,6 +63,23 @@ def parent_cache_parity_kwargs(parent: Any) -> dict[str, Any]:
     return kwargs
 
 
+def _exclude_main_read_additions(child):
+    """Ordinary forks inherit native capabilities, excluding V1.5's user-Main additions."""
+    from agent.system_prompt import HISTORY_SEARCH_GUIDANCE, SECRETARY_WORK_AND_NOTEBOOK_GUIDANCE
+
+    prompt = getattr(child, "_cached_system_prompt", None)
+    if isinstance(prompt, str):
+        for module in (HISTORY_SEARCH_GUIDANCE, SECRETARY_WORK_AND_NOTEBOOK_GUIDANCE):
+            if module + "\n\n" in prompt:
+                prompt = prompt.replace(module + "\n\n", "", 1)
+            else:
+                prompt = prompt.replace(module, "", 1)
+        child._cached_system_prompt = prompt
+    child.tools = [tool for tool in child.tools if tool.get("function", {}).get("name") != "notebook_show"]
+    child.valid_tool_names.discard("notebook_show")
+    child._secretary_main_read_eligible = child._secretary_notebook_read_enabled = False
+
+
 def apply_cache_parity_from_parent(child: Any, parent: Any, *, fork_tag: str | None = "noting") -> None:
     """Apply a same-model frozen prefix without changing any Session ownership.
 
@@ -80,5 +97,7 @@ def apply_cache_parity_from_parent(child: Any, parent: Any, *, fork_tag: str | N
     child._cached_conversation_root = parent._conversation_root_id()
     child.tools = copy.deepcopy(getattr(parent, "tools", None) or [])
     child.valid_tool_names = {tool["function"]["name"] for tool in child.tools}
+    if fork_tag != "noting":
+        _exclude_main_read_additions(child)
     child._tool_snapshot_generation = _FROZEN_TOOL_SNAPSHOT_GENERATION
     child._skip_mcp_refresh = True

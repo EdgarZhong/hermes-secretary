@@ -467,7 +467,7 @@ class ComputeHost:
         sid = str(frame.get("sid") or "")
         route_name = str(frame.get("route_name") or "")
         command = str(frame.get("command") or "")
-        if route_name in {"slash.notebook", "slash.propose-persistence"}:
+        if route_name in {"slash.notebook", "slash.noting", "slash.propose-persistence"}:
             parts = command.lstrip("/").split(maxsplit=1)
             response = server._methods["command.dispatch"](frame.get("request_id"), {
                 "session_id": sid, "name": route_name.removeprefix("slash."),

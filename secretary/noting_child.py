@@ -546,6 +546,11 @@ DEFAULT_NOTING_TASK_INSTRUCTION = (
     "after changes to verify the complete state. A historical /notebook rendering is already-existing "
     "derived Notebook state, not fresh user evidence: never duplicate its entries into new entries "
     "unless independent original user evidence establishes a new intent. Never replace raw JSON or write SQL. "
+    "Keep Persistence Candidates aligned with developments in the Parent Conversation: create or revise "
+    "them as needed, and archive candidates once their persistence actions are confirmed completed, or "
+    "the user has rejected or withdrawn them; a proposal or approval alone is not completion. "
+    "Notebook Schedules belong only to the Parent Conversation and deliver in-Conversation reminders; "
+    "they are not Hermes Cron jobs or delegated agent tasks. "
     "For NOTING_WITH_COMPACTION, call compact_parent after Notebook work before completion."
 )
 

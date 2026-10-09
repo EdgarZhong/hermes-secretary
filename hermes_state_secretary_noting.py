@@ -208,12 +208,21 @@ class SecretaryNotingMixin:
             return False
         if not rows:
             return False
-        boundary = -1
-        for row in self.get_full_foreground_conn(conn, conversation_ref):
-            if row["is_compaction"]:
-                boundary = max(boundary, row["path_position"])
+        full = [row for row in self.get_full_foreground_conn(conn, conversation_ref) if row.get("kind") == "message"]
+        introduced = {}
+        for index, source in enumerate(self._foreground_source_rows_conn(conn, conversation_ref)):
+            introduced.setdefault(source["message_uid"], index)
+        # A carried tail moves physically after a boundary without becoming a new
+        # logical event. Its frozen Anchor remains in the pre-compaction segment,
+        # even if an asynchronous Snapshot commits after the compaction completed.
+        boundaries = {row["message_uid"] for row in full if row["is_compaction"]}
+        boundary = max(((introduced[uid], 0) for uid in boundaries), default=(-1, 0))
+        anchors = {row["message_uid"] for row in full if not row["is_compaction"] and row["role"] != "system"}
         for row in rows:
-            position = self.anchor_position_conn(conn, conversation_ref, row["anchor_message_uid"])
+            uid = row["anchor_message_uid"]
+            # The genuine user projection of a newly introduced composite carrier
+            # follows its own boundary while keeping the same canonical identity.
+            position = (introduced[uid], int(uid in boundaries)) if uid in anchors else None
             if position is not None and position > boundary:
                 return True
         return False

@@ -39,18 +39,32 @@ def _remote_secretary(rid, params, session, name, arg):
 def _cmd_secretary(rid, params, session, name, arg):
     """Read current Notebook in the owning profile; a proposal is a normal main-Turn send."""
     from tui_gateway import server as s
-    from hermes_cli.cli_secretary_commands import notebook_command, propose_persistence_command
+    from hermes_cli.cli_secretary_commands import (notebook_command, noting_command, propose_persistence_command,
+                                                 persist_secretary_feedback, secretary_feedback_messages)
     if not session:
         return s._exec_out(rid, "Current Conversation state is unavailable.")
     if s._session_uses_compute_host(session):
         return _remote_secretary(rid, params, session, name, arg)
     with s._session_profile_runtime_scope(session):
-        if name == "notebook" and arg.strip().lower() in {"on", "off"}:
+        if name in {"notebook", "noting"}:
             if s._ensure_session_db_row(session) is False:
                 return s._exec_out(rid, "Current Conversation state is unavailable.")
         with s._session_db(session) as db:
-            command = notebook_command if name == "notebook" else propose_persistence_command
-            result = command(db, session.get("session_key"), arg)
+            command = {"notebook": notebook_command, "noting": noting_command,
+                       "propose-persistence": propose_persistence_command}[name]
+            target = str(getattr(session.get("agent"), "session_id", None) or session.get("session_key") or "")
+            result = command(db, target, arg, **({"source": session.get("source") or "tui"}
+                                               if name == "noting" else {}))
+            if result.output and name in {"notebook", "noting"}:
+                messages = secretary_feedback_messages(f"/{name}" + (f" {arg}" if arg else ""), result.output)
+                try:
+                    persist_secretary_feedback(db, target, messages)
+                except Exception as exc:
+                    logger.warning("Secretary slash feedback could not be saved", exc_info=True)
+                    return s._exec_out(rid, result.output + f"\nSecretary feedback could not be saved: {exc}")
+                with session["history_lock"]:
+                    session.setdefault("history", []).extend(messages)
+                    session["history_version"] = int(session.get("history_version", 0)) + 1
     if result.prompt:
         return s._ok(rid, {"type": "send", "message": result.prompt})
     return s._exec_out(rid, result.output)

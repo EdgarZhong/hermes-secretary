@@ -161,11 +161,8 @@ def _notebook_show(agent, args: dict, ctx: InlineToolContext) -> Any:
     if not ref:
         from agent.prompt_cache_scope import initialize_conversation_identity
         ref = getattr(agent, "_secretary_conversation_ref", None) or initialize_conversation_identity(agent)
-    effective_enabled = False
-    if db is not None and ref:
-        from secretary.noting_runtime import noting_trigger_gate
-        effective_enabled, _reason = noting_trigger_gate(db, ref)
-    return notebook_show(args, db=db, conversation_ref=ref, effective_enabled=effective_enabled)
+    from secretary.noting_surface import notebook_dispatch_enabled
+    return notebook_show(args, db=db, conversation_ref=ref, effective_enabled=notebook_dispatch_enabled(agent))
 
 
 def _compact_parent(agent, args: dict, ctx: InlineToolContext) -> Any:

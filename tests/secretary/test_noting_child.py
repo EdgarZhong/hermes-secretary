@@ -268,6 +268,8 @@ def test_real_spawn_runs_semantic_tool_to_snapshot_and_close(parent, db, stub_cl
     assert record["status"] == "completed"
     rows = db.get_messages_as_conversation(record["child_session_id"])
     assert rows[0]["content"].startswith("<noting-task>")
+    assert "a proposal or approval alone is not completion." in rows[0]["content"]
+    assert "they are not Hermes Cron jobs or delegated agent tasks." in rows[0]["content"]
     assert len(rows) == 6 and all(row["content"] != "will do" for row in rows)
     assert db.get_session(record["child_session_id"])["end_reason"] is not None
     calls = stub_client.chat.completions.create.call_args_list
@@ -420,5 +422,37 @@ def test_old_child_cannot_compact_parent_after_new_conversation(parent, db, stub
         result = json.loads(compact_parent_from_child(child))
         assert not result["success"] and result["status"] == "parent_ownership_or_gate_changed"
         native.assert_not_called()
+    finally:
+        child.close()
+
+
+@pytest.mark.parametrize("expression,kind", [
+    ("30m", "interval"), ("every 2h", "interval"), ("every hour", "interval"),
+    ("in 30m", "once"), ("in 2h", "once"),
+    ("every monday 9am", "cron"), ("weekdays at 9am", "cron"), ("every day at 9am", "cron"),
+    ("0 9 * * *", "cron"), ("2035-11-01T09:00:00", "once"),
+])
+def test_noting_schedule_tool_uses_five_native_forms_and_owning_timezone(parent, db, stub_client, expression, kind):
+    from datetime import datetime
+    from secretary.noting_tools import initialize_notebook_work
+    from secretary.noting_scope import owning_db_scope
+    Path(db.db_path).parent.joinpath("config.yaml").write_text("timezone: Asia/Shanghai\nnoting:\n  enabled: true\n")
+    child = build_noting_child(parent, runtime_profile="NOTING", parent_conversation_ref=parent._secretary_conversation_ref)
+    try:
+        initialize_notebook_work(child, trigger_type="idle")
+        created = json.loads(child._invoke_tool("notebook_mutate", {
+            "operation": "create", "entry_type": "user_reminder", "fields": {"message": "Follow up here"},
+        }, "create"))
+        assert created["success"], created
+        with owning_db_scope(db):
+            result = json.loads(child._invoke_tool("notebook_mutate", {
+                "operation": "schedule_create", "entry_id": created["entry"]["entry_id"], "expression": expression,
+            }, "schedule"))
+        assert result["success"], result
+        canonical = result["entry"]["schedule"]["canonical_schedule"]
+        assert canonical["kind"] == kind
+        if expression == "2035-11-01T09:00:00":
+            assert datetime.fromisoformat(canonical["run_at"]).utcoffset().total_seconds() == 8 * 3600
+        assert db._read_all("SELECT * FROM secretary_schedule_registry") == []
     finally:
         child.close()

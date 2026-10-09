@@ -15,9 +15,14 @@ SESSION_HISTORY_SCHEMA = {
         "properties": {
             "mode": {"type": "string", "enum": ["search", "read"]},
             "query": {"type": "string"}, "match": {"type": "string", "enum": ["keyword", "regex"]},
-            "roles": {"type": "array", "items": {"type": "string", "enum": ["user", "assistant", "tool"]}},
+            "roles": {"type": "array", "items": {"type": "string", "enum": ["user", "assistant", "tool", "system"]}},
             "limit": {"type": "integer", "minimum": 1, "maximum": 200},
             "message_id": {"type": "integer"},
+            "message_identity": {
+                "type": "object", "description": "Read a canonical Candidate source identity in the current Conversation.",
+                "properties": {"conversation_ref": {"type": "string"}, "message_uid": {"type": "string"}},
+                "required": ["conversation_ref", "message_uid"], "additionalProperties": False,
+            },
             "before": {"type": "integer", "minimum": 0, "maximum": 100},
             "after": {"type": "integer", "minimum": 0, "maximum": 100},
             "start_time": {"type": "string", "description": "Inclusive ISO timestamp or epoch seconds"},
@@ -49,14 +54,27 @@ def _select_history(db, session_id, conversation_ref, args):
     with db._read_ctx() as conn:
         rows = db.get_history_foreground_conn(conn, ref)
         message_id = args.get("message_id")
-        if args.get("mode") == "read" and message_id is not None:
-            identity = db.normalize_message_identity_conn(conn, ref, message_id)
-            index = next(i for i, row in enumerate(rows) if row["message_identity"] == identity)
+        identity = args.get("message_identity")
+        if args.get("mode") == "read" and (message_id is not None or identity is not None):
+            if message_id is not None:
+                if isinstance(message_id, bool) or not isinstance(message_id, int):
+                    raise ValueError("message_id must be an integer")
+                physical_identity = db.normalize_message_identity_conn(conn, ref, message_id)
+                if identity is not None and identity != physical_identity:
+                    raise ValueError("message_id and message_identity differ")
+                identity = physical_identity
+            if (not isinstance(identity, dict) or set(identity) != {"conversation_ref", "message_uid"}
+                    or identity["conversation_ref"] != ref or not isinstance(identity["message_uid"], str)
+                    or not identity["message_uid"]):
+                raise ValueError("message_identity must belong to the current Conversation")
+            index = next((i for i, row in enumerate(rows) if row["message_identity"] == identity), None)
+            if index is None:
+                raise ValueError("Message Identity is missing or outside the current Conversation path")
             before = _bounded_int(args.get("before"), 2, 0, 100)
             after = _bounded_int(args.get("after"), 3, 0, 100)
             rows = rows[max(0, index - before):index + after + 1]
     roles = args.get("roles")
-    if roles is not None and (not isinstance(roles, list) or any(role not in {"user", "assistant", "tool"} for role in roles)):
+    if roles is not None and (not isinstance(roles, list) or any(role not in {"user", "assistant", "tool", "system"} for role in roles)):
         raise ValueError("Invalid roles")
     start, end = _time_bound(args.get("start_time")), _time_bound(args.get("end_time"))
     if start is not None and end is not None and start > end:

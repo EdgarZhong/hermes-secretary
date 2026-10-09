@@ -251,3 +251,53 @@ def test_btw_formal_entry_uses_constructor_and_denies_dispatch(live_parent, monk
     assert history == original
     assert db.get_session("parent") == parent_row
     assert db.get_messages("parent") == parent_messages
+
+
+@pytest.mark.parametrize("origin", ["side_question", "background_review"])
+def test_real_ordinary_fork_excludes_only_new_main_modules_and_notebook(live_parent, origin):
+    from agent.background_review import build_cache_parity_fork
+    from secretary.noting_surface import apply_main_read_surface
+    from agent.system_prompt import HISTORY_SEARCH_GUIDANCE, SECRETARY_WORK_AND_NOTEBOOK_GUIDANCE
+
+    parent, _db = live_parent
+    apply_main_read_surface(parent)
+    parent._cached_system_prompt = parent._build_system_prompt(None)
+    original_prompt = parent._cached_system_prompt
+    original_tools = copy.deepcopy(parent.tools)
+    assert HISTORY_SEARCH_GUIDANCE in original_prompt
+    assert SECRETARY_WORK_AND_NOTEBOOK_GUIDANCE in original_prompt
+    assert "notebook_show" in parent.valid_tool_names
+    fork, _runtime, routed = build_cache_parity_fork(parent, {}, max_iterations=5, write_origin=origin)
+    try:
+        assert not routed
+        assert HISTORY_SEARCH_GUIDANCE not in fork._cached_system_prompt
+        assert SECRETARY_WORK_AND_NOTEBOOK_GUIDANCE not in fork._cached_system_prompt
+        assert "notebook_show" not in fork.valid_tool_names
+        assert {tool["function"]["name"] for tool in fork.tools} == parent.valid_tool_names - {"notebook_show"}
+        request = fork._build_api_kwargs([
+            {"role": "system", "content": fork._cached_system_prompt},
+            {"role": "user", "content": "auxiliary task"}], tools_for_api=fork.tools)
+        assert HISTORY_SEARCH_GUIDANCE not in request["messages"][0]["content"]
+        assert SECRETARY_WORK_AND_NOTEBOOK_GUIDANCE not in request["messages"][0]["content"]
+        assert "notebook_show" not in {tool["function"]["name"] for tool in request["tools"]}
+        assert fork.reasoning_config == parent.reasoning_config
+        assert fork._session_db is None and fork._persist_disabled
+        assert parent._cached_system_prompt == original_prompt and parent.tools == original_tools
+    finally:
+        fork.close()
+
+
+def test_noting_exception_keeps_new_main_modules_and_complete_advertised_tools(live_parent):
+    from secretary.noting_surface import apply_main_read_surface
+    from agent.system_prompt import HISTORY_SEARCH_GUIDANCE, SECRETARY_WORK_AND_NOTEBOOK_GUIDANCE
+
+    parent, _db = live_parent
+    apply_main_read_surface(parent)
+    parent._cached_system_prompt = parent._build_system_prompt(None)
+    assert HISTORY_SEARCH_GUIDANCE in parent._cached_system_prompt
+    assert SECRETARY_WORK_AND_NOTEBOOK_GUIDANCE in parent._cached_system_prompt
+    child = SimpleNamespace()
+    apply_cache_parity_from_parent(child, parent, fork_tag="noting")
+    assert child._cached_system_prompt == parent._cached_system_prompt
+    assert child.tools == parent.tools
+    assert child.valid_tool_names == parent.valid_tool_names

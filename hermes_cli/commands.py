@@ -153,9 +153,10 @@ COMMAND_REGISTRY: list[CommandDef] = [
                aliases=("hb",), args_hint="[every <interval> <prompt> | status | pause | resume | clear]",
                subcommands=("status", "pause", "resume", "clear"),
                busy_policy="dispatch"),
-    CommandDef("notebook", "Show the current Conversation Notebook or change local Noting participation", "Session",
-               args_hint="[on|off]", subcommands=("on", "off"), busy_policy="dispatch"),
-    CommandDef("propose-persistence", "Propose Memory, Rule, or Skill drafts from Notebook candidates and source evidence", "Session",
+    CommandDef("notebook", "Show the current Conversation Notebook", "Session", busy_policy="dispatch"),
+    CommandDef("noting", "Enable or disable background Noting for this Conversation", "Session",
+               args_hint="on|off", subcommands=("on", "off"), busy_policy="dispatch"),
+    CommandDef("propose-persistence", "Propose Memory, Rule, or Skill drafts from pending Notebook candidates", "Session",
                args_hint="[message]", argument_mode="text"),
     CommandDef("review", "Spawn an independent subagent to review the work just discussed (PR, code, docs)", "Session",
                args_hint="[review instructions]"),
@@ -454,7 +455,7 @@ HELP_SESSION_SUBGROUPS: dict[str, tuple[str, ...]] = {
     "Context": ("compress", "compact", "context", "ctx", "status"),
     "Background & Automation": (
         "bg", "btw", "agents", "tasks", "queue", "q", "steer", "s", "goal", "subgoal", "heartbeat", "hb",
-        "notebook", "propose-persistence", "loop", "proactive", "moa", "journey", "learning", "memory-graph")}
+        "notebook", "noting", "propose-persistence", "loop", "proactive", "moa", "journey", "learning", "memory-graph")}
 
 # All names + aliases the gateway dispatches. Config-gated commands are
 # included; their handler checks the gate at runtime.

@@ -1070,11 +1070,8 @@ def build_turn_context(
 
     # Tag log records on this thread with the session ID for ``hermes logs``; bind the
     # skill write-origin ContextVar; restore the primary runtime after a fallback turn.
-    # NOTE: the DB session row is created later, AFTER the system prompt is restored/built (see
-    # _ensure_db_session() below the system-prompt block). Creating it here — before _cached_system_prompt
-    # is populated — inserts a row with system_prompt=NULL on a fresh API/gateway agent that carries
-    # client-managed history, which then trips the "stored system prompt is null; rebuilding from scratch"
-    # warning and a needless first-turn prefix cache miss. (Issue #45499.)
+    # The owning row is established at the read-surface boundary below, before root
+    # capture. A fresh row's temporary NULL root is populated by native prompt persistence.
     set_session_context(agent.session_id)
     set_current_write_origin(getattr(agent, "_memory_write_origin", "assistant_tool"))
     from tools.skill_provenance import set_review_attended
@@ -1141,9 +1138,15 @@ def build_turn_context(
             f"{'...' if len(_preview_text) > 60 else ''}'"
         )
 
+    # Resolve ownership/config BEFORE restoring or capturing root + tools for this Turn.
+    _ensure_session_row(agent, pending_cli_message)
+    from secretary.noting_surface import apply_main_read_surface, synchronize_main_read_prompt
+    apply_main_read_surface(agent)
+
     # System prompt is cached per session for prefix caching.
     if agent._cached_system_prompt is None:
         restore_or_build_system_prompt(agent, system_message, conversation_history)
+    synchronize_main_read_prompt(agent, system_message)
     active_system_prompt = agent._cached_system_prompt
 
     # Bot Mode DM tool — injected ONLY into a bot's canonical "Bot Chat" session (same
@@ -1155,9 +1158,6 @@ def build_turn_context(
     except Exception:
         logger.debug("message_agent injection skipped", exc_info=True)
 
-    _ensure_session_row(agent, pending_cli_message)
-    from secretary.noting_runtime import apply_notebook_surface_gate
-    apply_notebook_surface_gate(agent)
     # A turn interrupted before admission could not write its accepted input because
     # it did not own the session lease. Persist that carried-forward row now, before
     # compaction can rewrite or drop it.

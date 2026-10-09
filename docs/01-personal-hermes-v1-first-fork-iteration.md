@@ -185,7 +185,7 @@ V1 只有两个 Runtime Profile：
 - `NOTING`；
 - `NOTING_WITH_COMPACTION`。
 
-Noting 使用 persistent Hermes child Session + Parent cache-parity prefix + narrow Noting tool surface。它是 process-lifetime one-shot task；进程中断后不恢复，未完成的任务不能移动 Notebook pointer。
+Noting 使用 persistent Hermes child Session + 始终保留的冻结Parent root/消息前缀 + 从noting-task起收窄的真实Noting工具面。它是 process-lifetime one-shot task；进程中断后不恢复，未完成的任务不能移动 Notebook pointer。
 
 主 Conversation 后续活动不会自动取消一个已经成功 admit 的 Noting Task。最终安全门是 commit 时重新验证 frozen Anchor 是否仍然位于当前 Full Foreground。
 

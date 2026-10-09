@@ -55,6 +55,7 @@ class GatewayAgentCacheMixin:
         generation: MCP reloads mutate the registry without touching config.yaml."""
         out: Dict[str, Any] = {}
         cfg = user_config if isinstance(user_config, dict) else {}
+        out["noting.enabled"] = cfg_get(cfg, "noting", "enabled", default=True)
         for section, key in cls._CACHE_BUSTING_CONFIG_KEYS:
             default = cfg_get(DEFAULT_CONFIG, section, key)
             section_val = cfg.get(section)

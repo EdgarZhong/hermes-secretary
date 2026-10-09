@@ -69,6 +69,7 @@
 - 保护每个 Conversation 的 prompt-cache prefix：不得在会话中途随意改写历史、切换工具面、重载记忆或重建 root System Prompt；压缩及已冻结的 Noting cache-parity 机制遵循各自契约。
 - 原有 facade / sibling 模块结构继续有效：行为放入对应 sibling，保持 facade 公共入口；避免模块级循环导入，在生产代码实际读取的接线点进行 patch。
 - 用户状态路径通过 `get_hermes_home()` 等 profile-aware helper 获取，不硬编码 `~/.hermes`；后台任务、tick、RPC、线程及子进程必须显式绑定所属 profile，不能使用启动 profile 代替目标 profile。
+- 本项目 Main/Noting 模型运行及真实验收使用 DeepSeek 官方 Anthropic 接口与已确认模型；不使用 Codex App Server、Codex Proxy 或自动回退到这两条通道。此为用户明确运行约束，凭据只从获授权本地环境读取，不进入 Git。
 - 机器事实及可执行文件解析使用 `hermes_platform`；非凭据的行为配置进入配置系统，不任意新增环境变量控制功能。
 - Core patch 必须位于已确认接线点；不得随手新增平行 Agent Loop、对话存储、主会话 admission gate、通用调度器或 API hierarchy。
 - Secretary 的持久状态只向已有 `state.db` 增加自有表，不改变 Hermes 原有表的 schema 或 ownership 语义。

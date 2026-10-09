@@ -49,20 +49,25 @@ def test_catalog_and_completion_discover_new_commands_and_remove_refine(live):
     sid, *_ = live
     catalog = call("commands.catalog", sid)["result"]
     commands = {pair[0] for pair in catalog["pairs"]}
-    assert {"/notebook", "/propose-persistence", "/review"} <= commands
+    assert {"/notebook", "/noting", "/propose-persistence", "/review"} <= commands
     assert "/refine" not in commands
     for prefix, wanted in (("/note", "/notebook"), ("/propose", "/propose-persistence")):
         result = call("complete.slash", sid, text=prefix)["result"]
         assert wanted.lstrip("/") in {item["text"].lstrip("/") for item in result["items"]}
-    result = call("complete.slash", sid, text="/notebook ")["result"]
+    result = call("complete.slash", sid, text="/noting ")["result"]
     assert {"on", "off"} <= {item["text"].strip() for item in result["items"]}
 
 
 def test_slash_exec_uses_live_state_and_send_keeps_tail(live):
     sid, session, home, db, ref = live
     before = db.notebook_current(ref)
-    result = call("slash.exec", sid, command="/notebook off")["result"]
+    result = call("slash.exec", sid, command="/noting off")["result"]
     assert "is off" in result["output"]
+    assert session["history"][-1]["content"] == result["output"]
+    durable = db.get_messages_as_conversation("secretary-main")
+    assert durable[-1]["content"] == result["output"]
+    assert durable[-2]["content"].endswith("/noting off")
+    assert durable[-1]["role"] == "assistant" and durable[-2]["role"] == "user"
     result = call("slash.exec", sid, command="/notebook")["result"]
     assert str(before["created_at"]) in result["output"]
     assert "source-original" not in result["output"]
@@ -70,7 +75,7 @@ def test_slash_exec_uses_live_state_and_send_keeps_tail(live):
     result = call("slash.exec", sid, command="/propose-persistence Keep THIS tail 文本")["result"]
     assert result["type"] == "send"
     assert result["message"].endswith("Keep THIS tail 文本")
-    assert "Use reusable procedures." in result["message"]
+    assert "Use reusable procedures." not in result["message"]
     assert session.get("slash_worker") is None
     assert session["session_key"] == "secretary-main"
     assert db.notebook_current(ref) == before
@@ -83,7 +88,7 @@ def test_slash_exec_uses_live_state_and_send_keeps_tail(live):
 def test_direct_dispatch_and_unknown_notebook_usage(live):
     sid, *_ = live
     result = call("command.dispatch", sid, name="notebook", arg="please edit")["result"]
-    assert result["output"] == "Usage: /notebook [on|off]"
+    assert result["output"] == "Usage: /notebook"
     result = call("command.dispatch", sid, name="propose-persistence", arg="Natural text")["result"]
     assert result["type"] == "send" and result["message"].endswith("Natural text")
 
@@ -93,3 +98,14 @@ def test_existing_prompt_commands_keep_the_normal_send_path(live):
     for name in ("queue", "plan", "learn"):
         result = call("command.dispatch", sid, name=name, arg="Preserve THIS intent")["result"]
         assert result["type"] == "send" and "Preserve THIS intent" in result["message"]
+
+
+def test_feedback_failure_retains_local_preference_without_fabricated_history(live, monkeypatch):
+    sid, session, _, db, ref = live
+    def failed(*args, **kwargs):
+        raise OSError("disk unavailable")
+    monkeypatch.setattr(db, "append_messages_batch", failed)
+    result = call("slash.exec", sid, command="/noting off")["result"]
+    assert "is off" in result["output"] and "feedback could not be saved" in result["output"]
+    assert session["history"] == []
+    assert not db.notebook_local_enabled(ref)

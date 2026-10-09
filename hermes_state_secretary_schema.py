@@ -23,6 +23,17 @@ CREATE TABLE IF NOT EXISTS secretary_session_bindings (
 );
 CREATE INDEX IF NOT EXISTS idx_secretary_binding_ref
     ON secretary_session_bindings(conversation_ref);
+CREATE TABLE IF NOT EXISTS secretary_context_preludes (
+    conversation_ref TEXT PRIMARY KEY REFERENCES secretary_conversations(conversation_ref),
+    session_id TEXT NOT NULL,
+    root_prompt_hash TEXT,
+    native_root_prompt_hash TEXT,
+    native_tools_pin TEXT,
+    tool_schemas_json TEXT NOT NULL,
+    source TEXT NOT NULL,
+    missing_reason TEXT,
+    captured_at REAL NOT NULL
+);
 CREATE TABLE IF NOT EXISTS secretary_branch_messages (
     conversation_ref TEXT NOT NULL REFERENCES secretary_conversations(conversation_ref),
     position INTEGER NOT NULL,

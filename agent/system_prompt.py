@@ -31,12 +31,26 @@ from hermes_constants import get_default_hermes_root, get_hermes_home
 from utils import is_truthy_value
 
 logger = logging.getLogger(__name__)
-SECRETARY_GUIDANCE = (
-    "Conversation history is the source of truth; use session_history to check current-conversation evidence. "
-    "In the main conversation, Notebook is derived working state that you may read when notebook_show is available; "
-    "semantic maintenance belongs to Noting. Persistence candidates are proposals: present their source evidence "
-    "and obtain explicit user approval before applying proposed Memory, Rule, or Skill changes."
-)
+HISTORY_SEARCH_GUIDANCE = """History Search retrieves original messages within the current Conversation, including across Compaction boundaries.
+
+When recalling earlier information, use `session_history` first unless the user explicitly refers to another Conversation; if the information is not found here, use `session_search` to search across Conversations."""
+SECRETARY_WORK_AND_NOTEBOOK_GUIDANCE = """## Secretary Work and Notebook Guidance
+
+As a long-term personal assistant, you may serve as the user's secretary, maintaining continuity within the same Conversation across many interactions and context compactions.
+
+The Notebook provides structured working state across compaction boundaries, preserving continuity in the user's affairs, ongoing work, shared decisions, and proposals for long-term memory and self-improvement.
+
+The Notebook has four sections:
+- **user** (`user_commitment`, `user_reminder`): the user's commitments and requested reminders.
+- **assistant** (`agent_task`, `watchpoint`): tasks you have accepted and matters that require future attention.
+- **consultation** (`decision`, `open_question`, `formulating_insight`): established decisions, unresolved questions, and developing insights.
+- **persistence** (`memory_candidate`, `rule_candidate`, `skill_candidate`): proposals for durable memory, rules, and reusable skills.
+
+The Notebook's Schedule capability provides in-Conversation reminders, delivered exclusively within the owning Conversation. Unlike Hermes Cron jobs, these reminders do not launch independent agents or execute autonomous tasks; they bring due matters back to the main Conversation for attention and follow-up.
+
+Background Noting maintains the Notebook asynchronously after interactions become idle or at other defined triggers. Updates may lag behind the latest messages. The Conversation history remains the source of truth. As the main assistant, never maintain or modify the Notebook yourself. Instead, consult `notebook_show` when relevant and carry out your work using the Notebook, the user's latest instructions, and delivered reminders.
+
+Persistence Candidates are only potential proposals recorded in the Notebook, not authorization to act. Never write them to Memory, Rules, or Skills without authorization. Persistence is permitted only after a proposal has been presented to the user and the user has explicitly authorized its execution."""
 _PLUGIN_SECTION_FRAME_RE = re.compile(
     r"^## Plugin Context: (?P<id>[a-z0-9][a-z0-9._-]{0,127})\n<!-- hermes-plugin-section-chars:(?P<chars>[0-9]{1,4}) -->\n\n",
     re.MULTILINE,
@@ -567,8 +581,10 @@ def _guidance_parts(agent: Any) -> List[str]:
             ) if getattr(agent, flag, True)
         ]
     parts.append(_tool_guidance_block(agent))  # None/empty entries are dropped by _join_tier
-    if "session_history" in (agent.valid_tool_names or set()):
-        parts.append(SECRETARY_GUIDANCE)
+    if getattr(agent, "_secretary_main_read_eligible", False):
+        parts.append(HISTORY_SEARCH_GUIDANCE)
+        if getattr(agent, "_secretary_notebook_read_enabled", False):
+            parts.append(SECRETARY_WORK_AND_NOTEBOOK_GUIDANCE)
     if not agent.valid_tool_names:
         return parts
     # Steering only lands inside tool results, so only reachable with tools.

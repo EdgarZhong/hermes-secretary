@@ -506,6 +506,41 @@ def _print_nous_entitlement_guidance(agent, capability: str) -> bool:
     return _print_guidance(agent, _nous_entitlement_message(capability))
 
 
+def _capture_secretary_request_prelude(agent, state):
+    """Capture the finalized provider-neutral root/tools before the real provider call."""
+    from secretary.noting_runtime import is_main_conversation_agent
+
+    if not is_main_conversation_agent(agent):
+        return
+    try:
+        payload = state.api_kwargs
+        request_messages = payload.get("messages", payload.get("input", state.api_messages))
+        root = _system_prompt_for_hooks(payload, request_messages)
+        if isinstance(root, list):
+            root = "".join(block.get("text", "") for block in root if isinstance(block, dict))
+        if not isinstance(root, str):
+            return
+        # Project finalized transport tools back to the existing provider-neutral schema.
+        import copy
+        tools = []
+        for original in payload.get("tools") or []:
+            tool = copy.deepcopy(original)
+            tool.pop("cache_control", None)
+            if isinstance(tool.get("function"), dict):
+                tool["function"].pop("cache_control", None)
+            elif tool.get("type") == "function":  # Responses' flat function schema.
+                tool = {"type": "function", "function": {k: v for k, v in tool.items() if k != "type"}}
+            elif "input_schema" in tool:  # Native Anthropic function schema.
+                tool["parameters"] = tool.pop("input_schema")
+                tool = {"type": "function", "function": tool}
+            tools.append(tool)
+        agent._session_db.capture_secretary_prelude(
+            agent.session_id, root, tools, source="provider_neutral_request",
+        )
+    except Exception:
+        logger.warning("Secretary effective request Prelude capture failed", exc_info=True)
+
+
 def _system_prompt_for_hooks(api_kwargs: Any, request_messages: Any) -> Any:
     """System prompt as sent to the provider (``system`` / ``instructions`` / ``messages[0]``)
     for observability hooks; None when the request carries none."""
@@ -712,6 +747,8 @@ def _restore_pinned_tools(agent, session_row) -> list:
             persist_agent_tool_names(agent)
     except Exception:
         logger.debug("tool prefix restore skipped", exc_info=True)
+    from secretary.noting_surface import apply_main_read_surface
+    apply_main_read_surface(agent)
     return built_for_this_surface
 
 
@@ -1509,6 +1546,7 @@ def _run_api_retry_loop(agent, s: _LoopState) -> Optional[Dict[str, Any]]:
             return None
         try:
             _run_phase(build_api_request, agent, s)
+            _capture_secretary_request_prelude(agent, s)
             if _run_phase(perform_api_call, agent, s).action == "break":
                 return None
             _rc = _run_phase(check_api_response, agent, s)

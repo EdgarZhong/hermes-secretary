@@ -41,7 +41,25 @@ NOTEBOOK_MUTATE_SCHEMA = {
                                       for fields in group.values() for key in fields}},
             "status": {"type": "string", "description": "Legal status graph by entry type: "
                        + json.dumps(STATUS_TRANSITIONS, ensure_ascii=False)},
-            "expression": {"type": "string", "description": "Human Schedule intent, never runtime JSON."},
+            "expression": {
+                "type": "string",
+                "description": (
+                    "Required for schedule_create and schedule_update. "
+                    "Time expression forms: "
+                    "(1) recurring interval — '30m', 'every 2h', 'every hour' "
+                    "(repeats indefinitely until cancelled); "
+                    "(2) explicit one-shot delay — 'in 30m', 'in 2h' "
+                    "(fires ONCE; use this for reminders after a duration, not a bare duration); "
+                    "(3) natural day/time — 'every monday 9am', 'weekdays at 9am', "
+                    "'every day at 9am' (recurring weekly/daily); "
+                    "(4) cron syntax — '0 9 * * *' (daily at 9am); "
+                    "(5) absolute one-shot — ISO timestamp '2026-11-01T09:00:00'. "
+                    "A bare duration like '30m' means recurring, while 'in 30m' means one-shot. "
+                    "Times without an explicit timezone use the configured Hermes timezone. "
+                    "This expression defines an in-Conversation Notebook reminder, "
+                    "NOT an independent Hermes Cron job."
+                ),
+            },
             "source_message_identities": {"type": "array", "items": {
                 "type": "object", "additionalProperties": False,
                 "properties": {"conversation_ref": {"type": "string"}, "message_uid": {"type": "string"}},

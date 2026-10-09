@@ -128,7 +128,7 @@ class SecretaryNotebookMixin:
         """UID -> path position for ordinary logical Message Anchors (02 §2.6)."""
         return {row["message_uid"]: row["path_position"]
                 for row in self.get_full_foreground_conn(conn, conversation_ref)
-                if row["role"] != "system" and not row["is_compaction"]}
+                if row.get("kind") == "message" and row["role"] != "system" and not row["is_compaction"]}
 
     def _notebook_latest_valid_snapshot_id_conn(self, conn, conversation_ref, positions):
         """The committed Snapshot of the latest Anchor still on *positions* (A10)."""

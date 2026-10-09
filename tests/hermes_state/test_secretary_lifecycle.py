@@ -98,7 +98,7 @@ def test_full_annotations_are_consumable_but_never_messages_or_history(db):
     create(db, 'p')
     message(db, 'p', 'a')
     committed = snapshot(db, 'p', 'a')
-    full = db.get_full_foreground('p')
+    full = db.get_full_foreground('p')[1:]
     assert len(full) == 1
     annotations = full[0]['audit_annotations']
     assert [a['kind'] for a in annotations] == ['noting_anchor', 'notebook_snapshot']
@@ -217,12 +217,12 @@ def test_native_branch_seed_does_not_reposition_compaction_provenance(db):
     db.archive_and_compact('p', [{'role': 'user', 'content': SUMMARY_PREFIX + 'summary\n' + _SUMMARY_END_MARKER,
                                  '_compressed_summary': True, 'message_uid': 'boundary'}])
     message(db, 'p', 'head', 'branch point')
-    before = [(r['message_uid'], r['is_compaction']) for r in db.get_full_foreground('p')]
+    before = [(r['message_uid'], r['is_compaction']) for r in db.get_full_foreground('p')[1:]]
     ref = branch(db)
     # Native TUI display seed contains authentic ordinary rows; Full retains the compaction audit path.
     db.append_messages_batch('b', [{'role': r['role'], 'content': r['content'], 'message_uid': r['message_uid']}
                                   for r in db.get_history_foreground('p')])
-    assert [(r['message_uid'], r['is_compaction']) for r in db.get_full_foreground(conversation_ref=ref)] == before
+    assert [(r['message_uid'], r['is_compaction']) for r in db.get_full_foreground(conversation_ref=ref)[1:]] == before
 
 
 def test_schema_upgrade_marks_existing_frozen_branch_without_refreezing(db):
@@ -288,7 +288,7 @@ def test_branch_own_native_rewrite_does_not_revive_inherited_path(db, mutation):
         db.clear_messages('b')  # Removing inactive native seed versions still cannot revive the prefix.
     expected = ['new'] if mutation == 'replace' else []
     assert [r['message_uid'] for r in db.get_history_foreground(conversation_ref=ref)] == expected
-    assert [r['message_uid'] for r in db.get_full_foreground(conversation_ref=ref)] == expected
+    assert [r['message_uid'] for r in db.get_full_foreground(conversation_ref=ref)[1:]] == expected
     assert db.notebook_current(ref) is None
     assert [r['message_uid'] for r in db.get_history_foreground('p')] == ['a', 'b']
     assert db.notebook_current(db.resolve_conversation_ref('p')) is not None
@@ -321,7 +321,7 @@ def test_branch_partial_rewind_keeps_prefix_snapshot_audit_and_rebranches(db):
                                   for r in db.get_history_foreground('p')])
     inherited = db.notebook_current(ref)
     db.rewind_to_message('b', db.get_active_message_ids('b')[1])
-    full = db.get_full_foreground(conversation_ref=ref)
+    full = db.get_full_foreground(conversation_ref=ref)[1:]
     assert [r['message_uid'] for r in full] == ['a']
     current = db.notebook_current(ref)
     assert current['anchor_message_uid'] == 'a'

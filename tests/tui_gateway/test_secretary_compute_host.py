@@ -71,7 +71,7 @@ def test_remote_secretary_control_ack_keeps_profile_identity_and_busy_policy(tmp
     try:
         def slash(text):
             return server._methods["slash.exec"]("test", {"session_id": sid, "command": text})["result"]
-        assert "is off" in slash("/notebook off")["output"]
+        assert "is off" in slash("/noting off")["output"]
         assert not db.notebook_local_enabled(ref)
         shown = slash("/notebook")["output"]
         assert "TARGET candidate" in shown
@@ -79,7 +79,7 @@ def test_remote_secretary_control_ack_keeps_profile_identity_and_busy_policy(tmp
         proposal = slash("/propose-persistence Original Tail 保留")
         assert proposal["type"] == "send"
         assert proposal["message"].endswith("Original Tail 保留")
-        assert "TARGET evidence only" in proposal["message"]
+        assert "TARGET evidence only" not in proposal["message"]
         assert not db.notebook_local_enabled(ref)
         assert not (launch / "state.db").exists()
         assert mirror["session_key"] == "launch-stale" and owner["session_key"] == "host-main"

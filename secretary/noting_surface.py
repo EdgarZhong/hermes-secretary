@@ -1,4 +1,4 @@
-"""Main-turn Secretary read tools, resolved only at construction or the turn boundary."""
+"""Main-turn read surface, synchronized only at native construction/Turn boundaries."""
 
 import copy
 import logging
@@ -10,14 +10,6 @@ _READ_TOOLS = {"session_history", "notebook_show"}
 def _tool_name(tool):
     function = tool.get("function") if isinstance(tool, dict) else None
     return function.get("name") if isinstance(function, dict) else None
-
-
-def _main_surface_agent(agent):
-    return not (
-        getattr(agent, "side_agent", False) or getattr(agent, "_persist_disabled", False)
-        or getattr(agent, "_parent_session_id", None) or getattr(agent, "_delegate_depth", 0)
-        or getattr(agent, "platform", None) in {"subagent", "gateway_hygiene"}
-    )
 
 
 def _read_schema(name):
@@ -33,42 +25,59 @@ def _read_schema(name):
     return registry.get_schema(name)
 
 
-def _notebook_enabled(agent):
-    from secretary.noting_runtime import noting_trigger_gate
+def notebook_read_enabled(agent):
+    """Only proven user Main + live owning-profile global enable; local state is irrelevant."""
+    from secretary.noting_runtime import is_main_conversation_agent
+    from secretary.noting_scope import owning_db_scope
 
-    try:
-        db = getattr(agent, "_secretary_history_db", None) or getattr(agent, "_session_db", None)
-        ref = getattr(agent, "_secretary_conversation_ref", None)
-        if db is None or not ref:
-            return False
-        from secretary.noting_scope import bind_main_runtime
-        from secretary.noting_policy import configuration_guidance
-
-        bind_main_runtime(agent)
-        enabled, reason = noting_trigger_gate(db, ref)
-        guidance = configuration_guidance(reason)
-        issue = {"reason": reason, "guidance": guidance}
-        if getattr(agent, "_secretary_noting_configuration_issue", None) != issue and guidance:
-            logger.warning("%s", guidance)
-        agent._secretary_noting_configuration_issue = issue
-        return enabled
-    except Exception:
-        logger.debug("Notebook ownership or policy unavailable at main-turn boundary", exc_info=True)
+    if not is_main_conversation_agent(agent):
         return False
+    try:
+        from hermes_cli.config import load_config_readonly
+        from hermes_cli.config_read_errors import FailedConfigRead
+        from utils import is_truthy_value
+
+        with owning_db_scope(agent._session_db):
+            config = load_config_readonly()
+        if isinstance(config, FailedConfigRead) or not isinstance(config, dict):
+            return False
+        block = config.get("noting")
+        block = block if isinstance(block, dict) else {}
+        return is_truthy_value(block.get("enabled"), default=True)
+    except Exception:
+        logger.debug("Notebook owning-profile config unavailable", exc_info=True)
+        return False
+
+
+def notebook_dispatch_enabled(agent):
+    """Use this Turn's synchronized read permission; config changes wait for the next Turn."""
+    from secretary.noting_runtime import is_main_conversation_agent
+
+    return (is_main_conversation_agent(agent)
+            and getattr(agent, "_secretary_main_read_eligible", False)
+            and getattr(agent, "_secretary_notebook_read_enabled", False))
 
 
 def apply_main_read_surface(agent):
-    """History is always available; Notebook requires a provable effective gate.
+    """Reconcile schema + actual dispatch names; preserve lawful auxiliary History tools."""
+    from secretary.noting_runtime import is_main_conversation_agent
 
-    Child/fork surfaces belong to their frozen runtime. Main surfaces are resolved once before
-    the first request of a Turn, never during the request/tool loop.
-    """
-    tools = getattr(agent, "tools", None)
-    if not _main_surface_agent(agent) or not isinstance(tools, list):
+    # Noting's advertised frozen Parent surface belongs to its V1 parity contract.
+    if getattr(agent, "_secretary_noting_child", False):
         return False
-    enabled = _notebook_enabled(agent)
-    desired = {"session_history"} | ({"notebook_show"} if enabled else set())
-    resolved = [tool for tool in tools if _tool_name(tool) not in _READ_TOOLS - desired]
+    tools = getattr(agent, "tools", None)
+    if not isinstance(tools, list):
+        return False
+    main = is_main_conversation_agent(agent)
+    if main:
+        from secretary.noting_scope import bind_main_runtime
+        bind_main_runtime(agent)
+    enabled = notebook_read_enabled(agent) if main else False
+    agent._secretary_main_read_eligible = main
+    agent._secretary_notebook_read_enabled = enabled
+    desired = {"session_history"} | ({"notebook_show"} if enabled else set()) if main else set()
+    removed = _READ_TOOLS - desired if main else {"notebook_show"}
+    resolved = [tool for tool in tools if _tool_name(tool) not in removed]
     names = {_tool_name(tool) for tool in resolved}
     for name in ("session_history", "notebook_show"):
         if name in desired and name not in names:
@@ -77,6 +86,27 @@ def apply_main_read_surface(agent):
                 resolved.append({"type": "function", "function": copy.deepcopy(schema)})
                 names.add(name)
     agent.tools = resolved
-    valid = set(getattr(agent, "valid_tool_names", set())) - _READ_TOOLS
-    agent.valid_tool_names = valid | (_READ_TOOLS & names)
-    return "notebook_show" in names
+    agent.valid_tool_names = (set(getattr(agent, "valid_tool_names", set())) - removed) | (desired & names)
+    return enabled
+
+
+def synchronize_main_read_prompt(agent, system_message=None):
+    """Use native builder/persistence when a Main's restored root has a stale read surface."""
+    if not getattr(agent, "_secretary_main_read_eligible", False):
+        return False
+    from agent.system_prompt import HISTORY_SEARCH_GUIDANCE, SECRETARY_WORK_AND_NOTEBOOK_GUIDANCE
+
+    prompt = getattr(agent, "_cached_system_prompt", None)
+    if not isinstance(prompt, str):
+        return False
+    notebook = bool(getattr(agent, "_secretary_notebook_read_enabled", False))
+    if (prompt.count(HISTORY_SEARCH_GUIDANCE) == 1
+            and prompt.count(SECRETARY_WORK_AND_NOTEBOOK_GUIDANCE) == int(notebook)):
+        return False
+    from hermes_cli.observability.shared_metrics_efficiency import record_cache_break
+    from agent.conversation_loop import _persist_system_prompt
+
+    agent._cached_system_prompt = agent._build_system_prompt(system_message)
+    record_cache_break(agent, "toolset_change")
+    _persist_system_prompt(agent, "Main read-surface prompt persistence failed (session=%s): %s", persist_tools=True)
+    return True

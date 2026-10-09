@@ -1,5 +1,7 @@
 # Hermes Secretary V1.5 — 实施权威规格
 
+> **2026-10-09 用户补充授权：** 本轮索引 C05–C09：Noting每次请求保留冻结父root/消息快照，但从`<noting-task>`起实际工具面与dispatch收敛为History/Notebook（特殊profile加compact_parent），控制消息显式说明变更；撤销首请求父完整工具面parity。模型调用统一DeepSeek官方Anthropic接口的deepseek-flash思考模式，不使用Codex App Server或Codex Proxy。缓存核验须使用Hermes自身真实请求/响应或抓包，区分前缀一致与provider缓存读取。原始附件保留在d5acc冻结树，以下正文同步本次授权。
+
 > **规格状态：** 设计定案；实施与最终验收待执行。本文不代表代码已经修改或通过验收。  
 > **实施对象：** `EdgarZhong/hermes-secretary`，承接 V1 首轮实现。  
 > **规格角色：** V1.5 的最高优先级**增量修订规格**，不是独立替代 V1 的全量重写。  
@@ -34,7 +36,7 @@ V1.5 只完成 V1 首轮实现后的必要调整、已确认缺口修复和最�
 | M11 | Main `notebook_show` 与只读权限 | V1-02 §3.5、§5.7 | **修订** | 只按主会话资格 + **全局** `noting.enabled` 注入，与局部开关完全解耦 | §3.1–§3.4、§4.2 |
 | M12 | `/notebook` 与局部 Noting Slash | V1-01 §2.3；V1-02 §3.6 | **修订** | `/notebook` 仅展示；`/noting on|off` 仅改变后台参与并持久化反馈；旧 `/notebook on|off` 退出 | §4.2–§4.3 |
 | M13 | Noting 两层启用、Idle/Force、准入与阈值 | V1-02 §4 全章 | **继承＋门禁澄清** | Trigger／Force 机制不变；局部开关只管后台行为，不管 Notebook 读取 | §4.3、§4.4 |
-| M14 | Noting Worker 生命周期、缓存前缀、工具权限 | V1-02 §5.1–§5.5、§5.7–§5.11 | **继承** | 不重做 child/runtime；仅按 §4.4 补极少量任务指导 | §4.4 |
+| M14 | Noting Worker 生命周期、缓存前缀、工具权限 | V1-02 §5.1–§5.5、§5.7–§5.11 | **继承** | 保留child/runtime；工具面从task起收窄，父root/消息前缀始终保留；按§4.4补必要指导 | §4.4 |
 | M15 | Noting Task 的 Candidate 清理与 Schedule 认知 | V1-02 §2.5、§3.7、§3.8、§5.6 | **最小扩展** | 补充按主会话进展修订／归档 Candidate 与 in-Conversation Schedule 边界 | §4.4 |
 | M16 | Notebook Schedule 的归属、Registry、scanner | V1-01 §2.5；V1-02 §3.8–§3.10 | **继承** | Schedule 不跨 Conversation、不创建 Hermes Cron Job；运行与持久化机制不重设计 | §5.1、§5.3 |
 | M17 | Schedule 时间表达式工具描述 | V1-02 §3.7–§3.8；现有 `notebook_mutate` | **扩展** | 在 `expression` Schema 中写明复用的五类 Hermes Cron 时间表达式，**不是**简单写“与 Cron 相同” | §5.2、附录 B |
@@ -93,7 +95,7 @@ V1.5 只完成 V1 首轮实现后的必要调整、已确认缺口修复和最�
 
 - 所有合格 Main Agent **默认拥有** `session_history` Tool Schema 与 `HISTORY_SEARCH_GUIDANCE`，不可由普通 Agent 模板、工具集配置或 `noting.enabled` 移除；不另设 Secretary 可配置开关。
 - 普通 Subagent、Background Agent、Cron、Dreaming、Skill refinement 等**不因 V1.5 新增**任何 History Guidance 或 Notebook Guidance、`notebook_show` 等主会话能力，也不因主会话开关切换重建其 Prompt／工具面。不得把其已有合法工具配置无关地重写。
-- **专用 Noting Worker 例外仅在 V1 既有维护职责内**：继续按 V1-02 §5.7 使用已获授权的父 Conversation 历史读取工具和受限分发；不把自己认定为新的用户主 Conversation，不获得新的独立主会话注入资格。其冻结 Parent prefix 的缓存相容机制不构成新的主会话授权。
+- **专用 Noting Worker 例外仅在 V1 既有维护职责内**：继续按 V1-02 §5.7 使用已获授权的父 Conversation 历史读取工具和受限分发；不把自己认定为新的用户主 Conversation，不获得新的独立主会话注入资格。其冻结Parent root/消息前缀在同Task的每次请求、工具循环及continuation始终保留；实际Schema和dispatch从task起仅限History/Notebook及特殊profile compact_parent，不保留父完整工具面。冻结前缀不构成新的主会话授权。
 - `session_search` 仍负责**不同 Conversation** 之间的检索。它与 `session_history` 是两个独立工具，不能互作替代或混用名称。
 
 ### 2.3 Active Foreground（修订／精确化 M04）
@@ -234,7 +236,7 @@ V1 的两种 Trigger、Force 公式／阈值、同 Anchor 准入、`NOTING`／`N
 
 ### 4.4 Noting Task 指导：**只增必要句子**（M14、M15）
 
-保留现有 `secretary/noting_child.py::DEFAULT_NOTING_TASK_INSTRUCTION` 的结构、工具使用顺序、`NOTING_WITH_COMPACTION` 约定、原始消息与 `/notebook` rendering 的区别；**不得整体替换或重新设计驱动 Prompt**。对当前缺少的语义，最多追加以下两句（合适地接入原英文段落）：
+保留现有 `secretary/noting_child.py::DEFAULT_NOTING_TASK_INSTRUCTION` 的结构、工具使用顺序、`NOTING_WITH_COMPACTION` 约定、原始消息与 `/notebook` rendering 的区别；**不得整体替换或重新设计驱动 Prompt**。对Candidate与Schedule语义只追加以下两句（合适地接入原英文段落）；另按C06在`<noting-task>`控制消息中明确工具面从父能力收敛为Noting专属History/Notebook（特殊profile加compact_parent），真实Tool Schemas与dispatch在首个及以后请求均执行此收敛，不能仅靠文字禁止。父root与到Anchor的消息快照始终保留：
 
 > Keep Persistence Candidates aligned with developments in the Parent Conversation: create or revise them as needed, and archive candidates once their persistence actions are confirmed completed, or the user has rejected or withdrawn them; a proposal or approval alone is not completion.
 
@@ -317,7 +319,7 @@ Registry 根据 Notebook semantic mutation 原子注册、更新、取消／禁�
 3. **Prompt／Tool gating**：加入两个正式 Stable Guidance，完成全局配置在 Pre-message Context 的工具／Prompt 一致性同步，以及 Warm／Cold Resume 缓存刷新。
 4. **Slash 和 Noting**：调整 `/notebook`、`/noting on|off`、局部门禁；只补必要的 Noting Task 句子；更新 Persistence 候选归档规则。
 5. **Schedule + Proposal**：复制五类时间表达 Schema、修订 `/propose-persistence` 的自主检索工作流；继续使用 V1 Schedule Runtime 和原生 Gateway 投递。
-6. **全范围验证**：独立检查、真实主模型测试、官方 Dashboard 端到端用户验收，出最终交付记录。
+6. **全范围验证**：独立检查、DeepSeek官方Anthropic/deepseek-flash思考模式真实主模型测试、官方Dashboard端到端用户验收，出最终交付记录。
 
 任何修改涉及 V1-01／V1-02 已经失效的文字时，应同步更新**现行有效文档**并标注替代口径；首轮历史 `baseline.txt` 和旧 Verification 不得改写为“当时符合新规格”。
 
@@ -338,7 +340,7 @@ Registry 根据 Notebook semantic mutation 原子注册、更新、取消／禁�
 | Proposal | Slash 不预检索／注入 source 原文；模型按 identity 自主查源并扩展关键词／后续更正；来源缺失 fail honestly；只提案、修改不批准、获批才执行且限批准范围 | M21–M22 |
 | Hermes-native 回归 | 非主 Agent 原生行为、Skills、Cron、Gateway、Compaction、Tool Registry 与 native Prompt tiers 无无关退化 | M01、M23–M24 |
 
-不得仅用单元测试的 mock 成功代替 Tool Schema 的**实际 provider request**一致性检查；不得只验证程序返回 OK 就宣称后续真实审批写入已发生。真实 cache 命中率若未观测，不得宣称已优化。
+不得仅用单元测试的 mock 成功代替 Tool Schema 的**实际 provider request**一致性检查；不得只验证程序返回 OK 就宣称后续真实审批写入已发生。按C08必须从Hermes实际请求/响应日志或抓包核查Noting各次请求的父前缀与provider缓存读取token；字节一致不能替代命中证据，未测部分不得宣称优化。
 
 ### 7.3 官方 Dashboard 最终用户验收
 

@@ -119,7 +119,7 @@ def test_carried_tail_rewind_and_anchor_same_transaction(db):
                                  "_compressed_summary": True, "message_uid": "summary"},
                                 {"role": "user", "content": "surviving", "message_uid": "b", "timestamp": 100}])
     ref = db.resolve_conversation_ref("s")
-    rows = db.get_full_foreground("s")
+    rows = db.get_full_foreground("s")[1:]
     assert [r["message_uid"] for r in rows] == ["a", "summary", "b"]
     assert db.get_foreground_anchor("s")["message_uid"] == "b"
     assert tool(db, "s", mode="read", message_id=old_tail)["success"]
@@ -141,7 +141,7 @@ def test_composite_summary_retains_authentic_user_and_anchor(db):
     history = db.get_history_foreground("s")
     assert history[0]["content"] == "real request"
     assert not history[0]["is_compaction"]
-    full = db.get_full_foreground("s")
+    full = db.get_full_foreground("s")[1:]
     assert [r["is_compaction"] for r in full] == [True, False]
     assert db.get_foreground_anchor("s")["message_uid"] == "live"
 

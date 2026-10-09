@@ -1079,7 +1079,7 @@ _SLASH_BUILTINS = {
     "loop": _cmd_loop, "undo": _cmd_undo, "snapshot": _cmd_snapshot, "snap": _cmd_snapshot,
     "compress": _cmd_compress, "compact": _cmd_compress,
     "memory": _cmd_memory, "skills": _cmd_skills,
-    "notebook": _cmd_secretary, "propose-persistence": _cmd_secretary}
+    "notebook": _cmd_secretary, "noting": _cmd_secretary, "propose-persistence": _cmd_secretary}
 
 @method("command.dispatch")
 def _(rid, params: dict) -> dict:
@@ -1123,7 +1123,7 @@ def _(rid, params: dict) -> dict:
     # Pending-input built-ins route straight to command.dispatch (some clients fail the
     # error-then-retry fallback); bundles go the same way under their resolved key.
     with _session_home_scope(session):  # a secondary-only bundle must route too (#110695)
-        target = base if base in _PENDING_INPUT_COMMANDS else _bundle_key_for(base)
+        target = base if base in _PENDING_INPUT_COMMANDS or base == "noting" else _bundle_key_for(base)
     if target is not None:
         return _methods["command.dispatch"](rid, {"name": target.lstrip("/"), "arg": arg, "session_id": sid})
     # Recognized skills keep the 4018 gate so clients command.dispatch. A scan

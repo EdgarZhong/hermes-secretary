@@ -4,8 +4,19 @@ import json
 import time
 import uuid
 
-from hermes_state_common import _RESET_END_REASONS
+from hermes_state_common import _RESET_END_REASONS, _sql_json_extract
 from hermes_state_compression import _CHAIN_CAP, _CHAIN_STEP_SQL
+
+# Native continuation markers are copied by compaction. Secretary applies the native
+# _is_explicit_fork_child_row boundary rule: only markers naming this parent are forks.
+_SECRETARY_CHAIN_STEP_SQL = _CHAIN_STEP_SQL
+for _marker in ("_branched_from", "_delegate_from"):
+    _field = _sql_json_extract("child.model_config", "$." + _marker)
+    _SECRETARY_CHAIN_STEP_SQL = _SECRETARY_CHAIN_STEP_SQL.replace(
+        _field + " IS NULL", "COALESCE(" + _field + ", '') != parent.id")
+_reset_field = _sql_json_extract("child.model_config", "$._reset_from")
+_SECRETARY_CHAIN_STEP_SQL = _SECRETARY_CHAIN_STEP_SQL.replace(
+    _reset_field + " IS NOT NULL", "COALESCE(" + _reset_field + ", '') = parent.id")
 
 
 class ConversationIdentityError(ValueError):
@@ -65,7 +76,7 @@ class SecretaryIdentityMixin:
         current, seen = ancestors[0], set()
         for _ in range(_CHAIN_CAP):
             seen.add(current)
-            row = conn.execute(_CHAIN_STEP_SQL, (current,)).fetchone()
+            row = conn.execute(_SECRETARY_CHAIN_STEP_SQL, (current,)).fetchone()
             if row is None or row["id"] in seen:
                 break
             current = row["id"]

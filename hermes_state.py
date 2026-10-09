@@ -527,10 +527,15 @@ class SessionDB(
 
     @staticmethod
     def _delete_unreferenced_system_prompts(conn) -> None:
+        secretary_reference = ""
+        if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='secretary_context_preludes'").fetchone():
+            secretary_reference = (
+                " AND NOT EXISTS (SELECT 1 FROM secretary_context_preludes "
+                "WHERE secretary_context_preludes.root_prompt_hash = system_prompts.hash)")
         conn.execute(
             "DELETE FROM system_prompts WHERE NOT EXISTS ("
             "SELECT 1 FROM sessions WHERE sessions.system_prompt_hash = system_prompts.hash) AND NOT EXISTS ("
-            "SELECT 1 FROM sessions WHERE sessions.tool_names = system_prompts.hash)"
+            "SELECT 1 FROM sessions WHERE sessions.tool_names = system_prompts.hash)" + secretary_reference
         )
 
     @staticmethod

@@ -1,10 +1,7 @@
 """Read-only AI-facing Notebook show for the main Assistant's current Conversation.
 
-The caller — never model arguments — supplies the owning DB and Conversation Ref and the
-resolved effective Noting gate: the main Assistant's surface omits ``notebook_show`` when
-effective Noting is off (02 §3.5), and the handler still fails closed when it is reached
-without local participation. It returns the complete AI-facing Snapshot JSON, not the
-human ``/notebook`` renderer.
+The runtime supplies a proven Main + global read gate, independently of local background
+participation. The handler fails closed without it and returns complete structured Snapshot JSON.
 """
 
 import json
@@ -21,7 +18,7 @@ NOTEBOOK_SHOW_SCHEMA = {
 
 
 def notebook_show(args=None, *, db=None, conversation_ref=None, effective_enabled=None, **kwargs):
-    """``effective_enabled`` is the resolved global AND local gate; None falls back to local."""
+    """``effective_enabled`` is the explicit Main + global read gate; missing proof fails closed."""
     args = dict(args or {})
     args.update(kwargs)
     try:
@@ -29,7 +26,7 @@ def notebook_show(args=None, *, db=None, conversation_ref=None, effective_enable
             raise ValueError("Unsupported Notebook arguments: " + ", ".join(sorted(args)))
         if db is None or not conversation_ref:
             raise ValueError("Current Conversation state is unavailable")
-        enabled = db.notebook_local_enabled(conversation_ref) if effective_enabled is None else effective_enabled
+        enabled = effective_enabled is True
         if not enabled:
             raise ValueError("Notebook is not enabled for this Conversation")
         return json.dumps({"success": True, "snapshot": show_notebook(db.notebook_current(conversation_ref))},

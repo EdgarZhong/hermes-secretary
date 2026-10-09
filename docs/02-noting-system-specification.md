@@ -1355,7 +1355,8 @@ thin NotingTaskRunner policy
 - Parent `session_start` where required;
 - `_inherited_cache_scope`;
 - necessary cached conversation root;
-- exact Parent advertised tool surface;
+- the frozen Parent root and message prefix remain in every Noting request;
+- the actual advertised and dispatchable tools narrow at the `<noting-task>` transition to History Search and Notebook tools, plus `compact_parent` only for the special profile;
 - Parent model/provider/reasoning/runtime parity;
 - MCP refresh parity/freeze;
 - provider-specific fork tag where needed.
@@ -1419,13 +1420,15 @@ On process crash/restart:
 The model-facing context has this shape:
 
 ```text
-Parent inherited root System Prompt / cache-identical prefix
-Parent exact advertised tools[]
+Parent inherited root System Prompt / frozen message prefix
 Parent frozen Active Foreground through Anchor
+Actual tools[]: History Search + Notebook (+ compact_parent for the special profile)
 ------------------------------------------------
-Noting task transition/control message
+Noting task transition/control message, explicitly declaring the narrowed tool surface
 Noting assistant/tool/continuation suffix
 ```
+
+Every request in the same task, including tool-loop iterations and continuation Turns, retains this same frozen Parent root/message prefix and appends only the Noting-owned suffix. Later Parent activity never refreshes that snapshot. The first request already advertises only the Noting tools; no request advertises the Parent's unrelated tools.
 
 Only the Noting-owned suffix is persisted to the child Session. The inherited Parent prefix is not copied into the Noting transcript.
 
@@ -1557,7 +1560,7 @@ The Noting Runtime does not have access to:
 
 - `compact_parent`.
 
-For prompt-cache parity, prompt-advertised `tools[]` may remain byte-identical to the Parent. Actual dispatch is constrained by the narrow Noting whitelist.
+From the `<noting-task>` transition, both actual provider Tool Schemas and dispatch must expose only the narrow Noting whitelist. The control message states the tool-surface transition; textual guidance alone is not enforcement. The Parent root/message prefix remains frozen throughout the task. Tools no longer retain Parent byte parity; actual provider cache reuse must be measured from Hermes request/response evidence, separately from prefix byte consistency.
 
 ## 5.8 Runtime Profiles
 
@@ -1647,14 +1650,16 @@ Anchor no longer belongs to current path
 
 ## 5.11 Prompt-cache divergence
 
-The first same-model Noting request should maximize reuse of the Parent's warm prefix.
+Every same-model Noting request retains the frozen Parent root/message prefix and should reuse available cache. The task-specific Tool Schemas differ from the Parent from the first request, so full request-prefix byte parity is not claimed.
 
 On server-slot-style cache routes, later Noting suffix divergence may reuse the Background Review fork-tag pattern so the divergent child stream does not evict the Parent's cache slot.
 
 The design target is:
 
-1. the first request can reuse the Parent warm prefix;
-2. later divergent Noting traffic does not damage the Parent cache.
+1. every tool-loop and continuation request retains the same frozen Parent root/message prefix;
+2. Noting-specific tools remain narrow from the first request onward;
+3. available Parent/task cache reuse is measured from Hermes actual provider requests/responses, not inferred from shared bytes;
+4. later Noting traffic does not gratuitously rebuild the Parent context or overwrite its cache scope.
 
 The exact provider-specific tag string is an implementation detail.
 
@@ -1880,7 +1885,8 @@ Cover at least:
 - child transcript is auditable;
 - process crash does not resume the task;
 - incomplete task does not commit;
-- even if advertised tools retain Parent parity, dispatch cannot execute filesystem/Web/Memory/Skills/delegation from Noting;
+- every Noting request advertises and dispatches only History Search/Notebook tools, plus special-profile `compact_parent`; filesystem/Web/Memory/Skills/delegation tools are absent and denied;
+- every tool-loop and continuation request retains the same frozen Parent root/message prefix; actual cache-read counters are recorded from Hermes/provider responses;
 - the main Assistant never mutates Notebook;
 - Special-profile continuation always reuses the same child;
 - child auto-compaction is disabled.
