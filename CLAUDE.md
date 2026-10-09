@@ -2,7 +2,7 @@
 
 ## 当前阶段与目标
 
-2026-10-09 用户授权开始 V1.5 自主实现，依据附件自行完成 ask-and-align，无须新增需求问答。已挂 active goal：纳入规格、冻结基线、实现、独立 Verification/Validation 与最终交付。当前完成全篇规格核对和文档同步，准备冻结文档基线；尚未开始产品代码修改和新测试。
+2026-10-09 用户授权开始 V1.5 自主实现，依据附件自行完成 ask-and-align，无须新增需求问答。已挂 active goal：纳入规格、冻结基线、实现、独立 Verification/Validation 与最终交付。当前完成全篇规格核对和文档同步，文档冻结基线已提交，计划已建立，三个实现 Agent 已分派并开始实施；尚未启动新测试。
 
 - 本轮索引：[index.md](.autonomous/20261009-v1.5-implementation/index.md)，snapshot-index.md 为同一正文链接。
 - 增量权威：[V1.5 规格](docs/04-hermes-secretary-v1.5-implementation-spec.md)，附件原样纳入；M01–M25 全覆盖，未修订 V1 契约继续有效。
@@ -18,18 +18,18 @@
 
 | 任务 | 当前状态 | 依赖与下一步 |
 |---|---|---|
-| 文档纳入、自主澄清、索引与冻结 | 文档已同步，待提交冻结 | 核对差异、原文和入口，提交后写 baseline.txt |
-| 精确回退首轮未授权混合 Prompt | 待实施 | 冻结后审计 Git 差异并先回退指定增量 |
-| Foreground/History/identity read | 待分派 | Full Prelude、逻辑节点、system 历史、source identity、branch 后压缩 |
-| Main Prompt/工具门禁与 Warm/Cold | 待分派 | 真实资格、全局同步、局部稳定、dispatch 和 pinned tools |
-| Slash/Noting/Schedule/Proposal | 待分派 | 共享 /noting、两句 task、五类 expression、自主搜证与审批 |
+| 文档纳入、自主澄清、索引与冻结 | 已冻结 | 冻结提交 d5acc2cc27c6053ff198448fa3502bd8dd47e415，baseline.txt 已记录 |
+| 精确回退首轮未授权混合 Prompt | 已完成 | 只删除8行增量；字节与5346cd原生文件一致；证据 .hermes-dev/evidence/v1.5/prompt/rollback-check.txt |
+| Foreground/History/identity read | foreground 实施中 | Full Prelude、逻辑节点、system 历史、source identity、branch 后压缩 |
+| Main Prompt/工具门禁与 Warm/Cold | prompt 实施中 | 真实资格、全局同步、局部稳定、dispatch 和 pinned tools |
+| Slash/Noting/Schedule/Proposal | workflow 实施中 | 共享 /noting、两句 task、五类 expression、自主搜证与审批 |
 | 主会话接收与集成 | 待开始 | 亲自 review 正式接线、状态/失败/权限和证据 |
 | 必要扩大本地检查 | 未执行 | 集成收敛并派独立门禁后统一一次，按影响选择范围 |
 | 独立 Verification | 未启动 | 全新无上下文审查 V1 未改条款+M01–M25 |
 | 官方 Dashboard Validation | 未启动 | Verification 通过后独立本机浏览器+真实模型验收 |
 | 最终交付判定 | 未开始 | 两门禁关闭、缺口清空、证据匹配交付提交后判定 |
 
-实现 Agent 使用 gpt-6.1-sol/high，白名单互不重叠；具体安排待 plan.md 建立。主会话负责全篇覆盖、接线、接收和最终判定。测试状态隔离，不写用户实际 Hermes 数据。
+实现 Agent 使用 gpt-6.1-sol/high，白名单互不重叠；具体接口、白名单和验证范围见本轮 plan.md。主会话负责全篇覆盖、接线、接收和最终判定。测试状态隔离，不写用户实际 Hermes 数据。
 
 ## 基线证据与限制
 
