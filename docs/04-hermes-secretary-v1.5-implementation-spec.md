@@ -1,6 +1,6 @@
 # Hermes Secretary V1.5 — 实施权威规格
 
-> **2026-10-09 用户补充授权：** 本轮索引 C05–C09：Noting每次请求保留冻结父root/消息快照，但从`<noting-task>`起实际工具面与dispatch收敛为History/Notebook（特殊profile加compact_parent），控制消息显式说明变更；撤销首请求父完整工具面parity。模型调用统一DeepSeek官方Anthropic接口的deepseek-flash思考模式，不使用Codex App Server或Codex Proxy。缓存核验须使用Hermes自身真实请求/响应或抓包，区分前缀一致与provider缓存读取。原始附件保留在d5acc冻结树，以下正文同步本次授权。
+> **2026-10-09 用户补充授权及纠偏：** 本轮索引C05–C11：Noting每次请求保留完整冻结父快照前缀，包括root、原工具列表/Schema与到Anchor的消息，不改写头部。在`<noting-task>`及后续新增的系统提示/控制消息中追加当前可用History/Notebook工具列表和完整Schema，强调以此为准；特殊profile另含compact_parent，实际dispatch按Noting白名单限制。此前“从首请求改实际顶层Schema、撤销父工具前缀parity”是Agent理解偏差，现撤销。机制停留在Hermes中间层上下文复用，模型继承、API/provider直接使用Hermes原生，不新增独立模型路由、provider改造或App Server Noting执行器。本轮真实运行选择仍为DeepSeek官方Anthropic/deepseek-flash思考模式；缓存观察使用Hermes自身日志或抓包。原始附件保留在d5acc冻结树，以下正文按最新用户澄清同步。
 
 > **规格状态：** 设计定案；实施与最终验收待执行。本文不代表代码已经修改或通过验收。  
 > **实施对象：** `EdgarZhong/hermes-secretary`，承接 V1 首轮实现。  
@@ -36,7 +36,7 @@ V1.5 只完成 V1 首轮实现后的必要调整、已确认缺口修复和最�
 | M11 | Main `notebook_show` 与只读权限 | V1-02 §3.5、§5.7 | **修订** | 只按主会话资格 + **全局** `noting.enabled` 注入，与局部开关完全解耦 | §3.1–§3.4、§4.2 |
 | M12 | `/notebook` 与局部 Noting Slash | V1-01 §2.3；V1-02 §3.6 | **修订** | `/notebook` 仅展示；`/noting on|off` 仅改变后台参与并持久化反馈；旧 `/notebook on|off` 退出 | §4.2–§4.3 |
 | M13 | Noting 两层启用、Idle/Force、准入与阈值 | V1-02 §4 全章 | **继承＋门禁澄清** | Trigger／Force 机制不变；局部开关只管后台行为，不管 Notebook 读取 | §4.3、§4.4 |
-| M14 | Noting Worker 生命周期、缓存前缀、工具权限 | V1-02 §5.1–§5.5、§5.7–§5.11 | **继承** | 保留child/runtime；工具面从task起收窄，父root/消息前缀始终保留；按§4.4补必要指导 | §4.4 |
+| M14 | Noting Worker 生命周期、缓存前缀、工具权限 | V1-02 §5.1–§5.5、§5.7–§5.11 | **继承＋澄清** | 完整父root/tools/消息前缀始终冻结；新工具列表/Schema只追加在task及后续新系统提示中并声明优先；dispatch受限，模型/API/provider沿用原生 | §4.4 |
 | M15 | Noting Task 的 Candidate 清理与 Schedule 认知 | V1-02 §2.5、§3.7、§3.8、§5.6 | **最小扩展** | 补充按主会话进展修订／归档 Candidate 与 in-Conversation Schedule 边界 | §4.4 |
 | M16 | Notebook Schedule 的归属、Registry、scanner | V1-01 §2.5；V1-02 §3.8–§3.10 | **继承** | Schedule 不跨 Conversation、不创建 Hermes Cron Job；运行与持久化机制不重设计 | §5.1、§5.3 |
 | M17 | Schedule 时间表达式工具描述 | V1-02 §3.7–§3.8；现有 `notebook_mutate` | **扩展** | 在 `expression` Schema 中写明复用的五类 Hermes Cron 时间表达式，**不是**简单写“与 Cron 相同” | §5.2、附录 B |
@@ -95,7 +95,7 @@ V1.5 只完成 V1 首轮实现后的必要调整、已确认缺口修复和最�
 
 - 所有合格 Main Agent **默认拥有** `session_history` Tool Schema 与 `HISTORY_SEARCH_GUIDANCE`，不可由普通 Agent 模板、工具集配置或 `noting.enabled` 移除；不另设 Secretary 可配置开关。
 - 普通 Subagent、Background Agent、Cron、Dreaming、Skill refinement 等**不因 V1.5 新增**任何 History Guidance 或 Notebook Guidance、`notebook_show` 等主会话能力，也不因主会话开关切换重建其 Prompt／工具面。不得把其已有合法工具配置无关地重写。
-- **专用 Noting Worker 例外仅在 V1 既有维护职责内**：继续按 V1-02 §5.7 使用已获授权的父 Conversation 历史读取工具和受限分发；不把自己认定为新的用户主 Conversation，不获得新的独立主会话注入资格。其冻结Parent root/消息前缀在同Task的每次请求、工具循环及continuation始终保留；实际Schema和dispatch从task起仅限History/Notebook及特殊profile compact_parent，不保留父完整工具面。冻结前缀不构成新的主会话授权。
+- **专用 Noting Worker 例外仅在 V1 既有维护职责内**：继续按V1-02 §5.7使用已获授权的父Conversation历史读取工具和受限分发；不把自己认定为新的用户主Conversation，不获得新的独立主会话注入资格。完整冻结Parent root、原工具列表/Schema、到Anchor消息在每次请求、工具循环及continuation始终保留；Noting当前可用History/Notebook工具列表和完整Schema只追加在task及后续新增系统提示/控制消息中并声明以此为准，特殊profile另含compact_parent。实际dispatch受白名单限制；冻结前缀不构成新的主会话授权，不改写其头部。
 - `session_search` 仍负责**不同 Conversation** 之间的检索。它与 `session_history` 是两个独立工具，不能互作替代或混用名称。
 
 ### 2.3 Active Foreground（修订／精确化 M04）
@@ -236,7 +236,7 @@ V1 的两种 Trigger、Force 公式／阈值、同 Anchor 准入、`NOTING`／`N
 
 ### 4.4 Noting Task 指导：**只增必要句子**（M14、M15）
 
-保留现有 `secretary/noting_child.py::DEFAULT_NOTING_TASK_INSTRUCTION` 的结构、工具使用顺序、`NOTING_WITH_COMPACTION` 约定、原始消息与 `/notebook` rendering 的区别；**不得整体替换或重新设计驱动 Prompt**。对Candidate与Schedule语义只追加以下两句（合适地接入原英文段落）；另按C06在`<noting-task>`控制消息中明确工具面从父能力收敛为Noting专属History/Notebook（特殊profile加compact_parent），真实Tool Schemas与dispatch在首个及以后请求均执行此收敛，不能仅靠文字禁止。父root与到Anchor的消息快照始终保留：
+保留现有`secretary/noting_child.py::DEFAULT_NOTING_TASK_INSTRUCTION`的结构、`NOTING_WITH_COMPACTION`约定、原始消息与`/notebook` rendering的区别；**不得整体替换或重新设计驱动Prompt**。对Candidate与Schedule语义只追加以下两句（合适地接入原英文段落）；另按C06/C11在`<noting-task>`及后续新增的系统提示/控制消息中重新给出当前可用History/Notebook工具列表和完整Schema（特殊profile另含compact_parent），明确“以此工具列表和Schema为准，取代此前工具可用性说明”。完整冻结父快照前缀包括root、原工具列表/Schema、到Anchor的消息，始终原样携带；不得在首请求或后续请求改写头部tools/schema。实际dispatch独立限制Noting白名单。模型继承、API/provider直接使用Hermes原生；中间层只保证上下文复用，不新增独立路由或provider改造。原“首次响应后扩顶层工具”的使用顺序不能覆盖这一纠偏契约：
 
 > Keep Persistence Candidates aligned with developments in the Parent Conversation: create or revise them as needed, and archive candidates once their persistence actions are confirmed completed, or the user has rejected or withdrawn them; a proposal or approval alone is not completion.
 

@@ -1356,7 +1356,8 @@ thin NotingTaskRunner policy
 - `_inherited_cache_scope`;
 - necessary cached conversation root;
 - the frozen Parent root and message prefix remain in every Noting request;
-- the actual advertised and dispatchable tools narrow at the `<noting-task>` transition to History Search and Notebook tools, plus `compact_parent` only for the special profile;
+- the Parent's frozen tool definitions remain unchanged in the inherited prefix; the Noting task and subsequent new system-instruction/control messages append the current permitted tool list and complete schemas, explicitly making that list authoritative;
+- actual Noting dispatch is restricted to History Search and Notebook tools, plus `compact_parent` only for the special profile;
 - Parent model/provider/reasoning/runtime parity;
 - MCP refresh parity/freeze;
 - provider-specific fork tag where needed.
@@ -1421,14 +1422,17 @@ The model-facing context has this shape:
 
 ```text
 Parent inherited root System Prompt / frozen message prefix
+Parent frozen tool definitions / schemas (unchanged)
 Parent frozen Active Foreground through Anchor
-Actual tools[]: History Search + Notebook (+ compact_parent for the special profile)
 ------------------------------------------------
-Noting task transition/control message, explicitly declaring the narrowed tool surface
+Noting task transition/control message: authoritative Noting tool list + complete schemas
+Subsequent new system-instruction/control messages: repeat the authoritative list + schemas
 Noting assistant/tool/continuation suffix
 ```
 
-Every request in the same task, including tool-loop iterations and continuation Turns, retains this same frozen Parent root/message prefix and appends only the Noting-owned suffix. Later Parent activity never refreshes that snapshot. The first request already advertises only the Noting tools; no request advertises the Parent's unrelated tools.
+Every request in the same task, including tool-loop iterations and continuation Turns, retains the same complete frozen Parent prefix, including root, tool definitions and Active messages through Anchor, and appends only the Noting-owned suffix. Later Parent activity never refreshes that snapshot. Do not rewrite the inherited top-level tools/schema or root to implement the task's tool transition. The task and subsequent new system-instruction/control messages carry the permitted list and full schemas and state that they supersede the Parent's earlier tool-availability instructions. These instructions use the existing Hermes control-message mechanism (§5.6); they do not introduce a new root prompt or redesign provider roles.
+
+This is a Hermes intermediate-layer context reuse contract. Model inheritance, API/provider resolution, serialization and inference use Hermes native mechanisms; do not introduce a Secretary-specific model route, provider adapter or App Server task executor for this requirement.
 
 Only the Noting-owned suffix is persisted to the child Session. The inherited Parent prefix is not copied into the Noting transcript.
 
@@ -1560,7 +1564,7 @@ The Noting Runtime does not have access to:
 
 - `compact_parent`.
 
-From the `<noting-task>` transition, both actual provider Tool Schemas and dispatch must expose only the narrow Noting whitelist. The control message states the tool-surface transition; textual guidance alone is not enforcement. The Parent root/message prefix remains frozen throughout the task. Tools no longer retain Parent byte parity; actual provider cache reuse must be measured from Hermes request/response evidence, separately from prefix byte consistency.
+From the `<noting-task>` transition, the current permitted list and complete schemas are appended in task/control instructions, and repeated in subsequent new system-instruction/control messages, with an explicit instruction to use this list as authoritative. They permit only History Search/Notebook and special-profile `compact_parent`. The inherited Parent root, tool definitions and message prefix remain unchanged throughout the task; do not replace the top-level tools/schema to express the transition. Actual dispatch independently enforces the Noting whitelist, including rejection of forbidden Parent tools. Reuse Hermes native model/API/provider mechanisms without deeper routing changes. Observe cache reuse through Hermes request/response evidence; do not redesign the provider cache.
 
 ## 5.8 Runtime Profiles
 
@@ -1650,14 +1654,14 @@ Anchor no longer belongs to current path
 
 ## 5.11 Prompt-cache divergence
 
-Every same-model Noting request retains the frozen Parent root/message prefix and should reuse available cache. The task-specific Tool Schemas differ from the Parent from the first request, so full request-prefix byte parity is not claimed.
+Every same-model Noting request retains the complete frozen Parent prefix, including root, tool definitions and messages through Anchor, to reuse the Parent's available cache. The authoritative Noting tool list and schemas are appended only in the child-owned task/control suffix. Secretary must guarantee this prefix reuse at the Hermes intermediate layer; native Hermes model/API/provider behavior is reused without additional routing or caching layers.
 
 On server-slot-style cache routes, later Noting suffix divergence may reuse the Background Review fork-tag pattern so the divergent child stream does not evict the Parent's cache slot.
 
 The design target is:
 
-1. every tool-loop and continuation request retains the same frozen Parent root/message prefix;
-2. Noting-specific tools remain narrow from the first request onward;
+1. every tool-loop and continuation request retains the same complete frozen Parent prefix, including tools/schema;
+2. task and subsequent new system-instruction/control messages repeat the authoritative permitted list and full schemas; actual dispatch remains restricted from task start;
 3. available Parent/task cache reuse is measured from Hermes actual provider requests/responses, not inferred from shared bytes;
 4. later Noting traffic does not gratuitously rebuild the Parent context or overwrite its cache scope.
 
@@ -1885,8 +1889,9 @@ Cover at least:
 - child transcript is auditable;
 - process crash does not resume the task;
 - incomplete task does not commit;
-- every Noting request advertises and dispatches only History Search/Notebook tools, plus special-profile `compact_parent`; filesystem/Web/Memory/Skills/delegation tools are absent and denied;
-- every tool-loop and continuation request retains the same frozen Parent root/message prefix; actual cache-read counters are recorded from Hermes/provider responses;
+- the task and subsequent new system-instruction/control messages append the complete authoritative History Search/Notebook tool list and schemas, plus special-profile `compact_parent`; dispatch denies filesystem/Web/Memory/Skills/delegation tools;
+- every tool-loop and continuation request retains the same complete frozen Parent root/tools/message prefix; no tool transition rewrites its head; actual cache-read counters are recorded from Hermes/provider responses;
+- model inheritance and API/provider execution reuse native Hermes; no Secretary-specific model route or App Server executor is added;
 - the main Assistant never mutates Notebook;
 - Special-profile continuation always reuses the same child;
 - child auto-compaction is disabled.

@@ -6,7 +6,7 @@
 
 | 输入类别 | 实际仓库文件路径或本文件位置 | 修改等级 |
 |---|---|---|
-| 用户需求 | docs/01-personal-hermes-v1-first-fork-iteration.md；docs/04-hermes-secretary-v1.5-implementation-spec.md | 二级；01 的既有解冻授权与 04 §7.1 的同步授权；04原始附件在d5acc冻结树中原样保留；工作区按C06–C09最新用户授权修订正文 |
+| 用户需求 | docs/01-personal-hermes-v1-first-fork-iteration.md；docs/04-hermes-secretary-v1.5-implementation-spec.md | 二级；01 的既有解冻授权与 04 §7.1 的同步授权；04原始附件在d5acc冻结树中原样保留；工作区按C05–C11最新用户授权及纠偏修订正文 |
 | 权威规格 | docs/04-hermes-secretary-v1.5-implementation-spec.md；docs/02-noting-system-specification.md | 二级；04 明确修订优先，02 未修订部分继续有效；01/02 可同步失效文字，不能追改首轮冻结历史 |
 | 编码指导 | AGENTS.md | 二级；同步规格入口及用户C07模型运行约束，不改变冻结检查类别、阈值或等级 |
 | 会话确认口径 | 本文件“口径与决策” | 二级；索引同为二级，本轮只记录真实用户决定或获授权取舍 |
@@ -22,11 +22,12 @@ README、CLAUDE 的本轮修改随冻结提交纳入；本轮并未修改的依�
 | C03 | 挂目标并持续推进，用户不再过问 | 已创建 active goal；完成条件为现行 V1/V1.5 范围、两个独立门禁与当前版本证据关闭 | 同条用户“记得挂一个目标，接下来我不再过问” |
 | C04 | 附件作为本次设计定案；公开核心增量，不扩张 Personal 产品化 | 依据附件 §1/§7/最终不变量；主会话自主选择文件名 04 与新轮次目录，保留原文并保留历史快照 | 用户提供附件并要求按此开始自主实现；文件路径见上表 |
 | C05 | 同一个 Noting Task 的每次模型请求、工具循环及 continuation 始终携带触发时冻结到 Anchor 的父会话快照前缀；仅在其后累加 Noting 自有后缀，不在首请求后丢弃或用实时父历史替换 | 用户明确澄清02 §5.5冻结root/消息前缀；工具面另按后续C06修订，不能据此缩减父前缀保留范围 | 2026-10-09 用户“noting应该始终携带父会话快照前缀，而不仅仅是第一次调有” |
-| C06 | Noting始终继承冻结父root与消息前缀，但从`<noting-task>`开始真实tools Schema与dispatch只限History Search、Notebook工具；特殊profile按规格保留compact_parent。task控制消息明确说明工具面变更 | 覆写02 §5.2/§5.5/§5.7的首请求Parent完整tools parity及04相关继承，root/消息快照不变；不以文字禁用代替真实工具收敛 | 2026-10-09 用户“noting task…包含工具面变更指示…只剩下规格里面规定的History search+notebook工具” |
+| C06 | Noting task包含工具面变更指示，当前可用工具只限History Search、Notebook，特殊profile保留compact_parent；按C11在task及后续新增系统提示中给出完整列表/Schema并声明以此为准，父快照头部保持冻结，dispatch受限 | 此前本行将用户指示解释成“修改顶层tools、撤销父工具parity”属于Agent偏差，已纠正；不作为用户授权或新验收要求 | 2026-10-09 用户“noting task…包含工具面变更指示…只剩下规格里面规定的History search+notebook工具”；后续C11明确纠正其承载位置 |
 | C07 | 项目后续模型调用与验收不使用codex_app_server或Codex Proxy，统一DeepSeek官方Anthropic格式；获授权从Ebbinghaus-v2本地环境文件读取可用密钥 | 不删除无关上游实现；撤销本轮T2b可选通道改造/调查，保留仅本地证据。密钥只在隔离运行环境，不进Git/报告 | 同条用户“以后不要再使用codex APP server…不要再走codes proxy统一走deep seek官方。Anthropic API格式…用它” |
 | C08 | 缓存核验使用Hermes自身请求/响应日志或抓包，逐次检查Noting父前缀保留及实际provider缓存读取 | 字节一致与实际缓存命中分别取证；禁止拿Codex App Server日志冒充当前路径证据 | 用户“查noting task缓存，是否还一直在…查hermiess自己的log或者是抓包” |
 | C09 | Main与Noting本轮实际模型统一deepseek-flash思考模式 | 用户已回答模型选择；官方Anthropic入口https://api.deepseek.com/anthropic，保留原生Hermes循环与适配器 | 用户“deepseek-flash 思考模式” |
 | C10 | 停止代码变更及继续验收；仅消除口径偏离影响、同步新口径文档、撤销误加App Server兼容改动、整理现状提交基线，在根CLAUDE交接详细下一步计划 | 用户明确暂停原自主实现，goal设paused；保留此前普通路径实现但不得继续改/测，新工具面与DeepSeek只完成文档，不能冒称已落代码 | 用户“停止代码变更…只把新口径落实到文档…整理好一个提交基线…APP server兼容…删掉”及“也停止继续验收…只消除…偏离…下一步详细计划交接放在看板里” |
+| C11 | 完整冻结父会话快照前缀保持不变，包括头部工具Schema；新可用工具列表与完整Schema只出现在Noting task及后续新增系统提示/控制消息，强调以此为准。模型/API/provider直接使用Hermes原生；机制只在中间层保证上下文复用，不深入改造下层 | 明确纠正Agent对C06的误解及独立模型路由建议；保留既有受限dispatch、child/Anchor/commit机制；不恢复代码变更或验收。本轮DeepSeek运行选择不等于重设计原生路由 | 用户“谁让你在头部就变化了？前缀缓存是冻结的…会话快照…工具变更提示只是出现在…task…后续…系统提示消息…可用工具列表，以及schema…以这个为准…那一层直接使用Hermes原生…从中间层，保证上下文复用” |
 
 文档事实（不是本次问答）：04 的 M01–M25 全范围继承表决定哪些 V1 条款修订；其中 §7.4 写 M01–M24，但 §1.2 强制映射表和 §7.2 已明确 M25，故完整覆盖 M25，不能遗漏节点不变量。04 附录 A/C 使用精确英文；附录 B 按五类时间表达与边界落实。附件未纳入MCP固定桥接方案；按C07本轮不再实施可选Codex通道接线。
 
@@ -38,6 +39,6 @@ README、CLAUDE 的本轮修改随冻结提交纳入；本轮并未修改的依�
 
 ## 2026-10-09 授权修订与冻结追踪
 
-C06–C09覆盖原附件与C05中冲突的工具面/模型通道表述；首轮与本轮d5acc原始冻结树均保留，不改历史报告。按C10停止后，01/02/04及根三文档同步最新契约，与此前保留实现共同形成暂停现状基线，完整哈希记baseline.txt；未运行新验收。后续恢复需新轮次索引引用原始冻结、本补充授权及暂停快照，再按完整范围审查。
+C11纠正Agent对C06的错误解释，完整父头部工具Schema保持冻结，新列表/Schema只追加在后缀；C07/C09仍为本轮原生Hermes的运行选择，不新增下层路由。首轮与本轮d5acc原始冻结树均保留，不改历史报告。按C10停止后，01/02/04及根三文档同步最新契约，与此前保留实现共同形成暂停现状基线，完整哈希记baseline.txt；未运行新验收。后续恢复需新轮次索引引用原始冻结、本补充授权及暂停快照，再按完整范围审查。
 
-暂停联合基线：`b0f260afe1a4e09f86725d800b109939953e45b2`。baseline.txt首行定位此版本；原始d5acc与计划5dc152f历史均保留。后续仅补记哈希，不新增产品修改或验收。
+暂停联合基线：`b0f260afe1a4e09f86725d800b109939953e45b2`。baseline.txt首行定位此版本；原始d5acc与计划5dc152f历史均保留。该提交保存暂停时的历史状态，其中工具头部变化解释已被C11纠正；当前文档修订不改此快照哈希，不追改其代码或历史验收结论。
