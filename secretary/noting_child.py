@@ -472,7 +472,10 @@ def run_noting_task(
         wrapper = build_noting_task_wrapper(
             initial_instruction, timestamp=admission_timestamp if admission_timestamp is not None else time.time(),
         )
-        _run_child_turns(child, prefix, wrapper, runtime_profile, outcome)
+        _run_child_turns(
+            child, prefix, wrapper, runtime_profile, outcome,
+            admission_timestamp=admission_timestamp,
+        )
         _commit_when_complete(task_db, conversation_ref, anchor_message_uid, trigger_type,
                               runtime_profile, child, provider, outcome)
     except Exception as exc:  # a crashed task never commits and never resumes
@@ -533,7 +536,7 @@ def _force_task_close(child: Any, runtime_profile: str, outcome: NotingTaskOutco
 
 def _run_child_turns(
     child: Any, prefix: List[Dict[str, Any]], wrapper: str, runtime_profile: str,
-    outcome: NotingTaskOutcome,
+    outcome: NotingTaskOutcome, *, admission_timestamp: float,
 ) -> None:
     """Run one persistent child for at most five complete Turns (M27)."""
     history: Any = [_clone_message(message) for message in prefix]
@@ -561,7 +564,10 @@ def _run_child_turns(
             if runtime_profile == "NOTING_WITH_COMPACTION"
             else _ORDINARY_CONTINUATION_MESSAGE
         )
-        wrapper = message + "\n\n" + noting_tool_control_message(runtime_profile)
+        wrapper = build_noting_task_wrapper(
+            message + "\n\n" + noting_tool_control_message(runtime_profile),
+            timestamp=admission_timestamp,
+        )
         history = _continuation_history(child, prefix)
         if not history:
             outcome.status, outcome.error = "failed", "Noting continuation history is unavailable"
