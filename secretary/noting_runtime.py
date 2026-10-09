@@ -32,6 +32,9 @@ from secretary.noting_scope import bind_main_runtime, runtime_configuration_fail
 
 logger = logging.getLogger(__name__)
 
+_MAIN_EXECUTION_KEY = "_secretary_last_main_execution"
+_MAIN_EXECUTION_VALUES = frozenset({"native", "external"})
+
 # Turn kinds that must never touch the per-Conversation Idle timer (02 §4.5): Noting children,
 # delegate/subagent Turns, review/`/btw` forks, background utility work and side agents are all
 # excluded before any read, so their activity cannot reset a main Conversation's timer.
@@ -195,6 +198,66 @@ def _main_conversation_ref(agent: Any) -> Optional[str]:
         return None
 
 
+def note_actual_main_execution(agent: Any, source: str) -> bool:
+    """Record who actually dispatched the latest Main-model request.
+
+    This is an execution fact, not a route guess: callers invoke it only from the
+    concrete native/external dispatch seams.  Child/review/background agents are ignored.
+    """
+    if source not in _MAIN_EXECUTION_VALUES or not is_main_conversation_agent(agent):
+        return False
+    agent._secretary_last_main_execution = source
+    agent._secretary_main_execution_dirty = True
+    return True
+
+
+def _persisted_main_execution(agent: Any) -> Optional[str]:
+    """Read the durable execution fact for Idle/Cold Resume without inferring a route."""
+    if not is_main_conversation_agent(agent):
+        return None
+    db = getattr(agent, "_session_db", None)
+    session_id = getattr(agent, "session_id", None)
+    if db is None or not session_id:
+        return None
+    try:
+        source = db.get_session_model_config_value(session_id, _MAIN_EXECUTION_KEY)
+    except Exception:
+        logger.debug("Noting execution-source read failed", exc_info=True)
+        return None
+    return source if source in _MAIN_EXECUTION_VALUES else None
+
+
+def main_execution_for_force(agent: Any) -> Optional[str]:
+    """Current in-memory fact, lazily hydrated from the same durable view on resume."""
+    source = getattr(agent, "_secretary_last_main_execution", None)
+    if source in _MAIN_EXECUTION_VALUES:
+        return source
+    source = _persisted_main_execution(agent)
+    if source is not None:
+        agent._secretary_last_main_execution = source
+    return source
+
+
+def persist_main_execution_source(agent: Any) -> bool:
+    """Atomically merge a newly observed Main execution fact into sessions.model_config."""
+    if not is_main_conversation_agent(agent):
+        return False
+    source = getattr(agent, "_secretary_last_main_execution", None)
+    if source not in _MAIN_EXECUTION_VALUES or not getattr(agent, "_secretary_main_execution_dirty", False):
+        return False
+    db = getattr(agent, "_session_db", None)
+    session_id = getattr(agent, "session_id", None)
+    if db is None or not session_id:
+        return False
+    try:
+        db.patch_session_model_config(session_id, {_MAIN_EXECUTION_KEY: source})
+    except Exception:
+        logger.warning("Noting execution-source persistence failed", exc_info=True)
+        return False
+    agent._secretary_main_execution_dirty = False
+    return True
+
+
 def _record_main_turn_event(agent: Any, at: Optional[float], *, started: bool) -> bool:
     if not is_main_conversation_agent(agent):
         return False
@@ -223,7 +286,8 @@ def note_main_turn_started(agent: Any, *, at: Optional[float] = None) -> bool:
 
 
 def note_main_turn_finished(agent: Any, *, at: Optional[float] = None) -> bool:
-    """Record a real main Turn end; the Idle delay runs from here (02 §4.5). True when recorded."""
+    """Persist any actual request-source fact, then record the real Main Turn end."""
+    persist_main_execution_source(agent)
     return _record_main_turn_event(agent, at, started=False)
 
 
@@ -285,6 +349,7 @@ def _force_decision(
     *,
     settings: Optional[NotingSettings],
     force_snapshot_in_segment: Optional[bool],
+    execution_source: Optional[str],
 ) -> NotingDecision:
     settings = settings_for_db(db) if settings is None else settings
     enabled, reason = noting_trigger_gate(db, conversation_ref, settings=settings)
@@ -293,6 +358,10 @@ def _force_decision(
     skip = _threshold_skip(measurement)
     if skip is not None:
         return skip
+    # D01: the trigger is real now; reject a confirmed External executor before
+    # freezing an Anchor or creating admission/reminder/child side effects.
+    if execution_source == "external":
+        return _skip("external_main_execution")
     identity = _freeze_and_log_attempt(db, conversation_ref, "force")
     if identity is None:
         return _skip("no_frozen_anchor")
@@ -310,6 +379,7 @@ def try_admit_force(
     *,
     settings: Optional[NotingSettings] = None,
     force_snapshot_in_segment: Optional[bool] = None,
+    execution_source: Optional[str] = None,
 ) -> NotingDecision:
     """Force admission gating (02 §4.11) on the frozen Anchor of the current Full Foreground head.
 
@@ -320,6 +390,7 @@ def try_admit_force(
     return _guarded(conversation_ref, lambda: _force_decision(
         db, conversation_ref, measurement, settings=settings,
         force_snapshot_in_segment=force_snapshot_in_segment,
+        execution_source=execution_source,
     ))
 
 
@@ -330,6 +401,7 @@ def _idle_decision(
     measurement: Optional[ContextMeasurement],
     settings: Optional[NotingSettings],
     now: Optional[float],
+    execution_source: Optional[str],
 ) -> NotingDecision:
     settings = settings_for_db(db) if settings is None else settings
     enabled, reason = noting_trigger_gate(db, conversation_ref, settings=settings)
@@ -342,9 +414,6 @@ def _idle_decision(
         now=now, delay_seconds=settings.idle_delay_seconds,
     ):
         return _skip("not_idle")
-    identity = _freeze_and_log_attempt(db, conversation_ref, "idle")
-    if identity is None:
-        return _skip("no_frozen_anchor")
     if measurement is not None:
         threshold_skip = _threshold_skip(measurement)
         if threshold_skip is not None:
@@ -358,6 +427,13 @@ def _idle_decision(
             # 02 §4.10: at/above the Force threshold without a Force Snapshot yet, the Force
             # path owns the segment — the ordinary Idle path creates no substitute Task.
             return _skip("force_path_owns_segment")
+    # D01 is intentionally after the Idle/Force profile decision but before the
+    # frozen Anchor/admission path.  Missing history preserves the pre-D01 behavior.
+    if execution_source == "external":
+        return _skip("external_main_execution")
+    identity = _freeze_and_log_attempt(db, conversation_ref, "idle")
+    if identity is None:
+        return _skip("no_frozen_anchor")
     return _freeze_and_admit(
         db, conversation_ref, kind="idle", task_profile=idle_task_profile(settings, measurement),
         compaction_threshold_tokens=settings.auto_trigger_compaction_threshold_tokens, frozen_identity=identity,
@@ -371,6 +447,7 @@ def try_admit_idle(
     measurement: Optional[ContextMeasurement] = None,
     settings: Optional[NotingSettings] = None,
     now: Optional[float] = None,
+    execution_source: Optional[str] = None,
 ) -> NotingDecision:
     """Idle admission gating (02 §4.5, §4.8, §4.10) from the durable per-Conversation timer.
 
@@ -381,6 +458,7 @@ def try_admit_idle(
     """
     return _guarded(conversation_ref, lambda: _idle_decision(
         db, conversation_ref, measurement=measurement, settings=settings, now=now,
+        execution_source=execution_source,
     ))
 
 
@@ -413,7 +491,9 @@ def maybe_admit_force_from_pressure(agent: Any, measured_tokens: Any, *, message
         measurement = measurement_from_agent(agent, measured_tokens)
         if measurement is None:
             return "no_measurement"
-        decision = try_admit_force(db, ref, measurement)
+        decision = try_admit_force(
+            db, ref, measurement, execution_source=main_execution_for_force(agent)
+        )
         if decision.action == "admit":
             from secretary.noting_child import spawn_noting_task
             spawn_noting_task(agent, decision.admission, parent_active_messages=messages)
@@ -451,7 +531,10 @@ def maybe_run_idle_noting(parent: Any, db: Any, conversation_ref: str, *,
             except Exception:
                 logger.debug("Noting Idle measurement re-read failed", exc_info=True)
                 measurement = None
-        decision = try_admit_idle(db, conversation_ref, measurement=measurement, now=now)
+        decision = try_admit_idle(
+            db, conversation_ref, measurement=measurement, now=now,
+            execution_source=_persisted_main_execution(parent),
+        )
         if decision.action == "admit":
             from secretary.noting_child import spawn_noting_task
             spawn_noting_task(parent, decision.admission)

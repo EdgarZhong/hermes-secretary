@@ -732,6 +732,11 @@ def run_codex_app_server_turn(agent, *, user_message: str, original_user_message
     try:
         _start_codex_thread(agent)
         wire_model = _codex_wire_model(agent, getattr(agent, "_codex_session_model_provider", None))
+        # D01: this is the first point at which the external App Server is really
+        # asked to execute the Main model turn.  A later generic fallback records native.
+        with suppress(Exception):
+            from secretary.noting_runtime import note_actual_main_execution
+            note_actual_main_execution(agent, "external")
         turn = agent._codex_session.run_turn(
             user_input=user_message,
             model=wire_model, reasoning_effort=_codex_turn_effort(agent, wire_model),

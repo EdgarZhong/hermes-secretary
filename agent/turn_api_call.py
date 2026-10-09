@@ -87,6 +87,16 @@ def perform_api_call(
     _use_streaming = _should_stream(agent)
 
     def _perform_api_call(next_api_kwargs):
+        # M26/D01 records the executor at the actual generic dispatch seam.  ACP and
+        # external-process profiles are external even when their API mode says chat_completions.
+        from hermes_cli.runtime_provider_backends import _is_external_process_provider
+        _base = str(getattr(agent, "base_url", "") or "").lower()
+        _external = _base.startswith(("acp://", "acp+tcp://")) or _is_external_process_provider(
+            getattr(agent, "provider", "")
+        )
+        with suppress(Exception):
+            from secretary.noting_runtime import note_actual_main_execution
+            note_actual_main_execution(agent, "external" if _external else "native")
         if agent.api_mode == "codex_responses":
             next_api_kwargs = agent._get_transport().preflight_kwargs(
                 next_api_kwargs, allow_stream=False, is_github_responses=agent._is_copilot_url(),
