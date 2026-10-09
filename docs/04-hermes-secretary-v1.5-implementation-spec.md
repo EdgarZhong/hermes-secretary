@@ -1,6 +1,6 @@
 # Hermes Secretary V1.5 — 实施权威规格
 
-> **2026-10-09 用户补充授权及纠偏：** 本轮索引C05–C11：Noting每次请求保留完整冻结父快照前缀，包括root、原工具列表/Schema与到Anchor的消息，不改写头部。在`<noting-task>`及后续新增的系统提示/控制消息中追加当前可用History/Notebook工具列表和完整Schema，强调以此为准；特殊profile另含compact_parent，实际dispatch按Noting白名单限制。此前“从首请求改实际顶层Schema、撤销父工具前缀parity”是Agent理解偏差，现撤销。机制停留在Hermes中间层上下文复用，模型继承、API/provider直接使用Hermes原生，不新增独立模型路由、provider改造或App Server Noting执行器。本轮真实运行选择仍为DeepSeek官方Anthropic/deepseek-flash思考模式；缓存观察使用Hermes自身日志或抓包。原始附件保留在d5acc冻结树，以下正文按最新用户澄清同步。
+> **2026-10-09 用户补充授权及纠偏：** 本轮索引C05–C13（C12/D01仍未定稿）：Noting每次请求保留完整冻结父快照前缀，包括root、原工具列表/Schema与到Anchor的消息，不改写头部。在`<noting-task>`及后续新增的系统提示/控制消息中追加当前可用History/Notebook工具列表和完整Schema，强调以此为准；特殊profile另含compact_parent，实际dispatch按Noting白名单限制。此前“从首请求改实际顶层Schema、撤销父工具前缀parity”是Agent理解偏差，现撤销。机制停留在Hermes中间层上下文复用，模型继承、API/provider直接使用Hermes原生，不新增独立模型路由、provider改造或App Server Noting执行器。本轮真实运行选择仍为DeepSeek官方Anthropic/deepseek-flash思考模式；缓存观察使用Hermes自身日志或抓包。原始附件保留在d5acc冻结树，以下正文按最新用户澄清同步。
 
 > **规格状态：** 既有定案契约继续有效；§4.5 D01外部Agent runtime继承边界按C12仅记录待论证问题，未定稿，等待用户重新论证。实施与最终验收仍暂停；本文不代表代码已经修改或通过验收。
 > **实施对象：** `EdgarZhong/hermes-secretary`，承接 V1 首轮实现。  
@@ -245,6 +245,15 @@ V1 的两种 Trigger、Force 公式／阈值、同 Anchor 准入、`NOTING`／`N
 第一句要求 Noting 随父 Conversation 的**实际进展**维护 Candidate，结案采用既有 `archive` 语义而不是物理删除。未确认执行成功、未明确拒绝或撤回的候选不得因“已经讨论过”而归档。第二句只补必要的 Schedule 边界，不重复五种时间表达式（由 §5.2 的 Tool Schema 承担）。
 
 主 Agent **没有** Notebook mutation 能力；Noting Worker **没有** Memory／Rule／Skill 外部持久化权限。两者原 V1 权限隔离保持不变。
+
+**完整生命周期的强制澄清（C13，与V1-02 §5.5/§5.11/§6.16一致）：**
+
+- **目的与冻结源：** Noting通过在父请求的冻结前缀之后追加自身内容来复用热缓存。在准入时冻结父会话实际有效的root、原工具列表/完整Schema及顺序、截至Anchor的Active消息；不是数据库History拼接，也不是后续父会话的最新版本。
+- **每次请求不变量：** 首请求、每次工具循环、重试、同child continuation均为“同一份完整父前缀＋累积Noting后缀”。首个工具响应、父会话新Turn/压缩、全局配置变化均不授权刷新已冻结task的前缀。不得以“suffix divergence”为名往头部tools加工具、删工具、改定义或改顺序。
+- **声明与执行分离：** 初始task给出当前完整可用工具列表及完整Schema（名称、描述、参数定义），强调取代此前工具可用性说明；每当追加新的系统提示/任务驱动控制消息时，再给一遍。已追加的声明随后缀保留，不回写此前消息，不重建root。实际执行从task起按Noting白名单限制；冻结父前缀仍列有某工具不等于Noting有权执行它。消息载体沿用V1-02 §5.6。
+- **改造边界与证据：** 只在Hermes中间层保证上述上下文复用，模型继承、API/provider与推理沿用原生。接续验证逐次比较实际组装的完整前缀、后缀声明及dispatch负例；不能只验第一请求，更不能把第二次新增头部Schema写成正确测试预期。真实缓存读取另由Hermes自身日志/响应观察，不用字节一致冒充已测命中。
+
+§4.5 D01仍为未定稿的外部Agent runtime问题；本澄清不对其支持范围、缺失快照处置或模型配置作决定。
 
 ### 4.5 待论证的规格问题：外部 Agent runtime 的继承边界（未定稿）
 

@@ -4,7 +4,7 @@
 
 2026-10-09 用户明确要求停止代码变更及继续验收，仅撤销刚刚口径偏离造成的App Server兼容改造、同步文档、整理基线和交接。后续C12要求外部Agent runtime继承边界先记录、**不定稿，由用户重新论证**，并查清原规格与实施责任。自主目标状态为 **paused**，V1.5 **未完成、未通过独立验收**。只有用户明确恢复实现后才能启动下面实施任务；D01相关范围须先接收用户规格修订，不能由Agent自行定稿。本次不运行模型、测试、扩大门禁或浏览器验收。
 
-- 本轮权威索引：[index.md](.autonomous/20261009-v1.5-implementation/index.md)，snapshot-index.md为同正文链接；C05–C12是最新用户口径，C11纠正工具Schema承载位置，C12授权待论证记录和静态核对。
+- 本轮权威索引：[index.md](.autonomous/20261009-v1.5-implementation/index.md)，snapshot-index.md为同正文链接；C05–C13是最新用户口径；C11纠正工具Schema承载位置，C12授权待论证记录和静态核对，C13明确授权加强现行02/04的完整生命周期表述。
 - 最新规格：[04](docs/04-hermes-secretary-v1.5-implementation-spec.md)；未修订契约沿用[02](docs/02-noting-system-specification.md)。原附件原样保留于 d5acc2cc27c6053ff198448fa3502bd8dd47e415 历史树，不追改首轮报告。
 - 原代码起点：main / 41f7057a28f8e9bf2fc6c8fb769748d9f2534012；产品承接 7533173ca315d6308b121d313f0dd281777c8604。
 - 原文档冻结：d5acc2cc27c6053ff198448fa3502bd8dd47e415；计划基线：5dc152f0dfa4086134a79e6366bfbcc1d615784a。暂停代码快照：b0f260afe1a4e09f86725d800b109939953e45b2，完整哈希见baseline.txt；C11文档纠偏提交4f940cda0d，后续C12只增加待论证问题和调查交接。暂停快照保存当时的普通实现及文档，不代表当前全部口径或最终发布版本。
@@ -17,7 +17,8 @@
 3. **本轮运行选择与原生边界（C07/C09/C11）**：模型继承、API/provider直接沿用Hermes原生；不新增Secretary独立模型路由、provider适配或App Server Noting执行器。本轮Main、Noting及后续真实验收选择DeepSeek官方Anthropic接口 https://api.deepseek.com/anthropic，deepseek-flash思考模式；不使用Codex App Server或Codex Proxy，不自动fallback到它们。用户授权从 /Users/edgar/code/Ebbinghaus-v2/.env.personal.local 读取DEEPSEEK_API_KEY。仅确认该变量非空，**未复制凭据、未验证有效性、未切换runtime配置、未调用DeepSeek**。密钥只能进入隔离配置或正常秘密读取，不进Git/报告。
 4. **缓存证据（C08）**：使用Hermes自己的真实request/response日志或获授权抓包逐次查冻结前缀和provider缓存读取tokens；字节一致、缓存命中量和效果分别报告。**当前没有这条真实Noting缓存核验结果**；Codex App Server日志不得作为证据。
 5. **停止边界（C10）**：本次仅文档、撤销偏离和本地现状快照；全部后续实施/验收保持暂停。
-6. **待用户论证（C12）**：外部Agent runtime的支持与完整父快照/缓存继承问题记录在04 §4.5 D01，未定稿。此前关于外部runtime的讨论不是最终支持策略；不自行禁用、降级、配置独立模型或新增适配。
+6. **权威正文加强（C13）**：现行02 §5.5/§5.11/§6.16和04 §4.4同步明确首次、工具循环、重试、continuation全部保留完整父前缀；tool列表/完整Schema只在后缀声明，dispatch独立受限。后续fork-tag处理不授权改头部；禁止只验首请求或把后续扩头部工具写成预期。仅文档落实，代码问题仍待修。
+7. **待用户论证（C12）**：外部Agent runtime的支持与完整父快照/缓存继承问题记录在04 §4.5 D01，未定稿。此前关于外部runtime的讨论不是最终支持策略；不自行禁用、降级、配置独立模型或新增适配。
 
 ## 理解偏差的时间定位与纠正（2026-10-09，静态核对，非验收）
 
@@ -78,11 +79,11 @@
 | H3 本轮DeepSeek原生运行配置 | 主会话环境配置；只读Ebbinghaus-v2获授权环境文件，凭据仅本地隔离运行状态 | 使用Hermes已有配置/adapter选择官方Anthropic endpoint、deepseek-flash思考模式，凭据不输出；核对native resolved上下文/Force阈值与有效配置。本任务不开发独立Noting模型路由、provider适配、API改造或App Server执行器 | 原生Hermes Main/Noting有效模型继承与本轮已选配置一致；只在恢复后记录实际结果。遇原生能力缺口如实报告，不擅自扩大实现范围 |
 | H4 Hermes缓存观察 | 主会话统一取证；沿既有Hermes日志/响应接缝，证据integration/cache/ | H1–H3后通过原生Hermes真实路径观察Main→Noting：首次、工具请求、continuation、Parent并发，记录完整父前缀指纹、后缀工具列表/Schema、原生返回的缓存统计；不改provider缓存策略或新增日志/缓存管理器 | 我方中间层冻结/追加机制逐次成立；真实命中另按原生响应记录，0或不可见如实报告。屏蔽认证头，只观察隔离Hermes流量，不用Codex日志 |
 | H5 接收集成与定向证据 | 主会话亲自review、微小接线；深入修复重新分派 | 接收七项报告、正式请求/权限/状态/失败与上下游；同时对本次Foreground兼容字段清理做必要定向复测，然后按DeepSeek重新验证global on↔off、local schema稳定、Warm/Cold/pinned、Full latestsource。更新README稳定事实、CLAUDE状态，创建明确待审提交 | 新口径代码与文档一致；未改V1未修订机制；凭据/个人内容不进Git；版本与证据匹配，不用反复复跑已有tests代替review |
-| H6 一次必要扩大回归+独立Verification | 全新fork_turns=none reviewer；产品只读，仅verification.md与证据；主会话统一安排测试执行方 | H5收敛后按冻结输入独立重新提取V1未改要求+M01–M25+C05–C12及用户后续已定稿修订；统一一次10类检查及实际影响的Secretary/Agent/State/Gateway/CLI/TUI/History分区、必要共享catalog验证；不无差别重测无关能力 | 六节完整矩阵与原文→路径→条件→方法→观察→判定闭环，无违规/证据不足；macOS边界明确。已知失败与新回归区分；修复仅定向复测，不能关闭规则让结果变绿 |
+| H6 一次必要扩大回归+独立Verification | 全新fork_turns=none reviewer；产品只读，仅verification.md与证据；主会话统一安排测试执行方 | H5收敛后按冻结输入独立重新提取V1未改要求+M01–M25+C05–C13及用户后续已定稿修订；统一一次10类检查及实际影响的Secretary/Agent/State/Gateway/CLI/TUI/History分区、必要共享catalog验证；不无差别重测无关能力 | 六节完整矩阵与原文→路径→条件→方法→观察→判定闭环，无违规/证据不足；macOS边界明确。已知失败与新回归区分；修复仅定向复测，不能关闭规则让结果变绿 |
 | H7 官方Dashboard独立Validation | 另一个全新fork_turns=none validator；产品只读，validation.md与隔离runtime/证据 | H6通过后先写场景供主会话过目，再用官方Dashboard+localhost native gateway+真实DeepSeek Main/Noting操作：跨compaction查原文、global/local/cold、真实Candidate自主搜证/后续更正、修订不写、明确批准限定写、Noting归档、Schedule idle/busy、Full Prelude/身份/Anchor审计 | 全部适用用户场景真实输入到输出通过，保留失败序列；构建/CLI/mock不替代，平台未测不冒称；无个人UI/新API/云部署 |
 | H8 交付判定 | 主会话delivery-evidence-review；根状态及新轮次final-delivery | 两独立门禁关闭、范围内整改清空、最新版本无新增必要缺口；对照本轮暂停历史与新轮次原始要求 | 才能标goal complete并交付实际commit/证据；未关闭继续修复，不以阶段测试通过替代整体完成 |
 
-恢复实现时先接收用户对D01的修订及明确恢复授权，再按autonomous-run建立新的接续轮次索引，引用暂停代码快照、原始5346cd/d5acc和C05–C12，复核本表已查明偏差；未定稿范围不能自行补方案。保留本轮暂停交付和历史结论，不追改为后来已通过。
+恢复实现时先接收用户对D01的修订及明确恢复授权，再按autonomous-run建立新的接续轮次索引，引用暂停代码快照、原始5346cd/d5acc和C05–C13，复核本表已查明偏差；未定稿范围不能自行补方案。保留本轮暂停交付和历史结论，不追改为后来已通过。
 
 ## 已知验证边界
 

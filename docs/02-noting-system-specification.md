@@ -1420,6 +1420,30 @@ On process crash/restart:
 
 ## 5.5 Runtime prefix and durable suffix
 
+### Authoritative clarification: immutable prefix, appended declaration, restricted execution
+
+The purpose of Noting is to reuse the Parent's warm context cache by extending its frozen request prefix. This contract applies to the task's entire lifetime, not only its first request.
+
+At admission, freeze one snapshot of the Parent's actual effective root prompt, original tool definitions/schemas and ordered Active messages through the Anchor. Do not reconstruct it from database History or refresh it from later Parent state. For every model request:
+
+```text
+Noting context = the SAME frozen Parent prefix + accumulated Noting-owned suffix
+```
+
+The three surfaces have distinct responsibilities:
+
+| Surface | Required behavior |
+|---|---|
+| Inherited Parent prefix | Keep the root, original tools/schema content and ordering, and frozen messages unchanged. Do not add/remove/redefine/reorder tools in this prefix for Noting. |
+| Appended task/control instructions | Give the complete current permitted tool list and schemas, including names, descriptions and argument definitions, and explicitly state that this list supersedes earlier tool-availability instructions. Ordinary Noting permits History Search and Notebook; only the special profile also permits compact_parent. |
+| Actual execution/dispatch | Enforce the Noting whitelist from task start, independent of the Parent definitions still present in the frozen prefix. A Parent tool appearing in that prefix does not authorize its execution. |
+
+Include the declaration in the initial Noting task and repeat it whenever a subsequent new system-instruction/task-driving control message is appended. Already-appended declarations remain in the accumulated suffix on later requests; do not rewrite or replace earlier messages to repeat them. System-instruction denotes the purpose of this content; message carriers and transport roles retain the existing §5.6 contract.
+
+The same immutable prefix is required for the first request, every later tool-loop request, retries and same-child continuation Turns. A first tool response, a new Parent Turn, Parent compaction, or a global/configuration change does not authorize modifying that task's frozen prefix. Adding schemas to a top-level tools array after the first response is a prefix mutation, not a Noting suffix extension. New task tools are described in appended instructions and enforced by dispatch; they are not inserted into the inherited head.
+
+This rule concerns Hermes intermediate-layer context assembly. Use Hermes native model inheritance, API/provider handling and inference without a Secretary-specific route or adapter. The unresolved external-Agent ownership case remains the pending question in §5.2 / V1.5 §4.5, not an exception decided by this clarification.
+
 The model-facing context has this shape:
 
 ```text
@@ -1658,7 +1682,7 @@ Anchor no longer belongs to current path
 
 Every same-model Noting request retains the complete frozen Parent prefix, including root, tool definitions and messages through Anchor, to reuse the Parent's available cache. The authoritative Noting tool list and schemas are appended only in the child-owned task/control suffix. Secretary must guarantee this prefix reuse at the Hermes intermediate layer; native Hermes model/API/provider behavior is reused without additional routing or caching layers.
 
-On server-slot-style cache routes, later Noting suffix divergence may reuse the Background Review fork-tag pattern so the divergent child stream does not evict the Parent's cache slot.
+On server-slot-style cache routes, later Noting suffix divergence may reuse the existing Background Review fork-tag pattern so the divergent child stream does not evict the Parent's cache slot. This is only native cache-slot handling for appended child traffic; it does not authorize changing the frozen Parent root, tools/schema or messages, and does not introduce a new provider/cache mechanism.
 
 The design target is:
 
@@ -1897,6 +1921,8 @@ Cover at least:
 - the main Assistant never mutates Notebook;
 - Special-profile continuation always reuses the same child;
 - child auto-compaction is disabled.
+
+Acceptance must compare the complete inherited prefix at Hermes's actual request-assembly seam for the first request, at least two subsequent tool-loop requests, applicable retry and same-child continuation paths, and Parent concurrent activity/compaction. Verify that new tool lists/full schemas are in appended child instructions, that each new system-instruction/task-driving message repeats the authoritative declaration, and that forbidden Parent tools are denied by dispatch. A test that checks only first-request parity, or expects tools to be added to the request head after the first response, does not satisfy this contract. Provider cache-read evidence remains a separate real-observation requirement; prefix equality alone is not a measured cache hit.
 
 ## 6.17 Schedule / Reminder / timestamp acceptance
 
