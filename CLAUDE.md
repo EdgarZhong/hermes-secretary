@@ -1,4 +1,4 @@
-# V1.5 暂停基线与接续看板
+# V1.5 云端恢复实施与接续看板
 
 ## 自主口径收敛 · 待用户追认（下次用户交互优先报告）
 
@@ -10,10 +10,10 @@
 
 ## 当前状态与恢复条件
 
-2026-10-09 用户此前暂停所有代码修改与继续验收。**此后明确单独授权 GitHub main 上一次 V1.5 全范围文档新提交，不授权恢复编码、真实模型调用、测试或验收。** D01、两个 Profile 的五 Turn 终止／强制提交及 Snapshot 结束审计均已由用户定稿，不能再让 Coding Agent 自选准入、另设路由或把强制结束改成不提交。V1.5 代码实施／独立验收依然 **paused / 未完成**。
+2026-10-09 用户已明确恢复 V1.5 编码授权：由当前云端主会话直接在 GitHub main 完成可远程完成的编码、静态核对与自主实现过程文档，并提交可由本地 Coding Agent 直接续接的版本；无需 subagent。此前暂停状态到 70c772180d1bb2aaf8bba8d27a8a64f7c2fabb12 为止，现已解除。D01、两个 Profile 的五 Turn 终止／强制提交及 Snapshot 结束审计均已定稿，不得重新设计。真实 DeepSeek、Dashboard 用户验收及必须独立执行的 Verification/Validation 若云端条件不具备，必须保留为本地接续门禁，不得伪装通过。
 
 
-- 本轮权威索引：[index.md](.autonomous/20261009-v1.5-implementation/index.md)，snapshot-index.md为同正文链接；C05–C17是最新用户口径；C11纠正工具Schema承载位置，C12授权待论证记录和静态核对，C13明确授权加强现行02/04的完整生命周期表述。
+- 历史暂停轮次权威索引：[index.md](.autonomous/20261009-v1.5-implementation/index.md)，C05–C17继续作为定稿规格来源。当前恢复实施轮次权威索引：[index.md](.autonomous/20261009-v1.5-cloud-resume/index.md)，snapshot-index.md 同正文；本轮基线固定为 70c772180d1bb2aaf8bba8d27a8a64f7c2fabb12。
 - 最新规格：[04](docs/04-hermes-secretary-v1.5-implementation-spec.md)；未修订契约沿用[02](docs/02-noting-system-specification.md)。原附件原样保留于 d5acc2cc27c6053ff198448fa3502bd8dd47e415 历史树，不追改首轮报告。
 - 原代码起点：main / 41f7057a28f8e9bf2fc6c8fb769748d9f2534012；产品承接 7533173ca315d6308b121d313f0dd281777c8604。
 - 原文档冻结：d5acc2cc27c6053ff198448fa3502bd8dd47e415；计划基线：5dc152f0dfa4086134a79e6366bfbcc1d615784a。暂停代码快照：b0f260afe1a4e09f86725d800b109939953e45b2，完整哈希见baseline.txt；C11文档纠偏提交4f940cda0d，后续C12只增加待论证问题和调查交接。暂停快照保存当时的普通实现及文档，不代表当前全部口径或最终发布版本。
@@ -80,7 +80,7 @@
 - 9139原隔离Dashboard目前无监听，先前exec句柄已不存在；不启动新服务、不继续用户场景。内置浏览器仅完成运行库准备，未执行本轮Dashboard验收。
 - 三实现Agent目前无继续执行任务；此前prompt/workflow因usage限制中断，不把T2b未交回内容称为完成。
 
-## 详细接续任务看板（全部暂停，需用户恢复）
+## 详细接续任务看板（已恢复；云端主会话实施，独立门禁留本地接续）
 
 | 顺序/任务 | 范围、负责人和修改边界 | 依赖与实施步骤 | 完成与验证条件 |
 |---|---|---|---|

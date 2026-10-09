@@ -1,0 +1,7 @@
+# V1.5 cloud-resume baseline
+
+baseline_commit=70c772180d1bb2aaf8bba8d27a8a64f7c2fabb12
+baseline_tree=0c8f4ea4ae2e14f83d3afcb7f2416c81f130d6eb
+historical_paused_round=.autonomous/20261009-v1.5-implementation/
+authority=docs/04-hermes-secretary-v1.5-implementation-spec.md + inherited docs/02-noting-system-specification.md
+resume_authorization=2026-10-09 user authorized cloud main-branch implementation and autonomous-process document updates
