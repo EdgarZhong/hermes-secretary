@@ -374,8 +374,12 @@ def test_d01_actual_execution_fact_persists_and_no_request_does_not_overwrite(db
     key = "_secretary_last_main_execution"
 
     assert db.get_session_model_config_value("s", key) is None
+    agent._session_init_model_config = {"existing": "kept"}
     assert rt.note_actual_main_execution(agent, "external") is True
     assert rt.main_execution_for_force(agent) == "external"
+    assert agent._session_init_model_config == {
+        "existing": "kept", "_secretary_last_main_execution": "external",
+    }
     assert rt.note_main_turn_finished(agent, at=1500.0) is True
     assert db.get_session_model_config_value("s", key) == "external"
 
@@ -392,3 +396,22 @@ def test_d01_actual_execution_fact_persists_and_no_request_does_not_overwrite(db
     non_main = SimpleNamespace(_session_db=db, session_id="s", platform="subagent")
     assert rt.note_actual_main_execution(non_main, "external") is False
     assert db.get_session_model_config_value("s", key) == "native"
+
+
+def test_d01_idle_external_blocks_before_force_snapshot_compaction_branch(db):
+    make(db, "s")
+    add(db, "s", "first", "m1")
+    add(db, "s", "second", "m2")
+    ref = ref_of(db, "s")
+    db.noting_idle_turn_finished(ref, 1000.0)
+    db.notebook_commit_snapshot(
+        ref, empty_state(), anchor_message_uid="m1",
+        trigger_type="force", runtime_profile=TASK_PROFILE_NOTING,
+    )
+
+    decision = rt.try_admit_idle(
+        db, ref, measurement=_measurement(70_000), now=2000.0,
+        settings=_settings(compact_after_force=True), execution_source="external",
+    )
+    assert (decision.action, decision.reason) == ("skip", "external_main_execution")
+    assert _admission_count(db) == 0

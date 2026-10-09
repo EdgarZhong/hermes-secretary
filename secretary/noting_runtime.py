@@ -198,16 +198,27 @@ def _main_conversation_ref(agent: Any) -> Optional[str]:
         return None
 
 
+def _remember_main_execution(agent: Any, source: str, *, dirty: bool) -> None:
+    agent._secretary_last_main_execution = source
+    if dirty:
+        agent._secretary_main_execution_dirty = True
+    # Compression continuation publication uses the Agent's existing session-init
+    # model_config. Keep this one fact in that inherited map as well, so a same-Turn
+    # rotation cannot drop the durable D01 fact before note_main_turn_finished().
+    init_config = getattr(agent, "_session_init_model_config", None)
+    if isinstance(init_config, dict):
+        init_config[_MAIN_EXECUTION_KEY] = source
+
+
 def note_actual_main_execution(agent: Any, source: str) -> bool:
     """Record who actually dispatched the latest Main-model request.
 
     This is an execution fact, not a route guess: callers invoke it only from the
-    concrete native/external dispatch seams.  Child/review/background agents are ignored.
+    concrete native/external dispatch seams. Child/review/background agents are ignored.
     """
     if source not in _MAIN_EXECUTION_VALUES or not is_main_conversation_agent(agent):
         return False
-    agent._secretary_last_main_execution = source
-    agent._secretary_main_execution_dirty = True
+    _remember_main_execution(agent, source, dirty=True)
     return True
 
 
@@ -234,7 +245,7 @@ def main_execution_for_force(agent: Any) -> Optional[str]:
         return source
     source = _persisted_main_execution(agent)
     if source is not None:
-        agent._secretary_last_main_execution = source
+        _remember_main_execution(agent, source, dirty=False)
     return source
 
 
@@ -414,6 +425,10 @@ def _idle_decision(
         now=now, delay_seconds=settings.idle_delay_seconds,
     ):
         return _skip("not_idle")
+    # D01: Idle itself is now due. Reject a confirmed External executor before
+    # profile selection can request parent compaction or any freeze/admission side effect.
+    if execution_source == "external":
+        return _skip("external_main_execution")
     if measurement is not None:
         threshold_skip = _threshold_skip(measurement)
         if threshold_skip is not None:
@@ -427,10 +442,6 @@ def _idle_decision(
             # 02 §4.10: at/above the Force threshold without a Force Snapshot yet, the Force
             # path owns the segment — the ordinary Idle path creates no substitute Task.
             return _skip("force_path_owns_segment")
-    # D01 is intentionally after the Idle/Force profile decision but before the
-    # frozen Anchor/admission path.  Missing history preserves the pre-D01 behavior.
-    if execution_source == "external":
-        return _skip("external_main_execution")
     identity = _freeze_and_log_attempt(db, conversation_ref, "idle")
     if identity is None:
         return _skip("no_frozen_anchor")
