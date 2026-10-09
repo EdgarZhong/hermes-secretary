@@ -732,15 +732,14 @@ def run_codex_app_server_turn(agent, *, user_message: str, original_user_message
     try:
         _start_codex_thread(agent)
         wire_model = _codex_wire_model(agent, getattr(agent, "_codex_session_model_provider", None))
-        # D01: this is the first point at which the external App Server is really
-        # asked to execute the Main model turn.  A later generic fallback records native.
+        effort = _codex_turn_effort(agent, wire_model)
+        service_tier = _codex_turn_service_tier(agent)
         with suppress(Exception):
             from secretary.noting_runtime import note_actual_main_execution
             note_actual_main_execution(agent, "external")
         turn = agent._codex_session.run_turn(
             user_input=user_message,
-            model=wire_model, reasoning_effort=_codex_turn_effort(agent, wire_model),
-            service_tier=_codex_turn_service_tier(agent))
+            model=wire_model, reasoning_effort=effort, service_tier=service_tier)
     except Exception as exc:
         logger.exception("codex app-server turn failed")
         _close_codex_session(agent)
@@ -1202,7 +1201,9 @@ def run_codex_stream(agent, api_kwargs: dict, client: Any = None, on_first_delta
             )
         stream_kwargs = _sanitize_consumer_codex_request(agent, next_api_kwargs)
         stream_kwargs["stream"] = True
-        return active_client.responses.create(**bypass_sdk_request_transform(stream_kwargs))
+        from secretary.noting_runtime import dispatch_main_model_request
+        final_kwargs = bypass_sdk_request_transform(stream_kwargs)
+        return dispatch_main_model_request(active_client.responses.create, final_kwargs, **final_kwargs)
 
     def _log_failure(exc: BaseException) -> None:
         request_body_bytes, exception_chain = _codex_request_failure_details(exc)

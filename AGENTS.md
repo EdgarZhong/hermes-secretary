@@ -78,7 +78,7 @@
 - 原有 facade / sibling 模块结构继续有效：行为放入对应 sibling，保持 facade 公共入口；避免模块级循环导入，在生产代码实际读取的接线点进行 patch。
 - 用户状态路径通过 `get_hermes_home()` 等 profile-aware helper 获取，不硬编码 `~/.hermes`；后台任务、tick、RPC、线程及子进程必须显式绑定所属 profile，不能使用启动 profile 代替目标 profile。
 - Noting的上下文复用在Hermes中间层实现：完整冻结父快照前缀（root、工具列表/Schema、消息）不改写，新的可用工具列表和完整Schema只追加在task及后续新增系统提示/控制消息中并声明以此为准；执行权限仍由Noting白名单限制。模型继承、API/provider及推理直接复用Hermes原生机制，不为Secretary新增独立模型路由、provider适配或App Server任务执行器。
-- 当前轮次获授权的Main/Noting真实运行与验收选择DeepSeek官方Anthropic接口、deepseek-flash思考模式，不使用Codex App Server、Codex Proxy或自动回退到这两条通道；这是本轮运行选择，不授权改造Hermes原生模型/API/provider层或删除既有兼容路径。凭据只从获授权本地环境读取，不进入Git。
+- 当前轮次 Main/Noting 真实运行使用 DeepSeek 官方接口、deepseek-flash 思考模式；此前 Anthropic 接口证据保留，2026-10-10 用户明确授权切换隔离测试为 OpenAI Chat Completions 格式并重跑真实链路。不使用 Codex App Server、Codex Proxy 或自动回退到这两条通道；运行选择不授权改造 Hermes 原生模型/API/provider 层或删除既有兼容路径，不修改另一旁路 Dashboard 配置。凭据只从获授权本地环境读取，不进入 Git。
 - 机器事实及可执行文件解析使用 `hermes_platform`；非凭据的行为配置进入配置系统，不任意新增环境变量控制功能。
 - Core patch 必须位于已确认接线点；不得随手新增平行 Agent Loop、对话存储、主会话 admission gate、通用调度器或 API hierarchy。
 - Secretary 的持久状态只向已有 `state.db` 增加自有表，不改变 Hermes 原有表的 schema 或 ownership 语义。

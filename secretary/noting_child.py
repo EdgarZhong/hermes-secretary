@@ -634,6 +634,10 @@ DEFAULT_NOTING_TASK_INSTRUCTION = (
     "the user has rejected or withdrawn them; a proposal or approval alone is not completion. "
     "Notebook Schedules belong only to the Parent Conversation and deliver in-Conversation reminders; "
     "they are not Hermes Cron jobs or delegated agent tasks. "
+    "Focus primarily on the Parent Conversation's currently visible Active Foreground and current Notebook. "
+    "Do not exhaustively traverse the cross-compaction Conversation History. Use session_history selectively "
+    "only when specific evidence requires verification or relevant context is missing. Once necessary "
+    "maintenance is complete, promptly use the terminal tool for this runtime profile. "
     "For NOTING_WITH_COMPACTION, call compact_parent after Notebook work before completion."
 )
 

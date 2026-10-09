@@ -45,10 +45,14 @@
    `HERMES_PYTHON="$PWD/.venv/bin/python" scripts/run_tests.sh tests/secretary/test_noting_runtime.py tests/secretary/test_noting_child.py tests/hermes_state/test_secretary_notebook.py`。
 2. 按实际改动补跑相关 agent/cache-parity/turn 生命周期测试，并运行冻结的 ruff/health 等相关检查；不要通过改规则、阈值或豁免让结果变绿。
 3. 更新本轮 `verification.md`，执行 H6 独立 Verification；只有通过后进入真实模型/用户验收。
-4. 使用既定 DeepSeek 官方 Anthropic / deepseek-flash 原生 Hermes 路径，取得真实 prefix/cache-read 证据，再执行官方 Dashboard H7 Validation。
+4. 使用 DeepSeek 官方 / deepseek-flash 原生 Hermes 路径，取得真实 prefix/cache-read 证据，再执行官方 Dashboard H7 Validation。此前 Anthropic 证据保留；本地 R08 指令明确改为 OpenAI Chat Completions 格式重测隔离真实链路，R07 旁路 Dashboard 边界仍有效。
 5. H6/H7 均通过后更新 `final-delivery.md`、`CLAUDE.md`、README，才标记整体完成。
 
 
 ## 2026-10-09 本地接续
 
 依据 R06 沿用本轮基线和计划。当前产品 c4b45bdf9b，首批三文件定向55项通过（17.4秒），日志见根 CLAUDE。主会话接收云端变更并取得接线证据；native_evidence 只读产品准备 Native DeepSeek 脚本与隔离运行条件。相关 Agent/cache 定向回归后安排一次影响范围内扩大回归和10类检查，独立 Verification 重新提取全范围要求；真实 Native请求/缓存证据与官方 Dashboard Validation 分别记录，不用历史 Codex结果代替。
+
+本地续接按 R07 暂不操作 Dashboard，继续代码与独立 Verification；用户旁路的实际体验结果不自动替代 H7 独立验收。43 文件扩大回归及修复后的定向证据、V-001/V-002/V-003 与配置反馈修复，统一见根 CLAUDE 最新状态；不重开大型检查、不重新定义已冻结产品行为。
+
+R08 的隔离真实重测依次验证 Main 正常请求、默认 Noting 工具调用、Snapshot 提交与 Main 读回；仅切换运行 API 格式。源版本稳定后执行，原始请求/响应、源 hash 和结果保存在 ignored 证据目录，主会话复核后记录；不以人工非法 SDK 参数用例或 standin 代替真实链路。

@@ -795,7 +795,10 @@ def _is_stream_unavailable_error(exc: Exception) -> bool:
 
 def _stream_final_message(stream_fn, api_kwargs, log_prefix, on_stream_event, on_response):
     """``messages.stream()`` -> final Message, ticking the best-effort callbacks."""
-    with stream_fn(**{k: v for k, v in api_kwargs.items() if k != "stream"}) as stream:
+    manager = stream_fn(**{k: v for k, v in api_kwargs.items() if k != "stream"})
+    from secretary.noting_runtime import record_main_model_dispatch
+    record_main_model_dispatch(api_kwargs)
+    with manager as stream:
         stream = normalize_stream_usage(stream)  # MiniMax usage:null (#60683), same as the main turn
         if callable(on_response):
             try:
@@ -864,4 +867,5 @@ def create_anthropic_message(
             logger.debug(
                 "%sAnthropic Messages stream unavailable; falling back to messages.create(): %s", log_prefix, exc
             )
-    return messages_api.create(**{k: v for k, v in api_kwargs.items() if k != "stream"})
+    from secretary.noting_runtime import dispatch_main_model_request
+    return dispatch_main_model_request(messages_api.create, api_kwargs, **{k: v for k, v in api_kwargs.items() if k != "stream"})

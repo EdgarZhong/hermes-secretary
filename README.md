@@ -22,7 +22,7 @@ Hermes Secretary 是基于 [Nous Research 的 Hermes Agent](https://github.com/N
 
 Full Foreground 的首节点是唯一 Context Prelude，记录最新有效请求的实际 root System Prompt 与 Tool Schemas；不可观测部分明确标为 missing。其余节点按逻辑 Message Identity 投影，Snapshot 与 Anchor 作为审计附着，不增加消息节点。
 
-V1.5 的 D01 实际执行来源门禁、冻结 Parent 前缀＋后缀工具声明、双 Profile 最多 5 Turn、forced Snapshot 收尾与 Snapshot termination 审计已进入 `main` 实现；termination 仍只进入内部审计元数据，日常 notebook_show、/notebook 和主 Assistant 读取不显示。**当前仅完成云端代码实施与静态接收；本地回归、真实 DeepSeek/缓存证据、独立 Verification 和官方 Dashboard Validation 仍是发布前门禁。**
+V1.5 的 D01 实际执行来源门禁、冻结 Parent 前缀＋后缀工具声明、双 Profile 最多 5 Turn、forced Snapshot 收尾与 Snapshot termination 审计已进入 `main` 实现；termination 仍只进入内部审计元数据，日常 notebook_show、/notebook 和主 Assistant 读取不显示。发布前必须取得本地回归、真实 DeepSeek/缓存证据、独立 Verification 和官方 Dashboard Validation；当前推进与门禁结果见根 `CLAUDE.md`。
 
 Conversation 原文是事实来源，Notebook 是派生工作状态。Secretary 持久化在原有 profile-scoped `state.db` 中增加自有表，不修改 Hermes 原有表的 schema 或 ownership。Notebook Schedule 与 Hermes Cron 的职责区分见实现规格。
 

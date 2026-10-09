@@ -506,36 +506,25 @@ def _print_nous_entitlement_guidance(agent, capability: str) -> bool:
     return _print_guidance(agent, _nous_entitlement_message(capability))
 
 
-def _capture_secretary_request_prelude(agent, state):
+def _capture_secretary_request_prelude(agent, payload):
     """Capture the finalized provider-neutral root/tools before the real provider call."""
     from secretary.noting_runtime import is_main_conversation_agent
 
     if not is_main_conversation_agent(agent):
         return
     try:
-        payload = state.api_kwargs
-        request_messages = payload.get("messages", payload.get("input", state.api_messages))
+        payload = getattr(payload, "api_kwargs", payload)
+        payload = {**payload, **(payload.get("extra_body") or {})}
+        request_messages = payload.get("messages", payload.get("input", []))
         root = _system_prompt_for_hooks(payload, request_messages)
         if isinstance(root, list):
             root = "".join(block.get("text", "") for block in root if isinstance(block, dict))
-        if not isinstance(root, str):
-            return
-        # Project finalized transport tools back to the existing provider-neutral schema.
-        import copy
-        tools = []
-        for original in payload.get("tools") or []:
-            tool = copy.deepcopy(original)
-            tool.pop("cache_control", None)
-            if isinstance(tool.get("function"), dict):
-                tool["function"].pop("cache_control", None)
-            elif tool.get("type") == "function":  # Responses' flat function schema.
-                tool = {"type": "function", "function": {k: v for k, v in tool.items() if k != "type"}}
-            elif "input_schema" in tool:  # Native Anthropic function schema.
-                tool["parameters"] = tool.pop("input_schema")
-                tool = {"type": "function", "function": tool}
-            tools.append(tool)
+        missing_reason = None if isinstance(root, str) else "Actual native request has no root System Prompt"
+        root = root if isinstance(root, str) else None
+        from hermes_state_secretary_foreground import request_tool_schemas
+        tools = request_tool_schemas(payload)
         agent._session_db.capture_secretary_prelude(
-            agent.session_id, root, tools, source="provider_neutral_request",
+            agent.session_id, root, tools, source="provider_neutral_request", missing_reason=missing_reason,
         )
     except Exception:
         logger.warning("Secretary effective request Prelude capture failed", exc_info=True)
@@ -1546,7 +1535,6 @@ def _run_api_retry_loop(agent, s: _LoopState) -> Optional[Dict[str, Any]]:
             return None
         try:
             _run_phase(build_api_request, agent, s)
-            _capture_secretary_request_prelude(agent, s)
             if _run_phase(perform_api_call, agent, s).action == "break":
                 return None
             _rc = _run_phase(check_api_response, agent, s)

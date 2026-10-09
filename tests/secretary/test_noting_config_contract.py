@@ -50,7 +50,7 @@ def _construct(db, config, *, window=196000, ratio=.75, idle=0, enabled=True, lo
     (500000, .60, 0, "reserve_above_128k", "move the Hermes threshold later"),
     (196000, .75, 300, "idle_compaction_conflict", "idle_compact_after_seconds to 0"),
 ])
-def test_actual_resolved_failure_closes_advertisement_requests_and_idle(native_runtime, window, ratio, idle, reason, guidance, caplog):
+def test_actual_resolved_failure_closes_background_noting_but_preserves_main_reads(native_runtime, window, ratio, idle, reason, guidance, caplog):
     db, config = native_runtime
     agent, ref, data = _construct(db, config, window=window, ratio=ratio, idle=idle)
     try:
@@ -59,13 +59,13 @@ def test_actual_resolved_failure_closes_advertisement_requests_and_idle(native_r
         assert native_pair == (window, int(window * ratio))
         assert noting_trigger_gate(db, ref) == (False, reason)
         assert guidance in caplog.text
-        assert "notebook_show" not in _names(agent.tools) | agent.valid_tool_names
+        assert "notebook_show" in _names(agent.tools) & agent.valid_tool_names
         assert "session_history" in _names(agent.tools) & agent.valid_tool_names
         assert not note_main_turn_finished(agent)
         assert db.noting_idle_state(ref) is None
         seen = _requests(agent)
         _turn(agent)
-        assert "notebook_show" not in _names(seen[0]["tools"])
+        assert "notebook_show" in _names(seen[0]["tools"])
         assert "session_history" in _names(seen[0]["tools"])
         assert config.read_text() == before
         assert native_pair == (agent.context_compressor.context_length, agent.context_compressor.threshold_tokens)
@@ -107,7 +107,10 @@ def test_global_or_local_off_does_not_rewrite_native_config(native_runtime, enab
     try:
         before = config.read_text()
         assert not noting_trigger_gate(db, ref)[0]
-        assert "notebook_show" not in _names(agent.tools)
+        assert ("notebook_show" in _names(agent.tools) & agent.valid_tool_names) is enabled
+        seen = _requests(agent)
+        _turn(agent)
+        assert ("notebook_show" in _names(seen[0]["tools"])) is enabled
         assert agent.compression_idle_compact_after_seconds == idle
         issues = validate_config_structure(data)
         assert any("idle compaction" in issue.message for issue in issues) is (enabled and idle > 0)

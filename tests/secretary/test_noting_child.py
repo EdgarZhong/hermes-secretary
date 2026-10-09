@@ -306,6 +306,48 @@ def test_real_spawn_runs_semantic_tool_to_snapshot_and_close(parent, db, stub_cl
     assert active_noting_task_count() == 0
 
 
+def test_native_retry_keeps_frozen_prefix_and_task_timestamp(parent, db, stub_client):
+    import copy
+    import httpx
+    from secretary.noting_child import spawn_noting_task
+    from secretary.noting_runtime import try_admit_idle
+    from tools.notebook_tool import NOTEBOOK_SHOW_SCHEMA
+
+    parent.tools = [{"type": "function", "function": copy.deepcopy(NOTEBOOK_SHOW_SCHEMA)}]
+    expected_tools = copy.deepcopy(parent.tools)
+    responses = iter(_read_mutate_finish_responses())
+    sent = []
+
+    def transient_then_complete(**kwargs):
+        sent.append(copy.deepcopy(kwargs))
+        if len(sent) == 1:
+            raise httpx.ConnectError("Transient connection loss before the response")
+        return next(responses)
+
+    stub_client.chat.completions.create.side_effect = transient_then_complete
+    ref = parent._secretary_conversation_ref
+    db.noting_idle_turn_finished(ref, 1000.0)
+    decision = try_admit_idle(db, ref, now=2000.0)
+    assert decision.action == "admit"
+    worker = spawn_noting_task(parent, decision.admission)
+    worker.join(timeout=15)
+    assert not worker.is_alive()
+    assert db.noting_child(decision.admission.admission_id)["status"] == "completed"
+    assert len(sent) == 5
+    assert sent[0]["messages"] == sent[1]["messages"]
+    task_position = next(index for index, row in enumerate(sent[0]["messages"])
+                         if "<noting-task>" in str(row.get("content", "")))
+    assert task_position > 0
+    frozen = sent[0]["messages"][:task_position]
+    task = sent[0]["messages"][task_position]
+    assert all(request["messages"][:task_position] == frozen for request in sent)
+    assert all(request["messages"][task_position] == task for request in sent)
+    assert all(request["tools"] == expected_tools for request in sent)
+    current = db.notebook_current(ref)
+    assert current["payload"]["consultation"][0]["fields"]["decision"] == "send report"
+    assert db.notebook_snapshot_audit(current["snapshot_id"])["termination"]["type"] == "finish_noting"
+
+
 def test_dispatch_freezes_prefix_runtime_before_worker(parent, db, stub_client, monkeypatch):
     import threading
     from secretary import noting_child
@@ -335,6 +377,12 @@ def test_dispatch_freezes_prefix_runtime_before_worker(parent, db, stub_client, 
     assert captured["frozen_runtime"]["noting_compaction_threshold_tokens"] == 100000
     assert [row["message_uid"] for row in captured["parent_active_messages"]] == ["m1", "m2"]
     assert db.noting_child(admission_id)["status"] == "completed"
+    sent = stub_client.chat.completions.create.call_args_list[0].kwargs["messages"]
+    task = next(row["content"] for row in sent if "<noting-task>" in str(row.get("content", "")))
+    assert "Focus primarily on the Parent Conversation's currently visible Active Foreground and current Notebook." in task
+    assert "Do not exhaustively traverse the cross-compaction Conversation History." in task
+    assert "Use session_history selectively" in task
+    assert "promptly use the terminal tool for this runtime profile." in task
 
 
 def test_freeze_and_constructor_failure_have_terminal_admission(parent, db, stub_client, monkeypatch):

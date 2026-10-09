@@ -53,6 +53,7 @@ from agent.reasoning_summaries import (
 from agent.repetition_guard import RunawayStreamWatch, is_repetition_dominated
 from agent.stream_single_writer import claim_stream_writer, stream_writer_is_current
 from tools.terminal_tool_lifecycle import is_persistent_env
+from secretary.noting_runtime import dispatch_main_model_request
 from utils import base_url_host_matches, base_url_hostname, env_float, env_int
 
 logger = logging.getLogger(__name__)
@@ -745,11 +746,11 @@ def _bedrock_converse_call(api_kwargs: dict, *, stream: bool, on_stream_denied=N
     method = client.converse_stream if stream else client.converse
     finish = (lambda raw: raw.get("stream", [])) if stream else normalize_converse_response
     try:
-        raw_response = method(**api_kwargs)
+        raw_response = dispatch_main_model_request(method, api_kwargs, **api_kwargs)
     except Exception as exc:
         retry_kwargs = recover_from_cache_point_rejection(exc, api_kwargs)
         if retry_kwargs is not None:
-            return finish(method(**retry_kwargs))
+            return finish(dispatch_main_model_request(method, retry_kwargs, **retry_kwargs))
         if on_stream_denied is not None and is_streaming_access_denied_error(exc):
             return on_stream_denied(client, api_kwargs, exc)
         if is_stale_connection_error(exc):
@@ -785,13 +786,13 @@ def _dispatch_nonstreaming_api_request(agent, api_kwargs: dict, *, make_client):
         _completions = getattr(getattr(agent.client, "chat", None), "completions", None)
         if not callable(getattr(_completions, "prepare", None)):
             api_kwargs.pop("_moa_prepared_request", None)
-        return agent.client.chat.completions.create(**api_kwargs)
+        return dispatch_main_model_request(agent.client.chat.completions.create, api_kwargs, **api_kwargs)
     request_client = make_client("chat_completion_request")
     # #93650: keep the bulk wire-format payload out of the SDK's GIL-holding
     # request transform. No-op unless this really is the OpenAI SDK, so the
     # MoA facade above and the suite's stand-in clients are unaffected.
     api_kwargs = bypass_chat_sdk_request_transform(api_kwargs, request_client)
-    return request_client.chat.completions.create(**api_kwargs)
+    return dispatch_main_model_request(request_client.chat.completions.create, api_kwargs, **api_kwargs)
 
 
 def should_use_direct_api_call(agent) -> bool:
@@ -2601,7 +2602,7 @@ class _BedrockStream:
             "   Grant that action to restore streaming output.\n", diagnostic=True)
         logger.info("bedrock: converse_stream denied by IAM (%s) — "
             "using non-streaming converse() for this session.", type(exc).__name__)
-        return normalize_converse_response(client.converse(**final_kwargs))
+        return normalize_converse_response(dispatch_main_model_request(client.converse, final_kwargs, **final_kwargs))
 
     def _worker(self):
         agent = self.agent
@@ -3011,10 +3012,9 @@ class _StreamingCall(StreamingWaitMonitor):
             self.agent._create_request_openai_client(reason="chat_completion_stream_request", api_kwargs=stream_kwargs))
         self.last_chunk_time["t"] = time.time()
         self.agent._touch_activity("waiting for provider response (streaming)")
-        # #93650: as above — the streaming path carries the same bulk
-        # messages/tools payload and pays the same client-side walk.
+        # Bypass the same SDK bulk transform as the non-streaming path.
         stream_kwargs = bypass_chat_sdk_request_transform(stream_kwargs, request_client)
-        return request_client.chat.completions.create(**stream_kwargs)
+        return dispatch_main_model_request(request_client.chat.completions.create, stream_kwargs, **stream_kwargs)
 
     def _chat_stream_created(self, raw_stream: Any) -> None:
         response = self._attempt_stream_response = getattr(raw_stream, "response", None)
@@ -3455,7 +3455,7 @@ class _StreamingCall(StreamingWaitMonitor):
             sanitize_anthropic_kwargs(final_kwargs, log_prefix=getattr(self.agent, "log_prefix", ""))
             manager = request_client.messages.stream(**final_kwargs)
             _stream_context["manager"] = manager
-            return normalize_stream_usage(manager.__enter__())
+            return normalize_stream_usage(dispatch_main_model_request(manager.__enter__, final_kwargs))
 
         def _anthropic_stream_created(raw_stream: Any) -> None:
             _stream_context["stream"] = raw_stream

@@ -411,6 +411,9 @@ class CopilotACPClient:
             request_id = next(request_ids)
             proc.stdin.write(json.dumps({"jsonrpc": "2.0", "id": request_id, "method": method, "params": params}) + "\n")
             proc.stdin.flush()
+            if method == "session/prompt":
+                from secretary.noting_runtime import record_main_model_dispatch
+                record_main_model_dispatch(source="external")
             deadline = session_deadline
             while time.monotonic() < deadline and proc.poll() is None:
                 try:

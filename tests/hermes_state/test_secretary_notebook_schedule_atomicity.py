@@ -10,6 +10,7 @@ from hermes_state_secretary_notebook import NotebookError
 from secretary import reminders, schedules
 from secretary.notebook_model import NotebookWorkingState
 from tests.hermes_state._secretary_notebook_harness import add, empty_state, make, open_notebook_db, ref_of
+from tests.secretary.reminder_runtime import bind_reminder_runtime
 
 
 @pytest.fixture
@@ -119,9 +120,12 @@ def test_branch_inherits_history_and_independent_runtime_without_refiring_done_o
     entry_id = payload["user"][0]["entry_id"]
     state.schedule_update(entry_id, "2020-01-01T00:00:00+00:00")
     db.notebook_commit_snapshot(ref, state.show(), anchor_message_uid="b")
+    bind_reminder_runtime(db, ref, "s")
     claim = schedules.claim_due(db, rows(db, ref)[0]["schedule_id"], owner="parent")
-    reminders.queue_pending_for_claim(db, claim)
+    assert claim is not None
+    assert reminders.convert_claim_to_pending(db, claim) is not None
     parent_runtime = rows(db, ref)[0]
+    assert parent_runtime["state"] == "done" and parent_runtime["last_fired_at"] is not None
 
     db.create_session("branch", source="test", parent_session_id="s",
                       model_config={"_branched_from": "s"}, branch_point_message_uid="b")

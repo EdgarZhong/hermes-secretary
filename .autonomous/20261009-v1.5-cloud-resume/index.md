@@ -22,6 +22,8 @@
 | R03 | 本地真实运行、DeepSeek/缓存抓取、Dashboard 用户验收由后续本地继续；云端不得把未执行门禁写成通过 | 已确认 |
 | R04 | 已定稿 D01、冻结父前缀/后缀工具声明、五 Turn 双 Profile、forced Snapshot、termination 审计直接实施，不重新发明方案 | 继承 C11/C14–C16 |
 | R06 | 2026-10-09 本地用户要求拉取最新提交并根据现状继续 V1.5 自主实现；沿用本轮依据，补齐本地运行、独立门禁、真实模型及 Dashboard 验收，范围内缺陷定向修复 | 当前用户明确指令 |
+| R07 | 2026-10-09 用户明确继续；Dashboard 实际体验已在另一旁路开展，本会话先不操作 Dashboard，优先汇报自主收敛、现状与下一步 | 当前用户明确指令 |
+| R08 | 2026-10-10 用户要求将 DeepSeek Provider 换为 OpenAI 格式并重测真实链路；使用隔离 Main/Noting runtime、原生 Hermes Chat Completions、deepseek-flash 思考模式，保留既有 Anthropic 证据，不改另一旁路 Dashboard | 当前用户明确指令 |
 | R05 | 项目 AGENTS 的“禁止扩张 + 必要最小自主收敛并登记待追认”继续有效；本轮尚无新的用户影响型自主收敛 | 继承 C17 |
 
 ## 本轮核心目标
@@ -34,7 +36,7 @@
 
 不顺手重写已经保留的 Foreground、History、Schedule、Reminder、Proposal、全局/局部开关、Provider 路由或缓存层。
 
-## 门禁状态
+## 门禁状态（云端交接历史；本地当前进度见根 CLAUDE）
 
 - 实现与主会话静态 review：本轮执行。
 - 可在云端完成的源码级验证：本轮执行并记录真实边界。

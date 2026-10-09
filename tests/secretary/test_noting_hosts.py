@@ -29,7 +29,7 @@ def parent(db):
 def _ready(parent, db, client):
     from tools.notebook_tool import NOTEBOOK_SHOW_SCHEMA
     parent.tools = [{"type": "function", "function": copy.deepcopy(NOTEBOOK_SHOW_SCHEMA)}]
-    client.chat.completions.create.side_effect = harness._read_then_mutate_responses()
+    client.chat.completions.create.side_effect = harness._read_mutate_finish_responses()
     db.noting_idle_turn_finished(parent._secretary_conversation_ref, time.time() - 1000)
 
 

@@ -15,8 +15,10 @@ trigger entry point fails safe: a DB or evaluation failure logs and skips instea
 into its host loop.
 """
 
+import contextvars
 import logging
 import time
+from contextlib import contextmanager, suppress
 from dataclasses import dataclass
 from typing import Any, Callable, Optional
 
@@ -24,6 +26,7 @@ from secretary.noting_policy import (
     TASK_PROFILE_NOTING,
     ContextMeasurement,
     NotingSettings,
+    configuration_guidance,
     force_thresholds,
     idle_due,
     idle_task_profile,
@@ -111,10 +114,14 @@ def noting_trigger_gate(
     """``(enabled, reason)`` for global AND conversation-local Noting (02 §4.2, §6.6)."""
     settings = settings_for_db(db) if settings is None else settings
     if not settings.enabled:
+        if settings.configuration_failure:
+            logger.warning("%s", configuration_guidance(settings.configuration_failure))
         return False, settings.configuration_failure or "global_disabled"
     if not noting_local_enabled(db, conversation_ref):
         return False, "local_disabled"
     failure = runtime_configuration_failure(db, conversation_ref)
+    if failure:
+        logger.warning("%s", configuration_guidance(failure))
     return (False, failure) if failure else (True, "")
 
 
@@ -177,7 +184,6 @@ def _delegate_child_row(row: Any) -> bool:
         return False
     if isinstance(config, str):
         import json
-
         try:
             config = json.loads(config)
         except ValueError:
@@ -220,6 +226,38 @@ def note_actual_main_execution(agent: Any, source: str) -> bool:
         return False
     _remember_main_execution(agent, source, dirty=True)
     return True
+
+
+_MAIN_REQUEST_SCOPE = contextvars.ContextVar("secretary_main_request_scope", default=None)
+
+
+@contextmanager
+def main_model_request_scope(agent: Any, payload: dict, *, external: bool = False):
+    """Bind only the Main conversation request; worker threads inherit this context."""
+    token = _MAIN_REQUEST_SCOPE.set((agent, payload, external))
+    try:
+        yield
+    finally:
+        _MAIN_REQUEST_SCOPE.reset(token)
+
+
+def record_main_model_dispatch(payload: Optional[dict] = None, *, source: str = "native") -> None:
+    """Notify at Hermes' final provider invocation seam, after local request preparation."""
+    scope = _MAIN_REQUEST_SCOPE.get()
+    if scope is None or (source == "native" and scope[2]):
+        return  # ACP facades notify only after their session/prompt dispatch.
+    agent, request, _external = scope
+    with suppress(Exception):
+        if not note_actual_main_execution(agent, source):
+            return
+        from agent.conversation_loop import _capture_secretary_request_prelude
+        _capture_secretary_request_prelude(agent, request if payload is None else payload)
+
+
+def dispatch_main_model_request(call: Callable, payload: dict, **kwargs):
+    """Record entry into native provider execute; SDK/HTTP behavior stays unchanged."""
+    record_main_model_dispatch(payload)
+    return call(**kwargs)
 
 
 def _persisted_main_execution(agent: Any) -> Optional[str]:

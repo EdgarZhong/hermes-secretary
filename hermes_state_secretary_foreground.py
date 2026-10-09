@@ -1,10 +1,36 @@
 """Canonical current-path History/Full projections of Hermes-owned transcript rows."""
 
+import copy
 import json
 import time
 
 from agent.context_compressor import ContextCompressor, MODEL_ONLY_DISPLAY_METADATA_KEY, split_user_originated_turn
 from hermes_state_secretary_identity import ConversationIdentityError
+
+
+def request_tool_schemas(payload):
+    """Project only actual transport tool definitions into the existing Prelude shape."""
+    originals = payload.get("tools")
+    if originals is None:
+        originals = (payload.get("toolConfig") or {}).get("tools")
+    tools = []
+    for original in originals or []:
+        if "cachePoint" in original:
+            continue  # Bedrock's cache boundary is not a tool definition.
+        tool = copy.deepcopy(original.get("toolSpec", original))
+        tool.pop("cache_control", None)
+        if isinstance(tool.get("function"), dict):
+            tool["function"].pop("cache_control", None)
+        elif tool.get("type") == "function":  # Responses' flat function schema.
+            tool = {"type": "function", "function": {k: v for k, v in tool.items() if k != "type"}}
+        elif "input_schema" in tool:  # Anthropic Messages.
+            tool["parameters"] = tool.pop("input_schema")
+            tool = {"type": "function", "function": tool}
+        elif "toolSpec" in original:  # Bedrock Converse.
+            tool["parameters"] = tool.pop("inputSchema")["json"]
+            tool = {"type": "function", "function": tool}
+        tools.append(tool)
+    return tools
 
 
 class SecretaryForegroundMixin:
