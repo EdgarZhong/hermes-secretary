@@ -200,7 +200,9 @@ def test_branch_gets_an_independent_notebook(db):
     working = NotebookWorkingState(parent_ref, validate_source_identity=lambda source: source == evidence)
     entry = working.create("memory_candidate", {"draft": "likes mornings"},
                            source_message_identities=[evidence])
-    parent_snapshot = db.notebook_commit_snapshot(parent_ref, working, anchor_message_uid="middle")
+    parent_snapshot = db.notebook_commit_snapshot(
+        parent_ref, working, anchor_message_uid="middle", termination={"type": "forced"},
+    )
 
     db.create_session("branch", source="test", parent_session_id="parent", model_config={"_branched_from": "parent"},
                       branch_point_message_uid="middle")
@@ -208,6 +210,7 @@ def test_branch_gets_an_independent_notebook(db):
     assert branch_ref != parent_ref
     inherited = db.notebook_current(branch_ref)["snapshot_id"]
     assert inherited is not None
+    assert db.notebook_snapshot_audit(inherited)["termination"] == {"type": "forced"}
 
     branch_state = db.notebook_current(branch_ref)
     assert branch_state["snapshot_id"] == inherited
@@ -281,3 +284,44 @@ def test_local_state_defaults_persists_and_keeps_snapshots(db):
         db.notebook_set_local_enabled("conv_missing", False)
     with pytest.raises(NotebookError, match="Unknown Conversation"):
         db.notebook_current("conv_missing")
+
+
+def test_termination_audit_is_internal_only_and_validated(db):
+    make(db, "audit")
+    add(db, "audit", "note", "m1")
+    ref = ref_of(db, "audit")
+
+    snapshot_id = db.notebook_commit_snapshot(
+        ref, empty_state(), anchor_message_uid="m1",
+        termination={"type": "finish_noting", "reason": "  checked and complete  "},
+    )
+    current = db.notebook_current(ref)
+    assert "termination" not in current
+    audit = db.notebook_snapshot_audit(snapshot_id)
+    assert audit["termination"] == {
+        "type": "finish_noting", "reason": "checked and complete",
+    }
+
+    with pytest.raises(NotebookError, match="nonempty reason"):
+        db.notebook_commit_snapshot(
+            ref, empty_state(), anchor_message_uid="m1",
+            termination={"type": "finish_noting", "reason": "   "},
+        )
+    with pytest.raises(NotebookError, match="accepts no extra"):
+        db.notebook_commit_snapshot(
+            ref, empty_state(), anchor_message_uid="m1",
+            termination={"type": "forced", "reason": "not allowed"},
+        )
+    with pytest.raises(NotebookError, match="Unknown Snapshot termination"):
+        db.notebook_commit_snapshot(
+            ref, empty_state(), anchor_message_uid="m1",
+            termination={"type": "terminal_failure"},
+        )
+
+
+def test_legacy_snapshot_without_termination_has_null_audit(db):
+    make(db, "legacy")
+    add(db, "legacy", "note", "m1")
+    ref = ref_of(db, "legacy")
+    snapshot_id = db.notebook_commit_snapshot(ref, empty_state(), anchor_message_uid="m1")
+    assert db.notebook_snapshot_audit(snapshot_id)["termination"] is None

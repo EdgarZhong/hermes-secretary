@@ -330,3 +330,65 @@ def test_state_survives_reopen_and_still_dedupes(tmp_path):
         assert rt.idle_candidates(reopened, now=1600.0) == [ref]
     finally:
         reopened.close()
+
+
+def test_d01_external_gate_runs_only_after_a_real_trigger_and_before_admission(db):
+    make(db, "force")
+    add(db, "force", "turn", "m1")
+    force_ref = ref_of(db, "force")
+
+    under = rt.try_admit_force(
+        db, force_ref, _measurement(63_999), execution_source="external",
+    )
+    assert (under.action, under.reason) == ("skip", "below_force_threshold")
+    blocked = rt.try_admit_force(
+        db, force_ref, _measurement(64_000), execution_source="external",
+    )
+    assert (blocked.action, blocked.reason) == ("skip", "external_main_execution")
+    assert _admission_count(db) == 0
+
+    native = rt.try_admit_force(
+        db, force_ref, _measurement(64_000), execution_source="native",
+    )
+    assert native.action == "admit"
+
+    make(db, "idle")
+    add(db, "idle", "turn", "m1")
+    idle_ref = ref_of(db, "idle")
+    db.noting_idle_turn_finished(idle_ref, 1000.0)
+    before = _admission_count(db)
+    blocked_idle = rt.try_admit_idle(
+        db, idle_ref, now=2000.0, execution_source="external",
+    )
+    assert (blocked_idle.action, blocked_idle.reason) == ("skip", "external_main_execution")
+    assert _admission_count(db) == before
+    assert rt.try_admit_idle(
+        db, idle_ref, now=2000.0, execution_source="native",
+    ).action == "admit"
+
+
+def test_d01_actual_execution_fact_persists_and_no_request_does_not_overwrite(db):
+    make(db, "s")
+    add(db, "s", "turn", "m1")
+    agent = _agent(db, "s")
+    key = "_secretary_last_main_execution"
+
+    assert db.get_session_model_config_value("s", key) is None
+    assert rt.note_actual_main_execution(agent, "external") is True
+    assert rt.main_execution_for_force(agent) == "external"
+    assert rt.note_main_turn_finished(agent, at=1500.0) is True
+    assert db.get_session_model_config_value("s", key) == "external"
+
+    resumed = _agent(db, "s")
+    assert rt.main_execution_for_force(resumed) == "external"
+    # A Main turn with no actual model dispatch must preserve the old execution fact.
+    assert rt.note_main_turn_finished(resumed, at=1600.0) is True
+    assert db.get_session_model_config_value("s", key) == "external"
+
+    assert rt.note_actual_main_execution(resumed, "native") is True
+    assert rt.note_main_turn_finished(resumed, at=1700.0) is True
+    assert db.get_session_model_config_value("s", key) == "native"
+
+    non_main = SimpleNamespace(_session_db=db, session_id="s", platform="subagent")
+    assert rt.note_actual_main_execution(non_main, "external") is False
+    assert db.get_session_model_config_value("s", key) == "native"

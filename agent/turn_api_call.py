@@ -87,30 +87,41 @@ def perform_api_call(
     _use_streaming = _should_stream(agent)
 
     def _perform_api_call(next_api_kwargs):
-        # M26/D01 records the executor at the actual generic dispatch seam.  ACP and
+        # M26/D01 records only at the concrete generic provider callback.  ACP and
         # external-process profiles are external even when their API mode says chat_completions.
         from hermes_cli.runtime_provider_backends import _is_external_process_provider
         _base = str(getattr(agent, "base_url", "") or "").lower()
-        _external = _base.startswith(("acp://", "acp+tcp://")) or _is_external_process_provider(
-            getattr(agent, "provider", "")
+        _execution_source = (
+            "external"
+            if _base.startswith(("acp://", "acp+tcp://"))
+            or _is_external_process_provider(getattr(agent, "provider", ""))
+            else "native"
         )
-        with suppress(Exception):
-            from secretary.noting_runtime import note_actual_main_execution
-            note_actual_main_execution(agent, "external" if _external else "native")
+
+        def _record_actual_dispatch():
+            with suppress(Exception):
+                from secretary.noting_runtime import note_actual_main_execution
+                note_actual_main_execution(agent, _execution_source)
+
         if agent.api_mode == "codex_responses":
             next_api_kwargs = agent._get_transport().preflight_kwargs(
                 next_api_kwargs, allow_stream=False, is_github_responses=agent._is_copilot_url(),
                 sanitize_harmony_tokens=agent._is_codex_backend(),
             )
         if _use_streaming:
+            _record_actual_dispatch()
             return agent._interruptible_streaming_api_call(
                 next_api_kwargs, on_first_delta=_stop_spinner
             )
         from agent import relay_llm
 
+        def _dispatch_nonstream(request):
+            _record_actual_dispatch()
+            return agent._interruptible_api_call(request)
+
         return relay_llm.execute(
             next_api_kwargs,
-            agent._interruptible_api_call,
+            _dispatch_nonstream,
             session_id=str(agent.session_id or ""),
             name=str(agent.provider or "provider"),
             model_name=str(agent.model or ""),

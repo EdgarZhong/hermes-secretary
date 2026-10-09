@@ -144,6 +144,10 @@ def test_child_persists_only_the_suffix_and_not_the_parent_prefix(parent, db, st
 
 
 def test_run_noting_task_commits_snapshot_and_closes_child(parent, db, stub_client):
+    stub_client.chat.completions.create.side_effect = [
+        _tool_response("finish_noting", {"reason": "No Notebook changes were needed."}, "finish"),
+        mock_response("done"),
+    ]
     admission_id = db.noting_admit(parent._secretary_conversation_ref, "m2", kind="idle")
     assert admission_id is not None
     outcome = run_noting_task(
@@ -154,11 +158,16 @@ def test_run_noting_task_commits_snapshot_and_closes_child(parent, db, stub_clie
     )
     assert outcome.committed is True, outcome
     assert outcome.status == "completed"
+    assert outcome.turns == 1
     current = db.notebook_current(parent._secretary_conversation_ref)
     assert current["snapshot_id"] == outcome.snapshot_id
     assert current["anchor_message_uid"] == "m2"
     assert current["trigger_type"] == "idle"
     assert current["runtime_profile"] == "NOTING"
+    assert "termination" not in current
+    assert db.notebook_snapshot_audit(outcome.snapshot_id)["termination"] == {
+        "type": "finish_noting", "reason": "No Notebook changes were needed.",
+    }
     # Strong ownership ended; the admission registry and the in-process registry are clean.
     assert active_noting_task(outcome.child_session_id) is None
     assert active_noting_task_count() == 0
@@ -231,6 +240,7 @@ def test_special_profile_advertises_compact_parent_and_reuses_the_same_child(par
         assert result["completed"] is True
         assert "compact_parent" in child.valid_tool_names
         assert child._secretary_noting_terminal_action_done is True
+        assert child._secretary_noting_termination == {"type": "compact_parent"}
         tool_rows = [m for m in child._session_messages if m.get("role") == "tool"]
         payload = json.loads(tool_rows[-1]["content"])
         assert payload["success"] is True and payload["status"] == "already_below_threshold"
@@ -238,14 +248,22 @@ def test_special_profile_advertises_compact_parent_and_reuses_the_same_child(par
         child.close()
 
 
+def _tool_response(name, args, uid):
+    return mock_response(content="", finish_reason="tool_calls", tool_calls=[SimpleNamespace(
+        id=uid, type="function", function=SimpleNamespace(name=name, arguments=json.dumps(args)))])
+
+
 def _read_then_mutate_responses():
-    def call(name, args, uid):
-        return mock_response(content="", finish_reason="tool_calls", tool_calls=[SimpleNamespace(
-            id=uid, type="function", function=SimpleNamespace(name=name, arguments=json.dumps(args)))])
-    return [call("notebook_show", {}, "read"),
-            call("notebook_mutate", {"operation": "create", "entry_type": "decision",
-                                     "fields": {"decision": "send report", "rationale": "confirmed"}}, "write"),
+    return [_tool_response("notebook_show", {}, "read"),
+            _tool_response("notebook_mutate", {"operation": "create", "entry_type": "decision",
+                                               "fields": {"decision": "send report", "rationale": "confirmed"}}, "write"),
             mock_response("Maintained.")]
+
+
+def _read_mutate_finish_responses():
+    responses = _read_then_mutate_responses()
+    responses.insert(2, _tool_response("finish_noting", {"reason": "Notebook maintained."}, "finish"))
+    return responses
 
 
 def test_real_spawn_runs_semantic_tool_to_snapshot_and_close(parent, db, stub_client):
@@ -256,7 +274,7 @@ def test_real_spawn_runs_semantic_tool_to_snapshot_and_close(parent, db, stub_cl
 
     parent.tools = [{"type": "function", "function": copy.deepcopy(NOTEBOOK_SHOW_SCHEMA)}]
     expected = copy.deepcopy(parent.tools)
-    stub_client.chat.completions.create.side_effect = _read_then_mutate_responses()
+    stub_client.chat.completions.create.side_effect = _read_mutate_finish_responses()
     db.noting_idle_turn_finished(parent._secretary_conversation_ref, 1000.0)
     decision = try_admit_idle(db, parent._secretary_conversation_ref, now=2000.0)
     worker = spawn_noting_task(parent, decision.admission)
@@ -270,12 +288,17 @@ def test_real_spawn_runs_semantic_tool_to_snapshot_and_close(parent, db, stub_cl
     assert rows[0]["content"].startswith("<noting-task>")
     assert "a proposal or approval alone is not completion." in rows[0]["content"]
     assert "they are not Hermes Cron jobs or delegated agent tasks." in rows[0]["content"]
-    assert len(rows) == 6 and all(row["content"] != "will do" for row in rows)
+    assert len(rows) == 8 and all(row["content"] != "will do" for row in rows)
+    assert "notebook_mutate" in rows[0]["content"]
+    assert "finish_noting" in rows[0]["content"]
     assert db.get_session(record["child_session_id"])["end_reason"] is not None
     calls = stub_client.chat.completions.create.call_args_list
-    assert calls[0].kwargs["tools"] == expected
-    assert "notebook_mutate" in {t["function"]["name"] for t in calls[1].kwargs["tools"]}
+    assert calls and all(call.kwargs["tools"] == expected for call in calls)
     assert parent.tools == expected
+    assert "termination" not in current
+    assert db.notebook_snapshot_audit(current["snapshot_id"])["termination"] == {
+        "type": "finish_noting", "reason": "Notebook maintained.",
+    }
     assert active_noting_task_count() == 0
 
 
@@ -293,7 +316,7 @@ def test_dispatch_freezes_prefix_runtime_before_worker(parent, db, stub_client, 
         captured.update(kwargs)
         return original(parent, **kwargs)
     monkeypatch.setattr(noting_child, "run_noting_task", held)
-    stub_client.chat.completions.create.side_effect = _read_then_mutate_responses()
+    stub_client.chat.completions.create.side_effect = _read_mutate_finish_responses()
     admission_id = db.noting_admit(parent._secretary_conversation_ref, "m2", kind="force")
     admission = NotingAdmission(admission_id, parent._secretary_conversation_ref, "m2", "force", None, "NOTING",
                                compaction_threshold_tokens=100000)
@@ -328,12 +351,21 @@ def test_freeze_and_constructor_failure_have_terminal_admission(parent, db, stub
     assert db.notebook_current(parent._secretary_conversation_ref) is None
 
 
-def test_text_only_completed_response_is_task_failure(parent, db, stub_client):
+def test_text_only_completion_runs_five_turns_then_forces_snapshot(parent, db, stub_client):
     admission = db.noting_admit(parent._secretary_conversation_ref, "m2", kind="idle")
     outcome = run_noting_task(parent, admission_id=admission, conversation_ref=parent._secretary_conversation_ref,
                               anchor_message_uid="m2", trigger_type="idle", runtime_profile="NOTING", task_instruction="work")
-    assert outcome.status == "failed" and not outcome.committed
-    assert db.notebook_current(parent._secretary_conversation_ref) is None
+    assert outcome.status == "completed" and outcome.committed
+    assert outcome.turns == 5
+    current = db.notebook_current(parent._secretary_conversation_ref)
+    assert current["snapshot_id"] == outcome.snapshot_id
+    assert "termination" not in current
+    assert db.notebook_snapshot_audit(outcome.snapshot_id)["termination"] == {"type": "forced"}
+    rows = db.get_messages_as_conversation(outcome.child_session_id)
+    user_rows = [row for row in rows if row["role"] == "user"]
+    assert len(user_rows) == 5
+    assert user_rows[0]["content"].startswith("<noting-task>")
+    assert all("finish_noting" in row["content"] for row in user_rows)
 
 
 def test_semantic_control_is_noting_only_and_rejects_forgery(parent, db, stub_client):
@@ -400,6 +432,7 @@ def test_special_profile_admitted_compaction_precedes_snapshot(parent, db, stub_
         assert outcome.committed and summarizing.is_set()
         assert not release.is_set()
         assert db.notebook_current(parent._secretary_conversation_ref)["payload"]["consultation"]
+        assert db.notebook_snapshot_audit(outcome.snapshot_id)["termination"] == {"type": "compact_parent"}
     finally:
         release.set()
         deadline = time.monotonic() + 3
@@ -456,3 +489,20 @@ def test_noting_schedule_tool_uses_five_native_forms_and_owning_timezone(parent,
         assert db._read_all("SELECT * FROM secretary_schedule_registry") == []
     finally:
         child.close()
+
+
+def test_special_profile_turn_budget_forces_snapshot_even_if_framework_compaction_is_blocked(
+    parent, db, stub_client, monkeypatch
+):
+    blocked = MagicMock(return_value=SimpleNamespace(ok=False, status="blocked:cooldown"))
+    monkeypatch.setattr("secretary.noting_compact.compact_parent", blocked)
+    admission = db.noting_admit(parent._secretary_conversation_ref, "m2", kind="idle")
+    outcome = run_noting_task(
+        parent, admission_id=admission, conversation_ref=parent._secretary_conversation_ref,
+        anchor_message_uid="m2", trigger_type="idle", runtime_profile="NOTING_WITH_COMPACTION",
+        task_instruction="Maintain Notebook then compact parent.",
+    )
+    assert outcome.status == "completed" and outcome.committed
+    assert outcome.turns == 5
+    blocked.assert_called_once()
+    assert db.notebook_snapshot_audit(outcome.snapshot_id)["termination"] == {"type": "forced"}
