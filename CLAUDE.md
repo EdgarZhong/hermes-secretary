@@ -6,7 +6,7 @@
 
 | ID | 规格空白、Agent 的最小收敛及理由 | 影响范围与实施状态 | 用户确认 |
 |---|---|---|---|
-| — | **暂无新产生的待追认自主收敛**。历史“超限不提交”和“首响应后更改顶层工具”是用户已否定的实现偏差，属于下方整改项，**不得视为待追认决定** | 本次仅更新规格与交接，未执行代码修复 | 不适用 |
+| — | **暂无新产生的待追认自主收敛**。本轮静态 review 只补齐现行规格已明确的 continuation wrapper 与 terminal 参数契约，不改变产品语义 | 云端代码已实施；待本地运行门禁 | 不适用 |
 
 ## 当前状态与恢复条件
 
@@ -19,14 +19,14 @@
 - 原文档冻结：d5acc2cc27c6053ff198448fa3502bd8dd47e415；计划基线：5dc152f0dfa4086134a79e6366bfbcc1d615784a。暂停代码快照：b0f260afe1a4e09f86725d800b109939953e45b2，完整哈希见baseline.txt；C11文档纠偏提交4f940cda0d，后续C12只增加待论证问题和调查交接。暂停快照保存当时的普通实现及文档，不代表当前全部口径或最终发布版本。
 - 环境：macOS，官方PM工作区 .venv Python3.14.7，现有pyproject/uv.lock未修改。测试与未来运行状态仅限ignored .hermes-dev隔离目录。
 
-## 最新口径与代码实际差距
+## 最新口径与云端实现状态
 
 1. **冻结父前缀始终存在（C05）**：同一个Noting Task每次实际模型请求、工具循环和continuation均保留触发时冻结的Parent root与截至Anchor的Active消息序列；只能累加Noting自有后缀，不能换成实时Parent历史。父前缀不复制到child持久转录。
-2. **工具变更只追加在后缀（C06/C11）**：完整冻结父快照前缀包括root、头部原工具列表/Schema、到Anchor消息，首请求及以后均不改写。在`<noting-task>`及后续新增系统提示/控制消息中重新给出session_history、notebook_show、notebook_mutate列表与完整Schema，强调以此为准；特殊NOTING_WITH_COMPACTION另有compact_parent。沿用Hermes控制消息机制，不新增第二root；dispatch始终受Noting白名单限制。**当前代码仍在首次响应后扩child.tools，未实现完整前缀始终冻结及后缀工具声明，保持暂停，不宣称已修。**
+2. **工具变更只追加在后缀（C06/C11）**：完整冻结父快照前缀包括root、头部原工具列表/Schema、到Anchor消息，首请求及以后均不改写。在`<noting-task>`及后续新增系统提示/控制消息中重新给出session_history、notebook_show、notebook_mutate列表与完整Schema，强调以此为准；特殊NOTING_WITH_COMPACTION另有compact_parent。沿用Hermes控制消息机制，不新增第二root；dispatch始终受Noting白名单限制。**云端代码已移除首响应后扩 child.tools 的旧行为；每次请求保持冻结 Parent 顶层 tools，合法工具与完整 Schema 只在 task/continuation 后缀声明；真实 provider 请求一致性仍待本地取证。**
 3. **本轮运行选择与原生边界（C07/C09/C11）**：模型继承、API/provider直接沿用Hermes原生；不新增Secretary独立模型路由、provider适配或App Server Noting执行器。本轮Main、Noting及后续真实验收选择DeepSeek官方Anthropic接口 https://api.deepseek.com/anthropic，deepseek-flash思考模式；不使用Codex App Server或Codex Proxy，不自动fallback到它们。用户授权从 /Users/edgar/code/Ebbinghaus-v2/.env.personal.local 读取DEEPSEEK_API_KEY。仅确认该变量非空，**未复制凭据、未验证有效性、未切换runtime配置、未调用DeepSeek**。密钥只能进入隔离配置或正常秘密读取，不进Git/报告。
 4. **缓存证据（C08）**：使用Hermes自己的真实request/response日志或获授权抓包逐次查冻结前缀和provider缓存读取tokens；字节一致、缓存命中量和效果分别报告。**当前没有这条真实Noting缓存核验结果**；Codex App Server日志不得作为证据。
-5. **停止边界（C10）**：本次仅文档、撤销偏离和本地现状快照；全部后续实施/验收保持暂停。
-6. **权威正文加强（C13）**：现行02 §5.5/§5.11/§6.16和04 §4.4同步明确首次、工具循环、重试、continuation全部保留完整父前缀；tool列表/完整Schema只在后缀声明，dispatch独立受限。后续fork-tag处理不授权改头部；禁止只验首请求或把后续扩头部工具写成预期。仅文档落实，代码问题仍待修。
+5. **停止边界更新**：C10 是历史暂停口径；用户本轮 R01/R02 已明确恢复云端编码和过程文档更新。云端可完成的实现已继续，真实运行与独立验收仍留本地。
+6. **权威正文加强（C13）**：现行02 §5.5/§5.11/§6.16和04 §4.4同步明确首次、工具循环、重试、continuation全部保留完整父前缀；tool列表/完整Schema只在后缀声明，dispatch独立受限。云端实现已按此纠偏，实际 provider 请求和 cache-read 仍须本地验证。
 7. **D01 定稿（C14；覆盖C12旧“未定稿”）**：仅记录最后实际 Main 模型请求 native/external，实际 dispatch 更新内存 `_secretary_last_main_execution`，Main Turn 完成通过现有 patch_session_model_config 持久化同值。Force 读即时内存，Idle/Cold Resume 读同一持久值；无模型请求不清空；仅确认 external 才拒绝并使用既定框架提示，native 原 Noting/cache_parity；不以 api_mode 模拟 ACP、模型路由比较或缓存 TTL 作新的准入条件。
 8. **五 Turn 双 Profile（C15）**：普通 NOTING 新 finish_noting(reason) 正常结束；NOTING_WITH_COMPACTION 保留 compact_parent() 成功正常结束；两者同 Child 最多五 Turn，初始任务优先当前 Active＋Notebook，跨历史按需查。到上限两者均强制收尾并经原 Commit Gate 尝试 Snapshot；特殊由框架直接请求原生父压缩。
 9. **Snapshot 结束审计（C16）**：新增 metadata termination，三型 finish_noting(reason)、compact_parent、forced；特殊超限 fallback 压缩成功仍 forced；日常 notebook_show、/notebook 和 Main AI 不得见。
@@ -42,7 +42,7 @@
 - **规格与审查责任**：原规格并未授权首响应后改写工具头部。旧实现把修改`child.tools`标记为suffix_diverged，混淆“追加child消息后缀”与“修改请求前部工具定义”；`record_noting_request`也只记录首请求工具parity，不能证明全生命周期一致。主会话审查未关闭这一矛盾，后来还误写成用户授权。恢复后的H1/H2须按原规格完整前缀与C11纠正，不能用供应商层解释合理化实现偏差；实际缓存命中损失尚未实测，不虚报数值。
 - **仍成立的静态事实**：child由独立AIAgent/Session/DB handle运行，模型及api_mode等当前经parent_cache_parity_kwargs继承；若Main是codex_app_server，现有run_conversation按该模式进入外部Turn分支。这只描述现有代码，不授权为Noting增加App Server兼容或下层路由。本轮继续原生Hermes实施边界、已选DeepSeek运行配置与暂停状态。
 
-接续工作只修Hermes中间层的完整冻结父前缀、追加工具声明与受限dispatch；不更换上游模型/API/provider机制。缓存观察仍按C08使用Hermes自身日志/响应或抓包，不以源代码推断冒充真实命中。当前没有新增模型调用、测试或验收。
+云端已完成 Hermes 中间层的完整冻结父前缀、后缀工具声明、受限 dispatch、D01、五 Turn 与 termination 实现；没有更换上游模型/API/provider机制。缓存观察仍按 C08 使用 Hermes 自身日志/响应或抓包，不以源代码推断冒充真实命中。当前没有真实 DeepSeek 调用、可执行测试、独立 Verification 或 Dashboard Validation。
 
 ## 原始V1/V1.5规格核对结论与交接依据（C12）
 
@@ -80,28 +80,26 @@
 - 9139原隔离Dashboard目前无监听，先前exec句柄已不存在；不启动新服务、不继续用户场景。内置浏览器仅完成运行库准备，未执行本轮Dashboard验收。
 - 三实现Agent目前无继续执行任务；此前prompt/workflow因usage限制中断，不把T2b未交回内容称为完成。
 
-## 详细接续任务看板（已恢复；云端主会话实施，独立门禁留本地接续）
+## 详细接续任务看板（云端编码已收口；从本地门禁继续）
 
-| 顺序/任务 | 范围、负责人和修改边界 | 依赖与实施步骤 | 完成与验证条件 |
+| 顺序 | 状态 | 本地接续动作 | 关闭条件 |
 |---|---|---|---|
-| P0 D01 已定稿的最小接线 | 待恢复的 Main Runtime/Noting Agent；04 §4.5 是用户权威实现方案 | 实际请求派发时记录 native/external 单一事实，Force 即时读取、Idle/Resume 持久读取；仅 external 拒绝，native 沿用缓存与 Child；不新建路由快照或 Provider 层 | 当前未实施；含ACP伪装、Codex App Server、fallback、无新请求以及无副作用验收；不允许重新论证门禁设计 |
-| H0 恢复依据与状态 | 主会话；根CLAUDE及接续轮次索引/计划 | 先接收P0用户修订并确认恢复范围；读取AGENTS/CLAUDE/index/baseline/01/02/04和自主套件，核对暂停快照、工作区与锁文件。C11纠正C06顶层Schema误解：完整父快照不改，新工具列表/Schema只在后缀；模型/API/provider沿用原生，不恢复T2b或独立模型路由建议 | 现行要求与保留代码差距明确，原生下层边界锁定，派遣行号重新核对，无未授权范围变化 |
-| H1 Noting后缀工具声明与权限 | 新实现Agent gpt-6.1-sol/high；secretary/noting_child.py、noting_tools.py及必要中间层控制消息接缝；对应tests/secretary/test_noting_child.py、tests/agent/test_cache_parity.py；根文档主会话负责 | 在task及后续新增系统提示/控制消息中重新给出当前工具列表与完整Schema，明确以此为准；普通session_history/notebook_show/notebook_mutate；普通Profile另finish_noting(reason)，special仅以compact_parent正常结案。移除首次响应后扩顶层child.tools的旧行为，完整继承父头部工具Schema；真实dispatch始终白名单 | 原工具头部/root不变；新增Schema全部位于child后缀；task/tool loop/continuation声明持续有效；拒绝fs/Web/Memory/Skill/Cron/delegation执行。不重设计原生Loop或provider层 |
-| H2 全生命周期完整父前缀 | H1同Agent或非重叠独立Agent；既有freeze/child循环及测试，深入范围先明确白名单 | 确认Parent root、原头部工具Schema、到Anchor消息在首次、多个tool request、同child continuation均不变；Parent并发追加、global切换、压缩不刷新冻结前缀；新增工具指示只在后缀，child仅持久后缀 | Hermes中间层实际组装内容与冻结源比较，逐次完整prefix一致；不改下层API/provider去满足。Anchor/commit原规则有效，child不自行压缩，不只核对第一次 |
-| H3 本轮DeepSeek原生运行配置 | 主会话环境配置；只读Ebbinghaus-v2获授权环境文件，凭据仅本地隔离运行状态 | 使用Hermes已有配置/adapter选择官方Anthropic endpoint、deepseek-flash思考模式，凭据不输出；核对native resolved上下文/Force阈值与有效配置。本任务不开发独立Noting模型路由、provider适配、API改造或App Server执行器 | 原生Hermes Main/Noting有效模型继承与本轮已选配置一致；只在恢复后记录实际结果。遇原生能力缺口如实报告，不擅自扩大实现范围 |
-| H4 Hermes缓存观察 | 主会话统一取证；沿既有Hermes日志/响应接缝，证据integration/cache/ | H1–H3后通过原生Hermes真实路径观察Main→Noting：首次、工具请求、continuation、Parent并发，记录完整父前缀指纹、后缀工具列表/Schema、原生返回的缓存统计；不改provider缓存策略或新增日志/缓存管理器 | 我方中间层冻结/追加机制逐次成立；真实命中另按原生响应记录，0或不可见如实报告。屏蔽认证头，只观察隔离Hermes流量，不用Codex日志 |
-| H2b 有界结案与审计 | 待恢复 Noting/State 实现 Agent；Noting Child/Tools/Session Snapshot/日常读投影 | 两Profile最多五Turn，正常结束各自工具，超限强制有效Snapshot提交，特殊框架直接调用父原生Compaction；审计termination仅内部可见 | 不以终止工具缺失当Snapshot拒绝条件；旧Snapshot/Branch兼容、真实工具调用、权限与原Commit Gate回归 |
-| H5 接收集成与定向证据 | 主会话亲自review、微小接线；深入修复重新分派 | 接收七项报告、正式请求/权限/状态/失败与上下游；同时对本次Foreground兼容字段清理做必要定向复测，然后按DeepSeek重新验证global on↔off、local schema稳定、Warm/Cold/pinned、Full latestsource。更新README稳定事实、CLAUDE状态，创建明确待审提交 | 新口径代码与文档一致；未改V1未修订机制；凭据/个人内容不进Git；版本与证据匹配，不用反复复跑已有tests代替review |
-| H6 一次必要扩大回归+独立Verification | 全新fork_turns=none reviewer；产品只读，仅verification.md与证据；主会话统一安排测试执行方 | H5收敛后按冻结输入独立重新提取V1未改要求+M01–M28+C05–C17及用户后续已定稿修订；统一一次10类检查及实际影响的Secretary/Agent/State/Gateway/CLI/TUI/History分区、必要共享catalog验证；不无差别重测无关能力 | 六节完整矩阵与原文→路径→条件→方法→观察→判定闭环，无违规/证据不足；macOS边界明确。已知失败与新回归区分；修复仅定向复测，不能关闭规则让结果变绿 |
-| H7 官方Dashboard独立Validation | 另一个全新fork_turns=none validator；产品只读，validation.md与隔离runtime/证据 | H6通过后先写场景供主会话过目，再用官方Dashboard+localhost native gateway+真实DeepSeek Main/Noting操作：跨compaction查原文、global/local/cold、真实Candidate自主搜证/后续更正、修订不写、明确批准限定写、Noting归档、Schedule idle/busy、Full Prelude/身份/Anchor审计 | 全部适用用户场景真实输入到输出通过，保留失败序列；构建/CLI/mock不替代，平台未测不冒称；无个人UI/新API/云部署 |
-| H8 交付判定 | 主会话delivery-evidence-review；根状态及新轮次final-delivery | 两独立门禁关闭、范围内整改清空、最新版本无新增必要缺口；对照本轮暂停历史与新轮次原始要求 | 才能标goal complete并交付实际commit/证据；未关闭继续修复，不以阶段测试通过替代整体完成 |
+| H0/P0–P3 云端实现 | **已写入 main，静态 review 完成** | 不重新设计 D01/M27/M28；仅在运行证据发现真实缺陷时做定向修复 | D01、冻结前缀/后缀 Schema、双 Profile 5 Turn、forced Snapshot、termination 审计代码与现行规格一致 |
+| H5 定向运行证据 | **待本地** | 先跑 `tests/secretary/test_noting_runtime.py`、`tests/secretary/test_noting_child.py`、`tests/hermes_state/test_secretary_notebook.py`，再补实际受影响的 agent/cache-parity/turn 生命周期测试与冻结检查 | 最新 head 的相关测试/检查无新增失败；失败只定向修复并复测 |
+| H6 独立 Verification | **待本地，未通过** | 独立重新提取 V1 未改要求 + M01–M28 + C05–C17/R01–R05；核对正式接线、负例、证据与平台边界 | `verification.md` 六节矩阵闭环，无未关闭违规/证据不足 |
+| H3/H4 Native DeepSeek 与缓存证据 | **待本地，未执行** | 使用既定 DeepSeek 官方 Anthropic / deepseek-flash 原生 Hermes 路径；核对首次、工具循环、continuation、Parent 并发的完整父前缀与 provider cache-read | 不改 provider/cache 层；真实请求证据证明中间层契约，命中量按实际记录 |
+| H7 官方 Dashboard Validation | **待 H6 后本地执行** | localhost native gateway + 官方 Dashboard，以真实用户输入覆盖跨 compaction、开关、Noting、Proposal、Schedule/Reminder 与审计边界 | 用户场景全部通过或有明确不适用依据；CLI/mock 不替代 |
+| H8 最终交付 | **未关闭** | 两门禁通过后更新本轮 final-delivery、根 CLAUDE/README | 才允许标 V1.5 overall complete |
 
-恢复实现时D01及生命周期/审计已定稿，只需用户另行明确恢复编码与验收授权，再按autonomous-run建立新的接续轮次索引，引用暂停代码快照、原始5346cd/d5acc和C05–C17，复核本表已查明偏差；不得重新发明D01模型路由方案，也不得自行补设产品准入条件。保留本轮暂停交付和历史结论，不追改为后来已通过。
+当前云端实现提交链从 `a84ce76769` 开始；核心代码/测试包括 `aefd94b6f0`、`0edf956211`、`c5a4405fab`、`db88b6ce48`、`27d4463472`、`0fb3e8cf96`、`32349fc25f`、`2a58d3e49e`。后续文档提交只更新交接事实，不改变产品规格。
 
 ## 已知验证边界
 
-- 本轮独立Verification、Validation均未启动；唯一扩大检查尚未执行。恢复后按H6/H7统一安排，不先跑大型检查“建立基线”。
-- 首轮7533173审查101条：98符合、2违规对应Full root provenance、1本机平台不适用；不是本轮通过声明。
-- 首轮扩大suite在6a75369：13,318通过、117失败、109跳过，后续定向修复，未重跑整套；无全suite全绿结论。
-- 平台只实测macOS，Linux/Windows未实测。真实cache hit未测，DeepSeek未调用。本次Foreground兼容字段清理未复测，隔离旧DB可能保留unused nullable列，新捕获采用显式列名不要求迁移；恢复后只定向核实。当前代码仍有首次响应后扩顶层Schema的旧机制，未满足C11完整前缀冻结和后缀工具声明，不能以旧测试绿代替H1/H2。
-- 历史暂停轮次原本不 push；**本次已单独获授权把文档新提交写入 GitHub main**，不包含任何代码、运行、验收或密钥；自主编码目标继续暂停。
+- GitHub 连接器可读写仓库但当前会话没有可执行仓库工作树；因此本轮**没有实际运行** Python tests、ruff、health 或其它冻结检查。新增 tests 是待执行回归，不是已通过证据。
+- 独立 Verification 与 Validation 均未启动；网页端当前没有本流程要求的独立 fork/subagent 条件，必须由本地 Coding Agent 接续。
+- DeepSeek 未调用，真实 provider cache-read / cache hit 未测；完整父前缀的静态代码路径已核对，但不能代替真实请求证据。
+- Dashboard 未启动，真实用户输入到模型输出未验收。
+- 历史测试/审查结果只作为旧版本证据，不能自动覆盖本轮最新 head。
+- 平台历史主要为 macOS；Linux/Windows 未实测，不得冒称跨平台验证完成。
+- 本轮未产生“Agent 自主收敛／待追认”的产品行为决定。
+
