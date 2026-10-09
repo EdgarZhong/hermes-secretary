@@ -2,7 +2,7 @@
 
 > **状态：** V1 核心实施总纲，已纳入 1.5 轮用户确认的补充调整
 > **用途：** 定义本轮 Fork 的目标、边界、能力关系、实施顺序与验收口径；不替代具体实现规格。  
-> **权威实现规格：** `02-noting-system-specification.md`。凡 Notebook / Noting / Conversation Identity / Schedule / Reminder / History Search 的实现细节与本文冲突，以 02 为准。  
+> **权威实现规格：** V1 继承契约见 `02-noting-system-specification.md`；V1.5 明确修订范围以 `04-hermes-secretary-v1.5-implementation-spec.md` 为最高优先级增量规格。未修订部分仍以 02 为准。
 > **后续路线材料：** 03 保存在仓库外，本轮不纳入考量，也不作为实现依赖或验收依据。
 
 ---
@@ -101,9 +101,7 @@ physical Session -> Conversation : single-valued
 
 ## 2.2 History Search：独立于 Noting 的基础能力
 
-History Search 是通用的一等只读工具，与原生 read 对齐工具注册、配置选择、Agent 模板、权限分类和可用性规则；不是 Noting 的附属工具，也不只供 main Conversation 使用。它通过正常工具配置提供，遵守模板和工具限制，不通过 Secretary 接缝强制注入或绕过关闭配置。
-
-它既能检索当前未压缩段的真实历史，也能跨压缩读取已归档历史，用于 Agent 主动召回与注意力补充，并非只查上一次 compaction。Cron、Dreaming、Skill 打磨及 Subagent 可按与 read 相同的正常配置规则使用它，但不会因此获得 Notebook 或 Noting；读取仍限于该 runtime 已获授权的历史范围。
+V1.5 已替代此前“与 read 一样由普通配置和模板选择暴露”的策略：所有直接与用户交流的合格 Main 默认且不可配置地拥有 `session_history` 与独立 History Guidance，不受全局或局部 Noting 控制。它检索当前未压缩历史及跨 Compaction 原文。辅助 Agent 不因本轮获得新的主会话注入，保留其既有合法工具配置；专用 Noting Worker 保持 V1 的受限父历史读取契约。详见 V1.5 §2.2、§2.6、§3。
 
 它始终读取 **History Foreground**：
 
@@ -115,7 +113,7 @@ History Search 是通用的一等只读工具，与原生 read 对齐工具注�
 
 已有 History Search 工具契约继续有效，包括 search/read、keyword/regex、role filter、bounded history/time-range read，以及围绕 Message Identity 的前后读取。
 
-History Search 的配置与可用性独立于 Noting 全局及局部开关；是否暴露遵循与 read 相同的普通工具配置和 Agent 模板规则。
+History Search 的主会话默认暴露与专用 Stable Guidance 独立于 Noting 开关；工具与身份权限遵循 V1.5 §2.2、§2.6、§3。
 
 ## 2.3 Session Notebook
 
@@ -378,7 +376,7 @@ Frontend / API 的更大范围增量 contract 仍保持 Open。本轮只实现�
 | 能力 | 最低验收结果 |
 |---|---|
 | Conversation Identity | 一个 Conversation 在 compression rotation、普通继续以及未来新增 declared session-key locator 时保持同一 Conversation Ref；branch/reset 创建新 Conversation；identity conflict fail closed。 |
-| History Search | 与 read 相同的工具配置、模板与只读权限规则生效；当前未压缩历史与跨 Compaction 历史都可 search/read；Noting 开关不控制该能力。 |
+| History Search | 合格 Main 默认拥有只读 session_history 及独立指导；当前未压缩历史与跨 Compaction 历史都可 search/read；Noting 开关不控制该能力；辅助 Agent 隔离遵循 V1.5。 |
 | Notebook | 用户主 Conversation 有独立 current Notebook；Snapshot immutable；pointer 原子更新；主 Assistant 只读；branch/rewind/edit 后 ownership 与 pointer 正确；通用后台与 Subagent 不暴露 Notebook。 |
 | Noting Enablement | global + Conversation-local 两层后台 gating 正确；局部开关不改变主会话工具 schema；global on 时人类 /notebook 与 AI notebook_show 仍能读取已有 Snapshot。 |
 | Idle / Force Noting | 两个 Trigger 均按 02 规则运行；同 Anchor 不重复 admit；不同 Anchor 可以合法并发；Force 与 Hermes compaction 不互相替代。 |

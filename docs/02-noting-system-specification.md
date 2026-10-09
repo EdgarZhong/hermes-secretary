@@ -1,12 +1,13 @@
 # Hermes Secretary V1 — Session Notebook / Noting System Implementation Specification
 
-> **Status:** V1 / iteration 1.5 authoritative English specification
+> **Status:** V1 inherited implementation contract, synchronized for V1.5
+> **V1.5 precedence:** `04-hermes-secretary-v1.5-implementation-spec.md` is the highest-priority incremental revision for its explicitly changed scope; all unchanged V1 contracts below remain effective.
 > **Scope:** Conversation Identity, History Search, Session Notebook, Noting, Notebook Schedule, and Reminder Delivery  
 > **Related documents:**
 > - `01-personal-hermes-v1-first-fork-iteration.md` — V1 goals, first-fork scope, and project boundary
 > - `03-future-roadmap-memory-governance-rsi.md` — post-V1 Memory Governance / RSI roadmap
 >
-> This document is derived from the frozen Chinese semantic baseline and supersedes earlier Noting drafts, the earlier Noting configuration / Hermes interaction note, and the old Session Notebook implementation note. For V1 Notebook / Noting implementation, this document is the final implementation specification.
+> This document is derived from the frozen Chinese semantic baseline and supersedes earlier Noting drafts, the earlier Noting configuration / Hermes interaction note, and the old Session Notebook implementation note. For unchanged V1 Notebook / Noting contracts, this document remains authoritative; explicit V1.5 revisions take precedence.
 
 ---
 
@@ -252,7 +253,7 @@ Notebook, Noting, Notebook Schedule, and their main-Assistant exposure belong on
 
 The dedicated Noting Runtime in §5 maintains an eligible Parent Conversation under its frozen ownership and narrow dispatch contract. It does not acquire a separate Notebook or enable Noting for its own child Session.
 
-History Search is separate: it is a general read-only tool managed like native read_file through the normal registry, configuration, Agent templates, and read-only permission rules. It is not restricted to user-facing main Conversations. An auxiliary Agent may use it when its normal read/tool configuration permits, without acquiring Notebook, Noting, or another Agent's history scope.
+History Search is separate. V1.5 §2.2 and §3 supersede the former read_file-style configurable Main exposure: every eligible user Main receives session_history and the exact independent History Guidance, regardless of templates, toolsets, or Noting switches. Auxiliary runtimes receive no new Main injection and retain their existing lawful tool configuration. The dedicated Noting Worker retains its restricted Parent-history contract.
 
 # 2. Foreground, History Search, and the Notebook Semantic Model
 
@@ -287,7 +288,7 @@ History Foreground is not Active Foreground and is not Full Foreground.
 
 ## 2.3 History Search Suite: a Secretary base capability, not a Noting capability
 
-History Search is a first-class read-only capability managed like native read_file. It is independent of noting.enabled, Conversation-local Noting participation, and Notebook state. Its exposure follows normal tool configuration and Agent templates, including auxiliary runtimes; Secretary hooks must not force it back into an excluded surface. It searches authentic current uncompacted history as well as valid compressed history, supporting proactive recall and attention in the authorized history scope.
+History Search is read-only and independent of Noting. V1.5 §2.2, §2.6 and §3 replace the former configurable Main exposure with mandatory eligible-Main session_history plus independent Stable Guidance. Auxiliary runtimes retain existing lawful tools without new Main injection. Search covers authentic current uncompacted and valid compressed history in the authorized Conversation.
 
 History Search reads **History Foreground only**. Noting must reuse the same capability rather than introducing a second History Search implementation or placing History Search behind the Noting feature gate.
 
@@ -345,27 +346,9 @@ Both the main Assistant and the Noting Runtime use this same suite.
 
 ## 2.4 Full Foreground
 
-Full Foreground is the **Noting provenance/audit view**. It answers questions such as:
+V1.5 §1.3 and §2.5 replace the former loose Full audit structure. Full is ordered `[Context Prelude, Message Nodes…]`. The unique first Prelude has no Message Identity and projects the latest effective root System Prompt and Tool Schemas from actual Hermes execution/recovery sources, with source and validity recorded; missing sources are reported honestly. It does not retain a history of every Prompt/Tool version.
 
-> At what point in this Conversation was the current Notebook derived, and through which message/Compaction path?
-
-In logical order it contains:
-
-- ordinary logical Messages;
-- Compaction Messages / boundaries;
-- the latest effective root System Prompt provenance when needed for audit;
-- Noting Anchors;
-- committed Notebook Snapshots associated with those Anchors.
-
-Full Foreground is used for:
-
-- resolving and freezing an Anchor after a Trigger arrives;
-- Snapshot audit;
-- Snapshot validity after Rewind/Edit;
-- deriving Force success state;
-- branch inheritance/rebinding.
-
-Full Foreground does not trigger Noting and is not the History Search source view.
+Ordinary nodes map one-to-one to `(conversation_ref, message_uid)`, never physical row IDs. The sole exception is a composite Compaction carrier: its Compaction and preserved real-user projections are adjacent nodes sharing the same original identity, distinguished by projection kind. Anchor and immutable Snapshot annotations attach to message nodes and are not new nodes. Full follows the current valid path through Compaction, resume, branch and rewrite; reads do not start Noting, Schedule or Turns. It is not Active request context or the History Search source.
 
 ## 2.5 Notebook sections and entry types
 
@@ -560,6 +543,8 @@ Every candidate carries provenance using one or more canonical Message Identitie
 ```
 
 At least one valid source Message Identity is required.
+
+V1.5 §6 and appendices A/C clarify that candidates are leads, not authority; /propose-persistence does not prefetch source text. The Main model retrieves source identities and surrounding/later evidence with session_history, proposes first, then executes only explicitly approved actions. Discussion/revision is not approval. Noting archives candidates only after confirmed execution, rejection or withdrawal, not proposal/approval alone.
 
 Promotion is separate from Noting:
 
@@ -847,6 +832,8 @@ Schedule intent belongs to the Notebook entry. Fast-changing operational state i
 
 Notebook Schedule does **not** create Hermes Cron Jobs, does not write Hermes Cron `jobs.json`, and does not enter Hermes Cron's isolated agent/script execution path.
 
+V1.5 §5.2 and appendix B require the existing notebook_mutate expression schema to explain all five native time forms and bare-duration recurring versus explicit delayed once behavior; use configured Hermes timezone. No Cron job-control fields are added.
+
 Stable Hermes Cron utilities may be reused for:
 
 - schedule-expression parsing;
@@ -1036,6 +1023,8 @@ The User Reminder carrier format is defined in §5.6.
 
 ## 4.1 Global configuration
 
+V1.5 §3.4–§3.5 adds the Main Pre-message Context boundary: read the latest owning-profile global configuration before capturing the active root Prompt and final Tool Schemas. Notebook Guidance, schema and dispatch change together on the next Main Turn, including warm cache and cold resume; local on/off never rebuilds Prompt/tools. Native cache mechanisms are reused, and deliberate global switching may lose prefix cache.
+
 V1 global configuration:
 
 ```yaml
@@ -1094,7 +1083,7 @@ When effective Noting is false for a Conversation:
 
 At the same time:
 
-- **History Search remains independent and follows normal read/tool configuration**;
+- **History Search remains independent and mandatory for eligible Main under V1.5**;
 - the Secretary base timestamp contract remains active even when local Noting is off;
 - in an eligible main Conversation with global noting.enabled=true, both /notebook and AI notebook_show can inspect an existing Snapshot;
 - `/noting on|off` remains available to change local participation.
@@ -1535,7 +1524,7 @@ The main Conversation always has:
 
 - History Search suite.
 
-When effective Noting is enabled, it additionally has:
+When Main eligibility is proven and global noting.enabled=true, it additionally has (independent of the local background switch):
 
 - `notebook_show`, read-only, returning the complete AI-facing Notebook JSON.
 
@@ -1718,7 +1707,7 @@ Current mechanisms that can be reused include equivalents of:
 
 ## 6.4 History Search wiring
 
-History Search is a general first-class read-only capability, not reimplemented or feature-gated by Noting. Register, configure, enable/disable, template, and classify it using the same native paths as read_file. Main-Turn Secretary hooks must not force it into a surface excluded by normal tool configuration. Background Agents and subagents follow the same configuration/template rules without acquiring Notebook or Noting.
+V1.5 §2.2 and §3 supersede configurable Main exposure: the existing registry/schema/handler is reused, but every eligible Main must receive session_history and its independent Guidance. It is not gated by Noting. Auxiliary Agents receive no new Main injection and retain existing lawful configuration; the Noting child reuses its restricted Parent-history path.
 
 It continues to:
 
@@ -1838,7 +1827,7 @@ conversation /noting off
 
 Expected behavior:
 
-- History Search follows normal read/tool configuration independently of Noting;
+- Eligible Main History Search remains present with its independent Guidance regardless of Noting;
 - bare `/notebook` can still read the latest Snapshot;
 - main Assistant notebook_show remains present and can read the latest committed Snapshot;
 - Noting Trigger / child / Schedule / Reminder behavior is inert;
@@ -1924,7 +1913,7 @@ Cover at least:
 - AI notebook_show returns complete structured JSON rather than the human renderer;
 - local Noting on/off preserves the complete main tool-schema bytes and read access, including after cold reconstruction;
 - non-user-facing auxiliary runtimes never receive notebook_show, including through composite/inherited toolsets;
-- History Search follows normal read configuration/templates and finds authentic current-segment history independently of Noting gates.
+- Eligible Main receives History Search independently of read configuration/templates and Noting; authentic current and cross-Compaction history remains searchable.
 
 ## 6.19 Open issue: additive Frontend / API contract
 
@@ -1959,7 +1948,7 @@ Secretary Conversation Ref is the stable ownership identity.
 Hermes Session / lineage / declared scopes are locators, not ownership IDs.
 
 History Search is a general first-class read-only capability over authorized History Foreground.
-It follows native read configuration/templates independently of Noting.
+Eligible Main exposure is mandatory independently of templates/configuration and Noting under V1.5; auxiliary runtimes retain existing lawful tools without new Main injection.
 It searches current uncompacted and valid compressed history.
 
 Notebook is one eligible user-facing main Conversation's derived working state.

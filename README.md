@@ -2,7 +2,7 @@
 
 Hermes Secretary 是基于 [Nous Research 的 Hermes Agent](https://github.com/NousResearch/hermes-agent) 的公开扩展项目，面向长期对话中的工作状态维护、责任跟进与提醒。
 
-公开范围由 [V1 实施总纲](docs/01-personal-hermes-v1-first-fork-iteration.md) 定义，并包含通用 System Prompt 调优。Notebook / Noting 及相关基础能力以 [实现规格](docs/02-noting-system-specification.md) 为权威。具体实施进展与当前任务统一记录在 [CLAUDE.md](CLAUDE.md)。
+公开范围由 [V1 实施总纲](docs/01-personal-hermes-v1-first-fork-iteration.md) 定义，并包含通用 System Prompt 调优。Notebook / Noting 及相关基础能力以 [实现规格](docs/02-noting-system-specification.md) 为权威。V1.5 明确修订范围以 [V1.5 实施权威规格](docs/04-hermes-secretary-v1.5-implementation-spec.md) 为准，未修订 V1 契约继续有效。具体实施进展与当前任务统一记录在 [CLAUDE.md](CLAUDE.md)。
 
 ## 架构与能力范围
 
@@ -24,7 +24,7 @@ Conversation 原文是事实来源，Notebook 是派生工作状态。Secretary 
 
 ## 对话中的 Secretary 命令
 
-这些命令沿用 Hermes 共享 Slash catalog、补全和执行链路，在 CLI、Gateway 与官方 Dashboard Web UI 中使用。下表记录当前已实现入口；功能契约与用户确认的命令修订统一查阅 [1.5 轮口径索引](.autonomous/20261008-v1.5-adjustment-and-acceptance/index.md)，实现状态见 [CLAUDE.md](CLAUDE.md)。
+这些命令沿用 Hermes 共享 Slash catalog、补全和执行链路，在 CLI、Gateway 与官方 Dashboard Web UI 中使用。下表记录当前已实现入口；功能契约与用户确认的命令修订统一查阅 [1.5 实施索引](.autonomous/20261009-v1.5-implementation/index.md)，实现状态见 [CLAUDE.md](CLAUDE.md)。
 
 | 命令 | 行为 |
 |---|---|
@@ -135,7 +135,9 @@ npm run --workspace apps/desktop check
 | 协作规则 | 用户规则、冻结约定、上游干扰隔离、文档保护和开发测试 SOP | [AGENTS.md](AGENTS.md) |
 | 当前阶段 | 当前目标、任务看板、已确认口径和验证状态 | [CLAUDE.md](CLAUDE.md) |
 | 首轮状态记录 | 实际交付、独立审查、未验收范围与移交项 | [.autonomous/20261007-v1-first-implementation/final-delivery.md](.autonomous/20261007-v1-first-implementation/final-delivery.md) |
-| 1.5 轮口径索引 | 补充调整的需求来源、文档权限与确认口径 | [.autonomous/20261008-v1.5-adjustment-and-acceptance/index.md](.autonomous/20261008-v1.5-adjustment-and-acceptance/index.md) |
+| V1.5 实施权威规格 | 最高优先级增量修订与继承矩阵、Foreground、Prompt/工具门禁、提案和最终验收 | [docs/04-hermes-secretary-v1.5-implementation-spec.md](docs/04-hermes-secretary-v1.5-implementation-spec.md) |
+| 1.5 实施冻结索引 | 本次自主实施的四类依据、授权口径与冻结权限 | [.autonomous/20261009-v1.5-implementation/index.md](.autonomous/20261009-v1.5-implementation/index.md) |
+| 1.5 文档准备快照 | 补充调整的需求来源、文档权限与确认口径 | [.autonomous/20261008-v1.5-adjustment-and-acceptance/index.md](.autonomous/20261008-v1.5-adjustment-and-acceptance/index.md) |
 | 上游贡献指南 | 运行及测试环境准备、现有检查命令的参考，不引入上游协作流程 | [CONTRIBUTING.md](CONTRIBUTING.md) |
 | PM 参考 | 开发激活、依赖及隔离环境管理 | [website/docs/reference/package-management.md](website/docs/reference/package-management.md) |
 | Hermes 架构 | Agent、Gateway、工具与状态层的架构说明 | [website/docs/developer-guide/architecture.md](website/docs/developer-guide/architecture.md) |

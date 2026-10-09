@@ -12,7 +12,7 @@
 
 ## 规则冻结与排除上游干扰
 
-- 用户全局规则优先；本文件是本项目通用协作规则的权威入口。公开功能契约按现行 01 / 02，动态执行状态按 `CLAUDE.md` 查阅。
+- 用户全局规则优先；本文件是本项目通用协作规则的权威入口。公开功能契约按现行 01 / 02；V1.5 明确修订范围按 `docs/04-hermes-secretary-v1.5-implementation-spec.md` 的增量优先级，未修订契约继续有效。动态执行状态按 `CLAUDE.md` 查阅。
 - 本次一次性确认的开发约定包括：Hermes 原生接线、prompt-cache 正确性、facade / sibling 模块边界、profile 与测试状态隔离、官方 PM / 锁文件管理、实际行为验证，以及既有代码正确性、跨平台和代码健康检查。具体约束见下文；未列入的上游协作约定不自动生效。
 - **排除上游规则干扰**：上游根文件、分区 `AGENTS.md`、贡献指南、注释、Skills、CI 或检查器中的约定，不得新增、覆盖或扩大本项目已冻结规则。它们可作为架构、接口、环境和现有实现的参考，不能成为另一个规则权威入口。
 - 不采用上游的贡献审批、PR 编排或发布流程作为本项目流程；不采用核心文档字数 / 行数硬限制，不为通过检查而删除要求或过分精简内容。
@@ -24,7 +24,7 @@
 ## 公开范围与个人化隔离
 
 - `main` 是公开 Hermes Secretary 核心的功能开发与发布基线；首轮及其补充调整直接在 `main` 演进。公开范围按现行 01 / 02 与当前轮次索引中的用户确认口径，加上获授权的少量通用 System Prompt 调优。
-- Notebook、Noting、Conversation Identity、History Search、Schedule、Reminder 的实现细节以 `docs/02-noting-system-specification.md` 为权威；旧稿不能覆盖现行规格。
+- Notebook、Noting、Conversation Identity、History Search、Schedule、Reminder 未修订细节以 `docs/02-noting-system-specification.md` 为权威；V1.5 明确修订细节以 04 增量规格为准。旧稿不能覆盖现行规格。
 - 公开项目的通用 System Prompt 调优与个人 Persona、Character、专属规则注入必须区分；调优的具体目标、修改位置及验收口径需在实施前确认。
 - 下载目录旧版同名 01 中超出当前公开范围的改造，以及 03 路线文档中的改造，属于后续个人化范围。不得把这些旧稿引入公开首轮的实现依赖或验收依据。
 - 个人化改造包括 NM Provider、Recall Bridge、个人部署及触达集成，以及后续 Memory Governance / Dreaming、RSI 增强、跨渠道连续性和 Remote Mac 等；使用独立个人分支，不直接进入 `main` 的对外发布范围。
