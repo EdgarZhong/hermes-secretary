@@ -2,7 +2,7 @@
 
 > **2026-10-09 用户补充授权及纠偏：** 本轮索引C05–C11：Noting每次请求保留完整冻结父快照前缀，包括root、原工具列表/Schema与到Anchor的消息，不改写头部。在`<noting-task>`及后续新增的系统提示/控制消息中追加当前可用History/Notebook工具列表和完整Schema，强调以此为准；特殊profile另含compact_parent，实际dispatch按Noting白名单限制。此前“从首请求改实际顶层Schema、撤销父工具前缀parity”是Agent理解偏差，现撤销。机制停留在Hermes中间层上下文复用，模型继承、API/provider直接使用Hermes原生，不新增独立模型路由、provider改造或App Server Noting执行器。本轮真实运行选择仍为DeepSeek官方Anthropic/deepseek-flash思考模式；缓存观察使用Hermes自身日志或抓包。原始附件保留在d5acc冻结树，以下正文按最新用户澄清同步。
 
-> **规格状态：** 设计定案；实施与最终验收待执行。本文不代表代码已经修改或通过验收。  
+> **规格状态：** 既有定案契约继续有效；§4.5 D01外部Agent runtime继承边界按C12仅记录待论证问题，未定稿，等待用户重新论证。实施与最终验收仍暂停；本文不代表代码已经修改或通过验收。
 > **实施对象：** `EdgarZhong/hermes-secretary`，承接 V1 首轮实现。  
 > **规格角色：** V1.5 的最高优先级**增量修订规格**，不是独立替代 V1 的全量重写。  
 > **原始依据：** `docs/01-personal-hermes-v1-first-fork-iteration.md`（下称 **V1-01**）、`docs/02-noting-system-specification.md`（下称 **V1-02**）、`.autonomous/20261007-v1-first-implementation/` 的冻结与审查记录、`.autonomous/20261008-v1.5-adjustment-and-acceptance/index.md`，以及本轮用户已定案的修订口径。
@@ -245,6 +245,21 @@ V1 的两种 Trigger、Force 公式／阈值、同 Anchor 准入、`NOTING`／`N
 第一句要求 Noting 随父 Conversation 的**实际进展**维护 Candidate，结案采用既有 `archive` 语义而不是物理删除。未确认执行成功、未明确拒绝或撤回的候选不得因“已经讨论过”而归档。第二句只补必要的 Schedule 边界，不重复五种时间表达式（由 §5.2 的 Tool Schema 承担）。
 
 主 Agent **没有** Notebook mutation 能力；Noting Worker **没有** Memory／Rule／Skill 外部持久化权限。两者原 V1 权限隔离保持不变。
+
+### 4.5 待论证的规格问题：外部 Agent runtime 的继承边界（未定稿）
+
+**状态：仅记录问题，等待用户重新论证和修订，不属于新增定案契约，不授权实施、配置切换或验收。** 已确认的完整父前缀冻结、后缀工具声明及受限dispatch要求继续有效；不得用本项替代或放宽它们。
+
+**D01：** 当Main由Hermes包装外部Agent runtime执行整个Turn时，Hermes持有的模型配置、root或历史镜像，是否等同于外部Agent实际请求的完整上下文？若外部执行器还加入自有指令、工具定义、内部消息或维护其权威会话，现有Noting的完整父快照与热缓存继承前提是否成立？V1/V1.5原稿没有明确规定这一组合的支持范围和交接契约。不能一概断言所有外部runtime均无内容可继承，也不能把模型名/历史镜像当作完整请求前缀。
+
+用户后续论证需明确：
+
+- 哪些Main运行形态纳入Noting支持范围；完整父快照由谁持有、提供，如何证明它与实际推理前缀一致。
+- 只有部分上下文、没有完整快照或无法复用同一缓存时，产品应如何处理；是否接受不同缓存行为，以及用户是否需要显式选择。
+- 外部Main场景的模型/执行入口继承应采用什么契约；现有Hermes原生能力是否足够，所需边界是什么。
+- 此类边界如何验证，同时保持Main已有运行方式和用户已确认的中间层改造范围。
+
+以上均为**未决问题**，不预设禁用Noting、冷启动、独立模型配置、额外capability failure、App Server桥接或provider改造等答案。Agent不得自行补成定稿或启动这些方案。待用户提供修订后，重新对齐相关01/02/04及接续索引，再确定实施范围；动态交接只在根CLAUDE维护。
 
 ---
 

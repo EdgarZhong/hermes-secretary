@@ -1330,6 +1330,8 @@ This is a fork-wide product decision. Conversation-local `/noting off` does not 
 
 ## 5.2 Runtime composition
 
+> Pending specification question, not a finalized contract: when Hermes wraps an external Agent runtime that owns the whole Main Turn, the availability and fidelity of the complete Parent request prefix and its cache inheritance are not yet defined. See V1.5 §4.5 D01. The user will re-evaluate this boundary; no fallback, new model route, support exclusion or external-runtime integration is authorized by this note. Existing prefix and dispatch requirements remain in force.
+
 ```text
 Noting Runtime
 =

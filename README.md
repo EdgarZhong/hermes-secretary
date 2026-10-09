@@ -137,7 +137,7 @@ npm run --workspace apps/desktop check
 | 协作规则 | 用户规则、冻结约定、上游干扰隔离、文档保护和开发测试 SOP | [AGENTS.md](AGENTS.md) |
 | 当前阶段 | 当前目标、任务看板、已确认口径和验证状态 | [CLAUDE.md](CLAUDE.md) |
 | 首轮状态记录 | 实际交付、独立审查、未验收范围与移交项 | [.autonomous/20261007-v1-first-implementation/final-delivery.md](.autonomous/20261007-v1-first-implementation/final-delivery.md) |
-| V1.5 实施权威规格 | 最高优先级增量修订与继承矩阵、Foreground、Prompt/工具门禁、提案和最终验收 | [docs/04-hermes-secretary-v1.5-implementation-spec.md](docs/04-hermes-secretary-v1.5-implementation-spec.md) |
+| V1.5 实施权威规格 | 增量修订与继承矩阵、Foreground、Prompt/工具门禁、提案和验收；§4.5另列外部runtime继承边界的待论证问题，未定稿 | [docs/04-hermes-secretary-v1.5-implementation-spec.md](docs/04-hermes-secretary-v1.5-implementation-spec.md) |
 | 1.5 实施冻结索引 | 本次自主实施的四类依据、授权口径与冻结权限 | [.autonomous/20261009-v1.5-implementation/index.md](.autonomous/20261009-v1.5-implementation/index.md) |
 | 1.5 文档准备快照 | 补充调整的需求来源、文档权限与确认口径 | [.autonomous/20261008-v1.5-adjustment-and-acceptance/index.md](.autonomous/20261008-v1.5-adjustment-and-acceptance/index.md) |
 | 上游贡献指南 | 运行及测试环境准备、现有检查命令的参考，不引入上游协作流程 | [CONTRIBUTING.md](CONTRIBUTING.md) |
