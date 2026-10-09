@@ -1,13 +1,8 @@
 # Hermes Secretary V1.5 — 实施权威规格
 
-> **2026-10-09 用户补充授权及纠偏：** 本轮索引C05–C13（C12/D01仍未定稿）：Noting每次请求保留完整冻结父快照前缀，包括root、原工具列表/Schema与到Anchor的消息，不改写头部。在`<noting-task>`及后续新增的系统提示/控制消息中追加当前可用History/Notebook工具列表和完整Schema，强调以此为准；特殊profile另含compact_parent，实际dispatch按Noting白名单限制。此前“从首请求改实际顶层Schema、撤销父工具前缀parity”是Agent理解偏差，现撤销。机制停留在Hermes中间层上下文复用，模型继承、API/provider直接使用Hermes原生，不新增独立模型路由、provider改造或App Server Noting执行器。本轮真实运行选择仍为DeepSeek官方Anthropic/deepseek-flash思考模式；缓存观察使用Hermes自身日志或抓包。原始附件保留在d5acc冻结树，以下正文按最新用户澄清同步。
+> **2026-10-09 用户补充授权及纠偏：** 本轮索引C05–C17（D01已定稿）：Noting每次请求保留完整冻结父快照前缀，包括root、原工具列表/Schema与到Anchor的消息，不改写头部。在`<noting-task>`及后续新增的系统提示/控制消息中追加当前可用History/Notebook工具列表和完整Schema，强调以此为准；特殊profile另含compact_parent，实际dispatch按Noting白名单限制。此前“从首请求改实际顶层Schema、撤销父工具前缀parity”是Agent理解偏差，现撤销。机制停留在Hermes中间层上下文复用，模型继承、API/provider直接使用Hermes原生，不新增独立模型路由、provider改造或App Server Noting执行器。本轮真实运行选择仍为DeepSeek官方Anthropic/deepseek-flash思考模式；缓存观察使用Hermes自身日志或抓包。原始附件保留在d5acc冻结树，以下正文按最新用户澄清同步。
 
-> **规格状态：** 既有定案契约继续有效；§4.5 D01外部Agent runtime继承边界按C12仅记录待论证问题，未定稿，等待用户重新论证。实施与最终验收仍暂停；本文不代表代码已经修改或通过验收。
-> **实施对象：** `EdgarZhong/hermes-secretary`，承接 V1 首轮实现。  
-> **规格角色：** V1.5 的最高优先级**增量修订规格**，不是独立替代 V1 的全量重写。  
-> **原始依据：** `docs/01-personal-hermes-v1-first-fork-iteration.md`（下称 **V1-01**）、`docs/02-noting-system-specification.md`（下称 **V1-02**）、`.autonomous/20261007-v1-first-implementation/` 的冻结与审查记录、`.autonomous/20261008-v1.5-adjustment-and-acceptance/index.md`，以及本轮用户已定案的修订口径。
-
----
+> **规格状态：** 本次在 V1.5 内定稿 D01（实际执行来源门禁）、Noting 五 Turn 目标驱动结案及 Snapshot 结束审计。**仅文档获授权提交，代码实施和独立验收仍暂停，当前行为不能被称为已实现。**
 
 ## 1. 规格定位、继承关系与实施边界
 
@@ -32,12 +27,12 @@ V1.5 只完成 V1 首轮实现后的必要调整、已确认缺口修复和最�
 | M07 | History Search 语义与基础操作 | V1-01 §2.2；V1-02 §2.3、§6.4 | **继承＋修订** | 继续只读当前 Conversation、支持 search/read；**废止**“与 read 一样由模板/配置选择暴露”的旧策略 | §2.6 |
 | M08 | History Search 默认暴露与 Stable Guidance | V1-02 §1.9、§2.3；旧 Secretary Prompt | **新增／替换** | 所有用户主会话默认、不可配置且不受 Noting 开关影响；新增独立两句 Guidance | §2.2、§3.2、附录 A |
 | M09 | Notebook 四区十类型／字段／状态图 | V1-01 §2.3；V1-02 §2.5 | **完全继承** | 不改类型、字段、状态流转、分类含义，不增独立 section 字段 | §4.1 |
-| M10 | Snapshot、Pointer、Anchor、分支与回退 | V1-02 §2.6–§2.7、§3.1–§3.4 | **继承** | 不可变完整 Snapshot、原子 pointer 与 provenance 仍按 V1 | §4.1、§7 |
+| M10 | Snapshot、Pointer、Anchor、分支与回退 | V1-02 §2.6–§2.7、§3.1–§3.4 | **继承＋审计扩展** | 完整不可变 Snapshot、原子 Pointer 与 Anchor 仍继承 V1；另加不进入 Notebook Payload 的结案审计元数据 | §4.1、§4.7、§7 |
 | M11 | Main `notebook_show` 与只读权限 | V1-02 §3.5、§5.7 | **修订** | 只按主会话资格 + **全局** `noting.enabled` 注入，与局部开关完全解耦 | §3.1–§3.4、§4.2 |
 | M12 | `/notebook` 与局部 Noting Slash | V1-01 §2.3；V1-02 §3.6 | **修订** | `/notebook` 仅展示；`/noting on|off` 仅改变后台参与并持久化反馈；旧 `/notebook on|off` 退出 | §4.2–§4.3 |
 | M13 | Noting 两层启用、Idle/Force、准入与阈值 | V1-02 §4 全章 | **继承＋门禁澄清** | Trigger／Force 机制不变；局部开关只管后台行为，不管 Notebook 读取 | §4.3、§4.4 |
-| M14 | Noting Worker 生命周期、缓存前缀、工具权限 | V1-02 §5.1–§5.5、§5.7–§5.11 | **继承＋澄清** | 完整父root/tools/消息前缀始终冻结；新工具列表/Schema只追加在task及后续新系统提示中并声明优先；dispatch受限，模型/API/provider沿用原生 | §4.4 |
-| M15 | Noting Task 的 Candidate 清理与 Schedule 认知 | V1-02 §2.5、§3.7、§3.8、§5.6 | **最小扩展** | 补充按主会话进展修订／归档 Candidate 与 in-Conversation Schedule 边界 | §4.4 |
+| M14 | Noting Worker 生命周期、缓存前缀、工具权限 | V1-02 §5.1–§5.5、§5.7–§5.11 | **继承＋实质修订** | 原生 Cache Parity、独立持久 Child／Dispatch 不变；父 Root/Tools/消息前缀全程冻结；两 Profile 改为目标驱动有界多 Turn | §4.4、§4.6 |
+| M15 | Noting Task 的 Candidate 清理、工作范围与 Schedule 认知 | V1-02 §2.3、§2.5、§3.7、§3.8、§5.6 | **最小扩展** | 以当前 Active Foreground＋Notebook 为主、历史仅按需检索；按进展维护 Candidate 和 Conversation 内 Schedule | §4.4 |
 | M16 | Notebook Schedule 的归属、Registry、scanner | V1-01 §2.5；V1-02 §3.8–§3.10 | **继承** | Schedule 不跨 Conversation、不创建 Hermes Cron Job；运行与持久化机制不重设计 | §5.1、§5.3 |
 | M17 | Schedule 时间表达式工具描述 | V1-02 §3.7–§3.8；现有 `notebook_mutate` | **扩展** | 在 `expression` Schema 中写明复用的五类 Hermes Cron 时间表达式，**不是**简单写“与 Cron 相同” | §5.2、附录 B |
 | M18 | System/User Reminder、时间戳与包装 | V1-01 §2.5–§2.6；V1-02 §3.11–§3.12、§5.6 | **继承** | 被动／主动投递、busy 回退、ACK、retry、role/user/timestamp 不重设计 | §5.3 |
@@ -48,8 +43,11 @@ V1.5 只完成 V1 首轮实现后的必要调整、已确认缺口修复和最�
 | M23 | Dashboard、共享 Slash、验收渠道 | V1-01 §4–§6；V1-02 §6.19；首轮报告 | **继承＋补齐** | 官方 Dashboard 仅作端到端用户验收；不做 Personal UI 产品化 | §7.3 |
 | M24 | 独立 Verification / Validation、回归门禁 | V1-01 §6；V1-02 §6；首轮 Verification | **扩展** | 覆盖本轮变化、旧缺口和 V1 未改契约，不能复用旧通过声明替代新验收 | §7 全章 |
 | M25 | Foreground 术语、Prelude 与节点映射 | V1-02 §1.1、§1.6、§2.1–§2.4；首轮审查 R014–R015 | **继承＋精确化／修订** | 继承 Conversation/Message Identity；精确定义 Pre-message Context、Context Prelude 与 Full 首节点；锁定普通节点 1:1 Message Identity 和复合 Compaction 特例 | §1.3、§2.5、§7.2 |
+| M26 | D01 实际请求来源准入 | V1-02 §4 全章、§5.2、§5.11 | **新增／定稿** | 最近一次实际 Main 模型请求 Native 沿用 Noting/cache_parity，External 拒绝；单一来源事实由内存 Force 与 model_config Idle/Resume 共用；不增路由／缓存准入 | §4.5、§7 |
+| M27 | Noting 两 Profile 有界多 Turn／强制收尾 | V1-02 §5.7–§5.10、§6.16 | **修订** | 普通 finish_noting(reason) 与特殊 compact_parent 正常结束；最多 5 Turn，超限强制提交有效 Snapshot、特殊 Profile 框架请求父压缩 | §4.6、§7 |
+| M28 | Snapshot 结束审计与普通输出隔离 | V1-02 §2.6–§2.7、§3.2–§3.6、§5.10、§6.16 | **新增** | termination 三态，仅审计可见，与 Notebook Payload、notebook_show、/notebook、Main AI 隔离 | §4.7、§7 |
 
-**落实规则：** 后续每项工作至少标注一条 `Mxx` 和对应 V1 条款；若出现表中没有的功能需求，先归类为 V1 既有契约还是 V1.5 新增变更，不得悄然变成代码要求。
+**落实规则：** 后续每项工作至少标注一条 `Mxx` 和对应 V1 条款；若出现表中没有的功能需求，先归类为 V1 既有契约还是 V1.5 新增变更，不得悄然变成代码要求。必要的局部自主收敛可不断工实施，但必须按项目 AGENTS.md 在 CLAUDE.md 醒目登记，下次与用户交互时优先汇报；不得冒充已获用户确认。
 
 ### 1.3 术语表与 Foreground 节点不变量（M02、M04–M06、M20、M25）
 
@@ -244,6 +242,12 @@ V1 的两种 Trigger、Force 公式／阈值、同 Anchor 准入、`NOTING`／`N
 
 第一句要求 Noting 随父 Conversation 的**实际进展**维护 Candidate，结案采用既有 `archive` 语义而不是物理删除。未确认执行成功、未明确拒绝或撤回的候选不得因“已经讨论过”而归档。第二句只补必要的 Schedule 边界，不重复五种时间表达式（由 §5.2 的 Tool Schema 承担）。
 
+**两 Profile 共享的初始 `<noting-task>` 指导必须再明确：**
+
+> Focus primarily on the Parent Conversation's currently visible Active Foreground and current Notebook. Do not exhaustively traverse the cross-compaction Conversation History. Use session_history selectively only when specific evidence requires verification or relevant context is missing. Once necessary maintenance is complete, promptly use the terminal tool for this runtime profile.
+
+Active Foreground 包括当前有效压缩摘要及活跃 tail。此限制避免无目的遍历全部历史，不得妨碍特定证据与来源身份核查。普通 Profile 以 `finish_noting(reason)` 正常结束，特殊 Profile 仍以 `compact_parent()` 正常结束。指导写入 Child 新后缀消息，不修改 Parent Root。
+
 主 Agent **没有** Notebook mutation 能力；Noting Worker **没有** Memory／Rule／Skill 外部持久化权限。两者原 V1 权限隔离保持不变。
 
 **完整生命周期的强制澄清（C13，与V1-02 §5.5/§5.11/§6.16一致）：**
@@ -253,22 +257,83 @@ V1 的两种 Trigger、Force 公式／阈值、同 Anchor 准入、`NOTING`／`N
 - **声明与执行分离：** 初始task给出当前完整可用工具列表及完整Schema（名称、描述、参数定义），强调取代此前工具可用性说明；每当追加新的系统提示/任务驱动控制消息时，再给一遍。已追加的声明随后缀保留，不回写此前消息，不重建root。实际执行从task起按Noting白名单限制；冻结父前缀仍列有某工具不等于Noting有权执行它。消息载体沿用V1-02 §5.6。
 - **改造边界与证据：** 只在Hermes中间层保证上述上下文复用，模型继承、API/provider与推理沿用原生。接续验证逐次比较实际组装的完整前缀、后缀声明及dispatch负例；不能只验第一请求，更不能把第二次新增头部Schema写成正确测试预期。真实缓存读取另由Hermes自身日志/响应观察，不用字节一致冒充已测命中。
 
-§4.5 D01仍为未定稿的外部Agent runtime问题；本澄清不对其支持范围、缺失快照处置或模型配置作决定。
+§4.5 的 D01 已定稿为单一执行来源门禁，不更改上述冻结前缀契约，也不增加模型路由或缓存校验。
 
-### 4.5 待论证的规格问题：外部 Agent runtime 的继承边界（未定稿）
+### 4.5 D01：最近一次实际 Main 模型请求的执行来源门禁（M26，定稿）
 
-**状态：仅记录问题，等待用户重新论证和修订，不属于新增定案契约，不授权实施、配置切换或验收。** 已确认的完整父前缀冻结、后缀工具声明及受限dispatch要求继续有效；不得用本项替代或放宽它们。
+**唯一产品规则：Noting Trigger 成立后，检查截至触发时最近一次实际模型请求的执行来源。**
 
-**D01：** 当Main由Hermes包装外部Agent runtime执行整个Turn时，Hermes持有的模型配置、root或历史镜像，是否等同于外部Agent实际请求的完整上下文？若外部执行器还加入自有指令、工具定义、内部消息或维护其权威会话，现有Noting的完整父快照与热缓存继承前提是否成立？V1/V1.5原稿没有明确规定这一组合的支持范围和交接契约。不能一概断言所有外部runtime均无内容可继承，也不能把模型名/历史镜像当作完整请求前缀。
+| 最近一次实际请求来源 | 处理 |
+|---|---|
+| `native`（Hermes Native） | 继续原有 Noting 过程，正常采用 `cache_parity` |
+| `external`（External Agent Runtime） | 拒绝启动 Noting，使用既定框架提示；必须在 Anchor 冻结、Admission、Reminder、Child 创建等 Noting 副作用之前拒绝 |
 
-用户后续论证需明确：
+这里的来源是**谁实际执行模型请求**，不是模型名、Provider、API mode、请求 URL、缓存是否命中或上下文是否“可复用”。External 包括 Codex App Server 与 ACP/`external_process`。ACP 可以表现为 `api_mode="chat_completions"` 并模拟 Usage，不能以该模式或用量数据判定为 Native；如果外部运行失败后实际 fallback 到 Native，则以最后一次真正执行的请求来源为准。
 
-- 哪些Main运行形态纳入Noting支持范围；完整父快照由谁持有、提供，如何证明它与实际推理前缀一致。
-- 只有部分上下文、没有完整快照或无法复用同一缓存时，产品应如何处理；是否接受不同缓存行为，以及用户是否需要显式选择。
-- 外部Main场景的模型/执行入口继承应采用什么契约；现有Hermes原生能力是否足够，所需边界是什么。
-- 此类边界如何验证，同时保持Main已有运行方式和用户已确认的中间层改造范围。
+**实施接线必须固定，不留给 Coding Agent 重新设计：**
 
-以上均为**未决问题**，不预设禁用Noting、冷启动、独立模型配置、额外capability failure、App Server桥接或provider改造等答案。Agent不得自行补成定稿或启动这些方案。待用户提供修订后，重新对齐相关01/02/04及接续索引，再确定实施范围；动态交接只在根CLAUDE维护。
+1. **记录接缝**：仅在实际模型请求派发时更新事实。Native 取 `agent/turn_api_call.py` 中 middleware 之后真正进入 provider streaming/nonstream execute 的内层位置；Codex App Server 取实际 `_codex_session.run_turn` 等外部派发点；ACP／external_process 取真实代理执行位置。预捕获 Prelude、预解析 Runtime、进入 Turn、middleware 被调用或拟发送的请求都不能冒充“实际执行”。失败前未真正派发不得覆盖历史值；多次实际调用则最后一次为准。
+2. **同一状态的内存／持久视图**：在合格 Main Agent 实例内维护一个二值 `_secretary_last_main_execution`（`native`/`external`），供 Turn 进行中的 **Force** 立即读取；Main Turn 结束通过 Hermes 现有 `hermes_state_sessions.py::patch_session_model_config` 原子合并同名键至当前 `sessions.model_config`，供 **Idle／Cold Resume** 读取。没有实际模型请求的 Turn **不清空、不覆盖**旧事实。Session 轮换应沿用现有 model_config／Session 继承接线保持同一事实可读取；不创建另一份路由状态、额外数据库表或独立会话事件。
+3. **门禁位置**：Force／Idle 各自的既有 Trigger 已成立之后、任何 Noting admission／freeze／dispatch 副作用之前读取来源。**仅当确证 `external` 才拒绝**并出既定框架提示；`native` 完全走原有 Noting。没有可记录请求或历史标记缺失时维持原来的 Noting 行为，不新增“执行来源无法确认”拒绝分支，也不能伪造一个 Native 记录。Idle 不因当前 Main 配置看似 Native 就覆盖持久的最近实际 External 记录。
+4. **严格非目标**：不额外记录、快照或比较模型路由；不做“父与 Child 模型／Provider 仍一致”二次准入；不验证 Cache TTL、缓存命中、缓存热度；不向 Child 注入一套独立模型路由；不重构 `cache_parity`。当前其从 Parent **当前** Hermes Runtime 构造同模型 Child 的既有行为保持不变。
+5. **职责界线**：`cache_parity` 只负责 Native 模型调用环境（模型、Provider、凭据、推理参数）、冻结父 Root/Tools 和 Prompt Cache 作用域的继承；不负责 Child 的新消息、原生 Session 持久化、实际工具权限或结束审计。这些分别由既有 Noting Child Runner、Hermes 消息存储和 Dispatch 白名单负责。不得为 D01 实现独立 Provider adapter／外部 App Server Noting 执行器。
+
+**验收**覆盖同 Turn Force、Idle、Cold Resume、先 Native 后 External 及反向转换、实际 fallback、无真实请求不覆盖、ACP 的 chat_completions 伪装；External 拒绝不产生新 Admission／Child／Snapshot／Reminder 副作用，Native 原路径及 cache_parity 仍正常。本轮真实运行环境仍选用 DeepSeek 官方 Anthropic/`deepseek-flash` 思考模式；这只是实施与验收配置，不是新增门禁。
+
+### 4.6 两种 Noting Profile：目标驱动有界多 Turn（M27）
+
+`NOTING` 和 `NOTING_WITH_COMPACTION` 都仍是**单次准入、单个独立持久 Child、进程崩溃不恢复**的任务。二者使用相同完整冻结父前缀，在同一个 Child Session 上最多 **5 个完整 Turn**（首 Turn＋最多四个 Continuation）；仅追加 Child 自有消息后缀，不重新读取 Parent 历史、不改变继承的顶层 Tool Schemas。**Turn 上限是执行预算，不是 Snapshot 的成功资格门禁。**
+
+| Profile | 唯一正常结束信号 | 第 5 Turn 仍未结束 |
+|---|---|---|
+| 普通 `NOTING` | 模型成功调用新增 `finish_noting(reason)`，`reason` 为必填字符串，简述已完成工作或无需更改原因 | 框架强制收尾，**仍以当前 Notebook 工作状态尝试提交 Snapshot** |
+| `NOTING_WITH_COMPACTION` | **沿用现有**模型调用 `compact_parent()` 且工具成功；不使用 `finish_noting` | 框架自行直接调用既有 `compact_parent(parent,...)` 请求原生父会话压缩，随后**仍尝试提交 Snapshot**，不增加第六 Turn |
+
+`finish_noting` 只属于普通 Noting，Schema 为：
+
+```json
+{
+  "name": "finish_noting",
+  "description": "Mark an ordinary Noting task complete after necessary Notebook work.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "reason": {
+        "type": "string",
+        "description": "Briefly explain why this Noting task is complete, including what was updated or why no changes were needed."
+      }
+    },
+    "required": ["reason"],
+    "additionalProperties": false
+  }
+}
+```
+
+终止工具**只设置任务正常结束标记并记录审计信息，不直接提交 Snapshot**。对特殊 Profile，保留原 `compact_parent` 无参数 Schema、父会话绑定、Hermes 原生阈值、Cooldown、锁、Admit 与既有在途结果语义；它成功就是唯一正常终止条件，无须再调用 finish_noting。普通 Profile 的 finish_noting 不获得父 Compaction 权限。
+
+若一个完整 Turn 返回 `completed=True`、模型只输出了“完成”文字或工具调用失败，均不代表 Task 正常结束；尚未到上限则追加简短、Profile 专用 Continuation 消息，在同一 Child 继续，并按照 §4.4 再附当前完整的合法工具声明。已累计的后缀不改写，冻结父前缀不刷新。
+
+**预算超限的强制结束须取代现有 `terminal_failure` 不提交策略**：即使模型没有显式调用最后一个工具，框架也读取现有 NotebookStore 的当前合法完整工作状态（包括无修改时原 Snapshot 或初始空四区），使用 `termination.type="forced"` 经过既有 Snapshot Commit Gate 尝试原子提交；**不得以“没有 Tool 调用／没有显式终止信号”为由拒绝提交**。特殊 Profile 的兜底压缩使用现有 `secretary/noting_compact.py::compact_parent`，不假造模型工具调用、不绕过原生压缩防护；压缩成功与否独立记录，不能仅因压缩未被准入而丢弃有效 Notebook Snapshot。
+
+原有 Commit Gate 仍须检查 Notebook 合法性、Anchor 当前有效、权限与状态；真正崩溃、失败／中断 Turn、无效 Anchor、写入失败均不能伪造有效 Snapshot。五 Turn 正常收尾／强制收尾完成后沿用现有 Child close 与审计记录机制。
+
+**C13 工具后缀约束保持不变**：包括 finish_noting 在内的专用工具列表及完整 Schema 仅追加在任务／控制消息后缀，父请求顶层 `tools[]` 始终原样冻结；实际执行使用 Noting 白名单。由于文本中的工具定义不自动等价于 Provider 正式 Tool API，必须以本轮 Native DeepSeek 路径真实验证这些新增工具的结构化调用可行性；无法调用时如实报告，不得自行改写头部工具、另造 Provider 或悄悄放宽缓存前缀要求。
+
+### 4.7 Snapshot 结束审计与日常视图隔离（M28）
+
+每个**新提交**的 immutable Snapshot 增加独立审计元数据 `termination`，恰好三种：
+
+```json
+{"type": "finish_noting", "reason": "model-provided brief reason"}
+{"type": "compact_parent"}
+{"type": "forced"}
+```
+
+- `finish_noting` 只记录普通 Profile 的成功结束和必填 `reason`；`compact_parent` 只记录特殊 Profile **模型调用成功**的正常结束；`forced` 只记录五 Turn 上限的强制结束。特殊 Profile 在上限后框架兜底压缩即使成功，类型仍为 `forced`。
+- `termination` 仅用于内部审计，不属于 Notebook 四区十类型业务 `payload`，不新增条目字段，也不改变 Trigger、Commit Gate、Pointer 排序与 Snapshot 有效性。
+- 采用现有 Secretary-owned `secretary_notebook_snapshots` 的独立审计字段（例如物理 `termination_json`，审计投影为 `termination`）及现有迁移、原子写入、分支继承；不新建 Notebook 数据库，不向 Hermes 原生 `sessions`／`messages` 表增加字段。历史 Snapshot 缺失该字段时保持真实空值，不追填臆测结束类型。
+- **日常严格不可见**：Main AI 的 `notebook_show` 结果、人类及模型可见的 `/notebook` Slash 反馈、普通 Notebook JSON／渲染投影都不得包含 `termination` 或 `reason`。不是只隐藏 UI；在真实返回给模型／用户的投影层就必须剔除。仅内部 Snapshot 审计读取可以展示。
+- 终止类型与 reason 不充当额外审批门禁、不影响下一次 Noting Trigger；不能用“forced”推断 Snapshot 失败。
 
 ---
 
@@ -341,7 +406,7 @@ Registry 根据 Notebook semantic mutation 原子注册、更新、取消／禁�
 1. **冻结现状和差异**：确认当前代码提交、V1 首轮报告、现行 Hermes Prompt、工具 registry／Gateway 与 Slash；精确回退首轮未经授权的混合 `SECRETARY_GUIDANCE`（§1.4）。
 2. **Foreground + History**：落实 Active/History/Full 的新视图、Context Prelude 最新 root Prompt／Tool Schemas、跨 Compaction source 定位与默认主会话暴露。
 3. **Prompt／Tool gating**：加入两个正式 Stable Guidance，完成全局配置在 Pre-message Context 的工具／Prompt 一致性同步，以及 Warm／Cold Resume 缓存刷新。
-4. **Slash 和 Noting**：调整 `/notebook`、`/noting on|off`、局部门禁；只补必要的 Noting Task 句子；更新 Persistence 候选归档规则。
+4. **Slash 和 Noting**：调整 `/notebook`、`/noting on|off`、局部门禁；落实 D01 来源门禁、完整前缀工具后缀声明、两 Profile 五 Turn/结束工具/强制 Snapshot、终止审计隔离；更新 Candidate 归档规则。
 5. **Schedule + Proposal**：复制五类时间表达 Schema、修订 `/propose-persistence` 的自主检索工作流；继续使用 V1 Schedule Runtime 和原生 Gateway 投递。
 6. **全范围验证**：独立检查、DeepSeek官方Anthropic/deepseek-flash思考模式真实主模型测试、官方Dashboard端到端用户验收，出最终交付记录。
 
@@ -358,13 +423,16 @@ Registry 根据 Notebook semantic mutation 原子注册、更新、取消／禁�
 | Prompt／Tool 同步 | false→true、true→false；Cold Resume、Warm cached Agent、Compaction 前后；任何主请求中 Stable 指导与工具 Schema 一致，绝无陈旧 pinned tool 或旧 prompt | M19–M20 |
 | 局部 Slash | `/noting off` 不改变 Prompt／Tool Schema、无 cache bust；`/notebook` 可读旧 Snapshot；Slash 反馈用户／模型可见且持久；旧命令不意外生效 | M11–M13 |
 | Notebook | 四区十类型、状态图、provenance、archive、Snapshot 原子性与 Noting mutation 白名单沿用 V1 测试；局部 off 不删数据 | M09–M10、M15 |
-| Noting | 两 Trigger／Child／Force／Anchor/Compaction 竞争继承原 V1；Candidate 实际完成／拒绝／撤回后归档，只有提议／批准不归档 | M13–M15 |
+| Noting 来源 D01 | Native 实际请求沿用 cache_parity；External 实际请求拒绝且无 admission/child/snapshot/reminder 副作用；同 Turn Force、Idle、Resume、ACP伪装、fallback、无请求不覆盖事实 | M13、M26 |
+| Noting 完成 | 普通 finish_noting(reason)，特殊 compact_parent 成功；同 Child 最多5 Turn，强制收尾仍提交有效 Snapshot、特殊 Profile 框架触发原生父压缩；Active 与 Notebook 为主要工作范围 | M14–M15、M27 |
+| 结束审计 | finish_noting(reason)、compact_parent、forced 三类；老 Snapshot 和分支兼容；普通 notebook_show、/notebook、Main AI 不可见终止审计 | M10、M28 |
+| Noting 基础 | 两 Trigger／Child／Force／Anchor/Compaction 竞争继承原 V1；Candidate 实际完成／拒绝／撤回后归档，只有提议／批准不归档 | M13–M15 |
 | Schedule | 五类 expression 解析、bare `30m` recurring vs `in 30m` once、时区、`watchpoint` only once；不产生 Cron Job、不跨 Conversation | M16–M17 |
 | Reminder | 被动不启动 Turn；主动 idle 同 Conversation 新 Turn、busy 转被动；ACK、重复到期、防丢、重启、局部 off/on 继承 V1 | M18 |
 | Proposal | Slash 不预检索／注入 source 原文；模型按 identity 自主查源并扩展关键词／后续更正；来源缺失 fail honestly；只提案、修改不批准、获批才执行且限批准范围 | M21–M22 |
 | Hermes-native 回归 | 非主 Agent 原生行为、Skills、Cron、Gateway、Compaction、Tool Registry 与 native Prompt tiers 无无关退化 | M01、M23–M24 |
 
-不得仅用单元测试的 mock 成功代替 Tool Schema 的**实际 provider request**一致性检查；不得只验证程序返回 OK 就宣称后续真实审批写入已发生。按C08必须从Hermes实际请求/响应日志或抓包核查Noting各次请求的父前缀与provider缓存读取token；字节一致不能替代命中证据，未测部分不得宣称优化。
+不得仅用单元测试的 mock 成功代替 Tool Schema 的**实际 provider request**一致性检查；必须实测冻结父 tools[] 仍不变时 finish_noting、notebook_mutate、compact_parent 的结构化调用、五 Turn 强制收尾及审计隔离；不得只验证程序返回 OK 就宣称后续真实审批写入已发生。按C08必须从Hermes实际请求/响应日志或抓包核查Noting各次请求的父前缀与provider缓存读取token；字节一致不能替代命中证据，未测部分不得宣称优化。
 
 ### 7.3 官方 Dashboard 最终用户验收
 
@@ -381,7 +449,7 @@ Registry 根据 Notebook semantic mutation 原子注册、更新、取消／禁�
 
 ### 7.4 Verification、Validation 与 Definition of Done
 
-- 对**V1 全部仍有效**的要求及本文 `M01–M24` 逐项做独立 Verification；旧 101 项审查可作对照但不能替代对更新代码／新规格的复核。
+- 对**V1 全部仍有效**的要求及本文 `M01–M28` 逐项做独立 Verification；旧 101 项审查可作对照但不能替代对更新代码／新规格的复核。
 - 必须包含首轮 Full Foreground root Prompt provenance 缺口及其新增工具面验证。独立审查不合格时不得进入“已通过最终验收”的结论。
 - 独立 Verification 后进行**真正 Dashboard 用户输入到模型响应**的 Validation；编译成功、单测通过、CLI 冒烟或模拟请求都不等同于用户验收。
 - 记录平台实测范围、模型及运行参数、Git commit、缓存行为、失败与限制。macOS 实测不得冒称 Linux/Windows 已验证；Prompt 字节 parity 不等于提供商实际缓存命中率。
@@ -481,3 +549,6 @@ This command authorizes proposals only. Present them for the user's review, revi
 6. **Schedule 严格 in-Conversation**；只借 Hermes Cron 的时间表达基础，不借其独立 Agent 执行机制。
 7. **Persistence Candidate 是潜在候选，不是授权**；仅在正式提案后收到用户明确执行批准，才允许写入。Slash 自主深查原始证据，Noting 按真实进展归档结案项。
 8. **未经规格授权的首轮 Prompt 改动先回退**；本文件、同步后的现行 V1 规范和可复核实施证据共同作为最终验收依据。
+9. **D01 只有最近一次真实 Native/External 来源门禁**；不得新增路由快照、模型比对、缓存热度等条件。
+10. **Noting 正常以对应工具结束；五 Turn 预算到顶仍尝试有效 Snapshot 提交**；特殊 Profile 另由框架请求原生父压缩。
+11. **Snapshot 终止审计仅审计可见**；Notebook 正常显示和 Main AI 均不能取得该字段。

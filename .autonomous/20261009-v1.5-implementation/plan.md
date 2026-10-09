@@ -1,5 +1,9 @@
 # 本轮实施计划：20261009-v1.5-implementation
 
+## 2026-10-09 V1.5 授权文档修订（不新增 V1.6）
+
+本轮获用户明确授权，仅把已定稿的 C14–C17 写入现行 01／02／04 与项目AGENTS／CLAUDE／README／索引／计划，并在 GitHub main 提交一次文档改动。D01 唯一 Native/External 最近实际请求来源标记（Force 内存、Idle/Resume 现有 model_config）；两 Profile 各自正常结束工具、最多5 Turn、超限仍提交有效 Snapshot 与特殊框架原生父压缩；Snapshot termination 三态只供审计。维持 C05/C11 父前缀与 Child 持久化/独立 dispatch 职责边界。项目 AGENTS 允许必要自主收敛不断工，但强制 CLAUDE 顶部看板和下次用户交互优先汇报，不改 Codex 全局规则。**尚未授权恢复编码、模型测试或独立验收。**
+
 ## 目标与依据
 
 依据 index.md（snapshot-index.md 为同文件链接）及 baseline.txt 冻结树中的 01、02、04、AGENTS 与会话授权。目标为 V1.5 增量、V1 未改要求、首轮 Full provenance 缺口全部落实，经独立 Verification 和官方 Dashboard 真实模型 Validation 关闭。先精确回退混合 Prompt，再使主对话→History/Notebook→Noting→Snapshot→Reminder/Proposal 的纵向路径完整。公开 main、本机隔离状态、官方 PM 3.14.7、现有锁文件；只在本轮范围内本地提交，不部署云端或触碰生产状态。
@@ -54,4 +58,4 @@ T2b 历史委派（已按C07撤销并恢复专属文件，不继续）：白名�
 
 C10暂停：不继续代码修改、模型调用或验收。最新详细接续编排、修改边界、依赖和完成条件只在根CLAUDE的H0–H8看板，不在本计划另建动态看板。保留的普通实现与最新文档一起提交现状快照；本轮以暂停final-delivery交付，用户恢复时新建接续轮次。
 
-C12交接更新：外部Agent runtime的完整Parent前缀/缓存继承与支持边界仅作为04 §4.5 D01待论证问题，由用户重新论证，未定稿；不启动独立模型路由或外部执行器兼容。原V1/V1.5与实施的静态核对结论、P0等待条件和后续编排只在根CLAUDE；查实的头部Schema变化属于实施/测试预期/审查偏差，不能由这一规格缺口合理化。现行C05/C11保持有效，全部实施和验收继续暂停。
+C12历史交接更新：当时外部Agent runtime继承仅列为04 §4.5 D01待论证；后续C14已定稿为最近真实请求的Native/External唯一准入；不启动独立模型路由或外部执行器兼容。原V1/V1.5与实施的静态核对结论、P0等待条件和后续编排只在根CLAUDE；查实的头部Schema变化属于实施/测试预期/审查偏差，不能由这一规格缺口合理化。现行C05/C11保持有效，全部实施和验收继续暂停。

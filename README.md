@@ -15,12 +15,14 @@ Hermes Secretary 是基于 [Nous Research 的 Hermes Agent](https://github.com/N
 | Conversation Identity | Secretary-owned `conversation_ref` 作为稳定 ownership；physical Session、compression lineage 和 Gateway scope 作为 locator |
 | History Search | 合格 Main 默认可用，按 canonical Message Identity 读取 History Foreground；跨压缩检索真实 User/Assistant/Tool/System 原文，独立于 Noting 开关 |
 | Session Notebook | 每个 Conversation 的结构化 working state；完整 immutable Snapshot 与原子 current pointer；主 Assistant 只读 |
-| Background Noting | Idle / Force Trigger、persistent Hermes child、冻结Parent前缀、受限工具dispatch与commit-time Anchor校验 |
+| Background Noting | V1.5规格：Idle/Force、持久Child与冻结Parent前缀；D01 最近实际请求 Native/External 来源门禁；普通finish_noting(reason)、特殊compact_parent正常结案，最多5 Turn，超限仍尝试提交有效Snapshot |
 | Schedule / Reminder | Notebook-owned 调度；被动提醒在下一 eligible request 注入，主动提醒复用 Gateway admission，busy 时转为被动提醒 |
 | Timestamp / Wrappers | 统一真实用户时间标记及 synthetic `role=user` wrapper 契约 |
 | System Prompt 调优 | 围绕公开 Secretary 行为进行通用调优，具体实施口径见当前任务记录 |
 
 Full Foreground 的首节点是唯一 Context Prelude，记录最新有效请求的实际 root System Prompt 与 Tool Schemas；不可观测部分明确标为 missing。其余节点按逻辑 Message Identity 投影，Snapshot 与 Anchor 作为审计附着，不增加消息节点。
+
+V1.5 另外要求 Snapshot 结束记录（finish_noting含reason、compact_parent、forced）只进入内部审计元数据，日常notebook_show、/notebook和主Assistant读取不显示。**上述新规格当前尚未实施或完成验收。**
 
 Conversation 原文是事实来源，Notebook 是派生工作状态。Secretary 持久化在原有 profile-scoped `state.db` 中增加自有表，不修改 Hermes 原有表的 schema 或 ownership。Notebook Schedule 与 Hermes Cron 的职责区分见实现规格。
 
@@ -137,7 +139,7 @@ npm run --workspace apps/desktop check
 | 协作规则 | 用户规则、冻结约定、上游干扰隔离、文档保护和开发测试 SOP | [AGENTS.md](AGENTS.md) |
 | 当前阶段 | 当前目标、任务看板、已确认口径和验证状态 | [CLAUDE.md](CLAUDE.md) |
 | 首轮状态记录 | 实际交付、独立审查、未验收范围与移交项 | [.autonomous/20261007-v1-first-implementation/final-delivery.md](.autonomous/20261007-v1-first-implementation/final-delivery.md) |
-| V1.5 实施权威规格 | 增量修订与继承矩阵、Foreground、Prompt/工具门禁、提案和验收；§4.5另列外部runtime继承边界的待论证问题，未定稿 | [docs/04-hermes-secretary-v1.5-implementation-spec.md](docs/04-hermes-secretary-v1.5-implementation-spec.md) |
+| V1.5 实施权威规格 | 增量修订与继承矩阵、Foreground、Prompt/工具门禁、提案和验收；§4.5 D01定稿唯一Native/External执行来源门禁，§4.6–§4.7定稿多Turn终止与审计 | [docs/04-hermes-secretary-v1.5-implementation-spec.md](docs/04-hermes-secretary-v1.5-implementation-spec.md) |
 | 1.5 实施冻结索引 | 本次自主实施的四类依据、授权口径与冻结权限 | [.autonomous/20261009-v1.5-implementation/index.md](.autonomous/20261009-v1.5-implementation/index.md) |
 | 1.5 文档准备快照 | 补充调整的需求来源、文档权限与确认口径 | [.autonomous/20261008-v1.5-adjustment-and-acceptance/index.md](.autonomous/20261008-v1.5-adjustment-and-acceptance/index.md) |
 | 上游贡献指南 | 运行及测试环境准备、现有检查命令的参考，不引入上游协作流程 | [CONTRIBUTING.md](CONTRIBUTING.md) |

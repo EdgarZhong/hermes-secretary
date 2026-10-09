@@ -185,7 +185,9 @@ V1 只有两个 Runtime Profile：
 - `NOTING`；
 - `NOTING_WITH_COMPACTION`。
 
-Noting 使用 persistent Hermes child Session + 始终保留的完整冻结Parent快照前缀（root、工具列表/Schema、到Anchor的消息）+ Noting后缀。在noting-task及后续新增的系统提示/控制消息中追加当前可用History/Notebook工具列表和完整Schema，强调以此为准；特殊profile另含compact_parent，实际dispatch按白名单限制。不得在头部改写工具Schema；模型/API/provider直接沿用Hermes原生，改造停留在中间层上下文复用。它是 process-lifetime one-shot task；进程中断后不恢复，未完成的任务不能移动 Notebook pointer。
+Noting 使用 persistent Hermes child Session + 始终保留的完整冻结Parent快照前缀（root、工具列表/Schema、到Anchor的消息）+ Noting后缀。在noting-task及后续新增的系统提示/控制消息中追加当前可用History/Notebook工具列表和完整Schema，强调以此为准；特殊profile另含compact_parent，实际dispatch按白名单限制。不得在头部改写工具Schema；模型/API/provider直接沿用Hermes原生，改造停留在中间层上下文复用。它仍是 process-lifetime、不可崩溃恢复的一次准入任务，但两种 Profile 均可在单个 Child 里最多进行5个Turn：普通NOTING以finish_noting(reason)正常结束，特殊Profile继续以compact_parent()成功正常结束。达到上限两者仍强制收尾并以当前有效Notebook状态走既有Commit Gate；特殊Profile由框架直接请求父原生Compaction。真实失败、无效Anchor或Commit Gate拒绝仍不会提交无效Snapshot。
+
+初始Noting关注当前Active Foreground与Notebook，跨Compaction历史仅按需核证。D01仅按最近实际Main模型请求是Hermes Native还是External Agent Runtime决定Noting是否准入；Native继续cache_parity，External拒绝并出框架提示，不额外记录/校验模型路由或缓存命中。Snapshot有仅内部审计可见的termination三态；平时notebook_show、/notebook和Main AI均不显示。
 
 主 Conversation 后续活动不会自动取消一个已经成功 admit 的 Noting Task。最终安全门是 commit 时重新验证 frozen Anchor 是否仍然位于当前 Full Foreground。
 
@@ -292,7 +294,7 @@ Notebook Schedule runtime state
 关键不变量：
 
 - 不修改 Hermes 现有 tables 的 schema/ownership；
-- Snapshot 是 immutable complete state，不是 diff；
+- Snapshot 是 immutable complete state，不是 diff；其结束审计元数据独立于四区Notebook Payload和日常输出；
 - current pointer 与新 Snapshot commit 原子更新；
 - Schedule mutable runtime state 与 immutable Snapshot 分离；
 - Snapshot、Schedule、Reminder ownership 全部基于 `conversation_ref`；
@@ -380,7 +382,7 @@ Frontend / API 的更大范围增量 contract 仍保持 Open。本轮只实现�
 | Notebook | 用户主 Conversation 有独立 current Notebook；Snapshot immutable；pointer 原子更新；主 Assistant 只读；branch/rewind/edit 后 ownership 与 pointer 正确；通用后台与 Subagent 不暴露 Notebook。 |
 | Noting Enablement | global + Conversation-local 两层后台 gating 正确；局部开关不改变主会话工具 schema；global on 时人类 /notebook 与 AI notebook_show 仍能读取已有 Snapshot。 |
 | Idle / Force Noting | 两个 Trigger 均按 02 规则运行；同 Anchor 不重复 admit；不同 Anchor 可以合法并发；Force 与 Hermes compaction 不互相替代。 |
-| Noting Runtime | persistent child、cache parity、narrow dispatch、one-shot lifecycle、commit-time Anchor validation 均正确；失败/崩溃不提交 Snapshot。 |
+| Noting Runtime | 持久Child、冻结前缀/cache_parity、Dispatch白名单；D01 Native/External准入；两Profile最多5 Turn，普通finish_noting(reason)、特殊compact_parent正常结案；强制结束仍提交有效Snapshot，特殊Profile框架请求父Compaction；审计termination对Main日常不可见，失败/崩溃不提交无效Snapshot。 |
 | Schedule | Notebook-owned registry 持久化可靠；Noting disabled 时不 fire；restart 后恢复；不创建 Hermes Cron Job。 |
 | System Reminder | due 后不启动 Turn；在下一 eligible main LLM request 注入；失败不丢；ACK/重试不造成无控制重复。 |
 | User Reminder | idle 时通过现有 Gateway admission 启动 main Turn；busy 时在现有 busy gate 转为 pending System Reminder，而不是排第二个未来 Turn。 |

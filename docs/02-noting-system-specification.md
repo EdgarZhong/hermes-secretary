@@ -576,6 +576,8 @@ Rules:
 
 The Noting child also records the Parent's current physical Session for runtime/persistence lineage, but that Session is not the semantic Anchor identity.
 
+**V1.5 Snapshot termination audit (V1.5 §4.7):** each newly committed immutable Snapshot carries separate audit-only `termination` metadata with exactly one of `finish_noting` (required model reason), `compact_parent` (model-initiated special-profile terminal succeeded), or `forced` (fifth Turn expired, even if framework fallback compaction succeeds). Store outside the four-section Notebook payload, preferably as a new column in the existing Secretary-owned Snapshot table, preserve metadata on branch inheritance, and leave legacy Snapshots' absent values honest. Neither normal `notebook_show`, human `/notebook`, nor their ordinary Main-AI-visible renderings may expose this audit record. It never affects Snapshot eligibility, Triggers or pointer ordering.
+
 ## 2.7 Conversation path changes
 
 ### Compaction
@@ -1330,7 +1332,7 @@ This is a fork-wide product decision. Conversation-local `/noting off` does not 
 
 ## 5.2 Runtime composition
 
-> Pending specification question, not a finalized contract: when Hermes wraps an external Agent runtime that owns the whole Main Turn, the availability and fidelity of the complete Parent request prefix and its cache inheritance are not yet defined. See V1.5 §4.5 D01. The user will re-evaluate this boundary; no fallback, new model route, support exclusion or external-runtime integration is authorized by this note. Existing prefix and dispatch requirements remain in force.
+> **V1.5 §4.5 D01 supersedes the former pending question:** check the execution origin of the latest actually dispatched Main model request at Noting Trigger time. Native continues ordinary cache_parity; External Agent Runtime (including App Server and ACP/external_process) is rejected with the existing framework hint. A single native/external fact is available in Main memory for Force and persisted in the existing Session model_config for Idle/resume. Do not add model-route snapshots, route comparison, new cache gates, a third unknown-source denial, or external Noting executors.
 
 ```text
 Noting Runtime
@@ -1363,6 +1365,8 @@ thin NotingTaskRunner policy
 - Parent model/provider/reasoning/runtime parity;
 - MCP refresh parity/freeze;
 - provider-specific fork tag where needed.
+
+**Runtime responsibility boundary:** `cache_parity` inherits Hermes Native model invocation environment, prompt/tools parity and cache-scope affinity; independent Child lifecycle, Child-only new-message persistence, actual tool dispatch permissions and Snapshot audit belong to their existing respective components. Do not enlarge `cache_parity` into a Noting lifecycle or authorization manager.
 
 ## 5.3 Extract a pure cache-parity helper
 
@@ -1415,7 +1419,7 @@ On process crash/restart:
 - never resume the Noting Task;
 - do not reconstruct it;
 - do not create a recovery manifest for it;
-- an incomplete task does not commit a Notebook Snapshot;
+- a truly crashed/failed task does not commit an invalid Notebook Snapshot; exhausting the five-Turn limit alone **still attempts a valid commit**;
 - any already-persisted child transcript remains audit-only.
 
 ## 5.5 Runtime prefix and durable suffix
@@ -1435,14 +1439,14 @@ The three surfaces have distinct responsibilities:
 | Surface | Required behavior |
 |---|---|
 | Inherited Parent prefix | Keep the root, original tools/schema content and ordering, and frozen messages unchanged. Do not add/remove/redefine/reorder tools in this prefix for Noting. |
-| Appended task/control instructions | Give the complete current permitted tool list and schemas, including names, descriptions and argument definitions, and explicitly state that this list supersedes earlier tool-availability instructions. Ordinary Noting permits History Search and Notebook; only the special profile also permits compact_parent. |
+| Appended task/control instructions | Give the complete current permitted tool list and schemas, including names, descriptions and argument definitions, and explicitly state that this list supersedes earlier tool-availability instructions. Ordinary Noting permits History Search, Notebook and its finish_noting(reason) terminal tool; the special profile uses compact_parent() as its sole normal terminal tool instead of finish_noting. |
 | Actual execution/dispatch | Enforce the Noting whitelist from task start, independent of the Parent definitions still present in the frozen prefix. A Parent tool appearing in that prefix does not authorize its execution. |
 
 Include the declaration in the initial Noting task and repeat it whenever a subsequent new system-instruction/task-driving control message is appended. Already-appended declarations remain in the accumulated suffix on later requests; do not rewrite or replace earlier messages to repeat them. System-instruction denotes the purpose of this content; message carriers and transport roles retain the existing §5.6 contract.
 
 The same immutable prefix is required for the first request, every later tool-loop request, retries and same-child continuation Turns. A first tool response, a new Parent Turn, Parent compaction, or a global/configuration change does not authorize modifying that task's frozen prefix. Adding schemas to a top-level tools array after the first response is a prefix mutation, not a Noting suffix extension. New task tools are described in appended instructions and enforced by dispatch; they are not inserted into the inherited head.
 
-This rule concerns Hermes intermediate-layer context assembly. Use Hermes native model inheritance, API/provider handling and inference without a Secretary-specific route or adapter. The unresolved external-Agent ownership case remains the pending question in §5.2 / V1.5 §4.5, not an exception decided by this clarification.
+This rule concerns Hermes intermediate-layer context assembly. Use Hermes native model inheritance, API/provider handling and inference without a Secretary-specific route or adapter. External Agent Runtime admissibility is now decided solely by finalized V1.5 §4.5 D01, independently of frozen-prefix assembly.
 
 The model-facing context has this shape:
 
@@ -1461,6 +1465,8 @@ Every request in the same task, including tool-loop iterations and continuation 
 This is a Hermes intermediate-layer context reuse contract. Model inheritance, API/provider resolution, serialization and inference use Hermes native mechanisms; do not introduce a Secretary-specific model route, provider adapter or App Server task executor for this requirement.
 
 Only the Noting-owned suffix is persisted to the child Session. The inherited Parent prefix is not copied into the Noting transcript.
+
+**New task focus (V1.5 §4.4):** review the currently visible Parent Active Foreground and Notebook first; do not exhaustively traverse the whole cross-compaction Conversation History. Search history selectively for missing or specific evidence, then use the applicable terminal tool promptly. Preserve needed source verification.
 
 ## 5.6 Unified message wrappers and timestamp contract
 
@@ -1586,46 +1592,30 @@ The Noting Runtime does not have access to:
 - messaging;
 - connectors/external data.
 
-`NOTING_WITH_COMPACTION` additionally exposes:
+**Profile-specific terminal tool:** ordinary `NOTING` additionally has `finish_noting(reason)` with a required concise reason; `NOTING_WITH_COMPACTION` retains its existing zero-argument `compact_parent()` as the only normal task terminator and does not use finish_noting. Tool schemas are described in appended task/control messages, never inserted into frozen Parent top-level tools[]. Terminal tools do not themselves commit Snapshots.
 
-- `compact_parent`.
+From the `<noting-task>` transition, the current permitted list and complete schemas are appended in task/control instructions, and repeated in subsequent new system-instruction/control messages, with an explicit instruction to use this list as authoritative. They permit only History Search/Notebook plus the specific profile's normal terminal tool (`finish_noting` for ordinary, `compact_parent` for special). The inherited Parent root, tool definitions and message prefix remain unchanged throughout the task; do not replace the top-level tools/schema to express the transition. Actual dispatch independently enforces the Noting whitelist, including rejection of forbidden Parent tools. Reuse Hermes native model/API/provider mechanisms without deeper routing changes. Observe cache reuse through Hermes request/response evidence; do not redesign the provider cache.
 
-From the `<noting-task>` transition, the current permitted list and complete schemas are appended in task/control instructions, and repeated in subsequent new system-instruction/control messages, with an explicit instruction to use this list as authoritative. They permit only History Search/Notebook and special-profile `compact_parent`. The inherited Parent root, tool definitions and message prefix remain unchanged throughout the task; do not replace the top-level tools/schema to express the transition. Actual dispatch independently enforces the Noting whitelist, including rejection of forbidden Parent tools. Reuse Hermes native model/API/provider mechanisms without deeper routing changes. Observe cache reuse through Hermes request/response evidence; do not redesign the provider cache.
+## 5.8 Runtime Profiles — V1.5 bounded goal-driven revision
 
-## 5.8 Runtime Profiles
+A Noting Task remains a one-shot process-lifetime, non-restart-resumable durable Child task. Both profiles can execute **up to five complete Turns** on the **same** Child (first plus four continuations), retaining the entire frozen Parent root/tools/Active prefix for every request and adding only Child-owned messages. Child auto-compaction stays disabled. **The Turn ceiling is an execution budget, not a rule that denies valid Snapshot commits.**
 
 ### `NOTING`
 
-```text
-continuation = false
-terminal_action = null
-```
-
-Behavior:
-
-- exactly one complete Turn;
-- child auto-compaction disabled;
-- after Notebook work completes, run the commit gate;
-- commit the Snapshot;
-- close the child.
+- Normal terminal action is successful `finish_noting(reason)`. The `reason` parameter is a required, brief explanation of work done or why no change was needed; schema is normative in V1.5 §4.6.
+- A text claim of completion, a completed model Turn or a failed terminal tool is not a successful task ending. If still unfinished after a complete Turn, append the ordinary profile's short continuation guidance (including authoritative tools) and run the next Turn on the same Child.
+- On reaching five Turns without finish_noting, **force-end and attempt to commit the current valid Notebook state through the existing Commit Gate**, recorded as termination `forced`. The state can be the unchanged previous Notebook or a valid empty initial four-section state; no terminal-tool success or mutation is newly required.
 
 ### `NOTING_WITH_COMPACTION`
 
-```text
-continuation = true
-terminal_action = parent_compaction_admitted_or_already_done
-```
+- Normal terminal action remains **successful `compact_parent()`** using its current no-argument schema, original Parent binding, native cooldown/lock/admission conditions. Do not require `finish_noting` as a second terminal tool.
+- Unfinished completed Turns receive the existing profile-specific continuation message, with the appended tool declaration, on the same Child.
+- After five Turns without successful model-initiated compact_parent, the **framework directly invokes the existing native Parent `compact_parent(parent,...)`** without a sixth model Turn. The task force-ends and **still attempts the existing Snapshot Commit Gate even if the fallback compaction was refused by Hermes native rules**; termination is `forced`, not `compact_parent`, even if fallback compaction succeeds.
 
-Behavior:
+### Common boundary
 
-- the same child may execute multiple complete Turns;
-- child auto-compaction remains disabled;
-- after each Turn, check the terminal action;
-- if unsatisfied, the runtime injects a mandatory continuation driving message;
-- continuation is bounded;
-- reaching the explicit terminal-failure boundary ends the task without committing an incomplete result.
+Normal terminal tool success or five-Turn force-end both lead to valid working state -> original Notebook/Anchor/enablement Commit Gate -> immutable Snapshot + atomic current pointer -> Child close. Remove the old `terminal_failure` behavior that discards state **solely for missing a terminal tool at the Turn ceiling**. Real failed/interrupted Turns, crashes, invalid Anchor or Notebook, and Commit Gate failures continue to refuse invalid commits. No parallel approval or subjective quality gate is added. Generic Hermes delegates remain single-Turn unless separately specified.
 
-Generic delegate behavior remains one-Turn. V1 does not change generic delegate semantics merely to support this special profile.
 
 ## 5.9 `compact_parent`
 
@@ -1647,15 +1637,17 @@ re-read Parent usage
 
 It reuses Hermes native compaction routing, locks, fences, retries, fallback, late-ack handling, and in-place-versus-rotating semantics.
 
-The special-profile commit order is:
+The special-profile **normal** commit order remains:
 
 ```text
 Notebook work
--> compact_parent SUCCESS
+-> model compact_parent SUCCESS
 -> commit-time Anchor validity check
--> commit immutable Snapshot
+-> commit immutable Snapshot (termination = compact_parent)
 -> close task
 ```
+
+At five-Turn exhaustion the **framework** calls native Parent compaction and then attempts a valid Snapshot commit (termination = forced) regardless of fallback compaction success; see §5.8.
 
 Notebook commit does not wait for ultimate compaction completion. If Hermes later retries, falls back, or ultimately fails that compaction, an already valid committed Notebook Snapshot is not rolled back.
 
@@ -1914,12 +1906,15 @@ Cover at least:
 - the first child-owned row is `role=user` `<noting-task>`;
 - child transcript is auditable;
 - process crash does not resume the task;
-- incomplete task does not commit;
-- the task and subsequent new system-instruction/control messages append the complete authoritative History Search/Notebook tool list and schemas, plus special-profile `compact_parent`; dispatch denies filesystem/Web/Memory/Skills/delegation tools;
+- actual failed/crashed task does not commit invalid state, but five-Turn force-end attempts a valid Snapshot commit;
+- the task and subsequent new control messages append authoritative History Search/Notebook schemas and the profile's specific finish_noting(reason) or compact_parent terminal schema; dispatch denies filesystem/Web/Memory/Skills/delegation and wrong-profile terminal tools;
 - every tool-loop and continuation request retains the same complete frozen Parent root/tools/message prefix; no tool transition rewrites its head; actual cache-read counters are recorded from Hermes/provider responses;
 - model inheritance and API/provider execution reuse native Hermes; no Secretary-specific model route or App Server executor is added;
 - the main Assistant never mutates Notebook;
-- Special-profile continuation always reuses the same child;
+- both profiles continue on the same child for no more than five Turns, with the correct profile-specific terminal tool and valid forced Snapshot close after the limit;
+- the special profile's forced close directly invokes Hermes native Parent compaction without a sixth Turn; compaction refusal does not independently bar Notebook commit;
+- committed Snapshot termination audit has exactly finish_noting(reason), compact_parent or forced; audit metadata never leaks into normal notebook_show, /notebook or Main AI context;
+- ordinary Noting focuses on Active Foreground/Notebook and selectively consults History;
 - child auto-compaction is disabled.
 
 Acceptance must compare the complete inherited prefix at Hermes's actual request-assembly seam for the first request, at least two subsequent tool-loop requests, applicable retry and same-child continuation paths, and Parent concurrent activity/compaction. Verify that new tool lists/full schemas are in appended child instructions, that each new system-instruction/task-driving message repeats the authoritative declaration, and that forbidden Parent tools are denied by dispatch. A test that checks only first-request parity, or expects tools to be added to the request head after the first response, does not satisfy this contract. Provider cache-read evidence remains a separate real-observation requirement; prefix equality alone is not a measured cache hit.
