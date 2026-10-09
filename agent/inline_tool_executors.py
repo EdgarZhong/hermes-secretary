@@ -171,6 +171,9 @@ def _compact_parent(agent, args: dict, ctx: InlineToolContext) -> Any:
     Resolves the Parent from the child's own binding (construction-time), never from
     model arguments. Success marks the child's terminal action as satisfied.
     """
+    if args:
+        return json.dumps({"success": False, "status": "invalid_arguments",
+                           "detail": "compact_parent takes no arguments"}, ensure_ascii=False)
     from secretary.noting_compact import compact_parent_from_child
 
     return compact_parent_from_child(agent)
