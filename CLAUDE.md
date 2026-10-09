@@ -7,7 +7,7 @@
 - 本轮权威索引：[index.md](.autonomous/20261009-v1.5-implementation/index.md)，snapshot-index.md 为同正文链接；C05–C10 是最新用户口径。
 - 最新规格：[04](docs/04-hermes-secretary-v1.5-implementation-spec.md)；未修订契约沿用[02](docs/02-noting-system-specification.md)。原附件原样保留于 d5acc2cc27c6053ff198448fa3502bd8dd47e415 历史树，不追改首轮报告。
 - 原代码起点：main / 41f7057a28f8e9bf2fc6c8fb769748d9f2534012；产品承接 7533173ca315d6308b121d313f0dd281777c8604。
-- 原文档冻结：d5acc2cc27c6053ff198448fa3502bd8dd47e415；计划基线：5dc152f0dfa4086134a79e6366bfbcc1d615784a。暂停现状快照完整哈希见本轮 baseline.txt；快照包含此前保留的普通路径实现与本次文档修订，不能当最终发布版本。
+- 原文档冻结：d5acc2cc27c6053ff198448fa3502bd8dd47e415；计划基线：5dc152f0dfa4086134a79e6366bfbcc1d615784a。暂停现状快照：b0f260afe1a4e09f86725d800b109939953e45b2，完整哈希另见本轮 baseline.txt；快照包含此前保留的普通路径实现与本次文档修订，不能当最终发布版本。
 - 环境：macOS，官方PM工作区 .venv Python3.14.7，现有pyproject/uv.lock未修改。测试与未来运行状态仅限ignored .hermes-dev隔离目录。
 
 ## 最新口径与代码实际差距
