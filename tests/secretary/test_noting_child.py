@@ -232,6 +232,10 @@ def test_special_profile_advertises_compact_parent_and_reuses_the_same_child(par
         names = {(tool.get("function") or {}).get("name") for tool in child.tools}
         assert "compact_parent" not in names
         assert noting_dispatch_block(child, "compact_parent") is None
+        refused = json.loads(child._invoke_tool("compact_parent", {"unexpected": True}, "bad"))
+        assert refused["success"] is False and refused["status"] == "invalid_arguments"
+        assert child._secretary_noting_terminal_action_done is False
+        assert child._secretary_noting_termination is None
         prefix = freeze_parent_active_prefix(parent, "m2")
         result = child.run_conversation(
             user_message=build_noting_task_wrapper("work", timestamp=2000),
@@ -364,7 +368,10 @@ def test_text_only_completion_runs_five_turns_then_forces_snapshot(parent, db, s
     rows = db.get_messages_as_conversation(outcome.child_session_id)
     user_rows = [row for row in rows if row["role"] == "user"]
     assert len(user_rows) == 5
-    assert user_rows[0]["content"].startswith("<noting-task>")
+    assert all(row["content"].startswith("<noting-task>") for row in user_rows)
+    timestamp_lines = [row["content"].splitlines()[1] for row in user_rows]
+    assert all(line.startswith("<timestamp>") for line in timestamp_lines)
+    assert len(set(timestamp_lines)) == 1
     assert all("finish_noting" in row["content"] for row in user_rows)
 
 
@@ -376,6 +383,12 @@ def test_semantic_control_is_noting_only_and_rejects_forgery(parent, db, stub_cl
     child = build_noting_child(parent, runtime_profile="NOTING", parent_conversation_ref=parent._secretary_conversation_ref)
     try:
         initialize_notebook_work(child, trigger_type="idle")
+        invalid_finish = json.loads(child._invoke_tool(
+            "finish_noting", {"reason": "done", "unexpected": True}, "bad-finish"
+        ))
+        assert invalid_finish["success"] is False
+        assert child._secretary_noting_terminal_action_done is False
+        assert child._secretary_noting_termination is None
         made = json.loads(child._invoke_tool("notebook_mutate", args, "child"))
         assert made["success"] and made["entry"]["status"] == "pending"
         uid = made["entry"]["entry_id"]
