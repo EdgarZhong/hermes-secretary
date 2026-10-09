@@ -6,11 +6,11 @@
 
 - 当前根规格、历史 C05–C17、本轮 R01–R08 不变。已补齐默认 Noting task 既定指导、配置失败 guidance，并修正扩大回归中的 11 个失败；D01/Prelude 已在既有最终 provider invocation 接缝最小收敛，无全 transport registry 或独立 provider 路由。
 - 主会话亲自 review 产品接线、回归修改与真实探针。最新定向 48 passed，投影兼容 3 passed，ruff/health 零阻断/提示；原一次 43 文件扩大回归为 673 passed/11 failed，失败已用定向证据关闭，不把两种范围累加。
-- R08：隔离 DeepSeek OpenAI Chat Completions、deepseek-flash thinking enabled，12.97 秒、8 次 HTTP 全部 200；默认真实 Main→Noting 工具写入→finish_noting→Snapshot→Main notebook_show 读回。5 条 Child 请求冻结前缀一致且 provider 暴露 cache-hit；16 个源 hash 一致。证据位于 `.hermes-dev/evidence/v1.5/openai-resume/default-368d1880/`，此前 Anthropic 证据保留在 `native-resume/`。
+- R08：隔离 DeepSeek OpenAI Chat Completions、deepseek-flash thinking enabled，12.97 秒、8 次 HTTP 全部 200；默认真实 Main→Noting 工具写入→finish_noting→Snapshot→Main notebook_show 读回。5 条 Child 请求冻结前缀一致且 provider 暴露 cache-hit；15 个源 hash 一致。证据位于 `.hermes-dev/evidence/v1.5/openai-resume/default-368d1880/`，此前 Anthropic 证据保留在 `native-resume/`。
 - H6 初审 FAIL；修复后全范围独立复审尚未运行。H7 PENDING，本会话不操作用户旁路 Dashboard；真实 API 取证不等于官方 Dashboard Validation。Linux/Windows 未实测。SDK 人工非法参数拒绝仍是声明的异常边界，不能冒称正常调用故障或全部派发异常已关闭。
 - 下次从本地阶段提交接续，按根 CLAUDE 当前状态与本轮 index 执行：独立 Verification 复审→定向整改（如有）→H6 PASS 后独立 Dashboard Validation→最终交付判定。复用同版本有效证据，不重跑大型套件。ignored 证据不会随 Git 提交传播，跨机器接续需保留本地证据目录；凭据不入 Git。
 
-阶段提交由主会话统一保存；无 push、发布或部署。停止整轮扩展的实际原因是额度余量与用户当前优先级，不能将本地进展偷换为整轮 COMPLETE。
+本地阶段代码提交：`cf826e14e59c36f08ad012258ce1b6dd759ac7a5`；取证时 HEAD=7e9e99d＋dirty，15 个实际存在的产品源与该提交一致。离线七项报告与来源证明已接收；初次口头计数 16 因列入不存在的 noting_runner.py，实际 hash 数量为 15，已纠正。无 push、发布或部署。停止整轮扩展的实际原因是额度余量与用户当前优先级，不能将本地进展偷换为整轮 COMPLETE。
 
 ## 当前判定
 
