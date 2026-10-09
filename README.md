@@ -22,13 +22,13 @@ Hermes Secretary 是基于 [Nous Research 的 Hermes Agent](https://github.com/N
 
 Full Foreground 的首节点是唯一 Context Prelude，记录最新有效请求的实际 root System Prompt 与 Tool Schemas；不可观测部分明确标为 missing。其余节点按逻辑 Message Identity 投影，Snapshot 与 Anchor 作为审计附着，不增加消息节点。
 
-V1.5 另外要求 Snapshot 结束记录（finish_noting含reason、compact_parent、forced）只进入内部审计元数据，日常notebook_show、/notebook和主Assistant读取不显示。**上述新规格当前尚未实施或完成验收。**
+V1.5 的 D01 实际执行来源门禁、冻结 Parent 前缀＋后缀工具声明、双 Profile 最多 5 Turn、forced Snapshot 收尾与 Snapshot termination 审计已进入 `main` 实现；termination 仍只进入内部审计元数据，日常 notebook_show、/notebook 和主 Assistant 读取不显示。**当前仅完成云端代码实施与静态接收；本地回归、真实 DeepSeek/缓存证据、独立 Verification 和官方 Dashboard Validation 仍是发布前门禁。**
 
 Conversation 原文是事实来源，Notebook 是派生工作状态。Secretary 持久化在原有 profile-scoped `state.db` 中增加自有表，不修改 Hermes 原有表的 schema 或 ownership。Notebook Schedule 与 Hermes Cron 的职责区分见实现规格。
 
 ## 对话中的 Secretary 命令
 
-这些命令沿用 Hermes 共享 Slash catalog、补全和执行链路，在 CLI、Gateway 与官方 Dashboard Web UI 中使用。下表记录当前已实现入口；功能契约与用户确认的命令修订统一查阅 [1.5 实施索引](.autonomous/20261009-v1.5-implementation/index.md)，实现状态见 [CLAUDE.md](CLAUDE.md)。
+这些命令沿用 Hermes 共享 Slash catalog、补全和执行链路，在 CLI、Gateway 与官方 Dashboard Web UI 中使用。下表记录当前已实现入口；功能契约与用户确认的命令修订统一查阅 [当前 V1.5 接续索引](.autonomous/20261009-v1.5-cloud-resume/index.md)，实现状态见 [CLAUDE.md](CLAUDE.md)。
 
 | 命令 | 行为 |
 |---|---|
