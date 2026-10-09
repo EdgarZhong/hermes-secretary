@@ -17,6 +17,25 @@ _OPERATIONS = {
     "schedule_update": {"entry_id", "expression"},
     "schedule_cancel": {"entry_id"},
 }
+FINISH_NOTING_SCHEMA = {
+    "name": "finish_noting",
+    "description": "Mark an ordinary Noting task complete after necessary Notebook work.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "reason": {
+                "type": "string",
+                "description": (
+                    "Briefly explain why this Noting task is complete, including what was "
+                    "updated or why no changes were needed."
+                ),
+            },
+        },
+        "required": ["reason"],
+        "additionalProperties": False,
+    },
+}
+
 NOTEBOOK_MUTATE_SCHEMA = {
     "name": "notebook_mutate",
     "description": (
@@ -78,7 +97,9 @@ def initialize_notebook_work(child, *, trigger_type):
         trigger_type=trigger_type, runtime_profile=child._secretary_noting_profile,
     )
     child._noting_notebook_lock = threading.RLock()
-    child._noting_notebook_state = None
+    # A no-op Noting task still owns a complete legal working state.  Forced or
+    # explicit completion may commit it through the ordinary Snapshot gate.
+    child._noting_notebook_state = child._noting_notebook_store.show()
 
 
 def notebook_mutate(child, args):
@@ -114,29 +135,67 @@ def notebook_work_show(child, args):
         return json.dumps({"success": True, "notebook": state}, ensure_ascii=False)
 
 
-def after_noting_response(child):
-    """The first request keeps exact Parent tools; later suffix requests expose semantic work."""
-    if not getattr(child, "_secretary_noting_child", False):
-        return
-    child._secretary_noting_request_count = getattr(child, "_secretary_noting_request_count", 0) + 1
-    if child._secretary_noting_request_count != 1:
-        return
-    schemas = [NOTEBOOK_MUTATE_SCHEMA]
-    if child._secretary_noting_profile == "NOTING_WITH_COMPACTION":
+def finish_noting(child, args):
+    """Ordinary-profile terminal marker. Snapshot commit remains framework-owned."""
+    if getattr(child, "_secretary_noting_profile", None) != "NOTING":
+        return json.dumps({"success": False, "error": "finish_noting is ordinary-Noting only"})
+    reason = args.get("reason") if isinstance(args, dict) else None
+    if not isinstance(reason, str) or not reason.strip():
+        return json.dumps({"success": False, "error": "finish_noting requires a nonempty reason"})
+    child._secretary_noting_terminal_action_done = True
+    child._secretary_noting_termination = {"type": "finish_noting", "reason": reason.strip()}
+    return json.dumps({"success": True, "status": "finished"}, ensure_ascii=False)
+
+
+def noting_tool_schemas(profile):
+    """Current Noting-only callable schemas, carried as suffix text rather than top-level tools[]."""
+    from tools.notebook_tool import NOTEBOOK_SHOW_SCHEMA
+    from tools.session_history_tool import SESSION_HISTORY_SCHEMA
+
+    schemas = [SESSION_HISTORY_SCHEMA, NOTEBOOK_SHOW_SCHEMA, NOTEBOOK_MUTATE_SCHEMA]
+    if profile == "NOTING_WITH_COMPACTION":
         from secretary.noting_compact import COMPACT_PARENT_SCHEMA
         schemas.append(COMPACT_PARENT_SCHEMA)
-    tools = copy.deepcopy(child.tools)
-    names = {tool["function"]["name"] for tool in tools}
-    tools.extend({"type": "function", "function": copy.deepcopy(schema)}
-                 for schema in schemas if schema["name"] not in names)
-    child.tools = tools
-    child.valid_tool_names = {tool["function"]["name"] for tool in tools}
-    child._secretary_noting_suffix_diverged = True
+    else:
+        schemas.append(FINISH_NOTING_SCHEMA)
+    return copy.deepcopy(schemas)
+
+
+def noting_tool_control_message(profile):
+    schemas = noting_tool_schemas(profile)
+    names = [schema["name"] for schema in schemas]
+    return (
+        "<noting-tools>\n"
+        "For this Noting task, the following list and complete schemas are authoritative and "
+        "replace any earlier statements about which tools are available to Noting. The Parent's "
+        "frozen top-level tools[] remains unchanged for cache parity; actual execution is still "
+        "restricted by the Noting dispatch whitelist.\n"
+        f"Available tools: {', '.join(names)}\n"
+        "Schemas:\n"
+        + json.dumps(schemas, ensure_ascii=False, sort_keys=True)
+        + "\n</noting-tools>"
+    )
+
+
+def after_noting_response(child):
+    """Count completed request/response cycles without ever mutating frozen top-level tools[]."""
+    if getattr(child, "_secretary_noting_child", False):
+        child._secretary_noting_request_count = getattr(child, "_secretary_noting_request_count", 0) + 1
 
 
 def record_noting_request(child, tools):
-    """Audit the actual first request source before Hermes cache-marker decoration."""
-    if not getattr(child, "_secretary_noting_child", False) or getattr(child, "_secretary_noting_request_count", 0):
+    """Audit every actual Noting request before Hermes cache-marker decoration."""
+    if not getattr(child, "_secretary_noting_child", False):
         return
-    child._secretary_noting_first_request_tools = copy.deepcopy(tools)
-    child._secretary_noting_first_request_tools_parity = tools == child._secretary_noting_parent_tools
+    snapshot = copy.deepcopy(tools)
+    history = getattr(child, "_secretary_noting_request_tools_history", None)
+    if not isinstance(history, list):
+        history = child._secretary_noting_request_tools_history = []
+    history.append(snapshot)
+    parity = tools == child._secretary_noting_parent_tools
+    child._secretary_noting_all_request_tools_parity = (
+        parity and getattr(child, "_secretary_noting_all_request_tools_parity", True)
+    )
+    if len(history) == 1:
+        child._secretary_noting_first_request_tools = snapshot
+        child._secretary_noting_first_request_tools_parity = parity

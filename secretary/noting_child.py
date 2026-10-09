@@ -35,13 +35,18 @@ logger = logging.getLogger(__name__)
 
 NOTING_CHILD_ERROR = "noting_child_error"
 
-# One complete Turn for NOTING; the special profile may run a bounded number of extra
-# Turns on the SAME child while its terminal action is unsatisfied (02 §5.8).
+# The child Agent can use ordinary internal tool iterations inside each Turn, while the
+# Noting Task itself has a fixed five-complete-Turn budget (M27).
 NOTING_MAX_ITERATIONS = 50
-_NOTING_CONTINUATION_LIMIT = 4
-_NOTING_CONTINUATION_MESSAGE = (
-    "The required terminal action is still unsatisfied. Re-check the Parent's context "
-    "pressure and call compact_parent again. Report completion only after it succeeds."
+_NOTING_TURN_LIMIT = 5
+_ORDINARY_CONTINUATION_MESSAGE = (
+    "This ordinary Noting task has not ended yet. Continue only the necessary Notebook work, "
+    "then call finish_noting(reason) when the task is complete. Text saying that you are done "
+    "does not end the task."
+)
+_COMPACTION_CONTINUATION_MESSAGE = (
+    "This NOTING_WITH_COMPACTION task has not ended yet. Continue necessary Notebook work, "
+    "then call compact_parent. Text saying that you are done does not end the task."
 )
 
 # ── Tool surface: advertised parity, narrow actual dispatch (02 §5.7, R13) ────────────
@@ -52,6 +57,7 @@ _NOTING_CONTINUATION_MESSAGE = (
 # it is never derived from model-supplied arguments.
 
 NOTING_ALLOWED_TOOL_NAMES = frozenset({"session_history", "notebook_show", "notebook_mutate"})
+NOTING_FINISH_TOOL_NAME = "finish_noting"
 NOTING_COMPACTION_TOOL_NAME = "compact_parent"
 
 
@@ -69,6 +75,8 @@ def noting_dispatch_block(agent: Any, tool_name: str) -> Optional[str]:
     if not profile:
         return None
     if tool_name in NOTING_ALLOWED_TOOL_NAMES:
+        return None
+    if tool_name == NOTING_FINISH_TOOL_NAME and profile == "NOTING":
         return None
     if tool_name == NOTING_COMPACTION_TOOL_NAME and profile == "NOTING_WITH_COMPACTION":
         return None
@@ -260,6 +268,15 @@ def _bind_child_identity(
     child._secretary_parent_conversation_ref = ref
     child._secretary_noting_anchor_uid = None
     child._secretary_noting_terminal_action_done = False
+    child._secretary_noting_termination = None
+    # Local validation may recognize Noting-only structured calls even though the
+    # provider-facing top-level tools[] remains the frozen Parent array.
+    extra_names = set(NOTING_ALLOWED_TOOL_NAMES)
+    extra_names.add(
+        NOTING_COMPACTION_TOOL_NAME if runtime_profile == "NOTING_WITH_COMPACTION"
+        else NOTING_FINISH_TOOL_NAME
+    )
+    child.valid_tool_names = set(getattr(child, "valid_tool_names", set()) or set()) | extra_names
     child.suppress_status_output = True
     child.skip_background_review = True
     child._memory_nudge_interval = child._skill_nudge_interval = 0
@@ -355,12 +372,12 @@ def owning_profile_for(db: Any) -> str:
 
 def commit_noting_snapshot(
     db: Any, conversation_ref: str, state: Any, *, anchor_message_uid: str,
-    trigger_type: str, runtime_profile: str,
+    trigger_type: str, runtime_profile: str, termination: dict,
 ) -> str:
     """One atomic commit: Anchor validity -> INSERT immutable Snapshot -> re-derive pointer."""
     return db._execute_write(lambda conn: db.notebook_commit_snapshot_conn(
         conn, conversation_ref, state, anchor_message_uid=anchor_message_uid,
-        trigger_type=trigger_type, runtime_profile=runtime_profile,
+        trigger_type=trigger_type, runtime_profile=runtime_profile, termination=termination,
     ))
 
 
@@ -387,11 +404,12 @@ def _turn_completed(result: Any) -> bool:
 
 
 def _default_state_provider(child: Any) -> Optional[dict]:
-    """The complete next Notebook state produced by the task, or None when it produced none.
-
-    The Notebook mutation surface records its working state on the child
-    (``_noting_notebook_state``); without a Notebook change there is nothing to commit.
-    """
+    """Return the complete current working state, including a legal no-op state."""
+    store = getattr(child, "_noting_notebook_store", None)
+    if store is not None:
+        state = store.show()
+        child._noting_notebook_state = state
+        return state
     state = getattr(child, "_noting_notebook_state", None)
     return state if isinstance(state, dict) else None
 
@@ -448,10 +466,11 @@ def run_noting_task(
             task_db, admission_id, child_session_id=child_session_id,
             profile=owning or None,
         )
-        from secretary.noting_tools import initialize_notebook_work
+        from secretary.noting_tools import initialize_notebook_work, noting_tool_control_message
         initialize_notebook_work(child, trigger_type=trigger_type)
+        initial_instruction = task_instruction + "\n\n" + noting_tool_control_message(runtime_profile)
         wrapper = build_noting_task_wrapper(
-            task_instruction, timestamp=admission_timestamp if admission_timestamp is not None else time.time(),
+            initial_instruction, timestamp=admission_timestamp if admission_timestamp is not None else time.time(),
         )
         _run_child_turns(child, prefix, wrapper, runtime_profile, outcome)
         _commit_when_complete(task_db, conversation_ref, anchor_message_uid, trigger_type,
@@ -466,33 +485,87 @@ def run_noting_task(
     return outcome
 
 
+def _continuation_history(child: Any, prefix: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Re-prepend the original frozen Parent prefix; never refresh it from the live Parent."""
+    live = list(getattr(child, "_session_messages", None) or [])
+    if not live:
+        return []
+    anchor_uid = prefix[-1].get("message_uid") if prefix else None
+    cut = None
+    if anchor_uid:
+        for index, message in enumerate(live):
+            if isinstance(message, dict) and message.get("message_uid") == anchor_uid:
+                cut = index + 1
+                break
+    suffix = live[cut:] if cut is not None else live
+    return [_clone_message(message) for message in prefix] + [
+        _clone_message(message) for message in suffix if isinstance(message, dict)
+    ]
+
+
+def _force_task_close(child: Any, runtime_profile: str, outcome: NotingTaskOutcome) -> None:
+    """M27 budget fallback: force Snapshot eligibility; special profile also requests native compaction."""
+    child._secretary_noting_termination = {"type": "forced"}
+    child._secretary_noting_terminal_action_done = True
+    if runtime_profile == "NOTING_WITH_COMPACTION":
+        try:
+            from secretary.noting_runtime import _main_conversation_ref, noting_trigger_gate
+            from secretary.noting_compact import compact_parent
+
+            parent = getattr(child, "_secretary_noting_parent", None)
+            ref = getattr(child, "_secretary_parent_conversation_ref", None)
+            if (
+                parent is not None and ref and _main_conversation_ref(parent) == ref
+                and noting_trigger_gate(child._session_db, ref)[0]
+            ):
+                result = compact_parent(
+                    parent,
+                    relevant_threshold_tokens=getattr(
+                        child, "_secretary_noting_compaction_threshold_tokens", None
+                    ),
+                )
+                child._secretary_noting_forced_compaction_status = result.status
+        except Exception:
+            logger.warning("Forced Noting parent compaction request failed", exc_info=True)
+    outcome.status = "completed"
+    outcome.error = None
+
+
 def _run_child_turns(
     child: Any, prefix: List[Dict[str, Any]], wrapper: str, runtime_profile: str,
     outcome: NotingTaskOutcome,
 ) -> None:
-    """One complete Turn for NOTING; bounded same-child continuation for the special profile."""
-    history: Any = prefix
-    limit = _NOTING_CONTINUATION_LIMIT + 1 if runtime_profile == "NOTING_WITH_COMPACTION" else 1
-    while outcome.turns < limit:
+    """Run one persistent child for at most five complete Turns (M27)."""
+    history: Any = [_clone_message(message) for message in prefix]
+    from secretary.noting_tools import noting_tool_control_message
+
+    while outcome.turns < _NOTING_TURN_LIMIT:
         outcome.turns += 1
         result = child.run_conversation(
             user_message=wrapper, conversation_history=history, title_user_message="",
         )
         if not _turn_completed(result):
-            outcome.status, outcome.error = "failed", str(result.get("turn_exit_reason") if isinstance(result, dict) else result)
-            return
-        if runtime_profile != "NOTING_WITH_COMPACTION":
-            outcome.status = "completed"
+            outcome.status = "failed"
+            outcome.error = str(
+                result.get("turn_exit_reason") if isinstance(result, dict) else result
+            )
             return
         if getattr(child, "_secretary_noting_terminal_action_done", False) is True:
             outcome.status = "completed"
             return
-        wrapper = _NOTING_CONTINUATION_MESSAGE
-        history = list(getattr(child, "_session_messages", None) or [])
-        if not history:  # a Turn that persisted nothing cannot be continued safely
-            break
-    outcome.status, outcome.error = "terminal_failure", "terminal action was not admitted within the bound"
-    logger.warning("Noting task %s ended without its terminal action", outcome.child_session_id)
+        if outcome.turns >= _NOTING_TURN_LIMIT:
+            _force_task_close(child, runtime_profile, outcome)
+            return
+        message = (
+            _COMPACTION_CONTINUATION_MESSAGE
+            if runtime_profile == "NOTING_WITH_COMPACTION"
+            else _ORDINARY_CONTINUATION_MESSAGE
+        )
+        wrapper = message + "\n\n" + noting_tool_control_message(runtime_profile)
+        history = _continuation_history(child, prefix)
+        if not history:
+            outcome.status, outcome.error = "failed", "Noting continuation history is unavailable"
+            return
 
 
 def _commit_when_complete(
@@ -513,12 +586,16 @@ def _commit_when_complete(
         outcome.status, outcome.error = "failed", f"Notebook state unavailable: {exc}"
         return
     if state is None:
-        outcome.status, outcome.error = "failed", "The completed Turn performed no Notebook read or semantic work"
+        outcome.status, outcome.error = "failed", "The completed Noting task has no legal Notebook working state"
+        return
+    termination = getattr(child, "_secretary_noting_termination", None)
+    if not isinstance(termination, dict):
+        outcome.status, outcome.error = "failed", "The completed Noting task has no termination audit"
         return
     try:
         outcome.snapshot_id = commit_noting_snapshot(
             parent_db, conversation_ref, state, anchor_message_uid=anchor_message_uid,
-            trigger_type=trigger_type, runtime_profile=runtime_profile,
+            trigger_type=trigger_type, runtime_profile=runtime_profile, termination=termination,
         )
         outcome.committed = True
     except Exception as exc:

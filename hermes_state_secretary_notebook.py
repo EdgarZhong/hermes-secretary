@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS secretary_notebook_snapshots (
     trigger_type TEXT NOT NULL,
     runtime_profile TEXT NOT NULL,
     payload_json TEXT NOT NULL,
+    termination_json TEXT,
     created_at REAL NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_secretary_snapshot_conversation
@@ -50,8 +51,9 @@ _SNAPSHOT_CANDIDATES_SQL = (
 _SNAPSHOT_BY_ID_SQL = "SELECT * FROM secretary_notebook_snapshots WHERE snapshot_id = ?"
 _INSERT_SNAPSHOT_SQL = (
     "INSERT INTO secretary_notebook_snapshots "
-    "(snapshot_id, conversation_ref, anchor_message_uid, trigger_type, runtime_profile, payload_json, created_at) "
-    "VALUES (?, ?, ?, ?, ?, ?, ?)"
+    "(snapshot_id, conversation_ref, anchor_message_uid, trigger_type, runtime_profile, "
+    "payload_json, termination_json, created_at) "
+    "VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
 )
 _POINTER_UPSERT_SQL = (
     "INSERT INTO secretary_notebook_pointer (conversation_ref, current_snapshot_id) VALUES (?, ?) "
@@ -65,10 +67,17 @@ _LOCAL_STATE_UPSERT_SQL = (
 
 
 def init_secretary_notebook_schema(cursor):
-    """Execute statement-by-statement, preserving the caller's transaction."""
+    """Execute statement-by-statement and migrate the Secretary-owned audit column in place."""
     for statement in SECRETARY_NOTEBOOK_SCHEMA_SQL.split(";"):
         if statement.strip():
             cursor.execute(statement)
+    columns = {row[1] for row in cursor.execute(
+        "PRAGMA table_info(secretary_notebook_snapshots)"
+    ).fetchall()}
+    if "termination_json" not in columns:
+        cursor.execute(
+            "ALTER TABLE secretary_notebook_snapshots ADD COLUMN termination_json TEXT"
+        )
 
 
 class NotebookError(ValueError):
@@ -87,6 +96,29 @@ def _complete_state(state):
     return deepcopy(state)
 
 
+def _termination_json(termination):
+    """Validate and serialize audit-only termination metadata; None preserves legacy Snapshots."""
+    if termination is None:
+        return None
+    if not isinstance(termination, dict):
+        raise NotebookError("Snapshot termination audit must be an object")
+    kind = termination.get("type")
+    if kind == "finish_noting":
+        if set(termination) != {"type", "reason"}:
+            raise NotebookError("finish_noting termination requires exactly type and reason")
+        reason = termination.get("reason")
+        if not isinstance(reason, str) or not reason.strip():
+            raise NotebookError("finish_noting termination requires a nonempty reason")
+        value = {"type": "finish_noting", "reason": reason.strip()}
+    elif kind in {"compact_parent", "forced"}:
+        if set(termination) != {"type"}:
+            raise NotebookError(f"{kind} termination accepts no extra fields")
+        value = {"type": kind}
+    else:
+        raise NotebookError("Unknown Snapshot termination type")
+    return json.dumps(value, ensure_ascii=False, sort_keys=True)
+
+
 def _snapshot_record(row):
     return {
         "snapshot_id": row["snapshot_id"],
@@ -99,6 +131,14 @@ def _snapshot_record(row):
         "payload": json.loads(row["payload_json"]),
         "created_at": row["created_at"],
     }
+
+
+def _snapshot_audit_record(row):
+    """Internal-only projection: ordinary Notebook surfaces intentionally never call this."""
+    record = _snapshot_record(row)
+    raw = row["termination_json"] if "termination_json" in row.keys() else None
+    record["termination"] = json.loads(raw) if raw else None
+    return record
 
 
 def _rebind_source_identities(payload, conversation_ref):
@@ -182,7 +222,7 @@ class SecretaryNotebookMixin:
     # ── Committing one immutable Snapshot (02 §3.3, §5.10, §6.16) ──────────
 
     def notebook_commit_snapshot_conn(self, conn, conversation_ref, state, *, anchor_message_uid,
-                                      trigger_type="idle", runtime_profile="NOTING"):
+                                      trigger_type="idle", runtime_profile="NOTING", termination=None):
         """Revalidate the frozen Anchor, INSERT one Snapshot and re-derive the pointer here."""
         self._notebook_require_conversation_conn(conn, conversation_ref)
         if not self.notebook_local_enabled_conn(conn, conversation_ref):
@@ -206,10 +246,11 @@ class SecretaryNotebookMixin:
             payload_json = json.dumps(payload, ensure_ascii=False, sort_keys=True)
         except (TypeError, ValueError) as exc:
             raise NotebookError("Notebook state must be JSON-serializable") from exc
+        termination_json = _termination_json(termination)
         snapshot_id = "snap_" + uuid.uuid4().hex
         conn.execute(_INSERT_SNAPSHOT_SQL, (
             snapshot_id, conversation_ref, anchor_message_uid, trigger_type, runtime_profile,
-            payload_json, time.time(),
+            payload_json, termination_json, time.time(),
         ))
         # An earlier Anchor's late Snapshot stays committed while the pointer keeps the newer one.
         self._notebook_reselect_pointer_conn(conn, conversation_ref)
@@ -241,7 +282,9 @@ class SecretaryNotebookMixin:
             conn.execute(_INSERT_SNAPSHOT_SQL, (
                 "snap_" + uuid.uuid4().hex, branch_conversation_ref, source["anchor_message_uid"],
                 source["trigger_type"], source["runtime_profile"],
-                json.dumps(payload, ensure_ascii=False, sort_keys=True), source["created_at"],
+                json.dumps(payload, ensure_ascii=False, sort_keys=True),
+                source["termination_json"] if "termination_json" in source.keys() else None,
+                source["created_at"],
             ))
         snapshot_id = self._notebook_reselect_pointer_conn(conn, branch_conversation_ref)
         from secretary.schedules import inherit_runtime_conn
@@ -270,10 +313,20 @@ class SecretaryNotebookMixin:
     # ── Convenience wrappers (own connection) ──────────────────────────────
 
     def notebook_commit_snapshot(self, conversation_ref, state, *, anchor_message_uid,
-                                 trigger_type="idle", runtime_profile="NOTING"):
+                                 trigger_type="idle", runtime_profile="NOTING", termination=None):
         return self._execute_write(lambda conn: self.notebook_commit_snapshot_conn(
             conn, conversation_ref, state, anchor_message_uid=anchor_message_uid,
-            trigger_type=trigger_type, runtime_profile=runtime_profile))
+            trigger_type=trigger_type, runtime_profile=runtime_profile, termination=termination))
+
+    def notebook_snapshot_audit_conn(self, conn, snapshot_id):
+        row = conn.execute(_SNAPSHOT_BY_ID_SQL, (snapshot_id,)).fetchone()
+        if row is None:
+            return None
+        return _snapshot_audit_record(row)
+
+    def notebook_snapshot_audit(self, snapshot_id):
+        with self._read_ctx() as conn:
+            return self.notebook_snapshot_audit_conn(conn, snapshot_id)
 
     def notebook_current(self, conversation_ref):
         with self._read_ctx() as conn:

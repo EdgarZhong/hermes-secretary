@@ -181,6 +181,11 @@ def _notebook_mutate(agent, args: dict, ctx: InlineToolContext) -> Any:
     return notebook_mutate(agent, args)
 
 
+def _finish_noting(agent, args: dict, ctx: InlineToolContext) -> Any:
+    from secretary.noting_tools import finish_noting
+    return finish_noting(agent, args)
+
+
 def _memory(agent, args: dict, ctx: InlineToolContext) -> Any:
     result = _call_tool(
         "tools.memory_tool", "memory_tool", args,
@@ -291,6 +296,7 @@ _RAW_INLINE_TOOL_EXECUTORS: Dict[str, InlineToolExecutor] = {
     "session_history": _session_history,
     "notebook_show": _notebook_show,
     "notebook_mutate": _notebook_mutate,
+    "finish_noting": _finish_noting,
     "compact_parent": _compact_parent,
     "memory": _memory,
     "clarify": _tool(

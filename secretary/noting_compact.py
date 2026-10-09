@@ -78,6 +78,7 @@ def compact_parent_from_child(child: Any) -> str:
     result = compact_parent(parent, relevant_threshold_tokens=getattr(child, "_secretary_noting_compaction_threshold_tokens", None))
     if result.ok:
         child._secretary_noting_terminal_action_done = True
+        child._secretary_noting_termination = {"type": "compact_parent"}
     return result.as_tool_result()
 
 
