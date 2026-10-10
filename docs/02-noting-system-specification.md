@@ -1123,6 +1123,8 @@ Only main Turns affect this timer. Noting Turns, delegate/subagent Turns, backgr
 
 Foreground is consulted only after a Trigger exists, to resolve and freeze the Anchor.
 
+**The Idle Trigger is a timer event, not a scan.** It is armed from the main Turn lifecycle (`turn_finished_at` + `idle_delay_seconds`) and cancelled/re-armed when the next main Turn starts. One idle period produces **exactly one** Idle Trigger, so the Foreground is consulted at most once per idle period. A periodic poll, due-scan, or host tick must **not** re-synthesize the Idle Trigger for an idle period whose deadline has already produced a Trigger (or whose Anchor has already been through §4.8 admission); repeatedly synthesizing Triggers so that each tick re-freezes the Anchor and records an attempt is a mechanism-shape violation, not an implementation detail. Re-evaluating an already-elapsed delay happens only as **catch-up**: when a runtime attaches to or resumes the Conversation after the deadline has passed and no Trigger was produced for it. This requirement is independent of any host's tick cadence — a host that polls for unrelated reasons does not thereby acquire the right to re-emit the Idle Trigger — and it does not replace the §4.8 admission pipeline, which remains unchanged.
+
 ## 4.6 Force Noting threshold
 
 Force does not copy Hermes's Auto Compaction threshold calculator. It consumes two already-resolved Hermes values:
@@ -1480,7 +1482,20 @@ role = user
 
 Their meaning comes from a complete XML-like wrapper. V1 does not add `_secretary_kind`, a special `display_kind`, or a new provider role for these carriers.
 
-### Real user-message timestamp
+### Reminder naming (V1.5)
+
+The two Reminder delivery semantics are named **`instant`** and **`deferred`**:
+
+- **instant** — delivered at its due moment, and its delivery *is* a user-message submission (so it can start a Turn);
+- **deferred** — not delivered at its due moment; it is inserted when the Conversation is next active, and it never starts a Turn.
+
+These names replace the earlier `user_reminder` / `system_reminder` identifiers. Remaining occurrences of the old names elsewhere in this document are the pending rename, not a second mechanism.
+
+### Timestamp marker: scope and meaning
+
+The `<timestamp>` marker is produced **only by the user-message submission path**: a genuine user input, and an **instant** Reminder delivery (which is submitted as a user message). No other carrier — deferred Reminder, Framework Message (which is also how the Force notice is delivered), or the Noting Task transition row — is given a timestamp wrapper by code.
+
+The marker's value is **the moment the message entered the AI's context** (for a user message, its arrival/persistence moment). It is therefore always aligned with the observation order in which the model reads it, and the sequence of markers is monotonic by construction. A source-event time that differs from that entry moment — a Reminder's due time, a Framework Message's production time — is **not** a timestamp and must never be carried in this marker; if such a time needs to be visible, it belongs to the message's **content**, decided when that content is composed.
 
 Every genuine user input exposed to the model begins with one timestamp marker line, without wrapping the whole user message:
 
@@ -1495,7 +1510,8 @@ The timestamp:
 - is visible to the model;
 - may be stripped/hidden by normal UI presentation;
 - is preserved in durable content so history/replay can recover it;
-- should reuse Hermes's existing message timestamp source rather than create a second clock/source of truth.
+- reuses Hermes's existing message timestamp source rather than creating a second clock/source of truth;
+- is written once, when the message enters the context; retry, replay and re-delivery never re-mint it, and there is no source-event time for it to preserve.
 
 ### Noting Task transition/control message
 
@@ -1504,56 +1520,114 @@ The first Noting-owned durable transcript row is:
 ```json
 {
   "role": "user",
-  "content": "<noting-task>\n<timestamp>...</timestamp>\n...task instruction...\n</noting-task>"
+  "content": "<noting-task>\n...task instruction...\n</noting-task>"
 }
 ```
 
-The opening and closing tags are both present, and the timestamp is the first line inside the wrapper.
+The opening and closing tags are both present. This carrier carries **no timestamp marker**: it is neither a user message nor an instant Reminder delivery, and its admission time is bookkeeping rather than a message timestamp.
 
 There is no Secretary `role=system` Noting transition row and no second root System Prompt. The inherited Parent root prompt remains the root prompt.
 
-### System Reminder
+### Deferred Reminder
 
-System Reminder is a request-only synthetic carrier:
-
-```json
-{
-  "role": "user",
-  "content": "<system-reminder>\n<timestamp>...</timestamp>\n...reminder content...\n</system-reminder>"
-}
-```
-
-The timestamp is the first line inside the wrapper.
-
-The carrier itself is not persisted as an ordinary durable main-Conversation transcript row. The durable source is Secretary pending Reminder state. Delivery/retry preserves the original source-event timestamp rather than minting a new timestamp on every attempt.
-
-### User Reminder
-
-User Reminder is an active synthetic conversational input:
+Deferred Reminder is an in-Conversation synthetic carrier, and it is a **durable transcript row exactly like any other message** in the Conversation:
 
 ```json
 {
   "role": "user",
-  "content": "<user-reminder>\n<timestamp>...</timestamp>\n...reminder content...\n</user-reminder>"
+  "content": "<deferred-reminder>\n...reminder content...\n</deferred-reminder>"
 }
 ```
 
-The timestamp is the first line inside the wrapper.
+This carrier carries **no timestamp marker** (see the scope rule above): it is delivered later than its due moment, so a timestamp could not be aligned with the model's observation order. If the content must say when the occurrence was due, that is composed into the content itself, as an ordinary statement rather than a timestamp.
 
-When idle admission succeeds, the User Reminder becomes a normal durable user row in the main Conversation. When the main Conversation is busy, it is not first persisted as a future User Reminder Turn; the busy gate converts it into pending System Reminder delivery instead.
+The carrier **is persisted in the main Conversation transcript**; it is not a request-only construct. It is written once per source occurrence — delivery retry, repeated request assembly, and replay must never create a duplicate row — and, like every other durable message, it is both part of the Conversation's durable history and present in the model request built from that history.
 
-Retry or route resolution does not change the original Reminder timestamp.
+The persisted row carries presentation metadata so that the Conversation UI (TUI / web chat) and the CLI transcript render it as a timeline event line; the raw `<system-reminder>` wrapper is not shown to the user. "Visible in the Conversation UI" and "delivered as a platform/channel message" are two different things: this carrier does only the former and performs **no channel or platform delivery**.
+
+Secretary pending Reminder state remains the source of truth for due/claim/ACK bookkeeping; it does not replace the transcript row. Because this carrier has no timestamp marker, delivery and retry carry no time value to preserve or re-mint.
+
+**Delivery timing.** A pending System Reminder is materialized into the transcript **only while the Conversation is active** — inside the runtime's request path for a real main Turn, at the point where that Turn's message list is still being prepared (before the provider request copy is assembled). It is never appended onto an already-built request copy, and a scheduler tick that finds no running Turn never materializes anything: the occurrence simply stays pending, with no transcript row, until a real Turn arrives.
+
+**Consumption.** An occurrence is acknowledged — and its pending state released — only when the row it produced **was actually carried in a request that received a provider response**. A failed request, or a request from which the row was dropped or compacted away, leaves the occurrence pending (at-least-once); the row itself is already durable and is never rewritten. A row permanently retired from durable history by compaction is settled as terminated rather than waiting for an acknowledgement that can never arrive. Secretary must therefore observe what the request actually carries rather than assuming that materializing a row is the same thing as delivering it.
+
+### Instant Reminder
+
+Instant Reminder is delivered by submitting a user message:
+
+```json
+{
+  "role": "user",
+  "content": "<instant-reminder>\n<timestamp>...</timestamp>\n...reminder content...\n</instant-reminder>"
+}
+```
+
+Because delivery is a user-message submission, this carrier receives the **user-message timestamp marker** (scope rule above): the marker is the moment of entry, and the Reminder's due moment coincides with it. Its wrapper tag is **`<instant-reminder>`**.
+
+When idle admission succeeds, the Instant Reminder becomes a normal durable user row in the main Conversation. When the main Conversation is busy, it is not first persisted as a future Instant Reminder Turn; the busy gate converts it into **deferred** delivery instead.
+
+The timestamp is written once at entry and is never re-minted by retry or route resolution. If the content also states the original due time, that statement is content — not a timestamp.
+
+### Framework Message
+
+A Framework Message is a message produced by the **runtime framework itself**, written through a **runtime-internal interface**: it exists only while a runtime owns the Conversation. There is no external producer API, no out-of-process write path and no owner lookup — an event with no runtime running does not and cannot produce a Framework Message.
+
+A Framework Message is **not a Reminder**: it has no Schedule, no pending state and no delivery acknowledgement. Writing one is a **dual write performed by the runtime itself** — append the row to the Conversation's live message list and persist that same row — so the transcript row and the live context are one write, never reconciled later by a read.
+
+```json
+{
+  "role": "user",
+  "content": "<framework-message>\n...message body...\n</framework-message>"
+}
+```
+
+A Framework Message carries **no timestamp marker** (scope rule above). If the content needs to state when the event was produced, that is composed into the body as an ordinary statement — never as a timestamp.
+
+**Write timing.** Two cases, and only two:
+
+- **No Turn is running** — the runtime writes immediately. The user sees the row at once, it is part of the durable transcript at the tail, and the next Turn's request carries it naturally.
+- **A Turn is running** — the write is deferred to the end of that Turn and then performed at the durable tail. The user seeing it, the model receiving it from the next Turn, and the database append are one synchronized act, so no partially visible or illegitimately positioned row ever exists.
+
+A Framework Message never starts or resumes a Turn.
+
+**Producers.** The Framework Message mechanism exists for exactly this purpose. Two producers exist today:
+
+- **Noting Task Finish Notice** — every Noting Task, whatever its runtime profile (ordinary `NOTING`, `NOTING_WITH_COMPACTION`, forced close) and whatever triggered it (Idle Trigger, Force, catch-up), posts exactly one **Noting Task Finish Notice** back to its **parent** Conversation when the task finishes. All Noting Task Finish Notices are Framework Messages, and the name is written out in full.
+- **Force notice** — likewise delivered as a Framework Message.
+
+A Framework Message is written to the parent Conversation's transcript, never to the Noting child's own session.
+
+**Compaction is the one case that can swallow a tail append.** The Noting child requests parent compaction as its terminal action, but that call proves only *admission*; the parent's compression commit can still be in flight when the Snapshot commit runs, and a row appended at that moment would fall inside the window that compaction is about to rewrite. Posting a completion Framework Message is therefore **fence-aware**: while the parent has a live `_active_compression_commit_fence`, the append is deferred until that fence clears and then performed at the tail. This is the same "the host is busy, defer" rule the carrier already follows, with the compaction commit fence as the busy signal for this producer.
+
+### Carrier content (unspecified)
+
+For every synthetic carrier this specification fixes only its **shape**: `role`, wrapper tag, whether a timestamp marker is present, and ordering. **What a carrier's content should actually say is not specified** — it remains open, and is deliberately left to the authoring site instead of being frozen here.
+
+| Carrier | Wrapper tag | Timestamp marker | Content |
+|---|---|---|---|
+| Noting Task transition/control message | `<noting-task>` | none | **unspecified** |
+| Instant Reminder | `<instant-reminder>` | yes (user-message path) | **unspecified** |
+| Deferred Reminder | `<deferred-reminder>` | none | **unspecified** |
+| Framework Message | `<framework-message>` | none | **unspecified** |
+
+A **Noting Task Finish Notice** and a **Force notice** are not separate carriers: both are Framework Messages, delivered through the `<framework-message>` wrapper above. They are producers of Framework Messages, not additional wrapper families.
+
+A reader must therefore not infer any required wording, field layout or phrasing from the examples in this section: those examples show the wrapper, not a content contract.
+
+**Ordering invariant.** A Framework Message is only ever appended **at the durable tail**; it is never inserted into the middle of the sequence. Position is write order alone, and because the carrier has no timestamp marker, no time value can contradict the order in which the model reads it. This is what keeps the prompt-cache prefix and the replayed prefix byte-stable.
+
+**Crash boundary.** A message produced while a Turn is running is held in memory until that Turn ends; if the process dies before then, that message is lost. Framework Messages are **at-most-once by design**, and no durable pending state is introduced for them.
+
+The persisted row carries presentation metadata so that the Conversation UI (TUI / web chat) and the CLI transcript render it as a timeline event line; the raw wrapper is not shown to the user.
 
 ### Timestamp source semantics
 
-The timestamp represents the **source occurrence time** of the real or synthetic message:
+A timestamp exists **only on the user-message submission path**, and it always represents **the moment the message entered the AI's context**:
 
-- real user message -> user-message arrival/persistence time;
-- Noting Task -> Noting transition/admission creation time;
-- scheduled Reminder -> due/fire event time;
-- Force internal Reminder -> Force admission event time.
+- real user message -> its arrival/persistence moment, which is also the moment it enters the context;
+- instant Reminder delivery -> the delivery moment, which is also its due moment.
 
-Replay, retry, and request-time injection do not regenerate the source timestamp.
+Nothing else carries a timestamp. Deferred Reminder, Framework Message and the Noting Task transition row have **no timestamp marker** — and a Force notice, being a Framework Message, has none either; any time they must express (a due time, a production time, an admission time) is composed into their content as an ordinary statement. Because a timestamp is written once at entry, replay, retry and re-delivery have nothing to regenerate.
 
 ## 5.7 Tool surface
 
@@ -1922,17 +1996,18 @@ Acceptance must compare the complete inherited prefix at Hermes's actual request
 ## 6.17 Schedule / Reminder / timestamp acceptance
 
 - due `user_commitment`, `agent_task`, and `watchpoint` do not start a Turn;
-- idle `user_reminder` can start a new Turn through existing admission;
-- busy `user_reminder` becomes pending System Reminder rather than a second queued Turn;
-- pending System Reminder enters the next eligible main LLM request;
+- an idle **instant** Reminder can start a new Turn through existing admission;
+- a busy instant Reminder becomes a **deferred** Reminder rather than a second queued Turn;
+- a pending deferred Reminder enters the next eligible main LLM request;
 - a failed provider request does not lose the Reminder;
 - restart does not lose pending delivery;
 - Schedule off/on does not delete Schedule intent;
-- real user message uses a standalone `<timestamp>...</timestamp>` prefix line;
-- `<noting-task>`, `<system-reminder>`, and `<user-reminder>` place the timestamp as the first line inside the wrapper;
-- all three synthetic carriers use `role=user`;
+- a real user message uses a standalone `<timestamp>...</timestamp>` prefix line;
+- an instant Reminder delivery is a user-message submission and therefore carries that same marker (wrapper `<instant-reminder>`);
+- no other carrier carries a timestamp marker: `<noting-task>`, `<deferred-reminder>` and `<framework-message>` have none (a Force notice is a Framework Message, so it has none either);
+- all synthetic carriers use `role=user`;
 - there is no Secretary mid-conversation `role=system` carrier;
-- retry/replay does not rewrite the source occurrence timestamp.
+- the timestamp is written once, at entry, and is never re-minted; the marker never carries a source-occurrence time.
 
 ## 6.18 `/notebook` acceptance
 
