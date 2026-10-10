@@ -741,6 +741,28 @@ Conversation-local Noting on/off never adds or removes this tool, rewrites its s
 
 History Search is unaffected by this gate.
 
+### `noting_memo` (Noting Memo)
+
+`noting_memo` is the main Assistant's single sanctioned write channel toward Noting: a per-Conversation scratch pad — a real sticky note — telling the next Noting Task what must not be forgotten. It is the semantic exit for a Main that may read the Notebook but never mutates it, and that must not satisfy reminders/schedules through Hermes Cron (§3.8).
+
+One tool, four modes: `add`, `replace`, `delete`, `list`.
+
+**Identity and numbering.** Each entry's identity key is its index. Indices **start at 1** and increase by one. `add` assigns the next index automatically — the caller never passes it — and the result reports the created entry together with its index, e.g. `created: <content>, index=<n>`. After a `delete` or `replace`, indices are immediately re-compacted so they stay consecutive from 1.
+
+**Feedback shape.** `add` reports `created: <content>, index=<n>`. `replace` and `delete` return the complete current memo in exactly the `list` form, prefixed with one line `replaced: <previous content>` or `deleted: <previous content>` respectively, then the full current memo.
+
+**`list` view.** The memo renders as a Markdown ordered list (`1.`, `2.`, …), never raw JSON. `content` carries no format restriction, but should be written as one brief sentence. An empty memo renders exactly `No memo after last noting`.
+
+**Usage documentation.** One sentence is appended to the existing main-Conversation Noting system-prompt module, and one sentence to the tool description.
+
+**Persistence.** Memo entries persist in a Secretary-owned table added to the existing `state.db` (§3.1), one memo per Conversation (`secretary_noting_memo`): Conversation id, index, content, creation time, plus archive linkage.
+
+**Trigger guarantee.** An `add` guarantees exactly one Noting run for this Conversation — an explicit admission that same-anchor dedup (§4.8) must not skip. With Conversation-local Noting off, `add` still succeeds and turns Noting back on automatically; the tool feedback notes the auto-enable (CLAUDE.md P02). The current memo is handed to the Noting Task as part of its appended task/control instruction (a suffix declaration, never touching the frozen prefix); the child receives no separate memo tool.
+
+**Clearing and archival.** When a Noting Task commits its Snapshot, the memo is cleared automatically; a task that commits no Snapshot leaves the memo in place (failure preserves it). Clearing does not delete: the pre-clear memo is archived together with the very Snapshot that task produced — one archive group in which the Snapshot remains the current effective Notebook and the archived memo is no longer visible through the tool.
+
+**Visibility.** Only the main Assistant (its own Conversation's memo) and that Conversation's Noting Runtime see the memo. It is never part of Notebook Snapshot content and never appears in `notebook_show`.
+
 ## 3.6 Notebook inspection and Noting participation commands
 
 In an eligible user-facing main Conversation with global noting.enabled=true, the following slash forms are available:
@@ -801,6 +823,8 @@ The control surface supports at least:
 - Schedule-intent create / update / cancel.
 
 Each mutation returns the resulting complete AI-facing entry/state rather than a bare `OK`, so the Noting model can continue from the real state it just produced.
+
+Mutation validation errors must be diagnosable (V1.5, 2026-10-10): a rejected mutation reports the offending field names together with the allowed field set for the attempted entry type, so the model can correct the call without blind retries. Validation strictness itself is unchanged — fields outside an entry type's contract remain rejected, never silently accepted.
 
 The model does not write Snapshot tables directly and cannot forge mutable Schedule runtime fields.
 
@@ -1549,6 +1573,8 @@ Secretary pending Reminder state remains the source of truth for due/claim/ACK b
 
 **Delivery timing.** A pending System Reminder is materialized into the transcript **only while the Conversation is active** — inside the runtime's request path for a real main Turn, at the point where that Turn's message list is still being prepared (before the provider request copy is assembled). It is never appended onto an already-built request copy, and a scheduler tick that finds no running Turn never materializes anything: the occurrence simply stays pending, with no transcript row, until a real Turn arrives.
 
+**Batch injection.** When several deferred Reminders are due together, they are materialized in **one** injection — one row, not one row per Reminder. The row's content is a single leading sentence `以下提醒已到期。` followed by a JSON body listing the delivered occurrences. Each element is the source Notebook Schedule entry with one key remapped: its `schedule` field is resolved to the occurrence's **actual due moment** (ISO 8601) and carried under the key **`due_at`**; the schedule expression itself is not copied verbatim. Other entry fields (content, entry type, etc.) pass through as-is. The JSON body is the payload the model reads; it is not wrapped in a timestamp and needs no other prose.
+
 **Consumption.** An occurrence is acknowledged — and its pending state released — only when the row it produced **was actually carried in a request that received a provider response**. A failed request, or a request from which the row was dropped or compacted away, leaves the occurrence pending (at-least-once); the row itself is already durable and is never rewritten. A row permanently retired from durable history by compaction is settled as terminated rather than waiting for an acknowledgement that can never arrive. Secretary must therefore observe what the request actually carries rather than assuming that materializing a row is the same thing as delivering it.
 
 ### Instant Reminder
@@ -1592,8 +1618,8 @@ A Framework Message never starts or resumes a Turn.
 
 **Producers.** The Framework Message mechanism exists for exactly this purpose. Two producers exist today:
 
-- **Noting Task Finish Notice** — every Noting Task, whatever its runtime profile (ordinary `NOTING`, `NOTING_WITH_COMPACTION`, forced close) and whatever triggered it (Idle Trigger, Force, catch-up), posts exactly one **Noting Task Finish Notice** back to its **parent** Conversation when the task finishes. All Noting Task Finish Notices are Framework Messages, and the name is written out in full.
-- **Force notice** — likewise delivered as a Framework Message.
+- **Noting Task Finish Notice** — every Noting Task, whatever its runtime profile (ordinary `NOTING`, `NOTING_WITH_COMPACTION`, forced close) and whatever triggered it (Idle Trigger, Force, catch-up), posts exactly one **Noting Task Finish Notice** back to its **parent** Conversation when the task finishes. All Noting Task Finish Notices are Framework Messages, and the name is written out in full. A task that committed no Snapshot posts no Notice at all. The content is always exactly one sentence: `Background: notebook updated at <snapshot commit time>`, where the time is the committed Snapshot's own commit time.
+- **Force dispatch notice** — when Force admission succeeds, the runtime **immediately** posts one Framework Message announcing the dispatch. Its content is: `临近上下文上限，notebook 更新任务已派发。建议尽早压缩，并在此提示：compaction 时将本消息之后的内容重点保留。` The Force Task's own finish is announced by the normal Noting Task Finish Notice above. Force therefore produces **two** Framework Messages — one at admission, one at finish — never one combined message.
 
 A Framework Message is written to the parent Conversation's transcript, never to the Noting child's own session.
 
@@ -1601,14 +1627,15 @@ A Framework Message is written to the parent Conversation's transcript, never to
 
 ### Carrier content (unspecified)
 
-For every synthetic carrier this specification fixes only its **shape**: `role`, wrapper tag, whether a timestamp marker is present, and ordering. **What a carrier's content should actually say is not specified** — it remains open, and is deliberately left to the authoring site instead of being frozen here.
+For every synthetic carrier this specification fixes its **shape**: `role`, wrapper tag, whether a timestamp marker is present, and ordering. For the carriers whose content V1.5 (2026-10-10) has now fixed, the exact wording is specified below; the Noting Task transition/control message content remains **unspecified** (its task instruction is governed by 04 §4.4).
 
 | Carrier | Wrapper tag | Timestamp marker | Content |
 |---|---|---|---|
-| Noting Task transition/control message | `<noting-task>` | none | **unspecified** |
-| Instant Reminder | `<instant-reminder>` | yes (user-message path) | **unspecified** |
-| Deferred Reminder | `<deferred-reminder>` | none | **unspecified** |
-| Framework Message | `<framework-message>` | none | **unspecified** |
+| Noting Task transition/control message | `<noting-task>` | none | **unspecified** (04 §4.4 task instruction) |
+| Instant Reminder | `<instant-reminder>` | yes (user-message path) | the Reminder's own text; no fixed wording |
+| Deferred Reminder | `<deferred-reminder>` | none | `以下提醒已到期。` + a JSON body (batch form below) |
+| Framework Message — Noting Task Finish Notice | `<framework-message>` | none | exactly `Background: notebook updated at <snapshot commit time>` |
+| Framework Message — Force dispatch notice | `<framework-message>` | none | exactly `临近上下文上限，notebook 更新任务已派发。建议尽早压缩，并在此提示：compaction 时将本消息之后的内容重点保留。` |
 
 A **Noting Task Finish Notice** and a **Force notice** are not separate carriers: both are Framework Messages, delivered through the `<framework-message>` wrapper above. They are producers of Framework Messages, not additional wrapper families.
 
@@ -1640,6 +1667,7 @@ The main Conversation always has:
 When Main eligibility is proven and global noting.enabled=true, it additionally has (independent of the local background switch):
 
 - `notebook_show`, read-only, returning the complete AI-facing Notebook JSON.
+- `noting_memo` (§3.5), the per-Conversation sticky note whose `add` guarantees exactly one Noting run.
 
 The main Assistant never receives Notebook mutation tools.
 
@@ -2008,6 +2036,11 @@ Acceptance must compare the complete inherited prefix at Hermes's actual request
 - all synthetic carriers use `role=user`;
 - there is no Secretary mid-conversation `role=system` carrier;
 - the timestamp is written once, at entry, and is never re-minted; the marker never carries a source-occurrence time.
+- `noting_memo` indices start at 1 and re-compact to stay consecutive after delete/replace;
+- memo `add` returns the created content and its index; `replace`/`delete` return `replaced:`/`deleted:` plus the full Markdown-ordered current memo; an empty memo returns exactly `No memo after last noting`;
+- memo persists per Conversation in a Secretary-owned `state.db` table; Snapshot commit clears it and archives it with the just-committed Snapshot; a task committing no Snapshot leaves it untouched;
+- a memo `add` triggers exactly one Noting run (explicit admission, not deduped away) and succeeds with local Noting off by auto-enabling it, noted in the feedback;
+- Notebook mutation validation errors name the offending fields and the allowed set for the attempted entry type.
 
 ## 6.18 `/notebook` acceptance
 
