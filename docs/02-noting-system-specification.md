@@ -1877,7 +1877,7 @@ Background Noting maintains the Notebook asynchronously after interactions becom
 Persistence Candidates are only potential proposals recorded in the Notebook, not authorization to act. Never write them to Memory, Rules, or Skills without authorization. Persistence is permitted only after a proposal has been presented to the user and the user has explicitly authorized its execution.
 ```
 
-Target (approved 2026-10-11) — final paragraph order: **(1) role-first opening** (below, replaces "As a long-term personal assistant, ..."), **(2) "The Notebook provides..."**, **(3) "The Notebook has four sections..."**, **(4) "Persistence Candidates are only potential proposals..."** (moved up from its frozen slot), **(5) the merged Schedule+Background-Noting paragraph** (below), **(6) "Noting Memo and routing"** (last). Paragraphs (2)/(3)/(4) keep their frozen text verbatim; only their order changes.
+Target (approved 2026-10-11) — final paragraph order: **(1) role-first opening** (below, replaces "As a long-term personal assistant, ..."), **(2) "The Notebook provides..."**, **(3) "The Notebook has four sections..."**, **(4) "Persistence Candidates are only potential proposals..."** (moved up from its frozen slot), **(5) the merged Schedule+Background-Noting paragraph** (below), **(6) "Noting Memo and routing"** (last). Paragraphs (2)/(3)/(4) keep their frozen text verbatim except the fork-wide `agent_task` → `secretary_task` rename applied throughout; only their order changes.
 
 Opening (replaces "As a long-term personal assistant, ..."):
 

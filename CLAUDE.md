@@ -10,7 +10,7 @@
 
 ## 当前状态
 
-- **V1.5 轮次已收口（2026-10-11）**：本轮全部纠偏口径已并入 02 权威规格——新增 **§5.12 全量 prompt 冻结清单**（按代码归属逐条收录，Frozen/Target 双态，施工逐字对照）、**§3.3a 条目生命周期表**、archive 卸下语义、三工具拆分、secretary_task 改名＋delivery_mode、context_overflow、定时器机制、投递 ACK/M4 规则、anchor 判定（noting_run_output 标记）。冻结基线 `9052a28eb6` 及后续 02 补记提交。
+- **V1.5 轮次已收口（2026-10-11）**：本轮全部纠偏口径已并入 02 权威规格——新增 **§5.12 全量 prompt 冻结清单**（按代码归属逐条收录，Frozen/Target 双态，施工逐字对照）、**§3.3a 条目生命周期表**、archive 卸下语义、三工具拆分、secretary_task 改名＋delivery_mode、context_overflow、定时器机制、投递 ACK/M4 规则、anchor 判定（noting_run_output 标记）、History Search 截断规则。**V1.6 开工基线 = 本文件当前 HEAD（`ec4fc58057` 及最终审查提交）**，完整 docs 提交链见 git log（`14102ac85c` → 终）。
 - **V1.6 待开启**（用户 2026-10-11：不走 autonomous 自主实现流程，开启方式与时机待用户定）。施工清单与定案口径见下，全部依据现行 02。
 - 历史轮次索引（细节与流水在各索引与 git 历史中，本看板不复述）：V1 首轮 `.autonomous/20261007-v1-first-implementation/`；V1.5 文档准备 `20261008-v1.5-adjustment-and-acceptance/`；V1.5 实施与云端接续 `20261009-v1.5-implementation/`、`20261009-v1.5-cloud-resume/`。
 - 既有验证边界（V1.5 遗留，V1.6 收尾时重跑）：独立 Verification 未通过（含机制形状/时间语义检查项缺口）；官方 Dashboard Validation 未做（用户旁路体验）。
