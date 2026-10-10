@@ -340,6 +340,8 @@ The existing bounded time-range/history read remains available as well.
 
 The tool resolves compression continuation internally. The model does not need to reason about physical Session IDs.
 
+Every message returned by Search or Read carries its entry timestamp and its canonical `message_uid` as metadata — no row is ever returned without both. These two fields are exactly what let a found message serve as a candidate source reference.
+
 History Search is read-only. It does not access Web, filesystem, Memory/NM, other Conversations, or Full Foreground's Noting/compaction audit annotations.
 
 Both the main Assistant and the Noting Runtime use this same suite.
@@ -529,7 +531,7 @@ skill_candidate
 - why_reusable
 ```
 
-Every candidate carries provenance using one or more canonical Message Identities:
+Every candidate carries provenance in one of two forms — one or more canonical Message Identities:
 
 ```json
 {
@@ -542,7 +544,18 @@ Every candidate carries provenance using one or more canonical Message Identitie
 }
 ```
 
-At least one valid source Message Identity is required.
+or a bounded source time range:
+
+```json
+{
+  "source_time_range": {
+    "start_time": "<ISO timestamp>",
+    "end_time": "<ISO timestamp>"
+  }
+}
+```
+
+At least one of the two forms must be present and valid. Neither form is privileged over the other; use whichever the evidence supports. Message Identities are obtained from `session_history` results, whose rows carry `message_uid` and timestamps.
 
 V1.5 §6 and appendices A/C clarify that candidates are leads, not authority; /propose-persistence does not prefetch source text. The Main model retrieves source identities and surrounding/later evidence with session_history, proposes first, then executes only explicitly approved actions. Discussion/revision is not approval. Noting archives candidates only after confirmed execution, rejection or withdrawal, not proposal/approval alone.
 
@@ -576,7 +589,7 @@ Rules:
 
 The Noting child also records the Parent's current physical Session for runtime/persistence lineage, but that Session is not the semantic Anchor identity.
 
-**V1.5 Snapshot termination audit (V1.5 §4.7):** each newly committed immutable Snapshot carries separate audit-only `termination` metadata with exactly one of `finish_noting` (required model reason), `compact_parent` (model-initiated special-profile terminal succeeded), or `forced` (fifth Turn expired, even if framework fallback compaction succeeds). Store outside the four-section Notebook payload, preferably as a new column in the existing Secretary-owned Snapshot table, preserve metadata on branch inheritance, and leave legacy Snapshots' absent values honest. Neither normal `notebook_show`, human `/notebook`, nor their ordinary Main-AI-visible renderings may expose this audit record. It never affects Snapshot eligibility, Triggers or pointer ordering.
+**V1.5 Snapshot termination audit (V1.5 §4.7):** each newly committed immutable Snapshot carries separate audit-only `termination` metadata with exactly one of `finish_noting` (required model reason), `compact_parent` (model-initiated special-profile terminal succeeded), `forced` (fifth Turn expired, even if framework fallback compaction succeeds), or `context_overflow` (a Child request could no longer be assembled within the context budget — e.g. oversized History Search results — and the framework force-ended the task exactly like Turn exhaustion, §5.8). Store outside the four-section Notebook payload, preferably as a new column in the existing Secretary-owned Snapshot table, preserve metadata on branch inheritance, and leave legacy Snapshots' absent values honest. Neither normal `notebook_show`, human `/notebook`, nor their ordinary Main-AI-visible renderings may expose this audit record. It never affects Snapshot eligibility, Triggers or pointer ordering.
 
 ## 2.7 Conversation path changes
 
@@ -1698,7 +1711,7 @@ The Noting Runtime does not have access to:
 
 **Profile-specific terminal tool:** ordinary `NOTING` additionally has `finish_noting(reason)` with a required concise reason; `NOTING_WITH_COMPACTION` retains its existing zero-argument `compact_parent()` as the only normal task terminator and does not use finish_noting. Tool schemas are described in appended task/control messages, never inserted into frozen Parent top-level tools[]. Terminal tools do not themselves commit Snapshots.
 
-From the `<noting-task>` transition, the current permitted list and complete schemas are appended in task/control instructions, and repeated in subsequent new system-instruction/control messages, with an explicit instruction to use this list as authoritative. They permit only History Search/Notebook plus the specific profile's normal terminal tool (`finish_noting` for ordinary, `compact_parent` for special). The inherited Parent root, tool definitions and message prefix remain unchanged throughout the task; do not replace the top-level tools/schema to express the transition. Actual dispatch independently enforces the Noting whitelist, including rejection of forbidden Parent tools. Reuse Hermes native model/API/provider mechanisms without deeper routing changes. Observe cache reuse through Hermes request/response evidence; do not redesign the provider cache.
+From the `<noting-task>` transition, the current permitted list and complete schemas are appended in task/control instructions, and repeated in subsequent new system-instruction/control messages, with an explicit instruction to use this list as authoritative. The current Notebook state is appended right after these schemas, so the child starts from the actual Notebook without having to read it back first; no first-tool usage is imposed — the model chooses its own opening move. They permit only History Search/Notebook plus the specific profile's normal terminal tool (`finish_noting` for ordinary, `compact_parent` for special). The inherited Parent root, tool definitions and message prefix remain unchanged throughout the task; do not replace the top-level tools/schema to express the transition. Actual dispatch independently enforces the Noting whitelist, including rejection of forbidden Parent tools. Reuse Hermes native model/API/provider mechanisms without deeper routing changes. Observe cache reuse through Hermes request/response evidence; do not redesign the provider cache.
 
 ## 5.8 Runtime Profiles — V1.5 bounded goal-driven revision
 
@@ -1719,6 +1732,8 @@ A Noting Task remains a one-shot process-lifetime, non-restart-resumable durable
 ### Common boundary
 
 Normal terminal tool success or five-Turn force-end both lead to valid working state -> original Notebook/Anchor/enablement Commit Gate -> immutable Snapshot + atomic current pointer -> Child close. Remove the old `terminal_failure` behavior that discards state **solely for missing a terminal tool at the Turn ceiling**. Real failed/interrupted Turns, crashes, invalid Anchor or Notebook, and Commit Gate failures continue to refuse invalid commits. No parallel approval or subjective quality gate is added. Generic Hermes delegates remain single-Turn unless separately specified.
+
+If a Child request can no longer be assembled within the context budget (e.g. oversized History Search results push the request past the limit), the task **force-ends exactly like Turn exhaustion**: no further Turn is attempted, the framework attempts the existing Snapshot Commit Gate with the current valid Notebook state, termination is recorded as `context_overflow`, and the normal Noting Task Finish Notice still posts. Silently discarding the run with no Snapshot — breaking cross-compaction continuity — is not permitted; the resume/completion chain proceeds as for any force-ended task.
 
 
 ## 5.9 `compact_parent`
@@ -1988,6 +2003,8 @@ Cover at least:
 - Active, History, and Full Foreground are not conflated;
 - History Search remains available with Noting off;
 - History Search crosses compression continuation;
+- every Search/Read result row carries its entry timestamp and canonical `message_uid`;
+- candidate provenance accepts either source Message Identities or a bounded source time range (neither privileged);
 - rewind/edit-superseded rows are excluded;
 - Full Foreground can audit compaction boundary + Anchor + Snapshot;
 - a historical `/notebook` rendering is not treated by Noting as new user evidence.
@@ -2011,14 +2028,15 @@ Cover at least:
 - child transcript is auditable;
 - process crash does not resume the task;
 - actual failed/crashed task does not commit invalid state, but five-Turn force-end attempts a valid Snapshot commit;
-- the task and subsequent new control messages append authoritative History Search/Notebook schemas and the profile's specific finish_noting(reason) or compact_parent terminal schema; dispatch denies filesystem/Web/Memory/Skills/delegation and wrong-profile terminal tools;
+- the task and subsequent new control messages append authoritative History Search/Notebook schemas, with the current Notebook appended right after the schemas and no first-tool sequencing imposed; the profile's specific finish_noting(reason) or compact_parent terminal schema is included; dispatch denies filesystem/Web/Memory/Skills/delegation and wrong-profile terminal tools;
 - every tool-loop and continuation request retains the same complete frozen Parent root/tools/message prefix; no tool transition rewrites its head; actual cache-read counters are recorded from Hermes/provider responses;
 - model inheritance and API/provider execution reuse native Hermes; no Secretary-specific model route or App Server executor is added;
 - the main Assistant never mutates Notebook;
 - both profiles continue on the same child for no more than five Turns, with the correct profile-specific terminal tool and valid forced Snapshot close after the limit;
 - the special profile's forced close directly invokes Hermes native Parent compaction without a sixth Turn; compaction refusal does not independently bar Notebook commit;
-- committed Snapshot termination audit has exactly finish_noting(reason), compact_parent or forced; audit metadata never leaks into normal notebook_show, /notebook or Main AI context;
-- ordinary Noting focuses on Active Foreground/Notebook and selectively consults History;
+- a request that can no longer be assembled within the context budget force-ends like Turn exhaustion: the framework attempts the Commit Gate with the current valid state, termination is `context_overflow`, and the Noting Task Finish Notice still posts;
+- committed Snapshot termination audit has exactly finish_noting(reason), compact_parent, forced or context_overflow; audit metadata never leaks into normal notebook_show, /notebook or Main AI context;
+- the child reviews the whole visible frozen transcript as its working material and consults History selectively;
 - child auto-compaction is disabled.
 
 Acceptance must compare the complete inherited prefix at Hermes's actual request-assembly seam for the first request, at least two subsequent tool-loop requests, applicable retry and same-child continuation paths, and Parent concurrent activity/compaction. Verify that new tool lists/full schemas are in appended child instructions, that each new system-instruction/task-driving message repeats the authoritative declaration, and that forbidden Parent tools are denied by dispatch. A test that checks only first-request parity, or expects tools to be added to the request head after the first response, does not satisfy this contract. Provider cache-read evidence remains a separate real-observation requirement; prefix equality alone is not a measured cache hit.
