@@ -7,8 +7,8 @@
 | ID | 规格空白、Agent 的最小收敛及理由 | 影响范围与实施状态 | 用户确认 |
 |---|---|---|---|
 | P01（归类纠正） | **补齐现行规格，不属于新增自主口径**：`DEFAULT_NOTING_TASK_INSTRUCTION` 追加的 Active Foreground＋Notebook、按需 History、及时 terminal 四句，逐字来自已提交的现行 04 §4.4（HEAD 中行 245–249，M15/M27）。此前旁路看板误将其归类为未经确认的 Prompt 调优；本会话核对原文后纠正。此前用户“预览期间先保留”的记录保留，不扩写为新授权 | 产品代码与实际 sent task 断言未提交；独立 Verification V-001 指出漏实现，当前按冻结要求补齐 | 不需要新产品口径追认；如用户另行要求更改指导，按新修订处理 |
-| P02（Agent 自主收敛／待追认） | Noting Memo 在主会话 `/noting off` 时 add 的行为（规格空白）：按已定方向"写即保证触发一次 Noting"收敛为——工具照常接收、自动开启 Noting、工具反馈注明已自动开启 | 影响 memo 工具与 Noting 开关交互；未实施 | 待用户确认 |
-| P03（Agent 自主收敛／待追认） | memo 触发整理的 admission kind 名称（规格空白）：收敛为 `memo` | secretary 触发/admission 记录；未实施 | 待用户确认 |
+| P02（核心已确认） | memo 非空 ⇒ Noting 自动开启（用户 2026-10-10 原话"只要 memo 里面存在了东西，那么 noting 就应该自动打开"）：add 照常接收、自动开启、反馈注明；收敛细节：`/noting off` 仅 memo 空时生效，非空时不生效并反馈说明原因 | memo 工具与 Noting 开关交互；未实施 | 核心已确认；off 边界细节待追认 |
+| P03（Agent 自主收敛／待追认） | memo 触发的整理，其触发来源记录值（snapshot/审计里 trigger_type 一类分类，现有 idle/force）收敛为 `memo` | secretary 触发/审计记录；未实施 | 待用户确认 |
 
 ## 当前状态与恢复条件
 
