@@ -74,6 +74,7 @@
 ## 实现与代码规范
 
 - Hermes-first、复用优先、增量改造；遵循现有模块边界、公共接口、命名与代码风格。
+- **不启用即原生（增量不破坏原则，用户 2026-10-11 明确）**：除口径明确要求的变更外，所有 Secretary/Noting 改造必须保证 Hermes 在该功能未启用时（全局开关关闭、非 eligible 会话、纯原生使用场景）原有逻辑与功能完全不变、不被破坏——新机制一律以分支/旁路接入既有接缝，原生路径零行为变化；施工与验收以"未启用场景行为与原生一致"为硬约束，不得借改造之名改变未启用时的任何既有行为。
 - 保护每个 Conversation 的 prompt-cache prefix：不得在会话中途随意改写历史、切换工具面、重载记忆或重建 root System Prompt；压缩及已冻结的 Noting cache-parity 机制遵循各自契约。
 - 原有 facade / sibling 模块结构继续有效：行为放入对应 sibling，保持 facade 公共入口；避免模块级循环导入，在生产代码实际读取的接线点进行 patch。
 - 用户状态路径通过 `get_hermes_home()` 等 profile-aware helper 获取，不硬编码 `~/.hermes`；后台任务、tick、RPC、线程及子进程必须显式绑定所属 profile，不能使用启动 profile 代替目标 profile。
