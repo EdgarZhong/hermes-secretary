@@ -342,6 +342,8 @@ The tool resolves compression continuation internally. The model does not need t
 
 Every message returned by Search or Read carries its entry timestamp and its canonical `message_uid` as metadata — no row is ever returned without both. These two fields are exactly what let a found message serve as a candidate source reference. Because real user messages already carry their exact entry timestamps in the transcript (§5.6), the shortest path to evidence is usually a direct time-range read rather than a keyword search.
 
+**Result truncation (decided 2026-10-11).** Search never returns full bodies: any result row whose content exceeds a bounded per-row budget (~800 characters) is elided in place and marked truncated, and the row still carries its `message_uid`. Search has **no** parameter to force full bodies — retrieving a complete message is always a second, precise `read` by `message_uid`/`message_identity` (optionally with `before`/`after` context), which is the only path that returns complete bodies. This keeps a 20-row search result bounded while leaving full-text evidence one precise call away.
+
 History Search is read-only. It does not access Web, filesystem, Memory/NM, other Conversations, or Full Foreground's Noting/compaction audit annotations.
 
 Both the main Assistant and the Noting Runtime use this same suite.
@@ -581,6 +583,7 @@ Anchor = (conversation_ref, message_uid)
 Rules:
 
 - after a Trigger arrives, resolve the current Full Foreground head;
+- the Anchor is the last message whose `display_metadata` does **not** carry `{"noting_run_output": true}`; every Noting Task Finish Notice writes that marker, so it never advances the Anchor, while all other rows (async delegation completion, process completion, model switch, `auto_continue`, Force notices, deferred reminders, …) advance it exactly as before — no kind whitelist is consulted for this judgment;
 - freeze the Anchor before dispatching the child;
 - the Anchor must be an ordinary logical Message;
 - a Compaction Message cannot be an Anchor;
@@ -1185,6 +1188,8 @@ Foreground is consulted only after a Trigger exists, to resolve and freeze the A
 
 **The Idle Trigger is a timer event, not a scan.** It is armed from the main Turn lifecycle (`turn_finished_at` + `idle_delay_seconds`) and cancelled/re-armed when the next main Turn starts. One idle period produces **exactly one** Idle Trigger, so the Foreground is consulted at most once per idle period. A periodic poll, due-scan, or host tick must **not** re-synthesize the Idle Trigger for an idle period whose deadline has already produced a Trigger (or whose Anchor has already been through §4.8 admission); repeatedly synthesizing Triggers so that each tick re-freezes the Anchor and records an attempt is a mechanism-shape violation, not an implementation detail. Re-evaluating an already-elapsed delay happens only as **catch-up**: when a runtime attaches to or resumes the Conversation after the deadline has passed and no Trigger was produced for it. This requirement is independent of any host's tick cadence — a host that polls for unrelated reasons does not thereby acquire the right to re-emit the Idle Trigger — and it does not replace the §4.8 admission pipeline, which remains unchanged.
 
+**Timer mechanism (decided 2026-10-10).** Arming hangs on the existing main-Turn end seams (TUI `prompt_turn.py`, gateway `stream_consumer.py`, via the `secretary/noting_hosts.py` seam — no new scheduler): on Turn end compute `due_at = turn_finished_at + idle_delay_seconds` and arm a per-Conversation timer (registry + lock + daemon thread); a new main Turn cancels/re-arms it. When the timer fires it re-checks the persisted state (still idle? gates? already admitted?) and produces exactly one Trigger, then enters the unchanged §4.8 pipeline. While armed, the Conversation marks itself `due_at` so the session-cap reaper's ordering key becomes `(holds_pending_timer, last_active)` — armed Conversations are picked **last**, never absolutely exempt: under real memory pressure they are still reaped. Missed timers (process gone / asleep) are recovered only by the catch-up scan (`idle_candidates`), which never synthesizes periodic Triggers.
+
 ## 4.6 Force Noting threshold
 
 Force does not copy Hermes's Auto Compaction threshold calculator. It consumes two already-resolved Hermes values:
@@ -1612,6 +1617,8 @@ Secretary pending Reminder state remains the source of truth for due/claim/ACK b
 **Batch injection.** When several deferred Reminders are due together, they are materialized in **one** injection — one row, not one row per Reminder. The row's content is a single leading sentence `以下提醒已到期。` followed by a JSON body listing the delivered occurrences. Each element is the source Notebook Schedule entry with one key remapped: its `schedule` field is resolved to the occurrence's **actual due moment** (ISO 8601) and carried under the key **`due_at`**; the schedule expression itself is not copied verbatim. Other entry fields (content, entry type, etc.) pass through as-is. The JSON body is the payload the model reads; it is not wrapped in a timestamp and needs no other prose.
 
 **Consumption.** An occurrence is acknowledged — and its pending state released — only when the row it produced **was actually carried in a request that received a provider response**. A failed request, or a request from which the row was dropped or compacted away, leaves the occurrence pending (at-least-once); the row itself is already durable and is never rewritten. A row permanently retired from durable history by compaction is settled as terminated rather than waiting for an acknowledgement that can never arrive. Secretary must therefore observe what the request actually carries rather than assuming that materializing a row is the same thing as delivering it.
+
+**Injection seam and acknowledgement (decided 2026-10-10).** Materialization happens inside the runtime's request assembly, **before** `build_api_messages`, as one durable row entering the `messages` sequence — never appended onto an already-built request copy. Acknowledgement is two-phase: the row is pre-registered as in-flight before assembly, the assembled request is verified to still carry it, and only a provider response to a request that actually carried it acknowledges the occurrence; anything else leaves the occurrence pending for re-materialization, and the idempotency key must not prevent the same occurrence from landing again. If the current assembly turns out to be a compaction pass, materialization is refused for that pass — the occurrence stays pending and is retried on the same Turn's next assembly — so a freshly inserted row can never be swallowed by a compaction that runs right behind it.
 
 ### Instant Reminder
 
