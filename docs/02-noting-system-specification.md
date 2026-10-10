@@ -755,11 +755,13 @@ One tool, four modes: `add`, `replace`, `delete`, `list`.
 
 **Usage documentation.** One sentence is appended to the existing main-Conversation Noting system-prompt module, and one sentence to the tool description.
 
-**Persistence.** Memo entries persist in a Secretary-owned table added to the existing `state.db` (§3.1), one memo per Conversation (`secretary_noting_memo`): Conversation id, index, content, creation time, plus archive linkage.
+**Persistence.** Active memo entries persist in a Secretary-owned table added to the existing `state.db` (§3.1), one memo per Conversation (`secretary_noting_memo`): Conversation id, index, content, creation time.
 
 **What memo does — and does not do.** A memo entry never starts a Noting run by itself; it is not a Trigger source (Triggers remain exactly the two of §4.4 plus catch-up). Whenever the memo is non-empty, Conversation-local Noting stays on: `add` turns it back on automatically (the tool feedback notes the auto-enable), and `/noting off` takes effect only while the memo is empty — with a non-empty memo it does not apply and its feedback says why (CLAUDE.md P02, user-confirmed). The memo's actual role is context: the current memo is handed to the Noting Task as part of its appended task/control instruction (a suffix declaration, never touching the frozen prefix) the next time a Trigger admits one; the child receives no separate memo tool.
 
-**Clearing and archival.** When a Noting Task commits its Snapshot, the memo is cleared automatically; a task that commits no Snapshot leaves the memo in place (failure preserves it). Clearing does not delete: the pre-clear memo is archived together with the very Snapshot that task produced — one archive group in which the Snapshot remains the current effective Notebook and the archived memo is no longer visible through the tool.
+**Clearing and archival.** When a Noting Task commits its Snapshot, the memo is cleared automatically; a task that commits no Snapshot leaves the memo in place (failure preserves it). Clearing does not delete: the pre-clear memo is archived **under the same Anchor** as the Notebook Snapshot that task produced (§2.6, §3.3) — the Anchor is the shared key that links the pair as one archive group. From then on the archived memo is invisible: it is not carried into later Noting Tasks and cannot be seen through the tool; the group exists for audit only, while the Snapshot alone remains the current effective Notebook.
+
+The archive record (`secretary_noting_memo_archive`) carries its own audit metadata: Conversation id; the shared Anchor; the committed Snapshot id; the memo entries as JSON (each keeping its original index, content and creation time); the entry count; the clearing task's trigger type and runtime profile; and the archival time.
 
 **Visibility.** Only the main Assistant (its own Conversation's memo) and that Conversation's Noting Runtime see the memo. It is never part of Notebook Snapshot content and never appears in `notebook_show`.
 
@@ -2038,7 +2040,7 @@ Acceptance must compare the complete inherited prefix at Hermes's actual request
 - the timestamp is written once, at entry, and is never re-minted; the marker never carries a source-occurrence time.
 - `noting_memo` indices start at 1 and re-compact to stay consecutive after delete/replace;
 - memo `add` returns the created content and its index; `replace`/`delete` return `replaced:`/`deleted:` plus the full Markdown-ordered current memo; an empty memo returns exactly `No memo after last noting`;
-- memo persists per Conversation in a Secretary-owned `state.db` table; Snapshot commit clears it and archives it with the just-committed Snapshot; a task committing no Snapshot leaves it untouched;
+- memo persists per Conversation in a Secretary-owned `state.db` table; Snapshot commit clears it and archives it **under the same Anchor** as the just-committed Snapshot (archive record carries its own metadata: entries, trigger type, archival time); a task committing no Snapshot leaves it untouched; archived memos are invisible to later tasks and to the tool (audit-only);
 - memo entries never start a Noting run (Triggers remain §4.4's two plus catch-up); the current memo is carried into the next admitted Noting Task's appended task/control instruction;
 - a non-empty memo keeps Noting on (an `add` auto-enables with feedback, noted) and `/noting off` applies only while the memo is empty;
 - Notebook mutation validation errors name the offending fields and the allowed set for the attempted entry type.
