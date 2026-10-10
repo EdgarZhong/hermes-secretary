@@ -340,7 +340,7 @@ The existing bounded time-range/history read remains available as well.
 
 The tool resolves compression continuation internally. The model does not need to reason about physical Session IDs.
 
-Every message returned by Search or Read carries its entry timestamp and its canonical `message_uid` as metadata — no row is ever returned without both. These two fields are exactly what let a found message serve as a candidate source reference.
+Every message returned by Search or Read carries its entry timestamp and its canonical `message_uid` as metadata — no row is ever returned without both. These two fields are exactly what let a found message serve as a candidate source reference. Because real user messages already carry their exact entry timestamps in the transcript (§5.6), the shortest path to evidence is usually a direct time-range read rather than a keyword search.
 
 History Search is read-only. It does not access Web, filesystem, Memory/NM, other Conversations, or Full Foreground's Noting/compaction audit annotations.
 
