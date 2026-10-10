@@ -745,7 +745,7 @@ History Search is unaffected by this gate.
 
 `noting_memo` is the main Assistant's single sanctioned write channel toward Noting: a per-Conversation scratch pad — a real sticky note — telling the next Noting Task what must not be forgotten. It is the semantic exit for a Main that may read the Notebook but never mutates it, and that must not satisfy reminders/schedules through Hermes Cron (§3.8).
 
-One tool, four modes: `add`, `replace`, `delete`, `list`.
+One tool with a single `operation` parameter — the same operation concept and parameter name as `notebook_mutate` — taking four values: `add`, `replace`, `delete`, `list`.
 
 **Identity and numbering.** Each entry's identity key is its index. Indices **start at 1** and increase by one. `add` assigns the next index automatically — the caller never passes it — and the result reports the created entry together with its index, e.g. `created: <content>, index=<n>`. After a `delete` or `replace`, indices are immediately re-compacted so they stay consecutive from 1.
 
