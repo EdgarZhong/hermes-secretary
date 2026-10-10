@@ -138,6 +138,7 @@ npm run --workspace apps/desktop check
 | Notebook / Noting 实现规格 | Identity、History、Notebook、Noting、Schedule、Reminder 的权威契约 | [docs/02-noting-system-specification.md](docs/02-noting-system-specification.md) |
 | 协作规则 | 用户规则、冻结约定、上游干扰隔离、文档保护和开发测试 SOP | [AGENTS.md](AGENTS.md) |
 | 当前阶段 | 当前目标、任务看板、已确认口径和验证状态 | [CLAUDE.md](CLAUDE.md) |
+| 上下文开销记录 | 产品改动的 LLM 上下文开销基线与变更记录（token 实测口径与台账） | [docs/05-context-cost-ledger.md](docs/05-context-cost-ledger.md) |
 | 首轮状态记录 | 实际交付、独立审查、未验收范围与移交项 | [.autonomous/20261007-v1-first-implementation/final-delivery.md](.autonomous/20261007-v1-first-implementation/final-delivery.md) |
 | V1.5 实施权威规格 | 增量修订与继承矩阵、Foreground、Prompt/工具门禁、提案和验收；§4.5 D01定稿唯一Native/External执行来源门禁，§4.6–§4.7定稿多Turn终止与审计 | [docs/04-hermes-secretary-v1.5-implementation-spec.md](docs/04-hermes-secretary-v1.5-implementation-spec.md) |
 | 1.5 实施冻结索引 | 本次自主实施的四类依据、授权口径与冻结权限 | [.autonomous/20261009-v1.5-implementation/index.md](.autonomous/20261009-v1.5-implementation/index.md) |
