@@ -27,13 +27,14 @@
 | R0 | V1.5 遗留门禁缺口 | 旧 Verification 未通过，Dashboard 未执行 | 必须，不能施工代替验收 | root/T5 | 当前版两门禁关闭 | 待收尾 |
 | R1 | 02 §5.6 Framework 已排队后 Turn 结束前关闭 Noting | flush 依赖 Idle recorded 和再次 effective gate，可能丢已准入生产的通知 | 集成正确性 | timers/delivery | timers/framework-off-race.log 3/3；已有队列尾部双写同 UID，空队列无新调用；root复核接收 | 已关闭 |
 | R2 | 02 §2.6 Anchor仅排 Finish marker及Compaction | 旧role=system排除阻止真实普通System事件推进Anchor | 接线正确性 | root/storage | root已复核foreground Anchor／freeze／Commit Gate／Full audit与branch路径；child-memo/integrated-final.log 50/50含普通System、Finish及真实预算装配；delivery/branch-boundary.log 10/10含原生create_session与TUI持久化helper | 集成关闭；正式门禁待审 |
-
 | R3 | C07拒绝判断后或通知排队期间发生actual Native | 过时“latest External”通知应丢弃；仅撤当前ref未落盘External producer，其他通知和durable行保持 | 用户委托范围内必要工程收敛，主会话提议／Verification评审 | delivery/root | external-notice/refs-final.log 27/27及queue-race/compat证据；正式Verifier按原V132–V136判据评审方案及关闭状态 | 已实施并经root接线review；待独立评审 |
-
 | VF01 / R4 | V036：历史已提交UID被rewind移除后新create或显式source edit复用 | 正式Verifier对fba6ec5真实SessionDB反例确认：全历史Snapshot来源UID并集给新输入通用许可，新候选可错误提交 | 范围内阻断，来源不能复活失效历史 | storage/root | 新create/source edit与commit并发移除来源均拒绝且状态/pointer不变；具体既有item原引用维护、并发旧base、branch与compaction source正例；root方案由Verifier评审，修复后全新全轮独立复审 | 已实施／root接线review接收；provenance-fix基础138、接线77（含专项28）通过，待新独立全轮复审关闭 |
-
-| VF02 / R5 | V099/V077及C08：异步父压缩缺少原生runtime结果接收 | 固定fba真实6→4 native提交后durable5/live7，worker局部tuple无人消费；Framework等fence清除后仍向旧list追加。root先暂列harness边界，已被正式反证推翻；用户明确Noting只触发，撤下Noting层查表拼tail方案（未实施） | 范围内阻断，父下一请求可能复用retired源／错误tail | root／原生接线实现者 | 父原生机制协调active Turn并发布有效结果，保留当前Turn及新消息、同Conversation continuation；Noting不重建父上下文；fail/blocked不fake；真实profile结束后live=DB且下一Mainwire压缩前缀，一FinishUID两视图，独立全轮复审 | 原生接口方案调查中，未关闭 |
+| VF02 / R5 | V099/V077及C08：异步父压缩缺少原生runtime结果接收 | 固定fba真实6→4 native提交后durable5/live7，worker局部tuple无人消费；Framework等fence清除后仍向旧list追加。root先暂列harness边界，已被正式反证推翻；用户明确Noting只触发，撤下Noting层查表拼tail方案（未实施） | 范围内阻断，父下一请求可能复用retired源／错误tail | root／原生接线实现者 | 父原生机制协调active Turn并发布有效结果，保留当前Turn及新消息、同Conversation continuation；Noting不重建父上下文；fail/blocked不fake；真实profile结束后live=DB且下一Mainwire压缩前缀，一FinishUID两视图，独立全轮复审 | 原生方案经评审后实施中，两个真实边界反例成立；未关闭 |
+| VF03 / R6 | V080/V120/V099：cached root误作原始custom supplement | 固定fba Noting将完整cached root传入native builder；实际无API反例root13054→20663字符，旧root整块被追加为custom context | 范围内阻断，压缩接线错误参数破坏有效root | timers/root | active使用当前Turn原始system_message，idle仅可信原始supplement/None；真实builder不重嵌完整root，下一Main实际请求正确；冷恢复未知参数诚实处理；新独立全轮关闭 | 独立确认／root反例及调用链复核接收，同批原生接线修复中；未关闭 |
 
 ## 取舍、快照与续接
 
 无新增产品取舍。C02 用户确认，非自主假设。02 残留 memo add guarantees run 和 schedule_create 以更具体已定案 §3.5/3.7、§5.12 Target 为准：memo 不触发，初始 Schedule 在 create。04 旧 agent_task/restore/三型 termination/旧 Prompt 按现行 02 明确修订替代，不追改上轮结论。阶段提交准确记录验证边界，最终由 delivery-evidence-review 判定。
+
+
+本次接续整改状态（2026-10-11）：VF02两个原生边界反例3/3成立、0API；root与Verifier有条件接受父native请求/完整commit结果/publication freshness方向，timers已进入白名单实施。VF03原custom参数可信捕获与official factory trustedNone同批修复。范围内缺陷仍开放，修复后须真实跨进程无争用、取消/边界、live/DB/下一Main wire证据及全新全范围Verification；旧反例通过不等于缺陷关闭，不重复已有扩大回归。

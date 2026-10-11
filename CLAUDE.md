@@ -57,9 +57,18 @@
 
 ## V1.6 当前编排与证据
 
+- **本次额度恢复接续（用户再次明确“额度已恢复继续推进”）**：原生两个边界反例已由主会话接收：真实存活 PID holder、正式 Framework writer 与两个 warm Agent，canonical 3/3（14.1s、0外部 API），证明旧 DB/live/tuple 不一致及无争用旧 history；尚非修复通过。证据 `.hermes-dev/v1.6-evidence/native-compaction-fix/counterexample-findings.md`。
+- **VF02/VF03 整改进入实施**：root 提议、原 Verification 根据冻结判据有条件接受。父 native request sibling负责真实 receipt/fence、active安全消费者、idle完成态交接、reset/close/interrupt；Noting退为薄触发。完整实际提交结果由native commit/loader产生；请求压缩成功summary的既有metadata承载publication身份，native lease/loader接缝只对未采纳结果进行freshness交接，不新增pending/表/schema/全局gate，不普遍重载无request Main。后续普通压缩、foreign追加、branch/reset、跨进程无争用及未持久user/sidecar保护必须有关闭证据。active用原始custom参数、idle用上一可信参数；官方factory可信None、任意cold未知则诚实compact失败，不能拒绝普通Noting或废合法Snapshot。上述是C08工程收敛，不冒称新增用户确认。
+- **当前分工**：timers继续完整native修复与0API定向行为测试，仅明确白名单，不派生、不提交；root维护全局覆盖/文档并集中review；旧Verification只完成方案评审，修复后另派全新无上下文审查者；native_evidence等待收敛源码版本，尚未启动新的真实模型调用。两正式门禁均尚未通过。
+
+- **额度恢复并接续（用户2026-10-11明确“额度已恢复继续推进”）**：恢复timers进行C08父原生request接线研究，先交方案再实现；恢复原Verification补存阶段B已核实发现、仅新规格先补C08判据后继续固定fba6ec53a7初审。当前HEAD606e251为C08文档冻结追踪，产品代码仍e5f2e70786。此前额度中断是历史状态，final-delivery中断记录保留，完成前重写交付判定。目标工具查询仍显示usageLimited（该状态不能由Agent手工恢复），不据此撤销用户本次接续授权；实际工具及子任务可执行性据实记录。
+- 接续后原Verification固定fba初审已完整落盘：原136判据逐字保留，C08仅新规格补V137–139，共139；127符合、5违规、7不足，根因VF01/VF02及受影响接线证据缺口；报告不通过，不能进入Validation。已保存C07竞态评审接受依据、VF01basis方案待独立关闭、撤下Noting拼tail提案和C08父原生候选的有条件方向评审。主会话已集中复核核心事实及不足行，修复后仍需全新无上下文全轮审查，不能把当前版混入固定fba初审。
+- 初审补充VF03后最新统计为**125符合、7违规、7不足**（仍139条）：旧Noting将完整cached root作为custom supplement传原生builder，无API真实反例root13054→20663字符；主会话已亲自读取反例与native调用链，接收为独立参数缺陷。修复将使用父原始custom参数，不能借此新增Prompt调优。V131已明确Verification→Validation顺序，未开始后续Validation仅影响整体交付，不能造成门禁循环。原生request完整方案及两个真实DB反例已交回，root提议经Verifier有条件评审后进入实施；本条统计仍对应固定fba初审，不提前关闭VF02/VF03。
+- native_evidence子Agent仅准备新版真实取证观测脚本（ignored native-compaction-fix），实际API尚0，待收敛commit后再执行；计划覆盖active tool-loop/in-place、forced/rotating、overflow及每次压缩后的下一真实Main请求，保源码/hash稳定，不重跑旧40+24请求。官方Dashboard新隔离profile已准备为`.hermes-dev/v1.6-validation/dashboard-final-4743943e`，仅配置/凭据安全复制，尚无DB、无服务、无模型请求；正式通过Verification后启动当前版进行Validation。
+
 - 冻结基线：`fc2668310b`（完整哈希见本轮 baseline.txt）；启动 `fa51561601`。计划见本轮 plan.md；三份核心文档和 C02 一并纳入冻结树。
 - T1–T4 实现及局部修补已交回，T5 主会话集中 review 已完成，进入正式规格审查。预算正式入口／普通 System Anchor 已提供 50/50 集成定向证据；Framework 队列 owner、Force owner 与 branch 边界已交回；尚不能以子 Agent 测试代替主会话 review。白名单见 plan；子 Agent 不再派生、不提交。
-- 用户明确讨论不暂停后台实施；2026-10-11 最新指令取消新 skill 单独试点，后续正式 Verification 直接使用，节省额度并抓紧推进。skill_trial 已停止，不续派试点；其执行曾返回额度限制，不计为审查证据。官方 Dashboard 隔离环境已就绪（localhost:53345，PID 63881；接管记录 `.hermes-dev/v1.6-evidence/dashboard-prep/launch.json`），首页与健康检查通过，尚未用户验收。真实 Native DeepSeek prefix/cache 取证已交回，最后 parent-compact 的八个关键源码哈希与当时集成版一致，新增C07再次改变noting_runtime；普通与 continuation 的 noting_runtime 哈希也不同。真实wire证据保留其观察版本及适用路径，不冒充当前整版全覆盖。Verification阶段A已完成，阶段B已对fba6ec53a7启动阶段B调查；Validation未启动，尚无全范围最终完成证据。
+- 用户明确讨论不暂停后台实施；2026-10-11 最新指令取消新 skill 单独试点，后续正式 Verification 直接使用，节省额度并抓紧推进。skill_trial 已停止，不续派试点；其执行曾返回额度限制，不计为审查证据。官方 Dashboard 隔离环境已就绪（localhost:53345，PID 63881；接管记录 `.hermes-dev/v1.6-evidence/dashboard-prep/launch.json`），首页与健康检查通过，尚未用户验收。真实 Native DeepSeek prefix/cache 取证已交回，最后 parent-compact 的八个关键源码哈希与当时集成版一致，新增C07再次改变noting_runtime；普通与 continuation 的 noting_runtime 哈希也不同。真实wire证据保留其观察版本及适用路径，不冒充当前整版全覆盖。Verification阶段A及固定fba6ec53a7阶段B初审已完成且未通过；Validation未启动，尚无全范围最终完成证据。
 - PM Python 3.14.7；lock SHA256 `2bc4db483e9cba927cd7147f9ccbb09635f85bb3f1f36d6e9d51d06b65d1c67e`。未预跑大型检查；日志 `.hermes-dev/v1.6-evidence/`。既有失败和平台边界见当前状态。
 - 隔离真实运行准备：全新 `.hermes-dev/v1.6-validation/`，DeepSeek 官方 Chat Completions／deepseek-flash，未复用旧库；凭据仅 ignored 本地 `.env`，未输出。官方 Dashboard 已有构建；尚未运行真实验收。
 - T1 首次 Prelude 节点缺少 `is_compaction` 导致 13 失败，已修复；已提供局部 model/store/schedule/atomicity/branch 证据，主会话已复核接收。首次测试临时库在系统隔离临时目录，后续运行数据库使用仓库内分组专属basetemp；Prompt/Checkpoint纯文件测试改用runner默认临时目录以避免祖先Git根干扰，不更改runner规则。完整日志见 storage 证据目录。
