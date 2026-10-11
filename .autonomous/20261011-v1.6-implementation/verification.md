@@ -407,3 +407,182 @@ Verifier评审：**接受新增seam的实施方向，但必须满足以下约束
 VF03参数来源追加评审：root/研究指出官方hosts省略run_conversation system_message，默认None；配置补指令走ephemeral_system_prompt，并非customsupplement。接受active使用当前原始参数、idle上一可信已捕获原值；官方coldfactory可根据明确真实构建/调用契约标trustedNone，不能对所有coldAgent猜None或从sessions/system_prompts完整root倒推参数。任意cold未知原custom时诚实拒该**无法安全构建参数的压缩请求**或等下一原生Turn，不能借此变成D01 unknown-source拒绝/第三Force capability门禁、改global/local/Memo参与或阻断普通Noting；special工具失败继续原终止契约、forced fallback拒绝不独立阻断合法Snapshotgate。需None/string/coldunknown、ephemeral配置和custom区分、global读面变化、连续压缩/nextMain真实root及原生未启用路径证据。接受方向不代表VF03已关。
 
 本追加不改139原判据及固定fba初审125符合/7违规/7不足，不评价实施中代码；不API、不派生、不提交。
+
+
+---
+
+<!-- independent-review-phase-a: verification_final 36f8ffb1019b0c6505226e83478a3cea8f985c05 -->
+
+# Verification：20261011-v1.6-implementation 阶段A独立判据原始报告
+
+## 1. 审查对象与结论概览
+
+当前仅阶段A，尚未收到root指定待审实现版本，因此没有实现门禁结论。本阶段未读取产品代码、测试、旧报告、动态看板或仓库核心指导。仅按委派读取autonomous-run与spec-implementation-review方法、指定索引的依据定位和冻结01/02/04全部原文。审查者：verification_final。规格commit：`36f8ffb1019b0c6505226e83478a3cea8f985c05`；建立时间：2026-10-11T09:45:42.812945+00:00。本阶段报告落入独立ignored证据白名单；正式verification.md等待root原样纳入第2节复审附录。阶段B再按指定版本查实现及其余适用指导。
+
+## 2. 独立要求清单与覆盖
+
+独立原始判据共128条；薄弱接线重点27条；类型统计：{'直接要求': 121, '必要推导': 2, '未决解释': 5}。范围覆盖：公开范围 6；身份 10；Foreground 7；History 5；Notebook 17；Memo 6；控制面 8；触发 10；来源门禁 5；Noting Runtime 15；父压缩 2；Schedule 6；Reminder 6；消息承载 3；Framework 4；Persistence Proposal 3；规范文案 6；完成定义 4；未决解释 5。
+
+
+
+建立时间（UTC）：2026-10-11T09:45:42.812945+00:00。冻结规格提交：`36f8ffb1019b0c6505226e83478a3cea8f985c05`。
+
+仅01/02/04形成产品要求；索引仅定位，流程Skill仅方法。本阶段未查看实现、测试、历史审查结论、动态看板。
+
+来源用冻结原文件章节行号；02现行修订/§5.12 Target覆盖旧01/04对应描述。类型明确分为直接要求、必要推导、未决解释。核查位置本阶段只登记判据ID，阶段B补实际入口及证据。
+
+
+| 条款编号 | 来源位置及要求 | 类型/适用范围 | 规格解释及必要不变量 | 符合判据 | 核查位置 |
+|---|---|---|---|---|---|
+| AF001 | 01:10–67,395–411；02:198–246；04:9–13,78–80：公开 Secretary core；Hermes-first，不建立平行 Harness | 公开范围；直接要求；全部适用正式入口；薄弱接线重点 | 原生 Session/Turn/compaction/ingress/history 为各自机制的所有者；Notebook 只为派生状态 | 追踪正式运行是否复用原生生命周期；不得新增平行 Agent Loop、对话存储、主 admission、通用调度器或 API hierarchy | AF001，等待阶段B |
+| AF002 | 01:39–45,279–303；02:648–678,2209–2217：只向 profile-scoped state.db 新增 Secretary 自有表 | 公开范围；直接要求；全部适用正式入口 | 核心表 schema、字段、主外键、ownership 语义不被 Secretary 改写 | 核查持久化实际位置与写入路径；不得用 JSON sidecar、第二数据库或每Conversation表作为Notebook真值 | AF002，等待阶段B |
+| AF003 | 01:47–51；02:198–221,2504–2525：Conversation 原文是事实源，新意图立即经 Foreground 生效 | 公开范围；直接要求；全部适用正式入口 | 异步 Noting 延迟不延迟主 Assistant 对新意图的执行 | 核查指导、任务输入和用户链路：不得以Notebook旧状态抵销当前用户更正或等待Noting后执行 | AF003，等待阶段B |
+| AF004 | 01:55–67,395–409；04:78–80：个人 Mem/Recall/Persona/Dreaming/RSI/Remote Mac 等不纳入公开改造 | 公开范围；直接要求；全部适用正式入口 | 公开抽象与依赖不反向耦合个人能力 | 核查新增能力、配置和依赖没有扩大上述范围；原生已有工具不等同新增个人集成 | AF004，等待阶段B |
+| AF005 | 01:303；02:2478–2498；04:437–448：仅补实际必要 UI/RPC/DTO；不重写 UI 或 API | 公开范围；直接要求；全部适用正式入口；薄弱接线重点 | 方法名和DTO未冻结，不可凭未指定名称判违约 | 核查官方入口能表达核心功能；允许薄兼容，禁止另造API层/个人Web App | AF005，等待阶段B |
+| AF006 | 02:1388–1398；04:72–76,175：旧自动 Background Review 产品行为停止，保留纯 cache parity；回退未经授权混合指导 | 公开范围；直接要求；全部适用正式入口 | 局部off不恢复旧review；合法原生prompt tiers和无关功能保留 | 核查旧自动review不独立运行，旧SECRETARY_GUIDANCE及错误注入移除；回退有可审计依据 | AF006，等待阶段B |
+| AF007 | 02:47–81；04:58–60,86–88：Conversation→Session 一对多；Session→Conversation 单值；Ref durable opaque | 身份；直接要求；全部适用正式入口 | ownership只以conversation_ref，不依赖其字符串格式 | 普通继续及不同物理session仍同Ref；同一物理session不得归属两Conversation；Notebook/Schedule/Anchor等用Ref | AF007，等待阶段B |
+| AF008 | 02:104–120,2219–2231：fallback仅沿已证明的 compression lineage | 身份；直接要求；全部适用正式入口 | branch/reset/delegate/tool child不折回父Conversation | 检查每类原生边界及跨compression locator解析，排除非continuation边界 | AF008，等待阶段B |
+| AF009 | 02:122–132,157–164：declared locator为(source,session_key,generation)，generation来自原生durable机制 | 身份；直接要求；全部适用正式入口 | compression不递增，边界递增；prune后不可复用generation | 核查跨rotation与删除历史后的generation稳定性；不得仅使用session_key或从可裁剪history猜generation | AF009，等待阶段B |
+| AF010 | 02:134–155：收集所有可证明alias；未知mint；同Ref绑定新alias；冲突fail closed | 身份；直接要求；全部适用正式入口 | 后来session-key locator绑定原Ref，无owner迁移 | 核查未知、多已知一致、新增locator、已知冲突四路，冲突不得自动合并 | AF010，等待阶段B |
+| AF011 | 02:83–102,136–142,2215–2216：alias唯一约束与同一Session单值在并发下仍成立 | 身份；必要推导；全部适用正式入口；薄弱接线重点 | 并发resolver不能mint两个有效owner并静默分裂 | 核查约束/事务或等效原子机制和并发事实 | AF011，等待阶段B |
+| AF012 | 02:166–181,2233–2248：路由与owner分离；后台实际送达时解析当前runtime | 身份；直接要求；全部适用正式入口；薄弱接线重点 | 旧generation提醒不能进入新generation Conversation | 追踪Ref→trusted locator→当前compression tip/SessionEntry→既有routing；不能证明ownership则fail closed | AF012，等待阶段B |
+| AF013 | 02:183–196；04:60,146–148：canonical Message Identity=(conversation_ref,message_uid) | 身份；直接要求；全部适用正式入口 | compression/in-place稳定；branch复制UID但Ref不同 | 所有Anchor、candidate provenance、history结果使用二元身份；物理message_id兼容不代替canonical身份 | AF013，等待阶段B |
+| AF014 | 02:597–643,2352–2359：branch/fork新Ref并继承branch-point有效Snapshot与路径 | 身份；直接要求；全部适用正式入口 | Anchor重绑branch-local身份；payload共享不允许跨会话mutation泄漏 | 核查branch-point而非父最新状态，Snapshot内容和审计继承，后续两branch修改隔离 | AF014，等待阶段B |
+| AF015 | 02:603–623,2352–2359：rewrite先原生成功持久化，再重建Full并reconcile pointer | 身份；直接要求；全部适用正式入口 | current为仍在当前Full的最新committed Snapshot，无有效则null | 核查rewind/edit/undo实际入口、pointer回退和失效Anchor结果不得提交 | AF015，等待阶段B |
+| AF016 | 02:615–623,1806–1823：Parent后续活动不取消已准入任务，commit紧邻校验Anchor | 身份；直接要求；全部适用正式入口 | frozen Anchor不随parent消息移动，失效即放弃且pointer不动 | 核查Parent新Turn/rewind/Auto Compact期间child继续；commit时检查有效路径而非仅admission时 | AF016，等待阶段B |
+| AF017 | 02:260–287,351–355；04:99–114：Active/History/Full严格分离 | Foreground；直接要求；全部适用正式入口；薄弱接线重点 | Active是实际provider-neutral请求上下文，不能存储重组近似；History是真实路径原文 | 核查实际请求冻结源、History数据选择及Full来源；不能用同一近似视图充当三者 | AF017，等待阶段B |
+| AF018 | 02:273–285；04:105–114：History包含真实active及active=0 compacted=1源行；排除active=0 compacted=0 superseded | Foreground；直接要求；全部适用正式入口 | 按逻辑UID去重跨compression；排除root/scaffold/临时衔接/审计 | 检查rotating/in-place/resume/rewind/edit/branch的history结果和源行选择 | AF018，等待阶段B |
+| AF019 | 04:109–114,146：真实role=system事件可查询；不捏造未持久source事件 | Foreground；直接要求；全部适用正式入口 | 真实System消息与root/Prelude区别；只在当前Conversation路径 | 核查roles system兼容与实际原文，不误暴露root/Prelude，也不把全部system事件剔除 | AF019，等待阶段B |
+| AF020 | 02:353–355；04:52–70,116–142：Full=[唯一Context Prelude,逻辑Message Nodes…] | Foreground；直接要求；全部适用正式入口 | Prelude不属Message无identity；普通Node↔canonical identity一一对应 | 核查顺序、duplicate persistence/compression/branch去重；Anchor/Snapshot只附着不创造节点 | AF020，等待阶段B |
+| AF021 | 04:67,130–141：唯一双节点例外：复合Compaction carrier的compaction与真实user投影 | Foreground；直接要求；全部适用正式入口 | 两节点相邻、projection kind可区分、同一原始identity；无真实user不必双投影 | 核查真实compound输入与无user carrier；禁止造第二UID或普通节点重复 | AF021，等待阶段B |
+| AF022 | 04:61–63,130,138–142；02:353：Prelude读最新有效root和tools真实执行/恢复来源 | Foreground；直接要求；全部适用正式入口；薄弱接线重点 | 标记source/capture/validity；缺失诚实记录，不据config重生成猜值；不维护每版历史 | 核查warm/cold/resume/compaction/branch/rewrite当前有效状态；root与tools同层审计 | AF022，等待阶段B |
+| AF023 | 04:137–142；02:355：Full读取纯审计 | Foreground；直接要求；全部适用正式入口 | 读不会触发Noting/Schedule/Turn；Full不声称等于Active且不供History Search | 追踪正式Full入口的读取副作用与投影来源 | AF023，等待阶段B |
+| AF024 | 02:289–349,2250–2262；04:90–97,144–150：所有eligible Main mandatory session_history及独立指导，与Noting无关 | History；直接要求；全部适用正式入口 | 模板、toolsets、pinned tools、global/local均不能移除；aux不新增Main注入 | 核查schema、handler、guidance的正式构建/恢复入口；Noting复用同一suite而非第二实现 | AF024，等待阶段B |
+| AF025 | 02:297–343,1961–1988；04:146–148：search/read及既有参数兼容：keyword/regex/roles/limit；身份与前后文、bounded time/history | History；直接要求；全部适用正式入口 | owner由runtime注入，模型不能选择他Conversation | 核查search/read实际结果，错误/cross identity、缺失source、失效path均不越权；旧message_id调用仍可用 | AF025，等待阶段B |
+| AF026 | 02:314–345；04:146–148：每个Search/Read结果含entry timestamp与canonical UID；durable provenance归一化identity | History；直接要求；全部适用正式入口 | 任何行不缺timestamp和UID；压缩解析对模型透明 | 核查每种模式和角色返回字段；candidate能按identity找回完整原文及上下文 | AF026，等待阶段B |
+| AF027 | 02:345：Search行正文bounded约800字符、就地elide并truncated；无full-body开关 | History；直接要求；全部适用正式入口 | UID保留；complete body唯一经精确read(UID/identity)而非search | 核查长行、多行search上界与随后精确read恢复完整body，不能把search limit当per-row budget | AF027，等待阶段B |
+| AF028 | 02:347；04:146–148：session_history只读当前授权History，不读取其他Conversation或Full审计/外部资料 | History；直接要求；全部适用正式入口 | 独立session_search负责跨Conversation；不强行注入原生未授权工具 | 核查permission与参数解析；guidance不造成cross-conversation或root泄漏 | AF028，等待阶段B |
+| AF029 | 02:250–256,357–379,766–776；01:118–150：仅直接用户Main有一份current Notebook；专用Noting只维护所属Parent | Notebook；直接要求；全部适用正式入口 | Cron/Dreaming/skill refinement/generic subagent无Notebook，无论toolset继承显式加入 | 核查真实runtime资格而非tool/session_id猜测；Notebook show不因继承toolset获得 | AF029，等待阶段B |
+| AF030 | 02:357–379,416–433；02:1885,2062：四区十类型；section由type派生；agent_task全局改secretary_task | Notebook；直接要求；全部适用正式入口 | 无冗余section字段、无第11类型、无旧agent_task产品别名 | 核查真实JSON、schema、prompt和状态工具均一致rename；01/04旧称不覆盖现行02 | AF030，等待阶段B |
+| AF031 | 02:381–395,399–412,416–431：user_commitment/ user_reminder/secretary_task字段与状态图 | Notebook；直接要求；全部适用正式入口 | what+intent；message；task+purpose required；合法单步转移，不跳跃或从terminal恢复 | 逐类型核查create/edit/status，合法图和失败错误，不只验证一个类型 | AF031，等待阶段B |
+| AF032 | 02:435–453,455–512：watchpoint/decision/open_question/insight字段与状态图 | Notebook；直接要求；全部适用正式入口 | watchpoint四required且until一次性；decision rationale；question why；insight basis及optional字段 | 核查required/optional/unknown字段及全部合法/非法状态边界 | AF032，等待阶段B |
+| AF033 | 02:514–573,2064,2088：三candidate optional语义字段，无required draft、无status graph | Notebook；直接要求；全部适用正式入口 | memory draft/why_persist；rule draft_rule/reason/scope；skill capability/workflow_draft/why_reusable | 核查候选可仅携合法provenance创建；拒绝无图status与其他类型字段 | AF033，等待阶段B |
+| AF034 | 02:536–560,1988,2025：candidate provenance至少合法Message Identities或bounded source_time_range之一，二者平等 | Notebook；直接要求；全部适用正式入口；薄弱接线重点 | identity当前owner且当前路径；time range明确有界有效；不能schema仅收identity迫使重写证据 | 核查tool args/schema和server validation均支持两个入口；错误identity、失效path、越权range诚实拒绝 | AF034，等待阶段B |
+| AF035 | 02:692–758：成功Noting完整immutable Snapshot + current pointer一次transaction | Notebook；直接要求；全部适用正式入口 | 失败/放弃不创建committed snapshot不移动pointer；无mutable master；共享表partition by Ref | 核查Snapshot至少id/ref/anchor/trigger/profile/payload/time与事务失败路径 | AF035，等待阶段B |
+| AF036 | 02:729–747：Snapshot实际payload为有序item row id列表；hydration为完整四区state | Notebook；直接要求；全部适用正式入口 | 只有逻辑id引用无foreign keys；不可把旧完整state表述当要求内嵌body | 核查储存结构、顺序及当前Snapshot精确版本body解析，Snapshot内容insert-only | AF036，等待阶段B |
+| AF037 | 02:731–747,2116：item row autoincrement BIGINT-range decimal id为唯一Agent-visible handle/version | Notebook；直接要求；全部适用正式入口 | lineage_id内部审计锚不暴露；create lineage=id；edit/status/schedule继承lineage插新row | 核查id形状、全操作版本链、旧Snapshot仍引用旧body，无row更新 | AF037，等待阶段B |
+| AF038 | 02:745–747,862–864：archive插最终archived=1版本同lineage并保留Snapshot引用，不能只drop id | Notebook；直接要求；全部适用正式入口 | 所有product surface过滤；无restore/查生命周期/recovery；新需要只能新建 | 核查show/task/slash/返回state及工具/handler无恢复路径；audit仍可推导生命周期 | AF038，等待阶段B |
+| AF039 | 02:747,852–868：Agent不直接查item表/历史，不直接写Snapshot/SQL/原始JSON | Notebook；直接要求；全部适用正式入口 | 允许runtime内部hydrate当前Snapshot id；权限边界不误禁内部读body | 核查正式tool面与dispatch不能枚举/找回归档，内部只解析Snapshot必要版本 | AF039，等待阶段B |
+| AF040 | 02:749–760：identity Registry和current pointer是分离层 | Notebook；直接要求；全部适用正式入口 | pointer由conversation_ref唯一管理；Snapshot INSERT和pointer原子 | 核查同事务与失败回滚，不把pointer塞进identity层 | AF040，等待阶段B |
+| AF041 | 02:852–860,2047–2116：三独立semantic写工具：manage create/archive；edit edit/status；schedule update/cancel | Notebook；直接要求；全部适用正式入口 | 初始Schedule由manage create until/expression；不再fused notebook_mutate/alias/schedule_create/restore | 核查实际suffix schema和dispatch三个entry point，无过渡别名或错误operation | AF041，等待阶段B |
+| AF042 | 02:864–866,2183：成功每次返回success true+完整latest entry(新id)+四区state；失败success false+诊断error | Notebook；直接要求；全部适用正式入口 | 旧id立即unknown-entry并带offending id；不是bare OK | 核查每操作成功/失败结果、id推进后链式调用及错误可修复信息 | AF042，等待阶段B |
+| AF043 | 02:866,2183：未知字段错误列offending及allowed set；非法status列type/current/legal targets | Notebook；直接要求；全部适用正式入口 | 严格拒绝非合同字段，candidate无status错误明确 | 核查实际工具错误而非只schema限制；保持其他现行冻结错误字符串 | AF043，等待阶段B |
+| AF044 | 02:266–593,595,1770–1804：Anchor是last logical Message排除noting_run_output=true；Compaction不可Anchor | Notebook；直接要求；全部适用正式入口 | 只看metadata标记，不kind白名单；Finish标记存在，其他事件均推进Anchor | 核查异步完成/model switch/auto_continue/Force/deferred等及finish notice的选择；trigger后freeze而非提前poll | AF044，等待阶段B |
+| AF045 | 02:595；02:1747–1767,2434：新Snapshot termination独立审计四态finish_noting(reason)/compact_parent/forced/context_overflow | Notebook；直接要求；全部适用正式入口 | normal show/slash/Main不暴露；branch保留；legacy absent honest；不影响eligibility/ordering | 核查四种真实结束audit，业务payload及全部投影不可漏reason/termination；02覆盖04三态 | AF045，等待阶段B |
+| AF046 | 02:780–790,2456–2457：main noting_memo operation add/replace/delete/list；index从1连续 | Memo；直接要求；全部适用正式入口 | add自动next；replace/delete立即重排；Agent不提供add index | 核查tool schema/dispatch和add result created content+index，replace/delete prefix old content+full Markdown list | AF046，等待阶段B |
+| AF047 | 02:790–802：memo list Markdown ordered，空串精确No memo after last noting；内容无格式限制 | Memo；直接要求；全部适用正式入口 | 非raw JSON；brief sentence是建议不是强制格式校验；memo不进Notebook payload/show | 核查空/非空、任意文本、show结果以及visibility仅所属Main/Noting | AF047，等待阶段B |
+| AF048 | 02:792–796,1897：Main模块/tool description记录memo用法；memo持久Secretary自表按Ref | Memo；直接要求；全部适用正式入口 | 一次Conversation memo；created time保留；只追加task suffix，无child memo工具 | 核查restart、task初始输入与权限schema，memo不改frozen prefix | AF048，等待阶段B |
+| AF049 | 02:796,2459–2460：memo不是Trigger；nonempty保持local on；add自动on且feedback；off只empty生效 | Memo；直接要求；全部适用正式入口 | 只Idle/Force及catch-up生产task；删除最后条后off可用 | 核查add不自发dispatch/新trigger、不因memo触发频次变化；拒绝off理由明确 | AF049，等待阶段B |
+| AF050 | 02:798–800：commit只消费frozen input内仍unchanged active memo，dispatch后add/replace保留 | Memo；直接要求；全部适用正式入口；薄弱接线重点 | user-deleted永不恢复，未commit完全不消费，commit前仍active并约束参与 | 构造并发add/replace/delete及两任务frozen不同输入，核查简单ownership/identity机制，不complex revision协议 | AF050，等待阶段B |
+| AF051 | 02:798–800,1664：消耗memo归档与Snapshot同Anchor同transaction | Memo；直接要求；全部适用正式入口 | 归档原index/content/created time/count、trigger/profile/time、snapshot id；remaining重新编号 | 核查snapshot/archival/clear失败全回滚；归档audit-only不进后续task/list；Finish单条确认processed范围 | AF051，等待阶段B |
+| AF052 | 02:804–850,2463–2476；04:222–227：/notebook查看current，timestamp=Snapshot created_at，不展示Anchor/pointer | 控制面；直接要求；全部适用正式入口 | null明确noSnapshot，不fabricate empty；local off读取仍可；global门禁保持 | 核查正式CLI/shared Slash/UI入口、正常history/model可见，不新增role/display_kind/hidden旁路 | AF052，等待阶段B |
+| AF053 | 02:848–850；04:225–227：/noting on/off仅persist local偏好+可见feedback；旧/notebook on/off退出 | 控制面；直接要求；全部适用正式入口 | 不改global、root/tools/cache、Snapshot/Schedule/audit；global切换不丢local偏好 | 核查冷热恢复与old command不意外生效，memo非空约束覆盖off | AF053，等待阶段B |
+| AF054 | 02:766–778,1707–1718；04:156–182：Main global true有show/memo+Notebook指导，false缺席；History始终存在 | 控制面；直接要求；全部适用正式入口 | Main永无mutation；aux无新增主指导或Notebook；Noting仅Parent契约 | 核查schema、valid_tool_names、dispatch与guidance同步，不只是visual list；已有aux lawful tools不无关重写 | AF054，等待阶段B |
+| AF055 | 04:168–182；02:1853–1897：两个独立Stable模块，保留native stable/context/volatile组织 | 控制面；直接要求；全部适用正式入口 | 不以history可用注Notebook指导，不改session_search guidance成混合，不duplicate旧模块 | 核查实际root stable层两组资格及措辞Target；局部开关完整schema bytes不变 | AF055，等待阶段B |
+| AF056 | 02:1089–1091；04:184–203：global切换在下一Main Turn Pre-message Context读最新owning-profile config | 控制面；直接要求；全部适用正式入口；薄弱接线重点 | 在捕获active root/final tools前同步，不等compaction/cache expiry/reopen；不倒灌inflight请求 | 核查warm/cold pinned tools/persist root、false→true/true→false/compaction前后；原生cache机制允许主动loss | AF056，等待阶段B |
+| AF057 | 02:1093–1134：config默认enabled true/idle 500/auto compaction false/null/auto force idle false | 控制面；直接要求；全部适用正式入口 | global AND local背景资格；eligible Main默认local on；aux永不参与 | 核查配置解析、持久local和background gates，不将read gate与background gate混用 | AF057，等待阶段B |
+| AF058 | 02:1136–1156,2275–2288,2361–2378：effective off使Noting hooks立即返回native行为，保留显式base能力 | 控制面；直接要求；全部适用正式入口 | 无Idle/Force/admission/child/mutation/Schedule火/Reminder产生投递；History与真实user timestamps保留 | 核查local off与global off正式request/compaction/busy/idle/background路径，不能残留Noting专用行为 | AF058，等待阶段B |
+| AF059 | 02:1366–1377：global Noting参与时idle_compact_after_seconds=0，属配置冲突 | 控制面；直接要求；全部适用正式入口 | 非Force capability failure；local off不动态改global | 核查冲突处理反馈及原生threshold auto compaction继续，不加第三Force失败条件 | AF059，等待阶段B |
+| AF060 | 02:1158–1170,796：Exactly Idle/Force；profile threshold/Auto Compaction/Schedule/Reminder/memo非trigger | 触发；直接要求；全部适用正式入口 | catch-up只恢复未生产的Idle事件，不创造第三Trigger类型 | 核查全部dispatch来源、不能其他事件或重复poll模拟Trigger | AF060，等待阶段B |
+| AF061 | 02:1172–1189：Idle从Main Turn结束+delay，无新Main Turn才fires；一idle period exactly one | 触发；直接要求；全部适用正式入口；薄弱接线重点 | 只Main Turn重置；foreground最多每idle period咨询一次；不得tick反复freeze记录attempt | 核查生命周期arm/cancel/fired标记，不以下游same-anchor dedupe替代上游事件频次 | AF061，等待阶段B |
+| AF062 | 02:1191：Idle timer挂已有Main end接缝；due_at registry+lock+daemon perConversation | 触发；直接要求；全部适用正式入口 | 新Main取消/重新arm；fire重读persisted idle/gates/admitted再进入unchanged admission | 核查TUI/gateway生产timer接线和多timer并发/关闭，不能另造scheduler | AF062，等待阶段B |
+| AF063 | 02:1191：armed Conversation session-cap reaper排序(holds_pending_timer,last_active)选最后但不豁免 | 触发；直接要求；全部适用正式入口；薄弱接线重点 | real memory pressure仍可reap；process/asleep遗漏仅idle_candidates catch-up | 核查runtime eviction/reaper实际排序和catch-up恰一次，不把纯持有timer当永不evict | AF063，等待阶段B |
+| AF064 | 02:1193–1239：Force=window−max((window−resolved native threshold)*1.20,66K) | 触发；直接要求；全部适用正式入口 | ForceThreshold<native threshold；<64K提示增window；reserve>128K提示减少reserve；128K非clamp | 核查精确数值边界与原生resolved值reuse，无反馈改native threshold和复制计算器 | AF064，等待阶段B |
+| AF065 | 02:1241–1263,2277–2288：Force复用native anchored/preflight/midturn/tool-results/pre-provider measurement | 触发；直接要求；全部适用正式入口；薄弱接线重点 | >=Force异步attempt；>=native threshold原生compaction不等Noting；不借should_compress替代Force比较 | 追踪各真实request pressure入口与usage来源，无第二counter，无阻塞父Auto Compact | AF065，等待阶段B |
+| AF066 | 02:1265–1283,2216：Idle/Force统一Trigger→head→freeze→attempt→compaction skip→dedupe→gate/profile→atomic admit→spawn | 触发；直接要求；全部适用正式入口 | 同Anchor只有一次成功准入DB-backed，不global串行；不同Anchor合法并发 | 核查统一正式pipeline及竞争，明确External gate位于freeze之前覆盖普通顺序 | AF066，等待阶段B |
+| AF067 | 02:1285–1306,1342–1350：Force成功状态从latest compaction boundary+committed force Snapshot+Anchor位置derive | 触发；直接要求；全部适用正式入口 | 不得stored force_noting_completed/awaiting_compaction/compression_epoch；无success前可重试新Anchor | 核查历史变化/restart/compaction后计算与Force gating三个必要条件 | AF067，等待阶段B |
+| AF068 | 02:1308–1340：Idle重新usage：低Force按auto threshold选profile；高Force交Force路径 | 触发；直接要求；全部适用正式入口 | 高usage已force success时flag false无动作/true直接parent compact不spawn；无success不普通替代Noting | 核查四profile分支；user Idle阈值与Force/native无强制排序 | AF068，等待阶段B |
+| AF069 | 02:1352–1364：Auto Compaction configuration/threshold/reserve/correction/retry/fallback/cooldown/mode归Hermes | 触发；直接要求；全部适用正式入口 | Secretary仅消费resolved结果，不代替原生压力防护 | 核查未启用与Noting运行中的原生in-place/rotating入口和失败路径 | AF069，等待阶段B |
+| AF070 | 02:1402；04:262–281：Trigger已成立后只看latest actually dispatched Main native/external | 来源门禁；直接要求；全部适用正式入口 | model/provider/api/url/cache/usage不是来源；unknown保持旧Noting不伪native不第三denial | 核查native、External、缺标记、ACP chat_completions伪装、fallback顺序与无request保持历史 | AF070，等待阶段B |
+| AF071 | 04:273–279：source只在native middleware后真正provider execute或真实External run派发位置更新 | 来源门禁；直接要求；全部适用正式入口；薄弱接线重点 | 预解析/Prelude/Turn entry/middleware未dispatch不能覆盖；实际最后call为准 | 追踪stream/nonstream/native/AppServer/ACP实际入口，不用准备动作代表完成事实 | AF071，等待阶段B |
+| AF072 | 04:275–277：同一二值事实内存Force+Turn end patch existing model_config持久Idle/cold | 来源门禁；直接要求；全部适用正式入口 | 无实际request不清空；rotation继承；不另表/route snapshot/session event | 核查同Turn Force及persisted Idle、resume和rotation，持久patch原子merge不破坏其他配置 | AF072，等待阶段B |
+| AF073 | 04:269,277–281；02:1667：确证External在freeze/admission/reminder/child前拒绝；Native走原cache_parity | 来源门禁；直接要求；全部适用正式入口 | 保留local pref/current Notebook；无额外model parity/cache TTL/hit gate或external executor | 核查External无Noting副作用；source回native后正常；只新增规定Framework提示 | AF073，等待阶段B |
+| AF074 | 02:1667–1669：External拒绝Force/Idle/cold catch-up发所属Parent Framework，exact英文文案 | 来源门禁；直接要求；全部适用正式入口；薄弱接线重点 | same live runtime+Conversation持续External至多一次，actual Native重置；unknown/off/其他拒绝不提示；无finish marker | 核查冷/热、会话隔离、reset suppress及busy/fence统一queue，不startTurn、不Reminder、不更参与 | AF074，等待阶段B |
+| AF075 | 02:1400–1436,1456–1490,2290–2302：persistent delegate-style child AIAgent/独立id/DB handle/parent id/native transcript/close | Noting Runtime；直接要求；全部适用正式入口 | Dedicated registry强持有，soft eviction不能丢active；crash不resume/reconstruct/manifest | 追踪admission正式construction、错误cleanup和close，child不是临时无存储helper | AF075，等待阶段B |
+| AF076 | 02:1438–1454：抽取pure cache-parity helper，不universal constructor flags | Noting Runtime；直接要求；全部适用正式入口 | 只prompt/runtime/cache parity，不改session_id/DB/persistence/parent/lifecycle/authorization | 核查helper边界及caller独立child lifecycle，复用native模型/provider/reasoning/MCP freeze | AF076，等待阶段B |
+| AF077 | 02:1474,1534,2300：不persist branch seed，不copy parent transcript，child仅持久owned suffix | Noting Runtime；直接要求；全部适用正式入口 | 第一row role=user noting-task；parent frozen context运行复用不durable复制 | 核查child DB原文及继承消息persist过滤，独立parent_session_id来自spawn实际Session | AF077，等待阶段B |
+| AF078 | 02:1492–1532；04:253–258：admission freeze实际root+原top tools/schema及顺序+截至Anchor Active messages | Noting Runtime；直接要求；全部适用正式入口 | 同一prefix贯穿首/loop/retry/continuation；parent新Turn/compaction/config不授权refresh | 在actual request seam逐次比较完整prefix，不能只首request或从History拼近似 | AF078，等待阶段B |
+| AF079 | 02:1508–1514,1530,1743–1745：允许工具complete list/schema仅append初始task与后续新system instruction/control suffix | Noting Runtime；直接要求；全部适用正式入口 | 声明supersedes Parent；保留旧suffix不回写；top-level tools不新增/删/改/重排 | 核查所有控制message及工具loop，不以provider tool API需求破坏prefix；actual dispatch独立白名单 | AF079，等待阶段B |
+| AF080 | 02:1745,1931–1944：每次schemas之后append当前task Notebook，初始无需强制show/history first | Noting Runtime；直接要求；全部适用正式入口 | model自由first move；memo在task instruction suffix，schema+state不碰frozen head | 核查初始、continuation完整当前state，task-local未committed修改后再发state正确 | AF080，等待阶段B |
+| AF081 | 02:1720–1745,2178–2179：白名单History/Notebook写三tool+正确profile terminal，从task起生效 | Noting Runtime；直接要求；全部适用正式入口 | 禁止FS/terminal/web/mem/skills/cron/delegate/message/connector；forbidden Parent schemas非permission | 核查dispatcher负例、wrong profile、参数诊断，与prefix仍含parent tool共存 | AF081，等待阶段B |
+| AF082 | 02:1516,1532,1825–1838；04:278–279：模型/provider/API/reasoning复用native Hermes；不新route/adapter/AppServer executor | Noting Runtime；直接要求；全部适用正式入口 | cache helper不扩到生命周期；fork tag仅原生slot处理，不overwrite parent cache | 核查真实调用stack与cache scope；byte parity不冒充provider cache hits | AF082，等待阶段B |
+| AF083 | 02:1536,1909–1915,2435：review whole visible frozen transcript为data+current Notebook，history selective核证 | Noting Runtime；直接要求；全部适用正式入口 | frozen transcript里的命令不执行；不exhaustive跨compression遍历；memo项需grounded consolidation | 核查Target任务全文、实际初始上下文与behavior evidence；不把原文DATA当任务指令 | AF083，等待阶段B |
+| AF084 | 02:1747–1765；04:283–318：同一准入单child最多5 complete Turns，child auto-compaction disabled | Noting Runtime；直接要求；全部适用正式入口 | completed/text done/failed terminal不正常结束；未到budget追加profile guidance继续，不第6Turn | 核查普通/特殊正常与五Turn paths、same child suffix累计、generic delegate仍原singleTurn | AF084，等待阶段B |
+| AF085 | 02:1751–1755,2027–2035：普通唯一normal finish_noting(required nonempty concise reason) | Noting Runtime；直接要求；全部适用正式入口 | 成功设置terminal/audit但不直接commit；ordinary无Parent compaction权限 | 核查schema、args验证和success流程，缺reason/text-only不能normal finish | AF085，等待阶段B |
+| AF086 | 02:1757–1765,1770–1804,2037–2044：special唯一normal compact_parent()成功，无finish第二条件 | Noting Runtime；直接要求；全部适用正式入口 | re-read usage已低或native admitted/pending/inflight/compressed success；still required refused failure；不同步wait整个压缩 | 核查实际parent绑定/native cooldown/locks/fences/retries，成功后Anchor check→Snapshot，后来native失败不rollback | AF086，等待阶段B |
+| AF087 | 02:1755–1765：5Turn强制以current valid完整工作state提交，不需mutation/terminal | Noting Runtime；直接要求；全部适用正式入口 | 初始空四区或unchanged均可；special框架直接native compact，无第6Turn；refusal不阻Snapshot；termination forced | 核查两profile缺terminal五Turn结束及fallback成功/拒绝分支，禁止旧terminal_failure纯budget discard | AF087，等待阶段B |
+| AF088 | 02:1767,2433：request context budget组不出时force-end如budget耗尽，termination=context_overflow | Noting Runtime；直接要求；全部适用正式入口；薄弱接线重点 | 不再Turn；existing Commit Gate valid Snapshot；committed仍Finish notice；不silent drop | 核查History结果等oversized上下文的真实错误分类，real provider failure不误当overflow | AF088，等待阶段B |
+| AF089 | 02:1765,1806–1823：正常/forced/overflow均经原Notebook/Anchor/enablement Gate才atomic commit再close | Noting Runtime；直接要求；全部适用正式入口 | 真实failed/interrupted/crash/invalid Anchor/state/write拒绝不fake；无parallel subjective quality gate | 核查各结束分支与commit时eligibility重验、事务失败和资源释放 | AF089，等待阶段B |
+| AF090 | 02:1770–1804：Noting只触发父native compression；active Turn协调、结果publication、continuation归Parent | 父压缩；直接要求；全部适用正式入口；薄弱接线重点 | 不Noting查表重建/merge tail/重做continuation判断；idle admission不证明以后仍idle | 核查请求到Parent原生coordination实际链路，不以Noting helper代替父机制 | AF090，等待阶段B |
+| AF091 | 02:1788–1790,1808–1813：并发Parent Turn/new messages保留；rotating sameConversation；后续Main不继续superseded context | 父压缩；必要推导；全部适用正式入口；薄弱接线重点 | native compression committed结果进入随后实际request；不是仅DB压缩完成 | 追踪active Turn与native compression fence/lock及最终请求上下文，验证tail和owner不丢 | AF091，等待阶段B |
+| AF092 | 02:870–907,2142–2148；04:340–368：Schedule仅commitment/reminder/secretary_task/watchpoint，Notebook intent owned | Schedule；直接要求；全部适用正式入口 | watchpoint直到until once；task explicit instant/deferred无default，其他type禁delivery_mode | 核查create/update/cancel各合同，task due仅提醒不自主执行，其他六type禁止Schedule | AF092，等待阶段B |
+| AF093 | 02:883,900,2100–2109；04:350–360：五表达复用native parser/canonical/next_run；裸duration recurring vs in duration once | Schedule；直接要求；全部适用正式入口 | 无explicit timezone用当前Hermes配置非server隐式；no Cron job fields/repeat limit | 核查schema完整五类文案及真实解析/计算、watchpoint once拒绝recurring | AF093，等待阶段B |
+| AF094 | 02:909–952,2338–2350；04:364：Registry mutable due与immutable intent分离，用Ref owner，route送达才resolve | Schedule；直接要求；全部适用正式入口；薄弱接线重点 | 不存platform/chat/thread/user/scope/assistant/character/channel；mutation原子register/update/cancel | 追踪service side effects，terminal/dropped/archive/schedule cancel禁future delivery，新id推进registry仍对应同一matter | AF094，等待阶段B |
+| AF095 | 02:954–979：薄scanner已有housekeeping/ticker优先；durable restart+atomic occurrence claim | Schedule；直接要求；全部适用正式入口 | 不能两worker成功claim同occurrence；failure不discard；one shot terminal；recurring shared next_run | 核查正式startup/tick/claim/dispatch/advance与失败路径，不只是isolated helper | AF095，等待阶段B |
+| AF096 | 02:981–987,1140–1146；04:364：effective off保留intent不fire，on overdue one shot至多一次，recurring不无限backlog | Schedule；直接要求；全部适用正式入口 | 同一gate覆盖produce/deliver；startup恢复pending/claims | 核查off到due再on、restart、competing scanner及recurring跳过历史backlog | AF096，等待阶段B |
+| AF097 | 02:898,1030–1081,2323–2350；04:344：不创建Hermes Cron Job/jobs.json/isolated execution，不另main busy gate | Schedule；直接要求；全部适用正式入口 | native Cron时间utility复用不意味执行语义复用 | 核查scheduler与Gateway生产链路及持久files/session source，不cron独立session | AF097，等待阶段B |
+| AF098 | 02:989–1028,1596–1621：deferred occurrence只durable pending，不startTurn；next eligible Main request拉取 | Reminder；直接要求；全部适用正式入口；薄弱接线重点 | inflight后sameTurn next tool-loop request可送；无next request则自然nextTurn | 核查实际request前message准备seam及空闲tick不materialize，不append已经built copy | AF098，等待阶段B |
+| AF099 | 02:1615–1621：materialize before build_api_messages，compaction pass拒绝插入等sameTurn下一assembly | Reminder；直接要求；全部适用正式入口；薄弱接线重点 | fresh row不被紧随compaction吞；pre-register in-flight→实际request carries→response ACK | 核查request payload真实含row而非仅DB存在；dropped/compacted/failure不ACK，idempotency不阻重落 | AF099，等待阶段B |
+| AF100 | 02:1609–1621：deferred是main durable role=user wrapper row，一batch多occurrences一row | Reminder；直接要求；全部适用正式入口 | 一次source occurrence不duplicate durable row；retry/replay不rewrite；retired permanent compaction row terminated | 核查批量、重复assembly/retry与compaction退休；at-least-once和durable row幂等同时成立 | AF100，等待阶段B |
+| AF101 | 02:1617,1681,2138,2148：deferred exact引导以下提醒已到期。+JSON entry数组，schedule→实际ISO due_at | Reminder；直接要求；全部适用正式入口 | 其他entry内容/type fields pass through；schedule expression不copy；无timestamp | 核查batch body、due moment来源、wrapper deferred-reminder及provider-neutral正常accounting | AF101，等待阶段B |
+| AF102 | 02:1019–1026,1619–1621,2321：ACK只actual carried row的successful provider response；failure pending，crash可redelivery | Reminder；直接要求；全部适用正式入口 | 目标no-loss at-least-once safe，非heavy exactly once；pending账本与transcript职责不同 | 核查response/failure/crash/restart以及row未出现在request时ACK否决 | AF102，等待阶段B |
+| AF103 | 02:1030–1081,1623–1638：instant通过existing ingress role=user MessageEvent到同Conversation | Reminder；直接要求；全部适用正式入口 | native final busy/idle判断，不能race-prone precheck；idle normal Turn durable；busy转deferred不futureTurn | 追踪真实adapter/admission/busy gate+route proof、idle/busy竞争、fallbackdurability | AF103，等待阶段B |
+| AF104 | 02:1540–1563,1581–1594,1623–1653,1677–1703：synthetic role=user完整noting-task/deferred-reminder/instant-reminder/framework-message wrapper | 消息承载；直接要求；全部适用正式入口 | 无new provider role/secretary semantic display kind；仅instant有user路径timestamp | 核查actual持久与request串行化，不在provider adapter新增semantic role logic | AF104，等待阶段B |
+| AF105 | 02:1559–1579,1696–1703,2264–2273：真实user独立timestamp首行exact ISO8601 offset，entry moment native source | 消息承载；直接要求；全部适用正式入口 | 只写一次耐久保存，retry/replay/route不remint；source due/production time只能content，不marker | 核查user与instant入口、UI可隐藏、localoff保留；无需新DB timestamp列 | AF105，等待阶段B |
+| AF106 | 02:1611,1694：deferred/framework UI(TUI/web)/CLI timeline line不show raw wrapper | 消息承载；直接要求；全部适用正式入口 | Conversation UI visible与platform/channel delivery分开，deferred无外发 | 核查正式各展示surface和transcript metadata，不只mock renderer | AF106，等待阶段B |
+| AF107 | 02:1640–1660,1669,1690–1692：runtime-internal生产，live list+same durable row dual write，只有runtime拥有时存在 | Framework；直接要求；全部适用正式入口；薄弱接线重点 | 无external producer/outprocess owner lookup/pending/ACK；只append durable tail，不start/resumeTurn | 核查正式parent runtime内部接口，不读库以后reconcile live；无runtime事件不写 | AF107，等待阶段B |
+| AF108 | 02:1655–1659,1671：idle立即可见持久进入下次request；busy推迟end durable tail；compression fence推迟clear | Framework；直接要求；全部适用正式入口；薄弱接线重点 | user/model/DB同步单act，不partial visible或midsequence insert；busy queue in-memory crash可loss | 核查active Turn和active compression fence交错及queue flush真实接线，不只prepare notification | AF108，等待阶段B |
+| AF109 | 02:1664–1669,1682–1684：committed task全部profile/trigger/forced/overflow exactly一Finish Notice所属Parent | Framework；直接要求；全部适用正式入口 | noSnapshot无Notice；内容exact Background: notebook updated at <snapshot commit time>. Processed memo entries have been cleared.；finish metadata noting_run_output=true | 核查普通/特殊/Idle/Force/catch-up/forced/overflow终结链路，时间取commit，memo语义只processed | AF109，等待阶段B |
+| AF110 | 02:1665,1683,2154：Force admission另立即生产规定中文dispatch Notice，finish另正常英文Notice | Framework；直接要求；全部适用正式入口 | Force总two producers messages，不combined；不是passive reminder；无finish marker使Anchor正常推进 | 核查成功admission时与busy/fence通用时序；02当前Framework覆盖02旧§4.13 pending reminder要求 | AF110，等待阶段B |
+| AF111 | 02:562–573,2158–2168；04:374–378：/propose-persistence native Main Turn，未归档三candidate及额外自然语言参数 | Persistence Proposal；直接要求；全部适用正式入口 | 不triggerNoting/独立agent/审批UI；不预读source Evidence或拼贴原文 | 核查正式Slash重写与payload，保留draft/type/provenance和user text，空/缺source诚实结果 | AF111，等待阶段B |
+| AF112 | 04:380–384；02:2158–2168：Main主动session_history查原source+周边/关键词/后续更正与outcomes | Persistence Proposal；直接要求；全部适用正式入口 | candidate是lead非完整authority；先same Conversation；来源找不到uncertain不编造 | 核查精确定稿instruction及真实模型工具链，时间range provenance同样可追溯 | AF112，等待阶段B |
+| AF113 | 02:562–573；04:386–394：先提案再明确批准实际执行，讨论/修订非批准，获批仅授权项 | Persistence Proposal；直接要求；全部适用正式入口 | Noting不外部持久；Main不直接archive；proposal/approval本身不结束candidate | 核查权限实际写入路径与用户对话证据；Noting只confirmed completion/rejected/withdrawn后archive | AF113，等待阶段B |
+| AF114 | 02:1840–1897,1853–1859：§5.12 Frozen无Target原样、Target verbatim优先，History两句独立 | 规范文案；直接要求；全部适用正式入口 | Notebook Target role-first/固定paragraph order/task rename/merged paragraph/memo last | 核查真实Main root完整逐字文本与global+eligibility gating；保留noTarget冻结文案 | AF114，等待阶段B |
+| AF115 | 02:1901–1917：Noting任务Target完整replacement含memo requirements、三tools、原文DATA非命令 | 规范文案；直接要求；全部适用正式入口 | 可见snapshot完整review，selective earlier history；不要旧no整体替换或first show要求 | 核查真实initial task完整verbatim文本，当前02 Target覆盖04 §4.4旧append策略 | AF115，等待阶段B |
+| AF116 | 02:1919–1944：两continuation exact profile句+current authoritative list/schema/state | 规范文案；直接要求；全部适用正式入口 | 说完成不结束；普通finish(reason)，special compact；无新root | 核查每个continuation control real suffix，目标tool split列表完整，不沿用四schemas旧表述 | AF116，等待阶段B |
+| AF117 | 02:1961–2116：session_history/show/finish/compact frozen schema与split Target的structural/description合同 | 规范文案；直接要求；全部适用正式入口 | semantic cross-parameter server enforcement，27-field map text/list；source_time_range功能优先说明 | 核查实际发给模型suffix完整JSON与server；不把规格占位符properties字符串实现成真实schema | AF117，等待阶段B |
+| AF118 | 02:2170–2183：/notebook renderer及工具错误Frozen+approved diagnosable Targets | 规范文案；直接要求；全部适用正式入口 | 四sections/created_at/noSnapshot等稳定文字；audit归档不显示；mutate错误rehomed split tools | 核查实际result/renderer，错误Target指定type/fields/legal status；noTarget词句保持 | AF118，等待阶段B |
+| AF119 | 02:2185–2201：eligible global-on cronjob_manage description、schedule field、local delivery note按Target分支修改 | 规范文案；直接要求；全部适用正式入口 | 其他sessions/platforms保留native文本；Cron语义standalone，Conversation reminder exclusively Notebook | 核查实际schema root append、条件与verbatim Target，不全局修改原生schema本体 | AF119，等待阶段B |
+| AF120 | 01:374–391；02:2361–2476；04:415–435：全范围identity/history/gates/snapshot/Trigger/runtime/Schedule/Reminder/disabled acceptance闭环 | 完成定义；直接要求；全部适用正式入口 | isolated helper不等formal wiring；旧报告不替新代码证据，mock OK不足actual request | 阶段B要求逐条spec→criterion→path→conditions→method→result→verdict，未验证记录证据不足 | AF120，等待阶段B |
+| AF121 | 02:2438；04:435,455：actual request首+至少两tool loop+适用retry/continuation+Parent并发/compaction完整prefix比较 | 完成定义；直接要求；全部适用正式入口 | provider cache read counters单独真实observed，shared bytes非cache hit | 核查证据具体版本/请求/响应，不仅首request；真实结构化工具可用性而非头schema改写 | AF121，等待阶段B |
+| AF122 | 04:437–456：官方Dashboard localhost Gateway+真实Main input→response端到端Validation | 完成定义；直接要求；全部适用正式入口 | CLI冒烟/compile/mock不替UAT；History压缩、global/local/cold、candidate提案批准、idle/busy Reminder、Full审计均cover | 阶段B审查已有验证是否符合所称范围；真实用户结果由独立Validation证明，不捏造 | AF122，等待阶段B |
+| AF123 | 04:450–456；01:378–391：交付有版本/平台/模型/参数/缓存/失败限制及代码归属矩阵/审查测试/Dashboard证据/风险/规范同步 | 完成定义；直接要求；全部适用正式入口 | macOS不冒Linux/Windows实测；完成须全部适用要求有证据 | 核查交付与证据版本一致，已知缺口与N/A有依据，未测不写passed | AF123，等待阶段B |
+| AF124 | 02:798与1716及2459；02:796：§5.7说memo add guarantees exactly one run，但详细§3.5/§6.17明确memo不是Trigger | 未决解释；未决解释；全部适用正式入口；薄弱接线重点 | 以详细机制审查add只auto-enable且等正常Trigger；不自加memo Trigger或永久任意一次保证 | 阶段B若实现另发task，按明确noTrigger条款核查；若需强解释一次保证，须记录规格歧义而不迁就实现 | AF124，等待阶段B |
+| AF125 | 02:343–345,1975–1981：正文说可read message_uid/identity；冻结schema列message_identity未列bare UID | 未决解释；未决解释；全部适用正式入口；薄弱接线重点 | 必须按canonical identity可靠精确read；bare UID独立参数是否必需不据代码猜 | 阶段B核查identity完整read必需，bare UID接口差异单独保留解释，不机械强制特定参数名 | AF125，等待阶段B |
+| AF126 | 02:1281与758、613；02:1806–1823：不同Anchor并发允许且原子完整Snapshot/current；未规定stale工作状态合并算法 | 未决解释；未决解释；全部适用正式入口；薄弱接线重点 | 不能擅加last-anchor胜出/merge/revision/拒绝旧任务要求；但不可变、有效Anchor和原子性必须成立 | 阶段B按现行latest committed valid与atomic审查，任何新增并发quality gate须单独说明依据 | AF126，等待阶段B |
+| AF127 | 02:1634,1638,1698–1703：instant due moment与entry moment措辞并列；允许content另述原due | 未决解释；未决解释；全部适用正式入口；薄弱接线重点 | marker只实际entry moment且不remint，不能因迟到使用旧due timestamp破观察次序 | 阶段B区分源due_at内容与timestamp；不强行要求wall-clock准时分毫不差或指定clock算法 | AF127，等待阶段B |
+| AF128 | 02:800,862,2478–2498；04:130–142：audit views可见历史；具体audit RPC/DTO/方法名未冻结 | 未决解释；未决解释；全部适用正式入口；薄弱接线重点 | audit-only对象不能进入Main/Noting product；不要求新增特定endpoint名称 | 阶段B核查必要审计能力真实可取，缺specific UI不机械判违约；分离权限与内部读取 | AF128，等待阶段B |
+
+## 3. 逐条实现证据
+
+等待阶段B：未指定待审实现版本且阶段A禁止调查实现。所有条款目前不作符合/违规判定；这不是门禁通过。
+
+| 条款编号 | 正式入口及完整关键代码路径 | 方法、输入、配置及实际证据 | 证据位置 | 判定及理由 | 证据边界 |
+|---|---|---|---|---|---|
+| AF001–AF128 | 等待阶段B | 阶段A仅规格判据 | criteria.phase-a.md/json及specs/ | 等待实现调查，不能宣称符合 | 未查看任何实现/测试证据 |
+
+## 4. 核心目标及验证方法审查
+
+等待阶段B：本阶段只能冻结判据，不能核查实际接线或测试依据。重点为Idle单次事件及timer/reaper/catch-up；实际模型派发来源记录；冻结全生命周期prefix；Parent原生压缩结果交付实际后续上下文；memo冻结身份消费同事务；deferred materialization与actual-carry ACK；Framework live/durable tail双写和busy/fence时序。各重点均有判据，不能用下游dedupe、准备动作、DB状态或字节parity代替上游规定机制/实际完成事实。
+
+## 5. 发现、整改优先级与范围外项
+
+等待阶段B：没有查看实现，不登记实现缺陷、不引用旧缺陷。规格内未决解释已在第2节明确，包括memo add一次运行措辞、bare UID参数、并发stale state处理、instant entry/due时间以及audit接口名称；不得因此降低明确条款。
+
+| 问题编号 | 对应条款/代码位置 | 触发路径与事实 | 影响及阻断理由 | 建议修复与关闭证据 | 当前状态 |
+|---|---|---|---|---|---|
+| 无 | 等待阶段B | 未调查实现，不能建立实现事实 | 无实现门禁结论 | 等指定待审版本后全范围检查 | 阶段A完成，等待 |
+
+## 6. 修复与独立复审
+
+等待阶段B：本阶段是全新独立判据原始起点，未读取旧报告，不能复核旧缺陷或修复。先按全部判据完成指定版本全范围调查，再查旧发现与修复影响。判据后续变更必须保留原文、规格依据、理由与变化记录；不能为迁就实现改变判据。当前没有主会话提案、实现研讨或工程收敛项。

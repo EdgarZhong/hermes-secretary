@@ -57,6 +57,10 @@
 
 ## V1.6 当前编排与证据
 
+- **新全范围Verification阶段A完成**：全新`verification_final`（fork none）只读36f8冻结01/02/04，独立128条（121直接／2必要推导／5未决解释）、19能力域、M01–M28全覆盖及27薄弱接线重点；尚未调查实现/旧报告/动态看板。root已复核覆盖并将六节原始报告逐字附入正式verification.md，旧139条与固定fba初审保留；原始criteria SHA256 `1ce545ee77cb45ee4c0fba9201671b7500733c6348f219bab30c66f1827459b3`，证据`verification-final/manifest.phase-a.json`。等待最终修复commit及真实补证后阶段B；不作通过声明。
+
+- **隔离Dashboard旧实例已关闭**：接续修复期间以PID/create_time/完整argv/HERMES_HOME核对所有权后，对63881发送SIGTERM并确认退出；本轮官方Dashboard当前0实例，不留旧schema／旧代码混合运行。新profile仍只准备未启动，Verification通过后用最终版启动单实例；证据`dashboard-final-prep/old-server-stop.json`。此前53345就绪记录仅为历史环境准备，不冒充当前运行或验收。
+
 - **本次额度恢复接续（用户再次明确“额度已恢复继续推进”）**：原生两个边界反例已由主会话接收：真实存活 PID holder、正式 Framework writer 与两个 warm Agent，canonical 3/3（14.1s、0外部 API），证明旧 DB/live/tuple 不一致及无争用旧 history；尚非修复通过。证据 `.hermes-dev/v1.6-evidence/native-compaction-fix/counterexample-findings.md`。
 - **VF02/VF03 整改进入实施**：root 提议、原 Verification 根据冻结判据有条件接受。父 native request sibling负责真实 receipt/fence、active安全消费者、idle完成态交接、reset/close/interrupt；Noting退为薄触发。完整实际提交结果由native commit/loader产生；请求压缩成功summary的既有metadata承载publication身份，native lease/loader接缝只对未采纳结果进行freshness交接，不新增pending/表/schema/全局gate，不普遍重载无request Main。后续普通压缩、foreign追加、branch/reset、跨进程无争用及未持久user/sidecar保护必须有关闭证据。active用原始custom参数、idle用上一可信参数；官方factory可信None、任意cold未知则诚实compact失败，不能拒绝普通Noting或废合法Snapshot。上述是C08工程收敛，不冒称新增用户确认。
 - **当前分工**：timers继续完整native修复与0API定向行为测试，仅明确白名单，不派生、不提交；root维护全局覆盖/文档并集中review；旧Verification只完成方案评审，修复后另派全新无上下文审查者；native_evidence等待收敛源码版本，尚未启动新的真实模型调用。两正式门禁均尚未通过。
