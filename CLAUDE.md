@@ -57,6 +57,10 @@
 
 ## V1.6 当前编排与证据
 
+- **用户确认C09已立即落规格**：compact_parent按原生成功契约触发后，父压缩后来取消/失败不撤销Noting terminal成功；照常尝试原Snapshot Gate，合法commit后照常写Finish Framework Message。实际压缩context仅成功commit才采纳，与Snapshot/通知提交独立；未准入不能冒称正常terminal成功、Anchor/enablement仍保留。02 §5.9及本轮索引已同步，独立Verifier须先仅新规格补判据再查实现。
+
+- **再一次额度恢复接续（用户明确“额度已恢复，继续”）**：timers从首批14/14后的claimed-timeout/reset/cancel/sidecar/tool验证恢复，native_evidence仅本地适配，网络权限中断后本地工具可用。当前原生接线工作区仍未提交、未root集中review；真实API补证仍0，native_evidence已完成正式五接缝观测适配并等待最终commit。root已准备ignored最终Dashboard单实例starter但未启动；不得把实现途中通过数或准备记录写为门禁通过。
+
 - **新全范围Verification阶段A完成**：全新`verification_final`（fork none）只读36f8冻结01/02/04，独立128条（121直接／2必要推导／5未决解释）、19能力域、M01–M28全覆盖及27薄弱接线重点；尚未调查实现/旧报告/动态看板。root已复核覆盖并将六节原始报告逐字附入正式verification.md，旧139条与固定fba初审保留；原始criteria SHA256 `1ce545ee77cb45ee4c0fba9201671b7500733c6348f219bab30c66f1827459b3`，证据`verification-final/manifest.phase-a.json`。等待最终修复commit及真实补证后阶段B；不作通过声明。
 
 - **隔离Dashboard旧实例已关闭**：接续修复期间以PID/create_time/完整argv/HERMES_HOME核对所有权后，对63881发送SIGTERM并确认退出；本轮官方Dashboard当前0实例，不留旧schema／旧代码混合运行。新profile仍只准备未启动，Verification通过后用最终版启动单实例；证据`dashboard-final-prep/old-server-stop.json`。此前53345就绪记录仅为历史环境准备，不冒充当前运行或验收。

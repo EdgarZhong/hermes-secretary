@@ -1801,7 +1801,7 @@ Notebook work
 
 At five-Turn exhaustion the **framework** calls native Parent compaction and then attempts a valid Snapshot commit (termination = forced) regardless of fallback compaction success; see §5.8.
 
-Notebook commit does not wait for ultimate compaction completion. If Hermes later retries, falls back, or ultimately fails that compaction, an already valid committed Notebook Snapshot is not rolled back.
+Notebook commit does not wait for ultimate compaction completion. Once `compact_parent` has successfully triggered the native compaction request under the success contract above, later cancellation, retry, fallback, or failure of Parent compaction does not revoke that terminal success. The task still attempts its normal Snapshot Commit Gate and, after a valid Snapshot commit, produces the normal Finish Framework Message; it must not discard a valid working Snapshot or suppress the Finish Notice merely because Parent compaction was subsequently cancelled. An already valid committed Notebook Snapshot is not rolled back. This does not bypass the existing Notebook/Anchor/enablement Commit Gate or classify a request that was never successfully admitted as a successful normal terminal action.
 
 ## 5.10 Parent concurrent activity and commit gate
 
