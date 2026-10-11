@@ -2,7 +2,7 @@
 
 Hermes Secretary 是基于 [Nous Research 的 Hermes Agent](https://github.com/NousResearch/hermes-agent) 的公开扩展项目，面向长期对话中的工作状态维护、责任跟进与提醒。
 
-公开范围由 [V1 实施总纲](docs/01-personal-hermes-v1-first-fork-iteration.md) 定义，并包含通用 System Prompt 调优。Notebook / Noting 及相关基础能力以 [实现规格](docs/02-noting-system-specification.md) 为权威。V1.5 明确修订范围以 [V1.5 实施权威规格](docs/04-hermes-secretary-v1.5-implementation-spec.md) 为准，未修订 V1 契约继续有效。具体实施进展与当前任务统一记录在 [CLAUDE.md](CLAUDE.md)。
+公开范围由 [V1 实施总纲](docs/01-personal-hermes-v1-first-fork-iteration.md) 定义，并包含通用 System Prompt 调优。Notebook / Noting 及相关基础能力以 [实现规格](docs/02-noting-system-specification.md) 为权威。V1.5 明确修订范围以 [V1.5 实施权威规格](docs/04-hermes-secretary-v1.5-implementation-spec.md) 为准；V1.6 已定案并收录于现行 02 的修订条款及 §5.12 Target 优先于 04 的相应旧表述，未修订契约继续有效。具体实施进展与当前任务统一记录在 [CLAUDE.md](CLAUDE.md)。
 
 ## 架构与能力范围
 
