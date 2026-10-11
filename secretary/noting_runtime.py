@@ -223,7 +223,11 @@ def note_actual_main_execution(agent: Any, source: str) -> bool:
     """
     if source not in _MAIN_EXECUTION_VALUES or not is_main_conversation_agent(agent):
         return False
-    _remember_main_execution(agent, source, dirty=True)
+    from secretary.framework_messages import _lock, reset_external_execution_notice
+    with _lock(agent):
+        _remember_main_execution(agent, source, dirty=True)
+        if source == "native":
+            reset_external_execution_notice(agent)
     return True
 
 
@@ -554,6 +558,9 @@ def maybe_admit_force_from_pressure(agent: Any, measured_tokens: Any, *, message
         decision = try_admit_force(
             db, ref, measurement, execution_source=main_execution_for_force(agent)
         )
+        if decision.reason == "external_main_execution":
+            from secretary.framework_messages import publish_external_execution_notice
+            publish_external_execution_notice(agent, expected_conversation_ref=ref)
         if decision.action == "admit":
             from secretary.framework_messages import publish_framework_message
             publish_framework_message(
@@ -617,6 +624,9 @@ def _run_idle_event(parent: Any, db: Any, conversation_ref: str, *,
             db, conversation_ref, measurement=measurement, now=now,
             execution_source=_persisted_main_execution(parent),
         )
+        if decision.reason == "external_main_execution":
+            from secretary.framework_messages import publish_external_execution_notice
+            publish_external_execution_notice(parent, expected_conversation_ref=conversation_ref)
         if decision.action == "admit":
             from secretary.noting_child import spawn_noting_task
             spawn_noting_task(parent, decision.admission)

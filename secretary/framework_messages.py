@@ -4,10 +4,58 @@ import logging
 import threading
 import time
 from contextlib import nullcontext
+from dataclasses import dataclass
 
 from agent.message_metadata import append_message, build_framework_message_wrapper
 
 logger = logging.getLogger(__name__)
+
+_EXTERNAL_EXECUTION_NOTICE = (
+    "Background: Noting is unavailable because this Conversation's latest model request used an external agent runtime. "
+    "Notebook updates can resume after native execution resumes."
+)
+_EXTERNAL_NOTICE_PRODUCER = "external_unavailability"
+
+
+@dataclass(frozen=True)
+class _QueuedFrameworkMessage:
+    conversation_ref: str
+    row: dict
+    producer: str | None = None
+
+    def __iter__(self):
+        yield self.conversation_ref
+        yield self.row
+
+
+def publish_external_execution_notice(parent, *, expected_conversation_ref):
+    """One D01 rejection notice per live owner until an actual Native dispatch."""
+    with _lock(parent):
+        if (not _runtime_valid(parent)
+                or parent._secretary_conversation_ref != expected_conversation_ref
+                or expected_conversation_ref in getattr(parent, "_secretary_external_notice_refs", ())
+                or getattr(parent, "_secretary_last_main_execution", None) == "native"):
+            return False
+        published = publish_framework_message(
+            parent, _EXTERNAL_EXECUTION_NOTICE, expected_conversation_ref=expected_conversation_ref,
+            _producer=_EXTERNAL_NOTICE_PRODUCER,
+        )
+        if published:
+            vars(parent).setdefault("_secretary_external_notice_refs", set()).add(expected_conversation_ref)
+        return published
+
+
+def reset_external_execution_notice(parent):
+    """Called only by a confirmed actual Native Main request, never by hydration."""
+    if not getattr(parent, "_secretary_external_notice_refs", None):
+        return
+    with _lock(parent):
+        ref = getattr(parent, "_secretary_conversation_ref", None)
+        parent._secretary_external_notice_refs.discard(ref)
+        pending = getattr(parent, "_secretary_framework_messages", None)
+        if pending:
+            pending[:] = [message for message in pending if not (
+                message.conversation_ref == ref and message.producer == _EXTERNAL_NOTICE_PRODUCER)]
 
 
 def _lock(parent):
@@ -98,7 +146,7 @@ def _runtime_valid(parent):
                 and isinstance(getattr(parent, "_session_messages", None), list))
 
 
-def publish_framework_message(parent, body, *, display_metadata=None, expected_conversation_ref=None):
+def publish_framework_message(parent, body, *, display_metadata=None, expected_conversation_ref=None, _producer=None):
     """Publish only through the owning runtime; never start a Turn or durable pending work."""
     with _lock(parent):
         if not _runtime_valid(parent):
@@ -109,7 +157,8 @@ def publish_framework_message(parent, body, *, display_metadata=None, expected_c
         row = {"role": "user", "content": build_framework_message_wrapper(body),
                "timestamp": time.time(), "display_kind": "process_complete",
                "display_metadata": {"display_text": str(body), **dict(display_metadata or {})}}
-        vars(parent).setdefault("_secretary_framework_messages", []).append((conversation_ref, row))
+        vars(parent).setdefault("_secretary_framework_messages", []).append(
+            _QueuedFrameworkMessage(conversation_ref, row, _producer))
     flush_framework_messages(parent)
     return True
 
@@ -139,7 +188,7 @@ def flush_framework_messages(parent):
         if not pending:
             return 0
         conversation_ref = getattr(parent, "_secretary_conversation_ref", None)
-        pending[:] = [(ref, row) for ref, row in pending if ref == conversation_ref]
+        pending[:] = [message for message in pending if message.conversation_ref == conversation_ref]
         if not pending:
             return 0
         if _busy(parent):
@@ -151,9 +200,10 @@ def flush_framework_messages(parent):
         if not _runtime_valid(parent):
             return 0
         written = 0
-        for ref, row in rows:
+        for message in rows:
             try:
-                append_runtime_row(parent, parent._session_messages, row, expected_conversation_ref=ref)
+                append_runtime_row(parent, parent._session_messages, message.row,
+                                   expected_conversation_ref=message.conversation_ref)
                 written += 1
             except Exception:
                 logger.warning("Framework tail write failed", exc_info=True)
