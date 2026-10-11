@@ -67,6 +67,9 @@
 - 主会话接线：原 `secretary_reconcile_session_conn` 的 Notebook pointer reconciliation 后调用 `reminder_settle_retired_conn`，只结算已有 carry 且源行已 compacted、同 UID 无 active 行的 pending occurrence。M4 未落行和普通请求丢行保持 pending；证据由 T3 的原生压缩/重投场景提供。
 - 集成 review：主会话已阅读 Memo 不可变行身份及同事务消费、Child 当前 Notebook 后缀／原生请求预算 guard／Overflow Commit Gate、Framework 所属 ref 冻结与 native tail flush／append transaction、Force及Finish调用、普通System Anchor／Full audit／branch和cron bridge ContextVar路径；按已交回日志接收 R2 定向证据，不重复复跑。规格补充已提交 `8626dc30d5`，baseline保留初始提交并追加此授权版本。
 - 正式 Verification 已派遣全新无上下文审查者，阶段A仅从 `8626dc30d5` 的01/02/04规格建立全范围判据，落盘后再提供实现快照与证据。用户取消的skill试点不恢复。集成阶段快照及一次必要扩大检查随后执行；Dashboard Validation须在Verification通过后进入。
+- **用户托管目标已挂载**：完成本轮 V1.6 自主实现，含两独立门禁与 final-delivery；用户暂时离开不停止执行。阶段实现提交 `3661812638171ec9a83a8553fcd4a05f7924ed0b`，尚未最终验收。旧 Dashboard `9119`／PID 97007 已按用户授权 SIGTERM 并确认退出，仅保留本轮 `53345` 隔离实例；最终验收前须重启以加载最新实现快照。
+- **统一检查已完成**：root 执行一次10项全集，首次 health 发现主循环 CC 23>原基线22与新测试fixture导入同名 F811；提取提醒装配 helper、使用pytest_plugins注册fixture后仅复测 ruff/health，两项通过；其余8项首次已通过，冻结规则未改。日志 `integration-checks.log`／`integration-checks-fix.log`。
+- **一次扩大回归已完成**：128个相关文件，四组各自 canonical runner `-j 1`、独立仓库内basetemp，178.4秒；首次1563通过、9失败、3跳过，失败已定向闭环：ACP依赖缺失经官方PM用现有锁在ignored环境补齐；Prompt/Checkpoint纯文件用例的仓库内basetemp引入父级Git根，改用runner默认独立临时目录（这些用例不创建运行数据库）；schema旧表清单补上新增memo表。四个失败文件定向复测分别22/22、57/57+1skip、3/3、9/9，覆盖结果为1572通过、3跳过，不累加重叠用例。未重跑128文件或无关全仓库suite。证据 `integration-test-plan.json`、`integration-group-{0..3}.log`、`integration-{acp,prompt-fixture,checkpoint-fixture,schema}-fix.log`；首次启动参数解析失败未执行测试，已记录。
 
 ## 本轮产品边界确认与实施方案
 

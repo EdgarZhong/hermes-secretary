@@ -14,26 +14,27 @@ Hermes Secretary 是基于 [Nous Research 的 Hermes Agent](https://github.com/N
 |---|---|
 | Conversation Identity | Secretary-owned `conversation_ref` 作为稳定 ownership；physical Session、compression lineage 和 Gateway scope 作为 locator |
 | History Search | 合格 Main 默认可用，按 canonical Message Identity 读取 History Foreground；跨压缩检索真实 User/Assistant/Tool/System 原文，独立于 Noting 开关 |
-| Session Notebook | 每个 Conversation 的结构化 working state；完整 immutable Snapshot 与原子 current pointer；主 Assistant 只读 |
-| Background Noting | V1.5规格：Idle/Force、持久Child与冻结Parent前缀；D01 最近实际请求 Native/External 来源门禁；普通finish_noting(reason)、特殊compact_parent正常结案，最多5 Turn，超限仍尝试提交有效Snapshot |
-| Schedule / Reminder | Notebook-owned 调度；被动提醒在下一 eligible request 注入，主动提醒复用 Gateway admission，busy 时转为被动提醒 |
+| Session Notebook | Snapshot 保存有序不可变 item 版本 id，原子 current pointer；主 Assistant 只读，Noting 使用 manage／edit／schedule 三工具维护；归档无找回入口 |
+| Background Noting | Main Turn 结束注册 Idle 定时器、新 Turn 取消；Force 与重启 catch-up；持久 Child 冻结 Parent 前缀，D01 实际 Native/External 来源门禁；最多5 Turn，超限或 context_overflow 仍走 Snapshot 提交门 |
+| Noting Memo | 主 Assistant 通过 add／replace／delete／list 指明下次整理要点；便签不触发任务，非空保持本会话 Noting 开启；Snapshot 提交同事务消费已处理条目，期间新增或替换的内容保留 |
+| Schedule / Reminder | Notebook-owned 调度；deferred 批量进入活列表与持久对话，实际携带且 Provider 成功响应后 ACK；instant 复用原生用户消息入口，busy 时转为 deferred |
 | Timestamp / Wrappers | 统一真实用户时间标记及 synthetic `role=user` wrapper 契约 |
 | System Prompt 调优 | 围绕公开 Secretary 行为进行通用调优，具体实施口径见当前任务记录 |
 
 Full Foreground 的首节点是唯一 Context Prelude，记录最新有效请求的实际 root System Prompt 与 Tool Schemas；不可观测部分明确标为 missing。其余节点按逻辑 Message Identity 投影，Snapshot 与 Anchor 作为审计附着，不增加消息节点。
 
-V1.5 的 D01 实际执行来源门禁、冻结 Parent 前缀＋后缀工具声明、双 Profile 最多 5 Turn、forced Snapshot 收尾与 Snapshot termination 审计已进入 `main` 实现；termination 仍只进入内部审计元数据，日常 notebook_show、/notebook 和主 Assistant 读取不显示。发布前必须取得本地回归、真实 DeepSeek/缓存证据、独立 Verification 和官方 Dashboard Validation；当前推进与门禁结果见根 `CLAUDE.md`。
+D01 实际执行来源门禁、冻结 Parent 前缀＋后缀完整工具声明与当前 Notebook、双 Profile 最多 5 Turn、forced／context_overflow Snapshot 收尾与 termination 审计已进入 `main` 实现；termination 仍只进入内部审计元数据，日常 notebook_show、/notebook 和主 Assistant 读取不显示。发布前必须取得本地回归、真实 DeepSeek/缓存证据、独立 Verification 和官方 Dashboard Validation；当前推进与门禁结果见根 `CLAUDE.md`。
 
 Conversation 原文是事实来源，Notebook 是派生工作状态。Secretary 持久化在原有 profile-scoped `state.db` 中增加自有表，不修改 Hermes 原有表的 schema 或 ownership。Notebook Schedule 与 Hermes Cron 的职责区分见实现规格。
 
 ## 对话中的 Secretary 命令
 
-这些命令沿用 Hermes 共享 Slash catalog、补全和执行链路，在 CLI、Gateway 与官方 Dashboard Web UI 中使用。下表记录当前已实现入口；功能契约与用户确认的命令修订统一查阅 [当前 V1.5 接续索引](.autonomous/20261009-v1.5-cloud-resume/index.md)，实现状态见 [CLAUDE.md](CLAUDE.md)。
+这些命令沿用 Hermes 共享 Slash catalog、补全和执行链路，在 CLI、Gateway 与官方 Dashboard Web UI 中使用。下表记录当前已实现入口；功能契约统一查阅 [现行实现规格](docs/02-noting-system-specification.md)，实现状态见 [CLAUDE.md](CLAUDE.md)。
 
 | 命令 | 行为 |
 |---|---|
 | `/notebook` | 查看当前 Conversation 的 Notebook 与 Snapshot 创建时间；尚无 Snapshot 时明确提示 |
-| `/noting on`、`/noting off` | 只修改当前 Conversation 的 Noting 参与状态；保留 Snapshot 与 Schedule 意图 |
+| `/noting on`、`/noting off` | 只修改当前 Conversation 的 Noting 参与状态；保留 Snapshot 与 Schedule 意图；便签非空时 off 不生效并说明原因 |
 | `/propose-persistence` | 核对 Notebook 的 Memory／Rule／Skill 候选及原文，向用户提出持久化草稿；可在命令后附普通自然语言 |
 
 全局 Noting 开启时，local off 仍允许人类查看已有 Notebook 和提议已有候选；全局关闭时这两项命令不可用。提议本身不执行持久化，由主 Assistant 使用 History Search 自主核查候选来源、周边和后续反证；后续由用户以自然语言明确批准执行、修改或否决，修改不是执行批准，获批操作使用 Hermes 已有能力。 `/noting on` 会验证当前模型的实际上下文能力及原生 Idle 配置；无法启用时给出具体指导，不写入虚假的开启状态。旧 `/notebook on/off` 不再作为控制入口或别名；`/noting` 的反馈进入普通对话记录，不启动模型 Turn。旧 `/refine` 已移除，独立工作审查 `/review` 保留。
