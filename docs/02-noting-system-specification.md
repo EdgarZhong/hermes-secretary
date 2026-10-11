@@ -1787,6 +1787,8 @@ re-read Parent usage
 
 It reuses Hermes native compaction routing, locks, fences, retries, fallback, late-ack handling, and in-place-versus-rotating semantics.
 
+**Parent runtime ownership (clarified 2026-10-11).** Noting only requests Parent compaction. The Parent's native runtime owns coordination with an active foreground Turn, publication of a committed compaction result into the context used by subsequent main requests, and Compression Continuation. Noting must not independently reconstruct the Parent transcript, merge concurrent tails, or reimplement Parent compaction/continuation decisions. The Parent may be active when the request arrives (§5.10); idle Noting admission is not proof that it remains idle. Coordination must preserve the current Turn and its new messages, preserve the same logical Conversation across rotating compaction, and prevent subsequent main requests from continuing with a superseded pre-compaction context. Notebook Snapshot commit and Framework Message production remain Noting responsibilities under their existing contracts.
+
 The special-profile **normal** commit order remains:
 
 ```text

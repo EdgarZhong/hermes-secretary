@@ -32,7 +32,7 @@
 
 | VF01 / R4 | V036：历史已提交UID被rewind移除后新create或显式source edit复用 | 正式Verifier对fba6ec5真实SessionDB反例确认：全历史Snapshot来源UID并集给新输入通用许可，新候选可错误提交 | 范围内阻断，来源不能复活失效历史 | storage/root | 新create/source edit与commit并发移除来源均拒绝且状态/pointer不变；具体既有item原引用维护、并发旧base、branch与compaction source正例；root方案由Verifier评审，修复后全新全轮独立复审 | 已实施／root接线review接收；provenance-fix基础138、接线77（含专项28）通过，待新独立全轮复审关闭 |
 
-| VF02 / R5 | V099/V077：Noting异步原生父压缩结果未发布live | 固定fba真实6→4 native提交后durable5/live7，worker局部tuple无人消费；Framework等fence清除后仍向旧list追加。root先暂列harness边界，已被正式反证推翻 | 范围内阻断，父下一请求可能复用retired源／错误tail | timers/root | 本次native有效commit结果在fence释放前所属live adoption，保共享引用、不覆盖新Turn/reset/branch/另一压缩；fail/blocked不fake；三个真实profile结束后live=DB且下一Mainwire压缩前缀，一FinishUID两视图，独立全轮复审 | 已确认／接口方案设计中，未关闭 |
+| VF02 / R5 | V099/V077及C08：异步父压缩缺少原生runtime结果接收 | 固定fba真实6→4 native提交后durable5/live7，worker局部tuple无人消费；Framework等fence清除后仍向旧list追加。root先暂列harness边界，已被正式反证推翻；用户明确Noting只触发，撤下Noting层查表拼tail方案（未实施） | 范围内阻断，父下一请求可能复用retired源／错误tail | root／原生接线实现者 | 父原生机制协调active Turn并发布有效结果，保留当前Turn及新消息、同Conversation continuation；Noting不重建父上下文；fail/blocked不fake；真实profile结束后live=DB且下一Mainwire压缩前缀，一FinishUID两视图，独立全轮复审 | 原生接口方案调查中，未关闭 |
 
 ## 取舍、快照与续接
 

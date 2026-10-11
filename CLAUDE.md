@@ -75,6 +75,10 @@
 
 ## 本轮产品边界确认与实施方案
 
+- **C08 用户明确父压缩职责**：Noting 仅请求原生父压缩、自身Snapshot提交和Framework Message生产；active Turn协调、压缩结果发布与Compression Continuation由父原生运行时负责。已同步02 §5.9及轮次索引。此前Noting层读库拼tail/adoption方案未实施，现已撤下；VF02仍阻断。主会话正在核对原生接收结果及active Turn接线，具体最小方案尚未收敛，不把候选方案写成用户确认。
+- C08原生调查（主会话，2026-10-11）：`turn_context.build_turn_context`复制传入history，运行Turn持有自己的messages；`turn_preflight`等原生调用方显式接收压缩tuple并更新flush baseline／重装请求，`turn_context_compaction._reanchor`更新当前user位置；压缩DB watermark保并发tail，rotating原子发布子Session，persist重试可采纳compression tip。但这些不自动替换运行中的Turn上下文；Noting worker局部tuple无人消费，单改`parent._session_messages`也会被旧Turn写回。Gateway hygiene同样显式adopt结果，未发现可直接调用且自动完成active Turn协调的现成异步入口。候选方向是父原生request在自身安全边界执行并消费结果，保留同Turn、同Conversation；空闲压缩与新Turn启动的竞态及receipt接线仍待研究，不是已收敛实现。
+- **外部中断（2026-10-11T09:09:08Z）**：目标工具返回`usageLimited`，实现研究子Agent已报额度限制；正式审查报告仍只持久保存阶段A，阶段B已核实的VF01/VF02事实见本看板、plan及本地反例，不能称全范围审查完成。中断交接见本轮final-delivery.md；恢复后第一步收敛C08原生接线方案、修复VF02，补保存独立阶段B报告，再全新全范围复审及Dashboard Validation。此为额度中断，非用户暂停或目标完成。
+
 - **C07 用户授权 External 拒绝通知**：最新指令要求最近实际请求来自External而使Noting被拒绝时追加Framework Message，并明确“不只是Idle”，交主会话自主收敛。覆盖Force、Idle与冷恢复catch-up，沿用所属Parent尾部双写／busy与fence队列；正文已同步02 §5.6。持续External在同一live runtime／Conversation只提示一次，实际Native请求重置提示抑制；开关、已有Notebook和D01门禁保持原契约。文案与内存通知抑制是用户明确委托的工程收敛，不冒充用户逐字确认。接线已实施并经主会话review；专项refs-final 27/27、关联队列回归60/60、Child兼容与Native竞态4/4、既有runtime17/17通过，日志有重叠不累加；ruff及health通过。正式Verification已仅读新规格补充5条判据，待调查实现。
 - C07竞态提案（主会话提议，待Verification评审）：External拒绝判断到发布之间若已确认actual Native，文案所称latest External不再成立；发布前跳过过时通知。同Turn busy/fence排队后再实际Native则只撤掉当前ref仍排队的该类通知，保留其它Framework生产者与已落盘行。采用已有Framework锁与简单producer标记；hydration/config猜测不能当Native复位，不引入revision/路由状态/持久pending。此项属于用户委托范围内工程收敛，必须进入审查研讨与交付摘要，不能以主会话认可代替独立关闭。
 
