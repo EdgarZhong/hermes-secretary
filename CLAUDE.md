@@ -65,6 +65,8 @@
 - T1 首次 Prelude 节点缺少 `is_compaction` 导致 13 失败，已修复；已提供局部 model/store/schedule/atomicity/branch 证据，主会话 review 中。首次测试临时库在系统隔离临时目录，后续 runner 使用仓库内分组专属 `--basetemp`，不更改 runner 规则。完整日志见 storage 证据目录。
 - T2 初步接收：34/34、正式 host Child→Snapshot 5/5、补充 timer 9/9；主会话核对 timer/DB 原子周期消费/attach/cap 正式路径。R1（已有 Framework queue 遇结束前关闭）已修复并提供 3/3 定向证据；尚未阶段提交。T3 已提供 compaction 拒投/下次重试、跨 host 崩溃恢复及旧 Reminder 回归证据，仍在收敛尾部持久化检查。不同日志有重叠，不累加用例数。
 - 主会话接线：原 `secretary_reconcile_session_conn` 的 Notebook pointer reconciliation 后调用 `reminder_settle_retired_conn`，只结算已有 carry 且源行已 compacted、同 UID 无 active 行的 pending occurrence。M4 未落行和普通请求丢行保持 pending；证据由 T3 的原生压缩/重投场景提供。
+- 集成 review：主会话已阅读 Memo 不可变行身份及同事务消费、Child 当前 Notebook 后缀／原生请求预算 guard／Overflow Commit Gate、Framework 所属 ref 冻结与 native tail flush／append transaction、Force及Finish调用、普通System Anchor／Full audit／branch和cron bridge ContextVar路径；按已交回日志接收 R2 定向证据，不重复复跑。规格补充已提交 `8626dc30d5`，baseline保留初始提交并追加此授权版本。
+- 正式 Verification 已派遣全新无上下文审查者，阶段A仅从 `8626dc30d5` 的01/02/04规格建立全范围判据，落盘后再提供实现快照与证据。用户取消的skill试点不恢复。集成阶段快照及一次必要扩大检查随后执行；Dashboard Validation须在Verification通过后进入。
 
 ## 本轮产品边界确认与实施方案
 

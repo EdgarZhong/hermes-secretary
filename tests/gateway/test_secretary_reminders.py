@@ -151,7 +151,7 @@ async def test_idle_scan_delivers_active_reminder_through_ingress(host_env):
     assert len(adapter.events) == 1
     event = adapter.events[0]
     assert event.source is source
-    assert event.text.startswith("<user-reminder>\n<timestamp>")
+    assert event.text.startswith("<instant-reminder>\n<timestamp>")
     assert "ping the user" in event.text
     assert event.text.splitlines()[1].startswith("<timestamp>")
     assert registry(db, row["schedule_id"])["state"] == "done"
@@ -169,7 +169,7 @@ async def test_scan_queues_passive_reminder_without_any_turn(host_env):
     assert adapter.events == []
     items = secretary_reminders.pull_pending(db, ref)
     assert len(items) == 1
-    assert items[0]["text"].startswith("<system-reminder>\n<timestamp>")
+    assert items[0]["text"].startswith("<deferred-reminder>\n")
     assert "commitment due" in items[0]["text"]
     assert registry(db, row["schedule_id"])["state"] == "done"
 
@@ -403,7 +403,7 @@ async def test_native_admission_rechecks_after_adapter_task_ack(host_env, monkey
     if change == "local_off":
         db.notebook_set_local_enabled(ref, False)
     elif change == "cancel":
-        db._execute_write(lambda conn: schedule_sync_conn(conn, ref, "entry_1", active=False, cancelled=True))
+        db._execute_write(lambda conn: schedule_sync_conn(conn, ref, row["notebook_entry_id"], active=False, cancelled=True))
     else:
         db._execute_write(lambda conn: conn.execute(
             "UPDATE secretary_schedule_registry SET claim_expires_at = ? WHERE schedule_id = ?",

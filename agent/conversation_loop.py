@@ -1554,6 +1554,18 @@ def _run_api_retry_loop(agent, s: _LoopState) -> Optional[Dict[str, Any]]:
     return None
 
 
+def _assemble_reminder_runtime_request(agent, s, *, preflight):
+    """Preview before native admission; materialize only after its send verdict."""
+    if not preflight and not getattr(agent, "_secretary_pending_batch", None):
+        return
+    flag = "_secretary_reminder_preflight_probe" if preflight else "_secretary_reminder_pending_prepared"
+    setattr(agent, flag, True)
+    try:
+        _run_phase(assemble_api_request, agent, s)
+    finally:
+        setattr(agent, flag, False)
+
+
 def _run_conversation_turn(
     agent,
     user_message: Any,
@@ -1665,7 +1677,7 @@ def _run_conversation_turn(
         if _run_phase(begin_iteration, agent, s).action == "break":
             break
         _run_phase(prepare_iteration, agent, s)
-        _run_phase(assemble_api_request, agent, s)
+        _assemble_reminder_runtime_request(agent, s, preflight=True)
         _pg = _run_phase(run_preflight_gate, agent, s)
         if _pg.action == "return":
             return _pg.result
@@ -1673,6 +1685,7 @@ def _run_conversation_turn(
             break
         if _pg.action == "continue":
             continue
+        _assemble_reminder_runtime_request(agent, s, preflight=False)
         _run_phase(announce_api_call, agent, s)
 
         s.api_start_time, s.retry_count, s.max_retries = time.time(), 0, agent._api_max_retries

@@ -1,37 +1,14 @@
-"""Request-only System Reminder delivery and success-tied acknowledgement (02 §3.11, §6.8).
-
-The durable source of truth is Secretary's pending-reminder state; a pending reminder is
-never written into the main Conversation transcript. Each eligible main LLM request:
-
-```text
-durable messages -> normal repair/request construction -> provider-neutral api_messages
--> select pending reminders for this Conversation -> append standalone role=user carriers
--> request accounting -> provider adapter
-```
-
-Delivery is acknowledged only after a successful provider/model response; a failed
-request leaves the reminder pending, and a crash between response and ACK may redeliver
-(at-least-once-safe, never lossy). Carriers reuse the durable source-event timestamp, so
-retry and redelivery never mint a new time.
-
-T4 owns the durable side and locks these method names on the owning SessionDB:
-``reminder_pull_pending_conn(conn, conversation_ref)`` and
-``reminder_ack_conn(conn, reminder_id)``.
-"""
+"""Durable deferred batches, pre-assembly registration and actual-carriage ACK (02 §5.6)."""
 
 from __future__ import annotations
 
+import json
 import logging
 from typing import Any, Dict, List, Optional, Tuple
 
 from agent.message_metadata import build_system_reminder_wrapper
 
 logger = logging.getLogger(__name__)
-
-# Row fields read defensively; T4's locked methods answer rows carrying at least these.
-_ID_KEYS = ("reminder_id", "id")
-_CONTENT_KEYS = ("content", "message", "payload", "text")
-_TIMESTAMP_KEYS = ("source_timestamp", "timestamp", "due_at", "created_at")
 
 
 def _conversation_db_and_ref(agent: Any) -> Tuple[Any, Optional[str]]:
@@ -83,14 +60,6 @@ def _effective_noting_enabled(db: Any, conversation_ref: str) -> bool:
         return False
 
 
-def _row_field(row: Dict[str, Any], keys: Tuple[str, ...]) -> Any:
-    for key in keys:
-        value = row.get(key)
-        if value is not None and value != "":
-            return value
-    return None
-
-
 def _locked_db_hook(db: Any, name: str) -> Any:
     """T4's locked reminder method: the SessionDB sibling, else the module-level function.
 
@@ -132,38 +101,104 @@ def pending_reminders(agent: Any) -> List[Dict[str, Any]]:
     return [dict(row) for row in rows or () if isinstance(row, dict) or hasattr(row, "keys")]
 
 
-def inject_pending_reminders(agent: Any, api_messages: list) -> Tuple[int, int]:
-    """Append one standalone role=user carrier per pending reminder to *api_messages*.
-
-    Returns ``(reminder_count, approx_tokens)``. Request-only: nothing durable changes and
-    the carriers never enter the Conversation transcript. The carried ids are staged on the
-    agent so the successful-response seam can acknowledge exactly them.
-    """
+def prepare_pending_reminders(agent: Any, messages: list) -> int:
+    """Pull bookkeeping only; preview batch pressure before native compaction admission."""
     agent._secretary_inflight_reminders = []
+    agent._secretary_inflight_carriers = []
+    agent._secretary_inflight_batches = []
+    agent._secretary_pending_batch = []
     if not injection_eligible(agent):
-        return 0, 0
+        return 0
     db, ref = _conversation_db_and_ref(agent)
     if db is None or not ref or not _effective_noting_enabled(db, ref):
-        return 0, 0
+        return 0
     rows = pending_reminders(agent)
-    if not rows:
-        return 0, 0
-    carriers: List[str] = []
-    ids: List[Any] = []
+    agent._secretary_pending_batch = rows
+    covered = {rid for row in messages for rid in (row.get("display_metadata") or {}).get("reminder_ids", [])}
+    text = _messages_text(messages)
+    covered.update(row["reminder_id"] for row in rows if row.get("carrier_content") and row["carrier_content"] in text)
+    fresh = [row for row in rows if row["reminder_id"] not in covered]
+    return _carrier_tokens([_batch_carrier(fresh)]) if fresh else 0
+
+
+def _batch_carrier(rows: list) -> str:
+    from hermes_state_secretary_schedule import render_source_timestamp
+    entries = []
     for row in rows:
-        body = _row_field(row, _CONTENT_KEYS)
-        if body is None:
-            continue
-        carrier = build_system_reminder_wrapper(body, timestamp=_row_field(row, _TIMESTAMP_KEYS))
-        api_messages.append({"role": "user", "content": carrier})
-        carriers.append(carrier)
-        reminder_id = _row_field(row, _ID_KEYS)
-        if reminder_id is not None:
-            ids.append(reminder_id)
-    agent._secretary_inflight_reminders = ids
-    if not carriers:
-        return 0, 0
-    return len(carriers), _carrier_tokens(carriers)
+        # Occurrence captures the complete entry while its claim is settled. A
+        # manually queued legacy/internal notice has no Notebook entry provenance.
+        entry = dict(row.get("entry_payload") or {"content": row["content"]})
+        entry.pop("schedule", None)
+        entry["due_at"] = render_source_timestamp(row["source_timestamp"])
+        entries.append(entry)
+    return build_system_reminder_wrapper("以下提醒已到期。\n" + json.dumps(entries, ensure_ascii=False))
+
+
+def materialize_pending_reminders(agent: Any, messages: list) -> int:
+    """One durable batch enters the live sequence, before build_api_messages copies it."""
+    rows = getattr(agent, "_secretary_pending_batch", [])
+    if not rows:
+        return 0
+    if getattr(agent, "_active_compression_commit_fence", None) is not None:
+        return 0
+    wanted = {row["reminder_id"] for row in rows}
+    covered = set()
+    carriers = []
+    batches = []
+    for row in messages:
+        ids = wanted.intersection((row.get("display_metadata") or {}).get("reminder_ids", []))
+        if ids:
+            covered.update(ids)
+            carriers.append(str(row["content"]))
+            batches.append((str(row["content"]), list(ids)))
+    text = _messages_text(messages)
+    for pending in rows:
+        carrier = pending.get("carrier_content")
+        if carrier and carrier in text and pending["reminder_id"] not in covered:
+            covered.add(pending["reminder_id"])
+            if carrier not in carriers:
+                carriers.append(carrier)
+            batches.append((carrier, [pending["reminder_id"]]))
+    fresh = [row for row in rows if row["reminder_id"] not in covered]
+    if fresh:
+        from secretary.framework_messages import append_runtime_row
+        carrier = _batch_carrier(fresh)
+        ids = [row["reminder_id"] for row in fresh]
+        row = {"role": "user", "content": carrier, "display_kind": "process_complete",
+               "display_metadata": {"reminder_ids": ids, "display_text": "以下提醒已到期。"}}
+        try:
+            append_runtime_row(agent, messages, row)
+        except Exception:
+            logger.warning("Deferred Reminder batch persistence failed; remains pending", exc_info=True)
+            return 0
+        covered.update(ids)
+        carriers.append(str(carrier))
+        batches.append((str(carrier), ids))
+    # Phase one: register before the builder or context selection can drop a row.
+    agent._secretary_inflight_reminders = [row["reminder_id"] for row in rows if row["reminder_id"] in covered]
+    agent._secretary_inflight_carriers = carriers
+    agent._secretary_inflight_batches = batches
+    return len(covered)
+
+
+def _messages_text(messages):
+    from agent.message_content import flatten_message_text
+    return "\n".join(flatten_message_text(row.get("content")) for row in messages or [])
+
+
+def verify_carried_reminders(agent: Any, api_messages: list) -> bool:
+    """Phase two: ACK can only follow a response to a request carrying the full wrapper."""
+    text = _messages_text(api_messages)
+    batches = getattr(agent, "_secretary_inflight_batches", [])
+    ids = [rid for carrier, row_ids in batches if carrier in text for rid in row_ids]
+    agent._secretary_inflight_reminders = list(dict.fromkeys(ids))
+    return bool(ids)
+
+
+def inject_pending_reminders(agent: Any, messages: list) -> Tuple[int, int]:
+    """Compatibility helper: materialize into LIVE messages, never a built API copy."""
+    tokens = prepare_pending_reminders(agent, messages)
+    return materialize_pending_reminders(agent, messages), tokens
 
 
 def _carrier_tokens(carriers: List[str]) -> int:

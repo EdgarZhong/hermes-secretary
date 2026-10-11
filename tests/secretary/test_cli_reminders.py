@@ -60,11 +60,13 @@ def arm(db, ref, semantics="user_reminder"):
     ))
 
 
-def test_cli_idle_tick_uses_normal_lane_and_preserves_due_timestamp(cli_env):
+def test_cli_idle_tick_uses_normal_lane_and_preserves_entry_timestamp(cli_env):
     cli, db, ref = cli_env
     row = arm(db, ref)
     cli_reminders.poll_cli_reminders(cli)
-    assert len(cli.calls) == 1 and cli.calls[0] == reminders.user_reminder_text("CLI reminder", row["next_run_at"])
+    assert len(cli.calls) == 1
+    assert cli.calls[0].source_timestamp > row["next_run_at"]
+    assert cli.calls[0] == reminders.user_reminder_text("CLI reminder", cli.calls[0].source_timestamp)
     from agent.message_metadata import TrustedUserInput, stamp_message_timestamp
     assert isinstance(cli.calls[0], TrustedUserInput)
     assert stamp_message_timestamp({"role": "user", "content": cli.calls[0]})["content"] == cli.calls[0]
@@ -211,8 +213,12 @@ def test_cold_cli_construct_then_real_chat_preserves_source_on_wire_and_durable(
         wire = next(r["content"] for r in seen[0]["messages"] if r["role"] == "user")
         assert wire == durable
         if trusted:
-            assert wire == carrier and wire.splitlines()[0] == "<user-reminder>"
-            assert durable_row["timestamp"] == row["next_run_at"]
+            assert wire.splitlines()[0] == "<instant-reminder>"
+            assert row["reminder_text"] in wire
+            from datetime import datetime
+            marker = wire.splitlines()[1]
+            assert datetime.fromisoformat(marker[len("<timestamp>"):-len("</timestamp>")]).timestamp() == durable_row["timestamp"]
+            assert durable_row["timestamp"] > row["next_run_at"]
         else:
             assert wire.splitlines()[0].startswith("<timestamp>") and wire.endswith(carrier)
     finally:

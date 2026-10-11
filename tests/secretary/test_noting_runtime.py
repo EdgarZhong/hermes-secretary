@@ -36,6 +36,12 @@ def db(tmp_path):
     db.close()
 
 
+@pytest.fixture(autouse=True)
+def historical_clock(monkeypatch):
+    """Policy tests use historical timestamps; real timer behavior has its own tests."""
+    monkeypatch.setattr("secretary.noting_timers.arm_idle_timer", lambda *args: None)
+
+
 def _settings(enabled=True, delay=500.0, selection=False, selection_threshold=None, compact_after_force=False):
     return NotingSettings(enabled, delay, selection, selection_threshold, compact_after_force)
 
@@ -135,7 +141,7 @@ def test_idle_admits_after_the_delay_with_the_frozen_anchor(db):
     assert db.noting_admission(admission.admission_id)["anchor_message_uid"] == "m2"
 
     repeat = rt.try_admit_idle(db, ref, now=2100.0)
-    assert (repeat.action, repeat.reason) == ("skip", "same_anchor_admitted")
+    assert (repeat.action, repeat.reason) == ("skip", "idle_trigger_produced")
 
 
 def test_non_main_turns_never_touch_the_timer(db):
@@ -210,7 +216,9 @@ def test_idle_defers_to_the_force_path_in_a_covered_segment(db):
 
     db.notebook_commit_snapshot(ref, empty_state(), anchor_message_uid="m1",
                                 trigger_type="force", runtime_profile=TASK_PROFILE_NOTING)
+    db.noting_idle_turn_finished(ref, 1100.0)
     assert rt.try_admit_idle(db, ref, measurement=measurement, now=2000.0).reason == "force_snapshot_present"
+    db.noting_idle_turn_finished(ref, 1200.0)
     compact = rt.try_admit_idle(db, ref, measurement=measurement, now=2000.0,
                                 settings=_settings(compact_after_force=True))
     assert (compact.action, compact.reason) == ("compact_parent", "force_snapshot_present")
@@ -362,6 +370,8 @@ def test_d01_external_gate_runs_only_after_a_real_trigger_and_before_admission(d
     )
     assert (blocked_idle.action, blocked_idle.reason) == ("skip", "external_main_execution")
     assert _admission_count(db) == before
+    assert rt.try_admit_idle(db, idle_ref, now=2000.0).reason == "idle_trigger_produced"
+    db.noting_idle_turn_finished(idle_ref, 1100.0)  # A later native main idle period is independent.
     assert rt.try_admit_idle(
         db, idle_ref, now=2000.0, execution_source="native",
     ).action == "admit"

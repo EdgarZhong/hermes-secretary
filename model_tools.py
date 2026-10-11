@@ -721,9 +721,12 @@ def _dispatch_bridge_tool(function_name: str, function_args: Dict[str, Any],
                                             quiet_mode=True, skip_tool_search_assembly=True) or []
     except Exception:
         current_defs = []
+    from agent.secretary_prompt import apply_scoped_cron_schema_guidance, apply_scoped_cron_search_guidance
+    current_defs = apply_scoped_cron_schema_guidance(current_defs)
     args = function_args or {}
     if function_name == ts.TOOL_SEARCH_NAME:
-        return ts.dispatch_tool_search(args, current_tool_defs=current_defs), None
+        result = ts.dispatch_tool_search(args, current_tool_defs=current_defs)
+        return apply_scoped_cron_search_guidance(result), None
     if function_name == ts.TOOL_DESCRIBE_NAME:
         return ts.dispatch_tool_describe(args, current_tool_defs=current_defs), None
     underlying_name, underlying_args, err = ts.resolve_underlying_call(args)

@@ -250,3 +250,69 @@ def test_profile_database_isolation_and_formal_agent_initialization(db, tmp_path
         assert other.get_history_foreground("shared-id") == []
     finally:
         other.close()
+
+
+def _copy_branch_at_boundary(db, child, parent, history, entrypoint):
+    if entrypoint == "tui":
+        from tui_gateway import server
+        server._persist_branch(db, child, parent, "Boundary branch", history,
+                               source="desktop", cwd=None, profile_name="default", model="test-model",
+                               copy_fields=("display_kind", "display_metadata", "timestamp"))
+    else:
+        db.create_session(child, source="test", parent_session_id=parent,
+                          model_config={"_branched_from": parent},
+                          branch_point_message_uid=history[-1]["message_uid"])
+        db.append_messages_batch(child, history)
+
+
+@pytest.mark.parametrize("entrypoint", ["native", "tui"])
+@pytest.mark.parametrize("boundary", ["system", "finish"])
+def test_branch_boundary_accepts_logical_system_and_finish_messages(db, entrypoint, boundary):
+    make(db, "parent")
+    add(db, "parent", "before boundary", "before")
+    row = {"role": "system" if boundary == "system" else "user", "content": "boundary event",
+           "message_uid": "boundary", "display_metadata": {"noting_run_output": True} if boundary == "finish" else {}}
+    db.append_messages_batch("parent", [row])
+    add(db, "parent", "after boundary", "later")
+    history = db.get_messages_as_conversation("parent")[:2]
+    parent_ref = db.resolve_conversation_ref("parent")
+    parent_node = next(r for r in db.get_full_foreground("parent") if r.get("message_uid") == "boundary")
+    assert parent_node["message_identity"] == {"conversation_ref": parent_ref, "message_uid": "boundary"}
+    assert not parent_node["is_compaction"]
+    _copy_branch_at_boundary(db, "branch", "parent", history, entrypoint)
+    branch_ref = db.resolve_conversation_ref("branch")
+    inherited = db.get_history_foreground("branch")
+    assert branch_ref != parent_ref
+    assert [r["message_uid"] for r in inherited] == ["before", "boundary"]
+    assert all(r["message_identity"]["conversation_ref"] == branch_ref for r in inherited)
+    assert inherited[-1]["role"] == row["role"]
+    if boundary == "finish":
+        assert inherited[-1]["display_metadata"]["noting_run_output"] is True
+    make(db, "wrong-parent")
+    with pytest.raises(ConversationIdentityError, match="Caller parent differs"):
+        db.inherit_foreground_branch("wrong-parent", "branch", through_message_uid="boundary")
+
+
+@pytest.mark.parametrize("entrypoint", ["native", "tui"])
+@pytest.mark.parametrize("boundary", ["missing", "foreign", "compaction"])
+def test_branch_boundary_rejects_invalid_foreign_and_compaction_uids(db, entrypoint, boundary):
+    make(db, "parent")
+    add(db, "parent", "parent fact", "before")
+    if boundary == "compaction":
+        db.append_messages_batch("parent", [{"role": "user", "message_uid": "boundary",
+                                 "content": SUMMARY_PREFIX + "scaffold\n" + _SUMMARY_END_MARKER,
+                                 "_compressed_summary": True}])
+        history = db.get_messages_as_conversation("parent")
+        assert next(r for r in db.get_full_foreground("parent")
+                    if r.get("message_uid") == "boundary")["is_compaction"]
+    else:
+        if boundary == "foreign":
+            make(db, "other-owner")
+            add(db, "other-owner", "foreign fact", "boundary", role="system")
+            history = db.get_messages_as_conversation("other-owner")
+        else:
+            history = [{"role": "system", "content": "nonexistent", "message_uid": "boundary"}]
+    with pytest.raises(ConversationIdentityError, match="Branch point is outside parent path"):
+        _copy_branch_at_boundary(db, "branch", "parent", history, entrypoint)
+    assert db.get_session("branch") is None
+    assert not db.get_messages("branch")

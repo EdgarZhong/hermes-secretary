@@ -36,7 +36,9 @@ def _source_validator_conn(db, conn, conversation_ref):
         "SELECT payload_json FROM secretary_notebook_snapshots WHERE conversation_ref = ?",
         (conversation_ref,),
     ):
-        persisted.update(_persisted_source_identities(json.loads(row[0])))
+        from secretary.notebook_items import hydrate_snapshot_conn
+        persisted.update(_persisted_source_identities(hydrate_snapshot_conn(
+            conn, conversation_ref, json.loads(row[0]), include_archived=True)))
 
     def valid_source(source):
         return (isinstance(source, dict) and source.get("conversation_ref") == conversation_ref
@@ -51,7 +53,7 @@ def validate_snapshot_state_conn(db, conn, conversation_ref, payload):
     return NotebookWorkingState(
         conversation_ref, payload,
         validate_source_identity=_source_validator_conn(db, conn, conversation_ref),
-    ).show()
+    ).snapshot_state()
 
 
 class NotebookStore:
@@ -72,40 +74,48 @@ class NotebookStore:
     def load(self):
         """(Re)build the working state from the current committed Snapshot; none starts empty."""
         with self._db._read_ctx() as conn:
-            snapshot = self._db.notebook_current_conn(conn, self.conversation_ref)
+            payload = self._db.notebook_snapshot_state_conn(conn, self.conversation_ref)
             valid_source = _source_validator_conn(self._db, conn, self.conversation_ref)
-        payload = snapshot["payload"] if snapshot else None
 
         self._state = NotebookWorkingState(self.conversation_ref, payload,
                                            validate_source_identity=valid_source,
-                                           parse_schedule=self._parse_schedule)
+                                           parse_schedule=self._parse_schedule, insert_version=self._insert_version)
         return self._state.show()
+
+    def _insert_version(self, entry, previous_id):
+        from secretary.notebook_items import insert_item_conn
+        return self._db._execute_write(lambda conn: insert_item_conn(
+            conn, self.conversation_ref, entry, previous_id))
+
+    def snapshot_state(self) -> dict:
+        return self._state.snapshot_state()
 
     def show(self) -> dict:
-        """The complete task-local state; the next commit persists exactly this."""
+        """The active task-local four-section Agent view; archive versions stay internal."""
         return self._state.show()
 
-    def create(self, entry_type, fields, *, status=None, source_message_identities=None) -> dict:
+    def create(self, entry_type, fields, *, status=None, source_message_identities=None,
+               source_time_range=None, expression=None, delivery_mode=None) -> dict:
         return self._state.create(entry_type, fields, status=status,
-                                  source_message_identities=source_message_identities)
+                                  source_message_identities=source_message_identities,
+                                  source_time_range=source_time_range, expression=expression,
+                                  delivery_mode=delivery_mode)
 
-    def edit(self, entry_id, fields, *, source_message_identities=None) -> dict:
-        return self._state.edit(entry_id, fields, source_message_identities=source_message_identities)
+    def edit(self, entry_id, fields, *, source_message_identities=None, source_time_range=None) -> dict:
+        return self._state.edit(entry_id, fields, source_message_identities=source_message_identities,
+                                source_time_range=source_time_range)
+
+    def get(self, entry_id) -> dict:
+        return self._state.get(entry_id)
 
     def archive(self, entry_id) -> dict:
         return self._state.archive(entry_id)
 
-    def restore(self, entry_id) -> dict:
-        return self._state.restore(entry_id)
-
     def transition_status(self, entry_id, status) -> dict:
         return self._state.transition_status(entry_id, status)
 
-    def schedule_create(self, entry_id, expression) -> dict:
-        return self._state.schedule_create(entry_id, expression)
-
-    def schedule_update(self, entry_id, expression) -> dict:
-        return self._state.schedule_update(entry_id, expression)
+    def schedule_update(self, entry_id, expression, *, delivery_mode=None) -> dict:
+        return self._state.schedule_update(entry_id, expression, delivery_mode=delivery_mode)
 
     def schedule_cancel(self, entry_id) -> dict:
         return self._state.schedule_cancel(entry_id)
@@ -113,5 +123,5 @@ class NotebookStore:
     def commit(self, anchor_message_uid) -> str:
         """Commit this task's complete state as one Snapshot; a refusal keeps state and pointer."""
         return self._db.notebook_commit_snapshot(
-            self.conversation_ref, self._state.show(), anchor_message_uid=anchor_message_uid,
+            self.conversation_ref, self._state.snapshot_state(), anchor_message_uid=anchor_message_uid,
             trigger_type=self.trigger_type, runtime_profile=self.runtime_profile)

@@ -34,6 +34,8 @@ CREATE TABLE IF NOT EXISTS secretary_noting_idle_state (
     conversation_ref TEXT PRIMARY KEY REFERENCES secretary_conversations(conversation_ref),
     last_turn_started_at REAL,
     last_turn_finished_at REAL,
+    due_at REAL,
+    trigger_produced_at REAL,
     updated_at REAL NOT NULL
 );
 """
@@ -44,13 +46,13 @@ _TURN_STARTED_UPSERT_SQL = (
     "INSERT INTO secretary_noting_idle_state "
     "(conversation_ref, last_turn_started_at, last_turn_finished_at, updated_at) VALUES (?, ?, NULL, ?) "
     "ON CONFLICT(conversation_ref) DO UPDATE SET last_turn_started_at = excluded.last_turn_started_at, "
-    "updated_at = excluded.updated_at"
+    "due_at = NULL, trigger_produced_at = NULL, updated_at = excluded.updated_at"
 )
 _TURN_FINISHED_UPSERT_SQL = (
     "INSERT INTO secretary_noting_idle_state "
-    "(conversation_ref, last_turn_started_at, last_turn_finished_at, updated_at) VALUES (?, NULL, ?, ?) "
+    "(conversation_ref, last_turn_started_at, last_turn_finished_at, due_at, updated_at) VALUES (?, NULL, ?, ?, ?) "
     "ON CONFLICT(conversation_ref) DO UPDATE SET last_turn_finished_at = excluded.last_turn_finished_at, "
-    "updated_at = excluded.updated_at"
+    "due_at = excluded.due_at, trigger_produced_at = NULL, updated_at = excluded.updated_at"
 )
 _CHILD_REGISTER_SQL = (
     "INSERT INTO secretary_noting_children "
@@ -158,13 +160,27 @@ class SecretaryNotingMixin:
         return self._execute_write(lambda conn: self.noting_idle_turn_started_conn(
             conn, conversation_ref, at))
 
-    def noting_idle_turn_finished_conn(self, conn, conversation_ref, at):
+    def noting_idle_turn_finished_conn(self, conn, conversation_ref, at, *, due_at=None):
         _require_text(conversation_ref, "An owning Conversation Ref")
-        conn.execute(_TURN_FINISHED_UPSERT_SQL, (conversation_ref, float(at), time.time()))
+        conn.execute(_TURN_FINISHED_UPSERT_SQL, (conversation_ref, float(at), due_at, time.time()))
 
-    def noting_idle_turn_finished(self, conversation_ref, at):
+    def noting_idle_turn_finished(self, conversation_ref, at, *, due_at=None):
         return self._execute_write(lambda conn: self.noting_idle_turn_finished_conn(
-            conn, conversation_ref, at))
+            conn, conversation_ref, at, due_at=due_at))
+
+    def noting_idle_claim_trigger(self, conversation_ref, *, now, delay_seconds):
+        """Atomically consume one idle period before consulting its Foreground."""
+        def claim(conn):
+            cursor = conn.execute(
+                "UPDATE secretary_noting_idle_state SET trigger_produced_at = ?, updated_at = ? "
+                "WHERE conversation_ref = ? AND trigger_produced_at IS NULL "
+                "AND last_turn_finished_at IS NOT NULL "
+                "AND (last_turn_started_at IS NULL OR last_turn_started_at < last_turn_finished_at) "
+                "AND COALESCE(due_at, last_turn_finished_at + ?) <= ?",
+                (float(now), time.time(), conversation_ref, float(delay_seconds), float(now)),
+            )
+            return cursor.rowcount == 1
+        return self._execute_write(claim)
 
     def noting_idle_state_conn(self, conn, conversation_ref):
         row = conn.execute(
@@ -181,9 +197,10 @@ class SecretaryNotingMixin:
         rows = conn.execute(
             "SELECT conversation_ref FROM secretary_noting_idle_state "
             "WHERE last_turn_finished_at IS NOT NULL "
+            "AND trigger_produced_at IS NULL "
             "AND (last_turn_started_at IS NULL OR last_turn_started_at < last_turn_finished_at) "
-            "AND last_turn_finished_at <= ? ORDER BY last_turn_finished_at",
-            (float(now) - float(delay_seconds),),
+            "AND COALESCE(due_at, last_turn_finished_at + ?) <= ? ORDER BY last_turn_finished_at",
+            (float(delay_seconds), float(now)),
         ).fetchall()
         return [row["conversation_ref"] for row in rows]
 
@@ -217,7 +234,8 @@ class SecretaryNotingMixin:
         # even if an asynchronous Snapshot commits after the compaction completed.
         boundaries = {row["message_uid"] for row in full if row["is_compaction"]}
         boundary = max(((introduced[uid], 0) for uid in boundaries), default=(-1, 0))
-        anchors = {row["message_uid"] for row in full if not row["is_compaction"] and row["role"] != "system"}
+        anchors = {row["message_uid"] for row in full if not row["is_compaction"]
+                   and (row.get("display_metadata") or {}).get("noting_run_output") is not True}
         for row in rows:
             uid = row["anchor_message_uid"]
             # The genuine user projection of a newly introduced composite carrier

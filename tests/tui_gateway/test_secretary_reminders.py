@@ -94,10 +94,10 @@ def test_idle_due_user_reminder_enters_the_normal_turn_admission(tui_env):
     assert len(submitter.calls) == 1
     sid, text = submitter.calls[0]
     assert sid == "ui-1"
-    assert text.startswith("<user-reminder>\n<timestamp>")
+    assert text.startswith("<instant-reminder>\n<timestamp>")
     assert text.splitlines()[1].startswith("<timestamp>")
     assert "ping the user" in text
-    assert text.endswith("</user-reminder>")
+    assert text.endswith("</instant-reminder>")
     assert registry(db, row["schedule_id"])["state"] == "done"
     assert pending(db, ref) == []
 
@@ -110,7 +110,7 @@ def test_busy_due_user_reminder_becomes_pending_without_a_second_turn(tui_env):
     assert submitter.calls == []
     items = pending(db, ref)
     assert len(items) == 1
-    assert items[0]["text"].startswith("<system-reminder>\n<timestamp>")
+    assert items[0]["text"].startswith("<deferred-reminder>\n")
     assert "ping the user" in items[0]["text"]
     assert registry(db, row["schedule_id"])["state"] == "done"
 
@@ -177,7 +177,7 @@ def test_cold_reopen_constructed_main_fires_due_without_a_human_turn(native_runt
         wire = next(r["content"] for r in seen[0]["messages"] if r["role"] == "user")
         durable_row = next(r for r in db.get_messages(agent.session_id) if r["role"] == "user")
         durable = durable_row["content"]
-        assert wire == durable and wire.splitlines()[0] == "<user-reminder>"
-        assert durable_row["timestamp"] == due
+        assert wire == durable and wire.splitlines()[0] == "<instant-reminder>"
+        assert durable_row["timestamp"] > due
     finally:
         agent.close()

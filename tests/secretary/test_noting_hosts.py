@@ -71,7 +71,7 @@ def test_messaging_housekeeping_scope_starts_real_child(parent, db, stub_client,
     assert homes == [Path(db.db_path).parent]
 
 
-def test_turn_start_measurement_spawns_force_and_once_pending(parent, db, stub_client, monkeypatch):
+def test_turn_start_measurement_spawns_force_and_once_framework(parent, db, stub_client, monkeypatch):
     from agent.turn_context import _preflight_request_tokens
     _ready(parent, db, stub_client)
     parent.context_compressor.context_length = 130_000
@@ -84,9 +84,11 @@ def test_turn_start_measurement_spawns_force_and_once_pending(parent, db, stub_c
     assert current["trigger_type"] == "force"
     _preflight_request_tokens(parent, parent._session_messages, parent._cached_system_prompt)
     with db._read_ctx() as conn:
-        pending = db.reminder_pull_pending_conn(conn, ref)
-        admitted = conn.execute("SELECT admitted_at FROM secretary_noting_admissions WHERE conversation_ref = ?", (ref,)).fetchone()[0]
-    assert len(pending) == 1 and pending[0]["source_timestamp"] == admitted
+        assert db.reminder_pull_pending_conn(conn, ref) == []
+    notices = [row for row in db.get_messages(parent.session_id)
+               if "notebook 更新任务已派发" in (row.get("content") or "")]
+    assert len(notices) == 1
+    assert notices[0]["content"] in [row.get("content") for row in parent._session_messages]
 
 
 def test_owner_profile_off_overrides_enabled_launch_and_reminder_read_failure(parent, db, stub_client, monkeypatch):
@@ -109,13 +111,13 @@ def test_owner_profile_off_overrides_enabled_launch_and_reminder_read_failure(pa
         assert len(db.reminder_pull_pending_conn(conn, ref)) == 1
 
 
-def test_force_pending_failure_rolls_back_admission(parent, db, stub_client, monkeypatch):
+def test_force_admission_has_no_pending_reminder_dependency(parent, db, stub_client, monkeypatch):
     from secretary.noting_policy import ContextMeasurement
     from secretary.noting_runtime import try_admit_force
     def fail(*args, **kwargs):
         raise RuntimeError("pending store failed")
     monkeypatch.setattr("hermes_state_secretary_schedule.reminder_append_pending_conn", fail)
     decision = try_admit_force(db, parent._secretary_conversation_ref, ContextMeasurement(64_000, 130_000, 75_000))
-    assert decision.reason == "trigger_error"
+    assert decision.action == "admit"
     with db._read_ctx() as conn:
-        assert conn.execute("SELECT COUNT(*) FROM secretary_noting_admissions").fetchone()[0] == 0
+        assert conn.execute("SELECT COUNT(*) FROM secretary_noting_admissions").fetchone()[0] == 1

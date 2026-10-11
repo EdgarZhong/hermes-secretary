@@ -293,6 +293,7 @@ async def _deliver_active_claim(runner, db, claim, profile, home) -> None:
             "schedule_id": claim["schedule_id"],
             "claim_token": claim["claim_token"],
             "source_timestamp": resolved["source_timestamp"],
+            "next_run_at": claim["next_run_at"],
             "content": resolved["content"],
         }
         event.metadata = metadata
@@ -326,7 +327,7 @@ def _event_claim(event):
     if not reminder:
         return None
     return {"conversation_ref": reminder.get("conversation_ref"), "schedule_id": reminder.get("schedule_id"),
-            "claim_token": reminder.get("claim_token"), "next_run_at": reminder.get("source_timestamp")}
+            "claim_token": reminder.get("claim_token"), "next_run_at": reminder.get("next_run_at", reminder.get("source_timestamp"))}
 
 
 def admit_secretary_reminder_event(runner, event):
@@ -407,7 +408,7 @@ def convert_busy_reminder_event(runner, event) -> bool:
         "conversation_ref": reminder.get("conversation_ref"),
         "schedule_id": reminder.get("schedule_id"),
         "claim_token": reminder.get("claim_token"),
-        "next_run_at": reminder.get("source_timestamp"),
+        "next_run_at": reminder.get("next_run_at", reminder.get("source_timestamp")),
         "reminder_text": reminder.get("content"),
     }
     try:

@@ -49,8 +49,13 @@ def test_trusted_synthetic_keeps_original_source_time_without_outside_stamp(runt
         assert result["completed"]
         wire = next(r["content"] for r in seen[0]["messages"] if r["role"] == "user")
         row = next(r for r in db.get_messages(agent.session_id) if r["role"] == "user")
-        assert wire == trusted and row["content"] == trusted and row["timestamp"] == source
-        assert wire.splitlines()[1].startswith("<timestamp>")
+        assert wire == trusted and row["content"] == trusted
+        if factory is build_user_reminder_wrapper:
+            assert row["timestamp"] == source
+            assert wire.splitlines()[1].startswith("<timestamp>")
+        else:
+            assert "<timestamp>" not in wire
+            assert row["timestamp"] > source
         result = agent.run_conversation(user_message="next", conversation_history=db.get_messages_as_conversation(agent.session_id), title_user_message="")
         assert result["completed"]
         assert next(r["content"] for r in seen[-1]["messages"] if r["role"] == "user") == trusted

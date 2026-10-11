@@ -236,10 +236,10 @@ def test_pending_reminder_dedup_pull_and_ack_only_after_success(db):
     assert len(pull) == 1
     item = pull[0]
     assert set(item) >= {"reminder_id", "text", "source_timestamp"}
-    assert item["text"].startswith("<system-reminder>\n<timestamp>")
-    assert item["text"].splitlines()[1].startswith("<timestamp>")
+    assert item["text"].startswith("<deferred-reminder>\n")
+    assert "<timestamp>" not in item["text"]
     assert "commitment due" in item["text"]
-    assert item["text"].endswith("</system-reminder>")
+    assert item["text"].endswith("</deferred-reminder>")
     assert item["source_timestamp"] == pytest.approx(now - 30, abs=0.01)
     # A failed request leaves the row pending: nothing was ACKed, so a retry sees it again.
     again = db._execute_write(lambda conn: reminder_pull_pending_conn(conn, ref))

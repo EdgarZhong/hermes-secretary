@@ -179,9 +179,27 @@ def _compact_parent(agent, args: dict, ctx: InlineToolContext) -> Any:
     return compact_parent_from_child(agent)
 
 
-def _notebook_mutate(agent, args: dict, ctx: InlineToolContext) -> Any:
-    from secretary.noting_tools import notebook_mutate
-    return notebook_mutate(agent, args)
+def _notebook_manage(agent, args: dict, ctx: InlineToolContext) -> Any:
+    from secretary.noting_tools import notebook_manage
+    return notebook_manage(agent, args)
+
+
+def _notebook_edit(agent, args: dict, ctx: InlineToolContext) -> Any:
+    from secretary.noting_tools import notebook_edit
+    return notebook_edit(agent, args)
+
+
+def _notebook_schedule(agent, args: dict, ctx: InlineToolContext) -> Any:
+    from secretary.noting_tools import notebook_schedule
+    return notebook_schedule(agent, args)
+
+
+def _noting_memo(agent, args: dict, ctx: InlineToolContext) -> Any:
+    from tools.noting_memo_tool import noting_memo
+    from secretary.noting_surface import notebook_dispatch_enabled
+    return noting_memo(args, db=getattr(agent, "_session_db", None),
+                      conversation_ref=getattr(agent, "_secretary_conversation_ref", None),
+                      effective_enabled=notebook_dispatch_enabled(agent))
 
 
 def _finish_noting(agent, args: dict, ctx: InlineToolContext) -> Any:
@@ -298,7 +316,10 @@ _RAW_INLINE_TOOL_EXECUTORS: Dict[str, InlineToolExecutor] = {
     "session_search": _session_search,
     "session_history": _session_history,
     "notebook_show": _notebook_show,
-    "notebook_mutate": _notebook_mutate,
+    "notebook_manage": _notebook_manage,
+    "notebook_edit": _notebook_edit,
+    "notebook_schedule": _notebook_schedule,
+    "noting_memo": _noting_memo,
     "finish_noting": _finish_noting,
     "compact_parent": _compact_parent,
     "memory": _memory,
@@ -348,7 +369,7 @@ INLINE_TOOL_EXECUTORS: Dict[str, InlineToolExecutor] = {
 # ``invoke_tool`` (concurrent path) consults the memory manager right after these
 # names and before the remaining inline tools; ``message_agent`` falls through to the
 # registry there (Bot Mode DM is only injected into the sequential path's schema).
-INVOKE_TOOL_PRE_MEMORY_MANAGER_NAMES = frozenset({"todo_list", "session_search", "session_history", "notebook_show", "memory"})
+INVOKE_TOOL_PRE_MEMORY_MANAGER_NAMES = frozenset({"todo_list", "session_search", "session_history", "notebook_show", "noting_memo", "memory"})
 
 
 def resolve_invoke_tool_executor(agent, function_name: str) -> Optional[InlineToolExecutor]:

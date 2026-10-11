@@ -48,11 +48,11 @@ def invalidate(db, ref, claim, change):
         "local_off": lambda: db.notebook_set_local_enabled(ref, False),
         "global_off": lambda: (db.db_path.parent / "config.yaml").write_text("noting:\n  enabled: false\n"),
         "cancel": lambda: db._execute_write(
-            lambda c: schedule_sync_conn(c, ref, "entry", active=False, cancelled=True)),
+            lambda c: schedule_sync_conn(c, ref, claim["notebook_entry_id"], active=False, cancelled=True)),
         "expired": expire,
         "reclaim": reclaim,
         "changed": lambda: db._execute_write(lambda c: schedule_sync_conn(
-            c, ref, "entry", active=True, canonical_schedule={"kind": "interval", "minutes": 10},
+            c, ref, claim["notebook_entry_id"], active=True, canonical_schedule={"kind": "interval", "minutes": 10},
             delivery_semantics="user_reminder", reminder_text="new intent")),
     }
     actions[change]()
@@ -76,7 +76,7 @@ def test_last_admission_rejects_changes_after_route_preparation(armed, change):
 def test_admitted_occurrence_cannot_be_reclaimed_or_admitted_twice(armed):
     db, _ref, claim = armed
     receipt = reminders.admit_active_reminder(db, claim, session_id="main")
-    assert receipt["resolved"]["source_timestamp"] == claim["next_run_at"]
+    assert receipt["resolved"]["source_timestamp"] > claim["next_run_at"]
     assert current(db, claim)["state"] == "pending"
     from tests.secretary.reminder_runtime import persist_native_carrier
     persist_native_carrier(db, "main", receipt["resolved"]["text"])
@@ -136,11 +136,9 @@ def test_occurrence_and_runtime_route_must_both_match_at_admission(armed):
 def test_noop_reconcile_keeps_receipt_valid_for_refused_invoke(armed):
     db, ref, claim = armed
     receipt = reminders.admit_active_reminder(db, claim)
-    db._execute_write(lambda c: schedules.reconcile_payload(c, ref, {"section": [{
-        "entry_id": "entry", "type": "user_reminder", "status": "active",
-        "fields": {"message": claim["reminder_text"]},
-        "schedule": {"canonical_schedule": json.loads(claim["canonical_schedule"]), "cancelled": False},
-    }]}, now=receipt["before"]["updated_at"] + 1))
+    payload = db.notebook_current(ref)["payload"]
+    db._execute_write(lambda c: schedules.reconcile_payload(
+        c, ref, payload, now=receipt["before"]["updated_at"] + 1))
     assert current(db, claim)["updated_at"] == receipt["before"]["updated_at"]
     assert reminders.recover_active_reminder(db, receipt)
     retry = schedules.claim_due(db, claim["schedule_id"], owner="retry")
@@ -150,10 +148,10 @@ def test_noop_reconcile_keeps_receipt_valid_for_refused_invoke(armed):
 def test_disabled_then_reenabled_registry_invalidates_old_receipt(armed):
     db, ref, claim = armed
     receipt = reminders.admit_active_reminder(db, claim)
-    db._execute_write(lambda c: schedule_sync_conn(c, ref, "entry", active=False,
+    db._execute_write(lambda c: schedule_sync_conn(c, ref, claim["notebook_entry_id"], active=False,
                                                  now=receipt["before"]["updated_at"] + 1))
     db._execute_write(lambda c: schedule_sync_conn(
-        c, ref, "entry", active=True, canonical_schedule=json.loads(claim["canonical_schedule"]),
+        c, ref, claim["notebook_entry_id"], active=True, canonical_schedule=json.loads(claim["canonical_schedule"]),
         delivery_semantics=claim["delivery_semantics"], reminder_text=claim["reminder_text"],
         now=receipt["before"]["updated_at"] + 2))
     before = current(db, claim)

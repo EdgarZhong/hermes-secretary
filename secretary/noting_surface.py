@@ -4,7 +4,7 @@ import copy
 import logging
 
 logger = logging.getLogger(__name__)
-_READ_TOOLS = {"session_history", "notebook_show"}
+_READ_TOOLS = {"session_history", "notebook_show", "noting_memo"}
 
 
 def _tool_name(tool):
@@ -19,6 +19,9 @@ def _read_schema(name):
         if name == "session_history":
             from tools.session_history_tool import SESSION_HISTORY_SCHEMA
             name = SESSION_HISTORY_SCHEMA["name"]
+        elif name == "noting_memo":
+            from tools.noting_memo_tool import NOTING_MEMO_SCHEMA
+            name = NOTING_MEMO_SCHEMA["name"]
         else:
             from tools.notebook_tool import NOTEBOOK_SHOW_SCHEMA
             name = NOTEBOOK_SHOW_SCHEMA["name"]
@@ -75,16 +78,18 @@ def apply_main_read_surface(agent):
     enabled = notebook_read_enabled(agent) if main else False
     agent._secretary_main_read_eligible = main
     agent._secretary_notebook_read_enabled = enabled
-    desired = {"session_history"} | ({"notebook_show"} if enabled else set()) if main else set()
-    removed = _READ_TOOLS - desired if main else {"notebook_show"}
+    desired = {"session_history"} | ({"notebook_show", "noting_memo"} if enabled else set()) if main else set()
+    removed = _READ_TOOLS - desired if main else {"notebook_show", "noting_memo"}
     resolved = [tool for tool in tools if _tool_name(tool) not in removed]
     names = {_tool_name(tool) for tool in resolved}
-    for name in ("session_history", "notebook_show"):
+    for name in ("session_history", "notebook_show", "noting_memo"):
         if name in desired and name not in names:
             schema = _read_schema(name)
             if isinstance(schema, dict):
                 resolved.append({"type": "function", "function": copy.deepcopy(schema)})
                 names.add(name)
+    from agent.secretary_prompt import apply_cron_schema_guidance
+    resolved = apply_cron_schema_guidance(resolved, enabled=enabled)
     agent.tools = resolved
     agent.valid_tool_names = (set(getattr(agent, "valid_tool_names", set())) - removed) | (desired & names)
     return enabled

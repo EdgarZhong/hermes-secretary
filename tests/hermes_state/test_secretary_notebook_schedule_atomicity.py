@@ -8,7 +8,7 @@ import pytest
 
 from hermes_state_secretary_notebook import NotebookError
 from secretary import reminders, schedules
-from secretary.notebook_model import NotebookWorkingState
+from secretary.notebook_store import NotebookStore
 from tests.hermes_state._secretary_notebook_harness import add, empty_state, make, open_notebook_db, ref_of
 from tests.secretary.reminder_runtime import bind_reminder_runtime
 
@@ -27,10 +27,9 @@ def prepared(db):
     return ref_of(db, "s"), first, second
 
 
-def scheduled_payload(ref, text="current", minutes=60):
-    state = NotebookWorkingState(ref)
-    entry = state.create("user_reminder", {"message": text})
-    state.schedule_create(entry["entry_id"], f"every {minutes}m")
+def scheduled_payload(db, ref, text="current", minutes=60):
+    state = NotebookStore(db, ref)
+    state.create("user_reminder", {"message": text}, expression=f"every {minutes}m")
     return state.show()
 
 
@@ -42,12 +41,13 @@ def rows(db, ref):
 
 def test_late_valid_anchor_does_not_revert_current_schedule(db):
     ref, _, _ = prepared(db)
-    payload = scheduled_payload(ref)
+    payload = scheduled_payload(db, ref)
     current = db.notebook_commit_snapshot(ref, payload, anchor_message_uid="b")
     runtime = rows(db, ref)[0]
-    old = deepcopy(payload)
-    old["user"][0]["fields"]["message"] = "late old text"
-    old["user"][0]["schedule"]["canonical_schedule"]["minutes"] = 5
+    state = NotebookStore(db, ref)
+    edited = state.edit(payload["user"][0]["entry_id"], {"message": "late old text"})
+    state.schedule_update(edited["entry_id"], "every 5m")
+    old = state.snapshot_state()
     late = db.notebook_commit_snapshot(ref, old, anchor_message_uid="a")
     assert late != current
     assert db.notebook_current(ref)["snapshot_id"] == current
@@ -62,11 +62,12 @@ def test_late_valid_anchor_does_not_revert_current_schedule(db):
 
 def test_rewind_reselects_schedule_and_null_disables_without_deletion(db):
     ref, first, second = prepared(db)
-    payload = scheduled_payload(ref, "earlier", 30)
+    payload = scheduled_payload(db, ref, "earlier", 30)
     older = db.notebook_commit_snapshot(ref, payload, anchor_message_uid="a")
-    changed = deepcopy(payload)
-    changed["user"][0]["fields"]["message"] = "later"
-    changed["user"][0]["schedule"]["canonical_schedule"]["minutes"] = 120
+    state = NotebookStore(db, ref)
+    edited = state.edit(payload["user"][0]["entry_id"], {"message": "later"})
+    state.schedule_update(edited["entry_id"], "every 120m")
+    changed = state.snapshot_state()
     db.notebook_commit_snapshot(ref, changed, anchor_message_uid="b")
     db.rewind_to_message("s", second)
     assert db.notebook_reselect_pointer(ref) == older
@@ -83,7 +84,7 @@ def test_rewind_reselects_schedule_and_null_disables_without_deletion(db):
 
 def test_registry_operational_error_rolls_back_snapshot_pointer_and_partial_sync(db, monkeypatch):
     ref, _, _ = prepared(db)
-    payload = scheduled_payload(ref)
+    payload = scheduled_payload(db, ref)
     committed = db.notebook_commit_snapshot(ref, payload, anchor_message_uid="a")
     before = rows(db, ref)
     original = schedules.schedule_sync_conn
@@ -93,8 +94,9 @@ def test_registry_operational_error_rolls_back_snapshot_pointer_and_partial_sync
         raise sqlite3.OperationalError("injected registry IO failure")
 
     monkeypatch.setattr(schedules, "schedule_sync_conn", fail_after_write)
-    changed = deepcopy(payload)
-    changed["user"][0]["fields"]["message"] = "half write"
+    state = NotebookStore(db, ref)
+    state.edit(payload["user"][0]["entry_id"], {"message": "half write"})
+    changed = state.snapshot_state()
     with pytest.raises(sqlite3.OperationalError, match="injected"):
         db.notebook_commit_snapshot(ref, changed, anchor_message_uid="b")
     assert db.notebook_current(ref)["snapshot_id"] == committed
@@ -114,9 +116,9 @@ def test_missing_schedule_schema_cannot_commit_a_snapshot(db):
 
 def test_branch_inherits_history_and_independent_runtime_without_refiring_done_once(db):
     ref, _, _ = prepared(db)
-    payload = scheduled_payload(ref)
+    payload = scheduled_payload(db, ref)
     db.notebook_commit_snapshot(ref, payload, anchor_message_uid="a")
-    state = NotebookWorkingState(ref, payload)
+    state = NotebookStore(db, ref)
     entry_id = payload["user"][0]["entry_id"]
     state.schedule_update(entry_id, "2020-01-01T00:00:00+00:00")
     db.notebook_commit_snapshot(ref, state.show(), anchor_message_uid="b")
@@ -160,7 +162,7 @@ def test_branch_inherits_history_and_independent_runtime_without_refiring_done_o
 ], ids=["fields", "section", "duplicate", "status", "runtime", "source"])
 def test_complete_snapshot_db_gate_rejects_semantically_invalid_state(db, mutate):
     ref, _, _ = prepared(db)
-    payload = scheduled_payload(ref)
+    payload = scheduled_payload(db, ref)
     mutate(payload, ref)
     with pytest.raises(NotebookError):
         db.notebook_commit_snapshot(ref, payload, anchor_message_uid="a")
@@ -171,7 +173,7 @@ def test_complete_snapshot_db_gate_rejects_semantically_invalid_state(db, mutate
 
 def test_native_branch_creation_registry_failure_rolls_back_entire_inheritance(db, monkeypatch):
     ref, _, _ = prepared(db)
-    db.notebook_commit_snapshot(ref, scheduled_payload(ref), anchor_message_uid="b")
+    db.notebook_commit_snapshot(ref, scheduled_payload(db, ref), anchor_message_uid="b")
     parent_runtime = rows(db, ref)
     original = schedules.schedule_sync_conn
 
@@ -194,11 +196,11 @@ def test_native_branch_creation_registry_failure_rolls_back_entire_inheritance(d
 
 def test_local_off_at_commit_gate_prevents_snapshot_and_registry_changes(db):
     ref, _, _ = prepared(db)
-    original = db.notebook_commit_snapshot(ref, scheduled_payload(ref), anchor_message_uid="a")
+    original = db.notebook_commit_snapshot(ref, scheduled_payload(db, ref), anchor_message_uid="a")
     before = rows(db, ref)
     db.notebook_set_local_enabled(ref, False)
     with pytest.raises(NotebookError, match="disabled"):
-        db.notebook_commit_snapshot(ref, scheduled_payload(ref, "forbidden"), anchor_message_uid="b")
+        db.notebook_commit_snapshot(ref, scheduled_payload(db, ref, "forbidden"), anchor_message_uid="b")
     assert db.notebook_current(ref)["snapshot_id"] == original
     assert rows(db, ref) == before
     assert db._read_one("SELECT COUNT(*) FROM secretary_notebook_snapshots")[0] == 1

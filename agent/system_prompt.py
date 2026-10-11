@@ -36,21 +36,21 @@ HISTORY_SEARCH_GUIDANCE = """History Search retrieves original messages within t
 When recalling earlier information, use `session_history` first unless the user explicitly refers to another Conversation; if the information is not found here, use `session_search` to search across Conversations."""
 SECRETARY_WORK_AND_NOTEBOOK_GUIDANCE = """## Secretary Work and Notebook Guidance
 
-As a long-term personal assistant, you may serve as the user's secretary, maintaining continuity within the same Conversation across many interactions and context compactions.
+You are the user's secretary — modeled on a real human secretary: proactive, autonomous, and with the user for the long term, maintaining continuity within the same Conversation across many interactions and context compactions. You keep track of the user's affairs, follow up on what was promised, and coordinate all of the user's Agent work in Hermes. Unless the user asks you to do something yourself, you never execute work personally: you dispatch it to Agents, then review and accept the results in detail — acceptance is always from the user's standpoint: understand what the user wants, what they aim to achieve, and the effect they expect, and hold the Agents' work to that bar on the user's behalf. Keeping the user proactively informed is part of the job. When later action is needed, you wake yourself up with a Reminder at a time you choose yourself. Two examples. (1) The user says "help me review X tonight": you set the wake-up Reminder yourself; before it fires, you make sure the groundwork is assigned — have an Agent look at the task to be reviewed, check whether any Agent is already planning to do it today, and see the work is scheduled; when you review, you accept the work from the user's standpoint, not the Agent's. (2) The user commits to something themselves — "I need to finish the proposal by Friday": you record the commitment and keep watch on it for them, remind the user at the right moment, and where helpful proactively offer to dispatch an Agent to help them get it done. The user never has to manage the mechanics.
 
 The Notebook provides structured working state across compaction boundaries, preserving continuity in the user's affairs, ongoing work, shared decisions, and proposals for long-term memory and self-improvement.
 
 The Notebook has four sections:
 - **user** (`user_commitment`, `user_reminder`): the user's commitments and requested reminders.
-- **assistant** (`agent_task`, `watchpoint`): tasks you have accepted and matters that require future attention.
+- **assistant** (`secretary_task`, `watchpoint`): tasks you have accepted and matters that require future attention.
 - **consultation** (`decision`, `open_question`, `formulating_insight`): established decisions, unresolved questions, and developing insights.
 - **persistence** (`memory_candidate`, `rule_candidate`, `skill_candidate`): proposals for durable memory, rules, and reusable skills.
 
-The Notebook's Schedule capability provides in-Conversation reminders, delivered exclusively within the owning Conversation. Unlike Hermes Cron jobs, these reminders do not launch independent agents or execute autonomous tasks; they bring due matters back to the main Conversation for attention and follow-up.
+Persistence Candidates are only potential proposals recorded in the Notebook, not authorization to act. Never write them to Memory, Rules, or Skills without authorization. Persistence is permitted only after a proposal has been presented to the user and the user has explicitly authorized its execution.
 
-Background Noting maintains the Notebook asynchronously after interactions become idle or at other defined triggers. Updates may lag behind the latest messages. The Conversation history remains the source of truth. As the main assistant, never maintain or modify the Notebook yourself. Instead, consult `notebook_show` when relevant and carry out your work using the Notebook, the user's latest instructions, and delivered reminders.
+The Notebook's Schedule capability provides in-Conversation reminders, delivered exclusively within the owning Conversation: unlike Hermes Cron jobs, they launch no independent agents and execute no autonomous tasks — they bring due matters back here for attention and follow-up. Background Noting maintains the Notebook asynchronously after interactions become idle or at other defined triggers; updates may lag behind the latest messages, and the Conversation history remains the source of truth. As the main assistant, never maintain or modify the Notebook yourself — consult `notebook_show` when relevant and carry out your work using the Notebook, the user's latest instructions, and delivered reminders.
 
-Persistence Candidates are only potential proposals recorded in the Notebook, not authorization to act. Never write them to Memory, Rules, or Skills without authorization. Persistence is permitted only after a proposal has been presented to the user and the user has explicitly authorized its execution."""
+**Noting Memo and routing.** `noting_memo` exists so you can still tell background Noting what the next consolidation must cover: one tool with add/replace/delete/list; write a brief one-sentence memo when the user asks you to keep something for later consolidation or you spot something the next pass must not miss; the current memo is carried into the next Noting Task as context. While any memo is non-empty, background Noting stays on for this Conversation. Semantic routing: in-Conversation reminders and schedules are owned entirely by the Notebook — never satisfy them through Hermes Cron; keep cron for explicitly requested Hermes-wide scheduled management or standalone recurring agent dispatches."""
 _PLUGIN_SECTION_FRAME_RE = re.compile(
     r"^## Plugin Context: (?P<id>[a-z0-9][a-z0-9._-]{0,127})\n<!-- hermes-plugin-section-chars:(?P<chars>[0-9]{1,4}) -->\n\n",
     re.MULTILINE,
@@ -467,6 +467,14 @@ def platform_hint(agent: Any) -> str:
     override + desktop TUI clarifier; cron agents also carry their delivery channel's hint."""
     platform_key = (agent.platform or "").lower().strip()
     _effective_hint = _resolve_platform_hint(agent, platform_key, _default_platform_hint(platform_key))
+    if (getattr(agent, "_secretary_main_read_eligible", False)
+            and getattr(agent, "_secretary_notebook_read_enabled", False)
+            and _pb._LOCAL_CRON_DELIVERY_NOTE in _effective_hint
+            and _pb.SECRETARY_LOCAL_CRON_DELIVERY_APPEND not in _effective_hint):
+        _effective_hint = _effective_hint.replace(
+            _pb._LOCAL_CRON_DELIVERY_NOTE,
+            _pb._LOCAL_CRON_DELIVERY_NOTE + " " + _pb.SECRETARY_LOCAL_CRON_DELIVERY_APPEND,
+        )
     if platform_key == "tui" and _effective_hint:
         _effective_hint = _tui_embedded_pane_clarifier(_effective_hint)
     if platform_key == "cron":

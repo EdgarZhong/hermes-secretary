@@ -1,6 +1,6 @@
 """Reminder service: durable pending System Reminders and route-proven active delivery.
 
-Passive delivery (due commitment/task/watchpoint, Force notice, busy User Reminder fallback)
+Passive delivery (due commitment/task/watchpoint, busy instant Reminder fallback)
 creates a durable pending System Reminder and never starts a Turn. Active delivery (due
 ``user_reminder``) proves Conversation ownership through the identity registry, builds the
 §5.6 carrier and hands it to the host's existing ingress — whose own admission decides
@@ -58,7 +58,8 @@ class ActiveReminderAdmission:
     def commit(self, db, conn, session_id, row):
         if self.aborted or str(Path(db.db_path).resolve()) != self.db_path:
             raise ActiveReminderPersistenceError("Active Reminder admission is no longer owned")
-        resolved = _resolve_active_conn(db, conn, self.receipt["before"], time.time(), session_id=session_id)
+        resolved = _resolve_active_conn(db, conn, self.receipt["before"], time.time(), session_id=session_id,
+                                        entry_timestamp=self.receipt["resolved"]["source_timestamp"])
         from agent.message_sanitization import _sanitize_surrogates
         expected = _sanitize_surrogates(self.receipt["resolved"]["text"])
         if (not resolved["route"] or _sanitize_surrogates(resolved.get("text", "")) != expected
@@ -197,7 +198,8 @@ def _current_claim_conn(db, conn, claim, timestamp):
     return current
 
 
-def _resolve_active_conn(db, conn, claim, timestamp, *, session_id=None, route_validator=None, content=None):
+def _resolve_active_conn(db, conn, claim, timestamp, *, session_id=None, route_validator=None, content=None,
+                         entry_timestamp=None):
     current = _current_claim_conn(db, conn, claim, timestamp)
     if current is None or current["delivery_semantics"] != ACTIVE_DELIVERY:
         return {"route": None, "reason": "claim_ineligible"}
@@ -206,7 +208,7 @@ def _resolve_active_conn(db, conn, claim, timestamp, *, session_id=None, route_v
             or (route_validator is not None and not route_validator(route))):
         return {"route": None, "reason": "route_unproven"}
     content = content or occurrence_content(current)
-    source_timestamp = occurrence_timestamp(current)
+    source_timestamp = float(timestamp if entry_timestamp is None else entry_timestamp)
     return {"route": route, "text": build_user_reminder_text(content, source_timestamp),
             "content": content, "source_timestamp": source_timestamp, "reason": "ok", "claim": current}
 
@@ -239,6 +241,13 @@ def recover_active_reminder(db, receipt, *, passive=False, now=None):
     return release_claim(db, receipt["before"], now=now)
 
 
+def _scheduled_entry_conn(db, conn, claim):
+    current = db.notebook_current_conn(conn, claim["conversation_ref"])
+    payload = current["payload"] if current else {}
+    return next((entry for entries in payload.values() for entry in entries
+                 if entry.get("entry_id") == claim["notebook_entry_id"]), None)
+
+
 def queue_pending_for_claim(db, claim, *, now=None, content=None):
     """Passive delivery: durable pending System Reminder plus accounting, in one transaction."""
     def _queue(conn):
@@ -250,6 +259,7 @@ def queue_pending_for_claim(db, claim, *, now=None, content=None):
             conn, current["conversation_ref"], content or occurrence_content(current),
             source_timestamp=occurrence_timestamp(current), schedule_id=current["schedule_id"],
             dedup_key=f"{current['schedule_id']}:{current['next_run_at']}",
+            entry_payload=_scheduled_entry_conn(db, conn, current),
             now=timestamp,
         )
         if schedule_finalize_conn(conn, current["schedule_id"], current["claim_token"], now=timestamp) is None:

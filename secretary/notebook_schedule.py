@@ -5,11 +5,11 @@ from datetime import datetime
 from typing import Callable
 
 
-SCHEDULE_TYPES = {"user_commitment", "user_reminder", "agent_task", "watchpoint"}
+SCHEDULE_TYPES = {"user_commitment", "user_reminder", "secretary_task", "watchpoint"}
 ACTIVE_STATUSES = {
     "user_commitment": {"pending", "in_progress"},
     "user_reminder": {"active"},
-    "agent_task": {"pending", "running"},
+    "secretary_task": {"pending", "running"},
     "watchpoint": {"watching"},
 }
 
@@ -53,11 +53,13 @@ def validate_canonical_schedule(schedule: dict) -> None:
         raise ValueError("Schedule display must be text")
 
 
-def validate_schedule_intent(intent: dict) -> None:
-    if not isinstance(intent, dict) or set(intent) != {"canonical_schedule", "cancelled"}:
+def validate_schedule_intent(intent: dict, *, entry_type=None) -> None:
+    if not isinstance(intent, dict) or set(intent) != ({"canonical_schedule", "cancelled", "delivery_mode"} if entry_type == "secretary_task" else {"canonical_schedule", "cancelled"}):
         raise ValueError("Invalid schedule intent; runtime fields are forbidden")
     if not isinstance(intent["cancelled"], bool):
         raise ValueError("Schedule cancelled must be a boolean")
+    if entry_type == "secretary_task" and intent.get("delivery_mode") not in {"instant", "deferred"}:
+        raise ValueError("secretary_task Schedule requires explicit delivery_mode: instant or deferred")
     validate_canonical_schedule(intent["canonical_schedule"])
 
 
@@ -69,4 +71,5 @@ def schedule_delivery_semantics(entry: dict) -> str | None:
         return None
     if entry.get("archived") or entry.get("status") not in ACTIVE_STATUSES[entry_type]:
         return None
-    return "user_reminder" if entry_type == "user_reminder" else "system_reminder"
+    return "user_reminder" if (entry_type == "user_reminder" or
+                               entry_type == "secretary_task" and intent["delivery_mode"] == "instant") else "system_reminder"

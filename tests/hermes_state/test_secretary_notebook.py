@@ -13,7 +13,7 @@ import pytest
 
 from agent.context_compressor import SUMMARY_PREFIX, _SUMMARY_END_MARKER
 from hermes_state_secretary_notebook import NotebookError, SecretaryNotebookMixin
-from secretary.notebook_model import NotebookWorkingState
+from secretary.notebook_store import NotebookStore
 from tests.hermes_state._secretary_notebook_harness import (
     NotebookSessionDB, add, empty_state, make, open_notebook_db, ref_of,
 )
@@ -35,7 +35,7 @@ def test_commit_round_trip_with_complete_state_and_provenance(db):
     add(db, "s", "please remind me about the report", "m1")
     ref = ref_of(db, "s")
     identity = {"conversation_ref": ref, "message_uid": "m1"}
-    working = NotebookWorkingState(ref, validate_source_identity=lambda source: source == identity)
+    working = NotebookStore(db, ref)
     entry = working.create("user_reminder", {"message": "submit the report"})
     candidate = working.create("memory_candidate", {"draft": "prefers mornings"},
                                source_message_identities=[identity])
@@ -197,7 +197,7 @@ def test_branch_gets_an_independent_notebook(db):
     add(db, "parent", "later question", "later", timestamp=300)
     parent_ref = ref_of(db, "parent")
     evidence = {"conversation_ref": parent_ref, "message_uid": "early"}
-    working = NotebookWorkingState(parent_ref, validate_source_identity=lambda source: source == evidence)
+    working = NotebookStore(db, parent_ref)
     entry = working.create("memory_candidate", {"draft": "likes mornings"},
                            source_message_identities=[evidence])
     parent_snapshot = db.notebook_commit_snapshot(
@@ -236,8 +236,7 @@ def test_branch_gets_an_independent_notebook(db):
     assert still["payload"] == branch_state["payload"]
 
     add(db, "branch", "branch follow-up", "branch-msg")
-    branch_work = NotebookWorkingState(branch_ref, still["payload"], validate_source_identity=lambda source: (
-        source["conversation_ref"] == branch_ref and source["message_uid"] in {"early", "middle", "branch-msg"}))
+    branch_work = NotebookStore(db, branch_ref)
     branch_entry = branch_work.create("decision", {"decision": "split", "rationale": "branch-local"})
     branch_snapshot = db.notebook_commit_snapshot(branch_ref, branch_work, anchor_message_uid="branch-msg")
     assert branch_snapshot != parent_snapshot

@@ -12,8 +12,8 @@ def test_null_is_explicit_and_not_an_empty_snapshot():
 def test_human_view_shows_timestamp_and_complete_semantics_without_anchor_or_pointer():
     model = NotebookWorkingState("conv_source", validate_source_identity=lambda source: True)
     commitment = model.create("user_commitment", {"what": "send report", "intent": "request approval"})
-    model.schedule_create(commitment["entry_id"], "2030-10-07T12:00:00Z")
-    model.create("agent_task", {"task": "draft slides", "purpose": "team review"})
+    model.schedule_update(commitment["entry_id"], "2030-10-07T12:00:00Z")
+    model.create("secretary_task", {"task": "draft slides", "purpose": "team review"})
     decision = model.create("decision", {"decision": "ship Friday", "rationale": "test runway"})
     model.archive(decision["entry_id"])
     model.create("skill_candidate", {"capability": "triage", "workflow_draft": ["logs", "isolate"]},
@@ -23,9 +23,10 @@ def test_human_view_shows_timestamp_and_complete_semantics_without_anchor_or_poi
                 "trigger_type": "idle", "runtime_profile": "NOTING", "payload": model.show()}
     rendered = render_notebook(snapshot)
     for text in (snapshot["created_at"], "user", "assistant", "consultation", "persistence",
-                 "send report", "request approval", "draft slides", "team review", "ship Friday",
-                 "test runway", "archived", "triage", "logs", "isolate", "Schedule", "2030-10-07"):
+                 "send report", "request approval", "draft slides", "team review", "triage", "logs", "isolate", "Schedule", "2030-10-07"):
         assert text in rendered
+    assert "ship Friday" not in rendered
+    assert "archived" not in rendered
     assert "hidden_anchor" not in rendered
     assert "hidden_pointer" not in rendered
     structured = show_notebook(snapshot)

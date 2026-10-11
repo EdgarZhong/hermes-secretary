@@ -7,7 +7,7 @@ does not confer permissions, move pointers, or mutate Schedule runtime rows.
 from copy import deepcopy
 from datetime import datetime
 from typing import Callable
-from uuid import uuid4
+from itertools import count
 
 from secretary.notebook_schedule import (
     SCHEDULE_TYPES,
@@ -17,10 +17,12 @@ from secretary.notebook_schedule import (
 )
 
 
+_LOCAL_IDS = count(1)
+
 SECTIONS = ("user", "assistant", "consultation", "persistence")
 TYPE_SECTIONS = {
     "user_commitment": "user", "user_reminder": "user",
-    "agent_task": "assistant", "watchpoint": "assistant",
+    "secretary_task": "assistant", "watchpoint": "assistant",
     "decision": "consultation", "open_question": "consultation",
     "formulating_insight": "consultation",
     "memory_candidate": "persistence", "rule_candidate": "persistence",
@@ -28,7 +30,7 @@ TYPE_SECTIONS = {
 }
 REQUIRED_FIELDS = {
     "user_commitment": ("what", "intent"), "user_reminder": ("message",),
-    "agent_task": ("task", "purpose"),
+    "secretary_task": ("task", "purpose"),
     "watchpoint": ("subject", "what_to_watch", "why", "until"),
     "decision": ("decision", "rationale"),
     "open_question": ("question", "why_it_matters"),
@@ -47,7 +49,7 @@ STATUS_TRANSITIONS = {
     "user_commitment": {"pending": ("in_progress", "dropped"),
                         "in_progress": ("done", "dropped"), "done": (), "dropped": ()},
     "user_reminder": {"active": ("delivered", "cancelled"), "delivered": (), "cancelled": ()},
-    "agent_task": {"pending": ("running", "failed", "dropped"),
+    "secretary_task": {"pending": ("running", "failed", "dropped"),
                    "running": ("done", "failed", "dropped"),
                    "done": (), "failed": (), "dropped": ()},
     "watchpoint": {"watching": ("resolved", "dropped"), "resolved": (), "dropped": ()},
@@ -57,7 +59,7 @@ STATUS_TRANSITIONS = {
                             "validated": (), "rejected": (), "superseded": ()},
 }
 ENTRY_KEYS = {"entry_id", "type", "archived", "fields", "status",
-              "source_message_identities", "schedule"}
+              "source_message_identities", "source_time_range", "schedule"}
 
 
 class NotebookValidationError(ValueError):
@@ -76,7 +78,8 @@ def _validate_fields(entry_type: str, fields: dict) -> None:
         raise NotebookValidationError("Semantic fields must be an object")
     allowed = set(REQUIRED_FIELDS[entry_type]) | set(OPTIONAL_FIELDS.get(entry_type, ()))
     if fields.keys() - allowed:
-        raise NotebookValidationError("Unknown semantic fields")
+        raise NotebookValidationError(
+            f"Unknown semantic fields for {entry_type}: {sorted(fields.keys() - allowed)}; allowed: {sorted(allowed)}")
     for key in REQUIRED_FIELDS[entry_type]:
         value = fields.get(key)
         if not isinstance(value, str) or not value.strip():
@@ -95,12 +98,14 @@ class NotebookWorkingState:
         self, conversation_ref: str, payload: dict | None = None, *,
         validate_source_identity: Callable[[dict], bool] | None = None,
         parse_schedule: Callable[[str], dict] = parse_schedule_expression,
+        insert_version: Callable[[dict, str | None], str] | None = None,
     ):
         if not isinstance(conversation_ref, str) or not conversation_ref:
             raise NotebookValidationError("An owning Conversation Ref is required")
         self.conversation_ref = conversation_ref
         self._validate_source_identity = validate_source_identity
         self._parse_schedule = parse_schedule
+        self._insert_version = insert_version
         state = deepcopy(payload) if payload is not None else {section: [] for section in SECTIONS}
         self._validate_state(state)
         self._state = state
@@ -108,8 +113,13 @@ class NotebookWorkingState:
     def _validate_sources(self, entry: dict) -> None:
         sources = entry.get("source_message_identities", [])
         is_candidate = section_for_type(entry["type"]) == "persistence"
-        if not isinstance(sources, list) or is_candidate and not sources:
-            raise NotebookValidationError("Candidates require at least one valid source Message Identity")
+        if not isinstance(sources, list):
+            raise NotebookValidationError("Sources must be a list of canonical Message Identities")
+        source_range = entry.get("source_time_range")
+        if source_range is not None:
+            self._validate_source_range(source_range)
+        if is_candidate and not sources and source_range is None:
+            raise NotebookValidationError("Candidates require valid source Message Identities or a source time range")
         for source in sources:
             if not isinstance(source, dict) or set(source) != {"conversation_ref", "message_uid"}:
                 raise NotebookValidationError("Source must be a canonical Message Identity")
@@ -120,12 +130,26 @@ class NotebookWorkingState:
             if self._validate_source_identity is None or not self._validate_source_identity(deepcopy(source)):
                 raise NotebookValidationError("Source Message Identity is not valid on the current path")
 
+    @staticmethod
+    def _validate_source_range(source_range: dict) -> None:
+        if not isinstance(source_range, dict) or set(source_range) != {"start_time", "end_time"}:
+            raise NotebookValidationError("Source time range requires start_time and end_time")
+        try:
+            start, end = (datetime.fromisoformat(source_range[key].replace("Z", "+00:00"))
+                          for key in ("start_time", "end_time"))
+            if start.tzinfo is None or end.tzinfo is None or start > end:
+                raise ValueError("Unbounded source time range")
+        except (AttributeError, TypeError, ValueError) as exc:
+            raise NotebookValidationError("Source time range requires ordered timezone-aware ISO timestamps") from exc
+
     def _validate_entry(self, entry: dict) -> None:
         if not isinstance(entry, dict) or entry.keys() - ENTRY_KEYS:
             raise NotebookValidationError("Invalid Notebook entry fields")
         entry_type = entry.get("type")
         section_for_type(entry_type)
-        if not isinstance(entry.get("entry_id"), str) or not entry["entry_id"]:
+        item_id = entry.get("entry_id")
+        if (not isinstance(item_id, str) or not item_id.isascii()
+                or not item_id.isdecimal() or int(item_id) < 1):
             raise NotebookValidationError("Entry ID is required")
         if not isinstance(entry.get("archived"), bool):
             raise NotebookValidationError("Archived must be a boolean")
@@ -143,7 +167,7 @@ class NotebookWorkingState:
         if intent is not None:
             if entry["type"] not in SCHEDULE_TYPES:
                 raise NotebookValidationError("This entry type cannot carry a Schedule")
-            validate_schedule_intent(intent)
+            validate_schedule_intent(intent, entry_type=entry["type"])
             canonical = intent["canonical_schedule"]
             if canonical["kind"] == "cron":
                 parsed = canonical_schedule(canonical["expr"], self._parse_schedule)
@@ -173,7 +197,18 @@ class NotebookWorkingState:
                 ids.add(entry["entry_id"])
 
     def show(self) -> dict:
+        return {section: [deepcopy(entry) for entry in entries if not entry["archived"]]
+                for section, entries in self._state.items()}
+
+    def snapshot_state(self) -> dict:
+        """Internal complete state, retaining archive final versions for immutable references."""
         return deepcopy(self._state)
+
+    def _new_version(self, entry: dict, previous_id: str | None = None) -> dict:
+        entry = deepcopy(entry)
+        entry["entry_id"] = (self._insert_version(entry, previous_id) if self._insert_version
+                             else str(next(_LOCAL_IDS)))
+        return entry
 
     def get(self, entry_id: str) -> dict:
         section, index = self._locate(entry_id)
@@ -182,22 +217,25 @@ class NotebookWorkingState:
     def _locate(self, entry_id: str) -> tuple[str, int]:
         for section, entries in self._state.items():
             for index, entry in enumerate(entries):
-                if entry["entry_id"] == entry_id:
+                if entry["entry_id"] == entry_id and not entry["archived"]:
                     return section, index
         raise NotebookValidationError(f"Unknown Notebook entry: {entry_id}")
 
     def _replace(self, entry: dict) -> dict:
         self._validate_entry(entry)
         section, index = self._locate(entry["entry_id"])
+        entry = self._new_version(entry, entry["entry_id"])
         self._state[section][index] = deepcopy(entry)
         return deepcopy(entry)
 
     def create(
         self, entry_type: str, fields: dict, *, status: str | None = None,
         source_message_identities: list[dict] | None = None,
+        source_time_range: dict | None = None, expression: str | None = None,
+        delivery_mode: str | None = None,
     ) -> dict:
         section = section_for_type(entry_type)
-        entry = {"entry_id": f"entry_{uuid4().hex}", "type": entry_type,
+        entry = {"entry_id": "1", "type": entry_type,
                  "archived": False, "fields": deepcopy(fields)}
         if entry_type in STATUS_TRANSITIONS:
             entry["status"] = status if status is not None else next(iter(STATUS_TRANSITIONS[entry_type]))
@@ -205,16 +243,28 @@ class NotebookWorkingState:
             raise NotebookValidationError("Persistence candidates have no defined status graph")
         if source_message_identities is not None:
             entry["source_message_identities"] = deepcopy(source_message_identities)
+        if source_time_range is not None:
+            entry["source_time_range"] = deepcopy(source_time_range)
+        if delivery_mode is not None and entry_type != "secretary_task":
+            raise NotebookValidationError("delivery_mode is only allowed for secretary_task schedules")
+        if delivery_mode is not None and expression is None:
+            raise NotebookValidationError("delivery_mode requires a Schedule expression")
+        if expression is not None:
+            if entry_type not in SCHEDULE_TYPES or entry_type == "watchpoint":
+                raise NotebookValidationError("Initial expression is only allowed for non-watchpoint Schedule types")
+            entry["schedule"] = self._new_intent(expression, entry_type=entry_type, delivery_mode=delivery_mode)
         if entry_type == "watchpoint" and isinstance(fields, dict) and fields.get("until"):
             entry["schedule"] = self._new_intent(fields["until"])
             if entry["schedule"]["canonical_schedule"]["kind"] == "once":
                 entry["fields"]["until"] = entry["schedule"]["canonical_schedule"]["run_at"]
         self._validate_entry(entry)
+        entry = self._new_version(entry)
         self._state[section].append(deepcopy(entry))
         return deepcopy(entry)
 
     def edit(
         self, entry_id: str, fields: dict, *, source_message_identities: list[dict] | None = None,
+        source_time_range: dict | None = None,
     ) -> dict:
         entry = self.get(entry_id)
         if not isinstance(fields, dict):
@@ -222,6 +272,8 @@ class NotebookWorkingState:
         entry["fields"].update(deepcopy(fields))
         if source_message_identities is not None:
             entry["source_message_identities"] = deepcopy(source_message_identities)
+        if source_time_range is not None:
+            entry["source_time_range"] = deepcopy(source_time_range)
         if entry["type"] == "watchpoint" and "until" in fields:
             entry["schedule"] = self._new_intent(fields["until"])
             if entry["schedule"]["canonical_schedule"]["kind"] == "once":
@@ -233,41 +285,39 @@ class NotebookWorkingState:
         entry["archived"] = True
         return self._replace(entry)
 
-    def restore(self, entry_id: str) -> dict:
-        entry = self.get(entry_id)
-        entry["archived"] = False
-        return self._replace(entry)
-
     def transition_status(self, entry_id: str, status: str) -> dict:
         entry = self.get(entry_id)
         transitions = STATUS_TRANSITIONS.get(entry["type"], {})
         if status not in transitions.get(entry.get("status"), ()):
-            raise NotebookValidationError("Illegal Notebook status transition")
+            if entry["type"] not in STATUS_TRANSITIONS:
+                raise NotebookValidationError(f"{entry['type']} has no status transitions")
+            raise NotebookValidationError(
+                f"Illegal status transition for {entry['type']} from {entry.get('status')}: "
+                f"legal targets {sorted(transitions.get(entry.get('status'), ()))}")
         entry["status"] = status
         return self._replace(entry)
 
-    def _new_intent(self, expression: str) -> dict:
-        return {"canonical_schedule": canonical_schedule(expression, self._parse_schedule), "cancelled": False}
+    def _new_intent(self, expression: str, *, entry_type=None, delivery_mode=None) -> dict:
+        intent = {"canonical_schedule": canonical_schedule(expression, self._parse_schedule), "cancelled": False}
+        if entry_type == "secretary_task":
+            intent["delivery_mode"] = delivery_mode
+        validate_schedule_intent(intent, entry_type=entry_type)
+        return intent
 
-    def _set_schedule(self, entry_id: str, expression: str, *, update: bool) -> dict:
+    def schedule_update(self, entry_id: str, expression: str, *, delivery_mode=None) -> dict:
         entry = self.get(entry_id)
         if entry["type"] not in SCHEDULE_TYPES:
             raise NotebookValidationError("This entry type cannot carry a Schedule")
+        if delivery_mode is not None and entry["type"] != "secretary_task":
+            raise NotebookValidationError("delivery_mode is only allowed for secretary_task schedules")
         existing = entry.get("schedule")
-        if update and existing is None or not update and existing is not None and not existing["cancelled"]:
-            raise NotebookValidationError("Schedule intent does not match create/update operation")
-        entry["schedule"] = self._new_intent(expression)
+        mode = delivery_mode if delivery_mode is not None else (existing or {}).get("delivery_mode")
+        entry["schedule"] = self._new_intent(expression, entry_type=entry["type"], delivery_mode=mode)
         if entry["type"] == "watchpoint":
             if entry["schedule"]["canonical_schedule"]["kind"] != "once":
                 raise NotebookValidationError("Watchpoint until requires a one-shot Schedule")
             entry["fields"]["until"] = entry["schedule"]["canonical_schedule"]["run_at"]
         return self._replace(entry)
-
-    def schedule_create(self, entry_id: str, expression: str) -> dict:
-        return self._set_schedule(entry_id, expression, update=False)
-
-    def schedule_update(self, entry_id: str, expression: str) -> dict:
-        return self._set_schedule(entry_id, expression, update=True)
 
     def schedule_cancel(self, entry_id: str) -> dict:
         entry = self.get(entry_id)

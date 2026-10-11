@@ -305,14 +305,15 @@ class SecretaryForegroundMixin:
         ):
             snapshots.setdefault(snapshot["anchor_message_uid"], []).append(dict(snapshot))
         for row in rows:
-            if row["is_compaction"] or row["role"] == "system":
+            if ("message_identity" not in row or row["is_compaction"]
+                    or (row.get("display_metadata") or {}).get("noting_run_output") is True):
                 continue
             annotations = []
             for snapshot in snapshots.get(row["message_uid"], ()):
                 annotations.append({"kind": "noting_anchor", "message_identity": row["message_identity"],
                                     "snapshot_id": snapshot["snapshot_id"]})
                 annotations.append({"kind": "notebook_snapshot", "snapshot_id": snapshot["snapshot_id"],
-                                    "anchor": row["message_identity"], "payload": json.loads(snapshot["payload_json"]),
+                                    "anchor": row["message_identity"], "payload": self.notebook_snapshot_audit_conn(conn, snapshot["snapshot_id"])["payload"],
                                     "trigger_type": snapshot["trigger_type"], "runtime_profile": snapshot["runtime_profile"],
                                     "created_at": snapshot["created_at"]})
             if annotations:
@@ -331,15 +332,20 @@ class SecretaryForegroundMixin:
 
     def anchor_position_conn(self, conn, conversation_ref, message_uid):
         for row in self.get_full_foreground_conn(conn, conversation_ref):
-            if row.get("kind") == "message" and row["message_uid"] == message_uid and row["role"] != "system" and not row["is_compaction"]:
+            if ("message_identity" in row and row["message_uid"] == message_uid and not row["is_compaction"]
+                    and (row.get("display_metadata") or {}).get("noting_run_output") is not True):
                 return row["path_position"]
         return None
 
     def get_foreground_anchor_conn(self, conn, conversation_ref):
         rows = self.get_full_foreground_conn(conn, conversation_ref)
-        if not rows or rows[-1].get("kind") != "message" or rows[-1]["is_compaction"] or rows[-1]["role"] == "system":
-            return None
-        return rows[-1]["message_identity"]
+        for row in reversed(rows):
+            if (row.get("display_metadata") or {}).get("noting_run_output") is True:
+                continue
+            if "message_identity" not in row or row.get("is_compaction"):
+                return None
+            return row["message_identity"]
+        return None
 
     def get_foreground_anchor(self, session_id=None, *, conversation_ref=None):
         ref = conversation_ref or self.resolve_conversation_ref(session_id)
@@ -379,7 +385,7 @@ class SecretaryForegroundMixin:
         rows = [row for row in self.get_full_foreground_conn(conn, parent_ref) if row.get("kind") == "message"]
         if through_message_uid is not None:
             index = next((i for i, row in enumerate(rows) if row["message_uid"] == through_message_uid
-                          and not row["is_compaction"] and row["role"] != "system"), None)
+                          and not row["is_compaction"]), None)
             if index is None:
                 raise ConversationIdentityError("Branch point is outside parent path")
             rows = rows[:index + 1]

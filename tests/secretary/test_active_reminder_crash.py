@@ -184,7 +184,7 @@ def test_sigkill_native_transaction_then_fresh_host_scan(tmp_path, host, boundar
         final = dict(db._read_one("SELECT * FROM secretary_schedule_registry"))
         assert final["state"] == "done" and final["claim_token"] is None
         users = [r for r in db.get_messages("s1") if r["role"] == "user"]
-        assert len(users) == 1 and users[0]["timestamp"] == original["next_run_at"]
+        assert len(users) == 1 and users[0]["timestamp"] > original["next_run_at"]
     finally:
         db.close()
 
@@ -200,7 +200,7 @@ def test_tui_crashed_marker_cannot_replay_while_current_schedule_is_off(tmp_path
         db.notebook_set_local_enabled(ref, False)
     else:
         from hermes_state_secretary_schedule import schedule_sync_conn
-        db._execute_write(lambda c: schedule_sync_conn(c, ref, "entry", active=False, cancelled=True))
+        db._execute_write(lambda c: schedule_sync_conn(c, ref, _row["notebook_entry_id"], active=False, cancelled=True))
     db._execute_write(lambda c: c.execute("UPDATE secretary_schedule_registry SET claim_expires_at=?", (time.time() - 1,)))
     db._execute_write(lambda c: c.execute("UPDATE session_turn_leases SET expires_at=?", (time.time() - 1,)))
     db.close()

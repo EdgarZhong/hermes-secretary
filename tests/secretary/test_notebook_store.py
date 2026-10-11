@@ -39,7 +39,8 @@ def test_store_round_trips_through_one_committed_snapshot(db):
     assert archived["archived"] is True
     second = again.commit("m1")
     assert second != snapshot_id
-    assert db.notebook_current(ref)["payload"]["user"][0]["archived"] is True
+    assert db.notebook_current(ref)["payload"]["user"] == []
+    assert db.notebook_snapshot_audit(second)["payload"]["user"][0] == archived
 
 
 def test_refused_operations_keep_working_state_and_committed_state(db):

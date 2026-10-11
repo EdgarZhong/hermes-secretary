@@ -14,7 +14,7 @@ HORIZON = "2030-10-07T12:00:00+00:00"
 FIELDS = {
     "user_commitment": {"what": "send proposal", "intent": "get review"},
     "user_reminder": {"message": "submit report"},
-    "agent_task": {"task": "draft plan", "purpose": "prepare launch"},
+    "secretary_task": {"task": "draft plan", "purpose": "prepare launch"},
     "watchpoint": {"subject": "release", "what_to_watch": "errors", "why": "reliability", "until": HORIZON},
     "decision": {"decision": "use sqlite", "rationale": "local atomic writes"},
     "open_question": {"question": "which port?", "why_it_matters": "deployment"},
@@ -25,7 +25,7 @@ FIELDS = {
 }
 TYPES_AND_SECTIONS = [
     ("user_commitment", "user"), ("user_reminder", "user"),
-    ("agent_task", "assistant"), ("watchpoint", "assistant"),
+    ("secretary_task", "assistant"), ("watchpoint", "assistant"),
     ("decision", "consultation"), ("open_question", "consultation"),
     ("formulating_insight", "consultation"),
     ("memory_candidate", "persistence"), ("rule_candidate", "persistence"),
@@ -55,17 +55,20 @@ def test_ten_types_complete_mutations_and_isolation(notebook, entry_type, sectio
     key = next(iter(FIELDS[entry_type]))
     edited = notebook.edit(entry["entry_id"], {key: "updated semantic text"})
     assert edited["fields"][key] == "updated semantic text"
-    assert edited == notebook.get(entry["entry_id"])
-    archived = notebook.archive(entry["entry_id"])
+    assert edited == notebook.get(edited["entry_id"])
+    with pytest.raises(ValueError, match=entry["entry_id"]):
+        notebook.get(entry["entry_id"])
+    archived = notebook.archive(edited["entry_id"])
     assert archived["archived"] is True
     assert archived["fields"] == edited["fields"]
-    restored = notebook.restore(entry["entry_id"])
-    assert restored == edited
+    assert notebook.show()[section] == []
+    with pytest.raises(ValueError, match=archived["entry_id"]):
+        notebook.get(archived["entry_id"])
 
 
 REQUIRED = [
     ("user_commitment", "what"), ("user_commitment", "intent"),
-    ("user_reminder", "message"), ("agent_task", "task"), ("agent_task", "purpose"),
+    ("user_reminder", "message"), ("secretary_task", "task"), ("secretary_task", "purpose"),
     ("watchpoint", "subject"), ("watchpoint", "what_to_watch"),
     ("watchpoint", "why"), ("watchpoint", "until"),
     ("decision", "decision"), ("decision", "rationale"),
@@ -93,9 +96,9 @@ TRANSITIONS = [
     ("user_commitment", "pending", "in_progress"), ("user_commitment", "in_progress", "done"),
     ("user_commitment", "pending", "dropped"), ("user_commitment", "in_progress", "dropped"),
     ("user_reminder", "active", "delivered"), ("user_reminder", "active", "cancelled"),
-    ("agent_task", "pending", "running"), ("agent_task", "running", "done"),
-    ("agent_task", "pending", "failed"), ("agent_task", "running", "failed"),
-    ("agent_task", "pending", "dropped"), ("agent_task", "running", "dropped"),
+    ("secretary_task", "pending", "running"), ("secretary_task", "running", "done"),
+    ("secretary_task", "pending", "failed"), ("secretary_task", "running", "failed"),
+    ("secretary_task", "pending", "dropped"), ("secretary_task", "running", "dropped"),
     ("watchpoint", "watching", "resolved"), ("watchpoint", "watching", "dropped"),
     ("decision", "active", "superseded"), ("decision", "active", "revoked"),
     ("open_question", "open", "resolved"), ("open_question", "open", "dropped"),
@@ -110,10 +113,10 @@ def test_all_defined_status_edges(notebook, entry_type, start, end):
     entry = create(notebook, entry_type, status=start)
     result = notebook.transition_status(entry["entry_id"], end)
     assert result["status"] == end
-    assert result == notebook.get(entry["entry_id"])
+    assert result == notebook.get(result["entry_id"])
     before = notebook.show()
     with pytest.raises(NotebookValidationError):
-        notebook.transition_status(entry["entry_id"], start)
+        notebook.transition_status(result["entry_id"], start)
     assert notebook.show() == before
 
 
@@ -156,7 +159,7 @@ def test_cross_owner_is_rejected_even_by_permissive_validator():
 
 
 @pytest.mark.parametrize("entry_type,end", [
-    ("user_commitment", "done"), ("agent_task", "done"), ("watchpoint", "active"),
+    ("user_commitment", "done"), ("secretary_task", "done"), ("watchpoint", "active"),
 ])
 def test_status_shortcuts_are_not_legal_transitions(notebook, entry_type, end):
     entry = create(notebook, entry_type)
@@ -167,34 +170,35 @@ def test_status_shortcuts_are_not_legal_transitions(notebook, entry_type, end):
 
 
 @pytest.mark.parametrize("entry_type,delivery", [
-    ("user_commitment", "system_reminder"), ("agent_task", "system_reminder"),
+    ("user_commitment", "system_reminder"), ("secretary_task", "system_reminder"),
     ("user_reminder", "user_reminder"), ("watchpoint", "system_reminder"),
 ])
 def test_schedule_lifecycle_and_delivery_class(notebook, entry_type, delivery):
-    entry = create(notebook, entry_type)
-    if entry_type != "watchpoint":
-        entry = notebook.schedule_create(entry["entry_id"], "every 30m")
+    kwargs = {} if entry_type == "watchpoint" else {"expression": "every 30m"}
+    if entry_type == "secretary_task":
+        kwargs["delivery_mode"] = "deferred"
+    entry = create(notebook, entry_type, **kwargs)
     assert schedule_delivery_semantics(entry) == delivery
     changed = notebook.schedule_update(entry["entry_id"], HORIZON)
     assert changed["schedule"]["canonical_schedule"]["run_at"] == HORIZON
-    assert changed == notebook.get(entry["entry_id"])
-    assert schedule_delivery_semantics(notebook.archive(entry["entry_id"])) is None
-    assert schedule_delivery_semantics(notebook.restore(entry["entry_id"])) == delivery
-    cancelled = notebook.schedule_cancel(entry["entry_id"])
+    assert changed == notebook.get(changed["entry_id"])
+    cancelled = notebook.schedule_cancel(changed["entry_id"])
     assert cancelled["schedule"]["cancelled"] is True
     assert schedule_delivery_semantics(cancelled) is None
-    recreated = notebook.schedule_create(entry["entry_id"], HORIZON)
+    recreated = notebook.schedule_update(cancelled["entry_id"], HORIZON)
     assert schedule_delivery_semantics(recreated) == delivery
+    assert schedule_delivery_semantics(notebook.archive(recreated["entry_id"])) is None
 
 
 @pytest.mark.parametrize("entry_type,status", [
-    ("user_commitment", "dropped"), ("agent_task", "failed"),
+    ("user_commitment", "dropped"), ("secretary_task", "failed"),
     ("user_reminder", "delivered"), ("watchpoint", "resolved"),
 ])
 def test_terminal_status_cancels_runtime_action_but_preserves_intent(notebook, entry_type, status):
-    entry = create(notebook, entry_type)
-    if entry_type != "watchpoint":
-        entry = notebook.schedule_create(entry["entry_id"], HORIZON)
+    kwargs = {} if entry_type == "watchpoint" else {"expression": HORIZON}
+    if entry_type == "secretary_task":
+        kwargs["delivery_mode"] = "deferred"
+    entry = create(notebook, entry_type, **kwargs)
     terminal = notebook.transition_status(entry["entry_id"], status)
     assert terminal["schedule"] == entry["schedule"]
     assert schedule_delivery_semantics(terminal) is None
@@ -206,7 +210,7 @@ def test_unsupported_schedule_types_rejected(notebook, entry_type):
     entry = create(notebook, entry_type)
     before = notebook.show()
     with pytest.raises(ValueError):
-        notebook.schedule_create(entry["entry_id"], HORIZON)
+        notebook.schedule_update(entry["entry_id"], HORIZON)
     assert notebook.show() == before
 
 
@@ -232,18 +236,16 @@ def test_relative_watchpoint_horizon_is_frozen(notebook):
 def test_illegal_schedule_operation_and_runtime_forgery_are_atomic(notebook):
     entry = create(notebook, "user_reminder")
     with pytest.raises(ValueError):
-        notebook.schedule_update(entry["entry_id"], HORIZON)
-    with pytest.raises(ValueError):
         notebook.schedule_cancel(entry["entry_id"])
-    scheduled = notebook.schedule_create(entry["entry_id"], "0 9 * * *")
+    scheduled = notebook.schedule_update(entry["entry_id"], "0 9 * * *")
     assert scheduled["schedule"]["canonical_schedule"]["kind"] == "cron"
     before = notebook.show()
     for expression in ("not a schedule", {"kind": "once", "next_run_at": HORIZON}):
         with pytest.raises(ValueError):
-            notebook.schedule_update(entry["entry_id"], expression)
+            notebook.schedule_update(scheduled["entry_id"], expression)
         assert notebook.show() == before
     with pytest.raises(ValueError):
-        notebook.schedule_create(entry["entry_id"], HORIZON)
+        notebook.schedule_update(entry["entry_id"], HORIZON)
     payload = notebook.show()
     payload["user"][0]["schedule"]["claim"] = "forged"
     with pytest.raises(ValueError):

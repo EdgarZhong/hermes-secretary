@@ -345,7 +345,9 @@ def _enforce_session_cap() -> None:
             return
         evictable = [(sid, s) for sid, s in _sessions.items() if _session_is_lru_evictable(sid, s)]
     # Oldest-touched first; evict only down to the cap (may stop short: live sessions are never eligible).
-    evictable.sort(key=lambda kv: float(kv[1].get("last_active") or 0.0))
+    from secretary.noting_timers import holds_pending_timer
+    evictable.sort(key=lambda kv: (holds_pending_timer(kv[1].get("agent")),
+                                  float(kv[1].get("last_active") or 0.0)))
     for sid, _s in evictable:
         with _sessions_lock:
             if len(_sessions) <= cap:

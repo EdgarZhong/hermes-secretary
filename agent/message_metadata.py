@@ -280,9 +280,9 @@ _TIMESTAMP_TAG = "timestamp"
 _REAL_USER_MARKER_PREFIX = f"<{_TIMESTAMP_TAG}>"
 _REAL_USER_MARKER_SUFFIX = f"</{_TIMESTAMP_TAG}>"
 
-# Secretary synthetic carriers own their full wrapper (02 §5.6): the timestamp is already
-# the first line inside them, so the standalone real-user marker is never added outside.
-_SYNTHETIC_CARRIER_PREFIXES = ("<noting-task>", "<system-reminder>", "<user-reminder>")
+# Secretary synthetic carriers own their full wrapper (02 §5.6). Only an instant
+# reminder carries an inner timestamp; other runtime carriers are never stamped.
+_SYNTHETIC_CARRIER_PREFIXES = ("<noting-task>", "<deferred-reminder>", "<instant-reminder>", "<framework-message>", "<system-reminder>", "<user-reminder>")
 
 
 def format_user_timestamp_marker(timestamp: Optional[float] = None) -> str:
@@ -403,17 +403,27 @@ def build_user_wrapper(tag: str, body: Any, *, timestamp: Optional[float] = None
 
 def build_noting_task_wrapper(body: Any, *, timestamp: Optional[float] = None) -> str:
     """The Noting Task transition/control message (first child-owned durable user row)."""
-    return build_user_wrapper("noting-task", body, timestamp=timestamp)
+    return build_unstamped_wrapper("noting-task", body)
 
 
 def build_system_reminder_wrapper(body: Any, *, timestamp: Optional[float] = None) -> str:
-    """The request-only passive System Reminder carrier."""
-    return build_user_wrapper("system-reminder", body, timestamp=timestamp)
+    """The durable deferred Reminder carrier; no timestamp marker."""
+    return build_unstamped_wrapper("deferred-reminder", body)
 
 
 def build_user_reminder_wrapper(body: Any, *, timestamp: Optional[float] = None) -> str:
-    """The active User Reminder carrier (durable user row when admitted idle)."""
-    return build_user_wrapper("user-reminder", body, timestamp=timestamp)
+    """The instant Reminder carrier, stamped once by user-message admission."""
+    return build_user_wrapper("instant-reminder", body, timestamp=timestamp)
+
+
+def build_unstamped_wrapper(tag: str, body: Any) -> str:
+    """Runtime control carriers never receive the user-submission timestamp marker."""
+    text = body if isinstance(body, str) else "" if body is None else str(body)
+    return trusted_user_input(f"<{tag}>\n{text}\n</{tag}>")
+
+
+def build_framework_message_wrapper(body: Any) -> str:
+    return build_unstamped_wrapper("framework-message", body)
 
 
 class TrustedUserInput(str):

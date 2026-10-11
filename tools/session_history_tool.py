@@ -32,6 +32,22 @@ SESSION_HISTORY_SCHEMA = {
     },
 }
 
+SEARCH_CONTENT_LIMIT = 800
+_SEARCH_TRUNCATION_MARKER = "\n[truncated]"
+
+
+def _public_history_row(row, *, search):
+    """Project actual source metadata; only Search bodies have a per-row budget."""
+    if not isinstance(row.get("message_uid"), str) or not row["message_uid"] or row.get("timestamp") is None:
+        raise ValueError("History source row is missing its entry timestamp or canonical message_uid")
+    public = {key: row[key] for key in ("message_id", "message_identity", "message_uid", "timestamp", "role", "content")}
+    if search:
+        content = row["content"] if isinstance(row["content"], str) else json.dumps(row["content"], ensure_ascii=False)
+        if len(content) > SEARCH_CONTENT_LIMIT:
+            public["content"] = content[:SEARCH_CONTENT_LIMIT - len(_SEARCH_TRUNCATION_MARKER)] + _SEARCH_TRUNCATION_MARKER
+            public["truncated"] = True
+    return public
+
 
 def _bounded_int(value, default, minimum, maximum):
     result = default if value is None else value
@@ -108,7 +124,7 @@ def session_history(args=None, *, db=None, current_session_id=None, conversation
         if db is None or not (current_session_id or conversation_ref):
             raise ValueError("Current Conversation state is unavailable")
         rows = _select_history(db, current_session_id, conversation_ref, args)
-        public = [{key: row[key] for key in ("message_id", "message_identity", "message_uid", "timestamp", "role", "content")} for row in rows]
+        public = [_public_history_row(row, search=args["mode"] == "search") for row in rows]
         return json.dumps({"success": True, "messages": public, "count": len(public)}, ensure_ascii=False)
     except (ValueError, TypeError, re.error) as exc:
         return json.dumps({"success": False, "error": str(exc)}, ensure_ascii=False)

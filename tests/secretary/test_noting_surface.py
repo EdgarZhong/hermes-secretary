@@ -129,7 +129,7 @@ def test_existing_agent_off_on_changes_actual_surface_at_next_turn(runtime, disa
     try:
         memo = copy.deepcopy(model_tools._tool_defs_cache)
         resolved_names = copy.deepcopy(model_tools._last_resolved_tool_names)
-        configured_names = _names(agent.tools) - {"session_history", "notebook_show"}
+        configured_names = _names(agent.tools) - {"session_history", "notebook_show", "noting_memo"}
         seen = _requests(agent)
         if disabled_by == "local":
             db.notebook_set_local_enabled(agent._secretary_conversation_ref, False)

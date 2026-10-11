@@ -26,22 +26,15 @@ def bind_reminder_runtime(db, conversation_ref, session_id):
 def arm_native_reminder(db, ref, canonical, text, entry_id="entry"):
     """A real current Snapshot must own intent when native transcript append reconciles it."""
     from uuid import uuid4
-    from secretary.notebook_model import NotebookWorkingState
+    from secretary.notebook_store import NotebookStore
     route = db.resolve_conversation_route(ref)
     anchor = "arm_" + uuid4().hex
     db.append_message(route["id"], "assistant", "Schedule established", message_uid=anchor)
-    current = db.notebook_current(ref)
-    payload = current["payload"] if current else None
-    if payload:
-        payload = {section: [e for e in entries if e["entry_id"] != entry_id] for section, entries in payload.items()}
-    state = NotebookWorkingState(ref, payload, parse_schedule=lambda _expression: canonical)
-    entry = state.create("user_reminder", {"message": text})
-    state.schedule_create(entry["entry_id"], "fixture")
-    payload = state.show()
-    next(e for entries in payload.values() for e in entries if e["entry_id"] == entry["entry_id"])["entry_id"] = entry_id
-    db.notebook_commit_snapshot(ref, payload, anchor_message_uid=anchor)
+    state = NotebookStore(db, ref, parse_schedule=lambda _expression: canonical)
+    entry = state.create("user_reminder", {"message": text}, expression="fixture")
+    state.commit(anchor)
     return dict(db._read_one("SELECT * FROM secretary_schedule_registry WHERE conversation_ref=? AND notebook_entry_id=?",
-                             (ref, entry_id)))
+                             (ref, entry["entry_id"])))
 
 
 def persist_native_carrier(db, session_id, text):

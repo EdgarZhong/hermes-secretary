@@ -73,6 +73,7 @@ def perform_api_call(
 ) -> ApiCallVerdict:
     """Issue the request (see ``_should_stream`` for the streaming decision)."""
     response = None
+    agent._secretary_reminder_provider_responded = False
 
     def _verdict(action: str) -> ApiCallVerdict:
         return ApiCallVerdict(
@@ -93,6 +94,7 @@ def perform_api_call(
         _external_facade = (_base.startswith(("acp://", "acp+tcp://"))
                             or _is_external_process_provider(getattr(agent, "provider", "")))
 
+        from secretary.reminder_request import verify_carried_reminders
         from secretary.noting_runtime import main_model_request_scope
         with main_model_request_scope(agent, next_api_kwargs, external=_external_facade):
             if agent.api_mode == "codex_responses":
@@ -100,16 +102,19 @@ def perform_api_call(
                     next_api_kwargs, allow_stream=False, is_github_responses=agent._is_copilot_url(),
                     sanitize_harmony_tokens=agent._is_codex_backend(),
                 )
+            verify_carried_reminders(agent, next_api_kwargs.get("messages", next_api_kwargs.get("input", [])))
             if _use_streaming:
-                return agent._interruptible_streaming_api_call(
+                answer = agent._interruptible_streaming_api_call(
                     next_api_kwargs, on_first_delta=_stop_spinner
                 )
+                agent._secretary_reminder_provider_responded = answer is not None
+                return answer
             from agent import relay_llm
 
             def _dispatch_nonstream(request):
                 return agent._interruptible_api_call(request)
 
-            return relay_llm.execute(
+            answer = relay_llm.execute(
                 next_api_kwargs,
                 _dispatch_nonstream,
                 session_id=str(agent.session_id or ""),
@@ -129,6 +134,8 @@ def perform_api_call(
                 },
                 defer_logical_completion=True,
             )
+            agent._secretary_reminder_provider_responded = answer is not None
+            return answer
 
     from hermes_cli.middleware import run_llm_execution_middleware
 
@@ -173,7 +180,8 @@ def perform_api_call(
     with suppress(Exception):
         from secretary.reminder_request import acknowledge_carried_reminders
 
-        acknowledge_carried_reminders(agent)
+        if agent._secretary_reminder_provider_responded:
+            acknowledge_carried_reminders(agent)
     return _verdict("fallthrough")
 
 

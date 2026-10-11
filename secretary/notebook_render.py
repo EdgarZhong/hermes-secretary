@@ -8,7 +8,12 @@ from secretary.notebook_model import SECTIONS
 
 def show_notebook(snapshot: dict | None) -> dict | None:
     """Return the entire persisted Snapshot, not a human projection or fabricated empty state."""
-    return deepcopy(snapshot)
+    view = deepcopy(snapshot)
+    if view is not None:
+        view.pop("termination", None)
+        for section, entries in view["payload"].items():
+            view["payload"][section] = [entry for entry in entries if not entry.get("archived")]
+    return view
 
 
 def _render_entry(entry: dict) -> list[str]:
@@ -37,7 +42,7 @@ def render_notebook(snapshot: dict | None) -> str:
     lines = ["Notebook", f"Created at: {snapshot['created_at']}"]
     for section in SECTIONS:
         lines.extend(["", section])
-        entries = snapshot["payload"][section]
+        entries = [entry for entry in snapshot["payload"][section] if not entry.get("archived")]
         if not entries:
             lines.append("(no entries)")
         for entry in entries:

@@ -27,7 +27,10 @@ class SecretaryIdentityMixin:
     def secretary_reconcile_session_conn(self, conn, session_id):
         """A native no-op against a vanished Session remains a no-op."""
         if conn.execute("SELECT 1 FROM sessions WHERE id=?", (session_id,)).fetchone() is not None:
-            self.notebook_reselect_pointer_conn(conn, self.resolve_conversation_ref_conn(conn, session_id))
+            ref = self.resolve_conversation_ref_conn(conn, session_id)
+            self.notebook_reselect_pointer_conn(conn, ref)
+            from hermes_state_secretary_schedule import reminder_settle_retired_conn
+            reminder_settle_retired_conn(conn, ref)
 
     def secretary_session_created_conn(self, conn, session_id, *, branch_point_message_uid=None):
         """Freeze locators only at a proven native INSERT, never at an old-row upsert."""

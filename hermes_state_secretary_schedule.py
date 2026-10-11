@@ -51,6 +51,9 @@ CREATE TABLE IF NOT EXISTS secretary_pending_reminders (
     delivery_semantics TEXT NOT NULL,
     source_timestamp REAL NOT NULL,
     content TEXT NOT NULL,
+    entry_payload TEXT,
+    carrier_content TEXT,
+    carrier_message_uid TEXT,
     status TEXT NOT NULL DEFAULT 'pending',
     created_at REAL NOT NULL,
     delivered_at REAL,
@@ -290,7 +293,7 @@ def schedule_release_conn(conn, schedule_id, claim_token, *, now):
 
 def reminder_append_pending_conn(
     conn, conversation_ref, content, *, source_timestamp, schedule_id=None, dedup_key=None,
-    delivery_semantics="system_reminder", now=None,
+    delivery_semantics="system_reminder", entry_payload=None, now=None,
 ):
     """Durably queue one pending System Reminder. Idempotent per (conversation, dedup key)."""
     timestamp = _now(now)
@@ -306,9 +309,9 @@ def reminder_append_pending_conn(
     reminder_id = "rem_" + uuid.uuid4().hex
     conn.execute(
         "INSERT INTO secretary_pending_reminders (reminder_id, conversation_ref, schedule_id, dedup_key, "
-        "delivery_semantics, source_timestamp, content, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "delivery_semantics, source_timestamp, content, entry_payload, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (reminder_id, conversation_ref, schedule_id, key, delivery_semantics,
-         float(source_timestamp), content, REMINDER_STATUS_PENDING, timestamp),
+         float(source_timestamp), content, json.dumps(entry_payload, ensure_ascii=False) if entry_payload is not None else None, REMINDER_STATUS_PENDING, timestamp),
     )
     return reminder_id
 
@@ -325,12 +328,34 @@ def reminder_pull_pending_conn(conn, conversation_ref):
             "reminder_id": row["reminder_id"],
             "text": build_system_reminder_text(row["content"], row["source_timestamp"]),
             "content": row["content"],
+            "entry_payload": json.loads(row["entry_payload"]) if row["entry_payload"] else None,
+            "carrier_content": row["carrier_content"],
+            "carrier_message_uid": row["carrier_message_uid"],
             "source_timestamp": float(row["source_timestamp"]),
             "delivery_semantics": row["delivery_semantics"],
             "schedule_id": row["schedule_id"],
         }
         for row in rows
     ]
+
+
+def reminder_settle_retired_conn(conn, conversation_ref):
+    """Native transcript reconciliation only: settle permanently compacted carriers.
+
+    A refused compaction-pass injection has no carrier UID and remains pending.
+    Missing/dropped rows and failed requests are likewise never terminated here.
+    """
+    return conn.execute(
+        "UPDATE secretary_pending_reminders SET status='terminated' "
+        "WHERE conversation_ref=? AND status='pending' AND carrier_message_uid IS NOT NULL "
+        "AND EXISTS (SELECT 1 FROM messages m JOIN secretary_session_bindings b "
+        "ON b.session_id=m.session_id WHERE b.conversation_ref=? "
+        "AND m.message_uid=carrier_message_uid AND m.compacted=1) "
+        "AND NOT EXISTS (SELECT 1 FROM messages m JOIN secretary_session_bindings b "
+        "ON b.session_id=m.session_id WHERE b.conversation_ref=? "
+        "AND m.message_uid=carrier_message_uid AND m.active=1)",
+        (conversation_ref, conversation_ref, conversation_ref),
+    ).rowcount
 
 
 def reminder_ack_conn(conn, reminder_id, *, now=None):
@@ -358,7 +383,7 @@ def reminder_pending_count_conn(conn, conversation_ref):
 
 
 def build_system_reminder_text(content, source_timestamp):
-    """The §5.6 request-only carrier: complete wrapper, timestamp as the first line inside."""
+    """The §5.6 deferred wrapper without a user-submission timestamp marker."""
     from agent.message_metadata import build_system_reminder_wrapper
 
     return build_system_reminder_wrapper(content, timestamp=source_timestamp)

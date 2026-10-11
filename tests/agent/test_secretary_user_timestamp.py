@@ -116,16 +116,19 @@ def test_marker_is_independent_of_the_noting_gate(runtime, monkeypatch):
         format_user_timestamp_marker(1_700_000_000.0))
 
 
-def test_three_wrappers_are_role_user_carriers_with_the_timestamp_first_inside():
+def test_wrappers_stamp_only_instant_submission():
     stamp = format_user_timestamp_marker(1234.0).rstrip("\n")
     cases = (
         (build_noting_task_wrapper, "noting-task", "do the work"),
-        (build_system_reminder_wrapper, "system-reminder", "due now"),
-        (build_user_reminder_wrapper, "user-reminder", "stand up"),
+        (build_system_reminder_wrapper, "deferred-reminder", "due now"),
+        (build_user_reminder_wrapper, "instant-reminder", "stand up"),
     )
     for builder, tag, body in cases:
         carrier = builder(body, timestamp=1234.0)
-        assert carrier.startswith(f"<{tag}>\n{stamp}\n")
+        if tag == "instant-reminder":
+            assert carrier.startswith(f"<{tag}>\n{stamp}\n")
+        else:
+            assert carrier.startswith(f"<{tag}>\n") and "<timestamp>" not in carrier
         assert carrier.endswith(f"\n{body}\n</{tag}>")
     # The helper strips only a leading marker, for identity comparisons.
     assert strip_user_timestamp_marker(f"{stamp}\nhello") == "hello"

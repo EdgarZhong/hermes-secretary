@@ -60,7 +60,7 @@ def test_busy_conversion_is_atomic_and_deduplicated(db, ref):
     assert first is not None and second is None  # consumed token cannot append again
     items = pending(db, ref)
     assert len(items) == 1
-    assert items[0]["text"].startswith("<system-reminder>\n<timestamp>")
+    assert items[0]["text"].startswith("<deferred-reminder>\n")
     assert "ping the user" in items[0]["text"]
     assert items[0]["source_timestamp"] == pytest.approx(claim["next_run_at"], abs=0.01)
     state = db._read_one(
@@ -85,14 +85,14 @@ def test_active_delivery_requires_proven_route_and_preserves_timestamp(db, ref):
     assert resolved["reason"] == "ok"
     assert resolved["route"]["id"] == "s1"
     assert resolved["route"]["session_key"] == "peer"
-    assert resolved["text"].startswith("<user-reminder>\n<timestamp>")
+    assert resolved["text"].startswith("<instant-reminder>\n<timestamp>")
     assert resolved["text"].splitlines()[1].startswith("<timestamp>")
-    assert resolved["text"].endswith("</user-reminder>")
-    assert resolved["source_timestamp"] == pytest.approx(claim["next_run_at"], abs=0.01)
-    # A failed delivery keeps the occurrence; retrying preserves the ORIGINAL source timestamp.
+    assert resolved["text"].endswith("</instant-reminder>")
+    assert resolved["source_timestamp"] > claim["next_run_at"]
+    # Before user-message admission, a new delivery attempt receives its own entry moment.
     reminders.release_claim(db, claim)
     retry = claim_due(db, claim["schedule_id"], owner="w2")
-    assert reminders.resolve_active_reminder(db, retry)["source_timestamp"] == resolved["source_timestamp"]
+    assert reminders.resolve_active_reminder(db, retry)["source_timestamp"] >= resolved["source_timestamp"]
 
 
 def test_stale_route_fails_closed_without_losing_the_occurrence(db, ref):

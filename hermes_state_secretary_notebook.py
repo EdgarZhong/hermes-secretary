@@ -1,8 +1,8 @@
 """Immutable Notebook Snapshots, their derived current pointer, and local Noting state.
 
 Secretary-owned tables in the owning Hermes ``state.db`` only (02 §3.1): core tables keep
-their shape and ownership. A committed Snapshot is insert-only and carries the complete
-four-section state; the current Notebook is exactly the pointer's Snapshot, never a
+their shape and ownership. A committed Snapshot is insert-only and references ordered immutable item versions;
+its public projection carries the complete four-section state; the current Notebook is exactly the pointer's Snapshot, never a
 mutable master row (02 §3.3-3.4). The pointer follows the latest Anchor still present on
 the current Full Foreground rather than commit order (02 §2.7, §5.10, A10), so an earlier
 Anchor's late Snapshot commits without moving the pointer backwards. Every write here runs
@@ -67,17 +67,14 @@ _LOCAL_STATE_UPSERT_SQL = (
 
 
 def init_secretary_notebook_schema(cursor):
-    """Execute statement-by-statement and migrate the Secretary-owned audit column in place."""
+    """Create Secretary-owned tables for a fresh development DB; no data migration."""
     for statement in SECRETARY_NOTEBOOK_SCHEMA_SQL.split(";"):
         if statement.strip():
             cursor.execute(statement)
-    columns = {row[1] for row in cursor.execute(
-        "PRAGMA table_info(secretary_notebook_snapshots)"
-    ).fetchall()}
-    if "termination_json" not in columns:
-        cursor.execute(
-            "ALTER TABLE secretary_notebook_snapshots ADD COLUMN termination_json TEXT"
-        )
+    from secretary.notebook_items import init_item_schema
+    init_item_schema(cursor)
+    from secretary.noting_memo import init_memo_schema
+    init_memo_schema(cursor)
 
 
 class NotebookError(ValueError):
@@ -86,7 +83,9 @@ class NotebookError(ValueError):
 
 def _complete_state(state):
     """A Snapshot is one complete four-section state, not a diff or a projection."""
-    if hasattr(state, "show"):
+    if hasattr(state, "snapshot_state"):
+        state = state.snapshot_state()
+    elif hasattr(state, "show"):
         state = state.show()
     if not isinstance(state, dict) or set(state) != set(SECTIONS):
         raise NotebookError("A Snapshot requires the complete four-section Notebook state")
@@ -110,7 +109,7 @@ def _termination_json(termination):
         if not isinstance(reason, str) or not reason.strip():
             raise NotebookError("finish_noting termination requires a nonempty reason")
         value = {"type": "finish_noting", "reason": reason.strip()}
-    elif kind in {"compact_parent", "forced"}:
+    elif kind in {"compact_parent", "forced", "context_overflow"}:
         if set(termination) != {"type"}:
             raise NotebookError(f"{kind} termination accepts no extra fields")
         value = {"type": kind}
@@ -119,7 +118,8 @@ def _termination_json(termination):
     return json.dumps(value, ensure_ascii=False, sort_keys=True)
 
 
-def _snapshot_record(row):
+def _snapshot_record(conn, row, *, include_archived=False):
+    from secretary.notebook_items import hydrate_snapshot_conn
     return {
         "snapshot_id": row["snapshot_id"],
         "conversation_ref": row["conversation_ref"],
@@ -128,27 +128,18 @@ def _snapshot_record(row):
                              "message_uid": row["anchor_message_uid"]},
         "trigger_type": row["trigger_type"],
         "runtime_profile": row["runtime_profile"],
-        "payload": json.loads(row["payload_json"]),
+        "payload": hydrate_snapshot_conn(conn, row["conversation_ref"], json.loads(row["payload_json"]),
+                                         include_archived=include_archived),
         "created_at": row["created_at"],
     }
 
 
-def _snapshot_audit_record(row):
+def _snapshot_audit_record(conn, row):
     """Internal-only projection: ordinary Notebook surfaces intentionally never call this."""
-    record = _snapshot_record(row)
+    record = _snapshot_record(conn, row, include_archived=True)
     raw = row["termination_json"] if "termination_json" in row.keys() else None
     record["termination"] = json.loads(raw) if raw else None
     return record
-
-
-def _rebind_source_identities(payload, conversation_ref):
-    """Rebind inherited provenance to branch-local Message Identity (02 §2.7)."""
-    rebound = deepcopy(payload)
-    for entries in rebound.values():
-        for entry in entries:
-            for source in entry.get("source_message_identities") or []:
-                source["conversation_ref"] = conversation_ref
-    return rebound
 
 
 class SecretaryNotebookMixin:
@@ -168,7 +159,8 @@ class SecretaryNotebookMixin:
         """UID -> path position for ordinary logical Message Anchors (02 §2.6)."""
         return {row["message_uid"]: row["path_position"]
                 for row in self.get_full_foreground_conn(conn, conversation_ref)
-                if row.get("kind") == "message" and row["role"] != "system" and not row["is_compaction"]}
+                if row.get("message_identity") and not row.get("is_compaction") and row.get("message_uid")
+                and (row.get("display_metadata") or {}).get("noting_run_output") is not True}
 
     def _notebook_latest_valid_snapshot_id_conn(self, conn, conversation_ref, positions):
         """The committed Snapshot of the latest Anchor still on *positions* (A10)."""
@@ -212,7 +204,15 @@ class SecretaryNotebookMixin:
         snapshot = conn.execute(_SNAPSHOT_BY_ID_SQL, (snapshot_id,)).fetchone()
         if snapshot is None:
             raise NotebookError("The current pointer references a missing Snapshot")
-        return _snapshot_record(snapshot)
+        return _snapshot_record(conn, snapshot)
+
+    def notebook_snapshot_state_conn(self, conn, conversation_ref):
+        """Internal task state includes archive final versions; ordinary reads always filter."""
+        current = self.notebook_current_conn(conn, conversation_ref)
+        if current is None:
+            return None
+        row = conn.execute(_SNAPSHOT_BY_ID_SQL, (current["snapshot_id"],)).fetchone()
+        return _snapshot_record(conn, row, include_archived=True)["payload"]
 
     def notebook_reselect_pointer_conn(self, conn, conversation_ref):
         """Rewind/edit/branch reconciliation: follow the current path, never commit order."""
@@ -222,7 +222,7 @@ class SecretaryNotebookMixin:
     # ── Committing one immutable Snapshot (02 §3.3, §5.10, §6.16) ──────────
 
     def notebook_commit_snapshot_conn(self, conn, conversation_ref, state, *, anchor_message_uid,
-                                      trigger_type="idle", runtime_profile="NOTING", termination=None):
+                                      trigger_type="idle", runtime_profile="NOTING", termination=None, memo_entries=None):
         """Revalidate the frozen Anchor, INSERT one Snapshot and re-derive the pointer here."""
         self._notebook_require_conversation_conn(conn, conversation_ref)
         if not self.notebook_local_enabled_conn(conn, conversation_ref):
@@ -234,7 +234,7 @@ class SecretaryNotebookMixin:
         if not isinstance(anchor_message_uid, str) or not anchor_message_uid:
             raise NotebookError("A Snapshot requires its frozen Anchor Message UID")
         # Commit-time gate: an Anchor that left the current Full Foreground abandons the result.
-        if self.anchor_position_conn(conn, conversation_ref, anchor_message_uid) is None:
+        if anchor_message_uid not in self._notebook_anchor_positions_conn(conn, conversation_ref):
             raise NotebookError("The frozen Anchor is not on the current Full Foreground")
         payload = _complete_state(state)
         from secretary.notebook_store import validate_snapshot_state_conn
@@ -243,15 +243,22 @@ class SecretaryNotebookMixin:
         except ValueError as exc:
             raise NotebookError(str(exc)) from exc
         try:
-            payload_json = json.dumps(payload, ensure_ascii=False, sort_keys=True)
+            from secretary.notebook_items import snapshot_item_ids_conn
+            payload_json = json.dumps(snapshot_item_ids_conn(conn, conversation_ref, payload), ensure_ascii=False)
         except (TypeError, ValueError) as exc:
-            raise NotebookError("Notebook state must be JSON-serializable") from exc
+            raise NotebookError(str(exc)) from exc
         termination_json = _termination_json(termination)
         snapshot_id = "snap_" + uuid.uuid4().hex
+        committed_at = time.time()
         conn.execute(_INSERT_SNAPSHOT_SQL, (
             snapshot_id, conversation_ref, anchor_message_uid, trigger_type, runtime_profile,
-            payload_json, termination_json, time.time(),
+            payload_json, termination_json, committed_at,
         ))
+        if memo_entries:
+            from secretary.noting_memo import consume_memo_conn
+            consume_memo_conn(conn, conversation_ref, memo_entries, snapshot_id=snapshot_id,
+                              anchor_message_uid=anchor_message_uid, trigger_type=trigger_type,
+                              runtime_profile=runtime_profile, archived_at=committed_at)
         # An earlier Anchor's late Snapshot stays committed while the pointer keeps the newer one.
         self._notebook_reselect_pointer_conn(conn, conversation_ref)
         return snapshot_id
@@ -278,7 +285,7 @@ class SecretaryNotebookMixin:
         for source in sources:
             if source["anchor_message_uid"] not in positions:
                 continue
-            payload = _rebind_source_identities(json.loads(source["payload_json"]), branch_conversation_ref)
+            payload = json.loads(source["payload_json"])
             conn.execute(_INSERT_SNAPSHOT_SQL, (
                 "snap_" + uuid.uuid4().hex, branch_conversation_ref, source["anchor_message_uid"],
                 source["trigger_type"], source["runtime_profile"],
@@ -308,21 +315,36 @@ class SecretaryNotebookMixin:
         self._notebook_require_conversation_conn(conn, conversation_ref)
         if not isinstance(enabled, bool):
             raise NotebookError("Conversation-local Noting participation must be a boolean")
+        if not enabled and self.noting_memo_entries_conn(conn, conversation_ref):
+            raise NotebookError("Background Noting stays on while this Conversation's Noting Memo is non-empty; clear the memo before /noting off")
         conn.execute(_LOCAL_STATE_UPSERT_SQL, (conversation_ref, int(enabled), time.time()))
+
+    def noting_memo_entries_conn(self, conn, conversation_ref):
+        from secretary.noting_memo import memo_entries_conn
+        self._notebook_require_conversation_conn(conn, conversation_ref)
+        return memo_entries_conn(conn, conversation_ref)
+
+    def noting_memo_entries(self, conversation_ref):
+        with self._read_ctx() as conn:
+            return self.noting_memo_entries_conn(conn, conversation_ref)
+
+    def noting_memo_mutate(self, conversation_ref, args):
+        from secretary.noting_memo import mutate_memo_conn
+        return self._execute_write(lambda conn: mutate_memo_conn(self, conn, conversation_ref, args))
 
     # ── Convenience wrappers (own connection) ──────────────────────────────
 
     def notebook_commit_snapshot(self, conversation_ref, state, *, anchor_message_uid,
-                                 trigger_type="idle", runtime_profile="NOTING", termination=None):
+                                 trigger_type="idle", runtime_profile="NOTING", termination=None, memo_entries=None):
         return self._execute_write(lambda conn: self.notebook_commit_snapshot_conn(
             conn, conversation_ref, state, anchor_message_uid=anchor_message_uid,
-            trigger_type=trigger_type, runtime_profile=runtime_profile, termination=termination))
+            trigger_type=trigger_type, runtime_profile=runtime_profile, termination=termination, memo_entries=memo_entries))
 
     def notebook_snapshot_audit_conn(self, conn, snapshot_id):
         row = conn.execute(_SNAPSHOT_BY_ID_SQL, (snapshot_id,)).fetchone()
         if row is None:
             return None
-        return _snapshot_audit_record(row)
+        return _snapshot_audit_record(conn, row)
 
     def notebook_snapshot_audit(self, snapshot_id):
         with self._read_ctx() as conn:

@@ -679,6 +679,8 @@ _LOCAL_CRON_DELIVERY_NOTE = (
     "default-deliver cron job will message them in this session."
 )
 
+SECRETARY_LOCAL_CRON_DELIVERY_APPEND = 'Separately: never create a cron job to satisfy an in-Conversation reminder or schedule. In-Conversation reminders and schedules are owned entirely by the Notebook/Noting system — Noting writes them into the Notebook Schedule and you read them via notebook_show — and a parallel cron job would deliver the same request through a second channel.'
+
 PLATFORM_HINTS = {
     "whatsapp": (
         "You are on WhatsApp. Standard markdown auto-converts to WhatsApp syntax (*bold*, _italic_, ~strike~, "

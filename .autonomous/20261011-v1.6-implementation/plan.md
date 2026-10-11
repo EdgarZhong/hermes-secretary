@@ -25,6 +25,8 @@
 | 问题编号 | 要求与触发条件 | 当前事实与影响 | 优先级及理由 | 修复负责人 | 关闭与复验条件 | 状态 |
 |---|---|---|---|---|---|---|
 | R0 | V1.5 遗留门禁缺口 | 旧 Verification 未通过，Dashboard 未执行 | 必须，不能施工代替验收 | root/T5 | 当前版两门禁关闭 | 待收尾 |
+| R1 | 02 §5.6 Framework 已排队后 Turn 结束前关闭 Noting | flush 依赖 Idle recorded 和再次 effective gate，可能丢已准入生产的通知 | 集成正确性 | timers/delivery | timers/framework-off-race.log 3/3；已有队列尾部双写同 UID，空队列无新调用；root复核接收 | 已关闭 |
+| R2 | 02 §2.6 Anchor仅排 Finish marker及Compaction | 旧role=system排除阻止真实普通System事件推进Anchor | 接线正确性 | root/storage | root已复核foreground Anchor／freeze／Commit Gate／Full audit与branch路径；child-memo/integrated-final.log 50/50含普通System、Finish及真实预算装配；delivery/branch-boundary.log 10/10含原生create_session与TUI持久化helper | 集成关闭；正式门禁待审 |
 
 ## 取舍、快照与续接
 

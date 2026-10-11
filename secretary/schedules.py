@@ -38,11 +38,27 @@ def entry_reminder_text(entry):
         return str(fields.get("message") or "").strip()
     if entry_type == "user_commitment":
         return f"Commitment due: {fields.get('what', '')}".strip()
-    if entry_type == "agent_task":
-        return f"Task due: {fields.get('task', '')}".strip()
+    if entry_type == "secretary_task":
+        return f"Secretary task due: {fields.get('task', '')}".strip()
     if entry_type == "watchpoint":
         return f"Watchpoint due: {fields.get('subject', '')} — {fields.get('what_to_watch', '')}".strip()
     return ""
+
+
+def _rebind_version_registry_conn(conn, conversation_ref, entry_id):
+    """A content version preserves the occurrence identity belonging to its lineage."""
+    current = conn.execute("SELECT lineage_id FROM secretary_notebook_item WHERE id = ?", (entry_id,)).fetchone()
+    if current is None:
+        return
+    old = conn.execute(
+        "SELECT r.schedule_id FROM secretary_schedule_registry r "
+        "JOIN secretary_notebook_item i ON i.id = r.notebook_entry_id "
+        "WHERE r.conversation_ref = ? AND i.lineage_id = ?",
+        (conversation_ref, current["lineage_id"]),
+    ).fetchone()
+    if old is not None:
+        conn.execute("UPDATE secretary_schedule_registry SET notebook_entry_id = ? WHERE schedule_id = ?",
+                     (entry_id, old["schedule_id"]))
 
 
 def reconcile_entry(conn, conversation_ref, entry, *, active=True, now=None, reminder_text=None):
@@ -51,6 +67,7 @@ def reconcile_entry(conn, conversation_ref, entry, *, active=True, now=None, rem
     Called by the Notebook service after a semantic mutation; a no-intent or now-inactive entry
     disables (never deletes) its runtime row, and a cancelled intent is terminal until replaced.
     """
+    _rebind_version_registry_conn(conn, conversation_ref, entry["entry_id"])
     intent = entry.get("schedule")
     cancelled = bool(isinstance(intent, dict) and intent.get("cancelled"))
     canonical = intent.get("canonical_schedule") if isinstance(intent, dict) else None
@@ -106,11 +123,13 @@ def inherit_runtime_conn(conn, parent_ref, branch_ref):
     """
     rows = conn.execute(
         "SELECT b.schedule_id, p.state, p.next_run_at, p.last_fired_at "
-        "FROM secretary_schedule_registry b JOIN secretary_schedule_registry p "
-        "ON p.notebook_entry_id = b.notebook_entry_id "
-        "AND p.canonical_schedule = b.canonical_schedule "
+        "FROM secretary_schedule_registry b "
+        "JOIN secretary_notebook_item bi ON bi.id = b.notebook_entry_id "
+        "JOIN secretary_schedule_registry p "
+        "JOIN secretary_notebook_item pi ON pi.id = p.notebook_entry_id AND pi.lineage_id = bi.lineage_id "
+        "WHERE p.canonical_schedule = b.canonical_schedule "
         "AND p.delivery_semantics = b.delivery_semantics "
-        "WHERE p.conversation_ref = ? AND b.conversation_ref = ? "
+        "AND p.conversation_ref = ? AND b.conversation_ref = ? "
         "AND b.enabled = 1 AND p.state IN ('pending', 'done')",
         (parent_ref, branch_ref),
     ).fetchall()

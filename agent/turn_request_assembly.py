@@ -120,6 +120,15 @@ def assemble_api_request(
         estimate_native_anthropic_messages_tokens_rough,
     )
 
+    from secretary.reminder_request import (
+        materialize_pending_reminders, prepare_pending_reminders, verify_carried_reminders,
+    )
+    _reminder_tokens = (0 if getattr(agent, "_secretary_reminder_pending_prepared", False)
+                        else prepare_pending_reminders(agent, messages))
+    if not getattr(agent, "_secretary_reminder_preflight_probe", False):
+        materialize_pending_reminders(agent, messages)
+        _reminder_tokens = 0  # now measured naturally from the live transcript
+
     api_messages, effective_system = build_api_messages(
         agent, messages, current_turn_user_idx=current_turn_user_idx,
         ext_prefetch_cache=_ext_prefetch_cache, plugin_user_context=_plugin_user_context,
@@ -231,16 +240,6 @@ def assemble_api_request(
         api_messages = _initial_cache_plan.messages
         tools_for_api = _initial_cache_plan.tools
 
-    # Request-only Secretary System Reminder delivery (02 §3.11/§6.8): after ordinary
-    # repair/merge and the cache plan, before provider-specific adaptation and accounting,
-    # append the pending reminders of this Conversation as standalone role=user carriers.
-    # Durable history and the prefix plan are untouched; the carriers ride this request.
-    from secretary.reminder_request import inject_pending_reminders
-
-    _reminder_count, _reminder_tokens = inject_pending_reminders(agent, api_messages)
-    if _reminder_count:
-        logger.debug("Carried %d pending System Reminder(s) on this request", _reminder_count)
-
     # Prepare the persistent-MoA request before measuring compression pressure: the
     # ephemeral advisor output is absent from ``messages``; ``create()`` reuses the
     # prepared request instead of running the advisors again.
@@ -249,6 +248,8 @@ def assemble_api_request(
         _moa_prepared_request, api_messages, pending_moa_prepared_request = _prepare_moa_request(
             agent, api_messages, pending_moa_prepared_request
         )
+
+    verify_carried_reminders(agent, api_messages)
 
     # One image-stripped estimate feeds both figures; tools counted separately (50+
     # tools ≈ 20-30K tokens); total_chars is a rough proxy for logs/hooks only.
@@ -283,8 +284,8 @@ def assemble_api_request(
     _anchored_pressure = anchored_context_tokens(messages, getattr(agent, "_usage_anchor", None))
     agent._request_pressure_anchored = _anchored_pressure is not None
     if _anchored_pressure is not None:
-        # Request-only carriers are NOT in ``messages``: the anchor's delta cannot see
-        # them, so their measured price rides the anchored figure too (02 §3.11).
+        # Before native preflight only, account the pending batch without inserting
+        # it. A compression pass never materializes the occurrence.
         request_pressure_tokens = _anchored_pressure + _reminder_tokens
     else:
         # Rough fallback only: floor at the provider's last REAL prompt size (an anchored
@@ -292,7 +293,10 @@ def assemble_api_request(
         # the fan-out tokens the anchor excludes).
         request_pressure_tokens = _pressure_with_real_floor(
             agent.context_compressor, request_pressure_tokens
-        )
+        ) + _reminder_tokens
+    if getattr(agent, "_secretary_noting_child", False):
+        from secretary.noting_child import guard_noting_request_budget
+        guard_noting_request_budget(agent, request_pressure_tokens)
     return AssembledRequest(
         "fallthrough", api_messages, tools_for_api, _moa_prepared_request,
         pending_moa_prepared_request, approx_tokens, request_pressure_tokens, approx_tokens * 4,

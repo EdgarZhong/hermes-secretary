@@ -1,4 +1,4 @@
-"""Idle checks on existing host ticks, always against the live Parent's owning profile."""
+"""Attach/resume Idle timers on existing host ticks in the live Parent's owning profile."""
 
 import contextlib
 import logging
@@ -23,7 +23,7 @@ def poll_parent_idle(parent):
 
 
 def poll_cli_noting(cli):
-    """The existing CLI queue-empty tick calls this; no daemon or new scheduler."""
+    """The existing CLI queue-empty tick attaches/recover timers; it emits no periodic Trigger."""
     if getattr(cli, "_agent_running", False):
         return
     now = time.monotonic()

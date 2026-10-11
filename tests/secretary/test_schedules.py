@@ -7,7 +7,7 @@ import pytest
 
 from hermes_state import SessionDB
 from hermes_state_secretary_schedule import init_secretary_schedule_schema
-from secretary.notebook_model import NotebookWorkingState
+from secretary.notebook_store import NotebookStore
 from secretary.schedules import (
     claim_due,
     default_enablement,
@@ -56,9 +56,9 @@ def reconcile(db, ref, state, *, active=True, complete=True):
 
 
 def test_reconcile_registers_runtime_rows_without_touching_intent(db, ref):
-    state = NotebookWorkingState(ref)
+    state = NotebookStore(db, ref)
     reminder = state.create("user_reminder", {"message": "ping me about the deploy"})
-    state.schedule_create(reminder["entry_id"], "every 30m")
+    reminder = state.schedule_update(reminder["entry_id"], "every 30m")
     watchpoint = state.create("watchpoint", {
         "subject": "deploy", "what_to_watch": "latency", "why": "SLA", "until": iso(3600),
     })
@@ -77,13 +77,13 @@ def test_reconcile_registers_runtime_rows_without_touching_intent(db, ref):
 
 
 def test_entry_completion_disables_row_but_keeps_intent(db, ref):
-    state = NotebookWorkingState(ref)
+    state = NotebookStore(db, ref)
     entry = state.create("user_commitment", {"what": "send the report", "intent": "keep the review loop"})
-    state.schedule_create(entry["entry_id"], "every 2h")
+    entry = state.schedule_update(entry["entry_id"], "every 2h")
     reconcile(db, ref, state)
     assert registry_rows(db, ref)[0]["enabled"] == 1
-    state.transition_status(entry["entry_id"], "in_progress")
-    state.transition_status(entry["entry_id"], "done")
+    entry = state.transition_status(entry["entry_id"], "in_progress")
+    entry = state.transition_status(entry["entry_id"], "done")
     reconcile(db, ref, state)
     rows = registry_rows(db, ref)
     assert len(rows) == 1 and rows[0]["enabled"] == 0
@@ -91,14 +91,14 @@ def test_entry_completion_disables_row_but_keeps_intent(db, ref):
 
 
 def test_cancelled_intent_terminates_and_update_rearms(db, ref):
-    state = NotebookWorkingState(ref)
-    entry = state.create("agent_task", {"task": "retry the migration", "purpose": "unblock release"})
-    state.schedule_create(entry["entry_id"], "every 1h")
+    state = NotebookStore(db, ref)
+    entry = state.create("secretary_task", {"task": "retry the migration", "purpose": "unblock release"})
+    entry = state.schedule_update(entry["entry_id"], "every 1h", delivery_mode="deferred")
     reconcile(db, ref, state)
-    state.schedule_cancel(entry["entry_id"])
+    entry = state.schedule_cancel(entry["entry_id"])
     reconcile(db, ref, state)
     assert registry_rows(db, ref)[0]["state"] == "cancelled"
-    state.schedule_update(entry["entry_id"], "every 3h")
+    entry = state.schedule_update(entry["entry_id"], "every 3h")
     reconcile(db, ref, state)
     rows = registry_rows(db, ref)
     assert rows[0]["state"] == "pending" and rows[0]["enabled"] == 1
@@ -107,19 +107,19 @@ def test_cancelled_intent_terminates_and_update_rearms(db, ref):
 
 
 def test_vanished_entry_disables_row_without_deleting_it(db, ref):
-    state = NotebookWorkingState(ref)
+    state = NotebookStore(db, ref)
     entry = state.create("user_reminder", {"message": "water the plants"})
-    state.schedule_create(entry["entry_id"], "every 1d")
+    entry = state.schedule_update(entry["entry_id"], "every 1d")
     reconcile(db, ref, state)
-    reconcile(db, ref, NotebookWorkingState(ref))
+    reconcile(db, ref, NotebookStore(db, ref))
     rows = registry_rows(db, ref)
     assert len(rows) == 1 and rows[0]["enabled"] == 0
 
 
 def test_scan_and_claim_respects_enablement_and_claims_once(db, ref):
-    state = NotebookWorkingState(ref)
+    state = NotebookStore(db, ref)
     entry = state.create("user_reminder", {"message": "pay the invoice"})
-    state.schedule_create(entry["entry_id"], "every 1h")
+    entry = state.schedule_update(entry["entry_id"], "every 1h")
     reconcile(db, ref, state)
     row = registry_rows(db, ref)[0]
     db._execute_write(lambda conn: conn.execute(
@@ -136,7 +136,7 @@ def test_scan_and_claim_respects_enablement_and_claims_once(db, ref):
 
 def test_reminder_text_projection_and_default_enablement(db, ref):
     assert entry_reminder_text({"type": "user_commitment", "fields": {"what": "ship it"}}) == "Commitment due: ship it"
-    assert entry_reminder_text({"type": "agent_task", "fields": {"task": "review"}}) == "Task due: review"
+    assert entry_reminder_text({"type": "secretary_task", "fields": {"task": "review"}}) == "Secretary task due: review"
     assert entry_reminder_text({"type": "user_reminder", "fields": {"message": "tea"}}) == "tea"
     assert entry_reminder_text({"type": "decision", "fields": {"decision": "x"}}) == ""
     assert default_enablement(db)(ref) is True
@@ -158,9 +158,9 @@ def test_conversation_local_off_skips_scan_and_reenable_delivers_once(tmp_path):
         ref = db.resolve_conversation_ref("s1", ("test", "peer", 0))
         from tests.secretary.reminder_runtime import bind_reminder_runtime
         bind_reminder_runtime(db, ref, "s1")
-        state = NotebookWorkingState(ref)
+        state = NotebookStore(db, ref)
         entry = state.create("user_reminder", {"message": "call the bank"})
-        state.schedule_create(entry["entry_id"], "every 1h")
+        entry = state.schedule_update(entry["entry_id"], "every 1h")
         db._execute_write(lambda conn: reconcile_payload(conn, ref, state.show()))
         db._execute_write(lambda conn: conn.execute(
             "UPDATE secretary_schedule_registry SET next_run_at = ?", (time.time() - 5,),

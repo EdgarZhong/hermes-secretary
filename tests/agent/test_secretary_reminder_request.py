@@ -1,9 +1,8 @@
-"""Request-only System Reminder delivery and success-tied ACK on the real seams.
+"""Durable deferred Reminder batches and response-tied ACK on actual runtime seams.
 
-Pending reminders live in a real ``state.db`` (T4's schedule schema), the carrier is
-appended by the real ``assemble_api_request`` and the acknowledgement is driven by the real
-``perform_api_call`` — a failed provider call must leave the reminder pending and the source
-timestamp must never be re-minted.
+Pending occurrences live in state.db, enter the live transcript before the real
+assemble_api_request builder, and are acknowledged by perform_api_call only after
+an actual provider response. Failure/replay retain the original due_at content.
 """
 
 from __future__ import annotations
@@ -89,21 +88,18 @@ def run_api_call(agent, messages):
     )
 
 
-def test_pending_reminder_is_injected_request_only_and_acked_on_success(runtime):
-    from agent.message_metadata import build_system_reminder_wrapper
-
+def test_pending_reminder_is_durable_and_acked_on_success(runtime):
     agent, db, _client = runtime
     ref = agent._secretary_conversation_ref
     reminder_id = seed_reminder(db, ref)
     messages = db.get_messages_as_conversation("S17")
 
     assembled = run_assembly(agent, messages)
-    carriers = [m for m in assembled.api_messages if m.get("role") == "user"
-                and str(m.get("content", "")).startswith("<system-reminder>")]
-    assert len(carriers) == 1
-    carrier = carriers[0]["content"]
-    assert carrier == build_system_reminder_wrapper("submit the report", timestamp=1234.0)
-    assert messages[-1]["content"] == "hello"  # durable transcript untouched
+    carrier = messages[-1]["content"]
+    assert carrier.startswith("<deferred-reminder>\n以下提醒已到期。\n")
+    assert "<timestamp>" not in carrier
+    assert any(carrier in str(m.get("content")) for m in assembled.api_messages)
+    assert db.get_messages("S17")[-1]["content"] == carrier
     assert agent._secretary_inflight_reminders == [reminder_id]
     assert db._execute_write(lambda conn: reminder_pending_count_conn(conn, ref)) == 1
 
@@ -111,10 +107,10 @@ def test_pending_reminder_is_injected_request_only_and_acked_on_success(runtime)
     assert verdict.action == "fallthrough"
     assert agent._secretary_inflight_reminders == []
     assert db._execute_write(lambda conn: reminder_pending_count_conn(conn, ref)) == 0
-
-    # Delivered: the next request carries nothing.
-    second = run_assembly(agent, messages)
-    assert not any(str(m.get("content", "")).startswith("<system-reminder>") for m in second.api_messages)
+    count = len(db.get_messages("S17"))
+    run_assembly(agent, messages)
+    assert len(db.get_messages("S17")) == count
+    assert not agent._secretary_inflight_reminders
 
 
 def test_failed_request_keeps_the_reminder_and_the_source_timestamp(runtime):
@@ -132,12 +128,10 @@ def test_failed_request_keeps_the_reminder_and_the_source_timestamp(runtime):
     client.chat.completions.create.side_effect = None
     client.chat.completions.create.return_value = mock_response("done")
     retried = run_assembly(agent, messages)
-    carriers = [m["content"] for m in retried.api_messages if m.get("role") == "user"
-                and str(m.get("content", "")).startswith("<system-reminder>")]
-    assert len(carriers) == 1 and carriers[0] == [
-        m["content"] for m in assembled.api_messages if m.get("role") == "user"
-        and str(m.get("content", "")).startswith("<system-reminder>")
-    ][0]
+    carrier = messages[-1]["content"]
+    assert any(carrier in str(m.get("content")) for m in assembled.api_messages)
+    assert any(carrier in str(m.get("content")) for m in retried.api_messages)
+    assert len([row for row in db.get_messages("S17") if str(row["content"]).startswith("<deferred-reminder>")]) == 1
 
     run_api_call(agent, retried.api_messages)
     assert db._execute_write(lambda conn: reminder_pending_count_conn(conn, ref)) == 0
@@ -178,3 +172,15 @@ def test_carrier_bytes_match_the_schedule_module_builder():
     assert build_system_reminder_text("due now", 1234.0) == build_system_reminder_wrapper(
         "due now", timestamp=1234.0
     )
+
+
+def test_execution_middleware_without_provider_response_does_not_ack(runtime, monkeypatch):
+    agent, db, _client = runtime
+    ref = agent._secretary_conversation_ref
+    seed_reminder(db, ref)
+    messages = db.get_messages_as_conversation("S17")
+    assembled = run_assembly(agent, messages)
+    monkeypatch.setattr("hermes_cli.middleware.run_llm_execution_middleware",
+                        lambda *_a, **_k: mock_response("cached local answer"))
+    run_api_call(agent, assembled.api_messages)
+    assert db._execute_write(lambda conn: reminder_pending_count_conn(conn, ref)) == 1
