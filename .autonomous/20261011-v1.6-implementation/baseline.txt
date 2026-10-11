@@ -4,3 +4,4 @@ fc2668310bff783dde0d6f1cee01b8de99a43cb9
 36f8ffb1019b0c6505226e83478a3cea8f985c05 — 授权补充 C08；2026-10-11 本会话明确Noting仅请求父原生压缩，active Turn协调、结果接收及Compression Continuation由父原生运行时负责；02 §5.9、索引、根CLAUDE、整改与额度中断交接一并保存。原生接线方案尚未收敛，压缩代码未修改。
 9072dcde60e11ecaaa92f39bbc3b172cf569e67d — 授权补充 C09；用户明确成功触发compact请求后即使父压缩随后取消，Snapshot照常经过既有Gate提交、Finish Framework Message照常生产；02 §5.9、索引及根CLAUDE一并冻结，未改变真实准入或有效Anchor条件。
 09372410e0c428842c9d033e1580a51f900c7775 — 授权补充 C10；用户明确Main notebook_show隐藏内部Snapshot/Anchor/Trigger/Profile等元数据，仅保Notebook正文＋last_update_time。02 §3.5／§5.12、索引与根CLAUDE立即冻结；原产品ce2fa6f尚未修改。README／AGENTS现行版本在冻结树中，README工作区docs06独立讨论索引未纳入。
+8df8885d822b769694c3e199bdc0c4011ec1fbc3 — 授权补充 C11；用户允许模型另见裸anchor_message_uid以History查源，除此不再加Snapshot元数据。02 §3.5／§5.12、索引及根CLAUDE同步冻结；C10旧授权链保留，以C11增量覆盖仅Anchor隐藏部分。

@@ -20,7 +20,8 @@ def test_human_view_shows_timestamp_and_complete_semantics_without_anchor_or_poi
                  source_message_identities=[{"conversation_ref": "conv_source", "message_uid": "hidden_anchor"}])
     snapshot = {"snapshot_id": "hidden_pointer", "conversation_ref": "conv_source",
                 "anchor_message_uid": "hidden_anchor", "created_at": "2026-10-07T17:23:45+08:00",
-                "trigger_type": "idle", "runtime_profile": "NOTING", "payload": model.show()}
+                "trigger_type": "idle", "runtime_profile": "NOTING", "future_internal_audit": "never_expose",
+                "termination": {"type": "forced"}, "payload": model.show()}
     rendered = render_notebook(snapshot)
     for text in (snapshot["created_at"], "user", "assistant", "consultation", "persistence",
                  "send report", "request approval", "draft slides", "team review", "triage", "logs", "isolate", "Schedule", "2030-10-07"):
@@ -30,9 +31,12 @@ def test_human_view_shows_timestamp_and_complete_semantics_without_anchor_or_poi
     assert "hidden_anchor" not in rendered
     assert "hidden_pointer" not in rendered
     structured = show_notebook(snapshot)
-    assert structured == snapshot
-    assert structured["anchor_message_uid"] == "hidden_anchor"
-    structured["payload"]["user"].clear()
+    assert set(structured) == {"last_update_time", "anchor_message_uid", "user", "assistant", "consultation", "persistence"}
+    assert structured["last_update_time"] == snapshot["created_at"]
+    assert structured["anchor_message_uid"] == snapshot["anchor_message_uid"]
+    assert structured["user"] == snapshot["payload"]["user"]
+    assert structured["persistence"] == snapshot["payload"]["persistence"]
+    structured["user"].clear()
     assert snapshot["payload"]["user"]
 
 

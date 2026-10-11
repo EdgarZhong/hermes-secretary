@@ -1,4 +1,4 @@
-"""Human slash rendering and complete AI-facing Snapshot JSON are separate views."""
+"""Human slash rendering and minimal AI-facing Notebook JSON are separate views."""
 
 from copy import deepcopy
 import json
@@ -7,13 +7,15 @@ from secretary.notebook_model import SECTIONS
 
 
 def show_notebook(snapshot: dict | None) -> dict | None:
-    """Return the entire persisted Snapshot, not a human projection or fabricated empty state."""
-    view = deepcopy(snapshot)
-    if view is not None:
-        view.pop("termination", None)
-        for section, entries in view["payload"].items():
-            view["payload"][section] = [entry for entry in entries if not entry.get("archived")]
-    return view
+    """Project committed Notebook content; internal Snapshot fields never enter the AI view."""
+    if snapshot is None:
+        return None
+    return {
+        "last_update_time": snapshot["created_at"],
+        "anchor_message_uid": snapshot["anchor_message_uid"],
+        **{section: [deepcopy(entry) for entry in snapshot["payload"][section]
+                     if not entry.get("archived")] for section in SECTIONS},
+    }
 
 
 def _render_entry(entry: dict) -> list[str]:

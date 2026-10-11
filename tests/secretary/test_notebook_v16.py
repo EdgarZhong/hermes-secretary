@@ -59,7 +59,7 @@ def test_real_version_chain_snapshot_references_and_archive_isolation(owner):
     assert NotebookStore(db, ref).show()["user"] == []
     assert db.notebook_snapshot_audit(final)["payload"]["user"] == [archived]
     assert "second" not in render_notebook(db.notebook_snapshot_audit(final))
-    assert show_notebook(db.notebook_snapshot_audit(final))["payload"]["user"] == []
+    assert show_notebook(db.notebook_snapshot_audit(final))["user"] == []
     assert json.loads(noting_tool_control_message("NOTING", notebook_state=state.snapshot_state()).split(
         "Current Notebook:\n", 1)[1].split("\n</noting-tools>", 1)[0])["user"] == []
     assert not hasattr(state, "restore")

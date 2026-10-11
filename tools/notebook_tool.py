@@ -1,7 +1,7 @@
 """Read-only AI-facing Notebook show for the main Assistant's current Conversation.
 
 The runtime supplies a proven Main + global read gate, independently of local background
-participation. The handler fails closed without it and returns complete structured Snapshot JSON.
+participation. The handler fails closed without it and returns Notebook content with its last update time.
 """
 
 import json
@@ -12,7 +12,7 @@ from tools.registry import registry
 
 NOTEBOOK_SHOW_SCHEMA = {
     "name": "notebook_show",
-    "description": "Read the current Conversation's committed Notebook Snapshot as complete structured JSON. Read-only.",
+    "description": "Read the current Notebook's complete four-section state, last_update_time, and anchor_message_uid. Read-only.",
     "parameters": {"type": "object", "properties": {}, "additionalProperties": False},
 }
 
@@ -29,7 +29,7 @@ def notebook_show(args=None, *, db=None, conversation_ref=None, effective_enable
         enabled = effective_enabled is True
         if not enabled:
             raise ValueError("Notebook is not enabled for this Conversation")
-        return json.dumps({"success": True, "snapshot": show_notebook(db.notebook_current(conversation_ref))},
+        return json.dumps({"success": True, "notebook": show_notebook(db.notebook_current(conversation_ref))},
                           ensure_ascii=False)
     except (ValueError, TypeError) as exc:
         return json.dumps({"success": False, "error": str(exc)}, ensure_ascii=False)
