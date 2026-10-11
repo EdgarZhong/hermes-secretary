@@ -586,3 +586,30 @@ VF03参数来源追加评审：root/研究指出官方hosts省略run_conversatio
 ## 6. 修复与独立复审
 
 等待阶段B：本阶段是全新独立判据原始起点，未读取旧报告，不能复核旧缺陷或修复。先按全部判据完成指定版本全范围调查，再查旧发现与修复影响。判据后续变更必须保留原文、规格依据、理由与变化记录；不能为迁就实现改变判据。当前没有主会话提案、实现研讨或工程收敛项。
+
+
+<!-- independent-c09: verification_final 9072dcde60e11ecaaa92f39bbc3b172cf569e67d -->
+
+# 独立判据补充 C09：仅规格增量阶段
+
+## 2. 独立要求清单与覆盖（增量附录）
+
+建立时间（UTC）：2026-10-11T10:13:39.766936+00:00。唯一新增产品依据为 `9072dcde60e11ecaaa92f39bbc3b172cf569e67d` 的 `docs/02-noting-system-specification.md` §5.9 L1804；必要上下文读取同版本 §5.8–§5.10 L1747–1823。其余产品要求继续使用 `36f8ffb1019b0c6505226e83478a3cea8f985c05` 的冻结01/02/04。
+
+本次只读取两版02的规格diff、新版本相关原文及自己的原始阶段A判据。未读实现、测试、历史审查结论、动态看板或主会话解释；没有产品门禁结论。原128条判据及原始文件不删改，新增AF129，不重新编号。
+
+新增原文（§5.9 L1804）：
+
+> Notebook commit does not wait for ultimate compaction completion. Once `compact_parent` has successfully triggered the native compaction request under the success contract above, later cancellation, retry, fallback, or failure of Parent compaction does not revoke that terminal success. The task still attempts its normal Snapshot Commit Gate and, after a valid Snapshot commit, produces the normal Finish Framework Message; it must not discard a valid working Snapshot or suppress the Finish Notice merely because Parent compaction was subsequently cancelled. An already valid committed Notebook Snapshot is not rolled back. This does not bypass the existing Notebook/Anchor/enablement Commit Gate or classify a request that was never successfully admitted as a successful normal terminal action.
+
+| 条款编号 | 来源位置及要求 | 类型/适用范围 | 规格解释及必要不变量 | 符合判据 | 核查位置 |
+|---|---|---|---|---|---|
+| AF129（新增） | 新02 `9072dcde60e11ecaaa92f39bbc3b172cf569e67d` §5.9 L1804；§5.9 L1772–1799为成功与正常提交顺序上下文：原生父压缩请求已在compact_parent成功合同内触发后，随后取消、重试、fallback或失败不撤销该正常终止成功 | 直接要求；特殊NOTING_WITH_COMPACTION模型compact_parent已成功后；薄弱接线重点 | 父原生压缩的后续结局与Noting已成立的终止成功是不同对象/时点；不能把父压缩取消当作Child真实失败/中断，或重新要求ultimate compression completion。任务仍尝试原Notebook/Anchor/enablement Commit Gate；有效commit后仍生产正常Finish Framework Message。未成功准入且仍需要压缩的请求不能假成功；真实Child失败及现有Gate仍有约束力 | 从实际compact_parent成功返回追踪取消、重试、fallback、最终失败四类父生命周期分支。每类不得仅因父结局清除终止成功、丢弃有效working Snapshot或抑制Finish Notice；仍须进入Gate，valid则原子commit及正常single Finish Notice，Gate拒绝则不造Snapshot/Notice。检查原生父压缩取消如何传播到Child终结链路，不机械要求特定函数或线程 | AF129，等待阶段B指定实现版本 |
+| AF086（原条款不变，新增原文澄清） | 原02 §5.8/§5.9 L1757–1765、1770–1804；新02 §5.9 L1804 | 直接要求；特殊Profile正常terminal | 原判据已明确compact_parent成功以native admitted/pending/inflight/compressed或已低usage为界，不同步等待整个压缩；成功后Anchor check→Snapshot，后来native失败不rollback。新文将“之后父取消不撤销已成功terminal”明确到未commit时，不改成功定义 | 原AF086继续适用；AF129补明确取消及未commit时期分支检查，不能仅证明已commit Snapshot未rollback就判完整符合 | AF086＋AF129，等待阶段B |
+| AF089（原条款不变，边界澄清） | 原02 §5.8 L1765、§5.10 L1806–1823；新02 §5.9 L1804 | 直接要求；全部结束路径的Commit Gate | 原判据已要求normal/forced/overflow经Gate，并拒绝真实Child失败/中断/crash、无效Anchor/state/write。父压缩后续取消本身不等于Child Turn真实失败，不新增subjective gate；新文明确没有绕过原Notebook/Anchor/enablement Gate | 原AF089继续核查真实失败与Gate；同AF129区别父compaction取消与Child失败。若有效Anchor已失效或enablement关闭，仍按Gate拒绝，不能以新条款假有效commit | AF089＋AF129，等待阶段B |
+| AF090（原条款不变，职责澄清） | 原/新02 §5.9 L1770–1804 | 直接要求；Noting请求父压缩与Parent原生生命周期 | 原判据已规定Noting只触发，active Turn协调、publication/continuation归Parent。新文进一步明确父压缩后续生命周期不倒改Noting已成立terminal；Snapshot与Framework生产仍属Noting | 原AF090继续检查native职责归属；AF129检查后续状态影响，禁止在Noting重新等待、重做压缩结局判断来阻止正常close | AF090＋AF129，等待阶段B |
+| AF091（原条款不变） | 原/新02 §5.9 L1788–1790、§5.10 L1808–1813 | 必要推导；父Turn并发与后续请求 | 新文不取消Parent对当前Turn、新messages、同Conversation rotation与后续request context publication的责任，也不将“可提交Notebook”当作“父已完成compression” | 原AF091仍需真实上下文接线证据；不能因AF129满足就省略Parent native协调及结果发布 | AF091，等待阶段B |
+| AF109（原条款不变，必要触发范围明确） | 原02 §5.6 L1664–1669、1682–1684；新02 §5.9 L1804 | 直接要求；committed task Finish Notice | 原判据已覆盖所有committed special任务单条Parent Finish Notice及noSnapshot无Notice。新文明确compact_parent成功后父取消不单独抑制Notice；仍以有效Snapshot commit为生产条件 | 原AF109检查统一内容、次数、commit time、marker及busy/fence；AF129补后续父取消下的生产链，不能以准备Notice或Gate尝试替代已commit后的实际生产 | AF109＋AF129，等待阶段B |
+| AF087 / AF088（原条款不变） | 原02 §5.8 L1755–1767；新02 §5.9 L1802及L1804 | 直接要求；五Turn强制结束/context overflow | C09不将framework兜底compact成功改成model正常terminal，不改forced/context_overflow类型、不增第六Turn；fallback拒绝不独立阻挡valid Notebook Gate的原合同保持 | 继续原预算/overflow判据；本次AF129专注成功model compact_parent之后生命周期，不能以新文改变forced与normal分类 | AF087、AF088，等待阶段B |
+
+覆盖变化：独立判据总计129条，其中AF001–AF128原始版本保持；新增AF129为直接要求、薄弱接线重点。M14、M27以及M18/M28相关终结与通知范围得到显式细化。无需另改产品完成条件或新增压缩成功门禁。本阶段无实现发现、无修复提案，也无门禁通过声明。

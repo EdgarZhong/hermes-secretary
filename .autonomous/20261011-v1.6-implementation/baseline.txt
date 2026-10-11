@@ -2,3 +2,4 @@ fc2668310bff783dde0d6f1cee01b8de99a43cb9
 8626dc30d5644b6d142dc7097b98eefb6f3b7422 — 授权补充 C03–C06；2026-10-11 本会话 memo 并发保留、简单身份机制、Finish 系统英文及规格优先 Verification 流程确认；初始基线保留。
 3286b7d0654b100d339d1c91b508b82294727722 — 授权补充 C07；2026-10-11 本会话明确要求External拒绝追加Framework Message且不只Idle，并委托主会话收敛文案与接线。
 36f8ffb1019b0c6505226e83478a3cea8f985c05 — 授权补充 C08；2026-10-11 本会话明确Noting仅请求父原生压缩，active Turn协调、结果接收及Compression Continuation由父原生运行时负责；02 §5.9、索引、根CLAUDE、整改与额度中断交接一并保存。原生接线方案尚未收敛，压缩代码未修改。
+9072dcde60e11ecaaa92f39bbc3b172cf569e67d — 授权补充 C09；用户明确成功触发compact请求后即使父压缩随后取消，Snapshot照常经过既有Gate提交、Finish Framework Message照常生产；02 §5.9、索引及根CLAUDE一并冻结，未改变真实准入或有效Anchor条件。
