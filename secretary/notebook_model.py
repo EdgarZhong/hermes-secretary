@@ -97,20 +97,22 @@ class NotebookWorkingState:
     def __init__(
         self, conversation_ref: str, payload: dict | None = None, *,
         validate_source_identity: Callable[[dict], bool] | None = None,
+        validate_inherited_sources: Callable[[dict], bool] | None = None,
         parse_schedule: Callable[[str], dict] = parse_schedule_expression,
-        insert_version: Callable[[dict, str | None], str] | None = None,
+        insert_version: Callable[[dict, str | None, bool], str] | None = None,
     ):
         if not isinstance(conversation_ref, str) or not conversation_ref:
             raise NotebookValidationError("An owning Conversation Ref is required")
         self.conversation_ref = conversation_ref
         self._validate_source_identity = validate_source_identity
+        self._validate_inherited_sources = validate_inherited_sources
         self._parse_schedule = parse_schedule
         self._insert_version = insert_version
         state = deepcopy(payload) if payload is not None else {section: [] for section in SECTIONS}
         self._validate_state(state)
         self._state = state
 
-    def _validate_sources(self, entry: dict) -> None:
+    def _validate_sources(self, entry: dict, *, inherit_sources=True) -> None:
         sources = entry.get("source_message_identities", [])
         is_candidate = section_for_type(entry["type"]) == "persistence"
         if not isinstance(sources, list):
@@ -120,6 +122,8 @@ class NotebookWorkingState:
             self._validate_source_range(source_range)
         if is_candidate and not sources and source_range is None:
             raise NotebookValidationError("Candidates require valid source Message Identities or a source time range")
+        inherited = (inherit_sources and self._validate_inherited_sources is not None
+                     and self._validate_inherited_sources(deepcopy(entry)))
         for source in sources:
             if not isinstance(source, dict) or set(source) != {"conversation_ref", "message_uid"}:
                 raise NotebookValidationError("Source must be a canonical Message Identity")
@@ -127,7 +131,8 @@ class NotebookWorkingState:
                 raise NotebookValidationError("Source must belong to this Conversation")
             if not isinstance(source["message_uid"], str) or not source["message_uid"]:
                 raise NotebookValidationError("Source Message UID is required")
-            if self._validate_source_identity is None or not self._validate_source_identity(deepcopy(source)):
+            if not inherited and (self._validate_source_identity is None
+                                  or not self._validate_source_identity(deepcopy(source))):
                 raise NotebookValidationError("Source Message Identity is not valid on the current path")
 
     @staticmethod
@@ -142,7 +147,7 @@ class NotebookWorkingState:
         except (AttributeError, TypeError, ValueError) as exc:
             raise NotebookValidationError("Source time range requires ordered timezone-aware ISO timestamps") from exc
 
-    def _validate_entry(self, entry: dict) -> None:
+    def _validate_entry(self, entry: dict, *, inherit_sources=True) -> None:
         if not isinstance(entry, dict) or entry.keys() - ENTRY_KEYS:
             raise NotebookValidationError("Invalid Notebook entry fields")
         entry_type = entry.get("type")
@@ -159,7 +164,7 @@ class NotebookWorkingState:
                 raise NotebookValidationError("Invalid status for this entry type")
         elif "status" in entry:
             raise NotebookValidationError("Persistence candidates have no defined status graph")
-        self._validate_sources(entry)
+        self._validate_sources(entry, inherit_sources=inherit_sources)
         self._validate_entry_schedule(entry)
 
     def _validate_entry_schedule(self, entry: dict) -> None:
@@ -204,9 +209,9 @@ class NotebookWorkingState:
         """Internal complete state, retaining archive final versions for immutable references."""
         return deepcopy(self._state)
 
-    def _new_version(self, entry: dict, previous_id: str | None = None) -> dict:
+    def _new_version(self, entry: dict, previous_id: str | None = None, *, inherit_sources=True) -> dict:
         entry = deepcopy(entry)
-        entry["entry_id"] = (self._insert_version(entry, previous_id) if self._insert_version
+        entry["entry_id"] = (self._insert_version(entry, previous_id, inherit_sources) if self._insert_version
                              else str(next(_LOCAL_IDS)))
         return entry
 
@@ -221,10 +226,10 @@ class NotebookWorkingState:
                     return section, index
         raise NotebookValidationError(f"Unknown Notebook entry: {entry_id}")
 
-    def _replace(self, entry: dict) -> dict:
-        self._validate_entry(entry)
+    def _replace(self, entry: dict, *, inherit_sources=True) -> dict:
+        self._validate_entry(entry, inherit_sources=inherit_sources)
         section, index = self._locate(entry["entry_id"])
-        entry = self._new_version(entry, entry["entry_id"])
+        entry = self._new_version(entry, entry["entry_id"], inherit_sources=inherit_sources)
         self._state[section][index] = deepcopy(entry)
         return deepcopy(entry)
 
@@ -257,8 +262,8 @@ class NotebookWorkingState:
             entry["schedule"] = self._new_intent(fields["until"])
             if entry["schedule"]["canonical_schedule"]["kind"] == "once":
                 entry["fields"]["until"] = entry["schedule"]["canonical_schedule"]["run_at"]
-        self._validate_entry(entry)
-        entry = self._new_version(entry)
+        self._validate_entry(entry, inherit_sources=False)
+        entry = self._new_version(entry, inherit_sources=False)
         self._state[section].append(deepcopy(entry))
         return deepcopy(entry)
 
@@ -278,7 +283,7 @@ class NotebookWorkingState:
             entry["schedule"] = self._new_intent(fields["until"])
             if entry["schedule"]["canonical_schedule"]["kind"] == "once":
                 entry["fields"]["until"] = entry["schedule"]["canonical_schedule"]["run_at"]
-        return self._replace(entry)
+        return self._replace(entry, inherit_sources=source_message_identities is None)
 
     def archive(self, entry_id: str) -> dict:
         entry = self.get(entry_id)

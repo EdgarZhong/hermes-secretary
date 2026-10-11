@@ -1,58 +1,38 @@
-"""One Noting task's semantic Notebook operations over the committed Snapshot.
-
-Semantic mutations reuse the task-local model in ``secretary.notebook_model``; the durable
-effect of a task is one immutable Snapshot committed in the same transaction as its pointer
-move (02 §3.3, §3.7). A refused operation — the frozen Anchor having left the current Full
-Foreground included — changes neither the committed state nor this working state. Only the
-Noting runtime's service may expose this control surface.
-"""
+"""Task-local Notebook semantics with immutable, item-bound provenance inheritance."""
 
 from secretary.notebook_model import NotebookValidationError, NotebookWorkingState
 from secretary.notebook_schedule import parse_schedule_expression
 
 
-def _persisted_source_identities(payload):
-    """Provenance already committed, so a later supersession does not make it unreadable."""
-    if not isinstance(payload, dict):
-        return set()
-    return {(source.get("conversation_ref"), source.get("message_uid"))
-            for entries in payload.values() if isinstance(entries, list)
-            for entry in entries if isinstance(entry, dict)
-            for source in entry.get("source_message_identities") or [] if isinstance(source, dict)}
-
-
 def _source_validator_conn(db, conn, conversation_ref):
-    """New citations use the current path; already committed provenance remains auditable.
-
-    Include older immutable Snapshots because a concurrently admitted task may have loaded
-    an earlier base Snapshot before a newer task committed. Supersession does not turn
-    those existing citations into newly invented evidence.
-    """
-    import json
-
-    on_path = set(db._notebook_anchor_positions_conn(conn, conversation_ref))
-    persisted = set()
-    for row in conn.execute(
-        "SELECT payload_json FROM secretary_notebook_snapshots WHERE conversation_ref = ?",
-        (conversation_ref,),
-    ):
-        from secretary.notebook_items import hydrate_snapshot_conn
-        persisted.update(_persisted_source_identities(hydrate_snapshot_conn(
-            conn, conversation_ref, json.loads(row[0]), include_archived=True)))
+    """New citations must exist in the current History Foreground, including archived raw rows."""
+    on_path = {row["message_identity"]["message_uid"]
+               for row in db.get_history_foreground_conn(conn, conversation_ref)
+               if row.get("message_identity")}
 
     def valid_source(source):
         return (isinstance(source, dict) and source.get("conversation_ref") == conversation_ref
-                and (source.get("message_uid") in on_path
-                     or (conversation_ref, source.get("message_uid")) in persisted))
+                and source.get("message_uid") in on_path)
 
     return valid_source
 
 
+def _inherited_sources_conn(conn, conversation_ref, entry, *, exact_version=False):
+    from secretary.notebook_items import item_entry, item_row_conn, source_basis_conn
+
+    row = item_row_conn(conn, entry["entry_id"])
+    if exact_version and entry != item_entry(row, conversation_ref):
+        raise ValueError(f"Notebook entry differs from immutable version: {entry['entry_id']}")
+    return source_basis_conn(conn, conversation_ref, row, entry) is not None
+
+
 def validate_snapshot_state_conn(db, conn, conversation_ref, payload):
-    """Apply the same full semantic/provenance/intent validation at the durable DB gate."""
+    """Recheck new citations in the commit transaction; inherited citations stay item-bound."""
     return NotebookWorkingState(
         conversation_ref, payload,
         validate_source_identity=_source_validator_conn(db, conn, conversation_ref),
+        validate_inherited_sources=lambda entry: _inherited_sources_conn(
+            conn, conversation_ref, entry, exact_version=True),
     ).snapshot_state()
 
 
@@ -75,17 +55,36 @@ class NotebookStore:
         """(Re)build the working state from the current committed Snapshot; none starts empty."""
         with self._db._read_ctx() as conn:
             payload = self._db.notebook_snapshot_state_conn(conn, self.conversation_ref)
-            valid_source = _source_validator_conn(self._db, conn, self.conversation_ref)
 
-        self._state = NotebookWorkingState(self.conversation_ref, payload,
-                                           validate_source_identity=valid_source,
-                                           parse_schedule=self._parse_schedule, insert_version=self._insert_version)
+        self._state = NotebookWorkingState(
+            self.conversation_ref, payload, validate_source_identity=self._valid_source,
+            validate_inherited_sources=self._inherited_sources,
+            parse_schedule=self._parse_schedule, insert_version=self._insert_version)
         return self._state.show()
 
-    def _insert_version(self, entry, previous_id):
-        from secretary.notebook_items import insert_item_conn
-        return self._db._execute_write(lambda conn: insert_item_conn(
-            conn, self.conversation_ref, entry, previous_id))
+    def _valid_source(self, source):
+        # Source input is checked when the operation runs, not against the task-load path.
+        with self._db._read_ctx() as conn:
+            return _source_validator_conn(self._db, conn, self.conversation_ref)(source)
+
+    def _inherited_sources(self, entry):
+        with self._db._read_ctx() as conn:
+            return _inherited_sources_conn(conn, self.conversation_ref, entry)
+
+    def _insert_version(self, entry, previous_id, inherit_sources):
+        from secretary.notebook_items import insert_item_conn, item_row_conn, source_basis_conn
+
+        def insert(conn):
+            basis = None
+            if inherit_sources and previous_id is not None:
+                basis = source_basis_conn(conn, self.conversation_ref, item_row_conn(conn, previous_id), entry)
+            if basis is None:
+                valid = _source_validator_conn(self._db, conn, self.conversation_ref)
+                if not all(valid(source) for source in entry.get("source_message_identities", [])):
+                    raise NotebookValidationError("Source Message Identity is not valid on the current path")
+            return insert_item_conn(conn, self.conversation_ref, entry, previous_id, source_basis_id=basis)
+
+        return self._db._execute_write(insert)
 
     def snapshot_state(self) -> dict:
         return self._state.snapshot_state()

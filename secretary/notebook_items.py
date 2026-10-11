@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS secretary_notebook_item (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     conversation_ref TEXT NOT NULL,
     lineage_id INTEGER NOT NULL,
+    source_basis_id INTEGER,
     payload_json TEXT NOT NULL,
     archived INTEGER NOT NULL CHECK (archived IN (0, 1))
 );
@@ -72,13 +73,42 @@ def item_entry(row, conversation_ref):
     return entry
 
 
-def insert_item_conn(conn, conversation_ref, entry, previous_id=None):
+def source_basis_conn(conn, conversation_ref, row, entry):
+    """Retain only this lineage's exact citations from a genuinely committed version.
+
+    Membership in this Conversation also proves shared branch ownership. A basis is
+    a concrete immutable item, never a set of historically permitted Message UIDs.
+    Time ranges have their own bounded-timestamp validation; editing a range does
+    not turn unchanged Message Identities into newly supplied citations.
+    """
+    require_item_owner(conn, row, conversation_ref)
+    sources = entry.get("source_message_identities", [])
+    if sources != item_entry(row, conversation_ref).get("source_message_identities", []):
+        return None
+    if _referenced_in_conversation(conn, conversation_ref, str(row["id"])):
+        return row["id"]
+    if row["source_basis_id"] is None:
+        return None
+    basis = item_row_conn(conn, str(row["source_basis_id"]))
+    require_item_owner(conn, basis, conversation_ref)
+    if (basis["lineage_id"] != row["lineage_id"]
+            or not _referenced_in_conversation(conn, conversation_ref, str(basis["id"]))
+            or sources != item_entry(basis, conversation_ref).get("source_message_identities", [])):
+        raise ValueError("Invalid Notebook source inheritance basis")
+    return basis["id"]
+
+
+def insert_item_conn(conn, conversation_ref, entry, previous_id=None, *, source_basis_id=None):
     """Allocate the row/version handle and lineage together in one INSERT, never UPDATE."""
     predecessor = None if previous_id is None else item_row_conn(conn, previous_id)
     if predecessor is not None:
         require_item_owner(conn, predecessor, conversation_ref)
         if predecessor["archived"]:
             raise ValueError(f"Unknown Notebook entry: {previous_id}")
+    if source_basis_id is not None and (predecessor is None or source_basis_id != source_basis_conn(
+        conn, conversation_ref, predecessor, entry
+    )):
+        raise ValueError("Invalid Notebook source inheritance basis")
     sequence = conn.execute(
         "SELECT seq FROM sqlite_sequence WHERE name = 'secretary_notebook_item'"
     ).fetchone()
@@ -88,9 +118,10 @@ def insert_item_conn(conn, conversation_ref, entry, previous_id=None):
     body.pop("entry_id", None)
     archived = body.pop("archived")
     conn.execute(
-        "INSERT INTO secretary_notebook_item (id, conversation_ref, lineage_id, payload_json, archived) "
-        "VALUES (?, ?, ?, ?, ?)",
-        (item_id, conversation_ref, lineage, json.dumps(body, ensure_ascii=False, sort_keys=True), int(archived)),
+        "INSERT INTO secretary_notebook_item "
+        "(id, conversation_ref, lineage_id, source_basis_id, payload_json, archived) VALUES (?, ?, ?, ?, ?, ?)",
+        (item_id, conversation_ref, lineage, source_basis_id,
+         json.dumps(body, ensure_ascii=False, sort_keys=True), int(archived)),
     )
     return str(item_id)
 
