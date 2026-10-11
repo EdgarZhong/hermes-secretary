@@ -1,27 +1,39 @@
 # Final Delivery：20261011-v1.6-implementation
 
-> 这是额度中断时的交接快照。用户已明确额度恢复并继续推进；本轮正在接续，尚未完成。最新固定fba初审已完整保存，125符合／7违规／7不足，另独立确认VF03 cached-root参数错误；动态状态以根CLAUDE.md及当前verification.md为准。收敛后由主会话重写本简报为最终交付判定，下文历史中断记录不冒充当前门禁状态。
+> 接续中的交付状态快照，尚非最终验收通过声明。旧额度中断内容保留在Git历史；当前以本简报、根CLAUDE.md及两份正式门禁报告为准。
 
 ## 目标状态与结束判定
-**目标未完成；额度导致外部中断。** 2026-10-11T09:09:08Z目标工具返回`usageLimited`，实现研究子Agent此前报额度限制。不是用户暂停，不标完成。当前代码提交`e5f2e70786362c29397cb1ca506e8350715f505a`；随后C08授权文档补充另行本地提交，未修改压缩代码。冻结链与授权见[snapshot-index.md](snapshot-index.md)、[baseline.txt](baseline.txt)。恢复后先收敛父原生压缩的active Turn接线并修VF02，再补齐独立报告、全新全范围复审、正式Dashboard验收。
+
+**目标仍在推进，未完成。** 用户再次授权继续。当前产品提交`ce2fa6f4760709275ae9ea87050a5d3996c092c8`；VFR04两文件修补及正式Main/aux定向证据已由root亲自review接收，独立Verifier已通过全129条审查。官方隔离Dashboard已启动，独立Validation八场景计划已获root过目放行，正在执行真实用户旅程，尚未验收通过；不能标记本轮完成。冻结链见[snapshot-index.md](snapshot-index.md)、[baseline.txt](baseline.txt)。
 
 ## 本轮收敛与授权
-范围仍是现行02的V1.6及未修订V1/V1.5公开契约，未push、部署或触碰真实用户状态。C02限制Agent查item历史／找回而允许内部Snapshot hydration；C03新增／替换memo保留，以不可复用行身份及同事务消费保证；C04/C05统一英文Finish说明已处理memo已清空；C06先规格判据后代码、主会话提议／Verifier评审；C07External拒绝通知覆盖Force、Idle、冷恢复，正文与简单抑制受用户委托收敛；C08用户明确Noting只请求父原生压缩，active Turn及Continuation由父运行时负责，已入02 §5.9。
 
-VF01：原实现允许历史Snapshot来源UID给新输入通用授权；主会话提出specific item、同owner/lineage、原sources不变的继承范围及输入／commit两次验证，独立审查者评审后实现，待新全轮独立关闭。VF02：主会话曾误把真实live/DB差异暂列harness边界，正式反例推翻后更正；此前Noting读库拼tail提案被用户C08纠正并撤下，未实施。最新候选为父原生request在自己的安全边界执行及接收结果；idle/new-Turn竞态与receipt尚未定案，不能写成双方已收敛或用户已认可。C07队列期间actual Native使提示过时的收敛也待独立关闭。详细事实和整改入口见[plan.md](plan.md)、根CLAUDE.md。
+公开V1.6范围及未修订V1/V1.5契约继续有效，无push或部署。新增用户确认C10：Main notebook_show只返回四区Notebook正文与last_update_time，隐藏内部Snapshot/Anchor/Trigger/Profile身份及审计；内部存储、Full审计、任务工作态和History权限不变。C02限定Agent查item历史/找回；C03以不可复用memo行身份与同事务消费保留新/替换内容；C04/C05统一正常系统英文Finish，说明已处理memo已清空；C06仅规格先建判据、主会话提议/Verifier评审；C07External拒绝通知覆盖Force/Idle/catch-up；C08Noting只请求父原生压缩，执行/结果发布/Continuation归父；C09真实原生请求准入后，后续压缩取消不撤销合法Snapshot与Finish提交。
+
+工程研讨在原规格内收敛，不冒充用户逐行批准：VF01按具体item/owner/lineage/原sources限定既有来源继承，不给历史UID通用许可；VF02/VF03由父原生request、安全消费者、原生commit/loader发布结果，捕获原custom输入，不由Noting读库拼tail。R7把正式Idle计量接到native读取；VFR02先消费原durable Idle事件再惰性读取，读错不允许多hostattach重造事件；VFR03按正式Framework完整行形状保护live逻辑身份，API副本保持原provider归一；VFR04复用本TurnMain资格及原Fresh输入witness保护真实提交边界，保留每输入原时间戳，aux仍原路径。完整提案、评审、原反例和版本关闭链保留于[verification.md](verification.md)。VFR04已在ce2fa6f独立关闭。
+
+用户新增授权Pi私人聊天记录迁入独立正式格式库并暂存。该库与验收profile分开，真实私人历史不得当测试库重建/删除；不加入公开产品或冻结规格。UI/只读API的新讨论保留于docs06，尚未冻结实施，不引入本轮验收。
 
 ## 已完成与交付物
-V1.6阶段实现已集成：INSERT-only item版本／三工具／永久archive、secretary_task显式delivery_mode、Prompt Target、memo并发消费、原生Turn生命周期Idle timer、Reminder batch/ACK/compaction拒投、Framework双写、普通System Anchor、overflow强制提交、History截断及UID精确read。另已修VF01来源缺陷。阶段提交及定向证据见根CLAUDE.md，当前版尚不可作为完整验收通过版交付。
 
-一次相关扩大回归有效覆盖1574通过／1 macOS文件名用例跳过，10项冻结检查已通过；VF01后基础138与接线77（含专项28）定向通过，计数有重叠不累加，不重复扩大检查。真实DeepSeek证据覆盖冻结prefix及ordinary/special终止分支；观察版fba6ec53a7不冒充当前整版。完整日志保留在ignored `.hermes-dev/v1.6-evidence/`。
+阶段实现：INSERT-only item版本/三工具/永久archive、secretary_task显式delivery_mode、Prompt Target、memo并发消费、Turn生命周期Idle timer、Reminder batch/ACK/compaction拒投、Framework双写、Anchor标记、overflow有效强制提交及History截断/UID精确read均已集成。范围内修补经历的失败与证据版本如实保留。
+
+扩大回归1574通过/1当前macOS文件系统跳过与10项冻结检查按对应版本复用，不累加后续重叠专项。最新VFR04证据为96项正式Main/Framework/repair及分批aux2/2、原Noting控制1例，四文件ruff/health无阻断或提示。原native超标文件3839行及函数指标未增加。root独立核15组实际观察/sourcehash，未重复实现者测试。首次辅助测试漏拦流式路径意外HTTP401已保留，最终aux禁止出网，不称全程零HTTP或真实模型成功。
+
+真实DeepSeek特殊normal/forced/overflow三组22HTTP200对应55e92版本，另旧失败7累计29/30。压缩publication与后续sameTurn/newTurn wire证据按实际源码影响复用；Framework和真实输入边界由最新正式机制补证，不冒称旧API取证等于当前整版用户验收。
+
+Pi迁移：独立库`.hermes-dev/chat-migration/pi-personal-history-20261011T143110Z/profile/state.db`，43原文件、48分支Conversation、4234唯一源消息、5986DB消息行（含分支公共前缀副本），原文/时间/图片/思考/工具关联与源hash核对。8唯一未完成toolcall保留，无伪造结果；1缺内部时间用真实entry时间并注明。root只读复核数据库完整性/FK、源与存档hash、48/5986/18自有表，连接已关闭；0Noting/0Snapshot/0Dashboard/0模型调用，按用户要求暂存。
 
 ## Verification 与 Validation
-Verification先仅以8626dc30d5规格建立131判据；仅看3286b7d065新规格补5条，原始判据与hash保留。阶段B调查固定fba6ec53a7，已交回VF01／VF02反例及部分研讨；[verification.md](verification.md)目前仍是阶段A报告，**完整阶段B矩阵及研讨尚未持久交付，不能判通过，也不能把口头发现当完整报告**。主会话亲自核对VF01正式Gate、真实native transcript与live/DB差异、父压缩返回值消费者及Turn消息所有权。VF01新代码未独立复审关闭，VF02未修。
 
-Validation未启动，[validation.md](validation.md)仍是模板。官方隔离Dashboard localhost:53345仅首页/health准备通过，代码为fba6ec53a7、数据库为VF01结构变更前测试schema。正式验收前须新建隔离profile并重启当前版；不能把readiness、mock测试或旧API取证当Dashboard用户验收。
+Verification由全新无主会话上下文审查者先只读冻结规格，独立建立原128判据；C09从新规格仅补AF129，不改原判据。全范围调查与弱规格接线研讨保留于同一六节报告，旧初审与历史失败不回写成通过。ce2fa6f最终报告为127符合、0违规、0证据不足、2仅Verification阶段不适用AF122/123；root已核全129矩阵、版本映射及关键正式路径证据并接收PASS。AF122实际用户验收、AF123最终交付仍须完成，不作整体豁免。
+
+Validation八场景计划已由root完整过目并放行执行，[validation.md](validation.md)由独立验收者维护。官方单隔离实例已启动于http://127.0.0.1:53345，PID62527，profile为`.hermes-dev/v1.6-validation/dashboard-final-4743943e`，首页与health均200；当前仅readiness。另一个全新无主会话上下文验收者正通过真实Dashboard输入→Main/Noting结果覆盖04 §7.3六类旅程；受控机制与readiness不能替代此验收。
 
 ## 剩余、阻塞与影响
-额度恢复后的顺序：①主会话及实现者收敛原生父request／safe boundary／idle-to-active竞态并修VF02（Noting只触发）；②定向覆盖active Turn、in-place/rotating Continuation、失败/取消/reset及真实下一Main请求已使用压缩上下文，Framework仅一UID双视图；③独立审查者补存初审阶段B，再全新仅规格先建判据的全轮复审，包含C08、VF01和C07竞态；④通过后新隔离Dashboard跑完整真实用户Validation；⑤复核交付并标目标完成。Linux/Windows未验证，不伪造OS证据；唯一扩大回归skip为主机文件系统限制，不代表独立门禁豁免。
+
+剩余为真实用户Validation→root证据复核与最终提交/交付。ce2fa6f Verification与Dashboard启动已完成。实测首发现VAL01：Noting成功提交的Finish已落库，但官方PTY/TUI聊天未即时显示timeline通知。当前只读调查、其余旅程继续，此项不判通过；另VAL02长Notebook在PTY折叠且点击不展开；二者查明后按原规格组织薄修补与复验。C10明确AI输出修订已同步规格、待实施，Validator已停新模型请求等待同profile升级。Linux/Windows未实际验证，不冒充跨平台覆盖；字节prefix parity不等于未测provider缓存命中率，机制覆盖不能推算剩余缺陷概率。目标工具仍显示历史usageLimited，但当前已接受用户继续并推进，不冒称目标完成。
 
 ## 用户复核建议
-当前先看02 §5.9的C08职责和plan的VF02行：根因不是压缩DB消息消失，而是后台入口未把结果接入父运行时。恢复验收须观察压缩后的下一次真实Main请求，而不能只看DB有handoff或工具返回成功。当前无需用户再复述历史口径。
+
+当前可查看[计划与整改](plan.md)、[独立审查](verification.md)及根CLAUDE.md。当前体验入口为[官方隔离Dashboard](http://127.0.0.1:53345)，尚不代表用户验收通过。Pi迁移库已按要求保留，无需接入或操作；本轮完成与两门禁关闭后，本简报将更新为最终结论。
