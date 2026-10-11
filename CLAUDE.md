@@ -10,8 +10,8 @@
 
 ## 当前状态
 
-- **V1.5 轮次已收口（2026-10-11）**：本轮全部纠偏口径已并入 02 权威规格——新增 **§5.12 全量 prompt 冻结清单**（按代码归属逐条收录，Frozen/Target 双态，施工逐字对照）、**§3.3a 条目生命周期表**、archive 卸下语义、三工具拆分、secretary_task 改名＋delivery_mode、context_overflow、定时器机制、投递 ACK/M4 规则、anchor 判定（noting_run_output 标记）、History Search 截断规则。**V1.6 开工基线 = 本文件当前 HEAD（`ec4fc58057` 及最终审查提交）**，完整 docs 提交链见 git log（`14102ac85c` → 终）。
-- **V1.6 自主实现已启动**（用户 2026-10-11 最新指令：“开始，1.6轮自主实现”，替代此前待启动及不走自主流程的安排）。轮次 `.autonomous/20261011-v1.6-implementation/`；当前准备冻结现行规格，随后分组实现、主会话集成、独立 Verification 与官方 Dashboard Validation。启动提交 `fa51561601`，工作区干净；尚未实施或验收。
+- **V1.5 产品口径已收口，实施与验收尚未闭环（2026-10-11）**：本轮全部纠偏口径已并入 02 权威规格——新增 **§5.12 全量 prompt 冻结清单**（按代码归属逐条收录，Frozen/Target 双态，施工逐字对照）、**§3.3a 条目生命周期表**、archive 卸下语义、三工具拆分、secretary_task 改名＋delivery_mode、context_overflow、定时器机制、投递 ACK/M4 规则、anchor 判定（noting_run_output 标记）、History Search 截断规则。**V1.6 实际启动提交为 `fa51561601`，文档冻结提交为 `fc2668310b`**；此前 `ec4fc58057` 为口径整理过程中的历史提交，完整 docs 提交链见 git log。
+- **V1.6 自主实现已启动**（用户 2026-10-11 最新指令：“开始，1.6轮自主实现”，替代此前待启动及不走自主流程的安排）。轮次 `.autonomous/20261011-v1.6-implementation/`；已冻结现行规格并进入分组实施；随后主会话集成、独立 Verification 与官方 Dashboard Validation。启动提交 `fa51561601`，启动时工作区干净；当前已有本轮未提交实现，尚未最终验收。
 - **本轮确认 C02**：item 表限制针对 Agent 直接查生命周期历史和找回条目；内部可以按当前 Snapshot 引用 id 取正文，归档项仍不可见、不可恢复。用户原话“是，原意就是禁止 Agent 查表和找回”，已同步 02 §3.3a。
 - 历史轮次索引（细节与流水在各索引与 git 历史中，本看板不复述）：V1 首轮 `.autonomous/20261007-v1-first-implementation/`；V1.5 文档准备 `20261008-v1.5-adjustment-and-acceptance/`；V1.5 实施与云端接续 `20261009-v1.5-implementation/`、`20261009-v1.5-cloud-resume/`。
 - 既有验证边界（V1.5 遗留，V1.6 收尾时重跑）：独立 Verification 未通过（含机制形状/时间语义检查项缺口）；官方 Dashboard Validation 未做（用户旁路体验）。
@@ -32,10 +32,10 @@
 7. cron 三处（§5.12-7）：主描述（独立定时 agent、与主会话无关；仅显式要求全局管理/免验收重复任务时用；会话内 schedule 归 Notebook）、schedule 字段（删 "remind me in N minutes" 诱导＋加边界句）、`_LOCAL_CRON_DELIVERY_NOTE` 追加反诱导段。
 
 **C. 机制**
-8. `noting_memo` 工具（§3.5）：operation 四值（add/replace/delete/list）；index 从 1、delete/replace 后重排；add 返回 `created: 内容, index=N`；replace/delete 返回 `replaced:`/`deleted:`＋完整 current memo；list 为 Markdown 有序列表、空态 `No memo after last noting`；**memo 非空 ⇒ Noting 保持开启**，`/noting off` 仅空 memo 生效；memo **不触发** Noting，随下次 Trigger 的 task 后缀进 child 上下文；commit 时清空并**随同一 Anchor 归档**（§3.3a 同款归档语义）。
+8. `noting_memo` 工具（§3.5）：operation 四值（add/replace/delete/list）；index 从 1、delete/replace 后重排；add 返回 `created: 内容, index=N`；replace/delete 返回 `replaced:`/`deleted:`＋完整 current memo；list 为 Markdown 有序列表、空态 `No memo after last noting`；**memo 非空 ⇒ Noting 保持开启**，`/noting off` 仅空 memo 生效；memo **不触发** Noting，随下次 Trigger 的 task 后缀进 child 上下文；commit 时仅消费该任务拿到且仍未替换/删除的条目并**随同一 Anchor 归档**，期间新增/替换内容保留（C03）。
 9. Idle Trigger 定时器化（§4.5）：turn 结束 arm（due_at=finished+delay、registry+锁+daemon）；新 turn 取消重排；到点回查持久状态后**只产生一个 Trigger**；session cap 排序键改 `(持有待触发定时器, last_active)`——**排最后、非绝对豁免**；`idle_candidates` 仅作 catch-up 兜底，不得周期性合成 Trigger。
 10. Reminder 投递改造（§5.6）：deferred 活跃时落 durable 行，多条到期**一次批量注入**（`以下提醒已到期。`＋JSON，schedule→due_at）；instant＝用户消息提交带 timestamp；**两步 ACK**（预登记→装配校验→成功响应才清 pending；失败保持 pending 重投，幂等键不阻止重落行）；**compaction pass 拒投**（识别本次装配为压缩则拒绝、保持 pending、下次装配重试）；**去掉每请求读库**。
-11. Framework Message（§5.6/§2.6）：runtime 内部双写（活列表＋落库同一行）；Force 准入即发"已派发"句、finish 发统一 `Background: notebook updated at <time>`；Finish Notice 写 `display_metadata["noting_run_output"]=true` ⇒ **不推进 anchor**（anchor＝最后一条无该标记的行；其它一切行照旧推进；不用 kind 白名单）。
+11. Framework Message（§5.6/§2.6）：runtime 内部双写（活列表＋落库同一行）；Force 准入即发"已派发"句、finish 发统一 `Background: notebook updated at <time>. Processed memo entries have been cleared.`（C04）；Finish Notice 写 `display_metadata["noting_run_output"]=true` ⇒ **不推进 anchor**（anchor＝最后一条无该标记的行；其它一切行照旧推进；不用 kind 白名单）。
 12. `context_overflow` 强制收尾（§5.8）：请求装不下时与五 Turn 同款——Commit Gate 照走、Finish Notice 照发、termination 记第四型 `context_overflow`；禁止无 Snapshot 丢弃。
 13. History Search（§2.3/§2.5）：结果行必附 entry timestamp＋message_uid；candidate provenance 支持 `source_message_identities` 或 `source_time_range`（不强调优先）；**search 单行超 ~800 字符就地截断标记，无强制全文参数；全文唯一通道＝read＋message_uid 精确取**。
 
@@ -58,6 +58,26 @@
 ## V1.6 当前编排与证据
 
 - 冻结基线：`fc2668310b`（完整哈希见本轮 baseline.txt）；启动 `fa51561601`。计划见本轮 plan.md；三份核心文档和 C02 一并纳入冻结树。
-- 第一组：T1 storage（item／三工具／类型／Schedule）；T2 timers（Idle／catch-up／cap）；T3 delivery（Reminder／Framework／ACK）。当前开始实施；白名单见 plan，不交叉、子 Agent 不再派生、不提交。
-- 第二组 T4（Prompt／Child／memo／History）待依赖交回；T5 集成审查与两独立门禁待收敛。机制／正式接线／针对性验证／用户结果尚无最终完成证据。
+- T1–T4 实现及局部修补已交回，T5 主会话集中 review 中。预算正式入口／普通 System Anchor 已提供 50/50 集成定向证据；Framework 队列 owner、Force owner 与 branch 边界已交回；尚不能以子 Agent 测试代替主会话 review。白名单见 plan；子 Agent 不再派生、不提交。
+- 用户明确讨论不暂停后台实施；2026-10-11 最新指令取消新 skill 单独试点，后续正式 Verification 直接使用，节省额度并抓紧推进。skill_trial 已停止，不续派试点；其执行曾返回额度限制，不计为审查证据。官方 Dashboard 隔离环境已就绪（localhost:53345，PID 24660；接管记录 `.hermes-dev/v1.6-evidence/dashboard-prep/launch.json`），首页与健康检查通过，尚未用户验收。真实 Native DeepSeek prefix/cache 取证已交回，最后 parent-compact 的八个关键源码哈希与当前一致；普通与 continuation 的 noting_runtime 哈希不同，不能冒充同版本全覆盖。两独立门禁尚未启动，尚无全范围最终完成证据。
 - PM Python 3.14.7；lock SHA256 `2bc4db483e9cba927cd7147f9ccbb09635f85bb3f1f36d6e9d51d06b65d1c67e`。未预跑大型检查；日志 `.hermes-dev/v1.6-evidence/`。既有失败和平台边界见当前状态。
+- 隔离真实运行准备：全新 `.hermes-dev/v1.6-validation/`，DeepSeek 官方 Chat Completions／deepseek-flash，未复用旧库；凭据仅 ignored 本地 `.env`，未输出。官方 Dashboard 已有构建；尚未运行真实验收。
+- T1 首次 Prelude 节点缺少 `is_compaction` 导致 13 失败，已修复；已提供局部 model/store/schedule/atomicity/branch 证据，主会话 review 中。首次测试临时库在系统隔离临时目录，后续 runner 使用仓库内分组专属 `--basetemp`，不更改 runner 规则。完整日志见 storage 证据目录。
+- T2 初步接收：34/34、正式 host Child→Snapshot 5/5、补充 timer 9/9；主会话核对 timer/DB 原子周期消费/attach/cap 正式路径。R1（已有 Framework queue 遇结束前关闭）已修复并提供 3/3 定向证据；尚未阶段提交。T3 已提供 compaction 拒投/下次重试、跨 host 崩溃恢复及旧 Reminder 回归证据，仍在收敛尾部持久化检查。不同日志有重叠，不累加用例数。
+- 主会话接线：原 `secretary_reconcile_session_conn` 的 Notebook pointer reconciliation 后调用 `reminder_settle_retired_conn`，只结算已有 carry 且源行已 compacted、同 UID 无 active 行的 pending occurrence。M4 未落行和普通请求丢行保持 pending；证据由 T3 的原生压缩/重投场景提供。
+
+## 本轮产品边界确认与实施方案
+
+- **C03 Memo 并发消费已确认**：用户确认未处理的新增/修改内容应保留，要求“用正向代码机制，保证不变量平凡成立”，尽量避免复杂 revision；已同步 02 §3.5 与轮次索引。
+- **C04/C05 完成通知已确认**：用户认可简单行身份方案，并要求现有 Finish Framework Message 表达已处理便签已清空；C05 明确须转写为正常系统英文，正文为 `Background: notebook updated at <snapshot commit time>. Processed memo entries have been cleared.`，已同步 02 §5.6、§5.12 与轮次索引；接线与定向证据已交回，主会话待复核。Notebook 与已消费 memo 同事务提交后才发送该统一通知。
+- 工程方案（主会话选择，不冒充用户逐项批准）：单 active 表增加不可复用的内部行主键，内容不可变；replace 删除旧行并插入新行，对外仍按连续 index 操作。dispatch 冻结行身份与内容；Snapshot commit 同事务仅归档/删除该任务实际拿到、且仍活跃的行，再重排显示 index。新增/替换行天然不在清理集合；失败不改 active，用户删除的内容不复活。实施与局部证据已交回，尚未通过全范围验收。
+
+## Verification 历史复盘与 skill 调优
+
+- 用户要求沿 Git 文档历史主动识别 1.5→1.6 口径纠偏与漏审，不要求用户复述；讨论不暂停后台实现。
+- 已核实：最早 `89a78c193e` 02 §4.5 已明确 main Turn 生命周期 timer；首轮/V1.5 报告 R050/V43 却只验证 elapsed，接受固定 5 秒轮询。历史 `1127da8731:CLAUDE.md` D02 记录 673 次尝试、672 次 same-anchor skip，是机制被替换后的真实症状；具体 registry/thread/cap 细节为后续细化，不能据此否定原 timer 要求。
+- 已核实：首轮报告 R077 接受首响应后修改 child.tools，并称为 suffix-only divergence；历史 `14102ac85c:CLAUDE.md` 已承认头部与后缀被混淆、测试把偏差当预期，原规格没有授权该修改。
+- 静态反证：V1.5 V39 只以外层 middleware 返回成功 ACK staged IDs；合法 middleware 删除载体或本地短路时，Provider 未收到提醒仍可能 ACK。V25 则接受额外 role=system Anchor 排除，旧普通逻辑消息定义未授权这一限制。两项为旧树源码反证，本次未新运行测试。
+- 另需区分：历史 `1127da8731:CLAUDE.md` 明确记录 request-only System Reminder 是起草规格偏离用户一贯原意；这是审查输入/规格解释失真问题，不能仅以代码符合旧文档合理化。V-001/002/003 已被旧审查抓到，不冒充漏审；真正新增产品要求不倒推旧版本违规。
+- **C06 已确认并更新 skill**：Verification先仅读规格建立判据并落盘，之后才读代码/测试/报告/看板；特别关注方向明确但接线与实现路径未详述的要求。主会话是提案方，Verification是依据规格与判据的评审方，授权内工程细化自行收敛推进。关键研讨及结论进入报告、final-delivery与最终汇报。全部原有审查职责保留，未修改冻结代码检查类别或阈值，历史报告不追改。
+- 已修改三个全局 skill（spec-implementation-review、autonomous-run、delivery-evidence-review）与两个模板，格式校验全部通过；原件及差异证据位于 ignored `.hermes-dev/v1.6-evidence/skill-tuning/`。这只证明结构有效，实际审查效果仍待本轮独立门禁验证。

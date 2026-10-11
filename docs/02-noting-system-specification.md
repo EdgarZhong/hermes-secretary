@@ -795,7 +795,7 @@ One tool with a single `operation` parameter — the same `operation`-parameter 
 
 **What memo does — and does not do.** A memo entry never starts a Noting run by itself; it is not a Trigger source (Triggers remain exactly the two of §4.4 plus catch-up). Whenever the memo is non-empty, Conversation-local Noting stays on: `add` turns it back on automatically (the tool feedback notes the auto-enable), and `/noting off` takes effect only while the memo is empty — with a non-empty memo it does not apply and its feedback says why (CLAUDE.md P02, user-confirmed). The memo's actual role is context: the current memo is handed to the Noting Task as part of its appended task/control instruction (a suffix declaration, never touching the frozen prefix) the next time a Trigger admits one; the child receives no separate memo tool.
 
-**Clearing and archival.** When a Noting Task commits its Snapshot, the memo is cleared automatically; a task that commits no Snapshot leaves the memo in place (failure preserves it). Clearing does not delete: the pre-clear memo is archived **under the same Anchor** as the Notebook Snapshot that task produced (§2.6, §3.3) — the Anchor is the shared key that links the pair as one archive group. From then on the archived memo is invisible: it is not carried into later Noting Tasks and cannot be seen through the tool; the group exists for audit only, while the Snapshot alone remains the current effective Notebook.
+**Clearing and archival.** When a Noting Task commits its Snapshot, it consumes only memo entries actually included in that task's frozen memo input and still unchanged in the active memo. Entries added or replaced after that input was frozen remain for the next Trigger; a user-deleted entry is never restored. A task that commits no Snapshot leaves the active memo untouched (failure preserves it). Until commit, entries remain visible in the active memo and continue to enforce the non-empty participation rule above. The implementation must make this invariant hold through simple data ownership/identity, without a complex revision protocol (user-confirmed 2026-10-11). The consumed pre-clear entries are archived **under the same Anchor**, atomically with the Notebook Snapshot that task produced (§2.6, §3.3) — the Anchor is the shared key that links the pair as one archive group. Remaining active entries are re-numbered consecutively. From then on the archived memo is invisible: it is not carried into later Noting Tasks and cannot be seen through the tool; the group exists for audit only, while the Snapshot alone remains the current effective Notebook.
 
 The archive record (`secretary_noting_memo_archive`) carries its own audit metadata: Conversation id; the shared Anchor; the committed Snapshot id; the memo entries as JSON (each keeping its original index, content and creation time); the entry count; the clearing task's trigger type and runtime profile; and the archival time.
 
@@ -1661,7 +1661,7 @@ A Framework Message never starts or resumes a Turn.
 
 **Producers.** The Framework Message mechanism exists for exactly this purpose. Two producers exist today:
 
-- **Noting Task Finish Notice** — every Noting Task, whatever its runtime profile (ordinary `NOTING`, `NOTING_WITH_COMPACTION`, forced close) and whatever triggered it (Idle Trigger, Force, catch-up), posts exactly one **Noting Task Finish Notice** back to its **parent** Conversation when the task finishes. All Noting Task Finish Notices are Framework Messages, and the name is written out in full. A task that committed no Snapshot posts no Notice at all. The content is always exactly one sentence: `Background: notebook updated at <snapshot commit time>`, where the time is the committed Snapshot's own commit time.
+- **Noting Task Finish Notice** — every Noting Task, whatever its runtime profile (ordinary `NOTING`, `NOTING_WITH_COMPACTION`, forced close) and whatever triggered it (Idle Trigger, Force, catch-up), posts exactly one **Noting Task Finish Notice** back to its **parent** Conversation when the task finishes. All Noting Task Finish Notices are Framework Messages, and the name is written out in full. A task that committed no Snapshot posts no Notice at all. The content is always exactly: `Background: notebook updated at <snapshot commit time>. Processed memo entries have been cleared.`, where the time is the committed Snapshot's own commit time. The appended sentence confirms consumption of the task's processed memo entries in that same commit (§3.5); memo entries added or replaced after dispatch remain active. It is part of this single Notice, not a separate message (user-confirmed 2026-10-11).
 - **Force dispatch notice** — when Force admission succeeds, the runtime **immediately** posts one Framework Message announcing the dispatch. Its content is: `临近上下文上限，notebook 更新任务已派发。建议尽早压缩，并在此提示：compaction 时将本消息之后的内容重点保留。` The Force Task's own finish is announced by the normal Noting Task Finish Notice above. Force therefore produces **two** Framework Messages — one at admission, one at finish — never one combined message.
 
 A Framework Message is written to the parent Conversation's transcript, never to the Noting child's own session.
@@ -1677,7 +1677,7 @@ For every synthetic carrier this specification fixes its **shape**: `role`, wrap
 | Noting Task transition/control message | `<noting-task>` | none | **unspecified** (04 §4.4 task instruction) |
 | Instant Reminder | `<instant-reminder>` | yes (user-message path) | the Reminder's own text; no fixed wording |
 | Deferred Reminder | `<deferred-reminder>` | none | `以下提醒已到期。` + a JSON body (batch form below) |
-| Framework Message — Noting Task Finish Notice | `<framework-message>` | none | exactly `Background: notebook updated at <snapshot commit time>` |
+| Framework Message — Noting Task Finish Notice | `<framework-message>` | none | exactly `Background: notebook updated at <snapshot commit time>. Processed memo entries have been cleared.` |
 | Framework Message — Force dispatch notice | `<framework-message>` | none | exactly `临近上下文上限，notebook 更新任务已派发。建议尽早压缩，并在此提示：compaction 时将本消息之后的内容重点保留。` |
 
 A **Noting Task Finish Notice** and a **Force notice** are not separate carriers: both are Framework Messages, delivered through the `<framework-message>` wrapper above. They are producers of Framework Messages, not additional wrapper families.
@@ -2146,7 +2146,7 @@ Target: the deferred batch body of §5.6 (`以下提醒已到期。` + JSON) rep
 
 Frozen: `Force Noting was admitted to maintain this Conversation's Notebook.`
 
-Target: two Framework Messages (§5.6) — at Force admission: `临近上下文上限，notebook 更新任务已派发。建议尽早压缩，并在此提示：compaction 时将本消息之后的内容重点保留。`; at task finish, the unified `Background: notebook updated at <snapshot commit time>`.
+Target: two Framework Messages (§5.6) — at Force admission: `临近上下文上限，notebook 更新任务已派发。建议尽早压缩，并在此提示：compaction 时将本消息之后的内容重点保留。`; at task finish, the unified `Background: notebook updated at <snapshot commit time>. Processed memo entries have been cleared.`.
 
 ### 5. Slash-command injections
 
