@@ -610,16 +610,11 @@ def _run_idle_event(parent: Any, db: Any, conversation_ref: str, *,
         measurement = None
         compressor = getattr(parent, "context_compressor", None)
         if compressor is not None:
-            try:
-                from secretary.noting_compact import _reread_usage
+            from agent.context_compaction_request import read_context_usage
+            from secretary.noting_policy import measurement_from_agent
 
-                usage, _threshold = _reread_usage(compressor)
-                from secretary.noting_policy import measurement_from_agent
-
-                measurement = measurement_from_agent(parent, usage)
-            except Exception:
-                logger.debug("Noting Idle measurement re-read failed", exc_info=True)
-                measurement = None
+            usage, _threshold = read_context_usage(parent)
+            measurement = measurement_from_agent(parent, usage)
         decision = try_admit_idle(
             db, conversation_ref, measurement=measurement, now=now,
             execution_source=_persisted_main_execution(parent),

@@ -104,7 +104,8 @@ class NativeCompactionRequest:
             fence.cancel_before_commit()
 
 
-def _usage(agent):
+def read_context_usage(agent):
+    """Read the native compressor's resolved usage and threshold without estimating."""
     c = getattr(agent, 'context_compressor', None)
     usage = max(int(getattr(c, 'last_real_prompt_tokens', 0) or 0),
                 int(getattr(c, 'last_prompt_tokens', 0) or 0))
@@ -125,7 +126,7 @@ class _NativeAdmissionReceipt:
 def request_context_compaction(agent, *, relevant_threshold_tokens=None, wait_seconds=5.0):
     """Machine result for one native request; successful receipt is not completion."""
     from agent.conversation_compression import _automatic_compression_gate_blocks
-    usage, native_threshold = _usage(agent)
+    usage, native_threshold = read_context_usage(agent)
     threshold = native_threshold if relevant_threshold_tokens is None else relevant_threshold_tokens
     if getattr(agent, 'context_compressor', None) is None:
         return NativeCompactionResult(False, 'no_compressor')
