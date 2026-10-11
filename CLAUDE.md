@@ -73,6 +73,8 @@
 
 ## 本轮产品边界确认与实施方案
 
+- **C07 用户授权 External 拒绝通知**：最新指令要求最近实际请求来自External而使Noting被拒绝时追加Framework Message，并明确“不只是Idle”，交主会话自主收敛。覆盖Force、Idle与冷恢复catch-up，沿用所属Parent尾部双写／busy与fence队列；正文已同步02 §5.6。持续External在同一live runtime／Conversation只提示一次，实际Native请求重置提示抑制；开关、已有Notebook和D01门禁保持原契约。文案与内存通知抑制是用户明确委托的工程收敛，不冒充用户逐字确认。接线待实施，正式Verification需依据新规格补充判据后调查实现。
+
 - **C03 Memo 并发消费已确认**：用户确认未处理的新增/修改内容应保留，要求“用正向代码机制，保证不变量平凡成立”，尽量避免复杂 revision；已同步 02 §3.5 与轮次索引。
 - **C04/C05 完成通知已确认**：用户认可简单行身份方案，并要求现有 Finish Framework Message 表达已处理便签已清空；C05 明确须转写为正常系统英文，正文为 `Background: notebook updated at <snapshot commit time>. Processed memo entries have been cleared.`，已同步 02 §5.6、§5.12 与轮次索引；接线与定向证据已交回，主会话待复核。Notebook 与已消费 memo 同事务提交后才发送该统一通知。
 - 工程方案（主会话选择，不冒充用户逐项批准）：单 active 表增加不可复用的内部行主键，内容不可变；replace 删除旧行并插入新行，对外仍按连续 index 操作。dispatch 冻结行身份与内容；Snapshot commit 同事务仅归档/删除该任务实际拿到、且仍活跃的行，再重排显示 index。新增/替换行天然不在清理集合；失败不改 active，用户删除的内容不复活。实施与局部证据已交回，尚未通过全范围验收。

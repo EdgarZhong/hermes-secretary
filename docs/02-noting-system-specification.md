@@ -1659,10 +1659,12 @@ A Framework Message carries **no timestamp marker** (scope rule above). If the c
 
 A Framework Message never starts or resumes a Turn.
 
-**Producers.** The Framework Message mechanism exists for exactly this purpose. Two producers exist today:
+**Producers.** The Framework Message mechanism exists for exactly this purpose. Three producers exist today:
 
 - **Noting Task Finish Notice** — every Noting Task, whatever its runtime profile (ordinary `NOTING`, `NOTING_WITH_COMPACTION`, forced close) and whatever triggered it (Idle Trigger, Force, catch-up), posts exactly one **Noting Task Finish Notice** back to its **parent** Conversation when the task finishes. All Noting Task Finish Notices are Framework Messages, and the name is written out in full. A task that committed no Snapshot posts no Notice at all. The content is always exactly: `Background: notebook updated at <snapshot commit time>. Processed memo entries have been cleared.`, where the time is the committed Snapshot's own commit time. The appended sentence confirms consumption of the task's processed memo entries in that same commit (§3.5); memo entries added or replaced after dispatch remain active. It is part of this single Notice, not a separate message (user-confirmed 2026-10-11).
 - **Force dispatch notice** — when Force admission succeeds, the runtime **immediately** posts one Framework Message announcing the dispatch. Its content is: `临近上下文上限，notebook 更新任务已派发。建议尽早压缩，并在此提示：compaction 时将本消息之后的内容重点保留。` The Force Task's own finish is announced by the normal Noting Task Finish Notice above. Force therefore produces **two** Framework Messages — one at admission, one at finish — never one combined message.
+
+- **External-execution unavailability notice** — whenever an established Force or Idle Trigger (including cold-resume catch-up) is rejected by the confirmed External execution-source gate (04 §4.5 D01), publish one Framework Message to the owning Parent's tail: `Background: Noting is unavailable because this Conversation's latest model request used an external agent runtime. Notebook updates can resume after native execution resumes.` Use the same live/durable carrier and busy/compression-fence queue as other Framework Messages; never start a Turn or create a Reminder, Admission, Child or Snapshot. Preserve participation preferences and the current Notebook. Within one live runtime and Conversation, repeated rejections while the latest actual source remains External publish at most one notice; a confirmed actual Native request resets this notification suppression. A different Conversation does not inherit the suppression; a process restart may lose it, consistent with the in-memory Framework mechanism. Unknown source, disabled Noting, unmet Trigger conditions and other rejection reasons produce no such notice. This notice is not a Noting Task Finish Notice and carries no `noting_run_output` marker. User authorized this producer for External rejection, explicitly including more than Idle, on 2026-10-11; wording and notification suppression are delegated engineering convergence.
 
 A Framework Message is written to the parent Conversation's transcript, never to the Noting child's own session.
 
@@ -1679,6 +1681,7 @@ For every synthetic carrier this specification fixes its **shape**: `role`, wrap
 | Deferred Reminder | `<deferred-reminder>` | none | `以下提醒已到期。` + a JSON body (batch form below) |
 | Framework Message — Noting Task Finish Notice | `<framework-message>` | none | exactly `Background: notebook updated at <snapshot commit time>. Processed memo entries have been cleared.` |
 | Framework Message — Force dispatch notice | `<framework-message>` | none | exactly `临近上下文上限，notebook 更新任务已派发。建议尽早压缩，并在此提示：compaction 时将本消息之后的内容重点保留。` |
+| Framework Message — External-execution unavailability notice | `<framework-message>` | none | exactly `Background: Noting is unavailable because this Conversation's latest model request used an external agent runtime. Notebook updates can resume after native execution resumes.` |
 
 A **Noting Task Finish Notice** and a **Force notice** are not separate carriers: both are Framework Messages, delivered through the `<framework-message>` wrapper above. They are producers of Framework Messages, not additional wrapper families.
 
