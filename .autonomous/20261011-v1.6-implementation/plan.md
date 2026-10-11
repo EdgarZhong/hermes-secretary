@@ -37,4 +37,4 @@
 无新增产品取舍。C02 用户确认，非自主假设。02 残留 memo add guarantees run 和 schedule_create 以更具体已定案 §3.5/3.7、§5.12 Target 为准：memo 不触发，初始 Schedule 在 create。04 旧 agent_task/restore/三型 termination/旧 Prompt 按现行 02 明确修订替代，不追改上轮结论。阶段提交准确记录验证边界，最终由 delivery-evidence-review 判定。
 
 
-本次接续整改状态（2026-10-11）：VF02两个原生边界反例3/3成立、0API；root与Verifier有条件接受父native请求/完整commit结果/publication freshness方向，timers已进入白名单实施。VF03原custom参数可信捕获与official factory trustedNone同批修复。范围内缺陷仍开放，修复后须真实跨进程无争用、取消/边界、live/DB/下一Main wire证据及全新全范围Verification；旧反例通过不等于缺陷关闭，不重复已有扩大回归。
+本次接续整改状态（2026-10-11）：VF02/VF03原生接线及root review补交已完成，由root集中接收22文件最终hash及真实DB/Loop/lease/fence机制证据；C09取消后Snapshot/Finish正式链路、postcommit publication失败停止旧请求均已定向验证。范围内缺陷仍待独立关闭，后续在稳定提交上补真实DeepSeek三分支及下一Main wire，全新Verification以其独立129条判据完成全轮调查，再进行官方Dashboard Validation；复用已有扩大回归及对应版本有效证据，不累加重叠用例或重复大型检查。动态编排和测试限制见根CLAUDE.md。

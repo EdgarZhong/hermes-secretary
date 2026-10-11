@@ -38,6 +38,8 @@ class TurnFacadeMixin:
         from agent.background_review import cancel_background_review_for_live_turn
 
         cancel_background_review_for_live_turn(self)
+        from agent.context_compaction_request import enter_native_turn, finish_native_turn, leave_native_turn
+        native_turn, conversation_history = enter_native_turn(self, system_message, conversation_history)
 
         from agent import relay_runtime
         from agent.aux_accounting import reset_accounting_context, set_accounting_context
@@ -147,6 +149,8 @@ class TurnFacadeMixin:
                 try:
                     if lease is not None:
                         lease.start()
+                    from agent.context_compaction_request import capture_native_turn_custom
+                    capture_native_turn_custom(self, system_message)
                     result = run_conversation(
                         self, user_message, system_message, conversation_history, effective_task_id,
                         stream_callback, persist_user_message,
@@ -157,6 +161,7 @@ class TurnFacadeMixin:
                         turn_author=turn_author,
                         title_user_message=title_user_message,
                     )
+                    result = finish_native_turn(self, native_turn, result, system_message, user_message)
                 finally:
                     # Post-loop relay/task finalization must not receive a late refresh interrupt;
                     # the interrupt clear itself waits for the thread join in the outer finally.
@@ -189,6 +194,7 @@ class TurnFacadeMixin:
                 finish_task_run(**task_context, error=exc)
             raise
         finally:
+            leave_native_turn(self, native_turn)
             try:
                 if relay_turn is not None:
                     relay_runtime.SESSION_COORDINATOR.end_turn(relay_turn, outcome=relay_outcome)

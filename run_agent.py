@@ -392,6 +392,8 @@ class AIAgent(
         With ``previous_messages`` / ``old_session_id`` / ``carry_over_context`` the context engine gets the
         full transition lifecycle instead of a bare reset.
         """
+        from agent.context_compaction_request import cancel_native_request
+        cancel_native_request(self, boundary=True)
         for counter in (
             "session_total_tokens", "session_input_tokens", "session_output_tokens", "session_prompt_tokens",
             "session_completion_tokens", "session_cache_read_tokens", "session_cache_write_tokens",
@@ -944,6 +946,8 @@ class AIAgent(
     def close(self) -> None:
         """Release every resource this agent holds (idempotent); each phase is guarded so one failure never
         blocks the rest."""
+        from agent.context_compaction_request import cancel_native_request
+        cancel_native_request(self, boundary=True)
         # close() is the hard owner boundary; shutdown_memory_provider() is idempotent so gateway pre-calls
         # never double-extract.
         session_messages = getattr(self, "_session_messages", None)

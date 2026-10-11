@@ -570,6 +570,24 @@ class SessionCompressionMixin:
         with self._read_ctx() as conn:
             return self._session_turn_lease_key_on_conn(conn, session_id)
 
+    def get_native_request_publication(self, session_id: str):
+        """Existing native summary metadata, active result only; no pending state."""
+        from agent.context_compaction_request_publication import PUBLICATION_KEY
+        session_id = self.get_compression_tip(session_id) or session_id
+        with self._read_ctx() as conn:
+            row = conn.execute(
+                "SELECT message_uid, display_metadata FROM messages "
+                "WHERE session_id = ? AND active = 1 AND _compressed_summary = 1 "
+                "AND display_metadata LIKE ? ORDER BY id DESC LIMIT 1",
+                (session_id, '%' + PUBLICATION_KEY + '%')).fetchone()
+        if row is None:
+            return None
+        metadata = self._decode_display_metadata(row['display_metadata']) or {}
+        marker = metadata.get(PUBLICATION_KEY)
+        if not isinstance(marker, dict) or not isinstance(marker.get('origin_request'), str):
+            return None
+        return {'message_uid': row['message_uid'], 'marker': marker, 'session_id': session_id}
+
     def try_acquire_session_turn_lease(
         self, session_id: str, holder: str, *, ttl_seconds: float = 300.0, patience_s: Optional[float] = None,
     ) -> bool:

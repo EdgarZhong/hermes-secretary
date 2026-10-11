@@ -2622,25 +2622,6 @@ def _startup_system_prompt(cfg: dict, task_id: str) -> str:
     return system_prompt
 
 
-def _transport_auth_user_id(transport) -> str | None:
-    """``<provider>:<user id>`` the WS-upgrade credential authenticated for ``transport``, or None for the legacy
-    token, stdio and the PTY child's server-internal credential. The prefix keeps a basic-auth ``alice`` and an
-    OIDC ``alice`` apart."""
-    identity = getattr(transport, "auth_identity", None)
-    if _methods_browser_control._is_authenticated_identity(identity):
-        return f"{str(identity['provider']).strip()}:{str(identity['user_id']).strip()}"
-    return None
-
-
-def _session_auth_user_id(session: dict | None) -> str | None:
-    """The login ``session`` was created under, stamped on the record as ``auth_user_id``. A second window turns
-    the transport slot into a FanoutTransport, which names no login, so only a record without the slot reads
-    its transport."""
-    session = session or {}
-    if "auth_user_id" in session:
-        return session["auth_user_id"]
-    return _transport_auth_user_id(session.get("transport"))
-
 
 def _make_agent(
     sid: str, key: str, session_id: str | None = None, session_db=None,
@@ -2698,6 +2679,8 @@ def _make_agent(
         # The resolved provider's request body (a custom entry's extra_body), as the CLI/cron/gateway pass it.
         request_overrides=runtime.get("request_overrides"),
         prefill_messages=_load_prefill_messages() or None, **_agent_cbs(sid))
+    from agent.context_compaction_request import trust_default_system_message
+    trust_default_system_message(agent)
     if context_cwd_is_launch_artifact is None:
         context_cwd_is_launch_artifact = _context_cwd_is_launch_artifact(session)
     agent._context_cwd_is_launch_artifact = bool(context_cwd_is_launch_artifact)

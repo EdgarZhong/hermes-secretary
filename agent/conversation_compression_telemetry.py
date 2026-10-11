@@ -1,7 +1,7 @@
 """Content-free per-attempt compression telemetry (attempt log line + shared metric).
 
 Sibling of ``agent/conversation_compression.py`` (the facade), which imports it at module level; this
-module must never import the facade (import cycle). It logs under the facade's logger name so log
+module must never import the facade at module scope (import cycle). It logs under the facade's logger name so log
 consumers keep one source.
 """
 
@@ -11,7 +11,10 @@ import json
 import logging
 import time
 import uuid
-from typing import Any
+from typing import Any, Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from agent.conversation_compression import _CompactionLifecycle
 
 logger = logging.getLogger("agent.conversation_compression")
 
@@ -73,3 +76,36 @@ def _emit_aborted_attempt_telemetry(agent: Any, started_at: float, failure_class
     _emit_compression_attempt_telemetry(
         agent, started_at=started_at, commit_status="aborted", split_status="aborted", failure_class=failure_class
     )
+
+
+def _refresh_main_credential(agent: Any) -> None:
+    """Re-resolve a rotating Anthropic OAuth token so the summary call never carries a revoked one."""
+    from agent.conversation_compression import _swallow
+    if getattr(agent, "api_mode", None) != "anthropic_messages":
+        return
+    refresh = getattr(agent, "_try_refresh_anthropic_client_credentials", None)
+    if callable(refresh):
+        with _swallow("pre-compression credential refresh failed: %s"):
+            refresh()
+
+
+def _announce_compression_start(
+    agent: Any, *, message_count: int, approx_tokens: Optional[int], focus_topic: Optional[str], force: bool
+) -> "_CompactionLifecycle":
+    """Log the attempt, emit the (engine-customisable) compacting status, return the lifecycle."""
+    from agent.conversation_compression import (
+        COMPACTION_STATUS, _CompactionLifecycle, automatic_compaction_status_message,
+    )
+    logger.info(
+        "context compression started: session=%s messages=%d tokens=~%s model=%s focus=%r", agent.session_id or "none",
+        message_count, f"{approx_tokens:,}" if approx_tokens else "unknown", agent.model, focus_topic,
+    )
+    status = COMPACTION_STATUS
+    if not force:
+        status = automatic_compaction_status_message(
+            agent.context_compressor, phase="compress", default_message=status, approx_tokens=approx_tokens,
+            message_count=message_count, model=agent.model, focus_topic=focus_topic,
+        )
+    if status:
+        agent._emit_status(status)
+    return _CompactionLifecycle(agent, bool(status))

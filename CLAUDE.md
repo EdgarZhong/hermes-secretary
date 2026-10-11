@@ -69,7 +69,12 @@
 
 - **本次额度恢复接续（用户再次明确“额度已恢复继续推进”）**：原生两个边界反例已由主会话接收：真实存活 PID holder、正式 Framework writer 与两个 warm Agent，canonical 3/3（14.1s、0外部 API），证明旧 DB/live/tuple 不一致及无争用旧 history；尚非修复通过。证据 `.hermes-dev/v1.6-evidence/native-compaction-fix/counterexample-findings.md`。
 - **VF02/VF03 整改进入实施**：root 提议、原 Verification 根据冻结判据有条件接受。父 native request sibling负责真实 receipt/fence、active安全消费者、idle完成态交接、reset/close/interrupt；Noting退为薄触发。完整实际提交结果由native commit/loader产生；请求压缩成功summary的既有metadata承载publication身份，native lease/loader接缝只对未采纳结果进行freshness交接，不新增pending/表/schema/全局gate，不普遍重载无request Main。后续普通压缩、foreign追加、branch/reset、跨进程无争用及未持久user/sidecar保护必须有关闭证据。active用原始custom参数、idle用上一可信参数；官方factory可信None、任意cold未知则诚实compact失败，不能拒绝普通Noting或废合法Snapshot。上述是C08工程收敛，不冒称新增用户确认。
-- **当前分工**：timers继续完整native修复与0API定向行为测试，仅明确白名单，不派生、不提交；root维护全局覆盖/文档并集中review；旧Verification只完成方案评审，修复后另派全新无上下文审查者；native_evidence等待收敛源码版本，尚未启动新的真实模型调用。两正式门禁均尚未通过。
+- **当前分工**：timers已完成native修复及root review补交并停止修改；root已集中核对接线、失败路径和最终22文件hash，准备提交。全新verification_final已仅读冻结规格建立128条判据并独立追加C09的AF129，待稳定产品版本进入实现调查；native_evidence等待该版本，尚未启动新的真实模型调用。skill_evidence按用户本次确认更新套件证据分工，不修改产品。两正式门禁均尚未通过。
+
+- **native最终补交已由root接收**：22文件聚合`018ddeb28f3d529ffe95a0d5a04f73019f443ccee4d384246f17119496dfa43d`，实际post-safety receipt、原生安全消费者、真实commit/loader发布、rotating lease的physical id/ContextVar交接、同UID sidecar正文校验、CLI pre-create/pre-flush settle及可信custom捕获接线均已核对。C09正式Child→Snapshot Gate→Finish在真实receipt后取消时仍成立；DB已成功commit但loader失败则父Loop传播异常，零后续旧wire/flush，不撤销Noting receipt。补交10/10、接缝9/9、settle5/5、失败3/3范围重叠不累加；ruff/health22文件0blocking/0advisory。真实DB/Loop/lease/fence保留，summary/provider边界受控，外部API0。原73/73与先前失败/修复日志保留其对应版本，不冒充最终版全量复跑；真实模型补证、两个门禁尚未完成。证据`native-compaction-fix/implementation-handoff.md`及`review-handoff-{source,manifest}.json`。
+
+- **用户确认套件证据原则（2026-10-11）**：必要的机制集成测试应在开发、接线阶段主动完成，以正式路径和可控调度验证并发/取消/失败；Verification完整审查规格、正式接线与证据可信度，真实模型补证验证不可替代接口，Validation验证真实用户旅程，同版本有效证据复用。不得以零模型测试代替真实用户验收，也不得以“代表链路”为由省略规格明确要求的真实分支；不推测未测故障概率。本次更新既有自主实施套件，不新增试点、门禁或放宽冻结检查。
+- 最终暂存集成的8项其余冻结检查通过（`native-compaction-fix/root-staged-checks.log`）；ruff/health复用最终22文件有效结果。root仅去掉新CLI sibling末尾空白行，暂存`diff --check`通过；交回hash对应格式修正前版本，提交树与后续真实probe源码hash对应修正后版本，未复跑行为测试。本次为修复阶段快照，VF01–03独立关闭、真实模型补证及Dashboard验收尚待完成。
 
 - **额度恢复并接续（用户2026-10-11明确“额度已恢复继续推进”）**：恢复timers进行C08父原生request接线研究，先交方案再实现；恢复原Verification补存阶段B已核实发现、仅新规格先补C08判据后继续固定fba6ec53a7初审。当前HEAD606e251为C08文档冻结追踪，产品代码仍e5f2e70786。此前额度中断是历史状态，final-delivery中断记录保留，完成前重写交付判定。目标工具查询仍显示usageLimited（该状态不能由Agent手工恢复），不据此撤销用户本次接续授权；实际工具及子任务可执行性据实记录。
 - 接续后原Verification固定fba初审已完整落盘：原136判据逐字保留，C08仅新规格补V137–139，共139；127符合、5违规、7不足，根因VF01/VF02及受影响接线证据缺口；报告不通过，不能进入Validation。已保存C07竞态评审接受依据、VF01basis方案待独立关闭、撤下Noting拼tail提案和C08父原生候选的有条件方向评审。主会话已集中复核核心事实及不足行，修复后仍需全新无上下文全轮审查，不能把当前版混入固定fba初审。

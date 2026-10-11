@@ -498,6 +498,9 @@ class CLISessionMixin:
             CLI_CONFIG, _parse_service_tier_config,
             _sync_process_session_id, datetime)
         from hermes_cli.cli_model_switch_mixin import _resolve_cli_reasoning
+        if self.agent:
+            from hermes_cli.cli_commands_session_boundary import _settle_native_compaction_boundary
+            _settle_native_compaction_boundary(self)
         old_session_id = self.session_id
         _boundary_snapshot = None
         if self.agent:

@@ -122,7 +122,7 @@ def _sync_persisted_markers(target_messages, source_messages) -> None:
 
 def _run_under_progress_timeout(
     agent, run, messages, system_message, *, active_fence, registration, fence_registration_lock,
-    idle_timeout, total_ceiling, approx_tokens=None,
+    idle_timeout, total_ceiling, approx_tokens=None, native_request=None,
 ):
     """Run ``run(fence, target_messages=snapshot)`` on the pool under the progress-aware timeout.
     The pooled worker must NEVER share the caller's live transcript — a late engine after a host timeout could
@@ -168,6 +168,8 @@ def _run_under_progress_timeout(
         # it on the slot hard_interrupt() reads, but only while this attempt still owns the
         # top registration. A later attempt's live fence must not be clobbered.
         retry_fence = CompressionCommitFence()
+        if native_request is not None:
+            native_request.bind_fence(retry_fence)
         with fence_registration_lock:
             registration.fence = retry_fence
             stack = vars(agent).get("_compression_commit_fence_stack") or ()
@@ -218,11 +220,16 @@ def _rebind_caller_session_context(agent) -> None:
 class CompressionFacadeMixin:
     """``_compress_context`` (see module docstring)."""
 
+    def request_context_compaction(self, *, relevant_threshold_tokens=None, wait_seconds=5.0):
+        from agent.context_compaction_request import request_context_compaction
+        return request_context_compaction(self, relevant_threshold_tokens=relevant_threshold_tokens,
+                                          wait_seconds=wait_seconds)
+
     def _compress_context(
         self, messages: list, system_message: str, *, approx_tokens: int = None, task_id: str = "default",
         focus_topic: str = None, force: bool = False, bypass_cooldown: bool = False,
         defer_context_engine_notification: bool = False, commit_fence=None, verbatim_tail: list = None,
-        trigger: str = None, snapshot_is_current=None, admission_receipt=None,
+        trigger: str = None, snapshot_is_current=None, admission_receipt=None, native_request=None,
     ) -> tuple:
         """Forwarder — see ``agent.conversation_compression.compress_context``.
         ``force=True`` (manual /compress) bypasses the summary-failure cooldown; ``bypass_cooldown=True``
@@ -268,6 +275,8 @@ class CompressionFacadeMixin:
         # admission against begin_commit(). Publication is serialized so overlapping automatic/manual
         # entrypoints cannot replace the fence of the attempt currently committing.
         active_fence = commit_fence or CompressionCommitFence()
+        if native_request is not None:
+            native_request.bind_fence(active_fence)
         fence_registration_lock = vars(self).setdefault("_compression_commit_fence_lock", threading.RLock())
         registration = _CommitFenceRegistration(active_fence)
         try:
@@ -282,7 +291,8 @@ class CompressionFacadeMixin:
                     approx_tokens=approx_tokens, task_id=task_id, focus_topic=focus_topic, force=force,
                     bypass_cooldown=bypass_cooldown or same_turn_fallback_recovery,
                     defer_context_engine_notification=(defer_context_engine_notification), commit_fence=fence,
-                    verbatim_tail=verbatim_tail, trigger=trigger, snapshot_is_current=snapshot_is_current, admission_receipt=admission_receipt,
+                    verbatim_tail=verbatim_tail, trigger=trigger, snapshot_is_current=snapshot_is_current,
+                    admission_receipt=admission_receipt, native_request=native_request,
                 )
 
             # Callers that already own a progress-aware wait (gateway session
@@ -299,6 +309,7 @@ class CompressionFacadeMixin:
                     active_fence=active_fence, registration=registration,
                     fence_registration_lock=fence_registration_lock,
                     idle_timeout=idle_timeout, total_ceiling=total_ceiling, approx_tokens=approx_tokens,
+                    native_request=native_request,
                 )
             _mirror_result_onto_live_lists(self, result, messages, direct_path=direct_path)
             _rebind_caller_session_context(self)

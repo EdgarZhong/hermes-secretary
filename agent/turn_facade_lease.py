@@ -333,6 +333,9 @@ def admit_durable_turn_lease(
                     and "_row_id" not in m
                 )
                 admission.conversation_history = reloaded
+        from agent.context_compaction_request_publication import refresh_request_history
+        admission.conversation_history = refresh_request_history(
+            agent, admission.conversation_history, task_context=task_context)
         lease.build_threads()
     except BaseException:
         # The façade never saw this lease; release here so an admitted row is not leaked.

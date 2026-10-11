@@ -3672,7 +3672,7 @@ def _commit_compaction(
     agent: Any, messages: list, compressed: list, *, in_place: bool, lease: _CompressionLease,
     new_system_prompt: str, system_message: str, compressed_user_turn_outcome: str,
     messages_before_compression: Optional[list], made_progress: bool, attempt: _Attempt,
-    verbatim_tail: Optional[list] = None, carried_messages: Optional[list] = None,
+    verbatim_tail: Optional[list] = None, carried_messages: Optional[list] = None, native_request=None,
 ) -> _CommitOutcome:
     """Persist the compacted transcript: memory extraction, anti-growth guard, then the
     in-place archive or the parent->child rotation.
@@ -3706,6 +3706,8 @@ def _commit_compaction(
                 )
             from agent.context_compressor import PROACTIVE_PRUNE_REARM_MODEL_CONFIG_KEY, stamp_db_persisted_markers
             from hermes_cli.partial_compress import rejoin_compressed_head_and_tail
+            from agent.context_compaction_request_publication import stamp_native_publication
+            stamp_native_publication(agent, messages, compressed, native_request)
             if in_place:
                 # In-place compaction: same session_id; soft-archive old turns (active=0, still
                 # searchable) + insert `compressed` atomically; no pre-flush (tail already in).
@@ -4032,33 +4034,7 @@ def _route_codex_compaction(
             commit_fence.finish_commit()
 
 
-def _refresh_main_credential(agent: Any) -> None:
-    """Re-resolve a rotating Anthropic OAuth token so the summary call never carries a revoked one."""
-    if getattr(agent, "api_mode", None) != "anthropic_messages":
-        return
-    refresh = getattr(agent, "_try_refresh_anthropic_client_credentials", None)
-    if callable(refresh):
-        with _swallow("pre-compression credential refresh failed: %s"):
-            refresh()
-
-
-def _announce_compression_start(
-    agent: Any, *, message_count: int, approx_tokens: Optional[int], focus_topic: Optional[str], force: bool
-) -> _CompactionLifecycle:
-    """Log the attempt, emit the (engine-customisable) compacting status, return the lifecycle."""
-    logger.info(
-        "context compression started: session=%s messages=%d tokens=~%s model=%s focus=%r", agent.session_id or "none",
-        message_count, f"{approx_tokens:,}" if approx_tokens else "unknown", agent.model, focus_topic,
-    )
-    status = COMPACTION_STATUS
-    if not force:
-        status = automatic_compaction_status_message(
-            agent.context_compressor, phase="compress", default_message=status, approx_tokens=approx_tokens,
-            message_count=message_count, model=agent.model, focus_topic=focus_topic,
-        )
-    if status:
-        agent._emit_status(status)
-    return _CompactionLifecycle(agent, bool(status))
+from agent.conversation_compression_telemetry import _announce_compression_start, _refresh_main_credential
 
 
 def compress_context(
@@ -4066,7 +4042,8 @@ def compress_context(
     task_id: str = "default", focus_topic: Optional[str] = None, force: bool = False,
     bypass_cooldown: bool = False, defer_context_engine_notification: bool = False,
     commit_fence: Optional[CompressionCommitFence] = None, verbatim_tail: Optional[list] = None,
-    trigger: Optional[str] = None, snapshot_is_current: Optional[Callable[[], bool]] = None, admission_receipt=None,
+    trigger: Optional[str] = None, snapshot_is_current: Optional[Callable[[], bool]] = None,
+    admission_receipt=None, native_request=None,
 ) -> Tuple[list, str]:
     """Compress conversation context and split the session in SQLite.
     ``force`` (manual /compress) clears the summary-failure cooldown; ``bypass_cooldown`` (provider-proven
@@ -4186,7 +4163,8 @@ def compress_context(
     # auxiliary-call seam so the compression owner unwinds promptly while an isolated provider stream
     # finishes or closes in its daemon worker. Otherwise four timed-out streams retain all four shared
     # compression-pool slots until the auxiliary stream's longer absolute ceiling expires. See #23975.
-    observe_native_admission(agent, commit_fence, admission_receipt)
+    from agent.context_compaction_request_publication import observe_request_admission
+    observe_request_admission(agent, commit_fence, admission_receipt, native_request)
     _hard_cancel_event = getattr(agent, "_hard_interrupt_requested", None)
     phase = _run_summary_phase(
         agent, messages, lease=lease, in_place=in_place, checkpoint_required=checkpoint_required,
@@ -4263,6 +4241,7 @@ def compress_context(
             # of archiving it compacted=1 next to a fresh twin (display would show it twice). The
             # todo fold / user-anchor rows added above are NOT carried: they keep their own class.
             carried_messages=[reinserted_reply] if reinserted_reply is not None else None,
+            native_request=native_request,
         )
         if commit.refused_prompt is not None:
             return messages, commit.refused_prompt
@@ -4276,6 +4255,8 @@ def compress_context(
             compression_made_progress=commit.made_progress, compression_used_fallback=_compression_used_fallback,
             compression_feasibility_skip=_compression_feasibility_skip, task_id=task_id,
         )
+        from agent.context_compaction_request_publication import publish_native_commit
+        compressed = publish_native_commit(agent, commit, new_system_prompt, native_request)
         logger.info(
             "context compression done: session=%s messages=%d->%d rough_tokens=~%s awaiting_real_usage=true",
             agent.session_id or "none", _pre_msg_count, len(compressed), f"{_compressed_est:,}",

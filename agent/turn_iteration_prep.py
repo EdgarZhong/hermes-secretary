@@ -108,6 +108,8 @@ class IterationPrep:
     messages: Any
     request_logger: Any
     current_turn_user_idx: Any
+    active_system_prompt: Any = None
+    conversation_history: Any = None
 
 
 # Retire hidden interrupt placeholders whose text the model echoes on replay
@@ -143,11 +145,15 @@ def _neutralise_replay_echo_ghosts(seq: List[Dict[str, Any]]) -> Tuple[List[Dict
 
 def prepare_iteration(
     agent: Any, *, messages: Any, api_call_count: Any, user_message: Any = None, current_turn_user_idx: Any = None,
+    system_message: Any = None, active_system_prompt: Any = None, conversation_history: Any = None,
 ) -> IterationPrep:
     """Prepare ``messages`` for this iteration in the original order. Every mutation here is
     cache-safe by construction: steer text is appended as a new (not yet persisted) user row, the ghost-row
     filter neutralises copies of hidden interrupt placeholders, and repair runs BEFORE the request build."""
     from agent.conversation_loop import _maybe_inject_run_budget_wrapup
+    from agent.context_compaction_request import consume_iteration_request
+    messages, active_system_prompt, conversation_history, current_turn_user_idx = consume_iteration_request(
+        agent, messages, system_message, active_system_prompt, conversation_history, user_message, current_turn_user_idx)
 
     # nous.anthropic_wire=auto: a wire switch decided from the previous response lands here,
     # before this iteration's request is built and with nothing in flight.
@@ -255,6 +261,7 @@ def prepare_iteration(
     return IterationPrep(
         action="fallthrough", messages=messages, request_logger=request_logger,
         current_turn_user_idx=current_turn_user_idx,
+        active_system_prompt=active_system_prompt, conversation_history=conversation_history,
     )
 
 

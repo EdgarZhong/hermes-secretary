@@ -37,6 +37,8 @@ def make_parent(tmp_path, monkeypatch, session_id="S17"):
     )
     agent._cached_system_prompt = "You are helpful."
     agent._session_messages = [{"role": "user", "content": "hello", "timestamp": 1.0}]
+    from agent.context_compaction_request import trust_default_system_message
+    trust_default_system_message(agent)
     return agent, db
 
 
@@ -102,8 +104,10 @@ def test_admission_requires_receipt_not_early_lock_publication(tmp_path, monkeyp
         entered = threading.Event()
 
         def _native_entry(messages, prompt, **kwargs):
+            from agent.conversation_compression import CompressionCommitFence
             entered.set()
             parent._active_compression_lock_holder = "test-holder"  # native admission publication
+            kwargs['native_request'].bind_fence(CompressionCommitFence())
             kwargs["admission_receipt"].set()
             release.wait(timeout=10)
             parent._active_compression_lock_holder = None

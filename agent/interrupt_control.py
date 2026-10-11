@@ -191,6 +191,8 @@ class InterruptControlMixin:
             _fence_cancel_before_commit(
                 _fence(), when_in_flight=False, failure_log="Compression hard-cancel fence admission failed"
             )
+            from agent.context_compaction_request import cancel_native_request
+            cancel_native_request(self, enabled=hard_cancel)
             self._pending_redirect = None
 
         # Codex watches a private interrupt event rather than Hermes' per-thread flag.

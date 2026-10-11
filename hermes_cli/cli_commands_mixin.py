@@ -227,15 +227,7 @@ def _parse_cron_flags(tokens):
 
 
 # Session-switch plumbing shared by /resume and /branch.
-def _end_current_session(cli, reason: str) -> None:
-    """Flush un-persisted messages, then end the current session row with ``reason``.
-    Best-effort on both steps (the switch proceeds even if the DB write fails)."""
-    if cli.agent:
-        with suppress(Exception):
-            cli.agent._flush_messages_to_session_db(
-                cli.conversation_history, conversation_history=cli.conversation_history)
-    with suppress(Exception):
-        cli._session_db.end_session(cli.session_id, reason)
+from hermes_cli.cli_commands_session_boundary import _end_current_session, _settle_native_compaction_boundary
 
 
 def _sync_agent_to_session(cli, session_id: str, *, parent_session_id: str, reason: str) -> None:
@@ -244,6 +236,8 @@ def _sync_agent_to_session(cli, session_id: str, *, parent_session_id: str, reas
     reset=False (their state stays valid and just targets the new id; parent keeps lineage)."""
     if not cli.agent:
         return
+    from agent.context_compaction_request import cancel_native_request
+    cancel_native_request(cli.agent, boundary=True)
     cli.agent.session_id = session_id
     cli.agent.reset_session_state()
     from agent.prompt_cache_scope import initialize_conversation_identity
@@ -1092,6 +1086,7 @@ class CLICommandsMixin(CLISecretaryCommandsMixin, CLICommandsSessionToolsMixin):
         # CLI has no threads: always in place; strip the gateway's ``--here`` so it is never a title.
         from gateway.slash_commands_branch_thread import parse_branch_args
         _, branch_name = parse_branch_args(_command_arg(cmd_original))
+        _settle_native_compaction_boundary(self)
         now = datetime.now()
         new_session_id = mint_session_id(now)
         branch_title = branch_name or self._session_db.get_next_title_in_lineage(
