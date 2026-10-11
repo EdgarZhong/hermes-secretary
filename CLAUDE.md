@@ -10,6 +10,8 @@
 
 ## 当前状态
 
+- **用户确认C12，立即打磨History模型暴露面**：当前result行的message_uid还在message_identity中重复、Conversation ref每行重复。现行02 §2.3／§5.12及本轮索引已同步：成功result只一份conversation_ref，row只message_uid/timestamp/role/content（Search既有truncated保留），不另暴露物理message_id／Identity包装；兼容原read输入及内部canonical身份、原始正文、合法路径/权限。准备独立子任务仅共享History工具投影及相关测试，不扩provider/runtime或selector；同profile仍停新模型请求，UI修补并行。
+
 - **C10／C11小修补已完成，待整版复审／真实模型补验**：只改notebook_render正向投影和Main工具外层notebook／description；正文四区＋last_update_time＋anchor_message_uid精确白名单，无Schema／存储迁移，Noting工作态、人类renderer、内部审计不变。相关三文件13/13（1.3秒），future内部字段不泄露／深拷贝／current时间Anchor同值／localoff与null及gate／永久归档通过；四项相关冻结检查ok（health摘要94 files vs3417313ab1f9，0阻断0提示，不冒称只扫描5文件）。证据notebook-ai-view-{manifest.json,tests.log,checks.log}。UI两个修补由timers施工，测试profile仍停新请求，等稳定提交统一升级。
 
 - **用户确认C10／C11，立即修订AI Notebook视图**：Main notebook_show按最新C10／C11只返回四区完整正文＋last_update_time（当前提交created_at原值）＋anchor_message_uid（裸UID可供History查源），移除其余Snapshot envelope身份／Identity／Trigger／Profile／审计；正向白名单投影，内部审计及Noting工作态不变。已同步02 §3.5／§5.12及本轮索引；这是真正用户新增产品修订，不是Agent自主口径。Validator已停新请求：globalfalse、memo空、Main ready、两Child ended，允许同profile升级／Cold，不重建。

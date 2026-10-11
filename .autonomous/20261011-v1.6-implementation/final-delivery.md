@@ -8,7 +8,7 @@
 
 ## 本轮收敛与授权
 
-公开V1.6范围及未修订V1/V1.5契约继续有效，无push或部署。新增用户确认C10／C11：Main notebook_show只返回四区Notebook正文、last_update_time和裸anchor_message_uid（可查History），隐藏其余内部Snapshot/Identity/Trigger/Profile身份及审计；内部存储、Full审计、任务工作态和History权限不变。C02限定Agent查item历史/找回；C03以不可复用memo行身份与同事务消费保留新/替换内容；C04/C05统一正常系统英文Finish，说明已处理memo已清空；C06仅规格先建判据、主会话提议/Verifier评审；C07External拒绝通知覆盖Force/Idle/catch-up；C08Noting只请求父原生压缩，执行/结果发布/Continuation归父；C09真实原生请求准入后，后续压缩取消不撤销合法Snapshot与Finish提交。
+公开V1.6范围及未修订V1/V1.5契约继续有效，无push或部署。新增用户确认C12：session_history结果级只一份Conversation ref，每行单UID／timestamp／role／content，去除重复Identity与物理地址，保既有read输入和内部canonical权限/原文契约。新增用户确认C10／C11：Main notebook_show只返回四区Notebook正文、last_update_time和裸anchor_message_uid（可查History），隐藏其余内部Snapshot/Identity/Trigger/Profile身份及审计；内部存储、Full审计、任务工作态和History权限不变。C02限定Agent查item历史/找回；C03以不可复用memo行身份与同事务消费保留新/替换内容；C04/C05统一正常系统英文Finish，说明已处理memo已清空；C06仅规格先建判据、主会话提议/Verifier评审；C07External拒绝通知覆盖Force/Idle/catch-up；C08Noting只请求父原生压缩，执行/结果发布/Continuation归父；C09真实原生请求准入后，后续压缩取消不撤销合法Snapshot与Finish提交。
 
 工程研讨在原规格内收敛，不冒充用户逐行批准：VF01按具体item/owner/lineage/原sources限定既有来源继承，不给历史UID通用许可；VF02/VF03由父原生request、安全消费者、原生commit/loader发布结果，捕获原custom输入，不由Noting读库拼tail。R7把正式Idle计量接到native读取；VFR02先消费原durable Idle事件再惰性读取，读错不允许多hostattach重造事件；VFR03按正式Framework完整行形状保护live逻辑身份，API副本保持原provider归一；VFR04复用本TurnMain资格及原Fresh输入witness保护真实提交边界，保留每输入原时间戳，aux仍原路径。完整提案、评审、原反例和版本关闭链保留于[verification.md](verification.md)。VFR04已在ce2fa6f独立关闭。
 

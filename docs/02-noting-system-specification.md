@@ -311,18 +311,18 @@ The existing `session_history` tool contract remains valid. V1 keeps at least th
 - optional role filtering;
 - search scope is the current Conversation's History Foreground, not one physical Session.
 
-Results expose at least:
+**Compact model-facing result (user-confirmed 2026-10-11).** Main and Noting share the same non-redundant output. Each successful result exposes the current `conversation_ref` exactly once at result level, with the existing `success`, `messages`, and `count` envelope. Each message row exposes only:
 
 ```text
-message_id
-message_identity   # canonical provenance identity when projected by Secretary
 message_uid
 timestamp
 role
 content
 ```
 
-Existing callers may continue to use `message_id`. Whenever a result is stored as durable provenance, Secretary normalizes it to canonical Message Identity.
+Search may also retain its existing `truncated: true` marker. Do not repeat the Conversation ref in every row or duplicate a row's UID inside a `message_identity` object. The model-facing row does not expose the physical `message_id` as a second address. Canonical identity remains the pair `(result.conversation_ref, row.message_uid)` and can still be used for Candidate provenance and precise reads; internal History/Full rows and persistent identities are unchanged.
+
+Existing `read` parameters, including `message_id` and `message_identity`, remain supported with their current validation and current-Conversation permissions. This output projection does not add a selector or change caller binding, History scope, full-body reads, filtering, ordering, or Source-of-Truth text. A source message's authentic content is never rewritten merely because its body itself contains identifiers. Whenever a result is stored as durable provenance, Secretary still normalizes it to canonical Message Identity.
 
 ### Read
 
@@ -1987,7 +1987,7 @@ Known gap: §5.6 forbids a timestamp marker on `<noting-task>`; the frozen forma
 }
 ```
 
-Secretary-side contracts beyond the schema (§2.3): every result row carries entry timestamp + `message_uid`; candidate provenance may cite Message Identities **or** a `source_time_range` (§2.5).
+Secretary-side contracts beyond the schema (§2.3): `conversation_ref` appears once per successful result; every row carries one canonical `message_uid`, timestamp, role and content, without physical message_id or a duplicate message_identity object. Search retains its bounded body and existing truncated marker. Input schema above remains unchanged; candidate provenance may cite Message Identities **or** a `source_time_range` (§2.5).
 
 #### 3.2 `notebook_show` — `tools/notebook_tool.py:13` — Frozen; approved AI-view revision
 

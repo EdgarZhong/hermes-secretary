@@ -24,6 +24,7 @@
 
 | 问题编号 | 要求与触发条件 | 当前事实与影响 | 优先级及理由 | 修复负责人 | 关闭与复验条件 | 状态 |
 |---|---|---|---|---|---|---|
+| C12 | 用户明确History模型返回不要重复字段 | 旧result各row同时message_uid及嵌套Identity重复UID/ref、物理message_id | 本轮新增用户确认输出去冗余 | History子Agent/root | result单Ref＋row单UID/ts/role/content；原read兼容／隔离／压缩查源／截断精读/Noting共用不变，实际模型补验 | 规格已同步，待冻结／实施 |
 | C10／C11 | 用户明确Notebook Show正文＋last_update_time＋anchor_message_uid | 旧AI结果暴露Snapshot/ref/Anchor/Trigger/Profile审计，占模型token | 本轮新增用户确认口径 | root | 正向四区＋last_update_time＋裸anchor_message_uid投影、内部持久审计不变、null／gate／归档／deepcopy证据与实际模型补验 | 8df8885授权冻结；两个产品文件修补及13/13定向证据完成，待当前整版独立复审／真实模型补验 |
 | VAL02 | 02 §3.6／04 §7.3：human Notebook完整可读 | 实际PTY515chars长Notebook折叠、AX和坐标点击均无展开 | 范围内真实用户结果缺口 | timers/root | 既有Slash展示薄修补，不扩新UI；实际长正文无需不可用鼠标可完整阅读 | 只读调查 |
 | VAL01 | 02 §5.6 L1656–1658／1694：Framework tail写入同步用户timeline可见 | 实际Dashboard Main→Idle Noting成功，Snapshot/memo/Finish durable正确，但23:20:55→23:21:30终端无Finish通知；首证据validation-final/U01/ | 范围内用户结果缺口待调查 | timers/root | 原TUI/PTY及CLI正式通知接线分析；复验真实Idle／busy tail事件用户可见且同UID单行，不新增Turn或carrier | 只读调查，Validation此项未通过 |
