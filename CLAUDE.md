@@ -54,3 +54,10 @@
 ## 环境
 
 官方 PM 工作区 `.venv`（Python 3.14.7），现有锁文件不变；运行状态仅 ignored `.hermes-dev/`；不 push 除非用户要求。
+
+## V1.6 当前编排与证据
+
+- 冻结基线：`fc2668310b`（完整哈希见本轮 baseline.txt）；启动 `fa51561601`。计划见本轮 plan.md；三份核心文档和 C02 一并纳入冻结树。
+- 第一组：T1 storage（item／三工具／类型／Schedule）；T2 timers（Idle／catch-up／cap）；T3 delivery（Reminder／Framework／ACK）。当前开始实施；白名单见 plan，不交叉、子 Agent 不再派生、不提交。
+- 第二组 T4（Prompt／Child／memo／History）待依赖交回；T5 集成审查与两独立门禁待收敛。机制／正式接线／针对性验证／用户结果尚无最终完成证据。
+- PM Python 3.14.7；lock SHA256 `2bc4db483e9cba927cd7147f9ccbb09635f85bb3f1f36d6e9d51d06b65d1c67e`。未预跑大型检查；日志 `.hermes-dev/v1.6-evidence/`。既有失败和平台边界见当前状态。
