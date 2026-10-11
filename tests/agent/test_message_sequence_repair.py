@@ -56,6 +56,21 @@ def test_repair_merges_consecutive_user_messages():
     assert messages[0]["content"] == "first\n\nsecond"
 
 
+@pytest.mark.parametrize('metadata', [
+    {}, {'display_metadata': {'noting_run_output': True}},
+    {'display_kind': 'process_complete'},
+    {'display_kind': 'process_complete', 'display_metadata': {'display_text': 'different body'}},
+])
+def test_repair_framework_body_lookalike_keeps_native_user_merge(metadata):
+    agent = _bare_agent()
+    body = '<framework-message>\nordinary user quoted text\n</framework-message>'
+    messages = [{'role': 'user', 'content': body, **metadata},
+                {'role': 'user', 'content': 'actual next user'}]
+    repairs = AIAgent._repair_message_sequence(agent, messages)
+    assert repairs == 1 and len(messages) == 1
+    assert messages[0]['content'] == body + '\n\nactual next user'
+
+
 def test_repair_preserves_user_content_when_one_side_empty():
     agent = _bare_agent()
     messages = [

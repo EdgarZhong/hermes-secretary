@@ -426,6 +426,15 @@ def build_framework_message_wrapper(body: Any) -> str:
     return build_unstamped_wrapper("framework-message", body)
 
 
+def is_framework_message(row: Mapping[str, Any]) -> bool:
+    """Recognize the existing runtime carrier shape, including after durable restore."""
+    metadata = row.get("display_metadata")
+    if row.get("role") != "user" or row.get("display_kind") != "process_complete" or not isinstance(metadata, Mapping):
+        return False
+    body = metadata.get("display_text")
+    return isinstance(body, str) and row.get("content") == build_framework_message_wrapper(body)
+
+
 class TrustedUserInput(str):
     """Internal source provenance for a freshly built synthetic carrier; never inferred from text."""
 
