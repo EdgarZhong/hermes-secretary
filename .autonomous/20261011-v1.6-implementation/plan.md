@@ -24,7 +24,7 @@
 
 | 问题编号 | 要求与触发条件 | 当前事实与影响 | 优先级及理由 | 修复负责人 | 关闭与复验条件 | 状态 |
 |---|---|---|---|---|---|---|
-| C10 | 用户明确Notebook Show正文＋last update time | 旧AI结果暴露Snapshot/ref/Anchor/Trigger/Profile审计，占模型token | 本轮新增用户确认口径 | root | 正向四区＋last_update_time投影、内部持久审计不变、null／gate／归档／deepcopy证据与实际模型补验 | 规格已同步，待实施 |
+| C10／C11 | 用户明确Notebook Show正文＋last_update_time＋anchor_message_uid | 旧AI结果暴露Snapshot/ref/Anchor/Trigger/Profile审计，占模型token | 本轮新增用户确认口径 | root | 正向四区＋last_update_time＋裸anchor_message_uid投影、内部持久审计不变、null／gate／归档／deepcopy证据与实际模型补验 | 规格已同步，待实施 |
 | VAL02 | 02 §3.6／04 §7.3：human Notebook完整可读 | 实际PTY515chars长Notebook折叠、AX和坐标点击均无展开 | 范围内真实用户结果缺口 | timers/root | 既有Slash展示薄修补，不扩新UI；实际长正文无需不可用鼠标可完整阅读 | 只读调查 |
 | VAL01 | 02 §5.6 L1656–1658／1694：Framework tail写入同步用户timeline可见 | 实际Dashboard Main→Idle Noting成功，Snapshot/memo/Finish durable正确，但23:20:55→23:21:30终端无Finish通知；首证据validation-final/U01/ | 范围内用户结果缺口待调查 | timers/root | 原TUI/PTY及CLI正式通知接线分析；复验真实Idle／busy tail事件用户可见且同UID单行，不新增Turn或carrier | 只读调查，Validation此项未通过 |
 | R0 | V1.5 遗留门禁缺口 | 旧 Verification 未通过，Dashboard 未执行 | 必须，不能施工代替验收 | root/T5 | 当前版两门禁关闭 | ce2fa6f Verification通过；真实Dashboard Validation及最终交付待关闭 |

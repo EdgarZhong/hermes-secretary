@@ -769,9 +769,9 @@ When the runtime belongs to an eligible user-facing main Conversation (§1.9) an
 notebook_show
 ```
 
-It returns only the complete current Notebook content and one freshness field, `last_update_time`, as AI-facing structured JSON. User-confirmed on 2026-10-11: Snapshot identity and lifecycle/audit metadata are internal and must not consume model context. The success result is `{"success": true, "notebook": {"last_update_time": <committed Snapshot created_at value>, "user": [...], "assistant": [...], "consultation": [...], "persistence": [...]}}`; before any committed Notebook exists, `notebook` is `null`.
+It returns only the complete current Notebook content and two additional fields, `last_update_time` and `anchor_message_uid`, as AI-facing structured JSON. User-confirmed on 2026-10-11: Snapshot identity and lifecycle/audit metadata are internal and must not consume model context. The success result is `{"success": true, "notebook": {"last_update_time": <committed Snapshot created_at value>, "anchor_message_uid": <committed Snapshot anchor UID>, "user": [...], "assistant": [...], "consultation": [...], "persistence": [...]}}`; before any committed Notebook exists, `notebook` is `null`.
 
-Construct this view positively from the four current sections and `last_update_time`; do not copy the Snapshot object and remove a few known fields. Do not expose top-level `snapshot_id`, `conversation_ref`, `anchor_message_uid`, `message_identity`, `trigger_type`, `runtime_profile`, `created_at`, termination audit, or any future internal Snapshot metadata. Entry semantics, current entry ids, source provenance and Schedule intent remain complete; archived entries remain absent. `last_update_time` is the current committed Snapshot's existing creation/commit value, not read time or a fabricated clock. Internal Snapshot storage, Full audit, Anchor rules, Noting's task-local working-state tool and History permissions remain unchanged. This tool does not run the human `/notebook` renderer.
+Construct this view positively from the four current sections, `last_update_time`, and `anchor_message_uid`; do not copy the Snapshot object and remove a few known fields. Do not expose top-level `snapshot_id`, `conversation_ref`, `message_identity`, `trigger_type`, `runtime_profile`, `created_at`, termination audit, or any future internal Snapshot metadata. User-confirmed addition on 2026-10-11: the bare `anchor_message_uid` is AI-visible because it can be used with History Search; do not add a surrounding Message Identity object, Conversation ref, or any other Snapshot metadata. Entry semantics, current entry ids, source provenance and Schedule intent remain complete; archived entries remain absent. `last_update_time` is the current committed Snapshot's existing creation/commit value, not read time or a fabricated clock. Internal Snapshot storage, Full audit, Anchor rules, Noting's task-local working-state tool and History permissions remain unchanged. This tool does not run the human `/notebook` renderer.
 
 The main Assistant may inspect the current Notebook but does not receive Notebook create/edit/status/Schedule mutation tools and never mutates Notebook directly.
 
@@ -1999,7 +1999,7 @@ Secretary-side contracts beyond the schema (§2.3): every result row carries ent
 }
 ```
 
-Approved Target (user-confirmed 2026-10-11): keep the name and no-argument parameters above; replace the description with `Read the current Notebook's complete four-section state and last_update_time. Read-only.` The returned AI view follows §3.5: current content plus `last_update_time`, no internal Snapshot envelope or audit identifiers. The Frozen text above records the previous implementation, not the new Target.
+Approved Target (user-confirmed 2026-10-11): keep the name and no-argument parameters above; replace the description with `Read the current Notebook's complete four-section state, last_update_time, and anchor_message_uid. Read-only.` The returned AI view follows §3.5: current content plus `last_update_time` and `anchor_message_uid`, no internal Snapshot envelope or audit identifiers. The Frozen text above records the previous implementation, not the new Target.
 
 #### 3.3 `notebook_mutate` — `secretary/noting_tools.py:39` — Frozen; approved description revision
 
@@ -2474,7 +2474,7 @@ Acceptance must compare the complete inherited prefix at Hermes's actual request
 - it does not display the pointer ID;
 - it does not introduce a new `display_kind`;
 - it follows normal Hermes persistence/context behavior;
-- AI notebook_show returns all four current sections plus last_update_time, without internal Snapshot/audit metadata, rather than the human renderer;
+- AI notebook_show returns all four current sections plus last_update_time and anchor_message_uid, without other internal Snapshot/audit metadata, rather than the human renderer;
 - local Noting on/off preserves the complete main tool-schema bytes and read access, including after cold reconstruction;
 - non-user-facing auxiliary runtimes never receive notebook_show, including through composite/inherited toolsets;
 - Eligible Main receives History Search independently of read configuration/templates and Noting; authentic current and cross-Compaction history remains searchable.

@@ -10,7 +10,7 @@
 
 ## 当前状态
 
-- **用户确认C10，立即修订AI Notebook视图**：Main notebook_show只返回四区完整正文＋last_update_time（当前提交created_at原值），移除Snapshot envelope身份／Anchor／Trigger／Profile／审计；正向白名单投影，内部审计及Noting工作态不变。已同步02 §3.5／§5.12及本轮索引；这是真正用户新增产品修订，不是Agent自主口径。Validator已停新请求：globalfalse、memo空、Main ready、两Child ended，允许同profile升级／Cold，不重建。
+- **用户确认C10／C11，立即修订AI Notebook视图**：Main notebook_show按最新C10／C11只返回四区完整正文＋last_update_time（当前提交created_at原值）＋anchor_message_uid（裸UID可供History查源），移除其余Snapshot envelope身份／Identity／Trigger／Profile／审计；正向白名单投影，内部审计及Noting工作态不变。已同步02 §3.5／§5.12及本轮索引；这是真正用户新增产品修订，不是Agent自主口径。Validator已停新请求：globalfalse、memo空、Main ready、两Child ended，允许同profile升级／Cold，不重建。
 - **VAL02（待最小提案）**：真实TUI /notebook 515字符正文折叠为摘要，AX／箭头坐标点击均无法展开；不能用DB可读替用户完整可读。timers只读核既有Slash→消息折叠／PTY鼠标接缝；不引入docs06新UI。
 
 - **验收Surface更正**：启动日志曾有ui-tui构建失败，但现场Dashboard62527子树两对实际进程均为node ui-tui/dist/entry.js→python -m tui_gateway.entry，session source=tui，隔离HOME正确。不能从先前构建错误推断当前fallback CLI；用户汇报已主动纠正，Validation保留原失败记录。主会话打开体验页可能存在第二PTY连接，验收核对自身Conversation归属、不操作其他连接。

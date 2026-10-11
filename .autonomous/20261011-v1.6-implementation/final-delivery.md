@@ -8,7 +8,7 @@
 
 ## 本轮收敛与授权
 
-公开V1.6范围及未修订V1/V1.5契约继续有效，无push或部署。新增用户确认C10：Main notebook_show只返回四区Notebook正文与last_update_time，隐藏内部Snapshot/Anchor/Trigger/Profile身份及审计；内部存储、Full审计、任务工作态和History权限不变。C02限定Agent查item历史/找回；C03以不可复用memo行身份与同事务消费保留新/替换内容；C04/C05统一正常系统英文Finish，说明已处理memo已清空；C06仅规格先建判据、主会话提议/Verifier评审；C07External拒绝通知覆盖Force/Idle/catch-up；C08Noting只请求父原生压缩，执行/结果发布/Continuation归父；C09真实原生请求准入后，后续压缩取消不撤销合法Snapshot与Finish提交。
+公开V1.6范围及未修订V1/V1.5契约继续有效，无push或部署。新增用户确认C10／C11：Main notebook_show只返回四区Notebook正文、last_update_time和裸anchor_message_uid（可查History），隐藏其余内部Snapshot/Identity/Trigger/Profile身份及审计；内部存储、Full审计、任务工作态和History权限不变。C02限定Agent查item历史/找回；C03以不可复用memo行身份与同事务消费保留新/替换内容；C04/C05统一正常系统英文Finish，说明已处理memo已清空；C06仅规格先建判据、主会话提议/Verifier评审；C07External拒绝通知覆盖Force/Idle/catch-up；C08Noting只请求父原生压缩，执行/结果发布/Continuation归父；C09真实原生请求准入后，后续压缩取消不撤销合法Snapshot与Finish提交。
 
 工程研讨在原规格内收敛，不冒充用户逐行批准：VF01按具体item/owner/lineage/原sources限定既有来源继承，不给历史UID通用许可；VF02/VF03由父原生request、安全消费者、原生commit/loader发布结果，捕获原custom输入，不由Noting读库拼tail。R7把正式Idle计量接到native读取；VFR02先消费原durable Idle事件再惰性读取，读错不允许多hostattach重造事件；VFR03按正式Framework完整行形状保护live逻辑身份，API副本保持原provider归一；VFR04复用本TurnMain资格及原Fresh输入witness保护真实提交边界，保留每输入原时间戳，aux仍原路径。完整提案、评审、原反例和版本关闭链保留于[verification.md](verification.md)。VFR04已在ce2fa6f独立关闭。
 
@@ -32,7 +32,7 @@ Validation八场景计划已由root完整过目并放行执行，[validation.md]
 
 ## 剩余、阻塞与影响
 
-剩余为真实用户Validation→root证据复核与最终提交/交付。ce2fa6f Verification与Dashboard启动已完成。实测首发现VAL01：Noting成功提交的Finish已落库，但官方PTY/TUI聊天未即时显示timeline通知。当前只读调查、其余旅程继续，此项不判通过；另VAL02长Notebook在PTY折叠且点击不展开；二者查明后按原规格组织薄修补与复验。C10明确AI输出修订已同步规格、待实施，Validator已停新模型请求等待同profile升级。Linux/Windows未实际验证，不冒充跨平台覆盖；字节prefix parity不等于未测provider缓存命中率，机制覆盖不能推算剩余缺陷概率。目标工具仍显示历史usageLimited，但当前已接受用户继续并推进，不冒称目标完成。
+剩余为真实用户Validation→root证据复核与最终提交/交付。ce2fa6f Verification与Dashboard启动已完成。实测首发现VAL01：Noting成功提交的Finish已落库，但官方PTY/TUI聊天未即时显示timeline通知。当前只读调查、其余旅程继续，此项不判通过；另VAL02长Notebook在PTY折叠且点击不展开；二者查明后按原规格组织薄修补与复验。C10／C11明确AI输出修订已同步规格、待实施，Validator已停新模型请求等待同profile升级。Linux/Windows未实际验证，不冒充跨平台覆盖；字节prefix parity不等于未测provider缓存命中率，机制覆盖不能推算剩余缺陷概率。目标工具仍显示历史usageLimited，但当前已接受用户继续并推进，不冒称目标完成。
 
 ## 用户复核建议
 
