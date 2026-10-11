@@ -127,12 +127,20 @@ def test_timer_force_snapshot_uses_resolved_usage_without_idle_substitute(
         assert calls == [{'relevant_threshold_tokens': 64000, 'wait_seconds': 5.0}]
 
 
-def test_timer_native_usage_read_failure_is_error_without_ordinary_dispatch(runtime, monkeypatch, caplog):
+def test_timer_native_usage_failure_consumes_period_and_next_turn_recovers(runtime, monkeypatch, caplog):
+    from agent.context_compaction_request import read_context_usage
     parent, db, dispatched, ready = runtime
-    outcomes = []
+    ref = parent._secretary_conversation_ref
+    (Path(db.db_path).parent / 'config.yaml').write_text(
+        'noting:\n  enabled: true\n  idle_delay_seconds: 0.12\n'
+        '  auto_trigger_compaction_after_noting:\n    enabled: true\n    threshold_tokens: 1000\n')
+    outcomes, reads, freezes = [], [], []
     completed = threading.Event()
     def unavailable(agent):
+        reads.append(agent)
         raise OSError('controlled native usage read unavailable')
+    freeze = rt._freeze_and_log_attempt
+    monkeypatch.setattr(rt, '_freeze_and_log_attempt', lambda *args: (freezes.append(args), freeze(*args))[1])
     original = rt._run_idle_event
     def observe(*args, **kwargs):
         try:
@@ -144,10 +152,30 @@ def test_timer_native_usage_read_failure_is_error_without_ordinary_dispatch(runt
     monkeypatch.setattr('agent.context_compaction_request.read_context_usage', unavailable)
     monkeypatch.setattr(rt, '_run_idle_event', observe)
     assert rt.note_main_turn_finished(parent)
+    assert timers.holds_pending_timer(parent)
     assert completed.wait(2)
-    assert outcomes == ['error'] and not dispatched
+    attaches = [rt.maybe_run_idle_noting(parent, db, ref) for _ in range(4)]
+    assert attaches == ['skip:idle_trigger_produced'] * 4
+    assert outcomes == ['skip:trigger_error'] and reads == [parent]
+    assert not dispatched and not freezes
     assert 'controlled native usage read unavailable' in caplog.text
-    assert db.noting_idle_state(parent._secretary_conversation_ref)['trigger_produced_at'] is None
+    assert db.noting_idle_state(ref)['trigger_produced_at'] is not None
+    assert not timers.holds_pending_timer(parent)
+    def available(agent):
+        reads.append(agent)
+        return read_context_usage(agent)
+    monkeypatch.setattr('agent.context_compaction_request.read_context_usage', available)
+    assert rt.note_main_turn_started(parent)
+    add(db, 'main', 'next actual main input', 'm2')
+    parent.context_compressor.update_from_response({'prompt_tokens': 8137})
+    completed.clear()
+    assert rt.note_main_turn_finished(parent)
+    assert ready.wait(2) and completed.wait(2)
+    assert outcomes == ['skip:trigger_error', 'admitted'] and reads == [parent, parent]
+    assert len(dispatched) == len(freezes) == 1
+    assert dispatched[0][0].task_profile == 'NOTING_WITH_COMPACTION'
+    assert dispatched[0][0].anchor_message_uid == 'm2'
+    assert rt.maybe_run_idle_noting(parent, db, ref) == 'skip:idle_trigger_produced'
 
 
 def test_main_start_cancels_and_next_finish_rearms(runtime):
@@ -173,13 +201,23 @@ def test_auxiliary_turn_does_not_cancel_parent_timer(runtime):
     assert len(dispatched) == 1
 
 
-def test_gate_rechecked_at_fire_and_off_never_arms(runtime):
+@pytest.mark.parametrize('gate', ['local', 'global'])
+def test_gate_rechecked_at_fire_and_off_never_arms(runtime, monkeypatch, gate):
     parent, db, dispatched, ready = runtime
     ref = parent._secretary_conversation_ref
+    reads = []
+    def forbidden(agent):
+        reads.append(agent)
+        raise AssertionError('Closed gate must not read context usage')
+    monkeypatch.setattr('agent.context_compaction_request.read_context_usage', forbidden)
     assert rt.note_main_turn_finished(parent)
-    db.notebook_set_local_enabled(ref, False)
+    if gate == 'local':
+        db.notebook_set_local_enabled(ref, False)
+    else:
+        (Path(db.db_path).parent / 'config.yaml').write_text('noting:\n  enabled: false\n')
     assert not ready.wait(0.25)
-    assert not dispatched
+    assert not dispatched and not reads
+    assert db.noting_idle_state(ref)['trigger_produced_at'] is None
     assert not rt.note_main_turn_finished(parent)
     assert not timers.holds_pending_timer(parent)
 
@@ -204,13 +242,18 @@ def test_attach_recovers_past_deadline_once_and_future_deadline_arms(runtime):
 
 def test_external_idle_period_consumed_without_freeze_then_native_can_run(runtime, monkeypatch):
     parent, db, dispatched, ready = runtime
+    reads = []
+    def forbidden(agent):
+        reads.append(agent)
+        raise AssertionError('External must not read context usage')
+    monkeypatch.setattr('agent.context_compaction_request.read_context_usage', forbidden)
     assert rt.note_actual_main_execution(parent, "external")
     monkeypatch.setattr(rt, "_freeze_and_log_attempt", lambda *args: pytest.fail("External must not freeze"))
     assert rt.note_main_turn_finished(parent)
     assert not ready.wait(0.25)
     state = db.noting_idle_state(parent._secretary_conversation_ref)
     assert state["trigger_produced_at"] is not None
-    assert not dispatched
+    assert not dispatched and not reads
 
 
 def test_restart_retains_produced_period(tmp_path, monkeypatch):

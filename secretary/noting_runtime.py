@@ -463,6 +463,7 @@ def _idle_decision(
     settings: Optional[NotingSettings],
     now: Optional[float],
     execution_source: Optional[str],
+    measurement_reader: Optional[Callable[[], Optional[ContextMeasurement]]] = None,
 ) -> NotingDecision:
     settings = settings_for_db(db) if settings is None else settings
     enabled, reason = noting_trigger_gate(db, conversation_ref, settings=settings)
@@ -482,6 +483,8 @@ def _idle_decision(
     # profile selection can request parent compaction or any freeze/admission side effect.
     if execution_source == "external":
         return _skip("external_main_execution")
+    if measurement_reader is not None:
+        measurement = measurement_reader()
     if measurement is not None:
         threshold_skip = _threshold_skip(measurement)
         if threshold_skip is not None:
@@ -512,6 +515,7 @@ def try_admit_idle(
     settings: Optional[NotingSettings] = None,
     now: Optional[float] = None,
     execution_source: Optional[str] = None,
+    measurement_reader: Optional[Callable[[], Optional[ContextMeasurement]]] = None,
 ) -> NotingDecision:
     """Idle admission gating (02 §4.5, §4.8, §4.10) from the durable per-Conversation timer.
 
@@ -519,10 +523,14 @@ def try_admit_idle(
     reached the Force threshold the ordinary Idle path never substitutes a Noting Task — the
     result is a skip, or ``compact_parent`` when ``auto_compact_after_force_noting_idle`` asks
     the caller to request Parent compaction directly.
+
+    A host's ``measurement_reader`` runs only after this idle period is claimed and External
+    execution is rejected, so a failed reading cannot recreate the same timer event.
     """
     return _guarded(conversation_ref, lambda: _idle_decision(
         db, conversation_ref, measurement=measurement, settings=settings, now=now,
         execution_source=execution_source,
+        measurement_reader=measurement_reader,
     ))
 
 
@@ -608,15 +616,18 @@ def _run_idle_event(parent: Any, db: Any, conversation_ref: str, *,
             return "skip:not_main_owner"
         bind_main_runtime(parent)
         measurement = None
-        compressor = getattr(parent, "context_compressor", None)
-        if compressor is not None:
+        def read_measurement():
+            nonlocal measurement
+            if getattr(parent, "context_compressor", None) is None:
+                return None
             from agent.context_compaction_request import read_context_usage
             from secretary.noting_policy import measurement_from_agent
 
             usage, _threshold = read_context_usage(parent)
             measurement = measurement_from_agent(parent, usage)
+            return measurement
         decision = try_admit_idle(
-            db, conversation_ref, measurement=measurement, now=now,
+            db, conversation_ref, measurement_reader=read_measurement, now=now,
             execution_source=_persisted_main_execution(parent),
         )
         if decision.reason == "external_main_execution":

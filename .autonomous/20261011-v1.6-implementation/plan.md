@@ -32,6 +32,8 @@
 | VF02 / R5 | V099/V077及C08：异步父压缩缺少原生runtime结果接收 | 固定fba真实6→4 native提交后durable5/live7，worker局部tuple无人消费；Framework等fence清除后仍向旧list追加。root先暂列harness边界，已被正式反证推翻；用户明确Noting只触发，撤下Noting层查表拼tail方案（未实施） | 范围内阻断，父下一请求可能复用retired源／错误tail | root／原生接线实现者 | 父原生机制协调active Turn并发布有效结果，保留当前Turn及新消息、同Conversation continuation；Noting不重建父上下文；fail/blocked不fake；真实profile结束后live=DB且下一Mainwire压缩前缀，一FinishUID两视图，独立全轮复审 | 原生方案经评审后实施中，两个真实边界反例成立；未关闭 |
 | VF03 / R6 | V080/V120/V099：cached root误作原始custom supplement | 固定fba Noting将完整cached root传入native builder；实际无API反例root13054→20663字符，旧root整块被追加为custom context | 范围内阻断，压缩接线错误参数破坏有效root | timers/root | active使用当前Turn原始system_message，idle仅可信原始supplement/None；真实builder不重嵌完整root，下一Main实际请求正确；冷恢复未知参数诚实处理；新独立全轮关闭 | 独立确认／root反例及调用链复核接收，同批原生接线修复中；未关闭 |
 | R7 | 02 §4.10：正式Idle回调须用当前真实usage选择profile | ab209实际freeze usage8137/threshold1000却选NOTING；runtime仍import已删除_reread_usage，异常捕获后measurementNone | 范围内阻断，特殊profile正式timer入口退化；root此前接线review漏审已更正 | timers/root | 正式timer→当前native usage→admission→special/低usage ordinary正反证据、Force-after-idle影响检查；修复后真实三分支补证及独立审查 | 三文件最小修复及13/13已root接收，独立关闭待审；旧真实请求7保留不计特殊链路通过 |
+| VFR02 | AF061/062/066：一idle周期仅一个timer事件，读数故障不得被hostattach重造 | 55e92读错在claim前，真实timer＋4attach重复读5次；原None断言仅不派ordinary不能证一次事件 | 范围内阻断 | timers/root | 原claim/External后惰性读数，错误period消费且多attach读1/FG0，新周期恢复，off/notidle/owner/External不误读 | 双文件修复21timer＋5接口及ruff/health已root接收，待独立关闭 |
+| VFR03 | AF105/107关联AF013/109：真实用户timestamp及Framework双视图逻辑身份 | 55e92真实forced/overflow nextMain repair合入Finish旧UID，live6/DB7、用户继承noting_run_output并丢timestamp；不是wire-only适配 | 范围内阻断，常见下一输入边界 | root/timers | allFramework producer与newuser独立live/DB UID-content-meta、actualwire stamp、nextIdle真实Anchor；纯native/关闭行为零改 | 独立已确认，root最小边界提案待评审及实现 |
 
 ## 取舍、快照与续接
 
