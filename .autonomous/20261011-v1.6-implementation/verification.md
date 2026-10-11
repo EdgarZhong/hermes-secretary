@@ -904,3 +904,97 @@ VFR02 root提案 → 本审查者原AF061/62/66/68/70/73评审 → 两file最小
 VFR03研讨更新：root提案原native _merge_consecutive_users仅当prev/msg任一正式Framework行时跳过live合并；用role=user、display_kind=process_complete、display_text和完整wrapper行事实识别三现有Finish/Force/External，不只noting_run_output或当前global flag，不新增DB/state/独立repairloop；provider若需合并用既有请求副本适配。Verification接受方向，要求display_text与wrapper body对应的正式形状，只有正文lookalike不得保护；cold restore metadata及已落Framework即便localoff仍保护。必要反例：Framework→human（保独立stamp/API侧文本）、human→Framework、Framework→Framework三producer、pure-native普通user及正文lookalike维持旧merge。实际Main→prep→transport assembly→persist→后续Idle freeze包含真实新Anchor才可关闭；Framework不新增timestamp，每真实user原stamp不能丢。冻结健康指标不放宽。此处仅评审，不共同迁就代码改判据；尚无该修复版本。
 
 旧VF01/02/03全范围复审之后的检查：VF01 exact-source basis当前授权与immutable state/commit已经机制闭合；VF02新Parent native publication与sameTurn/futureentry实际消费者三真实组成立；VF03 custom root来源原cache_context正确复用，实际所有归属Main/Child root指导段仅1且freeze prefix一致。旧VF02机制关闭不掩盖新VFR03carrier merge；当前门禁不通过。下一步只核新修复正式边界及其实际影响，然后更新本报告129状态；不能因用户希望尽快体验跳过完成定义。
+
+<!-- independent-review-phase-b-update: verification_final 414d37 interim -->
+# 独立复审更新：414d37 Framework关闭与相关时间标记核验
+
+## 1. 审查对象与结论概览
+
+待审产品414d37f2de23ad547f5e29c0a1224c99c371495f。原129判据及所有原报告内容保持。本次完成VFR03修复正式接缝与raw观察核验，并按两产品文件实际影响更新全129版本适用性。当前中间状态125符合、0已确认违规、2证据不足（AF105相关时间标记疑点与AF120完成定义）、2本阶段不适用。**Verification暂不通过**；相邻普通genuine inputs的marker疑点等待实际请求观察，而非把尚未验证内容默认为符合。
+
+## 2. 独立要求清单与覆盖
+
+| 条款编号 | 来源位置及要求 | 类型/适用范围 | 规格解释及必要不变量 | 符合判据 | 核查位置 |
+|---|---|---|---|---|---|
+| AF001–AF129 | 阶段A/C09完整冻结原表 | 原类型/范围不变 | 不因root方案/现有测试改判据 | 原判据保持；版本影响复核 | coverage.phase-b.414d37.interim.json及前方全129矩阵 |
+| AF105重点重核 | 原02 §5.6 L1561–1578/§4.3 L1152，§6.5 L2264–2273 | genuine Main user entry；localoff仍active | 每次真实输入自己的原arrival marker；不是user-role内部control一律stamp；无timestamp开关契约 | 合法两genuine inputs相邻时实际wire保各自原marker，不能只assert clean合并内容 | 新相关疑点VFR04（待raw，不是已确认违规） |
+
+## 3. 逐条实现证据
+
+完整129最新中间机器记录coverage.phase-b.414d37.interim.json；以下覆盖87228相应行，其余125行按framework-impact-version-map.json复用。两个实际产品变化仅既有metadata helper与native live repair条件；原API-copy归一、transport/Loop/持久化/Background/Notebook机制不变。
+
+| 条款编号 | 正式入口及完整关键代码路径 | 方法、输入、配置及实际证据 | 证据位置 | 判定及理由 | 证据边界 |
+|---|---|---|---|---|---|
+| AF013 | 真实Main staging→prepare_iteration→repair_message_sequence_with_cursor→_merge_consecutive_users | 六方向真实producer及Main观察，新user pre-repair UID保live/persist/下一Idle冻结，Framework UID不被吸收 | framework-boundaries-independent.json／六framework-*.json | 符合：原Framework合并身份问题关闭 | provider最外返回受控，source四file逐一hash已对414commit |
+| AF107 | runtime publisher→既有append_runtime_row双写→Mainrepair→persist→freeze | 框架原UID/content/time/kind/metadata在冻prefix不变，prefix UID序列=DB序列；三producer两方向/连续/冷恢复off | 同上；framework-boundaries-handoff.log 11/11 | 符合：same logical row保持，非后续DB reconcile修复 | 不声称新真实HTTP；55e92真实publication接口按版本影响复用 |
+| AF109 | 真实Idle Child finish_noting→SnapshotGate→Finish；Force+Finish+External正式producer | Notice原内容/marker/UID保持；同Wire仅一份，真实user不继承noting_run_output | 同上及tests/secretary/test_framework_message_boundaries.py实际底座 | 符合：VFR03 Notice后续污染关闭 | 原压缩publication/special终结由55e92三真实＋E12补；当版仅live merge边界 |
+| AF105 | 同上＋_stage_turn_user_message/stamp_fresh_turn_input→普通相邻user merge→actual build_api_messages | Framework相关六raw原timestamp仅一份有效；普通genuine user相邻清正文合并drop prev api_content却保旧fresh marker，new witness可能丢失；actual-native-off回归只assert text/absorbed | 六raw＋414冻结源码；root已安排现有两native-off用例actual request窄幅观察 | 证据不足：Framework部分关闭，普通相邻genuine输入关联疑点待actual raw | 不从普通dict repair单测推全部真实input，不将推测写运行失败 |
+| AF120 | 原129全范围路径、最终证据与关闭状态 | 原VFR01/02/03已闭合，AF105仍待核 | 当前129机器记录＋本节 | 证据不足：当前未完成definition，暂不进入Validation | Validation及最终delivery仍只本阶段NA，不能整体豁免 |
+
+## 4. 核心目标及验证方法审查
+
+新shape helper要求role=user、process_complete、Mapping display_metadata、string display_text与完整wrapper body精确对应；prev/msg任一真实carrier均保护。三publisher事实全覆盖，不靠noting_run_output或global/local配置，冷恢复既有Framework即使关背景仍保身份。用户仅正文lookalike、部分metadata或body不对应均不被误认。原API副本合并仍保框架文本及每个独立user自己的timestamp，live原行不变。
+
+四源码hash与414commit匹配，canonical JSON聚合独立重算精确4b5d815e9ab020d0330d296de9cedae3b9dc47e1f838712be9b1cec1a077bda7；11integration/71repair、四file ruff/health0/0有效，重叠过渡通过不叠加。六raw独立重算所有identity/marker/Freeze投影为true；新真实userUID、DB序序、原Framework各字段及实际wire完全可回查。六方向最终API返回受控，其余真实DB/nativeMain staging/repair/buildkwargs/persist；下一Idle为合法Main end持久period后原_run_idle_event实际claim→受控spawn中真实freeze，后台3600秒timer取消，不冒称该用例真实等daemon3600秒。daemon频次由VFR02已有有效证据覆盖。
+
+首before旧反例触实际Main merge污染，止于Framework身份断言，不能当旧后续freeze运行反证。修补初几轮失败属live clean/durable stamped投影、测试Idle时点/staging witness及patch实际接缝差错，均日志保留，不充当产品缺陷计数；最终观察器patch实际with_cursor位置有效。
+
+相关时间标记范围：§4.3明确localoff仍有效；§5.6每genuine input标记无global enabled前提，也没有timestamp配置开关。背景effective gate不授权吞真实用户入场时间。“不启用即原生”以未明确要求变更为前提，不能默默豁免明确base contract。aux内部task/control/delegate user-role字典不等于genuine human input，Noting transition明确无stamp，不能机械扩验。新疑点只针对真实Main用户staging，不要求改所有普通字典原生merge。
+
+## 5. 发现、整改优先级与范围外项
+
+| 问题编号 | 对应条款/代码位置 | 触发路径与事实 | 影响及阻断理由 | 建议修复与关闭证据 | 当前状态 |
+|---|---|---|---|---|---|
+| VFR03 | AF013/105相关Framework/107/109；message_metadata.is_framework_message＋原merge双侧 | 六raw所有原Frame/user不变量成立；四source commit/hash相符 | 原缺陷已关闭 | 正式11integration/71repair及独立sixraw；cold off/三producer/负对照有效 | 414d37关闭 |
+| VFR04相关疑点 | AF105；turn_context:670 staging/fresh witness、原merge drop api_content、build_api:1323 | 普通相邻genuine user各原stamp可能只剩旧一个；现实际native-off两回归没有双marker断言 | 未经实际请求观察，不宣称已确认违规；但AF105证据当前不足 | root已安排现两用例窄幅actualrequest记录1700000400/1700000500，各original marker计数；若确认缺陷，依原判据研讨修复与localoff/globalon代表接线 | 等raw，产品414只读冻结 |
+
+无新增范围外发现。个人聊天迁移不进入本门禁输入，未读其私聊/DB。
+
+## 6. 修复与独立复审
+
+VFR03链路：独立原判据与真实newMain失败 → root提案正式Framework full-shape双侧保护 → Verification接受三producer/两方向/冷off/lookalike及actualMain/persist/nextIdle要求 → 两product文件最小修补414d37 → 独立四source hash＋六raw/底座/log/source核验 → 原缺陷关闭。未改变产品规格，无新DB字段/gate/Loop/provider算法；冻结健康指标原巨大函数CC/NESTING/FUNC_LINES均不增，新helper CC2/7行。
+
+关闭过程中主动反证新ordinary genuine-user→genuine-user边界：预期继续native merge并非AF105双stamp证明；该疑点先上报，root核明确base timestamp及native-off例外前提后安排窄幅实际观察。原判据保持，未提前声称总门禁通过、未要求新模型API/大型回归。最终VFR04状态待证据补入本节；最后交付必须显眼摘要所有有实质影响收敛与来源、关闭版本、原真实API与受控mechanism分工。
+
+<!-- independent-review-vfr04: verification_final 414d37 confirmed -->
+# 414d37 相邻真实用户时间标记反证与方案评审更新
+
+## 1. 审查对象与结论概览
+
+产品仍414d37f2de23ad547f5e29c0a1224c99c371495f。相关疑点现经真实Main请求raw确认，编号VFR04；VFR03关闭不撤回。全129当前125符合、1违规（AF105）、1不足（AF120完成定义）、2本阶段有依据不适用（AF122/123）。**Verification不通过**。最新完整记录coverage.phase-b.414d37.json覆盖前方中间状态，后续Validation与delivery尚未执行，不能当作整体豁免。
+
+## 2. 独立要求清单与覆盖
+
+| 条款编号 | 来源位置及要求 | 类型/适用范围 | 规格解释及必要不变量 | 符合判据 | 核查位置 |
+|---|---|---|---|---|---|
+| AF105 | 原02 §5.6 L1561–1578、§4.3 L1152、§6.5 L2264–2273 | 真实Main用户提交；关闭背景不关闭base timestamp | 每genuine输入自己的原entry marker；非任意user-role程序控制字典均genuine | 实际Main wire、durable/replay各自原标记保留；不因native merge默认豁免 | 本节3／genuine-user-markers-independent.json |
+| AF001–AF129 | 原阶段A＋C09冻结全部 | 类型/范围/优先级保持 | 无判据新增/降低 | 原判据保持 | coverage.phase-b.414d37.json |
+
+## 3. 逐条实现证据
+
+| 条款编号 | 正式入口及完整关键代码路径 | 方法、输入、配置及实际证据 | 证据位置 | 判定及理由 | 证据边界 |
+|---|---|---|---|---|---|
+| AF105 | 真Main run_conversation→_stage_turn_user_message/stamp_fresh_turn_input→prepare_iteration repair→_merge_consecutive_users→build_api_messages→persist | 原有globaloff plain/正文lookalike两个场景只增加实际请求/双视图观测，原断言保持；source开始结束六product hash对414commit匹配；实际wire旧1700000400 marker1、新1700000500 marker0 | native-off-marker-plain.json/lookalike.json、source.json、observation.log；独立genuine-user-markers-independent.json | 违规：两真实input合并后旧Fresh witness仍保，api_content已清，survivor.timestamp竟换新1700000500但wire仍旧marker；第二入场时间未被模型看到 | 最终API返回受控，其余正式staging/repair/assembler/persist；2原断言通过不是timestamp符合；未运行旧872wire，不将源码相同因果冒充旧版运行 |
+| AF120 | 全129完成定义/范围内缺陷关闭 | VFR01/02/03均有效独立关闭，VFR04仍open | 当前129 JSON及第5节 | 证据不足：范围内违规未闭合 | 后续门禁未开始不循环阻断本阶段，但无Verification通过就不进入Validation |
+
+其他127条当前判定沿上节完整版本映射，不重复大型套件/API；VFR04源不是414新增Framework条件（对两个无正式carrier场景false），而是本轮base timestamp接入原native用户合并遗漏，在全范围主动反证中发现。
+
+## 4. 核心目标及验证方法审查
+
+已独立读两个raw请求并重算精确marker，不能依实现者结论或passed count；旧marker1/new0均成立，原字段/sidecar/UID witness与静态控制流相互支持。源六product file逐一hash对414commit，实际观察符合资格。规格§4.3 localoff明确保base contract；§5.6无global enabled前提、没有timestamp开关。aux区别至关重要：stamp_fresh_turn_input会给所有非Trusted run_conversation输入创建Fresh type，delegate_tool_child_run与background_review也会提交plain内部任务；因此Fresh类型只证native fresh staging，并不单独证明genuine用户Main资格。
+
+## 5. 发现、整改优先级与范围外项
+
+| 问题编号 | 对应条款/代码位置 | 触发路径与事实 | 影响及阻断理由 | 建议修复与关闭证据 | 当前状态 |
+|---|---|---|---|---|---|
+| VFR04（P1） | AF105／原native user merge清sidecar保旧Fresh；turn_context actualbuilder | 两genuine human直接相邻，actualMain下一输入marker0；用户正文看似Framework亦同样发生 | 模型获得错误入场时间，timestamp base与replay精确bytes失效，范围内阻断 | 同Turn资格真正重算后按既有Main事实与不可纯正文伪造Fresh witness保原live边界；actual globalon/localoff/globaloff、warm/cold、paste tags、原api侧bytes/两UID/两stamp各1/真实下一Idle freeze；普通dict及实际aux entry不变 | 已确认，root提案评审已接收方向；尚未有修复commit |
+
+无新增范围外发现。
+
+## 6. 修复与独立复审
+
+VFR04研讨链：原AF105全用户entry要求 → 关闭VFR03时反证ordinary user相邻 → root安排原两actual-native-off测试窄观察，实际旧1/new0 → 独立raw/source核验确认违规 → root初提Fresh witness两侧保护 → Verification认可保原entry bytes方向但指出Fresh也会在内部aux普通task staging创建 → root细化资格仅复用既有本Turn_secretary_main_read_eligible=true并具Fresh type，Framework shape保护仍独立 → Verification接受该资格收敛，不新增IO/业务gate/state/Clock/schema。
+
+资格依据：apply_main_read_surface的main=is_main_conversation_agent既有排side/parent/delegate/nonmain source，_secretary_main_read_eligible与global read enabled分开。本Turn真正顺序是turn_context:1113 staging→1143 apply_main_read_surface→prepare repair；必须在repair前已重算资格，不要求surface一定早于staging。root提案复用repair已有agent，只有user pass拿optional keyword，其他pass与直接调用保持原行为；API副本归一不变。必要证据不能靠手造eligible flag：真实Main globaloff资格仍true，actual delegate/background entrada应false，即便具有Fresh仍原merge；Noting内部Trusted transition不stamp，既有Frame冷off仍保护。此项为明确base contract与不启用原生边界的既有规格接线修复，非产品范围更改/例外放宽。
+
+当前尚无该修复版本，不能把评审方案写关闭；等root冻结实现版本后按实际影响复审原129、VFR04与新边界。交付应显眼说明VFR03 Framework逻辑行保护与VFR04真实输入base timestamp Main资格，不能只埋在子报告。

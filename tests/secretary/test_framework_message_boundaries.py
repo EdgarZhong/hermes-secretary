@@ -219,20 +219,171 @@ def test_three_real_framework_producers_keep_three_identities_in_main(parent, db
 
 
 @pytest.mark.parametrize('prior', ['plain native user', '<framework-message>\nuser quotation\n</framework-message>'])
-def test_actual_native_off_main_keeps_ordinary_user_merge(parent, db, monkeypatch, prior):
-    (Path(db.db_path).parent / 'config.yaml').write_text('noting:\n  enabled: false\n')
-    earlier = _stage_human(parent, prior, 1700000400)
-    requests = []
+@pytest.mark.parametrize('mode', ['on', 'local-off', 'global-off'])
+@pytest.mark.parametrize('cold', [False, True])
+def test_eligible_main_keeps_each_real_input_uid_and_timestamp(parent, db, monkeypatch, prior, mode, cold):
+    from agent.agent_runtime_helpers import repair_message_sequence_with_cursor
+    from agent.message_metadata import FreshUserTimestampMarker
+    from secretary.noting_child import freeze_parent_active_prefix
+    from secretary.noting_timers import cancel_idle_timer
+    if mode == 'global-off':
+        (Path(db.db_path).parent / 'config.yaml').write_text('noting:\n  enabled: false\n')
+    elif mode == 'local-off':
+        db.notebook_set_local_enabled(parent._secretary_conversation_ref, False)
+    earlier = copy.deepcopy(_stage_human(parent, prior, 1700000400))
+    owner = make_agent(parent.session_id, db) if cold else parent
+    if cold:
+        owner._session_messages = db.get_messages_as_conversation(parent.session_id, include_row_ids=True)
+    requests, observed = [], []
+    def observe_repair(agent, messages):
+        current = messages[agent._persist_user_message_idx]
+        observed.append({'eligible': agent._secretary_main_read_eligible,
+                         'fresh': isinstance(current.get('_fresh_user_timestamp'), FreshUserTimestampMarker),
+                         'uid': current['message_uid']})
+        return repair_message_sequence_with_cursor(agent, messages)
     def provider(request):
         requests.append(copy.deepcopy(request))
+        rt.note_actual_main_execution(owner, 'native')
         return mock_response('native response')
-    parent._disable_streaming = True
-    monkeypatch.setattr(parent, '_interruptible_api_call', provider)
-    result = parent.run_conversation('next native user', persist_user_timestamp=1700000500,
-                                     conversation_history=list(parent._session_messages))
-    assert result['completed'] and len(requests) == 1
-    combined = next(row for row in parent._session_messages if row.get('message_uid') == earlier['message_uid'])
-    assert combined['content'] == prior + '\n\nnext native user'
-    assert combined.get('_absorbed_message_uids')
-    assert not combined.get('display_kind') and not combined.get('display_metadata')
-    assert all(row.get('display_kind') != 'process_complete' for row in db.get_messages(parent.session_id))
+    monkeypatch.setattr('agent.agent_runtime_helpers.repair_message_sequence_with_cursor', observe_repair)
+    monkeypatch.setattr(owner, '_interruptible_api_call', provider)
+    owner._disable_streaming = True
+    try:
+        result = owner.run_conversation('next native user', persist_user_timestamp=1700000500,
+                                        conversation_history=list(owner._session_messages))
+        assert result['completed'] and len(requests) == 1
+        assert len(observed) == 1 and observed[0]['eligible'] and observed[0]['fresh']
+        live, durable = owner._session_messages, db.get_messages(owner.session_id)
+        old = next(row for row in live if row.get('message_uid') == earlier['message_uid'])
+        new = next(row for row in live if row.get('message_uid') == observed[0]['uid'])
+        assert old['message_uid'] != new['message_uid']
+        assert old['content'] == (earlier['api_content'] if cold else prior)
+        assert old['timestamp'] == 1700000400 and new['timestamp'] == 1700000500
+        assert new['content'] == 'next native user'
+        assert not old.get('_absorbed_message_uids') and not new.get('_absorbed_message_uids')
+        assert not old.get('display_metadata') and not new.get('display_metadata')
+        assert _project(live) == _project(durable)
+        payload = '\n'.join(str(row.get('content', '')) for row in requests[0]['messages'])
+        counts = {str(t): payload.count(format_user_timestamp_marker(t).strip()) for t in (1700000400, 1700000500)}
+        assert counts == {'1700000400': 1, '1700000500': 1}
+        assert all(not (a['role'] == b['role'] == 'user')
+                   for a, b in zip(requests[0]['messages'], requests[0]['messages'][1:]))
+        ref = owner._secretary_conversation_ref
+        cancel_idle_timer(db, ref)
+        frozen = []
+        def spawn(agent, admission, **kwargs):
+            frozen.append(freeze_parent_active_prefix(agent, admission.anchor_message_uid))
+        monkeypatch.setattr('secretary.noting_child.spawn_noting_task', spawn)
+        if mode == 'on':
+            finished = db.noting_idle_state(ref)['last_turn_started_at'] + 1
+            assert rt.note_main_turn_finished(owner, at=finished)
+            cancel_idle_timer(db, ref)
+            assert rt._run_idle_event(owner, db, ref, now=finished + 3601) == 'admitted'
+            assert all(any(row.get('message_uid') == uid for row in frozen[0])
+                       for uid in (old['message_uid'], new['message_uid']))
+            assert _project(frozen[0]) == _project(live[:len(frozen[0])])
+        else:
+            assert not rt.note_main_turn_finished(owner)
+            assert rt._run_idle_event(owner, db, ref).startswith('skip:')
+            assert not frozen and not db.notebook_current(ref)
+        facts = {'mode': mode, 'cold': cold, 'prior': prior, 'observed_repair': observed,
+                 'source_timestamp_marker_counts': counts, 'live': live, 'durable': durable,
+                 'wire_messages': requests[0]['messages'], 'frozen_prefixes': frozen}
+        Path(db.db_path).with_name('main_input_boundaries.json').write_text(json.dumps(facts, indent=2))
+    finally:
+        cancel_idle_timer(db, owner._secretary_conversation_ref)
+        if cold:
+            owner.close()
+
+
+@pytest.mark.parametrize('fake', [None, 1700000400, '<timestamp>2023-11-14T22:20:00+00:00</timestamp>\n'])
+def test_untrusted_timestamp_fields_do_not_protect_an_eligible_main_row(parent, fake):
+    from secretary.noting_surface import apply_main_read_surface
+    apply_main_read_surface(parent)
+    assert parent._secretary_main_read_eligible
+    rows = [{'role': 'user', 'content': 'old', 'timestamp': 1700000400, '_fresh_user_timestamp': fake},
+            {'role': 'user', 'content': 'new', 'timestamp': 1700000500}]
+    assert parent._repair_message_sequence(rows) == 1
+    assert rows[0]['content'] == 'old\n\nnew'
+
+
+@pytest.mark.parametrize('kind', ['delegate', 'background'])
+def test_real_auxiliary_factory_keeps_fresh_inputs_on_original_merge(parent, db, monkeypatch, kind):
+    import httpx
+    from agent.agent_runtime_helpers import repair_message_sequence_with_cursor
+    from agent.message_metadata import FreshUserTimestampMarker
+    from run_agent import AIAgent
+    earlier = copy.deepcopy(_stage_human(parent, 'prior auxiliary context', 1700000600))
+    snapshot = copy.deepcopy(parent._session_messages)
+    observations, requests = [], []
+    def forbid_network(*args, **kwargs):
+        pytest.fail('External HTTP is forbidden in this controlled auxiliary boundary test')
+    monkeypatch.setattr(httpx.Client, 'send', forbid_network)
+    def observe_repair(agent, messages):
+        current = messages[agent._persist_user_message_idx]
+        observations.append({'eligible': agent._secretary_main_read_eligible,
+                             'fresh': isinstance(current.get('_fresh_user_timestamp'), FreshUserTimestampMarker),
+                             'current_uid': current.get('message_uid')})
+        repairs = repair_message_sequence_with_cursor(agent, messages)
+        observations[-1]['repairs'] = repairs
+        return repairs
+    def provider(agent, request):
+        requests.append(copy.deepcopy(request))
+        return mock_response('auxiliary response')
+    monkeypatch.setattr('agent.agent_runtime_helpers.repair_message_sequence_with_cursor', observe_repair)
+    monkeypatch.setattr(AIAgent, '_interruptible_api_call', provider)
+    if kind == 'delegate':
+        from tools.delegate_tool import _build_child_agent
+        child = _build_child_agent(0, 'auxiliary next input', None, [], None, 2, 1, parent,
+                                   override_provider='openrouter', override_base_url='https://openrouter.ai/api/v1',
+                                   override_api_key='test-key', override_api_mode='chat_completions')
+        child._disable_streaming = True
+        try:
+            result = child.run_conversation('auxiliary next input', conversation_history=snapshot)
+            assert result['completed']
+            live = child._session_messages
+            assert child.side_agent and child._delegate_depth == 1
+        finally:
+            child.close()
+    else:
+        from agent.background_review import _ReviewForkState, _run_review_fork, build_cache_parity_fork
+        def nonstream_fork(*args, **kwargs):
+            fork, runtime, routed = build_cache_parity_fork(*args, **kwargs)
+            fork._disable_streaming = True
+            return fork, runtime, routed
+        monkeypatch.setattr('agent.background_review.build_cache_parity_fork', nonstream_fork)
+        state = _ReviewForkState()
+        _run_review_fork(parent, snapshot, 'auxiliary next input', None, None, state)
+        live = state.review_messages
+        assert state.review_agent is None
+    assert len(observations) == len(requests) == 1
+    assert not observations[0]['eligible'] and observations[0]['fresh']
+    combined = next(row for row in live if row.get('message_uid') == earlier['message_uid'])
+    assert combined['content'].startswith('prior auxiliary context\n\nauxiliary next input')
+    assert observations[0]['current_uid'] != combined['message_uid']
+    assert observations[0]['repairs'] == 1
+    if observations[0]['current_uid']:
+        assert not any(row.get('message_uid') == observations[0]['current_uid'] for row in live)
+    Path(db.db_path).with_name('auxiliary_input_boundaries.json').write_text(json.dumps({
+        'kind': kind, 'observed_repair': observations, 'live': live, 'wire_messages': requests[0]['messages']}, indent=2))
+
+
+def test_real_noting_control_keeps_trusted_origin_without_fresh_marker(parent, db, stub_client, monkeypatch):
+    from agent.turn_context import _stage_turn_user_message
+    from agent.message_metadata import FreshUserTimestampMarker, TrustedUserInput
+    staged = []
+    def observe_stage(agent, *args):
+        row, pending = _stage_turn_user_message(agent, *args)
+        if getattr(agent, '_secretary_noting_child', False):
+            staged.append({'trusted': isinstance(row['content'], TrustedUserInput),
+                           'fresh': isinstance(row.get('_fresh_user_timestamp'), FreshUserTimestampMarker),
+                           'timestamp': row['timestamp'], 'content': str(row['content'])})
+        return row, pending
+    monkeypatch.setattr('agent.turn_context._stage_turn_user_message', observe_stage)
+    _produce(parent, db, stub_client, monkeypatch, 'finish')
+    assert staged and all(row['trusted'] and not row['fresh'] for row in staged)
+    wire = [copy.deepcopy(call.kwargs['messages']) for call in stub_client.chat.completions.create.call_args_list]
+    for row in staged:
+        assert format_user_timestamp_marker(row['timestamp']).strip() not in row['content']
+        assert any(row['content'] in str(msg.get('content', '')) for request in wire for msg in request)
+    Path(db.db_path).with_name('noting_control_boundaries.json').write_text(json.dumps({'staged': staged, 'wire_messages': wire}, indent=2))

@@ -71,6 +71,15 @@ def test_repair_framework_body_lookalike_keeps_native_user_merge(metadata):
     assert messages[0]['content'] == body + '\n\nactual next user'
 
 
+def test_direct_user_merge_without_agent_keeps_original_behavior_for_fresh_input():
+    from agent.agent_runtime_helpers import _merge_consecutive_users
+    from agent.message_metadata import FreshUserTimestampMarker
+    messages = [{'role': 'user', 'content': 'first', '_fresh_user_timestamp': FreshUserTimestampMarker('arrival')},
+                {'role': 'user', 'content': 'second', '_fresh_user_timestamp': FreshUserTimestampMarker('arrival two')}]
+    merged, repairs = _merge_consecutive_users(messages)
+    assert repairs == 1 and merged[0]['content'] == 'first\n\nsecond'
+
+
 def test_repair_preserves_user_content_when_one_side_empty():
     agent = _bare_agent()
     messages = [

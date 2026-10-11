@@ -435,6 +435,11 @@ def is_framework_message(row: Mapping[str, Any]) -> bool:
     return isinstance(body, str) and row.get("content") == build_framework_message_wrapper(body)
 
 
+def is_main_user_input(row: Mapping[str, Any], *, agent: Any = None) -> bool:
+    """An eligible Main's original arrival witness owns a distinct live input boundary."""
+    return bool(getattr(agent, "_secretary_main_read_eligible", False)) and isinstance(row.get("_fresh_user_timestamp"), FreshUserTimestampMarker)
+
+
 class TrustedUserInput(str):
     """Internal source provenance for a freshly built synthetic carrier; never inferred from text."""
 

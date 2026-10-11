@@ -20,7 +20,7 @@ from agent.message_sanitization import (
     _FULL_ARGS_LOG_BOUND, coalesce_tool_call_id, coerce_tool_name, tool_call_id_variants, tool_result_id_variants
 )
 from agent.message_metadata import (
-    TOOL_CALL_UIDS, merge_tool_call_uids, per_occurrence_tool_call_uids, record_absorbed_message, is_framework_message)
+    TOOL_CALL_UIDS, merge_tool_call_uids, per_occurrence_tool_call_uids, record_absorbed_message, is_framework_message, is_main_user_input)
 from agent.prompt_builder import STEER_DISPLAY_KIND, steer_user_row
 from agent.tool_dispatch_helpers import _trajectory_normalize_msg, make_tool_result_message
 from agent.think_scrubber import THINK_TAG_NAMES
@@ -659,7 +659,7 @@ def _prune_unanswered_tool_calls(messages: List[Dict]) -> Tuple[List[Dict], int]
     return pruned, repairs
 
 
-def _merge_consecutive_users(messages: List[Dict]) -> Tuple[List[Dict], int]:
+def _merge_consecutive_users(messages: List[Dict], *, agent=None) -> Tuple[List[Dict], int]:
     """Pass 3: merge consecutive plain-text user messages (no user input lost)."""
     from agent.context_compressor import _DB_PERSISTED_MARKER, split_user_originated_turn
     from agent.conversation_compression_archive import MERGED_DURABLE_ROWS
@@ -681,7 +681,7 @@ def _merge_consecutive_users(messages: List[Dict]) -> Tuple[List[Dict], int]:
             and split_user_originated_turn(prev)[0] is None
             # A /steer row that ended the previous run is already persisted; merging the next
             # prompt into it would rewrite it in place and re-break replay parity.
-            and prev.get("display_kind") != STEER_DISPLAY_KIND and not (is_framework_message(prev) or is_framework_message(msg))
+            and prev.get("display_kind") != STEER_DISPLAY_KIND and not (is_framework_message(prev) or is_framework_message(msg) or is_main_user_input(prev, agent=agent) or is_main_user_input(msg, agent=agent))
             # Only merge plain-text content; leave multimodal (list or undecodable sentinel) content alone.
             and _plain_text(prev.get("content", "")) and _plain_text(msg.get("content", ""))
         ):
@@ -777,7 +777,7 @@ def repair_message_sequence(agent, messages: List[Dict]) -> int:
     repairs = 0
     current = messages
     for repair_pass in _SEQUENCE_REPAIR_PASSES:
-        current, made = repair_pass(current)
+        current, made = repair_pass(current, agent=agent) if repair_pass is _merge_consecutive_users else repair_pass(current)
         repairs += made
     if repairs > 0:
         # Rewrite in place so persistence/return value/DB flush see the repaired sequence.
