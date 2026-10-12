@@ -250,11 +250,11 @@ describe('capTranscriptHistory', () => {
 })
 
 describe('display.timestamps (#41531)', () => {
-  it('formats a Unix-seconds timestamp as [HH:MM] and rejects garbage', () => {
+  it('formats a Unix-seconds timestamp as an explicit UTC instant and rejects garbage', () => {
     const noon = new Date()
     noon.setHours(13, 5, 0, 0)
 
-    expect(fmtMsgTimestamp(noon.getTime() / 1000)).toBe('[13:05]')
+    expect(fmtMsgTimestamp(noon.getTime() / 1000)).toBe(`[${noon.toISOString()}]`)
     expect(fmtMsgTimestamp(undefined)).toBeNull()
     expect(fmtMsgTimestamp(0)).toBeNull()
     expect(fmtMsgTimestamp(Number.NaN)).toBeNull()

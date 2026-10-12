@@ -435,7 +435,12 @@ _CREATED_FIELDS = ("status", "workspace_kind", "workspace_path", "project_id")
 
 def _fields(obj: Any, names: tuple[str, ...]) -> dict[str, Any]:
     """``{name: getattr(obj, name)}``; every value None when ``obj`` is None."""
-    return {n: getattr(obj, n) if obj is not None else None for n in names}
+    from hermes_time import format_timestamp
+    values = {n: getattr(obj, n) if obj is not None else None for n in names}
+    for name in ("created_at", "started_at", "completed_at", "ended_at"):
+        if name in values:
+            values[name] = format_timestamp(values[name])
+    return values
 
 
 def _task_summary_dict(kb, conn, task) -> dict[str, Any]:

@@ -1,11 +1,6 @@
-import { fmtClock, fmtDayTime } from '@/lib/time'
+import { formatEpochTimestamp } from '@hermes/shared/format'
 
-const fmtTimelineClock = new Intl.DateTimeFormat(undefined, {
-  fractionalSecondDigits: 3,
-  hour: 'numeric',
-  minute: '2-digit',
-  second: '2-digit'
-})
+import { fmtClock, fmtDayTime } from '@/lib/time'
 
 const timelineDate = (seconds: number | undefined): Date | null => {
   if (typeof seconds !== 'number' || !Number.isFinite(seconds) || seconds <= 0) {
@@ -17,11 +12,11 @@ const timelineDate = (seconds: number | undefined): Date | null => {
   return Number.isNaN(date.getTime()) ? null : date
 }
 
-/** Millisecond-precise local clock for transcript activity boundaries. */
+/** Complete timestamp with an explicit UTC timezone for transcript activity boundaries. */
 export function formatTimelineTimestamp(seconds: number | undefined): string {
   const date = timelineDate(seconds)
 
-  return date ? fmtTimelineClock.format(date) : ''
+  return date ? formatEpochTimestamp(seconds!) : ''
 }
 
 export function formatTimelineRange(start: number | undefined, end: number | undefined): string {

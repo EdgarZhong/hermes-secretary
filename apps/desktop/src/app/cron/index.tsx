@@ -1,4 +1,5 @@
 import { createCronTriggerController, type CronTriggerController } from '@hermes/shared'
+import { formatEpochTimestamp } from '@hermes/shared/format'
 import { useStore } from '@nanostores/react'
 import { useQuery } from '@tanstack/react-query'
 import type * as React from 'react'
@@ -286,7 +287,7 @@ function formatTime(iso?: null | string): string {
     return iso
   }
 
-  return date.toLocaleString()
+  return iso
 }
 
 function matchesQuery(job: CronJob, q: string): boolean {
@@ -889,7 +890,7 @@ function formatRunTime(seconds?: null | number): string {
 
   const date = new Date(seconds * 1000)
 
-  return Number.isNaN(date.valueOf()) ? '—' : date.toLocaleString()
+  return Number.isNaN(date.valueOf()) ? '—' : formatEpochTimestamp(seconds)
 }
 
 // Script-only (no_agent) jobs have no agent sessions; the runs endpoint

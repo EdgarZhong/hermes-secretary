@@ -101,20 +101,22 @@ def test_global_off_hooks_and_admissions_are_inert(db):
     assert rt.idle_candidates(db, now=10_000.0) == []
 
 
-def test_local_off_is_inert_and_turning_it_on_resumes_participation(db):
+def test_local_off_deadline_is_terminal_but_main_timer_lifecycle_continues(db):
     make(db, "s")
     add(db, "s", "one turn", "m1")
     ref = ref_of(db, "s")
     agent = _agent(db, "s")
     db.notebook_set_local_enabled(ref, False)
 
-    assert rt.note_main_turn_finished(agent, at=1500.0) is False
-    assert db.noting_idle_state(ref) is None
+    assert rt.note_main_turn_finished(agent, at=1500.0) is True
+    assert db.noting_idle_state(ref)['due_at'] == 2000.0
     assert rt.try_admit_idle(db, ref, now=10_000.0).reason == "local_disabled"
+    assert db.noting_idle_state(ref) is None
     assert rt.try_admit_force(db, ref, _measurement(10_000_000)).reason == "local_disabled"
     assert _admission_count(db) == 0
 
     db.notebook_set_local_enabled(ref, True)
+    assert rt.try_admit_idle(db, ref, now=10_000.0).reason == "not_idle"
     assert rt.note_main_turn_finished(agent, at=1500.0) is True
     assert db.noting_idle_state(ref)["last_turn_finished_at"] == 1500.0
 
@@ -309,7 +311,7 @@ def test_trigger_failures_and_write_failures_fail_safe(db, monkeypatch):
     def _boom(*args, **kwargs):
         raise RuntimeError("db is gone")
 
-    monkeypatch.setattr(db, "noting_idle_state", _boom)
+    monkeypatch.setattr(db, "noting_idle_state_conn", _boom)
     idle = rt.try_admit_idle(db, ref, now=2000.0)
     assert (idle.action, idle.reason) == ("skip", "trigger_error")
     monkeypatch.setattr(db, "noting_force_snapshot_since_boundary", _boom)

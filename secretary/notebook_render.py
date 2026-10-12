@@ -4,21 +4,38 @@ from copy import deepcopy
 import json
 
 from secretary.notebook_model import SECTIONS
+from hermes_time import format_timestamp
 
 
-def show_notebook(snapshot: dict | None) -> dict | None:
+def readable_notebook_entry(entry):
+    """Copy an entry for presentation; one-shot display uses its canonical instant."""
+    projected = deepcopy(entry)
+    intent = projected.get("schedule")
+    if (intent and intent["canonical_schedule"].get("kind") == "once"
+            and intent["canonical_schedule"].get("display", "").startswith("once at ")):
+        schedule = intent["canonical_schedule"]
+        schedule["display"] = "once at " + format_timestamp(schedule["run_at"])
+    return projected
+
+
+def readable_notebook_state(state):
+    return {section: [readable_notebook_entry(entry) for entry in state[section]
+                     if not entry.get("archived")] for section in SECTIONS}
+
+
+def show_notebook(snapshot: dict | None, *, profile_home=None) -> dict | None:
     """Project committed Notebook content; internal Snapshot fields never enter the AI view."""
     if snapshot is None:
         return None
     return {
-        "last_update_time": snapshot["created_at"],
+        "last_update_time": format_timestamp(snapshot["created_at"], profile_home=profile_home),
         "anchor_message_uid": snapshot["anchor_message_uid"],
-        **{section: [deepcopy(entry) for entry in snapshot["payload"][section]
-                     if not entry.get("archived")] for section in SECTIONS},
+        **readable_notebook_state(snapshot["payload"]),
     }
 
 
 def _render_entry(entry: dict) -> list[str]:
+    entry = readable_notebook_entry(entry)
     status = entry.get("status", "candidate")
     archived = " (archived)" if entry["archived"] else ""
     lines = [f"- {entry['type']} [{status}]{archived}"]
@@ -37,11 +54,11 @@ def _render_entry(entry: dict) -> list[str]:
     return lines
 
 
-def render_notebook(snapshot: dict | None) -> str:
+def render_notebook(snapshot: dict | None, *, profile_home=None) -> str:
     """Normal slash text; caller owns gates and ordinary transcript persistence."""
     if snapshot is None:
         return "This Conversation has no Notebook Snapshot yet."
-    lines = ["Notebook", f"Created at: {snapshot['created_at']}"]
+    lines = ["Notebook", f"Created at: {format_timestamp(snapshot['created_at'], profile_home=profile_home)}"]
     for section in SECTIONS:
         lines.extend(["", section])
         entries = [entry for entry in snapshot["payload"][section] if not entry.get("archived")]

@@ -7,16 +7,6 @@ import { $displayTimestamps } from '@/store/display-timestamps'
 
 import { formatTimelineRange } from './timestamp'
 
-const preciseDateTime = new Intl.DateTimeFormat(undefined, {
-  day: 'numeric',
-  fractionalSecondDigits: 3,
-  hour: 'numeric',
-  minute: '2-digit',
-  month: 'short',
-  second: '2-digit',
-  year: 'numeric'
-})
-
 const validUnixSeconds = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value) && value > 0
 
@@ -51,9 +41,7 @@ export const TimelineTimestamp: FC<{
   const startLabel = formatTimelineRange(timestamp, undefined)
   const completedLabel = validCompletedAt === undefined ? '' : formatTimelineRange(validCompletedAt, undefined)
 
-  const title = completed
-    ? `${preciseDateTime.format(started)} → ${preciseDateTime.format(completed)}`
-    : preciseDateTime.format(started)
+  const title = validCompletedAt === undefined ? startLabel : `${startLabel} → ${completedLabel}`
 
   return (
     <span
@@ -65,11 +53,11 @@ export const TimelineTimestamp: FC<{
       data-slot="timeline-timestamp"
       title={title}
     >
-      <time dateTime={started.toISOString()}>{startLabel}</time>
+      <time dateTime={startLabel}>{startLabel}</time>
       {completed && validCompletedAt !== undefined && (
         <>
           {' → '}
-          <time dateTime={completed.toISOString()}>{completedLabel}</time>
+          <time dateTime={completedLabel}>{completedLabel}</time>
         </>
       )}
     </span>

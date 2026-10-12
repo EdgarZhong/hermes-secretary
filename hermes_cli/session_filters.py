@@ -54,7 +54,8 @@ def parse_point_in_time(value: str, flag: str) -> float:
 
 def format_epoch(ts: Optional[float]) -> str:
     """Render an epoch timestamp as a short local-time string; ``-`` when unset or corrupt."""
-    return "-" if (ts := coerce_epoch(ts)) is None else datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M")
+    from hermes_time import format_timestamp
+    return "-" if (ts := coerce_epoch(ts)) is None else format_timestamp(ts)
 
 
 # (filter key, argparse attr, CLI flag, description template) for the four epoch bounds.

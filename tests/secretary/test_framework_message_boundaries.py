@@ -283,7 +283,7 @@ def test_eligible_main_keeps_each_real_input_uid_and_timestamp(parent, db, monke
                        for uid in (old['message_uid'], new['message_uid']))
             assert _project(frozen[0]) == _project(live[:len(frozen[0])])
         else:
-            assert not rt.note_main_turn_finished(owner)
+            assert rt.note_main_turn_finished(owner) is (mode == 'local-off')
             assert rt._run_idle_event(owner, db, ref).startswith('skip:')
             assert not frozen and not db.notebook_current(ref)
         facts = {'mode': mode, 'cold': cold, 'prior': prior, 'observed_repair': observed,

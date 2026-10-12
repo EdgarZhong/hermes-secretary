@@ -198,7 +198,7 @@ describe('limit reset (#98852)', () => {
     expect(surface?.resetsAt).toBe(resetsAt)
 
     const at = new Date(resetsAt * 1000)
-    const clock = `${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`
+    const clock = at.toISOString()
 
     expect(formatLimitReset(surface?.resetsAt, now)).toBe(`${clock} (in 1h 05m)`)
     expect(formatErrorDiagnostics({ errorText: 'x', surface })).toContain('resets_at: ')

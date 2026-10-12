@@ -1,3 +1,5 @@
+import { formatEpochTimestamp } from '@hermes/shared/format'
+
 import type {
   BrowserManageResponse,
   CommandsCatalogResponse,
@@ -388,7 +390,7 @@ export const opsCommands: SlashCommand[] = [
               }
 
               const rows: [string, string][] = entries.map(e => {
-                const ts = e.finished_at ? new Date(e.finished_at * 1000).toLocaleString() : '?'
+                const ts = e.finished_at ? formatEpochTimestamp(e.finished_at) : '?'
                 const label = e.label || t('slashCmd.ops.replay.subagentsLabel', String(e.count))
 
                 return [`${ts} · ${e.count}×`, `${label}\n  ${e.path}`]

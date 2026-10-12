@@ -144,7 +144,8 @@ def _preamble(evt: dict, title: str, intro: str, completed_at: float, *, with_go
     lines = [title, intro, ""]
     dispatched_at = evt.get("dispatched_at")
     if isinstance(dispatched_at, (int, float)):
-        ts = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(dispatched_at))
+        from hermes_time import format_timestamp
+        ts = format_timestamp(dispatched_at)
         lines.append(f"Dispatched: {ts} ({_format_age(completed_at - dispatched_at)} ago)")
     if with_goal:
         lines.append(f"Original goal: {evt.get('goal', '') or ''}")

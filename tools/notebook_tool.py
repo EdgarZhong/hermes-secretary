@@ -5,6 +5,7 @@ participation. The handler fails closed without it and returns Notebook content 
 """
 
 import json
+from pathlib import Path
 
 from secretary.notebook_render import show_notebook
 from tools.registry import registry
@@ -29,7 +30,8 @@ def notebook_show(args=None, *, db=None, conversation_ref=None, effective_enable
         enabled = effective_enabled is True
         if not enabled:
             raise ValueError("Notebook is not enabled for this Conversation")
-        return json.dumps({"success": True, "notebook": show_notebook(db.notebook_current(conversation_ref))},
+        return json.dumps({"success": True, "notebook": show_notebook(db.notebook_current(conversation_ref),
+                          profile_home=Path(db.db_path).parent)},
                           ensure_ascii=False)
     except (ValueError, TypeError) as exc:
         return json.dumps({"success": False, "error": str(exc)}, ensure_ascii=False)

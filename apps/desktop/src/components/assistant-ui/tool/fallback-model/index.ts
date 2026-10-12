@@ -916,12 +916,7 @@ function formatCronTime(iso: string): string {
     return iso
   }
 
-  return new Date(ts).toLocaleString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
+  return iso
 }
 
 function cronjobSubtitle(argsRecord: Record<string, unknown>, resultRecord: Record<string, unknown>): string {

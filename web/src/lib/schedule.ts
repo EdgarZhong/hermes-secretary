@@ -1,3 +1,4 @@
+import { readableTimestamp } from "./utils";
 /**
  * Schedule builder helpers for the cron page.
  *
@@ -349,7 +350,7 @@ export function describeSchedule(
   if (schedule.kind === "once" && schedule.run_at) {
     return strings.onceAt.replace(
       "{time}",
-      formatIsoLocal(schedule.run_at, false),
+      formatIsoLocal(schedule.run_at),
     );
   }
 
@@ -427,21 +428,9 @@ function pad2(n: number): string {
   return n < 10 ? `0${n}` : String(n);
 }
 
-/** Format an ISO date for inline display. Drops the seconds + TZ
- * suffix so the cron list stays compact. Falls back to the raw string
- * if Date parsing fails. */
-function formatIsoLocal(iso: string, includeSeconds: boolean): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  const yyyy = d.getFullYear();
-  const mm = pad2(d.getMonth() + 1);
-  const dd = pad2(d.getDate());
-  const hh = pad2(d.getHours());
-  const mi = pad2(d.getMinutes());
-  if (includeSeconds) {
-    return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${pad2(d.getSeconds())}`;
-  }
-  return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
+/** Absolute schedule instants retain their source timezone. */
+function formatIsoLocal(iso: string): string {
+  return readableTimestamp(iso);
 }
 
 /** Convenience: build an English ordinal suffix ("1st", "2nd", "23rd").

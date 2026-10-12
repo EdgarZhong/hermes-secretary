@@ -46,8 +46,8 @@ def _mtime_or_none(resolved: str) -> Optional[float]:
 
 
 def _fmt_ts(ts: float) -> str:
-    # Short wall-clock for warnings; avoids datetime formatting on the hot path.
-    return time.strftime("%H:%M:%S", time.localtime(ts))
+    from hermes_time import format_timestamp
+    return format_timestamp(ts)
 
 
 def _evict_oldest(container, cap: int) -> None:

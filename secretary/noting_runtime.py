@@ -6,9 +6,9 @@ module owns the policy-facing half — gate, anchor freeze, durable admission an
 handle a Noting child is spawned from. Host glue arms lifecycle timers and dispatches the existing
 child runtime; it does not own the Hermes loop or introduce a scheduler.
 
-Hook contract for the host wiring (02 §6.6): every hook returns immediately (no thread, no
-scheduler, no DB write) unless the Turn belongs to a real main Conversation AND global + local
-Noting are both enabled. Main start cancels and Main finish arms a real daemon timer;
+Hook contract for the host wiring (02 §6.6): only eligible Main Turns are observed. Global
+feature enable controls timer initialization; local participation is decided only at the
+deadline event. Main start cancels and Main finish arms a real daemon timer;
 host ticks only attach/recover missed deadlines. Force admission is
 ``try_admit_force`` called from a Hermes measurement seam with a ``ContextMeasurement``. Every
 trigger entry point fails safe: a DB or evaluation failure logs and skips instead of raising
@@ -118,6 +118,16 @@ def noting_trigger_gate(
         return False, settings.configuration_failure or "global_disabled"
     if not noting_local_enabled(db, conversation_ref):
         return False, "local_disabled"
+    failure = runtime_configuration_failure(db, conversation_ref)
+    if failure:
+        logger.warning("%s", configuration_guidance(failure))
+    return (False, failure) if failure else (True, "")
+
+
+def noting_lifecycle_gate(db, conversation_ref, *, settings):
+    """Original global/capability initialization safety; never read local participation."""
+    if not settings.enabled:
+        return False, settings.configuration_failure or "global_disabled"
     failure = runtime_configuration_failure(db, conversation_ref)
     if failure:
         logger.warning("%s", configuration_guidance(failure))
@@ -319,14 +329,22 @@ def _record_main_turn_event(agent: Any, at: Optional[float], *, started: bool) -
         return False
     bind_main_runtime(agent)
     from secretary.noting_timers import arm_idle_timer, cancel_idle_timer, conversation_timer_lock
+    from secretary.framework_messages import mark_framework_turn
     try:
         with conversation_timer_lock(db, ref):
-            settings = settings_for_db(db)
-            if not noting_trigger_gate(db, ref, settings=settings)[0]:
-                cancel_idle_timer(db, ref)
-                return False
             when = time.time() if at is None else float(at)
+            if started:
+                mark_framework_turn(agent, running=True)
+            else:
+                if (getattr(agent, "_secretary_main_turn_running", False)
+                        or getattr(agent, "_secretary_framework_messages", None)):
+                    mark_framework_turn(agent, running=False)
             cancel_idle_timer(db, ref)
+            settings = settings_for_db(db)
+            if not noting_lifecycle_gate(db, ref, settings=settings)[0]:
+                if started and db.noting_idle_state(ref) is not None:
+                    db.noting_idle_turn_started(ref, when)  # Cancel an existing period, never arm off.
+                return False
             if started:
                 db.noting_idle_turn_started(ref, when)
             else:
@@ -341,11 +359,7 @@ def _record_main_turn_event(agent: Any, at: Optional[float], *, started: bool) -
 
 def note_main_turn_started(agent: Any, *, at: Optional[float] = None) -> bool:
     """Record a real main Turn start, resetting the Idle timer (02 §4.5). Returns True when recorded."""
-    recorded = _record_main_turn_event(agent, at, started=True)
-    if recorded:
-        from secretary.framework_messages import mark_framework_turn
-        mark_framework_turn(agent, running=True)
-    return recorded
+    return _record_main_turn_event(agent, at, started=True)
 
 
 def note_main_turn_finished(agent: Any, *, at: Optional[float] = None) -> bool:
@@ -376,7 +390,7 @@ def _freeze_and_admit(db: Any, conversation_ref: str, *, kind: str, task_profile
     if not callable(getattr(db, "noting_admit_conn", None)):
         return _skip("noting_schema_unavailable")
     def admit(conn):
-        if not db.notebook_local_enabled_conn(conn, conversation_ref):
+        if kind != "idle" and not db.notebook_local_enabled_conn(conn, conversation_ref):
             return _skip("local_disabled")
         identity = frozen_identity or db.get_foreground_anchor_conn(conn, conversation_ref)
         if identity is None:
@@ -464,21 +478,20 @@ def _idle_decision(
     now: Optional[float],
     execution_source: Optional[str],
     measurement_reader: Optional[Callable[[], Optional[ContextMeasurement]]] = None,
+    expected_period=None,
 ) -> NotingDecision:
     settings = settings_for_db(db) if settings is None else settings
-    enabled, reason = noting_trigger_gate(db, conversation_ref, settings=settings)
+    now = time.time() if now is None else now
+    event = db.noting_idle_claim_event(
+        conversation_ref, now=now, delay_seconds=settings.idle_delay_seconds,
+        feature_enabled=settings.enabled, expected_period=expected_period,
+    )
+    if event != "trigger":
+        reason = (settings.configuration_failure or "global_disabled") if not settings.enabled else ""
+        return _skip(reason or event)
+    enabled, reason = noting_lifecycle_gate(db, conversation_ref, settings=settings)
     if not enabled:
         return _skip(reason)
-    now = time.time() if now is None else now
-    state = db.noting_idle_state(conversation_ref) or {}
-    deadline = state.get("due_at")
-    finished, started = state.get("last_turn_finished_at"), state.get("last_turn_started_at")
-    if (finished is None or (started is not None and started >= finished)
-            or (deadline if deadline is not None else finished + settings.idle_delay_seconds) > now):
-        return _skip("not_idle")
-    if not db.noting_idle_claim_trigger(conversation_ref, now=now,
-                                       delay_seconds=settings.idle_delay_seconds):
-        return _skip("idle_trigger_produced")
     # D01: Idle itself is now due. Reject a confirmed External executor before
     # profile selection can request parent compaction or any freeze/admission side effect.
     if execution_source == "external":
@@ -516,6 +529,7 @@ def try_admit_idle(
     now: Optional[float] = None,
     execution_source: Optional[str] = None,
     measurement_reader: Optional[Callable[[], Optional[ContextMeasurement]]] = None,
+    expected_period=None,
 ) -> NotingDecision:
     """Idle admission gating (02 §4.5, §4.8, §4.10) from the durable per-Conversation timer.
 
@@ -530,7 +544,7 @@ def try_admit_idle(
     return _guarded(conversation_ref, lambda: _idle_decision(
         db, conversation_ref, measurement=measurement, settings=settings, now=now,
         execution_source=execution_source,
-        measurement_reader=measurement_reader,
+        measurement_reader=measurement_reader, expected_period=expected_period,
     ))
 
 
@@ -606,15 +620,28 @@ def _owns_idle_runtime(parent, db, conversation_ref):
 
 
 def _run_idle_event(parent: Any, db: Any, conversation_ref: str, *,
-                    now: Optional[float] = None) -> str:
+                    now: Optional[float] = None, expected_period=None) -> str:
     """Run a real timer event or one missed-deadline catch-up through §4.8.
 
     Re-reads the parent's resolved usage figures for the §4.10 profile decision and spawns the
     child off-thread on admit; never raises into the poller.
     """
+    from secretary.noting_timers import conversation_timer_lock
+    try:
+        with conversation_timer_lock(db, conversation_ref):
+            return _run_idle_event_locked(parent, db, conversation_ref, now=now, expected_period=expected_period)
+    except Exception:
+        logger.warning("Noting Idle timer ownership failed for %s", conversation_ref, exc_info=True)
+        return "error"
+
+
+def _run_idle_event_locked(parent, db, conversation_ref, *, now, expected_period):
+    from secretary.noting_timers import main_turn_running
     try:
         if not _owns_idle_runtime(parent, db, conversation_ref):
             return "skip:not_main_owner"
+        if main_turn_running(parent):
+            return "skip:not_idle"
         bind_main_runtime(parent)
         measurement = None
         def read_measurement():
@@ -630,6 +657,7 @@ def _run_idle_event(parent: Any, db: Any, conversation_ref: str, *,
         decision = try_admit_idle(
             db, conversation_ref, measurement_reader=read_measurement, now=now,
             execution_source=_persisted_main_execution(parent),
+            expected_period=expected_period,
         )
         if decision.reason == "external_main_execution":
             from secretary.framework_messages import publish_external_execution_notice

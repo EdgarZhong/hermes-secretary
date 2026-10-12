@@ -118,18 +118,20 @@ def prepare_pending_reminders(agent: Any, messages: list) -> int:
     text = _messages_text(messages)
     covered.update(row["reminder_id"] for row in rows if row.get("carrier_content") and row["carrier_content"] in text)
     fresh = [row for row in rows if row["reminder_id"] not in covered]
-    return _carrier_tokens([_batch_carrier(fresh)]) if fresh else 0
+    return _carrier_tokens([_batch_carrier(fresh, db=db)]) if fresh else 0
 
 
-def _batch_carrier(rows: list) -> str:
+def _batch_carrier(rows: list, *, db=None) -> str:
     from hermes_state_secretary_schedule import render_source_timestamp
+    from pathlib import Path
     entries = []
     for row in rows:
         # Occurrence captures the complete entry while its claim is settled. A
         # manually queued legacy/internal notice has no Notebook entry provenance.
         entry = dict(row.get("entry_payload") or {"content": row["content"]})
         entry.pop("schedule", None)
-        entry["due_at"] = render_source_timestamp(row["source_timestamp"])
+        entry["due_at"] = render_source_timestamp(
+            row["source_timestamp"], profile_home=Path(db.db_path).parent if db is not None else None)
         entries.append(entry)
     return build_system_reminder_wrapper("以下提醒已到期。\n" + json.dumps(entries, ensure_ascii=False))
 
@@ -162,7 +164,8 @@ def materialize_pending_reminders(agent: Any, messages: list) -> int:
     fresh = [row for row in rows if row["reminder_id"] not in covered]
     if fresh:
         from secretary.framework_messages import append_runtime_row
-        carrier = _batch_carrier(fresh)
+        db, _ref = _conversation_db_and_ref(agent)
+        carrier = _batch_carrier(fresh, db=db)
         ids = [row["reminder_id"] for row in fresh]
         row = {"role": "user", "content": carrier, "display_kind": "process_complete",
                "display_metadata": {"reminder_ids": ids, "display_text": "以下提醒已到期。"}}

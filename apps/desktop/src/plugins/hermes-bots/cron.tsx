@@ -1,9 +1,3 @@
-/**
- * Routines: the Hermes cron jobs scoped to the bot you're chatting with — the
- * list query and its owner resolution, the schedule picker, the create and
- * detail dialogs, and the pane the right tile renders.
- */
-
 import {
   atom,
   Button,
@@ -16,6 +10,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  fmtDateTime,
   GlyphSpinner,
   host,
   Input,
@@ -37,6 +32,11 @@ import {
   useQuery,
   useValue
 } from '@hermes/plugin-sdk'
+/**
+ * Routines: the Hermes cron jobs scoped to the bot you're chatting with — the
+ * list query and its owner resolution, the schedule picker, the create and
+ * detail dialogs, and the pane the right tile renders.
+ */
 import { useState } from 'react'
 
 import { avatarColor, botAppearance, BotFace } from './avatar'
@@ -330,7 +330,7 @@ function scheduleLabel(schedule: string | undefined): string {
 function routineTimestamp(value: string | undefined): null | string {
   const ms = value ? new Date(value).getTime() : Number.NaN
 
-  return Number.isFinite(ms) ? `${relativeTime(ms)} · ${new Date(ms).toLocaleString()}` : null
+  return Number.isFinite(ms) ? `${relativeTime(ms)} · ${fmtDateTime.format(ms)}` : null
 }
 
 /** The scheduler's `last_status` literals, spelled out for the inspector. The

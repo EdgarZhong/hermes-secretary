@@ -2,6 +2,9 @@
 
 import json
 import re
+from pathlib import Path
+from datetime import datetime
+from hermes_time import format_timestamp
 
 from hermes_cli.timefmt import coerce_epoch
 from tools.registry import registry
@@ -36,11 +39,12 @@ SEARCH_CONTENT_LIMIT = 800
 _SEARCH_TRUNCATION_MARKER = "\n[truncated]"
 
 
-def _public_history_row(row, *, search):
+def _public_history_row(row, *, search, profile_home=None):
     """Project actual source metadata; only Search bodies have a per-row budget."""
     if not isinstance(row.get("message_uid"), str) or not row["message_uid"] or row.get("timestamp") is None:
         raise ValueError("History source row is missing its entry timestamp or canonical message_uid")
     public = {key: row[key] for key in ("message_uid", "timestamp", "role", "content")}
+    public["timestamp"] = format_timestamp(row["timestamp"], profile_home=profile_home)
     if search:
         content = row["content"] if isinstance(row["content"], str) else json.dumps(row["content"], ensure_ascii=False)
         if len(content) > SEARCH_CONTENT_LIMIT:
@@ -59,6 +63,14 @@ def _bounded_int(value, default, minimum, maximum):
 def _time_bound(value):
     if value is None:
         return None
+    if isinstance(value, str) and "T" in value:
+        try:
+            instant = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            if instant.tzinfo is None:
+                raise ValueError("Invalid time bound: timezone required")
+            value = instant.timestamp()
+        except (ValueError, OverflowError) as exc:
+            raise ValueError("Invalid time bound") from exc
     result = coerce_epoch(value)
     if result is None:
         raise ValueError("Invalid time bound")
@@ -125,7 +137,8 @@ def session_history(args=None, *, db=None, current_session_id=None, conversation
             raise ValueError("Current Conversation state is unavailable")
         ref = conversation_ref or db.resolve_conversation_ref(current_session_id)
         rows = _select_history(db, current_session_id, ref, args)
-        public = [_public_history_row(row, search=args["mode"] == "search") for row in rows]
+        public = [_public_history_row(row, search=args["mode"] == "search", profile_home=Path(db.db_path).parent)
+                  for row in rows]
         return json.dumps({"success": True, "conversation_ref": ref, "messages": public, "count": len(public)}, ensure_ascii=False)
     except (ValueError, TypeError, re.error) as exc:
         return json.dumps({"success": False, "error": str(exc)}, ensure_ascii=False)

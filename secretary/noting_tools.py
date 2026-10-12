@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import json
 import threading
+from secretary.notebook_render import readable_notebook_entry, readable_notebook_state
 
 
 _TOOL_OPERATIONS = {
@@ -407,7 +408,8 @@ def _notebook_operation(child, args, tool_name):
         with child._noting_notebook_lock:
             entry = getattr(store, method)(**kwargs)
             child._noting_notebook_state = store.snapshot_state()
-            result = {"success": True, "entry": entry, "state": store.show()}
+            result = {"success": True, "entry": readable_notebook_entry(entry),
+                      "state": readable_notebook_state(store.show())}
             return json.dumps(result, ensure_ascii=False)
     except (AttributeError, KeyError, TypeError, ValueError) as exc:
         return json.dumps({"success": False, "error": str(exc)}, ensure_ascii=False)
@@ -431,7 +433,7 @@ def notebook_work_show(child, args):
     with child._noting_notebook_lock:
         state = child._noting_notebook_store.show()
         child._noting_notebook_state = child._noting_notebook_store.snapshot_state()
-        return json.dumps({"success": True, "notebook": state}, ensure_ascii=False)
+        return json.dumps({"success": True, "notebook": readable_notebook_state(state)}, ensure_ascii=False)
 
 
 def finish_noting(child, args):
@@ -466,8 +468,7 @@ def noting_tool_schemas(profile):
 def noting_tool_control_message(profile, *, notebook_state=None):
     from secretary.notebook_model import SECTIONS
     if notebook_state is not None:
-        notebook_state = {section: [entry for entry in notebook_state[section] if not entry.get("archived")]
-                          for section in SECTIONS}
+        notebook_state = readable_notebook_state(notebook_state)
     schemas = noting_tool_schemas(profile)
     names = [schema["name"] for schema in schemas]
     return (

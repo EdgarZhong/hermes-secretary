@@ -6,6 +6,8 @@ inside each method — importing ``cli`` at module load time would be a cycle.
 
 from __future__ import annotations
 
+from hermes_time import now
+
 import logging
 import os
 import queue
@@ -280,7 +282,7 @@ class CLIChatTurnMixin:
                     turn.box_opened = True
                     label = " ☤ Hermes "
                     if self.show_timestamps:
-                        label = f"{label}{datetime.now().strftime(self.timestamp_format)} "
+                        label = f"{label}{now().isoformat()} "
                     w = self._scrollback_box_width(getattr(self.console, "width", 80))
                     fill = w - 2 - self._status_bar_display_width(label)
                     _cprint(f"\n{_ACCENT}╭─{label}{'─' * max(fill - 1, 0)}╮{_RST}")

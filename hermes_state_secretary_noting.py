@@ -182,6 +182,35 @@ class SecretaryNotingMixin:
             return cursor.rowcount == 1
         return self._execute_write(claim)
 
+    def noting_idle_claim_event(self, conversation_ref, *, now, delay_seconds,
+                               feature_enabled=True, expected_period=None):
+        """Handle one exact deadline and its sole local decision in the original write txn."""
+        def claim(conn):
+            state = self.noting_idle_state_conn(conn, conversation_ref)
+            if state is None:
+                return "not_idle"
+            if state["trigger_produced_at"] is not None:
+                return "idle_trigger_produced"
+            if expected_period is not None and any(state[key] != expected_period[key] for key in (
+                    "last_turn_started_at", "last_turn_finished_at", "due_at", "updated_at")):
+                return "stale_idle_period"
+            finished, started = state["last_turn_finished_at"], state["last_turn_started_at"]
+            if (finished is None or (started is not None and started >= finished)
+                    or (state["due_at"] if state["due_at"] is not None else finished + delay_seconds) > now):
+                return "not_idle"
+            local_enabled = self.notebook_local_enabled_conn(conn, conversation_ref) if feature_enabled else False
+            if not local_enabled:
+                conn.execute("DELETE FROM secretary_noting_idle_state WHERE conversation_ref=? AND updated_at=? "
+                             "AND trigger_produced_at IS NULL", (conversation_ref, state["updated_at"]))
+                return "local_disabled" if feature_enabled else "global_disabled"
+            cursor = conn.execute(
+                "UPDATE secretary_noting_idle_state SET trigger_produced_at=?, updated_at=? "
+                "WHERE conversation_ref=? AND updated_at=? AND trigger_produced_at IS NULL",
+                (float(now), time.time(), conversation_ref, state["updated_at"]),
+            )
+            return "trigger" if cursor.rowcount == 1 else "stale_idle_period"
+        return self._execute_write(claim)
+
     def noting_idle_state_conn(self, conn, conversation_ref):
         row = conn.execute(
             "SELECT * FROM secretary_noting_idle_state WHERE conversation_ref = ?", (conversation_ref,),

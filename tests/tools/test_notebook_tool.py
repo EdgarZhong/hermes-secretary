@@ -1,6 +1,7 @@
 """notebook_show: explicit Main read eligibility, independent of local background Noting."""
 
 import json
+from datetime import datetime
 
 import pytest
 
@@ -43,9 +44,9 @@ def test_show_returns_only_complete_notebook_content_and_commit_time(db):
     notebook = result["notebook"]
     assert set(notebook) == {"last_update_time", "anchor_message_uid", "user", "assistant", "consultation", "persistence"}
     assert notebook["user"] == [entry]
-    assert notebook["last_update_time"] == audit_before["created_at"]
+    assert datetime.fromisoformat(notebook["last_update_time"]).timestamp() == pytest.approx(audit_before["created_at"], rel=0, abs=1e-6)
     assert notebook["anchor_message_uid"] == "m1"
-    assert isinstance(notebook["last_update_time"], float)
+    assert datetime.fromisoformat(notebook["last_update_time"]).tzinfo is not None
     assert db.notebook_current(ref) == audit_before
     assert audit_before["anchor_message_uid"] == "m1"
     assert audit_before["message_identity"] == {"conversation_ref": ref, "message_uid": "m1"}

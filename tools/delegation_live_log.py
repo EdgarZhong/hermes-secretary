@@ -15,6 +15,7 @@ import logging
 import shutil
 import threading
 import time
+from hermes_time import format_timestamp
 import uuid
 from contextlib import contextmanager
 from pathlib import Path
@@ -34,7 +35,6 @@ _KICKOFF_MAX = 500
 # Stream deltas are buffered and flushed as one assistant line when another
 # event type arrives (or on completion); capped so a huge reply can't hold memory.
 _STREAM_BUFFER_FLUSH_CHARS = 4000
-_TIME_FMT = "%Y-%m-%d %H:%M:%S"
 
 
 def live_transcript_root(home: Optional[Path] = None) -> Path:
@@ -93,7 +93,7 @@ class LiveTranscriptWriter:
     failure flips ``_ok`` off and later calls become debug-logged no-ops."""
 
     def __init__(self, delegation_id: str, task_index: int, goal: str,
-                 context: Optional[str] = None, root: Optional[Path] = None):
+                 context: Optional[str] = None, root: Optional[Path] = None, profile_home: Optional[Path] = None):
         self.delegation_id = delegation_id
         self.task_index = task_index
         self._ok = False
@@ -101,6 +101,8 @@ class LiveTranscriptWriter:
         self._stream_buf: List[str] = []
         self._stream_len = 0
         self.path: Optional[Path] = None
+        from hermes_constants import get_hermes_home
+        self._profile_home = profile_home if profile_home is not None else get_hermes_home()
         with _best_effort(f"init ({delegation_id} task {task_index})"):
             goal_line = _one_line(goal, _KICKOFF_MAX)
             d = (root if root is not None else live_transcript_root()) / delegation_id
@@ -110,7 +112,7 @@ class LiveTranscriptWriter:
                 "=== Hermes subagent live transcript ===\n"
                 f"delegation: {delegation_id}   task: {task_index}\n"
                 f"goal: {_redact(goal_line)}\n"  # header bypasses event(), so redact here too
-                f"started: {time.strftime(_TIME_FMT)}\n"
+                f"started: {format_timestamp(time.time(), profile_home=self._profile_home)}\n"
                 "(append-only; streams while the subagent runs — tail -f me)\n"
                 + "=" * 40 + "\n", encoding="utf-8")
             self.path, self._ok = path, True
@@ -118,11 +120,11 @@ class LiveTranscriptWriter:
                        + (f" | context: {_one_line(context, _KICKOFF_MAX)}" if context else ""))
 
     def event(self, role: str, text: str) -> None:
-        """Append one ``HH:MM:SS role | text`` line. Single choke point: every typed
+        """Append one ``ISO timestamp role | text`` line. Single choke point: every typed
         helper funnels through here so one redaction covers everything."""
         if not self._ok or self.path is None:
             return
-        line = f"{time.strftime('%H:%M:%S')} {role:<9}| {_redact(text)}\n"
+        line = f"{format_timestamp(time.time(), profile_home=self._profile_home)} {role:<9}| {_redact(text)}\n"
         try:
             with self._lock, open(self.path, "a", encoding="utf-8") as fh:
                 fh.write(line)
@@ -254,7 +256,7 @@ def create_live_transcripts(
         deleg_id = delegation_id or f"deleg_{uuid.uuid4().hex[:8]}"
         root = live_transcript_root(home)
         made = [LiveTranscriptWriter(deleg_id, i, str(t.get("goal", "")),
-                                     context=t.get("context") or context, root=root)
+                                     context=t.get("context") or context, root=root, profile_home=home)
                 for i, t in enumerate(task_list)]
         writers: List[Optional[LiveTranscriptWriter]] = [w if w.path is not None else None for w in made]
         paths: List[str] = [str(w.path) for w in made if w.path is not None]
@@ -274,7 +276,7 @@ def _write_manifest(delegation_id: str, task_list: List[Dict[str, Any]],
                     provider: Optional[str] = None, home: Optional[Path] = None) -> None:
     with _best_effort("manifest write"):
         _dump_json(_manifest_path(delegation_id, home), {
-            "delegation_id": delegation_id, "started": time.strftime(_TIME_FMT),
+            "delegation_id": delegation_id, "started": format_timestamp(time.time(), profile_home=home),
             "task_count": len(task_list), "model": model, "provider": provider,
             "tasks": [{
                 "index": i,
@@ -300,7 +302,7 @@ def update_manifest_statuses(delegation_id: Optional[str],
                 task["status"] = r.get("status", task.get("status"))
                 if r.get("exit_reason"):
                     task["exit_reason"] = r["exit_reason"]
-        manifest["completed"] = time.strftime(_TIME_FMT)
+        manifest["completed"] = format_timestamp(time.time(), profile_home=home)
         _dump_json(mp, manifest)
 
 

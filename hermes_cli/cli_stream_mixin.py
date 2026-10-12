@@ -7,6 +7,8 @@ never imports ``cli`` at module load time (import cycle).
 
 from __future__ import annotations
 
+from hermes_time import now
+
 import json
 import re
 import shutil
@@ -180,9 +182,9 @@ class CLIStreamMixin:
 
     def _format_submitted_user_message_preview(self, user_input: str) -> str:
         """Format the submitted user-message scrollback preview."""
-        from cli import _accent_hex, datetime
+        from cli import _accent_hex
         ts_suffix = (
-            f" [dim]{datetime.now().strftime(getattr(self, 'timestamp_format', '%H:%M'))}[/]"
+            f" [dim]{now().isoformat()}[/]"
             if getattr(self, "show_timestamps", False) else "")
         lines = user_input.split("\n")
         if len(lines) <= 1:
@@ -450,7 +452,7 @@ class CLIStreamMixin:
             except (ValueError, IndexError):
                 self._stream_text_ansi = ""
             if self.show_timestamps:
-                label = f"{label} {datetime.now().strftime(getattr(self, 'timestamp_format', '%H:%M'))}"
+                label = f"{label} {now().isoformat()}"
             w = self._scrollback_box_width()
             fill = w - 2 - HermesCLI._status_bar_display_width(label)
             _cprint(f"\n{_ACCENT}╭─{label}{'─' * max(fill - 1, 0)}╮{_RST}")

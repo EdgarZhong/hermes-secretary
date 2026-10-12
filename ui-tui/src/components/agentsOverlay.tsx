@@ -1,4 +1,5 @@
 import { Box, NoSelect, ScrollBox, type ScrollBoxHandle, Text, useInput, useStdout } from '@hermes/ink'
+import { formatEpochTimestamp } from '@hermes/shared/format'
 import { useStore } from '@nanostores/react'
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 
@@ -959,7 +960,7 @@ export function AgentsOverlay({ gw, initialHistoryIndex = 0, onClose, t }: Agent
   const title =
     replayMode && effectiveSnapshot
       ? `${historyIndex > 0 ? T.title.replay(historyIndex, history.length) : T.title.lastTurn}${T.title.finishedAt(
-          new Date(effectiveSnapshot.finishedAt).toLocaleTimeString()
+          formatEpochTimestamp(effectiveSnapshot.finishedAt / 1000)
         )}`
       : `${T.title.spawnTree}${delegation.paused ? T.title.pausedSuffix : ''}`
 

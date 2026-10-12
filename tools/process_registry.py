@@ -17,6 +17,7 @@ import subprocess
 import tempfile
 import threading
 import time
+from hermes_time import format_timestamp
 import uuid
 from pathlib import Path
 
@@ -43,7 +44,6 @@ logger = logging.getLogger(__name__)
 # Crash-recovery checkpoint (gateway only)
 CHECKPOINT_PATH = get_hermes_home() / "processes.json"
 _CHECKPOINT_PATH_AT_IMPORT = CHECKPOINT_PATH
-
 
 def _checkpoint_path() -> Path:
     """Active profile's checkpoint file at call time: the patched ``CHECKPOINT_PATH`` when a test
@@ -2427,7 +2427,7 @@ class ProcessRegistry(ProcessTerminationMixin, ProcessCheckpointMixin):
                 "cwd": s.cwd,
                 "pid": s.pid,
                 "owner_task_id": s.owner_task_id,
-                "started_at": time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(s.started_at)),
+                "started_at": format_timestamp(s.started_at),
                 "uptime_seconds": int(time.time() - s.started_at),
                 "status": "exited" if s.exited else "running",
                 "output_preview": s.output_buffer[-200:] if s.output_buffer else "",

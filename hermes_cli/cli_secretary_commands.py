@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 import json
 import logging
+from pathlib import Path
 
 from secretary.notebook_render import render_notebook
 from secretary.noting_policy import configuration_guidance, resolve_noting_settings
@@ -43,7 +44,7 @@ def notebook_command(db, session_id, arg="", *, source="cli"):
         return SecretaryCommandResult("Notebook unavailable: global Noting configuration is disabled or unreadable.")
     try:
         _ref, snapshot = _current(db, session_id)
-        return SecretaryCommandResult(render_notebook(snapshot))
+        return SecretaryCommandResult(render_notebook(snapshot, profile_home=Path(db.db_path).parent))
     except Exception as exc:
         logger.warning("Notebook slash failed", exc_info=True)
         return SecretaryCommandResult(f"Notebook unavailable: {exc}")

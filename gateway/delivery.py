@@ -2,6 +2,7 @@
 platform home channel ("telegram"), origin (back to where the job was created), or local (files)."""
 
 import logging
+from hermes_time import now
 import re
 from pathlib import Path
 from datetime import datetime
@@ -214,7 +215,7 @@ class DeliveryRouter:
         output_path = self.output_dir / (job_id or "misc") / f"{timestamp}.md"
         output_path.parent.mkdir(parents=True, exist_ok=True)
         lines = [f"# {job_name}" if job_name else "# Delivery Output", "",
-                 f"**Timestamp:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"]
+                 f"**Timestamp:** {now().isoformat()}"]
         lines += [f"**Job ID:** {job_id}"] if job_id else []
         lines += [f"**{key}:** {value}" for key, value in (metadata or {}).items()] + ["", "---", "", content]
         output_path.write_text("\n".join(lines), encoding="utf-8")

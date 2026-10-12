@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-import time
+from hermes_time import format_timestamp
 from typing import Any, Callable, Iterable, Optional
 
 from hermes_cli import kanban_db as kb
@@ -32,7 +32,7 @@ _ATTACHMENT_FIELDS = ("id", "filename", "content_type", "size", "uploaded_by", "
 
 
 def _fmt_ts(ts: Optional[int]) -> str:
-    return time.strftime("%Y-%m-%d %H:%M", time.localtime(ts)) if ts else ""
+    return format_timestamp(ts) if ts else ""
 
 
 def _print_json(obj: Any, *, ascii: bool = False) -> None:

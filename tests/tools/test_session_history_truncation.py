@@ -1,6 +1,7 @@
 """Search is bounded per row; canonical precise Read returns the authentic complete body."""
 
 import json
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -28,7 +29,7 @@ def test_search_budget_preserves_metadata_and_precise_read_returns_full_original
     assert found["success"] and found["count"] == 1
     row = found["messages"][0]
     assert found["conversation_ref"] == db.resolve_conversation_ref("main")
-    assert (row["message_uid"], row["timestamp"]) == ("authentic-source", 123.25)
+    assert (row["message_uid"], datetime.fromisoformat(row["timestamp"]).timestamp()) == ("authentic-source", 123.25)
     assert set(row) == {"message_uid", "timestamp", "role", "content"} | ({"truncated"} if size > 800 else set())
     if size > 800:
         assert len(row["content"]) == 800
@@ -40,7 +41,7 @@ def test_search_budget_preserves_metadata_and_precise_read_returns_full_original
     identity = {"conversation_ref": found["conversation_ref"], "message_uid": row["message_uid"]}
     read = invoke(db, {"mode": "read", "message_identity": identity, "before": 0, "after": 0})
     assert read["messages"][0]["content"] == content
-    assert read["messages"][0]["timestamp"] == 123.25
+    assert datetime.fromisoformat(read["messages"][0]["timestamp"]).timestamp() == 123.25
     assert read["messages"][0]["message_uid"] == "authentic-source"
 
 
@@ -55,7 +56,7 @@ def test_search_truncation_is_per_row_across_compaction_with_complete_read(db):
     assert search["count"] == 20
     assert sum(len(row["content"]) for row in search["messages"]) == 16000
     for row, (uid, body, stamp) in zip(search["messages"], originals):
-        assert row["message_uid"] == uid and row["timestamp"] == stamp
+        assert row["message_uid"] == uid and datetime.fromisoformat(row["timestamp"]).timestamp() == stamp
         assert row["truncated"] is True
         identity = {"conversation_ref": search["conversation_ref"], "message_uid": row["message_uid"]}
         full = invoke(db, {"mode": "read", "message_identity": identity, "before": 0, "after": 0})

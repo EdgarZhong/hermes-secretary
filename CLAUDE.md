@@ -10,6 +10,13 @@
 
 ## 当前状态
 
+- **用户决定结束V1.6本轮实现，验收移至第二轮**：两个实现Agent已完整交回并停止编辑/命令，不再启动本轮独立Verification/Validation。下一轮基于06实施外部Web UI后统一复查，**不重做V1.6自身全量Verification**，仅补遗留缺口和实际改动影响；工作区仍在本仓库，本仓库按原生接线需要继续修改。
+- **实现收尾已接收**：C15全部实际AI/human绝对时间薄呈现转换，内部epoch/调度/duration/机器导出及原历史保持；相关Python78、79+1平台skip、188各批有效，Web/TUI相关测试和typecheck通过，Desktop保留原日历/相对回归后19/19，四相关checks有效。C16统一到点事务读一次当前local开关，off结束旧事件、on原claim；生命周期/host无local gate，/off只改偏好，无新flag/表；64不同定向用例及四相关checks通过。root集中核正式接线、SQL周期ownership、C15字段/内部边界与hash，未重跑有效suite；阶段实现不冒称整版验收完成。
+- **最小交接**：[V1.6剩余](.autonomous/20261011-v1.6-implementation/continuation-guide.md)。C15/C16真实复验及Persistence/Reminder/剩余cold/branch链路移至下一轮；旧Child fixture和Desktop环境限制保留证据。新版本两独立门禁未执行，82旧PASS仅历史。
+- **运行与提交边界**：本轮隔离Dashboard68046已安全停止，Idle30恢复2秒；库保留6/157/5，凭据未变，无在途worker。只提交本轮源码/必要测试/现有轮次文档并按已授权push；README的06入口、两份未跟踪06文档和.playwright-mcp为用户旁支保留，不混入本轮；私人Pi库不动。交付commit见本轮baseline末记录。
+
+## 本轮收尾前执行记录（历史，不作为当前状态）
+
 - **用户最新纠正C16：统一到点入口判断当前会话开关**：定时器照常到点，Conversation-local off只改偏好不取消timer；common event handler读当前开关，off结束该事件永不重试，on进既有准入。host/attach/scan不散落local gate；全局启用eligible场景维护真实Main生命周期，global关闭/身份/权限安全约束保持。此前root“关闭即取消周期”提案被用户否定，已撤销并纠正规格/索引，`idle_busy_fix`停止旧实现改为集中设计；不加flags/off结束观察/历史推断。
 
 - **用户确认C15全产品时间暴露面调优**：所有实际面向AI和人的绝对时间使用带时区可读日期时间，不仅human Notebook Created at和AI last_update_time；内部持久/调度数值及duration不变，不改原瞬间/字段/权限/cache prefix。现行02 §3.5/3.6/5.6/5.12/6.18与索引已立即同步，专门`readable_times`负责全面排查/修补/覆盖清单与定向证据，范围仍需当前整版独立门禁和真实复验。

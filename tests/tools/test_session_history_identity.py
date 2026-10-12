@@ -1,6 +1,7 @@
 """Registered History tool resolves canonical Candidate sources on real SQLite (04 §2.6)."""
 
 import json
+from datetime import datetime
 from types import SimpleNamespace
 
 import pytest
@@ -94,7 +95,7 @@ def test_shared_inline_history_projects_one_identity_and_preserves_full_source(d
     identity = {"conversation_ref": found["conversation_ref"], "message_uid": row["message_uid"]}
     full = json.loads(handler(agent, {"mode": "read", "message_identity": identity, "before": 0, "after": 0}, ctx))
     assert full == {"success": True, "conversation_ref": ref, "count": 1,
-                    "messages": [{"message_uid": uid, "timestamp": 123.25, "role": "user", "content": body}]}
+                    "messages": [{"message_uid": uid, "timestamp": row["timestamp"], "role": "user", "content": body}]}
     assert db.get_history_foreground("main")[0]["message_identity"] == identity
     assert not json.loads(handler(agent, {"mode": "read", "message_identity": {
         "conversation_ref": db.resolve_conversation_ref("child"), "message_uid": "child-audit"}}, ctx))["success"]

@@ -34,7 +34,6 @@ from toolsets import get_toolset_names
 
 _log = logging.getLogger(__name__)
 
-
 # --- Shared micro-helpers (row access, JSON, env, git) ---
 
 def _lossy_text(value: Any) -> Any:
@@ -4092,7 +4091,8 @@ def _ctx_cap(s: Optional[str], limit: int = _CTX_MAX_FIELD_BYTES) -> str:
 
 def _ctx_stamp(ts: int, now: int) -> str:
     """``YYYY-MM-DD HH:MM`` plus a relative age when one is available."""
-    disp = time.strftime("%Y-%m-%d %H:%M", time.localtime(ts))
+    from hermes_time import format_timestamp
+    disp = format_timestamp(ts)
     age = _relative_age(ts, now)
     return f"{disp}, {age}" if age else disp
 

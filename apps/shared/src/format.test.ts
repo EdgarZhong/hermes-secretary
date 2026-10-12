@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { compactNumber } from './format'
+import { compactNumber, formatEpochTimestamp } from './format'
 
 describe('compactNumber', () => {
   it.each([
@@ -24,5 +24,15 @@ describe('compactNumber', () => {
     for (const value of [999.5, 999.9, 999_950, 999_999.4]) {
       expect(compactNumber(value)).not.toMatch(/^1000(\.\d)?k?$/)
     }
+  })
+})
+
+describe('formatEpochTimestamp', () => {
+  it('keeps epoch fractions, offset and the original instant', () => {
+    expect(formatEpochTimestamp(1791756123.25)).toBe('2026-10-11T22:02:03.25Z')
+    expect(formatEpochTimestamp(1791800714.1486568)).toBe('2026-10-12T10:25:14.1486568Z')
+    expect(formatEpochTimestamp(-1.25)).toBe('1969-12-31T23:59:58.75Z')
+    expect(formatEpochTimestamp(1e-7)).toBe('1970-01-01T00:00:00.0000001Z')
+    expect(formatEpochTimestamp(Number.NaN)).toBe('unknown')
   })
 })

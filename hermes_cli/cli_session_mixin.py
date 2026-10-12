@@ -7,6 +7,8 @@ inside each method (``from cli import ...``) — never at module load time (impo
 
 from __future__ import annotations
 
+from hermes_time import format_timestamp
+
 import contextlib
 import os
 import shutil
@@ -380,7 +382,7 @@ class CLISessionMixin:
                 return ""
             try:
                 stamp = _timestamp_or(ts, None)
-                return f"  [{stamp.strftime(getattr(self, 'timestamp_format', '%H:%M'))}]" if stamp else ""
+                return f"  [{format_timestamp(ts)}]" if stamp else ""
             except (ValueError, OSError, TypeError):
                 return ""
 

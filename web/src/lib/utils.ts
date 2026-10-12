@@ -1,3 +1,4 @@
+import { formatEpochTimestamp } from "@hermes/shared/format";
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -32,4 +33,13 @@ export function isoTimeAgo(iso: string): string {
   if (delta < 3600) return `${Math.floor(delta / 60)}m ago`;
   if (delta < 86400) return `${Math.floor(delta / 3600)}h ago`;
   return `${Math.floor(delta / 86400)}d ago`;
+}
+
+/** Absolute product timestamp: retain a source ISO offset or render epoch seconds in UTC. */
+export function readableTimestamp(value: number | string): string {
+  if (typeof value === "number") return formatEpochTimestamp(value);
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "unknown";
+  return typeof value === "string" && /(?:Z|[+-]\d{2}:\d{2})$/.test(value)
+    ? value : date.toISOString();
 }

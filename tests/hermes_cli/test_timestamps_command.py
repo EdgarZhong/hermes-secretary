@@ -10,7 +10,7 @@ stored unix `timestamp` (never fabricating one for live unsaved turns).
 import io
 import sys
 import time
-from datetime import datetime
+from hermes_time import format_timestamp
 
 import hermes_yaml as yaml
 
@@ -66,7 +66,7 @@ def test_history_shows_timestamp_for_stored_turns():
         {"role": "user", "content": "live turn, no ts"},
     ]
     out = _render_history(hist, show_ts=True)
-    hhmm = datetime.fromtimestamp(ts).strftime("%H:%M")
+    hhmm = format_timestamp(ts)
     assert f"[You #1]  [{hhmm}]" in out
     assert "[Hermes #2]  [" in out
     # a turn with no stored timestamp must NOT get a fabricated time

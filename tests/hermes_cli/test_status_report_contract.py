@@ -18,6 +18,7 @@ from gateway.config import Platform
 from gateway.platforms.event import MessageEvent
 from gateway.session import SessionEntry, SessionSource
 from hermes_cli.cli_session_mixin import CLISessionMixin
+from hermes_time import format_timestamp
 
 SESSION_ID = "status-contract-7f3a"
 MODEL = "vendor/distinctive-model-9000"
@@ -30,7 +31,7 @@ HOME = "~/.hermes-status-contract"
 
 COMMON_VALUES = (
     SESSION_ID, MODEL, PROVIDER, TITLE,
-    CREATED.strftime("%Y-%m-%d %H:%M"), UPDATED.strftime("%Y-%m-%d %H:%M"), f"{TOKENS:,}",
+    format_timestamp(CREATED.timestamp()), format_timestamp(UPDATED.timestamp()), f"{TOKENS:,}",
 )
 
 

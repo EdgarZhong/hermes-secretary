@@ -1,5 +1,7 @@
 """Cron subcommand for hermes CLI."""
 
+from hermes_time import readable_schedule_display
+
 import contextlib
 import json
 import re
@@ -255,7 +257,8 @@ def _job_rows(job: Dict[str, Any]) -> List[tuple[str, str]]:
          if latest_execution else "")]
     return [
         ("Name", job.get("name", "(unnamed)")),
-        ("Schedule", job.get("schedule_display", job.get("schedule", {}).get("value", "?"))),
+        ("Schedule", readable_schedule_display(
+            job.get("schedule"), job.get("schedule_display", job.get("schedule", {}).get("value", "?")))),
         ("Repeat", f"{repeat_info.get('completed', 0)}/{repeat_times}" if repeat_times else "∞"),
         _next_run_row(job),
         ("Deliver", deliver if isinstance(deliver, str) else ", ".join(deliver)),

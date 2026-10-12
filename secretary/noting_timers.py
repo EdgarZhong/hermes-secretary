@@ -43,7 +43,7 @@ def _fire(parent_ref, db, ref, timer):
         try:
             with owning_db_scope(db):
                 from secretary.noting_runtime import _run_idle_event
-                _run_idle_event(parent, db, ref)
+                _run_idle_event(parent, db, ref, expected_period=entry[3])
         except Exception:
             logger.warning("Noting Idle timer failed for %s", ref, exc_info=True)
 
@@ -51,13 +51,14 @@ def _fire(parent_ref, db, ref, timer):
 def arm_idle_timer(parent, db, ref, due_at):
     """Replace the in-process deadline; ownership is weak and callback scope is explicit."""
     cancel_idle_timer(db, ref)
+    period = db.noting_idle_state(ref)
     parent_ref = weakref.ref(parent)
     timer = threading.Timer(max(0.0, float(due_at) - time.time()),
                             lambda: _fire(parent_ref, db, ref, timer))
     timer.name = "noting-idle"
     timer.daemon = True
     with _registry_lock:
-        _timers[_runtime_key(db, ref)] = (timer, float(due_at), parent_ref)
+        _timers[_runtime_key(db, ref)] = (timer, float(due_at), parent_ref, period)
     timer.start()
 
 
@@ -71,33 +72,42 @@ def holds_pending_timer(parent):
         return _runtime_key(db, ref) in _timers
 
 
+def main_turn_running(parent):
+    """Observe the native Turn plus the balanced Main hook; never admit or lock Main."""
+    return bool(getattr(parent, "_native_compaction_turn", None)
+                or getattr(parent, "_relay_pending_turn_id", None)
+                or getattr(parent, "_secretary_main_turn_running", False))
+
+
 def attach_idle_timer(parent, db, ref, *, now=None):
     """Host ticks attach/recover the deadline once; they never produce periodic events."""
-    from secretary.noting_runtime import _run_idle_event, noting_trigger_gate
+    from secretary.noting_runtime import _run_idle_event, noting_lifecycle_gate
     from secretary.noting_scope import settings_for_db
 
     with conversation_timer_lock(db, ref):
         settings = settings_for_db(db)
-        enabled, reason = noting_trigger_gate(db, ref, settings=settings)
-        if not enabled:
+        enabled, reason = noting_lifecycle_gate(db, ref, settings=settings)
+        if main_turn_running(parent):
             cancel_idle_timer(db, ref)
-            return "skip:" + reason
-        with _registry_lock:
-            entry = _timers.get(_runtime_key(db, ref))
-            if entry is not None and entry[2]() is parent:
-                return "skip:timer_armed"
-        cancel_idle_timer(db, ref)  # A resumed owner must not inherit a stale runtime callback.
+            return "skip:not_idle"
         state = db.noting_idle_state(ref) or {}
         finished, started = state.get("last_turn_finished_at"), state.get("last_turn_started_at")
         if finished is None or (started is not None and started >= finished):
-            return "skip:not_idle"
+            return "skip:not_idle" if enabled else "skip:" + reason
         if state.get("trigger_produced_at") is not None:
             return "skip:idle_trigger_produced"
+        with _registry_lock:
+            entry = _timers.get(_runtime_key(db, ref))
+            if entry is not None and entry[2]() is parent and entry[3] == state:
+                return "skip:timer_armed"
         deadline = state.get("due_at")
         deadline = finished + settings.idle_delay_seconds if deadline is None else deadline
         now = time.time() if now is None else now
         if deadline <= now and ref in db.noting_idle_due_conversations(
                 now=now, delay_seconds=settings.idle_delay_seconds):
-            return _run_idle_event(parent, db, ref, now=now)
+            return _run_idle_event(parent, db, ref, now=now, expected_period=state)
+        if not enabled:
+            return "skip:" + reason  # Never initialize a new daemon outside the global feature.
+        cancel_idle_timer(db, ref)  # A resumed owner must not inherit a stale runtime callback.
         arm_idle_timer(parent, db, ref, deadline)
         return "skip:timer_armed"

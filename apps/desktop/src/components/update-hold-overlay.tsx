@@ -1,3 +1,4 @@
+import { formatEpochTimestamp } from '@hermes/shared/format'
 import { useStore } from '@nanostores/react'
 import { useEffect, useId, useState } from 'react'
 
@@ -10,7 +11,7 @@ import { $desktopBoot } from '@/store/boot'
 type Busy = 'quit' | 'recheck' | 'start' | null
 
 const formatTime = (ms: number) =>
-  new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  formatEpochTimestamp(ms / 1000)
 
 /**
  * The blocked boot screen (review R8 D3). While an earlier update's leftover

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections import Counter
-from datetime import datetime
 from time import time as wall_time
 from uuid import uuid4
 from typing import Any, List, Mapping, MutableMapping, Optional, Tuple, TypeVar
@@ -293,10 +292,11 @@ def format_user_timestamp_marker(timestamp: Optional[float] = None) -> str:
     synthetic carrier). ``None`` falls back to the local wall clock.
     """
     moment = wall_time() if timestamp is None else float(timestamp)
+    from hermes_time import format_timestamp, now
     try:
-        iso = datetime.fromtimestamp(moment).astimezone().isoformat()
+        iso = format_timestamp(moment)
     except (OverflowError, OSError, ValueError):
-        iso = datetime.now().astimezone().isoformat()
+        iso = now().isoformat()
     return f"{_REAL_USER_MARKER_PREFIX}{iso}{_REAL_USER_MARKER_SUFFIX}\n"
 
 

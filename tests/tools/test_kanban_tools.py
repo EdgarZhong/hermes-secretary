@@ -9,6 +9,7 @@ Verifies:
 from __future__ import annotations
 
 import json
+from datetime import datetime
 
 import pytest
 
@@ -80,6 +81,9 @@ def test_show_defaults_to_env_task_id(worker_env):
     assert d["task"]["status"] == "running"
     assert "worker_context" in d
     assert "runs" in d
+    assert datetime.fromisoformat(d["task"]["created_at"]).tzinfo is not None
+    assert datetime.fromisoformat(d["task"]["started_at"]).tzinfo is not None
+    assert all(datetime.fromisoformat(run["started_at"]).tzinfo is not None for run in d["runs"])
 
 
 def test_show_bare_call_outside_worker_returns_orientation_not_error(monkeypatch, worker_env):

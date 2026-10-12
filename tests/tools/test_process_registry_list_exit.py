@@ -1,6 +1,7 @@
 """List refresh observes the child, not its descendants' capture-pipe lifetime."""
 
 import ctypes
+from datetime import datetime
 import json
 import os
 from pathlib import Path
@@ -39,6 +40,9 @@ def test_list_leaves_live_reader_as_completion_owner():
     listed = registry.list_sessions(session_key="owner-session")
 
     assert listed[0]["status"] == "exited"
+    stamp = datetime.fromisoformat(listed[0]["started_at"])
+    assert stamp.tzinfo is not None
+    assert stamp.timestamp() == pytest.approx(session.started_at, rel=0, abs=1e-6)
     assert session._reader_finish_requested.is_set()
     assert session.id in registry._running
     assert registry.completion_queue.empty()

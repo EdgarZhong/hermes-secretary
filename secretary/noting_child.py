@@ -24,6 +24,7 @@ import logging
 import threading
 import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Sequence
 from uuid import uuid4
 from types import SimpleNamespace
@@ -646,7 +647,9 @@ def _commit_when_complete(
             snapshot = parent_db.notebook_snapshot_audit(outcome.snapshot_id)
             publish_framework_message(
                 parent,
-                "Background: notebook updated at " + render_source_timestamp(snapshot["created_at"]) + ". Processed memo entries have been cleared.",
+                "Background: notebook updated at " + render_source_timestamp(
+                    snapshot["created_at"], profile_home=Path(parent_db.db_path).parent
+                ) + ". Processed memo entries have been cleared.",
                 display_metadata={"noting_run_output": True},
                 expected_conversation_ref=conversation_ref,
             )

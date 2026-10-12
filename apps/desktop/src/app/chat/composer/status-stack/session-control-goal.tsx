@@ -1,3 +1,4 @@
+import { formatEpochTimestamp } from '@hermes/shared/format'
 import { memo, useCallback, useState } from 'react'
 
 import { queueKickoffIfSessionBusy } from '@/app/session/hooks/use-prompt-actions/queue-if-busy'
@@ -581,7 +582,7 @@ export const SessionControlGoalSection = memo(function SessionControlGoalSection
                 </div>
                 <div className="mt-0.5 text-foreground/90 leading-relaxed">
                   {goal.wait_barrier.type === 'until' &&
-                    ctrl.waitUntil(new Date(goal.wait_barrier.until_at * 1000).toLocaleTimeString())}
+                    ctrl.waitUntil(formatEpochTimestamp(goal.wait_barrier.until_at))}
                   {goal.wait_barrier.type === 'session' && ctrl.waitSession(goal.wait_barrier.target)}
                   {goal.wait_barrier.type === 'pid' && ctrl.waitPid(goal.wait_barrier.target)}
                   {goal.wait_barrier.reason && (

@@ -491,7 +491,7 @@ def _format_job(job: Dict[str, Any]) -> Dict[str, Any]:
         # Locked to its own model; unpinned jobs follow cron.model, then the main agent model.
         "pinned": bool(str(job.get("model") or "").strip()),
         "base_url": job.get("base_url"),
-        "schedule": job.get("schedule_display") or "?",
+        "schedule": hermes_time.readable_schedule_display(job.get("schedule"), job.get("schedule_display") or "?"),
         "repeat": _repeat_display(job),
         "deliver": job.get("deliver", "local"),
         "next_run_at": job.get("next_run_at"),

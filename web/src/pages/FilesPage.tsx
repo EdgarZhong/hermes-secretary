@@ -39,10 +39,7 @@ import type { ManagedFileEntry, ManagedFilesResponse } from "@/lib/api";
 import { PluginSlot } from "@/plugins";
 import { errorMessage } from "@/lib/api-error";
 
-const DATE_FORMAT = new Intl.DateTimeFormat(undefined, {
-  dateStyle: "medium",
-  timeStyle: "short",
-});
+import { readableTimestamp } from "@/lib/utils";
 
 function joinPath(base: string, name: string): string {
   const cleanName = name.trim().replace(/^[\\/]+/, "");
@@ -426,7 +423,7 @@ export default function FilesPage() {
                 <span className="text-xs tabular-nums text-text-secondary">{formatBytes(entry.size)}</span>
                 <span className="truncate text-xs text-text-secondary">
                   {entry.mtime !== null && Number.isFinite(entry.mtime)
-                    ? DATE_FORMAT.format(entry.mtime * 1000)
+                    ? readableTimestamp(entry.mtime)
                     : "-"}
                 </span>
                 <span className="flex justify-end gap-1">

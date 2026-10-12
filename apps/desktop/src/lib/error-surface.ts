@@ -1,3 +1,4 @@
+import { formatEpochTimestamp } from '@hermes/shared/format'
 // Structured turn-error descriptor forwarded by the gateway (see
 // agent/error_surface.py). Names WHICH layer of the stack failed and the
 // classifier's failure code so the error card can say what happened in plain
@@ -139,9 +140,7 @@ export function parseErrorSurface(value: unknown): ErrorSurface | null {
 
 /** "HH:mm" for a provider reset moment, in the user's local clock. */
 export function formatResetClock(resetsAt: number): string {
-  const at = new Date(resetsAt * 1000)
-
-  return `${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`
+  return formatEpochTimestamp(resetsAt)
 }
 
 /** "HH:mm (in 1h 05m)" for a provider reset moment, or null once it has passed

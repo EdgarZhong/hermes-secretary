@@ -34,7 +34,8 @@ def test_human_view_shows_timestamp_and_complete_semantics_without_anchor_or_poi
     assert set(structured) == {"last_update_time", "anchor_message_uid", "user", "assistant", "consultation", "persistence"}
     assert structured["last_update_time"] == snapshot["created_at"]
     assert structured["anchor_message_uid"] == snapshot["anchor_message_uid"]
-    assert structured["user"] == snapshot["payload"]["user"]
+    assert structured["user"][0]["schedule"]["canonical_schedule"]["display"] == "once at 2030-10-07T12:00:00+00:00"
+    assert structured["user"][0]["fields"] == snapshot["payload"]["user"][0]["fields"]
     assert structured["persistence"] == snapshot["payload"]["persistence"]
     structured["user"].clear()
     assert snapshot["payload"]["user"]

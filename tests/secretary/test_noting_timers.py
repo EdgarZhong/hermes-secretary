@@ -202,7 +202,7 @@ def test_auxiliary_turn_does_not_cancel_parent_timer(runtime):
 
 
 @pytest.mark.parametrize('gate', ['local', 'global'])
-def test_gate_rechecked_at_fire_and_off_never_arms(runtime, monkeypatch, gate):
+def test_deadline_closed_event_is_terminal_and_only_global_off_prevents_new_timer(runtime, monkeypatch, gate):
     parent, db, dispatched, ready = runtime
     ref = parent._secretary_conversation_ref
     reads = []
@@ -217,9 +217,9 @@ def test_gate_rechecked_at_fire_and_off_never_arms(runtime, monkeypatch, gate):
         (Path(db.db_path).parent / 'config.yaml').write_text('noting:\n  enabled: false\n')
     assert not ready.wait(0.25)
     assert not dispatched and not reads
-    assert db.noting_idle_state(ref)['trigger_produced_at'] is None
-    assert not rt.note_main_turn_finished(parent)
-    assert not timers.holds_pending_timer(parent)
+    assert db.noting_idle_state(ref) is None
+    assert rt.note_main_turn_finished(parent) is (gate == 'local')
+    assert timers.holds_pending_timer(parent) is (gate == 'local')
 
 
 def test_attach_recovers_past_deadline_once_and_future_deadline_arms(runtime):
@@ -321,7 +321,7 @@ def test_framework_queue_flushes_at_turn_end_after_gate_closes(runtime, gate):
         db.notebook_set_local_enabled(ref, False)
     else:
         (Path(db.db_path).parent / "config.yaml").write_text("noting:\n  enabled: false\n")
-    assert not rt.note_main_turn_finished(parent)
+    assert rt.note_main_turn_finished(parent) is (gate == "local")
     assert parent._secretary_main_turn_running is False
     assert not parent._secretary_framework_messages
     durable = [row for row in db.get_messages(parent.session_id) if "任务已派发。" in row.get("content", "")]
@@ -329,7 +329,7 @@ def test_framework_queue_flushes_at_turn_end_after_gate_closes(runtime, gate):
     assert len(durable) == len(live) == 1
     assert durable[0]["message_uid"] == live[0]["message_uid"]
     assert durable[0]["message_uid"] == db.get_messages(parent.session_id)[-1]["message_uid"]
-    assert not timers.holds_pending_timer(parent)
+    assert timers.holds_pending_timer(parent) is (gate == "local")
     assert not dispatched
 
 
@@ -338,4 +338,4 @@ def test_native_off_turn_end_does_not_call_framework_flush(runtime, monkeypatch)
     db.notebook_set_local_enabled(parent._secretary_conversation_ref, False)
     monkeypatch.setattr("secretary.framework_messages.flush_framework_messages",
                         lambda *args: pytest.fail("Native empty queue must not flush"))
-    assert not rt.note_main_turn_finished(parent)
+    assert rt.note_main_turn_finished(parent)

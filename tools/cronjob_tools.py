@@ -710,7 +710,7 @@ def _action_create(a: Dict[str, Any]) -> str:
     # but never fires — tell the model (the CLI already warns).
     _result = {
         "success": True, "job_id": job["id"], "name": job["name"], "skill": job.get("skill"),
-        "skills": job.get("skills", []), "schedule": job["schedule_display"], "repeat": _repeat_display(job),
+        "skills": job.get("skills", []), "schedule": _format_job(job)["schedule"], "repeat": _repeat_display(job),
         "deliver": job.get("deliver", "local"), "next_run_at": job["next_run_at"], "job": _format_job(job),
         "message": _create_message, **_gateway_liveness_notice(),
     }
@@ -736,7 +736,7 @@ def _action_remove(job: Dict[str, Any], a: Dict[str, Any]) -> str:
     return _dumps({
         "success": True,
         "message": f"Cron job '{job['name']}' removed.",
-        "removed_job": {"id": job_id, "name": job["name"], "schedule": job.get("schedule_display")},
+        "removed_job": {"id": job_id, "name": job["name"], "schedule": _format_job(job)["schedule"]},
     })
 
 
@@ -972,7 +972,7 @@ def _resolve_job_or_error(job_id: str):
             "success": False,
             "error": str(exc),
             "matches": [
-                {"id": m["id"], "name": m.get("name"), "schedule": m.get("schedule_display"), "next_run_at": m.get("next_run_at")}
+                {"id": m["id"], "name": m.get("name"), "schedule": _format_job(m)["schedule"], "next_run_at": m.get("next_run_at")}
                 for m in exc.matches
             ],
         })

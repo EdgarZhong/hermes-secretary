@@ -1,3 +1,4 @@
+import { formatEpochTimestamp } from '@hermes/shared/format'
 import type { GoalSnapshot } from '@hermes/shared/gateway-events'
 import { useStore } from '@nanostores/react'
 import { atom } from 'nanostores'
@@ -25,7 +26,7 @@ export interface GoalLine {
 }
 
 const clock = (epochSeconds: number) =>
-  new Date(epochSeconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  formatEpochTimestamp(epochSeconds)
 
 /** `⊙ goal · 3/20 turns · <title>` for an active goal, `⏳ goal parked` / `⏸ goal paused` with the
  * reason while held, `null` once it is done or cleared (the transcript carries the verdict). */

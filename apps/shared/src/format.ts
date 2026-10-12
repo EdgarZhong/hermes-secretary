@@ -25,3 +25,27 @@ export function compactNumber(value: null | number | undefined): string {
 
   return `${Math.round(num)}`
 }
+
+/** Render epoch seconds with explicit UTC, preserving the source Number's decimal precision. */
+export function formatEpochTimestamp(epochSeconds: number): string {
+  const date = new Date(Math.floor(epochSeconds) * 1000)
+
+  if (!Number.isFinite(epochSeconds) || Number.isNaN(date.getTime())) {
+    return 'unknown'
+  }
+  const [coefficient, exponentText = '0'] = Math.abs(epochSeconds).toString().split('e')
+  const [integer, decimal = ''] = coefficient.split('.')
+  const digits = integer + decimal
+  const point = integer.length + Number(exponentText)
+  const expanded = point < 0 ? '0'.repeat(-point) + digits : digits.slice(point)
+  let fraction = (point < digits.length ? expanded : '').replace(/0+$/, '')
+
+  if (epochSeconds < 0 && fraction) {
+    fraction = (10n ** BigInt(fraction.length) - BigInt(fraction)).toString()
+      .padStart(fraction.length, '0').replace(/0+$/, '')
+  }
+
+  const base = date.toISOString()
+
+  return fraction ? base.replace('.000Z', `.${fraction}Z`) : base
+}

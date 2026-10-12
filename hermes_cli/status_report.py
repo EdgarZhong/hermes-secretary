@@ -13,6 +13,7 @@ They now all call :func:`build_status_fields`; a surface only adds its own heade
 from __future__ import annotations
 
 from datetime import datetime
+from hermes_time import format_timestamp
 from pathlib import Path
 from typing import Any
 
@@ -97,8 +98,8 @@ def build_status_fields(
         "title": (row_title or "").strip(),
         "model": getattr(agent, "model", None) or model or "",
         "provider": getattr(agent, "provider", None) or provider or "",
-        "created": created.strftime(STATUS_STAMP),
-        "last_activity": last_activity.strftime(STATUS_STAMP),
+        "created": format_timestamp(created.timestamp(), profile_home=home),
+        "last_activity": format_timestamp(last_activity.timestamp(), profile_home=home),
         "tokens": f"{int(tokens or 0):,}",
         "agent_running": bool(agent_running),
     }

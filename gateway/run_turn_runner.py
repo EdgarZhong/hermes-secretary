@@ -135,7 +135,8 @@ class TurnRunner:
         # "log" mode: append tool.started lines to the log queue, silent in chat. Handled before
         # the progress_queue guard because log mode runs without a chat progress queue.
         if ctx.log_queue is not None and event_type == "tool.started" and tool_name and tool_name != "_thinking":
-            ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            from hermes_time import now
+            ts = now().isoformat()
             preview_str = f' "{preview}"' if preview else ""
             ctx.log_queue.put(f"{ts}  {tool_name}:{preview_str}".rstrip())
         if not ctx.progress_queue or not ctx._run_still_current():

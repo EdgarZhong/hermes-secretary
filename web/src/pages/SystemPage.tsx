@@ -1,3 +1,4 @@
+import { readableTimestamp } from "@/lib/utils";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import {
@@ -1092,7 +1093,7 @@ export default function SystemPage() {
               </Badge>
               <span className="text-sm text-muted-foreground">
                 {curator?.interval_hours ? `every ${curator.interval_hours}h` : ""}
-                {curator?.last_run_at ? ` · last run ${new Date(curator.last_run_at).toLocaleString()}` : " · never run"}
+                {curator?.last_run_at ? ` · last run ${readableTimestamp(curator.last_run_at)}` : " · never run"}
               </span>
             </div>
             <div className="flex items-center gap-2">

@@ -1,3 +1,5 @@
+import { formatEpochTimestamp } from '@hermes/shared/format'
+
 // Canonical time/date formatting. Shared `Intl` instances (created once, not
 // per-render) + relative-time helpers. Every surface that shows a timestamp or
 // an age pulls from here so the rendered strings stay consistent app-wide.
@@ -8,22 +10,27 @@ export const HOUR = 3_600_000
 export const DAY = 86_400_000
 
 // ── Absolute date/time formatters ──────────────────────────────────────────
-// `hh:mm` clock (thread today/yesterday lines).
-export const fmtClock = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' })
+// Absolute product timestamps keep their complete date, time and explicit UTC timezone.
+function absoluteDateTime(): Intl.DateTimeFormat {
+  // Preserve the native Intl object/API exported through the plugin SDK.
+  const formatter = new Intl.DateTimeFormat(undefined, {
+    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit',
+    minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3,
+    timeZone: 'UTC', timeZoneName: 'longOffset'
+  })
 
-// Compact "day + clock", no year/seconds (artifacts, thread fallback, cron runs).
-export const fmtDayTime = new Intl.DateTimeFormat(undefined, {
-  day: 'numeric',
-  hour: 'numeric',
-  minute: '2-digit',
-  month: 'short'
-})
+  Object.defineProperty(formatter, 'format', {
+    value: (value: Date | number = Date.now()) =>
+      formatEpochTimestamp((value instanceof Date ? value.getTime() : value) / 1000)
+  })
 
-// Medium date + short time (command center session detail).
-export const fmtDateTime = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+  return formatter
+}
 
-// Weekday + full date + clock (message time tooltips).
-export const fmtFullDateTime = new Intl.DateTimeFormat(undefined, { dateStyle: 'full', timeStyle: 'short' })
+export const fmtClock = absoluteDateTime()
+export const fmtDayTime = absoluteDateTime()
+export const fmtDateTime = absoluteDateTime()
+export const fmtFullDateTime = absoluteDateTime()
 
 // Date only, "5 Jun 2026" (starmap tooltip).
 export const fmtDate = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric' })

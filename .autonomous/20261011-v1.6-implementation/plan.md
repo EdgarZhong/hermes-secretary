@@ -18,6 +18,8 @@
 
 ## 当前状态与编排
 
+用户2026-10-12决定本轮仅完成实现收尾，验收转第二轮外部Web UI实施后统一补缺口；不重做V1.6自身全量Verification。C15/C16实现已接收，必要定向证据有效，新版本独立门禁和真实复验未执行。最小交接为continuation-guide.md，历史整改记录保留。
+
 动态机制／正式接线／针对性验证／用户结果状态仅根 CLAUDE.md。T1/T2/T3 白名单不交叉，共享工作区、无 worktree；子 Agent 不再派生、不提交。交回后 root 亲自阅读关键变更和上下游，核对要求覆盖、机制、接口、失败、证据缺口，之后 T4 串行接共享点。同版本有效证据不重跑；集成变化定向复测；门禁只在全局收敛后派遣。
 
 基线：启动 fa51561601；冻结见 baseline.txt；PM .venv Python 3.14.7；uv.lock SHA256 2bc4db483e9cba927cd7147f9ccbb09635f85bb3f1f36d6e9d51d06b65d1c67e；V1.5 Verification 未通过、Dashboard 未执行，不能沿用通过结论；macOS，Linux/Windows 未覆盖。未为建基线预跑大型检查。日志 .hermes-dev/v1.6-evidence/。

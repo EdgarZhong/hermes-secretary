@@ -385,7 +385,7 @@ export function VaultSettings({ subpage }: VaultSettingsProps = {}) {
   const formatCreated = useCallback((iso: string) => {
     const parsed = new Date(iso)
 
-    return Number.isNaN(parsed.getTime()) ? iso : parsed.toLocaleDateString()
+    return Number.isNaN(parsed.getTime()) ? iso : parsed.toISOString()
   }, [])
 
   return (

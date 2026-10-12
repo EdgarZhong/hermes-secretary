@@ -1,8 +1,16 @@
 import { describe, expect, it } from 'vitest'
 
+import { formatTimelineRange, formatTimelineTimestamp } from '../components/assistant-ui/thread/timestamp'
+
+import { formatLimitReset, formatResetClock } from './error-surface'
+
 import {
   calendarBucket,
   DAY,
+  fmtClock,
+  fmtDateTime,
+  fmtDayTime,
+  fmtFullDateTime,
   fmtMonth,
   fmtMonthYear,
   formatAgo,
@@ -147,5 +155,33 @@ describe('sessionBucketLabel', () => {
     }
 
     expect(sessionBucketLabel(monthYearBucket, labels)).toBe(fmtMonthYear.format(monthYearBucket.at))
+  })
+})
+
+describe('absolute product timestamp presentation', () => {
+  it('renders date, full clock and explicit UTC while preserving the supplied instant', () => {
+    const instant = new Date('2026-10-12T06:02:03.250+08:00')
+    expect(fmtDateTime).toBeInstanceOf(Intl.DateTimeFormat)
+    expect(typeof fmtDateTime.formatToParts).toBe('function')
+    expect(fmtDateTime.resolvedOptions().timeZone).toBe('UTC')
+
+    for (const formatter of [fmtClock, fmtDateTime, fmtDayTime, fmtFullDateTime]) {
+      expect(formatter.format(instant)).toBe('2026-10-11T22:02:03.25Z')
+    }
+
+    expect(formatTimelineTimestamp(1791756123.25)).toBe('2026-10-11T22:02:03.25Z')
+    expect(formatTimelineTimestamp(1791800714.1486568)).toBe('2026-10-12T10:25:14.1486568Z')
+    expect(formatTimelineRange(1791756123.25, 1791756124)).toBe(
+      '2026-10-11T22:02:03.25Z → 2026-10-11T22:02:04.000Z'
+    )
+  })
+
+  it('keeps the provider reset instant and numeric relative wait semantics', () => {
+    const instant = 1767272700
+    expect(formatResetClock(instant)).toBe('2026-01-01T13:05:00.000Z')
+    expect(formatLimitReset(instant, Date.UTC(2026, 0, 1, 12))).toBe(
+      '2026-01-01T13:05:00.000Z (in 1h 05m)'
+    )
+    expect(formatLimitReset(instant, instant * 1000 + 1)).toBeNull()
   })
 })

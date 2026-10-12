@@ -91,9 +91,10 @@ def epoch_to_utc_iso(timestamp):
     return datetime.fromtimestamp(float(timestamp), tz=timezone.utc).isoformat()
 
 
-def render_source_timestamp(timestamp):
+def render_source_timestamp(timestamp, *, profile_home=None):
     """ISO 8601 with a UTC offset for the §5.6 reminder wrappers."""
-    return datetime.fromtimestamp(float(timestamp)).astimezone().isoformat()
+    from hermes_time import format_timestamp
+    return format_timestamp(timestamp, profile_home=profile_home)
 
 
 def _schedule_row(conn, schedule_id):

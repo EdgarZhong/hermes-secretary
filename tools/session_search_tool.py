@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Union
 
 from hermes_state_common import _BOUNDARY_END_REASONS
-from hermes_time import safe_strftime
+from hermes_time import format_timestamp
 
 # Hidden from browsing/searching — integrations (HERMES_SESSION_SOURCE=tool), delegate
 # subagent runs, kanban workers are not the user's history.
@@ -81,7 +81,7 @@ def _format_timestamp(ts: Union[int, float, str, None]) -> str:
         return "unknown"
     if isinstance(ts, str) and not ts.replace(".", "").replace("-", "").isdigit():
         return ts
-    return _quiet(lambda: safe_strftime(datetime.fromtimestamp(float(ts)), "%B %d, %Y at %I:%M %p"), str(ts),
+    return _quiet(lambda: format_timestamp(ts), "unknown",
                   "Failed to format timestamp %s: %s", ts, with_exc=True)
 
 
@@ -241,7 +241,8 @@ def _shape_message(m: Dict[str, Any], anchor_id: Optional[int] = None,
     if isinstance(content, str) and "\x1b" in content:  # archived terminal output carries ANSI
         from tools.ansi_strip import strip_ansi
         content = strip_ansi(content)
-    entry = {"id": m.get("id"), "role": m.get("role"), "content": content, "timestamp": m.get("timestamp")}
+    entry = {"id": m.get("id"), "role": m.get("role"), "content": content,
+             "timestamp": _format_timestamp(m.get("timestamp"))}
     entry.update({k: m.get(k) for k in ("tool_name", "tool_calls", "tool_call_id") if m.get(k)})
     if anchor_id is not None and m.get("id") == anchor_id:
         entry["anchor"] = True
@@ -499,7 +500,8 @@ def _list_recent_sessions(db, limit: int, current_session_id: str = None, link_p
         hidden = {current_session_id, current_root if has_compression_hop and current_root else None}
         results = [{
             "session_id": s.get("id", ""), "link": _session_link(s.get("id", ""), link_profile),
-            "title": s.get("title") or None, **{k: s.get(k, "") for k in ("source", "started_at", "last_active")},
+            "title": s.get("title") or None, "source": s.get("source", ""),
+            **{k: _format_timestamp(s.get(k)) for k in ("started_at", "last_active")},
             "message_count": s.get("message_count", 0), "preview": s.get("preview", "")}
             for s in [x for x in sessions if x.get("id", "") not in hidden][:limit]]
         return _ok(mode="browse", results=results, count=len(results), message=(

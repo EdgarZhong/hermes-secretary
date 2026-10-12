@@ -10,7 +10,9 @@ import logging
 import os
 import re
 import threading
-from datetime import datetime
+from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation, ROUND_FLOOR
+from pathlib import Path
 from typing import Dict, Optional, Tuple
 from zoneinfo import ZoneInfo
 
@@ -80,9 +82,9 @@ def _timezone_cache_identity() -> Tuple[str, str]:
     return ("environment", tz_env) if tz_env else ("config", str(get_config_path()))
 
 
-def _resolve_timezone_name() -> str:
+def _resolve_timezone_name(config_path=None) -> str:
     """Read the configured IANA timezone string (or ``""``). Does file I/O — callers cache."""
-    tz_env = _env_timezone()
+    tz_env = _env_timezone() if config_path is None else ""
     if tz_env:
         return tz_env
     try:
@@ -92,10 +94,10 @@ def _resolve_timezone_name() -> str:
         # parse is the stdlib-safe fallback for bootstrap consumers without hermes_cli importable.
         try:
             from hermes_cli.config_effective import load_user_config_effective
-            cfg = load_user_config_effective(get_config_path())
+            cfg = load_user_config_effective(config_path or get_config_path())
         except Exception:
             import hermes_yaml as yaml
-            config_path = get_config_path()
+            config_path = config_path or get_config_path()
             cfg = (yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}) if config_path.exists() else {}
         if cfg:
             tz_cfg = cfg.get("timezone", "")
@@ -106,16 +108,16 @@ def _resolve_timezone_name() -> str:
     return ""
 
 
-def _timezone_entry() -> Tuple[str, Optional[ZoneInfo]]:
+def _timezone_entry(config_path=None) -> Tuple[str, Optional[ZoneInfo]]:
     """Cached ``(configured name, ZoneInfo | None)`` for the active profile."""
-    cache_identity = _timezone_cache_identity()
+    cache_identity = ("config", str(config_path)) if config_path is not None else _timezone_cache_identity()
     with _cache_lock:
         entry = _tz_cache.get(cache_identity)
         if entry is not None:
             return entry
     # Resolve outside the lock (config file I/O); first writer wins so concurrent resolvers of the
     # same identity converge on one ZoneInfo object.
-    name = _resolve_timezone_name()
+    name = _resolve_timezone_name(config_path)
     tz = None
     if name:
         try:
@@ -147,3 +149,55 @@ def now() -> datetime:
     """Current time as a tz-aware datetime: configured zone, else server-local."""
     tz = get_timezone()
     return datetime.now(tz) if tz is not None else datetime.now().astimezone()
+
+
+def format_timestamp(value, *, profile_home=None):
+    """Render an absolute instant with an explicit offset; never mutate stored values.
+
+    Existing timezone-aware ISO text keeps its exact spelling. An explicit owner reads
+    that profile's config rather than a launch-profile environment timezone.
+    """
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        if value.tzinfo is None:
+            raise ValueError("An absolute timestamp must include a timezone")
+        return value.isoformat()
+    if isinstance(value, str):
+        try:
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            pass  # Numeric epoch strings remain accepted at legacy output boundaries.
+        else:
+            if parsed.tzinfo is None:
+                raise ValueError("An absolute timestamp must include a timezone")
+            return value
+    config_path = Path(profile_home) / "config.yaml" if profile_home is not None else None
+    tz = _timezone_entry(config_path)[1]
+    try:
+        instant = Decimal(str(value))
+    except InvalidOperation as exc:
+        raise ValueError("Invalid absolute timestamp") from exc
+    if not instant.is_finite():
+        raise ValueError("Invalid absolute timestamp")
+    whole = int(instant.to_integral_value(rounding=ROUND_FLOOR))
+    moment = datetime.fromtimestamp(whole, tz=timezone.utc).astimezone(tz)
+    rendered = moment.isoformat(timespec="seconds")
+    # time.time() can carry sub-microsecond digits. Keep the original numeric
+    # precision in ISO text rather than silently rounding the stored instant.
+    fraction = format(instant - whole, "f")[1:].rstrip("0") if instant != whole else ""
+    return rendered[:19] + fraction + rendered[19:]
+
+
+def readable_schedule_display(schedule, display):
+    """Render an existing absolute one-shot label without changing stored intent."""
+    if (isinstance(schedule, dict) and schedule.get("kind") == "once"
+            and isinstance(display, str) and display.startswith("once at ")):
+        try:
+            instant = datetime.fromisoformat(schedule["run_at"].replace("Z", "+00:00"))
+            if instant.tzinfo is None:
+                instant = instant.replace(tzinfo=now().tzinfo)
+            return "once at " + format_timestamp(instant)
+        except (KeyError, TypeError, ValueError):
+            pass
+    return display

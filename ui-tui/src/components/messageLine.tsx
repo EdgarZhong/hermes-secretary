@@ -1,5 +1,6 @@
 import { Ansi, Box, NoSelect, Text } from '@hermes/ink'
 import { hasAnsi, sanitizeAnsiForRender, stripAnsi } from '@hermes/shared/ansi'
+import { formatEpochTimestamp } from '@hermes/shared/format'
 import { memo, useState } from 'react'
 
 import { TERMUX_TUI_MODE } from '../config/env.js'
@@ -23,9 +24,7 @@ import { TodoPanel } from './todoPanel.js'
 // Collapse threshold for long system messages (system prompt etc.)
 const SYSTEM_COLLAPSE_CHARS = 400
 
-// `display.timestamps` label — same HH:MM shape the classic CLI's default
-// `display.timestamp_format` ("%H:%M") produces on its message labels, so
-// one config key reads identically across surfaces (#41531).
+// Optional product timestamps preserve the complete instant and explicit UTC timezone.
 export const fmtMsgTimestamp = (createdAt: number | undefined): null | string => {
   if (typeof createdAt !== 'number' || !Number.isFinite(createdAt) || createdAt <= 0) {
     return null
@@ -37,10 +36,7 @@ export const fmtMsgTimestamp = (createdAt: number | undefined): null | string =>
     return null
   }
 
-  const hh = String(date.getHours()).padStart(2, '0')
-  const mm = String(date.getMinutes()).padStart(2, '0')
-
-  return `[${hh}:${mm}]`
+  return `[${formatEpochTimestamp(createdAt)}]`
 }
 
 export const MessageLine = memo(function MessageLine({
@@ -256,7 +252,7 @@ export const MessageLine = memo(function MessageLine({
   // against the prose around it.
   const isDiffSegment = msg.kind === 'diff'
 
-  // `display.timestamps`: dim [HH:MM] beside the gutter glyph on user and
+  // `display.timestamps`: dim [ISO timestamp] beside the gutter glyph on user and
   // assistant rows only — event/trail/system chrome stays unstamped, matching
   // the classic CLI which stamps its user/assistant labels (#41531).
   const stamp =
@@ -350,7 +346,7 @@ interface MessageLineProps {
   reasoningActive?: boolean
   sections?: SectionVisibility
   t: Theme
-  /** `display.timestamps` — dim [HH:MM] label on user/assistant rows. */
+  /** `display.timestamps` — dim [ISO timestamp] label on user/assistant rows. */
   timestamps?: boolean
   tools?: ActiveTool[]
 }

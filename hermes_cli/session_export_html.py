@@ -1,6 +1,7 @@
 """Standalone single-file HTML export (single or multi-session with sidebar); no remote deps."""
 
 import datetime
+from hermes_time import now
 import secrets
 from typing import Any, Dict, List
 from urllib.parse import quote
@@ -654,7 +655,8 @@ def _escape_html(text: Any) -> str:
 
 def _format_timestamp(ts: Any) -> str:
     # A corrupt cell renders as N/A; never raw text (a TEXT timestamp would otherwise reach an HTML sink).
-    return datetime.datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S") if ts and (ts := coerce_epoch(ts)) else "N/A"
+    from hermes_time import format_timestamp
+    return format_timestamp(ts) if ts and (ts := coerce_epoch(ts)) else "N/A"
 
 
 _ROLE_ICONS = {"user": ICON_USER, "assistant": ICON_BOT, "system": ICON_SHIELD}
@@ -797,7 +799,7 @@ def generate_multi_session_html_export(sessions: List[Dict[str, Any]]) -> str:
         sessions_html="\n".join(_session_view_html(s, is_multi) for s in sessions),
         main_margin="var(--sidebar-width)" if is_multi else "0",
         layout_class="layout-multi" if is_multi else "layout-single",
-        generated_at=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        generated_at=now().isoformat(),
         script_nonce=secrets.token_urlsafe(16),
     )
 
