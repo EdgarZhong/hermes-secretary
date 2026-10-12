@@ -2,7 +2,7 @@
 
 ## 目标与依据
 
-依据 snapshot-index.md 和 baseline.txt 冻结原文。完成根看板 V1.6 清单 A–D，继承未修订 V1/V1.5 契约，正式路径可用并关闭两个独立门禁。优先 Notebook 版本化→Noting Child→Snapshot→Main 读取／Reminder。只在 main 本地提交；隔离 runtime／测试库均位于 ignored .hermes-dev，可重建、不迁移；不 push、不部署。动态编排仅根 CLAUDE.md。
+依据 snapshot-index.md 和 baseline.txt 冻结原文。完成根看板 V1.6 清单 A–D，继承未修订 V1/V1.5 契约，正式路径可用并关闭两个独立门禁。优先 Notebook 版本化→Noting Child→Snapshot→Main 读取／Reminder。只在 main 本地提交；隔离 runtime／测试库均位于 ignored .hermes-dev，可重建、不迁移；用户已授权最终汇报前 push；不部署。动态编排仅根 CLAUDE.md。
 
 ## 覆盖与任务
 
@@ -24,12 +24,12 @@
 
 | 问题编号 | 要求与触发条件 | 当前事实与影响 | 优先级及理由 | 修复负责人 | 关闭与复验条件 | 状态 |
 |---|---|---|---|---|---|---|
-| C13 | Force通知不得跨下一compaction区间 | 原生compress真实60→10保留旧Force UID/body，无生命周期过期 | 用户明确新增成功压缩上下文边界 | root/timers | 正式原生成功发布后不携带，summary/tail/replay涵盖；取消失败不误清，历史保留，其他producer不变 | 31b1f757澄清冻结；六文件已root集中review并关闭pause四事项：窄复测5/5、新增对照2/2、生产者闭集静态核查、18/18当前源码；七项条件证据见root-review-c13-final.json；待阶段提交→独立Verification阶段B |
+| C13 | Force通知不得跨下一compaction区间 | 原生compress真实60→10保留旧Force UID/body，无生命周期过期 | 用户明确新增成功压缩上下文边界 | root/timers | 正式原生成功发布后不携带，summary/tail/replay涵盖；取消失败不误清，历史保留，其他producer不变 | 31b1f757澄清冻结；六文件已root集中review并关闭pause四事项：窄复测5/5、新增对照2/2、生产者闭集静态核查、18/18当前源码；七项条件证据见root-review-c13-final.json；已提交82cd557aaf；当前整版Verification已独立按K55及关联条款关闭，Validation引用正式机制证据 |
 | C12 | 用户明确History模型返回不要重复字段 | 旧result各row同时message_uid及嵌套Identity重复UID/ref、物理message_id | 本轮新增用户确认输出去冗余 | History子Agent/root | result单Ref＋row单UID/ts/role/content；原read兼容／隔离／压缩查源／截断精读/Noting共用不变，实际模型补验 | 9fa277授权冻结；39/39＋四项检查，root接收正式接线并提交bc9cd6d7a1，待整版门禁／模型补验 |
 | C10／C11 | 用户明确Notebook Show正文＋last_update_time＋anchor_message_uid | 旧AI结果暴露Snapshot/ref/Anchor/Trigger/Profile审计，占模型token | 本轮新增用户确认口径 | root | 正向四区＋last_update_time＋裸anchor_message_uid投影、内部持久审计不变、null／gate／归档／deepcopy证据与实际模型补验 | 8df8885授权冻结；两个产品文件修补及13/13定向证据完成，待当前整版独立复审／真实模型补验 |
 | VAL02 | 02 §3.6／04 §7.3：human Notebook完整可读 | 实际PTY515chars长Notebook折叠、AX和坐标点击均无展开 | 范围内真实用户结果缺口 | timers/root | 既有Slash展示薄修补，不扩新UI；实际长正文无需不可用鼠标可完整阅读 | 修补与30项UI证据已root接收并提交bc9cd6d7a1、官方构建完成，待真实复验 |
 | VAL01 | 02 §5.6 L1656–1658／1694：Framework tail写入同步用户timeline可见 | 实际Dashboard Main→Idle Noting成功，Snapshot/memo/Finish durable正确，但23:20:55→23:21:30终端无Finish通知；首证据validation-final/U01/ | 范围内用户结果缺口待调查 | timers/root | 原TUI/PTY及CLI正式通知接线分析；复验真实Idle／busy tail事件用户可见且同UID单行，不新增Turn或carrier | 正式接线及专项证据已root接收并提交bc9cd6d7a1，待当前整版独立门禁／真实复验 |
-| R0 | V1.5 遗留门禁缺口 | 旧 Verification 未通过，Dashboard 未执行 | 必须，不能施工代替验收 | root/T5 | 当前版两门禁关闭 | ce2fa6f Verification通过；真实Dashboard Validation及最终交付待关闭 |
+| R0 | V1.5 遗留门禁缺口 | 旧 Verification 未通过，Dashboard 未执行 | 必须，不能施工代替验收 | root/T5 | 当前版两门禁关闭 | 82cd557aaf当前整版Verification通过并root接收；真实Dashboard Validation正式执行，最终交付待关闭 |
 | R1 | 02 §5.6 Framework 已排队后 Turn 结束前关闭 Noting | flush 依赖 Idle recorded 和再次 effective gate，可能丢已准入生产的通知 | 集成正确性 | timers/delivery | timers/framework-off-race.log 3/3；已有队列尾部双写同 UID，空队列无新调用；root复核接收 | 已关闭 |
 | R2 | 02 §2.6 Anchor仅排 Finish marker及Compaction | 旧role=system排除阻止真实普通System事件推进Anchor | 接线正确性 | root/storage | root已复核foreground Anchor／freeze／Commit Gate／Full audit与branch路径；child-memo/integrated-final.log 50/50含普通System、Finish及真实预算装配；delivery/branch-boundary.log 10/10含原生create_session与TUI持久化helper | ce2fa6f全129独立复审已关闭 |
 | R3 | C07拒绝判断后或通知排队期间发生actual Native | 过时“latest External”通知应丢弃；仅撤当前ref未落盘External producer，其他通知和durable行保持 | 用户委托范围内必要工程收敛，主会话提议／Verification评审 | delivery/root | external-notice/refs-final.log 27/27及queue-race/compat证据；正式Verifier按原V132–V136判据评审方案及关闭状态 | ce2fa6f全129独立复审已关闭 |
