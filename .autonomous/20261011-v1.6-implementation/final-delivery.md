@@ -10,7 +10,7 @@
 
 ## 本轮收敛与授权
 
-C16（2026-10-12用户澄清）：关闭导致的Idle周期终结，不能视为合法漏触发并在on/cold时重试；cold扫描仅恢复仍合法的process/sleep漏掉周期。既有生命周期清理，不新增flags、不推算off Main结束、不假填Trigger/admission。此前复杂cold观察提案弃用，VAL04最终修补及复验仍待完成。
+C16（2026-10-12用户最新纠正）：定时器照常到点，只在统一到点事件入口读取当前Conversation-local开关，off本事件结束不重试、on进入既有准入；/noting off只改偏好，不取消timer，host/attach/scan不散落local判断。此前root关闭即取消方案被否定并撤销，复杂cold观察与历史推断均弃用；不新增flags，global关闭/资格/权限约束保持。VAL04修补待该统一机制完整交回和复验。
 
 C15（2026-10-12用户新增）：全部实际AI/human绝对时间外显为带时区可读日期时间，不仅Notebook；内部时间数值/比较/duration及原时间来源保持。专门子Agent全面排查修补后纳入新整版审查与实际复验，目前未完成。
 
