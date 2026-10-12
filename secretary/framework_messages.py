@@ -191,6 +191,29 @@ def _runtime_valid(parent):
                 and isinstance(getattr(parent, "_session_messages", None), list))
 
 
+def capture_queued_force_notices(parent):
+    """Snapshot this owner's existing producer objects for one native attempt."""
+    from agent.message_metadata import is_framework_message
+    with _lock(parent):
+        ref = getattr(parent, "_secretary_conversation_ref", None)
+        return tuple(message for message in getattr(parent, "_secretary_framework_messages", ())
+                     if message.conversation_ref == ref and message.producer == "force_dispatch"
+                     and is_framework_message(message.row)
+                     and message.row["display_metadata"].get("noting_force_dispatch") is True)
+
+
+def retire_queued_force_notices(parent, db, conversation_ref, captured):
+    """Native commit retired this interval; never turn an unappended row into history."""
+    with _lock(parent):
+        if (getattr(parent, "_session_db", None) is not db
+                or getattr(parent, "_secretary_conversation_ref", None) != conversation_ref):
+            return
+        expired = {id(message) for message in captured}
+        pending = getattr(parent, "_secretary_framework_messages", None)
+        if pending:
+            pending[:] = [message for message in pending if id(message) not in expired]
+
+
 def publish_framework_message(parent, body, *, display_metadata=None, expected_conversation_ref=None, _producer=None):
     """Publish only through the owning runtime; never start a Turn or durable pending work."""
     with _lock(parent):

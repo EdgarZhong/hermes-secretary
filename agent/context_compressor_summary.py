@@ -84,6 +84,8 @@ class SummaryDispatchMixin:
             "focus_topic": focus_topic or self._derive_auto_focus_topic(messages),
             "memory_context": memory_context,
         }
+        from agent.compression_force_notice import summary_focus_for_force
+        summary_kwargs["focus_topic"] = summary_focus_for_force(self, turns_to_summarize, summary_kwargs["focus_topic"])
         if _accepts_keyword_argument(self._generate_summary, "bypass_cooldown"):
             summary_kwargs["bypass_cooldown"] = bypass_cooldown
         try:

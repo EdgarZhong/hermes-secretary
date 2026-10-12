@@ -3305,7 +3305,7 @@ def _compression_child_source(agent: Any, parent_session_id: str) -> str:
 
 def _publish_rotated_compaction(
     agent: Any, messages: list, compressed: list, *, new_system_prompt: str, lease: _CompressionLease,
-    old_session_id: str, compressed_user_turn_outcome: str,
+    old_session_id: str, compressed_user_turn_outcome: str, force_notice_plan=None, native_request=None,
 ) -> None:
     """Rotate the session: flush the parent, publish the child, re-point the agent.
     Flushes current-turn msgs to the OLD session, passing the durable prefix (messages[:persist idx]) so
@@ -3350,6 +3350,7 @@ def _publish_rotated_compaction(
         watermark=(lease.watermark if _foreign_tail_ceiling is not None else None),
         watermark_ceiling=_foreign_tail_ceiling,
     )
+    retire_committed_force(force_notice_plan, native_request)
     # `already_present` stamping is done by run_agent's _sync_persisted_markers;
     # this branch covers inserted/merged only; direct callers must use that wrapper.
     if compressed_user_turn_outcome in {"inserted", "merged"}:
@@ -3512,84 +3513,11 @@ def _finish_compaction_boundary(
     return _compressed_est
 
 
-def _candidate_rejected(
-    agent: Any, compressed: Any, messages: list, messages_before_compression: list, *,
-    attempt_generation: Any, attempt_started_at: float,
-) -> bool:
-    """Reject an unusable compression candidate before any session mutation.
-    Order matters: compressor-reported abort, no progress, empty transcript, superseded attempt. Each branch surfaces
-    its own warning/telemetry; the caller releases the lease and returns the input unchanged when True.
-    """
-    # Aborted compression returns input unchanged: surface the error, skip rotation
-    # (no session ended); auto-compress callers detect no-op via equal lengths.
-    if getattr(agent.context_compressor, "_last_compress_aborted", False):
-        _summary_error = getattr(agent.context_compressor, "_last_summary_error", None)
-        _err = _summary_error or "unknown error"
-        if getattr(agent, "_last_compression_summary_warning", None) != _err:
-            agent._last_compression_summary_warning = _err
-            agent._emit_warning(
-                f"⚠ Compression aborted: {_err}. "
-                "No messages were dropped — conversation continues unchanged. "
-                "Run /compress to retry, or /new to start a fresh session."
-            )
-        _emit_aborted_attempt_telemetry(
-            agent, attempt_started_at, _summary_error and "summary_generation_aborted"
-        )
-        return True
-
-    # Compare semantic state, not identity: engines may return an equal copy or
-    # mutate the live list. ``==`` first (subclass __eq__), then marker-insensitive.
-    # Neither case may rotate or rewrite the session. The raw ``==`` leg runs FIRST so a list subclass
-    # returned by an engine keeps its ``__eq__`` semantics (tests seam on this); the marker-insensitive leg
-    # (#92231) then covers the cold-resume shape where the stamped snapshot differs from the marker-swept
-    # compress() output only by ``_db_persisted``.
-    if compressed == messages_before_compression or (
-        _strip_marker_for_comparison(compressed) == _strip_marker_for_comparison(messages_before_compression)
-    ):
-        if messages != messages_before_compression:
-            messages[:] = copy.deepcopy(messages_before_compression)
-        logger.info(
-            "Compression made no progress (session=%s) — skipping boundary rewrite.", agent.session_id or "none"
-        )
-        # Unchanged output would fail identically next turn; arm structural backoff so
-        # auto-compress stops re-firing each turn (success lifts it, force overrides).
-        with _swallow('no-progress backoff arm failed', exc_info=True):
-            if callable(_recorder := getattr(agent.context_compressor, "_record_structural_no_op", None)):
-                _recorder("compaction returned the transcript unchanged (no_progress)")
-        _emit_aborted_attempt_telemetry(agent, attempt_started_at, "no_progress")
-        return True
-    if not compressed:
-        logger.error(
-            "context compression returned an empty transcript; refusing to rotate session=%s so the parent remains resumable",
-            agent.session_id or "none",
-        )
-        with contextlib.suppress(Exception):
-            agent._emit_warning(
-                "⚠ Compression returned an empty transcript. No session split was performed; conversation continues unchanged."
-            )
-        return True
-
-    # A newer WORKING attempt supersedes us; discard the late candidate. No-op
-    # entry claims (sit-outs that never ran a summary) do not: keying on them
-    # discards a completed candidate and livelocks compression. Without a
-    # published working marker, fence poison alone misses a successor that
-    # minted its own fence — fall back to the entry-generation check.
-    if not _working_attempt_is_current(agent.context_compressor, attempt_generation):
-        _working_gen = getattr(
-            agent.context_compressor, "_compression_working_attempt_generation", None
-        )
-        logger.warning(
-            "Discarding late compression candidate: attempt generation "
-            "%s was superseded by a newer working attempt (current working: %s) (session=%s).",
-            attempt_generation,
-            _working_gen,
-            agent.session_id or "none",
-        )
-        _restore_messages_snapshot(messages, messages_before_compression)
-        agent._last_compaction_in_place = False
-        _emit_aborted_attempt_telemetry(agent, attempt_started_at, "attempt_superseded")
-        return True
-    return False
+from agent.compression_force_notice import (  # noqa: E402
+    _candidate_rejected, capture_force_notices, force_summary_scope, force_comparison,
+    force_candidate_source, force_commit_carry, force_verbatim, force_original_verbatim, retire_committed_force,
+    force_verbatim_count, raise_if_force_committed,
+)
 
 
 @dataclasses.dataclass
@@ -3672,7 +3600,7 @@ def _commit_compaction(
     agent: Any, messages: list, compressed: list, *, in_place: bool, lease: _CompressionLease,
     new_system_prompt: str, system_message: str, compressed_user_turn_outcome: str,
     messages_before_compression: Optional[list], made_progress: bool, attempt: _Attempt,
-    verbatim_tail: Optional[list] = None, carried_messages: Optional[list] = None, native_request=None,
+    verbatim_tail: Optional[list] = None, carried_messages: Optional[list] = None, native_request=None, force_notice_plan=None,
 ) -> _CommitOutcome:
     """Persist the compacted transcript: memory extraction, anti-growth guard, then the
     in-place archive or the parent->child rotation.
@@ -3686,6 +3614,7 @@ def _commit_compaction(
     commit_started_at = time.monotonic()
     split_status = "not_applicable"
     old_session_id: Optional[str] = None  # bound only once rotation begins
+    verbatim_tail = force_verbatim(force_notice_plan, verbatim_tail)
     if agent._session_db:
         split_status = "pending"
         try:
@@ -3737,24 +3666,27 @@ def _commit_compaction(
                     r for m in _tail_held if isinstance(m, dict)
                     for r in map(_positive_id, m.get(ABSORBED_ROW_IDS) or ())
                     if r is not None and agent._session_db.get_message_role(agent.session_id, r) is not None})
+                carried_messages, tail_count = force_commit_carry(
+                    force_notice_plan, compressed, _tail_tagged_ids, carried_messages, tail_count)
                 persisted = compressed
                 if verbatim_tail:
                     # The kept exchanges are durable rows under the watermark, so the archive below covers
                     # them too. Store them after the head in the same transaction, with the seam the caller
                     # would build, and count their originals as carried duplicates like compress()'s tail.
                     persisted = rejoin_compressed_head_and_tail(compressed, verbatim_tail)
-                    tail_count += len(verbatim_tail)
+                    tail_count += force_verbatim_count(force_notice_plan, verbatim_tail)
                 from agent.conversation_compression_archive import coverage_for_commit
                 covered_ids, unresolved_held = coverage_for_commit(
                     agent._session_db, agent.session_id,
                     messages_before_compression if messages_before_compression is not None else messages,
-                    verbatim_tail)
+                    force_original_verbatim(force_notice_plan, verbatim_tail))
                 agent._session_db.archive_and_compact(
                     agent.session_id, persisted, model_config_patch={PROACTIVE_PRUNE_REARM_MODEL_CONFIG_KEY: None},
-                    watermark=_held_watermark(agent, lease.watermark, messages, verbatim_tail),
+                    watermark=_held_watermark(agent, lease.watermark, messages, force_original_verbatim(force_notice_plan, verbatim_tail)),
                     lock_holder=lease.holder, tail_count=tail_count, carried_messages=carried_messages,
                     covered_ids=covered_ids, unresolved_held=unresolved_held,
                 )
+                retire_committed_force(force_notice_plan, native_request)
                 compressed = persisted
                 split_status = "in_place_committed"
                 # compress() returned marker-swept copies; stamp them as persisted or the next
@@ -3793,6 +3725,7 @@ def _commit_compaction(
                 _publish_rotated_compaction(
                     agent, messages, compressed, new_system_prompt=new_system_prompt, lease=lease,
                     old_session_id=old_session_id, compressed_user_turn_outcome=compressed_user_turn_outcome,
+                    force_notice_plan=force_notice_plan, native_request=native_request,
                 )
                 if verbatim_tail:
                     stamp_db_persisted_markers(verbatim_tail)
@@ -3801,6 +3734,7 @@ def _commit_compaction(
                 agent._flushed_db_message_session_id = agent.session_id
             session_commit_succeeded = True
         except Exception as e:
+            raise_if_force_committed(force_notice_plan)
             # Rotation: atomic publication failed (including lease loss) — keep the parent live and discard the stale
             # compacted snapshot. In-place: archive_and_compact is atomic so old rows stay active, but marker-swept
             # `compressed` would re-INSERT on top of them (doubling each try); gate on split_status (set right after
@@ -3868,6 +3802,7 @@ class _SummaryPhase:
     approx_tokens: Optional[int] = None
     pre_msg_count: int = 0
     abort_prompt: Optional[str] = None
+    force_notice_plan: Any = None
 
 
 def _run_summary_phase(
@@ -3875,6 +3810,7 @@ def _run_summary_phase(
     approx_tokens: Optional[int], focus_topic: Optional[str], force: bool, bypass_cooldown: bool,
     commit_fence: Optional[CompressionCommitFence], hard_cancel_event: Any, system_message: str,
     attempt: _Attempt,
+    verbatim_tail: Optional[list] = None,
 ) -> _SummaryPhase:
     """Adopt a grown durable parent, gather memory context and run the summarizer.
     A hard cancel restores the compressor snapshot + live list, records a stall backoff while the lease is
@@ -3907,13 +3843,16 @@ def _run_summary_phase(
             bypass_cooldown=bypass_cooldown,
         )
         messages_before_compression = copy.deepcopy(messages)
+        force_notice_plan = capture_force_notices(agent, messages, verbatim_tail)
         _activity_heartbeat = _CompressionActivityHeartbeat(
             agent, commit_fence=commit_fence, emit_client_status=lease.status_emitted,
         ).start()
-        compressed = _run_summary_dispatch(
-            agent, messages, compress_fn, compress_kwargs, commit_fence=commit_fence,
-            attempt_generation=attempt.generation, hard_cancel_event=hard_cancel_event,
-        )
+        with force_summary_scope(force_notice_plan):
+            compressed = _run_summary_dispatch(
+                agent, messages if force_notice_plan is None else force_notice_plan.working(),
+                compress_fn, compress_kwargs, commit_fence=commit_fence,
+                attempt_generation=attempt.generation, hard_cancel_event=hard_cancel_event,
+            )
     except AuxiliaryExplicitCancellation:
         try:
             attempt.restore_compressor(agent.context_compressor)
@@ -3956,6 +3895,7 @@ def _run_summary_phase(
     return _SummaryPhase(
         messages=messages, compressed=compressed, messages_before_compression=messages_before_compression,
         approx_tokens=approx_tokens, pre_msg_count=pre_msg_count,
+        force_notice_plan=force_notice_plan,
     )
 
 
@@ -4170,10 +4110,12 @@ def compress_context(
         agent, messages, lease=lease, in_place=in_place, checkpoint_required=checkpoint_required,
         approx_tokens=approx_tokens, focus_topic=focus_topic, force=force, bypass_cooldown=bypass_cooldown,
         commit_fence=commit_fence, hard_cancel_event=_hard_cancel_event, system_message=system_message, attempt=attempt,
+        verbatim_tail=verbatim_tail,
     )
     if phase.abort_prompt is not None:
         return phase.messages, phase.abort_prompt
     messages, compressed = phase.messages, phase.compressed
+    candidate_source = force_candidate_source(phase)
     messages_before_compression = phase.messages_before_compression
     approx_tokens, _pre_msg_count = phase.approx_tokens, phase.pre_msg_count
     _commit_fence_entered = False
@@ -4186,7 +4128,7 @@ def compress_context(
         )
         if _candidate_rejected(
             agent, compressed, messages, messages_before_compression, attempt_generation=attempt.generation,
-            attempt_started_at=attempt.started_at,
+            attempt_started_at=attempt.started_at, comparison_before=force_comparison(phase),
         ):
             return messages, _existing_system_prompt(agent, system_message)
         if commit_fence is not None:
@@ -4221,7 +4163,7 @@ def compress_context(
         # fold, not the just-delivered one (which lives in the verbatim tail), so the guard
         # must not undo the compression it was asked for.
         reinserted_reply = None if verbatim_tail else _ensure_compressed_keeps_last_assistant_reply(
-            messages, compressed, session_id=agent.session_id,
+            candidate_source, compressed, session_id=agent.session_id,
         )
         if reinserted_reply is not None:
             logger.info(
@@ -4229,7 +4171,7 @@ def compress_context(
                 "active set (session=%s).", agent.session_id or "none",
             )
         _fold_todo_snapshot(agent, compressed)
-        compressed_user_turn_outcome = _ensure_compressed_has_user_turn(messages, compressed)
+        compressed_user_turn_outcome = _ensure_compressed_has_user_turn(candidate_source, compressed)
         new_system_prompt = _rebuild_system_prompt_at_boundary(agent, system_message)
         commit = _commit_compaction(
             agent, messages, compressed, in_place=in_place, lease=lease, new_system_prompt=new_system_prompt,
@@ -4241,7 +4183,7 @@ def compress_context(
             # of archiving it compacted=1 next to a fresh twin (display would show it twice). The
             # todo fold / user-anchor rows added above are NOT carried: they keep their own class.
             carried_messages=[reinserted_reply] if reinserted_reply is not None else None,
-            native_request=native_request,
+            native_request=native_request, force_notice_plan=phase.force_notice_plan,
         )
         if commit.refused_prompt is not None:
             return messages, commit.refused_prompt

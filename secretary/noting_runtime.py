@@ -575,6 +575,7 @@ def maybe_admit_force_from_pressure(agent: Any, measured_tokens: Any, *, message
                 agent,
                 "临近上下文上限，notebook 更新任务已派发。建议尽早压缩，并在此提示：compaction 时将本消息之后的内容重点保留。",
                 expected_conversation_ref=ref,
+                display_metadata={"noting_force_dispatch": True}, _producer="force_dispatch",
             )
             from secretary.noting_child import spawn_noting_task
             spawn_noting_task(agent, decision.admission, parent_active_messages=messages)

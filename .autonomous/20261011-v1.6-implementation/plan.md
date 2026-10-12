@@ -24,11 +24,11 @@
 
 | 问题编号 | 要求与触发条件 | 当前事实与影响 | 优先级及理由 | 修复负责人 | 关闭与复验条件 | 状态 |
 |---|---|---|---|---|---|---|
-| C13 | Force通知不得跨下一compaction区间 | 原生compress真实60→10保留旧Force UID/body，无生命周期过期 | 用户明确新增成功压缩上下文边界 | root/timers | 正式原生成功发布后不携带，summary/tail/replay涵盖；取消失败不误清，历史保留，其他producer不变 | 缺陷已复现，待最小方案 |
-| C12 | 用户明确History模型返回不要重复字段 | 旧result各row同时message_uid及嵌套Identity重复UID/ref、物理message_id | 本轮新增用户确认输出去冗余 | History子Agent/root | result单Ref＋row单UID/ts/role/content；原read兼容／隔离／压缩查源／截断精读/Noting共用不变，实际模型补验 | 9fa277授权冻结；39/39＋四项检查，root接收正式接线，待集成提交／整版门禁／模型补验 |
+| C13 | Force通知不得跨下一compaction区间 | 原生compress真实60→10保留旧Force UID/body，无生命周期过期 | 用户明确新增成功压缩上下文边界 | root/timers | 正式原生成功发布后不携带，summary/tail/replay涵盖；取消失败不误清，历史保留，其他producer不变 | 31b1f757澄清冻结；六文件已root集中review并关闭pause四事项：窄复测5/5、新增对照2/2、生产者闭集静态核查、18/18当前源码；七项条件证据见root-review-c13-final.json；待阶段提交→独立Verification阶段B |
+| C12 | 用户明确History模型返回不要重复字段 | 旧result各row同时message_uid及嵌套Identity重复UID/ref、物理message_id | 本轮新增用户确认输出去冗余 | History子Agent/root | result单Ref＋row单UID/ts/role/content；原read兼容／隔离／压缩查源／截断精读/Noting共用不变，实际模型补验 | 9fa277授权冻结；39/39＋四项检查，root接收正式接线并提交bc9cd6d7a1，待整版门禁／模型补验 |
 | C10／C11 | 用户明确Notebook Show正文＋last_update_time＋anchor_message_uid | 旧AI结果暴露Snapshot/ref/Anchor/Trigger/Profile审计，占模型token | 本轮新增用户确认口径 | root | 正向四区＋last_update_time＋裸anchor_message_uid投影、内部持久审计不变、null／gate／归档／deepcopy证据与实际模型补验 | 8df8885授权冻结；两个产品文件修补及13/13定向证据完成，待当前整版独立复审／真实模型补验 |
-| VAL02 | 02 §3.6／04 §7.3：human Notebook完整可读 | 实际PTY515chars长Notebook折叠、AX和坐标点击均无展开 | 范围内真实用户结果缺口 | timers/root | 既有Slash展示薄修补，不扩新UI；实际长正文无需不可用鼠标可完整阅读 | 修补与30项UI证据已root接收，待集成提交及真实复验 |
-| VAL01 | 02 §5.6 L1656–1658／1694：Framework tail写入同步用户timeline可见 | 实际Dashboard Main→Idle Noting成功，Snapshot/memo/Finish durable正确，但23:20:55→23:21:30终端无Finish通知；首证据validation-final/U01/ | 范围内用户结果缺口待调查 | timers/root | 原TUI/PTY及CLI正式通知接线分析；复验真实Idle／busy tail事件用户可见且同UID单行，不新增Turn或carrier | 正式接线及专项证据已root接收，待集成提交／独立门禁／真实复验 |
+| VAL02 | 02 §3.6／04 §7.3：human Notebook完整可读 | 实际PTY515chars长Notebook折叠、AX和坐标点击均无展开 | 范围内真实用户结果缺口 | timers/root | 既有Slash展示薄修补，不扩新UI；实际长正文无需不可用鼠标可完整阅读 | 修补与30项UI证据已root接收并提交bc9cd6d7a1、官方构建完成，待真实复验 |
+| VAL01 | 02 §5.6 L1656–1658／1694：Framework tail写入同步用户timeline可见 | 实际Dashboard Main→Idle Noting成功，Snapshot/memo/Finish durable正确，但23:20:55→23:21:30终端无Finish通知；首证据validation-final/U01/ | 范围内用户结果缺口待调查 | timers/root | 原TUI/PTY及CLI正式通知接线分析；复验真实Idle／busy tail事件用户可见且同UID单行，不新增Turn或carrier | 正式接线及专项证据已root接收并提交bc9cd6d7a1，待当前整版独立门禁／真实复验 |
 | R0 | V1.5 遗留门禁缺口 | 旧 Verification 未通过，Dashboard 未执行 | 必须，不能施工代替验收 | root/T5 | 当前版两门禁关闭 | ce2fa6f Verification通过；真实Dashboard Validation及最终交付待关闭 |
 | R1 | 02 §5.6 Framework 已排队后 Turn 结束前关闭 Noting | flush 依赖 Idle recorded 和再次 effective gate，可能丢已准入生产的通知 | 集成正确性 | timers/delivery | timers/framework-off-race.log 3/3；已有队列尾部双写同 UID，空队列无新调用；root复核接收 | 已关闭 |
 | R2 | 02 §2.6 Anchor仅排 Finish marker及Compaction | 旧role=system排除阻止真实普通System事件推进Anchor | 接线正确性 | root/storage | root已复核foreground Anchor／freeze／Commit Gate／Full audit与branch路径；child-memo/integrated-final.log 50/50含普通System、Finish及真实预算装配；delivery/branch-boundary.log 10/10含原生create_session与TUI持久化helper | ce2fa6f全129独立复审已关闭 |
@@ -46,4 +46,6 @@
 无新增产品取舍。C02 用户确认，非自主假设。02 残留 memo add guarantees run 和 schedule_create 以更具体已定案 §3.5/3.7、§5.12 Target 为准：memo 不触发，初始 Schedule 在 create。04 旧 agent_task/restore/三型 termination/旧 Prompt 按现行 02 明确修订替代，不追改上轮结论。阶段提交准确记录验证边界，最终由 delivery-evidence-review 判定。
 
 
-本次接续整改状态（2026-10-11）：ce2fa6f全129独立Verification通过，所有已列实体缺陷关闭。官方隔离Dashboard已启动，另一个全新无上下文Validation正在制定真实用户旅程；受控机制与真实API证据按源码影响复用，不代替用户验收。后续关闭Validation及最终交付R0，动态编排仅见根CLAUDE.md。
+本次接续整改状态（2026-10-12）：旧ce2fa6f全129独立Verification通过记录保留；C10–C12及VAL01/VAL02已实现集成，C13仍待交回。当前版本全范围Verification与实际Validation均未关闭；官方构建完成但旧隔离服务器尚未升级。受控机制与真实API证据按源码影响复用，剩余典型用户旅程继续执行；动态编排仅见根CLAUDE.md。
+
+接手授权更新（2026-10-12，新会话用户确认）：①恢复自主目标授权，按continuation-guide A→F收尾；②Dashboard补充验证前先保库重启并复用Codex最近实测profile（dashboard-final-4743943e，不重建库），重启在C13提交且Verification通过后执行；③中间自主执行仓库快照提交方便回退（本轮既有授权确认）；④最终汇报前push云端（用户明确授权push；push前核对无凭据/个人化/私人Pi数据，不改变验收门禁）。
