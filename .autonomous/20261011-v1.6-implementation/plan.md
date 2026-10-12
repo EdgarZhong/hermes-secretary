@@ -22,8 +22,11 @@
 
 ## 缺陷与整改
 
+C14验收操作授权：仅合法隔离配置可临时调节，一般Idle30秒、memo操作可暂加长，验完恢复原值；真实Turn结束/timer/时钟驱动，不直接trigger/tick、不改DB due、不伪busy/时钟。产品默认值与既有规格不变。
+
 | 问题编号 | 要求与触发条件 | 当前事实与影响 | 优先级及理由 | 修复负责人 | 关闭与复验条件 | 状态 |
 |---|---|---|---|---|---|---|
+| VAL03 | 官方Dashboard CHAT恢复旧Session | 原生自动TUI build的scratch位于源码树，被productOutput拒绝，PTY未创建、0模型输入 | 阻挡全部用户验收，先恢复合法入口 | root（环境协调）/独立Verifier评审/Validator复验 | 既有native prebuilt入口与official bundle/source hash一致；保库重启后同CHAT/Session真实可用、原失败保留 | 独立提案接受，root保库重启PID68046（dff文档HEAD/82同产品）；原入口真实复验待完成，产品源码未变 |
 | C13 | Force通知不得跨下一compaction区间 | 原生compress真实60→10保留旧Force UID/body，无生命周期过期 | 用户明确新增成功压缩上下文边界 | root/timers | 正式原生成功发布后不携带，summary/tail/replay涵盖；取消失败不误清，历史保留，其他producer不变 | 31b1f757澄清冻结；六文件已root集中review并关闭pause四事项：窄复测5/5、新增对照2/2、生产者闭集静态核查、18/18当前源码；七项条件证据见root-review-c13-final.json；已提交82cd557aaf；当前整版Verification已独立按K55及关联条款关闭，Validation引用正式机制证据 |
 | C12 | 用户明确History模型返回不要重复字段 | 旧result各row同时message_uid及嵌套Identity重复UID/ref、物理message_id | 本轮新增用户确认输出去冗余 | History子Agent/root | result单Ref＋row单UID/ts/role/content；原read兼容／隔离／压缩查源／截断精读/Noting共用不变，实际模型补验 | 9fa277授权冻结；39/39＋四项检查，root接收正式接线并提交bc9cd6d7a1，待整版门禁／模型补验 |
 | C10／C11 | 用户明确Notebook Show正文＋last_update_time＋anchor_message_uid | 旧AI结果暴露Snapshot/ref/Anchor/Trigger/Profile审计，占模型token | 本轮新增用户确认口径 | root | 正向四区＋last_update_time＋裸anchor_message_uid投影、内部持久审计不变、null／gate／归档／deepcopy证据与实际模型补验 | 8df8885授权冻结；两个产品文件修补及13/13定向证据完成，待当前整版独立复审／真实模型补验 |
