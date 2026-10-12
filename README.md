@@ -75,6 +75,12 @@ hermes
 
 Gateway 入口为 `hermes gateway`。官方 Dashboard 入口为 `hermes dashboard --host 127.0.0.1 --no-open`，默认端口 9119；源码子命令为 `.venv/bin/python -m hermes_cli.main dashboard ...`。激活不自动安装全部 JS workspace；不以官方安装脚本替代当前 checkout。
 
+## 独立 Secretary Web 开发入口
+
+独立前端在并列本地仓库 `../hermes-secretary-web`，使用 React / TypeScript / Vite，直接调用原生 REST / WS；开发服务默认连接 `http://127.0.0.1:53445`。部署范围及验收进度见 CLAUDE，不替代官方 Dashboard。
+
+在前端目录执行 `npm ci` 后，`npm run dev` 启动正式接线页面；`npm run typecheck`、`npm test`、`npm run build` 为类型、定向测试与构建入口。静态交互工作台使用 `npm run mock -- --port 5176`，访问 `/mock.html`；可选择场景、主题与四种视口，不连接真实后端或调用模型。`npm run mock:test` 和 `npm run mock:build` 分别验证、构建静态工作台。场景与组件边界见 [Mock 交接说明](.autonomous/20261012-round2-web-ui/static-mock.md)。
+
 ## 代码规范与测试入口
 
 代码遵循 [AGENTS.md](AGENTS.md) 的 Hermes-first、原生兼容、facade/sibling、prompt-cache、profile 隔离与冻结检查约束。上游分区文档只作架构和环境参考。

@@ -32,6 +32,12 @@ T0审计已由主会话接收，S01–S05/I01–I03/C01为新增V1行为缺口�
 
 | 编号 | 要求与触发条件 | 当前事实与影响 | 优先级 | 修复负责人 | 关闭与复验条件 | 状态 |
 |---|---|---|---|---|---|---|
+| R2-F15 | 06 §0.5/§1.12 命令失败正确反馈 | Controller.stop吞错误后command-actions仍consume输入 | P2 | 前端Sol | 失败保留原owner命令草稿、明确错误；production定向测试 | Main源码review发现，修复中 |
+| R2-F16 | 06 §1.5 Model/Reasoning真实能力选项 | 仅config当前effort加none，遗漏实际可选档位 | P2 | 前端Sol | 查真实原生能力/配置来源，呈现完整合法选项，当前值与可用选项分离，不虚构支持 | Main源码review发现，调查修复中 |
+| R2-F14 | 02 §4.5 C16 合法 cold catchup、§5.5真实冻结前缀 | 5ccc619真实冷恢复事件已准入，parent._session_messages未恢复，spawn前失败无Snapshot | P1 | Core Sol调查/实现，Main集成，V1.6 Sol真实复验 | 原生恢复顺序/正确prefix，单事件不重复，未启用不变；先接缝设计，再定向机制和真实cold复验 | H04-A真实发现，设计调查中 |
+| R2-F12 | 真实多工具 Turn 的 stream→durable 投影切换 | assistant-ui message index 18 越界（length18），NodeMessage 使整页空白；实际第三次 PDF/JSON请求复现 | P1 | 前端 Sol | 稳定身份/生命周期修复，真实多工具流终态切换无崩溃，不仅error boundary遮蔽 | Main真实联调复现，整改中 |
+| R2-F13 | PDF+JSON附件正式提交 | 同一用户消息两附件各显示两次，疑似预测与durable双投影 | P2 | 前端 Sol | 依据真实身份合并，无重复/丢失，刷新前后结果一致 | Main真实联调发现，整改中 |
+| R2-F11 | 06 Thinking/工具卡独立生命周期；多工具真实 Turn | 用户与 Main 实测：旧 Thinking 在后续工具运行时仍显示 running，Turn 结束才统一折叠；工具卡同类风险 | P1 | 前端 Sol | 按每段/调用真实事件与身份独立终态和折叠，保留手动行为；以动态连续观察及事件时序复验 | 已修逐卡折叠并现场确认；第二空Thinking继续整改 |
 | R2-F10 | C17–C18；Files 打开 Markdown、长文本与常见文档 | 现有通用 pre 不渲染 Markdown/不折长行，多数二进制无法预览；面包屑含 Files/Parent folder 人工标签 | P1 | 前端 Sol；视觉配合容器 | 成熟本地预览库接入真实鉴权文件；代表文本/图片/PDF/Office/媒体验证；工作区相对路径及根强调色，四视口可用，无第三方文件外发 | 用户审看发现，整改中 |
 | R2-F09 | 06 §0.3–0.4 的 bounded ephemeral state；长期切换多个 Conversation | histories/lives/bindings 等分散 Map 缺统一释放边界，历史投影可随浏览持续积累；当前未发现持久 API 缓存 | P1 | 前端 Sol | 用统一 owner/lifetime 管理当前视图和必要在途状态，其余按需原生重建；连续切换、回看、ACK/断线与草稿归属验证 | 中期架构检查发现，整改中 |
 | R2-F01 | 延迟发送/steer/withdraw ACK 期间切 Conversation 或编辑 | owner 草稿可能串线、撤回文本丢失或新编辑被误清 | P1 | 前端 Sol | 生产 controller 延迟 RPC + 切换/编辑反例通过，按 accepted 内容与原 owner 更新 | 整改中 |
@@ -81,3 +87,5 @@ Sol 新小阶段只允许 `tui_gateway/methods_prompt.py` 必要原生 claim 接
 T3c 设计由 Main 亲查原 handler、claim、admission 与模块绑定后准入。最终接口 `prompt.submit_idle`，精确契约见 submit-idle-implementation.md；ContextVar 必须 finally reset，handler alias 经原 binder，claim source 标记仅原锁下元数据。两种先后顺序及 new/new 竞争由正式接缝屏障测试。
 
 R2-F04 跨连接图片清理反例补充：旧 image.attach 未 settle，新 WS detach 可能先完成而旧 attach 随后 append。Main 亲查原生 `_admit_prompt_turn` 与 compute-host 均已有显式 image_paths 参数；T3c 同一 owner 最小扩展新入口携带本次图片列表，新请求默认空列表、旧入口保持 None。前端只上传取得路径，再随 Send/Rewind 传入；不再通过共享 staged images 绑定 Web 图片。校验在 claim/truncate 前；沿原生图片权限及执行路径，不新增图片账本或第二执行器。设计与正式测试仍由 T3c 完整交回，已登记 CLAUDE 待追认。
+
+视觉阶段交接：前端 `27c5cb4`，worktree `/Users/edgar/code/hermes-secretary-web-visual-design`，分支 `codex/visual-design`，Mock5176。阶段快照不代表最终验收；用户另派设计，原前端继续功能整改。
