@@ -439,7 +439,7 @@ def test_force_producer_uses_admission_owner_when_runtime_switches(runtime, monk
         assert noting_runtime.maybe_admit_force_from_pressure(agent, 64000).startswith("admit")
         assert len(admissions) == 1 and admissions[0].conversation_ref == old_ref
         notices = [row for row in db.get_messages(old_sid)
-                   if "临近上下文上限，notebook 更新任务已派发。" in str(row["content"])]
+                   if "a Notebook update task has been dispatched." in str(row["content"])]
         if switch_owner:
             assert not notices
             assert not any("<framework-message>" in str(row["content"])

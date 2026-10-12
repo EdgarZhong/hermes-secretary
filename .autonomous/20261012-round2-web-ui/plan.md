@@ -32,13 +32,13 @@ T0审计已由主会话接收，S01–S05/I01–I03/C01为新增V1行为缺口�
 
 | 编号 | 要求与触发条件 | 当前事实与影响 | 优先级 | 修复负责人 | 关闭与复验条件 | 状态 |
 |---|---|---|---|---|---|---|
-| R2-F20 | 06组合Compaction载体保真实来源角色 | 真实压缩row121原role=assistant，App DisclosureNode对realText硬编码user并提供Reply | P1 | 前端Sol | 按真实role展示原文，仅user可Reply；React反例及实际carrier复验 | Main已review接收修复及真实role React反例；已有carrier只读复验待统一窗口 |
+| R2-F20 | 06组合Compaction载体保真实来源角色 | 真实压缩row121原role=assistant，App DisclosureNode对realText硬编码user并提供Reply | P1 | 前端Sol | 按真实role展示原文，仅user可Reply；React反例及实际carrier复验 | bfecc9f已提交；Main实际row121复验为Assistant且无Reply，carrier-role-final.json，开发缺陷关闭 |
 | R2-F17 | 06 unknown acceptance 不盲重发 | Turn结束后旧op查询被前端active gate阻挡，普通Send可能重复提交 | P1 | 前端Sol | 同一owner保存原turn/op，Check/Send仅查询旧op，明确receipt前不发新请求；生产反例通过 | Main已接收修复及生产Controller证据，30d3135 |
 | R2-F18 | 06 Pending 真实失效重取 | singleflight中pending_changed复用旧响应，漏掉在途变化 | P1 | 前端Sol | 唯一owner失效代次，过期结果不发布并顺序重读；生产并发反例通过 | Main已接收修复及生产Controller证据，30d3135 |
 | R2-F19 | 06 压缩真实反馈与History | 原生拒绝摘要增长，前端丢RPC结果及warn，没有notice；仅ensureBinding不刷新History | P1 | 前端Sol | 真实summary/lock/error明确反馈，成功发布后按新tip刷新History，保owner草稿；受控与真实补证 | 机制及Main review已接收；真实refused完整反馈、成功12→10且History读到carrier均已补证；角色错误由F20处理 |
 | R2-F15 | 06 §0.5/§1.12 命令失败正确反馈 | Controller.stop吞错误后command-actions仍consume输入 | P2 | 前端Sol | 失败保留原owner命令草稿、明确错误；production定向测试 | Main已接收机制，30d3135 |
-| R2-F16 | 06 §1.5 Model/Reasoning真实能力选项 | 七档机制已修，但30d3135真实会话仍显示capability unavailable，与原生catalog captrue不符 | P2 | 前端Sol | 定位实际catalog/runtime身份或加载失败，真实菜单/设置回读正确 | Main已接收真实5098错误/Retry/owner修复，55当前包通过；成功恢复待统一restart |
-| R2-F14 | 02 §4.5 C16 合法 cold catchup、§5.5真实冻结前缀 | 5ccc619真实冷恢复事件已准入，parent._session_messages未恢复，spawn前失败无Snapshot | P1 | Core Sol调查/实现，Main集成，V1.6 Sol真实复验 | 原生恢复顺序/正确prefix，单事件不重复，未启用不变；先接缝设计，再定向机制和真实cold复验 | Main已亲审完整代码/上下游并接收17不同新增机制+21旧恢复回归复用；真实cold待集成后新合法period |
+| R2-F16 | 06 §1.5 Model/Reasoning真实能力选项 | 七档机制已修，但30d3135真实会话仍显示capability unavailable，与原生catalog captrue不符 | P2 | 前端Sol | 定位实际catalog/runtime身份或加载失败，真实菜单/设置回读正确 | bfecc9f已提交；37ce184服务真实七档恢复，high→medium的Current/Effective均回读一致，开发缺陷关闭 |
+| R2-F14 | 02 §4.5 C16 合法 cold catchup、§5.5真实冻结前缀 | 5ccc619真实冷恢复事件已准入，parent._session_messages未恢复，spawn前失败无Snapshot | P1 | Core Sol调查/实现，Main集成，V1.6 Sol真实复验 | 原生恢复顺序/正确prefix，单事件不重复，未启用不变；先接缝设计，再定向机制和真实cold复验 | 37ce184已提交；Main接收17机制+21旧恢复复用，并复核新合法cold单event/Child/Snapshot无重复，开发缺陷关闭 |
 | R2-F12 | 真实多工具 Turn 的 stream→durable 投影切换 | assistant-ui message index 18 越界（length18），NodeMessage 使整页空白；实际第三次 PDF/JSON请求复现 | P1 | 前端 Sol | 稳定身份/生命周期修复，真实多工具流终态切换无崩溃，不仅error boundary遮蔽 | 实现及源码review已接收，后续真实多工具未再现 |
 | R2-F13 | PDF+JSON附件正式提交 | 同一用户消息两附件各显示两次，疑似预测与durable双投影 | P2 | 前端 Sol | 依据真实身份合并，无重复/丢失，刷新前后结果一致 | authored prefix实现review接收，真实后续附件单份 |
 | R2-F11 | 06 Thinking/工具卡独立生命周期；多工具真实 Turn | 用户与 Main 实测：旧 Thinking 在后续工具运行时仍显示 running，Turn 结束才统一折叠；工具卡同类风险 | P1 | 前端 Sol | 按每段/调用真实事件与身份独立终态和折叠，保留手动行为；以动态连续观察及事件时序复验 | 逐卡折叠用户确认；空Thinking修复review接收，真实双工具无空卡 |
@@ -163,3 +163,15 @@ R2-C25：用户再次强调视觉层交由用户/视觉AI，Main专注底层功�
 F16/F20补充证据：frontend/reasoning-recovery/version-and-check-selection.json记录5/5源码、两次定向运行理由及精确命令；当前55 Controller/Timeline＋42未变contracts/theme=97 distinct，不重复累加89。Main已亲审代码与接口接线，真实成功恢复不提前声明。
 
 BE-COLD证据：cold-resume-fix.md§8–9与ignored cold-resume-fix/final-manifest.json；Main核6/6源码报告、23/23日志，17不同新增机制（最终异步16＋压缩定向1）及21原恢复回归，ruff通过，health0阻断/1提示；全部18次canonical运行含失败fixture如实记，非18次大包。旧H04-A真实失败保留，待新合法period开发复验，不冒称已关真实缺口。
+
+WEB-FINAL-F16/F20：37ce184后端＋bfecc9f前端，runtime/reasoning-{high,medium}-final.txt与medium-final.png、carrier-role-final.json；真实设置往返并恢复medium、现成成功压缩carrier按assistant且Reply=false；零新模型/不重做长对话。
+
+V16-F14最终开发补证：v16-handoff-evidence§12及ignored v16-live/H04-F14/proof.json。37ce184，新stored20261012_231154_0e793a，Mainend→due前停机→跨due公开resume，1/1/1、10秒无重复；9/9产品与39/39证据hash Main核实，旧failed3不变。真实Root/ParentUID与toolpin一致，Child逐请求payload缺失及两次越权调用被拒如实保留。只补该周期，未重复H02/H03/H05–H08。现在按C24门禁前交接，后续先视觉合并再独立门禁。
+
+## 2026-10-13 视觉交回后集成包
+
+- R2-C28/C30覆盖此前等待边界，Sol主会话继续到最终交付；前置完成后才派Astra门禁。
+- F21：Enter只Send/Steer、Escape取消类；功能仓实际组件验证。
+- F22：500 MB合计附件预算替代16 MiB单文件；已有草稿+新选项合计判断，删除释放；完整实际上传与原生引用/提交需证据。
+- F23：视觉finished无回闪、Interrupt先收拢再涨入、顶部持久toast；worktree收尾及四视口、中间帧取证后Main合并并正式接线。
+- 历史16 MiB上传证据仅证明旧边界，不再代表交付上限；同源其他路径沿已有证据复用。

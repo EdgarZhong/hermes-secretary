@@ -86,7 +86,7 @@ def test_turn_start_measurement_spawns_force_and_once_framework(parent, db, stub
     with db._read_ctx() as conn:
         assert db.reminder_pull_pending_conn(conn, ref) == []
     notices = [row for row in db.get_messages(parent.session_id)
-               if "notebook 更新任务已派发" in (row.get("content") or "")]
+               if "a Notebook update task has been dispatched." in (row.get("content") or "")]
     assert len(notices) == 1
     assert notices[0]["content"] in [row.get("content") for row in parent._session_messages]
 

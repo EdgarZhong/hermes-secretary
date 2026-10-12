@@ -327,7 +327,7 @@ def test_actual_native_fallback_removes_only_queued_external_notice(runtime, bus
             agent._active_compression_commit_fence = SimpleNamespace()
         rt.maybe_admit_force_from_pressure(agent, 64000)
         finish = "Background: notebook updated at T. Processed memo entries have been cleared."
-        force = "临近上下文上限，notebook 更新任务已派发。建议尽早压缩，并在此提示：compaction 时将本消息之后的内容重点保留。"
+        force = "The context is nearing its limit, and a Notebook update task has been dispatched. Consider compacting soon. When you do, prioritize preserving the content after this message."
         assert publish_framework_message(agent, finish, display_metadata={"noting_run_output": True})
         assert publish_framework_message(agent, force)
         assert len(agent._secretary_framework_messages) == 3 and not notices(agent)

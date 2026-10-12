@@ -113,6 +113,7 @@ Python 不绕过 canonical runner 直接运行 pytest；JS/UI 入口及环境准
 | Web UI V1 权威规格 | 产品交互、原生接口、设计系统与验收；替代旧 UI 讨论主入口 | [06](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md) |
 | 通用协作 / 当前看板 | 用户规则、开发测试 SOP / 动态目标与未完成项 | [AGENTS](AGENTS.md)、[CLAUDE](CLAUDE.md) |
 | 第二轮依据索引 | Web UI 轮次授权、规格来源与冻结权限 | [Snapshot Index](.autonomous/20261012-round2-web-ui/snapshot-index.md) |
+| 视觉交付与 Mock URL | 共享视觉组件接口、可点击全场景 Mock 清单及验收对账 | [视觉报告](.autonomous/20261012-round2-web-ui/visual-design.md) |
 | 历史交付与移交 | V1 交付、V1.5 冻结、V1.6 剩余交接和证据 | [V1](.autonomous/20261007-v1-first-implementation/final-delivery.md)、[V1.5](.autonomous/20261009-v1.5-implementation/index.md)、[V1.6](.autonomous/20261011-v1.6-implementation/continuation-guide.md) |
 | 开发与 PM 参考 | 官方环境准备、源码激活及锁文件管理 | [CONTRIBUTING](CONTRIBUTING.md)、[PM](website/docs/reference/package-management.md) |
 | Hermes 架构 / 测试参考 | Agent、Gateway、状态层 / runner 与测试布局 | [架构](website/docs/developer-guide/architecture.md)、[测试](tests/AGENTS.md) |

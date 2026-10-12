@@ -587,7 +587,7 @@ def maybe_admit_force_from_pressure(agent: Any, measured_tokens: Any, *, message
             from secretary.framework_messages import publish_framework_message
             publish_framework_message(
                 agent,
-                "临近上下文上限，notebook 更新任务已派发。建议尽早压缩，并在此提示：compaction 时将本消息之后的内容重点保留。",
+                "The context is nearing its limit, and a Notebook update task has been dispatched. Consider compacting soon. When you do, prioritize preserving the content after this message.",
                 expected_conversation_ref=ref,
                 display_metadata={"noting_force_dispatch": True}, _producer="force_dispatch",
             )
