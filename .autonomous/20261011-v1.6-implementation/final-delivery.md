@@ -4,11 +4,11 @@
 
 ## 目标状态与结束判定
 
-**目标仍在推进，未完成。** 用户再次授权继续。当前产品提交`ce2fa6f4760709275ae9ea87050a5d3996c092c8`；VFR04两文件修补及正式Main/aux定向证据已由root亲自review接收，独立Verifier已通过全129条审查。官方隔离Dashboard已启动，独立Validation八场景计划已获root过目放行，正在执行真实用户旅程，尚未验收通过；不能标记本轮完成。冻结链见[snapshot-index.md](snapshot-index.md)、[baseline.txt](baseline.txt)。
+**目标仍在推进，未完成。** 当前HEAD9fa277包含C12授权规格，C10/C11产品修补已在551ca53提交并取得13项定向证据。History去重实施中；VAL01/VAL02修补已集中交回，待root审查接线与集成。新增C13 Force通知跨压缩缺陷已正式压缩器复现并进入规格，待修补。原ce2fa6f独立Verification结论只适用于其版本；当前整版门禁尚未关闭。隔离Dashboard数据保留、globalfalse，原PTY已退出，独立Validation等统一升级，尚非用户验收通过。
 
 ## 本轮收敛与授权
 
-公开V1.6范围及未修订V1/V1.5契约继续有效，无push或部署。新增用户确认C12：session_history结果级只一份Conversation ref，每行单UID／timestamp／role／content，去除重复Identity与物理地址，保既有read输入和内部canonical权限/原文契约。新增用户确认C10／C11：Main notebook_show只返回四区Notebook正文、last_update_time和裸anchor_message_uid（可查History），隐藏其余内部Snapshot/Identity/Trigger/Profile身份及审计；内部存储、Full审计、任务工作态和History权限不变。C02限定Agent查item历史/找回；C03以不可复用memo行身份与同事务消费保留新/替换内容；C04/C05统一正常系统英文Finish，说明已处理memo已清空；C06仅规格先建判据、主会话提议/Verifier评审；C07External拒绝通知覆盖Force/Idle/catch-up；C08Noting只请求父原生压缩，执行/结果发布/Continuation归父；C09真实原生请求准入后，后续压缩取消不撤销合法Snapshot与Finish提交。
+公开V1.6范围及未修订V1/V1.5契约继续有效，无push或部署。新增C13：Force触发通知仅属于当前compaction区间，成功压缩后不携入下一模型上下文；原历史保留，取消/失败/no-op不提前过期，其他Framework生产者不变。新增用户确认C12：session_history结果级只一份Conversation ref，每行单UID／timestamp／role／content，去除重复Identity与物理地址，保既有read输入和内部canonical权限/原文契约。新增用户确认C10／C11：Main notebook_show只返回四区Notebook正文、last_update_time和裸anchor_message_uid（可查History），隐藏其余内部Snapshot/Identity/Trigger/Profile身份及审计；内部存储、Full审计、任务工作态和History权限不变。C02限定Agent查item历史/找回；C03以不可复用memo行身份与同事务消费保留新/替换内容；C04/C05统一正常系统英文Finish，说明已处理memo已清空；C06仅规格先建判据、主会话提议/Verifier评审；C07External拒绝通知覆盖Force/Idle/catch-up；C08Noting只请求父原生压缩，执行/结果发布/Continuation归父；C09真实原生请求准入后，后续压缩取消不撤销合法Snapshot与Finish提交。
 
 工程研讨在原规格内收敛，不冒充用户逐行批准：VF01按具体item/owner/lineage/原sources限定既有来源继承，不给历史UID通用许可；VF02/VF03由父原生request、安全消费者、原生commit/loader发布结果，捕获原custom输入，不由Noting读库拼tail。R7把正式Idle计量接到native读取；VFR02先消费原durable Idle事件再惰性读取，读错不允许多hostattach重造事件；VFR03按正式Framework完整行形状保护live逻辑身份，API副本保持原provider归一；VFR04复用本TurnMain资格及原Fresh输入witness保护真实提交边界，保留每输入原时间戳，aux仍原路径。完整提案、评审、原反例和版本关闭链保留于[verification.md](verification.md)。VFR04已在ce2fa6f独立关闭。
 
@@ -32,7 +32,7 @@ Validation八场景计划已由root完整过目并放行执行，[validation.md]
 
 ## 剩余、阻塞与影响
 
-剩余为真实用户Validation→root证据复核与最终提交/交付。ce2fa6f Verification与Dashboard启动已完成。实测首发现VAL01：Noting成功提交的Finish已落库，但官方PTY/TUI聊天未即时显示timeline通知。当前只读调查、其余旅程继续，此项不判通过；另VAL02长Notebook在PTY折叠且点击不展开；二者查明后按原规格组织薄修补与复验。C10／C11明确AI输出修订已同步规格、待实施，Validator已停新模型请求等待同profile升级。Linux/Windows未实际验证，不冒充跨平台覆盖；字节prefix parity不等于未测provider缓存命中率，机制覆盖不能推算剩余缺陷概率。目标工具仍显示历史usageLimited，但当前已接受用户继续并推进，不冒称目标完成。
+剩余为C12／C13及VAL01／VAL02集成、当前整版独立Verification、官方构建与同profile升级后的真实用户Validation、root证据复核及最终交付。原用户失败与历史版本证据保留；不能把先前ce2fa6f通过当作新增变更的当前验收。Linux/Windows未实际验证；机制覆盖不能推算残余缺陷概率。Pi私人迁移库独立保留，不参与升级或测试重建。
 
 ## 用户复核建议
 

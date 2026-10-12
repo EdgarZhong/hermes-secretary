@@ -10,16 +10,18 @@
 
 ## 当前状态
 
-- **用户确认C12，立即打磨History模型暴露面**：当前result行的message_uid还在message_identity中重复、Conversation ref每行重复。现行02 §2.3／§5.12及本轮索引已同步：成功result只一份conversation_ref，row只message_uid/timestamp/role/content（Search既有truncated保留），不另暴露物理message_id／Identity包装；兼容原read输入及内部canonical身份、原始正文、合法路径/权限。准备独立子任务仅共享History工具投影及相关测试，不扩provider/runtime或selector；同profile仍停新模型请求，UI修补并行。
+- **用户确认C13／已确认当前缺陷**：Force dispatch Framework Message不得跨下一成功compaction区间。root用真实ContextCompressor.compress（仅摘要外部响应受控、0模型HTTP）复现60→10后旧Force UID/body仍保留，证据force-notice-boundary/current-repro.json。现行02 §5.6及索引立即同步；取消/失败/no-op不提前过期，历史原文保留，其他Framework producer不受此规则影响。待最小原生接缝方案与实施证据，不由Noting重管压缩。
+
+- **用户确认C12，立即打磨History模型暴露面**：当前result行的message_uid还在message_identity中重复、Conversation ref每行重复。现行02 §2.3／§5.12及本轮索引已同步：成功result只一份conversation_ref，row只message_uid/timestamp/role/content（Search既有truncated保留），不另暴露物理message_id／Identity包装；兼容原read输入及内部canonical身份、原始正文、合法路径/权限。已冻结9fa277并委派history_projection，仅共享History工具投影及相关测试，不扩provider/runtime或selector；2026-10-12用户授权继续，两项实施子任务已恢复，同profile仍停新模型请求，UI修补并行。
 
 - **C10／C11小修补已完成，待整版复审／真实模型补验**：只改notebook_render正向投影和Main工具外层notebook／description；正文四区＋last_update_time＋anchor_message_uid精确白名单，无Schema／存储迁移，Noting工作态、人类renderer、内部审计不变。相关三文件13/13（1.3秒），future内部字段不泄露／深拷贝／current时间Anchor同值／localoff与null及gate／永久归档通过；四项相关冻结检查ok（health摘要94 files vs3417313ab1f9，0阻断0提示，不冒称只扫描5文件）。证据notebook-ai-view-{manifest.json,tests.log,checks.log}。UI两个修补由timers施工，测试profile仍停新请求，等稳定提交统一升级。
 
 - **用户确认C10／C11，立即修订AI Notebook视图**：Main notebook_show按最新C10／C11只返回四区完整正文＋last_update_time（当前提交created_at原值）＋anchor_message_uid（裸UID可供History查源），移除其余Snapshot envelope身份／Identity／Trigger／Profile／审计；正向白名单投影，内部审计及Noting工作态不变。已同步02 §3.5／§5.12及本轮索引；这是真正用户新增产品修订，不是Agent自主口径。Validator已停新请求：globalfalse、memo空、Main ready、两Child ended，允许同profile升级／Cold，不重建。
-- **VAL02（待最小提案）**：真实TUI /notebook 515字符正文折叠为摘要，AX／箭头坐标点击均无法展开；不能用DB可读替用户完整可读。timers只读核既有Slash→消息折叠／PTY鼠标接缝；不引入docs06新UI。
+- **VAL02（实施中，待集中交回）**：真实TUI /notebook 515字符正文折叠为摘要，AX／箭头坐标点击均无法展开；不能用DB可读替用户完整可读。原生Slash展示薄修补提案已由主会话与独立Verifier按既有完整可读判据研讨接受，timers正在完成实现及针对性证据；不引入docs06新UI。
 
 - **验收Surface更正**：启动日志曾有ui-tui构建失败，但现场Dashboard62527子树两对实际进程均为node ui-tui/dist/entry.js→python -m tui_gateway.entry，session source=tui，隔离HOME正确。不能从先前构建错误推断当前fallback CLI；用户汇报已主动纠正，Validation保留原失败记录。主会话打开体验页可能存在第二PTY连接，验收核对自身Conversation归属、不操作其他连接。
 
-- **Validation首发现VAL01（待调查）**：真实官方Dashboard PTY/TUI Main→Idle Noting已提交Snapshot并消费memo，History有正确Finish行；至提交后35秒聊天终端仍无timeline通知。双写成功不能证明02 §5.6要求的用户即时可见。timers正在只读调查原TUI及CLI通知接缝／全host影响并交最小提案；独立Validation继续其余旅程，此项未通过，整体不能交付。未修改产品或新加机制。
+- **Validation首发现VAL01（实施中，待集中交回）**：真实官方Dashboard PTY/TUI Main→Idle Noting已提交Snapshot并消费memo，History有正确Finish行；至提交后35秒聊天终端仍无timeline通知。双写成功不能证明02 §5.6要求的用户即时可见。既有宿主通知接缝最小修补已研讨接受，timers实施正式TUI／CLI／Gateway展示接线及针对性证据；独立Validation保持安全空闲等统一升级，此项仍未通过，整体不能交付。
 
 - **独立 Verification 已通过（ce2fa6f）**：129条判据为127符合、0违规、0证据不足、2仅Verification阶段不适用（AF122真实用户验收、AF123最终交付，后续仍必须完成）。VFR01–04及旧VF01–03已关闭。原规格先行判据、主会话提案／Verifier评审和各版本失败证据保留于 `.autonomous/20261011-v1.6-implementation/verification.md`；root已复核全129矩阵、当前版本映射及关键正式路径证据，接受进入Validation。
 - **官方隔离 Dashboard 已启动**：产品提交 `ce2fa6f4760709275ae9ea87050a5d3996c092c8`，唯一本轮正式实例PID62527，入口 http://127.0.0.1:53345，profile `.hermes-dev/v1.6-validation/dashboard-final-4743943e`。首页与health均200，启动时0会话／0消息；readiness不是用户验收。显示dirty仅文档变更，产品源码hash一致。启动证据 `.hermes-dev/v1.6-evidence/dashboard-final-prep/readiness.json`。
