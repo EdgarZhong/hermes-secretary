@@ -14,11 +14,23 @@
 
 本轮已确认口径的授权来源见 [Snapshot Index](.autonomous/20261012-round2-web-ui/snapshot-index.md)，不得将 Agent 安排或推断写成用户确认。
 
+## 续接先读：已有测试与回归选择
+
+**用户R2-C26：不得跨会话/压缩后遗忘已有测试而重复运行。** 先读 [plan的统一证据索引与回归选择](.autonomous/20261012-round2-web-ui/plan.md#已有证据索引与回归选择r2-c26跨会话续接必读)，再读所涉及的owner报告/manifest。该处已区分机制、真实协议/模型、真实Web及独立门禁；本轮独立门禁尚未执行。
+
+- 可复用：后端Pending109、Read53、Usage23、Submit分版本证据；前端30d3135累计89；真实Main/图片/附件/控制/刷新/Notebook/压缩；V1.6的C15/C16/VAL04、Persistence、Reminder、branch/undo。各组有重叠，不相加为总通过数。
+- 当前只选剩余包：F14恢复/并发/off；F16能力错误恢复+F20carrier真实role。Main集成后统一重启稳定版本，集中真实cold、Reasoning回读、已有carrier只读复验；不重做已成功长对话/附件链。
+- Reasoning根因已由真实RPC定位为5098：服务5ccc619与checkout6d96e80不一致，loadCapabilities吞错成空能力。保留native保护，修错误与Retry；待统一重启再验，不猜provider别名或伪造支持。
+
 ## 当前目标与阶段
+
+**当前执行停止边界（R2-C24，用户已确认）：先完成到 Verification 启动前。用户与视觉 Agent 在独立 worktree 完工交回后，Main 再合并视觉、核对集成影响，随后按顺序启动 Verification → Validation。当前不派遣两个独立门禁。**
+
+最新推进约束 R2-C25：Main 不再处理视觉层，优先关闭基础能力缺陷、必要实测与阶段提交；用户及视觉 AI 随时反馈底层问题，纳入同一整改清单。
 
 最新用户口径 R2-C10 已写入 AGENTS：以同一 owner、统一判断点、同步临界区和正式提交点保证不变量；Main 据此复核当前增量，避免下游堆叠门禁。
 
-第二轮交付独立 Secretary Web UI，并完成 V1.6 移交缺口及本轮实际变化影响的验收。当前为 **前端阶段快照 27c5cb4 与视觉 worktree 已交接；T3/T4 后端快照 5ccc619 已进入真实联调；T2 空 Thinking 继续整改，T5 冷恢复真实缺口 R2-F14 处理中；尚未进入独立门禁**。用户授权在冻结前精简三份核心文档、最小修订新版 06；冻结后本轮不再修订权威规格。
+第二轮交付独立 Secretary Web UI，并完成 V1.6 移交缺口及本轮实际变化影响的验收。当前为 **前端阶段快照 27c5cb4 与视觉 worktree 已交接；T3/T4 后端快照 5ccc619 已进入真实联调；T2 Pending/压缩反馈已提交30d3135，成功压缩链路补证中，T5 冷恢复真实缺口 R2-F14 已准入修复；尚未进入独立门禁**。用户授权在冻结前精简三份核心文档、最小修订新版 06；冻结后本轮不再修订权威规格。
 
 - 后端工作区：`/Users/edgar/code/hermes-secretary`，继续按原生接缝实施必要增量。
 - 前端：并列本地仓库 `/Users/edgar/code/hermes-secretary-web`，`main`、无远端；React 应用已启动并通过基础导航冒烟，仍在整改和补齐功能。目录名属于实施安排，不是用户逐字指定。暂不上传远端。
@@ -57,7 +69,7 @@
 | 独立 Validation | Astra medium | Verification 通过后由全新无上下文验收者操作真实入口，检查用户输入到输出 |
 | 视觉设计 | 原 Astra medium 已按用户要求结束；后续用户另行委派 | 保留既有成果和未验项；不再由原 Agent 操作。Sol 继续已确认交互/卡片骨架及必要接线，不自行定案新主题 |
 
-当前活跃委派：`web_frontend` 处理空 Thinking 与局部代码健康；`v16_gap_evidence` 独占 53446 真实移交补验；`native_compatibility_audit` 调查 R2-F14 冷恢复，先交接缝设计。`static_mock` 已完整交回 96 场景、16 合成文件、20 定向测试和构建证据，Main 已验证工作台并创建视觉 worktree；`web_frontend`（Sol high，前端整改与接线）、`web_usage_projection`（Sol high，T4b 已完整交回，Main 已审源码/上下游/23项机制证据并接收）。`native_compatibility_audit` 的 T3c 已完整交回并经 Main 集中 review 接收；已完整交回 T3a，30 项新机制及 79 项原生回归有效通过；Main 已固定源码证据、核对 13/13 hash，并集中审查 owner/插入/终结/原生准入/关闭与实际 Loop、SQLite 测试后接收。T3c 报告列原设计 15 项、图片边界 19 项、旧回归 66 项及 typed Stop 2 项；不将重叠证据简单加总为独立用例，Main 已亲查准入/临界区、alias 绑定、ContextVar 释放、inline/compute-host 图片传递、原生忙碌兼容及完整测试；5/5 源码、4/4 注册生成物、14/14 日志 hash 相符。`web_backend_reads` 的 53 项机制证据及 12 文件 hash 已由 Main review 接收；`web_visual_system`（原 Astra medium）已按 R2-C19 结束并 interrupt，不再操作；当前四视口欢迎页与浅深移动侧栏六张完整截图已独立审图接收，Files/菜单/Conversation 浮卡和最终色系仍未验。成果与未完成项留在 visual-design.md，用户另行委派视觉。Sol 可继续已确认交互、卡片骨架及必要 design 组件接线；不继续自主纯视觉重设计。独立 Verification Astra high、Validation Astra medium 分工不变。白名单与精确章节/行范围见 [plan.md](.autonomous/20261012-round2-web-ui/plan.md)。主会话集中审查完整交回，不盯零碎 diff。
+当前活跃委派：`web_frontend` 已完整交回 Pending/压缩修复，Main审查后提交30d3135；现只做一个新合成会话的真实成功压缩补证；`v16_gap_evidence` 独占 53446 真实移交补验；`native_compatibility_audit` 实施经 Main 源码审查准入的 R2-F14 原生恢复修复。`static_mock` 已完整交回 96 场景、16 合成文件、20 定向测试和构建证据，Main 已验证工作台并创建视觉 worktree；`web_frontend`（Sol high，前端整改与接线）、`web_usage_projection`（Sol high，T4b 已完整交回，Main 已审源码/上下游/23项机制证据并接收）。`native_compatibility_audit` 的 T3c 已完整交回并经 Main 集中 review 接收；已完整交回 T3a，30 项新机制及 79 项原生回归有效通过；Main 已固定源码证据、核对 13/13 hash，并集中审查 owner/插入/终结/原生准入/关闭与实际 Loop、SQLite 测试后接收。T3c 报告列原设计 15 项、图片边界 19 项、旧回归 66 项及 typed Stop 2 项；不将重叠证据简单加总为独立用例，Main 已亲查准入/临界区、alias 绑定、ContextVar 释放、inline/compute-host 图片传递、原生忙碌兼容及完整测试；5/5 源码、4/4 注册生成物、14/14 日志 hash 相符。`web_backend_reads` 的 53 项机制证据及 12 文件 hash 已由 Main review 接收；`web_visual_system`（原 Astra medium）已按 R2-C19 结束并 interrupt，不再操作；当前四视口欢迎页与浅深移动侧栏六张完整截图已独立审图接收，Files/菜单/Conversation 浮卡和最终色系仍未验。成果与未完成项留在 visual-design.md，用户另行委派视觉。Sol 可继续已确认交互、卡片骨架及必要 design 组件接线；不继续自主纯视觉重设计。独立 Verification Astra high、Validation Astra medium 分工不变。白名单与精确章节/行范围见 [plan.md](.autonomous/20261012-round2-web-ui/plan.md)。主会话集中审查完整交回，不盯零碎 diff。
 
 主题色暂不定案，原 Astra 视觉 Agent 已结束；保留现有布局与颜色候选，等待用户另行设计。New Chat 两统计卡已移除并取得四视口图像证据；Sol 继续交互/卡片骨架与功能接线。
 
@@ -73,7 +85,7 @@
 | Web UI / 原生后端增量 | T2 九组整改中；T3a 与 T3b/T4a 已由 Main review 接收；T4b usage 23项证据已接收；T3c idle-only 与显式图片实现已审查接收 | Main已核实际读/压缩/fence/事务接缝与定向测试；真实 Main、图片/PDF/JSON、withdraw/interrupt/rewind/Cancel Send 与 16 MiB 二进制上传已验证；剩余前端整改与补验见 plan |
 | V1.6 缺口补验 | 真实 H02/H03 已有通过证据；H04 发现冷恢复前缀缺失 R2-F14，后续场景继续 | 最小 H01–H08 与可复用范围见 v16-handoff-evidence.md；先补 C16/VAL04/cold，不重跑旧轮全量审查 |
 | 全场景 Mock 与视觉 worktree | 阶段快照 27c5cb4 已交用户 | `/Users/edgar/code/hermes-secretary-web-visual-design`，`codex/visual-design`；`http://127.0.0.1:5176/mock.html`，`npm run mock -- --port 5176`；96 场景。用户另行视觉设计，原工作区继续逻辑 |
-| 第二轮独立两门禁与交付 | 未开始 | 第二轮完整 Verification → Validation → 主会话交付证据复核，准确声明限制 |
+| 第二轮独立两门禁与交付 | 等用户视觉交回后集成再启动（R2-C24） | 当前先完成所有必要开发/主审/实测与阶段提交，到 Verification 前交接等待；视觉合并后完整 Verification → Validation →交付复核 |
 
 ## V1.6 交接：保留证据，只补缺口
 
@@ -92,16 +104,16 @@ Full 审计 UI 按 06 延后，不提前造接口。旧轮首次失败、修复�
 
 最新执行优先级（R2-C22）：立即以 `5ccc619` 的 fresh 53445 服务推进真实 DeepSeek/Main/图片/Secretary；不等待表现层或静态 Mock。控制 Codex 开销与重复检查，不限制获授权测试模型 API 调用成本。视觉 worktree 与网络/逻辑实测并行。
 
-R2-F11：逐卡即时折叠已由用户现场及 Main 连续 DOM 共同确认；后发现第二空Thinking，Sol已区分原生thinking.delta等待活动与reasoning.delta真实思考，69定向测试通过，Main亲读差异接收，真实复验待进行。动态验证须连续观察与事件时序，不能只截图；必要时异步请用户协助，未答时继续独立工作。
+R2-F11：逐卡即时折叠已由用户现场及 Main 连续 DOM 共同确认；后发现第二空Thinking，Sol已区分原生thinking.delta等待活动与reasoning.delta真实思考，69定向测试通过，Main亲读差异接收，实际双工具中刷新后正常收敛且未出现空卡；本次原生仅发 thinking.delta 而无 reasoning.delta，不能冒称验证了流式真实思考内容。动态验证须连续观察与事件时序，不能只截图；必要时异步请用户协助，未答时继续独立工作。
 
-真实集成：`20261012_213252_1fa75a` 已完成 DeepSeek Main、自然 Noting、图片原生 vision_analyze 与 PDF/JSON理解；`20261012_213956_bc8a48` 已真实完成 Withdraw、Interrupt 单续发、Reply/Edit退出恢复、双确认 Rewind、Cancel Send 恢复冻结草稿。16 MiB+1 前端拒绝、精确16 MiB二进制实际上传并完成Main；Notebook只读前后表计数不变。R2-F12白屏与F13重复附件实现已交，Main后续双工具实际未再现，源码集中复审待完成。证据位于 ignored `round2-evidence/runtime/`。
+真实集成：`20261012_213252_1fa75a` 已完成 DeepSeek Main、自然 Noting、图片原生 vision_analyze 与 PDF/JSON理解；`20261012_213956_bc8a48` 已真实完成 Withdraw、Interrupt 单续发、Reply/Edit退出恢复、双确认 Rewind、Cancel Send 恢复冻结草稿。16 MiB+1 前端拒绝、精确16 MiB二进制实际上传并完成Main；Notebook只读前后表计数不变。R2-F12白屏与F13重复附件实现已交，Main后续双工具实际未再现，稳定node.id与authored prefix源码集中审查已接收。证据位于 ignored `round2-evidence/runtime/`。
 
 视觉交接：前端首次阶段提交 `27c5cb4`，79文件，明确尚未最终验收；npm锁安装成功，新树独立依赖，Mock实际打开96场景。Main仅补mock脚本/忽略产物、PDF二进制属性及合成长文本末尾空格；未上传远端。设计工作区归用户另派Agent，Main与Sol不在其中写入。
 
-T5 `v16_gap_evidence` 独占53446 / `.hermes-dev/round2-v16-live/`，真实公开协议集成先H02–H04再H05–H08；不操作Main53445，不是独立门禁。H04-A cold恢复已发现 R2-F14：事件单次准入后父Active上下文未恢复，Noting在创建child前失败（`The Parent's active context is unavailable for freezing`）；失败证据保留。Core Sol先调查原生恢复/接缝设计，不能以重建专用prefix或伪造Main遮蔽。
+T5 `v16_gap_evidence` 独占53446 / `.hermes-dev/round2-v16-live/`，真实公开协议集成先H02–H04再H05–H08；不操作Main53445，不是独立门禁。H04-A cold恢复已发现 R2-F14：事件单次准入后父Active上下文未恢复，Noting在创建child前失败（`The Parent's active context is unavailable for freezing`）；失败证据保留。Main 已亲审 cold-resume-fix.md 与上下游，准入原生 build/attach 发布前恢复完整 Parent Active；Core Sol 实施，不改 timer/admission/freeze，不重试旧失败事件。
 
 
-Files补验：HTML合成脚本/事件探针被移除，sandbox空权限+CSP阻断，DOM执行标记为null；`html-preview-proof.json`。WAV1秒/MP4 640×360均readyState4/error null，见audio/video-preview-proof.json；仅加载/解码证据，不冒称音频听感或实际播放过程完成。
+Files补验：HTML合成脚本/事件探针被移除，sandbox空权限+CSP阻断，DOM执行标记为null；`html-preview-proof.json`。WAV1秒/MP4 640×360均readyState4/error null，见audio/video-preview-proof.json；音频后续通过实际 Space 触发播放，从0到1秒ended=true/error=null，见audio-playback-proof.json；未验证听感。视频仅观察到实际进入播放，随后施工HMR使Controller重置并播放归零，video-playback-proof.json保留原结果，不宣称完整视频播放通过；按C25不再扩展此类表现层检查。
 
 Main前端集中review：已读27c5cb4的完整Controller、command-actions、projection、App/Timeline/Secretary/Dialogs、Files/附件/草稿与上下游DTO。F12稳定node.id直接props和F13 authored prefix修复机制接收；新发现F15命令Stop失败错误被吞仍消费文本，F16Reasoning仅当前值不能选完整native支持档位，交原前端Sol修复。健康拆分adoptDraftScope CC22→12已亲读无语义扩展；69定向测试/构建证据不重复运行。
 
@@ -132,3 +144,15 @@ Main前端集中review：已读27c5cb4的完整Controller、command-actions、pr
 | 上下文开销 | [05 台账](docs/05-context-cost-ledger.md) |
 
 V1.6 冻结/启动提交分别为 `fc2668310b` / `fa51561601`，收尾产品 `edd031f551`。详细历史、阶段测试与失败记录按上述报告和 Git 历史查阅，不改写其历史判定。
+
+开发期新增事实：R2-F17 unknown Steer 在旧 Turn 结束后被前端 active gate 挡住且 Send 可盲重发；R2-F18 Pending 请求飞行中失效通知未安排重读，三项生产控制器反例已失败确认，Sol按同一owner修复。R2-F19 实际两次压缩中后一次原生拒绝摘要增长（replay seq424），前端未显示反馈且不刷新正式History；已交Sol按真实RPC结果与summary反馈，不把facade completed冒称压缩成功。真实双工具中刷新保持同会话并最终单份结果；HTML安全和媒体解码证据沿用。
+
+R2-F15/F16：Main已亲读Stop、reasoning helper/App/Dialogs及官方常量/inventory，接收22:01交回的修复与74项不同定向证据，不复跑。R2-F14设计微调：因native root恢复可能写DB，eligible eager沿现有claim/build唯一owner执行准备，允许内部prepared_agent薄参数，保持非eligible/off原路与原eager等待语义；具体实现与资源所有权仍待完整review。
+
+前端阶段提交 `30d3135`：Main亲读F15–F19实际source/tests及native契约，50/50源码manifest匹配；89 distinct定向用例、tsc/build/health有效证据复用。真实UI压缩拒绝明确展示28messages preserved与summary/no messages removed，`runtime/compaction-refused-after-fix.dom.txt/png`。同库只读核对双工具刷新用户row89/最终assistant94均各一条，`stream-reload-db-proof.json`。未重复模型/附件测试；未独立门禁/最终验收。Mock Escape微修仅原功能树，同批提交；视觉树仍27c5cb4独立。
+
+R2-F16真实复验重新打开：30d3135实际第二会话Reasoning仍显示Current medium但capability unavailable/空选项，与owner原生catalog captrue证据不符。`runtime/reasoning-unavailable-real.dom.txt`；Main没有改设置。已交原前端owner在成功压缩补证期间核实际runtime/catalog身份及加载失败原因，再作必要逻辑修复；不能把既有fixture测试通过冒称实链关闭。
+
+成功压缩正向真实证据：新会话20261012_223239_3eb664 / Ref conv_0c38d52e956247fd854b2e6fa8734178，一次正式12→10消息、约79243→29762 tokens，native in-place故storedtip不变；carrier UID cdc55ef9bfb841a8b87db34ab3df5237/row121，Web已实际读取。但发现F20：该row真实assistant，DisclosureNode将realText硬编码user并给Reply，已交Sol按真实来源role微修和反例验证；不改design/视觉。证据frontend/compaction-positive与runtime/compaction-positive-history.dom.txt。
+
+T5完整阶段Main接收：H05–H08报告/原始摘要与7/7产品hash已审，真实Persistence/Reminder/branch/undo范围有效，F14仍单列。H05§11只读补核：sessions.system_prompt旧字段NULL，正文从system_prompt_hash→system_prompts.prompt读取；实际冻结两句History指导各1次，Root hash838a1bc，proposal前后留存WS Root一致，但无逐API完整payload，不冒称逐请求直接证实。附带模型多余3次空搜索保留为行为限制，不改冻结Prompt。

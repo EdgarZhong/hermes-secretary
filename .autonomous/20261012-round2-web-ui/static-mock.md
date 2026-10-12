@@ -87,3 +87,7 @@
 ```
 
 测试和构建各因新增代表场景、入口隔离与局部状态拆分做了定向复测，最终只引用最新源码证据；未运行全量产品 suite、Python suite 或真实后端。没有通过 Mock 结果宣布 Web UI、Secretary Core 或本轮独立门禁完成。
+
+## Main 集成复核（阶段快照之后）
+
+Main 已亲读独立入口/Vite、Stage、Timeline、Composer、Files、state owner与组件复用关系，并实际打开5176工作台、切换Pending及320预设。30源哈希中仅合成长文本的已知行尾空格清理、以及本次Mock Escape微修不同。Escape在active有输入时不得调用primary模拟Steer，现已改为停止模拟Turn并保留稿；sending仍模拟Cancel。仅原功能仓库修改，未触视觉worktree，视觉交回时一并集成。既有20项证据属于原版本；此微修不冒称已做完整键盘或四宿主视口验收。脚本/忽略目录与worktree已由Main落实，实际用户设计入口为5176（默认5174保留为本地Mock启动默认）。

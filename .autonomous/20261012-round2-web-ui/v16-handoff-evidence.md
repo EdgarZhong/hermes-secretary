@@ -175,3 +175,96 @@ C15 其它既有呈现结果可复用：`readable-times/last-interface-tests.log
 5. 第二轮独立Verification/Validation接收本报告作实现调查输入，继续独立建立本轮判据与实际旅程；不得把本研究视为第三个门禁或T5已PASS。交付仍明确原失败、剩余未执行、目标版本和实际覆盖。
 
 本次研究完成；V1.6真实补验未开始，范围内原未完项保持未完成。没有已确认的新源码缺陷，也没有通过静态核对关闭任何真实用户缺口。
+
+---
+
+## 8. T5 真实开发期集成 · 第一阶段 H02–H04（2026-10-12）
+
+### 8.1 条款、实际变更和正式入口
+
+依据用户 R2-C22：尽早真实模型实测、不等待视觉；本次是 Development 集成取证，不是独立门禁或浏览器/UAT。覆盖原 H02/C16、H03/VAL04、H04合法cold/global切换，并顺带取得C15代表AI/人类输出。沿已读02/04契约；产品目标 `5ccc619723f39690f11d29ca4b9182d2c6d9d543`，三次自己的实例启动 health.commit 均对应此版本。
+
+只创建新隔离 `.hermes-dev/round2-v16-live/`，获授权复制运行.env且权限0600，非敏感config沿用provider/model、terminal.cwd指向新profile、Idle30；没有复制旧库/旧source，没有产品修改、stage/commit、pytest或大型checks。脚本和响应在 ignored `.hermes-dev/round2-evidence/v16-live/`，本报告只追加本章节。
+
+实际入口：53446的原生HTML bootstrap token只在客户端内存；公开 `/api/ws` JSON-RPC、`session.create/resume`、`prompt.submit_idle`、实际契约名称 `command.dispatch`（原派遣提到的command.execute不是本产品方法名）、`secretary.notebook_read`，以及公开REST `PUT /api/config`。真实DeepSeek Main及Noting，真实SessionDB/daemon/实际时钟；未直接触发/claim/改due或伪busy。没有浏览器交互证据。
+
+第一次按指定共享runtime-dir启动被原生host-owner guard拒绝78（已有Main53445）；改专属runtime-dir后仍拒绝。Main明确准入官方 `--isolated` dedicated模式后成功启动，保留两次拒绝日志。后续cold沿相同官方参数、`--skip-build`复用本版本已建官方bundle，不绕过产品机制。自身runtime-dir `.hermes-dev/round2-v16-runtime/`，53445/round2-runtime状态未操作；两次cold只核自身完整argv/HERMES_HOME/PID后SIGTERM。原生observe-only host warning保留，未抢占Mainhost注册。
+
+### 8.2 实际结果、时钟与证据
+
+下列文件前缀均为 `.hermes-dev/round2-evidence/v16-live/`；共同原始请求/响应为 `requests.jsonl` / `wire.jsonl`，连接与版本为 `readiness.json` / `connection.json` / `environment.json`。
+
+| 场景 | 预期与实际 | 版本、ID、时钟、证据 | 当前判定与残留 |
+|---|---|---|---|
+| H02-A localoff自然到点→on不补 | 真实Main后立即off，timer原due保留；自然过due后period消耗、0admission/Child/Snapshot；on再等7秒仍0 | `H02-A-{main,before-due,off-after-due,reopen,reopen-state}.json`；due `1791812591.462574`；Ref在该状态及H02B继承记录；5ccc619 | **开发真实接口符合**；非浏览器/UI通过。没有把Orb absent当timer取消 |
+| H02-B due前off→on | 同Conversation新真实Main形成新周期，off/on均在due前；自然到点仅1admission/Child/Snapshot，额外poll窗口不重复 | Ref `conv_c76f87ba141846d28816ccd8c8bc0696`；Mainend `1791812603.183039`→due `2633.183039`→trigger `2633.187089`；`H02-B-*`、`H02-summary.json` | **开发真实接口符合**；Snapshot可合法为空，本例只证明事件/执行/单次commit，不宣称已整理某业务条目 |
+| H03 VAL04原合法busy memoauto-on | on周期→off→自然跨old due消耗→仍off真实Main依次add/add/list/replace/delete/list/History/terminal sleep3，首addauto-on；工具循环/最后回答前无旧Idle，Mainend新周期30秒后唯一Noting并消费memo | Ref `conv_27a6408e56d148dcb05d1a7fe6e57663`；stored `20261012_214524_6598aa`；old due `1791812757.627414`；新Mainstart `2759.6541781`、end `2780.09067`、due `2810.09067`、admit `2810.109598`；`H03-{busy-memo-main,old...}`实际文件见 `H03-off-past-old-due.json` / `H03-main-end.json` / `H03-after-noting.json` / `H03-summary.json` | **开发真实接口符合**；8次真实工具完成时间在wire，admission晚于真实Mainend+30；memo0、同Ref1Snapshot。保留旧82cd VAL04反例，不把此次等同最终UI复验 |
+| H04-A 未处理on deadline跨进程→合法cold attach catch-up | Main结束、due前安全停自己的实例，真实时钟跨due；cold启动与公开eager resume未发新Main，统一事件自然claim/admit，但Child预派遣冻结失败，无Snapshot | Ref `conv_9d02b19595f34da1b80cad2596f51b6d`；stored `20261012_214809_c5cb3e`；Mainend `1791812895.436746`、due `2925.436746`、cold trigger `2930.502721`、admit `2930.505279`、failed `2930.506175`；admission3，Child id/profile NULL；`H04-A-*`、`H04-A-cold-failure.json` | **失败，R2-F14**。actual traceback `noting_runtime.py:667→spawn_noting_task→freeze_parent_active_prefix:152`：Parent active context unavailable；没有Child/模型随机失败，不能仅因事件claim成功判通过。Main已派owner调查，产品修后定向复验 |
+| H04-B 已off处理事件cold/on不补 | 独立真实Main→off→自然due消耗，再随A安全cold；公开resume→on、观察8秒，该Ref无旧event/admission | `H04-B-{main,consumed-before-cold,resume,on-after-cold,no-old-off-replay}.json`，Ref/Stored由真实messages/bindings关联；5ccc619 | **开发真实接口符合**；B数据独立，不借H02后来的on周期冒充off事件cold证明 |
+| H04-C global warm false→true、coldon | REST合法保存false，同Conversation下一真实Main只History；save true下一Main恢复Notebook/memo；owncoldon恢复真实show/History可用。来源是当前实际provider-neutral Prelude而非仅readiness | `H04-C-global-{off,on}-save.json`、`*-main.json`、`*-prelude.json`、`H04-C-cold-on-*` / `H04-summary.json`；实际Prelude source=`provider_neutral_request`：off History有/Notebook与memo无，on三者有 | **开发真实接口符合**；A起点无Snapshot，因此另用D证明既有状态cold可读；不能用工具面通过覆盖H04-A失败 |
+| H04-D 既有Snapshot cold读取、C15/Anchor代表 | cold后合法恢复H03已有Snapshot的同Conversation，真实Main notebook_show→History read其bareanchor；只读human结果同Notebook，created_at带zone，Main工具结果可读时间 | `H04-D-{existing-resume,existing-snapshot-main,existing-human,existing-final}.json`；沿H03 stored/ref/Snapshot | **开发真实接口已执行**；具体AI时间瞬间与schema结果后续集中逐字段核；未提供浏览器可读性/新Web呈现判定 |
+
+### 8.3 验证边界、接口影响与建议下一步
+
+七项交回已覆盖：条款、实际变更、正式路径、验证结果、缺口、接口影响、后续动作。H02/H03所涉原生产机制与真实模型工具链均实际运行；H04唯一真实产品失败是未处理on事件cold冻结缺失。续接driver曾使用已断开client的旧runtime id收到4001，已通过公开resume重新绑定；这是取证客户端续接错误，原失败driver日志保留，不冒新的产品缺陷。发现terminal失败后只终止自己的等待driver，未终止服务/篡改事件。
+
+对当前接口的影响：公开eager resume返回live Agent并自然恢复Idle，但其Parent active消息未就绪，event已单次消耗后spawn冻结失败。不能在下游重试旧事件、补flags或强制运行Child来抹掉失败。Main已将其登记R2-F14并派原生resume/hydration owner研究；本Agent继续剩余授权旅程。
+
+H05真实Candidate/Memory批准链已启动；H06/H07真实Schedule与profile隔离、H08branch/undo继续实施。没有尚未执行项目的PASS，不等待视觉。修复合入后只定向重启/复验H04-A及相关边界，不重跑H02/H03或旧轮大型套件。最后将安全停自身实例、恢复测试Idle2并记录；此阶段实例仍用于后续取证。
+
+## 9. T5 真实开发期集成 · Persistence / branch 已执行（持续追加）
+
+- **任务条款与正式路径**：H05依02 §2.5/§3.7/§5.12 proposal Target及04 §6；H08依02 §2.7/§6.11–14。53446同一授权隔离profile，公开WS/RPC真实Main/Noting；没有产品修改，也没有独立门禁/浏览器声明。模型选择记录 `v16-live/model-and-timezone-selection.json`：deepseek-flash、custom、Chat Completions、api.deepseek.com、Asia/Shanghai；沿原config context pin262144，不改provider/模型路由。
+- **H05实际序列与结果**：stored `20261012_215835_a11cf5`、Ref `conv_10e078207bab4d6a96d6c25da1ac1ecb`；真实原始笼统偏好→明确限定更正→memo→自然Noting产出memory_candidate id2。公开proposal directive启动真实Main，先分别按两个source Identity精准read，再regex查本Conversation上下文；revision没有持久化写工具。Memory初始/proposal/revision三个文件hash表均 `{}`。用户场景在提案后明确只批准一项，真实 `memory(action=add)` 返回success/done、target=user、entry_count=1、`Write saved`，所属`memories/USER.md`实际新增（另有原生lockfile），只写限定合成条目；下一自然Noting后candidate有效集合为0，human/show亦不再见。证据 `H05-source-*`、`H05-candidate-*`、`H05-proposal-directive/main.json`、`H05-revision-main.json`、`H05-memory-{initial,after-proposal,after-revision}.json`、`H05-approved-memory-{main,files}.json`、`H05-post-execution-noting.json`、`H05-final-items/human.json`、`H05-post-archive-read.json`、`H05-summary.json`。核心候选→搜证→讨论不写→批准后真实执行→后续归档链已取得开发真实接口证据。
+- **H05附带模型偏差**：本Conversation原来源/更正已经通过History找到后，Main又自行调用3次跨Conversation `session_search`（均0结果），没有引用其结果或扩大实际批准写入。不能把这一观察写成完全遵循“本Conversation找不到才跨Conversation”的History指导；具体tool args/results在 `H05-proposal-main.json`。这是实际模型行为偏差，保留供Main判定；本Agent不调整冻结Prompt或工具权限让其变绿。
+- **H08实际序列与结果**：parent stored `20261012_214524_6598aa` / Ref `conv_27a6408e56d148dcb05d1a7fe6e57663`；公开native branch得到stored `20261012_220327_68d77c` / 新Ref `conv_f9ff1a747df1459cb5108015faeb5aba`，继承当前Notebook。真实银色Main/memo→自然Noting→native `session.undo` removed5→更正白色Main/History/memo→自然Noting。被undo原银色用户UID `295e506d42af4af4af1338418c8993d9` 未出现在后续History结果；新输入自身含“银色已撤销”不等于失效原文返回。当前有效decision为原父绿色/不要目录和本分支白色；父人类Notebook输出及created_at前后完全一致。证据 `H08-{parent-before,branch,branch-inherited-human,silver-main,silver-noting,silver-human,undo,post-undo,white-main,white-noting,white-human,parent-after-human,final,summary}.json`、`H08-effective-source-proof.json`。真实身份/用户意图/有效源隔离已取得开发证据；没有建Full审计UI，也不冒称完整Full/compound新界面验收。
+- **C15代表精度复核**：`C15-actual-interface-time-proof.json` 含2个真实六键Notebook结果、24条真实History result，均有+08:00。使用完整fraction（Pythondatetime的6位截断另记录）转回原epoch，最大差值0；human Notebook `created_at`和Finish正文使用同Snapshot instant、无新增timestamp marker。原始tool result字段/UID/内容没有改写。该证据证明实际AI/人类RPC输出边界，浏览器显示可读性仍属Main/后续Validator。
+- **残留与下一步**：H04-A/R2-F14仍失败；H06/H07真实到期/offon/busy/profile隔离继续；H05附带模型偏差待Main review。旧特殊cache/forced/overflow及有效机制按§4复用，没有新pytest/全量checks；不能用上述开发结果称门禁PASS。当前实例仍用于剩余场景，最终安全清理另记。
+
+## 10. T5 真实开发期集成 · H05–H08 完整阶段交回与安全停机
+
+### 10.1 条款、实际变更和正式路径
+
+覆盖原H05/CU05、H06–H07/CU06–07、H08/CU08的实际用户等价序列；结果为开发期生产入口集成证据，不是浏览器/UAT或独立门禁。继续遵循R2-C22/R2-C24：基础真实链路先推进，Verification前等待用户视觉工作树交回。
+
+本阶段只有授权报告追加和ignored两个隔离profile/脚本/事件/诊断产物；产品/根文档/plan零修改、stage/commit零、正式测试/大型checks零。公开REST/WS/RPC实际Main、真实DeepSeek、自然Noting、真实Schedule和原生Memory/branch/undo；没有模型返回stub、直接改due/DB或内部trigger。第二profile使用同一独占53446端口顺序切换，不增加Main端口或读取旧Pi/生产数据。
+
+H05/H08精确结果和模型偏差见§9；下面补H06/H07及隔离。共同原始输入/响应仍在 `v16-live/{requests,wire}.jsonl`，日志、每阶段状态及UID引用由相应JSON定位，不重复贴长原文。
+
+### 10.2 H06/H07 预期、实际与证据
+
+| 分支 | 实际输入→结果与关键时钟 | 证据（均在v16-live/） | 开发期判定与边界 |
+|---|---|---|---|
+| idleinstant | 真实Main/memo→Noting创建 `in 2m` user_reminder→自然due→原生入站新Main；属于R stored `20261012_220231_9a709e`。实际instant durable role=user有一次entry timestamp marker | `H06-idle-once-{main,noting,human}.json`、`H06-idle-schedules.json`、`H06-idle-instant-events.json`、`H06-idle-after-due.json`；所有instant UID/entry时钟见 `H06-H07-carrier-proof.json` | 实际链路有效；没有独立cron_ Session或Cron Job创建。不是浏览器Timeline已通过 |
+| deferred同due批量 | 真实Noting创建user_commitment与明确deferred的secretary_task，均due `1791814061.0`；到期idle只pending，无R新Turn/新durable carrier。下一自然Main于`4066.475093`材料化单carrier UID `f4d6a31c420f407db14b1d9d72c8ca31`，首句正确、JSON2元素、schedule映射actual due_at且无timestamp marker。两个occurrence成功response后分别ACK `4069.334448` / `4069.335169`；后续自然请求无重复carrier | `H06-deferred-{batch-main,batch-noting,batch-human,schedules,idle-due-pending,delivery-main,after-response-ack,no-repeat-main}.json`、`H06-H07-{ack-summary,carrier-proof}.json` | 实际批量/材料化/response ACK/后续不重投有效；不新造provider失败/崩溃来重复旧受控机制 |
+| off→跨due→on一次 | 合法新未来一次提醒“关闭恢复-第二实例”；memo消费后真实 `/noting off`反馈成功。off窗口跨真实due无fire，意图仍在；on后原生scanner恢复该overdueonce，实际只有1条对应instant carrier。与C16 Idle已处理off事件不补的语义分开 | `H06-off-once-repaired-{main,noting,human}.json`、`H06-off-{command,before-due,past-due}.json`、`H06-on-{command,overdue-events,after-due}.json`、`H06-H07-carrier-proof.json` | 实际Schedule关闭恢复有效。首次客户端错误的旧fixture另保留，不能拿其on状态下到期当off证据 |
+| busyinstant→deferred | 真实Noting创建绝对once“蓝图-R忙碌提醒”，due `1791814610.0`。真正Main terminal工具start观察`4595.036649`→end `4630.259614`，foreground sleep35（实测35.2208s）跨due；不是验收者shell伪busy。due即时转pending，tool返回后同Turn下一request材料化deferred UID `a45cb9a2da164bec824c7f15f3ae0985` at`4630.269377`，成功response ACK`4632.650964`，Mainfinal观察`4637.293078`。无该busy标记的instant durable row、无后补第二instantTurn；后续自然问不重投 | `H07-busy-{schedule-main,schedule-noting,schedule-human,schedules,main}.json`、`H07-{before-busy-main,after-busy-response,no-repeat-main}.json`、`H06-H07-{ack-summary,carrier-proof}.json` | 当前Usage/Pending/Main正式接缝上的真实busy/下一request/ACK代表有效；不以独立旧mock或单数据库计数替代此次链路 |
+| Conversation与profile隔离 | O真实Main没有R到期输入。安全结束primary实例后，独立observer profile在53446启动；`secretary.state(Rstored,profile='')`返回4001 Unknown stored session。**legacy `session.resume`不是拒绝**：返回同请求key的空视图、0messages，未载入R数据（API仍把resumed字段设为该key）；独立observer真实Main无R提醒，拥有自己的cwd/DB。随后安全停observer并恢复primary | `H07-observer-O-main.json`、`H07-other-profile-R-{read,resume}.json`、`H07-other-profile-observer-main.json`、`H07-observer-owner.json`、`H07-profile-primary-*`、`H07-return-primary-start.json`、`H07-profile-isolation-final.json` | 没有跨profile读取R内容或投递R occurrence的实际证据；legacy空resume不能冒称4001或已恢复R，也不能用它作为前端“恢复成功”的依据。Main可据实际旧DTO审Web恢复处理，不改旧API语义 |
+
+实际carrier形状集中核实：两个deferred occurrence共1row；busy为另1row/1occurrence；二者都role=user、无timestamp marker、JSONbody无schedule字段而有actual due_at。三个pending occurrence最终都status=delivered并有实际response ACK。instant由真实用户入场路径写一次marker。Schedule/Reminder留在同profile state.db，没有CronJob写入或独立任务Session。
+
+### 10.3 证据版本、过程错误与残留
+
+- 运行前和H04cold health为5ccc619；后续host启动健康显示 `6d96e80bf86aa4b1686cc7c4f90e129735cd6111`（文档推进HEAD，dirty来自进行中内容）。停机时 `git diff --name-only 5ccc619 -- agent secretary tui_gateway hermes_state_secretary_{notebook,noting,schedule}.py hermes_cli/config.py` 无产品差异；不是用新文档HEAD冒新产品已验。真实版本/最终关键源码hash见 `stage2-final-manifest.json`。之后F14产品修改按新版本定向复验。
+- 初次H06脚本只按enabled筛Schedule，读到合法terminal row `next_run_at=None` 导致TypeError，没来得及进入off窗口。原driver日志和fixture在 `driver-error-episode/` 保留；筛选正式有next_run_at的可执行row后，创建新合法未来once，仅补未完成off/on，未重做已有效idle/batch。其间原native busy4009明确 `accepted=false`，客户端等待已知Turn结束后合法resume/重试；不是unknown盲重发，也不是产品失败。
+- H08白色Notebook正文可能在rationale提及“银色已撤销”，不等于恢复失效entry。判据是原银色用户UID不在History、当前effective decision白色、parent前后完全一致；`H08-effective-source-proof.json`已给正式UID反证。
+- **仍欠/不可冒PASS**：H04-A/R2-F14真实coldcatchup失败；H05在本Conversation已找到证据后仍做3次无结果session_search的模型指导偏差；C15/Secretary新Web浏览器显示、四视口和最终用户动态交互未由本Agent操作；完整Full审计UI按06延后，旧特殊cache/forced/overflow/ACK失败机制证据继续分项复用。没有范围内未执行项被改成NA。
+
+### 10.4 安全清理、接口影响与建议下一步（七项完整交回）
+
+主取证profile与observer的Idle均通过合法REST保存恢复2秒（`primary-idle-restored.json` / `H07-observer-idle-restored.json`）。核完整argv/HERMES_HOME/PID后仅SIGTERM自己的53446实例，listener已不存在；不停止53445/全局进程。无running Noting或活动Main/压缩；最终primary保留19 Sessions /345 messages /13 admissions /12 Snapshots /13 Children（12 completed＋原F14 failed）/memo0/6 Schedule runtime rows/3已ACK pending rows。DB、合成Memory及原始失败保留供Main复核。实际停止与前后状态在 `stage2-final-primary-{owner,stopped,before-stop}.json`、`stage2-{before,after}-park.json`、`stage2-final-manifest.json`；凭据不在报告/响应manifest。
+
+条款、实际变更、正式调用链、真实验证结果、缺口、接口影响与下一步已全覆盖。本报告不会改变原方法、模型路由、调度器或门禁结论。当前新接缝通过真实Main/Noting/Memory/Reminder/branch代表链路取证，原生未知restore空返回和附带模型指导偏差须如实参与Main审查。
+
+建议：Main集中review H05–H08证据及残留；F14正式修补接收并集成后通知本Agent，以**新的真实Mainend→合法停机跨due→公开cold resume**重验，不能重试已消费admission3或改其due/状态。复用H02/H03/H05–H08有效结果，不再开整版V1.6复审/pytest。按R2-C24停在Verification前，待用户视觉worktree交回Main合并后再统一开两门禁。当前本Agent等待Main review/针对性F14复验通知，未宣称T5或全轮已验收完成。
+
+
+## 11. H05 实际 Root/指导与工具面最小只读复核
+
+1. **范围与依据**：按 Main 的 H05 `session_search` 偏差补问，只核原观察版本 `5ccc619` 的留存证据；不回放模型、不启服务、不改 prompt/产品/DB。正确 profile 是 `.hermes-dev/round2-v16-live`，stored `20261012_215835_a11cf5`、runtime `0c2db8c7`、Ref `conv_10e078207bab4d6a96d6c25da1ac1ecb`。
+2. **实际源定位**：`sessions.system_prompt` 为 NULL，Root 通过 `sessions.system_prompt_hash → system_prompts.hash → system_prompts.prompt` 正常归一化保存。读空旧列不能判断指导未注入。实际 Root 37,099 字符，SHA256 `838a1bc0064290b63c7bc89d51baa08468c6a2ea426b4d7d93985c49c5581613`。两句冻结 `HISTORY_SEARCH_GUIDANCE` 及完整两段块均恰好出现 **1 次**。
+3. **保留的真实请求/Root 证据**：`H05-candidate-state.json` 在 `1791813581.270249` 读到实际 `provider_neutral_request` Prelude，captured_at `1791813526.599286`；`H05-post-execution-noting.json` 保留 captured_at `1791813622.5400488`；当前 DB 的最新 capture 是 `1791813694.316438`。三者实际 Root hash 均相同。`wire.jsonl` 第6159/6641/9555/10799/12275行的同Session `session.info.payload.system_prompt` 真实正文也均为该hash，指导计数各1；其中6641（`1791813529.2731688`）在提案前，9555（`1791813608.345481`）在提案结束后的修订请求入场时。文件hash与逐行hash、时钟见新增小型核对JSON；未输出完整Root或对话长原文。
+4. **当次实际工具面/序列**：留存Prelude与WS工具面一致，共28个顶层工具；有 `session_history`、`notebook_show`、`noting_memo`、`tool_describe`/`tool_call`，无顶层 `session_search`。提案实际8个tool.start依次为两次History source read、当前Conversation History regex search、notebook_show、`tool_describe({"names":["session_search"]})`、三次session_search；三次均success且count0。动态可发现工具被实际调用，不能把“顶层无schema”当不可用。
+5. **真实性限制**：该次提案 `1791813581.299042→1791813608.3178492` 的5次API调用（原生日志#4–#8及provider request ID已定位）没有留存逐份完整provider payload。Prelude是latest覆盖记录，当前/后来capture不能冒充这5份请求直接日志。可直接确认的是实际冻结Root完整指导存在且前后保持同hash；“这5份请求都沿该Root”只能依据留存前后Root作推断，不能声称逐请求直接证据或凭当前源码推测。
+6. **结果与残留**：原 `H05-main-guidance-review.json` 的空旧列观察不被覆盖，新增证明纠正其解释。不能把H05偏差归因为已证实指导漏注入；仍保留模型在本Conversation已有来源后附加3次跨Conversation空搜的观察。没有额外写入、跨源引用或Memory范围扩大。精确摘要是 `.hermes-dev/round2-evidence/v16-live/H05-actual-request-guidance-proof.json`。
+7. **交回与下一步**：只追加本节及ignored摘要，不新增测试或改产品；53446仍停机、Idle2不变、Main53445未操作。Main可复用本节修正H05证据来源判读；逐请求payload不足如实保留，不为补日志重跑模型。等待Main review/F14后续通知，不称门禁通过。
