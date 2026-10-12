@@ -40,7 +40,7 @@
 | 独立 Validation | Astra medium | Verification 通过后由全新无上下文验收者操作真实入口，检查用户输入到输出 |
 | 独立视觉设计 | Astra medium | 按 06 交付 tokens、设计系统、呈现组件、响应式与视觉质量；不改变交互、网络、状态机、事件或导航语义 |
 
-当前活跃委派：`native_compatibility_audit`（Sol high，只读审计）、`web_visual_system`（Astra medium，前端 `src/design/**`）、`web_frontend`（Sol high，前端其余产品/测试/配置）。视觉与业务白名单不相交，后端尚未授权产品增量。具体依赖与精确章节/行范围已随派遣指定，见本轮 [plan.md](.autonomous/20261012-round2-web-ui/plan.md)。主会话完整阅读权威规格；Development 派遣按 AGENTS 的精确阅读契约执行，不能只给整份规格路径。并行修改不相交，子 Agent 不再派生；主会话集中审查完整交回，不频繁盯零碎 diff。
+当前活跃委派：`native_compatibility_audit`（Sol high，完整交回已review接收）、`web_visual_system`（Astra medium，前端 `src/design/**`）、`web_frontend`（Sol high，前端其余产品/测试/配置）。视觉与业务白名单不相交，后端A增量已准入；首派Core correction+Interrupt同owner实施。具体依赖与精确章节/行范围已随派遣指定，见本轮 [plan.md](.autonomous/20261012-round2-web-ui/plan.md)。主会话完整阅读权威规格；Development 派遣按 AGENTS 的精确阅读契约执行，不能只给整份规格路径。并行修改不相交，子 Agent 不再派生；主会话集中审查完整交回，不频繁盯零碎 diff。
 
 ## 任务看板
 
@@ -49,9 +49,9 @@
 | V1.6 实现提交与移交 | 已提交，验收未完 | 产品收尾提交 `edd031f551`；记录提交 `6c3659bdf8`；不得重复处理产品提交 |
 | 本轮规格与核心文档对齐 | 主会话 review 接收 | 06 优先级、分工、双仓库、四视口与覆盖边界已同步；规则与历史入口保留 |
 | Snapshot / 文档基线冻结 | 已冻结 `37ad76f5df` | 三份核心文档、06、索引与报告模板同批提交；规格本轮一级不可修改 |
-| 技术审计及实施计划 | 原生审计准备中，产品未改 | Sol 研究实际接口及原生差距，只写本轮 native-compatibility.md 与 ignored 证据；计划已建立，A 项须主会话审计接收后施工 |
+| 技术审计及实施计划 | 审计完整接收；计划已执行 | 30项N/F/A/D、DTO和源码反例已审；最终新方法名称见native-compatibility §11；具体增量按owner实施 |
 | 前端仓库与设计系统 | T1 视觉基础实施中 | 设计按 06，功能施工主要交 Sol；无远端发布 |
-| Web UI / 原生后端增量 | T2 原生前端实施中；后端等待审计 | 完整接线、状态转换、失败处理与原生兼容；不预建未来能力 |
+| Web UI / 原生后端增量 | T2 原生前端实施中；T3 correction+Interrupt开始 | 完整接线、状态转换、失败处理与原生兼容；不预建未来能力 |
 | V1.6 缺口补验 | 未开始 | 按下表与旧轮交接补证，共享有效历史结果 |
 | 第二轮独立两门禁与交付 | 未开始 | 第二轮完整 Verification → Validation → 主会话交付证据复核，准确声明限制 |
 
@@ -77,7 +77,7 @@ Full 审计 UI 按 06 延后，不提前造接口。旧轮首次失败、修复�
 - 本机 localhost 内置浏览器验收四视口；真实 REST+WS、真实图片/文件与用户旅程。真机专项和当前无法覆盖的平台如实标未验证，不以视口模拟冒充。
 - 隔离运行状态在 ignored `.hermes-dev/`。V1.6 profile `.hermes-dev/v1.6-validation/dashboard-final-4743943e` 保留 6 sessions / 157 messages / 5 Snapshots；Dashboard 已停，临时 Idle 已恢复 2 秒。后续从最终源码重新构建/启动，旧实例或 bundle 不作新版本证据。
 - 私人 Pi 迁移库按既有特定授权暂存，不读、不重建、不清理、不发布，亦不接入验收实例；凭据不进入 Git。
-- 第二轮产品、构建与门禁证据尚无；不能用文档对齐或旧有效测试宣称 Web UI 完成。接口差距必须先按 06 的原生审计要求证明，相关增量不得破坏未启用场景。
+- 第二轮隔离后端已以原生 Dashboard 启动于 `http://127.0.0.1:53445`，profile `.hermes-dev/round2-runtime`，首次 0 Sessions；health、原生 HTML bootstrap auth、default cwd 与列表只读 readiness 见 `.hermes-dev/round2-evidence/runtime/readiness.json`。启动时重建官方 Web bundle；产品仍 V1.6 基线，不能据 readiness 宣称 Web UI 或模型链路完成。接口差距必须先按 06 的原生审计要求证明，相关增量不得破坏未启用场景。
 - 纯文档对齐仅核差异、链接、职责和原规则保留，不跑代码测试；本轮大型检查记录执行方、版本、范围、次数与结果，复用同版本有效证据。
 
 ## 历史轮次与证据入口

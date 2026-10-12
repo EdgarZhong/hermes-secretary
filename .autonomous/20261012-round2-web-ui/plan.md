@@ -18,7 +18,7 @@
 
 ## 接口与执行安排
 
-1. 主会话审核 T0 后发布具体后端白名单及最终方法名称，增量的 owner、输入/状态/错误、unknown acceptance、锁/线程、事件、ephemeral/durable、兼容和测试逐项落在 native-compatibility.md，不改一级规格。
+1. 主会话已审核 T0，最终方法名称见 native-compatibility.md §11；具体后端白名单随各owner派遣限定。，增量的 owner、输入/状态/错误、unknown acceptance、锁/线程、事件、ephemeral/durable、兼容和测试逐项落在 native-compatibility.md，不改一级规格。
 2. T1 可先行，纯视觉接口集中 `src/design/index.ts` 导出；仅依赖 React、Radix/shadcn 方式 primitives、lucide-react（若采用）及 CSS。设计师不改 package.json；交回依赖清单供 T2 集成。不创建 App/router/client/store，组件只通过 props/children/callback 呈现。
 3. T2 开发负责 package/lock/config 与业务模块，避开 T1 白名单；等待 T0 的实际 DTO，不自行猜拟 A 方法。T3/T4 后端按不相交 owner 分组，必要共享文件串行；前端同一实现者完成控制接线。
 4. 每项阶段完整交回七项报告；主会话集中读实际 diff/上下游，不用重跑有效测试代替 review。机制实现、正式接线、针对性验证、真实用户结果的动态状态仅在根 CLAUDE 维护，本计划不复制看板。
@@ -26,7 +26,7 @@
 
 ## 缺陷与整改
 
-尚无本轮已判定代码缺陷；T0 准备审计差距和 V1.6 移交缺口按各自依据处理。范围内审查发现按下表追加，不降低冻结判据。
+T0审计已由主会话接收，S01–S05/I01–I03/C01为新增V1行为缺口的源码反例，T3/T4负责关闭；它们不被冒称原生旧功能回归。V1.6移交缺口继续保留。范围内审查发现按下表追加，不降低冻结判据。
 
 | 编号 | 要求与触发条件 | 当前事实与影响 | 优先级 | 修复负责人 | 关闭与复验条件 | 状态 |
 |---|---|---|---|---|---|---|
@@ -38,3 +38,8 @@
 - 官方 PM Python 解释器与锁沿用；前端新库正常 npm lock，不改后端依赖锁。测试必须 canonical runner；大型检查只集成收敛后统一一次，失败修复按影响复测。
 - 四视口 1440×900、1024×768、390×844、320×568 均强制；软键盘/相机/系统侧滑真机证据后续专项，功能仍实现。
 - 当前版本和完成状态见根 CLAUDE。每个阶段本地快照写明验证与缺口；最终双仓分别给出 commit。
+
+
+### T3a correction 与 atomic handoff 具体授权
+
+Sol同一任务负责 `agent/interrupt_control.py`、`agent/agent_init.py`、新 `agent/pending_steer.py`（或同义唯一owner sibling）、`agent/agent_runtime_helpers.py`仅steer helpers、`agent/turn_iteration_prep.py`仅原生插入、`agent/turn_finalizer.py`仅pending/关闭、`agent/turn_context.py`仅Turn epoch起点、`tui_gateway/methods_session_interrupt.py`及新pending sibling、`tui_gateway/prompt_turn.py`仅settlement/followup、`tui_gateway/session_auto_continue.py`/`session_lifecycle.py`仅相关handoff清理、独立新contracts文件、对应tests。共享server.py/module注册与contracts registry由Main统一接线；其他需改文件先报具体必要接缝。提交由Main做。开发先为真实竞态/传统路径取得必要定向证据，不能只测helper。
