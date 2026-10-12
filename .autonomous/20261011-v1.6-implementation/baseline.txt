@@ -9,3 +9,5 @@ fc2668310bff783dde0d6f1cee01b8de99a43cb9
 fb8fb696d5a3048ab07fa6ef68c034eec7542503 — 授权补充C13；2026-10-12用户明确Force dispatch通知不得跨下一成功compaction区间，已同步02 §5.6、索引、根看板与计划／交付。root正式压缩器反例已确认，产品尚未修补。
 31b1f7570562c447c3ac8d37e423d4fc4989b3bb — C13用户进一步明确active同Turn中途压缩后Continuation期间旧busy queued Force通知，不得在Turn结束迟到落入新区间；该单点澄清进入02／索引／根CLAUDE。
 40d3c992d1cb21ac152992caf6caac499c6acd7a — C14用户授权临时调整隔离验收现有配置以缩短真实链路；禁止代码强制触发，必须检查真实timer/时钟。仅验收操作输入约束，产品默认值/源码/已审判据不变；索引/根CLAUDE/计划/交付快照一并记录。
+
+C15 可读绝对时间新增用户授权冻结提交：d207c40474f8c19d3cc8a007bcc0d97d6a49cbd2（02、索引、根CLAUDE及现行根README/AGENTS纳入提交树；旁支README未提交内容保留，不纳本轮；产品VAL04修补未纳冻结树）。
