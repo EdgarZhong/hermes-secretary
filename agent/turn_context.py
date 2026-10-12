@@ -337,6 +337,8 @@ def export_current_turn_boundary(agent: Any, result: Any, user_message: Any) -> 
     A preflight-timeout envelope carries the prior history without this turn's row (#7100), so a
     repeated prompt would resolve to its historical copy: nothing is exported there.
     """
+    from agent.usage_read import finish_main_turn_usage
+    finish_main_turn_usage(agent, getattr(agent, "_current_turn_id", None), result)
     if not isinstance(result, dict) or result.get("turn_exit_reason") == "context_compression_timeout":
         return result
     messages = result.get("messages")
@@ -595,6 +597,8 @@ def _bind_turn_identity(
     )
     agent._relay_pending_turn_id = None
     agent._current_turn_id = turn_id
+    from agent.pending_steer import note_native_turn_started
+    note_native_turn_started(agent, turn_id)
     agent._current_api_request_id = ""
     # Tripwire: warn when this turn starts before the previous turn-end persist
     # (concurrent turns interleave transcript writes). Cleared in _persist_session.
@@ -1089,6 +1093,8 @@ def build_turn_context(
         agent, task_id, stream_callback, persist_user_message,
         persist_user_timestamp, persist_user_platform_id,
     )
+    from agent.usage_read import begin_main_turn_usage
+    begin_main_turn_usage(agent, turn_id, has_prior_history=bool(conversation_history))
     _reset_per_turn_agent_state(agent)
 
     _preview_text = summarize_user_message_for_log(user_message)

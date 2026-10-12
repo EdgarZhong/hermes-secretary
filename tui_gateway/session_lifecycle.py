@@ -368,6 +368,9 @@ def _finalize_session(session: dict | None, end_reason: str = "tui_close") -> No
     if (stop_event := session.get("_notif_stop")) is not None:
         stop_event.set()
     agent = session.get("agent")
+    from agent.pending_steer import buffer_for
+    if buffer_for(agent) is not None:
+        _pending_cancel_handoff(session, "session_closed")
     with (session.get("history_lock") or contextlib.nullcontext()):
         history = list(session.get("history", []))
     # Persist via ``_persist_session``'s marker-based dedup (gateway-shutdown flush contract). Do NOT pass
@@ -685,6 +688,7 @@ def _ws_session_is_orphaned(session: dict | None) -> bool:
 
 def _interrupt_session_turn(
     sid: str, session: dict, *, request_id: str | None = None, orphan: bool = False,
+    preserve_pending_handoff: bool = False,
 ) -> bool:
     """Apply the shared ``session.interrupt`` contract to one claimed session; returns whether the compute-host control
     channel was used. The WS orphan reaper reuses this so a dead client gets the same partial-history/queue semantics.
@@ -707,9 +711,13 @@ def _interrupt_session_turn(
         run_thread_alive = (rt := session.get("_run_thread")) is not None and rt.is_alive()
     with session["history_lock"]:
         session["_turn_cancel_requested"] = True
-        session["queued_prompt"] = None
-        session.pop("queued_prompts", None)
+        if not preserve_pending_handoff:
+            session["queued_prompt"] = None
+            session.pop("queued_prompts", None)
         session["_queued_prompt_generation"] = int(session.get("_queued_prompt_generation", 0)) + 1
+    from agent.pending_steer import buffer_for
+    if not preserve_pending_handoff and buffer_for(session.get("agent")) is not None:
+        _pending_cancel_handoff(session, "stopped")
     if should_interrupt:
         # Sibling of gateway/run_agent_cache.py::_interrupt_and_clear_session: a user-initiated stop of a
         # live TUI/desktop turn is the same "loop is gone" event for plugins holding per-turn external

@@ -330,15 +330,22 @@ class SecretaryNotebookMixin:
 
     def noting_memo_mutate(self, conversation_ref, args):
         from secretary.noting_memo import mutate_memo_conn
-        return self._execute_write(lambda conn: mutate_memo_conn(self, conn, conversation_ref, args))
+        result = self._execute_write(lambda conn: mutate_memo_conn(self, conn, conversation_ref, args))
+        if args.get("operation") != "list":
+            from secretary.web_events import changed
+            changed(self, conversation_ref, "memo_changed")
+        return result
 
     # ── Convenience wrappers (own connection) ──────────────────────────────
 
     def notebook_commit_snapshot(self, conversation_ref, state, *, anchor_message_uid,
                                  trigger_type="idle", runtime_profile="NOTING", termination=None, memo_entries=None):
-        return self._execute_write(lambda conn: self.notebook_commit_snapshot_conn(
+        result = self._execute_write(lambda conn: self.notebook_commit_snapshot_conn(
             conn, conversation_ref, state, anchor_message_uid=anchor_message_uid,
             trigger_type=trigger_type, runtime_profile=runtime_profile, termination=termination, memo_entries=memo_entries))
+        from secretary.web_events import changed
+        changed(self, conversation_ref, "notebook_changed")
+        return result
 
     def notebook_snapshot_audit_conn(self, conn, snapshot_id):
         row = conn.execute(_SNAPSHOT_BY_ID_SQL, (snapshot_id,)).fetchone()
@@ -367,5 +374,8 @@ class SecretaryNotebookMixin:
             return self.notebook_local_enabled_conn(conn, conversation_ref)
 
     def notebook_set_local_enabled(self, conversation_ref, enabled):
-        return self._execute_write(
+        result = self._execute_write(
             lambda conn: self.notebook_set_local_enabled_conn(conn, conversation_ref, enabled))
+        from secretary.web_events import changed
+        changed(self, conversation_ref, "local_changed")
+        return result

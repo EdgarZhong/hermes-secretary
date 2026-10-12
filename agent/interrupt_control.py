@@ -262,7 +262,15 @@ class InterruptControlMixin:
             # claimed a hard interrupt supersedes the steer — but nothing gated this wipe on
             # hard_cancel, so a soft clear dropped a live user message with no trace.
             with _ic_lock(self, "_pending_steer_lock"):
-                self._pending_steer = None
+                from agent.pending_steer import buffer_for
+                owner = buffer_for(self)
+                if owner is None:
+                    self._pending_steer = None
+                else:
+                    owner.reject("stopped")
+            if owner is not None:
+                from agent.pending_steer import notify
+                notify(self)
         return True
 
     def steer(self, text: str) -> bool:
@@ -273,7 +281,14 @@ class InterruptControlMixin:
         cleaned = text.strip()
         with _ic_lock(self, "_pending_steer_lock"):
             existing = _ic_slot(self, "_pending_steer_lock", "_pending_steer")
-            self._pending_steer = (existing + "\n" + cleaned) if existing else cleaned
+            from agent.pending_steer import PendingSteerBuffer
+            if isinstance(existing, PendingSteerBuffer):
+                existing.enqueue(cleaned)
+            else:
+                self._pending_steer = (existing + "\n" + cleaned) if existing else cleaned
+        if isinstance(existing, PendingSteerBuffer):
+            from agent.pending_steer import notify
+            notify(self)
         return True
 
     def redirect(self, text: str) -> bool:
@@ -351,5 +366,8 @@ class InterruptControlMixin:
         """Return the pending steer text (if any) and clear the slot; None when nothing is pending."""
         with _ic_lock(self, "_pending_steer_lock"):
             text = _ic_slot(self, "_pending_steer_lock", "_pending_steer")
+            from agent.pending_steer import PendingSteerBuffer
+            if isinstance(text, PendingSteerBuffer):
+                return text.take()
             self._pending_steer = None
         return text

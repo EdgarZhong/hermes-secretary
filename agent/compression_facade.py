@@ -26,10 +26,12 @@ class _CommitFenceRegistration:
     ``fence`` in place so the slot update stays tied to the owning registration.
     """
 
-    __slots__ = ("fence",)
+    __slots__ = ("fence", "observation")
 
     def __init__(self, fence) -> None:
         self.fence = fence
+        from agent.compression_read import CompressionObservation
+        self.observation = CompressionObservation()
 
 
 def _timeout_fallback_prompt(agent, system_message: str) -> str:
@@ -171,6 +173,8 @@ def _run_under_progress_timeout(
         if native_request is not None:
             native_request.bind_fence(retry_fence)
         with fence_registration_lock:
+            if registration.observation.cancel_requested:
+                retry_fence.try_cancel_before_commit()
             registration.fence = retry_fence
             stack = vars(agent).get("_compression_commit_fence_stack") or ()
             if stack and stack[-1] is registration:
@@ -279,6 +283,7 @@ class CompressionFacadeMixin:
             native_request.bind_fence(active_fence)
         fence_registration_lock = vars(self).setdefault("_compression_commit_fence_lock", threading.RLock())
         registration = _CommitFenceRegistration(active_fence)
+        observation_failed = True
         try:
             with fence_registration_lock:
                 fence_stack = vars(self).setdefault("_compression_commit_fence_stack", [])
@@ -313,6 +318,7 @@ class CompressionFacadeMixin:
                 )
             _mirror_result_onto_live_lists(self, result, messages, direct_path=direct_path)
             _rebind_caller_session_context(self)
+            observation_failed = False
             return result
         finally:
             # Remove only THIS attempt's registration. Completion order is not registration
@@ -320,6 +326,8 @@ class CompressionFacadeMixin:
             # live newer attempt (and popping the slot outright would delete that attempt's
             # fence mid-run). The slot always tracks the newest live registration.
             with fence_registration_lock:
+                from agent.compression_read import finish_observation
+                finish_observation(self, registration, failed=observation_failed)
                 # Re-read rather than reuse the try-block local: an early exception before
                 # the append would otherwise raise NameError here and mask the real failure.
                 fence_stack = vars(self).get("_compression_commit_fence_stack") or ()

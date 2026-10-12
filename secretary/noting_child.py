@@ -105,6 +105,7 @@ _ACTIVE_NOTING_LOCK = threading.Lock()
 def register_active_noting_task(child_session_id: str, child: Any) -> None:
     with _ACTIVE_NOTING_LOCK:
         _ACTIVE_NOTING_TASKS[child_session_id] = child
+    _notify_task_observer(child, "task_started")
 
 
 def unregister_active_noting_task(child_session_id: str, child: Any = None) -> bool:
@@ -114,7 +115,14 @@ def unregister_active_noting_task(child_session_id: str, child: Any = None) -> b
         if current is None or (child is not None and current is not child):
             return False
         del _ACTIVE_NOTING_TASKS[child_session_id]
-        return True
+    _notify_task_observer(current, "task_finished")
+    return True
+
+
+def _notify_task_observer(child, reason):
+    from secretary.web_events import changed
+    changed(getattr(child, "_session_db", None),
+            getattr(child, "_secretary_parent_conversation_ref", None), reason)
 
 
 def active_noting_task(child_session_id: str) -> Any:
@@ -383,10 +391,13 @@ def commit_noting_snapshot(
     trigger_type: str, runtime_profile: str, termination: dict, memo_entries=None,
 ) -> str:
     """One atomic commit: Anchor validity -> INSERT immutable Snapshot -> re-derive pointer."""
-    return db._execute_write(lambda conn: db.notebook_commit_snapshot_conn(
+    result = db._execute_write(lambda conn: db.notebook_commit_snapshot_conn(
         conn, conversation_ref, state, anchor_message_uid=anchor_message_uid,
         trigger_type=trigger_type, runtime_profile=runtime_profile, termination=termination, memo_entries=memo_entries,
     ))
+    from secretary.web_events import changed
+    changed(db, conversation_ref, "notebook_changed")
+    return result
 
 
 # ── The task ──────────────────────────────────────────────────────────────────────────

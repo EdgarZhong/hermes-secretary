@@ -1989,7 +1989,7 @@ def _write_config_state(
     extra_content_on_create: Optional[str] = None,
 ) -> None:
     """Shared comment-preserving config writer; omission policy is selected by the public wrapper."""
-    from utils import atomic_roundtrip_yaml_save
+    from hermes_cli.config_write_notifications import atomic_roundtrip_yaml_save
 
     _refuse_failed_read(config_path, data)
     if not allow_omissions:

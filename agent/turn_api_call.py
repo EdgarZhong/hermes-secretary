@@ -103,16 +103,22 @@ def perform_api_call(
                     sanitize_harmony_tokens=agent._is_codex_backend(),
                 )
             verify_carried_reminders(agent, next_api_kwargs.get("messages", next_api_kwargs.get("input", [])))
+            from agent.usage_read import observe_main_model_dispatch
             if _use_streaming:
-                answer = agent._interruptible_streaming_api_call(
-                    next_api_kwargs, on_first_delta=_stop_spinner
-                )
+                with observe_main_model_dispatch(agent) as usage_receipt:
+                    answer = agent._interruptible_streaming_api_call(
+                        next_api_kwargs, on_first_delta=_stop_spinner
+                    )
+                    usage_receipt[0] = answer
                 agent._secretary_reminder_provider_responded = answer is not None
                 return answer
             from agent import relay_llm
 
             def _dispatch_nonstream(request):
-                return agent._interruptible_api_call(request)
+                with observe_main_model_dispatch(agent) as usage_receipt:
+                    answer = agent._interruptible_api_call(request)
+                    usage_receipt[0] = answer
+                    return answer
 
             answer = relay_llm.execute(
                 next_api_kwargs,

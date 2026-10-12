@@ -3740,9 +3740,10 @@ def extract_api_error_context(error: Exception) -> Dict[str, Any]:
 
 def _requeue_pending_steer(agent, steer_text: str) -> None:
     """Put drained steer text back so the caller's fallback delivers it as a next-turn user message."""
-    # Under the lock the slot is read directly: an initialized agent always has both attributes, so a
-    # missing ``_pending_steer`` there is a real bug and must fail loud. The lock-less branch only
-    # exists for test stubs built via ``object.__new__`` that skipped ``__init__``.
+    from agent.pending_steer import requeue_if_owned
+    if requeue_if_owned(agent, steer_text):
+        return
+    # The lock-less branch supports legacy bare-agent test doubles.
     _lock = getattr(agent, "_pending_steer_lock", None)
     if _lock is not None:
         with _lock:
@@ -3757,8 +3758,6 @@ def _requeue_pending_steer(agent, steer_text: str) -> None:
 
 def apply_pending_steer_to_tool_results(agent, messages: list, num_tool_msgs: int) -> None:
     """Persist any pending /steer text as a standalone user message.
-
-    Called at the end of a tool-call batch, before the next API call.
 
     The steer is emitted as a NEW ``role:"user"`` message appended after the
     last tool result (marker text included), so:
@@ -3780,16 +3779,15 @@ def apply_pending_steer_to_tool_results(agent, messages: list, num_tool_msgs: in
     steer_text = agent._drain_pending_steer()
     if not steer_text:
         return
-    # Skip non-tool messages in the tail in case something else is appended at the boundary.
     tail = range(len(messages) - 1, max(len(messages) - num_tool_msgs - 1, -1), -1)
     target = next((messages[j] for j in tail if isinstance(messages[j], dict) and messages[j].get("role") == "tool"), None)
     if target is None:
-        # No tool result in this batch (e.g. all skipped by interrupt);
-        # requeue so the fallback path delivers it as a normal next-turn
-        # user message (which persists like any other user turn).
+        # A skipped batch requeues for the normal next-turn fallback.
         _requeue_pending_steer(agent, steer_text)
         return
-    messages.append(steer_user_row(steer_text))
+    from agent.pending_steer import append_steer_row
+    if not append_steer_row(agent, messages, steer_text):
+        return
     _ra().logger.info(
         "Delivered /steer to agent after tool batch (%d chars) as new user message: %s", len(steer_text),
         steer_text[:120] + ("..." if len(steer_text) > 120 else ""),

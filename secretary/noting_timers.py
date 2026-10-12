@@ -28,6 +28,8 @@ def cancel_idle_timer(db, ref):
         entry = _timers.pop(_runtime_key(db, ref), None)
     if entry is not None:
         entry[0].cancel()
+        from secretary.web_events import changed
+        changed(db, ref, "idle_changed")
 
 
 def _fire(parent_ref, db, ref, timer):
@@ -37,6 +39,8 @@ def _fire(parent_ref, db, ref, timer):
             if entry is None or entry[0] is not timer:
                 return
             _timers.pop(_runtime_key(db, ref), None)
+        from secretary.web_events import changed
+        changed(db, ref, "idle_changed")
         parent = parent_ref()
         if parent is None:
             return  # A reclaimed owner leaves its durable deadline for a future attach.
@@ -46,6 +50,8 @@ def _fire(parent_ref, db, ref, timer):
                 _run_idle_event(parent, db, ref, expected_period=entry[3])
         except Exception:
             logger.warning("Noting Idle timer failed for %s", ref, exc_info=True)
+        finally:
+            changed(db, ref, "idle_changed")
 
 
 def arm_idle_timer(parent, db, ref, due_at):
@@ -60,6 +66,8 @@ def arm_idle_timer(parent, db, ref, due_at):
     with _registry_lock:
         _timers[_runtime_key(db, ref)] = (timer, float(due_at), parent_ref, period)
     timer.start()
+    from secretary.web_events import changed
+    changed(db, ref, "idle_changed")
 
 
 def holds_pending_timer(parent):
@@ -111,3 +119,15 @@ def attach_idle_timer(parent, db, ref, *, now=None):
         cancel_idle_timer(db, ref)  # A resumed owner must not inherit a stale runtime callback.
         arm_idle_timer(parent, db, ref, deadline)
         return "skip:timer_armed"
+
+
+def idle_timer_observation(db, ref, period):
+    """Read only a live, matching native deadline; never attach/recover a timer."""
+    with _registry_lock:
+        entry = _timers.get(_runtime_key(db, ref))
+        if entry is None or entry[2]() is None or entry[3] != period or not entry[0].is_alive():
+            return None
+        parent = entry[2]()
+        if main_turn_running(parent):
+            return None
+        return entry[1]

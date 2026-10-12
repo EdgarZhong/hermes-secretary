@@ -273,3 +273,10 @@ Secretary只读采用两个新RPC；输入可用stored locator与明确profile�
 已核隔离runtime为原生默认in-process（dashboard turn isolation默认False，未新增配置开关）；其他原生模式保留。实施者检查hosted分支，不能读parent代理来假定child状态；若需扩展按同native supervisor接缝报告边界。新功能目标环境必须全部可用，未覆盖环境明确留证。
 
 认证复用原生HTML注入+header/WS token；实际loopback readiness已通过。开发Vite可转发原生bootstrap，最终构建优先由已有 `HERMES_WEB_DIST` 静态托管接缝注入，不新增token分发API或弱化origin。secret不写源码/报告/持久browser数据。
+
+
+### Main 补充审计：R2-F08 空闲 Send 准入交错
+
+前端调用 `session.activate` 确认空闲后，另一个客户端可先启动 Turn；现有 `methods_prompt.py` L755–775 根据实际 busy 进入 `_handle_busy_submit`，后者按原模式 queue/steer/redirect 并可能取走 staged images。`prompt.submit` 没有 expected-idle 参数，客户端 precheck 不构成原子保证。06 §1.8 禁止 Web 隐式 redirect/通用 queued fallback，因此必须关闭此交错，不能仅把真实 accepted disposition 显示出来便宣称合规。
+
+Main 亲读 `methods_prompt.py::_lock_in_submit_turn`、实际 submit busy/claim 路径和 `session_lifecycle._session_turn_admission`，确认已有 retirement + history_lock 准入 owner 应继续复用；不得新增平行准入 gate/队列。批准最小 additive idle-only 提交入口，旧 prompt.submit 输入/返回/原生语义保留。实现必须同时审查 busy precheck→handler 与 idle break→原生 claim 的间隙；简单外层持 history_lock 调整个旧 handler 会跨原 session_resume_lock 锁序，不能未经证明照做。当前为源码反例准入，方法名/精确 DTO 和机制验证待专门开发交回；根 CLAUDE 已登记 Agent 自主收敛／待追认，不是已获用户确认。

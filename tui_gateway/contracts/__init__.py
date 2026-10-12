@@ -12,13 +12,17 @@ from . import (  # noqa: F401
     groups_bot_relay,
     i18n,
     liveness,
+    pending,
     profiles_vault_complete_foreign_subagents,
     projects_pets,
     prompt_voice,
     server_requests,
     sessions,
+    submit_idle,
     tools_commands,
     tools_mcp_plugins,
+    usage_read,
+    web_read,
 )
 from .base import JsonValue, Params, Payload, Result, WireEnum
 from .registry import EVENTS, METHODS, SERVER_REQUESTS

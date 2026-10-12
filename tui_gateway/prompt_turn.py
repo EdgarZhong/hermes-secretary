@@ -441,8 +441,11 @@ def _run_post_turn_followups(
     prompt wins over every auto follow-up (drain it, skip the rest); a leftover /steer is
     requeued first so it isn't dropped; then goal continuation, then completion
     notifications.  Each nested submit re-checks ``running`` under the lock."""
+    from agent.pending_steer import SteerBatch, buffer_for
+    if buffer_for(session.get("agent")) is not None and _pending_dispatch_handoff(sid, session):
+        return
     steer = result.get("pending_steer") if isinstance(result, dict) else None
-    if isinstance(steer, str) and steer.strip():
+    if isinstance(steer, str) and not isinstance(steer, SteerBatch) and steer.strip():
         with session["history_lock"]:
             _enqueue_prompt(session, steer, session.get("transport"))
     if _drain_queued_prompt(rid, sid, session):
@@ -797,12 +800,17 @@ def _invoke_agent(
     agent._on_session_title = lambda t, _src, _k=_title_key: _emit(
         "session.title", sid, {"session_id": _k, "title": t})
     _usage_stop, _usage_thread = _start_usage_ticker(sid, agent)
+    usage_returned = False
     try:
         from agent.notification_presentation import notification_turn, event_presentation_muted
         from agent.message_metadata import preserve_user_input_origin
         with notification_turn(agent, muted=event_presentation_muted("message.delta", sid), session_id=sid):
             st.result = agent.run_conversation(preserve_user_input_origin(text, run_message), **st.run_kwargs)
+            usage_returned = True
     finally:
+        if not usage_returned:
+            from agent.usage_read import abandon_main_turn_usage
+            abandon_main_turn_usage(agent)
         # Stop AND join before anything emits: a tick surviving past message.complete would
         # roll the client's usage back to a stale snapshot (unbounded join: same worst case).
         _usage_stop.set()
@@ -1205,6 +1213,9 @@ def _run_prompt_submit(
                     if not st.error_retained:
                         _clear_inflight_turn(session)
                     _release_hosted_room_turn_slot(session)
+                    from agent.pending_steer import buffer_for
+                    if buffer_for(st.agent) is not None:
+                        _pending_settle_turn_locked(session, failed=st.error_retained)
                 # Closing bookend of "tui prompt accepted" — exactly one per accepted prompt.
                 # agent.session_id is re-read because compression may have rotated it (an
                 # accepted/finished pair whose id changed IS a rotation trace).
@@ -1237,6 +1248,11 @@ def _run_prompt_submit(
         from agent.notification_presentation import notification_policy_snapshot
         with notification_policy_snapshot(agent, "tui", notification_config), notification_turn(agent, muted=muted, session_id=sid):
             followup = run_body()
+        from agent.pending_steer import buffer_for
+        if buffer_for(agent) is not None:
+            _pending_complete_settlement(session)
+            if _pending_dispatch_handoff(sid, session):
+                return
         if followup is not None:
             _run_post_turn_followups(rid, sid, session, *followup)
     # The handle is resolved BEFORE _sessions_lock: a profile session opens its own SessionDB through the

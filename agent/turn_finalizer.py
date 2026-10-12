@@ -160,6 +160,8 @@ def _resolve_budget_fallback(
                 )
             _summary_start = time.time()
             try:
+                from agent.usage_read import note_unobserved_main_summary
+                note_unobserved_main_summary(agent)
                 final_response = agent._handle_max_iterations(messages, api_call_count)
             except InterruptedError:
                 # The turn ends interrupted, so the pending interrupt message is returned
@@ -741,7 +743,8 @@ def finalize_turn(
         result["cleanup_errors"] = _cleanup_errors
     # A /steer landing after the final assistant turn has no tool batch to drain into;
     # hand it back so it becomes the next user turn instead of being lost.
-    _leftover_steer = agent._drain_pending_steer()
+    from agent.pending_steer import finish_native_turn
+    _leftover_steer = finish_native_turn(agent, failed=failed)
     if _leftover_steer:
         result["pending_steer"] = _leftover_steer
     agent._response_was_previewed = False

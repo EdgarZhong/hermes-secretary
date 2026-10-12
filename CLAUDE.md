@@ -4,14 +4,24 @@
 
 > 本区域按 AGENTS.md 永久维护；无待追认收敛时注明“暂无”。
 
-**暂无。** 本轮已确认口径的授权来源见 [Snapshot Index](.autonomous/20261012-round2-web-ui/snapshot-index.md)，不得将 Agent 安排或推断写成用户确认。
+| 原规格空白 | Agent 自主收敛／理由 | 影响范围 | 实施情况 | 用户状态 |
+|---|---|---|---|---|
+| 新增Pending occurrence与Interrupt查询回执要求稳定但无有限保留/容量具体值 | 同原生owner内存保留当前epoch至多256个Web提交回执、64个Interrupt操作；最近8个已结束epoch；超容量明确拒绝，过期明确unknown，避免无界内存且不捏造查询成功 | 仅新增Web精确Pending接口；legacy steer无新容量限制；重启本就不保证live receipt恢复 | 已实施；Main 集中审查接收 109 个不同机制/原生回归用例，真实 UI 待联调 | **Agent 自主收敛／待追认** |
+| 压缩操作终态查询未指定有限保留条数 | 每个原生 Agent 仅在内存保留最近 32 条压缩终态；超出窗口的操作返回 no_active，不推断过往成功 | 仅新增压缩观察/取消 RPC；不改原生压缩记录或执行 | 已实施并通过相应机制验证；Main review 接收，真实 UI 待联调 | **Agent 自主收敛／待追认** |
+| 06 要求附件上限实测，未给出具体大小 | 前端暂以单文件 16 MiB 为选择上限，超限在提交前明确提示；需结合原生上传端验证后复核 | Web 图片和普通文件选择；不改变后端或旧客户端能力 | T2 已实施，边界实测及后端一致性未完成 | **Agent 自主收敛／待追认** |
+| Idle Send 的前端确认与原生 prompt.submit 之间，另一客户端可抢先准入，原接口随后会 queue/steer/redirect；06 禁止这些隐式兜底但未指定原子拒绝接口 | 在既有原生准入接缝增加最小 additive idle-only 提交入口；竞争后明确拒绝并保留草稿。复用原执行与原锁，不新建准入 owner/队列，不改变旧 prompt.submit 协议 | 新 Web 普通 Send 的竞争边界；Rewind 仍保留原生双确认/拒绝语义 | Main 源码反例确认并准入；T3c 设计已由 Main 源码审查接收，prompt.submit_idle / busy 4009 契约定案，Main 已审查接收实现与机制证据；真实 REST/WS 联调待验 | **Agent 自主收敛／待追认** |
+| 原生 image.attach 跨连接未完成时，断线后的 image.detach 可先完成，旧请求随后仍追加图片；06 未指定可证明安全的取消上传机制 | 新 Web 图片用原生 file.attach 取得路径，再由 submit_idle 显式传入本次 image_paths，复用原生图片执行参数；新请求默认空列表，不消费其他客户端共享图片暂存。取消/丢上传 ACK 最多留下普通文件，不使后续 Prompt 夹图 | Web 普通 Send/Rewind 图片绑定；普通文件仍用原生 ref_text；旧 prompt.submit/image.attach 语义保留 | Main 已亲查正式 inline 与 compute-host 两条接缝，Main 已接收显式图片实现、19 个不同图片用例及旧入口负对照；真实视觉模型链路待验 | **Agent 自主收敛／待追认** |
+
+本轮已确认口径的授权来源见 [Snapshot Index](.autonomous/20261012-round2-web-ui/snapshot-index.md)，不得将 Agent 安排或推断写成用户确认。
 
 ## 当前目标与阶段
 
-第二轮交付独立 Secretary Web UI，并完成 V1.6 移交缺口及本轮实际变化影响的验收。当前为 **实施计划已建立，原生审计与视觉基础准备中；尚无已完成的产品施工**。用户授权在冻结前精简三份核心文档、最小修订新版 06；冻结后本轮不再修订权威规格。
+最新用户口径 R2-C10 已写入 AGENTS：以同一 owner、统一判断点、同步临界区和正式提交点保证不变量；Main 据此复核当前增量，避免下游堆叠门禁。
+
+第二轮交付独立 Secretary Web UI，并完成 V1.6 移交缺口及本轮实际变化影响的验收。当前为 **T1 视觉基础已接收，T2 前端首阶段主审整改中，T3/T4 后端增量已由 Main 审查接收、准备阶段快照和运行联调；尚未进入独立门禁**。用户授权在冻结前精简三份核心文档、最小修订新版 06；冻结后本轮不再修订权威规格。
 
 - 后端工作区：`/Users/edgar/code/hermes-secretary`，继续按原生接缝实施必要增量。
-- 前端：并列本地仓库 `/Users/edgar/code/hermes-secretary-web` 已初始化 `main`，目前为空、无远端；目录名属于实施安排，不是用户逐字指定。暂不上传远端。
+- 前端：并列本地仓库 `/Users/edgar/code/hermes-secretary-web`，`main`、无远端；React 应用已启动并通过基础导航冒烟，仍在整改和补齐功能。目录名属于实施安排，不是用户逐字指定。暂不上传远端。
 - 过程计划、依据、协调、审计与验收证据全部留在本工作区；前端不建立并行过程看板。
 - 范围只含 06 Web V1、必要原生后端增量和 V1.6 移交验收；不含 Memory Provider 或云部署。
 
@@ -29,6 +39,13 @@
 | 验收 | localhost 内置浏览器，桌面 1440×900 / 1024×768、移动 390×844 / 320×568 全部强制；小屏布局、操作与视觉完整 | R2-C05 |
 | 真机覆盖 | 软键盘、相机、系统侧滑后续专项验证；功能仍实施，本轮不冒称真机覆盖 | R2-C05 |
 | 模型 | 已配置 DeepSeek，用户明确当前 V4.1Flash 支持视觉；Main/Noting 与真实图片验收沿用配置和原生 provider，不另换模型或新增路由 | R2-C06 |
+| 品牌素材 | 用户原图位于前端 public/assets/hermes-secretary-icon.png；仅替换标签页图标及 Claude 主题 New Chat Composer 上方标题栏左侧十字花，其他位置默认不额外使用 | R2-C09 |
+| 最新视觉纠正 | Usage/Context 悬浮、不另占底部高度层；New Chat 仅 5–6 句轮换标题，无副标题；先调布局与层级，主题色待用户提供，蓝灰色仅辅助 | R2-C11–C13、C15 |
+| 深浅主题 | 完整 system/light/dark；侧边栏底部三图标滑动胶囊，无可见文字；默认系统，本机保存显式选择 | R2-C14 |
+| New Chat 统计卡 | 不显示 Usage 和 Context；两卡仅在实际会话页面展示 | R2-C16 |
+| Files 预览与路径 | 使用成熟库呈现常见文本/非文本；真实工作区相对路径，根名称强调色，删除 Files/Parent folder 人工标签 | R2-C17–C18 |
+| 视觉交接 | Astra 视觉设计 Agent 已结束，不再操作；成果保留，用户另行委派设计。Sol 继续交互、卡片骨架和功能，Main 回归全局接线与审查 | R2-C19 |
+| Mock / worktree | Sol 构造复用正式组件的全场景静态交互 Mock，再创建前端独立视觉 worktree 供用户另行设计；Main 并行推进逻辑工作 | R2-C20–C21 |
 
 ## 编排与修改边界
 
@@ -38,9 +55,11 @@
 | Development | GPT-6.1 Sol high | 指定白名单内具体前后端实现、相关测试与完整阶段证据；不扩大产品语义、不再派生 |
 | 独立 Verification | Astra high | 全新无上下文审查者先从冻结规格建立判据，再核实现、接线与证据 |
 | 独立 Validation | Astra medium | Verification 通过后由全新无上下文验收者操作真实入口，检查用户输入到输出 |
-| 独立视觉设计 | Astra medium | 按 06 交付 tokens、设计系统、呈现组件、响应式与视觉质量；不改变交互、网络、状态机、事件或导航语义 |
+| 视觉设计 | 原 Astra medium 已按用户要求结束；后续用户另行委派 | 保留既有成果和未验项；不再由原 Agent 操作。Sol 继续已确认交互/卡片骨架及必要接线，不自行定案新主题 |
 
-当前活跃委派：`native_compatibility_audit`（Sol high，完整交回已review接收）、`web_visual_system`（Astra medium，前端 `src/design/**`）、`web_frontend`（Sol high，前端其余产品/测试/配置）。视觉与业务白名单不相交，后端A增量已准入；首派Core correction+Interrupt同owner实施。具体依赖与精确章节/行范围已随派遣指定，见本轮 [plan.md](.autonomous/20261012-round2-web-ui/plan.md)。主会话完整阅读权威规格；Development 派遣按 AGENTS 的精确阅读契约执行，不能只给整份规格路径。并行修改不相交，子 Agent 不再派生；主会话集中审查完整交回，不频繁盯零碎 diff。
+当前活跃委派：`static_mock`（Sol high，前端独立 src/mock/** 与静态入口，复用正式组件，不改产品/网络/共享依赖）；`web_frontend`（Sol high，前端整改与接线）、`web_usage_projection`（Sol high，T4b 已完整交回，Main 已审源码/上下游/23项机制证据并接收）。`native_compatibility_audit` 的 T3c 已完整交回并经 Main 集中 review 接收；已完整交回 T3a，30 项新机制及 79 项原生回归有效通过；Main 已固定源码证据、核对 13/13 hash，并集中审查 owner/插入/终结/原生准入/关闭与实际 Loop、SQLite 测试后接收。T3c 报告列原设计 15 项、图片边界 19 项、旧回归 66 项及 typed Stop 2 项；不将重叠证据简单加总为独立用例，Main 已亲查准入/临界区、alias 绑定、ContextVar 释放、inline/compute-host 图片传递、原生忙碌兼容及完整测试；5/5 源码、4/4 注册生成物、14/14 日志 hash 相符。`web_backend_reads` 的 53 项机制证据及 12 文件 hash 已由 Main review 接收；`web_visual_system`（原 Astra medium）已按 R2-C19 结束并 interrupt，不再操作；当前四视口欢迎页与浅深移动侧栏六张完整截图已独立审图接收，Files/菜单/Conversation 浮卡和最终色系仍未验。成果与未完成项留在 visual-design.md，用户另行委派视觉。Sol 可继续已确认交互、卡片骨架及必要 design 组件接线；不继续自主纯视觉重设计。独立 Verification Astra high、Validation Astra medium 分工不变。白名单与精确章节/行范围见 [plan.md](.autonomous/20261012-round2-web-ui/plan.md)。主会话集中审查完整交回，不盯零碎 diff。
+
+主题色暂不定案，原 Astra 视觉 Agent 已结束；保留现有布局与颜色候选，等待用户另行设计。New Chat 两统计卡已移除并取得四视口图像证据；Sol 继续交互/卡片骨架与功能接线。
 
 ## 任务看板
 
@@ -50,9 +69,10 @@
 | 本轮规格与核心文档对齐 | 主会话 review 接收 | 06 优先级、分工、双仓库、四视口与覆盖边界已同步；规则与历史入口保留 |
 | Snapshot / 文档基线冻结 | 已冻结 `37ad76f5df` | 三份核心文档、06、索引与报告模板同批提交；规格本轮一级不可修改 |
 | 技术审计及实施计划 | 审计完整接收；计划已执行 | 30项N/F/A/D、DTO和源码反例已审；最终新方法名称见native-compatibility §11；具体增量按owner实施 |
-| 前端仓库与设计系统 | T1 视觉基础实施中 | 设计按 06，功能施工主要交 Sol；无远端发布 |
-| Web UI / 原生后端增量 | T2 原生前端实施中；T3 correction+Interrupt开始 | 完整接线、状态转换、失败处理与原生兼容；不预建未来能力 |
-| V1.6 缺口补验 | 未开始 | 按下表与旧轮交接补证，共享有效历史结果 |
+| 前端仓库与设计系统 | T1 组件初版review接收，正式接线/四视口未完 | 设计按 06，功能施工主要交 Sol；无远端发布 |
+| Web UI / 原生后端增量 | T2 九组整改中；T3a 与 T3b/T4a 已由 Main review 接收；T4b usage 23项证据已接收；T3c idle-only 与显式图片实现已审查接收 | Main已核实际读/压缩/fence/事务接缝与定向测试；真实服务联调仍未执行，不以机制通过冒称用户验收；前端整改见 plan |
+| V1.6 缺口补验 | 只读证据核对已由 Main 接收；真实补验未开始 | 最小 H01–H08 与可复用范围见 v16-handoff-evidence.md；先补 C16/VAL04/cold，不重跑旧轮全量审查 |
+| 全场景 Mock 与视觉 worktree | 已派 Sol；隔离白名单与完整场景要求已明确 | Sol 复用现有组件实现独立无后端 Mock；可运行快照后创建前端 worktree，交接场景/入口/修改边界 |
 | 第二轮独立两门禁与交付 | 未开始 | 第二轮完整 Verification → Validation → 主会话交付证据复核，准确声明限制 |
 
 ## V1.6 交接：保留证据，只补缺口
@@ -72,13 +92,19 @@ Full 审计 UI 按 06 延后，不提前造接口。旧轮首次失败、修复�
 
 ## 环境、验收与风险
 
+- 中期架构检查：REST/WS、后端事实源与本地持久化白名单当前源码符合；前端内存投影缺少统一释放边界已登记 R2-F09，正在按统一 owner/lifetime 整改。尚未把进行时实现写成 06 全部合规。
+
 - 官方 PM 工作区 `.venv`；本轮只读核实 Python 3.14.7、Node 24.21.0、npm 11.19.0。沿用官方锁，uv.lock SHA256 为 `2bc4db483e9cba927cd7147f9ccbb09635f85bb3f1f36d6e9d51d06b65d1c67e`，package-lock SHA256 为 `9934677654ce672900b0946898cc28c73671f75896862b5768c24cca84776ccd`。本轮不为建基线先跑大型检查。
 - Main/Noting 使用已配置 DeepSeek 官方接口；图片验收必须有真实请求与理解结果，不能以附件 ACK 代替。保留原生模型/API/provider 层，不用 Codex App Server、Codex Proxy 或回退到这些通道；不修改另一旁路 Dashboard 配置。
 - 本机 localhost 内置浏览器验收四视口；真实 REST+WS、真实图片/文件与用户旅程。真机专项和当前无法覆盖的平台如实标未验证，不以视口模拟冒充。
 - 隔离运行状态在 ignored `.hermes-dev/`。V1.6 profile `.hermes-dev/v1.6-validation/dashboard-final-4743943e` 保留 6 sessions / 157 messages / 5 Snapshots；Dashboard 已停，临时 Idle 已恢复 2 秒。后续从最终源码重新构建/启动，旧实例或 bundle 不作新版本证据。
 - 私人 Pi 迁移库按既有特定授权暂存，不读、不重建、不清理、不发布，亦不接入验收实例；凭据不进入 Git。
-- 第二轮隔离后端已以原生 Dashboard 启动于 `http://127.0.0.1:53445`，profile `.hermes-dev/round2-runtime`，首次 0 Sessions；health、原生 HTML bootstrap auth、default cwd 与列表只读 readiness 见 `.hermes-dev/round2-evidence/runtime/readiness.json`。启动时重建官方 Web bundle；产品仍 V1.6 基线，不能据 readiness 宣称 Web UI 或模型链路完成。接口差距必须先按 06 的原生审计要求证明，相关增量不得破坏未启用场景。
+- 第二轮隔离后端已以原生 Dashboard 启动于 `http://127.0.0.1:53445`，profile `.hermes-dev/round2-runtime`，首次 0 Sessions；health、原生 HTML bootstrap auth、default cwd 与列表只读 readiness 见 `.hermes-dev/round2-evidence/runtime/readiness.json`。启动时重建官方 Web bundle；运行进程仍未重启加载本轮全部增量，不能据 readiness 宣称 Web UI 或模型链路完成。接口差距必须先按 06 的原生审计要求证明，相关增量不得破坏未启用场景。
 - 纯文档对齐仅核差异、链接、职责和原规则保留，不跑代码测试；本轮大型检查记录执行方、版本、范围、次数与结果，复用同版本有效证据。
+- Main 接线定向证据（当前暂存增量，尚未产品快照）：原生 `atomic_config_replace` 成功后失效通知 3 项测试通过；`scripts/check --staged --only config-writers,ruff,health` 三项通过（health 0 blocking / 0 advisory）。新方法模块与契约已正式注册并生成共享 TS/OpenRPC。生成一致性通过；事件目录测试初次失败含两个新增 steer emitter 扫描缺口（已交 owner 修复）及冻结基线已有的孤立 `review.summary` 契约，后者由 `git grep 37ad76f5df -- tui_gateway` 证实仅有声明。正式 RPC/WS 运行联调待阶段完成重启后取证，不以注册通过代替。
+
+- T3c Main review：新请求在原 admission/history_lock 同步检查并 claim，旧入口保留原 busy 政策；图片 validation 在 claim/truncate 前，显式列表沿既有 inline/compute-host/fallback 薄传，旧 None staging 不变。最终机制证据按 submit-idle-implementation.md 分版本复用，不虚称一次全量最终通过。无须退回产品修复；F08 后端机制关闭，真实客户端边界待联调。
+- T5 Main review：v16-handoff-evidence.md 的 H01–H08 为补验输入，旧版本 7/7、11/11、57/57 证据及 edd031 的 71/71 源码可追溯；当前同源范围按实际 observer/usage/Pending 差异区分。旧库无 Candidate/Schedule，不能据此宣称 Persistence/Reminder 已验；零新测试/零模型调用的研究报告不替代门禁。
 
 ## 历史轮次与证据入口
 

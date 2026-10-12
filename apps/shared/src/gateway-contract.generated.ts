@@ -1904,6 +1904,77 @@ export interface ClientCapabilitiesResult {
   server_requests: string[]
   declines_not_shown?: boolean
 }
+export interface SteerPendingParams {
+  session_id: string
+  profile?: string | null
+  turn_id: string
+  operation_id: string
+  text: string
+}
+export interface SteerPendingResult {
+  accepted: boolean
+  state: 'pending' | 'consumed' | 'withdrawn' | 'rejected' | 'inactive' | 'compressing' | 'terminal_conflict' | 'unknown_turn' | 'capacity'
+  pending_id: string | null
+  turn_id: string | null
+  reason: string | null
+}
+export interface PendingSessionParams {
+  session_id: string
+  profile?: string | null
+}
+export interface SteerPendingSnapshotResult {
+  turn_id: string | null
+  active: boolean
+  pending: PendingOccurrence[]
+  receipts: PendingReceipt[]
+  operation: InterruptPendingResult | null
+}
+export interface PendingOccurrence {
+  pending_id: string
+  text: string
+  order: number
+  state: 'pending' | 'handoff_reserved'
+  withdrawable: boolean
+}
+export interface PendingReceipt {
+  pending_id: string
+  state: 'consumed' | 'withdrawn' | 'rejected'
+  message_uid: string | null
+  reason: string | null
+}
+export interface InterruptPendingResult {
+  operation_id: string
+  turn_id: string
+  state: 'stopping' | 'dispatching' | 'followup_accepted' | 'nothing_pending' | 'not_active' | 'already_transitioned' | 'rejected' | 'unknown'
+  selected_ids: string[]
+  followup: FollowupReceipt | null
+  reason: string | null
+}
+export interface FollowupReceipt {
+  session_id: string
+  stored_session_id: string
+  turn_id: string | null
+}
+export interface SteerWithdrawParams {
+  session_id: string
+  profile?: string | null
+  turn_id: string
+  pending_id: string
+}
+export interface SteerWithdrawResult {
+  state: 'withdrawn' | 'already_withdrawn' | 'already_consumed' | 'handoff_reserved' | 'rejected' | 'unknown'
+  turn_id: string
+  pending_id: string
+  text: string | null
+  message_uid: string | null
+  reason: string | null
+}
+export interface PendingOperationParams {
+  session_id: string
+  profile?: string | null
+  turn_id: string
+  operation_id: string
+}
 /** ``word`` is the token under the cursor (``@`` prefix = context reference); ``cwd`` / ``session_id`` pick the directory the listing resolves against. */
 export interface CompletePathParams {
   profile?: string | null
@@ -3607,6 +3678,26 @@ export interface LlmOneshotParams {
 export interface LlmOneshotResult {
   text: string
 }
+export interface SubmitIdleParams {
+  session_id: string
+  profile?: string | null
+  text?: string
+  image_paths?: string[]
+  title_preview?: string | null
+  truncate_before_user_ordinal?: number | null
+  truncate_before_row_id?: number | null
+  truncate_before_message_id?: string | null
+  confirm_truncate?: boolean | null
+  confirm_empty_truncate?: boolean | null
+  rebind_survivor_row_ids?: number[] | null
+}
+export interface SubmitIdleResult {
+  status: 'streaming'
+  user_row_id?: number | null
+  survivor_user_row_ids?: (number | null)[] | null
+  survivor_row_id_map?: Record<string, number | null> | null
+  turn_isolation?: boolean | null
+}
 export interface SystemBatteryParams {
   profile?: string | null
 }
@@ -4404,6 +4495,102 @@ export interface OnboardingCatalogPlugin {
   app_state: CatalogAppState
   sentence: string
 }
+export interface UsageDetailParams {
+  session_id: string
+  profile?: string | null
+}
+export interface UsageDetailResult {
+  session_id: string
+  stored_session_id: string | null
+  session_total: SessionUsageTotal
+  latest_completed_turn: CompletedTurnUsage | null
+  latest_turn_availability: 'available' | 'partial' | 'unknown'
+  observed_at: string
+}
+export interface SessionUsageTotal {
+  input_tokens: number | null
+  cache_read_tokens: number | null
+  output_tokens: number | null
+  cache_hit_rate: number | null
+  availability: 'available' | 'partial' | 'unknown'
+  source: 'native_canonical_accounting' | 'unknown'
+  reasons: ('owner_unavailable' | 'hosted_owner_unavailable' | 'restored_session_totals_unknown' | 'overlapping_turns' | 'failed_dispatch' | 'missing_usage' | 'incomplete_usage_fields' | 'incompatible_cache_semantics' | 'opaque_moa_calls' | 'opaque_external_dispatch' | 'unobserved_dispatch' | 'unaccounted_response' | 'turn_exception' | 'unobserved_iteration_summary')[]
+  turns: number | null
+  scope: 'session'
+}
+export interface CompletedTurnUsage {
+  input_tokens: number | null
+  cache_read_tokens: number | null
+  output_tokens: number | null
+  cache_hit_rate: number | null
+  availability: 'available' | 'partial' | 'unknown'
+  source: 'native_canonical_accounting' | 'unknown'
+  reasons: ('owner_unavailable' | 'hosted_owner_unavailable' | 'restored_session_totals_unknown' | 'overlapping_turns' | 'failed_dispatch' | 'missing_usage' | 'incomplete_usage_fields' | 'incompatible_cache_semantics' | 'opaque_moa_calls' | 'opaque_external_dispatch' | 'unobserved_dispatch' | 'unaccounted_response' | 'turn_exception' | 'unobserved_iteration_summary')[]
+  turn_id: string
+  model_calls: number | null
+  model_calls_source: 'native_model_dispatch' | 'unknown'
+  scope: 'completed_main_turn'
+  completed_at: string
+}
+export interface CompactionStateParams {
+  session_id: string
+  profile?: string | null
+}
+export interface CompactionStateResult {
+  active: boolean
+  operation_id: string | null
+  phase: 'idle' | 'computing' | 'committing' | 'committed' | 'cancelled' | 'finished' | 'unknown'
+  cancelable: boolean
+  state: 'idle' | 'running' | 'completed' | 'cancelled' | 'no_change' | 'error' | 'unknown'
+}
+export interface CompactionCancelParams {
+  session_id: string
+  profile?: string | null
+  operation_id: string
+}
+export interface CompactionCancelResult {
+  operation_id: string
+  outcome: 'cancelled' | 'too_late' | 'no_active' | 'already_finished'
+}
+export interface SecretaryReadParams {
+  stored_session_id: string
+  profile: string
+}
+export interface SecretaryStateResult {
+  stored_session_id: string
+  profile: string
+  profile_home: string
+  conversation_ref: string | null
+  availability: 'available' | 'unavailable'
+  global_enabled: boolean | null
+  local_enabled: boolean | null
+  task_state: 'active' | 'idle' | 'unknown'
+  tasks: ActiveTask[]
+  next_idle: IdleEstimate
+  observed_at: string
+  memo_count: number
+  memo_entries: MemoEntry[]
+}
+export interface ActiveTask {
+  task_id: string
+}
+export interface IdleEstimate {
+  state: 'scheduled' | 'absent' | 'unknown'
+  at: string | null
+}
+export interface MemoEntry {
+  index: number
+  content: string
+}
+export interface NotebookReadResult {
+  stored_session_id: string
+  profile: string
+  profile_home: string
+  availability: 'available' | 'unavailable'
+  exists: boolean
+  output: string
+  created_at: string | null
+}
 /** ``answers`` rides only on a reconnect replay (locks the server already accepted; null = skipped). */
 export interface ClarifyRequestParams {
   session_id: string
@@ -4955,6 +5142,19 @@ export interface PetHatchProgressPayload {
 }
 /** ``change_watcher._CHANGE_WATCHES`` payload fn — ``{}`` for every watch except pet.changed. */
 export type ChangeSignalPayload = Record<string, unknown>
+export interface SteerPendingChangedPayload {
+  turn_id: string | null
+}
+export interface SteerConsumedPayload {
+  turn_id: string
+  pending_ids: string[]
+  message_uid: string | null
+}
+export interface SecretaryChangedPayload {
+  profile_home: string
+  conversation_ref: string | null
+  reason: 'task_started' | 'task_finished' | 'memo_changed' | 'notebook_changed' | 'local_changed' | 'idle_changed' | 'global_changed'
+}
 export type ConnectorErrorReason = 'INVALID_PARAMS' | 'NOT_OWNER' | 'UNSUPPORTED_RUNTIME' | 'CONNECTOR_REQUEST_FAILED' | 'INVALID_CONNECTOR_RESPONSE' | 'UNKNOWN_TARGET' | 'LINK_STILL_VALID' | 'REISSUE_REFUSED' | 'UNKNOWN_OPERATION' | 'INVALID_ANSWER' | 'NEEDS_NOUS_AUTH' | 'CONNECTOR_NOT_FOUND' | 'TOOLS_UNAVAILABLE' | 'CONNECTORS_UNAVAILABLE' | 'CATALOG_UNAVAILABLE' | 'ACCOUNTS_UNAVAILABLE' | 'CONNECTION_NOT_FOUND' | 'POLICY_UNAVAILABLE' | 'POLICY_CONFLICT' | 'FORBIDDEN_SCOPE' | 'ORG_REQUIRED' | 'ORG_ACCESS_DENIED' | 'INVALID_POLICY'
 
 // ── Client→server methods ──
@@ -5281,6 +5481,8 @@ export interface RpcMethods {
   'prompt.btw': { params: SideAgentParams; result: TaskIdResult }
   /** Send a user turn to a live session; busy sessions queue / steer / redirect instead of refusing. */
   'prompt.submit': { params: PromptSubmitParams; result: PromptSubmitResult }
+  /** Submit only if the native running claim is idle; competing turns refuse with 4009, never busy fallback. */
+  'prompt.submit_idle': { params: SubmitIdleParams; result: SubmitIdleResult }
   /** Re-read ~/.hermes/.env (CLI /reload parity); built agents keep their pool until /new. */
   'reload.env': { params: ReloadEnvParams; result: ReloadEnvResult }
   /** Tear down and rediscover MCP servers for every live session (prompt cache is invalidated). */
@@ -5293,6 +5495,8 @@ export interface RpcMethods {
   'rollback.list': { params: RollbackListParams; result: RollbackListResult }
   /** Restore the working tree (or one file) to a checkpoint by hash or 1-based index. */
   'rollback.restore': { params: RollbackRestoreParams; result: RollbackRestoreResult }
+  'secretary.notebook_read': { params: SecretaryReadParams; result: NotebookReadResult }
+  'secretary.state': { params: SecretaryReadParams; result: SecretaryStateResult }
   /** Attach the frontend to a live session without closing the previously focused one. */
   'session.activate': { params: SessionActivateParams; result: SessionActivateResult }
   /** Live sessions in this process, insertion order (not a DB browser). */
@@ -5307,6 +5511,8 @@ export interface RpcMethods {
   'session.branch_whole': { params: SessionBranchWholeParams; result: SessionBranchWholeResult }
   /** Tear down a live session (its stored row stays resumable). */
   'session.close': { params: SessionCloseParams; result: SessionCloseResult }
+  'session.compaction_cancel': { params: CompactionCancelParams; result: CompactionCancelResult }
+  'session.compaction_state': { params: CompactionStateParams; result: CompactionStateResult }
   /** Manual /compress of an idle session, optionally focused on a topic. */
   'session.compress': { params: SessionCompressParams; result: SessionCompressResult }
   /** Cursor-style split of the context window by category. */
@@ -5335,6 +5541,10 @@ export interface RpcMethods {
   'session.history': { params: SessionHistoryParams; result: SessionHistoryResult }
   /** Stop the running turn (and streaming TTS); retires the crash-recovery marker. */
   'session.interrupt': { params: SessionInterruptParams; result: SessionInterruptResult }
+  /** Atomically reserve remaining steer occurrences, stop, and admit one pending-only followup. */
+  'session.interrupt_pending': { params: PendingOperationParams; result: InterruptPendingResult }
+  /** Query an interrupt handoff without resubmitting a prompt after uncertain acceptance. */
+  'session.interrupt_pending_status': { params: PendingOperationParams; result: InterruptPendingResult }
   /** Human-facing stored sessions, most recent first (sub-agent / kanban sources denied). */
   'session.list': { params: SessionListParams; result: SessionListResult }
   /** Most recent human-facing session; errors fold into a null session_id. */
@@ -5351,12 +5561,19 @@ export interface RpcMethods {
   'session.status': { params: SessionStatusParams; result: SessionStatusResult }
   /** Inject text into the next tool result without interrupting the turn. */
   'session.steer': { params: SessionCorrectionParams; result: SessionCorrectionResult }
+  /** Enqueue one occurrence in the active native steer buffer with an idempotent receipt. */
+  'session.steer_pending': { params: SteerPendingParams; result: SteerPendingResult }
+  /** Read exact pending/terminal native steer receipts, never inferred correction offsets. */
+  'session.steer_pending_snapshot': { params: PendingSessionParams; result: SteerPendingSnapshotResult }
+  /** Withdraw exactly one occurrence until its true native insertion or handoff owns it. */
+  'session.steer_withdraw': { params: SteerWithdrawParams; result: SteerWithdrawResult }
   /** Read or set a live session's title; a title set before the row exists is queued. */
   'session.title': { params: SessionTitleParams; result: SessionTitleResult }
   /** Drop the last user turn (and everything after it) from an idle session. */
   'session.undo': { params: SessionUndoParams; result: SessionUndoResult }
   /** Token / context / cost counters for the session (+ Nous credit lines when available). */
   'session.usage': { params: SessionUsageParams; result: SessionUsageResult }
+  'session.usage_detail': { params: UsageDetailParams; result: UsageDetailResult }
   /** Re-home a stored session's workspace; git identity is replaced and a live agent follows. */
   'session.workspace.move': { params: SessionWorkspaceMoveParams; result: SessionWorkspaceMoveResult }
   /** Strict provider check through the same runtime resolution the agent uses on session creation. */
@@ -5627,12 +5844,15 @@ export const RPC_METHODS = [
   'prompt.background',
   'prompt.btw',
   'prompt.submit',
+  'prompt.submit_idle',
   'reload.env',
   'reload.mcp',
   'request.answer',
   'rollback.diff',
   'rollback.list',
   'rollback.restore',
+  'secretary.notebook_read',
+  'secretary.state',
   'session.activate',
   'session.active_list',
   'session.archive',
@@ -5640,6 +5860,8 @@ export const RPC_METHODS = [
   'session.branch_stored',
   'session.branch_whole',
   'session.close',
+  'session.compaction_cancel',
+  'session.compaction_state',
   'session.compress',
   'session.context_breakdown',
   'session.control',
@@ -5654,6 +5876,8 @@ export const RPC_METHODS = [
   'session.foreign.preview',
   'session.history',
   'session.interrupt',
+  'session.interrupt_pending',
+  'session.interrupt_pending_status',
   'session.list',
   'session.most_recent',
   'session.redirect',
@@ -5662,9 +5886,13 @@ export const RPC_METHODS = [
   'session.set_hidden',
   'session.status',
   'session.steer',
+  'session.steer_pending',
+  'session.steer_pending_snapshot',
+  'session.steer_withdraw',
   'session.title',
   'session.undo',
   'session.usage',
+  'session.usage_detail',
   'session.workspace.move',
   'setup.runtime_check',
   'setup.status',
@@ -5864,6 +6092,7 @@ export interface BackendGatewayEventMap {
   'request.cancel': RequestCancelPayload
   /** Background review of the last turn finished. */
   'review.summary': ReviewSummaryPayload
+  'secretary.changed': SecretaryChangedPayload
   /** Persisted goal / loop / heartbeat state changed. */
   'session.control.update': SessionControlUpdatePayload
   /** Live session settings snapshot (``server._session_info``); also the ``info`` of create/resume/activate. */
@@ -5884,6 +6113,10 @@ export interface BackendGatewayEventMap {
   'skin.changed': SkinPayload
   /** Transient status line (kind: status, lifecycle, compacting, goal, loop, heartbeat, process, …). */
   'status.update': StatusUpdatePayload
+  /** Exact occurrence ids entered one real user row or one accepted native followup prompt. */
+  'steer.consumed': SteerConsumedPayload
+  /** Native steer inventory or operation changed; refetch the owning runtime's snapshot/status. */
+  'steer.pending_changed': SteerPendingChangedPayload
   /** A child finished (status + observability rollup). */
   'subagent.complete': SubagentEventPayload
   /** Batched tool-name progress from a child. */
@@ -5973,6 +6206,7 @@ export const GATEWAY_EVENT_TYPES = [
   'reasoning.delta',
   'request.cancel',
   'review.summary',
+  'secretary.changed',
   'session.control.update',
   'session.info',
   'session.reclaimed',
@@ -5983,6 +6217,8 @@ export const GATEWAY_EVENT_TYPES = [
   'setup.ready',
   'skin.changed',
   'status.update',
+  'steer.consumed',
+  'steer.pending_changed',
   'subagent.complete',
   'subagent.progress',
   'subagent.spawn_requested',
