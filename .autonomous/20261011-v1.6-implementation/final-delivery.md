@@ -4,9 +4,13 @@
 
 ## 目标状态与结束判定
 
-**目标仍在推进，未完成。** 当前产品 `82cd557aafad97a57d58d07db93fe53f35956990` 已集成 C10/C11、C12、VAL01/VAL02 与 C13 修补。C13 提交树专项 18/18 及四项相关检查有效；本会话派遣全新独立 Verification，先仅规格建立判据再调查完整实现，当前整版已独立 PASS 并由 root 核完整矩阵和核心证据接收。全新独立 Validator 的六节计划已过目核准，现已放行实际补验。另一模型已完成同 profile 保库升级，当前 Dashboard PID35729、health.commit=82cd557aaf、3 sessions/79 messages/2 Snapshots、配置和凭据未变，Noting false、无子进程；本会话只读核对，尚未发新模型请求。准备操作先于当前整版 Verification，不替代门禁；此后实际验收仍遵守审查先行。
+**2026-10-12 更新：真实 Validation 新增 VAL04，交付仍阻断。** local off 时旧 Idle 事实未因新 Main 失效，memo auto-on 后旧截止时间在 Main 尚忙碌时准入；完整正式入口时序反例已保留。82 的独立 Verification PASS保留为当时历史判断，现反例要求最小修复、新独立复审及原用户序列真实复验。实现Agent已分派，Validator停止新输入并准备安全交接，CU05–08未闭环。用户同时要求套件采用问题反馈与阶段完整交回，主会话统筹不逐步监工；协作调优独立进行，不放宽质量门禁。
+
+**目标仍在推进，未完成。** 当前产品82cd557已集成C10/C11、C12、VAL01/VAL02和C13。C13专项18/18与四相关检查有效；全新独立Verification曾PASS，但随后真实Validation确认VAL04，现需修复版独立复审。Validator已完整交回阶段报告并安全关闭自身CHAT/PTY，Dashboard68046保留，globaltrue/Idle30/memo0，6sessions/157messages/5Snapshots，child tree空，无在途工作，可保库升级。
 
 ## 本轮收敛与授权
+
+C15（2026-10-12用户新增）：全部实际AI/human绝对时间外显为带时区可读日期时间，不仅Notebook；内部时间数值/比较/duration及原时间来源保持。专门子Agent全面排查修补后纳入新整版审查与实际复验，目前未完成。
 
 C14（本会话新增）仅授权临时调整隔离验收现有配置以加速真实链路，Idle按30秒安排；禁止代码强制触发，检查真实timer/时钟和正式用户入口，记录前后配置并验完恢复。产品默认值/机制/规则及provider/API未变。
 
@@ -28,15 +32,15 @@ Pi迁移：独立库`.hermes-dev/chat-migration/pi-personal-history-20261011T143
 
 ## Verification 与 Validation
 
-**当前82cd557整版Verification已通过**：全新独立审查者先仅规格锁72组，回原规格补默认配置K73，73组72符合、0违规、0证据不足、1仅阶段不适用K72（真实用户验收/交付仍必须完成）；旧98/129全映射。root核完整矩阵、正式路径、C13七条件和manifest/hash/历史前缀接收；19个真实Child raw wire独立复算，有效历史模型/扩大检查按源码影响复用，未重跑API/大检查。Validation CU01–08＋CE01计划覆盖04 §7.3六类旅程，root过目核准并在审查接收后正式放行。两个原真实UI失败仍须当前版原场景关闭。以下旧审查信息保留版本边界。
+**82整版Verification历史PASS保留，当前交付受VAL04阻断**：原73组72符合、0违规、0不足、1阶段不适用的独立审查及root接收证据保留。Validation已通过正式Dashboard真实Main/Noting取得C12查源、六键show/Anchor、人类长Notebook/localoff读取、memo操作/消费/Finish可见证据，VAL01/02/03复验关闭；真实busy旧Idle反例证明仍有范围内缺陷，不能沿用旧PASS宣称当前完成。新修复需新独立全范围复审与受影响原用户旅程复验，有效同源证据不重复昂贵取证。
 
 Verification由全新无主会话上下文审查者先只读冻结规格，独立建立原128判据；C09从新规格仅补AF129，不改原判据。全范围调查与弱规格接线研讨保留于同一六节报告，旧初审与历史失败不回写成通过。ce2fa6f最终报告为127符合、0违规、0证据不足、2仅Verification阶段不适用AF122/123；root已核全129矩阵、版本映射及关键正式路径证据并接收PASS。AF122实际用户验收、AF123最终交付仍须完成，不作整体豁免。
 
-Validation 历史八场景及失败保留于 [validation.md](validation.md)：U01 主体通过，U02/U03 部分完成，U04–U08 尚未执行完成；VAL01/VAL02 已修补但实际复验未通过前保持未关闭。当前全新独立验收者已获 root 核准计划及门禁放行，正在执行当前版实际用户旅程。PID35729 官方隔离实例已保库升级，readiness 只证明准备就绪。
+Validation历史与当前阶段完整事实保留于[validation.md](validation.md)。当前CU01、CU02主要链路、CU03coldoff/warmon和CU04便签效果有实际证据，但CU04首任务Trigger违反真实Idle条件；CU03剩余切换/coldon、CU05–08与CE01仍未关闭。报告SHA256 8e19760417a71d575798f1af9c6fff9aa83bac834b48116f73dda23861de33c1，stage-manifest记录57份证据hash与安全交接，root已集中核报告及hash对应。
 
 ## 剩余、阻塞与影响
 
-当前整版独立 Verification 已关闭；剩余为已升级同 profile 的真实用户 Validation、root 证据复核及最终提交/push 与交付。C13 已提交，保库升级已完成。C12及VAL01／VAL02已提交，官方TUI构建已完成。实际验收U01主体已执行、U02/U03部分执行；Memo完整旅程、Persistence批准执行、Reminder idle／busy／恢复与隔离、Cold切换及最终Full／branch审计尚未闭环。原用户失败与历史版本证据保留；不能把先前ce2fa6f通过当作新增变更的当前验收。Linux/Windows未实际验证；机制覆盖不能推算残余缺陷概率。Pi私人迁移库独立保留，不参与升级或测试重建。
+剩余：VAL04现有生命周期/timer最小修复与新独立复审、原busy序列自然timer复验、Persistence批准执行、Reminder idle/busy/deferred批量/恢复/隔离、剩余warm/cold及Full/branch/undo审计，最后恢复临时配置、root交付证据复核、提交/push。旧有效测试及用户结果按源码影响复用；Linux/Windows仍未实际验证，不能模拟冒覆盖。Pi私人迁移库独立保留，不参与升级或重建。
 
 ## 用户复核建议
 

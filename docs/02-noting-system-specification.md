@@ -769,9 +769,9 @@ When the runtime belongs to an eligible user-facing main Conversation (§1.9) an
 notebook_show
 ```
 
-It returns only the complete current Notebook content and two additional fields, `last_update_time` and `anchor_message_uid`, as AI-facing structured JSON. User-confirmed on 2026-10-11: Snapshot identity and lifecycle/audit metadata are internal and must not consume model context. The success result is `{"success": true, "notebook": {"last_update_time": <committed Snapshot created_at value>, "anchor_message_uid": <committed Snapshot anchor UID>, "user": [...], "assistant": [...], "consultation": [...], "persistence": [...]}}`; before any committed Notebook exists, `notebook` is `null`.
+It returns only the complete current Notebook content and two additional fields, `last_update_time` and `anchor_message_uid`, as AI-facing structured JSON. User-confirmed on 2026-10-11: Snapshot identity and lifecycle/audit metadata are internal and must not consume model context. The success result is `{"success": true, "notebook": {"last_update_time": <timezone-aware readable rendering of committed Snapshot created_at>, "anchor_message_uid": <committed Snapshot anchor UID>, "user": [...], "assistant": [...], "consultation": [...], "persistence": [...]}}`; before any committed Notebook exists, `notebook` is `null`.
 
-Construct this view positively from the four current sections, `last_update_time`, and `anchor_message_uid`; do not copy the Snapshot object and remove a few known fields. Do not expose top-level `snapshot_id`, `conversation_ref`, `message_identity`, `trigger_type`, `runtime_profile`, `created_at`, termination audit, or any future internal Snapshot metadata. User-confirmed addition on 2026-10-11: the bare `anchor_message_uid` is AI-visible because it can be used with History Search; do not add a surrounding Message Identity object, Conversation ref, or any other Snapshot metadata. Entry semantics, current entry ids, source provenance and Schedule intent remain complete; archived entries remain absent. `last_update_time` is the current committed Snapshot's existing creation/commit value, not read time or a fabricated clock. Internal Snapshot storage, Full audit, Anchor rules, Noting's task-local working-state tool and History permissions remain unchanged. This tool does not run the human `/notebook` renderer.
+Construct this view positively from the four current sections, `last_update_time`, and `anchor_message_uid`; do not copy the Snapshot object and remove a few known fields. Do not expose top-level `snapshot_id`, `conversation_ref`, `message_identity`, `trigger_type`, `runtime_profile`, `created_at`, termination audit, or any future internal Snapshot metadata. User-confirmed addition on 2026-10-11: the bare `anchor_message_uid` is AI-visible because it can be used with History Search; do not add a surrounding Message Identity object, Conversation ref, or any other Snapshot metadata. Entry semantics, current entry ids, source provenance and Schedule intent remain complete; archived entries remain absent. `last_update_time` represents the current committed Snapshot's existing creation/commit instant as a timezone-aware readable date-time string, not a Unix number, read time or a fabricated clock. Internal Snapshot storage, Full audit, Anchor rules, Noting's task-local working-state tool and History permissions remain unchanged. This tool does not run the human `/notebook` renderer.
 
 The main Assistant may inspect the current Notebook but does not receive Notebook create/edit/status/Schedule mutation tools and never mutates Notebook directly.
 
@@ -823,7 +823,7 @@ It:
 2. reads the current Notebook pointer;
 3. if the pointer is non-null, loads that immutable Snapshot;
 4. renders the Snapshot in a clear human-readable form;
-5. displays the Snapshot's **`created_at` timestamp**.
+5. displays the Snapshot's **`created_at` instant as a timezone-aware readable date-time**, never a raw Unix number.
 
 It does **not** display the Anchor and does **not** display the pointer ID.
 
@@ -1539,6 +1539,8 @@ Only the Noting-owned suffix is persisted to the child Session. The inherited Pa
 
 ## 5.6 Unified message wrappers and timestamp contract
 
+**Readable absolute times (user-confirmed 2026-10-12, C15).** Every absolute timestamp actually exposed to an AI or a human through this project's product surfaces must be a readable date-time string with an explicit timezone, not a raw Unix epoch number. This applies across Notebook human/AI views, History Search/Read, Full inspection, Noting task/control and notices, Reminder/Schedule views and other product outputs. Reuse the existing owning-profile timezone and native time rendering where available; existing timezone-aware readable ISO strings are valid. Preserve the original instant, source, entry-vs-source semantics, field names and permissions. Internal storage, timer comparisons, audit/lease mechanics and numeric durations remain unchanged; this does not authorize adding timestamp markers to carriers which must have none, rewriting historical messages, changing frozen cache prefixes, or creating new UI/API capabilities.
+
 Secretary V1 does not introduce a new mid-conversation semantic role.
 
 All three Secretary synthetic control/reminder carriers use:
@@ -2177,6 +2179,8 @@ This command authorizes proposals only. Present them for the user's review, revi
 
 No Snapshot → `This Conversation has no Notebook Snapshot yet.`; otherwise `Notebook` / `Created at: {created_at}` / section names (`user`/`assistant`/`consultation`/`persistence`) / `(no entries)` / entry lines `- {type} [{status}]( (archived))` with `  {field}: {value}` (lists as JSON), `  Source messages: {n}`, `  Schedule: {display|json}( (cancelled))`. Rendered output persists as ordinary transcript rows and is what the Noting instruction's "historical /notebook rendering" sentence refers to.
 
+Approved Target (user-confirmed 2026-10-12, C15): render the same committed `created_at` instant as a timezone-aware readable date-time; AI `last_update_time` follows the same representation. Apply the general readable-absolute-time contract in §5.6 to all actual AI/human time surfaces, while internal storage and numeric durations remain unchanged.
+
 ### 6. Tool-result / error texts — Frozen
 
  texts enter the context as tool results; all are frozen as currently implemented:
@@ -2471,7 +2475,7 @@ Acceptance must compare the complete inherited prefix at Hermes's actual request
 - `/noting on|off` persists Conversation-local participation correctly;
 - local off still allows bare `/notebook` to read an existing Snapshot;
 - a null pointer produces an explicit no-Snapshot result;
-- the human view displays Snapshot `created_at`;
+- the human view displays Snapshot `created_at` as a timezone-aware readable date-time, not a raw Unix number;
 - it does not display Anchor;
 - it does not display the pointer ID;
 - it does not introduce a new `display_kind`;
