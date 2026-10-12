@@ -12,7 +12,7 @@
 
 - **C12及VAL01／VAL02已root集中review接收，待阶段提交**：History正向投影与Main／Noting共用正式handler、输入身份及权限无变，39/39和四相关检查有效；Framework经已commit同UID事实沿CLI／TUI／Gateway既有展示接线，普通status／exec保持，47项回归及30项UI/source-alias＋tsc有效，新Python14项与测试预期修正后的1项按批保留。八＋四文件hash已核，不复跑有效测试。C13另待修补，当前整版独立门禁／官方构建及真实UI复验仍未完成。root-review定位integrated-output-ui-root-review.json。
 
-- **用户确认C13／已确认当前缺陷**：Force dispatch Framework Message不得跨下一成功compaction区间。root用真实ContextCompressor.compress（仅摘要外部响应受控、0模型HTTP）复现60→10后旧Force UID/body仍保留，证据force-notice-boundary/current-repro.json。现行02 §5.6及索引立即同步；取消/失败/no-op不提前过期，历史原文保留，其他Framework producer不受此规则影响。待最小原生接缝方案与实施证据，不由Noting重管压缩。
+- **用户确认C13／已确认当前缺陷**：Force dispatch Framework Message不得跨下一成功compaction区间。root用真实ContextCompressor.compress（仅摘要外部响应受控、0模型HTTP）复现60→10后旧Force UID/body仍保留，证据force-notice-boundary/current-repro.json。现行02 §5.6及索引立即同步；取消/失败/no-op不提前过期，历史原文保留，其他Framework producer不受此规则影响。用户进一步明确重点是active同Turn中途压缩Continuation，旧Force通知还在busy队列，Turn结束才落入新区间；现有queue只按ref仍可能迟到写出。已将排队通知过期加入02，待最小原生接缝方案与实施证据，不由Noting重管压缩。
 
 - **用户确认C12，立即打磨History模型暴露面**：当前result行的message_uid还在message_identity中重复、Conversation ref每行重复。现行02 §2.3／§5.12及本轮索引已同步：成功result只一份conversation_ref，row只message_uid/timestamp/role/content（Search既有truncated保留），不另暴露物理message_id／Identity包装；兼容原read输入及内部canonical身份、原始正文、合法路径/权限。已冻结9fa277并委派history_projection，仅共享History工具投影及相关测试，不扩provider/runtime或selector；2026-10-12用户授权继续，两项实施子任务已恢复，同profile仍停新模型请求，UI修补并行。
 

@@ -28,6 +28,6 @@
 | C11 | C10模型视图再允许anchor_message_uid；UID可用于History查源，除此不再加Snapshot元数据 | 最新用户补充仅覆盖C10对Anchor UID的隐去，保留裸UID、不加Identity包装或Conversation ref；正文四区＋last_update_time＋anchor_message_uid是最终白名单 | 2026-10-11 本会话：“再加一个字段 anchor message U I D……UID 是可以进入模型暴露面的……除此以外，不要再加神奇子弹” |
 | C12 | session_history模型返回去重：Conversation ref在结果级一次，各消息仅单message_uid及timestamp/role/content，不重复Identity包装或物理地址 | 用户明确要求打磨暴露面、避免长UID重复浪费token；输出以正向白名单收敛，Main/Noting共用，保现有read参数、内部canonical身份及权限、原文/截断，不增selector | 2026-10-11 本会话：“为什么要把 message UID 写两遍……我的 token 很珍贵……打磨一下相关的东西？不要重复字段” |
 
-| C13 | Force Noting 触发的 Framework Message 不得带入下一个 compaction 区间 | 用户明确生命周期边界；成功压缩后模型上下文不携带该旧通知，原历史保留；取消/失败/no-op没有进入新区间。正式压缩器60→10实际反例已确认旧UID/body保留，修补属于本轮新增授权 | 2026-10-12 本会话：“force noting 触发的那个 framework message，不允许被带到下一个 compaction 区间”；随后要求“检查一下，现在有没有可能造成这个问题？” |
+| C13 | Force Noting 触发的 Framework Message 不得带入下一个 compaction 区间 | 用户明确生命周期边界；成功压缩后模型上下文不携带该旧通知，原历史保留；取消/失败/no-op没有进入新区间；特别覆盖active同Turn中途压缩Continuation后，旧区间排队通知在Turn结束迟到落尾的情况。正式压缩器60→10实际反例已确认旧UID/body保留，修补属于本轮新增授权 | 2026-10-12 本会话：“force noting 触发的那个 framework message，不允许被带到下一个 compaction 区间”；随后要求“检查一下，现在有没有可能造成这个问题？”；进一步明确担心active Turn中途压缩后续跑、Turn结束才落通知的情况 |
 
 初始冻结提交见 baseline.txt；C03–C13 是初始冻结后的用户确认补充。C03–C05 产品口径已进入现行02 §3.5、§5.6、§5.12，C08已进入§5.9；先按C06独立建立规格判据，之后再核对本表及其他证据；不能只按初始提交的旧清空描述及旧 Finish 文案审查。明确不做：个人化集成、外部 Mem 写入、provider/模型路由重构、新通用调度器、新 API hierarchy、数据迁移、未授权 push/部署。运行与权限约束来自根 AGENTS.md 和既有权威规格，不冒充本轮新增会话问答。
