@@ -13,3 +13,4 @@ fb8fb696d5a3048ab07fa6ef68c034eec7542503 — 授权补充C13；2026-10-12用户�
 C15 可读绝对时间新增用户授权冻结提交：d207c40474f8c19d3cc8a007bcc0d97d6a49cbd2（02、索引、根CLAUDE及现行根README/AGENTS纳入提交树；旁支README未提交内容保留，不纳本轮；产品VAL04修补未纳冻结树）。
 
 C16最终口径冻结：d8a67f1cb8f44fd6a43e7775f3c38cac2e88a5df；用户C17结束本轮，仅实现收尾，门禁/真实验收移后轮，不重做V1.6全量Verification。
+V1.6 实现收尾交付提交：edd031f5518955a10a2c68210e1c65477d6f0991（C15/C16及必要定向检查；独立门禁/真实验收按C17移至第二轮，最小交接continuation-guide.md）。
