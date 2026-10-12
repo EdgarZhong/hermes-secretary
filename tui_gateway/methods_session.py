@@ -946,64 +946,8 @@ def _resume_cold(ctx: _Resume) -> dict:
 
 
 def _resume_eager(ctx: _Resume) -> dict:
-    """Synchronous build OUTSIDE _session_resume_lock (it would stall session.close), then double-checked."""
-    sid, source, _cwd = ctx.mint()
-    with _profile_build_scope(ctx.profile_home):
-        try:
-            history, display_history, raw_history = ctx.restore()
-            display_history_prefix = ctx.display_prefix()
-            # Profile db so turns persist to the right state.db; stored runtime identity so switching chats does
-            # not inherit another chat's global model.
-            stored_runtime_overrides = _stored_session_runtime_overrides(ctx.found)
-            agent = _make_agent_in_context(
-                sid, ctx.target, session_db=ctx.db, platform_override=source,
-                cwd_override=ctx.profile_resume_cwd or None,
-                context_cwd_is_launch_artifact=(source in _LAUNCH_CWD_NOT_A_WORKSPACE and not ctx.profile_resume_cwd),
-                auth_user_id=_transport_auth_user_id(current_transport()), **stored_runtime_overrides)
-        except Exception as e:
-            return _err(ctx.rid, 5000, resume_failed_message(e))
-    with _session_resume_lock:
-        live = _find_live_session_by_key(ctx.target, ctx.profile_home)
-        if live is not None:
-            with contextlib.suppress(Exception):
-                agent.close()
-            return _resume_reuse_live_locked(ctx, *live)
-        try:
-            with _profile_build_scope(ctx.profile_home):
-                _init_session(sid, ctx.target, agent, history, cols=ctx.cols, cwd=ctx.profile_resume_cwd,
-                              session_db=ctx.db, source=source, explicit_cwd=bool(ctx.profile_resume_cwd))
-                # Ownership TRANSFER: the agent holds the handle for life (AIAgent.close() releases it). The
-                # owns_db drop is UNCONDITIONAL — the session is registered against the handle, so the finally
-                # must not close it even if the transfer was refused (a leak beats "closed database" every
-                # turn). Gated on owns_db: the SHARED launch handle must never move onto one session.
-                if ctx.owns_db:
-                    _transfer_db_to_agent(agent, ctx.db)
-                ctx.owns_db = False
-            if (session := _sessions.get(sid)) is not None:
-                if stored_runtime_overrides.get("model_override") is not None:
-                    session["model_override"] = stored_runtime_overrides["model_override"]
-                model_config = _parse_model_config(ctx.found.get("model_config"), quiet=True)
-                if _row_follows_profile(ctx.found):
-                    session["follow_profile_config"] = True
-                    session["composer_override_profile"] = (
-                        model_config.get("composer_override_profile")
-                        if stored_runtime_overrides.get("model_override") else None)
-                # Each turn re-binds HERMES_HOME (mid-turn memory/skills reads); lease claimed lazily on turn 1.
-                if ctx.profile_home is not None:
-                    session["profile_home"] = str(ctx.profile_home)
-                session.update(display_history_prefix=display_history_prefix, active_session_lease=None)
-        except Exception as e:
-            # _init_session registers _sessions[sid] BEFORE its first db read; left in place the fast path
-            # would serve that dead session forever.
-            if ctx.owns_db:
-                with _sessions_lock:
-                    _sessions.pop(sid, None)
-            return _err(ctx.rid, 5000, resume_failed_message(e))
-        session = _sessions.get(sid) or {}
-    return _resume_response(
-        ctx, sid, session, info=_session_info(agent, session), display=display_history, count_source=raw_history,
-        started_at=float(session.get("created_at") or time.time()),
-        auto_continue=_maybe_schedule_auto_continue(sid, session, ctx.target) if session else None)
+    from tui_gateway.session_agent_context import resume_eager
+    return resume_eager(globals(), ctx)
 
 
 @method("session.resume")

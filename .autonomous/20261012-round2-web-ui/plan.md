@@ -32,26 +32,26 @@ T0审计已由主会话接收，S01–S05/I01–I03/C01为新增V1行为缺口�
 
 | 编号 | 要求与触发条件 | 当前事实与影响 | 优先级 | 修复负责人 | 关闭与复验条件 | 状态 |
 |---|---|---|---|---|---|---|
-| R2-F20 | 06组合Compaction载体保真实来源角色 | 真实压缩row121原role=assistant，App DisclosureNode对realText硬编码user并提供Reply | P1 | 前端Sol | 按真实role展示原文，仅user可Reply；React反例及实际carrier复验 | Main真实成功压缩后发现，精确源码已定位 |
+| R2-F20 | 06组合Compaction载体保真实来源角色 | 真实压缩row121原role=assistant，App DisclosureNode对realText硬编码user并提供Reply | P1 | 前端Sol | 按真实role展示原文，仅user可Reply；React反例及实际carrier复验 | Main已review接收修复及真实role React反例；已有carrier只读复验待统一窗口 |
 | R2-F17 | 06 unknown acceptance 不盲重发 | Turn结束后旧op查询被前端active gate阻挡，普通Send可能重复提交 | P1 | 前端Sol | 同一owner保存原turn/op，Check/Send仅查询旧op，明确receipt前不发新请求；生产反例通过 | Main已接收修复及生产Controller证据，30d3135 |
 | R2-F18 | 06 Pending 真实失效重取 | singleflight中pending_changed复用旧响应，漏掉在途变化 | P1 | 前端Sol | 唯一owner失效代次，过期结果不发布并顺序重读；生产并发反例通过 | Main已接收修复及生产Controller证据，30d3135 |
-| R2-F19 | 06 压缩真实反馈与History | 原生拒绝摘要增长，前端丢RPC结果及warn，没有notice；仅ensureBinding不刷新History | P1 | 前端Sol | 真实summary/lock/error明确反馈，成功发布后按新tip刷新History，保owner草稿；受控与真实补证 | Main已接收机制，真实refused反馈通过；成功tip补证中 |
+| R2-F19 | 06 压缩真实反馈与History | 原生拒绝摘要增长，前端丢RPC结果及warn，没有notice；仅ensureBinding不刷新History | P1 | 前端Sol | 真实summary/lock/error明确反馈，成功发布后按新tip刷新History，保owner草稿；受控与真实补证 | 机制及Main review已接收；真实refused完整反馈、成功12→10且History读到carrier均已补证；角色错误由F20处理 |
 | R2-F15 | 06 §0.5/§1.12 命令失败正确反馈 | Controller.stop吞错误后command-actions仍consume输入 | P2 | 前端Sol | 失败保留原owner命令草稿、明确错误；production定向测试 | Main已接收机制，30d3135 |
-| R2-F16 | 06 §1.5 Model/Reasoning真实能力选项 | 七档机制已修，但30d3135真实会话仍显示capability unavailable，与原生catalog captrue不符 | P2 | 前端Sol | 定位实际catalog/runtime身份或加载失败，真实菜单/设置回读正确 | Main真实复验重新打开，保留reasoning-unavailable-real.dom.txt |
-| R2-F14 | 02 §4.5 C16 合法 cold catchup、§5.5真实冻结前缀 | 5ccc619真实冷恢复事件已准入，parent._session_messages未恢复，spawn前失败无Snapshot | P1 | Core Sol调查/实现，Main集成，V1.6 Sol真实复验 | 原生恢复顺序/正确prefix，单事件不重复，未启用不变；先接缝设计，再定向机制和真实cold复验 | Main已审设计及原生接缝，实施中 |
+| R2-F16 | 06 §1.5 Model/Reasoning真实能力选项 | 七档机制已修，但30d3135真实会话仍显示capability unavailable，与原生catalog captrue不符 | P2 | 前端Sol | 定位实际catalog/runtime身份或加载失败，真实菜单/设置回读正确 | Main已接收真实5098错误/Retry/owner修复，55当前包通过；成功恢复待统一restart |
+| R2-F14 | 02 §4.5 C16 合法 cold catchup、§5.5真实冻结前缀 | 5ccc619真实冷恢复事件已准入，parent._session_messages未恢复，spawn前失败无Snapshot | P1 | Core Sol调查/实现，Main集成，V1.6 Sol真实复验 | 原生恢复顺序/正确prefix，单事件不重复，未启用不变；先接缝设计，再定向机制和真实cold复验 | Main已亲审完整代码/上下游并接收17不同新增机制+21旧恢复回归复用；真实cold待集成后新合法period |
 | R2-F12 | 真实多工具 Turn 的 stream→durable 投影切换 | assistant-ui message index 18 越界（length18），NodeMessage 使整页空白；实际第三次 PDF/JSON请求复现 | P1 | 前端 Sol | 稳定身份/生命周期修复，真实多工具流终态切换无崩溃，不仅error boundary遮蔽 | 实现及源码review已接收，后续真实多工具未再现 |
 | R2-F13 | PDF+JSON附件正式提交 | 同一用户消息两附件各显示两次，疑似预测与durable双投影 | P2 | 前端 Sol | 依据真实身份合并，无重复/丢失，刷新前后结果一致 | authored prefix实现review接收，真实后续附件单份 |
 | R2-F11 | 06 Thinking/工具卡独立生命周期；多工具真实 Turn | 用户与 Main 实测：旧 Thinking 在后续工具运行时仍显示 running，Turn 结束才统一折叠；工具卡同类风险 | P1 | 前端 Sol | 按每段/调用真实事件与身份独立终态和折叠，保留手动行为；以动态连续观察及事件时序复验 | 逐卡折叠用户确认；空Thinking修复review接收，真实双工具无空卡 |
-| R2-F10 | C17–C18；Files 打开 Markdown、长文本与常见文档 | 现有通用 pre 不渲染 Markdown/不折长行，多数二进制无法预览；面包屑含 Files/Parent folder 人工标签 | P1 | 前端 Sol；视觉配合容器 | 成熟本地预览库接入真实鉴权文件；代表文本/图片/PDF/Office/媒体验证；工作区相对路径及根强调色，四视口可用，无第三方文件外发 | 用户审看发现，整改中 |
-| R2-F09 | 06 §0.3–0.4 的 bounded ephemeral state；长期切换多个 Conversation | histories/lives/bindings 等分散 Map 缺统一释放边界，历史投影可随浏览持续积累；当前未发现持久 API 缓存 | P1 | 前端 Sol | 用统一 owner/lifetime 管理当前视图和必要在途状态，其余按需原生重建；连续切换、回看、ACK/断线与草稿归属验证 | 中期架构检查发现，整改中 |
-| R2-F01 | 延迟发送/steer/withdraw ACK 期间切 Conversation 或编辑 | owner 草稿可能串线、撤回文本丢失或新编辑被误清 | P1 | 前端 Sol | 生产 controller 延迟 RPC + 切换/编辑反例通过，按 accepted 内容与原 owner 更新 | 整改中 |
-| R2-F02 | 分页、live refresh、replay 失败和 snapshot 字段缺失 | 旧页被覆盖，恢复可能卡住或把 unknown 猜成 idle | P1 | 前端 Sol | 保持已加载范围和滚动，竞态与失败可恢复，真实 REST/WS 不重复 | 整改中 |
-| R2-F03 | busy Turn 输入 slash、动态 catalog 与 command 结果 | 命令可能作为 steer 发送，通用结果误标 Notebook transient | P1 | 前端 Sol | 统一先解析 slash；依据真实 catalog 与原生行为验证 | 整改中 |
-| R2-F04 | Files/Photos、历史附件、Edit、大小/类型边界 | 附件分类、历史恢复与明确限制缺少完整证据 | P1 | 前端 Sol | 图片/文件/PDF 正式链路与 Edit 恢复、上限实测 | 整改中 |
-| R2-F05 | New Chat 首次 admission 未知 | stored ID 未正确绑定，发送可能永久锁住 | P1 | 前端 Sol | 可查询/恢复实际会话与明确 unknown；不盲重发 | 整改中 |
-| R2-F06 | 历史工具/thinking/system、compaction、reasoning | 部分投影猜测状态或遗漏事实，选项未证明后端支持 | P2 | 前端 Sol | 原生真实 DTO 覆盖且 provenance 明确；不捏造选项/状态 | 整改中 |
-| R2-F07 | Files retry、深链边界、消失的恢复目标 | 重试不重新 fetch，路由与草稿 fallback 不完整 | P2 | 前端 Sol | 实际错误后恢复、根目录限制与保草稿 fallback | 整改中 |
-| R2-F08 | Web Idle Send precheck 后另一客户端抢先准入 | 原生 prompt.submit 按原 busy 模式转换 queue/steer/redirect，违反 06 无隐式兜底；单独前端检查不原子 | P1 | Core Sol + 前端 Sol | 原生现有准入锁内新 idle-only 入口，竞争拒绝且不丢草稿；覆盖 busy/claim 交错及旧客户端兼容 | 后端机制已由 Main review 接收；真实前端竞争/保草稿联调待验 |
+| R2-F10 | C17–C18；Files 打开 Markdown、长文本与常见文档 | 现有通用 pre 不渲染 Markdown/不折长行，多数二进制无法预览；面包屑含 Files/Parent folder 人工标签 | P1 | 前端 Sol；视觉配合容器 | 成熟本地预览库接入真实鉴权文件；代表文本/图片/PDF/Office/媒体验证；工作区相对路径及根强调色，四视口可用，无第三方文件外发 | 成熟库/边界机制及Main review已接收；真实文档/HTML/音频已验；视频完整播放、最终四视口仍待用户视觉交回后检查 |
+| R2-F09 | 06 §0.3–0.4 的 bounded ephemeral state；长期切换多个 Conversation | histories/lives/bindings 等分散 Map 缺统一释放边界，历史投影可随浏览持续积累；当前未发现持久 API 缓存 | P1 | 前端 Sol | 用统一 owner/lifetime 管理当前视图和必要在途状态，其余按需原生重建；连续切换、回看、ACK/断线与草稿归属验证 | 统一owner/lifetime实现及Main源码review已接收；连续十会话/恢复受控通过；必要未决操作元数据保留至明确处理，无持久API cache |
+| R2-F01 | 延迟发送/steer/withdraw ACK 期间切 Conversation 或编辑 | owner 草稿可能串线、撤回文本丢失或新编辑被误清 | P1 | 前端 Sol | 生产 controller 延迟 RPC + 切换/编辑反例通过，按 accepted 内容与原 owner 更新 | 机制修复及Main源码review已接收；延迟ACK/切路受控证据有效，真实Withdraw/Interrupt已验；真实断网分支未冒称覆盖 |
+| R2-F02 | 分页、live refresh、replay 失败和 snapshot 字段缺失 | 旧页被覆盖，恢复可能卡住或把 unknown 猜成 idle | P1 | 前端 Sol | 保持已加载范围和滚动，竞态与失败可恢复，真实 REST/WS 不重复 | 机制与Main review已接收；真实工具运行中reload及最终单份持久结果已验；truncated/epoch及分页旋转交错保留覆盖边界 |
+| R2-F03 | busy Turn 输入 slash、动态 catalog 与 command 结果 | 命令可能作为 steer 发送，通用结果误标 Notebook transient | P1 | 前端 Sol | 统一先解析 slash；依据真实 catalog 与原生行为验证 | 机制与Main review已接收；真实Notebook/compact反馈已验，Stop失败F15已修；各catalog命令不冒称逐一实测 |
+| R2-F04 | Files/Photos、历史附件、Edit、大小/类型边界 | 附件分类、历史恢复与明确限制缺少完整证据 | P1 | 前端 Sol | 图片/文件/PDF 正式链路与 Edit 恢复、上限实测 | 机制与Main review已接收；真实图/PDF/JSON、16MiB/超限、Cancel与Edit恢复已验；真机专项不在本轮覆盖 |
+| R2-F05 | New Chat 首次 admission 未知 | stored ID 未正确绑定，发送可能永久锁住 | P1 | 前端 Sol | 可查询/恢复实际会话与明确 unknown；不盲重发 | 机制修复及Main review已接收；lostACK/真实locator恢复受控通过，跨reload无持久submission ledger限制保留 |
+| R2-F06 | 历史工具/thinking/system、compaction、reasoning | 部分投影猜测状态或遗漏事实，选项未证明后端支持 | P2 | 前端 Sol | 原生真实 DTO 覆盖且 provenance 明确；不捏造选项/状态 | 基本投影机制及Main review已接收；真实成功压缩已补，剩余Reasoning F16与carrier角色F20单列修复 |
+| R2-F07 | Files retry、深链边界、消失的恢复目标 | 重试不重新 fetch，路由与草稿 fallback 不完整 | P2 | 前端 Sol | 实际错误后恢复、根目录限制与保草稿 fallback | 机制修复及Main review已接收；真实深层导航/Back to Chat已验；权限/消失目标/symlink错误代表尚无真实证据 |
+| R2-F08 | Web Idle Send precheck 后另一客户端抢先准入 | 原生 prompt.submit 按原 busy 模式转换 queue/steer/redirect，违反 06 无隐式兜底；单独前端检查不原子 | P1 | Core Sol + 前端 Sol | 原生现有准入锁内新 idle-only 入口，竞争拒绝且不丢草稿；覆盖 busy/claim 交错及旧客户端兼容 | 后端及前端机制/Main review已接收；真实Send/Rewind通过；跨client精确竞争依生产锁与Controller受控证据 |
 
 ## 取舍、快照与续接
 
@@ -97,6 +97,8 @@ R2-F04 跨连接图片清理反例补充：旧 image.attach 未 settle，新 WS 
 执行边界 R2-C24（用户确认）：当前推进至 Verification 启动前；功能整改、Main集中review、开发期实测和阶段提交照常完成。用户/视觉Agent完工交回后，Main合并视觉并处理集成影响，再派完整独立 Verification；通过后 Validation。不提前派遣门禁，不以开发期证据冒称其通过。
 
 R2-F14 准入：按 cold-resume-fix.md §4 白名单，Core Sol新增 session_agent_context sibling、methods_session eager、server build/attach及专用tests；Main已明确释放真实server接缝。完整native恢复在发布前完成；必要时eager薄传既有profile_home参数，保原生fallback政策、失败关闭及持久标记，不改timer/admission/freeze。真实复验待Main接收并集成commit后由T5 owner执行。
+
+R2-F14并发补充准入：正式prompt.submit在cold root恢复屏障期间已claim running并写入user，poller却在Agent Loop前消费旧Idle。Main亲读原host admission/history锁与共同timer接口后，准入session_notifications._maybe_fire_tui_noting_idle最小host busy观察接缝，仅eligible/global on；复用原锁/运行与isolation事实，无新owner/持久flag，不改timer/admission。实现者须证明history锁与同步compact/freeze无反锁，保留原失败并定向验证恢复期间及attach后ready前两窗口。非eligible/off行为保持。
 
 R2-C25：用户再次强调视觉层交由用户/视觉AI，Main专注底层功能和有效推进；现有阶段前端提交30d3135，成功压缩补证委派同owner仅操作53445新合成会话，零产品修改。既有89项有效证据不重复跑；原生cold修复仍由Core owner完成。
 
@@ -157,3 +159,7 @@ R2-C25：用户再次强调视觉层交由用户/视觉AI，Main专注底层功�
 5. **服务版本统一**：本地checkout提交变化可能触发native `model.options` 5098。先完成集成commit，核无活动Main/child/compaction后统一重启一次，记录health运行commit；必要真实复验集中在该稳定窗口。不得绕过版本保护、把错误吞成空能力或在未review源码上随意重启。
 6. **当前剩余集中包**：F14冷恢复实现者的正式cold/并发/off负对照；F16能力加载错误/Retry与F20真实角色一组前端定向用例；Main接收并集成后统一重启，T5一个新Mainend→跨due冷恢复；Main同窗口实际Reasoning设置回读+复用已成功压缩carrier核角色。不重跑图片、16MiB、109 Pending、53 Read、23 Usage或整套V1.6。
 7. **交回必须注明**：此次执行方、commit/源码hash、精确命令、范围/次数/耗时、通过/失败、复用证据ID、此次未覆盖。Main在本索引更新事实，CLAUDE只同步状态。全量/扩大检查仍按用户C24在视觉交回集成后的统一门禁安排，不能因本索引新增而提前跑。
+
+F16/F20补充证据：frontend/reasoning-recovery/version-and-check-selection.json记录5/5源码、两次定向运行理由及精确命令；当前55 Controller/Timeline＋42未变contracts/theme=97 distinct，不重复累加89。Main已亲审代码与接口接线，真实成功恢复不提前声明。
+
+BE-COLD证据：cold-resume-fix.md§8–9与ignored cold-resume-fix/final-manifest.json；Main核6/6源码报告、23/23日志，17不同新增机制（最终异步16＋压缩定向1）及21原恢复回归，ruff通过，health0阻断/1提示；全部18次canonical运行含失败fixture如实记，非18次大包。旧H04-A真实失败保留，待新合法period开发复验，不冒称已关真实缺口。

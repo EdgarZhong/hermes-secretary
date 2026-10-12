@@ -385,7 +385,19 @@ def _maybe_fire_tui_noting_idle(sid: str, session: dict) -> None:
             except (ConversationIdentityError, sqlite3.Error):
                 return
             session["_secretary_reminder_ref"] = (live_session_id, conversation_ref)
-        outcome = noting_runtime.maybe_run_idle_noting(agent, db, conversation_ref)
+        from tui_gateway.session_agent_context import cold_context_enabled
+        if cold_context_enabled(agent):
+            # The native admission owner exposes a claim before Agent.run_conversation.
+            # Keep observation and synchronous freeze together; no new Turn/idle owner.
+            # The shared handler's native compaction receipt/status and child-spawn paths
+            # do not acquire this host history lock (the child runs on its own worker).
+            with session["history_lock"]:
+                if (session.get("running") or session.get("_compute_host_turn_id")
+                        or _sessions.get(sid) is not session or session.get("agent") is not agent):
+                    return
+                outcome = noting_runtime.maybe_run_idle_noting(agent, db, conversation_ref)
+        else:
+            outcome = noting_runtime.maybe_run_idle_noting(agent, db, conversation_ref)
         if outcome.split(":", 1)[0] in ("admitted", "compact_parent", "error"):
             _secretary_logger.info("secretary noting idle %s: %s", sid, outcome)
 
