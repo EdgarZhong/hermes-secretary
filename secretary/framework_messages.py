@@ -82,6 +82,51 @@ def _framework_target_matches(parent, db, messages, conversation_ref):
             and getattr(parent, "_secretary_conversation_ref", None) == conversation_ref)
 
 
+class _FrameworkDisplayText(str):
+    """Committed-row provenance on the existing two-argument status callback."""
+
+    def __new__(cls, parent, row):
+        value = super().__new__(cls, row["display_metadata"]["display_text"])
+        value.parent, value.row = parent, row
+        value.db = parent._session_db
+        value.session_id = parent.session_id
+        value.conversation_ref = parent._secretary_conversation_ref
+        value.message_uid, value.content = row["message_uid"], row["content"]
+        value.metadata = dict(row["display_metadata"])
+        return value
+
+
+def framework_display_owned(parent, text):
+    """Only the native publisher's current live row can authorize presentation."""
+    if (not isinstance(text, _FrameworkDisplayText) or text.parent is not parent
+            or getattr(parent, "_session_db", None) is not text.db
+            or getattr(parent, "_secretary_conversation_ref", None) != text.conversation_ref):
+        return False
+    if parent.session_id != text.session_id:
+        # A same-Conversation native continuation may retain this row. A pre-id
+        # reset/branch with a stale runtime ref must not borrow its display sink.
+        with text.db._read_ctx() as conn:
+            binding = conn.execute("SELECT conversation_ref FROM secretary_session_bindings WHERE session_id=?",
+                                   (parent.session_id,)).fetchone()
+        if not binding or binding[0] != text.conversation_ref:
+            return False
+    return any(row.get("message_uid") == text.message_uid and row.get("role") == "user"
+               and row.get("content") == text.content and row.get("display_metadata") == text.metadata
+               for row in getattr(parent, "_session_messages", ()) or ())
+
+
+def _display_committed_row(parent, row):
+    text = _FrameworkDisplayText(parent, row)
+    # No fallback print: RPC/headless agents without a bound sink must stay quiet.
+    for sink, args in ((getattr(parent, "_print_fn", None), (str(text),)),
+                       (getattr(parent, "status_callback", None), ("framework", text))):
+        if callable(sink) and framework_display_owned(parent, text):
+            try:
+                sink(*args)
+            except Exception:
+                logger.warning("Framework timeline presentation failed", exc_info=True)
+
+
 def append_runtime_row(parent, messages, row, *, expected_conversation_ref=None):
     """Use native flush/dedup so the live row and its durable row have one identity."""
     from agent.context_compressor import _DB_PERSISTED_MARKER
@@ -205,6 +250,7 @@ def flush_framework_messages(parent):
                 append_runtime_row(parent, parent._session_messages, message.row,
                                    expected_conversation_ref=message.conversation_ref)
                 written += 1
+                _display_committed_row(parent, message.row)
             except Exception:
                 logger.warning("Framework tail write failed", exc_info=True)
         return written

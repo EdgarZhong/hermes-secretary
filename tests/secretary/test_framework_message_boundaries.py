@@ -387,3 +387,177 @@ def test_real_noting_control_keeps_trusted_origin_without_fresh_marker(parent, d
         assert format_user_timestamp_marker(row['timestamp']).strip() not in row['content']
         assert any(row['content'] in str(msg.get('content', '')) for request in wire for msg in request)
     Path(db.db_path).with_name('noting_control_boundaries.json').write_text(json.dumps({'staged': staged, 'wire_messages': wire}, indent=2))
+
+
+@pytest.mark.parametrize('producer', ['finish', 'force', 'external'])
+def test_committed_producer_immediately_uses_native_tui_timeline(
+        parent, db, stub_client, monkeypatch, producer):
+    import httpx
+    from agent.notification_presentation import notification_turn
+    from tui_gateway import server
+    def no_http(*args, **kwargs):
+        raise AssertionError('This display test must never send external HTTP')
+    monkeypatch.setattr(httpx.Client, 'send', no_http)
+    monkeypatch.setattr(httpx.AsyncClient, 'send', no_http)
+    frames = []
+    monkeypatch.setattr(server, '_sessions', {'display-main': {'agent': parent}})
+    monkeypatch.setattr(server, 'write_json', lambda frame: frames.append(frame) or True)
+    parent._print_fn = None
+    parent.status_callback = server._agent_cbs('display-main')['status_callback']
+    with notification_turn(parent, muted=True, session_id='display-main'):
+        row = _produce(parent, db, stub_client, monkeypatch, producer)
+    events = [frame['params'] for frame in frames if frame.get('params', {}).get('type') == 'status.update']
+    assert len(events) == 1, frames
+    assert events[0]['payload'] == {'kind': 'framework', 'text': row['display_metadata']['display_text']}
+    assert '<framework-message>' not in events[0]['payload']['text']
+    durable = next(r for r in db.get_messages(parent.session_id) if r['message_uid'] == row['message_uid'])
+    assert durable['content'] == row['content']
+    assert durable['display_metadata'] == row['display_metadata']
+    count = len(frames)
+    server._agent_status_update('display-main', 'framework', 'forged plain status')
+    assert len(frames) == count
+    evidence = Path(__file__).resolve().parents[2] / '.hermes-dev/v1.6-evidence/framework-visibility'
+    evidence.mkdir(parents=True, exist_ok=True)
+    (evidence / f'producer-{producer}.json').write_text(json.dumps(
+        {'uid': row['message_uid'], 'live': row, 'durable': durable, 'native_frames': frames,
+         'producer': producer, 'http_boundary': 'httpx send forbidden'}, default=str, ensure_ascii=False, indent=2))
+
+
+@pytest.mark.parametrize('busy', ['turn', 'fence'])
+def test_framework_timeline_is_after_real_tail_write_and_survives_off(parent, db, monkeypatch, busy):
+    import threading
+    import time
+    from secretary.framework_messages import mark_framework_turn, publish_framework_message
+    from secretary.noting_scope import owning_db_scope
+    notices = []
+    parent._print_fn = lambda text: notices.append((text, len(db.get_messages(parent.session_id))))
+    if busy == 'turn':
+        mark_framework_turn(parent, running=True)
+    else:
+        parent._active_compression_commit_fence = threading.Event()
+    before = len(db.get_messages(parent.session_id))
+    with owning_db_scope(db):
+        assert publish_framework_message(parent, 'first committed body')
+        assert publish_framework_message(parent, 'second committed body')
+        assert not notices and len(db.get_messages(parent.session_id)) == before
+        db.notebook_set_local_enabled(parent._secretary_conversation_ref, False)
+        if busy == 'turn':
+            mark_framework_turn(parent, running=False)
+        else:
+            parent._active_compression_commit_fence = None
+    deadline = time.monotonic() + 2
+    while len(notices) < 2 and time.monotonic() < deadline:
+        time.sleep(.01)
+    assert notices == [('first committed body', before + 1), ('second committed body', before + 2)]
+    assert len({r['message_uid'] for r in db.get_messages(parent.session_id)[-2:]}) == 2
+    assert not parent._secretary_framework_messages
+
+
+def test_framework_display_failures_owner_and_headless_boundaries(parent, db, monkeypatch, caplog):
+    from secretary.framework_messages import flush_framework_messages, publish_framework_message
+    from tui_gateway import server
+    frames = []
+    monkeypatch.setattr(server, '_sessions', {'display-main': {'agent': object()}})
+    monkeypatch.setattr(server, 'write_json', lambda frame: frames.append(frame) or True)
+    parent._print_fn = None
+    parent.status_callback = server._agent_cbs('display-main')['status_callback']
+    assert publish_framework_message(parent, 'wrong host binding')
+    assert not frames
+    parent.status_callback = lambda *args: (_ for _ in ()).throw(RuntimeError('display sink down'))
+    before = len(db.get_messages(parent.session_id))
+    assert publish_framework_message(parent, 'committed despite display error')
+    assert len(db.get_messages(parent.session_id)) == before + 1
+    assert 'Framework timeline presentation failed' in caplog.text
+    assert flush_framework_messages(parent) == 0
+    parent.status_callback = None
+    parent._print_fn = lambda text: frames.append(text)
+    with monkeypatch.context() as m:
+        m.setattr(db, 'append_messages_batch', lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError('db down')))
+        assert publish_framework_message(parent, 'must not display')
+    assert not frames and len(db.get_messages(parent.session_id)) == before + 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('boundary', ['current', 'new_owner', 'new_ref', 'new_generation',
+                                    'same_owner_copy', 'new_physical', 'same_owner_rotation', 'edited_uid'])
+async def test_gateway_framework_real_commit_checks_owner_at_async_send(parent, db, boundary):
+    import threading
+    from types import SimpleNamespace
+    from gateway.run_turn_runner import TurnRunner
+    from gateway.turn_context import TurnContext
+    from secretary.framework_messages import publish_framework_message
+    sent, scheduled = [], []
+    class Adapter:
+        async def send(self, chat_id, content, **kwargs):
+            sent.append((chat_id, content, kwargs))
+        async def send_or_update_status(self, *args, **kwargs):
+            raise AssertionError('Framework must never overwrite an earlier timeline line')
+    runner = SimpleNamespace(_agent_cache={'key': (parent, 'signature')}, _agent_cache_lock=threading.RLock())
+    current = [True]
+    ctx = TurnContext(session_key='key', session_id=parent.session_id,
+                      _run_still_current=lambda: current[0], _status_adapter=Adapter(),
+                      _status_chat_id='chat', _status_thread_metadata={'thread_id': 'thread'},
+                      mute_notification_reply=True, _cleanup_progress=True)
+    turn = TurnRunner(runner, ctx)
+    turn._schedule = lambda coroutine, *args: scheduled.append(coroutine)
+    parent._print_fn = None
+    parent.status_callback = turn._status_callback_sync
+    assert publish_framework_message(parent, 'first')
+    assert publish_framework_message(parent, 'second')
+    assert not sent
+    if boundary == 'new_owner':
+        runner._agent_cache['key'] = (object(), 'signature')
+    if boundary == 'new_ref':
+        parent._secretary_conversation_ref = 'new-conversation'
+    if boundary == 'new_generation':
+        current[0] = False
+    if boundary == 'same_owner_copy':
+        parent._session_messages = copy.deepcopy(parent._session_messages)
+    if boundary == 'new_physical':
+        db.create_session('display-new-owner', source='cli')
+        parent.session_id = 'display-new-owner'
+    if boundary == 'same_owner_rotation':
+        from agent.context_compressor import SUMMARY_PREFIX, _SUMMARY_END_MARKER
+        old_sid, ref = parent.session_id, parent._secretary_conversation_ref
+        holder = 'framework-display-rotation'
+        assert db.try_acquire_compression_lock(old_sid, holder)
+        db.publish_compression_child(parent_session_id=old_sid, child_session_id='display-continuation',
+                                     source='cli', system_prompt=parent._cached_system_prompt,
+                                     compression_lock_holder=holder,
+                                     messages=[{'role': 'user', 'content': SUMMARY_PREFIX + 'handoff\n' + _SUMMARY_END_MARKER,
+                                                '_compressed_summary': True},
+                                               *db.get_messages_as_conversation(old_sid)[-2:]])
+        db.release_compression_lock(old_sid, holder)
+        parent.session_id = 'display-continuation'
+        parent._session_messages = db.get_messages_as_conversation(parent.session_id)
+        assert db.resolve_conversation_ref(parent.session_id) == ref
+    if boundary == 'edited_uid':
+        parent._session_messages[-1]['content'] = 'changed content with old UID'
+    for coroutine in scheduled:
+        await coroutine
+    expected = ['first', 'second'] if boundary in {'current', 'same_owner_copy', 'same_owner_rotation'} else []
+    assert [row[1] for row in sent] == (['first'] if boundary == 'edited_uid' else expected)
+    assert not ctx._cleanup_msg_ids
+    assert len(db.get_messages('S17')) == 4  # Historical physical rows survive native rotation.
+
+
+def test_framework_native_cli_sink_and_no_sink_keep_commit_facts(parent, db, monkeypatch, capsys):
+    from cli import HermesCLI
+    from secretary.framework_messages import publish_framework_message
+    cli = object.__new__(HermesCLI)
+    seen = []
+    monkeypatch.setattr('cli._cprint', lambda text: seen.append(text))
+    parent.status_callback = None
+    parent._print_fn = cli._agent_status_print
+    assert publish_framework_message(parent, 'first CLI body')
+    assert seen == ['first CLI body']
+    cli._stream_box_live = True
+    assert publish_framework_message(parent, 'second CLI body')
+    assert seen == ['first CLI body'] and cli._held_status_lines == ['second CLI body']
+    cli._stream_box_live = False
+    cli._release_held_status_lines()
+    assert seen == ['first CLI body', 'second CLI body']
+    parent._print_fn = None
+    assert publish_framework_message(parent, 'quiet headless body')
+    assert 'quiet headless body' not in capsys.readouterr().out
+    assert len(db.get_messages(parent.session_id)) == 5

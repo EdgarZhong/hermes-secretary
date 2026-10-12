@@ -189,6 +189,11 @@ def test_repeated_compaction_preserves_composite_uid_without_duplicate_ordinary_
         assert full.index(carrier[1]) == full.index(carrier[0]) + 1
         assert db.get_history_foreground(current)[-1]["content"] == "real user input"
         assert db.get_foreground_anchor(current)["message_uid"] == "carrier"
+        result = read(db, current, message_identity={"conversation_ref": db.resolve_conversation_ref(current),
+                                                   "message_uid": "carrier"}, before=0, after=0)
+        assert result == {"success": True, "conversation_ref": db.resolve_conversation_ref(current), "count": 1,
+                          "messages": [{"message_uid": "carrier", "timestamp": carrier[1]["timestamp"],
+                                        "role": "user", "content": "real user input"}]}
 
 
 @pytest.mark.parametrize("rotating", [False, True])

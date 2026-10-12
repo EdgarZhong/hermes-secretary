@@ -1,4 +1,8 @@
 import { JsonRpcGatewayError } from '@hermes/shared/json-rpc-channel'
+import { renderSync } from '@hermes/ink'
+import { stripAnsi } from '@hermes/shared/ansi'
+import { PassThrough } from 'stream'
+import React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createSlashHandler } from '../app/createSlashHandler.js'
@@ -6,6 +10,9 @@ import { getOverlayState, resetOverlayState } from '../app/overlayStore.js'
 import { getUiState, patchUiState, resetUiState } from '../app/uiStore.js'
 import type * as EnvModule from '../config/env.js'
 import { TUI_SESSION_MODEL_FLAG } from '../domain/slash.js'
+import { MessageLine } from '../components/messageLine.js'
+import { toTranscriptMessages } from '../domain/messages.js'
+import { DEFAULT_THEME } from '../theme.js'
 import { applyLocale, resetLocale, t } from '../i18n/runtime.js'
 import * as ClipboardModule from '../lib/clipboard.js'
 import * as Osc52Module from '../lib/osc52.js'
@@ -32,6 +39,40 @@ describe('createSlashHandler', () => {
     resetOverlayState()
     resetUiState()
     envState.dashboardTuiMode = false
+  })
+
+  it('shows Dashboard bare Notebook as its durable assistant body without mouse expansion', async () => {
+    const ctx = buildCtx()
+    const output = 'Notebook\nCreated at: T\nconsultation\nopen_question: ' + '真实正文'.repeat(150) + '\n末端问题'
+    envState.dashboardTuiMode = true
+    vi.mocked(ctx.gateway.gw.request).mockResolvedValue({ type: 'exec', output } as any)
+
+    createSlashHandler(ctx)('/notebook')
+    await vi.waitFor(() => expect(ctx.transcript.setHistoryItems).toHaveBeenCalledOnce())
+    const update = vi.mocked(ctx.transcript.setHistoryItems).mock.calls[0]![0] as (rows: any[]) => any[]
+    const rows = update([{ role: 'user', text: 'previous' }])
+    expect(rows[1]).toMatchObject({ role: 'assistant', text: output })
+    expect(rows).toHaveLength(2)
+    expect(renderNotebookRow(rows[1])).toContain('末端问题')
+    const cold = toTranscriptMessages([{ role: 'assistant', text: output }])[0]!
+    expect(renderNotebookRow(cold)).toContain('末端问题')
+    expect(ctx.transcript.sys).not.toHaveBeenCalled()
+    expect(ctx.transcript.page).not.toHaveBeenCalled()
+    expect(ctx.transcript.send).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    [false, '/notebook'],
+    [true, '/notebook badarg'],
+    [true, '/other']
+  ])('keeps native/other long exec system rendering unchanged (%s %s)', async (dashboard, command) => {
+    const ctx = buildCtx()
+    const output = 'Notebook\n' + 'plain lookalike'.repeat(60)
+    envState.dashboardTuiMode = dashboard
+    vi.mocked(ctx.gateway.gw.request).mockResolvedValue({ type: 'exec', output } as any)
+    createSlashHandler(ctx)(command)
+    await vi.waitFor(() => expect(ctx.transcript.sys).toHaveBeenCalledWith(output))
+    expect(ctx.transcript.setHistoryItems).not.toHaveBeenCalled()
   })
 
   it('opens the unified sessions overlay for /resume', () => {
@@ -1186,4 +1227,26 @@ interface Ctx {
   session: ReturnType<typeof buildSession>
   transcript: ReturnType<typeof buildTranscript>
   voice: ReturnType<typeof buildVoice>
+}
+
+function renderNotebookRow(msg: any): string {
+  const stdout = new PassThrough()
+  const stdin = new PassThrough()
+  const stderr = new PassThrough()
+  let output = ''
+  Object.assign(stdout, { columns: 80, isTTY: false, rows: 24 })
+  Object.assign(stdin, { isTTY: false })
+  Object.assign(stderr, { isTTY: false })
+  stdout.on('data', chunk => {
+    output += chunk.toString()
+  })
+  const instance = renderSync(React.createElement(MessageLine, { cols: 80, msg, t: DEFAULT_THEME }), {
+    patchConsole: false,
+    stderr: stderr as NodeJS.WriteStream,
+    stdin: stdin as NodeJS.ReadStream,
+    stdout: stdout as NodeJS.WriteStream
+  })
+  instance.unmount()
+  instance.cleanup()
+  return stripAnsi(output)
 }

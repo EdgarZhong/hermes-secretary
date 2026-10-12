@@ -887,7 +887,25 @@ class TurnRunner:
         except Exception:
             logger.debug("Failed to attach session title callback", exc_info=True)
 
+    async def _send_framework_status(self, message) -> None:
+        from secretary.framework_messages import framework_display_owned
+        from gateway.run_agent_cache import _first_agent
+        from contextlib import nullcontext
+        ctx, runner = self._ctx, self._runner
+        lock = getattr(runner, "_agent_cache_lock", None)
+        with lock if lock is not None else nullcontext():
+            parent = _first_agent(runner._agent_cache.get(ctx.session_key))
+            if not self._status_live() or not framework_display_owned(parent, message):
+                return
+        # Permanent timeline line: never edit a prior Framework or register it
+        # among temporary progress bubbles for post-response deletion.
+        await ctx._status_adapter.send(ctx._status_chat_id, str(message),
+                                       metadata=ctx._status_thread_metadata)
+
     def _status_callback_sync(self, event_type: str, message: str) -> None:
+        if event_type == "framework":
+            self._schedule(self._send_framework_status(message), "Framework timeline delivery failed")
+            return
         from gateway.run import _prepare_gateway_status_message, _redact_gateway_user_facing_secrets, _send_or_update_status_coro
         from gateway.warning_notifications import is_warning_status, render_notification
         ctx = self._ctx

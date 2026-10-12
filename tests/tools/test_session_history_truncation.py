@@ -23,11 +23,13 @@ def test_history_schema_stays_frozen_without_full_body_option():
 def test_search_budget_preserves_metadata_and_precise_read_returns_full_original(db, size):
     db.create_session("main", source="cli")
     content = "证据" + "中" * (size - 2)
-    message_id = db.append_message("main", "user", content, message_uid="authentic-source", timestamp=123.25)
+    db.append_message("main", "user", content, message_uid="authentic-source", timestamp=123.25)
     found = invoke(db, {"mode": "search", "query": "证据"})
     assert found["success"] and found["count"] == 1
     row = found["messages"][0]
-    assert (row["message_id"], row["message_uid"], row["timestamp"]) == (message_id, "authentic-source", 123.25)
+    assert found["conversation_ref"] == db.resolve_conversation_ref("main")
+    assert (row["message_uid"], row["timestamp"]) == ("authentic-source", 123.25)
+    assert set(row) == {"message_uid", "timestamp", "role", "content"} | ({"truncated"} if size > 800 else set())
     if size > 800:
         assert len(row["content"]) == 800
         assert row["content"].endswith("[truncated]")
@@ -35,7 +37,8 @@ def test_search_budget_preserves_metadata_and_precise_read_returns_full_original
     else:
         assert row["content"] == content
         assert not row.get("truncated", False)
-    read = invoke(db, {"mode": "read", "message_identity": row["message_identity"], "before": 0, "after": 0})
+    identity = {"conversation_ref": found["conversation_ref"], "message_uid": row["message_uid"]}
+    read = invoke(db, {"mode": "read", "message_identity": identity, "before": 0, "after": 0})
     assert read["messages"][0]["content"] == content
     assert read["messages"][0]["timestamp"] == 123.25
     assert read["messages"][0]["message_uid"] == "authentic-source"
@@ -54,7 +57,8 @@ def test_search_truncation_is_per_row_across_compaction_with_complete_read(db):
     for row, (uid, body, stamp) in zip(search["messages"], originals):
         assert row["message_uid"] == uid and row["timestamp"] == stamp
         assert row["truncated"] is True
-        full = invoke(db, {"mode": "read", "message_identity": row["message_identity"], "before": 0, "after": 0})
+        identity = {"conversation_ref": search["conversation_ref"], "message_uid": row["message_uid"]}
+        full = invoke(db, {"mode": "read", "message_identity": identity, "before": 0, "after": 0})
         assert full["messages"][0]["content"] == body
     assert not invoke(db, {"mode": "search", "query": "evidence", "full_body": True})["success"]
 

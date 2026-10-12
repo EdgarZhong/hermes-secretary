@@ -108,6 +108,14 @@ def _agent_presentation_enabled(sid: str, *, diagnostic: bool) -> bool:
 
 
 def _agent_status_update(sid: str, kind: str, text: str | None = None) -> None:
+    if kind == "framework":
+        from secretary.framework_messages import framework_display_owned
+        with _sessions_lock:
+            parent = (_sessions.get(sid) or {}).get("agent")
+            if framework_display_owned(parent, text):
+                # Same native rail, independent of a diagnostic Turn's temporary mute.
+                write_json(_event_frame("status.update", sid, {"kind": kind, "text": str(text)}))
+        return
     from gateway.warning_notifications import is_warning_status
     if not _agent_presentation_enabled(sid, diagnostic=is_warning_status(kind, text if text is not None else kind)):
         return

@@ -3,6 +3,8 @@ import { parseCommandDispatch, parseSlashCommand } from '@hermes/shared/slash'
 import type { GatewayClient } from '../gatewayClient.js'
 import type { SlashExecResponse } from '../gatewayTypes.js'
 import { rpcErrorMessage } from '../lib/rpc.js'
+import { appendTranscriptMessage } from '../lib/messages.js'
+import { DASHBOARD_TUI_MODE } from '../config/env.js'
 import { launchWidget } from '../sdk/host.js'
 import { getWidgetApp } from '../sdk/registry.js'
 
@@ -129,6 +131,12 @@ export function createSlashHandler(ctx: SlashHandlerContext): (cmd: string, type
       }
 
       if (d.type === 'exec' || d.type === 'plugin') {
+        if (d.type === 'exec' && DASHBOARD_TUI_MODE && parsed.name === 'notebook' && !parsed.arg) {
+          return ctx.transcript.setHistoryItems(prev =>
+            appendTranscriptMessage(prev, { role: 'assistant', text: d.output || '(no output)' })
+          )
+        }
+
         return sys(d.output || '(no output)')
       }
 

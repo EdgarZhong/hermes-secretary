@@ -6,3 +6,4 @@ fc2668310bff783dde0d6f1cee01b8de99a43cb9
 09372410e0c428842c9d033e1580a51f900c7775 — 授权补充 C10；用户明确Main notebook_show隐藏内部Snapshot/Anchor/Trigger/Profile等元数据，仅保Notebook正文＋last_update_time。02 §3.5／§5.12、索引与根CLAUDE立即冻结；原产品ce2fa6f尚未修改。README／AGENTS现行版本在冻结树中，README工作区docs06独立讨论索引未纳入。
 8df8885d822b769694c3e199bdc0c4011ec1fbc3 — 授权补充 C11；用户允许模型另见裸anchor_message_uid以History查源，除此不再加Snapshot元数据。02 §3.5／§5.12、索引及根CLAUDE同步冻结；C10旧授权链保留，以C11增量覆盖仅Anchor隐藏部分。
 9fa27767e8ae15ec72cfec96be106dfc0931ed55 — 授权补充 C12；2026-10-11 用户明确 Session History 模型结果不重复 UID／Conversation ref，结果单 Ref、行单 UID，输入兼容与内部身份及权限不变；02、索引、计划、根 CLAUDE 与交付状态同步冻结。
+fb8fb696d5a3048ab07fa6ef68c034eec7542503 — 授权补充C13；2026-10-12用户明确Force dispatch通知不得跨下一成功compaction区间，已同步02 §5.6、索引、根看板与计划／交付。root正式压缩器反例已确认，产品尚未修补。

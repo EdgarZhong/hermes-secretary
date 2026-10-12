@@ -439,6 +439,73 @@ const normalizeSubagentStatus = (status: unknown, fallback: SubagentStatus): Sub
   return KNOWN_SUBAGENT_STATUSES.has(normalized) ? normalized : fallback
 }
 
+function handleStatusUpdate(
+  p: { kind?: string; text?: string } | undefined,
+  ctx: GatewayEventHandlerContext,
+  setStatus: (status: string) => void,
+  restoreStatusAfter: (ms: number) => void
+): void {
+  const { appendMessage } = ctx.transcript
+  const { sys } = ctx.system
+
+  if (!p?.text) {
+    return
+  }
+
+  if (p.kind === 'framework') {
+    appendMessage({ kind: 'event', role: 'system', text: p.text })
+
+    return
+  }
+
+  if (p.kind === 'goal') {
+    sys(p.text)
+
+    const brief = p.text.startsWith('✓')
+      ? t('gatewayMsg.goal.complete')
+      : p.text.startsWith('↻')
+        ? t('gatewayMsg.goal.continuing')
+        : p.text.startsWith('⏸')
+          ? t('gatewayMsg.goal.paused')
+          : 'ready'
+
+    setStatus(brief)
+    restoreStatusAfter(6000)
+
+    return
+  }
+
+  setStatus(p.text)
+
+  if (p.kind === 'compressing' || p.kind === 'compacting') {
+    sys(p.text)
+    turnController.clearStatusTimer()
+    patchUiState({ compacting: true })
+
+    return
+  }
+
+  if (p.kind === 'compacted') {
+    patchUiState({ compacting: false })
+  }
+
+  if (!p.kind || p.kind === 'status') {
+    return
+  }
+
+  if (turnController.lastStatusNote !== p.text) {
+    turnController.lastStatusNote = p.text
+    turnController.pushActivity(
+      p.text,
+      p.kind === 'error' ? 'error' : p.kind === 'warn' || p.kind === 'approval' ? 'warn' : 'info'
+    )
+  }
+
+  restoreStatusAfter(4000)
+
+  return
+}
+
 export function createGatewayEventHandler(ctx: GatewayEventHandlerContext): (ev: AnyGatewayEvent) => void {
   syncThemeToTerminalBackground()
 
@@ -922,60 +989,10 @@ export function createGatewayEventHandler(ctx: GatewayEventHandlerContext): (ev:
         turnController.startMessage()
 
         return
-      case 'status.update': {
-        const p = ev.payload
-
-        if (!p?.text) {
-          return
-        }
-
-        if (p.kind === 'goal') {
-          sys(p.text)
-
-          const brief = p.text.startsWith('✓')
-            ? t('gatewayMsg.goal.complete')
-            : p.text.startsWith('↻')
-              ? t('gatewayMsg.goal.continuing')
-              : p.text.startsWith('⏸')
-                ? t('gatewayMsg.goal.paused')
-                : 'ready'
-
-          setStatus(brief)
-          restoreStatusAfter(6000)
-
-          return
-        }
-
-        setStatus(p.text)
-
-        if (p.kind === 'compressing' || p.kind === 'compacting') {
-          sys(p.text)
-          turnController.clearStatusTimer()
-          patchUiState({ compacting: true })
-
-          return
-        }
-
-        if (p.kind === 'compacted') {
-          patchUiState({ compacting: false })
-        }
-
-        if (!p.kind || p.kind === 'status') {
-          return
-        }
-
-        if (turnController.lastStatusNote !== p.text) {
-          turnController.lastStatusNote = p.text
-          turnController.pushActivity(
-            p.text,
-            p.kind === 'error' ? 'error' : p.kind === 'warn' || p.kind === 'approval' ? 'warn' : 'info'
-          )
-        }
-
-        restoreStatusAfter(4000)
+      case 'status.update':
+        handleStatusUpdate(ev.payload, ctx, setStatus, restoreStatusAfter)
 
         return
-      }
 
       case 'notification.show': {
         // Credits/usage notice from the gateway. Payload is snake_case on the
