@@ -81,6 +81,8 @@ Gateway 入口为 `hermes gateway`。官方 Dashboard 入口为 `hermes dashboar
 
 当前草稿全部附件合计上限为 500,000,000 bytes，选择时累计判断、移除后释放预算，发送时沿原生 `file.attach` 分片上传并显式绑定本次图片。两个订阅同一会话的客户端共享原生实时事件；普通 Send 只在 Main Turn 空闲时启动新 Turn，活动时按既定 Steer/Stop/Interrupt 操作。
 
+Web 的 `/notebook` 是四分区只读临时卡片，固定在命令发起时的 Timeline 位置，刷新后可消失；任务状态与排期分别呈现，不展示内部 Anchor。
+
 在前端目录执行 `npm ci` 后，`npm run dev` 启动正式接线页面；`npm run typecheck`、`npm test`、`npm run build` 为类型、定向测试与构建入口。静态交互工作台使用 `npm run mock -- --port 5176`，访问 `/mock.html`；可选择场景、主题与四种视口，不连接真实后端或调用模型。`npm run mock:test` 和 `npm run mock:build` 分别验证、构建静态工作台。场景与组件边界见 [Mock 交接说明](.autonomous/20261012-round2-web-ui/static-mock.md)。
 
 ## 代码规范与测试入口

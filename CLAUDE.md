@@ -1,3 +1,5 @@
+> 当前交接（2026-10-13）：R01–R13开发期排查、修复与必要真实复验闭合；原生产品4443aa7、前端c55120f、visual fc18614。最终类型/构建通过，冻结前端health0/0。正式服务待文档提交后按同profile安全同步HEAD，不启动独立门禁；详细当前证据见总看板和final-delivery，旧表述保留为历史观察，不覆盖当前结论。
+
 # Hermes Secretary 第二轮主看板
 
 ## 自主口径收敛 · 待用户追认
@@ -25,6 +27,60 @@
 
 ## 当前目标与阶段
 
+### 现场整改总看板 · R2-C58（用户2026-10-13最新托管授权）
+
+**执行顺序：各责任人排查并将报告落盘 → Main集中读取/核对/汇总 → 对确认缺陷实施修复 → 内置浏览器真实DeepSeek实测 → 本地阶段交接。用户明确授权本轮任意必要DeepSeek模型实测；不得继续套用先前“零新增模型”的开发观察限制。继续停在独立Verification派遣/启动之前，不调用Astra门禁。上下文续接必须首先读取本看板和各报告，复用有效证据。报告目录为本轮`.autonomous/20261012-round2-web-ui/`，只承载各自证据，不另建全局任务看板。**
+
+**R2-C59/C60：用户纠正“责任人”指当前修复Owner，不开展追责；已有原合同取证仅用于准确恢复，不继续花token归因历史责任。用户再次明确继续托管并挂目标，当前Goal已active，范围就是本看板R01–R11，完成后停Verification前。原视觉、附件、选择器、live-flow、Noting五份报告已落盘；Main已集中读取，准备按实际文件边界分派修复。**
+
+| 问题ID / 范围 | 责任人 | 排查报告（必须落盘） | 当前状态 / 完成条件 |
+|---|---|---|---|
+| R01 原视觉合同、Welcome、Orb与Mock滚动 | 视觉owner/Main | `repair-original-visual-audit.md` | 开发复验闭合：原环形mask/2.4秒短弧、finished专属1.2秒渐熄实际中间帧、收起遮蔽与最终0dialog，Welcome完整ChatLayout/420ms共享过渡；Mock30秒滚动冻结机制反例复用。 |
+| R02 单工具双分区及真实终态 | 投影owner/Main | `repair-tool-cards.md` | 开发复验闭合：真实terminal/read_file/search_files/noting_memo单卡Parameters+Result；取消实看Interrupted，明确失败包装/非零exit分类；真实exit7补证见最新摘要。 |
+| R03 附件展示、长名与原生图片 | 附件owner/Main | `repair-attachments.md` | 开发复验闭合：原输入+附件，不摊注入全文；图片持久占位严格匹配移除；四视口长名实际ellipsis/全title/无横溢；真实自带视觉读出绿色三角形73729，零工具。 |
+| R04 Model/Reasoning高亮与菜单焦点 | 选择器owner/Main | `repair-composer-selectors.md` | 开发复验闭合：真实current高亮/无Current行；快速切换旧Popover抢焦点已修，正式Radix反例1pass及正常关闭回焦，原生应用链路复用有效证据。 |
+| R05 单层Rewind确认 | 视觉owner/Main | `repair-original-visual-audit.md` | 开发复验闭合：Send后一个红色窗，Cancel保编辑，确认直接native提交；新REWIND_OK只一条，旧目标不在当前路径。 |
+| R06 断连保状态与自动重连 | Main/API owner | `repair-native-messages.md` | 开发复验闭合：真实stop/start保Conversations/history/草稿/临时Notebook，Composer可编辑且Send灰；同owner换native bootstrap token自动恢复，临时卡仍在证明未reload；Vite后端停机不再全屏overlay。Files取数失败保自身error入口。 |
+| R07 source顺序与完成去重 | flow/native owner/Main | `repair-live-flow.md` | 开发复验闭合：原生有序UID/row边界与单次history/live提交，不按正文/时间；真实连续Turn/两次Steer/Framework后无重复，下一User仍在前一Assistant之后。 |
+| R08 及时流式呈现 | flow owner/Main | `repair-live-flow.md` | 开发复验闭合：replay cursor恢复即放流，history投影独立memo；真实Thinking/工具Running在Turn结束前已出现，未添加字播限速；不宣称量化网络延迟SLA。 |
+| R09 active Usage保值 | flow owner/Main | `repair-live-flow.md` | 开发复验闭合：真实第二Turn活动保持14,243in/38out/38.6%，完成才15,030in/238out/84%；同会话保值、跨会话清detail有正式反例。 |
+| R10 Steer消费即时真实User | flow/native owner/Main | `repair-live-flow.md` | 开发复验闭合：native consumed同锁发布真实User与前驱，前端当次移Pending/涨入真实行；FIRST在第二个sleep12工具Running时已可见，最终UID单行原位；批量合并复用原真人/机制证据。 |
+| R11 Noting持久化与15秒timer | Noting调查owner/Main | `repair-noting-persistence.md` | 开发复验闭合：旧两个task自然完成/memo原子消费/pointer不倒退；旧7m25为provider流中断重试。新短会话多轮自然Noting完成与Framework/Orb正常；原生15秒deadline实证复用，不旁路。 |
+| R12 pending Reminder疑问 | Main | `repair-noting-persistence.md` | 调查闭合：指定会话#12为pending秘书任务，无schedule，registry/pendingreminders均0；用户纠正可能误读，不是已证实注入故障，未为调查新增排期。 |
+| R13 Notebook临时顺序与可读设计 | flow/视觉 owner/Main | `repair-live-flow.md` | 开发复验闭合：命令发起捕捉边界/在途exact UID更新；真实卡位于后续User与Assistant之前，刷新0卡；四分区/条目状态/字段/来源计数/排期，人类输出不含Anchor，无schedule明确Not scheduled。 |
+
+此前“前置阶段表现闭合”不涵盖这些新发现，现以本看板为准。当前两项既有产品收敛（8轮操作窗口/32压缩终态）仍在顶部待追认，不能因整改忽略或冒称通过。不会重传500MB或无差别重跑全套；新缺陷按受影响路径测，记录执行方/版本/范围/次数/耗时，必要真实模型调用已获最新授权。
+
+### 用户现场问题登记与恢复（历史调查状态，当前关闭证据以上表为准）
+
+| 问题与明确口径 | 当前处理 / 尚缺证据 |
+|---|---|
+| 正式接线必须保留原视觉成果，不能仅比较当前工作树 | 已专派原会话取证Agent，找到Kimi真实用户会话、末checkpoint/file-history和收尾前快照；报告表明不可整体回滚1c614ac，该commit含用户完整未提交成果。逐项恢复继续中。 |
+| 悬浮球active环形转圈被呈现为雷达；只授权finished→idle熄灭收尾 | 已定位今天Main同步theme到visual漏mask token；恢复原#000环形alpha遮罩，不改原短弧/速度。通用SVG慢过渡影响active点亮，需限定只在finished→idle。面板关闭末帧保持遮蔽，已16项presentation回归含提交前间隙反例；真实中间帧复核待补。 |
+| User气泡最新左12%右3%；Assistant正文/活动卡片左4%右10% | 用户最新口径覆盖C42/C48；已按父阅读容器百分比接线，Pending与退场副本同边界，禁止固定px覆盖。 |
+| 同一tool的Parameters/Result必须一张卡；终态Success/Failed，不显complete | 原生UID/call_id合并函数63例已接收，Main已接正式Timeline；真实单卡检查待补，保留未匹配Unknown，不同名猜配。 |
+| 文件正文不得摊入User气泡，只留原输入与附件图标/名字；长名省略号且不越界 | 已查真实row155原生Attached Context包装，helper15例＋contracts63例共78通过；Main已接projection展示，原source/model上下文不动。长名父flex缩短问题待修复/实看。 |
+| Model/Reasoning二级选择面板高亮当前项，去Current说明 | 真实provider slug/native is_current机制接收；两条定向测试通过，选中CSS已接，实际菜单复核待补。 |
+| Rewind只Send后一个红色确认弹窗（二次确认=Send+确认），不能两轮确认 | 原Kimi01:23:50原句已核，Sol收尾把一次确认改成1→2未经授权；需恢复正式/Mock与06，保留取消时编辑草稿。 |
+| 断连仅Composer提示，保留Conversations/历史/草稿，Composer可编辑，Send置灰；Files取数失败按Files自身展示 | 已证后端53445和5173代理WS均gateway.ready；断连源为HMR控制器重建+旧started标记，非后端停机。改为同owner热更新保留、初始化幂等；只读页刷新后连接/4条会话/编辑恢复。Main已通过真实停止53445服务验证：Conversations/history/草稿保留，Composer继续编辑，Send灰，提示只Composer；新服务重连保稿待核。 |
+| 用户最新真实消息出现在上一Assistant回复之前；流式Thinking滞后，Turn结束后一瞬全出 | **待调查/修复**：须读取20261013_111430_4c8d85实际顺序和原生event链，核history/live合并与delta积压，不添加文字播放限速或按内容重排序。 |
+| 图片必须像素真实注入，支持视觉模型不得退到辅助模型文字转述 | 已读该会话assistant row230，确认custom+deepseek-flash能力未声明而走text。已在ignored本轮profile配置model.supports_vision=true，原生decide_image_input_mode返回native；实际新Turn图片上下文请求证据待补，不重启/切模型/provider或改另一旁路配置。 |
+| 本轮profile Noting Idle Delay至少15秒；不得旁路或瞬时触发，保留原生timer | 当前原值2秒→15秒，修改仅ignored `.hermes-dev/round2-runtime/config.yaml`。原生due_at=Turn结束+delay、新Turn取消/重排、one-idle-one-trigger代码无修改；11:33:41.235结束→11:33:56.235 due，实际自然触发.241已复核。 |
+
+以上持续写入本项目文档，不写Nowledge Mem。所有未关闭项保留，不以早先阶段交付声明或旧证据覆盖本次缺陷；仍停在独立Verification之前。
+
+**R2-C49 最新边距覆盖C42/C48：User气泡左12%／右3%；Assistant正文与卡片左4%／右10%，均按父阅读容器宽度计算，Pending/退场副本保持同一User边界，不叠加内层百分比。**
+
+**R2-C45–C47 用户新增现场整改：悬浮球面板收起末帧不得闪回（Main定位settle(false)先揭开遮蔽再异步卸载，保持遮蔽直到卸载）；Reminder/Framework折叠卡片高度与Thinking/Tool统一；同一次工具调用的Parameters/Result必须在一张卡片，按真实tool_call_id关联历史调用与结果，不能按工具名猜测。该时点整改尚未关闭；当前开发期关闭证据见顶部总表，不冒称独立验收。**
+
+**R2-C43 用户明确：Framework message 默认折叠，展开方式与Deferred reminder相同（标题旁箭头，原卡片内向下展开正文）；使用同一正式Message组件同步Mock，不修改Framework消息事实或模型上下文。**
+
+**R2-C44 用户纠正：工具调用终态显示成功／失败，不直接暴露complete。恢复Mock已有Success／Failed标签，保持真实结果状态分类与未知／中断／运行态区别；不以显示标签替代结果判断。**
+
+**用户现场整改 R2-C39–C42：以用户已经调好的视觉 Mock 为呈现基准，修复正式接线造成的差异，不自行重新设计。时间只在真实 User／Assistant 消息上方居中展示：今日仅时分、昨天标“昨天”、本年其他日期显示月日、往年带年份，不显示时区；Thinking／Tool／Framework 等无时间行。Thinking 与正文增加间隔，并统一卡片／正文左右边界。该时点口径后来由C48/C49覆盖：当前按父容器百分比，Assistant正文和卡片左4%／右10%，User左12%／右3%。Main自行选择的24px／48px以及3.125%／6.25%均已撤回；不得保留固定px或小屏覆盖这些百分比。**
+
+**交接后用户自测整改（R2-C38）：正式New Chat背景与Mock不一致，Main已定位Welcome误放入Timeline导致光晕画布裁切，正在恢复Mock同样的直接ChatLayout接缝并补实际对照。此前“表现层闭合”漏检了此项，现更正为该区域待修复复核；仍不启动Verification。用户测试服务保持494de9a，不为进行中的文档记录改HEAD/重启服务。**
+
 **当前执行授权（2026-10-13，R2-C31 覆盖此前自动进入门禁安排）：继续托管，完成开发/主审/必要实测/阶段提交并准备好审查输入，在启动或派遣 Verification 之前停下向用户交接。阶段目标已挂载。整轮后续仍需 Astra high Verification 与 Astra medium Validation，本次不启动。**
 
 R2-C32 用户现场纠正 Deferred reminder 已完成：箭头在蓝色标题右侧，原卡片向下展开直接展示正文，无独立due按钮或嵌套文本框；Reminder业务合同不变。
@@ -51,7 +107,7 @@ R2-F21（2026-10-13 用户现场发现，**逻辑层缺陷**）：活动 Turn �
 
 最新用户口径 R2-C10 已写入 AGENTS：以同一 owner、统一判断点、同步临界区和正式提交点保证不变量；Main 据此复核当前增量，避免下游堆叠门禁。
 
-第二轮交付独立 Secretary Web UI，并完成 V1.6 移交缺口及本轮实际变化影响的验收。当前为 **开发集成与阶段提交完成：后端产品5ba0481、前端21aad02，按R2-C31停在Verification派遣前；整轮尚未验收，两门禁本次不启动**。用户授权在冻结前精简三份核心文档、最小修订新版 06；冻结后本轮不再修订权威规格。
+第二轮交付独立 Secretary Web UI，并完成 V1.6 移交缺口及本轮实际变化影响的验收。当前为 **现场整改开发复验完成、阶段交接：原生产品4443aa7、前端c55120f、visual fc18614；本轮按R2-C31/C60停在Verification派遣前，整轮尚未独立验收，两门禁不启动**。用户授权在冻结前精简三份核心文档、最小修订新版 06；冻结后本轮不再修订权威规格。
 
 - 后端工作区：`/Users/edgar/code/hermes-secretary`，继续按原生接缝实施必要增量。
 - 前端：并列本地仓库 `/Users/edgar/code/hermes-secretary-web`，`main`、无远端；React前阶段已提交并完成开发期集中复验，现施工逻辑收尾与附件预算、待视觉合并及独立门禁。目录名属于实施安排，不是用户逐字指定。暂不上传远端。
@@ -90,7 +146,7 @@ R2-F21（2026-10-13 用户现场发现，**逻辑层缺陷**）：活动 Turn �
 | 独立 Validation | Astra medium | Verification 通过后由全新无上下文验收者操作真实入口，检查用户输入到输出 |
 | 视觉设计 | 原 Astra medium 已按用户要求结束；后续用户另行委派 | 保留既有成果和未验项；不再由原 Agent 操作。Sol 继续已确认交互/卡片骨架及必要接线，不自行定案新主题 |
 
-当前视觉成果已合并；逻辑与附件 owner 已完整交回并由 Main review 接收，修改窗口已释放。最终接线 `ui_final_wiring` 曾因额度限制中断，2026-10-13 按用户要求恢复后已完整交回，现待 Main 集中 review；其超额toast实测证据一并核查，不重复上传500 MB或模型调用。三个 owner 均已完成待命。此前前端功能阶段bfecc9f、后端37ce184eca及T5最后F14真实补证有效；各阶段报告和manifest统一从plan证据索引进入。Main 继续审查、必要定向复验及统一阶段快照，按 R2-C31 在派遣 Verification 前停止。
+当前视觉成果已合并；逻辑与附件 owner 已完整交回并由 Main review 接收，修改窗口已释放。最终接线 `ui_final_wiring` 曾因额度限制中断，2026-10-13 按用户要求恢复后已完整交回，现已由Main集中review接收（历史阶段）；其超额toast实测证据一并核查，不重复上传500 MB或模型调用。当前三个整改owner已完整交回，Main亲审/定向实测和冻结health0/0/最终build通过，全部修改窗口释放。此前前端功能阶段bfecc9f、后端37ce184eca及T5最后F14真实补证有效；各阶段报告和manifest统一从plan证据索引进入。Main 继续审查、必要定向复验及统一阶段快照，按 R2-C31 在派遣 Verification 前停止。
 
 用户视觉 worktree 已交回，现由 Sol 仅收尾已确认表现层缺口，保留用户设计成果；Main 负责合并与正式接线。New Chat 两统计卡已移除，不更改当前配色决策。
 

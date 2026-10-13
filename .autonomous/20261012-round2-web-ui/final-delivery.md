@@ -2,9 +2,9 @@
 
 ## 目标状态与结束判定
 
-**本次“完成开发集成并停在 Verification 前”的阶段目标已完成；整轮目标尚未完成。** 按用户 R2-C31 停止，不派遣 Verification 或 Validation。当前已完成视觉合并、三个实现者交回、Main 亲自审查、必要修补、开发期真实复验与本地阶段提交；两个独立门禁未执行，不宣称最终验收通过。
+**用户自测整改的开发／主审／必要真实复验阶段已完成，整轮最终验收尚未完成。** 当前范围为根CLAUDE的R01–R13及C38–C64；Main已接收修复报告、亲审正式接线、补必要修补、真实DeepSeek/IAB复验与本地快照。按用户C31/C60停在派遣Verification之前，没有启动两独立门禁，不能称整轮PASS。
 
-后端产品快照 `5ba04816302daf2bf16f97e202f87d394db2eaf4`；前端 `/Users/edgar/code/hermes-secretary-web` 最终产品 `21aad02`（含集成 `611b734`）；用户查看的 visual worktree `86fa280`。本次交接文档随后单独提交，产品代码不变。冻结基线 `37ad76f5df`，授权增量与最新停止边界见 [Snapshot Index](snapshot-index.md)。
+当前原生产品 `4443aa7b18806246ef84d6003fbd7e1e40cff5a2`；前端 `c55120f`；visual `fc18614`。后端交接文档随后单独提交，并在确认本轮所有Main/压缩/Noting空闲后同步53445服务HEAD。冻结基线37ad76f5df及显式授权修订见Snapshot Index；之前5ba0481/21aad02是历史快照。
 
 ## 本轮收敛与授权
 
@@ -16,7 +16,7 @@ C32–35现场修订已落实：Reminder蓝色标题右侧箭头、原卡片直�
 
 F14恢复原生父上下文、F16版本保护/能力错误恢复、F20真实carrier角色及最后原生tool_name/Reasoning值薄适配均已Main审收；没有独立审查者认可，不能冒称门禁结论。
 
-## 已完成与交付物
+## 历史阶段完成与交付物（不覆盖当前整改）
 
 - 视觉1c614ac→功能树3df93c9已合并；通知栈、Pending表现、真实任务完成信号、底栏/Orb/标题/阅读位置正式接线。Main核9/9owner源码、6/6依赖、21/21证据hash并亲读上下游。逻辑/附件此前完整交回也已Main审收。
 - 当前草稿合计500,000,000 bytes；选择累计、删除释放、引用真实stat、Send时原生分片。真实单500MB和同名250MB×2源/服务器SHA一致，DeepSeek原生terminal读取首尾标记和准确大小；取消后无实际提交且草稿完整。复用附件owner证据，未重传大包。
@@ -46,4 +46,22 @@ F14恢复原生父上下文、F16版本保护/能力错误恢复、F20真实carr
 
 正式入口 [Secretary Web](http://127.0.0.1:5173)，原生隔离服务53445；[静态Mock](http://127.0.0.1:5176/mock.html)同步C32–35并保留。内置浏览器已为用户展示；可展开Reminder、工具卡片，检查左右留白、纯Parameters与Result限高。
 
-续接先读CLAUDE顶部及plan证据索引；后端产品5ba0481、前端21aad02为独立门禁输入。先明确最新授权和待追认窗口，再派指定Astra；不要重传500MB、重造成功压缩会话或重跑已有效旧包。原完整启动环境留根CLAUDE，文档提交后服务版本同步不改变产品。
+续接先读CLAUDE顶部及plan最新整改证据；当前原生产品4443aa7、前端c55120f为待独立门禁输入。先明确最新授权和待追认窗口，再派指定Astra；不要重传500MB、重造成功压缩会话或重跑已有效旧包。原完整启动环境留根CLAUDE，文档提交后服务版本同步不改变产品。
+
+### 交接后漏审更正 · R2-C38（2026-10-13）
+
+用户自测指出New Chat背景被裁成标题后矩形。Main此前四视口只核边界、控件和无横溢，未核Welcome画布与Mock的实际背景效果，属于表现层接线漏审；当时New Chat表现层关闭声明撤回；当前该项已按下方整改证据修复关闭，保留漏审记录。根因是正式Welcome放在Timeline读取宽度容器，而Mock为ChatLayout直接child，光晕owner的运动/裁切范围不同。Main先恢复相同布局接缝，再实际截图/几何对照及受影响组件回归，不以旧四视口报告替代；停止边界仍在Verification之前。
+
+### 当前整改关闭证据 · R2-C38–C64
+
+- 原视觉合同恢复：Welcome直接完整ChatLayout并通过共享420ms离场；actual active环形mask有效/2.4秒短弧，finished→idle捕获data-fading=true、SVG1.2秒渐熄，外圈静态光晕为透明；实际收起中panel opacity0、最后0dialog/expandedfalse。Mock30秒阅读冻结、正式不叠owner有组件反例。
+- Timeline正式投影按原生UID/row/ordered source边界，history/live一次提交，不按正文或timestamp猜配。实际会话20261013_122700_433f46完成像素读图、sleep20→FIRST消费→sleep12→SECOND消费→最终一句答复；FIRST在第二工具Running时已真实出现。完成和自然Noting/Framework更新后无重复，后续User在前一Assistant之后。UI活动保原Usage14,243/38/38.6%，结束15,030/238/84%。
+- 文件原文不摊User气泡；原生[screenshot]占位仅真实图片引用/末尾数匹配时移除。长文件名四视口有实际ellipsis且保全title，无页面横溢；User12%/3%、Assistant4%/10%和居中本地时间实测。原生视觉图片提示未含答案，DeepSeek零工具读出绿色三角形73729。
+- 工具Parameters/Result单卡，真实成功Success、exit7预期失败Failed、旧用户Stop Interrupted；保Unknown和真实结果。Model/Reasoning真实current高亮/无Current行，旧Popover关闭抢新菜单焦点通过正式Radix快速反例修复。
+- Rewind：Send后唯一红色确认，Cancel保编辑，确认直接native提交，REWIND_OK只一条、旧目标不在当前路径。服务真实stop/start保会话/history/草稿/临时Notebook，可编辑/Send灰；同owner更新bootstrap自动重连后临时卡仍在，证明未reload；Vite停机不再全屏错误遮罩。
+- Notebook临时卡在命令发起时捕捉sequence边界（含在途source精确交接），实际卡固定在下一User/Assistant之前，刷新后0卡。公开人类四分区、条目状态/字段/来源计数/排期分层，无Anchor，缺schedule明确Not scheduled。指定原会话#12只是pending秘书任务，无schedule，registry/pendingreminders均0；未证实注入故障，也未凭调查制造排期。
+- 原长Noting的数据库/日志/Memo消费/pointer和15秒自然deadline已复核；新短会话多轮自然Noting完成/Framework/Orb正常，不改timer或force dispatch。旧7m25为provider首流388秒中断后的原生重试，不将正常并发误删。
+
+Main新增证据均在ignored `main-final-integration/repair-*`，包括actual原生source replay/active DB顺序、DOM、截图、四视口JSON和最终版本manifest。图片/文件全为新合成小附件，不重传500MB。前端最终构建（含types）PASS，冻结health0阻断/0提示；初次复杂度阻断均结构重构关闭，未放宽规则。Main受影响35个App/Composer用例按32有效旧通过＋修复2键位/1焦点的覆盖并集复用；附件展示17例PASS，API重连7例与owner source/视觉/Mock证据按各报告范围复用，不相加当全项目总数。
+
+失败保留：初次3个React失败、R13最后types不匹配、三处CC与随后Composer CC阻断均记录后修复；最初生成一致性1PASS，catalog仍已知review.summary孤立事件1FAIL。原生7文件12distinct/Ruff/health证据接收，不重复大包。既有SDK归档/旧Child fixture/未验证平台、手机真机行为仍为后续门禁/专项边界，不冒充覆盖。未执行两个独立门禁，最近8轮／32条查询窗口仍待追认。

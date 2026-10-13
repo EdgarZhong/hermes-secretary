@@ -267,3 +267,11 @@ Main集中review → 合并视觉并在App接ToastStack → 当前保留500MB取
 Main前端最终快照611b734；visual用户查看树86fa280保留全部既有untracked成果，仅提交本次3个明确修补文件。最终C32–35后的build-delivery.log/health-delivery.log通过，health0/0；没有因接收报告重跑88、46、30或既有97。后端原生preflight在53445/53447均无活动session，原服务版本37ce184/7fea3f5，供安全统一重启依据。
 
 最终稳定窗口：后端产品5ba0481、前端21aad02；源tool_name薄适配、无参数结果行删除空框、已读取Current Reasoning传Composer，正式浏览器现成工具卡片证实terminal名称/Result透明/16px/247.5px高度；54个受影响contract＋presentation例1.20s、最后build/health0/0。三屏各四视口new/conversation/files JSON及JPG全部保存；页面无横溢、320 drawer→Files→Back回原会话。源端首次预检错用session_id为4000，保存native-preflight-wrong-read-params，改stored_session_id后Noting idle；不抹去诊断失败。没有新模型或大包重传，本次按C31至Verification前结束。
+
+## 用户自测后整改（R2-C38–C60，当前执行）
+
+范围与动态Owner唯一看根CLAUDE现场整改总看板R01–R11。各owner先落排查报告，Main集中读取后已派三项明确修复：原视觉合同恢复、history/live顺序与及时呈现、原生Steer插入事实和精确持久映射。工具／附件／选择器／Noting报告已接收；不继续追历史责任或重复500MB/旧全套证据。
+
+本次Main新增实际证据在ignored `.hermes-dev/round2-evidence/main-final-integration/repair-*`：Model/Reasoning当前项高亮及无Current行；真实历史附件正文移除与同工具双分区；真实Noting idle/Memo0。用户旧页HMR遗留断连尚未刷新，Main独立新页连接正常，待统一native新版本后验证断线保状态。用户授权任意必要真实DeepSeek调用；最终新Turn/Steer/像素/流式/usage/视觉收尾实测仍未完成，阶段未闭合；严格停在独立Verification派遣前。
+
+整改最终接收：原生产品4443aa7/前端c55120f/visual fc18614，R01–R13开发期闭合与具体证据/失败边界见final-delivery当前章节；根CLAUDE唯一动态总表已更新。新增Main实际会话122700_433f46：像素73729、连续Tool/Steer/Usage、Notebook固定位置/刷新、单确认Rewind、exit7 Failed；actual服务停启确认状态保留+token自动恢复。最终build/types与冻结health0/0；同版本有效包按报告并集复用，无全套/两门禁。
