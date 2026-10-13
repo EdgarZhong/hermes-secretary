@@ -4,7 +4,7 @@
 
 **用户自测整改的开发／主审／必要真实复验阶段已完成，整轮最终验收尚未完成。** 当前范围为根CLAUDE的R01–R13及C38–C64；Main已接收修复报告、亲审正式接线、补必要修补、真实DeepSeek/IAB复验与本地快照。按用户C31/C60停在派遣Verification之前，没有启动两独立门禁，不能称整轮PASS。
 
-当前原生产品 `4443aa7b18806246ef84d6003fbd7e1e40cff5a2`；前端 `c55120f`；visual `fc18614`。后端交接文档随后单独提交，并在确认本轮所有Main/压缩/Noting空闲后同步53445服务HEAD。冻结基线37ad76f5df及显式授权修订见Snapshot Index；之前5ba0481/21aad02是历史快照。
+当前原生产品 `4443aa7b18806246ef84d6003fbd7e1e40cff5a2`；前端 `c55120f`；visual `fc18614`。后端交接文档单独提交，确认本轮所有Main/压缩/Noting空闲后将53445服务同profile同步交接版本；实际运行HEAD以健康接口和manifest为准。冻结基线37ad76f5df及显式授权修订见Snapshot Index；之前5ba0481/21aad02是历史快照。
 
 ## 本轮收敛与授权
 
