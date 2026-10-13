@@ -24,7 +24,7 @@
 - 新最小Prompt实际创建未来instant任务；自然到点源UID79b589…/row27，WS source seq153到IAB DOM21ms，Thinking seq157，complete seq313到DOM15ms，同UID唯一。三个真正Noting任务完成创建、pending→running→done，以及只schedule_update将done→pending（没有模型补status），同lineage/schedule_id、Snapshot/pointer/Registry/Memo正式提交。
 - 受控长流修复样本终态DOM约44–215ms，旧样本约2–5.7s；有完整内容/顺序/terminal无补播证据。它是单机Chrome开发MutationObserver观察，不是paint/SLA、不是assistant-ui独立倍率；后续只改Usage/HMR初始化及C99折叠，App/Parts/Markdown/RenderStore策略保持，未重跑性能大包。
 - 当前必要定向证据：Main Prompt真实spawn/prefix三个用例2pass/1保留原句失败，恢复原Persistence句后仅失败项1pass；Usage新有效数据1pass；C99两个组件2pass；HMR owner+Usage2pass及同步event/terminal1pass；各当前构建含tsc通过，最后HMR build日志可复核。footguns/ruff/health三项pass，0阻断/原未改文件1advisory；新增hook footguns/shebangs2项pass。未调阈值、未关闭提示、旧192/33/59/28/Undo/500MB等有效包未重复。
-- 稳定文档入口[07](../../docs/07-notebook-cleanup-mechanism-proposal.md)、[Prompt/原话对照](repair-secretary-task-contract.md#10-main-实际最小-prompt-改动与用户原话对账2026-10-14)、[真实链](repair-native-integration.md)、[前端接线](repair-frontend-verification.md)、[Core联动](repair-secretary-task-contract.md#9-c84状态与schedule同owner联动)。具体函数/证据/版本以报告正文和manifest为准。
+- 稳定文档入口[07](../../docs/07-notebook-cleanup-mechanism-proposal.md)、[Prompt/原话对照](repair-secretary-task-contract.md#10-main-实际最小-prompt-改动与用户原话对账2026-10-14)、[真实链](repair-native-integration.md)、[前端接线](repair-frontend-verification.md)、[Core联动](repair-secretary-task-contract.md)。具体函数/证据/版本以报告正文和manifest为准。
 
 ## Verification 与 Validation
 
