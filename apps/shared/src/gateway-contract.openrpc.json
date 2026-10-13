@@ -11747,6 +11747,54 @@
         "title": "ConnectorsListResult",
         "type": "object"
       },
+      "ConsumedSteerMessage": {
+        "additionalProperties": false,
+        "properties": {
+          "role": {
+            "const": "user",
+            "title": "Role",
+            "type": "string"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "display_kind": {
+            "const": "steer",
+            "title": "Display Kind",
+            "type": "string"
+          },
+          "message_uid": {
+            "title": "Message Uid",
+            "type": "string"
+          },
+          "display_content": {
+            "title": "Display Content",
+            "type": "string"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "role",
+          "content",
+          "display_kind",
+          "message_uid",
+          "display_content"
+        ],
+        "title": "ConsumedSteerMessage",
+        "type": "object"
+      },
       "ContextCategory": {
         "additionalProperties": false,
         "properties": {
@@ -20455,6 +20503,193 @@
         "title": "ModelSaveKeyResult",
         "type": "object"
       },
+      "NativeSourceBoundary": {
+        "additionalProperties": false,
+        "description": "Independent boundary facts, not permission to erase unknown streamed nodes.\nA client must still account for source identities, final row and available persisted rows.",
+        "properties": {
+          "user_message_uid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Message Uid"
+          },
+          "after_message_uid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After Message Uid"
+          },
+          "prefix_unchanged": {
+            "title": "Prefix Unchanged",
+            "type": "boolean"
+          },
+          "compression_unchanged": {
+            "title": "Compression Unchanged",
+            "type": "boolean"
+          },
+          "all_rows_committed": {
+            "title": "All Rows Committed",
+            "type": "boolean"
+          },
+          "insertion_at_tail": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Insertion At Tail"
+          }
+        },
+        "required": [
+          "user_message_uid",
+          "after_message_uid",
+          "prefix_unchanged",
+          "compression_unchanged",
+          "all_rows_committed"
+        ],
+        "title": "NativeSourceBoundary",
+        "type": "object"
+      },
+      "NativeSourceMessage": {
+        "additionalProperties": false,
+        "description": "Ordered native source address; no content, image bytes or historic prefix.",
+        "properties": {
+          "message_uid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message Uid"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "has_content": {
+            "title": "Has Content",
+            "type": "boolean"
+          },
+          "has_reasoning": {
+            "title": "Has Reasoning",
+            "type": "boolean"
+          },
+          "row_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Row Id"
+          },
+          "display_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Display Kind"
+          },
+          "tool_call_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Tool Call Id"
+          },
+          "tool_call_uid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Tool Call Uid"
+          },
+          "tool_calls": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/NativeSourceToolCall"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Tool Calls"
+          }
+        },
+        "required": [
+          "message_uid",
+          "role",
+          "has_content",
+          "has_reasoning"
+        ],
+        "title": "NativeSourceMessage",
+        "type": "object"
+      },
+      "NativeSourceToolCall": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "tool_call_uid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Tool Call Uid"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "NativeSourceToolCall",
+        "type": "object"
+      },
       "NotebookReadResult": {
         "additionalProperties": false,
         "properties": {
@@ -21501,6 +21736,32 @@
             ],
             "default": null,
             "title": "Final Assistant Row Id"
+          },
+          "source_messages": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/NativeSourceMessage"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Source Messages"
+          },
+          "source_boundary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NativeSourceBoundary"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
           }
         },
         "required": [
@@ -35896,6 +36157,66 @@
               }
             ],
             "title": "Message Uid"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConsumedSteerMessage"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "after_message_uid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "After Message Uid"
+          },
+          "predecessor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NativeSourceMessage"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "source_messages": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/NativeSourceMessage"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Source Messages"
+          },
+          "source_boundary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NativeSourceBoundary"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
           }
         },
         "required": [

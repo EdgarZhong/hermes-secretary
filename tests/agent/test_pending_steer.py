@@ -53,6 +53,68 @@ def test_claim_is_still_withdrawable_until_true_append():
     assert messages[0]["message_uid"]
 
 
+def test_consumed_projection_reports_actual_middle_insert_without_mutating_prefix():
+    from agent.pending_steer import native_source_boundary
+    from types import SimpleNamespace
+
+    agent, owner = setup_owner()
+    frames = []
+    agent._pending_steer_notify = lambda event, payload: frames.append((event, payload))
+    submit(agent, owner, "keep", "correction")
+    batch = agent._drain_pending_steer()
+    # A real source tool address, followed by an existing Assistant: insertion is not at tail.
+    messages = [{"role": "user", "content": "current", "message_uid": "current", "_row_id": 1, "_db_persisted": True},
+                {"role": "tool", "content": "result", "tool_call_id": "repeated", "_tool_call_uid": "occurrence",
+                 "message_uid": "result", "_row_id": 2, "_db_persisted": True},
+                {"role": "assistant", "content": "later", "message_uid": "later"}]
+    original = [dict(row) for row in messages]
+    agent._persist_user_message_idx = 0
+    agent.context_compressor = SimpleNamespace(compression_count=0)
+    agent._pending_steer_source_boundary = lambda prefix, start: native_source_boundary(agent, prefix, start, [], 0)
+    assert append_claimed_batch(agent, messages, batch, index=2)
+    payload = next(payload for event, payload in frames if event == "steer.consumed")
+    assert messages[:2] == original[:2] and messages[3] == original[2]
+    assert payload["message"]["message_uid"] == messages[2]["message_uid"]
+    assert payload["after_message_uid"] == "result"
+    assert payload["predecessor"]["tool_call_uid"] == "occurrence"
+    assert [row["message_uid"] for row in payload["source_messages"]] == ["current", "result"]
+    assert payload["source_boundary"]["insertion_at_tail"] is False
+    assert payload["source_boundary"]["all_rows_committed"] is True
+
+
+def test_consumed_projection_does_not_mint_identity_for_unknown_predecessor():
+    agent, owner = setup_owner()
+    frames = []
+    agent._pending_steer_notify = lambda event, payload: frames.append((event, payload))
+    submit(agent, owner, "one", "correction")
+    messages = [{"role": "tool", "content": "unknown result", "tool_call_id": "call"}]
+    before = dict(messages[0])
+    assert append_claimed_batch(agent, messages, agent._drain_pending_steer(), index=100)
+    payload = next(payload for event, payload in frames if event == "steer.consumed")
+    assert messages[0] == before
+    assert payload["after_message_uid"] is None and payload["predecessor"]["message_uid"] is None
+    assert "source_messages" not in payload and "source_boundary" not in payload
+    assert payload["message"]["message_uid"] == messages[1]["message_uid"]
+
+
+def test_consumed_projection_failure_cannot_veto_native_insertion():
+    agent, owner = setup_owner()
+    frames = []
+    agent._pending_steer_notify = lambda event, payload: frames.append((event, payload))
+    accepted = submit(agent, owner, "one", "correction")
+
+    def unavailable(*_args):
+        raise RuntimeError("observer unavailable")
+
+    agent._pending_steer_source_boundary = unavailable
+    messages = [{"role": "tool", "content": "result"}]
+    assert append_claimed_batch(agent, messages, agent._drain_pending_steer())
+    payload = next(payload for event, payload in frames if event == "steer.consumed")
+    assert payload["message"]["message_uid"] == messages[-1]["message_uid"]
+    assert "source_boundary" not in payload and "source_messages" not in payload
+    assert owner.withdraw("native-turn", accepted["pending_id"])["state"] == "already_consumed"
+
+
 def test_requeue_retains_original_ids_before_newer_enqueue():
     agent, owner = setup_owner()
     old = submit(agent, owner, "one", "old")

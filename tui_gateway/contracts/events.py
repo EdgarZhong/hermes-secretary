@@ -173,6 +173,37 @@ class BillingBlock(Payload):
     unverified: bool | None = None
 
 
+class NativeSourceToolCall(Payload):
+    id: str
+    tool_call_uid: str | None = None
+
+
+class NativeSourceMessage(Payload):
+    """Ordered native source address; no content, image bytes or historic prefix."""
+
+    message_uid: str | None
+    role: str
+    has_content: bool
+    has_reasoning: bool
+    row_id: int | None = None
+    display_kind: str | None = None
+    tool_call_id: str | None = None
+    tool_call_uid: str | None = None
+    tool_calls: list[NativeSourceToolCall] | None = None
+
+
+class NativeSourceBoundary(Payload):
+    """Independent boundary facts, not permission to erase unknown streamed nodes.
+    A client must still account for source identities, final row and available persisted rows."""
+
+    user_message_uid: str | None
+    after_message_uid: str | None
+    prefix_unchanged: bool
+    compression_unchanged: bool
+    all_rows_committed: bool
+    insertion_at_tail: bool | None = None
+
+
 class PersistedTurn(Payload):
     """Committed SQLite row addresses for the agent's current-turn suffix. Missing ids are
     unproven, never negative acknowledgements. ``complete`` permits retiring the whole local
@@ -184,6 +215,8 @@ class PersistedTurn(Payload):
     complete: bool
     user_row_id: int | None = None
     final_assistant_row_id: int | None = None
+    source_messages: list[NativeSourceMessage] | None = None
+    source_boundary: NativeSourceBoundary | None = None
 
 
 class MessageCompletePayload(Payload):

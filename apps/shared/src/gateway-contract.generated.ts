@@ -4870,6 +4870,33 @@ export interface PersistedTurn {
   complete: boolean
   user_row_id?: number | null
   final_assistant_row_id?: number | null
+  source_messages?: NativeSourceMessage[] | null
+  source_boundary?: NativeSourceBoundary | null
+}
+/** Ordered native source address; no content, image bytes or historic prefix. */
+export interface NativeSourceMessage {
+  message_uid: string | null
+  role: string
+  has_content: boolean
+  has_reasoning: boolean
+  row_id?: number | null
+  display_kind?: string | null
+  tool_call_id?: string | null
+  tool_call_uid?: string | null
+  tool_calls?: NativeSourceToolCall[] | null
+}
+export interface NativeSourceToolCall {
+  id: string
+  tool_call_uid?: string | null
+}
+/** Independent boundary facts, not permission to erase unknown streamed nodes. A client must still account for source identities, final row and available persisted rows. */
+export interface NativeSourceBoundary {
+  user_message_uid: string | null
+  after_message_uid: string | null
+  prefix_unchanged: boolean
+  compression_unchanged: boolean
+  all_rows_committed: boolean
+  insertion_at_tail?: boolean | null
 }
 /** ``server._status_update`` and the direct emitters (goal / loop / heartbeat / process). */
 export interface StatusUpdatePayload {
@@ -5157,6 +5184,19 @@ export interface SteerConsumedPayload {
   turn_id: string
   pending_ids: string[]
   message_uid: string | null
+  message?: ConsumedSteerMessage | null
+  after_message_uid?: string | null
+  predecessor?: NativeSourceMessage | null
+  source_messages?: NativeSourceMessage[] | null
+  source_boundary?: NativeSourceBoundary | null
+}
+export interface ConsumedSteerMessage {
+  role: 'user'
+  content: string
+  display_kind: 'steer'
+  message_uid: string
+  display_content: string
+  timestamp?: number | null
 }
 export interface SecretaryChangedPayload {
   profile_home: string

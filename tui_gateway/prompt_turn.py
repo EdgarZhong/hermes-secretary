@@ -801,6 +801,10 @@ def _invoke_agent(
         "session.title", sid, {"session_id": _k, "title": t})
     _usage_stop, _usage_thread = _start_usage_ticker(sid, agent)
     usage_returned = False
+    from agent.pending_steer import native_source_boundary
+    prior_source_observer = vars(agent).get("_pending_steer_source_boundary")
+    agent._pending_steer_source_boundary = lambda messages, start: native_source_boundary(
+        agent, messages, start, st.history, st.compression_count)
     try:
         from agent.notification_presentation import notification_turn, event_presentation_muted
         from agent.message_metadata import preserve_user_input_origin
@@ -808,6 +812,10 @@ def _invoke_agent(
             st.result = agent.run_conversation(preserve_user_input_origin(text, run_message), **st.run_kwargs)
             usage_returned = True
     finally:
+        if prior_source_observer is None:
+            vars(agent).pop("_pending_steer_source_boundary", None)
+        else:
+            agent._pending_steer_source_boundary = prior_source_observer
         if not usage_returned:
             from agent.usage_read import abandon_main_turn_usage
             abandon_main_turn_usage(agent)
@@ -888,6 +896,7 @@ def _persisted_turn_receipt(st: _TurnRun, raw: Any, status: str) -> dict | None:
     additionally requires the unchanged pre-turn prefix and no redirected user boundary.
     """
     from agent.context_compressor import _DB_PERSISTED_MARKER
+    from agent.pending_steer import native_source_boundary, native_source_suffix
 
     messages = st.result.get("messages")
     start = getattr(st.agent, "_persist_user_message_idx", None)
@@ -918,9 +927,17 @@ def _persisted_turn_receipt(st: _TurnRun, raw: Any, status: str) -> dict | None:
     prefix_unchanged = start == len(st.history) and all(
         committed_id(before) is not None and committed_id(before) == committed_id(after)
         for before, after in zip(st.history, messages[:start]))
+    compression_unchanged = (type(st.compression_count) is int
+        and st.compression_count == getattr(getattr(st.agent, "context_compressor", None), "compression_count", None))
+    try:
+        source = native_source_suffix(messages, start)
+        boundary = native_source_boundary(st.agent, messages, start, st.history, st.compression_count)
+    except Exception:  # health: allow BLE001 -- additive observation cannot veto the original completion receipt
+        logger.debug("turn source projection unavailable", exc_info=True)
+    else:
+        receipt.update(source_messages=source, source_boundary=boundary)
     receipt["complete"] = bool(
-        prefix_unchanged and type(st.compression_count) is int
-        and st.compression_count == getattr(getattr(st.agent, "context_compressor", None), "compression_count", None)
+        prefix_unchanged and compression_unchanged
         and len(row_ids) == len(tail)
         and sum(message.get("role") == "user" for message in tail) == 1
         and "final_assistant_row_id" in receipt)

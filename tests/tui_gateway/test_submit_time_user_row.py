@@ -128,22 +128,32 @@ def test_completion_receipt_covers_only_committed_current_turn_rows(monkeypatch,
         agent._flush_messages_to_session_db(messages, old)
         payload, _, _ = server._complete_turn_payload(session, st, None, 80)
         rows = db.get_messages_as_conversation(key, include_row_ids=True)
-        assert payload.get("persisted_turn") == {
+        receipt = payload["persisted_turn"]
+        assert {k: v for k, v in receipt.items() if not k.startswith("source_")} == {
             "user_row_id": rows[-2]["_row_id"],
             "row_ids": [row["_row_id"] for row in rows[-2:]],
             "final_assistant_row_id": rows[-1]["_row_id"],
             "complete": True,
         }
+        assert receipt["source_boundary"] == {
+            "user_message_uid": current[0]["message_uid"], "after_message_uid": old[-1]["message_uid"],
+            "prefix_unchanged": True, "compression_unchanged": True, "all_rows_committed": True}
+        assert [(r["message_uid"], r["row_id"]) for r in receipt["source_messages"]] == [
+            (row["message_uid"], row["_row_id"]) for row in current]
+        assert all("content" not in row for row in receipt["source_messages"])
         # Compression can discard an already-streamed segment even while the old prefix survives.
         agent.context_compressor = SimpleNamespace(compression_count=1)
         compressed, _, _ = server._complete_turn_payload(session, st, None, 80)
         assert compressed["persisted_turn"]["complete"] is False
+        assert compressed["persisted_turn"]["source_boundary"]["compression_unchanged"] is False
         # The row address alone does not assert that a subsequently mutated body was committed.
         current[-1].pop("_db_persisted")
         current[-1]["content"] = "not flushed"
         partial, _, _ = server._complete_turn_payload(session, st, None, 80)
-        assert partial["persisted_turn"] == {
+        assert {k: v for k, v in partial["persisted_turn"].items() if not k.startswith("source_")} == {
             "user_row_id": rows[-2]["_row_id"], "row_ids": [rows[-2]["_row_id"]], "complete": False}
+        assert partial["persisted_turn"]["source_boundary"]["all_rows_committed"] is False
+        assert "row_id" not in partial["persisted_turn"]["source_messages"][-1]
         # No authoritative current-turn anchor: never infer from matching text or positions in old history.
         agent._persist_user_message_idx = None
         missing, _, _ = server._complete_turn_payload(session, st, None, 80)
@@ -153,6 +163,44 @@ def test_completion_receipt_covers_only_committed_current_turn_rows(monkeypatch,
         st.result["messages"] = old
         stale, _, _ = server._complete_turn_payload(session, st, None, 80)
         assert "persisted_turn" not in stale
+    finally:
+        server._sessions.pop(sid, None)
+        db.close()
+
+
+def test_completion_source_boundary_rejects_redirected_or_rewritten_prefix(monkeypatch, tmp_path):
+    from tui_gateway.prompt_turn import _TurnRun
+
+    db = SessionDB(db_path=tmp_path / "state.db")
+    sid, key = _desktop_session(monkeypatch, db)
+    session = server._sessions[sid]
+    monkeypatch.setattr(server, "_get_usage", lambda agent: {})
+    try:
+        server._ensure_session_db_row(session)
+        agent = _flush_agent(db, key)
+        old = [{"role": "user", "content": "old"}, {"role": "assistant", "content": "old answer"}]
+        agent._flush_messages_to_session_db(old, [])
+        current = [{"role": "user", "content": "new"}, {"role": "assistant", "content": "answer"}]
+        agent._persist_user_message_idx = len(old)
+        agent.context_compressor = SimpleNamespace(compression_count=0)
+        agent._flush_messages_to_session_db(old + current, old)
+        # A rewritten prefix is still fully committed but is not the original source boundary.
+        st = _TurnRun(agent, None, None, False, history=old, compression_count=0,
+                      result={"messages": [old[1], old[0], *current], "final_response": "answer"})
+        payload, _, _ = server._complete_turn_payload(session, st, None, 80)
+        assert payload["persisted_turn"]["complete"] is False
+        assert payload["persisted_turn"]["source_boundary"]["prefix_unchanged"] is False
+        # Redirecting the user cursor to a later User must not authorize whole-turn replacement.
+        from agent.prompt_builder import steer_user_row
+        steer = steer_user_row("correction")
+        final = {"role": "assistant", "content": "final"}
+        messages = [*old, *current, steer, final]
+        agent._persist_user_message_idx = len(messages) - 2
+        agent._flush_messages_to_session_db(messages, old)
+        st.result = {"messages": messages, "final_response": "final"}
+        payload, _, _ = server._complete_turn_payload(session, st, None, 80)
+        assert payload["persisted_turn"]["complete"] is False
+        assert payload["persisted_turn"]["source_boundary"]["prefix_unchanged"] is False
     finally:
         server._sessions.pop(sid, None)
         db.close()

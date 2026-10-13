@@ -159,6 +159,53 @@ def test_rpc_consume_withdraw_and_one_real_persisted_row(live, monkeypatch):
     assert any(kind == "steer.consumed" for kind, _, _ in live.frames)
 
 
+def test_consumed_event_exposes_real_preflush_insertion_and_completion_sources(live, monkeypatch):
+    from tui_gateway.contracts.registry import check_payload
+
+    gate = begin(live, monkeypatch, tools=True, pause_second=True)
+    one = submit(gate.turn, "first", "one")
+    two = submit(gate.turn, "second", "two")
+    gate.release.set()
+    assert gate.second_entered.wait(5)
+    consumed = [payload for kind, _, payload in live.frames if kind == "steer.consumed"]
+    assert len(consumed) == 1
+    payload = consumed[0]
+    check_payload("steer.consumed", payload)
+    message = payload["message"]
+    assert payload["pending_ids"] == [one["pending_id"], two["pending_id"]]
+    assert message["role"] == "user" and message["display_kind"] == "steer"
+    assert message["message_uid"] == payload["message_uid"]
+    assert message["display_content"] == "one\ntwo"
+    assert "one\ntwo" in message["content"] and "timestamp" not in message
+    prefix = payload["source_messages"]
+    predecessor = payload["predecessor"]
+    assert predecessor["role"] == "tool" and predecessor["tool_call_id"] == "call_probe"
+    assert predecessor["message_uid"] == payload["after_message_uid"] == prefix[-1]["message_uid"]
+    assert prefix[-1]["row_id"] and all("content" not in row for row in prefix)
+    assert message["message_uid"] not in [row["message_uid"] for row in prefix]
+    assert payload["source_boundary"] == {
+        "user_message_uid": prefix[0]["message_uid"], "after_message_uid": None,
+        "prefix_unchanged": True, "compression_unchanged": True,
+        "all_rows_committed": True, "insertion_at_tail": True}
+    assert all(row["message_uid"] != message["message_uid"] for row in live.db.get_messages("stored"))
+    gate.second_release.set()
+    settled(live)
+    durable = live.db.get_messages("stored")
+    steer = next(row for row in durable if row["message_uid"] == message["message_uid"])
+    assert steer["content"] == message["content"] and steer["display_kind"] == "steer"
+    assert "_row_id" not in message and "_db_persisted" not in message
+    complete = [payload for kind, _, payload in live.frames if kind == "message.complete"][-1]
+    check_payload("message.complete", complete)
+    receipt = complete["persisted_turn"]
+    assert receipt["complete"] is False  # preserve conservative one-User condition
+    assert receipt["source_boundary"]["all_rows_committed"] is True
+    assert receipt["source_boundary"]["prefix_unchanged"] is True
+    assert receipt["source_boundary"]["compression_unchanged"] is True
+    assert [(row["message_uid"], row["row_id"]) for row in receipt["source_messages"]] == [
+        (row["message_uid"], row["id"]) for row in durable]
+    assert "_pending_steer_source_boundary" not in vars(live.agent)
+
+
 def test_natural_finish_uses_one_followup_and_late_ack_rejected(live, monkeypatch):
     gate = begin(live, monkeypatch)
     receipt = submit(gate.turn, "a", "a\nb")

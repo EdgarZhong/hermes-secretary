@@ -3,6 +3,7 @@ from pydantic import Field
 
 from .base import Params, Payload, Result
 from .common import SessionParams
+from .events import NativeSourceBoundary, NativeSourceMessage
 from .registry import event, method
 from typing import Literal
 
@@ -88,10 +89,24 @@ class SteerPendingChangedPayload(Payload):
     turn_id: str | None
 
 
+class ConsumedSteerMessage(Payload):
+    role: Literal["user"]
+    content: str
+    display_kind: Literal["steer"]
+    message_uid: str
+    display_content: str
+    timestamp: float | None = None
+
+
 class SteerConsumedPayload(Payload):
     turn_id: str
     pending_ids: list[str]
     message_uid: str | None
+    message: ConsumedSteerMessage | None = None
+    after_message_uid: str | None = None
+    predecessor: NativeSourceMessage | None = None
+    source_messages: list[NativeSourceMessage] | None = None
+    source_boundary: NativeSourceBoundary | None = None
 
 
 method("session.steer_pending", params=SteerPendingParams, result=SteerPendingResult,

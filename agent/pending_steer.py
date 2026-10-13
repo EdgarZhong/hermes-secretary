@@ -302,6 +302,76 @@ def reject_native_pending(agent, reason, *, include_reserved=False):
         notify(agent)
 
 
+def native_source_message(message):
+    """Observer-only identity/address, with no transcript or provider payload bytes."""
+    from agent.context_compressor import _DB_PERSISTED_MARKER
+    from agent.message_metadata import message_uid_or_none
+    result = {"message_uid": message_uid_or_none(message), "role": message.get("role", "unknown"),
+              "has_content": bool(message.get("content")),
+              "has_reasoning": bool(message.get("reasoning") or message.get("reasoning_content"))}
+    row_id = message.get("_row_id")
+    if message.get(_DB_PERSISTED_MARKER) and type(row_id) is int and row_id > 0:
+        result["row_id"] = row_id
+    for source, target in (("display_kind", "display_kind"), ("tool_call_id", "tool_call_id"),
+                           ("_tool_call_uid", "tool_call_uid")):
+        if isinstance(message.get(source), str) and message[source]:
+            result[target] = message[source]
+    if calls := message.get("tool_calls"):
+        uids = message.get("_tool_call_uids") or {}
+        result["tool_calls"] = [{"id": call["id"], **({"tool_call_uid": uids[call["id"]]}
+                                if call["id"] in uids else {})}
+                               for call in calls if isinstance(call, dict) and isinstance(call.get("id"), str)]
+    return result
+
+
+def native_source_suffix(messages, start):
+    """Only the actual current user boundary's suffix; an unknown boundary has no invented prefix."""
+    if (type(start) is not int or not 0 <= start < len(messages)
+            or not isinstance(messages[start], dict) or messages[start].get("role") != "user"):
+        return None
+    return [native_source_message(message) for message in messages[start:] if isinstance(message, dict)]
+
+
+def native_source_boundary(agent, messages, start, history, compression_count):
+    """Facts anchored in the host's pre-turn snapshot; no relaxed completion assertion."""
+    from agent.message_metadata import message_uid_or_none
+    source = native_source_suffix(messages, start)
+    if source is None:
+        return None
+    prefix_unchanged = start == len(history) and all(
+        (before_id := native_source_message(before).get("row_id")) is not None
+        and before_id == native_source_message(after).get("row_id")
+        for before, after in zip(history, messages[:start]))
+    return {"user_message_uid": message_uid_or_none(messages[start]),
+            "after_message_uid": message_uid_or_none(messages[start - 1]) if start else None,
+            "prefix_unchanged": prefix_unchanged,
+            "compression_unchanged": type(compression_count) is int and compression_count == getattr(
+                getattr(agent, "context_compressor", None), "compression_count", None),
+            "all_rows_committed": len(source) == len(messages) - start
+                and all(message.get("row_id") is not None for message in source)}
+
+
+def native_insertion_projection(agent, messages, position):
+    """Observe the insertion under its owner lock; observer failure cannot veto the insert."""
+    try:
+        predecessor = native_source_message(messages[position - 1]) if position else None
+        projection = {"after_message_uid": predecessor["message_uid"] if predecessor else None,
+                      "predecessor": predecessor}
+        start = getattr(agent, "_persist_user_message_idx", None)
+        prefix = messages[:position]
+        if (source := native_source_suffix(prefix, start)) is not None:
+            projection["source_messages"] = source
+        observer = vars(agent).get("_pending_steer_source_boundary")
+        boundary = observer(prefix, start) if callable(observer) else None
+        if boundary is not None:
+            projection["source_boundary"] = {**boundary, "insertion_at_tail": position == len(messages)}
+        return projection
+    except Exception:  # health: allow BLE001 -- optional observation must not change the native insertion
+        import logging
+        logging.getLogger(__name__).debug("pending source projection unavailable", exc_info=True)
+        return {}
+
+
 def append_claimed_batch(agent, messages, batch, *, index=None):
     """Insertion and occurrence disposition have one winner against withdraw."""
     from agent.message_metadata import stamp_message_uid
@@ -311,16 +381,24 @@ def append_claimed_batch(agent, messages, batch, *, index=None):
         entries = owner.claimed_entries(batch)
         if not entries:
             return False
-        row = steer_user_row("\n".join(entry.text for entry in entries))
+        author_text = "\n".join(entry.text for entry in entries)
+        row = steer_user_row(author_text)
         uid = stamp_message_uid(row)
+        # list.insert normalizes out-of-range/negative indexes. Capture THAT native
+        # position rather than assuming every call is a tail append.
+        position = len(messages) if index is None else min(
+            max(index if index >= 0 else len(messages) + index, 0), len(messages))
+        projection = native_insertion_projection(agent, messages, position)
         if index is None:
             messages.append(row)
         else:
             messages.insert(index, row)
-        ids = [entry.pending_id for entry in entries]
+        payload = {"turn_id": batch.turn_id, "pending_ids": [entry.pending_id for entry in entries],
+                   "message_uid": uid, "message": {**row, "display_content": author_text},
+                   **projection}
         for entry in entries:
             entry.state, entry.text, entry.claim, entry.message_uid = "consumed", "", None, uid
-    notify(agent, "steer.consumed", {"turn_id": batch.turn_id, "pending_ids": ids, "message_uid": uid})
+    notify(agent, "steer.consumed", payload)
     notify(agent)
     return True
 
