@@ -8,7 +8,7 @@ from types import SimpleNamespace
 import pytest
 
 from hermes_state_secretary_notebook import NotebookError
-from secretary.notebook_model import NotebookValidationError
+from secretary.notebook_model import NotebookValidationError, NotebookWorkingState
 from secretary.notebook_render import render_notebook, show_notebook
 from secretary.notebook_store import NotebookStore
 from secretary.noting_tools import (
@@ -114,6 +114,146 @@ def test_secretary_task_explicit_delivery_mode_and_registry_version_identity(own
     state.commit("b")
     assert deferred["schedule"]["delivery_mode"] == "deferred"
     assert db._read_one("SELECT delivery_semantics FROM secretary_schedule_registry")[0] == "system_reminder"
+
+
+@pytest.mark.parametrize("kwargs", [
+    {}, {"expression": None}, {"expression": ""}, {"expression": "   "},
+    {"expression": "not a time"}, {"expression": "in 1h", "delivery_mode": None},
+    {"expression": "in 1h", "delivery_mode": "later"},
+])
+def test_secretary_task_create_requires_valid_schedule_without_allocating_item(owner, kwargs):
+    db, ref = owner
+    state = NotebookStore(db, ref)
+    before = state.snapshot_state()
+    with pytest.raises(ValueError):
+        state.create("secretary_task", {"task": "review delivery", "purpose": "accept results"}, **kwargs)
+    assert state.snapshot_state() == before
+    assert db._read_one("SELECT COUNT(*) FROM secretary_notebook_item")[0] == 0
+    assert db.notebook_current(ref) is None
+
+
+@pytest.mark.parametrize("expression,kind", [
+    ("30m", "interval"), ("in 30m", "once"), ("every monday 9am", "cron"),
+    ("0 9 * * *", "cron"), ("2035-01-01T09:00:00+08:00", "once"),
+])
+@pytest.mark.parametrize("delivery_mode,semantics", [("instant", "user_reminder"), ("deferred", "system_reminder")])
+def test_secretary_task_native_time_forms_and_modes_commit(owner, expression, kind, delivery_mode, semantics):
+    db, ref = owner
+    state = NotebookStore(db, ref)
+    task = state.create("secretary_task", {"task": "review delivery", "purpose": "accept results"},
+                        expression=expression, delivery_mode=delivery_mode)
+    state.commit("a")
+    assert task["schedule"]["canonical_schedule"]["kind"] == kind
+    assert db._read_one("SELECT delivery_semantics FROM secretary_schedule_registry")[0] == semantics
+    assert NotebookStore(db, ref).show()["assistant"] == [task]
+
+
+def test_secretary_task_terminal_transition_stops_delivery_without_clearing_schedule(owner):
+    db, ref = owner
+    state = NotebookStore(db, ref)
+    task = state.create("secretary_task", {"task": "review delivery", "purpose": "accept results"},
+                        expression="every 1h", delivery_mode="instant")
+    state.commit("a")
+    assert db._read_one("SELECT enabled FROM secretary_schedule_registry")[0] == 1
+    running = state.transition_status(task["entry_id"], "running")
+    done = state.transition_status(running["entry_id"], "done")
+    state.commit("b")
+    assert done["schedule"] == task["schedule"]
+    assert db._read_one("SELECT enabled FROM secretary_schedule_registry")[0] == 0
+    assert NotebookStore(db, ref).show()["assistant"] == [done]
+
+
+@pytest.mark.parametrize("status", ["pending", "running", "done", "failed", "dropped"])
+def test_secretary_task_every_status_rejects_cancel_and_can_archive_directly(owner, status):
+    db, ref = owner
+    state = NotebookStore(db, ref)
+    task = state.create("secretary_task", {"task": "review delivery", "purpose": "accept results"},
+                        status=status, expression="in 1h", delivery_mode="deferred")
+    initial = state.commit("a")
+    before = state.snapshot_state()
+    with pytest.raises(ValueError, match="notebook_manage archive.*schedule_update"):
+        state.schedule_cancel(task["entry_id"])
+    assert state.snapshot_state() == before
+    assert db._read_one("SELECT COUNT(*) FROM secretary_notebook_item")[0] == 1
+    assert db.notebook_current(ref)["snapshot_id"] == initial
+    archived = state.archive(task["entry_id"])
+    assert archived["status"] == status and archived["schedule"] == task["schedule"]
+    final = state.commit("b")
+    assert NotebookStore(db, ref).show()["assistant"] == []
+    assert db.notebook_snapshot_audit(initial)["payload"]["assistant"] == [task]
+    assert db.notebook_snapshot_audit(final)["payload"]["assistant"] == [archived]
+    row = db._read_one("SELECT * FROM secretary_schedule_registry")
+    assert row is None or not row["enabled"]
+
+
+@pytest.mark.parametrize("status", ["pending", "running", "done", "failed", "dropped"])
+@pytest.mark.parametrize("fault", ["missing", "null", "cancelled", "mode", "time"])
+def test_secretary_task_complete_snapshot_gate_rejects_invalid_schedule(owner, status, fault):
+    from secretary.notebook_items import insert_item_conn
+
+    db, ref = owner
+    state = NotebookStore(db, ref)
+    task = state.create("secretary_task", {"task": "review delivery", "purpose": "accept results"},
+                        status=status, expression="in 1h", delivery_mode="deferred")
+    initial = state.commit("a")
+    malformed = state.snapshot_state()
+    entry = malformed["assistant"][0]
+    faults = {
+        "missing": lambda: entry.pop("schedule"),
+        "null": lambda: entry.update(schedule=None),
+        "cancelled": lambda: entry["schedule"].update(cancelled=True),
+        "mode": lambda: entry["schedule"].pop("delivery_mode"),
+        "time": lambda: entry["schedule"].update(canonical_schedule={"kind": "once", "run_at": "not a timestamp"}),
+    }
+    faults[fault]()
+    # Fault injection creates an exact immutable malformed version, so the semantic
+    # commit gate is tested without merely tripping the separate body-equality gate.
+    entry["entry_id"] = db._execute_write(lambda conn: insert_item_conn(conn, ref, entry, task["entry_id"]))
+    before_rows = [dict(row) for row in db._read_all("SELECT * FROM secretary_schedule_registry")]
+    with pytest.raises(ValueError):
+        NotebookWorkingState(ref, malformed)
+    with pytest.raises(NotebookError):
+        db.notebook_commit_snapshot(ref, malformed, anchor_message_uid="b")
+    assert db.notebook_current(ref)["snapshot_id"] == initial
+    assert db._read_one("SELECT COUNT(*) FROM secretary_notebook_snapshots")[0] == 1
+    assert [dict(row) for row in db._read_all("SELECT * FROM secretary_schedule_registry")] == before_rows
+    assert db.notebook_snapshot_audit(initial)["payload"]["assistant"] == [task]
+
+
+def test_secretary_task_actual_tools_require_schedule_reschedule_and_archive(owner):
+    db, ref = owner
+    child = SimpleNamespace(_session_db=db, _secretary_parent_conversation_ref=ref,
+                            _secretary_noting_profile="NOTING", _secretary_noting_child=True)
+    initialize_notebook_work(child, trigger_type="idle")
+    args = {"operation": "create", "entry_type": "secretary_task",
+            "fields": {"task": "review delivery", "purpose": "accept results"}}
+    refused = json.loads(notebook_manage(child, args))
+    assert not refused["success"] and "Schedule expression" in refused["error"]
+    made = json.loads(notebook_manage(child, {**args, "expression": "in 1h", "delivery_mode": "instant"}))
+    assert made["success"]
+    initial = child._noting_notebook_store.commit("a")
+    entry_id = made["entry"]["entry_id"]
+    refused = json.loads(notebook_schedule(child, {"operation": "schedule_cancel", "entry_id": entry_id}))
+    assert not refused["success"] and "notebook_manage archive" in refused["error"]
+    before = child._noting_notebook_store.snapshot_state()
+    for expression in (None, "", "not a time"):
+        refused = json.loads(notebook_schedule(child, {"operation": "schedule_update", "entry_id": entry_id,
+                                                       "expression": expression}))
+        assert not refused["success"]
+        assert child._noting_notebook_store.snapshot_state() == before
+    changed = json.loads(notebook_schedule(child, {"operation": "schedule_update", "entry_id": entry_id,
+                                                  "expression": "every 2h"}))
+    assert changed["success"] and changed["entry"]["schedule"]["delivery_mode"] == "instant"
+    changed_id = changed["entry"]["entry_id"]
+    switched = json.loads(notebook_schedule(child, {"operation": "schedule_update", "entry_id": changed_id,
+                                                   "expression": "in 2h", "delivery_mode": "deferred"}))
+    assert switched["success"] and switched["entry"]["schedule"]["delivery_mode"] == "deferred"
+    archived = json.loads(notebook_manage(child, {"operation": "archive", "entry_id": switched["entry"]["entry_id"]}))
+    assert archived["success"] and archived["state"]["assistant"] == []
+    assert archived["entry"]["status"] == "pending"
+    child._noting_notebook_store.commit("b")
+    assert db.notebook_snapshot_audit(initial)["payload"]["assistant"][0]["schedule"]["delivery_mode"] == "instant"
+    assert not db._read_one("SELECT enabled FROM secretary_schedule_registry")[0]
 
 
 def test_three_actual_tool_results_old_id_and_no_fused_or_restore(owner):

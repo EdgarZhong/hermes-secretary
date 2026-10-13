@@ -1,6 +1,12 @@
 # 第二轮实施计划
 
+> 当前R2-C73–C75：首轮Verification不通过（完整报告已交回）；附件后端合同整改与assistant-ui只读研究恢复。研究已完整交回且Main亲审，按用户“然后开始”释放独立前端整改树；Usage成功数据可见性纳入后续整改。
+
+R2-C66/C67增量：用户确认8轮/32条旧回执窗口及聊天历史首次200/更多200。前端待审更新为 `002f7a27fcf7313491f0301e143df7d3b6148088`。Main直接完成微小分页修改并亲审两文件diff；定向既有 `history range preservation` 测试1通过/59未选（205ms），覆盖首次200、更多至400、新tail保留401；typecheck通过，build通过（5.51s、保留chunk-size提示）。命令：前端 `npm test -- src/core/controller.test.ts -t 'history range preservation'`、`npm run typecheck`、`npm run build`，各一次。证据 `.hermes-dev/round2-verification/paging-{test,typecheck,build}.log`；不新跑模型/大包，不把未选测试写成通过。独立审查者已接收新版本及原始用户授权，须按受影响条款核查。
+
 ## 目标与依据
+
+R2-C68：用户授权首轮Verification完成后由GPT-6.1 Sol修复审出问题，Main在完整交回后亲审与验收，不逐步监工。开发服务已恢复供用户真实使用；具体状态和现场反馈只在根CLAUDE同步。当前4项初步违规及Main提案保留，等待首轮完整报告再确定修复白名单。
 
 依据 [Snapshot Index](snapshot-index.md) 与 [baseline.txt](baseline.txt)，冻结提交 `37ad76f5dfac02d4774d5e0faea55911b5fb8de9`。交付 06 divisions 0–4 的完整 Web V1，以及 V1.6 移交未闭合验收；division 5 为明确排除范围。规格本轮不改。先打通新建/恢复会话→真实提交→流式结果，再完成控制、秘书和文件功能；不引入 BFF、持久浏览器历史或第二执行循环。后端在当前 main；前端 `/Users/edgar/code/hermes-secretary-web`，无远端。过程文档只在后端。
 
@@ -32,6 +38,15 @@ T0审计已由主会话接收，S01–S05/I01–I03/C01为新增V1行为缺口�
 
 | 编号 | 要求与触发条件 | 当前事实与影响 | 优先级 | 修复负责人 | 关闭与复验条件 | 状态 |
 |---|---|---|---|---|---|---|
+| U-R2-05 | C80，侧栏须保原Mock视觉并按更新时间分组 | 正式App单Conversations section且缺Mock专属元素绑定的第二分隔线 | P2 | 前端整改owner | 正式Today/Yesterday/过去7天/30天/更早的真实更新时间组，Files/主题分隔恢复，四视口/主题，后台刷新无位移 | Main已定位，集中整改 |
+| U-R2-04 | C78，Instant触发源先于新Turn输出展示 | 用户实测Thinking先见、源Reminder直到Turn结束才上Timeline | P1 | Main追原生发布，前端研究owner核投影 | 原生入場→事件→状态→DOM时序证据，Reminder及时出现且与后续Thinking/Assistant顺序正确、终态不重复 | 用户已报，待定位；前端暂不实施 |
+| U-R2-01 | C69，Composer草稿独立编辑撤销 | 用户实用Ctrl+Z不可用，根因待查 | P1 | 首轮报告后键盘Sol | 实际浏览器文字输入/替换/连续撤销与重做；不触发后端Rewind、不串会话草稿 | 用户已报，未修复 |
+| U-R2-03 | C72，Turn active/结束列表刷新应稳定 | 侧边栏会话列表在边界刷新时闪动 | P2 | timeline_latency前端Sol | 真实Turn边界保已有列表，标题/排序/新建仍正确更新，加载/错误恢复不清空已有内容 | 用户已报，待首轮后实施 |
+| U-R2-02 | C70纠正，Timeline显示远落后模型，Stop后仍缓慢补显示 | Stop失效推断撤回；Main日志确认一次explicit Stop至Turn interrupted为95ms，显示积压层未定位 | P1 | timeline_latency Sol先只读调查，首轮报告后释放实施 | server事件→client接收→状态→实际DOM具区别力的时序/负载证据；及时反映真实终态，无人工限速、无丢失重排 | 用户已报，后端停止证据已核；根因/修复待交回 |
+| V-R2-01 | 06 §0.5/§2.1旧REST/RPC合同保留，新能力新名 | `file.attach`扩展分片/stat参数与结果shape，C30容量授权未豁免兼容约束 | P1 | Main提案，实施owner待初审集中安排 | 恢复旧合同，新名RPC复用原owner；新旧正式接线、重试/取消/metadata及上传提交证据由独立复审核定 | 初步违规；Main认可，提案已交审查者，未改产品 |
+| V-R2-02 | 活动Turn Reply/Edit须走Rewind语义与确认 | primaryAction仍Steer，perform调用steer且没有确认 | P1 | 待初审后Main集中安排 | 正式UI/controller选择Rewind路径及busy原子机制，确认/取消/失败保稿证据 | 审查者已落生产反例，待Main亲审 |
+| V-R2-03 | Edit暂时截断目标之后Timeline | history/live截断但temporary原样透传，Notebook失锚跳顶部且Pending仍显示 | P2 | 待初审后Main集中安排 | 临时卡片及Pending一并遵守编辑截断，取消编辑恢复 | 审查者已落生产反例，待Main亲审 |
+| V-R2-04 | Reply/Edit恢复原用户正文与附件 | beginEdit只strip引用，真实普通附件row的Attached Context附录进入草稿 | P2 | 待初审后Main集中安排 | 正式存储消息还原作者输入与附件，保模型真实上下文，不带入注入附录 | 审查者已落生产反例，待Main亲审 |
 | R2-F20 | 06组合Compaction载体保真实来源角色 | 真实压缩row121原role=assistant，App DisclosureNode对realText硬编码user并提供Reply | P1 | 前端Sol | 按真实role展示原文，仅user可Reply；React反例及实际carrier复验 | bfecc9f已提交；Main实际row121复验为Assistant且无Reply，carrier-role-final.json，开发缺陷关闭 |
 | R2-F17 | 06 unknown acceptance 不盲重发 | Turn结束后旧op查询被前端active gate阻挡，普通Send可能重复提交 | P1 | 前端Sol | 同一owner保存原turn/op，Check/Send仅查询旧op，明确receipt前不发新请求；生产反例通过 | Main已接收修复及生产Controller证据，30d3135 |
 | R2-F18 | 06 Pending 真实失效重取 | singleflight中pending_changed复用旧响应，漏掉在途变化 | P1 | 前端Sol | 唯一owner失效代次，过期结果不发布并顺序重读；生产并发反例通过 | Main已接收修复及生产Controller证据，30d3135 |
@@ -275,3 +290,19 @@ Main前端最终快照611b734；visual用户查看树86fa280保留全部既有un
 本次Main新增实际证据在ignored `.hermes-dev/round2-evidence/main-final-integration/repair-*`：Model/Reasoning当前项高亮及无Current行；真实历史附件正文移除与同工具双分区；真实Noting idle/Memo0。用户旧页HMR遗留断连尚未刷新，Main独立新页连接正常，待统一native新版本后验证断线保状态。用户授权任意必要真实DeepSeek调用；最终新Turn/Steer/像素/流式/usage/视觉收尾实测仍未完成，阶段未闭合；严格停在独立Verification派遣前。
 
 整改最终接收：原生产品4443aa7/前端c55120f/visual fc18614，R01–R13开发期闭合与具体证据/失败边界见final-delivery当前章节；根CLAUDE唯一动态总表已更新。新增Main实际会话122700_433f46：像素73729、连续Tool/Steer/Usage、Notebook固定位置/刷新、单确认Rewind、exit7 Failed；actual服务停启确认状态保留+token自动恢复。最终build/types与冻结health0/0；同版本有效包按报告并集复用，无全套/两门禁。
+
+
+### 2026-10-14 夜间托管最新执行覆盖
+
+- Main：亲审前端及C84产品差异/正式接线；自行最小Prompt与用户原话对账；集成快照、证据接收和资源控制。Prompt原Memo不动，硬清理gate不实施。
+- frontend owner：真实新附件RPC/模型及Instant→WS→内置浏览器DOM代表链；用户Chrome禁用；资源自查后重任务仅Main安排一个执行方。既有有效测试/性能证据复用。
+- cleanup_mechanism_proposal：单文档只读研究，不改产品/Prompt/测试/服务。涉及额外清理类型、统一同步机制、forced/overflow及下一轮义务承接均为待审提案。
+- Core owner：C84交回/33distinct机制证据复用，Main亲审尚未完成；当前仅资源轻量复盘。
+- prompt_review_v3：用户要求停止，只有用户另要求的资源自查，不继续Prompt任务。
+- 重任务并发：浏览器/真实模型/构建/测试先暂停，资源审计后串行安排，不为已交回有效证据复跑。不会停止用户进程。
+- 停止点：本轮授权开发/联调/阶段提交完成后交付；第二轮Verification不启动，也不把本阶段写成整轮独立验收通过。
+
+
+### Main阶段集成验证与续接（2026-10-14）
+
+C84/BE附件/Instant三机制包与前端完整整改包已亲审；Main只补Prompt相关真实spawn/prefix用例、active Usage新有效数据行为与当前build。日志/失败修复见各owner报告新Main段，不重跑全包。staged footguns/ruff/health当前pass（0阻断、未改文件既有HX012提示1）。当前唯一重任务执行方native_integration，旧附件真实模型terminal证据复用；IAB现真实可用，须关闭旧报告能力阻塞并取得新的实际链，旧Chrome不是新IAB证明。Main负责stage快照/接线，不启动第二轮Verification。

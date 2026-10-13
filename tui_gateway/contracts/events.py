@@ -15,6 +15,8 @@ closed, so a drifted emitter fails the suite (``registry.check_payload`` raises 
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import Field
 
 from .base import JsonValue, Payload, WireEnum
@@ -202,6 +204,31 @@ class NativeSourceBoundary(Payload):
     compression_unchanged: bool
     all_rows_committed: bool
     insertion_at_tail: bool | None = None
+
+
+class CommittedUserSource(Payload):
+    """The one actually committed driving row; no API sidecar or synthetic display kind."""
+
+    message_uid: str
+    row_id: int
+    role: Literal["user"]
+    content: str
+    timestamp: float
+    display_kind: str | None = None
+    display_metadata: JsonValue | None = None
+
+
+class MessageSourceCommittedPayload(Payload):
+    turn_id: str
+    stored_session_id: str
+    conversation_ref: str
+    message: CommittedUserSource
+    source_messages: list[NativeSourceMessage]
+    source_boundary: NativeSourceBoundary
+
+
+event("message.source_committed", MessageSourceCommittedPayload,
+      doc="An admitted Instant Reminder's real driving user row committed before the first model request.")
 
 
 class PersistedTurn(Payload):

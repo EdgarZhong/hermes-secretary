@@ -997,6 +997,60 @@
       }
     },
     {
+      "name": "file.attachment_info",
+      "summary": "Read an attachment's actual size in the session's readable roots without staging bytes.",
+      "params": [
+        {
+          "name": "params",
+          "schema": {
+            "$ref": "#/components/schemas/FileAttachmentInfoParams"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/FileAttachmentInfoResult"
+        }
+      }
+    },
+    {
+      "name": "file.upload_abort",
+      "summary": "Remove this runtime session's incomplete upload without revoking completed files.",
+      "params": [
+        {
+          "name": "params",
+          "schema": {
+            "$ref": "#/components/schemas/FileUploadAbortParams"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/FileUploadAbortResult"
+        }
+      }
+    },
+    {
+      "name": "file.upload_chunk",
+      "summary": "Append one bounded attachment chunk; publish an @file: ref only on completion.",
+      "params": [
+        {
+          "name": "params",
+          "schema": {
+            "$ref": "#/components/schemas/FileUploadChunkParams"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/FileUploadChunkResult"
+        }
+      }
+    },
+    {
       "name": "free_tier.ack_notice",
       "summary": "Mark the one-time availability notice as shown on the free-tier identity.",
       "params": [
@@ -8557,6 +8611,64 @@
         "title": "CommandsCatalogResult",
         "type": "object"
       },
+      "CommittedUserSource": {
+        "additionalProperties": false,
+        "description": "The one actually committed driving row; no API sidecar or synthetic display kind.",
+        "properties": {
+          "message_uid": {
+            "title": "Message Uid",
+            "type": "string"
+          },
+          "row_id": {
+            "title": "Row Id",
+            "type": "integer"
+          },
+          "role": {
+            "const": "user",
+            "title": "Role",
+            "type": "string"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "number"
+          },
+          "display_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Display Kind"
+          },
+          "display_metadata": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Display Metadata"
+          }
+        },
+        "required": [
+          "message_uid",
+          "row_id",
+          "role",
+          "content",
+          "timestamp"
+        ],
+        "title": "CommittedUserSource",
+        "type": "object"
+      },
       "CompactionCancelParams": {
         "additionalProperties": false,
         "properties": {
@@ -14496,66 +14608,6 @@
             ],
             "default": null,
             "title": "Name"
-          },
-          "upload_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Upload Id"
-          },
-          "offset": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Offset"
-          },
-          "total_bytes": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Total Bytes"
-          },
-          "abort_upload": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Abort Upload"
-          },
-          "metadata_only": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "title": "Metadata Only"
           }
         },
         "required": [
@@ -14590,8 +14642,27 @@
           "uploaded": {
             "title": "Uploaded",
             "type": "boolean"
+          }
+        },
+        "required": [
+          "attached",
+          "name",
+          "path",
+          "ref_path",
+          "ref_text",
+          "uploaded"
+        ],
+        "title": "FileAttachResult",
+        "type": "object"
+      },
+      "FileAttachmentInfoParams": {
+        "additionalProperties": false,
+        "properties": {
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
           },
-          "upload_id": {
+          "profile": {
             "anyOf": [
               {
                 "type": "string"
@@ -14601,19 +14672,236 @@
               }
             ],
             "default": null,
-            "title": "Upload Id"
+            "title": "Profile"
           },
-          "received_bytes": {
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "path"
+        ],
+        "title": "FileAttachmentInfoParams",
+        "type": "object"
+      },
+      "FileAttachmentInfoResult": {
+        "additionalProperties": false,
+        "properties": {
+          "attached": {
+            "title": "Attached",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "ref_path": {
+            "title": "Ref Path",
+            "type": "string"
+          },
+          "ref_text": {
+            "title": "Ref Text",
+            "type": "string"
+          },
+          "uploaded": {
+            "title": "Uploaded",
+            "type": "boolean"
+          },
+          "size_bytes": {
+            "title": "Size Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "attached",
+          "name",
+          "path",
+          "ref_path",
+          "ref_text",
+          "uploaded",
+          "size_bytes"
+        ],
+        "title": "FileAttachmentInfoResult",
+        "type": "object"
+      },
+      "FileUploadAbortParams": {
+        "additionalProperties": false,
+        "properties": {
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          },
+          "profile": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
             "default": null,
-            "title": "Received Bytes"
+            "title": "Profile"
+          },
+          "upload_id": {
+            "title": "Upload Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "upload_id"
+        ],
+        "title": "FileUploadAbortParams",
+        "type": "object"
+      },
+      "FileUploadAbortResult": {
+        "additionalProperties": false,
+        "properties": {
+          "attached": {
+            "title": "Attached",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "ref_path": {
+            "title": "Ref Path",
+            "type": "string"
+          },
+          "ref_text": {
+            "title": "Ref Text",
+            "type": "string"
+          },
+          "uploaded": {
+            "title": "Uploaded",
+            "type": "boolean"
+          },
+          "upload_id": {
+            "title": "Upload Id",
+            "type": "string"
+          },
+          "received_bytes": {
+            "title": "Received Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "attached",
+          "name",
+          "path",
+          "ref_path",
+          "ref_text",
+          "uploaded",
+          "upload_id",
+          "received_bytes"
+        ],
+        "title": "FileUploadAbortResult",
+        "type": "object"
+      },
+      "FileUploadChunkParams": {
+        "additionalProperties": false,
+        "properties": {
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "upload_id": {
+            "title": "Upload Id",
+            "type": "string"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total_bytes": {
+            "title": "Total Bytes",
+            "type": "integer"
+          },
+          "data_url": {
+            "title": "Data Url",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Name"
+          }
+        },
+        "required": [
+          "session_id",
+          "upload_id",
+          "offset",
+          "total_bytes",
+          "data_url"
+        ],
+        "title": "FileUploadChunkParams",
+        "type": "object"
+      },
+      "FileUploadChunkResult": {
+        "additionalProperties": false,
+        "properties": {
+          "attached": {
+            "title": "Attached",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "ref_path": {
+            "title": "Ref Path",
+            "type": "string"
+          },
+          "ref_text": {
+            "title": "Ref Text",
+            "type": "string"
+          },
+          "uploaded": {
+            "title": "Uploaded",
+            "type": "boolean"
+          },
+          "upload_id": {
+            "title": "Upload Id",
+            "type": "string"
+          },
+          "received_bytes": {
+            "title": "Received Bytes",
+            "type": "integer"
           },
           "size_bytes": {
             "anyOf": [
@@ -14634,9 +14922,11 @@
           "path",
           "ref_path",
           "ref_text",
-          "uploaded"
+          "uploaded",
+          "upload_id",
+          "received_bytes"
         ],
-        "title": "FileAttachResult",
+        "title": "FileUploadChunkResult",
         "type": "object"
       },
       "FollowupReceipt": {
@@ -19812,6 +20102,46 @@
           "role"
         ],
         "title": "MessageReactionPayload",
+        "type": "object"
+      },
+      "MessageSourceCommittedPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "turn_id": {
+            "title": "Turn Id",
+            "type": "string"
+          },
+          "stored_session_id": {
+            "title": "Stored Session Id",
+            "type": "string"
+          },
+          "conversation_ref": {
+            "title": "Conversation Ref",
+            "type": "string"
+          },
+          "message": {
+            "$ref": "#/components/schemas/CommittedUserSource"
+          },
+          "source_messages": {
+            "items": {
+              "$ref": "#/components/schemas/NativeSourceMessage"
+            },
+            "title": "Source Messages",
+            "type": "array"
+          },
+          "source_boundary": {
+            "$ref": "#/components/schemas/NativeSourceBoundary"
+          }
+        },
+        "required": [
+          "turn_id",
+          "stored_session_id",
+          "conversation_ref",
+          "message",
+          "source_messages",
+          "source_boundary"
+        ],
+        "title": "MessageSourceCommittedPayload",
         "type": "object"
       },
       "MoaAggregatingPayload": {
@@ -42358,6 +42688,18 @@
           "name": "payload",
           "schema": {
             "$ref": "#/components/schemas/MessageReactionPayload"
+          }
+        }
+      ]
+    },
+    {
+      "name": "message.source_committed",
+      "summary": "An admitted Instant Reminder's real driving user row committed before the first model request.",
+      "params": [
+        {
+          "name": "payload",
+          "schema": {
+            "$ref": "#/components/schemas/MessageSourceCommittedPayload"
           }
         }
       ]

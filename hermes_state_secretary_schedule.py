@@ -112,7 +112,7 @@ def _canonical_json(canonical_schedule):
 
 def schedule_sync_conn(
     conn, conversation_ref, entry_id, *, active, canonical_schedule=None, delivery_semantics=None,
-    reminder_text=None, cancelled=False, profile=None, now=None,
+    reminder_text=None, cancelled=False, profile=None, now=None, reactivated=False,
 ):
     """Register/update/disable one Notebook entry's Schedule runtime row in the caller's transaction.
 
@@ -149,7 +149,7 @@ def schedule_sync_conn(
         return _schedule_row(conn, row["schedule_id"])
     payload = _canonical_json(canonical_schedule)
     changed = payload != row["canonical_schedule"] or row["delivery_semantics"] != delivery_semantics
-    rearm = changed or row["state"] == SCHEDULE_STATE_CANCELLED
+    rearm = changed or row["state"] == SCHEDULE_STATE_CANCELLED or reactivated
     if rearm:
         conn.execute(
             "UPDATE secretary_schedule_registry SET canonical_schedule = ?, delivery_semantics = ?, reminder_text = ?, "

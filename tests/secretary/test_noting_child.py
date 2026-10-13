@@ -424,7 +424,8 @@ def test_text_only_completion_runs_five_turns_then_forces_snapshot(parent, db, s
 def test_semantic_control_is_noting_only_and_rejects_forgery(parent, db, stub_client):
     from secretary.noting_tools import initialize_notebook_work
 
-    args = {"operation": "create", "entry_type": "secretary_task", "fields": {"task": "report", "purpose": "deliver"}}
+    args = {"operation": "create", "entry_type": "secretary_task", "fields": {"task": "report", "purpose": "deliver"},
+            "expression": "2035-01-03T03:04:05+00:00", "delivery_mode": "deferred"}
     assert json.loads(parent._invoke_tool("notebook_manage", args, "main"))["success"] is False
     child = build_noting_child(parent, runtime_profile="NOTING", parent_conversation_ref=parent._secretary_conversation_ref)
     try:
@@ -442,7 +443,6 @@ def test_semantic_control_is_noting_only_and_rejects_forgery(parent, db, stub_cl
             ("notebook_edit", "status", {"status": "running"}),
             ("notebook_edit", "edit", {"fields": {"task": "updated"}}),
             ("notebook_schedule", "schedule_update", {"expression": "2035-01-03T03:04:05+00:00", "delivery_mode": "deferred"}),
-            ("notebook_schedule", "schedule_cancel", {}),
             ("notebook_manage", "archive", {}),
         ]:
             result = json.loads(child._invoke_tool(tool, {"operation": operation, "entry_id": uid, **extra}, "child"))

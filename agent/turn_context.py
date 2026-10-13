@@ -1038,6 +1038,14 @@ def _persist_turn_start(
     )
     from secretary.reminders import require_active_delivery_persisted
     require_active_delivery_persisted(agent, messages)
+    # A presentation observer sees only the native commit, never the admission receipt.
+    # Its failure cannot change persistence, Reminder settlement or the provider request.
+    try:
+        observer = getattr(agent, "_on_turn_user_persisted", None)
+        if callable(observer):
+            observer(messages, getattr(agent, "_persist_user_message_idx", None))
+    except Exception:
+        logger.debug("turn user persistence observer failed", exc_info=True)
 
 
 def build_turn_context(

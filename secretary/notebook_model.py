@@ -13,6 +13,7 @@ from secretary.notebook_schedule import (
     SCHEDULE_TYPES,
     canonical_schedule,
     parse_schedule_expression,
+    status_for_updated_schedule,
     validate_schedule_intent,
 )
 
@@ -169,6 +170,9 @@ class NotebookWorkingState:
 
     def _validate_entry_schedule(self, entry: dict) -> None:
         intent = entry.get("schedule")
+        if entry["type"] == "secretary_task" and intent is None:
+            raise NotebookValidationError(
+                "secretary_task requires a Schedule expression and explicit delivery_mode: instant or deferred")
         if intent is not None:
             if entry["type"] not in SCHEDULE_TYPES:
                 raise NotebookValidationError("This entry type cannot carry a Schedule")
@@ -280,9 +284,7 @@ class NotebookWorkingState:
         if source_time_range is not None:
             entry["source_time_range"] = deepcopy(source_time_range)
         if entry["type"] == "watchpoint" and "until" in fields:
-            entry["schedule"] = self._new_intent(fields["until"])
-            if entry["schedule"]["canonical_schedule"]["kind"] == "once":
-                entry["fields"]["until"] = entry["schedule"]["canonical_schedule"]["run_at"]
+            self._apply_schedule_update(entry, fields["until"])
         return self._replace(entry, inherit_sources=source_message_identities is None)
 
     def archive(self, entry_id: str) -> dict:
@@ -311,6 +313,11 @@ class NotebookWorkingState:
 
     def schedule_update(self, entry_id: str, expression: str, *, delivery_mode=None) -> dict:
         entry = self.get(entry_id)
+        self._apply_schedule_update(entry, expression, delivery_mode=delivery_mode)
+        return self._replace(entry)
+
+    def _apply_schedule_update(self, entry: dict, expression: str, *, delivery_mode=None) -> None:
+        """Publish Schedule and any lifecycle restart together in the next immutable version."""
         if entry["type"] not in SCHEDULE_TYPES:
             raise NotebookValidationError("This entry type cannot carry a Schedule")
         if delivery_mode is not None and entry["type"] != "secretary_task":
@@ -322,10 +329,14 @@ class NotebookWorkingState:
             if entry["schedule"]["canonical_schedule"]["kind"] != "once":
                 raise NotebookValidationError("Watchpoint until requires a one-shot Schedule")
             entry["fields"]["until"] = entry["schedule"]["canonical_schedule"]["run_at"]
-        return self._replace(entry)
+        entry["status"] = status_for_updated_schedule(entry["type"], entry["status"])
 
     def schedule_cancel(self, entry_id: str) -> dict:
         entry = self.get(entry_id)
+        if entry["type"] == "secretary_task":
+            raise NotebookValidationError(
+                "secretary_task Schedule cannot be cancelled; use notebook_manage archive to cancel the task "
+                "or notebook_schedule schedule_update to reschedule it")
         if entry.get("schedule") is None:
             raise NotebookValidationError("Entry has no Schedule intent")
         entry["schedule"]["cancelled"] = True

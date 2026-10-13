@@ -79,9 +79,11 @@ Gateway 入口为 `hermes gateway`。官方 Dashboard 入口为 `hermes dashboar
 
 独立前端在并列本地仓库 `../hermes-secretary-web`，使用 React / TypeScript / Vite，直接调用原生 REST / WS；开发服务默认连接 `http://127.0.0.1:53445`。部署范围及验收进度见 CLAUDE，不替代官方 Dashboard。
 
-当前草稿全部附件合计上限为 500,000,000 bytes，选择时累计判断、移除后释放预算，发送时沿原生 `file.attach` 分片上传并显式绑定本次图片。两个订阅同一会话的客户端共享原生实时事件；普通 Send 只在 Main Turn 空闲时启动新 Turn，活动时按既定 Steer/Stop/Interrupt 操作。
+当前草稿全部附件合计上限为 500,000,000 bytes，选择时累计判断、移除后释放预算，发送时小文件沿原生 `file.attach`，分片使用增量 `file.upload_chunk` / `file.upload_abort`，元数据使用 `file.attachment_info`，并显式绑定本次图片。两个订阅同一会话的客户端共享原生实时事件；普通 Send 只在 Main Turn 空闲时启动新 Turn，活动时按既定 Steer/Stop/Interrupt 操作。
 
 Web 的 `/notebook` 是四分区只读临时卡片，固定在命令发起时的 Timeline 位置，刷新后可消失；任务状态与排期分别呈现，不展示内部 Anchor。
+
+聊天历史首次加载最近 200 条后台消息，`Show More History` 每次向前加载 200 条；工具调用与结果计入条数。历史按需分页，不在浏览器持久化转录副本。
 
 在前端目录执行 `npm ci` 后，`npm run dev` 启动正式接线页面；`npm run typecheck`、`npm test`、`npm run build` 为类型、定向测试与构建入口。静态交互工作台使用 `npm run mock -- --port 5176`，访问 `/mock.html`；可选择场景、主题与四种视口，不连接真实后端或调用模型。`npm run mock:test` 和 `npm run mock:build` 分别验证、构建静态工作台。场景与组件边界见 [Mock 交接说明](.autonomous/20261012-round2-web-ui/static-mock.md)。
 
@@ -110,6 +112,7 @@ Python 不绕过 canonical runner 直接运行 pytest；JS/UI 入口及环境准
 
 | 文档 | 内容 | 路径 |
 |---|---|---|
+| Notebook 清理机制设计提案 | 类型状态、两轮处理、统一接缝与强制结束承接的候选方案；不作为现行实施契约 | [07](docs/07-notebook-cleanup-mechanism-proposal.md) |
 | V1 实施总纲 | 公开核心范围、边界与继承要求 | [01](docs/01-personal-hermes-v1-first-fork-iteration.md) |
 | Notebook / Noting 现行规格 | Identity、History、Notebook、Noting、Schedule、Reminder，含 V1.6 修订与 §5.12 Target | [02](docs/02-noting-system-specification.md) |
 | V1.5 增量规格 | 未被现行 02 覆盖的增量契约 | [04](docs/04-hermes-secretary-v1.5-implementation-spec.md) |

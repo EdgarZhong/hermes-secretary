@@ -1,3 +1,7 @@
 37ad76f5dfac02d4774d5e0faea55911b5fb8de9
 
 授权后依据版本 7fea3f5adc695e459b08e1ed832403447f7fbe25 (2026-10-13 R2-C30: 当前草稿全部附件合计500 MB；用户明确授权§1.7修订，覆盖16 MiB临时值；同批保留此前键位依据4939d340c0)。初始冻结基线不变。
+
+2026-10-13 R2-C65 Verification 输入：后端/规格树 24510d1c7c3b8dfc95b6d0626be30f090561fa30（产品代码 4443aa7b18806246ef84d6003fbd7e1e40cff5a2）；前端 c55120f92aca9acdcc5b7e7dc4fd1df06874e6b3。包含 25d71ef17e 已登记的用户授权 Rewind 与 Notebook 修订；不是重新冻结或扩大产品范围。Snapshot Index 本次仅追加启动授权。工作区已有 CLAUDE 远端记录、未跟踪 .playwright-mcp/ 与 docs/06-ui-read-api-discussion.md 不作为产品/权威规格输入，不覆盖或提交。
+
+2026-10-13 R2-C66/C67：用户追认8轮/32条旧操作回执窗口，并确认聊天历史200/200分页。前端增量提交 002f7a27fcf7313491f0301e143df7d3b6148088 为更新后的待审版本；后端产品/规格树不变，新增直接授权原文见当前snapshot-index.md。仅修改controller.ts分页常量及既有范围保留测试，不改变其他产品行为。

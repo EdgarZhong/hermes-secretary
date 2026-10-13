@@ -92,8 +92,8 @@ def test_entry_completion_disables_row_but_keeps_intent(db, ref):
 
 def test_cancelled_intent_terminates_and_update_rearms(db, ref):
     state = NotebookStore(db, ref)
-    entry = state.create("secretary_task", {"task": "retry the migration", "purpose": "unblock release"})
-    entry = state.schedule_update(entry["entry_id"], "every 1h", delivery_mode="deferred")
+    entry = state.create("user_commitment", {"what": "retry the migration", "intent": "unblock release"})
+    entry = state.schedule_update(entry["entry_id"], "every 1h")
     reconcile(db, ref, state)
     entry = state.schedule_cancel(entry["entry_id"])
     reconcile(db, ref, state)

@@ -1,4 +1,4 @@
-"""Bounded native file.attach uploads: ownership, publication and ACK retry semantics."""
+"""Bounded native uploads through the formal dispatcher: ownership, publication and ACK retries."""
 
 import base64
 from concurrent.futures import ThreadPoolExecutor
@@ -9,7 +9,6 @@ import uuid
 import pytest
 
 from tui_gateway import server
-from tui_gateway.contracts.registry import METHODS, check_result
 
 
 @pytest.fixture
@@ -24,11 +23,9 @@ def sessions(tmp_path, monkeypatch):
     return records
 
 
-def request(sid="first", **params):
-    response = server._methods["file.attach"](1, {"session_id": sid, **params})
-    if "result" in response:
-        check_result(METHODS["file.attach"], response["result"])
-    return response
+def request(sid="first", method="file.upload_chunk", **params):
+    return server.dispatch({"jsonrpc": "2.0", "id": 1, "method": method,
+                            "params": {"session_id": sid, **params}})
 
 
 def chunk(upload_id, offset, payload, total=10, sid="first", name="same.bin"):
@@ -79,12 +76,12 @@ def test_abort_removes_partial_and_does_not_revoke_complete_upload(sessions):
     key = str(uuid.uuid4())
     chunk(key, 0, b"first")
     temporary = sessions["first"]["file_uploads"][key]["temporary"]
-    assert request(upload_id=key, abort_upload=True)["result"]["attached"] is False
+    assert request(method="file.upload_abort", upload_id=key)["result"]["attached"] is False
     assert not temporary.exists()
     assert key not in sessions["first"]["file_uploads"]
     assert chunk(key, 5, b" last")["error"]["code"] == 5028
     result = chunk(key, 0, b"done", total=4)["result"]
-    request(upload_id=key, abort_upload=True)
+    request(method="file.upload_abort", upload_id=key)
     assert Path(result["path"]).read_bytes() == b"done"
 
 
@@ -97,7 +94,7 @@ def test_invalid_total_rejected_without_partial_file(sessions, total):
 def test_full_budget_total_admitted_and_chunk_overflow_keeps_existing_bytes(sessions):
     key = str(uuid.uuid4())
     assert chunk(key, 0, b"x", total=500_000_000)["result"]["received_bytes"] == 1
-    request(upload_id=key, abort_upload=True)
+    request(method="file.upload_abort", upload_id=key)
     chunk(key, 0, b"first", total=6)
     assert "error" in chunk(key, 5, b"xx", total=6)
     assert sessions["first"]["file_uploads"][key]["temporary"].read_bytes() == b"first"
@@ -109,16 +106,16 @@ def test_read_only_metadata_uses_real_size_without_staging_and_enforces_roots(se
     source = workspace / "real.bin"
     source.write_bytes(b"real bytes")
     before = set(tmp_path.rglob("*"))
-    result = request(path="real.bin", metadata_only=True)["result"]
+    result = request(method="file.attachment_info", path="real.bin")["result"]
     assert result["attached"] is False
     assert result["size_bytes"] == 10
     assert set(tmp_path.rglob("*")) == before
     assert source.read_bytes() == b"real bytes"
-    assert "error" in request("second", path=str(source), metadata_only=True)
+    assert "error" in request("second", method="file.attachment_info", path=str(source))
     outside = tmp_path / "outside.bin"
     outside.write_bytes(b"outside")
     (workspace / "link.bin").symlink_to(outside)
-    assert "error" in request(path="link.bin", metadata_only=True)
+    assert "error" in request(method="file.attachment_info", path="link.bin")
 
 
 def test_remote_cwd_does_not_stat_same_named_local_path(sessions, monkeypatch):
@@ -126,9 +123,9 @@ def test_remote_cwd_does_not_stat_same_named_local_path(sessions, monkeypatch):
     local.mkdir(parents=True)
     (local / "not-remote.bin").write_bytes(b"host bytes")
     monkeypatch.setattr(server, "_cwd_is_remote", lambda home: True)
-    assert "error" in request(path="not-remote.bin", metadata_only=True)
+    assert "error" in request(method="file.attachment_info", path="not-remote.bin")
     result = chunk(str(uuid.uuid4()), 0, b"local staged", total=12)["result"]
-    assert request(path=result["path"], metadata_only=True)["result"]["size_bytes"] == 12
+    assert request(method="file.attachment_info", path=result["path"])["result"]["size_bytes"] == 12
 
 
 def test_upload_id_cannot_inject_path(sessions):

@@ -169,11 +169,6 @@ class FileAttachParams(SessionParams):
     path: str | None = None
     data_url: str | None = None
     name: str | None = None
-    upload_id: str | None = None
-    offset: int | None = None
-    total_bytes: int | None = None
-    abort_upload: bool | None = None
-    metadata_only: bool | None = None
 
 
 class FileAttachResult(Result):
@@ -183,13 +178,53 @@ class FileAttachResult(Result):
     ref_path: str
     ref_text: str
     uploaded: bool
-    upload_id: str | None = None
-    received_bytes: int | None = None
-    size_bytes: int | None = None
 
 
 method("file.attach", params=FileAttachParams, result=FileAttachResult,
        doc="Stage a non-image file into the session workspace and hand back its @file: ref.")
+
+
+class FileUploadChunkParams(SessionParams):
+    upload_id: str
+    offset: int
+    total_bytes: int
+    data_url: str
+    name: str | None = None
+
+
+class FileUploadChunkResult(FileAttachResult):
+    upload_id: str
+    received_bytes: int
+    size_bytes: int | None = None
+
+
+method("file.upload_chunk", params=FileUploadChunkParams, result=FileUploadChunkResult,
+       doc="Append one bounded attachment chunk; publish an @file: ref only on completion.")
+
+
+class FileUploadAbortParams(SessionParams):
+    upload_id: str
+
+
+class FileUploadAbortResult(FileAttachResult):
+    upload_id: str
+    received_bytes: int
+
+
+method("file.upload_abort", params=FileUploadAbortParams, result=FileUploadAbortResult,
+       doc="Remove this runtime session's incomplete upload without revoking completed files.")
+
+
+class FileAttachmentInfoParams(SessionParams):
+    path: str
+
+
+class FileAttachmentInfoResult(FileAttachResult):
+    size_bytes: int
+
+
+method("file.attachment_info", params=FileAttachmentInfoParams, result=FileAttachmentInfoResult,
+       doc="Read an attachment's actual size in the session's readable roots without staging bytes.")
 
 
 class ImageDetachParams(SessionParams):

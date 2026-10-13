@@ -12,6 +12,16 @@ ACTIVE_STATUSES = {
     "secretary_task": {"pending", "running"},
     "watchpoint": {"watching"},
 }
+SCHEDULE_INITIAL_STATUSES = {
+    "user_commitment": "pending", "user_reminder": "active",
+    "secretary_task": "pending", "watchpoint": "watching",
+}
+
+
+def status_for_updated_schedule(entry_type: str, current_status: str) -> str:
+    """A new Schedule keeps ongoing work or reopens its entry through its owner."""
+    return (current_status if current_status in ACTIVE_STATUSES[entry_type]
+            else SCHEDULE_INITIAL_STATUSES[entry_type])
 
 
 def parse_schedule_expression(expression: str) -> dict:
@@ -60,6 +70,8 @@ def validate_schedule_intent(intent: dict, *, entry_type=None) -> None:
         raise ValueError("Schedule cancelled must be a boolean")
     if entry_type == "secretary_task" and intent.get("delivery_mode") not in {"instant", "deferred"}:
         raise ValueError("secretary_task Schedule requires explicit delivery_mode: instant or deferred")
+    if entry_type == "secretary_task" and intent["cancelled"]:
+        raise ValueError("secretary_task Schedule cannot be cancelled; archive the task or reschedule it")
     validate_canonical_schedule(intent["canonical_schedule"])
 
 

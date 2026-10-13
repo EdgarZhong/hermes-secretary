@@ -41,6 +41,8 @@ def notebook():
 
 def create(notebook, entry_type, **kwargs):
     sources = [SOURCE] if entry_type.endswith("_candidate") else None
+    if entry_type == "secretary_task":
+        kwargs = {"expression": HORIZON, "delivery_mode": "deferred", **kwargs}
     return notebook.create(entry_type, FIELDS[entry_type], source_message_identities=sources, **kwargs)
 
 
@@ -182,6 +184,13 @@ def test_schedule_lifecycle_and_delivery_class(notebook, entry_type, delivery):
     changed = notebook.schedule_update(entry["entry_id"], HORIZON)
     assert changed["schedule"]["canonical_schedule"]["run_at"] == HORIZON
     assert changed == notebook.get(changed["entry_id"])
+    if entry_type == "secretary_task":
+        before = notebook.snapshot_state()
+        with pytest.raises(NotebookValidationError, match="archive.*schedule_update"):
+            notebook.schedule_cancel(changed["entry_id"])
+        assert notebook.snapshot_state() == before
+        assert schedule_delivery_semantics(notebook.archive(changed["entry_id"])) is None
+        return
     cancelled = notebook.schedule_cancel(changed["entry_id"])
     assert cancelled["schedule"]["cancelled"] is True
     assert schedule_delivery_semantics(cancelled) is None

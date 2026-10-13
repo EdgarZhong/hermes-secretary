@@ -2843,11 +2843,6 @@ export interface FileAttachParams {
   path?: string | null
   data_url?: string | null
   name?: string | null
-  upload_id?: string | null
-  offset?: number | null
-  total_bytes?: number | null
-  abort_upload?: boolean | null
-  metadata_only?: boolean | null
 }
 export interface FileAttachResult {
   attached: boolean
@@ -2856,9 +2851,55 @@ export interface FileAttachResult {
   ref_path: string
   ref_text: string
   uploaded: boolean
-  upload_id?: string | null
-  received_bytes?: number | null
+}
+export interface FileUploadChunkParams {
+  session_id: string
+  profile?: string | null
+  upload_id: string
+  offset: number
+  total_bytes: number
+  data_url: string
+  name?: string | null
+}
+export interface FileUploadChunkResult {
+  attached: boolean
+  name: string
+  path: string
+  ref_path: string
+  ref_text: string
+  uploaded: boolean
+  upload_id: string
+  received_bytes: number
   size_bytes?: number | null
+}
+export interface FileUploadAbortParams {
+  session_id: string
+  profile?: string | null
+  upload_id: string
+}
+export interface FileUploadAbortResult {
+  attached: boolean
+  name: string
+  path: string
+  ref_path: string
+  ref_text: string
+  uploaded: boolean
+  upload_id: string
+  received_bytes: number
+}
+export interface FileAttachmentInfoParams {
+  session_id: string
+  profile?: string | null
+  path: string
+}
+export interface FileAttachmentInfoResult {
+  attached: boolean
+  name: string
+  path: string
+  ref_path: string
+  ref_text: string
+  uploaded: boolean
+  size_bytes: number
 }
 export interface ImageDetachParams {
   session_id: string
@@ -4823,6 +4864,49 @@ export interface MessageInterimPayload {
   text: string
   already_streamed: boolean
 }
+export interface MessageSourceCommittedPayload {
+  turn_id: string
+  stored_session_id: string
+  conversation_ref: string
+  message: CommittedUserSource
+  source_messages: NativeSourceMessage[]
+  source_boundary: NativeSourceBoundary
+}
+/** The one actually committed driving row; no API sidecar or synthetic display kind. */
+export interface CommittedUserSource {
+  message_uid: string
+  row_id: number
+  role: 'user'
+  content: string
+  timestamp: number
+  display_kind?: string | null
+  display_metadata?: unknown | null
+}
+/** Ordered native source address; no content, image bytes or historic prefix. */
+export interface NativeSourceMessage {
+  message_uid: string | null
+  role: string
+  has_content: boolean
+  has_reasoning: boolean
+  row_id?: number | null
+  display_kind?: string | null
+  tool_call_id?: string | null
+  tool_call_uid?: string | null
+  tool_calls?: NativeSourceToolCall[] | null
+}
+export interface NativeSourceToolCall {
+  id: string
+  tool_call_uid?: string | null
+}
+/** Independent boundary facts, not permission to erase unknown streamed nodes. A client must still account for source identities, final row and available persisted rows. */
+export interface NativeSourceBoundary {
+  user_message_uid: string | null
+  after_message_uid: string | null
+  prefix_unchanged: boolean
+  compression_unchanged: boolean
+  all_rows_committed: boolean
+  insertion_at_tail?: boolean | null
+}
 /** ``prompt_turn._complete_turn_payload`` / ``session_auto_continue._emit_terminal_turn_error`` / ``agent_callbacks._mirror_subagent_to_child`` (child watch mirror: ``text`` only) / ``compute_host_bridge`` (``text`` + ``status``). */
 export interface MessageCompletePayload {
   text?: string | unknown
@@ -4872,31 +4956,6 @@ export interface PersistedTurn {
   final_assistant_row_id?: number | null
   source_messages?: NativeSourceMessage[] | null
   source_boundary?: NativeSourceBoundary | null
-}
-/** Ordered native source address; no content, image bytes or historic prefix. */
-export interface NativeSourceMessage {
-  message_uid: string | null
-  role: string
-  has_content: boolean
-  has_reasoning: boolean
-  row_id?: number | null
-  display_kind?: string | null
-  tool_call_id?: string | null
-  tool_call_uid?: string | null
-  tool_calls?: NativeSourceToolCall[] | null
-}
-export interface NativeSourceToolCall {
-  id: string
-  tool_call_uid?: string | null
-}
-/** Independent boundary facts, not permission to erase unknown streamed nodes. A client must still account for source identities, final row and available persisted rows. */
-export interface NativeSourceBoundary {
-  user_message_uid: string | null
-  after_message_uid: string | null
-  prefix_unchanged: boolean
-  compression_unchanged: boolean
-  all_rows_committed: boolean
-  insertion_at_tail?: boolean | null
 }
 /** ``server._status_update`` and the direct emitters (goal / loop / heartbeat / process). */
 export interface StatusUpdatePayload {
@@ -5317,6 +5376,12 @@ export interface RpcMethods {
   'display.thumbnail': { params: ProfileParams; result: DisplayThumbnailResult }
   /** Stage a non-image file into the session workspace and hand back its @file: ref. */
   'file.attach': { params: FileAttachParams; result: FileAttachResult }
+  /** Read an attachment's actual size in the session's readable roots without staging bytes. */
+  'file.attachment_info': { params: FileAttachmentInfoParams; result: FileAttachmentInfoResult }
+  /** Remove this runtime session's incomplete upload without revoking completed files. */
+  'file.upload_abort': { params: FileUploadAbortParams; result: FileUploadAbortResult }
+  /** Append one bounded attachment chunk; publish an @file: ref only on completion. */
+  'file.upload_chunk': { params: FileUploadChunkParams; result: FileUploadChunkResult }
   /** Mark the one-time availability notice as shown on the free-tier identity. */
   'free_tier.ack_notice': { params: ProfileParams; result: FreeTierAckNoticeResult }
   /** Report a browser window outcome for the matching pending attempt; mint remains authoritative. */
@@ -5786,6 +5851,9 @@ export const RPC_METHODS = [
   'display.switchSandboxImage',
   'display.thumbnail',
   'file.attach',
+  'file.attachment_info',
+  'file.upload_abort',
+  'file.upload_chunk',
   'free_tier.ack_notice',
   'free_tier.challenge_result',
   'free_tier.provision',
@@ -6092,6 +6160,8 @@ export interface BackendGatewayEventMap {
   'message.interim': MessageInterimPayload
   /** The agent reacted to a message; paint it live. */
   'message.reaction': MessageReactionPayload
+  /** An admitted Instant Reminder's real driving user row committed before the first model request. */
+  'message.source_committed': MessageSourceCommittedPayload
   /** A turn began streaming; no payload. */
   'message.start': Record<string, never>
   /** The MoA aggregator started. */
@@ -6230,6 +6300,7 @@ export const GATEWAY_EVENT_TYPES = [
   'message.delta',
   'message.interim',
   'message.reaction',
+  'message.source_committed',
   'message.start',
   'moa.aggregating',
   'moa.phase',

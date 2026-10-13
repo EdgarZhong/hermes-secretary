@@ -13,7 +13,8 @@ def test_human_view_shows_timestamp_and_complete_semantics_without_anchor_or_poi
     model = NotebookWorkingState("conv_source", validate_source_identity=lambda source: True)
     commitment = model.create("user_commitment", {"what": "send report", "intent": "request approval"})
     model.schedule_update(commitment["entry_id"], "2030-10-07T12:00:00Z")
-    model.create("secretary_task", {"task": "draft slides", "purpose": "team review"})
+    model.create("secretary_task", {"task": "draft slides", "purpose": "team review"},
+                 expression="2030-10-07T12:00:00+00:00", delivery_mode="deferred")
     decision = model.create("decision", {"decision": "ship Friday", "rationale": "test runway"})
     model.archive(decision["entry_id"])
     model.create("skill_candidate", {"capability": "triage", "workflow_draft": ["logs", "isolate"]},

@@ -1,4 +1,4 @@
-> 当前交接（2026-10-13）：R01–R13开发期排查、修复与必要真实复验闭合；原生产品4443aa7、前端c55120f、visual fc18614。最终类型/构建通过，冻结前端health0/0。正式服务在阶段提交后按同profile安全同步HEAD，运行版本以健康接口和manifest为准，不启动独立门禁；详细当前证据见总看板和final-delivery，旧表述保留为历史观察，不覆盖当前结论。
+> 当前阶段（2026-10-14夜间托管）：Main已亲审C84正式状态/Schedule接线和前端主要差异；最小Prompt+两轮软提示已实施，Memo首段/来源与消费机制保持原样、六处完整字符串5214→5210字符。清理硬机制仅设计文档交回待Main审，不实施；真实附件/Instant内置浏览器联调由native_integration续接，旧owner交回并已停服务。重任务串行，保用户视觉与服务；第二轮Verification不启动。
 
 # Hermes Secretary 第二轮主看板
 
@@ -8,24 +8,88 @@
 
 | 原规格空白 | Agent 自主收敛／理由 | 影响范围 | 实施情况 | 用户状态 |
 |---|---|---|---|---|
-| 结束轮次的操作查询记录未指定保留窗口 | 同原生owner内存保留最近8个已结束轮次；更旧查询明确unknown，避免无界内存 | 只影响旧Steer/Interrupt操作结果追查，不限制持久消息历史；重启本就不保live记录 | 已实施；256次Steer/64个Interrupt请求已获用户追认，8个结束轮次窗口未单独确认 | **Agent 自主收敛／8轮窗口待追认** |
-| 压缩操作终态查询未指定有限保留条数 | 每个原生 Agent 仅在内存保留最近 32 条压缩终态；超出窗口的操作返回 no_active，不推断过往成功 | 仅新增压缩观察/取消 RPC；不改原生压缩记录或执行 | 已实施并通过相应机制验证；Main review 接收，真实 UI 待联调 | **Agent 自主收敛／待追认** |
+| 暂无 | 原8个结束Turn／32条压缩终态窗口已按R2-C66获用户追认 | 刷新恢复当前真实状态，当前操作不受旧记录淘汰影响；不恢复已过期旧回执 | 不改窗口实现 | 已确认 |
 
-已追认（R2-C36）：单Main Turn累计256次新Web Steer（消费/撤回仍计数）；同Turn64个不同Interrupt请求记录；idle-only保持同会话一次Main Turn、并发普通Send失败保稿，结束后任一客户端可发；同会话两个在线订阅端实时流式接收；图片经原生上下文注入，本体允许留服务器。第三项“32条压缩终态查询”在用户纠正后仍未确认；不得把查库未见摘要等同于取消成功。
+已追认（R2-C36/C66）：单Main Turn累计256次新Web Steer（消费/撤回仍计数）；同Turn64个不同Interrupt请求记录；idle-only保持同会话一次Main Turn、并发普通Send失败保稿，结束后任一客户端可发；同会话两个在线订阅端实时流式接收；图片经原生上下文注入，本体允许留服务器。C66追加确认8轮／32条旧操作回执窗口；不得把查库未见摘要等同于取消成功。下文旧待追认表述均为历史记录，由C66覆盖。
 
-2026-10-13 附件工程调查：整包500 MB Base64超过运行时字符串上限；沿原生 `file.attach` 增加可选分片参数，使用同session/profile owner及末片正式发布引用，不新增上传API。具体容量/取消/偏移/丢ACK实证由附件owner交回，尚未验收。
+2026-10-13 附件工程调查历史：整包500 MB Base64超过运行时字符串上限，因此实现曾沿原生 `file.attach` 增加可选分片参数。当前独立审查发现该方式违反06的旧接口合同保留要求，登记为V-R2-01；既有容量/取消/偏移/丢ACK证据不能消除合同偏差，修正提案见当前Verification段。
 
 本轮已确认口径的授权来源见 [Snapshot Index](.autonomous/20261012-round2-web-ui/snapshot-index.md)，不得将 Agent 安排或推断写成用户确认。
 
 ## 续接先读：已有测试与回归选择
 
-**用户R2-C26：不得跨会话/压缩后遗忘已有测试而重复运行。** 先读 [plan的统一证据索引与回归选择](.autonomous/20261012-round2-web-ui/plan.md#已有证据索引与回归选择r2-c26跨会话续接必读)，再读所涉及的owner报告/manifest。该处已区分机制、真实协议/模型、真实Web及独立门禁；本轮独立门禁尚未执行。
+**用户R2-C26：不得跨会话/压缩后遗忘已有测试而重复运行。** 先读 [plan的统一证据索引与回归选择](.autonomous/20261012-round2-web-ui/plan.md#已有证据索引与回归选择r2-c26跨会话续接必读)，再读所涉及的owner报告/manifest。该处已区分机制、真实协议/模型、真实Web及独立门禁；首轮独立Verification已执行且不通过；有效证据复用与整改复审仍遵循索引。
 
 - 可复用：后端Pending109、Read53、Usage23、Submit分版本证据；前端30d3135累计89；真实Main/图片/附件/控制/刷新/Notebook/压缩；V1.6的C15/C16/VAL04、Persistence、Reminder、branch/undo。各组有重叠，不相加为总通过数。
 - 剩余集中包已完成：F14机制及新合法cold真实补证，F16设置往返、F20已有carrier只读复验均已由Main接收。后端37ce184eca/前端bfecc9f；此为视觉交回前已完成的开发基线；本次按C28/C30继续收尾和集成，未启动门禁，不重跑已有效包。
 - Reasoning根因已由真实RPC定位为5098：服务5ccc619与checkout6d96e80不一致，loadCapabilities吞错成空能力。保留native保护，修错误与Retry；待统一重启再验，不猜provider别名或伪造支持。
 
 ## 当前目标与阶段
+
+**Main阶段验证（2026-10-14）**：后端本次三个定向用例2pass/1文本原句保留失败，恢复原Persistence句后只复测失败项1pass（1.7s），未改断言；Main Usage微修单worker1pass/13skip（500ms），当前build（含tsc）pass，Vite5.37s，旧chunk warning保持。当前staged footguns/ruff/health三项pass，0阻断、1提示：未改文件session_agent_context.py的既有HX012 raw Thread提示；不是本次新增0/0报告，不关闭提示。全部日志在prompt-main-final，旧192/33/59/28/前端性能及Undo有效包未重跑。
+
+**最新托管边界（2026-10-14，用户明确）**：用户撤回本轮清理硬门禁实施，仅要求Main在Noting整体维护段加入软提示；清理机制由一个子Agent单独写docs/07-notebook-cleanup-mechanism-proposal.md，供次日审核，须论述十类型状态、两轮处理、统一owner/同步最小接缝、五Turn/context_overflow/强制结束与未处理义务下一轮承接，不实施。Prompt由Main自行收敛，不再用prompt_review_v3；用户原话与每处实际前后英文/中文直译逐项对账，Memo全文/消费/provenance机制不改，总长度不增。目标已挂载，持续完成今晚整改到第二轮Verification前，不启动Verification。仅内置浏览器，禁止后续操作用户真实浏览器。
+
+**资源事故与当前执行安排**：用户报告本轮某操作导致内存爆炸/电脑卡死，根因尚未确认。全部刚执行Agent已要求轻量自查，浏览器/真实模型/构建/测试等重任务暂停并由Main统一排队。Main亲自负责资源基线、覆盖/依赖规划、完整交回review、跨分支接线和阶段集成，不以多Agent自行开重任务替代统筹。16GB即时快照可回收37%，压缩/换页累计量不能证明事故归因；用户浏览器/其他进程不终止。
+
+**最新Prompt范围纠正（2026-10-14，用户明确）**：v3对Noting首段/Memo的扩展被否决。Memo仅是Main给Noting的指示，不是Notebook条目，不得作为provenance；既有Memo消费/清理只与Snapshot有关，不增加模型声明用了哪条Memo或做了什么的要求。保留Memo相关原文与机制，撤回“将每个Memo条目整合到Notebook”及通用总述重写。本次已观察问题是secretary_task被写为已做工作流水账，基础Prompt改稿只围绕其未来工作语义、有效Schedule必填、明确instant/deferred、取消直接archive与既有代码自动状态联动；按此前要求去除归档“永久不可恢复”措辞。不得为凑长度改其他类型或共同说明；两轮完成清理gate仍单列审定，不混入Memo/总述。产品Prompt未实施。
+
+**Main接收U04后端开发包（2026-10-14）**：亲审turn_context单COMMIT观察点、Gateway真实witness/DB行校验/一次发布与finally恢复、新事件/累积生成合同及报告，方向与正式机制接收；28distinct、source先Thinking后（seq3/4）、rollback/unknownCOMMIT/关闭/跨profile/真实cold与压缩旋转证据有效，不复跑。前端/source真实DOM与隔离模型链未闭合，U04不整体关闭。
+
+### 当前Owner与全部未闭合缺口（2026-10-14夜间托管）
+
+| Owner | 当前工作与边界 | 接收状态／未闭合范围 |
+|---|---|---|
+| assistant_ui_research · 原前端Owner | 完整开发及附件模型证据已交回、53449/5183已停 | Main亲审接收；Usage微修单worker1pass/build5.37s通过，旧有效包复用；真实附件证据交给续接Owner，未完成Instant不得写通过 |
+| native_integration · 联调续接 | 已清点旧profile/证据，当前CUA真实有IAB；Main已释放唯一重任务窗口 | 复用已成功附件模型链，补真实Instant→WS→IAB DOM及新Prompt未来task/自动联动代表；不动用户5173/53445/视觉，不派生 |
+| secretary_task_contract · Core | C84完整交回，正式提交链与资源轻量自查结束 | Main亲审统一owner、真实Snapshot事务/旧新lineage/rearm及33distinct证据，接收开发机制；未重复测试。完整模型child/restart代表链仍待联调 |
+| cleanup_mechanism_proposal · 设计 | 单文档交回docs/07；无代码/Prompt/测试/服务操作 | Main审设计与十类型矩阵、两轮基线、forced/overflow承接和统一接缝；全部硬约束待明日审核，未实施 |
+| prompt_review_v3 | 用户要求停止；资源自查已交回 | 不再参与Prompt。旧v3/4均不实施；Main自行实际最小改稿见repair-secretary-task-contract.md §10 |
+| Main · 全局/集成 | 覆盖/依赖、亲审接线、Prompt+原话对账、相关微修/阶段快照/证据与资源管理 | 必要定向检查、最终接口/视觉保护集成、本地阶段提交和交付简报未完；不启动第二轮Verification |
+
+用户已明确持续托管至目标完成；不再追责卡顿来源，后续防止重任务叠加/资源泄漏。有效证据按版本复用，失去上下文先读本看板、plan统一证据索引与owner交回。硬清理gate撤回；软提示不承诺机器保证。
+
+
+### 当前审查整改与框架研究 · R2-C65–C75
+
+**R2-C80侧栏原视觉遗漏与当前整改启动**：用户要求恢复昨日Mock侧栏效果，尤其Files与主题视觉控件分隔、按更新时间的Today/Yesterday/过去7天/过去一个月分组。Main亲查visual-design fc18614及现正式002f7a2：布局/CSS共有，但正式App只接单个Conversations section；第二分隔线仅绑定Mock专属.mock-label，正式去该元素后丢线。Mock已有Today/Yesterday，7天/30天/更早按本次明确要求补正式动态组，不冒称所有组原源码已存在。前端研究repair-timeline-latency完整交回且Main亲审路径/采样边界：33源行100event/s及burst终态DOM延迟约1.53–2.90秒，优化React/框架组合约8–41ms；普通优化相近，非库单独倍率。用户“研究然后开始”授权已满足，现释放独立verification-fixes树前端施工，无新增事前审批；保用户visual-polish树。
+
+**R2-C85/C86当前定论（2026-10-14）**：用户再次否决Prompt候选：通用Noting总述过分单拎secretary_task，且只给修改后未给原文对照。后续全局总述仅共同维护原则，类型规则放对应工具字段，清理门禁放提交工具；每处原英文/中文直译→新英文/中文直译，逐串/总长度不增，旧候选不实施。用户询问assistant-ui定论，Main明确已定并推进：稳定ID消息scope+Parts/selector/Markdown smooth=false、Hermes事实与事务owner、稳定对象/历史memo/渲染rAF/终态同步flush、Composer与scroll保单owner。不再扩大研究，最终长增长/四视口/source/typesbuild证据待完整交回；已有定向Undo与小性能包只是开发证据。
+
+**C84联动修复已释放**：Main亲审Core owner映射及Registry正式接缝，按02既有契约修复语义终态重新排期自动回对应活动初始状态；仍活动者保原阶段。同一Snapshot事务rearm同lineage旧运行terminal（含同canonical），不能因新id、无关edit、重复reconcile/恢复/branch而重放完成occurrence。具体正式实现及关闭证据由Core owner交回，未改清理gate/Prompt/用户profile。
+
+**R2-C83/C84清理门禁与状态排期联动（2026-10-14）**：用户反对模型提示强调归档“永久/不可恢复”，要求表达从Notebook移除已确认完成事项；提出两轮清理：本轮依据确认完成先标done，下一轮对开始时已done项必须实际重新排期激活或archive，遗漏时finish_noting/compact_parent明确拒绝并给条目/原因，仅限明确完成可归档，不逼未完成事项结束、不静默清理。用户询问还适用哪些类型，范围/五轮与overflow收尾行为正在只读审查，尚未实施新gate。C84明确状态与Schedule联动是02既有代码职责，不让模型另补status；Main核§3.9确有schedule变更→注册/更新，终态→disable，模型不记副作用。当前schedule_update保留done、ACTIVE_STATUSES过滤导致无有效排期，是待修实现缺口。Core owner只读审状态映射与新gate范围后Main亲审释放实现。当前精简Prompt草案仍未批准，需随新机制方案调整，中英直译且本次不增长。
+
+**R2-C81 Prompt精简与中英审核（2026-10-14）**：用户明确原语义并非错误，只是略弱；否决上一稿多段追加导致增长，要求本次Prompt修改长度不增加，改为定向强化/压缩替换；后续审核每条英文Prompt下必须附中文直译。要求先检查assistant-ui调研与实际用法，Main已按用户要求核完整报告/实际修复树：框架消息scope/parts/selector/Markdown已正式接入开发树，关闭smooth并显式nativePart状态；仅渲染快照raf，原业务同步owner保留。不是最终通过，长增长Markdown/真实Stop/source链仍须补证。Core owner恢复纯审稿任务，逐字符串测原/新字符及词/token长度，重写现报告草案，不实施Prompt代码或02Target；新稿在聊天逐条中英对照审核。
+
+**Prompt审核待答（C77/C78后续）**：Main已亲审Secretary Task9行机制与正式路径，192distinct/scoped0/0开发证据接收，不表示真实模型语义闭合。用户要求把具体Prompt变更直接贴在聊天审核，而非仅给报告链接；Main此前已贴出§5.2–5.4稿但用户按C81否决其过长表述，正重做等长或更短中英稿，尚未获文字批准，Prompt代码/02 §5.12 Target不改。旧非法快照加载限制明确保留，真实验收使用干净隔离profile不清用户正在用的库。
+
+**当前Owner与交接**：assistant_ui_research转前端整改owner，负责V02–05、U01–03、Usage C73、Slash C76与侧栏C80；附件attachment_rpc_fix后端59 distinct/13组合同对照、scoped health0/0已交回，Main亲审恢复旧合同与新名接线方向接收，前端/新RPC真实Agent代表链未闭合；该owner接续U04 Instant源首消息原生观察接缝。secretary_task_contract的C77/C78 Schedule机制报告已Main亲审接收，当前重做C81 Prompt精简中英稿，不改用户库。产品不统一更新53445/5173前先完成接口接线及确认无活动工作，当前服务仍旧版本。
+
+**R2-C79用户纯表现层工作区**：用户要求专门新branch/worktree，与另一Agent继续纯表现层美化、不涉及逻辑。前端已创建 `/Users/edgar/code/hermes-secretary-web-visual-polish`，branch `codex/visual-polish`，基线main `002f7a2`；复用现有node_modules，未启动新服务/未改原5173/53445。新工作树归用户及其另行Agent；Main/整改owner不操作其中产品文件，不合并未交回成果。改样式、配色、排版及纯呈现组件，不能改controller/API/状态机/业务逻辑、键位/提交/权限/数据契约。前端功能整改与此树分离，后续交回后人工亲审合并，保双方成果；出现同文件变更需集中处理，不整树覆盖。此前visual-design worktree保留。
+
+**R2-C78最新覆盖与现场缺陷**：用户明确所有secretary_task的Schedule始终非空，不限未完成状态；真正取消时直接archive整条，禁止schedule_cancel后留空task，不要求取消前先status。此口径覆盖C77的较窄“未完成”限制。Core owner已收最新指令；原生状态结束时停止投递不等同于清空Schedule意图。U-R2-04：用户实测Instant Reminder触发Active Turn时Thinking先显示，Reminder本体直到Turn结束才出现在正确Timeline位置；必须追踪原生入场→事件→前端投影，触发消息应先展示，不能等终态才补行。前端研究owner纳入，产品修改仍待研究先行。
+
+**R2-C77新增Core要求（2026-10-13）**：用户实测发现secretary_task可能被Noting写成工作流水账，要求它表达秘书将要做的工作，Schedule必填、delivery_mode明确为deferred或instant；并检查/调优Noting Task及全局提示的心智模型。Schedule必填方向已授权并同步02 §2.5，具体Prompt先审查给出可review文本；用户已确认：未完成任务必须有有效时间表达式及明确模式，允许改期，不能只取消Schedule而保留未完成任务；不再跟进时done/dropped并归档，不新建已完成工作流水账。独立Core owner负责必填/取消边界机制及Prompt审查稿，Prompt具体替换待用户审看。不改变其他entry类型排期语义，不操作当前用户profile/既有会话。此项为用户新授权Core增量，首轮Verification历史结果不改写。
+
+**R2-C76追加前端要求**：Composer slash命令支持Tab补全；每条候选的命令本体与description合并在一个文本块，内部统一处理换行，不再各占独立容器分别换行，避免可用宽度足够时命令仍提前断行。用户纠正“set命令”系误识，应为slash命令整体。此项与既有前端整改一起在assistant-ui研究结论交回并经Main亲审后实施。
+
+**R2-C73–C75当前安排**：C73明确Usage成功取到会话数据即可见，不论Turn运行/idle；保留Latest Turn取最近完成Turn及New Chat不展示的既有语义。C74要求继续并恢复子Agent。C75要求先探明assistant-ui实际能力、相比当前实现好多少及原因、能否有效解决首轮问题，再开始前端整改。此前研究阶段前端产品修改暂停；现按C80释放独立前端整改树，研究阶段仅只读生产代码，可用隔离采样页、受控事件与ignored证据，不触碰用户活动会话。首轮报告已完整接收，Main核查V-R2-01–05及U-R2-01–03的正式路径与证据；缺陷仍未关闭。恢复两个Owner：附件后端RPC合同修复（不修改前端）；assistant-ui能力/性能/问题映射研究（不实施前端）。旧“初审进行中”均为历史状态。
+
+**R2-C68最新执行安排**：用户要求恢复开发服务供实际使用；首轮Verification完整交回后派GPT-6.1 Sol修复，Main不逐步监工，负责交回后的亲审与验收。现有5173前端/53445后端已恢复，后端HEAD24510d1c7c、前端002f7a2；沿原`.hermes-dev/round2-runtime`及原生PM环境启动，Dashboard加`--skip-build`复用已构建bundle。两个HTTP 200，浏览器真实会话列表及deepseek-flash/medium已加载。启动日志`.hermes-dev/round2-verification/{backend-dev,frontend-dev}.log`；后台会话85035/18501。当前用户正在实用，未经状态核查不得停服、重启或操作其会话；实现后必要服务更新在无活动工作时统一协调。
+
+- Main：核定双仓库版本、维护授权与动态记录、接收并亲自复核独立报告；不替代审查者建立判据。
+- 审查者：全新 `fork_turns=none`、`gpt-6-astra` / `high`，仅写本轮 `verification.md` 与隔离审查证据；产品代码只读，不再派生。
+- 范围：06 Web V1、必要原生增量、V1.6移交缺口及本轮实际影响；依据当前已授权规格与索引，不读取未授权旧讨论作为判据。
+- 里程碑：先独立全范围判据落盘，再核正式实现/证据并交完整报告。复用同版本有效证据，必要定向反证；大型检查由Main统一决定，不重复执行。
+- 当前状态：`round2_verification`（Astra high，全新独立上下文）已完成65条独立判据，正在调查实现。C66已确认8轮/32条窗口；C67聊天历史200/200已提交前端`002f7a2`并交审查者，Main定向分页范围测试1通过/59未选、types/build通过（保留chunk-size提示），无模型或大包重复运行；日志见plan增量记录。后端产品/规格仍24510d1c7c，最终门禁结论待完整交回，整轮尚未完成。
+- V-R2-01：`file.attach`新增分片/stat参数及结果字段违反06 §0.5/§2.1。Main已核原合同，认可偏差；提议恢复旧合同，新增`file.upload_chunk`、`file.upload_abort`、`file.attachment_info`，复用原生session/profile存储与锁，同步前端和合同类型并补正式接口证据。方案已交审查者评审，尚未实施；先完成全范围初审，不改变当前待审产品。
+- 独立新增发现：V-R2-02（P1）活动Turn Reply/Edit可能误走Steer而绕过Rewind确认；V-R2-03（P2）编辑截断未覆盖临时Notebook/Pending呈现；V-R2-04（P2）普通附件旧消息恢复草稿混入Attached Context附录。审查者已落盘生产Controller反例`.hermes-dev/round2-verification/rewind-*.json`；Main待完整初审集中亲审与整改，尚未修改产品。准许现有5173/53445只读健康/无token REST/坏Origin WS握手核验，不操作会话或新增模型调用。
+- R2-C69/C70用户实用追加：U-R2-01 Composer草稿Ctrl+Z撤销不可用。U-R2-02原“Stop失效”判断撤回，用户三次操作为Interrupt/Stop/Stop，最后观察到后端已停而Timeline仍缓慢增长，按显示严重滞后调查。Main只读最新会话`20261013_223838_0ddd56`：22:39:37 Interrupt后合并Pending；22:40:55.648下一轮complete；22:42:48.821 explicit Stop→.916 interrupted（95ms）；row431为中断响应，22:44:14 row456是Noting Framework。日志不能逐个证明三次按钮点击时刻。证据`.hermes-dev/round2-verification/latest-user-session.json`及agent.log1711–1716。尚未确定显式限速或积压根因。
+- `timeline_latency`（gpt-6.1-sol/high）只读调查U-R2-02，白名单为`repair-timeline-latency.md`与ignored同名证据目录；核事件→状态→正式React渲染及最小方案，不动用户profile/页面，不新增模型。首轮Verification交回后再释放产品实施；Main等待完整报告后亲审验收，不监工。
+- C71：用户明确质疑assistant-ui仅浅接入及显示吞吐。Main核当前只用external runtime/Provider/ThreadRoot，正式Timeline手工map、ReactMarkdown、自写滚动/Composer；已交timeline_latency同时提出成熟框架正式接入方案，保已确认视觉/原生业务，复核F12索引越界旧反例，不以依赖安装冒称完整复用。允许独立5179采样页/新临时IAB tab使用正式生产路径与受控WS输入取证，禁止连真实53445/用户会话；结束关闭。此为根因与修正方案研究，产品尚未改。
+- C72/U-R2-03：用户报告Turn active/结束时侧边栏列表刷新闪动，要求优化。交同一`timeline_latency`前端owner调查，后续统一修改App与列表刷新，保持已有列表后台更新而不清空/加载占位闪动；真实标题、排序、新建及错误恢复继续有效。
+- 开发服务生命周期修正：原exec附属进程在会话中断后退出，2026-10-13已用`Popen(start_new_session=True)`恢复同profile后台进程，backend/frontend PID1521/1522；不清库不改模型，原85035/18501已失效。日志仍为本轮`backend-dev.log`/`frontend-dev.log`。
 
 ### 现场整改总看板 · R2-C58（用户2026-10-13最新托管授权）
 
@@ -49,7 +113,7 @@
 | R12 pending Reminder疑问 | Main | `repair-noting-persistence.md` | 调查闭合：指定会话#12为pending秘书任务，无schedule，registry/pendingreminders均0；用户纠正可能误读，不是已证实注入故障，未为调查新增排期。 |
 | R13 Notebook临时顺序与可读设计 | flow/视觉 owner/Main | `repair-live-flow.md` | 开发复验闭合：命令发起捕捉边界/在途exact UID更新；真实卡位于后续User与Assistant之前，刷新0卡；四分区/条目状态/字段/来源计数/排期，人类输出不含Anchor，无schedule明确Not scheduled。 |
 
-此前“前置阶段表现闭合”不涵盖这些新发现，现以本看板为准。当前两项既有产品收敛（8轮操作窗口/32压缩终态）仍在顶部待追认，不能因整改忽略或冒称通过。不会重传500MB或无差别重跑全套；新缺陷按受影响路径测，记录执行方/版本/范围/次数/耗时，必要真实模型调用已获最新授权。
+此前“前置阶段表现闭合”不涵盖这些新发现，现以本看板为准。两项既有产品收敛（8轮操作窗口/32压缩终态）已获C66确认，独立核查仍须验证当前状态与刷新恢复条件。不会重传500MB或无差别重跑全套；新缺陷按受影响路径测，记录执行方/版本/范围/次数/耗时，必要真实模型调用已获最新授权。
 
 ### 用户现场问题登记与恢复（历史调查状态，当前关闭证据以上表为准）
 
@@ -110,7 +174,7 @@ R2-F21（2026-10-13 用户现场发现，**逻辑层缺陷**）：活动 Turn �
 第二轮交付独立 Secretary Web UI，并完成 V1.6 移交缺口及本轮实际变化影响的验收。当前为 **现场整改开发复验完成、阶段交接：原生产品4443aa7、前端c55120f、visual fc18614；本轮按R2-C31/C60停在Verification派遣前，整轮尚未独立验收，两门禁不启动**。用户授权在冻结前精简三份核心文档、最小修订新版 06；冻结后本轮不再修订权威规格。
 
 - 后端工作区：`/Users/edgar/code/hermes-secretary`，继续按原生接缝实施必要增量。
-- 前端：并列本地仓库 `/Users/edgar/code/hermes-secretary-web`，`main`、无远端；React前阶段已提交并完成开发期集中复验，现施工逻辑收尾与附件预算、待视觉合并及独立门禁。目录名属于实施安排，不是用户逐字指定。暂不上传远端。
+- 前端：并列本地仓库 `/Users/edgar/code/hermes-secretary-web`，`main` 已到 c55120f。用户2026-10-13授权新建**私有**远端 [github.com/EdgarZhong/hermes-still-chat](https://github.com/EdgarZhong/hermes-still-chat)（Hermes Still Chat），本地 `main` 已推为远端 `secretary` 分支（c55120f，远端无 main）；后续再改造为上游适配版本。目录名属于实施安排，不是用户逐字指定。
 - 过程计划、依据、协调、审计与验收证据全部留在本工作区；前端不建立并行过程看板。
 - 范围只含 06 Web V1、必要原生后端增量和 V1.6 移交验收；不含 Memory Provider 或云部署。
 
@@ -123,7 +187,8 @@ R2-F21（2026-10-13 用户现场发现，**逻辑层缺陷**）：活动 Turn �
 | 托管 | 用户要求挂载目标，持续推进至最终交付；必要时显式 wait 子 Agent | R2-C08 |
 | 文档与冻结 | Ask and Align 可最小修订 06、精简核心文档；冻结后不改权威规格 | R2-C01、C07 |
 | 协作 | 本次接手Main为Sol，具体收尾也Sol high；进入Verification前不调Astra；独立Verification Astra high/Validation Astra medium；完整交回集中review | R2-C28覆盖此前C02、C07安排 |
-| 双仓库 | 前端独立并列本地仓库，后端及全部过程文档在本工作区；无前端远端发布 | R2-C03 |
+| 双仓库 | 前端独立并列本地仓库，后端及全部过程文档在本工作区；过程文档不进前端仓 | R2-C03 |
+| 前端远端 | 用户2026-10-13明确授权：UI 命名 **Hermes Still Chat**，面向后续推广（极简、专注 chat，不限 Secretary），建**私有** GitHub 仓库 `hermes-still-chat`，本地 main 推为远端 `secretary` 分支（不传 main），后续再改造上游适配版 | 用户2026-10-13指示 |
 | V1.6 | 实现立即提交；收尾移至第二轮验收，不重做旧轮全量 Verification，只补缺口和实际变化影响 | R2-C04 |
 | 验收 | localhost 内置浏览器，桌面 1440×900 / 1024×768、移动 390×844 / 320×568 全部强制；小屏布局、操作与视觉完整 | R2-C05 |
 | 真机覆盖 | 软键盘、相机、系统侧滑后续专项验证；功能仍实施，本轮不冒称真机覆盖 | R2-C05 |
@@ -166,7 +231,7 @@ R2-F21（2026-10-13 用户现场发现，**逻辑层缺陷**）：活动 Turn �
 | 全场景 Mock 与视觉 worktree | 已合并且正式接线完成 | 功能集成611b734/最终21aad02；visual86fa280仅同步C32–35。103可点击URL/42实际反馈详见视觉报告；toast/Pending/finish接线与表现机制已Main审收。用户未跟踪成果保留 |
 | 合计500 MB附件预算/传输 F22 | Main亲读接收，真实超额toast可见性已补 | 当前全部attachment合计，历史引用真实stat；chunk沿file.attach旧method，末片才发布引用；真实500 MB上传/取消/越界取证 |
 | 键位/通知/原生完成事件 F21/F24 | Main亲读接收；正式App已接入 | Enter只发送；通知显式关闭；网络自动恢复；task_finished唯一完成信号，Main合并后App接线 |
-| 第二轮独立两门禁与交付 | 本次停在门禁前（R2-C31） | 三个 Sol 已交回并由 Main review 接收，前端611b734；后端产品5ba0481、前端21aad02；三屏四视口已完成开发核对，本次不派 Verification/Validation |
+| 第二轮独立两门禁与交付 | Verification进行中（R2-C65） | Astra high已独立落65项起始判据，正在核24510d1c7c/002f7a2及用户C66/C67增量；完整报告待交回，Validation未启动 |
 
 ## V1.6 交接与此前开发证据（历史版本记录）
 

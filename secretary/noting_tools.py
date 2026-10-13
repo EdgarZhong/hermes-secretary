@@ -45,8 +45,8 @@ FINISH_NOTING_SCHEMA = {
 NOTEBOOK_MANAGE_SCHEMA = {'name': 'notebook_manage',
  'description': "Notebook entry lifecycle. operation='create' opens a new entry and requires entry_type "
                 'plus all required fields of that type (per-type field contract below); '
-                "operation='archive' requires entry_id and removes the entry from the active Notebook "
-                'permanently — there is no restore. Returns the complete entry with its id plus the '
+                "operation='archive' requires entry_id and removes the entry from the active Notebook. "
+                'Returns the complete entry with its id plus the '
                 'four-section state.',
  'parameters': {'type': 'object',
                 'additionalProperties': False,
@@ -68,7 +68,7 @@ NOTEBOOK_MANAGE_SCHEMA = {'name': 'notebook_manage',
                                           'description': 'create only. Only fields for the selected '
                                                          'entry_type. Required fields by type: '
                                                          'user_commitment: what, intent; user_reminder: '
-                                                         'message; secretary_task: task, purpose; '
+                                                         'message; secretary_task: task (future work, not a completed-work log), purpose; '
                                                          'watchpoint: subject, what_to_watch, why, '
                                                          'until; decision: decision, rationale; '
                                                          'open_question: question, why_it_matters; '
@@ -169,7 +169,7 @@ NOTEBOOK_MANAGE_SCHEMA = {'name': 'notebook_manage',
                                                          'notebook_edit for the legal status '
                                                          'transitions of each entry_type.'},
                                'expression': {'type': 'string',
-                                              'description': 'create only, optional. Sets the new '
+                                              'description': 'create only; REQUIRED for secretary_task, otherwise optional. Sets the new '
                                                              "entry's initial Schedule intent; only for "
                                                              'entry types that may carry a Schedule '
                                                              '(§3.8). For watchpoint, the required '
@@ -180,7 +180,7 @@ NOTEBOOK_MANAGE_SCHEMA = {'name': 'notebook_manage',
                                'delivery_mode': {'type': 'string',
                                                  'enum': ['instant', 'deferred'],
                                                  'description': 'create only, REQUIRED for '
-                                                                'secretary_task schedules: instant '
+                                                                'every secretary_task: instant '
                                                                 'fires at the due moment and may start '
                                                                 'a Turn; deferred is delivered with the '
                                                                 'next active request and never starts a '
@@ -336,7 +336,8 @@ NOTEBOOK_EDIT_SCHEMA = {'name': 'notebook_edit',
 
 NOTEBOOK_SCHEDULE_SCHEMA = {'name': 'notebook_schedule',
  'description': 'Notebook Schedule-intent editing on existing entries that may carry a Schedule (§3.8). '
-                'schedule_update requires entry_id + expression; schedule_cancel requires entry_id. (A '
+                'schedule_update requires entry_id + expression; schedule_cancel requires entry_id; '
+                'forbidden for secretary_task — use notebook_manage archive. (A '
                 "NEW entry's initial Schedule is set inside notebook_manage create — watchpoint.until "
                 'or the expression argument — so this tool has no schedule_create.) Every change '
                 'returns the complete entry with its NEW id plus the four-section state. A Notebook '

@@ -19,7 +19,7 @@ from hermes_state_secretary_schedule import (
     schedule_release_conn,
     schedule_sync_conn,
 )
-from secretary.notebook_schedule import SCHEDULE_TYPES, schedule_delivery_semantics
+from secretary.notebook_schedule import ACTIVE_STATUSES, SCHEDULE_TYPES, schedule_delivery_semantics
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +61,7 @@ def _rebind_version_registry_conn(conn, conversation_ref, entry_id):
                      (entry_id, old["schedule_id"]))
 
 
-def reconcile_entry(conn, conversation_ref, entry, *, active=True, now=None, reminder_text=None):
+def reconcile_entry(conn, conversation_ref, entry, *, active=True, now=None, reminder_text=None, reactivated=False):
     """Mirror one Notebook entry's Schedule into the runtime registry, inside the caller's write.
 
     Called by the Notebook service after a semantic mutation; a no-intent or now-inactive entry
@@ -79,19 +79,57 @@ def reconcile_entry(conn, conversation_ref, entry, *, active=True, now=None, rem
     return schedule_sync_conn(
         conn, conversation_ref, entry["entry_id"], active=bool(active), canonical_schedule=canonical,
         delivery_semantics=semantics, reminder_text=reminder_text or entry_reminder_text(entry), now=now,
+        reactivated=reactivated,
     )
 
 
-def reconcile_conversation(conn, conversation_ref, entries, *, active=True, now=None, complete=True):
+def _snapshot_versions(conn, conversation_ref, payload):
+    """Resolve the immutable versions in a previously effective Snapshot by stable lineage."""
+    from secretary.notebook_items import item_entry, item_row_conn, require_item_owner
+
+    versions = {}
+    for section in (payload or {}).values():
+        for entry in section:
+            if entry["type"] not in SCHEDULE_TYPES or entry["archived"]:
+                continue
+            row = item_row_conn(conn, entry["entry_id"])
+            require_item_owner(conn, row, conversation_ref)
+            if entry != item_entry(row, conversation_ref):
+                raise ValueError("Previous Snapshot entry differs from its immutable version")
+            versions[row["lineage_id"]] = entry
+    return versions
+
+
+def _schedule_reactivated(conn, conversation_ref, entry, previous_versions):
+    """Only a forward semantic restart can rearm an unchanged fulfilled occurrence."""
+    if not previous_versions:
+        return False
+    from secretary.notebook_items import item_entry, item_row_conn, require_item_owner
+
+    row = item_row_conn(conn, entry["entry_id"])
+    require_item_owner(conn, row, conversation_ref)
+    if entry != item_entry(row, conversation_ref):
+        raise ValueError("Selected Snapshot entry differs from its immutable version")
+    previous = previous_versions.get(row["lineage_id"])
+    return bool(previous and previous["type"] == entry["type"]
+                and int(entry["entry_id"]) > int(previous["entry_id"])
+                and previous["status"] not in ACTIVE_STATUSES[entry["type"]]
+                and entry["status"] in ACTIVE_STATUSES[entry["type"]])
+
+
+def reconcile_conversation(conn, conversation_ref, entries, *, active=True, now=None, complete=True,
+                          previous_payload=None):
     """Reconcile every schedule-carrying entry; optionally disable rows whose entry vanished."""
     seen = set()
+    previous_versions = _snapshot_versions(conn, conversation_ref, previous_payload)
     for entry in entries:
         if not isinstance(entry, dict) or not entry.get("entry_id"):
             continue
         if entry.get("type") not in SCHEDULE_TYPES:
             continue
         seen.add(entry["entry_id"])
-        reconcile_entry(conn, conversation_ref, entry, active=active, now=now)
+        reactivated = _schedule_reactivated(conn, conversation_ref, entry, previous_versions)
+        reconcile_entry(conn, conversation_ref, entry, active=active, now=now, reactivated=reactivated)
     if not complete:
         return
     rows = conn.execute(
@@ -102,7 +140,8 @@ def reconcile_conversation(conn, conversation_ref, entries, *, active=True, now=
             schedule_sync_conn(conn, conversation_ref, entry_id, active=False, now=now)
 
 
-def reconcile_payload(conn, conversation_ref, payload, *, active=True, now=None, complete=True):
+def reconcile_payload(conn, conversation_ref, payload, *, active=True, now=None, complete=True,
+                      previous_payload=None):
     """Reconcile a committed Notebook Snapshot payload (the four-section state) in place.
 
     This is the call the Notebook commit transaction makes, so registry state and the
@@ -111,6 +150,7 @@ def reconcile_payload(conn, conversation_ref, payload, *, active=True, now=None,
     entries = [entry for section in (payload or {}).values() if isinstance(section, list) for entry in section]
     return reconcile_conversation(
         conn, conversation_ref, entries, active=active, now=now, complete=complete,
+        previous_payload=previous_payload,
     )
 
 

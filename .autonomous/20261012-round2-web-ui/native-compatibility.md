@@ -117,7 +117,10 @@ compute-host 分支当前 steer 没有可靠同 owner 通道，不可拿 parent 
 | WS `event` | `{jsonrpc:"2.0",method:"event",params:{type,session_id,payload?,seq?}}`；无统一event timestamp/turn_id！只有某些payload携带时间。不能给临时节点杜撰持久时间 | `server.py::_event_frame` L696；event_replay |
 | stream | message.start、message.delta `{text,rendered?}`、reasoning/thinking.delta、reasoning.available、message.interim `{text,already_streamed}`；message.complete `{text,status,usage?,persisted_turn?,reasoning?,error_surface?,partial?,response_*?,…}` | `contracts/events.py` L113–213；Desktop gateway-event/message-stream.ts |
 | tool | tool.generating `{name}`只有状态；tool.start `{tool_id,name,args?,context?,args_text?,labels?}`；tool.complete `{tool_id,name,args?,result,result_text?,summary?,duration_s?,…}`；**没有incremental arguments delta** | `agent_callbacks.py` L164；`tool_progress.py` L276–302；`contracts/events.py` L263–308 |
-| `file.attach {session_id,data_url?,path?,name?,profile?}` | `{attached,name,path,ref_path,ref_text,uploaded}`；ordinary PDF同路；把authoritative ref_text追加真实Prompt，不猜路径 | `methods_prompt.py` L976–996；`contracts/prompt_voice.py` L169–190 |
+| `file.attach {session_id,data_url?,path?,name?,profile?}` | `{attached,name,path,ref_path,ref_text,uploaded}`；ordinary PDF同路；把authoritative ref_text追加真实Prompt，不猜路径 | 当前`methods_prompt.py` L949–966；`contracts/prompt_voice.py` L165–184 |
+| `file.upload_chunk {session_id,upload_id,offset,total_bytes,data_url,name?,profile?}`（V-R2-01整改新增） | 原六个附件字段加`upload_id/received_bytes/size_bytes?`；未完成`attached:false`且path/ref为空；末片才发布ref。单片≤4MiB、声明总量≤500000000；offset+payload精确重放幂等 | `methods_prompt.py`的同名注册入口→`prompt_attachments.py::_file_attachment_chunk`；契约`FileUploadChunkParams/Result` |
+| `file.upload_abort {session_id,upload_id,profile?}`（V-R2-01整改新增） | 原六字段加`upload_id/received_bytes`；`attached:false`、path/ref为空；同runtime锁下仅清未完成临时文件，不撤销完整文件，不改变Turn/Pending、不启动冷Agent | `methods_prompt.py`→`_file_attachment_abort`；`FileUploadAbortParams/Result` |
+| `file.attachment_info {session_id,path,profile?}`（V-R2-01整改新增） | 原六字段加真实`size_bytes`；`attached:false/uploaded:false`；只读session workspace与profile attachments/images根，不stage/copy/warm Agent；symlink/remote cwd边界沿现有helper | `methods_prompt.py`→`_file_attachment_metadata`；`FileAttachmentInfoParams/Result` |
 | `image.attach_bytes {session_id,content_base64?|data?,filename?,ext?,profile?}` | `{attached,path,count,bytes?,name?,width?,height?,token_estimate?}`；魔术/后缀校验，同runtime `attached_images`留待submit | 同contracts L110–131；handler L887–917 |
 | `image.detach {session_id,path,profile?}` | `{detached,count}`；只撤queue引用，不删文件；不能把Cancel Send当Turn Stop | handler L999–1012 |
 | `session.usage {session_id,profile?}` | Usage累计`input/output/prompt/completion/total/calls`、context_*、cache_hit_pct?、avg_*?；**producer没填cache_read/cache_write，calls不是Turns**；read可能访问provider account limits，不宜每秒轮询 | `server.py::_get_usage` L2187–2240；`methods_session.py` L1405–1433 |
@@ -144,7 +147,7 @@ REST DTO：
 | `/api/fs/download?path=&profile=&session_id?` | 流式响应、MIME与Content-Disposition；**legacy query-token allowlist不含fs/download**，使用authenticated fetch→Blob；不能直接加tokenURL假定可用 | files.py L930–958；web_server.py L473 |
 | `/api/files/*`、`/api/media?path=` | managed policy与media roots独立；包含write/upload/mkdir/delete能力，V1 Files只调用read。`/api/files/download`可query-token；历史file chip不重建link | files.py L307–352/L598起；不能泛化成fs proxy |
 
-附件限制实情：image25MiB、特殊pdf-render50MiB/25页；ordinary file.attach的实际stage函数**未见raw size cap**，WS uvicorn配置384MiB是frame ceiling，注释中的“256MiB raw attach cap”不能代替file.attach校验；base64+JSON/浏览器内存/Agent可读性还需真实验收。重名文件用`open("xb")`循环生成独立目标；图像用counter。不要宣布500MB/2GB支持。V1允许上限须在实施证据review时选择并发布，本审计不提前定值。
+附件限制原始审计实情：image25MiB、特殊pdf-render50MiB/25页；ordinary file.attach的实际stage函数**未见raw size cap**，WS uvicorn配置384MiB是frame ceiling，注释中的“256MiB raw attach cap”不能代替file.attach校验。R2-C30之后明确草稿全部附件合计500000000 bytes；已有实际500MB上传/模型读取证据见plan附件段，底层复用不再传大包。V-R2-01整改将分片与stat从旧`file.attach`移至上表新名，恢复旧方法精确参数/六字段结果、4015/5028及额外键4000；前端新名接线与代表完整链路仍待后续授权实施/补证。重名文件用原生独占allocation；原image/PDF-render限制不变，不声明500MB图片理解。
 
 ## 6. REST/WS 安全与前端实际复用
 
@@ -186,7 +189,7 @@ Owner统一：**Main/Integration负责technical closure；Development按白名�
 | L10 live Framework即时显示 | N+F | agent_callbacks::_agent_status_update kind framework +REST refetch；§1.4 | 已commit验证过的event可作invalidation，不直接复制text成无UID持久节点。收到后REST读取真实row。若延迟/页窗无法稳映射再提narrow A |
 | L11 compaction authentic历史 | N+F优先，条件A | REST保存raw；native compaction classifier/split_user_originated_turn；§1.14 | Desktop隐藏纯handoff不能照搬。F识别真实carrier/full raw/composite仅一identity；无文本不造marker。如raw无法无歧义辨认，A只能新增read投影不改旧display字段 |
 | L12 compression status/cancel | A | compression_facade注册/fence；§2.5 | 无active状态read/cancel RPC；复用现有fence；C01源码证明 |
-| L13 file/image attachment | N+F | file.attach/image.attach_bytes/image.detach；§1.7 | 原生同runtime、重名独立；local draft untilSend、媒体实际DeepSeek读取待 |
+| L13 file/image attachment | N+F；大传输/尺寸为最小A | file.attach/image.attach_bytes/image.detach；新增file.upload_chunk/file.upload_abort/file.attachment_info；§1.7/V-R2-01 | 原生同runtime/附件owner与锁、旧合同精确保留；新增依据为500MB整包base64超V8字符串/WS帧上限、旧附件ACK无size事实，见plan附件反例；新名完整接线待补 |
 | L14 Cancel Send | F（N detach） | abort客户端剩余transfer/prompt；§1.10 | in-flight RPC不能假撤销；staged图像用detach清queue；留residual bytes允许；another-client stage消费竞态必须真实测试 |
 | L15 Steer occurrence/withdraw/recovery | A | Agent唯一_pending_steer锁；§2.2–2.3 | S01–05；旧session.steer不可改shape、compression reject单独报告 |
 | L16 Stop | N+F | session.interrupt native hard stop；§1.8/1.10 | 不发Composer；ACK后等terminal/status，不假idle |

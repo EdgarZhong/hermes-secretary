@@ -230,23 +230,36 @@ def _file_upload_progress(upload_id: str, state: dict) -> dict:
             "received_bytes": state["offset"]}
 
 
-def _file_attachment_chunk(session: dict, params: dict) -> dict:
-    """Bounded, ordered upload under the native session lock; last-ACK retries are idempotent."""
+def _file_upload_id(raw) -> str:
+    """Validate the opaque identifier shared by chunk and abort calls."""
     import uuid
-    upload_id = str(params.get("upload_id") or "")
+    upload_id = str(raw or "")
     try:
         if str(uuid.UUID(upload_id)) != upload_id:
             raise ValueError
     except ValueError as exc:
         raise ValueError("upload_id must be a canonical UUID") from exc
+    return upload_id
+
+
+def _file_attachment_abort(session: dict, raw_upload_id: str) -> dict:
+    """Clean only an incomplete upload owned by this runtime session."""
+    upload_id = _file_upload_id(raw_upload_id)
     with session["history_lock"]:
         uploads = session.setdefault("file_uploads", {})
         state = uploads.get(upload_id)
-        if params.get("abort_upload"):
-            if state and "result" not in state:
-                state["temporary"].unlink(missing_ok=True)
-                uploads.pop(upload_id, None)
-            return _file_upload_progress(upload_id, state or {"name": "", "offset": 0})
+        if state and "result" not in state:
+            state["temporary"].unlink(missing_ok=True)
+            uploads.pop(upload_id, None)
+        return _file_upload_progress(upload_id, state or {"name": "", "offset": 0})
+
+
+def _file_attachment_chunk(session: dict, params: dict) -> dict:
+    """Bounded, ordered upload under the native session lock; last-ACK retries are idempotent."""
+    upload_id = _file_upload_id(params.get("upload_id"))
+    with session["history_lock"]:
+        uploads = session.setdefault("file_uploads", {})
+        state = uploads.get(upload_id)
         return _append_file_attachment_chunk(session, params, uploads, state, upload_id)
 
 

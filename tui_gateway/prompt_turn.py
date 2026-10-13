@@ -735,6 +735,61 @@ def _prepare_turn_input(sid: str, session: dict, st: _TurnRun, text: Any, images
     return prompt, _prepend_note(run_message, _hud_surface_note(session)), cols, streamer
 
 
+def _read_committed_user_source(agent, messages, index, witness):
+    """Read exactly the active admission's native committed row, never a schedule projection."""
+    from agent.pending_steer import native_source_message
+    if type(index) is not int or not 0 <= index < len(messages) or witness.row_proof is None:
+        return None
+    source = native_source_message(messages[index])
+    session_id, uid, content, timestamp = witness.row_proof
+    if source.get("message_uid") != uid or source.get("row_id") is None:
+        return None
+    db = getattr(agent, "_session_db", None)
+    if db is None or str(Path(db.db_path).resolve()) != witness.db_path or not witness.durable(db):
+        return None
+    rows = db.get_messages_around(session_id, source["row_id"], window=0)["window"]
+    if len(rows) != 1:
+        return None
+    row = rows[0]
+    if (row.get("id"), row.get("message_uid"), row.get("role"), row.get("content"), row.get("timestamp")) != (
+            source["row_id"], uid, "user", content, timestamp) or not row.get("active"):
+        return None
+    message = {"message_uid": uid, "row_id": row["id"], "role": row["role"],
+               "content": row["content"], "timestamp": row["timestamp"]}
+    for field in ("display_kind", "display_metadata"):
+        if row.get(field) is not None:
+            message[field] = row[field]
+    return session_id, message, source
+
+
+def _committed_turn_source_observer(sid, session, st, witness):
+    """One invocation-local observer; a repeated early flush cannot duplicate the source event."""
+    published = False
+
+    def observe(messages, index):
+        nonlocal published
+        if published or _sessions.get(sid) is not session or session.get("_closing") or session.get("_finalized"):
+            return
+        if session.get("agent") is not st.agent:
+            return
+        read = _read_committed_user_source(st.agent, messages, index, witness)
+        if read is None:
+            return
+        from agent.pending_steer import native_source_boundary
+        turn_id = getattr(st.agent, "_current_turn_id", None)
+        ref = witness.receipt["before"].get("conversation_ref")
+        boundary = native_source_boundary(st.agent, messages, index, st.history, st.compression_count)
+        if not turn_id or not ref or boundary is None:
+            return
+        stored_session_id, message, source = read
+        published = True
+        _emit("message.source_committed", sid, {
+            "turn_id": turn_id, "stored_session_id": stored_session_id, "conversation_ref": ref,
+            "message": message, "source_messages": [source], "source_boundary": boundary})
+
+    return observe
+
+
 def _invoke_agent(
     sid: str, session: dict, st: _TurnRun, prompt: Any, run_message: Any, streamer,
     images: list[str], display_kind: str | None, display_metadata: dict | None,
@@ -805,6 +860,11 @@ def _invoke_agent(
     prior_source_observer = vars(agent).get("_pending_steer_source_boundary")
     agent._pending_steer_source_boundary = lambda messages, start: native_source_boundary(
         agent, messages, start, st.history, st.compression_count)
+    from secretary.reminders import active_admission_witness
+    witness = active_admission_witness(text)
+    prior_user_observer = vars(agent).get("_on_turn_user_persisted")
+    if witness is not None:
+        agent._on_turn_user_persisted = _committed_turn_source_observer(sid, session, st, witness)
     try:
         from agent.notification_presentation import notification_turn, event_presentation_muted
         from agent.message_metadata import preserve_user_input_origin
@@ -812,6 +872,11 @@ def _invoke_agent(
             st.result = agent.run_conversation(preserve_user_input_origin(text, run_message), **st.run_kwargs)
             usage_returned = True
     finally:
+        if witness is not None:
+            if prior_user_observer is None:
+                vars(agent).pop("_on_turn_user_persisted", None)
+            else:
+                agent._on_turn_user_persisted = prior_user_observer
         if prior_source_observer is None:
             vars(agent).pop("_pending_steer_source_boundary", None)
         else:

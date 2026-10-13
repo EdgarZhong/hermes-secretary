@@ -955,20 +955,51 @@ def _(rid, params: dict) -> dict:
         return err
     raw, data_url, name = (
         str(params.get(k, "") or "").strip() for k in ("path", "data_url", "name"))
-    if not raw and not data_url and not params.get("upload_id"):
+    if not raw and not data_url:
         return _err(rid, 4015, "path or data_url required")
     try:
-        if (any(params.get(k) is not None for k in ("offset", "total_bytes", "abort_upload"))
-                and not params.get("upload_id")):
-            raise ValueError("upload_id is required for chunk controls")
-        if params.get("metadata_only"):
-            return _ok(rid, _file_attachment_metadata(session, raw))
-        if params.get("upload_id"):
-            return _ok(rid, _file_attachment_chunk(session, params))
         stored_path, uploaded = _stage_session_file_attachment(
             session, raw_path=raw, data_url=data_url, name=name)
         return _ok(rid, _file_attach_result(session, stored_path, uploaded))
     except Exception as e:
+        logger.debug("file.attach failed", exc_info=True)
+        return _err(rid, 5028, str(e))
+
+
+@method("file.upload_chunk")
+def _(rid, params: dict) -> dict:
+    session, err = _sess_building(params, rid)
+    if err:
+        return err
+    try:
+        return _ok(rid, _file_attachment_chunk(session, params))
+    except Exception as e:
+        logger.debug("file.upload_chunk failed", exc_info=True)
+        return _err(rid, 5028, str(e))
+
+
+@method("file.upload_abort")
+def _(rid, params: dict) -> dict:
+    session, err = _sess_nowait(params, rid)
+    if err:
+        return err
+    try:
+        return _ok(rid, _file_attachment_abort(session, params.get("upload_id")))
+    except Exception as e:
+        logger.debug("file.upload_abort failed", exc_info=True)
+        return _err(rid, 5028, str(e))
+
+
+@method("file.attachment_info")
+def _(rid, params: dict) -> dict:
+    session, err = _sess_nowait(params, rid)
+    if err:
+        return err
+    try:
+        raw = str(params.get("path", "") or "").strip()
+        return _ok(rid, _file_attachment_metadata(session, raw))
+    except Exception as e:
+        logger.debug("file.attachment_info failed", exc_info=True)
         return _err(rid, 5028, str(e))
 
 

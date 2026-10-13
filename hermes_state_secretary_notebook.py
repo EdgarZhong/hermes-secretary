@@ -179,6 +179,7 @@ class SecretaryNotebookMixin:
         conn.execute(_POINTER_UPSERT_SQL, (conversation_ref, snapshot_id))
 
     def _notebook_reselect_pointer_conn(self, conn, conversation_ref):
+        previous = self.notebook_current_conn(conn, conversation_ref)
         positions = self._notebook_anchor_positions_conn(conn, conversation_ref)
         snapshot_id = self._notebook_latest_valid_snapshot_id_conn(conn, conversation_ref, positions)
         self._notebook_move_pointer_conn(conn, conversation_ref, snapshot_id)
@@ -186,7 +187,9 @@ class SecretaryNotebookMixin:
         # Null pointers disable runtime rows without deleting immutable intent/history.
         from secretary.schedules import reconcile_payload
         current = self.notebook_current_conn(conn, conversation_ref)
-        reconcile_payload(conn, conversation_ref, current["payload"] if current else None)
+        reconcile_payload(conn, conversation_ref, current["payload"] if current else None,
+                          previous_payload=(previous["payload"] if previous
+                                            and previous["anchor_message_uid"] in positions else None))
         return snapshot_id
 
     # ── Current state (02 §3.3-3.4) ────────────────────────────────────────

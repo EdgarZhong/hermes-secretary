@@ -151,6 +151,8 @@ Exactly **three main screen states** exist: **New Chat**, **Conversation**, **Fi
 
 Conversation list, title, ordering, archival/pin affordances (only if included by the approved design and native capability) use actual REST results. Do not add management controls just because Desktop has them. Empty/loading/error and a lost/deleted session are explicit, recoverable UI states.
 
+**User-confirmed sidebar restoration (2026-10-13, R2-C80):** Retain the approved Mock's Sidebar separators, including between Files and the theme controls. Organize real Sessions by their actual update time into mutually exclusive Today, Yesterday, previous 7 days, previous 30 days, and older groups. Restore the real-page presentation; do not substitute a single generic Conversations section for the approved grouping. Missing native timestamps must not be invented.
+
 ### 1.4. Timeline, streaming, message kinds and timestamps
 
 A Conversation has **one** Timeline. It includes the original ordered persisted messages, the live assistant stream and temporary pending-steer *visual* bubbles as a distinct non-persisted tail projection. No extra composer-level Queue card, separate In-flight panel or second transcript is permitted.
@@ -259,6 +261,8 @@ Buttons MUST be driven by this precedence so a user can prepare attachments duri
 | Dynamic commands | Skills, Bundles, plugins from native completion/catalog | Discover native availability; expose only those executable via correct browser/native dispatch, not a hardcoded stale catalog. |
 | Terminal-only / test-specific | `/mouse`, `/redraw`, `/density`, `/theme`, `/logs`, `/clear` or others **where proven TUI-only** | Exclude or intercept at the Web command router, without deleting commands from shared Hermes registry. |
 
+**User-confirmed slash completion (2026-10-13, R2-C76):** Composer supports Tab completion for slash commands. Each completion candidate presents the command and description in one text flow with unified wrapping, rather than separate text containers that wrap independently. Commands must not wrap prematurely while the candidate has sufficient available width.
+
 Slash completions and execution are separate: a suggestion MUST NOT imply a command can execute in this UI when only a terminal handler exists. Typing a literal command, clicking a suggestion, selecting a model pill and using a matching keyboard shortcut must converge on one underlying action. `/notebook` is human read-only, shows the currently effective Snapshot/explicit “none” state and its proper timestamp **as required by 02** within the temporary result, but does not show Anchor/pointer IDs, create a Turn, consume Memo, mutate Notebook, or persist the human display as model-visible history. Other valid slash results follow their native result and persistence contracts, not an indiscriminate `/notebook` special-case extension.
 
 ### 1.13. Usage cards and context indicator
@@ -274,6 +278,8 @@ Under/near the Composer, show a restrained usage component with two equal-size v
 | Turns | Real Session Turn count | Not an extra session count |
 | Model Calls | Not a replacement for Turns | Number of provider/model calls in that actual Turn |
 | Cache Write | Not displayed | Not displayed |
+
+**User-confirmed visibility (2026-10-13, R2-C73):** Once usage data for the selected actual Session has been successfully fetched, show it regardless of whether a Turn is running or idle. Turn activity MUST NOT suppress successful Session usage data. Latest Turn retains its completed-Turn meaning; unavailable counters remain unknown. New Chat remains excluded under R2-C16.
 
 Session Total SHOULD refresh as real native model-call/turn usage updates are available; Latest Turn switches to the most recently **completed** Turn, not the latest arbitrary assistant text segment. Missing/incompatible counters are shown as unavailable/unknown, **not** obtained by dubious subtraction of lifetime aggregates. Cost presentation should not direct attention away from the conversation.
 
