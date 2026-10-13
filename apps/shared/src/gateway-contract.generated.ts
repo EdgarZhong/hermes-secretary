@@ -2843,6 +2843,11 @@ export interface FileAttachParams {
   path?: string | null
   data_url?: string | null
   name?: string | null
+  upload_id?: string | null
+  offset?: number | null
+  total_bytes?: number | null
+  abort_upload?: boolean | null
+  metadata_only?: boolean | null
 }
 export interface FileAttachResult {
   attached: boolean
@@ -2851,6 +2856,9 @@ export interface FileAttachResult {
   ref_path: string
   ref_text: string
   uploaded: boolean
+  upload_id?: string | null
+  received_bytes?: number | null
+  size_bytes?: number | null
 }
 export interface ImageDetachParams {
   session_id: string

@@ -1,16 +1,16 @@
-# 第二轮交付记录：视觉交回后继续实施
+# 第二轮交付记录：Verification 前阶段交接
 
 ## 目标状态与结束判定
 
-**整轮目标未完成，两道独立门禁未执行。** 用户2026-10-13已交回视觉worktree并再次授权托管至交付；现继续表现层收尾、合计500 MB附件预算与真实链路、逻辑修补和视觉合并。前置完成后按 Astra high Verification → Astra medium Validation → 最终交付推进。此前门禁前交接的有效证据保留，不新开轮次。
+**整轮目标未完成，两道独立门禁未执行。** 用户2026-10-13最新R2-C31要求完成全部开发集成前置，在派遣Verification之前停下；视觉已合并、三个owner已完整交回并由Main亲自review接收，前端611b734已提交，当前完成后端快照和稳定服务定向四视口核对。此前门禁前交接的有效证据保留，不新开轮次。
 
-冻结依据：[Snapshot Index](snapshot-index.md)，基线 `37ad76f5df`。当前已提交产品：后端 `37ce184eca55ae3851819e60918134e2af089a10`，前端独立仓库 `bfecc9f`。最后F14新合法period真实补证已由Main复核接收，已到约定的门禁前交接点。
+冻结依据：[Snapshot Index](snapshot-index.md)，基线 `37ad76f5df`。当前已提交产品：后端 `37ce184eca55ae3851819e60918134e2af089a10`，前端独立仓库 `611b734`（继承bfecc9f及视觉合并3df93c9）。最后F14新合法period真实补证已由Main复核接收，已到约定的门禁前交接点。
 
 ## 本轮收敛与授权
 
 范围为新版06 Web V1、必要原生接缝增量、V1.6移交缺口；另含用户授权的全场景Mock和独立视觉worktree。没有发布远端、云部署或引入个人Memory Provider。C25要求Main专注基础能力，C26/C27要求按版本/影响复用证据、集中选包并控制资源；本阶段按此执行。
 
-仍待用户追认的四项自主取舍，完整记录在根CLAUDE顶部：Web回执的有限保留、最近32条压缩终态、idle-only原子拒绝接口、图片经file.attach并由本次image_paths显式提交。均有现有授权范围内的工程理由与机制证据，未冒称用户已逐项确认。
+R2-C36已明确追认单Turn累计256次Steer、64个不同Interrupt请求、idle-only共享会话规则和图片原生上下文注入/文件留存。当前仅最近8个结束Turn查询窗口、最近32条压缩终态仍待追认，见根CLAUDE顶部；没有将用户对“读库能否确认取消”的提问当成批准。
 
 F14采用原claim/build owner，在发布Agent前恢复原生root/tools和最新Parent历史；正式host history临界区排除已准入Main被误认空闲。未改timer/admission策略。F16保留原生5098版本保护，错误可见并可重读；F20按真实carrier角色展示。以上为Main与实现者的工程收敛，**尚无独立Verification评审结论**，不得冒称门禁认可。
 
@@ -32,7 +32,7 @@ F14采用原claim/build owner，在发布Agent前恢复原生root/tools和最新
 
 ## 剩余、阻塞与影响
 
-1. 用户已交回；Sol收尾后Main review并合并 `/Users/edgar/code/hermes-secretary-web-visual-design`（`codex/visual-design`，起点27c5cb4）；Main合并到功能树并核对接口/行为影响。
+1. 视觉已以1c614ac→3df93c9合并，最终接线Main已亲读接收；用户C32–35现场修正同步正式树611b734与visual86fa280。后端阶段提交和服务稳定窗口正在收尾。
 2. 两独立门禁、最终四视口与范围内未覆盖恢复/交错场景仍须完成；真实移动软键盘、相机、系统侧滑按C05后续专项验证。原生无snapshot+seq原子cut、未决操作不新增持久ledger、视频完整播放未确认等边界见plan，不能隐去。
 3. 没有公开发布授权；前端无远端。后端工作区既有未跟踪视觉报告、旧讨论和截图目录保持原状，未混入产品提交。当前新增收尾证据文档保留工作区，避免文档HEAD变化再次触发运行服务5098；下一次视觉集成统一提交并重启。
 
@@ -41,3 +41,5 @@ F14采用原claim/build owner，在发布Agent前恢复原生root/tools和最新
 功能入口 `http://127.0.0.1:5173`；原生测试服务 `http://127.0.0.1:53445`，隔离测试状态位于仓库内。视觉Mock入口 `http://127.0.0.1:5176/mock.html` 保持独立。
 
 续接先读根CLAUDE顶部及plan的统一证据索引，再按变化选包。F16/F20复核直接使用已有 `20261012_223239_3eb664`，无需再次调用模型构造压缩。恢复顺序与完整启动环境已写根CLAUDE，不把缺少参数的启动当作产品失败。
+
+本次新增开发证据：真实500MB及同名250MB×2上传/源服务器SHA一致/原生terminal理解/取消user rows0，复用附件owner报告；最新超额toast可见且500MB草稿保留，跨route持续及显式dismiss，复用ui-final-wiring。48受影响React、13最后微修＋native6、Mock20和构建/health0/0已审收；四视口结果由Main稳定窗口补入，未提前声称通过。

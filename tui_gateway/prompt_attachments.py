@@ -16,6 +16,8 @@ _registry = HandlerRegistry()
 _ATTACH_BYTES_MAX_BYTES = 25 * 1024 * 1024
 _PDF_ATTACH_MAX_BYTES = 50 * 1024 * 1024
 _PDF_ATTACH_MAX_PAGES = 25
+_FILE_ATTACH_CHUNK_BYTES = 4 * 1024 * 1024
+_FILE_ATTACH_TOTAL_BYTES = 500_000_000
 
 # Leading magic bytes -> file extension, for filename-less uploads.
 _IMAGE_MAGIC: tuple[tuple[bytes, str], ...] = (
@@ -184,6 +186,132 @@ def _sanitize_attachment_name(name: str) -> str:
     return candidate.strip().strip(".") or "attachment"
 
 
+def _attachment_targets(root: Path, filename: str):
+    """The shared native exclusive-allocation sequence, including duplicate names."""
+    filename = _sanitize_attachment_name(filename)
+    yield root / filename
+    stem, suffix = Path(filename).stem or "attachment", Path(filename).suffix
+    counter = 2
+    while True:
+        yield root / f"{stem}-{counter}{suffix}"
+        counter += 1
+
+
+def _file_attach_result(session: dict, target: Path, uploaded: bool) -> dict:
+    ref_path = _attachment_ref_path(session, target)
+    return {"attached": True, "name": target.name, "path": str(target),
+            "ref_path": ref_path, "ref_text": f"@file:{_format_ref_value(ref_path)}",
+            "uploaded": uploaded}
+
+
+def _file_attachment_metadata(session: dict, raw_path: str) -> dict:
+    """Read a real size without staging, with the same session/profile path ownership."""
+    if not raw_path:
+        raise ValueError("path is required for attachment metadata")
+    workspace = Path(_session_cwd(session)).resolve()
+    target = Path(raw_path).expanduser()
+    target = (target if target.is_absolute() else workspace / target).resolve()
+    roots = [_session_home_dir(session, name).resolve() for name in ("attachments", "images")]
+    # A remote cwd is not a host-local path. Never stat a same-named host workspace.
+    if not _cwd_is_remote(session.get("profile_home")):
+        roots.append(workspace)
+    if not any(target == root or target.is_relative_to(root) for root in roots):
+        raise ValueError("Attachment size unavailable outside the session's readable roots")
+    if not target.is_file():
+        raise ValueError("Attachment file is unavailable")
+    result = _file_attach_result(session, target, False)
+    result.update(attached=False, size_bytes=target.stat().st_size)
+    return result
+
+
+def _file_upload_progress(upload_id: str, state: dict) -> dict:
+    return {"attached": False, "name": state["name"], "path": "", "ref_path": "",
+            "ref_text": "", "uploaded": False, "upload_id": upload_id,
+            "received_bytes": state["offset"]}
+
+
+def _file_attachment_chunk(session: dict, params: dict) -> dict:
+    """Bounded, ordered upload under the native session lock; last-ACK retries are idempotent."""
+    import uuid
+    upload_id = str(params.get("upload_id") or "")
+    try:
+        if str(uuid.UUID(upload_id)) != upload_id:
+            raise ValueError
+    except ValueError as exc:
+        raise ValueError("upload_id must be a canonical UUID") from exc
+    with session["history_lock"]:
+        uploads = session.setdefault("file_uploads", {})
+        state = uploads.get(upload_id)
+        if params.get("abort_upload"):
+            if state and "result" not in state:
+                state["temporary"].unlink(missing_ok=True)
+                uploads.pop(upload_id, None)
+            return _file_upload_progress(upload_id, state or {"name": "", "offset": 0})
+        return _append_file_attachment_chunk(session, params, uploads, state, upload_id)
+
+
+def _append_file_attachment_chunk(session, params, uploads, state, upload_id):
+    import hashlib
+    import re as _re
+    import tempfile
+    offset, total = params.get("offset"), params.get("total_bytes")
+    if (type(offset) is not int or offset < 0 or type(total) is not int
+            or not 0 < total <= _FILE_ATTACH_TOTAL_BYTES):
+        raise ValueError("Invalid attachment offset or total_bytes (maximum 500000000)")
+    raw = str(params.get("data_url") or "")
+    if len(raw) > ((_FILE_ATTACH_CHUNK_BYTES + 2) // 3) * 4 + 1024:
+        raise ValueError("Attachment chunk encoding exceeds 4194304 bytes")
+    # All ordinary media types, preserving the legacy image/PDF-specific decoder caps.
+    try:
+        payload = _b64_payload(raw, r"^data:[^;,]*(?:;[^;,=]+=[^;,]+)*;base64,(.*)$", _re.DOTALL | _re.I)
+    except Exception as exc:
+        raise ValueError("invalid data_url payload") from exc
+    if not payload or len(payload) > _FILE_ATTACH_CHUNK_BYTES or offset + len(payload) > total:
+        raise ValueError("Invalid attachment chunk length (maximum 4194304)")
+    name = _sanitize_attachment_name(params.get("name") or "attachment")
+    digest = hashlib.sha256(payload).hexdigest()
+    if state:
+        if state["total"] != total or state["name"] != name:
+            raise ValueError("Upload metadata changed")
+        if state.get("last_offset") == offset and state.get("last_digest") == digest:
+            return state.get("result") or _file_upload_progress(upload_id, state)
+        if state["offset"] != offset or "result" in state:
+            raise ValueError("Upload offset does not match received bytes")
+    else:
+        if offset != 0:
+            raise ValueError("Unknown upload; first offset must be zero")
+        root = _session_home_dir(session, "attachments")
+        root.mkdir(parents=True, exist_ok=True)
+        fd, temporary = tempfile.mkstemp(prefix=".file-upload-", dir=root)
+        os.close(fd)
+        state = {"temporary": Path(temporary), "name": name, "offset": 0, "total": total}
+        uploads[upload_id] = state
+    temporary = state["temporary"]
+    try:
+        with temporary.open("r+b") as stream:
+            stream.seek(offset)
+            stream.write(payload)
+            stream.flush()
+        state.update(offset=offset + len(payload), last_offset=offset, last_digest=digest)
+        if state["offset"] == total:
+            # Hard-link publishes complete bytes atomically with exclusive native name allocation.
+            for target in _attachment_targets(temporary.parent, name):
+                try:
+                    os.link(temporary, target)
+                except FileExistsError:
+                    continue
+                break
+            temporary.unlink()
+            result = _file_attach_result(session, target.resolve(), True)
+            result.update(upload_id=upload_id, received_bytes=total, size_bytes=total)
+            state["result"] = result
+    except Exception:
+        temporary.unlink(missing_ok=True)
+        uploads.pop(upload_id, None)
+        raise
+    return state.get("result") or _file_upload_progress(upload_id, state)
+
+
 def _stage_session_file_attachment(
     session: dict, *, raw_path: str, data_url: str, name: str) -> tuple[Path, bool]:
     """Make a desktop file attachment available to the gateway agent: ``(stored_path, uploaded)``.
@@ -227,16 +355,11 @@ def _stage_session_file_attachment(
     root = _session_home_dir(session, "attachments")
     root.mkdir(parents=True, exist_ok=True)
     filename = _sanitize_attachment_name(filename)
-    target = root / filename
-    stem = Path(filename).stem or "attachment"
-    suffix = Path(filename).suffix
-    counter = 2
-    while True:
+    for target in _attachment_targets(root, filename):
         try:
             upload = target.open("xb")
         except FileExistsError:
-            target = root / f"{stem}-{counter}{suffix}"
-            counter += 1
+            continue
         else:
             break
     try:

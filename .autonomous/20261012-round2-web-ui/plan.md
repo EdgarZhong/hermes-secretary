@@ -170,8 +170,98 @@ V16-F14最终开发补证：v16-handoff-evidence§12及ignored v16-live/H04-F14/
 
 ## 2026-10-13 视觉交回后集成包
 
-- R2-C28/C30覆盖此前等待边界，Sol主会话继续到最终交付；前置完成后才派Astra门禁。
+- R2-C31为本次最新停止边界：完成开发集成与阶段提交，在派遣Verification之前交接；不自动进入Astra门禁。
 - F21：Enter只Send/Steer、Escape取消类；功能仓实际组件验证。
 - F22：500 MB合计附件预算替代16 MiB单文件；已有草稿+新选项合计判断，删除释放；完整实际上传与原生引用/提交需证据。
 - F23：视觉finished无回闪、Interrupt先收拢再涨入、顶部持久toast；worktree收尾及四视口、中间帧取证后Main合并并正式接线。
 - 历史16 MiB上传证据仅证明旧边界，不再代表交付上限；同源其他路径沿已有证据复用。
+
+## R2-F22 · 合计附件预算与真实大传输：Development 完整阶段交回（2026-10-13）
+
+本节由附件 owner 追加，仅记录 F22；待 Main 亲自 review / 集成，**不是独立 Verification 或 Validation 结论**。七项交回如下。唯一详细运行证据入口为 ignored `.hermes-dev/round2-evidence/attachment-budget/manifest.json`；不提交合成大文件、运行库、配置或凭据。
+
+### 1. 对应条款与现行依据
+
+- 用户 R2-C30 与现行 06 §1.7（202–204）：当前草稿的**所有附件合计 ≤ 500,000,000 bytes**，选取时包括已有项；duplicate-name occurrence 独立，删除释放预算，撤销旧 16 MiB 单文件限制。单文件刚好占满预算也允许。
+- 06 §0.3–0.5、§1.6–1.11、§3.5、§4.5–4.7：薄客户端、本地只保存未提交草稿、选择不上传、只在 Send 上传、原生引用与真实 Agent 可读、Cancel Send 不提交、原生协议兼容与真实失败如实记录。
+- Core 02 §5.12 Target 未修改；profile 隔离、未启用原生不变、原生模型/provider/锁与提交接缝保持。
+- 索引冻结基线 `37ad76f5dfac02d4774d5e0faea55911b5fb8de9`；本阶段 backend/frontend HEAD 与实际源码 hash 见 manifest。新增预算是用户明确授权的冻结例外，不覆盖其它规格。
+
+### 2. 实际变更及原生审计
+
+前端 owner 修改：`src/core/attachments.ts`、`src/core/drafts.ts`、`src/core/contracts.test.ts`；新增 `src/api/attachments.ts` 与附件 transport 定向测试。`sizeBytes` 只来源于真实 stat；选择 Blob 直接以 `blob.size` 为事实。`attachmentBudget` 对全部 occurrence 累计；未知尺寸保留引用但阻止新增/发送，不伪造 0。按选中顺序准入，超额项拒绝，已有项保持原 ID 和顺序。
+
+后端 owner 修改：`tui_gateway/prompt_attachments.py`、`tui_gateway/methods_prompt.py`、`tui_gateway/contracts/prompt_voice.py`；新增 `tests/tui_gateway/test_file_attachment_chunks.py`；按 Python 契约重新生成两份 shared TS/OpenRPC 文件。
+
+容量反例：原 `file.attach` 普通文件没有 25 MiB 原始 cap，但现有整包 base64 500 MB 会产生约 666,666,668 个字符；当前 Node/V8 `MAX_STRING_LENGTH=536,870,888`，现 Dashboard WS limit 为 `384*1024*1024`。原 `/api/files/upload-stream` 属另一 managed-file 写权限/根，且 100 MiB cap，不通过放宽该路径解决附件问题。Main 接受沿既有 `file.attach` 的 optional 分片和 metadata-only 增量。**没有新 RPC 方法、上传 API、BFF、数据库或服务**；没有调大 WS limit，没有改 legacy image/PDF cap 或原生 provider。
+
+新增 optional params：`upload_id`、`offset`、`total_bytes`、`abort_upload`、`metadata_only`；optional result facts：`upload_id`、`received_bytes`、`size_bytes`。旧 `path/data_url/name` 调用形态和原结果语义保留；progress 为 `attached:false`，path/ref 字段为空，末片才返回可提交引用。
+
+### 3. 正式路径、owner 与失败机制
+
+- App Files、paste/drop 仍共用 `selectAttachments`；Attach 只更新当前草稿，未在选择时上传。Controller 正式接线由 `web_logic_finish` owner 实施，我未写其白名单文件；对应源码 hash 也纳入 manifest，具体 87 个控制器/React 定向用例由该 owner 交回，Main复核，不由本 owner 重跑。
+- `Controller.stageAttachment` 对 file/image Blob 都调用 `stageBlobAttachment`；≤4 MiB 沿旧 `file.attach(data_url)`，更大逐片 4 MiB，片 base64 字符串约 5.59 MB。最后原生 ref 进入 `prompt.submit_idle`；图片仍进入原生 explicit image_paths，未改 legacy image/pdf 方法。
+- 客户端随机 canonical UUID 为 upload occurrence；服务端以 **session 内 map + 原生 `history_lock`** 为唯一 owner。总量/非负 offset/每片长度先验证，任意路径式 upload_id 拒绝。每片真实写成功后更新 offset。跨 session 即便同 UUID 也不共享状态；落盘根继续由 session profile/workspace 原生 helper 决定。
+- 最新已收片的 offset+SHA256 与 total/name 相同则直接返回同一 progress/final result，丢 ACK 重发不再次 append；错序、旧片、变更元数据、超长或溢出片拒绝，不破坏已有 bytes。完成后用同一原生 filename allocation 序列独占 hard-link 发布完整文件，临时路径不成为引用。
+- `stageBlobAttachment` 遇 `IndeterminateError` 仅重发相同片一次，拿到精确 received_bytes 才推进；不盲目推进偏移或提交。每片前后读同一 tx.cancelled；不完整结束 finally 尝试 `abort_upload`。已完成 staging 的 residual bytes 不撤销、不自动提交。断线/崩溃/进程重启可能残留 `.file-upload-*`，V1 不承诺持久续传或跨崩溃清理；重启丢失 runtime upload owner 后非零起始 offset 明确拒绝，草稿仍可恢复。
+- 历史 Rewind/reload 引用由 `metadata_only:true` 做纯 stat；不 copy/write/stage，也不开始 Turn。路径解析锚定该 session cwd，与该 profile 的 attachments/images 合法根；symlink 逃出根拒绝。远端 cwd 不拿同名 host 路径冒充，缺可靠事实就保持未知/阻止发送；已暂存于 profile 本地附件根的文件仍能 stat。
+- Controller 引用 hydrate 接线按 key/revision/generation 防晚 ACK 污染其它 route；发送在正式 upload 前**重新 stat 全部无 Blob 引用**，随后总预算验证，不能因为已有缓存 `sizeBytes` 而接受外部增大后的文件。当前已有 overLimit 快速拒绝发生在这一准备步骤之前；重新恢复/删除仍可更新草稿。
+
+### 4. 验证结果、命令与真实证据
+
+仅针对本任务执行小包，没有自行全量门禁。精确日志见 manifest 索引。
+
+| 执行 | 范围与结果 | 次数 / 耗时及说明 |
+|---|---|---|
+| `HERMES_PYTHON="$PWD/.venv/bin/python" scripts/run_tests.sh tests/tui_gateway/test_file_attachment_chunks.py tests/tui_gateway/test_file_attachment_allocation.py tests/tui_gateway/test_attach_does_not_wait_for_agent.py tests/tui_gateway/contracts/test_generated.py -q --basetemp=...` | 22 pass / 1 fail；生成一致性 pass；catalog 仅已知 `review.summary` 孤立事件 fail | 初次 4.0s；显式同一 basetemp 被 per-file 并行共享导致两个 fixture 初次波动，runner 自动重试后通过。原失败/重试均保留，不改检查规则 |
+| 后续 canonical runner 同 chunks + attach-does-not-wait，无共用 basetemp | 17/17 pass，无 fixture 波动 | 1次 2.6s；纠正运行目录用法，不改测试产品行为 |
+| canonical runner `test_tui_gateway_server.py -k file_attach -q` | 7/7 legacy file.attach pass（runner发现645估计值，但实际只运行7项） | 1次 1.2s，非645项大包 |
+| `npm test -- src/core/contracts.test.ts src/api/attachments.test.ts` | 最终46/46 pass；累计预算/删除/未知引用，真实 helper 小包串行、取消、丢ACK重复参数、精确最终ref | 最终1次0.401s。此前 transport 4例首次因 Node 无 FileReader 失败；改为 jsdom 环境后5/5 pass，再在最终类型收窄后重测46，无额外机制变更 |
+| `npm run typecheck` | pass | helper端口最初泛型 mock 类型不兼容，收窄实际 `Promise<Json>` 请求合同后最终pass；日志保留 |
+| 指定4个Python文件 Ruff + 既有 scoped health ratchet | Ruff pass；health 0 blocking / 0 advisory | 只审本 owner 路径，未更改阈值/规则；两仓指定文件 diff --check pass |
+
+后端**30个不同已通过用例**（12 chunks + 4 allocation + 6 attach-not-wait + 1 generated一致性 + 7 legacy）；17项复测与 runner重试不另计。catalog 失败不能算通过。前端本 owner 46 项与逻辑 owner 87 项按各自报告去重复用，不能直接相加当全项目计数。
+
+真实运行：官方 PM `.venv`，独立 `dashboard --host 127.0.0.1 --port 53447 --no-open --isolated --skip-build`，profile `.hermes-dev/round2-attachment-live`，前端5177代理53447；未操作53445/53446，未改另一 Dashboard。启动首次未加isolated而被host-owner拒绝，未停止既有owner，修正为已有正式隔离模式。凭据仅复用获授权本地环境，复制本体只在ignored profile。浏览器全部用CUA，独立tab，不改变共享viewport。
+
+| 真实操作 | 证据与实际结论 |
+|---|---|
+| 选完整500 MB，不Send；追加1 byte；reload | `selection-no-upload.json` 服务端附件目录不存在；`browser-over-budget*`、`browser-reloaded*` 与后续正式发送证明500MB Blob恢复，新增1byte不进入草稿，原项未丢。当前普通错误toast展示仍待Main App接线，不能声称视觉反馈已完成 |
+| 单500 MB实际Send / native refs / 真实Main | `single-500MB-proof.json`、`browser-first-result*`：stored `20261013_023020_8f37c0`；完整file=500000000；源/服务端SHA256均 `3bb68020b349b7006065e8d8218a1c1e8a34824e05d5f68d98f13cce61f6bf18`；点击Send→落盘约6.918s。原生binary Attached Context明确不inline正文；真实DeepSeek Main通过原生terminal读取head64/tail64，回报 `F22_HEAD_CEDAR_500MB`、`F22_TAIL_BLUE_ORCHID_500MB` 与stat500000000。持久tool/result/final rows保留，不拿ACK冒称理解 |
+| 历史引用恢复、重载、删除 | `metadata-native-response.json` 真实 `attached:false,size_bytes:500000000,uploaded:false`；`browser-reference-{over-budget,reloaded}.dom.txt` 引用与稿留存；删除后 `browser-delete-releases-budget.dom.txt` 1byte立即准入。没有copy/stage/新Turn |
+| 两个同名250 MB / 合计500 MB | `browser-pair-before*` 两个同名chip，不由Composer改名；`pair-500MB-and-cancel-proof.json` stored `20261013_023449_f5a878`。native路径 `same.bin/same-2.bin` 各250000000，源/服务端SHA分别一致：`433f5df8845deca44ad859520a3010f3ba115a589030e9bcaa155ef59750151d`、`41fad0103aaa299914b0c648e2086d7f110dde42dccaf0ebf5b2d5c968965fa2`。真实Main terminal读到了 ALPHA/BETA 头标及 END_ALPHA/END_BETA，各自stat250000000，证明独立内容，无吞500MB正文 |
+| 真Cancel Send | 第一次跨CUA调用追赶取消未赶上（按钮已经消失），仅记未执行，不算成功。后用同批Send→DOM→Cancel Send→DOM实际点击成功；`browser-cancel-{before,after,final}*` 最终Send可用，完整500MB chip与 `F22_CANCEL_SHOULD_NOT_SUBMIT` 原文本保留。`cancel-final-proof.json` 取消标记user rows=0，附件目录仍仅3个完整文件、无partial。取消前后既有framework user-role row不当成新增实际用户输入 |
+| 实际内存 | `memory-samples.json`/summary，0.5s名义间隔、809样本。独立backend PID30834 sampled RSS peak342589440 bytes（326.7MiB）；共享Codex renderer总RSS sampled peak1790066688 bytes（1.67GiB）。CUA readonly DOM scope不暴露performance.memory，renderer包括App UI与其它页面，因此明确**不是本页独立JS heap / 保证精确峰值**。实际1GB合计两轮传输均完成且未OOM |
+
+最终亲审追加一项新参数负例：仅提供 offset/total/abort 控制字段而漏 upload_id 明确5028拒绝，不能退回legacy write。canonical runner当前12 chunks + 7 legacy＝19/19通过，1次2.0s；Ruff/health最终再核通过。真实500MB服务仍加载这项最后负例保护之前的源，具体6文件hash保留在 `live-source-before-control-guard.json`；最终只新增上述错误输入拒绝分支，正常UUID/metadata/legacy成功路径不变，沿前述实际大传输证据复用，不冒称服务已热载新分支。后续Main统一重启。
+
+### 5. 当前缺口和保留限制
+
+- **Main集成依赖**：Controller 已将普通notice写入notifications，当前 App 尚未消费 ToastStack；真实超预算选择已拒绝但无可见toast。合并视觉并接栈后，只需对保留的500MB取消草稿再次选1byte补“错误可见”证据，不重传大包/调用模型。
+- 未声称跨平台、真机拍摄/键盘或500MB图片模型推理已验证；本轮真实上限传输用ordinary binary文件。原native image/PDF方法的限制保留。
+- remote workspace没有已有可信stat通道时返回未知并阻止新增/发送，这是保护真实预算而非用本地文件冒充；远端专项未验。元数据仅stat事实，不保存API业务缓存。
+- 丢ACK由真实正式handler重复请求、并发重复片与production helper拒绝/重试机制测试取证；未伪称人为实际断网的浏览器ACK丢失全过程。已完成真实全包传输与Main读取不依赖此模拟。
+- crash/断网可残留暂存bytes，V1不保证清理；该次真实Cancel确认无残片。不承诺跨进程续传。
+- catalog既知失败与首次测试环境失败保留，尚未本轮完整独立门禁。
+
+### 6. 接口影响与交接
+
+仅为既有file.attach增加optional能力和真实size字段，生成合同已同步。小文件和legacy clients保持原形；大文件需要支持分片的本轮客户端。Controller/App归其它owner：本 owner未修改 `controller/command-actions/ChatComposer/App/design/mock`。Main需亲读Controller tx owner/epoch/key接线、所有新server helpers与legacy上下游，不能以重跑上述有效测试代替review。
+
+服务53447与前端5177暂留供Main最终toast补证；其PID、源码hash、profile和证据见manifest。Main在补证/集成后可只停止这两个任务实例。测试数据可清理但仅限此任务自建profile/fixtures，不动其它验收库。
+
+### 7. 建议后续动作
+
+Main集中review → 合并视觉并在App接ToastStack → 当前保留500MB取消草稿选1byte取得可见拒绝 → 统一阶段提交与native服务版本更新。无需重做2轮500MB传输、模型理解或旧16MiB上传；只有实际上传/预算接缝变化或证据存疑再定向复测。之后按本轮既定完整Verification→Validation执行，F22本节作为开发证据输入。
+
+## Main最终集成审查与用户现场修补（2026-10-13）
+
+- Main已亲读最终接线9个文件及通知、任务完成、Pending、标题、滚动相关上下游，9/9owned、6/6依赖、21/21证据hash匹配；接收48受影响React例、最后13＋native6定向、Mock20一次和构建/冻结health0/0。未复跑Controller88、附件46/后端30、大上传或模型。
+- R2-C32/C33：Reminder合为蓝色标题＋右侧箭头，展开正文直接在同bubble；Parameters删除JSON额外label及内层框，直接pre/code，横向滚动和深色底保留。正式/Mock/用户查看中的visual worktree已最小同步。
+- R2-C34/C35：工具正文左右16px；Result单独max-height=10em×1.65，溢出自动滚动，原卡片背景，无深色文本框。390视口真实DOM：Result max247.5px/line24.75px=10行、背景透明、左右16px、JSON额外标题0。
+- ignored `main-final-integration/` 是本次Main证据入口；`parameters-390-proof.json`记录324px参数内容/564px滚动宽，`reminder-proof.json`记录标题展开、正文直接child、无嵌套box，`tool-result-proof.json`记录十行高度与留白。浏览器read-only沙箱不提供parseFloat，第一次取证算比值报错；改在工具侧计算后完成，未改页面或假造几何。
+- R2-C32/C33后已typecheck/build成功、冻结health0/0；后续C34/C35是CSS/容器小修，最终构建只在收尾稳定包补一次，不重做模型/大文件。
+- 5177真实1byte超额toast及完整500MB草稿保持、跨route保留/显式dismiss、Orb最终0ghost复用owner原始proof，Main已读。未把360ms中间帧1ghost当最终泄漏。
+- R2-C31本次严格在Verification派遣前停止；全部开发证据仍不构成独立门禁通过。R2-C36只追认明确列出项，压缩32及结束8轮窗口保留待定。
+
+Main前端最终快照611b734；visual用户查看树86fa280保留全部既有untracked成果，仅提交本次3个明确修补文件。最终C32–35后的build-delivery.log/health-delivery.log通过，health0/0；没有因接收报告重跑88、46、30或既有97。后端原生preflight在53445/53447均无活动session，原服务版本37ce184/7fea3f5，供安全统一重启依据。

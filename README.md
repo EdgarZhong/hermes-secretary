@@ -2,7 +2,7 @@
 
 Hermes Secretary 是基于 [Nous Research 的 Hermes Agent](https://github.com/NousResearch/hermes-agent) 的公开扩展，面向长期对话中的工作状态维护、责任跟进与提醒。
 
-继承的 Secretary Core 契约以 [现行 02](docs/02-noting-system-specification.md)（含 V1.6 已确认修订）为先，再继承 [04](docs/04-hermes-secretary-v1.5-implementation-spec.md) 未被覆盖的增量和 [01](docs/01-personal-hermes-v1-first-fork-iteration.md) 的适用要求。[Web UI V1 规格](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md) 是显式 Web 增量的权威入口，替代旧 UI 讨论；规格存在不表示新 Web UI 已实现。通用协作规则见 [AGENTS.md](AGENTS.md)，实施进展、任务与验收结果见 [CLAUDE.md](CLAUDE.md)。
+继承的 Secretary Core 契约以 [现行 02](docs/02-noting-system-specification.md)（含 V1.6 已确认修订）为先，再继承 [04](docs/04-hermes-secretary-v1.5-implementation-spec.md) 未被覆盖的增量和 [01](docs/01-personal-hermes-v1-first-fork-iteration.md) 的适用要求。[Web UI V1 规格](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md) 是显式 Web 增量的权威入口，替代旧 UI 讨论；独立前端入口见下文；实现不等于整版验收通过。通用协作规则见 [AGENTS.md](AGENTS.md)，实施进展、任务与验收结果见 [CLAUDE.md](CLAUDE.md)。
 
 ## 架构与能力
 
@@ -78,6 +78,8 @@ Gateway 入口为 `hermes gateway`。官方 Dashboard 入口为 `hermes dashboar
 ## 独立 Secretary Web 开发入口
 
 独立前端在并列本地仓库 `../hermes-secretary-web`，使用 React / TypeScript / Vite，直接调用原生 REST / WS；开发服务默认连接 `http://127.0.0.1:53445`。部署范围及验收进度见 CLAUDE，不替代官方 Dashboard。
+
+当前草稿全部附件合计上限为 500,000,000 bytes，选择时累计判断、移除后释放预算，发送时沿原生 `file.attach` 分片上传并显式绑定本次图片。两个订阅同一会话的客户端共享原生实时事件；普通 Send 只在 Main Turn 空闲时启动新 Turn，活动时按既定 Steer/Stop/Interrupt 操作。
 
 在前端目录执行 `npm ci` 后，`npm run dev` 启动正式接线页面；`npm run typecheck`、`npm test`、`npm run build` 为类型、定向测试与构建入口。静态交互工作台使用 `npm run mock -- --port 5176`，访问 `/mock.html`；可选择场景、主题与四种视口，不连接真实后端或调用模型。`npm run mock:test` 和 `npm run mock:build` 分别验证、构建静态工作台。场景与组件边界见 [Mock 交接说明](.autonomous/20261012-round2-web-ui/static-mock.md)。
 

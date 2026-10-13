@@ -169,6 +169,11 @@ class FileAttachParams(SessionParams):
     path: str | None = None
     data_url: str | None = None
     name: str | None = None
+    upload_id: str | None = None
+    offset: int | None = None
+    total_bytes: int | None = None
+    abort_upload: bool | None = None
+    metadata_only: bool | None = None
 
 
 class FileAttachResult(Result):
@@ -178,6 +183,9 @@ class FileAttachResult(Result):
     ref_path: str
     ref_text: str
     uploaded: bool
+    upload_id: str | None = None
+    received_bytes: int | None = None
+    size_bytes: int | None = None
 
 
 method("file.attach", params=FileAttachParams, result=FileAttachResult,
