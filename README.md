@@ -106,6 +106,8 @@ npm run --workspace ui-tui check
 npm run --workspace apps/desktop check
 ```
 
+Git 提交后通过 [post-commit hook](.githooks/post-commit) 推送当前分支的 upstream；工作区首次使用时按 [Git 同步约束](AGENTS.md#本地-ci--cd-与回归防护) 检查实际 hooks 路径并保留已有 hooks 后安装。独立 UI 的正式本地 main 对应 origin/secretary；新功能分支无 upstream 时推 origin 同名。失败时本地提交保留，不强推。
+
 Python 不绕过 canonical runner 直接运行 pytest；JS/UI 入口及环境准备见 [Development Setup](CONTRIBUTING.md#development-setup)。`.venv/`、`.hermes-dev/` 不入版本控制。GitHub Actions 保持关闭，质量门禁在本地执行；测试范围、独立门禁与证据复用流程见 AGENTS。
 
 ## 重要文档索引

@@ -217,3 +217,13 @@ C85用户否决最新精简稿：通用Noting总述不应过分强调secretary_t
 | C98 | “我不是让你在这块追责，我是提醒让你避免后续犯内存泄漏的错误”“现在你开始自助托管岛，完成任务目标”“最后结束之前，在聊天区给我一份简报” | 不继续事故归因；正式恢复持续托管到既定终点，停止前聊天简报，不能用等待明早作提前停止 |
 
 语音中的secondary/3块钱task/单/经理门禁/自助托管岛，依已有上下文分别指secretary_task/done/清理门禁/自主托管，不创造新类型、状态或规则。上述授权不是任何候选硬清理范围或M27政策的批准。
+
+
+### R2-C99 Reminder内部时间标记保留（2026-10-14）
+
+用户明确：“Reminder 不需要额外包装处理。Remind 默认折叠，里面的 timestamp 不需要在表现层消除”“你记混了。”覆盖Main在真实联调中对06的错误套用；Reminder保既有默认折叠，展开正文保内部timestamp，不新增额外包装/strip。Main未提交的临时呈现改动和对应错误断言已撤回，原source/model/历史始终不变；此纠正不扩大普通消息上方时间显示规则。
+
+
+### R2-C100 每次提交自动推送（2026-10-14）
+
+用户明确：“云端也有人干活。主仓库和 UI 仓库的git 操作改为每次 commit 自动 push”。Main据此配置两个仓库shared common post-commit，保原hooks，推当前upstream，无upstream功能分支origin同名，不强推或hook自动集成；UI正式main保既有origin/secretary，不擅建远端main。规则写入主AGENTS及UI AGENTS，hook源随代码记录，其他克隆按说明启用。推送只同步代码，不启动CI/CD或第二轮Verification。

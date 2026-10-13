@@ -111,6 +111,7 @@
 - **覆盖边界**：跨平台实现按目标平台本地验证；当前主机无法覆盖的部分明确记录，不能通过模拟 host OS 冒充覆盖。控制运行次数不能代替关闭范围内缺陷或补齐必要证据。
 - **环境**：使用下文官方 PM 工作区 `.venv` 与 lock，显式设置 `HERMES_PYTHON`，隔离状态不指向生产用户。完整入口为 `HERMES_PYTHON="$PWD/.venv/bin/python" scripts/run_tests.sh`。
 - **本地 CD**：在任务范围内完成 review、阶段提交及必要构建，交付与验证对应的 commit 和产物。只有任务包含发布 / 部署时才执行相应步骤，并验证实际结果；Git push 是代码同步，不代表构建、部署或验收完成。
+- **提交后自动同步（用户明确）**：主仓库与独立 UI 仓库每次 commit 自动 push 到当前分支的 upstream；无 upstream 的功能分支使用 origin 同名分支。UI 正式本地 main 对应 origin/secretary。新工作区检查并保留已有 hook 后，安装仓库 `.githooks/post-commit` 到实际 hooks 目录并赋执行权限；默认 common hooks 覆盖同仓库 worktree。推送失败时本地提交仍在，必须记录并处理；不强推、不在 hook 中自动 fetch/merge、不覆盖云端他人工作。此同步不启用 GitHub CI/CD，也不代表验收通过。
 - **证据**：在根 `CLAUDE.md` 记录当前阶段的基线、变更范围、命令、通过 / 失败 / 跳过、未完成项和回归风险。检查失败先修实现或排查真实误报，不扩大例外、调整阈值或关闭保留门禁。
 - 自主轮次索引、计划和门禁证据按套件组织，仍遵循核心文档职责。
 

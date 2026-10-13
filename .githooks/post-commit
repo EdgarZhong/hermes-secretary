@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Keep local commits visible to collaborators without rewriting remote history.
+set -u
+
+task_branch="$(git symbolic-ref --quiet --short HEAD)" || {
+  printf '%s\n' '自动推送失败：当前是游离 HEAD；本地提交已保存，请先明确目标分支。' >&2
+  exit 1
+}
+task_remote="$(git config --get "branch.${task_branch}.remote")" || task_remote=origin
+task_ref="$(git config --get "branch.${task_branch}.merge")" || task_ref="refs/heads/${task_branch}"
+
+if ! git push --porcelain --set-upstream "$task_remote" "HEAD:${task_ref}"; then
+  printf '%s\n' '自动推送失败：本地提交已保存。请先核对远端变化并集成；禁止强推覆盖他人工作。' >&2
+  exit 1
+fi

@@ -106,3 +106,29 @@ Main已亲读App、MessageProvider/Parts/leaf真实status、RenderStore、完整
 在已有真实测试基础上仅扩充既有Usage行为用例：证明active中随后正常取得新值会发布；单worker `npm test -- src/core/verification-fixes.test.tsx --maxWorkers=1 --no-file-parallelism -t 'successful Usage'` 1通过/13跳过，500ms。`npm run build` 通过（含tsc），Vite5.37s，既有大chunk警告保留；没有重新跑Undo、性能或完整包。新日志见`.hermes-dev/round2-verification/prompt-main-final/usage-integration-test.log`和`frontend-integration-build.log`。旧有效性能/视觉证据版本不冒充新source完全相等；render/App/CSS机制未改，Usage微修的当前行为及构建由本次定向证据覆盖。
 
 旧owner实际附件补证交回：live-integration-20261014里原生2片4,194,400bytes/stat/存储SHA/abort，正式Send真实DeepSeek正确读出size与首尾marker；runtime85c42a4c、terminal Assistant UID b372e58c519f4991a221b1c161b7bf46。Main待native_integration接收其日志/DB与manifest；不重做附件模型链。旧Chrome证据保留历史，但用户最新IAB-only不能由它替代。53449/5183旧owner已停止；新的真实Instant/Noting/IAB代表链由native_integration续接，重任务单执行方。
+
+
+## 8. native_integration 新 Owner 续接实际联调
+
+2026-10-14，新Owner不修改上文旧Owner证据。准备与真实串行补证完整见[repair-native-integration](repair-native-integration.md) §1–8及ignored `native-integration/`。
+
+旧live-integration附件新RPC上传/stat/SHA/abort和真实DeepSeek首尾读取直接复用，没有重新运行。当前IAB实际提供且隐藏tab1可用，旧报告“只有Chrome”仅属旧环境。本次两个正式用户Send→当前最小Prompt三个自然Noting任务→自然Instant原生source/模型/真实DOM→done→schedule_update代码自动回pending，已取得同链身份/DB/seq/模型生成tool requests/DOM证据。source UID79b58919db1a49398fd4d62556158e02,row27,seq153；源DOM21ms/Thinkingseq157；completeseq313/DOM15ms、源唯一、receiving0。Snapshot和同lineage同Registry重新排期见新报告。
+
+本Owner曾误判Reminder内timestamp为缺陷；用户最新纠正要求保留内部timestamp，Main临时隐藏修补与三测试已撤回，不能列缺陷或隐藏成功条件。原真实beforeFix证据复用；本次没有证明Instant默认折叠，已显眼交Main判断最新口径范围，不冒称通过。没有动用户Chrome/5173/53445/视觉树，未测试/build/大包/Undo/性能复跑，未启动Verification/Validation。自有PID/tab/observer最终清理及当前源hash在新报告后续段记录。
+
+最终资源已交回：自有IAB tab1关闭，Node95453/Python94660仅核属本人后SIGTERM，两exec exit143、53449/5183无监听；详见新报告§9。旧unfinished child原生只读是unknown/tasks[]，无live任务，未擅自修DB。
+
+Main随后按C99将Instant接入既有foldable/FoldedMessageBody，原timestamp保留；本Owner此时服务和页已关闭，最新默认折叠/展开IAB复验转Main，仅用既有真实row，不重跑自然Instant或模型。
+
+C99最后IAB复验尝试受接口阻塞：本次inventory仅Chrome、createBrowserTab(iab)不可用，未造页/模型或绕用真实浏览器。自有隔离全局off防overdue后启动的11773/11805及两frontend子进程已清理、无listener，config字节恢复且DB counts/Registry/真实source row前后相等。新默认折叠IAB仍未执行，交Main在可用环境仅验已有row；证据/源hash在native-integration/c99-result.json，新报告§10。
+
+C99最终由Main接任浏览器、Owner仅管全局off隔离服务；两个HTTP200后Main IAB绑定被Browser安全策略明确拒绝，按禁止workaround立即收尾，最后默认折叠/展开IAB未执行。自有15149/15179与两子进程均退出、无listener，config逐字节恢复，DB counts/Registry/source/API call_count全相等零新模型；详新报告§11和c99-main-result.json。原queued内置临时页未可控绑定，按排队未显示保留待正常UI处理，不用替代surface关闭。旧自然Instant实证及2组件/build有效，不冒称最后实看通过。
+
+
+### Main最终接线：C99与开发HMR（2026-10-14）
+
+C99用户明确Reminder默认折叠、内部timestamp保留；Main撤回所有临时strip改动/断言，复用既有FoldedMessageBody仅将instant加入foldable条件，无新wrapper/CSS/源数据变更。正式Timeline两个kind用例2pass/36skip（956ms），展开可见原timestamp；build（含tsc）pass，Vite5.15s。真实最后IAB实看被浏览器策略拒绝，报告边界见native-integration §11，未改真实Chrome或使用底层旁路。
+
+Main随后亲审发现此前HMR同owner Object.setPrototypeOf会保留旧实例，但新增renderStore/subscribeRender/getRenderSnapshot实例字段不会自动初始化。改同owner惰性renderStore getter/public subscription getters，保持旧gateway/history/draft且不创建第二Controller；controller仍2000行。新旧shape行为+Usage2pass/13skip（497ms），原同步event/按帧render/控制terminal flush专例1pass/14skip（453ms）；当前build pass，日志hmr-render-owner-{test,build}.log、hmr-render-flow-test.log。先前性能样本中App/Parts/Markdown/RenderStore机制未变；不把早一份完整manifest冒充最终Controller byte-identical，也不重复整套。
+
+UI阶段提交0f8d891已由post-commit自动推feature upstream并ff main/push origin/secretary；随后HMR提交8b3867e同流程。主仓库hooks配置保持原样，仅安装post-commit；云端同步不等于独立门禁通过。

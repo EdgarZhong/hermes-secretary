@@ -306,3 +306,13 @@ Main前端最终快照611b734；visual用户查看树86fa280保留全部既有un
 ### Main阶段集成验证与续接（2026-10-14）
 
 C84/BE附件/Instant三机制包与前端完整整改包已亲审；Main只补Prompt相关真实spawn/prefix用例、active Usage新有效数据行为与当前build。日志/失败修复见各owner报告新Main段，不重跑全包。staged footguns/ruff/health当前pass（0阻断、未改文件既有HX012提示1）。当前唯一重任务执行方native_integration，旧附件真实模型terminal证据复用；IAB现真实可用，须关闭旧报告能力阻塞并取得新的实际链，旧Chrome不是新IAB证明。Main负责stage快照/接线，不启动第二轮Verification。
+
+
+阶段快照：BE/依据/报告 `f8e416178ecf24021c614940052561f30dc7929d`；FE `aacb6e9`（已ff primary main）。Snapshot不表示新的Verification通过。后续只补native_integration返回与必要运行版本接线；Main不得重跑已交回有效包。当前用户服务兼容版本核对未完；需要保持原正在用的Conversation/profile/库，不迁移或静默清库。
+
+
+### 夜间最终交接（2026-10-14）
+
+当前BE产品f8e4161，FE正式main/修复树8b3867e，origin/secretary已同步；post-commit真实自动推两次feature提交，主repo最后文档/hook快照将同机制推origin/main。用户运行53445同旧HOME/config/DB安全更新为PID20193，5173 HTTP200，新RPC注册只读探测4001非not-found，active_count0。C84正式机制和实际3个新Noting链均收回；Main记录API in45s原生拒绝后模型改1m，不伪造精确秒成功。
+
+C99两正式Timeline组件用例pass、当版build pass；末次GUI实看被IAB浏览器安全策略明确拒绝，协议理由与http请求不一致，但禁止任何绕过。旧真实IAB source153→DOM21ms→Thinking157→complete313/DOM15ms与唯一UID证据有效；C99最后实看留明早正常UI操作，不冒称通过。清理07单文档已Main亲审，全部硬范围/M27/恢复设计未实施，用户明早审核。最终交付结论和限制见final-delivery.md；不再开第二次Verification或独立Validation。
