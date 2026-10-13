@@ -265,3 +265,5 @@ Main集中review → 合并视觉并在App接ToastStack → 当前保留500MB取
 - R2-C31本次严格在Verification派遣前停止；全部开发证据仍不构成独立门禁通过。R2-C36只追认明确列出项，压缩32及结束8轮窗口保留待定。
 
 Main前端最终快照611b734；visual用户查看树86fa280保留全部既有untracked成果，仅提交本次3个明确修补文件。最终C32–35后的build-delivery.log/health-delivery.log通过，health0/0；没有因接收报告重跑88、46、30或既有97。后端原生preflight在53445/53447均无活动session，原服务版本37ce184/7fea3f5，供安全统一重启依据。
+
+最终稳定窗口：后端产品5ba0481、前端21aad02；源tool_name薄适配、无参数结果行删除空框、已读取Current Reasoning传Composer，正式浏览器现成工具卡片证实terminal名称/Result透明/16px/247.5px高度；54个受影响contract＋presentation例1.20s、最后build/health0/0。三屏各四视口new/conversation/files JSON及JPG全部保存；页面无横溢、320 drawer→Files→Back回原会话。源端首次预检错用session_id为4000，保存native-preflight-wrong-read-params，改stored_session_id后Noting idle；不抹去诊断失败。没有新模型或大包重传，本次按C31至Verification前结束。

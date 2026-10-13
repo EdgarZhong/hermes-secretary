@@ -27,11 +27,11 @@
 
 **当前执行授权（2026-10-13，R2-C31 覆盖此前自动进入门禁安排）：继续托管，完成开发/主审/必要实测/阶段提交并准备好审查输入，在启动或派遣 Verification 之前停下向用户交接。阶段目标已挂载。整轮后续仍需 Astra high Verification 与 Astra medium Validation，本次不启动。**
 
-R2-C32 用户现场纠正 Deferred reminder：箭头放在蓝色标题右侧，单卡片向下展开并直接展示正文，删除独立due按钮及嵌套文本框。Main 正在做这一微小明确修补及实际浏览器核对；Reminder业务合同不变。
+R2-C32 用户现场纠正 Deferred reminder 已完成：箭头在蓝色标题右侧，原卡片向下展开直接展示正文，无独立due按钮或嵌套文本框；Reminder业务合同不变。
 
 R2-C33 用户现场纠正工具 Parameters：保留深色可横向滚动的JSON内容，去掉额外JSON标题。Main同步Mock，正式参数pre原本无此额外标题；不改变工具执行或分区。
 
-R2-C34/C35：工具正文恢复左右16px留白；Result最大约10行正文高度，超出区域内滚动，原卡片背景，无深色文本框。Main正在同步正式页面与Mock并定向核对。
+R2-C34/C35：工具正文恢复左右16px留白；Result最大约10行正文高度，超出区域内滚动，原卡片背景，无深色文本框。正式页面与Mock已同步并完成定向核对。
 
 自主取舍产品影响已向用户补充明确：256是单Main Turn累计新Web Steer次数上限，消费/撤回仍占名额；64按同Turn不同Interrupt请求计数，不是整个聊天中断次数；32仅后台旧压缩操作状态追查，不限制历史卡片。多客户端共用会话的Turn状态与实时流式广播，非客户端独占。用户已追认256/64、idle-only和图片留存；压缩旧操作状态确认及8轮保留窗口继续待追认。
 
@@ -51,7 +51,7 @@ R2-F21（2026-10-13 用户现场发现，**逻辑层缺陷**）：活动 Turn �
 
 最新用户口径 R2-C10 已写入 AGENTS：以同一 owner、统一判断点、同步临界区和正式提交点保证不变量；Main 据此复核当前增量，避免下游堆叠门禁。
 
-第二轮交付独立 Secretary Web UI，并完成 V1.6 移交缺口及本轮实际变化影响的验收。当前为 **视觉交回后收尾集成中：此前后端37ce184eca、前端bfecc9f开发基线有效，视觉与逻辑新包待Main review、合并、实测及提交；随后启动两门禁**。用户授权在冻结前精简三份核心文档、最小修订新版 06；冻结后本轮不再修订权威规格。
+第二轮交付独立 Secretary Web UI，并完成 V1.6 移交缺口及本轮实际变化影响的验收。当前为 **开发集成与阶段提交完成：后端产品5ba0481、前端21aad02，按R2-C31停在Verification派遣前；整轮尚未验收，两门禁本次不启动**。用户授权在冻结前精简三份核心文档、最小修订新版 06；冻结后本轮不再修订权威规格。
 
 - 后端工作区：`/Users/edgar/code/hermes-secretary`，继续按原生接缝实施必要增量。
 - 前端：并列本地仓库 `/Users/edgar/code/hermes-secretary-web`，`main`、无远端；React前阶段已提交并完成开发期集中复验，现施工逻辑收尾与附件预算、待视觉合并及独立门禁。目录名属于实施安排，不是用户逐字指定。暂不上传远端。
@@ -107,10 +107,10 @@ R2-F21（2026-10-13 用户现场发现，**逻辑层缺陷**）：活动 Turn �
 | Attach / Photos & Media / Take Photo | 真实前端入口与原生提交链路已接通；视觉 Mock 仅展示合成操作；移动设备拍照体验待真机验证 | `ChatComposer` 用标准 `<input type="file">` 文件选择、`accept="image/*"` 媒体选择、`capture="environment"` 移动拍摄提示；结果留在草稿中，Send 时走原生附件上传。视觉合并后复核入口保留；相机/选片实机行为尚未覆盖 |
 | Web UI / 原生后端增量 | 功能阶段37ce184eca/bfecc9f已提交并由Main review接收；F14/F16/F20最终开发实测关闭 | Main已核实际读/压缩/fence/事务接缝与定向测试；真实 Main、图片/PDF/JSON、withdraw/interrupt/rewind/Cancel Send 与 16 MiB 二进制上传已验证；未覆盖边界及后续门禁见plan |
 | V1.6 缺口补验 | H02–H08及C15均已由Main复核接收实际覆盖；F14新合法cold真实补证通过，仍非独立验收 | 最小 H01–H08 与可复用范围见 v16-handoff-evidence.md；先补 C16/VAL04/cold，不重跑旧轮全量审查 |
-| 全场景 Mock 与视觉 worktree | 已提交1c614ac并合并至功能仓3df93c9；正式接线中 | `/Users/edgar/code/hermes-secretary-web-visual-design`，`codex/visual-design`；`http://127.0.0.1:5176/mock.html`，`npm run mock -- --port 5176`；catalog 现产出 **66 个场景 URL**（此前记录的 96 与实际不符，已按现 catalog 更正）。交接底单 `docs/visual-design-handover.md`（66 URL 全量清单 + 用户 51 条反馈逐条对账 + 缺陷详录 + 取证截图），Codex 投喂指令 `docs/codex-handoff-prompt.md`。未完成/缺陷：三态 finished 外圈光晕回闪、Interrupt 收拢动画未生效、toast 卡片栈未实现（前两项表现层、第三项表现层）；Enter 键位属逻辑层见 R2-F21。合并方向 worktree → 主仓库 |
+| 全场景 Mock 与视觉 worktree | 已合并且正式接线完成 | 功能集成611b734/最终21aad02；visual86fa280仅同步C32–35。103可点击URL/42实际反馈详见视觉报告；toast/Pending/finish接线与表现机制已Main审收。用户未跟踪成果保留 |
 | 合计500 MB附件预算/传输 F22 | Main亲读接收，真实超额toast可见性已补 | 当前全部attachment合计，历史引用真实stat；chunk沿file.attach旧method，末片才发布引用；真实500 MB上传/取消/越界取证 |
 | 键位/通知/原生完成事件 F21/F24 | Main亲读接收；正式App已接入 | Enter只发送；通知显式关闭；网络自动恢复；task_finished唯一完成信号，Main合并后App接线 |
-| 第二轮独立两门禁与交付 | 本次停在门禁前（R2-C31） | 三个 Sol 已交回并由 Main review 接收，前端611b734；后端快照与稳定窗口四视口进行中；本次不派 Verification/Validation |
+| 第二轮独立两门禁与交付 | 本次停在门禁前（R2-C31） | 三个 Sol 已交回并由 Main review 接收，前端611b734；后端产品5ba0481、前端21aad02；三屏四视口已完成开发核对，本次不派 Verification/Validation |
 
 ## V1.6 交接与此前开发证据（历史版本记录）
 
@@ -202,4 +202,6 @@ F16/F20真实开发复验关闭：同原成功压缩会话，Web Reasoning七档
 
 F22 Main接收：11产品文件和额外2Controller接口源码hash相符，49/49固定证据hash匹配，已读正式file.attach锁/偏移/last-ACK/原生分配及readonly metadata、前端预算/重stat/tx取消上下游；30后端不同用例、46前端用例复用。真实单500 MB及同名250 MB×2源/服务器SHA一致，DeepSeek原生terminal实际读首尾标记/精确尺寸；真Cancel后取消标记user rows0、草稿500 MB保留、无partial。仅普通超额通知可见性待Main App补证，不重传大包。分片完成回执按runtime session生命周期保留；断线/崩溃可残留暂存bytes，不承诺跨进程续传/清理，符合06残留边界。最后缺upload_id负例guard未在53447热载，正常传输同路径证据复用，统一提交/restart再查负例。
 
-Main最终接收：最终接线9/9owned、6/6依赖、21/21证据hash相符；前端阶段611b734（22文件），用户查看Mock的86fa280仅3文件。最新build/tsc成功，冻结health0阻断/0提示。C32–35修补已现场390核对，无JSON内层卡片、Reminder直接展开、正文左右16px、Result10行/滚动/透明背景；当前继续后端快照和一次稳定窗口四视口，严格在派遣Verification前停止。
+Main最终接收：最终接线9/9owned、6/6依赖、21/21证据hash相符；前端阶段611b734（22文件），用户查看Mock的86fa280仅3文件。最新build/tsc成功，冻结health0阻断/0提示。C32–35修补已现场390核对，无JSON内层卡片、Reminder直接展开、正文左右16px、Result10行/滚动/透明背景；后端5ba0481及稳定窗口三屏四视口已完成，严格在派遣Verification前停止。
+
+本次门禁前最终交接：前端21aad02、后端产品5ba0481。最后native工具名/空参数框/Current Reasoning薄修后，54例受影响包1.20秒通过、build/tsc成功、health0/0；三屏四視口JSON和截图在main-final-integration，未重跑大包或模型。主测试服务实际guard5028拒缺upload_id、capabilities无5098。预停机事实：Main idle、压缩inactive、Noting idle；首次秘书预检错用session_id出现4000，改正式stored_session_id后正常，原失败文件保留。新建页/会话/Files四视口无页面横溢，320 Files返回原会话；这是开发观察，非独立Validation。最新阶段final-delivery已写，本次不派两门禁。
