@@ -1,6 +1,6 @@
 # Secretary Task 排期合同修补与 Prompt 审查稿
 
-2026-10-13 Development 交回。**结构约束已实现并通过定向机制验证；Prompt 修改稿尚未实施，仍待用户确认文字及其后真实模型验证。** 未提交、未重启服务、未操作用户运行库、未调用模型。它不改变首轮 Verification 历史结论，也不是本轮独立门禁通过声明。
+2026-10-13 Development 交回历史及后续修订。**当前完整审阅入口为 §11：新增文案仅提案，未实施；§10 和 §11.6.1 明确记录上一阶段已经实施的部分。** 原 Development 交回当时未提交、未重启服务、未操作用户运行库、未调用模型；后续事实各节分别记录。它不改变首轮 Verification 历史结论，也不是本轮独立门禁通过声明。
 
 ## 1. 任务对应条款与版本
 
@@ -594,3 +594,242 @@ Notebook Schedule-intent editing on existing entries that may carry a Schedule (
 ### 10.8 Main定向验证与实际原文保留修复
 
 canonical runner -j1仅选真实spawn/重试冻结/派遣冻结三个既有用例，2通过、1失败：原用例确认“A proposal or approval alone...”对应小写实际原句。Main恢复实际Prompt中的 `a proposal or approval alone is not completion.`，未改测试断言；只复测失败的真实spawn，1通过（1.7s）。两次日志分别targeted-tests.log/targeted-retest.log，失败完整保留；这是本轮微改后定向补证，192/33包未重复。最后修稿六字符串5214→5210字符、UTF-8少6字节、英文空白分词少11词；Memo首段、剩余完整原文/DATA/工具后缀权威、schema结构均静态相等。硬清理机制/terminal工具/M27无修改。
+
+
+## 11. 统一审阅稿：Main→Memo 路径、Noting 原则、Reminder 时间语义与秒精度（待审，未实施）
+
+**状态：本次新增文案、时间格式和 Reminder 正文仅提案，未修改代码；此前已实施并保留的五项工具描述在 §11.6.1 单独标明。** timestamp_seconds 一度产生未提交的格式改动，已按用户要求全部撤回，三个相关文件 diff 为空，没有测试或提交。前端 Usage／Compact／notice 工作继续按各自已获授权范围实施，不与本提案混淆。
+
+**阅读入口：本稿 §11 为本次新增待审内容；§11.6 汇总此前工具描述修订、当前维护段的重新拟稿以及忠实登记原则；§10 仅保留上一阶段的实现历史。无需来回拼稿，已实施／待审状态分别标明。** 本稿取消字符数不增加的硬约束；只报告长度，不以凑长度删改无关语义。
+
+### 11.1 用户原话逐项对账与范围
+
+| 用户原话／确认 | 对应本稿 | 保留或排除 |
+|---|---|---|
+| “你调整一下提示词提案，接下来我去审核” | §11.2–11.5 原文→新稿逐条英文／中文直译 | 审定前不改代码 |
+| “不用考虑时间余量的问题” | 只补明确的 Reminder→Memo→Noting 路径 | 不加抢跑、截止前确认或时间余量判断 |
+| “第 4 点撤回……在调优的时候，你也不需要关注” | Notebook 的 user_reminder 等模型词汇照常使用 | 不作为内部术语渗漏改造 |
+| “noting task 本身不需要关注它开始 noting task 的时间是多少，它只需要忠实的为主会话记录 noting 即可尽量不引入额外的自我判断” | §11.6 Noting 原则 | 不加 Task 当前时间／开始时间，不让它自主过滤、改期或拒绝过期请求 |
+| “我允许这5秒的延迟，不要增加代码复杂度……过期的东西不要被丢掉……Instant reminder，必须要保证这一点” | §11.6 到期补投 | 现有扫描，不加提交时立即触发旁路 |
+| “时间戳始终表示当前真实时间……它注册的这个时间，应该有单独表示” | §11.5、11.7 | timestamp 为消息真实产生时间；计划触发时间另列正文 |
+| “最新一个timestamp 标记……始终都是……这条消息产生时的真实当前时间” | §11.5 Main 新说明 | 不把计划时间、Noting 开始时间或模型思考结束时间塞进标记 |
+| “现在进 AI 上下文的时间戳……精确到秒以后的东西……通通删掉还有……系统提示” | §11.8 秒精度方案 | 新生成的模型可见时间仅到秒、保时区，内部精度不改 |
+| “我没让你直接写入代码，你给我改提案” | 本稿状态与实施边界 | 时间相关产品改动已撤回；继续只提案 |
+| “没必要一定保证系统提示……一点不增加……以写好为标准，语意清晰，表达不串，不能破坏已有语义除非明确需要修订的点” | 完整段落前后对照、非阻断长度报告 | 不为字符数压缩掉 Memo 泛用目的、参与规则、权限或 Cron 边界 |
+| 既有要求：Memo 是 Main 给 Noting 的指示，不是条目／provenance，消费只随 Snapshot | §11.3 原语义保留 | 不把 Memo 本身并入 Notebook；不要求模型声明用了哪条 Memo |
+| 既有要求：secretary_task 为未来工作、Schedule 非空、明确模式、取消直接归档、状态联动由代码处理 | §11.6.1 统一保留审阅 | 工具描述已实施；不新增工具或手动重置状态义务 |
+| 既有要求：硬清理门禁先不加，只在整体维护段加入软提示，单文档论述设计 | §11.6 软提示重新拟稿、docs/07 设计提案 | 不新增提交门禁或 M27 政策 |
+
+### 11.2 Main 主动唤醒的手段（agent/system_prompt.py:39）
+
+改动前：
+
+> When later action is needed, you wake yourself up with a Reminder at a time you choose yourself.
+
+中文直译：当需要之后采取行动时，你在自己选定的时间通过 Reminder 唤醒自己。
+
+改动后：
+
+> When later action is needed, you wake yourself up with a Reminder at a time you choose yourself. Arrange this Reminder through `noting_memo`.
+
+中文直译：当需要之后采取行动时，你在自己选定的时间通过 Reminder 唤醒自己。通过 noting_memo 安排这个 Reminder。
+
+### 11.3 Main Memo 段落（agent/system_prompt.py:53）
+
+改动前：
+
+> **Noting Memo and routing.** `noting_memo` exists so you can still tell background Noting what the next consolidation must cover: one tool with add/replace/delete/list; write a brief one-sentence memo when the user asks you to keep something for later consolidation or you spot something the next pass must not miss; the current memo is carried into the next Noting Task as context. While any memo is non-empty, background Noting stays on for this Conversation. Semantic routing: in-Conversation reminders and schedules are owned entirely by the Notebook — never satisfy them through Hermes Cron; keep cron for explicitly requested Hermes-wide scheduled management or standalone recurring agent dispatches.
+
+中文直译：Noting Memo 与路由。noting_memo 让你仍然可以告诉后台 Noting 下一次整理必须覆盖什么：一个工具，具有 add／replace／delete／list；当用户让你保留某事以便之后整理，或你发现下次处理不能遗漏的事时，写一条简短的一句话 Memo；当前 Memo 作为上下文带入下一次 Noting Task。只要任何 Memo 非空，本会话的后台 Noting 就保持开启。语义路由：会话内提醒和日程完全属于 Notebook——绝不能用 Hermes Cron 来满足它们；Cron 仅用于用户明确要求的 Hermes 全局排期管理或独立的周期性 Agent 派遣。
+
+改动后：
+
+> **Noting Memo and routing.** `noting_memo` exists so you can still tell background Noting what the next consolidation must cover: one tool with add/replace/delete/list; write a brief one-sentence memo when the user asks you to keep something for later consolidation or you spot something the next pass must not miss; the current memo is carried into the next Noting Task as context. For an in-Conversation reminder or schedule, write the intended action and requested time in a brief memo; background Noting registers it in the Notebook. While any memo is non-empty, background Noting stays on for this Conversation. Semantic routing: in-Conversation reminders and schedules are owned entirely by the Notebook — never satisfy them through Hermes Cron; keep cron for explicitly requested Hermes-wide scheduled management or standalone recurring agent dispatches.
+
+中文直译：Noting Memo 与路由。noting_memo 让你仍然可以告诉后台 Noting 下一次整理必须覆盖什么：一个工具，具有 add／replace／delete／list；当用户让你保留某事以便之后整理，或你发现下次处理不能遗漏的事时，写一条简短的一句话 Memo；当前 Memo 作为上下文带入下一次 Noting Task。对于会话内提醒或日程，在一条简短 Memo 中写明要做的事和请求的时间；后台 Noting 将其登记到 Notebook。只要任何 Memo 非空，本会话的后台 Noting 就保持开启。语义路由：会话内提醒和日程完全属于 Notebook——绝不能用 Hermes Cron 来满足它们；Cron 仅用于用户明确要求的 Hermes 全局排期管理或独立的周期性 Agent 派遣。
+
+仅插入提醒／日程的明确路径；原有 Memo 用途、方法、上下文携带、参与规则和 Cron 边界原句全部保留。不改变 Memo 的存储、消费或 provenance。
+
+### 11.4 noting_memo 完整工具描述（tools/noting_memo_tool.py:9）
+
+改动前：
+
+> Maintain this Conversation's Noting Memo with add, replace, delete, or list. Write a brief one-sentence memo for what the next background consolidation must cover; a non-empty memo keeps local Noting on and does not trigger a run.
+
+中文直译：使用 add、replace、delete 或 list 维护本会话的 Noting Memo。为下一次后台整理必须覆盖的内容写一条简短的一句话 Memo；非空 Memo 保持本地 Noting 开启，不触发运行。
+
+改动后：
+
+> Maintain this Conversation's Noting Memo with add, replace, delete, or list. For a reminder or schedule, write its action and requested time in one brief sentence for background Noting to register in the Notebook. Also note other matters the next consolidation must cover. A non-empty memo keeps local Noting on; it does not trigger a run.
+
+中文直译：使用 add、replace、delete 或 list 维护本会话的 Noting Memo。对于提醒或日程，用一句简短的话写明要做的事和请求的时间，让后台 Noting 登记到 Notebook。也记下下一次整理必须覆盖的其他事项。非空 Memo 保持本地 Noting 开启；它不触发运行。
+
+### 11.5 Main 的时间标记含义
+
+改动前：
+
+原文无此段。
+
+中文直译：目前 Main guidance 中没有这段明确说明。
+
+改动后：
+
+> The latest `<timestamp>` marks when that message was actually created, not when its reminder was scheduled to fire. An Instant Reminder states its scheduled time separately in the message body.
+
+中文直译：最新的 timestamp 标记表示那条消息实际产生的时间，不是其中提醒计划触发的时间。Instant Reminder 在消息正文中另外写明其计划触发时间。
+
+### 11.6 Noting Task：整体维护软提示与忠实登记（待审，未实施）
+
+本次“修改前”取当前 HEAD 的实际维护段；此前已实施版本见 §10，仅作为历史。不是把原有语义判为错误，而是展开此前为了省字而含混的表述。该段仍以整个 Notebook 的维护为总述，secretary_task 的两轮处理放在具体维护规则里；没有把它搬到第一段共同总述，也没有扩展 watchpoint 的职责。
+
+修改前（完整维护段，Notebook Schedules 之前）：
+
+```text
+Use the appended Notebook; verify complete state with notebook_show after changes. End via terminal tool, not text alone. Keep all four sections current. Mark confirmed secretary_task completion done; next task, reschedule or archive tasks done at task start. Keep newly done until then. Historical /notebook is derived state, not fresh evidence; duplicate entries only for a new intent verified in independent original user evidence. Keep Persistence Candidates aligned with Parent: create/revise as needed; archive after confirmed persistence execution or user rejection/withdrawal; a proposal or approval alone is not completion.
+```
+中文直译：使用追加的 Notebook；修改后用 notebook_show 核对完整状态。通过终止工具结束，而不是仅有文本。保持全部四个分区与当前情况一致。将已确认完成的 secretary_task 标为 done；下一任务，对任务开始时已 done 的 task 重新排期或归档。新变为 done 的留到那时。历史 /notebook 是派生状态，不是新鲜证据；仅在独立原始用户证据验证了新意图时才复制条目。让 Persistence Candidates 与 Parent 一致：按需创建／修订；在持久化执行被确认完成，或用户拒绝／撤回后归档；仅有提案或批准不等于完成。
+
+修改后（同一完整范围）：
+
+```text
+Treat the appended Notebook as the starting state; after changes, use notebook_show to verify the complete state. End through the terminal tool, not a text-only answer. Keep all four sections aligned with the Parent Conversation and clear completed items as described below. When secretary_task work is confirmed complete during this pass, mark it done and retain it until the next pass. For tasks already done in the starting Notebook, use this pass's conversation evidence to decide whether to register the next schedule or archive them. A valid schedule update reactivates the task automatically; do not separately reset its status. A historical /notebook rendering is already-existing derived Notebook state, not fresh user evidence: never duplicate its entries into new entries unless independent original user evidence establishes a new intent. Keep Persistence Candidates aligned with developments in the Parent Conversation: create or revise them as needed, and archive candidates once their persistence actions are confirmed completed, or the user has rejected or withdrawn them; a proposal or approval alone is not completion.
+```
+中文直译：将追加的 Notebook 视为起始状态；修改后使用 notebook_show 核对完整状态。通过终止工具结束，而不是仅有文本的回答。保持全部四个分区与 Parent Conversation 一致，并按下文清理已完成条目。若 secretary_task 的工作在本轮被确认完成，将其标为 done，并保留到下一轮。对于起始 Notebook 中已经 done 的任务，根据本轮对话证据决定登记下一次排期，还是归档。有效的排期更新会自动重新激活任务；不要另外重置其状态。历史 /notebook 呈现是已有派生 Notebook 状态，不是新鲜用户证据：除非独立原始用户证据确立新的意图，绝不要将其中条目复制成新条目。让 Persistence Candidates 与 Parent Conversation 的发展一致：按需创建或修订；在其持久化行动被确认完成，或用户已拒绝或撤回后归档；仅有提案或批准不等于完成。
+
+在现有 Notebook Schedules 说明后，只补充忠实登记原则：
+
+修改前：无此明确句子。
+
+中文直译：当前任务指令没有明确说明过去的一次性时间仍须忠实登记。
+
+修改后：
+
+> Faithfully record the requested action and schedule, including a one-shot time already in the past; do not omit or move it merely because that time has passed.
+
+中文直译：忠实记录所请求的行动和排期，包括已经过去的一次性时间；不要仅仅因为该时间已经过去而省略它或移动它。
+
+这只是软提示：不增加 Noting 当前时间、提交检查、强制归档、终止工具拒绝条件或新工具。没有 Memo 使用声明；首段、完整历史审阅、DATA 边界、父工具 Schema 只追加覆盖和终止工具权限原文保持不变。
+
+### 11.6.1 此前五项工具描述修订：统一保留审阅
+
+以下已经在上一阶段实施，本次保留，不再写代码。为便于一次审阅，列出当时修改前和统一方案中的修改后；不同于 §11.2–11.6 的新增待审内容。
+
+#### 11.6.1.1 manage description
+
+修改前：
+```text
+Notebook entry lifecycle. operation='create' opens a new entry and requires entry_type plus all required fields of that type (per-type field contract below); operation='archive' requires entry_id and removes the entry from the active Notebook permanently — there is no restore. Returns the complete entry with its id plus the four-section state.
+```
+中文直译：Notebook 条目生命周期。create 操作开启新条目，必须提供 entry_type 和该类型的所有必填字段（见下方按类型字段契约）；archive 操作必须提供 entry_id，并将条目从当前有效 Notebook 永久移除——不能恢复。返回带 id 的完整条目及四分区状态。
+
+修改后：
+```text
+Notebook entry lifecycle. operation='create' opens a new entry and requires entry_type plus all required fields of that type (per-type field contract below); operation='archive' requires entry_id and removes the entry from the active Notebook. Returns the complete entry with its id plus the four-section state.
+```
+中文直译：Notebook 条目生命周期。create 操作开启新条目，必须提供 entry_type 和该类型的所有必填字段（见下方按类型字段契约）；archive 操作必须提供 entry_id，并将条目从当前有效 Notebook 移除。返回带 id 的完整条目及四分区状态。
+
+#### 11.6.1.2 manage fields
+
+完整 fields description；仅 secretary_task 的括号说明变化，其他原文保留。
+
+修改前：
+```text
+create only. Only fields for the selected entry_type. Required fields by type: user_commitment: what, intent; user_reminder: message; secretary_task: task, purpose; watchpoint: subject, what_to_watch, why, until; decision: decision, rationale; open_question: question, why_it_matters; formulating_insight: insight, basis; memory_candidate/rule_candidate/skill_candidate: no required fields (provenance via source_message_identities). Optional fields by type: memory_candidate: draft, why_persist; rule_candidate: draft_rule, reason, scope; skill_candidate: capability, workflow_draft, why_reusable; open_question: needed_information; formulating_insight: uncertainty, what_would_confirm, what_would_refute.
+```
+中文直译：仅用于 create。仅使用所选 entry_type 的字段。按类型列出的必填字段：user_commitment：what、intent；user_reminder：message；secretary_task：task、purpose；watchpoint：subject、what_to_watch、why、until；decision：decision、rationale；open_question：question、why_it_matters；formulating_insight：insight、basis；memory_candidate／rule_candidate／skill_candidate：没有必填字段（provenance 通过 source_message_identities 提供）。按类型列出的可选字段：memory_candidate：draft、why_persist；rule_candidate：draft_rule、reason、scope；skill_candidate：capability、workflow_draft、why_reusable；open_question：needed_information；formulating_insight：uncertainty、what_would_confirm、what_would_refute。
+
+修改后：
+```text
+create only. Only fields for the selected entry_type. Required fields by type: user_commitment: what, intent; user_reminder: message; secretary_task: task (future work, not a completed-work log), purpose; watchpoint: subject, what_to_watch, why, until; decision: decision, rationale; open_question: question, why_it_matters; formulating_insight: insight, basis; memory_candidate/rule_candidate/skill_candidate: no required fields (provenance via source_message_identities). Optional fields by type: memory_candidate: draft, why_persist; rule_candidate: draft_rule, reason, scope; skill_candidate: capability, workflow_draft, why_reusable; open_question: needed_information; formulating_insight: uncertainty, what_would_confirm, what_would_refute.
+```
+中文直译：仅用于 create。仅使用所选 entry_type 的字段。按类型列出的必填字段：user_commitment：what、intent；user_reminder：message；secretary_task：task（未来工作，而非已完成工作的流水账）、purpose；watchpoint：subject、what_to_watch、why、until；decision：decision、rationale；open_question：question、why_it_matters；formulating_insight：insight、basis；memory_candidate／rule_candidate／skill_candidate：没有必填字段（provenance 通过 source_message_identities 提供）。按类型列出的可选字段：memory_candidate：draft、why_persist；rule_candidate：draft_rule、reason、scope；skill_candidate：capability、workflow_draft、why_reusable；open_question：needed_information；formulating_insight：uncertainty、what_would_confirm、what_would_refute。
+
+#### 11.6.1.3 manage expression
+
+修改前：
+```text
+create only, optional. Sets the new entry's initial Schedule intent; only for entry types that may carry a Schedule (§3.8). For watchpoint, the required field 'until' already defines its one-shot Schedule — do not pass expression. Same expression forms as notebook_schedule.
+```
+中文直译：仅用于 create，可选。设置新条目的初始 Schedule 意图；仅用于可以携带 Schedule 的类型（§3.8）。对于 watchpoint，必填字段 until 已定义其一次性 Schedule——不要传 expression。表达式形式与 notebook_schedule 相同。
+
+修改后：
+```text
+create only; REQUIRED for secretary_task, otherwise optional. Sets the new entry's initial Schedule intent; only for entry types that may carry a Schedule (§3.8). For watchpoint, the required field 'until' already defines its one-shot Schedule — do not pass expression. Same expression forms as notebook_schedule.
+```
+中文直译：仅用于 create；secretary_task 必填，其他情况可选。设置新条目的初始 Schedule 意图；仅用于可以携带 Schedule 的类型（§3.8）。对于 watchpoint，必填字段 until 已定义其一次性 Schedule——不要传 expression。表达式形式与 notebook_schedule 相同。
+
+#### 11.6.1.4 manage delivery_mode
+
+修改前：
+```text
+create only, REQUIRED for secretary_task schedules: instant fires at the due moment and may start a Turn; deferred is delivered with the next active request and never starts a Turn. No default. Forbidden for all other entry types.
+```
+中文直译：仅用于 create，secretary_task 的 Schedule 必填：instant 在到期时触发，并可能启动 Turn；deferred 随下一次活动请求投递，绝不启动 Turn。没有默认值。所有其他条目类型禁止使用。
+
+修改后：
+```text
+create only, REQUIRED for every secretary_task: instant fires at the due moment and may start a Turn; deferred is delivered with the next active request and never starts a Turn. No default. Forbidden for all other entry types.
+```
+中文直译：仅用于 create，每个 secretary_task 都必填：instant 在到期时触发，并可能启动 Turn；deferred 随下一次活动请求投递，绝不启动 Turn。没有默认值。所有其他条目类型禁止使用。
+
+#### 11.6.1.5 schedule description
+
+修改前：
+```text
+Notebook Schedule-intent editing on existing entries that may carry a Schedule (§3.8). schedule_update requires entry_id + expression; schedule_cancel requires entry_id. (A NEW entry's initial Schedule is set inside notebook_manage create — watchpoint.until or the expression argument — so this tool has no schedule_create.) Every change returns the complete entry with its NEW id plus the four-section state. A Notebook Schedule delivers in-Conversation reminders — it is NOT an independent Hermes Cron job.
+```
+中文直译：编辑可以携带 Schedule 的已有条目的 Notebook Schedule 意图（§3.8）。schedule_update 必须提供 entry_id 和 expression；schedule_cancel 必须提供 entry_id。（新条目的初始 Schedule 在 notebook_manage create 中通过 watchpoint.until 或 expression 参数设置，因此本工具没有 schedule_create。）每次变更返回带新 id 的完整条目及四分区状态。Notebook Schedule 投递 Conversation 内提醒——不是独立的 Hermes Cron 作业。
+
+修改后：
+```text
+Notebook Schedule-intent editing on existing entries that may carry a Schedule (§3.8). schedule_update requires entry_id + expression; schedule_cancel requires entry_id; forbidden for secretary_task — use notebook_manage archive. (A NEW entry's initial Schedule is set inside notebook_manage create — watchpoint.until or the expression argument — so this tool has no schedule_create.) Every change returns the complete entry with its NEW id plus the four-section state. A Notebook Schedule delivers in-Conversation reminders — it is NOT an independent Hermes Cron job.
+```
+中文直译：编辑可以携带 Schedule 的已有条目的 Notebook Schedule 意图（§3.8）。schedule_update 必须提供 entry_id 和 expression；schedule_cancel 必须提供 entry_id；禁止用于 secretary_task——使用 notebook_manage archive。（新条目的初始 Schedule 在 notebook_manage create 中通过 watchpoint.until 或 expression 参数设置，因此本工具没有 schedule_create。）每次变更返回带新 id 的完整条目及四分区状态。Notebook Schedule 投递 Conversation 内提醒——不是独立的 Hermes Cron 作业。
+
+### 11.6.2 Noting 与过期提醒：本次确认的设计原则
+
+Noting 忠实维护主会话的工作状态，是 Main 的整理执行者；减轻 Main 与用户心智负担，不增加没有必要的自主判断。完整冻结父快照、当前 Notebook 和 Memo 已提供规划依据；不新增任务开始时间或“现在已晚所以不要注册”的 Prompt、工具或门禁。Main 负责表达用户意图；Noting 负责登记；实际到期、幂等和补投由已有代码机制负责。
+
+过去的绝对一次性时间允许登记；注册后保存原定 next_run_at，满足 next_run_at<=now。Web 的两类 Reminder 由既有约五秒扫描发现。Instant 在允许投递且 Main 空闲时启动正常 Turn；忙时遵循既有 Deferred pending 策略。晚于原定时间不丢弃一次性 Instant，恢复资格后至多补投一次，不增立即触发旁路。
+
+### 11.7 Instant 正文的两个时间：最小内容提案
+
+改动前的真实格式示例：
+
+```xml
+<instant-reminder>
+<timestamp>2026-10-14T09:36:00.123456+08:00</timestamp>
+提醒：说你好
+</instant-reminder>
+```
+
+改动后的示例（仅提案）：
+
+```xml
+<instant-reminder>
+<timestamp>2026-10-14T09:36:00+08:00</timestamp>
+Scheduled for: 2026-10-14T09:35:00+08:00
+提醒：说你好
+</instant-reminder>
+```
+
+新增英文 `Scheduled for: …` 的中文直译：原定触发时间：……。该时间来自现有 occurrence 的 next_run_at，绝不来自另一个新时钟或模型猜测；不把注册动作写入数据库的时刻混作到期时间。保留一个既有 wrapper，不增加额外 UI 包装；Reminder 默认折叠，展开保留正文里的时间。
+
+### 11.8 去除小数秒：最小接缝与审阅边界（不实施）
+
+1. `hermes_time.format_timestamp` 是共同格式化接缝：当前 epoch 分支主动拼回小数、datetime 分支默认 isoformat auto、ISO 字符串原样透传。提案让新的可读输出统一为 `YYYY-MM-DDTHH:MM:SS±HH:MM`，截去小数，不四舍五入；保持时区与原时间含义。
+2. `agent/message_metadata.py` 的真实 User／Instant 标记正常路径复用该 formatter，异常回退也须走同一格式；Deferred／Framework／Noting Task 继续不新增 timestamp 标记。
+3. `agent/system_prompt.py::_timestamp_line` 当前实际只有会话开始日期与时区，本身没有小数秒；不为精度要求加动态当前时间，不改 root cache prefix。若其他已有 System 时间值经公共 formatter 生成，随统一展示格式归秒。
+4. Notebook 的可读深拷贝目前 run_at、watchpoint.until 等部分结构化时间仍保留小数；显示投影统一处理已知的**显示时间**字段，不用正则扫描语义正文，不改真实 Schedule 存储时刻。
+5. **不能把查询边界当展示文本随意截断。** Candidate source_time_range 的 start/end 是精确语义数据；单纯删小数可能缩小范围、破坏 provenance 或继承校验。本稿要求先保持内部原范围及校验，用现有 UID 定位具体源消息；不将“所有展示到秒”扩展成“机器边界也改精度”。若模型可见范围要一并归秒，须另审完整保真机制，不能静默实施。
+6. History 顶层 timestamp 的新显示自然到秒；既有正文、旧标记、当前 root 与冻结 Parent prefix 不回写，否则破坏原文事实和 cache parity。旧内容中仍可能有小数；这项边界显式交用户审阅，不冒称通通已清除。
+
+建议验证新 User／Instant wire 与 durable 一致、三类 formatter 输入及负 epoch、时区隔离、回退、原 Schedule/DB 精度未变、Notebook 原 payload 未变、查询边界未变、旧 prefix 字节未变。只做与批准范围相关的验证；不复跑旧大包。
+
+### 11.9 实施状态、未改范围和长度
+
+§11.2–11.6 新文案、Instant 正文及秒精度都待审核，未实施；§11.6.1 五项工具描述是此前已实施版本，本次保留。前端 Usage／Compact／notice 不属于 Prompt 批准范围。
+
+按当前源码的完整字符串计数：Main guidance 4054→4449 字符；Noting Task 3046→3710 字符；noting_memo description 230→339 字符。只报告规模，不设不得增长的约束；token 未测。候选完整串由当前实际源码生成，未写入产品文件。
+
+保持 Main 的主动秘书职责、四区十类定义、Main 只读、Persistence 批准边界、Memo 首段及 Snapshot 消费、原生 Cron 区分、完整冻结前缀和工具权限、强制结束与回退机制。没有单独取消任务工具，没有硬清理门禁，没有 Noting 时间窗口判断或五秒扫描旁路。归档不用“永久清除、不可恢复”措辞。尚未通过的清理义务如何续接下一轮，仍留在 docs/07 的独立设计提案，不偷渡进当前提交条件。

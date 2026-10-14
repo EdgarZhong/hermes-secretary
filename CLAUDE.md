@@ -1,4 +1,4 @@
-> 当前阶段（2026-10-14夜间托管）：开发整改与主审集成已收敛，BE产品f8e4161、FE8b3867e已接线，提交后自动push已启用。真实附件、自然Instant先源后Thinking/及时终态、未来task创建/完成/只改期自动pending均有实际链证据。Prompt精简4字符且Memo原文/机制不变；硬清理只交07提案未实施。用户要求重试后，C99真实IAB实看通过：默认collapsed、展开原timestamp、同消息唯一，再折叠成功；临时服务已退出、配置逐字恢复，DB/Registry/API计数不变。Files/Appearance胶囊内容宽度已恢复并实看；文案按用户最新C104要求撤回。UI正式main最终2c019ac已同步；原目标收尾交付，第二轮Verification未启动。
+> 当前增量（2026-10-14）：Prompt／时间戳仅提案，当前统一审阅稿见 repair-secretary-task-contract.md §11；长度以质量为准，不设零增长硬约束。UI Usage／notice df123c6、Compact／移动Usage／侧边栏 d4896f2 已提交推送，定向检查及唯一统一构建通过，Root真实页面复核未全部完成。用户追加压缩全路径复查及资源自查；只读发现compacted终态消费／历史刷新缺口，尚未修复。两个审查Agent大量返回文本已叫停，不再重测试／全档读取。第二轮Verification不启动。
 
 # Hermes Secretary 第二轮主看板
 
@@ -8,7 +8,7 @@
 
 | 原规格空白 | Agent 自主收敛／理由 | 影响范围 | 实施情况 | 用户状态 |
 |---|---|---|---|---|
-| 暂无 | 原8个结束Turn／32条压缩终态窗口已按R2-C66获用户追认 | 刷新恢复当前真实状态，当前操作不受旧记录淘汰影响；不恢复已过期旧回执 | 不改窗口实现 | 已确认 |
+| 冷恢复时实时Usage owner不存在，原生REST保存计数是否可展示 | Agent自主收敛：仅在无canonical source时读取原生保存Session计数并标注partial/source；未知Turn数／命中率／Latest不推算 | UI Usage冷恢复展示；不改RPC／存储 | df123c6已实施，Root实际页待复核 | 待追认；已在聊天主动汇报 |
 
 已追认（R2-C36/C66）：单Main Turn累计256次新Web Steer（消费/撤回仍计数）；同Turn64个不同Interrupt请求记录；idle-only保持同会话一次Main Turn、并发普通Send失败保稿，结束后任一客户端可发；同会话两个在线订阅端实时流式接收；图片经原生上下文注入，本体允许留服务器。C66追加确认8轮／32条旧操作回执窗口；不得把查库未见摘要等同于取消成功。下文旧待追认表述均为历史记录，由C66覆盖。
 
@@ -25,6 +25,14 @@
 - Reasoning根因已由真实RPC定位为5098：服务5ccc619与checkout6d96e80不一致，loadCapabilities吞错成空能力。保留native保护，修错误与Retry；待统一重启再验，不猜provider别名或伪造支持。
 
 ## 当前目标与阶段
+
+**最新审阅与追加复查（2026-10-14）**：用户明确本次Prompt／timestamp不得直接写代码，取消“不增加长度”硬约束；每项完整修改前／后英文及紧随中文直译，用户原话逐项对账。§11已汇总现行完整维护段→新稿、此前5项工具描述保留审阅、Main→Memo桥接、真实timestamp／Scheduled for、秒精度方案；未实施。timestamp_seconds的3文件改动已撤回。
+
+用户要求复查特殊Profile触发、所有压缩完成及时Timeline及过程Context。compaction_backend_audit／compaction_timeline_audit只读交回，Root核生产代码：UI1040未消费原生compacted，1512 active→false仅停700ms轮询无history重读；手动compact RPC成功后1601强制重读历史存在，首次状态读取race尚未实测。02特殊Noting终止不等待Parent最终压缩，不能依赖Finish早读代替completion。当前runtime两自动选项均false，不能宣称开启态实测通过；原生请求机制存在不等于所有路径完成已通过。旧真实summary row714唯一折叠卡Root已IAB展开，但不是即时追加证据。
+
+资源自查：两个新审查Agent各报告累计约6.6万token输出，发生截断，Root此前也有截断；立即停止全档读取，后续仅关键小范围低输出，不启动测试／模型／build／browser。当前一次ps未见其遗留重进程；CapsWriter约2.3GiB、Codex最大renderer约674MiB，不能据此归因历史卡顿，不终止用户进程。native_notice_frontend自查进行，sidebar owner因并发槽限制暂未触发新turn，提醒消息已发。
+
+**当前增量C106：原生错误notice接线（2026-10-14）**：用户原话：“你像这种情况下，有报错对吧？系统报错应该从前端走 notice 横幅入口，你可以再把前端接线加上。原生 API 支持这种报错提示吗？”原生已有AgentNotice→notice_callback→notification.show/clear，字段text/level/kind/ttl_ms/key/id，不需要新RPC/Schema。现Noting失败仅日志，Web未消费此事件。noting_native_notice负责单Task/单owner集中失败producer（后端noting_child及定向测试）；native_notice_frontend负责既有Notification/ToastStack消费者（UI controller最小接线+sibling，保2000行/视觉不动）。Root唯一文档、亲审和正式接线，重测试/构建串行；不得放宽旧Notebook合同、迁移/清库、补假Framework、改变重试/Trigger/权限或新建清理机制。既有task_finished错误用于所有退出，按outcome.committed在唯一finally区分task_finished/task_closed，使06既有成功高亮事实一致；不新建Task状态或改变已完成提交。
 
 **最新运行调查（2026-10-14 09:39）**：用户问最近会话为何Noting空闲/无倒计时/无完成Framework。按真实last_activity定位20261013_223838_0ddd56，09:34:37与09:35:13两次idle admission32/33均启动后立即failed（noting_b71066e17dbc466e、noting_66c202c484584a32），尚未创建模型会话。原有效Snapshot snap_f774a94cf9b8446b9db6ba2e7c76f794载荷[24,25]，秘书task24/pending的schedule=null；新非空校验使NotebookStore.load在初始化抛NotebookValidationError。idle trigger已产出故无新倒计时，live tasks空故现投影idle；Memo1未消费、无新成功Snapshot/完成Framework。不是2秒配置改动引起；此两次发生在改回2秒之前。旧非法测试库边界此前已记录但原运行库保留了它，用户现场暴露，不能宣告当前会话Noting成功；只读定位，未清库/迁移/静默改条目或放宽合同。
 
@@ -48,6 +56,8 @@
 
 | Owner | 当前工作与边界 | 接收状态／未闭合范围 |
 |---|---|---|
+| noting_native_notice | 复用Parent原生AgentNotice，集中单次真实failure曝光 | 实施/定向测试；不改Schema/状态/重试/Notebook |
+| native_notice_frontend | native notification.show/clear→现notice栈，准确owner/key/TTL清理 | 实施中；等后端测试结束才放行前端检查，Root唯一IAB |
 | sidebar_visual_restore · 最新截图修复 | 对照只读Mock视觉树，修正式UI Files/Appearance局部样式 | 最终2c019ac已推origin/secretary；保胶囊/两分隔恢复，文案按C104撤回，Root已亲审并复用完全同树实看证据 |
 | assistant_ui_research · 原前端Owner | 完整开发及附件模型证据已交回、53449/5183已停 | Main亲审接收；Usage微修单worker1pass/build5.37s通过，旧有效包复用；附件正式链及续接Instant真实链已接收 |
 | native_integration · 联调续接 | 全部真实链及收尾已交回；自有服务关闭/配置逐字恢复/DB与API不变 | Main接收附件/Instant21ms/终态15ms及3真实Noting；C99旧策略失败保留；Root重试正常且实看通过。无继续重任务，不重跑模型 |

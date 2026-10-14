@@ -251,3 +251,15 @@ C85用户否决最新精简稿：通用Noting总述不应过分强调secretary_t
 ### R2-C105 当前运行Noting delay改回2秒（2026-10-14）
 
 用户原话：“把noting delay 成回2秒钟”。仅当前53445的round2-runtime noting.idle_delay_seconds从15改2；原生live config读取确认2.0，其他配置不变。不是产品默认值改动，也不改历史取证profile；本地ignored配置不提交，记录同步。
+
+
+### R2-C106 系统错误通过现有notice横幅（2026-10-14）
+
+用户原话：“你像这种情况下，有报错对吧？系统报错应该从前端走 notice 横幅入口，你可以再把前端接线加上。原生 API 支持这种报错提示吗？”原生notification.show/clear已支持，不新增API；最小补Noting父会话producer与Web现通知栈consumer。仅错误曝光，不把旧无Schedule Notebook自动迁移/清理、放宽校验或重试；失败不会产生成功Framework/完成高亮，原默认关闭场景不变。两独立门禁仍未启动。
+
+## 2026-10-14 追加审阅与只读复查交接
+
+- 用户原话：“我没让你直接写入代码，你给我改提案”；“以写好为标准,语意清晰，表达不串,不能破坏已有语义除非明确需要修订的点”。当前统一审阅稿为 repair-secretary-task-contract.md §11：完整旧／新英文、紧随中文直译、用户原话对账；新增仅提案，前阶段已实施项分别标注。时间戳Agent未提交修改已撤回。长度不设不得增长的硬约束。
+- 用户原话：“noting with compaction 能不能正常触发……所有触发路径……消息能不能及时回到 timeline……状态指示能不能正确展示在 context”；仅只读复查，无第二轮Verification。Root源码核前端compacted终态未消费、轮询inactive未history重读；正常手动返回有强制重读链，过程首次activefalse竞态未实测。当前运行的两自动选项false，不能冒称开启态证据。
+- 用户原话：“赶紧让他们自查”。两个新审查Agent各约6.6万token输出已叫停；主会话也停止大范围读取。当前进程快照不能归因历史卡顿；不终止用户进程，不再重任务。
+- UI已提交push df123c6／d4896f2：notice时效／真实Usage来源与保留值、Compact仅Cancel／原地18px、移动Usage原指标。定向测试和唯一最终build通过；Root页面复核尚未全部完成，不能冒称完整交付。
