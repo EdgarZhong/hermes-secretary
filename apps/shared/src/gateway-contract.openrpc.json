@@ -8976,6 +8976,18 @@
             ],
             "title": "Output Tokens"
           },
+          "total_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Total Tokens"
+          },
           "cache_hit_rate": {
             "anyOf": [
               {
@@ -21433,6 +21445,148 @@
           }
         },
         "title": "OptionalProjectResult",
+        "type": "object"
+      },
+      "OutputCommittedPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "turn_id": {
+            "title": "Turn Id",
+            "type": "string"
+          },
+          "stored_session_id": {
+            "title": "Stored Session Id",
+            "type": "string"
+          },
+          "conversation_ref": {
+            "title": "Conversation Ref",
+            "type": "string"
+          },
+          "source_message": {
+            "$ref": "#/components/schemas/NativeSourceMessage"
+          }
+        },
+        "required": [
+          "turn_id",
+          "stored_session_id",
+          "conversation_ref",
+          "source_message"
+        ],
+        "title": "OutputCommittedPayload",
+        "type": "object"
+      },
+      "OutputDeltaPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "turn_id": {
+            "title": "Turn Id",
+            "type": "string"
+          },
+          "stored_session_id": {
+            "title": "Stored Session Id",
+            "type": "string"
+          },
+          "conversation_ref": {
+            "title": "Conversation Ref",
+            "type": "string"
+          },
+          "message_uid": {
+            "title": "Message Uid",
+            "type": "string"
+          },
+          "native_type": {
+            "enum": [
+              "message.delta",
+              "reasoning.delta",
+              "message.interim"
+            ],
+            "title": "Native Type",
+            "type": "string"
+          },
+          "native_payload": {
+            "additionalProperties": true,
+            "title": "Native Payload",
+            "type": "object"
+          },
+          "source_event_seq": {
+            "exclusiveMinimum": 0,
+            "title": "Source Event Seq",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "turn_id",
+          "stored_session_id",
+          "conversation_ref",
+          "message_uid",
+          "native_type",
+          "native_payload",
+          "source_event_seq"
+        ],
+        "title": "OutputDeltaPayload",
+        "type": "object"
+      },
+      "OutputStatePayload": {
+        "additionalProperties": false,
+        "properties": {
+          "turn_id": {
+            "title": "Turn Id",
+            "type": "string"
+          },
+          "stored_session_id": {
+            "title": "Stored Session Id",
+            "type": "string"
+          },
+          "conversation_ref": {
+            "title": "Conversation Ref",
+            "type": "string"
+          },
+          "message_uid": {
+            "title": "Message Uid",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "open",
+              "uncommitted",
+              "closed"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "api_request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Request Id"
+          },
+          "stream_writer_token": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stream Writer Token"
+          }
+        },
+        "required": [
+          "turn_id",
+          "stored_session_id",
+          "conversation_ref",
+          "message_uid",
+          "state",
+          "api_request_id",
+          "stream_writer_token"
+        ],
+        "title": "OutputStatePayload",
         "type": "object"
       },
       "PaneRevealPayload": {
@@ -34295,6 +34449,18 @@
             ],
             "title": "Output Tokens"
           },
+          "total_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Total Tokens"
+          },
           "cache_hit_rate": {
             "anyOf": [
               {
@@ -38923,6 +39089,69 @@
         "title": "ToolLabelKind",
         "type": "string"
       },
+      "ToolOutputPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "turn_id": {
+            "title": "Turn Id",
+            "type": "string"
+          },
+          "stored_session_id": {
+            "title": "Stored Session Id",
+            "type": "string"
+          },
+          "conversation_ref": {
+            "title": "Conversation Ref",
+            "type": "string"
+          },
+          "assistant_message_uid": {
+            "title": "Assistant Message Uid",
+            "type": "string"
+          },
+          "tool_call_uid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Call Uid"
+          },
+          "phase": {
+            "enum": [
+              "generating",
+              "start",
+              "complete"
+            ],
+            "title": "Phase",
+            "type": "string"
+          },
+          "native_payload": {
+            "additionalProperties": true,
+            "title": "Native Payload",
+            "type": "object"
+          },
+          "source_event_seq": {
+            "exclusiveMinimum": 0,
+            "title": "Source Event Seq",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "turn_id",
+          "stored_session_id",
+          "conversation_ref",
+          "assistant_message_uid",
+          "tool_call_uid",
+          "phase",
+          "native_payload",
+          "source_event_seq"
+        ],
+        "title": "ToolOutputPayload",
+        "type": "object"
+      },
       "ToolOutputRiskPayload": {
         "additionalProperties": false,
         "description": "``tool_progress._progress_output_risk``.",
@@ -42681,6 +42910,42 @@
       ]
     },
     {
+      "name": "message.output_committed",
+      "summary": "Actual native batch output row committed and markers adopted.",
+      "params": [
+        {
+          "name": "payload",
+          "schema": {
+            "$ref": "#/components/schemas/OutputCommittedPayload"
+          }
+        }
+      ]
+    },
+    {
+      "name": "message.output_delta",
+      "summary": "Identity projection of one exact legacy envelope sequence.",
+      "params": [
+        {
+          "name": "payload",
+          "schema": {
+            "$ref": "#/components/schemas/OutputDeltaPayload"
+          }
+        }
+      ]
+    },
+    {
+      "name": "message.output_state",
+      "summary": "Optional native output-object observation; never a Turn control.",
+      "params": [
+        {
+          "name": "payload",
+          "schema": {
+            "$ref": "#/components/schemas/OutputStatePayload"
+          }
+        }
+      ]
+    },
+    {
       "name": "message.reaction",
       "summary": "The agent reacted to a message; paint it live.",
       "params": [
@@ -43289,6 +43554,18 @@
           "name": "payload",
           "schema": {
             "$ref": "#/components/schemas/ToolGeneratingPayload"
+          }
+        }
+      ]
+    },
+    {
+      "name": "tool.output",
+      "summary": "Native tool occurrence projection of one exact legacy envelope sequence.",
+      "params": [
+        {
+          "name": "payload",
+          "schema": {
+            "$ref": "#/components/schemas/ToolOutputPayload"
           }
         }
       ]

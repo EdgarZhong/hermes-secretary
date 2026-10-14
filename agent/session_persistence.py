@@ -329,6 +329,8 @@ def _db_flush_write(agent, batch_rows: List[Dict[str, Any]], batch_msgs: List[Di
     )
     confirm_active_delivery_batch(batch_msgs)
     sync_flushed_message_markers(batch_msgs, batch_rows)
+    from agent.output_identity import notify_committed
+    notify_committed(agent, batch_msgs)
     if _newest_checkpoint_carrier(batch_msgs, "codex_reasoning_items") >= 0:
         # The insert already rewrote the older rows (SessionDB._drop_shadowed_checkpoint_rows); mirror it on
         # the live transcript so forks/compaction built from memory carry one checkpoint too. Markers stay:

@@ -231,6 +231,49 @@ event("message.source_committed", MessageSourceCommittedPayload,
       doc="An admitted Instant Reminder's real driving user row committed before the first model request.")
 
 
+class OutputIdentityScope(Payload):
+    turn_id: str
+    stored_session_id: str
+    conversation_ref: str
+    message_uid: str
+
+
+class OutputStatePayload(OutputIdentityScope):
+    state: Literal["open", "uncommitted", "closed"]
+    api_request_id: str | None
+    stream_writer_token: int | None
+
+
+class OutputDeltaPayload(OutputIdentityScope):
+    native_type: Literal["message.delta", "reasoning.delta", "message.interim"]
+    native_payload: dict[str, JsonValue]
+    source_event_seq: int = Field(gt=0)
+
+
+class ToolOutputPayload(Payload):
+    turn_id: str
+    stored_session_id: str
+    conversation_ref: str
+    assistant_message_uid: str
+    tool_call_uid: str | None
+    phase: Literal["generating", "start", "complete"]
+    native_payload: dict[str, JsonValue]
+    source_event_seq: int = Field(gt=0)
+
+
+class OutputCommittedPayload(Payload):
+    turn_id: str
+    stored_session_id: str
+    conversation_ref: str
+    source_message: NativeSourceMessage
+
+
+event("message.output_state", OutputStatePayload, doc="Optional native output-object observation; never a Turn control.")
+event("message.output_delta", OutputDeltaPayload, doc="Identity projection of one exact legacy envelope sequence.")
+event("tool.output", ToolOutputPayload, doc="Native tool occurrence projection of one exact legacy envelope sequence.")
+event("message.output_committed", OutputCommittedPayload, doc="Actual native batch output row committed and markers adopted.")
+
+
 class PersistedTurn(Payload):
     """Committed SQLite row addresses for the agent's current-turn suffix. Missing ids are
     unproven, never negative acknowledgements. ``complete`` permits retiring the whole local

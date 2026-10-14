@@ -866,9 +866,11 @@ def _invoke_agent(
     if witness is not None:
         agent._on_turn_user_persisted = _committed_turn_source_observer(sid, session, st, witness)
     try:
+        from tui_gateway.output_identity import observe_session_outputs
         from agent.notification_presentation import notification_turn, event_presentation_muted
         from agent.message_metadata import preserve_user_input_origin
-        with notification_turn(agent, muted=event_presentation_muted("message.delta", sid), session_id=sid):
+        with notification_turn(agent, muted=event_presentation_muted("message.delta", sid), session_id=sid), \
+                observe_session_outputs(agent, sid, _emit):
             st.result = agent.run_conversation(preserve_user_input_origin(text, run_message), **st.run_kwargs)
             usage_returned = True
     finally:
