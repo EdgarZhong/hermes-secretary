@@ -1,4 +1,4 @@
-> 当前增量（2026-10-14）：Prompt／时间戳仅提案，当前独立审阅稿见 prompt-review.md；长度以质量为准，不设零增长硬约束。UI Usage／notice df123c6、Compact／移动Usage／侧边栏 d4896f2 已提交推送，定向检查及唯一统一构建通过，Root真实页面复核未全部完成。用户追加压缩全路径复查及资源自查；只读发现compacted终态消费／历史刷新缺口，尚未修复。两个审查Agent大量返回文本已叫停，不再重测试／全档读取。第二轮Verification不启动。
+> 当前增量：用户明确继续完成未完代码与运行验证，Prompt由用户审核，仍仅提案。compaction_timeline_audit负责UI原生compacted消费、统一终态历史/Usage读取与真实Context状态；compaction_backend_audit负责native operation生命周期与开始/提交/完成回调时序。Root亲审、唯一服务/IAB owner、整合文档；重任务串行、低输出、采资源，禁止第二轮Verification。
 
 # Hermes Secretary 第二轮主看板
 
@@ -25,6 +25,16 @@
 - Reasoning根因已由真实RPC定位为5098：服务5ccc619与checkout6d96e80不一致，loadCapabilities吞错成空能力。保留native保护，修错误与Retry；待统一重启再验，不猜provider别名或伪造支持。
 
 ## 当前目标与阶段
+
+**Noting Prompt头尾收敛（仅提案）**：用户要求只在头部加强忠实维护原意，禁止新增时间判断句／任务开始timestamp；清理段在固定指令正文尾部，用两句共同要求＋各类型明确完成态规则（2＋N）。现行段实际上在tools后、Schedules/DATA/工具权威前。候选已列commitment.done、reminder.delivered、watchpoint.resolved、question.resolved和无status的candidate执行完成／拒绝／撤回；不将validated有效知识或失败冒充成功完成，不改状态图或硬门禁。
+
+**Notebook Slash用户最新口径**：用户明确 `/notebook` 输出只给用户显示、不进入模型上下文；因此候选Noting维护段删除历史/notebook非新鲜证据的整句，修改前引文保留。正在核producer/持久字段/Main过滤/Noting快照/session_history，尚未冒称已实现；依据旧02/04里模型可见的历史描述应以此最新授权覆盖，验证后同步规格。
+
+**时间系统Prompt审阅纠正**：用户要求一句通用规则：系统仅用最新Timestamp表示消息抵达时的当前真实时间，其他时间字段有各自调度语义、不代表当前时间。候选拟加在Main guidance既有Notebook/Schedule总述之后、Memo之前；不展开Instant场景，仅提案，不改当前root。
+
+**Memo心智模型确认**：用户原话：“任何时候，当你认为某件事必须在下次整理时出现在 notebook 中时，就记一条便签，Background noting会确保他进入notebook”。Memo是Main指示后台整理内容的统一通道，消除Main担忧后台结果而分神研究Notebook写入的负担；不按用户要求保留／Main主动发现分场景。候选Main段和工具描述已按此统一规则重写；指的是便签所指事项，不把便签文本作为Notebook条目或provenance。仅提案。
+
+**Prompt术语纠正**：用户明确 next pass 指下一次后台 Notebook 整理；候选 Main Memo 写明 next background Noting Task／consolidating the Notebook，维护段写明 current／next Noting Task，修改前原文不变。代码工作继续。
 
 **Prompt审阅纠正**：用户明确 Main 是通过 Memo 指示后台 Noting 注册 Reminder，不能表述成 Main 自己直接安排。独立提案主动唤醒句已明确 instruction／registration 两个角色，中文直译同步；仅提案，产品代码未修改。
 

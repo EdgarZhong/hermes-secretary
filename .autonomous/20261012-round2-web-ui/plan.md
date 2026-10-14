@@ -324,3 +324,17 @@ C101正常IAB重试成功；原真实Instant行折叠/展开保timestamp/单卡/
 
 
 最新结束状态（C104）：C99实际IAB补验已完成；C102侧栏胶囊宽度修复/Main实看完成；临时文案经用户明确撤回，最终UI main2c019ac与已实看43795c8树完全一致，auto-push成功。原目标的Main集成与交付记录收尾，不再展开视觉或重复有效测试。两独立门禁未启动；单文档硬清理待用户审核，未实施。
+
+
+## 2026-10-14 用户继续授权：压缩与运行闭合
+
+用户原话：“我审Prompt，你继续干活啊。你不是说没干完呢吗？”本次继续已有范围，Prompt仅提案；第二轮Verification仍不启动。
+
+| 整改项 | Owner | 完成条件与定向证据 | 状态 |
+|---|---|---|---|
+| 全部压缩完成边界到真实Timeline | compaction_timeline_audit | 消费原生compacted，统一状态/Usage/force历史读取，实际UID无假卡，scope/epoch正确；focused及真实IAB | 实施中 |
+| 原生operation开始/phase/完成顺序 | compaction_backend_audit | owner建立后可被Context真实读取，compacted在真实发布后，避免手动首次false竞态；最小runner -j1 | 亲核必要接缝 |
+| 正式运行新后端与Noting notice | Root | 确认真实Main/Noting全idle后同HOME/DB/config安全更新，原生notice既有事件链 | 待集成 |
+| Usage/侧栏/Compact/notice实际页面 | Root | IAB核真实冷恢复Usage、idle不清、scroll无条、同位loading仅Cancel及普通10秒/错误永久策略 | 待闭合 |
+
+复用df123c6/d4896f2定向测试及唯一统一build，不复跑旧包。新相关测试串行放行，采PID/RSS；各调用短输出，不批量展开长规格。禁止模型并行、服务多开、真实浏览器和任何Prompt代码变更。
