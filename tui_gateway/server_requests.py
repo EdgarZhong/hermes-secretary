@@ -146,6 +146,16 @@ def _emit_cancel(req: ServerRequest, reason: str) -> None:
     _emit("request.cancel", req.sid, {"id": req.id, "method": req.method, "reason": reason})
 
 
+def _notify_clarify_settled(req: ServerRequest) -> None:
+    """Close this request on every renderer without making settlement depend on delivery."""
+    if req.method != "clarify":
+        return
+    try:
+        _emit_cancel(req, "resolved")
+    except Exception:
+        logger.debug("Clarify %s settled; renderer notification failed", req.id, exc_info=True)
+
+
 def _register(req: ServerRequest) -> None:
     from tui_gateway.contracts import registry as contracts
 
@@ -290,6 +300,7 @@ def resolve_response(frame: dict, transport: Any = None) -> bool:
     if req.on_result is not None:
         req.on_result(req.result)
     req.event.set()
+    _notify_clarify_settled(req)
     return True
 
 
@@ -310,6 +321,7 @@ def lock_answer(request_id: str, question_id: str, answer: str | None) -> list[s
             _open.pop(request_id, None)
     if not remaining:
         req.event.set()
+        _notify_clarify_settled(req)
     return remaining
 
 

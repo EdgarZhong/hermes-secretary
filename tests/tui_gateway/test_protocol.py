@@ -555,7 +555,7 @@ def test_clarify_batch_locks_resolve_in_order_and_keep_partial_on_timeout(captur
         server._clarify_timeout_seconds = original_timeout
     assert box["answer"] == {"answers": {"q0": "kept"}, "outcome": "timed_out"}
     cancels = [f for f in _frames(buf) if f.get("method") == "event" and f["params"]["type"] == "request.cancel"]
-    assert [c["params"]["payload"]["id"] for c in cancels] == [req.id]
+    assert [(c["params"]["payload"]["id"], c["params"]["payload"]["reason"]) for c in cancels] == [(_frames(buf)[0]["id"], "resolved"), (req.id, "timeout")]
 
 
 def test_clarify_batch_cancel_all_is_a_response_without_answers(capture):
