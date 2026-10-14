@@ -1,4 +1,4 @@
-> 当前增量（2026-10-14）：Prompt／时间戳仅提案，当前统一审阅稿见 repair-secretary-task-contract.md §11；长度以质量为准，不设零增长硬约束。UI Usage／notice df123c6、Compact／移动Usage／侧边栏 d4896f2 已提交推送，定向检查及唯一统一构建通过，Root真实页面复核未全部完成。用户追加压缩全路径复查及资源自查；只读发现compacted终态消费／历史刷新缺口，尚未修复。两个审查Agent大量返回文本已叫停，不再重测试／全档读取。第二轮Verification不启动。
+> 当前增量（2026-10-14）：Prompt／时间戳仅提案，当前独立审阅稿见 prompt-review.md；长度以质量为准，不设零增长硬约束。UI Usage／notice df123c6、Compact／移动Usage／侧边栏 d4896f2 已提交推送，定向检查及唯一统一构建通过，Root真实页面复核未全部完成。用户追加压缩全路径复查及资源自查；只读发现compacted终态消费／历史刷新缺口，尚未修复。两个审查Agent大量返回文本已叫停，不再重测试／全档读取。第二轮Verification不启动。
 
 # Hermes Secretary 第二轮主看板
 
@@ -25,6 +25,8 @@
 - Reasoning根因已由真实RPC定位为5098：服务5ccc619与checkout6d96e80不一致，loadCapabilities吞错成空能力。保留native保护，修错误与Retry；待统一重启再验，不猜provider别名或伪造支持。
 
 ## 当前目标与阶段
+
+**Prompt独立审阅入口（用户最新纠正）**：用户只要独立提案，不接受几百行实现／历史混合报告作为审阅入口。已抽出 `.autonomous/20261012-round2-web-ui/prompt-review.md`，仅当前待审旧／新英文、紧随中文直译、用户原话对照与必要保留边界；不改产品代码。原repair文档继续仅作历史及实现记录。
 
 **最新审阅与追加复查（2026-10-14）**：用户明确本次Prompt／timestamp不得直接写代码，取消“不增加长度”硬约束；每项完整修改前／后英文及紧随中文直译，用户原话逐项对账。§11已汇总现行完整维护段→新稿、此前5项工具描述保留审阅、Main→Memo桥接、真实timestamp／Scheduled for、秒精度方案；未实施。timestamp_seconds的3文件改动已撤回。
 
