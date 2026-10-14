@@ -105,7 +105,7 @@ def propose_persistence_command(db, session_id, extra=""):
         return SecretaryCommandResult(f"Persistence proposal unavailable: {exc}")
 
 
-def secretary_feedback_messages(command, output, *, timestamp=None):
+def secretary_feedback_messages(command, output, *, timestamp=None, human_only=False):
     """Ordinary native transcript rows; no special presentation kind or semantic role."""
     from agent.message_metadata import format_user_timestamp_marker, stamp_message_timestamp, stamp_message_uid
     user = stamp_message_timestamp({"role": "user", "content": command}, timestamp=timestamp)
@@ -113,6 +113,8 @@ def secretary_feedback_messages(command, output, *, timestamp=None):
     reply = stamp_message_timestamp({"role": "assistant", "content": output})
     for message in (user, reply):
         stamp_message_uid(message)
+        if human_only:
+            message["display_metadata"] = {"human_only": True}
     return [user, reply]
 
 
@@ -133,15 +135,15 @@ class CLISecretaryCommandsMixin:
     def _handle_notebook_command(self, command):
         from hermes_cli.cli_commands_session_tools import _command_arg, _cp
         result = notebook_command(getattr(self, "_session_db", None), self.session_id, _command_arg(command))
-        _cp(self._secretary_feedback(command, result.output))
+        _cp(self._secretary_feedback(command, result.output, human_only=True))
 
     def _handle_noting_command(self, command):
         from hermes_cli.cli_commands_session_tools import _command_arg, _cp
         result = noting_command(getattr(self, "_session_db", None), self.session_id, _command_arg(command))
         _cp(self._secretary_feedback(command, result.output))
 
-    def _secretary_feedback(self, command, output):
-        messages = secretary_feedback_messages(command, output)
+    def _secretary_feedback(self, command, output, *, human_only=False):
+        messages = secretary_feedback_messages(command, output, human_only=human_only)
         try:
             persist_secretary_feedback(getattr(self, "_session_db", None), self.session_id, messages)
         except Exception as exc:

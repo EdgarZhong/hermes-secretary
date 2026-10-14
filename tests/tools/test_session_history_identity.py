@@ -24,6 +24,25 @@ def invoke(db, args, sid="main"):
     return json.loads(registry.get_entry("session_history").handler(args, db=db, current_session_id=sid))
 
 
+def test_human_notebook_feedback_stays_durable_but_is_absent_from_history_tool(db):
+    from hermes_cli.cli_secretary_commands import persist_secretary_feedback, secretary_feedback_messages
+
+    db.create_session("main", source="test")
+    private = secretary_feedback_messages("/notebook", "PRIVATE_NOTEBOOK_VIEW", human_only=True)
+    ordinary = secretary_feedback_messages("/noting off", "Noting is off")
+    persist_secretary_feedback(db, "main", private + ordinary)
+    db.append_message("main", "user", "Please discuss my Notebook normally")
+    durable = db.get_messages_as_conversation("main")
+    assert any(row["content"] == "PRIVATE_NOTEBOOK_VIEW" for row in durable)
+    for args in ({"mode": "read"}, {"mode": "search", "query": "PRIVATE_NOTEBOOK_VIEW"}):
+        result = invoke(db, args)
+        assert result["success"]
+        assert "PRIVATE_NOTEBOOK_VIEW" not in json.dumps(result)
+    result = invoke(db, {"mode": "read"})
+    assert "Noting is off" in json.dumps(result)
+    assert "Please discuss my Notebook normally" in json.dumps(result)
+
+
 def test_registered_identity_read_survives_repeated_compaction_and_returns_later_correction(db):
     db.create_session("main", source="test", system_prompt="root secret")
     original = db.append_message("main", "user", "candidate source", message_uid="source", timestamp=100)

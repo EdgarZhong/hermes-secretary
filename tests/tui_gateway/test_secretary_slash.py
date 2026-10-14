@@ -85,6 +85,19 @@ def test_slash_exec_uses_live_state_and_send_keeps_tail(live):
     assert result["type"] == "exec" and "unavailable" in result["output"]
 
 
+def test_notebook_slash_remains_visible_and_persisted_for_humans(live):
+    sid, session, home, db, ref = live
+    before = db.notebook_current(ref)
+    result = call("slash.exec", sid, command="/notebook")["result"]
+    assert "Notebook" in result["output"]
+    assert session["history"][-2]["display_metadata"] == {"human_only": True}
+    assert session["history"][-1]["content"] == result["output"]
+    durable = db.get_messages_as_conversation("secretary-main")
+    assert durable[-1]["content"] == result["output"]
+    assert durable[-1]["display_metadata"] == {"human_only": True}
+    assert db.notebook_current(ref) == before
+
+
 def test_direct_dispatch_and_unknown_notebook_usage(live):
     sid, *_ = live
     result = call("command.dispatch", sid, name="notebook", arg="please edit")["result"]

@@ -1292,7 +1292,11 @@ def build_api_messages(
     canonical_messages = canonicalize_replay_history(messages[:split], now=turn_now) + messages[split:]
 
     api_messages = []
+    from agent.message_visibility import is_model_visible
+
     for idx, msg in enumerate(canonical_messages):
+        if not is_model_visible(msg):
+            continue
         # Structural clone, NOT msg.copy(): in-place transforms below must not reach
         # persisted history via nested containers; see _clone_message_for_send.
         api_msg = _clone_message_for_send(msg)

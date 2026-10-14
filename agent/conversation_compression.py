@@ -33,6 +33,7 @@ from agent.context_engine import automatic_compaction_status_message, sanitize_m
 from agent.conversation_compression_codex import _codex_compaction_cooldown_remaining
 from agent.conversation_compression_telemetry import _emit_aborted_attempt_telemetry, _emit_compression_attempt_telemetry
 from agent.memory_provider import PRE_COMPRESS_CHECKPOINT_API_VERSION
+from agent.message_visibility import model_visible_messages
 from agent.model_metadata import estimate_messages_tokens_rough, estimate_request_tokens_rough
 from agent.session_activity import ActivityProvenance, normalize_activity_provenance
 from agent.usage_anchor import set_usage_anchor
@@ -40,7 +41,6 @@ from hermes_state_ids import new_session_id as mint_session_id
 from hermes_state_pidns import holder_namespace_token
 from secretary.noting_admission_receipt import dispatch_codex_compaction, observe_native_admission
 logger = logging.getLogger(__name__)
-
 
 @contextlib.contextmanager
 def _swallow(message: str, *, exc_info: bool = False):
@@ -3036,7 +3036,7 @@ def _run_summary_dispatch(
                 # no-op entry claims (lock sit-outs, gates, the cancelled-fence skip above) cannot supersede
                 # the candidate this run produces (#112482).
                 _mark_compressor_working_attempt(agent.context_compressor, attempt_generation)
-                compressed = compress_fn(messages, **compress_kwargs)
+                compressed = compress_fn(model_visible_messages(messages), **compress_kwargs)
                 # Freeze a hard stop that arrived after the last provider attempt but before session state rotates.
                 if hard_cancel_event is not None and hard_cancel_event.is_set():
                     raise AuxiliaryExplicitCancellation()

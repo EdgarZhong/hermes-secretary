@@ -56,7 +56,10 @@ def _cmd_secretary(rid, params, session, name, arg):
             result = command(db, target, arg, **({"source": session.get("source") or "tui"}
                                                if name == "noting" else {}))
             if result.output and name in {"notebook", "noting"}:
-                messages = secretary_feedback_messages(f"/{name}" + (f" {arg}" if arg else ""), result.output)
+                messages = secretary_feedback_messages(
+                    f"/{name}" + (f" {arg}" if arg else ""), result.output,
+                    human_only=name == "notebook",
+                )
                 try:
                     persist_secretary_feedback(db, target, messages)
                 except Exception as exc:

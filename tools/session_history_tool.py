@@ -80,7 +80,9 @@ def _time_bound(value):
 def _select_history(db, session_id, conversation_ref, args):
     ref = conversation_ref or db.resolve_conversation_ref(session_id)
     with db._read_ctx() as conn:
-        rows = db.get_history_foreground_conn(conn, ref)
+        from agent.message_visibility import model_visible_messages
+
+        rows = model_visible_messages(db.get_history_foreground_conn(conn, ref))
         message_id = args.get("message_id")
         identity = args.get("message_identity")
         if args.get("mode") == "read" and (message_id is not None or identity is not None):

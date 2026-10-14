@@ -151,10 +151,13 @@ def freeze_parent_active_prefix(
     if not isinstance(source, (list, tuple)) or not source:
         raise NotingChildError("The Parent's active context is unavailable for freezing")
     frozen: List[Dict[str, Any]] = []
+    from agent.message_visibility import is_model_visible
+
     for msg in source:
         if not isinstance(msg, dict):
             continue
-        frozen.append(_clone_message(msg))
+        if is_model_visible(msg):
+            frozen.append(_clone_message(msg))
         if msg.get("message_uid") == anchor_message_uid:
             break
     else:

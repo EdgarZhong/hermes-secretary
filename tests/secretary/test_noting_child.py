@@ -121,6 +121,58 @@ def test_child_parity_and_dispatch_marker(parent, db):
         child.close()
 
 
+def test_human_notebook_feedback_is_excluded_from_main_wire_and_frozen_child(parent, db, stub_client):
+    from hermes_cli.cli_secretary_commands import persist_secretary_feedback, secretary_feedback_messages
+
+    feedback = secretary_feedback_messages("/notebook", "PRIVATE_NOTEBOOK_VIEW", human_only=True)
+    ordinary = secretary_feedback_messages("/noting off", "Noting is off")
+    persist_secretary_feedback(db, parent.session_id, feedback + ordinary)
+    history = db.get_messages_as_conversation(parent.session_id)
+    parent.client = stub_client
+    parent.run_conversation(user_message="Discuss my Notebook normally", conversation_history=history)
+    assert stub_client.chat.completions.create.called
+    wire = str(stub_client.chat.completions.create.call_args_list)
+    assert "PRIVATE_NOTEBOOK_VIEW" not in wire
+    assert "Noting is off" in wire
+    assert "Discuss my Notebook normally" in wire
+    frozen = freeze_parent_active_prefix(parent, ordinary[-1]["message_uid"], history)
+    assert all(row.get("display_metadata", {}).get("human_only") is not True for row in frozen)
+    assert any(row["content"] == "Noting is off" for row in frozen)
+    child = build_noting_child(
+        parent, runtime_profile="NOTING", parent_conversation_ref=parent._secretary_conversation_ref,
+    )
+    try:
+        child.run_conversation(
+            user_message=build_noting_task_wrapper("Maintain the Notebook.", timestamp=1791370458),
+            conversation_history=frozen, title_user_message="",
+        )
+        assert stub_client.chat.completions.create.call_count >= 2
+        assert "PRIVATE_NOTEBOOK_VIEW" not in str(stub_client.chat.completions.create.call_args_list)
+    finally:
+        child.close()
+    assert any(row["content"] == "PRIVATE_NOTEBOOK_VIEW" for row in db.get_messages_as_conversation(parent.session_id))
+
+
+def test_human_notebook_feedback_never_reaches_native_summary_engine(parent, db, monkeypatch):
+    from hermes_cli.cli_secretary_commands import persist_secretary_feedback, secretary_feedback_messages
+
+    feedback = secretary_feedback_messages("/notebook", "PRIVATE_NOTEBOOK_VIEW", human_only=True)
+    persist_secretary_feedback(db, parent.session_id, feedback)
+    history = db.get_messages_as_conversation(parent.session_id)
+    observed = []
+
+    def summarize(messages, **kwargs):
+        observed.extend(messages)
+        return messages
+
+    parent._compression_feasibility_checked = True
+    monkeypatch.setattr(parent.context_compressor, "compress", summarize)
+    parent._compress_context(history, None, force=True)
+    assert observed
+    assert all(row.get("display_metadata", {}).get("human_only") is not True for row in observed)
+    assert any("please remind me" in str(row["content"]) for row in observed)
+
+
 def test_child_persists_only_the_suffix_and_not_the_parent_prefix(parent, db, stub_client):
     prefix = freeze_parent_active_prefix(parent, "m2")
     assert [m["message_uid"] for m in prefix] == ["m1", "m2"]

@@ -21,7 +21,10 @@ class GatewaySecretaryCommandsMixin:
         timestamp = getattr(event, "timestamp", None)
         if hasattr(timestamp, "timestamp"):
             timestamp = timestamp.timestamp()
-        for message in secretary_feedback_messages(event.text, result.output, timestamp=timestamp):
+        for message in secretary_feedback_messages(
+            event.text, result.output, timestamp=timestamp,
+            human_only=command is notebook_command,
+        ):
             await self.async_session_store.append_to_transcript(session_id, message)
         return result.output
 
