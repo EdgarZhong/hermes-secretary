@@ -108,14 +108,14 @@ def register_active_noting_task(child_session_id: str, child: Any) -> None:
     _notify_task_observer(child, "task_started")
 
 
-def unregister_active_noting_task(child_session_id: str, child: Any = None) -> bool:
+def unregister_active_noting_task(child_session_id: str, child: Any = None, *, reason: str = "task_finished") -> bool:
     """Identity-scoped removal (idempotent); True when a slot was removed."""
     with _ACTIVE_NOTING_LOCK:
         current = _ACTIVE_NOTING_TASKS.get(child_session_id)
         if current is None or (child is not None and current is not child):
             return False
         del _ACTIVE_NOTING_TASKS[child_session_id]
-    _notify_task_observer(current, "task_finished")
+    _notify_task_observer(current, reason)
     return True
 
 
@@ -413,6 +413,41 @@ class NotingTaskOutcome:
     snapshot_id: Optional[str] = None
     error: Optional[str] = None
     turns: int = 0
+    notice_error: Optional[str] = None
+
+
+class _NotingFailureNotice:
+    """One admitted task's native notice, scoped to its original Parent owner."""
+
+    def __init__(self, parent: Any, admission_id: Any, conversation_ref: str):
+        self.parent = parent
+        self.admission_id = admission_id
+        self.conversation_ref = conversation_ref
+        self.db = getattr(parent, "_session_db", None)
+        self.published = False
+
+    def publish(self, reason: Optional[str]) -> None:
+        if not reason or self.published:
+            return
+        try:
+            parent = self.parent
+            if (getattr(parent, "_secretary_conversation_ref", None) != self.conversation_ref
+                    or getattr(parent, "_session_db", None) is not self.db):
+                return
+            if not callable(getattr(parent, "notice_callback", None)):
+                return
+            from hashlib import sha256
+            from agent.credits_tracker import AgentNotice
+
+            owner = sha256(str(Path(self.db.db_path).resolve()).encode()).hexdigest()[:16]
+            key = f"noting.failed.{owner}.{self.conversation_ref}.{self.admission_id}"
+            notice = AgentNotice(text=f"Noting failed: {reason}", level="error", kind="sticky",
+                                 key=key, id=key)
+            # Shared by run and its worker: even an exceptional callback is attempted once.
+            self.published = True
+            parent._emit_notice(notice)
+        except Exception:
+            logger.warning("Noting failure notice could not be published", exc_info=True)
 
 
 def _turn_completed(result: Any) -> bool:
@@ -420,6 +455,15 @@ def _turn_completed(result: Any) -> bool:
         isinstance(result, dict) and result.get("completed") is True
         and not result.get("failed") and not result.get("interrupted")
     )
+
+
+def _failed_turn_notice_reason(result: Any) -> Optional[str]:
+    """Incomplete and interrupted native results do not assert a system failure."""
+    if not isinstance(result, dict) or result.get("interrupted"):
+        return None
+    if result.get("failed") or result.get("error") or result.get("failure_reason"):
+        return str(result.get("error") or result.get("failure_reason") or result.get("turn_exit_reason"))
+    return None
 
 
 def _default_state_provider(child: Any) -> Optional[dict]:
@@ -448,6 +492,7 @@ def run_noting_task(
     owning_profile: Optional[str] = None,
     frozen_runtime: Optional[dict] = None,
     memo_entries: Optional[list] = None,
+    _failure_notice: Optional[_NotingFailureNotice] = None,
 ) -> NotingTaskOutcome:
     """Run one admitted Noting Task to its one-shot conclusion (02 §5.4, §5.8).
 
@@ -463,6 +508,7 @@ def run_noting_task(
     if runtime_profile not in RUNTIME_PROFILES:
         raise NotingChildError("Unknown Noting runtime profile")
     parent_db = getattr(parent, "_session_db", None)
+    failure_notice = _failure_notice or _NotingFailureNotice(parent, admission_id, conversation_ref)
     try:
         if admission_timestamp is None:
             admission_timestamp = parent_db.noting_admission(admission_id)["admitted_at"]
@@ -471,8 +517,9 @@ def run_noting_task(
             parent, runtime_profile=runtime_profile, session_id=session_id,
             parent_conversation_ref=conversation_ref, frozen_runtime=frozen_runtime,
         )
-    except Exception:
+    except Exception as exc:
         finish_child_admission(parent_db, admission_id, status="failed")
+        failure_notice.publish(str(exc))
         raise
     child._secretary_noting_anchor_uid = anchor_message_uid
     child_session_id = child.session_id
@@ -508,10 +555,13 @@ def run_noting_task(
                               runtime_profile, child, provider, outcome)
     except Exception as exc:  # a crashed task never commits and never resumes
         outcome.status, outcome.error = "failed", str(exc)
+        outcome.notice_error = str(exc)
         logger.error("Noting task %s failed: %s", admission_id, exc, exc_info=True)
     finally:
+        failure_notice.publish(outcome.notice_error)
         finish_child_admission(task_db, admission_id, status=outcome.status)
-        unregister_active_noting_task(child_session_id, child)
+        unregister_active_noting_task(child_session_id, child,
+                                     reason="task_finished" if outcome.committed else "task_closed")
         _close_child(child)
     return outcome
 
@@ -588,6 +638,7 @@ def _run_child_turns(
             outcome.error = str(
                 result.get("turn_exit_reason") if isinstance(result, dict) else result
             )
+            outcome.notice_error = _failed_turn_notice_reason(result)
             return
         if getattr(child, "_secretary_noting_terminal_action_done", False) is True:
             outcome.status = "completed"
@@ -608,6 +659,7 @@ def _run_child_turns(
         history = _continuation_history(child, prefix)
         if not history:
             outcome.status, outcome.error = "failed", "Noting continuation history is unavailable"
+            outcome.notice_error = outcome.error
             return
 
 
@@ -627,13 +679,16 @@ def _commit_when_complete(
     except Exception as exc:
         logger.warning("Notebook state unavailable for %s: %s", conversation_ref, exc, exc_info=True)
         outcome.status, outcome.error = "failed", f"Notebook state unavailable: {exc}"
+        outcome.notice_error = outcome.error
         return
     if state is None:
         outcome.status, outcome.error = "failed", "The completed Noting task has no legal Notebook working state"
+        outcome.notice_error = outcome.error
         return
     termination = getattr(child, "_secretary_noting_termination", None)
     if not isinstance(termination, dict):
         outcome.status, outcome.error = "failed", "The completed Noting task has no termination audit"
+        outcome.notice_error = outcome.error
         return
     try:
         outcome.snapshot_id = commit_noting_snapshot(
@@ -646,6 +701,7 @@ def _commit_when_complete(
         # The Anchor may have left the current path (rewind) or the state may be invalid:
         # abandon the result without moving the pointer; the child transcript stays for audit.
         outcome.status, outcome.error = "abandoned", str(exc)
+        outcome.notice_error = outcome.error
         logger.warning("Noting commit refused for %s: %s", conversation_ref, exc, exc_info=True)
     if outcome.committed:
         try:
@@ -727,14 +783,16 @@ def spawn_noting_task(
     """
     instruction = instruction or DEFAULT_NOTING_TASK_INSTRUCTION
     parent_db = getattr(parent, "_session_db", None)
+    failure_notice = _NotingFailureNotice(parent, admission.admission_id, admission.conversation_ref)
     try:
         prefix = freeze_parent_active_prefix(parent, admission.anchor_message_uid, parent_active_messages)
         frozen_runtime = freeze_parent_runtime(parent)
         frozen_runtime["noting_compaction_threshold_tokens"] = getattr(admission, "compaction_threshold_tokens", None)
         admitted_at = parent_db.noting_admission(admission.admission_id)["admitted_at"]
         memo_entries = parent_db.noting_memo_entries(admission.conversation_ref)
-    except Exception:
+    except Exception as exc:
         finish_child_admission(parent_db, admission.admission_id, status="failed")
+        failure_notice.publish(str(exc))
         raise
 
     def _run() -> None:
@@ -749,17 +807,20 @@ def spawn_noting_task(
                     task_instruction=instruction, parent_active_messages=prefix,
                     admission_timestamp=admitted_at, frozen_runtime=frozen_runtime, memo_entries=memo_entries,
                     owning_profile=owning_profile if owning_profile is not None else admission.profile,
+                    _failure_notice=failure_notice,
                 )
-        except Exception:
+        except Exception as exc:
             finish_child_admission(parent_db, admission.admission_id, status="failed")
+            failure_notice.publish(str(exc))
             logger.warning("Noting task %s failed", getattr(admission, "admission_id", None),
                            exc_info=True)
 
-    from agent.memory_provider import spawn_context_thread
-    worker = spawn_context_thread(_run, name=f"noting-task-{admission.admission_id}", daemon=True)
     try:
+        from agent.memory_provider import spawn_context_thread
+        worker = spawn_context_thread(_run, name=f"noting-task-{admission.admission_id}", daemon=True)
         worker.start()
-    except Exception:
+    except Exception as exc:
         finish_child_admission(parent_db, admission.admission_id, status="failed")
+        failure_notice.publish(str(exc))
         raise
     return worker

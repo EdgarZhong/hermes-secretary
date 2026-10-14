@@ -143,7 +143,11 @@ def test_child_persists_only_the_suffix_and_not_the_parent_prefix(parent, db, st
         child.close()
 
 
-def test_run_noting_task_commits_snapshot_and_closes_child(parent, db, stub_client):
+def test_run_noting_task_commits_snapshot_and_closes_child(parent, db, stub_client, monkeypatch):
+    notices = []
+    parent.notice_callback = notices.append
+    reasons = []
+    monkeypatch.setattr("secretary.web_events.changed", lambda db, ref, reason: reasons.append(reason))
     stub_client.chat.completions.create.side_effect = [
         _tool_response("finish_noting", {"reason": "No Notebook changes were needed."}, "finish"),
         mock_response("done"),
@@ -177,6 +181,8 @@ def test_run_noting_task_commits_snapshot_and_closes_child(parent, db, stub_clie
     session_row = db.get_session(outcome.child_session_id)
     assert session_row["end_reason"] is not None
     assert session_row["parent_session_id"] == "S17"
+    assert notices == []
+    assert "task_finished" in reasons and "task_closed" not in reasons
 
 
 def test_anchor_outside_parent_active_context_fails_closed(parent, db):
@@ -569,3 +575,209 @@ def test_special_profile_turn_budget_forces_snapshot_even_if_framework_compactio
     assert outcome.turns == 5
     blocked.assert_called_once()
     assert db.notebook_snapshot_audit(outcome.snapshot_id)["termination"] == {"type": "forced"}
+
+
+def _notice_task(parent, db, *, state_provider=None):
+    admission_id = db.noting_admit(parent._secretary_conversation_ref, "m2", kind="idle")
+    outcome = run_noting_task(
+        parent, admission_id=admission_id, conversation_ref=parent._secretary_conversation_ref,
+        anchor_message_uid="m2", trigger_type="idle", runtime_profile="NOTING",
+        task_instruction="Maintain Notebook.", state_provider=state_provider,
+    )
+    return admission_id, outcome
+
+
+@pytest.fixture
+def closed_noting_children(monkeypatch):
+    from run_agent import AIAgent
+
+    closed = []
+    native_close = AIAgent.close
+    def close(child):
+        native_close(child)
+        if getattr(child, "_secretary_noting_child", False):
+            closed.append(child)
+    monkeypatch.setattr(AIAgent, "close", close)
+    return closed
+
+
+def test_invalid_saved_notebook_posts_native_failure_notice_without_consuming_memo(
+    parent, db, stub_client, monkeypatch, closed_noting_children
+):
+    from secretary.notebook_items import insert_item_conn
+
+    ref = parent._secretary_conversation_ref
+    # Reproduce the obsolete test-data shape through SQLite, without relaxing validation.
+    entry = {"type": "secretary_task", "archived": False, "status": "pending",
+             "fields": {"task": "report", "purpose": "deliver"}, "schedule": None,
+             "source_message_identities": []}
+    def seed_obsolete_snapshot(conn):
+        item_id = insert_item_conn(conn, ref, entry)
+        conn.execute(
+            "INSERT INTO secretary_notebook_snapshots "
+            "(snapshot_id, conversation_ref, anchor_message_uid, trigger_type, runtime_profile, payload_json, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            ("old-snapshot", ref, "m2", "idle", "NOTING", json.dumps([item_id]), 2000.0),
+        )
+        conn.execute(
+            "INSERT INTO secretary_notebook_pointer (conversation_ref, current_snapshot_id) VALUES (?, ?)",
+            (ref, "old-snapshot"),
+        )
+    db._execute_write(seed_obsolete_snapshot)
+    db.noting_memo_mutate(ref, {"operation": "add", "content": "Keep this report requirement."})
+    before_memo = db.noting_memo_entries(ref)
+    before_snapshot = db.notebook_current(ref)
+    notices = []
+    parent.notice_callback = notices.append
+    reasons = []
+    monkeypatch.setattr("secretary.web_events.changed", lambda db, ref, reason: reasons.append(reason))
+
+    admission_id, outcome = _notice_task(parent, db)
+
+    assert outcome.status == "failed" and not outcome.committed and outcome.turns == 0
+    assert len(notices) == 1
+    notice = notices[0]
+    assert notice.text == "Noting failed: " + outcome.error
+    assert "secretary_task requires a Schedule expression" in notice.text
+    assert (notice.level, notice.kind, notice.ttl_ms) == ("error", "sticky", None)
+    assert notice.key == notice.id and ref in notice.key and notice.key.endswith(f".{admission_id}")
+    assert db.noting_memo_entries(ref) == before_memo
+    assert db.notebook_current(ref) == before_snapshot
+    assert db.noting_child(admission_id)["status"] == "failed"
+    assert len(closed_noting_children) == 1
+    assert closed_noting_children[0].session_id == outcome.child_session_id
+    assert closed_noting_children[0]._owns_session_db is False
+    assert closed_noting_children[0].client is None
+    assert active_noting_task_count() == 0
+    assert reasons == ["task_started", "task_closed"]
+    assert db.get_messages_as_conversation("S17") == parent._session_messages
+    stub_client.chat.completions.create.assert_not_called()
+
+
+@pytest.mark.parametrize("stage", ["freeze", "runtime", "thread_constructor", "thread_start"])
+def test_spawn_setup_failure_posts_one_notice_and_finishes_admission(parent, db, stub_client, monkeypatch, stage):
+    from secretary import noting_child
+    from secretary.noting_runtime import NotingAdmission
+
+    notices = []
+    parent.notice_callback = notices.append
+    admission_id = db.noting_admit(parent._secretary_conversation_ref, "m2", kind="idle")
+    admission = NotingAdmission(admission_id, parent._secretary_conversation_ref, "m2", "idle", None, "NOTING")
+    def fail(*args, **kwargs):
+        raise RuntimeError(stage)
+    if stage == "freeze":
+        monkeypatch.setattr(noting_child, "freeze_parent_active_prefix", fail)
+    elif stage == "runtime":
+        monkeypatch.setattr(noting_child, "freeze_parent_runtime", fail)
+    elif stage == "thread_constructor":
+        monkeypatch.setattr("agent.memory_provider.spawn_context_thread", fail)
+    else:
+        monkeypatch.setattr("agent.memory_provider.spawn_context_thread", lambda *a, **k: SimpleNamespace(start=fail))
+    with pytest.raises(RuntimeError, match=stage):
+        noting_child.spawn_noting_task(parent, admission)
+    assert [notice.text for notice in notices] == [f"Noting failed: {stage}"]
+    assert db.noting_child(admission_id)["status"] == "failed"
+    assert db.notebook_current(parent._secretary_conversation_ref) is None
+    assert active_noting_task_count() == 0
+
+
+def test_worker_constructor_failure_is_not_reported_twice(parent, db, stub_client, monkeypatch):
+    from secretary import noting_child
+    from secretary.noting_runtime import NotingAdmission
+
+    notices = []
+    parent.notice_callback = notices.append
+    def fail(*args, **kwargs):
+        raise RuntimeError("child construction failed")
+    monkeypatch.setattr(noting_child, "build_noting_child", fail)
+    admission_id = db.noting_admit(parent._secretary_conversation_ref, "m2", kind="idle")
+    admission = NotingAdmission(admission_id, parent._secretary_conversation_ref, "m2", "idle", None, "NOTING")
+    worker = noting_child.spawn_noting_task(parent, admission)
+    worker.join(timeout=5)
+    assert not worker.is_alive()
+    assert [notice.text for notice in notices] == ["Noting failed: child construction failed"]
+    assert db.noting_child(admission_id)["status"] == "failed"
+    assert active_noting_task_count() == 0
+
+
+@pytest.mark.parametrize("result,expected", [
+    ({"completed": False, "failed": True, "error": "provider unavailable", "turn_exit_reason": "api_error"},
+     "Noting failed: provider unavailable"),
+    ({"completed": False, "interrupted": True, "error": "user stopped", "turn_exit_reason": "interrupted"}, None),
+    ({"completed": False, "turn_exit_reason": "unfinished"}, None),
+])
+def test_turn_notice_reports_only_real_failure(parent, db, stub_client, monkeypatch, result, expected):
+    notices = []
+    parent.notice_callback = notices.append
+    monkeypatch.setattr("run_agent.AIAgent.run_conversation", lambda *a, **k: result)
+    admission_id, outcome = _notice_task(parent, db)
+    assert [notice.text for notice in notices] == ([] if expected is None else [expected])
+    assert not outcome.committed
+    assert db.noting_child(admission_id)["status"] == outcome.status
+    assert active_noting_task_count() == 0
+
+
+@pytest.mark.parametrize("failure", ["body", "state_provider", "commit_gate"])
+def test_runtime_failure_notice_preserves_lifecycle_and_memo(parent, db, stub_client, monkeypatch, failure):
+    notices = []
+    parent.notice_callback = notices.append
+    ref = parent._secretary_conversation_ref
+    db.noting_memo_mutate(ref, {"operation": "add", "content": "Keep this."})
+    memo = db.noting_memo_entries(ref)
+    def turn(child, **kwargs):
+        if failure == "body":
+            raise RuntimeError("child loop unavailable")
+        child._secretary_noting_terminal_action_done = True
+        child._secretary_noting_termination = {"type": "finish_noting", "reason": "done"}
+        return {"completed": True}
+    monkeypatch.setattr("run_agent.AIAgent.run_conversation", turn)
+    def state(child):
+        if failure == "state_provider":
+            raise RuntimeError("state unavailable")
+        return {"user": []}  # The real Snapshot gate refuses incomplete state.
+    admission_id, outcome = _notice_task(parent, db, state_provider=state)
+    assert len(notices) == 1 and notices[0].text == "Noting failed: " + outcome.notice_error
+    assert not outcome.committed and db.notebook_current(ref) is None
+    assert db.noting_memo_entries(ref) == memo
+    assert db.noting_child(admission_id)["status"] == outcome.status
+    assert outcome.status == ("abandoned" if failure == "commit_gate" else "failed")
+    assert active_noting_task_count() == 0
+    assert db.get_messages_as_conversation("S17") == parent._session_messages
+
+
+@pytest.mark.parametrize("owner_change", ["conversation", "profile", "callback_missing", "callback_raises", "emitter_raises"])
+def test_failure_notice_owner_and_presentation_do_not_break_cleanup(parent, db, stub_client, monkeypatch, tmp_path,
+                                                                  owner_change, closed_noting_children):
+    notices = []
+    parent.notice_callback = notices.append
+    def presentation_failure(*args, **kwargs):
+        raise RuntimeError("presentation unavailable")
+    other_db = NotingSessionDB(tmp_path / "other-profile" / "state.db") if owner_change == "profile" else None
+    change_owner = {
+        "conversation": lambda: setattr(parent, "_secretary_conversation_ref", "other-conversation"),
+        "profile": lambda: setattr(parent, "_session_db", other_db),
+        "callback_missing": lambda: setattr(parent, "notice_callback", None),
+        "callback_raises": lambda: setattr(parent, "notice_callback", presentation_failure),
+        "emitter_raises": lambda: monkeypatch.setattr(parent, "_emit_notice", presentation_failure),
+    }
+    def failed_turn(child, **kwargs):
+        change_owner[owner_change]()
+        raise RuntimeError("child loop unavailable")
+    monkeypatch.setattr("run_agent.AIAgent.run_conversation", failed_turn)
+    ref = parent._secretary_conversation_ref
+    try:
+        admission_id, outcome = _notice_task(parent, db)
+        assert outcome.status == "failed" and outcome.error == "child loop unavailable"
+        assert not outcome.committed and notices == []
+        assert db.notebook_current(ref) is None
+        assert db.noting_child(admission_id)["status"] == "failed"
+        assert active_noting_task_count() == 0
+        assert len(closed_noting_children) == 1
+        assert closed_noting_children[0].session_id == outcome.child_session_id
+        assert closed_noting_children[0]._owns_session_db is False
+        assert closed_noting_children[0].client is None
+    finally:
+        parent._session_db = db
+        parent._secretary_conversation_ref = ref
+        if other_db is not None:
+            other_db.close()
