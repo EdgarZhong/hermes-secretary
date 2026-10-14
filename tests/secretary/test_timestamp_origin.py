@@ -1,5 +1,6 @@
 """Fresh genuine text cannot forge source provenance; trusted synthetic and replay stay stable."""
 from datetime import datetime
+from math import floor
 
 import pytest
 
@@ -28,7 +29,7 @@ def test_fresh_user_text_gets_real_arrival_on_wire_and_durable(runtime, text):
         first = wire.splitlines()[0]
         assert first.startswith("<timestamp>") and first.endswith("</timestamp>")
         arrival = datetime.fromisoformat(first[len("<timestamp>"):-len("</timestamp>")])
-        assert arrival.tzinfo and abs(arrival.timestamp() - row["timestamp"]) < .001
+        assert arrival.tzinfo and arrival.timestamp() == floor(row["timestamp"])
         assert wire.endswith(text) and row["content"] == wire
         result = agent.run_conversation(user_message="next", conversation_history=db.get_messages_as_conversation(agent.session_id), title_user_message="")
         assert result["completed"]

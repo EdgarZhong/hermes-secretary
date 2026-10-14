@@ -287,7 +287,7 @@ _SYNTHETIC_CARRIER_PREFIXES = ("<noting-task>", "<deferred-reminder>", "<instant
 def format_user_timestamp_marker(timestamp: Optional[float] = None) -> str:
     """The standalone ``<timestamp>ISO8601</timestamp>\\n`` marker line for one source time.
 
-    Exact ISO 8601 with a UTC offset, rendered from the message's stored epoch (the
+    Whole-second ISO 8601 with a UTC offset, rendered from the message's stored epoch (the
     arrival/persistence time for a real user message; the source-event time for a
     synthetic carrier). ``None`` falls back to the local wall clock.
     """
@@ -296,7 +296,7 @@ def format_user_timestamp_marker(timestamp: Optional[float] = None) -> str:
     try:
         iso = format_timestamp(moment)
     except (OverflowError, OSError, ValueError):
-        iso = now().isoformat()
+        iso = format_timestamp(now())
     return f"{_REAL_USER_MARKER_PREFIX}{iso}{_REAL_USER_MARKER_SUFFIX}\n"
 
 

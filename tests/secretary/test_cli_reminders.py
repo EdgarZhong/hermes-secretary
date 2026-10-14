@@ -3,6 +3,7 @@
 import queue
 import time
 from datetime import datetime, timezone
+from math import floor
 from types import SimpleNamespace
 
 import pytest
@@ -66,7 +67,10 @@ def test_cli_idle_tick_uses_normal_lane_and_preserves_entry_timestamp(cli_env):
     cli_reminders.poll_cli_reminders(cli)
     assert len(cli.calls) == 1
     assert cli.calls[0].source_timestamp > row["next_run_at"]
-    assert cli.calls[0] == reminders.user_reminder_text("CLI reminder", cli.calls[0].source_timestamp)
+    scheduled_line = cli.calls[0].splitlines()[2]
+    assert scheduled_line.startswith("Scheduled for: ")
+    assert datetime.fromisoformat(scheduled_line[len("Scheduled for: "):]).timestamp() == floor(row["next_run_at"])
+    assert cli.calls[0] == reminders.user_reminder_text(scheduled_line + "\nCLI reminder", cli.calls[0].source_timestamp)
     from agent.message_metadata import TrustedUserInput, stamp_message_timestamp
     assert isinstance(cli.calls[0], TrustedUserInput)
     assert stamp_message_timestamp({"role": "user", "content": cli.calls[0]})["content"] == cli.calls[0]
@@ -217,7 +221,10 @@ def test_cold_cli_construct_then_real_chat_preserves_source_on_wire_and_durable(
             assert row["reminder_text"] in wire
             from datetime import datetime
             marker = wire.splitlines()[1]
-            assert datetime.fromisoformat(marker[len("<timestamp>"):-len("</timestamp>")]).timestamp() == durable_row["timestamp"]
+            assert datetime.fromisoformat(marker[len("<timestamp>"):-len("</timestamp>")]).timestamp() == floor(durable_row["timestamp"])
+            scheduled_line = wire.splitlines()[2]
+            assert scheduled_line.startswith("Scheduled for: ")
+            assert datetime.fromisoformat(scheduled_line[len("Scheduled for: "):]).timestamp() == floor(row["next_run_at"])
             assert durable_row["timestamp"] > row["next_run_at"]
         else:
             assert wire.splitlines()[0].startswith("<timestamp>") and wire.endswith(carrier)

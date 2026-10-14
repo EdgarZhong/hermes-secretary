@@ -1,7 +1,9 @@
-"""C15 presentation boundaries preserve real stored instants and owning profiles."""
+"""Whole-second presentation preserves precise stored instants and owning profiles."""
 
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from decimal import Decimal
+from math import floor
 
 import pytest
 
@@ -35,7 +37,7 @@ def test_real_db_human_and_model_projections_keep_same_instant(tmp_path, monkeyp
         db.notebook_set_local_enabled(ref, False)
         model = json.loads(notebook_show(db=db, conversation_ref=ref, effective_enabled=True))["notebook"]
         parsed = datetime.fromisoformat(model["last_update_time"])
-        assert parsed.timestamp() == pytest.approx(snapshot["created_at"], rel=0, abs=1e-6)
+        assert parsed.timestamp() == floor(snapshot["created_at"])
         assert parsed.utcoffset() == timedelta(hours=offset)
         # The actual shared slash result is reused by CLI, Gateway and TUI adapters.
         monkeypatch.setattr("hermes_cli.cli_secretary_commands._available", lambda: True)
@@ -46,8 +48,9 @@ def test_real_db_human_and_model_projections_keep_same_instant(tmp_path, monkeyp
         row = result["messages"][0]
         assert set(row) == {"message_uid", "timestamp", "role", "content"}
         source = datetime.fromisoformat(row["timestamp"])
-        assert source.timestamp() == stamp and source.utcoffset() == timedelta(hours=offset)
-        precise = json.loads(session_history({"mode": "read", "start_time": row["timestamp"], "end_time": row["timestamp"]},
+        assert source.timestamp() == floor(stamp) and source.utcoffset() == timedelta(hours=offset)
+        exact_boundary = datetime.fromtimestamp(stamp, timezone.utc).isoformat()
+        precise = json.loads(session_history({"mode": "read", "start_time": exact_boundary, "end_time": exact_boundary},
                                            db=db, conversation_ref=ref))
         assert precise["messages"] == result["messages"]
         assert db.notebook_current(ref) == snapshot
@@ -75,26 +78,36 @@ def test_two_owners_do_not_use_launch_env_or_first_cached_timezone(tmp_path, mon
     stamp = 1791756123.25
     for _ in range(2):
         values = [format_timestamp(stamp, profile_home=home) for home in owners]
-        assert values == ["2026-10-12T06:02:03.25+08:00", "2026-10-11T22:02:03.25+00:00"]
+        assert values == ["2026-10-12T06:02:03+08:00", "2026-10-11T22:02:03+00:00"]
     assert format_user_timestamp_marker(stamp).count("<timestamp>") == 1
     assert "-10:00" in format_user_timestamp_marker(stamp)
     reset_cache()
 
 
 def test_valid_iso_null_and_invalid_absolute_time():
-    assert format_timestamp("2026-10-12T07:22:03.250000+08:00") == "2026-10-12T07:22:03.250000+08:00"
+    assert format_timestamp("2026-10-12T07:22:03.250000+08:00") == "2026-10-12T07:22:03+08:00"
     assert format_timestamp("2026-10-11T23:22:03Z") == "2026-10-11T23:22:03Z"
+    assert format_timestamp("2026-10-11T23:22:03.999999Z") == "2026-10-11T23:22:03Z"
     assert format_timestamp(None) is None
     with pytest.raises(ValueError):
         format_timestamp("2026-10-12T07:22:03")
 
 
-def test_numeric_fraction_is_preserved_without_rounding():
-    value = "1791800714.1486568"
+@pytest.mark.parametrize("value", ["1791800714.1486568", 1791800714.9999998, Decimal("-0.25")])
+def test_numeric_fraction_is_hidden_without_rounding(value):
     rendered = format_timestamp(value)
-    assert ".1486568" in rendered
-    assert datetime.fromisoformat(rendered).tzinfo is not None
-    assert ".+" not in format_timestamp(100.0)
+    parsed = datetime.fromisoformat(rendered)
+    assert parsed.timestamp() == floor(Decimal(str(value)))
+    assert parsed.microsecond == 0 and parsed.tzinfo is not None
+
+
+def test_datetime_fraction_is_hidden_without_mutating():
+    moment = datetime(2026, 10, 14, 12, 34, 56, 999999, tzinfo=timezone(timedelta(hours=8)))
+    assert format_timestamp(moment) == "2026-10-14T12:34:56+08:00"
+    assert moment.microsecond == 999999
+
+
+def test_invalid_numeric_absolute_times():
     for invalid in ("not-time", float("nan"), float("inf")):
         with pytest.raises(ValueError):
             format_timestamp(invalid)

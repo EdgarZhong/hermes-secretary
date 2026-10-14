@@ -3,6 +3,7 @@
 import time
 import sqlite3
 from datetime import datetime, timedelta, timezone
+from math import floor
 
 import pytest
 
@@ -87,12 +88,24 @@ def test_active_delivery_requires_proven_route_and_preserves_timestamp(db, ref):
     assert resolved["route"]["session_key"] == "peer"
     assert resolved["text"].startswith("<instant-reminder>\n<timestamp>")
     assert resolved["text"].splitlines()[1].startswith("<timestamp>")
+    marker = resolved["text"].splitlines()[1]
+    admitted = datetime.fromisoformat(marker[len("<timestamp>"):-len("</timestamp>")])
+    scheduled_line = resolved["text"].splitlines()[2]
+    assert scheduled_line.startswith("Scheduled for: ")
+    scheduled = datetime.fromisoformat(scheduled_line[len("Scheduled for: "):])
+    assert scheduled.timestamp() == floor(claim["next_run_at"])
+    assert admitted.timestamp() == floor(resolved["source_timestamp"])
+    assert scheduled.microsecond == admitted.microsecond == 0
+    assert resolved["text"].count("<instant-reminder>") == 1
+    assert resolved["content"] == claim["reminder_text"]
     assert resolved["text"].endswith("</instant-reminder>")
     assert resolved["source_timestamp"] > claim["next_run_at"]
     # Before user-message admission, a new delivery attempt receives its own entry moment.
     reminders.release_claim(db, claim)
     retry = claim_due(db, claim["schedule_id"], owner="w2")
-    assert reminders.resolve_active_reminder(db, retry)["source_timestamp"] >= resolved["source_timestamp"]
+    retried = reminders.resolve_active_reminder(db, retry)
+    assert retried["source_timestamp"] >= resolved["source_timestamp"]
+    assert retried["text"].splitlines()[2] == scheduled_line
 
 
 def test_stale_route_fails_closed_without_losing_the_occurrence(db, ref):

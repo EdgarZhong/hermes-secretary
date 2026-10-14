@@ -11,10 +11,13 @@ def readable_notebook_entry(entry):
     """Copy an entry for presentation; one-shot display uses its canonical instant."""
     projected = deepcopy(entry)
     intent = projected.get("schedule")
-    if (intent and intent["canonical_schedule"].get("kind") == "once"
-            and intent["canonical_schedule"].get("display", "").startswith("once at ")):
+    if intent and intent["canonical_schedule"].get("kind") == "once":
         schedule = intent["canonical_schedule"]
-        schedule["display"] = "once at " + format_timestamp(schedule["run_at"])
+        schedule["run_at"] = format_timestamp(schedule["run_at"])
+        if schedule.get("display", "").startswith("once at "):
+            schedule["display"] = "once at " + schedule["run_at"]
+        if projected["type"] == "watchpoint":
+            projected["fields"]["until"] = schedule["run_at"]
     return projected
 
 

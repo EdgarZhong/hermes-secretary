@@ -4,6 +4,26 @@ from secretary.notebook_model import NotebookWorkingState
 from secretary.notebook_render import render_notebook, show_notebook
 
 
+def test_display_times_hide_fraction_without_mutating_schedule_or_source_range():
+    from copy import deepcopy
+
+    exact = "2030-10-07T12:00:00.987654+08:00"
+    source_range = {"start_time": "2026-10-07T12:00:00.123456+08:00",
+                    "end_time": "2026-10-07T12:00:00.654321+08:00"}
+    model = NotebookWorkingState("conv_source")
+    model.create("watchpoint", {"subject": "report", "what_to_watch": "response", "why": "deadline", "until": exact})
+    model.create("memory_candidate", {"draft": "precise evidence"}, source_time_range=source_range)
+    snapshot = {"created_at": "2026-10-07T17:23:45.999999+08:00", "anchor_message_uid": "source", "payload": model.show()}
+    before = deepcopy(snapshot)
+    view = show_notebook(snapshot)
+    watchpoint = view["assistant"][0]
+    assert view["last_update_time"] == "2026-10-07T17:23:45+08:00"
+    assert watchpoint["schedule"]["canonical_schedule"]["run_at"] == "2030-10-07T12:00:00+08:00"
+    assert watchpoint["fields"]["until"] == "2030-10-07T12:00:00+08:00"
+    assert view["persistence"][0]["source_time_range"] == source_range
+    assert snapshot == before
+
+
 def test_null_is_explicit_and_not_an_empty_snapshot():
     assert show_notebook(None) is None
     assert "no Notebook Snapshot yet" in render_notebook(None)

@@ -152,17 +152,17 @@ def now() -> datetime:
 
 
 def format_timestamp(value, *, profile_home=None):
-    """Render an absolute instant with an explicit offset; never mutate stored values.
+    """Render an absolute instant to whole seconds with an explicit offset.
 
-    Existing timezone-aware ISO text keeps its exact spelling. An explicit owner reads
-    that profile's config rather than a launch-profile environment timezone.
+    Subsecond precision belongs to stored values, not presentation. An explicit owner
+    reads that profile's config rather than a launch-profile environment timezone.
     """
     if value is None:
         return None
     if isinstance(value, datetime):
         if value.tzinfo is None:
             raise ValueError("An absolute timestamp must include a timezone")
-        return value.isoformat()
+        return value.isoformat(timespec="seconds")
     if isinstance(value, str):
         try:
             parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
@@ -171,7 +171,8 @@ def format_timestamp(value, *, profile_home=None):
         else:
             if parsed.tzinfo is None:
                 raise ValueError("An absolute timestamp must include a timezone")
-            return value
+            rendered = parsed.isoformat(timespec="seconds")
+            return rendered[:-6] + "Z" if value.endswith("Z") else rendered
     config_path = Path(profile_home) / "config.yaml" if profile_home is not None else None
     tz = _timezone_entry(config_path)[1]
     try:
@@ -182,11 +183,7 @@ def format_timestamp(value, *, profile_home=None):
         raise ValueError("Invalid absolute timestamp")
     whole = int(instant.to_integral_value(rounding=ROUND_FLOOR))
     moment = datetime.fromtimestamp(whole, tz=timezone.utc).astimezone(tz)
-    rendered = moment.isoformat(timespec="seconds")
-    # time.time() can carry sub-microsecond digits. Keep the original numeric
-    # precision in ISO text rather than silently rounding the stored instant.
-    fraction = format(instant - whole, "f")[1:].rstrip("0") if instant != whole else ""
-    return rendered[:19] + fraction + rendered[19:]
+    return moment.isoformat(timespec="seconds")
 
 
 def readable_schedule_display(schedule, display):

@@ -17,6 +17,7 @@ from hermes_state_secretary_schedule import (
     reminder_append_pending_conn,
     reminder_pending_count_conn,
     reminder_pull_pending_conn,
+    render_source_timestamp,
     schedule_finalize_conn,
     schedule_release_conn,
 )
@@ -209,7 +210,9 @@ def _resolve_active_conn(db, conn, claim, timestamp, *, session_id=None, route_v
         return {"route": None, "reason": "route_unproven"}
     content = content or occurrence_content(current)
     source_timestamp = float(timestamp if entry_timestamp is None else entry_timestamp)
-    return {"route": route, "text": build_user_reminder_text(content, source_timestamp),
+    scheduled_for = render_source_timestamp(current["next_run_at"], profile_home=Path(db.db_path).parent)
+    body = f"Scheduled for: {scheduled_for}\n{content}"
+    return {"route": route, "text": build_user_reminder_text(body, source_timestamp),
             "content": content, "source_timestamp": source_timestamp, "reason": "ok", "claim": current}
 
 

@@ -66,16 +66,20 @@ def _wire_user_contents(request_kwargs):
 
 def test_real_user_turn_marker_on_wire_and_in_durable_content(runtime):
     agent, db, _client, requests = runtime
-    result = agent.run_conversation("hello world", persist_user_timestamp=1_700_000_000.0)
+    source = 1_700_000_000.987654
+    result = agent.run_conversation("hello world", persist_user_timestamp=source)
     assert result["completed"] is True
-    marker = format_user_timestamp_marker(1_700_000_000.0)
+    marker = format_user_timestamp_marker(source)
+    from datetime import datetime
+    visible_time = datetime.fromisoformat(marker[len("<timestamp>"):-len("</timestamp>\n")])
+    assert visible_time.timestamp() == 1_700_000_000 and visible_time.microsecond == 0
     assert result["messages"][-2]["content"] == "hello world"  # live dict stays clean
 
     wire = _wire_user_contents(requests[0])
     assert wire == [marker + "hello world"]
     durable = db.get_messages_as_conversation("S17")
     assert durable[0]["content"] == marker + "hello world"
-    assert durable[0]["timestamp"] == 1_700_000_000.0
+    assert durable[0]["timestamp"] == source
     assert len([m for m in requests[0]["messages"] if m.get("role") == "system"]) == 1
 
 
@@ -91,6 +95,23 @@ def test_replay_regenerates_identical_marker_bytes(runtime):
     assert replayed[1] == format_user_timestamp_marker(1_700_000_060.0) + "second question"
     durable = db.get_messages_as_conversation("S17")
     assert durable[0]["content"] == first_turn_wire
+
+
+def test_existing_fractional_history_and_cached_root_remain_byte_identical(runtime):
+    agent, db, _client, requests = runtime
+    old = "<timestamp>2023-11-14T22:13:20.987654+00:00</timestamp>\nold question"
+    from secretary.noting_surface import apply_main_read_surface
+    apply_main_read_surface(agent)
+    root = agent._build_system_prompt("Existing root with old time 2023-11-14T22:13:20.987654+00:00")
+    assert "2023-11-14T22:13:20.987654+00:00" in root
+    agent._cached_system_prompt = root
+    db.append_message("S17", "user", old, timestamp=1_700_000_000.987654)
+    db.append_message("S17", "assistant", "old answer", timestamp=1_700_000_001.123456)
+    history = db.get_messages_as_conversation("S17")
+    agent.run_conversation("new question", conversation_history=history, persist_user_timestamp=1_700_000_060.123456)
+    assert _wire_user_contents(requests[0])[0] == old
+    assert next(row["content"] for row in requests[0]["messages"] if row["role"] == "system") == root
+    assert db.get_messages_as_conversation("S17")[0] == history[0]
 
 
 def test_multimodal_turn_carries_the_marker_as_first_text_part(runtime):
