@@ -6,7 +6,7 @@ from tools.registry import registry
 
 NOTING_MEMO_SCHEMA = {
     "name": "noting_memo",
-    "description": "Maintain this Conversation's Noting Memo with add, replace, delete, or list. Write a brief one-sentence memo for what the next background consolidation must cover; a non-empty memo keeps local Noting on and does not trigger a run.",
+    "description": "Maintain this Conversation's Noting Memo with add, replace, delete, or list. Write a brief memo whenever a matter must be included in the Notebook at the next background Noting Task; background Noting ensures its inclusion. For reminders or schedules, include the intended action and requested time for background Noting to register. A non-empty memo keeps local Noting on; it does not trigger a run.",
     "parameters": {
         "type": "object", "properties": {
             "operation": {"type": "string", "enum": ["add", "replace", "delete", "list"]},

@@ -691,11 +691,15 @@ canonical runner -j1仅选真实spawn/重试冻结/派遣冻结三个既有用�
 > Maintain the Notebook faithfully from the frozen Parent Conversation, preserving the original meaning and intent. The Parent Assistant never maintains the Notebook itself: anything it flags as must-not-miss reaches you as a Noting Memo appended to this instruction — when a memo is present, every memo item must be covered by the resulting Notebook: treat each memo as a requirement to consolidate, not text to paste, and ground its entries in the conversation evidence exactly like anything else you write.
 中文直译：根据冻结的 Parent Conversation 忠实维护 Notebook，保留原本含义和意图。Parent Assistant 从不亲自维护 Notebook：它标记为不能遗漏的内容，会作为 Noting Memo 追加到本指令中传给你——存在 Memo 时，每条便签所指事项都必须由最终 Notebook 覆盖：将每条 Memo 当作需要整合的要求，而不是直接粘贴的文本；为其形成的 Notebook 条目亦与任何其他写入一样，以对话证据为依据。
 
-**现有中间健康维护内容，修改前（省略不变的控制句）：**
+**健康维护段：完整修改前／修改后**
+
+整段替换并移到固定指令正文尾部；`Historical /notebook...` 及其重复条目告诫在修改后删除。下方修改前为现行原文，不代表保留这句。起始状态／核对／终止工具的控制句没有改动，不重复列出。
+
+**修改前（完整健康维护内容）：**
 > Keep all four sections current. Mark confirmed secretary_task completion done; next task, reschedule or archive tasks done at task start. Keep newly done until then. Historical /notebook is derived state, not fresh evidence; duplicate entries only for a new intent verified in independent original user evidence. Keep Persistence Candidates aligned with Parent: create/revise as needed; archive after confirmed persistence execution or user rejection/withdrawal; a proposal or approval alone is not completion.
 中文直译：保持全部四个分区与当前情况一致。将已确认完成的 secretary_task 标为 done；下一任务，对任务开始时已 done 的 task 重新排期或归档。新变为 done 的留到那时。历史 /notebook 是派生状态，不是新鲜证据；仅在独立原始用户证据验证了新意图时才复制条目。让 Persistence Candidates 与 Parent 一致：按需创建／修订；在持久化执行被确认完成，或用户拒绝／撤回后归档；仅有提案或批准不等于完成。
 
-**正文尾部健康段，修改后（两句共同要求＋按类型规则）：**
+**修改后（完整替换内容，整体移到正文尾部）：**
 ```text
 Keep every Notebook entry aligned with the Parent Conversation's actual progress, and promptly mark completion when it is confirmed. Process entries already completed at the start of the Noting Task: reactivate them through an existing supported operation if follow-up is needed, or archive them; do not leave completed entries accumulating in the Notebook.
 - secretary_task.done and user_commitment.done: keep entries newly marked done until the next Noting Task; for entries already done at the start, update the Schedule to reactivate them or archive them. Schedule updates restore the active status automatically.

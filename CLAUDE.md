@@ -1,4 +1,4 @@
-> 当前增量：用户明确继续完成未完代码与运行验证，Prompt由用户审核，仍仅提案。compaction_timeline_audit负责UI原生compacted消费、统一终态历史/Usage读取与真实Context状态；compaction_backend_audit负责native operation生命周期与开始/提交/完成回调时序。Root亲审、唯一服务/IAB owner、整合文档；重任务串行、低输出、采资源，禁止第二轮Verification。
+> 当前增量：用户已审定并授权应用 Prompt；代码已按审阅稿更新，待主会话定向集成检查。时间秒精度及 Instant 原定时间已提交 9a816c06（102 个不同用例最终通过）；前端 Information 删除及底部间距修补做定向检查。New Chat 和 Conversation 必须共用 Composer 底边基准，内容增高向上展开；这是已有约束，不能被本次间距修补覆盖。Root 唯一服务/IAB owner，重任务串行，完成后停在第二轮 Verification 之前。
 
 # Hermes Secretary 第二轮主看板
 
@@ -6,9 +6,7 @@
 
 > 本区域按 AGENTS.md 永久维护；无待追认收敛时注明“暂无”。
 
-| 原规格空白 | Agent 自主收敛／理由 | 影响范围 | 实施情况 | 用户状态 |
-|---|---|---|---|---|
-| 冷恢复时实时Usage owner不存在，原生REST保存计数是否可展示 | Agent自主收敛：仅在无canonical source时读取原生保存Session计数并标注partial/source；未知Turn数／命中率／Latest不推算 | UI Usage冷恢复展示；不改RPC／存储 | df123c6已实施，Root实际页待复核 | 待追认；已在聊天主动汇报 |
+暂无。本次冷恢复展示已有原生保存计数、按已知 input/cache-read 计算命中率，依据用户“只要这个会话的数据正常获取到了……不论 turn 是否运行”及“这不是算一下就出来的事情吗”的明确要求执行。可靠冷 Context／Turn／Latest 来源缺失时，依据用户“如果做不到的话，就先暂缓”“不要再造 API”暂缓，不由消息数或历史累计值推算。
 
 已追认（R2-C36/C66）：单Main Turn累计256次新Web Steer（消费/撤回仍计数）；同Turn64个不同Interrupt请求记录；idle-only保持同会话一次Main Turn、并发普通Send失败保稿，结束后任一客户端可发；同会话两个在线订阅端实时流式接收；图片经原生上下文注入，本体允许留服务器。C66追加确认8轮／32条旧操作回执窗口；不得把查库未见摘要等同于取消成功。下文旧待追认表述均为历史记录，由C66覆盖。
 
@@ -26,21 +24,13 @@
 
 ## 当前目标与阶段
 
-**Noting Prompt头尾收敛（仅提案）**：用户要求只在头部加强忠实维护原意，禁止新增时间判断句／任务开始timestamp；清理段在固定指令正文尾部，用两句共同要求＋各类型明确完成态规则（2＋N）。现行段实际上在tools后、Schedules/DATA/工具权威前。候选已列commitment.done、reminder.delivered、watchpoint.resolved、question.resolved和无status的candidate执行完成／拒绝／撤回；不将validated有效知识或失败冒充成功完成，不改状态图或硬门禁。
+**开发阶段 Prompt 生效口径（用户 2026-10-14 纠正）**：本次已审定 Prompt 调优导致已有开发会话缓存失效并通过原生同步重建，是合理行为；不为保留旧文案新增保护逻辑。Root 撤回这项额外修补，原 `synchronize_main_read_prompt` 保持。一般运行期 prefix 保护规则不因此废除。
 
-**Notebook Slash用户最新口径**：用户明确 `/notebook` 输出只给用户显示、不进入模型上下文；因此候选Noting维护段删除历史/notebook非新鲜证据的整句，修改前引文保留。正在核producer/持久字段/Main过滤/Noting快照/session_history，尚未冒称已实现；依据旧02/04里模型可见的历史描述应以此最新授权覆盖，验证后同步规格。
+**当前 Prompt 状态**：用户已审定 `.autonomous/20261012-round2-web-ui/prompt-review.md`，Main 主动唤醒／统一 Memo、时间系统一句话、Noting 忠实头部与尾部 2＋N、Memo 工具描述已应用；现行 02 已同步，待主会话定向测试、提交及服务更新。开发期由原生机制重建缓存，不另加旧文案保护。保留原 Memo、权限、终止、Persistence 边界；不新增任务开始时间或过期时间判断，不实施清理门禁。审阅资料继续保留完整中英前后对照及用户原话，历史方案见 repair 文档。
 
-**时间系统Prompt审阅纠正**：用户要求一句通用规则：系统仅用最新Timestamp表示消息抵达时的当前真实时间，其他时间字段有各自调度语义、不代表当前时间。候选拟加在Main guidance既有Notebook/Schedule总述之后、Memo之前；不展开Instant场景，仅提案，不改当前root。
+**本次已交回增量**：BE 9a816c06 时间秒精度／Instant 原定时间，102 个不同用例最终通过；f0750bdd 人类专用 `/notebook` 从 Main／Noting／History／Summary 模型路径过滤；32418ea 原生 Main 用量 Total。FE ab1f4c4 删除 Information、统一底部间距，55d483d 原生 Total 接线、a9723d2 保存计数的命中率按 read/(input+read) 计算。UI 最终 typecheck/build 通过，build 7.88 秒／RSS 1.31 GiB／零 swap，仍有既有 chunk 提示；两项 Info 定向通过。Root 桌面实际页同底边与向上展开已测证；IAB viewport 覆盖未生效，移动浏览器证据不能算通过，原移动 CSS 规则保留。
 
-**Memo心智模型确认**：用户原话：“任何时候，当你认为某件事必须在下次整理时出现在 notebook 中时，就记一条便签，Background noting会确保他进入notebook”。Memo是Main指示后台整理内容的统一通道，消除Main担忧后台结果而分神研究Notebook写入的负担；不按用户要求保留／Main主动发现分场景。候选Main段和工具描述已按此统一规则重写；指的是便签所指事项，不把便签文本作为Notebook条目或provenance。仅提案。
-
-**Prompt术语纠正**：用户明确 next pass 指下一次后台 Notebook 整理；候选 Main Memo 写明 next background Noting Task／consolidating the Notebook，维护段写明 current／next Noting Task，修改前原文不变。代码工作继续。
-
-**Prompt审阅纠正**：用户明确 Main 是通过 Memo 指示后台 Noting 注册 Reminder，不能表述成 Main 自己直接安排。独立提案主动唤醒句已明确 instruction／registration 两个角色，中文直译同步；仅提案，产品代码未修改。
-
-**Prompt独立审阅入口（用户最新纠正）**：用户只要独立提案，不接受几百行实现／历史混合报告作为审阅入口。已抽出 `.autonomous/20261012-round2-web-ui/prompt-review.md`，仅当前待审旧／新英文、紧随中文直译、用户原话对照与必要保留边界；不改产品代码。原repair文档继续仅作历史及实现记录。
-
-**最新审阅与追加复查（2026-10-14）**：用户明确本次Prompt／timestamp不得直接写代码，取消“不增加长度”硬约束；每项完整修改前／后英文及紧随中文直译，用户原话逐项对账。§11已汇总现行完整维护段→新稿、此前5项工具描述保留审阅、Main→Memo桥接、真实timestamp／Scheduled for、秒精度方案；未实施。timestamp_seconds的3文件改动已撤回。
+**Prompt 集成检查**：首包 88 通过、2 失败；批准文案 A 大小写断言已更新，既有特殊 compaction 夹具补齐正式 host 的默认 system_message 信任声明，真实 admission 与晚摘要失败断言保留。仅定向复测两项通过，90 distinct 最终全部通过，旧失败日志保留；footguns/lazy-deps/ruff/health 四项全过，health0/0。随后唯一服务 owner 在真实 idle 时更新开发服务，实测隔离会话自动 Noting with compaction、Context 状态和及时摘要。冷 Context／完成 Turn／Latest 的原生来源缺失则依用户授权暂缓，不造 API、不伪造。
 
 用户要求复查特殊Profile触发、所有压缩完成及时Timeline及过程Context。compaction_backend_audit／compaction_timeline_audit只读交回，Root核生产代码：UI1040未消费原生compacted，1512 active→false仅停700ms轮询无history重读；手动compact RPC成功后1601强制重读历史存在，首次状态读取race尚未实测。02特殊Noting终止不等待Parent最终压缩，不能依赖Finish早读代替completion。当前runtime两自动选项均false，不能宣称开启态实测通过；原生请求机制存在不等于所有路径完成已通过。旧真实summary row714唯一折叠卡Root已IAB展开，但不是即时追加证据。
 

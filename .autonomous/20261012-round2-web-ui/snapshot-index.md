@@ -265,3 +265,5 @@ C85用户否决最新精简稿：通用Noting总述不应过分强调secretary_t
 - UI已提交push df123c6／d4896f2：notice时效／真实Usage来源与保留值、Compact仅Cancel／原地18px、移动Usage原指标。定向测试和唯一最终build通过；Root页面复核尚未全部完成，不能冒称完整交付。
 
 用户最新要求只看独立提案：当前审阅入口改为 [prompt-review.md](prompt-review.md)，仅待审内容，旧repair文档保留历史／实现记录；无产品代码修改。
+
+用户追加确认（2026-10-14）：现在是开发台，审定 Prompt 调优导致缓存失效并原生重建合理；撤回 Root 为保留旧措辞提出的额外修补。原话：“prompt 的调优跟它缓存失效，那不是必然的吗？现在是开发台”。此外重新强调 New Chat 和 Conversation 的 Composer 位置不变、以底边为基准；本次桌面间距修补必须保持该约束。

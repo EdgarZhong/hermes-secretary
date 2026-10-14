@@ -348,7 +348,7 @@ def test_real_spawn_runs_semantic_tool_to_snapshot_and_close(parent, db, stub_cl
     assert record["status"] == "completed"
     rows = db.get_messages_as_conversation(record["child_session_id"])
     assert rows[0]["content"].startswith("<noting-task>")
-    assert "a proposal or approval alone is not completion." in rows[0]["content"]
+    assert "A proposal or approval alone is not completion." in rows[0]["content"]
     assert "they are not Hermes Cron jobs or delegated agent tasks." in rows[0]["content"]
     assert len(rows) == 8 and all(row["content"] != "will do" for row in rows)
     assert "notebook_manage" in rows[0]["content"]
@@ -525,8 +525,12 @@ def test_semantic_control_is_noting_only_and_rejects_forgery(parent, db, stub_cl
 def test_special_profile_admitted_compaction_precedes_snapshot(parent, db, stub_client, monkeypatch):
     import threading
     import time
+    from agent.context_compaction_request import trust_default_system_message
 
     ref = parent._secretary_conversation_ref
+    # This directly constructed fixture has the official host's default None
+    # system message; declare it through the same native host seam.
+    trust_default_system_message(parent)
     release, summarizing = threading.Event(), threading.Event()
     parent._compression_feasibility_checked = True
     parent.context_compressor.last_prompt_tokens = 110_000
@@ -551,6 +555,8 @@ def test_special_profile_admitted_compaction_precedes_snapshot(parent, db, stub_
                                   frozen_runtime=frozen,
                                   task_instruction="Maintain Notebook then compact_parent")
         assert outcome.committed and summarizing.is_set()
+        request = parent._native_compaction_request
+        assert request.was_admitted and not request.committed
         assert not release.is_set()
         assert db.notebook_current(ref)["payload"]["consultation"]
         assert db.notebook_snapshot_audit(outcome.snapshot_id)["termination"] == {"type": "compact_parent"}
@@ -559,7 +565,14 @@ def test_special_profile_admitted_compaction_precedes_snapshot(parent, db, stub_
         deadline = time.monotonic() + 3
         while db.get_compression_lock_holder(parent.session_id) and time.monotonic() < deadline:
             time.sleep(0.01)
+        worker = getattr(parent, "_native_compaction_worker", None)
+        if worker is not None:
+            worker.join(3)
+            assert not worker.is_alive()
     # The later failure does not roll back the valid immutable Snapshot.
+    assert request.completed.is_set()
+    assert request.error == "native final summary failure after admission"
+    assert not request.committed
     assert db.notebook_current(ref)["snapshot_id"] == outcome.snapshot_id
 
 

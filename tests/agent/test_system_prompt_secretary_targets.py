@@ -55,14 +55,11 @@ def _root(request):
     return "\n".join(row["content"] for row in request["messages"] if row["role"] in {"system", "developer"})
 
 
-def test_guidance_matches_frozen_spec_six_paragraph_target_verbatim():
+def test_guidance_matches_approved_spec_target_verbatim():
     section = _section("#### 1.2 `SECRETARY_WORK_AND_NOTEBOOK_GUIDANCE`", "### 2. Noting Task messages")
-    frozen = section.split("```text\n", 1)[1].split("\n```", 1)[0].split("\n\n")
-    opening, merged, memo = [line.removeprefix("> ") for line in section.splitlines() if line.startswith("> ")]
-    expected = "\n\n".join([frozen[0], opening, frozen[2], frozen[3].replace("agent_task", "secretary_task"),
-                              frozen[-1], merged, memo])
+    target = section.split("Target (user-reviewed and approved 2026-10-14;", 1)[1]
+    expected = target.split("```text\n", 1)[1].split("\n```", 1)[0]
     assert SECRETARY_WORK_AND_NOTEBOOK_GUIDANCE == expected
-    assert len(expected.split("\n\n")) == 7  # heading plus six paragraphs
     assert "`agent_task`" not in expected
 
 

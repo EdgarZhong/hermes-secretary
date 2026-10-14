@@ -185,6 +185,7 @@ Message ordering, Compaction lineage, framework carriers, UIDs and stream insert
 ### 1.6. Composer contents, layout and keyboard
 
 The Composer is a responsive, rounded multiline input with the approved controls: **Attach**, **Model**, **Reasoning**, and one state-dependent circular primary action (**Send / Steer / Stop / Interrupt / Cancel Send**). The visual AI may arrange the fixed controls ergonomically but may not remove, re-label semantically or replace their actions with unapproved flows.
+- **Bottom anchor (user-reaffirmed 2026-10-14):** New Chat and Conversation share the same Composer bottom-edge anchor. Content growth expands upward; changing between these screens does not move the Composer. Desktop Composer and the two bottom capsules use the same bottom-spacing arrangement as mobile.
 
 - **Enter submits content only (user-confirmed 2026-10-13).** Enter fires **Send** while idle, or **Steer** while a Turn is active with Composer content, and **nothing else**: with an empty Composer and no attachments, Enter performs **no** action and MUST NOT fire **Stop**, **Interrupt** or **Cancel Send**, and MUST NOT consume still-pending corrections. Shift+Enter inserts a newline; IME composition must never accidentally send. **Escape is the binding for cancel-type actions**: it triggers the correct cancellable action for the current state — **Cancel Send**, **Stop** or **Interrupt** — with sane modal priority and safeguards when a modal confirmation is active.
 - Editor text can be undone via native Cmd/Ctrl+Z; ordinary text undo does **not** retract submitted messages, revert Rewind history, recover withdrawn Steers after consumption, undo attachments, or roll back filesystem actions.
@@ -267,6 +268,8 @@ Slash completions and execution are separate: a suggestion MUST NOT imply a comm
 
 ### 1.13. Usage cards and context indicator
 
+**User-confirmed compact pill (2026-10-14):** The collapsed pill shows only Total Tokens and Cache Hit Rate. Total includes trustworthy input, cache-read, cache-write and output consumption; absent required source fields remain unknown. Cache Hit Rate uses known input/cache-read counters independently of whether total is available. Remove the Information icon and its dedicated popup. Saved native Session counters may be shown while idle; do not invent missing completed Turn counts or Latest Turn receipts, and defer cold Context recovery if existing native APIs cannot provide a trustworthy occupancy. No new API is authorized.
+
 Under/near the Composer, show a restrained usage component with two equal-size views, **Session Total** and **Latest Turn**, not badges on each assistant bubble or an aggressive cost dashboard. Switching views MUST NOT change the container's dimensions or jitter the chat input.
 
 | Metric | Session Total | Latest Turn |
@@ -308,6 +311,10 @@ The post-compaction Timeline must display the **original native compaction summa
 | Local `/noting off` | Preserve orb when global switch on, but render true local/not-running status; current Memo remains human-readable subject to authorized native reads. |
 
 Use native status/task read with initial fetch on entry, refetch after Conversation change and reconnect, and existing owning Gateway event path for changes. An absolute authoritative next trigger time is preferred; the browser locally counts down rather than doing once-per-second HTTP polling. Orb, Status and Memo are entirely read-only: no Run Now, Stop, Noting toggle, Memo edit/delete, Notebook mutation or background control surface.
+
+**User-confirmed system error notices (2026-10-14, R2-C106):** Consume the existing native `notification.show` / `notification.clear` events through the existing notice stack, retaining the actual owner, text, severity and keyed replacement/clear semantics. Noting failures use the Parent's native notice callback; they do not create a successful Finish Framework Message or completion highlight. Preserve real failure/commit/trigger behavior; error presentation is not a retry, Notebook repair or new API contract.
+
+**User-confirmed notice lifetime (2026-10-14):** Error notices remain until manually dismissed. All ordinary notices automatically disappear after 10 seconds. Notices can stack; native clear/replacement must not prematurely erase an earlier error occurrence. This uses the existing notice entry and adds no API.
 
 ### 1.16. Files viewer, scope and error states
 

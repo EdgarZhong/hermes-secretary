@@ -338,3 +338,9 @@ C101正常IAB重试成功；原真实Instant行折叠/展开保timestamp/单卡/
 | Usage/侧栏/Compact/notice实际页面 | Root | IAB核真实冷恢复Usage、idle不清、scroll无条、同位loading仅Cancel及普通10秒/错误永久策略 | 待闭合 |
 
 复用df123c6/d4896f2定向测试及唯一统一build，不复跑旧包。新相关测试串行放行，采PID/RSS；各调用短输出，不批量展开长规格。禁止模型并行、服务多开、真实浏览器和任何Prompt代码变更。
+
+## 2026-10-14 用户审定后集成续接
+
+用户已授权应用独立 Prompt 审阅稿；“仅提案／不得 Prompt 代码变更”的前次限制已被本次授权替代。开发阶段缓存失效与原生重建属于正常结果，不追加旧措辞保护逻辑。Root 保持唯一服务与 IAB owner，任务继续至相关测试通过、实际集成完成，第二轮 Verification 不启动。当前动态编排和待完成项以根 CLAUDE 为准。
+
+可复用交回：时间 9a816c06 的 102 distinct 用例；Notebook visibility f0750bdd 的四条正式模型消费路径；BE Total 32418ea 的 12 用例；UI Total/缓存率 55d483d/a9723d2 的 26 最终用例；UI Info/底边 ab1f4c4 的两项 focused。Root 最终 UI typecheck 1.72 秒/RSS568.6MiB，build7.88秒/RSS1.31GiB、零swap（既有chunk提示）；不重跑上述包。Prompt 包88通过、两项失败及定向修复记录见 completion-integration/prompt-integration-tests.log。桌面 New Chat／Conversation bottom=671、增高仍671，底部胶囊栏=707；移动 viewport API 未改变真实尺寸，标记未覆盖，不能算移动通过。
