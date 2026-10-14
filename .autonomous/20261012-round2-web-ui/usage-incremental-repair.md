@@ -89,3 +89,91 @@
 4. Context采用native实际usage，压缩期间沿既有状态形变/Cancel；完成后有新有效occupancy则更新，无值保持最后已知。新的cold页面没有可信occupancy则仍未知。
 
 此交回是实现和必要机制证据，正式第二轮Validation由Root编制材料/指示后由指定GPT-6.1执行，最终Verification按用户最新安排做静态审查。
+
+## FV-F01 正式 Validation 真实失败后追加（2026-10-14）
+
+本节覆盖本报告前述实现对 **canonical partial 的来源补齐** 结论，不改写旧43用例的实际通过结果，也不宣称它们覆盖了此次真实错误。正式失败仍由原 Validation 报告保留，Root review / 集成与原 Validator ≥3 Turn 同会话复验尚未完成。
+
+### 1. 依据、版本与隔离
+
+- 正式 Validation 的 FV-F01 / V11；Root最新明确授权：先查真实返回、按字段canonical优先/缺口用已有saved补Session，source标签不代表完整度；Latest原生failed_dispatch缺值保最后已知，不以Session差分造值，不改backend。
+- 真实后端运行 `ea2ab483999f9230abfd794bdde2ea3fe2468cfe`，产品仍cb05c；正式前端 `833ef31468dbc73e0f25961cec1fe81399ba6111`。实际Session `20261014_162414_e964a3` / runtime `b03b78a2`。
+- 获授权创建平铺 worktree `/Users/edgar/code/hermes-secretary-web-usage-live-fix`，分支 `codex/round2-usage-live-fix`，从833ef31创建；common hook原样保留/可执行，node_modules仅链接既有目录，不install。所有改动限该树；未触正在验收的5173正式main、未触发其HMR。
+- 无派生、产品主目录修改、后端修改、模型调用、重启、改配置、build/full suite或commit。唯一测试窗口已通知Root起止并释放。
+
+### 2. 完整真实根因与变更
+
+只读53445取得 `fv-f01-fix/source.json`：
+
+| 来源 | 实际字段与语义 |
+|---|---|
+| `session.usage_detail.session_total` | input/read/output/total/rate均null；availability=`partial`、source=`native_canonical_accounting`、reasons=`failed_dispatch`，但 **turns=2真实有效**。 |
+| 同响应 `latest_completed_turn` | 五个token/rate字段均null，partial / failed_dispatch；实际新turn_id=`…:6c607caa`，**model_calls=4有效**，completed_at=`2026-10-14T08:28:15.182528+00:00`。 |
+| 原 `session.usage` | total125795 / input16124 / output1895 / prompt123900 / calls5 / cache_hit_pct87；它提供已知native aggregate，不提供第二Turn的新token明细。cache_hit_pct为native舍入呈现，且原分母语义可能含cache-write，不能拿它猜精确hit。 |
+| 已有 REST `GET /api/sessions/{stored}` | input16124 / cache_read107776 / cache_write0 / output1895 / api_call_count5；四个真实bucket完整，total确证为125795，按已冻结input/read定义rate=`107776/(16124+107776)`。API calls不当Turns。 |
+| event replay | 原生replay truncated=true，保留的session.info/message.complete usage投影只有2个；原始筛选usage字段与seq留在source.json，不以缺失早期事件否定正式Validator的观察。 |
+
+原后端 `agent/usage_read.py` 在failed dispatch后把相应token完整度标未知；这是本次 **Latest原生缺值** 的来源事实。前端 `sessionView` 仅看source是否canonical即提前返回，忽略已有saved字段来源，导致Session虽有新有效native计数仍保首轮48418。这个前端gate是FV-F01 Session缺陷根因，不需要改原生会计或新API。
+
+实际修改四文件：
+
+| 独立树文件 | 实际变化 |
+|---|---|
+| `src/core/usage-counters.ts` | `completeSessionUsage`检查每个呈现字段的有效性；`mergeSessionUsage`先补saved新有效字段，再由每个有效canonical字段覆盖，缺值继续保原字段；saved参与时明确source=persisted、partial及canonical/saved原因，保observed_at。Latest合并保新的partial/failed_dispatch原因，避免旧值保留吞掉新原生不完整事实。 |
+| `src/core/usage-view.ts` | 只有每个实际字段都可用才跳过saved；partial/缺失实际读已有REST。若native明确 `incompatible_cache_semantics`，不以saved桶计算的ratio补这个被明确否定的字段，已知历史ratio按用户保值规则保持。 |
+| `src/core/controller-usage-source.test.ts`（新） | 5个生产Controller测试：真实FV-F01来源组合与message.complete正式接线、按字段canonical优先、saved缺cache-write不猜total、saved403保原值并更新Turns、cache语义明确不兼容。 |
+| `src/core/controller-usage-view.test.ts` | 现39项Usage owner包补齐完整canonical fixture的真实total字段；纠正旧“canonical partial不得读saved”断言；缺失保值反例明确saved也不可用，以免假造“存在新有效来源却不更新”的预期。 |
+
+controller / projection / App / DTO均未改，controller与正式main逐字相同且2,000行，FV-F02的独立controller修复可无冲突集成。
+
+### 3. 正式链与两类结论
+
+正式 `message.complete` / `session.usage` → Controller原 `readUsage` → 原usage_detail → UsageViews字段完整度 → **必要时已有 saved REST读取** → 同owner/serial防晚包 → Session projection → 原Utilities胶囊和展开字段。
+
+**Session缺陷：已在独立树修复并有反例关闭证据，尚待正式Validator复验。** 实际partial返回可令Session更新input16124/read107776/out1895/total125795/rate真实值、Turns2；有效canonical字段始终优先，不累计、差分或以calls补Turns。
+
+**Latest合法未知：未伪造新token数。** 本次实际completed receipt不提供token值；依用户按字段保留，显示上次15014/read32640/out764/total48418/rate，同时更新真实Calls4并保 `failed_dispatch`/partial原因。不能把首轮token视作本轮新的原生结果，也不能把Session125795或其差分放到Latest；原Validator复验应按“源确实缺值则保最后已知、新有效值再更新”判定。后续即便Session仍受累计failed完整度影响，只要某次新Latest原生字段有效，仍直接更新该字段。
+
+### 4. 验证与遗漏说明
+
+证据目录：`.hermes-dev/round2-verification/formal-validation/fv-f01-fix/`。
+
+- 修前仅运行新真实响应反例：`negative-before.log`，1 fail / 4未选，正式Controller完成事件后 **48418≠125795**，稳定复现，不靠源码断言或镜像实现。Vitest1.18秒、命令约1.82秒。
+- 修后唯一受影响Usage包：`npm test -- src/core/controller-usage-source.test.ts src/core/controller-usage-view.test.ts --maxWorkers=1 --no-file-parallelism`；`focused-first.log` **44/44通过**，460ms、命令约1.12秒。只针对因来源选择与Latest原因合并而实际变化的Usage范围；不重跑旧4个不变Controller/压缩接缝、BE23、全套、附件或模型。
+- `npm run typecheck`：`typecheck.log`通过，约1.51秒；`git diff --check`通过。没有build/full suite。
+- `manifest.json`记录四个源码/测试hash、未变controller hash/2000行、worktree基线和原始source/负例/测试/tsc hash；`tracked.patch`供Root亲审（新测试在工作树中直接读取）。
+
+**旧43项漏掉的真实错误：** 旧源选择测试把 `source=canonical + availability=partial + tokens全null + Turns有效 + saved新有效值` 这一组合明确断言为不读saved；它将source标签误当完整性，反而固化了缺陷。普通incremental反例只验证缺失保旧值，没有同时提供并要求使用新的可靠替代native源；fully-available canonical fixture也未包含实际total字段。本次用实际failed_dispatch返回及真实保存桶重建正式完成事件反例，纠正这些预期。旧43通过证据仍真实，**不能再据它证明canonical partial实际来源覆盖完成**。
+
+### 5. 缺口、风险与原生边界
+
+- 当前运行main仍833ef31，独立树未集成。真实UI缺陷尚未正式复验关闭；保留原FV-F01失败，不把此机制证据等同完整正式验收。
+- 完整Session saved bucket可用时才给total；缺cache-write等必要来源时仍保持上次可用total/未知，不从API calls、Session差分、文本数或native rounded hit推新数。
+- 当saved读取失败/错误owner，原canonical有效字段仍更新，其余保最后已知，错误记录；既有profile/runtime/epoch/serial机制不变。
+- 有些字段可分别来自当下canonical、saved或上次已知投影，这是用户逐字段规则；availability与reasons保source缺口。Latest本轮确实缺值，不以UI首值保留掩盖新receipt不完整，也不扩大backend权限。
+- 原生owner/cold、Main与Noting计数隔离、后台关闭及原API/事件合同完全不变；BE-USAGE23证据继续复用。
+
+### 6. 接口、责任与交接
+
+仅前端内部新增完整度/来源合并helper，无DTO/呈现组件接口变化，不改controller；Root已接收完整根因与修复方案里程碑，明确不授权backend改动。全部四个文件留在独立Usage worktree未提交，由Root亲审后集成；common post-commit钩子保持，后续提交/push由Root统一管理。
+
+### 7. 建议正式复验
+
+Root亲审并集成后，由原正式Validator在同一FV-A Session继续至 **≥3个真实完成Turn**：对比usage_detail每字段有效性、native saved桶、Session胶囊/展开字段、Latest完成receipt与Calls；第三Turn若Latest有新有效token数必须替换首轮值。若源仍null，按最后已知保留并在正式报告明确source缺口，不能猜新数。后端无需重启；前端切换稳定快照与运行实例由Root安排，禁止本实现者触正在验收的主目录/页面。
+
+#### FV-F01 最终健康拆分与定向补证
+
+最终静态自审将同义的Latest来源原因/availability合并提为 preserveTurnFacts 小helper，避免既有 mergeUsageDetail 复合条件增加复杂度；没有语义、controller或接口变化。Root释放FV-F02窗口后只批准新来源5例+typecheck，没有重复44包。
+
+- 当前最终产品树 final-source-five.log：新来源5/5 pass，211ms（命令0.84秒）；final-typecheck.log通过，约1.50秒。
+- 冻结 scripts/code_health/ts_units.mjs + Measurer._typescript + compare/apply_allows/verdict，使用现有lock的TypeScript5.9.3，对基线833ef31与当前两个产品文件定向测量/比较：frozen-health.json **0 blocking / 0 advisory**；mergeUsageDetail CC19/19行/嵌套1，preserveTurnFacts CC7/7行/嵌套1。没有改规则/阈值/级别、豁免或安装依赖，也没有跑health全包。
+- manifest-before-health-extraction.json精确保留44项包执行树；当前 manifest.json记录最终四文件及5项/tsc/health/raw-source证据hash，tracked.patch更新至最终版本。39项旧owner包按此次同义提取的未变机制复用，**不将早先44命令冒称最终byte-identical树的一次44PASS**。
+- 最终 git diff --check通过，controller仍2,000行且完全未改；未commit，主目录/运行服务未触及。Root完整亲审后再安排正式Validator复验。
+
+#### FV-F01 已亲审提交，待真实复验（2026-10-14 16:54）
+
+Root已完整亲读两个产品模块、正式Controller来源反例与旧断言修订，接受按字段canonical优先/saved补缺、Latest保值及原生原因；已接收测试/冻结health证据，不复跑。其后授权仅显式stage上述四文件并commit。
+
+提交 b2be3fecf075528b421e7858ec7086ee60eae361（fix: 补齐原生 partial Usage 的有效 Session 来源），位于独立 codex/round2-usage-live-fix。共四文件135增/8删，没有controller/App/DTO/backend改动。common post-commit自动push成功，git ls-remote独立核对 origin/codex/round2-usage-live-fix 远端hash与本地完全一致；工作树干净，最终测试源码manifest4/4匹配，证据 fv-f01-fix/commit.json。
+
+未合main，未改53445/5173服务。Session缺陷已完成实现、机制反例与Root亲审，**正式FV-F01仍待Root集成后原Validator在同FV-A会话≥3个真实完成Turn复验**；Latest原生failed_dispatch缺字段继续按最后已知保留，不能把本提交冒称取得不存在的新receipt。

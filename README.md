@@ -81,7 +81,7 @@ Gateway 入口为 `hermes gateway`。官方 Dashboard 入口为 `hermes dashboar
 
 当前草稿全部附件合计上限为 500,000,000 bytes，选择时累计判断、移除后释放预算，发送时小文件沿原生 `file.attach`，分片使用增量 `file.upload_chunk` / `file.upload_abort`，元数据使用 `file.attachment_info`，并显式绑定本次图片。两个订阅同一会话的客户端共享原生实时事件；普通 Send 只在 Main Turn 空闲时启动新 Turn，活动时按既定 Steer/Stop/Interrupt 操作。
 
-Web 的 `/notebook` 是四分区只读临时卡片，固定在命令发起时的 Timeline 位置，刷新后可消失；任务状态与排期分别呈现，不展示内部 Anchor。
+Web 的 `/notebook` 是仅保存在浏览器内存中的四分区只读临时卡片，按调用顺序固定在命令发起时的 Timeline 位置，刷新后清除；任务状态与排期分别呈现，不展示内部 Anchor。
 
 聊天历史首次加载最近 200 条后台消息，`Show More History` 每次向前加载 200 条；工具调用与结果计入条数。历史按需分页，不在浏览器持久化转录副本。
 
