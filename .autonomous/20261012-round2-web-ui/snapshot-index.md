@@ -246,3 +246,8 @@ C85用户否决最新精简稿：通用Noting总述不应过分强调secretary_t
 ### R2-C104 不要文案，回原目标交付（2026-10-14）
 
 用户原话：“算了，不要文案了，你赶紧专注于交会你的原目标”。覆盖C103文案恢复要求；精确撤回临时标签、标签字号及其间距，保原胶囊收缩/分隔。最终UI2c019ac代码树与已实看43795c8完全相同，自动push；不再扩展视觉研究，Main完成原目标交接，第二轮Verification/Validation仍不启动。
+
+
+### R2-C105 当前运行Noting delay改回2秒（2026-10-14）
+
+用户原话：“把noting delay 成回2秒钟”。仅当前53445的round2-runtime noting.idle_delay_seconds从15改2；原生live config读取确认2.0，其他配置不变。不是产品默认值改动，也不改历史取证profile；本地ignored配置不提交，记录同步。

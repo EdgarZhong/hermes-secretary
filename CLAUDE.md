@@ -26,6 +26,8 @@
 
 ## 当前目标与阶段
 
+**当前运行配置（2026-10-14，C105）**：用户要求“把noting delay 成回2秒钟”。原53445使用的`.hermes-dev/round2-runtime/config.yaml`中noting.idle_delay_seconds由15改回2；原生resolve_noting_settings实际解析enabled=True、delay=2.0。配置动态读取，无需重启服务；不改产品默认值、隔离证据profile或其他配置，运行配置保持ignored不提交凭据。
+
 **本阶段交付（2026-10-14）**：今晚授权的代码整改、Main亲审集成、必要正式联调与文档已完成，停在第二轮Verification之前；整轮独立验收尚未完成。C99折叠/展开已按用户“重试”取得真实IAB证据，原策略拒绝未复现；旧失败记录保留为历史。截图所示Files/Appearance胶囊收缩已由sidebar_visual_restore修复，Root亲审并在正式5173 IAB核112×44/选中圆34×34/两分隔1px；文案依用户C104撤回，最终树与该有效实看版本完全相同。完整范围、证据与限制见[阶段交付](.autonomous/20261012-round2-web-ui/final-delivery.md)。
 
 **运行与快照**：BE产品f8e416178ecf24021c614940052561f30dc7929d；FE正式main最终2c019acfa34c0383e3c86e22c1b22871f8f1d73d；此前完整逻辑整改/修复树快照8b3867e3db220910b4bc9613af49a0740e07fc3c继续作为机制证据版本，最新仅侧栏呈现增量。后续BE提交仅文档/hook。53445在原生active_list确认无活动工作后沿同一round2-runtime HOME/config/DB更新为PID20193，5173 HTTP200，新RPC已注册；没有清库、迁移或凭据改动。Main修正HMR旧Controller字段初始化，保持同一连接/历史/草稿owner。
