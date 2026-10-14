@@ -4560,6 +4560,7 @@ export interface SessionUsageTotal {
   input_tokens: number | null
   cache_read_tokens: number | null
   output_tokens: number | null
+  total_tokens?: number | null
   cache_hit_rate: number | null
   availability: 'available' | 'partial' | 'unknown'
   source: 'native_canonical_accounting' | 'unknown'
@@ -4571,6 +4572,7 @@ export interface CompletedTurnUsage {
   input_tokens: number | null
   cache_read_tokens: number | null
   output_tokens: number | null
+  total_tokens?: number | null
   cache_hit_rate: number | null
   availability: 'available' | 'partial' | 'unknown'
   source: 'native_canonical_accounting' | 'unknown'
@@ -4906,6 +4908,40 @@ export interface NativeSourceBoundary {
   compression_unchanged: boolean
   all_rows_committed: boolean
   insertion_at_tail?: boolean | null
+}
+export interface OutputStatePayload {
+  turn_id: string
+  stored_session_id: string
+  conversation_ref: string
+  message_uid: string
+  state: 'open' | 'uncommitted' | 'closed'
+  api_request_id: string | null
+  stream_writer_token: number | null
+}
+export interface OutputDeltaPayload {
+  turn_id: string
+  stored_session_id: string
+  conversation_ref: string
+  message_uid: string
+  native_type: 'message.delta' | 'reasoning.delta' | 'message.interim'
+  native_payload: Record<string, unknown>
+  source_event_seq: number
+}
+export interface ToolOutputPayload {
+  turn_id: string
+  stored_session_id: string
+  conversation_ref: string
+  assistant_message_uid: string
+  tool_call_uid: string | null
+  phase: 'generating' | 'start' | 'complete'
+  native_payload: Record<string, unknown>
+  source_event_seq: number
+}
+export interface OutputCommittedPayload {
+  turn_id: string
+  stored_session_id: string
+  conversation_ref: string
+  source_message: NativeSourceMessage
 }
 /** ``prompt_turn._complete_turn_payload`` / ``session_auto_continue._emit_terminal_turn_error`` / ``agent_callbacks._mirror_subagent_to_child`` (child watch mirror: ``text`` only) / ``compute_host_bridge`` (``text`` + ``status``). */
 export interface MessageCompletePayload {
@@ -6158,6 +6194,12 @@ export interface BackendGatewayEventMap {
   'message.delta': StreamDeltaPayload
   /** Interim assistant commentary (text beside tool calls) sealed as its own segment. */
   'message.interim': MessageInterimPayload
+  /** Actual native batch output row committed and markers adopted. */
+  'message.output_committed': OutputCommittedPayload
+  /** Identity projection of one exact legacy envelope sequence. */
+  'message.output_delta': OutputDeltaPayload
+  /** Optional native output-object observation; never a Turn control. */
+  'message.output_state': OutputStatePayload
   /** The agent reacted to a message; paint it live. */
   'message.reaction': MessageReactionPayload
   /** An admitted Instant Reminder's real driving user row committed before the first model request. */
@@ -6259,6 +6301,8 @@ export interface BackendGatewayEventMap {
   'tool.complete': ToolCompletePayload
   /** The model is emitting a tool call's arguments. */
   'tool.generating': ToolGeneratingPayload
+  /** Native tool occurrence projection of one exact legacy envelope sequence. */
+  'tool.output': ToolOutputPayload
   /** Tool output was classified as risky (prompt-injection / secret findings). */
   'tool.output_risk': ToolOutputRiskPayload
   /** A tool call began (stable id + full args). */
@@ -6299,6 +6343,9 @@ export const GATEWAY_EVENT_TYPES = [
   'message.complete',
   'message.delta',
   'message.interim',
+  'message.output_committed',
+  'message.output_delta',
+  'message.output_state',
   'message.reaction',
   'message.source_committed',
   'message.start',
@@ -6350,6 +6397,7 @@ export const GATEWAY_EVENT_TYPES = [
   'todo.updated',
   'tool.complete',
   'tool.generating',
+  'tool.output',
   'tool.output_risk',
   'tool.start',
   'voice.interrupted',

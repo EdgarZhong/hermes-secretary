@@ -245,6 +245,8 @@ class StreamDeliveryMixin:
         with self._stream_writer_lock:
             self._stream_writer_token = token = self._stream_writer_token + 1
         self._stream_writer_tls.token = token
+        from agent.output_identity import observe_claim
+        observe_claim(self, token)
         return token
 
     def _stream_writer_is_current(self, token: int) -> bool:

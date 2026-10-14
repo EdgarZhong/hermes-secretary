@@ -52,6 +52,7 @@ from agent.reasoning_summaries import (
 )
 from agent.repetition_guard import RunawayStreamWatch, is_repetition_dominated
 from agent.stream_single_writer import claim_stream_writer, stream_writer_is_current
+from agent.output_identity import accept_response, bind_message, prepare_message
 from tools.terminal_tool_lifecycle import is_persistent_env
 from secretary.noting_runtime import dispatch_main_model_request
 from utils import base_url_host_matches, base_url_hostname, env_float, env_int
@@ -1669,6 +1670,7 @@ def build_assistant_message(agent, assistant_message, finish_reason: str) -> dic
     Textless turns are NOT padded here: ``repair_empty_non_final_messages`` is the
     single owner — write-time padding broke codex commentary turns and cannot
     survive ``_rows_to_conversation``."""
+    prepare_message(agent)
     assistant_tool_calls = getattr(assistant_message, "tool_calls", None)
     reasoning_text = _assistant_reasoning_text(agent, assistant_message)
     msg = stamp_message_timestamp({"role": "assistant",
@@ -1758,8 +1760,7 @@ def build_assistant_message(agent, assistant_message, finish_reason: str) -> dic
 
     if assistant_tool_calls:
         msg["tool_calls"] = [_assistant_tool_call_dict(agent, tc, i) for i, tc in enumerate(assistant_tool_calls)]
-    return msg
-
+    return bind_message(agent, msg)
 
 def rewrite_prompt_model_identity(agent, model: str, provider: str) -> None:
     """Rewrite the cached prompt's ``Model:``/``Provider:`` lines after a provider switch.
@@ -2649,7 +2650,7 @@ class _BedrockStream:
                 if stream.final_response is None:
                     raise
                 streamed_response = None
-            self.result["response"] = stream.final_response or streamed_response
+            self.result["response"] = accept_response(agent, stream.final_response or streamed_response, writer_token["value"])
         except Exception as e:
             self.result["error"] = e
         finally:
@@ -4024,14 +4025,14 @@ class _StreamingCall(StreamingWaitMonitor):
             raise InterruptedError("Agent interrupted during streaming API call (post-worker)")
         if self.result["error"] is not None:
             if self.deltas_were_sent["yes"]:
-                return self._partial_stream_stub()
+                return accept_response(self.agent, self._partial_stream_stub(), self._writer_token)
             raise self.result["error"]
         if self.result["response"] is not None:
             _reset_stale_streak(self.agent)  # provider proved responsive: clear the breaker
         # Propagate first-chunk timing for the ``post_api_request`` hook.
         if isinstance(self.clients.diag, dict) and self.clients.diag.get("first_chunk_at"):
             self.agent._last_api_first_chunk_at = float(self.clients.diag["first_chunk_at"])
-        return self.result["response"]
+        return accept_response(self.agent, self.result["response"], self._writer_token)
 
 
 def interruptible_streaming_api_call(agent, api_kwargs: dict, *, on_first_delta=None):
@@ -4048,7 +4049,6 @@ def interruptible_streaming_api_call(agent, api_kwargs: dict, *, on_first_delta=
     # Cross-turn stale-stream circuit breaker (see ``_stale_streak()``).
     _check_stale_giveup(agent)
     return _StreamingCall(agent, api_kwargs, on_first_delta).run()
-
 
 __all__ = ["interruptible_api_call", "build_api_kwargs", "build_assistant_message", "try_activate_fallback",
     "handle_max_iterations", "cleanup_task_resources", "interruptible_streaming_api_call"]

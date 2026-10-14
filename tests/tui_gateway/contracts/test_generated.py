@@ -59,6 +59,12 @@ def emitted_event_names() -> set[str]:
         names.update(_LITERAL_EMIT.findall(text))
         names.update(_LITERAL_FRAME.findall(text))
         names.update(_SIDE_AGENT.findall(text))
+    # Native output observation emits its audit/commit in the agent sibling and
+    # returns its presentation pair to write_json's gateway factory.
+    names.update(re.findall(r'\bself\.emit\(\s*"([a-z_][a-z0-9_.]*)"',
+                            _read(REPO / "agent" / "output_identity.py")))
+    names.update(re.findall(r'\breturn\s+"([a-z_][a-z0-9_.]*)"\s*,',
+                            _read(REPO / "tui_gateway" / "output_identity.py")))
     from tui_gateway.agent_callbacks import _CHILD_DELTA_EVENTS
     from tui_gateway.change_watcher import _CHANGE_WATCHES
 
