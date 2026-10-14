@@ -981,8 +981,11 @@ Requirements:
 - a due occurrence cannot be successfully claimed twice by competing workers;
 - delivery failure does not silently discard the occurrence;
 - a successful one-shot is terminalized;
+
 - recurring schedules use the shared schedule utility to compute the next run;
 - V1 does not introduce a heavy distributed-scheduler abstraction unless Hermes deployment later makes one necessary.
+
+User-confirmed timing clarification (2026-10-14): Past one-shot Instant Reminders remain due and eligible for delivery; lateness alone must not discard them. The existing five-second due scan is acceptable; no immediate-delivery bypass is required. Noting faithfully records the intended action and schedule without a task-start timestamp or an additional time-window decision. This does not change busy delivery, ACK, retry or cancellation semantics.
 
 When Conversation-local Noting is off:
 
@@ -1545,6 +1548,8 @@ Only the Noting-owned suffix is persisted to the child Session. The inherited Pa
 
 ## 5.6 Unified message wrappers and timestamp contract
 
+User-confirmed display precision (2026-10-14): Human- and model-facing absolute-time renderings use second precision without fractional seconds; internal storage and timer precision are unchanged.
+
 **Readable absolute times (user-confirmed 2026-10-12, C15).** Every absolute timestamp actually exposed to an AI or a human through this project's product surfaces must be a readable date-time string with an explicit timezone, not a raw Unix epoch number. This applies across Notebook human/AI views, History Search/Read, Full inspection, Noting task/control and notices, Reminder/Schedule views and other product outputs. Reuse the existing owning-profile timezone and native time rendering where available; existing timezone-aware readable ISO strings are valid. Preserve the original instant, source, entry-vs-source semantics, field names and permissions. Internal storage, timer comparisons, audit/lease mechanics and numeric durations remain unchanged; this does not authorize adding timestamp markers to carriers which must have none, rewriting historical messages, changing frozen cache prefixes, or creating new UI/API capabilities.
 
 Secretary V1 does not introduce a new mid-conversation semantic role.
@@ -1581,7 +1586,7 @@ Actual user content...
 
 The timestamp:
 
-- is exact ISO 8601 with a UTC offset;
+- is readable ISO 8601 with a UTC offset and second precision, without fractional seconds;
 - is visible to the model;
 - may be stripped/hidden by normal UI presentation;
 - is preserved in durable content so history/replay can recover it;
@@ -1641,7 +1646,7 @@ Instant Reminder is delivered by submitting a user message:
 }
 ```
 
-Because delivery is a user-message submission, this carrier receives the **user-message timestamp marker** (scope rule above): the marker is the moment of entry, and the Reminder's due moment coincides with it. Its wrapper tag is **`<instant-reminder>`**.
+Because delivery is a user-message submission, this carrier receives the **user-message timestamp marker** (scope rule above): the marker is the actual moment of entry, which may be later than the Reminder's originally scheduled due time; the original due time is stated separately in the body. Its wrapper tag is **`<instant-reminder>`**.
 
 When idle admission succeeds, the Instant Reminder becomes a normal durable user row in the main Conversation. When the main Conversation is busy, it is not first persisted as a future Instant Reminder Turn; the busy gate converts it into **deferred** delivery instead.
 

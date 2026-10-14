@@ -1,5 +1,3 @@
-> 当前增量：用户已审定并授权应用 Prompt；代码已按审阅稿更新，待主会话定向集成检查。时间秒精度及 Instant 原定时间已提交 9a816c06（102 个不同用例最终通过）；前端 Information 删除及底部间距修补做定向检查。New Chat 和 Conversation 必须共用 Composer 底边基准，内容增高向上展开；这是已有约束，不能被本次间距修补覆盖。Root 唯一服务/IAB owner，重任务串行，完成后停在第二轮 Verification 之前。
-
 # Hermes Secretary 第二轮主看板
 
 ## 自主口径收敛 · 待用户追认
@@ -13,6 +11,28 @@
 2026-10-13 附件工程调查历史：整包500 MB Base64超过运行时字符串上限，因此实现曾沿原生 `file.attach` 增加可选分片参数。当前独立审查发现该方式违反06的旧接口合同保留要求，登记为V-R2-01；既有容量/取消/偏移/丢ACK证据不能消除合同偏差，修正提案见当前Verification段。
 
 本轮已确认口径的授权来源见 [Snapshot Index](.autonomous/20261012-round2-web-ui/snapshot-index.md)，不得将 Agent 安排或推断写成用户确认。
+
+## 2026-10-14 中断恢复：当前执行状态（优先于下文历史阶段）
+
+本会话按用户“重启第二轮自主实现”恢复**临近中断时的最新状态**。已从上一会话《启动第二轮 Verification》（`01a13593-93e1-7ba2-8f1b-6ab9095e8f5a`）原始用户消息核回末段授权；不按标题启动 Verification，不回滚已完成产品。
+
+- **本阶段**：按本会话最新明确指令，Astra主会话亲自撰写正式Validation材料与指示，GPT-6.1执行；第二轮顺序为真实Validation→整改/真实复验→最后静态Verification→交付。不再临时/开发态Validation，不以旧流程要求先Verification。真实端到端逐项复测用户反馈，主动发送带指定前缀的消息，观察Main/Noting驾驭机制及实际轨迹；真实模型额度不限制必要场景。尚未执行，不将此前隔离代表链冒称本次完整验收。
+- **主会话效率（用户再次明确）**：Astra Root保持及时响应，只抓目标/覆盖/分工/接口/集中亲审和决策；停止大段读档与深入具体实现。优化Root自身Token消耗，充分使用DeepSeek真实模型演绎，不以额度理由削减必要验收。详细调查/执行/证据交由子Agent，阶段摘要交回。
+- **环境**：只用已有 round2 profile 和前端 `http://localhost:5173`，后端原入口53445；用户要求统一更新/重启，不另开profile或端口。先识别服务/活动任务再有序重启。真实模型调用获授权；消息统一携带 Snapshot Index 中原话前缀，不让测试模型研究代码。
+- **Usage/Context**：按字段增量更新；有效新值才替换，缺失/失败/Turn状态变化不清空已得数值；纯内存，不新增持久化/API，不跨会话混用。不可靠冷来源仍不推算。
+- **Clarify**：独立UI工作区 `/Users/edgar/code/hermes-secretary-web-clarify`，分支 `codex/round2-clarify`，从当前正式main `ab1f4c4`建立；用户另行通知后才合并，当前不可合并。
+- **运行恢复**：原53445未监听，Root已用现有round2 HOME/DB、原生dashboard及skip-build恢复HTTP200；5173HTTP200。双仓fetch后均与upstream一致，hook与版本化源一致。
+- **恢复基线**：后端 `cb05c0671c`，UI `ab1f4c4`。启动前已有根CLAUDE两段未提交进度修改、未跟踪 `.playwright-mcp/` 与 `docs/06-ui-read-api-discussion.md`；保留，不擅自纳入提交。已有测试按plan证据索引复用，最新用户要求的真实反馈复测另取证。
+
+| 本会话Owner | 修改白名单/职责 | 当前状态 |
+|---|---|---|
+| restore_user_intent · Sol high | 独立用户原话时序→适用口径→规格缺口/反馈复测清单 | 已完整交回143条原话/243条上下文及27项反馈；Root复核附录并最小同步02/06，报告只作用户口径审计 |
+| usage_incremental_repair · Sol high | 正式UI core的Usage/Context聚合及相关测试；后端只读 | 完整交回，Root亲审接收；43 distinct有效通过、typecheck通过；cold lifetime Turns原生未知保留，正式验收待执行 |
+| clarify_ui · Sol high | 独立clarify工作树；原生request/response交互 | 已派遣；不得自行合并 |
+| formal_validation · Sol high | 按Root编制的27组场景及遗漏补充执行正式真实Validation | 已派遣准备；等待稳定UI版本后真实交互，结果只写validation报告/证据 |
+| Root | 全局覆盖、文档、服务统筹、集中亲审、正式Validation材料编写与编排 | 恢复并推进；不陷入功能实现 |
+
+下文保留此前阶段事实与证据；其“当前”“未启动”“只用隔离profile”等执行安排由本节与最新用户原话覆盖，历史通过/失败结论不改写。旧Owner不视为本会话仍在运行。
 
 ## 续接先读：已有测试与回归选择
 
@@ -30,7 +50,7 @@
 
 **本次已交回增量**：BE 9a816c06 时间秒精度／Instant 原定时间，102 个不同用例最终通过；f0750bdd 人类专用 `/notebook` 从 Main／Noting／History／Summary 模型路径过滤；32418ea 原生 Main 用量 Total。FE ab1f4c4 删除 Information、统一底部间距，55d483d 原生 Total 接线、a9723d2 保存计数的命中率按 read/(input+read) 计算。UI 最终 typecheck/build 通过，build 7.88 秒／RSS 1.31 GiB／零 swap，仍有既有 chunk 提示；两项 Info 定向通过。Root 桌面实际页同底边与向上展开已测证；IAB viewport 覆盖未生效，移动浏览器证据不能算通过，原移动 CSS 规则保留。
 
-**Prompt 集成检查**：首包 88 通过、2 失败；批准文案 A 大小写断言已更新，既有特殊 compaction 夹具补齐正式 host 的默认 system_message 信任声明，真实 admission 与晚摘要失败断言保留。仅定向复测两项通过，90 distinct 最终全部通过，旧失败日志保留；footguns/lazy-deps/ruff/health 四项全过，health0/0。随后唯一服务 owner 在真实 idle 时更新开发服务，实测隔离会话自动 Noting with compaction、Context 状态和及时摘要。冷 Context／完成 Turn／Latest 的原生来源缺失则依用户授权暂缓，不造 API、不伪造。
+**Prompt 集成检查**：首包 88 通过、2 失败；批准文案 A 大小写断言已更新，既有特殊 compaction 夹具补齐正式 host 的默认 system_message 信任声明，真实 admission 与晚摘要失败断言保留。仅定向复测两项通过，90 distinct 最终全部通过，旧失败日志保留；footguns/lazy-deps/ruff/health 四项全过，health0/0。开发服务已在真实idle时更新为cb05c0671c。隔离实际IAB已证实特殊Noting真实compact_parent与成功压缩摘要无reload出现；手动路径原地loading环、popup唯一Cancel Compaction，would_grow不造摘要；fresh Usage Total23233、39.7%、Turns1、Latest Calls1。临时服务/页面/observer全部退出，主5173/53445HTTP200，主配置SHA和DB inode未变。冷 Context／完成 Turn／Latest 的原生来源缺失则依用户授权暂缓，不造 API、不伪造。
 
 用户要求复查特殊Profile触发、所有压缩完成及时Timeline及过程Context。compaction_backend_audit／compaction_timeline_audit只读交回，Root核生产代码：UI1040未消费原生compacted，1512 active→false仅停700ms轮询无history重读；手动compact RPC成功后1601强制重读历史存在，首次状态读取race尚未实测。02特殊Noting终止不等待Parent最终压缩，不能依赖Finish早读代替completion。当前runtime两自动选项均false，不能宣称开启态实测通过；原生请求机制存在不等于所有路径完成已通过。旧真实summary row714唯一折叠卡Root已IAB展开，但不是即时追加证据。
 

@@ -1,5 +1,7 @@
 # 第二轮实施计划
 
+> 2026-10-14 恢复会话当前执行顺序以Snapshot Index R2-C112为准：Astra Root编制正式Validation材料，GPT-6.1真实执行→整改/真实复验→最后静态Verification→交付；不再临时/开发态Validation。旧证据索引用于复用机制测试，用户明确要求重新实测的反馈与模型驾驭场景须取当前round2/5173真实结果。动态分工只见根CLAUDE。
+
 > 当前R2-C73–C75：首轮Verification不通过（完整报告已交回）；附件后端合同整改与assistant-ui只读研究恢复。研究已完整交回且Main亲审，按用户“然后开始”释放独立前端整改树；Usage成功数据可见性纳入后续整改。
 
 R2-C66/C67增量：用户确认8轮/32条旧回执窗口及聊天历史首次200/更多200。前端待审更新为 `002f7a27fcf7313491f0301e143df7d3b6148088`。Main直接完成微小分页修改并亲审两文件diff；定向既有 `history range preservation` 测试1通过/59未选（205ms），覆盖首次200、更多至400、新tail保留401；typecheck通过，build通过（5.51s、保留chunk-size提示）。命令：前端 `npm test -- src/core/controller.test.ts -t 'history range preservation'`、`npm run typecheck`、`npm run build`，各一次。证据 `.hermes-dev/round2-verification/paging-{test,typecheck,build}.log`；不新跑模型/大包，不把未选测试写成通过。独立审查者已接收新版本及原始用户授权，须按受影响条款核查。
