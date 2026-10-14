@@ -30,7 +30,7 @@
 
 用户要求复查特殊Profile触发、所有压缩完成及时Timeline及过程Context。compaction_backend_audit／compaction_timeline_audit只读交回，Root核生产代码：UI1040未消费原生compacted，1512 active→false仅停700ms轮询无history重读；手动compact RPC成功后1601强制重读历史存在，首次状态读取race尚未实测。02特殊Noting终止不等待Parent最终压缩，不能依赖Finish早读代替completion。当前runtime两自动选项均false，不能宣称开启态实测通过；原生请求机制存在不等于所有路径完成已通过。旧真实summary row714唯一折叠卡Root已IAB展开，但不是即时追加证据。
 
-资源自查：两个新审查Agent各报告累计约6.6万token输出，发生截断，Root此前也有截断；立即停止全档读取，后续仅关键小范围低输出，不启动测试／模型／build／browser。当前一次ps未见其遗留重进程；CapsWriter约2.3GiB、Codex最大renderer约674MiB，不能据此归因历史卡顿，不终止用户进程。native_notice_frontend自查进行，sidebar owner因并发槽限制暂未触发新turn，提醒消息已发。
+资源自查：两个新审查Agent各报告累计约6.6万token输出，发生截断，Root此前也有截断；立即停止全档读取，后续仅关键小范围低输出，不启动测试／模型／build／browser。当前一次ps未见其遗留重进程；CapsWriter约2.3GiB、Codex最大renderer约674MiB，不能据此归因历史卡顿，不终止用户进程。全部自查已交回：notice owner定向测试／typecheck均退出，无遗留重进程，一次11.4k token批读同样过大；sidebar owner最后focused2.59s、唯一Vite13.39s均exit0，输出约148／1508token，无本人遗留验证进程。所有owner未采历史RSS峰值，不能排除当时峰值，也不将当前快照作为无泄漏证明。原有5173 Vite保留；未停用户进程。
 
 **当前增量C106：原生错误notice接线（2026-10-14）**：用户原话：“你像这种情况下，有报错对吧？系统报错应该从前端走 notice 横幅入口，你可以再把前端接线加上。原生 API 支持这种报错提示吗？”原生已有AgentNotice→notice_callback→notification.show/clear，字段text/level/kind/ttl_ms/key/id，不需要新RPC/Schema。现Noting失败仅日志，Web未消费此事件。noting_native_notice负责单Task/单owner集中失败producer（后端noting_child及定向测试）；native_notice_frontend负责既有Notification/ToastStack消费者（UI controller最小接线+sibling，保2000行/视觉不动）。Root唯一文档、亲审和正式接线，重测试/构建串行；不得放宽旧Notebook合同、迁移/清库、补假Framework、改变重试/Trigger/权限或新建清理机制。既有task_finished错误用于所有退出，按outcome.committed在唯一finally区分task_finished/task_closed，使06既有成功高亮事实一致；不新建Task状态或改变已完成提交。
 
