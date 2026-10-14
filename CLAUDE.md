@@ -26,6 +26,8 @@
 
 ## 当前目标与阶段
 
+**最新运行调查（2026-10-14 09:39）**：用户问最近会话为何Noting空闲/无倒计时/无完成Framework。按真实last_activity定位20261013_223838_0ddd56，09:34:37与09:35:13两次idle admission32/33均启动后立即failed（noting_b71066e17dbc466e、noting_66c202c484584a32），尚未创建模型会话。原有效Snapshot snap_f774a94cf9b8446b9db6ba2e7c76f794载荷[24,25]，秘书task24/pending的schedule=null；新非空校验使NotebookStore.load在初始化抛NotebookValidationError。idle trigger已产出故无新倒计时，live tasks空故现投影idle；Memo1未消费、无新成功Snapshot/完成Framework。不是2秒配置改动引起；此两次发生在改回2秒之前。旧非法测试库边界此前已记录但原运行库保留了它，用户现场暴露，不能宣告当前会话Noting成功；只读定位，未清库/迁移/静默改条目或放宽合同。
+
 **当前运行配置（2026-10-14，C105）**：用户要求“把noting delay 成回2秒钟”。原53445使用的`.hermes-dev/round2-runtime/config.yaml`中noting.idle_delay_seconds由15改回2；原生resolve_noting_settings实际解析enabled=True、delay=2.0。配置动态读取，无需重启服务；不改产品默认值、隔离证据profile或其他配置，运行配置保持ignored不提交凭据。
 
 **本阶段交付（2026-10-14）**：今晚授权的代码整改、Main亲审集成、必要正式联调与文档已完成，停在第二轮Verification之前；整轮独立验收尚未完成。C99折叠/展开已按用户“重试”取得真实IAB证据，原策略拒绝未复现；旧失败记录保留为历史。截图所示Files/Appearance胶囊收缩已由sidebar_visual_restore修复，Root亲审并在正式5173 IAB核112×44/选中圆34×34/两分隔1px；文案依用户C104撤回，最终树与该有效实看版本完全相同。完整范围、证据与限制见[阶段交付](.autonomous/20261012-round2-web-ui/final-delivery.md)。
