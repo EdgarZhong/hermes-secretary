@@ -22,9 +22,9 @@
 
 改动后：
 
-> When later action is needed, you wake yourself up with a Reminder at a time you choose yourself. Arrange this Reminder through `noting_memo`.
+> When later action is needed, use `noting_memo` to instruct background Noting to register a Reminder that will wake you up at a time you choose.
 
-中文直译：当需要之后采取行动时，你在自己选定的时间通过 Reminder 唤醒自己。通过 noting_memo 安排这个 Reminder。
+中文直译：当需要之后采取行动时，使用 noting_memo 指示后台 Noting 注册一个 Reminder，在你选定的时间唤醒你。
 
 ## Main 的 Memo 段：只补提醒登记路径
 

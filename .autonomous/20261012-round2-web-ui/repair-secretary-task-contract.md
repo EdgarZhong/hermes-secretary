@@ -630,9 +630,9 @@ canonical runner -j1仅选真实spawn/重试冻结/派遣冻结三个既有用�
 
 改动后：
 
-> When later action is needed, you wake yourself up with a Reminder at a time you choose yourself. Arrange this Reminder through `noting_memo`.
+> When later action is needed, use `noting_memo` to instruct background Noting to register a Reminder that will wake you up at a time you choose.
 
-中文直译：当需要之后采取行动时，你在自己选定的时间通过 Reminder 唤醒自己。通过 noting_memo 安排这个 Reminder。
+中文直译：当需要之后采取行动时，使用 noting_memo 指示后台 Noting 注册一个 Reminder，在你选定的时间唤醒你。
 
 ### 11.3 Main Memo 段落（agent/system_prompt.py:53）
 
@@ -830,6 +830,6 @@ Scheduled for: 2026-10-14T09:35:00+08:00
 
 §11.2–11.6 新文案、Instant 正文及秒精度都待审核，未实施；§11.6.1 五项工具描述是此前已实施版本，本次保留。前端 Usage／Compact／notice 不属于 Prompt 批准范围。
 
-按当前源码的完整字符串计数：Main guidance 4054→4449 字符；Noting Task 3046→3710 字符；noting_memo description 230→339 字符。只报告规模，不设不得增长的约束；token 未测。候选完整串由当前实际源码生成，未写入产品文件。
+按当前源码的完整字符串计数：Main guidance 4054→4451 字符；Noting Task 3046→3710 字符；noting_memo description 230→339 字符。只报告规模，不设不得增长的约束；token 未测。候选完整串由当前实际源码生成，未写入产品文件。
 
 保持 Main 的主动秘书职责、四区十类定义、Main 只读、Persistence 批准边界、Memo 首段及 Snapshot 消费、原生 Cron 区分、完整冻结前缀和工具权限、强制结束与回退机制。没有单独取消任务工具，没有硬清理门禁，没有 Noting 时间窗口判断或五秒扫描旁路。归档不用“永久清除、不可恢复”措辞。尚未通过的清理义务如何续接下一轮，仍留在 docs/07 的独立设计提案，不偷渡进当前提交条件。

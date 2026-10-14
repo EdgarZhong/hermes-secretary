@@ -26,6 +26,8 @@
 
 ## 当前目标与阶段
 
+**Prompt审阅纠正**：用户明确 Main 是通过 Memo 指示后台 Noting 注册 Reminder，不能表述成 Main 自己直接安排。独立提案主动唤醒句已明确 instruction／registration 两个角色，中文直译同步；仅提案，产品代码未修改。
+
 **Prompt独立审阅入口（用户最新纠正）**：用户只要独立提案，不接受几百行实现／历史混合报告作为审阅入口。已抽出 `.autonomous/20261012-round2-web-ui/prompt-review.md`，仅当前待审旧／新英文、紧随中文直译、用户原话对照与必要保留边界；不改产品代码。原repair文档继续仅作历史及实现记录。
 
 **最新审阅与追加复查（2026-10-14）**：用户明确本次Prompt／timestamp不得直接写代码，取消“不增加长度”硬约束；每项完整修改前／后英文及紧随中文直译，用户原话逐项对账。§11已汇总现行完整维护段→新稿、此前5项工具描述保留审阅、Main→Memo桥接、真实timestamp／Scheduled for、秒精度方案；未实施。timestamp_seconds的3文件改动已撤回。
