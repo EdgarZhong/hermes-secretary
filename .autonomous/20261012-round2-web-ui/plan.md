@@ -1,6 +1,6 @@
 # 第二轮实施计划
 
-> 2026-10-14 恢复会话当前执行顺序以Snapshot Index R2-C112为准：Astra Root编制正式Validation材料，GPT-6.1真实执行→整改/真实复验→最后静态Verification→交付；不再临时/开发态Validation。旧证据索引用于复用机制测试，用户明确要求重新实测的反馈与模型驾驭场景须取当前round2/5173真实结果。动态分工只见根CLAUDE。
+> 2026-10-14 恢复会话以Snapshot Index R2-C112/C116为准：Astra Root编制正式Validation材料，GPT-6.1真实执行→整改/真实复验→整理待审版本与证据，静态Verification由云端复查。本主会话不执行或另派本地Verification，不代云端判通过；不再临时/开发态Validation。旧有效证据复用，用户明确反馈与驾驭场景取得当前round2/5173真实结果；动态分工只见根CLAUDE。
 
 > 当前R2-C73–C75：首轮Verification不通过（完整报告已交回）；附件后端合同整改与assistant-ui只读研究恢复。研究已完整交回且Main亲审，按用户“然后开始”释放独立前端整改树；Usage成功数据可见性纳入后续整改。
 
@@ -346,3 +346,55 @@ C101正常IAB重试成功；原真实Instant行折叠/展开保timestamp/单卡/
 用户已授权应用独立 Prompt 审阅稿；“仅提案／不得 Prompt 代码变更”的前次限制已被本次授权替代。开发阶段缓存失效与原生重建属于正常结果，不追加旧措辞保护逻辑。Root 保持唯一服务与 IAB owner，任务继续至相关测试通过、实际集成完成，第二轮 Verification 不启动。当前动态编排和待完成项以根 CLAUDE 为准。
 
 可复用交回：时间 9a816c06 的 102 distinct 用例；Notebook visibility f0750bdd 的四条正式模型消费路径；BE Total 32418ea 的 12 用例；UI Total/缓存率 55d483d/a9723d2 的 26 最终用例；UI Info/底边 ab1f4c4 的两项 focused。Root 最终 UI typecheck 1.72 秒/RSS568.6MiB，build7.88秒/RSS1.31GiB、零swap（既有chunk提示）；不重跑上述包。Prompt 包88通过、两项失败及定向修复记录见 completion-integration/prompt-integration-tests.log。桌面 New Chat／Conversation bottom=671、增高仍671，底部胶囊栏=707；移动 viewport API 未改变真实尺寸，标记未覆盖，不能算移动通过。
+
+## 正式Validation整改闭环（2026-10-14恢复）
+
+| 编号 | 用户要求/真实反例 | 修复负责人和边界 | 完成条件与复验 | 证据与状态 |
+|---|---|---|---|---|
+| FV-F01 | 新会话第二Turn的Turns/Calls更新，Token仍首值；已有原生新数不能遗漏 | usage_incremental_repair，独立UI usage-live-fix树；后端先只读，改动另由Root据根因分派 | 源有效值正式接线、旧保值/身份不破坏；原validator同会话≥3Turn真实复验，保失败历史 | formal-validation/A2-native-rpc.json等；validation§5，未关闭 |
+| FV-F02 | 第二Turn结束时旧Assistant已出现两个可见article，DB final row860只有一条；原DOM证明早于/notebook，保留归因更正 | timeline_duplicate_repair，独立UI timeline-fix树，禁止按内容去重 | 正式history/live/temp接缝修复；原场景及相同正文合法多消息/刷新/Framework/路径变更受影响链复验 | formal-validation/A2-duplicate-assistants.json等；validation§5，未关闭 |
+
+FV-F01根因补充：usage_detail的partial/failed_dispatch使Session/Latest token原生字段未知；Session另有saved最新值却因canonical标签提前返回未读取，修已有来源按字段补齐。Latest无新有效receipt时保旧值是用户许可边界，不用Session差分猜新数。
+
+
+FV-F01/FV-F02集成：Root亲读产品来源/UID归并退休接缝与真实反例测试后接收；独立提交b2be3fec/44955963已各自自动push。原validator在16:55:20+08确认Main/Noting/compaction全idle后，正式UI无冲突cherry-pick为fea51be、b99651c，最终完整hash `b99651c53ca7792e8631844fe363cdb168531912`，origin/secretary一致、工作树干净、diff check通过、5173 HTTP200。后端ea2ab483及profile/config/DB未改。双方产品文件不相交、集成未增改源码，复用44来源包/最终5例与127身份用例及各自typecheck/health，不重复机制包。正式validator正常reload后同FV-A复验，尚未关闭两缺陷。
+
+FV-F02首修真实复验失败：b99651c中原validator在Noting active时发下一sleep45 Turn，完成后Assistant/Thinking/Tool重复。原始事件 `formal-validation/F01-F02-b99651c-overlap-events.jsonl`、真实rows与DOM留存；原owner基于b99651c独立分支继续定位。127机制用例通过不能替代实际交错旅程，缺陷仍open。FV-F01 Session已在同场景正常增长并与native总数885661一致，待逐字段正式结论。
+
+### Root正式Validation B批执行指示（2026-10-14）
+
+本节由Astra Root编制；Sol正式validator执行真实产品场景，配置operator只负责获释放窗口的原生配置与只读取证，不操作浏览器/模型。不修改产品，不用内部调用或伪造事件替代用户操作。沿用原round2/53445/5173，每条模型输入及追问均带C113逐字前缀。独立只读配置核对依据：`formal-validation/environment/b-config-review.md`；其中源码研究结论属于配置准备，不作正式运行通过证据。
+
+**共同前置/交接**：validator在当前场景自然结束后报告所有runtime Main idle、Noting无active tasks/未处理idle timer、compaction inactive；Root逐窗释放，operator先保存原config本地字节快照/hash、白名单键存在性/类型/值及服务/DB身份，绝不输出凭据。只用原生CLI config set的标量键，不使用不支持这些键的RPC config.set，不新增profile/端口。operator交回实际解析值后validator正常刷新Secretary视图并用下一真实Main完成暖实例配置同步；不以配置回读代替运行生效。配置窗内保持默认DeepSeek路线，不切一次性模型。不得同时改其它窗口参数。
+
+1. **B1 特殊Noting压缩（V14）**：原global=true/context262144/ratio.8/capnull基础，仅特殊enabled=true、threshold_tokens=10000。下一真实业务Main→新的自然2秒Idle；取真实上下文测量10000≤usage<196144、特殊Profile、compact_parent、Parent实际压缩终态/summary及即时Timeline/Context证据。不是改开关即触发，不以Noting结束或would_grow代替Parent成功。若未缩短，继续有意义合成业务材料积累后用新合法period复测；不改机制或伪造token。自然全idle后恢复特殊false/threshold null。
+2. **B2 原生普通Auto及暖global off/on（V14/H06）**：先noting.enabled=false并回读；再compression.threshold=.08、threshold_tokens=20000。真实暖Main采用原生绝对cap，真实输入跨Auto20000，取得普通Auto过程/最终摘要、Timeline/Context，确认off期间无新Noting和下一轮Prompt/工具行为。`.08`单独会被原生抬至`.75`，不得拿约20K估算冒称生效。恢复时先在off下将ratio=.8/cap=null，发同暖会话真实业务追问采用恢复值并全idle，再恢复global=true，下一真实Main核Prompt/工具及新自然Idle；已处理period不补跑。不能重启后用cold结果替代暖开关场景。
+3. **B3 Force（H06）**：确认B2已恢复且特殊false，仅context_length=139264、ratio=.75，cap仍null。默认DeepSeek当前原生解析Auto104448、reserve66000、Force73264（K=1000）；以实际resolved/runtime测量为准。用真实合成材料在[73264,104448)区间捕Force admission/Anchor/Child/Snapshot与Parent链，区分Force与普通Auto，不以调用次数或Session累计token替代上下文量。保留same-Anchor去重事实；若越过Auto，另新合法Anchor重取有效Force证据，不改判断标准。全idle恢复context262144/ratio.8/capnull，下一真实Main核暖实例恢复。
+
+**取消/失败和记录**：每窗保实际输入、原生帧/任务/摘要UID、浏览器中间态与终态、有效测量、时间/版本、未覆盖项。用户Cancel Compaction场景仅通过真实页面按钮在实际active时执行，记录独立取消结果；不能把取消或失败计为成功压缩。发现产品缺陷及时交Root，保失败历史并继续独立场景；operator不自行调阈值“让测试过”。
+
+**恢复与收尾**：原特殊threshold_tokens与compression.threshold_tokens都实际存在且null，恢复null，不删除。逐键核原始值/类型/存在性、配置hash与runtime身份；若原生writer只改格式仍如实记录，不冒称逐字一致。暖同步可零重启；只有无法确认存活实例恢复时Root另行协调一次全idle后端重启，不能借此替代暖场景。保所有真实测试消息/Snapshot/失败证据；本次未来提醒/事项按validator归属清单通过正常用户操作关闭，不清DB或原用户事项。整体B批未执行/未通过，以上是正式执行指示。
+
+FV-F02第二修集成：Root亲读唯一匹配helper/正式接缝/新反例与公开fixture脱敏检查，接收78 distinct、最终原帧单例/typecheck/health0/0。独立351dd285已push，validator暂停模型的B1准备窗口内无冲突合入正式UI `7ea5e64555bd41964cee4b8ffb4de60926fc1b87`（远端secretary一致、工作树干净、diff check过）。未增改集成源码、不重复机制包，仍待同原会话真实overlap复验；保首修失败证据。
+
+FV-F04正式缺陷：B1成功后UI仍39440/15%，同runtime原生context_breakdown已有46189/max262144/18%/local_estimate/estimated=true。session.usage缺Context时保旧符合C108，但完成接缝漏读已有可信新源，不属于冷来源暂缓。Root核现成真实payload和正式接线后，授权独立UI复用既有RPC/同mergeNativeContext；三压缩路径及时Context更新仍待实现/真实复验。依据 `formal-validation/context-after-compaction-source-review.md`，不新API或自行计数。
+
+B2首轮暖直答未见Auto，尚不判产品缺陷：globaloff/Orb隐藏及新Prompt无Noting Memo/无新Snapshot有真实证据；provider usage37635在该单次调用完成后取得，而原生只在Turn开始/API前/工具后检查。Root依据只读 `environment/b2-auto-trigger-review.md` 释放下一真实预算核算工具追问，继续同配置和暖会话，不用raw cap冒称实例已采用；真实压缩及是否仍超cap分别记录。旧cancelled回执是上一操作历史，不直接证明新Auto被抑制。
+
+用户再次强调正式实测Noting with compaction：复用B1有效特殊Profile/compact_parent/父压缩证据，执行者核对角色指导、阈值条件、同Anchor抑制、失败恢复及后续对话；缺口与F04集成后三路径Context真实复验合并，普通Force不替代特殊Noting。Root亲审F04最终五文件，逐字段mask及同operation状态确认返修接收，36 distinct/typecheck/health有效证据复用，授权隔离commit，真实缺陷仍open。
+
+F04集成：feature3ad35d55已自动push；Root在validator暂停模型、operator10:23:04Z全idle且B3配置全字节恢复原hash的窗口，将五文件无冲突cherry-pick至正式UI e829b02c624a12ecf623915ff63b46209a68366f，远端secretary一致/树干净；未改集成代码、不重跑有效36例。已释放同5173 reload与暖Main确认原context262144/.8采用，特殊Noting/普通Auto/manual真实Context复验仍待执行。
+
+FV-F02 A设计审定：Root完整阅读timeline报告最后精确四事件manifest后批准封闭实施；后端由usage_incremental_repair隔离树负责，UI由timeline_duplicate_repair新树基于e829b02负责，仅projection/native-output和相关测试，双方不交叉改。保持旧RPC/旧event payload、provider wire/parity、原native UID/writer/DB owner、unknown与失败可见性；不放宽false、不新ledger。后端先独占canonical最小检查，UI就绪后Root放行，不full/build/模型；正式owner产生fixture，旧103帧不伪添UID。交回亲审后再统一正式集成/真实Auto复验。
+
+FV-F02实施前反例收紧：原open后屏蔽legacy方案在observer故障时会吞正常输出，Root否决该呈现机制；审定仅两个新typed event追加source_event_seq引用实际legacy envelope seq，旧字段不变。必须精确配对才识别UID，失败/未知仍显示legacy；允许有界单呈现slot，不造业务ledger、不永久等待、不补第二份文本。compute parent实际seq映射须有正式接缝证据，超白名单先报具体断点。后端owner同步manifest，两实现者按新合同协作。
+
+正式特殊补证负例已观察ordinaryNOTING→finish_noting→Snapshot完成，父compression仍2，保两次工具误用后恢复及当次selector数值未捕边界。Root已一次授权固定配置序列由validator/唯一operator在每次全idle+模型暂停的实证窗口交接（每步回执抄Root）：special150000→10000正例；specialfalse/null恢复原字节；原值手动压缩；globalfalse/cap20000且ratio.8/context262144不动的普通Auto；globaltrue/capnull恢复原全字节。每步实际原生解析/变更白名单/服务DB核对，异常不超值扩大，交Root判断。减少重复口令，不减少真实复验要求。
+
+最新用户明确授权Clarify合并：检查完工worktree diff并把效果完整带回正式实现。源HEAD3f6a45f还包含12项未提交/未跟踪生产视觉、Modal、RequestTransport及Mock演示增量，不能只cherry-pick旧提交。Root已读核心新增diff；前端owner优先建立e829b02隔离集成，保源树不动、锁定文件manifest、保F01/F02/F04，再Root亲审及必要定向验证。validator当前特殊正例完成/配置安全恢复后暂停，正式集成后V19真实验收；先前等待用户通知限制现已解除。
+
+Clarify完成正式集成：源3f6a45f+104f185全17文件→隔离cff013d→正式UI208b2d18fd4643faa2724febb9db56bc3f1d1a0e，远端secretary同hash且树干净/与审定树一致。Root亲审两controller冲突、取消失败重复发送修补及健康结构提取；全部CSS/7mock源字节保留，F01/F02/F04保护文件hash不变。28 distinct/typecheck/health0/0证据见ignored clarify-integration/report.md及manifest，不重复测试。模型暂停/原配置恢复窗口内集成，已释放同5173真实V19，需原生clarify单/多选/Other/skip及取消/四视口，禁止Mock替代。
+
+FV-F06正式双端缺陷：Root亲读server_requests resolve_response/lock_answer/_emit_cancel及现有reason resolved，确认原生settle后未跨端广播。授权timeline owner独立后端树最小修server_requests.py与定向tests，仅Clarify最终结束后复用request.cancel/resolved、best-effort不改ACK，partial/expired/重复不发；前端产品保持，必要消费证据独立测试树。F02与F06不交叉修改，测试串行。真实原帧后缀有truncated，不能宣称完整历史无事件；补request ID/真实两端修后证据。
+
+FV-F06后续证据与执行指示：原生两段重叠拼合8660–9179共520帧无gap，tool.start8939→complete8940缺request.cancel且open_requests空；原peer request ID未捕，不以tool ID替代。Root已完整审后端settlement广播与两Controller真实fixture，BE7567dc3/UI测试d543b22已合入并push，15 distinct/typecheck/冻结检查有效。受控重启实际断连65秒（11:49:34Z→11:50:39Z），保原时间而非计划值。validator先自然恢复V18未发稿/附件/编辑与冷来源，再发新双端Clarify核同一原生request ID自然关闭；旧弹层因重启reconcile消失不得作修复成功。普通Auto暂留待F02新版集成一起复验，不重复模型场景；其余真实场景继续。

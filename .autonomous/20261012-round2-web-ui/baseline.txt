@@ -5,3 +5,7 @@
 2026-10-13 R2-C65 Verification 输入：后端/规格树 24510d1c7c3b8dfc95b6d0626be30f090561fa30（产品代码 4443aa7b18806246ef84d6003fbd7e1e40cff5a2）；前端 c55120f92aca9acdcc5b7e7dc4fd1df06874e6b3。包含 25d71ef17e 已登记的用户授权 Rewind 与 Notebook 修订；不是重新冻结或扩大产品范围。Snapshot Index 本次仅追加启动授权。工作区已有 CLAUDE 远端记录、未跟踪 .playwright-mcp/ 与 docs/06-ui-read-api-discussion.md 不作为产品/权威规格输入，不覆盖或提交。
 
 2026-10-13 R2-C66/C67：用户追认8轮/32条旧操作回执窗口，并确认聊天历史200/200分页。前端增量提交 002f7a27fcf7313491f0301e143df7d3b6148088 为更新后的待审版本；后端产品/规格树不变，新增直接授权原文见当前snapshot-index.md。仅修改controller.ts分页常量及既有范围保留测试，不改变其他产品行为。
+
+2026-10-14 恢复会话授权依据版本 ea2ab483999f9230abfd794bdde2ea3fe2468cfe：R2-C107–C113与原话审计支持的02/06文字同步；正式Validation先行、最后静态Verification，Astra Root编制材料、GPT-6.1执行。初始冻结基线保留。对应UI整改快照833ef31468dbc73e0f25961cec1fe81399ba6111，后端产品同cb05c0671c。
+
+2026-10-14 R2-C114–C117文档快照：当前产品BE d276ea8b60441da61745c31be36ab2ff1fea58c3、UI da6377f9db9025c361bbc232e6e139de66e9f4d1；本次提交同时纳入修改的根CLAUDE、轮次索引/计划/本文件与授权06修订，根README/AGENTS未修改且现行版本在提交树中。C116将最终静态Verification交云端，C117明确Notebook纯内存、刷新清除、存续期间顺序正确。正式Validation继续，F02构建片段与C117位置整改尚未完成，不把文档快照称为验收通过。
