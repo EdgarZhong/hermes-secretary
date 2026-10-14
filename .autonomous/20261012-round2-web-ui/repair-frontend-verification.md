@@ -132,3 +132,10 @@ C99用户明确Reminder默认折叠、内部timestamp保留；Main撤回所有�
 Main随后亲审发现此前HMR同owner Object.setPrototypeOf会保留旧实例，但新增renderStore/subscribeRender/getRenderSnapshot实例字段不会自动初始化。改同owner惰性renderStore getter/public subscription getters，保持旧gateway/history/draft且不创建第二Controller；controller仍2000行。新旧shape行为+Usage2pass/13skip（497ms），原同步event/按帧render/控制terminal flush专例1pass/14skip（453ms）；当前build pass，日志hmr-render-owner-{test,build}.log、hmr-render-flow-test.log。先前性能样本中App/Parts/Markdown/RenderStore机制未变；不把早一份完整manifest冒充最终Controller byte-identical，也不重复整套。
 
 UI阶段提交0f8d891已由post-commit自动推feature upstream并ff main/push origin/secretary；随后HMR提交8b3867e同流程。主仓库hooks配置保持原样，仅安装post-commit；云端同步不等于独立门禁通过。
+
+
+## Main最新侧栏截图补修与文案撤回（2026-10-14，C102–104）
+
+用户截图暴露之前C80新增全宽appearance wrapper后，原Mock footer grid item的内容收缩约束丢失。不是ThemeSelector本体差异：原fc18614 Mock直挂footer、footer有grid/justify-items:start；正式wrapper使控件按block自动拉满。sidebar_visual_restore只在theme.css wrapper补display:grid/justify-items:start，43795c8自动推。Main正式5173 IAB实看：胶囊112×44、三按钮34×34且dark被选中、footer与appearance两border均1px，截图/读数在ignored native-integration/sidebar-visual-restore*.png/.json。
+
+用户随后指出文案遗漏，子Agent按fc18614/002f7a2最后Mock源码暂时恢复Adjust visual style（bb66da4），Main整块实看12px/16.8px行高、gap12、胶囊112×44；r10旧未跟踪截图文本不同，不冒称最后代码依据。用户最新明确“算了，不要文案了，你赶紧专注于交会你的原目标”，精确撤回标签及其字号/新增gap，保宽度修复。最终2c019acfa34c0383e3c86e22c1b22871f8f1d73d与43795c8树diff为空，可复用同树正式IAB证据，不再重复构建或页面操作。阶段一次build、追加标签一次typecheck通过；最终diff检查通过，自动push后远端一致。原用户视觉树未修改，业务/控制器/API未改。此次补修不构成独立Verification/Validation。

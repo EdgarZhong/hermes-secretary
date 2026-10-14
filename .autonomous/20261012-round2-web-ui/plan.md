@@ -316,3 +316,11 @@ C84/BE附件/Instant三机制包与前端完整整改包已亲审；Main只补Pr
 当前BE产品f8e4161，FE正式main/修复树8b3867e，origin/secretary已同步；post-commit真实自动推两次feature提交，主repo最后文档/hook快照已同机制推origin/main；两仓库本地/远端hash一致。用户运行53445同旧HOME/config/DB安全更新为PID20193，5173 HTTP200，新RPC注册只读探测4001非not-found，active_count0。C84正式机制和实际3个新Noting链均收回；Main记录API in45s原生拒绝后模型改1m，不伪造精确秒成功。
 
 C99两正式Timeline组件用例pass、当版build pass；末次GUI实看被IAB浏览器安全策略明确拒绝，协议理由与http请求不一致，但禁止任何绕过。旧真实IAB source153→DOM21ms→Thinking157→complete313/DOM15ms与唯一UID证据有效；C99最后实看留明早正常UI操作，不冒称通过。清理07单文档已Main亲审，全部硬范围/M27/恢复设计未实施，用户明早审核。最终交付结论和限制见final-delivery.md；不再开第二次Verification或独立Validation。
+
+
+### 用户重试与最新侧栏截图修复（2026-10-14）
+
+C101正常IAB重试成功；原真实Instant行折叠/展开保timestamp/单卡/再折叠实际通过，native报告§12及c99-retry证据。临时服务退出、原配置逐字恢复、DB/Registry/API计数无变化，无模型重跑。C102用户截图指出Files/Appearance宽胶囊迁移遗漏，sidebar_visual_restore直接干净UI main修局部CSS，Root不并行改UI、原visual-design只读，Root唯一正式5173 IAB验收。原因：正式全宽appearance wrapper改变ThemeSelector原grid item收缩布局。两独立门禁不启动。
+
+
+最新结束状态（C104）：C99实际IAB补验已完成；C102侧栏胶囊宽度修复/Main实看完成；临时文案经用户明确撤回，最终UI main2c019ac与已实看43795c8树完全一致，auto-push成功。原目标的Main集成与交付记录收尾，不再展开视觉或重复有效测试。两独立门禁未启动；单文档硬清理待用户审核，未实施。

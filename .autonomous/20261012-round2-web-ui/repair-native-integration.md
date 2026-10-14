@@ -150,3 +150,12 @@ Main确认task上下文隔离后，停止Owner所有CUA/open页尝试；Owner仅
 Owner只做收尾：核ps归属后SIGTERM backend15149/frontend npm15179及实际子进程15205/15206；两个exec均exit143，53449/5183无listener。服务退出后原config逐字节恢复/SHA一致。前后messages/children/Snapshots计数、完整Registry、真实source row、每Session API call_count全部相等，零新模型、零新Noting/Snapshot/source。`c99-main-before.json`、`c99-main-cleanup-start.json`、`c99-main-result.json`为前置、动作与结果；最新chat.tsx/projection.ts和两repo HEAD同result，未提交/推送。
 
 C99开发证据：Main的默认折叠/展开保timestamp组件2pass、最新build exit0可复用；**最后IAB默认折叠/展开实看仍未执行，明确策略阻塞**。先前自然Instant真实IAB source先Thinking与终态、真实任务排期/状态链有效，不与此阻塞混淆，不重复模型链。产品默认折叠实现不被工具拒绝推定失败；真实浏览器通过也不被实现测试替代。后续正常IAB访问恢复后只读同一现存行即可补最后呈现，不新增模型或伪造source。
+
+
+## 12. 用户要求重试：C99真实界面补验通过（2026-10-14，Main）
+
+同一Main上下文正常CUA getState列出IAB id2；正常createBrowserTab打开5173成功，原protocol拒绝未复现。随后沿已记录的原隔离profile53449/5183打开实际会话20261014_013750_6e40a5，只查看已有历史，无新Send/observer/模型。原Noting配置临时停用以避免测试调度，服务退出后配置原始字节完整恢复。
+
+现存真实Instant源在正式Timeline仅一份，按钮aria-expanded初始false；正常点击展开后true，正文含原`<timestamp>2026-10-14T02:19:39.932106+08:00</timestamp>`及原task；再次点击回collapsed。两张实际截图及结构化读数保存于ignored native-integration/c99-retry-{collapsed,expanded}.png、c99-retry-ui.json。原策略拒绝的具体根因仍不明，不把本次恢复解释为已修复某浏览器缺陷。
+
+自有IAB页关闭，53449/5183监听PID84571/84700按归属SIGTERM、exec均exit143；原配置逐字恢复；messages/children/Snapshots、Registry完整行、session API计数均与前置一致，零新增模型。c99-retry-before.json与c99-retry-result.json可复核。C99最终GUI观察现通过，仅为开发补验，不是第二轮Verification或Validation。

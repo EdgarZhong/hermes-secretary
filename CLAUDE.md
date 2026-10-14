@@ -1,4 +1,4 @@
-> 当前阶段（2026-10-14夜间托管）：开发整改与主审集成已收敛，BE产品f8e4161、FE8b3867e已接线，提交后自动push已启用。真实附件、自然Instant先源后Thinking/及时终态、未来task创建/完成/只改期自动pending均有实际链证据。Prompt精简4字符且Memo原文/机制不变；硬清理只交07提案未实施。C99两组件/当前构建通过，最后GUI实看被浏览器策略拒绝，准确保留待明早验收。最后文档与远端核对已完成；本阶段交付，第二轮Verification未启动。
+> 当前阶段（2026-10-14夜间托管）：开发整改与主审集成已收敛，BE产品f8e4161、FE8b3867e已接线，提交后自动push已启用。真实附件、自然Instant先源后Thinking/及时终态、未来task创建/完成/只改期自动pending均有实际链证据。Prompt精简4字符且Memo原文/机制不变；硬清理只交07提案未实施。用户要求重试后，C99真实IAB实看通过：默认collapsed、展开原timestamp、同消息唯一，再折叠成功；临时服务已退出、配置逐字恢复，DB/Registry/API计数不变。Files/Appearance胶囊内容宽度已恢复并实看；文案按用户最新C104要求撤回。UI正式main最终2c019ac已同步；原目标收尾交付，第二轮Verification未启动。
 
 # Hermes Secretary 第二轮主看板
 
@@ -26,9 +26,9 @@
 
 ## 当前目标与阶段
 
-**本阶段交付（2026-10-14）**：今晚授权的代码整改、Main亲审集成、必要正式联调与文档已完成，停在第二轮Verification之前；整轮独立验收尚未完成。唯一未取得的末次开发GUI观察是C99折叠/展开：正式组件两例及当前构建通过，IAB绑定被安全策略拒绝，不绕过、不改用户浏览器，留明早正常UI复核。完整范围、证据与限制见[阶段交付](.autonomous/20261012-round2-web-ui/final-delivery.md)。
+**本阶段交付（2026-10-14）**：今晚授权的代码整改、Main亲审集成、必要正式联调与文档已完成，停在第二轮Verification之前；整轮独立验收尚未完成。C99折叠/展开已按用户“重试”取得真实IAB证据，原策略拒绝未复现；旧失败记录保留为历史。截图所示Files/Appearance胶囊收缩已由sidebar_visual_restore修复，Root亲审并在正式5173 IAB核112×44/选中圆34×34/两分隔1px；文案依用户C104撤回，最终树与该有效实看版本完全相同。完整范围、证据与限制见[阶段交付](.autonomous/20261012-round2-web-ui/final-delivery.md)。
 
-**运行与快照**：BE产品f8e416178ecf24021c614940052561f30dc7929d；FE正式main/修复树8b3867e3db220910b4bc9613af49a0740e07fc3c。后续BE提交仅文档/hook。53445在原生active_list确认无活动工作后沿同一round2-runtime HOME/config/DB更新为PID20193，5173 HTTP200，新RPC已注册；没有清库、迁移或凭据改动。Main修正HMR旧Controller字段初始化，保持同一连接/历史/草稿owner。
+**运行与快照**：BE产品f8e416178ecf24021c614940052561f30dc7929d；FE正式main最终2c019acfa34c0383e3c86e22c1b22871f8f1d73d；此前完整逻辑整改/修复树快照8b3867e3db220910b4bc9613af49a0740e07fc3c继续作为机制证据版本，最新仅侧栏呈现增量。后续BE提交仅文档/hook。53445在原生active_list确认无活动工作后沿同一round2-runtime HOME/config/DB更新为PID20193，5173 HTTP200，新RPC已注册；没有清库、迁移或凭据改动。Main修正HMR旧Controller字段初始化，保持同一连接/历史/草稿owner。
 
 **Git同步最新授权（用户C100）**：用户原话：“云端也有人干活。主仓库和 UI 仓库的git 操作改为每次 commit 自动 push”。两个仓库实际common post-commit已安装且可执行，跟踪源.githooks/post-commit一致；按upstream明确push HEAD:ref，无upstream功能分支推origin同名。主仓库main→origin/main，UI本地main→origin/secretary，worktree共用默认hooks。实际提交自动推送成功且本地/远端hash已核对；失败明确报错，不强推，不自动fetch/merge覆盖云端工作。
 
@@ -38,16 +38,19 @@
 
 **验证与资源**：各owner机制/真实链证据已亲审接收并按版本复用；Main必要定向用例/构建/冻结相关检查通过，未改文件HX012既有提示保留。实际新IAB自然Instant源seq153→DOM21ms，Thinking seq157，terminal seq313→DOM15ms；三个真实Noting完成创建、完成及只改期自动done→pending。自然语言in45s不受原生parser支持，模型改合法in1m并说明偏差，不伪造秒级成功。所有自有临时服务/观察器已退出，临时配置逐字恢复、DB/API计数不变；只保原53445/5173，不重跑大包/模型、不终止用户进程。用户视觉工作树未写入或自动合并。
 
+**用户最新截图整改（2026-10-14）**：原话：“这里怎么回事？不是，为什么你从带mock数据的那个前天晚上的视觉施工 work tree 里边把东西弄过来都这么困难？能不能改好了？赶紧让subagent去改”。参考截图在本机临时目录；原视觉worktree fc18614只读，不触其用户未跟踪文件。sidebar_visual_restore（gpt-6.1-sol/high、无继承、禁止派生）仅恢复appearance wrapper的grid/justify-items:start，Root正式IAB实看通过。补回文案后用户C104明确撤回，最终2c019ac代码树与已实看43795c8相同，原视觉树未修改。Root亲审集成完成，未启动独立Verification。
+
 ### 当前Owner与交接（2026-10-14夜间托管）
 
 | Owner | 当前工作与边界 | 接收状态／未闭合范围 |
 |---|---|---|
+| sidebar_visual_restore · 最新截图修复 | 对照只读Mock视觉树，修正式UI Files/Appearance局部样式 | 最终2c019ac已推origin/secretary；保胶囊/两分隔恢复，文案按C104撤回，Root已亲审并复用完全同树实看证据 |
 | assistant_ui_research · 原前端Owner | 完整开发及附件模型证据已交回、53449/5183已停 | Main亲审接收；Usage微修单worker1pass/build5.37s通过，旧有效包复用；附件正式链及续接Instant真实链已接收 |
-| native_integration · 联调续接 | 全部真实链及收尾已交回；自有服务关闭/配置逐字恢复/DB与API不变 | Main接收附件/Instant21ms/终态15ms及3真实Noting；C99末次IAB被策略阻塞不写通过。无继续重任务，不重跑模型 |
+| native_integration · 联调续接 | 全部真实链及收尾已交回；自有服务关闭/配置逐字恢复/DB与API不变 | Main接收附件/Instant21ms/终态15ms及3真实Noting；C99旧策略失败保留；Root重试正常且实看通过。无继续重任务，不重跑模型 |
 | secretary_task_contract · Core | C84完整交回，正式提交链与资源轻量自查结束 | Main亲审统一owner、真实Snapshot事务/旧新lineage/rearm及33distinct证据，接收开发机制；未重复测试。实际3个新Noting代表链已接收；跨平台与完整独立验收仍未执行 |
 | cleanup_mechanism_proposal · 设计 | 单文档交回docs/07；无代码/Prompt/测试/服务操作 | Main审设计与十类型矩阵、两轮基线、forced/overflow承接和统一接缝；全部硬约束待明日审核，未实施 |
 | prompt_review_v3 | 用户要求停止；资源自查已交回 | 不再参与Prompt。旧v3/4均不实施；Main自行实际最小改稿见repair-secretary-task-contract.md §10 |
-| Main · 全局/集成 | 覆盖/依赖、亲审接线、Prompt+原话对账、相关微修/阶段快照/证据与资源管理 | 必要定向检查、接口/视觉保护集成、阶段提交与交付记录完成；远端一致。第二轮Verification未启动，C99末次GUI限制如实交接 |
+| Main · 全局/集成 | 覆盖/依赖、亲审接线、Prompt+原话对账、相关微修/阶段快照/证据与资源管理 | 必要定向检查、接口/视觉保护集成、阶段提交与交付记录完成；远端一致。第二轮Verification未启动，C99重试GUI通过，最新视觉修复完整交回 |
 
 用户已明确持续托管至目标完成；不再追责卡顿来源，后续防止重任务叠加/资源泄漏。有效证据按版本复用，失去上下文先读本看板、plan统一证据索引与owner交回。硬清理gate撤回；软提示不承诺机器保证。
 
@@ -342,3 +345,9 @@ Main最终接收：最终接线9/9owned、6/6依赖、21/21证据hash相符；�
 
 
 最后资源与续接边界：本轮所有子Agent已交回，只有Main完成文档/remote核对。没有自有53449/5183监听、没有observer/测试/build/model残留；临时profile config byte-identical恢复，DB/Registry/API count不变。C99 browser动作严格阻塞，不能继续重试URL/ID/控制接口；明早用户正常UI处理后才可能补最后实看。先读现report/source manifests，不为丢上下文再做调研/附件/性能/模型大包。
+
+
+**用户追加文案纠正（2026-10-14，C103）**：原话：“这就完了吗？我他妈这个地方还有文案呢！”Main承认局部尺寸复核遗漏原Mock文案；同一sidebar_visual_restore立即续接，不开第二Agent或研究任务。原r10截图文字与当前MockStage源码不同，按最后批准的Mock实现核定并恢复，不凭旧截图新增文字。Root必须核整块标签/间距/两分隔/胶囊/选中态，不以单个bbox通过冒称整块完成。
+
+
+**用户最新收敛（2026-10-14，C104）**：原话：“算了，不要文案了，你赶紧专注于交会你的原目标”。已仅撤回刚新增标签/字号/标签间距，保原Mock胶囊收缩；不再研究或扩展视觉。原目标的代码整改、亲审接线、必要真实链与阶段交付已收敛；C99最后GUI已补齐，硬清理仍仅07提案，Prompt保Memo并原话逐项对账。两仓库提交后自动push，最新远端核对。用户原未跟踪文件不纳入提交；正式第二轮Verification/Validation均未启动。

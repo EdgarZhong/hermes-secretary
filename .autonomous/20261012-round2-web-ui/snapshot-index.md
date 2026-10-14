@@ -227,3 +227,22 @@ C85用户否决最新精简稿：通用Noting总述不应过分强调secretary_t
 ### R2-C100 每次提交自动推送（2026-10-14）
 
 用户明确：“云端也有人干活。主仓库和 UI 仓库的git 操作改为每次 commit 自动 push”。Main据此配置两个仓库shared common post-commit，保原hooks，推当前upstream，无upstream功能分支origin同名，不强推或hook自动集成；UI正式main保既有origin/secretary，不擅建远端main。规则写入主AGENTS及UI AGENTS，hook源随代码记录，其他克隆按说明启用。推送只同步代码，不启动CI/CD或第二轮Verification。
+
+
+### R2-C101 浏览器补验重试（2026-10-14）
+
+用户明确：“重试”。仅授权沿正常内置浏览器入口重试先前未完成的Reminder实看，不授权绕过安全限制或使用真实Chrome。Main正常打开成功，原策略拒绝未复现；既有真实Instant行default aria-expanded=false、展开保原timestamp且单卡、再次折叠已观察。无新增模型请求，隔离配置逐字恢复，DB/Registry/API计数不变；开发补验，不启动独立门禁。
+
+### R2-C102 截图所示侧栏视觉恢复（2026-10-14）
+
+用户原话：“这里怎么回事？不是，为什么你从带mock数据的那个前天晚上的视觉施工 work tree 里边把东西弄过来都这么困难？能不能改好了？赶紧让subagent去改”。用户附图为Files上下分隔及Appearance宽胶囊/左聚图标。明确委派sidebar_visual_restore；恢复原Mock局部视觉，不修改用户原视觉树/业务，不把新的自由设计当原Mock。当前定位为正式页新增全宽appearance wrapper后丢了原footer grid的内容收缩约束；最小恢复wrapper布局。Root亲审与正式IAB实看后记录结果，不将派遣或原因推断冒称已完成。
+
+
+### R2-C103 侧栏文案必须恢复（2026-10-14）
+
+用户原话：“这就完了吗？我他妈这个地方还有文案呢！”C102不只胶囊宽度，还包括原Mock此处文案与整块排版；Main此前把标签判成Mock辅助内容是不当缩窄。继续由同一实现Agent恢复最后批准Mock原文案，Root整块实看；不据此新增其他文案或自由设计。
+
+
+### R2-C104 不要文案，回原目标交付（2026-10-14）
+
+用户原话：“算了，不要文案了，你赶紧专注于交会你的原目标”。覆盖C103文案恢复要求；精确撤回临时标签、标签字号及其间距，保原胶囊收缩/分隔。最终UI2c019ac代码树与已实看43795c8完全相同，自动push；不再扩展视觉研究，Main完成原目标交接，第二轮Verification/Validation仍不启动。

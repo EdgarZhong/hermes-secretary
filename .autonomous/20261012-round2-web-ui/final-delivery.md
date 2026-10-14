@@ -2,9 +2,9 @@
 
 ## 目标状态与结束判定
 
-2026-10-14夜间托管的代码整改、Main亲审集成、必要真实代表链与设计文档已完成；**整轮独立验收未完成，第二次Verification未启动。** 唯一尚未取得的末次开发GUI观察为C99 Reminder默认折叠/展开保内部timestamp：两条正式Timeline组件用例与当前构建通过，但内置浏览器绑定被安全策略明确拒绝，未绕过，留给明早正常UI复核。不能把这项观察写成通过，也不能把开发结果写成整轮PASS。
+2026-10-14夜间托管的代码整改、Main亲审集成、必要真实代表链与设计文档已完成；**整轮独立验收未完成，第二次Verification未启动。** 后续用户要求重试，C99 Reminder默认折叠/展开保内部timestamp已取得真实IAB证据，原绑定拒绝未复现，旧失败保留。后续Files/Appearance胶囊收缩已委派修复并由Main正式IAB实看；文案按用户最新“不要文案”撤回，最终同树证据有效。所有本阶段授权整改收敛，仍不能把开发结果写成整轮PASS。
 
-实际后端产品快照f8e416178ecf24021c614940052561f30dc7929d；UI正式main与修复树8b3867e3db220910b4bc9613af49a0740e07fc3c。后续文档/hook提交仅更新交接与Git同步。用户visual-polish/visual-design没有写入、自动合并或回滚；用户原有未跟踪文件保留。历史阶段交付详见Git历史及plan证据索引，不使用旧版本声明覆盖当前状态。
+实际后端产品快照f8e416178ecf24021c614940052561f30dc7929d；UI正式main最终2c019acfa34c0383e3c86e22c1b22871f8f1d73d，此前完整逻辑整改/修复树8b3867e3db220910b4bc9613af49a0740e07fc3c作为原机制证据快照。后续文档/hook提交仅更新交接与Git同步。用户visual-polish/visual-design没有写入、自动合并或回滚；用户原有未跟踪文件保留。历史阶段交付详见Git历史及plan证据索引，不使用旧版本声明覆盖当前状态。
 
 ## 本轮收敛与授权
 
@@ -13,6 +13,7 @@
 - 实际Prompt仅整体维护段和直接相关类型/工具description调整；6个完整改变字符串5214→5210字符，按此前相同11目标10532→10528；UTF-8少6字节、空白分词少11词，token未测。全部前后英文/直译/用户原话见repair-secretary-task-contract §10，Main自主收敛并非逐句用户批准。
 - C84依02既有契约：同一owner让Schedule/status一版本改变，实际有效Snapshot事务同步Registry；不让模型另call status，不用新id/内容edit/恢复/branch重放已完成occurrence。
 - C99：Reminder保内timestamp且默认折叠。Main撤回误加strip，仅现有foldable条件接入instant；无新增包装/CSS/源或模型上下文变更。
+- C101–104：正常IAB重试已补齐C99真实折叠/展开保timestamp；原策略拒绝未复现。截图所示主题胶囊被全宽wrapper拉伸，恢复原grid内容收缩约束；正式IAB实测112×44、选中圆34×34、两分隔1px。用户最后明确不要文案，精确撤回临时标签，最终树与已实看43795c8一致。
 - C100：每次commit自动push，已安装两个仓库common post-commit并跟踪源；尊重upstream、无则origin同名功能分支。正式BE main→origin/main，UI main→origin/secretary；不强推、不hook自动集成、不启GitHub CI/CD。
 
 ## 已完成与交付物
@@ -32,7 +33,7 @@
 
 ## 剩余、阻塞与影响
 
-- C99末次IAB历史实看被浏览器安全策略拒绝。实际HTTP请求被返回“protocol not allowed”且允许列表是HTTP/HTTPS；Main不绕URL/ID/其他浏览器/底层控制。代码与两正式组件用例/构建通过，实际图形操作仍未完成；先前自然source链IAB证据不失效。临时queued页未能合法绑定/关闭，明早可正常UI处理。
+- C99旧浏览器策略失败保留在真实链报告§11；用户要求正常重试后成功，§12有真实collapsed→expanded保原timestamp→collapsed/单卡截图。该轮临时页面已关闭，服务退出、配置逐字恢复、DB/Registry/API计数不变；没有使用Chrome或绕过策略。
 - 07提出的清理范围、强制结束A/B/C、刚done与即时取消例外、下一次时间要求都是待审政策；本文不批准任何硬机制。软提示不能保证永不积压。
 - 开发旧非法Snapshot含无Schedule task的加载边界已记录，不迁移/修补用户库；真实Core/Noting代表使用合法隔离数据。现有运行库/config保留，未来新会话按新合同；不保证旧非法派生状态可写。
 - browser本地选文件此前受真实Chrome扩展权限限制；已停止真实浏览器，不改权限。旧原生ref正式submit/模型、新上传API和前端接线机制证据有效，不能冒称新IAB本地filechooser全链通过。
@@ -46,4 +47,4 @@
 
 现场重点：Reminder默认折叠，展开保timestamp；新消息/Thinking追踪真实进度，无终态继续补播；Instant源先输出；活动/空闲Usage均可见；slash Tab/单流换行；侧栏分组与两分隔；活动编辑单确认/失败保稿及Undo。旧资料可读与新合法任务是不同边界，必要时使用新会话验证Core，不静默改旧Notebook。
 
-续接先读根CLAUDE顶部、plan统一证据索引及本报告，保留有效证据，不重传500MB/重跑模型/重开已完研究。剩余GUI与两独立门禁如实记录；不要未经授权启动下一次Verification。
+续接先读根CLAUDE顶部、plan统一证据索引及本报告，保留有效证据，不重传500MB/重跑模型/重开已完研究。最新侧栏修复与C99补验已收敛；两独立门禁未执行；不要未经授权启动下一次Verification。
