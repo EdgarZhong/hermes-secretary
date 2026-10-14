@@ -22,6 +22,7 @@ class UsageCounters(Result):
     input_tokens: int | None
     cache_read_tokens: int | None
     output_tokens: int | None
+    total_tokens: int | None = None
     cache_hit_rate: float | None
     availability: Literal["available", "partial", "unknown"]
     source: Literal["native_canonical_accounting", "unknown"]

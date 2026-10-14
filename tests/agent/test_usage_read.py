@@ -31,6 +31,7 @@ def test_noting_and_generic_subagents_are_not_parent_main_usage():
         finish_main_turn_usage(child, "child", {})
         assert not hasattr(child, "_main_usage_read")
         assert main_usage_detail(child)["session_total"]["input_tokens"] is None
+        assert main_usage_detail(child)["session_total"]["total_tokens"] is None
 
 
 def test_provider_response_rejected_before_canonical_never_guesses_tokens():
@@ -73,6 +74,7 @@ def test_moa_opaque_calls_and_tokens_remain_unknown():
     finish_main_turn_usage(a, "t", {})
     latest = main_usage_detail(a)["latest_completed_turn"]
     assert latest["model_calls"] is None and latest["input_tokens"] is None
+    assert latest["total_tokens"] is None
     assert latest["model_calls_source"] == "unknown" and "opaque_moa_calls" in latest["reasons"]
 
 
@@ -86,6 +88,80 @@ def test_abandon_and_unbound_finish_cannot_refinish_previous_turn():
     latest = main_usage_detail(a)["latest_completed_turn"]
     assert latest["availability"] == "unknown" and "turn_exception" in latest["reasons"]
     assert latest["input_tokens"] is None and main_usage_detail(a)["session_total"]["turns"] == 1
+    assert latest["total_tokens"] is None
     abandon_main_turn_usage(a)
     finish_main_turn_usage(a, "t", {})
     assert main_usage_detail(a)["session_total"]["turns"] == 1
+
+
+def test_total_uses_full_canonical_prompt_including_cache_writes():
+    a = agent()
+    begin_main_turn_usage(a, "first", has_prior_history=False)
+    observe(a, {"prompt_tokens": 100, "completion_tokens": 20,
+                "prompt_tokens_details": {"cached_tokens": 30, "cache_write_tokens": 40}})
+    finish_main_turn_usage(a, "first", {})
+    first = main_usage_detail(a)
+    assert first["latest_completed_turn"]["total_tokens"] == 120
+    assert first["latest_completed_turn"]["input_tokens"] == 30
+    assert first["latest_completed_turn"]["cache_hit_rate"] == 0.5
+    begin_main_turn_usage(a, "next", has_prior_history=True)
+    observe(a, {"prompt_tokens": 50, "completion_tokens": 5})
+    # The native full prompt remains exact despite omitted cache subdivisions.
+    active = main_usage_detail(a)
+    assert active["session_total"]["total_tokens"] == 175
+    assert active["latest_completed_turn"]["total_tokens"] == 120
+    finish_main_turn_usage(a, "next", {})
+    finish_main_turn_usage(a, "next", {})
+    assert main_usage_detail(a)["latest_completed_turn"]["total_tokens"] == 55
+    assert main_usage_detail(a)["session_total"]["total_tokens"] == 175
+
+
+def test_anthropic_total_requires_explicit_cache_write_including_zero():
+    for write, expected in ((None, None), (0, 45), (40, 85)):
+        a = agent()
+        a.provider, a.api_mode = "anthropic", "anthropic_messages"
+        usage = {"input_tokens": 10, "output_tokens": 5, "cache_read_input_tokens": 30}
+        if write is not None:
+            usage["cache_creation_input_tokens"] = write
+        begin_main_turn_usage(a, "turn", has_prior_history=False)
+        observe(a, usage)
+        finish_main_turn_usage(a, "turn", {})
+        detail = main_usage_detail(a)
+        assert detail["session_total"]["total_tokens"] == expected
+        assert detail["latest_completed_turn"]["total_tokens"] == expected
+
+
+def test_cold_total_and_session_rotation_never_relabel_latest():
+    a = agent()
+    begin_main_turn_usage(a, "restored", has_prior_history=True)
+    observe(a, {"prompt_tokens": 100, "completion_tokens": 20})
+    finish_main_turn_usage(a, "restored", {})
+    assert main_usage_detail(a)["session_total"]["total_tokens"] is None
+    assert main_usage_detail(a)["latest_completed_turn"]["total_tokens"] == 120
+    a.session_id = "rotated"
+    begin_main_turn_usage(a, "new", has_prior_history=False)
+    assert main_usage_detail(a)["latest_completed_turn"] is None
+    observe(a, {"prompt_tokens": 10, "completion_tokens": 2})
+    finish_main_turn_usage(a, "new", {})
+    assert main_usage_detail(a)["session_total"]["total_tokens"] == 12
+
+
+def test_inconsistent_complete_prompt_or_missing_output_keeps_total_unknown():
+    for usage in ({"prompt_tokens": 10, "completion_tokens": 5, "cached_tokens": 30},
+                  {"prompt_tokens": 10, "cached_tokens": 0}):
+        a = agent()
+        begin_main_turn_usage(a, "turn", has_prior_history=False)
+        observe(a, usage)
+        finish_main_turn_usage(a, "turn", {})
+        assert main_usage_detail(a)["latest_completed_turn"]["total_tokens"] is None
+
+
+def test_responses_total_known_without_cache_write_but_external_dispatch_unknown():
+    for endpoint, expected in (("https://example.invalid", 120), ("acp://example", None)):
+        a = agent(base_url=endpoint)
+        a.api_mode = "codex_responses"
+        begin_main_turn_usage(a, "turn", has_prior_history=False)
+        observe(a, {"input_tokens": 100, "output_tokens": 20,
+                    "input_tokens_details": {"cached_tokens": 30}})
+        finish_main_turn_usage(a, "turn", {})
+        assert main_usage_detail(a)["latest_completed_turn"]["total_tokens"] == expected

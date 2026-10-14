@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
-_BUCKETS = ("input_tokens", "cache_read_tokens", "output_tokens")
+_BUCKETS = ("input_tokens", "cache_read_tokens", "output_tokens", "total_tokens")
 
 
 def _now():
@@ -128,13 +128,18 @@ def _has_usage_path(raw, paths):
     return False
 
 
-def _unknown_buckets(agent, response):
-    # Reuse native accounting's field semantics, never implement another normalizer.
+def _usage_shape(agent):
     from agent.usage_pricing import _ANTHROPIC_USAGE_SHAPE, _CHAT_USAGE_SHAPE, _CODEX_USAGE_SHAPE
     mode = getattr(agent, "api_mode", None)
     provider = str(getattr(agent, "provider", "") or "").lower()
-    shape = (_ANTHROPIC_USAGE_SHAPE if mode == "anthropic_messages" or provider == "anthropic"
-             else _CODEX_USAGE_SHAPE if mode == "codex_responses" else _CHAT_USAGE_SHAPE)
+    return (_ANTHROPIC_USAGE_SHAPE if mode == "anthropic_messages" or provider == "anthropic"
+            else _CODEX_USAGE_SHAPE if mode == "codex_responses" else _CHAT_USAGE_SHAPE)
+
+
+def _unknown_buckets(agent, response, canonical_usage):
+    # Reuse native accounting's field semantics, never implement another normalizer.
+    from agent.usage_pricing import _ANTHROPIC_USAGE_SHAPE, _first_nonzero
+    shape = _usage_shape(agent)
     raw = getattr(response, "usage", None)
     unknown = set()
     if not _has_usage_path(raw, shape[0]):
@@ -145,6 +150,15 @@ def _unknown_buckets(agent, response):
         unknown.add("cache_read_tokens")
         if shape is not _ANTHROPIC_USAGE_SHAPE:
             unknown.add("input_tokens")
+    # Chat/Responses report the complete priced prompt even when individual cache
+    # fields are absent. Anthropic reports uncached input, so all four buckets must
+    # be explicit. The value itself always comes from the same canonical receipt.
+    complete_prompt = (_has_usage_path(raw, shape[0]) and
+                       (all(_has_usage_path(raw, paths) for paths in shape[2:])
+                        if shape is _ANTHROPIC_USAGE_SHAPE else
+                        canonical_usage.prompt_tokens == _first_nonzero(raw, *shape[0])))
+    if not complete_prompt or not _has_usage_path(raw, shape[1]):
+        unknown.add("total_tokens")
     return unknown
 
 
@@ -172,7 +186,7 @@ def observe_main_canonical_usage(agent, response, canonical_usage):
                     count = getattr(canonical_usage, key)
                     turn.tokens[key] += count
                     owner.tokens[key] += count
-                unknown = _unknown_buckets(agent, response)
+                unknown = _unknown_buckets(agent, response, canonical_usage)
                 turn.unknown.update(unknown)
                 if unknown:
                     turn.reasons.add("incomplete_usage_fields")
@@ -180,6 +194,8 @@ def observe_main_canonical_usage(agent, response, canonical_usage):
                     turn.reasons.add("opaque_moa_calls")
                 if "opaque_moa_calls" in turn.reasons:
                     turn.unknown.update(_BUCKETS)
+                if "opaque_external_dispatch" in turn.reasons:
+                    turn.unknown.add("total_tokens")
                 if (str(getattr(agent, "provider", "") or "").lower() in {"minimax", "minimax-cn"}
                         and getattr(agent, "api_mode", None) == "anthropic_messages"):
                     turn.reasons.add("incompatible_cache_semantics")
