@@ -708,7 +708,8 @@ def _finish_codex_turn(agent, turn, messages: List[Dict[str, Any]], *, original_
     # External memory sync skipped on interrupt/error (no partial transcripts).
     if not turn.interrupted and turn.error is None:
         _call_guarded(getattr(agent, "_sync_external_memory_for_turn", None), "external memory sync raised", kwargs=dict(
-            original_user_message=original_user_message, final_response=turn.final_text, interrupted=False, messages=messages,
+            original_user_message=original_user_message, final_response=turn.final_text, interrupted=turn.interrupted, messages=messages,
+            completed=not turn.interrupted and turn.error is None, failed=turn.error is not None,
         ))
     # Background review fork: only when a trigger tripped AND a real final response exists.
     if turn.final_text and not turn.interrupted and (should_review_memory or should_review_skills):

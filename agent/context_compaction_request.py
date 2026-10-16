@@ -17,6 +17,18 @@ logger = logging.getLogger(__name__)
 _UNKNOWN = object()
 
 
+def prepare_noting_for_native_compression(agent, messages, *, trigger=None, force=False, verbatim_tail=None):
+    """The sole native pre-summary increment; Idle already froze its child before requesting this work."""
+    if trigger == 'noting_joint_idle':
+        return
+    try:
+        from secretary.noting_runtime import prepare_joint_noting
+        active = [*messages, *verbatim_tail] if verbatim_tail else messages
+        prepare_joint_noting(agent, trigger='manual' if force else 'auto_compaction', messages=active)
+    except Exception:
+        logger.warning('Noting preparation failed; native compression continues', exc_info=True)
+
+
 @dataclass
 class NativeCompactionResult:
     ok: bool
@@ -219,7 +231,7 @@ def _execute_request(request, messages, custom, *, idle=False):
         token = set_hermes_home_override(Path(request.db.db_path).parent)
         try:
             request.result = agent._compress_context(messages, custom, approx_tokens=request.usage,
-                trigger='noting_compact_parent', snapshot_is_current=request.current, native_request=request,
+                trigger='noting_joint_idle', snapshot_is_current=request.current, native_request=request,
                 admission_receipt=_NativeAdmissionReceipt(request))
         finally:
             reset_hermes_home_override(token)

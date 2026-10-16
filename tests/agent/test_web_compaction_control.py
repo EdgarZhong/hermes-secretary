@@ -15,7 +15,7 @@ from tests.agent.test_context_compaction_request import _agent
 
 @pytest.fixture
 def runtime(tmp_path, monkeypatch):
-    (tmp_path / 'config.yaml').write_text('noting:\n  enabled: true\n  idle_delay_seconds: 3600\n')
+    (tmp_path / 'config.yaml').write_text('noting:\n  enabled: true\n  idle:\n    delay_seconds: 3600\n')
     db = SessionDB(tmp_path / 'state.db')
     db.create_session('native-request-probe', source='cli', system_prompt='Native probe root')
     for n in range(30):
@@ -36,7 +36,7 @@ def runtime(tmp_path, monkeypatch):
 
 
 @pytest.mark.parametrize('in_place', [True, False])
-@pytest.mark.parametrize('trigger', ['manual', 'auto', 'noting_compact_parent'])
+@pytest.mark.parametrize('trigger', ['manual', 'auto', 'noting_joint_idle'])
 @pytest.mark.parametrize('winner', ['cancel', 'commit'])
 def test_native_summary_and_publication_race(runtime, monkeypatch, in_place, trigger, winner):
     agent, db = runtime
@@ -48,7 +48,8 @@ def test_native_summary_and_publication_race(runtime, monkeypatch, in_place, tri
     before_live = copy.deepcopy(agent._session_messages)
     ref = agent._secretary_conversation_ref
     snapshot = db.notebook_commit_snapshot(ref, {section: [] for section in SECTIONS},
-                                         anchor_message_uid=before[-1]['message_uid'])
+                                         anchor_message_uid=before[-1]['message_uid'],
+                                         termination={'type': 'finish_noting', 'reason': 'No durable changes'})
     agent._pending_steer = 'pending stays'
     interrupted = getattr(agent, '_interrupt_requested', False)
     if winner == 'commit':
@@ -193,7 +194,7 @@ def test_real_main_auto_compaction_cancel_continues_same_turn(runtime, monkeypat
 def test_noting_native_request_snapshot_survives_cancellation(runtime, monkeypatch):
     from agent.context_compaction_request import trust_default_system_message
     from secretary.noting_child import commit_noting_snapshot
-    from secretary.noting_compact import compact_parent
+    from secretary.noting_compact import request_parent_compaction
     agent, db = runtime
     rpc = _rpc_for_agent(agent, db, monkeypatch)
     entered, release = threading.Event(), threading.Event()
@@ -204,20 +205,20 @@ def test_noting_native_request_snapshot_survives_cancellation(runtime, monkeypat
         assert release.wait(10)
         return '## Progress\nBackground admitted summary.'
     monkeypatch.setattr(agent.context_compressor, '_call_summary_llm', summary)
-    admitted = compact_parent(agent)
+    admitted = request_parent_compaction(agent)
     assert admitted.ok and admitted.status == 'admitted'
     assert entered.wait(5)
     ref = agent._secretary_conversation_ref
     anchor = db.get_messages(agent.session_id)[-1]['message_uid']
     snapshot = commit_noting_snapshot(db, ref, {section: [] for section in SECTIONS}, anchor_message_uid=anchor,
-                                     trigger_type='idle', runtime_profile='NOTING_WITH_COMPACTION',
-                                     termination={'type': 'compact_parent'})
+                                     trigger_type='idle', runtime_profile='NOTING',
+                                     termination={'type': 'finish_noting', 'reason': 'No durable changes'})
     observed = rpc('session.compaction_state')
     assert rpc('session.compaction_cancel', operation_id=observed['operation_id'])['outcome'] == 'cancelled'
     release.set()
     agent._native_compaction_worker.join(15)
     assert not agent._native_compaction_worker.is_alive()
-    assert db.notebook_current(ref)['snapshot_id'] == snapshot
+    assert db.notebook_current(ref)['snapshot_id'] == snapshot['snapshot_id']
     assert agent.context_compressor.compression_count == 0
     assert rpc('session.compaction_state')['state'] == 'cancelled'
 

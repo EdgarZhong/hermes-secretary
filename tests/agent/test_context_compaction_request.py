@@ -30,6 +30,8 @@ def _agent(db, monkeypatch, tmp_path):
     monkeypatch.setattr('model_tools.check_toolset_requirements', lambda *a, **kw: {})
     monkeypatch.setattr('agent.process_bootstrap.OpenAI', lambda **kw: MagicMock())
     monkeypatch.setattr('agent.model_metadata.fetch_model_metadata', lambda *a, **kw: {})
+    monkeypatch.setattr('agent.context_compressor.get_model_context_length', lambda *a, **kw: 130_000)
+    monkeypatch.setattr('secretary.noting_child.spawn_noting_task', lambda *a, **kw: threading.Thread(target=lambda: None))
     monkeypatch.setattr('agent.title_generator.maybe_auto_title', lambda *a, **kw: None)
     monkeypatch.setattr('run_agent._hermes_home', tmp_path / 'home')
     (tmp_path / 'home/logs').mkdir(parents=True, exist_ok=True)
@@ -93,7 +95,7 @@ def test_supported_framework_writer_can_create_native_foreign_tail(tmp_path, mon
         def run():
             try:
                 results.append(parent._compress_context(parent._session_messages, None,
-                               approx_tokens=10000, trigger='noting_compact_parent'))
+                               approx_tokens=10000, trigger='noting_joint_idle'))
             except BaseException as exc:
                 errors.append(repr(exc))
         worker = threading.Thread(target=run, name='native-probe', daemon=True)
@@ -158,7 +160,7 @@ def test_stale_separate_agent_history_survives_immediate_native_turn_admission(t
         parent.compression_in_place = True
         monkeypatch.setattr(parent.context_compressor, 'compress', _summary)
         returned, _ = parent._compress_context(parent._session_messages, None,
-                          approx_tokens=10000, trigger='noting_compact_parent')
+                              approx_tokens=10000, trigger='noting_joint_idle')
         durable_before = peer_db.get_messages(peer.session_id)
         active_uids = {m['message_uid'] for m in durable_before}
         retired = set(old_uids) - active_uids

@@ -23,6 +23,28 @@ from agent.turn_failure_copy import site_copy, stamp_failure
 logger = logging.getLogger("agent.conversation_loop")
 
 
+def _provider_response_received(agent, response):
+    """Confirm actual nonempty provider output with the native transport's shape and normalization."""
+    try:
+        from agent.turn_recovery import validate_response_shape
+        from agent.turn_truncation import normalize_response_for_agent
+
+        if (str(getattr(response, "status", "")).lower() in {"failed", "cancelled", "error"}
+                or getattr(response, "error", None)):
+            return False
+        if validate_response_shape(agent, response)[0]:
+            return False
+        normalized = normalize_response_for_agent(agent, response)
+        if isinstance(normalized.content, str) and normalized.content.strip():
+            return True
+        for call in normalized.tool_calls or ():
+            if isinstance(call.name, str) and call.name.strip():
+                return True
+    except Exception:
+        logger.debug("Provider response did not establish Reminder delivery", exc_info=True)
+    return False
+
+
 def stop_thinking_spinner(agent: Any, thinking_spinner: Any) -> None:
     """Stop the spinner silently and clear the thinking callback; returns ``None`` so
     callers can rebind ``thinking_spinner = stop_thinking_spinner(agent, thinking_spinner)``."""
@@ -110,7 +132,7 @@ def perform_api_call(
                         next_api_kwargs, on_first_delta=_stop_spinner
                     )
                     usage_receipt[0] = answer
-                agent._secretary_reminder_provider_responded = answer is not None
+                agent._secretary_reminder_provider_responded = _provider_response_received(agent, answer)
                 return answer
             from agent import relay_llm
 
@@ -140,7 +162,7 @@ def perform_api_call(
                 },
                 defer_logical_completion=True,
             )
-            agent._secretary_reminder_provider_responded = answer is not None
+            agent._secretary_reminder_provider_responded = _provider_response_received(agent, answer)
             return answer
 
     from hermes_cli.middleware import run_llm_execution_middleware

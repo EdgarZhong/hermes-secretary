@@ -898,7 +898,7 @@ class AIAgent(
         _notify_context_engine_session_end(self, messages)
 
     def _sync_external_memory_for_turn(self, *, original_user_message: Any, final_response: Any, interrupted: bool,
-                                       messages: list | None = None) -> None:
+                                       messages: list | None = None, completed: bool = True, failed: bool = False) -> None:
         """Mirror a completed turn into external memory providers (``sync_all`` + ``queue_prefetch_all``).
 
         Uses ``original_user_message`` (``user_message`` may carry injected skill content). Interrupted turns
@@ -910,7 +910,7 @@ class AIAgent(
         is almost certainly a retry of the same intent, and a prefetch keyed on the interrupted turn would
         fire against stale context. See #15218.
         """
-        if interrupted or not (self._memory_manager and final_response and original_user_message):
+        if not completed or failed or interrupted or not (self._memory_manager and final_response and original_user_message):
             return
         # Flatten multimodal parts to text (newline-joined for memory).
         user_text = _summarize_user_message_for_log(original_user_message, sep="\n")

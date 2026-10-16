@@ -1005,13 +1005,11 @@ class SessionMessagesMixin:
         compacted set by a pure-SQL clone (fresh ids); ``None`` archives everything. *covered_ids*: the
         rows the compressor actually held. When proved, only those are summarized; every other active
         row is cloned after the new set, so a gap below the newest held id is not archived unseen.
-        ``None`` keeps the watermark path. *unresolved_held*: held dicts with no row id, matched inside
-        the transaction. *lock_holder*: verified
-        in-txn so a reclaimed lease fails instead of clobbering the winner. *tail_count*: the LAST N compacted
+        ``None`` keeps the watermark path. *unresolved_held* matches held dicts without row IDs in this transaction.
+        *lock_holder* is verified in-txn so a reclaimed lease cannot clobber the winner. *tail_count*: the LAST N compacted
         rows are the verbatim carried tail; *carried_messages* names exact durable originals carried forward
         verbatim when they are not a contiguous suffix (micro-compaction's prefix + marker + suffix shape).
-        They are resolved inside this transaction by row id when present, else by unique durable identity +
-        timestamp. Those originals and the clones' originals are superseded duplicates and get rewind flags
+        Resolve them by row ID or unique durable identity + timestamp. Superseded originals get rewind flags
         (``active=0, compacted=0``) so search doesn't return each carried message once per compaction.
         ``model_config_patch`` merges in the same txn (``None`` removes a key).
 
@@ -1024,6 +1022,7 @@ class SessionMessagesMixin:
         rows fresh ids; consumers that reference durable row ids re-resolve by content (see 3e8ab0610).
         """
         from hermes_state import SessionCompressionInProgressError
+        from hermes_state_compression import _noting_compaction_write
         def _do(conn):
             if lock_holder is not None:
                 lock_row = conn.execute(_COMPRESSION_LOCK_ROW_SQL, (session_id,)).fetchone()
@@ -1078,7 +1077,8 @@ class SessionMessagesMixin:
             conn.execute(f"{_SET_COUNTERS_SQL}{', model_config = ?' if patch else ''} WHERE id = ?",
                 (inserted, tool_calls_total, *((patched_model_config,) if patch else ()), session_id))
             return inserted
-        return self._execute_transcript_write(_do, compacted_messages)
+        return self._execute_transcript_write(lambda conn: _noting_compaction_write(
+            self, conn, session_id, compacted_messages, lambda: _do(conn)), compacted_messages)
 
     def _message_column_names(self, conn) -> List[str]:
         """Column names of the messages table, cached per-connection era."""

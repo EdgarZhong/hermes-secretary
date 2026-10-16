@@ -40,6 +40,7 @@ from agent.usage_anchor import set_usage_anchor
 from hermes_state_ids import new_session_id as mint_session_id
 from hermes_state_pidns import holder_namespace_token
 from secretary.noting_admission_receipt import dispatch_codex_compaction, observe_native_admission
+from agent.context_compaction_request import prepare_noting_for_native_compression
 logger = logging.getLogger(__name__)
 
 @contextlib.contextmanager
@@ -3810,7 +3811,7 @@ def _run_summary_phase(
     approx_tokens: Optional[int], focus_topic: Optional[str], force: bool, bypass_cooldown: bool,
     commit_fence: Optional[CompressionCommitFence], hard_cancel_event: Any, system_message: str,
     attempt: _Attempt,
-    verbatim_tail: Optional[list] = None,
+    verbatim_tail: Optional[list] = None, noting_trigger: Optional[str] = None,
 ) -> _SummaryPhase:
     """Adopt a grown durable parent, gather memory context and run the summarizer.
     A hard cancel restores the compressor snapshot + live list, records a stall backoff while the lease is
@@ -3832,11 +3833,10 @@ def _run_summary_phase(
             if _adopted_parent is not None:
                 messages = _adopted_parent
                 pre_msg_count = len(messages)
-                # Estimate was for the stale snapshot; force re-derivation from adopted rows.
-                approx_tokens = 0
-                # Adopted list is fully durable: re-anchor persist idx at the end so the post-
-                # compression flush skips it; run_agent marker sync realigns _session_messages.
+                approx_tokens = 0  # Adopted rows need native re-measurement.
+                # The adopted list is durable; skip it on the post-compression flush.
                 agent._persist_user_message_idx = len(messages)
+        prepare_noting_for_native_compression(agent, messages, trigger=noting_trigger, force=force, verbatim_tail=verbatim_tail)
         memory_context = _pre_compress_memory_context(agent, messages, checkpoint_required)
         compress_fn, compress_kwargs = _resolve_compress_call(
             agent, approx_tokens=approx_tokens, focus_topic=focus_topic, force=force, memory_context=memory_context,
@@ -3958,7 +3958,7 @@ def _begin_compression_attempt(
 
 def _route_codex_compaction(
     agent: Any, messages: list, system_message: str, *, commit_fence: Optional[CompressionCommitFence],
-    attempt: _Attempt, approx_tokens: Optional[int], task_id: str, force: bool, admission_receipt=None, snapshot_is_current=None,
+    attempt: _Attempt, approx_tokens: Optional[int], task_id: str, force: bool, admission_receipt=None, snapshot_is_current=None, noting_trigger=None,
 ) -> Tuple[list, str]:
     """Codex owns the real thread: run its own compact under the commit fence bracket."""
     if commit_fence is not None and not commit_fence.begin_commit(getattr(agent, "_hard_interrupt_requested", None)):
@@ -3967,7 +3967,7 @@ def _route_codex_compaction(
     try:
         return _compress_context_via_codex_app_server(
             agent, messages, system_message, approx_tokens=approx_tokens, task_id=task_id, force=force,
-            admission_receipt=admission_receipt, commit_fence=commit_fence, snapshot_is_current=snapshot_is_current,
+            admission_receipt=admission_receipt, commit_fence=commit_fence, snapshot_is_current=snapshot_is_current, noting_trigger=noting_trigger,
         )
     finally:
         if commit_fence is not None:
@@ -4007,7 +4007,7 @@ def compress_context(
     session state after its caller has moved on. verbatim_tail: The exchanges ``/compress here N`` keeps
     after ``messages``; an in-place commit stores them after the compacted head and returns head + tail.
     trigger: Why this attempt runs (``"overflow"`` for provider-rejected requests); defaults to manual/auto
-    from ``force``. Feeds attempt telemetry only.
+    from ``force``; the Idle label also prevents preparing the same Noting task twice.
     snapshot_is_current: Optional host snapshot validation after durable lease admission. This protects
     edits completed before admission; it is not a substitute for the host's final publication fence.
     """
@@ -4027,7 +4027,7 @@ def compress_context(
             )
         return _route_codex_compaction(
             agent, messages, system_message, commit_fence=commit_fence, attempt=attempt, approx_tokens=approx_tokens,
-            task_id=task_id, force=force, admission_receipt=admission_receipt, snapshot_is_current=snapshot_is_current,
+            task_id=task_id, force=force, admission_receipt=admission_receipt, snapshot_is_current=snapshot_is_current, noting_trigger=trigger,
         )
 
     # All automatic entrypoints honor compressor cooldown/breaker state; hygiene's
@@ -4110,7 +4110,7 @@ def compress_context(
         agent, messages, lease=lease, in_place=in_place, checkpoint_required=checkpoint_required,
         approx_tokens=approx_tokens, focus_topic=focus_topic, force=force, bypass_cooldown=bypass_cooldown,
         commit_fence=commit_fence, hard_cancel_event=_hard_cancel_event, system_message=system_message, attempt=attempt,
-        verbatim_tail=verbatim_tail,
+        verbatim_tail=verbatim_tail, noting_trigger=trigger,
     )
     if phase.abort_prompt is not None:
         return phase.messages, phase.abort_prompt
@@ -4237,7 +4237,7 @@ def _record_codex_compaction_failure(agent: Any, error: str) -> None:
 
 def _compress_context_via_codex_app_server(
     agent: Any, messages: list, system_message: Optional[str], *, approx_tokens: Optional[int] = None,
-    task_id: str = "default", force: bool = False, admission_receipt=None, commit_fence=None, snapshot_is_current=None,
+    task_id: str = "default", force: bool = False, admission_receipt=None, commit_fence=None, snapshot_is_current=None, noting_trigger=None,
 ) -> Tuple[list, str]:
     """Route compaction to Codex app-server for Codex-owned threads.
     Rewriting the local transcript would not shrink the Codex thread, so Codex compacts its own thread and
@@ -4270,6 +4270,7 @@ def _compress_context_via_codex_app_server(
         agent._emit_status(COMPACTION_STATUS)
     _activity_heartbeat = _CompressionActivityHeartbeat(agent, emit_client_status=True).start()
     try:
+        prepare_noting_for_native_compression(agent, messages, trigger=noting_trigger, force=force)
         result = dispatch_codex_compaction(agent, codex_session, commit_fence, admission_receipt, snapshot_is_current)
     except BaseException:
         _activity_heartbeat.stop("context compression failed")
@@ -4300,8 +4301,7 @@ def _compress_context_via_codex_app_server(
         getattr(result, "thread_id", None) or "", getattr(result, "turn_id", None) or "",
     )
     existing_prompt = _existing_system_prompt(agent, system_message)
-    # Terminal edge only on success — failure/interrupt paths above return
-    # without it, matching the main compress_context() gating.
+    # Completion is emitted only on success; failure/interrupt returned above.
     _emit_compaction_done(agent)
     return messages, existing_prompt
 

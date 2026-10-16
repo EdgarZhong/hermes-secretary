@@ -18,6 +18,45 @@ from hermes_state_common import (
 # Log-record parity with the origin module (caplog tests pin "hermes_state").
 logger = logging.getLogger("hermes_state")
 
+
+def _noting_compaction_write(db, conn, session_id, messages, write, *, owner_session_id=None):
+    """Publish the native boundary and its existing Secretary interval in one transaction.
+
+    Secretary observation is fail-open for native work. A disabled feature creates no
+    state; an already tracked interval still observes successful native progress.
+    """
+    new_summary = False
+    try:
+        from agent.context_compressor import is_compaction_summary_message
+        new_summary = any(is_compaction_summary_message(message) and (
+            not message.get("message_uid") or conn.execute(
+                "SELECT 1 FROM messages WHERE message_uid=? LIMIT 1", (message["message_uid"],)).fetchone() is None
+        ) for message in messages)
+    except Exception:
+        logger.debug("Noting boundary detection unavailable", exc_info=True)
+    result = write()
+    try:
+        if not new_summary:
+            return result
+        from secretary.noting_runtime import _CHILD_SOURCES, _delegate_child_row
+        from secretary.noting_scope import settings_for_db
+        owner = owner_session_id or session_id
+        row = conn.execute("SELECT * FROM sessions WHERE id=?", (owner,)).fetchone()
+        binding = conn.execute("SELECT conversation_ref FROM secretary_session_bindings WHERE session_id=?",
+                               (owner,)).fetchone()
+        if row is None or binding is None or row["source"] in _CHILD_SOURCES or _delegate_child_row(dict(row)):
+            return result
+        tracked = conn.execute("SELECT 1 FROM secretary_noting_compaction_state WHERE conversation_ref=?",
+                               (binding["conversation_ref"],)).fetchone()
+        if tracked is None and not settings_for_db(db).enabled:
+            return result
+        ref = db.resolve_conversation_ref_conn(conn, session_id)
+        db.noting_record_compaction_conn(conn, ref)
+    except Exception:
+        logger.debug("Noting interval observation failed; native publication remains valid", exc_info=True)
+    return result
+
+
 _COOLDOWN_ROW_SQL = (
     "SELECT compression_failure_cooldown_until, compression_failure_error FROM sessions WHERE id = ?"
 )
@@ -335,7 +374,8 @@ class SessionCompressionMixin:
                 # A live continuation under an idle-sweep archive re-activates the chat; after the
                 # closure above the child is linked into the lineage walk (#117713).
                 self._unarchive_auto_archived_lineage(conn, child_session_id)
-        self._execute_transcript_write(_do, messages)
+        self._execute_transcript_write(lambda conn: _noting_compaction_write(
+            self, conn, child_session_id, messages, lambda: _do(conn), owner_session_id=parent_session_id), messages)
 
     def _write_sql_logged(self, op: str, session_id: str, sql: str, params) -> None:
         """``_write_sql`` that logs (never raises) on ``sqlite3.Error``."""
