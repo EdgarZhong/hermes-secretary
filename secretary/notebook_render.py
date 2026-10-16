@@ -1,72 +1,69 @@
-"""Human slash rendering and minimal AI-facing Notebook JSON are separate views."""
+"""Complete Notebook projections; no legacy Schedule rendering or length quota."""
 
-from copy import deepcopy
 import json
+from copy import deepcopy
 
-from secretary.notebook_model import SECTIONS
 from hermes_time import format_timestamp
+from secretary.notebook_contract import SECTIONS, public_state
 
 
 def readable_notebook_entry(entry):
-    """Copy an entry for presentation; one-shot display uses its canonical instant."""
+    """Copy a current entry without inventing timestamps or truncating identifiers."""
     projected = deepcopy(entry)
-    intent = projected.get("schedule")
-    if intent and intent["canonical_schedule"].get("kind") == "once":
-        schedule = intent["canonical_schedule"]
-        schedule["run_at"] = format_timestamp(schedule["run_at"])
-        if schedule.get("display", "").startswith("once at "):
-            schedule["display"] = "once at " + schedule["run_at"]
-        if projected["type"] == "watchpoint":
-            projected["fields"]["until"] = schedule["run_at"]
+    projected.pop("archived", None)
     return projected
 
 
 def readable_notebook_state(state):
-    return {section: [readable_notebook_entry(entry) for entry in state[section]
-                     if not entry.get("archived")] for section in SECTIONS}
+    """Reverse Candidate links always come from this complete current view."""
+    return public_state(state)
 
 
-def show_notebook(snapshot: dict | None, *, profile_home=None) -> dict | None:
-    """Project committed Notebook content; internal Snapshot fields never enter the AI view."""
+def show_notebook(snapshot, *, conversation_ref=None, profile_home=None):
+    """Main's complete effective Snapshot envelope (07 sections 4.5 and 7.1).
+
+    For an empty Notebook the trusted caller must supply its bound Conversation.
+    Working callers use NotebookStore.working_view(), never this projection.
+    ``profile_home`` is retained for internal callers; ISO evidence is not rewritten.
+    """
     if snapshot is None:
-        return None
-    return {
-        "last_update_time": format_timestamp(snapshot["created_at"], profile_home=profile_home),
-        "anchor_message_uid": snapshot["anchor_message_uid"],
-        **readable_notebook_state(snapshot["payload"]),
-    }
+        if not isinstance(conversation_ref, str) or not conversation_ref:
+            raise ValueError("An empty Notebook view requires its bound Conversation Ref")
+        return {"success": True, "conversation_ref": conversation_ref, "view_kind": "snapshot",
+                "snapshot_id": None, "coverage": None, "payload": {section: [] for section in SECTIONS}}
+    if conversation_ref is not None and conversation_ref != snapshot["conversation_ref"]:
+        raise ValueError("Snapshot does not belong to the bound Conversation")
+    return {"success": True, "conversation_ref": snapshot["conversation_ref"], "view_kind": "snapshot",
+            "snapshot_id": snapshot["snapshot_id"],
+            "coverage": {"anchor_message_uid": snapshot["anchor_message_uid"]},
+            "created_at": snapshot["created_at"], "payload": readable_notebook_state(snapshot["payload"])}
 
 
-def _render_entry(entry: dict) -> list[str]:
+def _render_entry(entry):
     entry = readable_notebook_entry(entry)
-    status = entry.get("status", "candidate")
-    archived = " (archived)" if entry["archived"] else ""
-    lines = [f"- {entry['type']} [{status}]{archived}"]
+    lines = [f"- {entry['entry_type']} [{entry['status']}]",
+             f"  entry_id: {entry['entry_id']}", f"  version_id: {entry['version_id']}"]
     for name, value in entry["fields"].items():
-        rendered = json.dumps(value, ensure_ascii=False) if isinstance(value, list) else value
+        rendered = value if isinstance(value, str) else json.dumps(value, ensure_ascii=False)
         lines.append(f"  {name}: {rendered}")
-    sources = entry.get("source_message_identities")
-    if sources:
-        lines.append(f"  Source messages: {len(sources)}")
-    intent = entry.get("schedule")
-    if intent:
-        schedule = intent["canonical_schedule"]
-        description = schedule.get("display") or json.dumps(schedule, ensure_ascii=False)
-        cancelled = " (cancelled)" if intent["cancelled"] else ""
-        lines.append(f"  Schedule: {description}{cancelled}")
+    for name in ("relations", "source_message_identities", "source_time_range", "candidate_refs",
+                 "created_at", "updated_at", "last_processed_at"):
+        lines.append(f"  {name}: {json.dumps(entry.get(name), ensure_ascii=False)}")
     return lines
 
 
-def render_notebook(snapshot: dict | None, *, profile_home=None) -> str:
-    """Normal slash text; caller owns gates and ordinary transcript persistence."""
+def render_notebook(snapshot, *, profile_home=None):
+    """Native slash text; complete data, no archive lookup or audit termination."""
     if snapshot is None:
         return "This Conversation has no Notebook Snapshot yet."
-    lines = ["Notebook", f"Created at: {format_timestamp(snapshot['created_at'], profile_home=profile_home)}"]
+    lines = ["Notebook", f"Snapshot: {snapshot['snapshot_id']}",
+             f"Created at: {format_timestamp(snapshot['created_at'], profile_home=profile_home)}",
+             f"Coverage anchor: {snapshot['anchor_message_uid']}"]
+    state = readable_notebook_state(snapshot["payload"])
     for section in SECTIONS:
         lines.extend(["", section])
-        entries = [entry for entry in snapshot["payload"][section] if not entry.get("archived")]
-        if not entries:
+        if not state[section]:
             lines.append("(no entries)")
-        for entry in entries:
+        for entry in state[section]:
             lines.extend(_render_entry(entry))
     return "\n".join(lines)
