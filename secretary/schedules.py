@@ -15,12 +15,7 @@ from hermes_state_secretary_schedule import (
     schedule_release_conn,
 )
 from secretary.noting_scope import owning_db_scope
-from secretary.scheduler_table import (
-    UNKNOWN_INSTANT_NOTICE,
-    apply_schedule_action_conn,
-    coverage_notice,
-    instant_coverage_conn,
-)
+from secretary.scheduler_table import apply_schedule_action_conn, coverage_notice, instant_coverage_conn
 from secretary.scheduler_time import (
     epoch,
     parse_schedule_expression,
@@ -86,12 +81,24 @@ class SchedulerStore:
                                 "Do not retry with another Conversation or profile identifier.")
 
     def _notice_conn(self, conn, result, timestamp):
+        """Complete the tool's required read before commit; unknown is a real read error.
+
+        Unlike a Reminder that is already being delivered, a tool operation can still
+        roll back atomically. Do not commit a mutation and then falsely report that it
+        failed because the coverage read failed. A known empty table never blocks it.
+        """
         try:
             value = instant_coverage_conn(conn, self.conversation_ref, now=timestamp)
-            notice = coverage_notice(value)
         except Exception:
             logger.warning("Scheduler coverage read failed", exc_info=True)
-            notice = UNKNOWN_INSTANT_NOTICE
+            value = None
+        if value is None:
+            raise ScheduleError(
+                "temporarily_unavailable", "The current 24-hour Schedule state could not be determined; this operation was not committed.",
+                "Keep the intended change and retry when the owning Schedule state can be read.",
+                field="schedule_table",
+            )
+        notice = coverage_notice(value)
         if notice:
             result["notice"] = notice
         return result
@@ -103,15 +110,15 @@ class SchedulerStore:
             with owning_db_scope(self.db), self.db._read_ctx() as conn:
                 self._authorize_conn(conn)
                 if not self.is_enabled(self.conversation_ref):
-                    result["notice"] = UNKNOWN_INSTANT_NOTICE
                     return result
-                return self._notice_conn(conn, result, timestamp)
-        except ScheduleError:
-            return result
+                value = instant_coverage_conn(conn, self.conversation_ref, now=timestamp)
+                if value is False:
+                    result["notice"] = coverage_notice(False)
         except Exception:
-            logger.warning("Scheduler failure-state read unavailable", exc_info=True)
-            result["notice"] = UNKNOWN_INSTANT_NOTICE
-            return result
+            # Preserve the original operation error, not an empty-table claim. The
+            # UNKNOWN_INSTANT_NOTICE text is for C6's already-delivering Reminder.
+            logger.debug("Scheduler failed-operation coverage remains unknown", exc_info=True)
+        return result
 
     def execute(self, args, *, now=None):
         """Return §7 JSON-compatible results; commit uncertainty is not reported as failure-to-write."""
@@ -233,12 +240,17 @@ def scan_and_claim_due(db, *, owner, now=None, limit=DEFAULT_DUE_BATCH, profile=
 
 def finalize_delivery(db, schedule_id, claim_token, *, now=None,
                       carrier_message_uid=None, carrier_content=None):
-    """Instant settlement requires the native carrier; C6 normally calls the conn seam directly."""
+    """Instant settlement requires native proof; C6 normally uses its append conn directly."""
+    def finalize(conn):
+        row = conn.execute("SELECT conversation_ref FROM secretary_schedule_registry WHERE schedule_id=?",
+                           (schedule_id,)).fetchone()
+        if row is None or not default_enablement(db)(row[0]):
+            return None
+        return schedule_finalize_conn(conn, schedule_id, claim_token, now=epoch(now),
+                                      carrier_message_uid=carrier_message_uid, carrier_content=carrier_content)
+
     with owning_db_scope(db):
-        return db._execute_write(lambda conn: schedule_finalize_conn(
-            conn, schedule_id, claim_token, now=epoch(now), carrier_message_uid=carrier_message_uid,
-            carrier_content=carrier_content,
-        ))
+        return db._execute_write(finalize)
 
 
 def release_claim(db, schedule_id, claim_token, *, now=None):

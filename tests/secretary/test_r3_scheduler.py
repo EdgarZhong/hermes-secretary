@@ -7,7 +7,6 @@ Run locally through scripts/run_tests.sh, not by a separate cloud test invocatio
 
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
-import json
 import sqlite3
 from threading import Barrier
 from types import SimpleNamespace
@@ -21,6 +20,7 @@ from hermes_state_secretary_schedule import (
     reminder_ack_conn,
     reminder_bind_carrier_conn,
     reminder_revalidate_pending_conn,
+    schedule_carrier_durable_conn,
     schedule_claim_conn,
     schedule_current_claim_conn,
     schedule_definition_conn,
@@ -113,7 +113,7 @@ def test_native_duration_and_profile_timezone(monkeypatch):
     assert datetime.fromisoformat(once["run_at"]).timestamp() == NOW + 1800
     naive = parse_schedule_expression("2026-10-17T09:00:00")
     assert naive["run_at"].endswith("+09:00")
-    assert schedule_initial_next_run(naive, now=NOW) < NOW  # overdue is retained, not discarded
+    assert schedule_initial_next_run(naive, now=NOW) < NOW
 
 
 def test_native_next_run_uses_supplied_epoch_and_bounded_backlog(monkeypatch):
@@ -133,7 +133,7 @@ def test_native_next_run_uses_supplied_epoch_and_bounded_backlog(monkeypatch):
     calls.clear()
     result = schedule_advance_epoch(canonical, NOW - 100000, now=NOW, max_steps=2)
     assert result == NOW + 1800
-    assert len(calls) == 3  # two native phase steps, then one native re-anchor
+    assert len(calls) == 3
 
 
 def test_interval_keeps_elapsed_duration_across_dst(monkeypatch):
@@ -254,7 +254,7 @@ def test_control_committed_first_fences_old_worker(conn, action, changes):
     sid = create(conn)
     owned = claim(conn, sid)
     result = call(conn, action, schedule_id=sid, **changes)
-    assert "delivery_in_flight" not in result  # a lease is not a delivered message
+    assert "delivery_in_flight" not in result
     with conn:
         assert schedule_queue_pending_conn(conn, owned, now=NOW) is None
         assert schedule_release_conn(conn, sid, owned["claim_token"], now=NOW) is False
@@ -267,7 +267,7 @@ def test_queued_once_is_not_completed_and_pause_resume_can_recover(conn):
     item = call(conn, "list")["schedules"][0]
     assert item["state"] == "active" and item["next_due_at"] is None
     assert item["pending_count"] == 1 and item["last_delivery"] is None
-    assert reminder_ack_conn(conn, rid, now=NOW) is False  # no carrier, no ACK
+    assert reminder_ack_conn(conn, rid, now=NOW) is False
     call(conn, "pause", schedule_id=sid)
     assert reminder_revalidate_pending_conn(conn, "a", rid) is None
     call(conn, "resume", schedule_id=sid, now=NOW + 100)
@@ -284,11 +284,12 @@ def test_mode_and_content_update_refresh_unadmitted_occurrence(conn):
     sid = create(conn)
     rid = queue(conn, sid)
     before = reminder_revalidate_pending_conn(conn, "a", rid)
-    call(conn, "update", schedule_id=sid, content="new content", delivery_mode="deferred")
+    call(conn, "update", schedule_id=sid, content="new content", delivery_mode="deferred", name="review")
     current = reminder_revalidate_pending_conn(conn, "a", rid)
     assert current["content"] == "new content"
     assert current["entry_payload"]["delivery_mode"] == "deferred"
-    assert current["origin_instant"] is True  # preserve original busy-instant provenance
+    assert current["entry_payload"]["name"] == "review"
+    assert current["origin_instant"] is True
     assert current["schedule_generation"] > before["schedule_generation"]
     assert conn.execute("SELECT COUNT(*) FROM messages").fetchone()[0] == 0
 
@@ -341,8 +342,7 @@ def test_paused_recurring_stays_paused_after_late_ack(conn):
     paused = schedule_definition_conn(conn, "a", sid)
     with conn:
         assert reminder_ack_conn(conn, rid, now=NOW + 64)
-    after = schedule_definition_conn(conn, "a", sid)
-    assert after == paused
+    assert schedule_definition_conn(conn, "a", sid) == paused
     assert claim(conn, sid, now=NOW + 1000) is None
 
 
@@ -358,6 +358,22 @@ def test_instant_requires_native_witness_and_then_cannot_replay(conn):
     assert after["state"] == "done"
     assert claim(conn, sid) is None
     assert call(conn, "delete", schedule_id=sid)["delivery_in_flight"] is True
+    assert schedule_carrier_durable_conn(conn, "a", sid, uid, body) is True
+    assert schedule_carrier_durable_conn(conn, "b", sid, uid, body) is False
+    with conn:
+        conn.execute("UPDATE messages SET active=0,compacted=1 WHERE message_uid=?", (uid,))
+    assert schedule_carrier_durable_conn(conn, "a", sid, uid, body) is True
+
+
+def test_pure_deferred_cannot_take_instant_settlement_path(conn):
+    sid = create(conn, mode="deferred")
+    owned = claim(conn, sid)
+    with pytest.raises(ScheduleError), conn:
+        uid, body = native_row(conn)
+        schedule_finalize_conn(conn, sid, owned["claim_token"], now=NOW,
+                               carrier_message_uid=uid, carrier_content=body)
+    assert conn.execute("SELECT COUNT(*) FROM messages").fetchone()[0] == 0
+    assert schedule_definition_conn(conn, "a", sid)["state"] == "pending"
 
 
 def test_failure_release_keeps_due_and_records_failure(conn):
@@ -368,6 +384,19 @@ def test_failure_release_keeps_due_and_records_failure(conn):
     item = call(conn, "list")["schedules"][0]
     assert item["last_delivery"]["outcome"] == "failed"
     assert claim(conn, sid, now=NOW + 1) is not None
+
+
+def test_pending_receipt_is_durable_across_reopen(conn):
+    sid = create(conn)
+    rid = queue(conn, sid)
+    path = conn.execute("PRAGMA database_list").fetchone()[2]
+    reopened = sqlite3.connect(path)
+    reopened.row_factory = sqlite3.Row
+    try:
+        assert reminder_revalidate_pending_conn(reopened, "a", rid)["schedule_id"] == sid
+        assert schedule_claim_conn(reopened, sid, owner="restart", now=NOW + 1000, lease_seconds=60) is None
+    finally:
+        reopened.close()
 
 
 def test_coverage_is_inclusive_readonly_and_counts_other_overdue_instant(conn):
@@ -451,18 +480,21 @@ def test_failure_noop_and_delete_last_receive_gap_notice(store):
     noop = store.update(sid, content="deferred", now=NOW)
     assert noop["changed"] is False and noop["notice"] == NO_INSTANT_NOTICE
     assert store.delete(sid, now=NOW)["notice"] == NO_INSTANT_NOTICE
-    assert store.list(now=NOW)["count"] == 0  # never auto-create a replacement
+    assert store.list(now=NOW)["count"] == 0
 
 
-def test_unknown_notice_preserves_known_action_result(store, monkeypatch):
+def test_unknown_coverage_returns_read_error_and_rolls_back_control(store, monkeypatch):
     def unavailable(*_args, **_kwargs):
         raise sqlite3.OperationalError("coverage read unavailable")
 
-    monkeypatch.setattr("secretary.schedules.instant_coverage_conn", unavailable)
-    result = store.create("attention", epoch_to_utc_iso(NOW + 100), "instant", now=NOW)
-    assert result["success"] is True and result["changed"] is True
-    assert result["notice"] == UNKNOWN_INSTANT_NOTICE
-    assert store.list(now=NOW)["count"] == 1
+    with monkeypatch.context() as patch:
+        patch.setattr("secretary.schedules.instant_coverage_conn", unavailable)
+        result = store.create("attention", epoch_to_utc_iso(NOW + 100), "instant", now=NOW)
+        assert result["success"] is False
+        assert result["error"]["code"] == "temporarily_unavailable"
+        assert result["error"]["field"] == "schedule_table"
+        assert "notice" not in result
+    assert store.list(now=NOW)["count"] == 0
 
 
 def test_postcommit_lost_return_reports_unknown_not_retry_create(store, monkeypatch):
@@ -489,6 +521,23 @@ def test_independent_configuration_gate(tmp_path, monkeypatch, config, enabled):
     monkeypatch.setattr("hermes_cli.config.load_config_readonly", lambda: config)
     db = SimpleNamespace(db_path=tmp_path / "state.db")
     assert default_enablement(db)("any-main") is enabled
+
+
+def test_configuration_loader_uses_each_owning_home(tmp_path, monkeypatch):
+    from hermes_constants import get_hermes_home
+
+    a, b = tmp_path / "a", tmp_path / "b"
+    seen = []
+
+    def config():
+        home = get_hermes_home()
+        seen.append(home)
+        return {"scheduler": {"enabled": home == a}}
+
+    monkeypatch.setattr("hermes_cli.config.load_config_readonly", config)
+    assert default_enablement(SimpleNamespace(db_path=a / "state.db"))("same-ref") is True
+    assert default_enablement(SimpleNamespace(db_path=b / "state.db"))("same-ref") is False
+    assert seen == [a, b]
 
 
 def test_disabled_scanner_preserves_definitions_and_reenable_can_claim(store, monkeypatch):

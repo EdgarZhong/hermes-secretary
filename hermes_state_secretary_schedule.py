@@ -16,7 +16,7 @@ from secretary.scheduler_time import (
     epoch_to_utc_iso,
     iso_to_epoch,
     schedule_advance_epoch,
-    schedule_initial_next_run,
+    schedule_initial_next_run as schedule_initial_next_run,
     validate_canonical_schedule,
 )
 
@@ -188,8 +188,11 @@ def occurrence_key(row):
 
 
 def occurrence_payload(row):
-    return {"schedule_id": row["schedule_id"], "content": row["reminder_text"],
-            "delivery_mode": "instant" if row["delivery_semantics"] == "user_reminder" else "deferred"}
+    payload = {"schedule_id": row["schedule_id"], "content": row["reminder_text"],
+               "delivery_mode": "instant" if row["delivery_semantics"] == "user_reminder" else "deferred"}
+    if row["name"]:
+        payload["name"] = row["name"]
+    return payload
 
 
 def reminder_append_pending_conn(
@@ -211,7 +214,7 @@ def reminder_append_pending_conn(
     key = dedup_key if dedup_key is not None else (schedule_id or "")
     if key:
         previous = conn.execute(
-            "SELECT reminder_id, status FROM secretary_pending_reminders "
+            "SELECT reminder_id FROM secretary_pending_reminders "
             "WHERE conversation_ref=? AND dedup_key=? ORDER BY created_at LIMIT 1",
             (conversation_ref, key),
         ).fetchone()
@@ -241,6 +244,22 @@ def _require_native_carrier_conn(conn, conversation_ref, uid, content):
     if row is None or row["role"] != "user" or row["content"] != content:
         raise ScheduleError("state_conflict", "The native Reminder carrier is not durably bound to this Conversation.",
                             "Persist and bind the exact carrier in the same native transaction.")
+
+
+def schedule_carrier_durable_conn(conn, conversation_ref, schedule_id, uid, content):
+    """C6 witness recovery: prove the receipt and native row, NOT today's mutable definition.
+
+    A legitimate pause/delete after native commit does not invalidate that commit.
+    Compaction may retire the carrier from active context without undoing durability.
+    """
+    return conn.execute(
+        "SELECT 1 FROM secretary_pending_reminders p WHERE p.conversation_ref=? AND p.schedule_id=? "
+        "AND p.carrier_message_uid=? AND p.carrier_content=? AND EXISTS ("
+        "SELECT 1 FROM messages m JOIN secretary_session_bindings b ON b.session_id=m.session_id "
+        "WHERE b.conversation_ref=p.conversation_ref AND m.message_uid=p.carrier_message_uid "
+        "AND m.role='user' AND m.content=p.carrier_content) LIMIT 1",
+        (conversation_ref, schedule_id, uid, content),
+    ).fetchone() is not None
 
 
 def schedule_finalize_conn(conn, schedule_id, claim_token, *, now, queued=False,
@@ -274,6 +293,9 @@ def schedule_finalize_conn(conn, schedule_id, claim_token, *, now, queued=False,
             raise ScheduleError("state_conflict", "The occurrence has no durable pending receipt.",
                                 "Queue and settle the current claim in one transaction.")
     else:
+        if row["delivery_semantics"] != "user_reminder":
+            raise ScheduleError("state_conflict", "A deferred Schedule cannot be settled as an instant invocation.",
+                                "Use the existing pending Reminder lane for deferred delivery.")
         if not carrier_message_uid or not isinstance(carrier_content, str):
             raise ScheduleError("state_conflict", "An instant claim is not proof of delivery.",
                                 "Supply the native persisted carrier when settling this claim.")
