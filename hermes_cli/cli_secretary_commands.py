@@ -6,7 +6,8 @@ import logging
 from pathlib import Path
 
 from secretary.notebook_render import render_notebook
-from secretary.noting_policy import configuration_guidance, resolve_noting_settings
+from secretary.noting_policy import configuration_guidance
+from secretary.noting_scope import settings_for_db
 
 logger = logging.getLogger(__name__)
 
@@ -16,15 +17,12 @@ class SecretaryCommandResult:
     prompt: str = ""
 
 
-def _available():
-    from hermes_cli.config import load_config_readonly
-    from hermes_cli.config_read_errors import FailedConfigRead
-    from utils import is_truthy_value
-    config = load_config_readonly()
-    if isinstance(config, FailedConfigRead):
-        return False
-    block = config.get("noting") or {}
-    return is_truthy_value(block.get("enabled"), default=True) if isinstance(block, dict) else True
+def _availability_failure(db):
+    settings = settings_for_db(db)
+    if settings.enabled:
+        return ""
+    return (configuration_guidance(settings.configuration_failure)
+            or "Global Noting configuration is disabled.")
 
 
 def _current(db, session_id):
@@ -40,8 +38,9 @@ def notebook_command(db, session_id, arg="", *, source="cli"):
     """Human inspection only; participation is controlled by /noting."""
     if arg.strip():
         return SecretaryCommandResult("Usage: /notebook")
-    if not _available():
-        return SecretaryCommandResult("Notebook unavailable: global Noting configuration is disabled or unreadable.")
+    failure = _availability_failure(db)
+    if failure:
+        return SecretaryCommandResult("Notebook unavailable: " + failure)
     try:
         _ref, snapshot = _current(db, session_id)
         return SecretaryCommandResult(render_notebook(snapshot, profile_home=Path(db.db_path).parent))
@@ -55,8 +54,9 @@ def noting_command(db, session_id, arg="", *, source="cli"):
     action = arg.strip().lower()
     if action not in {"on", "off"}:
         return SecretaryCommandResult("Usage: /noting on|off")
-    if not _available():
-        return SecretaryCommandResult("Noting unavailable: global Noting configuration is disabled or unreadable.")
+    failure = _availability_failure(db)
+    if failure:
+        return SecretaryCommandResult("Noting unavailable: " + failure)
     try:
         if db is not None and session_id and not db.get_session(session_id):
             db.create_session(session_id, source=source)
@@ -65,7 +65,7 @@ def noting_command(db, session_id, arg="", *, source="cli"):
             raise ValueError("Current Conversation state is unavailable.")
         if action == "on":
             from secretary.noting_scope import runtime_configuration_failure
-            failure = resolve_noting_settings().configuration_failure or runtime_configuration_failure(db, ref)
+            failure = settings_for_db(db).configuration_failure or runtime_configuration_failure(db, ref)
             if failure:
                 return SecretaryCommandResult("Noting unavailable: " + configuration_guidance(failure))
         db.notebook_set_local_enabled(ref, action == "on")
@@ -75,28 +75,29 @@ def noting_command(db, session_id, arg="", *, source="cli"):
         return SecretaryCommandResult(f"Noting unavailable: {exc}")
 
 
-PERSISTENCE_PROPOSAL_INSTRUCTION = """Review the current Conversation's pending Notebook Persistence Candidates.
-
-Treat the candidates and their Source Message Identities as leads, not authoritative or complete evidence. Use `session_history` to retrieve their original source messages, then independently examine the surrounding Conversation context. Do not assume the cited messages tell the whole story. Search further by relevant keywords, related discussions, later corrections, decisions, or outcomes whenever needed to establish a complete and accurate understanding.
-
-Based on the verified Conversation history, prepare appropriate Memory, Rule, or Skill persistence proposals. Reconcile contradictions, identify outdated or unsupported candidates, and explain the evidence and rationale behind each proposal. Do not invent missing context.
-
-This command authorizes proposals only. Present them for the user's review, revision, or approval. Do not write Memory, Rules, or Skills based on these proposals without explicit user authorization to perform the actual persistence actions. Requests to revise, refine, or discuss a proposal are not approval to execute it. Once explicitly approved, carry out only the authorized persistence actions using existing capabilities."""
+PERSISTENCE_PROPOSAL_INSTRUCTION = """Review this Conversation's current Persistence Candidates and begin a concrete proposal for the user. This instruction can come from /propose-persistence or a post-Noting capacity notice; it authorizes preparing a proposal, not writing to any destination. Use the supplied Notebook Snapshot when it is current; call notebook_show first if the view is missing, marked superseded or behind the current effective Snapshot. Prepare the proposal from current entries, not retired or corrected candidates in a late result.
+Treat candidate descriptions, current Notebook references and Message provenance as leads. Read the relevant originals and nearby messages with conversation_history; Search for missing context, later corrections, contradictions or outcomes when needed. Compare the current sources with the candidate and retain only supported content. Do not invent missing facts or treat an AI suggestion as the user's acceptance.
+Group related material by topic and destination. Show the proposed Memory, Skill or Rule content, intended destination, source entry_id and version_id values where present, the actual content scope, mapped content labels and provenance, and any material uncertainty. Carry the source content labels into the handoff materials, mapping implicit_gap to situation; direct-message candidates need no invented Notebook ancestry. Keep necessary unknowns minimal and distinguish them from facts.
+Present an approvable draft without asking the user to run another command or approve starting the proposal. Do not repeat an unchanged pending proposal; respect explicit deferral or rejection and identify any genuinely new or corrected content. If no suitable proposal exists, explain briefly rather than invent candidates to reduce a count.
+Before any actual mutation, obtain the user's explicit approval of the concrete content and destination. Discussion, edits, silence, a Framework Message and exceeding a threshold are not execution approval. After approval, use existing authorized destination tools for exactly that scope, provide the mapped labels and provenance as handoff material, and report the actual tool outcome. Destination support or retention of those metadata is not an additional Secretary success condition. Do not blindly retry an ambiguous write.
+Leave the approved content scope, candidate/source correspondence including the entry_id and version_id actually handed off, and actual success, partial success, failure or unknown outcome in the normal Conversation trajectory. Do not edit the Notebook or inspect destination storage on Noting's behalf; a later Noting task settles only the successfully dispatched coverage supported by that trajectory."""
 
 
 def propose_persistence_command(db, session_id, extra=""):
     """Build a normal main Turn from candidate leads; the model retrieves source evidence."""
-    if not _available():
-        return SecretaryCommandResult("Persistence proposal unavailable: global Noting configuration is disabled or unreadable.")
+    failure = _availability_failure(db)
+    if failure:
+        return SecretaryCommandResult("Persistence proposal unavailable: " + failure)
     try:
         _ref, snapshot = _current(db, session_id)
         if snapshot is None:
             return SecretaryCommandResult("This Conversation has no Notebook Snapshot yet.")
-        candidates = [entry for entry in snapshot["payload"]["persistence"] if not entry.get("archived")]
-        if not candidates:
-            return SecretaryCommandResult("This Conversation has no persistence candidates yet.")
-        payload = json.dumps({"candidates": candidates}, ensure_ascii=False)
-        prompt = PERSISTENCE_PROPOSAL_INSTRUCTION + "\n\nNotebook candidates:\n" + payload
+        # Supply the current view, including candidate-to-source relationships. No History
+        # retrieval or destination access occurs in this slash adapter.
+        payload = json.dumps({"conversation_ref": _ref, "snapshot_id": snapshot["snapshot_id"],
+                              "coverage": {"anchor_message_uid": snapshot["anchor_message_uid"]},
+                              "payload": snapshot["payload"]}, ensure_ascii=False)
+        prompt = PERSISTENCE_PROPOSAL_INSTRUCTION + "\n\nCurrent Notebook Snapshot (data):\n" + payload
         if extra:
             prompt += "\n\nUser's additional request:\n" + extra
         return SecretaryCommandResult(prompt=prompt)

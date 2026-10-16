@@ -8,10 +8,24 @@
 
 - 用户已授权：拉取全部远端分支；据本地环境调整计划并完整完成第三轮，优先派遣 C4。Verification 前高并行委派，主会话抓全局、review、集成，不重复执行子 Agent 有效测试。积极使用原生 DeepSeek 真实模型，token 消耗不设限制。
 - 门禁：Verification 全新 Astra / high；Validation 文档与场景由主会话直接制定，6.1 / high 独立执行。原计划只到 Develop 的停止限制已被本次完整托管覆盖。
-- 当前：origin 已拉取；云端 main c099c8c490（计划）；C1 658a4b1495、C2 43c7055391、C3 0a338353e0 待主会话 review 集成；C4 只有计划、由本地接续。Provider P1 676fec37、P2 e2c01dab 待接收。upstream 全部分支抓取进行中，不自动集成上游新代码。
-- 工作区：公开核心在 codex/round3-local-completion；初始后端干净，前端已有未提交内容保持原样。Provider 独立处理。真实 NM 写入/云端部署仍不在授权内。
-- 当前分工：C4 子 Agent 接续配置与 Main Prompt；个人子 Agent 接收 P1/P2 并完成 P3；环境子 Agent 核验 PM、隔离 runtime 和 DeepSeek 接入条件。主会话完整阅读权威规格并审查 C1/C2/C3。
-- 测试：本轮尚未运行；每个分区唯一执行方，主会话维护证据归属，最终大型检查待集成收敛统一安排。
+- 远端全部分支已 fetch 完成（含 upstream）；未集成官方上游新代码。云端 C1/C2/C3 已亲自审读核心实现并分别接入 `0e150cbce8` / `b41c549d4c` / `4022c5b`；这表示源码接收，不表示整链通过。
+- 工作区：公开核心 `codex/round3-local-completion`；初始后端干净。前端既有 dirty 保留、UI 后置。个人 Provider 独立仓库；真实 NM 写入与云端部署未授权。两仓 Actions 已读回关闭；提交自动同步不代表验收。
+- 环境：官方 PM `.venv` Python 3.14.7、macOS arm64、现有锁不变；隔离目录 `.hermes-dev/round3-local-20261017-l0/`。DeepSeek 原生 custom/chat_completions 已准备，未开始真实模型运行；既有 Dashboard 保留。详见本轮 `local-environment.md`。
+
+| 包 | 当前 owner／状态 | 独占验证与待办 |
+|---|---|---|
+| C1/C2/C3 | 主会话已 review 并接收云端实现 | C1交C5、C2交收口owner、C3交C6首次定向运行；C2 `_search` 嵌套7层需修 |
+| C4 | 主会话已review接收；c4-report.md | 38场景取得通过；ruff、C4增量health通过；不把全范围C2阻断写成通过 |
+| C5 | local_environment实施child四工具 | 接C1/C2/C4；独占C1+child定向测试 |
+| C6 | 待派：Scheduler投递 | 接C3/C4；顺序获得schedule接纳函数写权；独占C3+delivery测试 |
+| C7 | c4_config_prompt实施联合触发 | C4接口已定；优先移除旧runtime idle_task_profile/auto_compact消费者；独占joint测试 |
+| C8 | 待派：pointer Framework | C1事务接口与C4 Proposal；独占framework测试 |
+| C9/C10 | 待派正式接线与收口 | 包含通用external memory sync的completed/failed gate；独占wiring/legacy测试 |
+| P1/P2/P3 | personal_provider：接收与本地修复 | P1 30测通过；P3首次13测有2问题在修，使用本地fixture，不真实NM；P2仅基本检查 |
+| L0 | 环境已交回；yaml问题是个人脚本旧导入，P3 owner修复 | 不跑产品测试；不改锁或裸装依赖 |
+| 门禁 | 尚未启动 | 集成收敛后Astra/high Verification；主会话制定Validation、6.1/high执行 |
+
+- 原生真实模型验证将指定唯一owner；本轮大型检查尚未执行，集成收敛后统筹一次，修复后仅定向复测。主会话不重复子Agent有效测试。
 
 <details>
 <summary>云端规划时点记录（历史，状态以上方本地托管为准）</summary>

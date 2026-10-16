@@ -574,14 +574,13 @@ DEFAULT_CONFIG = {
         },
     },
 
-    # Noting (02 §4.1): global switch ANDed with conversation-local participation; only real
-    # main Turns reset `idle_delay_seconds`. The auto_trigger_compaction_after_noting block is
-    # NOT a trigger — once an Idle Trigger exists it selects the NOTING_WITH_COMPACTION runtime
-    # profile at/above threshold_tokens; auto_compact_after_force_noting_idle lets a later Idle
-    # event request Parent compaction after a successful Force Snapshot instead of a second Task.
-    "noting": {"enabled": True, "idle_delay_seconds": 500,
-               "auto_trigger_compaction_after_noting": {"enabled": False, "threshold_tokens": None},
-               "auto_compact_after_force_noting_idle": False},
+    # Independent profile-owned controls (07 §6.3). Local /noting only controls participation.
+    "scheduler": {"enabled": True},
+    "noting": {
+        "enabled": True,
+        "idle": {"enabled": False, "delay_seconds": 500, "threshold_tokens": None},
+        "persistence_proposal": {"char_threshold": 12000, "entry_threshold": 60},
+    },
 
     "compression": {
         "enabled": True,

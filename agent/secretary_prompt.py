@@ -6,8 +6,8 @@ import re
 from contextlib import contextmanager
 from contextvars import ContextVar
 
-SECRETARY_CRONJOB_DESCRIPTION = "Manage scheduled cron jobs. A cron job is a separate, standalone scheduled agent task: it runs in a fresh session with no chat context of this Conversation, and its scheduled firing has nothing to do with this Conversation's turns. Use cron only when the user explicitly asks for Hermes-wide scheduled task management, or to dispatch recurring real agent tasks that need no per-run review. In-Conversation schedules — especially reminders — belong to the Notebook/Noting system, NOT to cron; never create a cron job for an in-Conversation reminder. action='create' schedules a job from a prompt and/or skills (fires on 'schedule'; its output is POSTed one-way to the job's deliver target and never re-enters this session); 'list' inspects jobs; 'update'/'pause'/'resume'/'remove' manage one by job_id (always list first — never guess job IDs); 'run' fires a job immediately in the BACKGROUND (the one exception: returns a handle at once and its outcome re-enters this conversation when done — do not wait or poll; optional 'prompt' adds transient context for that fire only)."
-SECRETARY_CRON_SCHEDULE_NOTE = 'Not for in-Conversation reminders — "remind me in N minutes" belongs to the Notebook Schedule, not cron.'
+SECRETARY_CRONJOB_DESCRIPTION = 'Manage independent scheduled Hermes Agent jobs. Use this for explicitly requested Hermes-wide schedule management or standalone recurring Agent work; use scheduler for reminders and follow-ups delivered into the current Conversation. A scheduled job runs in its own Session, and scheduled output follows its configured delivery target rather than re-entering this Conversation. Use list to obtain job IDs; create schedules a prompt and/or skills, update/pause/resume/remove manage an existing job, and run starts an immediate background execution whose completion can return here under the native run behavior. Do not wait or poll merely because run returned a background handle.'
+SECRETARY_CRON_SCHEDULE_NOTE = 'Not for in-Conversation reminders: register those with scheduler. This field keeps the native Hermes Cron time-expression semantics.'
 _REMINDER_DURATION_CLAUSE = "; use this for 'remind me in N minutes' — do NOT hand-compute an absolute timestamp"
 _CRON_SCHEMA_SCOPE = ContextVar("secretary_cron_schema_scope", default=False)
 
@@ -16,7 +16,8 @@ _CRON_SCHEMA_SCOPE = ContextVar("secretary_cron_schema_scope", default=False)
 def cron_schema_scope(agent):
     """Carry this Turn's synchronized Main gate through native tool dispatch workers."""
     enabled = bool(getattr(agent, "_secretary_main_read_eligible", False)
-                   and getattr(agent, "_secretary_notebook_read_enabled", False)
+                   and getattr(agent, "_secretary_scheduler_enabled", False)
+                   and "scheduler" in getattr(agent, "valid_tool_names", ())
                    and not getattr(agent, "_secretary_noting_child", False))
     token = _CRON_SCHEMA_SCOPE.set(enabled)
     try:

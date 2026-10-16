@@ -33,6 +33,18 @@ def settings_for_db(db):
         return disabled_noting_settings()
 
 
+def scheduler_settings_for_db(db):
+    """Resolve independent Scheduler policy in the owning database profile."""
+    from secretary.noting_policy import disabled_scheduler_settings, resolve_scheduler_settings
+
+    try:
+        with owning_db_scope(db):
+            return resolve_scheduler_settings()
+    except Exception:
+        logger.debug("Owning-profile Scheduler policy unavailable", exc_info=True)
+        return disabled_scheduler_settings()
+
+
 # Read-only associations with existing main Agents, not durable capability state. A cold
 # host must resolve its normal target main runtime before scanning/admitting Secretary work.
 _main_runtimes = WeakValueDictionary()

@@ -1,7 +1,7 @@
 """Pure Noting trigger policy: enable gate, Idle due, and the Force threshold formula.
 
-02 §4.2 (global AND conversation-local), §4.5 (Idle from main Turns only), §4.6–§4.9 (Force
-threshold with K = 1,000 tokens per A23), §4.10 (Idle runtime-profile selection). Nothing here
+07 §6.3 configuration, Main-only Idle timing, and inherited Force arithmetic
+with K = 1,000 tokens per A23. Nothing here
 estimates tokens or touches an agent's request path: Force consumes Hermes's already-resolved
 values (``ResolvedContextWindow`` / ``HermesResolvedAutoCompactionThreshold``) and the measured
 context figure read at an existing Hermes measurement seam.
@@ -12,10 +12,9 @@ capability comparisons stay strict, and 128K is not a clamp.
 """
 
 import logging
+import math
 from dataclasses import dataclass
 from typing import Any, Optional
-
-from utils import is_truthy_value
 
 logger = logging.getLogger(__name__)
 
@@ -30,30 +29,45 @@ FORCE_RESERVE_MULTIPLIER_NUM, FORCE_RESERVE_MULTIPLIER_DEN = 12, 10   # 1.20
 CAPABILITY_THRESHOLD_BELOW_64K = "threshold_below_64k"
 CAPABILITY_RESERVE_ABOVE_128K = "reserve_above_128k"
 
-# Runtime profiles of a Noting Task after an Idle Trigger (02 §4.10); the Notebook sibling
-# records the same two names on a committed Snapshot.
+# A Noting task has one execution profile; compaction belongs to the parent runtime.
 TASK_PROFILE_NOTING = "NOTING"
-TASK_PROFILE_NOTING_WITH_COMPACTION = "NOTING_WITH_COMPACTION"
-
 DEFAULT_IDLE_DELAY_SECONDS = 500.0
+DEFAULT_PROPOSAL_CHAR_THRESHOLD = 12_000
+DEFAULT_PROPOSAL_ENTRY_THRESHOLD = 60
+_LEGACY_NOTING_KEYS = {
+    "idle_delay_seconds": "noting.idle.delay_seconds",
+    "auto_trigger_compaction_after_noting": "noting.idle.enabled and noting.idle.threshold_tokens",
+    "auto_compact_after_force_noting_idle": "noting.idle.enabled and noting.idle.threshold_tokens",
+}
 
 
 @dataclass(frozen=True)
 class NotingSettings:
-    """The effective ``noting:`` configuration block (02 §4.1)."""
+    """Effective profile-owned configuration; invalid Noting config disables only Noting."""
 
-    enabled: bool
-    idle_delay_seconds: float
-    auto_trigger_compaction_enabled: bool
-    auto_trigger_compaction_threshold_tokens: Optional[int]
-    auto_compact_after_force_noting_idle: bool
+    enabled: bool = True
+    idle_enabled: bool = False
+    idle_delay_seconds: float = DEFAULT_IDLE_DELAY_SECONDS
+    idle_threshold_tokens: Optional[int] = None
+    persistence_proposal_char_threshold: int = DEFAULT_PROPOSAL_CHAR_THRESHOLD
+    persistence_proposal_entry_threshold: int = DEFAULT_PROPOSAL_ENTRY_THRESHOLD
+    configuration_failure: str = ""
+
+
+@dataclass(frozen=True)
+class SchedulerSettings:
+    enabled: bool = True
     configuration_failure: str = ""
 
 
 def _number(value: Any) -> Optional[float]:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return None
-    return float(value)
+    try:
+        result = float(value)
+        return result if math.isfinite(result) else None
+    except OverflowError:
+        return None
 
 
 def _positive_int(value: Any) -> Optional[int]:
@@ -62,46 +76,99 @@ def _positive_int(value: Any) -> Optional[int]:
     return value
 
 
+def _block(config, name):
+    if not isinstance(config, dict):
+        return {}, f"Configuration is unreadable; correct the {name} configuration."
+    value = config.get(name, {})
+    if not isinstance(value, dict):
+        return {}, f"{name} must be a mapping; replace it with the documented {name} block."
+    return value, ""
+
+
+def _boolean(block, key, default, path, errors):
+    value = block.get(key, default)
+    if not isinstance(value, bool):
+        errors.append(f"{path} must be true or false.")
+        return False
+    return value
+
+
+def scheduler_settings_from_config(config: Any) -> SchedulerSettings:
+    block, failure = _block(config, "scheduler")
+    errors = [failure] if failure else []
+    enabled = _boolean(block, "enabled", True, "scheduler.enabled", errors)
+    return SchedulerSettings(enabled and not errors, " ".join(errors))
+
+
 def noting_settings_from_config(config: Any) -> NotingSettings:
-    """Parse the ``noting`` block tolerantly; spec defaults apply to missing or malformed keys."""
-    block = config.get("noting") if isinstance(config, dict) else None
-    if not isinstance(block, dict):
-        block = {}
-    enabled = is_truthy_value(block.get("enabled"), default=True)
-    delay = _number(block.get("idle_delay_seconds"))
+    """Parse the new block without translating retired configuration into execution aliases."""
+    block, failure = _block(config, "noting")
+    errors = [failure] if failure else []
+    enabled = _boolean(block, "enabled", True, "noting.enabled", errors)
+    for key, replacement in _LEGACY_NOTING_KEYS.items():
+        if key in block:
+            errors.append(f"noting.{key} was removed; use {replacement}. No automatic migration is performed.")
+    idle, failure = _block(block, "idle")
+    if failure:
+        errors.append("noting." + failure)
+    idle_enabled = _boolean(idle, "enabled", False, "noting.idle.enabled", errors)
+    delay = _number(idle.get("delay_seconds", DEFAULT_IDLE_DELAY_SECONDS))
     if delay is None or delay < 0:
+        errors.append("noting.idle.delay_seconds must be a finite nonnegative number.")
         delay = DEFAULT_IDLE_DELAY_SECONDS
-    selection = block.get("auto_trigger_compaction_after_noting")
-    selection = selection if isinstance(selection, dict) else {}
+    threshold = idle.get("threshold_tokens")
+    if (threshold is not None and _positive_int(threshold) is None) or (idle_enabled and threshold is None):
+        errors.append("Set noting.idle.threshold_tokens to a positive integer before enabling noting.idle.")
+    proposal, failure = _block(block, "persistence_proposal")
+    if failure:
+        errors.append("noting." + failure)
+    limits = []
+    for key, default in (("char_threshold", DEFAULT_PROPOSAL_CHAR_THRESHOLD),
+                         ("entry_threshold", DEFAULT_PROPOSAL_ENTRY_THRESHOLD)):
+        value = _positive_int(proposal.get(key, default))
+        if value is None:
+            errors.append(f"noting.persistence_proposal.{key} must be a positive integer.")
+            value = default
+        limits.append(value)
     conflict = idle_compaction_conflict(config) if enabled else ""
+    if conflict:
+        errors.append(conflict)
     return NotingSettings(
-        enabled=bool(enabled) and not conflict,
+        enabled=enabled and not errors,
+        idle_enabled=enabled and idle_enabled and not errors,
         idle_delay_seconds=delay,
-        auto_trigger_compaction_enabled=bool(selection.get("enabled", False)),
-        auto_trigger_compaction_threshold_tokens=_positive_int(selection.get("threshold_tokens")),
-        auto_compact_after_force_noting_idle=bool(block.get("auto_compact_after_force_noting_idle", False)),
-        configuration_failure=conflict,
+        idle_threshold_tokens=_positive_int(threshold),
+        persistence_proposal_char_threshold=limits[0],
+        persistence_proposal_entry_threshold=limits[1],
+        configuration_failure=" ".join(errors),
     )
 
 
 def disabled_noting_settings() -> NotingSettings:
-    """Everything inert — the fail-closed fallback when the config cannot be read."""
-    return NotingSettings(False, DEFAULT_IDLE_DELAY_SECONDS, False, None, False)
+    return NotingSettings(enabled=False, configuration_failure="Noting configuration is unreadable.")
 
 
-def resolve_noting_settings() -> NotingSettings:
-    """Read the live config; an unreadable config disables Noting rather than guessing."""
+def disabled_scheduler_settings() -> SchedulerSettings:
+    return SchedulerSettings(False, "Scheduler configuration is unreadable.")
+
+
+def _resolve_settings(parser, disabled, name):
     try:
         from hermes_cli.config import load_config_readonly
         from hermes_cli.config_read_errors import FailedConfigRead
-
         config = load_config_readonly()
-        if isinstance(config, FailedConfigRead):
-            return disabled_noting_settings()
-        return noting_settings_from_config(config)
+        return disabled() if isinstance(config, FailedConfigRead) else parser(config)
     except Exception:
-        logger.warning("noting config unreadable; treating Noting as disabled", exc_info=True)
-        return disabled_noting_settings()
+        logger.warning("%s config unreadable; disabling only that feature", name, exc_info=True)
+        return disabled()
+
+
+def resolve_noting_settings() -> NotingSettings:
+    return _resolve_settings(noting_settings_from_config, disabled_noting_settings, "Noting")
+
+
+def resolve_scheduler_settings() -> SchedulerSettings:
+    return _resolve_settings(scheduler_settings_from_config, disabled_scheduler_settings, "Scheduler")
 
 
 def effective_noting_enabled(settings: NotingSettings, local_enabled: bool) -> bool:
@@ -222,25 +289,13 @@ def measurement_from_agent(agent: Any, measured_tokens: Any) -> Optional[Context
     return ContextMeasurement(tokens, window, threshold)
 
 
-def idle_task_profile(settings: NotingSettings, measurement: Optional[ContextMeasurement]) -> str:
-    """02 §4.10 below-Force branch: which runtime profile an admitted Idle Task gets."""
-    if not settings.auto_trigger_compaction_enabled:
-        return TASK_PROFILE_NOTING
-    threshold = settings.auto_trigger_compaction_threshold_tokens
-    if measurement is None or threshold is None:
-        return TASK_PROFILE_NOTING
-    if measurement.measured_tokens >= threshold:
-        return TASK_PROFILE_NOTING_WITH_COMPACTION
-    return TASK_PROFILE_NOTING
-
-
 def idle_compaction_conflict(config: Any) -> str:
     """The independent §4.12 configuration conflict; never rewrite Hermes settings."""
     block = config.get("compression") if isinstance(config, dict) else None
     raw = block.get("idle_compact_after_seconds", 0) if isinstance(block, dict) else 0
     try:
         return "idle_compaction_conflict" if int(raw) > 0 else ""
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return "idle_compaction_config_unreadable"
 
 
@@ -252,4 +307,4 @@ def configuration_guidance(reason: str) -> str:
         "idle_compaction_conflict": "Noting is disabled: set compression.idle_compact_after_seconds to 0, or set noting.enabled to false; these idle mechanisms conflict.",
         "idle_compaction_config_unreadable": "Noting is disabled: correct compression.idle_compact_after_seconds.",
         "runtime_unresolved": "Noting is disabled until the Conversation's native Hermes context window and threshold have been resolved.",
-    }.get(reason, "")
+    }.get(reason, reason)
