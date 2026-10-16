@@ -230,3 +230,29 @@ F12正式`run_noting_task`→同一持久child→原生`run_conversation`→live
 6. **接口／证据manifest**：`readable_notebook_entry/state`只加可选profile_home，可读JSON的结构不变；秒投影不回流内部working state或commit。六路径SHA256、固定base、spec／锁hash、五次精确命令与日志hash、scoped测量在`.hermes-dev/round3-local-20261017-l0/v51/manifest.json`；`final.patch`包含新测试在内的完整最小六路径增量，`new-test-source.py`为新增测试完整快照。无凭据或真实用户运行数据。
 
 7. **停止／建议后续**：本包六源码／测试路径已停止写入，报告追加不改旧证据。root集中review并统一提交后安排全新全范围Verification复审；已通过大回归按实际影响复用，失败修复仅定向补证。本owner无stage／commit、派生、round3真实模型、核心文档或其它并行owner文件修改。
+
+
+## F17 真实human_only Anchor在冻结交接后消失
+
+1. **条款与真实缺陷**：以公共production `d033c5057df419fb7d7122cba3085105dd13d89e`为起点（启动时HEAD fd5ec46仅文档），沿07 §3完整冻结父prefix、§8.1手动joint、§8.11–12持久child，04 §4.4 C13／§4.6每请求cache parity及02身份／Anchor／Foreground／失败关闭保留合同。真实V23恢复F16链的admission12 manual，Anchor为压缩前正式/notebook的assistant反馈row502；c4只读确认display_metadata.human_only=true、observed=0。同步freeze找到该UID后模型投影过滤了它；后台run_noting_task再次按可见UID查找而失败，无child Session。原证据v23/runtime/recovery-anchor-metadata.json及recovery-admission12-traceback.log；原实测未独立dump同步prefix，不能冒称已有该内存证据。
+
+2. **原生RED与方案review**：新增真实Main `run_conversation`的provider返回边界，用正式secretary_feedback_messages构造并原生append human_only反馈，再调用manual prepare_joint_noting→真实spawn→原生context worker。只在worker进入点用Event阻挡后续执行，捕获实际同步freeze返回结构；明确父源含Anchor而模型prefix不含它。`red.log`3F／1P：human_only场景与真实同样failed／child_session_id null，普通Anchor场景完成五请求；另确认原标记对象能被重绑至prefix内另一UID、空模型投影未同步拒绝。root review后认可按绑定身份修复，未更改Anchor定义或把hidden正文注入模型。
+
+3. **实际机制／文件**：production仅`agent/cache_parity.py`与`secretary/noting_child.py`。FrozenParentPrefix新增只读anchor_identity（Conversation Ref＋UID）；裸构造对象无绑定。首次freeze仍从完整原source逐条匹配Anchor、私有clone、按父原index／clock清理历史并做模型可见投影，非空成功后才绑定身份及durable标记。空投影同步抛NotingChildError并沿原failed admission／notice路径退出，不启动child。正式spawn与后台run显式传原admission.conversation_ref；已有准确类型且绑定的对象只比较完整原身份并结构复制，不扫描可见UID，不再读取父current/index/clock／变化消息。错ref或同prefix内另UID直接拒绝。未绑定子类即使覆盖属性声称身份仍走原source完整校验；兼容未显式ref的首次调用只可复用父已存在bound Ref，父无Ref时仅返回匿名结构副本，不能形成匿名可信handoff。原始传入list、commit gate、失败清理、provider/root/tools与原生未绑定路径没有放宽。
+
+4. **最终定向验证**：`green-final.log`9P，包括human_only／普通Anchor×父同ref变化／切新ref四条真实manual spawn/background/native五Turn链；逐请求比对真实Main已发送的完整父数组与tools，禁止human_only文本泄露，同步与worker复制身份始终原admission。父同ref但context/root/tools/index/clock变化仍正常commit；父切ref后仍发原前缀、不重绑，但按现行owner gate abandoned、无Snapshot，释放运行资源。其余五项为同prefix另UID／跨ref拒绝、空可见prefix同步failclosed、未绑定子类不可伪装／只读元数据、旧匿名调用只结构复制。`shared-freeze-regression.log`11P＝F12四replay模式＋两marker身份＋正式preflight旧Anchor七项，C5多模态复制／缺Anchor及合法overflow／failed／interrupted资源释放四项；F12每次冻结前缀合同保持，不全跑旧78。
+
+| 本包日志 | 结果及用途 | runner wall秒 |
+|---|---|---:|
+| red.log | 3F／1P，有效正式handoff RED | 2.6 |
+| green.log | 3P／2F；首测试误强求切ref后仍commit，实际旧owner gate按合同abandoned，不冒称新产品缺陷 | 3.0 |
+| green-final.log | 新九项全部PASS；root认可同ref正常commit／跨ref保gate的拆分 | 4.6 |
+| shared-freeze-regression.log | 共享冻结／多模态／失败资源11P | 4.5 |
+
+共4次canonical runner，wall累计14.7秒，最终定向有效并集**20 PASS**（新9＋共享11）。三变化路径Ruff PASS／冻结scoped health相对d033 **0 blocking／0 advisory**／diff-check PASS，0.564秒；未重复旧78、大型回归或已通过时间组。
+
+5. **缺口与真实复证**：本次是实际F17失败后的确定性身份交接修复，不是概率重试，也不删除／重写原失败admission或占用。原生模型可见性仍过滤human_only；原DB隐私行保持。没有本包未关闭的受控机制失败；真实模型原合法chain由c4在root集成后复证一次，本owner不碰round3，不把受控API返回称真实DeepSeek成功。
+
+6. **接口／manifest**：freeze_parent_active_prefix新增内部可选keyword conversation_ref；正式spawn与run传同一admission Ref，外部四工具、admission身份定义与Snapshot／pointer接口不变。旧F12测试源码未改。精确三路径最终SHA、base、四次命令／nodes／日志hash及scope测量见ignored `f17/manifest.json`；`final.patch`包含新增test_r3_frozen_anchor_handoff.py的完整三路径增量，`real-origin.json`只记录脱敏metadata及原证据hash，没有凭据或完整root正文。
+
+7. **停止与后续**：三源码／测试路径已停止写入，交root集中review／commit后再由c4独占真实复证。无stage／commit、派生、round3／真实模型、其它production／规格／根docs／规则／依赖变更。独立Verification／Validation判定由主会话组织，20P不代替最终全范围复审。

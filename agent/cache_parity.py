@@ -144,22 +144,37 @@ def frozen_current_user_message(parent, message, index, cloned):
 
 
 class FrozenParentPrefix(list):
-    """Internal structural copy already normalized at the Parent's own request boundary."""
+    """Internal request copy, optionally bound after a verified Parent Anchor freeze."""
+
+    __slots__ = ("__anchor_identity",)
+
+    def __init__(self, messages=()):
+        super().__init__(messages)
+        self.__anchor_identity = None
+
+    @property
+    def anchor_identity(self):
+        return self.__anchor_identity
+
+    @staticmethod
+    def _from_verified_anchor(messages, *, conversation_ref, anchor_message_uid):
+        prefix = FrozenParentPrefix(messages)
+        prefix.__anchor_identity = (conversation_ref, anchor_message_uid)
+        return prefix
 
 
-def freeze_parent_replay_prefix(parent, messages, *, source_length, already_frozen=False):
+def freeze_parent_replay_prefix(parent, messages, *, source_length):
     """Replay-clean only the Parent's historical portion, once at its existing Turn clock."""
     from agent.message_visibility import model_visible_messages
     from agent.replay_cleanup import canonicalize_replay_history
 
-    if not already_frozen:
-        current = getattr(parent, "_persist_user_message_idx", None)
-        now = getattr(parent, "_current_turn_timestamp", None)
-        # Anchor truncation may omit this Turn's not-yet-durable user; prove its
-        # index against the complete source before limiting the historical slice.
-        split = min(current, len(messages)) if isinstance(current, int) and 0 <= current < source_length else 0
-        if split and now is not None:
-            messages = canonicalize_replay_history(messages[:split], now=now) + messages[split:]
+    current = getattr(parent, "_persist_user_message_idx", None)
+    now = getattr(parent, "_current_turn_timestamp", None)
+    # Anchor truncation may omit this Turn's not-yet-durable user; prove its
+    # index against the complete source before limiting the historical slice.
+    split = min(current, len(messages)) if isinstance(current, int) and 0 <= current < source_length else 0
+    if split and now is not None:
+        messages = canonicalize_replay_history(messages[:split], now=now) + messages[split:]
     return FrozenParentPrefix(model_visible_messages(messages))
 
 

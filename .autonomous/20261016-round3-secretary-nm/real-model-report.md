@@ -109,3 +109,20 @@ overflow、混批、提交竞争等确定性机制复用已有C5/C7/C9有效机�
 只做静态文本/AST核对：12个相关英文常量均逐字出现在07，其余11常量内容与hash不变；DEFAULT及07段落外字节不变。准确before/after/hash/行号在ignored `v23/implementation-manifest.json`，局部差异为`step4-implementation.patch`（SHA256 `d6fd0cc567a4cc5335c4b1c3401414d997f55f93f906a546003259270b571e7c`）。没有runtime、Schema、权限、commit gate、tests或规则改动；未运行镜像测试、大组、check、实际产品或模型。archive/update/引用约束复用既有机制证据，不能把文本核对当成模型语义结算通过。
 
 一次性后续输入计划在ignored `v23/scenario-input-plan.json`：原正式Conversation resume后仅一次/noting恢复首失败，不重复USER写入；另建一个正式Main链，合成事实→一次合法Noting形成现行来源→具体草稿→明确逐字USER批准→真实memory结果→新增未批准事实→一次合法Noting→正式/notebook与只读版本审计。输入没有测试专用Task/工具动作指令，不改DEFAULT以外任何Prompt；包含全覆盖个人经验、后来新增范围、资料册未完责任和待审Skill用途。按实际模型条目结构判断覆盖；若自然拆条使同entry partial未出现，明确缺口，不再抽样挑成功。任何真实失败/未知原样报告，不编造第二目标失败、不盲目重试。所有运行仍等待root review、提交SHA及明确START。
+
+
+### V23 首次真实恢复：正式联合入口受F17阻断（生产d033c505，已恢复并释放round3）
+
+主会话明确START的生产SHA为`d033c5057df419fb7d7122cba3085105dd13d89e`；启动时HEAD为`fd5ec4614326940d13a315f3311fe60f6a2952ba`，两者仅baseline/CLAUDE文档差异，生产相同。个人`5a2fe444042c1d19e29ff9e7a781c6eb4a348f70`未加载。wrapper原生DeepSeek custom/chat_completions，profile及get_hermes_home均为固定round3。配置SHA256仍为`ca8a60eb5cf213e74029452c7aedd1e8632e129031bc3ef6f1a5997aea6afc1e`，Noting/Scheduler配置缺省按产品默认；Idle未启用。配置、USER和空plugins目录已备份；未安装插件、未接NM、未接AppServer/Proxy或旧Dashboard。
+
+本次先纠正计划触发错误：裸/noting只是Usage，实际只用正式`session.compress`手动联合入口；/noting on|off仍仅控制参与。原链以`session.resume`恢复原stored ID，原生返回runtime `5a70c314`，用一条获批普通确认消息推进Main，未重放USER写入。Main真实完成后用正式/notebook保存整理前视图，再只调用一次session.compress。原生压缩成功`26→22`消息、removed4，~52,829→47,329 tokens，noop/aborted/refused_would_grow/fallback均false。
+
+**真实机制失败：** manual admission12已接纳，anchor为`37c3c8b6bbd04ed88797ff102c3f69b5`，children.status=failed，child_session_id=null。worker在`noting_child.py:534`第二次freeze，经:155报`The frozen Anchor is not present in the Parent's active context`，发生于child构造前，零Noting模型请求。只读原行是row502 assistant、display_metadata=`{"human_only":true}`、observed0，正是紧邻compress前/notebook产生的反馈；它不是Main正常确认回复（row500 UID`320004f07c3d4d5b8d64487b2feecc16`）。同步freeze先按durable Anchor截断，再经正式model_visible_messages移除该human_only条目，worker对这份已投影prefix再按同UID定位而失败。未独立dump同步内存prefix，因而该投影原因是由实际row metadata、正式代码及trace共同证实的时序，不冒称抓到了完整独立prefix对象。精确metadata与traceback已交主会话和原local owner，主会话按F17处理。
+
+故本次没有执行新Step4模型语义，也没有新增F16来源结算成功证据。原source6仍为v34且未归档，pointer前后同为`snap_52fa429915ab45db8845a90c7a9184e3`；首样本FAIL继续保留。收到主会话停止指令后没有重触发原链、没有新Conversation、新批准、新USER写入或随机抽样。新链全部未运行，不宣称未交付/责任/其他候选保护已新增覆盖。
+
+正式路径证据在ignored `v23/runtime/`：原始RPC/operations、recovery-confirmation、recovery-notebook-before、recovery-compress完整response、before/after Notebook版本及只读state备份、admission12与Anchor metadata、traceback、唯一新parent request.body及hash、usage-raw-observations和原始API/cache日志。Main实际API原值in47202/out34/total47236/cache46848/47202；原生summary有一次dispatch日志，未暴露独立aux逐call usage/cache原值，不用Main统计冒充。没有Noting请求可供新prefix或新Prompt对比。所有headers/key/root正文均未打印，body仅本地ignored。
+
+**退出与恢复：** 原生host已正常stop，wrapper returncode0；随后自有客户端driver以明确SIGINT退出130（不冒称0），两个自有PID均不在。turn leases0、running children0。配置原bytes已恢复，USER仍原75字符合成经验且hash`8f4eda659573177d245d2c1ca01f60664deefa1a3833ce8df4bfb1f519708ed4`，MEMORY/插件状态与备份一致，零新增USER正文。证据见handoff-host-stop-and-restore.json及process-release.json。round3已明确释放，不能在旧活runtime载入后续代码。
+
+本包只新增ignored运行驱动/证据与本报告，未改生产/规格/tests/core docs，未stage/commit或重跑最终回归。后续由root组织F17机制修复及定向证据；新提交review后，再明确分配固定SHA/START和剩余运行预算。当前F16仍OPEN、首次恢复因正式host冻结机制失败而阻断，不能据Prompt静态一致性关闭。

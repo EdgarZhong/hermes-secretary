@@ -129,35 +129,52 @@ def active_noting_task_count() -> int:
 
 
 def freeze_parent_active_prefix(
-    parent: Any, anchor_message_uid: str, messages: Optional[Sequence[Dict[str, Any]]] = None
+    parent: Any, anchor_message_uid: str, messages: Optional[Sequence[Dict[str, Any]]] = None,
+    *, conversation_ref: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """Structural copies of the Parent's request-normalized Active context through the frozen Anchor.
 
     Fails closed when the Anchor is not on the Parent's active path: dispatching against a
     wrong prefix would make the task's result unanchored. Copies are marked already-durable
     so the child's own flush never writes the inherited prefix into its transcript.
+    A verified handoff checks its bound identity: model projection may omit the Anchor row.
     """
     source = messages if messages is not None else getattr(parent, "_session_messages", None)
     if not isinstance(source, (list, tuple)) or not source:
         raise NotingChildError("The Parent's active context is unavailable for freezing")
     frozen: List[Dict[str, Any]] = []
     from agent.cache_parity import FrozenParentPrefix, freeze_parent_replay_prefix, frozen_current_user_message
-    already_frozen = isinstance(source, FrozenParentPrefix)
+    if type(source) is FrozenParentPrefix and source.anchor_identity is not None:
+        if source.anchor_identity != (conversation_ref, anchor_message_uid):
+            raise NotingChildError("The frozen Anchor identity does not match the admitted Conversation")
+        return FrozenParentPrefix._from_verified_anchor(
+            [_clone_message(message) for message in source],
+            conversation_ref=conversation_ref, anchor_message_uid=anchor_message_uid,
+        )
 
     for index, msg in enumerate(source):
         if not isinstance(msg, dict):
             continue
         cloned = _clone_message(msg)
-        frozen.append(cloned if already_frozen else frozen_current_user_message(parent, msg, index, cloned))
+        frozen.append(frozen_current_user_message(parent, msg, index, cloned))
         if msg.get("message_uid") == anchor_message_uid:
             break
     else:
         raise NotingChildError("The frozen Anchor is not present in the Parent's active context")
     from agent.context_compressor import _DB_PERSISTED_MARKER
 
-    frozen = freeze_parent_replay_prefix(parent, frozen, source_length=len(source), already_frozen=already_frozen)
+    frozen = freeze_parent_replay_prefix(parent, frozen, source_length=len(source))
+    if not frozen:
+        raise NotingChildError("The Parent's model-visible frozen prefix is empty")
     for msg in frozen:
         msg[_DB_PERSISTED_MARKER] = True
+    # Compatibility callers may derive an existing bound Ref only at FIRST freeze.
+    # An anonymous structural copy never gains trusted handoff identity.
+    bound_ref = conversation_ref if conversation_ref is not None else getattr(parent, "_secretary_conversation_ref", None)
+    if isinstance(bound_ref, str) and bound_ref:
+        frozen = FrozenParentPrefix._from_verified_anchor(
+            frozen, conversation_ref=bound_ref, anchor_message_uid=anchor_message_uid,
+        )
     return frozen
 
 
@@ -531,7 +548,8 @@ def run_noting_task(
     try:
         if admission_timestamp is None:
             admission_timestamp = parent_db.noting_admission(admission_id)["admitted_at"]
-        prefix = freeze_parent_active_prefix(parent, anchor_message_uid, parent_active_messages)
+        prefix = freeze_parent_active_prefix(
+            parent, anchor_message_uid, parent_active_messages, conversation_ref=conversation_ref)
         if frozen_work is None:
             frozen_work = freeze_notebook_start(parent_db, conversation_ref)
         child = build_noting_child(
@@ -734,7 +752,8 @@ def spawn_noting_task(
     parent_db = getattr(parent, "_session_db", None)
     failure_notice = _NotingFailureNotice(parent, admission.admission_id, admission.conversation_ref)
     try:
-        prefix = freeze_parent_active_prefix(parent, admission.anchor_message_uid, parent_active_messages)
+        prefix = freeze_parent_active_prefix(
+            parent, admission.anchor_message_uid, parent_active_messages, conversation_ref=admission.conversation_ref)
         frozen_runtime = freeze_parent_runtime(parent)
         admitted_at = parent_db.noting_admission(admission.admission_id)["admitted_at"]
         frozen_work = freeze_notebook_start(parent_db, admission.conversation_ref)

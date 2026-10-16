@@ -2,7 +2,7 @@
 
 ## 自主口径收敛 · 待用户追认
 
-**Agent 自主工程细化／待用户追认：F16 Noting来源结算动作展开。** 白板E1已要求移除实际成功覆盖，但07 §8.11 Step4仅抽象写“Remove only successfully dispatched coverage”，真实模型只归档Candidate并给source加注记。决定将同一段明确为：对照实际批准／成功与现行版本，完整交付且无保护理由的来源归档，部分覆盖则精简已交付部分，保留具体新内容／未完责任／其它候选依赖，先修引用并说明保留理由。Astra已按原判据评审认可，不改变产品语义、权限或完成条件；已同步07与常量，真实round3复测已启动，固定公共d033c5057df4。用户尚未追认，不冒称用户指定措辞。原始d19018冻结与首失败证据保留。
+**Agent 自主工程细化／待用户追认：F16 Noting来源结算动作展开。** 白板E1已要求移除实际成功覆盖，但07 §8.11 Step4仅抽象写“Remove only successfully dispatched coverage”，真实模型只归档Candidate并给source加注记。决定将同一段明确为：对照实际批准／成功与现行版本，完整交付且无保护理由的来源归档，部分覆盖则精简已交付部分，保留具体新内容／未完责任／其它候选依赖，先修引用并说明保留理由。Astra已按原判据评审认可，不改变产品语义、权限或完成条件；已同步07与常量，真实round3复测固定公共d033c5057df4启动后遇F17冻结交接失败，正在修复，尚无Step4结果。用户尚未追认，不冒称用户指定措辞。原始d19018冻结与首失败证据保留。
 
 ## 第三轮自主实现 · 本地托管恢复（2026-10-17）
 
@@ -34,6 +34,7 @@
 | 门禁 | verification_astra（全新Astra/high）正在全范围初审；发现项已回到修复循环 | 初审固定公开323c64dacba1／个人e1af6cc45ffb；修复生产公开d033c5057df4／个人5a2fe444042c；首审60项：56符合、2不符合、2证据不足，主会话已review接收；修后需全新独立全范围复审，Validation待通过 |
 | F14 最终回归 | 首轮已完成；27个旧测试失败／错误已修复并由主会话review接收（含邻域共29）；压缩6原失败＋邻域共10已review接收；两失败检查已修复通过 | 1766 PASS／29 FAIL／4 setup ERROR／3平台skip；固定136文件等范围只执行一次，后续仅失败与影响路径定向复测 |
 | F15 时间投影 | 公共六路径17项PASS，主会话已review接收；个人Recall8节点＋17子例已review接收；Scheduler run_at／绝对display共8项有效证据已review接收 | V51：仅人／模型可读Notebook投影为秒精度，覆盖工具、control、Main、slash、Proposal、Framework；内部精度不变 |
+| F17 冻结交接 | local_environment修复20项PASS，主会话已review接收；c4已释放round3待新版本复证 | 原恢复链human_only Anchor在同步模型投影中被过滤；现用已验证Ref／UID交接，不重读父状态，待原场景真实复证 |
 | F16 来源结算 | 主会话及Astra已评审具体Step4细化，c4已实施并启动固定d033c5057df4真实round3补证 | V23：候选13已归档但来源6仍保留成功写入的完整经验；不能宣称完成结算，首样本失败保留 |
 
 - 真实运行新发现 R3-F08：TUI Main streaming期间/noting反馈后，durable原文仍在但后续Active冻结缺输入／图片；修复已由主会话review接收：busy历史批次合并与cold human_only投影共28项PASS，ruff/health通过；eff3235真实busy图片六请求与cold回复／human_only隔离已通过，主会话接收。
