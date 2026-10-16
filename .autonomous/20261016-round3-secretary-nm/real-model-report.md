@@ -16,7 +16,7 @@ tracked 仅新增本报告；没有改 production／tests、stage、commit、分
 
 | 阶段 | 实际启动 SHA／manifest | 适用证据 |
 |---|---|---|
-| 初始 CLI／Gateway generations1–2 | f304b42bbd6c45a62d1fded490f005bde019b23e；E/run-manifest.json | 七类型、否决/纠正、受限真实USER成功结算、assistant尾图片5请求、History、Proposal、四入口/Idle时序；同时保留F08/F09/F11/F12真实失败 |
+| 初始 CLI／Gateway generations1–2 | f304b42bbd6c45a62d1fded490f005bde019b23e；E/run-manifest.json | 七类型、否决/纠正、受限真实USER成功写入与候选归档（来源结算失败，见V23）、assistant尾图片5请求、History、Proposal、四入口/Idle时序；同时保留F08/F09/F11/F12真实失败 |
 | 第一修复 Gateway generation3 | eff3235f6bc1ee53b5d29b5210ad397024959df6；E/repair-run-manifest.json | F08 streaming图片、F08b cold、F09/Scheduler注册/两deferred carrier与ACK、操作控制、闲置instant、busy降pending和下一ACK、global Noting off实际Scheduler、F11成功边界及下一Force、F13人类/model分界 |
 | 最终微修 Gateway generation4及受控probe | f66a8f80b4bab39b0a785a552019c91a6e9becba；E/f12-run-manifest.json | F12首user尾7请求、两个真实同child跨5Turn链、Scheduler重启持久性和清理；不重跑前述已有效链 |
 
@@ -31,13 +31,13 @@ tracked 仅新增本报告；没有改 production／tests、stage、commit、分
 | CLI／TUI与开关 | 原生CLI oneshot真实回复；TUI session.create→prompt.submit。全关、仅Noting、仅Scheduler均真实回复，History均在请求；Role／Scheduler指导各自独立。global Noting off时native compress正常no-op、零新admission；修复后global Noting off也真实创建/list Scheduler，local off投递完整通过 | E/cli-smoke.log；sessions.json；switch-request-evidence.json；*-response.json；global-off-native-compress.json；scheduler-global-off-* |
 | 七类型、否决、修正 | 第一任务13条覆盖matter/action/situation/implicit_gap/question/insight/decision及Candidate。青鹭周五纠正周六、未承诺今晚交付；委派owner小林；用户问题仍open、认识只是猜测；否决AI整套建议未变承诺。第二任务探访完成、青鹭测试仍pending、已回答缺口归档、限期决定expired | snapshot-first.json／snapshot-first-entries.json；notebook-after-settlement.json；noting-working-show.json |
 | 四工具与多模态前缀 | 原生image.attach合成64×64左蓝右红PNG，DeepSeek真实接受并识色。初始干净child同一Turn5请求精确parity；F08修复busy图片6请求精确parity；F12首user尾7请求精确parity。实际自然任务调用全部四工具和standalone finish；真实同child跨5Turn每请求也精确parity，见下文受控边界 | multimodal-prefix-parity.json；f08-repair-prefix-evidence.json；f12-user-tail-prefix-repair-evidence.json；native-continuation*-cross-turn-prefix-evidence.json；child-actual-tool-counts.json；semantic-second-tool-trace.json |
-| 跨压缩History与Proposal | 手动原生成功17→6后，Main用History读最早真实消息并区分图像观察和用户原话；/propose-persistence返回send后客户端转发原生directive，Main生成来源和版本明确草案；推迟不作批准。后续真实受限memory成功只结算成功范围；第二经验未定目标未执行 | proposal-first-response.json；correction-response.json；memory-before/manifest.json；memory-after.json；framework-177.txt；rpc.jsonl |
+| 跨压缩History与Proposal | 手动原生成功17→6后，Main用History读最早真实消息并区分图像观察和用户原话；/propose-persistence返回send后客户端转发原生directive，Main生成来源和版本明确草案；推迟不作批准。后续受限memory真实成功、候选13归档；来源6完整保留构成V23失败；第二经验未定目标未执行 | proposal-first-response.json；correction-response.json；memory-before/manifest.json；memory-after.json；framework-177.txt；rpc.jsonl |
 | 四入口与Idle | 手动28→15父native先于child完成；Force同conversation_start一次admission，换anchor/child完成不释放。auto真实preflight9→3提交。Idle23,296<32k截止零任务；36,412>32k、两新Turn取消重臂、due+约8ms唯一idle admission，父8→6成功先child约21秒。F11修后成功边界登记compaction:20261017_012517_02e0f2:285，下一Force admission8使用新区间，后续换anchor仍只一次 | force-*-response.json；auto-pressure-*.json；idle-*-response/state.json；idle-final-evidence.json；native-boundary-interval-miss.json；f11-repair-boundary-force-evidence.json；f11-refill-*-state.json |
 | Scheduler／重启 | 修复前真实未登记保留；修复后原Main工具桥实际create/list，pause/resume/update/delete；两deferred自然到期→一carrier→真实响应双ACK；idle instant自然唤醒；busy instant到期只pending、不启动第二Turn→下一Main实际携带ACK。重启前后registry逐项完全相等；合成未来排期最后实际delete清理 | scheduler-missing-catalog.json；scheduler-register-two-response.json；scheduler-deferred-*.json；scheduler-control-idle-register-response.json；scheduler-idle-wake-events.json；scheduler-busy-lifecycle-evidence.json；scheduler-restart-*.json；scheduler-cleanup-*-response.json |
 
 主要Conversation：semantic `conv_8ed507015f4544f4820892042f67fc8d`；multimodal `conv_6a9caac1efcf4bc89f118a38fc05c3a1`；pressure `conv_2c67c04d65074b719f2df0b78e8dfb34`；Idle `conv_0688c7da4f274982b5860cb299aa8d78`。物理Session和runtime ID见 E/sessions.json。所有事实、人物、项目和图片均合成。
 
-真实memory例外经主会话明确授权：先wrapper内get_hermes_home核实round3，备份确认原MEMORY/USER均不存在；只通过原生memory `action:add,target:user`写获批具体75字符合成经验，返回success、entry_count1，实际文件是round3/memories/USER.md。没有写真实profile、NM、Skill或其它目标。第二部分没有目标和授权，**未执行／未结算**，不是发生了写失败。Noting根据可见真实tool成功结果归档候选13，来源情形保留；新未定目标经验保留情形35，未伪造目标。
+真实memory例外经主会话明确授权：先wrapper内get_hermes_home核实round3，备份确认原MEMORY/USER均不存在；只通过原生memory `action:add,target:user`写获批具体75字符合成经验，返回success、entry_count1，实际文件是round3/memories/USER.md。没有写真实profile、NM、Skill或其它目标。第二部分没有目标和授权，**未执行／未结算**，不是发生了写失败。Noting根据可见真实tool成功结果归档候选13，但来源6 v34仍完整保留已写经验，仅加处理注记，未给新增/责任/其他候选等保留理由，构成V23来源结算失败；新未定目标经验保留为独立来源35，不能解释来源6的保留，未伪造目标。
 
 完整Snapshot Framework分别保存在 E/framework-58.txt、81、106、177；177含完整正文与同条末尾PERSISTENCE PROPOSAL REQUEST。Snapshot payload存immutable version ID；查现行应hydrate对应版本并过滤archived。E/snapshot-second-entries.json是早期错误选旧版本的粗略导出，不作为当前视图证据；正式/notebook与working show已证归档无复活。
 
@@ -72,7 +72,7 @@ overflow、混批、提交竞争等确定性机制复用已有C5/C7/C9有效机�
 
 两次probe均自然在原预算内结束，没有第三次随机尝试。它们证明同child跨原生Turn、完整实际continuation、完整多模态前缀稳定及有界兜底。没有取得特定“首纯文本、第二正常finish”的受控预期形态，该形态本身不是冻结规格的额外完成条件。正常standalone finish沿此前多个正式自然child链证明；桥工具失败不算成功，也没有修改产品放行父bridge。强制审计、Snapshot及已结束child/source Session行见E/final-product-state-before-stop.json；连接close原生日志、probe进程退出及最终零运行child共同构成资源释放证据。
 
-真实partial persistence failure没有人为制造；本次第二部分未执行，只覆盖成功范围结算与未知／未批准范围保留，不是同candidate多目标部分失败。跨平台、真实NM、云部署均不属本次运行证据。
+真实partial persistence failure没有人为制造；本次第二部分未执行，只证明USER真实写入、候选13归档及独立未批准来源35保留；来源6退出/精简未落实，不能宣称成功范围完整结算，也不是同candidate多目标部分失败。跨平台、真实NM、云部署均不属本次运行证据。
 
 ## 6. 接口影响与退出状态
 
@@ -87,3 +87,25 @@ overflow、混批、提交竞争等确定性机制复用已有C5/C7/C9有效机�
 主会话review本报告和ignored证据后安排C11-P独占round3。公开模型剩余清单已完成，无新增待改生产缺陷；真实模型输出仍有普通模型局限：global-off创建结果的额外自然语言把跨UTC日期误说为“早于当前”，但实际canonical时间／registry为真实未来07:13，未影响登记；已保留原回复，不把这句解释当metadata事实。
 
 最终回归静态清单按主会话要求已转reuse cache_parity11与thinking-only sanitizer20：136全文件＋TUI server84函数过滤、已有有效证据对照见regression-plan.md及ignored final-regression-prep。本Agent没有运行大型回归或固定10类检查；等待Verification派出后主会话另定SHA／owner／start。真实NM、云部署、跨平台和真实多目标persistence failure仍是明确边界，不冒称已验证。
+
+
+## V23 / R3-F16：来源结算首样本失败与调查里程碑（2026-10-17）
+
+**状态：OPEN；只完成调查，未改Prompt、未启动新模型。** Astra V23及主会话已核对：原f304b42样本的USER真实成功与Candidate13归档成立，但source6 v6→v34仅增加processing_note，description逐字未变，且无新增内容、未完责任或其他active候选/关系需要它。source35 v36为另一条独立未批准经验，不是6的保留理由。上述历史范围表及结算说明已纠正，原始request/tool/Snapshot失败事实均保留；不得继续把本样本称为来源完整结算通过。
+
+依据白板L2与第09章E1、07§8.11 Step4（当前1331节标题、1349动作段；1358来源保留直到结算；1363归档前修引用）；02§5.6只涉及时间投影。9个原Noting请求均注入逐字DEFAULT，与原f304b42源码及冻结07相等；完整父28消息/tools一致。实际批准、memory成功和独立新增内容在父上下文和child正式History Read返回中均可见。未发现相反的明确任务Prompt或配置例外。父Main泛述“source entries remain in place”是可能误导线索，child明确以追加任务为准，不能据此豁免来源结算。
+
+工具链：child尝试update6时混入只读candidate_refs而失败；archive13成功；随后合法重试仅加processing_note成功得到v34；finish明确称“来源6保留”，真实提交Snapshot `snap_52fa429915ab45db8845a90c7a9184e3`。因此不是提交丢失或资料缺口，而是模型把“候选归档＋来源加已保存注记”当成已完成结算。现行Step4没有展开source archive/update具体分支，应按已冻结语义提出工程Prompt细化，不能硬编码按memory返回删源。
+
+集中根因、证据UID、版本/引用、完整英文Step4替换提案及待START真实方案见ignored `.hermes-dev/round3-local-20261017-l0/v23/investigation-report.md`；逐请求及只读Snapshot审计见同目录 `investigation.json`；替换提案为 `proposed-step4.txt`。仅提案、尚未注入；需要root与Astra评审及明确修复SHA/运行START后，才通过同一正式Main批准→真实成功→合法Noting补证，并同时观察成功覆盖移除/精简和未交付新增/责任/其他候选依赖保护。不重复随机采样、不伪造第二部分写失败，不动真实NM、其它profile、生产/tests或最终回归。
+
+
+### V23 实施交回：仅Step4文本同步（尚未模型START）
+
+主会话采纳、原Astra评审认可完整Step4提案后，按明确白名单实施。工程细化仍为CLAUDE顶部登记的Agent自主细化／待用户追认，不冒称用户亲选措辞。实施基准HEAD `ac7032be96114016bc26d1fa8825c4ba04b925f4`；本包未stage/commit，待主会话review提交后另给真实运行SHA/START。首样本失败与调查原证据均保留，V23仍OPEN。
+
+准确变更仅两行：07 §8.11 Step4为第1349行；`secretary/noting_prompts.py` DEFAULT对应第18行。均逐字采用`proposed-step4.txt`完整第4段，不含文件前两行说明；英文段落SHA256 `42eb85bb48f70f1a793385de48e922792943f8a06b8c9bab67f25f76c47ba79c`，评审提案文件SHA256 `e0d68140116a3857b221ca727f38e68ae64f922293038097f04c29c21f0ac4de`。07完整文件新SHA256 `6aa214963a2d7f806fa3d006f1b9e5a2185b4992c1b8d1246a51590fe630fc8d`；noting_prompts完整文件 `669e109185556b82fcc7f688078b9875827b00f38e1ca74825f3e83097337ace`。
+
+只做静态文本/AST核对：12个相关英文常量均逐字出现在07，其余11常量内容与hash不变；DEFAULT及07段落外字节不变。准确before/after/hash/行号在ignored `v23/implementation-manifest.json`，局部差异为`step4-implementation.patch`（SHA256 `d6fd0cc567a4cc5335c4b1c3401414d997f55f93f906a546003259270b571e7c`）。没有runtime、Schema、权限、commit gate、tests或规则改动；未运行镜像测试、大组、check、实际产品或模型。archive/update/引用约束复用既有机制证据，不能把文本核对当成模型语义结算通过。
+
+一次性后续输入计划在ignored `v23/scenario-input-plan.json`：原正式Conversation resume后仅一次/noting恢复首失败，不重复USER写入；另建一个正式Main链，合成事实→一次合法Noting形成现行来源→具体草稿→明确逐字USER批准→真实memory结果→新增未批准事实→一次合法Noting→正式/notebook与只读版本审计。输入没有测试专用Task/工具动作指令，不改DEFAULT以外任何Prompt；包含全覆盖个人经验、后来新增范围、资料册未完责任和待审Skill用途。按实际模型条目结构判断覆盖；若自然拆条使同entry partial未出现，明确缺口，不再抽样挑成功。任何真实失败/未知原样报告，不编造第二目标失败、不盲目重试。所有运行仍等待root review、提交SHA及明确START。

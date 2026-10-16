@@ -9,6 +9,7 @@ import json
 import logging
 import uuid
 
+from hermes_time import readable_schedule_display
 from hermes_state_secretary_schedule import (
     ScheduleError,
     occurrence_payload,
@@ -114,6 +115,10 @@ def _state(row):
 def schedule_public_conn(conn, row, *, profile_home=None):
     canonical = json.loads(row["canonical_schedule"])
     validate_canonical_schedule(canonical)
+    if "run_at" in canonical:
+        canonical["run_at"] = render_source_timestamp(canonical["run_at"], profile_home=profile_home)
+        if "display" in canonical:
+            canonical["display"] = readable_schedule_display(canonical, canonical["display"])
     if row["delivery_semantics"] not in _MODES.values():
         raise RuntimeError("Unrecognized stored Schedule delivery mode")
     pending = conn.execute(

@@ -102,3 +102,53 @@ _freeze_and_admit(db, conversation_ref, *, kind, frozen_identity=None,
 6. **Scheduler 实际到期**：让 Main 实际结构调用 `scheduler` 登记短时 deferred/instant、list/update/pause/delete；保持 Noting 关闭时再次登记以证明独立。通过同 TUI host 等待到期：idle instant 的 Main 唤起、busy 降为 pending、两条 deferred 在下一实际请求形成一 carrier 并 ACK；记录真实 Table/receipt/carrier 与完成事件，重启同 profile 读取持久排期和 Snapshot。必要失败时序引用 C6/C9-H 真实 DB/provider seam 证据，不伪造网络失败来污染正式样本。
 
 所有输入、JSON-RPC 请求/事件、模型实际结构调用、usage、数据库身份与脱敏请求 body 写入新的 ignored real-model 证据子目录，报告列版本、控制边界、观察到的事实与缺口。启动前不执行上述命令或修改 round3 运行配置；主会话 review 本包及 C9-S 后确定实际待测 SHA 并发出 start。独立 Validation 保持另外执行者和报告职责。
+
+
+## F14 最终回归剩余压缩六节点：原生夹具与ACP隔离依赖
+
+1. **依据与范围**：以`ac7032be96114016bc26d1fa8825c4ba04b925f4`为回修起点，复用最终回归`compaction.log`／`failure-triage.json`六个精确失败，不重跑29文件／136文件。遵守未启用即原生及官方PM／现锁依赖契约，不修改压缩production或放宽断言。
+
+2. **实际查因与修改**：`test_in_place_compaction.py`四失败的原始日志显示额外Noting失败Framework，导致same-session／flagoff行数及rotation-preflush次数变化、anti-growth原文比对多一条通知。`test_in_place_persist_marker.py`最初仅知5!=4，本包先在原失败节点补失败诊断，实际读出额外active行正文为NOTING RESULT、metadata含`noting_run_output:true`，不是compact dict重复写入。两文件各自`_make_agent`在所属临时DB目录写`noting.enabled:false`，使纯原生夹具明确关闭后台Notebook任务；保留全部原生active／inactive行数、FTS、same-session／rotation、anti-growth、marker、两次persist及零重复断言；只为原行数断言添加失败时tail正文／metadata诊断。没有删除、skip、xfail、alias或生产绕路。
+
+3. **ACP正式环境**：原失败`test_conversation_compression_manual.py::test_every_surface_honours_preview_without_compressing[acp]`缺`acp`导入。官方`pyproject.toml:415`已声明extra `acp=agent-client-protocol==0.9.0`，现有uv.lock同版本；不是新增依赖／锁变化。获root协调授权后，以官方`pm.build_env`在ignored `compaction-repair/acp-env`创建独立Python3.14.7，groups dev/test＋extra acp，不使用裸pip/uv、无resolve、不动共享.venv。canonical runner显式选择该环境，仅运行ACP原参数。版本／source／准确PM命令／锁hash见`acp-environment.json`；共享.venv仍不能导入acp。环境构建成功日志保留，未单独计时构建过程。
+
+4. **验证**：`persist-red.log`1F（整行列表被pytest截断，1.9秒）；`persist-red-detail.log`1F（精确tail与metadata反证，2.0秒）；修复后`native-green.log`9P＝五原native失败＋同构造helper四邻近节点（5.9秒runner wall）；`acp-green.log`1P（1.3秒，21个其余manual参数复用原有效证据）。共4次runner／累计11.1秒，最终本包**10 PASS**，六原失败均关闭；micro-compact独立helper未改，原1P复用。环境切换仅ACP单点，其它命令仍工作区.venv。
+
+5. **缺口**：本包未发现需改压缩production的缺陷。Noting本身的开启／失败通知由既有C5–C9及真实模型证据覆盖，本包不以关闭Noting的native夹具冒称覆盖其开启行为。原manual文件无源码修改；此包只弥补ACP可选依赖的规范环境证据。
+
+6. **manifest与检查**：测试改动仅两个in-place文件；精确六旧节点、所有命令／次数／日志hash、三旧文件最终hash、独立环境范围见`final-regression/compaction-repair/manifest.json`，最小两文件patch为该目录`final.patch`。与F15一起执行四变化路径Ruff、冻结scoped health（相对ac703）及diff-check，全部通过，**0 blocking／0 advisory**，0.419秒；不重复保留10类大型检查。
+
+7. **停止／后续**：F14停止写入，交root集中review／统一集成；全范围门禁判定与其它owner旧夹具修复不在本包完成声明内。不stage／commit，不派生，不操作round3或模型；独立ACP环境留作ignored证据，后继可复用，不替换共享环境。
+
+## F15 Scheduler run_at 可读时间投影
+
+1. **条款**：冻结d19018的02 §5.6行1635–1637，07 §6.1行1054–1124、§6.2行1125–1135、§6.3行1136–1156；白板Scheduler独立语义。公开canonical规则及原expression保留，所有面向人／模型的绝对时刻为有zone秒精度，存储／推进精度不变。
+
+2. **实际修改**：production仅`secretary/scheduler_table.py::schedule_public_conn`两行：已从DB JSON解码并validate的局部canonical副本若有run_at，调用既有`render_source_timestamp(...,profile_home=...)`（原生format_timestamp）生成可读值。不改DB canonical、expression、next_run_at、解析器、周期算法、claim／ACK、generation／sequence、Scheduler开关或Notebook状态。
+
+3. **正式路径与反证**：新增`tests/secretary/test_r3_scheduler_time_projection.py`，真实SessionDB＋SchedulerStore的create→list→实际name update→同expression no-op四次正式操作均走统一出口。原生parser只在其现成clock依赖`cron.jobs._hermes_now`受控；显式带微秒ISO与相对`in 30m`均保留真实原生解析，分别覆盖UTC／Asia/Shanghai owner。RED四节点均明确run_at微秒654321／333333与已整秒next_due不一致。
+
+4. **验证与副作用**：`v51-scheduler/red.log`4F（0.7秒）→`green.log`4P（0.7秒）；`affected-regression.log`既有CRUD／no-op不重解析且保claim／queued-once恢复／失败与末项删除notice四节点4P（0.4秒）。新例断言run_at与next_due_at具有zone、无小数且指向同一原瞬间的整秒；原display／expression及DBcanonical微秒、精确next_run不变。name更新只正常增加generation，不变sequence或next_run；no-op不重新解析相对表达、不更新任何定义行、不制造pending／Notebook。3次runner／累计1.8秒，最终本包**8 PASS**，未重复完整Scheduler或已有时间组。
+
+5. **缺口**：无已知本包未关闭失败；不以本包定向证据替代独立Verification全范围复审或真实用户Validation。原生周期／due执行未改，继承既有有效证据，不为了可读投影重跑整组。
+
+6. **接口／证据**：公开shape／字段不变，canonical_schedule.run_at展示为同一绝对时间的秒精度字符串；内部读取仍获得原始微秒canonical。准确SHA／命令／测试nodes／锁与scoped检查见`v51-scheduler/manifest.json`，最小production＋新测试完整patch在`v51-scheduler/final.patch`。此包不改`test_r3_scheduler.py`源码，只消费四个已明确影响节点；F14/F15合计定向有效并集18P，未开启第二次大型回归。
+
+7. **停止**：F15停止production／测试写入，交rootreview并统一集成；无规则、规格、根文档、共享环境或其它production修改，无stage／commit／round3／模型运行。
+
+
+### F15 root review 追加：canonical.display 绝对标签
+
+1. **补漏来源／依据**：root review发现原生parser给显式ISO生成的`canonical.display`为`once at YYYY-MM-DD HH:MM`，仍属02 §5.6／V51规定的面向模型绝对时间；Astra已评审认可并记录verification.md §6.2。前一F15阶段只修run_at，且新测试把**公开绝对display等于原值**当成正确行为；该断言已撤销，不能据上阶段结果宣称最终display符合。历史“原display保持”仅继续适用于内部DBcanonical与相对标签，原expression始终保留。
+
+2. **实际增量**：production仍只`secretary/scheduler_table.py`，在已validate的once局部canonical副本上，run_at投影后复用现成`hermes_time.readable_schedule_display`；只把`once at`绝对标签规范为有zone整秒。相对`once in 30m`由原生helper原样返回。没有改时间helper、原生parser、DBcanonical／原display、expression、due计算或投递状态。
+
+3. **正式输出／断言**：仍用同四参数真实SessionDB＋SchedulerStore create/list/name update/no-op链；显式ISO公开display严格要求`once at 2030-04-06T12:30:00+05:30`，同时DB内原标签仍精确为`once at 2030-04-06 12:30`。两个owner timezone的相对标签要求`once in 30m`保持。实际name update的完整公开canonical必须等于create，no-op再等于update，故三个输出入口与无变化返回都覆盖；全部原DB精度／generation／sequence／pending／no-op不重解析断言保留。
+
+4. **新增RED→GREEN与检查**：`display-red.log` **2F／2P**，仅显式ISO两个参数失败于缺秒和zone；`display-green.log` **4P**。新增2次canonical runner，wall分别0.7／0.6秒，累计1.3秒。只跑获授权四参数，没有重复F14或此前Scheduler四绿。本增量两路径Ruff PASS／冻结scoped health **0 blocking／0 advisory**／diff-check PASS，0.340秒。最终F15仍为8个有效独立节点，不能把同四参数重跑再计成新覆盖。
+
+5. **缺口**：本次display反例关闭；公开／内部边界没有新增待确认产品扩展。仍不把定向测试当成全范围Verification复审通过。
+
+6. **manifest与可review增量**：旧run_at阶段完整保存在`manifest-before-display-review.json`、`before-display-review.patch`及两个before-display源快照。当前`manifest.json`追加`display_review`，保留旧runs并更新最终完整hash；`display-review-delta.patch`仅含相对上次root review的production＋测试增量，`final.patch`为相对ac703的完整F15 patch。精确命令、日志、耗时、两路径检查与hash均落ignored，不覆盖旧日志。
+
+7. **停止**：两源码／测试路径及报告停止写入，交root review／统一commit。F14已接收结果原样保留；无stage／commit、其它测试重跑、共享venv变更、round3／模型或大型检查。

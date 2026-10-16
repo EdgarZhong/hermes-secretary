@@ -2,7 +2,7 @@
 
 ## 自主口径收敛 · 待用户追认
 
-暂无新增待追认的产品扩展。白板／07既有授权内的具体接口与Prompt决定仍按冻结索引理解，不冒称每个字段由用户亲选。本次已恢复本地托管；分支、文件单写者、交接与计划调整是执行编排，不改变产品语义。
+**Agent 自主工程细化／待用户追认：F16 Noting来源结算动作展开。** 白板E1已要求移除实际成功覆盖，但07 §8.11 Step4仅抽象写“Remove only successfully dispatched coverage”，真实模型只归档Candidate并给source加注记。决定将同一段明确为：对照实际批准／成功与现行版本，完整交付且无保护理由的来源归档，部分覆盖则精简已交付部分，保留具体新内容／未完责任／其它候选依赖，先修引用并说明保留理由。Astra已按原判据评审认可，不改变产品语义、权限或完成条件；已同步07与常量，真实round3复测待固定提交启动。用户尚未追认，不冒称用户指定措辞。原始d19018冻结与首失败证据保留。
 
 ## 第三轮自主实现 · 本地托管恢复（2026-10-17）
 
@@ -31,10 +31,10 @@
 | C10-T | 主会话已review接收；c10-final-legacy-report.md | 六旧文件及相关节点有效并集92 PASS；F10/F13、F11受影响旧组定向关闭，未启动独立门禁 |
 | C11-P | 主会话已review接收；personal-host-report.md | 原生host→loopback fixture六场景、临时工具收窄及完整配置/插件备份恢复；公共f66a8f80／个人8682ff85实测；12 completed Turns／14请求／24真实UID与ACK；配置和插件恢复，round3已释放 |
 | L0 | 环境已交回；yaml问题是个人脚本旧导入，P3 owner修复 | 不跑产品测试；不改锁或裸装依赖 |
-| 门禁 | verification_astra（全新Astra/high）正在全范围初审；发现项已回到修复循环 | 初审固定公开323c64dacba1／个人e1af6cc45ffb；60项独立判据已落盘；修后需全新独立全范围复审，Validation待通过 |
-| F14 最终回归 | 首轮已完成；27个旧测试失败／错误已修复并由主会话review接收（含邻域共29）；压缩6节点待独占接力；两失败检查已修复通过 | 1766 PASS／29 FAIL／4 setup ERROR／3平台skip；固定136文件等范围只执行一次，后续仅失败与影响路径定向复测 |
-| F15 时间投影 | 公共六路径17项PASS，主会话已review接收；个人Recall与Scheduler canonical.run_at出口待修 | V51：仅人／模型可读Notebook投影为秒精度，覆盖工具、control、Main、slash、Proposal、Framework；内部精度不变 |
-| F16 来源结算 | 主会话已核对并认可Astra反例，待实现owner调查并真实补证 | V23：候选13已归档但来源6仍保留成功写入的完整经验；不能宣称完成结算，首样本失败保留 |
+| 门禁 | verification_astra（全新Astra/high）正在全范围初审；发现项已回到修复循环 | 初审固定公开323c64dacba1／个人e1af6cc45ffb；首审60项：56符合、2不符合、2证据不足，主会话已review接收；修后需全新独立全范围复审，Validation待通过 |
+| F14 最终回归 | 首轮已完成；27个旧测试失败／错误已修复并由主会话review接收（含邻域共29）；压缩6原失败＋邻域共10已review接收；两失败检查已修复通过 | 1766 PASS／29 FAIL／4 setup ERROR／3平台skip；固定136文件等范围只执行一次，后续仅失败与影响路径定向复测 |
+| F15 时间投影 | 公共六路径17项PASS，主会话已review接收；个人Recall8节点＋17子例已review接收；Scheduler run_at／绝对display共8项有效证据已review接收 | V51：仅人／模型可读Notebook投影为秒精度，覆盖工具、control、Main、slash、Proposal、Framework；内部精度不变 |
+| F16 来源结算 | 主会话及Astra已评审具体Step4细化，c4已实施；待固定SHA真实补证 | V23：候选13已归档但来源6仍保留成功写入的完整经验；不能宣称完成结算，首样本失败保留 |
 
 - 真实运行新发现 R3-F08：TUI Main streaming期间/noting反馈后，durable原文仍在但后续Active冻结缺输入／图片；修复已由主会话review接收：busy历史批次合并与cold human_only投影共28项PASS，ruff/health通过；eff3235真实busy图片六请求与cold回复／human_only隔离已通过，主会话接收。
 

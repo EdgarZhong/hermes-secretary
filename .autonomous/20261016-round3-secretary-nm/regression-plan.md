@@ -169,3 +169,7 @@ Web读DTO、UI、Settings展示、旧Dashboard、独立UI仓构建均按07明确
 主会话已亲自review六旧测试路径，原27失败／setup错误＋2实际影响邻域有效并集29 PASS，完整映射见c10-final-legacy-report.md §8。其余压缩6节点仍未关闭，不能宣称回归全绿。公共V51输出投影另有17项有效定向证据，见c9-host-report末节；个人Recall与Scheduler run_at追加出口仍待修。
 
 两检查窄修：personal-report的否定事实语句改述；scheduler_available原fail-closed异常支路补debug诊断，不改规则／阈值／严重等级。主会话执行`python scripts/check --staged --only no-tmp,health`均通过；因默认health对照为c099c8c49084，仅采用其中no-tmp结果，随后显式`--staged --base a51fd99abc783f245ab855526a10862f2c89656a --only health`通过，121文件0 blocking／0 advisory、8.3秒。此为失败检查的定向修复复验，没有重跑十类全集或136文件。
+
+### 7.5 剩余六节点定向接收
+
+主会话已review两native夹具：关闭测试本不涉及的Noting，不删除原行数／FTS／anti-growth／rotation／persist保障；额外Framework已实际取证而非预判。五原失败＋四共享fixture邻域9 PASS。ACP依赖由现锁已声明的agent-client-protocol 0.9.0 extra补入独立ignored官方PM dev/test环境，仅原ACP节点1 PASS；共享.venv和锁不变。详见c10-runtime-report末节及compaction-repair/manifest.json。首轮33个失败／错误现在全部完成定向修复复证，两原检查阻断亦已通过；这不替代独立全范围复审，不把首轮结果改写为全绿。

@@ -17,6 +17,8 @@ from unittest.mock import patch
 
 
 def _make_agent(session_db, session_id, *, in_place):
+    # These are native compaction contracts, independent of background Notebook tasks.
+    Path(session_db.db_path).with_name("config.yaml").write_text("noting:\n  enabled: false\n")
     with patch.dict(os.environ, {"OPENROUTER_API_KEY": "test-key"}):
         from run_agent import AIAgent
 

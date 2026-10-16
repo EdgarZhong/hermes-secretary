@@ -60,3 +60,64 @@ HERMES_PYTHON="/Users/edgar/code/hermes-secretary/.venv/bin/python" \
 ## 7. 下一步
 
 主会话亲自review两测试、个人CLAUDE与报告；确认退役用例映射和fixture范围后统一提交。两仓无本包stage/commit，C10-P已停止写入。独立门禁复用有效证据，不重复本包39或既有个人46场景；仅对后续实际相关变化定向补证。
+
+## 8. V51 · Recall 日期输出修复（2026-10-17）
+
+### 8.1 条款与版本
+
+本包在历史 C10-P 后独立授权。个人起点／交回 HEAD `e1af6cc45ffbd53c930d1d2f14ab46858e966ecd`；冻结依据个人 `97078118` 的 PHASE3 现行 §2、§3.1–3.3（45–86行），公共 `d19018` 的 02 §5.6（1635–1637行）：可见绝对时间用秒精度和显式时区，内部值、来源语义和权限不改；完整 ID、JSON安全、指针预算、短 CJK、离线诚实行为保留。
+
+### 8.2 实际变更
+
+`_candidate_date` 是 created_at/updated_at 的唯一投影点：epoch（含小数／数字字符串）和有 offset ISO 复用公共 `hermes_time.format_timestamp`；合法 YYYY-MM-DD 原样保留，不伪造午夜／时区。None、bool、非有限数、越界epoch、naive datetime、坏日期视作不可得的可选日期，只省相应字段，保留候选及其他正常日期，不使一次正常查询整体不可用。原input、字段名、完整 ID／标题JSON编码和整行预算机制不变。没有扫描／修改 Context Bundle Markdown。
+
+prefetch 在既有 policy lock 内捕获 owner home 并传到投影点，避免 launch profile／HERMES_TIMEZONE 覆盖 owner 时区。带 offset ISO 保留来源 offset 和对应 instant，只依已确认精度省去小数。
+
+### 8.3 正式路径与白名单
+
+正式链为 `PersonalNowledgeMemProvider.prefetch → scope.context_allowed → client.search → candidate_index → _candidate_date → native format_timestamp(profile_home=owner)`，末尾原 epoch/scope 复核不变。仅 Search 外部返回边界使用 StubClient，正式短CJK用例用真实只读 SQLite owner；不调用 NM 或模型。
+
+仅改个人 `nowledge-mem-hermes/personal_provider.py`、`personal_tests/test_r3_provider.py` 及本报告追加。测试加强两个既有节点，新增4个日期节点和1个正式 prefetch 节点；另定向运行既有整行预算／去重节点。根文档、规格、锁、安装器、其他tests和公共 formatter 未改；公共27节点包的六测试保持停写。
+
+### 8.4 执行证据
+
+官方 PM＋canonical runner：`HERMES_PYTHON=/Users/edgar/code/hermes-secretary/.venv/bin/python HERMES_TEST_FILE_RETRIES=0 /Users/edgar/code/hermes-secretary/scripts/run_tests.sh <ignored源码symlink::准确nodes> -q --tb=short --show-capture=no --junitxml=<本次XML>`。个人 ignored `temp-r3-personal/evidence/v51/{red-invocation.json,green-invocation.json,manifest.json}` 保存完整 argv、cwd、指纹和时长。沿既有源码symlink方案，不复制插件、不另建runner。
+
+| 次数 | 证据 | 实际结果 |
+|---|---|---|
+| 1 RED／生产未改 | red.log、red.xml | 6顶层选择：4普通node失败；坏日期矩阵6子例失败／11子例通过；pytest原始摘要2 passed／10 failed，包含subtest计数，不能当作12个顶层函数。纯日期保留原本通过；wall 1.255秒 |
+| 2 GREEN | green.log、green.xml | **8顶层nodes全部PASS＋17坏日期subtests PASS，0失败／0跳过**；XML tests=25即8＋17，不是25个独立顶层函数；wall 1.315秒，runner自身0.9秒 |
+
+8个有效节点均在 test_r3_provider.py：
+
+| 精确节点 | 现行保障 |
+|---|---|
+| `ProviderContextTests::test_short_cjk_prefetch_returns_only_pointers` | 实际“之前／她／近况”prefetch；真实owner DB及上海时区，launch home／纽约时区不覆盖owner；日期秒精度、正文隔离、limit与源响应不变 |
+| `ProviderContextTests::test_prefetch_omits_unavailable_dates_without_reporting_lookup_failure` | 坏日期字段省略、候选保留；正常候选及date-only共存；不误报lookup unavailable，提醒与原input不变 |
+| `CandidateEncodingTests::test_full_ids_dates_and_untrusted_markup_round_trip` | 超300字符opaque ID完整、恶意标题JSON安全，ISO微秒裁到秒、epoch变带offset字符串，正文／confidence不出 |
+| `CandidateEncodingTests::test_fractional_epochs_and_aware_iso_keep_instants_at_second_precision` | 正负小数epoch、数字字符串、有offset纳秒ISO及Z；正确秒边界／来源offset，原input不改 |
+| `CandidateEncodingTests::test_date_only_is_preserved_without_inventing_midnight` | 普通日期和闰日原样保留，不增加午夜／时区 |
+| `CandidateEncodingTests::test_unavailable_optional_dates_do_not_lose_other_pointers` | 17子例含None/bool/nonfinite/越界/naive字符串及datetime/非法日期/坏文本/空值/容器；只省字段，保候选／正常日期，原输入引用不变 |
+| `CandidateEncodingTests::test_date_projection_obeys_whole_row_budget_without_cutting_ids` | 日期投影后恰好装一整行；少1字符则整行省略；不截长ID或日期JSON，提醒及输入不变 |
+| `CandidateEncodingTests::test_budget_omits_whole_rows_and_deduplicates_without_truncation` | 保留原预算、整行省略、去重及非法控制字符拒绝 |
+
+两路径Ruff、冻结C901≤20及git diff --check通过。未重跑46／39全组、P2或公共回归。整理交接脚本的一次非UTF-8解析错误发生在脚本运行前，没有执行其写入；改用ASCII manifest脚本和独立文档patch完成，不是新增产品或测试失败。
+
+### 8.5 缺口与边界
+
+V51出口问题已复现并关闭，无额外产品语义／扩权待决。无来源时区或无效日期按外部可选字段不可得处理，不伪装为规范绝对时间，不因单条坏日期丢正常候选。本包不是独立Verification／Validation、真实NM或部署证据；未操作round3、真实配置或模型。测试配置／DB全部在个人仓ignored临时目录。
+
+### 8.6 接口与指纹
+
+`candidate_index(result, *, limit, budget, profile_home=None)` 只新增可选owner参数；唯一正式 Provider caller 总是传既有锁内捕获的owner home，直接旧helper调用兼容。公共 formatter 签名不改；无新status字段、合成时区或第二时间系统。
+
+| 文件 | 最终 SHA256 |
+|---|---|
+| personal_provider.py | `bcedd4fb3e214212288cae6ae9fb87d7bc54f7175d8beb40c790831c9f03d37c` |
+| personal_tests/test_r3_provider.py | `b88a5cf79d6d2825ddf9927d08e043cca4fb3ab2884568bd0b4fe6427d4fe6cb` |
+
+`v51.patch` SHA256：`14a74be3b3cb0f367ff31296dd09df39162463cd0338fbe0da9e8d7f53dfebf5`。公共观察HEAD `ac7032be96114016bc26d1fa8825c4ba04b925f4`；本次 native hermes_time.py 指纹 `327d66d64231651e0bde085655d874803cc034b2fd3591f06bd3a8484af8a169`。manifest另存完整锁／runner／native依赖和日志／XML指纹；不以后继HEAD冒称本包已提交。
+
+### 8.7 下一步
+
+交root亲自review唯一投影点、prefetch owner传递及manifest后统一提交。本包已停止写入和测试，未stage/commit；不启动round3／真实模型或连接真实NM，不把本开发证据替代独立门禁。

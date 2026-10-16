@@ -26,6 +26,8 @@ import pytest
 
 
 def _make_agent(session_db, session_id):
+    # Exercise native row markers without a separate Noting result carrier.
+    Path(session_db.db_path).with_name("config.yaml").write_text("noting:\n  enabled: false\n")
     with patch.dict(os.environ, {"OPENROUTER_API_KEY": "test-key"}):
         from run_agent import AIAgent
 
@@ -103,7 +105,10 @@ class TestInPlaceCommitPersistMarker:
             # duplicates" assertion below would pass vacuously on a path
             # that never committed anything.
             total, active = _row_counts(db, sid)
-            assert active == len(compressed) == 4
+            assert active == len(compressed) == 4, {
+                "last_active_content": db.get_messages(sid)[-1]["content"],
+                "last_active_metadata": db.get_messages(sid)[-1]["display_metadata"],
+            }
             assert total == 8 + len(compressed)  # archived seeds + active set
             archived = db._conn.execute(
                 "SELECT COUNT(*) FROM messages WHERE session_id = ? AND active = 0",
