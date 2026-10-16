@@ -11,3 +11,5 @@ source-code-hermes-nmem-provider=f9733fcb31a0e6f468eabe6419cb76444fe16b30
 # 用户授权的本地托管阶段变更，不覆盖原冻结基线
 authorized-local-resume=ceaf591c0a55935606b401e37ce28f7134eb6fa4
 authorization-index=R3-016,R3-017
+authorized-round3-profile-and-validation-plan=ba6266f314dbeddc01a4066110ed5138df683efd
+authorization-profile-index=R3-018

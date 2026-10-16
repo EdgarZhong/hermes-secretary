@@ -2,36 +2,36 @@
 
 Hermes Secretary 是基于 [Nous Research 的 Hermes Agent](https://github.com/NousResearch/hermes-agent) 的公开扩展，面向长期对话中的工作状态维护、责任跟进与提醒。
 
-第三轮改版的已审语义见 [Notebook 白板](docs/notebook-ontology-whiteboard.html)，工具、英文提示文与接线契约见 [07](docs/07-scheduler-notebook-noting-compaction-redesign.md)。二者共同组成Secretary新设计依据；第三轮同时开展独立的个人NM接入，保持个人实现隔离，界面改版后置。旧 01／02／04／06 仅在明确保留的范围继承。通用规则见 [AGENTS.md](AGENTS.md)，准备状态、代码版本、任务与证据见 [CLAUDE.md](CLAUDE.md)。
+第三轮改版的已审语义见 [Notebook 白板](docs/notebook-ontology-whiteboard.html)，工具、英文提示文与接线契约见 [07](docs/07-scheduler-notebook-noting-compaction-redesign.md)。二者共同组成Secretary新设计依据；第三轮同时开展独立的个人NM接入，保持个人实现隔离，界面改版后置。旧 01／02／04／06 仅在明确保留的范围继承。通用规则见 [AGENTS.md](AGENTS.md)，当前状态、代码版本、任务与证据见 [CLAUDE.md](CLAUDE.md)。
 
-**阅读顺序：** AGENTS → CLAUDE → 白板 → 07 → 07 指定的旧规格保留段落。下文“已落实”描述改版前代码能力，不能据此把旧 Memo、Notebook-owned Schedule 或旧工具面保留到第三轮。设计定案与实现、验收分别判断。
+**阅读顺序：** AGENTS → CLAUDE → 白板 → 07 → 07 指定的旧规格保留段落。设计契约、实现接线和验收证据分别判断；当前集成状态以 CLAUDE 为准，旧轮次报告不能代替第三轮证据。
 
-## 现有代码的架构与能力（改版前）
+## 核心架构
 
 沿用 Hermes 的 Agent Turn、physical Session、Gateway、原生工具、压缩与持久化，在既有接缝增量扩展。Conversation 原文是事实源，Notebook 是派生工作状态；Secretary 只向 profile-scoped `state.db` 增加自有表，不改原有表的 schema 或 ownership。现有官方 Dashboard（`web/` 与 `hermes_cli/web_server*.py`）仍是原生浏览器管理入口，独立 Secretary Web UI 的契约见 06。
 
-| 能力 | 已落实的核心机制 |
+| 模块 | 已落实的数据与职责边界 |
 |---|---|
 | Conversation Identity | `conversation_ref` 为稳定 ownership；physical Session、compression lineage 和 Gateway scope 为 locator |
-| History Search | 按 canonical Message Identity 读取真实 History Foreground，独立于 Noting 开关 |
-| Notebook | Snapshot 保存有序不可变 item 版本 id，以原子 current pointer 发布；Main 只读，Noting 用 manage/edit/schedule 三工具维护 |
-| Background Noting | 原生 Main 生命周期与 Idle 定时器、Force/catch-up；D01 实际 Native/External 来源门禁；冻结父前缀，最多五 Turn 与 context_overflow 收尾 |
-| Noting Memo | add/replace/delete/list；非空保持本会话 Noting 开启；提交同事务消费实际处理的条目，期间新增或替换内容保留 |
-| Schedule / Reminder | Notebook-owned 调度；deferred 批量投递并在实际携带且 Provider 成功响应后 ACK；instant 复用原生用户消息入口 |
+| Conversation History | 复用原生检索候选流及合法 History Foreground，以 `(conversation_ref,message_uid)` 返回规范来源；不建立第二份原文库 |
+| Notebook 数据层 | 三内容板块及 Candidates；稳定 entry 身份、不可变版本；Snapshot 固定版本映射，以原子 current pointer 发布；Main 只读 |
+| Background Noting | 复用原生 AIAgent、持久 child 与冻结父前缀；任务生命周期和正式接线位于 `secretary/noting_*.py` |
+| Scheduler 数据层 | 独立的 Conversation Schedule Table、原生时间解析、claim／pending／ACK；不随 Notebook pointer 重选修改 |
+| 配置与 Main 提示 | `noting`、`scheduler` 独立配置解析；Notebook local 参与由 `/noting` 控制，配置与工具请求同步沿原生构建接缝 |
 | 时间与消息载体 | 可读带时区绝对时间，以及 timestamp、Framework、Instant/Deferred Reminder 的真实载体契约 |
 | Full Foreground | 内部逻辑审计投影：唯一 Context Prelude、真实消息节点与 Anchor/Snapshot 附着；Web 全量审计视图按 06 延后 |
 
-实现不等于整版验收通过；对应版本证据和未关闭项统一见当前看板及历史报告。
+底层模块具备接口不代表全部 host 接线或整版验收已完成；正式运行和测试证据统一见 CLAUDE 及本轮报告。
 
-## 现有 Secretary Slash 入口（改版前）
+## Secretary Slash 入口
 
-以下记录当前代码行为；第三轮命令行为按 07，Memo 阻止关闭等旧条件退出。命令复用 Hermes 共享 catalog、补全与执行链路；既有 CLI、Gateway、官方 Dashboard 入口的契约以 02 为准，新 Web 的显式差异以 06 为准。
+命令复用 Hermes 共享 catalog、补全与执行链路。CLI、Gateway、官方 Dashboard 与 Web 的人类呈现边界按现行 02／06 及 07 的保留和替换条款处理。
 
 | 命令 | 行为 |
 |---|---|
-| `/notebook` | 查看当前 Conversation 的 Notebook 与 Snapshot 创建时间；无 Snapshot 时明确提示 |
-| `/noting on`、`/noting off` | 修改当前 Conversation 的参与状态；保留 Snapshot/Schedule；memo 非空时 off 拒绝并说明原因 |
-| `/propose-persistence` | 查核候选及原文，提出持久化草稿，可附自然语言；提议与修改均不等于执行批准 |
+| `/notebook` | 人类查看当前 Conversation 的完整 Notebook 与 Snapshot 创建时间；无 Snapshot 时明确提示 |
+| `/noting on`、`/noting off` | 修改当前 Conversation 的后台 Noting 参与状态；保留 Snapshot，不控制独立 Scheduler |
+| `/propose-persistence` | 提供当前完整 Snapshot 与共用提案指令，由 Main 按需查核原文；可附自然语言，提议与修改均不等于执行批准 |
 
 全局关闭时 Notebook/候选命令不可用；全局开启且 local off 时仍可查看或提议已有内容。获用户明确批准后使用 Hermes 既有能力执行持久化。旧 `/notebook on/off`、`/refine` 已移除；独立工作审查 `/review` 保留。
 
@@ -120,7 +120,7 @@ Python 不绕过 canonical runner 直接运行 pytest；JS/UI 入口及环境准
 
 | 文档 | 内容 | 路径 |
 |---|---|---|
-| Secretary 改版实施契约（设计定案，未实施） | 与已审白板互补：转向历程、术语、Conversation History、四工具 Noting、Scheduler、完整 Schema／反馈、英文提示文及源码接线路径 | [07](docs/07-scheduler-notebook-noting-compaction-redesign.md) |
+| Secretary 改版实施契约 | 与已审白板互补：转向历程、术语、Conversation History、四工具 Noting、Scheduler、完整 Schema／反馈、英文提示文及源码接线路径 | [07](docs/07-scheduler-notebook-noting-compaction-redesign.md) |
 | Notebook 已审方案白板 | 三板块七类型、逐类型进退、信息流、Noting 完整任务与联合触发的已审语义；工具／英文提示细节在 07 定案；支持会议批注 | [白板](docs/notebook-ontology-whiteboard.html) |
 | V1 实施总纲 | 公开核心范围、边界与继承要求 | [01](docs/01-personal-hermes-v1-first-fork-iteration.md) |
 | 改版前 Core 规格与保留机制 | 第三轮只继承就地标明的 Identity、Foreground、Snapshot、runtime 和投递不变量；旧 Target 不作为新施工要求 | [02](docs/02-noting-system-specification.md) |

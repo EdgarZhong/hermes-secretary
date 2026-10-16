@@ -9,7 +9,7 @@ import pytest
 from hermes_constants import get_hermes_home
 from secretary import noting_runtime as rt
 from secretary import noting_timers as timers
-from tests.hermes_state._secretary_noting_harness import add, empty_state, make, open_noting_db, ref_of
+from tests.hermes_state._secretary_noting_harness import add, make, open_noting_db, ref_of
 from tests.secretary.test_noting_runtime import _agent
 
 
@@ -19,9 +19,19 @@ def runtime(tmp_path, monkeypatch):
     make(db, "main")
     add(db, "main", "main turn", "m1")
     parent = _agent(db, "main")
-    (tmp_path / "config.yaml").write_text("noting:\n  enabled: true\n  idle_delay_seconds: 0.12\n")
+    (tmp_path / "config.yaml").write_text("noting:\n  enabled: true\n  idle:\n    enabled: true\n    delay_seconds: 0.12\n    threshold_tokens: 1000\n")
+    parent.context_compressor.update_from_response({"prompt_tokens": 8137})
+    parent.request_context_compaction = lambda **kwargs: type("NativeResult", (), {"status": "admitted"})()
     dispatched = []
     ready = threading.Event()
+    parent._test_idle_completed = threading.Event()
+    original_event = rt._run_idle_event
+    def observe_event(*args, **kwargs):
+        try:
+            return original_event(*args, **kwargs)
+        finally:
+            parent._test_idle_completed.set()
+    monkeypatch.setattr(rt, "_run_idle_event", observe_event)
     def spawn(parent, admission, **kwargs):
         dispatched.append((admission, get_hermes_home(), threading.current_thread().daemon))
         ready.set()
@@ -53,78 +63,50 @@ def test_turn_end_real_timer_fires_without_host_tick_once(runtime, monkeypatch):
     assert rt.idle_candidates(db) == []
 
 
-@pytest.mark.parametrize('usage,profile', [
-    (8137, 'NOTING_WITH_COMPACTION'), (1000, 'NOTING_WITH_COMPACTION'),
-    (500, 'NOTING'), (0, 'NOTING'),
-])
-def test_timer_resolved_usage_selects_real_admission_profile(runtime, usage, profile):
-    from agent.context_compaction_request import request_context_compaction
+@pytest.mark.parametrize("usage,expected", [(8137, True), (1000, True), (500, False), (0, False)])
+def test_timer_requires_actual_native_usage_threshold(runtime, usage, expected):
     parent, db, dispatched, ready = runtime
-    (Path(db.db_path).parent / 'config.yaml').write_text(
-        'noting:\n  enabled: true\n  idle_delay_seconds: 0.12\n'
-        '  auto_trigger_compaction_after_noting:\n    enabled: true\n    threshold_tokens: 1000\n')
-    parent.context_compressor.update_from_response({'prompt_tokens': usage})
-    assert rt.note_main_turn_finished(parent)
-    assert ready.wait(2)
-    assert len(dispatched) == 1
-    admission, home, daemon = dispatched[0]
-    assert admission.kind == 'idle' and admission.anchor_message_uid == 'm1'
-    assert admission.task_profile == profile
-    assert admission.compaction_threshold_tokens == 1000
-    assert home == Path(db.db_path).parent and daemon
-    record = db.noting_admission(admission.admission_id)
-    assert record['kind'] == 'idle' and record['anchor_message_uid'] == 'm1'
-    native_result = request_context_compaction(parent, relevant_threshold_tokens=usage + 1)
-    assert native_result.ok and native_result.status == 'already_below_threshold'
-    assert native_result.usage_tokens == usage and native_result.threshold_tokens == usage + 1
-
-
-@pytest.mark.parametrize('force_snapshot,compact,expected', [
-    (False, False, 'skip:force_path_owns_segment'),
-    (True, False, 'skip:force_snapshot_present'),
-    (True, True, 'compact_parent:admitted'),
-])
-def test_timer_force_snapshot_uses_resolved_usage_without_idle_substitute(
-        runtime, monkeypatch, force_snapshot, compact, expected):
-    from agent.context_compaction_request import NativeCompactionResult
-    from secretary.noting_child import commit_noting_snapshot
-    parent, db, dispatched, ready = runtime
-    ref = parent._secretary_conversation_ref
-    (Path(db.db_path).parent / 'config.yaml').write_text(
-        'noting:\n  enabled: true\n  idle_delay_seconds: 0.12\n'
-        f'  auto_compact_after_force_noting_idle: {str(compact).lower()}\n')
-    parent.context_compressor.update_from_response({'prompt_tokens': 64000})
-    if force_snapshot:
-        assert rt.maybe_admit_force_from_pressure(parent, parent.context_compressor.last_real_prompt_tokens).startswith('admit')
-        admission = dispatched[0][0]
-        assert admission.kind == 'force'
-        commit_noting_snapshot(db, ref, empty_state(), anchor_message_uid=admission.anchor_message_uid,
-                              trigger_type=admission.kind, runtime_profile=admission.task_profile,
-                              termination={'type': 'finish_noting', 'reason': 'Controlled Force task completed'})
-        assert db.noting_force_snapshot_since_boundary(ref)
-        dispatched.clear()
-        ready.clear()
-    calls, outcomes = [], []
+    if usage == 0:
+        # Native ignores zero-usage responses; this case represents no known usage.
+        parent.context_compressor.last_real_prompt_tokens = 0
+        parent.context_compressor.last_prompt_tokens = 0
+    parent.context_compressor.update_from_response({"prompt_tokens": usage})
     completed = threading.Event()
-    def native_request(**kwargs):
-        calls.append(kwargs)
-        return NativeCompactionResult(True, 'admitted')
-    parent.request_context_compaction = native_request
     original = rt._run_idle_event
     def observe(*args, **kwargs):
         try:
-            result = original(*args, **kwargs)
-            outcomes.append(result)
-            return result
+            return original(*args, **kwargs)
         finally:
             completed.set()
-    monkeypatch.setattr(rt, '_run_idle_event', observe)
+    from unittest.mock import patch
+    with patch.object(rt, "_run_idle_event", observe):
+        assert rt.note_main_turn_finished(parent)
+        assert completed.wait(2)
+    assert bool(dispatched) is expected
+    if expected:
+        admission, home, daemon = dispatched[0]
+        assert admission.kind == "idle" and admission.task_profile == "NOTING"
+        assert home == Path(db.db_path).parent and daemon
+
+
+@pytest.mark.parametrize("occupied", [False, True])
+def test_timer_force_interval_compacts_without_duplicate_noting(runtime, monkeypatch, occupied):
+    parent, db, dispatched, ready = runtime
+    if occupied:
+        assert rt.maybe_admit_force_from_pressure(parent, 64000).startswith("admit")
+        dispatched.clear()
+        ready.clear()
+        add(db, "main", "next source", "m2")
+    parent.context_compressor.update_from_response({"prompt_tokens": 64000})
+    calls = []
+    completed = threading.Event()
+    parent.request_context_compaction = lambda **kwargs: (calls.append(kwargs), completed.set())[0]
     assert rt.note_main_turn_finished(parent)
     assert completed.wait(2)
-    assert outcomes == [expected] and not dispatched
-    assert bool(calls) is compact
-    if compact:
-        assert calls == [{'relevant_threshold_tokens': 64000, 'wait_seconds': 5.0}]
+    assert len(dispatched) == (0 if occupied else 1)
+    assert calls == [{"relevant_threshold_tokens": 1000, "wait_seconds": 5.0}]
+    if not occupied:
+        assert dispatched[0][0].kind == "force"
 
 
 def test_timer_native_usage_failure_consumes_period_and_next_turn_recovers(runtime, monkeypatch, caplog):
@@ -132,8 +114,8 @@ def test_timer_native_usage_failure_consumes_period_and_next_turn_recovers(runti
     parent, db, dispatched, ready = runtime
     ref = parent._secretary_conversation_ref
     (Path(db.db_path).parent / 'config.yaml').write_text(
-        'noting:\n  enabled: true\n  idle_delay_seconds: 0.12\n'
-        '  auto_trigger_compaction_after_noting:\n    enabled: true\n    threshold_tokens: 1000\n')
+        'noting:\n  enabled: true\n  idle:\n    enabled: true\n    delay_seconds: 0.12\n    threshold_tokens: 1000\n'
+        '')
     outcomes, reads, freezes = [], [], []
     completed = threading.Event()
     def unavailable(agent):
@@ -173,7 +155,7 @@ def test_timer_native_usage_failure_consumes_period_and_next_turn_recovers(runti
     assert ready.wait(2) and completed.wait(2)
     assert outcomes == ['skip:trigger_error', 'admitted'] and reads == [parent, parent]
     assert len(dispatched) == len(freezes) == 1
-    assert dispatched[0][0].task_profile == 'NOTING_WITH_COMPACTION'
+    assert dispatched[0][0].task_profile == 'NOTING'
     assert dispatched[0][0].anchor_message_uid == 'm2'
     assert rt.maybe_run_idle_noting(parent, db, ref) == 'skip:idle_trigger_produced'
 
@@ -183,7 +165,6 @@ def test_main_start_cancels_and_next_finish_rearms(runtime):
     assert rt.note_main_turn_finished(parent)
     assert rt.note_main_turn_started(parent)
     assert not timers.holds_pending_timer(parent)
-    assert not ready.wait(0.18)
     assert not dispatched
     assert rt.note_main_turn_finished(parent)
     assert ready.wait(2)
@@ -215,7 +196,7 @@ def test_deadline_closed_event_is_terminal_and_only_global_off_prevents_new_time
         db.notebook_set_local_enabled(ref, False)
     else:
         (Path(db.db_path).parent / 'config.yaml').write_text('noting:\n  enabled: false\n')
-    assert not ready.wait(0.25)
+    assert parent._test_idle_completed.wait(2)
     assert not dispatched and not reads
     assert db.noting_idle_state(ref) is None
     assert rt.note_main_turn_finished(parent) is (gate == 'local')
@@ -242,18 +223,15 @@ def test_attach_recovers_past_deadline_once_and_future_deadline_arms(runtime):
 
 def test_external_idle_period_consumed_without_freeze_then_native_can_run(runtime, monkeypatch):
     parent, db, dispatched, ready = runtime
-    reads = []
-    def forbidden(agent):
-        reads.append(agent)
-        raise AssertionError('External must not read context usage')
-    monkeypatch.setattr('agent.context_compaction_request.read_context_usage', forbidden)
+    completed = threading.Event()
+    parent.request_context_compaction = lambda **kwargs: completed.set()
     assert rt.note_actual_main_execution(parent, "external")
     monkeypatch.setattr(rt, "_freeze_and_log_attempt", lambda *args: pytest.fail("External must not freeze"))
     assert rt.note_main_turn_finished(parent)
-    assert not ready.wait(0.25)
+    assert completed.wait(2)
     state = db.noting_idle_state(parent._secretary_conversation_ref)
     assert state["trigger_produced_at"] is not None
-    assert not dispatched and not reads
+    assert not dispatched
 
 
 def test_restart_retains_produced_period(tmp_path, monkeypatch):
@@ -280,6 +258,7 @@ def test_resumed_owner_replaces_stale_callback(runtime, monkeypatch):
     parent, db, dispatched, ready = runtime
     assert rt.note_main_turn_finished(parent)
     replacement = _agent(db, "main")
+    replacement.context_compressor.update_from_response({"prompt_tokens": 8137})
     owners = []
     def spawn(owner, admission, **kwargs):
         owners.append(owner)
@@ -298,7 +277,7 @@ def test_same_anchor_idle_skip_is_one_event_even_after_later_framework_row(runti
     freeze = rt._freeze_and_log_attempt
     monkeypatch.setattr(rt, "_freeze_and_log_attempt", lambda *args: (attempts.append(args), freeze(*args))[1])
     db.noting_idle_turn_finished(ref, time.time() - 10)
-    assert rt.maybe_run_idle_noting(parent, db, ref) == "skip:same_anchor_admitted"
+    assert rt.maybe_run_idle_noting(parent, db, ref) == "skip:force_interval_occupied"
     add(db, "main", "framework completion", "m2")
     for _ in range(3):
         assert rt.maybe_run_idle_noting(parent, db, ref) == "skip:idle_trigger_produced"

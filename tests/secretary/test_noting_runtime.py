@@ -16,11 +16,10 @@ from secretary.noting_policy import (
     CAPABILITY_RESERVE_ABOVE_128K,
     CAPABILITY_THRESHOLD_BELOW_64K,
     TASK_PROFILE_NOTING,
-    TASK_PROFILE_NOTING_WITH_COMPACTION,
     ContextMeasurement,
     NotingSettings,
 )
-from tests.hermes_state._secretary_noting_harness import add, empty_state, make as _make, open_noting_db, ref_of
+from tests.hermes_state._secretary_noting_harness import add, make as _make, open_noting_db, ref_of
 
 
 # Hermes-resolved pairs exercised below: reserve = max((window - threshold) * 1.20, 66K).
@@ -42,8 +41,14 @@ def historical_clock(monkeypatch):
     monkeypatch.setattr("secretary.noting_timers.arm_idle_timer", lambda *args: None)
 
 
-def _settings(enabled=True, delay=500.0, selection=False, selection_threshold=None, compact_after_force=False):
-    return NotingSettings(enabled, delay, selection, selection_threshold, compact_after_force)
+def _settings(enabled=True, delay=500.0, threshold=1):
+    return NotingSettings(enabled=enabled, idle_enabled=True, idle_delay_seconds=delay,
+                          idle_threshold_tokens=threshold)
+
+
+def _idle(db, ref, **kwargs):
+    kwargs.setdefault("measurement", _measurement(50_000))
+    return rt.try_admit_idle(db, ref, **kwargs)
 
 
 def _measurement(measured, window=FORCE_WINDOW, hermes=FORCE_HERMES):
@@ -57,6 +62,10 @@ def _agent(db, sid):
                             _secretary_conversation_ref=ref_of(db, sid), context_compressor=ContextCompressor(
                                 model="test/runtime", config_context_length=FORCE_WINDOW,
                                 threshold_percent=.75, threshold_tokens_cap=FORCE_HERMES, quiet_mode=True))
+    from pathlib import Path
+    config = Path(db.db_path).parent / "config.yaml"
+    if not config.exists():
+        config.write_text("noting:\n  enabled: true\n  idle:\n    enabled: true\n    threshold_tokens: 1\n")
     # SimpleNamespace is not weak-referenceable; use a normal runtime object retained by the host fixture.
     class Runtime:
         pass
@@ -93,7 +102,7 @@ def test_global_off_hooks_and_admissions_are_inert(db):
     assert rt.note_main_turn_finished(agent, at=1500.0) is False
     assert db.noting_idle_state(ref) is None
 
-    idle = rt.try_admit_idle(db, ref, now=10_000.0)
+    idle = _idle(db, ref, now=10_000.0)
     force = rt.try_admit_force(db, ref, _measurement(10_000_000))
     assert (idle.action, idle.reason) == ("skip", "global_disabled")
     assert (force.action, force.reason) == ("skip", "global_disabled")
@@ -110,13 +119,13 @@ def test_local_off_deadline_is_terminal_but_main_timer_lifecycle_continues(db):
 
     assert rt.note_main_turn_finished(agent, at=1500.0) is True
     assert db.noting_idle_state(ref)['due_at'] == 2000.0
-    assert rt.try_admit_idle(db, ref, now=10_000.0).reason == "local_disabled"
+    assert _idle(db, ref, now=10_000.0).reason == "local_disabled"
     assert db.noting_idle_state(ref) is None
     assert rt.try_admit_force(db, ref, _measurement(10_000_000)).reason == "local_disabled"
     assert _admission_count(db) == 0
 
     db.notebook_set_local_enabled(ref, True)
-    assert rt.try_admit_idle(db, ref, now=10_000.0).reason == "not_idle"
+    assert _idle(db, ref, now=10_000.0).reason == "not_idle"
     assert rt.note_main_turn_finished(agent, at=1500.0) is True
     assert db.noting_idle_state(ref)["last_turn_finished_at"] == 1500.0
 
@@ -131,10 +140,10 @@ def test_idle_admits_after_the_delay_with_the_frozen_anchor(db):
     assert rt.note_main_turn_started(agent, at=1000.0) is True
     assert rt.note_main_turn_finished(agent, at=1500.0) is True
 
-    early = rt.try_admit_idle(db, ref, now=1999.0)
+    early = _idle(db, ref, now=1999.0)
     assert (early.action, early.reason) == ("skip", "not_idle")
 
-    due = rt.try_admit_idle(db, ref, now=2000.0)
+    due = _idle(db, ref, now=2000.0)
     assert due.action == "admit"
     admission = due.admission
     assert admission.anchor_message_uid == "m2"
@@ -142,7 +151,7 @@ def test_idle_admits_after_the_delay_with_the_frozen_anchor(db):
     assert admission.task_profile == TASK_PROFILE_NOTING
     assert db.noting_admission(admission.admission_id)["anchor_message_uid"] == "m2"
 
-    repeat = rt.try_admit_idle(db, ref, now=2100.0)
+    repeat = _idle(db, ref, now=2100.0)
     assert (repeat.action, repeat.reason) == ("skip", "idle_trigger_produced")
 
 
@@ -170,7 +179,7 @@ def test_non_main_turns_never_touch_the_timer(db):
     state = db.noting_idle_state(ref)
     assert (state["last_turn_started_at"], state["last_turn_finished_at"]) == (1000.0, 1500.0)
     # The main Conversation is still idle despite all that child/hygiene activity.
-    assert rt.try_admit_idle(db, ref, now=2000.0).action == "admit"
+    assert _idle(db, ref, now=2000.0).action == "admit"
 
 
 def test_new_main_turn_resets_the_idle_timer(db):
@@ -181,50 +190,40 @@ def test_new_main_turn_resets_the_idle_timer(db):
     rt.note_main_turn_finished(agent, at=1500.0)
 
     assert rt.note_main_turn_started(agent, at=1990.0) is True
-    assert rt.try_admit_idle(db, ref, now=2000.0).reason == "not_idle"
+    assert _idle(db, ref, now=2000.0).reason == "not_idle"
 
     assert rt.note_main_turn_finished(agent, at=2500.0) is True
-    assert rt.try_admit_idle(db, ref, now=2999.0).reason == "not_idle"
-    assert rt.try_admit_idle(db, ref, now=3000.0).action == "admit"
+    assert _idle(db, ref, now=2999.0).reason == "not_idle"
+    assert _idle(db, ref, now=3000.0).action == "admit"
 
 
-def test_idle_selection_picks_the_runtime_profile(db):
+def test_idle_requires_actual_length_and_has_one_runtime_profile(db):
     make(db, "below")
     add(db, "below", "turn", "m1")
     make(db, "at")
     add(db, "at", "turn", "m1")
-    settings = _settings(selection=True, selection_threshold=50_000)
+    settings = _settings(threshold=50_000)
     below_ref, at_ref = ref_of(db, "below"), ref_of(db, "at")
     db.noting_idle_turn_finished(below_ref, 1000.0)
     db.noting_idle_turn_finished(at_ref, 1000.0)
+    below = _idle(db, below_ref, measurement=_measurement(40_000), settings=settings, now=2000.0)
+    at = _idle(db, at_ref, measurement=_measurement(55_000), settings=settings, now=2000.0)
+    assert below.reason == "below_idle_threshold"
+    assert at.admission.task_profile == TASK_PROFILE_NOTING
+    assert at.admission.kind == "idle"
 
-    below = rt.try_admit_idle(db, below_ref, measurement=_measurement(40_000), settings=settings, now=2000.0)
-    at = rt.try_admit_idle(db, at_ref, measurement=_measurement(55_000), settings=settings, now=2000.0)
-    assert below.admission.task_profile == TASK_PROFILE_NOTING
-    assert at.admission.task_profile == TASK_PROFILE_NOTING_WITH_COMPACTION
-    assert at.admission.compaction_threshold_tokens == 50_000
 
-
-def test_idle_defers_to_the_force_path_in_a_covered_segment(db):
+def test_idle_above_force_reserve_uses_single_force_occupation(db):
     make(db, "s")
     add(db, "s", "first", "m1")
-    add(db, "s", "second", "m2")
     ref = ref_of(db, "s")
     db.noting_idle_turn_finished(ref, 1000.0)
-    measurement = _measurement(70_000)  # at/above the 64,000 Force threshold
-
-    no_snapshot = rt.try_admit_idle(db, ref, measurement=measurement, now=2000.0)
-    assert (no_snapshot.action, no_snapshot.reason) == ("skip", "force_path_owns_segment")
-
-    db.notebook_commit_snapshot(ref, empty_state(), anchor_message_uid="m1",
-                                trigger_type="force", runtime_profile=TASK_PROFILE_NOTING)
-    db.noting_idle_turn_finished(ref, 1100.0)
-    assert rt.try_admit_idle(db, ref, measurement=measurement, now=2000.0).reason == "force_snapshot_present"
+    first = _idle(db, ref, measurement=_measurement(70_000), now=2000.0)
+    assert first.admission.kind == "force"
+    add(db, "s", "second", "m2")
     db.noting_idle_turn_finished(ref, 1200.0)
-    compact = rt.try_admit_idle(db, ref, measurement=measurement, now=2000.0,
-                                settings=_settings(compact_after_force=True))
-    assert (compact.action, compact.reason) == ("compact_parent", "force_snapshot_present")
-    assert _admission_count(db) == 0
+    assert _idle(db, ref, measurement=_measurement(70_000), now=2000.0).reason == "force_interval_occupied"
+    assert _admission_count(db) == 1
 
 
 def test_force_admission_boundaries_and_same_anchor_dedupe(db):
@@ -240,13 +239,13 @@ def test_force_admission_boundaries_and_same_anchor_dedupe(db):
     assert (at.admission.kind, at.admission.anchor_message_uid) == ("force", "m1")
     assert at.admission.task_profile == TASK_PROFILE_NOTING
 
-    assert rt.try_admit_force(db, ref, _measurement(64_000)).reason == "same_anchor_admitted"
+    assert rt.try_admit_force(db, ref, _measurement(64_000)).reason == "force_interval_occupied"
 
-    # Different Anchor: concurrent Force Tasks are allowed (02 §4.8).
+    # A new Anchor cannot bypass the same compression interval occupation (07 §8.1).
     add(db, "s", "second", "m2")
     second = rt.try_admit_force(db, ref, _measurement(64_000))
-    assert second.action == "admit" and second.admission.anchor_message_uid == "m2"
-    assert _admission_count(db) == 2
+    assert second.reason == "force_interval_occupied"
+    assert _admission_count(db) == 1
 
 
 def test_force_capability_failures_skip_with_reason(db):
@@ -264,17 +263,16 @@ def test_force_capability_failures_skip_with_reason(db):
     assert _admission_count(db) == 0
 
 
-def test_force_skips_when_the_segment_already_has_a_force_snapshot(db):
+def test_force_occupation_requires_admission_not_snapshot_completion(db):
     make(db, "s")
     add(db, "s", "first", "m1")
-    add(db, "s", "second", "m2")
     ref = ref_of(db, "s")
-    db.notebook_commit_snapshot(ref, empty_state(), anchor_message_uid="m1",
-                                trigger_type="force", runtime_profile=TASK_PROFILE_NOTING)
-
+    first = rt.try_admit_force(db, ref, _measurement(64_000))
+    assert first.action == "admit"
+    add(db, "s", "second", "m2")
     decision = rt.try_admit_force(db, ref, _measurement(64_000))
-    assert (decision.action, decision.reason) == ("skip", "force_snapshot_in_segment")
-    assert _admission_count(db) == 0
+    assert (decision.action, decision.reason) == ("skip", "force_interval_occupied")
+    assert _admission_count(db) == 1
 
 
 def test_no_admission_without_a_frozen_anchor(db):
@@ -284,7 +282,7 @@ def test_no_admission_without_a_frozen_anchor(db):
     ref = ref_of(db, "s")
     db.noting_idle_turn_finished(ref, 1000.0)
 
-    idle = rt.try_admit_idle(db, ref, now=2000.0)
+    idle = _idle(db, ref, now=2000.0)
     force = rt.try_admit_force(db, ref, _measurement(64_000))
     assert (idle.action, idle.reason) == ("skip", "no_frozen_anchor")
     assert (force.action, force.reason) == ("skip", "no_frozen_anchor")
@@ -312,9 +310,9 @@ def test_trigger_failures_and_write_failures_fail_safe(db, monkeypatch):
         raise RuntimeError("db is gone")
 
     monkeypatch.setattr(db, "noting_idle_state_conn", _boom)
-    idle = rt.try_admit_idle(db, ref, now=2000.0)
+    idle = _idle(db, ref, now=2000.0)
     assert (idle.action, idle.reason) == ("skip", "trigger_error")
-    monkeypatch.setattr(db, "noting_force_snapshot_since_boundary", _boom)
+    monkeypatch.setattr(db, "noting_compaction_interval_conn", _boom)
     force = rt.try_admit_force(db, ref, _measurement(64_000))
     assert (force.action, force.reason) == ("skip", "trigger_error")
 
@@ -336,7 +334,7 @@ def test_state_survives_reopen_and_still_dedupes(tmp_path):
     reopened = open_noting_db(path)
     _agent(reopened, "s")  # The restarted host resolves its native main runtime before admission.
     try:
-        assert rt.try_admit_force(reopened, ref, _measurement(64_000)).reason == "same_anchor_admitted"
+        assert rt.try_admit_force(reopened, ref, _measurement(64_000)).reason == "force_interval_occupied"
         assert rt.idle_candidates(reopened, now=1600.0) == [ref]
     finally:
         reopened.close()
@@ -367,14 +365,14 @@ def test_d01_external_gate_runs_only_after_a_real_trigger_and_before_admission(d
     idle_ref = ref_of(db, "idle")
     db.noting_idle_turn_finished(idle_ref, 1000.0)
     before = _admission_count(db)
-    blocked_idle = rt.try_admit_idle(
+    blocked_idle = _idle(
         db, idle_ref, now=2000.0, execution_source="external",
     )
     assert (blocked_idle.action, blocked_idle.reason) == ("skip", "external_main_execution")
     assert _admission_count(db) == before
-    assert rt.try_admit_idle(db, idle_ref, now=2000.0).reason == "idle_trigger_produced"
+    assert _idle(db, idle_ref, now=2000.0).reason == "idle_trigger_produced"
     db.noting_idle_turn_finished(idle_ref, 1100.0)  # A later native main idle period is independent.
-    assert rt.try_admit_idle(
+    assert _idle(
         db, idle_ref, now=2000.0, execution_source="native",
     ).action == "admit"
 
@@ -410,20 +408,12 @@ def test_d01_actual_execution_fact_persists_and_no_request_does_not_overwrite(db
     assert db.get_session_model_config_value("s", key) == "native"
 
 
-def test_d01_idle_external_blocks_before_force_snapshot_compaction_branch(db):
+def test_d01_idle_external_has_no_force_admission_side_effect(db):
     make(db, "s")
     add(db, "s", "first", "m1")
-    add(db, "s", "second", "m2")
     ref = ref_of(db, "s")
     db.noting_idle_turn_finished(ref, 1000.0)
-    db.notebook_commit_snapshot(
-        ref, empty_state(), anchor_message_uid="m1",
-        trigger_type="force", runtime_profile=TASK_PROFILE_NOTING,
-    )
-
-    decision = rt.try_admit_idle(
-        db, ref, measurement=_measurement(70_000), now=2000.0,
-        settings=_settings(compact_after_force=True), execution_source="external",
-    )
+    decision = _idle(db, ref, measurement=_measurement(70_000), now=2000.0,
+                     execution_source="external")
     assert (decision.action, decision.reason) == ("skip", "external_main_execution")
     assert _admission_count(db) == 0

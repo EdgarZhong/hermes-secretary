@@ -17,14 +17,15 @@
 |---|---|---|
 | C1/C2/C3 | 主会话已 review 并接收云端实现 | C1交C5、C2交收口owner、C3交C6首次定向运行；C2 `_search` 嵌套7层需修 |
 | C4 | 主会话已review接收；c4-report.md | 38场景取得通过；ruff、C4增量health通过；不把全范围C2阻断写成通过 |
-| C5 | local_environment实施child四工具 | 接C1/C2/C4；获授NotebookStore显式base_snapshot_id最小补丁；独占C1+child定向测试 |
-| C6 | personal_provider实施Scheduler投递 | 已顺序获得C3 schedule接纳函数及C3本地域修补权；独占C3+delivery测试 |
-| C7 | c4_config_prompt实施联合触发；获授test_noting_runtime.py/test_noting_timers.py旧用例更新 | C4接口已定；优先移除旧runtime idle_task_profile/auto_compact消费者；独占joint测试 |
-| C8 | 待派：pointer Framework | C1事务接口与C4 Proposal；独占framework测试 |
-| C9/C10 | 待派正式接线与收口 | 包含通用external memory sync的completed/failed gate；独占wiring/legacy测试 |
-| P1/P2/P3 | 主会话已review接收个人线；personal-report.md | 46独立用例通过；真实SessionDB/MemoryManager+本地HTTP fixture，P2基本模拟通过；主会话已review，公共finalizer gate与历史旧测试仍待收口 |
+| C5 | 主会话已review接收；c5-report.md | C1 93场景、C5 34场景有通过证据；三Schema和三Prompt与07静态逐字一致；时间秒精度单节点由原owner补证 |
+| C6 | personal_provider实施Scheduler投递 | 已顺序获得C3 schedule接纳函数及C3本地域修补权；额外窄授hermes_state_messages.py::append_messages_batch可选事务prepare_rows接缝，未提供时原生不变；独占C3+delivery测试 |
+| C7 | 主会话已review接收；c7-report.md | 63独立场景有通过证据；正式manual/auto与成功boundary接线交C9-H |
+| C8 | local_environment实施pointer Framework | C1事务接口与C4 Proposal；独占test_r3_framework.py及test_framework_message_boundaries.py；不改test_noting_child |
+| C9-H | c4_config_prompt：正式host生命周期 | 独占turn_context/preflight、context_compaction_request、conversation_compression/manual、turn_api_call/finalizer、run_agent._sync_external_memory_for_turn、hermes_state_compression及hermes_state_messages.archive_and_compact成功事务、tui_gateway/session_compression；新增test_r3_host_wiring；负责唯一联合准备、成功boundary、空响应不ACK、completed/failed归档gate |
+| C9-S/C10 | 待派工具surface/dispatch与收口 | 不与C9-H交叉；追加agent/session_persistence.py::_db_flush_write接C6 prepare_rows；独占wiring/legacy测试。C10需维护旧投递3文件及reminder_runtime夹具，个人旧test_personal/test_security，不复活旧契约 |
+| P1/P2/P3 | 主会话已review接收个人线并提交57d0abb854f4；personal-report.md | 46独立用例通过；真实SessionDB/MemoryManager+本地HTTP fixture，P2基本模拟通过；主会话已review，公共finalizer gate与历史旧测试仍待收口 |
 | L0 | 环境已交回；yaml问题是个人脚本旧导入，P3 owner修复 | 不跑产品测试；不改锁或裸装依赖 |
-| 门禁 | 尚未启动 | 集成收敛后Astra/high Verification；主会话制定Validation、6.1/high执行 |
+| 门禁 | 尚未启动；主会话已制定validation.md全范围15组场景 | 集成收敛后Astra/high Verification；主会话制定Validation、6.1/high执行 |
 
 - 原生真实模型验证将指定唯一owner；本轮大型检查尚未执行，集成收敛后统筹一次，修复后仅定向复测。主会话不重复子Agent有效测试。
 

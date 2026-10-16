@@ -1,11 +1,9 @@
-"""Noting admission, child registry, and durable per-Conversation Idle timing.
+"""Noting admissions, child registry and Main-only Idle timing in the owning state.db.
 
-Secretary-owned tables in the owning Hermes ``state.db`` only (02 §3.1, §6.1): core tables keep
-their shape and ownership. One successful admission per (Conversation, Anchor) is enforced by a
-UNIQUE constraint rather than an application lock, so two concurrent attempts on the same Anchor
-admit exactly once while different Anchors admit concurrently (02 §4.8). The Idle timer is
-durable per Conversation, so a restart recovers it (02 §4.5, §6.6). Every write here runs on the
-caller's connection inside its transaction.
+Anchor deduplication and Force's successful-compaction interval occupation share the
+admission transaction. The interval is an identity of the native published boundary,
+not a task state machine: child completion, failure and rewind never advance it.
+All writes preserve the caller's transaction and Hermes's native table ownership.
 """
 
 import sqlite3
@@ -16,12 +14,21 @@ CREATE TABLE IF NOT EXISTS secretary_noting_admissions (
     admission_id INTEGER PRIMARY KEY,
     conversation_ref TEXT NOT NULL REFERENCES secretary_conversations(conversation_ref),
     anchor_message_uid TEXT NOT NULL,
-    kind TEXT NOT NULL CHECK(kind IN ('idle','force')),
+    kind TEXT NOT NULL CHECK(kind IN ('idle','force','manual','auto_compaction')),
+    compression_interval_id TEXT NOT NULL,
     admitted_at REAL NOT NULL,
     UNIQUE(conversation_ref, anchor_message_uid)
 );
 CREATE INDEX IF NOT EXISTS idx_secretary_noting_admissions_conversation
     ON secretary_noting_admissions(conversation_ref);
+CREATE TABLE IF NOT EXISTS secretary_noting_compaction_state (
+    conversation_ref TEXT PRIMARY KEY REFERENCES secretary_conversations(conversation_ref),
+    interval_id TEXT NOT NULL,
+    boundary_message_uid TEXT,
+    updated_at REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_secretary_noting_force_interval
+    ON secretary_noting_admissions(conversation_ref, compression_interval_id, kind);
 CREATE TABLE IF NOT EXISTS secretary_noting_children (
     admission_id INTEGER PRIMARY KEY REFERENCES secretary_noting_admissions(admission_id),
     child_session_id TEXT,
@@ -40,7 +47,7 @@ CREATE TABLE IF NOT EXISTS secretary_noting_idle_state (
 );
 """
 
-ADMISSION_KINDS = ("idle", "force")
+ADMISSION_KINDS = ("idle", "force", "manual", "auto_compaction")
 
 _TURN_STARTED_UPSERT_SQL = (
     "INSERT INTO secretary_noting_idle_state "
@@ -81,20 +88,69 @@ class SecretaryNotingMixin:
 
     # ── Trigger admission (02 §4.8) ────────────────────────────────────────
 
+    def _noting_latest_compaction_uid_conn(self, conn, conversation_ref):
+        boundaries = [row["message_uid"] for row in self.get_full_foreground_conn(conn, conversation_ref)
+                      if row.get("message_identity") and row.get("is_compaction")]
+        return boundaries[-1] if boundaries else None
+
+    def noting_compaction_interval_conn(self, conn, conversation_ref):
+        """The native successful boundary identity, never rolled back by transcript rewind.
+
+        First access seeds from the actual current path. Later changes come only from
+        noting_record_compaction_conn at a successful native publication; an admission,
+        child finish, failed compaction or a newly visible Anchor never advances it.
+        """
+        row = conn.execute("SELECT interval_id FROM secretary_noting_compaction_state "
+                           "WHERE conversation_ref=?", (conversation_ref,)).fetchone()
+        if row is not None:
+            return row["interval_id"]
+        boundary = self._noting_latest_compaction_uid_conn(conn, conversation_ref)
+        interval = boundary or "conversation_start"
+        conn.execute("INSERT INTO secretary_noting_compaction_state "
+                     "(conversation_ref,interval_id,boundary_message_uid,updated_at) VALUES (?,?,?,?)",
+                     (conversation_ref, interval, boundary, time.time()))
+        return interval
+
+    def noting_record_compaction_conn(self, conn, conversation_ref):
+        """Only call in/after the native successful boundary publication transaction."""
+        boundary = self._noting_latest_compaction_uid_conn(conn, conversation_ref)
+        if boundary is None:
+            return False
+        cursor = conn.execute(
+            "INSERT INTO secretary_noting_compaction_state "
+            "(conversation_ref,interval_id,boundary_message_uid,updated_at) VALUES (?,?,?,?) "
+            "ON CONFLICT(conversation_ref) DO UPDATE SET interval_id=excluded.interval_id, "
+            "boundary_message_uid=excluded.boundary_message_uid,updated_at=excluded.updated_at "
+            "WHERE secretary_noting_compaction_state.interval_id<>excluded.interval_id",
+            (conversation_ref, boundary, boundary, time.time()),
+        )
+        return cursor.rowcount == 1
+
+    def noting_record_compaction(self, conversation_ref):
+        return self._execute_write(lambda conn: self.noting_record_compaction_conn(conn, conversation_ref))
+
+    def noting_force_occupied_conn(self, conn, conversation_ref, interval_id=None):
+        interval = interval_id or self.noting_compaction_interval_conn(conn, conversation_ref)
+        return conn.execute("SELECT 1 FROM secretary_noting_admissions WHERE conversation_ref=? "
+                            "AND compression_interval_id=? AND kind='force' LIMIT 1",
+                            (conversation_ref, interval)).fetchone() is not None
+
     def noting_admit_conn(self, conn, conversation_ref, anchor_message_uid, *, kind):
-        """One atomic admission per (Conversation, frozen Anchor); None when already admitted."""
+        """Anchor deduplication and Force interval occupancy share this write transaction."""
         _require_text(conversation_ref, "An owning Conversation Ref")
         _require_text(anchor_message_uid, "A frozen Anchor Message UID")
         if kind not in ADMISSION_KINDS:
             raise ValueError("Unknown Noting trigger kind")
+        interval = self.noting_compaction_interval_conn(conn, conversation_ref)
+        if self.noting_force_occupied_conn(conn, conversation_ref, interval):
+            return None
         cursor = conn.execute(
             "INSERT OR IGNORE INTO secretary_noting_admissions "
-            "(conversation_ref, anchor_message_uid, kind, admitted_at) VALUES (?, ?, ?, ?)",
-            (conversation_ref, anchor_message_uid, kind, time.time()),
+            "(conversation_ref, anchor_message_uid, kind, compression_interval_id, admitted_at) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (conversation_ref, anchor_message_uid, kind, interval, time.time()),
         )
-        if cursor.rowcount != 1:
-            return None
-        return cursor.lastrowid
+        return cursor.lastrowid if cursor.rowcount == 1 else None
 
     def noting_admit(self, conversation_ref, anchor_message_uid, *, kind):
         return self._execute_write(lambda conn: self.noting_admit_conn(
@@ -240,7 +296,9 @@ class SecretaryNotingMixin:
     # ── Force success state for the pre-compaction segment (02 §4.9) ───────
 
     def noting_force_snapshot_since_boundary_conn(self, conn, conversation_ref):
-        """Derive Force success from durable facts: a committed trigger_type=force Snapshot
+        """Read-only historical diagnostic, not the current Force admission gate.
+
+        Derive Force success from durable facts: a committed trigger_type=force Snapshot
         whose Anchor lies after the latest Compaction boundary on the current path. Absent
         Notebook Snapshot tables read as "no Force Snapshot yet" until the Notebook sibling
         owns them (02 §4.9: no stored runtime flag backs this)."""

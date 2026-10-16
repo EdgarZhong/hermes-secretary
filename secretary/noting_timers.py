@@ -95,6 +95,11 @@ def attach_idle_timer(parent, db, ref, *, now=None):
     with conversation_timer_lock(db, ref):
         settings = settings_for_db(db)
         enabled, reason = noting_lifecycle_gate(db, ref, settings=settings)
+        if not settings.idle_enabled:
+            db.noting_idle_claim_event(ref, now=time.time() if now is None else now,
+                                      delay_seconds=settings.idle_delay_seconds, feature_enabled=False)
+            cancel_idle_timer(db, ref)
+            return "skip:" + (reason if not enabled else "idle_disabled")
         if main_turn_running(parent):
             cancel_idle_timer(db, ref)
             return "skip:not_idle"

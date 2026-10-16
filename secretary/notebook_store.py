@@ -8,6 +8,9 @@ from secretary.notebook_contract import NotebookValidationError, parse_time, req
 from secretary.notebook_model import NotebookWorkingState
 
 
+_UNBOUND_BASE = object()
+
+
 def _source_checks_conn(db, conn, conversation_ref):
     """Use the native legal History path, not a separate Notebook evidence index."""
     history = list(db.get_history_foreground_conn(conn, conversation_ref))
@@ -73,7 +76,7 @@ class NotebookStore:
     """
 
     def __init__(self, db, conversation_ref, *, anchor_message_uid, trigger_type="idle",
-                 runtime_profile="NOTING", lock=None, clock=None):
+                 runtime_profile="NOTING", lock=None, clock=None, base_snapshot_id=_UNBOUND_BASE):
         if db is None:
             raise NotebookValidationError("An owning SessionDB is required.")
         require_text(conversation_ref, "conversation_ref")
@@ -89,14 +92,24 @@ class NotebookStore:
         self._anchor_message_uid = anchor_message_uid
         self._commit_result = None
         with self.lock, db._read_ctx() as conn:
-            current = db.notebook_current_conn(conn, conversation_ref)
+            current = (db.notebook_current_conn(conn, conversation_ref)
+                       if base_snapshot_id is _UNBOUND_BASE else None)
             if anchor_message_uid not in db._notebook_anchor_positions_conn(conn, conversation_ref):
                 raise NotebookValidationError("The frozen Anchor is unavailable.", code="source_unavailable")
-            self._base_snapshot_id = current["snapshot_id"] if current is not None else None
+            self._base_snapshot_id = (current["snapshot_id"] if current is not None else None)
+            if base_snapshot_id is not _UNBOUND_BASE:
+                if base_snapshot_id is not None:
+                    require_text(base_snapshot_id, "base_snapshot_id")
+                self._base_snapshot_id = base_snapshot_id
             # Hydrate by the captured immutable ID. A second pointer read could
             # combine A's base_snapshot_id with B's payload under concurrency.
-            payload = (None if self._base_snapshot_id is None else
-                       db.notebook_snapshot_audit_conn(conn, self._base_snapshot_id)["payload"])
+            snapshot = (None if self._base_snapshot_id is None else
+                        db.notebook_snapshot_audit_conn(conn, self._base_snapshot_id))
+            if self._base_snapshot_id is not None and snapshot is None:
+                raise NotebookValidationError("The bound base Snapshot is unavailable.", code="source_unavailable")
+            if snapshot is not None and snapshot["conversation_ref"] != conversation_ref:
+                raise NotebookValidationError("The base Snapshot belongs to another Conversation.", code="scope_denied")
+            payload = None if snapshot is None else snapshot["payload"]
             valid_identity, valid_range = _source_checks_conn(db, conn, conversation_ref)
             self._state = NotebookWorkingState(
                 conversation_ref, payload, lock=self.lock, clock=clock,

@@ -560,3 +560,47 @@ def test_soft_capacity_thresholds_do_not_reject_or_truncate_snapshot(db):
     assert len(current["payload"]["work"]) == 61
     assert current["payload"]["work"][0]["fields"]["description"] == long_text
     assert first["entry_id"] in render_notebook(current)
+
+
+def test_explicit_base_captured_before_worker_never_reloads_new_parent_pointer(db):
+    from secretary.noting_child import freeze_notebook_start
+
+    first = store(db)
+    original = create(first, uid="m1")
+    first_result = first.commit(termination=FINISH)
+    frozen = freeze_notebook_start(db, first.conversation_ref)
+    newer = store(db, "m2")
+    newer.update(original["entry_id"], {"fields": {"description": "Parent received later evidence"}})
+    newer.commit(termination=FINISH)
+    delayed = store(db, "m1", **frozen)
+    assert delayed.base_snapshot_id == first_result["snapshot_id"]
+    assert delayed.get(original["entry_id"])["fields"]["description"] == original["fields"]["description"]
+    assert db.notebook_current(first.conversation_ref)["snapshot_id"] != delayed.base_snapshot_id
+
+
+def test_explicit_empty_base_is_not_replaced_by_later_parent_snapshot(db):
+    from secretary.noting_child import freeze_notebook_start
+
+    ref = ref_of(db, "s")
+    frozen = freeze_notebook_start(db, ref)
+    assert frozen == {"base_snapshot_id": None}
+    current = store(db)
+    create(current, uid="m1")
+    current.commit(termination=FINISH)
+    delayed = store(db, **frozen)
+    assert delayed.base_snapshot_id is None
+    assert all(not entries for entries in delayed.show().values())
+
+
+def test_explicit_base_refuses_other_owner_and_unavailable_snapshot(db):
+    original = store(db)
+    result = original.commit(termination=FINISH)
+    make(db, "other-owner")
+    add(db, "other-owner", "Independent", "other-message")
+    with pytest.raises(NotebookValidationError) as error:
+        NotebookStore(db, ref_of(db, "other-owner"), anchor_message_uid="other-message",
+                      base_snapshot_id=result["snapshot_id"])
+    assert error.value.code == "scope_denied"
+    with pytest.raises(NotebookValidationError) as error:
+        store(db, base_snapshot_id="missing-snapshot")
+    assert error.value.code == "source_unavailable"
