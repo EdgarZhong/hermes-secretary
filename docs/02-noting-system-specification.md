@@ -210,6 +210,8 @@ Session Notebook is the structured **working-state layer** of a Conversation. It
 
 The raw Hermes Conversation transcript remains the source of truth.
 
+**用户明确的设计目的（2026-10-15）：** Notebook 同时是跨 Compaction 区间的工作信息索引。多轮压缩后的摘要可能遗漏细节；Main 应能通过 Notebook 发现与当前问题有关的既有事项及来源线索，再使用现有 History Search 读取对应原文与必要上下文，恢复摘要未保留的具体信息。Notebook 无须复制全部原文，也不能替代原文作为完整证据；其独立价值包括提高历史事项的可发现性及按需恢复细节，而不能仅以是否比摘要多保存了一份任务／决策文本评价。指导 Main 有效查阅 Notebook、使用索引回查原文，是这一目的的一部分；不在本段新增每 Turn 强制查询或新的工具／Schema 契约。节约费用的另一目标来自缓存仍热时整理并提前压缩上下文，该收益可由 idle compaction 的时机改进取得，不能全部归因于 Notebook。是否联合触发及具体阈值仍在讨论，未授权据此修改运行机制。
+
 Notebook is asynchronously derived state, not the authoritative control path for the current Turn:
 
 ```text
@@ -872,6 +874,10 @@ Mutation validation errors must be diagnosable (V1.5, 2026-10-10): a rejected mu
 The model does not write Snapshot tables directly and cannot forge mutable Schedule runtime fields.
 
 ## 3.8 Schedule ownership model
+
+**用户确认的及时登记原则（2026-10-15，职责重审中）：** 投递可以 deferred，不代表登记可以等待下一次 Noting／Compaction；登记不能等。具体业务归属及工具接线仍待确认。用户进一步以定时 watchpoint 检查讨论边界：即使原文保留在当前上下文且请求携带时间戳，仍不能据此认定模型到期后会可靠注意并执行观察。本段记录确认原则及待解决问题，不修改下文现行 Schedule 所有权和投递契约，也不把“可能需要 instant 的业务类型”冻结为归属判据。
+
+**概念澄清与待议边界（用户 2026-10-15 明确／尚未批准机制变更）：** 本次讨论中的两类 Reminder 指 `instant` 与 `deferred` 投递方式，不指 `user_reminder`、`secretary_task` 等事项语义类型；两者属于不同概念，合法组合仍可受具体产品契约约束。用户正在重新考虑即时行动／提醒管理与跨 Compaction 索引的职责分工，包括主会话管理可使用 instant 或 deferred 的行动事项、Notebook 是否继续持有仅需 deferred 的索引复查意图。最终收录范围、Schedule 所有权、工具、开关及触发规则均未冻结；不能把讨论记为已决定移除 Notebook Schedule，或把所有 deferred 事项自动归给 Notebook。下文保留当前已实施契约，待新方案确认后统一修订。
 
 Schedule is an adjunct of Noting/Notebook.
 
@@ -1899,7 +1905,9 @@ Background Noting maintains the Notebook asynchronously after interactions becom
 Persistence Candidates are only potential proposals recorded in the Notebook, not authorization to act. Never write them to Memory, Rules, or Skills without authorization. Persistence is permitted only after a proposal has been presented to the user and the user has explicitly authorized its execution.
 ```
 
-Target (user-reviewed and approved 2026-10-14; complete current wording). Main directs background Noting through Memo; it does not register Notebook schedules itself. The time-system sentence sits after the merged Schedule/Background paragraph and before Memo. No Memo storage, provenance, delivery, tool permission or trigger mechanism is changed. During development, the native prompt synchronization may invalidate and rebuild an existing prompt cache as part of this approved adjustment.
+**2026-10-15 用户已审定／未实施：** 本次只澄清下方 user 与 consultation 两行；不在 Main 中加入 Noting 角色交接或后台严格收录约束。Noting 文案及提醒结构的独立提案见 [文案提案（原 08）](noting-message-and-reminder-contract-proposal.md)，不作为本段实施内容。后续职责重设计入口为 [新 07](07-scheduler-notebook-noting-compaction-redesign.md)，尚未改变本段运行契约。
+
+Target (base wording approved 2026-10-14; limited Main-only revision approved 2026-10-15, not implemented). Main directs background Noting through Memo; it does not register Notebook schedules itself. The time-system sentence sits after the merged Schedule/Background paragraph and before Memo. No Memo storage, provenance, delivery, tool permission or trigger mechanism is changed. During development, the native prompt synchronization may invalidate and rebuild an existing prompt cache as part of this approved adjustment.
 
 ```text
 ## Secretary Work and Notebook Guidance
@@ -1909,9 +1917,9 @@ You are the user's secretary — modeled on a real human secretary: proactive, a
 The Notebook provides structured working state across compaction boundaries, preserving continuity in the user's affairs, ongoing work, shared decisions, and proposals for long-term memory and self-improvement.
 
 The Notebook has four sections:
-- **user** (`user_commitment`, `user_reminder`): the user's commitments and requested reminders.
+- **user** (`user_commitment`, `user_reminder`): the user's commitments and reminders requested by the user or proactively proposed by the assistant.
 - **assistant** (`secretary_task`, `watchpoint`): tasks you have accepted and matters that require future attention.
-- **consultation** (`decision`, `open_question`, `formulating_insight`): established decisions, unresolved questions, and developing insights.
+- **consultation** (`decision`, `open_question`, `formulating_insight`): the user's decisions, important unresolved questions, and insights developed with or explicitly put forward by the user.
 - **persistence** (`memory_candidate`, `rule_candidate`, `skill_candidate`): proposals for durable memory, rules, and reusable skills.
 
 Persistence Candidates are only potential proposals recorded in the Notebook, not authorization to act. Never write them to Memory, Rules, or Skills without authorization. Persistence is permitted only after a proposal has been presented to the user and the user has explicitly authorized its execution.

@@ -83,7 +83,11 @@ Gateway 入口为 `hermes gateway`。官方 Dashboard 入口为 `hermes dashboar
 
 Web 的 `/notebook` 是仅保存在浏览器内存中的四分区只读临时卡片，按调用顺序固定在命令发起时的 Timeline 位置，刷新后清除；任务状态与排期分别呈现，不展示内部 Anchor。
 
+`/notebook` 卡片时间标签为 `Updated at`，时间值沿用当前 Snapshot 的原生创建时间。后台进程和异步子 Agent 完成回报按原生 `display_kind` 显示为独立通知卡片，标题分别为 `process complete`、`async delegation complete`，复用 Framework Message 主题，默认折叠、可展开；前端不识别为 User Message，不提供 Reply／编辑。Noting Framework Message 保持原有展示。
+
 聊天历史首次加载最近 200 条后台消息，`Show More History` 每次向前加载 200 条；工具调用与结果计入条数。历史按需分页，不在浏览器持久化转录副本。
+
+Timeline 视口状态只在页面内存保存，刷新回底；用户 Send 被接受后立即回底跟随，其他来源的新 Turn 不触发回底。手动滚动暂停跟随，停止控制 20 秒后仅在 Turn 仍活动时恢复。向前加载历史保留当前内容锚点。完整工具调用段通过原生提交事件提供有序身份与展示元数据；并行调用逐张展示、按调用段顺序固定位置，各自更新状态。
 
 在前端目录执行 `npm ci` 后，`npm run dev` 启动正式接线页面；`npm run typecheck`、`npm test`、`npm run build` 为类型、定向测试与构建入口。静态交互工作台使用 `npm run mock -- --port 5176`，访问 `/mock.html`；可选择场景、主题与四种视口，不连接真实后端或调用模型。`npm run mock:test` 和 `npm run mock:build` 分别验证、构建静态工作台。场景与组件边界见 [Mock 交接说明](.autonomous/20261012-round2-web-ui/static-mock.md)。
 
@@ -114,9 +118,12 @@ Python 不绕过 canonical runner 直接运行 pytest；JS/UI 入口及环境准
 
 | 文档 | 内容 | 路径 |
 |---|---|---|
-| Notebook 清理机制设计提案 | 类型状态、两轮处理、统一接缝与强制结束承接的候选方案；不作为现行实施契约 | [07](docs/07-notebook-cleanup-mechanism-proposal.md) |
+| Scheduler / Notebook / Noting / Compaction 重设计 | 重设计依据、Conversation 内部记忆与外部 Provider 边界、Notebook 分类与逐类型进退、索引建立／审计与更新、过滤候选／超限主动提案与审批分发／结算、Scheduler 与工具控制面、完整 Noting Task／Prompt 草稿、联合触发与完成注入；完整待审方案，实施规格尚未冻结 | [07](docs/07-scheduler-notebook-noting-compaction-redesign.md) |
+| Notebook 正式方案白板（待审） | 可离线打开的 HTML：机制目录、类型属性、Scheduler 工具与 Schedule Table、索引建立／更新、过滤候选、命令或超限提示启动 Persistence、结算、完整 Noting Task／Prompt 及快照注入；集中待拍板项，支持批注暂存与保存副本，不作为现行运行规格 | [白板](docs/notebook-ontology-whiteboard.html) |
 | V1 实施总纲 | 公开核心范围、边界与继承要求 | [01](docs/01-personal-hermes-v1-first-fork-iteration.md) |
 | Notebook / Noting 现行规格 | Identity、History、Notebook、Noting、Schedule、Reminder，含 V1.6 修订与 §5.12 Target | [02](docs/02-noting-system-specification.md) |
+| Notebook 清理机制历史提案（原 07） | 原清理机制候选方案，去编号保留；不升格为规格，不作为新设计默认要求 | [清理提案](docs/notebook-cleanup-mechanism-proposal.md) |
+| Noting Message 与提醒结构历史提案（原 08） | 原提示词／Schema 与职责研讨材料；去编号保留，后续重设计统一在新 07 推进 | [文案提案](docs/noting-message-and-reminder-contract-proposal.md) |
 | V1.5 增量规格 | 未被现行 02 覆盖的增量契约 | [04](docs/04-hermes-secretary-v1.5-implementation-spec.md) |
 | 上下文开销台账 | token 实测口径、基线与变更记录 | [05](docs/05-context-cost-ledger.md) |
 | Web UI V1 权威规格 | 产品交互、原生接口、设计系统与验收；替代旧 UI 讨论主入口 | [06](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md) |

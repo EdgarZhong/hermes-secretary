@@ -155,6 +155,8 @@ Conversation list, title, ordering, archival/pin affordances (only if included b
 
 ### 1.4. Timeline, streaming, message kinds and timestamps
 
+**2026-10-15 用户确认底部留白：** Conversation Timeline 底部 padding 与 scroll-padding-bottom 统一为用户最终指定的 **64px**，避开 Secretary 悬浮球并保留正文间隙；替代此前试调的 52px，不改既有滚动跟随规则。
+
 A Conversation has **one** Timeline. It includes the original ordered persisted messages, the live assistant stream and temporary pending-steer *visual* bubbles as a distinct non-persisted tail projection. No extra composer-level Queue card, separate In-flight panel or second transcript is permitted.
 
 | Rendered source | Timeline semantics | Default rendering |
@@ -164,11 +166,21 @@ A Conversation has **one** Timeline. It includes the original ordered persisted 
 | Thinking | Model thinking stream, subject to actual available event segments | **Expanded while actively streaming**; auto-collapsed on completion; user can toggle. |
 | Tool Call | Native tool call/arguments, activity and result | **Collapsed by default**, including during execution; show a visible working status, expandable parameters/results. |
 | Framework Message | Genuine durable `<framework-message>` carrier | **Distinct message visual form within the Timeline**, not a toast, sidebar status or generic Assistant claim. |
+| Process completion notification | Native `display_kind=process_complete`, excluding Noting Framework carriers | Independent notification card using the Framework Message theme; exact title **process complete**; collapsed by default, expandable to show the complete report. |
+| Async delegation completion notification | Native `display_kind=async_delegation_complete` | Independent notification card using the Framework Message theme; exact title **async delegation complete**; collapsed by default, expandable to show the complete report. |
 | Instant Reminder | Genuine `<instant-reminder>` user-role carrier | Distinct Reminder treatment, collapsed by default; not misattributed to a typed user message. |
 | Deferred Reminder | Real native `<deferred-reminder>` message when actually projected in visible history | Collapsed by default, distinct from instant reminders; never fabricate one for a merely scheduled/pending occurrence. |
 | Compaction | Real native summary/handoff carrier as projected by backend | In correct historical position, **collapsed by default**, full original available on expansion. |
 | Pending Steer | Server-accepted, still-unconsumed correction | Separate provisional User-shaped bubbles at visual tail; no timestamp implying persistence. |
 | Human-only `/notebook` result | Slash result intended for human viewing only | Temporary **Assistant-styled** result in the Conversation Timeline, anchored at the sequence boundary when the command is invoked; later messages follow it. Keep this display only in browser working memory; reload clears it. Until that memory is reset, preserve its invocation-time Timeline position across later messages and history updates; do not relocate it to the tail merely because an anchor was reconciled. Render the public human output as readable sections, entry states, fields and schedules; do not show internal Anchor metadata. No durable message identity or next-model-history insertion. |
+
+**2026-10-15 用户确认完成回报的前端身份：** 上述两类通知按后端 `display_kind` 分类，前端使用独立通知 kind 和 system 角色，不能仅换皮后仍识别为 User Message；不使用用户气泡、用户消息动作栏、Reply／编辑入口或用户附件解析。原生 source 的 `role=user`、正文、UID 及数据库记录保持原样用于历史定位，不改变模型输入。Framework／Reminder 的既有包装优先识别，`display_metadata.noting_run_output=true` 不转换为进程完成通知，Noting Framework Message 的标题、主题及折叠行为保持不变。不以英文正文或 `display_text` 猜通知类型，固定标题不以任务摘要替代。
+
+**2026-10-15 用户确认 `/notebook` 时间标签：** 前端临时 Notebook 卡片的时间标签使用 `Updated at`。时间值继续来自当前有效 Snapshot 在原生人类输出中的 `Created at`，仅调整界面文案，不修改后端响应字段、存储或时间语义。
+
+**2026-10-15 用户确认 Thinking 展示保持现状：** 继续流式展示后端实际提供的推理文本或推理摘要，不因 GPT 等模型原始思维链不透明而隐藏其可见摘要或替换为「该模型思维链不可见」等固定文案。此前固定文案要求（前端 ISSUE-009）已由用户取消，不为该需求新增加密识别或接口。保留流式时展开、完成后自动折叠及用户手动展开的既有交互；内容仅以实际可用事件为准，不保证上游持续提供摘要。该取消不影响打断状态、缺段、状态闪烁等既有缺陷修复。
+
+**2026-10-15 用户确认 GPT Subscription 路径与摘要分段：** GPT Subscription 指 Hermes 的 `openai-codex` Provider，使用 ChatGPT／Codex OAuth 订阅认证，经 `codex_responses` 模式调用 Responses API。摘要请求、接收、流式传输与段落分隔直接复用 Hermes：推理开启时请求 `summary: "auto"`，上游摘要增量经既有回调和 `reasoning.delta` 进入前端 Thinking；Responses 摘要的 `summary_index` 变化时由 Hermes 插入 `\n\n`。前端按收到的文本顺序拼接并正常渲染 Markdown，保留已有空行，无需额外补换行，不按每次回调强行分段（回调可能只是一个摘要段的文本碎片）。此结论限定上述 Responses 路径，不泛化至所有第三方兼容接口；源码依据见 [Provider 路由](../hermes_cli/runtime_provider.py)、[摘要请求](../agent/transports/codex.py)、[摘要流与分段](../agent/codex_runtime.py)。本次核对未发起真实订阅请求，不作为运行验收通过证据。
 
 **Timeline time presentation contract:** Human-friendly date/time labels appear **only as Timeline reading aids** and **outside every message bubble**. They need not precede each message. The visual AI chooses ergonomic grouping, density, reveal timing, relative-vs-absolute style and placement; no per-message prefix rule is imposed. `<timestamp>ISO...</timestamp>` in ordinary native user-message content MUST be hidden from rendered text without modifying source data; grouped/merged Steers do not cause artificial timestamp rows. **2026-10-14 user clarification:** Reminder carriers remain collapsed by default; their inner timestamp is preserved on expansion, with no additional wrapper or timestamp-stripping treatment.
 
@@ -176,11 +188,21 @@ Message ordering, Compaction lineage, framework carriers, UIDs and stream insert
 
 ### 1.5. Tool rendering, Markdown and errors
 
+**视口信息不持久化（2026-10-15 用户确认）：** 滚动位置、手动控制状态和恢复计时只存在页面内存；不读写 localStorage 等持久存储。每次刷新页面回到 Timeline 底部并恢复默认跟随。
+
+**2026-10-15 滚动补充澄清（覆盖此前恢复跟随的含糊描述）：** Timeline 默认随内容高度向下增长而被动跟随底部，持续显示最新内容；用户 Send 被接受后回底并开始被动跟随。任何用户主动 Timeline 滚动（向上或向下）立即退出跟随，之后流式追加不得推动视口，按用户选定的高度位置阅读；停止手动滚动控制 20 秒后，若当时 Turn 仍在流式输出，则自动回底恢复被动跟随；期间再次手动滚动重新计时，触摸拖动与惯性滚动结束后计时。若到期时 Turn 已结束则保留位置。只有用户 Send 被后端接受会立即回底；不得监听所有 Turn 启动统一回底，Reminder 等自动触发的新 Turn 不改变阅读位置。首次只加载 200 条后台消息；更早历史仅通过上方按钮每次加载 200 条，不做自动分页。向前加载完成后，补偿顶部新增高度并锚定原可见内容在视口中的位置，不能跳顶、跳底、闪动或错位。
+
+**2026-10-15 用户录屏确认补充：** 每次真实工具调用在动态 Timeline 中只有一张卡，构建、运行和完成在同一卡片原位更新。**并行 N 次调用必须展示 N 张独立卡片，不得将整组并行调用合并成一张卡。识别到完整工具调用段时，全部调用卡即按后端真实顺序出现在 Timeline；各卡身份和位置顺序始终稳定，即使 start/complete 到达顺序不同，也仅及时更新各自的真实状态，不重排、不追加替代卡。** 每段 Thinking 和每次调用独立收尾，不以整个 Turn 结束作为统一纠正点。动态内容转为静态历史时，条目数量、顺序与内容保持连续，不得靠结束后的历史重渲染消除重复或补出此前漏显的段。处于底部跟随状态时，内容增长、卡片折叠及历史对账不得自行中断跟随；用户主动上滚阅读时保持其阅读位置。用户新 Send 被原生接受后回到底部、恢复跟随；手动滚动暂停与 20 秒恢复条件遵循上述最终澄清。
+
+**2026-10-15 结束瞬间连续性补充：** Turn 从 active 转为完成及随后的后台历史刷新期间，当前内容与视口必须连续，不得短暂跳回旧 Turn 再恢复。历史消息的操作栏在 active/idle 切换时保持占位高度稳定；已有被动跟随与分页锚定不能因后台历史请求而暂停。仍遵守用户手动滚动所有权，不把 Turn 完成新增为强制回底触发。
+
 - Assistant text supports Markdown and code blocks with normal text selection/copy. Render links safely; regular `http(s)` links may open, but assistant local paths/`file://` URLs remain plain text in V1, not automatically resolved into Files.
 - Tool cards retain activity/identity while token deltas arrive, including incremental tool-call argument construction when native events expose them; secure sensitive payloads using existing redaction/authorization rules, not invented client heuristics.
 - Tool state distinguishes constructing, running, complete, failed, interrupted, unknown and an explicit user-required approval/clarify request where native APIs expose it. A spinner alone is not evidence of a healthy model loop.
 - Completion of one tool or assistant block is not completion of the whole Turn; controls reconcile with backend status and actual terminal events.
 - A disconnected or stale feed displays a recoverable status; on reconnect, native replay plus REST history is reconciled instead of appending duplicated fragments.
+
+**2026-10-15 流式速度联调修订：** 纯正文／推理增量及其原生身份配对投影（`message.output_delta` 的对应 `native_type`）必须共享同一按帧渲染合并策略，不能由每条身份事件打穿合并并造成已完成内容持续积压。仅合并中间画面，原生事件、文本、顺序、身份及控制状态仍逐条同步处理；interim 边界、控制与终态立即发布最新完整投影并取消过期待绘制帧。真实终态竞争仍由后端拒绝，前端明确说明本轮已结束、Steer 未被接受、草稿已保留，不自动转成普通 Prompt。
 
 ### 1.6. Composer contents, layout and keyboard
 

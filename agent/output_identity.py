@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import contextlib
 import contextvars
+import copy
 import logging
 import threading
 from dataclasses import dataclass
@@ -149,11 +150,29 @@ class OutputIdentity:
                     call.pop("tool_call_uid")
             if not source.get("message_uid") or not source.get("row_id"):
                 continue
-            candidate = Candidate(message, str(getattr(self.agent, "_current_turn_id", "") or ""), "", None)
+            candidate = next((owned for owned in (self.current, self.accepted)
+                              if owned is not None and owned.message is message), None)
+            if candidate is not None:
+                # Non-streaming responses may commit before any legacy delta
+                # announced their owner. Preserve the actual writer identity.
+                self.announce(candidate)
+            else:
+                candidate = Candidate(message, str(getattr(self.agent, "_current_turn_id", "") or ""), "", None)
             scope = self.scope(candidate)
             if scope:
+                # The identity DTO remains content-free. This optional display
+                # sidecar exposes the complete native call segment before any
+                # call starts, in the same order as its committed identities.
+                calls = [call for call in (message.get("tool_calls") or [])
+                         if isinstance(call, dict) and isinstance(call.get("id"), str)]
+                display = []
+                for identity, call in zip(source.get("tool_calls", []), calls):
+                    function = call.get("function")
+                    function = function if isinstance(function, dict) else call
+                    display.append({**identity, "function": copy.deepcopy({
+                        key: function[key] for key in ("name", "arguments") if key in function})})
                 self.emit("message.output_committed", {k: v for k, v in scope.items() if k != "message_uid"} |
-                          {"source_message": source})
+                          {"source_message": source} | ({"tool_calls": display} if display else {}))
 
     def close_candidate(self, candidate):
         uid = candidate.message["message_uid"]

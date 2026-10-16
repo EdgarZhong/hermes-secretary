@@ -266,6 +266,8 @@ class OutputCommittedPayload(Payload):
     stored_session_id: str
     conversation_ref: str
     source_message: NativeSourceMessage
+    # Display-only native calls, ordered exactly like source_message.tool_calls.
+    tool_calls: list[dict[str, JsonValue]] | None = None
 
 
 event("message.output_state", OutputStatePayload, doc="Optional native output-object observation; never a Turn control.")
