@@ -1,5 +1,9 @@
 # Hermes Secretary V1.5 — 实施权威规格
 
+> **改版阅读边界（2026-10-16）：** 本文保留V1.5原轮次与未被覆盖的继承要求。下一阶段[07](07-scheduler-notebook-noting-compaction-redesign.md)明确替换旧Main/Noting提示、旧History路由、Memo与Notebook排期所有权、双runtime profile及compact_parent结束；保留冻结父root/tools/messages、追加工具声明、持久后台child、有限续跑与合法完整快照提交。原先“不得整体重写Prompt”是当轮范围，不限制本次用户已授权的英文重写。实施尚未开始，不修改旧验收结论。
+
+> **历史授权说明：** 以下2026-10-09内容仅记录当轮；缓存冻结纠偏保留，special profile已退出，当时Provider不作为第三轮配置要求。
+
 > **2026-10-09 用户补充授权及纠偏：** 本轮索引C05–C17（D01已定稿）：Noting每次请求保留完整冻结父快照前缀，包括root、原工具列表/Schema与到Anchor的消息，不改写头部。在`<noting-task>`及后续新增的系统提示/控制消息中追加当前可用History/Notebook工具列表和完整Schema，强调以此为准；特殊profile另含compact_parent，实际dispatch按Noting白名单限制。此前“从首请求改实际顶层Schema、撤销父工具前缀parity”是Agent理解偏差，现撤销。机制停留在Hermes中间层上下文复用，模型继承、API/provider直接使用Hermes原生，不新增独立模型路由、provider改造或App Server Noting执行器。本轮真实运行选择仍为DeepSeek官方Anthropic/deepseek-flash思考模式；缓存观察使用Hermes自身日志或抓包。原始附件保留在d5acc冻结树，以下正文按最新用户澄清同步。
 
 > **规格状态：** 本次在 V1.5 内定稿 D01（实际执行来源门禁）、Noting 五 Turn 目标驱动结案及 Snapshot 结束审计。**规格已定稿；实施与独立验收的动态状态见根 CLAUDE.md，不以规格状态代替实现或验收证据。**
@@ -8,11 +12,15 @@
 
 ### 1.1 目标与基本原则
 
+> **第三轮适用性：** 本节“不启动UI”等仅属V1.5当轮范围；Hermes-first／原生复用继续继承，第三轮在已存在06客户端上接线，不重做Dashboard。
+
 V1.5 只完成 V1 首轮实现后的必要调整、已确认缺口修复和最终验收，不启动第二轮 Personal UI 产品化。实施应以真实现行代码为对象，沿用 Hermes 原生 Session / Conversation lifecycle、System Prompt tiers、Gateway Agent cache、Slash、Compaction、工具注册与权限机制，不搭建平行子系统。
 
 规范性用语：**必须 / 不得**为强制要求；**应**为默认实现要求，偏离需要明确证据；**可以**为允许但非必需。本轮没有授权的新特性不得凭实现便利自行加入。
 
 ### 1.2 V1 → V1.5 全范围继承、扩展、修订对照表
+
+> **第三轮适用性：** 整张Mxx矩阵为历史轮次覆盖，不是第三轮任务清单。M07/09/11/13/14/15/16/17/21/22/23/24/27/28涉及旧History／分类／排期／profile／Prompt／Dashboard／审计可见性的部分，按白板＋07替换。M02、M04–M06、M25身份与Foreground、M20原生同步机制、M26实际来源D01继续继承；其他行只继承未被覆盖部分。第三轮以新索引组织要求编号。
 
 本表是后续**所有章节的强制对应索引**。每一项实施、测试、代码审查与验收，必须能回溯到此表、相应 V1 条款和本轮定案；未列为变更的 V1 机制继续有效。若 V1-01、V1-02 与本文件冲突，以本文件**明确修订的范围**为准；未修订部分以 V1-02 的详细约束为准。对 V1-01/V1-02 的同步修订不得追改首轮历史冻结证据。
 
@@ -71,6 +79,8 @@ V1.5 只完成 V1 首轮实现后的必要调整、已确认缺口修复和最�
 
 ### 1.4 先回退未经授权的 Prompt 修改
 
+> **第三轮适用性：** 历史已发生的整改，不要求第三轮再次回退。当前英文重写已获明确授权，以07 §8为准，保护原生及无关授权内容的原则保留。
+
 首轮自主实验擅自引入的 `agent/system_prompt.py::SECRETARY_GUIDANCE` 把 History Search、Notebook 与 Persistence 审批混写，并以 `session_history` 是否可用触发整段指导。**该改动没有经过对应的语义论证与权威规格授权，必须先精确回退，再按 §3 和附录 A 重建。**
 
 回退只针对该次未经授权的增量，包括引用与注入判断；不得回退 Hermes 原生 `stable/context/volatile` 拼接、其他已授权的 Secretary 功能或无关上游改动。以当前 Git 代码和首轮冻结提交比对定位具体 diff，保留可审计记录；不得因“即将重写”而跳过回退核查。
@@ -89,6 +99,8 @@ V1.5 只完成 V1 首轮实现后的必要调整、已确认缺口修复和最�
 
 ### 2.2 用户主会话资格与 History Search 默认可用性（修订 M03、M08）
 
+> **第三轮适用性：** 真实Main资格、辅助runtime隔离和冻结／dispatch边界保留；旧session_history、special工具和session_search跨Conversation指导由07 §3、§5、§8替换。
+
 **合格 Main Agent**：直接承接用户真实对话的 Main Conversation 执行者；资格应通过 Hermes 真实 runtime ownership／入口判定，而不是仅凭工具列表或是否存在某个 `session_id` 猜测。
 
 - 所有合格 Main Agent **默认拥有** `session_history` Tool Schema 与 `HISTORY_SEARCH_GUIDANCE`，不可由普通 Agent 模板、工具集配置或 `noting.enabled` 移除；不另设 Secretary 可配置开关。
@@ -103,6 +115,8 @@ Active 是**模型本次请求实际收到的活跃上下文**，基于 Hermes �
 用于请求重现、Noting Parent prefix 冻结及缓存一致性诊断。继承 V1 Noting 对 Parent 实际运行前缀的 freeze 约束，不通过重新扫描全部 history 伪造 Active。
 
 ### 2.4 History Foreground（扩展／精确化 M05）
+
+> **第三轮适用性：** 单个History Foreground仍只表示一个合法路径；新conversation_history可以组合多个授权同Profile路径Search，不改变Foreground本体，也不继承旧工具禁止跨域。
 
 History 是沿**当前有效 Conversation 路径**整理的真实消息事件流，可供 `session_history` 检索与阅读：
 
@@ -143,6 +157,8 @@ Full Foreground
 
 ### 2.6 `session_history` 契约与来源检索（继承＋修订 M07）
 
+> **第三轮适用性：** 旧工具名／regex／message_id／范围与两句逐字指导由07 §5、§8.4、§8.8替代。原文、规范身份、真实system可读但Prelude不读、失效来源诚实反馈继续继承。
+
 保留现有 `session_history` read-only 操作及已有参数兼容性：`search` 的 keyword／regex、角色过滤、界限，`read` 的定位与前后文、时间范围，返回原始 `content`、`role`、`timestamp`、物理 `message_id` 与 canonical `message_identity`／`message_uid`。对真实存在的 Conversation 内 `role=system` 消息，必须允许查询／读取，并在已有 `roles` 枚举中最小兼容扩展 `system`；这不授权读取 root System Prompt 或 Full Prelude。由 Runtime 注入 owner；模型不能自行选择其他 Conversation Ref。
 
 为 §6 的自主回溯流程，必须确保 Candidate 的 `(conversation_ref, message_uid)` 可以**可靠定位到该条历史原文**，并允许模型继续搜索邻近及其他相关消息。若现有按 `message_id` 读取的参数不足，应在**同一现有工具**上作最小兼容性扩展或提供既有稳定解析路径；不得让 Slash 代搜、拼贴原文来掩盖定位缺口。明确测试来源缺失、路径无效、错误 identity、跨压缩重复、后续推翻证据的情况。
@@ -154,6 +170,8 @@ Full Foreground
 ## 3. Main Agent System Prompt 与 Tool Surface
 
 ### 3.1 注入资格与两个独立能力组（M03、M08、M11）
+
+> **第三轮适用性：** 两组描述已不完整：新增独立Scheduler。History常可用；Notebook按其global门禁；Scheduler独立Main工具／提示与due gate。“Main只读”仅约束Notebook，不禁止Main调度，见07 §6.3、§8.2。
 
 | Runtime／条件 | `session_history` + History Guidance | `notebook_show` + Secretary Work and Notebook Guidance |
 |---|---|---|
@@ -167,6 +185,8 @@ Full Foreground
 
 ### 3.2 Stable 模块与原生结构（M08、M19）
 
+> **第三轮适用性：** 原生stable/context/volatile结构与稳定前缀保留；旧类型／Memo模块正文及禁止Main窄覆写session_search指导的限制被07 §8.2–8.9替换，不改非Main原生行为。
+
 在 Hermes `build_system_prompt_parts` 的 **stable** tier，保留原始 Identity、Help、行为指导、Skills 与 Coding posture 组织。增加**两个彼此独立的模块**：
 
 - `HISTORY_SEARCH_GUIDANCE`：所有合格用户 Main；两句定稿见附录 A.1。说明本 Conversation 跨 Compaction 原文检索，以及与 `session_search` 的跨对话优先级。
@@ -176,12 +196,16 @@ Full Foreground
 
 ### 3.3 Tool Schema 的绑定与隔离（M07、M11）
 
+> **第三轮适用性：** Main真实工具绑定和辅助runtime隔离保留；三能力组按07注册，Noting四工具另经追加控制声明及实际dispatch隔离，不从冻结父schema授予权限。
+
 - Main History 工具统一复用现有 `session_history` Schema／handler；主会话默认暴露不能因用户选择 toolsets／模板或已恢复的陈旧 pinned tools 而意外消失。
 - Main Notebook 工具只暴露**只读** `notebook_show`，返回 current Snapshot 完整结构化 JSON；不向主 Agent 提供 `notebook_mutate` 或 Schedule Mutation 权限。
 - 启用、禁用时必须同时调整**向模型发送的 Tool Schemas**、`valid_tool_names`、真实 dispatch 权限，不得只删视觉列表或只改变 Prompt 文本。
 - 原生工具注入／工具列表排序尽可能稳定；在未切换全局状态时，不因每 Turn 的 Secretary gate 制造无意义 schema 字节变化。
 
 ### 3.4 全局配置切换的立即生效边界（M20）
+
+> **第三轮适用性：** 原生Pre-message Context同步机制保留，并覆盖独立scheduler.enabled的Schema／Prompt／dispatch；local /noting不重建root。不得因新增模块另造cache manager。
 
 用户修改 `noting.enabled` 后，**下一次合格 Main Conversation 的 Pre-message Context 构建**必须读取最新有效配置并使两项 Notebook 相关内容同步生效：
 
@@ -208,6 +232,8 @@ Conversation-local `/noting on|off` 仅写入当前 Conversation 的后台参与
 
 ### 4.1 Notebook 语义模型：**V1 原样继承**（M09、M10）
 
+> **第三轮适用性：** “原样继承”已过时；新三板块七类型／Candidates与工具按白板＋07 §4。保留来源、不可变Snapshot／pointer、rewind／branch身份，不保留旧Schedule附着或Restore；archive无短期检索通道。
+
 四区十类型**完全不变**：
 
 ```text
@@ -221,6 +247,8 @@ persistence    → memory_candidate, rule_candidate, skill_candidate
 
 ### 4.2 Slash 命令修订（M12）
 
+> **第三轮适用性：** slash执行／local持久参与机制保留；/notebook用户和模型均可见已被02末尾10-14 human-only边界替代。Memo导致off拒绝退出，Scheduler不受/noting控制。
+
 - `/notebook`：仅进行**人类可读的 current Notebook 查看**，显示 Snapshot 创建时间；pointer 为空明确报告；不展示 Anchor／Pointer ID。仍按 Hermes 正常 Slash 历史／可见性机制持久化，**用户和模型均能看到**。
 - `/noting on`、`/noting off`：取代旧 `/notebook on|off`，仅持久化该 Conversation 的**后台 Noting 参与**布尔值，通过 Hermes 原生 Slash 通道输出简短、用户可见／模型可见的 enable/disable 反馈。不另建特殊消息 role、display_kind 或“仅 UI 可见”的旁路。
 - 局部 `/noting off` **不禁止** `/notebook`、`notebook_show` 读取最后有效 Snapshot（前提 global=true），也不删除 Snapshot／Schedule intent／审计记录。
@@ -228,11 +256,15 @@ persistence    → memory_candidate, rule_candidate, skill_candidate
 
 ### 4.3 局部开关只控制 Background Noting（M11–M13）
 
+> **第三轮适用性：** Noting两级参与与Commit Gate保留；Schedule／Reminder跟随local off、两Trigger和双profile失效，按07 §6.3、§8.1。
+
 继续使用 V1 的 `effective_noting_enabled = global noting.enabled AND conversation-local noting_enabled` 决定 Idle／Force Noting、专用 child、Notebook mutations、Schedule due 和 Reminder 产生／投递的后台行为。局部 off 不改变主会话工具或 Stable 指导。
 
 V1 的两种 Trigger、Force 公式／阈值、同 Anchor 准入、`NOTING`／`NOTING_WITH_COMPACTION`、原生 Compaction 交互、Commit gate、process-lifetime child 及权限白名单继续有效，不因 1.5 重写。
 
 ### 4.4 Noting Task 指导：**保持原结构、按定案必要增补**（M14、M15、M27）
+
+> **第三轮适用性：** 本节旧“不得整体替换Prompt”仅当轮范围，第三轮完整英文按07 §8.11–8.12；旧Schedule／special terminal删除。C13每请求冻结父前缀、追加完整Schema、真实dispatch和缓存证据整组完整保留。
 
 保留现有`secretary/noting_child.py::DEFAULT_NOTING_TASK_INSTRUCTION`的结构、`NOTING_WITH_COMPACTION`约定、原始消息与`/notebook` rendering的区别；**不得整体替换或重新设计驱动Prompt**。对Candidate与Schedule语义只追加以下两句（合适地接入原英文段落）；另按C06/C11在`<noting-task>`及后续新增的系统提示/控制消息中重新给出当前可用History/Notebook工具列表和完整Schema（特殊profile另含compact_parent），明确“以此工具列表和Schema为准，取代此前工具可用性说明”。完整冻结父快照前缀包括root、原工具列表/Schema、到Anchor的消息，始终原样携带；不得在首请求或后续请求改写头部tools/schema。实际dispatch独立限制Noting白名单。模型继承、API/provider直接使用Hermes原生；中间层只保证上下文复用，不新增独立路由或provider改造。原“首次响应后扩顶层工具”的使用顺序不能覆盖这一纠偏契约：
 
@@ -261,6 +293,8 @@ Active Foreground 包括当前有效压缩摘要及活跃 tail。此限制避免
 
 ### 4.5 D01：最近一次实际 Main 模型请求的执行来源门禁（M26，定稿）
 
+> **第三轮适用性：** D01实际Native／External来源规则完整继承，适用manual／auto／Idle／Force全部Noting入口，freeze/admission副作用前判断。External只拒绝Noting，不阻塞必须进行的原生压缩、独立Scheduler或History；未知来源不新增拒绝。下文DeepSeek配置只是当轮取证版本，不是第三轮指定Provider。
+
 **唯一产品规则：Noting Trigger 成立后，检查截至触发时最近一次实际模型请求的执行来源。**
 
 | 最近一次实际请求来源 | 处理 |
@@ -281,6 +315,8 @@ Active Foreground 包括当前有效压缩摘要及活跃 tail。此限制避免
 **验收**覆盖同 Turn Force、Idle、Cold Resume、先 Native 后 External 及反向转换、实际 fallback、无真实请求不覆盖、ACP 的 chat_completions 伪装；External 拒绝不产生新 Admission／Child／Snapshot／Reminder 副作用，Native 原路径及 cache_parity 仍正常。本轮真实运行环境仍选用 DeepSeek 官方 Anthropic/`deepseek-flash` 思考模式；这只是实施与验收配置，不是新增门禁。
 
 ### 4.6 两种 Noting Profile：目标驱动有界多 Turn（M27）
+
+> **第三轮适用性：** 双profile／special parent compaction删除。单持久child、五Turn、文本非结束、原生Turn返回后提交、合法状态forced／overflow提交与资源释放保留；新payload、四工具与统一finish按07，实际Provider另记录新轮环境。
 
 `NOTING` 和 `NOTING_WITH_COMPACTION` 都仍是**单次准入、单个独立持久 Child、进程崩溃不恢复**的任务。二者使用相同完整冻结父前缀，在同一个 Child Session 上最多 **5 个完整 Turn**（首 Turn＋最多四个 Continuation）；仅追加 Child 自有消息后缀，不重新读取 Parent 历史、不改变继承的顶层 Tool Schemas。**Turn 上限是执行预算，不是 Snapshot 的成功资格门禁。**
 
@@ -321,6 +357,8 @@ Active Foreground 包括当前有效压缩摘要及活跃 tail。此限制避免
 
 ### 4.7 Snapshot 结束审计与日常视图隔离（M28）
 
+> **第三轮适用性：** 精确枚举与Framework可见性按07 §3.2统一；元数据不进业务payload、普通show不混审计、审计不影响pointer继续保留。新版完成Framework可展示termination；不迁移旧数据，重建隔离测试库。
+
 每个**新提交**的 immutable Snapshot 增加独立审计元数据 `termination`，恰好三种：
 
 ```json
@@ -341,11 +379,15 @@ Active Foreground 包括当前有效压缩摘要及活跃 tail。此限制避免
 
 ### 5.1 In-Conversation 边界（M16）
 
+> **第三轮适用性：** 会话内投递／独立Cron分流保留；旧Notebook类型和Noting控制登记退出，由Main独立Scheduler持有内容与选择delivery_mode。
+
 Notebook Schedule 是**仅在所属 Conversation 内送达的提醒机制**，不是跨 Conversation Job，也不是 Hermes Cron 的隔离 Agent 运行任务。Notebook entry 是意图所有者；Registry、due 状态、claim／retry 仍归 Secretary 管理，不能创建 Hermes Cron Job、写 `jobs.json` 或启动 Cron 的独立 Session 来执行任务。
 
 时间表达式解析、时区处理及 next-run 计算**复用 Hermes Cron 已存在的稳定基础函数**；复用语法／计算不意味着复用其执行或路由语义。有效 Schedule 类型只限 `user_commitment`、`user_reminder`、`agent_task`、`watchpoint`；`watchpoint.until` 必须一次性。其余六种 Notebook 类型不得安排 Schedule。
 
 ### 5.2 `notebook_mutate` Schedule 时间 Schema（扩展 M17）
+
+> **第三轮适用性：** 旧工具位置退出；原生五类时间表达／时区解析继承，新入口为scheduler.schedule，完整Schema见07 §6。
 
 对 **Noting Worker** 的 `NOTEBOOK_MUTATE_SCHEMA.parameters.properties.expression` 复制 Hermes 原生 `cronjob_manage.schedule` 的**五类时间表达能力说明**，但使用 Notebook-owned 的称谓与投递语义。不得只写“same as Cron”或“clone Cron schema”；不得复制 Cron 的 `prompt`、`deliver`、`model`、`skills`、`repeat`、`run` 等 Job 控制字段。
 
@@ -361,6 +403,8 @@ Notebook Schedule 是**仅在所属 Conversation 内送达的提醒机制**，�
 
 ### 5.3 Schedule 生命周期与两类 Reminder：V1 继承（M16、M18）
 
+> **第三轮适用性：** 原生due／claim／ACK／busy转deferred与ingress继承；旧entry owner、local off停扫描、业务状态双向联动与类型限定失效。见07 §6.2、§8.14。
+
 Registry 根据 Notebook semantic mutation 原子注册、更新、取消／禁用 Schedule；局部 off 保留意图、冻结 due 处理，重新启用时一次性提醒至多投递一次，周期性不无限回放。scanner 继续走 Hermes 已有 ticker／housekeeping 的窄复用路径，保持跨重启可靠性与 claim 幂等。
 
 - `user_commitment`、`agent_task`、`watchpoint`：**被动 System Reminder**，到期本身不生成主 Turn；在下一次合格 main LLM request 中按 V1 格式注入。
@@ -373,17 +417,23 @@ Registry 根据 Notebook semantic mutation 原子注册、更新、取消／禁�
 
 ### 6.1 `/propose-persistence` 的职责边界（M21、M22）
 
+> **第三轮适用性：** 三种旧Candidate及附录C文案已替换。保留Main提案／明确批准后写／不预拼全量原文，新聚合引用与超限共用指令见07 §4、§8.10。
+
 该 Slash 在当前合格用户 Main Conversation 中启动**正常主 Turn**，不触发 Noting、不启动独立代理或新的审批 UI。读取 current Notebook 中**未归档**的 `memory_candidate`、`rule_candidate`、`skill_candidate`，给模型传递候选草案、类型、来源 `Message Identity` 以及原 Slash 额外自然语言参数。
 
 **禁止** Slash 自动预读原始 Source Evidence、把源消息原文拼入 Prompt 或预设候选证据就是全貌。当前 V1 代码中 `propose_persistence_command` 的 `source_evidence` 预检索与 payload 拼装必须按此修订；自然语言用户附加要求保留，仍通过原生主 Turn 运行。
 
 ### 6.2 主模型自主检索与完整性核查（M22）
 
+> **第三轮适用性：** 原文取证继续；新conversation_history替代旧工具，Main授权跨域不再引导session_search。提案用现行条目／版本与真实认可范围，见07 §5、§8.10。
+
 主模型从 Candidate 的来源 identity／线索出发，**亲自**用 `session_history` 找回原始来源消息，再自主扩展至相关上下文、关键词、前后讨论、用户后续更正、已执行结果或否定证据。来源 ID 不是完整证据集，Notebook 草案也不是原始事实；不得仅据引用的几条消息直接定论。
 
 检索范围首先是**同一 Conversation**。跨对话的 `session_search` 使用原则按独立 `HISTORY_SEARCH_GUIDANCE`；不能拿跨对话结果代替对本 Conversation 原始证据的必要核查。未能找到可核验来源时，明确标记不确定／不予支持，不虚构证据。
 
 ### 6.3 提案、修改、批准与实际执行（M21）
+
+> **第三轮适用性：** 明确批准硬门禁继续用提示词与流程；拒绝／撤回不得当已成功分发直接结算。Candidate来源原位及部分结算按白板＋07；目标是否保存标签／provenance不是Noting结算条件。
 
 `/propose-persistence` **仅授权形成提案**：基于查实的原始消息提出 Memory、Rule 或 Skill 的适当草案及理由，供用户审查、修改或拒绝。
 
@@ -398,6 +448,8 @@ Registry 根据 Notebook semantic mutation 原子注册、更新、取消／禁�
 ---
 
 ## 7. 工程实施、回归与最终验收
+
+> **第三轮适用性：** 本章为V1.5历史施工／验收清单，不作为第三轮逐字判据。旧回退／regex／类型图／双profile／固定Provider／Dashboard项退出；身份、原生后台、真实请求parity、ACK与原生回归按保留范围提取，新入口为现有06产品及07 §9。
 
 ### 7.1 实施顺序与变更审计
 
@@ -449,6 +501,8 @@ Registry 根据 Notebook semantic mutation 原子注册、更新、取消／禁�
 
 ### 7.4 Verification、Validation 与 Definition of Done
 
+> **第三轮适用性：** 独立审查与真实用户结果要求保留；轮次组织遵循当前autonomous-run，新范围按新索引，不复用旧Mxx矩阵／旧模型配置或旧验收结论。
+
 - 对**V1 全部仍有效**的要求及本文 `M01–M28` 逐项做独立 Verification；旧 101 项审查可作对照但不能替代对更新代码／新规格的复核。
 - 必须包含首轮 Full Foreground root Prompt provenance 缺口及其新增工具面验证。独立审查不合格时不得进入“已通过最终验收”的结论。
 - 独立 Verification 后进行**真正 Dashboard 用户输入到模型响应**的 Validation；编译成功、单测通过、CLI 冒烟或模拟请求都不等同于用户验收。
@@ -458,6 +512,8 @@ Registry 根据 Notebook semantic mutation 原子注册、更新、取消／禁�
 ---
 
 ## 附录 A. Stable Guidance 英文定稿（规范性）
+
+> **第三轮适用性：** 历史实际文案，不再是第三轮逐字要求。整体替换为07 §8.3–8.8；Stable注入位置和门禁按07 §8.2。
 
 ### A.1 `HISTORY_SEARCH_GUIDANCE`（默认 Main；不受 Noting 控制）
 
@@ -497,6 +553,8 @@ Persistence Candidates are only potential proposals recorded in the Notebook, no
 
 ## 附录 B. Notebook Schedule Tool Schema 时间字段（规范性）
 
+> **第三轮适用性：** 旧工具owner失效；原生时间语义仍继承，落在scheduler.schedule，新Schema见07 §6。
+
 只替换／扩写现有 `NOTEBOOK_MUTATE_SCHEMA.parameters.properties.expression`，**不引入 Cron Job schema 的其它字段**：
 
 ```python
@@ -525,6 +583,8 @@ Persistence Candidates are only potential proposals recorded in the Notebook, no
 
 ## 附录 C. `/propose-persistence` 主模型指令英文定稿（规范性）
 
+> **第三轮适用性：** 历史逐字文案由07 §8.10替换；slash进入Main、不预取源文、准备提案不等于执行批准继续保留。
+
 ```text
 Review the current Conversation's pending Notebook Persistence Candidates.
 
@@ -540,6 +600,8 @@ This command authorizes proposals only. Present them for the user's review, revi
 ---
 
 ## 最终裁决与不变量
+
+> **第三轮适用性：** 旧“整体继承类型／Trigger”、重新回退Prompt、special compact、审计绝对Main不可见失效；身份、权限、明确批准、D01、原生配置同步继续继承。用07新工具／owner替换旧名称，Final不能覆盖新版。
 
 1. **V1 无改动的语义继续有效**；尤其 Notebook 四区十类型、Conversation Identity、Snapshot、Trigger、Noting Child、Schedule Registry 与 Reminder 机制不得被 1.5 顺手重做。
 2. **History Search 默认 Main 常开且不受 Noting 控制**；其 Stable Guidance 与 `session_history` 是一组独立的同步注入。

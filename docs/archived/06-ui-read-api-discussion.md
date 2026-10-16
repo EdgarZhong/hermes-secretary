@@ -1,5 +1,7 @@
 # UI 增量与只读 API 讨论口径
 
+> **已归档／2026-10-16：** 本文保留历史研讨，旧方案及“待审”状态不再是当前施工要求。新 Notebook 语义以[已审白板](../notebook-ontology-whiteboard.html)为准，实施契约以[07](../07-scheduler-notebook-noting-compaction-redesign.md)为准；UI现行事实见[06](../06-Hermes-Secretary-Web-UI-V1-Spec.md)。归档不改写原轮次验收结论。
+
 日期：2026-10-11。
 
 ## 文档定位

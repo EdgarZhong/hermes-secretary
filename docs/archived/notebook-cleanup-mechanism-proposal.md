@@ -1,6 +1,8 @@
 # Notebook 完成事项清理机制设计提案
 
-> **历史设计提案／未实施／不改变现行契约。** 2026-10-16 按用户要求移除原 07 编号，保留本文讨论，不升格为规格。当前职责重设计入口为 [新 07](07-scheduler-notebook-noting-compaction-redesign.md)。旧轮次材料中的“docs/07 清理提案”指本文，不指新 07。
+> **已归档／2026-10-16：** 本文保留历史研讨，旧方案及“待审”状态不再是当前施工要求。新 Notebook 语义以[已审白板](../notebook-ontology-whiteboard.html)为准，实施契约以[07](../07-scheduler-notebook-noting-compaction-redesign.md)为准；UI现行事实见[06](../06-Hermes-Secretary-Web-UI-V1-Spec.md)。归档不改写原轮次验收结论。
+
+> **历史设计提案／未实施／不改变现行契约。** 2026-10-16 按用户要求移除原 07 编号，保留本文讨论，不升格为规格。当前职责重设计入口为 [新 07](../07-scheduler-notebook-noting-compaction-redesign.md)。旧轮次材料中的“docs/07 清理提案”指本文，不指新 07。
 >
 > 本文只论述功能、状态与实现候选方案，不授权任何清理硬门禁、工具、Prompt、产品或测试变更。既有 C84 状态与 Schedule 同步修复和本文的新清理机制必须分开。以下“建议”“候选”“若采用”均不是用户已批准的产品规则。
 
@@ -34,7 +36,7 @@ Notebook 是 Conversation 的派生工作状态，不是完成工作流水账。
 
 术语按现行产品校正：上述“经理门禁”按清理门禁理解，“Notebook Task”对应 Noting Task；秘书事项类型是 `secretary_task`，完成状态是 `done`。不创造 `secondary` 类型、通用 completed 状态或新的公开条目状态。
 
-现行需求依据为 [02](02-noting-system-specification.md) §1.7–1.9、§2.5–2.7、§3.1–3.4/3.7–3.12、§4.3、§5.4–5.5/5.8–5.10/5.12、§6.12–6.13/6.17；[04](04-hermes-secretary-v1.5-implementation-spec.md) 的 M27／§4.6 等未被后续覆盖增量。派遣时对应行范围分别为 198–257、357–647、650–763、856–1092、1142–1163、1464–1545、1759–1836、1852–2223、2377–2412、2456–2478，已以章节名核对。
+现行需求依据为 [02](../02-noting-system-specification.md) §1.7–1.9、§2.5–2.7、§3.1–3.4/3.7–3.12、§4.3、§5.4–5.5/5.8–5.10/5.12、§6.12–6.13/6.17；[04](../04-hermes-secretary-v1.5-implementation-spec.md) 的 M27／§4.6 等未被后续覆盖增量。派遣时对应行范围分别为 198–257、357–647、650–763、856–1092、1142–1163、1464–1545、1759–1836、1852–2223、2377–2412、2456–2478，已以章节名核对。
 
 根 AGENTS 约束协作与原生兼容；README 提供稳定索引；CLAUDE 记录本次动态授权与最新 Memo 澄清。第二轮 snapshot-index、plan、baseline 只定位轮次输入；`repair-secretary-task-contract.md` §8/9 只作为实现调查／证据入口，不能作为新需求权威，旧稿的 Memo 扩展建议不能覆盖上述最新澄清。本文不改 02 §5.12 Frozen／Target 文本。
 

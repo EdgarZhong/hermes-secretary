@@ -1,5 +1,7 @@
 # Hermes Secretary V1：首次 Fork 实施总纲
 
+> **改版阅读边界（2026-10-16）：** 本文保留 Secretary 定位、用户不必管理 Session 的愿景与原轮次目标。下一阶段 Scheduler/Notebook/Noting/History 改版以[已审白板](notebook-ontology-whiteboard.html)和[07 实施契约](07-scheduler-notebook-noting-compaction-redesign.md)为准；本文旧 Notebook 排期分工不再是改版要求。运行实现尚未切换，不回写历史验收。
+
 > **状态：** V1 核心实施总纲，已纳入 1.5 轮用户确认的补充调整
 > **用途：** 定义本轮 Fork 的目标、边界、能力关系、实施顺序与验收口径；不替代具体实现规格。  
 > **权威实现规格：** V1 继承契约见 `02-noting-system-specification.md`；V1.5 明确修订范围以 `04-hermes-secretary-v1.5-implementation-spec.md` 为最高优先级增量规格。未修订部分仍以 02 为准。
@@ -8,6 +10,8 @@
 ---
 
 # 1. 本轮目标与实施原则
+
+> **第三轮适用性：** “本轮”指首次Fork的历史范围；通用产品愿景与架构原则保留，第三轮目标不从首轮任务清单推导。
 
 Hermes Secretary V1 的第一次 Fork，不是把 Hermes 重写成另一套 Harness，而是在 Hermes 现有 Session、Gateway、Compaction、tool/runtime、state persistence 等机制之上，补齐一组长期个人对话真正缺失的基础能力：
 
@@ -101,6 +105,8 @@ physical Session -> Conversation : single-valued
 
 ## 2.2 History Search：独立于 Noting 的基础能力
 
+> **第三轮适用性：** 独立能力和合法路径原则保留；旧工具名、参数与搜索返回被07 §5替代。以[已审白板](notebook-ontology-whiteboard.html)与[07](07-scheduler-notebook-noting-compaction-redesign.md)为准。
+
 V1.5 已替代此前“与 read 一样由普通配置和模板选择暴露”的策略：所有直接与用户交流的合格 Main 默认且不可配置地拥有 `session_history` 与独立 History Guidance，不受全局或局部 Noting 控制。它检索当前未压缩历史及跨 Compaction 原文。辅助 Agent 不因本轮获得新的主会话注入，保留其既有合法工具配置；专用 Noting Worker 保持 V1 的受限父历史读取契约。详见 V1.5 §2.2、§2.6、§3。
 
 它始终读取 **History Foreground**：
@@ -116,6 +122,8 @@ V1.5 已替代此前“与 read 一样由普通配置和模板选择暴露”的
 History Search 的主会话默认暴露与专用 Stable Guidance 独立于 Noting 开关；工具与身份权限遵循 V1.5 §2.2、§2.6、§3。
 
 ## 2.3 Session Notebook
+
+> **第三轮适用性：** 旧标签、状态规则、候选组织与工具接口已过时；只继承Conversation归属、原文事实源和快照派生原则。以[已审白板](notebook-ontology-whiteboard.html)与[07](07-scheduler-notebook-noting-compaction-redesign.md)为准。
 
 只有直接与用户交流的 main Conversation 拥有 Notebook / Noting System；每条这样的 Conversation 恰好拥有一份 current Notebook working state。Cron Task、Dreaming、Skill 打磨、通用 Subagent 等后台或辅助 runtime 不参与该系统，全局配置 on/off 均不改变这一资格边界，其工具列表绝不出现 notebook_show。专用 Noting Runtime 仅维护所属主 Conversation 的 Notebook，不为自己创建独立 Notebook。
 
@@ -161,6 +169,8 @@ Notebook 不是 mutable master JSON。每次成功 Noting 提交完整 immutable
 
 ## 2.4 Noting
 
+> **第三轮适用性：** 保留专职后台整理的职责；旧逐轮Idle、排期登记、独立整理／压缩profile及旧工具面不用于第三轮。完整任务、联合触发及结束机制见07 §3、§8。
+
 Noting 是本轮最主要的后台行为扩展。
 
 它接管原 Background Self-Improvement Review 的产品生态位，但不会简单把旧 Background Review 原样改名。旧实现中有价值的 cache-parity machinery 应抽取为通用 helper；旧的自动 memory/skill review 产品行为在 Secretary 模式下停止运行。
@@ -195,6 +205,8 @@ Trigger、Force threshold、admission、same-Anchor dedupe、compaction interact
 
 ## 2.5 Notebook Schedule 与 Reminder Delivery
 
+> **第三轮适用性：** Notebook拥有排期及旧业务类型分流已过时。登记／修改归Main的独立Scheduler；保留instant／deferred真实载体、可靠接纳与ACK机制，不继承Notebook状态联动。以[已审白板](notebook-ontology-whiteboard.html)与[07](07-scheduler-notebook-noting-compaction-redesign.md)为准。
+
 Schedule 是 **Notebook-owned、in-Conversation scheduling capability**，属于 Noting / Notebook 的附属能力。
 
 它不是 Hermes Cron Job，也不是 Hermes Cron 的替代品。Secretary 自己持久化 ConversationScheduleRegistry 与 mutable due state；Hermes Cron 只在适合时提供时间表达解析和 next-run calculation 等通用能力。
@@ -202,6 +214,8 @@ Schedule 是 **Notebook-owned、in-Conversation scheduling capability**，属于
 V1 有两种 delivery semantics。
 
 ### Passive System Reminder
+
+> **第三轮适用性：** 旧称只作历史说明；新版deferred不限定业务内容，不由Noting登记。
 
 用于：
 
@@ -213,6 +227,8 @@ V1 有两种 delivery semantics。
 Schedule 到期后只进入 durable pending 状态，不主动创建 main Turn。下一次 eligible main LLM request 拉取并注入 `<system-reminder>...</system-reminder>`。
 
 ### Active User Reminder
+
+> **第三轮适用性：** 旧称只作历史说明；新版instant可承载Main主动跟进，不意味着新增用户授权，不由Notebook标签决定投递。
 
 用于 `user_reminder`。
 
@@ -245,6 +261,8 @@ Secretary synthetic input 使用完整 wrapper，当前冻结的 wrapper 至少�
 
 # 3. Enablement 与 Hermes-native 回退边界
 
+> **第三轮适用性：** 保留未启用即原生及Main资格隔离；旧单一Noting开关控制Schedule的口径过时，Scheduler独立开关，History常可用，具体见07 §6.3。
+
 Noting 的实际启用状态由两层共同决定：
 
 ```text
@@ -276,6 +294,8 @@ History Search 不受影响。
 
 # 4. 持久化与改造边界
 
+> **第三轮适用性：** 保留自有表、Profile隔离与原生机制优先；下列旧类型／排期／Memo结构不作为新表设计要求。开发阶段重建隔离测试库，不做旧数据迁移。
+
 本轮所有 Secretary durable state 进入现有 `state.db`，采用新增表，不建立 JSON sidecar 或第二个数据库作为 Notebook 真值。
 
 概念上至少包括：
@@ -305,6 +325,8 @@ Frontend / API 的更大范围增量 contract 仍保持 Open。本轮只实现�
 ---
 
 # 5. 建议实施顺序
+
+> **第三轮适用性：** 本节全为首轮历史施工安排，不作为第三轮任务清单；新顺序见07 §9，正式编排由第三轮新索引与计划确定。
 
 实现应按依赖关系推进，而不是先做 UI 或先做零散 Trigger。
 
@@ -373,6 +395,8 @@ Frontend / API 的更大范围增量 contract 仍保持 Open。本轮只实现�
 
 # 6. Definition of Done
 
+> **第三轮适用性：** 首轮验收清单保留历史用途；旧类型／排期耦合及首轮范围不得成为第三轮判据。第三轮按白板＋07及未覆盖的不变量重新提取判据。
+
 首轮完成不是“代码大致跑起来”，而是以下能力形成完整闭环。
 
 | 能力 | 最低验收结果 |
@@ -393,6 +417,8 @@ Frontend / API 的更大范围增量 contract 仍保持 Open。本轮只实现�
 ---
 
 # 7. 本轮明确不做
+
+> **第三轮适用性：** 仅指首次Fork当轮范围，不覆盖后续已获授权的Web、提示文和工具重设计。公开／个人边界仍适用。
 
 以下内容不应在首轮实现过程中顺手扩张：
 

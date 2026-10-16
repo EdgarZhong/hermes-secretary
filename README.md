@@ -2,9 +2,11 @@
 
 Hermes Secretary 是基于 [Nous Research 的 Hermes Agent](https://github.com/NousResearch/hermes-agent) 的公开扩展，面向长期对话中的工作状态维护、责任跟进与提醒。
 
-继承的 Secretary Core 契约以 [现行 02](docs/02-noting-system-specification.md)（含 V1.6 已确认修订）为先，再继承 [04](docs/04-hermes-secretary-v1.5-implementation-spec.md) 未被覆盖的增量和 [01](docs/01-personal-hermes-v1-first-fork-iteration.md) 的适用要求。[Web UI V1 规格](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md) 是显式 Web 增量的权威入口，替代旧 UI 讨论；独立前端入口见下文；实现不等于整版验收通过。通用协作规则见 [AGENTS.md](AGENTS.md)，实施进展、任务与验收结果见 [CLAUDE.md](CLAUDE.md)。
+第三轮改版的已审语义见 [Notebook 白板](docs/notebook-ontology-whiteboard.html)，工具、英文提示文与接线契约见 [07](docs/07-scheduler-notebook-noting-compaction-redesign.md)。二者共同组成Secretary新设计依据；第三轮同时开展独立的个人NM接入，保持个人实现隔离，界面改版后置。旧 01／02／04／06 仅在明确保留的范围继承。通用规则见 [AGENTS.md](AGENTS.md)，准备状态、代码版本、任务与证据见 [CLAUDE.md](CLAUDE.md)。
 
-## 架构与能力
+**阅读顺序：** AGENTS → CLAUDE → 白板 → 07 → 07 指定的旧规格保留段落。下文“已落实”描述改版前代码能力，不能据此把旧 Memo、Notebook-owned Schedule 或旧工具面保留到第三轮。设计定案与实现、验收分别判断。
+
+## 现有代码的架构与能力（改版前）
 
 沿用 Hermes 的 Agent Turn、physical Session、Gateway、原生工具、压缩与持久化，在既有接缝增量扩展。Conversation 原文是事实源，Notebook 是派生工作状态；Secretary 只向 profile-scoped `state.db` 增加自有表，不改原有表的 schema 或 ownership。现有官方 Dashboard（`web/` 与 `hermes_cli/web_server*.py`）仍是原生浏览器管理入口，独立 Secretary Web UI 的契约见 06。
 
@@ -21,9 +23,9 @@ Hermes Secretary 是基于 [Nous Research 的 Hermes Agent](https://github.com/N
 
 实现不等于整版验收通过；对应版本证据和未关闭项统一见当前看板及历史报告。
 
-## Secretary Slash 入口
+## 现有 Secretary Slash 入口（改版前）
 
-命令复用 Hermes 共享 catalog、补全与执行链路；既有 CLI、Gateway、官方 Dashboard 入口的契约以 02 为准，新 Web 的显式差异以 06 为准。
+以下记录当前代码行为；第三轮命令行为按 07，Memo 阻止关闭等旧条件退出。命令复用 Hermes 共享 catalog、补全与执行链路；既有 CLI、Gateway、官方 Dashboard 入口的契约以 02 为准，新 Web 的显式差异以 06 为准。
 
 | 命令 | 行为 |
 |---|---|
@@ -118,16 +120,18 @@ Python 不绕过 canonical runner 直接运行 pytest；JS/UI 入口及环境准
 
 | 文档 | 内容 | 路径 |
 |---|---|---|
-| Scheduler / Notebook / Noting / Compaction 重设计 | 重设计依据、Conversation 内部记忆与外部 Provider 边界、Notebook 分类与逐类型进退、索引建立／审计与更新、过滤候选／超限主动提案与审批分发／结算、Scheduler 与工具控制面、完整 Noting Task／Prompt 草稿、联合触发与完成注入；完整待审方案，实施规格尚未冻结 | [07](docs/07-scheduler-notebook-noting-compaction-redesign.md) |
-| Notebook 正式方案白板（待审） | 可离线打开的 HTML：机制目录、类型属性、Scheduler 工具与 Schedule Table、索引建立／更新、过滤候选、命令或超限提示启动 Persistence、结算、完整 Noting Task／Prompt 及快照注入；集中待拍板项，支持批注暂存与保存副本，不作为现行运行规格 | [白板](docs/notebook-ontology-whiteboard.html) |
+| Secretary 改版实施契约（设计定案，未实施） | 与已审白板互补：转向历程、术语、Conversation History、四工具 Noting、Scheduler、完整 Schema／反馈、英文提示文及源码接线路径 | [07](docs/07-scheduler-notebook-noting-compaction-redesign.md) |
+| Notebook 已审方案白板 | 三板块七类型、逐类型进退、信息流、Noting 完整任务与联合触发的已审语义；工具／英文提示细节在 07 定案；支持会议批注 | [白板](docs/notebook-ontology-whiteboard.html) |
 | V1 实施总纲 | 公开核心范围、边界与继承要求 | [01](docs/01-personal-hermes-v1-first-fork-iteration.md) |
-| Notebook / Noting 现行规格 | Identity、History、Notebook、Noting、Schedule、Reminder，含 V1.6 修订与 §5.12 Target | [02](docs/02-noting-system-specification.md) |
-| Notebook 清理机制历史提案（原 07） | 原清理机制候选方案，去编号保留；不升格为规格，不作为新设计默认要求 | [清理提案](docs/notebook-cleanup-mechanism-proposal.md) |
-| Noting Message 与提醒结构历史提案（原 08） | 原提示词／Schema 与职责研讨材料；去编号保留，后续重设计统一在新 07 推进 | [文案提案](docs/noting-message-and-reminder-contract-proposal.md) |
-| V1.5 增量规格 | 未被现行 02 覆盖的增量契约 | [04](docs/04-hermes-secretary-v1.5-implementation-spec.md) |
+| 改版前 Core 规格与保留机制 | 第三轮只继承就地标明的 Identity、Foreground、Snapshot、runtime 和投递不变量；旧 Target 不作为新施工要求 | [02](docs/02-noting-system-specification.md) |
+| Notebook 清理机制旧提案（归档） | 原 07 研讨，已由白板与新 07 替代，不作为施工要求 | [归档](docs/archived/notebook-cleanup-mechanism-proposal.md) |
+| Noting 文案／提醒结构旧提案（归档） | 原 08 研讨及旧英文草案，新版提示文以 07 为准 | [归档](docs/archived/noting-message-and-reminder-contract-proposal.md) |
+| 改版前 V1.5 增量与保留机制 | 按新版替换标识继承缓存前缀、持久 child、有限续跑等机制 | [04](docs/04-hermes-secretary-v1.5-implementation-spec.md) |
 | 上下文开销台账 | token 实测口径、基线与变更记录 | [05](docs/05-context-cost-ledger.md) |
-| Web UI V1 权威规格 | 产品交互、原生接口、设计系统与验收；替代旧 UI 讨论主入口 | [06](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md) |
+| Web UI 基线与保留契约 | 继承原生客户端、交互、设计系统；Memo、旧类型／工具与开关按 07 替换 | [06](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md) |
+| UI 只读 API 早期讨论（归档） | 已被正式 06 覆盖的早期讨论；旧 Memo 设计不进入新版 | [归档](docs/archived/06-ui-read-api-discussion.md) |
 | 通用协作 / 当前看板 | 用户规则、开发测试 SOP / 动态目标与未完成项 | [AGENTS](AGENTS.md)、[CLAUDE](CLAUDE.md) |
+| 第三轮依据索引 | Secretary改版与独立个人Provider的依据、会话口径及双仓库冻结记录入口 | [Snapshot Index](.autonomous/20261016-round3-secretary-nm/snapshot-index.md) |
 | 第二轮依据索引 | Web UI 轮次授权、规格来源与冻结权限 | [Snapshot Index](.autonomous/20261012-round2-web-ui/snapshot-index.md) |
 | 视觉交付与 Mock URL | 共享视觉组件接口、可点击全场景 Mock 清单及验收对账 | [视觉报告](.autonomous/20261012-round2-web-ui/visual-design.md) |
 | 历史交付与移交 | V1 交付、V1.5 冻结、V1.6 剩余交接和证据 | [V1](.autonomous/20261007-v1-first-implementation/final-delivery.md)、[V1.5](.autonomous/20261009-v1.5-implementation/index.md)、[V1.6](.autonomous/20261011-v1.6-implementation/continuation-guide.md) |

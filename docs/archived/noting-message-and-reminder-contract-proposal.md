@@ -1,6 +1,8 @@
 # Noting Message 与 User Reminder 结构调优提案
 
-> **历史提案编号调整（2026-10-16）：** 按用户要求移除原 08 编号，保留原讨论、草案及 Schema 设计，不升格为规格。§12–13 是此前职责研讨记录；当前 Scheduler／Notebook／Noting／compaction 重设计的设计依据和记忆层级边界以 [新 07](07-scheduler-notebook-noting-compaction-redesign.md) 为入口。本提案不再维护一份并行的新架构规格。
+> **已归档／2026-10-16：** 本文保留历史研讨，旧方案及“待审”状态不再是当前施工要求。新 Notebook 语义以[已审白板](../notebook-ontology-whiteboard.html)为准，实施契约以[07](../07-scheduler-notebook-noting-compaction-redesign.md)为准；UI现行事实见[06](../06-Hermes-Secretary-Web-UI-V1-Spec.md)。归档不改写原轮次验收结论。
+
+> **历史提案编号调整（2026-10-16）：** 按用户要求移除原 08 编号，保留原讨论、草案及 Schema 设计，不升格为规格。§12–13 是此前职责研讨记录；当前 Scheduler／Notebook／Noting／compaction 重设计的设计依据和记忆层级边界以 [新 07](../07-scheduler-notebook-noting-compaction-redesign.md) 为入口。本提案不再维护一份并行的新架构规格。
 
 > **独立设计提案／Noting Message 待审／全部未实施。** 用户于 2026-10-15 要求将本提案从 02 撤出单独保存。主会话 System Prompt 已审定的两处调优留在 02；本文收录 Noting 压缩稿、已确认的语义和提醒结构设计、具体 Schema 增量及待审细化。已确认设计要点不等于授权实施，本文不覆盖 02 的现行契约。
 >
@@ -30,7 +32,7 @@
 
 ## 3. 主会话 System Prompt 的已审定部分
 
-M2／M3 已获用户认可，权威文本已归入 [02 §5.12 entry 1.2](02-noting-system-specification.md)，不在本提案维护第二份 Main 文案。原 M1 已撤回；角色交接声明仅放在 Noting Message 内。
+M2／M3 已获用户认可，权威文本已归入 [02 §5.12 entry 1.2](../02-noting-system-specification.md)，不在本提案维护第二份 Main 文案。原 M1 已撤回；角色交接声明仅放在 Noting Message 内。
 
 ## 4. Noting Task Message：完整替换草案
 

@@ -1,5 +1,7 @@
 # Hermes Secretary V1 — Session Notebook / Noting System Implementation Specification
 
+> **改版阅读边界（2026-10-16）：** 本文继续记录改版前运行契约与可继承不变量。下一阶段[白板](notebook-ontology-whiteboard.html)＋[07](07-scheduler-notebook-noting-compaction-redesign.md)明确替换 §2.3 History工具面、§2.5旧类型、旧Notebook Schedule/Memo、旧Idle/profile/compact_parent、旧Main/Noting提示及工具Schema；Identity/Foreground、原子Snapshot、Profile隔离、冻结前缀、显式结束与投递可靠性继续按未被覆盖部分继承。07只定案设计，不能据此称运行代码已变更。下方旧Target/待审状态为历史记录，新施工以07替换表为准。
+
 > **Status:** V1 inherited implementation contract, synchronized for V1.5
 > **V1.5 precedence:** `04-hermes-secretary-v1.5-implementation-spec.md` is the highest-priority incremental revision for its explicitly changed scope; all unchanged V1 contracts below remain effective.
 > **Scope:** Conversation Identity, History Search, Session Notebook, Noting, Notebook Schedule, and Reminder Delivery  
@@ -16,6 +18,8 @@
 This specification reuses Hermes semantics wherever Hermes already has the relevant object or lifecycle. Secretary adds only the identity and state that Hermes does not natively provide but V1 Noting requires.
 
 ## 1.1 Core terminology
+
+> **第三轮适用性：** 部分继承。Conversation、Session、Foreground、Anchor定义保留；双Runtime Profile和Notebook-owned Schedule已过时。第三轮只有一种Noting runtime，Schedule由Main独立Scheduler管理，instant／deferred仅为投递方式，见07 §0、§3.2、§6。
 
 | Term | Meaning in this specification | Relationship to Hermes |
 |---|---|---|
@@ -58,6 +62,8 @@ A Conversation may span multiple physical Sessions because of rotating compressi
 This property lets Secretary derive or collect trusted Hermes locators from the current Session and resolve them to one durable Conversation Ref.
 
 ## 1.3 Conversation Ref as Secretary's base identity
+
+> **第三轮适用性：** Conversation所有权继承；Scheduler虽仍按Conversation隔离，但不属于Notebook。rewind／pointer重选不改排期；new／reset／fork不自动复制父排期，见07 §6.2。
 
 Conversation Ref is not the compression-lineage root Session ID, and it is not a `gwk_*` declared prompt-cache scope. It is a Secretary-owned durable opaque ID, for example:
 
@@ -197,6 +203,8 @@ Therefore:
 
 ## 1.7 Goal and source of truth
 
+> **第三轮适用性：** 索引目的、原文事实源与异步派生边界继续有效；旧类型清单失效，按白板03；联合触发已经白板11与07 §8.1定案，下文“仍在讨论”只指10-15历史时点。
+
 Session Notebook is the structured **working-state layer** of a Conversation. It keeps important working state stable across long conversations and repeated Compaction, including:
 
 - user commitments;
@@ -251,6 +259,8 @@ Where Hermes already owns the underlying mechanism, Secretary reuses it:
 
 ## 1.9 Runtime eligibility and general read tools
 
+> **第三轮适用性：** 真实Main资格、辅助runtime隔离与Noting父域限制保留；Main使用conversation_history，Scheduler独立门禁。Noting专用runtime有自己的working-view notebook_show，不由此获得Main能力。旧工具名及Schedule随Noting开关失效，见07 §3、§5、§6。
+
 Notebook, Noting, Notebook Schedule, and their main-Assistant exposure belong only to a main Conversation that directly communicates with the user. Cron Tasks, Dreaming, Skill refinement, generic subagents/delegates, and other auxiliary/background runtimes do not participate, regardless of global Noting configuration. Their tool lists must never contain notebook_show; ordinary toolset inheritance or an explicit Notebook toolset must not grant it.
 
 The dedicated Noting Runtime in §5 maintains an eligible Parent Conversation under its frozen ownership and narrow dispatch contract. It does not acquire a separate Notebook or enable Noting for its own child Session.
@@ -274,6 +284,8 @@ When a Noting Task is spawned, it should freeze the Parent's actual live Active 
 
 ## 2.2 History Foreground
 
+> **第三轮适用性：** 失效逻辑路径排除规则保留；不能仅凭物理active=0,compacted=0删除候选，合法fork引用的源消息仍可读。按07 §5.2先验证membership及History Foreground，不将物理位当完整可见性判据。
+
 History Foreground is the authentic readable history of the current Conversation.
 
 It:
@@ -289,6 +301,8 @@ It:
 History Foreground is not Active Foreground and is not Full Foreground.
 
 ## 2.3 History Search Suite: a Secretary base capability, not a Noting capability
+
+> **第三轮适用性：** 本节旧工具名、keyword/regex参数、物理message_id兼容、范围与截取契约整体被07 §5替代；不实现regex或旧名alias。Main默认当前域且可显式同Profile授权跨域；Noting仅父域。保留原文、规范身份、合法路径与复用原生索引原则；Search改为实际命中邻域，Read按新锚点条件及外层结果预算。
 
 History Search is read-only and independent of Noting. V1.5 §2.2, §2.6 and §3 replace the former configurable Main exposure with mandatory eligible-Main session_history plus independent Stable Guidance. Auxiliary runtimes retain existing lawful tools without new Main injection. Search covers authentic current uncompacted and valid compressed history in the authorized Conversation.
 
@@ -358,6 +372,8 @@ Ordinary nodes map one-to-one to `(conversation_ref, message_uid)`, never physic
 
 ## 2.5 Notebook sections and entry types
 
+> **第三轮适用性：** 本节旧分类、字段、封闭状态图与三种Candidate语义整体过时，全部按白板03、07–09及07文档§4。仍继承合法来源至少一种、Candidate不构成权限、Main明确批准后分发、Noting无外部写权限；不要连这些边界一并删除。
+
 The Notebook exposes four semantic sections. Section is derived from `type`; there is no redundant independent section field.
 
 ```text
@@ -416,6 +432,8 @@ active -> cancelled
 May carry a Schedule. It is the Notebook entry type built around active instant-Reminder delivery; `secretary_task` may also elect instant delivery explicitly (§3.8).
 
 ### `secretary_task` (V1 `agent_task`, renamed 2026-10-11)
+
+> **第三轮适用性：** 下文R2-C77/C78强制绑定Schedule为历史口径，第三轮明确废弃。事项／行动不必有排期；Notebook状态／归档与Scheduler无双向副作用。
 
 A task the secretary has accepted, dispatched, or must follow up on.
 
@@ -517,6 +535,8 @@ No Schedule.
 
 ### Persistence Candidates
 
+> **第三轮适用性：** 原文来源、用户明确审批原则保留；结构和新工具面按07。下文拒绝／撤回即清除的旧要求不用于第三轮，不得将拒绝当成功分发；候选原位来源和分发结算按白板及07 §8.10–8.11。
+
 `memory_candidate`, `rule_candidate`, and `skill_candidate` are drafts for later main-Assistant review.
 
 Suggested semantic fields:
@@ -578,6 +598,8 @@ The Noting child has no direct long-term Memory/Rule/Skill write permission.
 
 ## 2.6 Anchor and Snapshot position
 
+> **第三轮适用性：** Anchor及完整不可变Snapshot原则继承；结束枚举按07 §3.2统一，compact_parent退出。普通show不混入结束审计；新版Framework明确可带termination及summary，与普通读取区分。
+
 An Anchor is the Message Identity used as the derivation point for one Noting result:
 
 ```text
@@ -599,6 +621,8 @@ The Noting child also records the Parent's current physical Session for runtime/
 **V1.5 Snapshot termination audit (V1.5 §4.7):** each newly committed immutable Snapshot carries separate audit-only `termination` metadata with exactly one of `finish_noting` (required model reason), `compact_parent` (model-initiated special-profile terminal succeeded), `forced` (fifth Turn expired, even if framework fallback compaction succeeds), or `context_overflow` (a Child request could no longer be assembled within the context budget — e.g. oversized History Search results — and the framework force-ended the task exactly like Turn exhaustion, §5.8). Store outside the four-section Notebook payload, preferably as a new column in the existing Secretary-owned Snapshot table, preserve metadata on branch inheritance, and leave legacy Snapshots' absent values honest. Neither normal `notebook_show`, human `/notebook`, nor their ordinary Main-AI-visible renderings may expose this audit record. It never affects Snapshot eligibility, Triggers or pointer ordering.
 
 ## 2.7 Conversation path changes
+
+> **第三轮适用性：** 身份、rewind／fork合法路径和不可变Snapshot继承。latest按合法路径覆盖顺序选择，不按任务完成时间倒退；排期不再随Notebook pointer／rewind重选。见07 §3.1、§6.2。
 
 ### Compaction
 
@@ -651,6 +675,8 @@ Snapshot payloads may be shared/referenced internally, but payload sharing must 
 
 ## 3.1 Persistence principle: additive extension of `state.db` only
 
+> **第三轮适用性：** 只增加Secretary自有表、不改原生schema／ownership的边界保留；下文migration仅历史。本阶段结构变化直接重建仓库内隔离测试库，不写旧数据迁移。
+
 Secretary V1 does not modify the columns, primary keys, foreign keys, or existing semantics of Hermes core tables.
 
 Secretary does not repurpose ownership in tables such as:
@@ -683,6 +709,8 @@ The exact table names may follow repository style. The ownership boundary above 
 
 ## 3.2 Conversation-local Noting state
 
+> **第三轮适用性：** local参与状态保留且只控制Noting，移除Memo auto-enable／off拒绝；不再控制独立Scheduler或History，见07 §6.3。
+
 Conversation-local participation state is persisted by `conversation_ref`, for example:
 
 ```text
@@ -694,6 +722,8 @@ updated_at
 `/noting on` and `/noting off` only change this local state. They do not duplicate global Noting policy and do not rewrite Hermes global configuration.
 
 ## 3.3 Immutable Notebook Snapshot
+
+> **第三轮适用性：** 完整不可变结果、事务与共享表保留；旧四区payload／双profile／trigger枚举按07 §3–4与§8.1替换，trigger审计包括idle／force／manual／auto_compaction。
 
 There is no long-lived mutable master Notebook row that is updated in place.
 
@@ -732,6 +762,8 @@ The complete Anchor identity is:
 
 ### 3.3a Notebook item lifecycle table (V1.5, 2026-10-11, user-decided)
 
+> **第三轮适用性：** INSERT-only与Snapshot旧版本固定继续继承。对Agent身份改为稳定entry_id＋不可变version_id，可复用lineage；旧每次编辑更换entry_id与隐藏稳定身份的要求失效。archive的内部存储可复用，不能恢复Agent归档检索或Restore。
+
 Snapshot payloads and entry contents are stored separately, with **no foreign keys** — only logical references by row id:
 
 ```text
@@ -752,6 +784,8 @@ Because each Snapshot names the exact row ids it comprises, a matter's full life
 
 ## 3.4 Current Notebook Pointer
 
+> **第三轮适用性：** pointer事务和合法路径选择保留；按覆盖顺序而不是提交时间选结果，不再reconcile排期，见07 §3.1、§6.2。
+
 Current state is represented separately:
 
 ```text
@@ -766,6 +800,8 @@ The Conversation Identity Registry does not store `current_snapshot_id`. Convers
 ## 3.5 Main Assistant Notebook Control
 
 ### `notebook_show`
+
+> **第三轮适用性：** 旧结果禁止snapshot_id／conversation_ref等条款由07 §4.5、§7.1替换。Main读有效Snapshot；Noting读本任务编辑后最新working view。权限与视图由可信调用身份绑定，无归档／历史快照工具面；普通读取不混结束审计。
 
 When the runtime belongs to an eligible user-facing main Conversation (§1.9) and global noting.enabled=true, the main Assistant receives the read-only notebook_show capability:
 
@@ -784,6 +820,8 @@ Conversation-local Noting on/off never adds or removes this tool, rewrites its s
 History Search is unaffected by this gate.
 
 ### `noting_memo` (Noting Memo)
+
+> **第三轮适用性：** 历史机制，第三轮全链删除，包括工具、表／DTO、输入、消费、auto-enable、禁止off、界面与提示。不实现替代便签；Main即时用Scheduler登记，Noting从正常对话与工具结果取证。
 
 `noting_memo` is the main Assistant's single sanctioned write channel toward Noting: a per-Conversation scratch pad — a real sticky note — telling the next Noting Task what must not be forgotten. It is the semantic exit for a Main that may read the Notebook but never mutates it, and that must not satisfy reminders/schedules through Hermes Cron (§3.8).
 
@@ -808,6 +846,8 @@ The archive record (`secretary_noting_memo_archive`) carries its own audit metad
 **Visibility.** Only the main Assistant (its own Conversation's memo) and that Conversation's Noting Runtime see the memo. It is never part of Notebook Snapshot content and never appears in `notebook_show`.
 
 ## 3.6 Notebook inspection and Noting participation commands
+
+> **第三轮适用性：** 命令分发与持久参与机制保留，但下文模型可见的裸/notebook已被本文末尾10-14 human-only边界替代：浏览器只读临时输出不入模型／History／摘要，历史未标行不追改。移除Memo导致off拒绝的条件；/noting不影响Scheduler。
 
 In an eligible user-facing main Conversation with global noting.enabled=true, the following slash forms are available:
 
@@ -857,6 +897,8 @@ When Noting later sees a Notebook rendering in the transcript, it should treat i
 
 ## 3.7 Notebook Mutation Control
 
+> **第三轮适用性：** 旧三个写工具、全簿回传、每改更换ID和旧状态转换由07 §4整体替换。新maintain一个工具含create／update／archive，完整单条返回，属性合并及数组整值替换。权限、原子失败、来源／引用合法性与archive无短期恢复继续保留。
+
 Notebook mutation is exposed only to the Noting Runtime and uses semantic operations rather than raw JSON replacement or SQL. It is carried by **three separate tools**, not one fused entry point (the fusion pattern exists for crowded main-session tool surfaces; Noting writes happen only inside the background task, so clarity wins over entry-point count):
 
 - **`notebook_manage`** — lifecycle management: `create`, `archive`;
@@ -874,6 +916,8 @@ Mutation validation errors must be diagnosable (V1.5, 2026-10-10): a rejected mu
 The model does not write Snapshot tables directly and cannot forge mutable Schedule runtime fields.
 
 ## 3.8 Schedule ownership model
+
+> **第三轮适用性：** 10-15“归属未冻结”已结束，旧owner、业务类型限制与Noting排期工具过时。Main独立Scheduler直接登记，无Notebook状态联动；保留原生时间解析／时区／next-run与会话内投递／独立Cron分流。见07 §6。
 
 **用户确认的及时登记原则（2026-10-15，职责重审中）：** 投递可以 deferred，不代表登记可以等待下一次 Noting／Compaction；登记不能等。具体业务归属及工具接线仍待确认。用户进一步以定时 watchpoint 检查讨论边界：即使原文保留在当前上下文且请求携带时间戳，仍不能据此认定模型到期后会可靠注意并执行观察。本段记录确认原则及待解决问题，不修改下文现行 Schedule 所有权和投递契约，也不把“可能需要 instant 的业务类型”冻结为归属判据。
 
@@ -917,6 +961,8 @@ Stable Hermes Cron utilities may be reused for:
 - `compute_next_run()` or equivalent next-run calculation.
 
 ## 3.9 ConversationScheduleRegistry
+
+> **第三轮适用性：** 保留Conversation owner、route resolver、claim／lease／attempt／pending／ACK；删除Notebook entry／version绑定与双向状态副作用，Scheduler直接持有intent/content，见07 §6.2。
 
 Schedule registration and persistence are owned by a Secretary `ConversationScheduleRegistry`.
 
@@ -965,6 +1011,8 @@ User-confirmed clarification (2026-10-14, R2-C84): The Notebook service owns the
 
 ## 3.10 Schedule timer / due scanner
 
+> **第三轮适用性：** 扫描gate改为独立scheduler.enabled和真实所属Main资格，/noting off不冻结排期。迟到一次性、竞争claim唯一、失败重试、跨重启与周期不无限补发继续保留。
+
 V1 does not build a second full Cron daemon.
 
 Prefer a thin due scan attached to existing Hermes/Gateway periodic housekeeping/ticker infrastructure. If a particular host has no clean reusable seam, use a small Secretary-owned persisted scanner rather than cloning Hermes Cron's execution architecture.
@@ -1002,6 +1050,8 @@ When Conversation-local Noting is off:
 - recurring schedules do not replay an unbounded backlog of missed occurrences; they advance according to the canonical schedule to a reasonable next execution point.
 
 ## 3.11 System Reminder delivery path
+
+> **第三轮适用性：** 旧Notebook类型决定投递的规则失效，由delivery_mode选择。保留deferred同批durable materialization、实际请求携带／Provider响应后逐occurrence ACK与at-least-once，正文来源改为Scheduler，见07 §6.2、§8.14。
 
 System Reminder is the passive delivery mechanism used by:
 
@@ -1043,6 +1093,8 @@ Delivery is not acknowledged merely because the Reminder was inserted into a req
 The carrier format is defined in §5.6.
 
 ## 3.12 User Reminder delivery path
+
+> **第三轮适用性：** 旧Notebook类型决定instant的规则失效。真实idle／busy判断、既有ingress、durable witness、busy转deferred继续继承，正文按07 §8.14，不新增Main admission gate。
 
 A due `user_reminder` is an active invoke.
 
@@ -1103,6 +1155,8 @@ The User Reminder carrier format is defined in §5.6.
 
 ## 4.1 Global configuration
 
+> **第三轮适用性：** 旧配置键、双profile和Schedule共gate已过时，新结构及旧key报错见07 §6.3；不做配置自动迁移。
+
 V1.5 §3.4–§3.5 adds the Main Pre-message Context boundary: read the latest owning-profile global configuration before capturing the active root Prompt and final Tool Schemas. Notebook Guidance, schema and dispatch change together on the next Main Turn, including warm cache and cold resume; local on/off never rebuilds Prompt/tools. Native cache mechanisms are reused, and deliberate global switching may lose prefix cache.
 
 V1 global configuration:
@@ -1136,6 +1190,8 @@ Conversation-local participation is controlled by:
 
 ## 4.2 Effective enable state
 
+> **第三轮适用性：** 保留Noting两级参与和Commit Gate；排期扫描不再读取effective_noting_enabled，Memo条件删除，Scheduler独立。
+
 ```text
 effective_noting_enabled(conversation)
 =
@@ -1149,6 +1205,8 @@ An eligible user-facing main Conversation participates by default when global No
 Schedule is an adjunct of Noting and is governed by the same effective gate.
 
 ## 4.3 Disabled fallback invariant
+
+> **第三轮适用性：** 不启用即原生继续继承；Noting off只关自身增量，Scheduler独立，History常可用。需分别验证两个开关组合，不把关闭Noting解释为关闭所有Secretary能力。
 
 When effective Noting is false for a Conversation:
 
@@ -1172,6 +1230,8 @@ Apart from explicitly defined Secretary-wide configuration choices/conflicts, ev
 
 ## 4.4 Exactly two Noting Triggers
 
+> **第三轮适用性：** “恰好两个”已过时。第三轮普通自动／手动压缩、Idle联合入口及提前Force按07 §8.1；原生压缩不是Noting工具执行。
+
 V1 has exactly:
 
 1. **Idle Trigger**
@@ -1185,6 +1245,8 @@ The following are not Noting Triggers:
 - Reminder delivery.
 
 ## 4.5 Idle Trigger
+
+> **第三轮适用性：** 旧仅空闲延迟、每轮独立整理已替换。Idle默认关闭，开启须同时满足时间与实际上下文长度。保留Main计时owner、单deadline、取消重臂、daemon timer与catch-up，见07 §6.3、§8.1。
 
 Idle is defined only from main Conversation Turn lifecycle:
 
@@ -1281,6 +1343,8 @@ Force Noting is asynchronous/background work. If the Parent reaches Hermes's com
 
 ## 4.8 Trigger admission and Anchor freeze
 
+> **第三轮适用性：** 普通Anchor原子准入保留；Force还须按07 §8.1同事务登记compaction区间占用，换Anchor／in-flight／失败／rewind均不解除，只有成功compaction进入新区间。不据旧“不同Anchor可并发”绕过Force约束。
+
 Idle and Force converge on one admission pipeline:
 
 ```text
@@ -1300,6 +1364,8 @@ Different Anchors may have concurrent Noting Tasks. The same Anchor may have onl
 V1 does not add a heavyweight “only one Noting Task globally” lock.
 
 ## 4.9 Deriving Force Noting success state
+
+> **第三轮适用性：** 仅依已提交Force Snapshot推导状态的旧判据不足，按07 §8.1补同事务区间admission；失败也不重臂。已有不可变Snapshot证据仍保留，不用它替代在飞准入证据。
 
 V1 does not persist runtime flags such as:
 
@@ -1323,6 +1389,8 @@ Snapshot Anchor position
 The resulting “normally only one successful Force Noting before the next Compaction” behavior is a consequence of these rules, not a separate stored flag.
 
 ## 4.10 Runtime Profile selection after Idle Trigger
+
+> **第三轮适用性：** 整节旧profile选择退出。只有一种Noting runtime和一个finish_noting；父runtime联合压缩，子任务不调用compact_parent，见07 §3.2、§8.1。
 
 When Idle fires, read current usage again.
 
@@ -1358,6 +1426,8 @@ If the segment does not yet have a successful Force Snapshot, the ordinary Idle 
 
 ## 4.11 Force admission gating
 
+> **第三轮适用性：** 旧禁止awaiting/epoch不得用来否定07明确要求的同事务压缩区间占用。仍沿现有admission owner实现，不新增调度队列；安全线、原生测量与真实来源门禁保留。
+
 Force admission requires all of:
 
 ```text
@@ -1367,6 +1437,8 @@ AND no committed trigger_type=force Snapshot lies after the latest Compaction bo
 ```
 
 ## 4.12 Relationship to Hermes Compaction
+
+> **第三轮适用性：** 旧整理与压缩解耦的入口时序已由07 §8.1联合流程替代；保留原生压缩owner及既有互斥。Noting关闭原生逻辑照常，Noting开启只启用新Idle联合子开关。
 
 Hermes retains ownership of threshold-based Auto Compaction, including:
 
@@ -1395,6 +1467,8 @@ Conversation-local `/noting off` does not dynamically rewrite Hermes global conf
 
 ## 4.13 Force admission Reminder side effect
 
+> **第三轮适用性：** 本节历史passive pending表述已被§5.6的Force dispatch Framework替代，不创建Schedule occurrence。保留该通知在成功compaction后失效的规则，见07 §8.1；失败／no-op不使它失效。
+
 A successful Force Noting admission also creates an internal passive System Reminder.
 
 That Reminder does not get a separate delivery mechanism; it enters the unified pending System Reminder pipeline in §3.11.
@@ -1415,6 +1489,8 @@ In the Secretary fork:
 This is a fork-wide product decision. Conversation-local `/noting off` does not dynamically restore the old Background Review behavior.
 
 ## 5.2 Runtime composition
+
+> **第三轮适用性：** 原生AIAgent／模型继承／实际后台继续继承；本节special compact_parent权限退出，白名单仅07定义的四工具，见§3.2。
 
 > **V1.5 §4.5 D01 supersedes the former pending question:** check the execution origin of the latest actually dispatched Main model request at Noting Trigger time. Native continues ordinary cache_parity; External Agent Runtime (including App Server and ACP/external_process) is rejected with the existing framework hint. A single native/external fact is available in Main memory for Force and persisted in the existing Session model_config for Idle/resume. Do not add model-route snapshots, route comparison, new cache gates, a third unknown-source denial, or external Noting executors.
 
@@ -1507,6 +1583,8 @@ On process crash/restart:
 - any already-persisted child transcript remains audit-only.
 
 ## 5.5 Runtime prefix and durable suffix
+
+> **第三轮适用性：** 冻结root／顶层tools／messages、追加完整Schema、真实dispatch白名单和durable suffix继续完整继承；旧special profile名单／compact_parent不保留。以07 §8.11–8.12四工具控制消息替换实际正文。
 
 ### Authoritative clarification: immutable prefix, appended declaration, restricted execution
 
@@ -1601,6 +1679,8 @@ The timestamp:
 
 ### Noting Task transition/control message
 
+> **第三轮适用性：** 载体与追加位置继承，旧正文和工具面替换为07 §8.11–8.12。
+
 The first Noting-owned durable transcript row is:
 
 ```json
@@ -1615,6 +1695,8 @@ The opening and closing tags are both present. This carrier carries **no timesta
 There is no Secretary `role=system` Noting transition row and no second root System Prompt. The inherited Parent root prompt remains the root prompt.
 
 ### Deferred Reminder
+
+> **第三轮适用性：** 保留原生wrapper／timestamp／批量durable载体及逐occurrence ACK；旧Notebook entry正文由07 §8.14的Scheduler正文替换。
 
 Deferred Reminder is an in-Conversation synthetic carrier, and it is a **durable transcript row exactly like any other message** in the Conversation:
 
@@ -1643,6 +1725,8 @@ Secretary pending Reminder state remains the source of truth for due/claim/ACK b
 
 ### Instant Reminder
 
+> **第三轮适用性：** wrapper、entry时间与原生ingress继承；业务来源和投递选择改为Scheduler，不限旧用户标签，见07 §8.14。
+
 Instant Reminder is delivered by submitting a user message:
 
 ```json
@@ -1659,6 +1743,8 @@ When idle admission succeeds, the Instant Reminder becomes a normal durable user
 The timestamp is written once at entry and is never re-minted by retry or route resolution. If the content also states the original due time, that statement is content — not a timestamp.
 
 ### Framework Message
+
+> **第三轮适用性：** role=user、wrapper、时间、durable/live同写、tail-only／busy／compression fence、非唤起及内存队列边界继承。完成通知旧固定句和无提交不通知按07 §8.13替换；Force admission和External拒绝producer及抑制继续保留。
 
 A Framework Message is a message produced by the **runtime framework itself**, written through a **runtime-internal interface**: it exists only while a runtime owns the Conversation. There is no external producer API, no out-of-process write path and no owner lookup — an event with no runtime running does not and cannot produce a Framework Message.
 
@@ -1695,6 +1781,8 @@ A Framework Message is written to the parent Conversation's transcript, never to
 
 ### Carrier content (unspecified)
 
+> **第三轮适用性：** 本节未定案及旧child请求压缩的描述已过时；任务正文、完成／失败、Reminder正文已分别在07 §8.11–8.14定案，父联合入口见§8.1。
+
 For every synthetic carrier this specification fixes its **shape**: `role`, wrapper tag, whether a timestamp marker is present, and ordering. For the carriers whose content V1.5 (2026-10-10) has now fixed, the exact wording is specified below; the Noting Task transition/control message content remains **unspecified** (its task instruction is governed by 04 §4.4).
 
 | Carrier | Wrapper tag | Timestamp marker | Content |
@@ -1726,6 +1814,8 @@ A timestamp exists **only on the user-message submission path**, and it always r
 Nothing else carries a timestamp. Deferred Reminder, Framework Message and the Noting Task transition row have **no timestamp marker** — and a Force notice, being a Framework Message, has none either; any time they must express (a due time, a production time, an admission time) is composed into their content as an ordinary statement. Because a timestamp is written once at entry, replay, retry and re-delivery have nothing to regenerate.
 
 ## 5.7 Tool surface
+
+> **第三轮适用性：** Main／Noting旧工具面由07 §3–6替换：Noting四工具含show，Main有独立Scheduler；Memo、manage/edit/schedule、compact_parent退出，不保留执行alias。冻结父schema不是执行权限。
 
 ### Main Conversation
 
@@ -1769,6 +1859,8 @@ From the `<noting-task>` transition, the current permitted list and complete sch
 
 ## 5.8 Runtime Profiles — V1.5 bounded goal-driven revision
 
+> **第三轮适用性：** 双profile与special parent compaction退出，空视图采用07新四区。保留单个持久child最多五Turn、无child auto-compaction、文本不是结束、显式结束不直接提交、预算／overflow合法状态提交与真实失败处理。termination统一见07 §3.2。
+
 A Noting Task remains a one-shot process-lifetime, non-restart-resumable durable Child task. Both profiles can execute **up to five complete Turns** on the **same** Child (first plus four continuations), retaining the entire frozen Parent root/tools/Active prefix for every request and adding only Child-owned messages. Child auto-compaction stays disabled. **The Turn ceiling is an execution budget, not a rule that denies valid Snapshot commits.**
 
 ### `NOTING`
@@ -1791,6 +1883,8 @@ If a Child request can no longer be assembled within the context budget (e.g. ov
 
 
 ## 5.9 `compact_parent`
+
+> **第三轮适用性：** 子工具全节退出，历史调用仅留聊天证据，不可执行。原生父压缩owner、fence及原生失败处理继承；新的父联合接线见07 §8.1。
 
 `compact_parent` does not wait synchronously for the Parent's complete compaction lifecycle to finish.
 
@@ -1862,6 +1956,8 @@ The exact provider-specific tag string is an implementation detail.
 
 ## 5.12 Normative prompt texts (V1.5, user-approved 2026-10-11)
 
+> **第三轮适用性：** 本节整体为历史文案／Schema冻结记录，不得把Frozen／Target／verbatim当第三轮施工指令。新版精确英文与Schema以07 §4–8为准；carrier载体与时间／权限等未覆盖不变量仍继承。
+
 This section is the **audited freeze of every LLM-context text the Secretary改造 involves** — root prompt sections, Noting Task messages, tool schemas, reminder carriers/templates, slash-command injections, and tool-result texts. Each entry states its code location, injection condition, and status:
 
 - **Frozen (现行)** — already implemented; the text is frozen as quoted. Changing it requires amending this section. Frozen entries **without** a Target are V1 texts kept as-is (现状冻结): the user spot-approved **1.1** and **5.1** in an earlier round (the code text is the approved text); the remaining frozen entries are convergence-frozen at their current wording.
@@ -1870,6 +1966,8 @@ This section is the **audited freeze of every LLM-context text the Secretary改�
 Upstream-native texts are not quoted unless the Secretary changes them (§7). Known "Frozen vs Target" gaps (implemented text differing from approved spec) are flagged inline.
 
 ### 1. Main-Conversation root System Prompt sections
+
+> **第三轮适用性：** 历史逐字正文已替换。新Main角色／History／Notebook／Scheduler／Time及原生工具窄覆写见07 §8.3–8.9。
 
 Injection condition for both: `agent/system_prompt.py` `_guidance_parts()` — eligible main Conversation (`apply_main_read_surface`, `secretary/noting_surface.py:61`); §1.2 additionally requires global `noting.enabled`.
 
@@ -1905,7 +2003,7 @@ Background Noting maintains the Notebook asynchronously after interactions becom
 Persistence Candidates are only potential proposals recorded in the Notebook, not authorization to act. Never write them to Memory, Rules, or Skills without authorization. Persistence is permitted only after a proposal has been presented to the user and the user has explicitly authorized its execution.
 ```
 
-**2026-10-15 用户已审定／未实施：** 本次只澄清下方 user 与 consultation 两行；不在 Main 中加入 Noting 角色交接或后台严格收录约束。Noting 文案及提醒结构的独立提案见 [文案提案（原 08）](noting-message-and-reminder-contract-proposal.md)，不作为本段实施内容。后续职责重设计入口为 [新 07](07-scheduler-notebook-noting-compaction-redesign.md)，尚未改变本段运行契约。
+**2026-10-15 用户已审定／未实施：** 本次只澄清下方 user 与 consultation 两行；不在 Main 中加入 Noting 角色交接或后台严格收录约束。Noting 文案及提醒结构的独立提案见 [文案提案（原 08）](archived/noting-message-and-reminder-contract-proposal.md)，不作为本段实施内容。后续职责重设计入口为 [新 07](07-scheduler-notebook-noting-compaction-redesign.md)，尚未改变本段运行契约。
 
 Target (base wording approved 2026-10-14; limited Main-only revision approved 2026-10-15, not implemented). Main directs background Noting through Memo; it does not register Notebook schedules itself. The time-system sentence sits after the merged Schedule/Background paragraph and before Memo. No Memo storage, provenance, delivery, tool permission or trigger mechanism is changed. During development, the native prompt synchronization may invalidate and rebuild an existing prompt cache as part of this approved adjustment.
 
@@ -1932,6 +2030,8 @@ Time system: only the latest `<timestamp>` marks the real current time when its 
 ```
 
 ### 2. Noting Task messages (child context)
+
+> **第三轮适用性：** 历史逐字正文已替换。新完整任务／控制声明／续Turn见07 §8.11–8.12；冻结父前缀不改。
 
 #### 2.1 `DEFAULT_NOTING_TASK_INSTRUCTION` — `secretary/noting_child.py:624` — Frozen; Target = full replacement
 
@@ -1999,6 +2099,8 @@ Frozen format:
 Known gap: §5.6 forbids a timestamp marker on `<noting-task>`; the frozen format still carries one. The timestamp line is removed together with the carrier rework (§5.6), not by a standalone edit.
 
 ### 3. Tool schemas
+
+> **第三轮适用性：** 本组旧Schema全部不是第三轮工具面。按07 §4–6；compact_parent、Memo及旧三写工具退出，无regex／物理message_id兼容。
 
 #### 3.1 `session_history` — `tools/session_history_tool.py:10` — Frozen
 
@@ -2161,6 +2263,8 @@ Entry ids in all three tools are the short autoincrement decimal strings of §3.
 
 ### 4. Reminder carriers and content templates
 
+> **第三轮适用性：** 保留真实wrapper和时间／durable／ACK契约；正文按07 §8.14。Force和External通知的继承范围见07 §8.1，不因替换Reminder正文删除其producer。
+
 #### 4.1 Reminder wrappers — `agent/message_metadata.py:409,414` — Frozen; Target per §5.6
 
 Frozen formats (both carry a timestamp today):
@@ -2199,6 +2303,8 @@ Target: two Framework Messages (§5.6) — at Force admission: `The context is n
 
 ### 5. Slash-command injections
 
+> **第三轮适用性：** Proposal逐字指令以07 §8.10替换；人类Notebook渲染使用新版四区，浏览器human-only边界继承，Memo命令退出。
+
 #### 5.1 `PERSISTENCE_PROPOSAL_INSTRUCTION` — `hermes_cli/cli_secretary_commands.py:77` — Frozen (user-approved in an earlier round; authoritative as quoted)
 
 ```text
@@ -2219,6 +2325,8 @@ Approved Target (user-confirmed 2026-10-12, C15): render the same committed `cre
 
 ### 6. Tool-result / error texts — Frozen
 
+> **第三轮适用性：** 旧冻结仅属于原轮次；新版结果与错误以07 §7为准，不要求全簿回显或旧工具修法。
+
  texts enter the context as tool results; all are frozen as currently implemented:
 
 - Noting whitelist denial (`secretary/noting_child.py:83`): `Noting runtime denied non-whitelisted tool: {tool_name}. Available here: History Search (session_history) and Notebook tools. Do not retry {tool_name}.`
@@ -2229,6 +2337,8 @@ Approved Target (user-confirmed 2026-10-12, C15): render the same committed `cre
 Approved Targets (§3.7): (1) the `Unknown semantic fields` rejection becomes diagnosable — `Unknown semantic fields for {entry_type}: {sorted offending keys}; allowed: {sorted allowed keys}`; (2) `Illegal Notebook status transition` becomes `Illegal status transition for {entry_type} from {current_status}: legal targets {sorted targets}` (for types without a status graph: `{entry_type} has no status transitions`). With the tool split (entry 3.6), the mutate-level errors re-home to the three tools (`Notebook mutation is Noting-only` → per-tool; `Unknown operation or non-semantic arguments` → per-tool unknown operation). Other error strings stay unchanged.
 
 ### 7. Upstream-native texts with Secretary-side changes — Targets approved
+
+> **第三轮适用性：** 旧Main上session_search／Cron描述由07 §8.8–8.9窄覆写替代；不改变非eligible runtime的原生Schema／行为。
 
 Upstream originals stay untouched for sessions/platforms without Noting; eligible main Conversations get the revised text (branch-gated construction).
 
@@ -2253,6 +2363,8 @@ Delete `use this for 'remind me in N minutes' — do NOT hand-compute an absolut
 This chapter is the implementation backstop. Mechanisms already defined in the functional chapters are not redesigned here, but every agreed Hermes integration seam that is easy to omit during implementation is called out explicitly.
 
 ## 6.1 Additive persistence wiring
+
+> **第三轮适用性：** 自有表接线保留；migration历史步骤失效，开发隔离库重建，不写数据迁移。
 
 - all durable Secretary state lives in the existing profile-scoped `state.db`;
 - add only Secretary-owned tables/indexes/migrations;
@@ -2295,6 +2407,8 @@ Current mechanisms that can be reused include equivalents of:
 
 ## 6.4 History Search wiring
 
+> **第三轮适用性：** 真实Main／合法路径与正式dispatch接线保留；工具面和授权跨域／检索算法按07 §5，不实现旧regex／alias。
+
 V1.5 §2.2 and §3 supersede configurable Main exposure: the existing registry/schema/handler is reused, but every eligible Main must receive session_history and its independent Guidance. It is not gated by Noting. Auxiliary Agents receive no new Main injection and retain existing lawful configuration; the Noting child reuses its restricted Parent-history path.
 
 It continues to:
@@ -2320,6 +2434,8 @@ Conversation-local Noting off does not disable the real-user-message timestamp c
 
 ## 6.6 Noting Trigger / Turn-lifecycle wiring
 
+> **第三轮适用性：** 生命周期／原生owner接线保留；入口改按07 §8.1四种联合入口，Idle双阈值，不复制旧两Trigger/profile分流。
+
 Idle timing attaches to main Turn start/end boundaries, not generic background activity.
 
 Force attaches to Hermes's existing request-context measurement seams. The new hooks return immediately when Noting is effectively disabled.
@@ -2335,6 +2451,8 @@ Force/Idle integration does not take ownership of the global agent loop.
 
 ## 6.7 Cache-parity child wiring
 
+> **第三轮适用性：** 真实请求root/tools/messages等价及追加声明接线完整继承；special工具/profile退出，四工具及finish按07 §3、§8.11–8.12。
+
 Extract the pure cache-parity helper from the old Background Review path. Construct the durable Noting child through delegate-style lifecycle code.
 
 The Noting child has:
@@ -2348,6 +2466,8 @@ The Noting child has:
 - no restart resume.
 
 ## 6.8 System Reminder request-injection wiring
+
+> **第三轮适用性：** 原生materialization／实际请求witness／ACK接线保留；业务来源改Schedule，不因旧类型或Noting gate阻断投递，见07 §6.2、§8.14。
 
 System Reminder injection happens at the provider-neutral request-construction layer:
 
@@ -2368,6 +2488,8 @@ Reminder ACK is tied to successful provider/model response, not to request assem
 
 ## 6.9 User Reminder Gateway wiring
 
+> **第三轮适用性：** 真实所属Main ingress／idle-busy／durable witness继承；instant业务来源及权限按独立Scheduler，不由Notebook状态决定。
+
 Active User Reminder delivery does not use the Hermes Cron execution path and does not create an isolated `cron_<job>_<timestamp>` Session.
 
 Reuse Hermes's existing synthetic/internal ingress behavior, including current patterns such as:
@@ -2383,6 +2505,8 @@ Do not add a second main-agent busy/admission gate.
 
 ## 6.10 Schedule scanner wiring
 
+> **第三轮适用性：** scanner／claim／ACK正式接线保留；gate改为独立Scheduler，删除Snapshot重选／Notebook版本绑定副作用。
+
 The ConversationScheduleRegistry timer reuses Hermes/Gateway periodic process infrastructure where practical. Notebook Schedule is not registered in the Hermes Cron Registry.
 
 The scanner is:
@@ -2397,6 +2521,8 @@ The scanner is:
 
 ## 6.11 Rewind/Edit/Branch wiring
 
+> **第三轮适用性：** 合法路径／身份／Snapshot重选继续继承；Notebook rewind和pointer重选不再改变Schedule，新fork排期不复制，见07 §6.2。
+
 Secretary reconciliation happens after Hermes successfully performs its own mutation:
 
 - Rewind/Edit: rebuild Full Foreground, then reconcile the current Notebook pointer;
@@ -2405,6 +2531,8 @@ Secretary reconciliation happens after Hermes successfully performs its own muta
 - Secretary hooks do not alter Hermes's native rewrite/branch semantics.
 
 ## 6.12 Noting-disabled / Hermes-native acceptance
+
+> **第三轮适用性：** 原生不破坏仍验收；旧Noting off停Schedule／Memo阻止off失效。按07 §9.3覆盖Noting／Scheduler独立开关组合。
 
 Test at least:
 
@@ -2442,6 +2570,8 @@ Cover at least:
 
 ## 6.14 Foreground / History Search acceptance
 
+> **第三轮适用性：** 身份／Foreground和真实证据继续验；旧regex／message_id／跨域限制相关用例改按07 §5，不让旧测试定义新工具契约。
+
 - Active, History, and Full Foreground are not conflated;
 - History Search remains available with Noting off;
 - History Search crosses compression continuation;
@@ -2453,6 +2583,8 @@ Cover at least:
 
 ## 6.15 Trigger / Force / race acceptance
 
+> **第三轮适用性：** 测量／能力失败／资源与竞态仍验；旧仅成功Snapshot判据、双profile与独立逐轮Idle用例失效，按07 §8.1、§9.3替换。
+
 - only main Turns reset Idle;
 - Force formula matches the specification exactly;
 - there are exactly two Force capability failures;
@@ -2463,6 +2595,8 @@ Cover at least:
 - Force success state is derived from Snapshot + Compaction boundary rather than a stored flag.
 
 ## 6.16 Runtime / tool-isolation acceptance
+
+> **第三轮适用性：** 冻结前缀、真实模型请求／dispatch隔离、五Turn／overflow保留；旧special结束／compact_parent及审计绝对不可见失效，按07 §3.2、§8.13。
 
 - the child is a persistent Hermes Session;
 - Parent prefix is not copied into the child transcript;
@@ -2484,6 +2618,8 @@ Cover at least:
 Acceptance must compare the complete inherited prefix at Hermes's actual request-assembly seam for the first request, at least two subsequent tool-loop requests, applicable retry and same-child continuation paths, and Parent concurrent activity/compaction. Verify that new tool lists/full schemas are in appended child instructions, that each new system-instruction/task-driving message repeats the authoritative declaration, and that forbidden Parent tools are denied by dispatch. A test that checks only first-request parity, or expects tools to be added to the request head after the first response, does not satisfy this contract. Provider cache-read evidence remains a separate real-observation requirement; prefix equality alone is not a measured cache hit.
 
 ## 6.17 Schedule / Reminder / timestamp acceptance
+
+> **第三轮适用性：** 时间／claim／durable／ACK／idle-busy继续验；旧类型限定、Notebook状态联动和Noting gate用例失效，按07 §6。 本节后半的Memo编号、消费、auto-enable、阻止off等用例全部退出，不从历史验收表恢复Memo。
 
 - due `user_commitment` and `watchpoint` do not start a Turn;
 - a due `secretary_task` starts a Turn only when its Schedule elected `instant` delivery; a `deferred` secretary_task due does not;
@@ -2508,6 +2644,8 @@ Acceptance must compare the complete inherited prefix at Hermes's actual request
 
 ## 6.18 `/notebook` acceptance
 
+> **第三轮适用性：** Memo相关用例全部退出；模型工具show结果按07 §4.5，浏览器/notebook按10-14 human-only边界。旧模型可见slash及旧四区栏目不再是验收要求。
+
 - `/noting on|off` persists Conversation-local participation correctly;
 - local off still allows bare `/notebook` to read an existing Snapshot;
 - a null pointer produces an explicit no-Snapshot result;
@@ -2522,6 +2660,8 @@ Acceptance must compare the complete inherited prefix at Hermes's actual request
 - Eligible Main receives History Search independently of read configuration/templates and Noting; authentic current and cross-Compaction history remains searchable.
 
 ## 6.19 Open issue: additive Frontend / API contract
+
+> **第三轮适用性：** 此为首轮当时开放项；当前Web客户端与原生接线基线见正式06，第三轮按07变更现有投影／DTO／Settings，不重新发明平行API。
 
 Core V1 implementation does not depend on designing a new API hierarchy first.
 
@@ -2546,6 +2686,8 @@ Method names, event names, and DTO schemas are intentionally not frozen in this 
 ---
 
 # Final implementation invariants
+
+> **第三轮适用性：** 以下是旧轮次最终汇总。Identity／原文／不可变Snapshot／原生后台／无第二栈保留；旧类型／双profile／Notebook-owned排期／旧工具约束由白板＋07替换，不能因Final字样重新生效。
 
 ```text
 Hermes Conversation transcript is the source of truth.
@@ -2591,6 +2733,8 @@ V1 does not create:
 New `/notebook` command and result rows are human presentation only. Existing native display metadata marks them human-only; they remain available to human history while Main request assembly, Noting frozen-prefix construction, model-visible session_history and native summary input filter them through one visibility predicate. Ordinary user discussion of Notebook, other slash responses and historical rows without this marker keep their existing semantics. No new role, table, API or rewritten history is introduced.
 
 ### Approved Memo tool wording (2026-10-14)
+
+> **第三轮适用性：** 历史文案，第三轮Memo全链删除，不应用此段重建工具或注册队列。
 
 Only the `noting_memo` description changes; parameters and the add/replace/delete/list behavior remain:
 

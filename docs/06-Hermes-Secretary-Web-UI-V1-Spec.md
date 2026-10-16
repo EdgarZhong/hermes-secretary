@@ -1,5 +1,9 @@
 # Hermes Secretary Web UI V1 — Product, Native Interface & Implementation Specification
 
+> **改版阅读边界（2026-10-16）：** 本文保留现有Web UI与原生客户端架构基线。用户已确认第三轮自主实现聚焦Secretary改版与个人NM接入，界面修改整体后置；Memo控件、Orb／Idle倒计时、Notebook人类卡片、Settings及UI读取DTO的调整不作为本轮实施／验收条件。下方局部标识仅说明旧语义已被白板＋07替换或继续继承，不构成第三轮UI施工清单；后续界面改版另行安排。
+
+> **历史冻结范围：** 下行“this round”“remain frozen”等只指第二轮，不约束第三轮已授权的改版。局部过时标识优先于对应旧正文；不修改第二轮验收历史。
+
 > **Status:** Frozen normative specification for Round 2 (2026-10-12). This round MUST NOT revise its authoritative specifications; implementation and acceptance status belong to the root CLAUDE.md and round reports. **Authorized exceptions (2026-10-13):** §1.6 Composer keyboard binding (Enter submits content only; Escape carries the cancel-type primary actions), with §1.10 aligned; and §1.7 attachment budget (all attachments in the current draft together MUST NOT exceed 500 MB), explicitly confirmed by the user. Subsequent explicit user-confirmed amendments, including the 2026-10-14 corrections, are recorded in the Round 2 Snapshot Index. Unrelated clauses remain frozen.
 > **Date:** 2026-10-12
 > **Target:** `EdgarZhong/hermes-secretary` native Hermes/Secretary backend plus a separate browser-native Secretary UI repository.
@@ -13,6 +17,8 @@
 ## 0. Terminology, Specification Authority & Architecture Invariants
 
 ### 0.1. Canonical terminology
+
+> **第三轮适用性：** 表中Memo及Notebook-owned Schedule的术语已过时；Conversation／Session／Message Identity、原生客户端与真实消息载体继续继承。第三轮Scheduler与Notebook的定义以07术语表为准。
 
 Use Hermes/Secretary's actual names first. UI-only terms are allowed only when they denote actual presentation behavior that has no corresponding native primitive.
 
@@ -46,6 +52,8 @@ Use Hermes/Secretary's actual names first. UI-only terms are allowed only when t
 **Terminology retired from earlier discussions:** `Attach Notice` as a synthetic API object; `Photo Attach` as a universal backend operation; `PDF Attach` for ordinary file-PDF transfer; `Gateway` used ambiguously; `Reply` as a second thread; a separate `In-flight Queue` card/zone; speculative `/stash` name for the actual `/notebook` command; and a new “Conversation Web API” just to map stored IDs to runtime IDs. They MUST NOT appear as new domain types or backend requirements.
 
 ### 0.2. Relationship to 01/02/04 and historical 06
+
+> **第三轮适用性：** 以下优先级描述的是第二轮。第三轮先白板＋07，再继承旧规格明确保留部分；旧规格中的Target不得反向覆盖新版。浏览器/notebook只读临时结果的差异仍保留。
 
 | Source | Retained authority | Deliberate Web UI boundary/revision |
 |---|---|---|
@@ -83,6 +91,8 @@ Round 2 uses a separate **local frontend repository beside this backend workspac
 
 ### 0.4. Thin client and local-persistence allowlist
 
+> **第三轮适用性：** 薄客户端与持久化边界保留；表中Memo实体退出，Schedule从Notebook中独立，权威owner仍在Secretary服务端。
+
 | State | Authoritative owner | Browser treatment |
 |---|---|---|
 | Session list, stored transcript, titles, pinned/archived metadata, Lineage | Hermes SessionDB | Fetch on demand; no durable browser mirror or second repository. |
@@ -105,6 +115,8 @@ The implementation MUST NOT introduce a persisted API-response cache, client Ses
 6. A missing/uncertain backend fact is represented as loading/unknown/error, **never as guessed success, false idle, an inferred consumption, or a fabricated historical row**.
 
 ### 0.6. Engineering and delegation authority
+
+> **第三轮适用性：** 本节角色与编排属于第二轮历史安排，第三轮以新计划与AGENTS为准；不据此指定旧Agent或扩大文档冻结。
 
 **Main/Integration is GPT-6 Astra high**, accountable for technical direction, complete requirement coverage, delegation, review and integration. **Development is GPT-6.1 Sol high**, responsible for concrete frontend/backend implementation and relevant tests within assigned boundaries. Independent **Verification is Astra high**, independent **Validation is Astra medium**, and the independent **visual designer is Astra medium**. Technical accountability does not make the Main agent the sole code implementer. The visual designer is scoped to a cohesive design system, responsive visuals, tokens and styling, with **no authority to design new product interactions** or change button conditions, navigation, data semantics or Agent controls. See division 4 for boundaries and acceptance.
 
@@ -276,6 +288,8 @@ Buttons MUST be driven by this precedence so a user can prepare attachments duri
 
 ### 1.12. Slash catalog, command dispatch and human-only `/notebook`
 
+> **第三轮适用性：** 保留共享catalog与浏览器临时只读结果；新版四分区正文为work／situations／discussion／candidates，旧栏目不继承。/noting不再控制Scheduler或受Memo阻止；Proposal英文指令见07 §8.10。
+
 | Class | Examples | Mandatory Web behavior |
 |---|---|---|
 | Navigation | `/new`, `/reset` where genuinely registered, `/sessions`, `/resume` | UI navigation/session selection, with the **actual** command's semantics validated. Never invoke terminal interactive selection inside the browser. |
@@ -322,6 +336,8 @@ The post-compaction Timeline must display the **original native compaction summa
 
 ### 1.15. Secretary Orb, Noting status and Memo Stick
 
+> **第三轮适用性：** Memo计数、二级Memo面板和相关读取全部删除；Orb真实任务状态、失败提示与只读边界保留。下一次Idle展示须采用07新子开关及长度／时间资格，无资格不显示可执行倒计时。
+
 **Visibility is governed by the GLOBAL Noting switch and route, not by conversation-local eligibility:** show Orb only on an **existing Conversation** page while the global switch is on. A conversation-local `/noting off` does **not** hide it. When global Noting is off, hide the Orb (rather than displaying a disabled orb). Never show it on New Chat or Files.
 
 | View/state | Product behavior |
@@ -352,6 +368,8 @@ File list and preview have loading, empty, not found, permission denied, unsuppo
 ## 2. V1-Only Additive API Contracts & Native Compatibility
 
 ### 2.1. Delta admission: no duplicate API layer
+
+> **第三轮适用性：** N/F/A/D评估与原生复用保留；表中Memo能力删除，Notebook／Schedule按新owner和07接线，不额外保留旧读取入口。
 
 **Every V1 requirement first receives one of four dispositions:** **N** = reuse existing native REST/RPC/Event unchanged; **F** = implement only in thin frontend UI/orchestration; **A** = add a minimal native method, read projection, or event at a proven missing seam; **D** = deferred and MUST NOT be implemented for V1. A user-visible action is not sufficient justification for a new backend method. The engineering team MUST record a file-level source audit and a failing invariant/test before creating any **A** item; Main/Integration reviews the evidence.
 
@@ -434,6 +452,8 @@ The lead first audits `session.compress`, native compression lock/commit fences,
 
 ### 2.6. Secretary human-only read contracts
 
+> **第三轮适用性：** CurrentMemoRead整项删除。HumanNotebookRead改为新版work／situations／discussion／candidates四区；NotingPresenceRead与NextIdleRead采用新开关、联合流程与双阈值。真实归属、只读、沿既有传输与禁止浏览器伪造倒计时继续保留。
+
 Secretary read APIs MUST preserve 02's actual `conversation_ref` ownership. First inspect current Core tools/status data and identify only missing consumer-safe projections. No read may initiate a Turn, trigger Idle/Force Noting, mutate Snapshot pointers, consume Memo or acknowledge a Reminder.
 
 | Logical read | Required source data | Minimum return/behavior |
@@ -447,6 +467,8 @@ Secretary read APIs MUST preserve 02's actual `conversation_ref` ownership. Firs
 The engineering team may expose these through the **existing** REST/read paths or new small TUI Gateway RPCs as technically appropriate; do not force every read through WS or wrap existing REST endpoints in redundant RPCs. All results use correct profile/Conversation owner resolution; fetching status for Conversation A must not paint B after a rapid route change. Changes SHOULD travel on existing owning WS transport as small events/invalidation hints, followed by refetch when necessary. Do **not** add a dedicated Noting WebSocket or fast periodic status polling merely for the countdown.
 
 ### 2.7. Special `/notebook` result contract and inherited Core behavior
+
+> **第三轮适用性：** 临时人类结果、不持久化、不注入模型及客户端边界保留；four-section指07新四区，不指旧标签结构；不把后台Framework完整Snapshot注入误写为slash也要注入。
 
 The new human view has a **different persistence intent** from the inherited 02 slash path. In a browser-client command invocation:
 
@@ -566,6 +588,8 @@ The ledger is the handoff artifact for coding. It is **not** a second design doc
 
 ### 4.1. Technical accountability, development and independent review
 
+> **第三轮适用性：** 第二轮角色安排保留作历史记录，不作为第三轮人员／模型指定；第三轮以新编排为准。
+
 Current-round user-authorized model assignments and gate order are recorded in the Snapshot Index; they do not waive either final gate.
 
 **GPT-6 Astra high is Main/Integration and the accountable technical lead across frontend and backend; GPT-6.1 Sol high performs concrete Development.** Astra owns coverage, architecture decisions, delegation, review, integration and final defect closure; Sol implements assigned features, native integrations and tests, returning complete stage evidence for review. The specification does not prescribe their internal code structure, concurrency primitives or file-by-file patch sequence. Independent Verification uses **Astra high**; independent Validation uses **Astra medium**.
@@ -584,6 +608,8 @@ The independent **visual designer, Astra medium**, owns visual art direction, de
 | Final integration, defect triage and delivery evidence | **Astra high Main/Integration** | Review complete stage returns; Sol and visual designer fix defects within assigned scope. |
 
 ### 4.2. Design system as a production engineering deliverable
+
+> **第三轮适用性：** 设计系统与组件治理保留；Memo相关组件退出，新版不因为本节列过Memo而继续实现。
 
 The design system is **mandatory**, not a mood board or an optional last-mile styling pass. The visual AI establishes a coherent, reusable foundation using the approved React/assistant-ui/shadcn/Tailwind stack.
 
@@ -606,6 +632,8 @@ Local implementation exceptions are permissible only when they represent a genui
 - Questions about undefined styling can be resolved by the visual AI. Questions that would change interaction/product scope require explicit user approval, not an AI's unrecorded preference.
 
 ### 4.4. Sequencing without prescribing code architecture
+
+> **第三轮适用性：** 本节是第二轮里程碑，不是第三轮实施计划；Memo相关里程碑退出，新切片见07 §9。
 
 Implementation order is a **dependency guide**, not a file-by-file plan imposed on Astra:
 
@@ -642,6 +670,8 @@ A feature is not accepted because its button is present or its RPC returned 200.
 
 ### 4.6. Test layers and compatibility gate
 
+> **第三轮适用性：** 第二轮证据与判定按原版本保留，不能替代第三轮两个独立门禁；新范围与证据由第三轮索引确定。
+
 - **Unit/contract tests** confirm product state machines, visual component props, identity rules, slash routing, draft isolation, message-kind projections and mandatory API outcomes.
 - **Gateway/Core regression tests** exercise only genuine additive behavior and prove unchanged clients can still call all existing methods with their original semantics; include crash, simultaneous correction consumption/withdraw, interrupt races and Compaction cancel/commit races where relevant.
 - **Browser integration tests** use real REST+WS against the target fork, not UI mocks alone; include REST history paging, authentic message kind preservation, attachment-to-Agent readability, reconnection and uncertain Submit outcomes.
@@ -651,6 +681,8 @@ A feature is not accepted because its button is present or its RPC returned 200.
 - **No false green:** unavailable/unproven APIs are reported as blocked or incomplete; tests cannot pass by inventing DTOs, hardcoding counters, hiding legitimate messages or silently downgrading product rules.
 
 ### 4.7. Delivery checklist and change control
+
+> **第三轮适用性：** 保留如实报告、兼容和薄客户端原则；Astra/Sol固定分工仅属第二轮，本轮角色按新计划。
 
 The final implementation report MUST contain: (a) current source revision and changed files; (b) native-reuse versus additive-delta list with why each addition was needed; (c) verified client/backend contract results and existing-client compatibility; (d) test matrix with real evidence and known limitations; (e) design-system token/component governance checks; (f) proof of no new backend service, client business database or durable API history cache; and (g) a concise list of unresolved items, if any, without declaring them complete.
 
@@ -665,6 +697,8 @@ The final implementation report MUST contain: (a) current source revision and ch
 The future UI is a **human-readable audit projection**, not a different chat history implementation. Retain 02/04's precise `Full Foreground` semantics: unique `Context Prelude`, ordered logical message nodes, authentic Compaction projection, and Anchor/Snapshot attachments. Message Identity is `(conversation_ref, message_uid)`; composite compaction may project adjacent logical nodes without inventing a second identity. The future viewer may expose source/version validity and audit anchors, but **none of its endpoints, database tables, message-node UI or navigation scaffolding is required in V1**.
 
 ### 5.2. Historical Notebook/Snapshot and advanced Memo views
+
+> **第三轮适用性：** 旧Memo未来能力已取消，不再保留。Notebook历史审计仅为过去记录的未来设想，本次不实现已退出内容的短期检索通道。
 
 Future screens may browse immutable Notebook Snapshot history, Anchor chronology, item lifecycle audit, archived Memo batches and richer human provenance. V1 has only the current effective Memo Stick and temporary human-readable `/notebook` result. Future read access may remain valid when Background Noting is disabled, subject to Hermes's authorized global policy; current V1 must not introduce editable Notebook surfaces or pretend archived data is an active Memo.
 
@@ -685,5 +719,7 @@ Native desktop/mobile applications, live voice/video interactions, advanced Dash
 Future goals remain recorded so omitting them from V1 is **not** a cancellation. However, V1 is complete only against the explicit requirements in divisions 0–4. No future-scope API method, audit storage, speculative DTO, hidden tab, preview scaffold or unused cross-client sync layer may be added “for later” without separate scope approval.
 
 ---
+
+> **第三轮适用性：** 下文薄客户端、原生复用与真实交互原则保留；末句固定Astra／视觉AI职责是第二轮历史编排，第三轮按新计划，不由此指定人员／模型。
 
 **Final normative invariant:** *The browser is a thin, reconstructible API client. Hermes/Secretary owns all committed conversation and runtime truth. The Web UI follows the confirmed user interactions exactly; source-grounded native reuse is preferred; exceptional backend changes are minimal and additive; the design system is centralized; GPT-6 Astra is responsible for integration and correctness, and the visual AI is responsible for styling without inventing product behavior.*
