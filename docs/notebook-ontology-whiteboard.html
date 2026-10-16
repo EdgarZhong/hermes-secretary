@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Secretary · Notebook 研究白板</title>
+<style>
+:root{--ink:#233740;--muted:#60727b;--paper:#fff;--board:#edf2f3;--line:#cbd8dc;--blue:#245edb;--blue-soft:#edf2ff;--green:#186e59;--green-soft:#e8f5ef;--amber:#865b17;--amber-soft:#fff5d5;--rose:#964653;--rose-soft:#fceff0;--radius:13px;--display:"Avenir Next","PingFang SC","Microsoft YaHei",sans-serif;--body:"SF Pro Text","PingFang SC","Microsoft YaHei",sans-serif;--mono:"SFMono-Regular",Consolas,monospace}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--board);color:var(--ink);font:15px/1.75 var(--body)}button,input,select,textarea{font:inherit}button,a,select{touch-action:manipulation}button{cursor:pointer}button:disabled{cursor:default;opacity:.45}a{color:var(--blue);text-underline-offset:3px}button:focus-visible,a:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #5f8ce6;outline-offset:4px}button{border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);padding:7px 12px}button:hover{background:#f4f7fa}button.primary{background:var(--blue);border-color:var(--blue);color:#fff}button.primary:hover{background:#174cc1}button.quiet{border-color:transparent;background:transparent}h1,h2,h3,h4,p{margin:0}h1,h2,h3,h4{font-family:var(--display);line-height:1.3}h1{font-size:clamp(30px,3.4vw,52px);font-weight:650;letter-spacing:-1.5px}h2{font-size:30px;letter-spacing:-.6px}h3{font-size:21px;font-weight:600}h4{font-size:16px}p+p{margin-top:12px}small,.small{font-size:13px}strong{font-weight:650}ul,ol{margin:12px 0 0;padding-left:21px}li+li{margin-top:7px}code{font:12px var(--mono);background:#f0f3f6;padding:3px 5px;border-radius:4px}hr{border:0;border-top:1px solid var(--line);margin:22px 0}
+.topbar{position:sticky;top:0;z-index:10;min-height:66px;padding:12px 24px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.97);display:flex;align-items:center;justify-content:space-between;gap:16px}.brand{font:600 16px var(--display);display:flex;align-items:center;gap:13px}.brand-mark{width:29px;height:29px;display:grid;place-items:center;background:var(--ink);color:white;border-radius:8px;font:600 17px var(--mono)}.brand small{font:12px var(--body);color:var(--muted);display:block}.top-actions{display:flex;gap:8px;align-items:center}.save-indicator{font-size:12px;color:var(--muted);max-width:180px}.layout{display:grid;grid-template-columns:205px minmax(0,1fr);min-height:calc(100vh - 66px)}.rail{position:sticky;top:66px;height:calc(100vh - 66px);background:#f8fafb;border-right:1px solid var(--line);padding:26px 14px;display:flex;flex-direction:column}.rail-title{font:11px var(--mono);letter-spacing:1.5px;color:var(--muted);padding:0 12px;margin-bottom:16px}.rail nav{display:grid;gap:6px}.nav-button{text-align:left;display:flex;gap:12px;align-items:center;border:0;background:none;padding:11px 12px;font-size:14px}.nav-button span{font:11px var(--mono);color:#71848e}.nav-button[aria-current="page"]{background:var(--blue-soft);color:var(--blue);font-weight:650}.rail-foot{margin-top:auto;padding:25px 12px 0;font-size:12px;color:var(--muted)}.rail-foot b{font-weight:500;color:var(--ink)}.canvas{padding:38px clamp(22px,3.4vw,56px) 70px;min-width:0;background-image:radial-gradient(#c7d3d9 .65px,transparent .65px);background-size:19px 19px}.panel{max-width:1330px;margin:auto}.panel[hidden]{display:none}.eyebrow{display:flex;align-items:center;gap:12px;font-size:12px;color:var(--muted);margin-bottom:14px}.eyebrow .index{font:12px var(--mono);color:var(--blue);border-bottom:2px solid var(--blue);padding-bottom:3px}.panel-head{margin-bottom:28px;display:flex;align-items:flex-end;justify-content:space-between;gap:24px}.panel-head p{margin-top:13px;max-width:780px;color:var(--muted)}.status{display:inline-flex;align-items:center;border-radius:5px;padding:3px 8px;font-size:11px;white-space:nowrap;font-weight:600}.status.confirmed{color:var(--green);background:var(--green-soft)}.status.proposed{color:var(--blue);background:var(--blue-soft)}.status.question{color:var(--amber);background:var(--amber-soft)}.status.evidence{color:#58616e;background:#eef0f4}.legend{display:flex;gap:10px;flex-wrap:wrap}.grid{display:grid;gap:20px}.two{grid-template-columns:repeat(2,minmax(0,1fr))}.three{grid-template-columns:repeat(3,minmax(0,1fr))}.four{grid-template-columns:repeat(4,minmax(0,1fr))}.card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:0 4px 12px #22323b04;min-width:0;position:relative}.card .kicker{display:flex;align-items:center;gap:9px;color:var(--muted);font-size:12px;margin-bottom:12px}.card .card-id{font:11px var(--mono);letter-spacing:.3px}.card h3+p,.card h4+p{margin-top:12px}.card .source{margin-top:15px;font-size:12px;color:var(--muted)}.card .source a{color:#436b8a}.card-tools{display:flex;justify-content:flex-end;margin:18px -4px -9px}.card-tools button{font-size:12px;padding:3px 7px;color:var(--muted);background:none;border:0}.card-tools button.has-note{color:var(--blue);background:var(--blue-soft)}.card-note{background:var(--amber-soft);border-color:#e6d7a0;box-shadow:3px 5px 0 #23374007}.card-green{background:var(--green-soft);border-color:#c4dfd2}.card-blue{background:var(--blue-soft);border-color:#c9d7f8}.card-rose{background:var(--rose-soft);border-color:#e5ccd1}.wide{grid-column:1/-1}.stack{display:grid;gap:20px}.spaced{margin-top:24px}.muted{color:var(--muted)}.lede{font-size:18px;line-height:1.85}.big-thesis{border-left:5px solid var(--blue);padding:9px 0 9px 23px;font-size:24px;line-height:1.55;font-family:var(--display)}.text-link{border:0;background:none;color:var(--blue);padding:0;text-decoration:underline;text-underline-offset:4px}.number{font:500 48px/1 var(--display);color:var(--blue);letter-spacing:-2px}.number small{font:13px var(--body);letter-spacing:0;color:var(--muted)}.section-label{font:600 14px var(--body);margin:31px 0 14px}.mini-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.mini{background:#f6f8fa;border-radius:8px;padding:15px}.mini b{display:block;margin-bottom:4px}.quote{font-family:var(--display);font-size:24px;line-height:1.65}.line-note{font-size:13px;color:var(--muted);border-left:3px solid var(--line);padding-left:14px;margin-top:17px}
+.system-map{padding:29px 24px;background:white;border:1px solid var(--line);border-radius:var(--radius)}.map-top{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:20px}.map-top span{background:var(--ink);color:white;border-radius:24px;padding:8px 28px}.map-grid{display:grid;grid-template-columns:1fr 1fr 1.2fr 1fr 1fr;gap:12px}.map-node{padding:19px 13px;border-radius:11px;background:#f4f7f9;border:1px solid var(--line);text-align:left;min-height:164px;line-height:1.6}.map-node b{display:block;font-size:17px;margin-bottom:9px}.map-node small{display:block;color:var(--muted);font-size:12px}.map-node[aria-pressed="true"]{outline:3px solid var(--blue);outline-offset:3px}.map-node.notebook{background:var(--blue-soft);border-color:#abc2f5}.map-node.schedule{background:var(--green-soft);border-color:#b6d7c7}.map-node.memory{background:#f3effa;border-color:#d4c8e6}.map-thread{margin:24px auto 18px;max-width:85%;border-top:1px solid #a4b7c1;display:flex;justify-content:space-around}.map-thread span{padding-top:10px;font-size:11px;color:var(--muted);position:relative}.map-thread span:before{content:"";position:absolute;top:-6px;left:50%;width:9px;height:9px;border:2px solid #8fa5b1;background:#fff;border-radius:50%}.map-detail{padding:20px 24px;background:#f7f9fb;border-radius:8px;min-height:100px}.map-detail h4{margin-bottom:7px}.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:#fff}.table-wrap table{width:100%;border-collapse:collapse;text-align:left;min-width:620px}.table-wrap th{background:#f4f7f9;font-size:12px;color:var(--muted);font-weight:600}.table-wrap th,.table-wrap td{padding:15px 17px;border-bottom:1px solid #e0e7eb;vertical-align:top}.table-wrap td{font-size:14px}.table-wrap tr:last-child td{border-bottom:0}.table-wrap td:first-child{font-weight:600}.table-wrap tr.recommended{background:#f0f5ff}.table-wrap caption{text-align:left;padding:18px;font-weight:600}.choice-list{display:grid;gap:9px}.choice-list button{text-align:left;border-radius:9px;padding:13px 16px;background:white}.choice-list button.active{border-color:var(--blue);box-shadow:inset 3px 0 var(--blue);background:var(--blue-soft)}.choice-list button b{display:block}.choice-list button small{color:var(--muted)}.taxonomy-layout{display:grid;grid-template-columns:230px minmax(0,1fr);gap:20px}.type-details{min-height:285px}.type-tags{display:flex;gap:6px;flex-wrap:wrap;margin:15px 0}.type-tags span{background:#f0f4f8;font:12px var(--mono);border-radius:5px;padding:4px 7px}.example{margin-top:20px;padding:17px;border-radius:9px;background:#f6f8fa;border-left:3px solid #99b1c3}.example small{color:var(--muted);display:block;margin-bottom:6px}.proposal-lane{border:1px dashed #b79e50;background:#fff9e7;padding:23px;border-radius:12px;display:grid;grid-template-columns:1fr 2fr;gap:24px;margin-top:20px}.proposal-lane .destinations{display:flex;gap:9px;flex-wrap:wrap;margin-top:13px}.destinations span{border:1px solid #dfcf95;border-radius:5px;padding:5px 9px;font-size:12px}.lane-name{font-size:11px;color:var(--muted);letter-spacing:1px;margin:17px 0 7px}.task-line{display:grid;grid-template-columns:45px minmax(0,1fr) auto;align-items:start;gap:12px;padding:20px 0;border-top:1px solid var(--line)}.task-line:first-of-type{border:0}.task-icon{font:12px var(--mono);border:1px solid #b5c9df;border-radius:50%;width:36px;height:36px;display:grid;place-items:center;background:var(--blue-soft);color:var(--blue)}.task-line small{display:block;color:var(--muted)}.task-line select{max-width:135px;padding:6px;border:1px solid var(--line);border-radius:6px;background:#fff}.task-summary{border-top:1px solid var(--line);padding-top:15px;color:var(--blue);font-size:14px}.pill-row{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}.pill{font-size:12px;border-radius:16px;background:#f3f6f8;border:1px solid #d8e2e6;padding:5px 12px}.pill.current{background:var(--green-soft);color:var(--green)}.scenario-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px}.scenario-tabs button.active{background:var(--ink);border-color:var(--ink);color:#fff}.timeline{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-top:20px}.moment{position:relative;border:1px solid var(--line);border-top:3px solid #8ca5b4;border-radius:10px;background:white;padding:23px}.moment:not(:last-child):after{content:"→";position:absolute;right:-16px;top:40px;color:#7c94a3;background:var(--board);z-index:1}.moment .time{font:11px var(--mono);color:var(--muted);margin-bottom:12px}.moment h4{margin-bottom:12px}.timeline .moment:last-child{border-top-color:var(--blue)}.flow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.flow-step{padding:20px;background:#fff;border:1px solid var(--line);border-radius:10px}.flow-step .step{font:12px var(--mono);color:var(--blue);margin-bottom:10px}.flow-step p{font-size:13px;margin-top:9px;color:var(--muted)}.criterion{padding:20px 0;border-top:1px solid var(--line)}.criterion:first-of-type{border:0;padding-top:0}.criterion b{display:block;margin-bottom:8px}.check-question{display:flex;align-items:flex-start;gap:13px}.check-question .q{font:12px var(--mono);color:var(--blue);min-width:24px;padding-top:5px}.check-question+.check-question{margin-top:16px}.research-ref{margin-top:14px;font-size:12px;display:flex;align-items:center;gap:10px}.research-ref span{color:var(--muted)}.ref-list{display:grid;gap:0;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}.ref{padding:21px 25px;border-bottom:1px solid var(--line);display:grid;grid-template-columns:43px 1fr;gap:10px}.ref:last-child{border:0}.ref-id{font:12px var(--mono);color:var(--muted);padding-top:3px}.ref p{font-size:13px;color:var(--muted);margin-top:6px}.proposal-grid .card{display:flex;flex-direction:column}.proposal-grid .card p{flex:1}.stance-select{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:19px;border-top:1px solid var(--line);padding-top:16px;font-size:12px}.stance-select select{font-size:12px;padding:5px;border:1px solid var(--line);border-radius:5px;background:white}.global-notes{width:100%;min-height:170px;margin-top:15px;padding:16px;border:1px solid #d5c48d;border-radius:8px;resize:vertical;background:#fffdf5;line-height:1.8}.board-footer{display:flex;justify-content:space-between;align-items:center;gap:16px;border-top:1px solid var(--line);padding-top:22px;margin-top:40px;color:var(--muted);font-size:12px}.board-footer button{font-size:13px}.note-preview{font-size:12px;color:var(--amber);margin-top:10px;white-space:pre-wrap;overflow-wrap:anywhere;max-height:75px;overflow:hidden;border-left:2px solid #dfca80;padding-left:10px}.note-preview:empty{display:none}
+.proposal-lane>.card-tools,.proposal-lane>.note-preview{grid-column:1/-1}
+dialog{color:var(--ink);width:min(510px,calc(100vw - 26px));height:min(680px,calc(100vh - 40px));padding:0;border:1px solid var(--line);border-radius:15px;margin:auto 20px auto auto;box-shadow:0 20px 80px #152b3f30}dialog::backdrop{background:#19344933;backdrop-filter:blur(2px)}.dialog-inner{padding:28px;height:100%;display:flex;flex-direction:column}.dialog-head{display:flex;justify-content:space-between;align-items:center;gap:14px}.dialog-head small{color:var(--blue);font:12px var(--mono)}.dialog-title{font-size:21px;margin:15px 0 20px}.dialog-inner label{font-size:13px;color:var(--muted)}.dialog-inner textarea{flex:1;min-height:180px;resize:none;padding:16px;border:1px solid #dbc985;border-radius:8px;background:#fffcef;margin:10px 0 17px;line-height:1.8}.dialog-inner .footnote{font-size:12px;color:var(--muted)}.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:white;border-radius:9px;box-shadow:0 5px 20px #1233;max-width:min(650px,90vw);padding:12px 20px;z-index:50;font-size:13px}.toast[hidden]{display:none}.focus-mode .rail{display:none}.focus-mode .layout{grid-template-columns:1fr}.focus-mode .panel{max-width:1430px}.focus-mode .canvas{padding-left:50px;padding-right:50px}
+@media(min-width:1600px){.canvas{padding-top:45px}.card{padding:28px}.map-node{min-height:175px}}
+@media(max-width:1150px){.four{grid-template-columns:repeat(2,minmax(0,1fr))}.layout{grid-template-columns:180px minmax(0,1fr)}.rail{padding:24px 10px}.canvas{padding:30px 24px 60px}.map-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.map-thread{display:none}.map-detail{margin-top:22px}.flow{grid-template-columns:repeat(2,minmax(0,1fr))}.three{grid-template-columns:repeat(2,minmax(0,1fr))}.save-indicator{display:none}.timeline{gap:12px}.moment{padding:18px}.moment:not(:last-child):after{right:-13px}}
+@media(max-width:800px){.layout{display:block}.rail{height:auto;position:relative;top:0;border-right:0;border-bottom:1px solid var(--line);padding:10px 13px}.rail-title,.rail-foot{display:none}.rail nav{display:flex;overflow-x:auto;gap:4px}.nav-button{white-space:nowrap;padding:9px 10px;font-size:13px}.nav-button span{display:none}.topbar{padding:10px 15px;min-height:65px}.brand small{display:none}.top-actions button{padding:6px 9px;font-size:12px}.top-actions .secondary-action{display:none}.canvas{padding:25px 16px 50px}.panel-head{display:block}.panel-head>.status{margin-top:15px}.two,.three{grid-template-columns:1fr}.map-grid{grid-template-columns:1fr 1fr}.map-node{min-height:145px}.taxonomy-layout{grid-template-columns:1fr}.choice-list{grid-template-columns:1fr 1fr}.lane-name{grid-column:1/-1}.proposal-lane{grid-template-columns:1fr;gap:12px}.timeline{grid-template-columns:1fr}.moment:not(:last-child):after{content:"↓";right:50%;top:auto;bottom:-19px}.timeline .moment{margin-bottom:10px}.task-line{grid-template-columns:35px 1fr}.task-line select{grid-column:2}.panel-head p{font-size:14px}.card{padding:21px}.big-thesis{font-size:22px}.focus-mode .canvas{padding:25px 16px}.board-footer{align-items:flex-start}.brand{font-size:14px}h2{font-size:27px}}
+@media(max-width:460px){.map-grid,.four,.mini-grid,.flow{grid-template-columns:1fr}.top-actions{gap:3px}.brand-mark{display:none}.topbar{gap:6px}.top-actions button{padding:6px}.map-node{min-height:auto}.map-top span{padding:8px 17px}.choice-list{grid-template-columns:1fr}.card{padding:18px}.quote{font-size:21px}.board-footer span{max-width:180px}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important;animation:none!important}}
+@media print{body{background:white;font-size:11px}.topbar,.rail,.card-tools,.board-footer,dialog,.toast,.top-actions,.stance-select,.scenario-tabs{display:none!important}.layout{display:block}.canvas{padding:0;background:none}.panel[hidden],.panel{display:block!important;break-before:page;max-width:none}.panel:first-child{break-before:auto}.panel-head{margin-top:20px}.card,.moment,.ref,.system-map{box-shadow:none;break-inside:avoid}.three,.four{grid-template-columns:repeat(2,1fr)}.map-grid{grid-template-columns:repeat(5,1fr)}.map-node{min-height:120px}.note-preview{max-height:none}.taxonomy-layout{display:block}.choice-list{display:none}.table-wrap{overflow:visible}.table-wrap table{min-width:0}h1{font-size:34px}h2{font-size:26px}textarea{border:0!important}a{color:inherit}.print-annotation{white-space:pre-wrap;border-left:2px solid #bbb;padding:8px;margin-top:10px}}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><span class="brand-mark">S</span><div>Secretary · 研究白板<small>Notebook / Ontology · 2026.10.16 · 讨论稿 v1.4</small></div></div>
+  <div class="top-actions">
+    <span id="save-indicator" class="save-indicator" role="status">批注保存在当前浏览器</span>
+    <button id="focus-button" class="secondary-action" aria-pressed="false">聚焦</button>
+    <button id="all-notes-button">会议便笺</button>
+    <button id="save-board" class="primary" title="下载包含当前批注的独立 HTML 文件">保存白板</button>
+  </div>
+</header>
+<div class="layout">
+<aside class="rail">
+  <div class="rail-title">MEETING BOARD</div>
+  <nav aria-label="白板主题">
+    <button class="nav-button" data-panel="overview" aria-current="page"><span>01</span>从哪里开始</button>
+    <button class="nav-button" data-panel="ontology"><span>02</span>个人 Ontology</button>
+    <button class="nav-button" data-panel="taxonomy"><span>03</span>Notebook 分类</button>
+    <button class="nav-button" data-panel="coordination"><span>04</span>事项与行动</button>
+    <button class="nav-button" data-panel="scenarios"><span>05</span>放进真实场景</button>
+    <button class="nav-button" data-panel="maintenance"><span>06</span>容量、清退与找回</button>
+    <button class="nav-button" data-panel="compaction"><span>07</span>与压缩联合</button>
+    <button class="nav-button" data-panel="discussion"><span>08</span>明早讨论什么</button>
+    <button class="nav-button" data-panel="sources"><span>09</span>研究依据</button>
+  </nav>
+  <div class="rail-foot"><b>指着卡片继续谈。</b><br>每张卡都有固定编号。点击“留意见”贴一张便笺。<br><br>保存白板可携带批注；浏览器暂存不会改写原文件，也不会自动发回聊天。</div>
+</aside>
+<main class="canvas" id="main">
+
+<section class="panel" id="overview" aria-labelledby="overview-title">
+  <div class="panel-head"><div><div class="eyebrow"><span class="index">01 / 开场</span>让用户忘记 Session 管理</div><h1 id="overview-title">让 AI 连续地<br>参与一个人的生活。</h1><p>从“保留哪些笔记”，走到“Secretary 如何持续理解、统筹与行动”。<br>本轮研究已整理在这块白板；具体分类、字段和执行方案仍等待我们讨论。</p></div><div class="legend"><span class="status confirmed">用户已明确</span><span class="status proposed">研究建议</span><span class="status question">待讨论</span></div></div>
+  <div class="grid two">
+    <article class="card card-blue" data-card="A1" data-title="Ontology 类比的落点">
+      <div class="kicker"><span class="card-id">A1</span><span class="status proposed">研究结论</span></div>
+      <div class="big-thesis">这个类比适合 Secretary 整体。Notebook 承担其中的会话工作记忆与历史索引。</div>
+      <p class="spaced">个人世界里有人、关系、事项、承诺、经历和判断。它们需要可理解的关联，也需要明确“谁能改变什么、结果由谁确认”。仅有一组标签，还无法支撑完整统筹。</p>
+      <p class="source">依据：<a href="https://www.palantir.com/docs/foundry/architecture-center/ontology-system" target="_blank" rel="noopener">Palantir 的数据、逻辑、行动与权限模型</a>。映射到 Secretary 是本轮推论。</p>
+    </article>
+    <article class="card card-note" data-card="A2" data-title="本轮最值得讨论的结构">
+      <div class="kicker"><span class="card-id">A2</span><span class="status question">优先讨论</span></div>
+      <h3>先保证同一内容只承载一次。</h3>
+      <p>当前讨论围绕<strong>事务、情景、研讨</strong>三个内容板块及长期化候选。用户已要求背景／经历合并为情景；每个板块都需要容量预算与退出路径。</p>
+      <p><strong>用户已明确：</strong>同一项信息在情景、Persistent Candidate、已建立的长期记忆之间互斥。移入候选就移出情景，真实写入长期体系并确认后清空候选；NM 已承载的相同内容不再复制回来。</p>
+      <p class="line-note">类型不再先争数量。容量、清退与找回见 L1–L4；初版重复保留内容的建议已撤回，见 C2／C3。</p>
+    </article>
+  </div>
+  <h3 class="section-label">我们已经形成的边界</h3>
+  <div class="grid three">
+    <article class="card card-green" data-card="A3" data-title="登记必须及时"><div class="kicker"><span class="card-id">A3</span><span class="status confirmed">已明确</span></div><h3>可靠提醒 → 当场登记</h3><p>主会话创建、修改和取消；运行时持久化并稳定投递。instant / deferred 描述投递方式，不能用来推迟登记。</p></article>
+    <article class="card card-green" data-card="A4" data-title="Notebook 的记忆范围"><div class="kicker"><span class="card-id">A4</span><span class="status confirmed">已明确</span></div><h3>跨压缩，仍属短期记忆</h3><p>Notebook 属于当前 Conversation。个人情况、人际关系、经历和逐渐形成的理解都可以进入；“短期”不等于信息只能短暂有效。</p></article>
+    <article class="card card-green" data-card="A5" data-title="长期化的门禁"><div class="kicker"><span class="card-id">A5</span><span class="status confirmed">已明确</span></div><h3>长期化需要正式提案</h3><p>Memory → NM；Skill → 技能文档；Rule → 对应规则。用户批准且真实写入确认后结算候选。Memory 无须先证明可复用性。</p></article>
+  </div>
+  <article class="card spaced" data-card="A6" data-title="本轮完成到哪里">
+    <div class="kicker"><span class="card-id">A6</span><span class="status evidence">研究范围</span></div>
+    <div class="mini-grid"><div><h3>这一轮做到了什么</h3><p>对照 Palantir、分类理论、个人信息管理与任务管理，形成一套可讨论的概念模型、分类候选、维护契约和压缩时序，并用场景推演暴露缺口。</p></div><div><h3>明早从这里继续</h3><p>先讨论 <strong>A2：3 个内容分区＋候选视图</strong>，再讨论 <strong>T2：事项与行动分开</strong>。页面中的互动是说明性演示；产品行为、性能和费用尚未实测。</p></div></div>
+    <p class="line-note">07 保留已确认方向；这份 HTML 是研究草稿本。白板上的倾向、批注和建议都不会自动变成正式规格。</p>
+  </article>
+</section>
+
+<section class="panel" id="ontology" aria-labelledby="ontology-title" hidden>
+  <div class="panel-head"><div><div class="eyebrow"><span class="index">02 / 概念地图</span>企业 → 个人</div><h2 id="ontology-title">从“资料分类”走向“共同理解世界”。</h2><p>Ontology 的帮助在于明确对象、属性、关系与行为。Palantir 进一步把这套语义接到行动和权限上。我们借鉴这套建模方法，保持已有系统的职责边界。</p></div></div>
+  <div class="system-map">
+    <div class="map-top"><span>用户持续交流 · Secretary 理解与统筹</span></div>
+    <div class="map-grid" aria-label="Secretary 职责地图">
+      <button class="map-node" data-owner="history" aria-pressed="false"><b>History</b><small>过去实际说过什么<br>合法路径上的原文证据</small></button>
+      <button class="map-node schedule" data-owner="schedule" aria-pressed="false"><b>Scheduler</b><small>何时可靠提起<br>登记、投递与执行状态</small></button>
+      <button class="map-node notebook" data-owner="notebook" aria-pressed="true"><b>Notebook</b><small>这段 Conversation 的<br>工作状态与历史细节索引</small></button>
+      <button class="map-node memory" data-owner="memory" aria-pressed="false"><b>NM / Skill / Rule</b><small>经过正式长期化<br>由各自目标体系维护</small></button>
+      <button class="map-node" data-owner="main" aria-pressed="false"><b>Main / Tools</b><small>理解意图、采取行动<br>依授权改变真实状态</small></button>
+    </div>
+    <div class="map-thread" aria-hidden="true"><span>追溯</span><span>正式登记</span><span>整理与召回</span><span>提议与核准</span><span>行动与反馈</span></div>
+    <div id="owner-detail" class="map-detail" aria-live="polite"><h4>Notebook：本 Conversation 的派生工作记忆</h4><p>Noting 写入；Main 读取。保存当前理解、重要变化及其来源。对提醒和外部任务可保存引用与有时间边界的观察，不争夺正式状态的所有权。</p></div>
+  </div>
+  <div class="grid two spaced">
+    <article class="card" data-card="O1" data-title="三个不同层次">
+      <div class="kicker"><span class="card-id">O1</span><span class="status proposed">概念拆解</span></div><h3>分类 → 关系 → 行动</h3>
+      <div class="criterion"><b>分类：它是什么？</b><p>这是一个行动、一段经历、一个未决问题，还是一项决定？严格类型减少维护歧义。</p></div>
+      <div class="criterion"><b>关系：它与什么有关？</b><p>这项行动服务哪个目标，等谁回复；这个决定依据什么，后来被什么修正？</p></div>
+      <div class="criterion"><b>行动：谁有权改变它？</b><p>改提醒由正式 Scheduler 工具完成。把“预计会完成”写进 Notebook，不产生真实完成结果。</p></div>
+      <p class="source"><a href="https://protege.stanford.edu/publications/ontology_development/ontology101-noy-mcguinness.html" target="_blank" rel="noopener">Stanford Ontology 101</a> 区分类、属性和实例；<a href="https://www.palantir.com/docs/foundry/action-types/overview" target="_blank" rel="noopener">Palantir Action types</a> 将业务操作与状态变更相连。</p>
+    </article>
+    <article class="card" data-card="O2" data-title="个人场景需要保留的复杂性">
+      <div class="kicker"><span class="card-id">O2</span><span class="status proposed">个人场景的修正</span></div><h3>人的生活，常常没有完整状态表。</h3>
+      <ul><li><strong>主观性：</strong>“我最近觉得和朋友疏远了”是用户的体验，不能改写成对方客观不在乎。</li><li><strong>变化性：</strong>一段关系和一个偏好会变。新理解应带上时间与来源，不能抹去旧经历。</li><li><strong>不完备：</strong>没有回复证据，只能说“尚未看到回复”；不能自动判定“被拒绝”。</li><li><strong>低负担：</strong>用户自然聊天，系统承担归类与链接。信息不必先挂靠某项任务才值得记住。</li></ul>
+      <p class="source"><a href="https://hci.stanford.edu/publications/2008/infoscraps/TOIS-final-with-refs.pdf" target="_blank" rel="noopener">Information Scraps</a> 展示个人信息的多样与录入负担；以上具体边界是结合用户愿景的设计推论。</p>
+    </article>
+  </div>
+  <article class="card spaced" data-card="O3" data-title="借鉴与克制">
+    <div class="kicker"><span class="card-id">O3</span><span class="status proposed">采用到什么程度</span></div>
+    <div class="mini-grid"><div><h3>本轮可借鉴</h3><ul><li>同一事项跨 compaction 保持稳定身份。</li><li>有意义的关系：服务于、等待、依据、取代。</li><li>正式状态明确 owner，派生索引明确证据。</li><li>用真实提问检验模型是否可用。</li></ul></div><div><h3>当前无需引入</h3><ul><li>一套完整的个人世界图数据库。</li><li>把所有聊天句子转换成实体和关系。</li><li>复制 NM 的个人档案与跨会话管理。</li><li>Palantir 平台、OWL / RDF 或新执行引擎。</li></ul></div></div>
+    <p class="source">Palantir <a href="https://www.palantir.com/docs/foundry/ontology/ontology-best-practices" target="_blank" rel="noopener">设计建议</a>支持现实语义与聚焦对象；<a href="https://www.palantir.com/docs/foundry/ontology/ontology-anti-patterns" target="_blank" rel="noopener">反模式</a>提醒重复概念、来源孤岛与过度通用对象的成本。借鉴其方法不等于其效果已经在 Secretary 上得到验证。</p>
+  </article>
+</section>
+
+<section class="panel" id="taxonomy" aria-labelledby="taxonomy-title" hidden>
+  <div class="panel-head"><div><div class="eyebrow"><span class="index">03 / 分类候选</span>先限制语义，再表达关系</div><h2 id="taxonomy-title">三个内容分区，一处长期化工作区。</h2><p>保留“分区＋类型”的阅读结构。将状态、负责人、生活领域、长期化阶段拆为不同维度；让每一种内容有清楚的收录与维护标准。</p></div><span class="status proposed">建议 B · 尚未冻结</span></div>
+  <div class="table-wrap">
+    <table><caption>三种方案的取舍</caption><thead><tr><th>方案</th><th>优势</th><th>代价</th><th>本轮判断</th></tr></thead><tbody>
+    <tr><td>A · 延续角色分区</td><td>接近现有 user / assistant / consultation / persistence</td><td>同一事项因负责人变化跨区；内容与候选阶段混合</td><td>变动较小，语义问题仍在</td></tr>
+    <tr class="recommended"><td>B · 内容类型＋关系</td><td>分区好读，类型可约束；统筹可沿关系查找</td><td>需要明确类型边界与少量关系；显示视图不完全等于存储分区</td><td><strong>优先讨论</strong></td></tr>
+    <tr><td>C · 全部按实体组织</td><td>围绕人物、项目、地点等形成广泛关联</td><td>身份消歧、跨会话治理与维护成本扩大，容易复制 NM</td><td>用作整体思考方法，暂不做完整系统</td></tr>
+    </tbody></table>
+  </div>
+  <div class="taxonomy-layout spaced">
+    <div class="choice-list" aria-label="选择 Notebook 类型">
+      <div class="lane-name">事务 · 需要持续统筹什么</div>
+      <button data-type="matter" class="active"><b>事项 · matter</b><small>目标、持续责任与总体进展</small></button>
+      <button data-type="action"><b>行动 · action</b><small>一个具体要完成的步骤</small></button>
+      <div class="lane-name">情景 · 逐渐压缩并退出</div>
+      <button data-type="situation"><b>情景 · situation</b><small>个人处境、关系、事件与体验</small></button>
+      <div class="lane-name">用户研讨 · 用户的问题、认识与决定</div>
+      <button data-type="question"><b>问题 · question</b><small>用户提出或认可的未决问题</small></button>
+      <button data-type="insight"><b>认识 · insight</b><small>用户明确表达或认可的认识</small></button>
+      <button data-type="decision"><b>决定 · decision</b><small>用户已作出的选择及约束</small></button>
+    </div>
+    <div class="stack">
+      <article class="card type-details" data-card="C1" data-title="内容类型候选">
+        <div class="kicker"><span class="card-id">C1</span><span class="status proposed">点左侧切换示例</span></div>
+        <div id="type-detail" aria-live="polite"></div>
+      </article>
+      <article class="card card-note" data-card="C2" data-title="同一内容只承载一次">
+        <div class="kicker"><span class="card-id">C2</span><span class="status confirmed">用户已明确 · 批注 1</span></div><h3>先限定情景边界，再讨论类型数量。</h3>
+        <p>情景容易积压，也容易与 NM 召回及 Persistent Candidate 重复。<strong>同一个东西，要么在情景里，要么在候选里，要么已在长期记忆。</strong></p>
+        <div class="pill-row"><span class="pill">情景记录</span><span aria-hidden="true">→</span><span class="pill">待审候选</span><span aria-hidden="true">→</span><span class="pill current">长期体系</span></div>
+        <p>移入候选时撤下相同情景内容；批准、真实写入并确认后清空候选。原始对话和 provenance 保留为证据。已知由 NM 承载的同一内容，不再因召回重新登记一份。</p>
+        <p class="line-note">用户进一步明确：背景与经历合并为“情景”，所有 Notebook 内容有容量限制。当前重点是怎样退出和找回，见第 06 块 L1–L4。</p>
+      </article>
+    </div>
+  </div>
+  <article class="proposal-lane" data-card="C3" data-title="长期化工作区">
+    <div><div class="kicker"><span class="card-id">C3</span> <span class="status confirmed">承载互斥已明确</span></div><h3>移入候选，写入后退出</h3><div class="destinations"><span>Memory → NM</span><span>Skill → 技能</span><span>Rule → 规则</span></div></div>
+    <div><p>候选承载提案所需的内容、理由、目标、原文来源及<strong>原始内容类型</strong>。同一内容移入候选后，原区不再留一份。核准但尚未写入、写入失败或结果不明时，候选仍未结算。</p><p class="small muted">用户已明确：转入长期 Memory 时至少一个标签继承 Notebook 原始内容类型，不能只标 memory_candidate。真实写入确认后清空候选，后续从长期体系召回。</p></div>
+  </article>
+  <div class="grid two spaced">
+    <article class="card" data-card="C4" data-title="从内容分类到条目字段"><div class="kicker"><span class="card-id">C4</span><span class="status proposed">结构建议 · 字段尚未定稿</span></div><h3>类型负责归类，其他属性按需描述。</h3><p>这张卡连接“Notebook 分哪些内容类型”和“每种条目怎样记录”两步讨论。原版把分类与字段混列，容易误以为它们都是同一级标签，或每条都要填满。</p><ul><li><strong>内容类型：</strong>这条是什么，例如行动、情景、认识、决定；用于归类和确定维护方式。</li><li><strong>领域／主题：</strong>这条涉及什么，例如家庭、工作；可以与内容类型交叉，具体取值与是否必填待议。</li><li><strong>类型专属字段：</strong>例如行动的负责人、执行状态；其他类型分别设计，不统一套行动字段。</li><li><strong>条目关系：</strong>例如行动属于某事项、决定取代旧决定；需要关联时引用已有条目。</li><li><strong>候选流程字段：</strong>长期化目标、审议与写入结果，放在候选记录中；候选仍携带原始内容类型。</li></ul><div class="example"><span class="example-label">一条行动的示意</span><p>简述：确认家庭探访日期。类型＝行动；领域＝家庭；负责者＝用户；状态＝等待家人回复；所属事项＝家庭探访；provenance＝对应对话消息。</p></div><p class="line-note">已有基本单元是简述＋provenance。这里补充的是结构建议；尚未逐类确定字段、必填项或存储 Schema，也不要求把所有属性都做成标签。</p><p class="source">分类方法参考：<a href="https://groups.niso.org/higherlogic/ws/public/download/12591/z39-19-2005r2010.pdf" target="_blank" rel="noopener">NISO Z39.19 §5.3.4</a>。本卡的属性划分是项目设计建议。</p></article>
+    <article class="card" data-card="C5" data-title="旧类型如何重新定位"><div class="kicker"><span class="card-id">C5</span><span class="status proposed">语义映射，非迁移方案</span></div><h3>保留已确认的内容准入边界。</h3><ul><li><strong>user_commitment / secretary_task：</strong>行动＋责任人＋承诺证据。</li><li><strong>user_reminder：</strong>提醒交 Scheduler；必要情景留在对应内容中。</li><li><strong>watchpoint：</strong>定时观察由 Main 登记；用户的问题与关注缘由分别按语义保存。</li><li><strong>open_question / formulating_insight / decision：</strong>承载用户的问题、认识与决定；模型自己的猜测和未答澄清问题不进入。</li><li><strong>constraint：</strong>用户决定的约束归决定，客观条件归情景。</li></ul><p class="line-note">旧 insight 的用户来源边界已有确认；不能因可带 uncertainty 字段，就扩大为模型未确认的个人解释。</p></article>
+  </div>
+  <article class="card card-note spaced" data-card="C6" data-title="互斥之后仍需解决的维护问题">
+    <div class="kicker"><span class="card-id">C6</span><span class="status question">下一步设计</span></div><h3>互斥还需要退出规则与可见依据。</h3>
+    <ul><li><strong>防积压：</strong>建议情景只保留当前仍有理解价值、且未由候选或长期体系承载的内容；失去用途的派生条目应退出，不能只因“曾经发生”无限积累。</li><li><strong>候选被否决／撤回：</strong>建议有当前用途则移回情景，否则清理；具体规则待讨论，不能同时留在两区。</li><li><strong>NM 已有内容：</strong>需要让 Noting 能识别可见的召回来源与正式写入回执；不能假定它能查询整个 NM，或已经实现语义去重。</li><li><strong>新变化：</strong>同一个人出现新的经历，不自动等于重复记忆；建议只整理新增／修正部分，避免把整段旧记忆抄回候选。</li></ul>
+    <p class="line-note">例如，“家人正在搬家”若已入 NM，Notebook 不再维护其副本；“探访日期仍待确认”是一项不同的工作状态，可以由事项／行动继续承载。</p>
+  </article>
+  <div class="grid two spaced">
+    <article class="card card-green" data-card="C7" data-title="用户的认识与模型缺口分开">
+      <div class="kicker"><span class="card-id">C7</span><span class="status confirmed">用户已明确 · 认识示例批注</span></div><h3>问题、认识、决定，属于用户的研讨。</h3>
+      <p>认识由用户自己明确表达，或由用户明确认可双方／模型提出的内容。用户也可以说“我怀疑……”，应保留这种确定性；模型单独猜测不因此取得用户来源。</p>
+      <p>后续相关讨论中，Main 应能找回用户已有认识、原来的限定与来源，并适时提起。</p>
+      <p class="source">既有口径见 <a href="noting-message-and-reminder-contract-proposal.md">文案提案 §4／§5.2</a>；提示词实现尚待审。本白板初版将模型猜测放入“理解”的示例已撤回。</p>
+    </article>
+    <article class="card card-note" data-card="C8" data-title="模型理解缺口的承载与关闭">
+      <div class="kicker"><span class="card-id">C8</span><span class="status question">单独承载，位置待议</span></div><h3>只记自己缺什么，不替用户解释动机。</h3>
+      <p>例如：“推迟出发的原因尚未在可见对话中说明；若影响后续安排，先查原文或澄清。”这是一项模型理解缺口，不能写成“用户其实在等家人”。</p>
+      <p>建议 Main 优先在当前工作中处理；跨压缩仍相关的少量缺口，可放 Compact Message 的独立待澄清区域。补足、被证据排除，或当前工作已不再依赖时关闭。</p>
+      <p class="line-note">缺口不进入用户研讨，也不直接变成长期化候选。具体位置、容量及关闭时限待议；Noting 不借此自由生成假说。</p>
+    </article>
+  </div>
+  <article class="card card-blue spaced" data-card="C9" data-title="长期记忆继承 Notebook 类型">
+    <div class="kicker"><span class="card-id">C9</span><span class="status confirmed">用户已明确 · 标签继承</span></div><h3>从 Notebook 进入长期 Memory，至少继承一个来源类型标签。</h3>
+    <div class="pill-row"><span class="pill">认识条目</span><span aria-hidden="true">→</span><span class="pill">Memory 候选 · 来源类型：认识</span><span aria-hidden="true">→</span><span class="pill current">NM Memory · 标签含“认识”</span></div>
+    <p>候选携带原始内容类型，Main 在正式提案中展示继承标签，实际写入时一并提交。情景、决定及事务等类型按同样方式对应；主题／人物标签可以补充。</p>
+    <p class="line-note">这里的中文标签表示语义对应；具体字符串与受控映射尚未冻结。候选身份不替代内容类型，类型随内容移动也不需要在原区留正文。</p>
+  </article>
+</section>
+
+<section class="panel" id="coordination" aria-labelledby="coordination-title" hidden>
+  <div class="panel-head"><div><div class="eyebrow"><span class="index">04 / 统筹核心</span>从“有个待办”到“理解整个局面”</div><h2 id="coordination-title">事项承载结果，行动承载下一步。</h2><p>Secretary 最重要的能力是持续知道：希望达成什么，谁在做什么，卡在哪里，还有什么可推进。状态要落到合适的粒度。</p></div></div>
+  <div class="grid two">
+    <article class="card card-blue" data-card="T1" data-title="一项事情的最小统筹视图">
+      <div class="kicker"><span class="card-id">T1</span><span class="status proposed">虚构场景 · 状态演示</span></div>
+      <h3>安排一次家庭探访</h3><p>结果：确定双方方便的日期与基本行程。约束：先确认家人时间，再订票。</p>
+      <div class="task-line"><span class="task-icon">A</span><div><b>确认家人可接待的日期</b><small>用户已询问；等待家人回复</small></div><select id="task-a" aria-label="确认日期的状态"><option value="waiting">等待回复</option><option value="done">已确认日期</option></select></div>
+      <div class="task-line"><span class="task-icon">B</span><div><b>整理两套候选行程</b><small>Secretary 可并行研究，尚未承诺购买</small></div><select id="task-b" aria-label="候选行程的状态"><option value="ready">可推进</option><option value="active">推进中</option><option value="done">已完成</option></select></div>
+      <div class="task-line"><span class="task-icon">C</span><div><b>选定并预订</b><small id="task-c-note">依赖 A、B；实际购买仍遵循授权</small></div><span class="pill" id="task-c-state">尚未具备条件</span></div>
+      <p id="task-summary" class="task-summary" aria-live="polite">事项仍在推进：A 等待，B 可做。不能把整个事项标成“等待”。</p>
+      <p class="small muted spaced">这里切换的是说明性样例，未连接真实任务、提醒或工具。</p>
+    </article>
+    <article class="card" data-card="T2" data-title="事项与行动的区分">
+      <div class="kicker"><span class="card-id">T2</span><span class="status proposed">建议保留两个类型</span></div><h3>两个类型，能避免几种常见失真。</h3>
+      <ul><li><strong>事项：</strong>目标、边界、总体判断、相关行动、关键变化。持续责任也可作为事项，但不强行编造完成日期。</li><li><strong>行动：</strong>具体步骤、负责者、当前状态、依赖、完成依据。没有上级事项的独立行动也合法。</li><li>一个子行动完成，不等于整体目标达成；一个子行动等待，不等于全局停摆。</li><li>尚未承诺执行的想法，保留为问题／理解，或在事项中明确“待选择”，不能悄悄进入待办。</li></ul>
+      <p class="source"><a href="https://gettingthingsdone.com/2010/10/some-key-gtd-definitions/" target="_blank" rel="noopener">GTD</a> 区分结果、下一步、等待与未承诺事项。持续责任等扩展是针对 Secretary 的建议。</p>
+    </article>
+  </div>
+  <article class="card spaced" data-card="T3" data-title="行动的六种候选状态">
+    <div class="kicker"><span class="card-id">T3</span><span class="status proposed">有限状态，不扩成标签组合</span></div><h3>行动建议先用六种状态。</h3>
+    <div class="pill-row"><span class="pill">待推进</span><span class="pill">推进中</span><span class="pill">等待条件</span><span class="pill">主动暂缓</span><span class="pill current">完成</span><span class="pill">终止</span></div>
+    <div class="mini-grid"><div><p><strong>等待条件：</strong>记录等谁／什么、条件为何尚未满足。<br><strong>主动暂缓：</strong>明确选择暂不推进，保留恢复条件。<br><strong>完成：</strong>有对应行动完成条件的证据。</p></div><div><p><strong>未知：</strong>不是业务流程的第七状态；信息不足时保留“尚未核实”及最后证据时间。<br><strong>已委派：</strong>是关系与事件；不等于对方接受，也不等于已完成。</p></div></div>
+    <p class="line-note">Notebook 展示的是有来源的最新已知状态。若外部工具有正式状态，操作前应按需核对；不能用异步索引替代实时工作台。也不新增“所有行动必须用户验收”的普遍门禁。</p>
+  </article>
+  <div class="grid two spaced">
+    <article class="card" data-card="T4" data-title="哪些字段值得结构化"><div class="kicker"><span class="card-id">T4</span><span class="status proposed">最小结构</span></div><h3>只结构化需要稳定查询的东西。</h3><p><strong>共同基础：</strong>身份、类型、简述、provenance、有关对象／条目。</p><p><strong>行动补充：</strong>负责者、最后已知状态及证据时间；有依赖再带等待对象／条件；有正式任务或排期再带引用。</p><p><strong>保留自然语言：</strong>复杂理由、人际背景、完成标准、风险与条件先写简述。不要把每条笔记变成一张几十字段的表。</p></article>
+    <article class="card card-note" data-card="T5" data-title="承诺为什么要有证据"><div class="kicker"><span class="card-id">T5</span><span class="status question">需要谨慎建模</span></div><h3>“我会做”与“我想做”有区别。</h3><p>统筹需要识别提出请求、作出承诺、报告完成等不同事件。承诺可以先作为行动的关系与证据保存，暂不新增第八种条目。</p><p>如果以后反复出现“一次承诺覆盖多个行动、不同接受条件”的场景，再讨论独立承诺类型。</p><p class="source"><a href="https://www.lri.fr/~mbl/ENS/CSCW/2014/papers/Winograd-CSCW86.pdf" target="_blank" rel="noopener">Winograd 的语言／行动视角</a>支持关注协作承诺。是否拆成独立对象，是我们仍需决定的工程粒度。</p></article>
+  </div>
+</section>
+
+<section class="panel" id="scenarios" aria-labelledby="scenarios-title" hidden>
+  <div class="panel-head"><div><div class="eyebrow"><span class="index">05 / 场景推演</span>设计问题，不是实测结果</div><h2 id="scenarios-title">跨过两次压缩，仍能接着谈。</h2><p>下面全部是虚构例子。切换场景，观察哪些信息进入 Notebook、哪些职责始终留在其他系统。</p></div></div>
+  <div class="scenario-tabs" aria-label="场景选择"><button data-scenario="family" class="active">家庭安排与关系</button><button data-scenario="delegate">多任务委派</button><button data-scenario="decision">决定被后来修正</button><button data-scenario="watch">到点再观察</button></div>
+  <article class="card card-blue" data-card="S1" data-title="跨压缩场景推演"><div class="kicker"><span class="card-id">S1</span><span class="status proposed">说明性场景</span></div><h3 id="scenario-title"></h3><p id="scenario-premise" class="lede"></p><div id="scenario-timeline" class="timeline"></div><div id="scenario-result" class="line-note"></div></article>
+  <div class="grid two spaced">
+    <article class="card" data-card="S2" data-title="用哪些提问检验"><div class="kicker"><span class="card-id">S2</span><span class="status proposed">能力问题集</span></div><h3>一套分类应当回答这些问题。</h3>
+      <div class="check-question spaced"><span class="q">Q1</span><p>现在同时推进哪几件事？哪一件需要我决定，哪一件在等别人？</p></div>
+      <div class="check-question"><span class="q">Q2</span><p>一个依赖延迟，会影响哪些行动？还有什么可以继续？</p></div>
+      <div class="check-question"><span class="q">Q3</span><p>之前为什么选 A？用户后来撤回的是哪一部分？</p></div>
+      <div class="check-question"><span class="q">Q4</span><p>关于这个人，我亲口说过什么？哪些只是模型的解释？</p></div>
+      <div class="check-question"><span class="q">Q5</span><p>这项提醒是否真的登记？这个“记住”是否真的写入 NM？</p></div>
+      <div class="check-question"><span class="q">Q6</span><p>已长期化的完成记录能否从长期体系召回，并沿来源核对当时的关键条件？</p></div>
+      <p class="source"><a href="https://protege.stanford.edu/publications/ontology_development/ontology101-noy-mcguinness.html" target="_blank" rel="noopener">Competency questions</a> 与 <a href="https://www.palantir.com/docs/foundry/ontology/ontology-design-validation" target="_blank" rel="noopener">真实问题驱动的检验</a>支持这种方法；这些具体提问由本项目构造。</p>
+    </article>
+    <article class="card" data-card="S3" data-title="如何判断索引真的有帮助"><div class="kicker"><span class="card-id">S3</span><span class="status question">后续评价，尚未执行</span></div><h3>对照组也必须能读原文。</h3><p>比较：原生 compact＋相同 History 工具，与 compact＋Notebook 索引＋相同 History 工具。使用相同历史、问题与模型条件。</p><ul><li>跨多次压缩后的答案与证据是否正确。</li><li>能否找到旧条件、否定和取代关系。</li><li>误把猜测当事实、旧状态当新状态的次数。</li><li>需要多少检索、多少 token、多少等待。</li><li>Noting 的维护费用与索引携带费用。</li></ul><p class="line-note">先判断“帮助了哪些问题”，再判断费用是否值得；不把“保存了很多条目”当成成功。</p></article>
+  </div>
+</section>
+
+<section class="panel" id="maintenance" aria-labelledby="maintenance-title" hidden>
+  <div class="panel-head"><div><div class="eyebrow"><span class="index">06 / 有界生命周期</span>容量、清退、长期召回</div><h2 id="maintenance-title">当前 Notebook 有界，退出后由长期体系负责。</h2><p>用户已明确：全部板块有容量上限，情景逐渐压缩后关闭或持久化；完成记录进入长期。退出后不再提供短期记忆找回路径。</p></div></div>
+  <article class="card card-blue" data-card="L1" data-title="容量上限如何设">
+    <div class="kicker"><span class="card-id">L1</span><span class="status proposed">具体起点 · 参数未确认</span></div><h3>当前总量 6K token；80% 启动整理，目标 60%。</h3>
+    <p>按真实序列化后的 token 计量，简述、状态、关系、provenance、候选和所有当前索引一起计入。预算靠计量与提交校验执行。</p>
+    <div class="table-wrap spaced"><table><thead><tr><th>板块</th><th>建议硬上限</th><th>启动整理</th><th>整理目标</th></tr></thead><tbody><tr><td>事务</td><td>2,500</td><td>2,000</td><td>1,500</td></tr><tr><td>情景</td><td>1,000</td><td>800</td><td>600</td></tr><tr><td>研讨</td><td>1,500</td><td>1,200</td><td>900</td></tr><tr><td>长期化候选</td><td>1,000</td><td>800</td><td>600</td></tr><tr class="recommended"><td>总量</td><td>6,000</td><td>4,800</td><td>3,600</td></tr></tbody></table></div>
+    <p class="line-note">数值用于开始讨论，不是已证明的最优值。每次联合 Noting／压缩时检查候选快照的预算，目标 60% 留出增长空间；压缩必要时回原文核对，保留恢复路径。无法安全满足预算时按 L4 处理。</p>
+  </article>
+  <article class="card spaced" data-card="L2" data-title="三板块如何清退">
+    <div class="kicker"><span class="card-id">L2</span><span class="status proposed">退出机制候选</span></div><h3>事务看完成，情景看当前用途，研讨看结论是否收敛。</h3>
+    <div class="table-wrap spaced"><table><thead><tr><th>板块</th><th>压缩／结算时机</th><th>退出路径</th></tr></thead><tbody>
+    <tr><td>事务</td><td>完成／终止时，将过程状态收敛成“完成了什么、结果、关键条件、来源”</td><td>完成记录 → 长期化候选 → 批准并写入确认 → 退出。建议按事项／阶段合并细小行动</td></tr>
+    <tr><td>情景</td><td>依据原文合并重复与变化，逐次缩为必要简述＋来源；检查当前用途</td><td>无当前用途则关闭；值得长期理解则移入候选。关闭表示退出当前工作集，历史事实仍保留</td></tr>
+    <tr><td>用户研讨</td><td>问题已回答／撤回；认识由用户后续明确修正或放弃；决定被取代或相关事务结束</td><td>将用户结论与必要来由收敛后，持久化提案或关闭；模型理解缺口不混入这一板块</td></tr>
+    </tbody></table></div>
+    <p class="line-note">事务完成仍需沿已有批准流程写长期记忆。活跃责任与待审候选不因容量紧张被静默删除；Memory 也不以“是否普适可复用”为准入标准。</p>
+  </article>
+  <div class="grid two spaced">
+    <article class="card card-green" data-card="L3" data-title="退出后只由长期体系召回"><div class="kicker"><span class="card-id">L3</span><span class="status confirmed">用户已明确 · L3 批注</span></div><h3>退出后，只有长期体系承担记忆召回。</h3><ul><li><strong>持久化：</strong>候选经批准、真实写入确认后退出短期体系，后续从 NM／相应目标体系召回。</li><li><strong>关闭：</strong>未持久化而选择关闭的内容，不再作为可召回记忆保留。</li><li><strong>来源取证：</strong>长期记忆召回后，可沿 provenance 核对原文；这是长期召回链路的取证步骤。</li></ul><p class="line-note">已撤回旧 Snapshot 搜索及关闭内容的短期恢复方案。候选仍属短期；退出前要明确选择关闭还是持久化。</p></article>
+    <article class="card card-note" data-card="L4" data-title="容量满而无法安全清退"><div class="kicker"><span class="card-id">L4</span><span class="status question">需要明确的溢出行为</span></div><h3>有限容量，必须允许显式处理积压。</h3><p>先去重、缩写，再结算完成项和失效内容；候选相关的提案可以合并。候选仍积压时，让 Main 发起批量审议，不自动批准，也不为腾位置丢掉待审内容。</p><p>如果活跃责任和待审内容仍无法安全放入预算，建议返回“容量不足”，保留上一有效 Snapshot 与覆盖边界，由 Main 处理优先级／审议；正常对话继续，新增原文仍保存。</p><p class="line-note">80%／60% 是整理目标。有限容量、不断新增、全部待审项无限保留不能无条件同时成立；接纳与压缩降级策略需要正式确认。</p></article>
+  </div>
+  <h3 class="section-label">Noting 在每次整理时完成这些工作</h3>
+  <div class="flow"><div class="flow-step"><div class="step">1 · 对齐范围</div><h4>读取有效快照与新增历史</h4><p>沿合法 Conversation 路径，明确整理到哪个消息边界。</p></div><div class="flow-step"><div class="step">2 · 识别变化</div><h4>找新增、修正、解决与取代</h4><p>优先当前事项和容易被摘要丢掉的限定；按需回读证据。</p></div><div class="flow-step"><div class="step">3 · 整理索引</div><h4>归类、链接、合并与精简</h4><p>同一事项保持身份；避免将反复提及的同一事实不断新增。</p></div><div class="flow-step"><div class="step">4 · 发布结果</div><h4>校验边界与来源后交接</h4><p>完成有效快照，再由压缩流程携带对应视图进入新区间。</p></div></div>
+  <div class="grid two spaced">
+    <article class="card" data-card="N1" data-title="收录的判断标准"><div class="kicker"><span class="card-id">N1</span><span class="status proposed">建议维护指导</span></div><h3>这条信息未来会帮到什么？</h3><ul><li><strong>恢复统筹：</strong>仍需推进的目标、行动、依赖和未知。</li><li><strong>恢复依据：</strong>选择的理由、适用条件、用户纠正，以及后来变化。</li><li><strong>恢复理解：</strong>影响当前交流的个人处境、关系和经历；可独立于任务。</li><li><strong>支持提案：</strong>值得进入 Memory、Skill 或 Rule 的具体材料。</li></ul><p class="line-note">个人情景内容先遵循 C2 的互斥边界：候选或长期体系已经承载的相同内容，不再收录副本。没有实质变化时允许不改，不为填满类别制造内容；重要而难分类的材料不因缺少“任务”而丢弃。</p></article>
+    <article class="card" data-card="N2" data-title="简述必须包含什么"><div class="kicker"><span class="card-id">N2</span><span class="status proposed">共同基元</span></div><h3>简述＋provenance，保留必要限定。</h3><p>简述应让读者知道对象、当前有效表述、重要条件与变化。provenance 可沿用时间范围或 canonical message identities，读取时回到原文及邻近上下文。</p><div class="example"><small>示例 · 虚构</small>用户原计划本月探访家人，后因对方搬家暂缓；日期未定。暂停缘由见 E12，后续行动 A7 等待可接待日期。这里不自动推断双方关系恶化。</div><p class="source"><a href="https://www.w3.org/TR/prov-overview/" target="_blank" rel="noopener">W3C PROV</a>提供来源与派生关系的通用背景；本轮不改现有 provenance 机制，也不要求采用其序列化。</p></article>
+    <article class="card" data-card="N3" data-title="维护不等于重写过去"><div class="kicker"><span class="card-id">N3</span><span class="status proposed">更新规则</span></div><h3>维护用户已表达的内容与实际工作状态。</h3><ul><li>当前摘要随证据更新，保留仍需使用的关键来源。</li><li>用户认识须有明确表达或认可来源；用户不确定的语气如实保留。</li><li>模型理解缺口独立处理，不写成用户的认识或问题。</li><li>新原文和正式工具状态优先，旧 Notebook 不能覆盖。</li><li>退出后遵循 L3，不从旧快照恢复记忆。</li></ul></article>
+    <article class="card card-note" data-card="N4" data-title="关闭或交给长期体系"><div class="kicker"><span class="card-id">N4</span><span class="status confirmed">保持退出边界</span></div><h3>清退要作出选择：关闭，或持久化。</h3><p>需要未来召回的内容，先完成长期化流程，再退出短期。选择关闭且未持久化的内容，结束其记忆保留职责。</p><p>旧 Snapshot、归档条目和原始历史不另行构成退出后的短期记忆恢复通道。</p><p class="line-note">原始证据的保存不等于继续维护可召回记忆。本轮只修正文档方向，未删除历史，也未修改生产 History 工具。</p></article>
+  </div>
+  <article class="card spaced" data-card="N5" data-title="Notebook 与 Compaction 的分工"><div class="kicker"><span class="card-id">N5</span><span class="status proposed">各自保留什么</span></div><div class="mini-grid"><div><h3>Compact Message</h3><p>让模型接着当前工作：近期焦点、当前指令、必要操作状态、紧接着要处理什么。</p></div><div><h3>Notebook</h3><p>为多个事项、个人情景与重要讨论提供可发现索引：它们是什么、现在怎样、细节和理由去哪里找。</p></div></div><p class="line-note">允许少量有用重叠；维护时避免两边各写一份完整会话总结。Notebook 的价值需要以“跨压缩后能否恢复细节”检验。</p><p class="source"><a href="https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents" target="_blank" rel="noopener">Anthropic 上下文工程</a>讨论压缩、结构化笔记与按需读取的互补关系；具体分工由 Secretary 的任务决定。</p></article>
+</section>
+
+<section class="panel" id="compaction" aria-labelledby="compaction-title" hidden>
+  <div class="panel-head"><div><div class="eyebrow"><span class="index">07 / 联合机制</span>两个开关 · 三条触发路径</div><h2 id="compaction-title">Noting ＋ Compaction，作为一个联合流程。</h2><p>用户已明确：普通路径同时触发、并行执行，现有快照获取机制不变。Force 逻辑上同样联合，只有时序差异；Idle 是专门为节约费用增加的自动联合入口。</p></div><span class="status confirmed">触发方向已收敛</span></div>
+  <div class="grid two">
+    <article class="card card-green" data-card="P1" data-title="总开关与 Idle 子开关"><div class="kicker"><span class="card-id">P1</span><span class="status confirmed">用户已明确</span></div><h3>总开关启用联合机制，Idle 只增加自动入口。</h3><ul><li><strong>Noting 总开关关闭：</strong>按原生 compaction 逻辑运行。</li><li><strong>Noting 总开关开启：</strong>普通 compaction 同时触发 Noting，并行执行。</li><li><strong>Idle 子开关：</strong>仅在 Noting 开启后可用；决定是否在空闲且上下文足够长时自动联合触发。</li></ul><p class="line-note">关闭 Idle 子开关后，手动压缩与 Force 的联合机制仍有效。职责目标不同，不意味着 Noting 和 compaction 可以独立触发。</p></article>
+    <article class="card card-blue" data-card="P2" data-title="并行与现有快照机制"><div class="kicker"><span class="card-id">P2</span><span class="status confirmed">用户已明确</span></div><h3>同时触发，并行执行；快照获取机制不变。</h3><p>沿用现有父上下文冻结、Anchor 和 Notebook Snapshot 获取机制。Noting 可以多轮调用工具；compaction 保留原生执行链路。</p><p>白板初版优先采用“Noting 完成后再启动 compaction”的建议已撤回。</p><p class="line-note">具体完成先后如何衔接既有读取／发布点，在实施接线时核对；本页不另立等待门禁或配对发布协议。</p></article>
+  </div>
+  <div class="table-wrap spaced"><table><caption>三条路径 · 都属于联合机制</caption><thead><tr><th>路径</th><th>触发条件</th><th>执行时序</th><th>已进入 Force 阶段</th></tr></thead><tbody>
+    <tr class="recommended"><td>Idle 自动联合</td><td>总开关＋Idle 子开关开启，空闲时间与上下文长度同时达到设定阈值</td><td>Noting 与 compaction 同时触发，并行执行</td><td>压缩对应该区间提前启动的 Force Noting，不再重复启动</td></tr>
+    <tr><td>Force 联合流程</td><td>达到现有 Force 空间线，不等待 Idle</td><td>Noting 提前；随后 compaction 与该次 Noting 构成同一联合流程</td><td>区间内抑制其他新增 Noting，直到 compaction 缩小占用</td></tr>
+    <tr><td>手动 compaction</td><td>总开关开启；不依赖 Idle 子开关</td><td>未进入 Force 阶段时，同时触发两者并行执行</td><td>完成与此前 Force Noting 对应的压缩，不重复开 Noting</td></tr>
+  </tbody></table></div>
+  <div class="grid two spaced">
+    <article class="card card-green" data-card="P3" data-title="Force 的时序差异"><div class="kicker"><span class="card-id">P3</span><span class="status confirmed">沿用现有 Force 机制</span></div><h3>Noting 需要更大的剩余空间，所以先行。</h3><div class="pill-row"><span class="pill">达到 Force 线</span><span aria-hidden="true">→</span><span class="pill">提前 Force Noting</span><span aria-hidden="true">→</span><span class="pill">对应的 compaction</span></div><p>后续 Idle／手动／原生自动压缩对应该次提前整理，不再新开一次 Noting。压缩使上下文占用降低后，进入后续联合流程。</p><p class="line-note">沿用现有阈值计算、上下文测量、准入和去重；成功状态仍依据最近压缩边界及已提交 Force Snapshot 推导。</p></article>
+    <article class="card" data-card="P4" data-title="Idle 节约费用与 Noting 连续性"><div class="kicker"><span class="card-id">P4</span><span class="status confirmed">目标分别评价，触发联合</span></div><h3>Idle 趁缓存热提前压缩，Noting 维护连续性。</h3><p>Idle 在会话沉寂且长度达标时自动发起联合流程，目的在于节约下一次恢复费用。Noting 的目的，是维护跨 compaction 的工作状态与细节索引。</p><p>两个目的分别评价费用与质量；总开关开启后的执行仍遵循联合规则。</p><p class="source">已有费用假设与限制见 <a href="05-context-cost-ledger.md">05 上下文开销台账</a>。本次没有冻结新的阈值数值，也没有运行费用实验。</p></article>
+  </div>
+  <article class="card spaced" data-card="P5" data-title="保留与原生 Idle 的互斥"><div class="kicker"><span class="card-id">P5</span><span class="status confirmed">用户明确保留互斥</span></div><h3>同一时间，只有对应体系的 Idle 选项可用。</h3><div class="table-wrap spaced"><table><thead><tr><th>Noting 总开关</th><th>新 Idle 联合子开关</th><th>原生“空闲回归后自动 compact”</th></tr></thead><tbody><tr><td>关闭</td><td>不可用</td><td>恢复可用，按原生配置运行</td></tr><tr class="recommended"><td>开启</td><td>可用；另有上下文阈值和空闲秒数两个参数</td><td>不可用，保留现有配置互斥</td></tr></tbody></table></div><p class="line-note">开关和触发语义已确认；字段映射、默认数值与失败路径接线仍需规格化。现有原生配置值不由白板自动改写。</p></article>
+</section>
+
+<section class="panel" id="discussion" aria-labelledby="discussion-title" hidden>
+  <div class="panel-head"><div><div class="eyebrow"><span class="index">08 / 会谈议程</span>先定模型，再定字段</div><h2 id="discussion-title">明早，把这些主张逐个讲透。</h2><p>可以选择倾向，也可以贴批注。这里记录讨论意见；正式共识仍需在对话中确认，再同步到 07。</p></div></div>
+  <div class="grid two proposal-grid">
+    <article class="card" data-card="D1" data-title="先用个人 Ontology 理解整体"><div class="kicker"><span class="card-id">D1</span><span class="status question">第一步 · 范围</span></div><h3>Ontology 是整体建模方法。</h3><p>用它连接人、事项、关系、证据和行动。Notebook 仍负责本 Conversation 的工作记忆；NM、Scheduler 和工具保留各自权威。</p><label class="stance-select">讨论倾向<select data-stance="D1"><option value="">未表态</option><option>倾向赞同</option><option>有异议</option><option>先后置</option></select></label></article>
+    <article class="card" data-card="D2" data-title="采用三个内容分区与候选视图"><div class="kicker"><span class="card-id">D2</span><span class="status question">第二步 · 顶层</span></div><h3>事务、情景、研讨＋长期化候选。</h3><p>分区仍是候选方案，但 C2 的互斥边界已明确：相同情景内容移入候选就移出情景，长期化完成后退出候选。候选视图不能额外展示一份情景副本。</p><label class="stance-select">讨论倾向<select data-stance="D2"><option value="">未表态</option><option>倾向赞同</option><option>有异议</option><option>先后置</option></select></label></article>
+    <article class="card" data-card="D3" data-title="情景合并后的容量设置"><div class="kicker"><span class="card-id">D3</span><span class="status question">第三步 · 容量</span></div><h3>情景已合并；讨论 6K 总预算是否合适。</h3><p>背景与经历统一为情景是用户明确方向。L1 提议总 6K、分区限额、80% 启动／60% 目标；具体数值与其余类型仍待讨论。</p><label class="stance-select">讨论倾向<select data-stance="D3"><option value="">未表态</option><option>倾向赞同</option><option>有异议</option><option>先后置</option></select></label></article>
+    <article class="card" data-card="D4" data-title="统筹最小结构"><div class="kicker"><span class="card-id">D4</span><span class="status question">第四步 · 统筹</span></div><h3>两类事务＋少量明确关系。</h3><p>事项和行动分开；行动带负责人、最新已知状态、必要依赖与证据。正式业务状态来自相应工具或原文，不由 Noting 创造事实。</p><label class="stance-select">讨论倾向<select data-stance="D4"><option value="">未表态</option><option>倾向赞同</option><option>有异议</option><option>先后置</option></select></label></article>
+    <article class="card" data-card="D5" data-title="清退时选择关闭或长期化"><div class="kicker"><span class="card-id">D5</span><span class="status question">第五步 · 退出条件</span></div><h3>退出后的召回已交给长期体系。</h3><p>L3 的边界已明确；继续讨论 L2 中何时关闭、何时移入候选。需要保留的内容完成长期化后退出，关闭的内容不再从短期路径找回。</p><label class="stance-select">讨论倾向<select data-stance="D5"><option value="">未表态</option><option>倾向赞同</option><option>有异议</option><option>先后置</option></select></label></article>
+    <article class="card" data-card="D6" data-title="联合触发方向已确认"><div class="kicker"><span class="card-id">D6</span><span class="status confirmed">第六步 · 方向已确认</span></div><h3>普通路径同时并行；Force 仅有时序差异。</h3><p>复用现有快照获取机制。总开关控制联合机制，Idle 子开关控制空闲＋长度达标时的自动联合入口，并与原生 Idle 保持互斥。具体接线与参数在实施规格中处理。</p></article>
+  </div>
+  <article class="card card-note spaced" id="meeting-notes"><div class="kicker"><span class="card-id">MEETING</span>自由便笺</div><h3>想改哪里，就从哪里说。</h3><label class="small muted" for="global-notes">例如：“L1，情景预算还要更小”；“L2，决定的退出条件要调整”；“P5，两个 Idle 选项怎样保持互斥”。</label><textarea id="global-notes" class="global-notes" placeholder="记录我们明早要接着讨论的想法……"></textarea><p class="small muted">输入自动暂存到当前浏览器。使用右上角“保存白板”下载包含批注的 HTML，供下次打开或交回聊天。</p></article>
+</section>
+
+<section class="panel" id="sources" aria-labelledby="sources-title" hidden>
+  <div class="panel-head"><div><div class="eyebrow"><span class="index">09 / 研究依据</span>官方文档、原论文与项目材料</div><h2 id="sources-title">哪些来自研究，哪些是我们的选择。</h2><p>查阅日期：2026-10-16。理论帮助拆分概念，实践帮助发现风险。章节数量、条目字段、触发策略和效果，仍需通过 Secretary 的实际使用来确定。</p></div></div>
+  <div class="ref-list">
+    <div class="ref"><span class="ref-id">R01</span><div><a href="https://www.palantir.com/docs/foundry/architecture-center/ontology-system" target="_blank" rel="noopener">Palantir · The Ontology system</a><p>官方架构资料：把数据、逻辑、行动与权限连接起来。支持整体 Secretary 类比；不能据此证明某个个人助理方案已有效。</p></div></div>
+    <div class="ref"><span class="ref-id">R02</span><div><a href="https://www.palantir.com/docs/foundry/ontology/ontology-best-practices" target="_blank" rel="noopener">Palantir · Ontology design: Best practices</a><p>围绕现实概念建模、保持对象聚焦、避免过深层级。我们据此建议跨压缩保持事项身份，并将状态／责任与类型分开。</p></div></div>
+    <div class="ref"><span class="ref-id">R03</span><div><a href="https://www.palantir.com/docs/foundry/ontology/ontology-structural-guidance" target="_blank" rel="noopener">Palantir · Structural guidance</a> / <a href="https://www.palantir.com/docs/foundry/ontology/ontology-anti-patterns" target="_blank" rel="noopener">Anti-patterns</a><p>重复事实与重复概念容易造成维护漂移。对应到本项目：避免 Notebook、Scheduler、NM 同时争夺同一种正式状态；引用与派生视图需要明确来源。</p></div></div>
+    <div class="ref"><span class="ref-id">R04</span><div><a href="https://www.palantir.com/docs/foundry/ontology/ontology-design-validation" target="_blank" rel="noopener">Palantir · Design validation</a><p>通过真实问题观察可发现性、解答路径与困难点。我们把它转化为跨压缩场景与能力问题；这块白板没有执行其评估。</p></div></div>
+    <div class="ref"><span class="ref-id">R05</span><div><a href="https://www.palantir.com/docs/foundry/action-types/overview" target="_blank" rel="noopener">Palantir · Action types</a><p>官方机制区分语义对象与实际变更操作。对本项目的启发：写一条笔记不等于完成一次登记、执行或长期写入。</p></div></div>
+    <div class="ref"><span class="ref-id">R06</span><div><a href="https://protege.stanford.edu/publications/ontology_development/ontology101-noy-mcguinness.html" target="_blank" rel="noopener">Noy &amp; McGuinness · Ontology Development 101（2001）</a><p>类、属性、实例与范围；先列需要回答的问题，再反复修订。Ontology 早于 Palantir，且不存在与用途无关的唯一正确模型。</p></div></div>
+    <div class="ref"><span class="ref-id">R07</span><div><a href="https://www.niso.org/publications/ansiniso-z3919-2005-r2010" target="_blank" rel="noopener">ANSI/NISO Z39.19（2005，2010 重申）</a> · <a href="https://groups.niso.org/higherlogic/ws/public/download/12591/z39-19-2005r2010.pdf" target="_blank" rel="noopener">§5.3.4 Facet Analysis</a><p>不同属性可以作为独立分面服务组织与检索。支持“类型／状态／负责人”等分轴，但标准没有为 Secretary 选定标签数量。</p></div></div>
+    <div class="ref"><span class="ref-id">R08</span><div><a href="https://gettingthingsdone.com/2010/10/some-key-gtd-definitions/" target="_blank" rel="noopener">David Allen Company · Some Key GTD Definitions</a><p>区分目标结果、下一步行动、等待与未承诺事项。借鉴统筹概念，不把个人手工维护清单的工作转嫁给用户。</p></div></div>
+    <div class="ref"><span class="ref-id">R09</span><div><a href="https://www.lri.fr/~mbl/ENS/CSCW/2014/papers/Winograd-CSCW86.pdf" target="_blank" rel="noopener">Terry Winograd · A language/action perspective on the design of cooperative work（1986）</a><p>用请求、承诺、报告与闭环理解协作。支持避免把“已委派”“已接受”“已完成”混同；不意味着本项目要给所有操作增加审批。</p></div></div>
+    <div class="ref"><span class="ref-id">R10</span><div><a href="https://hci.stanford.edu/publications/2008/infoscraps/TOIS-final-with-refs.pdf" target="_blank" rel="noopener">Bernstein 等 · Information Scraps（2008）</a><p>对 27 位知识工作者的研究揭示个人信息碎片的多样性与轻量录入需求。提醒严格分类仍需覆盖真实生活，避免把整理负担交还用户。</p></div></div>
+    <div class="ref"><span class="ref-id">R11</span><div><a href="https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents" target="_blank" rel="noopener">Anthropic · Effective context engineering for AI agents（2025）</a><p>讨论压缩的细节损失、结构化笔记及按需读取。支持机制互补，不直接推出本项目的分类、频率或省钱阈值。</p></div></div>
+    <div class="ref"><span class="ref-id">R12</span><div><a href="https://www.w3.org/TR/prov-overview/" target="_blank" rel="noopener">W3C · PROV Overview（2013）</a><p>来源、派生与责任的通用框架。本项目可沿用已认可的时间范围／消息身份来源，不必为借鉴概念引入新标准栈。</p></div></div>
+  </div>
+  <article class="card spaced" data-card="R13" data-title="项目依据与本轮限制"><div class="kicker"><span class="card-id">R13</span><span class="status evidence">本地材料</span></div><h3>回到 Secretary 自己的定位。</h3><ul><li><a href="01-personal-hermes-v1-first-fork-iteration.md">01 实施总纲</a>：Secretary 的 Conversation 连续性与派生工作状态。</li><li><a href="02-noting-system-specification.md">02 现行规格</a>：当前运行契约；本白板不会自动覆盖它。</li><li><a href="07-scheduler-notebook-noting-compaction-redesign.md">07 重设计讨论</a>：已确认边界、研究方向与后续设计入口。</li><li><a href="05-context-cost-ledger.md">05 成本台账</a>：既有统计与模型限制。</li><li>用户提供的独立稿：<em>Hermes-Secretary-Conversation-History-and-NM-Memory-Standalone-Design.md</em>。取证工具与长期治理设计是本轮输入，尚未据此实施。</li></ul><p class="line-note">本轮未操作 NM、未修改产品运行代码／配置、未执行模型或召回实验。白板里的例子是构造的设计推演，研究结论与产品验证结果保持区分。</p></article>
+</section>
+
+<footer class="board-footer"><span id="page-caption">研究草稿 · 2026.10.16<br>可以直接说：“我们来看 C3。”</span><div><button id="previous-panel">上一块</button> <button id="next-panel">下一块 →</button></div></footer>
+</main>
+</div>
+<dialog id="annotation-dialog" aria-labelledby="annotation-title">
+  <div class="dialog-inner"><div class="dialog-head"><small id="annotation-id"></small><button id="close-annotation" aria-label="关闭批注">关闭 ×</button></div><h2 class="dialog-title" id="annotation-title">讨论这张卡</h2><label for="annotation-text">这张卡上，我们有什么不同想法？</label><textarea id="annotation-text" placeholder="写下意见、反例，或者希望明早接着讨论的问题……"></textarea><p class="footnote">在当前浏览器自动暂存。使用“保存白板”下载携带批注的副本；批注不会自动同步到聊天或正式规格。</p></div>
+</dialog>
+<div id="toast" class="toast" role="status" hidden></div>
+<script id="board-state" type="application/json">{"boardId":"secretary-ontology-20261016","version":1,"updatedAt":0,"annotations":{},"stances":{},"meeting":""}</script>
+<script>
+(function(){
+  'use strict';
+  var key='secretary-ontology-whiteboard-20261016-v1';
+  var seed=JSON.parse(document.getElementById('board-state').textContent);
+  var state=seed, storageAvailable=true;
+  try {
+    var cached=JSON.parse(localStorage.getItem(key)||'null');
+    if(cached && cached.boardId===seed.boardId && cached.version===1 && cached.updatedAt>seed.updatedAt) state=cached;
+  } catch(error){storageAvailable=false;}
+  state.annotations=state.annotations||{};state.stances=state.stances||{};
+  var panels=Array.from(document.querySelectorAll('.panel'));
+  var nav=Array.from(document.querySelectorAll('[data-panel]'));
+  var currentPanel='overview', annotationCard=null, opener=null;
+  var dialog=document.getElementById('annotation-dialog');
+  var input=document.getElementById('annotation-text');
+  var saveLabel=document.getElementById('save-indicator');
+  function toast(message){var element=document.getElementById('toast');element.textContent=message;element.hidden=false;clearTimeout(toast.timer);toast.timer=setTimeout(function(){element.hidden=true;},4200);}
+  function save(){
+    state.updatedAt=Date.now();
+    try {localStorage.setItem(key,JSON.stringify(state));storageAvailable=true;saveLabel.textContent='批注已在此浏览器暂存';}
+    catch(error){storageAvailable=false;saveLabel.textContent='请用“保存白板”保留批注';}
+  }
+  if(!storageAvailable) saveLabel.textContent='请用“保存白板”保留批注';
+  function showPanel(id,move){
+    if(!panels.some(function(p){return p.id===id;})) id='overview';
+    currentPanel=id;panels.forEach(function(p){p.hidden=p.id!==id;});
+    nav.forEach(function(b){if(b.dataset.panel===id)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});
+    var index=panels.findIndex(function(p){return p.id===id;});
+    document.getElementById('previous-panel').disabled=index===0;
+    document.getElementById('next-panel').disabled=index===panels.length-1;
+    if(move){try {history.replaceState(null,'','#'+id);}catch(error){}window.scrollTo({top:0,behavior:'instant'});}
+  }
+  nav.forEach(function(b){b.addEventListener('click',function(){showPanel(b.dataset.panel,true);});});
+  document.getElementById('previous-panel').addEventListener('click',function(){var i=panels.findIndex(function(p){return p.id===currentPanel;});if(i>0)showPanel(panels[i-1].id,true);});
+  document.getElementById('next-panel').addEventListener('click',function(){var i=panels.findIndex(function(p){return p.id===currentPanel;});if(i<panels.length-1)showPanel(panels[i+1].id,true);});
+  document.getElementById('focus-button').addEventListener('click',function(){var on=document.body.classList.toggle('focus-mode');this.setAttribute('aria-pressed',String(on));this.textContent=on?'退出聚焦':'聚焦';});
+  document.getElementById('all-notes-button').addEventListener('click',function(){showPanel('discussion',true);document.getElementById('meeting-notes').scrollIntoView({block:'center'});document.getElementById('global-notes').focus({preventScroll:true});});
+  function refreshCard(card){
+    var id=card.dataset.card, note=state.annotations[id]||'',button=card.querySelector('.card-tools button'),preview=card.querySelector('.note-preview');
+    button.textContent=note.trim()?'查看批注 · '+id:'留意见 ↗';
+    button.classList.toggle('has-note',!!note.trim());
+    preview.textContent=note;
+  }
+  document.querySelectorAll('[data-card]').forEach(function(card){
+    var tools=card.querySelector('.card-tools');
+    if(tools)tools.remove();
+    var preview=card.querySelector('.note-preview');
+    if(preview)preview.remove();
+    preview=document.createElement('div');preview.className='note-preview';card.appendChild(preview);
+    tools=document.createElement('div');tools.className='card-tools';
+    var button=document.createElement('button');button.setAttribute('aria-label','给 '+card.dataset.card+' '+card.dataset.title+' 留意见');
+    button.addEventListener('click',function(){
+      annotationCard=card;opener=button;
+      document.getElementById('annotation-id').textContent=card.dataset.card+' / 讨论便笺';
+      document.getElementById('annotation-title').textContent=card.dataset.title;
+      input.value=state.annotations[card.dataset.card]||'';
+      dialog.showModal();input.focus();
+    });tools.appendChild(button);card.appendChild(tools);refreshCard(card);
+  });
+  input.addEventListener('input',function(){if(annotationCard){state.annotations[annotationCard.dataset.card]=input.value;save();refreshCard(annotationCard);}});
+  document.getElementById('close-annotation').addEventListener('click',function(){dialog.close();});
+  dialog.addEventListener('close',function(){if(opener)opener.focus();});
+  document.querySelectorAll('[data-stance]').forEach(function(select){
+    select.value=state.stances[select.dataset.stance]||'';
+    select.addEventListener('change',function(){state.stances[select.dataset.stance]=select.value;save();});
+  });
+  var meeting=document.getElementById('global-notes');meeting.value=state.meeting||'';
+  meeting.addEventListener('input',function(){state.meeting=meeting.value;save();});
+  document.getElementById('save-board').addEventListener('click',function(){
+    save();
+    var clone=document.documentElement.cloneNode(true);
+    clone.querySelector('#board-state').textContent=JSON.stringify(state).replace(/</g,'\\u003c');
+    clone.querySelector('#annotation-dialog').removeAttribute('open');
+    clone.querySelector('#annotation-text').textContent='';
+    clone.querySelector('#global-notes').textContent=state.meeting||'';
+    clone.querySelector('#toast').setAttribute('hidden','');
+    clone.querySelectorAll('.print-annotation').forEach(function(element){element.remove();});
+    var blob=new Blob(['<!doctype html>\n'+clone.outerHTML],{type:'text/html;charset=utf-8'});
+    var url=URL.createObjectURL(blob),link=document.createElement('a');
+    link.href=url;link.download='secretary-notebook-whiteboard-'+new Date().toISOString().slice(0,10)+'.html';
+    document.body.appendChild(link);link.click();link.remove();setTimeout(function(){URL.revokeObjectURL(url);},30000);
+    toast('已请求下载包含批注的 HTML；请在浏览器下载记录中查看。');
+  });
+  var owners={
+    history:['History：原文证据与合法历史路径','回答“当时究竟说了什么”。搜索帮助发现线索，精确条件回到原文与邻近上下文。扩展稿中的跨 Conversation 读取仍服从角色与范围约束，不代表 Notebook 自动获得跨会话所有权。'],
+    schedule:['Scheduler：可靠投递的正式记录','主会话在需要可靠提起的情景明确时即时登记。运行时持久化、到期投递并处理状态。Notebook 可以解释提醒缘由，但索引尚未整理不应阻碍提醒成立。'],
+    notebook:['Notebook：本 Conversation 的派生工作记忆','Noting 写入；Main 读取。保存当前理解、重要变化及其来源。对提醒和外部任务可保存引用与有时间边界的观察，不争夺正式状态的所有权。'],
+    memory:['NM / Skill / Rule：不同长期化目标','个人 Memory 由 NM 托管；Skill 与规则由各自文档体系维护。相同内容在情景、候选、长期体系之间互斥：移入候选后不留情景副本，真实长期写入确认后清空候选，后续由目标体系管理。'],
+    main:['Main / Tools：即时行动与反馈','主会话依据用户意图和现有授权采取行动。工具确认正式变更；原文记录过程。Noting 在随后整理时将真实结果纳入索引，不能以一次摘要生成代替实际执行。']
+  };
+  document.querySelectorAll('[data-owner]').forEach(function(button){
+    button.addEventListener('click',function(){
+      document.querySelectorAll('[data-owner]').forEach(function(b){b.setAttribute('aria-pressed',String(b===button));});
+      var detail=owners[button.dataset.owner],target=document.getElementById('owner-detail');
+      target.replaceChildren();var h=document.createElement('h4');h.textContent=detail[0];var p=document.createElement('p');p.textContent=detail[1];target.append(h,p);
+    });
+  });
+  var types={
+    matter:{title:'事项 · 一个需要持续理解和统筹的整体',desc:'围绕一个期望结果，或一项持续责任组织材料。它能容纳多个行动、决定、背景与问题，不等于某一条待办。',tags:['matter','目标 / 责任','关联行动','整体判断'],include:'当多条行动或多次讨论确实服务同一关切时建立。只出现一次的简单操作通常无需再建上层事项。',exclude:'不把每个人、每个话题都变成事项；不为持续责任虚构“完成”。',example:'安排家庭探访：希望确认行程；当前等家人日期，同时可整理路线。'},
+    action:{title:'行动 · 一个具体需要完成的步骤',desc:'记录要做什么、由谁做、目前知道推进到了哪里。独立行动可以没有上级事项；具备时点要求时另外引用正式 Schedule。',tags:['action','负责人','状态与证据','必要依赖'],include:'有明确行动意图／承诺，且后续仍需跟踪或恢复。',exclude:'一个模型建议不自动成为用户承诺；没有事实依据不填“已开始”或“已完成”。',example:'用户向家人确认可接待日期：已发出询问，等待回复；来源保留原话。'},
+    situation:{title:'情景 · 当前理解所需的个人情景',desc:'合并个人处境、人际关系、事件与体验；在有限预算内逐渐压缩，最后关闭或移入长期化候选。',tags:['situation','逐渐压缩','关闭 / 持久化','原文来源'],include:'当前仍有理解用途，且未由候选或长期体系承载。不要求先关联任务。',exclude:'不拆成背景与经历两个类型；不因暂未进入长期就无限保留。移入候选后撤下同一情景内容。',example:'用户提到一次通话改变了探访安排。先记录必要情景；后续合并压缩，形成候选或关闭，原文仍可回查。'},
+    question:{title:'问题 · 用户提出或认可的重要未决问题',desc:'保存用户明确关切、认可尚未解决并希望继续讨论的问题，以及已有讨论和所缺依据。',tags:['question','用户关切','未决内容','原文来源'],include:'用户明确提出或认可的重要问题。模型自己问了却未获回答，不足以形成用户的问题。',exclude:'模型对隐含语义的理解缺口单独处理；沉默不算用户认可。定时可靠提起仍要按 Scheduler 登记。',example:'用户明确说：我想继续弄清，情景应当什么时候关闭、什么时候进入长期记忆。'},
+    insight:{title:'认识 · 用户明确表达或认可的实质认识',desc:'承载用户自己提出的认识，或双方形成、由用户明确认可的内容。保留用户原本的确定性、条件与认可来源。',tags:['insight','用户表达 / 明确认可','确定性','原文来源'],include:'必须能定位到用户的明确表达或认可；即使用户说的是我怀疑，也可以如实保存其认识。',exclude:'模型单方面的观察、解释、动机猜测和待澄清缺口不进入；加待确认标签也不能代替用户来源。',example:'用户明确说：我意识到，我需要系统在相关讨论中提起自己以前形成的认识，而不只是保存事实。'},
+    decision:{title:'决定 · 已作出的选择及其约束',desc:'记录谁决定了什么、对什么范围成立、重要理由与条件；之后被修正时保留取代入口。',tags:['decision','决定者','适用范围','理由 / 取代'],include:'用户明确选择、已授权执行的决定，或可由原文证明的正式结论。',exclude:'不能把建议、未获回答的提问、临时猜想写成已确认。',example:'用户决定先等家人确认日期，暂不订票；与“不再探访”不是同一含义。'}
+  };
+  function renderType(key){
+    var data=types[key],target=document.getElementById('type-detail');target.replaceChildren();
+    var title=document.createElement('h3');title.textContent=data.title;
+    var desc=document.createElement('p');desc.textContent=data.desc;desc.className='spaced';
+    var tags=document.createElement('div');tags.className='type-tags';data.tags.forEach(function(t){var el=document.createElement('span');el.textContent=t;tags.appendChild(el);});
+    var inc=document.createElement('p');var b=document.createElement('strong');b.textContent='收录：';inc.append(b,document.createTextNode(data.include));
+    var exc=document.createElement('p');b=document.createElement('strong');b.textContent='边界：';exc.append(b,document.createTextNode(data.exclude));
+    var example=document.createElement('div');example.className='example';var label=document.createElement('small');label.textContent='虚构例子';example.append(label,document.createTextNode(data.example));
+    target.append(title,desc,tags,inc,exc,example);
+    document.querySelectorAll('[data-type]').forEach(function(button){button.classList.toggle('active',button.dataset.type===key);button.setAttribute('aria-pressed',String(button.dataset.type===key));});
+  }
+  document.querySelectorAll('[data-type]').forEach(function(button){button.addEventListener('click',function(){renderType(button.dataset.type);});});renderType('matter');
+  function updateTasks(){
+    var a=document.getElementById('task-a').value,b=document.getElementById('task-b').value;
+    var ready=a==='done'&&b==='done';
+    document.getElementById('task-c-state').textContent=ready?'可进入选择与预订':'尚未具备条件';
+    document.getElementById('task-c-state').classList.toggle('current',ready);
+    document.getElementById('task-c-note').textContent=ready?'依赖已满足；是否预订仍依据用户授权':'依赖 A、B；实际购买仍遵循授权';
+    var summary=ready?'准备步骤已齐备，但 C 尚未执行。不能把整个事项标成“完成”。':a==='done'?'日期已知，仍需完成行程准备。整体状态不能只读取 A 的结果。':b==='done'?'候选行程已准备，下一步受日期回复阻塞；仍需保留等待对象。':'事项仍在推进：A 等待，B '+(b==='active'?'正在做':'可做')+'。不能把整个事项标成“等待”。';
+    document.getElementById('task-summary').textContent=summary;
+  }
+  document.getElementById('task-a').addEventListener('change',updateTasks);document.getElementById('task-b').addEventListener('change',updateTasks);updateTasks();
+  var scenarios={
+    family:{title:'个人情景进入候选后，同一内容从情景区退出。',premise:'用户讨论探访家人，又聊到近期沟通方式的变化。安排仍由事项与行动统筹，个人信息按情景、候选、长期体系流转。',moments:[['区间 A · 出现','情景＋工作状态','新的个人情景暂存 Notebook；是否已知由 NM 承载需识别来源。探访日期待确认是另外一项工作状态。'],['区间 B · 第一次压缩后','移入候选','一段通话经历被选为 Memory 候选，带原文来源；该经历从情景区移出。等待确认日期的行动继续保留。'],['区间 C · 第二次压缩后','写入确认后退出','若用户批准且真实写入 NM 已确认，则清空该候选；未写入或失败继续留在候选。后续从 NM 恢复相同个人记忆。']],result:'检验点：同一内容在三处只承载一次；事项仍可保存不同的工作状态。原始对话留作证据，不能用索引名义重新复制已长期化内容。'},
+    delegate:{title:'多个执行方，并不意味着多份相互竞争的进度真值。',premise:'用户让 Secretary 统筹两个 Agent：一个整理资料，一个准备方案。Secretary 需要了解依赖，也需要尊重实际执行结果。',moments:[['区间 A · 分工','事项＋行动','整体结果是完成方案评审。A 收集材料，B 起草结构；保存真实分派与回报的引用。'],['区间 B · 第一次压缩后','局部完成','A 报告完成，但材料缺一项来源；Notebook 记录已报告及缺口。B 可以先推进不依赖缺失材料的部分。'],['区间 C · 第二次压缩后','回到统筹','“现在卡哪里？”先读索引识别缺口，再按需查正式任务状态与回报，避免把整个事项粗暴标成完成。']],result:'检验点：已委派、已接受、已报告、满足完成条件需要区分；不用为每一种组合增加一个类型。'},
+    decision:{title:'新的决定，应当带得回旧的理由。',premise:'用户先选了方案 A，后来因为一个新限制改用 B。多次压缩后，当前摘要可能只剩“采用 B”。',moments:[['区间 A · 初次决定','决定 D1','选 A 的理由是速度；适用条件是数据范围维持现状。原文条件需要保留。'],['区间 B · 第一次压缩后','新背景＋决定 D2','数据范围扩大，用户改选 B。D2 取代 D1 的当前效力，但 D1 的理由仍可解释历史。'],['区间 C · 第二次压缩后','按问题召回','“当初为什么没有一开始用 B？”沿取代关系回读两次决定，区分当时条件与后来新增条件。']],result:'检验点：仅存最新决定不能完整回答历史原因；全存两段摘要又可能让旧方案复活。需要明确取代关系与原文来源。'},
+    watch:{title:'“到时候再看看”同时包含行动与背景。',premise:'用户要求周五观察一个外部结果，如果没有变化，再讨论下一步。登记不能等到下一次 Noting。',moments:[['区间 A · 当场','正式登记','Main 调用正式工具登记时间、投递方式与要检查的内容。成功结果来自运行时。'],['区间 B · 压缩整理','问题／背景索引','Noting 保留观察缘由、要判断什么，以及 Schedule 引用。不复制一套调度状态，也不负责第一次登记。'],['区间 C · 到期以后','投递与判断','运行时投递后，Main 按正式要求观察，结合 Notebook 回查当时的条件。时间戳与笔记本本身不提供可靠唤起保证。']],result:'检验点：watchpoint 无需同时承担时间登记、业务任务、历史解释三种职责；它们通过引用联系。'}
+  };
+  function renderScenario(key){
+    var data=scenarios[key];document.getElementById('scenario-title').textContent=data.title;document.getElementById('scenario-premise').textContent=data.premise;document.getElementById('scenario-result').textContent=data.result;
+    var timeline=document.getElementById('scenario-timeline');timeline.replaceChildren();
+    data.moments.forEach(function(moment){var block=document.createElement('div');block.className='moment';var time=document.createElement('div');time.className='time';time.textContent=moment[0];var h=document.createElement('h4');h.textContent=moment[1];var p=document.createElement('p');p.textContent=moment[2];block.append(time,h,p);timeline.appendChild(block);});
+    document.querySelectorAll('[data-scenario]').forEach(function(button){button.classList.toggle('active',button.dataset.scenario===key);button.setAttribute('aria-pressed',String(button.dataset.scenario===key));});
+  }
+  document.querySelectorAll('[data-scenario]').forEach(function(button){button.addEventListener('click',function(){renderScenario(button.dataset.scenario);});});renderScenario('family');
+  showPanel(location.hash.slice(1),false);
+  window.addEventListener('hashchange',function(){showPanel(location.hash.slice(1),false);});
+  window.addEventListener('beforeprint',function(){
+    document.querySelectorAll('.print-annotation').forEach(function(el){el.remove();});
+    var p=document.createElement('div');p.className='print-annotation';p.textContent=state.meeting||'';document.getElementById('meeting-notes').appendChild(p);
+  });
+})();
+</script>
+</body>
+</html>
