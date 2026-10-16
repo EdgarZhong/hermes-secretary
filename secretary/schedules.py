@@ -29,29 +29,11 @@ DEFAULT_DUE_BATCH = 50
 
 
 def default_enablement(db):
-    """Consume the frozen C4 scheduler.enabled contract, never a Noting gate.
+    """Use C4's owning-profile Scheduler policy; Noting/local switches are independent."""
+    from secretary.noting_scope import scheduler_settings_for_db
 
-    Use the existing profile-bound readonly loader. Missing Scheduler configuration
-    defaults to enabled; malformed/unreadable configuration fails this feature closed.
-    This deliberately does not parse the independent Noting configuration block.
-    """
     def enabled(_conversation_ref):
-        try:
-            from hermes_cli.config import load_config_readonly
-            from hermes_cli.config_read_errors import FailedConfigRead
-
-            with owning_db_scope(db):
-                config = load_config_readonly()
-            if isinstance(config, FailedConfigRead) or not isinstance(config, dict):
-                return False
-            block = config.get("scheduler", {})
-            if not isinstance(block, dict) or not isinstance(block.get("enabled", True), bool):
-                logger.warning("Invalid scheduler.enabled: expected a boolean in the owning profile config")
-                return False
-            return block.get("enabled", True)
-        except Exception:
-            logger.warning("Scheduler config unreadable; new admission is disabled", exc_info=True)
-            return False
+        return scheduler_settings_for_db(db).enabled
 
     return enabled
 

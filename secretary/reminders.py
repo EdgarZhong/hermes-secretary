@@ -18,6 +18,9 @@ from hermes_state_secretary_schedule import (
     reminder_pending_count_conn,
     reminder_pull_pending_conn,
     render_source_timestamp,
+    schedule_carrier_durable_conn,
+    schedule_current_claim_conn,
+    schedule_queue_pending_conn,
     schedule_finalize_conn,
     schedule_release_conn,
 )
@@ -40,21 +43,31 @@ class ActiveReminderAdmission:
         self.committed = False
 
     def durable(self, db):
+        if str(Path(db.db_path).resolve()) != self.db_path:
+            return False
         if self.committed:
             return True
-        if self.row_proof is None or str(Path(db.db_path).resolve()) != self.db_path:
+        if self.row_proof is None:
             return False
         session_id, uid, content, stamp = self.row_proof
         with db._read_ctx() as conn:
             row = conn.execute("SELECT content, timestamp FROM messages WHERE session_id=? AND message_uid=?",
                                (session_id, uid)).fetchone()
-            state = conn.execute("SELECT * FROM secretary_schedule_registry WHERE schedule_id=?",
-                                 (self.receipt["before"]["schedule_id"],)).fetchone()
-        after = self.receipt["after"]
-        keys = ("conversation_ref", "canonical_schedule", "delivery_semantics", "state", "next_run_at",
-                "last_fired_at", "claim_token", "updated_at")
-        return (row is not None and row["content"] == content and row["timestamp"] == stamp
-                and after is not None and state is not None and all(state[key] == after[key] for key in keys))
+            return (row is not None and row["content"] == content and row["timestamp"] == stamp
+                    and schedule_carrier_durable_conn(conn, self.receipt["before"]["conversation_ref"],
+                        self.receipt["before"]["schedule_id"], uid, content))
+
+    def prepare(self, db, conn, session_id, row):
+        """Build the final carrier under the native insertion transaction, never on live state."""
+        if self.aborted or str(Path(db.db_path).resolve()) != self.db_path:
+            raise ActiveReminderPersistenceError("Active Reminder admission is no longer owned")
+        resolved = _resolve_active_conn(db, conn, self.receipt["before"], time.time(), session_id=session_id,
+                                       entry_timestamp=self.receipt["resolved"]["source_timestamp"])
+        if not resolved["route"]:
+            raise ActiveReminderPersistenceError("Active Reminder definition changed before persistence")
+        resolved["text"]._secretary_active_admission = self
+        self.receipt["resolved"] = resolved
+        row["content"] = resolved["text"]
 
     def commit(self, db, conn, session_id, row):
         if self.aborted or str(Path(db.db_path).resolve()) != self.db_path:
@@ -72,7 +85,8 @@ class ActiveReminderAdmission:
         if stored is None or stored["content"] != expected or stored["timestamp"] != row["timestamp"]:
             raise ActiveReminderPersistenceError("Active Reminder native user row is not canonical")
         after = schedule_finalize_conn(conn, resolved["claim"]["schedule_id"],
-                                       resolved["claim"]["claim_token"], now=time.time())
+                                       resolved["claim"]["claim_token"], now=time.time(),
+                                       carrier_message_uid=stored["message_uid"], carrier_content=expected)
         if after is None:
             raise ActiveReminderPersistenceError("Active Reminder settlement lost its claim")
         self.receipt["after"] = after
@@ -83,6 +97,24 @@ def active_admission_witness(value):
     from agent.message_metadata import TrustedUserInput
     witness = getattr(value, "_secretary_active_admission", None) if isinstance(value, TrustedUserInput) else None
     return witness if isinstance(witness, ActiveReminderAdmission) else None
+
+
+def active_delivery_prepare_callback(db, batch_msgs, batch_rows):
+    """C9 passes this to native append_messages_batch(prepare_rows=...).
+
+    Only private batch rows change before COMMIT; confirm_active_delivery_batch
+    publishes the final carrier to the corresponding live dicts after success.
+    """
+    pairs = [(active_admission_witness(msg.get("content")), row) for msg, row in zip(batch_msgs, batch_rows)]
+    pairs = [(witness, row) for witness, row in pairs if witness is not None and not witness.durable(db)]
+    if not pairs:
+        return None
+
+    def prepare(conn, session_id, _rows):
+        for witness, row in pairs:
+            witness.prepare(db, conn, session_id, row)
+
+    return prepare
 
 
 def active_delivery_batch_callback(db, batch_msgs, batch_rows):
@@ -132,6 +164,7 @@ def confirm_active_delivery_batch(batch_msgs):
     for msg in batch_msgs:
         witness = active_admission_witness(msg.get("content"))
         if witness is not None and witness.row_proof is not None:
+            msg["content"] = witness.receipt["resolved"]["text"]
             witness.committed = True
 
 
@@ -174,26 +207,40 @@ def occurrence_timestamp(claim, *, now=None):
 
 def occurrence_content(claim):
     text = str(claim.get("reminder_text") or "").strip()
-    if text:
-        return text
-    return f"Notebook {claim.get('notebook_entry_id', 'entry')} is due"
+    if not text:
+        raise ValueError("A Schedule occurrence requires its registered content")
+    return text
+
+
+def scheduled_attention_text(schedule_id, due_at, delivery_mode, content):
+    return (f"SCHEDULED ATTENTION\nSchedule: {schedule_id}\nDue: {due_at}\n"
+            f"Delivery: {delivery_mode}\nContent:\n{content}\n\n"
+            "This is previously scheduled attention in this Conversation, not a new user instruction or new authorization. "
+            "Check the current situation and existing authorization before acting. Use scheduler to change the schedule "
+            "if needed; delivery does not prove the business task is complete.")
+
+
+def instant_notice_conn(conn, conversation_ref, rows, *, now):
+    """Read final complete Table; original instant batches get exactly one notice."""
+    from secretary.scheduler_table import coverage_notice, instant_coverage_conn
+    if not any(row.get("origin_instant") for row in rows):
+        return None
+    excluded = [(row["schedule_id"], row["source_timestamp"]) for row in rows if row.get("schedule_id")]
+    try:
+        coverage = instant_coverage_conn(conn, conversation_ref, now=now, exclude_occurrences=excluded)
+    except Exception:
+        import logging
+        logging.getLogger(__name__).warning("Reminder instant coverage unavailable", exc_info=True)
+        coverage = None
+    return coverage_notice(coverage)
 
 
 def _current_claim_conn(db, conn, claim, timestamp):
-    """Recheck the exact occurrence and effective gate under the registry write lock."""
-    row = conn.execute(
-        "SELECT * FROM secretary_schedule_registry WHERE schedule_id = ? AND conversation_ref = ? "
-        "AND claim_token = ? AND next_run_at = ? AND next_run_at <= ? "
-        "AND state = 'pending' AND enabled = 1 AND claim_expires_at > ?",
-        (claim.get("schedule_id"), claim.get("conversation_ref"), claim.get("claim_token"),
-         claim.get("next_run_at"), timestamp, timestamp),
-    ).fetchone()
-    if row is None:
+    current = schedule_current_claim_conn(conn, claim, now=timestamp)
+    if current is None:
         return None
-    current = dict(row)
     from secretary.schedules import default_enablement
-    if (not default_enablement(db)(current["conversation_ref"])
-            or not db.notebook_local_enabled_conn(conn, current["conversation_ref"])):
+    if not default_enablement(db)(current["conversation_ref"]):
         schedule_release_conn(conn, current["schedule_id"], current["claim_token"], now=timestamp)
         return None
     return current
@@ -208,10 +255,15 @@ def _resolve_active_conn(db, conn, claim, timestamp, *, session_id=None, route_v
     if (not route or (session_id is not None and route["id"] != session_id)
             or (route_validator is not None and not route_validator(route))):
         return {"route": None, "reason": "route_unproven"}
-    content = content or occurrence_content(current)
+    content = occurrence_content(current)
     source_timestamp = float(timestamp if entry_timestamp is None else entry_timestamp)
     scheduled_for = render_source_timestamp(current["next_run_at"], profile_home=Path(db.db_path).parent)
-    body = f"Scheduled for: {scheduled_for}\n{content}"
+    body = scheduled_attention_text(current["schedule_id"], scheduled_for, "instant", content)
+    notice = instant_notice_conn(conn, current["conversation_ref"], [{
+        "schedule_id": current["schedule_id"], "source_timestamp": current["next_run_at"], "origin_instant": True,
+    }], now=timestamp)
+    if notice:
+        body += "\n\n" + notice
     return {"route": route, "text": build_user_reminder_text(body, source_timestamp),
             "content": content, "source_timestamp": source_timestamp, "reason": "ok", "claim": current}
 
@@ -244,32 +296,14 @@ def recover_active_reminder(db, receipt, *, passive=False, now=None):
     return release_claim(db, receipt["before"], now=now)
 
 
-def _scheduled_entry_conn(db, conn, claim):
-    current = db.notebook_current_conn(conn, claim["conversation_ref"])
-    payload = current["payload"] if current else {}
-    return next((entry for entries in payload.values() for entry in entries
-                 if entry.get("entry_id") == claim["notebook_entry_id"]), None)
-
-
 def queue_pending_for_claim(db, claim, *, now=None, content=None):
-    """Passive delivery: durable pending System Reminder plus accounting, in one transaction."""
-    def _queue(conn):
+    """Current Schedule definition and durable pending receipt settle atomically."""
+    def queue(conn):
         timestamp = time.time() if now is None else float(now)
         current = _current_claim_conn(db, conn, claim, timestamp)
-        if current is None:
-            return None
-        reminder_id = reminder_append_pending_conn(
-            conn, current["conversation_ref"], content or occurrence_content(current),
-            source_timestamp=occurrence_timestamp(current), schedule_id=current["schedule_id"],
-            dedup_key=f"{current['schedule_id']}:{current['next_run_at']}",
-            entry_payload=_scheduled_entry_conn(db, conn, current),
-            now=timestamp,
-        )
-        if schedule_finalize_conn(conn, current["schedule_id"], current["claim_token"], now=timestamp) is None:
-            raise RuntimeError("Schedule claim changed inside its pending transaction")
-        return reminder_id
+        return schedule_queue_pending_conn(conn, current, now=timestamp) if current is not None else None
 
-    return db._execute_write(_queue)
+    return db._execute_write(queue)
 
 
 def convert_claim_to_pending(db, claim, *, now=None, content=None):

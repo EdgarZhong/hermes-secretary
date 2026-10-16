@@ -458,12 +458,12 @@ class SessionMessagesMixin:
     def append_messages_batch(
         self, session_id: str, messages: List[Dict[str, Any]], compression_lock_holder: Optional[str] = None,
         turn_lease_holder: Optional[str] = None, chunk_rows: Optional[int] = None,
-        turn_lease_ttl_seconds: float = 300.0, *, before_commit=None) -> int:
+        turn_lease_ttl_seconds: float = 300.0, *, before_commit=None, prepare_rows=None) -> int:
         """Append *messages* in ONE write txn (all rows land or none, guards run once); returns the inserted
-        count. ``chunk_rows`` bounds txn size for LARGE copies (branch seeds; FTS triggers run per row)."""
+        count. Optional prepare_rows mutates a private batch inside this txn, before native row serialization."""
         if not messages:
             return 0
-        if before_commit is not None and chunk_rows is not None:
+        if (before_commit is not None or prepare_rows is not None) and chunk_rows is not None:
             raise ValueError("Atomic transcript callback cannot use chunk_rows")
         if chunk_rows is not None and len(messages) > chunk_rows:
             tool_uid_index: Dict[str, str] = {}
@@ -476,6 +476,8 @@ class SessionMessagesMixin:
         def _do(conn):
             self._check_transcript_write_guards(conn, session_id, compression_lock_holder,
                 turn_lease_holder=turn_lease_holder, turn_lease_ttl_seconds=turn_lease_ttl_seconds)
+            if prepare_rows is not None:
+                prepare_rows(conn, session_id, messages)
             from agent.transcript_repair import resolve_and_repair_transcript_batch
             inserted_rows = resolve_and_repair_transcript_batch(
                 conn,
@@ -483,9 +485,7 @@ class SessionMessagesMixin:
                 messages,
                 encode_content_fn=self._encode_content,
                 decode_content_fn=self._decode_content,
-                serialize_message_fn=lambda msg, timestamp: self._serialized_message_row(
-                    session_id, msg, timestamp
-                ),
+                serialize_message_fn=lambda msg, timestamp: self._serialized_message_row(session_id, msg, timestamp),
                 decode_row_fn=self._decoded_repair_row,
                 before_rewrite=lambda conn, row_id: self.secretary_preserve_branch_sources_conn(conn, [row_id]),
             )
