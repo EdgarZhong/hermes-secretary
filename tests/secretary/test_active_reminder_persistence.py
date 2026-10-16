@@ -28,7 +28,7 @@ def armed_agent(runtime):
     return db, ref, agent, claim, receipt
 
 
-@pytest.mark.parametrize("change", ["local_off", "cancel", "expire", "reclaim", "changed"])
+@pytest.mark.parametrize("change", ["global_off", "cancel", "expire", "reclaim", "changed"])
 def test_native_transaction_rejects_claim_changes_after_admission(runtime, change):
     from tests.secretary.test_active_reminder_admission import invalidate
     db, ref, agent, claim, receipt = armed_agent(runtime)

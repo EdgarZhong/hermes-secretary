@@ -1,177 +1,71 @@
-"""Schedule service: Notebook-transaction reconcile, due scan, atomic claim, advance."""
+"""Main-owned Scheduler service: claims, independent configuration and atomic control."""
 
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 import pytest
 
 from hermes_state import SessionDB
-from hermes_state_secretary_schedule import init_secretary_schedule_schema
-from secretary.notebook_store import NotebookStore
-from secretary.schedules import (
-    claim_due,
-    default_enablement,
-    entry_reminder_text,
-    finalize_delivery,
-    reconcile_conversation,
-    scan_and_claim_due,
-)
+from secretary.schedules import SchedulerStore, claim_due, default_enablement, scan_and_claim_due
+from secretary import reminders
 
 
 @pytest.fixture
-def db(tmp_path):
-    db = SessionDB(tmp_path / "state.db")
-    db._execute_write(init_secretary_schedule_schema)
-    db.create_session("s1", source="test", session_key="peer")
-    yield db
+def owner(tmp_path):
+    db = SessionDB(tmp_path / "state.db"); db.create_session("s1", source="cli")
+    ref = db.resolve_conversation_ref("s1")
+    store = SchedulerStore(db, ref, session_id="s1")
+    yield db, ref, store
     db.close()
 
 
-@pytest.fixture
-def ref(db):
-    ref = db.resolve_conversation_ref("s1", ("test", "peer", 0))
-    from tests.secretary.reminder_runtime import bind_reminder_runtime
-    bind_reminder_runtime(db, ref, "s1")
-    return ref
+def due(store, mode="instant"):
+    result = store.create("pay invoice", datetime.fromtimestamp(time.time()-5, timezone.utc).isoformat(), mode)
+    assert result["success"], result
+    return result["schedule"]["schedule_id"]
 
 
-def iso(offset_seconds):
-    return (datetime.now(timezone.utc) + timedelta(seconds=offset_seconds)).isoformat()
+def test_main_control_creates_independent_rows_without_notebook(owner):
+    db, ref, store = owner; sid = due(store)
+    assert db.notebook_current(ref) is None
+    row = db._read_one("SELECT * FROM secretary_schedule_registry WHERE schedule_id=?", (sid,))
+    assert row["reminder_text"] == "pay invoice" and row["conversation_ref"] == ref
+    assert store.list()["count"] == 1
 
 
-def entries(state):
-    return [entry for section in state.show().values() for entry in section]
+def test_pause_resume_and_delete_preserve_definition_identity(owner):
+    db, ref, store = owner; sid = due(store)
+    assert store.pause(sid)["success"] and scan_and_claim_due(db, owner="paused") == []
+    assert store.resume(sid)["schedule"]["schedule_id"] == sid
+    assert len(scan_and_claim_due(db, owner="resumed")) == 1
+    assert store.delete(sid)["deleted"] and store.list()["count"] == 0
+    assert db.notebook_current(ref) is None
 
 
-def registry_rows(db, ref):
-    return [dict(row) for row in db._read_all(
-        "SELECT * FROM secretary_schedule_registry WHERE conversation_ref = ? ORDER BY notebook_entry_id", (ref,),
-    )]
-
-
-def reconcile(db, ref, state, *, active=True, complete=True):
-    return db._execute_write(lambda conn: reconcile_conversation(
-        conn, ref, entries(state), active=active, complete=complete,
-    ))
-
-
-def test_reconcile_registers_runtime_rows_without_touching_intent(db, ref):
-    state = NotebookStore(db, ref)
-    reminder = state.create("user_reminder", {"message": "ping me about the deploy"})
-    reminder = state.schedule_update(reminder["entry_id"], "every 30m")
-    watchpoint = state.create("watchpoint", {
-        "subject": "deploy", "what_to_watch": "latency", "why": "SLA", "until": iso(3600),
-    })
-    reconcile(db, ref, state)
-    rows = {row["notebook_entry_id"]: row for row in registry_rows(db, ref)}
-    assert set(rows) == {reminder["entry_id"], watchpoint["entry_id"]}
-    assert rows[reminder["entry_id"]]["delivery_semantics"] == "user_reminder"
-    assert rows[reminder["entry_id"]]["reminder_text"] == "ping me about the deploy"
-    assert rows[reminder["entry_id"]]["next_run_at"] > time.time()
-    assert rows[watchpoint["entry_id"]]["delivery_semantics"] == "system_reminder"
-    assert rows[watchpoint["entry_id"]]["reminder_text"] == "Watchpoint due: deploy — latency"
-    # The Notebook intent itself is the source and is untouched by reconcile.
-    stored = state.get(reminder["entry_id"])
-    assert stored["schedule"]["canonical_schedule"]["kind"] == "interval"
-    assert stored["schedule"]["cancelled"] is False
-
-
-def test_entry_completion_disables_row_but_keeps_intent(db, ref):
-    state = NotebookStore(db, ref)
-    entry = state.create("user_commitment", {"what": "send the report", "intent": "keep the review loop"})
-    entry = state.schedule_update(entry["entry_id"], "every 2h")
-    reconcile(db, ref, state)
-    assert registry_rows(db, ref)[0]["enabled"] == 1
-    entry = state.transition_status(entry["entry_id"], "in_progress")
-    entry = state.transition_status(entry["entry_id"], "done")
-    reconcile(db, ref, state)
-    rows = registry_rows(db, ref)
-    assert len(rows) == 1 and rows[0]["enabled"] == 0
-    assert state.get(entry["entry_id"])["status"] == "done"  # intent survives, delivery stops
-
-
-def test_cancelled_intent_terminates_and_update_rearms(db, ref):
-    state = NotebookStore(db, ref)
-    entry = state.create("user_commitment", {"what": "retry the migration", "intent": "unblock release"})
-    entry = state.schedule_update(entry["entry_id"], "every 1h")
-    reconcile(db, ref, state)
-    entry = state.schedule_cancel(entry["entry_id"])
-    reconcile(db, ref, state)
-    assert registry_rows(db, ref)[0]["state"] == "cancelled"
-    entry = state.schedule_update(entry["entry_id"], "every 3h")
-    reconcile(db, ref, state)
-    rows = registry_rows(db, ref)
-    assert rows[0]["state"] == "pending" and rows[0]["enabled"] == 1
-    import json
-    assert json.loads(rows[0]["canonical_schedule"])["minutes"] == 180
-
-
-def test_vanished_entry_disables_row_without_deleting_it(db, ref):
-    state = NotebookStore(db, ref)
-    entry = state.create("user_reminder", {"message": "water the plants"})
-    entry = state.schedule_update(entry["entry_id"], "every 1d")
-    reconcile(db, ref, state)
-    reconcile(db, ref, NotebookStore(db, ref))
-    rows = registry_rows(db, ref)
-    assert len(rows) == 1 and rows[0]["enabled"] == 0
-
-
-def test_scan_and_claim_respects_enablement_and_claims_once(db, ref):
-    state = NotebookStore(db, ref)
-    entry = state.create("user_reminder", {"message": "pay the invoice"})
-    entry = state.schedule_update(entry["entry_id"], "every 1h")
-    reconcile(db, ref, state)
-    row = registry_rows(db, ref)[0]
-    db._execute_write(lambda conn: conn.execute(
-        "UPDATE secretary_schedule_registry SET next_run_at = ? WHERE schedule_id = ?",
-        (time.time() - 5, row["schedule_id"]),
-    ))
+def test_scan_and_claim_respects_enablement_and_claims_once(owner):
+    db, _ref, store = owner; sid = due(store)
     assert scan_and_claim_due(db, owner="w1", is_enabled=lambda _ref: False) == []
     claims = scan_and_claim_due(db, owner="w1", is_enabled=lambda _ref: True)
-    assert [claim["schedule_id"] for claim in claims] == [row["schedule_id"]]
+    assert [claim["schedule_id"] for claim in claims] == [sid]
     assert scan_and_claim_due(db, owner="w2", is_enabled=lambda _ref: True) == []
-    finalize_delivery(db, row["schedule_id"], claims[0]["claim_token"])
-    assert claim_due(db, row["schedule_id"], owner="w3") is None
+    reminders.queue_pending_for_claim(db, claims[0])
+    assert claim_due(db, sid, owner="w3") is None
 
 
-def test_reminder_text_projection_and_default_enablement(db, ref):
-    assert entry_reminder_text({"type": "user_commitment", "fields": {"what": "ship it"}}) == "Commitment due: ship it"
-    assert entry_reminder_text({"type": "secretary_task", "fields": {"task": "review"}}) == "Secretary task due: review"
-    assert entry_reminder_text({"type": "user_reminder", "fields": {"message": "tea"}}) == "tea"
-    assert entry_reminder_text({"type": "decision", "fields": {"decision": "x"}}) == ""
-    assert default_enablement(db)(ref) is True
+def test_scheduler_enablement_ignores_noting_and_local_switch(owner):
+    db, ref, store = owner; due(store)
+    db.notebook_set_local_enabled(ref, False)
+    config = db.db_path.parent / "config.yaml"
+    config.write_text("noting:\n  enabled: false\nscheduler:\n  enabled: true\n")
+    assert default_enablement(db)(ref)
+    assert len(scan_and_claim_due(db, owner="independent")) == 1
 
 
-class _NotebookSessionDB(SessionDB):
-    """SessionDB with the centrally wired Secretary Notebook mixin."""
-
-
-def test_conversation_local_off_skips_scan_and_reenable_delivers_once(tmp_path):
-    from hermes_state_secretary_notebook import init_secretary_notebook_schema
-    from secretary.schedules import reconcile_payload
-
-    db = _NotebookSessionDB(tmp_path / "state.db")
-    try:
-        db._execute_write(init_secretary_schedule_schema)
-        db._execute_write(init_secretary_notebook_schema)
-        db.create_session("s1", source="test", session_key="peer")
-        ref = db.resolve_conversation_ref("s1", ("test", "peer", 0))
-        from tests.secretary.reminder_runtime import bind_reminder_runtime
-        bind_reminder_runtime(db, ref, "s1")
-        state = NotebookStore(db, ref)
-        entry = state.create("user_reminder", {"message": "call the bank"})
-        entry = state.schedule_update(entry["entry_id"], "every 1h")
-        db._execute_write(lambda conn: reconcile_payload(conn, ref, state.show()))
-        db._execute_write(lambda conn: conn.execute(
-            "UPDATE secretary_schedule_registry SET next_run_at = ?", (time.time() - 5,),
-        ))
-        gate = default_enablement(db)
-        assert gate(ref) is True
-        db.notebook_set_local_enabled(ref, False)
-        assert gate(ref) is False
-        assert scan_and_claim_due(db, owner="w1", is_enabled=gate) == []
-        db.notebook_set_local_enabled(ref, True)
-        claims = scan_and_claim_due(db, owner="w1", is_enabled=gate)
-        assert len(claims) == 1
-    finally:
-        db.close()
+def test_scheduler_off_retains_definition_and_on_claims_original_due(owner):
+    db, ref, store = owner; sid = due(store)
+    original = db._read_one("SELECT next_run_at FROM secretary_schedule_registry WHERE schedule_id=?", (sid,))[0]
+    config = db.db_path.parent / "config.yaml"; config.write_text("scheduler:\n  enabled: false\n")
+    assert not default_enablement(db)(ref) and scan_and_claim_due(db, owner="off") == []
+    config.write_text("scheduler:\n  enabled: true\n")
+    claim = scan_and_claim_due(db, owner="on")[0]
+    assert claim["schedule_id"] == sid and claim["next_run_at"] == original

@@ -9,7 +9,7 @@ from types import SimpleNamespace
 import pytest
 
 from hermes_state import SessionDB
-from hermes_state_secretary_schedule import schedule_sync_conn
+from secretary.schedules import SchedulerStore
 from secretary import cli_reminders, reminders
 from tests.secretary.test_noting_surface import _agent, _requests, runtime as _native_runtime
 
@@ -50,15 +50,11 @@ def cli_env(tmp_path, monkeypatch):
 
 
 def arm(db, ref, semantics="user_reminder"):
-    if semantics == "user_reminder":
-        from tests.secretary.reminder_runtime import arm_native_reminder
-        return arm_native_reminder(db, ref, {"kind": "once", "run_at": datetime.fromtimestamp(
-            time.time() - 30, timezone.utc).isoformat()}, "CLI reminder")
-    return db._execute_write(lambda c: schedule_sync_conn(
-        c, ref, "entry", active=True,
-        canonical_schedule={"kind": "once", "run_at": datetime.fromtimestamp(time.time() - 30, timezone.utc).isoformat()},
-        delivery_semantics=semantics, reminder_text="CLI reminder",
-    ))
+    route = db.resolve_conversation_route(ref)
+    result = SchedulerStore(db, ref, session_id=route["id"]).create("CLI reminder", datetime.fromtimestamp(
+        time.time() - 30, timezone.utc).isoformat(), "instant" if semantics == "user_reminder" else "deferred")
+    assert result["success"], result
+    return dict(db._read_one("SELECT * FROM secretary_schedule_registry WHERE schedule_id=?", (result["schedule"]["schedule_id"],)))
 
 
 def test_cli_idle_tick_uses_normal_lane_and_preserves_entry_timestamp(cli_env):
@@ -67,10 +63,10 @@ def test_cli_idle_tick_uses_normal_lane_and_preserves_entry_timestamp(cli_env):
     cli_reminders.poll_cli_reminders(cli)
     assert len(cli.calls) == 1
     assert cli.calls[0].source_timestamp > row["next_run_at"]
-    scheduled_line = cli.calls[0].splitlines()[2]
-    assert scheduled_line.startswith("Scheduled for: ")
-    assert datetime.fromisoformat(scheduled_line[len("Scheduled for: "):]).timestamp() == floor(row["next_run_at"])
-    assert cli.calls[0] == reminders.user_reminder_text(scheduled_line + "\nCLI reminder", cli.calls[0].source_timestamp)
+    scheduled_line = next(line for line in cli.calls[0].splitlines() if line.startswith("Due: "))
+    assert datetime.fromisoformat(scheduled_line[len("Due: "):]).timestamp() == floor(row["next_run_at"])
+    assert "SCHEDULED ATTENTION" in cli.calls[0] and row["schedule_id"] in cli.calls[0]
+    assert "CLI reminder" in cli.calls[0]
     from agent.message_metadata import TrustedUserInput, stamp_message_timestamp
     assert isinstance(cli.calls[0], TrustedUserInput)
     assert stamp_message_timestamp({"role": "user", "content": cli.calls[0]})["content"] == cli.calls[0]
@@ -88,17 +84,18 @@ def test_cli_busy_or_passive_due_never_queues_another_turn(cli_env, semantics, b
     assert cli.calls == [] and cli._pending_input.empty()
     pending = reminders.pull_pending(db, ref)
     assert len(pending) == 1 and pending[0]["source_timestamp"] == row["next_run_at"]
-    assert reminders.ack(db, pending[0]["reminder_id"])
-    assert reminders.pull_pending(db, ref) == []
+    assert not reminders.ack(db, pending[0]["reminder_id"])
+    assert pending[0]["carrier_message_uid"] is None
+    assert len(reminders.pull_pending(db, ref)) == 1
 
 
-def test_cli_local_off_then_on_retains_schedule_and_fires_once(cli_env):
+def test_cli_scheduler_off_then_on_retains_schedule_and_fires_once(cli_env):
     cli, db, ref = cli_env
     arm(db, ref)
-    db.notebook_set_local_enabled(ref, False)
+    db.db_path.parent.joinpath("config.yaml").write_text("scheduler:\n  enabled: false\n")
     cli_reminders.poll_cli_reminders(cli)
     assert cli.calls == []
-    db.notebook_set_local_enabled(ref, True)
+    db.db_path.parent.joinpath("config.yaml").write_text("scheduler:\n  enabled: true\n")
     cli._secretary_reminder_next_poll = 0
     cli_reminders.poll_cli_reminders(cli)
     cli._secretary_reminder_next_poll = 0
@@ -111,7 +108,7 @@ def test_cli_lane_rechecks_claim_after_poll(cli_env):
     arm(db, ref)
     lane = cli._tui_process_one_input
     def disable_then_lane(value):
-        db.notebook_set_local_enabled(ref, False)
+        db.db_path.parent.joinpath("config.yaml").write_text("scheduler:\n  enabled: false\n")
         return lane(value)
     cli._tui_process_one_input = disable_then_lane
     cli_reminders.poll_cli_reminders(cli)
@@ -222,9 +219,8 @@ def test_cold_cli_construct_then_real_chat_preserves_source_on_wire_and_durable(
             from datetime import datetime
             marker = wire.splitlines()[1]
             assert datetime.fromisoformat(marker[len("<timestamp>"):-len("</timestamp>")]).timestamp() == floor(durable_row["timestamp"])
-            scheduled_line = wire.splitlines()[2]
-            assert scheduled_line.startswith("Scheduled for: ")
-            assert datetime.fromisoformat(scheduled_line[len("Scheduled for: "):]).timestamp() == floor(row["next_run_at"])
+            scheduled_line = next(line for line in wire.splitlines() if line.startswith("Due: "))
+            assert datetime.fromisoformat(scheduled_line[len("Due: "):]).timestamp() == floor(row["next_run_at"])
             assert durable_row["timestamp"] > row["next_run_at"]
         else:
             assert wire.splitlines()[0].startswith("<timestamp>") and wire.endswith(carrier)

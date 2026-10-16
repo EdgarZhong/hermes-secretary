@@ -8,6 +8,8 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from hermes_state import SessionDB
+from secretary.schedules import SchedulerStore
+from tests.secretary.test_reminders import materialize
 from hermes_state_secretary_schedule import (
     init_secretary_schedule_schema,
     reminder_ack_conn,
@@ -18,7 +20,6 @@ from hermes_state_secretary_schedule import (
     schedule_due_scan_conn,
     schedule_finalize_conn,
     schedule_release_conn,
-    schedule_sync_conn,
 )
 
 
@@ -39,14 +40,12 @@ def iso(offset_seconds):
     return (datetime.now(timezone.utc) + timedelta(seconds=offset_seconds)).isoformat()
 
 
-def arm(db, ref, entry_id="entry_1", *, minutes=None, run_at=None, semantics="system_reminder", text="due text"):
-    canonical = {"kind": "once", "run_at": run_at or iso(-60)} if minutes is None else {
-        "kind": "interval", "minutes": minutes,
-    }
-    return db._execute_write(lambda conn: schedule_sync_conn(
-        conn, ref, entry_id, active=True, canonical_schedule=canonical,
-        delivery_semantics=semantics, reminder_text=text,
-    ))
+def arm(db, ref, entry_id="entry_1", *, minutes=None, run_at=None, semantics="user_reminder", text="due text"):
+    result = SchedulerStore(db, ref, session_id=db.resolve_conversation_route(ref)["id"]).create(
+        text, f"every {minutes}m" if minutes else run_at or iso(-60),
+        "instant" if semantics == "user_reminder" else "deferred", name=entry_id)
+    assert result["success"], result
+    return row(db, result["schedule"]["schedule_id"])
 
 
 def set_next_run(db, schedule_id, when):
@@ -74,9 +73,7 @@ def test_due_occurrence_claimed_once_and_survives_restart(db):
     assert db._execute_write(lambda conn: schedule_claim_conn(
         conn, registered["schedule_id"], owner="w2", now=now, lease_seconds=60,
     )) is None
-    done = db._execute_write(lambda conn: schedule_finalize_conn(
-        conn, registered["schedule_id"], claim["claim_token"], now=now,
-    ))
+    done = settle_native(db, claim, now=now)
     assert done["state"] == "done" and done["next_run_at"] is None
     assert db._execute_write(lambda conn: schedule_due_scan_conn(conn, now=now + 10)) == []
     # Reopening the store keeps the terminal state and the pending rows (durable, no sidecar).
@@ -133,47 +130,28 @@ def test_release_keeps_occurrence_due_and_lease_blocks_second_owner(db):
     assert row(db, registered["schedule_id"])["claim_attempts"] == 2
 
 
-def test_disabled_conversation_keeps_intent_and_overdue_fires_once_after_reenable(db):
-    ref = make_conversation(db)
-    registered = arm(db, ref)
-    db._execute_write(lambda conn: schedule_sync_conn(conn, ref, "entry_1", active=False))
-    assert row(db, registered["schedule_id"])["enabled"] == 0
+def test_paused_schedule_keeps_intent_and_overdue_fires_once_after_resume(db):
+    ref = make_conversation(db); registered = arm(db, ref)
+    store = SchedulerStore(db, ref, session_id="s1")
+    assert store.pause(registered["schedule_id"])["success"]
     now = time.time()
     assert db._execute_write(lambda conn: schedule_due_scan_conn(conn, now=now)) == []
-    db._execute_write(lambda conn: schedule_sync_conn(conn, ref, "entry_1", active=False, cancelled=True))
-    assert row(db, registered["schedule_id"])["state"] == "cancelled"
-    # The Notebook becomes active again with the same intent: the overdue one-shot fires once.
-    db._execute_write(lambda conn: schedule_sync_conn(conn, ref, "entry_1", active=False))
-    rearmed = db._execute_write(lambda conn: schedule_sync_conn(
-        conn, ref, "entry_1", active=True, canonical_schedule={"kind": "once", "run_at": iso(-90)},
-        delivery_semantics="system_reminder", reminder_text="due text",
-    ))
-    assert rearmed["state"] == "pending" and rearmed["enabled"] == 1
-    due = db._execute_write(lambda conn: schedule_due_scan_conn(conn, now=now))
-    assert len(due) == 1
-    claim = db._execute_write(lambda conn: schedule_claim_conn(
-        conn, registered["schedule_id"], owner="w1", now=now, lease_seconds=60,
-    ))
-    db._execute_write(lambda conn: schedule_finalize_conn(conn, registered["schedule_id"], claim["claim_token"], now=now))
-    assert db._execute_write(lambda conn: schedule_due_scan_conn(conn, now=now + 5)) == []
+    assert store.resume(registered["schedule_id"])["success"]
+    due = db._execute_write(lambda conn: schedule_due_scan_conn(conn, now=time.time()))
+    assert len(due) == 1 and due[0]["schedule_id"] == registered["schedule_id"]
+    claim = db._execute_write(lambda conn: schedule_claim_conn(conn, registered["schedule_id"], owner="w1", now=time.time(), lease_seconds=60))
+    settle_native(db, claim, now=time.time())
+    assert db._execute_write(lambda conn: schedule_due_scan_conn(conn, now=time.time()+5)) == []
 
 
 def test_unchanged_done_intent_does_not_refire(db):
-    ref = make_conversation(db)
-    registered = arm(db, ref)
-    now = time.time()
-    claim = db._execute_write(lambda conn: schedule_claim_conn(
-        conn, registered["schedule_id"], owner="w1", now=now, lease_seconds=60,
-    ))
-    db._execute_write(lambda conn: schedule_finalize_conn(conn, registered["schedule_id"], claim["claim_token"], now=now))
-    # Every later reconcile of the SAME intent must not re-arm the terminal one-shot.
-    again = db._execute_write(lambda conn: schedule_sync_conn(
-        conn, ref, "entry_1", active=True,
-        canonical_schedule=json.loads(registered["canonical_schedule"]),
-        delivery_semantics="system_reminder", reminder_text="due text",
-    ))
-    assert again["state"] == "done"
-    assert db._execute_write(lambda conn: schedule_due_scan_conn(conn, now=now + 5)) == []
+    ref = make_conversation(db); registered = arm(db, ref); now = time.time()
+    claim = db._execute_write(lambda conn: schedule_claim_conn(conn, registered["schedule_id"], owner="w1", now=now, lease_seconds=60))
+    settle_native(db, claim, now=now)
+    result = SchedulerStore(db, ref, session_id="s1").update(registered["schedule_id"], content=registered["reminder_text"], schedule=registered["expression"])
+    assert result["success"] and not result["changed"]
+    assert row(db, registered["schedule_id"])["state"] == "done"
+    assert db._execute_write(lambda conn: schedule_due_scan_conn(conn, now=now+5)) == []
 
 
 def test_recurring_advances_without_replaying_backlog(db):
@@ -184,9 +162,7 @@ def test_recurring_advances_without_replaying_backlog(db):
     claim = db._execute_write(lambda conn: schedule_claim_conn(
         conn, registered["schedule_id"], owner="w1", now=now, lease_seconds=60,
     ))
-    advanced = db._execute_write(lambda conn: schedule_finalize_conn(
-        conn, registered["schedule_id"], claim["claim_token"], now=now,
-    ))
+    advanced = settle_native(db, claim, now=now)
     assert advanced["state"] == "pending"
     assert now < advanced["next_run_at"] <= now + 5 * 60 + 5
     # Scan AT the claim instant: ``next_run > now`` is asserted above, so this is deterministic.
@@ -200,36 +176,29 @@ def test_recurring_advance_helper_bounded():
     jumped = schedule_advance_epoch({"kind": "interval", "minutes": 1}, now - 86400, now=now)
     assert jumped > now
     assert jumped <= now + 60 + 5
-    assert schedule_advance_epoch({"kind": "once", "run_at": iso(-1)}, now - 5, now=now) is None
+    with pytest.raises(ValueError, match="no next recurrence"):
+        schedule_advance_epoch({"kind": "once", "run_at": iso(-1)}, now - 5, now=now)
 
 
-def test_unusable_runtime_row_is_quarantined_not_retried_forever(db):
-    ref = make_conversation(db)
-    registered = arm(db, ref)
-    now = time.time()
-    set_next_run(db, registered["schedule_id"], now - 5)
-    db._execute_write(lambda conn: conn.execute(
-        "UPDATE secretary_schedule_registry SET canonical_schedule = 'not json' WHERE schedule_id = ?",
-        (registered["schedule_id"],),
-    ))
-    claim = db._execute_write(lambda conn: schedule_claim_conn(
-        conn, registered["schedule_id"], owner="w1", now=now, lease_seconds=60,
-    ))
-    quarantined = db._execute_write(lambda conn: schedule_finalize_conn(
-        conn, registered["schedule_id"], claim["claim_token"], now=now,
-    ))
-    assert quarantined["state"] == "cancelled" and quarantined["enabled"] == 0
-    assert db._execute_write(lambda conn: schedule_due_scan_conn(conn, now=now + 5)) == []
+def test_corrupt_schedule_failure_rolls_back_native_row_and_keeps_claim_recoverable(db):
+    ref = make_conversation(db); registered = arm(db, ref); now = time.time()
+    db._execute_write(lambda conn: conn.execute("UPDATE secretary_schedule_registry SET canonical_schedule='not json' WHERE schedule_id=?", (registered["schedule_id"],)))
+    claim = db._execute_write(lambda conn: schedule_claim_conn(conn, registered["schedule_id"], owner="w1", now=now, lease_seconds=60))
+    before = row(db, registered["schedule_id"])
+    with pytest.raises(ValueError):
+        settle_native(db, claim, now=now)
+    assert db.get_messages("s1") == [] and row(db, registered["schedule_id"]) == before
+    assert db._execute_write(lambda conn: schedule_release_conn(conn, registered["schedule_id"], claim["claim_token"], now=now))
 
 
 def test_pending_reminder_dedup_pull_and_ack_only_after_success(db):
     ref = make_conversation(db)
     now = time.time()
     first = db._execute_write(lambda conn: reminder_append_pending_conn(
-        conn, ref, "commitment due", source_timestamp=now - 30, schedule_id="sched_a",
+        conn, ref, "commitment due", source_timestamp=now - 30, dedup_key="internal-notice",
     ))
     second = db._execute_write(lambda conn: reminder_append_pending_conn(
-        conn, ref, "commitment due", source_timestamp=now - 30, schedule_id="sched_a",
+        conn, ref, "commitment due", source_timestamp=now - 30, dedup_key="internal-notice",
     ))
     assert first == second
     pull = db._execute_write(lambda conn: reminder_pull_pending_conn(conn, ref))
@@ -244,6 +213,8 @@ def test_pending_reminder_dedup_pull_and_ack_only_after_success(db):
     # A failed request leaves the row pending: nothing was ACKed, so a retry sees it again.
     again = db._execute_write(lambda conn: reminder_pull_pending_conn(conn, ref))
     assert [it["source_timestamp"] for it in again] == [item["source_timestamp"]]
+    assert not db._execute_write(lambda conn: reminder_ack_conn(conn, item["reminder_id"]))
+    materialize(db, ref)
     assert db._execute_write(lambda conn: reminder_ack_conn(conn, item["reminder_id"]))
     assert db._execute_write(lambda conn: reminder_pull_pending_conn(conn, ref)) == []
     assert db._execute_write(lambda conn: reminder_ack_conn(conn, item["reminder_id"]))  # idempotent
@@ -254,3 +225,15 @@ def test_pending_reminder_dedup_pull_and_ack_only_after_success(db):
         )[0] == "delivered"
     finally:
         other.close()
+
+
+def settle_native(db, claim, *, now):
+    """Registry layer gets its real native row and settlement in one transaction."""
+    outcome = []
+    rows = [{"role": "user", "content": "instant occurrence " + claim["schedule_id"], "timestamp": now}]
+    def settled(conn, _sid, inserted):
+        stored = inserted[0]
+        outcome.append(schedule_finalize_conn(conn, claim["schedule_id"], claim["claim_token"], now=now,
+            carrier_message_uid=stored["message_uid"], carrier_content=stored["content"]))
+    db.append_messages_batch(db.resolve_conversation_route(claim["conversation_ref"])["id"], rows, before_commit=settled)
+    return outcome[0]

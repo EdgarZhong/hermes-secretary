@@ -16,7 +16,7 @@ import pytest
 
 from hermes_state import SessionDB
 from hermes_state_secretary_schedule import (
-    REMINDER_STATUS_PENDING, init_secretary_schedule_schema, reminder_append_pending_conn,
+    init_secretary_schedule_schema,
     reminder_pending_count_conn,
 )
 from agent.turn_request_assembly import assemble_api_request
@@ -66,8 +66,14 @@ def runtime(tmp_path, monkeypatch):
 
 
 def seed_reminder(db, ref, content="submit the report", source_timestamp=1234.0):
-    return db._execute_write(lambda conn: reminder_append_pending_conn(
-        conn, ref, content, source_timestamp=source_timestamp, schedule_id="sched_1"))
+    from datetime import datetime, timezone
+    from secretary.schedules import SchedulerStore, claim_due
+    from secretary.reminders import queue_pending_for_claim
+    result = SchedulerStore(db, ref, session_id=db.resolve_conversation_route(ref)["id"]).create(
+        content, datetime.fromtimestamp(source_timestamp, timezone.utc).isoformat(), "deferred")
+    assert result["success"], result
+    claim = claim_due(db, result["schedule"]["schedule_id"], owner="seed")
+    return queue_pending_for_claim(db, claim)
 
 
 def run_assembly(agent, messages):
@@ -96,7 +102,7 @@ def test_pending_reminder_is_durable_and_acked_on_success(runtime):
 
     assembled = run_assembly(agent, messages)
     carrier = messages[-1]["content"]
-    assert carrier.startswith("<deferred-reminder>\n以下提醒已到期。\n")
+    assert carrier.startswith("<deferred-reminder>\nSCHEDULED ATTENTION\n")
     assert "<timestamp>" not in carrier
     assert any(carrier in str(m.get("content")) for m in assembled.api_messages)
     assert db.get_messages("S17")[-1]["content"] == carrier
@@ -150,17 +156,18 @@ def test_noting_children_and_detached_forks_never_pull_reminders(runtime):
     assert api_messages == [{"role": "user", "content": "hello"}]
 
 
-def test_reminder_gate_follows_noting_settings(runtime, monkeypatch):
+def test_reminder_gate_follows_scheduler_settings(runtime):
     agent, db, _client = runtime
     ref = agent._secretary_conversation_ref
     seed_reminder(db, ref)
-    from secretary import noting_policy
-
-    monkeypatch.setattr(noting_policy, "resolve_noting_settings",
-                        lambda: noting_policy.disabled_noting_settings())
-    api_messages: list = [{"role": "user", "content": "hello"}]
+    from pathlib import Path
+    config = Path(db.db_path).parent / "config.yaml"
+    config.write_text("noting:\n  enabled: true\nscheduler:\n  enabled: false\n")
+    api_messages = [{"role": "user", "content": "hello"}]
     assert inject_pending_reminders(agent, api_messages) == (0, 0)
     assert api_messages == [{"role": "user", "content": "hello"}]
+    config.write_text("noting:\n  enabled: false\nscheduler:\n  enabled: true\n")
+    assert inject_pending_reminders(agent, api_messages)[0] == 1
 
 
 def test_carrier_bytes_match_the_schedule_module_builder():

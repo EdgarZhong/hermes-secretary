@@ -143,7 +143,7 @@ def child(home, host, boundary):
 
 
 def prepare(home, host):
-    home.mkdir()
+    home.mkdir(parents=True)
     (home / "config.yaml").write_text("model:\n  context_length: 196000\nnoting:\n  enabled: true\n")
     db = SessionDB(home / "state.db")
     db.create_session("s1", source="telegram" if host == "gateway" else "cli", session_key="peer", profile_name="default")
@@ -157,7 +157,7 @@ def prepare(home, host):
 @pytest.mark.parametrize("host", ["cli", "tui", "gateway"])
 @pytest.mark.parametrize("boundary", ["before", "inside", "after"])
 def test_sigkill_native_transaction_then_fresh_host_scan(tmp_path, host, boundary):
-    home = tmp_path / host
+    home = tmp_path / "profiles" / "default"
     _ref, original = prepare(home, host)
     killed = child(home, host, boundary)
     assert killed.returncode == -signal.SIGKILL, killed.stdout + killed.stderr
@@ -189,18 +189,18 @@ def test_sigkill_native_transaction_then_fresh_host_scan(tmp_path, host, boundar
         db.close()
 
 
-@pytest.mark.parametrize("change", ["local_off", "cancel"])
+@pytest.mark.parametrize("change", ["scheduler_off", "cancel"])
 def test_tui_crashed_marker_cannot_replay_while_current_schedule_is_off(tmp_path, change):
-    home = tmp_path / "tui"
+    home = tmp_path / "profiles" / "default"
     ref, _row = prepare(home, "tui")
     killed = child(home, "tui", "before")
     assert killed.returncode == -signal.SIGKILL, killed.stdout + killed.stderr
     db = SessionDB(home / "state.db")
-    if change == "local_off":
-        db.notebook_set_local_enabled(ref, False)
+    if change == "scheduler_off":
+        (home / "config.yaml").write_text("scheduler:\n  enabled: false\n")
     else:
-        from hermes_state_secretary_schedule import schedule_sync_conn
-        db._execute_write(lambda c: schedule_sync_conn(c, ref, _row["notebook_entry_id"], active=False, cancelled=True))
+        from secretary.schedules import SchedulerStore
+        assert SchedulerStore(db, ref, session_id="s1").delete(_row["schedule_id"])["success"]
     db._execute_write(lambda c: c.execute("UPDATE secretary_schedule_registry SET claim_expires_at=?", (time.time() - 1,)))
     db._execute_write(lambda c: c.execute("UPDATE session_turn_leases SET expires_at=?", (time.time() - 1,)))
     db.close()

@@ -1,7 +1,6 @@
 """Real registry tests for the last active Reminder admission and its narrow recovery receipt."""
 
 import time
-import json
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
@@ -9,7 +8,7 @@ from datetime import datetime, timezone
 import pytest
 
 from hermes_state import SessionDB
-from hermes_state_secretary_schedule import schedule_sync_conn
+from secretary.schedules import SchedulerStore
 from secretary import reminders, schedules
 
 
@@ -30,8 +29,8 @@ def armed(tmp_path):
 
 
 def current(db, claim):
-    return dict(db._read_one("SELECT * FROM secretary_schedule_registry WHERE schedule_id = ?",
-                             (claim["schedule_id"],)))
+    found = db._read_one("SELECT * FROM secretary_schedule_registry WHERE schedule_id = ?", (claim["schedule_id"],))
+    return None if found is None else dict(found)
 
 
 def invalidate(db, ref, claim, change):
@@ -44,21 +43,19 @@ def invalidate(db, ref, claim, change):
         expire()
         assert schedules.claim_due(db, claim["schedule_id"], owner="new")
 
+    store = SchedulerStore(db, ref, session_id=db.resolve_conversation_route(ref)["id"])
     actions = {
         "local_off": lambda: db.notebook_set_local_enabled(ref, False),
-        "global_off": lambda: (db.db_path.parent / "config.yaml").write_text("noting:\n  enabled: false\n"),
-        "cancel": lambda: db._execute_write(
-            lambda c: schedule_sync_conn(c, ref, claim["notebook_entry_id"], active=False, cancelled=True)),
+        "global_off": lambda: (db.db_path.parent / "config.yaml").write_text("scheduler:\n  enabled: false\n"),
+        "cancel": lambda: store.delete(claim["schedule_id"]),
         "expired": expire,
         "reclaim": reclaim,
-        "changed": lambda: db._execute_write(lambda c: schedule_sync_conn(
-            c, ref, claim["notebook_entry_id"], active=True, canonical_schedule={"kind": "interval", "minutes": 10},
-            delivery_semantics="user_reminder", reminder_text="new intent")),
+        "changed": lambda: store.update(claim["schedule_id"], schedule="every 10m", content="new intent"),
     }
     actions[change]()
 
 
-@pytest.mark.parametrize("change", ["local_off", "global_off", "cancel", "expired", "reclaim", "changed"])
+@pytest.mark.parametrize("change", ["global_off", "cancel", "expired", "reclaim", "changed"])
 def test_last_admission_rejects_changes_after_route_preparation(armed, change):
     db, ref, claim = armed
     assert reminders.resolve_active_reminder(db, claim)["route"]["id"] == "main"
@@ -66,8 +63,11 @@ def test_last_admission_rejects_changes_after_route_preparation(armed, change):
     before = current(db, claim)
     assert reminders.admit_active_reminder(db, claim, session_id="main") is None
     after = current(db, claim)
-    assert after["state"] == before["state"]
-    assert after["next_run_at"] == before["next_run_at"]
+    if before is None:
+        assert after is None
+    else:
+        assert after["state"] == before["state"]
+        assert after["next_run_at"] == before["next_run_at"]
     assert reminders.pending_count(db, ref) == 0
     if change == "reclaim":
         assert after["claim_owner"] == "new" and after["claim_token"] == before["claim_token"]
@@ -111,19 +111,14 @@ def test_failed_invoke_receipt_cannot_revert_new_runtime_owner(armed, change):
     assert reminders.pending_count(db, ref) == 0
 
 
-def test_local_off_after_admission_recovers_due_without_creating_reminder(armed):
+def test_local_off_after_admission_does_not_block_native_carrier(armed):
     db, ref, claim = armed
     receipt = reminders.admit_active_reminder(db, claim)
     db.notebook_set_local_enabled(ref, False)
-    assert reminders.recover_active_reminder(db, receipt, passive=True)
-    assert current(db, claim)["state"] == "pending"
-    assert reminders.pending_count(db, ref) == 0
-    db.notebook_set_local_enabled(ref, True)
-    retry = schedules.claim_due(db, claim["schedule_id"], owner="after-on")
-    accepted = reminders.admit_active_reminder(db, retry)
     from tests.secretary.reminder_runtime import persist_native_carrier
-    persist_native_carrier(db, "main", accepted["resolved"]["text"])
+    persist_native_carrier(db, "main", receipt["resolved"]["text"])
     assert current(db, claim)["state"] == "done"
+    assert not reminders.recover_active_reminder(db, receipt)
 
 
 def test_occurrence_and_runtime_route_must_both_match_at_admission(armed):
@@ -133,12 +128,11 @@ def test_occurrence_and_runtime_route_must_both_match_at_admission(armed):
     assert current(db, claim)["claim_token"] == claim["claim_token"]
 
 
-def test_noop_reconcile_keeps_receipt_valid_for_refused_invoke(armed):
+def test_noop_update_keeps_receipt_valid_for_refused_invoke(armed):
     db, ref, claim = armed
     receipt = reminders.admit_active_reminder(db, claim)
-    payload = db.notebook_current(ref)["payload"]
-    db._execute_write(lambda c: schedules.reconcile_payload(
-        c, ref, payload, now=receipt["before"]["updated_at"] + 1))
+    result = SchedulerStore(db, ref, session_id="main").update(claim["schedule_id"], content=claim["reminder_text"])
+    assert result["success"] and not result["changed"]
     assert current(db, claim)["updated_at"] == receipt["before"]["updated_at"]
     assert reminders.recover_active_reminder(db, receipt)
     retry = schedules.claim_due(db, claim["schedule_id"], owner="retry")
@@ -148,12 +142,9 @@ def test_noop_reconcile_keeps_receipt_valid_for_refused_invoke(armed):
 def test_disabled_then_reenabled_registry_invalidates_old_receipt(armed):
     db, ref, claim = armed
     receipt = reminders.admit_active_reminder(db, claim)
-    db._execute_write(lambda c: schedule_sync_conn(c, ref, claim["notebook_entry_id"], active=False,
-                                                 now=receipt["before"]["updated_at"] + 1))
-    db._execute_write(lambda c: schedule_sync_conn(
-        c, ref, claim["notebook_entry_id"], active=True, canonical_schedule=json.loads(claim["canonical_schedule"]),
-        delivery_semantics=claim["delivery_semantics"], reminder_text=claim["reminder_text"],
-        now=receipt["before"]["updated_at"] + 2))
+    store = SchedulerStore(db, ref, session_id="main")
+    assert store.pause(claim["schedule_id"])["success"]
+    assert store.resume(claim["schedule_id"])["success"]
     before = current(db, claim)
     assert not reminders.recover_active_reminder(db, receipt, passive=True)
     assert current(db, claim) == before

@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from hermes_state_secretary_schedule import reminder_append_pending_conn, reminder_pending_count_conn
+from hermes_state_secretary_schedule import reminder_pending_count_conn
 from secretary.framework_messages import flush_framework_messages, publish_framework_message
 from tests.secretary.test_noting_surface import _agent, _requests, _turn, runtime as _surface_runtime
 
@@ -16,11 +16,14 @@ def runtime(tmp_path, monkeypatch):
 
 
 def seed(agent, entry_id="1", due=1700000000):
-    entry = {"entry_id": entry_id, "entry_type": "user_commitment", "fields": {"what": "报告"},
-             "schedule": {"expression": "tomorrow"}}
-    return agent._session_db._execute_write(lambda conn: reminder_append_pending_conn(
-        conn, agent._secretary_conversation_ref, "报告到期", source_timestamp=due,
-        entry_payload=entry, dedup_key=entry_id))
+    from datetime import datetime, timezone
+    from secretary.schedules import SchedulerStore, claim_due
+    from secretary.reminders import queue_pending_for_claim
+    result = SchedulerStore(agent._session_db, agent._secretary_conversation_ref, session_id=agent.session_id).create(
+        "报告到期 " + entry_id, datetime.fromtimestamp(due, timezone.utc).isoformat(), "deferred", name=entry_id)
+    assert result["success"], result
+    claim = claim_due(agent._session_db, result["schedule"]["schedule_id"], owner="seed")
+    return queue_pending_for_claim(agent._session_db, claim)
 
 
 def pending(agent):
@@ -45,11 +48,11 @@ def test_real_turn_batches_two_occurrences_live_durable_and_success_ack(runtime)
         assert len(rows) == 1 and pending(agent) == 0
         carrier = rows[0]["content"]
         assert "<timestamp>" not in carrier
-        assert carrier.startswith("<deferred-reminder>\n以下提醒已到期。\n")
-        entries = json.loads(carrier.splitlines()[2])
-        assert [e["entry_id"] for e in entries] == ["1", "2"]
-        assert all("schedule" not in e and "due_at" in e for e in entries)
-        assert entries[0]["fields"] == {"what": "报告"}
+        assert carrier.startswith("<deferred-reminder>\nSCHEDULED ATTENTION\n")
+        assert carrier.count("SCHEDULED ATTENTION") == 2
+        assert carrier.index("报告到期 1") < carrier.index("报告到期 2")
+        assert carrier.count("Schedule:") == 2 and carrier.count("Due:") == 2
+        assert "entry_type" not in carrier and "fields" not in carrier
         assert any(carrier in str(row["content"]) for row in seen[0]["messages"])
         assert any(row["message_uid"] == rows[0]["message_uid"] for row in agent._session_messages)
         _turn(agent, "下一轮")
@@ -75,7 +78,7 @@ def test_context_selection_drop_keeps_pending_then_rematerializes(runtime, monke
         history = [row for row in agent._session_messages if "<deferred-reminder>" not in str(row.get("content"))]
         result = agent.run_conversation("重试", conversation_history=history, title_user_message="")
         assert result["completed"] and pending(agent) == 0
-        assert len(deferred_rows(agent)) == 2
+        assert len(deferred_rows(agent)) == 1
     finally:
         agent.close()
 
@@ -134,16 +137,14 @@ def test_framework_idle_busy_fence_same_row_and_anchor_marker(runtime):
         agent.close()
 
 
-@pytest.mark.parametrize("disabled", ["global", "local", "auxiliary"])
+@pytest.mark.parametrize("disabled", ["scheduler", "auxiliary"])
 def test_delivery_disabled_paths_remain_native(runtime, disabled):
     db, config = runtime
     agent = _agent(db)
     try:
         seed(agent)
-        if disabled == "global":
-            config.write_text("noting:\n  enabled: false\n")
-        elif disabled == "local":
-            db.notebook_set_local_enabled(agent._secretary_conversation_ref, False)
+        if disabled == "scheduler":
+            config.write_text("scheduler:\n  enabled: false\n")
         else:
             agent._secretary_reminder_injection_disabled = True
             agent.side_agent = True
@@ -464,6 +465,8 @@ def test_partial_request_ack_releases_only_the_batch_actually_carried(runtime):
         inject_pending_reminders(agent, agent._session_messages)
         assert verify_carried_reminders(agent, [{"role": "user", "content": first_carrier}])
         assert agent._secretary_inflight_reminders == [first]
+        assert acknowledge_carried_reminders(agent) == 0
+        agent._secretary_reminder_provider_responded = True
         assert acknowledge_carried_reminders(agent) == 1
         assert db._read_one("SELECT status FROM secretary_pending_reminders WHERE reminder_id=?", (second,))[0] == "pending"
     finally:
