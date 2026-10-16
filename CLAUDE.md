@@ -4,9 +4,9 @@
 
 暂无未经授权的待追认产品扩展。本轮用户已整体审定白板，并授权自主收敛完整 Noting Prompt 与工具细节；下列是依授权形成的具体决定，不冒称逐字段由用户亲自选择。尚未实施。
 
-## 第三轮自主实现 · 文档基线（2026-10-16，收敛完成、提交后暂停）
+## 第三轮自主实现 · 文档基线（2026-10-16，文档基线已建立，已暂停）
 
-- **本次用户指令**：“开始第三轮自主实现，执行 ask and align”。ask-and-align已完成，正在提交双仓库文档基线；随后按用户要求暂停，未编制正式实施计划或修改产品代码。
+- **本次用户指令**：“开始第三轮自主实现，执行 ask and align”。ask-and-align及双仓库文档基线已完成，按用户要求暂停，未编制正式实施计划或修改产品代码。
 - **承接既有确认**：Secretary 改版＋独立个人 NM 接入共同纳入本轮；界面改版后置。已确认的 finish 独立调用、deferred 原投递机制、Scheduler 24 小时空档提示与生效 pointer 控制完成通知继续适用，不重复视为本次新增确认。
 - **已确认 A01／R3-002**：并发 Noting 保持现状。已有 Snapshot A，B 未提交时 C 启动，C 可以 A 为起点独立整理，不要求继承 B 的未提交成果；按有效边界选择生效结果，B 后续不生效本身不是缺陷。用户明确认为这一点不构成大碍；保留该设计边界，不新增串行、合并或重跑机制，不以缺少 B→C 成果继承阻断验收。生效 pointer 控制完成通知仍须按已确认契约落实。
 - **已确认 R3-003**：用户要求从云端拉取个人Provider仓库；已克隆`EdgarZhong/hermes-nmem-provider`到并列目录`/Users/edgar/code/hermes-nmem-provider`，分支`main`，HEAD `f9733fcb`，clone后工作区干净。已有个人Provider、CLI helper与测试，旧PHASE3的History设计已由新版07替代；个人现行设计已纳入该仓库nowledge-mem-hermes/docs/PHASE3.md上半部§1–7，下半部仅作历史。未安装／部署Provider、未更改运行配置、未写NM服务。
@@ -15,9 +15,10 @@
 - **已确认 R3-006／CLI测试边界**：通用`nmem` CLI编辑／管理不重复验收；此前捆绑Memory／Thread写入测试Space提议未获授权，不据此创建Space或写NM。自有Metadata小脚本与Provider Thread归档的接线验证须与通用CLI功能测试区分。
 - **最新用户决定 R3-008／R3-009**：Hermes provenance必须写入NM Memory；撤销此前取消`metadata.hermes_provenance`的短暂决定。以一个小脚本调用官方CLI创建Memory、读取真实返回ID、再仅补写Metadata，复用运行主机同一NM端点／密钥／远程配置；不复刻官方CLI，也不沿用旧helper直接HTTP创建／编辑正文的体系。正式部署目标为云端。尚未实施，未调用NM写入。
 - **已确认 R3-010／小脚本验证边界**：用户明确省去provenance小脚本的严格验证，不为它设置独立验收门禁或真实NM测试写入；后续实施仅做基本静态／调用检查，实际联通问题留待云端部署时调整。这不取消强制保存provenance，也不豁免公开Secretary与Provider其他适用要求。Provider自动Thread归档的真实服务写入仍未获授权；本次不写NM。
+- **冻结版本**：Secretary `d19018a7ba3e38ae01f76aa57821b55cbc15ff58`；Provider `97078118287bcd41ba8b02aa5a3a108c5026f7af`。这两次提交均为文档基线，不代表实现或验收通过。
 - **依据入口**：[本轮索引](.autonomous/20261016-round3-secretary-nm/snapshot-index.md)。公开白板／07、旧规格明确保留范围及个人PHASE3现行§1–7均已核对；下载个人稿不再作为平行权威。自动Thread归档的真实NM测试写入未授权，需要时在恢复阶段另行收敛。
 - **工作区保护**：启动读取时后端 HEAD 为 `a51fd99abc783f245ab855526a10862f2c89656a`；已有修改为核心文档、01／02／04／05／06／07、白板及归档移动。它们是此前准备成果，不冒称本次实现。本次纳入文档冻结，未改前端、产品代码、配置、运行库或NM服务。
-- **检查与停止**：文档差异检查通过，07的9个JSON块可解析，白板43个ID／73张卡片唯一、内部锚点有效，38处本地链接存在；Provider现行JSON及旧PHASE3原文保留检查通过；未运行产品测试，未启动Verification或Validation。基线提交后仅记录双仓库哈希并暂停等待用户恢复；用户明确不撰写交付或交接文档；恢复第一步为writing-plans。第二轮历史结论不作为本轮通过证据。
+- **检查与停止**：文档差异检查通过，07的9个JSON块可解析，白板43个ID／73张卡片唯一、内部锚点有效，38处本地链接存在；Provider现行JSON及旧PHASE3原文保留检查通过；未运行产品测试，未启动Verification或Validation。双仓库哈希已记录于本轮baseline.txt，现暂停等待用户恢复；用户明确不撰写交付或交接文档；恢复第一步为writing-plans。第二轮历史结论不作为本轮通过证据。
 
 <details>
 <summary>10-16冻结前的文档准备历史记录</summary>

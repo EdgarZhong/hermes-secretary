@@ -1,0 +1,9 @@
+d19018a7ba3e38ae01f76aa57821b55cbc15ff58
+
+hermes-secretary=d19018a7ba3e38ae01f76aa57821b55cbc15ff58
+hermes-nmem-provider=97078118287bcd41ba8b02aa5a3a108c5026f7af
+
+kind=document-baseline
+round=20261016-round3-secretary-nm
+source-code-hermes-secretary=a51fd99abc783f245ab855526a10862f2c89656a
+source-code-hermes-nmem-provider=f9733fcb31a0e6f468eabe6419cb76444fe16b30
