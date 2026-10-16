@@ -1,4 +1,4 @@
-"""``compact_parent`` against native state: verdict, refusal, cooldown and admission proof.
+"""Native parent compaction against state: verdict, refusal, cooldown and admission proof.
 
 The Parent here is a real ``AIAgent`` with a real ``ContextCompressor`` bound to a real
 profile ``state.db``, so "below threshold", the cooldown ladder and the durable compression
@@ -16,7 +16,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from hermes_state import SessionDB
-from secretary.noting_compact import compact_parent, compact_parent_from_child
+from agent.context_compaction_request import request_context_compaction
 
 
 def make_parent(tmp_path, monkeypatch, session_id="S17"):
@@ -59,7 +59,7 @@ def test_below_threshold_is_success_without_requesting_compaction(tmp_path, monk
         parent.context_compressor.last_prompt_tokens = 10
         parent.context_compressor.threshold_tokens = 100_000
         calls = _never_compress(monkeypatch, parent)
-        result = compact_parent(parent)
+        result = request_context_compaction(parent)
         assert (result.ok, result.status) == (True, "already_below_threshold")
         assert calls["n"] == 0
     finally:
@@ -73,7 +73,7 @@ def test_cooldown_refuses_without_forcing_and_without_starting_an_attempt(tmp_pa
         parent.context_compressor.threshold_tokens = 100_000
         parent.context_compressor.record_timeout_failure("stalled", failure_kind="stalled")
         calls = _never_compress(monkeypatch, parent)
-        result = compact_parent(parent)
+        result = request_context_compaction(parent)
         assert result.ok is False
         assert result.status.startswith("blocked:cooldown")
         assert calls["n"] == 0
@@ -88,7 +88,7 @@ def test_early_durable_compression_lock_is_not_safe_admission(tmp_path, monkeypa
         parent.context_compressor.threshold_tokens = 100_000
         assert db.try_acquire_compression_lock("S17", "pid=99999:turn=other", ttl_seconds=300.0) is True
         calls = _never_compress(monkeypatch, parent)
-        result = compact_parent(parent)
+        result = request_context_compaction(parent)
         assert result.ok is False
         assert calls["n"] == 1
     finally:
@@ -114,7 +114,7 @@ def test_admission_requires_receipt_not_early_lock_publication(tmp_path, monkeyp
             return messages, prompt
 
         monkeypatch.setattr(parent, "_compress_context", _native_entry, raising=False)
-        result = compact_parent(parent, wait_seconds=5.0)
+        result = request_context_compaction(parent, wait_seconds=5.0)
         assert entered.is_set()
         assert (result.ok, result.status) == (True, "admitted")
         release.set()
@@ -127,7 +127,7 @@ def test_admission_requires_receipt_not_early_lock_publication(tmp_path, monkeyp
             return messages, prompt
 
         monkeypatch.setattr(parent, "_compress_context", _no_admission, raising=False)
-        refused = compact_parent(parent, wait_seconds=5.0)
+        refused = request_context_compaction(parent, wait_seconds=5.0)
         assert refused.ok is False
         assert refused.status in {"not_admitted", "blocked:ineffective"}
     finally:
@@ -144,7 +144,7 @@ def test_native_error_is_a_typed_failure(tmp_path, monkeypatch):
             raise RuntimeError("summary route unavailable")
 
         monkeypatch.setattr(parent, "_compress_context", _boom, raising=False)
-        result = compact_parent(parent, wait_seconds=5.0)
+        result = request_context_compaction(parent, wait_seconds=5.0)
         assert result.ok is False
         assert result.status in {"native_error", "blocked:ineffective"}
     finally:
@@ -154,15 +154,10 @@ def test_native_error_is_a_typed_failure(tmp_path, monkeypatch):
 def test_missing_compressor_fails_clearly(tmp_path, monkeypatch):
     parent, db = make_parent(tmp_path, monkeypatch)
     try:
-        result = compact_parent(object())
+        result = request_context_compaction(object())
         assert (result.ok, result.status) == (False, "no_compressor")
     finally:
         db.close()
-
-
-def test_tool_entry_requires_the_parent_binding(tmp_path, monkeypatch):
-    payload = compact_parent_from_child(object())
-    assert '"success": false' in payload and "permission_denied" in payload
 
 
 def test_real_native_safety_checks_precede_receipt(tmp_path, monkeypatch):
@@ -201,11 +196,11 @@ def test_real_native_admission_returns_before_summary_finishes(tmp_path, monkeyp
             release.wait(timeout=10)
             raise RuntimeError("ultimate summary failure")
         monkeypatch.setattr("agent.conversation_compression._run_summary_phase", summary)
-        result = compact_parent(parent, wait_seconds=2)
+        result = request_context_compaction(parent, wait_seconds=2)
         assert entered.is_set()
         assert result.ok and result.status == "admitted"
         # Native safe admission also supports a different concurrent Noting task.
-        assert compact_parent(parent).status == "already_in_flight"
+        assert request_context_compaction(parent).status == "already_in_flight"
     finally:
         release.set()
         deadline = time.monotonic() + 3
@@ -231,13 +226,13 @@ def test_low_idle_selection_threshold_requests_real_native_safe_admission(tmp_pa
             release.wait(timeout=10)
             raise RuntimeError("controlled summary completion failure")
         monkeypatch.setattr("agent.conversation_compression._run_summary_phase", summary)
-        result = compact_parent(parent, relevant_threshold_tokens=100000, wait_seconds=2)
+        result = request_context_compaction(parent, relevant_threshold_tokens=100000, wait_seconds=2)
         assert entered.is_set() and result.ok and result.status == "admitted"
         assert result.threshold_tokens == 100000 and result.usage_tokens == 110000
         assert observed["approx_tokens"] == 110000 and observed["force"] is False
         assert observed["bypass_cooldown"] is False
         assert parent.context_compressor.threshold_tokens == 147000
-        assert compact_parent(parent, relevant_threshold_tokens=100000).status == "already_in_flight"
+        assert request_context_compaction(parent, relevant_threshold_tokens=100000).status == "already_in_flight"
     finally:
         release.set()
         deadline = time.monotonic() + 3
@@ -254,10 +249,10 @@ def test_low_idle_threshold_preserves_cooldown_and_no_receipt(tmp_path, monkeypa
         parent.context_compressor.last_prompt_tokens = 110000
         parent.context_compressor.record_timeout_failure("controlled", failure_kind="stalled")
         calls = _never_compress(monkeypatch, parent)
-        result = compact_parent(parent, relevant_threshold_tokens=100000)
+        result = request_context_compaction(parent, relevant_threshold_tokens=100000)
         assert not result.ok and result.status.startswith("blocked:cooldown") and calls["n"] == 0
         assert parent.context_compressor.threshold_tokens == 147000
         parent.context_compressor.last_prompt_tokens = 99999
-        assert compact_parent(parent, relevant_threshold_tokens=100000).status == "already_below_threshold"
+        assert request_context_compaction(parent, relevant_threshold_tokens=100000).status == "already_below_threshold"
     finally:
         db.close()

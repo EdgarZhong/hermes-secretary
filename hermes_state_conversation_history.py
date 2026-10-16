@@ -182,6 +182,8 @@ class HistoryPaths:
         if not any(row["role"] == "user" and row.get("display_kind") in (None, "", "steer") for row in rows):
             self._paths[ref] = None
             return None
+        if any(not isinstance(row.get("message_uid"), str) or not row["message_uid"].strip() for row in rows):
+            raise unavailable_source()
         self._paths[ref] = rows
         self._by_uid[ref] = {row["message_uid"]: row for row in rows}
         return rows

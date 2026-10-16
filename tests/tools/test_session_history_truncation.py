@@ -2,22 +2,23 @@
 
 import json
 from datetime import datetime
-from pathlib import Path
 
 import pytest
 
 from agent.context_compressor import SUMMARY_PREFIX, _SUMMARY_END_MARKER
 from tests.tools.test_session_history_identity import invoke
-from tools.session_history_tool import SESSION_HISTORY_SCHEMA
+from tools.session_history_tool import CONVERSATION_HISTORY_SCHEMA
 
 pytest_plugins = ("tests.tools.test_session_history_identity",)
 
 
-def test_history_schema_stays_frozen_without_full_body_option():
-    spec = (Path(__file__).resolve().parents[2] / "docs/02-noting-system-specification.md").read_text()
-    section = spec.split("#### 3.1 `session_history`", 1)[1].split("#### 3.2", 1)[0]
-    frozen = json.loads(section.split("```json\n", 1)[1].split("\n```", 1)[0])
-    assert SESSION_HISTORY_SCHEMA == frozen
+def test_history_mode_conflicts_are_rejected_by_registered_handler(db):
+    db.create_session("main", source="cli")
+    db.append_message("main", "user", "evidence", message_uid="m")
+    assert CONVERSATION_HISTORY_SCHEMA["name"] == "conversation_history"
+    for args in ({"mode": "search", "query": "evidence", "before": 0},
+                 {"mode": "read", "message_identity": {"conversation_ref": db.resolve_conversation_ref("main"), "message_uid": "m"}, "limit": 1}):
+        assert invoke(db, args)["error"]["code"] == "invalid_argument"
 
 
 @pytest.mark.parametrize("size", [799, 800, 801, 4000])
@@ -29,11 +30,12 @@ def test_search_budget_preserves_metadata_and_precise_read_returns_full_original
     assert found["success"] and found["count"] == 1
     row = found["messages"][0]
     assert found["conversation_ref"] == db.resolve_conversation_ref("main")
-    assert (row["message_uid"], datetime.fromisoformat(row["timestamp"]).timestamp()) == ("authentic-source", 123.25)
-    assert set(row) == {"message_uid", "timestamp", "role", "content"} | ({"truncated"} if size > 800 else set())
+    assert (row["message_uid"], datetime.fromisoformat(row["timestamp"]).timestamp()) == ("authentic-source", 123.0)
+    assert set(row) == {"message_uid", "timestamp", "role", "content", "excerpt_kind"} | ({"truncated"} if size > 800 else set())
     if size > 800:
-        assert len(row["content"]) == 800
-        assert row["content"].endswith("[truncated]")
+        assert len(row["content"]) <= 802
+        assert row["content"].rstrip("…") in content
+        assert row["excerpt_kind"] == "match"
         assert row["truncated"] is True
     else:
         assert row["content"] == content
@@ -41,7 +43,7 @@ def test_search_budget_preserves_metadata_and_precise_read_returns_full_original
     identity = {"conversation_ref": found["conversation_ref"], "message_uid": row["message_uid"]}
     read = invoke(db, {"mode": "read", "message_identity": identity, "before": 0, "after": 0})
     assert read["messages"][0]["content"] == content
-    assert datetime.fromisoformat(read["messages"][0]["timestamp"]).timestamp() == 123.25
+    assert datetime.fromisoformat(read["messages"][0]["timestamp"]).timestamp() == 123.0
     assert read["messages"][0]["message_uid"] == "authentic-source"
 
 
@@ -54,7 +56,7 @@ def test_search_truncation_is_per_row_across_compaction_with_complete_read(db):
                                      "_compressed_summary": True, "message_uid": "boundary"}], tail_count=0)
     search = invoke(db, {"mode": "search", "query": "evidence"})
     assert search["count"] == 20
-    assert sum(len(row["content"]) for row in search["messages"]) == 16000
+    assert sum(len(row["content"]) for row in search["messages"]) <= 16040
     for row, (uid, body, stamp) in zip(search["messages"], originals):
         assert row["message_uid"] == uid and datetime.fromisoformat(row["timestamp"]).timestamp() == stamp
         assert row["truncated"] is True
@@ -75,5 +77,9 @@ def test_invalid_source_metadata_fails_closed_without_inventing_values(db, monke
         return rows
     monkeypatch.setattr(db, "get_history_foreground_conn", damaged)
     result = invoke(db, {"mode": "search", "query": "evidence"})
-    assert result["success"] is False
-    assert "entry timestamp or canonical message_uid" in result["error"]
+    if result["success"]:
+        assert result["partial"] and result["messages"] == []
+    else:
+        assert result["error"]["code"] == "source_unavailable"
+    precise = invoke(db, {"mode": "read", "message_identity": {"conversation_ref": db.resolve_conversation_ref("main"), "message_uid": "original"}, "before": 0, "after": 0})
+    assert not precise["success"]

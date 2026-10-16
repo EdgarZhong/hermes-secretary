@@ -35,22 +35,21 @@ def test_commit_round_trip_with_complete_state_and_provenance(db):
     add(db, "s", "please remind me about the report", "m1")
     ref = ref_of(db, "s")
     identity = {"conversation_ref": ref, "message_uid": "m1"}
-    working = NotebookStore(db, ref)
-    entry = working.create("user_reminder", {"message": "submit the report"})
-    candidate = working.create("memory_candidate", {"draft": "prefers mornings"},
-                               source_message_identities=[identity])
-    snapshot_id = db.notebook_commit_snapshot(ref, working, anchor_message_uid="m1")
+    working = NotebookStore(db, ref, anchor_message_uid="m1")
+    entry = working.create("matter", {"description": "submit the report", "completion_condition": "report submitted"}, source_message_identities=[identity])["entry"]
+    candidate = working.create("candidate", {"description": "prefers mornings", "targets": ["memory"], "notebook_refs": [], "source_types": []},
+                               source_message_identities=[identity])["entry"]
+    snapshot_id = db.notebook_commit_snapshot(ref, working, anchor_message_uid="m1", termination={"type": "forced"})
 
     current = db.notebook_current(ref)
     assert current["snapshot_id"] == snapshot_id
     assert current["conversation_ref"] == ref
     assert current["anchor_message_uid"] == "m1"
-    assert current["message_identity"] == identity
     assert current["trigger_type"] == "idle"
     assert current["runtime_profile"] == "NOTING"
     assert current["payload"] == working.show()
-    assert current["payload"]["user"] == [entry]
-    assert current["payload"]["persistence"] == [candidate]
+    assert current["payload"]["work"] == [entry]
+    assert current["payload"]["candidates"] == [candidate]
     assert isinstance(current["created_at"], float)
 
 
@@ -59,10 +58,10 @@ def test_commit_accepts_plain_state_and_trigger_profile_metadata(db):
     add(db, "s", "note", "m1")
     ref = ref_of(db, "s")
     db.notebook_commit_snapshot(ref, empty_state(), anchor_message_uid="m1",
-                                trigger_type="force", runtime_profile="NOTING_WITH_COMPACTION")
+                                trigger_type="force", runtime_profile="NOTING", termination={"type": "forced"})
     current = db.notebook_current(ref)
     assert current["trigger_type"] == "force"
-    assert current["runtime_profile"] == "NOTING_WITH_COMPACTION"
+    assert current["runtime_profile"] == "NOTING"
 
 
 def test_incomplete_or_unknown_state_is_never_committed(db):
@@ -70,13 +69,13 @@ def test_incomplete_or_unknown_state_is_never_committed(db):
     add(db, "s", "note", "m1")
     ref = ref_of(db, "s")
     with pytest.raises(NotebookError, match="four-section"):
-        db.notebook_commit_snapshot(ref, {"user": []}, anchor_message_uid="m1")
+        db.notebook_commit_snapshot(ref, {"work": []}, anchor_message_uid="m1", termination={"type": "forced"})
     with pytest.raises(NotebookError, match="entry lists"):
-        db.notebook_commit_snapshot(ref, {**empty_state(), "user": [1]}, anchor_message_uid="m1")
+        db.notebook_commit_snapshot(ref, {**empty_state(), "work": [1]}, anchor_message_uid="m1", termination={"type": "forced"})
     with pytest.raises(NotebookError, match="trigger"):
-        db.notebook_commit_snapshot(ref, empty_state(), anchor_message_uid="m1", trigger_type="manual")
+        db.notebook_commit_snapshot(ref, empty_state(), anchor_message_uid="m1", trigger_type="unrecognized", termination={"type": "forced"})
     with pytest.raises(NotebookError, match="profile"):
-        db.notebook_commit_snapshot(ref, empty_state(), anchor_message_uid="m1", runtime_profile="NOTING_X")
+        db.notebook_commit_snapshot(ref, empty_state(), anchor_message_uid="m1", runtime_profile="NOTING_X", termination={"type": "forced"})
     assert count_snapshots(db) == 0
     assert db.notebook_current(ref) is None
 
@@ -87,13 +86,13 @@ def test_invalid_anchor_is_refused_without_a_snapshot(db):
     boundary = SUMMARY_PREFIX + "carried scaffold\n" + _SUMMARY_END_MARKER
     db.append_message("s", "user", boundary, message_uid="boundary", _compressed_summary=True)
     ref = ref_of(db, "s")
-    committed = db.notebook_commit_snapshot(ref, empty_state(), anchor_message_uid="m1")
+    committed = db.notebook_commit_snapshot(ref, empty_state(), anchor_message_uid="m1", termination={"type": "forced"})
     with pytest.raises(NotebookError, match="Full Foreground"):
-        db.notebook_commit_snapshot(ref, empty_state(), anchor_message_uid="boundary")
+        db.notebook_commit_snapshot(ref, empty_state(), anchor_message_uid="boundary", termination={"type": "forced"})
     with pytest.raises(NotebookError, match="Full Foreground"):
-        db.notebook_commit_snapshot(ref, empty_state(), anchor_message_uid="ghost")
+        db.notebook_commit_snapshot(ref, empty_state(), anchor_message_uid="ghost", termination={"type": "forced"})
     with pytest.raises(NotebookError, match="Unknown Conversation"):
-        db.notebook_commit_snapshot("conv_missing", empty_state(), anchor_message_uid="m1")
+        db.notebook_commit_snapshot("conv_missing", empty_state(), anchor_message_uid="m1", termination={"type": "forced"})
     assert count_snapshots(db) == 1
     assert db.notebook_current(ref)["snapshot_id"] == committed
 
@@ -104,11 +103,11 @@ def test_two_anchors_out_of_order_never_move_the_pointer_backward(db):
     second_message = add(db, "s", "second question", "b")
     third_message = add(db, "s", "third question", "c")
     ref = ref_of(db, "s")
-    first = db.notebook_commit_snapshot(ref, empty_state(), anchor_message_uid="a")
-    third = db.notebook_commit_snapshot(ref, empty_state(), anchor_message_uid="c")
+    first = db.notebook_commit_snapshot(ref, empty_state(), anchor_message_uid="a", termination={"type": "forced"})
+    third = db.notebook_commit_snapshot(ref, empty_state(), anchor_message_uid="c", termination={"type": "forced"})
     assert db.notebook_current(ref)["snapshot_id"] == third
 
-    late = db.notebook_commit_snapshot(ref, empty_state(), anchor_message_uid="b")
+    late = db.notebook_commit_snapshot(ref, empty_state(), anchor_message_uid="b", termination={"type": "forced"})
     assert count_snapshots(db) == 3
     assert late not in {first, third}
     assert db.notebook_current(ref)["snapshot_id"] == third
@@ -134,19 +133,19 @@ def test_failed_pointer_move_rolls_back_the_snapshot(db, monkeypatch):
     add(db, "s", "one", "m1")
     add(db, "s", "two", "m2")
     ref = ref_of(db, "s")
-    first = db.notebook_commit_snapshot(ref, empty_state(), anchor_message_uid="m1")
+    first = db.notebook_commit_snapshot(ref, empty_state(), anchor_message_uid="m1", termination={"type": "forced"})
 
     def fail_pointer_move(self, conn, conversation_ref, snapshot_id):
         raise RuntimeError("injected pointer failure")
 
     monkeypatch.setattr(SecretaryNotebookMixin, "_notebook_move_pointer_conn", fail_pointer_move)
     with pytest.raises(RuntimeError, match="injected"):
-        db.notebook_commit_snapshot(ref, empty_state(), anchor_message_uid="m2")
+        db.notebook_commit_snapshot(ref, empty_state(), anchor_message_uid="m2", termination={"type": "forced"})
     monkeypatch.undo()
 
     assert count_snapshots(db) == 1
     assert db.notebook_current(ref)["snapshot_id"] == first
-    second = db.notebook_commit_snapshot(ref, empty_state(), anchor_message_uid="m2")
+    second = db.notebook_commit_snapshot(ref, empty_state(), anchor_message_uid="m2", termination={"type": "forced"})
     assert db.notebook_current(ref)["snapshot_id"] == second
 
 
@@ -155,7 +154,7 @@ def test_committed_snapshots_are_insert_only(db):
     add(db, "s", "alpha", "m1")
     add(db, "s", "beta", "m2")
     ref = ref_of(db, "s")
-    first = db.notebook_commit_snapshot(ref, empty_state(), anchor_message_uid="m1")
+    first = db.notebook_commit_snapshot(ref, empty_state(), anchor_message_uid="m1", termination={"type": "forced"})
     before = dict(db._read_one("SELECT * FROM secretary_notebook_snapshots WHERE snapshot_id = ?", (first,)))
 
     def install_guards(conn):
@@ -169,7 +168,7 @@ def test_committed_snapshots_are_insert_only(db):
         db._execute_write(lambda conn: conn.execute(
             "UPDATE secretary_notebook_snapshots SET payload_json = '{}' WHERE snapshot_id = ?", (first,)))
 
-    second = db.notebook_commit_snapshot(ref, empty_state(), anchor_message_uid="m2")
+    second = db.notebook_commit_snapshot(ref, empty_state(), anchor_message_uid="m2", termination={"type": "forced"})
     db.notebook_reselect_pointer(ref)
     after = dict(db._read_one("SELECT * FROM secretary_notebook_snapshots WHERE snapshot_id = ?", (first,)))
     assert after == before
@@ -182,8 +181,8 @@ def test_concurrent_commits_keep_both_snapshots_and_the_latest_anchor(db):
     add(db, "s", "two", "m2")
     ref = ref_of(db, "s")
     with ThreadPoolExecutor(max_workers=2) as pool:
-        first = pool.submit(db.notebook_commit_snapshot, ref, empty_state(), anchor_message_uid="m1")
-        second = pool.submit(db.notebook_commit_snapshot, ref, empty_state(), anchor_message_uid="m2")
+        first = pool.submit(db.notebook_commit_snapshot, ref, empty_state(), anchor_message_uid="m1", termination={"type": "forced"})
+        second = pool.submit(db.notebook_commit_snapshot, ref, empty_state(), anchor_message_uid="m2", termination={"type": "forced"})
         committed = {first.result(), second.result()}
     assert len(committed) == 2
     assert count_snapshots(db) == 2
@@ -197,9 +196,9 @@ def test_branch_gets_an_independent_notebook(db):
     add(db, "parent", "later question", "later", timestamp=300)
     parent_ref = ref_of(db, "parent")
     evidence = {"conversation_ref": parent_ref, "message_uid": "early"}
-    working = NotebookStore(db, parent_ref)
-    entry = working.create("memory_candidate", {"draft": "likes mornings"},
-                           source_message_identities=[evidence])
+    working = NotebookStore(db, parent_ref, anchor_message_uid="middle")
+    entry = working.create("candidate", {"description": "likes mornings", "targets": ["memory"], "notebook_refs": [], "source_types": []},
+                           source_message_identities=[evidence])["entry"]
     parent_snapshot = db.notebook_commit_snapshot(
         parent_ref, working, anchor_message_uid="middle", termination={"type": "forced"},
     )
@@ -216,12 +215,12 @@ def test_branch_gets_an_independent_notebook(db):
     assert branch_state["snapshot_id"] == inherited
     assert branch_state["anchor_message_uid"] == "middle"
     assert branch_state["created_at"] == db.notebook_current(parent_ref)["created_at"]
-    assert branch_state["payload"]["persistence"][0]["entry_id"] == entry["entry_id"]
-    assert branch_state["payload"]["persistence"][0]["fields"] == entry["fields"]
-    assert branch_state["payload"]["persistence"][0]["source_message_identities"] == [
+    assert branch_state["payload"]["candidates"][0]["entry_id"] == entry["entry_id"]
+    assert branch_state["payload"]["candidates"][0]["fields"] == entry["fields"]
+    assert branch_state["payload"]["candidates"][0]["source_message_identities"] == [
         {"conversation_ref": branch_ref, "message_uid": "early"}]
     rebound = deepcopy(branch_state["payload"])
-    for inherited_entry in rebound["persistence"]:
+    for inherited_entry in rebound["candidates"]:
         for source in inherited_entry["source_message_identities"]:
             source["conversation_ref"] = parent_ref
     assert rebound == db.notebook_current(parent_ref)["payload"]
@@ -236,12 +235,12 @@ def test_branch_gets_an_independent_notebook(db):
     assert still["payload"] == branch_state["payload"]
 
     add(db, "branch", "branch follow-up", "branch-msg")
-    branch_work = NotebookStore(db, branch_ref)
-    branch_entry = branch_work.create("decision", {"decision": "split", "rationale": "branch-local"})
-    branch_snapshot = db.notebook_commit_snapshot(branch_ref, branch_work, anchor_message_uid="branch-msg")
+    branch_work = NotebookStore(db, branch_ref, anchor_message_uid="branch-msg")
+    branch_entry = branch_work.create("decision", {"description": "split", "scope": "branch", "valid_when": "now", "ends_when": "reviewed"}, source_message_identities=[{"conversation_ref": branch_ref, "message_uid": "branch-msg"}])["entry"]
+    branch_snapshot = db.notebook_commit_snapshot(branch_ref, branch_work, anchor_message_uid="branch-msg", termination={"type": "forced"})
     assert branch_snapshot != parent_snapshot
     assert db.notebook_current(branch_ref)["snapshot_id"] == branch_snapshot
-    assert db.notebook_current(branch_ref)["payload"]["consultation"] == [branch_entry]
+    assert db.notebook_current(branch_ref)["payload"]["discussion"] == [branch_entry]
     assert count_snapshots(db) == 3
 
 
@@ -260,7 +259,7 @@ def test_local_state_defaults_persists_and_keeps_snapshots(db):
     add(db, "s", "note", "m1")
     ref = ref_of(db, "s")
     assert db.notebook_local_enabled(ref) is True
-    committed = db.notebook_commit_snapshot(ref, empty_state(), anchor_message_uid="m1")
+    committed = db.notebook_commit_snapshot(ref, empty_state(), anchor_message_uid="m1", termination={"type": "forced"})
 
     db.notebook_set_local_enabled(ref, False)
     assert db.notebook_local_enabled(ref) is False
@@ -318,9 +317,10 @@ def test_termination_audit_is_internal_only_and_validated(db):
         )
 
 
-def test_legacy_snapshot_without_termination_has_null_audit(db):
+def test_new_snapshot_without_termination_is_refused(db):
     make(db, "legacy")
     add(db, "legacy", "note", "m1")
     ref = ref_of(db, "legacy")
-    snapshot_id = db.notebook_commit_snapshot(ref, empty_state(), anchor_message_uid="m1")
-    assert db.notebook_snapshot_audit(snapshot_id)["termination"] is None
+    with pytest.raises(NotebookError, match="requires termination"):
+        db.notebook_commit_snapshot(ref, empty_state(), anchor_message_uid="m1", termination=None)
+    assert count_snapshots(db) == 0

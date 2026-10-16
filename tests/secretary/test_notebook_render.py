@@ -1,70 +1,53 @@
-"""AI JSON and normal human slash text keep different 02 §3.5/3.6 contracts."""
+"""Complete Snapshot projections retain public identity and exclude audit/archive."""
+
+from copy import deepcopy
 
 from secretary.notebook_model import NotebookWorkingState
 from secretary.notebook_render import render_notebook, show_notebook
 
-
-def test_display_times_hide_fraction_without_mutating_schedule_or_source_range():
-    from copy import deepcopy
-
-    exact = "2030-10-07T12:00:00.987654+08:00"
-    source_range = {"start_time": "2026-10-07T12:00:00.123456+08:00",
-                    "end_time": "2026-10-07T12:00:00.654321+08:00"}
-    model = NotebookWorkingState("conv_source")
-    model.create("watchpoint", {"subject": "report", "what_to_watch": "response", "why": "deadline", "until": exact})
-    model.create("memory_candidate", {"draft": "precise evidence"}, source_time_range=source_range)
-    snapshot = {"created_at": "2026-10-07T17:23:45.999999+08:00", "anchor_message_uid": "source", "payload": model.show()}
-    before = deepcopy(snapshot)
-    view = show_notebook(snapshot)
-    watchpoint = view["assistant"][0]
-    assert view["last_update_time"] == "2026-10-07T17:23:45+08:00"
-    assert watchpoint["schedule"]["canonical_schedule"]["run_at"] == "2030-10-07T12:00:00+08:00"
-    assert watchpoint["fields"]["until"] == "2030-10-07T12:00:00+08:00"
-    assert view["persistence"][0]["source_time_range"] == source_range
-    assert snapshot == before
+REF = "conv_source"
+RANGE = {"start_time": "2026-10-07T12:00:00.123456+08:00", "end_time": "2026-10-07T12:00:00.654321+08:00"}
 
 
-def test_null_is_explicit_and_not_an_empty_snapshot():
-    assert show_notebook(None) is None
+def snapshot():
+    model = NotebookWorkingState(REF, validate_source_range=lambda value: value == RANGE)
+    entry = model.create("matter", {"description": "send report", "completion_condition": "reviewed"}, source_time_range=RANGE)["entry"]
+    model.create("candidate", {"description": "precise evidence", "targets": ["memory"], "notebook_refs": [entry["entry_id"]], "source_types": ["matter"]}, source_time_range=RANGE)
+    return {"snapshot_id": "pointer", "conversation_ref": REF, "created_at": "2026-10-07T17:23:45.999999+08:00", "anchor_message_uid": "source", "payload": model.show()}
+
+
+def test_display_time_does_not_rewrite_source_range_or_snapshot():
+    saved = snapshot(); before = deepcopy(saved)
+    view = show_notebook(saved)
+    assert view["created_at"] == "2026-10-07T17:23:45+08:00"
+    assert view["payload"]["candidates"][0]["source_time_range"] == RANGE
+    assert saved == before
+
+
+def test_empty_view_is_success_with_bound_owner_and_explicit_null_snapshot():
+    view = show_notebook(None, conversation_ref=REF)
+    assert view == {"success": True, "conversation_ref": REF, "view_kind": "snapshot", "snapshot_id": None,
+                    "coverage": None, "payload": {section: [] for section in ("work", "situations", "discussion", "candidates")}}
     assert "no Notebook Snapshot yet" in render_notebook(None)
 
 
-def test_human_view_shows_timestamp_and_complete_semantics_without_anchor_or_pointer():
-    model = NotebookWorkingState("conv_source", validate_source_identity=lambda source: True)
-    commitment = model.create("user_commitment", {"what": "send report", "intent": "request approval"})
-    model.schedule_update(commitment["entry_id"], "2030-10-07T12:00:00Z")
-    model.create("secretary_task", {"task": "draft slides", "purpose": "team review"},
-                 expression="2030-10-07T12:00:00+00:00", delivery_mode="deferred")
-    decision = model.create("decision", {"decision": "ship Friday", "rationale": "test runway"})
-    model.archive(decision["entry_id"])
-    model.create("skill_candidate", {"capability": "triage", "workflow_draft": ["logs", "isolate"]},
-                 source_message_identities=[{"conversation_ref": "conv_source", "message_uid": "hidden_anchor"}])
-    snapshot = {"snapshot_id": "hidden_pointer", "conversation_ref": "conv_source",
-                "anchor_message_uid": "hidden_anchor", "created_at": "2026-10-07T17:23:45+08:00",
-                "trigger_type": "idle", "runtime_profile": "NOTING", "future_internal_audit": "never_expose",
-                "termination": {"type": "forced"}, "payload": model.show()}
-    rendered = render_notebook(snapshot)
-    for text in (snapshot["created_at"], "user", "assistant", "consultation", "persistence",
-                 "send report", "request approval", "draft slides", "team review", "triage", "logs", "isolate", "Schedule", "2030-10-07"):
-        assert text in rendered
-    assert "ship Friday" not in rendered
-    assert "archived" not in rendered
-    assert "hidden_anchor" not in rendered
-    assert "hidden_pointer" not in rendered
-    structured = show_notebook(snapshot)
-    assert set(structured) == {"last_update_time", "anchor_message_uid", "user", "assistant", "consultation", "persistence"}
-    assert structured["last_update_time"] == snapshot["created_at"]
-    assert structured["anchor_message_uid"] == snapshot["anchor_message_uid"]
-    assert structured["user"][0]["schedule"]["canonical_schedule"]["display"] == "once at 2030-10-07T12:00:00+00:00"
-    assert structured["user"][0]["fields"] == snapshot["payload"]["user"][0]["fields"]
-    assert structured["persistence"] == snapshot["payload"]["persistence"]
-    structured["user"].clear()
-    assert snapshot["payload"]["user"]
+def test_human_and_model_views_are_complete_and_exclude_termination_audit():
+    saved = snapshot()
+    saved["termination"] = {"type": "forced"}; saved["future_internal_audit"] = "never_expose"
+    text = render_notebook(saved)
+    for value in ("pointer", "source", "work", "situations", "discussion", "candidates", "send report", "reviewed", "precise evidence", "candidate_refs", "entry_id", "version_id"):
+        assert value in text
+    assert "forced" not in text and "never_expose" not in text
+    view = show_notebook(saved)
+    assert view["coverage"] == {"anchor_message_uid": "source"}
+    assert view["snapshot_id"] == "pointer" and view["payload"] == saved["payload"]
+    assert "termination" not in view and "future_internal_audit" not in view
+    view["payload"]["work"].clear()
+    assert saved["payload"]["work"]
 
 
-def test_committed_empty_snapshot_still_has_created_at_and_four_sections():
-    snapshot = {"created_at": "2026-10-07T09:00:00Z", "payload": NotebookWorkingState("conv_a").show()}
-    rendered = render_notebook(snapshot)
-    assert snapshot["created_at"] in rendered
-    assert rendered.count("(no entries)") == 4
-    assert "no Notebook Snapshot yet" not in rendered
+def test_committed_empty_snapshot_has_created_time_and_four_sections():
+    saved = snapshot(); saved["payload"] = NotebookWorkingState(REF).show()
+    text = render_notebook(saved)
+    assert "2026-10-07T17:23:45+08:00" in text and text.count("(no entries)") == 4
+    assert "no Notebook Snapshot yet" not in text

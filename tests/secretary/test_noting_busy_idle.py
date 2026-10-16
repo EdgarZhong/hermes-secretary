@@ -23,7 +23,9 @@ pytest_plugins = ['tests.secretary.test_noting_child']
 @pytest.fixture
 def busy_runtime(parent, db, stub_client, monkeypatch):
     config = Path(db.db_path).parent / 'config.yaml'
-    config.write_text('noting:\n  enabled: true\n  idle_delay_seconds: 0.12\n')
+    config.write_text('noting:\n  enabled: true\n  idle:\n    enabled: true\n    delay_seconds: 0.12\n    threshold_tokens: 1000\n')
+    from secretary.noting_scope import bind_main_runtime
+    assert bind_main_runtime(parent)
     parent._disable_streaming = True
     parent.context_compressor.context_length = 130000
     parent.context_compressor.threshold_tokens = 75000
@@ -61,7 +63,7 @@ def _assert_no_idle_effects(db, ref):
         assert conn.execute('SELECT COUNT(*) FROM secretary_noting_admissions').fetchone()[0] == 0
 
 
-@pytest.mark.parametrize('enable', ['memo', 'local', 'global'])
+@pytest.mark.parametrize('enable', ['local', 'global'])
 def test_off_main_enables_inside_turn_without_claim_then_real_end_timer_once(busy_runtime, monkeypatch, enable):
     from secretary.framework_messages import publish_framework_message
     from secretary.noting_hosts import poll_parent_idle
@@ -72,7 +74,7 @@ def test_off_main_enables_inside_turn_without_claim_then_real_end_timer_once(bus
     db.noting_idle_turn_finished(ref, now - 10, due_at=now - 9)
     stale = copy.deepcopy(db.noting_idle_state(ref))
     if enable == 'global':
-        config.write_text('noting:\n  enabled: false\n  idle_delay_seconds: 0.12\n')
+        config.write_text('noting:\n  enabled: false\n  idle:\n    enabled: true\n    delay_seconds: 0.12\n    threshold_tokens: 1000\n')
     else:
         db.notebook_set_local_enabled(ref, False)
     entered, release = threading.Event(), threading.Event()
@@ -81,17 +83,16 @@ def test_off_main_enables_inside_turn_without_claim_then_real_end_timer_once(bus
     def provider(request):
         calls.append(copy.deepcopy(request))
         rt.note_actual_main_execution(parent, 'native')
-        if enable == 'memo' and len(calls) == 1:
-            # Main actually dispatches the public memo tool, whose add auto-enables.
-            assert db.noting_idle_state(ref)['due_at'] is None
-            return _tool_response('noting_memo', {'operation': 'add', 'content': 'keep the green cover'}, 'memo')
         if enable == 'local':
             db.notebook_set_local_enabled(ref, True)
         elif enable == 'global':
-            config.write_text('noting:\n  enabled: true\n  idle_delay_seconds: 0.12\n')
+            config.write_text('noting:\n  enabled: true\n  idle:\n    enabled: true\n    delay_seconds: 0.12\n    threshold_tokens: 1000\n')
         entered.set()
         assert release.wait(5)
-        return mock_response('Main finished')
+        response = mock_response('Main finished')
+        from types import SimpleNamespace
+        response.usage = SimpleNamespace(prompt_tokens=8000, completion_tokens=10, total_tokens=8010)
+        return response
 
     monkeypatch.setattr(parent, '_interruptible_api_call', provider)
     worker, results, errors = _start_main(parent)
@@ -123,10 +124,6 @@ def test_off_main_enables_inside_turn_without_claim_then_real_end_timer_once(bus
     assert any(row.get('message_uid') == framework[0]['message_uid'] for row in parent._session_messages)
     assert [poll_parent_idle(parent) for _ in range(4)] == ['skip:idle_trigger_produced'] * 4
     assert not timers.holds_pending_timer(parent) and len(dispatched) == 1
-    if enable == 'memo':
-        assert len(calls) == 2
-        assert 'automatically enabled' in json.dumps(calls[-1]['messages'])
-        assert len(db.noting_memo_entries(ref)) == 1
     Path(db.db_path).with_name(f'busy-{enable}.json').write_text(json.dumps({
         'stale_idle': stale, 'new_idle': state, 'admitted_at': dispatched[0][2],
         'main_requests': len(calls), 'framework_uid': framework[0]['message_uid'],
@@ -143,6 +140,7 @@ def test_natural_daemon_checks_native_ingress_before_main_hook(busy_runtime, mon
     entered, release, fired = threading.Event(), threading.Event(), threading.Event()
     original_start, original_event = QUEUE.note_turn_started, rt._run_idle_event
     outcomes = []
+    admitted_event = threading.Event()
 
     def review_start():
         original_start()
@@ -152,12 +150,14 @@ def test_natural_daemon_checks_native_ingress_before_main_hook(busy_runtime, mon
     def observe_event(*args, **kwargs):
         outcome = original_event(*args, **kwargs)
         outcomes.append(outcome)
+        if outcome == "admitted":
+            admitted_event.set()
         fired.set()
         return outcome
 
     monkeypatch.setattr(QUEUE, 'note_turn_started', review_start)
     monkeypatch.setattr(rt, '_run_idle_event', observe_event)
-    monkeypatch.setattr(parent, '_interruptible_api_call', lambda request: mock_response('done'))
+    monkeypatch.setattr(parent, '_interruptible_api_call', lambda request: measured_response('done'))
     worker, results, errors = _start_main(parent)
     try:
         assert entered.wait(5)
@@ -170,6 +170,7 @@ def test_natural_daemon_checks_native_ingress_before_main_hook(busy_runtime, mon
         worker.join(5)
     assert not worker.is_alive() and not errors and results[0]['completed']
     assert ready.wait(2) and len(dispatched) == 1
+    assert admitted_event.wait(2)
     assert outcomes == ['skip:not_idle', 'admitted']
 
 
@@ -182,7 +183,7 @@ def test_off_main_preserves_real_lifecycle_and_reopening_never_infers_an_end(bus
         db.notebook_set_local_enabled(ref, False)
     else:
         config.write_text('noting:\n  enabled: false\n')
-    monkeypatch.setattr(parent, '_interruptible_api_call', lambda request: mock_response('off Main finished'))
+    monkeypatch.setattr(parent, '_interruptible_api_call', lambda request: measured_response('off Main finished'))
     result = parent.run_conversation('off Main', conversation_history=list(parent._session_messages))
     assert result['completed'] and not dispatched
     state = db.noting_idle_state(ref)
@@ -193,7 +194,7 @@ def test_off_main_preserves_real_lifecycle_and_reopening_never_infers_an_end(bus
         assert not ready.wait(0.18) and db.noting_idle_state(ref) is None
     else:
         assert state['due_at'] is None and not timers.holds_pending_timer(parent)
-    config.write_text('noting:\n  enabled: true\n  idle_delay_seconds: 0.22\n')
+    config.write_text('noting:\n  enabled: true\n  idle:\n    enabled: true\n    delay_seconds: 0.22\n    threshold_tokens: 1000\n')
     db.notebook_set_local_enabled(ref, True)
     assert rt.maybe_run_idle_noting(parent, db, ref) == 'skip:not_idle'
     assert not ready.wait(0.08)
@@ -209,7 +210,7 @@ def test_main_lifecycle_cannot_cross_conversation_or_auxiliary(busy_runtime, mon
     parent, db, _config, dispatched, ready = busy_runtime
     old_ref = parent._secretary_conversation_ref
     db.notebook_set_local_enabled(old_ref, False)
-    monkeypatch.setattr(parent, '_interruptible_api_call', lambda request: mock_response('off Main finished'))
+    monkeypatch.setattr(parent, '_interruptible_api_call', lambda request: measured_response('off Main finished'))
     assert parent.run_conversation('off Main', conversation_history=list(parent._session_messages))['completed']
     timers.cancel_idle_timer(db, old_ref)
     db.create_session('other', source='test')
@@ -225,3 +226,10 @@ def test_main_lifecycle_cannot_cross_conversation_or_auxiliary(busy_runtime, mon
     assert not rt.note_main_turn_started(parent) and not rt.note_main_turn_finished(parent)
     assert rt.maybe_run_idle_noting(parent, db, ref) == 'skip:not_main_owner'
     assert db.noting_idle_state(ref) is None and not dispatched
+
+
+def measured_response(content):
+    from types import SimpleNamespace
+    response = mock_response(content)
+    response.usage = SimpleNamespace(prompt_tokens=8000, completion_tokens=10, total_tokens=8010)
+    return response

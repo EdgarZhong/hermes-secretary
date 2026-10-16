@@ -112,7 +112,7 @@ def test_child_parity_and_dispatch_marker(parent, db):
         assert child._secretary_parent_conversation_ref == parent._secretary_conversation_ref
         assert child._secretary_history_db is child._session_db
         # Narrow dispatch: History and Notebook only; parity is advertising, not permission.
-        assert noting_dispatch_block(child, "session_history") is None
+        assert noting_dispatch_block(child, "conversation_history") is None
         assert noting_dispatch_block(child, "notebook_show") is None
         assert "denied" in noting_dispatch_block(child, "terminal")
         assert "denied" in noting_dispatch_block(child, "delegate_task")
@@ -267,47 +267,6 @@ def test_parent_interrupt_does_not_cancel_child(parent, db, stub_client):
         child.close()
 
 
-def test_special_profile_advertises_compact_parent_and_reuses_the_same_child(parent, db, stub_client):
-    tool_call = SimpleNamespace(
-        id="call_1", type="function",
-        function=SimpleNamespace(name="compact_parent", arguments="{}"),
-    )
-    stub_client.chat.completions.create.side_effect = [
-        mock_response(content="", finish_reason="tool_calls", tool_calls=[SimpleNamespace(
-            id="read_first", type="function", function=SimpleNamespace(name="notebook_show", arguments="{}"))]),
-        mock_response(content="", finish_reason="tool_calls", tool_calls=[tool_call]),
-        mock_response("done"),
-    ]
-    # Below the threshold: the native verdict is "no compaction required" -> terminal action done.
-    parent.context_compressor.last_prompt_tokens = 10
-    parent.context_compressor.context_length = 196_000
-    parent.context_compressor.threshold_tokens = 147_000
-    child = build_noting_child(parent, runtime_profile="NOTING_WITH_COMPACTION",
-                               parent_conversation_ref=parent._secretary_conversation_ref)
-    try:
-        from secretary.noting_tools import initialize_notebook_work
-        initialize_notebook_work(child, trigger_type="idle")
-        names = {(tool.get("function") or {}).get("name") for tool in child.tools}
-        assert "compact_parent" not in names
-        assert noting_dispatch_block(child, "compact_parent") is None
-        refused = json.loads(child._invoke_tool("compact_parent", {"unexpected": True}, "bad"))
-        assert refused["success"] is False and refused["status"] == "invalid_arguments"
-        assert child._secretary_noting_terminal_action_done is False
-        assert child._secretary_noting_termination is None
-        prefix = freeze_parent_active_prefix(parent, "m2")
-        result = child.run_conversation(
-            user_message=build_noting_task_wrapper("work", timestamp=2000),
-            conversation_history=prefix, title_user_message="",
-        )
-        assert result["completed"] is True
-        assert "compact_parent" in child.valid_tool_names
-        assert child._secretary_noting_terminal_action_done is True
-        assert child._secretary_noting_termination == {"type": "compact_parent"}
-        tool_rows = [m for m in child._session_messages if m.get("role") == "tool"]
-        payload = json.loads(tool_rows[-1]["content"])
-        assert payload["success"] is True and payload["status"] == "already_below_threshold"
-    finally:
-        child.close()
 
 
 def _tool_response(name, args, uid):
@@ -317,8 +276,10 @@ def _tool_response(name, args, uid):
 
 def _read_then_mutate_responses():
     return [_tool_response("notebook_show", {}, "read"),
-            _tool_response("notebook_manage", {"operation": "create", "entry_type": "decision",
-                                               "fields": {"decision": "send report", "rationale": "confirmed"}}, "write"),
+            _tool_response("notebook_maintain", {"action": "create", "entry_type": "matter",
+                                               "fields": {"description": "send report", "completion_condition": "Report sent"},
+                                               "source_time_range": {"start_time": "1970-01-01T00:16:40+00:00",
+                                                                     "end_time": "1970-01-01T00:16:41+00:00"}}, "write"),
             mock_response("Maintained.")]
 
 
@@ -330,7 +291,7 @@ def _read_mutate_finish_responses():
 
 def test_real_spawn_runs_semantic_tool_to_snapshot_and_close(parent, db, stub_client):
     from secretary.noting_child import spawn_noting_task
-    from secretary.noting_runtime import try_admit_idle
+    from secretary.noting_runtime import NotingAdmission
     from tools.notebook_tool import NOTEBOOK_SHOW_SCHEMA
     import copy
 
@@ -338,20 +299,21 @@ def test_real_spawn_runs_semantic_tool_to_snapshot_and_close(parent, db, stub_cl
     expected = copy.deepcopy(parent.tools)
     stub_client.chat.completions.create.side_effect = _read_mutate_finish_responses()
     db.noting_idle_turn_finished(parent._secretary_conversation_ref, 1000.0)
-    decision = try_admit_idle(db, parent._secretary_conversation_ref, now=2000.0)
+    admitted = db.noting_admit(parent._secretary_conversation_ref, "m2", kind="idle")
+    decision = SimpleNamespace(admission=NotingAdmission(admitted, parent._secretary_conversation_ref, "m2", "idle", None, "NOTING"))
     worker = spawn_noting_task(parent, decision.admission)
     worker.join(timeout=15)
     assert not worker.is_alive()
     current = db.notebook_current(parent._secretary_conversation_ref)
-    assert current["payload"]["consultation"][0]["fields"]["decision"] == "send report"
+    assert current["payload"]["work"][0]["fields"]["description"] == "send report"
     record = db.noting_child(decision.admission.admission_id)
     assert record["status"] == "completed"
     rows = db.get_messages_as_conversation(record["child_session_id"])
     assert rows[0]["content"].startswith("<noting-task>")
-    assert "A proposal or approval alone is not completion." in rows[0]["content"]
-    assert "they are not Hermes Cron jobs or delegated agent tasks." in rows[0]["content"]
+    assert "notebook_maintain" in rows[0]["content"]
+    assert "conversation_history" in rows[0]["content"]
     assert len(rows) == 8 and all(row["content"] != "will do" for row in rows)
-    assert "notebook_manage" in rows[0]["content"]
+    assert "notebook_maintain" in rows[0]["content"]
     assert "finish_noting" in rows[0]["content"]
     assert db.get_session(record["child_session_id"])["end_reason"] is not None
     calls = stub_client.chat.completions.create.call_args_list
@@ -368,7 +330,7 @@ def test_native_retry_keeps_frozen_prefix_and_task_timestamp(parent, db, stub_cl
     import copy
     import httpx
     from secretary.noting_child import spawn_noting_task
-    from secretary.noting_runtime import try_admit_idle
+    from secretary.noting_runtime import NotingAdmission
     from tools.notebook_tool import NOTEBOOK_SHOW_SCHEMA
 
     parent.tools = [{"type": "function", "function": copy.deepcopy(NOTEBOOK_SHOW_SCHEMA)}]
@@ -385,8 +347,8 @@ def test_native_retry_keeps_frozen_prefix_and_task_timestamp(parent, db, stub_cl
     stub_client.chat.completions.create.side_effect = transient_then_complete
     ref = parent._secretary_conversation_ref
     db.noting_idle_turn_finished(ref, 1000.0)
-    decision = try_admit_idle(db, ref, now=2000.0)
-    assert decision.action == "admit"
+    admitted = db.noting_admit(ref, "m2", kind="idle")
+    decision = SimpleNamespace(admission=NotingAdmission(admitted, ref, "m2", "idle", None, "NOTING"))
     worker = spawn_noting_task(parent, decision.admission)
     worker.join(timeout=15)
     assert not worker.is_alive()
@@ -402,7 +364,7 @@ def test_native_retry_keeps_frozen_prefix_and_task_timestamp(parent, db, stub_cl
     assert all(request["messages"][task_position] == task for request in sent)
     assert all(request["tools"] == expected_tools for request in sent)
     current = db.notebook_current(ref)
-    assert current["payload"]["consultation"][0]["fields"]["decision"] == "send report"
+    assert current["payload"]["work"][0]["fields"]["description"] == "send report"
     assert db.notebook_snapshot_audit(current["snapshot_id"])["termination"]["type"] == "finish_noting"
 
 
@@ -422,8 +384,7 @@ def test_dispatch_freezes_prefix_runtime_before_worker(parent, db, stub_client, 
     monkeypatch.setattr(noting_child, "run_noting_task", held)
     stub_client.chat.completions.create.side_effect = _read_mutate_finish_responses()
     admission_id = db.noting_admit(parent._secretary_conversation_ref, "m2", kind="force")
-    admission = NotingAdmission(admission_id, parent._secretary_conversation_ref, "m2", "force", None, "NOTING",
-                               compaction_threshold_tokens=100000)
+    admission = NotingAdmission(admission_id, parent._secretary_conversation_ref, "m2", "force", None, "NOTING")
     worker = noting_child.spawn_noting_task(parent, admission)
     assert entered.wait(timeout=5)
     parent._session_messages.clear()
@@ -432,14 +393,12 @@ def test_dispatch_freezes_prefix_runtime_before_worker(parent, db, stub_client, 
     release.set()
     worker.join(timeout=15)
     assert captured["frozen_runtime"]["parity"]._cached_system_prompt == "You are helpful."
-    assert captured["frozen_runtime"]["noting_compaction_threshold_tokens"] == 100000
     assert [row["message_uid"] for row in captured["parent_active_messages"]] == ["m1", "m2"]
     assert db.noting_child(admission_id)["status"] == "completed"
     sent = stub_client.chat.completions.create.call_args_list[0].kwargs["messages"]
     task = next(row["content"] for row in sent if "<noting-task>" in str(row.get("content", "")))
-    assert "Parent Conversation's complete transcript, frozen at dispatch" in task
-    assert "review it wholly" in task
-    assert "call session_history only when specific earlier evidence requires verification" in task
+    assert "conversation_history" in task and "notebook_maintain" in task
+    assert captured["frozen_work"]["base_snapshot_id"] is None
 
 
 
@@ -481,165 +440,36 @@ def test_text_only_completion_runs_five_turns_then_forces_snapshot(parent, db, s
 
 def test_semantic_control_is_noting_only_and_rejects_forgery(parent, db, stub_client):
     from secretary.noting_tools import initialize_notebook_work
-
-    args = {"operation": "create", "entry_type": "secretary_task", "fields": {"task": "report", "purpose": "deliver"},
-            "expression": "2035-01-03T03:04:05+00:00", "delivery_mode": "deferred"}
-    assert json.loads(parent._invoke_tool("notebook_manage", args, "main"))["success"] is False
+    args = {"action": "create", "entry_type": "matter", "fields": {"description": "report", "completion_condition": "Delivered"},
+            "source_message_identities": [{"conversation_ref": parent._secretary_conversation_ref, "message_uid": "m1"}]}
+    assert not json.loads(parent._invoke_tool("notebook_maintain", args, "main"))["success"]
     child = build_noting_child(parent, runtime_profile="NOTING", parent_conversation_ref=parent._secretary_conversation_ref)
     try:
+        child._secretary_noting_anchor_uid = "m2"
         initialize_notebook_work(child, trigger_type="idle")
-        invalid_finish = json.loads(child._invoke_tool(
-            "finish_noting", {"reason": "done", "unexpected": True}, "bad-finish"
-        ))
-        assert invalid_finish["success"] is False
-        assert child._secretary_noting_terminal_action_done is False
-        assert child._secretary_noting_termination is None
-        made = json.loads(child._invoke_tool("notebook_manage", args, "child"))
-        assert made["success"] and made["entry"]["status"] == "pending"
+        assert not json.loads(child._invoke_tool("finish_noting", {"reason": "done", "unexpected": True}, "bad"))["success"]
+        made = json.loads(child._invoke_tool("notebook_maintain", args, "child"))
+        assert made["success"]
         uid = made["entry"]["entry_id"]
-        for tool, operation, extra in [
-            ("notebook_edit", "status", {"status": "running"}),
-            ("notebook_edit", "edit", {"fields": {"task": "updated"}}),
-            ("notebook_schedule", "schedule_update", {"expression": "2035-01-03T03:04:05+00:00", "delivery_mode": "deferred"}),
-            ("notebook_manage", "archive", {}),
-        ]:
-            result = json.loads(child._invoke_tool(tool, {"operation": operation, "entry_id": uid, **extra}, "child"))
-            assert result["success"], result
-            assert result["entry"]["entry_id"] != uid
-            uid = result["entry"]["entry_id"]
-            assert set(result["state"]) == set(SECTIONS)
+        updated = json.loads(child._invoke_tool("notebook_maintain", {"action": "update", "entry_id": uid, "changes": {"fields": {"description": "updated report"}}}, "update"))
+        assert updated["success"] and updated["entry"]["entry_id"] == uid
         state = child._noting_notebook_store.show()
-        for invalid in [dict(args, payload_json=empty_state()),
-                        dict(args, fields={"task": "x", "purpose": "x", "next_due_at": 123}),
-                        {"operation": "schedule_update", "entry_id": uid, "expression": {"next_due_at": 123}},
-                        {"operation": "sql", "query": "DROP TABLE messages"}]:
-            refused = json.loads(child._invoke_tool("notebook_manage", invalid, "child"))
-            assert refused["success"] is False
+        for invalid in [dict(args, payload_json=empty_state()), dict(args, fields={"description": "x", "next_due_at": 123}),
+                        {"action": "sql", "query": "DROP TABLE messages"}]:
+            assert not json.loads(child._invoke_tool("notebook_maintain", invalid, "bad"))["success"]
             assert child._noting_notebook_store.show() == state
         db.notebook_set_local_enabled(parent._secretary_conversation_ref, False)
-        assert not json.loads(child._invoke_tool("notebook_manage", args, "child"))["success"]
+        assert not json.loads(child._invoke_tool("notebook_maintain", args, "disabled"))["success"]
     finally:
         child.close()
 
 
-def test_special_profile_admitted_compaction_precedes_snapshot(parent, db, stub_client, monkeypatch):
-    import threading
-    import time
-    from agent.context_compaction_request import trust_default_system_message
-
-    ref = parent._secretary_conversation_ref
-    # This directly constructed fixture has the official host's default None
-    # system message; declare it through the same native host seam.
-    trust_default_system_message(parent)
-    release, summarizing = threading.Event(), threading.Event()
-    parent._compression_feasibility_checked = True
-    parent.context_compressor.last_prompt_tokens = 110_000
-    parent.context_compressor.context_length = 196_000
-    parent.context_compressor.threshold_tokens = 147_000
-    def summary(*args, **kwargs):
-        summarizing.set()
-        release.wait(timeout=10)
-        raise RuntimeError("native final summary failure after admission")
-    monkeypatch.setattr("agent.conversation_compression._run_summary_phase", summary)
-    responses = _read_then_mutate_responses()
-    responses.insert(2, mock_response(content="", finish_reason="tool_calls", tool_calls=[SimpleNamespace(
-        id="compact", type="function", function=SimpleNamespace(name="compact_parent", arguments="{}"))]))
-    stub_client.chat.completions.create.side_effect = responses
-    admission = db.noting_admit(parent._secretary_conversation_ref, "m2", kind="idle")
-    from secretary.noting_child import freeze_parent_runtime
-    frozen = freeze_parent_runtime(parent)
-    frozen["noting_compaction_threshold_tokens"] = 100_000
-    try:
-        outcome = run_noting_task(parent, admission_id=admission, conversation_ref=parent._secretary_conversation_ref,
-                                  anchor_message_uid="m2", trigger_type="idle", runtime_profile="NOTING_WITH_COMPACTION",
-                                  frozen_runtime=frozen,
-                                  task_instruction="Maintain Notebook then compact_parent")
-        assert outcome.committed and summarizing.is_set()
-        request = parent._native_compaction_request
-        assert request.was_admitted and not request.committed
-        assert not release.is_set()
-        assert db.notebook_current(ref)["payload"]["consultation"]
-        assert db.notebook_snapshot_audit(outcome.snapshot_id)["termination"] == {"type": "compact_parent"}
-    finally:
-        release.set()
-        deadline = time.monotonic() + 3
-        while db.get_compression_lock_holder(parent.session_id) and time.monotonic() < deadline:
-            time.sleep(0.01)
-        worker = getattr(parent, "_native_compaction_worker", None)
-        if worker is not None:
-            worker.join(3)
-            assert not worker.is_alive()
-    # The later failure does not roll back the valid immutable Snapshot.
-    assert request.completed.is_set()
-    assert request.error == "native final summary failure after admission"
-    assert not request.committed
-    assert db.notebook_current(ref)["snapshot_id"] == outcome.snapshot_id
 
 
-def test_old_child_cannot_compact_parent_after_new_conversation(parent, db, stub_client, monkeypatch):
-    from secretary.noting_compact import compact_parent_from_child
-    child = build_noting_child(parent, runtime_profile="NOTING_WITH_COMPACTION",
-                               parent_conversation_ref=parent._secretary_conversation_ref)
-    try:
-        native = MagicMock()
-        monkeypatch.setattr(parent, "_compress_context", native)
-        db.create_session("new-parent", source="test")
-        parent.session_id = "new-parent"
-        parent._secretary_conversation_ref = None
-        result = json.loads(compact_parent_from_child(child))
-        assert not result["success"] and result["status"] == "parent_ownership_or_gate_changed"
-        native.assert_not_called()
-    finally:
-        child.close()
 
 
-@pytest.mark.parametrize("expression,kind", [
-    ("30m", "interval"), ("every 2h", "interval"), ("every hour", "interval"),
-    ("in 30m", "once"), ("in 2h", "once"),
-    ("every monday 9am", "cron"), ("weekdays at 9am", "cron"), ("every day at 9am", "cron"),
-    ("0 9 * * *", "cron"), ("2035-11-01T09:00:00", "once"),
-])
-def test_noting_schedule_tool_uses_five_native_forms_and_owning_timezone(parent, db, stub_client, expression, kind):
-    from datetime import datetime
-    from secretary.noting_tools import initialize_notebook_work
-    from secretary.noting_scope import owning_db_scope
-    Path(db.db_path).parent.joinpath("config.yaml").write_text("timezone: Asia/Shanghai\nnoting:\n  enabled: true\n")
-    child = build_noting_child(parent, runtime_profile="NOTING", parent_conversation_ref=parent._secretary_conversation_ref)
-    try:
-        initialize_notebook_work(child, trigger_type="idle")
-        created = json.loads(child._invoke_tool("notebook_manage", {
-            "operation": "create", "entry_type": "user_reminder", "fields": {"message": "Follow up here"},
-        }, "create"))
-        assert created["success"], created
-        with owning_db_scope(db):
-            result = json.loads(child._invoke_tool("notebook_schedule", {
-                "operation": "schedule_update", "entry_id": created["entry"]["entry_id"], "expression": expression,
-            }, "schedule"))
-        assert result["success"], result
-        canonical = result["entry"]["schedule"]["canonical_schedule"]
-        assert canonical["kind"] == kind
-        if expression == "2035-11-01T09:00:00":
-            assert datetime.fromisoformat(canonical["run_at"]).utcoffset().total_seconds() == 8 * 3600
-        assert db._read_all("SELECT * FROM secretary_schedule_registry") == []
-    finally:
-        child.close()
 
 
-def test_special_profile_turn_budget_forces_snapshot_even_if_framework_compaction_is_blocked(
-    parent, db, stub_client, monkeypatch
-):
-    blocked = MagicMock(return_value=SimpleNamespace(ok=False, status="blocked:cooldown"))
-    monkeypatch.setattr("secretary.noting_compact.compact_parent", blocked)
-    admission = db.noting_admit(parent._secretary_conversation_ref, "m2", kind="idle")
-    outcome = run_noting_task(
-        parent, admission_id=admission, conversation_ref=parent._secretary_conversation_ref,
-        anchor_message_uid="m2", trigger_type="idle", runtime_profile="NOTING_WITH_COMPACTION",
-        task_instruction="Maintain Notebook then compact parent.",
-    )
-    assert outcome.status == "completed" and outcome.committed
-    assert outcome.turns == 5
-    blocked.assert_called_once()
-    assert db.notebook_snapshot_audit(outcome.snapshot_id)["termination"] == {"type": "forced"}
 
 
 def _notice_task(parent, db, *, state_provider=None):
@@ -666,56 +496,31 @@ def closed_noting_children(monkeypatch):
     return closed
 
 
-def test_invalid_saved_notebook_posts_native_failure_notice_without_consuming_memo(
-    parent, db, stub_client, monkeypatch, closed_noting_children
-):
-    from secretary.notebook_items import insert_item_conn
-
+def test_invalid_saved_notebook_posts_native_failure_notice_and_releases_resources(parent, db, stub_client, monkeypatch, closed_noting_children):
     ref = parent._secretary_conversation_ref
-    # Reproduce the obsolete test-data shape through SQLite, without relaxing validation.
-    entry = {"type": "secretary_task", "archived": False, "status": "pending",
-             "fields": {"task": "report", "purpose": "deliver"}, "schedule": None,
-             "source_message_identities": []}
     def seed_obsolete_snapshot(conn):
-        item_id = insert_item_conn(conn, ref, entry)
-        conn.execute(
-            "INSERT INTO secretary_notebook_snapshots "
-            "(snapshot_id, conversation_ref, anchor_message_uid, trigger_type, runtime_profile, payload_json, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
-            ("old-snapshot", ref, "m2", "idle", "NOTING", json.dumps([item_id]), 2000.0),
-        )
-        conn.execute(
-            "INSERT INTO secretary_notebook_pointer (conversation_ref, current_snapshot_id) VALUES (?, ?)",
-            (ref, "old-snapshot"),
-        )
+        conn.execute("INSERT INTO secretary_notebook_item (conversation_ref,lineage_id,payload_json,archived) VALUES(?,?,?,0)",
+                     (ref, 1, json.dumps({"entry_type": "secretary_task", "fields": {"task": "report"}, "source_message_identities": []})))
+        conn.execute("INSERT INTO secretary_notebook_snapshots (snapshot_id,conversation_ref,anchor_message_uid,trigger_type,runtime_profile,payload_json,created_at) VALUES(?,?,?,?,?,?,?)",
+                     ("old-snapshot",ref,"m2","idle","NOTING",json.dumps(["1"]),2000.0))
+        conn.execute("INSERT INTO secretary_notebook_pointer(conversation_ref,current_snapshot_id) VALUES(?,?)", (ref,"old-snapshot"))
+    admission_id = db.noting_admit(ref, "m2", kind="idle")
     db._execute_write(seed_obsolete_snapshot)
-    db.noting_memo_mutate(ref, {"operation": "add", "content": "Keep this report requirement."})
-    before_memo = db.noting_memo_entries(ref)
-    before_snapshot = db.notebook_current(ref)
-    notices = []
-    parent.notice_callback = notices.append
-    reasons = []
-    monkeypatch.setattr("secretary.web_events.changed", lambda db, ref, reason: reasons.append(reason))
-
-    admission_id, outcome = _notice_task(parent, db)
-
-    assert outcome.status == "failed" and not outcome.committed and outcome.turns == 0
-    assert len(notices) == 1
-    notice = notices[0]
-    assert notice.text == "Noting failed: " + outcome.error
-    assert "secretary_task requires a Schedule expression" in notice.text
-    assert (notice.level, notice.kind, notice.ttl_ms) == ("error", "sticky", None)
-    assert notice.key == notice.id and ref in notice.key and notice.key.endswith(f".{admission_id}")
-    assert db.noting_memo_entries(ref) == before_memo
-    assert db.notebook_current(ref) == before_snapshot
+    before = [dict(row) for row in db._read_all("SELECT * FROM secretary_notebook_snapshots")]
+    notices = []; parent.notice_callback = notices.append
+    with pytest.raises(Exception, match="Unknown Notebook entry type"):
+        run_noting_task(parent, admission_id=admission_id, conversation_ref=ref, anchor_message_uid="m2",
+                        trigger_type="idle", runtime_profile="NOTING", task_instruction="Maintain the Notebook.")
+    assert len(notices) == 1 and notices[0].text.startswith("Noting failed:")
+    assert (notices[0].level, notices[0].kind, notices[0].ttl_ms) == ("error", "sticky", None)
+    assert notices[0].key.endswith(f".{admission_id}")
+    assert [dict(row) for row in db._read_all("SELECT * FROM secretary_notebook_snapshots")] == before
     assert db.noting_child(admission_id)["status"] == "failed"
-    assert len(closed_noting_children) == 1
-    assert closed_noting_children[0].session_id == outcome.child_session_id
-    assert closed_noting_children[0]._owns_session_db is False
-    assert closed_noting_children[0].client is None
+    assert closed_noting_children == []  # Invalid base is refused before a child is allocated.
     assert active_noting_task_count() == 0
-    assert reasons == ["task_started", "task_closed"]
-    assert db.get_messages_as_conversation("S17") == parent._session_messages
+    durable = [{key: value for key, value in row.items() if key not in {"_db_persisted", "_row_id", "_db_row_snapshot"}} for row in db.get_messages_as_conversation("S17")]
+    live = [{key: value for key, value in row.items() if key not in {"_db_persisted", "_row_id", "_db_row_snapshot"}} for row in parent._session_messages]
+    assert durable == live
     stub_client.chat.completions.create.assert_not_called()
 
 
@@ -783,12 +588,10 @@ def test_turn_notice_reports_only_real_failure(parent, db, stub_client, monkeypa
 
 
 @pytest.mark.parametrize("failure", ["body", "state_provider", "commit_gate"])
-def test_runtime_failure_notice_preserves_lifecycle_and_memo(parent, db, stub_client, monkeypatch, failure):
+def test_runtime_failure_notice_preserves_lifecycle(parent, db, stub_client, monkeypatch, failure):
     notices = []
     parent.notice_callback = notices.append
     ref = parent._secretary_conversation_ref
-    db.noting_memo_mutate(ref, {"operation": "add", "content": "Keep this."})
-    memo = db.noting_memo_entries(ref)
     def turn(child, **kwargs):
         if failure == "body":
             raise RuntimeError("child loop unavailable")
@@ -799,15 +602,19 @@ def test_runtime_failure_notice_preserves_lifecycle_and_memo(parent, db, stub_cl
     def state(child):
         if failure == "state_provider":
             raise RuntimeError("state unavailable")
-        return {"user": []}  # The real Snapshot gate refuses incomplete state.
+        return {"work": []}  # The real Snapshot gate refuses incomplete state.
     admission_id, outcome = _notice_task(parent, db, state_provider=state)
     assert len(notices) == 1 and notices[0].text == "Noting failed: " + outcome.notice_error
     assert not outcome.committed and db.notebook_current(ref) is None
-    assert db.noting_memo_entries(ref) == memo
     assert db.noting_child(admission_id)["status"] == outcome.status
     assert outcome.status == ("abandoned" if failure == "commit_gate" else "failed")
     assert active_noting_task_count() == 0
-    assert db.get_messages_as_conversation("S17") == parent._session_messages
+    durable = [{key: value for key, value in row.items() if key not in {"_db_persisted", "_row_id", "_db_row_snapshot"}} for row in db.get_messages_as_conversation("S17")]
+    live = [{key: value for key, value in row.items() if key not in {"_db_persisted", "_row_id", "_db_row_snapshot"}} for row in parent._session_messages]
+    assert durable == live
+    notice = parent._session_messages[-1]
+    assert notice["_db_persisted"] and notice["_row_id"] > 0 and notice["_db_row_snapshot"]
+    assert "No new Snapshot was committed" in notice["content"]
 
 
 @pytest.mark.parametrize("owner_change", ["conversation", "profile", "callback_missing", "callback_raises", "emitter_raises"])
@@ -846,3 +653,14 @@ def test_failure_notice_owner_and_presentation_do_not_break_cleanup(parent, db, 
         parent._secretary_conversation_ref = ref
         if other_db is not None:
             other_db.close()
+
+
+@pytest.mark.parametrize("name", ["session_history", "noting_memo", "compact_parent", "notebook_manage", "notebook_edit", "notebook_schedule", "scheduler"])
+def test_retired_and_scheduler_tools_cannot_execute_in_noting(parent, stub_client, name):
+    child = build_noting_child(parent, runtime_profile="NOTING", parent_conversation_ref=parent._secretary_conversation_ref)
+    try:
+        assert noting_dispatch_block(child, name) is not None
+        result = json.loads(child._invoke_tool(name, {}, "retired"))
+        assert result.get("success") is not True and result.get("error")
+    finally:
+        child.close()

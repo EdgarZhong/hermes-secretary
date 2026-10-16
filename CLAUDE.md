@@ -23,9 +23,10 @@
 | C8 | 主会话已review接收；c8-report.md | 59场景有通过证据；pointer核验/durable/live同事务与既有锁，完整正文与严格超限Proposal；C5时间秒精度1节点通过 |
 | C9-H | 主会话已review接收；c9-host-report.md | 正式pre-summary唯一联合准备、原生成功发布事务更新interval、非空成功响应ACK、completed/failed归档gate；112独立场景有通过证据。review修正工具args业务校验不属投递ACK，23项定向复测通过 |
 | C9-S | personal_provider：工具surface/dispatch与投递caller | 独占noting_surface/hosts、inline_tool_executors/tool_executor、model_tools/toolsets/registry/tool_result_storage/budget_config、notebook_tool与noting_memo_tool退出、session_persistence._db_flush_write、gateway/secretary_reminders及run_agent_cache；新增wiring及旧surface/hosts测试；不与C9-H交叉 |
-| C10-A | local_environment：C2首次运行/health修及Notebook/child旧tests收口 | 独占C2的session_history_tool/history_candidates/conversation_history sibling、r3_history；旧Notebook/child 11文件及tools/test_session_history_truncation、identity；保留有效保障、退出旧契约，不重跑已通过新组 |
+| C10-A | 主会话已review接收；c10-notebook-history-report.md | 233独立场景有通过证据；C2嵌套修复、坏UID来源不可用、Snapshot时间ISO；保留旧有效保障，退出接口有处置映射 |
 | C10-H | c4_config_prompt：5个旧配置/触发组收口 | 独占policy/config_contract/codex_receipt/deadline_event及hermes_state/secretary_noting；随后作为唯一开发真实模型owner，先准备原生入口方案，待接线完成后启动round3 |
-| C10-B/P | 待分域收口 | 旧投递3文件及reminder_runtime夹具、个人test_personal/test_security；不复活旧alias、不重复本轮有效测试 |
+| C10-B | local_environment：10个旧Scheduler/Reminder文件收口 | 独占旧reminders/crash/admission/persistence/CLI/v16/schedules/status、agent/reminder_request、state/schedule_registry；共享reminder_runtime由C9-S先交回，不双写 |
+| C10-P | 待收口 | 个人test_personal/test_security需维护；不复活旧完整写入helper，不重复P1/P3新组 |
 | P1/P2/P3 | 主会话已review接收个人线并提交57d0abb854f4；personal-report.md | 46独立用例通过；真实SessionDB/MemoryManager+本地HTTP fixture，P2基本模拟通过；主会话已review，公共finalizer gate与历史旧测试仍待收口 |
 | L0 | 环境已交回；yaml问题是个人脚本旧导入，P3 owner修复 | 不跑产品测试；不改锁或裸装依赖 |
 | 门禁 | 尚未启动；主会话已制定validation.md全范围15组场景 | 集成收敛后Astra/high Verification；主会话制定Validation、6.1/high执行 |

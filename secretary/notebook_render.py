@@ -24,7 +24,7 @@ def show_notebook(snapshot, *, conversation_ref=None, profile_home=None):
 
     For an empty Notebook the trusted caller must supply its bound Conversation.
     Working callers use NotebookStore.working_view(), never this projection.
-    ``profile_home`` is retained for internal callers; ISO evidence is not rewritten.
+    ``profile_home`` controls the display timezone; source ISO evidence is not rewritten.
     """
     if snapshot is None:
         if not isinstance(conversation_ref, str) or not conversation_ref:
@@ -36,7 +36,8 @@ def show_notebook(snapshot, *, conversation_ref=None, profile_home=None):
     return {"success": True, "conversation_ref": snapshot["conversation_ref"], "view_kind": "snapshot",
             "snapshot_id": snapshot["snapshot_id"],
             "coverage": {"anchor_message_uid": snapshot["anchor_message_uid"]},
-            "created_at": snapshot["created_at"], "payload": readable_notebook_state(snapshot["payload"])}
+            "created_at": format_timestamp(snapshot["created_at"], profile_home=profile_home),
+            "payload": readable_notebook_state(snapshot["payload"])}
 
 
 def _render_entry(entry):

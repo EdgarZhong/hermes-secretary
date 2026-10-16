@@ -21,7 +21,8 @@ def db(tmp_path):
 
 
 def invoke(db, args, sid="main"):
-    return json.loads(registry.get_entry("session_history").handler(args, db=db, current_session_id=sid))
+    agent = SimpleNamespace(_session_db=db, session_id=sid, platform="cli", _secretary_conversation_ref=db.resolve_conversation_ref(sid))
+    return json.loads(registry.get_entry("conversation_history").handler(args, agent=agent))
 
 
 def test_human_notebook_feedback_stays_durable_but_is_absent_from_history_tool(db):
@@ -58,11 +59,10 @@ def test_registered_identity_read_survives_repeated_compaction_and_returns_later
     assert result["success"] and [r["content"] for r in result["messages"]] == ["candidate source", "recorded event", "later correction"]
     assert len({r["message_uid"] for r in result["messages"]}) == 3
     precise = invoke(db, {"mode": "read", "message_id": original, "before": 0, "after": 0})
-    assert precise["conversation_ref"] == identity["conversation_ref"]
-    assert precise["messages"][0]["message_uid"] == identity["message_uid"]
-    assert set(precise) == {"success", "conversation_ref", "messages", "count"}
+    assert precise["error"]["code"] == "legacy_tool_removed"
     assert all(set(row) == {"message_uid", "timestamp", "role", "content"} for row in result["messages"])
-    filtered = invoke(db, {"mode": "read", "message_identity": identity, "after": 2, "roles": ["system"], "start_time": "125", "end_time": "175"})
+    assert not invoke(db, {"mode": "read", "message_identity": identity, "roles": ["system"]})["success"]
+    filtered = invoke(db, {"mode": "read", "roles": ["system"], "start_time": "125", "end_time": "175"})
     assert [r["content"] for r in filtered["messages"]] == ["recorded event"]
     assert invoke(db, {"mode": "search", "query": "root secret"})["count"] == 0
     assert invoke(db, {"mode": "search", "query": "scaffold"})["count"] == 0
@@ -83,7 +83,7 @@ def test_registered_tool_rejects_forged_or_unknown_sources_and_model_owner_selec
 @pytest.mark.parametrize("noting", [False, True])
 def test_shared_inline_history_projects_one_identity_and_preserves_full_source(db, monkeypatch, noting):
     db.create_session("main", source="cli")
-    db.create_session("child", source="subagent")
+    db.create_session("child", source="subagent", parent_session_id="main", model_config={"_delegate_from": "main"})
     ref = db.resolve_conversation_ref("main")
     uid = "canonical-source-uid"
     body = f"Evidence contains message_uid={uid}, conversation_ref={ref}. " + "正文" * 500 + "末尾证据"
@@ -103,21 +103,24 @@ def test_shared_inline_history_projects_one_identity_and_preserves_full_source(d
     if noting:
         agent._secretary_history_db = db
         agent._secretary_parent_conversation_ref = ref
-    handler = INLINE_TOOL_EXECUTORS["session_history"]
+        agent._parent_session_id = "main"
+        admission = db.noting_admit(ref, uid, kind="idle")
+        db.noting_child_register(admission, child_session_id="child", profile=None)
+    handler = INLINE_TOOL_EXECUTORS["conversation_history"]
     ctx = InlineToolContext(effective_task_id="history-projection")
     found = json.loads(handler(agent, {"mode": "search", "query": "Evidence", "limit": 1}, ctx))
-    assert set(found) == {"success", "conversation_ref", "messages", "count"}
+    assert {"success", "conversation_ref", "messages", "count", "partial"} <= set(found)
     assert found["success"] and found["conversation_ref"] == ref and found["count"] == 1
     row = found["messages"][0]
-    assert set(row) == {"message_uid", "timestamp", "role", "content", "truncated"}
+    assert set(row) == {"message_uid", "timestamp", "role", "content", "truncated", "excerpt_kind"}
     assert row["message_uid"] == uid and row["truncated"] is True
     identity = {"conversation_ref": found["conversation_ref"], "message_uid": row["message_uid"]}
     full = json.loads(handler(agent, {"mode": "read", "message_identity": identity, "before": 0, "after": 0}, ctx))
-    assert full == {"success": True, "conversation_ref": ref, "count": 1,
+    assert full == {"success": True, "conversation_ref": ref, "count": 1, "anchor_uid": uid,
                     "messages": [{"message_uid": uid, "timestamp": row["timestamp"], "role": "user", "content": body}]}
     assert db.get_history_foreground("main")[0]["message_identity"] == identity
     assert not json.loads(handler(agent, {"mode": "read", "message_identity": {
         "conversation_ref": db.resolve_conversation_ref("child"), "message_uid": "child-audit"}}, ctx))["success"]
     assert not json.loads(handler(agent, {"mode": "read", "conversation_ref": ref}, ctx))["success"]
-    empty = json.loads(handler(agent, {"mode": "search", "query": "not-present"}, ctx))
-    assert empty == {"success": True, "conversation_ref": ref, "messages": [], "count": 0}
+    empty = json.loads(handler(agent, {"mode": "search", "query": "absenttoken"}, ctx))
+    assert empty == {"success": True, "conversation_ref": ref, "messages": [], "count": 0, "partial": False}

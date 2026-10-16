@@ -245,6 +245,30 @@ def _read(paths, options):
     return result
 
 
+def _candidate_public(paths, stream, options, candidate, ref):
+    """Validate one logical membership against the same native source/query route."""
+    projected = False
+    try:
+        row = paths.winner(ref, candidate["message_uid"])
+        if row is None or not _eligible_row(row, options):
+            return None, False, False
+        if row["id"] != candidate["id"] and not stream.matches_row_id(row["id"]):
+            return None, False, False
+        source = paths.source_row(row)
+        projected = row["content"] != paths.db._decode_content(source["content"])
+        if projected:
+            # A removed compaction handoff is not original user evidence. Keep
+            # the native literal fallback explicit and conservatively incomplete.
+            visible = row["content"] if isinstance(row["content"], str) else json.dumps(row["content"], ensure_ascii=False)
+            if not stream.matches_projection(visible, source["tool_name"], source["tool_calls"]):
+                return None, True, True
+        return _public_row(row, paths.db, query=stream.route.query), projected, projected
+    except HistoryError as exc:
+        if exc.code != "source_unavailable":
+            raise
+        return None, True, projected
+
+
 def _search(paths, options):
     stream = HistoryCandidateStream(paths.db, paths.conn, options["query"], limit=options["limit"],
                                     roles=options["roles"], start_time=options["start_time"], end_time=options["end_time"])
@@ -262,26 +286,10 @@ def _search(paths, options):
                     key = (ref, candidate["message_uid"])
                     if key in seen:
                         continue
-                    try:
-                        row = paths.winner(ref, candidate["message_uid"])
-                        if row is None or not _eligible_row(row, options):
-                            continue
-                        if row["id"] != candidate["id"] and not stream.matches_row_id(row["id"]):
-                            continue
-                        source = paths.source_row(row)
-                        if row["content"] != paths.db._decode_content(source["content"]):
-                            # Do not cite the removed compaction handoff as original
-                            # user evidence. The existing native literal fallback is
-                            # a conservative, explicitly incomplete projection check.
-                            incomplete = projection_fallback = True
-                            visible = row["content"] if isinstance(row["content"], str) else json.dumps(row["content"], ensure_ascii=False)
-                            if not stream.matches_projection(visible, source["tool_name"], source["tool_calls"]):
-                                continue
-                        public = _public_row(row, paths.db, query=stream.route.query)
-                    except HistoryError as exc:
-                        if exc.code != "source_unavailable":
-                            raise
-                        incomplete = True
+                    public, unverified, projected = _candidate_public(paths, stream, options, candidate, ref)
+                    incomplete |= unverified
+                    projection_fallback |= projected
+                    if public is None:
                         continue
                     seen.add(key)
                     groups.setdefault(ref, []).append(public)
