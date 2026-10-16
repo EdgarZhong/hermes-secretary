@@ -1273,7 +1273,7 @@ def build_api_messages(
     replayed verbatim."""
     from agent.agent_runtime_helpers import fill_empty_non_final_wire_payload
     from agent.conversation_loop import _clone_message_for_send
-    from agent.replay_cleanup import canonicalize_replay_history
+    from agent.cache_parity import canonicalize_cache_parity_history
 
     has_current = isinstance(current_turn_user_idx, int) and 0 <= current_turn_user_idx < len(messages)
     current_turn_message = messages[current_turn_user_idx] if has_current else None
@@ -1289,7 +1289,8 @@ def build_api_messages(
     # rather than silently un-freezing it.
     turn_now = agent._current_turn_timestamp
     split = current_turn_user_idx if has_current else 0
-    canonical_messages = canonicalize_replay_history(messages[:split], now=turn_now) + messages[split:]
+    # A Noting child's inherited prefix was cleaned once at the Parent's own boundary.
+    canonical_messages = canonicalize_cache_parity_history(agent, messages, split, turn_now)
 
     api_messages = []
     from agent.message_visibility import is_model_visible

@@ -542,10 +542,10 @@ def maybe_admit_force_from_pressure(agent: Any, measured_tokens: Any, *, message
     return decision.action + (":" + decision.reason if decision.reason else "")
 
 
-def _dispatch_joint_decision(parent, decision, messages):
+def _dispatch_joint_decision(parent, decision, messages, expected_conversation_ref):
     if decision.reason == "external_main_execution":
         from secretary.framework_messages import publish_external_execution_notice
-        publish_external_execution_notice(parent, expected_conversation_ref=_main_conversation_ref(parent))
+        publish_external_execution_notice(parent, expected_conversation_ref=expected_conversation_ref)
     if decision.action != "admit":
         return decision
     from secretary.noting_child import spawn_noting_task
@@ -602,7 +602,7 @@ def prepare_joint_noting(parent, *, trigger, measurement=None, messages=None, no
                 identity = _freeze_and_log_attempt(db, ref, trigger)
                 decision = (_skip("no_frozen_anchor") if identity is None else
                             _freeze_and_admit(db, ref, kind=trigger, frozen_identity=identity))
-        return _dispatch_joint_decision(parent, decision, messages)
+        return _dispatch_joint_decision(parent, decision, messages, ref)
     except Exception:
         logger.warning("Noting joint preparation failed for %s", trigger, exc_info=True)
         return (replace(decision, action="skip", reason="trigger_error")

@@ -22,11 +22,12 @@ def state(tmp_path, monkeypatch):
     db = SessionDB(home / "state.db")
     db.create_session("main", source="cli")
     db.append_message("main", "user", "I prefer concise answers.", message_uid="evidence")
+    db.append_message("main", "assistant", "Preference acknowledged.", message_uid="coverage-only-anchor")
     ref = db.resolve_conversation_ref("main")
-    working = NotebookStore(db, ref)
-    working.create("memory_candidate", {"draft": "Prefers concise answers", "why_persist": "Repeated preference"},
+    working = NotebookStore(db, ref, anchor_message_uid="coverage-only-anchor")
+    working.create("candidate", {"description": "Prefers concise answers", "targets": ["memory"], "notebook_refs": [], "source_types": []},
                    source_message_identities=[{"conversation_ref": ref, "message_uid": "evidence"}])
-    db.notebook_commit_snapshot(ref, working.show(), anchor_message_uid="evidence")
+    working.commit(termination={"type": "finish_noting", "reason": "Synthetic fixture candidate"})
     # Enable requires the actual owner's native resolved pair, not merely a saved flag.
     from tests.secretary.test_noting_surface import _agent
     monkeypatch.setattr("agent.process_bootstrap.OpenAI", lambda **kw: MagicMock())
@@ -55,8 +56,14 @@ def test_actual_invalid_capability_on_is_visible_and_does_not_write_local(native
         output = noting_command(db, agent.session_id, "on").output
         assert guidance in output and "is on" not in output and "global noting.enabled is false" not in output
         assert not db.notebook_local_enabled(ref) and config.read_text() == before
-        assert "is off" in noting_command(db, agent.session_id, "off").output
-        assert "no Notebook Snapshot" in notebook_command(db, agent.session_id).output
+        off = noting_command(db, agent.session_id, "off").output
+        if idle:
+            assert "unavailable" in off and guidance in off
+            assert "unavailable" in notebook_command(db, agent.session_id).output
+        else:
+            assert "is off" in off
+            assert "no Notebook Snapshot" in notebook_command(db, agent.session_id).output
+        assert not db.notebook_local_enabled(ref) and config.read_text() == before
     finally:
         agent.close()
 
@@ -87,15 +94,16 @@ def test_notebook_local_off_retains_human_snapshot_and_candidates(state):
     assert "is off" in noting_command(db, "main", "off").output
     assert not db.notebook_local_enabled(ref)
     text = notebook_command(db, "main").output
-    assert str(snapshot["created_at"]) in text
-    assert all(section in text for section in ("user", "assistant", "consultation", "persistence"))
+    from hermes_time import format_timestamp
+    assert format_timestamp(snapshot["created_at"], profile_home=home) in text
+    assert all(section in text.splitlines() for section in ("work", "situations", "discussion", "candidates"))
     assert snapshot["snapshot_id"] not in text
     assert snapshot["anchor_message_uid"] not in text
     result = propose_persistence_command(db, "main", "Focus on reusable preferences, 请简洁")
     assert result.prompt.endswith("Focus on reusable preferences, 请简洁")
     assert "I prefer concise answers." not in result.prompt
     assert "source_evidence" not in result.prompt
-    assert "Requests to revise, refine, or discuss a proposal are not approval" in result.prompt
+    assert "Before any actual mutation, obtain the user's explicit approval of the concrete content and destination." in result.prompt
     assert db.notebook_current(ref) == snapshot
     assert not db.notebook_local_enabled(ref)
     assert (home / "config.yaml").read_text() == "noting:\n  enabled: true\n"
@@ -123,8 +131,11 @@ def test_usage_null_pointer_no_candidates_and_pre_turn_local_state(state):
     assert not db.notebook_local_enabled(ref)
     db.notebook_set_local_enabled(ref, True)
     db.append_message("empty", "user", "just a note", message_uid="empty-note")
-    db.notebook_commit_snapshot(ref, NotebookWorkingState(ref), anchor_message_uid="empty-note")
-    assert "no persistence candidates" in propose_persistence_command(db, "empty").output
+    db.notebook_commit_snapshot(ref, NotebookWorkingState(ref), anchor_message_uid="empty-note",
+        termination={"type": "finish_noting", "reason": "No candidate"})
+    empty_proposal = propose_persistence_command(db, "empty")
+    assert empty_proposal.prompt and '"candidates": []' in empty_proposal.prompt
+    assert "If no suitable proposal exists, explain briefly" in empty_proposal.prompt
 
 
 def test_cli_canonical_dispatch_queues_proposal_on_original_session(state, monkeypatch):
@@ -157,9 +168,9 @@ def test_proposal_reads_only_candidate_leads_and_preserves_source_identity(state
     monkeypatch.setattr(db, "get_history_foreground_conn", forbidden)
     result = propose_persistence_command(db, "main", "Revise only; do not execute")
     assert result.prompt
-    payload = json.loads(result.prompt.split("Notebook candidates:\n", 1)[1].split("\n\nUser's additional request:", 1)[0])
-    entry = payload["candidates"][0]
-    assert entry["type"] == "memory_candidate"
+    payload = json.loads(result.prompt.split("Current Notebook Snapshot (data):\n", 1)[1].split("\n\nUser's additional request:", 1)[0])
+    entry = payload["payload"]["candidates"][0]
+    assert entry["entry_type"] == "candidate"
     assert entry["source_message_identities"] == [{"conversation_ref": ref, "message_uid": "evidence"}]
     assert "source_evidence" not in payload
     assert "I prefer concise answers." not in result.prompt

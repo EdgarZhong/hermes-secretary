@@ -88,10 +88,18 @@ class SecretaryNotingMixin:
 
     # ── Trigger admission (02 §4.8) ────────────────────────────────────────
 
-    def _noting_latest_compaction_uid_conn(self, conn, conversation_ref):
-        boundaries = [row["message_uid"] for row in self.get_full_foreground_conn(conn, conversation_ref)
+    def _noting_latest_compaction_conn(self, conn, conversation_ref):
+        boundaries = [row for row in self.get_full_foreground_conn(conn, conversation_ref)
                       if row.get("message_identity") and row.get("is_compaction")]
         return boundaries[-1] if boundaries else None
+
+    def _noting_latest_compaction_uid_conn(self, conn, conversation_ref):
+        boundary = self._noting_latest_compaction_conn(conn, conversation_ref)
+        return boundary["message_uid"] if boundary is not None else None
+
+    @staticmethod
+    def _noting_publication_interval(boundary):
+        return f"compaction:{boundary['session_id']}:{boundary['id']}" if boundary is not None else "conversation_start"
 
     def noting_compaction_interval_conn(self, conn, conversation_ref):
         """The native successful boundary identity, never rolled back by transcript rewind.
@@ -104,16 +112,16 @@ class SecretaryNotingMixin:
                            "WHERE conversation_ref=?", (conversation_ref,)).fetchone()
         if row is not None:
             return row["interval_id"]
-        boundary = self._noting_latest_compaction_uid_conn(conn, conversation_ref)
-        interval = boundary or "conversation_start"
+        boundary = self._noting_latest_compaction_conn(conn, conversation_ref)
+        interval = self._noting_publication_interval(boundary)
         conn.execute("INSERT INTO secretary_noting_compaction_state "
                      "(conversation_ref,interval_id,boundary_message_uid,updated_at) VALUES (?,?,?,?)",
-                     (conversation_ref, interval, boundary, time.time()))
+                     (conversation_ref, interval, boundary["message_uid"] if boundary is not None else None, time.time()))
         return interval
 
     def noting_record_compaction_conn(self, conn, conversation_ref):
         """Only call in/after the native successful boundary publication transaction."""
-        boundary = self._noting_latest_compaction_uid_conn(conn, conversation_ref)
+        boundary = self._noting_latest_compaction_conn(conn, conversation_ref)
         if boundary is None:
             return False
         cursor = conn.execute(
@@ -122,7 +130,7 @@ class SecretaryNotingMixin:
             "ON CONFLICT(conversation_ref) DO UPDATE SET interval_id=excluded.interval_id, "
             "boundary_message_uid=excluded.boundary_message_uid,updated_at=excluded.updated_at "
             "WHERE secretary_noting_compaction_state.interval_id<>excluded.interval_id",
-            (conversation_ref, boundary, boundary, time.time()),
+            (conversation_ref, self._noting_publication_interval(boundary), boundary["message_uid"], time.time()),
         )
         return cursor.rowcount == 1
 

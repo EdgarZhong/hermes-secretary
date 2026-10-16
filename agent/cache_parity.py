@@ -101,3 +101,70 @@ def apply_cache_parity_from_parent(child: Any, parent: Any, *, fork_tag: str | N
         _exclude_main_read_additions(child)
     child._tool_snapshot_generation = _FROZEN_TOOL_SNAPSHOT_GENERATION
     child._skip_mcp_refresh = True
+
+
+def split_frozen_cache_prefix(agent, messages, *, api=False):
+    """Separate this Noting child's immutable Parent prefix from its own suffix."""
+    count = getattr(agent, "_cache_parity_frozen_prefix_count", 0)
+    if not count:
+        return 0, messages
+    if api:
+        count += int(bool(messages and messages[0].get("role") == "system")) + len(agent.prefill_messages or [])
+    if count > len(messages):
+        raise RuntimeError("The frozen Parent cache prefix is missing from the Noting request")
+    return count, messages[count:]
+
+
+def normalize_frozen_cache_segments(messages, count, normalize, **kwargs):
+    """Apply the existing native send normalization without crossing the frozen boundary."""
+    return normalize(messages[:count], **kwargs) + normalize(messages[count:], **kwargs)
+
+
+def normalize_cache_parity_request(agent, messages, **kwargs):
+    """Unbound native callers keep their exact existing sanitizer call signature."""
+    count, _suffix = split_frozen_cache_prefix(agent, messages, api=True)
+    if count:
+        kwargs["preserve_prefix_count"] = count
+    return agent._drop_thinking_only_and_merge_users(messages, **kwargs)
+
+
+def frozen_current_user_message(parent, message, index, cloned):
+    """Materialize only the Parent current turn's already-issued multimodal marker."""
+    from agent.message_metadata import (
+        FreshUserTimestampMarker, TimestampedUserParts, prepend_user_timestamp_marker, user_input_timestamp_marker,
+    )
+    marker = message.get("_fresh_user_timestamp")
+    content = cloned.get("content")
+    if (index != getattr(parent, "_persist_user_message_idx", None) or message.get("role") != "user"
+            or not isinstance(content, list) or not isinstance(marker, FreshUserTimestampMarker) or not marker
+            or isinstance(message.get("content"), TimestampedUserParts)):
+        return cloned
+    cloned["content"] = prepend_user_timestamp_marker(content, user_input_timestamp_marker(message))
+    return cloned
+
+
+class FrozenParentPrefix(list):
+    """Internal structural copy already normalized at the Parent's own request boundary."""
+
+
+def freeze_parent_replay_prefix(parent, messages, *, already_frozen=False):
+    """Replay-clean only the Parent's historical portion, once at its existing Turn clock."""
+    from agent.message_visibility import model_visible_messages
+    from agent.replay_cleanup import canonicalize_replay_history
+
+    if not already_frozen:
+        current = getattr(parent, "_persist_user_message_idx", None)
+        now = getattr(parent, "_current_turn_timestamp", None)
+        split = current if isinstance(current, int) and 0 <= current < len(messages) else 0
+        if split and now is not None:
+            messages = canonicalize_replay_history(messages[:split], now=now) + messages[split:]
+    return FrozenParentPrefix(model_visible_messages(messages))
+
+
+def canonicalize_cache_parity_history(agent, messages, split, now):
+    """The frozen Parent is already normalized; each child Turn cleans only its own history."""
+    from agent.replay_cleanup import canonicalize_replay_history
+
+    count, _suffix = split_frozen_cache_prefix(agent, messages)
+    split = max(count, split)
+    return messages[:count] + canonicalize_replay_history(messages[count:split], now=now) + messages[split:]

@@ -19,7 +19,9 @@ NOTICE = ("Background: Noting is unavailable because this Conversation's latest 
 
 @pytest.fixture
 def runtime(tmp_path, monkeypatch):
-    yield from _surface_runtime.__wrapped__(tmp_path, monkeypatch)
+    for db, config in _surface_runtime.__wrapped__(tmp_path, monkeypatch):
+        config.write_text("noting:\n  enabled: true\n  idle:\n    enabled: true\n    delay_seconds: 3600\n    threshold_tokens: 10000\n")
+        yield db, config
 
 
 def prepare(db):
@@ -29,6 +31,7 @@ def prepare(db):
     agent._session_messages = db.get_messages_as_conversation(agent.session_id)
     agent.context_compressor.context_length = 130000
     agent.context_compressor.threshold_tokens = 75000
+    agent.context_compressor.last_real_prompt_tokens = 10000
     return agent
 
 
@@ -78,6 +81,8 @@ def test_external_trigger_glue_dual_writes_notice_without_noting_work(runtime, m
                 agent.close()
                 agent = _agent(db, existing=False, session_id=sid)
                 agent._session_messages = db.get_messages_as_conversation(sid)
+                # Cold runtime must have the native last-request usage, not fabricate a reading.
+                agent.context_compressor.last_real_prompt_tokens = 10000
             outcome = rt.maybe_run_idle_noting(agent, db, ref)
         assert outcome == "skip:external_main_execution"
         assert_notice(agent)
@@ -90,7 +95,7 @@ def test_external_trigger_glue_dual_writes_notice_without_noting_work(runtime, m
 
 def test_real_idle_timer_external_rejection_publishes_once(runtime, monkeypatch):
     db, config = runtime
-    config.write_text("noting:\n  enabled: true\n  idle_delay_seconds: 0.05\n")
+    config.write_text("noting:\n  enabled: true\n  idle:\n    enabled: true\n    delay_seconds: 0.05\n    threshold_tokens: 10000\n")
     agent = prepare(db)
     try:
         external_dispatch(agent)
@@ -326,7 +331,7 @@ def test_actual_native_fallback_removes_only_queued_external_notice(runtime, bus
         else:
             agent._active_compression_commit_fence = SimpleNamespace()
         rt.maybe_admit_force_from_pressure(agent, 64000)
-        finish = "Background: notebook updated at T. Processed memo entries have been cleared."
+        finish = "Background: synthetic producer notification retained."
         force = "The context is nearing its limit, and a Notebook update task has been dispatched. Consider compacting soon. When you do, prioritize preserving the content after this message."
         assert publish_framework_message(agent, finish, display_metadata={"noting_run_output": True})
         assert publish_framework_message(agent, force)

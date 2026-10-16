@@ -219,5 +219,7 @@ def test_force_interval_uses_successful_native_boundary_and_not_snapshot_or_chil
     add(db, "s", "after the boundary", "b")
     next_admission = db.noting_admit(ref, "b", kind="force")
     assert isinstance(next_admission, int)
-    assert db.noting_admission(next_admission)["compression_interval_id"] == "sum"
+    state = db._read_one("SELECT interval_id,boundary_message_uid FROM secretary_noting_compaction_state WHERE conversation_ref=?", (ref,))
+    assert state["boundary_message_uid"] == "sum"
+    assert db.noting_admission(next_admission)["compression_interval_id"] == state["interval_id"] != "conversation_start"
     assert db.noting_admission(admission)["compression_interval_id"] == "conversation_start"

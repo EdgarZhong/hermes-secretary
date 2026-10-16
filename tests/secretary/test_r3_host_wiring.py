@@ -76,11 +76,11 @@ def test_native_compression_prepares_once_and_records_real_boundary(runtime, in_
     assert admission.kind == ("manual" if manual else "auto_compaction")
     assert prefix[-1]["message_uid"] == admission.anchor_message_uid
     with db._read_ctx() as conn:
-        state = conn.execute("SELECT interval_id FROM secretary_noting_compaction_state WHERE conversation_ref=?",
+        state = conn.execute("SELECT interval_id,boundary_message_uid FROM secretary_noting_compaction_state WHERE conversation_ref=?",
                              (admission.conversation_ref,)).fetchone()
         boundary = db._noting_latest_compaction_uid_conn(conn, admission.conversation_ref)
-    assert boundary and state["interval_id"] == boundary
-    assert boundary != admission.compression_interval_id
+    assert boundary and state["boundary_message_uid"] == boundary
+    assert state["interval_id"] != admission.compression_interval_id
 
 
 def test_idle_request_marker_prevents_a_second_spawn_in_native_pipeline(runtime):
@@ -171,7 +171,9 @@ def test_in_place_boundary_interval_is_committed_before_competing_admission(runt
         contender.join(5)
         assert not writer.is_alive() and not contender.is_alive() and not errors
         assert outcomes[0].action == "admit"
-        assert outcomes[0].admission.compression_interval_id == "atomic-boundary"
+        state = db._read_one("SELECT interval_id,boundary_message_uid FROM secretary_noting_compaction_state WHERE conversation_ref=?", (ref,))
+        assert state["boundary_message_uid"] == "atomic-boundary"
+        assert outcomes[0].admission.compression_interval_id == state["interval_id"] != "conversation_start"
     finally:
         release.set()
         writer.join(5)

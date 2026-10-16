@@ -32,6 +32,7 @@ from agent.credential_pool import (
 from agent.error_classifier import FailoverReason
 from agent.retry_utils import parse_retry_after_seconds, reset_delay_from_message
 from agent.message_metadata import MERGED_TURN_PREFIX
+from agent.cache_parity import normalize_frozen_cache_segments, split_frozen_cache_prefix
 from agent.turn_context import drop_stale_api_content
 from agent.agent_runtime_helpers_placeholders import _INTERRUPTED_PLACEHOLDER
 from utils import base_url_host_matches, base_url_hostname, env_var_enabled, atomic_json_write
@@ -764,24 +765,22 @@ def _normalize_sentinel_encoded_content(messages: List[Dict]) -> None:
 
 def repair_message_sequence(agent, messages: List[Dict]) -> int:
     """Collapse malformed role-alternation left in the live history; returns repair count.
-    Providers require strict alternation after the system message (violations: silent empty
-    responses or 400s); this is the pre-call belt for host-fed, resumed or replayed histories.
-    Passes in order: decode any sentinel-encoded multimodal rows (so an image is not merged as text);
-    merge consecutive assistant turns (BEFORE orphan detection so the merged tool_call-id union is
-    known); drop stray tool results; prune unanswered tool_calls; merge consecutive user turns. A user
-    turn directly after an assistant turn is valid and left alone.
-    """
+    Providers require strict alternation after the system message (violations: silent empty responses or 400s);
+    this is the pre-call belt for host-fed, resumed or replayed histories.
+    Passes in order: decode any sentinel-encoded multimodal rows (so an image is not merged as text); merge consecutive
+    assistant turns (BEFORE orphan detection so the merged tool_call-id union is known); drop stray tool results;
+    prune unanswered tool_calls; merge consecutive user turns. A user turn directly after an assistant turn is valid and left alone."""
     if not messages:
         return 0
-    _normalize_sentinel_encoded_content(messages)
+    prefix_count, current = split_frozen_cache_prefix(agent, messages)
+    _normalize_sentinel_encoded_content(current)
     repairs = 0
-    current = messages
     for repair_pass in _SEQUENCE_REPAIR_PASSES:
         current, made = repair_pass(current, agent=agent) if repair_pass is _merge_consecutive_users else repair_pass(current)
         repairs += made
     if repairs > 0:
         # Rewrite in place so persistence/return value/DB flush see the repaired sequence.
-        messages[:] = current
+        messages[prefix_count:] = current
     return repairs
 
 
@@ -1244,18 +1243,19 @@ _UNMERGEABLE = object()
 
 def drop_thinking_only_and_merge_users(
     messages: List[Dict[str, Any]], *, drop_codex_reasoning_items: bool = True,
-    drop_nudge_marker: Optional[str] = None,
+    drop_nudge_marker: Optional[str] = None, preserve_prefix_count: int = 0,
 ) -> List[Dict[str, Any]]:
     """Drop thinking-only assistant turns and merge adjacent user messages left behind, on the
-    per-call ``api_messages`` copy only (``agent.messages`` is never mutated). Drop-and-merge
-    (not stub text) keeps history honest and preserves role alternation.
-
-    ``drop_nudge_marker`` (#67321): user rows equal to the marker — the synthetic Codex
-    continuation nudge — are dropped too once the turn has crossed to a non-Codex provider;
-    doing it in this pass keeps alternation valid when the nudge sat between dropped
-    reasoning-only interims and a tool result rather than next to the user's message."""
+    per-call ``api_messages`` copy only (``agent.messages`` is never mutated).
+    Drop-and-merge (not stub text) keeps history honest and preserves role alternation.
+    ``drop_nudge_marker`` (#67321): user rows equal to the marker — the synthetic Codex continuation nudge —
+    are dropped too once the turn has crossed to a non-Codex provider; doing it in this pass keeps alternation valid
+    when the nudge sat between dropped reasoning-only interims and a tool result rather than next to the user's message."""
     if not messages:
         return messages
+    if preserve_prefix_count:
+        return normalize_frozen_cache_segments(messages, preserve_prefix_count, drop_thinking_only_and_merge_users,
+            drop_codex_reasoning_items=drop_codex_reasoning_items, drop_nudge_marker=drop_nudge_marker)
     kept = [
         m for m in messages
         if not (drop_nudge_marker is not None and m.get("role") == "user" and m.get("content") == drop_nudge_marker)

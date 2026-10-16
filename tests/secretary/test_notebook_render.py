@@ -35,9 +35,12 @@ def test_human_and_model_views_are_complete_and_exclude_termination_audit():
     saved = snapshot()
     saved["termination"] = {"type": "forced"}; saved["future_internal_audit"] = "never_expose"
     text = render_notebook(saved)
-    for value in ("pointer", "source", "work", "situations", "discussion", "candidates", "send report", "reviewed", "precise evidence", "candidate_refs", "entry_id", "version_id"):
+    for value in ("work", "situations", "discussion", "candidates", "send report", "reviewed", "precise evidence", "candidate_refs", "entry_id", "version_id"):
         assert value in text
     assert "forced" not in text and "never_expose" not in text
+    assert saved["snapshot_id"] not in text
+    assert "Coverage anchor:" not in text and "Snapshot:" not in text
+    assert "source_time_range" in text and RANGE["start_time"] in text
     view = show_notebook(saved)
     assert view["coverage"] == {"anchor_message_uid": "source"}
     assert view["snapshot_id"] == "pointer" and view["payload"] == saved["payload"]

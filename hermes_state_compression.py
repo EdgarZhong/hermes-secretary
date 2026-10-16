@@ -25,18 +25,21 @@ def _noting_compaction_write(db, conn, session_id, messages, write, *, owner_ses
     Secretary observation is fail-open for native work. A disabled feature creates no
     state; an already tracked interval still observes successful native progress.
     """
-    new_summary = False
+    summary_expected, before_id = False, 0
     try:
         from agent.context_compressor import is_compaction_summary_message
-        new_summary = any(is_compaction_summary_message(message) and (
-            not message.get("message_uid") or conn.execute(
-                "SELECT 1 FROM messages WHERE message_uid=? LIMIT 1", (message["message_uid"],)).fetchone() is None
-        ) for message in messages)
+        summary_expected = any(is_compaction_summary_message(message) for message in messages)
+        before_id = conn.execute("SELECT COALESCE(MAX(id),0) FROM messages WHERE session_id=?",
+                                 (session_id,)).fetchone()[0]
     except Exception:
+        summary_expected = False
         logger.debug("Noting boundary detection unavailable", exc_info=True)
     result = write()
     try:
-        if not new_summary:
+        published = conn.execute(
+            "SELECT id FROM messages WHERE session_id=? AND active=1 AND _compressed_summary=1 "
+            "AND id>? ORDER BY id DESC LIMIT 1", (session_id, before_id)).fetchone() if summary_expected else None
+        if published is None:
             return result
         from secretary.noting_runtime import _CHILD_SOURCES, _delegate_child_row
         from secretary.noting_scope import settings_for_db
@@ -51,7 +54,9 @@ def _noting_compaction_write(db, conn, session_id, messages, write, *, owner_ses
         if tracked is None and not settings_for_db(db).enabled:
             return result
         ref = db.resolve_conversation_ref_conn(conn, session_id)
-        db.noting_record_compaction_conn(conn, ref)
+        boundary = db._noting_latest_compaction_conn(conn, ref)
+        if boundary is not None and (boundary["session_id"], boundary["id"]) == (session_id, published["id"]):
+            db.noting_record_compaction_conn(conn, ref)
     except Exception:
         logger.debug("Noting interval observation failed; native publication remains valid", exc_info=True)
     return result

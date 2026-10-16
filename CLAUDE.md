@@ -25,17 +25,19 @@
 | C9-S | 主会话已review接收；c9-surface-report.md | 23路径指纹一致，112独立场景有通过证据；原始整批guard、退休名不fuzzy、可信catalog scope、独立Scheduler及完整claim、原生持久化prepare接线。无真实模型结论 |
 | C10-A | 主会话已review接收；c10-notebook-history-report.md | 233独立场景有通过证据；C2嵌套修复、坏UID来源不可用、Snapshot时间ISO；保留旧有效保障，退出接口有处置映射 |
 | C10-H | 主会话已review接收；c10-runtime-report.md | 62旧组场景＋4受影响Idle节点有通过证据；恢复deadline唯一local决定，提交gate仍检查。c4_config_prompt已于C9-S f304b42接收后独占真实DeepSeek运行 |
-| C10-B | 主会话已review接收；c10-delivery-report.md | 十个旧测试文件106独立场景PASS，含九个CLI/TUI/Gateway SIGKILL边界；无生产修改，旧Notebook耦合退出。local_environment已准备回归范围，因真实发现R3-F08优先修复busy slash→Active历史接缝；未执行大型检查 |
+| C10-B | 主会话已review接收；c10-delivery-report.md | 十个旧测试文件106独立场景PASS，含九个CLI/TUI/Gateway SIGKILL边界；无生产修改，旧Notebook耦合退出。F08/F11/F12已review接收；c4接手最终回归静态清单，未执行大型检查 |
 | C10-P | 主会话已review接收；个人8682ff8，c10-personal-report.md | 两旧测试39项PASS，canonical runner通过ignored源码链接避免错误包收集；无生产修改。personal_provider准备正式host→本机fixture，等round3独占接力 |
 | P1/P2/P3 | 主会话已review接收个人线并提交57d0abb854f4；personal-report.md | 46独立用例通过；真实SessionDB/MemoryManager+本地HTTP fixture，P2基本模拟通过；主会话已review，公共finalizer gate及历史旧测试已收口，真实host→fixture仍待接力 |
+| C10-T | 主会话已review接收；c10-final-legacy-report.md | 六旧文件及相关节点有效并集92 PASS；F10/F13、F11受影响旧组定向关闭，未启动独立门禁 |
+| C11-P | personal_provider准备已review接收；personal-host-report.md | 原生host→loopback fixture六场景、临时工具收窄及完整配置/插件备份恢复；尚未start，等round3独占接力 |
 | L0 | 环境已交回；yaml问题是个人脚本旧导入，P3 owner修复 | 不跑产品测试；不改锁或裸装依赖 |
 | 门禁 | 尚未启动；主会话已制定validation.md全范围15组场景 | 集成收敛后Astra/high Verification；主会话制定Validation、6.1/high执行 |
 
 - 真实运行新发现 R3-F08：TUI Main streaming期间/noting反馈后，durable原文仍在但后续Active冻结缺输入／图片；修复已由主会话review接收：busy历史批次合并与cold human_only投影共28项PASS，ruff/health通过；真实复测待执行。真实模型owner继续独立场景，修后定向复测，不以配置存在或部分成功冒称整链通过。
 
-- R3-F09真实Scheduler目录缺失已由主会话review接收单点catalog修复，正式TUI四开关及热关闭等6项PASS；真实复测待执行。C10-T六旧文件首轮60 PASS／17 FAIL／10 setup ERROR已保存，personal_provider正按现行契约调整并取得F10定向证据。R3-F10 External通知owner重读由主会话只补传现有ref，待原失败定向复验。F08b冷恢复human_only与正常回复合并已反证并修复；R3-F13原生/notebook误显Snapshot/anchor ID由personal_provider按04§4.2保留约束修正。
+- R3-F09真实Scheduler目录缺失已由主会话review接收单点catalog修复，正式TUI四开关及热关闭等6项PASS；真实复测待执行。C10-T六旧文件已收口，最终有效并集92项PASS；首轮60 PASS／17 FAIL／10 setup ERROR保留。R3-F10 External通知owner重读由主会话只补传现有ref，原失败及owner/suppression六项定向通过。F08b冷恢复human_only与正常回复合并已反证并修复；R3-F13原生/notebook误显Snapshot/anchor ID已修正，原CLI失败、human/model投影及Framework三项PASS。
 
-- R3-F11／F12：真实原生成功压缩复用UID时漏记新interval；Force父尾为user时Noting任务被并入冻结消息。已派local_environment按07§3/8.1与04 C13修复，包含事务/no-op和逐请求前缀反证；不能用文本包含替代完整消息前缀。
+- R3-F11／F12：真实原生成功压缩复用UID时漏记新interval；Force父尾为user时Noting任务被并入冻结消息。local_environment首包62项PASS；F11主会话review接收，C10-T另四项通过。F12首次review发现child时钟重做父历史清理，补四个真实native RED后回修；主会话已review接收累计74项有效证据，真实复测待统一重启；不能用文本包含替代完整消息前缀。
 
 - 原生真实模型验证唯一owner为c4_config_prompt，已从C9-S f304b42启动；本轮大型检查尚未执行，集成收敛后统筹一次，修复后仅定向复测。主会话不重复子Agent有效测试。
 

@@ -17,6 +17,7 @@ from agent.message_sanitization import _sanitize_messages_surrogates
 from agent.usage_anchor import anchored_context_tokens
 from agent.prompt_caching import build_prompt_cache_plan, effective_cache_ttl
 from agent.turn_context import build_api_messages
+from agent.cache_parity import normalize_cache_parity_request
 
 logger = logging.getLogger("agent.conversation_loop")
 
@@ -189,8 +190,8 @@ def assemble_api_request(
     # provider, #67321) the synthetic continuation nudge is Codex-only control text: drop it
     # alongside the opaque replay state.
     _cross_protocol = agent.api_mode != "codex_responses"
-    api_messages = agent._drop_thinking_only_and_merge_users(
-        api_messages, drop_codex_reasoning_items=_cross_protocol,
+    api_messages = normalize_cache_parity_request(
+        agent, api_messages, drop_codex_reasoning_items=_cross_protocol,
         drop_nudge_marker=_CODEX_INCOMPLETE_NUDGE if _cross_protocol else None,
     )
 

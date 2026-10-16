@@ -16,7 +16,7 @@ from secretary.framework_messages import mark_framework_turn, publish_framework_
 from secretary.noting_scope import owning_db_scope
 from tests.agent.test_context_compaction_request import _agent
 
-EVIDENCE = Path(__file__).resolve().parents[2] / '.hermes-dev/v1.6-evidence/force-notice-boundary'
+EVIDENCE = Path(__file__).resolve().parents[2] / '.hermes-dev/round3-local-20261017-l0/c10-t/force-notice-boundary'
 
 
 @pytest.fixture
@@ -27,8 +27,8 @@ def runtime(tmp_path, monkeypatch):
     monkeypatch.setattr(httpx.AsyncClient, 'send', no_http)
     home = tmp_path / 'home'
     home.mkdir()
-    (home / 'config.yaml').write_text('noting:\n  enabled: true\n  idle_delay_seconds: 3600\n')
-    db = SessionDB(tmp_path / 'state.db')
+    (home / 'config.yaml').write_text('noting:\n  enabled: true\n  idle:\n    enabled: false\n')
+    db = SessionDB(home / 'state.db')
     db.create_session('native-request-probe', source='cli', system_prompt='Native probe root')
     for i in range(30):
         db.append_message('native-request-probe', 'user', f'original question {i}: ' + 'ordinary history ' * 120)
@@ -67,9 +67,10 @@ def _summary_response(agent, monkeypatch):
 
 
 def _force(agent, db, *, busy=False):
+    before = len(agent._force_test_admissions)
     mark_framework_turn(agent, running=busy)
     assert rt.maybe_admit_force_from_pressure(agent, 64000, messages=agent._session_messages).startswith('admit:')
-    assert len(agent._force_test_admissions) == 1
+    assert len(agent._force_test_admissions) == before + 1
     if busy:
         pending = agent._secretary_framework_messages
         assert len(pending) == 1 and pending[0].producer == 'force_dispatch'
@@ -132,7 +133,7 @@ def test_persisted_force_native_compaction_keeps_history_and_other_producer(runt
     agent.compression_in_place = in_place
     old_sid = agent.session_id
     force = _force(agent, db)
-    publish_framework_message(agent, 'Background: notebook updated at T. Processed memo entries have been cleared.',
+    publish_framework_message(agent, 'Background: synthetic producer notification retained.',
                               display_metadata={'noting_run_output': True})
     append_message(agent._session_messages, {'role': 'user', 'content': 'the genuine newer question must survive'})
     assert agent._flush_messages_to_session_db(agent._session_messages)
@@ -143,7 +144,7 @@ def test_persisted_force_native_compaction_keeps_history_and_other_producer(runt
     assert not any((row.get('display_metadata') or {}).get('noting_force_dispatch') for row in db.get_messages(agent.session_id))
     history = db.get_history_foreground(conversation_ref=agent._secretary_conversation_ref)
     assert any(row.get('message_uid') == force['message_uid'] and row['content'] == force['content'] for row in history)
-    assert any('notebook updated at T' in str(row.get('content')) for row in result)
+    assert any('synthetic producer notification retained' in str(row.get('content')) for row in result)
     assert '临近上下文上限' not in summaries[0]
     assert (agent.session_id != old_sid) is (not in_place)
 
@@ -223,7 +224,7 @@ def test_success_expires_captured_force_queue_keeps_other_producers_and_disabled
     from secretary.framework_messages import publish_external_execution_notice
     agent, db = runtime
     force = _force(agent, db, busy=True)
-    publish_framework_message(agent, 'Background: notebook updated at T. Processed memo entries have been cleared.',
+    publish_framework_message(agent, 'Background: synthetic producer notification retained.',
                               display_metadata={'noting_run_output': True})
     agent._secretary_last_main_execution = 'external'
     assert publish_external_execution_notice(agent, expected_conversation_ref=agent._secretary_conversation_ref)
@@ -237,7 +238,7 @@ def test_success_expires_captured_force_queue_keeps_other_producers_and_disabled
     agent._session_messages[:] = result
     mark_framework_turn(agent, running=False)
     rows = db.get_messages(agent.session_id)
-    assert sum('notebook updated at T' in str(row['content']) for row in rows) == 1
+    assert sum('synthetic producer notification retained' in str(row['content']) for row in rows) == 1
     assert sum('Noting is unavailable' in str(row['content']) for row in rows) == 1
     assert not any((row.get('display_metadata') or {}).get('noting_force_dispatch') for row in rows)
 
@@ -299,10 +300,19 @@ def test_real_db_success_expires_queue_before_native_publication_loader_failure(
 def test_next_interval_formal_force_producer_is_not_retired_by_old_attempt(runtime, monkeypatch):
     agent, db = runtime
     old = _force(agent, db, busy=True)
+    prior_interval = db._read_one("SELECT interval_id FROM secretary_noting_compaction_state WHERE conversation_ref=?",
+        (agent._secretary_conversation_ref,))[0]
     _summary_response(agent, monkeypatch)
     result, prompt = agent._compress_context(agent._session_messages, None, force=True)
     assert old not in agent._secretary_framework_messages
     agent._session_messages[:] = result
+    EVIDENCE.mkdir(parents=True, exist_ok=True)
+    with db._read_ctx() as conn:
+        state = dict(conn.execute("SELECT * FROM secretary_noting_compaction_state WHERE conversation_ref=?", (agent._secretary_conversation_ref,)).fetchone())
+        summaries = [row['message_uid'] for row in db.get_full_foreground_conn(conn, agent._secretary_conversation_ref) if row.get('is_compaction')]
+    (EVIDENCE / 'next-interval.json').write_text(json.dumps({'prior_interval': prior_interval, 'state': state, 'summary_uids': summaries}, indent=2))
+    assert summaries and state['boundary_message_uid'] == summaries[-1]
+    assert state['interval_id'] != prior_interval
     # The controlled spawn boundary starts no Child worker/registry owner. The
     # next actual Force admission still resolves its new authentic foreground Anchor.
     append_message(agent._session_messages, {'role': 'user', 'content': 'a new interval original user question'})
@@ -366,7 +376,7 @@ def test_no_force_paths_keep_native_compression_and_capture_dormant(runtime, mon
     result, prompt = agent._compress_context(agent._session_messages, None, force=True)
     assert any(SUMMARY_PREFIX in str(row.get('content')) for row in result)
     assert not any((row.get('display_metadata') or {}).get('noting_force_dispatch') for row in result)
-    assert not agent._force_test_admissions
+    assert [admission.kind for admission in agent._force_test_admissions] == ['manual']
     assert not getattr(agent, '_secretary_framework_messages', ())
     assert capture_force_notices(agent, agent._session_messages) is None
     # (2) Local off: pressure admission refuses, queue stays empty, no capture material appears.
@@ -374,14 +384,16 @@ def test_no_force_paths_keep_native_compression_and_capture_dormant(runtime, mon
     outcome = rt.maybe_admit_force_from_pressure(agent, 999999, messages=agent._session_messages)
     assert not outcome.startswith('admit:'), outcome
     assert not getattr(agent, '_secretary_framework_messages', ())
-    assert not agent._force_test_admissions
+    assert [admission.kind for admission in agent._force_test_admissions] == ['manual']
     assert capture_force_notices(agent, agent._session_messages) is None
     # (3) A non-main agent with a queued Force object is still excluded from capture.
     db.notebook_set_local_enabled(agent._secretary_conversation_ref, True)
+    append_message(agent._session_messages, {'role': 'user', 'content': 'A genuine new Main input after the joint manual attempt'})
+    assert agent._flush_messages_to_session_db(agent._session_messages)
     queued = _force(agent, db, busy=True)
     agent.side_agent = True
     try:
-        assert rt.maybe_admit_force_from_pressure(agent, 999999, messages=agent._session_messages) == 'not_main'
+        assert rt.maybe_admit_force_from_pressure(agent, 999999, messages=agent._session_messages) == 'skip:not_main'
         assert capture_force_notices(agent, agent._session_messages) is None
     finally:
         agent.side_agent = False

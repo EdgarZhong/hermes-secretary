@@ -103,3 +103,86 @@ AIAgent._sync_external_memory_for_turn(
 ## 7. 交接与建议
 
 主会话亲自 review 八个生产文件，特别核对两 DB publication 的同事务边界、共同 hook 的单次 freeze，以及失败 native 回退不改变既有行为；再按 manifest 接收未提交 patch。C9-S 继续其单写者文件，C10 收口上述旧组；已有 112 场景有效证据复用，仅集成实质改变相关接缝时定向复测。没有新增影响用户预期的自主规格收敛。
+
+## R3-F11 / F12 本地真实发现修复补充（2026-10-17）
+
+### 1. 依据与真实反证
+
+d19018 白板实际 A7 为删除Memo、N5 为主动性归Main、N6 为保持冻结前缀；本包机制要求由07 §3（89–114）、§8.1–8.2（1237–1264）及04 §4.4/C13（265–291）、§4.6（317–356）明确。未继承双profile/child压父。真实证据摘要：`real-model/native-boundary-interval-miss.json`、`force-user-tail-prefix-observation.json`；只读请求 body/摘要，未输出headers、root或凭据，未触碰round3。
+
+F11：原生in-place复用旧assistant UID形成新summary，原`_noting_compaction_write`以“UID全库未见过”判新边界，真实发布后interval仍conversation_start；重压同UID summary也不能前进。F12：父最后一条是user，原生live repair与发送副本user merge将noting-task并入该user，违反逐消息前缀。受控新增RED分别复现两类同UID不前进、finish/五Turn父user被改写（4 FAIL）。新增多模态反证还发现父当前user数组的timestamp块只在发送时存在，child历史重放丢该块。
+
+### 2. 实际变更
+
+- `hermes_state_compression.py::_noting_compaction_write`：写前保存目标session物理水位，原生write成功后只接受该session新插入、active、summary行，且它仍是当前合法路径的最新边界。排除同事务其他session、未发布/no-op；异常原生write照常回滚，观察保持fail-open。
+- `hermes_state_secretary_noting.py`：从Full foreground合法节点导出不透明 `compaction:<session_id>:<physical_row_id>` interval，`boundary_message_uid`仍为逻辑UID。初次seed/成功record同一格式；同物理发布重记幂等，同UID再次发布新行则新interval。getter已登记后直接返回，不因rewind重置，Force占用随真正新边界释放。
+- `secretary/noting_child.py` / `agent/cache_parity.py`：只给持久Noting child绑定冻结父前缀长度。live repair只处理child后缀；发送drop/merge分段调用原生函数，不能跨父/child边界。首请求、工具循环与五Turn续跑共用此边界，无假assistant、provider adapter、独立Loop或父root/tools修改。
+- timestamp补充：freeze私有副本仅对父`_persist_user_message_idx`对应、Anchor以内的user数组，复用该消息**已有非空FreshUserTimestampMarker**与正式prepend helper物化实际发送块。不读取普通timestamp来补造时间；历史图片、无现成标记、索引不匹配均不补。已物化的可信Parts不重复。原消息字典未改，不给无content字段的消息补None。
+- `agent/agent_runtime_helpers.py`仅repair与drop/merge两个窄接缝、`agent/turn_request_assembly.py`只调用上述已有cache owner。未绑定冻结边界时继续原调用参数、原repair与send行为。超长runtime helpers仍3837行，与基线相同；只重排两段原docstring换行，未删指导或规则。
+- 两处`test_r3_host_wiring.py`及一个`test_secretary_noting.py`旧内部断言改为逻辑boundary UID＋opaque interval/旧占用变化，不恢复旧alias、不删可靠性保障。
+
+### 3. 正式路径与原子性
+
+in-place `archive_and_compact`、rotation `publish_compression_child`均进入同一原生transcript写事务，在native成功发布与COMMIT之间更新现有Secretary interval表。物理summary行、合法路径、目标session三者同时匹配；竞争admission仍由SQLite原生写锁串行看到新interval，失败无新占用释放。没有新schema或迁移。
+
+F12正式`run_noting_task`→同一持久child→原生`run_conversation`→live repair→request assembly/provider。测试先让原生Parent真实发出受控请求，逐消息比较所有child实际请求的root、tools与完整父数组；不是源码断言或镜像拼装。允许合法完成Framework追加父尾，但原父前缀逐项不变；child durable只保存自有后缀，来源UID不重复入库。
+
+### 4. 最终验证与耗时
+
+本包最终有效 **62 PASS**：新独立文件20（F11同UID两轮×2、no-op/外session/rollback3、rewind1、rotation1；F12五种前缀×finish/五Turn10、无marker/错index2、原生默认repair/send1）；旧正式host边界10；旧state占用1；默认sanitizer20＋cache parity11。其余已有C1–C10证据复用，不跑全组或大型门禁。
+
+| 本地日志（f11-f12/） | 结果 | runner wall秒 |
+|---|---:|---:|
+| red | 0P/4F；根因RED | 1.9 |
+| green-first | 2P/2F；F11绿，测试旧写死root需改实际请求比较 | 2.2 |
+| expanded | 3P/9F；实际多模态marker差异＋合法Framework/false字段夹具假设 | 4.6 |
+| expanded-fixed | 13P | 4.4 |
+| prefix-timestamp-final | 13P；新增历史图片/assistant尾/无marker/rotation | 6.5 |
+| prefix-final | 最终受影响12个F12节点PASS | 7.5 |
+| host-boundary-regression | 10P | 4.1 |
+| state-boundary-regression | 1P | 0.7 |
+| native-parity-regression | 31P | 85.3 |
+
+共9次canonical runner调用，累计各runner wall 117.2秒（最后四组并行，该值不是端到端串行耗时）。改动/实际失败后定向复测；最后helper字典结构保留调整只重测12个F12节点，F11无关8个新节点复用已有效证据。长耗时来自旧cache-parity文件85.3秒，已过，不重复。
+
+九路径锁定Ruff PASS，官方未改的Measurer/compare/apply_allows/verdict相对`4739b54896040be66c37c194d6b75dac2b675d97`为 **0 blocking / 0 advisory**，diff-check PASS（1.19秒）。最终固定实现前base的全范围十类门禁仍未执行；不据scoped结果宣称全项目绿。
+
+### 5. 缺口与证据边界
+
+本包无已知未关闭的受控机制失败。真实DeepSeek对user→user独立后缀的接受、真实Force首长user、再次压缩后新interval以及实际请求/cache观察，由c4唯一owner按原失败序列复测；本包没有真实模型结论。C10-T owner已另交`c10-t/f11-final.log`四个Force边界PASS（下一interval、in-place/rotation、no-op），本包未重复执行该文件/节点。F09/F10与最终regression-plan已归其他owner，未碰。
+
+### 6. 文件与接口 manifest
+
+九路径：`agent/agent_runtime_helpers.py`、`agent/cache_parity.py`、`agent/turn_request_assembly.py`、`hermes_state_compression.py`、`hermes_state_secretary_noting.py`、`secretary/noting_child.py`、新增`tests/secretary/test_r3_boundary_prefix_regression.py`、`tests/secretary/test_r3_host_wiring.py`、`tests/hermes_state/test_secretary_noting.py`。没有新的公开产品接口；原生drop/merge增加内部可选`preserve_prefix_count=0`，默认native签名参数使用保持；interval消费者必须视其为opaque，不再等同逻辑UID。
+
+全部SHA256/锁指纹、版本、最终命令、精确node选择、运行次数与日志hash：`.hermes-dev/round3-local-20261017-l0/f11-f12/manifest.json`；已有源码diff为`final.patch`，新独立测试完整快照`new-test-source.py`；健康脚本/完整测量为`check_scoped.py`、`scoped-checks.json`、`checks.log`。HEAD只是集成背景，本包尚未提交，不把HEAD冒称已含修复。
+
+### 7. 后续与停止
+
+本包停止全部生产/测试写入，交主会话review/集成，随后c4定向真实复测F11/F12。没有stage/commit、派生、真实NM、round3操作或大型检查。最终回归静态准备已转c4，不再写该文档与目录。
+
+## F12 review 回修：父 replay cleanup 只冻结一次
+
+1. **条款与反证**：同04 C13／07 §3每次请求的完整父前缀合同。主会话指出`build_api_messages`在每个child Turn用child新clock清理整个父prefix。新增真实原生Parent→持久child反证证实：已合法清理的旧read-only interrupted历史及父本Turn刚返回的interrupted工具结果被再次删去，使静态长度越界；跨Turn/后台交接的新clock将父原请求合成确认文案改为EXPIRED。没有执行危险动作；read_file仅在正式`model_tools.handle_function_call`返回边界提供合成结果。
+
+2. **相对上次review的变更**：仅`agent/cache_parity.py`、`agent/turn_context.py::build_api_messages`、`secretary/noting_child.py::freeze_parent_active_prefix`、同一新测试文件。首次同步freeze沿父现成`_persist_user_message_idx`切历史，复用现成`_current_turn_timestamp`只canonicalize历史一次，当前父Turn不提前清理；无现成clock不补造时间。原始索引在human_only过滤前保留，完成原生历史清理后再过滤，按清理后的长度绑定child边界。`FrozenParentPrefix`仅内部list结构副本标记，spawn→后台再次freeze只复制，不读取父已变化clock/index；普通list及该内部类型都仍逐条检查Anchor，提交gate未绕过。
+
+3. **正式接缝**：native Parent `run_conversation`真实请求捕获→同步freeze→持久child runner→`build_api_messages`只canonicalize冻结边界后的child自有历史。未绑定时helper仍调用原`canonicalize_replay_history(messages[:split], now=now)+messages[split:]`等价路径，同clock/阈值，原生cleanup保持；没有全局关闭清理。原父live/durable、root/tools均不改；父实际已清理的历史不会被“原样保留坏历史”重新带回。
+
+4. **新增验证**：`replay-red-native.log`4 FAIL为有效原生RED；`replay-green.log`四反例PASS，每个持久child五Turn逐请求比对完整实际父数组及tools，并确认父durable原文不改。`replay-prefix-regression.log`14 PASS＝前版受影响F12十二节点＋普通/内部类型不可绕Anchor两节点；`native-replay-regression.log`六PASS验证原生默认发送/恢复清理及60秒clock行为。未重跑F11/62全组、31项cache/sanitizer。原62按影响复用，加六个新边界和六个原生cleanup场景，最终有效覆盖 **74 PASS**。
+
+| 本次日志 | 结果 | runner wall秒 |
+|---|---:|---:|
+| replay-red | 4F，stub误写到不存在的facade；非根因证据 | 1.5 |
+| replay-red-native | 4F，有效RED | 3.1 |
+| replay-green | 4P | 3.0 |
+| replay-prefix-regression | 14P | 6.8 |
+| native-replay-regression | 6P | 0.5 |
+
+本次5次canonical runner，累计14.9秒；连同上次为14次/132.1秒各runner wall之和。四变化路径锁定Ruff PASS、冻结scoped health **0 blocking/0 advisory**、diff-check PASS，0.574秒。完整门禁仍未启动。
+
+5. **缺口**：本次受控反例已关闭；真实DeepSeek接受与缓存命中仍由c4原owner复测，不把受控Loop当成真实模型结论。F11两个prod未再写，C10-T92项与其四Force节点不重复。
+
+6. **最终hash与增量**：`f11-f12/manifest.json`的`replay_review.final_sha256`给出四个最终完整SHA256，`unchanged_f11`两项均true。相对上次review的完整四文件增量为`replay-review-delta.patch`（SHA256 `b705e9069fb8acf9c07cebf75532260a344ad5a7bb7fa0204731745ed1b9e0b6`）。已用初次base＋初次patch重建上次源文件并逐一核对所有旧manifest hash，不是凭当前HEAD推测增量。第一次review证据保留为`manifest-before-replay-review.json`、`before-replay-review.patch`、`before-replay-review-test.py`；最终全patch/新测试完整源已更新，检查为`replay_check_scoped.py`、`replay-scoped-checks.json`、`replay-checks.log`。
+
+7. **停止**：四路径生产/测试已停止写入，无stage/commit、派生、round3/真实模型或大型检查。交root按独立增量一次review并集成，之后原真实owner按原失败序列复测。最终regression文档与目录仍归c4，本owner不再写。

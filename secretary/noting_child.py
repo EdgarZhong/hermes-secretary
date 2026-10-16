@@ -131,7 +131,7 @@ def active_noting_task_count() -> int:
 def freeze_parent_active_prefix(
     parent: Any, anchor_message_uid: str, messages: Optional[Sequence[Dict[str, Any]]] = None
 ) -> List[Dict[str, Any]]:
-    """Structural copies of the Parent's live Active context through the frozen Anchor.
+    """Structural copies of the Parent's request-normalized Active context through the frozen Anchor.
 
     Fails closed when the Anchor is not on the Parent's active path: dispatching against a
     wrong prefix would make the task's result unanchored. Copies are marked already-durable
@@ -141,19 +141,21 @@ def freeze_parent_active_prefix(
     if not isinstance(source, (list, tuple)) or not source:
         raise NotingChildError("The Parent's active context is unavailable for freezing")
     frozen: List[Dict[str, Any]] = []
-    from agent.message_visibility import is_model_visible
+    from agent.cache_parity import FrozenParentPrefix, freeze_parent_replay_prefix, frozen_current_user_message
+    already_frozen = isinstance(source, FrozenParentPrefix)
 
-    for msg in source:
+    for index, msg in enumerate(source):
         if not isinstance(msg, dict):
             continue
-        if is_model_visible(msg):
-            frozen.append(_clone_message(msg))
+        cloned = _clone_message(msg)
+        frozen.append(cloned if already_frozen else frozen_current_user_message(parent, msg, index, cloned))
         if msg.get("message_uid") == anchor_message_uid:
             break
     else:
         raise NotingChildError("The frozen Anchor is not present in the Parent's active context")
     from agent.context_compressor import _DB_PERSISTED_MARKER
 
+    frozen = freeze_parent_replay_prefix(parent, frozen, already_frozen=already_frozen)
     for msg in frozen:
         msg[_DB_PERSISTED_MARKER] = True
     return frozen
@@ -610,6 +612,7 @@ def _run_child_turns(
     outcome: NotingTaskOutcome, *, admission_timestamp: float,
 ) -> None:
     """Run one persistent child for at most five complete Turns (M27)."""
+    child._cache_parity_frozen_prefix_count = len(prefix)
     history: Any = [_clone_message(message) for message in prefix]
     while outcome.turns < _NOTING_TURN_LIMIT:
         outcome.turns += 1

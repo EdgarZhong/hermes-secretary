@@ -81,10 +81,10 @@ pending后通过工具更新content/mode、改期、pause/delete；下一实际m
 通过正式注册/dispatch证据核对Main三能力、Noting四工具和辅助runtime；对历史旧名执行应返回明确legacy_tool_removed与新工具引导，历史不删除/重放。单结果spill和批次总裁剪分别在真实executor路径构造：Noting History反馈先缩窗口，单条仍超限明确无法继续，不提示无权工具；其他runtime原生提示/预算/落盘不变。无个人Provider安装时核心能加载与运行。
 
 ### V13 个人Bundle与Recall
-仅本机HTTP fixture：Main首次构造、cold恢复及compaction原生重建获取稳定Bundle（无Working Memory），连续Turn不每次重建root；有意义输入包括短CJK触发Memory Search指针（完整ID/标题/可得时间、不正文）。恶意标题编码为不可信数据。端点故障不得复用旧指针，保留不可用/Memory check短提示；History仍可用。Cron仅归档、Noting/其他辅助无独立Bundle/Recall网络；无模型工具Schema/第二同步插件。
+仅本机HTTP fixture：Main首次构造、cold新runtime无有效root及compaction原生重建获取fresh稳定Bundle（无Working Memory）；cold resume仍有有效冻结root时沿用该root，连续Turn不每次重建root；有意义输入包括短CJK触发Memory Search指针（完整ID/标题/可得时间、不正文）。恶意标题编码为不可信数据。端点故障不得复用旧指针，保留不可用/Memory check短提示；History仍可用。Cron仅归档、Noting/其他辅助无独立Bundle/Recall网络；无模型工具Schema/第二同步插件。
 
 ### V14 completed归档与收据
-公共真实host生命周期接本机fixture：completed且未failed/interrupted才sync；失败但有final_response不上传。跨压缩Main使用合法History及host批量egress脱敏；Cron仅自身合格正文。相同ACK前缀只上传suffix，失败不推进，重试可恢复；continuation同thread，new/fork分开。rewind/edit导致prefix差异返回reconciliation-required，不覆盖旧Thread/换ID。endpoint/Space隔离，无自动蒸馏或治理变更。引用开发44项时标明其真实SessionDB/MemoryManager与fixture范围；公共完成gate集成后受影响路径必须另有证据。
+公共真实host生命周期接本机fixture：completed且未failed/interrupted才sync；失败但有final_response不上传。跨压缩Main使用合法History及host批量egress脱敏；Cron仅自身合格正文。相同ACK前缀只上传suffix，失败不推进，重试可恢复；continuation同thread，new/fork分开。rewind/edit导致prefix差异返回reconciliation-required，不覆盖旧Thread/换ID。endpoint/Space隔离，无自动蒸馏或治理变更。引用开发46项时标明其真实SessionDB/MemoryManager与fixture范围；公共完成gate集成后受影响路径必须另有证据。
 
 ### V15 provenance小脚本
 只审阅本轮P2基本模拟调用证据：参数数组调用官方CLI、解析真实ID、同配置仅补hermes_provenance并保留无关metadata；partial明确ID、修复不重新m add，unknown不猜ID。确认安装/skill指向新入口，其他管理回官方CLI。不重复真实NM写入、不把小脚本例外扩为整个Provider免验。

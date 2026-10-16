@@ -57,9 +57,7 @@ def render_notebook(snapshot, *, profile_home=None):
     """Native slash text; complete data, no archive lookup or audit termination."""
     if snapshot is None:
         return "This Conversation has no Notebook Snapshot yet."
-    lines = ["Notebook", f"Snapshot: {snapshot['snapshot_id']}",
-             f"Created at: {format_timestamp(snapshot['created_at'], profile_home=profile_home)}",
-             f"Coverage anchor: {snapshot['anchor_message_uid']}"]
+    lines = ["Notebook", f"Created at: {format_timestamp(snapshot['created_at'], profile_home=profile_home)}"]
     state = readable_notebook_state(snapshot["payload"])
     for section in SECTIONS:
         lines.extend(["", section])
