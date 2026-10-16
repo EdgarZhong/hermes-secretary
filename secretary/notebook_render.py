@@ -4,19 +4,30 @@ import json
 from copy import deepcopy
 
 from hermes_time import format_timestamp
-from secretary.notebook_contract import SECTIONS, public_state
+from secretary.notebook_contract import EVIDENCE_TIMES, SECTIONS, public_state
 
 
-def readable_notebook_entry(entry):
-    """Copy a current entry without inventing timestamps or truncating identifiers."""
+def readable_notebook_entry(entry, *, profile_home=None):
+    """Project absolute times to seconds without changing stored evidence or text."""
     projected = deepcopy(entry)
     projected.pop("archived", None)
+    for key in ("created_at", "updated_at", "last_processed_at"):
+        if key in projected:
+            projected[key] = format_timestamp(projected[key], profile_home=profile_home)
+    for key in EVIDENCE_TIMES & projected["fields"].keys():
+        projected["fields"][key] = format_timestamp(projected["fields"][key], profile_home=profile_home)
+    if projected.get("source_time_range") is not None:
+        projected["source_time_range"] = {
+            key: format_timestamp(value, profile_home=profile_home)
+            for key, value in projected["source_time_range"].items()
+        }
     return projected
 
 
-def readable_notebook_state(state):
+def readable_notebook_state(state, *, profile_home=None):
     """Reverse Candidate links always come from this complete current view."""
-    return public_state(state)
+    return {section: [readable_notebook_entry(entry, profile_home=profile_home) for entry in entries]
+            for section, entries in public_state(state).items()}
 
 
 def show_notebook(snapshot, *, conversation_ref=None, profile_home=None):
@@ -24,7 +35,7 @@ def show_notebook(snapshot, *, conversation_ref=None, profile_home=None):
 
     For an empty Notebook the trusted caller must supply its bound Conversation.
     Working callers use NotebookStore.working_view(), never this projection.
-    ``profile_home`` controls the display timezone; source ISO evidence is not rewritten.
+    ``profile_home`` controls numeric display times; precise stored ISO evidence stays untouched.
     """
     if snapshot is None:
         if not isinstance(conversation_ref, str) or not conversation_ref:
@@ -37,7 +48,7 @@ def show_notebook(snapshot, *, conversation_ref=None, profile_home=None):
             "snapshot_id": snapshot["snapshot_id"],
             "coverage": {"anchor_message_uid": snapshot["anchor_message_uid"]},
             "created_at": format_timestamp(snapshot["created_at"], profile_home=profile_home),
-            "payload": readable_notebook_state(snapshot["payload"])}
+            "payload": readable_notebook_state(snapshot["payload"], profile_home=profile_home)}
 
 
 def _render_entry(entry):
@@ -58,7 +69,7 @@ def render_notebook(snapshot, *, profile_home=None):
     if snapshot is None:
         return "This Conversation has no Notebook Snapshot yet."
     lines = ["Notebook", f"Created at: {format_timestamp(snapshot['created_at'], profile_home=profile_home)}"]
-    state = readable_notebook_state(snapshot["payload"])
+    state = readable_notebook_state(snapshot["payload"], profile_home=profile_home)
     for section in SECTIONS:
         lines.extend(["", section])
         if not state[section]:

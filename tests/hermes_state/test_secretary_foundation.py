@@ -11,7 +11,7 @@ from agent.inline_tool_executors import InlineToolContext, resolve_invoke_tool_e
 from agent.prompt_cache_scope import initialize_conversation_identity, trusted_declared_conversation_locator
 from hermes_state import SessionDB
 from hermes_state_secretary_identity import ConversationIdentityError
-from tools.session_history_tool import session_history
+from tools.session_history_tool import conversation_history
 
 
 @pytest.fixture
@@ -31,7 +31,9 @@ def add(db, sid, text, uid, role="user", timestamp=100):
 
 
 def tool(db, sid, **args):
-    return json.loads(session_history(args, db=db, current_session_id=sid))
+    agent = SimpleNamespace(_session_db=db, session_id=sid,
+                            _secretary_conversation_ref=db.resolve_conversation_ref(sid))
+    return json.loads(conversation_history(args, agent=agent))
 
 
 def test_alias_upgrade_rotation_restart_and_inplace(db):
@@ -92,7 +94,7 @@ def test_conflicting_aliases_rollback_without_merge(db):
 
 def test_history_crosses_compression_uid_twins_and_real_tip(db):
     make(db, "root")
-    original = add(db, "root", "Rule + Reminder", "old")
+    add(db, "root", "Rule + Reminder", "old")
     add(db, "root", "identical", "twin1")
     add(db, "root", "identical", "twin2")
     db.archive_and_compact("root", [])
@@ -105,16 +107,20 @@ def test_history_crosses_compression_uid_twins_and_real_tip(db):
     rows = db.get_history_foreground("root")
     assert [r["message_uid"] for r in rows] == ["old", "twin1", "twin2", "new"]
     assert len({r["message_identity"]["conversation_ref"] for r in rows}) == 1
-    assert tool(db, "root", mode="search", query="Rule + Reminder", roles=["user"])["messages"][0]["message_id"] == original
-    assert tool(db, "root", mode="search", query="new.*answer", match="regex")["count"] == 1
+    hit = tool(db, "root", mode="search", query='"Rule + Reminder"', roles=["user"])
+    assert hit["success"] and hit["conversation_ref"] == db.resolve_conversation_ref("root")
+    assert [(r["message_uid"], r["content"]) for r in hit["messages"]] == [("old", "Rule + Reminder")]
+    twins = tool(db, "root", mode="search", query="identical")
+    assert [r["message_uid"] for r in twins["messages"]] == ["twin1", "twin2"]
+    assert tool(db, "root", mode="search", query="new AND answer")["count"] == 1
     assert tool(db, "root", mode="read", start_time="150", end_time="250")["count"] == 1
-    assert tool(db, "root", mode="read", message_id=original, before=0, after=1)["count"] == 2
+    assert tool(db, "root", mode="read", message_identity={"conversation_ref": db.resolve_conversation_ref("root"), "message_uid": "old"}, before=0, after=1)["count"] == 2
 
 
 def test_carried_tail_rewind_and_anchor_same_transaction(db):
     make(db, "s")
     add(db, "s", "archived", "a")
-    old_tail = add(db, "s", "surviving", "b")
+    add(db, "s", "surviving", "b")
     db.archive_and_compact("s", [{"role": "user", "content": SUMMARY_PREFIX + "summary\n" + _SUMMARY_END_MARKER,
                                  "_compressed_summary": True, "message_uid": "summary"},
                                 {"role": "user", "content": "surviving", "message_uid": "b", "timestamp": 100}])
@@ -122,7 +128,9 @@ def test_carried_tail_rewind_and_anchor_same_transaction(db):
     rows = db.get_full_foreground("s")[1:]
     assert [r["message_uid"] for r in rows] == ["a", "summary", "b"]
     assert db.get_foreground_anchor("s")["message_uid"] == "b"
-    assert tool(db, "s", mode="read", message_id=old_tail)["success"]
+    read = tool(db, "s", mode="read", message_identity={"conversation_ref": ref, "message_uid": "b"}, before=0, after=0)
+    assert read["success"] and read["anchor_uid"] == "b"
+    assert [(r["message_uid"], r["content"]) for r in read["messages"]] == [("b", "surviving")]
     tail_id = next(r["message_id"] for r in rows if r["message_uid"] == "b")
     db.rewind_to_message("s", tail_id)
     assert "b" not in [r["message_uid"] for r in db.get_history_foreground("s")]
@@ -170,28 +178,45 @@ def test_registry_inline_executor_and_noting_parent_scope(db):
     make(db, "main")
     add(db, "main", "known main history", "main")
     make(db, "other")
-    other_id = add(db, "other", "other secret", "other")
+    add(db, "other", "other secret", "other")
     import model_tools
-    definitions = model_tools.get_tool_definitions(enabled_toolsets=["session_history"], quiet_mode=True)
-    assert any(t["function"]["name"] == "session_history" for t in definitions)
+    definitions = model_tools.get_tool_definitions(enabled_toolsets=["conversation_history"], quiet_mode=True)
+    assert any(t["function"]["name"] == "conversation_history" for t in definitions)
     agent = SimpleNamespace(_session_db=db, session_id="main", _gateway_session_key="", noting_enabled=False)
-    executor = resolve_invoke_tool_executor(agent, "session_history")
+    executor = resolve_invoke_tool_executor(agent, "conversation_history")
     result = json.loads(executor(agent, {"mode": "search", "query": "history"}, InlineToolContext("task")))
     assert result["count"] == 1
-    assert not tool(db, "main", mode="read", message_id=other_id)["success"]
-    assert not tool(db, "main", mode="search", query="secret", session_id="other")["success"]
+    foreign = {"conversation_ref": db.resolve_conversation_ref("other"), "message_uid": "other"}
+    assert tool(db, "main", mode="read", message_identity=foreign)["error"]["code"] == "scope_denied"
+    invalid = tool(db, "main", mode="search", query="secret", session_id="other")
+    assert invalid["error"]["code"] == "invalid_argument"
+    assert invalid["error"]["field"] == "session_id"
     make(db, "noting", "main", "_delegate_from", "subagent")
     agent.session_id = "noting"
     agent._secretary_parent_conversation_ref = db.resolve_conversation_ref("main")
     agent._secretary_history_db = db
+    agent._secretary_noting_child = True
+    agent._parent_session_id = "main"
+    admission = db.noting_admit(agent._secretary_parent_conversation_ref, "main", kind="idle")
+    db.noting_child_register(admission, child_session_id="noting", profile=None)
     assert json.loads(executor(agent, {"mode": "read"}, InlineToolContext("task")))["messages"][0]["message_uid"] == "main"
+    rejected = json.loads(executor(agent, {"mode": "read", "message_identity": foreign,
+                                          "cross_conversation": True}, InlineToolContext("task")))
+    assert rejected["error"]["code"] == "scope_denied"
 
 
 def test_bad_regex_and_time_fail_readonly(db):
     make(db, "s")
     add(db, "s", "unchanged", "one")
-    assert not tool(db, "s", mode="search", query="[", match="regex")["success"]
-    assert not tool(db, "s", mode="read", start_time="invalid")["success"]
+    retired_regex = tool(db, "s", mode="search", query="[", match="regex")
+    assert retired_regex["error"]["code"] == "invalid_argument"
+    assert retired_regex["error"]["field"] == "match"
+    invalid_query = tool(db, "s", mode="search", query='"unterminated')
+    assert invalid_query["error"]["code"] == "invalid_argument"
+    assert invalid_query["error"]["field"] == "query"
+    invalid_time = tool(db, "s", mode="read", start_time="invalid")
+    assert invalid_time["error"]["code"] == "invalid_argument"
+    assert invalid_time["error"]["field"] == "start_time"
     assert db.message_count("s") == 1
 
 
@@ -240,7 +265,7 @@ def test_profile_database_isolation_and_formal_agent_initialization(db, tmp_path
     agent = AIAgent(
         model="test-model", provider="custom", api_key="test-only", base_url="http://127.0.0.1:1/v1",
         session_id="shared-id", session_db=db, gateway_session_key="peer", quiet_mode=True,
-        skip_context_files=True, skip_memory=True, enabled_toolsets=["session_history"],
+        skip_context_files=True, skip_memory=True, enabled_toolsets=["conversation_history"],
     )
     assert agent._secretary_conversation_ref == ref
     other = SessionDB(tmp_path / "other-profile" / "state.db")

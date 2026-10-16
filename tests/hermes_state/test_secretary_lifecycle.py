@@ -26,7 +26,8 @@ def message(db, sid, uid, content=None):
 
 def snapshot(db, sid, uid):
     return db.notebook_commit_snapshot(db.resolve_conversation_ref(sid), {s: [] for s in SECTIONS},
-                                       anchor_message_uid=uid)
+                                       anchor_message_uid=uid,
+                                       termination={"type": "finish_noting", "reason": "Lifecycle fixture indexed its real Anchor."})
 
 
 def branch(db, parent='p', child='b', **kwargs):

@@ -55,12 +55,9 @@ def _run(agent, responses, user_message="hello", conversation_history=None):
 def test_promoted_reasoning_is_returned_but_persisted_row_keeps_content_empty(loop_agent):
     from tests.agent.test_run_agent import _mock_response
 
-    # Isolate the original parser-only no-tool contract from Secretary's main History
-    # surface. A side agent legitimately has no automatic main-Conversation tools.
-    assert "session_history" in loop_agent.valid_tool_names
-    loop_agent.side_agent = True
-    loop_agent.tools = []
-    loop_agent.valid_tool_names = set()
+    # The parser-only fixture has no owning SessionDB: native no-tool semantics apply.
+    assert not loop_agent._secretary_main_read_eligible
+    assert loop_agent.tools == [] and loop_agent.valid_tool_names == set()
     result = _run(loop_agent, [_mock_response(content="", finish_reason="stop", reasoning_content=REASONING)])
 
     # Return contract from the parser-compat fix survives: one call, the reasoning is the answer.
@@ -83,11 +80,22 @@ def test_promoted_reasoning_is_returned_but_persisted_row_keeps_content_empty(lo
     assert "api_content" not in assistant_rows[0]
 
 
-def test_main_history_planning_reasoning_continues_and_preserves_sidecar(loop_agent):
+def test_main_history_planning_reasoning_continues_and_preserves_sidecar(loop_agent, tmp_path, request):
     """The main History tool makes a planning-only stop eligible for the native stall guard."""
     from tests.agent.test_run_agent import _mock_response
 
-    assert "session_history" in loop_agent.valid_tool_names
+    from hermes_state import SessionDB
+    from secretary.noting_surface import apply_main_read_surface
+
+    # Give the native runtime a real Main owner before asking it for mandatory History.
+    db = SessionDB(tmp_path / "state.db")
+    request.addfinalizer(db.close)
+    db.create_session(loop_agent.session_id, source="cli")
+    loop_agent._session_db = db
+    apply_main_read_surface(loop_agent)
+    assert loop_agent._secretary_main_read_eligible
+    assert "conversation_history" in loop_agent.valid_tool_names
+    assert "session_history" not in loop_agent.valid_tool_names
     result = _run(loop_agent, [
         _mock_response(content="", finish_reason="stop", reasoning_content=REASONING),
         _mock_response(content="The evidence is sufficient.", finish_reason="stop"),
@@ -98,7 +106,8 @@ def test_main_history_planning_reasoning_continues_and_preserves_sidecar(loop_ag
     assert not interim.get("content")
     assert interim["reasoning"] == interim["api_content"] == REASONING
     second = loop_agent.client.chat.completions.create.call_args_list[1].kwargs
-    assert "session_history" in {tool["function"]["name"] for tool in second["tools"]}
+    names = {tool["function"]["name"] for tool in second["tools"]}
+    assert "conversation_history" in names and "session_history" not in names
     assert [m for m in second["messages"] if m.get("role") == "assistant"][0]["content"] == REASONING
 
 

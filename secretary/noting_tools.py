@@ -8,7 +8,9 @@ import sqlite3
 import threading
 from datetime import datetime, timezone
 
+from hermes_time import format_timestamp
 from secretary.notebook_contract import NotebookValidationError
+from secretary.notebook_render import readable_notebook_entry, readable_notebook_state
 from secretary.noting_contract import (
     FINISH_NOTING_SCHEMA,
     NOTEBOOK_MAINTAIN_SCHEMA,
@@ -77,6 +79,8 @@ def notebook_maintain(child, args):
                 ))
             result = store.maintain(args)
             child._noting_notebook_state = store.snapshot_state()
+            if "entry" in result:
+                result["entry"] = readable_notebook_entry(result["entry"])
             return _encoded(result)
     except NotebookValidationError as exc:
         return _encoded(exc.as_result())
@@ -93,7 +97,9 @@ def notebook_work_show(child, args):
         if not isinstance(args, dict) or args:
             return _encoded(_error("notebook_show accepts only an empty argument object.", field="arguments"))
         with store.lock:
-            return _encoded(store.working_view())
+            view = store.working_view()
+            view["payload"] = readable_notebook_state(view["payload"])
+            return _encoded(view)
     except NotebookValidationError as exc:
         return _encoded(exc.as_result())
 
@@ -161,9 +167,10 @@ def noting_tool_control_message(profile="NOTING", *, notebook_state=None, conver
 
     data = {
         "conversation_ref": conversation_ref, "coverage": coverage, "base_snapshot_id": base_snapshot_id,
-        "current_time": current_time or datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "current_time": format_timestamp(current_time or datetime.now(timezone.utc)),
         "task_parameters": {"aging_days": 7, "implicit_gap_hours": 72},
-        "working_notebook": notebook_state if notebook_state is not None else {key: [] for key in SECTIONS},
+        "working_notebook": readable_notebook_state(
+            notebook_state if notebook_state is not None else {key: [] for key in SECTIONS}),
         "callable_tool_schemas": noting_tool_schemas(profile),
     }
     return (CURRENT_NOTING_CONTROL + "\n\n<noting-task-data>\n"

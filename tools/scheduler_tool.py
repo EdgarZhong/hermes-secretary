@@ -60,6 +60,7 @@ def scheduler_available(agent):
             store._authorize_conn(conn)
         return bool(store.is_enabled(store.conversation_ref))
     except Exception:
+        logger.debug("Scheduler capability discovery is unavailable", exc_info=True)
         return False
 
 

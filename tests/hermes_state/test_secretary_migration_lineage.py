@@ -23,7 +23,8 @@ def seeded_branch(db):
     db.create_session('root', source='telegram', session_key='peer', profile_name='default')
     db.append_message('root', 'user', 'original', message_uid='original')
     db.notebook_commit_snapshot(db.resolve_conversation_ref('root'), {s: [] for s in SECTIONS},
-                                anchor_message_uid='original')
+                                anchor_message_uid='original',
+                                termination={'type': 'finish_noting', 'reason': 'Index original evidence before branching.'})
     db.create_session('branch', source='telegram', parent_session_id='root',
                       model_config={'_branched_from': 'root'}, session_key='peer', profile_name='default')
     return db.resolve_conversation_ref('branch')

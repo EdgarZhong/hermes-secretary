@@ -1,12 +1,14 @@
 """Complete Snapshot projections retain public identity and exclude audit/archive."""
 
 from copy import deepcopy
+from datetime import datetime
 
 from secretary.notebook_model import NotebookWorkingState
 from secretary.notebook_render import render_notebook, show_notebook
 
 REF = "conv_source"
 RANGE = {"start_time": "2026-10-07T12:00:00.123456+08:00", "end_time": "2026-10-07T12:00:00.654321+08:00"}
+DISPLAY_RANGE = {"start_time": "2026-10-07T12:00:00+08:00", "end_time": "2026-10-07T12:00:00+08:00"}
 
 
 def snapshot():
@@ -20,7 +22,7 @@ def test_display_time_does_not_rewrite_source_range_or_snapshot():
     saved = snapshot(); before = deepcopy(saved)
     view = show_notebook(saved)
     assert view["created_at"] == "2026-10-07T17:23:45+08:00"
-    assert view["payload"]["candidates"][0]["source_time_range"] == RANGE
+    assert view["payload"]["candidates"][0]["source_time_range"] == DISPLAY_RANGE
     assert saved == before
 
 
@@ -40,10 +42,19 @@ def test_human_and_model_views_are_complete_and_exclude_termination_audit():
     assert "forced" not in text and "never_expose" not in text
     assert saved["snapshot_id"] not in text
     assert "Coverage anchor:" not in text and "Snapshot:" not in text
-    assert "source_time_range" in text and RANGE["start_time"] in text
+    assert "source_time_range" in text and DISPLAY_RANGE["start_time"] in text
     view = show_notebook(saved)
     assert view["coverage"] == {"anchor_message_uid": "source"}
-    assert view["snapshot_id"] == "pointer" and view["payload"] == saved["payload"]
+    assert view["snapshot_id"] == "pointer"
+    times = {"created_at", "updated_at", "last_processed_at", "source_time_range"}
+    for section, entries in saved["payload"].items():
+        for original, projected in zip(entries, view["payload"][section], strict=True):
+            assert {key: value for key, value in projected.items() if key not in times} == {
+                key: value for key, value in original.items() if key not in times}
+            assert projected["source_time_range"] == DISPLAY_RANGE
+            for key in times - {"source_time_range"}:
+                assert projected[key] == (None if original[key] is None else
+                    datetime.fromisoformat(original[key]).replace(microsecond=0).isoformat())
     assert "termination" not in view and "future_internal_audit" not in view
     view["payload"]["work"].clear()
     assert saved["payload"]["work"]

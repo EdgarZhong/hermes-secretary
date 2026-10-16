@@ -203,3 +203,30 @@ F12正式`run_noting_task`→同一持久child→原生`run_conversation`→live
 6. **接口及manifest**：只新增内部`freeze_parent_replay_prefix(..., *, source_length, already_frozen=False)`参数，唯一正式freeze caller传完整source长度；公开产品接口不变。三路径最终hash、精确命令／选择器／日志hash／检查计时见ignored `f11-f12/manifest.json`的`anchor_review`；相对eff3235的完整三路径增量为`anchor-review-delta.patch`。上次manifest保存在`manifest-before-anchor-review.json`，避免覆盖上一轮review历史。
 
 7. **停止与后续**：生产／测试停止写入，交root集中review／统一集成，再由c4按真实失败序列复测。不stage／commit，不派生、不操作round3、不写最终regression目录或启动大型检查。
+
+
+## Verification V51：Notebook 时间只在可读输出投影为秒
+
+1. **条款／原因**：冻结d19018的02 §5.6（1635–1637）要求所有面向人／模型的绝对时间为带时区秒精度，内部存储及计时精度不变；07 §4.1–4.5的条目时间／不可变版本／no-op／provenance，§8.10–8.13的提案、task/control及Framework；白板C4／T4／L2／N3继续区分真实证据年龄与处理时间。真实Store调用默认`_now`序列化机制产生微秒，正式maintain、working show、Main show、slash、Proposal、Framework及child控制正文原先直接暴露。有效RED为7 FAIL／1 PASS，没有更改内部clock来掩盖问题。
+
+2. **实际变更／文件**：相对`323c64dacba1190c16bacc69bbe5e76db6f43529`，production仅`secretary/notebook_render.py`统一可读entry/state投影、`secretary/noting_tools.py`输出接缝、`hermes_cli/cli_secretary_commands.py`的Proposal payload。统一复用`hermes_time.format_timestamp`，只处理entry的created_at／updated_at／last_processed_at、fields内EVIDENCE_TIMES三字段及source_time_range起止；现成control current_time也经相同秒投影。保留null／未知、字段名、ID、关系、原始来源、自然语言description／time_context。没有改notebook_model._now、NotebookStore、public_state、原生时间helper、contract、hydrate、commit、source_basis、父prefix或旧History。
+
+3. **正式路径**：真实SessionDB＋NotebookStore→notebook_maintain单条返回／notebook_work_show整视图；Store commit→Main notebook_show／共享notebook_command（CLI／TUI／Gateway复用）／propose_persistence_command。Framework既有noting_notifications.completion_body→render_notebook自动采用统一投影，真实publish_noting_completion在原生事务追加durable＋live同条完整Snapshot及超限Proposal；无需修改通知owner。真实原生Parent→持久child五Turn捕获实际provider请求，逐次检查初始及continuation control的完整working_notebook。provider返回受控文本，不执行真实模型或危险动作。
+
+4. **验证／次数**：新增`tests/secretary/test_r3_notebook_time_projection.py`八节点：六正式输出、内部版本／no-op／真实合法及非法来源、原生五Turn控制消息。显式带微秒Store clock、证据时间及同秒内精确source范围；输出为秒而immutable DB版本、原始snapshot_state／Store.show／public_state／提交再hydrate仍保持全部微秒，重复无修改不新建版本或刷新时间。描述中形似微秒时间的原文完整保留，非空／null处理时刻及未知证据不补造。
+
+| 日志（ignored v51/） | 实际结果 | runner wall秒 |
+|---|---:|---:|
+| red.log | 7F／1P，有效正式输出RED | 1.7 |
+| green.log | 5P／3F；三项为新测试JSON键序／内部state与持久payload结构取样错误，非产品时间失败 | 1.6 |
+| green-final.log | 新V51八项全部PASS | 1.6 |
+| affected-regression.log | 4P／3F；C5 handler/control、C8严格字符阈值通过；三失败为旧F13人类ID断言 | 0.7 |
+| legacy-targeted.log | 两renderer节点＋三个timezone节点，5P | 0.6 |
+
+共5次canonical runner，runner wall累计6.2秒；最终有效并集**17 PASS**（新增8＋相关旧4＋维护旧5），没有为收口重跑已有效8／4。早先对话把相关旧4口述为5，现以原始日志更正。六路径最终Ruff PASS、冻结scoped health **0 blocking／0 advisory**、diff-check PASS（最终检查0.404秒）；未重跑78／C10-T或任何大型组／完整门禁。
+
+5. **旧例处置／缺口**：获root追加授权，仅维护`test_notebook_render.py`两实际受影响节点：可读source范围改秒预期，仍比较所有非时间字段完整性／ID／排除audit／原始对象不变／每个时间原瞬间截到秒；`test_readable_times.py`仅第46行更新已集成F13的人类view隐藏snapshot ID，保留source ID、三个profile时区、History精确查询、durable原值全部断言。未改变其它旧测试或共享fixture。没有已知本包未关闭机制失败；不把17项或scoped checks称为独立Verification通过，Astra旧SHA发现及全新全范围复审由root组织。
+
+6. **接口／证据manifest**：`readable_notebook_entry/state`只加可选profile_home，可读JSON的结构不变；秒投影不回流内部working state或commit。六路径SHA256、固定base、spec／锁hash、五次精确命令与日志hash、scoped测量在`.hermes-dev/round3-local-20261017-l0/v51/manifest.json`；`final.patch`包含新测试在内的完整最小六路径增量，`new-test-source.py`为新增测试完整快照。无凭据或真实用户运行数据。
+
+7. **停止／建议后续**：本包六源码／测试路径已停止写入，报告追加不改旧证据。root集中review并统一提交后安排全新全范围Verification复审；已通过大回归按实际影响复用，失败修复仅定向补证。本owner无stage／commit、派生、round3真实模型、核心文档或其它并行owner文件修改。

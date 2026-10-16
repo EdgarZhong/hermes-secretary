@@ -43,7 +43,7 @@ def test_real_db_human_and_model_projections_keep_same_instant(tmp_path, monkeyp
         # The actual shared slash result is reused by CLI, Gateway and TUI adapters.
         human = notebook_command(db, "main").output
         assert f"Created at: {model['created_at']}" in human
-        assert "source" in human and snapshot["snapshot_id"] in human
+        assert "source" in human and snapshot["snapshot_id"] not in human
         agent = SimpleNamespace(_session_db=db, session_id="main", platform="cli", _secretary_conversation_ref=ref)
         result = json.loads(conversation_history({"mode": "search", "query": "original"}, agent=agent))
         row = result["messages"][0]

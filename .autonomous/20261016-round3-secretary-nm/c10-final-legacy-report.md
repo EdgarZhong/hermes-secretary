@@ -75,3 +75,94 @@ F11初始反证见`diagnostic.log`：成功native压缩已出现真实Full summa
 ## 7. 下一步
 
 F11已完成最后定向复测，92有效node并集与精确文件/证据hash齐备。集中交root亲自review，本Agent已停止本包全部白名单写入；root统一提交/自动同步。继续等待C11-P正式start，不自行启产品或模型。
+
+
+## 8. 最终回归修复（27 个非压缩失败／错误，2026-10-17）
+
+### 8.1 条款与本包边界
+
+首轮固定公共版本 `323c64dacba1190c16bacc69bbe5e76db6f43529`；直接复用 `final-regression/failure-triage.{md,json}` 与 loop/state/gateway 原始日志的 RED：23 FAIL＋4 setup ERROR，不为造 RED 重跑。依据冻结 d19018：07 §2、§3.1、§4.1–4.5、§5、§8.2/8.4/8.8、§9.1；白板 K1/K6/P3/N3；旧02身份、Foreground、跨压缩／rewind／fork §1–3.4及slash §3.6；04 Main History §3及child-parent权限 C13 §4.4/4.6。生产只读，不碰 compaction/ACP/V51 时间投影 owner。
+
+### 8.2 变更及原节点保障
+
+没有恢复退休执行名、删除主体断言或 skip/xfail。原生 no-DB Agent 本来不具备 Main 资格，不能只替换字符串后假设必有 History：native no-tools 用例直接断言真实空 catalog；Main reasoning 用例建立隔离真实 SQLite owner 后用既有 runtime surface 接缝授予 History，再实际执行原生 loop、两次 API、空 content、sidecar 和重放断言。它仍是原测试的返回 row／请求重放范围，`_persist_session` 沿原夹具受控，不将其夸大为新取得真实持久库写入证据。
+
+Snapshot 两共享夹具仅给真实既存 Anchor 的合法空 Snapshot 补 `finish_noting` 非空 reason 审计；branch、rewrite、rollback、schema reopen 全部原断言保留。Gateway 夹具沿现行 task-bound Store＋真实 source UID＋candidate 完整字段＋合法 termination 发布；不再用旧 rule_candidate。History 改用 actual Agent、canonical ref/UID、合法 running Noting admission/child；Search 使用现行 FTS，明确拒绝 regex 参数而不恢复 regex。
+
+| 原始精确节点 | 现行断言保障 | 结果 |
+|---|---|---|
+| `tests/agent/test_reasoning_only_stop_persistence.py::test_main_history_planning_reasoning_continues_and_preserves_sidecar` | 实际 SQLite Main owner 授予 canonical History；原生 loop 两次 API，空 content／reasoning+api_content sidecar 与下一请求逐字重放均执行。 | PASS |
+| `tests/agent/test_reasoning_only_stop_persistence.py::test_promoted_reasoning_is_returned_but_persisted_row_keeps_content_empty` | 无 SessionDB 的 native/no-tools 路径保持；一次 API 返回 reasoning，assistant content 空，sidecar 与下一 Turn 重放均执行。 | PASS |
+| `tests/agent/test_run_agent.py::TestBuildSystemPrompt::test_skills_prompt_derives_available_toolsets_from_loaded_tools` | 从真实加载的四个工具推导 web/skills 能力，不为无 owner 的 native Agent 伪造 Main History。 | PASS |
+| `tests/agent/test_run_agent.py::TestTaskCompletionGuidance::test_no_tools_no_injection` | 无 owner、无工具时 task-completion guidance 不注入；断言真实空 catalog，不手工清空工具掩盖资格。 | PASS |
+| `tests/agent/test_run_agent.py::TestToolUseEnforcementConfig::test_no_tools_never_injects` | 无 owner、无工具时 tool-use enforcement 不注入；真实原生 no-tools gate。 | PASS |
+| `tests/hermes_state/test_secretary_foundation.py::test_carried_tail_rewind_and_anchor_same_transaction` | 同 UID carried tail 用 canonical identity 读回原文；真实 rewind 同事务移除 b，并保留 a／排除 summary Anchor。 | PASS |
+| `tests/hermes_state/test_secretary_foundation.py::test_history_crosses_compression_uid_twins_and_real_tip` | 原生压缩及真实有效 tip 跨 Session 原文；两个同文不同 UID 命中不合并；FTS phrase/AND、角色、时间与 read 邻域。 | PASS |
+| `tests/hermes_state/test_secretary_foundation.py::test_registry_inline_executor_and_noting_parent_scope` | 真实注册和 inline 执行；Main 跨 ref 默认拒绝；合法 running admission+child 仅读 parent；cross=true 仍不得读外域。 | PASS |
+| `tests/hermes_state/test_secretary_lifecycle.py::test_branch_own_native_rewrite_does_not_revive_inherited_path[clear]` | 合法空 Snapshot/audit 后执行 branch 自身 clear/replace/rewind；旧 inherited path 不复活、parent 原文与 Snapshot 不变、再分支正确。 | PASS |
+| `tests/hermes_state/test_secretary_lifecycle.py::test_branch_own_native_rewrite_does_not_revive_inherited_path[replace]` | 合法空 Snapshot/audit 后执行 branch 自身 clear/replace/rewind；旧 inherited path 不复活、parent 原文与 Snapshot 不变、再分支正确。 | PASS |
+| `tests/hermes_state/test_secretary_lifecycle.py::test_branch_own_native_rewrite_does_not_revive_inherited_path[rewind]` | 合法空 Snapshot/audit 后执行 branch 自身 clear/replace/rewind；旧 inherited path 不复活、parent 原文与 Snapshot 不变、再分支正确。 | PASS |
+| `tests/hermes_state/test_secretary_lifecycle.py::test_branch_partial_rewind_keeps_prefix_snapshot_audit_and_rebranches` | 保留前缀 a 的真实 Snapshot/audit，撤销 b，当前 pointer/Anchor/再分支均退回合法 a。 | PASS |
+| `tests/hermes_state/test_secretary_lifecycle.py::test_full_annotations_are_consumable_but_never_messages_or_history` | 合法空 Snapshot 的 noting_anchor/notebook_snapshot 审计在 Full 可读，History 不混入 audit。 | PASS |
+| `tests/hermes_state/test_secretary_lifecycle.py::test_native_mutation_pointer_failure_rolls_back_transcript_and_counter[clear]` | 合法 Snapshot 后让 pointer reconcile 真正抛错；rewind/replace/clear 原文、rewind_count 和 pointer 全回滚。 | PASS |
+| `tests/hermes_state/test_secretary_lifecycle.py::test_native_mutation_pointer_failure_rolls_back_transcript_and_counter[replace]` | 合法 Snapshot 后让 pointer reconcile 真正抛错；rewind/replace/clear 原文、rewind_count 和 pointer 全回滚。 | PASS |
+| `tests/hermes_state/test_secretary_lifecycle.py::test_native_mutation_pointer_failure_rolls_back_transcript_and_counter[rewind]` | 合法 Snapshot 后让 pointer reconcile 真正抛错；rewind/replace/clear 原文、rewind_count 和 pointer 全回滚。 | PASS |
+| `tests/hermes_state/test_secretary_migration_lineage.py::test_legacy_branch_freeze_backfill_is_idempotent_and_atomic` | 保留既有 partial-schema/backfill 回归；真实 trigger 故障全事务回滚，重试幂等且不把 parent 后续消息重冻结。 | PASS |
+| `tests/hermes_state/test_secretary_migration_lineage.py::test_native_branch_rotations_keep_ref_notebook_and_frozen_path[False-False]` | global/local 四组合均执行真实原生 rotation/native create/Agent 恢复；ref、Snapshot、local、冻结原文稳定，delegate/reset 不混 owner。 | PASS |
+| `tests/hermes_state/test_secretary_migration_lineage.py::test_native_branch_rotations_keep_ref_notebook_and_frozen_path[False-True]` | global/local 四组合均执行真实原生 rotation/native create/Agent 恢复；ref、Snapshot、local、冻结原文稳定，delegate/reset 不混 owner。 | PASS |
+| `tests/hermes_state/test_secretary_migration_lineage.py::test_native_branch_rotations_keep_ref_notebook_and_frozen_path[True-False]` | global/local 四组合均执行真实原生 rotation/native create/Agent 恢复；ref、Snapshot、local、冻结原文稳定，delegate/reset 不混 owner。 | PASS |
+| `tests/hermes_state/test_secretary_migration_lineage.py::test_native_branch_rotations_keep_ref_notebook_and_frozen_path[True-True]` | global/local 四组合均执行真实原生 rotation/native create/Agent 恢复；ref、Snapshot、local、冻结原文稳定，delegate/reset 不混 owner。 | PASS |
+| `tests/hermes_state/test_secretary_migration_lineage.py::test_partial_secretary_schema_upgrade_reopens_without_refreezing` | 保留真实 drop-table/reopen 两次的历史兼容回归；不重新冻结后来原文，Snapshot 与 ref 不变。 | PASS |
+| `tests/hermes_state/test_secretary_migration_lineage.py::test_settled_open_with_real_branch_performs_no_writes_while_writer_is_held` | 真实 SQLite BEGIN IMMEDIATE 持 writer 时重开 settled DB；SQL trace 零写，frozen branch 原文可读。 | PASS |
+| `tests/gateway/test_secretary_slash.py::test_canonical_prompt_keeps_original_identity_and_tail` | 真实 Gateway canonical dispatch：local off 反馈持久化；proposal 保留自然尾文/source/message identity、不预拼原文。 | PASS |
+| `tests/gateway/test_secretary_slash.py::test_existing_plan_learn_and_review_routes_remain_canonical` | 既有 plan/learn/review canonical 路由保留，refine 退役不复活。 | PASS |
+| `tests/gateway/test_secretary_slash.py::test_feedback_stays_with_command_conversation_if_route_moves` | 真实 dispatch 路由切换时反馈及 local 开关仍写原 Conversation，新 owner 未修改。 | PASS |
+| `tests/gateway/test_secretary_slash.py::test_global_off_returns_unavailable_without_turn_rewrite` | owner profile 全局关闭时明确 unavailable，原 Turn 不改写。 | PASS |
+
+### 8.3 路径及精确补丁
+
+本包仅六个授权测试文件＋本报告追加；完整六路径源码 SHA256、原始 SHA256、补丁及证据指纹位于 ignored `final-regression/legacy-repair/{baseline.json,manifest.json,tests.patch}`。未修改 regression-plan、核心文档、其他报告、production、依赖、规则或其他 owner 文件。
+
+| 测试路径 | 最终 SHA256 |
+|---|---|
+| `tests/agent/test_reasoning_only_stop_persistence.py` | `f4f906e94532e9db0e6b09d0baf3bb02d92263dbcd1966db3a555e6ee37d2633` |
+| `tests/agent/test_run_agent.py` | `b554486d9832660063f77e626d6164d67b47364d2a25dfed896b3c7a4882d1c8` |
+| `tests/gateway/test_secretary_slash.py` | `b6b1aa6ba6a5350eb2dfdcb89d1addc35d526837f8ba64e8597a6e2265193584` |
+| `tests/hermes_state/test_secretary_foundation.py` | `a65af68498e2c757ef97dfa8b3c5cbf435209e782ae45cba2f552a44160e0683` |
+| `tests/hermes_state/test_secretary_lifecycle.py` | `802b7c4ab6d1f41843bb0d9326d556707c0e9b8859b3289975c005ab94eaa353` |
+| `tests/hermes_state/test_secretary_migration_lineage.py` | `104dcdc340b7da02acd62883e51f0df4c8ebf5fc2b4727e25f9abb8019795446` |
+
+六测试文件 patch SHA256：`e69c6f2c5e92a01790d2757e29d0b097e2d0370a61ed27efb7abef23f72aa705`。交回时 HEAD `323c64dacba1190c16bacc69bbe5e76db6f43529`；工作区其他 owner 的生产与文档 dirty 保留，其精确观察依赖指纹另列 manifest，不归为本包改动。
+
+### 8.4 执行证据与有效并集
+
+统一官方 PM `.venv`，显式 `HERMES_PYTHON=/Users/edgar/code/hermes-secretary/.venv/bin/python`、`HERMES_TEST_FILE_RETRIES=0`，全部经 `scripts/run_tests.sh`。实际 argv／参数与时长见三个 invocation JSON；runner 将 node selector 转成函数 -k，本包参数全集与函数选择展开恰好相等，未选其他函数。
+
+| 调用 | 选择／结果 |
+|---|---|
+| `green-first.log` | 原27＋下列两个受影响邻域：6文件29 PASS／0 FAIL／0 ERROR，runner wall 65.1秒 |
+| `reasoning-final.log/xml` | Main reasoning 增加显式 DB finalizer 及退休名不在实际第二请求中的断言后，仅该1节点 PASS |
+| `history-final.log/xml` | registry scope 增强具体 invalid_argument 字段，坏query/time邻域拆开具体错误字段后，仅该2节点 PASS |
+
+有效并集 **29 精确节点＝原27＋受影响邻域2**；实际修后执行32次case，不把重复3次算新覆盖。首次并行调用共用 junit 路径被最后一个 per-file writer 覆盖，故 `green-first.xml` 仅7个 lineage 参数，**不是29项XML**；其余通过证据是原始 runner 逐文件数量＋精确选择表。最终两调用各有独立XML，不以缺失XML冒称未执行或重跑已通过组。
+
+两个新增邻域只因实际改动选择：
+
+- `test_bad_regex_and_time_fail_readonly`：共享 tool helper 从退休名 rejector 接回现行 handler，旧绿不能沿用；现在分别证明 regex 参数拒绝、畸形 FTS query、非法时间及消息数不变。
+- `test_profile_database_isolation_and_formal_agent_initialization`：本文件正式 Agent 的 enabled_toolsets 迁至现行 History，须保留真实 identity 初始化及另一 profile 同 Session ID 不混库。
+
+六路径 pinned Ruff PASS；六路径 `git diff --check` PASS。未重复全 test_run_agent、136文件、大门禁、Provider46/39、P2或其他既有效测试。
+
+### 8.5 缺口／关闭情况
+
+27原节点全部进入原主体并通过，无本包未关闭失败；没有需要扩权的新增生产反例。15个 Snapshot 初始错误和4个 Gateway setup 错误现在不再挡在主体前；reasoning 两节点实际执行1次／2次请求及下一请求重放，未只替旧名字符串求绿。schema backfill、持writer reopen、跨压缩 ownership 仍是有效回归，未以“开发不迁移”为由删掉。
+
+本包不负责 ACP／5个压缩失败／V51 时间投影，不代替独立 Verification 或 Validation，不宣称整轮回归全绿。
+
+### 8.6 接口
+
+生产接口未改：`conversation_history(args, *, agent)`，anchored read 用 `{conversation_ref,message_uid}`；真实 Noting child 必须由 `noting_admit`＋`noting_child_register` 绑定 running task；`NotebookStore(..., anchor_message_uid=...)` 与 `commit(termination=...)` 按现行契约消费。两个低层合法空 Snapshot 夹具仅补现有 termination 参数。native no-owner 无 Main 自动工具；有真实 owner 的 Main 由既有 `apply_main_read_surface` 授予 History。
+
+### 8.7 下一步
+
+交 root 亲自 review 六测试路径、此追加报告及 manifest 后统一提交。本包已停止修改和测试，未 stage/commit、未安装依赖、未占 round3／启动真实模型／调用真实 NM。等待下一包正式个人授权与冻结后再开始，不提前处理 V51 candidate_index。

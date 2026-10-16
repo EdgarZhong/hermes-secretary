@@ -21,10 +21,11 @@ def routed(tmp_path):
     db.create_session("gateway-main", source="telegram")
     db.append_message("gateway-main", "user", "Always preserve original evidence.", message_uid="source")
     ref = db.resolve_conversation_ref("gateway-main")
-    state = NotebookStore(db, ref)
-    state.create("rule_candidate", {"draft_rule": "Preserve evidence", "reason": "Auditability", "scope": "project"},
+    state = NotebookStore(db, ref, anchor_message_uid="source")
+    state.create("candidate", {"description": "Preserve evidence for auditability", "targets": ["rule"],
+                               "notebook_refs": [], "source_types": []},
                  source_message_identities=[{"conversation_ref": ref, "message_uid": "source"}])
-    db.notebook_commit_snapshot(ref, state.show(), anchor_message_uid="source")
+    state.commit(termination={"type": "finish_noting", "reason": "Indexed the original evidence."})
     runner = GatewayRunner.__new__(GatewayRunner)
     runner.config = GatewayConfig(multiplex_profiles=True)
     runner._resolve_profile_home_for_source = lambda _: home

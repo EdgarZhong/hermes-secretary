@@ -61,7 +61,7 @@ P3 场景：真实 History 与后台 snapshot 边界；api_content 不出境；�
 
 首次 P3 测试暴露 PyYAML 不存在，按环境 owner 核实使用锁内 ruamel.yaml 修复；首个脱敏断言错误假定所有原生掩码都为 `[redacted]`，改用 host 支持的 opaque Bearer fixture 专门证明跨行传播，完整秘密仍断言不出现。失败项都已定向复测关闭。
 
-所有 runtime DB／receipts／临时安装都在个人仓库 ignored `temp-r3-personal/`；没有 `/tmp` 运行库、真实 profile、真实 NM Memory／Thread／Space、真实凭据或治理变更。
+所有 runtime DB／receipts／临时安装都在个人仓库 ignored `temp-r3-personal/`；未使用仓库外运行库、真实 profile、真实 NM Memory／Thread／Space、真实凭据或治理变更。
 
 ## 5. 缺口与限制
 

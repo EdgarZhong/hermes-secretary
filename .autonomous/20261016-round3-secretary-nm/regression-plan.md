@@ -100,3 +100,72 @@ F11/F12最终源码指纹按 `files → replay_review.final_sha256 → anchor_re
 Web读DTO、UI、Settings展示、旧Dashboard、独立UI仓构建均按07明确后置；不新增JS/UI测试或发布步骤。真实NM、官方CLI通用编辑/管理写入、云部署未授权，不纳回归。当前macOS不能冒称其它OS通过，不伪造sys.platform。
 
 静态清单与现有证据收口完成，但没有最终回归执行或验收结论。下一步：Verification派出→主会话指定最终回归owner/SHA/start；如其后生产变化，仅按实际影响定向更新证据。准确范围仍是136全文件＋一个server文件的84函数过滤＋个人两R3文件46项，彼此不重复；个人旧39项不重跑。`execution_authorized=false`、`final_sha_owner=null`保持不变，没有因本文件列出范围而扩大运行授权。
+
+## 7. 最终回归真实执行记录（2026-10-17 START）
+
+主会话已派出全新Astra/high Verification，并明确授权本Agent作为唯一最终回归owner。此START覆盖上方静态编制时点的NOT_RUN／未授权状态；静态scope快照仍保留原值，实际执行授权与结果单独记录在ignored `final-regression/execution-manifest.json`，`execution_authorized=true`。
+
+- 固定公共待测SHA：`323c64dacba1190c16bacc69bbe5e76db6f43529`，生产与f66a8相同。
+- 固定个人待测SHA：`e1af6cc45ffbd53c930d1d2f14ab46858e966ecd`，生产与8682相同。
+- 检查固定base：`a51fd99abc783f245ab855526a10862f2c89656a`。
+- 官方PM `.venv`／显式HERMES_PYTHON，`HERMES_TEST_FILE_RETRIES=0`；Python测试全部经canonical runner。136文件九组顺序各一次，server过滤组、Provider两symlink文件及十类check各一次；完成组不再合并重跑。
+- 状态：**FIRST_FULL_RUN_COMPLETE_WITH_FAILURES，已停止执行**。12次调用全部结束；各组各一次，未进行修复或重跑。每组args、源码前后指纹、lockhash、开始/结束、wall秒、EXIT、每文件PASS/FAIL/skip/error与失败node完整留证；原始失败和setup/collection error均保留。
+- 未启动实际产品／模型，未操作round3或真实NM；不改production、tests、规则、核心文档，不stage/commit。工作区主会话已有CLAUDE.md动态修改已保留。
+
+
+### 7.1 范围、版本与正式入口
+
+本包落实本计划§2–6及主会话本次明确START，不承担独立Verification/Validation判定。公开136全文件与review清单逐项相等且无重复；另一个server文件按84函数表达式筛选，实际参数展开90项，原已有效3函数未入表达式。个人两个R3源文件以源码symlink从canonical runner运行，31＋15＝46 PASS，原39项未重复。共139个文件调用、11次测试runner调用、1次十类check调用。
+
+开始 `2026-10-16T18:46:44.442494+00:00`，结束 `2026-10-16T18:51:57.818831+00:00`（时间采用执行manifest UTC原值）；各命令wall合计311.402秒。实际结束时间以manifest `finished_at`精确值为准。Python为官方PM工作区3.14.7；`HERMES_PYTHON=/Users/edgar/code/hermes-secretary/.venv/bin/python`、`HERMES_TEST_FILE_RETRIES=0`。每次测试调用均为 `scripts/run_tests.sh <精确列表/过滤> -q --tb=short --show-capture=no`；runner自身每文件隔离、10 workers，组间顺序运行。完整argv、cwd、开始结束、源码前后检查和日志hash见 `final-regression/execution-manifest.json`，不以此简写代替参数原证据。
+
+`uv.lock` SHA256：`2bc4db483e9cba927cd7147f9ccbb09635f85bb3f1f36d6e9d51d06b65d1c67e`；`pyproject.toml`：`cadde2f6a92574d292103f43abf66408b1d841cd9ea332ca7f3e3dfc5dcc87fd`；review范围manifest：`bad7b9c98e1b9f66bde85432380f89512615dc0f714f81bdd30251499e26fd19`。各组执行前后源码／锁均匹配固定SHA；已有主会话CLAUDE与Verification报告变更保留。25个规则来源指纹静态核对仍与review版本一致，只有既授权文档长度入口排除，不改变规则、阈值或严重级别。
+
+### 7.2 首轮结果（不可写成已通过）
+
+| 顺序／组 | 文件数 | PASS | FAIL | skip | setup ERROR | EXIT | wall秒 |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| loop | 12 | 391 | 5 | 0 | 0 | 1 | 77.923 |
+| persistence | 13 | 72 | 0 | 0 | 0 | 0 | 19.050 |
+| compaction | 29 | 241 | 6 | 0 | 0 | 1 | 33.098 |
+| dispatch | 16 | 291 | 0 | 2 | 0 | 0 | 48.797 |
+| catalog | 5 | 114 | 0 | 0 | 0 | 0 | 3.549 |
+| state | 19 | 235 | 18 | 0 | 0 | 1 | 34.155 |
+| cli | 11 | 63 | 0 | 1 | 0 | 0 | 6.327 |
+| tui | 18 | 171 | 0 | 0 | 0 | 0 | 60.843 |
+| gateway | 13 | 52 | 0 | 0 | 4 | 1 | 3.780 |
+| tui-server84 | 1 | 90 | 0 | 0 | 0 | 0 | 7.708 |
+| provider46 | 2 | 46 | 0 | 0 | 0 | 0 | 3.165 |
+| **测试合计** | **139** | **1766** | **29** | **3** | **4** | **非全绿** | **298.395** |
+| 十类check | — | 8类通过 | 2类阻断 | — | — | 1 | 13.007 |
+
+无collection error、teardown error或解释器崩溃。Gateway一个文件4项均为setup error，主体未运行；runner将该文件列入“no tests ran”，不能因摘要只显示FAIL=0而判通过。3 skip来自prompt_builder的非macOS大小写场景，以及tool_batch_segmentation和chat_q_exit_clear各一Windows场景；此处skip节点/原因按静态platform marker定位，原runner仅有每文件数量，不冒称取得跨平台证据。
+
+统计解析的最初regex把时长`1.8s`的小数部分误读为8 skip。首轮结束后只解析原日志补了token边界；PASS、FAIL、error完全未变。初版manifest与各文件初始observed单独保留，原日志hash不变，未为统计重跑测试。修正过程脚本见 `summarize_first_run.py`；最终3 skip与原runner Summary相等。
+
+### 7.3 失败、缺口与精确接力
+
+完整33个失败/错误node、phase、日志和初步归类见ignored `final-regression/failure-triage.json`及同名Markdown，不省略参数node。以下归类是原日志＋静态代码的修复输入，不能据此声明生产行为已通过：
+
+| 类别 | 数量 | 真实失败事实／建议边界 |
+|---|---:|---|
+| Loop旧执行名断言 | 5 FAIL | test_run_agent三项和reasoning_only_stop_persistence两项仍断言session_history存在；不得恢复退休名alias。后两项尚未进入reasoning主要行为断言，应以现行工具契约保留原断言目标 |
+| ACP可选依赖 | 1 FAIL | conversation_compression_manual的[acp]分支导入acp_adapter.commands时报ModuleNotFoundError: acp；先查官方PM依赖组/锁，不裸装、不加skip |
+| 原生压缩夹具与Noting通知 | 5 FAIL | in_place_compaction四项见额外Noting失败Framework或persist多调用；persist_marker一项active5!=期望4，日志未展开第五行内容，须owner定向核对，不能提前冒称已证同一通知原因 |
+| Snapshot夹具缺audit | 15 FAIL | secretary_lifecycle八项及secretary_migration_lineage七项，在notebook_commit_snapshot夹具阶段缺termination audit抛NotebookError；原身份/分支/原生回滚/重启主体保障仍需按现行契约恢复测试 |
+| History旧调用契约 | 3 FAIL | secretary_foundation：search结果无messages、read success为false、注册目录无session_history；保留跨压缩UID/原文、parent scope与身份边界目标，改用现行接口 |
+| Notebook夹具缺Anchor | 4 setup ERROR | gateway/test_secretary_slash.py routed:24未传NotebookStore必需keyword-only anchor_message_uid；四个主体未执行 |
+
+十类check固定base与commit、单次执行exit1：footguns、shebangs、config-writers、os-marker-fakes、case-collisions、lazy-deps、profile-archives、ruff八类通过；`no-tmp`命中 `.autonomous/20261016-round3-secretary-nm/personal-report.md:64` 的否定事实语句，`health`命中 `tools/scheduler_tool.py:62 scheduler_available` 的BLE001（blind except Exception）。主会话已接收：前者由root按事实改述，后者交实现owner补合理诊断或精确异常处理，不修改检查器、不追加豁免。
+
+### 7.4 实际变更、接口影响与下一步
+
+本包tracked仅更新本文件真实执行节；ignored新增执行编排、日志、初版及校正后manifest、33-node归类、规则指纹与证据索引；个人ignored目录只新建两源码symlink。没有production/tests/规则/核心文档修改，无stage/commit；没有实际产品、模型、round3或NM操作。没有产品接口变化；本包交付的是可共享、不可覆盖首轮失败的回归证据。
+
+主会话及Astra共享本首轮结果，下一步只针对明确失败和实际受影响路径分配修复/定向复证，不重新运行136文件、server90、Provider46或十类全集。主会话另发现Notebook输出微秒的问题及其修复影响由主会话统一安排，不纳入本包擅自改动。当前首轮里程碑已完整交回，整体仍有29 FAIL、4 setup ERROR、2检查阻断，不能据1766 PASS或既有真实模型证据宣称最终回归／独立验收通过。本Agent停止执行与写入，等待主会话后续指令。
+
+### 7.4 首批定向修复接收
+
+主会话已亲自review六旧测试路径，原27失败／setup错误＋2实际影响邻域有效并集29 PASS，完整映射见c10-final-legacy-report.md §8。其余压缩6节点仍未关闭，不能宣称回归全绿。公共V51输出投影另有17项有效定向证据，见c9-host-report末节；个人Recall与Scheduler run_at追加出口仍待修。
+
+两检查窄修：personal-report的否定事实语句改述；scheduler_available原fail-closed异常支路补debug诊断，不改规则／阈值／严重等级。主会话执行`python scripts/check --staged --only no-tmp,health`均通过；因默认health对照为c099c8c49084，仅采用其中no-tmp结果，随后显式`--staged --base a51fd99abc783f245ab855526a10862f2c89656a --only health`通过，121文件0 blocking／0 advisory、8.3秒。此为失败检查的定向修复复验，没有重跑十类全集或136文件。

@@ -950,7 +950,6 @@ class TestBuildSystemPrompt:
             "skills_list": "skills",
             "skill_view": "skills",
             "skill_manage": "skills",
-            "session_history": "session_history",
         }
 
         with (
@@ -975,7 +974,7 @@ class TestBuildSystemPrompt:
 
         assert "SKILLS_PROMPT" in prompt
         assert mock_skills.call_args.kwargs["available_tools"] == set(toolset_map)
-        assert mock_skills.call_args.kwargs["available_toolsets"] == {"web", "skills", "session_history"}
+        assert mock_skills.call_args.kwargs["available_toolsets"] == {"web", "skills"}
 
 
 class TestToolUseEnforcementConfig:
@@ -1001,11 +1000,9 @@ class TestToolUseEnforcementConfig:
                 enabled_toolsets=[],
             )
             a.client = MagicMock()
-            # Exercise the native no-tool prompt gate explicitly. Main Secretary agents
-            # retain History even when the configurable toolsets list is empty.
-            assert "session_history" in a.valid_tool_names
-            a.tools = []
-            a.valid_tool_names = set()
+            # No owning SessionDB means this is native, not an eligible Main.
+            assert not a._secretary_main_read_eligible
+            assert a.tools == [] and a.valid_tool_names == set()
             prompt = a._build_system_prompt()
             assert TOOL_USE_ENFORCEMENT_GUIDANCE not in prompt
 
@@ -1135,9 +1132,8 @@ class TestTaskCompletionGuidance:
                 enabled_toolsets=[],
             )
             a.client = MagicMock()
-            assert "session_history" in a.valid_tool_names
-            a.tools = []
-            a.valid_tool_names = set()
+            assert not a._secretary_main_read_eligible
+            assert a.tools == [] and a.valid_tool_names == set()
             assert TASK_COMPLETION_GUIDANCE not in a._build_system_prompt()
 
 
