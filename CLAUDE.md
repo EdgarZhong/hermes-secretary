@@ -26,12 +26,12 @@
 | C10-A | 主会话已review接收；c10-notebook-history-report.md | 233独立场景有通过证据；C2嵌套修复、坏UID来源不可用、Snapshot时间ISO；保留旧有效保障，退出接口有处置映射 |
 | C10-H | 主会话已review接收；c10-runtime-report.md | 62旧组场景＋4受影响Idle节点有通过证据；恢复deadline唯一local决定，提交gate仍检查。公共真实DeepSeek复测已交回，证据见real-model-report.md |
 | C10-B | 主会话已review接收；c10-delivery-report.md | 十个旧测试文件106独立场景PASS，含九个CLI/TUI/Gateway SIGKILL边界；无生产修改，旧Notebook耦合退出。F08/F11/F12已review接收；c4接手最终回归静态清单，未执行大型检查 |
-| C10-P | 主会话已review接收；个人8682ff8，c10-personal-report.md | 两旧测试39项PASS，canonical runner通过ignored源码链接避免错误包收集；无生产修改。personal_provider已接收round3，正在正式host→本机fixture实测 |
-| P1/P2/P3 | 主会话已review接收个人线并提交57d0abb854f4；personal-report.md | 46独立用例通过；真实SessionDB/MemoryManager+本地HTTP fixture，P2基本模拟通过；主会话已review，公共finalizer gate及历史旧测试已收口，真实host→fixture正在独占round3执行 |
+| C10-P | 主会话已review接收；个人8682ff8，c10-personal-report.md | 两旧测试39项PASS，canonical runner通过ignored源码链接避免错误包收集；无生产修改。正式host→本机fixture六场景已完成并review接收 |
+| P1/P2/P3 | 主会话已review接收个人线并提交57d0abb854f4；personal-report.md | 46独立用例通过；真实SessionDB/MemoryManager+本地HTTP fixture，P2基本模拟通过；主会话已review，公共finalizer gate及历史旧测试已收口，真实host→fixture六场景已通过并review接收 |
 | C10-T | 主会话已review接收；c10-final-legacy-report.md | 六旧文件及相关节点有效并集92 PASS；F10/F13、F11受影响旧组定向关闭，未启动独立门禁 |
-| C11-P | personal_provider准备已review接收并START；personal-host-report.md | 原生host→loopback fixture六场景、临时工具收窄及完整配置/插件备份恢复；已在公共f66a8f80／个人8682ff85启动；等待完整结果及恢复交回 |
+| C11-P | 主会话已review接收；personal-host-report.md | 原生host→loopback fixture六场景、临时工具收窄及完整配置/插件备份恢复；公共f66a8f80／个人8682ff85实测；12 completed Turns／14请求／24真实UID与ACK；配置和插件恢复，round3已释放 |
 | L0 | 环境已交回；yaml问题是个人脚本旧导入，P3 owner修复 | 不跑产品测试；不改锁或裸装依赖 |
-| 门禁 | 尚未启动；主会话已制定validation.md全范围15组场景 | 集成收敛后Astra/high Verification；主会话制定Validation、6.1/high执行 |
+| 门禁 | Develop已收敛；主会话已制定validation.md全范围15组场景，准备派出Verification | 集成收敛后Astra/high Verification；主会话制定Validation、6.1/high执行 |
 
 - 真实运行新发现 R3-F08：TUI Main streaming期间/noting反馈后，durable原文仍在但后续Active冻结缺输入／图片；修复已由主会话review接收：busy历史批次合并与cold human_only投影共28项PASS，ruff/health通过；eff3235真实busy图片六请求与cold回复／human_only隔离已通过，主会话接收。
 
@@ -41,7 +41,7 @@
 
 - eff3235真实定向复测首批：F08 busy图片+slash后child六请求前缀一致、F08b cold回复及human_only隔离；F09两deferred单carrier成功ACK、CRUD/instant idle；F11实际新boundary后Force再准入；F13 human/model视图区分已取得正证。忙碌instant已真实pending→下一Main单carrier→成功ACK；重启registry保持。F12及恢复已完整交回，11个child结束、未来排期零、配置原bytes恢复、原生host退出0。
 
-- 公共真实模型开发证据已由主会话review接收，详见real-model-report.md；跨Turn两次受控probe真实执行五Turn forced，未取得“第二Turn正常finish”的特定模型形态；正常finish由自然链独立证明。受限合成USER成功不冒称多目标写失败；真实NM与部署仍未执行。round3由personal_provider独占接力，c4仅静态更新回归清单。本轮大型检查尚未执行，集成收敛并派出Verification后统筹一次；主会话不重复有效测试。
+- 公共真实模型开发证据已由主会话review接收，详见real-model-report.md；跨Turn两次受控probe真实执行五Turn forced，未取得“第二Turn正常finish”的特定模型形态；正常finish由自然链独立证明。受限合成USER成功不冒称多目标写失败；真实NM与部署仍未执行。C11-P已完整交回并review接收；round3配置hash恢复，插件恢复为原不存在，自有进程及lease归零。原生子进程退出码未独立记录，不宣称该码0；归档ACK完整。本轮大型检查尚未执行，集成收敛并派出Verification后统筹一次；主会话不重复有效测试。
 
 <details>
 <summary>云端规划时点记录（历史，状态以上方本地托管为准）</summary>
@@ -139,3 +139,4 @@
 稳定产品入口仍由README维护，通用规则仍由AGENTS维护；本次没有改动两者或冻结白板／07／PHASE3，没有以规划状态改写“已实现”或“已验收”。
 
 </details>
+
