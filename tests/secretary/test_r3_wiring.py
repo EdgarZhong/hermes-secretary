@@ -349,3 +349,114 @@ def test_auxiliary_native_session_search_is_preserved(runtime, monkeypatch):
         assert result["native"] is True and len(calls) == 1
     finally:
         agent.close()
+
+
+@pytest.mark.parametrize("noting,scheduler,local", [
+    (True, True, False), (False, True, False), (True, False, True), (False, False, True),
+])
+def test_formal_tui_default_bridge_preserves_runtime_main_capabilities(runtime, monkeypatch, noting, scheduler, local):
+    """Default host toolsets can defer runtime additions without losing their catalog/dispatch."""
+    import model_tools
+    from tui_gateway import server
+    from hermes_cli.cli_secretary_commands import noting_command
+    from tools.secretary_dispatch import filter_tool_definitions
+    from agent.tool_executor import _tool_search_scoped_names
+    from secretary.scheduler_time import epoch_to_utc_iso
+    import time
+
+    db, config = runtime
+    config.write_text(f"noting:\n  enabled: {str(noting).lower()}\nscheduler:\n  enabled: {str(scheduler).lower()}\n")
+    monkeypatch.setattr(server, "_resolve_agent_model_runtime", lambda *a: ("test/model", {
+        "provider": "custom", "api_key": "test-key", "base_url": "https://test.invalid/v1",
+        "api_mode": "chat_completions"}))
+    monkeypatch.setenv("HERMES_IGNORE_RULES", "1")
+    db.create_session("f09-main", source="cli")
+    # Exercise the actual TUI factory and its default toolset loader; do not use _agent.
+    agent = server._make_agent("f09-ui", "f09-main", session_db=db, platform_override="cli")
+    agent._disable_streaming = True
+    agent.compression_enabled = False
+    agent.save_trajectories = False
+    agent._skip_mcp_refresh = True
+    ref = agent._secretary_conversation_ref
+    if not local:
+        if noting:
+            assert "is off" in noting_command(db, "f09-main", "off").output
+        else:
+            db.notebook_set_local_enabled(ref, False)
+    try:
+        raw = model_tools.get_tool_definitions(enabled_toolsets=agent.enabled_toolsets,
+            disabled_toolsets=agent.disabled_toolsets, quiet_mode=True, skip_tool_search_assembly=True)
+        # This reproduces the real default bundle: runtime additions are absent from the native raw list.
+        assert not {"scheduler", "notebook_show"}.intersection(_names(raw))
+        raw_before = copy.deepcopy(raw)
+        composed = filter_tool_definitions(raw, agent)
+        assert composed == filter_tool_definitions(composed, agent)
+        assert _names(composed) == (_names(raw) | {"conversation_history"}
+            | ({"scheduler"} if scheduler else set()) | ({"notebook_show"} if noting else set()))
+        assert len(composed) == len(_names(composed))
+        for schema in composed:
+            if schema["function"]["name"] in {"scheduler", "notebook_show"}:
+                # The catalog owns its added Schema, never the owner/global cached dict.
+                schema["function"]["description"] = "private catalog mutation probe"
+        from secretary.noting_surface import _read_schema
+        assert _read_schema("scheduler")["description"] != "private catalog mutation probe"
+        assert _read_schema("notebook_show")["description"] != "private catalog mutation probe"
+        # No current runtime scope means exactly native behavior, with no injected capabilities.
+        assert filter_tool_definitions(raw) is raw and raw == raw_before
+        assert {"tool_search", "tool_describe", "tool_call", "conversation_history"} <= _names(agent.tools)
+        assert not {"scheduler", "notebook_show"}.intersection(_names(agent.tools))
+
+        calls = [call("tool_describe", {"names": ["scheduler", "notebook_show"]}, "describe"),
+                 call("tool_search", {"queries": ["scheduler", "deferred", "notebook"]}, "search"),
+                 call("tool_call", {"calls": [{"name": "scheduler", "arguments": {
+                     "action": "create", "content": "Synthetic Main reminder", "schedule": epoch_to_utc_iso(time.time() + 600),
+                     "delivery_mode": "deferred"}}]}, "create"),
+                 call("tool_call", {"calls": [{"name": "notebook_show", "arguments": {}}]}, "show")]
+        responses = [SimpleNamespace(model="test/model", usage=None, choices=[SimpleNamespace(
+            finish_reason="tool_calls", message=SimpleNamespace(content="", tool_calls=[c],
+                reasoning=None, reasoning_content=None))]) for c in calls]
+        responses.append(SimpleNamespace(model="test/model", usage=None, choices=[SimpleNamespace(
+            finish_reason="stop", message=SimpleNamespace(content="Completed the actual catalog and registration probe.",
+                tool_calls=None, reasoning=None, reasoning_content=None))]))
+        requests = _requests(agent, lambda n: responses[n - 1])
+        result = agent.run_conversation("Use the available catalog to register a synthetic deferred reminder.", title_user_message="")
+        assert result["completed"], result
+        tool_rows = {row["tool_call_id"]: json.loads(row["content"]) for row in result["messages"] if row.get("role") == "tool"}
+        described = tool_rows["describe"]
+        assert ("scheduler" in described["tools"]) is scheduler
+        assert ("notebook_show" in described["tools"]) is noting
+        assert ("scheduler" in _tool_search_scoped_names(agent)) is scheduler
+        assert ("notebook_show" in _tool_search_scoped_names(agent)) is noting
+        assert set(described.get("not_found", [])) == ({"scheduler", "notebook_show"} - set(described["tools"]))
+        assert ("scheduler" in tool_rows["search"]["tools"]) is scheduler
+        assert ("notebook_show" in tool_rows["search"]["tools"]) is noting
+        with db._read_ctx() as conn:
+            rows = conn.execute("SELECT reminder_text,delivery_semantics FROM secretary_schedule_registry WHERE conversation_ref=?", (ref,)).fetchall()
+        assert len(rows) == int(scheduler)
+        if scheduler:
+            assert rows[0]["reminder_text"] == "Synthetic Main reminder" and rows[0]["delivery_semantics"] == "system_reminder"
+            assert tool_rows["create"]["success"] is True
+        else:
+            assert "not available" in str(tool_rows["create"])
+        if noting:
+            assert tool_rows["show"]["success"] is True and tool_rows["show"]["view_kind"] == "snapshot"
+        else:
+            assert "not available" in str(tool_rows["show"])
+        assert len(requests) == len(responses)
+        assert all(_names(request["tools"]) == _names(requests[0]["tools"]) for request in requests)
+        assert db.notebook_local_enabled(ref) is local
+        assert raw == raw_before
+        if noting and scheduler:
+            config.write_text("noting:\n  enabled: false\nscheduler:\n  enabled: false\n")
+            _requests(agent)
+            _turn(agent, "Continue after the owning feature configuration changed")
+            disabled = json.loads(agent._invoke_tool("tool_describe", {
+                "names": ["scheduler", "notebook_show"]}, "disabled-catalog"))
+            assert not disabled["tools"] and set(disabled["not_found"]) == {"scheduler", "notebook_show"}
+            assert not {"scheduler", "notebook_show"}.intersection(_tool_search_scoped_names(agent))
+            blocked = json.loads(agent._invoke_tool("tool_call", {"calls": [{"name": "scheduler", "arguments": {
+                "action": "create", "content": "must not register", "schedule": "in 1h", "delivery_mode": "deferred"}}]}, "disabled-call"))
+            assert "not available" in str(blocked)
+            assert db._read_one("SELECT COUNT(*) FROM secretary_schedule_registry WHERE conversation_ref=?", (ref,))[0] == 1
+    finally:
+        agent.close()

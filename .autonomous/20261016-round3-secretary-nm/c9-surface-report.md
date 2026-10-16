@@ -104,3 +104,13 @@ Gateway due tick
 ## 7. 下一步
 
 主会话亲自review本包23路径与manifest；更新根CLAUDE接收状态后统一提交。接收后C10-B继续其独占旧测试；最终仅由统一owner执行round3真实产品/模型和独立门禁。无需C9-S再派生或重复已有效测试。
+
+## R3-F09 回修交回（2026-10-17）
+
+1. **条款与根因：** 07 §3/6.3/8.2及白板A3/K1–K5要求三能力按真实Main身份/各自开关供给，local off不撤Scheduler/Notebook读。真实Main默认toolsets只含History；Main动态补入Notebook/Scheduler后被原生bridge正常defer，但bridge又仅从原始toolsets重建raw catalog，旧`filter_tool_definitions`只过滤不补齐，造成当前runtime已授予能力在describe/search/unwrap阶段丢失。`request_dump_20261017_012327_e7b50d_*`只读确认桥接工具和History存在、Scheduler describe明确not_found；未打印root或任何headers。
+2. **实际改动：** 仅`tools/secretary_dispatch.py::filter_tool_definitions`生产符号，按现有同agent三资格flag在私有catalog副本补齐缺失完整Schema，复用`noting_surface._read_schema` owner后deepcopy；维持固定追加顺序和Secretary同名去重。全局注册、原生toolsets、cache和权限来源不变，`agent=None`原样返回；非Main不增加能力。没有修改额外fallback/owner/profile/modelroute。
+3. **正式路径：** 新增`tests/secretary/test_r3_wiring.py::test_formal_tui_default_bridge_preserves_runtime_main_capabilities`四参数场景，真实TUI `_make_agent`及默认toolset loader → 原生`AIAgent.run_conversation` → scripted provider边界 → `tool_describe/tool_search/tool_call` → 实际SchedulerStore落库/Notebook空Snapshot envelope。未使用手工`_agent`替代构造、没有patch工具定义/catalog/handler/storage。原始raw默认catalog确实无这两项、API顶层只见History+bridge，证明覆盖本次真实缺陷。开启场景精确核落库内容与deferred语义；关闭场景零登记。同Agent热关闭后describe不泄漏、scope cache更新、实际bridge create被拒绝且表仍仅原一条。local off不影响该链。
+4. **执行证据：** canonical runner首次`red.log`为3个能力反例＋1个新测试SQL字段错误；修测试观测字段后`red-formal.log`得到**3 FAIL/1 PASS**，失败是正式native loop返回的describe工具结果空。单点修复后`green.log`四PASS；新增副本/热关闭检查后`affected.log`5PASS（4新+1旧catalog关闭）；`hot-native.log`5PASS（4新+1旧非Main原生search）。**有效node并集6项**，未复跑原112组。Ruff PASS；原冻结health引擎限定这两个路径相对HEAD：0 blocking/0 advisory；diff-check PASS。全部使用临时隔离DB、合成配置和scripted provider，无真实模型/profile/NM调用。
+5. **缺口：** 此为开发反证和正式接线修复；真实DeepSeek原失败序列尚待c4 owner独占round3复跑。没有冒称真实产品已修复通过。C11-P仍只准备；C10-T保持基线日志，F10 owner race由root单独补线后待恢复测试验证。
+6. **接口：** `filter_tool_definitions(tools, agent=None)`签名不变；既有`_reconcile_catalog`、`_dispatch_bridge_tool`与`_tool_search_scoped_names`继续共享它。后两处的同runtime scope/capability cache keys已含三flags，无需第二权限或缓存来源。传入列表和owner Schema不被修改，固定顺序、同名去重和无scope原生identity已有断言。
+7. **版本/下一步：** 修复起点公共`e2fd9081a6a128d682ec1d59785ae600e0069c88`，本域两文件尚未提交；精确hash、patch、有效node并集和全部日志位于ignored `.hermes-dev/round3-local-20261017-l0/f09/manifest.json`。已停止这两个文件写入，交root review后统一提交，再由真实owner重走用户失败序列。本任务不碰F08/F10生产文件、共享fixture或round3配置。

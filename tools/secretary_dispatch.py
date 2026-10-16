@@ -37,7 +37,11 @@ def secretary_surface_scope(agent):
 
 
 def filter_tool_definitions(tools, agent=None):
-    """Apply actual runtime capability to catalog copies, never the global schema cache."""
+    """Compose runtime Main capabilities on a catalog copy, never the global schema cache.
+
+    Native toolsets need not name the Main additions. A bridge may defer those
+    additions, so its raw catalog must receive the same runtime grants as tools[].
+    """
     agent = _SURFACE_AGENT.get() if agent is None else agent
     if agent is None:
         return tools
@@ -48,7 +52,20 @@ def filter_tool_definitions(tools, agent=None):
     if main and getattr(agent, "_secretary_scheduler_enabled", False):
         allowed.add("scheduler")
     secretary = {"conversation_history", "notebook_show", "scheduler", "notebook_maintain", "finish_noting"}
-    return [tool for tool in tools if tool.get("function", {}).get("name") not in secretary - allowed]
+    resolved, names = [], set()
+    for tool in tools:
+        name = tool.get("function", {}).get("name")
+        if name in secretary and (name not in allowed or name in names):
+            continue
+        resolved.append(tool)
+        names.add(name)
+    if main:
+        from copy import deepcopy
+        from secretary.noting_surface import _read_schema
+        for name in ("conversation_history", "notebook_show", "scheduler"):
+            if name in allowed and name not in names:
+                resolved.append({"type": "function", "function": deepcopy(_read_schema(name))})
+    return resolved
 
 
 def _suffix_only():
