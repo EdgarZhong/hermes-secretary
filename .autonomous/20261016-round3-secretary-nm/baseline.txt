@@ -13,3 +13,10 @@ authorized-local-resume=ceaf591c0a55935606b401e37ce28f7134eb6fa4
 authorization-index=R3-016,R3-017
 authorized-round3-profile-and-validation-plan=ba6266f314dbeddc01a4066110ed5138df683efd
 authorization-profile-index=R3-018
+
+# E01自主工程细化；依据用户项目自主收敛规则，非新增用户逐字确认
+engineering-step4-clarification=d033c5057df419fb7d7122cba3085105dd13d89e
+engineering-index=E01
+engineering-review=verification.md:6.1
+engineering-user-ratification=pending
+engineering-source=用户提供AGENTS项目级必要自主口径收敛与AI指令具体动作规则；R3-016完整托管
