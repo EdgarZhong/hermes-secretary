@@ -1,298 +1,264 @@
-"""ConversationScheduleRegistry service: Notebook reconcile, due scan, atomic claim, advance.
+"""Main-owned Scheduler service and thin adapters for the existing due scanner.
 
-Schedule is an adjunct of Noting/Notebook. Intent lives in the Notebook (immutable Snapshot
-payload); this service keeps the separate runtime registry synchronized inside the Notebook
-service's own transaction, then scans/claims due occurrences for the host that delivers them.
+Schedule definitions are independent of Notebook/Noting. Host dispatch remains in C9;
+C6 owns actual instant/deferred admission. The service never starts an Agent or Cron job.
 """
 
 import logging
-import time
+from pathlib import Path
 
 from hermes_state_secretary_schedule import (
-    SCHEDULE_STATE_CANCELLED,
-    SCHEDULE_STATE_PENDING,
-    schedule_advance_epoch,
+    ScheduleError,
     schedule_claim_conn,
     schedule_due_scan_conn,
     schedule_finalize_conn,
-    schedule_initial_next_run,
     schedule_release_conn,
-    schedule_sync_conn,
 )
-from secretary.notebook_schedule import ACTIVE_STATUSES, SCHEDULE_TYPES, schedule_delivery_semantics
+from secretary.noting_scope import owning_db_scope
+from secretary.scheduler_table import (
+    UNKNOWN_INSTANT_NOTICE,
+    apply_schedule_action_conn,
+    coverage_notice,
+    instant_coverage_conn,
+)
+from secretary.scheduler_time import (
+    epoch,
+    parse_schedule_expression,
+    schedule_advance_epoch as schedule_advance_epoch,
+    schedule_initial_next_run as schedule_initial_next_run,
+)
 
 logger = logging.getLogger(__name__)
-
 DEFAULT_CLAIM_LEASE_SECONDS = 3600.0
 DEFAULT_DUE_BATCH = 50
 
 
-def entry_reminder_text(entry):
-    """Delivery text for one schedule-carrying entry, projected from its semantic fields.
-
-    The Notebook remains the intent source; this projection is refreshed by every reconcile.
-    """
-    fields = entry.get("fields") or {}
-    entry_type = entry.get("type")
-    if entry_type == "user_reminder":
-        return str(fields.get("message") or "").strip()
-    if entry_type == "user_commitment":
-        return f"Commitment due: {fields.get('what', '')}".strip()
-    if entry_type == "secretary_task":
-        return f"Secretary task due: {fields.get('task', '')}".strip()
-    if entry_type == "watchpoint":
-        return f"Watchpoint due: {fields.get('subject', '')} — {fields.get('what_to_watch', '')}".strip()
-    return ""
-
-
-def _rebind_version_registry_conn(conn, conversation_ref, entry_id):
-    """A content version preserves the occurrence identity belonging to its lineage."""
-    current = conn.execute("SELECT lineage_id FROM secretary_notebook_item WHERE id = ?", (entry_id,)).fetchone()
-    if current is None:
-        return
-    old = conn.execute(
-        "SELECT r.schedule_id FROM secretary_schedule_registry r "
-        "JOIN secretary_notebook_item i ON i.id = r.notebook_entry_id "
-        "WHERE r.conversation_ref = ? AND i.lineage_id = ?",
-        (conversation_ref, current["lineage_id"]),
-    ).fetchone()
-    if old is not None:
-        conn.execute("UPDATE secretary_schedule_registry SET notebook_entry_id = ? WHERE schedule_id = ?",
-                     (entry_id, old["schedule_id"]))
-
-
-def reconcile_entry(conn, conversation_ref, entry, *, active=True, now=None, reminder_text=None, reactivated=False):
-    """Mirror one Notebook entry's Schedule into the runtime registry, inside the caller's write.
-
-    Called by the Notebook service after a semantic mutation; a no-intent or now-inactive entry
-    disables (never deletes) its runtime row, and a cancelled intent is terminal until replaced.
-    """
-    _rebind_version_registry_conn(conn, conversation_ref, entry["entry_id"])
-    intent = entry.get("schedule")
-    cancelled = bool(isinstance(intent, dict) and intent.get("cancelled"))
-    canonical = intent.get("canonical_schedule") if isinstance(intent, dict) else None
-    semantics = schedule_delivery_semantics(entry)
-    if cancelled or canonical is None or semantics is None:
-        return schedule_sync_conn(
-            conn, conversation_ref, entry["entry_id"], active=False, cancelled=cancelled, now=now,
-        )
-    return schedule_sync_conn(
-        conn, conversation_ref, entry["entry_id"], active=bool(active), canonical_schedule=canonical,
-        delivery_semantics=semantics, reminder_text=reminder_text or entry_reminder_text(entry), now=now,
-        reactivated=reactivated,
-    )
-
-
-def _snapshot_versions(conn, conversation_ref, payload):
-    """Resolve the immutable versions in a previously effective Snapshot by stable lineage."""
-    from secretary.notebook_items import item_entry, item_row_conn, require_item_owner
-
-    versions = {}
-    for section in (payload or {}).values():
-        for entry in section:
-            if entry["type"] not in SCHEDULE_TYPES or entry["archived"]:
-                continue
-            row = item_row_conn(conn, entry["entry_id"])
-            require_item_owner(conn, row, conversation_ref)
-            if entry != item_entry(row, conversation_ref):
-                raise ValueError("Previous Snapshot entry differs from its immutable version")
-            versions[row["lineage_id"]] = entry
-    return versions
-
-
-def _schedule_reactivated(conn, conversation_ref, entry, previous_versions):
-    """Only a forward semantic restart can rearm an unchanged fulfilled occurrence."""
-    if not previous_versions:
-        return False
-    from secretary.notebook_items import item_entry, item_row_conn, require_item_owner
-
-    row = item_row_conn(conn, entry["entry_id"])
-    require_item_owner(conn, row, conversation_ref)
-    if entry != item_entry(row, conversation_ref):
-        raise ValueError("Selected Snapshot entry differs from its immutable version")
-    previous = previous_versions.get(row["lineage_id"])
-    return bool(previous and previous["type"] == entry["type"]
-                and int(entry["entry_id"]) > int(previous["entry_id"])
-                and previous["status"] not in ACTIVE_STATUSES[entry["type"]]
-                and entry["status"] in ACTIVE_STATUSES[entry["type"]])
-
-
-def reconcile_conversation(conn, conversation_ref, entries, *, active=True, now=None, complete=True,
-                          previous_payload=None):
-    """Reconcile every schedule-carrying entry; optionally disable rows whose entry vanished."""
-    seen = set()
-    previous_versions = _snapshot_versions(conn, conversation_ref, previous_payload)
-    for entry in entries:
-        if not isinstance(entry, dict) or not entry.get("entry_id"):
-            continue
-        if entry.get("type") not in SCHEDULE_TYPES:
-            continue
-        seen.add(entry["entry_id"])
-        reactivated = _schedule_reactivated(conn, conversation_ref, entry, previous_versions)
-        reconcile_entry(conn, conversation_ref, entry, active=active, now=now, reactivated=reactivated)
-    if not complete:
-        return
-    rows = conn.execute(
-        "SELECT notebook_entry_id FROM secretary_schedule_registry WHERE conversation_ref = ?", (conversation_ref,),
-    ).fetchall()
-    for (entry_id,) in rows:
-        if entry_id not in seen:
-            schedule_sync_conn(conn, conversation_ref, entry_id, active=False, now=now)
-
-
-def reconcile_payload(conn, conversation_ref, payload, *, active=True, now=None, complete=True,
-                      previous_payload=None):
-    """Reconcile a committed Notebook Snapshot payload (the four-section state) in place.
-
-    This is the call the Notebook commit transaction makes, so registry state and the
-    immutable Snapshot move together (02 §3.9).
-    """
-    entries = [entry for section in (payload or {}).values() if isinstance(section, list) for entry in section]
-    return reconcile_conversation(
-        conn, conversation_ref, entries, active=active, now=now, complete=complete,
-        previous_payload=previous_payload,
-    )
-
-
-def inherit_runtime_conn(conn, parent_ref, branch_ref):
-    """Keep independent branch rows, preserving accounting only for identical inherited intent.
-
-    A fulfilled one-shot must not be re-fired solely by branching. Claims and pending
-    delivery belong to their original Conversation and are never copied to the branch.
-    An older branch-point intent differing from the parent's current runtime starts fresh.
-    """
-    rows = conn.execute(
-        "SELECT b.schedule_id, p.state, p.next_run_at, p.last_fired_at "
-        "FROM secretary_schedule_registry b "
-        "JOIN secretary_notebook_item bi ON bi.id = b.notebook_entry_id "
-        "JOIN secretary_schedule_registry p "
-        "JOIN secretary_notebook_item pi ON pi.id = p.notebook_entry_id AND pi.lineage_id = bi.lineage_id "
-        "WHERE p.canonical_schedule = b.canonical_schedule "
-        "AND p.delivery_semantics = b.delivery_semantics "
-        "AND p.conversation_ref = ? AND b.conversation_ref = ? "
-        "AND b.enabled = 1 AND p.state IN ('pending', 'done')",
-        (parent_ref, branch_ref),
-    ).fetchall()
-    for row in rows:
-        conn.execute(
-            "UPDATE secretary_schedule_registry SET state = ?, next_run_at = ?, last_fired_at = ? "
-            "WHERE schedule_id = ?",
-            (row["state"], row["next_run_at"], row["last_fired_at"], row["schedule_id"]),
-        )
-
-
 def default_enablement(db):
-    """Effective Noting gate predicate (global config AND Conversation-local state, 02 §4.2).
+    """Consume the frozen C4 scheduler.enabled contract, never a Noting gate.
 
-    Consumes the Noting runtime's own gate (``noting_trigger_gate``), which already resolves
-    global config AND the Notebook sibling's conversation-local participation. An unavailable
-    gate or evaluation error fails CLOSED for scanning — the occurrence stays due
-    and fires after the gate is evaluable again, so nothing is lost.
+    Use the existing profile-bound readonly loader. Missing Scheduler configuration
+    defaults to enabled; malformed/unreadable configuration fails this feature closed.
+    This deliberately does not parse the independent Noting configuration block.
+    """
+    def enabled(_conversation_ref):
+        try:
+            from hermes_cli.config import load_config_readonly
+            from hermes_cli.config_read_errors import FailedConfigRead
+
+            with owning_db_scope(db):
+                config = load_config_readonly()
+            if isinstance(config, FailedConfigRead) or not isinstance(config, dict):
+                return False
+            block = config.get("scheduler", {})
+            if not isinstance(block, dict) or not isinstance(block.get("enabled", True), bool):
+                logger.warning("Invalid scheduler.enabled: expected a boolean in the owning profile config")
+                return False
+            return block.get("enabled", True)
+        except Exception:
+            logger.warning("Scheduler config unreadable; new admission is disabled", exc_info=True)
+            return False
+
+    return enabled
+
+
+class SchedulerStore:
+    """Authorized Main control surface; all supplied ownership is host-only.
+
+    session_id must be the actual caller's physical Session. No Conversation or
+    profile selector is exposed in the tool schema. parser/is_enabled are dependency
+    injection seams for host integration and isolated tests, not model parameters.
     """
 
-    def is_enabled(conversation_ref):
-        try:
-            from secretary.noting_runtime import noting_trigger_gate
-        except ImportError:
-            logger.warning("Noting gate unavailable; skipping Schedule scan", exc_info=True)
-            return False
-        try:
-            enabled, _reason = noting_trigger_gate(db, conversation_ref)
-            return bool(enabled)
-        except Exception:
-            logger.warning("Noting gate evaluation failed for %s; skipping its Schedule scan",
-                           conversation_ref, exc_info=True)
-            return False
+    def __init__(self, db, conversation_ref, *, session_id, parser=None, is_enabled=None):
+        self.db = db
+        self.conversation_ref = conversation_ref
+        self.session_id = session_id
+        self.home = Path(db.db_path).resolve().parent
+        self.parser = parser or parse_schedule_expression
+        self.is_enabled = is_enabled or default_enablement(db)
 
-    return is_enabled
+    def _authorize_conn(self, conn):
+        ref = self.db.resolve_conversation_ref_conn(conn, self.session_id, read_only=True)
+        route = self.db.resolve_conversation_route_conn(conn, self.conversation_ref)
+        if (not ref or ref != self.conversation_ref or not route or route["id"] != self.session_id
+                or Path(self.db.db_path).resolve().parent != self.home):
+            raise ScheduleError("scope_denied", "Scheduler can access only the caller's current Main Conversation.",
+                                "Do not retry with another Conversation or profile identifier.")
+
+    def _notice_conn(self, conn, result, timestamp):
+        try:
+            value = instant_coverage_conn(conn, self.conversation_ref, now=timestamp)
+            notice = coverage_notice(value)
+        except Exception:
+            logger.warning("Scheduler coverage read failed", exc_info=True)
+            notice = UNKNOWN_INSTANT_NOTICE
+        if notice:
+            result["notice"] = notice
+        return result
+
+    def _failure_notice(self, result, timestamp):
+        if result["error"]["code"] == "scope_denied":
+            return result  # Do not probe a denied or disabled capability.
+        try:
+            with owning_db_scope(self.db), self.db._read_ctx() as conn:
+                self._authorize_conn(conn)
+                if not self.is_enabled(self.conversation_ref):
+                    result["notice"] = UNKNOWN_INSTANT_NOTICE
+                    return result
+                return self._notice_conn(conn, result, timestamp)
+        except ScheduleError:
+            return result
+        except Exception:
+            logger.warning("Scheduler failure-state read unavailable", exc_info=True)
+            result["notice"] = UNKNOWN_INSTANT_NOTICE
+            return result
+
+    def execute(self, args, *, now=None):
+        """Return §7 JSON-compatible results; commit uncertainty is not reported as failure-to-write."""
+        timestamp = epoch(now)
+        write = not isinstance(args, dict) or args.get("action") != "list"
+        callback_returned = False
+
+        def apply(conn):
+            nonlocal callback_returned
+            self._authorize_conn(conn)
+            if not self.is_enabled(self.conversation_ref):
+                raise ScheduleError("scope_denied", "Scheduler is disabled or its owning configuration is unreadable.",
+                                    "Check scheduler.enabled in this profile; Noting switches do not enable Scheduler.")
+            from hermes_constants import profile_name_for_home
+
+            result = apply_schedule_action_conn(
+                conn, self.conversation_ref, args, now=timestamp,
+                profile=profile_name_for_home(self.home), parser=self.parser, profile_home=self.home,
+            )
+            result = self._notice_conn(conn, result, timestamp)
+            callback_returned = True
+            return result
+
+        try:
+            with owning_db_scope(self.db):
+                if write:
+                    return self.db._execute_write(apply)
+                with self.db._read_ctx() as conn:
+                    return apply(conn)
+        except ScheduleError as exc:
+            result = {"success": False, "error": exc.error}
+        except Exception:
+            logger.warning("Scheduler control operation did not return normally", exc_info=True)
+            uncertain = write and callback_returned
+            result = {"success": False, "error": {
+                "code": "outcome_unknown" if uncertain else "temporarily_unavailable",
+                "message": ("The operation's outcome could not be established." if uncertain else
+                            "The Schedule operation could not complete; its transaction was not published."),
+                "next_action": ("Inspect the current Schedule Table before retrying; do not create a duplicate." if uncertain else
+                                "Keep the intended change and retry through the normal Main tool path when storage is available."),
+            }}
+        return self._failure_notice(result, timestamp)
+
+    def list(self, *, state=None, delivery_mode=None, now=None):
+        args = {"action": "list"}
+        if state is not None:
+            args["state"] = state
+        if delivery_mode is not None:
+            args["delivery_mode"] = delivery_mode
+        return self.execute(args, now=now)
+
+    def create(self, content, schedule, delivery_mode, *, name="", now=None):
+        return self.execute({"action": "create", "content": content, "schedule": schedule,
+                             "delivery_mode": delivery_mode, "name": name}, now=now)
+
+    def update(self, schedule_id, *, now=None, **changes):
+        return self.execute({**changes, "action": "update", "schedule_id": schedule_id}, now=now)
+
+    def pause(self, schedule_id, *, now=None):
+        return self.execute({"action": "pause", "schedule_id": schedule_id}, now=now)
+
+    def resume(self, schedule_id, *, now=None):
+        return self.execute({"action": "resume", "schedule_id": schedule_id}, now=now)
+
+    def delete(self, schedule_id, *, now=None):
+        return self.execute({"action": "delete", "schedule_id": schedule_id}, now=now)
+
+
+def instant_coverage(db, conversation_ref, *, now=None, exclude_occurrences=()):
+    """I-S: read-only True/False/None. C6 uses the conn variant in admission transactions."""
+    try:
+        with owning_db_scope(db), db._read_ctx() as conn:
+            return instant_coverage_conn(conn, conversation_ref, now=epoch(now),
+                                         exclude_occurrences=exclude_occurrences)
+    except Exception:
+        logger.warning("Scheduler 24-hour coverage unavailable", exc_info=True)
+        return None
 
 
 def due_rows(db, *, now=None, limit=DEFAULT_DUE_BATCH, profile=None, conversation_ref=None):
-    timestamp = time.time() if now is None else float(now)
-    with db._read_ctx() as conn:
-        return schedule_due_scan_conn(
-            conn, now=timestamp, limit=limit, profile=profile, conversation_ref=conversation_ref,
-        )
+    with owning_db_scope(db), db._read_ctx() as conn:
+        return schedule_due_scan_conn(conn, now=epoch(now), limit=limit, profile=profile,
+                                      conversation_ref=conversation_ref)
 
 
-def claim_due(db, schedule_id, *, owner, now=None, lease_seconds=DEFAULT_CLAIM_LEASE_SECONDS):
-    timestamp = time.time() if now is None else float(now)
-    return db._execute_write(lambda conn: schedule_claim_conn(
-        conn, schedule_id, owner=owner, now=timestamp, lease_seconds=lease_seconds,
-    ))
+def claim_due(db, schedule_id, *, owner, now=None, lease_seconds=DEFAULT_CLAIM_LEASE_SECONDS,
+              conversation_ref=None, expected_generation=None, is_enabled=None):
+    timestamp = epoch(now)
+    enabled = is_enabled or default_enablement(db)
+
+    def claim(conn):
+        found = conn.execute("SELECT conversation_ref FROM secretary_schedule_registry WHERE schedule_id=?",
+                             (schedule_id,)).fetchone()
+        if found is None or (conversation_ref is not None and found[0] != conversation_ref) or not enabled(found[0]):
+            return None
+        return schedule_claim_conn(conn, schedule_id, owner=owner, now=timestamp, lease_seconds=lease_seconds,
+                                   conversation_ref=found[0], expected_generation=expected_generation)
+
+    with owning_db_scope(db):
+        return db._execute_write(claim)
 
 
-def scan_and_claim_due(
-    db, *, owner, now=None, limit=DEFAULT_DUE_BATCH, profile=None, conversation_ref=None, is_enabled=None,
-):
-    """Claim up to *limit* due occurrences for one profile's store; at most one winner each.
-
-    ``is_enabled`` is the effective Noting gate: an effectively-disabled Conversation is never
-    scanned, and its registry rows (with their intent) stay stored for a later re-enable.
-    """
-    timestamp = time.time() if now is None else float(now)
+def scan_and_claim_due(db, *, owner, now=None, limit=DEFAULT_DUE_BATCH, profile=None,
+                       conversation_ref=None, is_enabled=None):
+    """Existing scanner entry: default gate is independent Scheduler, never Notebook local state."""
+    timestamp = epoch(now)
+    enabled = is_enabled or default_enablement(db)
     claims = []
     for row in due_rows(db, now=timestamp, limit=limit, profile=profile, conversation_ref=conversation_ref):
-        if is_enabled is not None and not is_enabled(row["conversation_ref"]):
+        if not enabled(row["conversation_ref"]):
             continue
-        claim = claim_due(db, row["schedule_id"], owner=owner, now=timestamp)
-        if claim is not None:
-            claims.append(claim)
+        current = claim_due(db, row["schedule_id"], owner=owner, now=timestamp,
+                            conversation_ref=row["conversation_ref"], expected_generation=row["generation"],
+                            is_enabled=enabled)
+        if current is not None:
+            claims.append(current)
     return claims
 
 
-def finalize_delivery(db, schedule_id, claim_token, *, now=None):
-    """Account one delivered occurrence (one-shot terminal, recurring advanced, no backlog)."""
-    timestamp = time.time() if now is None else float(now)
-    row = db._execute_write(lambda conn: schedule_finalize_conn(conn, schedule_id, claim_token, now=timestamp))
-    if row is not None and row["state"] == SCHEDULE_STATE_CANCELLED:
-        logger.error(
-            "Schedule %s carried an unusable canonical schedule and was quarantined "
-            "(disabled; the Notebook intent is untouched)", schedule_id,
-        )
-    elif row is not None and row["state"] == SCHEDULE_STATE_PENDING and row["next_run_at"] is None:
-        logger.warning(
-            "Recurring schedule %s could not compute a next run; it stays stored but is due again "
-            "only after the schedule becomes computable (e.g. croniter available)", schedule_id,
-        )
-    return row
+def finalize_delivery(db, schedule_id, claim_token, *, now=None,
+                      carrier_message_uid=None, carrier_content=None):
+    """Instant settlement requires the native carrier; C6 normally calls the conn seam directly."""
+    with owning_db_scope(db):
+        return db._execute_write(lambda conn: schedule_finalize_conn(
+            conn, schedule_id, claim_token, now=epoch(now), carrier_message_uid=carrier_message_uid,
+            carrier_content=carrier_content,
+        ))
 
 
 def release_claim(db, schedule_id, claim_token, *, now=None):
-    """Delivery failed: keep the occurrence due so a later scan retries it."""
-    timestamp = time.time() if now is None else float(now)
-    return db._execute_write(lambda conn: schedule_release_conn(conn, schedule_id, claim_token, now=timestamp))
+    return db._execute_write(lambda conn: schedule_release_conn(conn, schedule_id, claim_token, now=epoch(now)))
 
 
-def stale_disable(db, schedule_id, *, now=None):
-    """Quarantine an unusable runtime row without deleting the Notebook intent."""
-    timestamp = time.time() if now is None else float(now)
+def stale_disable(db, schedule_id, *, now=None, expected_generation=None):
+    """Quarantine only a witnessed corrupt definition, never an unseen newer update."""
+    if expected_generation is None:
+        return False
 
-    def _disable(conn):
+    def disable(conn):
         cursor = conn.execute(
-            "UPDATE secretary_schedule_registry SET enabled = 0, state = ?, claim_owner = NULL, "
-            "claim_token = NULL, claim_expires_at = NULL, updated_at = ? WHERE schedule_id = ?",
-            (SCHEDULE_STATE_CANCELLED, timestamp, schedule_id),
+            "UPDATE secretary_schedule_registry SET enabled=0,state='cancelled',generation=generation+1,"
+            "claim_owner=NULL,claim_token=NULL,claim_expires_at=NULL,updated_at=? "
+            "WHERE schedule_id=? AND generation=?", (epoch(now), schedule_id, expected_generation),
         )
+        if cursor.rowcount:
+            conn.execute("UPDATE secretary_pending_reminders SET status='cancelled' WHERE schedule_id=? "
+                         "AND status='pending' AND carrier_message_uid IS NULL", (schedule_id,))
         return cursor.rowcount == 1
 
-    return db._execute_write(_disable)
-
-
-__all__ = [
-    "DEFAULT_CLAIM_LEASE_SECONDS",
-    "DEFAULT_DUE_BATCH",
-    "claim_due",
-    "default_enablement",
-    "due_rows",
-    "entry_reminder_text",
-    "finalize_delivery",
-    "reconcile_conversation",
-    "reconcile_entry",
-    "reconcile_payload",
-    "release_claim",
-    "scan_and_claim_due",
-    "schedule_advance_epoch",
-    "schedule_initial_next_run",
-    "stale_disable",
-]
+    return db._execute_write(disable)
