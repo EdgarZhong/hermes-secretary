@@ -1,5 +1,7 @@
 """Resolved native configuration, effective surface, and host gates (§4.6/4.12)."""
 import json
+from copy import deepcopy
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -8,7 +10,25 @@ from hermes_state import SessionDB
 from secretary.noting_policy import configuration_guidance, force_capability_failure, force_thresholds
 from secretary.noting_runtime import note_main_turn_finished, noting_trigger_gate
 from secretary.noting_scope import owning_db_scope
-from tests.secretary.test_noting_surface import _names, _requests, _turn
+
+
+def _names(tools):
+    return {tool["function"]["name"] for tool in tools or ()}
+
+
+def _requests(agent):
+    seen = []
+    def dispatch(request):
+        seen.append(deepcopy(request))
+        return SimpleNamespace(choices=[SimpleNamespace(finish_reason="stop", message=SimpleNamespace(
+            content="Completed the configuration review.", tool_calls=None))], usage=None)
+    agent._interruptible_api_call = dispatch
+    agent._disable_streaming = True
+    return seen
+
+
+def _turn(agent):
+    assert agent.run_conversation("Review the current configuration", title_user_message="")["completed"]
 
 
 @pytest.fixture
@@ -59,14 +79,14 @@ def test_actual_resolved_failure_closes_background_noting_but_preserves_main_rea
         assert native_pair == (window, int(window * ratio))
         assert noting_trigger_gate(db, ref) == (False, reason)
         assert guidance in caplog.text
-        assert "notebook_show" in _names(agent.tools) & agent.valid_tool_names
-        assert "session_history" in _names(agent.tools) & agent.valid_tool_names
+        assert ("notebook_show" in _names(agent.tools) & agent.valid_tool_names) is (reason != "idle_compaction_conflict")
+        assert {"conversation_history", "scheduler"} <= _names(agent.tools) & agent.valid_tool_names
         assert not note_main_turn_finished(agent)
         assert db.noting_idle_state(ref) is None
         seen = _requests(agent)
         _turn(agent)
-        assert "notebook_show" in _names(seen[0]["tools"])
-        assert "session_history" in _names(seen[0]["tools"])
+        assert ("notebook_show" in _names(seen[0]["tools"])) is (reason != "idle_compaction_conflict")
+        assert {"conversation_history", "scheduler"} <= _names(seen[0]["tools"])
         assert config.read_text() == before
         assert native_pair == (agent.context_compressor.context_length, agent.context_compressor.threshold_tokens)
         print(json.dumps({"pair": native_pair, "effective": noting_trigger_gate(db, ref), "guidance": guidance,
@@ -107,13 +127,14 @@ def test_global_or_local_off_does_not_rewrite_native_config(native_runtime, enab
     try:
         before = config.read_text()
         assert not noting_trigger_gate(db, ref)[0]
-        assert ("notebook_show" in _names(agent.tools) & agent.valid_tool_names) is enabled
+        assert ("notebook_show" in _names(agent.tools) & agent.valid_tool_names) is (enabled and idle == 0)
         seen = _requests(agent)
         _turn(agent)
-        assert ("notebook_show" in _names(seen[0]["tools"])) is enabled
+        assert ("notebook_show" in _names(seen[0]["tools"])) is (enabled and idle == 0)
+        assert {"conversation_history", "scheduler"} <= _names(seen[0]["tools"])
         assert agent.compression_idle_compact_after_seconds == idle
         issues = validate_config_structure(data)
-        assert any("idle compaction" in issue.message for issue in issues) is (enabled and idle > 0)
+        assert any("compression.idle_compact_after_seconds" in issue.hint for issue in issues) is (enabled and idle > 0)
         assert config.read_text() == before
     finally:
         agent.close()
@@ -167,11 +188,11 @@ def test_real_attempt_logs_before_admission_dedupe_and_compaction_head(native_ru
         db.append_message(agent.session_id, "user", "original intent", message_uid="original")
         measurement = ContextMeasurement(140000, agent.context_compressor.context_length, agent.context_compressor.threshold_tokens)
         assert try_admit_force(db, ref, measurement).action == "admit"
-        assert try_admit_force(db, ref, measurement).reason == "same_anchor_admitted"
+        assert try_admit_force(db, ref, measurement).reason == "force_interval_occupied"
         events = [record.message for record in caplog.records if record.name == "secretary.noting_runtime"]
         assert "trigger attempt" in events[0] and "anchor=original" in events[0]
         assert "outcome" in events[1] and "action=admit" in events[1]
-        assert "trigger attempt" in events[2] and "same_anchor_admitted" in events[3]
+        assert "trigger attempt" in events[2] and "force_interval_occupied" in events[3]
         caplog.clear()
         db.append_message(agent.session_id, "user", SUMMARY_PREFIX + "summary\n" + _SUMMARY_END_MARKER,
                           message_uid="compaction", display_kind="context_summary")

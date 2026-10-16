@@ -374,11 +374,13 @@ def idle_candidates(db: Any, *, settings: Optional[NotingSettings] = None, now: 
     return db.noting_idle_due_conversations(now=now, delay_seconds=settings.idle_delay_seconds)
 
 
-def _freeze_and_admit(db: Any, conversation_ref: str, *, kind: str, frozen_identity=None) -> NotingDecision:
+def _freeze_and_admit(db: Any, conversation_ref: str, *, kind: str, frozen_identity=None,
+                      participation_decided=False) -> NotingDecision:
+    """A claimed Idle event owns its local decision; other entrances decide in this transaction."""
     if not callable(getattr(db, "noting_admit_conn", None)):
         return _skip("noting_schema_unavailable")
     def admit(conn):
-        if not db.notebook_local_enabled_conn(conn, conversation_ref):
+        if not participation_decided and not db.notebook_local_enabled_conn(conn, conversation_ref):
             return _skip("local_disabled")
         interval = db.noting_compaction_interval_conn(conn, conversation_ref)
         if db.noting_force_occupied_conn(conn, conversation_ref, interval):
@@ -495,7 +497,7 @@ def _idle_decision(
         identity = _freeze_and_log_attempt(db, conversation_ref, kind)
         if identity is None:
             return _skip("no_frozen_anchor")
-        return _freeze_and_admit(db, conversation_ref, kind=kind, frozen_identity=identity)
+        return _freeze_and_admit(db, conversation_ref, kind=kind, frozen_identity=identity, participation_decided=True)
     # The parent's due fact survives all Noting errors after both conditions held.
     return replace(_guarded(conversation_ref, decide), compaction_due=True)
 

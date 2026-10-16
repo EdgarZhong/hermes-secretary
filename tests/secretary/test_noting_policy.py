@@ -12,22 +12,19 @@ import pytest
 from secretary.noting_policy import (
     CAPABILITY_RESERVE_ABOVE_128K,
     CAPABILITY_THRESHOLD_BELOW_64K,
-    TASK_PROFILE_NOTING,
-    TASK_PROFILE_NOTING_WITH_COMPACTION,
     ContextMeasurement,
     NotingSettings,
     effective_noting_enabled,
     force_capability_failure,
     force_thresholds,
     idle_due,
-    idle_task_profile,
     measurement_from_agent,
     noting_settings_from_config,
 )
 
 
-def _settings(enabled=True, delay=500.0, selection=False, selection_threshold=None, compact_after_force=False):
-    return NotingSettings(enabled, delay, selection, selection_threshold, compact_after_force)
+def _settings(enabled=True):
+    return NotingSettings(enabled=enabled)
 
 
 # ── Two-layer enable gate (02 §4.2) ────────────────────────────────────────
@@ -44,23 +41,22 @@ def test_effective_gate_is_global_and_local(global_enabled, local_enabled, expec
 def test_settings_parse_spec_defaults_and_overrides():
     defaults = noting_settings_from_config({})
     assert (defaults.enabled, defaults.idle_delay_seconds) == (True, 500.0)
-    assert defaults.auto_trigger_compaction_enabled is False
-    assert defaults.auto_trigger_compaction_threshold_tokens is None
-    assert defaults.auto_compact_after_force_noting_idle is False
+    assert defaults.idle_enabled is False
+    assert defaults.idle_threshold_tokens is None
+    assert not defaults.configuration_failure
 
     parsed = noting_settings_from_config({"noting": {
-        "enabled": False, "idle_delay_seconds": 30,
-        "auto_trigger_compaction_after_noting": {"enabled": True, "threshold_tokens": 120_000},
-        "auto_compact_after_force_noting_idle": True,
+        "enabled": True, "idle": {"enabled": True, "delay_seconds": 30, "threshold_tokens": 120_000},
     }})
-    assert parsed == NotingSettings(False, 30.0, True, 120_000, True)
+    assert parsed == NotingSettings(enabled=True, idle_enabled=True, idle_delay_seconds=30.0,
+                                   idle_threshold_tokens=120_000)
 
     malformed = noting_settings_from_config({"noting": {
-        "enabled": "no", "idle_delay_seconds": "soon",
-        "auto_trigger_compaction_after_noting": {"enabled": True, "threshold_tokens": -5},
+        "enabled": "no", "idle": {"enabled": True, "delay_seconds": "soon", "threshold_tokens": -5},
     }})
     assert (malformed.enabled, malformed.idle_delay_seconds) == (False, 500.0)
-    assert malformed.auto_trigger_compaction_threshold_tokens is None
+    assert malformed.idle_threshold_tokens is None
+    assert not malformed.idle_enabled and "noting.idle.threshold_tokens" in malformed.configuration_failure
 
 
 @pytest.mark.parametrize("load_good_first", [False, True])
@@ -171,19 +167,7 @@ def test_threshold_stays_earlier_than_hermes_compaction_and_rejects_bad_inputs()
     assert unusable.measured_usage_triggers(10_000_000) is False
 
 
-# ── Idle runtime profile (02 §4.10) and the measurement pair ──────────────
-
-
-def test_idle_task_profile_follows_the_selection_knob():
-    measurement = ContextMeasurement(120_000, 200_000, 150_000)
-    assert idle_task_profile(_settings(), measurement) == TASK_PROFILE_NOTING
-    assert idle_task_profile(_settings(selection=True, selection_threshold=120_000), measurement) \
-        == TASK_PROFILE_NOTING_WITH_COMPACTION
-    assert idle_task_profile(_settings(selection=True, selection_threshold=120_001), measurement) \
-        == TASK_PROFILE_NOTING
-    assert idle_task_profile(_settings(selection=True, selection_threshold=100_000), None) \
-        == TASK_PROFILE_NOTING
-    assert idle_task_profile(_settings(selection=True), measurement) == TASK_PROFILE_NOTING
+# ── Native measurement pair; one child profile is covered by the C5 runner ──
 
 
 def test_measurement_from_agent_uses_resolved_compressor_values():

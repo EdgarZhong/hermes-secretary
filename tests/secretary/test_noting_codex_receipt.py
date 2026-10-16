@@ -7,12 +7,20 @@ import pytest
 
 from agent.transports.codex_app_server import CodexAppServerError
 from tests.agent.transports.test_codex_app_server_session import FakeClient, make_session
-from tests.secretary.test_noting_compact import make_parent
-from secretary.noting_compact import compact_parent
+from tests.agent.test_context_compaction_request import _agent
+from hermes_state import SessionDB
+from secretary.noting_scope import owning_db_scope
 
 
 def _codex_parent(tmp_path, monkeypatch):
-    parent, db = make_parent(tmp_path, monkeypatch)
+    from agent.context_compaction_request import trust_default_system_message
+    (tmp_path / "config.yaml").write_text("noting:\n  enabled: false\n")
+    db = SessionDB(tmp_path / "state.db")
+    db.create_session("native-request-probe", source="cli")
+    db.append_message("native-request-probe", "user", "original native context")
+    with owning_db_scope(db):
+        parent = _agent(db, monkeypatch, tmp_path)
+    trust_default_system_message(parent)
     client = FakeClient()
     session = make_session(client)
     parent.api_mode = "codex_app_server"
@@ -36,11 +44,11 @@ def test_transport_ack_receipt_precedes_native_completion(tmp_path, monkeypatch,
     original = session.compact_thread
     session.compact_thread = lambda **kwargs: original(turn_timeout=0.3, **kwargs)
     try:
-        result = compact_parent(parent, wait_seconds=1)
+        result = parent.request_context_compaction(wait_seconds=1)
         assert result.ok and result.status == "admitted"
         assert ("thread/compact/start", {"threadId": "thread-fake-001"}) in client.requests
         assert parent._active_compression_commit_fence is not None
-        assert compact_parent(parent).status == "already_in_flight"
+        assert parent.request_context_compaction().status == "already_in_flight"
         if terminal != "timeout":
             client.queue_notification("turn/started", threadId="thread-fake-001", turn={"id": "compact-1"})
             client.queue_notification("turn/completed", threadId="thread-fake-001",

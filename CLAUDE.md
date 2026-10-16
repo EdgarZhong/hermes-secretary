@@ -24,7 +24,7 @@
 | C9-H | 主会话已review接收；c9-host-report.md | 正式pre-summary唯一联合准备、原生成功发布事务更新interval、非空成功响应ACK、completed/failed归档gate；112独立场景有通过证据。review修正工具args业务校验不属投递ACK，23项定向复测通过 |
 | C9-S | personal_provider：工具surface/dispatch与投递caller | 独占noting_surface/hosts、inline_tool_executors/tool_executor、model_tools/toolsets/registry/tool_result_storage/budget_config、notebook_tool与noting_memo_tool退出、session_persistence._db_flush_write、gateway/secretary_reminders及run_agent_cache；新增wiring及旧surface/hosts测试；不与C9-H交叉 |
 | C10-A | 主会话已review接收；c10-notebook-history-report.md | 233独立场景有通过证据；C2嵌套修复、坏UID来源不可用、Snapshot时间ISO；保留旧有效保障，退出接口有处置映射 |
-| C10-H | c4_config_prompt：5个旧配置/触发组收口 | 独占policy/config_contract/codex_receipt/deadline_event及hermes_state/secretary_noting；随后作为唯一开发真实模型owner，先准备原生入口方案，待接线完成后启动round3 |
+| C10-H | 主会话已review接收；c10-runtime-report.md | 62旧组场景＋4受影响Idle节点有通过证据；恢复deadline唯一local决定，提交gate仍检查。c4_config_prompt等待C9-S接收后独占真实DeepSeek运行 |
 | C10-B | local_environment：10个旧Scheduler/Reminder文件收口 | 独占旧reminders/crash/admission/persistence/CLI/v16/schedules/status、agent/reminder_request、state/schedule_registry；共享reminder_runtime由C9-S先交回，不双写 |
 | C10-P | 待收口 | 个人test_personal/test_security需维护；不复活旧完整写入helper，不重复P1/P3新组 |
 | P1/P2/P3 | 主会话已review接收个人线并提交57d0abb854f4；personal-report.md | 46独立用例通过；真实SessionDB/MemoryManager+本地HTTP fixture，P2基本模拟通过；主会话已review，公共finalizer gate与历史旧测试仍待收口 |

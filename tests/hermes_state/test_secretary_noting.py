@@ -1,8 +1,7 @@
 """Real-SQLite behavior of Noting admission, the child registry and durable Idle timing.
 
-02 §4.8 (same-Anchor dedupe under real concurrency, different Anchors concurrently), §4.5/§6.6
-(the Idle timer is durable across restarts) and §4.9 (Force success derives from committed
-Snapshots plus the latest Compaction boundary, never a stored flag).
+07 §8.1 (same-Anchor dedupe and durable Force interval occupation), inherited Idle
+timing across restart, and real successful native compaction boundaries.
 """
 
 import threading
@@ -36,7 +35,7 @@ def test_schema_init_is_idempotent_inside_the_callers_transaction(db):
             "SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE 'secretary_noting_%'")}
     assert names == {
         "secretary_noting_admissions", "secretary_noting_children", "secretary_noting_idle_state",
-        "secretary_noting_memo", "secretary_noting_memo_archive",
+        "secretary_noting_compaction_state",
     }
 
 
@@ -61,7 +60,7 @@ def test_admission_rejects_unknown_kind(db):
     make(db, "s")
     ref = ref_of(db, "s")
     with pytest.raises(ValueError):
-        db.noting_admit(ref, "m1", kind="manual")
+        db.noting_admit(ref, "m1", kind="compact_parent")
     with pytest.raises(ValueError):
         db.noting_admit("", "m1", kind="idle")
 
@@ -194,25 +193,31 @@ def test_idle_due_requires_the_last_event_to_be_a_finish(db):
     assert db.noting_idle_state(ref_a)["last_turn_started_at"] == 1200.0
 
 
-def test_force_snapshot_since_boundary_derives_from_durable_facts(db):
+@pytest.mark.parametrize("kind", ["idle", "manual", "auto_compaction", "force"])
+def test_all_current_joint_kinds_share_the_native_interval(db, kind):
+    make(db, "s")
+    add(db, "s", "original", "m1")
+    admission = db.noting_admit(ref_of(db, "s"), "m1", kind=kind)
+    assert db.noting_admission(admission)["compression_interval_id"] == "conversation_start"
+
+
+def test_force_interval_uses_successful_native_boundary_and_not_snapshot_or_child_end(db):
     make(db, "s")
     add(db, "s", "archived", "a")
+    ref = ref_of(db, "s")
+    admission = db.noting_admit(ref, "a", kind="force")
+    assert isinstance(admission, int)
+    db.notebook_commit_snapshot(ref, empty_state(), anchor_message_uid="a", trigger_type="force",
+                                runtime_profile="NOTING", termination={"type": "finish_noting", "reason": "Completed"})
+    db.noting_child_register(admission, child_session_id="child", profile="test")
+    assert db.noting_child_finish(admission, status="completed")
+    add(db, "s", "new anchor in occupied interval", "next")
+    for kind in ("force", "idle", "manual", "auto_compaction"):
+        assert db.noting_admit(ref, "next", kind=kind) is None
     db.archive_and_compact("s", [{"role": "user", "content": SUMMARY_PREFIX + "summary\n" + _SUMMARY_END_MARKER,
                                   "_compressed_summary": True, "message_uid": "sum"}])
     add(db, "s", "after the boundary", "b")
-    ref = ref_of(db, "s")
-    state = empty_state()
-
-    # An Idle Snapshot alone is not Force success, and an Anchor before the boundary is the
-    # previous segment's — neither commits Force success for the current segment (02 §4.9).
-    assert db.noting_force_snapshot_since_boundary(ref) is False
-    db.notebook_commit_snapshot(ref, state, anchor_message_uid="b", trigger_type="idle",
-                                runtime_profile="NOTING")
-    assert db.noting_force_snapshot_since_boundary(ref) is False
-    db.notebook_commit_snapshot(ref, state, anchor_message_uid="a", trigger_type="force",
-                                runtime_profile="NOTING")
-    assert db.noting_force_snapshot_since_boundary(ref) is False
-
-    db.notebook_commit_snapshot(ref, state, anchor_message_uid="b", trigger_type="force",
-                                runtime_profile="NOTING")
-    assert db.noting_force_snapshot_since_boundary(ref) is True
+    next_admission = db.noting_admit(ref, "b", kind="force")
+    assert isinstance(next_admission, int)
+    assert db.noting_admission(next_admission)["compression_interval_id"] == "sum"
+    assert db.noting_admission(admission)["compression_interval_id"] == "conversation_start"
