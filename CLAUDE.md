@@ -20,10 +20,11 @@
 | C5 | 主会话已review接收；c5-report.md | C1 93场景、C5 34场景有通过证据；三Schema和三Prompt与07静态逐字一致；时间秒精度单节点由原owner补证 |
 | C6 | 主会话已review接收；c6-report.md | C3 47、C6 30独立场景有通过证据；原生append_messages_batch事务prepare_rows，先持久化后live，实际携带与成功响应ACK；正式caller交C9-S |
 | C7 | 主会话已review接收；c7-report.md | 63独立场景有通过证据；正式manual/auto与成功boundary接线交C9-H |
-| C8 | local_environment实施pointer Framework | C1事务接口与C4 Proposal；独占test_r3_framework.py及test_framework_message_boundaries.py；不改test_noting_child |
-| C9-H | c4_config_prompt：正式host生命周期 | 独占turn_context/preflight、context_compaction_request、conversation_compression/manual、turn_api_call/finalizer、run_agent._sync_external_memory_for_turn、hermes_state_compression及hermes_state_messages.archive_and_compact成功事务、tui_gateway/session_compression；新增test_r3_host_wiring；负责唯一联合准备、成功boundary、空响应不ACK、completed/failed归档gate |
-| C9-S | personal_provider：工具surface/dispatch与投递caller | 独占noting_surface/hosts、inline_tool_executors/tool_executor、model_tools/toolsets/registry/tool_result_storage/budget_config、session_persistence._db_flush_write、gateway/secretary_reminders及run_agent_cache；新增wiring及旧surface/hosts测试；不与C9-H交叉 |
-| C10 | 待接口接线完成后分域收口 | 旧投递3文件及reminder_runtime夹具、Notebook/child旧tests、个人test_personal/test_security需按新契约维护；不复活旧alias、不重复本轮有效测试 |
+| C8 | 主会话已review接收；c8-report.md | 59场景有通过证据；pointer核验/durable/live同事务与既有锁，完整正文与严格超限Proposal；C5时间秒精度1节点通过 |
+| C9-H | c4_config_prompt：正式host生命周期 | 独占turn_context/preflight、context_compaction_request、conversation_compression/manual、turn_api_call/finalizer、codex_runtime仅通用sync参数、run_agent._sync_external_memory_for_turn、hermes_state_compression及hermes_state_messages.archive_and_compact成功事务、tui_gateway/session_compression；新增test_r3_host_wiring；负责唯一联合准备、成功boundary、空响应不ACK、completed/failed归档gate |
+| C9-S | personal_provider：工具surface/dispatch与投递caller | 独占noting_surface/hosts、inline_tool_executors/tool_executor、model_tools/toolsets/registry/tool_result_storage/budget_config、notebook_tool与noting_memo_tool退出、session_persistence._db_flush_write、gateway/secretary_reminders及run_agent_cache；新增wiring及旧surface/hosts测试；不与C9-H交叉 |
+| C10-A | local_environment：C2首次运行/health修及Notebook/child旧tests收口 | 独占C2的session_history_tool/history_candidates/conversation_history sibling、r3_history；旧Notebook/child 11文件及tools/test_session_history_truncation、identity；保留有效保障、退出旧契约，不重跑已通过新组 |
+| C10-B/P | 待分域收口 | 旧投递3文件及reminder_runtime夹具、个人test_personal/test_security；不复活旧alias、不重复本轮有效测试 |
 | P1/P2/P3 | 主会话已review接收个人线并提交57d0abb854f4；personal-report.md | 46独立用例通过；真实SessionDB/MemoryManager+本地HTTP fixture，P2基本模拟通过；主会话已review，公共finalizer gate与历史旧测试仍待收口 |
 | L0 | 环境已交回；yaml问题是个人脚本旧导入，P3 owner修复 | 不跑产品测试；不改锁或裸装依赖 |
 | 门禁 | 尚未启动；主会话已制定validation.md全范围15组场景 | 集成收敛后Astra/high Verification；主会话制定Validation、6.1/high执行 |

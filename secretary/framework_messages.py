@@ -22,6 +22,9 @@ class _QueuedFrameworkMessage:
     conversation_ref: str
     row: dict
     producer: str | None = None
+    snapshot_id: str | None = None
+    termination: dict | None = None
+    summary: str | None = None
 
     def __iter__(self):
         yield self.conversation_ref
@@ -127,7 +130,8 @@ def _display_committed_row(parent, row):
                 logger.warning("Framework timeline presentation failed", exc_info=True)
 
 
-def append_runtime_row(parent, messages, row, *, expected_conversation_ref=None):
+def append_runtime_row(parent, messages, row, *, expected_conversation_ref=None,
+                       snapshot_id=None, termination=None, summary=None):
     """Use native flush/dedup so the live row and its durable row have one identity."""
     from agent.context_compressor import _DB_PERSISTED_MARKER
     from agent.transcript_repair import sync_flushed_message_markers
@@ -149,7 +153,29 @@ def append_runtime_row(parent, messages, row, *, expected_conversation_ref=None)
         # Native flush may adopt a same-Conversation compression child. Freeze its
         # resulting physical target rather than reading mutable parent fields later.
         session_id = parent.session_id
-        append_message(messages, row)
+        if snapshot_id is None:
+            append_message(messages, row)
+        settings = None
+        if snapshot_id is not None:
+            from secretary.noting_scope import settings_for_db
+            settings = settings_for_db(db)
+
+        def prepare_completion(conn, target_session_id, _rows):
+            from secretary.noting_notifications import SupersededNotingResult, completion_body
+            from pathlib import Path
+
+            snapshot = db.notebook_snapshot_if_current_conn(conn, expected_conversation_ref, snapshot_id)
+            if snapshot is None:
+                raise SupersededNotingResult("The pending Noting Snapshot has been superseded")
+            audit = db.notebook_snapshot_audit_conn(conn, snapshot_id)
+            if audit["termination"] != termination:
+                raise RuntimeError("Noting completion audit differs from the committed Snapshot")
+            body = completion_body(snapshot, termination=termination, summary=summary,
+                                   settings=settings, profile_home=Path(db.db_path).parent)
+            row["content"] = build_framework_message_wrapper(body)
+            row["display_metadata"]["display_text"] = body
+            row["timestamp"] = snapshot["created_at"]
+
         def record_carrier(conn, target_session_id, _rows):
             if expected_conversation_ref is not None:
                 binding = conn.execute(
@@ -162,6 +188,15 @@ def append_runtime_row(parent, messages, row, *, expected_conversation_ref=None)
                         or parent.session_id != target_session_id
                         or binding is None or binding[0] != expected_conversation_ref):
                     raise RuntimeError("Framework target no longer belongs to its runtime")
+            if snapshot_id is not None:
+                from secretary.noting_notifications import SupersededNotingResult
+                if db.notebook_snapshot_if_current_conn(conn, expected_conversation_ref, snapshot_id) is None:
+                    raise SupersededNotingResult("The pending Noting Snapshot has been superseded")
+                # The DB write lock orders this live append with all Snapshot
+                # commits. The outer framework/persist locks hide retry drafts
+                # from Main; on rollback the live row is removed before release.
+                if not any(message is row for message in messages):
+                    append_message(messages, row)
             for rid in (row.get("display_metadata") or {}).get("reminder_ids", []):
                 conn.execute("UPDATE secretary_pending_reminders SET carrier_content=?, carrier_message_uid=? "
                              "WHERE reminder_id=? AND status='pending'",
@@ -174,9 +209,13 @@ def append_runtime_row(parent, messages, row, *, expected_conversation_ref=None)
                 turn_lease_holder=getattr(parent, "_active_session_turn_lease_holder", None),
                 turn_lease_ttl_seconds=getattr(parent, "_active_session_turn_lease_ttl_seconds", 300.0),
                 before_commit=record_carrier,
+                **({"prepare_rows": prepare_completion} if snapshot_id is not None else {}),
             )
         except BaseException:
-            messages.remove(row)
+            for index, message in enumerate(messages):
+                if message is row:
+                    del messages[index]
+                    break
             raise
         sync_flushed_message_markers([row], [row])
         row[_DB_PERSISTED_MARKER] = True
@@ -186,8 +225,9 @@ def _runtime_valid(parent):
     from secretary.noting_runtime import is_main_conversation_agent
     db = getattr(parent, "_session_db", None)
     ref = getattr(parent, "_secretary_conversation_ref", None)
-    from secretary.reminder_request import injection_eligible
-    return bool(db is not None and ref and injection_eligible(parent) and is_main_conversation_agent(parent)
+    return bool(db is not None and ref and is_main_conversation_agent(parent)
+                and not getattr(parent, "_secretary_noting_child", False)
+                and not getattr(parent, "_secretary_noting_profile", None)
                 and isinstance(getattr(parent, "_session_messages", None), list))
 
 
@@ -214,7 +254,8 @@ def retire_queued_force_notices(parent, db, conversation_ref, captured):
             pending[:] = [message for message in pending if id(message) not in expired]
 
 
-def publish_framework_message(parent, body, *, display_metadata=None, expected_conversation_ref=None, _producer=None):
+def publish_framework_message(parent, body, *, display_metadata=None, expected_conversation_ref=None, _producer=None,
+                              _snapshot_id=None, _termination=None, _summary=None):
     """Publish only through the owning runtime; never start a Turn or durable pending work."""
     with _lock(parent):
         if not _runtime_valid(parent):
@@ -226,7 +267,7 @@ def publish_framework_message(parent, body, *, display_metadata=None, expected_c
                "timestamp": time.time(), "display_kind": "process_complete",
                "display_metadata": {"display_text": str(body), **dict(display_metadata or {})}}
         vars(parent).setdefault("_secretary_framework_messages", []).append(
-            _QueuedFrameworkMessage(conversation_ref, row, _producer))
+            _QueuedFrameworkMessage(conversation_ref, row, _producer, _snapshot_id, _termination, _summary))
     flush_framework_messages(parent)
     return True
 
@@ -271,9 +312,51 @@ def flush_framework_messages(parent):
         for message in rows:
             try:
                 append_runtime_row(parent, parent._session_messages, message.row,
-                                   expected_conversation_ref=message.conversation_ref)
+                                   expected_conversation_ref=message.conversation_ref,
+                                   snapshot_id=message.snapshot_id, termination=message.termination,
+                                   summary=message.summary)
                 written += 1
                 _display_committed_row(parent, message.row)
-            except Exception:
-                logger.warning("Framework tail write failed", exc_info=True)
+            except Exception as exc:
+                from secretary.noting_notifications import SupersededNotingResult
+                if isinstance(exc, SupersededNotingResult):
+                    logger.debug("Superseded Noting Framework carrier discarded")
+                else:
+                    logger.warning("Framework tail write failed", exc_info=True)
         return written
+
+
+def publish_noting_completion(parent, commit_result, *, termination, summary):
+    """Queue only the Snapshot selected by this successful commit transaction.
+
+    The queue retains its Snapshot ID, not an unconditional rendered body. Actual
+    content preparation, pointer check and live append share the native write
+    transaction while holding framework -> persist -> DB locks. DB-only Snapshot
+    commits never acquire the host locks, so there is no reverse lock order.
+    """
+    if (not isinstance(commit_result, dict) or commit_result.get("pointer_changed") is not True
+            or not isinstance(commit_result.get("snapshot_id"), str)
+            or commit_result.get("snapshot_id") != commit_result.get("effective_snapshot_id")
+            or not isinstance(termination, dict)
+            or termination.get("type") not in {"finish_noting", "forced", "context_overflow"}
+            or not isinstance(summary, str) or not summary.strip()):
+        return False
+    return publish_framework_message(
+        parent, "", display_metadata={"noting_run_output": True,
+                                      "noting_snapshot_id": commit_result["snapshot_id"]},
+        expected_conversation_ref=getattr(parent, "_secretary_conversation_ref", None),
+        _producer="noting_completion", _snapshot_id=commit_result["snapshot_id"],
+        _termination=dict(termination), _summary=summary,
+    )
+
+
+def publish_noting_failure(parent, *, conversation_ref, specific_reason):
+    """A real no-Snapshot failure is a Framework fact, never a successful receipt."""
+    if not isinstance(specific_reason, str) or not specific_reason.strip():
+        return False
+    from secretary.noting_notifications import failure_body
+    return publish_framework_message(
+        parent, failure_body(conversation_ref, specific_reason),
+        display_metadata={"noting_run_output": True}, expected_conversation_ref=conversation_ref,
+        _producer="noting_failure",
+    )

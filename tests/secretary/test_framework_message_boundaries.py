@@ -2,22 +2,34 @@
 import copy
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
 from agent.message_metadata import append_message, format_user_timestamp_marker
 from secretary import noting_runtime as rt
 from secretary.noting_scope import owning_db_scope
-from tests.secretary.test_noting_child import _tool_response, mock_response, make_agent
+from tests.secretary.test_noting_child import _tool_response, mock_response as _native_response, make_agent
 
 pytest_plugins = ['tests.secretary.test_noting_child']
 
+def mock_response(content):
+    """The fake transport provides real usage input for the new Idle length gate."""
+    result = _native_response(content)
+    result.usage = SimpleNamespace(prompt_tokens=8000, completion_tokens=10, total_tokens=8010)
+    return result
+
+
 
 @pytest.fixture(autouse=True)
-def profile(db):
+def profile(db, stub_client, parent):
     with owning_db_scope(db):
         (Path(db.db_path).parent / 'config.yaml').write_text(
-            'noting:\n  enabled: true\n  idle_delay_seconds: 3600\n')
+            'noting:\n  enabled: true\n  idle:\n    enabled: true\n    delay_seconds: 3600\n    threshold_tokens: 1000\n')
+        parent.context_compressor.update_from_response({'prompt_tokens': 8000})
+        # Framework tests keep native compaction as a controlled boundary; its
+        # implementation/interval transition is independently owned by C7.
+        parent.request_context_compaction = lambda **kwargs: SimpleNamespace(status='cooldown')
         yield
         from secretary.noting_timers import cancel_idle_timer
         cancel_idle_timer(db, db.resolve_conversation_ref('S17'))
@@ -31,7 +43,8 @@ def _produce(parent, db, stub_client, monkeypatch, kind):
     rt.bind_main_runtime(parent)
     if kind == 'finish':
         db.noting_idle_turn_finished(ref, 1000, due_at=1001)
-        decision = rt.try_admit_idle(db, ref, now=2000)
+        from secretary.noting_policy import measurement_from_agent
+        decision = rt.try_admit_idle(db, ref, now=2000, measurement=measurement_from_agent(parent, 8000))
         assert decision.action == 'admit'
         stub_client.chat.completions.create.side_effect = [
             _tool_response('finish_noting', {'reason': 'Boundary work complete'}, 'finish'),
@@ -130,18 +143,27 @@ def test_real_producer_rows_survive_main_repair_wire_and_next_idle(
     def spawn(owner, admission, **kwargs):
         frozen.append((admission, freeze_parent_active_prefix(owner, admission.anchor_message_uid)))
     monkeypatch.setattr('secretary.noting_child.spawn_noting_task', spawn)
-    assert rt._run_idle_event(parent, db, ref, now=finished + 3601) == 'admitted'
-    admission, prefix = frozen[0]
+    idle_result = rt._run_idle_event(parent, db, ref, now=finished + 3601)
+    if producer == 'force':
+        # New Force admission owns this interval until successful compaction;
+        # inspect the still-intact real prefix without dispatching a duplicate child.
+        assert idle_result == 'skip:force_interval_occupied' and not frozen
+        prefix = freeze_parent_active_prefix(parent, live[-1]['message_uid'])
+        anchor_uid = prefix[-1]['message_uid']
+    else:
+        assert idle_result == 'admitted'
+        admission, prefix = frozen[0]
+        anchor_uid = admission.anchor_message_uid
     assert any(row.get('message_uid') == human['message_uid'] for row in prefix)
     assert _project(prefix) == _project(live[:len(prefix)])
     assert _project([next(row for row in prefix if row.get('message_uid') == framework['message_uid'])]) == _project([framework])
     with db._read_ctx() as conn:
         human_position = db.anchor_position_conn(conn, ref, human['message_uid'])
-        anchor_position = db.anchor_position_conn(conn, ref, admission.anchor_message_uid)
+        anchor_position = db.anchor_position_conn(conn, ref, anchor_uid)
     assert human_position is not None and human_position <= anchor_position
     evidence = {'producer': producer, 'direction': direction,
           'framework_uid': framework['message_uid'], 'pre_repair_user_uid': arrival_uids[0],
-          'anchor_uid': admission.anchor_message_uid,
+          'anchor_uid': anchor_uid,
           'frozen_uids': [row['message_uid'] for row in prefix],
           'db_uids': [row['message_uid'] for row in rows], 'source_timestamp': human['timestamp'],
           'framework': framework, 'frozen_prefix': prefix, 'wire_messages': requests[0]['messages']}
@@ -457,7 +479,7 @@ def test_framework_display_failures_owner_and_headless_boundaries(parent, db, mo
     from secretary.framework_messages import flush_framework_messages, publish_framework_message
     from tui_gateway import server
     frames = []
-    monkeypatch.setattr(server, '_sessions', {'display-main': {'agent': object()}})
+    monkeypatch.setattr(server, '_sessions', {'display-main': {'agent': SimpleNamespace()}})
     monkeypatch.setattr(server, 'write_json', lambda frame: frames.append(frame) or True)
     parent._print_fn = None
     parent.status_callback = server._agent_cbs('display-main')['status_callback']
