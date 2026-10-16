@@ -1,126 +1,201 @@
-"""Task-local Notebook semantics with immutable, item-bound provenance inheritance."""
+"""Task-bound Notebook service; each task keeps its own base and complete view."""
 
-from secretary.notebook_model import NotebookValidationError, NotebookWorkingState
-from secretary.notebook_schedule import parse_schedule_expression
+from copy import deepcopy
+from datetime import datetime, timezone
+from threading import RLock
+
+from secretary.notebook_contract import NotebookValidationError, parse_time, require_text, validate_source_range
+from secretary.notebook_model import NotebookWorkingState
 
 
-def _source_validator_conn(db, conn, conversation_ref):
-    """New citations must exist in the current History Foreground, including archived raw rows."""
-    on_path = {row["message_identity"]["message_uid"]
-               for row in db.get_history_foreground_conn(conn, conversation_ref)
-               if row.get("message_identity")}
+def _source_checks_conn(db, conn, conversation_ref):
+    """Use the native legal History path, not a separate Notebook evidence index."""
+    history = list(db.get_history_foreground_conn(conn, conversation_ref))
+    on_path = {row["message_identity"]["message_uid"] for row in history if row.get("message_identity")}
+    timestamps = []
+    for row in history:
+        if not row.get("message_identity"):
+            continue
+        value = row.get("timestamp")
+        try:
+            if isinstance(value, (int, float)) and not isinstance(value, bool):
+                timestamps.append(datetime.fromtimestamp(value, timezone.utc))
+            elif isinstance(value, str):
+                timestamps.append(parse_time(value, "timestamp"))
+        except (ValueError, OverflowError, OSError):
+            # Unknown evidence time is not manufactured from operation time.
+            continue
 
-    def valid_source(source):
+    def valid_identity(source):
         return (isinstance(source, dict) and source.get("conversation_ref") == conversation_ref
                 and source.get("message_uid") in on_path)
 
-    return valid_source
+    def valid_range(source_range):
+        start, end = validate_source_range(source_range)
+        return any(start <= timestamp <= end for timestamp in timestamps)
+
+    return valid_identity, valid_range
+
+
+def _source_validator_conn(db, conn, conversation_ref):
+    return _source_checks_conn(db, conn, conversation_ref)[0]
 
 
 def _inherited_sources_conn(conn, conversation_ref, entry, *, exact_version=False):
     from secretary.notebook_items import item_entry, item_row_conn, source_basis_conn
 
-    row = item_row_conn(conn, entry["entry_id"])
+    row = item_row_conn(conn, entry["version_id"])
     if exact_version and entry != item_entry(row, conversation_ref):
-        raise ValueError(f"Notebook entry differs from immutable version: {entry['entry_id']}")
+        raise ValueError("Notebook entry differs from its immutable version")
     return source_basis_conn(conn, conversation_ref, row, entry) is not None
 
 
 def validate_snapshot_state_conn(db, conn, conversation_ref, payload):
-    """Recheck new citations in the commit transaction; inherited citations stay item-bound."""
-    return NotebookWorkingState(
-        conversation_ref, payload,
-        validate_source_identity=_source_validator_conn(db, conn, conversation_ref),
+    """Revalidate versions, provenance and references in the commit transaction."""
+    valid_identity, valid_range = _source_checks_conn(db, conn, conversation_ref)
+    state = NotebookWorkingState(
+        conversation_ref, payload, validate_source_identity=valid_identity, validate_source_range=valid_range,
         validate_inherited_sources=lambda entry: _inherited_sources_conn(
             conn, conversation_ref, entry, exact_version=True),
     ).snapshot_state()
+    from secretary.notebook_items import snapshot_item_ids_conn
+    snapshot_item_ids_conn(conn, conversation_ref, state)
+    return state
 
 
 class NotebookStore:
-    """The Noting runtime's semantic control surface; never a raw JSON or SQL replacement."""
+    """C5's task-local service, not a Main tool or an editable global Notebook.
 
-    def __init__(self, db, conversation_ref, *, trigger_type="idle", runtime_profile="NOTING",
-                 parse_schedule=parse_schedule_expression):
-        if db is None or not isinstance(conversation_ref, str) or not conversation_ref:
-            raise NotebookValidationError("A Notebook Store requires an owning DB and Conversation Ref")
+    Lock order: caller's task lock (pass it as ``lock``) -> SessionDB transaction.
+    No conn helper reacquires a task lock. Host capability/global switch and
+    admission checks remain runner responsibilities; commit rechecks local state
+    and Anchor. There is no reload/whole-view replacement or old edit/schedule API.
+    """
+
+    def __init__(self, db, conversation_ref, *, anchor_message_uid, trigger_type="idle",
+                 runtime_profile="NOTING", lock=None, clock=None):
+        if db is None:
+            raise NotebookValidationError("An owning SessionDB is required.")
+        require_text(conversation_ref, "conversation_ref")
+        require_text(anchor_message_uid, "anchor_message_uid")
+        from hermes_state_secretary_notebook import TRIGGER_TYPES, RUNTIME_PROFILES
+        if trigger_type not in TRIGGER_TYPES or runtime_profile not in RUNTIME_PROFILES:
+            raise NotebookValidationError("Invalid Noting trigger or runtime profile.")
         self._db = db
         self.conversation_ref = conversation_ref
         self.trigger_type = trigger_type
         self.runtime_profile = runtime_profile
-        self._parse_schedule = parse_schedule
-        self._state = None
-        self.load()
+        self.lock = lock if lock is not None else RLock()
+        self._anchor_message_uid = anchor_message_uid
+        self._commit_result = None
+        with self.lock, db._read_ctx() as conn:
+            current = db.notebook_current_conn(conn, conversation_ref)
+            if anchor_message_uid not in db._notebook_anchor_positions_conn(conn, conversation_ref):
+                raise NotebookValidationError("The frozen Anchor is unavailable.", code="source_unavailable")
+            self._base_snapshot_id = current["snapshot_id"] if current is not None else None
+            # Hydrate by the captured immutable ID. A second pointer read could
+            # combine A's base_snapshot_id with B's payload under concurrency.
+            payload = (None if self._base_snapshot_id is None else
+                       db.notebook_snapshot_audit_conn(conn, self._base_snapshot_id)["payload"])
+            valid_identity, valid_range = _source_checks_conn(db, conn, conversation_ref)
+            self._state = NotebookWorkingState(
+                conversation_ref, payload, lock=self.lock, clock=clock,
+                validate_source_identity=valid_identity, validate_source_range=valid_range,
+                validate_inherited_sources=lambda entry: _inherited_sources_conn(
+                    conn, conversation_ref, entry, exact_version=True),
+            )
+        # Subsequent operations check the current legal path, not a startup cache.
+        self._state._validate_source_identity = self._valid_source
+        self._state._validate_source_range = self._valid_range
+        self._state._validate_inherited_sources = self._inherited_sources
+        self._state._insert_version = self._insert_version
 
-    def load(self):
-        """(Re)build the working state from the current committed Snapshot; none starts empty."""
-        with self._db._read_ctx() as conn:
-            payload = self._db.notebook_snapshot_state_conn(conn, self.conversation_ref)
+    @property
+    def base_snapshot_id(self):
+        return self._base_snapshot_id
 
-        self._state = NotebookWorkingState(
-            self.conversation_ref, payload, validate_source_identity=self._valid_source,
-            validate_inherited_sources=self._inherited_sources,
-            parse_schedule=self._parse_schedule, insert_version=self._insert_version)
-        return self._state.show()
+    @property
+    def coverage(self):
+        return {"anchor_message_uid": self._anchor_message_uid}
 
     def _valid_source(self, source):
-        # Source input is checked when the operation runs, not against the task-load path.
         with self._db._read_ctx() as conn:
-            return _source_validator_conn(self._db, conn, self.conversation_ref)(source)
+            return _source_checks_conn(self._db, conn, self.conversation_ref)[0](source)
+
+    def _valid_range(self, source_range):
+        with self._db._read_ctx() as conn:
+            return _source_checks_conn(self._db, conn, self.conversation_ref)[1](source_range)
 
     def _inherited_sources(self, entry):
         with self._db._read_ctx() as conn:
             return _inherited_sources_conn(conn, self.conversation_ref, entry)
 
-    def _insert_version(self, entry, previous_id, inherit_sources):
+    def _insert_version(self, entry, previous_version_id):
         from secretary.notebook_items import insert_item_conn, item_row_conn, source_basis_conn
 
         def insert(conn):
             basis = None
-            if inherit_sources and previous_id is not None:
-                basis = source_basis_conn(conn, self.conversation_ref, item_row_conn(conn, previous_id), entry)
+            if previous_version_id is not None:
+                basis = source_basis_conn(conn, self.conversation_ref,
+                                          item_row_conn(conn, previous_version_id), entry)
             if basis is None:
-                valid = _source_validator_conn(self._db, conn, self.conversation_ref)
-                if not all(valid(source) for source in entry.get("source_message_identities", [])):
-                    raise NotebookValidationError("Source Message Identity is not valid on the current path")
-            return insert_item_conn(conn, self.conversation_ref, entry, previous_id, source_basis_id=basis)
+                valid_identity, valid_range = _source_checks_conn(self._db, conn, self.conversation_ref)
+                if (not all(valid_identity(source) for source in entry["source_message_identities"])
+                        or (entry["source_time_range"] is not None and not valid_range(entry["source_time_range"]))):
+                    raise NotebookValidationError(
+                        "The source left the authorized current path before the write.", code="source_unavailable",
+                        next_action="Locate current evidence; this operation did not change the working Notebook.",
+                    )
+            return insert_item_conn(conn, self.conversation_ref, entry, previous_version_id, source_basis_id=basis)
 
         return self._db._execute_write(insert)
 
-    def snapshot_state(self) -> dict:
+    def snapshot_state(self):
         return self._state.snapshot_state()
 
-    def show(self) -> dict:
-        """The active task-local four-section Agent view; archive versions stay internal."""
+    def show(self):
+        """Complete current payload only; no base reload, publication or time renewal."""
         return self._state.show()
 
-    def create(self, entry_type, fields, *, status=None, source_message_identities=None,
-               source_time_range=None, expression=None, delivery_mode=None) -> dict:
-        return self._state.create(entry_type, fields, status=status,
-                                  source_message_identities=source_message_identities,
-                                  source_time_range=source_time_range, expression=expression,
-                                  delivery_mode=delivery_mode)
+    def working_view(self):
+        with self.lock:
+            return {"success": True, "conversation_ref": self.conversation_ref, "view_kind": "working",
+                    "base_snapshot_id": self._base_snapshot_id, "coverage": self.coverage, "payload": self.show()}
 
-    def edit(self, entry_id, fields, *, source_message_identities=None, source_time_range=None) -> dict:
-        return self._state.edit(entry_id, fields, source_message_identities=source_message_identities,
-                                source_time_range=source_time_range)
-
-    def get(self, entry_id) -> dict:
+    def get(self, entry_id):
         return self._state.get(entry_id)
 
-    def archive(self, entry_id) -> dict:
-        return self._state.archive(entry_id)
+    def create(self, entry_type, fields, *, status=None, relations=None,
+               source_message_identities=None, source_time_range=None):
+        return self._state.create(entry_type, fields, status=status, relations=relations,
+                                  source_message_identities=source_message_identities, source_time_range=source_time_range)
 
-    def transition_status(self, entry_id, status) -> dict:
-        return self._state.transition_status(entry_id, status)
+    def update(self, entry_id, changes):
+        return self._state.update(entry_id, changes)
 
-    def schedule_update(self, entry_id, expression, *, delivery_mode=None) -> dict:
-        return self._state.schedule_update(entry_id, expression, delivery_mode=delivery_mode)
+    def archive(self, entry_id, reason):
+        return self._state.archive(entry_id, reason)
 
-    def schedule_cancel(self, entry_id) -> dict:
-        return self._state.schedule_cancel(entry_id)
+    def maintain(self, args):
+        return self._state.maintain(args)
 
-    def commit(self, anchor_message_uid) -> str:
-        """Commit this task's complete state as one Snapshot; a refusal keeps state and pointer."""
-        return self._db.notebook_commit_snapshot(
-            self.conversation_ref, self._state.snapshot_state(), anchor_message_uid=anchor_message_uid,
-            trigger_type=self.trigger_type, runtime_profile=self.runtime_profile)
+    def freeze(self):
+        return self._state.freeze()
+
+    def commit(self, *, termination):
+        """Return I-N's transaction result; the runner calls after the native Turn.
+
+        The Anchor is bound at startup, never a model-selected/latest UID. Failed
+        commit keeps the complete work. Successful repeated calls return the same
+        receipt, without publishing another Snapshot or emitting another event.
+        """
+        with self.lock:
+            if self._commit_result is not None:
+                return deepcopy(self._commit_result)
+            result = self._db.notebook_commit_snapshot_result(
+                self.conversation_ref, self.snapshot_state(), anchor_message_uid=self._anchor_message_uid,
+                trigger_type=self.trigger_type, runtime_profile=self.runtime_profile, termination=termination,
+            )
+            self._state.freeze()
+            self._commit_result = deepcopy(result)
+            return deepcopy(result)
