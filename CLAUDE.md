@@ -37,7 +37,9 @@
 
 - R3-F09真实Scheduler目录缺失已由主会话review接收单点catalog修复，正式TUI四开关及热关闭等6项PASS；真实复测待执行。C10-T六旧文件已收口，最终有效并集92项PASS；首轮60 PASS／17 FAIL／10 setup ERROR保留。R3-F10 External通知owner重读由主会话只补传现有ref，原失败及owner/suppression六项定向通过。F08b冷恢复human_only与正常回复合并已反证并修复；R3-F13原生/notebook误显Snapshot/anchor ID已修正，原CLI失败、human/model投影及Framework三项PASS。
 
-- R3-F11／F12：真实原生成功压缩复用UID时漏记新interval；Force父尾为user时Noting任务被并入冻结消息。local_environment首包62项PASS；F11主会话review接收，C10-T另四项通过。F12首次review发现child时钟重做父历史清理，补四个真实native RED后回修；主会话已review接收累计74项有效证据，真实复测待统一重启；不能用文本包含替代完整消息前缀。
+- R3-F11／F12：真实原生成功压缩复用UID时漏记新interval；Force父尾为user时Noting任务被并入冻结消息。local_environment首包62项PASS；F11主会话review接收，C10-T另四项通过。F12首次review发现child时钟重做父历史清理，补四个真实native RED后回修；主会话已review接收累计74项有效证据并提交eff3235f6b；追加review确认preflight旧Anchor截断缺口，已补正式preflight RED并窄修，累计有效78项PASS；主会话接收，真实owner继续最后前缀分支；不能用文本包含替代完整消息前缀。
+
+- eff3235真实定向复测首批：F08 busy图片+slash后child六请求前缀一致、F08b cold回复及human_only隔离；F09两deferred单carrier成功ACK、CRUD/instant idle；F11实际新boundary后Force再准入；F13 human/model视图区分已取得正证。忙碌instant、F12专属user尾/续Turn及最终恢复仍待owner完整交回。
 
 - 原生真实模型验证唯一owner为c4_config_prompt，已从C9-S f304b42启动；本轮大型检查尚未执行，集成收敛后统筹一次，修复后仅定向复测。主会话不重复子Agent有效测试。
 

@@ -155,7 +155,7 @@ def freeze_parent_active_prefix(
         raise NotingChildError("The frozen Anchor is not present in the Parent's active context")
     from agent.context_compressor import _DB_PERSISTED_MARKER
 
-    frozen = freeze_parent_replay_prefix(parent, frozen, already_frozen=already_frozen)
+    frozen = freeze_parent_replay_prefix(parent, frozen, source_length=len(source), already_frozen=already_frozen)
     for msg in frozen:
         msg[_DB_PERSISTED_MARKER] = True
     return frozen

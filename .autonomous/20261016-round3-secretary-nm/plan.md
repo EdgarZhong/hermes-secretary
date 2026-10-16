@@ -670,5 +670,5 @@ P2只做基本检查，不重测官方CLI，不做真实NM写入。
 | R3-F09 | 真实Main配置已启用Scheduler但tool_describe返回not_found、tool_search为空，无法登记；07§6.3/8.2 | personal_provider：核对真实CLI/TUI工具构造与catalog，单owner修正确能力供给 | 正式TUI默认factory→native loop→bridge→Store四开关及热关闭等6项PASS，主会话review接收；原用户序列真实复测待完成 |
 | R3-F10 | D01决策后owner切换，通知发布重读新ref而跨Conversation；04§4.5 suppression/owner不变量 | 主会话微小集成修补：把联合触发已捕获ref传到正式发布点；C10-T owner复测 | c10-final-legacy-report.md：原race及owner/Native恢复/并发suppression共6项PASS，主会话review接收 |
 | R3-F11 | 原生成功in-place压缩复用旧assistant UID，漏推进Force interval；07§8.1 | local_environment：在正式成功发布事务识别新boundary，覆盖复用UID及既有summary重复压缩，保持rollback/noop/rewind不释放 | 机制新反例、正式host/state与C10-T四节点通过，主会话review接收；真实原序列复测待完成 |
-| R3-F12 | Force父最后user被child任务拼接修改，完整父消息前缀失真；07§3/8.2与04 C13 | local_environment：在既有中间层冻结/后缀接缝保留每请求完整父前缀，原生路径不变 | 主会话review发现replay缺口后补四个native RED并回修；累计74项有效PASS，最终hash核对接收；真实user尾/续Turn复测待完成 |
+| R3-F12 | Force父最后user被child任务拼接修改，完整父消息前缀失真；07§3/8.2与04 C13 | local_environment：在既有中间层冻结/后缀接缝保留每请求完整父前缀，原生路径不变 | 主会话review发现replay缺口后补四个native RED并回修；累计74项有效PASS已纳eff3235f6b；追加review确认preflight旧Anchor截断缺口，正式RED与窄修后10项通过，累计78项有效证据已接收；真实user尾/续Turn复测待完成 |
 | R3-F13 | 原生/notebook误显示Snapshot/anchor审计ID，04§4.2要求隐藏 | personal_provider：仅修slash renderer两行，不改模型show envelope或Framework | 原CLI失败、独立human/model与Framework三项PASS，主会话review接收 |

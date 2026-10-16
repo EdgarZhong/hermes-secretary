@@ -147,7 +147,7 @@ class FrozenParentPrefix(list):
     """Internal structural copy already normalized at the Parent's own request boundary."""
 
 
-def freeze_parent_replay_prefix(parent, messages, *, already_frozen=False):
+def freeze_parent_replay_prefix(parent, messages, *, source_length, already_frozen=False):
     """Replay-clean only the Parent's historical portion, once at its existing Turn clock."""
     from agent.message_visibility import model_visible_messages
     from agent.replay_cleanup import canonicalize_replay_history
@@ -155,7 +155,9 @@ def freeze_parent_replay_prefix(parent, messages, *, already_frozen=False):
     if not already_frozen:
         current = getattr(parent, "_persist_user_message_idx", None)
         now = getattr(parent, "_current_turn_timestamp", None)
-        split = current if isinstance(current, int) and 0 <= current < len(messages) else 0
+        # Anchor truncation may omit this Turn's not-yet-durable user; prove its
+        # index against the complete source before limiting the historical slice.
+        split = min(current, len(messages)) if isinstance(current, int) and 0 <= current < source_length else 0
         if split and now is not None:
             messages = canonicalize_replay_history(messages[:split], now=now) + messages[split:]
     return FrozenParentPrefix(model_visible_messages(messages))

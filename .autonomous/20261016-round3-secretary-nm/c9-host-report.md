@@ -186,3 +186,20 @@ F12正式`run_noting_task`→同一持久child→原生`run_conversation`→live
 6. **最终hash与增量**：`f11-f12/manifest.json`的`replay_review.final_sha256`给出四个最终完整SHA256，`unchanged_f11`两项均true。相对上次review的完整四文件增量为`replay-review-delta.patch`（SHA256 `b705e9069fb8acf9c07cebf75532260a344ad5a7bb7fa0204731745ed1b9e0b6`）。已用初次base＋初次patch重建上次源文件并逐一核对所有旧manifest hash，不是凭当前HEAD推测增量。第一次review证据保留为`manifest-before-replay-review.json`、`before-replay-review.patch`、`before-replay-review-test.py`；最终全patch/新测试完整源已更新，检查为`replay_check_scoped.py`、`replay-scoped-checks.json`、`replay-checks.log`。
 
 7. **停止**：四路径生产/测试已停止写入，无stage/commit、派生、round3/真实模型或大型检查。交root按独立增量一次review并集成，之后原真实owner按原失败序列复测。最终regression文档与目录仍归c4，本owner不再写。
+
+
+## F12 review 追加回修：Anchor 早于当前未持久化 user
+
+1. **条款与真实接缝**：沿用04 C13／07 §3每请求冻结父前缀合同。普通Main输入在`turn_context`先append user并登记索引，`run_turn_start_compaction`的preflight Force早于1229的正式user持久化；`reminders.persist_active_before_compaction`仅提前持久Active Reminder。正式admission从DB最新合法Full Foreground取Anchor，没有保证Anchor晚于当前user。故旧assistant Anchor合法，不能把截断后越界的current直接解释为原生“无current”。
+
+2. **实际变更**：相对已review并集成的`eff3235f6bc1ee53b5d29b5210ad397024959df6`，仅改`agent/cache_parity.py`与`secretary/noting_child.py`窄freeze接口。内部helper新增必传`source_length`，先验证父current属于完整source，再以`min(current,len(truncated_prefix))`确定历史清理边界。完整source索引None／末尾／越界仍split0；FrozenParentPrefix后台handoff仍不重读父index/clock。没有改变admission、原生Loop、阈值或父live/durable。
+
+3. **正式路径证据**：新增测试启用真实Parent preflight，控制原生测量返回140K、已解析window200K/auto150K；真实Force policy/admission/sync freeze全部执行。在正式worker调度边界延迟后台运行，断言DB头仍为旧Anchor、新user尚未入库。Parent实际provider请求将历史合成确认改为EXPIRED；旧实现child实际请求仍发原文，取得有效RED。修后在父已改index/clock时执行原worker，五Turn child每请求完整前缀均等于父实际请求截至Anchor，最终成功Snapshot。无真实危险动作，provider返回为受控依赖。
+
+4. **验证与次数**：仅同一新独立测试文件新增四节点及受影响六节点。`anchor-red.log`初轮4F（旧Anchor一项为真实反证；三个无current项因取样停在transport清理前而比较了持久字段，非产品失败）；修正测试取样使用原生transport sanitizer后，`anchor-red-native.log`为**1F/3P**有效RED；生产窄修后`anchor-green.log`为**10P**（新增4＋原四replay模式及两Anchor身份节点）。三个无current反证覆盖None、完整source末尾和完整source越界，走原生`build_api_messages`＋transport清理与真实持久child请求对比。3次canonical runner，runner wall分别3.1／2.9／5.4秒，共11.4秒。既有74项证据按影响复用，新有效并集78；未复跑F11／C10-T／旧74全集。三变化路径Ruff PASS，冻结scoped health相对eff3235为**0 blocking/0 advisory**，diff-check PASS；完整十类门禁未启动。
+
+5. **缺口**：本次正式preflight反例与无current／后台handoff边界均已关闭。真实DeepSeek复测仍由c4原owner执行；本包没有真实模型或cache命中结论。
+
+6. **接口及manifest**：只新增内部`freeze_parent_replay_prefix(..., *, source_length, already_frozen=False)`参数，唯一正式freeze caller传完整source长度；公开产品接口不变。三路径最终hash、精确命令／选择器／日志hash／检查计时见ignored `f11-f12/manifest.json`的`anchor_review`；相对eff3235的完整三路径增量为`anchor-review-delta.patch`。上次manifest保存在`manifest-before-anchor-review.json`，避免覆盖上一轮review历史。
+
+7. **停止与后续**：生产／测试停止写入，交root集中review／统一集成，再由c4按真实失败序列复测。不stage／commit，不派生、不操作round3、不写最终regression目录或启动大型检查。

@@ -279,3 +279,89 @@ def test_frozen_prefix_marker_never_bypasses_anchor_validation(native_parent, al
         source = FrozenParentPrefix(source)
     with pytest.raises(NotingChildError, match='Anchor'):
         freeze_parent_active_prefix(parent, 'missing-anchor', source)
+
+
+def test_preflight_force_freezes_replay_before_unpersisted_current_user(native_parent, database, monkeypatch):
+    import time
+    from types import SimpleNamespace
+    from agent import turn_context
+    from agent.memory_provider import spawn_context_thread
+
+    parent, client = native_parent
+    now = time.time()
+    database.append_messages_batch('parent', [
+        {'role': 'user', 'content': 'Synthetic quoted sample: confirm reboot', 'timestamp': now - 120},
+        {'role': 'assistant', 'content': 'Historical reply; no action requested.', 'message_uid': 'old-anchor'}])
+    parent._session_messages = database.get_messages_as_conversation('parent')
+    parent.compression_enabled = True
+    parent.context_compressor.context_length = 200_000
+    parent.context_compressor.threshold_tokens = 150_000
+    monkeypatch.setattr(turn_context, '_should_run_preflight_estimate', lambda *a: True)
+    monkeypatch.setattr(turn_context, '_resolved_preflight_request_tokens', lambda *a: 140_000)
+    pending = []
+    def defer_child(target, **kwargs):
+        if not kwargs.get('name', '').startswith('noting-task-'):
+            return spawn_context_thread(target, **kwargs)
+        # The real spawn has already frozen the admitted DB Anchor, before this scheduler boundary.
+        assert database.get_foreground_anchor('parent')['message_uid'] == 'old-anchor'
+        assert not any('Fresh ordinary input' in str(row['content']) for row in database.get_messages('parent'))
+        return SimpleNamespace(start=lambda: pending.append(target))
+    monkeypatch.setattr('agent.memory_provider.spawn_context_thread', defer_child)
+    wires = []
+    def provider(**kwargs):
+        wires.append(deepcopy(kwargs))
+        return response('Maintained synthetic discussion.')
+    client.chat.completions.create.side_effect = provider
+    result = parent.run_conversation(user_message='Fresh ordinary input; no action requested.',
+                                     conversation_history=parent._session_messages, title_user_message='')
+    assert result['completed'], result
+    assert len(pending) == 1, 'the formal preflight Force must admit and freeze the old durable Anchor'
+    parent_wire = wires.pop(0)
+    current = next(i for i, msg in enumerate(parent_wire['messages'])
+                   if 'Fresh ordinary input' in str(msg.get('content')))
+    expected = parent_wire['messages'][:current]
+    assert any('EXPIRED' in str(msg.get('content')) for msg in expected)
+    parent._persist_user_message_idx = 0
+    parent._current_turn_timestamp = now + 1200
+    pending[0]()
+    assert len(wires) == 5, 'the persistent child must retain the synchronous frozen handoff'
+    for wire in wires:
+        assert wire['messages'][:len(expected)] == expected
+        assert wire['messages'][len(expected)]['content'].startswith('<noting-task>')
+    assert database.notebook_current(parent._secretary_conversation_ref) is not None
+
+
+@pytest.mark.parametrize('current_index', [None, 'source_end', 'outside'])
+def test_complete_source_without_current_keeps_native_replay_boundary(native_parent, database, current_index):
+    import time
+    from agent.turn_context import build_api_messages
+    from agent.transports.chat_completions import _sanitize_message
+    from secretary.noting_child import DEFAULT_NOTING_TASK_INSTRUCTION, run_noting_task
+
+    parent, client = native_parent
+    database.append_messages_batch('parent', [
+        {'role': 'user', 'content': 'Synthetic quoted sample: confirm reboot', 'timestamp': time.time() - 120},
+        {'role': 'assistant', 'content': 'Historical reply; no action requested.', 'message_uid': 'no-current-anchor'},
+        {'role': 'user', 'content': 'Already durable tail.', 'message_uid': 'durable-tail'}])
+    source = database.get_messages_as_conversation('parent')
+    index = len(source) + int(current_index == 'outside') if current_index is not None else None
+    parent._persist_user_message_idx = index
+    parent._current_turn_timestamp = time.time()
+    expected, _system = build_api_messages(parent, source, current_turn_user_idx=index,
+        ext_prefetch_cache='', plugin_user_context='', moa_config=None, active_system_prompt=parent._cached_system_prompt)
+    expected = [_sanitize_message(msg, strip_extra_content=True) or msg for msg in expected[:-1]]
+    assert not any('EXPIRED' in str(msg.get('content')) for msg in expected)
+    wires = []
+    def provider(**kwargs):
+        wires.append(deepcopy(kwargs))
+        return response('No changes needed.')
+    client.chat.completions.create.side_effect = provider
+    ref = parent._secretary_conversation_ref
+    admission = database.noting_admit(ref, 'no-current-anchor', kind='manual')
+    outcome = run_noting_task(parent, admission_id=admission, conversation_ref=ref,
+        anchor_message_uid='no-current-anchor', trigger_type='manual', runtime_profile='NOTING',
+        task_instruction=DEFAULT_NOTING_TASK_INSTRUCTION, admission_timestamp=parent._current_turn_timestamp,
+        parent_active_messages=source)
+    assert outcome.committed, outcome
+    for wire in wires:
+        assert wire['messages'][:len(expected)] == expected
