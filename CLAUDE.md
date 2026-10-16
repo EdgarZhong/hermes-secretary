@@ -10,18 +10,19 @@
 - 门禁：Verification 全新 Astra / high；Validation 文档与场景由主会话直接制定，6.1 / high 独立执行。原计划只到 Develop 的停止限制已被本次完整托管覆盖。
 - 远端全部分支已 fetch 完成（含 upstream）；未集成官方上游新代码。云端 C1/C2/C3 已亲自审读核心实现并分别接入 `0e150cbce8` / `b41c549d4c` / `4022c5b`；这表示源码接收，不表示整链通过。
 - 工作区：公开核心 `codex/round3-local-completion`；初始后端干净。前端既有 dirty 保留、UI 后置。个人 Provider 独立仓库；真实 NM 写入与云端部署未授权。两仓 Actions 已读回关闭；提交自动同步不代表验收。
+- 实测约定（用户最新明确）：真实产品运行、DeepSeek复测、最终验收统一采用 `round3` 隔离 profile（`.hermes-dev/round3-runtime/profiles/round3`；L0 `run-native.py` 已固定此路径）；所有数据库在仓库 ignored 目录。单元测试仍按 runner 创建临时隔离状态；本地 Provider fixture 不连接真实 NM。原 L0 目录仅保留环境准备和证据，不能继续作为另一个实测 profile。
 - 环境：官方 PM `.venv` Python 3.14.7、macOS arm64、现有锁不变；隔离目录 `.hermes-dev/round3-local-20261017-l0/`。DeepSeek 原生 custom/chat_completions 已准备，未开始真实模型运行；既有 Dashboard 保留。详见本轮 `local-environment.md`。
 
 | 包 | 当前 owner／状态 | 独占验证与待办 |
 |---|---|---|
 | C1/C2/C3 | 主会话已 review 并接收云端实现 | C1交C5、C2交收口owner、C3交C6首次定向运行；C2 `_search` 嵌套7层需修 |
 | C4 | 主会话已review接收；c4-report.md | 38场景取得通过；ruff、C4增量health通过；不把全范围C2阻断写成通过 |
-| C5 | local_environment实施child四工具 | 接C1/C2/C4；独占C1+child定向测试 |
-| C6 | 待派：Scheduler投递 | 接C3/C4；顺序获得schedule接纳函数写权；独占C3+delivery测试 |
-| C7 | c4_config_prompt实施联合触发 | C4接口已定；优先移除旧runtime idle_task_profile/auto_compact消费者；独占joint测试 |
+| C5 | local_environment实施child四工具 | 接C1/C2/C4；获授NotebookStore显式base_snapshot_id最小补丁；独占C1+child定向测试 |
+| C6 | personal_provider实施Scheduler投递 | 已顺序获得C3 schedule接纳函数及C3本地域修补权；独占C3+delivery测试 |
+| C7 | c4_config_prompt实施联合触发；获授test_noting_runtime.py/test_noting_timers.py旧用例更新 | C4接口已定；优先移除旧runtime idle_task_profile/auto_compact消费者；独占joint测试 |
 | C8 | 待派：pointer Framework | C1事务接口与C4 Proposal；独占framework测试 |
 | C9/C10 | 待派正式接线与收口 | 包含通用external memory sync的completed/failed gate；独占wiring/legacy测试 |
-| P1/P2/P3 | personal_provider：接收与本地修复 | P1 30测通过；P3首次13测有2问题在修，使用本地fixture，不真实NM；P2仅基本检查 |
+| P1/P2/P3 | 主会话已review接收个人线；personal-report.md | 46独立用例通过；真实SessionDB/MemoryManager+本地HTTP fixture，P2基本模拟通过；主会话已review，公共finalizer gate与历史旧测试仍待收口 |
 | L0 | 环境已交回；yaml问题是个人脚本旧导入，P3 owner修复 | 不跑产品测试；不改锁或裸装依赖 |
 | 门禁 | 尚未启动 | 集成收敛后Astra/high Verification；主会话制定Validation、6.1/high执行 |
 
