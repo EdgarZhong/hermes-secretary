@@ -125,17 +125,15 @@ def _prime_owner_runtime(runner, db, conversation_ref, route, source):
     from gateway.run_agent_cache import _first_agent
     from hermes_cli.config import load_config_readonly
     from hermes_cli.config_read_errors import FailedConfigRead
-    from secretary.noting_capability import prime_cold_main_capability
-    from secretary.noting_policy import configuration_guidance, noting_settings_from_config
+    from secretary.noting_policy import configuration_guidance, scheduler_settings_from_config
     from secretary.noting_scope import bind_main_runtime, owning_db_scope
 
     with owning_db_scope(db):
         config = load_config_readonly()
-        settings = noting_settings_from_config(config)
+        settings = scheduler_settings_from_config(config)
         if settings.configuration_failure:
             logger.warning("%s", configuration_guidance(settings.configuration_failure))
-        if (isinstance(config, FailedConfigRead) or not settings.enabled
-                or not db.notebook_local_enabled(conversation_ref)):
+        if isinstance(config, FailedConfigRead) or not settings.enabled:
             return False
         key = str(route.get("session_key") or "")
         model, runtime = runner._resolve_session_agent_runtime(source=source, session_key=key, user_config=config)
@@ -151,7 +149,10 @@ def _prime_owner_runtime(runner, db, conversation_ref, route, source):
                 and Path(getattr(getattr(parent, "_session_db", None), "db_path", "")).resolve()
                 == Path(db.db_path).resolve()):
             return bind_main_runtime(parent)
-        return prime_cold_main_capability(db, conversation_ref, model, runtime)
+        # Scheduler needs the existing Main route, not Noting's context-window capability.
+        # The caller already proved source/profile/generation and this resolver is Hermes's
+        # normal target runtime resolver. No cold Agent or Noting admission is constructed.
+        return bool(model and isinstance(runtime, dict))
 
 
 async def _prime_due_capabilities(runner, db, profile, home):
@@ -292,6 +293,7 @@ async def _deliver_active_claim(runner, db, claim, profile, home) -> None:
             "conversation_ref": claim["conversation_ref"],
             "schedule_id": claim["schedule_id"],
             "claim_token": claim["claim_token"],
+            "generation": claim["generation"], "sequence": claim["sequence"],
             "source_timestamp": resolved["source_timestamp"],
             "next_run_at": claim["next_run_at"],
             "content": resolved["content"],
@@ -327,7 +329,8 @@ def _event_claim(event):
     if not reminder:
         return None
     return {"conversation_ref": reminder.get("conversation_ref"), "schedule_id": reminder.get("schedule_id"),
-            "claim_token": reminder.get("claim_token"), "next_run_at": reminder.get("next_run_at", reminder.get("source_timestamp"))}
+            "claim_token": reminder.get("claim_token"),
+            "generation": reminder.get("generation"), "sequence": reminder.get("sequence"), "next_run_at": reminder.get("next_run_at", reminder.get("source_timestamp"))}
 
 
 def admit_secretary_reminder_event(runner, event):
@@ -408,6 +411,7 @@ def convert_busy_reminder_event(runner, event) -> bool:
         "conversation_ref": reminder.get("conversation_ref"),
         "schedule_id": reminder.get("schedule_id"),
         "claim_token": reminder.get("claim_token"),
+        "generation": reminder.get("generation"), "sequence": reminder.get("sequence"),
         "next_run_at": reminder.get("next_run_at", reminder.get("source_timestamp")),
         "reminder_text": reminder.get("content"),
     }

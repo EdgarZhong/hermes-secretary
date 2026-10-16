@@ -2607,8 +2607,7 @@ def invoke_tool(agent, function_name: str, function_args: dict, effective_task_i
         def _execute(next_args: dict) -> Any:
             dispatch_kwargs = dict(
                 tool_call_id=tool_call_id, session_id=agent.session_id or "",
-                turn_id=getattr(agent, "_current_turn_id", "") or "",
-                api_request_id=getattr(agent, "_current_api_request_id", "") or "",
+                turn_id=getattr(agent, "_current_turn_id", "") or "", api_request_id=getattr(agent, "_current_api_request_id", "") or "",
                 enabled_tools=list(agent.valid_tool_names) if agent.valid_tool_names else None,
                 skip_pre_tool_call_hook=True, skip_tool_request_middleware=True,
                 enabled_toolsets=getattr(agent, "enabled_toolsets", None),
@@ -2617,8 +2616,8 @@ def invoke_tool(agent, function_name: str, function_args: dict, effective_task_i
             )
             if skip_tool_execution_middleware:
                 dispatch_kwargs["skip_tool_execution_middleware"] = True
-            import model_tools
-            return model_tools.handle_function_call(function_name, next_args, effective_task_id, **dispatch_kwargs)
+            from tools.secretary_dispatch import scoped_registry_dispatch
+            return scoped_registry_dispatch(agent, function_name, next_args, effective_task_id, **dispatch_kwargs)
     if skip_tool_execution_middleware:
         return _execute(function_args)
     from hermes_cli.middleware import run_tool_execution_middleware
@@ -2634,7 +2633,8 @@ def repair_tool_call(agent, tool_name: str) -> str | None:
     ``TodoTool_tool`` reduces fully, then fuzzy match) before aborting. Returns the repaired
     name if in valid_tool_names, else None."""
     from difflib import get_close_matches
-    if not tool_name:
+    from tools.secretary_dispatch import legacy_tool_removed
+    if not tool_name or legacy_tool_removed(tool_name) is not None:
         return None
     # VolcEngine api/plan leaks XML attribute fragments into tool_use.name (`terminal"
     # parameter="command" ...`); trim at the first quote/angle bracket. Do NOT split on whitespace:
@@ -2649,7 +2649,7 @@ def repair_tool_call(agent, tool_name: str) -> str | None:
         _idx = tool_name.find(_xml_sep)
         if _idx > 0:
             tool_name = tool_name[:_idx]
-    if not tool_name:
+    if not tool_name or legacy_tool_removed(tool_name) is not None:
         return None
     _norm = lambda s: s.lower().replace("-", "_").replace(" ", "_")  # noqa: E731
     _camel_snake = lambda s: re.sub(r"(?<!^)(?=[A-Z])", "_", s).lower()  # noqa: E731

@@ -606,7 +606,7 @@ def _resolve_active_context_length() -> int:
 # =============================================================================
 
 # Intercepted by the agent loop (need agent-level state); dispatch returns a stub error.
-_AGENT_LOOP_TOOLS = {"todo_list", "memory", "session_search", "session_history", "notebook_show", "delegate_task"}
+_AGENT_LOOP_TOOLS = {"todo_list", "memory", "session_search", "conversation_history", "notebook_show", "scheduler", "notebook_maintain", "finish_noting", "delegate_task"}
 
 # Legacy tool-name aliases accepted at every dispatch seam (old sessions/saved
 # prompts keep working); schemas advertise only new names.
@@ -722,7 +722,8 @@ def _dispatch_bridge_tool(function_name: str, function_args: Dict[str, Any],
     except Exception:
         current_defs = []
     from agent.secretary_prompt import apply_scoped_cron_schema_guidance, apply_scoped_cron_search_guidance
-    current_defs = apply_scoped_cron_schema_guidance(current_defs)
+    from tools.secretary_dispatch import filter_tool_definitions
+    current_defs = apply_scoped_cron_schema_guidance(filter_tool_definitions(current_defs))
     args = function_args or {}
     if function_name == ts.TOOL_SEARCH_NAME:
         result = ts.dispatch_tool_search(args, current_tool_defs=current_defs)
@@ -892,6 +893,10 @@ def handle_function_call(
     if not isinstance(function_args, dict):
         function_args = {}
     trace = list(tool_request_middleware_trace or [])
+    from tools.secretary_dispatch import legacy_tool_removed
+    retired = legacy_tool_removed(function_name)
+    if retired is not None:
+        return json.dumps(retired, ensure_ascii=False)
     function_name = _LEGACY_TOOL_ALIASES.get(function_name, function_name)
     ids = _CallIds(task_id, session_id, tool_call_id, turn_id, api_request_id)
     start = time.monotonic()

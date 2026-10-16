@@ -318,7 +318,10 @@ def _db_flush_write(agent, batch_rows: List[Dict[str, Any]], batch_msgs: List[Di
     """One transaction for the turn's new rows: on failure nothing lands and no markers are stamped."""
     if not batch_rows:
         return
-    from secretary.reminders import active_delivery_batch_callback, confirm_active_delivery_batch
+    from secretary.reminders import (
+        active_delivery_batch_callback, active_delivery_prepare_callback, confirm_active_delivery_batch,
+    )
+    prepare = active_delivery_prepare_callback(agent._session_db, batch_msgs, batch_rows)
     callback = active_delivery_batch_callback(agent._session_db, batch_msgs, batch_rows)
     agent._session_db.append_messages_batch(
         session_id=agent.session_id, messages=batch_rows,
@@ -326,6 +329,7 @@ def _db_flush_write(agent, batch_rows: List[Dict[str, Any]], batch_msgs: List[Di
         turn_lease_holder=getattr(agent, "_active_session_turn_lease_holder", None),
         turn_lease_ttl_seconds=getattr(agent, "_active_session_turn_lease_ttl_seconds", 300.0) or 300.0,
         **({"before_commit": callback} if callback is not None else {}),
+        **({"prepare_rows": prepare} if prepare is not None else {}),
     )
     confirm_active_delivery_batch(batch_msgs)
     sync_flushed_message_markers(batch_msgs, batch_rows)

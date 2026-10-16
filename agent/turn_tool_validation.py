@@ -91,6 +91,11 @@ def validate_tool_calls(
     agent._uniquify_tool_call_ids(tool_calls)
     normalize_provider_tool_call_ids(tool_calls)
 
+    from tools.secretary_dispatch import secretary_validation_refusal
+    secretary_refusal = secretary_validation_refusal(agent, assistant_message, finish_reason, messages)
+    if secretary_refusal is not None:
+        return secretary_refusal
+
     # Repair mismatched tool names before validating (model hallucinations).
     repaired_ids = set()
     for tc in tool_calls:
@@ -155,7 +160,7 @@ def validate_tool_calls(
         if isinstance(args, (dict, list)):
             tc.function.arguments = json.dumps(args)
             continue
-        if args is not None and not isinstance(args, str):
+        if not isinstance(args, (str, type(None))):
             tc.function.arguments = args = str(args)
         if not args or not args.strip():
             tc.function.arguments = "{}"

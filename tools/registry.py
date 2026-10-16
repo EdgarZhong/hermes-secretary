@@ -894,6 +894,10 @@ class ToolRegistry:
         self, name: str, args: dict, *, scope: Optional[str] = None, **kwargs) -> str | dict:
         """Execute a tool handler by name: async handlers bridged via ``_run_async()``,
         results normalized, every exception returned as ``{"error": ...}``."""
+        from tools.secretary_dispatch import legacy_tool_removed
+        retired = legacy_tool_removed(name)
+        if retired is not None:
+            return json.dumps(retired, ensure_ascii=False)
         entry = self.get_entry(name, scope=scope)
         if not entry:
             return tool_error(f"Unknown tool: {name}")

@@ -23,7 +23,7 @@ sys.modules.setdefault("telegram.ext", types.ModuleType("telegram.ext"))
 from gateway.platforms.base import Platform, SessionSource, build_session_key  # noqa: E402
 from gateway.platforms.event import MessageEvent, MessageType  # noqa: E402
 from hermes_state import SessionDB  # noqa: E402
-from hermes_state_secretary_schedule import init_secretary_schedule_schema, schedule_sync_conn  # noqa: E402
+from hermes_state_secretary_schedule import init_secretary_schedule_schema  # noqa: E402
 
 import gateway.secretary_reminders as host  # noqa: E402
 from secretary import reminders as secretary_reminders  # noqa: E402
@@ -97,8 +97,8 @@ class _Host:
 
 @pytest.fixture
 def host_env(tmp_path, monkeypatch):
-    home = tmp_path / "profile"
-    home.mkdir()
+    home = tmp_path / "profiles" / "default"
+    home.mkdir(parents=True)
     db = SessionDB(home / "state.db")
     db._execute_write(init_secretary_schedule_schema)
     db.create_session("s1", source="telegram", session_key="peer", profile_name="default")
@@ -114,18 +114,12 @@ def host_env(tmp_path, monkeypatch):
 
 
 def arm_due(db, ref, *, semantics="user_reminder", text="ping the user", entry_id="entry_1"):
-    if semantics == "user_reminder":
-        from tests.secretary.reminder_runtime import arm_native_reminder
-        return arm_native_reminder(db, ref, {"kind": "once", "run_at": iso(-30)}, text, entry_id)
-    row = db._execute_write(lambda conn: schedule_sync_conn(
-        conn, ref, entry_id, active=True, canonical_schedule={"kind": "once", "run_at": iso(-30)},
-        delivery_semantics=semantics, reminder_text=text,
-    ))
-    db._execute_write(lambda conn: conn.execute(
-        "UPDATE secretary_schedule_registry SET next_run_at = ? WHERE schedule_id = ?",
-        (time.time() - 5, row["schedule_id"]),
-    ))
-    return row
+    from secretary.schedules import SchedulerStore
+    route = db.resolve_conversation_route(ref)
+    store = SchedulerStore(db, ref, session_id=route["id"])
+    result = store.create(text, iso(-30), "instant" if semantics == "user_reminder" else "deferred", name=entry_id)
+    assert result["success"], result
+    return dict(db._read_one("SELECT * FROM secretary_schedule_registry WHERE schedule_id=?", (result["schedule"]["schedule_id"],)))
 
 
 def registry(db, schedule_id):
@@ -171,7 +165,7 @@ async def test_scan_queues_passive_reminder_without_any_turn(host_env):
     assert len(items) == 1
     assert items[0]["text"].startswith("<deferred-reminder>\n")
     assert "commitment due" in items[0]["text"]
-    assert registry(db, row["schedule_id"])["state"] == "done"
+    assert registry(db, row["schedule_id"])["state"] == "pending"
 
 
 @pytest.mark.asyncio
@@ -210,7 +204,8 @@ async def test_busy_gate_converts_secretary_reminder_to_pending_not_a_second_tur
         message_type=MessageType.TEXT, source=source, internal=True, allow_gateway_control=False,
         metadata={"secretary_user_reminder": {
             "conversation_ref": ref, "schedule_id": row["schedule_id"],
-            "claim_token": claim["claim_token"], "source_timestamp": claim["next_run_at"],
+            "claim_token": claim["claim_token"],
+            "generation": claim["generation"], "sequence": claim["sequence"], "source_timestamp": claim["next_run_at"],
             "content": "ping the user",
         }},
     )
@@ -218,7 +213,7 @@ async def test_busy_gate_converts_secretary_reminder_to_pending_not_a_second_tur
     assert runner._queued_events == {}  # not a queued future Turn
     items = secretary_reminders.pull_pending(db, ref)
     assert len(items) == 1 and "ping the user" in items[0]["text"]
-    assert registry(db, row["schedule_id"])["state"] == "done"
+    assert registry(db, row["schedule_id"])["state"] == "pending"
 
 
 def test_busy_conversion_helper_ignores_other_events():
@@ -308,18 +303,12 @@ async def test_scan_cancellation_releases_acquired_registry_handle(host_env, mon
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize('rejection', ['global_off', 'local_off', 'admission'])
+@pytest.mark.parametrize('rejection', ['global_off', 'admission'])
 async def test_scan_to_ingress_rechecks_gate_and_requires_native_receipt(host_env, monkeypatch, rejection):
     h, db, ref, adapter, _source = host_env
     row = arm_due(db, ref)
     runner = h.make_runner()
-    if rejection == 'local_off':
-        original = host._spawn_delivery
-        def disable_then_spawn(*args):
-            db.notebook_set_local_enabled(ref, False)
-            return original(*args)
-        monkeypatch.setattr(host, '_spawn_delivery', disable_then_spawn)
-    elif rejection == 'global_off':
+    if rejection == 'global_off':
         from secretary import schedules
         calls = []
         def gate(_db):
@@ -387,12 +376,13 @@ def claim_event(h, db, ref, claim):
                                    "secretary_user_reminder": {"conversation_ref": ref,
                                                               "schedule_id": claim["schedule_id"],
                                                               "claim_token": claim["claim_token"],
+            "generation": claim["generation"], "sequence": claim["sequence"],
                                                               "source_timestamp": claim["next_run_at"]}})
     return event
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("change", ["local_off", "cancel", "reclaim"])
+@pytest.mark.parametrize("change", ["scheduler_off", "cancel", "reclaim"])
 async def test_native_admission_rechecks_after_adapter_task_ack(host_env, monkeypatch, change):
     h, db, ref, _adapter, _source = host_env
     row = arm_due(db, ref)
@@ -400,10 +390,11 @@ async def test_native_admission_rechecks_after_adapter_task_ack(host_env, monkey
     claim = claim_due(db, row["schedule_id"], owner="old")
     event = claim_event(h, db, ref, claim)
     event._gateway_accepted = True  # Adapter already reserved its background dispatch task.
-    if change == "local_off":
-        db.notebook_set_local_enabled(ref, False)
+    if change == "scheduler_off":
+        (h.home / "config.yaml").write_text("scheduler:\n  enabled: false\n")
     elif change == "cancel":
-        db._execute_write(lambda conn: schedule_sync_conn(conn, ref, row["notebook_entry_id"], active=False, cancelled=True))
+        from secretary.schedules import SchedulerStore
+        SchedulerStore(db, ref, session_id="s1").pause(row["schedule_id"])
     else:
         db._execute_write(lambda conn: conn.execute(
             "UPDATE secretary_schedule_registry SET claim_expires_at = ? WHERE schedule_id = ?",
@@ -460,7 +451,7 @@ async def test_adapter_idle_task_that_loses_native_slot_converts_at_runner_busy_
     claim = claim_due(db, row["schedule_id"], owner="old")
     event = claim_event(h, db, ref, claim)
     if stale:
-        db.notebook_set_local_enabled(ref, False)
+        (h.home / "config.yaml").write_text("scheduler:\n  enabled: false\n")
     runner = native_runner(h, event, [], monkeypatch)
     runner._is_session_running = lambda _key: True
     async def forbidden(*_args):
@@ -469,7 +460,7 @@ async def test_adapter_idle_task_that_loses_native_slot_converts_at_runner_busy_
     assert await runner.handle() is None
     assert pending_count(db, ref) == (0 if stale else 1)
     assert runner.released == []  # No second slot was ever acquired.
-    assert registry(db, row["schedule_id"])["state"] == ("pending" if stale else "done")
+    assert registry(db, row["schedule_id"])["state"] == "pending"
 
 
 @pytest.mark.asyncio
@@ -488,7 +479,7 @@ async def test_runner_busy_delegate_preserves_the_ordinary_message_path(host_env
 
 
 def install_native_cold_route(runner, monkeypatch):
-    """Use the real Gateway route resolver; replace credential discovery, never capability."""
+    """Use the real Gateway route resolver; replace credential discovery, never native routing."""
     from gateway.run import GatewayRunner
     monkeypatch.setattr("gateway.run._resolve_runtime_agent_kwargs", lambda: {
         "provider": "openai", "api_mode": "chat_completions", "base_url": "", "api_key": "test-placeholder"})
@@ -503,7 +494,7 @@ def install_native_cold_route(runner, monkeypatch):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("invalid", [None, "window", "reserve", "idle_config"])
-async def test_cold_restart_resolves_native_capability_before_scan_and_main_admission(host_env, monkeypatch, caplog, invalid):
+async def test_cold_restart_resolves_native_route_without_noting_force_gate(host_env, monkeypatch, caplog, invalid):
     from secretary import noting_scope
     from secretary.noting_capability import _cold_capabilities
     h, db, ref, adapter, _source = host_env
@@ -529,18 +520,10 @@ async def test_cold_restart_resolves_native_capability_before_scan_and_main_admi
     adapter.handle_message = native_handle
     dispatched = await host.scan_due_secretary_schedules(runner)
     await asyncio.gather(*getattr(runner, "_secretary_delivery_tasks", set()))
-    if invalid:
-        assert dispatched == 0 and adapter.events == [] and calls == []
-        from secretary.noting_runtime import noting_trigger_gate
-        assert noting_trigger_gate(db, ref)[0] is False
-        current = registry(db, row["schedule_id"])
-        assert current["state"] == "pending" and current["claim_token"] is None
-        if invalid == "idle_config":
-            assert "idle_compact_after_seconds" in caplog.text
-    else:
-        assert dispatched == 1 and len(adapter.events) == 1 and len(calls) == 1
-        assert registry(db, row["schedule_id"])["state"] == "done"
-        assert _cold_capabilities[noting_scope._runtime_key(db, ref)]["pair"] == (196000, 166600)
+    # Scheduler is independent of Noting Force thresholds and retired Idle configuration.
+    assert dispatched == 1 and len(adapter.events) == 1 and len(calls) == 1
+    assert registry(db, row["schedule_id"])["state"] == "done"
+    assert noting_scope._runtime_key(db, ref) not in _cold_capabilities
 
 
 @pytest.mark.asyncio
@@ -579,3 +562,19 @@ async def test_native_prepare_normal_return_before_execution_recovers_occurrence
     assert current["state"] == "pending" and current["claim_token"] is None
     assert current["next_run_at"] == claim["next_run_at"]
     assert runner.released == ["slot", "lease"]
+
+
+@pytest.mark.asyncio
+async def test_noting_global_and_local_off_still_delivers_scheduler_with_full_claim(host_env):
+    h, db, ref, adapter, _source = host_env
+    (h.home / "config.yaml").write_text("noting:\n  enabled: false\nscheduler:\n  enabled: true\n")
+    db.notebook_set_local_enabled(ref, False)
+    row = arm_due(db, ref)
+    runner = h.make_runner()
+    assert await host.scan_due_secretary_schedules(runner) == 1
+    await asyncio.gather(*runner._secretary_delivery_tasks)
+    assert len(adapter.events) == 1
+    metadata = adapter.events[0].metadata["secretary_user_reminder"]
+    assert metadata["generation"] == row["generation"]
+    assert metadata["sequence"] == row["sequence"]
+    assert registry(db, row["schedule_id"])["state"] == "done"

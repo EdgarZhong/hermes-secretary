@@ -15,7 +15,7 @@ import pytest
 
 import tui_gateway.session_notifications as sn
 from hermes_state import SessionDB
-from hermes_state_secretary_schedule import init_secretary_schedule_schema, schedule_sync_conn
+from hermes_state_secretary_schedule import init_secretary_schedule_schema
 from tui_gateway.session_lifecycle import _session_turn_admission
 from tests.secretary.test_noting_surface import _agent, _requests, runtime as _native_runtime
 
@@ -63,18 +63,12 @@ def tui_env(tmp_path, monkeypatch):
 
 
 def arm_due(db, ref, *, semantics="user_reminder", text="ping the user", entry_id="entry_1"):
-    if semantics == "user_reminder":
-        from tests.secretary.reminder_runtime import arm_native_reminder
-        return arm_native_reminder(db, ref, {"kind": "once", "run_at": iso(-30)}, text, entry_id)
-    row = db._execute_write(lambda conn: schedule_sync_conn(
-        conn, ref, entry_id, active=True, canonical_schedule={"kind": "once", "run_at": iso(-30)},
-        delivery_semantics=semantics, reminder_text=text,
-    ))
-    db._execute_write(lambda conn: conn.execute(
-        "UPDATE secretary_schedule_registry SET next_run_at = ? WHERE schedule_id = ?",
-        (time.time() - 5, row["schedule_id"]),
-    ))
-    return row
+    from secretary.schedules import SchedulerStore
+    route = db.resolve_conversation_route(ref)
+    store = SchedulerStore(db, ref, session_id=route["id"])
+    result = store.create(text, iso(-30), "instant" if semantics == "user_reminder" else "deferred", name=entry_id)
+    assert result["success"], result
+    return dict(db._read_one("SELECT * FROM secretary_schedule_registry WHERE schedule_id=?", (result["schedule"]["schedule_id"],)))
 
 
 def registry(db, schedule_id):
@@ -112,7 +106,7 @@ def test_busy_due_user_reminder_becomes_pending_without_a_second_turn(tui_env):
     assert len(items) == 1
     assert items[0]["text"].startswith("<deferred-reminder>\n")
     assert "ping the user" in items[0]["text"]
-    assert registry(db, row["schedule_id"])["state"] == "done"
+    assert registry(db, row["schedule_id"])["state"] == "pending"
 
 
 def test_due_commitment_only_queues_a_passive_reminder(tui_env):
@@ -121,7 +115,7 @@ def test_due_commitment_only_queues_a_passive_reminder(tui_env):
     sn._maybe_fire_tui_secretary_reminder("ui-1", session)
     assert submitter.calls == []
     assert len(pending(db, ref)) == 1
-    assert registry(db, row["schedule_id"])["state"] == "done"
+    assert registry(db, row["schedule_id"])["state"] == "pending"
 
 
 def test_refused_admission_releases_the_original_occurrence(tui_env):

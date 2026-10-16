@@ -139,67 +139,30 @@ def _session_search(agent, args: dict, ctx: InlineToolContext) -> Any:
     )
 
 
-def _session_history(agent, args: dict, ctx: InlineToolContext) -> Any:
-    from tools.session_history_tool import session_history
-    from agent.prompt_cache_scope import initialize_conversation_identity
-    # Noting binds its frozen Parent ownership; its own child Session is audit only.
-    db = getattr(agent, "_secretary_history_db", None) or getattr(agent, "_session_db", None)
-    if not getattr(agent, "_secretary_parent_conversation_ref", None):
-        initialize_conversation_identity(agent)
-    return session_history(args, db=db, current_session_id=agent.session_id,
-                           conversation_ref=getattr(agent, "_secretary_parent_conversation_ref", None))
+def _conversation_history(agent, args: dict, ctx: InlineToolContext) -> Any:
+    from tools.session_history_tool import conversation_history
+    return conversation_history(args, agent=agent)
 
 
 def _notebook_show(agent, args: dict, ctx: InlineToolContext) -> Any:
     if getattr(agent, "_secretary_noting_child", False):
         from secretary.noting_tools import notebook_work_show
         return notebook_work_show(agent, args)
+    from secretary.noting_surface import notebook_dispatch_enabled
     from tools.notebook_tool import notebook_show
-    # Noting children bind their frozen Parent ownership; the main Assistant uses its own.
-    db = getattr(agent, "_secretary_history_db", None) or getattr(agent, "_session_db", None)
-    ref = getattr(agent, "_secretary_parent_conversation_ref", None)
-    if not ref:
-        from agent.prompt_cache_scope import initialize_conversation_identity
-        ref = getattr(agent, "_secretary_conversation_ref", None) or initialize_conversation_identity(agent)
-    from secretary.noting_surface import notebook_dispatch_enabled
-    return notebook_show(args, db=db, conversation_ref=ref, effective_enabled=notebook_dispatch_enabled(agent))
+    return notebook_show(args, db=getattr(agent, "_session_db", None),
+                         conversation_ref=getattr(agent, "_secretary_conversation_ref", None),
+                         effective_enabled=notebook_dispatch_enabled(agent))
 
 
-def _compact_parent(agent, args: dict, ctx: InlineToolContext) -> Any:
-    """``compact_parent`` for the NOTING_WITH_COMPACTION child (02 §5.9).
-
-    Resolves the Parent from the child's own binding (construction-time), never from
-    model arguments. Success marks the child's terminal action as satisfied.
-    """
-    if args:
-        return json.dumps({"success": False, "status": "invalid_arguments",
-                           "detail": "compact_parent takes no arguments"}, ensure_ascii=False)
-    from secretary.noting_compact import compact_parent_from_child
-
-    return compact_parent_from_child(agent)
+def _notebook_maintain(agent, args: dict, ctx: InlineToolContext) -> Any:
+    from secretary.noting_tools import notebook_maintain
+    return notebook_maintain(agent, args)
 
 
-def _notebook_manage(agent, args: dict, ctx: InlineToolContext) -> Any:
-    from secretary.noting_tools import notebook_manage
-    return notebook_manage(agent, args)
-
-
-def _notebook_edit(agent, args: dict, ctx: InlineToolContext) -> Any:
-    from secretary.noting_tools import notebook_edit
-    return notebook_edit(agent, args)
-
-
-def _notebook_schedule(agent, args: dict, ctx: InlineToolContext) -> Any:
-    from secretary.noting_tools import notebook_schedule
-    return notebook_schedule(agent, args)
-
-
-def _noting_memo(agent, args: dict, ctx: InlineToolContext) -> Any:
-    from tools.noting_memo_tool import noting_memo
-    from secretary.noting_surface import notebook_dispatch_enabled
-    return noting_memo(args, db=getattr(agent, "_session_db", None),
-                      conversation_ref=getattr(agent, "_secretary_conversation_ref", None),
-                      effective_enabled=notebook_dispatch_enabled(agent))
+def _scheduler(agent, args: dict, ctx: InlineToolContext) -> Any:
+    from tools.scheduler_tool import scheduler_tool
+    return scheduler_tool(args, agent=agent)
 
 
 def _finish_noting(agent, args: dict, ctx: InlineToolContext) -> Any:
@@ -314,14 +277,11 @@ _RAW_INLINE_TOOL_EXECUTORS: Dict[str, InlineToolExecutor] = {
         task_id=lambda agent, ctx: ctx.effective_task_id, agent=lambda agent, ctx: agent,
     ),
     "session_search": _session_search,
-    "session_history": _session_history,
+    "conversation_history": _conversation_history,
     "notebook_show": _notebook_show,
-    "notebook_manage": _notebook_manage,
-    "notebook_edit": _notebook_edit,
-    "notebook_schedule": _notebook_schedule,
-    "noting_memo": _noting_memo,
+    "notebook_maintain": _notebook_maintain,
+    "scheduler": _scheduler,
     "finish_noting": _finish_noting,
-    "compact_parent": _compact_parent,
     "memory": _memory,
     "clarify": _tool(
         "tools.clarify_tool", "clarify_tool", ("questions", "questions"),
@@ -369,7 +329,7 @@ INLINE_TOOL_EXECUTORS: Dict[str, InlineToolExecutor] = {
 # ``invoke_tool`` (concurrent path) consults the memory manager right after these
 # names and before the remaining inline tools; ``message_agent`` falls through to the
 # registry there (Bot Mode DM is only injected into the sequential path's schema).
-INVOKE_TOOL_PRE_MEMORY_MANAGER_NAMES = frozenset({"todo_list", "session_search", "session_history", "notebook_show", "noting_memo", "memory"})
+INVOKE_TOOL_PRE_MEMORY_MANAGER_NAMES = frozenset({"todo_list", "session_search", "conversation_history", "notebook_show", "scheduler", "memory"})
 
 
 def resolve_invoke_tool_executor(agent, function_name: str) -> Optional[InlineToolExecutor]:
@@ -378,6 +338,10 @@ def resolve_invoke_tool_executor(agent, function_name: str) -> Optional[InlineTo
     Precedence: todo_list/session_search/memory, then memory-manager tools, then the
     remaining inline tools (``message_agent`` excluded).
     """
+    from tools.secretary_dispatch import legacy_tool_removed
+    retired = legacy_tool_removed(function_name)
+    if retired is not None:
+        return lambda agent, args, ctx: json.dumps(retired, ensure_ascii=False)
     from agent.tool_executor import _noting_dispatch_block
     refusal = _noting_dispatch_block(agent, function_name)
     if refusal is not None:

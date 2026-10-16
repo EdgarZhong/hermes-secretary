@@ -11,6 +11,8 @@ from __future__ import annotations
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+import json
+
 import pytest
 
 from hermes_state import SessionDB
@@ -56,6 +58,7 @@ def _last_tool_message(messages):
 def test_sequential_path_denies_non_noting_tools(runtime):
     agent, _db, recorder = runtime
     agent._secretary_noting_profile = "NOTING"
+    agent._secretary_noting_child = True
     messages = [{"role": "user", "content": "go"}]
     execute_tool_calls_sequential(agent, SimpleNamespace(tool_calls=[tool_call("write_file")]), messages, "task")
     recorder.assert_not_called()
@@ -65,6 +68,7 @@ def test_sequential_path_denies_non_noting_tools(runtime):
 def test_concurrent_path_denies_non_noting_tools(runtime):
     agent, _db, recorder = runtime
     agent._secretary_noting_profile = "NOTING"
+    agent._secretary_noting_child = True
     messages = [{"role": "user", "content": "go"}]
     execute_tool_calls_concurrent(
         agent, SimpleNamespace(tool_calls=[tool_call("terminal"), tool_call("session_search", call_id="c2")]),
@@ -79,6 +83,7 @@ def test_concurrent_path_denies_non_noting_tools(runtime):
 def test_agent_level_inline_tools_are_denied_too(runtime):
     agent, _db, recorder = runtime
     agent._secretary_noting_profile = "NOTING"
+    agent._secretary_noting_child = True
     agent._memory_store = MagicMock()
     messages = [{"role": "user", "content": "go"}]
     execute_tool_calls_sequential(agent, SimpleNamespace(tool_calls=[tool_call("memory")]), messages, "task")
@@ -87,12 +92,13 @@ def test_agent_level_inline_tools_are_denied_too(runtime):
     assert "denied non-whitelisted tool: memory" in _last_tool_message(messages)["content"]
 
 
-def test_special_profile_allows_compact_parent_only_there(runtime):
+def test_retired_compact_parent_never_executes(runtime):
     agent, _db, _recorder = runtime
     agent._secretary_noting_profile = "NOTING"
+    agent._secretary_noting_child = True
     messages = [{"role": "user", "content": "go"}]
     execute_tool_calls_sequential(agent, SimpleNamespace(tool_calls=[tool_call("compact_parent")]), messages, "task")
-    assert "denied non-whitelisted tool: compact_parent" in _last_tool_message(messages)["content"]
+    assert json.loads(_last_tool_message(messages)["content"])["error"]["code"] == "legacy_tool_removed"
 
 
 def test_unmarked_agents_keep_the_normal_dispatch(runtime):
@@ -106,6 +112,7 @@ def test_unmarked_agents_keep_the_normal_dispatch(runtime):
 def test_direct_invoke_cannot_bypass_narrow_guard(runtime, name):
     agent, _db, recorder = runtime
     agent._secretary_noting_profile = "NOTING"
+    agent._secretary_noting_child = True
     result = agent._invoke_tool(name, {}, "direct", pre_tool_block_checked=True)
     assert "denied non-whitelisted tool" in result
     recorder.assert_not_called()

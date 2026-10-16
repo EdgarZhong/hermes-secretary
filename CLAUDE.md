@@ -15,23 +15,23 @@
 
 | 包 | 当前 owner／状态 | 独占验证与待办 |
 |---|---|---|
-| C1/C2/C3 | 主会话已 review 并接收云端实现 | C1交C5、C2交收口owner、C3交C6首次定向运行；C2 `_search` 嵌套7层需修 |
+| C1/C2/C3 | 主会话已 review 并接收云端实现 | C1 93、C2 69、C3 47独立场景已有有效证据；C2 `_search` 嵌套由C10-A修复 |
 | C4 | 主会话已review接收；c4-report.md | 38场景取得通过；ruff、C4增量health通过；不把全范围C2阻断写成通过 |
 | C5 | 主会话已review接收；c5-report.md | C1 93场景、C5 34场景有通过证据；三Schema和三Prompt与07静态逐字一致；时间秒精度单节点由原owner补证 |
 | C6 | 主会话已review接收；c6-report.md | C3 47、C6 30独立场景有通过证据；原生append_messages_batch事务prepare_rows，先持久化后live，实际携带与成功响应ACK；正式caller交C9-S |
 | C7 | 主会话已review接收；c7-report.md | 63独立场景有通过证据；正式manual/auto与成功boundary接线交C9-H |
 | C8 | 主会话已review接收；c8-report.md | 59场景有通过证据；pointer核验/durable/live同事务与既有锁，完整正文与严格超限Proposal；C5时间秒精度1节点通过 |
 | C9-H | 主会话已review接收；c9-host-report.md | 正式pre-summary唯一联合准备、原生成功发布事务更新interval、非空成功响应ACK、completed/failed归档gate；112独立场景有通过证据。review修正工具args业务校验不属投递ACK，23项定向复测通过 |
-| C9-S | personal_provider：工具surface/dispatch与投递caller | 独占noting_surface/hosts、inline_tool_executors/tool_executor、model_tools/toolsets/registry/tool_result_storage/budget_config、notebook_tool与noting_memo_tool退出、session_persistence._db_flush_write、gateway/secretary_reminders及run_agent_cache；新增wiring及旧surface/hosts测试；不与C9-H交叉 |
+| C9-S | 主会话已review接收；c9-surface-report.md | 23路径指纹一致，112独立场景有通过证据；原始整批guard、退休名不fuzzy、可信catalog scope、独立Scheduler及完整claim、原生持久化prepare接线。无真实模型结论 |
 | C10-A | 主会话已review接收；c10-notebook-history-report.md | 233独立场景有通过证据；C2嵌套修复、坏UID来源不可用、Snapshot时间ISO；保留旧有效保障，退出接口有处置映射 |
 | C10-H | 主会话已review接收；c10-runtime-report.md | 62旧组场景＋4受影响Idle节点有通过证据；恢复deadline唯一local决定，提交gate仍检查。c4_config_prompt等待C9-S接收后独占真实DeepSeek运行 |
 | C10-B | local_environment：10个旧Scheduler/Reminder文件收口 | 独占旧reminders/crash/admission/persistence/CLI/v16/schedules/status、agent/reminder_request、state/schedule_registry；共享reminder_runtime由C9-S先交回，不双写 |
-| C10-P | 待收口 | 个人test_personal/test_security需维护；不复活旧完整写入helper，不重复P1/P3新组 |
+| C10-P | personal_provider：个人旧测试收口中 | 个人test_personal/test_security需维护；不复活旧完整写入helper，不重复P1/P3新组 |
 | P1/P2/P3 | 主会话已review接收个人线并提交57d0abb854f4；personal-report.md | 46独立用例通过；真实SessionDB/MemoryManager+本地HTTP fixture，P2基本模拟通过；主会话已review，公共finalizer gate与历史旧测试仍待收口 |
 | L0 | 环境已交回；yaml问题是个人脚本旧导入，P3 owner修复 | 不跑产品测试；不改锁或裸装依赖 |
 | 门禁 | 尚未启动；主会话已制定validation.md全范围15组场景 | 集成收敛后Astra/high Verification；主会话制定Validation、6.1/high执行 |
 
-- 原生真实模型验证将指定唯一owner；本轮大型检查尚未执行，集成收敛后统筹一次，修复后仅定向复测。主会话不重复子Agent有效测试。
+- 原生真实模型验证唯一owner为c4_config_prompt，C9-S提交后启动；本轮大型检查尚未执行，集成收敛后统筹一次，修复后仅定向复测。主会话不重复子Agent有效测试。
 
 <details>
 <summary>云端规划时点记录（历史，状态以上方本地托管为准）</summary>

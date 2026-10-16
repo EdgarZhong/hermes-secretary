@@ -1,10 +1,10 @@
-"""Main-turn read surface, synchronized only at native construction/Turn boundaries."""
+"""Synchronize independent Main capabilities at existing native Turn boundaries."""
 
 import copy
-import logging
 
-logger = logging.getLogger(__name__)
-_READ_TOOLS = {"session_history", "notebook_show", "noting_memo"}
+_MAIN_TOOLS = {"conversation_history", "notebook_show", "scheduler"}
+_RETIRED_TOOLS = {"session_history", "noting_memo", "notebook_manage", "notebook_edit", "notebook_schedule", "compact_parent"}
+_NOTING_ONLY = {"notebook_maintain", "finish_noting"}
 
 
 def _tool_name(tool):
@@ -13,59 +13,57 @@ def _tool_name(tool):
 
 
 def _read_schema(name):
-    from tools.registry import registry
-
-    if registry.get_schema(name) is None:
-        if name == "session_history":
-            from tools.session_history_tool import SESSION_HISTORY_SCHEMA
-            name = SESSION_HISTORY_SCHEMA["name"]
-        elif name == "noting_memo":
-            from tools.noting_memo_tool import NOTING_MEMO_SCHEMA
-            name = NOTING_MEMO_SCHEMA["name"]
-        else:
-            from tools.notebook_tool import NOTEBOOK_SHOW_SCHEMA
-            name = NOTEBOOK_SHOW_SCHEMA["name"]
-    return registry.get_schema(name)
+    if name == "conversation_history":
+        from tools.session_history_tool import CONVERSATION_HISTORY_SCHEMA
+        return CONVERSATION_HISTORY_SCHEMA
+    if name == "scheduler":
+        from tools.scheduler_tool import get_scheduler_schema
+        return get_scheduler_schema()
+    from tools.notebook_tool import NOTEBOOK_SHOW_SCHEMA
+    return NOTEBOOK_SHOW_SCHEMA
 
 
 def notebook_read_enabled(agent):
-    """Only proven user Main + live owning-profile global enable; local state is irrelevant."""
+    """Global owning-profile gate; local participation never controls Main reads."""
     from secretary.noting_runtime import is_main_conversation_agent
-    from secretary.noting_scope import owning_db_scope
-
-    if not is_main_conversation_agent(agent):
-        return False
-    try:
-        from hermes_cli.config import load_config_readonly
-        from hermes_cli.config_read_errors import FailedConfigRead
-        from utils import is_truthy_value
-
-        with owning_db_scope(agent._session_db):
-            config = load_config_readonly()
-        if isinstance(config, FailedConfigRead) or not isinstance(config, dict):
-            return False
-        block = config.get("noting")
-        block = block if isinstance(block, dict) else {}
-        return is_truthy_value(block.get("enabled"), default=True)
-    except Exception:
-        logger.debug("Notebook owning-profile config unavailable", exc_info=True)
-        return False
+    from secretary.noting_scope import settings_for_db
+    return is_main_conversation_agent(agent) and settings_for_db(agent._session_db).enabled
 
 
 def notebook_dispatch_enabled(agent):
-    """Use this Turn's synchronized read permission; config changes wait for the next Turn."""
     from secretary.noting_runtime import is_main_conversation_agent
-
     return (is_main_conversation_agent(agent)
             and getattr(agent, "_secretary_main_read_eligible", False)
             and getattr(agent, "_secretary_notebook_read_enabled", False))
 
 
-def apply_main_read_surface(agent):
-    """Reconcile schema + actual dispatch names; preserve lawful auxiliary History tools."""
-    from secretary.noting_runtime import is_main_conversation_agent
+def _reconcile_catalog(agent, tools):
+    """Reassemble an existing native bridge after capability removal, preserving native tools."""
+    from tools.secretary_dispatch import filter_tool_definitions
+    from tools import tool_search
+    if not any(_tool_name(tool) == "tool_search" for tool in tools):
+        return tools
+    import model_tools
+    raw = model_tools.get_tool_definitions(
+        enabled_toolsets=getattr(agent, "enabled_toolsets", None),
+        disabled_toolsets=getattr(agent, "disabled_toolsets", None),
+        quiet_mode=True, skip_tool_search_assembly=True,
+    )
+    if not any(_tool_name(tool) in _MAIN_TOOLS | _NOTING_ONLY for tool in raw):
+        return tools
+    raw = filter_tool_definitions(raw, agent)
+    deferred = tool_search.scoped_deferrable_names(raw)
+    visible = [tool for tool in tools if not tool_search.is_bridge_tool(_tool_name(tool))]
+    names = {_tool_name(tool) for tool in visible}
+    catalog = [tool for tool in raw if _tool_name(tool) in deferred - names]
+    return tool_search.assemble_tool_defs([*visible, *catalog], context_length=model_tools._resolve_active_context_length()).tool_defs
 
-    # Noting's advertised frozen Parent surface belongs to its V1 parity contract.
+
+def apply_main_read_surface(agent):
+    """Keep frozen Noting prefixes; reconcile Main's schemas and execution names together."""
+    from secretary.noting_runtime import is_main_conversation_agent
+    from secretary.noting_scope import bind_main_runtime, scheduler_settings_for_db
+
     if getattr(agent, "_secretary_noting_child", False):
         return False
     tools = getattr(agent, "tools", None)
@@ -73,44 +71,49 @@ def apply_main_read_surface(agent):
         return False
     main = is_main_conversation_agent(agent)
     if main:
-        from secretary.noting_scope import bind_main_runtime
         bind_main_runtime(agent)
-    enabled = notebook_read_enabled(agent) if main else False
+    notebook = notebook_read_enabled(agent) if main else False
+    scheduler = scheduler_settings_for_db(agent._session_db).enabled if main else False
     agent._secretary_main_read_eligible = main
-    agent._secretary_notebook_read_enabled = enabled
-    desired = {"session_history"} | ({"notebook_show", "noting_memo"} if enabled else set()) if main else set()
-    removed = _READ_TOOLS - desired if main else {"notebook_show", "noting_memo"}
+    agent._secretary_notebook_read_enabled = notebook
+    agent._secretary_scheduler_enabled = scheduler
+    desired = ({"conversation_history"} | ({"notebook_show"} if notebook else set())
+               | ({"scheduler"} if scheduler else set())) if main else set()
+    removed = (_MAIN_TOOLS - desired) | _RETIRED_TOOLS | _NOTING_ONLY
     resolved = [tool for tool in tools if _tool_name(tool) not in removed]
     names = {_tool_name(tool) for tool in resolved}
-    for name in ("session_history", "notebook_show", "noting_memo"):
+    for name in ("conversation_history", "notebook_show", "scheduler"):
         if name in desired and name not in names:
-            schema = _read_schema(name)
-            if isinstance(schema, dict):
-                resolved.append({"type": "function", "function": copy.deepcopy(schema)})
-                names.add(name)
+            resolved.append({"type": "function", "function": copy.deepcopy(_read_schema(name))})
+            names.add(name)
     from agent.secretary_prompt import apply_cron_schema_guidance
-    resolved = apply_cron_schema_guidance(resolved, enabled=enabled)
-    agent.tools = resolved
+    agent.tools = apply_cron_schema_guidance(_reconcile_catalog(agent, resolved), enabled=scheduler)
     agent.valid_tool_names = (set(getattr(agent, "valid_tool_names", set())) - removed) | (desired & names)
-    return enabled
+    return notebook
 
 
 def synchronize_main_read_prompt(agent, system_message=None):
-    """Use native builder/persistence when a Main's restored root has a stale read surface."""
+    """Repair restored roots through the native builder and canonical persistence."""
     if not getattr(agent, "_secretary_main_read_eligible", False):
         return False
-    from agent.system_prompt import HISTORY_SEARCH_GUIDANCE, SECRETARY_WORK_AND_NOTEBOOK_GUIDANCE
-
+    from agent.system_prompt import (
+        HISTORY_SEARCH_GUIDANCE, SCHEDULER_GUIDANCE, SECRETARY_SESSION_SEARCH_GUIDANCE,
+        SECRETARY_WORK_AND_NOTEBOOK_GUIDANCE,
+    )
     prompt = getattr(agent, "_cached_system_prompt", None)
     if not isinstance(prompt, str):
         return False
-    notebook = bool(getattr(agent, "_secretary_notebook_read_enabled", False))
-    if (prompt.count(HISTORY_SEARCH_GUIDANCE) == 1
-            and prompt.count(SECRETARY_WORK_AND_NOTEBOOK_GUIDANCE) == int(notebook)):
+    names = set(getattr(agent, "valid_tool_names", set()))
+    expected = (
+        (HISTORY_SEARCH_GUIDANCE, True),
+        (SECRETARY_WORK_AND_NOTEBOOK_GUIDANCE, bool(getattr(agent, "_secretary_notebook_read_enabled", False))),
+        (SCHEDULER_GUIDANCE, bool(getattr(agent, "_secretary_scheduler_enabled", False)) and "scheduler" in names),
+        (SECRETARY_SESSION_SEARCH_GUIDANCE, "session_search" in names),
+    )
+    if all(prompt.count(text) == int(enabled) for text, enabled in expected):
         return False
     from hermes_cli.observability.shared_metrics_efficiency import record_cache_break
     from agent.conversation_loop import _persist_system_prompt
-
     agent._cached_system_prompt = agent._build_system_prompt(system_message)
     record_cache_break(agent, "toolset_change")
     _persist_system_prompt(agent, "Main read-surface prompt persistence failed (session=%s): %s", persist_tools=True)

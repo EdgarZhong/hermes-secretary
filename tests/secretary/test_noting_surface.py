@@ -66,13 +66,13 @@ def test_real_construct_and_requests_always_have_history(runtime, selected):
     db, _config = runtime
     agent = _agent(db, selected=selected)
     try:
-        assert {"session_history", "notebook_show"} <= _names(agent.tools)
-        assert {"session_history", "notebook_show"} <= agent.valid_tool_names
+        assert {"conversation_history", "notebook_show"} <= _names(agent.tools)
+        assert {"conversation_history", "notebook_show"} <= agent.valid_tool_names
         if selected:
             assert "tool_search" in _names(agent.tools) or "todo_list" in _names(agent.tools)
         seen = _requests(agent)
         _turn(agent)
-        assert {"session_history", "notebook_show"} <= _names(seen[0]["tools"])
+        assert {"conversation_history", "notebook_show"} <= _names(seen[0]["tools"])
     finally:
         agent.close()
 
@@ -85,14 +85,14 @@ def test_unknown_ref_is_closed_until_real_session_birth(runtime, local_off_befor
         assert agent._secretary_conversation_ref is None
         assert "notebook_show" not in _names(agent.tools)
         assert "notebook_show" not in agent.valid_tool_names
-        assert "session_history" not in _names(agent.tools)
+        assert "conversation_history" not in _names(agent.tools)
         if local_off_before_birth:
             db.create_session(agent.session_id, source="cli")
             db.notebook_set_local_enabled(db.resolve_conversation_ref(agent.session_id), False)
         seen = _requests(agent)
         _turn(agent)
         assert db.get_session(agent.session_id) and agent._secretary_conversation_ref
-        assert "session_history" in _names(seen[0]["tools"])
+        assert "conversation_history" in _names(seen[0]["tools"])
         assert "notebook_show" in _names(seen[0]["tools"])
     finally:
         agent.close()
@@ -112,10 +112,10 @@ def test_constructing_with_noting_off_has_history_without_notebook(runtime, disa
     try:
         assert ("notebook_show" in _names(agent.tools)) is (disabled_by == "local")
         assert ("notebook_show" in agent.valid_tool_names) is (disabled_by == "local")
-        assert "session_history" in _names(agent.tools)
+        assert "conversation_history" in _names(agent.tools)
         seen = _requests(agent)
         _turn(agent)
-        assert "session_history" in _names(seen[0]["tools"])
+        assert "conversation_history" in _names(seen[0]["tools"])
         assert ("notebook_show" in _names(seen[0]["tools"])) is (disabled_by == "local")
     finally:
         agent.close()
@@ -129,7 +129,7 @@ def test_existing_agent_off_on_changes_actual_surface_at_next_turn(runtime, disa
     try:
         memo = copy.deepcopy(model_tools._tool_defs_cache)
         resolved_names = copy.deepcopy(model_tools._last_resolved_tool_names)
-        configured_names = _names(agent.tools) - {"session_history", "notebook_show", "noting_memo"}
+        configured_names = _names(agent.tools) - {"conversation_history", "notebook_show", "scheduler"}
         seen = _requests(agent)
         if disabled_by == "local":
             db.notebook_set_local_enabled(agent._secretary_conversation_ref, False)
@@ -140,12 +140,12 @@ def test_existing_agent_off_on_changes_actual_surface_at_next_turn(runtime, disa
         _turn(agent)
         assert ("notebook_show" in _names(seen[-1]["tools"])) is (disabled_by == "local")
         assert ("notebook_show" in agent.valid_tool_names) is (disabled_by == "local")
-        assert {"session_history"} | configured_names <= _names(seen[-1]["tools"])
+        assert {"conversation_history"} | configured_names <= _names(seen[-1]["tools"])
         config.write_text("noting:\n  enabled: true\n", encoding="utf-8")
         if disabled_by == "local":
             db.notebook_set_local_enabled(agent._secretary_conversation_ref, True)
         _turn(agent, "again")
-        assert {"session_history", "notebook_show"} | configured_names <= _names(seen[-1]["tools"])
+        assert {"conversation_history", "notebook_show"} | configured_names <= _names(seen[-1]["tools"])
         assert "notebook_show" in agent.valid_tool_names
         _assert_guidance(seen[-1], True)
         assert model_tools._tool_defs_cache == memo
@@ -162,7 +162,7 @@ def test_same_turn_tools_stay_fixed_when_off_changes_during_api_call(runtime):
             if index == 1:
                 db.notebook_set_local_enabled(agent._secretary_conversation_ref, False)
                 tool = SimpleNamespace(id="history", type="function", function=SimpleNamespace(
-                    name="session_history", arguments=json.dumps({"mode": "search", "query": "alpha"})))
+                    name="conversation_history", arguments=json.dumps({"mode": "search", "query": "alpha"})))
                 return mock_response(None, "tool_calls", [tool])
             return mock_response("done")
         seen = _requests(agent, response)
@@ -173,7 +173,7 @@ def test_same_turn_tools_stay_fixed_when_off_changes_during_api_call(runtime):
         assert json.loads(tool_rows[-1]["content"])["success"] is True
         _turn(agent, "next turn")
         assert "notebook_show" in _names(seen[-1]["tools"])
-        assert "session_history" in _names(seen[-1]["tools"])
+        assert "conversation_history" in _names(seen[-1]["tools"])
     finally:
         agent.close()
 
@@ -183,7 +183,7 @@ def test_child_construction_never_applies_main_surface(runtime, extra):
     db, _config = runtime
     agent = _agent(db, **extra)
     try:
-        assert "session_history" not in _names(agent.tools)
+        assert "conversation_history" not in _names(agent.tools)
         assert "notebook_show" not in _names(agent.tools)
     finally:
         agent.close()
@@ -216,14 +216,14 @@ def test_native_branch_resume_keep_main_agent_without_child_parent_field(runtime
         assert agent._secretary_conversation_ref != original_ref
         assert is_main_conversation_agent(agent)
         _turn(agent, "branch main turn")
-        assert {"session_history", "notebook_show"} <= _names(seen[-1]["tools"])
-        assert db.noting_idle_state(agent._secretary_conversation_ref)["last_turn_finished_at"]
+        assert {"conversation_history", "notebook_show"} <= _names(seen[-1]["tools"])
+        assert db.noting_idle_state(agent._secretary_conversation_ref) is None  # Idle is disabled by default.
         # The official /resume handler follows the same switch without adopting the DB parent pointer.
         CLICommandsMixin._handle_resume_command(cli, "/resume " + original_id)
         assert cli.session_id == original_id and agent.session_id == original_id
         assert agent._parent_session_id is None and is_main_conversation_agent(agent)
         _turn(agent, "resumed main turn")
-        assert {"session_history", "notebook_show"} <= _names(seen[-1]["tools"])
+        assert {"conversation_history", "notebook_show"} <= _names(seen[-1]["tools"])
     finally:
         agent.close()
 
@@ -252,14 +252,14 @@ def test_native_rotation_recovery_and_cold_resume_keep_main_classification(runti
         _turn(agent, "continued main turn")
         assert agent.session_id == "continued" and agent._parent_session_id is None
         assert agent._secretary_conversation_ref == ref and is_main_conversation_agent(agent)
-        assert {"session_history", "notebook_show"} <= _names(seen[-1]["tools"])
-        assert db.noting_idle_state(ref)["last_turn_finished_at"]
+        assert {"conversation_history", "notebook_show"} <= _names(seen[-1]["tools"])
+        assert db.noting_idle_state(ref) is None  # Idle is disabled by default.
         cold = _agent(db, session_id="continued", existing=False)
         cold_seen = _requests(cold)
         assert db.get_session(cold.session_id)["parent_session_id"] == parent_id
         assert cold._parent_session_id is None and is_main_conversation_agent(cold)
         _turn(cold, "cold resumed continuation")
-        assert {"session_history", "notebook_show"} <= _names(cold_seen[-1]["tools"])
+        assert {"conversation_history", "notebook_show"} <= _names(cold_seen[-1]["tools"])
     finally:
         if cold is not None:
             cold.close()
@@ -281,8 +281,8 @@ def test_native_reset_birth_remains_main(runtime):
         _turn(agent, "reset main turn")
         assert agent._parent_session_id is None and is_main_conversation_agent(agent)
         assert agent._secretary_conversation_ref != old_ref
-        assert {"session_history", "notebook_show"} <= _names(seen[-1]["tools"])
-        assert db.noting_idle_state(agent._secretary_conversation_ref)["last_turn_finished_at"]
+        assert {"conversation_history", "notebook_show"} <= _names(seen[-1]["tools"])
+        assert db.noting_idle_state(agent._secretary_conversation_ref) is None  # Idle is disabled by default.
     finally:
         agent.close()
 
@@ -380,7 +380,7 @@ def test_auxiliary_ownership_never_grants_main_modules_or_notebook(runtime, sour
     db.create_session("auxiliary", source=source)
     agent = _agent(db, session_id="auxiliary", existing=False, selected=["notebook", "history"])
     try:
-        original_history = "session_history" in _names(agent.tools)
+        original_history = "conversation_history" in _names(agent.tools)
         for enabled in (True, False, True):
             config.write_text(f"noting:\n  enabled: {str(enabled).lower()}\n", encoding="utf-8")
             apply_main_read_surface(agent)
@@ -389,7 +389,7 @@ def test_auxiliary_ownership_never_grants_main_modules_or_notebook(runtime, sour
             assert SECRETARY_WORK_AND_NOTEBOOK_GUIDANCE not in stable
             assert "notebook_show" not in _names(agent.tools)
             assert "notebook_show" not in agent.valid_tool_names
-            assert ("session_history" in _names(agent.tools)) is original_history
+            assert ("conversation_history" in _names(agent.tools)) is original_history
     finally:
         agent.close()
 
@@ -461,11 +461,11 @@ def test_actual_ephemeral_root_is_audited_without_polluting_native_resume(runtim
 
 @pytest.mark.parametrize("payload", [
     {"instructions": "actual-responses-root", "input": [{"role": "user", "content": "turn"}],
-     "tools": [{"type": "function", "name": "session_history", "description": "read",
+     "tools": [{"type": "function", "name": "conversation_history", "description": "read",
                 "parameters": {"type": "object"}}]},
     {"system": [{"type": "text", "text": "actual-anthropic-root", "cache_control": {"type": "ephemeral"}}],
      "messages": [{"role": "user", "content": "turn"}],
-     "tools": [{"name": "session_history", "description": "read", "input_schema": {"type": "object"},
+     "tools": [{"name": "conversation_history", "description": "read", "input_schema": {"type": "object"},
                 "cache_control": {"type": "ephemeral"}}]},
     {"messages": [{"role": "system", "content": "actual-empty-tools-root"}], "tools": None},
 ])
@@ -485,7 +485,7 @@ def test_final_transport_shape_prelude_projection_uses_actual_values(runtime, pa
         assert prelude["root_system_prompt"] == root
         if payload["tools"]:
             assert prelude["tool_schemas"] == [{"type": "function", "function": {
-                "name": "session_history", "description": "read", "parameters": {"type": "object"}}}]
+                "name": "conversation_history", "description": "read", "parameters": {"type": "object"}}}]
         else:
             assert prelude["tool_schemas"] == []
         assert payload == original

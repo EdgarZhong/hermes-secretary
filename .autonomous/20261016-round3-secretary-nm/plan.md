@@ -662,6 +662,6 @@ P2只做基本检查，不重测官方CLI，不做真实NM写入。
 | R3-F02 | C2可见原文缺message_uid时静默返回完整空搜索结果；07§5要求诚实错误与完整性 | C10-A：在History路径读取边界拒绝坏canonical身份，不伪造空结果 | 已关闭；c10-notebook-history-report：真实坏UID反证及受影响16条路径定向PASS |
 | R3-F03 | Notebook show envelope直接暴露float created_at；保留02 C15可读时间契约 | C10-A：仅展示层按owner profile渲染，内部数值/原始来源ISO保留 | 已关闭；c10-notebook-history-report：三时区展示及精确存储边界PASS |
 | R3-F04 | Idle deadline已决定local参与，freeze/admit再次读取导致一次事件两次决定；02§4.5 C16 | C10-H：成功claim_event的Idle沿用唯一决定，其他入口原检查与commit gate不变 | 已关闭；c10-runtime-report：普通Idle/升级Force只读一次，关闭后Commit Gate拒绝；受影响节点定向PASS |
-| R3-F05 | 原生validation先丢非法项，使finish+unknown变单finish；旧名可被fuzzy成新名 | C9-S：原始完整批次先guard；退休名明确legacy，其他native纠错行为保留 | 正式run_conversation反证／复验待接收 |
-| R3-F06 | Gateway冷投递仍受Noting/local/capability gate，claim metadata丢generation/sequence | C9-S：Scheduler独立配置及原生owner/route，完整claim身份贯穿 | Gateway/TUI本域已有PASS，待最终源码与报告review |
-| R3-F07 | 直接invoke绕过可信surface scope，tool_describe泄露已关闭能力 | C9-S：registry invoke复用正式同一scope，不扩大执行权限 | direct调用与正式派发补证待接收 |
+| R3-F05 | 原生validation先丢非法项，使finish+unknown变单finish；旧名可被fuzzy成新名 | C9-S：原始完整批次先guard；退休名明确legacy，其他native纠错行为保留 | 已关闭；c9-surface-report：正式run_conversation原始混批与退休名反证PASS |
+| R3-F06 | Gateway冷投递仍受Noting/local/capability gate，claim metadata丢generation/sequence | C9-S：Scheduler独立配置及原生owner/route，完整claim身份贯穿 | 已关闭；c9-surface-report：Gateway30/TUI6与Noting关闭独立投递PASS，主会话已review |
+| R3-F07 | 直接invoke绕过可信surface scope，tool_describe泄露已关闭能力 | C9-S：registry invoke复用正式同一scope，不扩大执行权限 | 已关闭；c9-surface-report：direct catalog与正式派发PASS，主会话已review |

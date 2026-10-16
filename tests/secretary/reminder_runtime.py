@@ -24,24 +24,27 @@ def bind_reminder_runtime(db, conversation_ref, session_id):
 
 
 def arm_native_reminder(db, ref, canonical, text, entry_id="entry"):
-    """A real current Snapshot must own intent when native transcript append reconciles it."""
-    from uuid import uuid4
-    from secretary.notebook_store import NotebookStore
+    """Create independent Scheduler intent without a Notebook Snapshot."""
+    from secretary.schedules import SchedulerStore
     route = db.resolve_conversation_route(ref)
-    anchor = "arm_" + uuid4().hex
-    db.append_message(route["id"], "assistant", "Schedule established", message_uid=anchor)
-    state = NotebookStore(db, ref, parse_schedule=lambda _expression: canonical)
-    entry = state.create("user_reminder", {"message": text}, expression="fixture")
-    state.commit(anchor)
-    return dict(db._read_one("SELECT * FROM secretary_schedule_registry WHERE conversation_ref=? AND notebook_entry_id=?",
-                             (ref, entry["entry_id"])))
+    expression = canonical.get("run_at") or canonical.get("expression")
+    if expression is None:
+        raise ValueError("Fixture requires an explicit native time expression")
+    store = SchedulerStore(db, ref, session_id=route["id"])
+    result = store.create(text, expression, "instant", name=entry_id)
+    assert result["success"], result
+    return dict(db._read_one("SELECT * FROM secretary_schedule_registry WHERE schedule_id=?",
+                             (result["schedule"]["schedule_id"],)))
 
 
 def persist_native_carrier(db, session_id, text):
     """Transport test substitute performs the actual native batch transaction, not queue ACK."""
-    from secretary.reminders import active_delivery_batch_callback, confirm_active_delivery_batch
+    from secretary.reminders import (
+        active_delivery_batch_callback, active_delivery_prepare_callback, confirm_active_delivery_batch,
+    )
     messages = [{"role": "user", "content": text, "timestamp": text.source_timestamp}]
     rows = [{**messages[0]}]
     callback = active_delivery_batch_callback(db, messages, rows)
-    db.append_messages_batch(session_id, rows, before_commit=callback)
+    prepare = active_delivery_prepare_callback(db, messages, rows)
+    db.append_messages_batch(session_id, rows, before_commit=callback, prepare_rows=prepare)
     confirm_active_delivery_batch(messages)

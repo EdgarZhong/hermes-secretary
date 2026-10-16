@@ -1,0 +1,351 @@
+"""C9-S actual registration, native dispatch, Main restoration and persistence seams."""
+
+import copy
+import json
+from types import SimpleNamespace
+
+import pytest
+
+from tests.secretary.test_noting_surface import _agent, _names, _requests, _turn, runtime as _runtime
+
+
+@pytest.fixture
+def runtime(tmp_path, monkeypatch):
+    yield from _runtime.__wrapped__(tmp_path, monkeypatch)
+
+
+def call(name, args=None, ident="c1"):
+    return SimpleNamespace(id=ident, type="function", function=SimpleNamespace(name=name, arguments=json.dumps(args or {})))
+
+
+def test_real_catalog_registers_only_current_contract(runtime):
+    import model_tools
+    from tools.registry import registry
+    from secretary.noting_tools import noting_tool_schemas
+    from tools.secretary_dispatch import RETIRED_SECRETARY_TOOLS
+    from toolsets import resolve_toolset
+    for schema in noting_tool_schemas():
+        schema = schema.get("function", schema)
+        assert registry.get_schema(schema["name"]) == schema
+    assert "scheduler" in resolve_toolset("scheduler")
+    assert "conversation_history" in resolve_toolset("conversation_history")
+    for name in RETIRED_SECRETARY_TOOLS:
+        assert registry.get_schema(name) is None
+        assert json.loads(registry.dispatch(name, {}))["error"]["code"] == "legacy_tool_removed"
+        assert json.loads(model_tools.handle_function_call(name, {}))["error"]["code"] == "legacy_tool_removed"
+
+
+@pytest.mark.parametrize("executor", ["execute_tool_calls_sequential", "execute_tool_calls_concurrent", "execute_tool_calls_segmented"])
+def test_actual_batch_rejects_mixed_finish_before_any_tool_or_hook(runtime, monkeypatch, executor):
+    from agent import tool_executor
+    db, _ = runtime
+    agent = _agent(db)
+    agent._secretary_noting_child = True
+    agent._secretary_noting_profile = "NOTING"
+    effects = []
+    monkeypatch.setattr("secretary.noting_tools.notebook_maintain", lambda *a: effects.append("mutation"))
+    monkeypatch.setattr("secretary.noting_tools.finish_noting", lambda *a: effects.append("finish"))
+    monkeypatch.setattr("agent.tool_executor._pre_tool_block", lambda *a: effects.append("hook"))
+    calls = [call("notebook_maintain", {"action": "archive"}), call("finish_noting", {"reason": "done"}, "c2")]
+    messages = [{"role": "assistant", "tool_calls": [{"id": c.id, "type": "function", "function": {"name": c.function.name, "arguments": c.function.arguments}} for c in calls]}]
+    try:
+        getattr(tool_executor, executor)(agent, SimpleNamespace(tool_calls=calls), messages, "batch")
+        results = [m for m in messages if m.get("role") == "tool"]
+        assert len(results) == 2 and effects == []
+        assert all(json.loads(m["content"])["error"]["code"] == "invalid_argument" for m in results)
+        assert results[0]["content"] == results[1]["content"]
+    finally:
+        agent.close()
+
+
+@pytest.mark.parametrize("concurrent", [False, True])
+def test_actual_main_dispatch_history_notebook_and_scheduler(runtime, concurrent):
+    from agent.tool_executor import execute_tool_calls_concurrent, execute_tool_calls_sequential
+    db, config = runtime
+    config.write_text("noting:\n  enabled: false\nscheduler:\n  enabled: true\n")
+    agent = _agent(db, selected=["session_search"])
+    db.append_message(agent.session_id, "user", "canonical evidence", message_uid="evidence")
+    messages = []
+    tools = [call("conversation_history", {"mode": "read", "limit": 10}),
+             call("scheduler", {"action": "list"}, "c2")]
+    try:
+        fn = execute_tool_calls_concurrent if concurrent else execute_tool_calls_sequential
+        fn(agent, SimpleNamespace(tool_calls=tools), messages, "actual")
+        results = [json.loads(m["content"]) for m in messages if m.get("role") == "tool"]
+        assert len(results) == 2 and all(r["success"] for r in results)
+        assert "canonical evidence" in json.dumps(results[0])
+        from agent.tool_executor import _tool_search_scoped_names
+        assert "session_search" in _tool_search_scoped_names(agent) | agent.valid_tool_names
+        assert "notebook_show" not in _names(agent.tools)
+        assert agent._secretary_scheduler_enabled is True
+    finally:
+        agent.close()
+
+
+@pytest.mark.parametrize("cold", [False, True])
+def test_scheduler_independent_switch_updates_actual_root_schemas_and_cache(runtime, cold):
+    from agent.system_prompt import HISTORY_SEARCH_GUIDANCE, SCHEDULER_GUIDANCE, SECRETARY_WORK_AND_NOTEBOOK_GUIDANCE
+    from gateway.run import GatewayRunner
+    db, config = runtime
+    agent = _agent(db, selected=["session_search"])
+    try:
+        seen = _requests(agent)
+        _turn(agent)
+        history = db.get_messages_as_conversation(agent.session_id)
+        config.write_text("noting:\n  enabled: false\nscheduler:\n  enabled: false\n")
+        if cold:
+            agent.close()
+            agent = _agent(db, existing=False, selected=["session_search"])
+            agent._cached_system_prompt = None
+            seen = _requests(agent)
+            result = agent.run_conversation(user_message="restored", conversation_history=history, title_user_message="")
+            assert result["completed"]
+        else:
+            _turn(agent, "next turn")
+        root = seen[-1]["messages"][0]["content"]
+        assert root.count(HISTORY_SEARCH_GUIDANCE) == 1
+        assert SECRETARY_WORK_AND_NOTEBOOK_GUIDANCE not in root and SCHEDULER_GUIDANCE not in root
+        assert "conversation_history" in _names(seen[-1]["tools"])
+        assert not {"notebook_show", "scheduler"}.intersection(_names(seen[-1]["tools"]))
+        assert (agent._secretary_main_read_eligible, agent._secretary_notebook_read_enabled,
+                agent._secretary_scheduler_enabled) == (True, False, False)
+        off = GatewayRunner._extract_cache_busting_config({"scheduler": {"enabled": False}})
+        invalid = GatewayRunner._extract_cache_busting_config({"scheduler": {"enabled": "false"}})
+        assert off["scheduler.enabled"] is False and invalid["scheduler.enabled"] is False
+    finally:
+        agent.close()
+
+
+def test_actual_native_session_flush_refreshes_admitted_instant_before_commit(runtime):
+    from agent.session_persistence import _db_flush_write
+    from secretary import reminders, schedules
+    from secretary.scheduler_time import epoch_to_utc_iso
+    import time
+    db, _ = runtime
+    agent = _agent(db)
+    store = schedules.SchedulerStore(db, agent._secretary_conversation_ref, session_id=agent.session_id)
+    now = time.time()
+    created = store.create("actual native refresh", epoch_to_utc_iso(now - 10), "instant", now=now)
+    sid = created["schedule"]["schedule_id"]
+    claim = schedules.claim_due(db, sid, owner="wiring", now=now)
+    receipt = reminders.admit_active_reminder(db, claim, session_id=agent.session_id, now=now)
+    live = [{"role": "user", "content": receipt["resolved"]["text"], "timestamp": receipt["resolved"]["source_timestamp"]}]
+    rows = copy.copy(live[0])
+    # The final instant notice changes between ingress resolution and real native insertion.
+    store.create("future coverage", epoch_to_utc_iso(now + 100), "instant", now=now)
+    try:
+        _db_flush_write(agent, [rows], live, live)
+        stored = db.get_messages(agent.session_id)
+        assert len(stored) == 1
+        assert stored[0]["content"] == live[0]["content"]
+        assert "no instant reminder" not in stored[0]["content"].lower()
+        assert reminders.active_admission_witness(live[0]["content"]).durable(db)
+    finally:
+        agent.close()
+
+
+@pytest.mark.parametrize("aggregate", [False, True])
+def test_noting_budget_feedback_is_authorized_and_honest(runtime, aggregate):
+    from tools.budget_config import BudgetConfig
+    from tools.tool_result_storage import enforce_turn_budget, maybe_persist_tool_result
+    budget = BudgetConfig(default_result_size=100, turn_budget=100, preview_size=20)
+    text = "original evidence " * 100
+    if aggregate:
+        rows = [{"role": "tool", "tool_call_id": "large", "content": text}]
+        enforce_turn_budget(rows, config=budget, noting=True)
+        restricted = rows[0]["content"]
+    else:
+        restricted = maybe_persist_tool_result(text, "conversation_history", "large", config=budget, noting=True)
+    assert "Reduce before/after" in restricted and "single message" in restricted
+    assert "currently allowed tools cannot read" in restricted
+    assert "read_file" not in restricted and "execute_code" not in restricted and "terminal" not in restricted
+    native = maybe_persist_tool_result(text, "conversation_history", "native", config=budget)
+    assert "read_file" in native and "execute_code" in native
+
+
+@pytest.mark.parametrize("concurrent", [False, True])
+def test_bound_child_uses_all_four_tools_through_actual_dispatch(runtime, concurrent):
+    from agent.tool_executor import execute_tool_calls_concurrent, execute_tool_calls_sequential
+    from secretary.noting_child import build_noting_child
+    from secretary.noting_tools import initialize_notebook_work
+    db, _ = runtime
+    parent = _agent(db)
+    db.append_message(parent.session_id, "user", "Visit after dates agreed", message_uid="m1")
+    child = build_noting_child(parent, runtime_profile="NOTING", parent_conversation_ref=parent._secretary_conversation_ref)
+    child._secretary_noting_anchor_uid = "m1"
+    admission = db.noting_admit(parent._secretary_conversation_ref, "m1", kind="manual")
+    db.noting_child_register(admission, child_session_id=child.session_id, profile=None)
+    initialize_notebook_work(child, trigger_type="manual")
+    fn = execute_tool_calls_concurrent if concurrent else execute_tool_calls_sequential
+    messages = []
+    try:
+        args = {"action": "create", "entry_type": "matter", "fields": {"description": "Plan visit", "completion_condition": "Dates agreed"},
+                "source_message_identities": [{"conversation_ref": parent._secretary_conversation_ref, "message_uid": "m1"}]}
+        for number, (name, args) in enumerate([
+            ("conversation_history", {"mode": "read", "limit": 5}),
+            ("notebook_maintain", args), ("notebook_show", {}), ("finish_noting", {"reason": "Indexed visit"}),
+        ]):
+            fn(child, SimpleNamespace(tool_calls=[call(name, args, f"child{number}")]), messages, "child")
+            result = json.loads([m for m in messages if m.get("role") == "tool"][-1]["content"])
+            assert result["success"], result
+            if name == "notebook_show":
+                assert result["view_kind"] == "working" and "Plan visit" in json.dumps(result)
+            if name == "finish_noting":
+                assert result["status"] == "end_requested" and "committed" not in result
+        assert db.notebook_current(parent._secretary_conversation_ref) is None
+    finally:
+        child.close()
+        parent.close()
+
+
+@pytest.mark.parametrize("aggregate", [False, True])
+def test_actual_dispatch_selects_noting_budget_feedback_from_runtime(runtime, monkeypatch, aggregate):
+    from agent.tool_executor import execute_tool_calls_sequential
+    from tools.budget_config import BudgetConfig
+    db, _ = runtime
+    agent = _agent(db)
+    agent._secretary_noting_child = True
+    agent._secretary_noting_profile = "NOTING"
+    budget = BudgetConfig(default_result_size=10000 if aggregate else 100, turn_budget=100, preview_size=20)
+    monkeypatch.setattr("agent.tool_executor._budget_for_agent", lambda _agent: budget)
+    monkeypatch.setattr("tools.session_history_tool.conversation_history", lambda *a, **k: "evidence " * 300)
+    messages = []
+    try:
+        execute_tool_calls_sequential(agent, SimpleNamespace(tool_calls=[call("conversation_history")]), messages, "budget")
+        content = [m for m in messages if m.get("role") == "tool"][-1]["content"]
+        assert "Reduce before/after" in content and "single message" in content
+        assert "read_file" not in content and "execute_code" not in content
+    finally:
+        agent.close()
+
+
+@pytest.mark.parametrize("name", ["session_history", "noting_memo", "notebook_edit", "notebook_manage", "notebook_schedule", "compact_parent"])
+def test_actual_restored_legacy_call_has_explicit_nonexecuting_result(runtime, name):
+    from agent.tool_executor import execute_tool_calls_concurrent
+    db, _ = runtime
+    agent = _agent(db)
+    messages = []
+    try:
+        execute_tool_calls_concurrent(agent, SimpleNamespace(tool_calls=[call(name)]), messages, "legacy")
+        result = json.loads(messages[-1]["content"])
+        assert result["error"]["code"] == "legacy_tool_removed"
+        assert json.loads(agent._invoke_tool(name, {}, "direct-legacy"))["error"]["code"] == "legacy_tool_removed"
+        assert db.notebook_current(agent._secretary_conversation_ref) is None
+    finally:
+        agent.close()
+
+
+def test_actual_catalog_does_not_restore_disabled_or_noting_only_capabilities(runtime):
+    db, config = runtime
+    config.write_text("noting:\n  enabled: false\nscheduler:\n  enabled: false\n")
+    agent = _agent(db, selected=["notebook", "scheduler", "noting", "session_search"])
+    try:
+        result = json.loads(agent._invoke_tool("tool_describe", {
+            "names": ["session_search", "scheduler", "notebook_show", "notebook_maintain", "finish_noting"]}, "catalog"))
+        rendered = json.dumps(result)
+        assert "session_search" in result.get("tools", {})
+        assert not {"scheduler", "notebook_show", "notebook_maintain", "finish_noting"}.intersection(result.get("tools", {}))
+        assert "legacy_tool_removed" not in rendered
+        bridge = next(tool for tool in agent.tools if tool["function"]["name"] == "tool_search")
+        for name in ("scheduler", "notebook_show", "notebook_maintain", "finish_noting"):
+            assert f"- {name}:" not in bridge["function"]["description"]
+    finally:
+        agent.close()
+
+
+@pytest.mark.parametrize("other", ["unknown_tool", "notebook_edit", "notebook_maintain"])
+def test_real_turn_rejects_original_finish_batch_before_native_filtering(runtime, monkeypatch, other):
+    from tests.secretary.test_noting_child import mock_response
+    db, _ = runtime
+    agent = _agent(db)
+    agent._secretary_noting_child = True
+    agent._secretary_noting_profile = "NOTING"
+    agent.valid_tool_names |= {"finish_noting", "notebook_maintain"}
+    agent._secretary_noting_parent_tools = copy.deepcopy(agent.tools)
+    effects = []
+    monkeypatch.setattr("secretary.noting_tools.finish_noting", lambda *a: effects.append("finish"))
+    monkeypatch.setattr("secretary.noting_tools.notebook_maintain", lambda *a: effects.append("write"))
+    def response(index):
+        return mock_response(None, "tool_calls", [call("finish_noting", {"reason": "done"}), call(other, {}, "c2")]) if index == 1 else mock_response("stopped")
+    seen = _requests(agent, response)
+    try:
+        _turn(agent)
+        results = [row for row in seen[-1]["messages"] if row["role"] == "tool"]
+        assert len(results) == 2 and effects == []
+        assert all(json.loads(row["content"])["error"]["code"] == "invalid_argument" for row in results)
+        assert results[0]["content"] == results[1]["content"]
+    finally:
+        agent.close()
+
+
+@pytest.mark.parametrize("legacy_name", ["session_history", "Session-History"])
+def test_real_turn_does_not_fuzzy_execute_retired_history_name(runtime, monkeypatch, legacy_name):
+    from tests.secretary.test_noting_child import mock_response
+    db, _ = runtime
+    agent = _agent(db)
+    effects = []
+    monkeypatch.setattr("tools.session_history_tool.conversation_history", lambda *a, **k: effects.append("history"))
+    def response(index):
+        return mock_response(None, "tool_calls", [call(legacy_name, {"mode": "read"})]) if index == 1 else mock_response("corrected")
+    seen = _requests(agent, response)
+    try:
+        _turn(agent)
+        assert effects == []
+        result = next(row for row in seen[-1]["messages"] if row["role"] == "tool")
+        assert json.loads(result["content"])["error"]["code"] == "legacy_tool_removed"
+        assert agent._repair_tool_call(legacy_name) is None
+    finally:
+        agent.close()
+
+
+def test_actual_native_session_flush_rejection_does_not_publish_live_or_consume(runtime, monkeypatch):
+    import time
+    from agent.session_persistence import _db_flush_write
+    from secretary import reminders, schedules
+    from secretary.scheduler_time import epoch_to_utc_iso
+    db, _ = runtime
+    agent = _agent(db)
+    store = schedules.SchedulerStore(db, agent._secretary_conversation_ref, session_id=agent.session_id)
+    now = time.time()
+    sid = store.create("rollback carrier", epoch_to_utc_iso(now - 1), "instant", now=now)["schedule"]["schedule_id"]
+    claim = schedules.claim_due(db, sid, owner="rollback", now=now)
+    receipt = reminders.admit_active_reminder(db, claim, session_id=agent.session_id, now=now)
+    original_text = receipt["resolved"]["text"]
+    live = [{"role": "user", "content": original_text, "timestamp": receipt["resolved"]["source_timestamp"]}]
+    store.create("new later coverage", epoch_to_utc_iso(now + 100), "instant", now=now)
+    append = db.append_messages_batch
+    def reject(*args, **kwargs):
+        bind = kwargs["before_commit"]
+        def before(conn, sid, rows):
+            bind(conn, sid, rows)
+            raise OSError("controlled native transaction rejection")
+        return append(*args, **{**kwargs, "before_commit": before})
+    monkeypatch.setattr(db, "append_messages_batch", reject)
+    try:
+        with pytest.raises(OSError, match="controlled native"):
+            _db_flush_write(agent, [dict(live[0])], live, live)
+        assert db.get_messages(agent.session_id) == []
+        assert live[0]["content"] is original_text
+        assert not reminders.active_admission_witness(original_text).committed
+        assert db._read_one("SELECT state FROM secretary_schedule_registry WHERE schedule_id=?", (sid,))[0] == "pending"
+    finally:
+        agent.close()
+
+
+def test_auxiliary_native_session_search_is_preserved(runtime, monkeypatch):
+    from agent.tool_executor import _tool_search_scoped_names
+    db, _ = runtime
+    db.create_session("native-cron", source="cron")
+    agent = _agent(db, session_id="native-cron", existing=False, selected=["session_search"])
+    calls = []
+    def native_search(**kwargs):
+        calls.append(kwargs)
+        return json.dumps({"success": True, "native": True})
+    monkeypatch.setattr("tools.session_search_tool.session_search", native_search)
+    try:
+        assert "session_search" in _tool_search_scoped_names(agent) | agent.valid_tool_names
+        assert not {"conversation_history", "notebook_show", "scheduler"}.intersection(_names(agent.tools))
+        result = json.loads(agent._invoke_tool("session_search", {"query": "physical execution"}, "native"))
+        assert result["native"] is True and len(calls) == 1
+    finally:
+        agent.close()

@@ -370,14 +370,18 @@ def _tool_search_scoped_names(agent) -> frozenset:
         getattr(_registry, "_generation", 0),
         frozenset(enabled) if enabled is not None else None,
         frozenset(disabled) if disabled is not None else None,
+        getattr(agent, "_secretary_main_read_eligible", None),
+        getattr(agent, "_secretary_notebook_read_enabled", None),
+        getattr(agent, "_secretary_scheduler_enabled", None),
     )
     cached = getattr(agent, "_tool_search_scope_cache", None)
     if cached is not None and cached[0] == cache_key:
         return cached[1]
     try:
-        names = _ts.scoped_deferrable_names(model_tools.get_tool_definitions(
+        from tools.secretary_dispatch import filter_tool_definitions
+        names = _ts.scoped_deferrable_names(filter_tool_definitions(model_tools.get_tool_definitions(
             enabled_toolsets=enabled, disabled_toolsets=disabled, quiet_mode=True, skip_tool_search_assembly=True,
-        ) or [])
+        ) or [], agent))
     except Exception:
         names = frozenset()
     with contextlib.suppress(Exception):
@@ -721,6 +725,14 @@ def _dispatch_authorized_once(
         elif callback is not None:
             callback()
 
+    from tools.secretary_dispatch import legacy_tool_removed
+    retired = legacy_tool_removed(ref.name)
+    if retired is not None:
+        _advance_start_order()
+        state.blocked = True
+        return _blocked_tool_result(agent, ref, block_body=retired,
+                                    block_error_type="legacy_tool_removed", guardrail_decision=None)
+
     block_message, block_error_type = scope_block, "tool_scope_block"
     if block_message is None:
         # Noting runtime policy first: a denied tool must not reach plugin hooks or guardrails.
@@ -770,7 +782,8 @@ def _dispatch_authorized_once(
     prepare_current_terminal(ref)
     _advance_start_order(lambda: _begin_tool_execution(agent, ref, display_index))
     from agent.secretary_prompt import cron_schema_scope
-    with cron_schema_scope(agent):
+    from tools.secretary_dispatch import secretary_surface_scope
+    with cron_schema_scope(agent), secretary_surface_scope(agent):
         return _run_with_activity_heartbeat(agent, ref.name, lambda: execute(ref.args))
 
 
@@ -1133,10 +1146,13 @@ def _commit_tool_result(
     _status_suffix = " (error)" if is_error else ""
     agent._touch_activity(f"tool completed: {function_name} ({tool_duration:.1f}s){_status_suffix}")
 
+    # Trusted runtime identity, never tool arguments or a model-selected profile.
+    noting_feedback = (getattr(agent, "_secretary_noting_child", False)
+                       and getattr(agent, "_secretary_noting_profile", None) == "NOTING")
     persisted_result = function_result
     if _is_multimodal_tool_result(persisted_result):
         persisted_result = _persist_multimodal_text_parts(
-            persisted_result, function_name, tool_call_id, get_active_env(effective_task_id), budget,
+            persisted_result, function_name, tool_call_id, get_active_env(effective_task_id), budget, noting=noting_feedback,
         )
     else:
         persisted_result = maybe_persist_tool_result(
@@ -1145,6 +1161,7 @@ def _commit_tool_result(
             tool_use_id=tool_call_id,
             env=get_active_env(effective_task_id),
             config=budget,
+            **({"noting": True} if noting_feedback else {}),
         )
     _record_persisted_path_for_stub(agent, tool_call_id, persisted_result)
     note_tool_result(agent, function_name, tool_call_id, function_result, persisted_result)
@@ -1188,7 +1205,7 @@ def _commit_tool_result(
     return persisted_result, function_result, tool_message.get("_tool_output_risk")
 
 
-def _persist_multimodal_text_parts(result: dict, tool_name: str, tool_call_id: str, env, budget: BudgetConfig) -> dict:
+def _persist_multimodal_text_parts(result: dict, tool_name: str, tool_call_id: str, env, budget: BudgetConfig, *, noting=False) -> dict:
     """Spill oversized TEXT parts of a multimodal envelope through the same persistence policy as
     string results (#95429). A ``browser_exec`` call that captured a screenshot bakes its full
     stdout into the envelope's text part, which used to bypass ``maybe_persist_tool_result``
@@ -1202,7 +1219,7 @@ def _persist_multimodal_text_parts(result: dict, tool_name: str, tool_call_id: s
             # One spill file per part: a second oversized part under the same id would overwrite the first's file.
             part_id = tool_call_id if not spilled else f"{tool_call_id}_part{spilled}"
             replaced = maybe_persist_tool_result(content=text, tool_name=tool_name, tool_use_id=part_id,
-                                                 env=env, config=budget)
+                                                 env=env, config=budget, **({"noting": True} if noting else {}))
             if replaced != text:
                 part = {**part, "text": replaced}
                 first_replacement = first_replacement or replaced
@@ -1226,7 +1243,10 @@ def _finalize_tool_batch(agent, messages: list, effective_task_id: str, num_tool
         return
     batch = messages[-num_tools:]
     contents_before = [message.get("content") for message in batch]
-    enforce_turn_budget(batch, env=get_active_env(effective_task_id), config=budget)
+    noting_feedback = (getattr(agent, "_secretary_noting_child", False)
+                       and getattr(agent, "_secretary_noting_profile", None) == "NOTING")
+    enforce_turn_budget(batch, env=get_active_env(effective_task_id), config=budget,
+                        **({"noting": True} if noting_feedback else {}))
     record_tool_batch(agent, batch, contents_before)
     agent._apply_pending_steer_to_tool_results(messages, num_tools)
 
@@ -1587,6 +1607,9 @@ def execute_tool_calls_concurrent(agent, assistant_message, messages: list, effe
     ``finalize=False`` skips end-of-batch budget enforcement and /steer injection (the
     segmented dispatcher owns turn-end work)."""
     tool_calls = assistant_message.tool_calls
+    from tools.secretary_dispatch import reject_noting_mixed_finish
+    if reject_noting_mixed_finish(agent, tool_calls, messages, effective_task_id):
+        return
     num_tools = len(tool_calls)
     _tool_budget = _budget_for_agent(agent)  # once per turn, not per result
 
@@ -1625,7 +1648,6 @@ def execute_tool_calls_concurrent(agent, assistant_message, messages: list, effe
         return
     if finalize:
         _finalize_tool_batch(agent, messages, effective_task_id, len(parsed_calls), _tool_budget)
-
 
 # ── Sequential dispatch ─────────────────────────────────────────────────────
 
@@ -1862,6 +1884,9 @@ def _publish_sequential_result(agent, messages: list, ref: _ToolCallRef, managed
 def execute_tool_calls_sequential(agent, assistant_message, messages: list, effective_task_id: str, api_call_count: int = 0, *, finalize: bool = True) -> None:
     from types import SimpleNamespace
     from agent.terminal_approval_batch import terminal_approval_batch, terminal_approval_runs
+    from tools.secretary_dispatch import reject_noting_mixed_finish
+    if reject_noting_mixed_finish(agent, assistant_message.tool_calls, messages, effective_task_id):
+        return
     for calls in terminal_approval_runs(agent, assistant_message.tool_calls):
         with terminal_approval_batch(agent, calls, messages, effective_task_id):
             _execute_tool_calls_sequential(agent, SimpleNamespace(tool_calls=calls), messages, effective_task_id, api_call_count, finalize=False)
@@ -1937,6 +1962,10 @@ def execute_tool_calls_segmented(agent, assistant_message, messages: list, effec
     interrupt flag up front, so an interrupt drains later segments with one result per call."""
     from types import SimpleNamespace
 
+    from tools.secretary_dispatch import reject_noting_mixed_finish
+    if reject_noting_mixed_finish(agent, assistant_message.tool_calls, messages, effective_task_id):
+        return
+
     if segments is None:
         _active_env = get_active_env(effective_task_id)
         _exec_cwd = Path(_active_env.cwd) if _active_env is not None and _active_env.cwd else None
@@ -1954,7 +1983,6 @@ def execute_tool_calls_segmented(agent, assistant_message, messages: list, effec
     total_tools = len(assistant_message.tool_calls)
     if total_tools > 0:
         _finalize_tool_batch(agent, messages, effective_task_id, total_tools, _budget_for_agent(agent))
-
 
 __all__ = [
     "execute_tool_calls_concurrent",

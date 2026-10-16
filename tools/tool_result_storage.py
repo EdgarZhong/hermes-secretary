@@ -292,7 +292,7 @@ def extract_persisted_path(content: str) -> str | None:
 
 def maybe_persist_tool_result(content: str, tool_name: str, tool_use_id: str, env=None,
                               config: BudgetConfig = DEFAULT_BUDGET,
-                              threshold: int | float | None = None) -> str:
+                              threshold: int | float | None = None, *, noting: bool = False) -> str:
     """Layer 2: persist an oversized result, return preview + path. ``threshold`` overrides
     ``config.resolve_threshold(tool_name)``; falls back to inline truncation when no write
     location succeeds."""
@@ -309,14 +309,19 @@ def maybe_persist_tool_result(content: str, tool_name: str, tool_use_id: str, en
     def _persisted(path: str, host_suffix: str = "") -> str:
         logger.info("Persisted large tool result: %s (%s, %d chars -> %s%s)",
                     tool_name, tool_use_id, len(persisted_content), path, host_suffix)
+        if noting:
+            from tools.session_history_tool import NOTING_HISTORY_OVERSIZE_GUIDANCE
+            return (f"{PERSISTED_OUTPUT_TAG}\n{preview}\n\n"
+                    f"[Preview only: {len(persisted_content):,} characters; full output retained at {path}.]\n"
+                    f"{NOTING_HISTORY_OVERSIZE_GUIDANCE}\n</persisted-output>")
         return _build_persisted_message(preview, has_more, len(persisted_content), path)
 
     # Always persist host-side first: cache/spillover is the single canonical home.
     host_path = _write_to_spillover(persisted_content, filename)
     host_side = _is_host_side_env(env)
-    if host_side and host_path is not None:
+    if (host_side or noting) and host_path is not None:
         return _persisted(host_path)
-    if not host_side:
+    if not host_side and not noting:
         # Remote backend: reference the mounted/synced path when the sandbox can actually read
         # it, else write into the sandbox temp dir (containers without the spillover mount).
         visible = _sandbox_visible_spillover_path(host_path, env) if host_path else None
@@ -330,6 +335,9 @@ def maybe_persist_tool_result(content: str, tool_name: str, tool_use_id: str, en
             logger.warning("Sandbox write failed for %s: %s", tool_use_id, exc)
     logger.info("Inline-truncating large tool result: %s (%d chars, no sandbox write)",
                 tool_name, len(content))
+    if noting:
+        from tools.session_history_tool import NOTING_HISTORY_OVERSIZE_GUIDANCE
+        return f"{preview}\n\n[Truncated: source remains partly unread.] {NOTING_HISTORY_OVERSIZE_GUIDANCE}"
     return (f"{preview}\n\n[Truncated: tool response was {len(content):,} chars. "
             "Full output could not be saved to sandbox.]")
 
@@ -342,7 +350,7 @@ def _content_text_size(content) -> int:
     return len(content or "")
 
 
-def _spill_largest_text_part(parts: list, tool_use_id: str, env, config: BudgetConfig) -> tuple[list, int]:
+def _spill_largest_text_part(parts: list, tool_use_id: str, env, config: BudgetConfig, *, noting=False) -> tuple[list, int]:
     """Persist the largest non-persisted text part of a multimodal list; ``(new parts, chars saved)``."""
     texts = [(i, p["text"]) for i, p in enumerate(parts) if isinstance(p, dict) and p.get("type") == "text"
              and isinstance(p.get("text"), str) and PERSISTED_OUTPUT_TAG not in p["text"]]
@@ -350,14 +358,14 @@ def _spill_largest_text_part(parts: list, tool_use_id: str, env, config: BudgetC
         return parts, 0
     idx, text = max(texts, key=lambda t: len(t[1]))
     replacement = maybe_persist_tool_result(content=text, tool_name=_BUDGET_TOOL_NAME,
-                                            tool_use_id=f"{tool_use_id}_part{idx}", env=env, config=config, threshold=0)
+                                            tool_use_id=f"{tool_use_id}_part{idx}", env=env, config=config, threshold=0, **({"noting": True} if noting else {}))
     if replacement == text:
         return parts, 0
     return [*parts[:idx], {**parts[idx], "text": replacement}, *parts[idx + 1:]], len(text) - len(replacement)
 
 
 def enforce_turn_budget(tool_messages: list[dict], env=None,
-                        config: BudgetConfig = DEFAULT_BUDGET) -> list[dict]:
+                        config: BudgetConfig = DEFAULT_BUDGET, *, noting: bool = False) -> list[dict]:
     """Layer 3: persist the largest non-persisted results first until the turn's aggregate is
     under budget. Mutates the list in-place and returns it. A multimodal result (part list) counts its
     text characters and spills its largest text part; its images stay inline."""
@@ -374,7 +382,7 @@ def enforce_turn_budget(tool_messages: list[dict], env=None,
         content = tool_messages[idx]["content"]
         tool_use_id = tool_messages[idx].get("tool_call_id", f"budget_{idx}")
         if isinstance(content, list):
-            parts, saved = _spill_largest_text_part(content, tool_use_id, env, config)
+            parts, saved = _spill_largest_text_part(content, tool_use_id, env, config, noting=noting)
             if saved:
                 total_size -= saved
                 tool_messages[idx]["content"] = parts
@@ -382,7 +390,7 @@ def enforce_turn_budget(tool_messages: list[dict], env=None,
             continue
         replacement = maybe_persist_tool_result(
             content=content, tool_name=_BUDGET_TOOL_NAME, tool_use_id=tool_use_id,
-            env=env, config=config, threshold=0)
+            env=env, config=config, threshold=0, **({"noting": True} if noting else {}))
         if replacement != content:
             total_size += len(replacement) - size
             tool_messages[idx]["content"] = replacement

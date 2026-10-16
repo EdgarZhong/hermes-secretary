@@ -29,6 +29,13 @@ def parent(db):
 def _ready(parent, db, client):
     from tools.notebook_tool import NOTEBOOK_SHOW_SCHEMA
     parent.tools = [{"type": "function", "function": copy.deepcopy(NOTEBOOK_SHOW_SCHEMA)}]
+    parent.client = client
+    client.chat.completions.create.side_effect = None
+    client.chat.completions.create.return_value = harness.mock_response("Host execution recorded")
+    assert parent.run_conversation(user_message="Record native host boundary", title_user_message="")["completed"]
+    (Path(db.db_path).parent / "config.yaml").write_text(
+        "noting:\n  enabled: true\n  idle:\n    enabled: true\n    threshold_tokens: 10000\n")
+    parent.context_compressor.last_real_prompt_tokens = 10000
     client.chat.completions.create.side_effect = harness._read_mutate_finish_responses()
     db.noting_idle_turn_finished(parent._secretary_conversation_ref, time.time() - 1000)
 
@@ -91,13 +98,13 @@ def test_turn_start_measurement_spawns_force_and_once_framework(parent, db, stub
     assert notices[0]["content"] in [row.get("content") for row in parent._session_messages]
 
 
-def test_owner_profile_off_overrides_enabled_launch_and_reminder_read_failure(parent, db, stub_client, monkeypatch):
+def test_owner_profile_gates_noting_and_scheduler_independently(parent, db, stub_client, monkeypatch):
     from secretary.noting_hosts import poll_parent_idle
     from secretary.reminder_request import inject_pending_reminders
     from hermes_state_secretary_schedule import reminder_append_pending_conn
     _ready(parent, db, stub_client)
     ref = parent._secretary_conversation_ref
-    (Path(db.db_path).parent / "config.yaml").write_text("noting:\n  enabled: false\n")
+    (Path(db.db_path).parent / "config.yaml").write_text("noting:\n  enabled: false\n  idle:\n    enabled: true\n    threshold_tokens: 10000\nscheduler:\n  enabled: false\n")
     assert poll_parent_idle(parent) == "skip:global_disabled"
     db._execute_write(lambda conn: reminder_append_pending_conn(conn, ref, "pending", source_timestamp=1234))
     api_messages = []
@@ -106,7 +113,8 @@ def test_owner_profile_off_overrides_enabled_launch_and_reminder_read_failure(pa
     def unavailable(*args):
         raise RuntimeError("unavailable local state")
     monkeypatch.setattr(db, "notebook_local_enabled_conn", unavailable)
-    assert inject_pending_reminders(parent, api_messages) == (0, 0)
+    count, pressure = inject_pending_reminders(parent, api_messages)
+    assert count == 1 and pressure > 0
     with db._read_ctx() as conn:
         assert len(db.reminder_pull_pending_conn(conn, ref)) == 1
 
