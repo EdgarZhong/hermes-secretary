@@ -66,8 +66,17 @@ def _cmd_secretary(rid, params, session, name, arg):
                     logger.warning("Secretary slash feedback could not be saved", exc_info=True)
                     return s._exec_out(rid, result.output + f"\nSecretary feedback could not be saved: {exc}")
                 with session["history_lock"]:
-                    session.setdefault("history", []).extend(messages)
-                    session["history_version"] = int(session.get("history_version", 0)) + 1
+                    history = session.setdefault("history", [])
+                    version = int(session.get("history_version", 0)) + 1
+                    if session.get("running"):
+                        from copy import deepcopy
+                        session.setdefault("_secretary_feedback_appends", []).append({
+                            "before": deepcopy(history), "messages": deepcopy(messages), "version": version,
+                        })
+                    history.extend(messages)
+                    session["history_version"] = version
+                    if not session.get("running") and session.get("agent") is not None:
+                        session["agent"]._session_messages = history
     if result.prompt:
         return s._ok(rid, {"type": "send", "message": result.prompt})
     return s._exec_out(rid, result.output)

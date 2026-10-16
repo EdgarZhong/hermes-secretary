@@ -267,15 +267,53 @@ def _start_turn_voice() -> tuple[Any, bool]:
         return tts_queue, False
 
 
+def _merge_secretary_feedback(session, result, history, history_version, current_history):
+    """Accept only the exact append batches published by the local feedback owner."""
+    batches = session.pop("_secretary_feedback_appends", ())
+    batches = [batch for batch in batches if batch["version"] > history_version]
+    if not batches:
+        return None
+    def without_pivots(rows):
+        return [row for row in rows if not _is_pivot_marker(row)]
+    expected = without_pivots(history)
+    feedback = []
+    for batch in batches:
+        if without_pivots(batch["before"]) != expected:
+            return None
+        rows = batch["messages"]
+        if any(not row.get("message_uid") for row in rows):
+            return None
+        expected = expected + rows
+        feedback.extend(rows)
+    if without_pivots(current_history) != expected:
+        return None
+    # The result may be shorter after native compression: it is already the complete
+    # authoritative Main context, never a suffix indexed by the old history length.
+    feedback_uids = {row["message_uid"] for row in feedback}
+    messages = [row for row in result["messages"] if row.get("message_uid") not in feedback_uids]
+    current_pivots = [row for row in current_history if _is_pivot_marker(row)]
+    result_pivots = [row for row in messages if _is_pivot_marker(row)]
+    messages = [row for row in messages if not _is_pivot_marker(row) or row in current_pivots]
+    known_uids = {row.get("message_uid") for row in messages if row.get("message_uid")}
+    for row in current_history:
+        if row.get("message_uid") in feedback_uids:
+            if row["message_uid"] not in known_uids:
+                messages.append(row)
+                known_uids.add(row["message_uid"])
+        elif _is_pivot_marker(row) and row not in result_pivots:
+            messages.append(row)
+    return messages
+
+
 def _commit_turn_history(
     session: dict, result: dict, history: list, history_version: int) -> str | None:
     """Write the agent's messages back to session history; returns a client warning or None.
-    If history_version moved mid-turn, the only tolerated mutation is a gateway-inserted
-    pivot marker (compare content, not indices: ``_append_model_switch_marker`` strips prior
-    markers in place); any other desync is surfaced, never dropped."""
+    Concurrent owner-registered Secretary appends and native pivot markers can be merged;
+    any other desync is surfaced, never silently accepted."""
     with session["history_lock"]:
         current_version = int(session.get("history_version", 0))
         if current_version == history_version:
+            session.pop("_secretary_feedback_appends", None)
             session["history"] = result["messages"]
             session["history_version"] = history_version + 1
             return None
@@ -287,6 +325,13 @@ def _commit_turn_history(
         # _append_model_switch_marker strips prior markers in-place then appends a new one, so the delta is
         # NOT a simple tail-slice — we must compare content, not indices.
         current_history = list(session["history"])
+        merged = _merge_secretary_feedback(session, result, history, history_version, current_history)
+        if merged is not None:
+            session["history"] = merged
+            session["history_version"] = current_version + 1
+            if session.get("agent") is not None:
+                session["agent"]._session_messages = merged
+            return None
         history_no_markers = [e for e in history if not _is_pivot_marker(e)]
         current_no_markers = [e for e in current_history if not _is_pivot_marker(e)]
         if current_no_markers == history_no_markers and any(

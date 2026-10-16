@@ -666,9 +666,9 @@ P2只做基本检查，不重测官方CLI，不做真实NM写入。
 | R3-F06 | Gateway冷投递仍受Noting/local/capability gate，claim metadata丢generation/sequence | C9-S：Scheduler独立配置及原生owner/route，完整claim身份贯穿 | 已关闭；c9-surface-report：Gateway30/TUI6与Noting关闭独立投递PASS，主会话已review |
 | R3-F07 | 直接invoke绕过可信surface scope，tool_describe泄露已关闭能力 | C9-S：registry invoke复用正式同一scope，不扩大执行权限 | 已关闭；c9-surface-report：direct catalog与正式派发PASS，主会话已review |
 
-| R3-F08 | 正式TUI Main streaming期间/noting反馈使后续Active冻结丢失用户输入／图片，而durable原文仍在；07§3完整父前缀与原生历史边界 | local_environment：定位原生history merge与feedback接缝，保留busy即时local控制、多模态与消息身份；不以拒绝busy或重写root规避 | real-model/concurrent-slash-active-observation.json；定向正式host机制修复与唯一真实owner复测待完成 |
+| R3-F08 | 正式TUI Main streaming期间/noting反馈使后续Active冻结丢失用户输入／图片，而durable原文仍在；07§3完整父前缀与原生历史边界 | local_environment：定位原生history merge与feedback接缝，保留busy即时local控制、多模态与消息身份；不以拒绝busy或重写root规避 | slash-feedback-report.md：正式busy RPC、完整结果合并、cold human_only投影共28项PASS，主会话接收；唯一真实owner复测待完成 |
 | R3-F09 | 真实Main配置已启用Scheduler但tool_describe返回not_found、tool_search为空，无法登记；07§6.3/8.2 | personal_provider：核对真实CLI/TUI工具构造与catalog，单owner修正确能力供给 | 正式TUI默认factory→native loop→bridge→Store四开关及热关闭等6项PASS，主会话review接收；原用户序列真实复测待完成 |
 | R3-F10 | D01决策后owner切换，通知发布重读新ref而跨Conversation；04§4.5 suppression/owner不变量 | 主会话微小集成修补：把联合触发已捕获ref传到正式发布点；C10-T owner复测 | 旧test_external_rejection_owner_changes_before_publisher_cannot_cross已真实失败，修复后待定向复验 |
-
 | R3-F11 | 原生成功in-place压缩复用旧assistant UID，漏推进Force interval；07§8.1 | local_environment：在正式成功发布事务识别新boundary，覆盖复用UID及既有summary重复压缩，保持rollback/noop/rewind不释放 | real-model/native-boundary-interval-miss.json；机制及真实定向复测待完成 |
 | R3-F12 | Force父最后user被child任务拼接修改，完整父消息前缀失真；07§3/8.2与04 C13 | local_environment：在既有中间层冻结/后缀接缝保留每请求完整父前缀，原生路径不变 | c4实际provider请求对比；修复及真实user尾分支复测待完成 |
+| R3-F13 | 原生/notebook误显示Snapshot/anchor审计ID，04§4.2要求隐藏 | personal_provider：仅修slash renderer两行，不改模型show envelope或Framework | C10-T现行fixture真实失败；定向复验待完成 |

@@ -1649,11 +1649,11 @@ class SessionMessagesMixin:
                 if exact_clone_key is not None:
                     exact_user_clones[exact_clone_key] = msg
             messages.append(msg)
-        # Defense-in-depth: strip a background-review harness turn (older builds shared the parent's
-        # session_id) plus its curator reply, and bare tool-call marker content ("[memory]") persisted as an answer.
         messages = _strip_stale_tool_call_markers(_strip_background_review_harness(messages))
         if repair_alternation and messages:
             from agent.agent_runtime_helpers import repair_message_sequence
+            from agent.message_visibility import model_visible_messages
+            messages = model_visible_messages(messages)
             repaired = repair_message_sequence(None, messages)
             if repaired:
                 logger.info("Repaired %d message-alternation violation(s) while "

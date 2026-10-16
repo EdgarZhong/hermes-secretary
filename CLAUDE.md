@@ -31,9 +31,9 @@
 | L0 | 环境已交回；yaml问题是个人脚本旧导入，P3 owner修复 | 不跑产品测试；不改锁或裸装依赖 |
 | 门禁 | 尚未启动；主会话已制定validation.md全范围15组场景 | 集成收敛后Astra/high Verification；主会话制定Validation、6.1/high执行 |
 
-- 真实运行新发现 R3-F08：TUI Main streaming期间/noting反馈后，durable原文仍在但后续Active冻结缺输入／图片；已由local_environment调查修复。真实模型owner继续独立场景，修后定向复测，不以配置存在或部分成功冒称整链通过。
+- 真实运行新发现 R3-F08：TUI Main streaming期间/noting反馈后，durable原文仍在但后续Active冻结缺输入／图片；修复已由主会话review接收：busy历史批次合并与cold human_only投影共28项PASS，ruff/health通过；真实复测待执行。真实模型owner继续独立场景，修后定向复测，不以配置存在或部分成功冒称整链通过。
 
-- R3-F09真实Scheduler目录缺失已由主会话review接收单点catalog修复，正式TUI四开关及热关闭等6项PASS；真实复测待执行。C10-T六旧文件首轮60 PASS／17 FAIL／10 setup ERROR已保存，personal_provider正按现行契约调整并取得F10定向证据。R3-F10 External通知owner重读由主会话只补传现有ref，待原失败定向复验。F08b冷恢复human_only与正常回复合并已反证，local_environment在model-fed投影过滤接线修复。
+- R3-F09真实Scheduler目录缺失已由主会话review接收单点catalog修复，正式TUI四开关及热关闭等6项PASS；真实复测待执行。C10-T六旧文件首轮60 PASS／17 FAIL／10 setup ERROR已保存，personal_provider正按现行契约调整并取得F10定向证据。R3-F10 External通知owner重读由主会话只补传现有ref，待原失败定向复验。F08b冷恢复human_only与正常回复合并已反证并修复；R3-F13原生/notebook误显Snapshot/anchor ID由personal_provider按04§4.2保留约束修正。
 
 - R3-F11／F12：真实原生成功压缩复用UID时漏记新interval；Force父尾为user时Noting任务被并入冻结消息。已派local_environment按07§3/8.1与04 C13修复，包含事务/no-op和逐请求前缀反证；不能用文本包含替代完整消息前缀。
 
