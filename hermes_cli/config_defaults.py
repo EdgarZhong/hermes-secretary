@@ -4,7 +4,6 @@ Pure-data leaf module — must not import from hermes_cli.config. Comments are t
 docs of config.yaml.
 """
 
-
 #: Image every container terminal backend (docker/modal/daytona/singularity) uses unless the
 #: user pins one. LEGACY_SANDBOX_IMAGES are the plain defaults that preceded the desktop stack
 #: (the 3.14 pin shipped between the two without a migration); a saved config still holding one
@@ -2135,6 +2134,7 @@ DEFAULT_CONFIG = {
         # and re-arms the live handle; explicit env wins.
         "startup_watchdog": True,
         "startup_watchdog_timeout_seconds": 300,
+        "model_code_skew_guard": True,  # dev bypass for model-operation skew guards only: startup/process-wide, see README
         # Keep writing the legacy ~/.hermes/sessions/sessions.json mirror of the routing index
         # (primary copy: state.db gateway_routing table). True for external tooling and downgrade
         # safety; False stops producing the file.

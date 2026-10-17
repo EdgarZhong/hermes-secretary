@@ -77,6 +77,20 @@ hermes
 
 Gateway 入口为 `hermes gateway`。官方 Dashboard 入口为 `hermes dashboard --host 127.0.0.1 --no-open`，默认端口 9119；源码子命令为 `.venv/bin/python -m hermes_cli.main dashboard ...`。激活不自动安装全部 JS workspace；不以官方安装脚本替代当前 checkout。
 
+### 模型代码版本漂移保护（开发开关）
+
+Hermes 在进程启动时记录 checkout 的 Git revision。运行中 checkout 变化后，模型列表、密钥保存、模型切换等模型操作会拒绝请求（TUI/Desktop RPC `5098`、Dashboard `503`），避免新旧模块混用导致的真实导入/运行错误。保护默认开启，未配置时行为不变。
+
+本地开发需要在同一 checkout 内继续这些模型操作时，在启动 Profile 的 `config.yaml`（默认 `~/.hermes/config.yaml`）中设置：
+
+```yaml
+gateway:
+  model_code_skew_guard: false
+```
+
+也可执行 `hermes config set gateway.model_code_skew_guard false`。该策略由对应后端进程在启动时读取一次，同进程内所有 Profile 共用；修改后需重启该后端（gateway、dashboard/`hermes serve` 或 TUI）才生效。关闭只跳过上述模型操作的版本漂移拒绝：原始漂移检测、Cron 使用方、后端退休/watchdog、Session `4001` 保护、认证及模型/provider 校验均保持不变。它不是模块热更新，也不会保证已加载模块与磁盘代码兼容；真实导入或运行错误仍会正常暴露，必要时仍需重启。
+
+
 ## 独立 Secretary Web 开发入口
 
 独立前端在并列本地仓库 `../hermes-secretary-web`，使用 React / TypeScript / Vite，直接调用原生 REST / WS；开发服务默认连接 `http://127.0.0.1:53445`。部署范围及验收进度见 CLAUDE；官方 Dashboard 与 Secretary 同源并存，见下节部署形态。

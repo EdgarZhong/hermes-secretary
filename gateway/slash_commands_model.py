@@ -49,9 +49,9 @@ _REASONING_DISPLAY_TOGGLES = {"show": True, "on": True, "hide": False, "off": Fa
 def _model_switch_skew_guard() -> Optional[str]:
     """Refuse a model switch when the gateway is running stale code: a first-time lazy import on
     a new code path can crash on a stale cached dependency. Scoped to the highest-risk trigger."""
-    from gateway.code_skew import detect_code_skew
+    from gateway.code_skew import model_guard_skew
 
-    skew = detect_code_skew()
+    skew = model_guard_skew()
     if not skew:
         return None
     boot_rev, disk_rev = skew

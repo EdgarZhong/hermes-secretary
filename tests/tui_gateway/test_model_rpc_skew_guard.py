@@ -10,13 +10,31 @@ the gateway's ``/model`` switch already returns, and never reach the payload bui
 
 from __future__ import annotations
 
+import os
+from pathlib import Path
 from unittest.mock import Mock
 
+import pytest
+
+import gateway.code_skew as code_skew
 import tui_gateway.server as server
 
 
 def _call(method: str, params: dict | None = None) -> dict:
     return server._methods[method]("rid", params or {})
+
+
+@pytest.fixture(autouse=True)
+def _reset_model_guard_policy(monkeypatch):
+    """Each test starts with the process policy unresolved (= native enabled)."""
+    monkeypatch.setattr(code_skew, "_model_guard_enabled", None)
+
+
+def _disable_model_guard() -> None:
+    home = Path(os.environ["HERMES_HOME"])
+    (home / "config.yaml").write_text(
+        "gateway:\n  model_code_skew_guard: false\n", encoding="utf-8")
+    assert code_skew.resolve_model_guard_policy() is False
 
 
 def test_stale_model_options_refuses_instead_of_building(tmp_path, monkeypatch):
@@ -64,3 +82,78 @@ def test_fresh_model_options_builds_payload_unchanged(tmp_path, monkeypatch):
     resp = _call("model.options")
     assert "result" in resp, resp
     assert resp["result"] == expected
+
+
+def test_explicitly_enabled_guard_still_refuses_model_options(tmp_path, monkeypatch):
+    home = Path(os.environ["HERMES_HOME"])
+    (home / "config.yaml").write_text(
+        "gateway:\n  model_code_skew_guard: true\n", encoding="utf-8")
+    assert code_skew.resolve_model_guard_policy() is True
+    monkeypatch.setattr(code_skew, "detect_code_skew", lambda: ("abc1234567", "def4567890"))
+    monkeypatch.setattr(server, "_hermes_home", tmp_path)
+    builds: list = []
+    monkeypatch.setattr("hermes_cli.inventory.build_model_options_payload",
+                        Mock(side_effect=lambda *a, **k: builds.append(1)))
+
+    resp = _call("model.options")
+    assert resp.get("error") is not None, resp
+    assert resp["error"]["code"] == 5098
+    assert builds == []
+
+
+def test_disabled_guard_lets_model_options_build(tmp_path, monkeypatch):
+    _disable_model_guard()
+    monkeypatch.setattr(code_skew, "detect_code_skew", lambda: ("abc1234567", "def4567890"))
+    monkeypatch.setattr(server, "_hermes_home", tmp_path)
+    expected = {"providers": [{"slug": "zai"}]}
+    builds: list = []
+    monkeypatch.setattr("hermes_cli.inventory.build_model_options_payload",
+                        Mock(side_effect=lambda *a, **k: builds.append(1) or expected))
+
+    resp = _call("model.options")
+    assert "result" in resp, resp
+    assert resp["result"] == expected
+    assert builds == [1]
+
+
+def test_disabled_guard_lets_model_save_key_reach_the_credential_write(tmp_path, monkeypatch):
+    _disable_model_guard()
+    monkeypatch.setattr(code_skew, "detect_code_skew", lambda: ("abc1234567", "def4567890"))
+    monkeypatch.setattr(server, "_hermes_home", tmp_path)
+    saves: list = []
+    monkeypatch.setattr("hermes_cli.credential_lifecycle.save_provider_env_credential",
+                        lambda env_var, api_key: saves.append((env_var, api_key)))
+    monkeypatch.setattr("hermes_cli.config.is_managed", lambda: False)
+    monkeypatch.setattr("hermes_cli.config.load_env", lambda: {})
+    monkeypatch.setattr("hermes_cli.free_tier_bootstrap.reconcile_record", lambda: None)
+    monkeypatch.setattr(
+        "hermes_cli.observability.shared_metrics_setup.record_provider_setup_done",
+        lambda *a, **k: None)
+    monkeypatch.setattr("hermes_cli.inventory.build_models_payload",
+                        lambda *a, **k: {"providers": []})
+
+    resp = _call("model.save_key", {"slug": "zai", "api_key": "sk-canary"})
+    assert "result" in resp, resp
+    assert resp["result"]["provider"]["authenticated"] is True
+    assert saves and saves[0][1] == "sk-canary"
+
+
+def test_disabled_launch_policy_holds_for_a_secondary_profile_request(tmp_path, monkeypatch):
+    """A request scoped to another Profile must not re-read that Profile's config."""
+    home = Path(os.environ["HERMES_HOME"])
+    _disable_model_guard()
+    secondary = home / "profiles" / "secondary"
+    secondary.mkdir(parents=True)
+    (secondary / "config.yaml").write_text(
+        "gateway:\n  model_code_skew_guard: true\n", encoding="utf-8")
+
+    monkeypatch.setattr(code_skew, "detect_code_skew", lambda: ("abc1234567", "def4567890"))
+    expected = {"providers": []}
+    builds: list = []
+    monkeypatch.setattr("hermes_cli.inventory.build_model_options_payload",
+                        Mock(side_effect=lambda *a, **k: builds.append(1) or expected))
+
+    resp = _call("model.options", {"profile": "secondary"})
+    assert "result" in resp, resp
+    assert resp["result"] == expected
+    assert builds == [1]

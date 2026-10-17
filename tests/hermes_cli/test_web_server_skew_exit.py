@@ -6,7 +6,9 @@ while an update is still in flight, and its client respawns it from the new code
 
 from __future__ import annotations
 
+import os
 import subprocess
+from pathlib import Path
 
 from hermes_cli.web_server_skew_exit import should_retire_for_skew, start_code_skew_watchdog
 
@@ -91,6 +93,35 @@ def test_default_probe_retires_once_the_checkout_moves_past_the_boot_revision(tm
     assert unchanged.should_exit is False
 
     subprocess.run([*git, "commit", "-q", "--allow-empty", "-m", "two"], check=True)
+    moved = _Server()
+    start_code_skew_watchdog(moved, update_probe=lambda: False, fence=fence,
+                             poll_s=0.01, max_polls=4).join(timeout=5)
+    assert moved.should_exit is True
+
+
+def test_model_guard_opt_out_keeps_backend_retirement_running(tmp_path, monkeypatch):
+    """``gateway.model_code_skew_guard=false`` bypasses only model-operation guards; the
+    backend's own retirement/watchdog still reads raw ``detect_code_skew()``."""
+    import gateway.code_skew as code_skew
+
+    home = Path(os.environ["HERMES_HOME"])
+    (home / "config.yaml").write_text(
+        "gateway:\n  model_code_skew_guard: false\n", encoding="utf-8")
+    monkeypatch.setattr(code_skew, "_model_guard_enabled", None)
+    assert code_skew.resolve_model_guard_policy() is False
+
+    repo = tmp_path / "repo"
+    git = ["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false"]
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    subprocess.run([*git, "commit", "-q", "--allow-empty", "-m", "one"], check=True)
+    monkeypatch.setattr(code_skew, "_PROJECT_ROOT", repo)
+    monkeypatch.setattr(code_skew, "_boot_fingerprint", None)
+    code_skew.record_boot_fingerprint()
+    subprocess.run([*git, "commit", "-q", "--allow-empty", "-m", "two"], check=True)
+
+    assert code_skew.model_guard_skew() is None
+    assert code_skew.detect_code_skew() is not None
+    fence = _Fence(idle=True)
     moved = _Server()
     start_code_skew_watchdog(moved, update_probe=lambda: False, fence=fence,
                              poll_s=0.01, max_polls=4).join(timeout=5)

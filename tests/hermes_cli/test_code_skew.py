@@ -10,6 +10,9 @@ stale-module ImportError after ``hermes update``.
 
 import asyncio
 import contextlib
+import os
+import types
+from pathlib import Path
 
 import pytest
 
@@ -23,6 +26,20 @@ import hermes_cli.web_server_profiles as _web_server_profiles
 def _reset_boot_fingerprint(monkeypatch):
     """Each test starts with no recorded boot fingerprint."""
     monkeypatch.setattr(code_skew, "_boot_fingerprint", None)
+
+
+@pytest.fixture(autouse=True)
+def _reset_model_guard_policy(monkeypatch):
+    """Each test starts with the process policy unresolved (= native enabled)."""
+    monkeypatch.setattr(code_skew, "_model_guard_enabled", None)
+
+
+def _write_guard_config(home: Path, value: bool | str) -> None:
+    home.mkdir(parents=True, exist_ok=True)
+    rendered = str(value).lower() if isinstance(value, bool) else value
+    (home / "config.yaml").write_text(
+        f"gateway:\n  model_code_skew_guard: {rendered}\n", encoding="utf-8"
+    )
 
 
 class TestDetectCodeSkew:
@@ -182,3 +199,223 @@ class TestModelSetSkewGuard:
         body = _rt_models.ModelAssignment(scope="main", provider="nous", model="some-model")
         result = asyncio.run(_rt_models.set_model_assignment(body))
         assert result["ok"] is True
+
+
+class TestModelGuardPolicy:
+    """The development opt-out is a process policy over the model-operation guards only.
+
+    Default/enabled keeps the native refusal; explicit false bypasses just these guards
+    while raw detection and its cron/watchdog consumers keep working.
+    """
+
+    def test_unconfigured_keeps_the_native_guard_enabled(self, monkeypatch):
+        assert code_skew.resolve_model_guard_policy() is True
+        monkeypatch.setattr(code_skew, "detect_code_skew", lambda: ("abc1234567", "def4567890"))
+
+        assert code_skew.model_guard_skew() == ("abc1234567", "def4567890")
+        from gateway import slash_commands_model as slash_commands
+
+        assert slash_commands._model_switch_skew_guard() is not None
+        assert _web_server_config._dashboard_code_skew_guard() is not None
+
+    def test_explicit_true_keeps_the_native_guard_enabled(self, monkeypatch):
+        _write_guard_config(Path(os.environ["HERMES_HOME"]), True)
+        assert code_skew.resolve_model_guard_policy() is True
+        monkeypatch.setattr(code_skew, "detect_code_skew", lambda: ("abc1234567", "def4567890"))
+
+        assert code_skew.model_guard_skew() == ("abc1234567", "def4567890")
+
+    def test_explicit_false_bypasses_the_two_shared_guard_helpers(self, monkeypatch):
+        _write_guard_config(Path(os.environ["HERMES_HOME"]), False)
+        assert code_skew.resolve_model_guard_policy() is False
+        monkeypatch.setattr(code_skew, "detect_code_skew", lambda: ("abc1234567", "def4567890"))
+
+        assert code_skew.model_guard_skew() is None
+        from gateway import slash_commands_model as slash_commands
+
+        assert slash_commands._model_switch_skew_guard() is None
+        assert _web_server_config._dashboard_code_skew_guard() is None
+
+    def test_raw_detection_stays_live_when_the_model_guard_is_disabled(self, monkeypatch):
+        _write_guard_config(Path(os.environ["HERMES_HOME"]), False)
+        assert code_skew.resolve_model_guard_policy() is False
+
+        monkeypatch.setattr(code_skew, "_fingerprint", lambda: "git:refs/heads/main:abc1234567890")
+        code_skew.record_boot_fingerprint()
+        monkeypatch.setattr(code_skew, "_fingerprint", lambda: "git:refs/heads/main:def4567890123")
+
+        # Raw detection is untouched; only the model-operation gate returns None.
+        assert code_skew.detect_code_skew() == ("abc1234567", "def4567890")
+        assert code_skew.model_guard_skew() is None
+        assert code_skew.current_code_sha() == "def4567890123"
+
+    def test_cron_skew_consumer_stays_live_when_the_model_guard_is_disabled(self, monkeypatch):
+        _write_guard_config(Path(os.environ["HERMES_HOME"]), False)
+        assert code_skew.resolve_model_guard_policy() is False
+        monkeypatch.setattr(code_skew, "detect_code_skew", lambda: ("abc1234567", "def4567890"))
+
+        from cron.scheduler import _detect_gateway_code_skew
+
+        assert _detect_gateway_code_skew() == ("abc1234567", "def4567890")
+
+    def test_policy_is_fixed_at_startup_and_ignores_a_profile_switch(self, monkeypatch, tmp_path):
+        launch_home = Path(os.environ["HERMES_HOME"])
+        secondary_home = tmp_path / "secondary"
+        _write_guard_config(launch_home, False)
+        _write_guard_config(secondary_home, True)
+
+        assert code_skew.resolve_model_guard_policy() is False
+        monkeypatch.setenv("HERMES_HOME", str(secondary_home))
+        # First call wins: the request's active Profile does not re-resolve the policy.
+        assert code_skew.resolve_model_guard_policy() is False
+        monkeypatch.setattr(code_skew, "detect_code_skew", lambda: ("abc1234567", "def4567890"))
+        assert code_skew.model_guard_skew() is None
+
+    def test_launch_enabled_policy_survives_a_disabled_profile(self, monkeypatch, tmp_path):
+        launch_home = Path(os.environ["HERMES_HOME"])
+        secondary_home = tmp_path / "secondary"
+        _write_guard_config(launch_home, True)
+        _write_guard_config(secondary_home, False)
+
+        assert code_skew.resolve_model_guard_policy() is True
+        monkeypatch.setenv("HERMES_HOME", str(secondary_home))
+        assert code_skew.resolve_model_guard_policy() is True
+        monkeypatch.setattr(code_skew, "detect_code_skew", lambda: ("abc1234567", "def4567890"))
+        assert code_skew.model_guard_skew() == ("abc1234567", "def4567890")
+
+    @pytest.mark.parametrize("value", ["yes", "on", "1", "bogus", "false-ish"])
+    def test_recognized_truthy_or_unrecognized_values_keep_the_native_guard(self, value):
+        assert code_skew._model_guard_enabled_from_config(
+            {"gateway": {"model_code_skew_guard": value}}) is True
+
+    @pytest.mark.parametrize("value", ["0", "false", "no", "off"])
+    def test_recognized_false_strings_disable_the_model_guard(self, value):
+        assert code_skew._model_guard_enabled_from_config(
+            {"gateway": {"model_code_skew_guard": value}}) is False
+
+    def test_missing_or_malformed_sections_keep_the_native_guard(self):
+        assert code_skew._model_guard_enabled_from_config(None) is True
+        assert code_skew._model_guard_enabled_from_config({}) is True
+        assert code_skew._model_guard_enabled_from_config({"gateway": "nope"}) is True
+
+
+class TestModelGuardConfigRegistration:
+    """The documented `hermes config set ...` usage must stay a registered boolean."""
+
+    def test_key_is_known_and_coerced_as_a_boolean(self):
+        from hermes_cli.config import _coerce_config_set_value, _validate_config_key
+
+        assert _validate_config_key("gateway.model_code_skew_guard") == (True, None)
+        assert _coerce_config_set_value("gateway.model_code_skew_guard", "false") is False
+        assert _coerce_config_set_value("gateway.model_code_skew_guard", "true") is True
+
+
+class TestDisabledPolicyThroughDashboardRoutes:
+    """Explicit false must let the real dashboard model routes reach their payload/apply."""
+
+    def _assert_options_and_set_proceed(self, monkeypatch):
+        async def _fake_run_in_threadpool(func):
+            return func()
+
+        monkeypatch.setattr(_rt_models, "run_in_threadpool", _fake_run_in_threadpool)
+        monkeypatch.setattr(_web_server_profiles, "_profile_scope", lambda profile: contextlib.nullcontext())
+        monkeypatch.setattr("hermes_cli.inventory.load_picker_context", lambda: {})
+        monkeypatch.setattr("hermes_cli.model_selection_guards.combined_selection_warning", lambda *a, **k: None)
+
+        async def _to_thread(fn):
+            return fn()
+
+        monkeypatch.setattr(_rt_models.asyncio, "to_thread", _to_thread)
+        monkeypatch.setattr(_rt_models, "_prepare_main_assignment", lambda cfg, *a: {"ok": True})
+        applied: list = []
+        monkeypatch.setattr(
+            _rt_models, "_apply_model_assignment_sync",
+            lambda *a, **k: applied.append(1) or {"ok": True, "scope": "main"})
+
+        built: list = []
+        expected = {"providers": []}
+        monkeypatch.setattr(
+            "hermes_cli.inventory.build_model_options_payload",
+            lambda *a, **k: built.append(1) or expected)
+
+        assert asyncio.run(_rt_models.get_model_options()) == expected
+        assert built == [1]
+
+        body = _rt_models.ModelAssignment(scope="main", provider="nous", model="some-model")
+        assert asyncio.run(_rt_models.set_model_assignment(body))["ok"] is True
+        assert applied == [1]
+
+    def test_explicit_false_lets_both_dashboard_model_routes_proceed(self, monkeypatch):
+        _write_guard_config(Path(os.environ["HERMES_HOME"]), False)
+        assert code_skew.resolve_model_guard_policy() is False
+        monkeypatch.setattr(code_skew, "detect_code_skew", lambda: ("abc1234567", "def4567890"))
+
+        self._assert_options_and_set_proceed(monkeypatch)
+
+    @pytest.mark.parametrize("configured", [None, True])
+    def test_default_or_explicit_true_still_blocks_the_options_route(self, monkeypatch, configured):
+        if configured is not None:
+            _write_guard_config(Path(os.environ["HERMES_HOME"]), configured)
+        assert code_skew.resolve_model_guard_policy() is True
+        monkeypatch.setattr(code_skew, "detect_code_skew", lambda: ("abc1234567", "def4567890"))
+        from fastapi import HTTPException
+
+        built: list = []
+        monkeypatch.setattr(
+            "hermes_cli.inventory.build_model_options_payload",
+            lambda *a, **k: built.append(1) or {"providers": []})
+
+        with pytest.raises(HTTPException) as excinfo:
+            asyncio.run(_rt_models.get_model_options())
+        assert excinfo.value.status_code == 503
+        assert "abc1234567" in str(excinfo.value.detail)
+        assert built == []
+
+
+class TestDisabledPolicyThroughGatewayModelSwitch:
+    """The real /model switch path must reach switch_model only when the policy is off."""
+
+    def _context(self):
+        from gateway import slash_commands_model as slash_commands
+
+        return slash_commands, slash_commands._ModelSwitchContext(
+            session_key="session-1", source=None, config_path=None, persist_global=False)
+
+    def _patch_switch(self, monkeypatch, calls):
+        def _switch_model(**kwargs):
+            calls.append(kwargs)
+            return types.SimpleNamespace(success=True, new_model=kwargs["raw_input"])
+
+        monkeypatch.setattr("hermes_cli.model_switch.switch_model", _switch_model)
+        monkeypatch.setattr(
+            "hermes_cli.context_switch_guard.enrich_model_switch_warnings_for_gateway",
+            lambda *a, **k: None)
+
+    def test_native_policy_refuses_before_switch_model(self, monkeypatch):
+        assert code_skew.resolve_model_guard_policy() is True
+        monkeypatch.setattr(code_skew, "detect_code_skew", lambda: ("abc1234567", "def4567890"))
+        calls: list = []
+        self._patch_switch(monkeypatch, calls)
+        slash_commands, ctx = self._context()
+
+        result, error = asyncio.run(
+            slash_commands.GatewayModelCommandsMixin()._perform_model_switch(ctx, "new-model", None, None))
+
+        assert result is None
+        assert error is not None and "abc1234567" in error
+        assert calls == []
+
+    def test_explicit_false_lets_switch_model_run(self, monkeypatch):
+        _write_guard_config(Path(os.environ["HERMES_HOME"]), False)
+        assert code_skew.resolve_model_guard_policy() is False
+        monkeypatch.setattr(code_skew, "detect_code_skew", lambda: ("abc1234567", "def4567890"))
+        calls: list = []
+        self._patch_switch(monkeypatch, calls)
+        slash_commands, ctx = self._context()
+
+        result, error = asyncio.run(
+            slash_commands.GatewayModelCommandsMixin()._perform_model_switch(ctx, "new-model", None, None))
+
+        assert error is None
+        assert result is not None and result.success is True
+        assert calls and calls[0]["raw_input"] == "new-model"

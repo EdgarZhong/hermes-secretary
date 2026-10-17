@@ -273,6 +273,11 @@ def _write_or_exit(payload: dict, reason: str) -> None:
 def main():
     # stdout is this process's JSON-RPC client channel: peer-less global broadcasts belong on it.
     server._stdio_is_rpc_channel = True
+    # Settle the process-wide model code-skew guard policy from the launch config before
+    # serving any RPC; requests for other Profiles never re-read it mid-process.
+    from gateway.code_skew import resolve_model_guard_policy
+
+    resolve_model_guard_policy()
     try:
         server.install_tui_message_injector()
     except Exception:

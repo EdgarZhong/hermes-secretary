@@ -342,9 +342,9 @@ def _model_skew_err(rid) -> dict | None:
     stale cached modules (the reporter's agent_init_failed). Mirrors the dashboard's
     ``_dashboard_code_skew_guard`` and the gateway's ``_model_switch_skew_guard``;
     never a false positive (non-git installs detect nothing)."""
-    from gateway.code_skew import detect_code_skew
+    from gateway.code_skew import model_guard_skew
 
-    skew = detect_code_skew()
+    skew = model_guard_skew()
     if not skew:
         return None
     boot_rev, disk_rev = skew

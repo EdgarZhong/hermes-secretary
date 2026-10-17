@@ -1,10 +1,12 @@
 # Hermes Secretary 项目主看板
 
-## 待交接 · 5098模型代码漂移保护开发开关（2026-10-17）
+## 已完成 · 5098模型代码漂移保护开发开关（2026-10-17）
 
 **用户已确认：** 增加现有配置系统中的开发开关；默认保持保护，显式关闭只绕过模型操作的版本漂移拦截，保留原始检测及其他使用方。策略为后端进程级，同进程不同Profile一致；不改前端/数据库，不削弱独立4001保护。权威需求已落[06 §0.8](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md#08-development-opt-out-for-model-code-skew-guards-user-confirmed-2026-10-17)。
 
-**当前状态：仅需求落档和实施prompt交接，未实现、未测试、未变更运行配置。** 用户安排其他执行者实施；本会话不派Agent、不修改代码、不重启用户后端。交接参考：`gateway/code_skew.py`原始检测；`tui_gateway/methods_complete.py::_model_skew_err`、`gateway/slash_commands_model.py::_model_switch_skew_guard`、`hermes_cli/web_server_config.py::_dashboard_code_skew_guard`三个模型入口；配置和进程启动接线由实施者调查。保留用户同期UI修改，不把此前审查的其他开放项混入此任务。
+**状态：已实现，定向测试与固定检查通过；未重启用户后端、未改用户运行配置。** 配置键为 `gateway.model_code_skew_guard`（布尔，默认 `true`），用法与限制已写入[README](README.md#模型代码版本漂移保护开发开关)。集中策略入口在 `gateway/code_skew.py`：`record_boot_state()`/`resolve_model_guard_policy()` 在启动时读取一次启动 Profile 的 effective config 并锁定进程策略，`model_guard_skew()` 是三个模型入口共用的唯一接缝；`detect_code_skew()` 原语义未改，Cron 与后端退休/watchdog 仍直接使用它。启动接线位于 `gateway/run.py::start_gateway`、`hermes_cli/web_server.py::_lifespan`（dashboard/`hermes serve`）和 `tui_gateway/entry.py::main`。
+
+**验证：** 三个原有测试文件定向 **47 PASS**（`test_code_skew.py` 33、`test_model_rpc_skew_guard.py` 7、`test_web_server_skew_exit.py` 7）；相关有效并集 **73 PASS / 1 平台 skip**（另含 `test_resource_limits.py` 启动顺序、`test_web_server_boot_handshake.py` lifespan、`test_web_server_launch_env_freeze.py`）。另在隔离 `HERMES_HOME` 实际执行 README 的 `hermes config set gateway.model_code_skew_guard false`：写入 `false`，启动解析返回 `False` 并记录关闭警告（未触碰用户配置）。证据覆盖：未配置/显式开启仍拦截、显式关闭后 Dashboard 两个模型路由与 gateway `/model` 实际路径继续执行、TUI `model.options`/`model.save_key` 继续执行、关闭后原始检测与 Cron/watchdog 仍工作、启动后切 Profile 或二次解析不改变策略。`scripts/check --staged --only ruff,health,no-tmp` PASS（health 0 blocking/0 advisory；已用等价压缩抵消 `run.py` 与 `config_defaults.py` 的超限增长）。**未验证：** 真实后端重启后的进程内生效、真实模型调用、其他平台。关闭保护不等于热更新；真实导入/运行错误仍会暴露。
 
 ## 第2次 Verification 后的增量审查与用户现场回归（2026-10-17）
 

@@ -210,9 +210,11 @@ async def _lifespan(app: "FastAPI"):
     # Snapshot the checkout revision so lazy-import paths (model picker) can
     # refuse with "restart required" after `hermes update` replaced the code
     # (#86207); the update flow does not reliably restart the dashboard.
-    from gateway.code_skew import record_boot_fingerprint
+    # The model-guard policy is process-wide and settled here from the launch profile,
+    # before any request can be scoped to another Profile.
+    from gateway.code_skew import record_boot_state
 
-    record_boot_fingerprint()
+    record_boot_state()
 
     # Hosted Bot rooms belong to the backend process. Recovery may need a
     # contended state.db migration, so keep it off the pre-yield path: Group
