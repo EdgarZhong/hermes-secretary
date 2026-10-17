@@ -1,5 +1,15 @@
 # Hermes Secretary 项目主看板
 
+## Web Chat `/title` + `/ai-title` 命令接线（2026-10-17）
+
+**用户已确认语义（2026-10-17 更正）：** `/title <name>` 手动改名；空参 `/title` 查看当前标题；AI 起名改由独立的 `/ai-title` 专门处理。用户明确否决在同一个 `/title` 入口上用 `--ai` 承载两种模式；`/title --ai` 在 Web 上不再触发 AI，会给出用法错误并指向 `/ai-title`。`/ai-title` 是 **Web 本地命令**（无原生 catalog 条目），由 Web 命令路由本地广播；官方客户端 `/title` 语义不变。AI 只提议，命令执行写入；失败保留原标题并显示原生错误。
+
+**实现：** Web 命令路由保留 `title` 浏览器控制（手动/读取）；新增 Web-local `ai-title`，在 Web 斜杠建议中单独注入，不冒充原生目录。live 会话走原生 `session.title` RPC 写入，stored row 回退 `PATCH /api/sessions/{id}`；AI 生成复用现有 `llm.oneshot`（不新增后端 RPC），标题变化由既有 `RenamingText` 在顶栏和选中侧栏播放动画。未改主仓库后端。
+
+**验证（2026-10-17 复核）：** UI 仓库 `npm run typecheck` PASS；全量 `vitest run` 为 **504 PASS / 9 个既有失败**（`presentation.integration.test.tsx` 的 jsdom `el.scrollTo` 基线；在 clean HEAD 复跑同样 9 个失败，非本次引入）。
+
+**改动文件：** UI 仓库 `src/core/conversation-title.ts`、`conversation-title.test.ts`、`controller.ts`、`commands.ts`、`command-actions.ts`、`App.tsx`、`controller.test.ts`、`controller-session-metadata.test.ts`、`contracts.test.ts`；主仓库 `docs/06-Hermes-Secretary-Web-UI-V1-Spec.md`、`CLAUDE.md`。已提交：UI `3f7f693`（含此前 `5d6121c`、`e15122d`、`c333bd7`），主仓库见本文件所在提交。
+
 ## 当前任务 · 部署拓扑 + 双 SPA + 4001 恢复（2026-10-17）
 
 **用户已确认：** 单私有域名 + Cloudflare Access 唯一可见认证 + Cloudflare Tunnel + 本机 Caddy（Host 改写为 `127.0.0.1`、删除 `Origin`）+ 后端只 bind loopback；`/` 为 Secretary，`/dashboard` 为官方 Dashboard；同进程双 SPA、共享 `/api`/`/api/ws`；不做跨域、不做第二 API 域名。**规格已写入** [06 §0.7](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md#07-confirmed-deployment-topology-and-dual-spa-routing-2026-10-17)，README 已补稳定部署入口。
