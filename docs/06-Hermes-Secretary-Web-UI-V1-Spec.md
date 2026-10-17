@@ -120,6 +120,22 @@ The implementation MUST NOT introduce a persisted API-response cache, client Ses
 
 **Main/Integration is GPT-6 Astra high**, accountable for technical direction, complete requirement coverage, delegation, review and integration. **Development is GPT-6.1 Sol high**, responsible for concrete frontend/backend implementation and relevant tests within assigned boundaries. Independent **Verification is Astra high**, independent **Validation is Astra medium**, and the independent **visual designer is Astra medium**. Technical accountability does not make the Main agent the sole code implementer. The visual designer is scoped to a cohesive design system, responsive visuals, tokens and styling, with **no authority to design new product interactions** or change button conditions, navigation, data semantics or Agent controls. See division 4 for boundaries and acceptance.
 
+### 0.7. Confirmed deployment topology and dual-SPA routing (2026-10-17)
+
+> **User-confirmed deployment shape.** One private hostname, one Cloudflare Access gate, one backend process serving both the Secretary SPA and the native Hermes Dashboard. This is a deployment decision, not a new API or a second product surface.
+
+The following constraints are normative for the private cloud deployment:
+
+1. **Single public entry.** The only public address is one private hostname protected by Cloudflare Access with an email allowlist. Cloudflare Tunnel reaches the backend host; a loopback-only reverse proxy rewrites the request `Host` to `127.0.0.1` and removes `Origin` before forwarding to Hermes. The Hermes backend and the reverse proxy MUST bind `127.0.0.1` only. No browser cross-origin configuration, second API hostname, or CORS policy is part of this deployment.
+2. **Two SPAs, one origin.** `/` serves the Secretary SPA from `HERMES_WEB_DIST`. `/dashboard` serves the native Hermes Dashboard SPA from `HERMES_DASHBOARD_WEB_DIST` (prefix `HERMES_DASHBOARD_PREFIX`, default `/dashboard`). Both are same-origin with the API and MUST acquire the injected `window.__HERMES_SESSION_TOKEN__` from their own served `index.html`.
+3. **One shared API and one backend process.** `/api/*` and `/api/ws` are shared by both SPAs. Requests under `/dashboard/api/*` MUST be rewritten to `/api/*` before routing, for both HTTP and WebSocket upgrades, so the native SPA can use `__HERMES_BASE_PATH__ = /dashboard` without a second API surface. Both SPAs MUST be mounted in the same Hermes process. A second backend process, multiple workers, or replicas are forbidden for this deployment: `_sessions` is process memory, and Scheduler/Noting background owners would duplicate or diverge.
+4. **Authentication boundary.** Cloudflare Access is the only user-visible authentication layer. The backend session token remains an automatically injected machine credential, not a second interactive login. `dashboard.public_url` MUST NOT be configured for this deployment because it engages the dashboard OAuth gate; `--insecure` does not bypass authentication and MUST NOT be relied upon.
+5. **Docker is allowed only with host identity.** If the backend runs in a container, the reverse proxy and the backend MUST share the host network namespace (or an equivalent arrangement) so WebSocket upgrades still present a `127.0.0.1` peer; a separate bridge network would be rejected by the loopback peer check.
+6. **Stale runtime sessions are a normal reconnect case.** A backend restart, idle TTL, or eviction invalidates the in-memory runtime session. Session-scoped `config.set` for `model` / `reasoning` answers `4001`; the Web UI MUST resume the stored session and retry that operation once. Recovery is silent on success and surfaces the real error on failure. The backend stale-session guard MUST NOT be removed or weakened.
+7. **No default change when the second SPA is absent.** When `HERMES_DASHBOARD_WEB_DIST` is unset, the server MUST behave exactly as before: no `/dashboard` mount and no path-rewrite middleware.
+
+The stable operator entry points are `HERMES_WEB_DIST`, `HERMES_DASHBOARD_WEB_DIST`, and `HERMES_DASHBOARD_PREFIX`; their operator-facing summary lives in the repository README.
+
 ---
 
 ## 1. Product Design, User Interactions & V1 Boundaries

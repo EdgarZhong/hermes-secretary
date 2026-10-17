@@ -1,8 +1,24 @@
 # Hermes Secretary 项目主看板
 
+## 当前任务 · 部署拓扑 + 双 SPA + 4001 恢复（2026-10-17）
+
+**用户已确认：** 单私有域名 + Cloudflare Access 唯一可见认证 + Cloudflare Tunnel + 本机 Caddy（Host 改写为 `127.0.0.1`、删除 `Origin`）+ 后端只 bind loopback；`/` 为 Secretary，`/dashboard` 为官方 Dashboard；同进程双 SPA、共享 `/api`/`/api/ws`；不做跨域、不做第二 API 域名。**规格已写入** [06 §0.7](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md#07-confirmed-deployment-topology-and-dual-spa-routing-2026-10-17)，README 已补稳定部署入口。
+
+**实现范围：**
+- 后端：`mount_spa` 参数化并新增 `HERMES_DASHBOARD_WEB_DIST` / `HERMES_DASHBOARD_PREFIX`；`/dashboard/api/*` 在路由前重写为 `/api/*`（HTTP + WS）；未设置第二套 dist 时行为与原生完全一致。
+- 前端：`controller.setSessionConfig` 在 4001 时 `ensureBinding`（resume stored session）后重试一次；成功静默，失败才提示；不删除后端 stale-session 保护。
+
+**状态：已实现，定向验证通过；未做真实部署/手机端到端。** 后端正向：`mount_spa` 参数化，`HERMES_DASHBOARD_WEB_DIST`/`HERMES_DASHBOARD_PREFIX` 启用第二套 SPA，`_DashboardApiPrefixMiddleware` 将 `/dashboard/api/*`（HTTP+WS）重写为 `/api/*`；未设置新变量时不挂载、不加中间件。前端 `controller.setSessionConfig` 在 4001 时 resume stored session 并重试一次，成功静默。
+
+**本次验证：** 后端新增 `tests/hermes_cli/test_dashboard_dual_spa_mount.py` 5 项 PASS（未启用保持原行为、`/dashboard` index/资源/CSS/API/WS、可配置前缀）；SPA 相关文件全量回归 **235 项 PASS**（`test_web_server.py` 202、`test_dashboard_auth_prefix.py` 26、`test_dashboard_initial_profile_bootstrap.py` 2、新增 5）。前端 `controller.test.ts` 73 项 PASS、`npm run typecheck` PASS、`npm run build` PASS。`scripts/check --staged --only ruff,health,no-tmp` PASS（health 0 blocking/0 advisory；两处 HX002 以部署路径注释豁免）。**未验证：** 真实 Cloudflare Tunnel/Access/手机浏览器、双 SPA 生产运行、后端重启现场。
+
+**本次改动文件：** 主仓库 `hermes_cli/web_server_dashboard.py`、`tests/hermes_cli/test_dashboard_dual_spa_mount.py`、`docs/06-…md`、`README.md`、`CLAUDE.md`；UI 仓库 `src/core/controller.ts`、`src/components/ChatSelectors.tsx`、`src/core/controller.test.ts`。工作区另有既有未提交修改（`docs/07`、`scheduler_time.py`、`tests/secretary`、UI `design/layout.tsx`、`theme.css`），本次未触碰、未纳入提交。
+
 ## 自主口径收敛 · 待用户追认
 
-暂无新增。来源先结算、Candidate最后处理及控制Prompt体量仍沿用户R3-019既有要求；本次Verification没有新增产品语义、修改权威规格或降低门禁。
+**暂无待追认项。** 来源先结算、Candidate最后处理及控制Prompt体量仍沿用户R3-019既有要求；本次Verification没有新增产品语义、修改权威规格或降低门禁。
+
+**已由用户确认并落地（2026-10-17）：** Schedule Table 的 `timezone` 字段属原规格空白（07 §6.1 只列字段名、未定格式）。实测实现按 `kind` 取两个来源：`once` 从 `run_at` 的 ISO 偏移反推得 `UTC+08:00`，`interval`/`cron` 取进程本地时区得系统缩写 `CST`；即使配置 `timezone: Asia/Shanghai`，`once` 仍是 `UTC+08:00`，属结构性不一致而非缺配置。用户确认采用「条目归属时区」口径：三种 `kind` 统一取 `hermes_time` 当前生效时区，配置了 IANA 时区返回其名称，未配置时返回 `UTC±HH:MM` 固定偏移，不再从 `run_at` 反推。影响范围：模型 `list`/`create`/`update` 返回的 Schedule 条目与 Web `ScheduleEntry.timezone`。**是否已实施：是。** 改于 `secretary/scheduler_time.py::schedule_timezone`，同步 07 §6.1；新增 2 项 kind 无关性测试，`tests/secretary/test_r3_scheduler.py` 49 项通过；不计入本轮 Verification 结论。
 
 ## 第三轮第2次 Verification · 公开主仓库审查完成，不通过
 

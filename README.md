@@ -79,7 +79,7 @@ Gateway 入口为 `hermes gateway`。官方 Dashboard 入口为 `hermes dashboar
 
 ## 独立 Secretary Web 开发入口
 
-独立前端在并列本地仓库 `../hermes-secretary-web`，使用 React / TypeScript / Vite，直接调用原生 REST / WS；开发服务默认连接 `http://127.0.0.1:53445`。部署范围及验收进度见 CLAUDE，不替代官方 Dashboard。
+独立前端在并列本地仓库 `../hermes-secretary-web`，使用 React / TypeScript / Vite，直接调用原生 REST / WS；开发服务默认连接 `http://127.0.0.1:53445`。部署范围及验收进度见 CLAUDE；官方 Dashboard 与 Secretary 同源并存，见下节部署形态。
 
 当前草稿全部附件合计上限为 500,000,000 bytes，选择时累计判断、移除后释放预算，发送时小文件沿原生 `file.attach`，分片使用增量 `file.upload_chunk` / `file.upload_abort`，元数据使用 `file.attachment_info`，并显式绑定本次图片。两个订阅同一会话的客户端共享原生实时事件；普通 Send 只在 Main Turn 空闲时启动新 Turn，活动时按既定 Steer/Stop/Interrupt 操作。
 
@@ -92,6 +92,62 @@ Web 的 `/notebook` 是仅保存在浏览器内存中的四分区只读临时卡
 Timeline 视口状态只在页面内存保存，刷新回底；用户 Send 被接受后立即回底跟随，其他来源的新 Turn 不触发回底。手动滚动暂停跟随，停止控制 20 秒后仅在 Turn 仍活动时恢复。向前加载历史保留当前内容锚点。完整工具调用段通过原生提交事件提供有序身份与展示元数据；并行调用逐张展示、按调用段顺序固定位置，各自更新状态。
 
 在前端目录执行 `npm ci` 后，`npm run dev` 启动正式接线页面；`npm run typecheck`、`npm test`、`npm run build` 为类型、定向测试与构建入口。静态交互工作台使用 `npm run mock -- --port 5176`，访问 `/mock.html`；可选择场景、主题与四种视口，不连接真实后端或调用模型。`npm run mock:test` 和 `npm run mock:build` 分别验证、构建静态工作台。场景与组件边界见 [Mock 交接说明](.autonomous/20261012-round2-web-ui/static-mock.md)。
+
+## 部署形态（已确认）
+
+私有云端部署使用**一个域名、一套 Cloudflare Access、一个后端进程**：
+
+```text
+手机 / 浏览器
+  → https://<private-host>/            Cloudflare Access（邮箱白名单）
+  → Cloudflare Tunnel
+  → 本机 Caddy（仅 127.0.0.1）         Host 改写为 127.0.0.1、删除 Origin
+  → Hermes 后端（仅 127.0.0.1）
+       ├─ /                Secretary SPA（HERMES_WEB_DIST）
+       ├─ /dashboard       官方 Dashboard SPA（HERMES_DASHBOARD_WEB_DIST）
+       ├─ /dashboard/api/* 重写为 /api/*
+       └─ /api/*、/api/ws  两套共用
+```
+
+- 不配置第二个 API 域名，不做浏览器跨域/CORS；Access 是唯一用户可见认证层，后端 token 由各自的 `index.html` 自动注入。
+- 两套 SPA 必须由**同一个后端进程**挂载；不要用第二个后端进程或多 worker，否则内存会话、Scheduler/Noting 会分裂或重复。
+- 后端与 Caddy 只监听 `127.0.0.1`；Cloudflare Tunnel 是唯一入口。Docker 部署需要 host 网络或等价共享命名空间，否则 WebSocket 的 loopback peer 检查会拒绝。
+- 未设置 `HERMES_DASHBOARD_WEB_DIST` 时，后端行为与原来完全一致（不挂 `/dashboard`、不改写路径）。
+
+启动示例：
+
+```bash
+HERMES_WEB_DIST=/opt/hermes-secretary-web/dist \
+HERMES_DASHBOARD_WEB_DIST=/opt/hermes-secretary/hermes_cli/web_dist \
+HERMES_DASHBOARD_PREFIX=/dashboard \
+hermes dashboard --host 127.0.0.1 --port 53445 --skip-build
+```
+
+本机 Caddy（只监听回环，两层 Web 认证都不由它承担）：
+
+```caddyfile
+:8080 {
+    reverse_proxy 127.0.0.1:53445 {
+        header_up Host 127.0.0.1:53445
+        header_up -Origin
+    }
+}
+```
+
+Cloudflare Tunnel（cloudflared 主动出站，不开放入站端口）：
+
+```yaml
+tunnel: <tunnel-id>
+credentials-file: /etc/cloudflared/<tunnel-id>.json
+ingress:
+  - hostname: <private-host>
+    service: http://127.0.0.1:8080
+  - service: http_status:404
+```
+
+Access 应用使用同一个 hostname，策略为 `Allow` + 邮箱白名单；不要为 `/api/*` 或 `/dashboard/api/*` 配置 Bypass。`/dashboard/api/*` 的前缀重写由后端完成，Caddy 不需要额外 path 规则。
+
+官方 Dashboard 需要单独构建：`cd web && npm run build`。完整约束与验收口径见 [Web UI 规格 §0.7](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md#07-confirmed-deployment-topology-and-dual-spa-routing-2026-10-17)。
 
 ## 代码规范与测试入口
 

@@ -100,54 +100,81 @@ _HEADLESS_MSG = (
 )
 
 
-def mount_spa(application: FastAPI):
-    """Mount the built SPA; unmatched paths fall back to index.html for client-side routing.
+class _ImmutableAssetFiles(StaticFiles):
+    """StaticFiles that marks hashed bundle assets immutable so reloads skip revalidation."""
 
-    The session token is injected into index.html via a ``<script>`` tag so the SPA can
-    authenticate without a separate token-dispensing endpoint. Behind a path-prefix reverse
-    proxy (``X-Forwarded-Prefix: /hermes``) the served index.html is rewritten so absolute
-    asset URLs and the runtime ``__HERMES_BASE_PATH__`` honour that prefix without a rebuild.
+    async def get_response(self, path: str, scope):
+        response = await super().get_response(path, scope)
+        if response.status_code == 200:
+            response.headers["Cache-Control"] = _IMMUTABLE_ASSET_CACHE_CONTROL
+        return response
 
-    A missing WEB_DIST is deliberately NOT a mount-time terminal state: every route copes
-    with a missing dist per-request (404 JSON / ``check_dir=False``), so a long-lived
+
+class _DashboardApiPrefixMiddleware:
+    """Route ``<prefix>/api/...`` back onto the single ``/api`` surface.
+
+    The mounted dashboard SPA runs with ``__HERMES_BASE_PATH__ = <prefix>``, so it
+    addresses its API and WebSocket as ``<prefix>/api/...``. Hermes owns exactly one
+    API surface; rewriting the ASGI scope (HTTP and WebSocket) keeps both SPAs on it
+    without a second set of routes. Installed only when the second SPA is mounted, so
+    the default single-SPA process keeps its original routing.
+    """
+
+    def __init__(self, app, prefix: str):
+        self.app = app
+        self.prefix = prefix
+
+    async def __call__(self, scope, receive, send):
+        if scope.get("type") in ("http", "websocket"):
+            path = scope.get("path", "")
+            if path == f"{self.prefix}/api" or path.startswith(f"{self.prefix}/api/"):
+                scope = dict(scope)
+                scope["path"] = path[len(self.prefix):]
+                raw_path = scope.get("raw_path")
+                if raw_path:
+                    scope["raw_path"] = raw_path[len(self.prefix):]
+        await self.app(scope, receive, send)
+
+
+def _read_css_text(path: Path, root: Path) -> Optional[str]:
+    """Read a dashboard CSS asset only when it stays inside its dist root."""
+    if not path.is_file() or not path.resolve().is_relative_to(root.resolve()):
+        return None
+    return path.read_text(encoding="utf-8-sig")
+
+
+def _existing_static_file(path: Path, root: Path) -> bool:
+    """True for a regular file under ``root`` (path traversal stays rejected)."""
+    return path.resolve().is_relative_to(root.resolve()) and path.exists() and path.is_file()
+
+
+def _mount_spa_bundle(
+    application: FastAPI,
+    *,
+    dist: Path,
+    fixed_prefix: str = "",
+    dynamic_prefix: bool = False,
+    name: str = "spa",
+) -> None:
+    """Mount one built SPA at ``fixed_prefix`` (empty = site root).
+
+    ``dynamic_prefix`` keeps the original ``X-Forwarded-Prefix`` behaviour for the
+    primary SPA; the second SPA uses its explicit mount prefix so its
+    ``__HERMES_BASE_PATH__`` matches the route it is actually served from.
+
+    A missing dist is deliberately NOT a mount-time terminal state (#82614): every route
+    copes with it per-request (404 JSON / ``check_dir=False``), so a long-lived
     ``--skip-build`` process recovers the moment a build appears on disk — no restart.
     """
-    from hermes_cli.web_server import WEB_DIST, _DASHBOARD_EMBEDDED_CHAT_ENABLED, app
+    from hermes_cli.web_server import _DASHBOARD_EMBEDDED_CHAT_ENABLED, app
     from hermes_cli.web_deps import _server
 
-    # `hermes serve` is the headless backend: it must NEVER serve the browser SPA, even if a
-    # dist is lying around, so only the JSON-RPC/WS/API surface is reachable.
-    if os.environ.get("HERMES_SERVE_HEADLESS") == "1":
+    def prefix_for(request: Request) -> str:
+        if not dynamic_prefix:
+            return fixed_prefix
+        return _normalise_prefix(request.headers.get("x-forwarded-prefix"))
 
-        @application.get("/{full_path:path}")
-        async def no_frontend(full_path: str):
-            # Desktop token handshake: the Electron shell boots by fetching `/` and reading
-            # ``window.__HERMES_SESSION_TOKEN__`` for /api/ws auth. When headless 404'd every
-            # path, a renderer whose spawn token no longer matched (e.g. after `hermes update`)
-            # white-screened. Serve a token-only page at the exact root, but ONLY when the auth
-            # gate is off: on a gated serve the token must never be readable without auth.
-            # See #94227, #95575.
-            gated = bool(getattr(application.state, "auth_required", False))
-            if full_path == "" and not gated:
-                return HTMLResponse(
-                    "<!doctype html><html><head><script>"
-                    f"window.__HERMES_SESSION_TOKEN__={json.dumps(_server()._SESSION_TOKEN)};"
-                    "window.__HERMES_AUTH_REQUIRED__=false;"
-                    f"</script></head><body>{_HEADLESS_MSG}</body></html>",
-                    headers=_NO_STORE,
-                )
-            return JSONResponse({"error": _HEADLESS_MSG}, status_code=404)
-        return
-
-    # A missing WEB_DIST is deliberately NOT a mount-time terminal state (#82614): a long-lived `hermes
-    # dashboard --skip-build` process that survives a `git pull` (or starts before the first build) used to
-    # install a permanent no_frontend catch-all here and could never recover — every route answered 404
-    # "Frontend not built" until the process was restarted, even after `npm run build` completed. The SPA
-    # routes below all cope with a missing dist per-request (`_serve_index` returns the same 404 JSON when
-    # index.html is unreadable; the asset mounts use check_dir=False and 404 on missing files), so mounting
-    # them unconditionally makes the dashboard recover the moment a build appears on disk — no restart
-    # needed.
-    def _serve_index(prefix: str = ""):
+    def serve_index(prefix: str = ""):
         """index.html with the session token + base-path injected.
 
         When the OAuth auth gate is active (``app.state.auth_required``), the legacy
@@ -156,7 +183,7 @@ def mount_spa(application: FastAPI):
         and /api/ws (ticket vs token).
         """
         try:
-            html = (WEB_DIST / "index.html").read_text(encoding="utf-8-sig")
+            html = (dist / "index.html").read_text(encoding="utf-8-sig")
         except OSError:
             # Partial build / wiped dist / permissions: same JSON 404 as a fully-missing dist.
             return JSONResponse({"error": "Frontend not built. Run: cd web && npm run build"}, status_code=404)
@@ -195,13 +222,16 @@ def mount_spa(application: FastAPI):
     # Built CSS contains absolute ``url(/fonts/...)`` / ``url(/ds-assets/...)`` references that
     # browsers resolve against the document origin — wrong under a proxy prefix. Intercept CSS
     # BEFORE the StaticFiles mount and rewrite when a prefix is in play.
-    @application.get("/assets/{filename}.css")
+    css_route = f"{fixed_prefix}/assets/{{filename}}.css"
+    route_options = {} if dynamic_prefix else {"include_in_schema": False}
+
+    @application.get(css_route, **route_options)
     async def serve_css(filename: str, request: Request):
-        css_path = WEB_DIST / "assets" / f"{filename}.css"
-        if not css_path.is_file() or not css_path.resolve().is_relative_to(WEB_DIST.resolve()):
+        css_path = dist / "assets" / f"{filename}.css"
+        css = await asyncio.to_thread(_read_css_text, css_path, dist)
+        if css is None:
             return JSONResponse({"error": "not found"}, status_code=404)
-        prefix = _normalise_prefix(request.headers.get("x-forwarded-prefix"))
-        css = css_path.read_text(encoding="utf-8-sig")
+        prefix = prefix_for(request)
         if prefix:
             for asset_dir in ("/fonts/", "/fonts-terminal/", "/ds-assets/", "/assets/"):
                 for quote in ("", '"', "'"):
@@ -210,37 +240,105 @@ def mount_spa(application: FastAPI):
             content=css, media_type="text/css", headers={"Cache-Control": _IMMUTABLE_ASSET_CACHE_CONTROL}
         )
 
-    class _ImmutableAssetFiles(StaticFiles):
-        """StaticFiles that marks hashed bundle assets immutable so reloads skip revalidation."""
-
-        async def get_response(self, path: str, scope):
-            response = await super().get_response(path, scope)
-            if response.status_code == 200:
-                response.headers["Cache-Control"] = _IMMUTABLE_ASSET_CACHE_CONTROL
-            return response
-
     # check_dir=False: the dist may not exist yet; StaticFiles 404s per-request until it does.
     application.mount(
-        "/assets", _ImmutableAssetFiles(directory=WEB_DIST / "assets", check_dir=False), name="assets"
+        f"{fixed_prefix}/assets",
+        _ImmutableAssetFiles(directory=dist / "assets", check_dir=False),
+        name="assets" if not fixed_prefix else f"{name}-assets",
     )
 
-    @application.get("/{full_path:path}")
-    async def serve_spa(full_path: str, request: Request):
-        prefix = _normalise_prefix(request.headers.get("x-forwarded-prefix"))
+    async def spa_response(full_path: str, request: Request):
+        prefix = prefix_for(request)
         # An unmatched /api/* path is a missing endpoint, not a client-side route: return a
         # real 404 JSON instead of index.html (which breaks JSON clients with a SyntaxError).
         if full_path == "api" or full_path.startswith("api/"):
             return JSONResponse({"detail": f"No such API endpoint: /{full_path}"}, status_code=404)
-        file_path = WEB_DIST / full_path
+        file_path = dist / full_path
         # Prevent path traversal via url-encoded sequences (%2e%2e/)
-        if (
-            full_path
-            and file_path.resolve().is_relative_to(WEB_DIST.resolve())
-            and file_path.exists()
-            and file_path.is_file()
-        ):
+        if full_path and await asyncio.to_thread(_existing_static_file, file_path, dist):
             return FileResponse(file_path)
-        return _serve_index(prefix)
+        return serve_index(prefix)
+
+    if fixed_prefix:
+        @application.get(fixed_prefix, include_in_schema=False, name=f"{name}-index")
+        async def serve_mount_index(request: Request):
+            return serve_index(prefix_for(request))
+
+        @application.get(f"{fixed_prefix}/{{full_path:path}}", include_in_schema=False, name=f"{name}-spa")
+        async def serve_mount_spa(full_path: str, request: Request):
+            return await spa_response(full_path, request)
+    else:
+        @application.get("/{full_path:path}")
+        async def serve_spa(full_path: str, request: Request):
+            return await spa_response(full_path, request)
+
+
+def mount_spa(application: FastAPI):
+    """Mount the built SPA(s); unmatched paths fall back to index.html for client-side routing.
+
+    The session token is injected into index.html via a ``<script>`` tag so the SPA can
+    authenticate without a separate token-dispensing endpoint. Behind a path-prefix reverse
+    proxy (``X-Forwarded-Prefix: /hermes``) the served index.html is rewritten so absolute
+    asset URLs and the runtime ``__HERMES_BASE_PATH__`` honour that prefix without a rebuild.
+
+    The primary SPA is served at ``/`` from ``HERMES_WEB_DIST``. When
+    ``HERMES_DASHBOARD_WEB_DIST`` is set, the native dashboard SPA is mounted at
+    ``HERMES_DASHBOARD_PREFIX`` (default ``/dashboard``) in the same process, and
+    ``<prefix>/api/*`` is rewritten onto the shared ``/api`` surface. Unset means the
+    original single-SPA behaviour, byte for byte.
+
+    A missing dist is deliberately NOT a mount-time terminal state: every route copes
+    with a missing dist per-request (404 JSON / ``check_dir=False``), so a long-lived
+    ``--skip-build`` process recovers the moment a build appears on disk — no restart.
+    """
+    from hermes_cli.web_server import WEB_DIST
+
+    # `hermes serve` is the headless backend: it must NEVER serve the browser SPA, even if a
+    # dist is lying around, so only the JSON-RPC/WS/API surface is reachable.
+    if os.environ.get("HERMES_SERVE_HEADLESS") == "1":
+
+        from hermes_cli.web_deps import _server
+
+        @application.get("/{full_path:path}")
+        async def no_frontend(full_path: str):
+            # Desktop token handshake: the Electron shell boots by fetching `/` and reading
+            # ``window.__HERMES_SESSION_TOKEN__`` for /api/ws auth. When headless 404'd every
+            # path, a renderer whose spawn token no longer matched (e.g. after `hermes update`)
+            # white-screened. Serve a token-only page at the exact root, but ONLY when the auth
+            # gate is off: on a gated serve the token must never be readable without auth.
+            # See #94227, #95575.
+            gated = bool(getattr(application.state, "auth_required", False))
+            if full_path == "" and not gated:
+                return HTMLResponse(
+                    "<!doctype html><html><head><script>"
+                    f"window.__HERMES_SESSION_TOKEN__={json.dumps(_server()._SESSION_TOKEN)};"
+                    "window.__HERMES_AUTH_REQUIRED__=false;"
+                    f"</script></head><body>{_HEADLESS_MSG}</body></html>",
+                    headers=_NO_STORE,
+                )
+            return JSONResponse({"error": _HEADLESS_MSG}, status_code=404)
+        return
+
+    dashboard_dist_raw = os.environ.get("HERMES_DASHBOARD_WEB_DIST", "").strip()  # health: allow HX002 -- deployment path for the optional second SPA, not a user-facing behaviour knob
+    if dashboard_dist_raw:
+        dashboard_prefix = _normalise_prefix(
+            os.environ.get("HERMES_DASHBOARD_PREFIX", "/dashboard")  # health: allow HX002 -- mount path for the optional second SPA, not a user-facing behaviour knob
+        ) or "/dashboard"
+        if dashboard_prefix == "/":
+            _log.warning(
+                "HERMES_DASHBOARD_PREFIX=%r is not a usable subpath; the native dashboard SPA is not mounted",
+                dashboard_prefix,
+            )
+        else:
+            _mount_spa_bundle(
+                application,
+                dist=Path(dashboard_dist_raw).expanduser(),
+                fixed_prefix=dashboard_prefix,
+                name="dashboard",
+            )
+            application.add_middleware(_DashboardApiPrefixMiddleware, prefix=dashboard_prefix)
+
+    _mount_spa_bundle(application, dist=WEB_DIST, dynamic_prefix=True, name="spa")
 
 
 # ---------------------------------------------------------------------------
