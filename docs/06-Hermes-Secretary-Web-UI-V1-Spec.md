@@ -136,6 +136,18 @@ The following constraints are normative for the private cloud deployment:
 
 The stable operator entry points are `HERMES_WEB_DIST`, `HERMES_DASHBOARD_WEB_DIST`, and `HERMES_DASHBOARD_PREFIX`; their operator-facing summary lives in the repository README.
 
+### 0.8. Development opt-out for model code-skew guards (user-confirmed 2026-10-17)
+
+The user approved a configuration switch for the native model-operation code-skew protection (including RPC error `5098`). This is an implementation requirement, not a claim that the switch already exists.
+
+- **Default compatibility.** The protection remains enabled by default. Existing installations without the new setting retain the original behavior and error handling.
+- **Scope.** An explicit development opt-out bypasses only the model-operation skew guards. Keep raw revision detection, its cron consumers and backend retirement/watchdog behavior intact. Do not make `detect_code_skew()` return a fabricated no-skew result to implement the switch.
+- **Configuration ownership.** Use the existing configuration system, not a new environment variable or frontend setting. The policy belongs to the backend process; requests or Sessions from different Profiles in that process must not change it. The implementation must document the chosen key and activation/restart behavior.
+- **Preserved boundaries.** No database/schema, frontend protocol or Session ownership changes. Preserve the independent stale-runtime `4001` guard, authentication, model/provider validation and existing quality checks.
+- **Actual limitation.** Opting out permits model operations despite revision drift; it does not hot-reload Python modules or guarantee compatibility between loaded and on-disk code. Genuine import/runtime failures still surface and may require a restart.
+
+Implementation and evidence status remain in root `CLAUDE.md`. Tests must cover the default/enabled path, the explicit opt-out through the actual model ingress points, consistent process policy across Profiles, and unchanged raw detection/other consumers.
+
 ---
 
 ## 1. Product Design, User Interactions & V1 Boundaries

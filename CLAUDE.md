@@ -1,5 +1,11 @@
 # Hermes Secretary 项目主看板
 
+## 待交接 · 5098模型代码漂移保护开发开关（2026-10-17）
+
+**用户已确认：** 增加现有配置系统中的开发开关；默认保持保护，显式关闭只绕过模型操作的版本漂移拦截，保留原始检测及其他使用方。策略为后端进程级，同进程不同Profile一致；不改前端/数据库，不削弱独立4001保护。权威需求已落[06 §0.8](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md#08-development-opt-out-for-model-code-skew-guards-user-confirmed-2026-10-17)。
+
+**当前状态：仅需求落档和实施prompt交接，未实现、未测试、未变更运行配置。** 用户安排其他执行者实施；本会话不派Agent、不修改代码、不重启用户后端。交接参考：`gateway/code_skew.py`原始检测；`tui_gateway/methods_complete.py::_model_skew_err`、`gateway/slash_commands_model.py::_model_switch_skew_guard`、`hermes_cli/web_server_config.py::_dashboard_code_skew_guard`三个模型入口；配置和进程启动接线由实施者调查。保留用户同期UI修改，不把此前审查的其他开放项混入此任务。
+
 ## 第2次 Verification 后的增量审查与用户现场回归（2026-10-17）
 
 **当前用户任务：** 审查第2次 Verification 后两仓功能打磨，识别用户需求是否落档、文档与实现/文档之间的冲突，以及潜在回归；不代替或改写第二次独立门禁结论。审查基线公开 `b6939f47e3ffdd81e507cc73a207e709fa0157d9`、UI `50cc8fd52dfe64a8f4afb4fe2d2cbbf8b8e5454e`，后续修复单独记录。定向反证及日志保存在 `.autonomous/20261016-round3-secretary-nm/evidence/post-verification-review/`；历史反证不因新授权改成新需求下的失败。
