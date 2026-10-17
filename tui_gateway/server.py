@@ -2199,64 +2199,6 @@ def _session_usage_snapshot(session: dict | None) -> dict:
     return _restored_cold_usage(sess)
 
 
-def _restored_cold_usage(session: dict) -> dict:
-    """Context readout restored from the session row's usage anchor when no agent is live.
-
-    The anchor is the provider's own count for the last priced turn, so this is the occupancy at the
-    end of that turn — never a local estimate. Omitted (empty) when the anchor is absent, stale
-    against the transcript, or was priced by a different model than the session now uses: a cold
-    start followed by a model switch changes what the next request will actually carry, and this
-    function must not imply otherwise."""
-    history = session.get("history")
-    stored_id = str(session.get("stored_session_id") or session.get("session_key") or "")
-    if not stored_id or not isinstance(history, list) or not history:
-        return {}
-    try:
-        db = _get_db()
-    except Exception:
-        return {}
-    if db is None:
-        return {}
-    model = ""
-    getter = getattr(db, "get_session_model_config_value", None)
-    if callable(getter):
-        with contextlib.suppress(Exception):
-            model = str(getter(stored_id, "model", "") or "")
-    if not model:
-        model = str(_metadata_mirror(session).get("model") or "")
-    from agent.usage_anchor import persisted_anchor_context
-
-    with contextlib.suppress(Exception):
-        context = persisted_anchor_context(db, stored_id, history, model=model)
-        if not context or context.get("model_matches") is False:
-            return {}
-        used = int(context["tokens"])
-        # Context only: the anchor proves occupancy, never a session-lifetime total, so the
-        # cumulative counters keep the same empty-session zeros every client already handles.
-        usage = {
-            "calls": 0, "input": 0, "output": 0, "total": 0,
-            "context_used": used,
-            "context_estimated": False, "context_source": "usage_anchor",
-        }
-        limit = _configured_context_length()
-        if limit > 0:
-            usage["context_max"] = limit
-            usage["context_percent"] = max(0, min(100, round(used / limit * 100)))
-        return usage
-    return {}
-
-
-def _configured_context_length() -> int:
-    """The profile's declared ``model.context_length``, or 0 when it does not declare one."""
-    try:
-        from hermes_cli.config import load_config_readonly
-
-        value = (load_config_readonly() or {}).get("model", {}).get("context_length")
-        return int(value) if isinstance(value, int) and value > 0 else 0
-    except Exception:
-        return 0
-
-
 def _project_info_for_cwd(cwd: str) -> dict | None:
     """The first-class Project owning ``cwd`` (per-profile projects.db) so TUI status, desktop status bar and
     ``/status`` name the workspace identically. Only explicit named projects resolve."""
@@ -3601,7 +3543,7 @@ from . import (  # noqa: E402
     session_compression as _session_compression, model_switch as _model_switch,
     compute_host_bridge as _compute_host_bridge, session_workdir as _session_workdir,
     session_lifecycle as _session_lifecycle, session_reaper as _session_reaper,
-    session_transports as _session_transports,
+    session_transports as _session_transports, session_usage as _session_usage,
     methods_browser_control as _methods_browser_control, methods_bot_relay as _methods_bot_relay,
     methods_complete as _methods_complete, methods_config as _methods_config,
     methods_config_set as _methods_config_set, methods_images as _methods_images,
@@ -3616,7 +3558,7 @@ from . import (  # noqa: E402
     methods_shared_metrics as _methods_shared_metrics, methods_pending as _methods_pending, methods_web_read as _methods_web_read)
 
 for _m in (
-    _session_transports, _session_reaper, _session_lifecycle, _session_workdir, _compute_host_bridge, _model_switch,
+    _session_usage, _session_transports, _session_reaper, _session_lifecycle, _session_workdir, _compute_host_bridge, _model_switch,
     _session_compression, _change_watcher, _tool_progress, _session_notifications,
     _prompt_attachments, _session_history, _agent_callbacks, _session_auto_continue, _plugin_inject, _rpc_dispatch,
     _methods_complete_helpers, _methods_slash, _methods_voice, _methods_browser,

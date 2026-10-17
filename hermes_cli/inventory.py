@@ -5,8 +5,11 @@ from __future__ import annotations
 
 from contextvars import copy_context
 from dataclasses import dataclass, replace
+import logging
 from threading import Lock, Thread, current_thread
 from typing import Any, Optional
+
+logger = logging.getLogger(__name__)
 
 _pricing_prewarm_lock = Lock()
 _pricing_prewarm_threads: dict[tuple[str, tuple[tuple[str, str], ...]], Thread] = {}
@@ -550,7 +553,7 @@ def _declared_efforts(
         if declared:
             return list(declared), "config"
     except Exception:
-        pass
+        logger.debug("Configured effort declaration unavailable for %s/%s", slug, model, exc_info=True)
     try:
         from agent.reasoning_effort import declared_provider_efforts
 
@@ -558,8 +561,16 @@ def _declared_efforts(
         if provider_ladder:
             return list(provider_ladder), "provider"
     except Exception:
-        pass
+        logger.debug("Provider effort declaration unavailable for %s/%s", slug, model, exc_info=True)
     return None, None
+
+
+def _published_catalog_efforts(detail: dict) -> list[str] | None:
+    published = detail.get("supported_efforts")
+    if not isinstance(published, list):
+        return None
+    efforts = [str(e).strip().lower() for e in published if str(e).strip()]
+    return list(dict.fromkeys(efforts)) or None
 
 
 def _apply_capabilities(rows: list[dict], *, metadata_config: dict | None = None) -> None:
@@ -611,12 +622,8 @@ def _apply_capabilities(rows: list[dict], *, metadata_config: dict | None = None
                 elif detail:
                     entry["can_disable_reasoning"] = not detail.get("mandatory")
                     if efforts is None:
-                        published = detail.get("supported_efforts")
-                        if isinstance(published, list):
-                            catalog_efforts = [str(e).strip().lower() for e in published if str(e).strip()]
-                            if catalog_efforts:
-                                efforts = list(dict.fromkeys(catalog_efforts))
-                                effort_source = "catalog"
+                        efforts = _published_catalog_efforts(detail)
+                        effort_source = "catalog" if efforts else None
 
             if efforts:
                 entry["supported_efforts"] = efforts

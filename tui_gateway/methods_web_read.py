@@ -27,20 +27,24 @@ def _secretary_handler(server, rid, params, *, read=None):
     from hermes_state import SessionDB
     from secretary import web_read as secretary_reads
     try:
-        home = Path(server._profile_home(params["profile"]) or server._launch_home())
+        profile_home = server._profile_home(params["profile"])
+        home = Path(profile_home or server._launch_home())
         path = home / "state.db"
         if not path.is_file():
             return server._err(rid, 5010, "Owning profile state is unavailable")
-        db = SessionDB(path, read_only=True)
-        try:
-            if db.get_session(params["stored_session_id"]) is None:
-                return server._err(rid, 4001, "Unknown stored session")
-            result = (read or secretary_reads.secretary_state)(db, params["stored_session_id"])
-            result["profile"] = params["profile"]
-            result["profile_home"] = str(home.resolve())
-            return server._ok(rid, result)
-        finally:
-            db.close()
+        # Use the same native owner scope as other profile reads: the Scheduler's
+        # shared projection resolves its timezone through the active Hermes clock.
+        with server._session_profile_runtime_scope({"profile_home": profile_home}, hydrate_secrets=False):
+            db = SessionDB(path, read_only=True)
+            try:
+                if db.get_session(params["stored_session_id"]) is None:
+                    return server._err(rid, 4001, "Unknown stored session")
+                result = (read or secretary_reads.secretary_state)(db, params["stored_session_id"])
+                result["profile"] = params["profile"]
+                result["profile_home"] = str(home.resolve())
+                return server._ok(rid, result)
+            finally:
+                db.close()
     except PermissionError as exc:
         return server._err(rid, 4030, str(exc))
     except server.ProfileUnavailableError:

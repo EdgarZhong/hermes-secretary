@@ -1,5 +1,13 @@
 # Hermes Secretary 项目主看板
 
+## WIP · 增量审查明确Bug修复（2026-10-17，Codex专职续修）
+
+**用户决定（2026-10-17）：** 工作区保留已开始但未完成的增量审查 bug 修复；用户估计为 5 个、也可能只有 3 个，具体以 Codex 恢复后核对为准。这些 bug **不阻塞**当前开发，**不宣称已修复**。Codex 额度恢复后由 Codex 专职继续；其他 Agent 不接手这批 WIP，也不把现有改动当作完成。当前 WIP 的 3 项定向测试通过（`test_cold_usage.py` 2、`test_secretary_read_profile_scope.py` 1），仅证明当前检查点可运行，不证明 bug 已关闭。
+
+**已落档的用户口径：** Pin 区在 New Conversation 与 Today 之间，空时隐藏；长按拖拽保留原占位，接近顶部展开 Pin 落点，松手置顶，已置顶项可同手势调序。**Pin 表现/拖拽由用户另外指定的 Agent 实施，本 WIP 不修改。** Orb 不再需要倒计时，现有表现已获用户确认；只修失败任务误报成功的事实判断，不重做 Orb。两项口径已同步 06 §1.3/§1.15/§2.6。
+
+**当前 WIP 范围（未完成）：** 后端冷恢复改用所属 Profile 的 SessionDB 与当前 Session 模型（`tui_gateway/session_usage.py`、`test_cold_usage.py`，并从 `server.py` 移出旧 helper）；Secretary 读取按所属 Profile 绑定运行时时区（`methods_web_read.py`、`test_secretary_read_profile_scope.py`）；`inventory.py` 的可见 effort 声明整理与健康修补。**未包含：** 独立 UI 仓库的 F07/F09 等前端改动（其工作区原样保留，未提交）；其余审查项不在本 WIP。后续 Codex 继续时先核对实际剩余项，不按这里的估计数量直接判定。
+
 ## 已完成 · 5098模型代码漂移保护开发开关（2026-10-17）
 
 **用户已确认：** 增加现有配置系统中的开发开关；默认保持保护，显式关闭只绕过模型操作的版本漂移拦截，保留原始检测及其他使用方。策略为后端进程级，同进程不同Profile一致；不改前端/数据库，不削弱独立4001保护。权威需求已落[06 §0.8](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md#08-development-opt-out-for-model-code-skew-guards-user-confirmed-2026-10-17)。
