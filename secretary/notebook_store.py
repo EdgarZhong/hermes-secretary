@@ -4,6 +4,7 @@ from copy import deepcopy
 from datetime import datetime, timezone
 from threading import RLock
 
+from agent.message_visibility import model_visible_messages
 from secretary.notebook_contract import NotebookValidationError, parse_time, require_text, validate_source_range
 from secretary.notebook_model import NotebookWorkingState
 
@@ -13,7 +14,9 @@ _UNBOUND_BASE = object()
 
 def _source_checks_conn(db, conn, conversation_ref):
     """Use the native legal History path, not a separate Notebook evidence index."""
-    history = list(db.get_history_foreground_conn(conn, conversation_ref))
+    history = [row for row in model_visible_messages(list(db.get_history_foreground_conn(conn, conversation_ref)))
+               if row.get("kind") == "message" and row.get("display_kind") != "hidden"
+               and row.get("role") in {"user", "assistant", "tool", "system"}]
     on_path = {row["message_identity"]["message_uid"] for row in history if row.get("message_identity")}
     timestamps = []
     for row in history:

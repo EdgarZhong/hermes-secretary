@@ -19,6 +19,7 @@ from hermes_state_secretary_schedule import (
 from secretary.scheduler_time import (
     canonical_schedule,
     epoch,
+    iso_to_epoch,
     parse_schedule_expression,
     schedule_advance_epoch,
     schedule_initial_next_run,
@@ -240,8 +241,14 @@ def _participation(conn, row, action, *, now):
     next_run, sequence = row["next_run_at"], row["sequence"]
     if wants_enabled:
         canonical = json.loads(row["canonical_schedule"])
-        next_run = (schedule_initial_next_run(canonical, now=now) if canonical["kind"] == "once" else
-                    schedule_advance_epoch(canonical, next_run, now=now))
+        if canonical["kind"] == "once":
+            next_run = schedule_initial_next_run(canonical, now=now)
+        elif next_run is not None and iso_to_epoch(next_run) > epoch(now):
+            # The pause did not consume a still-future occurrence: recompute from the
+            # clock instead of advancing past the slot the user is resuming for.
+            next_run = schedule_initial_next_run(canonical, now=now)
+        else:
+            next_run = schedule_advance_epoch(canonical, next_run, now=now)
         # Withdrawn receipts stay withdrawn; a new enable epoch cannot revive an old worker.
         sequence += 1
     else:

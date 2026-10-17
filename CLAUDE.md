@@ -1,5 +1,27 @@
 # Hermes Secretary 项目主看板
 
+## 已完成 · F01/F04 修复与 F16 真实模型复测（2026-10-17）
+
+**用户指令（2026-10-17）：** 开始实测 F16，修 1、4；拿 F16 新结果和模型行为观察汇报，不擅自再次调优。复测复用 Round 3 Profile。**本轮未改提示词、未改场景输入、未做第二次调优。**
+
+**F01（History 不可读来源仍可提交）· 已修复。** 根因在 `secretary/notebook_store.py::_source_checks_conn`：只用 `get_history_foreground_conn` 取路径，未套用 History 的可见性真值。修复为同一谓词：`model_visible_messages(...)` + `kind == "message"` + `display_kind != "hidden"` + role ∈ user/assistant/tool/system；身份与时间范围都只从该路径取。继承旧版本走原 `_inherited_sources_conn`，未改合法旧版本继承。新增 `tests/secretary/test_noting_source_visibility.py` 5 项（human_only/hidden × uid/range 的公开工具反证 4 项 + 可见来源正控 1 项）。**RED（未修源码）4 failed / 正控 PASS；GREEN 5 PASS。**
+
+**F04（恢复未来排期被推进到下一次）· 已修复。** 根因 `secretary/scheduler_table.py::_participation`：resume 无条件把存储的 `next_run_at` 当 last-run 锚点交给 `schedule_advance_epoch`，未来时刻被当成已过去而跳到下一次。修复：`once` 仍从当前时刻重算；`cron`/`interval` 的存储 `next_run_at` 仍在未来时改用 `schedule_initial_next_run(now)`（与原生 `resume_job` 的未来分支一致），已过去时保留原跳过逻辑。`tests/secretary/test_r3_scheduler.py` 新增 3 项：cron 09:20 恢复保留当天 10:00（原次日）、interval 恢复按 now 重锚（不是 stored+interval）、已过时点仍推进到下一次。**RED 2 failed / 已过时点正控 PASS；GREEN 52 PASS。**
+
+**相关回归（修复后）：** `test_r3_scheduler`、`test_r3_scheduler_time_projection`、`test_schedule_status_lifecycle`、`test_schedules`、`test_notebook_provenance`、`test_notebook_store`、`test_r3_notebook`、`test_r3_history` 共 **261 PASS**；`test_r3_delivery`、`test_web_read`、`test_secretary_read_profile_scope` 共 **41 PASS / 2 failed**；`test_noting_child`、`test_noting_surface`、`test_r3_child`、`test_r3_wiring` 共 **132 PASS / 6 failed**。上述 8 个失败在未修源码 `0dfa26a58d` 上逐字复现（`test_web_read` 2、`test_noting_surface` 4、`test_r3_child` 1、`test_noting_child` 1），非本次引入；未扩为全量重跑。`scripts/check --staged --only ruff,health,no-tmp` PASS（4 文件，0 blocking / 0 advisory）。
+
+**F16 真实模型复测（3 个 Conversation，复用现用 `round3` Profile）。** 证据目录 `.hermes-dev/f16-retest-20261017/`（`run_f16.py`、`inputs.json`、`analysis.json`、每 Conversation 的 baseline/settlement snapshot 与完整 child 工具序列、`rpc.jsonl`、`clarify.log`）。固定产品代码 `0dfa26a58d` + 上述 F01/F04 修改；现行 07 §8.11 Step4 提示词未改。每个 Conversation 都是同样的结算情景（两条已完成经验、一个未完资料册、一个租借经历 + 待审 Skill 草稿、一次精确批准的真实 memory 成功、一个后来变化），只替换合成内容 A/B/C，原因是同一 Profile 的 USER 记忆会让相同文本变成重复写入。
+
+| Conversation | 完整派发来源的结算 | 部分派发来源 | Candidate | 结论 |
+|---|---|---|---|---|
+| A `conv_dce45273…` | Notebook 里没有该来源（Main 在 baseline 前已违规直接写 USER，见下），无法覆盖归档分支 | situation 14 改写为仅剩 Skill 待审基础，正确 | 16/18 先清 refs 再归档，17 保留 Skill，正确 | 归档分支不适用；已索引来源的结算正确 |
+| B `conv_b3c7cda2…` | situation 29（食堂+南湾，均已随 F16B 派发）**未归档，正文原样保留并追加后来变化** | situation 30 保留整段经历正文，只加 processing_note | 33 已归档但 refs 仍为 `['28']`；32 正确收窄为 Skill | **F16 失败复现** |
+| C `conv_ae2797a8…` | situation 41 **已归档**；situation 42 改写为只剩未批准保存的返程细节 | matter 43、situation 44 改写为仅剩未完成责任/待审 Skill | 46 先清 refs 再归档，47 保留 Skill，新增 54 承载未批准细节 | **F16 行为通过** |
+
+**模型行为观察（只记录，未调优）：** (1) A 和 B 的 Main 都在 facts 阶段、明确“不批准任何写入”的情况下直接调用 `memory add` 写了 USER 记忆（A 18:36:33，B 早于批准），并各创建了一条未经批准的 Schedule（A `2026-10-19 19:00`、B `2026-10-18 10:00`）；C 未发生。(2) A 因此没有把两条已完成经验索引成 Notebook 来源，settlement 无“完整派发正文”可清。(3) B 的 settlement 已识别出 F16B 真实成功、也更新了 Candidate，但仍把已派发正文留在 situation 29，并把 33 带 refs 归档；C 的同类判断则完整执行了“先来源正文、后 Candidate/refs”。(4) A 的 settle 子 Agent 首次 `conversation_history` 返回 `source_unavailable` 后自行改用可见读取，未重复失败调用。**结论：现行 Step4 文本能被执行，但真实模型在 3 次里只有 1 次完整执行；提示词不变的前提下，F16 仍不能判为已关闭。**
+
+**当前 Profile 残留：** 上述 3 个测试 Conversation、其 USER 记忆追加（含 A/B 违规写入）以及 2 条待触发 Schedule 仍在现用 `round3` Profile；未做 SQL 清理或二次写入。需要清理时由用户确认后按产品入口处理。
+
 ## WIP · 增量审查明确Bug修复（2026-10-17，Codex专职续修）
 
 **用户决定（2026-10-17）：** 工作区保留已开始但未完成的增量审查 bug 修复；用户估计为 5 个、也可能只有 3 个，具体以 Codex 恢复后核对为准。这些 bug **不阻塞**当前开发，**不宣称已修复**。Codex 额度恢复后由 Codex 专职继续；其他 Agent 不接手这批 WIP，也不把现有改动当作完成。当前 WIP 的 3 项定向测试通过（`test_cold_usage.py` 2、`test_secretary_read_profile_scope.py` 1），仅证明当前检查点可运行，不证明 bug 已关闭。

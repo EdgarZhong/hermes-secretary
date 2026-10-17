@@ -38,6 +38,7 @@ from secretary.scheduler_table import (
 )
 from secretary.scheduler_time import (
     epoch_to_utc_iso,
+    iso_to_epoch,
     parse_schedule_expression,
     schedule_advance_epoch,
     schedule_initial_next_run,
@@ -295,6 +296,43 @@ def test_control_committed_first_fences_old_worker(conn, action, changes):
         assert schedule_queue_pending_conn(conn, owned, now=NOW) is None
         assert schedule_release_conn(conn, sid, owned["claim_token"], now=NOW) is False
     assert conn.execute("SELECT COUNT(*) FROM secretary_pending_reminders").fetchone()[0] == 0
+
+
+def test_resume_keeps_a_still_future_occurrence(conn):
+    """Resuming before the stored slot must not advance past the slot being resumed for."""
+    sid = create(conn, expression="0 10 * * *")
+    first = iso_to_epoch(schedule_definition_conn(conn, "a", sid)["next_run_at"])
+    assert first == NOW + 7200  # the same day's 10:00 slot is still ahead
+
+    call(conn, "pause", schedule_id=sid)
+    resumed = call(conn, "resume", schedule_id=sid, now=NOW + 4800)  # 09:20
+
+    assert iso_to_epoch(schedule_definition_conn(conn, "a", sid)["next_run_at"]) == first
+    assert resumed["schedule"]["state"] == "active"
+
+
+def test_resume_recomputes_a_still_future_interval_from_now(conn):
+    """Native resume re-anchors intervals at the clock, never past the stored instant twice."""
+    sid = create(conn, expression="45m")
+    first = iso_to_epoch(schedule_definition_conn(conn, "a", sid)["next_run_at"])
+    assert first == NOW + 2700
+
+    call(conn, "pause", schedule_id=sid)
+    call(conn, "resume", schedule_id=sid, now=NOW + 600)
+
+    resumed = iso_to_epoch(schedule_definition_conn(conn, "a", sid)["next_run_at"])
+    assert resumed == NOW + 3300  # now + 45m, matching native resume
+    assert resumed < NOW + 5400
+
+
+def test_resume_after_the_stored_slot_advances_to_the_next_one(conn):
+    sid = create(conn, expression="0 10 * * *")
+    first = iso_to_epoch(schedule_definition_conn(conn, "a", sid)["next_run_at"])
+
+    call(conn, "pause", schedule_id=sid)
+    call(conn, "resume", schedule_id=sid, now=NOW + 8000)  # 10:13, slot already elapsed
+
+    assert iso_to_epoch(schedule_definition_conn(conn, "a", sid)["next_run_at"]) == first + 86400
 
 
 def test_queued_once_is_not_completed_and_pause_resume_can_recover(conn):
