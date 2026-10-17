@@ -1,0 +1,84 @@
+
+> hermes-secretary-web@0.1.0 test
+> vitest run src/core/post-v2-review-extra.probe.test.tsx
+
+[file-viewer:vite-plugin] Copied 9/9 renderer assets to /Users/edgar/code/hermes-secretary-web/public/file-viewer
+
+ RUN  v4.1.11 /Users/edgar/code/hermes-secretary-web
+
+ ❯ src/core/post-v2-review-extra.probe.test.tsx (3 tests | 3 failed) 89ms
+   × ordinary reasoning notices obey the documented ten-second lifetime 3ms
+   × a closed task without Snapshot evidence does not publish successful completion 1ms
+   × AI title input does not include hidden machinery as the users conversation 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/core/post-v2-review-extra.probe.test.tsx > ordinary reasoning notices obey the documented ten-second lifetime
+AssertionError: expected [] to have a length of 1 but got +0
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ src/core/post-v2-review-extra.probe.test.tsx:18:35
+     16|     c.notifyInfo("Thinking effort changed to", "High");
+     17|     vi.advanceTimersByTime(5000);
+     18|     expect(c.state.notifications).toHaveLength(1);
+       |                                   ^
+     19|   } finally {vi.useRealTimers();}
+     20| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  src/core/post-v2-review-extra.probe.test.tsx > a closed task without Snapshot evidence does not publish successful completion
+AssertionError: expected { revision: 1, …(2) } to be undefined
+
+- Expected:
+undefined
+
++ Received:
+{
+  "observedAt": 1792227728666,
+  "revision": 1,
+  "scope": "@launch:A",
+}
+
+ ❯ src/core/post-v2-review-extra.probe.test.tsx:27:39
+     25|   vi.spyOn(c,"readSchedules").mockResolvedValue({} as any);
+     26|   (c as any).event({type:"secretary.changed",payload:{profile_home:"/p…
+     27|   expect(c.state.secretaryCompletion).toBeUndefined();
+       |                                       ^
+     28| });
+     29| it("AI title input does not include hidden machinery as the users conv…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  src/core/post-v2-review-extra.probe.test.tsx > AI title input does not include hidden machinery as the users conversation
+AssertionError: expected 'User: Plan a holiday\n\nUser: Interna…' not to contain 'Internal tool whitelist'
+
+- Expected
++ Received
+
+- Internal tool whitelist
++ User: Plan a holiday
++
++ User: Internal tool whitelist and maintenance routing
+
+ ❯ src/core/post-v2-review-extra.probe.test.tsx:31:21
+     29| it("AI title input does not include hidden machinery as the users conv…
+     30|   const input = conversationExcerpt([{role:"user",content:"Plan a holi…
+     31|   expect(input).not.toContain("Internal tool whitelist");
+       |                     ^
+     32| });
+     33|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed (3)
+   Start at  09:02:08
+   Duration  500ms (transform 97ms, setup 0ms, import 29ms, tests 89ms, environment 311ms)
+

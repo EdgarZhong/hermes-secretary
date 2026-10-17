@@ -349,7 +349,7 @@ The adjacent Context control is a compact percentage ring, with an expanded deta
 **Runtime presence is not product state (user-confirmed 2026-10-17).** Binding, cold start, runtime recycling and “no live agent yet” are implementation details, not states the Chat UI may expose. Consequences:
 
 - No control may render a sentence derived from a missing binding — in particular the Reasoning panel MUST NOT show an “Effective on this route” line, and the Context/Usage capsules MUST NOT say “Unknown” or “no active runtime”.
-- After a cold start or a recycled runtime, Context and Session Total are restored from the Session’s persisted usage anchor (the value recorded at the end of the last completed Turn) and presented as the normal readout. If no trustworthy persisted value exists, omit the number rather than label it unknown; never estimate locally. The expanded Context panel states, in one short sentence, that the value appears after the next model response (“Shows after the next model response.”) instead of printing placeholders.
+- **User clarification (2026-10-17): previous readings are allowed as cold-start estimates.** After a cold start or a recycled runtime, restore usable Context and Session Total readouts from the same Session’s persisted native readings rather than requiring an exact live measurement. Reusing the previous value as an estimate is explicitly authorized: Context can use its persisted usage anchor, while Session Total can use the existing native persisted Session counters or the previous trustworthy value for that statistical view. These are usable estimates until superseded by valid live readings; do not reject them merely because no live runtime measurement exists. If there is no trustworthy previous value, omit the number rather than label it unknown. The expanded Context panel states, in one short sentence, that the value appears after the next model response (“Shows after the next model response.”) instead of printing placeholders. This clarification permits estimates; it does not relax Session/profile ownership or the following known-model-mismatch rules.
 - Restoring validates the anchor before trusting it: a fingerprint mismatch (rewind, edit, compaction) or an anchor priced by a **different model** than the Session now uses makes it untrustworthy and the number is omitted. An anchor persisted before model identity was recorded has no opinion and is still restored. This is the accepted trade-off: a cold start followed by a model switch may briefly show the previous model’s occupancy until the next real call replaces it, but a *known* mismatch is never presented.
 - Restoring must reuse an existing native read path. Do not add a dedicated API for this; if no existing read carries the persisted anchor, stop and escalate instead of inventing one.
 - A value restored this way is replaced by live numbers as soon as a real runtime reports them; no frontend persistence and no cross-Session leakage.
@@ -382,7 +382,7 @@ Use native status/task read with initial fetch on entry, refetch after Conversat
 
 **User-confirmed system error notices (2026-10-14, R2-C106):** Consume the existing native `notification.show` / `notification.clear` events through the existing notice stack, retaining the actual owner, text, severity and keyed replacement/clear semantics. Noting failures use the Parent's native notice callback; they do not create a successful Finish Framework Message or completion highlight. Preserve real failure/commit/trigger behavior; error presentation is not a retry, Notebook repair or new API contract.
 
-**User-confirmed notice lifetime (2026-10-14):** Error notices remain until manually dismissed. All ordinary notices automatically disappear after 10 seconds. Notices can stack; native clear/replacement must not prematurely erase an earlier error occurrence. This uses the existing notice entry and adds no API.
+**User-confirmed notice lifetime (2026-10-17, replaces the 2026-10-14 ten-second value):** Error notices remain until manually dismissed. All ordinary notices automatically disappear after **5 seconds**, including native notices and local thinking-effort feedback, through the same notice lifetime owner. Notices can stack; native clear/replacement must not prematurely erase an earlier error occurrence. This uses the existing notice entry and adds no API.
 
 ### 1.16. Files viewer, scope and error states
 
@@ -577,6 +577,18 @@ Every accepted delta requires a completed mini-contract before merge: **owner**,
 - 实测：`openai-codex` → `none/low/medium/high/xhigh/max`；`kimi-for-coding:k3` → `low/high/max`；`custom:deepseek-flash`（未声明）→ 不出现该字段；带 `model_overrides` 声明时来源标 `config`。`ModelOptionsResult` 与 `ModelOptionProvider` 均可通过校验。
 
 ---
+
+### 2.11. New Chat Profile selection and Conversation icons (user-confirmed 2026-10-17)
+
+This decision replaces the earlier proposal to place Profile entries inside the Model selector.
+
+- **Placement and content.** Only the home / New Chat screen exposes a separate Profile dropdown. It is independent of the Model selector; each Profile option shows its name only, without a model, description, system prompt preview or other secondary metadata. Existing Conversation screens do not expose a control that pretends to change that Session's Profile in place.
+- **Native ownership.** Read the available Profile roster through Hermes' existing native API. Selecting a Profile changes the New Chat environment before Session creation, including its model/provider defaults, SOUL/system instructions, memory, tools and native state ownership. The eventual `session.create` and all subsequent operations use that Profile. Existing Sessions remain owned by their original Profile; no transcript migration, copy of another Profile's prompt into the current Session, or second profile state store is introduced.
+- **Draft and transition boundaries.** Preserve separate draft ownership per Profile with the existing draft mechanism. Profile-scoped model/effort choices and staged paths must not leak into another Profile's first send. A pending Send/session creation must not have its owner changed by the dropdown. Load native defaults/capabilities for the selected Profile, and do not publish a late response for the previous Profile into the new selection.
+- **Workspace reuse.** Profiles may configure the same `terminal.cwd` to share project files; this does not merge their Session stores, memory or instructions.
+- **Conversation row icons.** The icon to the left of each sidebar Conversation is determined by that row's owning Profile. Conversations of the same Profile use the same icon; the configured Profiles use distinguishable icons. Keep a centralized, hardcoded Profile-name-to-icon mapping in the frontend source, as the user requested. Do not add a config field, persistence layer or icon-setting UI. Render the Profile's icon using the existing icon system without adding text metadata to the Profile options.
+
+The native Profile roster, Session ownership and existing APIs remain authoritative. The frontend mapping is presentation data, not a replacement Profile registry. This section records the new requirement; implementation and evidence status remain in root `CLAUDE.md`.
 
 ## 3. Native Integration — Verified Wiring & Implementation Handoff
 

@@ -1,0 +1,102 @@
+{
+  "backend_review_head": "b6939f47e3ffdd81e507cc73a207e709fa0157d9",
+  "frontend_review_head": "50cc8fd52dfe64a8f4afb4fe2d2cbbf8b8e5454e",
+  "comparison_backend_base": "bd6207b6f2",
+  "comparison_frontend_base": "d554546",
+  "scope": "post-verification incremental review, not a new independent gate",
+  "counterexamples": {
+    "backend_first": {
+      "tests": 3,
+      "failed": 3
+    },
+    "backend_model_only": {
+      "tests": 1,
+      "failed": 1,
+      "deselected": 3
+    },
+    "frontend_first": {
+      "tests": 4,
+      "failed": 4
+    },
+    "frontend_extra": {
+      "tests": 3,
+      "failed": 3
+    }
+  },
+  "reminder_change": {
+    "passed": 2,
+    "old_words": 42,
+    "new_words": 26
+  },
+  "environment": "macOS arm64, official PM .venv Python 3.14.7; Node/Vitest from existing UI environment; synthetic state only",
+  "pre_collection_failure": "Original frontend symlink outside Vite root failed with 0 tests; corrected test placement, no product change.",
+  "files": {
+    "backend-model-probe.log": "b1222b249e8f9f606ece963ecc4faa6cc612de78e928bf84c9960f3654a48d8e",
+    "backend-probes.log": "bed230ba115cee3bcb8e1b1f9bd4e22633109eb92ee85feb63bcdf770fba4380",
+    "frontend-counterexamples.test.tsx": "db9a35faa1ada23a4f5149cf53ce01afb9d152c884924cc6e8960e97cb538e44",
+    "frontend-extra-counterexamples.test.tsx": "0d980998818e2728231fbfb0c62dfb4d5567ea8e71004074abb782d04a85d8ef",
+    "frontend-extra-probes.log": "23950412c44d880f7a9ee7b0eff789c6e23c456243628147fe8af3a8d37ed45f",
+    "frontend-probes-run.log": "776d2ec536d89e33a37abd8c84d24cab540a86d7db108765bcd1c31053dcb621",
+    "reminder-shortening.log": "4ece9ec52e79b8090d52b2b959a32e9bf57a3357bf6c7fea540778dca94cd683",
+    "test_backend_counterexamples.py": "98b63c06fb0f3083c71bd888c4c71958c15e4414bb28bb7d807de8ffb036dbaf",
+    "notice-five-seconds-retest.log": "6f4d6cae44b72637c8abc94479ca99e4f0f7d1595db33a34efa578552d7ef0ac",
+    "notice-five-seconds.log": "9cc3de5f97f3dcb8bce82c067d33883635e10569f68f02409388167c960acf44",
+    "timeline-green.log": "7e2a0b9a62ced45ee1bceb8c5284baf907983217032d0661d6addf856fdceaab",
+    "timeline-green-fixed.log": "413918fbd62ad38ff998c3597cbf0931d9de731169d6020b36287a50c30a8593",
+    "evidence-ruff-diagnostic.json": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "timeline-typecheck.log": "36b9b5bc0b981a5ac0fea6920466caa8a81e131f360855e3102447dad183f1c5",
+    "timeline-red.log": "7d8be8998b06c3bbe6f1fd09420bb4c4ff1d5cb50bd0cde94e6ed54c9758bb24",
+    "final-static-check.log": "011a944a73d2d69c49f51b6135ffbef1959cc67d90ecd3325a1794ad7598d594",
+    "timeline-slot-lifecycle.log": "1fe2654a42c647d4d76bfe90c1250d169a8cd75de8f388a64166777e48ea7307"
+  },
+  "reviewed_backend_files": {
+    "secretary/web_read.py": "346a0fdce1eb602f5c6ccc3466c399c0dca4463f3d81f941686c6d6174e5d0ee",
+    "secretary/scheduler_time.py": "1af5be5d9cd2de19533030309419661aaabb722f3259f0051d18cc98a51fd5fd",
+    "tui_gateway/methods_web_read.py": "5675d1fb475bd0e820e46b45704450e15cfc4d82e812655f22188f3d0247d600",
+    "tui_gateway/server.py": "311a60d313b7f3a1b6f2806a4b09a3be06de20bb3aee8ae4f564bb5febfeba3f",
+    "agent/usage_anchor.py": "c7bf5528274b5db2926b4cc95ef12cb6798357e3fb1f15a03614e83fdd544cfe",
+    "agent/usage_read.py": "26be0dea77d1056ed8dfef3b6e7ff0db80ed523e43c3e5ce17ea9f90a1ad9219",
+    "docs/06-Hermes-Secretary-Web-UI-V1-Spec.md": "69801168652b79f7a52a9e0252731f271c27ec415de6ccf2eb2f9e7178b048fc"
+  },
+  "superseded_historical_expectations": {
+    "test_cold_context_does_not_claim_estimated_delta_is_provider_measurement": "User explicitly permits cold-start estimates; this test asserted retaining only the exact old count and is not a current failure criterion.",
+    "ordinary reasoning notices obey the documented ten-second lifetime": "User subsequently changed all ordinary notices to five seconds; original failure remains historical, fix uses one existing owner."
+  },
+  "notice_five_seconds": {
+    "first_run": {
+      "passed": 26,
+      "failed_old_4600ms_assertions": 2
+    },
+    "directed_retest": {
+      "passed": 2,
+      "deselected": 26
+    },
+    "effective_unique_passed": 28
+  },
+  "timeline_fix": {
+    "ui_commit": "01be26a1630fd4c28aecab6205be6493d3a31ba9",
+    "new_cases": 7,
+    "baseline_red_failures": 2,
+    "final_directed_passed": 56,
+    "prior_effective_union": 99,
+    "final_typecheck_runs": 1,
+    "fresh_real_model": false,
+    "raw_replays": "ignored only; 156 complete frames/2 Turns without reasoning.delta; second 512 frames truncated"
+  },
+  "static_check": {
+    "base": "a51fd99abc783f245ab855526a10862f2c89656a",
+    "passed": [
+      "ruff",
+      "no-tmp"
+    ],
+    "failed": [
+      "health"
+    ],
+    "health_files": 158,
+    "blocking": 13,
+    "advisory": 0,
+    "wall_seconds": 11.9,
+    "suspected_evidence_false_positives": 5,
+    "direct_ruff_diagnostics": 0
+  }
+}

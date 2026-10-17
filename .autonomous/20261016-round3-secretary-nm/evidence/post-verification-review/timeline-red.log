@@ -1,0 +1,215 @@
+
+> hermes-secretary-web@0.1.0 test
+> vitest run src/core/controller-timeline-streaming.test.tsx
+
+[file-viewer:vite-plugin] Copied 9/9 renderer assets to /Users/edgar/code/hermes-secretary-web/public/file-viewer
+
+ RUN  v4.1.11 /Users/edgar/code/hermes-secretary-web
+
+stderr | src/core/controller-timeline-streaming.test.tsx > live native Timeline continuity > keeps the construction DOM and expansion through exact UID admission, Running and history adoption
+The current testing environment is not configured to support act(...)
+
+stderr | src/core/controller-timeline-streaming.test.tsx > live native Timeline continuity > keeps the construction DOM and expansion through exact UID admission, Running and history adoption
+The current testing environment is not configured to support act(...)
+
+stderr | src/core/controller-timeline-streaming.test.tsx > live native Timeline continuity > keeps the construction DOM and expansion through exact UID admission, Running and history adoption
+The current testing environment is not configured to support act(...)
+
+stderr | src/core/controller-timeline-streaming.test.tsx > live native Timeline continuity > keeps the construction DOM and expansion through exact UID admission, Running and history adoption
+The current testing environment is not configured to support act(...)
+
+stderr | src/core/controller-timeline-streaming.test.tsx > live native Timeline continuity > keeps the construction DOM and expansion through exact UID admission, Running and history adoption
+The current testing environment is not configured to support act(...)
+
+stderr | src/core/controller-timeline-streaming.test.tsx > live native Timeline continuity > keeps the construction DOM and expansion through exact UID admission, Running and history adoption
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+
+stderr | src/core/controller-timeline-streaming.test.tsx > live native Timeline continuity > keeps the construction DOM and expansion through exact UID admission, Running and history adoption
+The current testing environment is not configured to support act(...)
+
+stderr | src/core/controller-timeline-streaming.test.tsx > live native Timeline continuity > keeps the construction DOM and expansion through exact UID admission, Running and history adoption
+The current testing environment is not configured to support act(...)
+
+stderr | src/core/controller-timeline-streaming.test.tsx > live native Timeline continuity > keeps the construction DOM and expansion through exact UID admission, Running and history adoption
+The current testing environment is not configured to support act(...)
+
+stderr | src/core/controller-timeline-streaming.test.tsx > live native Timeline continuity > does not turn native wait notices or blank historical reasoning " \n\t" into a Thinking segment
+The current testing environment is not configured to support act(...)
+
+stderr | src/core/controller-timeline-streaming.test.tsx > live native Timeline continuity > does not turn native wait notices or blank historical reasoning " \n\t" into a Thinking segment
+The current testing environment is not configured to support act(...)
+
+stderr | src/core/controller-timeline-streaming.test.tsx > live native Timeline continuity > does not turn native wait notices or blank historical reasoning " \n\t" into a Thinking segment
+The current testing environment is not configured to support act(...)
+
+stderr | src/core/controller-timeline-streaming.test.tsx > live native Timeline continuity > does not turn native wait notices or blank historical reasoning " \n\t" into a Thinking segment
+The current testing environment is not configured to support act(...)
+
+stderr | src/core/controller-timeline-streaming.test.tsx > live native Timeline continuity > does not turn native wait notices or blank historical reasoning " \n\t" into a Thinking segment
+The current testing environment is not configured to support act(...)
+
+stderr | src/core/controller-timeline-streaming.test.tsx > live native Timeline continuity > does not turn native wait notices or blank historical reasoning " \n\t" into a Thinking segment
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+
+stderr | src/core/controller-timeline-streaming.test.tsx > live native Timeline continuity > does not turn native wait notices or blank historical reasoning " \n\t" into a Thinking segment
+The current testing environment is not configured to support act(...)
+
+stderr | src/core/controller-timeline-streaming.test.tsx > live native Timeline continuity > does not turn native wait notices or blank historical reasoning " \n\t" into a Thinking segment
+The current testing environment is not configured to support act(...)
+
+stderr | src/core/controller-timeline-streaming.test.tsx > live native Timeline continuity > does not turn native wait notices or blank historical reasoning " \n\t" into a Thinking segment
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+
+stderr | src/core/controller-timeline-streaming.test.tsx > live native Timeline continuity > does not turn native wait notices or blank historical reasoning " \n\t" into a Thinking segment
+The current testing environment is not configured to support act(...)
+
+stderr | src/core/controller-timeline-streaming.test.tsx > live native Timeline continuity > does not turn native wait notices or blank historical reasoning " \n\t" into a Thinking segment
+The current testing environment is not configured to support act(...)
+
+stderr | src/core/controller-timeline-streaming.test.tsx > live native Timeline continuity > does not turn native wait notices or blank historical reasoning " \n\t" into a Thinking segment
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+
+stderr | src/core/controller-timeline-streaming.test.tsx > live native Timeline continuity > does not turn native wait notices or blank historical reasoning " \n\t" into a Thinking segment
+The current testing environment is not configured to support act(...)
+
+stderr | src/core/controller-timeline-streaming.test.tsx > live native Timeline continuity > does not turn native wait notices or blank historical reasoning " \n\t" into a Thinking segment
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+
+stderr | src/core/controller-timeline-streaming.test.tsx > live native Timeline continuity > does not turn native wait notices or blank historical reasoning " \n\t" into a Thinking segment
+The current testing environment is not configured to support act(...)
+
+stderr | src/core/controller-timeline-streaming.test.tsx > live native Timeline continuity > does not turn native wait notices or blank historical reasoning " \n\t" into a Thinking segment
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+
+stderr | src/core/controller-timeline-streaming.test.tsx > live native Timeline continuity > does not turn native wait notices or blank historical reasoning " \n\t" into a Thinking segment
+The current testing environment is not configured to support act(...)
+
+ ❯ src/core/controller-timeline-streaming.test.tsx (7 tests | 2 failed) 428ms
+     × keeps the construction DOM and expansion through exact UID admission, Running and history adoption 11ms
+     × does not turn native wait notices or blank historical reasoning " \n\t" into a Thinking segment 13ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/core/controller-timeline-streaming.test.tsx > live native Timeline continuity > keeps the construction DOM and expansion through exact UID admission, Running and history adoption
+AssertionError: expected <section …(4)>…(2)</section> to be <section …(4)>…(2)</section> // Object.is equality
+
+- Expected
++ Received
+
+@@ -1,14 +1,14 @@
+  <section
+    class="hs-disclosure"
+    data-kind="tool"
+-   data-timeline-anchor="tool:uid:assistant"
+-   data-timeline-node="constructing:stream-runtime:1"
++   data-timeline-anchor="tool:occurrence-0"
++   data-timeline-node="native-tool:@launch:stream-session:occurrence-0"
+  >
+    <button
+-     aria-controls="_r_f_"
+-     aria-expanded="true"
++     aria-controls="_r_g_"
++     aria-expanded="false"
+      class="hs-disclosure__trigger"
+      type="button"
+    >
+      <span
+        aria-hidden="true"
+@@ -32,11 +32,11 @@
+        </svg>
+      </span>
+      <svg
+        aria-hidden="true"
+        class="lucide lucide-chevron-down hs-chevron"
+-       data-open="true"
++       data-open="false"
+        fill="none"
+        height="24"
+        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+@@ -74,19 +74,27 @@
+          <path
+            d="M21 12a9 9 0 1 1-6.219-8.56"
+          />
+        </svg>
+        <span>
+-         Constructing arguments
++         Queued
+        </span>
+      </span>
+    </button>
+    <div
+      class="hs-disclosure__body"
+-     data-open="true"
+-     id="_r_f_"
++     data-open="false"
++     id="_r_g_"
++     inert=""
+    >
+      <div
+        class="hs-disclosure__inner"
+-     />
++     >
++       <h3>
++         Parameters
++       </h3>
++       <pre>
++         {"command":"echo 0"}
++       </pre>
++     </div>
+    </div>
+  </section>
+
+ ❯ src/core/controller-timeline-streaming.test.tsx:121:72
+    119|       await act(async () => card.querySelector<HTMLButtonElement>("but…
+    120|       await f.commit();
+    121|       expect(f.host.querySelector('.hs-disclosure[data-kind="tool"]'))…
+       |                                                                        ^
+    122|       expect(card.querySelector("button")?.getAttribute("aria-expanded…
+    123|       expect(card.textContent).toContain("Queued");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/core/controller-timeline-streaming.test.tsx > live native Timeline continuity > does not turn native wait notices or blank historical reasoning " \n\t" into a Thinking segment
+AssertionError: expected <section …(4)>…(2)</section> to have a length of +0 but got 1
+
+- Expected
++ Received
+
+- 0
++ 1
+
+ ❯ src/core/controller-timeline-streaming.test.tsx:148:79
+    146|       await f.emit("message.complete", { status: "complete" });
+    147|       await vi.waitFor(() => expect(f.c.state.history.messages).toHave…
+    148|       expect(f.host.querySelectorAll('.hs-disclosure[data-kind="thinki…
+       |                                                                               ^
+    149|     } finally { await f.close(); }
+    150|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 5 passed (7)
+   Start at  17:10:18
+   Duration  1.04s (transform 184ms, setup 0ms, import 251ms, tests 428ms, environment 293ms)
+

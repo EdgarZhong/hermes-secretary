@@ -1,0 +1,58 @@
+
+=== health (failed) ===
+.autonomous/20261016-round3-secretary-nm/evidence/verification2/test_v2_retired_tool.py:26  F811  parent
+    redefinition of unused name
+    fix: remove the shadowed definition
+.autonomous/20261016-round3-secretary-nm/evidence/verification2/test_v2_retired_tool.py:26  F811  parent
+    redefinition of unused name
+    fix: remove the shadowed definition
+.autonomous/20261016-round3-secretary-nm/evidence/verification2/test_v2_retired_tool.py:47  F811  test_raw_retired_name_cannot_write_through_native_noting_loop
+    redefinition of unused name
+    fix: remove the shadowed definition
+.autonomous/20261016-round3-secretary-nm/evidence/verification2/test_v2_retired_tool.py:47  F811  test_raw_retired_name_cannot_write_through_native_noting_loop
+    redefinition of unused name
+    fix: remove the shadowed definition
+.autonomous/20261016-round3-secretary-nm/evidence/verification2/test_v2_scheduler_resume.py:20  F811  test_resume_before_due_keeps_native_next_occurrence
+    redefinition of unused name
+    fix: remove the shadowed definition
+hermes_cli/inventory.py:552  BLE001  _declared_efforts
+    blind `except Exception`
+    fix: catch the exceptions this code can actually raise; a deliberate catch-all boundary must re-raise or log the traceback (`logger.exception(...)` or `exc_info=True`; `logger.warning(..., e)` is not enough). `# noqa` is ignored here: waive with `# health: allow BLE001 -- <why>`
+hermes_cli/inventory.py:552  S110  _declared_efforts
+    try/except/pass
+    fix: log it or narrow the except; a silent pass hides the failure the next bug report is about
+hermes_cli/inventory.py:560  BLE001  _declared_efforts
+    blind `except Exception`
+    fix: catch the exceptions this code can actually raise; a deliberate catch-all boundary must re-raise or log the traceback (`logger.exception(...)` or `exc_info=True`; `logger.warning(..., e)` is not enough). `# noqa` is ignored here: waive with `# health: allow BLE001 -- <why>`
+hermes_cli/inventory.py:560  S110  _declared_efforts
+    try/except/pass
+    fix: log it or narrow the except; a silent pass hides the failure the next bug report is about
+hermes_cli/inventory.py:565  NESTING  _apply_capabilities
+    NESTING 7 > target 6 (was 5)
+    fix: return early, or extract the inner block into a helper
+tests/hermes_cli/test_model_switch_custom_providers.py:1  FILE_LINES  <module>
+    lines 2497 > 2441, its value on main (over target 2000: it may only go down)
+    fix: offset the growth in the same PR: move an existing function or class into a topical sibling `<stem>_<topic>.py` (moved code keeps its cap; see root AGENTS.md), or put new tests in a new `test_<stem>_<topic>.py`; new behaviour never goes into a facade
+tui_gateway/server.py:2216  BLE001  _restored_cold_usage
+    blind `except Exception`
+    fix: catch the exceptions this code can actually raise; a deliberate catch-all boundary must re-raise or log the traceback (`logger.exception(...)` or `exc_info=True`; `logger.warning(..., e)` is not enough). `# noqa` is ignored here: waive with `# health: allow BLE001 -- <why>`
+tui_gateway/server.py:2256  BLE001  _configured_context_length
+    blind `except Exception`
+    fix: catch the exceptions this code can actually raise; a deliberate catch-all boundary must re-raise or log the traceback (`logger.exception(...)` or `exc_info=True`; `logger.warning(..., e)` is not enough). `# noqa` is ignored here: waive with `# health: allow BLE001 -- <why>`
+
+Allowed by comment (reviewers: check the reasons):
+  hermes_cli/model_switch_providers.py:1067  BLE001  _lap_bare_custom_row  -- config.yaml may be user-edited or mid-migration; a read failure must degrade to "no row", never crash the picker
+  hermes_cli/web_server_dashboard.py:322  HX002  mount_spa  -- deployment path for the optional second SPA, not a user-facing behaviour knob
+  hermes_cli/web_server_dashboard.py:325  HX002  mount_spa  -- mount path for the optional second SPA, not a user-facing behaviour knob
+  tui_gateway/server.py:1  FILE_LINES  <module>  -- security fix for #82010: distinguish an explicitly-empty toolset allowlist (fail closed, nothing allowed) from an absent one (no restriction); the added lines are minimal fail-closed branches at this existing chokepoint
+
+code health: 158 files vs a51fd99abc78: 13 blocking, 0 advisory (11.9s)
+
+Each function and file has its own cap: its value on main if it is already over target,
+otherwise the target. New code meets the target; existing code may only go down. Fix the code
+(the `fix:` line is the repo's remedy); a genuine exception takes a reviewed comment on the line,
+`# health: allow <RULE> -- <why>`. Rules and targets: scripts/code_health/config.py.
+Reproduce locally: python scripts/check --only health (every lint check: python scripts/check;
+on every push: python scripts/check --install-hook pre-push).
+
+scripts/check: 3 checks, FAILED: health

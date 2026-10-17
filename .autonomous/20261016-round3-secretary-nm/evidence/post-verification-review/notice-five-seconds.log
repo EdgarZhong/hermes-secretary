@@ -1,0 +1,58 @@
+
+> hermes-secretary-web@0.1.0 test
+> vitest run src/core/controller-native-notices.test.ts
+
+[file-viewer:vite-plugin] Copied 9/9 renderer assets to /Users/edgar/code/hermes-secretary-web/public/file-viewer
+
+ RUN  v4.1.11 /Users/edgar/code/hermes-secretary-web
+
+ ❯ src/core/controller-native-notices.test.ts (28 tests | 2 failed) 94ms
+     × stays silent on the initial bind, then toasts a neutral notice on change and auto-dismisses it 3ms
+     × toasts from a local reasoning pick, not from a model pick 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/core/controller-native-notices.test.ts > thinking-effort change notice > stays silent on the initial bind, then toasts a neutral notice on change and auto-dismisses it
+AssertionError: expected [ { …(6) } ] to have a length of +0 but got 1
+
+- Expected
++ Received
+
+- 0
++ 1
+
+ ❯ src/core/controller-native-notices.test.ts:332:35
+    330|     });
+    331|     vi.advanceTimersByTime(4600);
+    332|     expect(c.state.notifications).toHaveLength(0);
+       |                                   ^
+    333|   });
+    334|   it("maps none and xhigh wire words to display labels", () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/core/controller-native-notices.test.ts > thinking-effort change notice > toasts from a local reasoning pick, not from a model pick
+AssertionError: expected [ { …(6) } ] to have a length of +0 but got 1
+
+- Expected
++ Received
+
+- 0
++ 1
+
+ ❯ src/core/controller-native-notices.test.ts:364:35
+    362|     });
+    363|     vi.advanceTimersByTime(4600);
+    364|     expect(c.state.notifications).toHaveLength(0);
+       |                                   ^
+    365|     await c.setSessionConfig("model", "deepseek-flash");
+    366|     expect(c.state.notifications).toHaveLength(0);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 26 passed (28)
+   Start at  17:07:45
+   Duration  194ms (transform 92ms, setup 0ms, import 28ms, tests 94ms, environment 0ms)
+

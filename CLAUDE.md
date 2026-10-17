@@ -1,5 +1,21 @@
 # Hermes Secretary 项目主看板
 
+## 第2次 Verification 后的增量审查与用户现场回归（2026-10-17）
+
+**当前用户任务：** 审查第2次 Verification 后两仓功能打磨，识别用户需求是否落档、文档与实现/文档之间的冲突，以及潜在回归；不代替或改写第二次独立门禁结论。审查基线公开 `b6939f47e3ffdd81e507cc73a207e709fa0157d9`、UI `50cc8fd52dfe64a8f4afb4fe2d2cbbf8b8e5454e`，后续修复单独记录。定向反证及日志保存在 `.autonomous/20261016-round3-secretary-nm/evidence/post-verification-review/`；历史反证不因新授权改成新需求下的失败。
+
+**本会话用户已确认，立即覆盖旧口径：**
+- 冷启动允许沿用上次可信值作估算，目的是给用户可用读数，不能仅因不是当前精确测量就判缺陷或留空。06 §1.13已更正；此前“禁止估算”的审查判据撤回。实际Web Session Total还沿已有REST读取原生持久Session计数，不能仅凭live `usage_detail`未恢复就宣称整个界面未恢复。
+- 普通提示统一 **5秒** 自动消失，错误仍手动关闭；06 §1.15已覆盖旧10秒，原生notice与本地思考档位toast共用已有 `NativeNotices.track` 计时owner。相关测试有效并集28项PASS（首26项＋修正旧4.6秒断言后的定向2项），不复跑其余已过节点。
+- 用户要求缩短Scheduler说明；07 §8.14与运行时同步为26英文词（原42词），每条Reminder各带说明、整批仍一个durable carrier；2项相关投递/ACK测试PASS。
+- 用户实测：Send后首段Thinking整个流式阶段缺失、Turn结束才出现；首个工具卡片开始时闪动。已授权修复并明确委派子Agent。`timeline_stream_regression`（GPT-6.1/high）独占UI投影/组件/RenderStore及对应测试，主会话避开其白名单；不得派生、重启后端或改用户Conversation。主会话处理其余审查、普通提示及文档，交回后集中review，不重复其有效测试。Timeline首包已review接收：仅App的呈现key保持及空白历史过滤，新7项逐帧组件测试；最终56项PASS、此前有效并集99项，整合typecheck一次PASS。真实replay未证明推理文本被吞，实际确认空白补卡与工具DOM重建。
+
+**新增Chat UI需求（本会话用户确认）：** 原先“Profile放进Model selector”的提案已被用户替换：仅首页/New Chat显示独立Profile下拉，选项只显示名字，沿原生Profile整套切换，已存在Session归属不变。多个Profile可指向相同terminal.cwd共用Workspace。Conversation列表左侧icon按其所属Profile区分；图标用前端源码内固定映射表，不做配置或设置界面。已落06 §2.11，由同一子Agent以UI 01be26a为新基线独立增量实施；不得把旧提案保留为同时生效的交互。
+
+**检查现状：** 固定base a51fd99的ruff/no-tmp通过，health 158文件有13 blocking（其中5条证据脚本诊断与直接ruff/源码不一致，待排查），未放宽规则。详细专项审查见[post-verification-review.md](.autonomous/20261016-round3-secretary-nm/post-verification-review.md)。
+
+**待收敛：** 已取得跨会话配置重试错投、冷启动归属/模型真值错误、排期时区两端错配、置顶排序及AI起名输入等反证；仅估算本身及旧10秒寿命不再作为现行需求缺陷。原生事件与真实UI结果的边界分别记录，未凭模型自报通过认定完成。
+
 ## Web Chat `/title` + `/ai-title` 命令接线（2026-10-17）
 
 **用户已确认语义（2026-10-17 更正）：** `/title <name>` 手动改名；空参 `/title` 查看当前标题；AI 起名改由独立的 `/ai-title` 专门处理。用户明确否决在同一个 `/title` 入口上用 `--ai` 承载两种模式；`/title --ai` 在 Web 上不再触发 AI，会给出用法错误并指向 `/ai-title`。`/ai-title` 是 **Web 本地命令**（无原生 catalog 条目），由 Web 命令路由本地广播；官方客户端 `/title` 语义不变。AI 只提议，命令执行写入；失败保留原标题并显示原生错误。

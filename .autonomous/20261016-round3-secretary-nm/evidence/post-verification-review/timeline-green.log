@@ -1,0 +1,56 @@
+
+> hermes-secretary-web@0.1.0 test
+> vitest run src/core/controller-timeline-streaming.test.tsx src/core/native-output.test.ts src/core/controller-native-output.test.tsx src/core/controller-timeline-reconciliation.test.tsx src/core/timeline.test.tsx
+
+[file-viewer:vite-plugin] Copied 9/9 renderer assets to /Users/edgar/code/hermes-secretary-web/public/file-viewer
+
+ RUN  v4.1.11 /Users/edgar/code/hermes-secretary-web
+
+ ❯ src/core/controller-native-output.test.tsx (11 tests | 10 failed) 997ms
+     × 'normal' preserves output, exact UID facets and result occurrences 58ms
+     × 'observer_failure' preserves output, exact UID facets and result occurrences 52ms
+     × 'typed_delivery_failure' preserves output, exact UID facets and result occurrences 53ms
+     × 'repeated_provider_id' preserves output, exact UID facets and result occurrences 53ms
+     × 'retry' preserves output, exact UID facets and result occurrences 52ms
+     × 'rotation' preserves output, exact UID facets and result occurrences 51ms
+     × 'native_tool_worker' preserves output, exact UID facets and result occurrences 53ms
+     × 'nonstream' preserves output, exact UID facets and result occurrences 52ms
+     × preserves native History reasoning without a reasoning stream (controlled omission) 51ms
+     × uses exact committed UID facets when both terminal proof flags are false (controlled boundary, no historical frame fabrication) 52ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 10 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/core/controller-native-output.test.tsx > native writer/DB fixtures through Controller and production Timeline > 'normal' preserves output, exact UID facets and result occurrences
+ FAIL  src/core/controller-native-output.test.tsx > native writer/DB fixtures through Controller and production Timeline > 'observer_failure' preserves output, exact UID facets and result occurrences
+ FAIL  src/core/controller-native-output.test.tsx > native writer/DB fixtures through Controller and production Timeline > 'typed_delivery_failure' preserves output, exact UID facets and result occurrences
+ FAIL  src/core/controller-native-output.test.tsx > native writer/DB fixtures through Controller and production Timeline > 'repeated_provider_id' preserves output, exact UID facets and result occurrences
+ FAIL  src/core/controller-native-output.test.tsx > native writer/DB fixtures through Controller and production Timeline > 'retry' preserves output, exact UID facets and result occurrences
+ FAIL  src/core/controller-native-output.test.tsx > native writer/DB fixtures through Controller and production Timeline > 'rotation' preserves output, exact UID facets and result occurrences
+ FAIL  src/core/controller-native-output.test.tsx > native writer/DB fixtures through Controller and production Timeline > 'native_tool_worker' preserves output, exact UID facets and result occurrences
+ FAIL  src/core/controller-native-output.test.tsx > native writer/DB fixtures through Controller and production Timeline > 'nonstream' preserves output, exact UID facets and result occurrences
+ FAIL  src/core/controller-native-output.test.tsx > native writer/DB fixtures through Controller and production Timeline > preserves native History reasoning without a reasoning stream (controlled omission)
+ FAIL  src/core/controller-native-output.test.tsx > native writer/DB fixtures through Controller and production Timeline > uses exact committed UID facets when both terminal proof flags are false (controlled boundary, no historical frame fabrication)
+AssertionError: expected undefined to be null // Object.is equality
+
+- Expected:
+null
+
++ Received:
+undefined
+
+ ❯ verifyScenario src/core/controller-native-output.test.tsx:60:34
+     58|       expect(facet).toHaveLength(1);
+     59|       expect(facet[0].text).toBe(row.content);
+     60|       expect(facet[0].reasoning).toBe(row.reasoning);
+       |                                  ^
+     61|     }
+     62|     expect(nodes.filter(node => node.kind === "tool")).toHaveLength(ro…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/10]⎯
+
+
+ Test Files  1 failed | 4 passed (5)
+      Tests  10 failed | 89 passed (99)
+   Start at  17:10:42
+   Duration  1.91s (transform 1.37s, setup 0ms, import 1.89s, tests 3.19s, environment 1.49s)
+

@@ -1,0 +1,14 @@
+
+> hermes-secretary-web@0.1.0 test
+> vitest run src/core/controller-native-notices.test.ts -t stays silent on the initial bind|toasts from a local reasoning pick
+
+[file-viewer:vite-plugin] Copied 9/9 renderer assets to /Users/edgar/code/hermes-secretary-web/public/file-viewer
+
+ RUN  v4.1.11 /Users/edgar/code/hermes-secretary-web
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed | 26 skipped (28)
+   Start at  17:08:09
+   Duration  167ms (transform 85ms, setup 0ms, import 23ms, tests 82ms, environment 0ms)
+

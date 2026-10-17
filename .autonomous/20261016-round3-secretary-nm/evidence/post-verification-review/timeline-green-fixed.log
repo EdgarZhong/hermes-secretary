@@ -1,0 +1,14 @@
+
+> hermes-secretary-web@0.1.0 test
+> vitest run src/core/controller-timeline-streaming.test.tsx src/core/controller-native-output.test.tsx
+
+[file-viewer:vite-plugin] Copied 9/9 renderer assets to /Users/edgar/code/hermes-secretary-web/public/file-viewer
+
+ RUN  v4.1.11 /Users/edgar/code/hermes-secretary-web
+
+
+ Test Files  2 passed (2)
+      Tests  18 passed (18)
+   Start at  17:10:56
+   Duration  1.41s (transform 373ms, setup 0ms, import 349ms, tests 1.38s, environment 370ms)
+

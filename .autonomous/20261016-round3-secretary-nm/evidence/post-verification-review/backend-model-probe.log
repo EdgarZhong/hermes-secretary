@@ -1,0 +1,100 @@
+▶ not activated — using HERMES_PYTHON: /Users/edgar/code/hermes-secretary/.venv/bin/python
+▶ running per-file parallel test suite via run_tests_parallel.py
+  (TZ=UTC LANG=C.UTF-8 PYTHONHASHSEED=0; clean env)
+▶ pre-compiling bytecode cache
+▶ launching test runner
+Discovered 1 test files (~4 tests) under ['tests/secretary/test_post_v2_review_probe.py']; running with -j 10
+[100.0% |     4/~4 | ✓0 | ✗1] ✗ .hermes-dev/post-v2-review-20261017/test_backend_counterexamples.py (1✗, 0.7s)
+
+  ╔╍ Failed: .hermes-dev/post-v2-review-20261017/test_backend_counterexamples.py ╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍
+  ║ =================================== FAILURES ===================================
+  ║ ___________ test_cold_context_honors_current_session_model_override ____________
+  ║ 
+  ║ monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x109749ba0>
+  ║ 
+  ║     def test_cold_context_honors_current_session_model_override(monkeypatch):
+  ║         from tui_gateway import server
+  ║         history = [{"role":"user", "content":"hello"}]
+  ║         anchor = capture_usage_anchor(1000, 20, history, model="model-a")
+  ║         db = SimpleNamespace(get_session_model_config_value=lambda sid, key, default=None: anchor if key == "_usage_anchor" else "model-a")
+  ║         monkeypatch.setattr(server, "_get_db", lambda: db)
+  ║         monkeypatch.setattr(server, "_configured_context_length", lambda: 100000)
+  ║         session = {"agent":None, "session_key":"s", "history":history, "model_override":{"model":"model-b","provider":"custom"}}
+  ║         assert server._live_session_identity(session)[0] == "model-b"
+  ║ >       assert server._session_usage_snapshot(session) == {}
+  ║ E       AssertionError: assert {'calls': 0, ...otal': 0, ...} == {}
+  ║ E         
+  ║ E         Left contains 9 more items:
+  ║ E         {'calls': 0,
+  ║ E          'context_estimated': False,
+  ║ E          'context_max': 100000,
+  ║ E          'context_percent': 1,
+  ║ E          'context_source': 'usage_anchor',...
+  ║ E         
+  ║ E         ...Full output truncated (5 lines hidden), use '-vv' to show
+  ║ 
+  ║ tests/secretary/test_post_v2_review_probe.py:74: AssertionError
+  ║ =========================== short test summary info ============================
+  ║ FAILED tests/secretary/test_post_v2_review_probe.py::test_cold_context_honors_current_session_model_override
+  ║ ======================= 1 failed, 3 deselected in 0.45s ========================
+  ║
+  ║  Repro: python -m pytest .hermes-dev/post-v2-review-20261017/test_backend_counterexamples.py -k cold_context_honors_current_session_model_override
+  ╚╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍
+
+
+=== Summary: 1 files, 0 tests passed, 1 failed (100% complete) in 0.7s (10 workers) ===
+
+=== Per-file subprocess time distribution ===
+  Files:   1
+  Total subprocess CPU-wall: 0.7s  (runner wall: 0.7s, parallelism: 10x)
+  P50: 0.71s  P90: 0.71s  P95: 0.71s  P99: 0.71s  Max: 0.71s
+  <1s: 1 files (100%)  <2s: 1 files (100%)
+  Top 10 slowest:
+      0.71s  .hermes-dev/post-v2-review-20261017/test_backend_counterexamples.py
+
+=== Failure output ===
+
+--- .hermes-dev/post-v2-review-20261017/test_backend_counterexamples.py ---
+============================= test session starts ==============================
+platform darwin -- Python 3.14.7, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Users/edgar/code/hermes-secretary
+configfile: pyproject.toml
+plugins: anyio-4.14.2, asyncio-1.3.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 4 items / 3 deselected / 1 selected
+
+tests/secretary/test_post_v2_review_probe.py F                           [100%]
+
+=================================== FAILURES ===================================
+___________ test_cold_context_honors_current_session_model_override ____________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x109749ba0>
+
+    def test_cold_context_honors_current_session_model_override(monkeypatch):
+        from tui_gateway import server
+        history = [{"role":"user", "content":"hello"}]
+        anchor = capture_usage_anchor(1000, 20, history, model="model-a")
+        db = SimpleNamespace(get_session_model_config_value=lambda sid, key, default=None: anchor if key == "_usage_anchor" else "model-a")
+        monkeypatch.setattr(server, "_get_db", lambda: db)
+        monkeypatch.setattr(server, "_configured_context_length", lambda: 100000)
+        session = {"agent":None, "session_key":"s", "history":history, "model_override":{"model":"model-b","provider":"custom"}}
+        assert server._live_session_identity(session)[0] == "model-b"
+>       assert server._session_usage_snapshot(session) == {}
+E       AssertionError: assert {'calls': 0, ...otal': 0, ...} == {}
+E         
+E         Left contains 9 more items:
+E         {'calls': 0,
+E          'context_estimated': False,
+E          'context_max': 100000,
+E          'context_percent': 1,
+E          'context_source': 'usage_anchor',...
+E         
+E         ...Full output truncated (5 lines hidden), use '-vv' to show
+
+tests/secretary/test_post_v2_review_probe.py:74: AssertionError
+=========================== short test summary info ============================
+FAILED tests/secretary/test_post_v2_review_probe.py::test_cold_context_honors_current_session_model_override
+======================= 1 failed, 3 deselected in 0.45s ========================
+
+=== 1 file with test failures (1 test failed) ===
+  .hermes-dev/post-v2-review-20261017/test_backend_counterexamples.py  (1 test failed)
