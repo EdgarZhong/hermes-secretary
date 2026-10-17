@@ -103,7 +103,7 @@
 
 - Python 测试统一使用 `scripts/run_tests.sh`，不绕过 runner 直接调用 pytest；检查入口是 `python scripts/check`。具体环境准备见 `CONTRIBUTING.md`。
 - 测试使用隔离的 `HERMES_HOME` / runtime，不写入用户真实 Hermes 状态；跨平台行为在对应平台验证，不伪造 `sys.platform`。
-- **隔离测试 Profile 必须显式设置 `terminal.cwd`，指向该 profile／runtime 自己的目录**，不能依赖启动目录或继承仓库根；否则 agent cwd 落到仓库根，native project-context 会把仓库 `AGENTS.md` 注入用户会话，并把 `CLAUDE.md` 指给模型，造成角色和设计讨论污染。参考 round2：`terminal.cwd: .hermes-dev/round2-runtime`。
+- **隔离测试 Profile 的工作区必须放在仓库 git root 之外**，例如与仓库同级的 `/Users/edgar/code/Hermes Test/<profile>-workspace`，并把该目录设为 `terminal.cwd`；不能使用仓库内的 `.hermes-dev/...` 作为工作区，否则 git root 到 cwd 的 `AGENTS.md` 链仍会把它注入用户会话，造成角色和设计讨论污染。参考当前 round2／round3：`/Users/edgar/code/Hermes Test/round2-workspace`、`round3-workspace`。
 - 修复验证行为契约和实际失败路径，避免读取源码断言、镜像实现或仅证明代码变化的测试；纯文档修改以差异、链接、职责和规格一致性检查为主。
 - 上游 `check_agents_md_size.py` 仅是历史诊断工具，不运行它来裁剪文档；文档长度不属验收门禁。
 
