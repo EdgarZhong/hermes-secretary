@@ -193,6 +193,8 @@ Conversation list, title, ordering, archival/pin affordances (only if included b
 
 **User-confirmed sidebar restoration (2026-10-13, R2-C80):** Retain the approved Mock's Sidebar separators, including between Files and the theme controls. Organize real Sessions by their actual update time into mutually exclusive Today, Yesterday, previous 7 days, previous 30 days, and older groups. Restore the real-page presentation; do not substitute a single generic Conversations section for the approved grouping. Missing native timestamps must not be invented. Turn activation or completion must not cause whole-list flashing. Keep the list scrollable while hiding the visible scrollbar, and preserve the approved Mock separators and compact theme-control layout.
 
+**User-confirmed Pin interaction (2026-10-17).** Place a Pin section between New Conversation and Today; hide it when empty and no drag approaches it. Long-pressing a Conversation lifts its card while temporarily retaining its original slot. Dragging upward toward New Conversation opens/expands the Pin area and reserves a drop slot; releasing there pins the Conversation. Multiple pinned cards can be reordered using the same long-press drag gesture. Pinned Conversations belong to that section instead of being duplicated in date groups. This explicitly replaces the old activity-only ordering/custom-drag exclusion in §2.6. The user has assigned implementation of Pin presentation/dragging to another Agent; this bug-fix task must preserve its concurrent changes.
+
 ### 1.4. Timeline, streaming, message kinds and timestamps
 
 **2026-10-15 用户确认底部留白：** Conversation Timeline 底部 padding 与 scroll-padding-bottom 统一为用户最终指定的 **64px**，避开 Secretary 悬浮球并保留正文间隙；替代此前试调的 52px，不改既有滚动跟随规则。
@@ -376,7 +378,7 @@ The post-compaction Timeline must display the **original native compaction summa
 
 ### 1.15. Secretary Orb, Noting status and Memo Stick
 
-> **第三轮适用性：** Memo计数、二级Memo面板和相关读取全部删除；Orb真实任务状态、失败提示与只读边界保留。下一次Idle展示须采用07新子开关及长度／时间资格，无资格不显示可执行倒计时。
+> **第三轮适用性：** Memo计数、二级Memo面板和相关读取全部删除；Orb真实任务状态、失败提示与只读边界保留。**用户2026-10-17确认：现有Orb表现无误，不再需要倒计时。** 本节旧Idle倒计时要求已由此替换，不据旧表恢复倒计时或重做已确认的表现。
 
 **Visibility is governed by the GLOBAL Noting switch and route, not by conversation-local eligibility:** show Orb only on an **existing Conversation** page while the global switch is on. A conversation-local `/noting off` does **not** hide it. When global Noting is off, hide the Orb (rather than displaying a disabled orb). Never show it on New Chat or Files.
 
@@ -385,12 +387,12 @@ The post-compaction Timeline must display the **original native compaction summa
 | Orb idle | Calm, unobtrusive, even when local Noting is off; no task-running claim. |
 | Orb active | Lights only while a real Noting Task is executing; never from a mere countdown or “enabled” flag. |
 | Orb finish | A short completion highlight then back to idle, from real task completion. |
-| First-level Status | Compact, **read-only** actual status, available Idle Trigger estimate if any, Memo **count** and an expand affordance; **no Memo contents** in this level. |
+| First-level Status | Compact, **read-only** actual status, no countdown; current Orb presentation is user-approved. Memo count/contents are retired by the above Round 3 amendment. |
 | Memo second level | Replaces first-level Status body with a header and the full ordered **current effective Memo** plus collapse control; no Status-body remnants and no edit controls. |
 | No valid next trigger | Show no invented countdown; a 0-second local clock never asserts Noting started. |
 | Local `/noting off` | Preserve orb when global switch on, but render true local/not-running status; current Memo remains human-readable subject to authorized native reads. |
 
-Use native status/task read with initial fetch on entry, refetch after Conversation change and reconnect, and existing owning Gateway event path for changes. An absolute authoritative next trigger time is preferred; the browser locally counts down rather than doing once-per-second HTTP polling. Orb, Status and Memo are entirely read-only: no Run Now, Stop, Noting toggle, Memo edit/delete, Notebook mutation or background control surface.
+Use native status/task read with initial fetch on entry, refetch after Conversation change and reconnect, and existing owning Gateway event path for changes. Do not render an Idle countdown or introduce polling for it. Orb and Status remain entirely read-only: no Run Now, Stop, Noting toggle, Notebook mutation or background control surface.
 
 **User-confirmed system error notices (2026-10-14, R2-C106):** Consume the existing native `notification.show` / `notification.clear` events through the existing notice stack, retaining the actual owner, text, severity and keyed replacement/clear semantics. Noting failures use the Parent's native notice callback; they do not create a successful Finish Framework Message or completion highlight. Preserve real failure/commit/trigger behavior; error presentation is not a retry, Notebook repair or new API contract.
 
@@ -499,7 +501,7 @@ Secretary read APIs MUST preserve 02's actual `conversation_ref` ownership. Firs
 | Logical read | Required source data | Minimum return/behavior |
 |---|---|---|
 | `NotingPresenceRead` | Effective global config, target Conversation's local Noting participation and real running-task ownership | Explicit global on/off and local participation, actual task state (including unknown), task identity/status where real, no inference from a stale DB `running` row. |
-| `NotingNextIdleRead` | Native trigger scheduler and current eligibility | Absolute expected due time if meaningfully determined; explicit absent/unknown if not; optional server observation time for clock correction. Never fabricate a due date. |
+| `NotingNextIdleRead` (retired UI requirement, user-confirmed 2026-10-17) | Existing native data may remain available | No Orb countdown is required or rendered; do not remove native fields solely for this UI decision. |
 | `CurrentMemoRead` | Current effective Memo in Secretary-owned state.db | Ordered current entries and count, including an explicit empty result; read-only even when local Noting is off, subject to authorized global behavior. |
 | `HumanNotebookRead` | Current effective Notebook pointer and Snapshot | Read-only rendered four-section content (or true no-Snapshot result) and Snapshot `created_at`; no Anchor/pointer ID by default; never a normal persisted chat row. |
 | `GlobalNotingConfigRead` | Existing native config read | Enough to decide Orb visibility without adding a duplicate browser-maintained setting. |
@@ -507,7 +509,7 @@ Secretary read APIs MUST preserve 02's actual `conversation_ref` ownership. Firs
 
 The engineering team may expose these through the **existing** REST/read paths or new small TUI Gateway RPCs as technically appropriate; do not force every read through WS or wrap existing REST endpoints in redundant RPCs. All results use correct profile/Conversation owner resolution; fetching status for Conversation A must not paint B after a rapid route change. Changes SHOULD travel on existing owning WS transport as small events/invalidation hints, followed by refetch when necessary. Do **not** add a dedicated Noting WebSocket or fast periodic status polling merely for the countdown.
 
-**Browser state boundary (user-confirmed 2026-10-17).** The Web UI is not a second store: session titles, pins and the Schedule Table are read from the backend and rendered from that answer. A rename is one native write — `session.title` for a live Conversation, `PATCH /api/sessions/{id}` for a stored row — and a pin is one native `PATCH /api/sessions/{id}`; the response is the only adopted value; no optimistic copy, browser mirror, replay queue or two-way sync layer exists. Pinned ordering is deterministic from backend fields (`sessions.pinned` boolean, then activity); the client keeps no pin-order table, so a custom drag order is out of scope. The Schedule Table is refetched on Conversation open, on Secretary invalidation hints and on panel expansion; schedule mutations emit no dedicated invalidation yet.
+**Browser state boundary (user-confirmed 2026-10-17, Pin amendment above takes precedence).** The Web UI is not a second store for native facts: session titles, pin membership and the Schedule Table are read from the backend and rendered from that answer. A rename is one native write — `session.title` for a live Conversation, `PATCH /api/sessions/{id}` for a stored row — and a pin is one native `PATCH /api/sessions/{id}`; the response is the only adopted membership value; no optimistic copy, browser mirror, replay queue or two-way sync layer exists. The later Pin interaction explicitly authorizes manual drag ordering, replacing the prior activity-only/custom-drag prohibition. The Agent implementing Pin must document its ordering persistence mechanism and distinguish presentation order from native pin membership; this bug-fix task does not choose or implement that mechanism. The Schedule Table is refetched on Conversation open, on Secretary invalidation hints and on panel expansion; schedule mutations emit no dedicated invalidation yet.
 
 ### 2.7. Special `/notebook` result contract and inherited Core behavior
 
