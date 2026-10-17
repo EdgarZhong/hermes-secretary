@@ -3042,7 +3042,7 @@ def _show_compression_section(config: Dict[str, Any]) -> None:
         pass
     print(f"  Target ratio: {compression.get('target_ratio', 0.20) * 100:.0f}% of threshold preserved")
     print(f"  Protect last: {compression.get('protect_last_n', 20)} messages")
-    print(f"  Protect first: {compression.get('protect_first_n', 3)} non-system head messages")
+    print(f"  Protect first: {compression.get('protect_first_n', 0)} non-system head messages")
     aux_comp = config.get('auxiliary', {}).get('compression', {})
     print(f"  Model:        {aux_comp.get('model', '') or '(auto)'}")
     comp_provider = aux_comp.get('provider', 'auto')

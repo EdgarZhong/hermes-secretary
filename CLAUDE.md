@@ -1,5 +1,37 @@
 # Hermes Secretary 项目主看板
 
+## 已完成 · Compaction 恢复指引对齐 History 与前端完成通知（2026-10-17）
+
+**用户确认口径：** 压缩摘要的恢复指引与 `HISTORY_SEARCH_GUIDANCE` 同资格，只看合格 Main（`_secretary_main_read_eligible`），不额外要求 Noting 全局开关；`## Context Recovery` 改为“上一次压缩掉的 N 条消息（区间时间）；`conversation_history` 可检索自本 Conversation 第一条消息以来全部消息（会话起始时间）”，不出现 Session ID / `session_search` / 工具 Schema，迭代摘要替换旧 footer。`compression.protect_first_n` 产品默认改为 0（用户自用 Secretary 也吃产品默认，不单独覆盖 profile）。前端成功 compact 后弹 `Compact completed` 通知并整句高亮；degraded/aborted 仍显示原生 receipt。
+
+**实现（后端）：** `agent/context_compressor.py`（Secretary footer、区间/会话起始时间、`_replace_summary_section`、anchor index 文案）；`agent/context_compressor_summary.py`（记录会话起始 timestamp）；`agent/conversation_compression.py`（按 `main_read_surface_enabled` 注入 `_secretary_history_recovery`）；`secretary/noting_surface.py`（新 helper，`apply_main_read_surface` 复用）；`agent/agent_init.py`、`hermes_cli/config_defaults.py`、`hermes_cli/config.py`（默认 0）。**前端：** `native-notices.ts`（`strong`）、`controller.ts`（`noticeStrong` 透传）、`compaction-read.ts`（成功通知）、`App.tsx`（整句高亮）及测试。
+
+**验证：** 后端 `tests/agent/test_lean_single_aux_call.py` 10 PASS、`tests/secretary/test_r3_config_prompt.py`＋`test_r3_wiring.py` 73 PASS、ruff 通过；前端 `controller-context-compaction.test.ts` 48 PASS、`tsc -b` 通过。
+
+**文档：** 07 §5.2 第 9 条／§8.8／§9.1／§11.2、04 §3.2、02 §1 适用性、根 AGENTS「写 prompt」已同步。
+
+**未完成／注意：** 后端未重启，代码与 `protect_first_n=0` 尚未在运行中的 runtime 生效；后端全量测试未跑；前端全量 vitest 未跑；自动（非手动）压缩完成目前仍不弹这条 notice；`tail_mode`/保尾逻辑未改。
+
+## 已完成修复 · Round 3 Compact 与 Context 冷恢复（2026-10-17）
+
+**用户授权：** 调查 Round 3「实测 conversation history 工具」的 `session.compress timed out; outcome is unknown`、Context 环没有显示转动的 Compacting、原生 compact message 未及时出现在 Timeline，并修复前后端问题；补充要求成功后清理 Composer 本次 slash 命令。等待期间新增草稿仍按现有草稿归属保护。
+
+**现场已确认：** stored Session `20261017_202521_55c52c`；22:07:42.604 开始压缩，22:08:20.079 已 `committed`，耗时 37.474 秒，79→31 消息、粗估 168,459→41,914 tokens；数据库有 `_compressed_summary=1` 的真实 summary。前端 RPC 默认 30 秒超时，不能将其当作压缩失败。
+
+**兼容约束（用户 2026-10-17 再次明确）：** 后端 API 只增可选字段/参数，旧前端及 Hermes 原生客户端通信不受影响；内部调用点保持旧默认逻辑。已同步根 AGENTS；本次精确 anchor 和冷估算分离、无新 API/必填 DTO/数据库 schema。
+
+**用户追加（2026-10-17）：** 后端重启及 runtime 重新 bind 前，Context 必须允许读所属 Session 的原生 usage anchor 恢复估算；只有切换模型或 rewind 使冷估算失效。Notebook anchor 无关。已立即同步 06 §1.13，覆盖旧的 compaction/fingerprint 一概失效措辞。`cold_context_backend`（6.1/high，不再派生）独占后端冷估算读取及原生 usage-anchor 相关测试，主会话接线与最终 review；不放松模型精确计数路径，不新增用户消息或重新压缩真实会话。
+
+**执行：** 主会话只读查后端与真实存储/投影，子 Agent `compact_frontend`（6.1/high，不再派生）修复前端 compaction owner、超时恢复、正式命令成功回收，集中交回后主会话 review。用户现有后端 History/来源及前端 sidebar/layout/theme dirty 原样保留；不重复压缩用户会话、不借 Noting 完成判断压缩成功。两子 Agent 已交回，主会话完成集中 review；代码与定向验证完成，用户要求尽快停止汇报，已停止后续操作。
+
+**结果：** 前端压缩专用等待上限 660 秒（普通 RPC 仍 30 秒，显式 timeout 优先）；既有原生状态 owner 持续观察，完成后刷新真实历史与 Context；成功清理原 slash，保护新输入，失败/不确定/pending 不重发、不误清。真实原生 summary 已核对；原现场“环未转”的直接原因未完整复现，已关闭 first-idle、读取失败及迟到结果时序缺口，不能宣称重新做过真实 Compact。
+
+**冷恢复：** 原生精确 `_usage_anchor` 保持原校验；可选 `_usage_context` 保存原生读数/压缩后估算，按 Session、model、原生 `rewind_count` 校验。首 resume ACK 在 history 延迟加载前即可读盘；Agent 已构建但无新读数继续保留估算。Provider 名称单独变化不清空；只有明确模型变化/rewind 清 Context，不清 Session Total。API 只增可选 `context_available`、`context_invalidated`、`context_invalidation_reason`，旧必填数值和错误码不变，OpenRPC required 清单零变更。原生 Context 计算与估算保存沿正式 rewind 的同一 history_lock 结算，已覆盖并发反证。
+
+**验证：** 前端8个相关文件289 PASS；收窄Provider判据后6项邻域PASS（有效证据复用），新版 npm run build PASS（含TypeScript）。后端子Agent有效并集70 PASS/1环境FAIL（ACP缺acp依赖）；主会话正式binding5 PASS、只读resume7 PASS、账户usage1 PASS、原生选定resume/context/usage3 PASS、生成文件一致性1 PASS。事件目录另一失败为HEAD既有 `review.summary` scanner orphan，已核对发出点集合与HEAD相同。没有全量重跑，不把两项失败写成通过。子Agent5文件与主会话5集成文件ruff/health/no-tmp均PASS，实际index未改。三份核心文档及06已同步；两仓本次改动未commit/push，既有History与sidebar/layout/theme dirty保留。
+
+**真实现场：** 确认Round3无活动Turn并用SQLite备份后，沿原run-native.py启动方式重启两次；首次通过正式session.context_breakdown读取并保存44,743/262,144 tokens（17%，local_estimate），再次重启后的session.resume首ACK在hydrating=true时即恢复同值，页面显示17%及~44,743。最终后端PID30230、端口53445；未发新消息/模型请求/再次Compact。证据及备份：`.hermes-dev/compact-cold-context-20261017/`（verify_runtime.py、native-reading.json、cold-restored.json、context-restored.png、integration-check.log、backend.log、before-restart.db）；原压缩只读回放为`.hermes-dev/compact-observe-events.json`、REST投影为`.hermes-dev/compact-observe-messages.json`。未进行旧原生客户端全端到端实机验收，兼容结论限于契约与相关原生路径回归。
+
 ## 已完成 · F01/F04 修复与 F16 真实模型复测（2026-10-17）
 
 **用户指令（2026-10-17）：** 开始实测 F16，修 1、4；拿 F16 新结果和模型行为观察汇报，不擅自再次调优。复测复用 Round 3 Profile。**本轮未改提示词、未改场景输入、未做第二次调优。**

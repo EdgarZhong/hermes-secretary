@@ -79,6 +79,13 @@ class SummaryDispatchMixin:
             if isinstance(telemetry, dict):
                 telemetry["failure_class"] = "stall_deterministic_fallback"
             return None
+        # Recovery-guidance context: the Conversation's first message instant, taken from the
+        # history being compacted (the protected head normally carries it). Fallback: unset.
+        _stamps = [
+            msg.get("timestamp") for msg in messages
+            if isinstance(msg.get("timestamp"), (int, float)) and not isinstance(msg.get("timestamp"), bool)
+        ]
+        self._conversation_started_at = min(_stamps) if _stamps else None
         # Focus-topic derivation scans user turns; only pay when a summary is generated.
         summary_kwargs: Dict[str, Any] = {
             "focus_topic": focus_topic or self._derive_auto_focus_topic(messages),

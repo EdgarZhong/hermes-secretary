@@ -861,6 +861,8 @@ def _resume_response(
         messages = ctx.messages(display)
     if message_count is None:
         message_count = len(count_source) if ctx.omit_messages else len(messages)
+    if not info.get("usage") and (usage := _session_usage_snapshot(record)):
+        info = {**info, "usage": usage}
     payload = {"session_id": sid, "resumed": ctx.target, "message_count": message_count, "messages": messages,
                **({"messages_omitted": ctx.omit_messages} if hydrating is None else {"hydrating": hydrating}),
                "info": info, "inflight": None, "running": running, "session_key": ctx.target,
@@ -871,12 +873,10 @@ def _resume_response(
 
 
 def _resume_lazy(ctx: _Resume) -> dict:
-    """Lazy/watch resume (desktop subagent windows): a live session WITHOUT an agent — the child runs
-    inside the parent's turn, so the window needs stored history + a transport; prompt.submit upgrades it."""
+    """Lazy/watch resume: the child runs inside its parent; this window has history + transport, no agent."""
     sid, source, cwd = ctx.mint(prompts=False)
     try:
-        # Read-only mount (#85303): an ended row stays ended; the first real turn reopens it.
-        # But a restart discarded the busy-queue — retire never-drained accept rows (#125577)
+        # Read-only mount: only the first real turn reopens the row; retire the restart's lost queue (#125577).
         # or the marked row stays active and visible until the next send. Best-effort like
         # the resume guard: a handle without the method (duck-typed doubles) skips it.
         retire = getattr(ctx.db, "retire_undrained_queue_rows", None)
@@ -1380,17 +1380,7 @@ def _account_usage_lines(session: dict) -> list[str]:
 @_session_method("session.context_breakdown")
 def _(rid, params: dict, session: dict) -> dict:
     if (agent := session.get("agent")) is None:
-        usage = _session_usage_snapshot(session) or _get_usage(None)
-        return _ok(rid, {
-            "categories": [], "context_max": usage.get("context_max", 0) or 0,
-            "context_percent": usage.get("context_percent", 0) or 0,
-            "context_used": usage.get("context_used", 0) or 0,
-            "estimated_total": 0,
-            "context_estimated": usage.get("context_estimated", False),
-            "context_source": usage.get("context_source", "provider_usage"),
-            "model": _metadata_mirror(session).get("model", "")})
-    with session["history_lock"]:
-        history = list(session.get("history", []))
+        return _ok(rid, _cold_context_breakdown(session))
     # Bind the session context (on the RPC thread the session cwd is unset, so the prompt build inside
     # would key its workspace pin on the backend's cwd and overwrite the session's pin) and the session's
     # profile runtime scope: the build reaches the external memory provider's system_prompt_block(),
@@ -1400,7 +1390,9 @@ def _(rid, params: dict, session: dict) -> dict:
         from agent.context_breakdown import compute_session_context_breakdown
         from agent.context_file_sources import context_file_sources_for_agent
         with _session_profile_runtime_scope(session):
-            payload = compute_session_context_breakdown(agent, history)
+            with session["history_lock"]:
+                history = list(session.get("history", []))
+                payload = _retain_context_breakdown_estimate(agent, compute_session_context_breakdown(agent, history))
             # Structured per-file rows so the Desktop popover can explain "why is my CLAUDE.md ignored?".
             payload["context_files"] = context_file_sources_for_agent(agent)
         return _ok(rid, payload)

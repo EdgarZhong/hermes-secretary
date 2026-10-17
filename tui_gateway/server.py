@@ -2193,10 +2193,9 @@ def _session_usage_snapshot(session: dict | None) -> dict:
     sess = session or {}
     mirror_usage = _metadata_mirror(session).get("usage")
     if sess.get("agent") is not None and not (sess.get("_compute_host_active") and isinstance(mirror_usage, dict)):
-        return _get_usage(sess["agent"])
-    if isinstance(mirror_usage, dict) and mirror_usage:
-        return dict(mirror_usage)
-    return _restored_cold_usage(sess)
+        usage = _get_usage(sess["agent"])
+        return usage if "context_used" in usage else {**_restored_cold_usage(sess), **usage}
+    return dict(mirror_usage) if isinstance(mirror_usage, dict) and mirror_usage else _restored_cold_usage(sess)
 
 
 def _project_info_for_cwd(cwd: str) -> dict | None:

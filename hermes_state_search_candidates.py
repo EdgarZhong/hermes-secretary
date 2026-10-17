@@ -12,6 +12,7 @@ import re
 import sqlite3
 
 from hermes_state_common import FTS_CJK_STALE_KEY, FTS_STALE_KEY, MAX_FTS5_QUERY_CHARS
+from hermes_state_message_provenance import SYNTHETIC_DISPLAY_KINDS
 from hermes_state_search import SessionSearchMixin
 
 
@@ -96,12 +97,18 @@ class HistoryCandidateStream:
     outlives its caller-owned read transaction.
     """
 
-    def __init__(self, db, conn, query, *, limit=20, roles=None, start_time=None, end_time=None):
+    def __init__(self, db, conn, query, *, limit=20, roles=None, start_time=None, end_time=None,
+                 order="relevance", exclude_synthetic_user=False, exclude_empty_assistant=False):
+        if order not in ("relevance", "time"):
+            raise ValueError("order must be relevance or time")
         self.db, self.conn = db, conn
         self.query = prepare_query(query)
         self.budget = min(10000, max(1000, 20 * limit))
         self.batch_size = 200
         self.roles, self.start_time, self.end_time = roles, start_time, end_time
+        self.order = order
+        self.exclude_synthetic_user = exclude_synthetic_user
+        self.exclude_empty_assistant = exclude_empty_assistant
         self._cursors, self._queue = [], deque()
         self._seen, self._peek = set(), None
         self.examined = 0
@@ -148,6 +155,16 @@ class HistoryCandidateStream:
             else:
                 clauses.append("m.role IN (" + ",".join("?" for _ in self.roles) + ")")
                 params.extend(self.roles)
+        if self.exclude_synthetic_user:
+            synthetic = tuple(sorted(SYNTHETIC_DISPLAY_KINDS))
+            clauses.append("(m.role <> 'user' OR COALESCE(m.display_kind, '') NOT IN ("
+                           + ",".join("?" for _ in synthetic) + "))")
+            params.extend(synthetic)
+        if self.exclude_empty_assistant:
+            # A tool-call-only assistant row is audit metadata, not a content
+            # match.  Excluding it in SQL keeps it from consuming the candidate
+            # budget before the logical match-source check runs.
+            clauses.append("NOT (m.role = 'assistant' AND COALESCE(m.content, '') = '')")
         if self.start_time is not None:
             clauses.append("m.timestamp >= ?")
             params.append(self.start_time)
@@ -162,7 +179,9 @@ class HistoryCandidateStream:
             source = f"{route.table} JOIN messages m ON m.id={route.table}.rowid"
             clauses.insert(0, f"{route.table} MATCH ?")
             params.insert(0, route.query)
-            order = "rank, m.id"
+            # Time pagination needs a deterministic keyset.  Relevance order is
+            # kept for an unscoped current-Conversation lookup only.
+            order = "m.timestamp DESC, m.id DESC" if self.order == "time" else "rank, m.id"
         else:
             source = "messages m"
             predicate, like_params, anchor = self.db._compile_like_boolean_query(route.query)
@@ -244,7 +263,7 @@ class HistoryCandidateStream:
                 if self._try(_Route("trigram", self.query, "messages_fts_trigram"), optional=True):
                     return
             route = _Route("like_cjk", self.query)
-            self.warnings.append("Native literal CJK substring fallback was used.")
+            self.warnings.append("Native literal CJK substring fallback was used; CJK matches are literal substrings and may miss morphological variants.")
             self._try(route)
             self.route = self.route or route
             return
@@ -316,7 +335,9 @@ class HistoryCandidateStream:
 
     def diagnostics(self):
         exhausted = self._peek is None
+        index_incomplete = bool(self.gaps) or self.route.name == "like_stale"
         return {"route": self.route.name, "actual_query": self.route.query,
+                "order": self.order, "index_incomplete": index_incomplete,
                 "degraded": bool(self.warnings), "warnings": list(dict.fromkeys(self.warnings)),
                 "examined": self.examined, "budget": self.budget, "exhausted": exhausted,
                 "budget_exhausted": self.examined >= self.budget and not exhausted}

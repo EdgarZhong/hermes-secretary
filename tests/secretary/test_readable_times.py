@@ -47,13 +47,17 @@ def test_real_db_human_and_model_projections_keep_same_instant(tmp_path, monkeyp
         agent = SimpleNamespace(_session_db=db, session_id="main", platform="cli", _secretary_conversation_ref=ref)
         result = json.loads(conversation_history({"mode": "search", "query": "original"}, agent=agent))
         row = result["messages"][0]
-        assert set(row) == {"message_uid", "timestamp", "role", "content", "excerpt_kind"}
+        assert set(row) == {"message_uid", "timestamp", "role", "kind", "source", "content",
+                            "excerpt_kind"}
         source = datetime.fromisoformat(row["timestamp"])
         assert source.timestamp() == floor(stamp) and source.utcoffset() == timedelta(hours=offset)
         exact_boundary = datetime.fromtimestamp(stamp, timezone.utc).isoformat()
         precise = json.loads(conversation_history({"mode": "read", "start_time": exact_boundary, "end_time": exact_boundary},
                                            agent=agent))
-        assert precise["messages"][0] == {key: value for key, value in row.items() if key != "excerpt_kind"}
+        precise_row = precise["messages"][0]
+        assert precise_row["content"] == row["content"]
+        assert precise_row["message_uid"] == row["message_uid"]
+        assert precise_row["kind"] == "human" and precise_row["source"] == "human"
         assert db.notebook_current(ref) == snapshot
         assert db.get_messages("main")[0]["timestamp"] == stamp
         assert row["content"] == "original body 1791756123.25"

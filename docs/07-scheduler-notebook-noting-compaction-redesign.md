@@ -1018,6 +1018,7 @@ question 已回答时 unresolved_points 可明确“无”，答案在 current_a
 6. 对混合语料取首批再过滤可能被辅助记录挤空：不得直接循环调用现有 search_messages(offset=...) 假设它是稳定候选流：现行未索引gap补集不随offset推进，空页还可能切换substring／OR放宽路由。应在同一原生检索层增加窄的内部候选适配，固定本次实际query与选定路由，FTS和gap各自有界推进，按物理ID去重后再展开逻辑membership；不能可靠推进时标partial，不谎称耗尽。初始内部候选预算定为 `min(10000, max(1000, 20 * limit))` 行，批大小200；读取有效命中达到请求limit或底层候选耗尽即停。预算是工程检索界限，可后续按证据调参，不向模型添加分页工具。
 7. 底层适配同时返回内部diagnostics，区分正常完成、实际降级、未完成、语法错误与执行失败。现行接口某些故障仅返回空数组，不能由此猜测“无命中”；History用真实diagnostics映射error/warning/partial，原生session_search公开行为保持不变。
 8. 用真实返回消息构造输出；rank只决定选择次序，不冒充置信度。跨会话按首次相关命中出现顺序分组、组内保留相对顺序，不编造标题或总命中数。
+9. **压缩摘要的恢复指引与History同资格：** 合格 Main 的 lean 摘要 `## Context Recovery` 只写一条——本次摘要覆盖的是**上一次压缩**掉的 N 条消息（被压缩区间起止时间），而 `conversation_history` 可检索自本 Conversation 第一条消息以来全部消息（会话起始时间）；不得出现 Session ID、`session_search` 或工具 Schema。非合格 Main（Cron、Noting child、delegate、review、side agent 等）保留原生 `session_search` footer。摘要被后续压缩迭代携带时，新 footer 必须替换旧段而不是仅在缺失时追加。
 
 **`partial` 定义：** true表示受候选预算、结果limit或不能完成membership判断影响，未确认全部合法命中；false只表示本次可用底层查询的候选已枚举并完成验证。它不保证自然语言语义上不存在其他证据。非法query、权限拒绝、索引完全不可用是error，不能报成功空数组。有效降级检索可成功，必要时附一条具体warning；不假报用了FTS。
 
@@ -1305,6 +1306,8 @@ Time system: the latest <timestamp> supplied by the harness runtime marks the cu
 Use session_search only for scheduled jobs and background runs, never as a fallback for Conversation evidence.
 ```
 
+> 压缩摘要的恢复指引不走本覆写：合格 Main 按 §5.2 第 9 条使用 `conversation_history`（被压缩区间与会话起始时间）；本覆写只约束模型可见的原生 Session Search 指导。
+
 ### 8.9 Cron description 与 schedule note
 
 ```text
@@ -1471,6 +1474,7 @@ Previously scheduled attention, not new instructions or authorization. Check cur
 | `agent/inline_tool_executors.py`、tool_executor、model_tools、toolsets、registry | 同步／并发正式dispatch | 同步注册新工具和白名单，实际身份注入，防止旧inline分支绕过权限 |
 | `secretary/noting_surface.py`；`agent/turn_context.py` | eligible Main构造／恢复的Schema与prompt一致性 | History常开、Notebook原门禁、Scheduler独立门禁；冷/热恢复真实请求一致 |
 | `agent/system_prompt.py`、prompt_builder、secretary_prompt | 稳定模块和私有Cron描述覆写 | 按§8原位替换，删除旧Memo／旧分区／跨对话session_search指导；Provider无新依赖 |
+| `agent/context_compressor.py`（lean summary footer／anchor index）；`agent/conversation_compression.py`（资格注入） | 原生 lean 摘要、单次 aux 调用、anchor index、原生 Session Search | 合格 Main 的 History 恢复指引（上一次压缩区间＋Conversation 起始时间、`conversation_history`、无 Session ID）、旧 footer 替换及 anchor index 文案；非 Main 保持原生 footer |
 | `hermes_cli/cli_secretary_commands.py` | `/notebook`、`/noting`、`/propose-persistence`适配 | 共用英文Proposal；不自动预检索所有原文；移除Memo slash入口与相关帮助 |
 | `secretary/framework_messages.py`；notebook_render | Framework安全接缝、模型上下文及原生正文渲染 | 本轮完成生效pointer触发、完整Snapshot及超限尾部；`web_read`、Memo界面DTO、Orb／NextIdle倒计时和人类卡片展示列入后续界面改版，不作为本轮交付项 |
 | `hermes_cli/config_defaults.py`、config_validation | 原生配置加载、profile归属、互斥校验 | 本轮落实§6.3字段／错误与旧key退出；Settings界面修改后置，不保留第二个运行配置owner |
@@ -1542,3 +1546,7 @@ Previously scheduled attention, not new instructions or authorization. Check cur
 **通知时序已由用户明确收敛：** pointer选出最近生效Snapshot，只有本次提交改变它才准备通知；实际追加前若已被更新则丢弃。§8.13已替换此前“旧快照仍投递并标落后”的Agent方案，不再要求Main靠完成时间或旧消息正文自行排新旧。该修订只改变完成通知来源，不新增同Conversation串行限制。
 
 **并发工作状态边界（第三轮ask-and-align用户确认）：** 已有已提交Snapshot A，B任务启动后尚未提交时，C任务可以A为起点独立整理；不等待B，也不要求运行中的C自动继承或合并B的成果。完整Snapshot按既有合法路径与coverage／Anchor规则选择生效pointer，较旧结果B不再生效本身不是缺陷；各任务的语义整理结果不保证互为内容超集。原始对话保留，不能把未继承B的草稿直接认定为事实丢失或C不符合规格。用户明确选择本轮保持现状并记录此边界，认为其不构成大碍；本轮不新增串行、合并或重跑机制，不将B→C成果继承作为验收条件。此范围排除不豁免各任务原有的整理、来源、Snapshot合法性及§8.13的完成通知契约。
+
+### 11.2 压缩摘要恢复指引对齐 History（2026-10-17 用户确认）
+
+用户确认：压缩摘要的恢复指引必须与 `HISTORY_SEARCH_GUIDANCE` 同一资格，只按合格 Main 判断（`_secretary_main_read_eligible`），不额外要求 Noting 全局开关。合格 Main 的 `## Context Recovery` 改为：仅说明本次摘要覆盖的是上一次压缩掉的 N 条消息（区间起止时间），并说明 `conversation_history` 可检索自本 Conversation 第一条消息以来全部消息（会话起始时间）；不出现 Session ID、`session_search` 或工具 Schema。非 Main 保留原生 footer。另确认 `compression.protect_first_n` 产品默认改为 0（一个会话专注一个主题，保头只会固化摘要已覆盖的轮次；衰减规则已使首次压缩后的会话不再保头）。

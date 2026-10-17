@@ -6,15 +6,52 @@ Helpers are rebound onto server.py, preserving the facade's public/patchable sea
 from .method_ctx import bind_module
 
 
-def _restored_cold_usage(session: dict) -> dict:
-    """Reuse a matching persisted usage anchor as a cold Context estimate.
+def _retain_context_breakdown_estimate(agent, payload: dict) -> dict:
+    """Keep an existing native rough readout for restart recovery without changing its response."""
+    try:
+        from agent.usage_anchor import persist_context_estimate, persisted_context_estimate
 
-    Native anchor accounting includes the provider's previous prompt/completion count and a
-    rough delta for appended messages. This is not a fresh provider occupancy measurement.
+        previous = persisted_context_estimate(
+            getattr(agent, "_session_db", None), getattr(agent, "session_id", None), model=getattr(agent, "model", None),
+        )
+        if previous and previous.get("invalidation_reason"):
+            payload.update(context_available=False, context_invalidated=True,
+                           context_invalidation_reason=previous["invalidation_reason"])
+            return payload
+        tokens = payload.get("context_used")
+        if (payload.get("context_source") == "local_estimate" and isinstance(tokens, int)
+                and not isinstance(tokens, bool) and tokens >= 0):
+            persist_context_estimate(agent, tokens)
+    except Exception:
+        logger.debug("native context estimate retention failed", exc_info=True)
+    return payload
+
+
+def _cold_context_breakdown(session: dict) -> dict:
+    """Preserve the existing cold response's numeric shape, with optional availability hints."""
+    restored = _session_usage_snapshot(session)
+    usage = restored or _get_usage(None)
+    return {
+        "categories": [], "context_max": usage.get("context_max", 0) or 0,
+        "context_percent": usage.get("context_percent", 0) or 0, "context_used": usage.get("context_used", 0) or 0,
+        "estimated_total": 0, "context_estimated": usage.get("context_estimated", False),
+        "context_source": usage.get("context_source", "provider_usage"),
+        "model": _metadata_mirror(session).get("model", ""),
+        "context_available": "context_used" in restored and not restored.get("context_invalidated", False),
+        **({"context_invalidated": True, "context_invalidation_reason": restored["context_invalidation_reason"]}
+           if restored.get("context_invalidated") else {}),
+    }
+
+
+def _restored_cold_usage(session: dict) -> dict:
+    """Reuse the owning Session's persisted native reading as a cold Context estimate.
+
+    Exact native anchors retain their delta accounting when possible; a prior display reading
+    survives replay repair and compaction until a model switch or durable rewind invalidates it.
     """
     history = session.get("history")
     stored_id = str(session.get("stored_session_id") or session.get("session_key") or "")
-    if not stored_id or not isinstance(history, list) or not history:
+    if not stored_id:
         return {}
     try:
         with _session_profile_runtime_scope(session, hydrate_secrets=False), _session_db(session) as db:
@@ -24,18 +61,20 @@ def _restored_cold_usage(session: dict) -> dict:
             if not model:
                 getter = getattr(db, "get_session_model_config_value", None)
                 model = str(getter(stored_id, "model", "") or "") if callable(getter) else ""
-            from agent.usage_anchor import persisted_anchor_context
+            from agent.usage_anchor import persisted_context_estimate
 
-            context = persisted_anchor_context(db, stored_id, history, model=model)
-            if not context or context.get("model_matches") is False:
+            context = persisted_context_estimate(db, stored_id, history, model=model)
+            if not context:
                 return {}
+            if context.get("invalidation_reason"):
+                return {"context_invalidated": True, "context_invalidation_reason": context["invalidation_reason"]}
             used = int(context["tokens"])
             # The anchor describes Context, never session-lifetime totals. Preserve the
             # existing empty-session counter shape; native persisted totals have their own path.
             usage = {
                 "calls": 0, "input": 0, "output": 0, "total": 0,
                 "context_used": used,
-                "context_estimated": True, "context_source": "usage_anchor",
+                "context_estimated": True, "context_source": context["source"],
             }
             limit = _configured_context_length()
             if limit > 0:

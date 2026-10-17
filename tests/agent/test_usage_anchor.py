@@ -27,6 +27,8 @@ from agent.turn_context import _preflight_request_tokens
 from agent.usage_anchor import (
     anchored_context_tokens,
     capture_usage_anchor,
+    persisted_context_estimate,
+    persist_context_estimate,
     restore_usage_anchor,
     set_usage_anchor,
 )
@@ -185,6 +187,94 @@ class TestAnchorInvalidation:
         restore_usage_anchor(stale, durable)
         assert stale._usage_anchor is None
         db.close()
+
+
+class TestColdDisplayPersistence:
+    def test_native_display_estimate_updates_are_deduplicated_and_preserve_exact_anchor(self, tmp_path):
+        from unittest.mock import patch
+        from hermes_state import SessionDB
+
+        with SessionDB(db_path=tmp_path / "state.db") as db:
+            db.create_session("s1", source="cli")
+            agent = SimpleNamespace(session_id="s1", _session_db=db, model="model-a")
+            anchor = capture_usage_anchor(10000, 20, _plain_history(), model="model-a")
+            set_usage_anchor(agent, anchor)
+            with patch.object(db, "patch_session_model_config", wraps=db.patch_session_model_config) as writer:
+                persist_context_estimate(agent, 1234)
+                persist_context_estimate(agent, 1234)
+                assert writer.call_count == 1
+                persist_context_estimate(agent, 1250)
+                assert writer.call_count == 2
+
+            assert db.get_session_model_config_value("s1", "_usage_anchor") == anchor
+            assert persisted_context_estimate(db, "s1", model="model-a") == {"tokens": 1250, "source": "local_estimate"}
+
+    def test_exact_restore_rejection_keeps_display_reading_only(self, tmp_path):
+        from hermes_state import SessionDB
+
+        with SessionDB(db_path=tmp_path / "state.db") as db:
+            db.create_session("s1", source="cli")
+            history = _plain_history()
+            live = SimpleNamespace(session_id="s1", _session_db=db, _usage_anchor=None)
+            set_usage_anchor(live, capture_usage_anchor(10000, 20, history, model="model-a"))
+            edited = [_msg("user", "replayed prefix")]
+            fresh = SimpleNamespace(session_id="s1", _session_db=db, _usage_anchor=None)
+
+            restore_usage_anchor(fresh, edited)
+
+            assert fresh._usage_anchor is None
+            assert db.get_session_model_config_value("s1", "_usage_anchor") is None
+            assert persisted_context_estimate(db, "s1", edited, model="model-a")["tokens"] == 10020
+            assert anchored_context_tokens(edited, fresh._usage_anchor) is None
+
+    def test_display_metadata_failure_does_not_break_exact_anchor_persistence(self):
+        from unittest.mock import Mock
+
+        db = SimpleNamespace(get_session=Mock(side_effect=RuntimeError("read unavailable")),
+                             patch_session_model_config=Mock())
+        anchor = capture_usage_anchor(10000, 20, _plain_history())
+        set_usage_anchor(SimpleNamespace(session_id="s1", _session_db=db), anchor)
+
+        assert db.patch_session_model_config.call_args.args[1]["_usage_anchor"] == anchor
+
+    def test_copied_session_metadata_cannot_restore_a_foreign_display_reading(self, tmp_path):
+        from hermes_state import SessionDB
+
+        with SessionDB(db_path=tmp_path / "state.db") as db:
+            db.create_session("s1", source="cli")
+            live = SimpleNamespace(session_id="s1", _session_db=db, model="model-a")
+            set_usage_anchor(live, None, context_estimate=1234)
+            db.create_session("s2", source="cli")
+            db.patch_session_model_config("s2", {"_usage_context": db.get_session_model_config_value("s1", "_usage_context")})
+
+            assert persisted_context_estimate(db, "s2", model="model-a") is None
+
+    def test_native_compaction_boundary_persists_its_rough_estimate(self, tmp_path, monkeypatch):
+        import agent.conversation_compression as compression
+        from hermes_state import SessionDB
+
+        with SessionDB(db_path=tmp_path / "state.db") as db:
+            db.create_session("s1", source="cli")
+            agent = SimpleNamespace(
+                session_id="s1", _session_db=db, model="model-a", tools=None, _memory_manager=None,
+                context_compressor=SimpleNamespace(compression_count=1), _usage_anchor=None,
+            )
+            monkeypatch.setattr(compression, "_notify_context_engine_compression_complete", lambda *a, **k: None)
+            monkeypatch.setattr(compression, "_reset_read_dedup_caches", lambda *a, **k: None)
+            summary = [_msg("user", "native summary handoff")]
+            db.replace_messages("s1", summary)
+
+            estimate = compression._finish_compaction_boundary(
+                agent, summary, new_system_prompt="system", old_session_id=None, in_place=True,
+                compacted_in_place=True, session_commit_succeeded=True, defer_context_engine_notification=False,
+                compression_made_progress=False, compression_used_fallback=False, compression_feasibility_skip=False,
+                task_id="s1",
+            )
+
+            assert estimate > 0
+            assert agent._usage_anchor is None
+            assert db.get_session_model_config_value("s1", "_usage_anchor") is None
+            assert persisted_context_estimate(db, "s1", model="model-a") == {"tokens": estimate, "source": "local_estimate"}
 
 
 class TestPreflightConsumer:

@@ -33,6 +33,9 @@ class Usage(OpenModel):
     context_percent: int | None = None
     context_source: str | None = None
     context_estimated: bool | None = None
+    context_available: bool | None = None
+    context_invalidated: bool | None = None
+    context_invalidation_reason: Literal["model_changed", "rewind"] | None = None
     cache_hit_pct: int | None = None
     cache_read: int | None = None
     cache_write: int | None = None

@@ -30,6 +30,20 @@ def denied():
                         "Use the current allowed Conversation; do not retry through another tool.")
 
 
+def scope_denied_for_target(*, target, noting=False):
+    """The actionable boundary when the target is merely outside the default scope."""
+    if noting:
+        return HistoryError(
+            "scope_denied", "Noting can read only its bound parent Conversation.",
+            "Keep the bound parent; cross-Conversation retry is not available to Noting.",
+        )
+    return HistoryError(
+        "scope_denied", f"Conversation {target} is outside the default current-Conversation scope.",
+        "If it is an authorized same-Profile Conversation, retry with cross_conversation=true; "
+        "otherwise stay in the current Conversation.",
+    )
+
+
 def unavailable_source():
     return HistoryError("source_unavailable", "The requested source is not available on the authorized current path.",
                         "Search for specific evidence in the allowed scope; keep it unknown if it cannot be found.")
@@ -120,6 +134,7 @@ class HistoryPaths:
         self.db, self.conn, self.scope = db, conn, scope
         self._paths = {}
         self._by_uid = {}
+        self._fork_of = {}
 
     def _user_owned(self, ref):
         from secretary.noting_runtime import _CHILD_SOURCES, _NON_MAIN_PLATFORMS, _delegate_child_row
@@ -194,7 +209,7 @@ class HistoryPaths:
             raise denied()
         return rows
 
-    def memberships(self, candidate, *, cross_conversation):
+    def memberships(self, candidate, *, cross_conversation, exclude_current=False):
         """Expand only metadata of a physical hit, including frozen fork references."""
         rows = self.conn.execute(
             "SELECT conversation_ref FROM secretary_session_bindings WHERE session_id=? "
@@ -207,10 +222,37 @@ class HistoryPaths:
         current = self.scope.conversation_ref
         if not cross_conversation:
             return [current] if current in refs else []
+        if exclude_current:
+            return [ref for ref in refs if ref != current]
         if current in refs:
             refs.remove(current)
             refs.insert(0, current)
         return refs
+
+    def fork_of(self, ref):
+        """The authorized parent Conversation Ref for an explicit branch/reset, else None."""
+        if ref in self._fork_of:
+            return self._fork_of[ref]
+        parent_ref = None
+        try:
+            rows = self.conn.execute(
+                "SELECT s.* FROM secretary_session_bindings b JOIN sessions s ON s.id=b.session_id "
+                "WHERE b.conversation_ref=? ORDER BY s.started_at", (ref,),
+            ).fetchall()
+            if rows:
+                root_id = self.db._compression_ancestors_conn(self.conn, rows[0]["id"])[0]
+                root = self.db._secretary_session_conn(self.conn, root_id)
+                if root and self.db._is_explicit_fork_child_row(root, include_reset=True):
+                    parent_id = root.get("parent_session_id")
+                    if parent_id:
+                        candidate = self.db.resolve_conversation_ref_conn(
+                            self.conn, parent_id, read_only=True)
+                        if candidate and candidate != ref and self._user_owned(candidate):
+                            parent_ref = candidate
+        except (ConversationIdentityError, HistoryError):
+            parent_ref = None
+        self._fork_of[ref] = parent_ref
+        return parent_ref
 
     def winner(self, ref, uid):
         if self.rows(ref) is None:

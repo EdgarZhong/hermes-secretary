@@ -1482,9 +1482,9 @@ def _parse_compression_config(agent, _agent_cfg) -> CompressionSettings:
     threshold_tokens = cfg.get("threshold_tokens", cfg_get(DEFAULT_CONFIG, "compression", "threshold_tokens"))
     if threshold_tokens is not None:
         threshold_tokens = _positive_int(threshold_tokens)
-    # Non-system head messages to protect (system prompt is always protected); 0 is a
-    # legitimate "system prompt + summary + tail".
-    protect_first = max(0, int(cfg.get("protect_first_n", 3)))
+    # Non-system head messages to protect (system prompt is always protected). Product default
+    # 0: the protected head only fossilizes turns the compaction summary already covers.
+    protect_first = max(0, int(cfg.get("protect_first_n", 0)))
     checkpoint_required = is_truthy_value(cfg.get("checkpoint_required"), default=False)
     _refuse_checkpoint_required_on_codex_app_server(
         checkpoint_required, getattr(agent, "api_mode", None)

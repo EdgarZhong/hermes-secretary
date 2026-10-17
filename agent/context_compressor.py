@@ -1027,6 +1027,61 @@ def _build_recovery_footer(session_id: str, region_len: int) -> str:
     )
 
 
+def _format_instant(value: Any, profile_home: Optional[str] = None) -> Optional[str]:
+    """One stored message timestamp as a timezone-aware ISO-8601 instant, or None."""
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        return None
+    try:
+        from hermes_time import format_timestamp
+        return format_timestamp(value, profile_home=profile_home)
+    except Exception:
+        return None
+
+
+def _region_instants(
+    turns: List[Dict[str, Any]], profile_home: Optional[str] = None,
+) -> Tuple[Optional[str], Optional[str]]:
+    """First/last message instants of the compacted region."""
+    stamps = [
+        msg.get("timestamp") for msg in turns
+        if isinstance(msg.get("timestamp"), (int, float)) and not isinstance(msg.get("timestamp"), bool)
+    ]
+    if not stamps:
+        return None, None
+    return _format_instant(min(stamps), profile_home), _format_instant(max(stamps), profile_home)
+
+
+def _build_secretary_recovery_footer(
+    region_len: int, region_start: Optional[str], region_end: Optional[str], conversation_start: Optional[str],
+) -> str:
+    """Secretary Main recovery guidance: the summarized segment, and the real History scope.
+
+    ``conversation_history`` searches every message of the Conversation across compaction regions;
+    naming only the compacted segment would understate that, so the footer names the segment and then
+    the Conversation-wide retrieval path. No Session ID and no tool schema.
+    """
+    window = f" ({region_start}–{region_end})" if region_start and region_end else ""
+    since = f" ({conversation_start})" if conversation_start else ""
+    return (
+        "\n\n" + _LEAN_RECOVERY_HEADING + "\n"
+        f"Only the {region_len} message(s){window} compacted by the last compaction are summarized here; "
+        f"if needed, every message since this Conversation began{since} is available through conversation_history."
+    )
+
+
+def _replace_summary_section(summary: str, heading: str, body: str) -> str:
+    """Drop an existing ``heading`` section (up to the next ``## `` or EOF), then append ``body``.
+
+    Iterative summaries carry the previous handoff forward, so a shipped footer must be replaced in
+    place: appending only when absent would leave the old guidance contradicting the system prompt.
+    """
+    # No ``\b`` after the heading: headings may end in punctuation (``## Anchor Index (…)``),
+    # where a word boundary never matches and the stale section would survive.
+    pattern = re.compile(r"\n*" + re.escape(heading) + r"(?=\s|$).*?(?=\n#{2} |\Z)", re.DOTALL)
+    return pattern.sub("", summary).rstrip() + body
+
+
+
 # Detailed session log comes from the SAME single summary request (one aux LLM
 # call per attempt); coverage via input sampling, exact needles via anchor index.
 # One flat 2-3K-token summary cannot carry a 400K+ region's specifics — the eval showed recall collapsing to
@@ -1070,7 +1125,11 @@ _ANCHOR_NOISE = frozenset({
 
 
 def _build_anchor_index(turns: List[Dict[str, Any]]) -> str:
-    """Regex-harvest exact identifiers from the compacted region (LLM-free); per-category caps, most-frequent first."""
+    """Regex-harvest exact identifiers from the compacted region (LLM-free); per-category caps, most-frequent first.
+
+    Coding-specialized (PR/issue numbers, paths, commands, SHAs): kept for the native lean summary
+    only. The Secretary Main handoff omits this section (see ``_augment_summary_lean``).
+    """
     text = "\n".join(c for c in (msg.get("content") for msg in turns) if isinstance(c, str) and c)
     if not text:
         return ""
@@ -3773,17 +3832,42 @@ Summary generation was unavailable, so this is a best-effort deterministic fallb
             logger.info("Lean tail: demoted %d stale tool result(s)", demoted)
         return result
 
+    def _secretary_recovery_footer(self, region_len: int, turns: List[Dict[str, Any]]) -> str:
+        """Recovery footer for an eligible Main Conversation (Secretary History policy)."""
+        profile_home = None
+        db_path = getattr(getattr(self, "_session_db", None), "db_path", None)
+        if db_path:
+            from pathlib import Path
+            profile_home = str(Path(db_path).parent)
+        start, end = _region_instants(turns, profile_home)
+        conversation_start = _format_instant(getattr(self, "_conversation_started_at", None), profile_home)
+        return _build_secretary_recovery_footer(region_len, start, end, conversation_start)
+
     def _augment_summary_lean(self, summary: str, turns_to_summarize: List[Dict[str, Any]]) -> str:
         """Append deterministic lean-mode sections to a summary; no-op in legacy mode."""
         if getattr(self, "tail_mode", "lean") != "lean":
             return summary
+        secretary = bool(getattr(self, "_secretary_history_recovery", False))
+        if secretary:
+            # The mechanically extracted identifier index is coding-specialized; a Conversation
+            # handoff drops it (and any copy an earlier handoff carried forward).
+            summary = _replace_summary_section(summary, _LEAN_ANCHOR_HEADING, "")
         for heading, build in (
             (_LEAN_ANCHOR_HEADING, lambda: _redact_compaction_text(_build_anchor_index(turns_to_summarize))),
             (_LEAN_USER_MESSAGES_HEADING, lambda: _redact_compaction_text(_build_verbatim_user_section(turns_to_summarize))),
-            (_LEAN_RECOVERY_HEADING, lambda: _build_recovery_footer(getattr(self, "_session_id", "") or "", len(turns_to_summarize))),
         ):
+            if secretary and heading == _LEAN_ANCHOR_HEADING:
+                continue
             if heading not in summary:
                 summary += build()
+        if secretary:
+            # Replaced, not appended-if-absent: an earlier handoff may still carry the native footer.
+            summary = _replace_summary_section(
+                summary, _LEAN_RECOVERY_HEADING,
+                self._secretary_recovery_footer(len(turns_to_summarize), turns_to_summarize),
+            )
+        elif _LEAN_RECOVERY_HEADING not in summary:
+            summary += _build_recovery_footer(getattr(self, "_session_id", "") or "", len(turns_to_summarize))
         return summary
 
     @classmethod

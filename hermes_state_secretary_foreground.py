@@ -255,6 +255,8 @@ class SecretaryForegroundMixin:
             "id": row["id"], "message_id": row["id"], "message_uid": uid,
             "message_identity": {"conversation_ref": conversation_ref, "message_uid": uid},
             "timestamp": row["timestamp"], "role": row["role"], "content": content,
+            "tool_calls": row.get("tool_calls"), "tool_name": row.get("tool_name"),
+            "tool_call_id": row.get("tool_call_id"),
             "is_compaction": compaction and full, "has_user_turn": live is not None if compaction else row["role"] == "user",
             "session_id": row["session_id"],
             "display_kind": row.get("display_kind"), "display_metadata": metadata,

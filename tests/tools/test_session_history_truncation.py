@@ -27,11 +27,12 @@ def test_search_budget_preserves_metadata_and_precise_read_returns_full_original
     content = "证据" + "中" * (size - 2)
     db.append_message("main", "user", content, message_uid="authentic-source", timestamp=123.25)
     found = invoke(db, {"mode": "search", "query": "证据"})
-    assert found["success"] and found["count"] == 1
+    assert found["success"] and found["returned"] == 1
     row = found["messages"][0]
     assert found["conversation_ref"] == db.resolve_conversation_ref("main")
     assert (row["message_uid"], datetime.fromisoformat(row["timestamp"]).timestamp()) == ("authentic-source", 123.0)
-    assert set(row) == {"message_uid", "timestamp", "role", "content", "excerpt_kind"} | ({"truncated"} if size > 800 else set())
+    assert set(row) == {"message_uid", "timestamp", "role", "kind", "source", "content",
+                        "excerpt_kind"} | ({"truncated", "content_chars"} if size > 800 else set())
     if size > 800:
         assert len(row["content"]) <= 802
         assert row["content"].rstrip("…") in content
@@ -41,7 +42,8 @@ def test_search_budget_preserves_metadata_and_precise_read_returns_full_original
         assert row["content"] == content
         assert not row.get("truncated", False)
     identity = {"conversation_ref": found["conversation_ref"], "message_uid": row["message_uid"]}
-    read = invoke(db, {"mode": "read", "message_identity": identity, "before": 0, "after": 0})
+    read = invoke(db, {"mode": "read", "message_identity": identity, "before": 0, "after": 0,
+                       "max_chars_per_message": 4000})
     assert read["messages"][0]["content"] == content
     assert datetime.fromisoformat(read["messages"][0]["timestamp"]).timestamp() == 123.0
     assert read["messages"][0]["message_uid"] == "authentic-source"
@@ -55,7 +57,7 @@ def test_search_truncation_is_per_row_across_compaction_with_complete_read(db):
     db.archive_and_compact("main", [{"role": "user", "content": SUMMARY_PREFIX + "summary\n" + _SUMMARY_END_MARKER,
                                      "_compressed_summary": True, "message_uid": "boundary"}], tail_count=0)
     search = invoke(db, {"mode": "search", "query": "evidence"})
-    assert search["count"] == 20
+    assert search["returned"] == 20
     assert sum(len(row["content"]) for row in search["messages"]) <= 16040
     for row, (uid, body, stamp) in zip(search["messages"], originals):
         assert row["message_uid"] == uid and datetime.fromisoformat(row["timestamp"]).timestamp() == stamp
@@ -78,7 +80,7 @@ def test_invalid_source_metadata_fails_closed_without_inventing_values(db, monke
     monkeypatch.setattr(db, "get_history_foreground_conn", damaged)
     result = invoke(db, {"mode": "search", "query": "evidence"})
     if result["success"]:
-        assert result["partial"] and result["messages"] == []
+        assert result["verification_incomplete"] and result["messages"] == []
     else:
         assert result["error"]["code"] == "source_unavailable"
     precise = invoke(db, {"mode": "read", "message_identity": {"conversation_ref": db.resolve_conversation_ref("main"), "message_uid": "original"}, "before": 0, "after": 0})

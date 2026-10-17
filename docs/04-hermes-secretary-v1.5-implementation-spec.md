@@ -194,6 +194,8 @@ Full Foreground
 
 两者与各自工具 Schema 的资格条件绑定。不得以“`session_history` 可用”作为 Notebook Guidance 的注入条件，也不得在 `session_search` 的原生 Guidance 上直接改写一段混合说明。删除未经授权的 `SECRETARY_GUIDANCE`，不得重复注入。附录文本是实施内容，不得因措辞重构自行新增任务权限。
 
+压缩摘要的 `## Context Recovery` 指引同样绑定该资格：合格 Main 使用 `conversation_history`、被压缩区间与 Conversation 起始时间，不给 Session ID、不引 `session_search`；非 Main 保留原生 footer（07 §5.2 第 9 条）。
+
 ### 3.3 Tool Schema 的绑定与隔离（M07、M11）
 
 > **第三轮适用性：** Main真实工具绑定和辅助runtime隔离保留；三能力组按07注册，Noting四工具另经追加控制声明及实际dispatch隔离，不从冻结父schema授予权限。

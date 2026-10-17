@@ -166,7 +166,8 @@ def _materialize_batch(agent, db, ref, messages, wanted):
         carrier = _batch_carrier(fresh, db=db, conn=conn, conversation_ref=ref, now=time.time())
         private_rows[:] = [{"role": "user", "content": carrier, "display_kind": "process_complete",
                            "display_metadata": {"reminder_ids": [row["reminder_id"] for row in fresh],
-                                                "display_text": "以下提醒已到期。"}}]
+                                                "display_text": "以下提醒已到期。",
+                                                "origin": "reminder", "producer": "reminder"}}]
 
     def bind(conn, sid, _rows):
         if admitted["fresh"]:

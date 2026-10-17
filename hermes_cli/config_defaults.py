@@ -661,9 +661,11 @@ DEFAULT_CONFIG = {
         # commit is never abandoned: past the ceiling it is logged (WARNING, then ERROR) and
         # surfaced on the warning channel while the host keeps waiting.
         "context_total_ceiling_seconds": 600,
-        # Non-system head messages always kept verbatim, in ADDITION to the (always protected)
-        # system prompt. 0 = pin nothing but system prompt + summary + tail.
-        "protect_first_n": 3,
+        # Non-system head messages kept verbatim in ADDITION to the (always protected) system
+        # prompt. Product default 0: a Conversation is one topic, so the protected head only
+        # fossilizes turns the summary already covers (and the decay rule drops it after the first
+        # compression anyway). Raise it to pin the original task framing on the first compaction.
+        "protect_first_n": 0,
         # When True, auto-compression whose summary fails (aux error / non-JSON / timeout) aborts
         # instead of dropping the middle with a "summary unavailable" placeholder; the session
         # freezes at its size until /compress (bypasses the cooldown) or /new.

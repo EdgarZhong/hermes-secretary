@@ -570,6 +570,9 @@ export interface Usage {
   context_percent?: number | null
   context_source?: string | null
   context_estimated?: boolean | null
+  context_available?: boolean | null
+  context_invalidated?: boolean | null
+  context_invalidation_reason?: 'model_changed' | 'rewind' | null
   cache_hit_pct?: number | null
   cache_read?: number | null
   cache_write?: number | null
@@ -3538,6 +3541,9 @@ export interface SessionUsageResult {
   context_percent?: number | null
   context_source?: string | null
   context_estimated?: boolean | null
+  context_available?: boolean | null
+  context_invalidated?: boolean | null
+  context_invalidation_reason?: 'model_changed' | 'rewind' | null
   cache_hit_pct?: number | null
   cache_read?: number | null
   cache_write?: number | null
@@ -3565,6 +3571,9 @@ export interface SessionContextBreakdownResult {
   context_source: string
   model: string
   context_files?: ContextFileSource[]
+  context_available?: boolean | null
+  context_invalidated?: boolean | null
+  context_invalidation_reason?: 'model_changed' | 'rewind' | null
 }
 export interface ContextCategory {
   color: string

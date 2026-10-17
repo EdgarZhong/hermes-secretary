@@ -1971,6 +1971,8 @@ Upstream-native texts are not quoted unless the Secretary changes them (§7). Kn
 
 Injection condition for both: `agent/system_prompt.py` `_guidance_parts()` — eligible main Conversation (`apply_main_read_surface`, `secretary/noting_surface.py:61`); §1.2 additionally requires global `noting.enabled`.
 
+> **第三轮适用性（压缩摘要恢复指引）：** 合格 Main 的压缩摘要恢复指引随 `HISTORY_SEARCH_GUIDANCE` 同一资格，使用 `conversation_history`、被压缩区间与会话起始时间；不给 Session ID、不引 `session_search`。非 Main 保留原生 footer，见 07 §5.2 第 9 条。
+
 #### 1.1 `HISTORY_SEARCH_GUIDANCE` — `agent/system_prompt.py:34` — Frozen (user-approved in an earlier round; authoritative as quoted)
 
 ```text

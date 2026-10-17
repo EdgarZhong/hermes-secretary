@@ -31923,6 +31923,46 @@
             },
             "title": "Context Files",
             "type": "array"
+          },
+          "context_available": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Context Available"
+          },
+          "context_invalidated": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Context Invalidated"
+          },
+          "context_invalidation_reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "model_changed",
+                  "rewind"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Context Invalidation Reason"
           }
         },
         "required": [
@@ -34568,6 +34608,46 @@
             ],
             "default": null,
             "title": "Context Estimated"
+          },
+          "context_available": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Context Available"
+          },
+          "context_invalidated": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Context Invalidated"
+          },
+          "context_invalidation_reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "model_changed",
+                  "rewind"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Context Invalidation Reason"
           },
           "cache_hit_pct": {
             "anyOf": [
@@ -40346,6 +40426,46 @@
             ],
             "default": null,
             "title": "Context Estimated"
+          },
+          "context_available": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Context Available"
+          },
+          "context_invalidated": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Context Invalidated"
+          },
+          "context_invalidation_reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "model_changed",
+                  "rewind"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Context Invalidation Reason"
           },
           "cache_hit_pct": {
             "anyOf": [

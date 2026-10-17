@@ -112,7 +112,7 @@ def test_anchored_read_keeps_anchor_and_full_requested_neighbors(db):
     for index in range(35):
         db.append_message("main", "assistant", f"original {index}", message_uid=f"a{index}", timestamp=1800000001 + index)
     anchored = call(agent, mode="read", message_identity=identity(agent, "a17"), before=17, after=17)
-    assert anchored["success"] and anchored["count"] == 35
+    assert anchored["success"] and anchored["returned"] == 35
     assert anchored["anchor_uid"] == "a17"
     assert anchored["messages"][17]["message_uid"] == "a17"
     assert "excerpt_kind" not in anchored["messages"][0]
@@ -120,7 +120,7 @@ def test_anchored_read_keeps_anchor_and_full_requested_neighbors(db):
     assert [m["message_uid"] for m in exact["messages"]] == ["a17"]
     default = call(agent, mode="read", message_identity=identity(agent, "a17"))
     assert [m["message_uid"] for m in default["messages"]] == [f"a{i}" for i in range(15, 21)]
-    assert call(agent, mode="read")["count"] == 20
+    assert call(agent, mode="read")["returned"] == 20
     missing = call(agent, mode="read", message_identity=identity(agent, "not-a-source"))
     assert missing["error"]["code"] == "source_unavailable"
 
@@ -133,7 +133,7 @@ def test_message_time_bounds_are_inclusive_not_session_start(db):
     for mode in ("search", "read"):
         result = call(agent, mode=mode, start_time="1800000010", end_time="1800000011",
                       **({"query": "timeboundary"} if mode == "search" else {}))
-        assert result["success"] and result["count"] == 2
+        assert result["success"] and result["returned"] == 2
         assert {m["message_uid"] for m in result["messages"]} == {"t0", "t1"}
     assert call(agent, mode="read", roles=[])["messages"] == []
 
@@ -174,16 +174,16 @@ def test_fts_terms_phrases_boolean_prefix_and_empty(db):
     assert uids("cobalt NOT excluded") == {"one", "two"}
     assert uids("lant*") == {"one"}
     empty = call(agent, mode="search", query="zzzxqvnotpresent")
-    assert empty["success"] and empty["messages"] == [] and empty["partial"] is False
+    assert empty["success"] and empty["messages"] == [] and empty["complete"] is True
 
 
 def test_explicit_cross_scope_grouping_and_anchored_read(db):
     first, second = main(db, "first"), main(db, "second")
     for agent in (first, second):
         db.append_message(agent.session_id, "assistant", "crossneedle", message_uid="shared_uid")
-    assert call(first, mode="search", query="crossneedle")["count"] == 1
+    assert call(first, mode="search", query="crossneedle")["returned"] == 1
     cross = call(first, mode="search", query="crossneedle", cross_conversation=True)
-    assert cross["success"] and cross["count"] == 2 and cross["conversation_count"] == 2
+    assert cross["success"] and cross["returned"] == 2 and cross["conversation_count"] == 2
     assert {g["conversation_ref"] for g in cross["conversations"]} == {first._secretary_conversation_ref, second._secretary_conversation_ref}
     foreign = identity(second, "shared_uid")
     assert call(first, mode="read", message_identity=foreign)["error"]["code"] == "scope_denied"
@@ -202,7 +202,7 @@ def test_non_user_and_unknown_targets_do_not_disclose_existence(db):
                for target in (ref, "unknown_or_other_profile")]
     assert results[0] == results[1]
     assert results[0]["error"]["code"] == "scope_denied"
-    assert call(agent, mode="search", query="crossneedle", cross_conversation=True)["count"] == 0
+    assert call(agent, mode="search", query="crossneedle", cross_conversation=True)["returned"] == 0
 
 
 @pytest.mark.parametrize("flag,value", [("side_agent", True), ("_persist_disabled", True),
@@ -231,7 +231,7 @@ def test_other_profile_cannot_be_selected_or_injected(db, tmp_path):
     foreign_db = SessionDB(tmp_path / "other" / "state.db")
     try:
         foreign = main(foreign_db, "main", text="privateonlyneedle")
-        assert call(parent, mode="search", query="privateonlyneedle", cross_conversation=True)["count"] == 0
+        assert call(parent, mode="search", query="privateonlyneedle", cross_conversation=True)["returned"] == 0
         assert call(parent, mode="read", cross_conversation=True,
                     message_identity=identity(foreign, "main_user"))["error"]["code"] == "scope_denied"
         child = noting(db, parent)
@@ -246,11 +246,11 @@ def test_frozen_fork_keeps_inactive_source_but_not_rewound_parent(db):
     source = db.append_message("main", "assistant", "forkneedle", message_uid="shared")
     branch = fork(db, parent)
     sql(db, "UPDATE messages SET active=0, compacted=0 WHERE id=?", (source,))
-    assert call(parent, mode="search", query="forkneedle")["count"] == 0
+    assert call(parent, mode="search", query="forkneedle")["returned"] == 0
     result = call(parent, mode="search", query="forkneedle", cross_conversation=True)
-    assert result["success"] and result["count"] == 1
+    assert result["success"] and result["returned"] == 1
     assert result["conversations"][0]["conversation_ref"] == branch._secretary_conversation_ref
-    assert call(branch, mode="read", message_identity=identity(branch, "shared"), before=0, after=0)["count"] == 1
+    assert call(branch, mode="read", message_identity=identity(branch, "shared"), before=0, after=0)["returned"] == 1
     assert call(parent, mode="read", message_identity=identity(parent, "shared"))["error"]["code"] == "source_unavailable"
 
 
@@ -259,11 +259,11 @@ def test_one_physical_source_expands_to_each_fork_then_exclusions_apply(db):
     db.append_message("main", "assistant", "forkneedle", message_uid="shared")
     first, second = fork(db, parent, "first"), fork(db, parent, "second")
     before = call(parent, mode="search", query="forkneedle", cross_conversation=True)
-    assert before["count"] == 3
+    assert before["returned"] == 3
     sql(db, "INSERT INTO secretary_branch_exclusions(conversation_ref,message_uid) VALUES (?,?)",
         (first._secretary_conversation_ref, "shared"))
     after = call(parent, mode="search", query="forkneedle", cross_conversation=True)
-    assert after["count"] == 2
+    assert after["returned"] == 2
     assert {g["conversation_ref"] for g in after["conversations"]} == {parent._secretary_conversation_ref, second._secretary_conversation_ref}
 
 
@@ -275,7 +275,7 @@ def test_copied_uid_must_match_current_source_not_retired_content(db):
     old = call(parent, mode="search", query="oldforkneedle", cross_conversation=True)
     assert {g["conversation_ref"] for g in old["conversations"]} == {parent._secretary_conversation_ref}
     new = call(branch, mode="search", query="newforkneedle")
-    assert new["count"] == 1 and new["messages"][0]["message_uid"] == "shared"
+    assert new["returned"] == 1 and new["messages"][0]["message_uid"] == "shared"
 
 
 def test_compacted_rows_remain_evidence_and_hidden_views_do_not(db):
@@ -286,8 +286,8 @@ def test_compacted_rows_remain_evidence_and_hidden_views_do_not(db):
     db.append_message("main", "assistant", "hiddenhistoryneedle", display_metadata={"human_only": True})
     from agent.context_compressor import MODEL_ONLY_DISPLAY_METADATA_KEY
     db.append_message("main", "user", "hiddenhistoryneedle", display_metadata={MODEL_ONLY_DISPLAY_METADATA_KEY: True})
-    assert call(agent, mode="search", query="visiblehistoryneedle")["count"] == 1
-    assert call(agent, mode="search", query="hiddenhistoryneedle")["count"] == 0
+    assert call(agent, mode="search", query="visiblehistoryneedle")["returned"] == 1
+    assert call(agent, mode="search", query="hiddenhistoryneedle")["returned"] == 0
     read = call(agent, mode="read")
     assert all("hiddenhistoryneedle" not in str(row["content"]) for row in read["messages"])
 
@@ -300,18 +300,21 @@ def test_search_progresses_past_an_auxiliary_first_page(db, monkeypatch):
     db.append_message("main", "assistant", "crowdneedle", message_uid="wanted")
     monkeypatch.setattr(db, "search_messages", lambda *a, **k: pytest.fail("public offset API is not a candidate stream"))
     result = call(agent, mode="search", query="crowdneedle", limit=5)
-    assert result["count"] == 1 and result["messages"][0]["message_uid"] == "wanted"
-    assert result["partial"] is False
+    assert result["returned"] == 1 and result["messages"][0]["message_uid"] == "wanted"
+    assert result["complete"] is True
 
 
-def test_candidate_budget_is_partial_even_with_no_valid_hits(db):
+def test_candidate_budget_is_incomplete_even_with_no_valid_hits(db):
     db.create_session("noise", source="cron")
     for index in range(1010):
         db.append_message("noise", "user", "budgetneedle", message_uid=f"n{index}")
     agent = main(db)
     db.append_message("main", "assistant", "budgetneedle", message_uid="after-budget")
     result = call(agent, mode="search", query="budgetneedle", limit=1)
-    assert result["success"] and result["count"] == 0 and result["partial"] is True
+    assert result["success"] and result["returned"] == 0
+    assert result["search"]["budget_exhausted"] is True and result["total_matches"] is None
+    assert result["complete"] is False and result["truncated"] is False
+    assert result["incomplete_reasons"] == ["budget"]
     assert "Candidate budget exhausted" in result["warning"]
 
 
@@ -320,9 +323,12 @@ def test_result_limit_does_not_claim_exhaustion(db):
     for index in range(5):
         db.append_message("main", "assistant", "limitneedle", message_uid=f"r{index}")
     result = call(agent, mode="search", query="limitneedle", limit=2)
-    assert result["count"] == 2 and result["partial"] is True
+    assert result["returned"] == 2 and result["total_matches"] is None
+    assert result["complete"] is False and result["truncated"] is True
+    assert result["incomplete_reasons"] == ["limit"]
     all_results = call(agent, mode="search", query="limitneedle", limit=5)
-    assert all_results["count"] == 5 and all_results["partial"] is False
+    assert all_results["returned"] == 5 and all_results["complete"] is True
+    assert all_results["truncated"] is False and all_results["incomplete_reasons"] == []
 
 
 def test_gap_and_fts_advance_independently_and_deduplicate(db):
@@ -390,7 +396,7 @@ def test_or_relaxation_is_reported_only_when_actually_used(db, monkeypatch):
     monkeypatch.setattr(db, "_fts_cjk_available", False)
     monkeypatch.setattr(db, "_trigram_available", False)
     result = call(agent, mode="search", query="relaxamber missingcobalt")
-    assert result["count"] == 1 and "OR relaxation" in result["warning"]
+    assert result["returned"] == 1 and "OR relaxation" in result["warning"]
 
 
 def test_native_cjk_fallback_preserves_boolean_and_phrase(db, monkeypatch):
@@ -399,19 +405,28 @@ def test_native_cjk_fallback_preserves_boolean_and_phrase(db, monkeypatch):
     monkeypatch.setattr(db, "_trigram_available", False)
     db.append_message("main", "assistant", "北京 上海 连续短语", message_uid="one")
     db.append_message("main", "assistant", "北京 排除", message_uid="two")
-    assert call(agent, mode="search", query="北京 NOT 排除")["count"] == 1
-    assert call(agent, mode="search", query='"连续短语"')["count"] == 1
-    assert call(agent, mode="search", query="上海 OR 排除")["count"] == 2
+    assert call(agent, mode="search", query="北京 NOT 排除")["returned"] == 1
+    assert call(agent, mode="search", query='"连续短语"')["returned"] == 1
+    assert call(agent, mode="search", query="上海 OR 排除")["returned"] == 2
 
 
-def test_explicit_tool_body_uses_native_full_body_fallback(db):
+def test_explicit_tool_body_is_digest_by_default_and_capped_on_request(db):
     agent = main(db)
-    db.append_message("main", "tool", "x" * 75000 + " longtoolneedle", tool_call_id="call-1", message_uid="tool")
+    body = "x" * 75000 + " longtoolneedle"
+    db.append_message("main", "tool", body, tool_call_id="call-1", message_uid="tool", tool_name="terminal")
     result = call(agent, mode="search", query="longtoolneedle", roles=["tool"])
-    assert result["success"] and result["count"] == 1
+    assert result["success"] and result["returned"] == 1
     row = result["messages"][0]
-    assert "longtoolneedle" in row["content"] and row["truncated"] is True
+    assert row["kind"] == "tool" and row["tool_name"] == "terminal"
+    assert "match_source" not in row
+    assert "content" not in row and row["content_digest"].startswith("sha256:")
+    assert row["content_chars"] == len(body)
     assert "fallback" in result["warning"]
+    capped = call(agent, mode="search", query="longtoolneedle", roles=["tool"],
+                  include_tool_content=True, max_chars_per_message=1000)
+    capped_row = capped["messages"][0]
+    assert "longtoolneedle" in capped_row["content"] and capped_row["truncated"] is True
+    assert len(capped_row["content"]) <= 802
 
 
 def test_failures_are_errors_and_do_not_mutate_index_state(db, monkeypatch):
@@ -447,7 +462,7 @@ def test_read_only_does_not_repair_binding_or_project_unmatched_conversations(db
     monkeypatch.setattr(db, "resolve_conversation_ref", lambda *a, **k: pytest.fail("History may not repair bindings"))
     changes = db._conn.total_changes
     result = call(agent, mode="search", query="targetneedle", cross_conversation=True)
-    assert result["count"] == 1
+    assert result["returned"] == 1
     assert set(projected) == {target._secretary_conversation_ref}
     assert db._conn.total_changes == changes
 
@@ -476,13 +491,18 @@ def test_excerpts_are_literal_centered_bounded_and_ignore_not_terms():
     assert len(fallback["content"]) <= 800
 
 
-def test_tool_call_only_hit_is_not_fabricated_as_content_match(db):
+def test_tool_call_only_hit_is_audit_only_and_excluded_by_default(db):
     agent = main(db)
     db.append_message("main", "assistant", "", message_uid="toolcall", tool_calls=[
         {"id": "call-1", "type": "function", "function": {"name": "example", "arguments": '{"q":"toolcallneedle"}'}}
     ])
-    result = call(agent, mode="search", query="toolcallneedle")
-    assert result["count"] == 1 and result["messages"][0]["excerpt_kind"] == "fallback"
+    default = call(agent, mode="search", query="toolcallneedle")
+    assert default["success"] and default["returned"] == 0
+    result = call(agent, mode="search", query="toolcallneedle", include_tool_calls=True)
+    assert result["returned"] == 1
+    row = result["messages"][0]
+    assert row["excerpt_kind"] == "fallback" and row["tool_calls"][0]["name"] == "example"
+    assert "args_digest" in row["tool_calls"][0] and "arguments" not in row["tool_calls"][0]
 
 
 def test_read_preserves_multimodal_structure_without_claiming_attachment_read(db):
@@ -495,14 +515,17 @@ def test_read_preserves_multimodal_structure_without_claiming_attachment_read(db
     assert "truncated" not in result["messages"][0]
 
 
-def test_incomplete_membership_is_partial_not_complete_empty(db, monkeypatch):
+def test_incomplete_membership_is_not_complete_empty(db, monkeypatch):
     from hermes_state_secretary_identity import ConversationIdentityError
     agent = main(db, text="membershipneedle")
     def broken_path(*args, **kwargs):
         raise ConversationIdentityError("controlled conflicting binding")
     monkeypatch.setattr(db, "get_history_foreground_conn", broken_path)
     result = call(agent, mode="search", query="membershipneedle")
-    assert result["success"] and result["count"] == 0 and result["partial"] is True
+    assert result["success"] and result["returned"] == 0
+    assert result["verification_incomplete"] is True and result["total_matches"] is None
+    assert result["complete"] is False and result["truncated"] is False
+    assert result["incomplete_reasons"] == ["verification"]
     assert "could not be fully verified" in result["warning"]
 
 
@@ -512,7 +535,7 @@ def test_persisted_stale_index_uses_read_only_native_fallback(db):
     meta(db, FTS_STALE_KEY, "1")
     changes = db._conn.total_changes
     result = call(agent, mode="search", query="staleneedle")
-    assert result["success"] and result["count"] == 1
+    assert result["success"] and result["returned"] == 1
     assert "substring fallback" in result["warning"]
     assert db._conn.total_changes == changes
 
@@ -521,7 +544,7 @@ def test_main_history_ignores_notebook_and_memory_switches(db):
     agent = main(db, text="independentneedle")
     agent._secretary_notebook_read_enabled = False
     agent._memory_provider = None
-    assert call(agent, mode="search", query="independentneedle")["count"] == 1
+    assert call(agent, mode="search", query="independentneedle")["returned"] == 1
 
 
 def test_flag_without_noting_admission_is_not_permission(db):
@@ -535,4 +558,151 @@ def test_flag_without_noting_admission_is_not_permission(db):
 def test_query_bounds_do_not_inherit_durable_timestamp_storage_limits(db):
     agent = main(db)
     result = call(agent, mode="read", start_time="-1", end_time="9999-01-01T00:00:00+00:00")
-    assert result["success"] and result["count"] == 1
+    assert result["success"] and result["returned"] == 1
+
+
+def test_bounded_window_returns_every_conversation_and_is_complete(db):
+    first, second = main(db, "first"), main(db, "second")
+    db.append_message("first", "assistant", "windowneedle", message_uid="f1", timestamp=1800000001)
+    db.append_message("second", "assistant", "windowneedle", message_uid="s1", timestamp=1800000002)
+    result = call(first, mode="search", query="windowneedle", cross_conversation=True,
+                  start_time="1800000000", end_time="1800000010", limit=50)
+    assert result["success"] and result["window_complete"] is True
+    assert result["returned"] == 2 and result["total_matches"] == 2
+    assert result["complete"] is True and result["truncated"] is False
+    assert result["conversation_count"] == 2
+    assert {group["conversation_ref"] for group in result["conversations"]} == {
+        first._secretary_conversation_ref, second._secretary_conversation_ref}
+
+
+def test_bounded_window_truncation_requires_narrowing(db):
+    agent = main(db)
+    for index in range(11):
+        db.append_message("main", "assistant", "truncneedle", message_uid=f"t{index}",
+                          timestamp=1800000001 + index)
+    result = call(agent, mode="search", query="truncneedle", start_time="1800000000",
+                  end_time="1800000020", limit=10)
+    assert result["success"] and result["window_complete"] is False
+    assert result["returned"] == 10 and result["total_matches"] is None
+    assert result["complete"] is False and result["truncated"] is True
+    assert result["incomplete_reasons"] == ["limit"]
+    assert "narrow start_time/end_time" in result["warning"]
+
+
+def test_single_time_bound_never_claims_a_complete_window(db):
+    agent = main(db)
+    for index in range(5):
+        db.append_message("main", "assistant", "oneboundneedle", message_uid=f"b{index}",
+                          timestamp=1800000001 + index)
+    result = call(agent, mode="search", query="oneboundneedle", start_time="1800000000", limit=2)
+    assert "window_complete" not in result
+    assert result["total_matches"] is None and result["complete"] is False
+    assert result["truncated"] is True and result["incomplete_reasons"] == ["limit"]
+    assert "Only one time bound" in result["warning"]
+
+
+def test_notebook_and_framework_carriers_are_labelled_not_human(db):
+    agent = main(db)
+    db.append_message("main", "user", "ordinary provneedle", message_uid="human", timestamp=1800000001)
+    db.append_message(
+        "main", "user", "<framework-message>\nNOTING RESULT\nCURRENT NOTEBOOK SNAPSHOT\nprovneedle",
+        message_uid="notebook", timestamp=1800000002, display_kind="process_complete",
+        display_metadata={"noting_run_output": True, "display_text": "NOTING RESULT\nCURRENT NOTEBOOK SNAPSHOT\nprovneedle"})
+    db.append_message(
+        "main", "user", "<framework-message>\nreminder provneedle", message_uid="framework",
+        timestamp=1800000003, display_kind="process_complete",
+        display_metadata={"display_text": "reminder provneedle", "reminder_ids": ["r1"]})
+    default = call(agent, mode="search", query="provneedle")
+    assert [row["message_uid"] for row in default["messages"]] == ["human"]
+    assert default["messages"][0]["kind"] == "human"
+    notebook = call(agent, mode="search", query="provneedle", kinds=["notebook"])
+    assert [(row["kind"], row["source"]) for row in notebook["messages"]] == [
+        ("notebook", "notebook:noting_result")]
+    framework = call(agent, mode="search", query="provneedle", kinds=["framework"])
+    assert framework["messages"][0]["kind"] == "framework"
+
+
+def test_self_history_is_excluded_until_explicitly_audited(db):
+    agent = main(db)
+    db.append_message("main", "tool", "selfneedle result body", message_uid="self",
+                      timestamp=1800000001, tool_name="conversation_history", tool_call_id="c1")
+    assert call(agent, mode="search", query="selfneedle")["returned"] == 0
+    assert call(agent, mode="search", query="selfneedle", roles=["tool"])["returned"] == 0
+    audited = call(agent, mode="search", query="selfneedle", roles=["tool"], include_self_history=True)
+    assert audited["returned"] == 1
+    row = audited["messages"][0]
+    assert row["kind"] == "tool" and row["content_omitted"] == "tool_result"
+    assert "content" not in row and row["content_digest"].startswith("sha256:")
+
+
+def test_unanchored_read_reports_limit_more_and_remaining(db):
+    agent = main(db)
+    for index in range(2):
+        db.append_message("main", "user", f"u{index}", message_uid=f"u{index}", timestamp=1800000001 + index)
+        db.append_message("main", "assistant", f"a{index}", message_uid=f"a{index}", timestamp=1800000011 + index)
+    limited = call(agent, mode="read", limit=2)
+    assert limited["returned"] == 2 and limited["has_more"] is True
+    assert limited["remaining"] == 3 and limited["messages_truncated"] is False
+    complete = call(agent, mode="read", limit=10)
+    assert complete["returned"] == 5 and complete["has_more"] is False
+    assert complete["remaining"] == 0
+    filtered = call(agent, mode="read", roles=["user"], limit=1)
+    assert filtered["returned"] == 1 and filtered["has_more"] is True
+    assert filtered["remaining"] == 2 and filtered["messages_truncated"] is False
+    anchored = call(agent, mode="read", message_identity=identity(agent, "u0"), before=0, after=0)
+    assert "has_more" not in anchored and "remaining" not in anchored
+
+
+def test_read_caps_keep_anchor_and_report_dropped_neighbours(db):
+    agent = main(db)
+    for index in range(3):
+        db.append_message("main", "user", "R" * 10000, message_uid=f"r{index}",
+                          timestamp=1800000001 + index)
+    read = call(agent, mode="read", message_identity=identity(agent, "r1"),
+                before=1, after=1, max_total_chars=2500)
+    assert read["success"] and read["returned"] == 1
+    assert read["anchor_uid"] == "r1" and read["anchor_truncated"] is True
+    assert read["messages_truncated"] is True and read["dropped_by_size"] == 2
+    assert len(read["messages"][0]["content"]) <= 2000
+
+
+def test_read_tool_digest_is_reported_as_truncated(db):
+    agent = main(db)
+    db.append_message("main", "tool", "T" * 90000, message_uid="tool", timestamp=1800000001,
+                      tool_name="terminal", tool_call_id="c1")
+    read = call(agent, mode="read", message_identity=identity(agent, "tool"), before=0, after=0)
+    assert read["success"] and read["returned"] == 1
+    assert read["messages"][0]["content_omitted"] == "tool_result"
+    assert read["anchor_truncated"] is True and read["messages_truncated"] is True
+
+
+def test_scope_denied_hints_that_cross_conversation_is_the_authorized_retry(db):
+    first, second = main(db, "first"), main(db, "second")
+    result = call(first, mode="read", message_identity=identity(second, "second_user"))
+    assert result["error"]["code"] == "scope_denied"
+    assert "cross_conversation=true" in result["error"]["next_action"]
+
+
+def test_schema_has_no_cursor_or_max_total_and_exposes_window_contract(db):
+    properties = CONVERSATION_HISTORY_SCHEMA["parameters"]["properties"]
+    assert "cursor" not in properties and "max_total" not in properties
+    assert {"kinds", "exclude_current_conversation", "max_chars_per_message",
+            "max_total_chars", "include_tool_content", "include_self_history",
+            "include_tool_calls"} <= set(properties)
+    assert "window_complete" in CONVERSATION_HISTORY_SCHEMA["description"]
+    assert "complete/truncated" in CONVERSATION_HISTORY_SCHEMA["description"]
+
+
+def test_unanchored_read_rejects_search_only_self_history_switch(db):
+    result = call(main(db), mode="read", include_self_history=True)
+    assert result["error"]["code"] == "invalid_argument"
+    assert result["error"]["field"] == "include_self_history"
+
+
+def test_search_exposes_only_the_kept_internal_diagnostics(db):
+    agent = main(db, text="diagnosticneedle")
+    result = call(agent, mode="search", query="diagnosticneedle")
+    diagnostics = result["search"]
+    assert {"route", "order", "degraded", "enumeration_complete",
+            "index_incomplete", "budget_exhausted"} <= set(diagnostics)
+    assert "match_source" not in result["messages"][0]

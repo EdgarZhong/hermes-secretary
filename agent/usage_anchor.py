@@ -12,6 +12,8 @@ every turn and a resumed session runs in a fresh process, so object identity is 
 across the surfaces where the estimate mattered most (#99421, #104462). The anchor also persists
 on the session row (``model_config._usage_anchor``) so a restarted process can restore it; a
 restored anchor is honored only while the durable transcript still matches its fingerprint.
+The separate optional ``_usage_context`` metadata is a cold display estimate only: compaction
+may replace it with native rough usage, and it never restores an exact engine anchor.
 """
 
 from __future__ import annotations
@@ -24,6 +26,7 @@ from typing import Any, Dict, List, Optional
 logger = logging.getLogger(__name__)
 
 USAGE_ANCHOR_MODEL_CONFIG_KEY = "_usage_anchor"
+USAGE_CONTEXT_MODEL_CONFIG_KEY = "_usage_context"
 
 # Identity of a priced message = the provider-visible fields that round-trip the session DB
 # byte-for-byte. Display/persistence metadata (timestamps, row ids, display kinds) is rewritten
@@ -166,7 +169,31 @@ def _serialize(anchor: Any) -> Optional[Dict[str, Any]]:
     return serialized
 
 
-def persist_usage_anchor(agent: Any, anchor: Optional[Dict[str, Any]]) -> None:
+def _display_context_snapshot(agent: Any, anchor: Any, context_estimate: Any) -> Optional[Dict[str, Any]]:
+    """Prepare display metadata without making native exact-anchor persistence depend on it."""
+    if anchor is None and context_estimate is None:
+        return None
+    try:
+        row_getter = getattr(agent._session_db, "get_session", None)
+        row = row_getter(agent.session_id) if callable(row_getter) else None
+        if not isinstance(row, dict):
+            return None
+        tokens = anchor["prompt_tokens"] + anchor["completion_tokens"] if anchor else int(context_estimate)
+        if tokens < 0:
+            return None
+        return {
+            "session_id": agent.session_id, "tokens": tokens, "rewind_count": int(row.get("rewind_count") or 0),
+            "model": anchor.get("model") if anchor else _normalized_model(getattr(agent, "model", None)),
+            "source": "usage_anchor" if anchor else "local_estimate",
+        }
+    except Exception:
+        logger.debug("display context snapshot unavailable", exc_info=True)
+        return None
+
+
+def persist_usage_anchor(
+    agent: Any, anchor: Optional[Dict[str, Any]], *, context_estimate: Optional[int] = None,
+) -> None:
     """Write (or clear, ``None``) the session row's anchor blob. Best-effort: the row may not exist yet."""
     if getattr(agent, "_persist_disabled", False):
         return
@@ -175,17 +202,40 @@ def persist_usage_anchor(agent: Any, anchor: Optional[Dict[str, Any]]) -> None:
     if not session_id or not callable(patcher):
         return
     try:
-        patcher(session_id, {USAGE_ANCHOR_MODEL_CONFIG_KEY: _serialize(anchor)})
+        serialized = _serialize(anchor)
+        patch = {USAGE_ANCHOR_MODEL_CONFIG_KEY: serialized}
+        snapshot = _display_context_snapshot(agent, serialized, context_estimate)
+        if snapshot is not None:
+            patch[USAGE_CONTEXT_MODEL_CONFIG_KEY] = snapshot
+        patcher(session_id, patch)
     except Exception:
         logger.debug("usage anchor persist failed", exc_info=True)
 
 
-def set_usage_anchor(agent: Any, anchor: Optional[Dict[str, Any]], *, turn_base: bool = False) -> None:
+def persist_context_estimate(agent: Any, tokens: int) -> None:
+    """Save a native display estimate without touching the exact anchor; unchanged polls do not write."""
+    if getattr(agent, "_persist_disabled", False):
+        return
+    snapshot = _display_context_snapshot(agent, None, tokens)
+    if snapshot is None:
+        return
+    db = getattr(agent, "_session_db", None)
+    try:
+        current = db.get_session_model_config_value(agent.session_id, USAGE_CONTEXT_MODEL_CONFIG_KEY, None)
+        if current != snapshot:
+            db.patch_session_model_config(agent.session_id, {USAGE_CONTEXT_MODEL_CONFIG_KEY: snapshot})
+    except Exception:
+        logger.debug("display context estimate persist failed", exc_info=True)
+
+
+def set_usage_anchor(
+    agent: Any, anchor: Optional[Dict[str, Any]], *, turn_base: bool = False, context_estimate: Optional[int] = None,
+) -> None:
     """Install ``anchor`` on the agent (``None`` clears) and mirror it to the session row."""
     agent._usage_anchor = anchor
     if turn_base or anchor is None:
         agent._turn_base_usage_anchor = anchor
-    persist_usage_anchor(agent, anchor)
+    persist_usage_anchor(agent, anchor, context_estimate=context_estimate)
 
 
 def restore_usage_anchor(agent: Any, conversation_history: Optional[List[Dict[str, Any]]]) -> None:
@@ -244,3 +294,59 @@ def persisted_anchor_context(
     priced_by = _normalized_model(anchor.get("model"))
     verdict = None if not current or not priced_by else priced_by == current
     return {"tokens": tokens, "model_matches": verdict}
+
+
+def persisted_context_estimate(
+    session_db: Any, session_id: Any, messages: Any = None, *, model: Any = None,
+) -> Optional[Dict[str, Any]]:
+    """Read-only cold display estimate, never an input to native compression accounting.
+
+    Native exact anchors may be cleared on compaction or replay repair. Their last observed
+    reading, or the compaction owner's rough estimate, survives for the display until another
+    native reading replaces it. A durable rewind or known model mismatch invalidates it.
+    No transcript load or agent construction is needed for deferred-history resumes.
+    A known invalidation returns only ``invalidation_reason`` so incremental clients can
+    retire a previous readout; absent or unreadable readings return None.
+    """
+    getter = getattr(session_db, "get_session", None)
+    if not session_id or not callable(getter):
+        return None
+    try:
+        row = getter(session_id)
+        if not isinstance(row, dict):
+            return None
+        config = row.get("model_config") or {}
+        if isinstance(config, str):
+            config = json.loads(config)
+        if not isinstance(config, dict):
+            return None
+        anchor = _serialize(config.get(USAGE_ANCHOR_MODEL_CONFIG_KEY))
+        reading = config.get(USAGE_CONTEXT_MODEL_CONFIG_KEY)
+        rewind_count = int(row.get("rewind_count") or 0)
+        if isinstance(reading, dict):
+            if reading.get("session_id") != session_id:
+                return None
+            if int(reading["rewind_count"]) != rewind_count:
+                return {"invalidation_reason": "rewind"}
+        elif anchor and rewind_count == 0:
+            # Earlier native anchors have no rewind generation; only an untouched Session
+            # can safely reuse one as a display estimate.
+            reading = {"tokens": anchor["prompt_tokens"] + anchor["completion_tokens"],
+                       "model": anchor.get("model"), "source": "usage_anchor"}
+        elif anchor and rewind_count > 0:
+            return {"invalidation_reason": "rewind"}
+        else:
+            return None
+        current, priced_by = _normalized_model(model), _normalized_model(reading.get("model"))
+        if current and priced_by and current != priced_by:
+            return {"invalidation_reason": "model_changed"}
+        tokens = int(reading["tokens"])
+        if tokens < 0:
+            return None
+        # Preserve the native delta estimate when the exact priced prefix still matches.
+        precise = anchored_context_tokens(messages, anchor) if isinstance(messages, list) else None
+        return {"tokens": precise if precise is not None else tokens,
+                "source": "usage_anchor" if precise is not None else reading.get("source") or "usage_anchor"}
+    except Exception:
+        logger.debug("cold display estimate load failed", exc_info=True)
+        return None

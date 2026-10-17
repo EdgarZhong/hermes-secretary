@@ -7,10 +7,12 @@ and pushed compactions to 7-11 minutes on slow aux routes):
 (b) the single response's detailed-session-log section lands in the summary;
 (c) an oversized region is EVEN-SAMPLED into the one request's input (with
     explicit elision markers), never split into extra requests;
-(d) the LLM-free anchor index and the session_search recovery footer are
-    still appended.
+(d) the LLM-free anchor index and the recovery footer are still appended —
+    the native session_search footer, or the Conversation-History footer for
+    an eligible Main Conversation.
 """
 
+import re
 from unittest.mock import patch, MagicMock
 
 import pytest
@@ -52,19 +54,22 @@ def _llm_response(text):
 
 def _big_region(n_rounds=60, tool_chars=6_000):
     """Synthetic compacted region: user + assistant/tool rounds, ~360K chars."""
+    base = 1_792_239_921.0
     turns = [
-        {"role": "user", "content": "Please fix PR #12345 in agent/foo.py"},
+        {"role": "user", "content": "Please fix PR #12345 in agent/foo.py", "timestamp": base},
     ]
     for i in range(n_rounds):
         turns.append({
             "role": "assistant",
             "content": f"Working on step {i}: editing agent/foo.py line {i}",
+            "timestamp": base + 10 * i + 1,
         })
         turns.append({
             "role": "tool",
             "tool_call_id": f"tc{i}",
             "tool_name": "terminal",
             "content": f"round {i} output: " + ("x" * tool_chars),
+            "timestamp": base + 10 * i + 2,
         })
     return turns
 
@@ -161,6 +166,71 @@ class TestSampledSummaryInput:
         assert mock_call.call_count == 1
         prompt = mock_call.call_args.kwargs["messages"][0]["content"]
         assert "summary input truncated" in prompt
+
+
+class TestSecretaryRecoveryFooter:
+    """Eligible Main Conversations follow the History policy instead of the native footer."""
+
+    def _secretary_compressor(self):
+        c = _mk_compressor()
+        c._secretary_history_recovery = True
+        c._conversation_started_at = 1_792_239_921.0
+        return c
+
+    def test_last_compaction_scope_and_conversation_history(self):
+        c = self._secretary_compressor()
+        turns = _big_region(n_rounds=5)
+        with patch(
+            "agent.context_compressor.call_llm",
+            return_value=_llm_response(SUMMARY_BODY),
+        ):
+            summary = c._generate_summary(turns)
+        assert _LEAN_RECOVERY_HEADING in summary
+        # The mechanically extracted, coding-specialized identifier index is not a Conversation handoff section.
+        assert _LEAN_ANCHOR_HEADING not in summary
+        assert "compacted by the last compaction" in summary
+        # The compacted window sits on the message count, not after "last compaction".
+        assert re.search(r"message\(s\) \(\d{4}-\d{2}-\d{2}T", summary)
+        assert "last compaction (" not in summary
+        assert "Only the" in summary
+        assert "conversation_history" in summary
+        assert "every message since this Conversation began" in summary
+        # Conversation History is the whole retrieval path for a Main Conversation.
+        assert "session_search" not in summary
+        assert "session_id" not in summary
+        assert "sess-lean-1call" not in summary
+        # Both the compacted window and the Conversation start carry an explicit instant.
+        instants = re.findall(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}", summary)
+        assert len(instants) >= 2
+
+    def test_drops_a_carried_forward_anchor_index(self):
+        c = self._secretary_compressor()
+        turns = _big_region(n_rounds=2)
+        stale = (
+            SUMMARY_BODY
+            + f"\n\n{_LEAN_ANCHOR_HEADING}\nPRs: #12345, #54321\n(Exact identifiers …)"
+            + "\n\n## Context Recovery\nThe 3 compacted message(s) remain fully preserved in "
+            "session history. If you need any detail, recover it with: "
+            "session_search(query='<keywords>', session_id='sess-lean-1call')"
+        )
+        out = c._augment_summary_lean(stale, turns)
+        assert _LEAN_ANCHOR_HEADING not in out
+        # The stale index body is gone; #12345 legitimately survives only in the user's own quoted words.
+        assert "#54321" not in out
+        assert out.count(_LEAN_RECOVERY_HEADING) == 1
+        assert "session_search" not in out
+        assert "conversation_history" in out
+
+    def test_non_main_keeps_native_footer(self):
+        c = _mk_compressor()  # no Secretary surface
+        turns = _big_region(n_rounds=2)
+        with patch(
+            "agent.context_compressor.call_llm",
+            return_value=_llm_response(SUMMARY_BODY),
+        ):
+            summary = c._generate_summary(turns)
+        assert "session_search" in summary
+        assert "conversation_history" not in summary
 
 
 if __name__ == "__main__":

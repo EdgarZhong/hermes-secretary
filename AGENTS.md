@@ -92,6 +92,7 @@
 - 冻结父 system prompt 需要显式作废：当前任务在父上下文之后时，写明父的 system prompt、角色、行为规则、工具策略、任务与完成条件不适用；只以当前任务及后续 control message 为准。
 - 先读现有 owner 文本、规格与代码，再改 prompt；不从记忆重写。规格与运行时常量逐字一致。
 - 能删就删；矩阵用表格；不把内部机制写成解释。
+- 压缩摘要的 `## Context Recovery` 也是模型可见 prompt：合格 Main 必须指向 `conversation_history`，写明被压缩区间与 Conversation 起始时间；不得出现 Session ID 或 `session_search`。资格与 `HISTORY_SEARCH_GUIDANCE` 同一 predicate，非 Main 保留原生 footer；迭代摘要必须替换旧 footer，不能只在缺失时追加。
 - 通用 System Prompt 调优与个人 Persona／Character 注入分开，具体边界见「公开范围与个人化隔离」。
 
 ### 校验与隔离
@@ -106,6 +107,7 @@
 - Hermes-first、复用优先、增量改造；遵循现有模块边界、公共接口、命名与代码风格。
 - **用正向代码机制保证不变量平凡成立**（用户 2026-10-12 明确）：条件判断尽量归同一处，状态由同一 owner 和正式提交点管理；能同步完成的尽量同步。优先从结构和时序消除非法状态，不以散落的判断、复杂 if/else 或下游反复追加门禁替代正确机制。
 - **不启用即原生（增量不破坏原则，用户 2026-10-11 明确）**：除口径明确要求的变更外，所有 Secretary/Noting 改造必须保证 Hermes 在该功能未启用时（全局开关关闭、非 eligible 会话、纯原生使用场景）原有逻辑与功能完全不变、不被破坏——新机制一律以分支/旁路接入既有接缝，原生路径零行为变化；施工与验收以"未启用场景行为与原生一致"为硬约束，不得借改造之名改变未启用时的任何既有行为。
+- **API 与调用点增量兼容（用户 2026-10-17 明确）**：后端 API 新增内容只能是可选字段或可选参数；既有必填参数、返回字段语义、错误码、默认行为及调用方式保持兼容，不影响旧前端和 Hermes 原生客户端通信。内部调用点新增参数须有兼容默认值；附加展示、估算或最佳努力持久化失败不得阻断原有主逻辑。
 - 原有 facade / sibling 模块结构继续有效：行为放入对应 sibling，保持 facade 公共入口；避免模块级循环导入，在生产代码实际读取的接线点进行 patch。
 - 用户状态路径通过 `get_hermes_home()` 等 profile-aware helper 获取，不硬编码 `~/.hermes`；后台任务、tick、RPC、线程及子进程必须显式绑定所属 profile，不能使用启动 profile 代替目标 profile。
 - 模型继承、API/provider及推理直接复用Hermes原生机制，不为Secretary新增独立模型路由、provider适配或App Server任务执行器。

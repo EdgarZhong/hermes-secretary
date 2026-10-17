@@ -60,12 +60,13 @@ def test_registered_identity_read_survives_repeated_compaction_and_returns_later
     assert len({r["message_uid"] for r in result["messages"]}) == 3
     precise = invoke(db, {"mode": "read", "message_id": original, "before": 0, "after": 0})
     assert precise["error"]["code"] == "legacy_tool_removed"
-    assert all(set(row) == {"message_uid", "timestamp", "role", "content"} for row in result["messages"])
+    assert all(set(row) == {"message_uid", "timestamp", "role", "kind", "source", "content"}
+               for row in result["messages"])
     assert not invoke(db, {"mode": "read", "message_identity": identity, "roles": ["system"]})["success"]
     filtered = invoke(db, {"mode": "read", "roles": ["system"], "start_time": "125", "end_time": "175"})
     assert [r["content"] for r in filtered["messages"]] == ["recorded event"]
-    assert invoke(db, {"mode": "search", "query": "root secret"})["count"] == 0
-    assert invoke(db, {"mode": "search", "query": "scaffold"})["count"] == 0
+    assert invoke(db, {"mode": "search", "query": "root secret"})["returned"] == 0
+    assert invoke(db, {"mode": "search", "query": "scaffold"})["returned"] == 0
 
 
 @pytest.mark.parametrize("identity", [None, {}, {"conversation_ref": "forged", "message_uid": "shared"},
@@ -77,7 +78,7 @@ def test_registered_tool_rejects_forged_or_unknown_sources_and_model_owner_selec
     args = {"mode": "read", "message_identity": identity} if identity is not None else {"mode": "read", "message_id": other_id}
     assert not invoke(db, args)["success"]
     assert not invoke(db, {"mode": "read", "conversation_ref": db.resolve_conversation_ref("other")})["success"]
-    assert invoke(db, {"mode": "search", "query": "secret"})["count"] == 0
+    assert invoke(db, {"mode": "search", "query": "secret"})["returned"] == 0
 
 
 @pytest.mark.parametrize("noting", [False, True])
@@ -109,18 +110,26 @@ def test_shared_inline_history_projects_one_identity_and_preserves_full_source(d
     handler = INLINE_TOOL_EXECUTORS["conversation_history"]
     ctx = InlineToolContext(effective_task_id="history-projection")
     found = json.loads(handler(agent, {"mode": "search", "query": "Evidence", "limit": 1}, ctx))
-    assert {"success", "conversation_ref", "messages", "count", "partial"} <= set(found)
-    assert found["success"] and found["conversation_ref"] == ref and found["count"] == 1
+    assert {"success", "conversation_ref", "messages", "returned", "total_matches",
+            "total_matches_known", "complete", "truncated", "incomplete_reasons",
+            "verification_incomplete"} <= set(found)
+    assert found["success"] and found["conversation_ref"] == ref and found["returned"] == 1
     row = found["messages"][0]
-    assert set(row) == {"message_uid", "timestamp", "role", "content", "truncated", "excerpt_kind"}
-    assert row["message_uid"] == uid and row["truncated"] is True
+    assert set(row) == {"message_uid", "timestamp", "role", "kind", "source", "content",
+                        "truncated", "content_chars", "excerpt_kind"}
+    assert row["message_uid"] == uid and row["kind"] == "human" and row["truncated"] is True
     identity = {"conversation_ref": found["conversation_ref"], "message_uid": row["message_uid"]}
     full = json.loads(handler(agent, {"mode": "read", "message_identity": identity, "before": 0, "after": 0}, ctx))
-    assert full == {"success": True, "conversation_ref": ref, "count": 1, "anchor_uid": uid,
-                    "messages": [{"message_uid": uid, "timestamp": row["timestamp"], "role": "user", "content": body}]}
+    assert full["success"] and full["returned"] == 1 and full["anchor_uid"] == uid
+    assert full["messages"] == [{"message_uid": uid, "timestamp": row["timestamp"], "role": "user",
+                                 "kind": "human", "source": "human", "content": body}]
     assert db.get_history_foreground("main")[0]["message_identity"] == identity
     assert not json.loads(handler(agent, {"mode": "read", "message_identity": {
         "conversation_ref": db.resolve_conversation_ref("child"), "message_uid": "child-audit"}}, ctx))["success"]
     assert not json.loads(handler(agent, {"mode": "read", "conversation_ref": ref}, ctx))["success"]
     empty = json.loads(handler(agent, {"mode": "search", "query": "absenttoken"}, ctx))
-    assert empty == {"success": True, "conversation_ref": ref, "messages": [], "count": 0, "partial": False}
+    assert empty["success"] and empty["conversation_ref"] == ref
+    assert empty["messages"] == [] and empty["returned"] == 0
+    assert empty["total_matches"] == 0 and empty["total_matches_known"] is True
+    assert empty["complete"] is True and empty["truncated"] is False
+    assert empty["incomplete_reasons"] == []

@@ -112,9 +112,9 @@ def test_history_crosses_compression_uid_twins_and_real_tip(db):
     assert [(r["message_uid"], r["content"]) for r in hit["messages"]] == [("old", "Rule + Reminder")]
     twins = tool(db, "root", mode="search", query="identical")
     assert [r["message_uid"] for r in twins["messages"]] == ["twin1", "twin2"]
-    assert tool(db, "root", mode="search", query="new AND answer")["count"] == 1
-    assert tool(db, "root", mode="read", start_time="150", end_time="250")["count"] == 1
-    assert tool(db, "root", mode="read", message_identity={"conversation_ref": db.resolve_conversation_ref("root"), "message_uid": "old"}, before=0, after=1)["count"] == 2
+    assert tool(db, "root", mode="search", query="new AND answer")["returned"] == 1
+    assert tool(db, "root", mode="read", start_time="150", end_time="250")["returned"] == 1
+    assert tool(db, "root", mode="read", message_identity={"conversation_ref": db.resolve_conversation_ref("root"), "message_uid": "old"}, before=0, after=1)["returned"] == 2
 
 
 def test_carried_tail_rewind_and_anchor_same_transaction(db):
@@ -185,7 +185,7 @@ def test_registry_inline_executor_and_noting_parent_scope(db):
     agent = SimpleNamespace(_session_db=db, session_id="main", _gateway_session_key="", noting_enabled=False)
     executor = resolve_invoke_tool_executor(agent, "conversation_history")
     result = json.loads(executor(agent, {"mode": "search", "query": "history"}, InlineToolContext("task")))
-    assert result["count"] == 1
+    assert result["returned"] == 1
     foreign = {"conversation_ref": db.resolve_conversation_ref("other"), "message_uid": "other"}
     assert tool(db, "main", mode="read", message_identity=foreign)["error"]["code"] == "scope_denied"
     invalid = tool(db, "main", mode="search", query="secret", session_id="other")

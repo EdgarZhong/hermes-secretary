@@ -263,9 +263,13 @@ def publish_framework_message(parent, body, *, display_metadata=None, expected_c
         conversation_ref = parent._secretary_conversation_ref
         if expected_conversation_ref is not None and conversation_ref != expected_conversation_ref:
             return False
+        metadata = {"display_text": str(body), "origin": "framework",
+                    "producer": _producer or "framework", **dict(display_metadata or {})}
+        if _snapshot_id is not None:
+            metadata.update(origin="notebook", producer="noting_result")
         row = {"role": "user", "content": build_framework_message_wrapper(body),
                "timestamp": time.time(), "display_kind": "process_complete",
-               "display_metadata": {"display_text": str(body), **dict(display_metadata or {})}}
+               "display_metadata": metadata}
         vars(parent).setdefault("_secretary_framework_messages", []).append(
             _QueuedFrameworkMessage(conversation_ref, row, _producer, _snapshot_id, _termination, _summary))
     flush_framework_messages(parent)

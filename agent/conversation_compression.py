@@ -3499,7 +3499,7 @@ def _finish_compaction_boundary(
     compressor.awaiting_real_usage_after_compression = True
     # Transcript rewritten: invalidate the usage anchor's base snapshot explicitly
     # (its structural check would fail closed anyway); estimate until re-anchored.
-    set_usage_anchor(agent, None)
+    set_usage_anchor(agent, None, context_estimate=_compressed_est)
     # Arm the effectiveness verdict only after a completed rewrite crosses the
     # boundary so later usage isn't charged to an attempt that changed nothing.
     if compression_made_progress:
@@ -3977,6 +3977,20 @@ def _route_codex_compaction(
 from agent.conversation_compression_telemetry import _announce_compression_start, _refresh_main_credential
 
 
+def _secretary_history_recovery_enabled(agent: Any) -> bool:
+    """Whether this compaction's recovery guidance must follow the Secretary History policy.
+
+    The same predicate that injects ``HISTORY_SEARCH_GUIDANCE`` (an eligible Main Conversation)
+    decides it, so the summary can never tell the model to use ``session_search`` for Conversation
+    evidence. Every other runtime keeps the native footer. Fails closed.
+    """
+    try:
+        from secretary.noting_surface import main_read_surface_enabled
+        return bool(main_read_surface_enabled(agent))
+    except Exception:
+        return False
+
+
 def compress_context(
     agent: Any, messages: list, system_message: str, *, approx_tokens: Optional[int] = None,
     task_id: str = "default", focus_topic: Optional[str] = None, force: bool = False,
@@ -4011,6 +4025,11 @@ def compress_context(
     snapshot_is_current: Optional host snapshot validation after durable lease admission. This protects
     edits completed before admission; it is not a substitute for the host's final publication fence.
     """
+    # Per attempt: the Main read surface is reconciled between turns, and a rotated child runtime
+    # must never inherit a Main-only prompt policy.
+    compressor = getattr(agent, "context_compressor", None)
+    if compressor is not None:
+        compressor._secretary_history_recovery = _secretary_history_recovery_enabled(agent)
     attempt = _begin_compression_attempt(
         agent, force=force, defer_notification=defer_context_engine_notification, trigger=trigger,
         approx_tokens=approx_tokens,

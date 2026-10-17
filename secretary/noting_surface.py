@@ -59,9 +59,21 @@ def _reconcile_catalog(agent, tools):
     return tool_search.assemble_tool_defs([*visible, *catalog], context_length=model_tools._resolve_active_context_length()).tool_defs
 
 
+def main_read_surface_enabled(agent) -> bool:
+    """Whether the Secretary Main read surface (and its HISTORY_SEARCH_GUIDANCE) applies.
+
+    The same predicate that authorizes the Main History guidance decides compaction recovery
+    guidance too, so a summary can never tell an eligible Main to use ``session_search`` for
+    Conversation evidence.
+    """
+    if agent is None or getattr(agent, "_secretary_noting_child", False):
+        return False
+    from secretary.noting_runtime import is_main_conversation_agent
+    return is_main_conversation_agent(agent)
+
+
 def apply_main_read_surface(agent):
     """Keep frozen Noting prefixes; reconcile Main's schemas and execution names together."""
-    from secretary.noting_runtime import is_main_conversation_agent
     from secretary.noting_scope import bind_main_runtime, scheduler_settings_for_db
 
     if getattr(agent, "_secretary_noting_child", False):
@@ -69,7 +81,7 @@ def apply_main_read_surface(agent):
     tools = getattr(agent, "tools", None)
     if not isinstance(tools, list):
         return False
-    main = is_main_conversation_agent(agent)
+    main = main_read_surface_enabled(agent)
     if main:
         bind_main_runtime(agent)
     notebook = notebook_read_enabled(agent) if main else False
