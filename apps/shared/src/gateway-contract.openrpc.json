@@ -3103,6 +3103,24 @@
       }
     },
     {
+      "name": "secretary.schedules",
+      "summary": "",
+      "params": [
+        {
+          "name": "params",
+          "schema": {
+            "$ref": "#/components/schemas/SecretaryReadParams"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/SchedulesReadResult"
+        }
+      }
+    },
+    {
       "name": "secretary.state",
       "summary": "",
       "params": [
@@ -21464,6 +21482,22 @@
           },
           "source_message": {
             "$ref": "#/components/schemas/NativeSourceMessage"
+          },
+          "tool_calls": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Tool Calls"
           }
         },
         "required": [
@@ -30295,6 +30329,256 @@
           "idempotent"
         ],
         "title": "RoomTombstone",
+        "type": "object"
+      },
+      "ScheduleCanonical": {
+        "additionalProperties": false,
+        "description": "Core-owned canonical schedule; ``kind`` selects the one populated field.",
+        "properties": {
+          "kind": {
+            "enum": [
+              "once",
+              "interval",
+              "cron"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "run_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Run At"
+          },
+          "minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Minutes"
+          },
+          "expr": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Expr"
+          },
+          "display": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Display"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "ScheduleCanonical",
+        "type": "object"
+      },
+      "ScheduleDelivery": {
+        "additionalProperties": false,
+        "properties": {
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          }
+        },
+        "required": [
+          "timestamp",
+          "outcome"
+        ],
+        "title": "ScheduleDelivery",
+        "type": "object"
+      },
+      "ScheduleEntry": {
+        "additionalProperties": false,
+        "description": "One Schedule Table row, field-for-field with the runtime's ``schedule_public_conn``.",
+        "properties": {
+          "schedule_id": {
+            "title": "Schedule Id",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Name"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "expression": {
+            "title": "Expression",
+            "type": "string"
+          },
+          "canonical_schedule": {
+            "$ref": "#/components/schemas/ScheduleCanonical"
+          },
+          "timezone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timezone"
+          },
+          "delivery_mode": {
+            "enum": [
+              "instant",
+              "deferred"
+            ],
+            "title": "Delivery Mode",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "active",
+              "paused",
+              "completed"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "next_due_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Due At"
+          },
+          "pending_count": {
+            "title": "Pending Count",
+            "type": "integer"
+          },
+          "last_delivery": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScheduleDelivery"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "schedule_id",
+          "content",
+          "expression",
+          "canonical_schedule",
+          "timezone",
+          "delivery_mode",
+          "state",
+          "next_due_at",
+          "pending_count",
+          "last_delivery"
+        ],
+        "title": "ScheduleEntry",
+        "type": "object"
+      },
+      "SchedulesReadResult": {
+        "additionalProperties": false,
+        "properties": {
+          "stored_session_id": {
+            "title": "Stored Session Id",
+            "type": "string"
+          },
+          "profile": {
+            "title": "Profile",
+            "type": "string"
+          },
+          "profile_home": {
+            "title": "Profile Home",
+            "type": "string"
+          },
+          "conversation_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversation Ref"
+          },
+          "availability": {
+            "enum": [
+              "available",
+              "unavailable"
+            ],
+            "title": "Availability",
+            "type": "string"
+          },
+          "observed_at": {
+            "title": "Observed At",
+            "type": "string"
+          },
+          "schedules": {
+            "items": {
+              "$ref": "#/components/schemas/ScheduleEntry"
+            },
+            "title": "Schedules",
+            "type": "array"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "stored_session_id",
+          "profile",
+          "profile_home",
+          "conversation_ref",
+          "availability",
+          "observed_at",
+          "schedules",
+          "count"
+        ],
+        "title": "SchedulesReadResult",
         "type": "object"
       },
       "SecretRequestParams": {

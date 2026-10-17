@@ -8,7 +8,7 @@ import pytest
 from hermes_state import SessionDB
 from secretary.notebook_model import SECTIONS
 from secretary.web_events import subscribe, unsubscribe
-from secretary.web_read import notebook_read, secretary_state
+from secretary.web_read import notebook_read, schedules_read, secretary_state
 
 
 @pytest.fixture
@@ -29,6 +29,61 @@ def _contents(db):
     with db._read_ctx() as conn:
         return {row[0]: [tuple(r) for r in conn.execute('SELECT * FROM "' + row[0] + '"')]
                 for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")}
+
+
+def _schedule(db, ref, *, content='Review the result', expression='in 2h', mode='instant', name=None):
+    from secretary.scheduler_table import apply_schedule_action_conn
+    args = {'action': 'create', 'content': content, 'schedule': expression, 'delivery_mode': mode}
+    if name is not None:
+        args['name'] = name
+    created = db._execute_write(
+        lambda conn: apply_schedule_action_conn(conn, ref, args, now=time.time()))
+    return created['schedule']['schedule_id']
+
+
+def test_schedules_read_projects_current_conversation_without_writes(database):
+    db, ref = database
+    first = _schedule(db, ref, content='Review the result', expression='in 2h', name='review')
+    second = _schedule(db, ref, content='Check the draft', expression='every 3h', mode='deferred')
+    # A second Conversation's Schedule must never leak into this one's table.
+    db.create_session('other', source='cli')
+    other_ref = db.resolve_conversation_ref('other')
+    _schedule(db, other_ref, content='Foreign reminder')
+    before = _contents(db)
+    read = SessionDB(db.db_path, read_only=True)
+    try:
+        result = schedules_read(read, 'main')
+        assert result['availability'] == 'available' and result['conversation_ref'] == ref
+        assert result['count'] == len(result['schedules']) == 2
+        by_id = {item['schedule_id']: item for item in result['schedules']}
+        assert set(by_id) == {first, second}
+        # Field-for-field with the Scheduler tool's own list projection.
+        assert set(by_id[first]) == {
+            'schedule_id', 'name', 'content', 'expression', 'canonical_schedule', 'timezone',
+            'delivery_mode', 'state', 'next_due_at', 'pending_count', 'last_delivery'}
+        assert set(by_id[second]) == set(by_id[first]) - {'name'}
+        assert by_id[first]['name'] == 'review'
+        assert by_id[first]['state'] == 'active' and by_id[first]['delivery_mode'] == 'instant'
+        assert by_id[second]['delivery_mode'] == 'deferred'
+        assert by_id[first]['canonical_schedule']['kind'] == 'once'
+        assert by_id[second]['canonical_schedule']['kind'] == 'interval'
+        assert by_id[first]['content'] == 'Review the result'
+        assert by_id[first]['pending_count'] == 0 and by_id[first]['last_delivery'] is None
+        # The browser read is read-only: the whole store is byte-identical afterwards.
+        assert _contents(db) == before
+    finally:
+        read.close()
+
+
+def test_schedules_read_unbound_session_is_unavailable(database):
+    db, _ref = database
+    db._execute_write(lambda conn: conn.execute(
+        'INSERT INTO sessions(id, source, started_at) VALUES(?,?,?)', ('legacy-sched', 'cli', time.time())))
+    before = _contents(db)
+    result = schedules_read(db, 'legacy-sched')
+    assert result['availability'] == 'unavailable' and result['conversation_ref'] is None
+    assert result['schedules'] == [] and result['count'] == 0
+    assert _contents(db) == before
 
 
 def test_reads_pointer_memo_off_and_no_side_effect(database):
@@ -160,6 +215,56 @@ def test_registered_rpc_profile_isolation_and_before_after(database, tmp_path, m
     assert request('secretary.state', unknown=True)['error']['code'] == 4000
     assert (_contents(db), _contents(other)) == before
     other.close()
+
+
+def test_registered_rpc_schedules_is_profile_scoped_and_read_only(tmp_path, monkeypatch):
+    from tui_gateway import server
+    from tui_gateway.contracts import web_read  # noqa: F401
+    from tui_gateway.contracts.web_read import SchedulesReadResult
+
+    home_a = tmp_path / 'a'
+    home_a.mkdir()
+    (home_a / 'config.yaml').write_text('noting:\n  enabled: true\n')
+    db = SessionDB(home_a / 'state.db')
+    db.create_session('main', source='cli')
+    db.append_message('main', 'user', 'actual evidence', message_uid='m1')
+    ref = db.resolve_conversation_ref('main')
+    _schedule(db, ref)
+
+    home_b = tmp_path / 'b'
+    home_b.mkdir()
+    (home_b / 'config.yaml').write_text('noting:\n  enabled: false\n')
+    other = SessionDB(home_b / 'state.db')
+    other.create_session('main', source='cli')
+    other.resolve_conversation_ref('main')
+
+    monkeypatch.setattr(server, '_profile_home', lambda profile: home_a if profile == 'a' else home_b)
+    before = _contents(db), _contents(other)
+
+    def request(profile='a', **extra):
+        return server.handle_request({'jsonrpc': '2.0', 'id': 1, 'method': 'secretary.schedules',
+                                      'params': {'stored_session_id': 'main', 'profile': profile, **extra}})
+
+    result = request()['result']
+    SchedulesReadResult.model_validate(result)
+    assert result['profile'] == 'a' and result['profile_home'] == str(home_a.resolve())
+    assert result['availability'] == 'available' and result['conversation_ref'] == ref
+    assert result['count'] == 1 and result['schedules'][0]['state'] == 'active'
+    # Another profile's store answers with its own (empty) table, never this one's row.
+    isolated = request('b')['result']
+    assert isolated['availability'] == 'available' and isolated['count'] == 0
+    assert isolated['profile_home'] == str(home_b.resolve())
+    missing = server.handle_request({'jsonrpc': '2.0', 'id': 2, 'method': 'secretary.schedules',
+                                     'params': {'stored_session_id': 'missing', 'profile': 'a'}})
+    assert missing['error']['code'] == 4001
+    assert request(unknown=True)['error']['code'] == 4000
+    # The shared handler still serves the pre-existing Notebook read (no behaviour change).
+    notebook = server.handle_request({'jsonrpc': '2.0', 'id': 3, 'method': 'secretary.notebook_read',
+                                      'params': {'stored_session_id': 'main', 'profile': 'a'}})
+    assert notebook['result']['exists'] is False
+    assert (_contents(db), _contents(other)) == before
+    other.close()
+    db.close()
 
 
 def test_explicit_launch_empty_profile_and_unknown_global(database, monkeypatch):
