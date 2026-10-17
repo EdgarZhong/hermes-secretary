@@ -104,6 +104,9 @@ class ModelCapabilities:
     context_window: int = 200000
     max_output_tokens: Optional[int] = None
     model_family: str = ""
+    #: Explicit ``model_overrides.<provider>.<model>.supported_efforts`` for this route, when the
+    #: user declared one; ``None`` means "no declaration" (never a permission to invent one).
+    supported_efforts: Optional[list[str]] = None
 
 
 # Hermes provider names → models.dev provider IDs
@@ -613,7 +616,7 @@ def lookup_models_dev_context(provider: str, model: str, *, allow_network: bool 
 
 # Per-model overrides (config.yaml → model_overrides). Canonical schema (the ONLY key space consumers
 # accept): context_window, supports_tools, supports_vision, supports_reasoning,
-# model_family. ``<provider>.<model_id>`` is an explicit partial patch that always wins over the
+# model_family, supported_efforts. ``<provider>.<model_id>`` is an explicit partial patch that always wins over the
 # catalog. ``<provider>._default`` / top-level ``_default`` are FILL-GAP defaults: they apply ONLY to
 # models the catalog does not know and never displace catalog data. Provider keys accept the Hermes
 # or models.dev id; model ids match exactly, then case-insensitively (mirroring catalog lookup).
@@ -876,7 +879,50 @@ def get_model_capabilities(
         context_window=_extract_limit(raw, "context") or 200000,
         max_output_tokens=_extract_limit(raw, "output"),
         model_family=raw.get("family", "") or "",
+        supported_efforts=declared_supported_efforts(
+            provider, model, config=config, catalog_hit=not unknown_base),
     )
+
+
+def _normalize_efforts(raw: Any) -> Optional[list[str]]:
+    """Normalized ``supported_efforts`` declaration: non-empty lowercase strings, de-duplicated in
+    declaration order, bounded so a pathological config cannot bloat a picker payload."""
+    if isinstance(raw, str):
+        raw = [raw]
+    if not isinstance(raw, (list, tuple)):
+        return None
+    levels: list[str] = []
+    for item in raw:
+        level = str(item or "").strip().lower()
+        if level and level not in levels:
+            levels.append(level)
+        if len(levels) >= 32:
+            break
+    return levels or None
+
+
+def declared_supported_efforts(
+    provider: str, model: str, *, config: Optional[Dict[str, Any]] = None,
+    catalog_hit: Optional[bool] = None,
+) -> Optional[list[str]]:
+    """User-declared reasoning ladder from ``model_overrides``, or None.
+
+    Explicit ``<provider>.<model>.supported_efforts`` wins; otherwise the fill-gap ``_default``
+    applies ONLY when the catalog does not know this model (the same rule every other override
+    field follows). Used both by :func:`get_model_capabilities` and by the picker inventory, which
+    labels the resulting set as user-declared rather than a provider fact."""
+    explicit = _explicit_model_override(provider, model, config=config)
+    if isinstance(explicit, dict):
+        efforts = _normalize_efforts(explicit.get("supported_efforts"))
+        if efforts:
+            return efforts
+    if catalog_hit is None:
+        models = _get_provider_models(provider, allow_network=False, config=config)
+        catalog_hit = models is not None and _find_model_entry(models, model, provider) is not None
+    if catalog_hit:
+        return None
+    default = _default_model_override(provider, config=config)
+    return _normalize_efforts((default or {}).get("supported_efforts"))
 
 
 def list_provider_models(provider: str, *, allow_network: bool = True) -> List[str]:

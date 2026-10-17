@@ -120,6 +120,40 @@ def kimi_supported_efforts(model: Optional[str]) -> tuple[str, ...]:
     return KIMI_K3_EFFORTS if _KIMI_K3_SLUG_RE.search(m) else KIMI_K2_EFFORTS
 
 
+#: Provider ids whose reasoning ladder is declared in this module (upstream-owned), with the aliases a
+#: picker row may carry. Anything outside this table returns None on purpose: a user-defined custom
+#: endpoint has no provider implementation to speak for it.
+_PROVIDER_EFFORT_PROVIDERS: dict[str, tuple[str, ...]] = {
+    "openai-codex": ("openai-codex", "chatgpt", "chatgpt-codex"),
+    "kimi": ("kimi-for-coding", "kimi", "kimi-coding", "kimi-coding-cn", "moonshot"),
+    "xai": ("xai", "x-ai", "x.ai", "grok"),
+}
+
+
+def declared_provider_efforts(
+    provider: Optional[str], model: Optional[str],
+) -> Optional[tuple[str, ...]]:
+    """The provider implementation's own effort ladder for this route, or None when none declares.
+
+    Answers the pickers' need for a *declared* set: ChatGPT subscription / Codex, Kimi Coding and xAI
+    come from the constants above; every other route — including a user-defined custom endpoint —
+    returns None so callers fall through to a user declaration, an aggregator catalog, or the widest
+    compatible vocabulary. Never widens a route: unknown stays unknown.
+    """
+    slug = str(provider or "").strip().lower()
+    if not slug:
+        return None
+    if slug in _PROVIDER_EFFORT_PROVIDERS["openai-codex"]:
+        return codex_supported_efforts(model)
+    if slug in _PROVIDER_EFFORT_PROVIDERS["kimi"]:
+        return kimi_supported_efforts(model)
+    if slug in _PROVIDER_EFFORT_PROVIDERS["xai"]:
+        from agent.model_metadata import is_grok_46_family
+
+        return XAI_GROK46_EFFORTS if is_grok_46_family(str(model or "")) else XAI_LEGACY_EFFORTS
+    return None
+
+
 def clamp_effort(
     effort: Optional[str], supported: Optional[Sequence[str]], overrides: Optional[dict[str, str]] = None,
 ) -> Optional[str]:

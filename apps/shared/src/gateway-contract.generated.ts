@@ -806,12 +806,14 @@ export interface ModelOptionProvider {
   usage?: ProviderUsage | null
   [key: string]: unknown
 }
-/** ``hermes_cli/inventory.py::_apply_capabilities``. */
+/** ``hermes_cli/inventory.py::_apply_capabilities``. ``supported_efforts`` is present ONLY when a declaration exists — the user's ``model_overrides``, the provider implementation's own ladder, or an aggregator-published one — and ``supported_efforts_source`` names which. An undeclared route omits both: clients fall back to their compatible vocabulary and say so, rather than presenting a guess as a fact. Adding fields here requires regenerating the shared contract (``scripts/gen_gateway_contracts.py``). */
 export interface ModelCapabilities {
   fast: boolean
   ultrafast?: boolean
   reasoning: boolean
   can_disable_reasoning?: boolean | null
+  supported_efforts?: string[] | null
+  supported_efforts_source?: 'config' | 'provider' | 'catalog' | null
 }
 /** ``hermes_cli/inventory.py::_apply_pricing`` — formatted $/Mtok strings (``""`` unknown, ``"free"``); the sale fields are Nous Portal-only. */
 export interface ModelPricing {

@@ -458,12 +458,20 @@ class ModelPricing(Result):
 
 
 class ModelCapabilities(Result):
-    """``hermes_cli/inventory.py::_apply_capabilities``."""
+    """``hermes_cli/inventory.py::_apply_capabilities``.
+
+    ``supported_efforts`` is present ONLY when a declaration exists — the user's ``model_overrides``,
+    the provider implementation's own ladder, or an aggregator-published one — and ``supported_efforts_source``
+    names which. An undeclared route omits both: clients fall back to their compatible vocabulary and
+    say so, rather than presenting a guess as a fact. Adding fields here requires regenerating the
+    shared contract (``scripts/gen_gateway_contracts.py``)."""
 
     fast: bool
     ultrafast: bool = False
     reasoning: bool
     can_disable_reasoning: bool | None = None
+    supported_efforts: list[str] | None = None
+    supported_efforts_source: Literal["config", "provider", "catalog"] | None = None
 
 
 class ProviderLimit(Result):

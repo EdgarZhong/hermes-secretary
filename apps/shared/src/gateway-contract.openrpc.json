@@ -20289,7 +20289,7 @@
       },
       "ModelCapabilities": {
         "additionalProperties": false,
-        "description": "``hermes_cli/inventory.py::_apply_capabilities``.",
+        "description": "``hermes_cli/inventory.py::_apply_capabilities``.\n\n``supported_efforts`` is present ONLY when a declaration exists \u2014 the user's ``model_overrides``,\nthe provider implementation's own ladder, or an aggregator-published one \u2014 and ``supported_efforts_source``\nnames which. An undeclared route omits both: clients fall back to their compatible vocabulary and\nsay so, rather than presenting a guess as a fact. Adding fields here requires regenerating the\nshared contract (``scripts/gen_gateway_contracts.py``).",
         "properties": {
           "fast": {
             "title": "Fast",
@@ -20315,6 +20315,38 @@
             ],
             "default": null,
             "title": "Can Disable Reasoning"
+          },
+          "supported_efforts": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Supported Efforts"
+          },
+          "supported_efforts_source": {
+            "anyOf": [
+              {
+                "enum": [
+                  "config",
+                  "provider",
+                  "catalog"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Supported Efforts Source"
           }
         },
         "required": [

@@ -4,9 +4,9 @@ picker payload. The desktop model picker hides its Thinking toggle from this,
 so a route that can't disable reasoning must be describable here — otherwise
 the UI offers an off switch whose setting the upstream rejects.
 
-The catalog's `supported_efforts` is intentionally absent from the payload:
-the Portal honors levels a route doesn't advertise, so publishing it would
-invite a picker filter that hides working levels.
+The catalog's `supported_efforts` crosses the wire only when a declaration exists, tagged with
+its source (`config` > `provider` > `catalog`); an undeclared route omits the key so a picker
+falls back to its compatible vocabulary instead of treating a guess as a fact.
 """
 
 import hermes_cli.inventory as inv
@@ -41,11 +41,11 @@ def test_optional_reasoning_route_can_disable(monkeypatch):
     assert rows[0]["capabilities"]["deepseek/deepseek-v4-pro"]["can_disable_reasoning"] is True
 
 
-def test_advertised_efforts_never_reach_the_picker(monkeypatch):
-    """The catalog's level list stays off the wire even when it is published.
+def test_advertised_efforts_cross_the_wire_with_their_source(monkeypatch):
+    """A published ladder is forwarded, tagged ``catalog`` — never silently as a fact.
 
-    It under-reports what the Portal serves, so forwarding it would let the
-    picker hide levels that work. Only the disable verdict crosses.
+    The Portal honors levels a route doesn't advertise, so the tag matters: a picker may show the
+    published list, but it must not present it as the provider's whole truth.
     """
     _patch_catalog(monkeypatch, {
         "deepseek/deepseek-v4-pro": {
@@ -57,7 +57,46 @@ def test_advertised_efforts_never_reach_the_picker(monkeypatch):
     rows = [{"slug": "nous", "models": ["deepseek/deepseek-v4-pro"]}]
     inv._apply_capabilities(rows)
 
-    assert "supported_efforts" not in rows[0]["capabilities"]["deepseek/deepseek-v4-pro"]
+    caps = rows[0]["capabilities"]["deepseek/deepseek-v4-pro"]
+    assert caps["supported_efforts"] == ["xhigh", "high"]
+    assert caps["supported_efforts_source"] == "catalog"
+
+
+def test_user_declared_efforts_win_and_are_tagged_config(monkeypatch):
+    """``model_overrides`` is the custom-endpoint path: the user, not Hermes, owns that ladder."""
+    _patch_catalog(monkeypatch, {})
+    rows = [{"slug": "custom", "models": ["deepseek-flash"]}]
+    inv._apply_capabilities(rows, metadata_config={
+        "model_overrides": {
+            "custom": {"deepseek-flash": {"supported_efforts": ["none", "low", "high"]}},
+        },
+    })
+
+    caps = rows[0]["capabilities"]["deepseek-flash"]
+    assert caps["supported_efforts"] == ["none", "low", "high"]
+    assert caps["supported_efforts_source"] == "config"
+
+
+def test_provider_ladder_is_tagged_provider(monkeypatch):
+    """ChatGPT subscription / Codex answers from its own implementation, not a catalog."""
+    _patch_catalog(monkeypatch, {})
+    rows = [{"slug": "openai-codex", "models": ["gpt-5.6"]}]
+    inv._apply_capabilities(rows)
+
+    caps = rows[0]["capabilities"]["gpt-5.6"]
+    assert caps["supported_efforts_source"] == "provider"
+    assert "max" in caps["supported_efforts"]
+
+
+def test_undeclared_route_omits_the_ladder(monkeypatch):
+    """No declaration means no key: the picker must not receive a guessed set."""
+    _patch_catalog(monkeypatch, {})
+    rows = [{"slug": "custom", "models": ["some-custom-model"]}]
+    inv._apply_capabilities(rows)
+
+    caps = rows[0]["capabilities"]["some-custom-model"]
+    assert "supported_efforts" not in caps
+    assert "supported_efforts_source" not in caps
 
 
 def test_non_reasoning_route_offers_no_reasoning_controls(monkeypatch):

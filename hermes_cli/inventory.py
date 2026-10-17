@@ -535,11 +535,41 @@ def _reasoning_catalog_reader(slug: str):
     return read
 
 
+def _declared_efforts(
+    slug: str, model: str, metadata_config: dict | None = None,
+) -> tuple[list[str] | None, str | None]:
+    """``(ladder, source)`` for one picker row entry, or ``(None, None)`` when nothing declares one.
+
+    Only *declarations* answer here — a user's ``model_overrides`` entry, a provider implementation's
+    own constant, or an aggregator-published ladder. A route with none of those stays undeclared on
+    purpose: the caller must not present the widest compatible vocabulary as if it were a fact."""
+    try:
+        from agent.models_dev import declared_supported_efforts
+
+        declared = declared_supported_efforts(slug, model, config=metadata_config)
+        if declared:
+            return list(declared), "config"
+    except Exception:
+        pass
+    try:
+        from agent.reasoning_effort import declared_provider_efforts
+
+        provider_ladder = declared_provider_efforts(slug, model)
+        if provider_ladder:
+            return list(provider_ladder), "provider"
+    except Exception:
+        pass
+    return None, None
+
+
 def _apply_capabilities(rows: list[dict], *, metadata_config: dict | None = None) -> None:
     """Attach ``{model: {fast, reasoning, ...}}`` per row. ``reasoning`` defaults True when the catalog is
     silent (the dial is a no-op on models that ignore it; hiding it from a capable model is worse). A
-    serving aggregator's detail overrides models.dev (adds ``can_disable_reasoning``). ``supported_efforts``
-    is deliberately NOT forwarded — it under-reports levels that work."""
+    serving aggregator's detail overrides models.dev (adds ``can_disable_reasoning``).
+
+    ``supported_efforts`` is forwarded ONLY when something actually declares one, together with its
+    source (``config`` > ``provider`` > ``catalog``). An undeclared route omits both keys rather than
+    publishing the widest compatible vocabulary as a fact — consumers fall back themselves."""
     from hermes_cli.models import model_supports_ultrafast, resolve_fast_mode_overrides
 
     try:
@@ -567,6 +597,7 @@ def _apply_capabilities(rows: list[dict], *, metadata_config: dict | None = None
             if fast and model_supports_ultrafast(model):
                 entry["ultrafast"] = True
 
+            efforts, effort_source = _declared_efforts(slug, model, metadata_config)
             if reasoning and read_reasoning_catalog is not None:
                 try:
                     detail = read_reasoning_catalog(model)
@@ -576,8 +607,20 @@ def _apply_capabilities(rows: list[dict], *, metadata_config: dict | None = None
                     # Aggregator catalog beats models.dev for a route it serves: no reasoning param
                     # means no reasoning controls, so no disable to describe either.
                     entry["reasoning"] = False
+                    efforts, effort_source = None, None
                 elif detail:
                     entry["can_disable_reasoning"] = not detail.get("mandatory")
+                    if efforts is None:
+                        published = detail.get("supported_efforts")
+                        if isinstance(published, list):
+                            catalog_efforts = [str(e).strip().lower() for e in published if str(e).strip()]
+                            if catalog_efforts:
+                                efforts = list(dict.fromkeys(catalog_efforts))
+                                effort_source = "catalog"
+
+            if efforts:
+                entry["supported_efforts"] = efforts
+                entry["supported_efforts_source"] = effort_source
 
             caps[model] = entry
 
