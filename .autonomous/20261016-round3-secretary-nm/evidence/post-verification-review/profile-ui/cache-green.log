@@ -1,0 +1,14 @@
+
+> hermes-secretary-web@0.1.0 test
+> vitest run src/core/controller.test.ts -t releases departed projections
+
+[file-viewer:vite-plugin] Copied 9/9 renderer assets to /Users/edgar/code/hermes-secretary-web/public/file-viewer
+
+ RUN  v4.1.11 /Users/edgar/code/hermes-secretary-web
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 79 skipped (80)
+   Start at  17:27:40
+   Duration  209ms (transform 111ms, setup 0ms, import 55ms, tests 93ms, environment 0ms)
+

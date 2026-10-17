@@ -588,7 +588,7 @@ This decision replaces the earlier proposal to place Profile entries inside the 
 - **Workspace reuse.** Profiles may configure the same `terminal.cwd` to share project files; this does not merge their Session stores, memory or instructions.
 - **Conversation row icons.** The icon to the left of each sidebar Conversation is determined by that row's owning Profile. Conversations of the same Profile use the same icon; the configured Profiles use distinguishable icons. Keep a centralized, hardcoded Profile-name-to-icon mapping in the frontend source, as the user requested. Do not add a config field, persistence layer or icon-setting UI. Render the Profile's icon using the existing icon system without adding text metadata to the Profile options.
 
-The native Profile roster, Session ownership and existing APIs remain authoritative. The frontend mapping is presentation data, not a replacement Profile registry. This section records the new requirement; implementation and evidence status remain in root `CLAUDE.md`.
+The native Profile roster, Session ownership and existing APIs remain authoritative. The frontend mapping is presentation data, not a replacement Profile registry. A newly configured Profile needs an entry in that source mapping to receive its own icon; an unmapped name uses a generic fallback. Implementation and evidence status remain in root `CLAUDE.md`.
 
 ## 3. Native Integration — Verified Wiring & Implementation Handoff
 

@@ -81,6 +81,8 @@ Gateway 入口为 `hermes gateway`。官方 Dashboard 入口为 `hermes dashboar
 
 独立前端在并列本地仓库 `../hermes-secretary-web`，使用 React / TypeScript / Vite，直接调用原生 REST / WS；开发服务默认连接 `http://127.0.0.1:53445`。部署范围及验收进度见 CLAUDE；官方 Dashboard 与 Secretary 同源并存，见下节部署形态。
 
+首页 / New Chat 通过独立下拉选择原生 Profile，已有 Conversation 保持原归属；草稿、模型选择及附件路径按 Profile 隔离。侧栏 Conversation 图标由前端 `src/core/profile-icons.tsx` 的集中固定映射提供；新增 Profile 需补充映射，未映射时使用通用图标。多个 Profile 可配置相同 Workspace，共享项目文件但各自保留会话、记忆与指令。交互契约见 [06 §2.11](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md#211-new-chat-profile-selection-and-conversation-icons-user-confirmed-2026-10-17)。
+
 当前草稿全部附件合计上限为 500,000,000 bytes，选择时累计判断、移除后释放预算，发送时小文件沿原生 `file.attach`，分片使用增量 `file.upload_chunk` / `file.upload_abort`，元数据使用 `file.attachment_info`，并显式绑定本次图片。两个订阅同一会话的客户端共享原生实时事件；普通 Send 只在 Main Turn 空闲时启动新 Turn，活动时按既定 Steer/Stop/Interrupt 操作。
 
 Web 的 `/notebook` 是仅保存在浏览器内存中的四分区只读临时卡片，按调用顺序固定在命令发起时的 Timeline 位置，刷新后清除；任务状态与排期分别呈现，不展示内部 Anchor。

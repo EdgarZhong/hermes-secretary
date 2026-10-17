@@ -7,7 +7,7 @@
 - 后端比较范围：`bd6207b6f2`（2026-10-17 12:28:29 第二次审查报告提交）至 `b6939f47e3ffdd81e507cc73a207e709fa0157d9`。开始时的两处本地模型选择器修改被其他会话提交为 `b6939f47e3`，本次已纳入读取；主会话没有替它们提交。
 - Web 比较范围：`d554546`（12:27:47，紧邻该时点）至 `50cc8fd52dfe64a8f4afb4fe2d2cbbf8b8e5454e`。读取正式入口、相关调用者、测试与相邻生命周期；Orb 的部分旧接线缺口注明为继承问题，不冒称都是这个区间新增。
 - 需求依据：现行 06、07、根 README/AGENTS/CLAUDE，以及本会话用户后续澄清。没有读取归档规格，没有将提交描述或测试预期自动当作用户需求。
-- 本次审查记录**7项仍开放的产品缺陷/实现缺口，另有1项质量门禁阻断**；用户现场Timeline的两项已复现问题已修复并review接收，新Profile需求在独立增量实施中。原第二次 Verification 的4项不符合和2项证据缺口仍独立保留，不混作本次新增问题。
+- 本次审查基线发现**7项产品缺陷/实现缺口，另有1项质量门禁阻断**；后续Profile增量中F01的原会话4001重试错投已窄修并复证，现为6项产品问题仍开放。用户现场Timeline的两项已复现问题已修复并review接收；新增Profile功能的接收与证据见§7。原第二次 Verification 的4项不符合和2项证据缺口仍独立保留，不混作本次新增问题。
 
 **用户在本次审查中直接确认的优先口径：** 冷启动允许沿用上次可信读数作为估算；普通提示统一5秒，错误手动关闭；Scheduler说明缩短但不改批量载体语义；首段Thinking直到Turn结束才出现及首工具闪动须修复，由子Agent负责。
 
@@ -32,9 +32,9 @@
 | 移动侧栏滑入/滑出、Orb换层位置与动效、标题加快、表格横滑 | 相应提交/Mock和代码，06覆盖通用响应式/稳定布局，未覆盖全部新细节 | 可以确认已经实施哪些视觉，不足以证明每个参数都是你的已确认需求；不因无精确参数就杜撰产品需求或要求重新审批所有CSS |
 | 普通提示统一5秒，错误手动关闭 | **本会话用户直接确认**；06 §1.15已替换旧10秒 | 原生通知和本地思考Toast共用`NativeNotices.track`，已改；测试见§5 |
 | Scheduler解释文案缩短 | **本会话用户直接确认**；07 §8.14与`scheduled_attention_text`逐字同步 | 42→26英文词，保留授权/当前情况/修改排期/投递不等于完成；每项各带一份说明，整批仍一个carrier，末尾instant空档notice仍至多一次 |
-| 首页独立Profile菜单及Profile图标 | **本会话用户直接确认并修订**；06 §2.11 | 只在首页/New Chat另加Profile下拉，不并入Model selector；Conversation行按所属Profile取前端固定映射图标，不做配置界面；新增量正在实施，不冒称已验收 |
+| 首页独立Profile菜单及Profile图标 | **本会话用户直接确认并修订**；06 §2.11 | 只在首页/New Chat另加Profile下拉，不并入Model selector；Conversation行按所属Profile取前端固定映射图标，不做配置界面；增量与受控证据见§7，不冒称真实模型全链验收 |
 
-## 3. 仍开放的实现问题
+## 3. 审查基线发现与后续处置
 
 下列位置均为上述待审SHA中的位置。UI路径以独立Web仓库为根。优先级表达修复顺序，不替代用户的产品范围决定。
 
@@ -44,6 +44,7 @@
 - 路径：UI `src/core/controller.ts:1007–1030`，`setSessionConfig`在第一次请求失败后重新读取`this.state.route`，并以该新route执行`ensureBinding`；`send`同时动态读取当前profile。
 - 反例：在A点击high，等待响应时切到B；A返回4001，第二个`config.set`实际带`session_id=runtime-B`、`value=high`。A的操作改了B，不只是错误提示画错位置。
 - 证据：前端首组第3例FAIL；固定原操作的stored ID/profile/runtime owner，并在恢复/采纳各边界保持它，不能从当前页面推导原动作owner。
+- 后续处置：新增Profile切换的正式接线将此写入与恢复固定到原route/profile，独立定向反例取得RED→GREEN，原同owner恢复一次及non-stale不重试邻域通过。主会话review确认此路径已关闭；原历史脚本未重新执行，不扩张为所有后台跨会话操作均已关闭。新证据见§7。
 
 ### F02 · P1 · 冷启动读数取启动profile的库，并忽略已知会话模型覆盖
 
@@ -120,7 +121,7 @@
 | 普通提示5秒 | 首次28项：26 PASS、2个旧4.6秒断言FAIL；修正这两个旧断言后仅定向2 PASS | 有效并集28项PASS，涵盖原生/本地提示、错误持久、clear/replacement、重连/HMR；主会话没有复跑整个suite |
 | 固定代码检查 | ruff/no-tmp PASS，health 13 blocking/0 advisory，158文件，11.9秒 | F10；直接ruff对两证据文件为0诊断，不改写原health失败 |
 
-历史总计11个反例执行失败，经用户澄清后其中**9个仍适用，归为上述7项问题**；两个旧需求预期已明确失效。没有将历史失败日志改成绿色，也没有把新授权倒填为旧运行已符合。首次前端外部symlink因Vite根限制在收集前失败，0 tests，移入UI正常临时测试路径后执行；该环境问题不计产品缺陷。
+历史总计11个反例执行失败，经用户澄清后其中**9个适用当时需求，归为上述7项问题**；两个旧需求预期已明确失效。后续F01窄修见§7，现仍开放6项产品问题。没有将历史失败日志改成绿色，也没有把新授权倒填为旧运行已符合。首次前端外部symlink因Vite根限制在收集前失败，0 tests，移入UI正常临时测试路径后执行；该环境问题不计产品缺陷。
 
 后端使用官方PM Python 3.14.7/macOS arm64，经`HERMES_PYTHON=... HERMES_TEST_FILE_RETRIES=0 scripts/run_tests.sh`。使用真实隔离SessionDB/注册RPC、受控会话/外部请求边界；UI使用实际Controller、实际组件渲染或正式输入/排序函数及fake timers。反例证明具体机制，不宣称真实浏览器/真实模型已全部验收。所有数据合成，不修改用户round3状态、不调用NM、不部署、不重跑大型回归。
 
@@ -132,10 +133,24 @@
 
 `timeline_stream_regression`（GPT-6.1/high）负责正式流式投影/组件与定向反证、修复和typecheck；主会话处理本报告、普通通知与根文档，修改范围分离。调查必须区分真实reasoning.delta与等待提示thinking.delta，核对legacy/typed sidecar配对、WS顺序、history/live retire、组件身份和工具状态，不能以结束后的静态历史正确代替动态正确。不得靠延时、伪造Thinking或状态掩盖。
 
-子Agent已只读取到一个完整156帧、2个Turn的现场replay：两Turn均无`reasoning.delta`，首工具前是`thinking.delta`等待字串/清空，实际assistant reasoning_content仅空格，却在结束历史投影生成空Thinking；另一个512帧replay已截断，不能宣称覆盖完整。不得将该样本描述成“真实推理增量被前端吞掉”。同时定位工具构造卡取得正式UID后呈现key改变、React重建的路径；正在补实际组件逐帧反证与修复。原始现场事件只保存在ignored目录，不公开用户内容。
+子Agent已只读取到一个完整156帧、2个Turn的现场replay：两Turn均无`reasoning.delta`，首工具前是`thinking.delta`等待字串/清空，实际assistant reasoning_content仅空格，却在结束历史投影生成空Thinking；另一个512帧replay已截断，不能宣称覆盖完整。不得将该样本描述成“真实推理增量被前端吞掉”。同时定位工具构造卡取得正式UID后呈现key改变、React重建的路径；实际组件逐帧反证及修复已完成如下。原始现场事件只保存在ignored目录，不公开用户内容。
 
 用户还明确补充：第三轮自主实现前Astra曾修好前端且当时实测正常。已交子Agent按Git历史/既有证据定位参考版本，不能未经核验假定任意SHA就是该正常版，也不重复整套旧测试。
 
 **修复已由主会话review接收并提交UI `01be26a1630fd4c28aecab6205be6493d3a31ba9`。** App的呈现key映射仅维持当前列表内挂载身份，精确承接构造节点→真实occurrence UID→历史行；不改原生ID、顺序或按名称匹配。历史Thinking渲染要求原文trim后非空，展示仍用原文。新增7项逐帧Controller→RenderStore→生产Timeline组件测试：改前2个RED，修复过程中保留10个自引null/undefined失败及回修；最终版本56 PASS，前一版本有效并集99项，不能冒称最终又全跑99项。整合主会话通知后typecheck一次PASS。完整命令、次数、耗时、文件哈希与正常历史参考保存在ignored `timeline-fix/report.md`；已核对没有回退此前正确的UID、并行次序、分段/去重及滚动机制。未发起新真实模型/新Conversation、未做真实浏览器肉眼验收。
 
 同一子Agent随后接收用户新增Profile任务；基线为上述已提交UI版本，改动与证据单独交回，不把旧Timeline测试重跑充作新功能验证。其余开放项未经本次用户逐项修复授权，不在审查中顺手改变产品行为。
+
+## 7. 新Chat UI Profile功能及归属修复
+
+UI已提交并同步`0371c6c19b2d4a5224ffdce2989efbc2a3fda6b1`；该提交排除用户同期表现调整。
+
+主会话已集中review接收：New Chat独立Profile下拉，菜单仅显示名字；沿原生`profiles.list`、`session.create(profile=...)`及profile-scoped REST/RPC工作，不复制系统提示、不新增Profile存储、不迁移已有Session。启动无显式名字时以原生`config.get(key=profile).home`精确匹配roster.path，不能把`is_default`误作当前启动Profile。各Profile草稿、模型/effort及已staged路径分开；创建/Send未决时禁止改变owner；默认目录、能力、列表、恢复晚回包均按原owner采纳。
+
+Conversation图标集中在UI `src/core/profile-icons.tsx`：default为MessageSquare、round3为FlaskConical；未来新增Profile需补映射，未知名字为UserRound通用fallback。Session原生归属仍是唯一真值，当前列表沿既有profile查询，不新增跨Profile聚合。用户同期表现层调整保持原样，不纳入本次功能修复。
+
+F01配置重试由`writeOwnedSessionConfig`固定原route/profile/runtime，4001只恢复原Session并重试一次，受控反例RED→GREEN；未选中的owner不展示成功toast，不以当前页面替换原动作owner。主会话review另发现并要求修复根URL显式Profile被last-route覆盖、以及另一owner旧Conversation ID被带入的两处初始化缺口；分别取得RED2→GREEN，只允许恢复同owner旧路由，不同/未知owner进入所选Profile的New Chat，无显式owner时保留原恢复行为。
+
+有效并集**113项PASS**：新增Controller11、App/组件13、既有Controller80和metadata9。共11次Vitest、两次对应不同代码版本的typecheck通过；最后定向8项PASS，未重跑113项全套。中途104P/1F的空New Chat缓存回归通过收敛保留范围修正，原测试断言未改，仅失败项复测通过。主会话没有复跑子Agent有效测试。合成日志、脱敏原生观察与哈希见[evidence/post-verification-review/manifest.json](evidence/post-verification-review/manifest.json)的`profile_ui`及`profile-ui/`。
+
+真实只读观察确认default/round3名单、启动home唯一匹配round3；未修改用户Profile、重启后端、真实create/发送、调用模型、上传真实附件、连接NM或部署。请求owner及原生整套继承由受控Controller→App正式入口测试和后端接线源码共同核对，不冒称真实模型全链或浏览器视觉验收。其余6项产品问题及F10质量阻断继续开放；本次不是新的独立Verification/Validation，也不改写第三轮未通过结论。

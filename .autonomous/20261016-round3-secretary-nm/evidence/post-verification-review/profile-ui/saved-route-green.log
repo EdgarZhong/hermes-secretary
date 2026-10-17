@@ -1,0 +1,14 @@
+
+> hermes-secretary-web@0.1.0 test
+> vitest run src/components/profile-selection.test.tsx -t restores only a matching|explicit root URL|explicit Profile URL|proven native launch
+
+[file-viewer:vite-plugin] Copied 9/9 renderer assets to /Users/edgar/code/hermes-secretary-web/public/file-viewer
+
+ RUN  v4.1.11 /Users/edgar/code/hermes-secretary-web
+
+
+ Test Files  1 passed (1)
+      Tests  8 passed | 5 skipped (13)
+   Start at  17:33:16
+   Duration  1.04s (transform 219ms, setup 0ms, import 156ms, tests 461ms, environment 341ms)
+

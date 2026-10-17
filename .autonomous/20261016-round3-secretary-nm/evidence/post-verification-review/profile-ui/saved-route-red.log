@@ -1,0 +1,43 @@
+
+> hermes-secretary-web@0.1.0 test
+> vitest run src/components/profile-selection.test.tsx -t restores only a matching
+
+[file-viewer:vite-plugin] Copied 9/9 renderer assets to /Users/edgar/code/hermes-secretary-web/public/file-viewer
+
+ RUN  v4.1.11 /Users/edgar/code/hermes-secretary-web
+
+ ❯ src/components/profile-selection.test.tsx (13 tests | 2 failed | 9 skipped) 434ms
+     × restores only a matching saved route ('foreign saved owner') 11ms
+     × restores only a matching saved route ('unknown saved owner') 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/components/profile-selection.test.tsx > New Chat native Profile controls > restores only a matching saved route ('foreign saved owner')
+ FAIL  src/components/profile-selection.test.tsx > New Chat native Profile controls > restores only a matching saved route ('unknown saved owner')
+AssertionError: expected { screen: 'conversation', id: 'A' } to deeply equal { screen: 'new' }
+
+- Expected
++ Received
+
+  {
+-   "screen": "new",
++   "id": "A",
++   "screen": "conversation",
+  }
+
+ ❯ src/components/profile-selection.test.tsx:115:31
+    113|     vi.spyOn(fresh.drafts, "get").mockResolvedValue(emptyDraft());
+    114|     expect(fresh.state.profile).toBe(scenario.owner);
+    115|     expect(fresh.state.route).toEqual(scenario.conversation ? { screen…
+       |                               ^
+    116|     await fresh.loadProfiles();
+    117|     const resumes = calls.filter(call => call.method === "session.resu…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 2 passed | 9 skipped (13)
+   Start at  17:33:07
+   Duration  957ms (transform 221ms, setup 0ms, import 150ms, tests 434ms, environment 303ms)
+

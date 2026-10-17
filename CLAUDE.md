@@ -10,11 +10,15 @@
 - 用户要求缩短Scheduler说明；07 §8.14与运行时同步为26英文词（原42词），每条Reminder各带说明、整批仍一个durable carrier；2项相关投递/ACK测试PASS。
 - 用户实测：Send后首段Thinking整个流式阶段缺失、Turn结束才出现；首个工具卡片开始时闪动。已授权修复并明确委派子Agent。`timeline_stream_regression`（GPT-6.1/high）独占UI投影/组件/RenderStore及对应测试，主会话避开其白名单；不得派生、重启后端或改用户Conversation。主会话处理其余审查、普通提示及文档，交回后集中review，不重复其有效测试。Timeline首包已review接收：仅App的呈现key保持及空白历史过滤，新7项逐帧组件测试；最终56项PASS、此前有效并集99项，整合typecheck一次PASS。真实replay未证明推理文本被吞，实际确认空白补卡与工具DOM重建。
 
-**新增Chat UI需求（本会话用户确认）：** 原先“Profile放进Model selector”的提案已被用户替换：仅首页/New Chat显示独立Profile下拉，选项只显示名字，沿原生Profile整套切换，已存在Session归属不变。多个Profile可指向相同terminal.cwd共用Workspace。Conversation列表左侧icon按其所属Profile区分；图标用前端源码内固定映射表，不做配置或设置界面。已落06 §2.11，由同一子Agent以UI 01be26a为新基线独立增量实施；不得把旧提案保留为同时生效的交互。
+**新增Chat UI需求（本会话用户确认）：** 原先“Profile放进Model selector”的提案已被用户替换：仅首页/New Chat显示独立Profile下拉，选项只显示名字，沿原生Profile整套切换，已存在Session归属不变。多个Profile可指向相同terminal.cwd共用Workspace。Conversation列表左侧icon按其所属Profile区分；图标用前端源码内固定映射表，不做配置或设置界面。已落06 §2.11，由同一子Agent以UI 01be26a为基线完成增量，主会话review接收并提交同步UI `0371c6c`；不得把旧提案保留为同时生效的交互。当前固定映射default→MessageSquare、round3→FlaskConical，未来新增Profile需补映射，未映射先用UserRound通用图标，不冒称每个未知Profile已有独占图标。真实只读观察确认名单及启动home唯一匹配round3；创建/发送/隔离为受控Controller→App链证据，未新发真实模型或真实Profile写入。
+
+**Profile增量验证与接收：** 新增24项＋既有89项的有效并集113项PASS，共11次定向Vitest、两次对应不同实现版本的typecheck通过；最后定向8项，未再跑整组。主会话集中review后追加修复根URL显式Profile优先、last-route仅恢复同owner旧Conversation两处边界，各有RED→GREEN；不重复子Agent有效测试。公开合成日志/脱敏观察与哈希见专项报告§7及证据manifest。主仓库本次仅维护稳定入口、规格、看板和证据，AGENTS规则无需更改。UI提交排除用户同期Constructing文案/对应Timeline断言及新出现的置顶表现文件，保留其工作区内容，不宣称用户编辑中的UI工作区干净。
+
+**同期协作（用户明确，2026-10-17）：** 用户会自行微调表现层；集成保留这些同期改动，不因小幅样式/呈现差异回滚或重做。主会话和子Agent继续核对功能、状态归属与接口，只有表现调整实际影响这些契约时才指出。
 
 **检查现状：** 固定base a51fd99的ruff/no-tmp通过，health 158文件有13 blocking（其中5条证据脚本诊断与直接ruff/源码不一致，待排查），未放宽规则。详细专项审查见[post-verification-review.md](.autonomous/20261016-round3-secretary-nm/post-verification-review.md)。
 
-**待收敛：** 已取得跨会话配置重试错投、冷启动归属/模型真值错误、排期时区两端错配、置顶排序及AI起名输入等反证；仅估算本身及旧10秒寿命不再作为现行需求缺陷。原生事件与真实UI结果的边界分别记录，未凭模型自报通过认定完成。
+**待收敛：** 跨会话配置4001重试错投在Profile增量中已按原route/profile/runtime owner窄修并取得RED→GREEN；历史反例保持原样，只关闭该受控路径。冷启动归属/模型真值错误、排期时区两端错配、置顶排序、AI起名输入及失败任务高亮共6项产品问题仍开放，另有上述代码健康阻断；仅估算本身及旧10秒寿命不再作为现行需求缺陷。原生事件与真实UI结果的边界分别记录，未凭模型自报通过认定完成。
 
 ## Web Chat `/title` + `/ai-title` 命令接线（2026-10-17）
 

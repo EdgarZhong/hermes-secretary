@@ -1,0 +1,14 @@
+
+> hermes-secretary-web@0.1.0 test
+> vitest run src/core/controller-profiles.test.ts
+
+[file-viewer:vite-plugin] Copied 9/9 renderer assets to /Users/edgar/code/hermes-secretary-web/public/file-viewer
+
+ RUN  v4.1.11 /Users/edgar/code/hermes-secretary-web
+
+
+ Test Files  1 passed (1)
+      Tests  9 passed (9)
+   Start at  17:22:58
+   Duration  208ms (transform 94ms, setup 0ms, import 35ms, tests 103ms, environment 0ms)
+

@@ -1,0 +1,15 @@
+{
+  "observed_at": "2026-10-17T09:29:42.244Z",
+  "profile_names": [
+    "default",
+    "round3"
+  ],
+  "launch_name_by_exact_path": [
+    "round3"
+  ],
+  "bootstrap_window_fields": [
+    "__HERMES_SESSION_TOKEN__",
+    "__HERMES_AUTH_REQUIRED__"
+  ],
+  "mutations": 0
+}

@@ -1,0 +1,38 @@
+
+> hermes-secretary-web@0.1.0 test
+> vitest run src/core/controller-profiles.test.ts src/components/profile-selection.test.tsx src/core/controller.test.ts src/core/controller-session-metadata.test.ts
+
+[file-viewer:vite-plugin] Copied 9/9 renderer assets to /Users/edgar/code/hermes-secretary-web/public/file-viewer
+
+ RUN  v4.1.11 /Users/edgar/code/hermes-secretary-web
+
+ ❯ src/core/controller.test.ts (80 tests | 1 failed) 658ms
+     × releases departed projections and restores native history plus local draft on return 8ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/core/controller.test.ts > native Conversation draft ownership > releases departed projections and restores native history plus local draft on return
+AssertionError: expected 2 to be 1 // Object.is equality
+
+- Expected
++ Received
+
+- 1
++ 2
+
+ ❯ src/core/controller.test.ts:775:37
+    773|     expect(native.lives.size).toBe(1);
+    774|     expect(native.bindings.size).toBe(1);
+    775|     expect(native.draftValues.size).toBe(1);
+       |                                     ^
+    776|     native.event({
+    777|       type: "message.delta",
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 3 passed (4)
+      Tests  1 failed | 104 passed (105)
+   Start at  17:27:02
+   Duration  1.15s (transform 540ms, setup 0ms, import 365ms, tests 1.44s, environment 344ms)
+

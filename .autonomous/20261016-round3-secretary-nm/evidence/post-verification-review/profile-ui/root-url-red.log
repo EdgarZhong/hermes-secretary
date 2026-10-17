@@ -1,0 +1,52 @@
+
+> hermes-secretary-web@0.1.0 test
+> vitest run src/components/profile-selection.test.tsx -t explicit root URL
+
+[file-viewer:vite-plugin] Copied 9/9 renderer assets to /Users/edgar/code/hermes-secretary-web/public/file-viewer
+
+ RUN  v4.1.11 /Users/edgar/code/hermes-secretary-web
+
+ ❯ src/components/profile-selection.test.tsx (9 tests | 2 failed | 7 skipped) 431ms
+     × prioritizes explicit root URL Profile default over the saved last-route owner 11ms
+     × prioritizes explicit root URL Profile missing over the saved last-route owner 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/components/profile-selection.test.tsx > New Chat native Profile controls > prioritizes explicit root URL Profile default over the saved last-route owner
+AssertionError: expected 'round3' to be 'default' // Object.is equality
+
+Expected: "default"
+Received: "round3"
+
+ ❯ src/components/profile-selection.test.tsx:89:33
+     87|     fresh.gateway.request = controller.gateway.request;
+     88|     vi.spyOn(fresh.drafts, "get").mockResolvedValue(emptyDraft());
+     89|     expect(fresh.state.profile).toBe(profile);
+       |                                 ^
+     90|     await fresh.loadProfiles();
+     91|     expect(fresh.state.profile).toBe(profile);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/components/profile-selection.test.tsx > New Chat native Profile controls > prioritizes explicit root URL Profile missing over the saved last-route owner
+AssertionError: expected 'round3' to be 'missing' // Object.is equality
+
+Expected: "missing"
+Received: "round3"
+
+ ❯ src/components/profile-selection.test.tsx:89:33
+     87|     fresh.gateway.request = controller.gateway.request;
+     88|     vi.spyOn(fresh.drafts, "get").mockResolvedValue(emptyDraft());
+     89|     expect(fresh.state.profile).toBe(profile);
+       |                                 ^
+     90|     await fresh.loadProfiles();
+     91|     expect(fresh.state.profile).toBe(profile);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 7 skipped (9)
+   Start at  17:32:01
+   Duration  944ms (transform 220ms, setup 0ms, import 144ms, tests 431ms, environment 299ms)
+

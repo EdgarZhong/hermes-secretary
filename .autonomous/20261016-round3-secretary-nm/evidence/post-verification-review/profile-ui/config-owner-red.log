@@ -1,0 +1,49 @@
+
+> hermes-secretary-web@0.1.0 test
+> vitest run src/core/controller-profiles.test.ts -t old Session config
+
+[file-viewer:vite-plugin] Copied 9/9 renderer assets to /Users/edgar/code/hermes-secretary-web/public/file-viewer
+
+ RUN  v4.1.11 /Users/edgar/code/hermes-secretary-web
+
+ ❯ src/core/controller-profiles.test.ts (10 tests | 1 failed | 9 skipped) 88ms
+     × retries an old Session config failure on its original Profile after another Profile opens 4ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/core/controller-profiles.test.ts > native Profile environment ownership > retries an old Session config failure on its original Profile after another Profile opens
+AssertionError: expected [ { key: 'model', …(3) }, …(1) ] to deeply equal [ ObjectContaining{…}, …(1) ]
+
+- Expected
++ Received
+
+@@ -4,9 +4,11 @@
+      "profile": "round3",
+      "session_id": "runtime-A",
+      "value": "A-model --provider A --session",
+    },
+    {
+-     "profile": "round3",
++     "key": "model",
++     "profile": "default",
+      "session_id": "fresh-A",
++     "value": "A-model --provider A --session",
+    },
+  ]
+
+ ❯ src/core/controller-profiles.test.ts:152:89
+    150|     c.state = { ...c.state, profile: "default", route: { screen: "conv…
+    151|     first.resolve(Promise.reject(new RpcError("Unknown Session", 4001)…
+    152|     expect(calls.filter(call => call.method === "config.set").map(call…
+       |                                                                                         ^
+    153|       expect.objectContaining({ session_id: "runtime-A", profile: "rou…
+    154|       expect.objectContaining({ session_id: "fresh-A", profile: "round…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 9 skipped (10)
+   Start at  17:23:43
+   Duration  196ms (transform 93ms, setup 0ms, import 38ms, tests 88ms, environment 0ms)
+
