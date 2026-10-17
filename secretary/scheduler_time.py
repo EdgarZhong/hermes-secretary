@@ -106,12 +106,22 @@ def schedule_advance_epoch(schedule: dict, previous_next_run, *, now, max_steps=
 
 
 def schedule_timezone(schedule: dict) -> str:
-    """Report the effective native timezone, not a second independently managed zone."""
-    validate_canonical_schedule(schedule)
-    if schedule["kind"] == "once":
-        zone = datetime.fromisoformat(schedule["run_at"].replace("Z", "+00:00")).tzinfo
-    else:
-        from hermes_time import now
+    """Report the owning Hermes timezone for every kind, never a per-kind offset guess.
 
-        zone = now().tzinfo
-    return getattr(zone, "key", None) or str(zone)
+    A one-shot instant stays absolute in ``run_at``; the owning zone is whatever
+    ``hermes_time`` resolves now, so all kinds name the same clock the Scheduler compares
+    against. A configured IANA zone keeps its name; the server-local fallback renders as an
+    explicit ``UTC+HH:MM`` offset, so no ambiguous system abbreviation reaches the Table.
+    """
+    validate_canonical_schedule(schedule)
+    from hermes_time import now
+
+    moment = now()
+    key = getattr(moment.tzinfo, "key", None)
+    if key:
+        return key
+    offset = moment.utcoffset()
+    seconds = int(offset.total_seconds()) if offset is not None else 0
+    sign = "+" if seconds >= 0 else "-"
+    hours, remainder = divmod(abs(seconds), 3600)
+    return f"UTC{sign}{hours:02d}:{remainder // 60:02d}"

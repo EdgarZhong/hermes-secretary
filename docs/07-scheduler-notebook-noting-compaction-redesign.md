@@ -1120,7 +1120,7 @@ new/reset/fork、原地或旋转压缩、rewind/edit对路径的既有更新机�
 | resume | schedule_id | 恢复未完成排期并计算下次发生；已明确完成的一次性排期不可重投，需新建 |
 | delete | schedule_id | 从当前Table删除并停止未接纳投递；不撤销已经进入Main上下文的消息；恢复需create |
 
-每条Table包含schedule_id、name（有则返回）、content、原expression、canonical_schedule、timezone、delivery_mode、state、next_due_at（无则null）、pending_count及最近投递／失败的last_delivery（无记录则null，记录实际时间与outcome）。claim token、ACK、内部generation不让模型设置。只读字段错误明确指出应使用哪个动作。全部写操作直接进Scheduler所属状态，不等Noting；不推导Notebook类型或业务状态。
+每条Table包含schedule_id、name（有则返回）、content、原expression、canonical_schedule、timezone（条目归属的Hermes时区：配置了IANA时区时返回其名称，未配置时返回`UTC±HH:MM`形式的固定偏移；三种kind取值来源相同，不按kind改变）、delivery_mode、state、next_due_at（无则null）、pending_count及最近投递／失败的last_delivery（无记录则null，记录实际时间与outcome）。claim token、ACK、内部generation不让模型设置。只读字段错误明确指出应使用哪个动作。全部写操作直接进Scheduler所属状态，不等Noting；不推导Notebook类型或业务状态。
 
 ### 6.2 沿用排期与可靠投递机制
 

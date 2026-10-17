@@ -7,6 +7,7 @@ Run locally through scripts/run_tests.sh, not by a separate cloud test invocatio
 
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
+import re
 import sqlite3
 from threading import Barrier
 from types import SimpleNamespace
@@ -40,6 +41,7 @@ from secretary.scheduler_time import (
     parse_schedule_expression,
     schedule_advance_epoch,
     schedule_initial_next_run,
+    schedule_timezone,
 )
 from secretary.schedules import SchedulerStore, default_enablement, scan_and_claim_due
 
@@ -114,6 +116,40 @@ def test_native_duration_and_profile_timezone(monkeypatch):
     naive = parse_schedule_expression("2026-10-17T09:00:00")
     assert naive["run_at"].endswith("+09:00")
     assert schedule_initial_next_run(naive, now=NOW) < NOW
+
+
+_ALL_KIND_SCHEDULES = (
+    {"kind": "once", "run_at": "2026-10-19T10:00:00+08:00"},
+    {"kind": "interval", "minutes": 120},
+    {"kind": "cron", "expr": "0 9 * * *"},
+)
+
+
+def test_schedule_timezone_names_the_owning_zone_for_every_kind(monkeypatch):
+    import hermes_time
+
+    monkeypatch.setenv("HERMES_TIMEZONE", "Asia/Tokyo")
+    hermes_time.reset_cache()
+    try:
+        assert {schedule_timezone(schedule) for schedule in _ALL_KIND_SCHEDULES} == {"Asia/Tokyo"}
+    finally:
+        monkeypatch.delenv("HERMES_TIMEZONE", raising=False)
+        hermes_time.reset_cache()
+
+
+def test_schedule_timezone_without_configured_zone_renders_explicit_offset(monkeypatch, tmp_path):
+    import hermes_time
+
+    monkeypatch.delenv("HERMES_TIMEZONE", raising=False)
+    monkeypatch.setenv("HERMES_HOME", str(tmp_path))
+    hermes_time.reset_cache()
+    try:
+        assert hermes_time.get_timezone_name() == ""
+        rendered = {schedule_timezone(schedule) for schedule in _ALL_KIND_SCHEDULES}
+    finally:
+        hermes_time.reset_cache()
+    assert len(rendered) == 1
+    assert re.fullmatch(r"UTC[+-]\d{2}:\d{2}", rendered.pop())
 
 
 def test_native_next_run_uses_supplied_epoch_and_bounded_backlog(monkeypatch):
