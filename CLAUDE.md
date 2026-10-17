@@ -2,7 +2,9 @@
 
 ## 自主口径收敛 · 待用户追认
 
-**Agent 自主工程细化／待用户追认：F16 Noting来源结算动作展开。** 白板E1已要求移除实际成功覆盖，但07 §8.11 Step4仅抽象写“Remove only successfully dispatched coverage”，真实模型只归档Candidate并给source加注记。决定将同一段明确为：对照实际批准／成功与现行版本，完整交付且无保护理由的来源归档，部分覆盖则精简已交付部分，保留具体新内容／未完责任／其它候选依赖，先修引用并说明保留理由。Astra已按原判据评审认可，不改变产品语义、权限或完成条件；已同步07与常量，真实round3复测固定公共d033c5057df4启动后遇F17冻结交接失败，正在修复，尚无Step4结果。用户尚未追认，不冒称用户指定措辞。原始d19018冻结与首失败证据保留。
+**暂无。F16结算顺序已由用户明确调整（2026-10-17）：先处理该退出的来源正文，再关闭Candidate；提示词保持简短。** 已据此重写07 §8.11 Step4及运行时同段：修正阻塞归档的已结算引用时保留Candidate的描述和消息来源作为清单，先归档／精简来源，全部相关来源处理成功后再归档或更新Candidate；继续保护后来变化、未完责任、其他未完成提案所需内容。替换段落比上一版更短。先前“候选为空时再查”的补丁提案不采用。用户确认的是本次处理顺序与控制体量，不冒称逐字确认英文。已完成文本与接线一致性核对，待固定提交后真实round3复证；不启动第二次门禁，F16尚未关闭。原失败与原Astra评审仅代表历史版本。
+
+**最新执行边界（2026-10-17）：** 用户恢复并行工作，完成整改与开发复证后，停在第二次Verification复审启动之前，并提交干净。第二次Verification与Validation本次不派遣。root统一review／提交；r3_pointer_repair只读查pointer疑点，r3_real_retest独占round3准备接续新链，r3_evidence_audit只读核对既有整改证据，三者不重复测试。此前额度中断与暂停现场保留，host已退出0、配置复原，合成USER保留；是否可用以本次实际执行为准。
 
 ## 第三轮自主实现 · 本地托管恢复（2026-10-17）
 
@@ -31,11 +33,11 @@
 | C10-T | 主会话已review接收；c10-final-legacy-report.md | 六旧文件及相关节点有效并集92 PASS；F10/F13、F11受影响旧组定向关闭；独立初审已完成，现修复复证 |
 | C11-P | 主会话已review接收；personal-host-report.md | 原生host→loopback fixture六场景、临时工具收窄及完整配置/插件备份恢复；公共f66a8f80／个人8682ff85实测；12 completed Turns／14请求／24真实UID与ACK；配置和插件恢复，round3已释放 |
 | L0 | 环境已交回；yaml问题是个人脚本旧导入，P3 owner修复 | 不跑产品测试；不改锁或裸装依赖 |
-| 门禁 | verification_astra（全新Astra/high）正在全范围初审；发现项已回到修复循环 | 初审固定公开323c64dacba1／个人e1af6cc45ffb；修复生产公开d033c5057df4／个人5a2fe444042c；首审60项：56符合、2不符合、2证据不足，主会话已review接收；修后需全新独立全范围复审，Validation待通过 |
+| 门禁 | verification_astra（全新Astra/high）已完成全范围初审；发现项已回到修复循环 | 初审固定公开323c64dacba1／个人e1af6cc45ffb；修复生产公开25241d8c83d0／个人5a2fe444042c；首审60项：56符合、2不符合、2证据不足，主会话已review接收；修后需全新独立全范围复审，Validation待通过 |
 | F14 最终回归 | 首轮已完成；27个旧测试失败／错误已修复并由主会话review接收（含邻域共29）；压缩6原失败＋邻域共10已review接收；两失败检查已修复通过 | 1766 PASS／29 FAIL／4 setup ERROR／3平台skip；固定136文件等范围只执行一次，后续仅失败与影响路径定向复测 |
 | F15 时间投影 | 公共六路径17项PASS，主会话已review接收；个人Recall8节点＋17子例已review接收；Scheduler run_at／绝对display共8项有效证据已review接收 | V51：仅人／模型可读Notebook投影为秒精度，覆盖工具、control、Main、slash、Proposal、Framework；内部精度不变 |
-| F17 冻结交接 | local_environment修复20项PASS，主会话已review接收；c4已释放round3待新版本复证 | 原恢复链human_only Anchor在同步模型投影中被过滤；现用已验证Ref／UID交接，不重读父状态，待原场景真实复证 |
-| F16 来源结算 | 主会话及Astra已评审具体Step4细化，c4已实施并启动固定d033c5057df4真实round3补证 | V23：候选13已归档但来源6仍保留成功写入的完整经验；不能宣称完成结算，首样本失败保留 |
+| F17 冻结交接 | local_environment修复20项PASS，主会话已review接收；r3_pointer_repair调查旧真实结果；新复证由r3_real_retest独占round3执行 | 原恢复链human_only Anchor在同步模型投影中被过滤；现用已验证Ref／UID交接，不重读父状态；admission13真实child完成并提交新Snapshot，待完整前缀与pointer证据review |
+| F16 来源结算 | 主会话及Astra已评审具体Step4细化，c4已实施，F17修复后固定25241d8c83d0真实round3补证 | V23：候选13已归档但来源6仍保留成功写入的完整经验；细化后旧链仍错误跳过该来源，保持OPEN；按R3-019用户确认的来源优先短Prompt接续新链真实复证 |
 
 - 真实运行新发现 R3-F08：TUI Main streaming期间/noting反馈后，durable原文仍在但后续Active冻结缺输入／图片；修复已由主会话review接收：busy历史批次合并与cold human_only投影共28项PASS，ruff/health通过；eff3235真实busy图片六请求与cold回复／human_only隔离已通过，主会话接收。
 
@@ -45,7 +47,7 @@
 
 - eff3235真实定向复测首批：F08 busy图片+slash后child六请求前缀一致、F08b cold回复及human_only隔离；F09两deferred单carrier成功ACK、CRUD/instant idle；F11实际新boundary后Force再准入；F13 human/model视图区分已取得正证。忙碌instant已真实pending→下一Main单carrier→成功ACK；重启registry保持。F12及恢复已完整交回，11个child结束、未来排期零、配置原bytes恢复、原生host退出0。
 
-- 公共真实模型开发证据已由主会话review接收，详见real-model-report.md；跨Turn两次受控probe真实执行五Turn forced，未取得“第二Turn正常finish”的特定模型形态；正常finish由自然链独立证明。受限合成USER成功不冒称多目标写失败；真实NM与部署仍未执行。C11-P已完整交回并review接收；round3配置hash恢复，插件恢复为原不存在，自有进程及lease归零。原生子进程退出码未独立记录，不宣称该码0；归档ACK完整。Verification正在进行；c4统一最终回归已完成：136文件＋server84筛选函数（展开90项）＋Provider46项canonical＋冻结10类检查一次，12次调用、311.402秒，详见regression-plan.md §7。八类检查通过，no-tmp／health两项有窄修补；主会话不重复有效测试。
+- 公共真实模型开发证据已由主会话review接收，详见real-model-report.md；跨Turn两次受控probe真实执行五Turn forced，未取得“第二Turn正常finish”的特定模型形态；正常finish由自然链独立证明。受限合成USER成功不冒称多目标写失败；真实NM与部署仍未执行。C11-P已完整交回并review接收；round3配置hash恢复，插件恢复为原不存在，自有进程及lease归零。原生子进程退出码未独立记录，不宣称该码0；归档ACK完整。Verification首审已完成、整改进行中；c4统一最终回归已完成：136文件＋server84筛选函数（展开90项）＋Provider46项canonical＋冻结10类检查一次，12次调用、311.402秒，详见regression-plan.md §7。八类检查通过，no-tmp／health两项有窄修补；主会话不重复有效测试。
 
 - 初审整改：V51输出投影修复不降低内部时间精度；V23真实来源结算样本存在缺口，已与Astra按冻结成功范围结算要求研讨，先核对实际Prompt分支，再通过round3正式Main批准→实际成功→Noting语义结算补证。不得用SQL删除、伪造写成功或硬编码删来源替代。首失败保留，新增成功证据须同时证明已交付覆盖移除及未交付内容／责任／其他候选依赖保护。
 

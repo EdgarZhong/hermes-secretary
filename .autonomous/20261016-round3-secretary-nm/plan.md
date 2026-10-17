@@ -674,5 +674,10 @@ P2只做基本检查，不重测官方CLI，不做真实NM写入。
 | R3-F13 | 原生/notebook误显示Snapshot/anchor审计ID，04§4.2要求隐藏 | personal_provider：仅修slash renderer两行，不改模型show envelope或Framework | 原CLI失败、独立human/model与Framework三项PASS，eff3235真实human隐藏header、model保留完整状态通过；主会话接收，已关闭 |
 | R3-F14 | 首轮最终回归29 FAIL／4 setup ERROR及no-tmp／health阻断；不能以旧测试或缺依赖直接豁免 | 主会话统筹唯一文件owner修复；保留原生行为保障，不复活已退出接口、不跳过或放宽检查 | 已修复并由主会话review接收：旧27＋邻域2共29，压缩6＋邻域4共10，两失败检查定向通过；首33个失败／错误全部有复证。ACP采用现锁extra独立官方PM环境；详见regression-plan.md §7及两个修复报告；实现整改关闭，独立门禁复审待执行 |
 | R3-F15 | Verification V51：Notebook人／模型可读绝对时间泄漏微秒，违反保留02§5.6；内部精度应保留 | local_environment仅输出投影修复，覆盖maintain／working show／control首续／Main／slash／Proposal／Framework，不改Store/public_state内部语义 | 公共Notebook17项、个人Recall8节点＋17子例已review接收；Scheduler run_at／绝对display共8项有效定向通过（含root补漏复证），已review接收；实现整改关闭，待全范围独立复审 |
-| R3-F16 | Verification V23：真实USER写入成功且Candidate13归档，source6 v34仍保留全部成功经验，无继续保留理由；白板E1/L2、07§8.11 | 核查实际注入Prompt并按既有语义修正必要缺口；同一正式原文链补证成功范围来源结算及未交付／责任／其他候选依赖保护 | 首失败原证据保留；E01按白板既有语义展开07 Step4与DEFAULT，root及Astra评审认可并已实施；无SQL/自动删源，待固定SHA真实round3补证与独立复审，未关闭 |
+| R3-F16 | Verification V23：真实USER写入成功且Candidate13归档，source6 v34仍保留全部成功经验，无继续保留理由；白板E1/L2、07§8.11 | 核查实际注入Prompt并按既有语义修正必要缺口；同一正式原文链补证成功范围来源结算及未交付／责任／其他候选依赖保护 | 首失败原证据保留；E01按白板既有语义展开07 Step4与DEFAULT，root及Astra评审认可并已实施；无SQL/自动删源，首恢复链来源仍未退出；用户R3-019明确改为来源正文先结算、Candidate最后关闭，已压缩重写Step4，未启动复测；仍待固定SHA真实round3补证与独立复审，未关闭 |
 | R3-F17 | F16真实旧会话恢复后手动联合压缩：同步freeze成功，后台run再次freeze找不到Anchor，child尚未请求模型即failed；07§3/8.1与04冻结prefix合同 | local_environment调查并用正式spawn反例修复；已冻结交接不得依赖被模型可见性投影过滤的Anchor仍在消息数组，也不能放松错Anchor验证或重读父状态 | 首失败admission12及原Anchor证据保留；绑定身份单次冻结交接修复已review接收，新9＋共享11共20项PASS；c4已释放round3，待固定新版本原场景真实复证与独立复审，未关闭 |
+
+
+### R3-020 执行边界调整
+
+用户恢复并行整改，完成必要开发复证并提交干净后停在第二次Verification启动前；本阶段不派遣第二次Verification或Validation。范围、原始失败记录与后续完整门禁要求保持。当前编排仅见根CLAUDE，避免重复测试。
