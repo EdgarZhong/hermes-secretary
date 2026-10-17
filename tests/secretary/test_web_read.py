@@ -75,6 +75,20 @@ def test_schedules_read_projects_current_conversation_without_writes(database):
         read.close()
 
 
+def test_secretary_state_round3_projection_has_no_memo(database):
+    from tui_gateway.contracts.web_read import SecretaryStateResult
+    db, ref = database
+    before = _contents(db)
+    result = secretary_state(db, 'main')
+    assert result['availability'] == 'available' and result['conversation_ref'] == ref
+    assert result['global_enabled'] is True
+    # Round 3 retired Memo: the browser projection must stop reading (and returning) it.
+    assert 'memo_count' not in result and 'memo_entries' not in result
+    SecretaryStateResult.model_validate(
+        {**result, 'profile': 'default', 'profile_home': str(Path(db.db_path).parent)})
+    assert _contents(db) == before
+
+
 def test_schedules_read_unbound_session_is_unavailable(database):
     db, _ref = database
     db._execute_write(lambda conn: conn.execute(
@@ -86,21 +100,18 @@ def test_schedules_read_unbound_session_is_unavailable(database):
     assert _contents(db) == before
 
 
-def test_reads_pointer_memo_off_and_no_side_effect(database):
+def test_reads_pointer_notebook_off_and_no_side_effect(database):
     db, ref = database
     assert notebook_read(db, 'main')['exists'] is False
     state = {section: [] for section in SECTIONS}
-    db.notebook_commit_snapshot(ref, state, anchor_message_uid='m1')
-    db.noting_memo_mutate(ref, {'operation': 'add', 'content': 'first'})
-    db.noting_memo_mutate(ref, {'operation': 'add', 'content': 'second'})
+    db.notebook_commit_snapshot(ref, state, anchor_message_uid='m1', termination={'type': 'forced'})
     before = _contents(db)
     read = SessionDB(db.db_path, read_only=True)
     try:
         result = secretary_state(read, 'main')
         view = notebook_read(read, 'main')
         assert result['task_state'] == 'idle'
-        assert result['memo_entries'] == [{'index': 1, 'content': 'first'}, {'index': 2, 'content': 'second'}]
-        assert result['memo_count'] == 2
+        assert 'memo_entries' not in result and 'memo_count' not in result
         assert result['next_idle'] == {'state': 'absent', 'at': None}
         assert view['exists'] and view['created_at'] in view['output']
         assert all(section in view['output'] for section in SECTIONS)
@@ -108,8 +119,6 @@ def test_reads_pointer_memo_off_and_no_side_effect(database):
         assert _contents(db) == before
     finally:
         read.close()
-    db.noting_memo_mutate(ref, {'operation': 'delete', 'index': 2})
-    db.noting_memo_mutate(ref, {'operation': 'delete', 'index': 1})
     db.notebook_set_local_enabled(ref, False)
     assert notebook_read(db, 'main')['exists']
     assert secretary_state(db, 'main')['local_enabled'] is False

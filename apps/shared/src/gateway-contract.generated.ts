@@ -4619,8 +4619,6 @@ export interface SecretaryStateResult {
   tasks: ActiveTask[]
   next_idle: IdleEstimate
   observed_at: string
-  memo_count: number
-  memo_entries: MemoEntry[]
 }
 export interface ActiveTask {
   task_id: string
@@ -4628,10 +4626,6 @@ export interface ActiveTask {
 export interface IdleEstimate {
   state: 'scheduled' | 'absent' | 'unknown'
   at: string | null
-}
-export interface MemoEntry {
-  index: number
-  content: string
 }
 export interface NotebookReadResult {
   stored_session_id: string

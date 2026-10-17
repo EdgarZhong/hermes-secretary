@@ -43,11 +43,6 @@ class ActiveTask(Result):
     task_id: str
 
 
-class MemoEntry(Result):
-    index: int
-    content: str
-
-
 class SecretaryStateResult(Result):
     stored_session_id: str
     profile: str
@@ -60,8 +55,6 @@ class SecretaryStateResult(Result):
     tasks: list[ActiveTask]
     next_idle: IdleEstimate
     observed_at: str
-    memo_count: int
-    memo_entries: list[MemoEntry]
 
 
 class NotebookReadResult(Result):
