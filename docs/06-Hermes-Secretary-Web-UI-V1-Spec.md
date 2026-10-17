@@ -346,6 +346,13 @@ Session Total SHOULD refresh as real native model-call/turn usage updates are av
 
 The adjacent Context control is a compact percentage ring, with an expanded detailed numerical usage/max view. Do not invent a category breakdown bar when authoritative categories do not exist. Context and Session Total numbers refer to the backend's real state and source; no independent local token accounting is authoritative.
 
+**Runtime presence is not product state (user-confirmed 2026-10-17).** Binding, cold start, runtime recycling and “no live agent yet” are implementation details, not states the Chat UI may expose. Consequences:
+
+- No control may render a sentence derived from a missing binding — in particular the Reasoning panel MUST NOT show an “Effective on this route” line, and the Context/Usage capsules MUST NOT say “Unknown” or “no active runtime”.
+- After a cold start or a recycled runtime, Context and Session Total are restored from the Session’s persisted usage anchor (the value recorded at the end of the last completed Turn) and presented as the normal readout. If no trustworthy persisted value exists, omit the number rather than label it unknown; never estimate locally.
+- Restoring must reuse an existing native read path. Do not add a dedicated API for this; if no existing read carries the persisted anchor, stop and escalate instead of inventing one.
+- A value restored this way is replaced by live numbers as soon as a real runtime reports them; no frontend persistence and no cross-Session leakage.
+
 ### 1.14. Compaction presence, cancellation and authentic history
 
 During actual manual or automatic Compaction, the existing Context percentage ring **morphs in place** to a same-size animated loading ring; its normal percentage caption becomes **`Compacting`**. The expanded subview substitutes a **Cancel Compaction** action for the normal “used / limit” numbers while cancellation is meaningful. There is no extra Compaction status strip or second permanent control.
