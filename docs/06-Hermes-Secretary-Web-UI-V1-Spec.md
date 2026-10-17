@@ -310,9 +310,13 @@ Buttons MUST be driven by this precedence so a user can prepare attachments duri
 |---|---|---|
 | Navigation | `/new`, `/reset` where genuinely registered, `/sessions`, `/resume` | UI navigation/session selection, with the **actual** command's semantics validated. Never invoke terminal interactive selection inside the browser. |
 | Session/user controls | `/model`, `/reasoning`, `/compact`/`/compress`, `/stop` where genuinely supported | Use established UI controls or dedicated native RPC; synchronize actual model/effort/compression state. Do not submit command text as ordinary Prompt by accident. |
+| Session title | `/title`, `/title <name>` | Read or set the current Conversation title. A live Conversation writes through the native `session.title` RPC; a stored row falls back to `PATCH /api/sessions/{id}`. The native answer is the only adopted title; the existing `RenamingText` animation plays on the real change. `/title --ai` is not a mode; use `/ai-title`. |
+| AI title (Web-local) | `/ai-title` | Web command-router command (no native registry entry) that asks the existing stateless `llm.oneshot` RPC to name the current transcript, then applies the result through the same `session.title`/PATCH write. It is advertised locally in Web completions, not by the native catalog. AI proposes; the command writes. Failure leaves the existing title untouched and surfaces the native error. |
 | Human-facing results | `/help`, `/status`, `/usage`, `/notebook`, `/noting` where supported | Render native results appropriately; `/notebook` is a **transient read-only Assistant-style chat result** without new model context or durable transcript row. |
 | Dynamic commands | Skills, Bundles, plugins from native completion/catalog | Discover native availability; expose only those executable via correct browser/native dispatch, not a hardcoded stale catalog. |
 | Terminal-only / test-specific | `/mouse`, `/redraw`, `/density`, `/theme`, `/logs`, `/clear` or others **where proven TUI-only** | Exclude or intercept at the Web command router, without deleting commands from shared Hermes registry. |
+
+**User-confirmed title split (2026-10-17).** `/title` remains the native read/set entry: `/title <name>` sets the given title and bare `/title` reads the current title. AI naming is a separate Web-local `/ai-title` command; it is not a `--ai` flag on `/title`, and it is not a native registry command. The Web command router advertises it locally, while official clients keep their native `/title` semantics. `/ai-title` makes one stateless `llm.oneshot` title-generation call from the current transcript and then applies it through the same native write. A failed generation or rejected write leaves the existing title untouched and surfaces the native error.
 
 **User-confirmed slash completion (2026-10-13, R2-C76):** Composer supports Tab completion for slash commands. Each completion candidate presents the command and description in one text flow with unified wrapping, rather than separate text containers that wrap independently. Commands must not wrap prematurely while the candidate has sufficient available width.
 
@@ -483,7 +487,7 @@ Secretary read APIs MUST preserve 02's actual `conversation_ref` ownership. Firs
 
 The engineering team may expose these through the **existing** REST/read paths or new small TUI Gateway RPCs as technically appropriate; do not force every read through WS or wrap existing REST endpoints in redundant RPCs. All results use correct profile/Conversation owner resolution; fetching status for Conversation A must not paint B after a rapid route change. Changes SHOULD travel on existing owning WS transport as small events/invalidation hints, followed by refetch when necessary. Do **not** add a dedicated Noting WebSocket or fast periodic status polling merely for the countdown.
 
-**Browser state boundary (user-confirmed 2026-10-17).** The Web UI is not a second store: session titles, pins and the Schedule Table are read from the backend and rendered from that answer. A rename or pin is one native `PATCH /api/sessions/{id}` whose response is the only adopted value; no optimistic copy, browser mirror, replay queue or two-way sync layer exists. Pinned ordering is deterministic from backend fields (`sessions.pinned` boolean, then activity); the client keeps no pin-order table, so a custom drag order is out of scope. The Schedule Table is refetched on Conversation open, on Secretary invalidation hints and on panel expansion; schedule mutations emit no dedicated invalidation yet.
+**Browser state boundary (user-confirmed 2026-10-17).** The Web UI is not a second store: session titles, pins and the Schedule Table are read from the backend and rendered from that answer. A rename is one native write — `session.title` for a live Conversation, `PATCH /api/sessions/{id}` for a stored row — and a pin is one native `PATCH /api/sessions/{id}`; the response is the only adopted value; no optimistic copy, browser mirror, replay queue or two-way sync layer exists. Pinned ordering is deterministic from backend fields (`sessions.pinned` boolean, then activity); the client keeps no pin-order table, so a custom drag order is out of scope. The Schedule Table is refetched on Conversation open, on Secretary invalidation hints and on panel expansion; schedule mutations emit no dedicated invalidation yet.
 
 ### 2.7. Special `/notebook` result contract and inherited Core behavior
 
@@ -514,6 +518,55 @@ These items are **not automatically additional API work**. Before making a chang
 ### 2.9. Additive interface correctness checklist
 
 Every accepted delta requires a completed mini-contract before merge: **owner**, source file, reason native reuse fails, input constraints, stable IDs, response/terminal statuses, errors, timeout/unknown-acceptance rules, thread/lock ownership, native event projection, durable-vs-ephemeral boundary, existing-client compatibility, and tests. Use the source file's naming conventions when selecting method names. Existing RPC names and DTOs remain untouched. No other new backend features may be introduced under the label “V1 convenience.”
+
+### 2.10. Model and reasoning-effort capability projection (decided 2026-10-17)
+
+**一句话决策。** 思考强度的候选档位必须由后端解析后下发；前端只渲染后端给出的集合，拿不到就显示“未声明”，不再用固定常量冒充真实能力。
+
+**为什么需要。** 现状有三处脱节：
+
+- 前端把 `minimal … ultra` 七档写死（`apps/shared/src/reasoning-effort.ts` 与 Web 的 `src/core/reasoning.ts` 是同源复制）；后端从不告诉任何客户端“这条路由支持哪些档位”。
+- 后端其实已经维护了十几张厂商档位表（ChatGPT 订阅、Kimi Code、xAI、TokenHub 等，见 `agent/reasoning_effort.py`），OpenRouter / Nous 的聚合目录里也有 `supported_efforts`。但这些表只在“构造请求”时被用掉，没有任何一处序列化给客户端。
+- 结果是：`ultra` 在多数路由上必然被钳成 `max`；`none`（关闭思考）在自定义端点永远不出现；未设置时界面同时显示 `medium` 与 `Unknown`。
+
+**增量内容。** 在既有 `model.options` 响应的 `providers[].capabilities[<model>]` 上增加两个字段，不新增 RPC：
+
+| 字段 | 类型 | 含义 |
+|---|---|---|
+| `supported_efforts` | `list[str] \| None` | 该 `(provider, model)` 已声明的思考档位；`None` 表示没有上游声明 |
+| `supported_efforts_source` | `"config" \| "provider" \| "catalog" \| None` | 上述集合的来源 |
+
+**解析顺序（后端一个函数，按序回退）。**
+
+1. 用户配置 `model_overrides.<provider>.<model>.supported_efforts`。自定义端点（DeepSeek 直连）走这条；`_default` 可给目录未知的模型兜底。
+2. 厂商代码表（`codex_supported_efforts`、`kimi_supported_efforts` 等既有常量）。
+3. 聚合器目录（OpenRouter / Nous 的 `supported_efforts`，仅缓存态）。
+4. 都没有 → `None`。
+
+**前端必须区分的三态。**
+
+| 状态 | 渲染 |
+|---|---|
+| `supported_efforts` 有值 | 只显示这些档位 |
+| `None` | 显示现有兼容全集，并标注“该路由未声明，厂商可能再收窄” |
+| 字段缺失（旧后端） | 回退兼容全集，不报错 |
+
+**明确不做。** 不改任何发送路径（`clamp_effort`、`route_supported_efforts`、`agent/transports/*` 全部不动），不改未设置时的实际发送值；不新增 RPC 方法；不改 `binding.info`；不改现有字段语义；不为任何厂商新增档位知识——集合只能来自配置、厂商代码或聚合器目录。
+
+**兼容性红线。** `model.options` 的结果由 `contracts/registry.py` 依 `ModelCapabilities` 强校验（`extra="forbid"`）。新增字段必须同时进入契约模型并重新生成 `gateway-contract.generated.ts` / `.openrpc.json`；漏做会让 Desktop、TUI 与 Web **同时**收到校验失败。同步完成后新增字段是可选、只读的，不读它的客户端行为完全不变。
+
+**已知边界。** Codex app-server 上的 `ultra` 可能少报一格，因为解析时拿不到会话的 `api_mode`；聚合器目录为缓存态，冷启动返回 `None`，界面落到兼容全集且不阻塞。
+
+**验收。** 后端覆盖三种来源各一个用例与 `None` 回退，且契约生成物字节一致；前端三态各一个渲染用例，选择器只信任该字段或兼容全集；Desktop / TUI 的既有字段与数值零变化。
+
+**实现落点（2026-10-17，已交付）。**
+
+- `agent/models_dev.py`：`ModelCapabilities.supported_efforts` 字段；`declared_supported_efforts()` 读 `model_overrides`（显式优先，`_default` 仅在目录不认识该模型时兜底）；`model_overrides.supported_efforts` 进入 canonical key space。
+- `agent/reasoning_effort.py`：`declared_provider_efforts(provider, model)`，覆盖 ChatGPT 订阅 / Codex、Kimi Coding、xAI 三家已声明的表；其余 provider 返回 `None`。
+- `hermes_cli/inventory.py`：`_declared_efforts()` 按 `config > provider > catalog` 回退，`_apply_capabilities` 仅在确有声明时写入两个键。
+- 契约与生成物：`ModelCapabilities` 加两字段，`scripts/gen_gateway_contracts.py` 已重跑。
+- Web：`src/core/reasoning.ts` 三态返回（`source` / `undeclared`），`ReasoningSelector` 对未声明路由显示提示；其余客户端不读该字段，行为不变。
+- 实测：`openai-codex` → `none/low/medium/high/xhigh/max`；`kimi-for-coding:k3` → `low/high/max`；`custom:deepseek-flash`（未声明）→ 不出现该字段；带 `model_overrides` 声明时来源标 `config`。`ModelOptionsResult` 与 `ModelOptionProvider` 均可通过校验。
 
 ---
 

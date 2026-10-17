@@ -184,7 +184,7 @@ Python 不绕过 canonical runner 直接运行 pytest；JS/UI 入口及环境准
 | Noting 文案／提醒结构旧提案（归档） | 原 08 研讨及旧英文草案，新版提示文以 07 为准 | [归档](docs/archived/noting-message-and-reminder-contract-proposal.md) |
 | 改版前 V1.5 增量与保留机制 | 按新版替换标识继承缓存前缀、持久 child、有限续跑等机制 | [04](docs/04-hermes-secretary-v1.5-implementation-spec.md) |
 | 上下文开销台账 | token 实测口径、基线与变更记录 | [05](docs/05-context-cost-ledger.md) |
-| Web UI 基线与保留契约 | 继承原生客户端、交互、设计系统；Memo、旧类型／工具与开关按 07 替换 | [06](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md) |
+| Web UI 基线与保留契约 | 继承原生客户端、交互、设计系统；Memo、旧类型／工具与开关按 07 替换；模型思考档位投影见 §2.10 | [06](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md) |
 | UI 只读 API 早期讨论（归档） | 已被正式 06 覆盖的早期讨论；旧 Memo 设计不进入新版 | [归档](docs/archived/06-ui-read-api-discussion.md) |
 | 通用协作 / 当前看板 | 用户规则、开发测试 SOP / 动态目标与未完成项 | [AGENTS](AGENTS.md)、[CLAUDE](CLAUDE.md) |
 | 第三轮依据索引 | Secretary改版与独立个人Provider的依据、会话口径及双仓库冻结记录入口 | [Snapshot Index](.autonomous/20261016-round3-secretary-nm/snapshot-index.md) |
