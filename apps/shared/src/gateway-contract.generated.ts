@@ -4642,6 +4642,42 @@ export interface NotebookReadResult {
   output: string
   created_at: string | null
 }
+export interface SchedulesReadResult {
+  stored_session_id: string
+  profile: string
+  profile_home: string
+  conversation_ref: string | null
+  availability: 'available' | 'unavailable'
+  observed_at: string
+  schedules: ScheduleEntry[]
+  count: number
+}
+/** One Schedule Table row, field-for-field with the runtime's ``schedule_public_conn``. */
+export interface ScheduleEntry {
+  schedule_id: string
+  name?: string | null
+  content: string
+  expression: string
+  canonical_schedule: ScheduleCanonical
+  timezone: string | null
+  delivery_mode: 'instant' | 'deferred'
+  state: 'active' | 'paused' | 'completed'
+  next_due_at: string | null
+  pending_count: number
+  last_delivery: ScheduleDelivery | null
+}
+/** Core-owned canonical schedule; ``kind`` selects the one populated field. */
+export interface ScheduleCanonical {
+  kind: 'once' | 'interval' | 'cron'
+  run_at?: string | null
+  minutes?: number | null
+  expr?: string | null
+  display?: string | null
+}
+export interface ScheduleDelivery {
+  timestamp: string
+  outcome: string
+}
 /** ``answers`` rides only on a reconnect replay (locks the server already accepted; null = skipped). */
 export interface ClarifyRequestParams {
   session_id: string
@@ -4942,6 +4978,7 @@ export interface OutputCommittedPayload {
   stored_session_id: string
   conversation_ref: string
   source_message: NativeSourceMessage
+  tool_calls?: Record<string, unknown>[] | null
 }
 /** ``prompt_turn._complete_turn_payload`` / ``session_auto_continue._emit_terminal_turn_error`` / ``agent_callbacks._mirror_subagent_to_child`` (child watch mirror: ``text`` only) / ``compute_host_bridge`` (``text`` + ``status``). */
 export interface MessageCompletePayload {
@@ -5645,6 +5682,7 @@ export interface RpcMethods {
   /** Restore the working tree (or one file) to a checkpoint by hash or 1-based index. */
   'rollback.restore': { params: RollbackRestoreParams; result: RollbackRestoreResult }
   'secretary.notebook_read': { params: SecretaryReadParams; result: NotebookReadResult }
+  'secretary.schedules': { params: SecretaryReadParams; result: SchedulesReadResult }
   'secretary.state': { params: SecretaryReadParams; result: SecretaryStateResult }
   /** Attach the frontend to a live session without closing the previously focused one. */
   'session.activate': { params: SessionActivateParams; result: SessionActivateResult }
@@ -6004,6 +6042,7 @@ export const RPC_METHODS = [
   'rollback.list',
   'rollback.restore',
   'secretary.notebook_read',
+  'secretary.schedules',
   'secretary.state',
   'session.activate',
   'session.active_list',

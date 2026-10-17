@@ -88,6 +88,31 @@ def secretary_state(db, stored_session_id):
     return result
 
 
+def schedules_read(db, stored_session_id):
+    """Read-only Schedule Table of the session's Conversation.
+
+    The list projection is the Scheduler's own (``apply_schedule_action_conn`` with the
+    ``list`` action, which only SELECTs), so the browser displays exactly the rows the
+    model tool returns — no second field mapping to drift. Unbound Conversations are
+    reported unavailable, like ``secretary_state``.
+    """
+    from secretary.scheduler_table import apply_schedule_action_conn
+
+    now = time.time()
+    home = Path(db.db_path).parent
+    result = {"stored_session_id": stored_session_id, "conversation_ref": None,
+              "availability": "unavailable", "observed_at": format_timestamp(now, profile_home=home),
+              "schedules": [], "count": 0}
+    with db._read_ctx() as conn:
+        ref = db.resolve_conversation_ref_conn(conn, stored_session_id, read_only=True)
+        if ref is None:
+            return result
+        listed = apply_schedule_action_conn(conn, ref, {"action": "list"}, now=now, profile_home=home)
+        result.update(conversation_ref=ref, availability="available",
+                      schedules=listed["schedules"], count=listed["count"])
+    return result
+
+
 def notebook_read(db, stored_session_id):
     from secretary.notebook_render import render_notebook
     global_enabled, _settings = global_noting_config(db)
