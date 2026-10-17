@@ -243,18 +243,32 @@ def test_anchor_outside_parent_active_context_fails_closed(parent, db):
 
 
 def test_failed_turn_does_not_commit(parent, db, stub_client):
-    stub_client.chat.completions.create.side_effect = RuntimeError("provider down")
-    admission_id = db.noting_admit(parent._secretary_conversation_ref, "m2", kind="force")
-    outcome = run_noting_task(
-        parent, admission_id=admission_id, conversation_ref=parent._secretary_conversation_ref,
-        anchor_message_uid="m2", trigger_type="force", runtime_profile="NOTING",
-        task_instruction="Maintain the Notebook.", state_provider=lambda child: empty_state(),
-    )
-    assert outcome.committed is False
-    assert outcome.status in {"failed", "terminal_failure"}
-    assert db.notebook_current(parent._secretary_conversation_ref) is None
-    assert db.noting_child(admission_id)["status"] == outcome.status
-    assert active_noting_task_count() == 0
+    from secretary.web_events import subscribe, unsubscribe
+    from tui_gateway.contracts.web_read import SecretaryChangedPayload
+
+    reasons = []
+
+    def observe(home, owner, reason):
+        event = SecretaryChangedPayload(profile_home=str(home), conversation_ref=owner, reason=reason)
+        reasons.append(event.reason)
+
+    subscribe("failed-task-wire", observe)
+    try:
+        stub_client.chat.completions.create.side_effect = RuntimeError("provider down")
+        admission_id = db.noting_admit(parent._secretary_conversation_ref, "m2", kind="force")
+        outcome = run_noting_task(
+            parent, admission_id=admission_id, conversation_ref=parent._secretary_conversation_ref,
+            anchor_message_uid="m2", trigger_type="force", runtime_profile="NOTING",
+            task_instruction="Maintain the Notebook.", state_provider=lambda child: empty_state(),
+        )
+        assert outcome.committed is False
+        assert outcome.status in {"failed", "terminal_failure"}
+        assert db.notebook_current(parent._secretary_conversation_ref) is None
+        assert db.noting_child(admission_id)["status"] == outcome.status
+        assert active_noting_task_count() == 0
+        assert reasons == ["task_started", "task_finished"]
+    finally:
+        unsubscribe("failed-task-wire")
 
 
 def test_parent_interrupt_does_not_cancel_child(parent, db, stub_client):

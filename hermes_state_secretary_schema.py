@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS secretary_branch_messages (
     message_id INTEGER NOT NULL,
     message_uid TEXT NOT NULL,
     is_compaction INTEGER NOT NULL DEFAULT 0,
+    coverage_position INTEGER,
     PRIMARY KEY(conversation_ref, position)
 );
 CREATE TABLE IF NOT EXISTS secretary_branch_freezes (

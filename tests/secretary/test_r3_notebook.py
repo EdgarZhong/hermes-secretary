@@ -343,6 +343,90 @@ def test_working_view_never_reload_new_parent_pointer_and_late_commit_is_success
     assert "termination" not in current and "base_snapshot_id" not in current
 
 
+@pytest.mark.parametrize("repetitions", [1, 2])
+def test_compaction_carry_does_not_promote_old_anchor_past_new_human_anchor(db, repetitions):
+    original = store(db, "m3")
+    entry = create(original)
+    previous = original.commit(termination=FINISH)
+    db.append_message("s", "assistant", "Notebook read-only feedback", message_uid="human",
+                      display_metadata={"human_only": True}, timestamp=400)
+    current = store(db, "human")
+    late = store(db, "m3")
+    visible = [row for row in db.get_messages_as_conversation("s")
+               if not (row.get("display_metadata") or {}).get("human_only")]
+    for index in range(repetitions):
+        db.archive_and_compact("s", [{"role": "assistant", "content": "Compaction summary",
+                                      "message_uid": f"summary-{index}", "_compressed_summary": True},
+                                     *deepcopy(visible)])
+    rows = db.get_full_foreground("s")[1:]
+    assert next(row["message_id"] for row in rows if row["message_uid"] == "m3") > next(
+        row["message_id"] for row in rows if row["message_uid"] == "human")
+    current.update(entry["entry_id"], {"fields": {"description": "Current accepted outcome"}})
+    result = current.commit(termination=FINISH)
+    assert result["pointer_changed"]
+    assert result["effective_snapshot_id"] == result["snapshot_id"] != previous["snapshot_id"]
+    late.update(entry["entry_id"], {"fields": {"description": "Older task outcome"}})
+    late_result = late.commit(termination=FINISH)
+    assert not late_result["pointer_changed"]
+    assert db.notebook_snapshot_audit(late_result["snapshot_id"])
+    shown = show_notebook(db.notebook_current(current.conversation_ref))
+    assert shown["payload"]["work"][0]["fields"]["description"] == "Current accepted outcome"
+
+
+def test_fork_inherits_logical_coverage_after_parent_compaction_carries_old_uid(db):
+    original = store(db, "m3")
+    entry = create(original)
+    original.commit(termination=FINISH)
+    db.append_message("s", "assistant", "Notebook read-only feedback", message_uid="human",
+                      display_metadata={"human_only": True}, timestamp=400)
+    current = store(db, "human")
+    visible = [row for row in db.get_messages_as_conversation("s")
+               if not (row.get("display_metadata") or {}).get("human_only")]
+    db.archive_and_compact("s", [{"role": "assistant", "content": "Compaction summary",
+                                  "message_uid": "summary", "_compressed_summary": True}, *visible])
+    current.update(entry["entry_id"], {"fields": {"description": "Current accepted outcome"}})
+    current.commit(termination=FINISH)
+    make(db, "branch", "s", "_branched_from")
+    branch_ref = db.inherit_foreground_branch("s", "branch")
+    inherited = db.notebook_current(branch_ref)
+    assert inherited["anchor_message_uid"] == "human"
+    assert inherited["payload"]["work"][0]["fields"]["description"] == "Current accepted outcome"
+    db.clear_messages("s")
+    db.notebook_reselect_pointer(branch_ref)
+    assert db.notebook_current(branch_ref)["anchor_message_uid"] == "human"
+    new_row = add(db, "branch", "Branch has a new outcome", "branch-new", timestamp=500)
+    branch = NotebookStore(db, branch_ref, anchor_message_uid="branch-new")
+    branch.update(entry["entry_id"], {"fields": {"description": "New branch outcome"}})
+    assert branch.commit(termination=FINISH)["pointer_changed"]
+    make(db, "nested", "branch", "_branched_from")
+    nested_ref = db.inherit_foreground_branch("branch", "nested")
+    assert db.notebook_current(nested_ref)["anchor_message_uid"] == "branch-new"
+    db.rewind_to_message("branch", new_row)
+    db.notebook_reselect_pointer(branch_ref)
+    assert db.notebook_current(branch_ref)["anchor_message_uid"] == "human"
+    db.notebook_reselect_pointer(nested_ref)
+    assert db.notebook_current(nested_ref)["anchor_message_uid"] == "branch-new"
+
+
+def test_composite_carrier_user_projection_remains_newer_coverage_and_rewinds(db):
+    from agent.context_compressor import SUMMARY_PREFIX, _SUMMARY_END_MARKER
+
+    original = store(db, "m3")
+    entry = create(original)
+    previous = original.commit(termination=FINISH)
+    row_id = db.append_message("s", "user", SUMMARY_PREFIX + "summary\n" + _SUMMARY_END_MARKER
+                               + "\n\nThe genuine new user request", message_uid="composite",
+                               _compressed_summary=True, timestamp=400)
+    current = store(db, "composite")
+    current.update(entry["entry_id"], {"fields": {"description": "Outcome from the genuine user request"}})
+    result = current.commit(termination=FINISH)
+    assert result["pointer_changed"]
+    assert db.notebook_current(current.conversation_ref)["snapshot_id"] == result["snapshot_id"]
+    db.rewind_to_message("s", row_id)
+    db.notebook_reselect_pointer(current.conversation_ref)
+    assert db.notebook_current(current.conversation_ref)["snapshot_id"] == previous["snapshot_id"]
+
+
 def test_loading_uses_captured_snapshot_id_not_a_second_pointer_read(db, monkeypatch):
     initial = store(db)
     create(initial)

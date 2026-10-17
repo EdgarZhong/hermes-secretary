@@ -591,8 +591,7 @@ def run_noting_task(
     finally:
         failure_notice.publish(outcome.notice_error)
         finish_child_admission(task_db, admission_id, status=outcome.status)
-        unregister_active_noting_task(child_session_id, child,
-                                     reason="task_finished" if outcome.committed else "task_closed")
+        unregister_active_noting_task(child_session_id, child)
         _close_child(child)
     return outcome
 

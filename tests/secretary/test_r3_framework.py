@@ -110,6 +110,34 @@ def test_newer_coverage_finishes_first_late_snapshot_is_successful_without_notic
     assert "Old coverage" not in notices(db)[0]["content"]
 
 
+def test_carried_old_uid_cannot_suppress_new_human_anchor_completion(runtime):
+    parent, db = runtime
+    original = book(parent)
+    entry = create(original, "Original outcome")
+    commit(original)
+    db.append_message("main", "assistant", "Notebook read-only feedback", message_uid="human",
+                      display_metadata={"human_only": True}, timestamp=300)
+    current, late = book(parent, anchor="human"), book(parent)
+    visible = [row for row in db.get_messages_as_conversation("main")
+               if not (row.get("display_metadata") or {}).get("human_only")]
+    db.archive_and_compact("main", [{"role": "assistant", "content": "Compaction summary",
+                                     "message_uid": "summary", "_compressed_summary": True}, *visible])
+    parent._session_messages = db.get_messages_as_conversation("main")
+    current.update(entry["entry_id"], {"fields": {"description": "Current accepted outcome"}})
+    result = commit(current)
+    assert publish(parent, result)
+    late.update(entry["entry_id"], {"fields": {"description": "Older task outcome"}})
+    late_result = commit(late)
+    assert not late_result["pointer_changed"] and not publish(parent, late_result)
+    rows = notices(db)
+    assert [row["display_metadata"]["noting_snapshot_id"] for row in rows] == [result["snapshot_id"]]
+    snapshot = db.notebook_current(current.conversation_ref)
+    assert render_notebook(snapshot, profile_home=Path(db.db_path).parent) in rows[0]["content"]
+    assert "Current accepted outcome" in rows[0]["content"]
+    assert "Older task outcome" not in rows[0]["content"]
+    parent.run_conversation.assert_not_called()
+
+
 def test_queued_old_snapshot_and_its_proposal_are_dropped_entirely(runtime):
     parent, db = runtime
     config(parent, 1, 1)

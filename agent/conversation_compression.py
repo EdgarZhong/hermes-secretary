@@ -3037,7 +3037,7 @@ def _run_summary_dispatch(
                 # no-op entry claims (lock sit-outs, gates, the cancelled-fence skip above) cannot supersede
                 # the candidate this run produces (#112482).
                 _mark_compressor_working_attempt(agent.context_compressor, attempt_generation)
-                compressed = compress_fn(model_visible_messages(messages), **compress_kwargs)
+                compressed = compress_fn(messages, **compress_kwargs)
                 # Freeze a hard stop that arrived after the last provider attempt but before session state rotates.
                 if hard_cancel_event is not None and hard_cancel_event.is_set():
                     raise AuxiliaryExplicitCancellation()
@@ -3515,7 +3515,7 @@ def _finish_compaction_boundary(
 
 
 from agent.compression_force_notice import (  # noqa: E402
-    _candidate_rejected, capture_force_notices, force_summary_scope, force_comparison,
+    _candidate_rejected, capture_force_notices, force_summary_scope,
     force_candidate_source, force_commit_carry, force_verbatim, force_original_verbatim, retire_committed_force,
     force_verbatim_count, raise_if_force_committed,
 )
@@ -3631,6 +3631,7 @@ def _commit_compaction(
                 attempt_snapshot=attempt.snapshot,
             )
             if compressed is None:
+                _restore_messages_snapshot(messages, messages_before_compression)
                 return _CommitOutcome(
                     compressed=messages, refused_prompt=_refused_sp, commit_started_at=commit_started_at
                 )
@@ -3650,10 +3651,12 @@ def _commit_compaction(
                 # scaffolding) would flag a summarized row superseded instead: gone from display and search.
                 # Only while a turn holds the session: between turns (manual /compress, gateway hygiene) the
                 # anchor is the last turn's, and the rows it points at are durable, just unmarked.
+                source_before = messages_before_compression if messages_before_compression is not None else messages
                 _turn_idx = getattr(agent, "_persist_user_message_idx", None)
                 if (getattr(agent, "_active_session_turn_lease_holder", None) is not None
-                        and isinstance(_turn_idx, int) and 0 <= _turn_idx < len(messages)):
+                        and isinstance(_turn_idx, int) and 0 <= _turn_idx < len(source_before)):
                     from agent.context_compressor import _DB_PERSISTED_MARKER
+                    _turn_idx = len(model_visible_messages(source_before[:_turn_idx]))
                     tail_count -= sum(
                         1 for m in messages[max(_turn_idx, len(messages) - tail_count):]
                         if isinstance(m, dict) and not m.get(_DB_PERSISTED_MARKER)
@@ -3679,7 +3682,7 @@ def _commit_compaction(
                 from agent.conversation_compression_archive import coverage_for_commit
                 covered_ids, unresolved_held = coverage_for_commit(
                     agent._session_db, agent.session_id,
-                    messages_before_compression if messages_before_compression is not None else messages,
+                    model_visible_messages(source_before),
                     force_original_verbatim(force_notice_plan, verbatim_tail))
                 agent._session_db.archive_and_compact(
                     agent.session_id, persisted, model_config_patch={PROACTIVE_PRUNE_REARM_MODEL_CONFIG_KEY: None},
@@ -3748,16 +3751,8 @@ def _commit_compaction(
             ):
                 if rotation_rollback:
                     old_session_id = None
-                # In-place sibling of the rotation rollback above (#99477). archive_and_compact() is atomic,
-                # so a raise before it returned means EVERY pre-compaction row is still ``active = 1`` in
-                # state.db — nothing was archived and the compacted set was never inserted. But
-                # ``compressed`` is the marker-swept output of compress() (_strip_persistence_markers,
-                # #57491) and the post-commit ``stamp_db_persisted_markers`` never ran, so handing it back
-                # makes the next append-only flush treat the whole compacted transcript as new and INSERT it
-                # ON TOP of the rows it was supposed to replace. The active set then holds the summary AND
-                # the turns it summarized; the next resume reloads both, the token count goes UP, preflight
-                # fires again, and each failed attempt appends another copy of the protected head + tail
-                # (#99477: ~15 real turns stored as 3,814 rows, the first user message repeated 893 times).
+                # An atomic failure leaves the old rows active. Returning marker-swept output would
+                # reinsert the compacted transcript beside them on the next flush (#99477/#57491).
                 # Gate on ``split_status`` rather than ``compacted_in_place``: it is assigned on the
                 # statement immediately after the atomic commit returns, so a committed compaction can never
                 # be rolled back into a live/durable mismatch of the opposite sign. The deepcopy carries
@@ -3804,7 +3799,8 @@ class _SummaryPhase:
     pre_msg_count: int = 0
     abort_prompt: Optional[str] = None
     force_notice_plan: Any = None
-
+    verbatim_tail: Optional[list] = None
+    comparison_before: Optional[list] = None
 
 def _run_summary_phase(
     agent: Any, messages: list, *, lease: _CompressionLease, in_place: bool, checkpoint_required: bool,
@@ -3837,12 +3833,15 @@ def _run_summary_phase(
                 # The adopted list is durable; skip it on the post-compression flush.
                 agent._persist_user_message_idx = len(messages)
         prepare_noting_for_native_compression(agent, messages, trigger=noting_trigger, force=force, verbatim_tail=verbatim_tail)
+        # Freeze/rollback use the raw history; every compression consumer shares the visible source.
+        raw_messages, messages = messages, model_visible_messages(messages)
+        verbatim_tail = None if verbatim_tail is None else model_visible_messages(verbatim_tail)
         memory_context = _pre_compress_memory_context(agent, messages, checkpoint_required)
         compress_fn, compress_kwargs = _resolve_compress_call(
             agent, approx_tokens=approx_tokens, focus_topic=focus_topic, force=force, memory_context=memory_context,
             bypass_cooldown=bypass_cooldown,
         )
-        messages_before_compression = copy.deepcopy(messages)
+        messages_before_compression = copy.deepcopy(raw_messages)
         force_notice_plan = capture_force_notices(agent, messages, verbatim_tail)
         _activity_heartbeat = _CompressionActivityHeartbeat(
             agent, commit_fence=commit_fence, emit_client_status=lease.status_emitted,
@@ -3895,7 +3894,8 @@ def _run_summary_phase(
     return _SummaryPhase(
         messages=messages, compressed=compressed, messages_before_compression=messages_before_compression,
         approx_tokens=approx_tokens, pre_msg_count=pre_msg_count,
-        force_notice_plan=force_notice_plan,
+        force_notice_plan=force_notice_plan, verbatim_tail=verbatim_tail,
+        comparison_before=model_visible_messages(messages_before_compression) if force_notice_plan is None else force_notice_plan.comparison,
     )
 
 
@@ -4114,22 +4114,22 @@ def compress_context(
     )
     if phase.abort_prompt is not None:
         return phase.messages, phase.abort_prompt
-    messages, compressed = phase.messages, phase.compressed
+    messages, compressed, verbatim_tail = phase.messages, phase.compressed, phase.verbatim_tail
     candidate_source = force_candidate_source(phase)
     messages_before_compression = phase.messages_before_compression
     approx_tokens, _pre_msg_count = phase.approx_tokens, phase.pre_msg_count
     _commit_fence_entered = False
     try:
-        # Capture the verdict before rotation callbacks: lifecycle hooks may reset
-        # compressor fields on rebind; record only after the full boundary commits.
+        # Capture before rotation callbacks reset fields; record only after the durable commit.
         _compression_made_progress, _compression_used_fallback, _compression_feasibility_skip = (
             bool(getattr(agent.context_compressor, name, False))
             for name in ("_last_compression_made_progress", "_last_summary_fallback_used", "_last_feasibility_skip")
         )
         if _candidate_rejected(
             agent, compressed, messages, messages_before_compression, attempt_generation=attempt.generation,
-            attempt_started_at=attempt.started_at, comparison_before=force_comparison(phase),
+            attempt_started_at=attempt.started_at, comparison_before=phase.comparison_before,
         ):
+            _restore_messages_snapshot(messages, messages_before_compression)
             return messages, _existing_system_prompt(agent, system_message)
         if commit_fence is not None:
             _commit_fence_entered = commit_fence.begin_commit(_hard_cancel_event)

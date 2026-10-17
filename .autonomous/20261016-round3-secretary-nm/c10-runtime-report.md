@@ -152,3 +152,11 @@ _freeze_and_admit(db, conversation_ref, *, kind, frozen_identity=None,
 6. **manifest与可review增量**：旧run_at阶段完整保存在`manifest-before-display-review.json`、`before-display-review.patch`及两个before-display源快照。当前`manifest.json`追加`display_review`，保留旧runs并更新最终完整hash；`display-review-delta.patch`仅含相对上次root review的production＋测试增量，`final.patch`为相对ac703的完整F15 patch。精确命令、日志、耗时、两路径检查与hash均落ignored，不覆盖旧日志。
 
 7. **停止**：两源码／测试路径及报告停止写入，交root review／统一commit。F14已接收结果原样保留；无stage／commit、其它测试重跑、共享venv变更、round3／模型或大型检查。
+
+## F19 hidden Anchor 压缩失效：提前收口（2026-10-17）
+
+- 原真实d434ffd的admission15：raw21含human_only行643／644，摘要仅见19；归档却按raw末9行636–644撤掉尾部，而实际可见tail对应634–642。644无同UID有效替身，Full正确排除，child finish后被提交门禁abandoned。原生folded-away警告选中了隐藏/notebook回复，不是正常Main回复。原始state-after副本SHA与root提供值一致；只读调查见ignored `anchor-validity-repair/investigation.json`。
+- production仅改`agent/conversation_compression.py`：Noting冻结先见raw，随后绑定可见压缩源和可见verbatim tail，摘要／candidate／reply／user后处理／held watermark／tail／coverage使用一致可见源；raw快照专用于回滚，当前Turn索引按投影重定位，拒绝／no-op比较可见源并返回原raw。hidden沿原生unseen clone保留，不改Snapshot gate、Foreground或pointer文件。文件物理行数回到原4498；最后仅删一空行，不影响已运行代码。
+- 新`tests/secretary/test_r3_compaction_visibility.py`使用真实AIAgent、原生ContextCompressor／archive_and_compact／Noting worker与commit；仅summary／provider响应受控。末尾／中部／无hidden×full／here1六场景，含summary期间另写unseen输入、实际finish提交与下一Main API无泄露；另三项no-op／summary-failure／DB-failure原raw恢复。
+- canonical runner依次：`red.log`初版6F（含两项错误地在wire读UID的测试观察错误）；修正观察后的`red-final.log` **3F／3P**，明确复现原abandoned及两中部hidden错误归档；初修`green.log`6P；补回滚检查`rejection-red.log`2F／1P；修正后`green-final.log` **9P**，runner wall依次3.9／4.6／5.5／2.2／6.9秒，共5次、23.1秒。命令统一显式工作区HERMES_PYTHON与RETRIES=0，经scripts/run_tests.sh选择该新文件；仅rejection-red加`-k rejected_visible`。不累计重复节点，不冒称真实模型。
+- 用户要求额度前立即返回，现停止写入／运行。**未执行**Force旧节点、其它受影响原生邻域、Ruff／health／diff-check；未整理最终manifest／patch hash，未stage／commit、未动round3或源库、未新启模型或独立门禁。root需亲自review此当前patch与剩余证据缺口；本包不能宣称完整开发验收通过。

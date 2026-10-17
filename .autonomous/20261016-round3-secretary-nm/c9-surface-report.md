@@ -114,3 +114,10 @@ Gateway due tick
 5. **缺口：** 此为开发反证和正式接线修复；真实DeepSeek原失败序列尚待c4 owner独占round3复跑。没有冒称真实产品已修复通过。C11-P仍只准备；C10-T保持基线日志，F10 owner race由root单独补线后待恢复测试验证。
 6. **接口：** `filter_tool_definitions(tools, agent=None)`签名不变；既有`_reconcile_catalog`、`_dispatch_bridge_tool`与`_tool_search_scoped_names`继续共享它。后两处的同runtime scope/capability cache keys已含三flags，无需第二权限或缓存来源。传入列表和owner Schema不被修改，固定顺序、同名去重和无scope原生identity已有断言。
 7. **版本/下一步：** 修复起点公共`e2fd9081a6a128d682ec1d59785ae600e0069c88`，本域两文件尚未提交；精确hash、patch、有效node并集和全部日志位于ignored `.hermes-dev/round3-local-20261017-l0/f09/manifest.json`。已停止这两个文件写入，交root review后统一提交，再由真实owner重走用户失败序列。本任务不碰F08/F10生产文件、共享fixture或round3配置。
+
+
+## R3-F20 失败任务结束事件接线修补（主会话）
+
+真实r3019-retest日志发现失败／abandoned结束后发布task_closed，既有SecretaryChangedPayload.reason不接受该值，导致客户端状态刷新无效。主会话仅改noting_child原finally：无论是否提交，都通过既有unregister默认task_finished信号报告任务运行结束；completed/failed/abandoned事实仍由原outcome与admission管理，不将失败冒充Snapshot提交。未改Web DTO／Schema、工具、结束条件或权限。
+
+针对实际provider失败路径扩展既有test_failed_turn_does_not_commit：原生child失败及资源归零，沿真实observer用既有wire Payload校验开始／结束reason。旧代码RED1（observer拒task_closed，收不到合法结束）；微修GREEN1，原未提交／admission状态保障保留。canonical runner red9.09s、green9.9s，不重复F17整组或全量。源码／日志指纹及边界见ignored task-finish-wire/manifest.json；证据位置在.hermes-dev/round3-local-20261017-l0/，没有真实模型调用。该修补只恢复现有协议接线，不是UI改版、独立Verification或Validation。

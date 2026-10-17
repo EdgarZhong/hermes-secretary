@@ -20,3 +20,8 @@ engineering-index=E01
 engineering-review=verification.md:6.1
 engineering-user-ratification=pending
 engineering-source=用户提供AGENTS项目级必要自主口径收敛与AI指令具体动作规则；R3-016完整托管
+
+# 用户R3-019确认来源先结算、Candidate最后关闭；R3-020本阶段停止点
+authorized-source-first-prompt=d434ffd7c9dadc777458386c8ed7588779aeea5c
+authorization-source-first-index=R3-019,R3-020
+engineering-E01-status=historical-prompt-repair-not-new-product-semantics;superseded-by-user-R3-019-order

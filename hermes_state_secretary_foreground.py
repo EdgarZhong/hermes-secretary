@@ -121,7 +121,8 @@ class SecretaryForegroundMixin:
         """Frozen branch references plus live path rows; no copied transcript content."""
         rows = []
         inherited = conn.execute(
-            "SELECT m.*, b.is_compaction AS inherited_compaction FROM secretary_branch_messages b "
+            "SELECT m.*, b.is_compaction AS inherited_compaction, b.coverage_position AS inherited_coverage_position "
+            "FROM secretary_branch_messages b "
             "JOIN messages m ON m.id = b.message_id WHERE b.conversation_ref = ? "
             "AND NOT EXISTS(SELECT 1 FROM secretary_branch_exclusions x "
             "WHERE x.conversation_ref=b.conversation_ref AND x.message_uid=b.message_uid) ORDER BY b.position",
@@ -130,6 +131,7 @@ class SecretaryForegroundMixin:
         for row in inherited:
             item = dict(row)
             item["_inherited"] = True
+            item["_notebook_coverage_position"] = item.pop("inherited_coverage_position")
             rows.append(item)
         frozen_ids = {row["id"] for row in inherited}
         frozen_by_uid = {row["message_uid"]: row for row in rows}
@@ -391,9 +393,13 @@ class SecretaryForegroundMixin:
             rows = rows[:index + 1]
         # A composite carrier yields a boundary and ordinary projection from ONE source row.
         source_rows = list({row["message_id"]: row for row in rows}.values())
+        parent_coverage = self._notebook_anchor_positions_conn(conn, parent_ref)
+        inherited_anchors = {row["message_uid"] for row in source_rows if row["message_uid"] in parent_coverage}
+        coverage = {uid: index for index, uid in enumerate(sorted(inherited_anchors, key=parent_coverage.get))}
         conn.executemany(
-            "INSERT INTO secretary_branch_messages VALUES (?, ?, ?, ?, ?)",
-            [(branch_ref, i, row["message_id"], row["message_uid"], int(row["is_compaction"])) for i, row in enumerate(source_rows)],
+            "INSERT INTO secretary_branch_messages VALUES (?, ?, ?, ?, ?, ?)",
+            [(branch_ref, i, row["message_id"], row["message_uid"], int(row["is_compaction"]),
+              coverage.get(row["message_uid"])) for i, row in enumerate(source_rows)],
         )
         conn.execute("INSERT INTO secretary_branch_freezes VALUES (?, ?, ?, ?)",
                      (branch_ref, parent_session_id, through_message_uid, time.time()))

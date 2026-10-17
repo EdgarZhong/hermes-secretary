@@ -256,3 +256,45 @@ F12正式`run_noting_task`→同一持久child→原生`run_conversation`→live
 6. **接口／manifest**：freeze_parent_active_prefix新增内部可选keyword conversation_ref；正式spawn与run传同一admission Ref，外部四工具、admission身份定义与Snapshot／pointer接口不变。旧F12测试源码未改。精确三路径最终SHA、base、四次命令／nodes／日志hash及scope测量见ignored `f17/manifest.json`；`final.patch`包含新增test_r3_frozen_anchor_handoff.py的完整三路径增量，`real-origin.json`只记录脱敏metadata及原证据hash，没有凭据或完整root正文。
 
 7. **停止与后续**：三源码／测试路径已停止写入，交root集中review／commit后再由c4独占真实复证。无stage／commit、派生、round3／真实模型、其它production／规格／根docs／规则／依赖变更。独立Verification／Validation判定由主会话组织，20P不代替最终全范围复审。
+
+
+## R3-F18 · Snapshot coverage 排序修复（2026-10-17）
+
+**状态：Development 修复及定向证据已交回，待主会话亲自 review；不宣称第二次 Verification、Validation 或 F16 语义结算完成。** 调查固定生产 `25241d8c83d0dd01dce08579c57c7be62961d063`，实施基线 `d434ffd7c9dadc777458386c8ed7588779aeea5c` 加本包未提交 patch。主会话先批准只读调查，再批准三文件修复，确认 fork 反例后扩大到 Foreground/schema；root 持有文档与最终集成提交。
+
+### 对应条款、真实根因与正式路径
+
+07 §0 Anchor/coverage、§3.1 原子提交与合法路径重选、§3.2 Main 只读有效 Snapshot；白板 N1/N3/N4；保留02 §2.6/2.7/3.3/3.4及04 §4.1/4.7。索引 R3-002 允许较早 coverage 晚提交不生效，本次不属于该情况；E1/E2 语义结算质量不参与 coverage 排序。
+
+真实 admission13 的新 human_only Anchor `372147c2f1b04a2ca490ab51624f4913` 原生行533、Full位置22；旧 Anchor `7e3a0b126eb941df875fcbf72b277719` 的 UID 未变，但经压缩从行121/515携带到546、Full位置35。原实现直接以 Full 最新物理 generation 的展示位置为 coverage，误把旧 Snapshot `snap_52fa…` 排在新 `snap_939f80…` 之后。唯一 binding／physical 已排除跨 Session 混合。不是 finish 失败，也不应放宽 Framework gate。
+
+正式链：`NotebookStore.commit → notebook_commit_snapshot_result_conn → _notebook_reselect_pointer_conn → _notebook_anchor_positions_conn`。Snapshot 插入、pointer选择和返回的 pointer_changed 继续属于同一事务；完成消息继续消费该事务事实并在实际追加时重验 pointer。
+
+### 实际修改与接口影响
+
+- `hermes_state_secretary_notebook.py`：当前 Full 合法 Anchor 集合继续负责有效性，coverage改按同一当前合法 source 路径的 UID 首次引入顺序；不是全库首次时间、最小rowid或提交时间。与现有 Force introduced-map 原则一致，旧 UID 携带不提升 coverage。
+- `hermes_state_secretary_schema.py`：现有自有 `secretary_branch_messages` 增加内部 `coverage_position`，与 Full `position` 分开。只定义全新库 schema，无迁移、ALTER或旧库兼容分支。
+- `hermes_state_secretary_foreground.py`：同一 fork freeze 事务保存父路径合法 Anchor 的归一化 coverage 顺序，读取时作为内部 source 字段传回；Full 位置不改变。所有继承 coverage 都小于继承行总数，分支新增消息沿源数组位于继承内容之后；父后续清理、原生 source 保全克隆和嵌套 fork 不重排已冻结 coverage，分支自身 rewind 仍经合法集合过滤。
+- 两个 `test_r3_*` 文件新增正式 SessionDB／NotebookStore／archive_and_compact／Framework 反例，不改Prompt、能力、工具面或通知gate。公共方法签名及Snapshot输出形状无变化；仅内部 fork 表字段增加，当前旧 schema 运行库需要按开发规则重建。
+
+### 验证结果与精确证据
+
+证据目录 `.hermes-dev/round3-local-20261017-l0/pointer-repair/`；完整SHA256、patch和依赖版本见 `manifest.json`、`f18.patch`。环境为 macOS arm64、官方PM `.venv` Python3.14.7；测试均由 canonical runner 的临时隔离库执行，没有启动产品、真实模型或NM，也未打开round3源库。
+
+| 日志 | 结果与覆盖 | runner墙钟 |
+|---|---|---|
+| `red.log` | 旧实现4 FAIL：一次/两次carry使新提交不生效、fork继承旧coverage、错误抑制新完成通知 | 见原日志 |
+| `first-fix.log` | 首次UID修复3 PASS／fork 1 FAIL，证明需要冻结独立coverage字段；不是跳过fork | 1.2s |
+| `green-new.log` | 新反例5 PASS：重复carry、新有效Snapshot和Main正文、晚旧提交审计不回退、完整通知、父清理后fork稳定、分支新增与rewind、嵌套fork、复合carrier真实user投影 | 0.8s |
+| `green-neighbors.log` | 26 PASS：旧pointer/事务rollback/并发晚结果、fork有效/无效继承、原生父编辑保全、分支rewrite/partial rewind、来源重验、Frame追加竞态及rewind不伪发完成 | 1.5s |
+| `checks.log` | 五个明确代码文件：仓库固定ruff PASS；未改动官方Measurer/compare/apply_allows/verdict与规则，按HEAD增量health 0 blocking／0 advisory | 小范围 |
+
+新增反例精确入口：`test_compaction_carry_does_not_promote_old_anchor_past_new_human_anchor[1/2]`、`test_fork_inherits_logical_coverage_after_parent_compaction_carries_old_uid`、`test_composite_carrier_user_projection_remains_newer_coverage_and_rewinds`、`test_carried_old_uid_cannot_suppress_new_human_anchor_completion`。没有复跑F17冻结20项、完整suite或全套检查。
+
+测试统一前缀 `HERMES_PYTHON="$PWD/.venv/bin/python" scripts/run_tests.sh`。新反例使用两个变更测试文件及 `-k 'compaction_carry_does_not_promote or fork_inherits_logical_coverage or carried_old_uid_cannot_suppress or composite_carrier_user_projection'`。相邻节点准确文件与完整 `-k` 选择已记录在证据命令日志及本报告对应执行记录，不能把文件全部用例当作覆盖。
+
+原真实备份由root提供，复制后只读分析；前后SHA256均 `ff2e40c328652450a0c4db55517a5989631c874a325f4459f2f6f3eb00a692b4`。`anchor-analysis.json` 保存原正式 Full 排名；`fixed-selector-analysis.json` 在增加分支字段前用同一正式修复selector只读得到旧coverage31、新coverage92，正确选择 `snap_939f80df48c74e03823afee7564fa13a`，存储pointer仍为原 `snap_52fa…`，没有写库。增加新列后不再对旧 schema 调用新 Full 读取，也不把该中间只读分析冒称最终新schema真实模型验收。
+
+### 缺口、后续动作与交接
+
+主会话 review 实际五文件patch后统一提交；真实owner在完整保留备份后重建round3隔离库，再选择需要的真实路径复证。F18当前有可复现RED、正式机制GREEN和原证据只读排序对照，尚无新schema真实模型运行结论。F16语义顺序、F17冻结交接及新F19 Anchor资格问题由其owner处理，本包不重复调查或代其关闭。没有修改冻结产品要求、检查规则、阈值或权限，也没有启动独立门禁。

@@ -674,10 +674,18 @@ P2只做基本检查，不重测官方CLI，不做真实NM写入。
 | R3-F13 | 原生/notebook误显示Snapshot/anchor审计ID，04§4.2要求隐藏 | personal_provider：仅修slash renderer两行，不改模型show envelope或Framework | 原CLI失败、独立human/model与Framework三项PASS，eff3235真实human隐藏header、model保留完整状态通过；主会话接收，已关闭 |
 | R3-F14 | 首轮最终回归29 FAIL／4 setup ERROR及no-tmp／health阻断；不能以旧测试或缺依赖直接豁免 | 主会话统筹唯一文件owner修复；保留原生行为保障，不复活已退出接口、不跳过或放宽检查 | 已修复并由主会话review接收：旧27＋邻域2共29，压缩6＋邻域4共10，两失败检查定向通过；首33个失败／错误全部有复证。ACP采用现锁extra独立官方PM环境；详见regression-plan.md §7及两个修复报告；实现整改关闭，独立门禁复审待执行 |
 | R3-F15 | Verification V51：Notebook人／模型可读绝对时间泄漏微秒，违反保留02§5.6；内部精度应保留 | local_environment仅输出投影修复，覆盖maintain／working show／control首续／Main／slash／Proposal／Framework，不改Store/public_state内部语义 | 公共Notebook17项、个人Recall8节点＋17子例已review接收；Scheduler run_at／绝对display共8项有效定向通过（含root补漏复证），已review接收；实现整改关闭，待全范围独立复审 |
-| R3-F16 | Verification V23：真实USER写入成功且Candidate13归档，source6 v34仍保留全部成功经验，无继续保留理由；白板E1/L2、07§8.11 | 核查实际注入Prompt并按既有语义修正必要缺口；同一正式原文链补证成功范围来源结算及未交付／责任／其他候选依赖保护 | 首失败原证据保留；E01按白板既有语义展开07 Step4与DEFAULT，root及Astra评审认可并已实施；无SQL/自动删源，首恢复链来源仍未退出；用户R3-019明确改为来源正文先结算、Candidate最后关闭，已压缩重写Step4，未启动复测；仍待固定SHA真实round3补证与独立复审，未关闭 |
+| R3-F16 | Verification V23：真实USER写入成功且Candidate13归档，source6 v34仍保留全部成功经验，无继续保留理由；白板E1/L2、07§8.11 | 核查实际注入Prompt并按既有语义修正必要缺口；同一正式原文链补证成功范围来源结算及未交付／责任／其他候选依赖保护 | 首失败原证据保留；E01按白板既有语义展开07 Step4与DEFAULT，root及Astra评审认可并已实施；无SQL/自动删源，首恢复链来源仍未退出；用户R3-019明确改为来源正文先结算、Candidate最后关闭，已压缩重写Step4；d434ffd真实首样本仍先Candidate后source且source50未精简，child又受F19放弃；保持FAIL/OPEN，根因是误将source派生candidate_refs当可写边；短句已明确Candidate.fields.notebook_refs，待统一修复版再取首样本，不重复抽样 |
 | R3-F17 | F16真实旧会话恢复后手动联合压缩：同步freeze成功，后台run再次freeze找不到Anchor，child尚未请求模型即failed；07§3/8.1与04冻结prefix合同 | local_environment调查并用正式spawn反例修复；已冻结交接不得依赖被模型可见性投影过滤的Anchor仍在消息数组，也不能放松错Anchor验证或重读父状态 | 首失败admission12及原Anchor证据保留；绑定身份单次冻结交接修复已review接收，新9＋共享11共20项PASS；c4已释放round3，待固定新版本原场景真实复证与独立复审，未关闭 |
+| R3-F18 | F17真实恢复提交新Snapshot后pointer仍选旧Snapshot：compaction携带旧UID至更后物理位置，错误抬高旧coverage | r3_pointer_repair；当前Full合法Anchor过滤＋同一合法source路径UID首次引入顺序，保留原子提交／通知gate／rewind/fork规则，不用提交时间替代coverage | 根因与只读真实副本证据已由root review接收；正式4反例RED；首次修复3P/fork1F，已批准fork同事务冻结coverage_position扩展，修后5新＋26相邻PASS，root已review接收；新schema真实复证未跑 |
+| R3-F19 | R3-019真实child finish成功但commit abandoned：父原生压缩后human_only冻结Anchor不再位于Full | r3_evidence_audit只读调查有效性首次丢失点；遵循冻结身份／压缩不换UID／原生关闭一致边界，不放松commit gate | 首样本真实abandoned保留，runtime已正常stop0并恢复；根因已review：summary实际可见源与后续raw tail/coverage混用；统一压缩可见源并保留原始冻结/回滚源，有效RED3F/3P→GREEN9P（含回滚）；root已review，Force/其它原生邻域和真实复证未执行，不宣称就绪 |
+| R3-F20 | 真实失败child结束发task_closed，但既有wire枚举不接受，客户端可能缺状态刷新 | root微小接线修补：任务结束统一既有task_finished，实际失败/abandoned状态不变，不改DTO或UI | 真实失败链＋wire Payload校验RED1→GREEN1，root已接收；日志/源码hash在task-finish-wire，待集成提交 |
 
 
 ### R3-020 执行边界调整
 
 用户恢复并行整改，完成必要开发复证并提交干净后停在第二次Verification启动前；本阶段不派遣第二次Verification或Validation。范围、原始失败记录与后续完整门禁要求保持。当前编排仅见根CLAUDE，避免重复测试。
+
+
+### R3-021 额度前收口
+
+所有子Agent已交回并停止，root提交本阶段快照。第二次Verification/Validation未启动；F16最新短Prompt未实测，F19缺Force／其它原生邻域，统一新schema真实复证未执行。统一准备在ignored v23/unified-f16-f18-f19-retest，round3旧库尚未重建，恢复先完整封存后新建，绝不迁移旧数据。不能把提交干净等同于整改或门禁通过。

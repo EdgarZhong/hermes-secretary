@@ -126,3 +126,22 @@ overflow、混批、提交竞争等确定性机制复用已有C5/C7/C9有效机�
 **退出与恢复：** 原生host已正常stop，wrapper returncode0；随后自有客户端driver以明确SIGINT退出130（不冒称0），两个自有PID均不在。turn leases0、running children0。配置原bytes已恢复，USER仍原75字符合成经验且hash`8f4eda659573177d245d2c1ca01f60664deefa1a3833ce8df4bfb1f519708ed4`，MEMORY/插件状态与备份一致，零新增USER正文。证据见handoff-host-stop-and-restore.json及process-release.json。round3已明确释放，不能在旧活runtime载入后续代码。
 
 本包只新增ignored运行驱动/证据与本报告，未改生产/规格/tests/core docs，未stage/commit或重跑最终回归。后续由root组织F17机制修复及定向证据；新提交review后，再明确分配固定SHA/START和剩余运行预算。当前F16仍OPEN、首次恢复因正式host冻结机制失败而阻断，不能据Prompt静态一致性关闭。
+
+
+### R3-019 唯一首样本：来源顺序仍失败，正式提交被 Anchor gate 拒绝（已释放round3）
+
+**状态：FAIL／OPEN，Development复证，不是独立门禁。** root固定START公开`d434ffd7c9dadc777458386c8ed7588779aeea5c`，个人`5a2fe444042c1d19e29ff9e7a781c6eb4a348f70`未加载；原生DeepSeek custom/chat_completions/deepseek-flash、唯一round3隔离profile，wrapper hash仍`a19ed9a2…`。无真实NM、AppServer/Proxy、Dashboard修改。仅按用户R3-019及恢复授权接续已准备新链；旧source6／Candidate13失败与F17原反例完整保留。
+
+**条款与实际变化：** 白板E1/E2/L2、07§4.4/8.10/8.11/8.12；tracked仅由本owner追加本报告，其余新增ignored `v23/r3019-retest/`。新链stored`20261017_033813_635695`／Conversation`conv_0ff1be4833974d328d029be60799a6c4`在暂停前已有四类事实、一次baseline Noting和具体proposal；row633受限批准→row634 memory→row635 success/entry_count2成立。批准轮Main随后实际调用terminal、read_file只读检查目标文件（row636–639），本次按原轨迹保留，不采信其泛称无额外动作。此次没有重放USER写入，也没有重触发旧source6；只追加已批准laterchange（停车20点关门未批准保存、后10页未完、Skill待审）。
+
+**正式路径：** 同一L0 wrapper→原生tui_gateway.entry→session.resume→一次prompt.submit laterchange→/notebook→一次session.compress→/notebook。原生压缩成功21→12、removed9，40058→36502 tokens；新admission15、child`noting_e9d30b0a5cdd4d24`真实运行一个原生Turn／16 API请求。实际任务逐字包含固定SHA的DEFAULT（SHA256`4d89547e1f240be714b979b49813a0d0ff924cef5d615dfe3e07b08218ed1c2d`），恰为DEFAULT＋CURRENT控制块＋运行时JSON，无自定义Task／gold。16请求全部父19消息完整冻结前缀、root及有序tools相等；父实际18消息＋原生completed assistant逐项等于child前缀，human_only反馈不入模型前缀。
+
+**实际工具结果与语义失败：** row664精简source48→v60；随后row666/668/670/672先archive Candidate51/52/53/55，row674才archive source47。没有先保留Candidate51并清其notebook_refs的操作，没有任何source47 archive遭拒。模型第一response已正确复述来源先结算，却自行把派生candidate_refs当成需清除的引用，计划候选先归档；两个invalid_argument分别来自changes.processing_note及description等放错层级，之后把“candidate_refs不可编辑”误推为“只能先关Candidate”。当前控制块未反转Step4，未发现另一明确父指令要求Candidate先关；不能归因为工具拒绝来源归档后的被迫逆序。
+
+**working与缺口：** source48 v68仅剩新增未批准停车事实，同entry部分覆盖发生；source49 v49与待审Skill Candidate54→v69及其引用保留。source50零update，仍v50／in_progress，正文含已保存1–10页及未完11–20页；模型只以未完责任整体保留，未说明已交付段继续保留的独立需要。因此只能确认责任未被删除，不能宣称该来源完成部分精简。working新增Candidate66／decision67；这些都没有提交生效，不当用户结果正证。完整工具与外部模型reasoning仅保留ignored。
+
+**正式提交失败：** finish_noting row686→687返回success/end_requested，原生Turn返回后commit拒绝：`noting_child.py:700→commit_noting_snapshot→hermes_state_secretary_notebook.py:243`，`The frozen Anchor is not on the current Full Foreground`。实际Anchor row644 UID`a57e4718b65f402fa9fba2e22cacd304`是/notebook human_only反馈；停止后库active0、compacted0、observed0。压缩日志还记录刚交付assistant reply被summary折叠。child最终abandoned，无新Snapshot，有效pointer仍`snap_7b5e973d64ea48f09071fa3cdb632b4f`。另观察到secretary.changed的task_closed不在wire枚举，保留为接口缺口，不能冒充此次commit拒绝直接原因。Foreground根因与生产修复交独立pointer owner。
+
+**接口影响、证据与下一步：** 没有生产／规格／测试修改、没有新的接口或自动删源机制、没有回归/check。本次首结果及静态归因见ignored `root-cause-analysis.md`；`actual-tool-trace.json`、`child-message-rows.json`、`reasoning-analysis-source.json`、`request-audit.json`、`actual-task-text.txt`、16个request副本、native日志片段、usage原值、前后只读库及evidence-manifest提供完整定位。root若提出短修，应把模糊“修阻塞引用”明确为修改Candidate.fields.notebook_refs并保留Candidate，而不是改派生candidate_refs；尚未实施或获准再次采样。F16仍OPEN，修commit gate也不能将本样本顺序失败改写为通过；停在第二次Verification前。
+
+**退出：** 原生wrapper47329正规stop返回0；自有driver47328在host退出后SIGINT结束130，两个PID已不存在，leases0、running child0。config原bytes恢复hash`ca8a60eb5cf213e74029452c7aedd1e8632e129031bc3ef6f1a5997aea6afc1e`；plugins空、plugins.json及MEMORY原不存在状态恢复。两条已授权合成USER保留且与本次before相同，hash`71a557f07ac4c40740734575c91be2856b1d767c2c910fb90dbc40033897bec3`。最终只读`state-after.sqlite3` hash`a6e689f8de8400c71978617efb2a6dcc644499fa5af768e9d745880d711f6266`。`host-stop-and-restore.json`、`process-release.json`确认round3已释放，后续仅做静态交回。
