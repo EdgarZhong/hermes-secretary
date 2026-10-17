@@ -64,8 +64,15 @@ def _priced_prefix_fingerprint(messages: List[Dict[str, Any]], base_count: int) 
     return hashlib.sha256(raw.encode("utf-8", "replace")).hexdigest()
 
 
-def capture_usage_anchor(prompt_tokens: Any, completion_tokens: Any, messages: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
-    """Build a usage anchor from provider-reported usage, or None when usage is unusable."""
+def capture_usage_anchor(
+    prompt_tokens: Any, completion_tokens: Any, messages: List[Dict[str, Any]],
+    model: Any = None,
+) -> Optional[Dict[str, Any]]:
+    """Build a usage anchor from provider-reported usage, or None when usage is unusable.
+
+    ``model`` records WHICH route priced ``prompt_tokens`` so a later restore can tell whether the
+    number still describes the current model. It is optional and additive: anchors persisted before
+    this field existed simply have no opinion (consumers treat them as unknown, never stale)."""
     try:
         pt = int(prompt_tokens or 0)
         ct = int(completion_tokens or 0)
@@ -74,7 +81,7 @@ def capture_usage_anchor(prompt_tokens: Any, completion_tokens: Any, messages: L
     if pt <= 0 or not isinstance(messages, list) or not messages:
         return None  # some endpoints omit usage — caller keeps its anchor
     last = messages[-1]
-    return {
+    anchor = {
         "prompt_tokens": pt,
         "completion_tokens": max(0, ct),
         "base_count": len(messages),
@@ -82,6 +89,16 @@ def capture_usage_anchor(prompt_tokens: Any, completion_tokens: Any, messages: L
         "base_last_fp": message_fingerprint(last),
         "base_prefix_fp": _priced_prefix_fingerprint(messages, len(messages)),
     }
+    priced_by = _normalized_model(model)
+    if priced_by:
+        anchor["model"] = priced_by
+    return anchor
+
+
+def _normalized_model(model: Any) -> Optional[str]:
+    """Comparable model identity for the anchor; None when unknown (never a stale verdict)."""
+    value = str(model or "").strip().lower()
+    return value or None
 
 
 def _anchor_matches(messages: List[Dict[str, Any]], anchor: Dict[str, Any]) -> bool:
@@ -140,9 +157,13 @@ def _serialize(anchor: Any) -> Optional[Dict[str, Any]]:
         or not prefix_fp
     ):
         return None
-    return {"prompt_tokens": pt, "completion_tokens": max(0, ct), "base_count": base_count,
-            "base_last_role": role if isinstance(role, str) else None, "base_last_fp": fp,
-            "base_prefix_fp": prefix_fp}
+    serialized = {"prompt_tokens": pt, "completion_tokens": max(0, ct), "base_count": base_count,
+                  "base_last_role": role if isinstance(role, str) else None, "base_last_fp": fp,
+                  "base_prefix_fp": prefix_fp}
+    priced_by = _normalized_model(anchor.get("model"))
+    if priced_by:
+        serialized["model"] = priced_by
+    return serialized
 
 
 def persist_usage_anchor(agent: Any, anchor: Optional[Dict[str, Any]]) -> None:
@@ -192,6 +213,20 @@ def restore_usage_anchor(agent: Any, conversation_history: Optional[List[Dict[st
 def persisted_anchor_tokens(session_db: Any, session_id: Any, messages: Any) -> Optional[int]:
     """Anchored token figure from the session row's persisted anchor, for callers without a live
     agent (gateway hygiene); None when absent, unreadable, or stale against ``messages``."""
+    context = persisted_anchor_context(session_db, session_id, messages)
+    return context["tokens"] if context else None
+
+
+def persisted_anchor_context(
+    session_db: Any, session_id: Any, messages: Any, *, model: Any = None,
+) -> Optional[Dict[str, Any]]:
+    """Anchored context figure plus a model verdict, for callers without a live agent.
+
+    Returns ``{"tokens": <prompt+completion>, "model_matches": True | False | None}``. The overall
+    result is None when the anchor is absent, unreadable, or stale against ``messages`` — the
+    fingerprint check is the caller's proof that the number still describes this transcript.
+    ``model_matches`` is None when the stored anchor predates model recording (no opinion) and
+    False only when the anchor names a different route than the caller's ``model``."""
     getter = getattr(session_db, "get_session_model_config_value", None)
     if not session_id or not callable(getter) or not isinstance(messages, list):
         return None
@@ -200,4 +235,12 @@ def persisted_anchor_tokens(session_db: Any, session_id: Any, messages: Any) -> 
     except Exception:
         logger.debug("usage anchor load failed", exc_info=True)
         return None
-    return anchored_context_tokens(messages, anchor) if anchor else None
+    if not anchor or not _anchor_matches(messages, anchor):
+        return None
+    tokens = anchored_context_tokens(messages, anchor)
+    if tokens is None:
+        return None
+    current = _normalized_model(model)
+    priced_by = _normalized_model(anchor.get("model"))
+    verdict = None if not current or not priced_by else priced_by == current
+    return {"tokens": tokens, "model_matches": verdict}

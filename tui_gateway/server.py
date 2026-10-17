@@ -2194,7 +2194,64 @@ def _session_usage_snapshot(session: dict | None) -> dict:
     mirror_usage = _metadata_mirror(session).get("usage")
     if sess.get("agent") is not None and not (sess.get("_compute_host_active") and isinstance(mirror_usage, dict)):
         return _get_usage(sess["agent"])
-    return dict(mirror_usage) if isinstance(mirror_usage, dict) else {}
+    if isinstance(mirror_usage, dict) and mirror_usage:
+        return dict(mirror_usage)
+    return _restored_cold_usage(sess)
+
+
+def _restored_cold_usage(session: dict) -> dict:
+    """Context readout restored from the session row's usage anchor when no agent is live.
+
+    The anchor is the provider's own count for the last priced turn, so this is the occupancy at the
+    end of that turn — never a local estimate. Omitted (empty) when the anchor is absent, stale
+    against the transcript, or was priced by a different model than the session now uses: a cold
+    start followed by a model switch changes what the next request will actually carry, and this
+    function must not imply otherwise."""
+    history = session.get("history")
+    stored_id = str(session.get("stored_session_id") or session.get("session_key") or "")
+    if not stored_id or not isinstance(history, list) or not history:
+        return {}
+    try:
+        db = _get_db()
+    except Exception:
+        return {}
+    if db is None:
+        return {}
+    model = ""
+    getter = getattr(db, "get_session_model_config_value", None)
+    if callable(getter):
+        with contextlib.suppress(Exception):
+            model = str(getter(stored_id, "model", "") or "")
+    if not model:
+        model = str(_metadata_mirror(session).get("model") or "")
+    from agent.usage_anchor import persisted_anchor_context
+
+    with contextlib.suppress(Exception):
+        context = persisted_anchor_context(db, stored_id, history, model=model)
+        if not context or context.get("model_matches") is False:
+            return {}
+        used = int(context["tokens"])
+        usage = {
+            "input": used, "total": used, "context_used": used,
+            "context_estimated": False, "context_source": "usage_anchor",
+        }
+        limit = _configured_context_length()
+        if limit > 0:
+            usage["context_max"] = limit
+            usage["context_percent"] = max(0, min(100, round(used / limit * 100)))
+        return usage
+    return {}
+
+
+def _configured_context_length() -> int:
+    """The profile's declared ``model.context_length``, or 0 when it does not declare one."""
+    try:
+        from hermes_cli.config import load_config_readonly
+
+        value = (load_config_readonly() or {}).get("model", {}).get("context_length")
+        return int(value) if isinstance(value, int) and value > 0 else 0
+    except Exception:
+        return 0
 
 
 def _project_info_for_cwd(cwd: str) -> dict | None:

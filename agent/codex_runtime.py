@@ -195,7 +195,10 @@ def _record_codex_app_server_usage(agent, turn, messages=None) -> dict[str, Any]
     if isinstance(messages, list):
         from agent.usage_anchor import capture_usage_anchor, set_usage_anchor
 
-        anchor = capture_usage_anchor(prompt_tokens, canonical_usage.output_tokens, messages)
+        anchor = capture_usage_anchor(
+            prompt_tokens, canonical_usage.output_tokens, messages,
+            model=getattr(agent, "model", ""),
+        )
         if anchor is not None:
             set_usage_anchor(agent, anchor)
     for key, value in usage_dict.items():

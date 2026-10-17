@@ -134,7 +134,8 @@ def record_response_usage(
     # introduced images, the residual is their real per-image cost (learned before re-anchoring).
     calibrate_from_usage(agent, messages, aggregator_usage.prompt_tokens)
     _new_anchor = capture_usage_anchor(
-        aggregator_usage.prompt_tokens, aggregator_usage.output_tokens, messages
+        aggregator_usage.prompt_tokens, aggregator_usage.output_tokens, messages,
+        model=getattr(agent, "model", ""),
     )
     if _new_anchor is not None:
         set_usage_anchor(agent, _new_anchor, turn_base=api_call_count == 1)

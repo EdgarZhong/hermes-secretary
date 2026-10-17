@@ -350,6 +350,7 @@ The adjacent Context control is a compact percentage ring, with an expanded deta
 
 - No control may render a sentence derived from a missing binding — in particular the Reasoning panel MUST NOT show an “Effective on this route” line, and the Context/Usage capsules MUST NOT say “Unknown” or “no active runtime”.
 - After a cold start or a recycled runtime, Context and Session Total are restored from the Session’s persisted usage anchor (the value recorded at the end of the last completed Turn) and presented as the normal readout. If no trustworthy persisted value exists, omit the number rather than label it unknown; never estimate locally.
+- Restoring validates the anchor before trusting it: a fingerprint mismatch (rewind, edit, compaction) or an anchor priced by a **different model** than the Session now uses makes it untrustworthy and the number is omitted. An anchor persisted before model identity was recorded has no opinion and is still restored. This is the accepted trade-off: a cold start followed by a model switch may briefly show the previous model’s occupancy until the next real call replaces it, but a *known* mismatch is never presented.
 - Restoring must reuse an existing native read path. Do not add a dedicated API for this; if no existing read carries the persisted anchor, stop and escalate instead of inventing one.
 - A value restored this way is replaced by live numbers as soon as a real runtime reports them; no frontend persistence and no cross-Session leakage.
 
