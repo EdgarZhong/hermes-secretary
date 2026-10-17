@@ -187,19 +187,21 @@ def test_real_idle_registry_and_off_no_rearm(database):
 def test_after_commit_hints_and_failure_isolation(database):
     from secretary.web_events import config_changed
     db, ref = database
+    state = {section: [] for section in SECTIONS}
     seen = []
-    def listener(home, owner, reason):
-        seen.append((home, owner, reason, len(db.noting_memo_entries(ref))))
-    subscribe('test-web-read', listener)
-    db.noting_memo_mutate(ref, {'operation': 'add', 'content': 'committed'})
-    assert seen[-1] == (Path(db.db_path).parent.resolve(), ref, 'memo_changed', 1)
+    subscribe('test-web-read', lambda home, owner, reason: seen.append((home, owner, reason)))
+    db.notebook_commit_snapshot(ref, state, anchor_message_uid='m1', termination={'type': 'forced'})
+    assert seen[-1] == (Path(db.db_path).parent.resolve(), ref, 'notebook_changed')
     before = len(seen)
-    db.noting_memo_mutate(ref, {'operation': 'list'})
-    assert len(seen) == before
+    db.notebook_set_local_enabled(ref, True)
+    assert len(seen) == before + 1
+    assert seen[-1] == (Path(db.db_path).parent.resolve(), ref, 'local_changed')
     config_changed(Path(db.db_path).parent / 'config.yaml')
     assert seen[-1][1:3] == (None, 'global_changed')
+    # A failing observer must not block the mutation it was only meant to announce.
     subscribe('test-web-read', lambda *args: (_ for _ in ()).throw(RuntimeError('observer failed')))
-    assert db.noting_memo_mutate(ref, {'operation': 'add', 'content': 'still committed'}).startswith('created:')
+    db.notebook_set_local_enabled(ref, False)
+    assert secretary_state(db, 'main')['local_enabled'] is False
 
 
 def test_registered_rpc_profile_isolation_and_before_after(database, tmp_path, monkeypatch):

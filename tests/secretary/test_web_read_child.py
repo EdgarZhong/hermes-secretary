@@ -10,10 +10,9 @@ from tests.secretary.test_noting_child import _tool_response, mock_response
 pytest_plugins = ('tests.secretary.test_noting_child',)
 
 
-def test_real_task_start_finish_snapshot_memo_events(parent, db, stub_client):
+def test_real_task_start_finish_events(parent, db, stub_client):
     ref = parent._secretary_conversation_ref
     (Path(db.db_path).parent / 'config.yaml').write_text('noting:\n  enabled: true\n')
-    db.noting_memo_mutate(ref, {'operation': 'add', 'content': 'cover in Notebook'})
     observed, hints = [], []
     prefix = copy.deepcopy(parent._session_messages)
     def provider(**kwargs):
@@ -34,9 +33,10 @@ def test_real_task_start_finish_snapshot_memo_events(parent, db, stub_client):
         assert outcome.committed, outcome
         assert observed and all(state['task_state'] == 'active' for state in observed)
         assert all(state['tasks'] == [{'task_id': outcome.child_session_id}] for state in observed)
-        assert all(state['memo_count'] == 1 for state in observed)
+        # Round 3 retired Memo: the live projection must not resurrect it.
+        assert all('memo_count' not in state and 'memo_entries' not in state for state in observed)
         final = secretary_state(db, parent.session_id)
-        assert final['task_state'] == 'idle' and final['memo_count'] == 0
+        assert final['task_state'] == 'idle'
         reasons = [reason for home, owner, reason in hints]
         assert reasons[0] == 'task_started' and reasons[-1] == 'task_finished'
         assert 'notebook_changed' in reasons

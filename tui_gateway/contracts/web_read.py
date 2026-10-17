@@ -112,7 +112,7 @@ class SchedulesReadResult(Result):
 class SecretaryChangedPayload(Payload):
     profile_home: str
     conversation_ref: str | None
-    reason: Literal["task_started", "task_finished", "memo_changed", "notebook_changed", "local_changed", "idle_changed", "global_changed"]
+    reason: Literal["task_started", "task_finished", "notebook_changed", "local_changed", "idle_changed", "global_changed"]
 
 
 method("session.compaction_state", params=CompactionStateParams, result=CompactionStateResult)

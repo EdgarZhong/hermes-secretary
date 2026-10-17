@@ -30621,7 +30621,6 @@
             "enum": [
               "task_started",
               "task_finished",
-              "memo_changed",
               "notebook_changed",
               "local_changed",
               "idle_changed",
