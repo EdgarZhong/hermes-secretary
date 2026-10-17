@@ -239,3 +239,31 @@ def test_malformed_native_idle_config_does_not_raise(value):
     assert not settings.enabled
     assert settings.configuration_failure == "idle_compaction_config_unreadable"
     assert scheduler_settings_from_config(config).enabled
+
+
+def test_secretary_conversation_gates_skill_writes_instead_of_recording():
+    from agent.prompt_builder import SECRETARY_SKILLS_GUIDANCE, SKILL_RECORD_GUIDANCE, SKILLS_GUIDANCE
+    from agent.system_prompt import _tool_guidance_block
+
+    current = agent()
+    current.valid_tool_names.add("skill_manage")
+    block = _tool_guidance_block(current)
+    assert SECRETARY_SKILLS_GUIDANCE in block
+    assert SKILL_RECORD_GUIDANCE not in block
+
+    native = agent(main=False)
+    native.valid_tool_names.add("skill_manage")
+    native_block = _tool_guidance_block(native)
+    assert SKILLS_GUIDANCE in native_block
+    assert SKILL_RECORD_GUIDANCE in native_block
+
+
+def test_skill_gate_requires_confirmed_secretary_conversation():
+    from agent.prompt_builder import SECRETARY_SKILL_GATE, SKILL_RECORD_GUIDANCE
+    from agent.system_prompt import _tool_guidance_block
+
+    current = agent(main=False, noting=True)
+    current.valid_tool_names.add("skill_manage")
+    block = _tool_guidance_block(current)
+    assert SECRETARY_SKILL_GATE not in block
+    assert SKILL_RECORD_GUIDANCE in block

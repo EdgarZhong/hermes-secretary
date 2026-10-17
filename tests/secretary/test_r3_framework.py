@@ -280,8 +280,7 @@ def test_entry_threshold_is_strict_and_candidate_references_do_not_duplicate_ent
     state = book(parent)
     entries = [create(state, f"Accepted responsibility {i}") for i in range(count - 1)]
     state.create("candidate", {"description": "Retain the work outcomes", "targets": ["memory"],
-                              "notebook_refs": [e["entry_id"] for e in entries], "source_types": ["matter"]},
-                 source_message_identities=[{"conversation_ref": state.conversation_ref, "message_uid": "m1"}])
+                              "notebook_refs": [e["entry_id"] for e in entries], "source_types": ["matter"]})
     result = commit(state)
     publish(parent, result)
     text = notices(db)[0]["content"]

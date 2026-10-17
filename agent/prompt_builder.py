@@ -189,11 +189,37 @@ HERMES_AGENT_HELP_GUIDANCE_NO_SKILLS = (
 )
 
 
+# Secretary Conversations already carry a Notebook and a user-approval rule; the native
+# "save it now" wording would compete with the Notebook's Candidate rule.  Kept verbatim in
+# the prompt so the approval contract is checkable and the two branches cannot silently merge.
+SECRETARY_MEMORY_APPROVAL = (
+    "In this Secretary-enabled Conversation, Memory, Skill and Rule writes are external "
+    "persistence: the Notebook indexes the Conversation, and its Candidates carry the possible "
+    "writes. Do not write Memory, change a Skill, or add a "
+    "Rule merely because the user mentioned, agreed with or repeated something, and do not treat "
+    "\"save it later\", silence or a capacity notice as approval. Present the exact content and "
+    "destination, obtain the user's explicit approval for that write, then write only the approved "
+    "content and report the real tool result. Memory is the narrow exception for "
+    "facts that apply to EVERY session regardless of task (who the user is, environment facts, "
+    "standing conventions with no task home); task-specific procedures, pitfalls and corrections "
+    "belong in skills. Write entries as declarative facts, not instructions to yourself: 'User prefers "
+    "concise responses' ✓ — 'Always respond concisely' ✗ (imperative phrasing gets re-read as a "
+    "directive in later sessions and can override the user's current request). A fact stale within a "
+    "week belongs in session history; procedures and workflows belong in skills."
+)
+
+
 # Keep the every-session memory scope even when task knowledge cannot be saved as a skill.
 def build_memory_guidance(
     memory_enabled: bool = True, profile_enabled: bool = True, *, skill_manage_available: bool = True,
+    secretary_mode: bool = False,
 ) -> str:
-    """Adapt store and skill-write guidance without widening what belongs in memory."""
+    """Adapt store and skill-write guidance without widening what belongs in memory.
+
+    ``secretary_mode`` follows the owning profile's global Noting switch.  With it on, the
+    native "record it now" instructions are replaced by the Notebook Candidate approval rule;
+    the scope of what belongs in memory stays the same.
+    """
     if not memory_enabled and not profile_enabled:
         return ""
     if memory_enabled:
@@ -207,6 +233,8 @@ def build_memory_guidance(
             "loaded into each new session's context; save durable facts about the user with the "
             "memory tool (target='user') — the built-in notes store is disabled, so never target='memory'. "
         )
+    if secretary_mode:
+        return frame + SECRETARY_MEMORY_APPROVAL
     skill_routing = (
         "Skills come first: when you learn something while doing a task — a "
         "procedure, a pitfall, and the user's preferences and corrections "
@@ -256,13 +284,23 @@ SESSION_SEARCH_GUIDANCE = (
 # to save as a skill" and "fix it with skill_manage(action='patch')") and skill_manage's own schema. Only
 # the compaction-pruning contract lives here — nothing else teaches it.
 SKILL_SAFETY_HEADING = "## Skill Safety Rule"
-SKILLS_GUIDANCE = (
-    "When you work out a non-trivial workflow, record it with skill_manage for future reuse.\n\n"
+SKILL_RECORD_GUIDANCE = (
+    "When you work out a non-trivial workflow, record it with skill_manage for future reuse."
+)
+SKILL_SAFETY_GUIDANCE = (
     f"{SKILL_SAFETY_HEADING}\n"
     "A skill placeholder containing `[SKILL_PRUNED]` lost its content in context compression and is inaccessible — "
     "reload it with skill_view(name='...') before acting on anything that depends on it. After reloading, ignore any "
     "remaining `[SKILL_PRUNED]` markers for that same skill; they are historical artifacts of earlier compactions."
 )
+# Native bytes stay identical: the record sentence is the wording validated against the
+# Anthropic content filter, so the composed constant must not change it.
+SKILLS_GUIDANCE = f"{SKILL_RECORD_GUIDANCE}\n\n{SKILL_SAFETY_GUIDANCE}"
+SECRETARY_SKILL_GATE = (
+    "Skill changes are persistence writes: prepare a proposal and obtain the user's explicit "
+    "approval before calling skill_manage."
+)
+SECRETARY_SKILLS_GUIDANCE = f"{SECRETARY_SKILL_GATE}\n\n{SKILL_SAFETY_GUIDANCE}"
 
 KANBAN_GUIDANCE = (
     "# Kanban task execution protocol\n"
