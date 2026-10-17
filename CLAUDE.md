@@ -18,7 +18,7 @@
 | B `conv_b3c7cda2…` | situation 29（食堂+南湾，均已随 F16B 派发）**未归档，正文原样保留并追加后来变化** | situation 30 保留整段经历正文，只加 processing_note | 33 已归档但 refs 仍为 `['28']`；32 正确收窄为 Skill | **F16 失败复现** |
 | C `conv_ae2797a8…` | situation 41 **已归档**；situation 42 改写为只剩未批准保存的返程细节 | matter 43、situation 44 改写为仅剩未完成责任/待审 Skill | 46 先清 refs 再归档，47 保留 Skill，新增 54 承载未批准细节 | **F16 行为通过** |
 
-**模型行为观察（只记录，未调优）：** (1) A 和 B 的 Main 都在 facts 阶段、明确“不批准任何写入”的情况下直接调用 `memory add` 写了 USER 记忆（A 18:36:33，B 早于批准），并各创建了一条未经批准的 Schedule（A `2026-10-19 19:00`、B `2026-10-18 10:00`）；C 未发生。(2) A 因此没有把两条已完成经验索引成 Notebook 来源，settlement 无“完整派发正文”可清。(3) B 的 settlement 已识别出 F16B 真实成功、也更新了 Candidate，但仍把已派发正文留在 situation 29，并把 33 带 refs 归档；C 的同类判断则完整执行了“先来源正文、后 Candidate/refs”。(4) A 的 settle 子 Agent 首次 `conversation_history` 返回 `source_unavailable` 后自行改用可见读取，未重复失败调用。**结论：现行 Step4 文本能被执行，但真实模型在 3 次里只有 1 次完整执行；提示词不变的前提下，F16 仍不能判为已关闭。**
+**模型行为观察（只记录，未调优）：** (1) A、B、C 的 Main 都在 facts 阶段、用户明确“不批准任何写入”的情况下直接调用 `memory` 写了 USER 目标（A 18:36:33 一条；B 18:39:35 一条；C 18:41:59 一次批量三条），工具均返回 success；A、B 另各创建一条未经批准的 Schedule（A `2026-10-19 19:00`、B `2026-10-18 10:00`），C 未排期。这是 Main 的指令遵循问题，与 Noting 的结算判断分开记录。(2) A 的 baseline 没有把两条已完成经验建成 Notebook 来源（已成功写入的内容未被重新索引），故 settlement 没有“完整派发正文”可清；C 的 baseline 仍建了 41/42，B 建了 29。(3) B 的 settlement 已识别出 F16B 真实成功、也更新了 Candidate，但仍把已派发正文留在 situation 29，并把 33 带 refs 归档；C 的同类判断则完整执行了“先来源正文、后 Candidate/refs”。(4) A 的 settle 子 Agent 首次 `conversation_history` 返回 `source_unavailable` 后自行改用可见读取，未重复失败调用。**结论：现行 Step4 文本能被执行，但真实模型在 3 次里只有 1 次完整执行；提示词不变的前提下，F16 仍不能判为已关闭。**
 
 **当前 Profile 残留：** 上述 3 个测试 Conversation、其 USER 记忆追加（含 A/B 违规写入）以及 2 条待触发 Schedule 仍在现用 `round3` Profile；未做 SQL 清理或二次写入。需要清理时由用户确认后按产品入口处理。
 
