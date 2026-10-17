@@ -12,7 +12,7 @@ from secretary.notebook_contract import (
     ARRAY_FIELDS, CHANGE_KEYS, COMMON_FIELDS, ENTRY_KEYS, OPTIONAL_FIELDS,
     RELATION_KINDS, REQUIRED_FIELDS, STATUSES, NotebookValidationError,
     outgoing_references, parse_time, public_state, require_text,
-    validate_fields, validate_references, validate_source_range,
+    validate_candidate_provenance, validate_fields, validate_references, validate_source_range,
 )
 from secretary.notebook_contract import SECTIONS as SECTIONS
 from secretary.notebook_contract import TYPE_SECTIONS as TYPE_SECTIONS
@@ -74,15 +74,19 @@ class NotebookWorkingState:
         source_range = entry["source_time_range"]
         if source_range is not None:
             validate_source_range(source_range)
-        if not sources and source_range is None:
-            raise NotebookValidationError(
-                "Every entry requires at least one provenance form.", field="source_message_identities",
-                next_action="Supply supporting Message Identities or a bounded source_time_range.",
-            )
         inherited = (not fresh and self._validate_inherited_sources is not None
                      and self._validate_inherited_sources(deepcopy(entry)))
         if inherited:
             return
+        if entry["entry_type"] == "candidate":
+            if validate_candidate_provenance(entry) == "refs":
+                # Referenced entries carry their own provenance; validate_references checks them.
+                return
+        elif not sources and source_range is None:
+            raise NotebookValidationError(
+                "Every entry requires at least one provenance form.", field="source_message_identities",
+                next_action="Supply supporting Message Identities or a bounded source_time_range.",
+            )
         valid_messages = all(self._validate_source_identity is not None
                              and self._validate_source_identity(deepcopy(source)) for source in sources)
         valid_range = (source_range is None or (self._validate_source_range is not None

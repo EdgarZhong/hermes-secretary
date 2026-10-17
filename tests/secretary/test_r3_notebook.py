@@ -55,12 +55,12 @@ def pure(clock=None):
                                 validate_source_range=lambda interval: interval == RANGE, clock=clock)
 
 
-def create(book, entry_type="matter", *, fields=None, uid="m1", **kwargs):
+def create(book, entry_type="matter", *, fields=None, uid="m1", sources=True, **kwargs):
     body = deepcopy(FIELDS[entry_type] if fields is None else fields)
     if entry_type == "implicit_gap" and body["situation_ref"] == "missing":
         body["situation_ref"] = create(book, "situation", uid=uid)["entry_id"]
-    return book.create(entry_type, body, source_message_identities=[
-        {"conversation_ref": book.conversation_ref, "message_uid": uid}], **kwargs)["entry"]
+    return book.create(entry_type, body, source_message_identities=(
+        [{"conversation_ref": book.conversation_ref, "message_uid": uid}] if sources else []), **kwargs)["entry"]
 
 
 @pytest.fixture
@@ -219,7 +219,7 @@ def test_candidates_keep_sources_in_place_map_labels_and_derive_reverse_refs():
     matter = create(book)
     gap = create(book, "implicit_gap")
     candidate = create(book, "candidate", fields={**FIELDS["candidate"],
-        "notebook_refs": [matter["entry_id"], gap["entry_id"]], "source_types": ["matter", "situation"]})
+        "notebook_refs": [matter["entry_id"], gap["entry_id"]], "source_types": ["matter", "situation"]}, sources=False)
     assert book.get(matter["entry_id"])["candidate_refs"] == [candidate["entry_id"]]
     original_source_version = matter["version_id"]
     updated = book.update(matter["entry_id"], {"fields": {"description": "New information about the same visit"}})["entry"]
@@ -234,7 +234,8 @@ def test_candidates_keep_sources_in_place_map_labels_and_derive_reverse_refs():
         with pytest.raises(NotebookValidationError):
             book.update(candidate["entry_id"], {"fields": fields})
         assert book.snapshot_state() == before
-    book.update(candidate["entry_id"], {"fields": {"notebook_refs": [], "source_types": []}})
+    book.update(candidate["entry_id"], {"fields": {"notebook_refs": [], "source_types": []},
+                                        "source_message_identities": [SOURCE]})
     assert book.get(matter["entry_id"])["candidate_refs"] == []
 
 
@@ -263,7 +264,7 @@ def test_archive_reports_all_referrers_and_preserves_internal_final_version():
     gap = create(book, "implicit_gap", fields={**FIELDS["implicit_gap"], "situation_ref": situation["entry_id"]})
     action = create(book, "action", relations=[{"kind": "based_on", "entry_id": situation["entry_id"]}])
     candidate = create(book, "candidate", fields={**FIELDS["candidate"], "notebook_refs": [situation["entry_id"]],
-                                                "source_types": ["situation"]})
+                                                "source_types": ["situation"]}, sources=False)
     before = book.snapshot_state()
     with pytest.raises(NotebookValidationError) as error:
         book.archive(situation["entry_id"], "Redundant background")
@@ -273,7 +274,8 @@ def test_archive_reports_all_referrers_and_preserves_internal_final_version():
     assert book.snapshot_state() == before
     book.archive(gap["entry_id"], "No longer affects the retained situation")
     book.update(action["entry_id"], {"relations": []})
-    book.update(candidate["entry_id"], {"fields": {"notebook_refs": []}})
+    book.update(candidate["entry_id"], {"fields": {"notebook_refs": [], "source_types": []},
+                                        "source_message_identities": [SOURCE]})
     result = book.archive(situation["entry_id"], "Necessary evidence remains in the direct-message candidate")
     assert result == {"success": True, "changed": True, "entry_id": situation["entry_id"], "archived": True}
     assert book.show()["situations"] == []
@@ -527,7 +529,7 @@ def test_inherited_sources_are_bound_to_the_same_claim_not_unrelated_new_content
 
 def test_range_provenance_requires_current_known_evidence_not_just_valid_syntax(db):
     book = store(db)
-    entry = book.create("candidate", FIELDS["candidate"], source_time_range=RANGE)["entry"]
+    entry = book.create("situation", FIELDS["situation"], source_time_range=RANGE)["entry"]
     assert entry["source_message_identities"] == []
     before = book.snapshot_state()
     with pytest.raises(NotebookValidationError) as error:

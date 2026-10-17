@@ -46,6 +46,8 @@ STATUSES = {
 }
 RELATION_KINDS = {"part_of", "depends_on", "based_on", "supersedes", "related_to"}
 SOURCE_TYPES = {"matter", "action", "situation", "question", "insight", "decision"}
+CANDIDATE_TARGETS = {"memory", "skill", "rule", "conversation"}
+PERSISTENCE_TARGETS = CANDIDATE_TARGETS - {"conversation"}
 ENTRY_KEYS = {
     "entry_id", "version_id", "entry_type", "fields", "status", "relations",
     "source_message_identities", "source_time_range", "created_at", "updated_at",
@@ -141,8 +143,14 @@ def validate_fields(entry_type, fields):
             unique_strings(value, field)
             if key in {"subjects", "targets"} and not value:
                 raise NotebookValidationError("This required array cannot be empty.", field=field)
-            if key == "targets" and set(value) - {"memory", "skill", "rule"}:
-                raise NotebookValidationError("Unknown persistence target.", field=field)
+            if key == "targets":
+                if set(value) - CANDIDATE_TARGETS:
+                    raise NotebookValidationError("Unknown Candidate target.", field=field)
+                if "conversation" in value and len(set(value)) != 1:
+                    raise NotebookValidationError(
+                        "A Conversation Candidate cannot mix persistence targets.", field=field,
+                        next_action="Create a separate Memory, Skill or Rule Candidate for persistence.",
+                    )
             if key == "source_types" and set(value) - SOURCE_TYPES:
                 raise NotebookValidationError("Invalid source label; implicit_gap maps to situation.", field=field)
         elif key in EVIDENCE_TIMES:
@@ -152,6 +160,66 @@ def validate_fields(entry_type, fields):
             require_text(value, field)
         elif value is not None and not isinstance(value, str):
             raise NotebookValidationError("Expected optional text or null.", field=field)
+
+
+def validate_candidate_provenance(entry):
+    """Return the Candidate provenance form and enforce the target matrix.
+
+    ``refs``: a Memory Candidate backed by current Notebook entries.
+    ``messages``: a Memory, Skill, Rule or Conversation Candidate backed by
+    exact Message identities.  A Candidate never mixes the two forms, and
+    Skill/Rule/Conversation Candidates never use Notebook entries as provenance.
+    """
+    fields = entry["fields"]
+    targets = set(fields["targets"])
+    refs = fields["notebook_refs"]
+    sources = entry["source_message_identities"]
+    source_range = entry["source_time_range"]
+    if "conversation" in targets:
+        if targets != {"conversation"}:
+            raise NotebookValidationError(
+                "A Conversation Candidate cannot mix persistence targets.", field="fields.targets",
+                next_action="Create a separate Memory, Skill or Rule Candidate for persistence.",
+            )
+        if refs or fields["source_types"]:
+            raise NotebookValidationError(
+                "A Conversation Candidate cites Messages, not Notebook entries.",
+                field="fields.notebook_refs",
+                next_action="Leave notebook_refs and source_types empty; cite the Messages directly.",
+            )
+        if source_range is not None or not sources:
+            raise NotebookValidationError(
+                "A Conversation Candidate requires exact Message identities.",
+                field="source_message_identities",
+                next_action="Cite the Messages that carry the improvement; do not use a time range.",
+            )
+        return "messages"
+    if refs:
+        if targets & {"skill", "rule"}:
+            raise NotebookValidationError(
+                "Skill and Rule Candidates cite Messages, not Notebook entries.",
+                field="fields.notebook_refs",
+                next_action="Leave notebook_refs and source_types empty; cite the Messages directly.",
+            )
+        if sources or source_range is not None:
+            raise NotebookValidationError(
+                "A Memory Candidate cites either Notebook entries or Messages, not both.",
+                field="source_message_identities",
+                next_action="Keep notebook_refs and clear Message provenance, or clear notebook_refs and cite Messages.",
+            )
+        return "refs"
+    if fields["source_types"]:
+        raise NotebookValidationError(
+            "source_types requires notebook_refs.", field="fields.source_types",
+            next_action="Clear source_types when provenance is Message-based.",
+        )
+    if source_range is not None or not sources:
+        raise NotebookValidationError(
+            "Message-referenced Candidates require exact Message identities.",
+            field="source_message_identities",
+            next_action="Cite the Messages directly; do not use a time range.",
+        )
+    return "messages"
 
 
 def same_source_claim(left, right):
