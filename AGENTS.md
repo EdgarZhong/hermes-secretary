@@ -66,21 +66,49 @@
 - 不使用整文件 `checkout --theirs`、整树覆盖、自动同步脚本或机器人替换这些文档；其他集成方式（cherry-pick、rebase、补丁应用等）也必须满足同样的保护要求。
 - Git merge driver 或“没有冲突”不能代替此 SOP：单侧变化和快进可能不触发自定义 driver。
 
-## Harness 中的 AI 行动指令
+## Harness 与 Prompt 设计
 
-- **给 AI 的指令必须写具体动作（用户明确）**：本条约束机制中通过 System Prompt、任务消息、工具说明等指示 AI 行动的部分。不能只写“维护”“复核”“处理”等笼统词，而不说明 AI 实际要做什么。若保留这些概括词，必须在同处展开具体动作。
-- 按对象指示 AI 分流时，在该对象的说明中写明“什么信息满足什么条件 → 执行哪些具体动作 → 内容去哪里”；不能只写“进入某个流程步骤”而省略动作选择。通用章节可以展开动作的执行方法，不能代替对象自身的判断分支。
-- 例如，“复核候选”应展开为“读取候选引用的现行条目，将新证据与候选描述比较；结论有变化时修改描述和来源引用，内容相同则不新建候选”。“沿 provenance 查证”也应写明读取哪些原文、要确认哪项事实，以及确认或无法确认后分别做什么。
+**总原则：** Prompt 是目标模型的全部可见世界，不是实现者的设计文档。实现者知道、而目标模型在上下文或工具结果里看不到的东西，不写进 prompt；必须让模型遵守的约束，放到结构层和工具层。
+
+### 只写目标模型能观察到的对象
+
+- 可写：Conversation、Notebook Snapshot、工具结果、`<timestamp>`、当前消息与后续 control message 中可见的指令。
+- 不写：admission、versions、commit、Session 轮转、DB row、派生字段、内部触发／投递名。需要模型遵守的，用 schema、校验器和工具拒绝保证，不靠解释内部机制。
+- 每个指代必须有同段可见的先行词；`shared`、`same`、`above`、`the system`、`runtime` 没有对象就删。
+
+### 分层与术语
+
+- 目的层：例如 Notebook 的 index 与 dispatch。
+- 状态层：例如 Candidate → proposal → approval → action → actual write。
+- 触发层：用户命令、容量阈值。
+- 投递层：普通 Turn、Framework Message。
+- 实现层：不进 prompt。
+- 一个词只归属一层；dispatch 只作目的，actual write 作确认结果；Candidate 不是 proposal；`conversation_ref`／`notebook_refs` 是 ref，`candidate_refs` 只是派生反向视图。
+
+### 写 prompt
+
+- 给 AI 的指令必须写具体动作；不能只写“维护”“复核”“处理”。按对象分支时写清“什么条件 → 哪些动作 → 内容去哪里”。例如“复核候选”要展开为读取哪些现行条目、比较什么、变化时改什么、无变化时不做什么。
+- 外部要有边界：写 “outside this Conversation”，不写没有指代的 “external”。
+- 冻结父 system prompt 需要显式作废：当前任务在父上下文之后时，写明父的 system prompt、角色、行为规则、工具策略、任务与完成条件不适用；只以当前任务及后续 control message 为准。
+- 先读现有 owner 文本、规格与代码，再改 prompt；不从记忆重写。规格与运行时常量逐字一致。
+- 能删就删；矩阵用表格；不把内部机制写成解释。
+- 通用 System Prompt 调优与个人 Persona／Character 注入分开，具体边界见「公开范围与个人化隔离」。
+
+### 校验与隔离
+
+- 构建真实 system prompt 复查：project context、skills 索引、runtime footer、memory／skill／tool guidance、control message 都算 prompt。
+- 隔离测试 Profile 的 `terminal.cwd` 必须在仓库 git root 之外，例如 `/Users/edgar/code/Hermes Test/<profile>-workspace`；仓库内的 `.hermes-dev/...` 仍会通过 git root→cwd 链加载根 `AGENTS.md`。
+- prompt 改动要有 prompt 分支测试、工具层拒绝测试和真实模型样本；不以一次样本或提示词自报通过判完成。
+- 保护 prompt-cache prefix：不在会话中途改写历史、切换工具面、重载记忆或重建 root System Prompt；压缩及已冻结的 Noting cache-parity 机制遵循各自契约。Noting 冻结父快照前缀，新工具声明只追加在任务及后续系统提示／控制消息中，并声明以此为准。
 
 ## 实现与代码规范
 
 - Hermes-first、复用优先、增量改造；遵循现有模块边界、公共接口、命名与代码风格。
 - **用正向代码机制保证不变量平凡成立**（用户 2026-10-12 明确）：条件判断尽量归同一处，状态由同一 owner 和正式提交点管理；能同步完成的尽量同步。优先从结构和时序消除非法状态，不以散落的判断、复杂 if/else 或下游反复追加门禁替代正确机制。
 - **不启用即原生（增量不破坏原则，用户 2026-10-11 明确）**：除口径明确要求的变更外，所有 Secretary/Noting 改造必须保证 Hermes 在该功能未启用时（全局开关关闭、非 eligible 会话、纯原生使用场景）原有逻辑与功能完全不变、不被破坏——新机制一律以分支/旁路接入既有接缝，原生路径零行为变化；施工与验收以"未启用场景行为与原生一致"为硬约束，不得借改造之名改变未启用时的任何既有行为。
-- 保护每个 Conversation 的 prompt-cache prefix：不得在会话中途随意改写历史、切换工具面、重载记忆或重建 root System Prompt；压缩及已冻结的 Noting cache-parity 机制遵循各自契约。
 - 原有 facade / sibling 模块结构继续有效：行为放入对应 sibling，保持 facade 公共入口；避免模块级循环导入，在生产代码实际读取的接线点进行 patch。
 - 用户状态路径通过 `get_hermes_home()` 等 profile-aware helper 获取，不硬编码 `~/.hermes`；后台任务、tick、RPC、线程及子进程必须显式绑定所属 profile，不能使用启动 profile 代替目标 profile。
-- Noting的上下文复用在Hermes中间层实现：完整冻结父快照前缀（root、工具列表/Schema、消息）不改写，新的可用工具列表和完整Schema只追加在task及后续新增系统提示/控制消息中并声明以此为准；执行权限仍由Noting白名单限制。模型继承、API/provider及推理直接复用Hermes原生机制，不为Secretary新增独立模型路由、provider适配或App Server任务执行器。
+- 模型继承、API/provider及推理直接复用Hermes原生机制，不为Secretary新增独立模型路由、provider适配或App Server任务执行器。
 - 真实运行选择记录在 CLAUDE，沿用 Hermes 原生模型/API/provider；不得据此改造该层或删除兼容路径，不使用 Codex App Server、Codex Proxy 或自动回退到这两条通道，不修改另一旁路 Dashboard 配置。凭据只从获授权本地环境读取，不进入 Git；历史接口证据按观察版本保留。
 - 机器事实及可执行文件解析使用 `hermes_platform`；非凭据的行为配置进入配置系统，不任意新增环境变量控制功能。
 - Core patch 必须位于已确认接线点；不得随手新增平行 Agent Loop、对话存储、主会话 admission gate、通用调度器或 API hierarchy。
@@ -103,7 +131,6 @@
 
 - Python 测试统一使用 `scripts/run_tests.sh`，不绕过 runner 直接调用 pytest；检查入口是 `python scripts/check`。具体环境准备见 `CONTRIBUTING.md`。
 - 测试使用隔离的 `HERMES_HOME` / runtime，不写入用户真实 Hermes 状态；跨平台行为在对应平台验证，不伪造 `sys.platform`。
-- **隔离测试 Profile 的工作区必须放在仓库 git root 之外**，例如与仓库同级的 `/Users/edgar/code/Hermes Test/<profile>-workspace`，并把该目录设为 `terminal.cwd`；不能使用仓库内的 `.hermes-dev/...` 作为工作区，否则 git root 到 cwd 的 `AGENTS.md` 链仍会把它注入用户会话，造成角色和设计讨论污染。参考当前 round2／round3：`/Users/edgar/code/Hermes Test/round2-workspace`、`round3-workspace`。
 - 修复验证行为契约和实际失败路径，避免读取源码断言、镜像实现或仅证明代码变化的测试；纯文档修改以差异、链接、职责和规格一致性检查为主。
 - 上游 `check_agents_md_size.py` 仅是历史诊断工具，不运行它来裁剪文档；文档长度不属验收门禁。
 
