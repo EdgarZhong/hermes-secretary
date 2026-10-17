@@ -2231,8 +2231,11 @@ def _restored_cold_usage(session: dict) -> dict:
         if not context or context.get("model_matches") is False:
             return {}
         used = int(context["tokens"])
+        # Context only: the anchor proves occupancy, never a session-lifetime total, so the
+        # cumulative counters keep the same empty-session zeros every client already handles.
         usage = {
-            "input": used, "total": used, "context_used": used,
+            "calls": 0, "input": 0, "output": 0, "total": 0,
+            "context_used": used,
             "context_estimated": False, "context_source": "usage_anchor",
         }
         limit = _configured_context_length()
