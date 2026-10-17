@@ -1,3 +1,5 @@
+> **接续说明（本次独立复审追加）：** 本文件是da68703/de810ba写入的较早GitHub静态复核，以下原文完整保留，NOT_RUN/INCOMPLETE只描述该次工作。当前公开主仓库第2次逐条独立审查及四组实测反证已追加到 [verification.md](verification.md)，当前门禁仍不通过。
+
 # 第三轮自主实现 · 第二次 Verification（GitHub 独立静态复核）
 
 > 日期：2026-10-17。审查对象：`EdgarZhong/hermes-secretary` 公共核心，固定产品提交 `b40fa1ff2a771066b4da1d8978a7abe44327e530`。本报告直接提交在 `main`；报告提交自身只改变文档，不作为产品修复或测试证据。

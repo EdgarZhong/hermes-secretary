@@ -25,3 +25,14 @@ engineering-source=用户提供AGENTS项目级必要自主口径收敛与AI指�
 authorized-source-first-prompt=d434ffd7c9dadc777458386c8ed7588779aeea5c
 authorization-source-first-index=R3-019,R3-020
 engineering-E01-status=historical-prompt-repair-not-new-product-semantics;superseded-by-user-R3-019-order
+
+# 用户R3-023启动第2次Verification并授权main向前提交；保留以上原冻结与历史
+verification-2-product-hermes-secretary=b40fa1ff2a771066b4da1d8978a7abe44327e530
+verification-2-report-parent-main=de810bafb055d7cbc8cf8948c1975b37ed808bf6
+verification-2-original-observed-main=c099c8c490846e7989adc4d4aea9a1b4a9a37162
+verification-2-authority-product-docs=b40fa1ff2a771066b4da1d8978a7abe44327e530
+verification-2-authorization-index=R3-023
+verification-2-scope=public-hermes-secretary-main;personal-provider-not-reviewed
+verification-2-result=NOT_PASS
+verification-2-evidence=evidence/verification2/manifest.json
+verification-2-canonical-report=verification.md

@@ -1,0 +1,163 @@
+▶ not activated — using HERMES_PYTHON: /workspace/scratch/6cf4c3fd3ec0/hermes-audit-checkout/.venv/bin/python
+▶ running per-file parallel test suite via run_tests_parallel.py
+  (TZ=UTC LANG=C.UTF-8 PYTHONHASHSEED=0; clean env)
+▶ pre-compiling bytecode cache
+▶ launching test runner
+Discovered 1 test files (~1 tests) under ['tests/secretary/test_v2_context_selection.py']; running with -j 1
+[100.0% |     1/~1 | ✓0 | ✗1] ✗ tests/secretary/test_v2_context_selection.py (1✗, 2.7s)
+
+  ╔╍ Failed: tests/secretary/test_v2_context_selection.py ╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍
+  ║ E         Use -v to get more diff
+  ║ 
+  ║ tests/secretary/test_v2_context_selection.py:113: AssertionError
+  ║ ------------------------------ Captured log setup ------------------------------
+  ║ INFO     run_agent:agent_runtime_helpers.py:2095 OpenAI client created (agent_init, shared=True) thread=MainThread:140375645787968 provider= base_url=https://api.example.test/v1 model=
+  ║ ----------------------------- Captured stdout call -----------------------------
+  ║ {"active_children_after": 0, "committed": true, "configured_engine": "review_selecting_engine", "main_request_count": 1, "noting_request_count": 3, "prefix_equal_per_request": [true, false, false], "termination": {"reason": "No changes are necessary.", "type": "finish_noting"}, "tools_equal_per_request": [true, true, true]}
+  ║ ------------------------------ Captured log call -------------------------------
+  ║ INFO     agent.turn_context:turn_context.py:1123 conversation turn: session=parent model= provider=unknown platform=unknown history=2 msg='Keep this complete Parent prefix.'
+  ║ INFO     run_agent:client_lifecycle.py:206 OpenAI client closed (request_complete, shared=False, tcp_force_closed=0) thread=Thread-3 (<lambda>):140375401387712 provider= base_url=https://api.example.test/v1 model=
+  ║ INFO     agent.conversation_loop:turn_usage.py:97 API call #1: model= provider=unknown in=? out=? total=? latency=0.0s usage=unavailable
+  ║ INFO     agent.conversation_loop:turn_finalizer.py:383 Turn ended: reason=text_response(finish_reason=stop) model= api_calls=1/9223372036854775807 budget=1/9223372036854775807 tool_turns=0 last_msg_role=assistant response_len=16 session=parent
+  ║ INFO     run_agent:agent_runtime_helpers.py:2095 OpenAI client created (agent_init, shared=True) thread=MainThread:140375645787968 provider= base_url=https://api.example.test/v1 model=
+  ║ INFO     agent.turn_context:turn_context.py:1123 conversation turn: session=noting_cda424f5c5754638 model= provider=unknown platform=subagent history=3 msg='<noting-task> You are the Noting Agent for the bound Conversation. In one comple...' origin=noting
+  ║ INFO     run_agent:client_lifecycle.py:206 OpenAI client closed (request_complete, shared=False, tcp_force_closed=0) thread=MainThread:140375645787968 provider= base_url=https://api.example.test/v1 model=
+  ║ INFO     agent.conversation_loop:turn_usage.py:97 API call #1: model= provider=unknown in=? out=? total=? latency=0.0s usage=unavailable
+  ║ INFO     agent.tool_executor:tool_executor.py:1132 tool notebook_show completed (0.01s, 279 chars)
+  ║ INFO     run_agent:client_lifecycle.py:206 OpenAI client closed (request_complete, shared=False, tcp_force_closed=0) thread=MainThread:140375645787968 provider= base_url=https://api.example.test/v1 model=
+  ║ INFO     agent.conversation_loop:turn_usage.py:97 API call #2: model= provider=unknown in=? out=? total=? latency=0.0s usage=unavailable
+  ║ INFO     agent.tool_executor:tool_executor.py:1132 tool finish_noting completed (0.00s, 44 chars)
+  ║ INFO     run_agent:client_lifecycle.py:206 OpenAI client closed (request_complete, shared=False, tcp_force_closed=0) thread=MainThread:140375645787968 provider= base_url=https://api.example.test/v1 model=
+  ║ INFO     agent.conversation_loop:turn_usage.py:97 API call #3: model= provider=unknown in=? out=? total=? latency=0.0s usage=unavailable
+  ║ INFO     agent.conversation_loop:turn_finalizer.py:383 Turn ended: reason=text_response(finish_reason=stop) model= api_calls=3/50 budget=3/50 tool_turns=2 last_msg_role=assistant response_len=10 session=noting_cda424f5c5754638 origin=noting
+  ║ INFO     run_agent:client_lifecycle.py:206 OpenAI client closed (agent_close, shared=True, tcp_force_closed=0) thread=MainThread:140375645787968 provider= base_url=https://api.example.test/v1 model=
+  ║ INFO     hermes_cli.mem_trim:mem_trim.py:179 memory trim: reason=agent close malloc_trim=1 rss_kib=150064->149264 rss_anon_kib=122052->121252 threads=4 duration_ms=97.8
+  ║ ---------------------------- Captured log teardown -----------------------------
+  ║ INFO     run_agent:client_lifecycle.py:206 OpenAI client closed (agent_close, shared=True, tcp_force_closed=0) thread=MainThread:140375645787968 provider= base_url=https://api.example.test/v1 model=
+  ║ =========================== short test summary info ============================
+  ║ FAILED tests/secretary/test_v2_context_selection.py::test_native_noting_second_request_preserves_frozen_parent_with_context_engine
+  ║ 1 failed in 2.06s
+  ║
+  ║  Repro: python -m pytest tests/secretary/test_v2_context_selection.py -q
+  ╚╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍
+
+
+=== Summary: 1 files, 0 tests passed, 1 failed (100% complete) in 2.7s (1 workers) ===
+
+=== Per-file subprocess time distribution ===
+  Files:   1
+  Total subprocess CPU-wall: 2.7s  (runner wall: 2.7s, parallelism: 1x)
+  P50: 2.73s  P90: 2.73s  P95: 2.73s  P99: 2.73s  Max: 2.73s
+  <1s: 0 files (0%)  <2s: 0 files (0%)
+  Top 10 slowest:
+      2.73s  tests/secretary/test_v2_context_selection.py
+
+=== Failure output ===
+
+--- tests/secretary/test_v2_context_selection.py ---
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_ test_native_noting_second_request_preserves_frozen_parent_with_context_engine _
+
+native_parent = (<run_agent.AIAgent object at 0x7fabbaf8f230>, <MagicMock id='140375586646608'>)
+database = <hermes_state.SessionDB object at 0x7fabbd2a56a0>
+
+    def test_native_noting_second_request_preserves_frozen_parent_with_context_engine(native_parent, database):
+        from secretary.noting_child import DEFAULT_NOTING_TASK_INSTRUCTION, active_noting_task_count, run_noting_task
+    
+        parent, client = native_parent
+        main_wires = []
+        client.chat.completions.create.side_effect = lambda **kw: main_wires.append(deepcopy(kw)) or response("Parent response.")
+        main_result = parent.run_conversation(
+            user_message="Keep this complete Parent prefix.",
+            conversation_history=parent._session_messages,
+            title_user_message="",
+        )
+        assert main_result["completed"]
+        assert parent.context_compressor.name == "review_selecting_engine"
+        assert parent.context_compressor.requests == 1, "Parent must use the same formal selection seam"
+        parent._session_messages = main_result["messages"][:-1]
+        anchor = parent._session_messages[-1]["message_uid"]
+        original_history = deepcopy(parent._session_messages)
+        ref = parent._secretary_conversation_ref
+        admission_id = database.noting_admit(ref, anchor, kind="manual")
+    
+        child_wires = []
+        replies = iter([
+            tool_response("notebook_show", {}, "show-current-work"),
+            tool_response("finish_noting", {"reason": "No changes are necessary."}, "finish-work"),
+            response("Completed."),
+        ])
+    
+        def provider(**kwargs):
+            child_wires.append(deepcopy(kwargs))
+            return next(replies)
+    
+        client.chat.completions.create.side_effect = provider
+        outcome = run_noting_task(
+            parent,
+            admission_id=admission_id,
+            conversation_ref=ref,
+            anchor_message_uid=anchor,
+            trigger_type="manual",
+            runtime_profile="NOTING",
+            task_instruction=DEFAULT_NOTING_TASK_INSTRUCTION,
+            admission_timestamp=500,
+        )
+        expected = main_wires[0]["messages"]
+        boundary = len(expected)
+        print(json.dumps({
+            "configured_engine": parent.context_compressor.name,
+            "main_request_count": len(main_wires),
+            "noting_request_count": len(child_wires),
+            "committed": outcome.committed,
+            "termination": outcome.termination,
+            "prefix_equal_per_request": [wire["messages"][:boundary] == expected for wire in child_wires],
+            "tools_equal_per_request": [wire["tools"] == main_wires[0]["tools"] for wire in child_wires],
+            "active_children_after": active_noting_task_count(),
+        }, ensure_ascii=False, sort_keys=True))
+        assert outcome.committed, outcome
+        assert len(child_wires) == 3
+        assert active_noting_task_count() == 0
+        assert parent._session_messages[:len(original_history)] == original_history
+        assert child_wires[0]["messages"][:boundary] == expected
+>       assert child_wires[1]["messages"][:boundary] == expected, (
+            "The second actual native Noting request changed its frozen Parent prefix through select_context."
+        )
+E       AssertionError: The second actual native Noting request changed its frozen Parent prefix through select_context.
+E       assert [{'role': 'sy...ent prefix.'}] == [{'role': 'sy...ent prefix.'}]
+E         
+E         At index 1 diff: {'role': 'user', 'content': 'Retrieved replacement for the earlier context.'} != {'role': 'user', 'content': 'Plan a visit'}
+E         Use -v to get more diff
+
+tests/secretary/test_v2_context_selection.py:113: AssertionError
+------------------------------ Captured log setup ------------------------------
+INFO     run_agent:agent_runtime_helpers.py:2095 OpenAI client created (agent_init, shared=True) thread=MainThread:140375645787968 provider= base_url=https://api.example.test/v1 model=
+----------------------------- Captured stdout call -----------------------------
+{"active_children_after": 0, "committed": true, "configured_engine": "review_selecting_engine", "main_request_count": 1, "noting_request_count": 3, "prefix_equal_per_request": [true, false, false], "termination": {"reason": "No changes are necessary.", "type": "finish_noting"}, "tools_equal_per_request": [true, true, true]}
+------------------------------ Captured log call -------------------------------
+INFO     agent.turn_context:turn_context.py:1123 conversation turn: session=parent model= provider=unknown platform=unknown history=2 msg='Keep this complete Parent prefix.'
+INFO     run_agent:client_lifecycle.py:206 OpenAI client closed (request_complete, shared=False, tcp_force_closed=0) thread=Thread-3 (<lambda>):140375401387712 provider= base_url=https://api.example.test/v1 model=
+INFO     agent.conversation_loop:turn_usage.py:97 API call #1: model= provider=unknown in=? out=? total=? latency=0.0s usage=unavailable
+INFO     agent.conversation_loop:turn_finalizer.py:383 Turn ended: reason=text_response(finish_reason=stop) model= api_calls=1/9223372036854775807 budget=1/9223372036854775807 tool_turns=0 last_msg_role=assistant response_len=16 session=parent
+INFO     run_agent:agent_runtime_helpers.py:2095 OpenAI client created (agent_init, shared=True) thread=MainThread:140375645787968 provider= base_url=https://api.example.test/v1 model=
+INFO     agent.turn_context:turn_context.py:1123 conversation turn: session=noting_cda424f5c5754638 model= provider=unknown platform=subagent history=3 msg='<noting-task> You are the Noting Agent for the bound Conversation. In one comple...' origin=noting
+INFO     run_agent:client_lifecycle.py:206 OpenAI client closed (request_complete, shared=False, tcp_force_closed=0) thread=MainThread:140375645787968 provider= base_url=https://api.example.test/v1 model=
+INFO     agent.conversation_loop:turn_usage.py:97 API call #1: model= provider=unknown in=? out=? total=? latency=0.0s usage=unavailable
+INFO     agent.tool_executor:tool_executor.py:1132 tool notebook_show completed (0.01s, 279 chars)
+INFO     run_agent:client_lifecycle.py:206 OpenAI client closed (request_complete, shared=False, tcp_force_closed=0) thread=MainThread:140375645787968 provider= base_url=https://api.example.test/v1 model=
+INFO     agent.conversation_loop:turn_usage.py:97 API call #2: model= provider=unknown in=? out=? total=? latency=0.0s usage=unavailable
+INFO     agent.tool_executor:tool_executor.py:1132 tool finish_noting completed (0.00s, 44 chars)
+INFO     run_agent:client_lifecycle.py:206 OpenAI client closed (request_complete, shared=False, tcp_force_closed=0) thread=MainThread:140375645787968 provider= base_url=https://api.example.test/v1 model=
+INFO     agent.conversation_loop:turn_usage.py:97 API call #3: model= provider=unknown in=? out=? total=? latency=0.0s usage=unavailable
+INFO     agent.conversation_loop:turn_finalizer.py:383 Turn ended: reason=text_response(finish_reason=stop) model= api_calls=3/50 budget=3/50 tool_turns=2 last_msg_role=assistant response_len=10 session=noting_cda424f5c5754638 origin=noting
+INFO     run_agent:client_lifecycle.py:206 OpenAI client closed (agent_close, shared=True, tcp_force_closed=0) thread=MainThread:140375645787968 provider= base_url=https://api.example.test/v1 model=
+INFO     hermes_cli.mem_trim:mem_trim.py:179 memory trim: reason=agent close malloc_trim=1 rss_kib=150064->149264 rss_anon_kib=122052->121252 threads=4 duration_ms=97.8
+---------------------------- Captured log teardown -----------------------------
+INFO     run_agent:client_lifecycle.py:206 OpenAI client closed (agent_close, shared=True, tcp_force_closed=0) thread=MainThread:140375645787968 provider= base_url=https://api.example.test/v1 model=
+=========================== short test summary info ============================
+FAILED tests/secretary/test_v2_context_selection.py::test_native_noting_second_request_preserves_frozen_parent_with_context_engine
+1 failed in 2.06s
+
+=== 1 file with test failures (1 test failed) ===
+  tests/secretary/test_v2_context_selection.py  (1 test failed)

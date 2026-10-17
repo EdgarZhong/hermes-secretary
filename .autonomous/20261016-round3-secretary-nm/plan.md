@@ -689,3 +689,18 @@ P2只做基本检查，不重测官方CLI，不做真实NM写入。
 ### R3-021 额度前收口
 
 所有子Agent已交回并停止，root提交本阶段快照。第二次Verification/Validation未启动；F16最新短Prompt未实测，F19缺Force／其它原生邻域，统一新schema真实复证未执行。统一准备在ignored v23/unified-f16-f18-f19-retest，round3旧库尚未重建，恢复先完整封存后新建，绝不迁移旧数据。不能把提交干净等同于整改或门禁通过。
+
+## 13. 第2次Verification后的整改输入（2026-10-17）
+
+本节是依据已完成独立审查追加的实施要求，实际owner/排程/进行状态只维护根CLAUDE。审查只写报告与反证，以下修复尚未执行。每个任务须先读verification.md §2–6及对应证据文件，保持现行白板/07与旧保留条款，不以本计划代替权威产品要求。
+
+| 任务 | 实现责任接缝 | 必须解决的事实 | 最小关闭证据 |
+|---|---|---|---|
+| VR2-NH | NotebookStore来源判定与History可见路径 | human_only/hidden UID及只覆盖隐藏消息的range均可被新来源采纳并提交 | 四个原反例拒绝且无写入，合法普通/跨压缩/fork/既有来源继承仍有效；不放开隐藏History |
+| VR2-TOOLS | raw name校验/repair/同步并发dispatch | 退休notebook_mutate被修成maintain后真实写入 | 原始退休名不执行、不提交标记；合法maintain与已知退休对照保持；旧历史调用不重写 |
+| VR2-CACHE | 原生request ContextEngine/Noting冻结接线 | 第2次起selection能替换被冻结的Parent消息 | 配置engine下每个tool/retry/continuation wire完整父prefix不变，Main原生选择功能保留，资源正常结束 |
+| VR2-SCHED | Scheduler pause/resume及native next-run | future next_run被当已发生的last-run推进，跳过一天 | 当日10:00例恢复仍当日；一次性/interval/逾期相关分支与generation/旧worker取消的实际影响定向验证 |
+| VR2-CAP | 原生output-cap异常路由与child结束 | disabled compression的普通overflow早停正确，但output-cap豁免仍尝试压缩，尚未穿正式错误路由验证 | 受控provider真实报max_tokens/available_tokens，观察重试、最终prefix、摘要尝试、合法工作态及资源；按反证决定必要修复 |
+| VR2-F16 | 完整Noting提示及实际来源结算 | 最新Prompt还没有成功移除已交付正文的真实闭环 | 固定修复SHA，唯一隔离round3 Main具体提案/批准/受限合成目标真实success→新变化/部分覆盖/其它依赖→联合Noting→正式view；保留首次结果与前后版本，不人工清源、不伪造收据 |
+
+保留有效旧定向证据，不再因换审查者重复大型回归。改动实际影响旧证据时只补相关路径；修复原反例与相邻不变量，不能加skip/xfail、放宽判断、恢复旧alias或删断言求绿。四项修复及必要证据缺口关闭后，固定新产品SHA，再由新独立上下文全范围复审公开主库；个人部分按其独立仓范围另审，Verification通过后才能启动原Validation计划。

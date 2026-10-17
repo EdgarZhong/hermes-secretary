@@ -1,5 +1,35 @@
 # Hermes Secretary 项目主看板
 
+## 自主口径收敛 · 待用户追认
+
+暂无新增。来源先结算、Candidate最后处理及控制Prompt体量仍沿用户R3-019既有要求；本次Verification没有新增产品语义、修改权威规格或降低门禁。
+
+## 第三轮第2次 Verification · 公开主仓库审查完成，不通过
+
+**最新用户指令（2026-10-17）：** 继续在主仓库执行第三轮自主实现第2次verification，审出的内容直接写仓库，在main向前提交。实际仓库为 `EdgarZhong/hermes-secretary`。
+
+**状态：`VERIFICATION_2_COMPLETE_NOT_PASS`。** 固定待审产品 `b40fa1ff2a771066b4da1d8978a7abe44327e530`；本次三个独立 `fork_turns=none` 审查者从原文提取要求，主会话亲审证据后完成87条细分要求及旧公共V01–V51/V52公开边界映射。全局正式报告：[verification.md](.autonomous/20261016-round3-secretary-nm/verification.md)；主会话交付判断：[final-delivery.md](.autonomous/20261016-round3-secretary-nm/final-delivery.md)。四项新不符合已在实际实现路径复现，另有F16及output-cap恢复证据缺口，Validation保持未启动。
+
+| 当前问题 | 事实与影响 | 下一步/责任 |
+|---|---|---|
+| V2-F01 · P1 | History不可回读的human_only/hidden来源仍可经maintain和commit进入有效Snapshot，4组合全复现 | Notebook/History实现owner统一合法来源真值，保合法旧版本继承；原反例及实际影响邻域复证 |
+| V2-F02 · P1 | 退休notebook_mutate被原生repair变为notebook_maintain，真实child写入并提交 | 工具dispatch owner在统一原始名称修复边界落实退休集合，保留历史原文 |
+| V2-F03 · P1 | 配置ContextEngine后child第2/3请求可重写冻结父消息，任务仍提交 | 请求/child owner保护冻结段，保Main原生选择能力；逐请求tool/retry/continuation复证 |
+| V2-F04 · P2 | 每日10:00在09:20恢复时被推进到次日10:00，正式list也错误 | Scheduler owner修未来next_run被当last_run推进的问题，保claim/撤销/ACK不变量 |
+| V2-E01 / F16 · P1 | 40f4ecc新库真实链提交已成功，已交付来源正文仍未退出；b40fa1f具体改写Prompt无新行为关闭证据 | 原生round3固定修复SHA做一次完整来源结算链；保留首次结果、新变化/未完责任/其它候选依赖 |
+| V2-E02 · P2 | 普通overflow会早停；output-cap豁免仍尝试child压缩，正式错误路由未实证 | runtime owner补该窄分支正式provider错误证据，再据实际结果修复 |
+
+**本次执行证据：** 官方PM Python 3.14.7、Linux x86_64、原锁dev/test环境；四个canonical单文件runner、禁重试，共10独立用例，**3 PASS / 7 FAIL**，runner wall8.7秒。七个失败均保留为四项产品反证；另两次沙箱临时目录失败发生于收集前、0 tests，已分开记录。原始脚本、日志与哈希见 [evidence/verification2](.autonomous/20261016-round3-secretary-nm/evidence/verification2/README.md)。未修改产品或既有测试，没有运行新的真实模型、用户round3现场、NM、跨平台实机、UI或部署。
+
+**旧问题复核：** 公共V51可读时间、F17交接、F18覆盖排序、F19可见压缩源/hidden Anchor及F20事件值的旧反例可按当前源码与具体旧证据关闭；首33回归失败/错误已有逐节点定向修复记录，六个修复测试源码哈希和锁亲核一致。F19较晚补35原生邻域与新schema真实链已读，较早final-delivery的“未执行”不再作为当前事实。完整旧全量结果仍是1766P/29F/4setupE/3平台skip，未改成“整套全绿”；忽略日志未在本次回放。以上不抵消本次新问题。
+
+**main接续与范围：** 开始调查时main仅有c099c8c规划；期间并行提交已快进集成b40fa1f，并新增da68703/de810ba文档。已亲核两提交不改产品，保留其 [verification-2.md](.autonomous/20261016-round3-secretary-nm/verification-2.md) 静态历史，本次从最新main继续提交。公开产品审查与个人Provider V53–V60分开；个人线未在本次代签，不宣称整个第三轮交付完成。整改要求追加原 [plan.md](.autonomous/20261016-round3-secretary-nm/plan.md)，修复集成后需再次独立复审，通过后才启动Validation。
+
+<details>
+<summary>本次接续前的完整主看板原文（截至de810ba，历史状态）</summary>
+
+# Hermes Secretary 项目主看板
+
 ## 第三轮第二次 Verification · GitHub 静态复核（2026-10-17）
 
 **目标提交：** `b40fa1ff2a771066b4da1d8978a7abe44327e530`，本次依用户指令已从旧规划 `main=c099c8c` 非强推快进到该第三轮实现提交；`main` 前进是代码集成事实，**不代表通过Verification、Validation或发布**。本次报告与本段为后续文档提交，不改变审查所针对的产品SHA。
@@ -160,5 +190,7 @@
 规划前完整根看板原文逐字保存在[CLAUDE.before-planning.txt](.autonomous/20261016-round3-secretary-nm/snapshots/CLAUDE.before-planning.txt)，其Git blob与`dec457e...:CLAUDE.md`相同。它是只读历史证据，不是第二动态看板；内含的相对路径按原仓库根解释。第二轮与10-15所有历史结论、未提交工作记录和报告版本未被改写；恢复第三轮以本页当前区域、plan和冻结索引为准，非必要不重读历史。
 
 稳定产品入口仍由README维护，通用规则仍由AGENTS维护；本次没有改动两者或冻结白板／07／PHASE3，没有以规划状态改写“已实现”或“已验收”。
+
+</details>
 
 </details>

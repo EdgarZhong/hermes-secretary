@@ -1,0 +1,126 @@
+▶ not activated — using HERMES_PYTHON: /workspace/scratch/6cf4c3fd3ec0/hermes-audit-checkout/.venv/bin/python
+▶ running per-file parallel test suite via run_tests_parallel.py
+  (TZ=UTC LANG=C.UTF-8 PYTHONHASHSEED=0; clean env)
+▶ pre-compiling bytecode cache
+▶ launching test runner
+Discovered 1 test files (~1 tests) under ['tests/secretary/test_v2_scheduler_resume.py']; running with -j 1
+[100.0% |     1/~1 | ✓1 | ✗1] ✗ tests/secretary/test_v2_scheduler_resume.py (1✓ 1✗, 1.1s)
+
+  ╔╍ Failed: tests/secretary/test_v2_scheduler_resume.py ╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍
+  ║         listed = store.list(now=clock[0].timestamp())
+  ║         assert listed["success"] is True and listed["count"] == 1, listed
+  ║         evidence = {
+  ║             "expression": expression,
+  ║             "created_at": "2030-04-06T09:00:00+00:00",
+  ║             "paused_at": "2030-04-06T09:10:00+00:00",
+  ║             "resumed_at": clock[0].isoformat(),
+  ║             "created_next_due_at": created["schedule"]["next_due_at"],
+  ║             "native_next_occurrence": native_next,
+  ║             "resumed_next_due_at": resumed["schedule"]["next_due_at"],
+  ║             "durable_list_next_due_at": listed["schedules"][0]["next_due_at"],
+  ║             "resumed_notice": resumed.get("notice"),
+  ║             "resumed_schedule": resumed["schedule"],
+  ║         }
+  ║         print("SECOND_VERIFICATION_RESUME_EVIDENCE " + json.dumps(evidence, ensure_ascii=False))
+  ║ >       assert resumed["schedule"]["next_due_at"] == native_next, json.dumps(evidence, ensure_ascii=False)
+  ║ E       AssertionError: {"expression": "0 10 * * *", "created_at": "2030-04-06T09:00:00+00:00", "paused_at": "2030-04-06T09:10:00+00:00", "resumed_at": "2030-04-06T09:20:00+00:00", "created_next_due_at": "2030-04-06T10:00:00+00:00", "native_next_occurrence": "2030-04-06T10:00:00+00:00", "resumed_next_due_at": "2030-04-07T10:00:00+00:00", "durable_list_next_due_at": "2030-04-07T10:00:00+00:00", "resumed_notice": "No instant reminder is currently scheduled to trigger in this Conversation within the next 24 hours. Consider whether a follow-up is needed.", "resumed_schedule": {"schedule_id": "sched_291c6af9e09e4cc6b02f37a0d0be92d9", "content": "Attend the daily 10:00 review", "expression": "0 10 * * *", "canonical_schedule": {"display": "0 10 * * *", "expr": "0 10 * * *", "kind": "cron"}, "timezone": "UTC", "delivery_mode": "instant", "state": "active", "next_due_at": "2030-04-07T10:00:00+00:00", "pending_count": 0, "last_delivery": null}}
+  ║ E       assert '2030-04-07T10:00:00+00:00' == '2030-04-06T10:00:00+00:00'
+  ║ E         
+  ║ E         - 2030-04-06T10:00:00+00:00
+  ║ E         ?          ^
+  ║ E         + 2030-04-07T10:00:00+00:00
+  ║ E         ?          ^
+  ║ 
+  ║ tests/secretary/test_v2_scheduler_resume.py:56: AssertionError
+  ║ ----------------------------- Captured stdout call -----------------------------
+  ║ SECOND_VERIFICATION_RESUME_EVIDENCE {"expression": "0 10 * * *", "created_at": "2030-04-06T09:00:00+00:00", "paused_at": "2030-04-06T09:10:00+00:00", "resumed_at": "2030-04-06T09:20:00+00:00", "created_next_due_at": "2030-04-06T10:00:00+00:00", "native_next_occurrence": "2030-04-06T10:00:00+00:00", "resumed_next_due_at": "2030-04-07T10:00:00+00:00", "durable_list_next_due_at": "2030-04-07T10:00:00+00:00", "resumed_notice": "No instant reminder is currently scheduled to trigger in this Conversation within the next 24 hours. Consider whether a follow-up is needed.", "resumed_schedule": {"schedule_id": "sched_291c6af9e09e4cc6b02f37a0d0be92d9", "content": "Attend the daily 10:00 review", "expression": "0 10 * * *", "canonical_schedule": {"display": "0 10 * * *", "expr": "0 10 * * *", "kind": "cron"}, "timezone": "UTC", "delivery_mode": "instant", "state": "active", "next_due_at": "2030-04-07T10:00:00+00:00", "pending_count": 0, "last_delivery": null}}
+  ║ =========================== short test summary info ============================
+  ║ FAILED tests/secretary/test_v2_scheduler_resume.py::test_resume_before_due_keeps_native_next_occurrence[daily-calendar-future-occurrence]
+  ║ 1 failed, 1 passed in 0.62s
+  ║
+  ║  Repro: python -m pytest tests/secretary/test_v2_scheduler_resume.py -q
+  ╚╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍
+
+
+=== Summary: 1 files, 1 tests passed, 1 failed (100% complete) in 1.1s (1 workers) ===
+
+=== Per-file subprocess time distribution ===
+  Files:   1
+  Total subprocess CPU-wall: 1.1s  (runner wall: 1.1s, parallelism: 1x)
+  P50: 1.13s  P90: 1.13s  P95: 1.13s  P99: 1.13s  Max: 1.13s
+  <1s: 0 files (0%)  <2s: 1 files (100%)
+  Top 10 slowest:
+      1.13s  tests/secretary/test_v2_scheduler_resume.py
+
+=== Failure output ===
+
+--- tests/secretary/test_v2_scheduler_resume.py ---
+.F                                                                       [100%]
+=================================== FAILURES ===================================
+_ test_resume_before_due_keeps_native_next_occurrence[daily-calendar-future-occurrence] _
+
+store = <secretary.schedules.SchedulerStore object at 0x7f2c31652990>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f2c31860e90>
+expression = '0 10 * * *'
+
+    @pytest.mark.parametrize(
+        "expression",
+        [
+            pytest.param("2030-04-06T10:00:00+00:00", id="one-shot-positive-control"),
+            pytest.param("0 10 * * *", id="daily-calendar-future-occurrence"),
+        ],
+    )
+    def test_resume_before_due_keeps_native_next_occurrence(store, monkeypatch, expression):
+        import cron.jobs as native
+    
+        clock = [datetime(2030, 4, 6, 9, 0, tzinfo=timezone.utc)]
+        monkeypatch.setattr(native, "_hermes_now", lambda: clock[0])
+        created = store.create("Attend the daily 10:00 review", expression, "instant", now=clock[0].timestamp())
+        assert created["success"] is True, created
+        schedule_id = created["schedule"]["schedule_id"]
+        assert created["schedule"]["next_due_at"] == "2030-04-06T10:00:00+00:00"
+    
+        clock[0] = datetime(2030, 4, 6, 9, 10, tzinfo=timezone.utc)
+        paused = store.pause(schedule_id, now=clock[0].timestamp())
+        assert paused["success"] is True and paused["schedule"]["state"] == "paused", paused
+    
+        clock[0] = datetime(2030, 4, 6, 9, 20, tzinfo=timezone.utc)
+        # This is the native computation used by cron.jobs.resume_job when its stored
+        # next occurrence is still future. No Scheduler helper supplies the oracle.
+        native_next = native.compute_next_run(created["schedule"]["canonical_schedule"])
+        assert native_next == "2030-04-06T10:00:00+00:00", native_next
+        resumed = store.resume(schedule_id, now=clock[0].timestamp())
+        assert resumed["success"] is True and resumed["schedule"]["state"] == "active", resumed
+        listed = store.list(now=clock[0].timestamp())
+        assert listed["success"] is True and listed["count"] == 1, listed
+        evidence = {
+            "expression": expression,
+            "created_at": "2030-04-06T09:00:00+00:00",
+            "paused_at": "2030-04-06T09:10:00+00:00",
+            "resumed_at": clock[0].isoformat(),
+            "created_next_due_at": created["schedule"]["next_due_at"],
+            "native_next_occurrence": native_next,
+            "resumed_next_due_at": resumed["schedule"]["next_due_at"],
+            "durable_list_next_due_at": listed["schedules"][0]["next_due_at"],
+            "resumed_notice": resumed.get("notice"),
+            "resumed_schedule": resumed["schedule"],
+        }
+        print("SECOND_VERIFICATION_RESUME_EVIDENCE " + json.dumps(evidence, ensure_ascii=False))
+>       assert resumed["schedule"]["next_due_at"] == native_next, json.dumps(evidence, ensure_ascii=False)
+E       AssertionError: {"expression": "0 10 * * *", "created_at": "2030-04-06T09:00:00+00:00", "paused_at": "2030-04-06T09:10:00+00:00", "resumed_at": "2030-04-06T09:20:00+00:00", "created_next_due_at": "2030-04-06T10:00:00+00:00", "native_next_occurrence": "2030-04-06T10:00:00+00:00", "resumed_next_due_at": "2030-04-07T10:00:00+00:00", "durable_list_next_due_at": "2030-04-07T10:00:00+00:00", "resumed_notice": "No instant reminder is currently scheduled to trigger in this Conversation within the next 24 hours. Consider whether a follow-up is needed.", "resumed_schedule": {"schedule_id": "sched_291c6af9e09e4cc6b02f37a0d0be92d9", "content": "Attend the daily 10:00 review", "expression": "0 10 * * *", "canonical_schedule": {"display": "0 10 * * *", "expr": "0 10 * * *", "kind": "cron"}, "timezone": "UTC", "delivery_mode": "instant", "state": "active", "next_due_at": "2030-04-07T10:00:00+00:00", "pending_count": 0, "last_delivery": null}}
+E       assert '2030-04-07T10:00:00+00:00' == '2030-04-06T10:00:00+00:00'
+E         
+E         - 2030-04-06T10:00:00+00:00
+E         ?          ^
+E         + 2030-04-07T10:00:00+00:00
+E         ?          ^
+
+tests/secretary/test_v2_scheduler_resume.py:56: AssertionError
+----------------------------- Captured stdout call -----------------------------
+SECOND_VERIFICATION_RESUME_EVIDENCE {"expression": "0 10 * * *", "created_at": "2030-04-06T09:00:00+00:00", "paused_at": "2030-04-06T09:10:00+00:00", "resumed_at": "2030-04-06T09:20:00+00:00", "created_next_due_at": "2030-04-06T10:00:00+00:00", "native_next_occurrence": "2030-04-06T10:00:00+00:00", "resumed_next_due_at": "2030-04-07T10:00:00+00:00", "durable_list_next_due_at": "2030-04-07T10:00:00+00:00", "resumed_notice": "No instant reminder is currently scheduled to trigger in this Conversation within the next 24 hours. Consider whether a follow-up is needed.", "resumed_schedule": {"schedule_id": "sched_291c6af9e09e4cc6b02f37a0d0be92d9", "content": "Attend the daily 10:00 review", "expression": "0 10 * * *", "canonical_schedule": {"display": "0 10 * * *", "expr": "0 10 * * *", "kind": "cron"}, "timezone": "UTC", "delivery_mode": "instant", "state": "active", "next_due_at": "2030-04-07T10:00:00+00:00", "pending_count": 0, "last_delivery": null}}
+=========================== short test summary info ============================
+FAILED tests/secretary/test_v2_scheduler_resume.py::test_resume_before_due_keeps_native_next_occurrence[daily-calendar-future-occurrence]
+1 failed, 1 passed in 0.62s
+
+=== 1 file with test failures (1 test failed) ===
+  tests/secretary/test_v2_scheduler_resume.py  (1 test failed)

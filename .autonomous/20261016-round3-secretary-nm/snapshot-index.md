@@ -1,5 +1,15 @@
 # Snapshot Index：20261016-round3-secretary-nm
 
+## 当前阶段：第2次Verification已完成，公开主仓库门禁不通过（2026-10-17）
+
+正式逐条复审写回 [verification.md](verification.md)，主会话最终接受判断见 [final-delivery.md](final-delivery.md)。固定待审产品 `b40fa1ff2a771066b4da1d8978a7abe44327e530`；提交准备读取main `de810bafb055d7cbc8cf8948c1975b37ed808bf6`，该版本相对产品只增加两份文档更新。本次不是个人Provider复审、产品修复或Validation。
+
+| 口径编号 | 用户明确要求 | 来源与边界 |
+|---|---|---|
+| R3-023 | 继续在主仓库执行第三轮第2次Verification；审出内容写入仓库，在main向前提交 | 本会话用户原文：“你继续在，Parliament Secretary 主仓库执行第三轮自主实现的第2次verification。审出来的东西直接写进仓库，在main上继续往前提交”。仓库核对为EdgarZhong/hermes-secretary。此指令覆盖R3-020～022当时“复审前停止”的阶段限制，保留产品语义、个人隔离与NM/UI/部署边界 |
+
+三个独立审查上下文先读原文提取要求，后做实现与证据核对；main产品SHA没有因本次反证而改变。四项新不符合、F16和output-cap窄证据缺口保留，原报告及首审逐节原文未被改写。以下记录保留此前授权和开发阶段历史，不把历史停止点当作本次停止要求。
+
 ## 当前阶段：2026-10-17 本地完整托管
 
 R3-016～018已覆盖原云端规划／Develop停止限制；现在按本地环境完成开发、真实DeepSeek复测、独立Verification与Validation及交付。实测统一round3隔离profile；动态进度仅见根CLAUDE。以下2026-10-16规划说明保留为历史时点，不作为当前停止条件。

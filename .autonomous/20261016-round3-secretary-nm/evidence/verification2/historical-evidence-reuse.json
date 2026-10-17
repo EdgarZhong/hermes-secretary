@@ -1,0 +1,53 @@
+{
+  "method": "只读逐字源码SHA256与既有报告明确指纹相比较；没有重放旧测试或读取其ignored原始日志。",
+  "product_sha": "b40fa1ff2a771066b4da1d8978a7abe44327e530",
+  "reported_source": "https://github.com/EdgarZhong/hermes-secretary/blob/b40fa1ff2a771066b4da1d8978a7abe44327e530/.autonomous/20261016-round3-secretary-nm/c10-final-legacy-report.md#L145",
+  "test_files": [
+    {
+      "path": "tests/agent/test_reasoning_only_stop_persistence.py",
+      "reported_sha256": "f4f906e94532e9db0e6b09d0baf3bb02d92263dbcd1966db3a555e6ee37d2633",
+      "actual_sha256": "f4f906e94532e9db0e6b09d0baf3bb02d92263dbcd1966db3a555e6ee37d2633",
+      "equal": true
+    },
+    {
+      "path": "tests/agent/test_run_agent.py",
+      "reported_sha256": "b554486d9832660063f77e626d6164d67b47364d2a25dfed896b3c7a4882d1c8",
+      "actual_sha256": "b554486d9832660063f77e626d6164d67b47364d2a25dfed896b3c7a4882d1c8",
+      "equal": true
+    },
+    {
+      "path": "tests/gateway/test_secretary_slash.py",
+      "reported_sha256": "b6b1aa6ba6a5350eb2dfdcb89d1addc35d526837f8ba64e8597a6e2265193584",
+      "actual_sha256": "b6b1aa6ba6a5350eb2dfdcb89d1addc35d526837f8ba64e8597a6e2265193584",
+      "equal": true
+    },
+    {
+      "path": "tests/hermes_state/test_secretary_foundation.py",
+      "reported_sha256": "a65af68498e2c757ef97dfa8b3c5cbf435209e782ae45cba2f552a44160e0683",
+      "actual_sha256": "a65af68498e2c757ef97dfa8b3c5cbf435209e782ae45cba2f552a44160e0683",
+      "equal": true
+    },
+    {
+      "path": "tests/hermes_state/test_secretary_lifecycle.py",
+      "reported_sha256": "802b7c4ab6d1f41843bb0d9326d556707c0e9b8859b3289975c005ab94eaa353",
+      "actual_sha256": "802b7c4ab6d1f41843bb0d9326d556707c0e9b8859b3289975c005ab94eaa353",
+      "equal": true
+    },
+    {
+      "path": "tests/hermes_state/test_secretary_migration_lineage.py",
+      "reported_sha256": "104dcdc340b7da02acd62883e51f0df4c8ebf5fc2b4727e25f9abb8019795446",
+      "actual_sha256": "104dcdc340b7da02acd62883e51f0df4c8ebf5fc2b4727e25f9abb8019795446",
+      "equal": true
+    }
+  ],
+  "dependency_files": {
+    "uv.lock": "2bc4db483e9cba927cd7147f9ccbb09635f85bb3f1f36d6e9d51d06b65d1c67e",
+    "pyproject.toml": "cadde2f6a92574d292103f43abf66408b1d841cd9ea332ca7f3e3dfc5dcc87fd"
+  },
+  "not_inferred": [
+    "全部历史日志已回放",
+    "全部生产依赖指纹逐项匹配",
+    "本次全量回归通过",
+    "跨平台实机通过"
+  ]
+}

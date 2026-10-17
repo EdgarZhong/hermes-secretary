@@ -1,0 +1,193 @@
+▶ not activated — using HERMES_PYTHON: /workspace/scratch/6cf4c3fd3ec0/hermes-audit-checkout/.venv/bin/python
+▶ running per-file parallel test suite via run_tests_parallel.py
+  (TZ=UTC LANG=C.UTF-8 PYTHONHASHSEED=0; clean env)
+▶ pre-compiling bytecode cache
+▶ launching test runner
+Discovered 1 test files (~1 tests) under ['tests/secretary/test_v2_retired_tool.py']; running with -j 1
+[100.0% |     1/~1 | ✓2 | ✗1] ✗ tests/secretary/test_v2_retired_tool.py (2✓ 1✗, 3.7s)
+
+  ╔╍ Failed: tests/secretary/test_v2_retired_tool.py ╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍
+  ║ INFO     hermes_cli.plugins:plugins.py:373 Plugin 'web-perplexity' registered web provider: perplexity
+  ║ INFO     hermes_cli.plugins:plugins.py:373 Plugin 'web-searxng' registered web provider: searxng
+  ║ INFO     hermes_cli.plugins:plugins.py:373 Plugin 'web-tavily' registered web provider: tavily
+  ║ INFO     hermes_cli.plugins:plugins.py:373 Plugin 'web-xai' registered web provider: xai
+  ║ INFO     hermes_cli.plugins:plugins.py:1428 Plugin discovery complete: 57 found, 52 enabled
+  ║ INFO     agent.model_metadata:model_metadata.py:2275 No model id provided for context length resolution — defaulting to 256,000 tokens.
+  ║ ----------------------------- Captured stdout call -----------------------------
+  ║ SECOND_VERIFICATION_EVIDENCE {"raw_model_tool_name": "notebook_mutate", "raw_arguments": {"action": "create", "entry_type": "matter", "fields": {"description": "SECOND_VERIFICATION_RAW_NAME_WRITE", "completion_condition": "Report sent"}, "source_time_range": {"start_time": "1970-01-01T00:16:40+00:00", "end_time": "1970-01-01T00:16:41+00:00"}}, "model_calls": 4, "outcome": {"status": "completed", "committed": true, "turns": 1}, "tool_rows": [{"role": "tool", "content": "{\"success\": true, \"conversation_ref\": \"conv_6654bb0cd53f42959416541e352a2836\", \"view_kind\": \"working\", \"base_snapshot_id\": null, \"coverage\": {\"anchor_message_uid\": \"m2\"}, \"payload\": {\"work\": [], \"situations\": [], \"discussion\": [], \"candidates\": []}}", "_db_persisted": true, "message_uid": "33827bea757b4fbb8f068f264a8490b1", "_tool_call_uid": "ea4c70aa394f4f48a7c54b03f10dc111", "timestamp": 1792209310.5108073, "tool_call_id": "read", "tool_name": "notebook_show"}, {"role": "tool", "content": "{\"success\": true, \"changed\": true, \"entry\": {\"created_at\": \"2026-10-17T03:55:10+00:00\", \"entry_type\": \"matter\", \"fields\": {\"completion_condition\": \"Report sent\", \"description\": \"SECOND_VERIFICATION_RAW_NAME_WRITE\"}, \"last_processed_at\": null, \"relations\": [], \"source_message_identities\": [], \"source_time_range\": {\"end_time\": \"1970-01-01T00:16:41+00:00\", \"start_time\": \"1970-01-01T00:16:40+00:00\"}, \"status\": \"in_progress\", \"updated_at\": \"2026-10-17T03:55:10+00:00\", \"entry_id\": \"1\", \"version_id\": \"1\", \"candidate_refs\": []}}", "_db_persisted": true, "message_uid": "6487a44c839a42d982bb8fdb2f0382c6", "_tool_call_uid": "158d1a85264f44808a81ad7feea3545f", "timestamp": 1792209310.5419633, "tool_call_id": "candidate-write", "tool_name": "notebook_maintain"}, {"role": "tool", "content": "{\"success\": true, \"status\": \"end_requested\"}", "_db_persisted": true, "message_uid": "cc74aa183621416f840d32abf43db5a4", "_tool_call_uid": "ff3e42d5a4b0407ab99d7c3f9c328c70", "timestamp": 1792209310.5722663, "tool_call_id": "finish", "tool_name": "finish_noting"}], "committed_work": [{"created_at": "2026-10-17T03:55:10.538520+00:00", "entry_type": "matter", "fields": {"completion_condition": "Report sent", "description": "SECOND_VERIFICATION_RAW_NAME_WRITE"}, "last_processed_at": null, "relations": [], "source_message_identities": [], "source_time_range": {"end_time": "1970-01-01T00:16:41+00:00", "start_time": "1970-01-01T00:16:40+00:00"}, "status": "in_progress", "updated_at": "2026-10-17T03:55:10.538520+00:00", "entry_id": "1", "version_id": "1", "candidate_refs": []}], "expected_write": false, "observed_write": true}
+  ║ ------------------------------ Captured log call -------------------------------
+  ║ INFO     run_agent:agent_runtime_helpers.py:2095 OpenAI client created (agent_init, shared=True) thread=MainThread:140217833625408 provider= base_url=https://openrouter.ai/api/v1 model=
+  ║ INFO     agent.model_metadata:model_metadata.py:2275 No model id provided for context length resolution — defaulting to 256,000 tokens.
+  ║ INFO     agent.turn_context:turn_context.py:1123 conversation turn: session=noting_91cd9e4616fc4372 model= provider=unknown platform=subagent history=2 msg='<noting-task> Maintain the Notebook using the supplied tool calls, then finish. ...' origin=noting
+  ║ INFO     run_agent:client_lifecycle.py:206 OpenAI client closed (request_complete, shared=False, tcp_force_closed=0) thread=MainThread:140217833625408 provider= base_url=https://openrouter.ai/api/v1 model=
+  ║ INFO     agent.conversation_loop:turn_usage.py:97 API call #1: model= provider=unknown in=? out=? total=? latency=0.0s usage=unavailable
+  ║ INFO     agent.tool_executor:tool_executor.py:1132 tool notebook_show completed (0.01s, 249 chars)
+  ║ INFO     run_agent:client_lifecycle.py:206 OpenAI client closed (request_complete, shared=False, tcp_force_closed=0) thread=MainThread:140217833625408 provider= base_url=https://openrouter.ai/api/v1 model=
+  ║ INFO     agent.conversation_loop:turn_usage.py:97 API call #2: model= provider=unknown in=? out=? total=? latency=0.0s usage=unavailable
+  ║ INFO     agent.tool_executor:tool_executor.py:1132 tool notebook_maintain completed (0.01s, 526 chars)
+  ║ INFO     run_agent:client_lifecycle.py:206 OpenAI client closed (request_complete, shared=False, tcp_force_closed=0) thread=MainThread:140217833625408 provider= base_url=https://openrouter.ai/api/v1 model=
+  ║ INFO     agent.conversation_loop:turn_usage.py:97 API call #3: model= provider=unknown in=? out=? total=? latency=0.0s usage=unavailable
+  ║ INFO     agent.tool_executor:tool_executor.py:1132 tool finish_noting completed (0.01s, 44 chars)
+  ║ INFO     run_agent:client_lifecycle.py:206 OpenAI client closed (request_complete, shared=False, tcp_force_closed=0) thread=MainThread:140217833625408 provider= base_url=https://openrouter.ai/api/v1 model=
+  ║ INFO     agent.conversation_loop:turn_usage.py:97 API call #4: model= provider=unknown in=? out=? total=? latency=0.0s usage=unavailable
+  ║ INFO     agent.conversation_loop:turn_finalizer.py:383 Turn ended: reason=text_response(finish_reason=stop) model= api_calls=4/50 budget=4/50 tool_turns=3 last_msg_role=assistant response_len=4 session=noting_91cd9e4616fc4372 origin=noting
+  ║ INFO     run_agent:client_lifecycle.py:206 OpenAI client closed (agent_close, shared=True, tcp_force_closed=0) thread=MainThread:140217833625408 provider= base_url=https://openrouter.ai/api/v1 model=
+  ║ ---------------------------- Captured log teardown -----------------------------
+  ║ INFO     run_agent:client_lifecycle.py:206 OpenAI client closed (agent_close, shared=True, tcp_force_closed=0) thread=MainThread:140217833625408 provider= base_url=https://openrouter.ai/api/v1 model=
+  ║ =========================== short test summary info ============================
+  ║ FAILED tests/secretary/test_v2_retired_tool.py::test_raw_retired_name_cannot_write_through_native_noting_loop[required-retired-name-must-not-write]
+  ║ 1 failed, 2 passed in 2.88s
+  ║
+  ║  Repro: python -m pytest tests/secretary/test_v2_retired_tool.py -q
+  ╚╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍
+
+
+=== Summary: 1 files, 2 tests passed, 1 failed (100% complete) in 3.7s (1 workers) ===
+
+=== Per-file subprocess time distribution ===
+  Files:   1
+  Total subprocess CPU-wall: 3.7s  (runner wall: 3.7s, parallelism: 1x)
+  P50: 3.67s  P90: 3.67s  P95: 3.67s  P99: 3.67s  Max: 3.67s
+  <1s: 0 files (0%)  <2s: 0 files (0%)
+  Top 10 slowest:
+      3.67s  tests/secretary/test_v2_retired_tool.py
+
+=== Failure output ===
+
+--- tests/secretary/test_v2_retired_tool.py ---
+..F                                                                      [100%]
+=================================== FAILURES ===================================
+_ test_raw_retired_name_cannot_write_through_native_noting_loop[required-retired-name-must-not-write] _
+
+parent = <run_agent.AIAgent object at 0x7f86f43834d0>
+db = <tests.secretary.test_noting_child.NotingSessionDB object at 0x7f86f4380050>
+stub_client = <MagicMock id='140217759379680'>
+raw_tool_name = 'notebook_mutate', expected_write = False
+
+    @pytest.mark.parametrize(
+        ("raw_tool_name", "expected_write"),
+        [
+            pytest.param("notebook_maintain", True, id="current-name-positive-control"),
+            pytest.param("notebook_manage", False, id="known-retired-negative-control"),
+            pytest.param("notebook_mutate", False, id="required-retired-name-must-not-write"),
+        ],
+    )
+    def test_raw_retired_name_cannot_write_through_native_noting_loop(
+        parent, db, stub_client, raw_tool_name, expected_write
+    ):
+        ref = parent._secretary_conversation_ref
+        maintain_args = {
+            "action": "create",
+            "entry_type": "matter",
+            "fields": {
+                "description": "SECOND_VERIFICATION_RAW_NAME_WRITE",
+                "completion_condition": "Report sent",
+            },
+            "source_time_range": {
+                "start_time": "1970-01-01T00:16:40+00:00",
+                "end_time": "1970-01-01T00:16:41+00:00",
+            },
+        }
+        stub_client.chat.completions.create.side_effect = [
+            _tool_response("notebook_show", {}, "read"),
+            _tool_response(raw_tool_name, maintain_args, "candidate-write"),
+            _tool_response("finish_noting", {"reason": "Controlled name-dispatch verification finished."}, "finish"),
+            mock_response("done"),
+        ]
+        admission_id = db.noting_admit(ref, "m2", kind="idle")
+        assert admission_id is not None
+        outcome = run_noting_task(
+            parent,
+            admission_id=admission_id,
+            conversation_ref=ref,
+            anchor_message_uid="m2",
+            trigger_type="idle",
+            runtime_profile="NOTING",
+            task_instruction="Maintain the Notebook using the supplied tool calls, then finish.",
+            parent_active_messages=parent._session_messages,
+            admission_timestamp=2000.0,
+        )
+        assert outcome.committed is True, outcome
+        assert outcome.status == "completed", outcome
+        snapshot = db.notebook_current(ref)
+        assert snapshot is not None
+        rows = db.get_messages_as_conversation(outcome.child_session_id)
+        tool_rows = [row for row in rows if row.get("role") == "tool"]
+        written = any(
+            entry.get("fields", {}).get("description") == "SECOND_VERIFICATION_RAW_NAME_WRITE"
+            for entry in snapshot["payload"]["work"]
+        )
+        evidence = {
+            "raw_model_tool_name": raw_tool_name,
+            "raw_arguments": maintain_args,
+            "model_calls": stub_client.chat.completions.create.call_count,
+            "outcome": {"status": outcome.status, "committed": outcome.committed, "turns": outcome.turns},
+            "tool_rows": tool_rows,
+            "committed_work": snapshot["payload"]["work"],
+            "expected_write": expected_write,
+            "observed_write": written,
+        }
+        print("SECOND_VERIFICATION_EVIDENCE " + json.dumps(evidence, ensure_ascii=False, default=str))
+>       assert written is expected_write, json.dumps(evidence, ensure_ascii=False, default=str)
+E       AssertionError: {"raw_model_tool_name": "notebook_mutate", "raw_arguments": {"action": "create", "entry_type": "matter", "fields": {"description": "SECOND_VERIFICATION_RAW_NAME_WRITE", "completion_condition": "Report sent"}, "source_time_range": {"start_time": "1970-01-01T00:16:40+00:00", "end_time": "1970-01-01T00:16:41+00:00"}}, "model_calls": 4, "outcome": {"status": "completed", "committed": true, "turns": 1}, "tool_rows": [{"role": "tool", "content": "{\"success\": true, \"conversation_ref\": \"conv_6654bb0cd53f42959416541e352a2836\", \"view_kind\": \"working\", \"base_snapshot_id\": null, \"coverage\": {\"anchor_message_uid\": \"m2\"}, \"payload\": {\"work\": [], \"situations\": [], \"discussion\": [], \"candidates\": []}}", "_db_persisted": true, "message_uid": "33827bea757b4fbb8f068f264a8490b1", "_tool_call_uid": "ea4c70aa394f4f48a7c54b03f10dc111", "timestamp": 1792209310.5108073, "tool_call_id": "read", "tool_name": "notebook_show"}, {"role": "tool", "content": "{\"success\": true, \"changed\": true, \"entry\": {\"created_at\": \"2026-10-17T03:55:10+00:00\", \"entry_type\": \"matter\", \"fields\": {\"completion_condition\": \"Report sent\", \"description\": \"SECOND_VERIFICATION_RAW_NAME_WRITE\"}, \"last_processed_at\": null, \"relations\": [], \"source_message_identities\": [], \"source_time_range\": {\"end_time\": \"1970-01-01T00:16:41+00:00\", \"start_time\": \"1970-01-01T00:16:40+00:00\"}, \"status\": \"in_progress\", \"updated_at\": \"2026-10-17T03:55:10+00:00\", \"entry_id\": \"1\", \"version_id\": \"1\", \"candidate_refs\": []}}", "_db_persisted": true, "message_uid": "6487a44c839a42d982bb8fdb2f0382c6", "_tool_call_uid": "158d1a85264f44808a81ad7feea3545f", "timestamp": 1792209310.5419633, "tool_call_id": "candidate-write", "tool_name": "notebook_maintain"}, {"role": "tool", "content": "{\"success\": true, \"status\": \"end_requested\"}", "_db_persisted": true, "message_uid": "cc74aa183621416f840d32abf43db5a4", "_tool_call_uid": "ff3e42d5a4b0407ab99d7c3f9c328c70", "timestamp": 1792209310.5722663, "tool_call_id": "finish", "tool_name": "finish_noting"}], "committed_work": [{"created_at": "2026-10-17T03:55:10.538520+00:00", "entry_type": "matter", "fields": {"completion_condition": "Report sent", "description": "SECOND_VERIFICATION_RAW_NAME_WRITE"}, "last_processed_at": null, "relations": [], "source_message_identities": [], "source_time_range": {"end_time": "1970-01-01T00:16:41+00:00", "start_time": "1970-01-01T00:16:40+00:00"}, "status": "in_progress", "updated_at": "2026-10-17T03:55:10.538520+00:00", "entry_id": "1", "version_id": "1", "candidate_refs": []}], "expected_write": false, "observed_write": true}
+E       assert True is False
+
+tests/secretary/test_v2_retired_tool.py:102: AssertionError
+------------------------------ Captured log setup ------------------------------
+INFO     run_agent:agent_runtime_helpers.py:2095 OpenAI client created (agent_init, shared=True) thread=MainThread:140217833625408 provider= base_url=https://openrouter.ai/api/v1 model=
+INFO     hermes_cli.plugins:plugins.py:373 Plugin 'browser-browser-use' registered browser provider: browser-use
+INFO     hermes_cli.plugins:plugins.py:373 Plugin 'browser-browserbase' registered browser provider: browserbase
+INFO     hermes_cli.plugins:plugins.py:373 Plugin 'browser-firecrawl' registered browser provider: firecrawl
+INFO     hermes_cli.plugins:plugins.py:373 Plugin 'deepinfra' registered image_gen provider: deepinfra
+INFO     hermes_cli.plugins:plugins.py:373 Plugin 'fal' registered image_gen provider: fal
+INFO     hermes_cli.plugins:plugins.py:373 Plugin 'krea' registered image_gen provider: krea
+INFO     hermes_cli.plugins:plugins.py:373 Plugin 'meta-ai-image-gen' registered image_gen provider: meta-ai
+INFO     hermes_cli.plugins:plugins.py:373 Plugin 'openai' registered image_gen provider: openai
+INFO     hermes_cli.plugins:plugins.py:373 Plugin 'openai-codex' registered image_gen provider: openai-codex
+INFO     hermes_cli.plugins:plugins.py:373 Plugin 'openrouter' registered image_gen provider: openrouter
+INFO     hermes_cli.plugins:plugins.py:373 Plugin 'openrouter' registered image_gen provider: nous
+INFO     hermes_cli.plugins:plugins.py:373 Plugin 'xai' registered image_gen provider: xai
+INFO     hermes_cli.plugins:plugins.py:373 Plugin 'deepinfra' registered video_gen provider: deepinfra
+INFO     hermes_cli.plugins:plugins.py:373 Plugin 'fal' registered video_gen provider: fal
+INFO     hermes_cli.plugins:plugins.py:373 Plugin 'openrouter' registered video_gen provider: openrouter
+INFO     hermes_cli.plugins:plugins.py:373 Plugin 'xai' registered video_gen provider: xai
+INFO     hermes_cli.plugins:plugins.py:373 Plugin 'web-brave-free' registered web provider: brave-free
+INFO     hermes_cli.plugins:plugins.py:373 Plugin 'web-ddgs' registered web provider: ddgs
+INFO     hermes_cli.plugins:plugins.py:373 Plugin 'web-exa' registered web provider: exa
+INFO     hermes_cli.plugins:plugins.py:373 Plugin 'web-firecrawl' registered web provider: firecrawl
+INFO     hermes_cli.plugins:plugins.py:373 Plugin 'web-keenable' registered web provider: keenable
+INFO     hermes_cli.plugins:plugins.py:373 Plugin 'web-openai-native' registered web provider: openai-native
+INFO     hermes_cli.plugins:plugins.py:373 Plugin 'web-parallel' registered web provider: parallel
+INFO     hermes_cli.plugins:plugins.py:373 Plugin 'web-perplexity' registered web provider: perplexity
+INFO     hermes_cli.plugins:plugins.py:373 Plugin 'web-searxng' registered web provider: searxng
+INFO     hermes_cli.plugins:plugins.py:373 Plugin 'web-tavily' registered web provider: tavily
+INFO     hermes_cli.plugins:plugins.py:373 Plugin 'web-xai' registered web provider: xai
+INFO     hermes_cli.plugins:plugins.py:1428 Plugin discovery complete: 57 found, 52 enabled
+INFO     agent.model_metadata:model_metadata.py:2275 No model id provided for context length resolution — defaulting to 256,000 tokens.
+----------------------------- Captured stdout call -----------------------------
+SECOND_VERIFICATION_EVIDENCE {"raw_model_tool_name": "notebook_mutate", "raw_arguments": {"action": "create", "entry_type": "matter", "fields": {"description": "SECOND_VERIFICATION_RAW_NAME_WRITE", "completion_condition": "Report sent"}, "source_time_range": {"start_time": "1970-01-01T00:16:40+00:00", "end_time": "1970-01-01T00:16:41+00:00"}}, "model_calls": 4, "outcome": {"status": "completed", "committed": true, "turns": 1}, "tool_rows": [{"role": "tool", "content": "{\"success\": true, \"conversation_ref\": \"conv_6654bb0cd53f42959416541e352a2836\", \"view_kind\": \"working\", \"base_snapshot_id\": null, \"coverage\": {\"anchor_message_uid\": \"m2\"}, \"payload\": {\"work\": [], \"situations\": [], \"discussion\": [], \"candidates\": []}}", "_db_persisted": true, "message_uid": "33827bea757b4fbb8f068f264a8490b1", "_tool_call_uid": "ea4c70aa394f4f48a7c54b03f10dc111", "timestamp": 1792209310.5108073, "tool_call_id": "read", "tool_name": "notebook_show"}, {"role": "tool", "content": "{\"success\": true, \"changed\": true, \"entry\": {\"created_at\": \"2026-10-17T03:55:10+00:00\", \"entry_type\": \"matter\", \"fields\": {\"completion_condition\": \"Report sent\", \"description\": \"SECOND_VERIFICATION_RAW_NAME_WRITE\"}, \"last_processed_at\": null, \"relations\": [], \"source_message_identities\": [], \"source_time_range\": {\"end_time\": \"1970-01-01T00:16:41+00:00\", \"start_time\": \"1970-01-01T00:16:40+00:00\"}, \"status\": \"in_progress\", \"updated_at\": \"2026-10-17T03:55:10+00:00\", \"entry_id\": \"1\", \"version_id\": \"1\", \"candidate_refs\": []}}", "_db_persisted": true, "message_uid": "6487a44c839a42d982bb8fdb2f0382c6", "_tool_call_uid": "158d1a85264f44808a81ad7feea3545f", "timestamp": 1792209310.5419633, "tool_call_id": "candidate-write", "tool_name": "notebook_maintain"}, {"role": "tool", "content": "{\"success\": true, \"status\": \"end_requested\"}", "_db_persisted": true, "message_uid": "cc74aa183621416f840d32abf43db5a4", "_tool_call_uid": "ff3e42d5a4b0407ab99d7c3f9c328c70", "timestamp": 1792209310.5722663, "tool_call_id": "finish", "tool_name": "finish_noting"}], "committed_work": [{"created_at": "2026-10-17T03:55:10.538520+00:00", "entry_type": "matter", "fields": {"completion_condition": "Report sent", "description": "SECOND_VERIFICATION_RAW_NAME_WRITE"}, "last_processed_at": null, "relations": [], "source_message_identities": [], "source_time_range": {"end_time": "1970-01-01T00:16:41+00:00", "start_time": "1970-01-01T00:16:40+00:00"}, "status": "in_progress", "updated_at": "2026-10-17T03:55:10.538520+00:00", "entry_id": "1", "version_id": "1", "candidate_refs": []}], "expected_write": false, "observed_write": true}
+------------------------------ Captured log call -------------------------------
+INFO     run_agent:agent_runtime_helpers.py:2095 OpenAI client created (agent_init, shared=True) thread=MainThread:140217833625408 provider= base_url=https://openrouter.ai/api/v1 model=
+INFO     agent.model_metadata:model_metadata.py:2275 No model id provided for context length resolution — defaulting to 256,000 tokens.
+INFO     agent.turn_context:turn_context.py:1123 conversation turn: session=noting_91cd9e4616fc4372 model= provider=unknown platform=subagent history=2 msg='<noting-task> Maintain the Notebook using the supplied tool calls, then finish. ...' origin=noting
+INFO     run_agent:client_lifecycle.py:206 OpenAI client closed (request_complete, shared=False, tcp_force_closed=0) thread=MainThread:140217833625408 provider= base_url=https://openrouter.ai/api/v1 model=
+INFO     agent.conversation_loop:turn_usage.py:97 API call #1: model= provider=unknown in=? out=? total=? latency=0.0s usage=unavailable
+INFO     agent.tool_executor:tool_executor.py:1132 tool notebook_show completed (0.01s, 249 chars)
+INFO     run_agent:client_lifecycle.py:206 OpenAI client closed (request_complete, shared=False, tcp_force_closed=0) thread=MainThread:140217833625408 provider= base_url=https://openrouter.ai/api/v1 model=
+INFO     agent.conversation_loop:turn_usage.py:97 API call #2: model= provider=unknown in=? out=? total=? latency=0.0s usage=unavailable
+INFO     agent.tool_executor:tool_executor.py:1132 tool notebook_maintain completed (0.01s, 526 chars)
+INFO     run_agent:client_lifecycle.py:206 OpenAI client closed (request_complete, shared=False, tcp_force_closed=0) thread=MainThread:140217833625408 provider= base_url=https://openrouter.ai/api/v1 model=
+INFO     agent.conversation_loop:turn_usage.py:97 API call #3: model= provider=unknown in=? out=? total=? latency=0.0s usage=unavailable
+INFO     agent.tool_executor:tool_executor.py:1132 tool finish_noting completed (0.01s, 44 chars)
+INFO     run_agent:client_lifecycle.py:206 OpenAI client closed (request_complete, shared=False, tcp_force_closed=0) thread=MainThread:140217833625408 provider= base_url=https://openrouter.ai/api/v1 model=
+INFO     agent.conversation_loop:turn_usage.py:97 API call #4: model= provider=unknown in=? out=? total=? latency=0.0s usage=unavailable
+INFO     agent.conversation_loop:turn_finalizer.py:383 Turn ended: reason=text_response(finish_reason=stop) model= api_calls=4/50 budget=4/50 tool_turns=3 last_msg_role=assistant response_len=4 session=noting_91cd9e4616fc4372 origin=noting
+INFO     run_agent:client_lifecycle.py:206 OpenAI client closed (agent_close, shared=True, tcp_force_closed=0) thread=MainThread:140217833625408 provider= base_url=https://openrouter.ai/api/v1 model=
+---------------------------- Captured log teardown -----------------------------
+INFO     run_agent:client_lifecycle.py:206 OpenAI client closed (agent_close, shared=True, tcp_force_closed=0) thread=MainThread:140217833625408 provider= base_url=https://openrouter.ai/api/v1 model=
+=========================== short test summary info ============================
+FAILED tests/secretary/test_v2_retired_tool.py::test_raw_retired_name_cannot_write_through_native_noting_loop[required-retired-name-must-not-write]
+1 failed, 2 passed in 2.88s
+
+=== 1 file with test failures (1 test failed) ===
+  tests/secretary/test_v2_retired_tool.py  (1 test failed)

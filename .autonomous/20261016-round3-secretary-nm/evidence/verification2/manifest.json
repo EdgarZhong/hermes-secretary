@@ -1,0 +1,467 @@
+{
+  "review": "round3-verification-2-public-core",
+  "generated_at_utc": "2026-10-17T04:17:27.975682+00:00",
+  "product_sha": "b40fa1ff2a771066b4da1d8978a7abe44327e530",
+  "report_parent_sha": "de810bafb055d7cbc8cf8948c1975b37ed808bf6",
+  "original_main_sha": "c099c8c490846e7989adc4d4aea9a1b4a9a37162",
+  "main_product_delta_to_report_parent": [
+    "CLAUDE.md",
+    ".autonomous/20261016-round3-secretary-nm/verification-2.md"
+  ],
+  "original_spec_freeze_sha": "d19018a7ba3e38ae01f76aa57821b55cbc15ff58",
+  "independent_review_contexts": [
+    "verify_notebook_history",
+    "verify_runtime",
+    "verify_scheduler_surfaces"
+  ],
+  "fork_turns": "none",
+  "requirement_count": 87,
+  "requirement_verdict_counts": {
+    "符合": 75,
+    "违规": 9,
+    "证据不足": 3
+  },
+  "old_public_coverage": {
+    "V01": [
+      "RT26",
+      "RT27",
+      "SS20"
+    ],
+    "V02": [
+      "RT01",
+      "RT12"
+    ],
+    "V03": [
+      "NH28",
+      "RT02",
+      "RT21"
+    ],
+    "V04": [
+      "NH10",
+      "NH20",
+      "NH21",
+      "RT03",
+      "RT10",
+      "RT11",
+      "RT12",
+      "RT13",
+      "RT21"
+    ],
+    "V05": [
+      "NH01",
+      "NH02",
+      "NH10"
+    ],
+    "V06": [
+      "NH02",
+      "NH11",
+      "NH14",
+      "NH15",
+      "NH16"
+    ],
+    "V07": [
+      "NH06",
+      "NH13",
+      "NH16"
+    ],
+    "V08": [
+      "NH10",
+      "NH12",
+      "NH20",
+      "RT10"
+    ],
+    "V09": [
+      "NH17",
+      "NH21",
+      "RT07"
+    ],
+    "V10": [
+      "NH19",
+      "RT08"
+    ],
+    "V11": [
+      "NH02",
+      "NH03",
+      "NH04",
+      "NH14"
+    ],
+    "V12": [
+      "NH07",
+      "NH08",
+      "NH09"
+    ],
+    "V13": [
+      "NH03"
+    ],
+    "V14": [
+      "NH04"
+    ],
+    "V15": [
+      "NH05"
+    ],
+    "V16": [
+      "NH06",
+      "NH11"
+    ],
+    "V17": [
+      "NH07"
+    ],
+    "V18": [
+      "NH08"
+    ],
+    "V19": [
+      "NH09"
+    ],
+    "V20": [
+      "NH03",
+      "NH04",
+      "NH05",
+      "NH06",
+      "NH07",
+      "NH08",
+      "NH09",
+      "NH11"
+    ],
+    "V21": [
+      "NH05",
+      "NH06",
+      "NH13",
+      "NH14",
+      "NH24"
+    ],
+    "V22": [
+      "NH22"
+    ],
+    "V23": [
+      "NH23",
+      "NH24",
+      "SS23"
+    ],
+    "V24": [
+      "NH25",
+      "NH26"
+    ],
+    "V25": [
+      "NH12",
+      "NH25",
+      "NH28",
+      "RT26",
+      "SS16",
+      "SS17",
+      "SS27"
+    ],
+    "V26": [
+      "NH27",
+      "NH28"
+    ],
+    "V27": [
+      "NH27",
+      "NH29",
+      "NH30"
+    ],
+    "V28": [
+      "NH12",
+      "NH28",
+      "NH29",
+      "NH30"
+    ],
+    "V29": [
+      "NH18",
+      "NH26",
+      "RT06",
+      "SS18"
+    ],
+    "V30": [
+      "SS01",
+      "SS02",
+      "SS03"
+    ],
+    "V31": [
+      "RT12",
+      "SS03",
+      "SS04",
+      "SS05"
+    ],
+    "V32": [
+      "SS04",
+      "SS06",
+      "SS07"
+    ],
+    "V33": [
+      "SS05",
+      "SS08",
+      "SS09",
+      "SS11"
+    ],
+    "V34": [
+      "SS09",
+      "SS10",
+      "SS15"
+    ],
+    "V35": [
+      "SS12",
+      "SS13"
+    ],
+    "V36": [
+      "SS13",
+      "SS14"
+    ],
+    "V37": [
+      "RT15",
+      "RT17",
+      "RT27",
+      "SS16",
+      "SS20",
+      "SS21"
+    ],
+    "V38": [
+      "RT03",
+      "RT14",
+      "RT21"
+    ],
+    "V39": [
+      "RT15",
+      "RT16"
+    ],
+    "V40": [
+      "RT17"
+    ],
+    "V41": [
+      "RT18"
+    ],
+    "V42": [
+      "RT19",
+      "RT20",
+      "RT21"
+    ],
+    "V43": [
+      "RT03",
+      "RT05",
+      "RT09",
+      "RT25",
+      "RT26",
+      "RT29"
+    ],
+    "V44": [
+      "RT03",
+      "RT04",
+      "RT07",
+      "RT09",
+      "RT21",
+      "RT28"
+    ],
+    "V45": [
+      "NH18",
+      "NH19",
+      "RT06",
+      "RT07",
+      "SS17",
+      "SS18"
+    ],
+    "V46": [
+      "NH19",
+      "RT08",
+      "RT09",
+      "RT25",
+      "RT29"
+    ],
+    "V47": [
+      "NH21",
+      "RT11",
+      "RT12",
+      "RT13",
+      "RT22",
+      "RT23"
+    ],
+    "V48": [
+      "NH22",
+      "RT24",
+      "RT25",
+      "SS23"
+    ],
+    "V49": [
+      "NH25",
+      "RT27",
+      "SS16",
+      "SS17",
+      "SS19",
+      "SS20",
+      "SS22",
+      "SS28"
+    ],
+    "V50": [
+      "NH12",
+      "NH17",
+      "NH22",
+      "NH28",
+      "RT21",
+      "SS23",
+      "SS24",
+      "SS27"
+    ],
+    "V51": [
+      "NH11",
+      "NH17",
+      "NH30",
+      "RT19",
+      "RT23",
+      "RT24",
+      "RT29",
+      "SS15",
+      "SS25",
+      "SS26",
+      "SS27"
+    ],
+    "V52": [
+      "SS28"
+    ]
+  },
+  "environment": {
+    "python": "3.14.7",
+    "host": "Linux x86_64",
+    "builder": "pm.build_env",
+    "groups": [
+      "dev",
+      "test"
+    ],
+    "lock_modified": false
+  },
+  "executions": [
+    {
+      "id": "V2-F01",
+      "script": "test_v2_provenance.py",
+      "log": "provenance.log",
+      "passed": 0,
+      "failed": 4,
+      "runner_seconds": 1.2,
+      "command": "HERMES_PYTHON=\"$PWD/.venv/bin/python\" HERMES_TEST_FILE_RETRIES=0 scripts/run_tests.sh tests/secretary/test_v2_provenance.py -q -j 1",
+      "command_note": "命令语义按实际调用整理；完整runner输出为原日志，真实cwd在固定产品checkout。",
+      "exit_code": 1,
+      "production_fix": false
+    },
+    {
+      "id": "V2-F02",
+      "script": "test_v2_retired_tool.py",
+      "log": "retired-tool.log",
+      "passed": 2,
+      "failed": 1,
+      "runner_seconds": 3.7,
+      "command": "HERMES_PYTHON=\"$PWD/.venv/bin/python\" HERMES_TEST_FILE_RETRIES=0 scripts/run_tests.sh tests/secretary/test_v2_retired_tool.py -q -j 1",
+      "command_note": "命令语义按实际调用整理；完整runner输出为原日志，真实cwd在固定产品checkout。",
+      "exit_code": 1,
+      "production_fix": false
+    },
+    {
+      "id": "V2-F03",
+      "script": "test_v2_context_selection.py",
+      "log": "context-selection.log",
+      "passed": 0,
+      "failed": 1,
+      "runner_seconds": 2.7,
+      "command": "HERMES_PYTHON=\"$PWD/.venv/bin/python\" HERMES_TEST_FILE_RETRIES=0 scripts/run_tests.sh tests/secretary/test_v2_context_selection.py -q -j 1",
+      "command_note": "命令语义按实际调用整理；完整runner输出为原日志，真实cwd在固定产品checkout。",
+      "exit_code": 1,
+      "production_fix": false
+    },
+    {
+      "id": "V2-F04",
+      "script": "test_v2_scheduler_resume.py",
+      "log": "scheduler-resume.log",
+      "passed": 1,
+      "failed": 1,
+      "runner_seconds": 1.1,
+      "command": "HERMES_PYTHON=\"$PWD/.venv/bin/python\" HERMES_TEST_FILE_RETRIES=0 scripts/run_tests.sh tests/secretary/test_v2_scheduler_resume.py -q -j 1",
+      "command_note": "命令语义按实际调用整理；完整runner输出为原日志，真实cwd在固定产品checkout。",
+      "exit_code": 1,
+      "production_fix": false
+    }
+  ],
+  "test_totals": {
+    "passed": 3,
+    "failed": 7,
+    "skipped": 0,
+    "errors": 0,
+    "unique_cases": 10,
+    "runner_calls_with_tests": 4,
+    "runner_seconds": 8.7
+  },
+  "precollection_environment_exits": [
+    "retired-tool-sandbox-first-attempt.log",
+    "provenance-initial-sandbox.log"
+  ],
+  "limits": [
+    "no new live model",
+    "no live NM",
+    "no personal Provider review",
+    "no production fixes",
+    "no full regression replay",
+    "historical ignored model/DB/log files not read"
+  ],
+  "original_verification_sha256": "69cb77f6c3fa9266924c1c05d72018be85a796e261c5f2c37ac7b000dad71e63",
+  "historical_verification_section_sha256": [
+    "879e82a33c14480dd2115ebe435dd72b00fd0c7d29aec04124b4fb5ef5f60a9a",
+    "ec8aa9856550351fdce957b1e283b3ce25e24463e4ec16ff4f0abb92a33907a8",
+    "3fbe95ad7ebf8acad37e6770bbdfbc0ce9cd783971a93fa2276dfe8206cd12ea",
+    "f0ff16d00188c0855847de9bcd0c5ec82c9a82dc5090a214ede0794e070dc301",
+    "b444409feb0886a0b5b8017014af6da7ee2e8dbd6b3124fd9e2da0c50d0eb521",
+    "973de9665f2f0f80fde9742c42820da71dacb1e9a370ce482370cbea8deebb64"
+  ],
+  "original_main_claude_sha256": "44f66a2f8743cbf5df896de212bcf1418f93dc186ef9879a5c13eb39e276ec27",
+  "original_static_review_sha256": "7efc65f3422b33a09d5f25621fa1456e91957153ccd4a5cb4e8184d0bb4152a4",
+  "product_file_sha256": {
+    "docs/notebook-ontology-whiteboard.html": "fa554dab731c97c1f94e32a0e57d92cd7fab431fa3325e1a78ba26447b8b097c",
+    "docs/07-scheduler-notebook-noting-compaction-redesign.md": "8b7dd2f8270bad25c62484bba7b3bb3ba0ccc6995dfea7cc964016010b89a9bb",
+    "docs/02-noting-system-specification.md": "c6b68301877419ad52540aa7122248d17be3382eeddd792e846a24408c87a7fb",
+    "docs/04-hermes-secretary-v1.5-implementation-spec.md": "84faa1b3e8267738c8215ce0517f0b11d7a43240eadda7786c455bf2420aaebd",
+    "secretary/notebook_store.py": "69f15ef38eccc97cb3f7e108024acb5e51ca372d170a0f0e6cd63887379b08bc",
+    "secretary/notebook_model.py": "ed6791442be397410e7eac9028e545c8ee8ddba81a37067800a15a21d06f8bf7",
+    "secretary/notebook_contract.py": "db60cf44f9f1cec1ed9aeea48d28e05b6d35539e41a3213e5671d7a227ee1c62",
+    "hermes_state_conversation_history.py": "097e46f9b93b479fbbfe2168614fb83f87d0f8d946cff9773a1422a26c54dee3",
+    "hermes_state_secretary_notebook.py": "9f660d01374fd81d9d70522df1b0e9e1d7e818ad9841230be24d5d155e66e42c",
+    "secretary/noting_tools.py": "858e8d5bdfd691fd3ed40fc148c1d17198296c472e36c7c16ad6b74443dd6352",
+    "tools/session_history_tool.py": "04e34e5089557aecee9a1a5cf8811b52468cde542eabb59e7fd5b16b3205028c",
+    "tools/secretary_dispatch.py": "9f039cf754403b0466d98eb5a7e17b90addf8d9fc3dc8ff64386b0648dd97132",
+    "secretary/noting_surface.py": "c09bcfa01f63b4d8481e4fdc0b54328a6a4d40400bbeb870f38a4f904519f1f9",
+    "agent/turn_tool_validation.py": "53f0c33b027841769f4e0a73a628a5433f47f2eea3ae243625a07df1c5158c4a",
+    "agent/agent_runtime_helpers.py": "a7a74e4cc203a9d80b4bf5d15ae396deeefdd3fa3706ceabddb28cf4fa6b8d02",
+    "secretary/noting_child.py": "6c1b20ea968dfb3a177cd65ccd10e01580798c4c9ff23f00c8fb43d810790249",
+    "secretary/noting_prompts.py": "83c27a200535814e0fb929e25e945bb11499ba389b7ca15309ffe960f024b58b",
+    "agent/turn_request_assembly.py": "37ecc3a9a393d00d834adf7a0873e972e2baf4194a40a117cf4b6d54712a30b7",
+    "agent/conversation_loop.py": "11351a8d41f11a9620ff698099566711c624fe7095c1243254769c960adeb8f4",
+    "agent/context_engine.py": "1f5a95adf26fc79245566fa3018cf8a3f613a7c837316a4bdaaa43736a56805c",
+    "plugins/context_engine/__init__.py": "c82481d9c96b8ebfdbfc7fd49eb0a06dcafd539f2786c603438366a1188f7178",
+    "agent/agent_init.py": "3f718ba4a5883e7af4e9f77845f7da3850802fd23313cce505713250b1a981e3",
+    "agent/compression_facade.py": "5a4ffa1e4946f9eae452634f07553cac9b4a1c8398d6dec05e40fb22cc823015",
+    "agent/turn_recovery.py": "c9a365ec45614f52bc5919520882ad6ae84482f13214fede77e2990d2d342eaa",
+    "agent/turn_overflow.py": "2daa47807026fdf16f0bc857c9ed18aa7d81fb74d17d1ecf3e5f26bdb2ffa4cf",
+    "secretary/scheduler_table.py": "c5c34b88f33fecfdc9a86b9a1bf3fa269ed58efdf28be4fca9b9683e599e9742",
+    "secretary/scheduler_time.py": "c28d9f69997eb594c6e07a4926023c6d23af6cd45445148c99949ca34abc6edf",
+    "cron/jobs.py": "68caf3f639bcae54eb3d88cf6fcbe7c58e88aba2410197f57e3c3e20ac5f0a01",
+    "tests/conftest.py": "6c19f6b05b6422a831c2005047d75de6a33d22464eb875a51418b2fbbbbe9c9f",
+    "tests/secretary/test_noting_child.py": "eeb1e56a0202b1044658904a23e036033b431333cc37554d031d656970d8827c",
+    "tests/secretary/test_r3_child.py": "265bfa39eb7ee8c0556fe748820609c54c6f706aa027ea91c9546d0a086a30b0",
+    "tests/secretary/test_r3_scheduler.py": "4f365e45a916628a34714969233f4ef2d920922eb32217c35193d45221a955ad",
+    "tests/agent/test_plugin_context_engine_init.py": "4c8aa322d1225fa18951a08cf055f6aa2153d8ec8cfdc171562b89c49dece617",
+    "scripts/run_tests.sh": "5d81d729ca0b98f89d5c944d2231eaf2a6190817b099a45f924de0af24ec3aac",
+    "uv.lock": "2bc4db483e9cba927cd7147f9ccbb09635f85bb3f1f36d6e9d51d06b65d1c67e",
+    "pyproject.toml": "cadde2f6a92574d292103f43abf66408b1d841cd9ea332ca7f3e3dfc5dcc87fd"
+  },
+  "evidence_sha256": {
+    "README.md": "925fb6f5af54eecab2de90a3cbc99239a4d304879fbcc3a14e29f47492839cac",
+    "context-selection.log": "b8d5c5edacd72068d31d51af6295945fa297b99a92fe5bc9e25716dc2beaf26d",
+    "historical-evidence-reuse.json": "ad4ed308078bfdaeb52096c0861e6635f48a3d9e43e77c09d38579b69655d6f7",
+    "pm-build.log": "44f0af42bd9cd8436ab1c197346ecfe90070363497004a8ba6f51b4a1d4bf211",
+    "provenance-initial-sandbox.log": "00269885074a00b7f0e4bb009ed7a80df49f7154ffe3149cb7586236fa8f50bd",
+    "provenance-observations.json": "4022b2a73b9896471060c32675e66b6d9f6565c63bb03ee23c3d55b11a179ec8",
+    "provenance.log": "1ea84fe731476c23c39081fcddb677b8cd5b459284884353ef120a6c639770c9",
+    "requirements.json": "9bcd8194538275330c60a44dd31e04b9ebd63eb0018ed68182ee6db3356b08ee",
+    "retired-tool-sandbox-first-attempt.log": "fe09aff04b19316a7c04580e4a5b080f4189ae64d8695ca1cbb1712ced953c84",
+    "retired-tool.log": "0a02687d16b41f7e40ce7d15a3b39e994c21a9fe1e2df209fa772ce415946465",
+    "scheduler-resume.log": "a38d9d6957dd2ec74fe0c3c48ba34c77e9f23bb23a00cdd4580633989f594bad",
+    "test_v2_context_selection.py": "a01400a9cac9548867b9c85542a0e640d48411f1ccf3d2eae185268dd3127845",
+    "test_v2_provenance.py": "c61696b7d2659ce39ff95c826e003ff0bf7b1de86bf53dfd95aa31842dc22e75",
+    "test_v2_retired_tool.py": "6825e78c162f83c8e12bad42404f53979861753587f8ad812e50607b7b465538",
+    "test_v2_scheduler_resume.py": "674d1a52bd27808712e1e4ae5f98facc722bc185439c7d66d024b68c1f17bf9f"
+  },
+  "gate": "NOT_PASS"
+}

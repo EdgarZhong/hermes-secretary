@@ -1,0 +1,18 @@
+▶ not activated — using HERMES_PYTHON: /workspace/scratch/6cf4c3fd3ec0/hermes-audit-checkout/.venv/bin/python
+▶ running per-file parallel test suite via run_tests_parallel.py
+  (TZ=UTC LANG=C.UTF-8 PYTHONHASHSEED=0; clean env)
+▶ pre-compiling bytecode cache
+▶ launching test runner
+Discovered 1 test files (~1 tests) under ['tests/secretary/test_v2_retired_tool.py']; running with -j 1
+Traceback (most recent call last):
+  File "/workspace/scratch/6cf4c3fd3ec0/hermes-audit-checkout/scripts/run_tests_parallel.py", line 1538, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/workspace/scratch/6cf4c3fd3ec0/hermes-audit-checkout/scripts/run_tests_parallel.py", line 1378, in main
+    _sweep_killed_run_roots(_runner_scratch_root())
+                            ~~~~~~~~~~~~~~~~~~~~^^
+  File "/workspace/scratch/6cf4c3fd3ec0/hermes-audit-checkout/scripts/run_tests_parallel.py", line 107, in _runner_scratch_root
+    os.makedirs(root, exist_ok=True)
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen os>", line 236, in makedirs
+OSError: [Errno 30] Read-only file system: '/var/tmp/hermes-pytest-0'

@@ -1,0 +1,1353 @@
+[
+  {
+    "id": "NH01",
+    "scope": "数据结构；所有Notebook创建、恢复、提交、展示",
+    "criterion": "唯一四数组对应七业务类型及Candidate；section从entry_type导出，未知类型、任意section、重复身份不能进入完整状态。",
+    "path": "原生dispatch/registry → agent/inline_tool_executors.py:158–160（或 tools/secretary_dispatch.py:76–84）→ secretary/noting_tools.py:33–91 的绑定/任务锁/gate → secretary/notebook_store.py:NotebookStore.maintain → secretary/notebook_model.py:293–312 → create/update/archive → _validate_state/_persist → secretary/notebook_items.py:insert_item_conn。关键约束：notebook_contract.py:10–25,82–85；notebook_model.py:126–140；notebook_render.py:27–51。",
+    "method": "逐类型独立对照白板与07字段表，检查create、恢复和commit使用同一完整状态验证；审阅8类型参数化及wrong-section测试。",
+    "evidence": "notebook_contract.py:10–25与model:126–140实际强制映射。tests/secretary/test_r3_notebook.py:85–125逐类创建/必填/来源；test_notebook_model.py相关完整state测试；c5-report.md:35–41报告93条Notebook通过，c10-notebook-history-report.md:34–36记录旧模型/版本/展示保障。",
+    "verdict": "符合",
+    "reason": "类型到板块映射由同一contract执行，模型无section写入口，恢复与提交也验证四数组。",
+    "boundary": "本轮未重跑旧组；亲读测试预期/正式代码，旧运行只按已提交报告所载范围引用，未取得其ignored原始日志与manifest来独立重做精确版本证明。 本条不评价内容事实是否受原文支持。",
+    "old_v_ids": [
+      "V05"
+    ],
+    "source": "白板 C1:156–161及七类data:678–1060；07 §4.1–4.3:120–149。要求：work(matter/action)、situations(situation/implicit_gap)、discussion(question/insight/decision)、candidates四数组；板块从类型导出，不接受自选section。"
+  },
+  {
+    "id": "NH02",
+    "scope": "类型字段、状态及修正；所有maintain动作",
+    "criterion": "七类及Candidate按各自必填/可选字段与status校验，允许同类型基于证据修正/重开；无旧单向图、无Notebook排期副作用。",
+    "path": "原生dispatch/registry → agent/inline_tool_executors.py:158–160（或 tools/secretary_dispatch.py:76–84）→ secretary/noting_tools.py:33–91 的绑定/任务锁/gate → secretary/notebook_store.py:NotebookStore.maintain → secretary/notebook_model.py:293–312 → create/update/archive → _validate_state/_persist → secretary/notebook_items.py:insert_item_conn。关键分支：notebook_contract.py:17–54,126–154；notebook_model.py:96–140,219–258；noting_prompts.py:10–17。",
+    "method": "核对每个必需属性/状态默认值、未知字段与null处理；沿update确认无单向迁移表，非法草稿在持久化前被拒。",
+    "evidence": "contract枚举与07表一致；model按status成员而非旧状态图校验。test_r3_notebook.py:85–114遍历全部status后回到起始状态；:163–215覆盖无效patch/混合action。c5-report.md:37记录93条；c10-notebook-history-report.md:44记录Notebook/Scheduler独立保障。",
+    "verdict": "符合",
+    "reason": "规定结构约束与可修正状态机制具备，维护路径不调用Scheduler。",
+    "boundary": "本轮未重跑旧组；亲读测试预期/正式代码，旧运行只按已提交报告所载范围引用，未取得其ignored原始日志与manifest来独立重做精确版本证明。 状态是否属实由模型依据证据判断，枚举通过不等于事实被证实。",
+    "old_v_ids": [
+      "V05",
+      "V06",
+      "V11"
+    ],
+    "source": "白板 C1/C7/U1/U2:156–161,189–198,259–267；07 §4.1–4.3:128–149。要求：七类及Candidate按类型必填字段、合法状态验证；新证据允许修正/重开，无旧单向状态图与排期副作用。"
+  },
+  {
+    "id": "NH03",
+    "scope": "matter准入与逐类型进退；默认完整Noting任务",
+    "criterion": "明确责任/目标才入索引；完成/终止/解除或7天无实质进展同次保留未完责任、聚合成果或归档无价值过程；不以子行动完成推整体完成。",
+    "path": "secretary/noting_child.py:740–750 spawn 默认任务 → :551–586 run_noting_task 绑定child、捕获base并将任务文与 _working_control 追加 → :627–668 _run_child_turns 调原生 run_conversation → 正式四工具 dispatch → notebook_maintain/finish_noting → :671–711 Commit Gate。执行内容：secretary/noting_prompts.py:10,16–20；matter字段contract:18,28,38；维护动作model:190–291。",
+    "method": "将白板matter的准入、用途、时间依据及三种去向逐一映射至Step2/3/5；核实际默认任务进入child的wrapper而非未引用常量；参考旧真实样本中的探访完成与青鹭工作未完。",
+    "evidence": "noting_prompts.py:17/20保留accepted responsibility、unfinished goals/obligations/blockers、completed outcomes与archive条件；run_noting_task:575–584将该任务+工作态交原生Turn。real-model-report.md:32,40记录探访完成而另一工作pending，未把不相干新经历当旧来源责任。",
+    "verdict": "符合",
+    "reason": "逐类分流指令和实际维护入口落实，未引入自动到期删除或整体完成推断规则。",
+    "boundary": "符合结论限于规格要求的具体语义指令、正式注入和可执行维护机制。已读旧真实运行报告提供代表场景，不据文本相等宣称所有模型输出或逐分支语义验收通过；7天/72小时等未逐分支补跑，留作Validation证据边界。F16另列，不由此关闭。",
+    "old_v_ids": [
+      "V11",
+      "V13",
+      "V20"
+    ],
+    "source": "白板 types.matter:678–730、T2–T5/L7:300–325；07 §8.11:1347–1351。要求：matter只录明确目标/责任，7天无实质进展或终态时同次精简并决定去留；保留未完责任，可交接已完阶段，子行动完成不等于事项完成。"
+  },
+  {
+    "id": "NH04",
+    "scope": "action准入、责任与退出；默认完整Noting任务",
+    "criterion": "区分建议与已接受工作，保留owner/完成条件/依赖；完成/终止/7天同次精简未完行动、聚合结果或有条件归档；报告不能制造完成事实。",
+    "path": "secretary/noting_child.py:740–750 spawn 默认任务 → :551–586 run_noting_task 绑定child、捕获base并将任务文与 _working_control 追加 → :627–668 _run_child_turns 调原生 run_conversation → 正式四工具 dispatch → notebook_maintain/finish_noting → :671–711 Commit Gate。执行内容noting_prompts.py:10,16–17,21；contract.py:19,29,39；model.py:190–291。",
+    "method": "逐项核accepted commitments、faithful extraction、owner和completion_condition的结构要求及action处理分支；参考真实样本未承诺今晚交付、委派owner与未完成测试。",
+    "evidence": "noting_contract.py owner说明明确do not infer acceptance；noting_prompts.py:21列未完steps/owner/conditions/dependencies、结果Candidate及归档前结果保存。real-model-report.md:32记录未承诺未转承诺、owner小林、测试pending。",
+    "verdict": "符合",
+    "reason": "责任准入和保留条件具备具体指令，结构端不允许缺owner/完成条件；实际维护无自动执行业务动作。",
+    "boundary": "符合结论限于规格要求的具体语义指令、正式注入和可执行维护机制。已读旧真实运行报告提供代表场景，不据文本相等宣称所有模型输出或逐分支语义验收通过；7天/72小时等未逐分支补跑，留作Validation证据边界。F16另列，不由此关闭。 已交付1–10页与未完11–20页的结算失败属于NH23/F16，不能借此条机制符合抹除。",
+    "old_v_ids": [
+      "V11",
+      "V14",
+      "V20"
+    ],
+    "source": "白板 types.action:732–784、T2–T5/L7:300–325；07 §4.2:136及§8.11:1341,1347–1352。要求：action只录明确意图/承诺/授权；7天或终态触发处理，保留owner/步骤/条件/依赖，报告完成不能代替验收证据。"
+  },
+  {
+    "id": "NH05",
+    "scope": "situation准入、时间依据及去向",
+    "criterion": "表达的个人处境/关系/经历可入索引，不以任务或技能复用为门槛；首实质证据7天/当前用途结束时当次简留、候选或归档，重读不续期。",
+    "path": "secretary/noting_child.py:740–750 spawn 默认任务 → :551–586 run_noting_task 绑定child、捕获base并将任务文与 _working_control 追加 → :627–668 _run_child_turns 调原生 run_conversation → 正式四工具 dispatch → notebook_maintain/finish_noting → :671–711 Commit Gate。noting_prompts.py:7,16–17,22,27；contract.py:20,40；noting_tools.py:163–177提供current_time与7天参数；model.py:219–258保留原时间。",
+    "method": "核准入范围与首证据时间而非updated_at年龄，检查保留个人经历无需rule/skill价值的明确句；参考真实情景+Candidate样本。",
+    "evidence": "noting_prompts.py:22明确first substantive evidence/current usefulness/personal circumstances和无需reusable rule or skill；Step2禁止reading/rewriting续龄。real-model-report.md:32,40记录个人情景/真实USER手交付。",
+    "verdict": "符合",
+    "reason": "个人记忆语义与时间起点的规定机制已接线；代码没有按年龄硬删条目。",
+    "boundary": "符合结论限于规格要求的具体语义指令、正式注入和可执行维护机制。已读旧真实运行报告提供代表场景，不据文本相等宣称所有模型输出或逐分支语义验收通过；7天/72小时等未逐分支补跑，留作Validation证据边界。F16另列，不由此关闭。",
+    "old_v_ids": [
+      "V15",
+      "V20",
+      "V21"
+    ],
+    "source": "白板 types.situation:786–838、C2/L7；07 §8.11:1348,1353。要求：situation记录已表达处境/关系/体验；首实质证据7天或失去用途时精简、候选或归档；个人经历无需技能复用价值，重读不重置年龄。"
+  },
+  {
+    "id": "NH06",
+    "scope": "implicit_gap与当前situation、72小时与补回",
+    "criterion": "具体缺项/影响/解决条件+当前situation引用；首次识别created_at不被改写刷新；回答/失效/情景处理/72h时补回已知事实或变化，必要未知随情景候选，gap标签映射situation。",
+    "path": "secretary/noting_child.py:740–750 spawn 默认任务 → :551–586 run_noting_task 绑定child、捕获base并将任务文与 _working_control 追加 → :627–668 _run_child_turns 调原生 run_conversation → 正式四工具 dispatch → notebook_maintain/finish_noting → :671–711 Commit Gate。noting_prompts.py:11–12,17,23；contract.py:21,41,178–209；model.py:190–217,219–255；noting_tools.py:172。",
+    "method": "逐项核gap准入、防借gap收AI推测、创建顺序、引用类型、时钟起点和去向；审阅gap no-reset与映射/引用反例；旧真实报告查已回答缺口。",
+    "evidence": "test_r3_notebook.py:152–161证明改写/证据时间不改created_at；:217–259覆盖gap→situation与当前引用。noting_prompts.py:23完整列四触发点与补回/归档/必要未知动作。real-model-report.md:32记录已回答缺口归档。",
+    "verdict": "符合",
+    "reason": "关系与时钟由程序约束，具体回答/失效去向与外部标签映射均进入正式任务。",
+    "boundary": "符合结论限于规格要求的具体语义指令、正式注入和可执行维护机制。已读旧真实运行报告提供代表场景，不据文本相等宣称所有模型输出或逐分支语义验收通过；7天/72小时等未逐分支补跑，留作Validation证据边界。F16另列，不由此关闭。 尚无本次真实模型72小时自然触发和失效但未获答案的逐支正证。",
+    "old_v_ids": [
+      "V07",
+      "V16",
+      "V20",
+      "V21"
+    ],
+    "source": "白板 C8:200–207、types.implicit_gap:840–896、L7；07 §4.1–4.2:124–145、§8.11:1343,1354。要求：implicit_gap必须指向当前situation并有具体缺项/影响/补足条件；首次识别72小时或补足/失效/情景处理触发；答案/变化补回情景，必要未知简留，候选映射situation。"
+  },
+  {
+    "id": "NH07",
+    "scope": "用户question准入、未决性与退出",
+    "criterion": "只记录用户提出/接受/认真参与的未决范围；无回应AI问题不入簿；回答/撤回/7天无讨论同次处理，沉默不等于回答或放弃。",
+    "path": "secretary/noting_child.py:740–750 spawn 默认任务 → :551–586 run_noting_task 绑定child、捕获base并将任务文与 _working_control 追加 → :627–668 _run_child_turns 调原生 run_conversation → 正式四工具 dispatch → notebook_maintain/finish_noting → :671–711 Commit Gate。noting_prompts.py:10–11,16–17,24；contract.py:22,31,42；model.py:219–258。",
+    "method": "对照C7多个认可范围例子与question逐类处理点，核实际任务保留逐点认可/不重开user-closed问题/沉默条件；参考旧真实模糊否决及open问题。",
+    "evidence": "noting_prompts.py:11明确vague confirmation不批准整段、认真回答可支持未决问题、unanswered/unnoticed AI question不可；:24规定真实resolved/unresolved候选及silence边界。real-model-report.md:32记录用户问题仍open、否决AI整套建议未变承诺。",
+    "verdict": "符合",
+    "reason": "准入和进退的具体指令完整且实际注入，状态与unresolved_points字段支持保留未决性。",
+    "boundary": "符合结论限于规格要求的具体语义指令、正式注入和可执行维护机制。已读旧真实运行报告提供代表场景，不据文本相等宣称所有模型输出或逐分支语义验收通过；7天/72小时等未逐分支补跑，留作Validation证据边界。F16另列，不由此关闭。",
+    "old_v_ids": [
+      "V12",
+      "V17",
+      "V20"
+    ],
+    "source": "白板 C7:189–198、types.question:898–950、N2:381–382；07 §8.11:1341–1342,1355。要求：question须用户提出或实际认可/参与的未决范围；已回答/撤回或7天无实质讨论时处理，沉默不算答案/放弃，不新增未获回应AI问题。"
+  },
+  {
+    "id": "NH08",
+    "scope": "用户insight、certainty/qualification及认识变化",
+    "criterion": "只记录用户表达/认可内容及限定；7天或修正/放弃同次保留现用认识、聚合有意义变化或归档无价值旧见，不搬运AI论证。",
+    "path": "secretary/noting_child.py:740–750 spawn 默认任务 → :551–586 run_noting_task 绑定child、捕获base并将任务文与 _working_control 追加 → :627–668 _run_child_turns 调原生 run_conversation → 正式四工具 dispatch → notebook_maintain/finish_noting → :671–711 Commit Gate。noting_prompts.py:10–11,25；contract.py:23,43；model.py:190–291。",
+    "method": "逐项核用户归属、certainty与qualification必填、认识变化保留及AI论证排除；参考真实样本把认识保留为猜测而非定论。",
+    "evidence": "noting_prompts.py:25列at7days/revised/abandoned、current usefulness/meaningful change/archive条件及not AI argument；real-model-report.md:32记录认识只是猜测；test_r3_notebook.py:85–114覆盖insight字段/status。",
+    "verdict": "符合",
+    "reason": "规定的用户来源、确定性、修正与去留机制均有明确落点。",
+    "boundary": "符合结论限于规格要求的具体语义指令、正式注入和可执行维护机制。已读旧真实运行报告提供代表场景，不据文本相等宣称所有模型输出或逐分支语义验收通过；7天/72小时等未逐分支补跑，留作Validation证据边界。F16另列，不由此关闭。",
+    "old_v_ids": [
+      "V12",
+      "V18",
+      "V20"
+    ],
+    "source": "白板 C7、types.insight:952–1004、L7；07 §4.2:141、§8.11:1341–1342,1356。要求：insight须用户表达/认可并保留确定性/限定；表达/认可7天或修正/放弃时处理，保留有意义认识变化，不复制AI论证。"
+  },
+  {
+    "id": "NH09",
+    "scope": "用户decision、适用范围与持续有效性",
+    "criterion": "真实选择及scope/valid_when/ends_when；7天或取代/撤销/范围结束同次处理；保留仍有效决定，年龄不能撤销。",
+    "path": "secretary/noting_child.py:740–750 spawn 默认任务 → :551–586 run_noting_task 绑定child、捕获base并将任务文与 _working_control 追加 → :627–668 _run_child_turns 调原生 run_conversation → 正式四工具 dispatch → notebook_maintain/finish_noting → :671–711 Commit Gate。noting_prompts.py:10–11,16,26；contract.py:24,32,44；model.py:190–291。",
+    "method": "核四个decision字段、合法修正状态、7天与范围变化的处理分支及不按年龄撤销的明确指令；参考旧真实限期决定expired。",
+    "evidence": "noting_prompts.py:26保留applicable choices/conditions/reasons、聚合choices/change，并明确Age does not revoke；real-model-report.md:32记录限期决定expired，非时间阈值自动撤销；test_r3_notebook.py:85–114覆盖字段/status。",
+    "verdict": "符合",
+    "reason": "范围条件与仍有效保护在规定机制中落实，程序无TTL删除/撤销。",
+    "boundary": "符合结论限于规格要求的具体语义指令、正式注入和可执行维护机制。已读旧真实运行报告提供代表场景，不据文本相等宣称所有模型输出或逐分支语义验收通过；7天/72小时等未逐分支补跑，留作Validation证据边界。F16另列，不由此关闭。",
+    "old_v_ids": [
+      "V12",
+      "V19",
+      "V20"
+    ],
+    "source": "白板 C7、types.decision:1006–1060、L7；07 §4.2:142、§8.11:1341–1342,1357。要求：decision须用户真实选择与范围/条件；7天或被取代/撤回/范围结束时处理，年龄不得撤销仍有效决定。"
+  },
+  {
+    "id": "NH10",
+    "scope": "稳定身份、版本与完整Snapshot；并发/恢复/分支",
+    "criterion": "首次创建固定entry_id，每次真实修改分配新不可变version；Snapshot只指向固定version，旧视图不会被新版本覆盖，branch不反写parent。",
+    "path": "原生dispatch/registry → agent/inline_tool_executors.py:158–160（或 tools/secretary_dispatch.py:76–84）→ secretary/noting_tools.py:33–91 的绑定/任务锁/gate → secretary/notebook_store.py:NotebookStore.maintain → secretary/notebook_model.py:293–312 → create/update/archive → _validate_state/_persist → secretary/notebook_items.py:insert_item_conn。notebook_model.py:179–217,219–258 → notebook_items.py:insert_item_conn/item_entry/hydrate/snapshot_item_ids_conn（insert-only SQL triggers）→ hermes_state_secretary_notebook.py:235–269完整snapshot。",
+    "method": "读ID分配/lineage、insert-only trigger、hydrate与伪造版本拒绝路径；审閱真实DB roundtrip、并发/branch、archive终版测试。",
+    "evidence": "test_r3_notebook.py:299–345,455–489,564–586,619–633；test_notebook_provenance.py:139–184,233–283；c10-notebook-history-report.md:32–36,43–44记录对应真实Store/DB保障通过。V2-F01本次输出也区分内部精确item与公开当前snapshot。",
+    "verdict": "符合",
+    "reason": "工作态修改插新版本，固定版本映射在commit事务重验，原Snapshot不会跟随后来的entry改写。",
+    "boundary": "本轮未重跑旧组；亲读测试预期/正式代码，旧运行只按已提交报告所载范围引用，未取得其ignored原始日志与manifest来独立重做精确版本证明。 不保证并发完整Snapshot互为内容超集；R3-002明确不要求。",
+    "old_v_ids": [
+      "V04",
+      "V05",
+      "V08"
+    ],
+    "source": "白板 K6:227–239、C6:182–187；07 §4.1:122–127、§3.1:103–105；保留02 §3 Snapshot/§5.10。要求：稳定entry_id，不可变version_id；Snapshot固定身份到版本映射，旧快照不随新版本改变。"
+  },
+  {
+    "id": "NH11",
+    "scope": "运行时间/证据时间、gap时钟、no-op",
+    "criterion": "系统时间不可写；证据时间真实来源而非操作时间；gap首识别不刷新；成功processing_note记last_processed；无实际变化不分配版本或更新时间。",
+    "path": "原生dispatch/registry → agent/inline_tool_executors.py:158–160（或 tools/secretary_dispatch.py:76–84）→ secretary/noting_tools.py:33–91 的绑定/任务锁/gate → secretary/notebook_store.py:NotebookStore.maintain → secretary/notebook_model.py:293–312 → create/update/archive → _validate_state/_persist → secretary/notebook_items.py:insert_item_conn。notebook_model.py:49–53,190–217,219–258（:248–249先返回no-op）；notebook_contract.py:36,49–54,88–113；noting_prompts.py:7,15–16,19–26；render.py:10–24。",
+    "method": "核change白名单、时钟调用位置、no-op提前返回、created_at保留、processing_note触发与显示层转换；审阅带可计数clock测试。",
+    "evidence": "test_r3_notebook.py:128–176逐次核clock调用数、no-op、数组/null、gap.created_at；c5-report.md:37 93条；c10-notebook-history-report.md:37/66–70时间和来源专项记录。新V2-F01输出maintain秒精度，current_snapshot仍保留内部微秒。",
+    "verdict": "符合",
+    "reason": "内部时间、证据时间及显示时间职责分开，no-op在_now与_insert_version前返回。",
+    "boundary": "本轮未重跑旧组；亲读测试预期/正式代码，旧运行只按已提交报告所载范围引用，未取得其ignored原始日志与manifest来独立重做精确版本证明。 工具只验证时间格式，原文是否支持某证据时间仍由模型负责；本次未重新运行全部时区用例。",
+    "old_v_ids": [
+      "V06",
+      "V16",
+      "V20",
+      "V51"
+    ],
+    "source": "07 §4.1:123–125、§4.4:847；白板 D5:491、N2:382、L7:323–325。要求：runtime系统时间只读；evidence/progress/discussion时间为真实证据时间；gap龄期使用created_at；processing_note成功记录last_processed_at；相同值no-op不新增版本、不刷新任何时间。"
+  },
+  {
+    "id": "NH12",
+    "scope": "新建/修订/提交provenance；当前父Conversation合法可读原文；继承旧claim",
+    "criterion": "每项至少一类合法来源；新UID/时间范围必须落在模型可读的当前原文路径；隐藏/人类展示不成为新证据；继承依据严格绑定本条已提交版本，不能给不同claim兜底。",
+    "path": "原生dispatch/registry → agent/inline_tool_executors.py:158–160（或 tools/secretary_dispatch.py:76–84）→ secretary/noting_tools.py:33–91 的绑定/任务锁/gate → secretary/notebook_store.py:NotebookStore.maintain → secretary/notebook_model.py:293–312 → create/update/archive → _validate_state/_persist → secretary/notebook_items.py:insert_item_conn。model._validate_sources:55–94 → store._source_checks_conn:14–38 → get_history_foreground_conn；_insert_version:146–164与validate_snapshot_state_conn:56–66再用同检查。实际History则hermes_state_conversation_history.py:174–176额外model_visible_messages+hidden过滤。",
+    "method": "独立源码反查后亲自执行四个受控反例：真实SessionDB、真实注册child、bound notebook_maintain、finish、Store.commit及当前snapshot；human_only/hidden×UID/range。仅外部readiness gate被控制，来源/版本/本地开关/Anchor/提交实码；先用同child History正控证明授权可读visible_user，再读取被引用行。",
+    "evidence": "evidence/verification2/test_v2_provenance.py:65–131；evidence/verification2/provenance.log：4 FAIL/0 PASS，1.2s，无重试。四例anchored read=source_unavailable，单点range read=count0；maintain success/changed true，finish end_requested，commit pointer_changed true，current payload含不可读来源。evidence/verification2/provenance-observations.json保留四份实际JSON。",
+    "verdict": "违规",
+    "reason": "V2-F01（子审查V2-F01）：新来源验证只取raw History投影UID/时间，漏掉正式History可见性筛选；错误来源通过写入和提交。",
+    "boundary": "反证没有真实模型、未走nativeTurn；正式native commit复用同一validate_snapshot_state_conn，路径已核。只实证fresh create四类，update/继承异常未新跑；原版本逐条继承防借用机制本身未发现新增违例。Full human_only作为coverage Anchor合法性保持，不能用禁Anchor修此洞。",
+    "old_v_ids": [
+      "V08",
+      "V25",
+      "V28",
+      "V50"
+    ],
+    "source": "07 §0:19–21、§3.1:105、§4.1:126、§5.2:1015、§5.5:1050；保留04 §2.4:121–126与02:2731–2733。要求：所有条目含非空Message来源或有效时间范围；新来源限当前合法父Conversation；继承来源必须逐条/逐版本绑定，不能借合法旧来源给别条新内容兜底。"
+  },
+  {
+    "id": "NH13",
+    "scope": "Candidate数据与当前引用、原文来源",
+    "criterion": "简述+targets+current稳定refs+原文来源；可直接原文或混合，不建虚假祖先；candidate不能指向candidate，gap→situation；候选不能搬走源正文。",
+    "path": "原生dispatch/registry → agent/inline_tool_executors.py:158–160（或 tools/secretary_dispatch.py:76–84）→ secretary/noting_tools.py:33–91 的绑定/任务锁/gate → secretary/notebook_store.py:NotebookStore.maintain → secretary/notebook_model.py:293–312 → create/update/archive → _validate_state/_persist → secretary/notebook_items.py:insert_item_conn。notebook_contract.py:25,45,48,126–154,174–225；model.py:55–94,126–140；noting_prompts.py:17,27；Main proposal cli_secretary_commands.py:78–83。",
+    "method": "核direct/mixed所需字段、必须原文来源、引用类型、source_types必含映射union与反向派生；审閱Candidate创建/更新/错误引用及无来源拒绝。",
+    "evidence": "test_r3_notebook.py:117–125,217–259；candidate样本保留源正文并derive candidate_refs，gap映射且candidate→candidate拒绝；C5 93条与C10报告:32–35记录通过。noting_prompts.py:27明确聚合不搬家。",
+    "verdict": "符合",
+    "reason": "Candidate索引形态和必需源地址/引用关系有程序保证，语义简述与直接来源无需虚假Notebook祖先的指令具备。",
+    "boundary": "本轮未重跑旧组；亲读测试预期/正式代码，旧运行只按已提交报告所载范围引用，未取得其ignored原始日志与manifest来独立重做精确版本证明。 原文地址的hidden漏洞由NH12限制；此条不因此证明所有引用均可读，也不把源保护误当成功分发后继续保留全部正文的理由。",
+    "old_v_ids": [
+      "V07",
+      "V21"
+    ],
+    "source": "白板 C2/C3/C6/C8/C9:162–213；07 §4.1–4.3:126–149。要求：Candidate为简述+稳定当前条目引用+原文来源+targets/source_types；允许直接原文与混合来源，不能引用Candidate；source_types继承映射集合，gap→situation。"
+  },
+  {
+    "id": "NH14",
+    "scope": "同题更新/候选去重/双向引用一致性",
+    "criterion": "先匹配既有稳定条目和提案；同主题目标聚合，源新证据同次修候选描述/refs；反向candidate_refs只由正向refs导出；重复数组拒绝而非静默去重。",
+    "path": "secretary/noting_child.py:740–750 spawn 默认任务 → :551–586 run_noting_task 绑定child、捕获base并将任务文与 _working_control 追加 → :627–668 _run_child_turns 调原生 run_conversation → 正式四工具 dispatch → notebook_maintain/finish_noting → :671–711 Commit Gate。noting_prompts.py:16–17,27–28 → 原生dispatch/registry → agent/inline_tool_executors.py:158–160（或 tools/secretary_dispatch.py:76–84）→ secretary/noting_tools.py:33–91 的绑定/任务锁/gate → secretary/notebook_store.py:NotebookStore.maintain → secretary/notebook_model.py:293–312 → create/update/archive → _validate_state/_persist → secretary/notebook_items.py:insert_item_conn。notebook_contract.py:116–123,213–225；model.py:223–249。",
+    "method": "对照语义去重/重读不重建的具体动作和结构关系所有写点，主动检查是否另存可编辑candidate_refs；审閱源原位更新与候选反向链接测试。",
+    "evidence": "Step2要求revise linked candidate；Step3先check existing及settled trajectory；Step5按topic/target merge；Step6检查重复与mismatch。contract.public_state每次从notebook_refs重算；CHANGE_KEYS不含candidate_refs；test_r3_notebook.py:217–239及:178–215负例。",
+    "verdict": "符合",
+    "reason": "规定的模型去重/复核动作有实际任务路径，程序端消除了可编辑双向关系分歧。",
+    "boundary": "符合结论限于规格要求的具体语义指令、正式注入和可执行维护机制。已读旧真实运行报告提供代表场景，不据文本相等宣称所有模型输出或逐分支语义验收通过；7天/72小时等未逐分支补跑，留作Validation证据边界。F16另列，不由此关闭。 没有要求或宣称数据库能按自然语言主题唯一约束；F16残余正文可能诱发重提案的风险仍开放。",
+    "old_v_ids": [
+      "V06",
+      "V11",
+      "V21"
+    ],
+    "source": "白板 C6:182–187、I1/I2/U1/U2:246–267、L7；07 §4.1–4.2:127,145、§8.11:1347–1348,1358–1359。要求：Candidate按主题/目标去重；源正文原位更新，变化后同次复核候选语义；candidate_refs从正向引用计算，只读；数组重复值拒绝。"
+  },
+  {
+    "id": "NH15",
+    "scope": "maintain公开Schema与handler三动作参数",
+    "criterion": "action参数互斥、update非空；fields仅浅合并，数组/对象整个替换，null只清可选；不能改entry_id/type/version/系统时间；无硬字数限制。",
+    "path": "原生dispatch/registry → agent/inline_tool_executors.py:158–160（或 tools/secretary_dispatch.py:76–84）→ secretary/noting_tools.py:33–91 的绑定/任务锁/gate → secretary/notebook_store.py:NotebookStore.maintain → secretary/notebook_model.py:293–312 → create/update/archive → _validate_state/_persist → secretary/notebook_items.py:insert_item_conn。noting_contract.py:NOTEBOOK_MAINTAIN_SCHEMA；notebook_model.py:219–258,293–312；notebook_contract.py:49–54,126–154。",
+    "method": "将完整schema字段与实际router/validators逐项比对，检查输入键存在性、null/[]区别、time_range同时两端、无效patch与no-op；未以Schema文本相等代替handler行为。",
+    "evidence": "test_r3_notebook.py:163–215按替换后的数组/清空/required-null/mixed-action检查实际state不变；c5-report.md:37 93条记录；本次V2-F01也经同handler公开create对象进入真实Store。",
+    "verdict": "符合",
+    "reason": "三动作由同路由显式required/optional集合约束，模型不能用额外selector或身份字段改变职责。",
+    "boundary": "本轮未重跑旧组；亲读测试预期/正式代码，旧运行只按已提交报告所载范围引用，未取得其ignored原始日志与manifest来独立重做精确版本证明。 来源地址是否可读受NH12反例限制；结构验证不负责语义approval/entailment。",
+    "old_v_ids": [
+      "V06"
+    ],
+    "source": "白板 K6:227–239；07 §4.3–4.4:147–866。要求：create/update/archive按action严格参数验证；update非空，fields浅层按键合并、数组整体替换、对象属性整体替换；[]/null按契约清除；不可改身份/类型/系统时间。"
+  },
+  {
+    "id": "NH16",
+    "scope": "单条维护原子性、错误与archive引用保护",
+    "criterion": "所有操作在同task锁；先验证草稿，再建版本并切工作态；失败不部分修改；create/update返回完整单条，archive referrers精确；无batch DSL/全簿替换/硬写作配额。",
+    "path": "原生dispatch/registry → agent/inline_tool_executors.py:158–160（或 tools/secretary_dispatch.py:76–84）→ secretary/noting_tools.py:33–91 的绑定/任务锁/gate → secretary/notebook_store.py:NotebookStore.maintain → secretary/notebook_model.py:293–312 → create/update/archive → _validate_state/_persist → secretary/notebook_items.py:insert_item_conn。noting_tools.py:64–91异常转标准JSON；notebook_model.py:190–217,245–291；notebook_contract.py:174–209 outgoing refs；items持久化事务。",
+    "method": "检查持久化与_state赋值顺序、深拷贝、锁范围和archive反向引用路径；审閱非法字段/insert失败/并发freeze/referrer完整性测试。",
+    "evidence": "test_r3_notebook.py:103–114,189–215,260–298,474–488；archive返回各referrer entry_id/version_id/fields，错误后视图保持原值；C5/C10相关Store与child报告。当前源码无全簿可写工具或maxLength拒绝。",
+    "verdict": "符合",
+    "reason": "单条结构修改在同锁和完整草稿验证后生效；引用错误可据返回值直接修正。",
+    "boundary": "本轮未重跑旧组；亲读测试预期/正式代码，旧运行只按已提交报告所载范围引用，未取得其ignored原始日志与manifest来独立重做精确版本证明。 四个新反例体现的是校验规则错误而非部分提交；不可把“原子成功”当作语义合法。",
+    "old_v_ids": [
+      "V06",
+      "V07"
+    ],
+    "source": "白板 K6/L7/E2:227–239,323–325,360–362；07 §4.4/§7:839–866,1210–1233。要求：单条维护有任务锁，失败不改工作视图；create/update返回完整单条及稳定ID/版本，archive存在入向引用须拒绝并给referrers；无新批量DSL、全簿替换或硬写作配额。"
+  },
+  {
+    "id": "NH17",
+    "scope": "Main notebook_show、child notebook_show、无归档回读",
+    "criterion": "Main只读有效snapshot；child仅自身完整working含未提交修改/固定base，不因父新pointer刷新；空Notebook成功明确null，无scope/task参数或历史入口。",
+    "path": "agent/inline_tool_executors.py:147–155按caller分派；Main→tools/notebook_tool.py:11–25→db.notebook_current→notebook_render.py:33–51；Noting→noting_tools.py:94–104→NotebookStore.working_view:173–176→model.show→public_state。固定base捕获notebook_store.py:78–124。",
+    "method": "核scope来源而非参数、snapshot/working不同envelope、只读深拷贝、archive过滤；审閱父并发变pointer与显式emptybase场景及当前显示时间出口。",
+    "evidence": "test_r3_notebook.py:324–345,430–454,619–633,649–688；test_r3_child.py:112–133；c5-report.md:13–15,22–26及C10:36–37。notebook_render.py:13/30/43–51过滤archive且无termination审计。",
+    "verdict": "符合",
+    "reason": "两个视图实际入口分开，child固有base与工作态没有读最新父快照的回载路径。",
+    "boundary": "本轮未重跑旧组；亲读测试预期/正式代码，旧运行只按已提交报告所载范围引用，未取得其ignored原始日志与manifest来独立重做精确版本证明。 本条不含完整三host UI验收；有效snapshot本身的来源合法性受NH12限制。",
+    "old_v_ids": [
+      "V09",
+      "V50",
+      "V51"
+    ],
+    "source": "白板 K6/P6:227,443；07 §4.5:868–907、§7.1。要求：Main只读当前有效Snapshot；Noting show读取自身含未提交成功修改的完整working view，不被较新父Snapshot覆盖；show无scope/task参数、无历史/归档入口。"
+  },
+  {
+    "id": "NH18",
+    "scope": "实际四工具权限、Main只读、旧面退出",
+    "criterion": "Noting只有history/show/maintain/finish的真实dispatch；Profile/parent绑定；Main无maintain；包括notebook_mutate在内所有旧名明确退休且不得由修名进入新工具；legacy history参数报removed。",
+    "path": "noting_child.py:70–85白名单及:279–305绑定；noting_tools.py:33–91；tools/secretary_dispatch.py:10–24/83–86退休和注册；agent/turn_tool_validation.py:100–107 → agent/agent_runtime_helpers.py:2631–2679修名 → inline:158–160 → maintain。Main surface noting_surface.py:62–92。",
+    "method": "独立静态发现retired集合遗漏notebook_mutate，追到invalid-tool repair；由SS owner独占执行真实native child反证，本审查亲读测试与日志：合法maintain正控、已知manage负控、mutate缺项。",
+    "evidence": "evidence/verification2/test_v2_retired_tool.py（checkout临时同名测试）:38–102；evidence/verification2/retired-tool.log:45,168,190：2 PASS/1 FAIL。raw notebook_mutate被记录为tool_name notebook_maintain，outcome completed/committed，当前Snapshot含标记正文。History legacy测试r3_history:70–80。",
+    "verdict": "违规",
+    "reason": "V2-F02（本域初报V2-F02，SS owner主发现）：退休集合缺项被原生fuzzy repair转成可执行maintain；不是只有广告Schema的遗漏。",
+    "boundary": "运行证据由SS owner执行、root及本审查已读；仅模型client受控，原生child/repair/dispatch/store/commit实码。未宣称所有类似拼写都已覆盖；主报告只计一个V2-F02，不重复计issue。",
+    "old_v_ids": [
+      "V29",
+      "V45"
+    ],
+    "source": "白板 K6/N1–N6；07 §2:81–84、§3.2、§4.5、§5；旧工具不得保留可执行alias。要求：Noting实际dispatch仅history/show/maintain/finish；绑定父Profile/Conversation；Main不能maintain；旧工具无可执行alias，遗留history参数明确legacy_tool_removed。"
+  },
+  {
+    "id": "NH19",
+    "scope": "finish独立调用、批次预检、冻结、Turn后提交",
+    "criterion": "含finish多调用批次执行前整批拒绝；合法非空reason在同锁下冻结首次视图；重复finish保首次结果，后续maintain冲突；show/History仍可；只在nativeTurn返回后commit。",
+    "path": "agent/tool_executor.py:1610,1887,1965的reject_noting_mixed_finish → tools/secretary_dispatch.py:89起 → noting_tools.py:134–150；单finish→inline:168–170→noting_tools.py:107–131→store.freeze；run_noting_task:581–586→_commit_when_complete。",
+    "method": "读同步/并发预检接线、finish与write共锁和首次receipt分支，审阅混合batch零副作用、重复finish与竞态测试；复用真实standalone finish报告。",
+    "evidence": "test_r3_child.py:96–109,136–175；C5报告:21–24/37–38及后续C10/SS接线证据；real-model-report.md:33/50记录自然child四工具及standalone finish。本次V2-F01亲见finish仅end_requested，之后显式提交才出现snapshot；SS native测试真实finish→Turn返回→commit。",
+    "verdict": "符合",
+    "reason": "结束请求与发布职责分离，固定视图与后续写拒绝同锁；混合批次有dispatch前整批护栏。",
+    "boundary": "本轮未重跑旧组；亲读测试预期/正式代码，旧运行只按已提交报告所载范围引用，未取得其ignored原始日志与manifest来独立重做精确版本证明。 本次未重跑全部同步/并发batch组；名称退休漏洞另计NH18，不用其成功变相证明原始旧名合法。",
+    "old_v_ids": [
+      "V10",
+      "V45",
+      "V46"
+    ],
+    "source": "白板 K6/D8；07 §4.5:903、§3.1、§8.11:1359。要求：finish非空reason、独立调用；含finish的混合批次整批先拒绝；end_requested固定工作态，后续写冲突，重复finish保持首次结果；原生Turn返回后才Commit Gate提交。"
+  },
+  {
+    "id": "NH20",
+    "scope": "完整Snapshot提交、原子gate与coverage pointer",
+    "criterion": "同事务重验开关/Anchor/版本/来源，插完整Snapshot并按逻辑coverage选pointer；旧anchor晚提交不得回退；草稿不可被当生效。",
+    "path": "secretary/noting_child.py:581–586 在原生 Turn 返回后 → _commit_when_complete/:671–711 → commit_noting_snapshot/:395–411 → db._execute_write → hermes_state_secretary_notebook.py:235–269 notebook_commit_snapshot_result_conn → secretary/notebook_store.py:56–66 validate_snapshot_state_conn → 固定item版本/来源复验 → 同事务插完整Snapshot并按coverage重选pointer。排序hermes_state_secretary_notebook.py:153–193；源检查notebook_store.py:14–38,56–66；fresh测试路径Store.commit:198–214抵达同一个db snapshot事务。",
+    "method": "读完整提交、pointer排序与rollback路径并参考runtime独立审查；审閱F18 carry/fork/composite回归。对来源可见性主动反证，四例经正式持久化commit后检查current payload。",
+    "evidence": "原子与coverage：test_r3_notebook.py:324–429,455–527,607–617；runtime共享c9-host-report.md:261–300 F18共31 PASS及real-model-report.md:152当前snapshot/通知。反例：provenance.log四例pointer_changed=true，四份snapshot_id在provenance-observations.json。",
+    "verdict": "违规",
+    "reason": "原子事务与coverage排序机制符合，但事务内重验采用同一个不完整来源谓词，V2-F01能提交不可读provenance，故本条完整gate要求不符合。",
+    "boundary": "不将来源漏洞误报为原子回滚/coverage排序缺陷；Full human_only可作Anchor与History证据许可须分开。旧组未重跑；亲测仅四fresh来源例。",
+    "old_v_ids": [
+      "V04",
+      "V08"
+    ],
+    "source": "07 §3.1:103–105、§11.1:1529–1531；保留02 Snapshot/来源；白板N4。要求：正式提交原子校验开关/Anchor/版本/来源、插完整Snapshot并重选pointer；旧coverage晚提交不得回退较新pointer；工作草稿不等于生效结果。"
+  },
+  {
+    "id": "NH21",
+    "scope": "并发工作基线、过时结果和完成注入",
+    "criterion": "C可从已提交A独立启动，无需继承在飞B；仅本次commit改变pointer准备通知，实际durable/live追加前同一致性边界再确认current，否则整条含proposal丢弃。",
+    "path": "NotebookStore.__init__:78–124绑定base → commit路径 → noting_child.py:712起仅pointer_changed发布 → framework_messages.py:133–221 prepare_completion/record_carrier → native db.append_messages_batch prepare_rows/before_commit；DB pointer predicate:216–233。",
+    "method": "独立对照R3-002范围，读固定base/late receipt和追加时事务重验/rollback；参考runtime独立审查的竞争屏障与owner换测试，不把B草稿未继承认作回归。",
+    "evidence": "test_r3_notebook.py:324–345,430–454,649–688；framework代码:167–174/:191–218两次current检查及rollback。runtime已审test_r3_framework.py:141–163,179–243,332起，c8-report既有59有效节点、c9-host-report F18；real-model-report.md:152通知到新结果。",
+    "verdict": "符合",
+    "reason": "base与pointer职责清晰，追加与DB写锁共用一致性边界，队列中的过时Snapshot不会进入Main。",
+    "boundary": "本审查亲读关键append与pointer代码，完整Framework测试运行由runtime/既有报告共享，未重复执行；并发成果不保证内容超集是用户明确范围，非免责于每个任务的语义整理。",
+    "old_v_ids": [
+      "V04",
+      "V09",
+      "V47"
+    ],
+    "source": "07 §11.1:1529–1531及§8.13；snapshot-index R3-002；白板N3/N4。要求：并发任务可各自从已提交A开始，不强制串行/继承在飞B；只在新结果改变pointer且追加前仍匹配时投递整条完成通知。"
+  },
+  {
+    "id": "NH22",
+    "scope": "Main具体提案、批准范围、外部dispatch与可结算轨迹",
+    "criterion": "从当前源/版本/原文形成可批准的具体内容、目标、标签/provenance；明确批准后只写该范围，诚实记实际success/partial/failure/unknown；不把目标元数据保留作Secretary额外成功门禁。",
+    "path": "hermes_cli/cli_secretary_commands.py:86–104 propose_persistence_command → :78–83共用PERSISTENCE_PROPOSAL_INSTRUCTION+当前完整Snapshot → 原生Main Turn与conversation_history/现有目标工具；noting_notifications.py:11–35超限尾部复用同一指令。",
+    "method": "逐句对照§8.10并检查slash/容量消息确实消费同常量，核所附当前snapshot与版本范围、approval和未知写入处理；参考旧真实Main proposal→推迟→后续精确批准→memory成功链。",
+    "evidence": "cli_secretary_commands.py:78–104；noting_notifications.py:28–34。real-model-report.md:34,40,75,135,152记录具体proposal、未定目标未执行和受限USER真实success；未把未执行第二目标写成partial failure。",
+    "verdict": "符合",
+    "reason": "共同指令和正式注入明确内容/目标批准与诚实结果，Main不通过Notebook写工具分发。",
+    "boundary": "符合规定的提案/批准指令与接线；未本轮真实执行Memory/Skill/Rule，也没有真实同Candidate多目标部分失败正证。旧报告:135另记Main terminal/read_file回读，不用那段泛述证明不存在额外动作；Noting不依赖目标存储结算。",
+    "old_v_ids": [
+      "V22",
+      "V48",
+      "V50"
+    ],
+    "source": "白板 L6/F1/F2:345–355、C9:209–213；07 §8.10:1320–1328。要求：Main提案先核对当前entry/version/原文，给具体正文/目标/标签/来源；仅明确批准具体范围才能实际写入；结果记录实际成功/部分/失败/未知，不追加目标保存metadata条件。"
+  },
+  {
+    "id": "NH23",
+    "scope": "F16成功分发覆盖的源正文结算；最新b40fa提示修订",
+    "criterion": "依据批准及实际dispatch识别成功覆盖，比较当前version；先archive完全交付且无保留理由的source，或改fields.description/相关属性仅留必要剩余内容；processing_note不算移除；再处理Candidate。",
+    "path": "secretary/noting_child.py:740–750 spawn 默认任务 → :551–586 run_noting_task 绑定child、捕获base并将任务文与 _working_control 追加 → :627–668 _run_child_turns 调原生 run_conversation → 正式四工具 dispatch → notebook_maintain/finish_noting → :671–711 Commit Gate。secretary/noting_prompts.py:18最新212词Step4 → bound notebook_maintain update/archive → model.py:219–291 → 完整commit。无按工具返回硬编码删源的旁路。",
+    "method": "独立提取要求后阅读历史反例并追踪当前Step4具体动词/字段；核source与Candidate引用实现可执行；将各真实启动SHA分开，不用b40文本相等替代新模型语义结果。",
+    "evidence": "最新源码noting_prompts.py:18和07:1349明确rewrite fields.description/affected attributes与每个retained part理由。real-model-report.md:150–156：最后真实40f4ecceb772…的source1/3/4仅注记，source2仍旧成功正文+停车事实，source4仍含已交付1–10页；Candidate6/7/9随后归档、Snapshot snap_25024b3893c240469e0b8ceec72b6b72生效。该报告明确最新文字待实测；未提供b40新正证。",
+    "verdict": "证据不足",
+    "reason": "V2-E01（既有F16）。既有F16未关闭。最新明确字段的修订已落地，但最新版本的成功覆盖源正文清退尚无语义运行证据；旧40f4样本真实失败不能改写成b40已实测失败或通过。",
+    "boundary": "本轮不运行真实模型/NM；已读的是提交报告及当前源码，ignored原始provider请求/完整工具轨迹不在当前审查可复核包。保留所有早前失败，不能以Candidate退出或源正文增加注记作关闭证据。",
+    "old_v_ids": [
+      "V23"
+    ],
+    "source": "白板 E1/E2:360–362、N1/N2；07 §8.10:1328、§8.11 Step4:1349；snapshot-index R3-019/R3-022。要求：F16：按Conversation批准+真实分发轨迹结算成功覆盖；先archive或重写source.fields.description及相关字段，仅保留后来变化/未完责任/其他未完成提案所需内容；随后关/缩Candidate；结算注记单独不算移除正文。"
+  },
+  {
+    "id": "NH24",
+    "scope": "F16来源保护、引用修正与Candidate退出顺序",
+    "criterion": "来源处理时保留Candidate描述/原文provenance，只修fields.notebook_refs和其他阻塞引用；全部相关源成功处理后才关/缩Candidate。未批准新变更、未完责任、其他未完提案来源和失败/未知范围仍保留，不因重读复建已结算内容。",
+    "path": "secretary/noting_child.py:740–750 spawn 默认任务 → :551–586 run_noting_task 绑定child、捕获base并将任务文与 _working_control 追加 → :627–668 _run_child_turns 调原生 run_conversation → 正式四工具 dispatch → notebook_maintain/finish_noting → :671–711 Commit Gate。noting_prompts.py:16–18,27–28；model.archive:260–291返回referrers；contract.outgoing_references:174–182及public_state:213–225使candidate_refs派生不可写；Main轨迹由cli提案指令:78–83提供。",
+    "method": "检查最新Step4明确正向refs与处理顺序，逐一对照保护分支；审阅referrer约束测试和三次历史真实语义轨迹，区分working失败与已提交失败。",
+    "evidence": "test_r3_notebook.py:217–283支持正向refs修复/源原位。real-model-report.md:139–143旧d434ffd先归档Candidate后source、source50未精简且commit遭Anchor拒绝；:152–154的40f4虽source update先于Candidate关闭，但正文仍未清退；新b40未复测。最新prompt把candidate_refs只读、保留description/provenance直到source完成写明。",
+    "verdict": "证据不足",
+    "reason": "V2-E01（既有F16）。保护分支与引用动作已有可执行机制，但最新版本“成功源处理+保护剩余范围+最后Candidate退出”的组合语义未获运行关闭证据，仍属F16。",
+    "boundary": "有保留未批准Skill/责任的历史观察，不等于每个保留部分都有独立理由；不把d434ffd未提交working当用户生效正证，也不伪造真实多目标部分失败。",
+    "old_v_ids": [
+      "V21",
+      "V23"
+    ],
+    "source": "白板 C2/C6/F2/E1/E2:162–187,354–362；07 §8.11:1347–1349,1358–1363。要求：F16：修正Candidate.fields.notebook_refs及阻塞引用，处理源正文时保留Candidate描述/Message来源；全部相关来源成功处理后才能关闭Candidate；失败/未知/未批准部分继续保留，重读旧证据不重建相同已结算内容。"
+  },
+  {
+    "id": "NH25",
+    "scope": "Main/Noting History资格、Profile隔离与只读身份",
+    "criterion": "History独立Noting/Provider开关；Main显式跨同Profile真实用户Conversation；Noting须真实running admission且仅父域；参数无Profile选择；查询不建Ref/binding或探测其他profile。",
+    "path": "agent/inline_tool_executors.py:142–144（注册入口同 handler）→ tools/session_history_tool.py:326–352 conversation_history → hermes_state_conversation_history.py:45–113 owning_history_db/resolve_history_scope → HistoryPaths → _read/:231–245 或 _search/:272–323 → :217–228 _public_row。hermes_state_conversation_history.py:45–79同DB路径/:82–113绑定/:124–164_user_owned与require_current_owner；noting_surface.py:75–91 Main恒定History。",
+    "method": "独立查权限从实际runtime/元数据而非仅role/user/ref推断；审閱跨域、aux、伪flag、错Profile、未绑定、开关关闭测试及query无写路径。",
+    "evidence": "test_r3_history.py:180–239,436–461,520–533；c10-notebook-history-report.md:29–31/66/70记录实际路径组；新V2-F01真实注册child能读visible_user且不可读hidden，证明本用例History作用域正常。原生search/read只有读取事务，未调用mint/repair。",
+    "verdict": "符合",
+    "reason": "授权取自可信caller和已有同owner元数据，read/search能力不受Noting与Memory开关捆绑。",
+    "boundary": "本轮未重跑旧组；亲读测试预期/正式代码，旧运行只按已提交报告所载范围引用，未取得其ignored原始日志与manifest来独立重做精确版本证明。 新反例不涉及History越权，是Notebook另用宽source谓词；本条不延伸到个人Provider/NM授权。",
+    "old_v_ids": [
+      "V24",
+      "V25",
+      "V49"
+    ],
+    "source": "07 §5.2/§5.5:1008–1050；保留04 §2.2/2.4；07 §2:81。要求：History工具独立于Noting/Provider开关；Main显式跨域限同Profile真实用户Conversation；Noting严格父域；查询本身只读不创建身份/binding。"
+  },
+  {
+    "id": "NH26",
+    "scope": "History search/anchored read/unanchored read参数",
+    "criterion": "先按参数存在性判互斥再填默认；search非空query、limit默认20范围1..200；anchor窗口默认2/3且0..100，锚点必返回；无锚只当前域，跨域Read需明确true+identity，legacy message_id明确removed。",
+    "path": "agent/inline_tool_executors.py:142–144（注册入口同 handler）→ tools/session_history_tool.py:326–352 conversation_history → hermes_state_conversation_history.py:45–113 owning_history_db/resolve_history_scope → HistoryPaths → _read/:231–245 或 _search/:272–323 → :217–228 _public_row。tools/session_history_tool.py:117–166 _arguments与:231–245 _read；Schema:CONVERSATION_HISTORY_SCHEMA；history scope:82–113。",
+    "method": "逐字段对照07 schema及presence-sensitive分支，检查False/0/null/bool-as-int与anchored filters冲突；审閱边界窗口、无效time/query和跨域read例。",
+    "evidence": "test_r3_history.py:70–160,180–193；已有C10 69条History报告；新provenance四例每次anchored exact只读0/0→source_unavailable，range read传两端成功空，不会默认近邻伪称命中。",
+    "verdict": "符合",
+    "reason": "三模式路由与互斥在handler实际执行，锚点不存在时错误明确且默认值不吞掉冲突参数。",
+    "boundary": "本轮未重跑旧组；亲读测试预期/正式代码，旧运行只按已提交报告所载范围引用，未取得其ignored原始日志与manifest来独立重做精确版本证明。 本次只亲测隐藏源缺锚点和单点range；其余边界为源审+既有报告，非新全量执行。",
+    "old_v_ids": [
+      "V24",
+      "V29"
+    ],
+    "source": "07 §5.1/§5.3–5.4:910–1006,1026–1048。要求：History三种模式严格互斥、模式后填默认；search非空FTS query、limit1..200默认20；anchored read默认before2/after3、0..100且锚点必达；unanchored只当前域。"
+  },
+  {
+    "id": "NH27",
+    "scope": "原生全文候选适配、固定路由、有界补批",
+    "criterion": "复用FTS/CJK/trigram/LIKE/OR；固定route，FTS/gap各自推进cursor，物理去重后展开membership；预算min(10000,max(1000,20*limit))、batch200；故障/降级/partial诊断诚实，不直接套offset search。",
+    "path": "agent/inline_tool_executors.py:142–144（注册入口同 handler）→ tools/session_history_tool.py:326–352 conversation_history → hermes_state_conversation_history.py:45–113 owning_history_db/resolve_history_scope → HistoryPaths → _read/:231–245 或 _search/:272–323 → :217–228 _public_row。_search:272–323 → hermes_state_search_candidates.py:30–64 query,:99–116 budget,:141–278 filters/route/cursors/dedup → 原生FTS/sanitizer/LIKE编译器 → HistoryPaths.memberships/winner → _candidate_public:248–269。",
+    "method": "读完整候选流和search适配，追query准备/路由选择/缺索引gap/peek预算/去重/partial；检查合法候选在辅助噪声首批之后、gap>一页、后来空页不换route等反例是否被现有测试覆盖。",
+    "evidence": "test_r3_history.py:295–435,498–518，分别覆盖budget、limit、gap和FTS独立推进/固定路由/CJK/OR/LIKE/故障无索引写。c10-notebook-history-report.md:29/60–74记69全过与16路径定向；源码未见offset重查或第二检索索引。",
+    "verdict": "符合",
+    "reason": "查询候选和逻辑授权分层且都有有限推进；诊断不是从空数组推测，最终仍经真实History行复核。",
+    "boundary": "本轮未重跑旧组；亲读测试预期/正式代码，旧运行只按已提交报告所载范围引用，未取得其ignored原始日志与manifest来独立重做精确版本证明。 未重跑原生session_search全组；该工具本体未作为新公开History契约替代。",
+    "old_v_ids": [
+      "V26",
+      "V27"
+    ],
+    "source": "07 §5.2:1008–1023；§9.1 History候选接线。要求：原生FTS/CJK/trigram/LIKE/OR通路的稳定候选适配；固定路由、FTS/gap分别有界推进、物理去重再membership；预算min(10000,max(1000,20*limit))批200，准确diagnostics/partial。"
+  },
+  {
+    "id": "NH28",
+    "scope": "合法路径、fork membership、隐藏消息、真实时间与role",
+    "criterion": "一physical source可返回各合法fork逻辑identity；不因active=0,compacted=0一刀切；按实际message role/time含端点；search/read同路径最终验证，排除失效分支、scaffold、Prelude和不可见注入。",
+    "path": "agent/inline_tool_executors.py:142–144（注册入口同 handler）→ tools/session_history_tool.py:326–352 conversation_history → hermes_state_conversation_history.py:45–113 owning_history_db/resolve_history_scope → HistoryPaths → _read/:231–245 或 _search/:272–323 → :217–228 _public_row。HistoryPaths.rows:166–189/memberships:197–213/source_row/winner → get_history_foreground_conn；model_visible_messages + display_kind hidden最终过滤；search_candidates.py:141–183按真实消息role/time且保留inactive候选。",
+    "method": "核原始候选→各membership→当前逻辑winner三段，不把physical flag当完整合法性；审阅fork多归属/rewind/copiedUID/hidden/时间端点测试，亲测两种隐藏源在History均不可读。",
+    "evidence": "test_r3_history.py:128–154,244–292；c10-notebook-history-report.md:29–31/70；本次provenance.log四例已真实验证human_only/hidden read分别source_unavailable及range空。history.py:174–176共用两道过滤。",
+    "verdict": "符合",
+    "reason": "正式History Search与Read共享最终可见路径并支持合法fork源，错误只存在Notebook的旁路source校验。",
+    "boundary": "本轮未重跑旧组；亲读测试预期/正式代码，旧运行只按已提交报告所载范围引用，未取得其ignored原始日志与manifest来独立重做精确版本证明。 当前亲测仅History读取过滤；fork/rewind/搜索组合未重跑。Full的human_only Anchor属于另一语义域，不能据History隐藏撤销它。",
+    "old_v_ids": [
+      "V03",
+      "V25",
+      "V26",
+      "V28",
+      "V50"
+    ],
+    "source": "07 §5.2:1012–1020、§5.5:1050；保留02 §2.2:287–301、04 §2.4:121–126。要求：同一物理源可属于多个fork，各逻辑identity返回；保留合法active=0,compacted=0 branch source；按实际message role/time(端点含)筛；最终合法性与Read同入口，排除失效路径/隐藏控制/Prelude。"
+  },
+  {
+    "id": "NH29",
+    "scope": "Search摘录与Read原始结构、邻居及外层预算",
+    "criterion": "约800字符实际正向字面命中邻域，full/match/fallback准确，省略必truncated；Read保原始content结构/逻辑邻居，不冒已读附件；Noting裁剪指导缩窗口/承认不可达，不诱导越权read_file。",
+    "path": "agent/inline_tool_executors.py:142–144（注册入口同 handler）→ tools/session_history_tool.py:326–352 conversation_history → hermes_state_conversation_history.py:45–113 owning_history_db/resolve_history_scope → HistoryPaths → _read/:231–245 或 _search/:272–323 → :217–228 _public_row。tools/session_history_tool.py:178–228 _excerpt/_public_row与:231–245 _read；NOTING_HISTORY_OVERSIZE_GUIDANCE由原生tool输出裁剪路径使用；noting_prompts.py:7,15,33。",
+    "method": "逐步审阅literal positive-term片段/多命中合并/预算/回退标记及Read不摘要的分支；对照tool-call-only命中和multimodal测试，查实际外层裁剪调用点由surface owner覆盖。",
+    "evidence": "test_r3_history.py:464–496；tests/tools/test_session_history_truncation.py的实际输出预算与source身份测试；c10-notebook-history-report.md:30–31。_public_row原content深度形态由上游路径保留，query不空才调用_excerpt；没有模型摘要替代原文。",
+    "verdict": "符合",
+    "reason": "摘录可追溯原文，Read与Search输出职责明确，工具指导不增加Noting工具权限。",
+    "boundary": "本审查完整读History输出与指导常量；外层并发batch总预算接线由SS owner检查，未本轮再跑巨大多模态输出。旧报告复用边界同本报告§3的既有证据复用说明；实际附件内容不可达不等于已读。",
+    "old_v_ids": [
+      "V27",
+      "V28"
+    ],
+    "source": "07 §5.3–5.4:1026–1048、§7:1233、§9.1；白板 I2/P6:251–254,443。要求：Search约800字符实际命中邻域，全/命中/降级标记准确、省略必truncated；Read原始结构逻辑邻居，外层截断对Noting指导缩窗口/承认不可达，不提示越权read_file。"
+  },
+  {
+    "id": "NH30",
+    "scope": "History错误/空结果/partial与canonical输出",
+    "criterion": "候选枚举并验证完无命中才success空且partial false；预算/未判membership/未枚举到尽头可partial true；坏query/拒权/全索引不可用报error；缺锚点source_unavailable；规范ref+uid真实时间role/content，无虚构标题/总命中数。",
+    "path": "agent/inline_tool_executors.py:142–144（注册入口同 handler）→ tools/session_history_tool.py:326–352 conversation_history → hermes_state_conversation_history.py:45–113 owning_history_db/resolve_history_scope → HistoryPaths → _read/:231–245 或 _search/:272–323 → :217–228 _public_row。HistoryCandidateStream diagnostics/pending/exhausted → _search:272–323 partial → _public_row:217–228 format_timestamp；_read缺anchor:235–239；统一ConversationHistoryError序列化。",
+    "method": "审阅每类失败的传播与降级warning、remaining候选/stream.exhausted判断及canonical分组输出；对照损坏UID/time、不可用索引、有效降级、空命中和partial测试。",
+    "evidence": "test_r3_history.py:157–178,307–326,417–453,498–518；c10-notebook-history-report.md:18/29–31/70记录坏UID由假空修为source_unavailable；本次四例验证被过滤anchor明确error，单点合法查询success空count0，与maintain成功形成对照。",
+    "verdict": "符合",
+    "reason": "公开输出区分没有结果、没有查完和查询失败，canonical身份与时间从真实源构造。",
+    "boundary": "本轮未重跑旧组；亲读测试预期/正式代码，旧运行只按已提交报告所载范围引用，未取得其ignored原始日志与manifest来独立重做精确版本证明。 partial false只说明当前可用底层候选完成，不声称自然语言世界不存在更多证据；不保证语义检索召回率。",
+    "old_v_ids": [
+      "V27",
+      "V28",
+      "V51"
+    ],
+    "source": "07 §5.2:1022、§5.4:1038–1048、§7:1210–1233。要求：无命中且已验证为success空/partial false；扫描未完可partial true；坏query/无权限/索引完全不可用报error，Read缺锚点source_unavailable；返回规范ref+uid/真实时间/role/content，不虚构标题总数。"
+  },
+  {
+    "id": "RT01",
+    "source": "02 §1.2–1.6（51–204）；04 §2.1；07 §9.1（1445–1451）：Conversation 为独立 opaque owner，物理 Session/host locator 不能替代。",
+    "scope": "身份、压缩延续、new/reset/fork、路由 generation。",
+    "criterion": "压缩祖先绑定同 ref；显式分支/重置另建 ref；可信 alias 冲突拒绝；只读身份读取不凭当前 generation 重写旧归属。",
+    "path": "原生 Session INSERT → hermes_state_secretary_identity.py:35–54 secretary_session_created_conn → :62–85 compression ancestry / :126–204 resolve_conversation_ref_conn → :206–236 route；rewind reconcile :27–33。",
+    "method": "独立阅读身份 SQL 与原生 rewind/reconcile 调用点；对照分支/压缩继承测试及首验可复用证据。",
+    "evidence": "hermes_state_messages.py:1844–1885；tests/secretary/test_r3_notebook.py:376–429、564–588；原 verification.md V02；c9-host-report.md §F18（261–300）。",
+    "verdict": "符合",
+    "boundary": "审查的是身份和 owner 机制；History 工具授权由 NH 审查。没有重新启动其他平台 host。",
+    "old_v_ids": [
+      "V02"
+    ]
+  },
+  {
+    "id": "RT02",
+    "source": "02 §2.6–2.7、§3.1–3.4（599–799）；04 §2.3–2.5；07 §9.1：Active 来自真实请求，Full 唯一 Prelude、逻辑 UID 去重、复合 carrier 双投影例外。",
+    "scope": "Full/Active、原始路径、Prelude、复合压缩 carrier。",
+    "criterion": "Full 的普通节点 UID 唯一；compaction boundary 与其真实 user 部分可同 UID 双投影；Prelude 使用实际捕获 root/tools，缺失不拼造；读取不触发 Noting。",
+    "path": "secretary/noting_runtime.py 实际 Main dispatch capture → hermes_state_secretary_foreground.py:31–116 Prelude、:120–155 source、:232–296 projection/winner、:307–368 Full/anchor。",
+    "method": "阅读完整 foreground owner，检查原始来源、latest physical generation 及 composite split；对照 F18 composite/rewind 测试。",
+    "evidence": "tests/secretary/test_r3_notebook.py:411–429；agent/cache_parity.py:148–187；agent/turn_context.py:1293–1301；原 verification.md V03。",
+    "verdict": "符合",
+    "boundary": "Full 的 human_only 原始节点可合法存在；其可否作为新 Notebook provenance 是 RT10/V2-F01 的独立违规，不能以本行合法 Full 推断合法来源。",
+    "old_v_ids": [
+      "V03"
+    ]
+  },
+  {
+    "id": "RT03",
+    "source": "07 §3.1（89–103）、§8.1（1237–1244）；02 §2.6/5.10；04 §4.4：Anchor 是 Full 末端非 compaction、非 noting_run_output 逻辑消息，准入冻结后不可移动。",
+    "scope": "四种触发、human_only 末尾 Anchor、后台交接；F17。",
+    "criterion": "首次从真实 raw Active 验证 UID 再投影；已验证冻结对象只承认原 (ref,UID)，worker 不按可见列表重新寻找被过滤的 Anchor，不读取后来的父状态。",
+    "path": "noting_runtime.py:377–400、545–609 → noting_child.py:131–178 freeze_parent_active_prefix → cache_parity.py FrozenParentPrefix → noting_child.py:740–792 spawn → :516–596 run。",
+    "method": "检查私有绑定、精确类型与只读 identity；完整阅读正式 manual/spawn/native child 屏障测试与 F17修复报告。",
+    "evidence": "tests/secretary/test_r3_frozen_anchor_handoff.py:17–162：human_only/普通×父同ref变化/切ref、错UID/ref、空投影、伪子类；c9-host-report.md:237–258 9P+11P；real-model-report.md R3-022。",
+    "verdict": "符合",
+    "boundary": "F17 的锚点交接缺陷可关闭；这不等于整个请求前缀在所有 native hook 下已受保护，见 RT04。历史20P/真实链为报告级复用，本次未重跑。",
+    "old_v_ids": [
+      "V04",
+      "V38",
+      "V43",
+      "V44"
+    ]
+  },
+  {
+    "id": "RT04",
+    "source": "04 §4.4 C13（287–290），§2.2（108）；07 §3.1、§9.1（1447–1448）：每次首请求、工具循环、重试、continuation 都是“同一份完整父前缀＋累积Noting后缀”。",
+    "scope": "Native AIAgent 请求构建；配置 context.engine 的公开选择 hook；冻结 root/tools/messages。",
+    "criterion": "后续 request 不可替换、截断或重写冻结父消息；配置的 native ContextEngine 同样不能改变已冻结前缀。",
+    "path": "配置 context.engine → agent_init.py:1848–1888、1914–1950 构造 parent/child engine → noting_child.py:211–310 → run_noting_task → turn_request_assembly.py:155 → conversation_loop.py:1307–1359 _apply_context_engine_selection → 实际 provider 请求。",
+    "method": "本次唯一一次独立 native 反证。公开 hook 第二次请求替换早期 user 请求片段；真实 parent先发一请求，child使用实际 AIAgent/tool loop/SessionDB，I/O 全部受控；按规范断言每次 wire prefix。",
+    "evidence": "evidence/verification2/test_v2_context_selection.py（运行副本 tests/secretary/test_v2_context_selection.py）；evidence/verification2/context-selection.log：canonical runner 1F，pytest2.06s/runner2.7s；parent1请求、child3请求、prefix=[true,false,false]、tools全true、committed=true、active_children_after=0。",
+    "verdict": "违规",
+    "boundary": "V2-F03 已实证。默认 compressor 的 F12/F17 positive 证据仍有效；反例没有真实模型/网络调用，没有修改持久 Parent 原文，只证实实际请求父前缀被重写。",
+    "old_v_ids": [
+      "V44"
+    ]
+  },
+  {
+    "id": "RT05",
+    "source": "02 §5.2–5.5（1490–1610）；04 §4.6（317–356）；07 §3.1、§9.1：单次准入、独立持久 child、只持久自有 suffix、强引用直到显式 close，不恢复崩溃任务。",
+    "scope": "Child 构造、持久 Session、线程、资源所有权。",
+    "criterion": "独立 SessionID、父 physical lineage、同所属 state.db 独立 handle；Parent prefix 仅请求携带；task registry 强引用；正常/失败终态清理 admission/registry/client/db。",
+    "path": "noting_child.py:195–266 acquire/build → :279–305 identity → :516–596 runner/finally；:91–109 registry；run_agent.py:946–969 close、:1019–1033 owned DB release；session_persistence 仅 suffix。",
+    "method": "完整阅读 child owner 与原生 close；核 child Session source/delegate marker、DB ownership flag及 finally；对照真实 suffix/close/parent interrupt 用例。",
+    "evidence": "tests/secretary/test_noting_child.py:176–238、274–342、419–455、513–672；tests/secretary/test_r3_child.py:238–294；real-model-report.md:48–83 共11持久child及两5Turn链关闭；本次V2-F03也观察registry归零。",
+    "verdict": "符合",
+    "boundary": "没有运行 crash/restart 产品场景；源码无恢复 in-flight task 入口，历史报告提供已结束资源观察；父中断不取消 Noting 是规定行为，不应加入父普通 child fan-out。",
+    "old_v_ids": [
+      "V43"
+    ]
+  },
+  {
+    "id": "RT06",
+    "source": "07 §3.2、§7、§9.1；02 §5.7 保留；04 C13：唯一 NOTING、仅四工具真实 dispatch；旧 Notebook 工具/Memo/compact_parent 不保留可执行 alias。",
+    "scope": "同步/并发/inline/原始模型工具名修复链。",
+    "criterion": "冻结父 tools 不赋权；conversation_history/notebook_show/notebook_maintain/finish_noting 才可执行；旧工具名必须在原生 repair 之前拒绝，不转换成写入。",
+    "path": "noting_child.py:46–84、279–305 → turn_tool_validation.py:94–110 repair → tools/secretary_dispatch.py:10–24 legacy list → agent/tool_executor.py:659–668、728–746 → inline_tool_executors.py:338–355。",
+    "method": "读真实校验与dispatch链，复核 SS 审查者同版本 native Loop 反证日志；普通 terminal/delegate/scheduler 拒绝测试可复用。",
+    "evidence": "evidence/verification2/retired-tool.log：canonical 2P/1F；raw notebook_mutate 被repair为 notebook_maintain，maintain success，finish后 Snapshot committed；tools/secretary_dispatch.py:10–12遗漏 notebook_mutate。",
+    "verdict": "违规",
+    "boundary": "跨域发现 SS/正式最终编号由根会话统一；不是独立第二个复现。当前四工具名 dispatch guard 存在且起效，但原始旧名在到达 guard 前已失去身份。",
+    "old_v_ids": [
+      "V29",
+      "V45"
+    ]
+  },
+  {
+    "id": "RT07",
+    "source": "07 §4.5、§8.11–8.12（1331–1410）；白板 N0–N6；04 §4.4：首轮与每个新控制消息含当前完整工作视图和四个完整 Schema，已追加 suffix 保留。",
+    "scope": "任务 base、工作视图、续 Turn 控制消息。",
+    "criterion": "同步冻结明确 base_snapshot_id（含显式空）；worker只hydrate该base；show指向本task草稿；新continuation重新附完整control/working data，不重载新的parent pointer。",
+    "path": "noting_child.py:493–513 freeze_notebook_start/_working_control → :574–581 init → noting_tools.py initialize_notebook_work/noting_tool_control_message → :655–668 continuation；NotebookStore.__init__ 显式base三态。",
+    "method": "读固定base与suffix生命周期；审初始/续Turn请求及工作态竞争测试。",
+    "evidence": "tests/secretary/test_r3_notebook.py:324–345、430–440、649–692；tests/secretary/test_r3_child.py:109–132、179–193、277–294；c5-report.md §接口及34项；04对应真实跨Turn报告。",
+    "verdict": "符合",
+    "boundary": "本行仅证明完整任务/控制数据真实接入，不评价Step4来源结算语义，F16由NH审查；配置ContextEngine可能破坏wire前缀另列RT04。",
+    "old_v_ids": [
+      "V09",
+      "V44",
+      "V45"
+    ]
+  },
+  {
+    "id": "RT08",
+    "source": "07 §4.5、§9.1；白板 D8；07 §3.1：finish必须单独调用，成功仅end_requested，任务锁固定工作态，runner等原生Turn返回后提交。",
+    "scope": "完整批次、同步/并发、终态幂等。",
+    "criterion": "混合含finish的完整模型batch在任何执行前全部拒绝；首次合法reason固定；重复finish不改结果；之后write state_conflict，read仍可；工具返回不等于已提交。",
+    "path": "turn_tool_validation.py:94–98 secretary_validation_refusal → tools/secretary_dispatch.py:89–122；tool_executor.py:1610、1887、1965 全批防线 → noting_tools.py:107–151 → noting_child.py:643–652、671–725 commit。",
+    "method": "读取三执行入口与模型原始batch pre-repair检查；审task lock并发和原生两请求finish测试。",
+    "evidence": "tests/secretary/test_r3_child.py:94–108、135–176、238–275；C5报告34有效项；C9正式dispatch接线报告；当前V2-F03实际finish end_requested后原生Turn返回才commit。",
+    "verdict": "符合",
+    "boundary": "“重复finish同一batch”必须整批拒绝，“分批重复合法finish”幂等；禁止旧工具alias是另条RT06，不由本条finish guard覆盖。",
+    "old_v_ids": [
+      "V10",
+      "V46"
+    ]
+  },
+  {
+    "id": "RT09",
+    "source": "04 §4.6（317–356）；07 §3.1–3.2、§8.11–8.12；02 §5.8：最多5完整原生Turn，无child自动压缩，合法forced/context_overflow也尝试提交完整工作态。",
+    "scope": "执行预算、文本完成、真实Provider overflow/output-cap恢复。",
+    "criterion": "普通文本completed不是正常Task结束；第5Turn后不第6次；普通overflow走合法视图终结，不能为继续运行压缩冻结prefix；failure/interruption不能伪装成功。",
+    "path": "noting_child.py:42–43、307–310、617–725；turn_request_assembly.py:298–300 guard；turn_api_error.py:161–204 → turn_recovery.py:1846–1879 disabled-overflow gate；其output-cap例外 → turn_overflow.py:286–319 _clamp_output_cap → :148–173 compress → compression_facade.py:232–328。",
+    "method": "读完整5Turn状态机、真实错误路由。普通overflow有上游compression_enabled=False拦截；输出cap错误明确被豁免且仍调用child._compress_context。当前受控overflow测试直接替换run_conversation抛NotingContextOverflow，未走该真实恢复分支。",
+    "evidence": "tests/secretary/test_r3_child.py:277–325；real-model-report.md:67–77 两5Turn/31请求 forced真实链；源码 turn_recovery.py:1854–1861 和 turn_overflow.py:286–319。",
+    "verdict": "证据不足",
+    "boundary": "普通预算/overflow及失败分类有肯定证据；缺口仅合法max_tokens/available_tokens Provider错误的恢复路径可能压缩冻结child。未实际复现、未第二次运行，不把静态风险写成已发生破坏；V2-E02交根会话。",
+    "old_v_ids": [
+      "V43",
+      "V44",
+      "V46"
+    ]
+  },
+  {
+    "id": "RT10",
+    "source": "02 §5.10（1923–1939）、§3.3；07 §3.1、§4.1、§9.1：同一原子commit重验全局/local/capability、合法Anchor、版本、规范来源，完整不可变Snapshot。",
+    "scope": "工作态正式提交、来源可见性。",
+    "criterion": "开关/Anchor/版本/来源任何失效均不插入Snapshot、不移动pointer；新source必须是同域合法可读原文，不能仅Full/底层History在路径即有效。",
+    "path": "noting_child.py:395–417 commit gate → notebook_store.py:56–67 validate_snapshot_state_conn → _source_checks_conn:14–40 → hermes_state_secretary_notebook.py:235–269 INSERT+reselect。",
+    "method": "逐层阅读同conn验证/immutable triggers；复核NH四例来源反证及其正式DB提交结果。",
+    "evidence": "evidence/verification2/provenance-observations.json；evidence/verification2/provenance.log：human_only/hidden×UID/range，History source_unavailable/count0，但maintain+finish+commit成功、pointer_changed=true。",
+    "verdict": "违规",
+    "boundary": "V2-F01已实证；来源validator漏model_visible条件，事务原子性和Anchor合法性本身正常。修复不得删除Full合法human_only Anchor（F17/F19）。",
+    "old_v_ids": [
+      "V04",
+      "V08"
+    ]
+  },
+  {
+    "id": "RT11",
+    "source": "02 §2.6–2.7、§3.3–3.4；07 §3.1、§11.1（1525–1531）：按当前路径覆盖范围选有效Snapshot，旧合法结果晚到可commit但不可倒退。",
+    "scope": "F18 coverage ordering、immutable Snapshot/pointer。",
+    "criterion": "只在当前Full合法Anchor中按原逻辑引入顺序排序，携带的旧UID不因更晚physical row提升coverage；提交/重选/receipt同一事务。",
+    "path": "hermes_state_secretary_notebook.py:153–205 _notebook_anchor_positions_conn/reselect → :235–269 commit；hermes_state_secretary_foreground.py:120–155 source首次引入。",
+    "method": "审排序真值源、setdefault和current legality分工；读carry一次/两次、late旧commit、Framework旧UID抑制反例。",
+    "evidence": "tests/secretary/test_r3_notebook.py:347–374；test_r3_framework.py:96–140；c9-host-report.md:261–300 F18 5新+26邻域PASS；real-model-report.md:150–156 新schema当前snapshot/通知成功。",
+    "verdict": "符合",
+    "boundary": "F18覆盖排序修复可关闭；40f4..b40仅noting_prompts.py为生产变化，相关runtime相同。原始ignored日志未读取，不将报告PASS称本次亲测。",
+    "old_v_ids": [
+      "V04",
+      "V47"
+    ]
+  },
+  {
+    "id": "RT12",
+    "source": "02 §1.6/§2.7/§3.4；07 §9.1；04 §4.1/4.7：rewind/fork保留逻辑身份/版本，重选不制造完成事件，不联动Scheduler。",
+    "scope": "分支继承、父后续清理、嵌套fork、rewind。",
+    "criterion": "fork冻结自己的coverage次序和来源，rebind ref；parent cleanup不重排或丢branch来源；branch新原文更晚；rewind只让非法anchor退出并重选，不新建Noting结果。",
+    "path": "hermes_state_secretary_foreground.py:370–432 freeze/inherit/preserve → hermes_state_secretary_notebook.py:279–300 fork snapshot copy → hermes_state_messages.py:1844–1885 rewind → identity.py:27–33 reconcile。",
+    "method": "审同事务fork字段coverage_position和native源保全；读嵌套fork/父clear/rewind/复合carrier测试。",
+    "evidence": "tests/secretary/test_r3_notebook.py:376–429、564–588；test_r3_framework.py:332–345；c9-host-report.md F18 31PASS邻域。",
+    "verdict": "符合",
+    "boundary": "Scheduler owner不复制及reminder退休逻辑由SS核查；本行确认Notebook pointer未反向同步Scheduler业务状态。",
+    "old_v_ids": [
+      "V02",
+      "V04",
+      "V31",
+      "V47"
+    ]
+  },
+  {
+    "id": "RT13",
+    "source": "07 §11.1（1525–1531），索引R3-002：B/C可同从已提交A开始、各自完整commit；不要求后启动C继承在飞B或合并重放。",
+    "scope": "并发Noting base与覆盖。",
+    "criterion": "每task持有独立完整工作态和固定base；提交互不合并；current仅按合法coverage；C不包含B新内容本身不能判违规。",
+    "path": "noting_child.py:499–504 freeze_notebook_start → NotebookStore base_snapshot_id → hermes_state_secretary_notebook.py:235–269 独立快照/择优。",
+    "method": "按确认边界审并发基线捕获和late commit测试，不把内容superset当额外验收标准。",
+    "evidence": "tests/secretary/test_r3_notebook.py:324–345、649–677；test_r3_framework.py:96–112；c5-report.md接口；snapshot-index.md R3-002。",
+    "verdict": "符合",
+    "boundary": "任务之间没有要求串行、覆盖合并或重放；当前来源不合法仍受RT10阻断，与允许同base并行无关。",
+    "old_v_ids": [
+      "V04",
+      "V47"
+    ]
+  },
+  {
+    "id": "RT14",
+    "source": "白板 P1–P4；07 §8.1（1237–1244）、§9.1；02原生压缩保留：manual/auto/Idle在摘要前联合冻结并行启动，Noting失败不挡必须压缩。",
+    "scope": "所有共同native压缩入口、partial manual、in-place/rotation。",
+    "criterion": "native安全/route/fence通过后、summary改写前prepare一次；child不阻塞summary；Idle已prepare内部标记不重复；Noting skip/error不终止原生压缩。",
+    "path": "context_compaction_request.py:20–29 prepare_noting_for_native_compression → conversation_compression.py:3831–3838 _run_summary_phase；partial head+verbatim；noting_runtime.py:545–612 → spawn；Idle内部trigger noting_joint_idle。",
+    "method": "读正式公共seam、child同步freeze/异步spawn顺序及native异常分离；审真实native compressor/DB集成用例和运行报告。",
+    "evidence": "tests/secretary/test_r3_host_wiring.py manual/auto×in-place/rotation；test_r3_joint.py:94–122、163–209；test_r3_compaction_visibility.py:32–121；c9-host-report.md §3；real-model-report.md:36。",
+    "verdict": "符合",
+    "boundary": "不以run_joint_cycle孤立callback当全部接线证据；已追公共summary正式路径。真实多host用户验收SS负责；RT04仍影响配置selector的child请求。",
+    "old_v_ids": [
+      "V38"
+    ]
+  },
+  {
+    "id": "RT15",
+    "source": "02 §4.6–4.9/4.11；07 §8.1；白板P3：原生Resolved window/Auto threshold，reserve=max((window-auto)*1.2,66000)，Force严格在Auto前。",
+    "scope": "Force测量、能力失败、配置。",
+    "criterion": "同原生usage/压力测量，不另建token计数；forceThreshold<64000或reserve>128000才规定capability失败；精确阈值与边界。",
+    "path": "turn_context.py:45–53；turn_preflight.py:96–105、306–310 → noting_runtime.py try_admit_force → noting_policy.py force_thresholds/measurement_from_agent。",
+    "method": "逐式检查十倍整数计算、严格比较和原生measurement caller；核边界/阈值场景。",
+    "evidence": "tests/secretary/test_noting_runtime.py:229–276；tests/secretary/test_noting_policy.py/config_contract（报告复用）；c7-report.md §1/§4；real-model-report.md Force/Idle真实usage。",
+    "verdict": "符合",
+    "boundary": "仅使用所属profile原生解析值；cache/provider实际计费不从这里推断。配置ContextEngine也可满足该能力门槛，不能豁免RT04。",
+    "old_v_ids": [
+      "V37",
+      "V39"
+    ]
+  },
+  {
+    "id": "RT16",
+    "source": "07 §8.1；02 §4.6–4.9；白板P3：Force占用按最后成功原生compaction区间，在admission同事务检查；换anchor/child结束/rewind不解锁。",
+    "scope": "并发四入口、重启、重复UID的真实压缩边界；F11延续。",
+    "criterion": "所有入口共享admission占用；区间身份用真实native publication，不用Snapshot成功或receipt；失败/no-op不前进，成功复用同UID也开新区间。",
+    "path": "noting_runtime.py:377–400 _freeze_and_admit → hermes_state_secretary_noting.py:99–181 interval/admit；hermes_state_compression.py:22–62 _noting_compaction_write → messages.py:1080/compression.py:382实际write事务。",
+    "method": "读同BEGIN事务占用与仅成功summary physical identity hook；审两个连接竞争、rewind/reopen和同UID反例。",
+    "evidence": "tests/secretary/test_r3_joint.py:51–92、123–148、211–229；test_r3_boundary_prefix_regression.py:33–52、115–152、179–191；real-model-report.md F11新compaction:session:row证据。",
+    "verdict": "符合",
+    "boundary": "noting_record_compaction后置facade不是成功事实主来源；正式hook在native事务内。先前C7报告同UID描述已被F11修正，以当前代码/后续报告为准。",
+    "old_v_ids": [
+      "V39"
+    ]
+  },
+  {
+    "id": "RT17",
+    "source": "02 §4.5 C16；07 §6.3/§8.1；白板P5：Idle默认off、delay默认500，正threshold；Main结束计时、start取消，local只在deadline消费。",
+    "scope": "daemon timer、恢复owner、一次deadline、idle/force升级。",
+    "criterion": "delay与实际占用同时满足；辅助活动不影响Main；off不删等待但到期off终结，on不复活；host恢复catch-up同event；不新建周期scheduler。",
+    "path": "turn_facade.py:85–86、227–228 → noting_runtime.py:312–376、try_admit_idle、637–704 → noting_timers.py arm/attach/_fire → hermes_state_secretary_noting.py:215–300 claim once。",
+    "method": "读状态SQL CAS、timer弱owner/同period、local_checked传递；完整读deadline事件3组测试与C7/C10修复记录。",
+    "evidence": "tests/secretary/test_noting_deadline_event.py:64–153；test_noting_timers.py:44–325；c7-report.md 63有效场景；c10-runtime-report.md deadline修复；real-model-report.md:36 idle低/高/取消重臂实际观察。",
+    "verdict": "符合",
+    "boundary": "对slot无活owner时持久deadline待原生恢复是契约行为；cold capability helper无正式调用，不把它的local读取错当deadline实际额外gate。",
+    "old_v_ids": [
+      "V37",
+      "V40"
+    ]
+  },
+  {
+    "id": "RT18",
+    "source": "04 §4.5 D01（293–315）；07 §8.1：最近实际Main native/external来源，在四触发Noting副作用前统一判；unknown沿旧行为。",
+    "scope": "真实provider dispatch、持久来源、resume、External拒绝。",
+    "criterion": "只实际dispatch更新memory/model_config，无请求不抹旧事实；native真实恢复才重置external抑制；external拒Noting不挡父压缩/History/Scheduler；不能据api_mode猜来源。",
+    "path": "turn_api_call.py:119–127 main_model_request_scope → noting_runtime.py:95–311实际source/capture/persist；anthropic_adapter.py:799/870、copilot_acp_client.py:415、codex_runtime.py:739/1205 native/external记录 → prepare_joint_noting。",
+    "method": "读来源fact写入、恢复与四入口先后顺序；核已有跨transport、zero-request及持久重开测试。",
+    "evidence": "tests/secretary/test_noting_runtime.py:343–429；test_r3_joint.py:94–108、178–193；c9-host-report.md external正式manual证据；原 verification.md V41。",
+    "verdict": "符合",
+    "boundary": "本次没有实际启动External服务；其来源记录接线只读审阅，静态/受控证据证明不以provider名称或selector engine误判。",
+    "old_v_ids": [
+      "V41"
+    ]
+  },
+  {
+    "id": "RT19",
+    "source": "07 §3.1、§8.1；02 §5.6；白板P2/P3：Force/External沿原Framework producer，External同live runtime/ref抑制一次，无child或Reminder副作用。",
+    "scope": "Force接纳消息、External拒绝提示、抑制复位。",
+    "criterion": "Force只admit/spawn成功后沿原producer发；External发既定文本且同runtime/ref一次，实际native请求重置；busy/fence延迟，不发新Turn。",
+    "path": "noting_runtime.py:545–561 _dispatch_joint_decision → framework_messages.py:39–92 suppression、:264–321 publish/flush；mark_framework_turn与native request source reset。",
+    "method": "读producer/suppression identity与无Scheduler依赖，核多producer/关闭/无Turn用例。",
+    "evidence": "tests/secretary/test_r3_framework.py:320–330；test_framework_message_boundaries.py（C8报告59有效项）；c9-host-report.md external_fact/notice-tests；原 verification.md V42。",
+    "verdict": "符合",
+    "boundary": "进程崩溃前仍在内存队列的通知可丢失，冻结规范未要求恢复必达；Force退休另RT20。",
+    "old_v_ids": [
+      "V42",
+      "V51"
+    ]
+  },
+  {
+    "id": "RT20",
+    "source": "02 §4.12、§5.6；07 §8.1；白板P3：成功原生压缩才退休旧Force通知，摘要/tail/重放不再带通知，durable审计保留。",
+    "scope": "Force snapshot plan、summary/candidate/protected reply/verbatim tail、成功/失败。",
+    "criterion": "同一attempt剔旧Force通知覆盖全部native候选消费者；真实DB publication之后才删queued通知；no-op/summary/DB失败保留原上下文和占用。",
+    "path": "agent/compression_force_notice.py:17–143 capture/summary/comparison/carry/retire → conversation_compression.py:3835–3898、3683–3704 → actual archive/publish后retire。",
+    "method": "完整读ForceNoticePlan及F19同源投影交汇；审失败恢复与报告中成功边界后邻域结果。",
+    "evidence": "tests/secretary/test_r3_host_wiring.py Force native success/no-op/DBfailure；c10-runtime-report.md:165–167 固定40f4 Force18+lastreply8以及manual9共35PASS。",
+    "verdict": "符合",
+    "boundary": "报告中首次selector只实际执行manual9、另两文件deselected；第二次26PASS才补齐，已按独立节点计数；没有重复计成70。",
+    "old_v_ids": [
+      "V42"
+    ]
+  },
+  {
+    "id": "RT21",
+    "source": "07 §8.1、§9.1；02 Active/Full/Anchor/原生失败回滚；04缓存保留：hidden/human_only不得进model或summary，仍须保原始合法锚点/未见输入。",
+    "scope": "F19原生压缩完整/partial、tail、reply、current user index、rollback。",
+    "criterion": "freeze先见raw；summary/candidate/reply/tail/coverage/watermark用同一可见源；raw仅保存rollback和native unseen保全；hidden不侵入模型且不被错归档丢Anchor。",
+    "path": "conversation_compression.py:3831–3898 raw→model_visible；:3647–3686 current idx/tail/coverage；:4117–4131 reject restore；hermes_state_messages.py archive_and_compact unseen保全。",
+    "method": "读正式source数据流到nativeDB；完整审F19六组合和三失败用例，对照真实原失败与新schema链。",
+    "evidence": "tests/secretary/test_r3_compaction_visibility.py:32–121 6×正式compress+延迟child+unseen+nextMain；:123–159 3失败raw恢复；c10-runtime-report.md:156–167 9PASS+35邻域；real-model-report.md:150–156成功新pointer/通知。",
+    "verdict": "符合",
+    "boundary": "F19修复可关闭；source可见性作为Notebook provenance的漏检是RT10，不能因Full合法锚点而混同。此审查未复跑已有44节点。",
+    "old_v_ids": [
+      "V03",
+      "V04",
+      "V38",
+      "V42",
+      "V44",
+      "V50"
+    ]
+  },
+  {
+    "id": "RT22",
+    "source": "07 §8.13、§11.1；白板N3：只有本次commit成为当前pointer才准备完成通知，实际append前再验证，过期整条含proposal丢弃。",
+    "scope": "Snapshot receipt、乱序完成、忙时队列、rewind。",
+    "criterion": "receipt own/effective/pointer_changed一致；queue绑定snapshot_id；append用同conn current predicate；旧合法late结果成功但不通知；reselection本身不发完成。",
+    "path": "noting_child.py:671–725 → framework_messages.py:329–350 publish_noting_completion → queued snapshot_id → :168–208 prepare/record → notebook_snapshot_if_current_conn:216–228。",
+    "method": "读receipt判定和延迟重验两处；审先排队后新pointer、已append后新pointer、fence放行与rewind无通知。",
+    "evidence": "tests/secretary/test_r3_framework.py:96–177、332–364；C8完整报告；F18新增已current通知正例；real-model-report末尾实际新完成通知。",
+    "verdict": "符合",
+    "boundary": "旧结果不通知是当前pointer规则，不是要求失败或内容合并；合法Snapshot已commit而通知失败不回滚Snapshot。",
+    "old_v_ids": [
+      "V47"
+    ]
+  },
+  {
+    "id": "RT23",
+    "source": "07 §8.13；02 §5.6/§3.3；04保留载体：durable/live安全尾部追加与pointer验证同一致性边界，不先验后任意异步publish。",
+    "scope": "Framework原生append事务、并发Snapshot/owner变化、回滚。",
+    "criterion": "framework/persist锁→BEGIN IMMEDIATE内重验pointer和owner→原生repair/insert→before_commit同一live对象追加→COMMIT；失败移除live且不重试队列；Main不能观察未提交草稿。",
+    "path": "framework_messages.py:133–221 → hermes_state_messages.py:458–526 prepare_rows/repair/insert/reconcile/before_commit → hermes_state.py:1006–1119 _execute_write；framework outer lock/turn busy。",
+    "method": "核实际事务和锁顺序、callback位置/重试身份；完整读竞争屏障、target换owner、append失败测试。",
+    "evidence": "test_r3_framework.py:179–224 B等A事务，A原生COMMIT后阻断外层仍B见同durable/live；:227–257 owner/DBfailure；C8报告锁序/59有效项。",
+    "verdict": "符合",
+    "boundary": "不新建持久通知队列，保留进程内at-most-once；SQLite外部跨进程live对象不共享，durable/current以事务统一。",
+    "old_v_ids": [
+      "V47",
+      "V51"
+    ]
+  },
+  {
+    "id": "RT24",
+    "source": "07 §8.13（1411–1423）；白板L1/L9/N3：同一Framework含完整有效Snapshot，正文Unicode字符>12000或现行entry>60才尾附共同proposal。",
+    "scope": "完成正文、计数、forced/overflow、失败。",
+    "criterion": "不截断/拒交/自动删/重跑；header/body/termination/anchor完整；body len按Unicode码点、4区数组独立entry数、不重复refs；strict >；消息时间为Snapshotcommit时间，无timestamp marker。",
+    "path": "noting_notifications.py completion_body/failure_body → notebook_render.render_notebook → framework_messages.py:168–182 render at current check；shared PERSISTENCE_PROPOSAL_INSTRUCTION。",
+    "method": "读计数范围和模板，审Unicode相等/超1、60/61、candidate refs、forced/overflow限制说明及failure无Snapshot。",
+    "evidence": "test_r3_framework.py:72–94、259–319；noting_notifications.py全文；C8报告；real-model-report.md:40 framework-177完整正文/同尾proposal报告。",
+    "verdict": "符合",
+    "boundary": "Notebook全部时间字段的人类/模型投影由NH核查；本行只完成载体commit时间与不截断/阈值，未宣称任意客户端UI渲染已验收。",
+    "old_v_ids": [
+      "V48",
+      "V51"
+    ]
+  },
+  {
+    "id": "RT25",
+    "source": "02 §5.2/5.8/5.10；07 §3.1、§8.13：失败/中断/非法commit不能报完成，失败反馈具体，无新Snapshot且释放资源。",
+    "scope": "同步freeze/构造失败、worker异常、local off、parent owner变化、通知自身失败。",
+    "criterion": "admission终态一次；失败不移动pointer；有具体失败原因才notice，不把真实中断伪造failure成功；notice异常不妨碍registry/DB/client close。",
+    "path": "noting_child.py:438–492 failure notice → :516–596 startup/run/finally → :671–733 commit/close → :750–792 sync/thread failure；finish_child_admission:337–369。",
+    "method": "审异常分层与once标记、expected原parent DB/ref；读各setup/worker/notification失败及F17父切ref用例。",
+    "evidence": "tests/secretary/test_noting_child.py:419–436、513–672；test_r3_child.py:297–325、358–379；test_r3_frozen_anchor_handoff.py:17–106；C5/C9报告；本次V2-F03正常清理实际观察。",
+    "verdict": "符合",
+    "boundary": "output-cap分支未闭合见RT09；先合法commit后notification失败不应变更已提交Snapshot，按通知at-most-once界线接受。",
+    "old_v_ids": [
+      "V43",
+      "V46",
+      "V48"
+    ]
+  },
+  {
+    "id": "RT26",
+    "source": "02 §1.6、§5.3/5.4；04保留Profile隔离；AGENTS原生profile helper规则：后台线程/child/DB/settings都使用所属profile，不用启动profile。",
+    "scope": "所有runtime配置、child DB、timers、Framework renderer/owner。",
+    "criterion": "DB path/ref/runtime key同owner；dedicated handle指向Parent文件；thread contextvars绑定get_hermes_home；route/config失效拒绝；不重载独立记忆/个人Provider。",
+    "path": "noting_scope.py owning_db_scope/settings_for_db/_runtime_key；noting_child.py:195–266、740–792；noting_timers.py:_fire/attach；framework_messages.py:160–182 profile_home；noting_capability.py read-only native pair。",
+    "method": "读context设置/finally恢复、weak runtime key、DBsamefile acquire和memory optouts；核交叉profile来源/失败owner测试。",
+    "evidence": "tests/secretary/test_noting_child.py:635–672；test_r3_notebook.py:544–588；test_noting_timers.py:237–270；real-model-report.md所属round3/退出恢复；V2-F03测试隔离fixture。",
+    "verdict": "符合",
+    "boundary": "公开runtime隔离审查，不进入个人NM源码/外部服务，不把个人Profile成功作为公共门禁；没有在目标OS之外伪造平台验证。",
+    "old_v_ids": [
+      "V01",
+      "V25",
+      "V43"
+    ]
+  },
+  {
+    "id": "RT27",
+    "source": "07 §6.3、§8.2、§9；白板P1/P5；04全局pre-message与local边界：Noting/Scheduler独立，local不重建root，关闭增量不破坏原生压缩。",
+    "scope": "runtime开关/host生命周期的本域接缝。",
+    "criterion": "Noting关闭仍History/独立Scheduler可用、native压缩照常；global按原生构造/恢复边界同步，已冻结child版本不刷新；local只持久许可和规定deadline/commit gate。",
+    "path": "noting_policy.py settings解析 → noting_runtime.py prepare/lifecycle gate；turn_context.py Main surface构造/恢复；noting_child.py freeze_runtime；context_compaction_request.py共同旁路；noting_timers.attach。",
+    "method": "审开关不阻断native的分支与下游调用；复用global/local/idle-off正式loop和真实报告；surface细节交SS。",
+    "evidence": "tests/secretary/test_noting_runtime.py:93–131；test_noting_deadline_event.py；test_r3_host_wiring.py native_disabled/noting_off；real-model-report.md:31、36–37 关闭路径。",
+    "verdict": "符合",
+    "boundary": "本行只本域runtime开关接缝；root/tool真实host同步与其余保留baseline由SS/根会话覆盖，不把局部结果扩写全仓未启用零回归。",
+    "old_v_ids": [
+      "V01",
+      "V37",
+      "V49"
+    ]
+  },
+  {
+    "id": "RT28",
+    "source": "04 §4.4（290）、§5.1（487）；07 §9.3（1490）：逐次实际请求证明冻结前缀/四工具可行性；真实缓存读取单独观察，不用字节一致宣称节费。",
+    "scope": "已有真实native DeepSeek协议与缓存机会证据。",
+    "criterion": "provider dump逐次root/tools/message比较，与真实四工具结构化调用、原生usage/cache分别记证；不把单Turn五request冒充五Turn、不把解析JSON当HTTP字节。",
+    "path": "正式CLI/TUI Main→nativeNoting child→provider request dumps/usage；代码缓存作用域 apply_cache_parity_from_parent。",
+    "method": "要求清单完成后才复用首验V44对169文件hash和43实际请求的独立重算记录；读real-model报告区分干净5、user-tail7及两5Turn18+13；不新跑真实模型。",
+    "evidence": "原 verification.md:136、162 V44/E6（169hash、43逐请求，另cache观察）；real-model-report.md:33、46–77；最新R3-022 request-audit位置及40f4→b40 runtime未改。",
+    "verdict": "符合",
+    "boundary": "仅证明历史默认native路径已取得可复用协议/缓存观察。原始ignored dumps本环境缺失；本次未重新计算cache命中、更不推收益或永久命中。RT04已推翻“所有合法context.engine也不变”的泛化。",
+    "old_v_ids": [
+      "V44"
+    ]
+  },
+  {
+    "id": "RT29",
+    "source": "02保留runtime/通知结束契约；07 §3.1/§8.13；既有SecretaryChangedPayload事件契约：失败结束也应产生可消费的结束状态刷新。",
+    "scope": "F20 task结束事件、正常/失败、wire枚举。",
+    "criterion": "结束使用既有task_finished，不发送DTO拒绝的task_closed；outcome仍如实failed/abandoned/completed，不以事件标签伪成功。",
+    "path": "noting_child.py:101–109 unregister default task_finished → :588–595 finally → web_events.py:23–44 changed/notify → tui_gateway/contracts/web_read.py:80 reason Literal。",
+    "method": "读实际默认值、finally调用与observer异常隔离；审原生失败child+真实Payload构造断言；复用F20 RED→GREEN记录。",
+    "evidence": "tests/secretary/test_noting_child.py:198–269：正常及provider down都task_finished，失败无Snapshot/registry0；CLAUDE.md:45与plan.md:681记RED1→GREEN1。",
+    "verdict": "符合",
+    "boundary": "F20窄接线修复可关闭；Web/Settings UI本轮后置，本结论只既有wire值及运行时刷新，不宣称前端视觉验收。",
+    "old_v_ids": [
+      "V43",
+      "V46",
+      "V51"
+    ]
+  },
+  {
+    "id": "SS01",
+    "source": "docs/07-scheduler-notebook-noting-compaction-redesign.md §6.1 L1054–1123、§7.2 L1212–1214",
+    "scope": "Scheduler Schema、调用资格及owner",
+    "criterion": "仅六动作list/create/update/pause/resume/delete；各动作仅接受自己的字段。真实当前Main只能访问所属Conversation Table，模型不能指定profile、conversation_ref、claim、generation或ACK。",
+    "path": "原生Main工具调用 → agent/inline_tool_executors.py:163–165 / tools/secretary_dispatch.py:81–82 → tools/scheduler_tool.py:33–52,67–82 → secretary/schedules.py:57–63,111–123 → secretary/scheduler_table.py:53–100,258–298。",
+    "method": "独立将§6.1 Schema与各action validator逐字段对照；顺序追真实Agent注入、is_main_conversation_agent、当前binding/route重验；核无用户owner参数可覆盖可信Agent。",
+    "evidence": "b40源码：额外及跨动作字段在任何变更前报invalid_argument；SchedulerStore在实际事务内重读ref/route和DB home。tests/secretary/test_r3_scheduler.py:194–212,214–221,553–576定义错误字段、scope、Schema复制反例；本次未运行这些旧测试。",
+    "verdict": "符合",
+    "boundary": "判当前正式调用路径。SchedulerStore的parser/is_enabled注入是受控host/测试接缝，不在模型Schema；无主Agent对象的raw registry调用不能取得owner。",
+    "old_v_ids": [
+      "V30"
+    ]
+  },
+  {
+    "id": "SS02",
+    "source": "docs/07-scheduler-notebook-noting-compaction-redesign.md §6.1 L1114–1123、§7.1 L1185–1197、§7.2 L1205–1231",
+    "scope": "Scheduler CRUD正式持久化、DTO和错误真实性",
+    "criterion": "create立即登记；list默认完整当前Table且可按state/mode筛选；mutate返回完整单条，delete仅ID/deleted；未变化changed:false；包含expression/canonical/timezone/next_due/pending/last_delivery；失败与提交未知不能伪造成功或鼓励重复create。",
+    "path": "SchedulerStore.execute → secretary/scheduler_table.py:115–145,176–230,258–298 → secretary/schedules.py:105–145 → SQLite原生_execute_write；读写共用schedule_public_conn。",
+    "method": "检查JSON投影白名单、每动作效果、no-op是否解析/写入；追callback_returned到commit异常分类及失败后notice。",
+    "evidence": "b40源码：update无实际changes立即返回；只有schedule变化调用parser。事务callback完成后异常返回outcome_unknown；已知失败返回原错误。tests/secretary/test_r3_scheduler.py:149–192,474–515覆盖no-op、只读投影和COMMIT-return丢失；c6/c10-delivery报告提供既有受控证据，本次未重跑。",
+    "verdict": "符合",
+    "boundary": "返回形状和持久化原子性成立，不据success字段推断next_due语义必正确；周期resume的错误下一发生单列SS03/SS04。",
+    "old_v_ids": [
+      "V30"
+    ]
+  },
+  {
+    "id": "SS03",
+    "source": "docs/07-scheduler-notebook-noting-compaction-redesign.md §6.1 L1118–1121、§6.2 L1127,1131–1133",
+    "scope": "update/pause/resume/delete生命周期及未消费未来发生",
+    "criterion": "update只改显式字段，改schedule才重新解析。pause保定义并停止未接纳投递，resume计算真正下一发生；未到期的日历发生不能因pause/resume被当作已运行而跳过。完成一次性不能恢复重投。",
+    "path": "SchedulerStore.pause/resume → secretary/scheduler_table.py:233–255；L243–244将row.next_run_at送入secretary/scheduler_time.py:85–105；L93–99把它作为cron.jobs.compute_next_run的last_run_at。原生未来resume分支cron/jobs.py:2171–2206。",
+    "method": "先独立阅读生命周期，再用真实SessionDB/SchedulerStore create→pause→resume→list；仅控制cron.jobs._hermes_now，原生compute_next_run作为独立oracle，设置日历周期与一次性正对照。",
+    "evidence": "新增tests/secretary/test_v2_scheduler_resume.py。UTC 2030-04-06 09:00建0 10 * * *，next=当日10:00；09:10 pause、09:20 resume，原生oracle=当日10:00，但返回及持久list均=2030-04-07 10:00；一次性ISO正对照正确。canonical runner 1 PASS/1 FAIL，日志evidence/verification2/scheduler-resume.log，runner 1.1秒。",
+    "verdict": "违规",
+    "boundary": "V2-F04/P2，跳过尚未到期的日历发生已亲测。修改、撤销、完成once不恢复的其余分支静态符合；没有据本例否定全部CRUD，也没有把notice计算另算缺陷。",
+    "old_v_ids": [
+      "V30",
+      "V31"
+    ]
+  },
+  {
+    "id": "SS04",
+    "source": "docs/07-scheduler-notebook-noting-compaction-redesign.md §6.1 L1086–1088、§6.2 L1127,1131；docs/04-hermes-secretary-v1.5-implementation-spec.md §5.2 L388–402；docs/02-noting-system-specification.md §3.10 L1014,1034–1050",
+    "scope": "原生时间语法、timezone、next-run、迟到和周期推进",
+    "criterion": "五类原生时间表达、30m周期/in30m一次、所属profile时区和DST语义复用；过期一次不丢弃，周期不无限回放；next-run不因把未来due误作last-run而跳期。",
+    "path": "tools/scheduler_tool.py:9–26 → SchedulerStore.owning_db_scope → secretary/scheduler_time.py:34–38,63–117 → cron/jobs.py:1178–1238 parse_schedule/compute_next_run；resume额外路径见SS03。",
+    "method": "确认没有第二套Cron算法，读取once例外与max_steps退路；对照native函数last_run_at语义；以SS03受控日历反证验证调用参数而非只确认调用了原生函数。",
+    "evidence": "静态parse直接转交cron.jobs；once返回原run_at即使逾期，周期最多1000步后从当前时刻用原生计算。tests/secretary/test_r3_scheduler.py:104–146既有语法/时区/DST断言及C6报告可复用；新增scheduler-resume.log证明恢复时错误传入未来anchor。",
+    "verdict": "违规",
+    "boundary": "与SS03同一V2-F04，不累计成第二缺陷。语法、时区及bounded推进子项没有新反例；错误在调用native next-run的恢复边界。",
+    "old_v_ids": [
+      "V31",
+      "V32"
+    ]
+  },
+  {
+    "id": "SS05",
+    "source": "docs/07-scheduler-notebook-noting-compaction-redesign.md §6.2 L1128,1130,1134、§9.1 L1450,1453–1454、§9.3 L1484；docs/02-noting-system-specification.md §1.3 L64起、§3.9 L963起",
+    "scope": "Table归属及与Notebook/pointer/branch隔离",
+    "criterion": "Table独立属于Conversation；new/reset/fork不自动复制父排期，同Conversation压缩沿当前route。Notebook状态、Snapshot提交、rewind或pointer重选均不重建/删除Schedule，Reminder消费不等同业务完成。",
+    "path": "SchedulerStore._authorize_conn → hermes_state_secretary_schedule.py两张Scheduler-owned表；secretary/scheduler_table.py:176–187按当前ref创建；hermes_state_secretary_notebook.py pointer/commit路径无reconcile_payload；identity续接通过resolve_conversation_route_conn。",
+    "method": "核表owner、只按ref查询及创建；跨查NotebookStore/model、Snapshot/pointer和identity文件对Scheduler的调用：仅原生identity收敛可退休既有carrier，无Notebook→排期重建。",
+    "evidence": "tests/secretary/test_schedule_status_lifecycle.py:24–48对Notebook完成/归档/提交失败前后比较同一排期；tests/secretary/test_r3_scheduler.py:214–221独立owner；c10-delivery-report.md:31–32记录生命周期与pointer/branch既有证据。",
+    "verdict": "符合",
+    "boundary": "复用共享Conversation身份owner，不在本子审重新证明全部fork/Foreground算法；该算法由Notebook/History独立子审覆盖。Scheduler没有实现复制父Table的写路径。",
+    "old_v_ids": [
+      "V31",
+      "V33"
+    ]
+  },
+  {
+    "id": "SS06",
+    "source": "docs/07-scheduler-notebook-noting-compaction-redesign.md §6.2 L1128–1133；docs/02-noting-system-specification.md §3.9 L963起、§3.10 L1014–1042",
+    "scope": "due scan、durable claim/lease/dedup、失败重试及host route/profile",
+    "criterion": "持久调度状态、竞争单winner、完整generation/sequence/token/lease校验；失败保原due并允许reclaim；重启恢复；CLI/TUI/Gateway使用真实当前owner profile与route，不把声称的ref当授权。",
+    "path": "既有tick → secretary/schedules.py:183–259 scan_and_claim_due → hermes_state_secretary_schedule.py:123–183 current_claim/claim、198–234 pending去重、345–354 release → secretary/cli_reminders.py:18–49 / tui_gateway/session_notifications.py:299–352 / gateway/secretary_reminders.py:79–155,182–220,256–424。",
+    "method": "逐项追原子UPDATE条件、lease检查及失败释放；分别读三host现有poll/route调用，检查profile解析到DB home而非进程启动home。",
+    "evidence": "C10-delivery-report.md:19–36记录真实SessionDB、native append及独立SIGKILL进程恢复场景；b40测试源含tests/secretary/test_r3_scheduler.py:223–251,379–400和tests/secretary/test_r3_delivery.py:188–222。真实模型报告L20–21,36记eff3235/f66a8上的idle/busy/restart，作为历史范围证据。",
+    "verdict": "符合",
+    "boundary": "本次以当前事务/caller源码闭合并复用历史证据；未重新SIGKILL、未实际启动渠道、未独立取得所有旧ignored原始日志，不宣称跨平台exactly-once。",
+    "old_v_ids": [
+      "V32"
+    ]
+  },
+  {
+    "id": "SS07",
+    "source": "docs/07-scheduler-notebook-noting-compaction-redesign.md §6.2 L1129；docs/02-noting-system-specification.md §3.12 L1097–1148",
+    "scope": "instant idle/busy及既有Main admission",
+    "criterion": "idle instant经所属Main原生ingress/admission；busy只原子转pending deferred，不另排未来Main Turn；最终busy决策由既有slot，而非有竞态的预检查或新busy锁。",
+    "path": "CLI poll→dispatch_cli_reminder_input(secretary/cli_reminders.py:52–76)→既有_tui_process_one_input；TUI _session_turn_admission→_run_prompt_submit(tui_gateway/session_notifications.py:272–296)；Gateway adapter.handle_message→原有busy/slot→gateway/secretary_reminders.py:320–424，gateway/run_busy.py:834–838。",
+    "method": "读取三host实际控制流及抢slot后busy fallback，核原生running/admission锁所有权、失败release/recover；检查gateway internal event不会误入未来queue或slash控制。",
+    "evidence": "tests/secretary/test_r3_delivery.py:362–381分别断言busy零Main调用、idle既有serial lane；C9-S/C10-B记录三host受控入口；real-model-report.md:36记真实busy只pending、下一自然Main ACK和idle唤醒。",
+    "verdict": "符合",
+    "boundary": "不把测试中模拟native lane当作真实用户模型运行。现有host admission被复用；本子审未启动TUI/Gateway服务。",
+    "old_v_ids": [
+      "V32"
+    ]
+  },
+  {
+    "id": "SS08",
+    "source": "docs/07-scheduler-notebook-noting-compaction-redesign.md §6.2 L1131–1133、§9.3 L1489",
+    "scope": "CRUD与due worker竞争、未接纳内容和模式变更",
+    "criterion": "变更先提交时，旧token/generation/sequence worker不能投递或复活；content/mode替换尚未接纳pending，schedule变更撤旧发生，pause/delete撤未接纳；不能用prepare缓存绕过。",
+    "path": "secretary/scheduler_table.py:168–173,190–230,233–255,283–290 → hermes_state_secretary_schedule.py:123–139,160–183,327–342,357–378 → deferred materialize / instant commit。",
+    "method": "按事务先后列worker-win与mutation-win两序列；读generation++、token清除、sequence重置及pending更新/取消SQL；校验update可保当前delivery lane且正文来自最新定义。",
+    "evidence": "b40 tests/secretary/test_r3_delivery.py:104–135重读最新定义/flush后再变更，test_r3_scheduler.py:253–321多动作fence和stale prepare；C6/C10-B既有真实DB受控竞态证据与当前源码一致。",
+    "verdict": "符合",
+    "boundary": "状态更改正确fence旧worker；V2-F04另为未发生竞争的周期resume时间参数错误，不以fence正确覆盖它。",
+    "old_v_ids": [
+      "V33"
+    ]
+  },
+  {
+    "id": "SS09",
+    "source": "docs/07-scheduler-notebook-noting-compaction-redesign.md §6.2 L1132–1133、§8.14 L1426；docs/02-noting-system-specification.md §3.11 L1054,1084–1091、§5.6",
+    "scope": "deferred durable materialization、批载体与回滚",
+    "criterion": "实际append事务重新读取所有occurrences、定义、撤销和开关；过滤无效项，一批只建一durable carrier并绑定实际全部occurrences；原生COMMIT前不发布live，失败或丢失COMMIT-return可重用原carrier。",
+    "path": "prepare_pending_reminders → secretary/reminder_request.py:138–190 _materialize_batch → db.append_messages_batch(prepare_rows=prepare,before_commit=bind) → hermes_state_secretary_schedule.py:357–418；只有返回后L187–189追加live。existing carrier恢复L111–135。",
+    "method": "完整读取materialize两个事务回调和carrier binding；核placeholder不可在callback失败时逃逸，原生tail先flush、compression/turn guard先成立，批次只有一row。",
+    "evidence": "tests/secretary/test_r3_delivery.py:104–222实际调用原生append，断言删除项过滤、2 occurrences/1 row、bind回滚无live、COMMIT成功return丢失/reopen仍1 row；L383–424检验原生prepare回调原子/禁chunk/锁重试。C6/C10-B为既有运行记录。",
+    "verdict": "符合",
+    "boundary": "现有原生事务是正确性边界，不新增数据库或第二载体状态机；本次未再次运行这组。",
+    "old_v_ids": [
+      "V33",
+      "V34"
+    ]
+  },
+  {
+    "id": "SS10",
+    "source": "docs/07-scheduler-notebook-noting-compaction-redesign.md §6.2 L1129,1132–1133、§8.14 L1426；docs/02-noting-system-specification.md §3.11 L1082–1091",
+    "scope": "真正请求携带、Provider成功响应及逐occurrence ACK",
+    "criterion": "正式请求build前materialize，压缩预估pass只prepare不吞新carrier；最终kwargs真实含完整carrier且Provider得到成功非空响应才ACK对应全部项；无响应、空/失败/被middleware剔除carrier、redirect中断均不ACK，ACK失败可重试。",
+    "path": "agent/conversation_loop.py:1561–1580 preflight与1684–1692正式assembly → agent/turn_request_assembly.py:124–131,253 → secretary/reminder_request.py:233–239 verify → agent/turn_api_call.py:26–45,98,119–127,135,165,194–212 → reminder_request.py:256–277 → hermes_state_secretary_schedule.py:435–458。",
+    "method": "独立读最终middleware内verify和两Provider返回路径，区分ACK callback-spy与durable端到端测试；检查每次请求重置authority、carrier全文与ref匹配。",
+    "evidence": "tests/secretary/test_r3_host_wiring.py:194–235覆盖stream/nonstream非空响应矩阵；L303–352走真实AIAgent/native压缩/Schedule并从final kwargs删carrier，证明无ACK。test_r3_delivery.py:137–154证明0/2项ACK边界。C9-H报告L47–48及真实模型报告L36补充过去两deferred真实响应双ACK。",
+    "verdict": "符合",
+    "boundary": "deferred ACK与instant已durable接纳的receipt边界分别继承，不将instant标记admitted误说为Provider成功；at-least-once允许成功响应至ACK间crash重投。",
+    "old_v_ids": [
+      "V34"
+    ]
+  },
+  {
+    "id": "SS11",
+    "source": "docs/07-scheduler-notebook-noting-compaction-redesign.md §6.2 L1131–1133",
+    "scope": "instant最终witness、在途保留、晚ACK不复活",
+    "criterion": "instant ActiveReminderAdmission.commit在原生落库前最后重验；变更先commit旧witness不得落库，载体先commit属于在途。CRUD只在实际发生时返回delivery_in_flight；保留已durable carrier/ACK证据，晚ACK不能重新激活变动定义。",
+    "path": "secretary/reminders.py:36–94 ActiveReminderAdmission.prepare/commit/durable → active_delivery_prepare_callback / active_delivery_batch_callback L102–130 → 原生append事务 → hermes_state_secretary_schedule.py:265–324 finalize、435–458 ACK；scheduler_table.py:148–156,168–173。",
+    "method": "核witness必须为process内可信对象且验证DB path/native message身份、当前owner、generation、sequence、token、lease；追在途SQL与ACK UPDATE的generation条件。",
+    "evidence": "tests/secretary/test_r3_delivery.py:157–170 carrier→pause/delete→ACK前后定义完全相等，L322–359原生commit重算/旧witness拒绝/回滚reclaim；C10-B active_admission与native persistence既有证据。",
+    "verdict": "符合",
+    "boundary": "不撤回已经进入Main的内容；它仍可被Main看到，但不授予新用户授权。delete成功与已有carrier继续确认并不矛盾。",
+    "old_v_ids": [
+      "V33"
+    ]
+  },
+  {
+    "id": "SS12",
+    "source": "docs/07-scheduler-notebook-noting-compaction-redesign.md §6.4 L1162,1167–1179、§7.2 L1205",
+    "scope": "每次Scheduler结果的24小时完整Table notice",
+    "criterion": "六动作含no-op及可确认状态的失败均读操作后的完整Table；筛选list不得影响coverage；保原结果/错误；未知不能冒称没有；只增加可选notice，不阻止删除最后一项或自动补建。",
+    "path": "secretary/schedules.py:65–103 _notice_conn/_failure_notice，execute L119–145 → secretary/scheduler_table.py:328–360 instant_coverage_conn/coverage_notice。",
+    "method": "逐返回分支核同事务coverage与失败后二次只读、scope-denied不跨域探测、unknown rollback与outcome_unknown区分；检查没有schedule新增/timer调用。",
+    "evidence": "tests/secretary/test_r3_scheduler.py:464–515定义全表vs筛选、失败/no-op/末项删除、unknown回滚、commit-return未知；源码只查完整ref table且字符串与07原文一致。",
+    "verdict": "符合",
+    "boundary": "V2-F04使正式Table错误跳期后出现notice，是上游next_due错误带来的正确事实反馈；本条不把该notice另算coverage算法缺陷。",
+    "old_v_ids": [
+      "V35"
+    ]
+  },
+  {
+    "id": "SS13",
+    "source": "docs/07-scheduler-notebook-noting-compaction-redesign.md §6.4 L1163–1165",
+    "scope": "24小时coverage边界、发生排除和只读计算",
+    "criterion": "[now,now+24h]含端点；其他逾期仍能立即触发instant计覆盖；排除暂停/完成/删除/纯deferred及已pending的该次发生；排本次不排同周期后续；计算不得推进/消费Table或查Notebook。",
+    "path": "secretary/scheduler_table.py:302–354 → receipts按(schedule_id,sequence,due)排除 → 必要时只在局部变量调用schedule_advance_epoch；SQL仅SELECT。",
+    "method": "手动检查上下端点、max(now,due)、once无后续、recurrence的有限blocked循环、partial unknown与存在至少一个true的逻辑；核所有SQL只读。",
+    "evidence": "tests/secretary/test_r3_scheduler.py:402–447覆盖含端点/另一逾期instant/周期后续/pending/paused/completed/unknown；C6报告收录。当前源码无coverage→UPDATE或Cron job写入通路。",
+    "verdict": "符合",
+    "boundary": "不能确认的损坏row返回unknown；若另一条确定覆盖存在则可诚实返回有覆盖。时间范围只是反馈，不是每日唤醒配额。",
+    "old_v_ids": [
+      "V35",
+      "V36"
+    ]
+  },
+  {
+    "id": "SS14",
+    "source": "docs/07-scheduler-notebook-noting-compaction-redesign.md §6.4 L1163–1176、§8.14 L1426",
+    "scope": "instant/busy fallback最终投递notice",
+    "criterion": "instant在最终接纳事务重算排本次的coverage；busy降deferred仍保origin_instant，实际materialize时重算；同批多instant只附一次，纯deferred零新增入口；未知只短提示且不取消既有投递。",
+    "path": "secretary/reminders.py:223–235 instant_notice_conn；instant经_resolve_active_conn L249–268及ActiveReminderAdmission.prepare/commit；deferred经secretary/reminder_request.py:93–108 _batch_carrier在native prepare事务构造。",
+    "method": "核origin_instant决定是否调用coverage，排除批内真实occurrence，对prepare后新增/删除排期重新读取；检查notice直接加入同body，没有另建Framework/Turn。",
+    "evidence": "tests/secretary/test_r3_delivery.py:241–278覆盖混批一次notice、prepare后新增覆盖抑制、纯deferred不调用coverage、unknown仍投递；L322–336 instant在append事务重新生成正文。",
+    "verdict": "符合",
+    "boundary": "已durable的carrier在重试时复用相同正文而不重写历史notice；这是已接纳消息保留契约，并非新的notice入口。",
+    "old_v_ids": [
+      "V36"
+    ]
+  },
+  {
+    "id": "SS15",
+    "source": "docs/07-scheduler-notebook-noting-compaction-redesign.md §8.14 L1424–1437",
+    "scope": "Schedule正文和既有wrapper",
+    "criterion": "每occurrence一个逐字SCHEDULED ATTENTION块，含自己的schedule_id、原due、当前投递mode/content；多项保持实际顺序置于同carrier；保既有wrapper，不输出旧Notebook JSON，不另生成指令/授权。",
+    "path": "secretary/reminders.py:215–221 scheduled_attention_text → _resolve_active_conn / secretary/reminder_request.py:93–108 _batch_carrier → agent/message_metadata.py:404–426 三类wrapper。",
+    "method": "将模板各行及最后指导段与07逐句比较；核每row真实字段来源、readonly时间投影、正文位于wrapper内，批次仅一个role=user持久消息。",
+    "evidence": "b40模板与07英文块一致；test_r3_delivery.py:87–101,137–154,322–336断言Schedule/Due/Delivery及无notebook_entry_id、单批carrier；real-model-report.md:36记自然deferred/instant路径。",
+    "verdict": "符合",
+    "boundary": "传入content仍为先前已登记事项，需要Main按当前授权判断；不会把提醒送达冒称业务任务完成。",
+    "old_v_ids": [
+      "V34",
+      "V51"
+    ]
+  },
+  {
+    "id": "SS16",
+    "source": "docs/07-scheduler-notebook-noting-compaction-redesign.md §5 L905起、§6.3 L1152–1156、§8.2 L1251–1257、§9.3 L1481；docs/04-hermes-secretary-v1.5-implementation-spec.md §2.2 L100起、§3.1 L172起",
+    "scope": "eligible Main三能力与独立开关",
+    "criterion": "真实Main常有Conversation History；Notebook read/Secretary Role由全局Noting门禁，Scheduler由自己的门禁。Conversation-local /noting开关仅参与后台整理，不改变Main schema/root或排期。非Main辅助runtime没有Main能力。",
+    "path": "secretary/noting_runtime.py:32–33,145–172 is_main_conversation_agent → secretary/noting_surface.py:62–92 apply_main_read_surface → noting_scope.py:25–45两个独立配置解析 → agent/system_prompt.py:595–602。",
+    "method": "核实际Agent parent/delegate/platform/source/DB身份，而非仅凭role/user/ref；将四开关组合映射desired tools和提示模块；检查local未参与schema/prompt判断。",
+    "evidence": "b40代码显式集合History | optional Notebook | optional Scheduler；C4和C9-S报告记录config/surface四组合，real-model-report.md:31记真实全关/仅Noting/仅Scheduler、History恒在以及Noting off仍可Scheduler登记。",
+    "verdict": "符合",
+    "boundary": "真实模型记录是旧eff3235/f66a8的历史证据，本次以b40当前资格/配置逻辑独立重读；整体aux身份算法还由其他子审交叉核查。",
+    "old_v_ids": [
+      "V25",
+      "V37",
+      "V49"
+    ]
+  },
+  {
+    "id": "SS17",
+    "source": "docs/07-scheduler-notebook-noting-compaction-redesign.md §3.2 L107–113、§8.2 L1255–1259、§9.1 L1458–1459；docs/04-hermes-secretary-v1.5-implementation-spec.md §3.3 L197–204",
+    "scope": "当前工具catalog/tool_search/inline/direct/sync/parallel真实分发",
+    "criterion": "新能力在provider catalog和tool_search桥均可发现且实际可执行；scope可信Agent不可由args覆盖；Noting只有四个现行工具可执行，不通过冻结的父tools授予其他工具。",
+    "path": "noting_surface.apply_main_read_surface/_reconcile_catalog → tools/secretary_dispatch.py:39–68 filter_tool_definitions → model_tools.py:725–726 catalog与896–930桥递归；agent/tool_executor.py:381–382,785–786 scoped dispatch；agent/inline_tool_executors.py:137–169；noting_child.py:70–88 Noting guard。",
+    "method": "逐入口核agent注入与同一scope，检查native bridge重建和raw catalog均动态加入Main grant，私有复制不污染全局；区分current-name execution与退休旧名预修复问题。",
+    "evidence": "C9-S F09追加报告专门保留初始真实missing-catalog失败及修后native桥测试；b40 filter_tool_definitions L62–67已补runtime grant。新增retired-tool测试正常notebook_maintain正对照沿真实Noting loop写入/提交成功。",
+    "verdict": "符合",
+    "boundary": "本条仅现行合法名称与四工具权限；退休旧名notebook_mutate的fuzzy执行是SS18的独立不符合，不能以本条掩盖。没有声称Main可直接写Notebook。",
+    "old_v_ids": [
+      "V25",
+      "V45",
+      "V49"
+    ]
+  },
+  {
+    "id": "SS18",
+    "source": "docs/07-scheduler-notebook-noting-compaction-redesign.md §2 L84、§7.2 L1211,1231、§9.1 L1458、§9.3 L1488",
+    "scope": "退休旧工具无alias/无fuzzy执行与legacy反馈",
+    "criterion": "notebook_mutate/manage/edit/schedule、noting_memo、compact_parent不再作为当前可执行接口；旧session_history/物理message_id调用明确legacy_tool_removed并指向规范新接口；历史保留但新模型产出的旧调用不得被重放或纠错成执行。",
+    "path": "tools/secretary_dispatch.py:10–24及secretary/noting_surface.py:5–7遗漏notebook_mutate → agent/turn_tool_validation.py:94–108先native repair → agent/agent_runtime_helpers.py:2631–2679 legacy检查遗漏后fuzzy → noting_child.py:301有效notebook_maintain → inline_tool_executors.py:158–160 → NotebookStore/finish Snapshot。",
+    "method": "从07原始退休名单独立提取，未使用实现集合生成期望；新增真实Noting原生loop测试，先show再发原始notebook_mutate+新maintain合法create参数，最后finish。另设当前name正对照与已列入退休集的notebook_manage负对照。",
+    "evidence": "tests/secretary/test_v2_retired_tool.py：canonical 2 PASS/1 FAIL（runner3.7秒）。raw notebook_mutate实际tool row名称为notebook_maintain，success:true/changed:true，entry_id=1；outcome completed/committed:true，当前Snapshot包含SECOND_VERIFICATION_RAW_NAME_WRITE。日志evidence/verification2/retired-tool.log。",
+    "verdict": "违规",
+    "boundary": "V2-F02（分区初评P2，主会话按核心退休契约定为P1，见§5）。证明Noting可用退休原始名称执行并持久化；没有证明Main越权，没有自动重放历史记录，没有声称所有旧payload都兼容。raw registry若直接调用可能只Unknown tool，不能用它代替本次真实repair路径。",
+    "old_v_ids": [
+      "V29",
+      "V45"
+    ]
+  },
+  {
+    "id": "SS19",
+    "source": "docs/07-scheduler-notebook-noting-compaction-redesign.md §6.3 L1152–1156、§8.2 L1251–1257、§9.1 L1459；docs/04-hermes-secretary-v1.5-implementation-spec.md §3.4 L206–217、§3.5 L219–230",
+    "scope": "global下一Pre-message生效、cold/warm与native cache",
+    "criterion": "所属profile最新global配置在下一Pre-message Context生效，schema/root/dispatch同门禁；cold restored/pinned root不得复活旧能力；local on/off不重建root；沿原cache分层不造新cache manager。",
+    "path": "agent/turn_context.py:1155–1164在restore/capture前apply_main_read_surface → noting_surface.py:95–120检查四段期望，必要时原生_build_system_prompt/_persist_system_prompt；tui_gateway/session_agent_context.py:12–27同步；gateway/run_agent_cache.py:58–60独立配置signature。",
+    "method": "追冷缓存恢复与热配置变化顺序；核无变化prompt.count精确匹配立即返回，仅实际global/tool变化记录native cache break，local不进判据。",
+    "evidence": "C4/C9-S现行接线和cold/warm组报告；b40 native Turn预入口源码明确先ensure row→解析owner配置→surface→restore/build→synchronize。",
+    "verdict": "符合",
+    "boundary": "不由静态前缀相等保证第三方Provider持续cache命中；原生cache收益和五Turn前缀的完整验证另由runtime子审。",
+    "old_v_ids": [
+      "V49"
+    ]
+  },
+  {
+    "id": "SS20",
+    "source": "docs/07-scheduler-notebook-noting-compaction-redesign.md §6.3 L1152–1156、§9.3 L1481；AGENTS.md原生能力不破坏要求",
+    "scope": "关闭/坏配置分区隔离与原生兼容",
+    "criterion": "Noting/Scheduler四组合互不绑关；坏配置只令所属功能失败关闭并给修法，History不受牵连。Scheduler关闭保Table/停止新投递，已经admitted的消息/ACK保留；重新开启恢复原排期，原生能力正常运行。",
+    "path": "secretary/noting_policy.py:96–145独立parser → noting_scope.py:25–45 → noting_surface.py:75–91；SchedulerStore.is_enabled、scan_and_claim_due；reminder_request.py:156–157,prepare；原生压缩路径不以Noting成功作必要前提。",
+    "method": "检查两个解析器错误隔离和caller默认关闭，逐读disabled prepare/materialize/ACK分支；复核native append opt-in回调不会改变无Secretary调用；不将尚未admitted和已有carrier混为一类。",
+    "evidence": "test_r3_delivery.py:87–101,281–304,383–406定义Noting/local off仍投递、Scheduler off停止新admission、已carrier仍可ACK及native普通append；C9-H native disabled/Noting off实际loop与最终回归报告。",
+    "verdict": "符合",
+    "boundary": "这是本域更改路径的原生兼容结论，不替代root对全仓全部原生测试和检查门禁的判定。V2-F04影响用户主动pause/resume，不是全局关闭保数据机制。",
+    "old_v_ids": [
+      "V37",
+      "V49",
+      "V01"
+    ]
+  },
+  {
+    "id": "SS21",
+    "source": "docs/07-scheduler-notebook-noting-compaction-redesign.md §6.3 L1138–1156、§9.1 L1463",
+    "scope": "配置默认值、校验、旧key退出及native idle互斥",
+    "criterion": "scheduler.enabled=true、noting.enabled=true；Idle默认false、delay500、threshold=null，开启需正整数threshold且delay非负有限；Proposal默认12000字符/60项。旧auto及idle key明确替代，无迁移；native idle_compact与全局Noting互斥，不擅改native配置。",
+    "path": "hermes_cli/config_defaults.py:577–585 → secretary/noting_policy.py:45–60,63–145,292–312 → hermes_cli/config_validation.py:67–77；runtime消费所属profile settings。",
+    "method": "逐默认值与布尔/有限数/整数条件核对；检查legacy key错误文本和互斥只报错关闭，不修改config；核Noting off时Idle子配置不激活。",
+    "evidence": "C4-report包含38个config/prompt既有场景，当前源码defaults/parser与07一致；tests/secretary/test_r3_config_prompt.py及test_noting_config_contract.py为现行断言源。本次无新配置测试运行。",
+    "verdict": "符合",
+    "boundary": "Settings视觉/展示明确后置，不把旧UI选项渲染列为本轮不符合；Force资源能力计算由runtime子审覆盖。",
+    "old_v_ids": [
+      "V37"
+    ]
+  },
+  {
+    "id": "SS22",
+    "source": "docs/07-scheduler-notebook-noting-compaction-redesign.md §8.2 L1247–1264、§8.3–8.9 L1266–1318",
+    "scope": "Main英文实际文案、条件组合、session_search与Cron私有copy",
+    "criterion": "按07原文命名常量原位替换Role/History/Notebook/Scheduler/Time；History所有eligible Main，Notebook组global Noting，Scheduler独立；session_search实际存在才覆盖且非Main保持native；Cron Schema/catalog仅在Scheduler可用Main的私有copy改描述及note。",
+    "path": "agent/system_prompt.py:34–53各常量、295–315 tool guidance、468–480 platform hint、585–602 guidance组合；agent/secretary_prompt.py:9–84 scope/cron copy；agent/prompt_builder.py:682既有local Cron附句；model_tools.py:725–726。",
+    "method": "独立比对07实际英文段和代码常量；跟随注入条件到provider-visible tools及tool_search，核deepcopy和非scope恢复native描述，不按一个常量存在即判集成。",
+    "evidence": "C4-report的9个导出常量逐字比较及C9-S真实surface证据；b40源码明确使用copy、ContextVar和实际valid_tool_names。",
+    "verdict": "符合",
+    "boundary": "只判本域Main文案/路由，不替代Noting六步语义或用户实测成功；没有把全模块重复塞进root。",
+    "old_v_ids": [
+      "V49"
+    ]
+  },
+  {
+    "id": "SS23",
+    "source": "docs/07-scheduler-notebook-noting-compaction-redesign.md §8.2 L1258、§8.10 L1320–1329、§9.1 L1461、§9.3 L1491；docs/04-hermes-secretary-v1.5-implementation-spec.md §6.1–6.3 L418–447",
+    "scope": "Persistence Proposal slash入口、统一指令和批准/交付边界",
+    "criterion": "/propose-persistence取当前完整Snapshot并使用与超限Framework同一指令；进入正常Main，不创建后台执行worker，不预拼全量History。具体内容和目标须显式批准后由现有授权工具写入；标签/provenance是handoff而非目标必须保留的附加成功条件。",
+    "path": "hermes_cli/cli_secretary_commands.py:78–104常量/构造 → CLI mixin、gateway/slash_commands_secretary.py:37–44、tui_gateway/methods_secretary.py:42–78 → 正常Main；secretary/noting_notifications.py/Framework复用该常量（runtime子审）。",
+    "method": "对比07统一Proposal全文，核当前snapshot与readable payload、保留extra、无history搜索或外部mutation；核指令未将讨论、沉默、超限通知当批准且未知写入不盲重试。",
+    "evidence": "tests/gateway/test_secretary_slash.py:55–80实际canonical命令保source/message_id/自然尾文，不拼原文；c10-final-legacy-report.md:117–120四Gateway修复节点；real-model-report.md:34,40记录实际草案/延迟不作批准及受限目标写入。",
+    "verdict": "符合",
+    "boundary": "批准语义在模型指令与既有目标工具授权内，不冒称新代码硬审批机制。后续Noting来源结算失败属于Notebook子审，不能据本条宣布Persistence整体成功。",
+    "old_v_ids": [
+      "V23",
+      "V48",
+      "V50"
+    ]
+  },
+  {
+    "id": "SS24",
+    "source": "docs/07-scheduler-notebook-noting-compaction-redesign.md §9.1 L1461–1462、§9.2 L1472；docs/04-hermes-secretary-v1.5-implementation-spec.md §4.2 L248–254；docs/02-noting-system-specification.md §3.6 L848–898、§5.1 L1479起；docs/06-Hermes-Secretary-Web-UI-V1-Spec.md §1.12 L289起",
+    "scope": "原生Slash catalog/执行、只读Notebook、local反馈与旧命令退出",
+    "criterion": "共享catalog/补全和CLI/TUI/Gateway分发同新slash；/notebook只读当前四区，显示创建时间或明确无Snapshot，无pointer/Anchor等内部头；/noting只持久local并给正常反馈，local off仍可读；旧notebook on/off/Memo/refine不意外生效，独立/review保留。",
+    "path": "hermes_cli/commands.py:156–162,458 → hermes_cli/cli_secretary_commands.py:20–75,110–167；gateway/slash_commands_secretary.py:8–44；tui_gateway/methods_tools.py:1076–1101与methods_secretary.py:42–78；secretary/notebook_render.py:67–79。",
+    "method": "读共享命令函数和三adapter真实owner/persistence路径；核不支持参数只返回usage、off无Memo拒绝，render无snapshot/anchor头且包含合法entry/version/source内容；比较Gateway修复测试hash。",
+    "evidence": "test_secretary_slash.py四canonical主体已读，当前SHA256 b6b1aa6ba6a5350eb2dfdcb89d1addc35d526837f8ba64e8597a6e2265193584，与c10-final-legacy-report.md:130一致，L117–120报告四主体PASS补齐首次V50 setup缺口；未重跑。F13/V51当前renderer源码已复核。",
+    "verdict": "符合",
+    "boundary": "合法entry_id/version_id/source provenance属于Notebook内容，未要求删去。独立浏览器临时viewer及UI/Settings后置，未按它的新DTO要求否定现有原生slash持久历史。",
+    "old_v_ids": [
+      "V50"
+    ]
+  },
+  {
+    "id": "SS25",
+    "source": "docs/02-noting-system-specification.md §5.6 L1635–1637；docs/07-scheduler-notebook-noting-compaction-redesign.md §6.1 L1123、§8.14 L1426",
+    "scope": "本域模型/人类绝对时间投影",
+    "criterion": "Scheduler canonical.run_at/绝对display、next_due/last_delivery、Reminder due与timestamp、Notebook Main/slash/Proposal及History时间使用带timezone整秒可读值，无raw epoch/小数；保留内部精度、原expression/正文和未知含义，不重铸证据时间。",
+    "path": "hermes_time.py:154–200 format_timestamp/readable_schedule_display → secretary/scheduler_table.py:115–145 public DTO；secretary/reminders.py:_resolve_active_conn；notebook_render.py:10–30,33–51,67–79；cli_secretary_commands.py:86–104；tools/session_history_tool.py:217–228。",
+    "method": "逐公开出口对照统一formatter，核deepcopy只投影与offset保留、秒截断；特别重新读首次V51两个遗漏字段run_at和once absolute display；History投影由独立HN子审交叉确认。",
+    "evidence": "c9-host-report.md:208–233为Notebook V51八节点及相关回归；c10-runtime-report.md:123–154为Scheduler run_at和display两阶段RED→GREEN。当前源码两修均存在。本次notebook_mutate真实tool row时间整秒而内部Snapshot保微秒亦提供现场对照。",
+    "verdict": "符合",
+    "boundary": "仅公开Secretary本域；个人Provider候选created_at由另域审查，独立UI后置。原expression/自由文本中用户原有ISO小数被原样保留符合不改原文，不能错误当新投影缺陷。",
+    "old_v_ids": [
+      "V51"
+    ]
+  },
+  {
+    "id": "SS26",
+    "source": "docs/02-noting-system-specification.md §5.6 L1633起及§6.17；docs/07-scheduler-notebook-noting-compaction-redesign.md §8.14 L1426",
+    "scope": "真实入场timestamp、重试不重铸及无标记carrier",
+    "criterion": "真实user和instant仅一次entry timestamp；instant的timestamp是实际进入Main时刻、原due另列，迟到不回填；deferred/noting-task/framework没有timestamp marker；历史/重试保原已铸字节，伪造文本不授予可信origin。",
+    "path": "agent/message_metadata.py:366–426,443–493 user_input_timestamp_marker/TrustedUserInput/stamp_fresh_turn_input → secretary/reminders.py:36–94,249–268 active witness → 原生persist/build；deferred/existing carrier恢复reminder_request.py:111–135。",
+    "method": "核已标记/合成wrapper的检测与process可信类分开，fresh user入口和restore入口不同；追source_timestamp在prepare与最终commit沿同witness保持，deferred重试只恢复原durable全文。",
+    "evidence": "test_r3_delivery.py:87–101,188–222,322–336；C10-B报告CLI cold真实chat、trusted/untrusted wire/durable timestamp及实际入场原Due；当前message_metadata明确noting-task/deferred/framework调用unstamped wrapper。",
+    "verdict": "符合",
+    "boundary": "不添加新语义role；内部数值timestamp仍用于持久/比较，可读marker不等于Schedule due。Framework的完整投递生效性由runtime子审另验。",
+    "old_v_ids": [
+      "V51"
+    ]
+  },
+  {
+    "id": "SS27",
+    "source": "docs/02-noting-system-specification.md末尾human-only边界 L2731–2733；docs/06-Hermes-Secretary-Web-UI-V1-Spec.md §1.12 L289起、§2.6 L453起；docs/07-scheduler-notebook-noting-compaction-redesign.md §9.1 L1457,1462",
+    "scope": "human_only正常历史保留、Main/Noting/History/summary模型隔离",
+    "criterion": "新/notebook command/result使用原生display metadata标记human_only，人类历史可见；Main请求、Noting冻结前缀、History Search/Read、native summary共用模型可见predicate。未标旧行、Notebook普通用户讨论和其他slash保持原语义。",
+    "path": "cli_secretary_commands.py:110–131及三host适配 → agent/message_visibility.py:1–12 → turn_context.py:1296–1301；cache_parity.py:166–178冻结；hermes_state_conversation_history.py:166–189统一History path；conversation_compression.py:3831–3897,3647–3686可见源，4093–4131失败还原。",
+    "method": "直接读标记和四模型入口；与runtime子审共享F17/F19原生可见压缩源证据、与HN子审共享真正绑定child的human_only/hidden读取反例结果，区分可见路径与Notebook来源校验。",
+    "evidence": "tests/secretary/test_noting_child.py:121–175分别保人类历史/排Main与child/排summary；runtime子审已读test_r3_compaction_visibility.py九场景并核F19补证报告；HN子审本次canonical实证human_only/hidden anchored Read均source_unavailable且range count0。当前History公共入口已亲读L174–175。",
+    "verdict": "符合",
+    "boundary": "本条不覆盖Notebook maintain/commit的来源资格；HN子审发现来源校验漏过滤不能外推成History自身泄漏。本次未重跑全部三host可见性/时间组；浏览器临时viewer不在本轮。",
+    "old_v_ids": [
+      "V25",
+      "V50",
+      "V51"
+    ]
+  },
+  {
+    "id": "SS28",
+    "source": "docs/07-scheduler-notebook-noting-compaction-redesign.md §2 L85、§8.10 L1327、§9.1 L1460；docs/02-noting-system-specification.md §5.5 L1627",
+    "scope": "公共Provider host与个人方案隔离、实际通用成功条件",
+    "criterion": "公开Secretary不依赖个人NM文件/API/安装/标签/provenance回读/治理。Proposal报告实际目标工具结果，metadata支持或保留不是附加成功门禁。通用外部memory sync只消费真实completed且非failed/interrupted的原生完成事实，不因个人Provider改变主路由。",
+    "path": "cli_secretary_commands.py:78–104统一handoff指令；run_agent.py:900–931 _sync_external_memory_for_turn → turn_finalizer.py:771–774传completed/failed；agent/codex_runtime.py:710–712原有external caller；agent/turn_api_call.py Provider原生transport与Scheduler response gate。",
+    "method": "在公开Scheduler/配置/Prompt/dispatch/slash/host所读路径中查依赖及成功判断；亲读通用sync gate和两个caller，确认无NM特判，无元数据回读决定Secretary交付成功。",
+    "evidence": "C9-H报告L14和L49–50记generic sync四分支、external三分支；test_r3_host_wiring.py:240–270为当前正式caller测试。Proposal实际常量明确destination retention不是额外成功条件；真实模型报告未加载个人Provider即完成公开Scheduler链。",
+    "verdict": "符合",
+    "boundary": "不审个人Provider仓库，不为所有第三方后端宣称可用。通用sync是best-effort，失败不阻主Turn；Candidate来源结算是否正确由Notebook子审单独判断。",
+    "old_v_ids": [
+      "V49",
+      "V52",
+      "V58"
+    ]
+  }
+]

@@ -1,0 +1,21 @@
+▶ not activated — using HERMES_PYTHON: /workspace/scratch/6cf4c3fd3ec0/hermes-audit-checkout/.venv/bin/python
+▶ running per-file parallel test suite via run_tests_parallel.py
+  (TZ=UTC LANG=C.UTF-8 PYTHONHASHSEED=0; clean env)
+▶ pre-compiling bytecode cache
+▶ launching test runner
+Discovered 1 test files (~1 tests) under ['tests/secretary/test_v2_provenance.py']; running with -j 1
+[100.0% |     1/~1 | ✓0 | ✗0] ✗ tests/secretary/test_v2_provenance.py (1 tests, 0.0s)
+
+=== Summary: 1 files, 0 tests passed, 0 failed (100% complete) in 0.0s (1 workers) ===
+
+=== ✗ NO TESTS RAN — 0 collected across 1 file. This is NOT a pass. ===
+  Common causes: the selected venv has no pytest; a -k/-m filter matched nothing; or collection errored in every file.
+  Check the per-file output above for the real error.
+
+=== Failure output ===
+
+--- tests/secretary/test_v2_provenance.py ---
+runner crashed: OSError(30, 'Read-only file system')
+
+=== 1 file where no tests ran (collection/import error, timeout before collection, etc.) ===
+  tests/secretary/test_v2_provenance.py

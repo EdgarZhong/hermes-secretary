@@ -1,0 +1,384 @@
+▶ not activated — using HERMES_PYTHON: /workspace/scratch/6cf4c3fd3ec0/hermes-audit-checkout/.venv/bin/python
+▶ running per-file parallel test suite via run_tests_parallel.py
+  (TZ=UTC LANG=C.UTF-8 PYTHONHASHSEED=0; clean env)
+▶ pre-compiling bytecode cache
+▶ launching test runner
+Discovered 1 test files (~1 tests) under ['tests/secretary/test_v2_provenance.py']; running with -j 1
+[100.0% |     1/~1 | ✓0 | ✗4] ✗ tests/secretary/test_v2_provenance.py (4✗, 1.2s)
+
+  ╔╍ Failed: tests/secretary/test_v2_provenance.py ╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍
+  ║             "maintain": maintained,
+  ║         }
+  ║         if maintained.get("success"):
+  ║             observed["finish"] = json.loads(finish_noting(child, {"reason": "Review probe complete"}))
+  ║             try:
+  ║                 observed["commit"] = store.commit(termination=child._secretary_noting_termination)
+  ║             except NotebookError as exc:
+  ║                 observed["commit_error"] = str(exc)
+  ║             observed["current_snapshot"] = database.notebook_current(conversation_ref)
+  ║         else:
+  ║             assert store.snapshot_state() == before
+  ║             assert database.notebook_current(conversation_ref) is None
+  ║     
+  ║         evidence = json.dumps(observed, ensure_ascii=False, sort_keys=True)
+  ║         print("NH-F02 evidence: " + evidence)
+  ║ >       assert maintained.get("success") is False, evidence
+  ║ E       AssertionError: {"commit": {"committed_at": 1792209361.3762908, "effective_snapshot_id": "snap_53fdfd4691cb47e19d0a57460e04873d", "pointer_changed": true, "snapshot_id": "snap_53fdfd4691cb47e19d0a57460e04873d"}, "current_snapshot": {"anchor_message_uid": "visible_anchor", "conversation_ref": "conv_bb72aef0fce843d4aee34b98a51f83a4", "created_at": 1792209361.3762908, "message_identity": {"conversation_ref": "conv_bb72aef0fce843d4aee34b98a51f83a4", "message_uid": "visible_anchor"}, "payload": {"candidates": [], "discussion": [], "situations": [{"candidate_refs": [], "created_at": "2026-10-17T03:56:01.374174+00:00", "entry_id": "1", "entry_type": "situation", "fields": {"description": "Retain the display-only assertion about the visit.", "subjects": ["visit"], "time_context": "Current visit planning"}, "last_processed_at": null, "relations": [], "source_message_identities": [], "source_time_range": {"end_time": "2027-01-15T08:00:10+00:00", "start_time": "2027-01-15T08:00:10+00:00"}, "status": "current", "updated_at": "2026-10-17T03:56:01.374174+00:00", "version_id": "1"}], "work": []}, "runtime_profile": "NOTING", "snapshot_id": "snap_53fdfd4691cb47e19d0a57460e04873d", "trigger_type": "idle"}, "finish": {"status": "end_requested", "success": true}, "history_anchor": {"error": {"code": "source_unavailable", "message": "The requested source is not available on the authorized current path.", "next_action": "Search for specific evidence in the allowed scope; keep it unknown if it cannot be found."}, "success": false}, "history_range": {"conversation_ref": "conv_bb72aef0fce843d4aee34b98a51f83a4", "count": 0, "messages": [], "success": true}, "maintain": {"changed": true, "entry": {"candidate_refs": [], "created_at": "2026-10-17T03:56:01+00:00", "entry_id": "1", "entry_type": "situation", "fields": {"description": "Retain the display-only assertion about the visit.", "subjects": ["visit"], "time_context": "Current visit planning"}, "last_processed_at": null, "relations": [], "source_message_identities": [], "source_time_range": {"end_time": "2027-01-15T08:00:10+00:00", "start_time": "2027-01-15T08:00:10+00:00"}, "status": "current", "updated_at": "2026-10-17T03:56:01+00:00", "version_id": "1"}, "success": true}, "provenance": "range", "visibility": "hidden"}
+  ║ E       assert True is False
+  ║ E        +  where True = <built-in method get of dict object at 0x7efc3ea25d40>('success')
+  ║ E        +    where <built-in method get of dict object at 0x7efc3ea25d40> = {'success': True, 'changed': True, 'entry': {'created_at': '2026-10-17T03:56:01+00:00', 'entry_type': 'situation', 'fi...n about the visit.', 'subjects': ['visit'], 'time_context': 'Current visit planning'}, 'last_processed_at': None, ...}}.get
+  ║ 
+  ║ tests/secretary/test_v2_provenance.py:130: AssertionError
+  ║ ----------------------------- Captured stdout call -----------------------------
+  ║ NH-F02 evidence: {"commit": {"committed_at": 1792209361.3762908, "effective_snapshot_id": "snap_53fdfd4691cb47e19d0a57460e04873d", "pointer_changed": true, "snapshot_id": "snap_53fdfd4691cb47e19d0a57460e04873d"}, "current_snapshot": {"anchor_message_uid": "visible_anchor", "conversation_ref": "conv_bb72aef0fce843d4aee34b98a51f83a4", "created_at": 1792209361.3762908, "message_identity": {"conversation_ref": "conv_bb72aef0fce843d4aee34b98a51f83a4", "message_uid": "visible_anchor"}, "payload": {"candidates": [], "discussion": [], "situations": [{"candidate_refs": [], "created_at": "2026-10-17T03:56:01.374174+00:00", "entry_id": "1", "entry_type": "situation", "fields": {"description": "Retain the display-only assertion about the visit.", "subjects": ["visit"], "time_context": "Current visit planning"}, "last_processed_at": null, "relations": [], "source_message_identities": [], "source_time_range": {"end_time": "2027-01-15T08:00:10+00:00", "start_time": "2027-01-15T08:00:10+00:00"}, "status": "current", "updated_at": "2026-10-17T03:56:01.374174+00:00", "version_id": "1"}], "work": []}, "runtime_profile": "NOTING", "snapshot_id": "snap_53fdfd4691cb47e19d0a57460e04873d", "trigger_type": "idle"}, "finish": {"status": "end_requested", "success": true}, "history_anchor": {"error": {"code": "source_unavailable", "message": "The requested source is not available on the authorized current path.", "next_action": "Search for specific evidence in the allowed scope; keep it unknown if it cannot be found."}, "success": false}, "history_range": {"conversation_ref": "conv_bb72aef0fce843d4aee34b98a51f83a4", "count": 0, "messages": [], "success": true}, "maintain": {"changed": true, "entry": {"candidate_refs": [], "created_at": "2026-10-17T03:56:01+00:00", "entry_id": "1", "entry_type": "situation", "fields": {"description": "Retain the display-only assertion about the visit.", "subjects": ["visit"], "time_context": "Current visit planning"}, "last_processed_at": null, "relations": [], "source_message_identities": [], "source_time_range": {"end_time": "2027-01-15T08:00:10+00:00", "start_time": "2027-01-15T08:00:10+00:00"}, "status": "current", "updated_at": "2026-10-17T03:56:01+00:00", "version_id": "1"}, "success": true}, "provenance": "range", "visibility": "hidden"}
+  ║ =========================== short test summary info ============================
+  ║ FAILED tests/secretary/test_v2_provenance.py::test_inaccessible_history_cannot_become_committed_fresh_provenance[uid-human_only]
+  ║ FAILED tests/secretary/test_v2_provenance.py::test_inaccessible_history_cannot_become_committed_fresh_provenance[uid-hidden]
+  ║ FAILED tests/secretary/test_v2_provenance.py::test_inaccessible_history_cannot_become_committed_fresh_provenance[range-human_only]
+  ║ FAILED tests/secretary/test_v2_provenance.py::test_inaccessible_history_cannot_become_committed_fresh_provenance[range-hidden]
+  ║ 4 failed in 0.78s
+  ║
+  ║  Repro: python -m pytest tests/secretary/test_v2_provenance.py -q
+  ╚╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍
+
+
+=== Summary: 1 files, 0 tests passed, 4 failed (100% complete) in 1.2s (1 workers) ===
+
+=== Per-file subprocess time distribution ===
+  Files:   1
+  Total subprocess CPU-wall: 1.2s  (runner wall: 1.2s, parallelism: 1x)
+  P50: 1.21s  P90: 1.21s  P95: 1.21s  P99: 1.21s  Max: 1.21s
+  <1s: 0 files (0%)  <2s: 1 files (100%)
+  Top 10 slowest:
+      1.21s  tests/secretary/test_v2_provenance.py
+
+=== Failure output ===
+
+--- tests/secretary/test_v2_provenance.py ---
+FFFF                                                                     [100%]
+=================================== FAILURES ===================================
+_ test_inaccessible_history_cannot_become_committed_fresh_provenance[uid-human_only] _
+
+runtime = <hermes_state.SessionDB object at 0x7efc3ed8c2f0>
+visibility = 'human_only', provenance = 'uid'
+
+    @pytest.mark.parametrize("visibility", ["human_only", "hidden"])
+    @pytest.mark.parametrize("provenance", ["uid", "range"])
+    def test_inaccessible_history_cannot_become_committed_fresh_provenance(
+        runtime, visibility, provenance
+    ):
+        database = runtime
+        attributes = ({"display_metadata": {"human_only": True}}
+                      if visibility == "human_only" else {"display_kind": "hidden"})
+        database.append_message(
+            "parent", "assistant", "A display-only assertion about the visit.",
+            message_uid="inaccessible", timestamp=1800000010, **attributes,
+        )
+        database.append_message(
+            "parent", "assistant", "I will check the visit context.",
+            message_uid="visible_anchor", timestamp=1800000020,
+        )
+        child, conversation_ref = bind_child(database)
+        source = {"conversation_ref": conversation_ref, "message_uid": "inaccessible"}
+        instant = datetime.fromtimestamp(1800000010, timezone.utc).isoformat()
+        interval = {"start_time": instant, "end_time": instant}
+    
+        def history(**arguments):
+            return json.loads(conversation_history(arguments, agent=child))
+    
+        visible = history(
+            mode="read", message_identity={**source, "message_uid": "visible_user"},
+            before=0, after=0,
+        )
+        assert visible["success"] and visible["count"] == 1, visible
+        anchored = history(mode="read", message_identity=source, before=0, after=0)
+        ranged = history(mode="read", **interval)
+        assert not anchored["success"], anchored
+        assert anchored["error"]["code"] == "source_unavailable", anchored
+        assert ranged["success"] and ranged["count"] == 0, ranged
+    
+        store = child._noting_notebook_store
+        before = store.snapshot_state()
+        arguments = {
+            "action": "create", "entry_type": "situation",
+            "fields": {
+                "description": "Retain the display-only assertion about the visit.",
+                "subjects": ["visit"], "time_context": "Current visit planning",
+            },
+            **({"source_message_identities": [source]} if provenance == "uid"
+               else {"source_time_range": interval}),
+        }
+        maintained = json.loads(notebook_maintain(child, arguments))
+        observed = {
+            "visibility": visibility, "provenance": provenance,
+            "history_anchor": anchored, "history_range": ranged,
+            "maintain": maintained,
+        }
+        if maintained.get("success"):
+            observed["finish"] = json.loads(finish_noting(child, {"reason": "Review probe complete"}))
+            try:
+                observed["commit"] = store.commit(termination=child._secretary_noting_termination)
+            except NotebookError as exc:
+                observed["commit_error"] = str(exc)
+            observed["current_snapshot"] = database.notebook_current(conversation_ref)
+        else:
+            assert store.snapshot_state() == before
+            assert database.notebook_current(conversation_ref) is None
+    
+        evidence = json.dumps(observed, ensure_ascii=False, sort_keys=True)
+        print("NH-F02 evidence: " + evidence)
+>       assert maintained.get("success") is False, evidence
+E       AssertionError: {"commit": {"committed_at": 1792209361.0257313, "effective_snapshot_id": "snap_5d0cdf3fea2d4fc8ae6f8bacb59601ac", "pointer_changed": true, "snapshot_id": "snap_5d0cdf3fea2d4fc8ae6f8bacb59601ac"}, "current_snapshot": {"anchor_message_uid": "visible_anchor", "conversation_ref": "conv_88890e193ace4d32a0d9eca73b2a9a08", "created_at": 1792209361.0257313, "message_identity": {"conversation_ref": "conv_88890e193ace4d32a0d9eca73b2a9a08", "message_uid": "visible_anchor"}, "payload": {"candidates": [], "discussion": [], "situations": [{"candidate_refs": [], "created_at": "2026-10-17T03:56:01.023027+00:00", "entry_id": "1", "entry_type": "situation", "fields": {"description": "Retain the display-only assertion about the visit.", "subjects": ["visit"], "time_context": "Current visit planning"}, "last_processed_at": null, "relations": [], "source_message_identities": [{"conversation_ref": "conv_88890e193ace4d32a0d9eca73b2a9a08", "message_uid": "inaccessible"}], "source_time_range": null, "status": "current", "updated_at": "2026-10-17T03:56:01.023027+00:00", "version_id": "1"}], "work": []}, "runtime_profile": "NOTING", "snapshot_id": "snap_5d0cdf3fea2d4fc8ae6f8bacb59601ac", "trigger_type": "idle"}, "finish": {"status": "end_requested", "success": true}, "history_anchor": {"error": {"code": "source_unavailable", "message": "The requested source is not available on the authorized current path.", "next_action": "Search for specific evidence in the allowed scope; keep it unknown if it cannot be found."}, "success": false}, "history_range": {"conversation_ref": "conv_88890e193ace4d32a0d9eca73b2a9a08", "count": 0, "messages": [], "success": true}, "maintain": {"changed": true, "entry": {"candidate_refs": [], "created_at": "2026-10-17T03:56:01+00:00", "entry_id": "1", "entry_type": "situation", "fields": {"description": "Retain the display-only assertion about the visit.", "subjects": ["visit"], "time_context": "Current visit planning"}, "last_processed_at": null, "relations": [], "source_message_identities": [{"conversation_ref": "conv_88890e193ace4d32a0d9eca73b2a9a08", "message_uid": "inaccessible"}], "source_time_range": null, "status": "current", "updated_at": "2026-10-17T03:56:01+00:00", "version_id": "1"}, "success": true}, "provenance": "uid", "visibility": "human_only"}
+E       assert True is False
+E        +  where True = <built-in method get of dict object at 0x7efc3eb2a6c0>('success')
+E        +    where <built-in method get of dict object at 0x7efc3eb2a6c0> = {'success': True, 'changed': True, 'entry': {'created_at': '2026-10-17T03:56:01+00:00', 'entry_type': 'situation', 'fi...n about the visit.', 'subjects': ['visit'], 'time_context': 'Current visit planning'}, 'last_processed_at': None, ...}}.get
+
+tests/secretary/test_v2_provenance.py:130: AssertionError
+----------------------------- Captured stdout call -----------------------------
+NH-F02 evidence: {"commit": {"committed_at": 1792209361.0257313, "effective_snapshot_id": "snap_5d0cdf3fea2d4fc8ae6f8bacb59601ac", "pointer_changed": true, "snapshot_id": "snap_5d0cdf3fea2d4fc8ae6f8bacb59601ac"}, "current_snapshot": {"anchor_message_uid": "visible_anchor", "conversation_ref": "conv_88890e193ace4d32a0d9eca73b2a9a08", "created_at": 1792209361.0257313, "message_identity": {"conversation_ref": "conv_88890e193ace4d32a0d9eca73b2a9a08", "message_uid": "visible_anchor"}, "payload": {"candidates": [], "discussion": [], "situations": [{"candidate_refs": [], "created_at": "2026-10-17T03:56:01.023027+00:00", "entry_id": "1", "entry_type": "situation", "fields": {"description": "Retain the display-only assertion about the visit.", "subjects": ["visit"], "time_context": "Current visit planning"}, "last_processed_at": null, "relations": [], "source_message_identities": [{"conversation_ref": "conv_88890e193ace4d32a0d9eca73b2a9a08", "message_uid": "inaccessible"}], "source_time_range": null, "status": "current", "updated_at": "2026-10-17T03:56:01.023027+00:00", "version_id": "1"}], "work": []}, "runtime_profile": "NOTING", "snapshot_id": "snap_5d0cdf3fea2d4fc8ae6f8bacb59601ac", "trigger_type": "idle"}, "finish": {"status": "end_requested", "success": true}, "history_anchor": {"error": {"code": "source_unavailable", "message": "The requested source is not available on the authorized current path.", "next_action": "Search for specific evidence in the allowed scope; keep it unknown if it cannot be found."}, "success": false}, "history_range": {"conversation_ref": "conv_88890e193ace4d32a0d9eca73b2a9a08", "count": 0, "messages": [], "success": true}, "maintain": {"changed": true, "entry": {"candidate_refs": [], "created_at": "2026-10-17T03:56:01+00:00", "entry_id": "1", "entry_type": "situation", "fields": {"description": "Retain the display-only assertion about the visit.", "subjects": ["visit"], "time_context": "Current visit planning"}, "last_processed_at": null, "relations": [], "source_message_identities": [{"conversation_ref": "conv_88890e193ace4d32a0d9eca73b2a9a08", "message_uid": "inaccessible"}], "source_time_range": null, "status": "current", "updated_at": "2026-10-17T03:56:01+00:00", "version_id": "1"}, "success": true}, "provenance": "uid", "visibility": "human_only"}
+_ test_inaccessible_history_cannot_become_committed_fresh_provenance[uid-hidden] _
+
+runtime = <hermes_state.SessionDB object at 0x7efc3ef74ad0>
+visibility = 'hidden', provenance = 'uid'
+
+    @pytest.mark.parametrize("visibility", ["human_only", "hidden"])
+    @pytest.mark.parametrize("provenance", ["uid", "range"])
+    def test_inaccessible_history_cannot_become_committed_fresh_provenance(
+        runtime, visibility, provenance
+    ):
+        database = runtime
+        attributes = ({"display_metadata": {"human_only": True}}
+                      if visibility == "human_only" else {"display_kind": "hidden"})
+        database.append_message(
+            "parent", "assistant", "A display-only assertion about the visit.",
+            message_uid="inaccessible", timestamp=1800000010, **attributes,
+        )
+        database.append_message(
+            "parent", "assistant", "I will check the visit context.",
+            message_uid="visible_anchor", timestamp=1800000020,
+        )
+        child, conversation_ref = bind_child(database)
+        source = {"conversation_ref": conversation_ref, "message_uid": "inaccessible"}
+        instant = datetime.fromtimestamp(1800000010, timezone.utc).isoformat()
+        interval = {"start_time": instant, "end_time": instant}
+    
+        def history(**arguments):
+            return json.loads(conversation_history(arguments, agent=child))
+    
+        visible = history(
+            mode="read", message_identity={**source, "message_uid": "visible_user"},
+            before=0, after=0,
+        )
+        assert visible["success"] and visible["count"] == 1, visible
+        anchored = history(mode="read", message_identity=source, before=0, after=0)
+        ranged = history(mode="read", **interval)
+        assert not anchored["success"], anchored
+        assert anchored["error"]["code"] == "source_unavailable", anchored
+        assert ranged["success"] and ranged["count"] == 0, ranged
+    
+        store = child._noting_notebook_store
+        before = store.snapshot_state()
+        arguments = {
+            "action": "create", "entry_type": "situation",
+            "fields": {
+                "description": "Retain the display-only assertion about the visit.",
+                "subjects": ["visit"], "time_context": "Current visit planning",
+            },
+            **({"source_message_identities": [source]} if provenance == "uid"
+               else {"source_time_range": interval}),
+        }
+        maintained = json.loads(notebook_maintain(child, arguments))
+        observed = {
+            "visibility": visibility, "provenance": provenance,
+            "history_anchor": anchored, "history_range": ranged,
+            "maintain": maintained,
+        }
+        if maintained.get("success"):
+            observed["finish"] = json.loads(finish_noting(child, {"reason": "Review probe complete"}))
+            try:
+                observed["commit"] = store.commit(termination=child._secretary_noting_termination)
+            except NotebookError as exc:
+                observed["commit_error"] = str(exc)
+            observed["current_snapshot"] = database.notebook_current(conversation_ref)
+        else:
+            assert store.snapshot_state() == before
+            assert database.notebook_current(conversation_ref) is None
+    
+        evidence = json.dumps(observed, ensure_ascii=False, sort_keys=True)
+        print("NH-F02 evidence: " + evidence)
+>       assert maintained.get("success") is False, evidence
+E       AssertionError: {"commit": {"committed_at": 1792209361.1790216, "effective_snapshot_id": "snap_3fb795dca8894f55a1ed857891345e58", "pointer_changed": true, "snapshot_id": "snap_3fb795dca8894f55a1ed857891345e58"}, "current_snapshot": {"anchor_message_uid": "visible_anchor", "conversation_ref": "conv_b53381a43ac643c2b712d762980a0d2f", "created_at": 1792209361.1790216, "message_identity": {"conversation_ref": "conv_b53381a43ac643c2b712d762980a0d2f", "message_uid": "visible_anchor"}, "payload": {"candidates": [], "discussion": [], "situations": [{"candidate_refs": [], "created_at": "2026-10-17T03:56:01.176214+00:00", "entry_id": "1", "entry_type": "situation", "fields": {"description": "Retain the display-only assertion about the visit.", "subjects": ["visit"], "time_context": "Current visit planning"}, "last_processed_at": null, "relations": [], "source_message_identities": [{"conversation_ref": "conv_b53381a43ac643c2b712d762980a0d2f", "message_uid": "inaccessible"}], "source_time_range": null, "status": "current", "updated_at": "2026-10-17T03:56:01.176214+00:00", "version_id": "1"}], "work": []}, "runtime_profile": "NOTING", "snapshot_id": "snap_3fb795dca8894f55a1ed857891345e58", "trigger_type": "idle"}, "finish": {"status": "end_requested", "success": true}, "history_anchor": {"error": {"code": "source_unavailable", "message": "The requested source is not available on the authorized current path.", "next_action": "Search for specific evidence in the allowed scope; keep it unknown if it cannot be found."}, "success": false}, "history_range": {"conversation_ref": "conv_b53381a43ac643c2b712d762980a0d2f", "count": 0, "messages": [], "success": true}, "maintain": {"changed": true, "entry": {"candidate_refs": [], "created_at": "2026-10-17T03:56:01+00:00", "entry_id": "1", "entry_type": "situation", "fields": {"description": "Retain the display-only assertion about the visit.", "subjects": ["visit"], "time_context": "Current visit planning"}, "last_processed_at": null, "relations": [], "source_message_identities": [{"conversation_ref": "conv_b53381a43ac643c2b712d762980a0d2f", "message_uid": "inaccessible"}], "source_time_range": null, "status": "current", "updated_at": "2026-10-17T03:56:01+00:00", "version_id": "1"}, "success": true}, "provenance": "uid", "visibility": "hidden"}
+E       assert True is False
+E        +  where True = <built-in method get of dict object at 0x7efc3e9c4d40>('success')
+E        +    where <built-in method get of dict object at 0x7efc3e9c4d40> = {'success': True, 'changed': True, 'entry': {'created_at': '2026-10-17T03:56:01+00:00', 'entry_type': 'situation', 'fi...n about the visit.', 'subjects': ['visit'], 'time_context': 'Current visit planning'}, 'last_processed_at': None, ...}}.get
+
+tests/secretary/test_v2_provenance.py:130: AssertionError
+----------------------------- Captured stdout call -----------------------------
+NH-F02 evidence: {"commit": {"committed_at": 1792209361.1790216, "effective_snapshot_id": "snap_3fb795dca8894f55a1ed857891345e58", "pointer_changed": true, "snapshot_id": "snap_3fb795dca8894f55a1ed857891345e58"}, "current_snapshot": {"anchor_message_uid": "visible_anchor", "conversation_ref": "conv_b53381a43ac643c2b712d762980a0d2f", "created_at": 1792209361.1790216, "message_identity": {"conversation_ref": "conv_b53381a43ac643c2b712d762980a0d2f", "message_uid": "visible_anchor"}, "payload": {"candidates": [], "discussion": [], "situations": [{"candidate_refs": [], "created_at": "2026-10-17T03:56:01.176214+00:00", "entry_id": "1", "entry_type": "situation", "fields": {"description": "Retain the display-only assertion about the visit.", "subjects": ["visit"], "time_context": "Current visit planning"}, "last_processed_at": null, "relations": [], "source_message_identities": [{"conversation_ref": "conv_b53381a43ac643c2b712d762980a0d2f", "message_uid": "inaccessible"}], "source_time_range": null, "status": "current", "updated_at": "2026-10-17T03:56:01.176214+00:00", "version_id": "1"}], "work": []}, "runtime_profile": "NOTING", "snapshot_id": "snap_3fb795dca8894f55a1ed857891345e58", "trigger_type": "idle"}, "finish": {"status": "end_requested", "success": true}, "history_anchor": {"error": {"code": "source_unavailable", "message": "The requested source is not available on the authorized current path.", "next_action": "Search for specific evidence in the allowed scope; keep it unknown if it cannot be found."}, "success": false}, "history_range": {"conversation_ref": "conv_b53381a43ac643c2b712d762980a0d2f", "count": 0, "messages": [], "success": true}, "maintain": {"changed": true, "entry": {"candidate_refs": [], "created_at": "2026-10-17T03:56:01+00:00", "entry_id": "1", "entry_type": "situation", "fields": {"description": "Retain the display-only assertion about the visit.", "subjects": ["visit"], "time_context": "Current visit planning"}, "last_processed_at": null, "relations": [], "source_message_identities": [{"conversation_ref": "conv_b53381a43ac643c2b712d762980a0d2f", "message_uid": "inaccessible"}], "source_time_range": null, "status": "current", "updated_at": "2026-10-17T03:56:01+00:00", "version_id": "1"}, "success": true}, "provenance": "uid", "visibility": "hidden"}
+_ test_inaccessible_history_cannot_become_committed_fresh_provenance[range-human_only] _
+
+runtime = <hermes_state.SessionDB object at 0x7efc3ef742f0>
+visibility = 'human_only', provenance = 'range'
+
+    @pytest.mark.parametrize("visibility", ["human_only", "hidden"])
+    @pytest.mark.parametrize("provenance", ["uid", "range"])
+    def test_inaccessible_history_cannot_become_committed_fresh_provenance(
+        runtime, visibility, provenance
+    ):
+        database = runtime
+        attributes = ({"display_metadata": {"human_only": True}}
+                      if visibility == "human_only" else {"display_kind": "hidden"})
+        database.append_message(
+            "parent", "assistant", "A display-only assertion about the visit.",
+            message_uid="inaccessible", timestamp=1800000010, **attributes,
+        )
+        database.append_message(
+            "parent", "assistant", "I will check the visit context.",
+            message_uid="visible_anchor", timestamp=1800000020,
+        )
+        child, conversation_ref = bind_child(database)
+        source = {"conversation_ref": conversation_ref, "message_uid": "inaccessible"}
+        instant = datetime.fromtimestamp(1800000010, timezone.utc).isoformat()
+        interval = {"start_time": instant, "end_time": instant}
+    
+        def history(**arguments):
+            return json.loads(conversation_history(arguments, agent=child))
+    
+        visible = history(
+            mode="read", message_identity={**source, "message_uid": "visible_user"},
+            before=0, after=0,
+        )
+        assert visible["success"] and visible["count"] == 1, visible
+        anchored = history(mode="read", message_identity=source, before=0, after=0)
+        ranged = history(mode="read", **interval)
+        assert not anchored["success"], anchored
+        assert anchored["error"]["code"] == "source_unavailable", anchored
+        assert ranged["success"] and ranged["count"] == 0, ranged
+    
+        store = child._noting_notebook_store
+        before = store.snapshot_state()
+        arguments = {
+            "action": "create", "entry_type": "situation",
+            "fields": {
+                "description": "Retain the display-only assertion about the visit.",
+                "subjects": ["visit"], "time_context": "Current visit planning",
+            },
+            **({"source_message_identities": [source]} if provenance == "uid"
+               else {"source_time_range": interval}),
+        }
+        maintained = json.loads(notebook_maintain(child, arguments))
+        observed = {
+            "visibility": visibility, "provenance": provenance,
+            "history_anchor": anchored, "history_range": ranged,
+            "maintain": maintained,
+        }
+        if maintained.get("success"):
+            observed["finish"] = json.loads(finish_noting(child, {"reason": "Review probe complete"}))
+            try:
+                observed["commit"] = store.commit(termination=child._secretary_noting_termination)
+            except NotebookError as exc:
+                observed["commit_error"] = str(exc)
+            observed["current_snapshot"] = database.notebook_current(conversation_ref)
+        else:
+            assert store.snapshot_state() == before
+            assert database.notebook_current(conversation_ref) is None
+    
+        evidence = json.dumps(observed, ensure_ascii=False, sort_keys=True)
+        print("NH-F02 evidence: " + evidence)
+>       assert maintained.get("success") is False, evidence
+E       AssertionError: {"commit": {"committed_at": 1792209361.2843618, "effective_snapshot_id": "snap_708172ad25b449a2827510c470fa3680", "pointer_changed": true, "snapshot_id": "snap_708172ad25b449a2827510c470fa3680"}, "current_snapshot": {"anchor_message_uid": "visible_anchor", "conversation_ref": "conv_b707791b05904ea2992f4453af5ace26", "created_at": 1792209361.2843618, "message_identity": {"conversation_ref": "conv_b707791b05904ea2992f4453af5ace26", "message_uid": "visible_anchor"}, "payload": {"candidates": [], "discussion": [], "situations": [{"candidate_refs": [], "created_at": "2026-10-17T03:56:01.281722+00:00", "entry_id": "1", "entry_type": "situation", "fields": {"description": "Retain the display-only assertion about the visit.", "subjects": ["visit"], "time_context": "Current visit planning"}, "last_processed_at": null, "relations": [], "source_message_identities": [], "source_time_range": {"end_time": "2027-01-15T08:00:10+00:00", "start_time": "2027-01-15T08:00:10+00:00"}, "status": "current", "updated_at": "2026-10-17T03:56:01.281722+00:00", "version_id": "1"}], "work": []}, "runtime_profile": "NOTING", "snapshot_id": "snap_708172ad25b449a2827510c470fa3680", "trigger_type": "idle"}, "finish": {"status": "end_requested", "success": true}, "history_anchor": {"error": {"code": "source_unavailable", "message": "The requested source is not available on the authorized current path.", "next_action": "Search for specific evidence in the allowed scope; keep it unknown if it cannot be found."}, "success": false}, "history_range": {"conversation_ref": "conv_b707791b05904ea2992f4453af5ace26", "count": 0, "messages": [], "success": true}, "maintain": {"changed": true, "entry": {"candidate_refs": [], "created_at": "2026-10-17T03:56:01+00:00", "entry_id": "1", "entry_type": "situation", "fields": {"description": "Retain the display-only assertion about the visit.", "subjects": ["visit"], "time_context": "Current visit planning"}, "last_processed_at": null, "relations": [], "source_message_identities": [], "source_time_range": {"end_time": "2027-01-15T08:00:10+00:00", "start_time": "2027-01-15T08:00:10+00:00"}, "status": "current", "updated_at": "2026-10-17T03:56:01+00:00", "version_id": "1"}, "success": true}, "provenance": "range", "visibility": "human_only"}
+E       assert True is False
+E        +  where True = <built-in method get of dict object at 0x7efc3e9d2b40>('success')
+E        +    where <built-in method get of dict object at 0x7efc3e9d2b40> = {'success': True, 'changed': True, 'entry': {'created_at': '2026-10-17T03:56:01+00:00', 'entry_type': 'situation', 'fi...n about the visit.', 'subjects': ['visit'], 'time_context': 'Current visit planning'}, 'last_processed_at': None, ...}}.get
+
+tests/secretary/test_v2_provenance.py:130: AssertionError
+----------------------------- Captured stdout call -----------------------------
+NH-F02 evidence: {"commit": {"committed_at": 1792209361.2843618, "effective_snapshot_id": "snap_708172ad25b449a2827510c470fa3680", "pointer_changed": true, "snapshot_id": "snap_708172ad25b449a2827510c470fa3680"}, "current_snapshot": {"anchor_message_uid": "visible_anchor", "conversation_ref": "conv_b707791b05904ea2992f4453af5ace26", "created_at": 1792209361.2843618, "message_identity": {"conversation_ref": "conv_b707791b05904ea2992f4453af5ace26", "message_uid": "visible_anchor"}, "payload": {"candidates": [], "discussion": [], "situations": [{"candidate_refs": [], "created_at": "2026-10-17T03:56:01.281722+00:00", "entry_id": "1", "entry_type": "situation", "fields": {"description": "Retain the display-only assertion about the visit.", "subjects": ["visit"], "time_context": "Current visit planning"}, "last_processed_at": null, "relations": [], "source_message_identities": [], "source_time_range": {"end_time": "2027-01-15T08:00:10+00:00", "start_time": "2027-01-15T08:00:10+00:00"}, "status": "current", "updated_at": "2026-10-17T03:56:01.281722+00:00", "version_id": "1"}], "work": []}, "runtime_profile": "NOTING", "snapshot_id": "snap_708172ad25b449a2827510c470fa3680", "trigger_type": "idle"}, "finish": {"status": "end_requested", "success": true}, "history_anchor": {"error": {"code": "source_unavailable", "message": "The requested source is not available on the authorized current path.", "next_action": "Search for specific evidence in the allowed scope; keep it unknown if it cannot be found."}, "success": false}, "history_range": {"conversation_ref": "conv_b707791b05904ea2992f4453af5ace26", "count": 0, "messages": [], "success": true}, "maintain": {"changed": true, "entry": {"candidate_refs": [], "created_at": "2026-10-17T03:56:01+00:00", "entry_id": "1", "entry_type": "situation", "fields": {"description": "Retain the display-only assertion about the visit.", "subjects": ["visit"], "time_context": "Current visit planning"}, "last_processed_at": null, "relations": [], "source_message_identities": [], "source_time_range": {"end_time": "2027-01-15T08:00:10+00:00", "start_time": "2027-01-15T08:00:10+00:00"}, "status": "current", "updated_at": "2026-10-17T03:56:01+00:00", "version_id": "1"}, "success": true}, "provenance": "range", "visibility": "human_only"}
+_ test_inaccessible_history_cannot_become_committed_fresh_provenance[range-hidden] _
+
+runtime = <hermes_state.SessionDB object at 0x7efc3ef74440>
+visibility = 'hidden', provenance = 'range'
+
+    @pytest.mark.parametrize("visibility", ["human_only", "hidden"])
+    @pytest.mark.parametrize("provenance", ["uid", "range"])
+    def test_inaccessible_history_cannot_become_committed_fresh_provenance(
+        runtime, visibility, provenance
+    ):
+        database = runtime
+        attributes = ({"display_metadata": {"human_only": True}}
+                      if visibility == "human_only" else {"display_kind": "hidden"})
+        database.append_message(
+            "parent", "assistant", "A display-only assertion about the visit.",
+            message_uid="inaccessible", timestamp=1800000010, **attributes,
+        )
+        database.append_message(
+            "parent", "assistant", "I will check the visit context.",
+            message_uid="visible_anchor", timestamp=1800000020,
+        )
+        child, conversation_ref = bind_child(database)
+        source = {"conversation_ref": conversation_ref, "message_uid": "inaccessible"}
+        instant = datetime.fromtimestamp(1800000010, timezone.utc).isoformat()
+        interval = {"start_time": instant, "end_time": instant}
+    
+        def history(**arguments):
+            return json.loads(conversation_history(arguments, agent=child))
+    
+        visible = history(
+            mode="read", message_identity={**source, "message_uid": "visible_user"},
+            before=0, after=0,
+        )
+        assert visible["success"] and visible["count"] == 1, visible
+        anchored = history(mode="read", message_identity=source, before=0, after=0)
+        ranged = history(mode="read", **interval)
+        assert not anchored["success"], anchored
+        assert anchored["error"]["code"] == "source_unavailable", anchored
+        assert ranged["success"] and ranged["count"] == 0, ranged
+    
+        store = child._noting_notebook_store
+        before = store.snapshot_state()
+        arguments = {
+            "action": "create", "entry_type": "situation",
+            "fields": {
+                "description": "Retain the display-only assertion about the visit.",
+                "subjects": ["visit"], "time_context": "Current visit planning",
+            },
+            **({"source_message_identities": [source]} if provenance == "uid"
+               else {"source_time_range": interval}),
+        }
+        maintained = json.loads(notebook_maintain(child, arguments))
+        observed = {
+            "visibility": visibility, "provenance": provenance,
+            "history_anchor": anchored, "history_range": ranged,
+            "maintain": maintained,
+        }
+        if maintained.get("success"):
+            observed["finish"] = json.loads(finish_noting(child, {"reason": "Review probe complete"}))
+            try:
+                observed["commit"] = store.commit(termination=child._secretary_noting_termination)
+            except NotebookError as exc:
+                observed["commit_error"] = str(exc)
+            observed["current_snapshot"] = database.notebook_current(conversation_ref)
+        else:
+            assert store.snapshot_state() == before
+            assert database.notebook_current(conversation_ref) is None
+    
+        evidence = json.dumps(observed, ensure_ascii=False, sort_keys=True)
+        print("NH-F02 evidence: " + evidence)
+>       assert maintained.get("success") is False, evidence
+E       AssertionError: {"commit": {"committed_at": 1792209361.3762908, "effective_snapshot_id": "snap_53fdfd4691cb47e19d0a57460e04873d", "pointer_changed": true, "snapshot_id": "snap_53fdfd4691cb47e19d0a57460e04873d"}, "current_snapshot": {"anchor_message_uid": "visible_anchor", "conversation_ref": "conv_bb72aef0fce843d4aee34b98a51f83a4", "created_at": 1792209361.3762908, "message_identity": {"conversation_ref": "conv_bb72aef0fce843d4aee34b98a51f83a4", "message_uid": "visible_anchor"}, "payload": {"candidates": [], "discussion": [], "situations": [{"candidate_refs": [], "created_at": "2026-10-17T03:56:01.374174+00:00", "entry_id": "1", "entry_type": "situation", "fields": {"description": "Retain the display-only assertion about the visit.", "subjects": ["visit"], "time_context": "Current visit planning"}, "last_processed_at": null, "relations": [], "source_message_identities": [], "source_time_range": {"end_time": "2027-01-15T08:00:10+00:00", "start_time": "2027-01-15T08:00:10+00:00"}, "status": "current", "updated_at": "2026-10-17T03:56:01.374174+00:00", "version_id": "1"}], "work": []}, "runtime_profile": "NOTING", "snapshot_id": "snap_53fdfd4691cb47e19d0a57460e04873d", "trigger_type": "idle"}, "finish": {"status": "end_requested", "success": true}, "history_anchor": {"error": {"code": "source_unavailable", "message": "The requested source is not available on the authorized current path.", "next_action": "Search for specific evidence in the allowed scope; keep it unknown if it cannot be found."}, "success": false}, "history_range": {"conversation_ref": "conv_bb72aef0fce843d4aee34b98a51f83a4", "count": 0, "messages": [], "success": true}, "maintain": {"changed": true, "entry": {"candidate_refs": [], "created_at": "2026-10-17T03:56:01+00:00", "entry_id": "1", "entry_type": "situation", "fields": {"description": "Retain the display-only assertion about the visit.", "subjects": ["visit"], "time_context": "Current visit planning"}, "last_processed_at": null, "relations": [], "source_message_identities": [], "source_time_range": {"end_time": "2027-01-15T08:00:10+00:00", "start_time": "2027-01-15T08:00:10+00:00"}, "status": "current", "updated_at": "2026-10-17T03:56:01+00:00", "version_id": "1"}, "success": true}, "provenance": "range", "visibility": "hidden"}
+E       assert True is False
+E        +  where True = <built-in method get of dict object at 0x7efc3ea25d40>('success')
+E        +    where <built-in method get of dict object at 0x7efc3ea25d40> = {'success': True, 'changed': True, 'entry': {'created_at': '2026-10-17T03:56:01+00:00', 'entry_type': 'situation', 'fi...n about the visit.', 'subjects': ['visit'], 'time_context': 'Current visit planning'}, 'last_processed_at': None, ...}}.get
+
+tests/secretary/test_v2_provenance.py:130: AssertionError
+----------------------------- Captured stdout call -----------------------------
+NH-F02 evidence: {"commit": {"committed_at": 1792209361.3762908, "effective_snapshot_id": "snap_53fdfd4691cb47e19d0a57460e04873d", "pointer_changed": true, "snapshot_id": "snap_53fdfd4691cb47e19d0a57460e04873d"}, "current_snapshot": {"anchor_message_uid": "visible_anchor", "conversation_ref": "conv_bb72aef0fce843d4aee34b98a51f83a4", "created_at": 1792209361.3762908, "message_identity": {"conversation_ref": "conv_bb72aef0fce843d4aee34b98a51f83a4", "message_uid": "visible_anchor"}, "payload": {"candidates": [], "discussion": [], "situations": [{"candidate_refs": [], "created_at": "2026-10-17T03:56:01.374174+00:00", "entry_id": "1", "entry_type": "situation", "fields": {"description": "Retain the display-only assertion about the visit.", "subjects": ["visit"], "time_context": "Current visit planning"}, "last_processed_at": null, "relations": [], "source_message_identities": [], "source_time_range": {"end_time": "2027-01-15T08:00:10+00:00", "start_time": "2027-01-15T08:00:10+00:00"}, "status": "current", "updated_at": "2026-10-17T03:56:01.374174+00:00", "version_id": "1"}], "work": []}, "runtime_profile": "NOTING", "snapshot_id": "snap_53fdfd4691cb47e19d0a57460e04873d", "trigger_type": "idle"}, "finish": {"status": "end_requested", "success": true}, "history_anchor": {"error": {"code": "source_unavailable", "message": "The requested source is not available on the authorized current path.", "next_action": "Search for specific evidence in the allowed scope; keep it unknown if it cannot be found."}, "success": false}, "history_range": {"conversation_ref": "conv_bb72aef0fce843d4aee34b98a51f83a4", "count": 0, "messages": [], "success": true}, "maintain": {"changed": true, "entry": {"candidate_refs": [], "created_at": "2026-10-17T03:56:01+00:00", "entry_id": "1", "entry_type": "situation", "fields": {"description": "Retain the display-only assertion about the visit.", "subjects": ["visit"], "time_context": "Current visit planning"}, "last_processed_at": null, "relations": [], "source_message_identities": [], "source_time_range": {"end_time": "2027-01-15T08:00:10+00:00", "start_time": "2027-01-15T08:00:10+00:00"}, "status": "current", "updated_at": "2026-10-17T03:56:01+00:00", "version_id": "1"}, "success": true}, "provenance": "range", "visibility": "hidden"}
+=========================== short test summary info ============================
+FAILED tests/secretary/test_v2_provenance.py::test_inaccessible_history_cannot_become_committed_fresh_provenance[uid-human_only]
+FAILED tests/secretary/test_v2_provenance.py::test_inaccessible_history_cannot_become_committed_fresh_provenance[uid-hidden]
+FAILED tests/secretary/test_v2_provenance.py::test_inaccessible_history_cannot_become_committed_fresh_provenance[range-human_only]
+FAILED tests/secretary/test_v2_provenance.py::test_inaccessible_history_cannot_become_committed_fresh_provenance[range-hidden]
+4 failed in 0.78s
+
+=== 1 file with test failures (4 tests failed) ===
+  tests/secretary/test_v2_provenance.py  (4 tests failed)

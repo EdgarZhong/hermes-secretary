@@ -1,0 +1,398 @@
+[
+  {
+    "commit": {
+      "committed_at": 1792209361.0257313,
+      "effective_snapshot_id": "snap_5d0cdf3fea2d4fc8ae6f8bacb59601ac",
+      "pointer_changed": true,
+      "snapshot_id": "snap_5d0cdf3fea2d4fc8ae6f8bacb59601ac"
+    },
+    "current_snapshot": {
+      "anchor_message_uid": "visible_anchor",
+      "conversation_ref": "conv_88890e193ace4d32a0d9eca73b2a9a08",
+      "created_at": 1792209361.0257313,
+      "message_identity": {
+        "conversation_ref": "conv_88890e193ace4d32a0d9eca73b2a9a08",
+        "message_uid": "visible_anchor"
+      },
+      "payload": {
+        "candidates": [],
+        "discussion": [],
+        "situations": [
+          {
+            "candidate_refs": [],
+            "created_at": "2026-10-17T03:56:01.023027+00:00",
+            "entry_id": "1",
+            "entry_type": "situation",
+            "fields": {
+              "description": "Retain the display-only assertion about the visit.",
+              "subjects": [
+                "visit"
+              ],
+              "time_context": "Current visit planning"
+            },
+            "last_processed_at": null,
+            "relations": [],
+            "source_message_identities": [
+              {
+                "conversation_ref": "conv_88890e193ace4d32a0d9eca73b2a9a08",
+                "message_uid": "inaccessible"
+              }
+            ],
+            "source_time_range": null,
+            "status": "current",
+            "updated_at": "2026-10-17T03:56:01.023027+00:00",
+            "version_id": "1"
+          }
+        ],
+        "work": []
+      },
+      "runtime_profile": "NOTING",
+      "snapshot_id": "snap_5d0cdf3fea2d4fc8ae6f8bacb59601ac",
+      "trigger_type": "idle"
+    },
+    "finish": {
+      "status": "end_requested",
+      "success": true
+    },
+    "history_anchor": {
+      "error": {
+        "code": "source_unavailable",
+        "message": "The requested source is not available on the authorized current path.",
+        "next_action": "Search for specific evidence in the allowed scope; keep it unknown if it cannot be found."
+      },
+      "success": false
+    },
+    "history_range": {
+      "conversation_ref": "conv_88890e193ace4d32a0d9eca73b2a9a08",
+      "count": 0,
+      "messages": [],
+      "success": true
+    },
+    "maintain": {
+      "changed": true,
+      "entry": {
+        "candidate_refs": [],
+        "created_at": "2026-10-17T03:56:01+00:00",
+        "entry_id": "1",
+        "entry_type": "situation",
+        "fields": {
+          "description": "Retain the display-only assertion about the visit.",
+          "subjects": [
+            "visit"
+          ],
+          "time_context": "Current visit planning"
+        },
+        "last_processed_at": null,
+        "relations": [],
+        "source_message_identities": [
+          {
+            "conversation_ref": "conv_88890e193ace4d32a0d9eca73b2a9a08",
+            "message_uid": "inaccessible"
+          }
+        ],
+        "source_time_range": null,
+        "status": "current",
+        "updated_at": "2026-10-17T03:56:01+00:00",
+        "version_id": "1"
+      },
+      "success": true
+    },
+    "provenance": "uid",
+    "visibility": "human_only"
+  },
+  {
+    "commit": {
+      "committed_at": 1792209361.1790216,
+      "effective_snapshot_id": "snap_3fb795dca8894f55a1ed857891345e58",
+      "pointer_changed": true,
+      "snapshot_id": "snap_3fb795dca8894f55a1ed857891345e58"
+    },
+    "current_snapshot": {
+      "anchor_message_uid": "visible_anchor",
+      "conversation_ref": "conv_b53381a43ac643c2b712d762980a0d2f",
+      "created_at": 1792209361.1790216,
+      "message_identity": {
+        "conversation_ref": "conv_b53381a43ac643c2b712d762980a0d2f",
+        "message_uid": "visible_anchor"
+      },
+      "payload": {
+        "candidates": [],
+        "discussion": [],
+        "situations": [
+          {
+            "candidate_refs": [],
+            "created_at": "2026-10-17T03:56:01.176214+00:00",
+            "entry_id": "1",
+            "entry_type": "situation",
+            "fields": {
+              "description": "Retain the display-only assertion about the visit.",
+              "subjects": [
+                "visit"
+              ],
+              "time_context": "Current visit planning"
+            },
+            "last_processed_at": null,
+            "relations": [],
+            "source_message_identities": [
+              {
+                "conversation_ref": "conv_b53381a43ac643c2b712d762980a0d2f",
+                "message_uid": "inaccessible"
+              }
+            ],
+            "source_time_range": null,
+            "status": "current",
+            "updated_at": "2026-10-17T03:56:01.176214+00:00",
+            "version_id": "1"
+          }
+        ],
+        "work": []
+      },
+      "runtime_profile": "NOTING",
+      "snapshot_id": "snap_3fb795dca8894f55a1ed857891345e58",
+      "trigger_type": "idle"
+    },
+    "finish": {
+      "status": "end_requested",
+      "success": true
+    },
+    "history_anchor": {
+      "error": {
+        "code": "source_unavailable",
+        "message": "The requested source is not available on the authorized current path.",
+        "next_action": "Search for specific evidence in the allowed scope; keep it unknown if it cannot be found."
+      },
+      "success": false
+    },
+    "history_range": {
+      "conversation_ref": "conv_b53381a43ac643c2b712d762980a0d2f",
+      "count": 0,
+      "messages": [],
+      "success": true
+    },
+    "maintain": {
+      "changed": true,
+      "entry": {
+        "candidate_refs": [],
+        "created_at": "2026-10-17T03:56:01+00:00",
+        "entry_id": "1",
+        "entry_type": "situation",
+        "fields": {
+          "description": "Retain the display-only assertion about the visit.",
+          "subjects": [
+            "visit"
+          ],
+          "time_context": "Current visit planning"
+        },
+        "last_processed_at": null,
+        "relations": [],
+        "source_message_identities": [
+          {
+            "conversation_ref": "conv_b53381a43ac643c2b712d762980a0d2f",
+            "message_uid": "inaccessible"
+          }
+        ],
+        "source_time_range": null,
+        "status": "current",
+        "updated_at": "2026-10-17T03:56:01+00:00",
+        "version_id": "1"
+      },
+      "success": true
+    },
+    "provenance": "uid",
+    "visibility": "hidden"
+  },
+  {
+    "commit": {
+      "committed_at": 1792209361.2843618,
+      "effective_snapshot_id": "snap_708172ad25b449a2827510c470fa3680",
+      "pointer_changed": true,
+      "snapshot_id": "snap_708172ad25b449a2827510c470fa3680"
+    },
+    "current_snapshot": {
+      "anchor_message_uid": "visible_anchor",
+      "conversation_ref": "conv_b707791b05904ea2992f4453af5ace26",
+      "created_at": 1792209361.2843618,
+      "message_identity": {
+        "conversation_ref": "conv_b707791b05904ea2992f4453af5ace26",
+        "message_uid": "visible_anchor"
+      },
+      "payload": {
+        "candidates": [],
+        "discussion": [],
+        "situations": [
+          {
+            "candidate_refs": [],
+            "created_at": "2026-10-17T03:56:01.281722+00:00",
+            "entry_id": "1",
+            "entry_type": "situation",
+            "fields": {
+              "description": "Retain the display-only assertion about the visit.",
+              "subjects": [
+                "visit"
+              ],
+              "time_context": "Current visit planning"
+            },
+            "last_processed_at": null,
+            "relations": [],
+            "source_message_identities": [],
+            "source_time_range": {
+              "end_time": "2027-01-15T08:00:10+00:00",
+              "start_time": "2027-01-15T08:00:10+00:00"
+            },
+            "status": "current",
+            "updated_at": "2026-10-17T03:56:01.281722+00:00",
+            "version_id": "1"
+          }
+        ],
+        "work": []
+      },
+      "runtime_profile": "NOTING",
+      "snapshot_id": "snap_708172ad25b449a2827510c470fa3680",
+      "trigger_type": "idle"
+    },
+    "finish": {
+      "status": "end_requested",
+      "success": true
+    },
+    "history_anchor": {
+      "error": {
+        "code": "source_unavailable",
+        "message": "The requested source is not available on the authorized current path.",
+        "next_action": "Search for specific evidence in the allowed scope; keep it unknown if it cannot be found."
+      },
+      "success": false
+    },
+    "history_range": {
+      "conversation_ref": "conv_b707791b05904ea2992f4453af5ace26",
+      "count": 0,
+      "messages": [],
+      "success": true
+    },
+    "maintain": {
+      "changed": true,
+      "entry": {
+        "candidate_refs": [],
+        "created_at": "2026-10-17T03:56:01+00:00",
+        "entry_id": "1",
+        "entry_type": "situation",
+        "fields": {
+          "description": "Retain the display-only assertion about the visit.",
+          "subjects": [
+            "visit"
+          ],
+          "time_context": "Current visit planning"
+        },
+        "last_processed_at": null,
+        "relations": [],
+        "source_message_identities": [],
+        "source_time_range": {
+          "end_time": "2027-01-15T08:00:10+00:00",
+          "start_time": "2027-01-15T08:00:10+00:00"
+        },
+        "status": "current",
+        "updated_at": "2026-10-17T03:56:01+00:00",
+        "version_id": "1"
+      },
+      "success": true
+    },
+    "provenance": "range",
+    "visibility": "human_only"
+  },
+  {
+    "commit": {
+      "committed_at": 1792209361.3762908,
+      "effective_snapshot_id": "snap_53fdfd4691cb47e19d0a57460e04873d",
+      "pointer_changed": true,
+      "snapshot_id": "snap_53fdfd4691cb47e19d0a57460e04873d"
+    },
+    "current_snapshot": {
+      "anchor_message_uid": "visible_anchor",
+      "conversation_ref": "conv_bb72aef0fce843d4aee34b98a51f83a4",
+      "created_at": 1792209361.3762908,
+      "message_identity": {
+        "conversation_ref": "conv_bb72aef0fce843d4aee34b98a51f83a4",
+        "message_uid": "visible_anchor"
+      },
+      "payload": {
+        "candidates": [],
+        "discussion": [],
+        "situations": [
+          {
+            "candidate_refs": [],
+            "created_at": "2026-10-17T03:56:01.374174+00:00",
+            "entry_id": "1",
+            "entry_type": "situation",
+            "fields": {
+              "description": "Retain the display-only assertion about the visit.",
+              "subjects": [
+                "visit"
+              ],
+              "time_context": "Current visit planning"
+            },
+            "last_processed_at": null,
+            "relations": [],
+            "source_message_identities": [],
+            "source_time_range": {
+              "end_time": "2027-01-15T08:00:10+00:00",
+              "start_time": "2027-01-15T08:00:10+00:00"
+            },
+            "status": "current",
+            "updated_at": "2026-10-17T03:56:01.374174+00:00",
+            "version_id": "1"
+          }
+        ],
+        "work": []
+      },
+      "runtime_profile": "NOTING",
+      "snapshot_id": "snap_53fdfd4691cb47e19d0a57460e04873d",
+      "trigger_type": "idle"
+    },
+    "finish": {
+      "status": "end_requested",
+      "success": true
+    },
+    "history_anchor": {
+      "error": {
+        "code": "source_unavailable",
+        "message": "The requested source is not available on the authorized current path.",
+        "next_action": "Search for specific evidence in the allowed scope; keep it unknown if it cannot be found."
+      },
+      "success": false
+    },
+    "history_range": {
+      "conversation_ref": "conv_bb72aef0fce843d4aee34b98a51f83a4",
+      "count": 0,
+      "messages": [],
+      "success": true
+    },
+    "maintain": {
+      "changed": true,
+      "entry": {
+        "candidate_refs": [],
+        "created_at": "2026-10-17T03:56:01+00:00",
+        "entry_id": "1",
+        "entry_type": "situation",
+        "fields": {
+          "description": "Retain the display-only assertion about the visit.",
+          "subjects": [
+            "visit"
+          ],
+          "time_context": "Current visit planning"
+        },
+        "last_processed_at": null,
+        "relations": [],
+        "source_message_identities": [],
+        "source_time_range": {
+          "end_time": "2027-01-15T08:00:10+00:00",
+          "start_time": "2027-01-15T08:00:10+00:00"
+        },
+        "status": "current",
+        "updated_at": "2026-10-17T03:56:01+00:00",
+        "version_id": "1"
+      },
+      "success": true
+    },
+    "provenance": "range",
+    "visibility": "hidden"
+  }
+]
