@@ -160,3 +160,8 @@ _freeze_and_admit(db, conversation_ref, *, kind, frozen_identity=None,
 - 新`tests/secretary/test_r3_compaction_visibility.py`使用真实AIAgent、原生ContextCompressor／archive_and_compact／Noting worker与commit；仅summary／provider响应受控。末尾／中部／无hidden×full／here1六场景，含summary期间另写unseen输入、实际finish提交与下一Main API无泄露；另三项no-op／summary-failure／DB-failure原raw恢复。
 - canonical runner依次：`red.log`初版6F（含两项错误地在wire读UID的测试观察错误）；修正观察后的`red-final.log` **3F／3P**，明确复现原abandoned及两中部hidden错误归档；初修`green.log`6P；补回滚检查`rejection-red.log`2F／1P；修正后`green-final.log` **9P**，runner wall依次3.9／4.6／5.5／2.2／6.9秒，共5次、23.1秒。命令统一显式工作区HERMES_PYTHON与RETRIES=0，经scripts/run_tests.sh选择该新文件；仅rejection-red加`-k rejected_visible`。不累计重复节点，不冒称真实模型。
 - 用户要求额度前立即返回，现停止写入／运行。**未执行**Force旧节点、其它受影响原生邻域、Ruff／health／diff-check；未整理最终manifest／patch hash，未stage／commit、未动round3或源库、未新启模型或独立门禁。root需亲自review此当前patch与剩余证据缺口；本包不能宣称完整开发验收通过。
+
+
+### F19 主会话单独补证（R3-022）
+
+固定40f4ecceb772e6faaa98b99d95b8f4b0de5e31f0补齐原未执行邻域：canonical runner手动压缩选定节点9 PASS（含here N原生保留／轮换、未见输入、去重与中间空档），另一次无selector运行Force通知18 PASS与最后回复8 PASS，共35独立PASS，wall9.2＋6.3秒。首次跨文件带node selector实际只执行manual9，另两文件deselected，未误计通过；第二次只执行此前未运行的Force/reply。两日志与manifest在ignored solo-completion/，未重跑F19新9、F18的31或大型回归。生产未修改。统一新schema真实链正在同round3正式入口执行，尚不预判F16／F18／F19实测结果。

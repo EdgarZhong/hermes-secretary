@@ -145,3 +145,12 @@ overflow、混批、提交竞争等确定性机制复用已有C5/C7/C9有效机�
 **接口影响、证据与下一步：** 没有生产／规格／测试修改、没有新的接口或自动删源机制、没有回归/check。本次首结果及静态归因见ignored `root-cause-analysis.md`；`actual-tool-trace.json`、`child-message-rows.json`、`reasoning-analysis-source.json`、`request-audit.json`、`actual-task-text.txt`、16个request副本、native日志片段、usage原值、前后只读库及evidence-manifest提供完整定位。root若提出短修，应把模糊“修阻塞引用”明确为修改Candidate.fields.notebook_refs并保留Candidate，而不是改派生candidate_refs；尚未实施或获准再次采样。F16仍OPEN，修commit gate也不能将本样本顺序失败改写为通过；停在第二次Verification前。
 
 **退出：** 原生wrapper47329正规stop返回0；自有driver47328在host退出后SIGINT结束130，两个PID已不存在，leases0、running child0。config原bytes恢复hash`ca8a60eb5cf213e74029452c7aedd1e8632e129031bc3ef6f1a5997aea6afc1e`；plugins空、plugins.json及MEMORY原不存在状态恢复。两条已授权合成USER保留且与本次before相同，hash`71a557f07ac4c40740734575c91be2856b1d767c2c910fb90dbc40033897bec3`。最终只读`state-after.sqlite3` hash`a6e689f8de8400c71978617efb2a6dcc644499fa5af768e9d745880d711f6266`。`host-stop-and-restore.json`、`process-release.json`确认round3已释放，后续仅做静态交回。
+
+
+### R3-022 单独真实新库首样本：提交链成功，来源正文结算仍失败
+
+固定40f4ecceb772e6faaa98b99d95b8f4b0de5e31f0；原round3完整双备份／封存后由native创建新schema，未迁移。新Conversation conv_5296f48511e54c5db4f21ba2616d44ed，两Main事实→合法manual整理→具体proposal→精确V23b USER真实success→laterchange→manual整理→正式/notebook，没有自定义Task/gold/SQL状态改写。baseline child976af1…、settlement child78daef…均completed；后次真实压缩removed10，新有效snap_25024b3893c240469e0b8ceec72b6b72，压缩前human_only Anchor保持合法，完成通知及正式视图到新结果。
+
+语义仍FAIL：source1/3/4仅加processing_note，source2在原成功正文后追加停车新事实；之后archive Candidate6/7/9，保留Skill8。source1以未交付“搬家已结束、无待办”作全文保留理由；source4仍含1–10已交付段。虽本次来源update在Candidate归档之前，但未清退已交付正文，不能宣称F16关闭。API逐请求prefix/root/tools及DEFAULT见ignored unified-f16-f18-f19-retest/request-audit.json；原始工具顺序settlement-message-rows.json及前后Snapshot保留。主会话据此只将Step4的抽象“移除覆盖”换成明确调用notebook_maintain重写fields.description及相关属性、仅留必要剩余范围，段落仍比260词短；尚待新版本实测，未用多次同版随机抽样覆盖失败。
+
+取证客户端初次socket路径过长发生在0会话／0请求之前，修正短ignored路径，错误原样保留。运行结束正规stop host0、driver SIGINT、leases0/children0；实际合成USER另存fixture-after，恢复原两条USER，当前新schema库保留，旧库未迁回。无真实NM、其它profile、部署或门禁。

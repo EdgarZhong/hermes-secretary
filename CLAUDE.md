@@ -4,7 +4,7 @@
 
 **暂无。F16结算顺序已由用户明确调整（2026-10-17）：先处理该退出的来源正文，再关闭Candidate；提示词保持简短。** 已据此重写07 §8.11 Step4及运行时同段：修正阻塞归档的已结算引用时保留Candidate的描述和消息来源作为清单，先归档／精简来源，全部相关来源处理成功后再归档或更新Candidate；继续保护后来变化、未完责任、其他未完成提案所需内容。替换段落比上一版更短。先前“候选为空时再查”的补丁提案不采用。用户确认的是本次处理顺序与控制体量，不冒称逐字确认英文。已完成文本与接线一致性核对，待固定提交后真实round3复证；不启动第二次门禁，F16尚未关闭。原失败与原Astra评审仅代表历史版本。
 
-**当前停止点（2026-10-17，R3-020／021）：** 用户要求第二次Verification前提交干净；随后额度将尽要求子Agent立即交回。所有Agent已停止写入，无round3活runtime或在途测试。root亲自review接收F18（新5＋邻域26）和F20（1）有效证据；F19有9项受控机制PASS，但Force与其他原生邻域未执行，只按明确缺口提交阶段快照。F16最新210词短Prompt未真实复测。**第二次Verification尚未启动，当前尚未达到可复审就绪。** 真实复证准备已落ignored统一目录，未备份／移动现有profile或创建新库。由于新增branch coverage字段，下次启动round3前必须先完整封存旧测试现场，再重建数据库；不得直接用新代码打开旧schema运行库，不迁移。
+**当前执行（2026-10-17，R3-022）：** 用户要求主会话一个人继续，把阶段推进至确实可启动第二次Verification；不派子Agent、不启动第二次复审。公开基线40f4ecceb772e6faaa98b99d95b8f4b0de5e31f0，工作区起点干净。当前补F19 Force／原生邻域，然后完整封存round3旧测试profile并新建同profile数据库，固定版本做统一真实链复证；不迁移旧库、不使用真实NM。F19补35邻域PASS；新schema真实链两child提交及pointer/反馈隔离通过，但F16仍仅来源注记未精简正文，首样本FAIL保留。Step4仅将来源动作明确到notebook_maintain重写fields.description，212词；待该新版本一次完整链复证。
 
 提交前定向静态检查：固定base a51fd99abc783f245ab855526a10862f2c89656a，`ruff,health,no-tmp`三项PASS；health覆盖134文件，0 blocking／0 advisory，9.8秒。日志ignored pre-verification-final-check.log；没有重跑大型回归。
 
@@ -39,7 +39,7 @@
 | F14 最终回归 | 首轮已完成；27个旧测试失败／错误已修复并由主会话review接收（含邻域共29）；压缩6原失败＋邻域共10已review接收；两失败检查已修复通过 | 1766 PASS／29 FAIL／4 setup ERROR／3平台skip；固定136文件等范围只执行一次，后续仅失败与影响路径定向复测 |
 | F15 时间投影 | 公共六路径17项PASS，主会话已review接收；个人Recall8节点＋17子例已review接收；Scheduler run_at／绝对display共8项有效证据已review接收 | V51：仅人／模型可读Notebook投影为秒精度，覆盖工具、control、Main、slash、Proposal、Framework；内部精度不变 |
 | F17 冻结交接 | local_environment修复20项PASS，主会话已review接收；r3_pointer_repair调查旧真实结果；新复证由r3_real_retest独占round3执行 | 原恢复链human_only Anchor在同步模型投影中被过滤；现用已验证Ref／UID交接，不重读父状态；admission13真实child完成并提交新Snapshot，完整六请求prefix已读；pointer问题已独立登记F18，不冒称通知整链通过 |
-| F16 来源结算 | 主会话及Astra已评审具体Step4细化，c4已实施，F17修复后固定25241d8c83d0真实round3补证 | V23：候选13已归档但来源6仍保留成功写入的完整经验；细化后旧链仍错误跳过该来源，保持OPEN；R3-019短Prompt在d434ffd真实首样本仍先Candidate后source，source50未精简；且F19阻止提交，不能判好转；真实轨迹已确认把只读candidate_refs误当编辑入口；短句已明确Candidate.fields.notebook_refs，现210词，尚未真实复证 |
+| F16 来源结算 | 主会话及Astra已评审具体Step4细化，c4已实施，F17修复后固定25241d8c83d0真实round3补证 | V23：候选13已归档但来源6仍保留成功写入的完整经验；细化后旧链仍错误跳过该来源，保持OPEN；R3-019短Prompt在d434ffd真实首样本仍先Candidate后source，source50未精简；且F19阻止提交，不能判好转；真实轨迹已确认把只读candidate_refs误当编辑入口；短句已明确Candidate.fields.notebook_refs，210词版真实首样本仍留成功正文；现212词明确fields.description待实测 |
 | F18 coverage排序 | r3_pointer_repair完整修复31项PASS已由root review接收，待统一阶段提交 | 旧UID被压缩携带到更后物理位置，旧Snapshot误压新Snapshot；仅修排序真值源；fork同事务新增coverage_position保留父冻结顺序，保持Full展示与通知gate；开发阶段不迁移，真实库完整备份后重建 |
 | F19 Anchor有效性 | r3_evidence_audit只读调查 | d434ffd真实admission15 finish后提交abandoned：human_only Anchor压缩后不在Full；同一summary输入与后续raw coverage/tail源集错配；统一可见压缩源，隐藏行走原生unseen保留，不放松commit gate；9项受控正式链PASS；Force/其他原生邻域未执行，真实复测未跑，阶段提交 |
 | F20 结束事件 | root微小接线修补已验证 | 失败结束统一既有task_finished协议值，不更改outcome/提交事实；实际child失败＋wire验证RED1→GREEN1，待统一阶段提交 |
