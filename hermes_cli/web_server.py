@@ -281,6 +281,8 @@ async def _lifespan(app: "FastAPI"):
     selftest_task = asyncio.create_task(_dashboard_selftest_loop())
     # Live auto-archive timer, independent of list requests.
     auto_archive_task = asyncio.create_task(_auto_archive_ticker_loop())
+    from tui_gateway.scheduler_host import SchedulerHost
+    secretary_scheduler = SchedulerHost().start()
 
     # Managed local runtime (local_runtime.enabled): bring llama-server back so a
     # restart doesn't strand a llamacpp main model. Off-thread and best-effort;
@@ -308,6 +310,7 @@ async def _lifespan(app: "FastAPI"):
     try:
         yield
     finally:
+        await asyncio.to_thread(secretary_scheduler.stop)
         try:
             tui_gateway.server.clear_tui_message_injector()
         except Exception:

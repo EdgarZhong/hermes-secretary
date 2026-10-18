@@ -988,5 +988,6 @@ async def fs_default_cwd(profile: Optional[str] = None):
         except Exception as exc:
             _raise_fs_backend_error(exc)
         return {"cwd": cwd, "branch": branch}
-    cwd = _fs_default_cwd()
-    return {"cwd": cwd, "branch": _fs_git_branch(cwd)}
+    with _profile_scope(profile):
+        cwd = _fs_default_cwd()
+        return {"cwd": cwd, "branch": _fs_git_branch(cwd)}

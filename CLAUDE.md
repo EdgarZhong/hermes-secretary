@@ -1,5 +1,32 @@
 # Hermes Secretary 项目主看板
 
+## 自主口径收敛 · 待用户追认
+
+**暂无待追认项。** 来源先结算、Candidate最后处理及控制Prompt体量仍沿用户R3-019既有要求；本次Verification没有新增产品语义、修改权威规格或降低门禁。
+
+**已由用户确认并落地（2026-10-17）：** Schedule Table 的 `timezone` 字段属原规格空白（07 §6.1 只列字段名、未定格式）。实测实现按 `kind` 取两个来源：`once` 从 `run_at` 的 ISO 偏移反推得 `UTC+08:00`，`interval`/`cron` 取进程本地时区得系统缩写 `CST`；即使配置 `timezone: Asia/Shanghai`，`once` 仍是 `UTC+08:00`，属结构性不一致而非缺配置。用户确认采用「条目归属时区」口径：三种 `kind` 统一取 `hermes_time` 当前生效时区，配置了 IANA 时区返回其名称，未配置时返回 `UTC±HH:MM` 固定偏移，不再从 `run_at` 反推。影响范围：模型 `list`/`create`/`update` 返回的 Schedule 条目与 Web `ScheduleEntry.timezone`。**是否已实施：是。** 改于 `secretary/scheduler_time.py::schedule_timezone`，同步 07 §6.1；新增 2 项 kind 无关性测试，`tests/secretary/test_r3_scheduler.py` 49 项通过；不计入本轮 Verification 结论。
+
+
+## 已完成代码修复 · 冷态 Reminder 与 Files Profile（2026-10-18）
+
+**用户指令：** 拉取远端最新提交，根据最新文档修复两个 bug。依据为 [08](docs/08-profile-scheduler-files-clarification.md)；修复范围是常驻 serve 对冷态 Instant Reminder 的自动恢复投递，以及固定 Files Profile 与请求目录归属。既有其他审查问题不纳入本次关闭声明。
+
+**同步与基线：** 两仓 fetch 后均已是远端最新且开始时工作区干净；主仓 `65dbb54e806263814547e5b3602b658f08ed717e`（origin/main），UI `4808500b458f10539115946ca6fb34905c15b6fc`（origin/secretary）。PM `.venv` Python 3.14.7，`uv.lock` blob `2b9135989931cc4ef8a696c9f7371671fe03190e`；不修改环境或锁文件，不为基线重跑全量。既有历史失败与未验证平台保持原记录。
+
+**分工：** `files_profile_fix`（GPT-6.1/high）负责独立 UI 的 Files/导航和后端 `web_routers/files.py` 及定向测试；`cold_scheduler_fix`（GPT-6.1/high）负责常驻宿主 scanner、原生恢复/提醒接缝及相关测试；均不再派生、不提交。主会话维护根文档、复核机制和证据、处理最小集成修补。两个修改范围不交叉。
+
+**完成条件：** 冷态测试先确认 Runtime/Session poller 不存在，再从常驻宿主接缝触发原生恢复及 Main；覆盖 Profile owner、配置关闭、deferred 不唤醒、busy 转 deferred、claim/失败重试及回收。Files 的 root/list/read/media/download 固定同 owner，返回保留聊天 Profile/Conversation，创建/附件不受影响；后端本地目录按请求 Profile 读取。真实 Provider/浏览器现场与受控测试分别报告，不把受控 Provider 输出当真实模型验收。
+
+**当前状态：** 两项实现及证据均已由主会话集中 review 接收，相关回归通过；UI 已提交同步 `524e479`，后端与本记录同一提交同步。未重启用户运行后端，未部署。无新增待追认产品口径。
+
+**Files 验证：** 后端真实隔离 Profile 配置的 RED 显示 `other` 错返 default 目录，修复后 `tests/hermes_cli/test_web_server_files.py` 22 PASS、ruff PASS；校验请求切换不改进程 HERMES_HOME/cwd，缺失 Profile 返回 404。前端 RED 复现入口借聊天 cwd 和返回丢 Profile；修复后相关有效并集194 PASS（Profile UI 14、Profile Controller 13、其他 Files 导航相关 Controller 157、Files 专项10），包含固定root/list/text/media/download、错误不fallback、history/刷新/新标签、首发cwd/Profile/草稿/附件归属；`npm run typecheck` PASS。主会话 `npm run build` PASS（Vite 14.35秒，包体积提示不阻断）；两仓 diff whitespace 检查通过；Files 后端补充 health/no-tmp 2文件0 blocking/0 advisory。未做真实SSH文件访问或浏览器实机验收，不重复全量测试。
+
+**冷态 Scheduler 实现：** `tui_gateway/scheduler_host.py` 常驻宿主扫描，启动即扫描、每轮后约5秒；原生受管理 Profile 枚举加实际启动 Home，按真实 Home 去重，仅打开已有数据库。先验证本地 Main 路由再 claim，消息渠道路由保留给原 owner；deferred 只持久 pending。Instant 沿 `_Resume` 定位／压缩续接／guard／deferred hydration／原生 Agent build 恢复，再使用既有 `_secretary_deliver_claim` 原子接纳；不触发恢复时的自动续跑。内部 background 复用并发 winner 时不重绑客户端 transport，新 Runtime 使用原生 detached/reaper。`web_server` lifespan 启停扫描，恢复中收到停止请求则释放 claim，不新启 Turn；未增加公开 API 或改动数据库 schema。
+
+**冷态验证：** 新增 `tests/tui_gateway/test_cold_scheduler_host.py` 有效并集19 PASS，包含无客户端、无Runtime/轮询器的真实宿主入口、实际回收后再唤醒、B Profile及named launch/default隔离、busy、暂停/删除/关闭竞争、失败构建释放与重试、迟到once/周期推进、claim竞争、messaging防错投、并发浏览器transport、压缩续接及恢复中shutdown。真实 SessionDB/AIAgent/消息见证及deferred自然Turn响应ACK；Provider响应受控，不是外部真实模型验收。相关6文件76 PASS（58秒），完整范围及日志见 `.hermes-dev/cold-scheduler-fix-20261018/handoff.md`；专项初始17项20.8秒，后续仅复测变化路径和新增2项。4个冷态文件 ruff/health/no-tmp 0 blocking/0 advisory；有效证据复用，不重复全量。首次RED为新增模块缺失的收集错误，不冒称旧版端到端反证。
+
+**实际限制：** 未执行真实外部Provider调用、用户现场关闭浏览器后的端到端验收、真实SSH文件访问或跨平台验证；未重启运行后端，不能宣称现场已加载修复。README补充08稳定入口及Files/冷态宿主实现事实；AGENTS通用规则保持不变，顶部待追认区域已恢复到顶部。
+
 ## 已完成 · Compaction 恢复指引对齐 History 与前端完成通知（2026-10-17）
 
 **用户确认口径：** 压缩摘要的恢复指引与 `HISTORY_SEARCH_GUIDANCE` 同资格，只看合格 Main（`_secretary_main_read_eligible`），不额外要求 Noting 全局开关；`## Context Recovery` 改为“上一次压缩掉的 N 条消息（区间时间）；`conversation_history` 可检索自本 Conversation 第一条消息以来全部消息（会话起始时间）”，不出现 Session ID / `session_search` / 工具 Schema，迭代摘要替换旧 footer。`compression.protect_first_n` 产品默认改为 0（用户自用 Secretary 也吃产品默认，不单独覆盖 profile）。前端成功 compact 后弹 `Compact completed` 通知并整句高亮；degraded/aborted 仍显示原生 receipt。
@@ -116,11 +143,6 @@
 
 **本次改动文件：** 主仓库 `hermes_cli/web_server_dashboard.py`、`tests/hermes_cli/test_dashboard_dual_spa_mount.py`、`docs/06-…md`、`README.md`、`CLAUDE.md`；UI 仓库 `src/core/controller.ts`、`src/components/ChatSelectors.tsx`、`src/core/controller.test.ts`。工作区另有既有未提交修改（`docs/07`、`scheduler_time.py`、`tests/secretary`、UI `design/layout.tsx`、`theme.css`），本次未触碰、未纳入提交。
 
-## 自主口径收敛 · 待用户追认
-
-**暂无待追认项。** 来源先结算、Candidate最后处理及控制Prompt体量仍沿用户R3-019既有要求；本次Verification没有新增产品语义、修改权威规格或降低门禁。
-
-**已由用户确认并落地（2026-10-17）：** Schedule Table 的 `timezone` 字段属原规格空白（07 §6.1 只列字段名、未定格式）。实测实现按 `kind` 取两个来源：`once` 从 `run_at` 的 ISO 偏移反推得 `UTC+08:00`，`interval`/`cron` 取进程本地时区得系统缩写 `CST`；即使配置 `timezone: Asia/Shanghai`，`once` 仍是 `UTC+08:00`，属结构性不一致而非缺配置。用户确认采用「条目归属时区」口径：三种 `kind` 统一取 `hermes_time` 当前生效时区，配置了 IANA 时区返回其名称，未配置时返回 `UTC±HH:MM` 固定偏移，不再从 `run_at` 反推。影响范围：模型 `list`/`create`/`update` 返回的 Schedule 条目与 Web `ScheduleEntry.timezone`。**是否已实施：是。** 改于 `secretary/scheduler_time.py::schedule_timezone`，同步 07 §6.1；新增 2 项 kind 无关性测试，`tests/secretary/test_r3_scheduler.py` 49 项通过；不计入本轮 Verification 结论。
 
 ## 第三轮第2次 Verification · 公开主仓库审查完成，不通过
 

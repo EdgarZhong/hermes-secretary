@@ -23,6 +23,8 @@ Hermes Secretary 是基于 [Nous Research 的 Hermes Agent](https://github.com/N
 
 底层模块具备接口不代表全部 host 接线或整版验收已完成；正式运行和测试证据统一见 CLAUDE 及本轮报告。
 
+`hermes serve`／Dashboard 宿主在启动时及每轮后约5秒扫描其受管理 Profile 的持久排期。合法本地 Main 的 Instant Reminder 即使无浏览器连接、原 Runtime 已回收，也沿原生恢复与接纳入口处理；纯 deferred 不主动唤醒，busy 沿既有机制转 pending。新 Runtime 仍可按原生机制回收，消息渠道路由由其原 owner 负责。适用配置、失败及投递确认边界见 [08](docs/08-profile-scheduler-files-clarification.md)。
+
 ## Secretary Slash 入口
 
 命令复用 Hermes 共享 catalog、补全与执行链路。CLI、Gateway、官方 Dashboard 与 Web 的人类呈现边界按现行 02／06 及 07 的保留和替换条款处理。
@@ -96,6 +98,8 @@ gateway:
 独立前端在并列本地仓库 `../hermes-secretary-web`，使用 React / TypeScript / Vite，直接调用原生 REST / WS；开发服务默认连接 `http://127.0.0.1:53445`。部署范围及验收进度见 CLAUDE；官方 Dashboard 与 Secretary 同源并存，见下节部署形态。
 
 首页 / New Chat 通过独立下拉选择原生 Profile，已有 Conversation 保持原归属；草稿、模型选择及附件路径按 Profile 隔离。侧栏 Conversation 图标由前端 `src/core/profile-icons.tsx` 的集中固定映射提供；新增 Profile 需补充映射，未映射时使用通用图标。多个 Profile 可配置相同 Workspace，共享项目文件但各自保留会话、记忆与指令。交互契约见 [06 §2.11](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md#211-new-chat-profile-selection-and-conversation-icons-user-confirmed-2026-10-17)。
+
+Files 临时固定使用 `default` Profile 的文件后端与默认目录（前端单一入口 `src/core/files.ts`），目录、文本／媒体预览及下载保持同一归属；不跟随当前聊天切换。Back to Chat 恢复原聊天的 Profile 和路由，返回记录保存在当前标签页及浏览器历史项；新标签页没有返回记录时进入原链接 Profile 的 New Chat。聊天创建目录、草稿和附件仍归聊天自身 Profile。后端 `default-cwd?profile=P` 按 P 的配置解析本地默认目录；完整边界见 [08](docs/08-profile-scheduler-files-clarification.md)。
 
 当前草稿全部附件合计上限为 500,000,000 bytes，选择时累计判断、移除后释放预算，发送时小文件沿原生 `file.attach`，分片使用增量 `file.upload_chunk` / `file.upload_abort`，元数据使用 `file.attachment_info`，并显式绑定本次图片。两个订阅同一会话的客户端共享原生实时事件；普通 Send 只在 Main Turn 空闲时启动新 Turn，活动时按既定 Steer/Stop/Interrupt 操作。
 
@@ -202,6 +206,7 @@ Python 不绕过 canonical runner 直接运行 pytest；JS/UI 入口及环境准
 | Noting 文案／提醒结构旧提案（归档） | 原 08 研讨及旧英文草案，新版提示文以 07 为准 | [归档](docs/archived/noting-message-and-reminder-contract-proposal.md) |
 | 改版前 V1.5 增量与保留机制 | 按新版替换标识继承缓存前缀、持久 child、有限续跑等机制 | [04](docs/04-hermes-secretary-v1.5-implementation-spec.md) |
 | 上下文开销台账 | token 实测口径、基线与变更记录 | [05](docs/05-context-cost-ledger.md) |
+| Profile、冷态提醒与 Files 补充契约 | Profile 配置归属、serve 冷态 Instant 恢复、Files 固定归属及最低验收场景 | [08](docs/08-profile-scheduler-files-clarification.md) |
 | Web UI 基线与保留契约 | 继承原生客户端、交互、设计系统；Memo、旧类型／工具与开关按 07 替换；模型思考档位投影见 §2.10，模型代码漂移保护开发开关的已确认需求见 §0.8 | [06](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md) |
 | UI 只读 API 早期讨论（归档） | 已被正式 06 覆盖的早期讨论；旧 Memo 设计不进入新版 | [归档](docs/archived/06-ui-read-api-discussion.md) |
 | 通用协作 / 当前看板 | 用户规则、开发测试 SOP / 动态目标与未完成项 | [AGENTS](AGENTS.md)、[CLAUDE](CLAUDE.md) |

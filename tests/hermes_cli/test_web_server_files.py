@@ -1,6 +1,7 @@
 """Tests for the dashboard-managed file browser API."""
 
 import base64
+import os
 from types import SimpleNamespace
 
 import pytest
@@ -610,6 +611,34 @@ def test_git_branch_decodes_utf8_under_a_gbk_default_codec(tmp_path, monkeypatch
     monkeypatch.setattr(subprocess, "_text_encoding", lambda: "gbk")
 
     assert _rt_files._fs_git_branch(str(tmp_path)) == branch
+
+
+def test_default_cwd_resolves_requested_local_profile(local_files_client, monkeypatch):
+    from pathlib import Path
+
+    client, home = local_files_client
+    monkeypatch.setattr(Path, "home", lambda: home)
+    hermes_home = home / ".hermes"
+    monkeypatch.setenv("HERMES_HOME", str(hermes_home))
+    workspaces = {}
+    for name in ("default", "other"):
+        profile_home = hermes_home if name == "default" else hermes_home / "profiles" / name
+        profile_home.mkdir(parents=True)
+        workspace = home / (name + "-workspace")
+        workspace.mkdir()
+        (profile_home / "config.yaml").write_text(
+            f"terminal:\n  backend: local\n  cwd: {workspace}\n", encoding="utf-8",
+        )
+        workspaces[name] = str(workspace)
+    initial_home, initial_cwd = os.environ["HERMES_HOME"], Path.cwd()
+    for name in ("other", "default", "other"):
+        response = client.get("/api/fs/default-cwd", params={"profile": name})
+        assert response.status_code == 200
+        assert response.json() == {"cwd": workspaces[name], "branch": ""}
+        assert os.environ["HERMES_HOME"] == initial_home
+        assert Path.cwd() == initial_cwd
+    assert client.get("/api/fs/default-cwd").json()["cwd"] == workspaces["default"]
+    assert client.get("/api/fs/default-cwd", params={"profile": "missing"}).status_code == 404
 
 
 @pytest.mark.require_symlinks
