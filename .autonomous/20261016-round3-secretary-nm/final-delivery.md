@@ -90,3 +90,6 @@ Validation：现有15组计划仍全部未执行，本次未启动独立用户�
 > For approved new Memories, load nm-cli and use its provenance helper with verified sources and inherited content labels.
 
 同步删除nm-cli Skill末尾过时的“本轮未授权真实写入”等阶段说明，保留审批、来源与部分失败处理规则。公共07已有查源/标签要求暂不增字。此提案尚未实施，也不承诺单句即可解决模型行为；获批后定向观察真实提案/来源交付，并据真实结果决定是否还有代码接入缺口。暂停该改动的依据是用户明确要求“框架里写死的prompt……未经过我授权，不要擅自动手更改”。
+
+
+阶段提交：公开报告/核心文档`bbfc7c51`及后续纯文档收口已同步origin/main；个人插件`1eb8d9a2a4e81101255ee8ae3998275ab608e52f`已同步origin/codex/round3-local-completion、个人仓干净。已安装client/provider指纹与该个人提交一致。主仓他人已有代码/规格dirty保留，未冒称整树干净。运行后端保留启动版本4e21f787+对应dirty，后续提交仅文档；双Profile正式REST/WS model.options已核对可用、无5098，未因文档提交重复重启。

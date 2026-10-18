@@ -41,9 +41,9 @@
 
 | 项目 | 最近已核对事实（后续执行前再核对） |
 |---|---|
-| 公开主仓 | `main` / `4e21f787595571cad8efe36fa725fef1f8b2636f`；含同期未提交 UID、Running DTO、规格、测试及文档改动，不覆盖或整树提交 |
+| 公开主仓 | `main`；本次实际产品运行基线`4e21f787595571cad8efe36fa725fef1f8b2636f`+既有dirty，报告阶段`bbfc7c51`已同步origin/main；后续仅文档收口。同期UID、Running DTO、规格及测试改动仍保留，不整树提交 |
 | 独立 UI | `../hermes-secretary-web` / `7f0fea60463c6731f8e04a00db923d28b80ade19`；含 Running 时长、侧栏触摸与滚动测试等未提交改动，保留他人工作 |
-| 个人插件 | `../hermes-nmem-provider`，个人实现不进入公开依赖；新阶段部署时记录实际 SHA 和安装副本指纹 |
+| 个人插件 | `../hermes-nmem-provider` / `1eb8d9a2a4e81101255ee8ae3998275ab608e52f` 已同步`origin/codex/round3-local-completion`、工作区干净；安装client/provider指纹与真实复验一致，不进入公开依赖 |
 | 环境 | 官方 PM `.venv` Python 3.14.7、macOS arm64；现有锁不变。DeepSeek 原生 custom/chat_completions，不接 Codex App Server/Proxy |
 | 现存 round3 | `.hermes-dev/round3-runtime/profiles/round3`；53445 后端 PID60820 / wrapper60815，5173 UI PID40290；准备 Agent 已只读确认监听，未重启 |
 | 最近重启 | Notebook UID 行为验证前经用户授权 SQLite backup 后重启，health ready、Profile 配置 hash 不变；加载当次工作区代码，不保证之后磁盘变化都已载入 |
