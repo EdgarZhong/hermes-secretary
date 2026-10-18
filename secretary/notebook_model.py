@@ -11,6 +11,7 @@ from threading import RLock
 from secretary.notebook_contract import (
     ARRAY_FIELDS, CHANGE_KEYS, COMMON_FIELDS, ENTRY_KEYS, OPTIONAL_FIELDS,
     RELATION_KINDS, REQUIRED_FIELDS, STATUSES, NotebookValidationError,
+    SOURCE_NOT_PROVIDED, canonical_source_fields, local_source_error,
     outgoing_references, parse_time, public_state, require_text,
     validate_candidate_provenance, validate_fields, validate_references, validate_source_range,
 )
@@ -192,7 +193,8 @@ class NotebookWorkingState:
         return entry
 
     def create(self, entry_type, fields, *, status=None, relations=None,
-               source_message_identities=None, source_time_range=None):
+               source_message_identities=SOURCE_NOT_PROVIDED, source_time_range=None,
+               source_message_uids=SOURCE_NOT_PROVIDED):
         with self.lock:
             self._require_writable()
             section = section_for_type(entry_type)
@@ -200,16 +202,27 @@ class NotebookWorkingState:
             # A cleared optional singleton has one representation: absent. Required
             # text/arrays were checked above, so null cannot hide a missing value.
             fields = {key: deepcopy(value) for key, value in fields.items() if value is not None}
+            sources = {}
+            if source_message_identities is not SOURCE_NOT_PROVIDED:
+                sources["source_message_identities"] = source_message_identities
+            if source_message_uids is not SOURCE_NOT_PROVIDED:
+                sources["source_message_uids"] = source_message_uids
+            sources = canonical_source_fields(sources, self.conversation_ref)
+            identities = sources.get("source_message_identities")
             entry = {"entry_id": "__new__", "version_id": "__new__", "entry_type": entry_type,
                      "fields": fields, "status": STATUSES[entry_type][0] if status is None else status,
                      "relations": deepcopy(relations) if relations is not None else [],
-                     "source_message_identities": deepcopy(source_message_identities)
-                     if source_message_identities is not None else [],
+                     "source_message_identities": [] if identities is None else identities,
                      "source_time_range": deepcopy(source_time_range), "archived": False,
                      "created_at": None, "updated_at": None, "last_processed_at": None}
             draft = self.snapshot_state()
             draft[section].append(entry)
-            self._validate_state(draft, fresh_id="__new__")
+            try:
+                self._validate_state(draft, fresh_id="__new__")
+            except NotebookValidationError as error:
+                if source_message_uids is not SOURCE_NOT_PROVIDED:
+                    local_source_error(error)
+                raise
             now = self._now()
             entry["created_at"] = entry["updated_at"] = now
             note = entry["fields"].get("processing_note")
@@ -226,6 +239,8 @@ class NotebookWorkingState:
             section, index = self._locate(entry_id)
             if not isinstance(changes, dict) or not changes or changes.keys() - CHANGE_KEYS:
                 raise NotebookValidationError("Expected nonempty changes with only editable properties.", field="changes")
+            local_sources = "source_message_uids" in changes
+            changes = canonical_source_fields(changes, self.conversation_ref)
             old = self._state[section][index]
             entry = deepcopy(old)
             field_changes = changes.get("fields", {})
@@ -248,7 +263,12 @@ class NotebookWorkingState:
                     entry["fields"][key] = deepcopy(value)
             draft = self.snapshot_state()
             draft[section][index] = entry
-            self._validate_state(draft)
+            try:
+                self._validate_state(draft)
+            except NotebookValidationError as error:
+                if local_sources:
+                    local_source_error(error)
+                raise
             if entry == old:
                 return {"success": True, "changed": False, "entry": self.get(entry_id)}
             now = self._now()
@@ -301,7 +321,7 @@ class NotebookWorkingState:
         action = args["action"]
         required = {"create": {"entry_type", "fields"}, "update": {"entry_id", "changes"},
                     "archive": {"entry_id", "reason"}}
-        optional = {"create": {"status", "relations", "source_message_identities", "source_time_range"},
+        optional = {"create": {"status", "relations", "source_message_identities", "source_message_uids", "source_time_range"},
                     "update": set(), "archive": set()}
         if action not in required:
             raise NotebookValidationError("Expected create, update or archive.", field="action")
@@ -309,7 +329,7 @@ class NotebookWorkingState:
         if supplied - required[action] - optional[action] or required[action] - supplied:
             raise NotebookValidationError("Missing required or mixed-action parameters.", field="action",
                                           next_action="Supply only the parameters for the selected action.")
-        for key in ("status", "relations", "source_message_identities"):
+        for key in ("status", "relations", "source_message_identities", "source_message_uids"):
             if key in args and args[key] is None:
                 raise NotebookValidationError("Null is not allowed for this parameter.", field=key)
         kwargs = {key: value for key, value in args.items() if key != "action"}

@@ -116,6 +116,41 @@ def test_scheduler_independent_switch_updates_actual_root_schemas_and_cache(runt
         agent.close()
 
 
+@pytest.mark.parametrize("noting,scheduler", [(True, True), (True, False), (False, True), (False, False)])
+def test_actual_root_preserves_full_soul_and_independent_prompt_modules(runtime, noting, scheduler):
+    from agent.prompt_builder import SESSION_SEARCH_GUIDANCE
+    from agent.system_prompt import (
+        HISTORY_SEARCH_GUIDANCE, NOTEBOOK_GUIDANCE, SCHEDULER_GUIDANCE,
+        SECRETARY_ROLE_GUIDANCE, SECRETARY_TIME_GUIDANCE,
+    )
+    db, config = runtime
+    config.write_text(f"noting:\n  enabled: {str(noting).lower()}\nscheduler:\n  enabled: {str(scheduler).lower()}\n")
+    soul = "# SOUL\nLong-term private adviser.\n\nAnswer naturally and keep authorization explicit."
+    (config.parent / "SOUL.md").write_text(soul)
+    agent = _agent(db, selected=["session_search"], load_soul_identity=True)
+    agent._cached_system_prompt = None
+    try:
+        seen = _requests(agent)
+        _turn(agent)
+        root = seen[0]["messages"][0]["content"]
+        assert soul in root
+        assert root.count(HISTORY_SEARCH_GUIDANCE) == 1
+        for block in (SECRETARY_ROLE_GUIDANCE, NOTEBOOK_GUIDANCE, SECRETARY_TIME_GUIDANCE):
+            assert root.count(block) == int(noting)
+        assert root.count(SCHEDULER_GUIDANCE) == int(scheduler)
+        assert SESSION_SEARCH_GUIDANCE not in root
+        if not noting and not scheduler:
+            from agent.system_prompt import _guidance_parts
+            agent._secretary_main_read_eligible = False
+            agent.valid_tool_names.add("session_search")
+            native = "\n".join(filter(None, _guidance_parts(agent)))
+            assert SESSION_SEARCH_GUIDANCE in native
+            assert not any(block in native for block in (
+                SECRETARY_ROLE_GUIDANCE, SCHEDULER_GUIDANCE, HISTORY_SEARCH_GUIDANCE))
+    finally:
+        agent.close()
+
+
 def test_actual_native_session_flush_refreshes_admitted_instant_before_commit(runtime):
     from agent.session_persistence import _db_flush_write
     from secretary import reminders, schedules
@@ -156,8 +191,8 @@ def test_noting_budget_feedback_is_authorized_and_honest(runtime, aggregate):
         restricted = rows[0]["content"]
     else:
         restricted = maybe_persist_tool_result(text, "conversation_history", "large", config=budget, noting=True)
-    assert "Reduce before/after" in restricted and "single message" in restricted
-    assert "currently allowed tools cannot read" in restricted
+    from tools.session_history_tool import NOTING_HISTORY_OVERSIZE_GUIDANCE
+    assert NOTING_HISTORY_OVERSIZE_GUIDANCE in restricted
     assert "read_file" not in restricted and "execute_code" not in restricted and "terminal" not in restricted
     native = maybe_persist_tool_result(text, "conversation_history", "native", config=budget)
     assert "read_file" in native and "execute_code" in native
@@ -213,20 +248,24 @@ def test_actual_dispatch_selects_noting_budget_feedback_from_runtime(runtime, mo
     try:
         execute_tool_calls_sequential(agent, SimpleNamespace(tool_calls=[call("conversation_history")]), messages, "budget")
         content = [m for m in messages if m.get("role") == "tool"][-1]["content"]
-        assert "Reduce before/after" in content and "single message" in content
+        from tools.session_history_tool import NOTING_HISTORY_OVERSIZE_GUIDANCE
+        assert NOTING_HISTORY_OVERSIZE_GUIDANCE in content
+        denied = json.loads(agent._invoke_tool("read_file", {"path": "synthetic-only"}, "denied-file"))
+        assert "Noting runtime denied non-whitelisted tool: read_file" in denied["error"]
         assert "read_file" not in content and "execute_code" not in content
     finally:
         agent.close()
 
 
-@pytest.mark.parametrize("name", ["session_history", "noting_memo", "notebook_edit", "notebook_manage", "notebook_schedule", "compact_parent"])
-def test_actual_restored_legacy_call_has_explicit_nonexecuting_result(runtime, name):
-    from agent.tool_executor import execute_tool_calls_concurrent
+@pytest.mark.parametrize("name", ["session_history", "noting_memo", "notebook_mutate", "notebook_edit", "notebook_manage", "notebook_schedule", "compact_parent"])
+@pytest.mark.parametrize("executor", ["execute_tool_calls_sequential", "execute_tool_calls_concurrent"])
+def test_actual_restored_legacy_call_has_explicit_nonexecuting_result(runtime, name, executor):
+    from agent import tool_executor
     db, _ = runtime
     agent = _agent(db)
     messages = []
     try:
-        execute_tool_calls_concurrent(agent, SimpleNamespace(tool_calls=[call(name)]), messages, "legacy")
+        getattr(tool_executor, executor)(agent, SimpleNamespace(tool_calls=[call(name)]), messages, "legacy")
         result = json.loads(messages[-1]["content"])
         assert result["error"]["code"] == "legacy_tool_removed"
         assert json.loads(agent._invoke_tool(name, {}, "direct-legacy"))["error"]["code"] == "legacy_tool_removed"
@@ -278,7 +317,7 @@ def test_real_turn_rejects_original_finish_batch_before_native_filtering(runtime
         agent.close()
 
 
-@pytest.mark.parametrize("legacy_name", ["session_history", "Session-History"])
+@pytest.mark.parametrize("legacy_name", ["session_history", "Session-History", "notebook_mutate", "Notebook-Mutate"])
 def test_real_turn_does_not_fuzzy_execute_retired_history_name(runtime, monkeypatch, legacy_name):
     from tests.secretary.test_noting_child import mock_response
     db, _ = runtime

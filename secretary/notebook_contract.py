@@ -53,7 +53,8 @@ ENTRY_KEYS = {
     "source_message_identities", "source_time_range", "created_at", "updated_at",
     "last_processed_at", "archived",
 }
-CHANGE_KEYS = {"fields", "status", "relations", "source_message_identities", "source_time_range"}
+CHANGE_KEYS = {"fields", "status", "relations", "source_message_identities", "source_message_uids", "source_time_range"}
+SOURCE_NOT_PROVIDED = object()
 
 
 class NotebookValidationError(ValueError):
@@ -125,6 +126,32 @@ def unique_strings(value, field):
         raise NotebookValidationError("Duplicate array values are not allowed.", field=field)
 
 
+def canonical_source_fields(values, conversation_ref):
+    """Bind local input once; persistent entries retain canonical identities."""
+    result = deepcopy(values)
+    if "source_message_uids" not in result:
+        return result
+    if "source_message_identities" in result:
+        raise NotebookValidationError(
+            "Supply only one source Message representation.", field="source_message_uids",
+            next_action="Use source_message_uids alone; omit source_message_identities.",
+        )
+    uids = result.pop("source_message_uids")
+    unique_strings(uids, "source_message_uids")
+    result["source_message_identities"] = [
+        {"conversation_ref": conversation_ref, "message_uid": uid} for uid in uids
+    ]
+    return result
+
+
+def local_source_error(error):
+    """Keep diagnostic fields consistent with the caller's local UID input."""
+    if error.field and error.field.startswith("source_message_identities"):
+        error.field = error.field.replace("source_message_identities", "source_message_uids", 1)
+        error.next_action = error.next_action.replace("Message Identities", "Message UIDs")
+    return error
+
+
 def validate_fields(entry_type, fields):
     section_for_type(entry_type)
     if not isinstance(fields, dict):
@@ -163,47 +190,20 @@ def validate_fields(entry_type, fields):
 
 
 def validate_candidate_provenance(entry):
-    """Return the Candidate provenance form and enforce the target matrix.
+    """Return one exclusive provenance form, independent of Candidate target.
 
-    ``refs``: a Memory Candidate backed by current Notebook entries.
-    ``messages``: a Memory, Skill, Rule or Conversation Candidate backed by
-    exact Message identities.  A Candidate never mixes the two forms, and
-    Skill/Rule/Conversation Candidates never use Notebook entries as provenance.
+    ``refs`` follows current Notebook entries back to their original evidence;
+    ``messages`` cites exact Message identities directly. A Candidate never mixes
+    these forms or substitutes a time range for exact Message identities.
     """
     fields = entry["fields"]
-    targets = set(fields["targets"])
     refs = fields["notebook_refs"]
     sources = entry["source_message_identities"]
     source_range = entry["source_time_range"]
-    if "conversation" in targets:
-        if targets != {"conversation"}:
-            raise NotebookValidationError(
-                "A Conversation Candidate cannot mix persistence targets.", field="fields.targets",
-                next_action="Create a separate Memory, Skill or Rule Candidate for persistence.",
-            )
-        if refs or fields["source_types"]:
-            raise NotebookValidationError(
-                "A Conversation Candidate cites Messages, not Notebook entries.",
-                field="fields.notebook_refs",
-                next_action="Leave notebook_refs and source_types empty; cite the Messages directly.",
-            )
-        if source_range is not None or not sources:
-            raise NotebookValidationError(
-                "A Conversation Candidate requires exact Message identities.",
-                field="source_message_identities",
-                next_action="Cite the Messages that carry the improvement; do not use a time range.",
-            )
-        return "messages"
     if refs:
-        if targets & {"skill", "rule"}:
-            raise NotebookValidationError(
-                "Skill and Rule Candidates cite Messages, not Notebook entries.",
-                field="fields.notebook_refs",
-                next_action="Leave notebook_refs and source_types empty; cite the Messages directly.",
-            )
         if sources or source_range is not None:
             raise NotebookValidationError(
-                "A Memory Candidate cites either Notebook entries or Messages, not both.",
+                "A Candidate cites either Notebook entries or Messages, not both.",
                 field="source_message_identities",
                 next_action="Keep notebook_refs and clear Message provenance, or clear notebook_refs and cite Messages.",
             )

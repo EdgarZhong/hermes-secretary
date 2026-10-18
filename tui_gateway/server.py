@@ -38,6 +38,7 @@ from agent.compaction_display import project_compaction_message_for_display  # n
 from agent.skill_commands import describe_skill_invocation  # noqa: F401
 from agent.conversation_loop import INTERRUPT_WAITING_FOR_MODEL_PREFIX  # noqa: F401
 from tui_gateway import git_probe
+from tui_gateway.inflight_output import _set_session_running
 from tui_gateway.checkpoints import (_load_checkpoints_enabled, _resolve_checkpoint_hash,
                                      resolve_checkpoints_enabled as _resolve_checkpoints_enabled)  # noqa: F401
 from tui_gateway._env import env_float, env_int
@@ -2657,6 +2658,7 @@ def _init_session(
     now = time.time()
     with _sessions_lock:
         _sessions[sid] = {
+            "_sid": sid,
             "agent": agent, "session_key": key, "history": history, "history_lock": threading.Lock(),
             "history_version": 0, "inflight_turn": None, "created_at": now, "last_active": now,
             "running": False, "attached_images": [], "image_counter": 0, "cwd": cwd or _completion_cwd(),
@@ -2781,6 +2783,7 @@ def _claim_or_reuse_live(sid: str, session_key: str, record: dict, lease) -> tup
             # reattach must leave an in-flight orphan interrupt polling.
             return live
         with _sessions_lock:
+            record["_sid"] = sid
             _sessions[sid] = record
             _register_session_cwd(_sessions[sid])
         # A PRIOR runtime for this stored id may still be sentinel-parked with a reap Timer armed; cancel +
@@ -2938,30 +2941,6 @@ def _session_live_title(session: dict, key: str) -> str:
     return title
 
 
-def _session_live_item(sid: str, session: dict, current_sid: str = "") -> dict:
-    key = _session_lookup_key(session, fallback=sid)
-    agent = session.get("agent")
-    history = list(session.get("history") or [])
-    status = _session_live_status(sid, session)
-    inflight = _inflight_snapshot(session)
-    queued = _queued_prompt_snapshot(session)
-    preview = next((" ".join(text.split())[:160] for msg in reversed(history)
-                    if (text := _content_display_text(msg.get("content", msg.get("text", ""))).strip())), "")
-    if queued:
-        preview = " ".join(str(queued.get("user") or preview).split())[:160]
-    elif inflight:
-        preview = " ".join(str(inflight.get("assistant") or inflight.get("user") or preview).split())[:160]
-    now = time.time()
-    return {
-        "current": sid == current_sid, "id": sid,
-        "last_active": float(session.get("last_active") or session.get("created_at") or now),
-        "message_count": len(history),
-        "model": str(getattr(agent, "model", "") or _resolve_model()), "preview": preview,
-        "session_key": key, "started_at": float(session.get("created_at") or now), "status": status,
-        "title": _session_live_title(session, key),
-    }
-
-
 def _session_lookup_key(session: dict, *, fallback: str = "") -> str:
     return str(getattr(session.get("agent"), "session_id", None) or session.get("session_key") or fallback or "")
 
@@ -3048,6 +3027,9 @@ def _live_session_payload(
         in_memory_history = list(session.get("display_history_prefix") or []) + list(session.get("history") or [])
         inflight, queued = _inflight_snapshot(session), _queued_prompt_snapshot(session)
         running, turn_started_at = bool(session.get("running")), _turn_started_at(session)
+        status = _session_live_status(sid, session)
+        from tui_gateway.inflight_output import snapshot
+        state_snapshot = snapshot(session, sid)
     # Persisted display lineage via the session's profile-aware DB (not the launch ``_get_db()``), read
     # outside the history lock (the DB has its own). ``omit_messages`` skips the read (fast path).
     if omit_messages:
@@ -3065,9 +3047,9 @@ def _live_session_payload(
         "messages_omitted": omit_messages, "running": running, "turn_started_at": turn_started_at,
         "session_id": sid, "session_key": _session_lookup_key(session, fallback=sid),
         "started_at": float(session.get("created_at") or time.time()),
-        "status": _session_live_status(sid, session),
+        "status": status,
     }
-    for key, value in (("inflight", inflight), ("queued", queued),
+    for key, value in (("state_snapshot", state_snapshot), ("inflight", inflight), ("queued", queued),
                        ("pending_approval", _pending_approval_request_payload(str(session.get("session_key") or ""))),
                        ("open_requests", _open_requests(sid)),
                        ("pending_connection", _pending_connection_request_payload(sid))):
@@ -3549,7 +3531,7 @@ from . import (  # noqa: E402
     methods_profiles as _methods_profiles, methods_prompt as _methods_prompt, methods_session as _methods_session, methods_submit_idle as _methods_submit_idle,
     methods_tools as _methods_tools, prompt_turn as _prompt_turn, billing_view as _billing_view,
     methods_projects as _methods_projects, methods_session_foreign as _methods_session_foreign,
-    methods_session_control as _methods_session_control, methods_subagents as _methods_subagents,
+    methods_session_control as _methods_session_control, methods_session_state as _methods_session_state, methods_subagents as _methods_subagents,
     methods_vault as _methods_vault, methods_free_tier as _methods_free_tier,
     methods_connectors as _methods_connectors, methods_connectors_account as _methods_connectors_account,
     methods_display as _methods_display, methods_display_watch as _methods_display_watch,
@@ -3564,7 +3546,7 @@ for _m in (
     _methods_browser_control, _methods_session, _methods_prompt, _methods_submit_idle, _methods_config,
     _methods_config_set, _methods_complete, _methods_tools, _methods_profiles, _methods_images,
     _methods_bot_relay, _prompt_turn, _billing_view, _methods_projects, _methods_session_foreign,
-    _methods_session_control, _methods_subagents, _methods_vault, _methods_free_tier, _methods_connectors,
+    _methods_session_control, _methods_session_state, _methods_subagents, _methods_vault, _methods_free_tier, _methods_connectors,
     _methods_connectors_account, _methods_display, _methods_display_watch, _methods_onboarding,
     _methods_i18n, _methods_shared_metrics, _methods_pending, _methods_web_read, _methods_usage_read):
     _m.register(sys.modules[__name__])

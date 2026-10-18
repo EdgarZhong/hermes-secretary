@@ -9,6 +9,7 @@ import logging
 import os
 import time
 
+from .inflight_output import _set_session_running
 from .method_ctx import bind_module
 
 # Module-scoped traceback logger for this module's new boundary catches (the bound handlers
@@ -149,7 +150,7 @@ _KANBAN_POLL_SECONDS = _LOOP_POLL_SECONDS = _BOT_DELIVERY_POLL_SECONDS = 5.0
 
 def _notif_release_turn(session: dict) -> None:
     with session["history_lock"]:
-        session["running"] = False
+        _set_session_running(session, False)
 
 
 def _notif_claim_turn(session: dict) -> bool:
@@ -159,7 +160,7 @@ def _notif_claim_turn(session: dict) -> bool:
     with _session_turn_admission(session) as admitted:
         if not admitted or session.get("running") or session.get("_turn_cancel_requested"):
             return False
-        session["running"] = True
+        _set_session_running(session, True)
         return True
 
 
@@ -284,7 +285,7 @@ def _secretary_deliver_claim(sid: str, session: dict, db, claim: dict, reminders
         if receipt is None:
             reminders.release_claim(db, claim)
             return
-        session["running"] = True
+        _set_session_running(session, True)
     started = False
     try:
         started = bool(_run_prompt_submit(f"__secretary_reminder__{int(time.time() * 1000)}", sid, session,
@@ -790,7 +791,7 @@ def _poll_bot_live_delivery_once(sid: str, session: dict) -> bool:
         claimed = claim_pending_delivery(home, owner)
         if claimed is None:
             return False
-        session["running"] = True
+        _set_session_running(session, True)
 
     delivery_id = str(claimed["id"])
 

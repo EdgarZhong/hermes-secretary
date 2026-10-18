@@ -290,7 +290,7 @@ class ComputeHost:
                 session = server._sessions.get(sid)
                 if session is not None:
                     with session.get("history_lock", threading.Lock()):
-                        session["running"] = False
+                        server._set_session_running(session, False)
                         server._clear_inflight_turn(session)
             self._reply("turn.error", sid, request_id, reason="exception", message=str(exc))
 
@@ -394,6 +394,7 @@ class ComputeHost:
             # _init_session's side machinery (slash worker, approval notify) unavailable: keep a
             # minimal host-owned session rather than failing after the expensive agent build.
             server._sessions[sid] = {
+                "_sid": sid,
                 "agent": agent, "session_key": key, "history": list(history),
                 "history_lock": threading.Lock(),
                 "history_version": int(frame.get("history_version") or 0), "inflight_turn": None,

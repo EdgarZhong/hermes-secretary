@@ -81,10 +81,14 @@ def test_single_carrier_contains_complete_snapshot_and_native_identity(runtime):
     row = rows[0]
     body = row["display_metadata"]["display_text"]
     assert body.startswith("NOTING RESULT\nConversation: " + state.conversation_ref)
-    assert render_notebook(snapshot, profile_home=Path(db.db_path).parent) in body
+    assert render_notebook(snapshot, profile_home=Path(db.db_path).parent, db=db, model_visible=True) in body
+    assert '"history_message_count": 2' in body
+    assert '"through_time": "1970-01-01T00:03:20+00:00"' in body
     assert entry["entry_id"] in body and entry["version_id"] in body
     assert "为家人确定探访日期 🌄" in body
-    assert "Coverage anchor: m2" in body and "Termination: finish_noting" in body
+    assert "Snapshot:" not in body and "Coverage anchor:" not in body
+    assert result["snapshot_id"] not in body and "Termination: finish_noting" in body
+    assert row["display_metadata"]["noting_snapshot_id"] == result["snapshot_id"]
     assert row["content"] == "<framework-message>\n" + body + "\n</framework-message>"
     assert "<timestamp>" not in row["content"]
     assert row["timestamp"] == result["committed_at"]
@@ -132,7 +136,9 @@ def test_carried_old_uid_cannot_suppress_new_human_anchor_completion(runtime):
     rows = notices(db)
     assert [row["display_metadata"]["noting_snapshot_id"] for row in rows] == [result["snapshot_id"]]
     snapshot = db.notebook_current(current.conversation_ref)
-    assert render_notebook(snapshot, profile_home=Path(db.db_path).parent) in rows[0]["content"]
+    assert render_notebook(snapshot, profile_home=Path(db.db_path).parent, db=db, model_visible=True) in rows[0]["content"]
+    assert '"history_message_count": 3' in rows[0]["content"]
+    assert '"through_time": "1970-01-01T00:05:00+00:00"' in rows[0]["content"]
     assert "Current accepted outcome" in rows[0]["content"]
     assert "Older task outcome" not in rows[0]["content"]
     parent.run_conversation.assert_not_called()
@@ -155,7 +161,8 @@ def test_queued_old_snapshot_and_its_proposal_are_dropped_entirely(runtime):
     mark_framework_turn(parent, running=False)
     rows = notices(db)
     assert len(rows) == len(parent.displays) == 1
-    assert b["snapshot_id"] in rows[0]["content"]
+    assert rows[0]["display_metadata"]["noting_snapshot_id"] == b["snapshot_id"]
+    assert b["snapshot_id"] not in rows[0]["content"]
     assert a["snapshot_id"] not in rows[0]["content"]
     assert "Superseded draft" not in rows[0]["content"]
     assert rows[0]["content"].count("PERSISTENCE PROPOSAL REQUEST") == 1
@@ -255,6 +262,22 @@ def test_append_failure_keeps_committed_snapshot_and_drops_notice_at_most_once(r
     assert db.append_messages_batch.call_count == 1
 
 
+def test_coverage_display_failure_does_not_block_the_formal_completion(runtime, monkeypatch):
+    parent, db = runtime
+    state = book(parent)
+    create(state)
+    result = commit(state)
+    def unavailable(*_args):
+        raise RuntimeError("History display temporarily unavailable")
+    monkeypatch.setattr("secretary.notebook_render._evidence_coverage_conn", unavailable)
+    assert publish(parent, result)
+    rows = notices(db)
+    assert len(rows) == 1
+    assert '"status": "unavailable"' in rows[0]["content"]
+    assert "Plan the visit" in rows[0]["content"]
+    assert rows[0]["display_metadata"]["noting_snapshot_id"] == result["snapshot_id"]
+
+
 @pytest.mark.parametrize("difference", [0, 1])
 def test_unicode_character_threshold_is_strict_and_excludes_framework_wrapper(runtime, difference):
     parent, db = runtime
@@ -262,7 +285,7 @@ def test_unicode_character_threshold_is_strict_and_excludes_framework_wrapper(ru
     create(state, "日期未定 🌄" * 20)
     result = commit(state)
     snapshot = db.notebook_current(parent._secretary_conversation_ref)
-    rendered = render_notebook(snapshot, profile_home=Path(db.db_path).parent)
+    rendered = render_notebook(snapshot, profile_home=Path(db.db_path).parent, db=db, model_visible=True)
     config(parent, len(rendered) - difference, 1000)
     publish(parent, result)
     text = notices(db)[0]["content"]

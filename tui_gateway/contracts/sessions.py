@@ -72,6 +72,18 @@ class LiveSessionStatus(WireEnum):
     resuming = "resuming"  # deferred hydration in flight
 
 
+class TurnOutputSnapshot(Result):
+    """Complete current/last native Turn display projection at one replay watermark.
+    Adjacent token chunks may be joined; native typed references remain paired.
+    Runtime-only: cold restore uses persisted transcript/assistant sidecars.
+    """
+
+    events: list[dict[str, JsonValue]]
+    seq: int
+    epoch: str
+    complete: Literal[True]
+
+
 class LiveSessionSnapshot(Result):
     """Union of ``server._live_session_payload``, ``methods_session._resume_response`` and the
     live-unpersisted resume path; keys only some paths produce are optional."""
@@ -89,6 +101,7 @@ class LiveSessionSnapshot(Result):
     turn_started_at: float | None = None
     started_at: float | None = None
     status: str | None = None  # a LiveSessionStatus value
+    state_snapshot: TurnOutputSnapshot | None = None
     inflight: InflightTurn | None = None
     queued: QueuedPrompt | None = None
     pending_approval: PendingApproval | None = None
@@ -267,6 +280,8 @@ method("session.most_recent", params=SessionMostRecentParams, result=SessionMost
 
 
 class SessionActiveListParams(ProfileParams):
+    """The inherited profile argument retains its historical global-roster behavior."""
+
     current_session_id: str | None = None
 
 
@@ -283,6 +298,11 @@ class SessionActiveItem(Result):
     started_at: float
     status: LiveSessionStatus
     title: str
+    stored_session_id: str | None = None
+    profile_name: str | None = None
+    profile_home: str | None = None
+    running: bool | None = None
+    turn_started_at: float | None = None
 
 
 class SessionActiveListResult(Result):
@@ -290,7 +310,7 @@ class SessionActiveListResult(Result):
 
 
 method("session.active_list", params=SessionActiveListParams, result=SessionActiveListResult,
-       doc="Live sessions in this process, insertion order (not a DB browser).")
+       doc="Live sessions in this process, insertion order; the legacy profile argument does not filter the global roster.")
 
 
 # ── stored-row mutation ───────────────────────────────────────────────────────────────────────

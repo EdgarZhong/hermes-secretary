@@ -7,6 +7,7 @@ from __future__ import annotations
 import contextlib
 import threading
 
+from .inflight_output import _set_session_running
 from .method_ctx import HandlerRegistry, bind_module
 
 _registry = HandlerRegistry()
@@ -242,9 +243,13 @@ def _apply_compute_host_metadata_mirror(session: dict, frame: dict | None) -> No
 
 
 def _on_compute_host_turn_done(rid: str, sid: str, session: dict, frame: dict) -> None:
+    from tui_gateway.turn_terminal import persist, token
+    if frame.get("type") == "turn.error":
+        persist(sid, session, {"text": f"Error: {frame.get('message') or 'compute host turn failed'}", "status": "error",
+                              "error": str(frame.get("message") or "compute host turn failed")}, token(session))
     with session["history_lock"]:
         _compute_host_adopt_frame_meta(session, frame)
-        session["running"] = False
+        _set_session_running(session, False)
         session["last_active"] = time.time()
         _clear_inflight_turn(session)
         session.pop("_compute_host_open_request", None)

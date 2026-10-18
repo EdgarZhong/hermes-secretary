@@ -844,7 +844,18 @@ class ChangeSignalPayload(OpenPayload):
 
 
 event("cron.changed", ChangeSignalPayload, doc="cron/jobs.json moved; refetch the cron list.")
-event("sessions.changed", ChangeSignalPayload, doc="state.db moved; refetch the session list.")
+class SessionsChangedPayload(ChangeSignalPayload):
+    """Existing watcher signal, also emitted on native runtime start/settle/reclaim."""
+
+    runtime_id: str | None = None
+    stored_session_id: str | None = None
+    profile_name: str | None = None
+    profile_home: str | None = None
+    running: bool | None = None
+    turn_started_at: float | None = None
+
+
+event("sessions.changed", SessionsChangedPayload, doc="Stored session or runtime changed; refetch session lists.")
 event("platforms.changed", ChangeSignalPayload, doc="gateway_state.json moved; refetch platform status.")
 event("projects.changed", ChangeSignalPayload, doc="projects.db moved; refetch the project list + tree.")
 event("pairing.changed", ChangeSignalPayload, doc="Pairing state moved; refetch pairing.")

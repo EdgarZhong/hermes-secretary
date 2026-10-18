@@ -511,6 +511,7 @@ def _working_control(child):
     return noting_tool_control_message(
         child._secretary_noting_profile, notebook_state=store.show(),
         conversation_ref=store.conversation_ref, coverage=store.coverage, base_snapshot_id=store.base_snapshot_id,
+        db=child._session_db,
     )
 
 
@@ -565,7 +566,6 @@ def run_noting_task(
     child_session_id = child.session_id
     task_db = child._session_db
     provider = state_provider or _default_state_provider
-    register_active_noting_task(child_session_id, child)
     outcome = NotingTaskOutcome(status="incomplete", child_session_id=child_session_id)
     try:
         owning = owning_profile if owning_profile is not None else owning_profile_for(parent_db)
@@ -573,6 +573,8 @@ def run_noting_task(
             task_db, admission_id, child_session_id=child_session_id,
             profile=owning or None,
         )
+        # Observers may read immediately: publish active only after its durable start exists.
+        register_active_noting_task(child_session_id, child)
         from secretary.noting_tools import initialize_notebook_work
         initialize_notebook_work(child, trigger_type=trigger_type, frozen_work=frozen_work)
         initial_instruction = task_instruction + "\n\n" + _working_control(child)

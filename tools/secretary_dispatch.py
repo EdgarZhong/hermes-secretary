@@ -8,7 +8,7 @@ from tools.registry import registry
 from tools.scheduler_tool import SCHEDULER_SCHEMA, scheduler_tool
 
 RETIRED_SECRETARY_TOOLS = frozenset({
-    "session_history", "noting_memo", "notebook_manage", "notebook_edit", "notebook_schedule", "compact_parent",
+    "session_history", "noting_memo", "notebook_mutate", "notebook_manage", "notebook_edit", "notebook_schedule", "compact_parent",
 })
 
 

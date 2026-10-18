@@ -372,6 +372,7 @@ def _create_session(rid, params: dict, *, copy_parent_history: bool = False) -> 
     now = time.time()
     with _sessions_lock:
         _sessions[sid] = {
+            "_sid": sid,
             "agent": None, "agent_error": None, "agent_ready": threading.Event(), "attached_images": [],
             "close_on_disconnect": _flag(params, "close_on_disconnect"),
             "active_session_lease": None,  # claimed lazily on the first turn (_ensure_active_session_slot)
@@ -1041,20 +1042,6 @@ def _(rid, params: dict) -> dict:
             return _err(rid, 4017, str(e))
         _emit("session.info", live_sid, _cwd_info(live, target_cwd, branch=branch))
     return _ok(rid, {"cwd": target_cwd, "branch": branch, "git_repo_root": root})
-
-
-@method("session.active_list")
-def _(rid, params: dict) -> dict:
-    """Live TUI sessions in this process (not a DB browser)."""
-    snapshot, err = _snapshot_sessions(rid)
-    if err:
-        return err
-    current = str(params.get("current_session_id") or "")
-    # ``_finalized`` sessions linger until the reaper pops them (they inflated the footer). Do NOT filter on
-    # the WS-detached sentinel: detached is attachable until grace-reap, and ``hermes --tui`` rides stdio.
-    # Keep insertion order (focused must not jump).
-    rows = [_session_live_item(sid, session, current) for sid, session in snapshot if not session.get("_finalized")]
-    return _ok(rid, {"sessions": rows})
 
 
 @_session_method("session.activate")

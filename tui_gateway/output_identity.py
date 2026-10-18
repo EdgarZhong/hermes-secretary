@@ -14,12 +14,16 @@ _LEGACY = frozenset({"message.delta", "reasoning.delta", "message.interim",
 _PAIRED = frozenset({"message.output_delta", "tool.output"})
 
 
-def _native_write(obj, sessions, current_transport, stdio_transport):
+def _native_write(obj, sessions, current_transport, stdio_transport, display_identity=None):
     # This is the former server.write_json body, with unchanged routing/return semantics.
     from tui_gateway.event_replay import _stamp_event
     from tui_gateway.hosted_room_member_activity import project_room_member_activity
-    _stamp_event(obj)
     params = obj.get("params")
+    sid = params.get("session_id") if isinstance(params, dict) else None
+    session = sessions.get(sid) if sid else None
+    from tui_gateway.inflight_output import record
+    _stamp_event(obj, observe=(lambda stamped: record(session, stamped, display_identity)
+                              if display_identity else record(session, stamped)) if session is not None else None)
     if obj.get("method") == "event" or (isinstance(obj.get("id"), str) and "method" in obj):
         project_room_member_activity(obj, sessions)
         sid = ((params or {}).get("session_id")) if isinstance(params, dict) else ""
@@ -99,6 +103,7 @@ def write_frame(obj, sessions, current_transport, stdio_transport):
     event = params.get("type") if params else None
     origin = params.get("seq") if params else None
     source = None
+    display_identity = None
     try:
         owner = _observer(session)
     except Exception:
@@ -109,6 +114,7 @@ def write_frame(obj, sessions, current_transport, stdio_transport):
             source = owner.source(event, params.get("payload") or {})
             if source:
                 owner.announce(source[0])
+                display_identity = _typed_payload(owner, source, event, params.get("payload") or {}, 0)[1]
         except Exception:
             logger.debug("output identity observation unavailable; writing legacy", exc_info=True)
     if owner is None and params and type(origin) is int:
@@ -122,7 +128,7 @@ def write_frame(obj, sessions, current_transport, stdio_transport):
             logger.debug("output identity relay unavailable", exc_info=True)
             if event in _PAIRED:
                 return True
-    written = _native_write(obj, sessions, current_transport, stdio_transport)
+    written = _native_write(obj, sessions, current_transport, stdio_transport, display_identity)
     sequence = params.get("seq") if params else None
     try:
         if owner is None:

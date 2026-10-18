@@ -1,5 +1,6 @@
 """Browser reads exercise real readonly DB, native ownership, timers and registered RPC."""
 import time
+from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -141,10 +142,19 @@ def test_live_child_owner_stale_and_cross_database(database, tmp_path):
     admission = db.noting_admit(ref, 'm1', kind='idle')
     db.noting_child_register(admission, child_session_id='child', profile='default')
     assert secretary_state(db, 'main')['task_state'] == 'unknown'
+    registered_at = db.noting_child(admission)['registered_at']
     child = SimpleNamespace(_session_db=db, _secretary_parent_conversation_ref=ref)
     register_active_noting_task('child', child)
     try:
-        assert secretary_state(db, 'main')['tasks'] == [{'task_id': 'child'}]
+        before = _contents(db)
+        observed = secretary_state(db, 'main')
+        assert len(observed['tasks']) == 1
+        assert observed['tasks'][0]['task_id'] == 'child'
+        assert set(observed['tasks'][0]) == {'task_id', 'started_at'}
+        started = datetime.fromisoformat(observed['tasks'][0]['started_at'])
+        assert started.tzinfo is not None
+        assert abs(started.timestamp() - registered_at) < 1
+        assert _contents(db) == before
         other = SessionDB(tmp_path / 'other' / 'state.db')
         other.create_session('main', source='cli')
         other.resolve_conversation_ref('main')

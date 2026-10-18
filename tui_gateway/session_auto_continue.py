@@ -7,6 +7,7 @@ from __future__ import annotations
 import contextlib
 import os
 
+from .inflight_output import _set_session_running
 from .method_ctx import bind_module
 
 # A concluded turn (success, handled error, interrupt) clears its durable marker (turn_marker.py) in _run_prompt_submit's
@@ -102,7 +103,7 @@ def _maybe_schedule_auto_continue(sid: str, session: dict, session_key: str) -> 
             if session.get("running") or session.get("_turn_cancel_requested") or session.get("_finalized"):
                 session["_auto_continue_scheduled"] = False  # a real user prompt beat us; it clears the marker
                 return
-            session["running"] = True
+            _set_session_running(session, True)
             session["last_active"] = time.time()
         # Ownership admission BEFORE message.start: a sibling backend sharing this HERMES_HOME may have written the
         # marker and still be mid-turn. Leave the marker so a later resume retries.
@@ -111,7 +112,7 @@ def _maybe_schedule_auto_continue(sid: str, session: dict, session_key: str) -> 
         if _ensure_active_session_slot(sid, session) is not None:
             logger.info("auto-continue for %s refused: session has another live owner", session_key)
             with session["history_lock"]:
-                session["running"] = False
+                _set_session_running(session, False)
                 session["_auto_continue_scheduled"] = False
             return
         with session["history_lock"]:
@@ -460,7 +461,7 @@ def _drain_queued_prompt(rid, sid: str, session: dict) -> bool:
             return False
         queue_generation = int(session.get("_queued_prompt_generation", 0))
         _ac_set_queue(session, session.get("queued_prompts") or [])
-        session["running"] = True
+        _set_session_running(session, True)
         queued_transport = queued.get("transport")
         # The queuer's transport is pinned so the drained turn reaches the client that sent it — but
         # ATTACHED, not rebound: a mid-turn prompt from a second client used to silence the first for the
@@ -476,7 +477,7 @@ def _drain_queued_prompt(rid, sid: str, session: dict) -> bool:
             # See #84417.
             advanced = session.get("queued_prompt")
             _ac_set_queue(session, [queued, *([advanced] if advanced else []), *(session.get("queued_prompts") or [])])
-            session["running"] = False
+            _set_session_running(session, False)
             return True
     kwargs: dict = {"queued_prompt_generation": queue_generation}
     if queued.get("image_paths"):
@@ -507,7 +508,7 @@ def _drain_queued_prompt(rid, sid: str, session: dict) -> bool:
             _run_prompt_submit(rid, sid, session, queued["text"], **kwargs, **author_kwargs)
         elif (resp := _submit_prompt_to_compute_host(rid, sid, session, queued["text"], **kwargs)).get("error"):
             with session["history_lock"]:
-                session["running"] = False
+                _set_session_running(session, False)
                 _clear_inflight_turn(session)
             _emit("error", sid, {"message": str((resp.get("error") or {}).get("message") or "queued prompt failed")})
             dispatch_failed = True
@@ -555,10 +556,15 @@ def _inflight_snapshot(session: dict) -> dict | None:
 
 
 def _emit_terminal_turn_error(
-    sid: str, session: dict, error: Any, error_surface: Optional[dict] = None, *, retire_marker: bool = True) -> None:
+    sid: str, session: dict, error: Any, error_surface: Optional[dict] = None, *, retire_marker: bool = True,
+    expected_token=None) -> None:
     """Close a failed turn with the same ``status: "error"`` ``message.complete`` frame as the returned-error path,
     retaining the turn so a client that missed the frame recovers it from ``session.resume``'s ``inflight``.
     ``error_surface`` ({layer, code, retryable}) is classified from an exception if absent."""
+    from tui_gateway.turn_terminal import persist, token
+    if expected_token is not None and (_sessions.get(sid) is not session or token(session) is not expected_token):
+        return
+    expected_token = token(session) if expected_token is None else expected_token
     agent = session.get("agent")
     if error_surface is None and isinstance(error, BaseException):
         with contextlib.suppress(Exception):
@@ -567,6 +573,9 @@ def _emit_terminal_turn_error(
                 error, provider=str(getattr(agent, "provider", "") or ""), model=str(getattr(agent, "model", "") or ""),
                 api_key=getattr(agent, "api_key", None))
     with session["history_lock"]:
+        if expected_token is not None and (token(session) is not expected_token
+                or _sessions.get(sid) is not session or session.get("_closing") or session.get("_finalized")):
+            return
         _fail_inflight_turn(session, error, error_surface=error_surface)
         turn = session.get("inflight_turn") or {}
         message, partial = str(turn.get("error") or "turn failed"), str(turn.get("assistant") or "")
@@ -578,6 +587,7 @@ def _emit_terminal_turn_error(
     payload = {"text": text, "usage": _get_usage(agent) if agent is not None else {}, "status": "error",
                "error": message, "recoverable": True, **({"error_surface": error_surface} if error_surface else {}),
                **({"partial": True} if partial else {}), **({"rendered": rendered} if rendered else {})}
+    persist(sid, session, payload, expected_token)
     if retire_marker:
         _retire_turn_marker(session)
     _emit("message.complete", sid, payload)

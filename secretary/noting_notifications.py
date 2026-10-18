@@ -8,9 +8,9 @@ class SupersededNotingResult(RuntimeError):
     """The queued Snapshot no longer owns the current pointer; drop this carrier."""
 
 
-def completion_body(snapshot, *, termination, summary, settings, profile_home):
+def completion_body(snapshot, *, termination, summary, settings, profile_home, db=None, conn=None):
     """Count the exact injected Notebook body, excluding the notification wrapper."""
-    body = render_notebook(snapshot, profile_home=profile_home)
+    body = render_notebook(snapshot, profile_home=profile_home, db=db, conn=conn, model_visible=True)
     char_count = len(body)
     entry_count = sum(len(entries) for entries in snapshot["payload"].values())
     kind = termination["type"]
@@ -20,7 +20,6 @@ def completion_body(snapshot, *, termination, summary, settings, profile_home):
         summary += " The context window was exhausted; some Noting responsibilities may remain unfinished."
     result = (
         f"NOTING RESULT\nConversation: {snapshot['conversation_ref']}\n"
-        f"Snapshot: {snapshot['snapshot_id']}\nCoverage anchor: {snapshot['anchor_message_uid']}\n"
         f"Termination: {kind}\nSummary: {summary}\n\nCURRENT NOTEBOOK SNAPSHOT\n{body}"
     )
     char_threshold = settings.persistence_proposal_char_threshold

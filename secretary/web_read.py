@@ -32,18 +32,27 @@ def global_noting_config(db):
 def _tasks(db, conn, ref):
     from secretary.noting_child import _ACTIVE_NOTING_LOCK, _ACTIVE_NOTING_TASKS
     target = Path(db.db_path).resolve()
+    home = Path(db.db_path).parent
     with _ACTIVE_NOTING_LOCK:
         children = tuple(_ACTIVE_NOTING_TASKS.items())
+    # The child registry owns the durable start instant. A live child is readable only
+    # while its registration row exists; never derive a start from page load or admission.
+    running = conn.execute(
+        "SELECT c.child_session_id, c.registered_at FROM secretary_noting_children c "
+        "JOIN secretary_noting_admissions a ON a.admission_id=c.admission_id "
+        "WHERE a.conversation_ref=? AND c.status='running'", (ref,)).fetchall()
+    started_at = {row["child_session_id"]: row["registered_at"]
+                  for row in running if row["child_session_id"]}
     live = []
     for child_id, child in children:
         owned_db = getattr(child, "_session_db", None)
         if (owned_db is not None and Path(owned_db.db_path).resolve() == target
                 and getattr(child, "_secretary_parent_conversation_ref", None) == ref):
-            live.append({"task_id": child_id})
-    stale = conn.execute(
-        "SELECT 1 FROM secretary_noting_children c JOIN secretary_noting_admissions a "
-        "ON a.admission_id=c.admission_id WHERE a.conversation_ref=? AND c.status='running' LIMIT 1", (ref,)).fetchone()
-    return ("active" if live else "unknown" if stale else "idle"), live
+            task = {"task_id": child_id}
+            if child_id in started_at:
+                task["started_at"] = format_timestamp(started_at[child_id], profile_home=home)
+            live.append(task)
+    return ("active" if live else "unknown" if running else "idle"), live
 
 
 def _next_idle(db, conn, ref, *, global_enabled, local_enabled, settings, now):

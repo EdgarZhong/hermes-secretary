@@ -639,3 +639,156 @@ class TestDisplayDedupe:
         msgs = db.get_messages(sid, include_compacted=True)
         assert len(msgs) == 1
         assert msgs[0]["tool_call_id"] == "call-1"
+
+
+def _seed_retired_compaction_tail(db, sid="edited"):
+    db.create_session(sid, source="cli")
+    db.append_messages_batch(sid, [
+        {"role": role, "content": f"{role}-{turn}", "timestamp": float(turn * 10 + index)}
+        for turn in range(1, 4) for index, role in enumerate(("user", "assistant"))
+    ])
+    original = db.get_messages_as_conversation(sid, include_row_ids=True)
+    db.archive_and_compact(sid, [
+        {"role": "assistant", "content": "real handoff", "_compressed_summary": True}, *original[-4:]
+    ])
+    live = db.get_messages_as_conversation(sid, include_row_ids=True)
+    cut = next(index for index, row in enumerate(live) if row["content"] == "user-3")
+    db.replace_messages(sid, live[:cut], active_only=True, archive_dropped=True)
+    db.append_messages_batch(sid, [
+        {"role": "user", "content": "edited request"},
+        {"role": "assistant", "content": "edited answer"}
+    ])
+    return original[-2:]
+
+
+@pytest.mark.parametrize("projection", ["indexed", "legacy", "native", "resume"])
+@pytest.mark.parametrize("read_only", [False, True])
+def test_retired_uid_generation_cannot_revive_compacted_tail(db, projection, read_only):
+    old = _seed_retired_compaction_tail(db)
+    audit_before = db.get_messages("edited", include_inactive=True)
+    for message in old:
+        copies = [row for row in audit_before if row["message_uid"] == message["message_uid"]]
+        assert len(copies) == 2
+        assert copies[0]["compacted"] and not copies[-1]["active"] and not copies[-1]["compacted"]
+    if projection == "legacy":
+        db._execute_write(lambda conn: conn.execute(
+            "UPDATE messages SET display_order = NULL, display_identity = NULL WHERE session_id = 'edited'"))
+    reader = SessionDB(db.db_path, read_only=True) if read_only or projection == "legacy" else db
+    try:
+        if projection == "native":
+            rows = reader.get_messages_as_conversation("edited", include_compacted=True)
+        elif projection == "resume":
+            model, rows = reader.get_resume_conversations("edited")
+            assert "user-3" not in [row["content"] for row in model]
+        else:
+            rows = reader.get_messages("edited", include_compacted=True)
+            for latest in (False, True):
+                page = reader.get_messages("edited", include_compacted=True, limit=2, offset=1, latest=latest)
+                expected = rows[::-1][1:3][::-1] if latest else rows[1:3]
+                assert page == expected
+        contents = [row["content"] for row in rows]
+        assert "user-3" not in contents and "assistant-3" not in contents
+        assert contents.count("user-1") == contents.count("assistant-1") == 1
+        assert contents.count("user-2") == contents.count("assistant-2") == 1
+        assert "real handoff" in contents
+        assert contents[-2:] == ["edited request", "edited answer"]
+        assert reader.get_messages("edited", include_inactive=True) == audit_before
+        if projection == "indexed":
+            assert reader.display_message_count("edited") == len(rows)
+    finally:
+        if reader is not db:
+            reader.close()
+
+
+
+@pytest.mark.parametrize("tail_count", [0, 2])
+def test_latest_uid_restoration_and_distinct_repeated_text_remain_visible(db, tail_count):
+    sid = "valid-generations"
+    db.create_session(sid, source="cli")
+    db.append_messages_batch(sid, [
+        {"role": "user", "content": "repeat", "timestamp": 100.0},
+        {"role": "assistant", "content": "reply", "timestamp": 101.0},
+        {"role": "user", "content": "repeat", "timestamp": 200.0},
+        {"role": "assistant", "content": "reply", "timestamp": 201.0},
+    ])
+    tail = db.get_messages_as_conversation(sid, include_row_ids=True)[-2:]
+    db.archive_and_compact(sid, [{"role": "assistant", "content": "summary"}, *tail], tail_count=tail_count)
+    before = db.get_messages(sid, include_compacted=True)
+    assert [row["content"] for row in before].count("repeat") == 2
+    db.replace_messages(sid, db.get_messages_as_conversation(sid)[:1], archive_dropped=True)
+    assert [row["content"] for row in db.get_messages(sid, include_compacted=True)].count("repeat") == 1
+    # An explicit later restore of the same UID is valid again, not permanently blacklisted.
+    db.append_messages_batch(sid, [
+        {key: message[key] for key in ("role", "content", "timestamp", "message_uid")}
+        for message in tail
+    ])
+    assert [row["content"] for row in db.get_messages(sid, include_compacted=True)].count("repeat") == 2
+    assert db.display_message_count(sid) == len(before)
+
+
+def test_retired_uid_is_scoped_to_verified_lineage_not_independent_branch(db):
+    db.create_session("root", source="cli")
+    db.append_messages_batch("root", [
+        {"role": "user", "content": "keep"}, {"role": "assistant", "content": "kept answer"},
+        {"role": "user", "content": "retire"}, {"role": "assistant", "content": "retired answer"},
+    ])
+    original = db.get_messages_as_conversation("root", include_row_ids=True)
+    db.end_session("root", end_reason="compression")
+    db.create_session("tip", source="cli", parent_session_id="root")
+    db.create_session("branch", source="cli", parent_session_id="root")
+    for sid in ("tip", "branch"):
+        db.append_messages_batch(sid, original)
+    db.rewind_to_message("tip", db.get_messages("tip")[2]["id"])
+    db.append_message("tip", "user", "replacement")
+    for rows in (
+        db.get_messages("tip", include_compacted=True, include_ancestors=True),
+        db.get_messages_as_conversation("tip", include_compacted=True, include_ancestors=True),
+        db.get_resume_conversations("tip")[1],
+        db.get_ancestor_display_prefix("tip"),
+    ):
+        assert "retire" not in [row["content"] for row in rows]
+    # Mark an explicit independent branch (not a compression continuation).
+    db._execute_write(lambda conn: conn.execute(
+        "UPDATE sessions SET end_reason = 'branch' WHERE id = 'root'"))
+    assert "retire" in [row["content"] for row in db.get_messages(
+        "branch", include_compacted=True, include_ancestors=True)]
+    assert "retire" in [row["content"] for row in db.get_messages("root", include_compacted=True)]
+    assert any(row["content"] == "retire" for row in db.get_messages(
+        "tip", include_compacted=True, include_ancestors=True, include_inactive=True))
+
+
+@pytest.mark.parametrize("indexed", [False, True])
+def test_missing_uid_keeps_legacy_display_and_audit_semantics(db, indexed):
+    _seed_retired_compaction_tail(db)
+    db._execute_write(lambda conn: conn.execute("UPDATE messages SET message_uid = NULL"))
+    if not indexed:
+        db._execute_write(lambda conn: conn.execute(
+            "UPDATE messages SET display_order = NULL, display_identity = NULL"))
+    reader = SessionDB(db.db_path, read_only=True)
+    try:
+        # No durable UID means no proof that one historical identity supersedes another.
+        rows = reader.get_messages("edited", include_compacted=True)
+        assert "user-3" in [row["content"] for row in rows]
+        assert reader.get_messages("edited", include_inactive=True) == db.get_messages(
+            "edited", include_inactive=True)
+    finally:
+        reader.close()
+
+
+def test_formal_rest_history_excludes_retired_compaction_aliases(db, monkeypatch):
+    from starlette.testclient import TestClient
+    import hermes_state
+    from hermes_cli.web_server import app, _SESSION_HEADER_NAME, _SESSION_TOKEN
+
+    old = _seed_retired_compaction_tail(db)
+    monkeypatch.setattr(hermes_state, "DEFAULT_DB_PATH", db.db_path)
+    client = TestClient(app)
+    client.headers[_SESSION_HEADER_NAME] = _SESSION_TOKEN
+    response = client.get("/api/sessions/edited/messages", params={
+        "include_compacted": "true", "limit": 500, "offset": 0, "order": "latest",
+    })
+    assert response.status_code == 200, response.text
+    rows = response.json()["messages"]
+    assert not {row["message_uid"] for row in rows} & {row["message_uid"] for row in old}
+    assert [row["content"] for row in rows][-2:] == ["edited request", "edited answer"]
+    assert response.json()["pagination"]["returned"] == db.display_message_count("edited")

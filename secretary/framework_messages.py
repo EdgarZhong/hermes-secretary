@@ -171,7 +171,7 @@ def append_runtime_row(parent, messages, row, *, expected_conversation_ref=None,
             if audit["termination"] != termination:
                 raise RuntimeError("Noting completion audit differs from the committed Snapshot")
             body = completion_body(snapshot, termination=termination, summary=summary,
-                                   settings=settings, profile_home=Path(db.db_path).parent)
+                                   settings=settings, profile_home=Path(db.db_path).parent, db=db, conn=conn)
             row["content"] = build_framework_message_wrapper(body)
             row["display_metadata"]["display_text"] = body
             row["timestamp"] = snapshot["created_at"]

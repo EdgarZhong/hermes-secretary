@@ -152,7 +152,7 @@ def _notebook_show(agent, args: dict, ctx: InlineToolContext) -> Any:
     from tools.notebook_tool import notebook_show
     return notebook_show(args, db=getattr(agent, "_session_db", None),
                          conversation_ref=getattr(agent, "_secretary_conversation_ref", None),
-                         effective_enabled=notebook_dispatch_enabled(agent))
+                         effective_enabled=notebook_dispatch_enabled(agent), model_visible=True)
 
 
 def _notebook_maintain(agent, args: dict, ctx: InlineToolContext) -> Any:

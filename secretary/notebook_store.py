@@ -5,7 +5,9 @@ from datetime import datetime, timezone
 from threading import RLock
 
 from agent.message_visibility import model_visible_messages
-from secretary.notebook_contract import NotebookValidationError, parse_time, require_text, validate_source_range
+from secretary.notebook_contract import (
+    SOURCE_NOT_PROVIDED, NotebookValidationError, parse_time, require_text, validate_source_range,
+)
 from secretary.notebook_model import NotebookWorkingState
 
 
@@ -182,9 +184,11 @@ class NotebookStore:
         return self._state.get(entry_id)
 
     def create(self, entry_type, fields, *, status=None, relations=None,
-               source_message_identities=None, source_time_range=None):
+               source_message_identities=SOURCE_NOT_PROVIDED, source_time_range=None,
+               source_message_uids=SOURCE_NOT_PROVIDED):
         return self._state.create(entry_type, fields, status=status, relations=relations,
-                                  source_message_identities=source_message_identities, source_time_range=source_time_range)
+                                  source_message_identities=source_message_identities, source_time_range=source_time_range,
+                                  source_message_uids=source_message_uids)
 
     def update(self, entry_id, changes):
         return self._state.update(entry_id, changes)

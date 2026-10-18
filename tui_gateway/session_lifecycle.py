@@ -9,6 +9,7 @@ import logging
 
 import contextlib
 
+from .inflight_output import _set_session_running
 from .method_ctx import bind_module
 
 
@@ -356,6 +357,7 @@ def _finalize_session(session: dict | None, end_reason: str = "tui_close") -> No
     if not session or session.get("_finalized"):
         return
     session["_finalized"] = True
+    _publish_session_running(_lifecycle_own_sid(session), session)
     _lock_vault_managers(session)
     if (history_ready := session.get("resume_history_ready")) is not None and not history_ready.is_set():
         session["resume_history_error"] = "session resume cancelled"
@@ -564,6 +566,8 @@ def _pop_session_by_id(sid: str) -> dict | None:
             _closed_session_activity[home] = max(_closed_session_activity.get(home, 0), last_active)
             session["_closing"] = True
             session["_sid"] = sid  # out of _sessions now, so teardown can't recover the live id by scanning
+    if session is not None:
+        _publish_session_running(sid, session)
     return session
 
 
@@ -749,7 +753,7 @@ def _interrupt_session_turn(
         if not run_thread_alive and not compressing:
             with session["history_lock"]:
                 if session.get("running"):
-                    session["running"] = False
+                    _set_session_running(session, False)
                     _clear_inflight_turn(session)
     # Sibling of the #102895 finalize-path fix above: an explicit /stop (or the WS-orphan reaper's
     # interrupt-at-grace) must also reach a background memory/skill review, not just the foreground

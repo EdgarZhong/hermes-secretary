@@ -52,8 +52,13 @@ _BUMP_GENERATION_SQL = """
 _TURN_LEASE_ROW_SQL = "SELECT holder, expires_at FROM session_turn_leases WHERE conversation_id = ?"
 _DELETE_COMPRESSION_LOCK_SQL = "DELETE FROM compression_locks WHERE session_id = ? AND holder = ?"
 _DISPLAY_ACTIVE_CLAUSE = " AND (active = 1 OR compacted = 1)"
-# Model-only rows (see MODEL_ONLY_DISPLAY_METADATA_KEY) never enter a display projection. Unqualified on
-# purpose: inside a correlated subquery it binds to the innermost ``messages`` alias.
+# Inspect the newest UID generation BEFORE discarding rewind-only rows; otherwise an old
+# compacted alias revives. The id lower bound keeps latest-page probes near their candidate.
+_DISPLAY_GENERATION_SQL = """ AND (NULLIF({owner}.message_uid, '') IS NULL OR (
+    SELECT generation.active = 1 OR generation.compacted = 1 FROM messages AS generation
+    WHERE generation.session_id = {owner}.session_id AND generation.message_uid = {owner}.message_uid
+      AND generation.id >= {owner}.id ORDER BY generation.id DESC LIMIT 1))"""
+# Model-only rows never enter display; unqualified SQL binds to the innermost messages alias.
 DISPLAY_VISIBLE_SQL = (
     f" AND COALESCE({_sql_json_extract('display_metadata', '$.' + MODEL_ONLY_DISPLAY_METADATA_KEY)}, 0) = 0")
 _DISPLAY_META_ROW_SQL = "SELECT display_metadata FROM messages WHERE id = ? AND session_id IN ({ids})" + _DISPLAY_ACTIVE_CLAUSE
@@ -821,23 +826,10 @@ class SessionMessagesMixin:
 
     def replace_messages(self, session_id: str, messages: List[Dict[str, Any]], active_only: bool = False,
         archive_dropped: bool = False, reject_active_turn_lease: bool = False) -> None:
-        """Atomically replace a session's messages (/retry, /undo, /compress). DESTRUCTIVE by default (rows
-        DELETEd, leave FTS). ``active_only`` spares soft-archived rows (needed with in-place compaction).
-        ``archive_dropped`` SOFT-archives live rows rewind-style: what rewind/edit/regenerate must use, since
-        DELETE leaves nothing to recover. ``reject_active_turn_lease``: in-txn lease check for user rewrites.
-
-        Pass ``archive_dropped=True`` to SOFT-archive the live rows instead of DELETEing them: the replaced
-        turns stay on disk with ``active = 0``, ``compacted = 0`` — the same "the user took it back" marking
-        :meth:`rewind_to_message` applies — and stay readable via :meth:`get_messages` with
-        ``include_inactive=True``. This is the mode a rewind/edit/regenerate must use: those flows overwrite
-        a transcript the user may not have meant to drop, and a plain DELETE also evicts the rows from the
-        FTS index, leaving nothing to recover from (#82756). It implies active-only handling —
-        already-archived rows are never touched — so ``active_only`` is redundant with it. Live rows that
-        *messages* keeps in place (the common in-order prefix, matched on role/content/tool identity) are
-        left untouched with their ids; only the divergent live suffix is archived and only the new suffix
-        of *messages* is inserted (#82956: archiving and re-inserting the kept prefix grew the archive by
-        the whole transcript on every rewind). The live view is identical either way; only the durability
-        of the dropped turns differs.
+        """Replace transcript atomically. ``active_only`` preserves the compaction archive.
+        ``archive_dropped`` implies active-only: retire only the divergent live suffix, retaining the
+        matching prefix's ids (#82956). Retired rows stay in the DB/FTS for audit and recovery
+        (#82756), unlike the destructive default. ``reject_active_turn_lease`` fences user rewrites.
         """
         from hermes_state_errors import CompressionSessionClosedError
         def _do(conn):
@@ -1212,13 +1204,18 @@ class SessionMessagesMixin:
         """Fixed-width durable identity for indexed display-generation lookup."""
         return hashlib.sha256(repr(key).encode("utf-8", "surrogatepass")).digest()
 
-    def _dedupe_display_generations(self, rows):
-        """Collapse compaction generations so each logical message appears once (the protected tail is copied
-        into each generation: same role/content/timestamp, different ``active``/id); prefer the live row, then
-        the newest. The ONE definition every display projection shares. *rows* must be ordered by ``id``."""
+    def _dedupe_display_generations(self, rows, *, include_inactive=False):
+        """Filter retired UID generations, then dedupe display copies (live/newest wins).
+        Supply ALL generations ordered by id; explicit audit reads retain their old visibility."""
+        latest = {row["message_uid"]: row for row in rows
+            if "message_uid" in row.keys() and row["message_uid"]}
+        retired = {uid for uid, row in latest.items() if not (row["active"] or row["compacted"])}
         seen: Dict[Tuple[Any, ...], Any] = {}
         first_id: Dict[Tuple[Any, ...], int] = {}
         for row in rows:
+            uid = row["message_uid"] if "message_uid" in row.keys() else None
+            if not include_inactive and (uid in retired or not (row["active"] or row["compacted"])):
+                continue
             if self._is_model_only_row(row):
                 continue
             key = self._display_dedupe_key(row)
@@ -1295,10 +1292,12 @@ class SessionMessagesMixin:
                     ("idx_messages_session_id",),
                 ).fetchone() is not None
                 index_hint = "INDEXED BY idx_messages_session_id" if has_session_index else "NOT INDEXED"
+                generation_clause = (_DISPLAY_GENERATION_SQL.format(owner="messages")
+                    if active_clause and "message_uid" in self._message_column_names(conn) else "")
                 rows = conn.execute(
                     "SELECT id, role, content, timestamp, tool_call_id, tool_calls, tool_name, active, "
                     f"display_kind, display_metadata FROM messages {index_hint} "
-                    f"WHERE session_id = ?{active_clause} ORDER BY id ASC",
+                    f"WHERE session_id = ?{active_clause}{generation_clause} ORDER BY id ASC",
                     (session_id,))
                 for row in rows:
                     if self._is_model_only_row(row):
@@ -1354,10 +1353,13 @@ class SessionMessagesMixin:
                                 offset: int = 0, latest: bool = False):
         """One display-history projection for normal reads and transactional verification."""
         direction = "DESC" if latest else "ASC"
+        generation = _DISPLAY_GENERATION_SQL if any(
+            row[1] == "message_uid" for row in conn.execute("PRAGMA table_info(messages)")) else ""
         return conn.execute(
             f"""WITH page AS (
                    SELECT display_order FROM messages
                    WHERE session_id = ? AND (active = 1 OR compacted = 1){DISPLAY_VISIBLE_SQL}
+                     {generation.format(owner="messages")}
                    GROUP BY display_order ORDER BY display_order {direction}
                    LIMIT ? OFFSET ?
                )
@@ -1367,6 +1369,7 @@ class SessionMessagesMixin:
                    WHERE candidate.session_id = ?
                      AND candidate.display_order = page.display_order
                      AND (candidate.active = 1 OR candidate.compacted = 1){DISPLAY_VISIBLE_SQL}
+                     {generation.format(owner="candidate")}
                    ORDER BY candidate.active DESC, candidate.id DESC LIMIT 1
                )
                ORDER BY page.display_order ASC""",
@@ -1379,7 +1382,8 @@ class SessionMessagesMixin:
         backfills them), so the count is zero exactly when the read paints nothing."""
         row = self._read_one(
             "SELECT COUNT(*) FROM (SELECT DISTINCT display_order FROM messages"
-            f" WHERE session_id = ?{_DISPLAY_ACTIVE_CLAUSE}{DISPLAY_VISIBLE_SQL})", (session_id,))
+            f" WHERE session_id = ?{_DISPLAY_ACTIVE_CLAUSE}{DISPLAY_VISIBLE_SQL}"
+            f"{_DISPLAY_GENERATION_SQL.format(owner='messages')})", (session_id,))
         return int(row[0])
 
     def _display_messages_from_conn(self, conn, session_id: str) -> Optional[List[Dict[str, Any]]]:
@@ -1422,7 +1426,9 @@ class SessionMessagesMixin:
             # (display_order is per-segment and not comparable across segments, so the per-segment
             # display_order paging below does not apply across a lineage.)
             rows = self._dedupe_display_generations(self._read_all(
-                f"SELECT * FROM messages WHERE session_id IN ({_placeholders(session_ids)})" + active_clause + " ORDER BY id ASC", session_ids))
+                f"SELECT * FROM messages WHERE session_id IN ({_placeholders(session_ids)})"
+                + ("" if include_compacted and not include_inactive else active_clause) + " ORDER BY id ASC", session_ids),
+                include_inactive=include_inactive)
             rows = rows[::-1][offset:][:limit][::-1] if latest else rows[offset:][:limit]
         elif include_compacted and not include_inactive and self._ensure_display_order(session_id):
             # _read_retrying_ioerr: mode=ro pooled readers see a transient IOERR mid-checkpoint (#100871).
@@ -1522,7 +1528,7 @@ class SessionMessagesMixin:
         """``_CONVERSATION_ROW_COLUMNS`` rows for *session_ids* ORDER BY id (timestamps are not monotonic
         and would break tool-call adjacency)."""
         return self._read_all(
-            f"SELECT {'session_id, ' if with_session_id else ''}{self._CONVERSATION_ROW_COLUMNS} "
+            f"SELECT compacted, {'session_id, ' if with_session_id else ''}{self._CONVERSATION_ROW_COLUMNS} "
             f"FROM messages WHERE session_id IN ({_placeholders(session_ids)})"
             f"{active_clause} ORDER BY id", tuple(session_ids))
 
@@ -1537,9 +1543,9 @@ class SessionMessagesMixin:
         cannot merge with an original user turn; the stored transcript is never mutated."""
         rows = self._fetch_conversation_rows(
             self._resume_lineage_ids(session_id) if include_ancestors else [session_id],
-            self._active_clause(include_inactive, include_compacted), with_session_id=False)
+            "" if include_compacted else self._active_clause(include_inactive, False), with_session_id=False)
         if include_compacted:
-            rows = self._dedupe_display_generations(rows)
+            rows = self._dedupe_display_generations(rows, include_inactive=include_inactive)
         return self._rows_to_conversation(rows, session_id=session_id, include_ancestors=include_ancestors,
             repair_alternation=repair_alternation, include_row_ids=include_row_ids,
             include_summary_markers=repair_alternation)
@@ -1662,18 +1668,12 @@ class SessionMessagesMixin:
         return messages
 
     def get_resume_conversations(self, session_id: str) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
-        """``(model_history, display_history)`` for a resume from ONE SELECT; byte-identical to the separate
-        reads. model: the tip's active rows, alternation-repaired, summary marker kept for pre-compress
-        checkpointing. display: the full lineage (``/branch`` stands alone), compaction-archived rows deduped.
-
-        The display projection also includes rows preserved by IN-PLACE compaction (``active=0,
-        compacted=1``), deduped by :meth:`_dedupe_display_generations`. Without them a compacted
-        conversation resumes showing only its summary plus the carried-forward tail — the user's own turns
-        read as deleted even though every row is still on disk, and the REST transcript read (which has
-        always included them) disagreed with this one about the same session (#92080).
+        """One lineage read: active-only, alternation-repaired model history plus complete display
+        history. Display keeps legitimate compaction archives (#92080), but a later retired UID
+        generation invalidates its older aliases. Explicit branches stay isolated.
         """
         rows = self._fetch_conversation_rows(
-            self._resume_lineage_ids(session_id), _DISPLAY_ACTIVE_CLAUSE, with_session_id=True)
+            self._resume_lineage_ids(session_id), "", with_session_id=True)
         # The model projection stays active-only: it is the compressed working context.
         model_history = self._rows_to_conversation(
             [r for r in rows if r["session_id"] == session_id and r["active"]], session_id=session_id,
@@ -1752,7 +1752,7 @@ class SessionMessagesMixin:
         if len(session_ids) <= 1:
             return []
         rows = self._dedupe_display_generations(
-            self._fetch_conversation_rows(session_ids, _DISPLAY_ACTIVE_CLAUSE, with_session_id=True))
+            self._fetch_conversation_rows(session_ids, "", with_session_id=True))
         ancestor_ids = {int(row["id"]) for row in rows if row["session_id"] != session_id and row["id"] is not None}
         if not ancestor_ids:
             return []

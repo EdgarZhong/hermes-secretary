@@ -18,12 +18,12 @@
 | Active Foreground | 当前真正提交给模型的上下文；Noting 从父运行态冻结其前缀，保留原 content blocks |
 | History Foreground | 当前合法路径上可作为原文证据的跨压缩消息；排除失效分支、控制脚手架与不可见注入 |
 | Full Foreground | 包括上下文前导及审计附着的完整展示投影；不是 History 检索语料的同义词 |
-| Message Identity / provenance | `(conversation_ref, message_uid)` 是规范消息地址；Notebook 也可保留同 Conversation 时间范围。来源存在不等于支持某断言 |
+| Message Identity / provenance | 全局规范消息地址仍是 `(conversation_ref, message_uid)`；Notebook 局部来源使用 `source_message_uids`，Conversation 归属由绑定结构提供，也可保留同 Conversation 时间范围。来源存在不等于支持某断言 |
 | Notebook / entry | Conversation 内部的派生工作状态与细节索引／一个稳定语义条目；分类见白板 C1–C9 |
 | entry_id / version_id | 同一条目的稳定身份／一次不可变内容版本；不得再以每次改动换 entry_id 表达版本 |
 | working view / Snapshot | Noting 任务私有的当前完整工作视图／经过正式提交的不可变全量结果；操作成功不等于 Snapshot 已发布 |
 | Anchor / coverage | Snapshot 所依据的有效逻辑消息边界；较晚提交的旧边界不能覆盖更靠后的有效结果 |
-| Candidate | 简述＋当前条目引用＋原文来源的持久化提案索引；不是已批准事实，也不搬走源正文 |
+| Candidate | 按目标特化的简述＋Notebook 条目引用或确切 Message Identity 引用，二选一；不是已批准事实，不复写或搬走源正文 |
 | Persistence / dispatch / settlement | Main 提案、用户批准、向目标实际分发／执行获批交付／Noting 依据 Conversation 轨迹清退已分发覆盖范围 |
 | archive | 从当前 Notebook 工作视图退出；不是新建可检索的短期归档库，亦不删除原始聊天证据 |
 | Scheduler / Schedule Table | Main 独立控制的会话内排期工具／其可列出的正式排期集合；不由 Notebook 状态驱动 |
@@ -119,11 +119,12 @@ Noting **仅**拥有 `conversation_history`、`notebook_show`、`notebook_mainta
 内容类型、准入、状态含义和每类出口以白板 03／07 为准。这里定案其机器表达：
 
 - Payload 使用 `work`（matter/action）、`situations`（situation/implicit_gap）、`discussion`（question/insight/decision）、`candidates` 四个数组。前三个是内容板块，第四个是聚合区。
-- 一个 entry 包含 `entry_id, version_id, entry_type, fields, status, relations, source_message_identities, source_time_range`；runtime 另返回 `created_at, updated_at, last_processed_at`（未知／尚未处理可 null）。分类板块由类型确定，模型不能任意写 section。
+- 一个 entry 包含 `entry_id, version_id, entry_type, fields, status, relations, source_message_uids, source_time_range`；runtime 另返回 `created_at, updated_at, last_processed_at`（未知／尚未处理可 null）。分类板块由类型确定，模型不能任意写 section。
+- **2026-10-18 用户确认 · 局部来源身份：** Noting 创建／更新来源只填 `source_message_uids`（完整、非空且不重复的 UID 字符串数组；空数组用于清除），不填写每条来源的 `conversation_ref`。工具从可信绑定的父 Conversation 组装全局 Message Identity，再执行原有合法路径、可见性及提交校验；其他 Conversation 的 UID 不因此取得权限。所有 Notebook 可读投影（维护结果、Main／Noting show、初始／续 Turn 控制消息、slash、Proposal、完成 Framework）仅列局部 UID，Conversation 可在外层出现一次，不逐条重复。内部不可变版本及既有后端／Web API 保留完整来源身份与原有语义，不移除已有字段；不把完整身份重新回显给 Noting。fork 仍共享不可变版本，按继承 Conversation 绑定解释来源，不改写父版本；旧来源的逐条继承依据及禁止借旧证据支持新断言的约束保持。History 全局 Message Identity 与跨会话契约不变。
 - `entry_id` 可复用既有 lineage 的稳定身份；`version_id` 标识既有不可变 item row。Snapshot 固定到具体版本。旧版本可服务已存在的历史审计，不增加 Agent 旧快照检索工具。
 - `fields.evidence_time` 是对应信息的原始实质证据时间；事项／行动使用 `last_progress_time`，问题使用 `last_discussion_time`，无后者时回到其原始证据时间。gap 的72小时使用runtime记录的首次识别／created_at，且不因改写刷新；它引用的原始消息时间不冒充识别时刻。来源时间未知时先定向取证，仍未知则明确未知并作语义去留判断，不编造“未到期”。
 - `last_processed_at` 由提交具体 `processing_note` 的成功操作记录实际运行时间；仅作处理留痕，不改变白板的年龄依据。相同值 no-op 不刷新任何时间；下一次完整 Noting 仍判断已到期条目，不为每条新增定时器。
-- 任一条目至少有非空 Messages provenance 或有效时间范围；Candidate 也保留原文来源，不能只剩 notebook_refs。新引用限当前父 Conversation；继承来源按原版本的合法依据保留。
+- 非 Candidate 条目至少有非空 Messages provenance 或有效时间范围。所有 Candidate（Memory、Rule、Skill 及 Conversation 工作指导）严格选择一种来源：非空 notebook_refs 搭配映射后的 source_types，或非空确切 source_message_uids；禁止混用。refs 型的直接消息数组为空、source_time_range=null，经现行源条目回溯 History；直接消息型的 notebook_refs/source_types 为空、source_time_range=null。仅时间范围不构成 Candidate 的直接来源。新引用限当前父 Conversation；继承来源按原版本的合法依据保留。
 - Candidate 引用稳定 entry_id；反向 candidate_refs 从引用计算，不同时保存第二套可编辑关系。源条目可继续更新，提案前 Main 回读；不能仅因获批某个旧版本就结算新的未覆盖内容。
 - 状态是有证据的事实，校验按类型的合法词汇，不机械沿用旧“只许单向转换”。发现新证据可改正／重开；reason/evidence 写入 provenance 与相关简述，工具不创造业务事实。
 
@@ -142,7 +143,7 @@ Noting **仅**拥有 `conversation_history`、`notebook_show`、`notebook_mainta
 | decision | scope, valid_when, ends_when | rationale | active, superseded, revoked, expired |
 | candidate | targets, notebook_refs（可空）, source_types（可空） | stage_evidence | proposed, awaiting_approval, approved, awaiting_result |
 
-question 已回答时 unresolved_points 可明确“无”，答案在 current_answer；不靠 null 隐去结论。Candidate source_types 在直接原文来源时可空，防止伪造继承；引用 Notebook 时必须带相应映射集合。数组内 ID／标签必须唯一，重复值报invalid_argument，不静默去重或改变顺序。关系目标必须属于当前工作视图，situation_ref 必须指向 situation；Candidate 不引用另一个 Candidate。
+question 已回答时 unresolved_points 可明确“无”，答案在 current_answer；不靠 null 隐去结论。Candidate 直接原文来源时 source_types 必须为空，防止伪造继承；引用 Notebook 时必须带相应映射集合。来源二选一不依赖目标；Conversation 目标仍与持久化目标分开，不混入同一 Candidate。refs 型只做按身份有用的简述：Memory 概括个人事实及限定，Rule 概括适用约束，Skill 概括场景与流程；不复写源正文，细节仍读现行条目与原文。数组内 ID／标签必须唯一，重复值报invalid_argument，不静默去重或改变顺序。关系目标必须属于当前工作视图，situation_ref 必须指向 situation；Candidate 不引用另一个 Candidate。
 
 ### 4.3 `notebook_maintain` 完整 Schema
 
@@ -354,7 +355,7 @@ question 已回答时 unresolved_points 可明确“无”，答案在 current_a
             "items": {
               "type": "string"
             },
-            "description": "Candidate only: complete replacement array of stable current entry IDs; sources remain in place."
+            "description": "Candidate only: stable current entry IDs for any target. Use these references or exact Message UIDs, never both; source bodies remain in place."
           },
           "targets": {
             "type": "array",
@@ -363,10 +364,11 @@ question 已回答时 unresolved_points 可明确“无”，答案在 current_a
               "enum": [
                 "memory",
                 "skill",
-                "rule"
+                "rule",
+                "conversation"
               ]
             },
-            "description": "Candidate only: intended destination kinds. Actual providers and write permissions are selected by Main."
+            "description": "Candidate only: persistence destinations or Conversation working guidance. Main selects actual providers and write permissions."
           },
           "source_types": {
             "type": "array",
@@ -381,19 +383,19 @@ question 已回答时 unresolved_points 可明确“无”，答案在 current_a
                 "decision"
               ]
             },
-            "description": "Candidate only: source content types; map implicit_gap to situation, preserve the union for aggregated sources."
+            "description": "Candidate only: mapped source content types for notebook_refs; map implicit_gap to situation and preserve the union. Empty for direct Message sources."
           },
           "stage_evidence": {
             "type": [
               "string",
               "null"
             ],
-            "description": "Candidate only: brief evidence of proposal, approval or dispatch outcome; cite original messages in provenance."
+            "description": "Candidate only: brief evidence of proposal, approval or dispatch outcome; verify it against the original Conversation trajectory."
           }
         },
         "required": [],
         "additionalProperties": false,
-        "description": "All types require description. Common optional fields: domains, external_refs, evidence_time, processing_note. Allowed type-specific fields (required unless marked optional): matter: completion_condition; optional blocker, last_progress_time. action: owner, completion_condition; optional blocker, last_progress_time. situation: subjects, time_context. implicit_gap: situation_ref, missing_information, impact, resolution_condition. question: unresolved_points; optional current_answer, last_discussion_time. insight: certainty, qualification. decision: scope, valid_when, ends_when; optional rationale. candidate: targets, notebook_refs, source_types; optional stage_evidence. Candidate notebook_refs may be empty for direct-message sources; source_types may be empty only when there is no Notebook ancestry. Required text must be nonempty; express genuinely unknown conditions explicitly rather than inventing them. Optional single-valued fields may be cleared with null; arrays with []. Use only fields belonging to the entry type. For update, provide only changed properties; omitted properties remain. Keep prose concise, preferably one sentence per summary; no word or character quotas."
+        "description": "All types require description. Common optional fields: domains, external_refs, evidence_time, processing_note. Allowed type-specific fields (required unless marked optional): matter: completion_condition; optional blocker, last_progress_time. action: owner, completion_condition; optional blocker, last_progress_time. situation: subjects, time_context. implicit_gap: situation_ref, missing_information, impact, resolution_condition. question: unresolved_points; optional current_answer, last_discussion_time. insight: certainty, qualification. decision: scope, valid_when, ends_when; optional rationale. candidate: targets, notebook_refs, source_types; optional stage_evidence. Candidate uses either notebook_refs with mapped source_types or exact source_message_uids with both arrays empty; never both. Keep its description target-specific without repeating referenced bodies. Required text must be nonempty; express genuinely unknown conditions explicitly rather than inventing them. Optional single-valued fields may be cleared with null; arrays with []. Use only fields belonging to the entry type. For update, provide only changed properties; omitted properties remain. Keep prose concise, preferably one sentence per summary; no word or character quotas."
       },
       "status": {
         "type": "string",
@@ -451,27 +453,12 @@ question 已回答时 unresolved_points 可明确“无”，答案在 current_a
         },
         "description": "Only real current relationships; send the complete replacement array."
       },
-      "source_message_identities": {
+      "source_message_uids": {
         "type": "array",
         "items": {
-          "type": "object",
-          "properties": {
-            "conversation_ref": {
-              "type": "string",
-              "description": "Exact Conversation Ref returned by the runtime."
-            },
-            "message_uid": {
-              "type": "string",
-              "description": "Exact Message UID returned with that Conversation Ref."
-            }
-          },
-          "required": [
-            "conversation_ref",
-            "message_uid"
-          ],
-          "additionalProperties": false
+          "type": "string"
         },
-        "description": "Exact supporting original-message identities in this Conversation. Send the complete replacement array."
+        "description": "Exact supporting Message UIDs in this Conversation. Send the complete replacement array; Conversation ownership is supplied by the bound Notebook."
       },
       "source_time_range": {
         "anyOf": [
@@ -497,7 +484,7 @@ question 已回答时 unresolved_points 可明确“无”，答案在 current_a
             "type": "null"
           }
         ],
-        "description": "Current-Conversation evidence interval; supply both bounds together, or null to clear when other valid provenance remains."
+        "description": "Current-Conversation evidence interval; supply both bounds together, or null to clear when other valid provenance remains. Not a Candidate source; keep null for Candidates."
       },
       "changes": {
         "type": "object",
@@ -675,7 +662,7 @@ question 已回答时 unresolved_points 可明确“无”，答案在 current_a
                 "items": {
                   "type": "string"
                 },
-                "description": "Candidate only: complete replacement array of stable current entry IDs; sources remain in place."
+                "description": "Candidate only: stable current entry IDs for any target. Use these references or exact Message UIDs, never both; source bodies remain in place."
               },
               "targets": {
                 "type": "array",
@@ -684,10 +671,11 @@ question 已回答时 unresolved_points 可明确“无”，答案在 current_a
                   "enum": [
                     "memory",
                     "skill",
-                    "rule"
+                    "rule",
+                    "conversation"
                   ]
                 },
-                "description": "Candidate only: intended destination kinds. Actual providers and write permissions are selected by Main."
+                "description": "Candidate only: persistence destinations or Conversation working guidance. Main selects actual providers and write permissions."
               },
               "source_types": {
                 "type": "array",
@@ -702,19 +690,19 @@ question 已回答时 unresolved_points 可明确“无”，答案在 current_a
                     "decision"
                   ]
                 },
-                "description": "Candidate only: source content types; map implicit_gap to situation, preserve the union for aggregated sources."
+                "description": "Candidate only: mapped source content types for notebook_refs; map implicit_gap to situation and preserve the union. Empty for direct Message sources."
               },
               "stage_evidence": {
                 "type": [
                   "string",
                   "null"
                 ],
-                "description": "Candidate only: brief evidence of proposal, approval or dispatch outcome; cite original messages in provenance."
+                "description": "Candidate only: brief evidence of proposal, approval or dispatch outcome; verify it against the original Conversation trajectory."
               }
             },
             "required": [],
             "additionalProperties": false,
-            "description": "All types require description. Common optional fields: domains, external_refs, evidence_time, processing_note. Allowed type-specific fields (required unless marked optional): matter: completion_condition; optional blocker, last_progress_time. action: owner, completion_condition; optional blocker, last_progress_time. situation: subjects, time_context. implicit_gap: situation_ref, missing_information, impact, resolution_condition. question: unresolved_points; optional current_answer, last_discussion_time. insight: certainty, qualification. decision: scope, valid_when, ends_when; optional rationale. candidate: targets, notebook_refs, source_types; optional stage_evidence. Candidate notebook_refs may be empty for direct-message sources; source_types may be empty only when there is no Notebook ancestry. Required text must be nonempty; express genuinely unknown conditions explicitly rather than inventing them. Optional single-valued fields may be cleared with null; arrays with []. Use only fields belonging to the entry type. For update, provide only changed properties; omitted properties remain. Keep prose concise, preferably one sentence per summary; no word or character quotas."
+            "description": "All types require description. Common optional fields: domains, external_refs, evidence_time, processing_note. Allowed type-specific fields (required unless marked optional): matter: completion_condition; optional blocker, last_progress_time. action: owner, completion_condition; optional blocker, last_progress_time. situation: subjects, time_context. implicit_gap: situation_ref, missing_information, impact, resolution_condition. question: unresolved_points; optional current_answer, last_discussion_time. insight: certainty, qualification. decision: scope, valid_when, ends_when; optional rationale. candidate: targets, notebook_refs, source_types; optional stage_evidence. Candidate uses either notebook_refs with mapped source_types or exact source_message_uids with both arrays empty; never both. Keep its description target-specific without repeating referenced bodies. Required text must be nonempty; express genuinely unknown conditions explicitly rather than inventing them. Optional single-valued fields may be cleared with null; arrays with []. Use only fields belonging to the entry type. For update, provide only changed properties; omitted properties remain. Keep prose concise, preferably one sentence per summary; no word or character quotas."
           },
           "status": {
             "type": "string",
@@ -772,27 +760,12 @@ question 已回答时 unresolved_points 可明确“无”，答案在 current_a
             },
             "description": "Only real current relationships; send the complete replacement array."
           },
-          "source_message_identities": {
+          "source_message_uids": {
             "type": "array",
             "items": {
-              "type": "object",
-              "properties": {
-                "conversation_ref": {
-                  "type": "string",
-                  "description": "Exact Conversation Ref returned by the runtime."
-                },
-                "message_uid": {
-                  "type": "string",
-                  "description": "Exact Message UID returned with that Conversation Ref."
-                }
-              },
-              "required": [
-                "conversation_ref",
-                "message_uid"
-              ],
-              "additionalProperties": false
+              "type": "string"
             },
-            "description": "Exact supporting original-message identities in this Conversation. Send the complete replacement array."
+            "description": "Exact supporting Message UIDs in this Conversation. Send the complete replacement array; Conversation ownership is supplied by the bound Notebook."
           },
           "source_time_range": {
             "anyOf": [
@@ -818,7 +791,7 @@ question 已回答时 unresolved_points 可明确“无”，答案在 current_a
                 "type": "null"
               }
             ],
-            "description": "Current-Conversation evidence interval; supply both bounds together, or null to clear when other valid provenance remains."
+            "description": "Current-Conversation evidence interval; supply both bounds together, or null to clear when other valid provenance remains. Not a Candidate source; keep null for Candidates."
           }
         },
         "required": [],
@@ -861,7 +834,7 @@ question 已回答时 unresolved_points 可明确“无”，答案在 current_a
 }
 ```
 
-若42是候选且原引用为17、23，该调用保留17、删除23、加入29；其他字段与原文来源不变。关系同理；更新 source_time_range 时两端一起传。
+若42是候选且原引用为17、23，该调用保留17、删除23、加入29；其他字段与选定来源形态不变，不额外混入直接消息来源。关系同理；非 Candidate 更新 source_time_range 时两端一起传。
 
 **软写法：** description、Candidate description、archive reason 优先一句话；属性写具体必要的目标／条件／缺口／证据，不写进展流水账或复制原文。类型字段的语义和工具 description 一起指导模型；没有每条、每参数字数配额、maxLength、长度拒绝或自动截断。完整 ID、关键限定和来源优先于简洁。
 
@@ -898,7 +871,9 @@ question 已回答时 unresolved_points 可明确“无”，答案在 current_a
   }
 }
 ```
-`notebook_show({})` 由实际调用者身份选择视图：Main 返回完整当前有效 Snapshot（含身份、覆盖和正文），无 Snapshot 是成功空视图；Noting 返回绑定任务当前完整 working view（含该任务成功执行但尚未提交的修改、base_snapshot_id 与覆盖边界），不能用父 Conversation 的最新已提交快照覆盖本任务修改。返回 `view_kind:"snapshot"` 或 `view_kind:"working"`；working 结果不冒称已经提交，不伪造 snapshot_id。模型不能传入 task_id、Conversation 或视图选择参数。不存在有效绑定任务时返回 state_conflict；空工作视图仍为成功。不返回归档条目／历史快照，也不把结束审计元数据混进条目正文。
+`notebook_show({})` 由实际调用者身份选择视图：Main 返回完整当前有效 Notebook，无 Snapshot 是成功空视图；Noting 返回绑定任务当前完整 working view，含该任务成功执行但尚未提交的修改，不能用父 Conversation 的最新已提交快照覆盖本任务修改。返回 `view_kind:"snapshot"` 或 `view_kind:"working"`；working 结果不冒称已经提交。模型专用投影保留 Conversation、视图种类、完整正文和可操作的 entry/version、关系与来源身份，不输出内部 snapshot_id、base_snapshot_id 或覆盖anchor审计字段；原 Store 及外部API默认返回仍保留这些内部字段，不能删除既有HTTP/WS字段来代替模型投影。模型不能传入 task_id、Conversation 或视图选择参数。不存在有效绑定任务时返回 state_conflict；空工作视图仍为成功。不返回归档条目／历史快照，也不把结束审计元数据混进条目正文。
+
+模型专用视图的 `evidence_coverage` 从绑定DB中的真实冻结锚点解析可用Conversation历史范围，包含可解析状态、消息范围数量、起止原始时间及边界角色，不输出锚点审计ID。它只说明任务可用历史边界，不声称逐条精读或全部成为Notebook事实；生成时间另列。没有可信DB或锚点不可解析时明确unknown/unavailable，不拿生成时间或最新消息冒充；展示解析失败不得阻断完整正文及原有提交/通知。默认API不增加该模型字段。
 
 `finish_noting` 校验非空 reason，记录正常结束请求。返回 `status:"end_requested"`；runner 在原生 Turn 返回后经过 Commit Gate 提交，不能返回 `committed:true`。重复成功结束请求不再改变结果。模型须最后单独调用并停止（用户已确认）。沿现有Noting工具执行机制，在同步／并发dispatch执行任何调用前检查批次：若包含finish_noting且不止一个调用，整批返回invalid_argument，不执行其中任何调用，提示先完成其他工作再单独finish。成功end_requested后，在现有任务锁下固定本次可提交工作状态；后续notebook_maintain返回state_conflict且不改视图，重复finish保留首次结束结果。show／History仍只读；runner仍等原生Turn返回后经过Commit Gate提交，不由finish直接发布。运行时预算兜底仍能提交合法视图，但保留 forced 标识，不能伪造模型显式完成。
 
@@ -977,6 +952,11 @@ question 已回答时 unresolved_points 可明确“无”，答案在 current_a
         ],
         "additionalProperties": false
       },
+      "content_offset": {
+        "type": "integer",
+        "minimum": 0,
+        "description": "Optional anchored Read only, with before=0 and after=0. Unicode code-point offset into this message's original content; structured content uses canonical JSON text. Returns an exact bounded slice with content_offset/content_end/next_content_offset. Repeat the same message_identity using next_content_offset until null. Tool bodies still require include_tool_content=true."
+      },
       "before": {
         "type": "integer",
         "minimum": 0,
@@ -1028,7 +1008,13 @@ Search每条正文约800字符：短消息全返回，长消息选实际正向�
 
 Read返回原始内容／结构而非Search折叠，邻居按同一有效逻辑路径排序。默认前2＋本条＋后3，0/0只看锚点。跨压缩读原始历史；排除rewind/edit/undo已失效路径、Prelude与仅模型／仅人类的隐藏注入，遵循原有视图边界。历史多模态内容继续用原生可表示结构，不把文件地址说成已看过附件。
 
-不新增Scroll、全文chunk、cursor工具。沿用Hermes外层工具结果预算与落盘／截断保护；Read的完整语义不承诺巨型正文一定全部进入模型。Noting没有read_file，超限时反馈必须让它先缩小before/after；单条仍过大则明确“当前允许工具无法读取其余内容”，保留未知，不诱导越权读文件。不得把路径预览当全文已读取。本轮不为这类极端情况扩大四工具面。
+不新增Scroll、全文chunk、cursor工具。沿用Hermes外层工具结果预算与落盘／截断保护；Read的完整语义不承诺巨型正文一定全部进入模型。Noting没有read_file，超限时先缩小before/after或时间范围；单条仍过大时沿下述可选参数读取同源剩余内容。不可得时保留未知，不诱导越权读文件，不把路径预览当全文已读取；四工具面不变。
+
+**增量续读接口（用户已确认同源分页及配套指导同步）：** 可选 `content_offset` 仅接受单锚点Read且显式 `before=0, after=0`，不传参数仍保留原默认与结果。按同一 `message_identity` 的原文Unicode码点分段；结构化内容沿既有规范JSON文本表示。每页重新验证owner/父域/合法路径，工具正文仍需 `include_tool_content=true`。片段不插省略号，长度不超原单条/总量预算；显式分段结果附 `content_offset`（含）、`content_end`（不含）、完整源 `content_chars/content_digest` 及 `next_content_offset`（末页为null）。offset等于原文长度为空末页，超过长度报invalid_argument。超限反馈使用 `tools/session_history_tool.py::NOTING_HISTORY_OVERSIZE_GUIDANCE`；以下为与运行时逐字一致的英文文案，不改工具权限或Schema：
+
+```text
+Reduce before/after or the time window. For one oversized message, set before=after=0 and content_offset=0 in anchored Read; repeat the same message_identity at next_content_offset until null. If unavailable, keep the evidence unknown. Do not use file tools or treat a saved-path preview as the full source.
+```
 
 ### 5.4 结果形状
 
@@ -1189,7 +1175,7 @@ Could not determine whether an instant reminder can trigger in this Conversation
 |---|---|---|
 | notebook_maintain create/update | success、changed、完整entry（含当前version）；工作视图尚未提交的含义写在description | 全Notebook、全Schema、原文副本、内部SQL |
 | notebook_maintain archive | success、changed、entry_id、archived:true | 已归档正文、可找回归档的入口 |
-| notebook_show | success、conversation_ref、view_kind、coverage、完整当前payload；Main含snapshot_id，Noting含base_snapshot_id | 历史版本、结束审计、Memo |
+| notebook_show | success、conversation_ref、view_kind、完整当前payload及可得的可读时间；保留可操作entry/version和来源身份 | 内部snapshot_id/base_snapshot_id、coverage anchor审计字段、历史快照、结束审计、Memo；外部API默认字段不变 |
 | finish_noting | success、status:end_requested | Snapshot成功断言、压缩请求或重写全簿 |
 | scheduler list | success、conversation_ref、schedules、count；未来24小时无instant时加notice | 重复owner、内部claim/ACK、已删正文 |
 | scheduler mutate | success、changed、完整schedule；delete返回ID＋deleted:true；有在途才附标记；未来24小时无instant时加notice | Notebook状态或推测的业务完成 |
@@ -1252,7 +1238,7 @@ Force admission仍复用现有Framework producer发出接纳通知；只在成�
 | 文案 | owner／条件 |
 |---|---|
 | Secretary Role、Notebook、Time | 替换现有SECRETARY_WORK_AND_NOTEBOOK_GUIDANCE；沿该指导原有Main/全局Noting门禁，local参与开关不重建root |
-| Scheduler | 独立Main模块，scheduler.enabled控制，不跟Noting关掉；三句一段 |
+| Scheduler | 独立Main模块，scheduler.enabled控制，不跟Noting关掉；一段 |
 | Conversation and History | 替换HISTORY_SEARCH_GUIDANCE，所有eligible Main常有 |
 | Native Session Search | 仅原生session_search实际可用时；Secretary路由措辞只在eligible Main能力范围覆盖，非Main原生指导保持 |
 | Cron description／schedule note | 现有私有Schema copy／tool_search说明覆写接缝；只在Scheduler可用的eligible Main覆盖，不能修改全局原生Schema |
@@ -1268,7 +1254,7 @@ Force admission仍复用现有Framework producer发出接纳通知；只在成�
 
 ```text
 ## Secretary Role
-You are the user's secretary: proactively coordinate their affairs and Agent work, follow up on commitments, and preserve continuity in one Conversation across interactions and compactions. Unless the user asks you to perform work yourself, delegate concrete work to suitable Agents, then examine their results against the user's intended outcome before accepting them. Keep the user informed, act within their authorization, and handle context continuity without asking them to manage Sessions or maintain a Notebook. For a requested future review, arrange the preparatory work and register the follow-up; for a user's own commitment, track what remains and offer appropriate help without treating your suggestion as their acceptance.
+You are the user's secretary: proactively coordinate their affairs and Agent work, follow up on commitments, and preserve continuity in one Conversation across interactions and compactions. Answer questions, give advice, and converse directly. For concrete execution work, delegate to suitable Agents unless the user asks you to do it yourself. Review delegated results against the user's intended outcome before accepting them. Keep the user informed, act within their authorization, and handle context continuity without asking them to manage Sessions or maintain a Notebook. For a requested future review, arrange the preparatory work and register the follow-up; for a user's own commitment, track what remains and offer appropriate help without treating your suggestion as their acceptance.
 ```
 
 ### 8.4 Main · Conversation and History
@@ -1288,10 +1274,10 @@ When a Snapshot arrives, note its coverage and use the entries relevant to your 
 Candidates are not permission to write. Prepare a concrete proposal with the exact content and destination; approval authorizes one action, and only the tool's confirmed successful result is the actual write. Neither silence nor a capacity notice is approval. When the system requests a Persistence proposal, begin preparing it directly, avoiding duplicate pending proposals and respecting a user's deferral or rejection.
 ```
 
-### 8.6 Main · Scheduler（三句一段）
+### 8.6 Main · Scheduler（一段）
 
 ```text
-Use scheduler to register and manage the current Conversation's Schedule Table as soon as future attention is needed: choose instant to attempt a wake-up when due, or deferred when the content can wait for the next model request. Route in-Conversation reminders and follow-ups to Scheduler; reserve Hermes Cron for explicitly requested Hermes-wide schedule management or independent recurring Agent tasks. Unless the user explicitly disables autonomous follow-up, keep at least one meaningful instant reminder that can still fire; use the scheduler's coverage notice about a gap in the next 24 hours to judge whether further follow-up is needed.
+Use scheduler to register and manage the current Conversation's Schedule Table as soon as future attention is needed: choose instant to attempt a wake-up when due, or deferred when the content can wait for the next model request. Route in-Conversation reminders and follow-ups to Scheduler; reserve Hermes Cron for explicitly requested Hermes-wide schedule management or independent recurring Agent tasks. Unless the user explicitly disables autonomous follow-up, keep at least one instant reminder due within the next 24 hours. Check existing commitments without inventing new tasks, and stay quiet when there is nothing useful to report; use the scheduler's coverage notice to identify missing coverage.
 ```
 
 ### 8.7 Main · Time
@@ -1363,15 +1349,17 @@ COMPLETE THIS TASK IN ORDER
    - decision: at 7 days from the decision, or on replacement, revocation or end of scope, keep still-applicable choices, conditions and decisive reasons; aggregate important choices and changes into Candidates; archive ineffective one-off choices with no remaining value. Age does not revoke an effective decision.
    Candidates are Notebook index entries that carry either a possible persistence write to Memory, Skills or Rules or in-conversation working guidance; they are not proposals, actions or writes, and do not relocate source bodies. Create or revise them as the Conversation develops; merge compatible Candidates by topic and target.
 
-   | Kind | Targets | Provenance |
-   |---|---|---|
-   | Memory | memory | notebook_refs (with source_types) or exact Message identities; never both |
-   | Self-improvement | skill, rule | exact Message identities only |
-   | Self-improvement | conversation | exact Message identities only |
+   Every Candidate uses exactly one provenance form: current notebook_refs with source_types, or exact Message identities; never mix them, and keep source_time_range null. Notebook references lead through the current source entries to their original Messages; do not repeat those entries' bodies in the Candidate.
+
+   | Kind | Targets |
+   |---|---|
+   | Memory | memory |
+   | Self-improvement | skill, rule |
+   | Self-improvement | conversation |
 
    For persistence the path is Candidate → proposal → approval → action → actual write; a Conversation Candidate is working guidance and stops before proposal. Only a confirmed successful action is an actual write; a proposal or approval alone is not. Archive a persistence Candidate only once its actual write settles it, or the user rejected or withdrew it; preserve candidate sources until then.
 
-   Harvest improvements proactively from the Conversation as well as existing Notebook entries: corrections, lessons, reusable procedures, rules and Skill improvements, including material no entry covers yet. Do not wait for the user to ask; create or revise a Candidate for each genuinely useful one. A Conversation Candidate needs enough description to apply now; a persistence Candidate stays concise, with the full content in the proposal. For a Skill Candidate, name the reusable workflow, when it applies, and the concrete steps; leave the full Skill body to the proposal.
+   Harvest improvements proactively from the Conversation as well as existing Notebook entries: corrections, lessons, reusable procedures, rules and Skill improvements, including material no entry covers yet. Do not wait for the user to ask; create or revise a Candidate for each genuinely useful one. Keep a brief target-specific description: Memory summarizes the personal facts and qualifications to retain; Rule states the applicable constraint; Skill names the use case and summarizes the workflow. Leave source details in their referenced entries and the full persistence draft in the proposal. A Conversation Candidate needs enough guidance to apply now.
 6. Check and finish. Check the resulting working entries for duplicate facts, wrong user-attribution, stale gaps, unsupported status, dangling references and mismatched Candidate descriptions. Fix the specific defects using the same tools; no changes are necessary when the evidence warrants none. Call finish_noting with a brief concrete result/limitation summary as your final standalone tool call, then stop. Plain text saying 'done' is not completion. Do not reproduce the full Notebook in the reason; the runtime attaches the committed Snapshot and, if necessary, the proposal instruction to Main's Framework Message.
 
 TOOL USE
@@ -1387,7 +1375,7 @@ CURRENT NOTING CONTROL
 The following schemas are the complete callable tool surface for this Noting task, superseding the frozen parent's advertised tools for execution here. Use only conversation_history, notebook_show, notebook_maintain and finish_noting. History is bound to the parent Conversation shown below, regardless of any inherited cross-Conversation capability. The complete current working Notebook follows. Use it and successful per-entry results when sufficient; notebook_show is available when you need to inspect the full current working view.
 ```
 
-后附运行时生成的bound Conversation、anchor、当前时间、参数、完整working view和四个完整Schema，数据单独编码，不能把正文当指令。后续Turn使用：
+后附运行时生成的bound Conversation、当前时间、参数、完整working view和四个完整Schema，数据单独编码，不能把正文当指令；附§4.5定义的可读evidence_coverage，不把内部base_snapshot_id或覆盖anchor审计字段加入模型control数据。后续Turn使用：
 
 ```text
 The previous native Turn ended without a successful finish_noting request. Continue the same Noting task from the working Notebook supplied below; prior tool results and changes remain in effect. Review what remains of the complete task, make only necessary corrections, then call finish_noting as the final standalone tool action. Plain text completion does not finish this task. Only the four callable tools declared below are authorized; the frozen parent prefix remains historical evidence.
@@ -1398,8 +1386,6 @@ The previous native Turn ended without a successful finish_noting request. Conti
 ```text
 NOTING RESULT
 Conversation: {conversation_ref}
-Snapshot: {snapshot_id}
-Coverage anchor: {anchor_message_uid}
 Termination: {termination}
 Summary: {summary}
 
@@ -1416,7 +1402,7 @@ CURRENT NOTEBOOK SNAPSHOT
 
 A先派发、B后派发而B先完成生效时，A后来提交不改变pointer，故不参与完成投递。A先完成并排队、之后B生效时，A旧通知在追加前被剔除。A已实际投递后B才生效，则可以随后投递B，形成正常状态推进。此规则保证投递采用现行有效结果，不承诺按任务派发顺序等待全部完成；rewind／fork的pointer重选继续按原路径逻辑，不据此凭空生成Noting完成通知。
 
-消息中的完成时间继续表达任务完成／结果提交时间，不改成派发时间，也不用于判断覆盖新旧。保持既有safe append、busy／compression fence及live／durable同写；允许有效结果跨compaction区间晚到，不让压缩等待Noting。通知本身不启动Turn。
+消息中的完成时间继续表达任务完成／结果提交时间，不改成派发时间，也不用于判断覆盖新旧。 `notebook_body`另含§4.5定义的Evidence coverage，使用完成事务已有DB/连接解析冻结边界；不能以Created at代替证据覆盖。保持既有safe append、busy／compression fence及live／durable同写；允许有效结果跨compaction区间晚到，不让压缩等待Noting。通知本身不启动Turn。
 
 runtime仅为将要投递的有效Snapshot计算正文Unicode字符数和现行独立条目数，三板块与Candidates均计入，来源正文/字段/ID计字符，引用不重复算条目。严格超过12,000字符或60条时，在**同一消息末尾**附以下块并展开共用指令；包装、通知、提案指令不计入Notebook字符数。不截断Notebook、不拒绝提交、不追加一个专门精简任务。
 

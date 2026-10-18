@@ -182,23 +182,11 @@ NOTEBOOK_MAINTAIN_SCHEMA = {'name': 'notebook_maintain',
                                                                                             'running diary.'},
                                                          'notebook_refs': {'type': 'array',
                                                                            'items': {'type': 'string'},
-                                                                           'description': 'Candidate only: '
-                                                                                          'complete '
-                                                                                          'replacement array '
-                                                                                          'of stable current '
-                                                                                          'entry IDs; '
-                                                                                          'sources remain in '
-                                                                                          'place.'},
+                                                                           'description': 'Candidate only: stable current entry IDs for any target. Use these references or exact Message UIDs, never both; source bodies remain in place.'},
                                                          'targets': {'type': 'array',
                                                                      'items': {'type': 'string',
-                                                                               'enum': ['memory',
-                                                                                        'skill',
-                                                                                        'rule']},
-                                                                     'description': 'Candidate only: '
-                                                                                    'intended destination '
-                                                                                    'kinds. Actual providers '
-                                                                                    'and write permissions '
-                                                                                    'are selected by Main.'},
+                                                                               'enum': ['memory', 'skill', 'rule', 'conversation']},
+                                                                     'description': 'Candidate only: persistence destinations or Conversation working guidance. Main selects actual providers and write permissions.'},
                                                          'source_types': {'type': 'array',
                                                                           'items': {'type': 'string',
                                                                                     'enum': ['matter',
@@ -207,53 +195,12 @@ NOTEBOOK_MAINTAIN_SCHEMA = {'name': 'notebook_maintain',
                                                                                              'question',
                                                                                              'insight',
                                                                                              'decision']},
-                                                                          'description': 'Candidate only: '
-                                                                                         'source content '
-                                                                                         'types; map '
-                                                                                         'implicit_gap to '
-                                                                                         'situation, '
-                                                                                         'preserve the union '
-                                                                                         'for aggregated '
-                                                                                         'sources.'},
+                                                                          'description': 'Candidate only: mapped source content types for notebook_refs; map implicit_gap to situation and preserve the union. Empty for direct Message sources.'},
                                                          'stage_evidence': {'type': ['string', 'null'],
-                                                                            'description': 'Candidate only: '
-                                                                                           'brief evidence '
-                                                                                           'of proposal, '
-                                                                                           'approval or '
-                                                                                           'dispatch '
-                                                                                           'outcome; cite '
-                                                                                           'original '
-                                                                                           'messages in '
-                                                                                           'provenance.'}},
+                                                                            'description': 'Candidate only: brief evidence of proposal, approval or dispatch outcome; verify it against the original Conversation trajectory.'}},
                                           'required': [],
                                           'additionalProperties': False,
-                                          'description': 'All types require description. Common optional '
-                                                         'fields: domains, external_refs, evidence_time, '
-                                                         'processing_note. Allowed type-specific fields '
-                                                         '(required unless marked optional): matter: '
-                                                         'completion_condition; optional blocker, '
-                                                         'last_progress_time. action: owner, '
-                                                         'completion_condition; optional blocker, '
-                                                         'last_progress_time. situation: subjects, '
-                                                         'time_context. implicit_gap: situation_ref, '
-                                                         'missing_information, impact, resolution_condition. '
-                                                         'question: unresolved_points; optional '
-                                                         'current_answer, last_discussion_time. insight: '
-                                                         'certainty, qualification. decision: scope, '
-                                                         'valid_when, ends_when; optional rationale. '
-                                                         'candidate: targets, notebook_refs, source_types; '
-                                                         'optional stage_evidence. Candidate notebook_refs '
-                                                         'may be empty for direct-message sources; '
-                                                         'source_types may be empty only when there is no '
-                                                         'Notebook ancestry. Required text must be nonempty; '
-                                                         'express genuinely unknown conditions explicitly '
-                                                         'rather than inventing them. Optional single-valued '
-                                                         'fields may be cleared with null; arrays with []. '
-                                                         'Use only fields belonging to the entry type. For '
-                                                         'update, provide only changed properties; omitted '
-                                                         'properties remain. Keep prose concise, preferably '
-                                                         'one sentence per summary; no word or character '
-                                                         'quotas.'},
+                                          'description': 'All types require description. Common optional fields: domains, external_refs, evidence_time, processing_note. Allowed type-specific fields (required unless marked optional): matter: completion_condition; optional blocker, last_progress_time. action: owner, completion_condition; optional blocker, last_progress_time. situation: subjects, time_context. implicit_gap: situation_ref, missing_information, impact, resolution_condition. question: unresolved_points; optional current_answer, last_discussion_time. insight: certainty, qualification. decision: scope, valid_when, ends_when; optional rationale. candidate: targets, notebook_refs, source_types; optional stage_evidence. Candidate uses either notebook_refs with mapped source_types or exact source_message_uids with both arrays empty; never both. Keep its description target-specific without repeating referenced bodies. Required text must be nonempty; express genuinely unknown conditions explicitly rather than inventing them. Optional single-valued fields may be cleared with null; arrays with []. Use only fields belonging to the entry type. For update, provide only changed properties; omitted properties remain. Keep prose concise, preferably one sentence per summary; no word or character quotas.'},
                                'status': {'type': 'string',
                                           'enum': ['in_progress',
                                                    'paused',
@@ -308,32 +255,13 @@ NOTEBOOK_MAINTAIN_SCHEMA = {'name': 'notebook_maintain',
                                                        'additionalProperties': False},
                                              'description': 'Only real current relationships; send the '
                                                             'complete replacement array.'},
-                               'source_message_identities': {'type': 'array',
-                                                             'items': {'type': 'object',
-                                                                       'properties': {'conversation_ref': {'type': 'string',
-                                                                                                           'description': 'Exact '
-                                                                                                                          'Conversation '
-                                                                                                                          'Ref '
-                                                                                                                          'returned '
-                                                                                                                          'by '
-                                                                                                                          'the '
-                                                                                                                          'runtime.'},
-                                                                                      'message_uid': {'type': 'string',
-                                                                                                      'description': 'Exact '
-                                                                                                                     'Message '
-                                                                                                                     'UID '
-                                                                                                                     'returned '
-                                                                                                                     'with '
-                                                                                                                     'that '
-                                                                                                                     'Conversation '
-                                                                                                                     'Ref.'}},
-                                                                       'required': ['conversation_ref',
-                                                                                    'message_uid'],
-                                                                       'additionalProperties': False},
-                                                             'description': 'Exact supporting '
-                                                                            'original-message identities in '
-                                                                            'this Conversation. Send the '
-                                                                            'complete replacement array.'},
+                               'source_message_uids': {'type': 'array',
+                                                       'items': {'type': 'string'},
+                                                       'description': 'Exact supporting Message UIDs in this '
+                                                                      'Conversation. Send the complete '
+                                                                      'replacement array; Conversation '
+                                                                      'ownership is supplied by the bound '
+                                                                      'Notebook.'},
                                'source_time_range': {'anyOf': [{'type': 'object',
                                                                 'properties': {'start_time': {'type': 'string',
                                                                                               'description': 'Inclusive '
@@ -350,10 +278,7 @@ NOTEBOOK_MAINTAIN_SCHEMA = {'name': 'notebook_maintain',
                                                                 'required': ['start_time', 'end_time'],
                                                                 'additionalProperties': False},
                                                                {'type': 'null'}],
-                                                     'description': 'Current-Conversation evidence interval; '
-                                                                    'supply both bounds together, or null to '
-                                                                    'clear when other valid provenance '
-                                                                    'remains.'},
+                                                     'description': 'Current-Conversation evidence interval; supply both bounds together, or null to clear when other valid provenance remains. Not a Candidate source; keep null for Candidates.'},
                                'changes': {'type': 'object',
                                            'properties': {'fields': {'type': 'object',
                                                                      'properties': {'description': {'type': 'string',
@@ -646,39 +571,11 @@ NOTEBOOK_MAINTAIN_SCHEMA = {'name': 'notebook_maintain',
                                                                                                                        'diary.'},
                                                                                     'notebook_refs': {'type': 'array',
                                                                                                       'items': {'type': 'string'},
-                                                                                                      'description': 'Candidate '
-                                                                                                                     'only: '
-                                                                                                                     'complete '
-                                                                                                                     'replacement '
-                                                                                                                     'array '
-                                                                                                                     'of '
-                                                                                                                     'stable '
-                                                                                                                     'current '
-                                                                                                                     'entry '
-                                                                                                                     'IDs; '
-                                                                                                                     'sources '
-                                                                                                                     'remain '
-                                                                                                                     'in '
-                                                                                                                     'place.'},
+                                                                                                      'description': 'Candidate only: stable current entry IDs for any target. Use these references or exact Message UIDs, never both; source bodies remain in place.'},
                                                                                     'targets': {'type': 'array',
                                                                                                 'items': {'type': 'string',
-                                                                                                          'enum': ['memory',
-                                                                                                                   'skill',
-                                                                                                                   'rule']},
-                                                                                                'description': 'Candidate '
-                                                                                                               'only: '
-                                                                                                               'intended '
-                                                                                                               'destination '
-                                                                                                               'kinds. '
-                                                                                                               'Actual '
-                                                                                                               'providers '
-                                                                                                               'and '
-                                                                                                               'write '
-                                                                                                               'permissions '
-                                                                                                               'are '
-                                                                                                               'selected '
-                                                                                                               'by '
-                                                                                                               'Main.'},
+                                                                                                          'enum': ['memory', 'skill', 'rule', 'conversation']},
+                                                                                                'description': 'Candidate only: persistence destinations or Conversation working guidance. Main selects actual providers and write permissions.'},
                                                                                     'source_types': {'type': 'array',
                                                                                                      'items': {'type': 'string',
                                                                                                                'enum': ['matter',
@@ -687,103 +584,13 @@ NOTEBOOK_MAINTAIN_SCHEMA = {'name': 'notebook_maintain',
                                                                                                                         'question',
                                                                                                                         'insight',
                                                                                                                         'decision']},
-                                                                                                     'description': 'Candidate '
-                                                                                                                    'only: '
-                                                                                                                    'source '
-                                                                                                                    'content '
-                                                                                                                    'types; '
-                                                                                                                    'map '
-                                                                                                                    'implicit_gap '
-                                                                                                                    'to '
-                                                                                                                    'situation, '
-                                                                                                                    'preserve '
-                                                                                                                    'the '
-                                                                                                                    'union '
-                                                                                                                    'for '
-                                                                                                                    'aggregated '
-                                                                                                                    'sources.'},
+                                                                                                     'description': 'Candidate only: mapped source content types for notebook_refs; map implicit_gap to situation and preserve the union. Empty for direct Message sources.'},
                                                                                     'stage_evidence': {'type': ['string',
                                                                                                                 'null'],
-                                                                                                       'description': 'Candidate '
-                                                                                                                      'only: '
-                                                                                                                      'brief '
-                                                                                                                      'evidence '
-                                                                                                                      'of '
-                                                                                                                      'proposal, '
-                                                                                                                      'approval '
-                                                                                                                      'or '
-                                                                                                                      'dispatch '
-                                                                                                                      'outcome; '
-                                                                                                                      'cite '
-                                                                                                                      'original '
-                                                                                                                      'messages '
-                                                                                                                      'in '
-                                                                                                                      'provenance.'}},
+                                                                                                       'description': 'Candidate only: brief evidence of proposal, approval or dispatch outcome; verify it against the original Conversation trajectory.'}},
                                                                      'required': [],
                                                                      'additionalProperties': False,
-                                                                     'description': 'All types require '
-                                                                                    'description. Common '
-                                                                                    'optional fields: '
-                                                                                    'domains, external_refs, '
-                                                                                    'evidence_time, '
-                                                                                    'processing_note. '
-                                                                                    'Allowed type-specific '
-                                                                                    'fields (required unless '
-                                                                                    'marked optional): '
-                                                                                    'matter: '
-                                                                                    'completion_condition; '
-                                                                                    'optional blocker, '
-                                                                                    'last_progress_time. '
-                                                                                    'action: owner, '
-                                                                                    'completion_condition; '
-                                                                                    'optional blocker, '
-                                                                                    'last_progress_time. '
-                                                                                    'situation: subjects, '
-                                                                                    'time_context. '
-                                                                                    'implicit_gap: '
-                                                                                    'situation_ref, '
-                                                                                    'missing_information, '
-                                                                                    'impact, '
-                                                                                    'resolution_condition. '
-                                                                                    'question: '
-                                                                                    'unresolved_points; '
-                                                                                    'optional '
-                                                                                    'current_answer, '
-                                                                                    'last_discussion_time. '
-                                                                                    'insight: certainty, '
-                                                                                    'qualification. '
-                                                                                    'decision: scope, '
-                                                                                    'valid_when, ends_when; '
-                                                                                    'optional rationale. '
-                                                                                    'candidate: targets, '
-                                                                                    'notebook_refs, '
-                                                                                    'source_types; optional '
-                                                                                    'stage_evidence. '
-                                                                                    'Candidate notebook_refs '
-                                                                                    'may be empty for '
-                                                                                    'direct-message sources; '
-                                                                                    'source_types may be '
-                                                                                    'empty only when there '
-                                                                                    'is no Notebook '
-                                                                                    'ancestry. Required text '
-                                                                                    'must be nonempty; '
-                                                                                    'express genuinely '
-                                                                                    'unknown conditions '
-                                                                                    'explicitly rather than '
-                                                                                    'inventing them. '
-                                                                                    'Optional single-valued '
-                                                                                    'fields may be cleared '
-                                                                                    'with null; arrays with '
-                                                                                    '[]. Use only fields '
-                                                                                    'belonging to the entry '
-                                                                                    'type. For update, '
-                                                                                    'provide only changed '
-                                                                                    'properties; omitted '
-                                                                                    'properties remain. Keep '
-                                                                                    'prose concise, '
-                                                                                    'preferably one sentence '
-                                                                                    'per summary; no word or '
-                                                                                    'character quotas.'},
+                                                                     'description': 'All types require description. Common optional fields: domains, external_refs, evidence_time, processing_note. Allowed type-specific fields (required unless marked optional): matter: completion_condition; optional blocker, last_progress_time. action: owner, completion_condition; optional blocker, last_progress_time. situation: subjects, time_context. implicit_gap: situation_ref, missing_information, impact, resolution_condition. question: unresolved_points; optional current_answer, last_discussion_time. insight: certainty, qualification. decision: scope, valid_when, ends_when; optional rationale. candidate: targets, notebook_refs, source_types; optional stage_evidence. Candidate uses either notebook_refs with mapped source_types or exact source_message_uids with both arrays empty; never both. Keep its description target-specific without repeating referenced bodies. Required text must be nonempty; express genuinely unknown conditions explicitly rather than inventing them. Optional single-valued fields may be cleared with null; arrays with []. Use only fields belonging to the entry type. For update, provide only changed properties; omitted properties remain. Keep prose concise, preferably one sentence per summary; no word or character quotas.'},
                                                           'status': {'type': 'string',
                                                                      'enum': ['in_progress',
                                                                               'paused',
@@ -847,40 +654,25 @@ NOTEBOOK_MAINTAIN_SCHEMA = {'name': 'notebook_maintain',
                                                                                        'relationships; send '
                                                                                        'the complete '
                                                                                        'replacement array.'},
-                                                          'source_message_identities': {'type': 'array',
-                                                                                        'items': {'type': 'object',
-                                                                                                  'properties': {'conversation_ref': {'type': 'string',
-                                                                                                                                      'description': 'Exact '
-                                                                                                                                                     'Conversation '
-                                                                                                                                                     'Ref '
-                                                                                                                                                     'returned '
-                                                                                                                                                     'by '
-                                                                                                                                                     'the '
-                                                                                                                                                     'runtime.'},
-                                                                                                                 'message_uid': {'type': 'string',
-                                                                                                                                 'description': 'Exact '
-                                                                                                                                                'Message '
-                                                                                                                                                'UID '
-                                                                                                                                                'returned '
-                                                                                                                                                'with '
-                                                                                                                                                'that '
-                                                                                                                                                'Conversation '
-                                                                                                                                                'Ref.'}},
-                                                                                                  'required': ['conversation_ref',
-                                                                                                               'message_uid'],
-                                                                                                  'additionalProperties': False},
-                                                                                        'description': 'Exact '
-                                                                                                       'supporting '
-                                                                                                       'original-message '
-                                                                                                       'identities '
-                                                                                                       'in '
-                                                                                                       'this '
-                                                                                                       'Conversation. '
-                                                                                                       'Send '
-                                                                                                       'the '
-                                                                                                       'complete '
-                                                                                                       'replacement '
-                                                                                                       'array.'},
+                                                          'source_message_uids': {'type': 'array',
+                                                                                  'items': {'type': 'string'},
+                                                                                  'description': 'Exact '
+                                                                                                 'supporting '
+                                                                                                 'Message '
+                                                                                                 'UIDs in '
+                                                                                                 'this '
+                                                                                                 'Conversation. '
+                                                                                                 'Send the '
+                                                                                                 'complete '
+                                                                                                 'replacement '
+                                                                                                 'array; '
+                                                                                                 'Conversation '
+                                                                                                 'ownership '
+                                                                                                 'is '
+                                                                                                 'supplied '
+                                                                                                 'by the '
+                                                                                                 'bound '
+                                                                                                 'Notebook.'},
                                                           'source_time_range': {'anyOf': [{'type': 'object',
                                                                                            'properties': {'start_time': {'type': 'string',
                                                                                                                          'description': 'Inclusive '
@@ -898,17 +690,7 @@ NOTEBOOK_MAINTAIN_SCHEMA = {'name': 'notebook_maintain',
                                                                                                         'end_time'],
                                                                                            'additionalProperties': False},
                                                                                           {'type': 'null'}],
-                                                                                'description': 'Current-Conversation '
-                                                                                               'evidence '
-                                                                                               'interval; '
-                                                                                               'supply both '
-                                                                                               'bounds '
-                                                                                               'together, or '
-                                                                                               'null to '
-                                                                                               'clear when '
-                                                                                               'other valid '
-                                                                                               'provenance '
-                                                                                               'remains.'}},
+                                                                                'description': 'Current-Conversation evidence interval; supply both bounds together, or null to clear when other valid provenance remains. Not a Candidate source; keep null for Candidates.'}},
                                            'required': [],
                                            'additionalProperties': False},
                                'reason': {'type': 'string',

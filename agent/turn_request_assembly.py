@@ -17,9 +17,21 @@ from agent.message_sanitization import _sanitize_messages_surrogates
 from agent.usage_anchor import anchored_context_tokens
 from agent.prompt_caching import build_prompt_cache_plan, effective_cache_ttl
 from agent.turn_context import build_api_messages
-from agent.cache_parity import normalize_cache_parity_request
+from agent.cache_parity import normalize_cache_parity_request, split_frozen_cache_prefix
 
 logger = logging.getLogger("agent.conversation_loop")
+
+
+def _select_request_context(agent, api_messages, messages, incoming, *, request_logger):
+    """Expose only the child-owned suffix to a Noting context selector."""
+    from agent.conversation_loop import _apply_context_engine_selection
+
+    count, suffix = split_frozen_cache_prefix(agent, api_messages, api=True)
+    if not count:
+        return _apply_context_engine_selection(agent, api_messages, messages, incoming, logger=request_logger)
+    _, history_suffix = split_frozen_cache_prefix(agent, messages)
+    selected = _apply_context_engine_selection(agent, suffix, history_suffix, incoming, logger=request_logger)
+    return api_messages[:count] + selected
 
 
 @dataclass
@@ -113,7 +125,7 @@ def assemble_api_request(
     are injected only after whitespace normalization, the orphan sweep, thinking-only drop /
     user merge and surrogate stripping, so the same row's bytes never vary across turns."""
     from agent.conversation_loop import (
-        _CODEX_INCOMPLETE_NUDGE, _apply_context_engine_selection, _canonicalize_api_tool_calls,
+        _CODEX_INCOMPLETE_NUDGE, _canonicalize_api_tool_calls,
         _clone_message_for_send, _midturn_request_pressure_tokens, _pressure_with_real_floor,
     )
     from agent.model_metadata import (
@@ -152,8 +164,8 @@ def assemble_api_request(
     _sel_incoming = (
         messages[current_turn_user_idx] if 0 <= current_turn_user_idx < len(messages) else None
     )
-    api_messages = _apply_context_engine_selection(
-        agent, api_messages, messages, _sel_incoming, logger=request_logger
+    api_messages = _select_request_context(
+        agent, api_messages, messages, _sel_incoming, request_logger=request_logger
     )
 
     # Context selection may replace the request with a fresh clone of canonical history.

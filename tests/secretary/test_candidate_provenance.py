@@ -42,14 +42,14 @@ def message(ref, uid="b"):
     (["memory"], False, True, True),
     (["memory"], True, True, False),
     (["memory"], False, False, False),
-    (["skill"], True, False, False),
+    (["skill"], True, False, True),
     (["skill"], False, True, True),
-    (["rule"], True, False, False),
+    (["rule"], True, False, True),
     (["rule"], False, True, True),
     (["conversation"], False, True, True),
-    (["conversation"], True, False, False),
+    (["conversation"], True, False, True),
     (["conversation", "memory"], False, True, False),
-    (["memory", "skill"], True, False, False),
+    (["memory", "skill"], True, False, True),
     (["memory", "skill"], False, True, True),
 ])
 def test_candidate_provenance_matrix(book, targets, use_refs, use_message, valid):
@@ -115,7 +115,7 @@ def maintain(child, **args):
     return json.loads(notebook_maintain(child, args))
 
 
-def test_tool_layer_accepts_memory_refs_and_rejects_skill_refs(child):
+def test_tool_layer_accepts_memory_and_skill_refs(child):
     child, ref = child
     created = maintain(child, action="create", entry_type="matter",
                        fields={"description": "send report", "completion_condition": "reviewed"},
@@ -128,17 +128,16 @@ def test_tool_layer_accepts_memory_refs_and_rejects_skill_refs(child):
 
     skill = maintain(child, action="create", entry_type="candidate",
                      fields=fields(["skill"], [matter_id], ["matter"]))
-    assert skill["success"] is False
-    assert skill["error"]["code"] == "invalid_argument"
-    assert skill["error"]["field"] == "fields.notebook_refs"
+    assert skill["success"] is True
+    assert skill["entry"]["fields"]["notebook_refs"] == [matter_id]
 
 
-def test_tool_layer_requires_message_for_conversation_candidate(child):
+def test_tool_layer_requires_provenance_for_conversation_candidate(child):
     child, ref = child
     missing = maintain(child, action="create", entry_type="candidate",
                        fields=fields(["conversation"]))
     assert missing["success"] is False
-    assert missing["error"]["field"] == "source_message_identities"
+    assert missing["error"]["field"] == "source_message_uids"
 
     valid = maintain(child, action="create", entry_type="candidate",
                      fields=fields(["conversation"]),

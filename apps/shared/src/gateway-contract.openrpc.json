@@ -3158,7 +3158,7 @@
     },
     {
       "name": "session.active_list",
-      "summary": "Live sessions in this process, insertion order (not a DB browser).",
+      "summary": "Live sessions in this process, insertion order; the legacy profile argument does not filter the global roster.",
       "params": [
         {
           "name": "params",
@@ -4978,6 +4978,18 @@
           "task_id": {
             "title": "Task Id",
             "type": "string"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Started At"
           }
         },
         "required": [
@@ -31033,6 +31045,17 @@
             "default": null,
             "title": "Status"
           },
+          "state_snapshot": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TurnOutputSnapshot"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
           "inflight": {
             "anyOf": [
               {
@@ -31166,6 +31189,66 @@
           "title": {
             "title": "Title",
             "type": "string"
+          },
+          "stored_session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Stored Session Id"
+          },
+          "profile_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile Name"
+          },
+          "profile_home": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile Home"
+          },
+          "running": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Running"
+          },
+          "turn_started_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Turn Started At"
           }
         },
         "required": [
@@ -31185,6 +31268,7 @@
       },
       "SessionActiveListParams": {
         "additionalProperties": false,
+        "description": "The inherited profile argument retains its historical global-roster behavior.",
         "properties": {
           "profile": {
             "anyOf": [
@@ -34103,6 +34187,17 @@
             "default": null,
             "title": "Status"
           },
+          "state_snapshot": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TurnOutputSnapshot"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
           "inflight": {
             "anyOf": [
               {
@@ -34997,6 +35092,86 @@
           "cwd"
         ],
         "title": "SessionWorkspaceMoveResult",
+        "type": "object"
+      },
+      "SessionsChangedPayload": {
+        "additionalProperties": true,
+        "description": "Existing watcher signal, also emitted on native runtime start/settle/reclaim.",
+        "properties": {
+          "runtime_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Runtime Id"
+          },
+          "stored_session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Stored Session Id"
+          },
+          "profile_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile Name"
+          },
+          "profile_home": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile Home"
+          },
+          "running": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Running"
+          },
+          "turn_started_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Turn Started At"
+          }
+        },
+        "title": "SessionsChangedPayload",
         "type": "object"
       },
       "SetupReadyPayload": {
@@ -40208,6 +40383,30 @@
             "default": null,
             "title": "Row Id"
           },
+          "message_uid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Message Uid"
+          },
+          "tool_call_uid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Tool Call Uid"
+          },
           "display_kind": {
             "anyOf": [
               {
@@ -40299,6 +40498,41 @@
           "role"
         ],
         "title": "TranscriptMessage",
+        "type": "object"
+      },
+      "TurnOutputSnapshot": {
+        "additionalProperties": false,
+        "description": "Complete current/last native Turn display projection at one replay watermark.\nAdjacent token chunks may be joined; native typed references remain paired.\nRuntime-only: cold restore uses persisted transcript/assistant sidecars.",
+        "properties": {
+          "events": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "epoch": {
+            "title": "Epoch",
+            "type": "string"
+          },
+          "complete": {
+            "const": true,
+            "title": "Complete",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "events",
+          "seq",
+          "epoch",
+          "complete"
+        ],
+        "title": "TurnOutputSnapshot",
         "type": "object"
       },
       "TurnStatus": {
@@ -43771,12 +44005,12 @@
     },
     {
       "name": "sessions.changed",
-      "summary": "state.db moved; refetch the session list.",
+      "summary": "Stored session or runtime changed; refetch session lists.",
       "params": [
         {
           "name": "payload",
           "schema": {
-            "$ref": "#/components/schemas/ChangeSignalPayload"
+            "$ref": "#/components/schemas/SessionsChangedPayload"
           }
         }
       ]

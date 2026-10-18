@@ -29,6 +29,26 @@
 | PI-10 | 尊重原生Profile/会话/模型/provider机制，关闭Secretary时原生行为保持；API新增兼容，用户数据归属和权限边界不擅改。主会话并行统筹、避免重复测试/流水账，尽快收敛交付。 |
 | PI-11 | 用户本机其他桌面录屏，禁止CU/CUA/原生桌面/Chrome/Edge/切桌面抢焦点；所有界面验收只在Codex内置浏览器进行。没有非CU内置接口则明确界面未验，不能以外部浏览器代验。另明确禁止任何方式改变屏幕显示状态，包括open/open_in_codex、打开/导航可见页面、窗口激活/切换/最小化/关闭；只准保证不改显示的后台接口。此为执行约束，不改变产品功能判据。 |
 
+
+| PI-12 | 用户后续明确允许仅CUA下隐藏Codex内置浏览器（iab、visible:false），仍禁止任何可见页面/桌面/窗口/焦点改变及外部浏览器；此为PI-11的唯一例外，不放宽产品判据。 |
+| PI-13 | 用户看过S01/Q02精确中英文前后对照后明确答“两处均按提案实施”：默认未来24h内至少一条Instant、检查已有承诺不造任务且无可汇报内容静默；答疑/建议/交流直接回应，适合Agent的执行事务委派并审核，用户要求亲自处理优先。仅这两处及明确获准History同源分页配套文字同步，不是无限Prompt调优授权。 |
+| PI-14 | 用户明确允许仅窄Memory创建helper改用一次正式API创建并携Metadata，复用同一连接；其余NM操作仍官方CLI。真实写入具体内容/目标审批和原生权限不变，不重建旧partial对象凑成功。 |
+| PI-15 | 用户明确Candidate来源为Notebook条目引用或Message Identity引用，二选一禁止混用；Notebook refs型不得重写条目正文，按Candidate的Memory、Rule或Skill身份作特化简述。先实际覆盖来源结算、后关闭Candidate及保留未交付部分沿PI-08。 |
+| PI-16 | 用户要求按实际部署形态测试：本地开反代，浏览器访问反代端口检查URL路径；Cloudflare Access不验。部署为06§0.7独立Secretary Web与原生Web Dashboard、同域同后端；source=desktop仅独立Web客户端协议字段，不表示官方Electron Desktop。不得仅以开发服务器直连或后台API冒称该拓扑通过。 |
+| PI-17 | 用户明确要求：不论Turn是否由Web触发，前端任意时刻接入后均应通过WebSocket API接收真实状态。静默不等于丢弃或隐藏执行事实；此前NO_REPLY及隐藏气泡／未读／通知的组合提案未获批准，不能据此屏蔽执行事件。实时订阅、中途接入和完成后恢复须分别取证。 |
+| PI-18 | 用户明确授权补齐上述接线，不另起一套机制；后台Reminder运行时随时打开前端，应看到真实状态和完整Timeline。前后端并行，按本机反代部署形态实测并尽快收尾；不是只提供接口说明或用有界事件ring代替完整恢复。 |
+| PI-19 | 用户确认表现层打磨完成，最终修改不得破坏现有UIUX。以用户最新表现为基线，状态／恢复接线不回滚布局、样式、动画、Profile图标、Pin／拖拽及滚动交互；必要状态体现优先复用既有组件，单独审查功能差异，不整文件覆盖或挟带用户变更提交。 |
+| PI-20 | 用户明确要求最终留一份上云部署SOP文档；应可据实际部署形态执行，并区分本机已验证事实、最终版本／产物和云端尚未验证环节，不把文档编写冒充上云完成。 |
+| PI-21 | 用户收到精确NO_REPLY新增英文/中文及“只可信自动Instant过滤、保留状态/Thinking/工具/静默完成记录、不改deferred/未读/通知”提案后，明确答“先保持现状，列为待决项”。故本轮不实施该Prompt/过滤/展示协议；保留安静性既有失败和当前无变化仍可能业务汇报的限制，单列待决，不能冒称已授权或静默验收通过。其余状态接线及验收继续。 |
+| PI-22 | 用户明确废弃Memory创建Skill方案，授权直接精简修改现有个人NM Memory Provider系统提示：仅Memory创建使用窄入口，一次提交完整内容及Metadata；其余操作走官方CLI。用户后续纠正：普通Memory字段仍可经批准用CLI修改；仅创建时Metadata错误须经批准删除后重新创建，禁止将该限制扩大为Memory整体不可修改；不因此授权修改、删除或重建既有失败样本，也不豁免partial/unknown先核实、不盲重试。撤销本次Skill自动加载及模型可见入口，避免与Provider提示并存冲突；本次仅改该窄接线，不启动新实测。 |
+
+| PI-23 | 用户明确确认三类实测模型偏差（用户假设错误归因、截断Search结果夸大为完整核对/拼接原因、Noting补叙述未补对应来源身份）不构成本轮阻塞；保留真实观察，不再以这三类要求新增开发或补测才能交付。此决定不把原失败改成通过，也不自动豁免Memory来源Metadata实际落库或归档暂停提示等独立未验事项；无变化Reminder按PI-21保持待决。 |
+| PI-24 | 用户纠正术语为“NM Thread同步”，不是归档。已同步History出现不一致时，插件识别分叉点并新建NM Thread，不重复保存相同前缀；第一条由插件生成接续说明，引用原NM Thread ID及最后共同消息的NM原生Message ID（不得以Hermes消息身份代替），第二条起保存分叉点消息及后续。用户授权实现该机制并补齐必要真实验证，尤其须由模型实际调用专用入口创建Memory并确认Metadata落库。Provider系统提示英文原文必须先交用户审批，批准后仅落实该句，不改其它无关提示；root已提交简短原文待批，批准前不再修改Prompt。旧暂停设计不作为成功分叉的最终行为；保留旧Thread，不自动覆盖/删除旧数据，不把新Thread当Memory创建。 |
+
+| PI-25 | 用户明确此类NM小工具独立于Hermes，统一放运行主机 `~/scrips/`，云端也相同。不得依赖Hermes安装目录、HERMES_HOME、仓库cwd或Hermes模块；使用运行主机官方NM配置。工具接受正文与通用Metadata，Hermes来源由调用方提供，不自行查Hermes。root据此安排独立创建入口 `python3 ~/scrips/nmem-memory.py create`，原HERMES_HOME版本英文因用户质疑未获批；新路径英文原文已单独提交待批，批准前不改Provider提示。 |
+
+| PI-26 | 用户对新独立工具路径的精确英文原文明确回复“批准上述英文原文”：`For approved Memory creation, use \`python3 ~/scrips/nmem-memory.py create\` to submit the content and \`metadata.hermes_provenance\` together; use the official \`nmem\` CLI for all other operations, including edits to ordinary fields, and correct erroneous creation metadata only by user-approved deletion and recreation.` 仅替换root此前追加的长句，其余Provider提示保持；不恢复Skill，也不豁免真实创建/Metadata回读验证。 |
+
 ## 两阶段独立审查与版本定位
 
 判据阶段只读上述产品原文、身份参考、用户口径和本Skill，独立把全范围要求/判据落入verification.md §2；不读动态CLAUDE、实现代码/测试、历史审查/实测报告或主会话解释。允许确认表引用版本。无须发送“判据完成”消息，写到报告即可。

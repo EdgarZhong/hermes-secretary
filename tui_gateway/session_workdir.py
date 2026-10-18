@@ -680,6 +680,7 @@ def _write_submit_user_row(session: dict, text: Any, display_kind: str | None,
     # Record the owning session so every later addresser of THIS row (the @-expansion rewrite, the
     # queue merge, the drain deactivation) finds it by the same key even if a rotation lands mid-turn.
     staged[_SUBMIT_ROW_SESSION_KEY] = target
+    staged["_submit_row_db_path"] = str(Path(db.db_path).resolve())
     return staged
 
 
@@ -695,6 +696,8 @@ def _persist_submit_user_row(session: dict, text: Any, display_kind: str | None,
     session.pop("_submit_user_row", None)  # a failed/unsupported write must not acknowledge an older send
     if (staged := _write_submit_user_row(session, text, display_kind, accept_metadata)) is not None:
         session["_submit_user_row"] = staged
+        from tui_gateway.turn_terminal import submit_source
+        submit_source(session, staged)
 
 
 def _adopt_submit_user_row(session: dict, agent, persist_user_message: Any, text: Any) -> None:
@@ -790,6 +793,8 @@ def _rewind_active_session_history(
             retryable_user_text(live_view.get("content"))
 
     installed = [message.copy() for message in installed]
+    from tui_gateway.inflight_output import reset
+    reset(session)
     session["history"] = installed
     session["history_version"] = int(session.get("history_version", 0)) + 1
     agent = session.get("agent")

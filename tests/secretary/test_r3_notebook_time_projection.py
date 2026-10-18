@@ -43,7 +43,7 @@ def time_book(database, monkeypatch):
     args = {"action": "create", "entry_type": "matter", "fields": {
         "description": DESCRIPTION, "completion_condition": "reviewed", "evidence_time": EVIDENCE,
         "last_progress_time": EVIDENCE, "processing_note": "Retain the supported responsibility"},
-        "source_message_identities": [{"conversation_ref": ref, "message_uid": "time-source"}],
+        "source_message_uids": ["time-source"],
         "source_time_range": deepcopy(SOURCE_RANGE)}
     maintained = json.loads(notebook_maintain(child, args))
     assert maintained["success"], maintained
@@ -62,6 +62,9 @@ def time_book(database, monkeypatch):
 
 
 def assert_projected_entry(entry):
+    assert entry["source_message_uids"] == ["time-source"]
+    assert "source_message_identities" not in entry
+    assert "conversation_ref" not in entry
     assert entry["created_at"] == CLOCK_DISPLAY
     assert entry["updated_at"] == CLOCK_DISPLAY
     if entry["entry_type"] == "matter":
@@ -121,6 +124,9 @@ def test_real_store_times_are_projected_only_at_product_outputs(time_book, surfa
                 assert row["content"] == parent._session_messages[-1]["content"]
                 output = row["content"]
                 assert "PERSISTENCE PROPOSAL REQUEST" in output
+            assert 'source_message_uids: ["time-source"]' in output
+            assert "source_message_identities" not in output
+            assert "conversation_ref" not in output
             assert f'created_at: "{CLOCK_DISPLAY}"' in output
             assert f'last_processed_at: "{CLOCK_DISPLAY}"' in output
             assert f"evidence_time: {EVIDENCE_DISPLAY}\n" in output

@@ -64,7 +64,7 @@ def _thaw_params(payload: bytes, seq: int) -> dict:
     return event
 
 
-def _stamp_event(obj: dict) -> None:
+def _stamp_event(obj: dict, *, observe=None) -> None:
     """Stamp one outgoing event frame (mutates obj in place) and record a frozen snapshot."""
     if obj.get("method") != "event":
         return
@@ -85,6 +85,8 @@ def _stamp_event(obj: dict) -> None:
         seq = _replay_next_seq.get(sid, 0) + 1
         _replay_next_seq[sid] = seq
         params["seq"] = seq
+        if observe is not None:
+            observe(params)  # same native sequence cut as the current in-flight display projection
         buf = _replay_buffers.get(sid)
         if buf is None:
             buf = _replay_buffers[sid] = deque()

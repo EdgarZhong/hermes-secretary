@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import dataclasses
 
+from .inflight_output import _set_session_running
 from .method_ctx import HandlerRegistry, bind_module
 
 _registry = HandlerRegistry()
@@ -128,7 +129,7 @@ def _admit_prompt_turn(
             session.get("session_key") or sid,
             getattr(ownership_refusal, "reason", None) or "refused")
         with session["history_lock"]:
-            session["running"] = False
+            _set_session_running(session, False)
             session.pop("_submit_user_row", None)  # no turn runs: the submit-time row stays as the send
         _emit("error", sid, {"message": str(ownership_refusal)})
         return None
@@ -136,7 +137,7 @@ def _admit_prompt_turn(
         if session.get("_closing") or (
             queued_prompt_generation is not None
             and int(session.get("_queued_prompt_generation", 0)) != queued_prompt_generation):
-            session["running"] = False
+            _set_session_running(session, False)
             session.pop("_submit_user_row", None)
             if session.get("_closing") and session.get("active_session_lease") is not held_lease:
                 # Close stops waiting for this thread after a grace and then finalizes. A lease this
@@ -155,7 +156,7 @@ def _admit_prompt_turn(
                 session, text, display_kind=display_kind, display_metadata=display_metadata)
         agent = session["agent"]
         if agent is None:
-            session["running"] = False
+            _set_session_running(session, False)
         else:
             with contextlib.suppress(Exception):
                 agent.clear_interrupt()
@@ -169,7 +170,8 @@ def _admit_prompt_turn(
         logger.info("Refusing turn for session %s: no agent attached (%s)", session.get("session_key") or sid, reason)
         _emit_terminal_turn_error(
             sid, session, reason,
-            error_surface={"layer": "runtime", "code": "agent_init_failed", "retryable": True})
+            error_surface={"layer": "runtime", "code": "agent_init_failed", "retryable": True},
+            expected_token=(inflight or {}).get("_terminal_token"))
         return None
     return images, agent
 
@@ -477,7 +479,7 @@ def _dispatch_followup_turn(rid, sid: str, session: dict, prompt: Any, what: str
             on_error()
         _hook_failure(what, exc)
         with session["history_lock"]:
-            session["running"] = False
+            _set_session_running(session, False)
 
 
 def _run_post_turn_followups(
@@ -501,7 +503,7 @@ def _run_post_turn_followups(
                 return  # user already sent something — their turn wins
             if session.get("_turn_cancel_requested"):
                 return  # the user pressed Stop; the goal resumes after their next prompt
-            session["running"] = True
+            _set_session_running(session, True)
         _dispatch_followup_turn(rid, sid, session, goal_followup, "goal continuation dispatch")
     # Safety net for completion events that arrived mid-turn.  Ownership is positive-proof
     # and compression-chain aware (same fail-closed gate as the poller): session B must
@@ -550,6 +552,7 @@ class _TurnRun:
     prompt_text: str = ""
     marker_key: str = ""
     receipt_attempted: bool = False
+    inflight_token: Any = None
 
 
 def _adopt_out_of_band_turns(session: dict) -> None:
@@ -910,6 +913,9 @@ def _invoke_agent(
     prior_user_observer = vars(agent).get("_on_turn_user_persisted")
     if witness is not None:
         agent._on_turn_user_persisted = _committed_turn_source_observer(sid, session, st, witness)
+    from tui_gateway.turn_terminal import source_observer
+    agent._on_turn_user_persisted = source_observer(
+        sid, session, agent, st.inflight_token, getattr(agent, "_on_turn_user_persisted", None))
     try:
         from tui_gateway.output_identity import observe_session_outputs
         from agent.notification_presentation import notification_turn, event_presentation_muted
@@ -919,11 +925,10 @@ def _invoke_agent(
             st.result = agent.run_conversation(preserve_user_input_origin(text, run_message), **st.run_kwargs)
             usage_returned = True
     finally:
-        if witness is not None:
-            if prior_user_observer is None:
-                vars(agent).pop("_on_turn_user_persisted", None)
-            else:
-                agent._on_turn_user_persisted = prior_user_observer
+        if prior_user_observer is None:
+            vars(agent).pop("_on_turn_user_persisted", None)
+        else:
+            agent._on_turn_user_persisted = prior_user_observer
         if prior_source_observer is None:
             vars(agent).pop("_pending_steer_source_boundary", None)
         else:
@@ -1104,10 +1109,20 @@ def _complete_turn_payload(session: dict, st: _TurnRun, status_note: str | None,
     has_partial_text = bool(
         result.get("partial") and isinstance(final_text, str)
         and final_text.strip() and final_text.strip() != str(error_value or "").strip())
+    if status == "error":
+        payload["error"] = str(error_value or raw)
+        payload["recoverable"] = True
+        # Desktop distinguishes retained answer text from error copy using this flag.
+        if has_partial_text:
+            payload["partial"] = True
+        if _error_surface:
+            payload["error_surface"] = _error_surface
+    from tui_gateway.turn_terminal import persist
+    persist(_lifecycle_own_sid(session), session, payload, st.inflight_token, result=result)
     with session["history_lock"]:
         if status == "error":
-            # Retain the failed turn: resume's inflight payload is the only carrier of the
-            # failure if this frame is lost to a disconnect.
+            # Retain the live failure alongside its best-effort persistent terminal metadata;
+            # resume recovers even if this frame is lost to a disconnect.
             if has_partial_text and not (session.get("inflight_turn") or {}).get("assistant"):
                 # Non-streaming results need a replay body too; keep existing streamed segments intact.
                 _append_inflight_delta(session, raw)
@@ -1117,14 +1132,6 @@ def _complete_turn_payload(session: dict, st: _TurnRun, status_note: str | None,
                 error_value, result.get("failure_reason"), st.prompt_text)
         else:
             _clear_inflight_turn(session)
-    if status == "error":
-        payload["error"] = str(error_value or raw)
-        payload["recoverable"] = True
-        # Desktop distinguishes retained answer text from error copy using this flag.
-        if has_partial_text:
-            payload["partial"] = True
-        if _error_surface:
-            payload["error_surface"] = _error_surface
     if st.terminal_callback is not None:
         st.receipt_attempted = True
         st.terminal_callback({
@@ -1159,7 +1166,7 @@ def _recover_turn_exception(sid: str, session: dict, st: _TurnRun, e: BaseExcept
             logger.exception("hosted room terminal receipt commit failed")
     try:
         # Same terminal error frame shape as the returned-error path.
-        _emit_terminal_turn_error(sid, session, e, retire_marker=st.receipt_committed)
+        _emit_terminal_turn_error(sid, session, e, retire_marker=st.receipt_committed, expected_token=st.inflight_token)
         st.error_retained = True
         st.error_detail = _turn_failure_detail(e, type(e).__name__, st.prompt_text)
     except Exception as emit_exc:
@@ -1298,7 +1305,8 @@ def _run_prompt_submit(
         runtime_session_token = _current_runtime_session_record.set(session)
         st = _TurnRun(
             session["agent"], session.pop("one_turn_model_restore", None), terminal_callback,
-            receipt_committed=terminal_callback is None)
+            receipt_committed=terminal_callback is None,
+            inflight_token=(session.get("inflight_turn") or {}).get("_terminal_token"))
         from secretary.reminders import active_delivery_auto_continue
         st.marker_key = _record_turn_marker(session, text,
             auto_continue=active_delivery_auto_continue(text, terminal_callback is None),
@@ -1337,7 +1345,7 @@ def _run_prompt_submit(
                 # A stale interim closure must not fire during a later turn.
                 st.agent.interim_assistant_callback = None
                 with session["history_lock"]:
-                    session["running"] = False
+                    _set_session_running(session, False)
                     session["last_active"] = time.time()
                     if not st.error_retained:
                         _clear_inflight_turn(session)
@@ -1397,7 +1405,7 @@ def _run_prompt_submit(
             can_start = _start_session_work(run, name=f"prompt-turn-{sid}", session=session) is not None
     if not can_start:
         with session["history_lock"]:
-            session["running"] = False
+            _set_session_running(session, False)
     return can_start
 
 

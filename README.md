@@ -132,7 +132,7 @@ Schedule Table 按条目时区（IANA／`UTC±HH:MM`）显示绝对时间，缺�
 HERMES_WEB_DIST=/opt/hermes-secretary-web/dist \
 HERMES_DASHBOARD_WEB_DIST=/opt/hermes-secretary/hermes_cli/web_dist \
 HERMES_DASHBOARD_PREFIX=/dashboard \
-hermes dashboard --host 127.0.0.1 --port 53445 --skip-build
+hermes dashboard --host 127.0.0.1 --port 53445 --skip-build --no-open
 ```
 
 本机 Caddy（只监听回环，两层 Web 认证都不由它承担）：
@@ -198,6 +198,7 @@ Python 测试统一使用上述 runner；环境准备见 [Development Setup](CON
 | 上下文开销台账 | token 实测口径、基线与变更记录 | [05](docs/05-context-cost-ledger.md) |
 | Profile、冷态提醒与 Files 补充契约 | Profile 配置归属、serve 冷态 Instant 恢复、Files 固定归属及最低验收场景 | [08](docs/08-profile-scheduler-files-clarification.md) |
 | Web UI 基线与保留契约 | 客户端、交互、设计系统、部署；思考档位见 §2.10，漂移开关见 §0.8；旧机制按 07 替换 | [06](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md) |
+| 上云部署 SOP | Linux 双SPA单后端、反代与Tunnel／Access、Profile与可选插件、常驻、验收、备份及回滚 | [部署 SOP](docs/cloud-deployment-sop.md) |
 | UI 只读 API 早期讨论（归档） | 已被正式 06 覆盖的早期讨论；旧 Memo 设计不进入新版 | [归档](docs/archived/06-ui-read-api-discussion.md) |
 | 通用协作 / 当前看板 | 用户规则、开发测试 SOP / 动态目标与未完成项 | [AGENTS](AGENTS.md)、[CLAUDE](CLAUDE.md) |
 | 产品意图复审与交付依据 | 最新产品文档、用户纠偏、独立审查及场景/功能覆盖验收入口 | [Snapshot Index](.autonomous/20261018-product-intent-review/snapshot-index.md) |

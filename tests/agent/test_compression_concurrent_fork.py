@@ -41,6 +41,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from hermes_state import SessionDB
+from tests.agent._compression_usage_assertions import assert_cold_usage_context
 
 def _build_agent_with_db(
     db: SessionDB,
@@ -995,10 +996,9 @@ def test_rotation_publish_failure_restores_proactive_prune_runway(
     assert agent.session_id == parent_sid
     assert agent.context_compressor._proactive_prune_rearm_tokens == 120_000
     assert db.get_messages_as_conversation(parent_sid) == durable_before
-    assert json.loads(db.get_session(parent_sid)["model_config"]) == {
-        "keep": "value",
-        "_proactive_prune_rearm_tokens": 120_000,
-    }
+    assert_cold_usage_context(
+        db, agent, parent_sid, {"keep": "value", "_proactive_prune_rearm_tokens": 120_000},
+    )
 
 def test_full_in_place_compression_atomically_clears_durable_prune_runway(
     tmp_path: Path,
@@ -1024,7 +1024,7 @@ def test_full_in_place_compression_atomically_clears_durable_prune_runway(
     assert [message["content"] for message in db.get_messages_as_conversation(session_id)] == [
         message["content"] for message in compressed
     ]
-    assert json.loads(db.get_session(session_id)["model_config"]) == {"keep": "value"}
+    assert_cold_usage_context(db, agent, session_id, {"keep": "value"})
 
 def test_rotation_child_starts_without_durable_prune_runway(tmp_path: Path) -> None:
     db = SessionDB(db_path=tmp_path / "state.db")

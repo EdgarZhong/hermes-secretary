@@ -3,7 +3,6 @@
 import copy
 
 _MAIN_TOOLS = {"conversation_history", "notebook_show", "scheduler"}
-_RETIRED_TOOLS = {"session_history", "noting_memo", "notebook_manage", "notebook_edit", "notebook_schedule", "compact_parent"}
 _NOTING_ONLY = {"notebook_maintain", "finish_noting"}
 
 
@@ -75,6 +74,7 @@ def main_read_surface_enabled(agent) -> bool:
 def apply_main_read_surface(agent):
     """Keep frozen Noting prefixes; reconcile Main's schemas and execution names together."""
     from secretary.noting_scope import bind_main_runtime, scheduler_settings_for_db
+    from tools.secretary_dispatch import RETIRED_SECRETARY_TOOLS
 
     if getattr(agent, "_secretary_noting_child", False):
         return False
@@ -91,7 +91,7 @@ def apply_main_read_surface(agent):
     agent._secretary_scheduler_enabled = scheduler
     desired = ({"conversation_history"} | ({"notebook_show"} if notebook else set())
                | ({"scheduler"} if scheduler else set())) if main else set()
-    removed = (_MAIN_TOOLS - desired) | _RETIRED_TOOLS | _NOTING_ONLY
+    removed = (_MAIN_TOOLS - desired) | RETIRED_SECRETARY_TOOLS | _NOTING_ONLY
     resolved = [tool for tool in tools if _tool_name(tool) not in removed]
     names = {_tool_name(tool) for tool in resolved}
     for name in ("conversation_history", "notebook_show", "scheduler"):

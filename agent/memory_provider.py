@@ -60,6 +60,20 @@ class RecallStatus:
     glyph: str = INDICATOR_GLYPH
 
 
+@dataclass(frozen=True)
+class MemorySyncFeedback:
+    """Optional completed-sync observation; opaque scope/state support notice deduplication.
+
+    A callback attempt is best-effort, never a delivery acknowledgement. Providers
+    may repeat the current observation on later completed boundaries for retry.
+    """
+
+    scope: str
+    state: str
+    text: str
+    level: str = "warn"
+
+
 # Prompts with no semantic signal; single source of truth for the core prefetch gate and
 # provider-side classifiers. Anchored and followed only by whitespace/punctuation, so
 # "k8s"/"yolo"/"note" do NOT match while "hi!"/"thanks :)"/"done???" do.
@@ -136,7 +150,9 @@ class MemoryProvider(ABC):
         turn_author: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Persist a completed turn (non-blocking). ``messages`` is the OpenAI-style list so far.
-        ``turn_author`` (``{"id", "name", "is_bot"}``) is who wrote the user side; the manager sends it only to signatures that accept it."""
+        ``turn_author`` (``{"id", "name", "is_bot"}``) is who wrote the user side; the manager sends it only to signatures that accept it.
+        An optional result mapping may contain ``feedback: MemorySyncFeedback``;
+        None and other legacy returns retain their existing behavior."""
 
     @abstractmethod
     def get_tool_schemas(self) -> List[Dict[str, Any]]:

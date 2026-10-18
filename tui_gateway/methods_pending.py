@@ -1,4 +1,5 @@
 """Additive Web steer receipts over the agent's one native correction owner."""
+from .inflight_output import _set_session_running
 from .method_ctx import HandlerRegistry, bind_module
 
 _registry = HandlerRegistry()
@@ -183,7 +184,7 @@ def _pending_settle_turn_locked(session, *, failed=False):
             owner.reject("turn_failed", include_reserved=True)
         elif op and op["state"] in {"reserved", "stopping"}:
             op["_turn_ended"] = True
-            session["running"] = True  # one native next-turn reservation, not a second admission gate
+            _set_session_running(session, True)  # one native next-turn reservation, not a second admission gate
         else:
             owner.reject("turn_retired")
 
@@ -234,7 +235,7 @@ def _pending_dispatch_handoff(sid, session):
                    and epoch.entries[i].state == "reserved"]
         if not entries:
             op.update(state="rejected", reason="reserved_batch_unavailable")
-            session["running"] = False
+            _set_session_running(session, False)
             return True
         text = "\n".join(entry.text for entry in entries)
         op.update(state="dispatching", _dispatch_claimed=True,
@@ -249,7 +250,7 @@ def _pending_dispatch_handoff(sid, session):
     except Exception as exc:  # health: allow BLE001 -- native dispatch can raise provider-specific errors; retain a terminal receipt
         _pending_cancel_handoff(session, f"followup_failed:{type(exc).__name__}")
         with session["history_lock"]:
-            session["running"] = False
+            _set_session_running(session, False)
         return True
     with agent._pending_steer_lock:
         if accepted and op["state"] == "dispatching":

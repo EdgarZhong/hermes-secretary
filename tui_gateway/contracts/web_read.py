@@ -41,6 +41,7 @@ class IdleEstimate(Result):
 
 class ActiveTask(Result):
     task_id: str
+    started_at: str | None = None
 
 
 class SecretaryStateResult(Result):

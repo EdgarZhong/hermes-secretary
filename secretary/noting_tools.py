@@ -9,8 +9,8 @@ import threading
 from datetime import datetime, timezone
 
 from hermes_time import format_timestamp
-from secretary.notebook_contract import NotebookValidationError
-from secretary.notebook_render import readable_notebook_entry, readable_notebook_state
+from secretary.notebook_contract import NotebookValidationError, local_source_error
+from secretary.notebook_render import evidence_coverage, model_notebook_view, readable_notebook_entry, readable_notebook_state
 from secretary.noting_contract import (
     FINISH_NOTING_SCHEMA,
     NOTEBOOK_MAINTAIN_SCHEMA,
@@ -83,6 +83,11 @@ def notebook_maintain(child, args):
                 result["entry"] = readable_notebook_entry(result["entry"])
             return _encoded(result)
     except NotebookValidationError as exc:
+        legacy_sources = isinstance(args, dict) and (
+            "source_message_identities" in args or (
+                isinstance(args.get("changes"), dict) and "source_message_identities" in args["changes"]))
+        if not legacy_sources:
+            local_source_error(exc)
         return _encoded(exc.as_result())
     except sqlite3.Error:
         return _encoded(_error(
@@ -97,7 +102,7 @@ def notebook_work_show(child, args):
         if not isinstance(args, dict) or args:
             return _encoded(_error("notebook_show accepts only an empty argument object.", field="arguments"))
         with store.lock:
-            view = store.working_view()
+            view = model_notebook_view(store.working_view(), db=child._session_db)
             view["payload"] = readable_notebook_state(view["payload"])
             return _encoded(view)
     except NotebookValidationError as exc:
@@ -161,12 +166,13 @@ def noting_tool_schemas(profile="NOTING"):
 
 
 def noting_tool_control_message(profile="NOTING", *, notebook_state=None, conversation_ref=None,
-                                coverage=None, base_snapshot_id=None, current_time=None):
+                                coverage=None, base_snapshot_id=None, current_time=None, db=None):
     """Encode all variable input as data after the exact frozen control text."""
     from secretary.notebook_model import SECTIONS
 
     data = {
-        "conversation_ref": conversation_ref, "coverage": coverage, "base_snapshot_id": base_snapshot_id,
+        "conversation_ref": conversation_ref,
+        "evidence_coverage": evidence_coverage(conversation_ref, coverage, db=db),
         "current_time": format_timestamp(current_time or datetime.now(timezone.utc)),
         "task_parameters": {"aging_days": 7, "implicit_gap_hours": 72},
         "working_notebook": readable_notebook_state(

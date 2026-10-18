@@ -282,6 +282,15 @@ _HISTORY_ASSISTANT_DETAIL_KEYS = (
 _HISTORY_ROLES = frozenset({"user", "assistant", "tool", "system"})
 
 
+def _history_row_identity(message: dict) -> dict:
+    identity = {}
+    if message.get("message_uid"):
+        identity["message_uid"] = message["message_uid"]
+    if message.get("role") == "tool" and message.get("_tool_call_uid"):
+        identity["tool_call_uid"] = message["_tool_call_uid"]
+    return identity
+
+
 def _history_to_messages(history: list[dict], *, profile_home=None, image_urls: bool = True) -> list[dict]:
     """``image_urls=False`` is the ``inline_images=false`` projection (#116511): image parts render ``[image]``
     so a remote client's history read stays kilobytes instead of re-transmitting every stored attachment."""
@@ -331,6 +340,7 @@ def _history_to_messages(history: list[dict], *, profile_home=None, image_urls: 
                              **({"content": m.get("content")} if name in {"write_file", "patch", "skill_manage"} else {}),
                              **{key: m[key] for key in ("tool_call_id", "timestamp", "display_metadata")
                                 if m.get(key) is not None},
+                             **_history_row_identity(m),
                              **({"args": args} if args else {}), **({"labels": labels} if labels else {})})
             continue
         # Assistant detail sidecars can carry the only visible reply or reasoning after resume/reload.
@@ -338,6 +348,7 @@ def _history_to_messages(history: list[dict], *, profile_home=None, image_urls: 
         if not content_text.strip() and not has_assistant_detail:
             continue
         msg = {"role": role, "text": content_text}
+        msg.update(_history_row_identity(m))
         # Authoring time (Unix seconds) for display.timestamps; display-only.
         # Display-only: never fed back into model context. See #41531.
         ts = m.get("timestamp")
@@ -389,7 +400,7 @@ def _start_inflight_turn(
 ) -> None:
     now = time.time()
     turn = {
-        "assistant": "", "started_at": now, "streaming": True, "updated_at": now,
+        "assistant": "", "started_at": now, "streaming": True, "updated_at": now, "_terminal_token": object(),
         "user": _inflight_text(text),
     }
     if display_kind:
@@ -397,6 +408,9 @@ def _start_inflight_turn(
     if isinstance(display_metadata, dict):
         turn["display_metadata"] = dict(display_metadata)
     session["inflight_turn"] = turn
+    from tui_gateway.inflight_output import start
+    start(session)
+    _publish_session_running(_lifecycle_own_sid(session), session)
 
 
 def _append_inflight_delta(session: dict, delta: Any) -> None:
@@ -528,6 +542,61 @@ def _turn_failure_detail(error: Any, reason: Any = None, prompt: Any = None) -> 
         message = message[:_TURN_FAILURE_DETAIL_LIMIT] + "\u2026"
     out = " failure_reason=%s" % " ".join(reason_text.split()) if reason_text else ""
     return out + (" cause=%r" % message if message else "")
+
+
+def _publish_session_running(sid: str, session: dict) -> None:
+    """Invalidate the existing global roster at native runtime ownership transitions."""
+    if not sid:
+        return
+    try:
+        running = bool(session.get("running")) and not session.get("_closing") and not session.get("_finalized")
+        home = str(Path(session.get("profile_home") or _launch_home()).resolve())
+        key = _session_lookup_key(session, fallback=sid)
+        started = _turn_started_at(session) if running and session.get("_inflight_output") else None
+        identity = (home, key, running, started)
+        previous = session.get("_published_running_state")
+        if previous == identity or (previous is None and not running):
+            return
+        session["_published_running_state"] = identity
+        _broadcast_global_event("sessions.changed", {
+            "runtime_id": sid, "stored_session_id": key, "profile_home": home,
+            "profile_name": profile_name_for_home(home) or "custom",
+            "running": running, "turn_started_at": started,
+        })
+    except Exception:
+        logger.debug("runtime roster invalidation unavailable", exc_info=True)
+
+
+def _session_live_item(sid: str, session: dict, current_sid: str = "") -> dict:
+    with session.get("history_lock") or contextlib.nullcontext():
+        key = _session_lookup_key(session, fallback=sid)
+        agent = session.get("agent")
+        history = list(session.get("history") or [])
+        status = _session_live_status(sid, session)
+        inflight = _inflight_snapshot(session)
+        queued = _queued_prompt_snapshot(session)
+        running = bool(session.get("running"))
+        turn_started_at = _turn_started_at(session) if running and session.get("_inflight_output") else None
+        home = str(Path(session.get("profile_home") or _launch_home()).resolve())
+    preview = next((" ".join(text.split())[:160] for msg in reversed(history)
+                    if (text := _content_display_text(msg.get("content", msg.get("text", ""))).strip())), "")
+    if queued:
+        preview = " ".join(str(queued.get("user") or preview).split())[:160]
+    elif inflight:
+        preview = " ".join(str(inflight.get("assistant") or inflight.get("user") or preview).split())[:160]
+    now = time.time()
+    return {
+        "current": sid == current_sid, "id": sid,
+        "last_active": float(session.get("last_active") or session.get("created_at") or now),
+        "message_count": len(history),
+        "model": str(getattr(agent, "model", "") or _resolve_model()), "preview": preview,
+        "session_key": key, "started_at": float(session.get("created_at") or now), "status": status,
+        "title": _session_live_title(session, key),
+        "stored_session_id": key,
+        "profile_name": profile_name_for_home(home) or "custom",
+        "profile_home": home,
+        "running": running, "turn_started_at": turn_started_at,
+    }
 
 
 def register(server) -> None:

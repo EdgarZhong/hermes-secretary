@@ -20,9 +20,9 @@ Profile 选择器仅出现在首页／New Chat，用于决定即将创建的 Con
 
 ### 2.1 Runtime 可回收，排期不能因此停止
 
-只要 `hermes serve` 宿主正常运行，目标 Profile 由该宿主管理、Scheduler 已启用，且排期与目标 Conversation 仍合法可执行，到期扫描和 Instant Reminder 的投递尝试必须持续工作，不依赖以下条件：浏览器打开、WebSocket 在线、页面当前选择该 Profile／Conversation、驻留的 TUI Runtime Session 或 Agent 实例。
+只要 Hermes Web 宿主正常运行，目标 Profile 由该宿主管理、Scheduler 已启用，且排期与目标 Conversation 仍合法可执行，到期扫描和 Instant Reminder 的投递尝试必须持续工作，不依赖以下条件：浏览器打开、WebSocket 在线、页面当前选择该 Profile／Conversation、驻留的 TUI Runtime Session 或 Agent 实例。双SPA部署使用README既有的 `hermes dashboard --no-open` 入口；`hermes serve` 是不挂载SPA的headless入口，根路径握手页的HTTP 200不能算网页已部署。这是原生启动模式的区分，不引入第二个后端或新的调度机制。
 
-必须覆盖：浏览器关闭，原 Web Runtime 已完全回收，`serve` 仍运行；到期后无需用户重新打开或发送消息，后端仍自动发现并处理该 Conversation 的 Instant Reminder。仅在用户重开页面后补投，不满足本条。自动回收内存对象不能被当作用户暂停排期、结束逻辑 Conversation 或撤销后台处理意愿。
+必须覆盖：浏览器关闭，原 Web Runtime 已完全回收，Web宿主仍运行；到期后无需用户重新打开或发送消息，后端仍自动发现并处理该 Conversation 的 Instant Reminder。仅在用户重开页面后补投，不满足本条。自动回收内存对象不能被当作用户暂停排期、结束逻辑 Conversation 或撤销后台处理意愿。
 
 扫描生命周期由常驻宿主负责，不得以“每个存活 Session 都有轮询器”替代所有受管理持久排期的覆盖。优先复用原生周期维护与恢复接缝；确无合适接缝时，02 §3.10 已允许窄的 Secretary 扫描器，不得另造完整 Cron 执行系统。07 §6.4 的“不新增独立轮询／定时器”仅约束 24 小时空档提示，不禁止本节必要的到期扫描。
 
@@ -39,6 +39,10 @@ Profile 选择器仅出现在首页／New Chat，用于决定即将创建的 Con
 宿主停止期间不承诺按时执行；宿主重启后须自动恢复合法的到期工作，不等待浏览器连接。迟到一次性任务不能仅因过期丢弃；周期排期继续使用原生推进规则，不无限重放积压。不得为了掩盖接线缺口而关闭 Runtime 回收或让所有 Agent 永久驻留。
 
 这里要求的是进入原 Conversation 并自动执行 Main 的能力，不新增浏览器离线系统通知或微信推送必达保证。没有到期工作时，扫描不能为了保活而新建 Main、调用模型或拼装所有 Conversation 的完整上下文。
+
+### 2.3 浏览器任意时刻接入的执行可见性（2026-10-18 用户明确）
+
+后台Reminder与Web发起的Turn共用原生执行与可观察链。用户在Reminder运行前、中途或完成后打开前端，必须能取得正确Profile／Conversation的真实状态与完整可用Timeline；断线重连同样适用。中途恢复包括真实Reminder载体、上游已提供的Thinking、工具调用及当前／完成状态、已输出正文，后续事件无遗漏或重复地接续。不能只恢复running和一段正文，也不能用有界ring掩盖已淘汰的当前Turn事件。首页／侧栏须能取得并持续更新未打开Conversation的后台状态，不为观察状态唤醒全部Runtime。复用现有生命周期、历史／输出投影、事件回放和全局广播，不新建平行机制；静默不意味着隐藏真实执行。具体验收遵06的同源单后端部署，通过本机反代及隐藏内置浏览器分别取证，不用后台执行成功代签前端可见。
 
 ## 3. Files 固定 Profile 的临时接线
 

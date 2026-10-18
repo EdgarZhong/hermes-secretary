@@ -304,6 +304,11 @@ def _clamp_output_cap(st: _Recovery, _retry: TurnRetryState, available_out: int,
     exhausted = st.count_attempt()
     if exhausted is not None:
         return exhausted
+    if getattr(agent, "_secretary_noting_child", False):
+        # Only the output reservation changes. A Noting task must keep its frozen
+        # Parent evidence and child working transcript through this native retry.
+        _retry.restart_with_compressed_messages = True
+        return st.done("break")
     # Also compress history so the retry doesn't spin on max_tokens alone; dropping the
     # middle window makes the total fit. Compression must never turn an output-cap error
     # fatal — on error, fall through and retry on max_tokens alone.

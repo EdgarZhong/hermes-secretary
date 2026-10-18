@@ -103,6 +103,10 @@ CONVERSATION_HISTORY_SCHEMA = {
                     "message_uid": {"type": "string", "minLength": 1, "description": "Exact Message UID returned with that Conversation Ref."},
                 }, "required": ["conversation_ref", "message_uid"], "additionalProperties": False,
             },
+            "content_offset": {
+                "type": "integer", "minimum": 0,
+                "description": "Optional anchored Read only, with before=0 and after=0. Unicode code-point offset into this message's original content; structured content uses canonical JSON text. Returns an exact bounded slice with content_offset/content_end/next_content_offset. Repeat the same message_identity using next_content_offset until null. Tool bodies still require include_tool_content=true.",
+            },
             "before": {"type": "integer", "minimum": 0, "maximum": 100, "default": 2,
                        "description": "Anchored Read only: preceding logical messages on the same valid path."},
             "after": {"type": "integer", "minimum": 0, "maximum": 100, "default": 3,
@@ -115,9 +119,9 @@ CONVERSATION_HISTORY_SCHEMA = {
 # is NEW; it does not register or execute the retired tool.
 SESSION_HISTORY_SCHEMA = CONVERSATION_HISTORY_SCHEMA
 NOTING_HISTORY_OVERSIZE_GUIDANCE = (
-    "Reduce before/after or the time window to narrow the History result. If a single message is still "
-    "too large, the currently allowed tools cannot read its remaining content; keep that evidence unknown. "
-    "Do not use a file tool or treat a saved-path preview as having read the full source."
+    "Reduce before/after or the time window. For one oversized message, set before=after=0 and "
+    "content_offset=0 in anchored Read; repeat the same message_identity at next_content_offset until null. "
+    "If unavailable, keep the evidence unknown. Do not use file tools or treat a saved-path preview as the full source."
 )
 
 
@@ -213,6 +217,19 @@ def _role_kinds(args):
     return roles, kinds
 
 
+def _content_paging_options(args, options):
+    if "content_offset" not in args:
+        return {}
+    offset = args["content_offset"]
+    if isinstance(offset, bool) or not isinstance(offset, int) or offset < 0:
+        raise _invalid("content_offset", "content_offset must be a nonnegative integer.",
+                       "Set content_offset to a Unicode code-point offset, starting at 0.")
+    if options["before"] != 0 or options["after"] != 0:
+        raise _invalid("content_offset", "content_offset requires before=0 and after=0.",
+                       "Read the same message_identity with before=0 and after=0.")
+    return {"content_offset": offset}
+
+
 def _arguments(args):
     if not isinstance(args, dict):
         raise _invalid("arguments", "History arguments must be an object.", "Provide mode and the selectors allowed for that mode.")
@@ -230,14 +247,14 @@ def _arguments(args):
     cross = _boolean(args, "cross_conversation", False)
     anchored = mode == "read" and "message_identity" in args
     if mode == "search":
-        forbidden = {"message_identity", "before", "after", "max_total_chars"}
+        forbidden = {"message_identity", "before", "after", "max_total_chars", "content_offset"}
     elif anchored:
         forbidden = {"query", "roles", "kinds", "start_time", "end_time", "limit",
                      "exclude_current_conversation", "include_self_history", "include_tool_calls"}
     else:
         # cross_conversation is handled after scope resolution: Noting answers
         # scope_denied, while an unanchored Main read answers invalid_argument.
-        forbidden = {"query", "before", "after",
+        forbidden = {"query", "before", "after", "content_offset",
                      "exclude_current_conversation", "include_self_history", "include_tool_calls"}
     conflicts = forbidden.intersection(args)
     if conflicts:
@@ -257,6 +274,7 @@ def _arguments(args):
                       include_tool_content=_boolean(args, "include_tool_content", False),
                       roles=None, kinds=None, start_time=None, end_time=None, limit=None,
                       include_self_history=False, include_tool_calls=False, exclude_current=False)
+        result.update(_content_paging_options(args, result))
         return result
 
     roles, kinds = _role_kinds(args)
@@ -427,6 +445,27 @@ def _included_source(public, match, options):
     return True
 
 
+def _read_public_row(row, paths, options):
+    public = _public_row(row, paths.db, max_chars=options["max_chars"],
+                         include_tool_content=options["include_tool_content"])
+    offset = options.get("content_offset")
+    if offset is None or "content_omitted" in public:
+        return public
+    content = row.get("content")
+    text = content_text(content)
+    if offset > len(text):
+        raise _invalid("content_offset", "content_offset is beyond this message's content.",
+                       "Use an offset no greater than content_chars from this same message_identity.")
+    end = min(len(text), offset + min(options["max_chars"], options["max_total_chars"]))
+    public.update(content=text[offset:end], content_offset=offset, content_end=end,
+                  next_content_offset=end if end < len(text) else None,
+                  content_chars=len(text), content_digest=content_digest(content),
+                  truncated=offset > 0 or end < len(text))
+    if not isinstance(content, str):
+        public["content_format"] = "json"
+    return public
+
+
 def _read(paths, options):
     ref = options["identity"]["conversation_ref"] if options["anchored"] else paths.scope.conversation_ref
     rows = paths.require(ref)
@@ -444,9 +483,7 @@ def _read(paths, options):
         eligible_count = len(eligible)
         selected = eligible[:options["limit"]]
         anchor_index = None
-    entries = [_public_row(row, paths.db, max_chars=options["max_chars"],
-                           include_tool_content=options["include_tool_content"])
-               for row in selected]
+    entries = [_read_public_row(row, paths, options) for row in selected]
     dropped = 0
     total_chars = sum(_public_size(entry) for entry in entries)
     while total_chars > options["max_total_chars"] and len(entries) > 1:

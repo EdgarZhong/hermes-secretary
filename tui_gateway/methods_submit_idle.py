@@ -2,6 +2,7 @@
 from contextlib import contextmanager
 from contextvars import ContextVar
 
+from .inflight_output import _set_session_running
 from .method_ctx import HandlerRegistry, bind_module
 
 _registry = HandlerRegistry()
@@ -78,7 +79,7 @@ def _submit_client_surface(session, params, *, claimed=False):
 
 def _submit_commit_running_claim(session, text, params, hosted_task, display_kind):
     """Commit native running/inflight and its source in the one admission critical section."""
-    session["running"] = True
+    _set_session_running(session, True)
     session["_turn_cancel_requested"] = False
     session["last_active"] = time.time()
     if hosted_task is not None:

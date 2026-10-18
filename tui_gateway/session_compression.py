@@ -8,6 +8,7 @@ import contextlib
 
 from utils import is_truthy_value
 
+from .inflight_output import _set_session_running
 from .method_ctx import bind_module
 
 
@@ -232,13 +233,14 @@ def _manual_compress_turn(sid: str, session: dict):
     with session["history_lock"]:
         if session.get("running"):
             raise CompressionBusy(busy_message("compress", bool(session.get("_manual_compress_active"))))
-        session["running"] = session["_manual_compress_active"] = True
+        session["_manual_compress_active"] = True
+        _set_session_running(session, True)
     try:
         yield
     finally:
         with session["history_lock"]:
             session.pop("_manual_compress_active", None)
-            session["running"] = False
+            _set_session_running(session, False)
         # The compaction emitted session.info with running=true; close that edge or Desktop latches busy.
         _emit_session_info_for_session(sid, session)
         _drain_queued_prompt("__compress__", sid, session)

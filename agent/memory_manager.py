@@ -18,7 +18,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 from agent.redact import redact_for_egress
 
-from agent.memory_provider import MemoryProvider, PRE_COMPRESS_CHECKPOINT_API_VERSION, ctx_bound, spawn_context_thread
+from agent.memory_provider import MemoryProvider, MemorySyncFeedback, PRE_COMPRESS_CHECKPOINT_API_VERSION, ctx_bound, spawn_context_thread
 from agent.skill_commands import extract_user_instruction_from_skill_message
 from tools.hook_output_spill import get_spill_config, spill_if_oversized
 from tools.registry import tool_error
@@ -414,6 +414,9 @@ class MemoryManager:
         # Futures by durability class ("write" / "prefetch") so shutdown can drain FIFO
         # within a bound, then report exactly what it abandoned.
         self._background_futures: Dict[Future, str] = {}
+        self._sync_feedback_lock = threading.Lock()
+        self._sync_feedback_attempted: Dict[tuple, str] = {}
+        self._sync_feedback_pending: Dict[tuple, tuple] = {}
         self._shutting_down = False
         self._shutdown_drain_state: Dict[str, Any] = {
             "status": "not_started", "abandoned_writes": 0, "abandoned_prefetches": 0, "active_tasks": 0,
@@ -589,7 +592,8 @@ class MemoryManager:
 
     def sync_all(self, user_content: str, assistant_content: str, *, session_id: str = "",
                  messages: Optional[List[Dict[str, Any]]] = None,
-                 turn_author: Optional[Dict[str, Any]] = None) -> None:
+                 turn_author: Optional[Dict[str, Any]] = None,
+                 feedback_callback: Optional[Callable[[MemorySyncFeedback], bool]] = None) -> None:
         """Sync a completed turn to all providers on the background worker.
 
         Never inline: a provider's ``sync_turn`` may block for minutes, which kept ``run_conversation``
@@ -607,17 +611,57 @@ class MemoryManager:
         clean_user_content, assistant_content, redacted_messages = _redact_for_provider(
             clean_user_content, assistant_content, messages)
         optional_kwargs = {"messages": redacted_messages, "turn_author": turn_author}
+        self._replay_sync_feedback(session_id, feedback_callback, providers)
 
         def _sync(provider: MemoryProvider) -> None:
             kwargs: Dict[str, Any] = {"session_id": session_id}
             for keyword, value in optional_kwargs.items():
                 if value is not None and self._provider_sync_accepts(provider, keyword):
                     kwargs[keyword] = value
-            provider.sync_turn(clean_user_content, assistant_content, **kwargs)
+            result = provider.sync_turn(clean_user_content, assistant_content, **kwargs)
+            self._report_sync_feedback(provider, result, feedback_callback, session_id)
 
         self._submit_background(
             lambda: self._each_provider("sync_turn failed", _sync, level=logging.WARNING, providers=providers)
         )
+
+    @staticmethod
+    def _sync_feedback_owner(session_id):
+        from hermes_constants import get_hermes_home
+        return str(get_hermes_home().resolve()), session_id
+
+    def _try_sync_feedback(self, key, feedback, callback) -> None:
+        """Called under the feedback lock; a successful call means attempted, never delivered."""
+        try:
+            if callable(callback) and callback(feedback) is True:
+                self._sync_feedback_attempted[key] = feedback.state
+                self._sync_feedback_pending.pop(key, None)
+        except Exception:
+            logger.debug("Memory sync feedback attempt failed (non-fatal)", exc_info=True)
+
+    def _replay_sync_feedback(self, session_id, callback, providers) -> None:
+        if not callable(callback) or not self._sync_feedback_pending:
+            return
+        owner = self._sync_feedback_owner(session_id)
+        names = {provider.name for provider in providers}
+        with self._sync_feedback_lock:
+            for key, (pending_owner, feedback) in list(self._sync_feedback_pending.items()):
+                if pending_owner == owner and key[0] in names:
+                    self._try_sync_feedback(key, feedback, callback)
+
+    def _report_sync_feedback(self, provider, result, callback, session_id) -> None:
+        """Ignore legacy returns; retry an observation until its owner can attempt a notice."""
+        feedback = result.get("feedback") if isinstance(result, dict) else None
+        if not isinstance(feedback, MemorySyncFeedback):
+            return
+        owner = self._sync_feedback_owner(session_id)
+        key = (provider.name, owner[0], feedback.scope)
+        with self._sync_feedback_lock:
+            if self._sync_feedback_attempted.get(key) == feedback.state:
+                self._sync_feedback_pending.pop(key, None)
+                return
+            self._sync_feedback_pending[key] = (owner, feedback)
+            self._try_sync_feedback(key, feedback, callback)
 
     def _submit_background(self, fn, *, kind: str = "write") -> None:
         """Queue ``fn`` on the serialized worker (created lazily; None once shutting down) and track its

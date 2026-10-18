@@ -14,7 +14,7 @@ from hermes_state import SessionDB
 from hermes_state_conversation_history import history_read_snapshot
 from hermes_state_search_candidates import CandidateUnavailableError, HistoryCandidateStream
 from tools.session_history_tool import (
-    CONVERSATION_HISTORY_SCHEMA, NOTING_HISTORY_OVERSIZE_GUIDANCE,
+    CONVERSATION_HISTORY_SCHEMA,
     _excerpt, conversation_history, session_history,
 )
 
@@ -76,7 +76,6 @@ def test_schema_and_retired_calls_never_execute(db):
     assert "match" not in schema["parameters"]["properties"]
     assert json.loads(session_history({"mode": "read"}, db=db))["error"]["code"] == "legacy_tool_removed"
     assert call(agent, mode="read", message_id=1)["error"]["code"] == "legacy_tool_removed"
-    assert "currently allowed tools cannot read" in NOTING_HISTORY_OVERSIZE_GUIDANCE
 
 
 @pytest.mark.parametrize("args,field", [
@@ -706,3 +705,40 @@ def test_search_exposes_only_the_kept_internal_diagnostics(db):
     assert {"route", "order", "degraded", "enumeration_complete",
             "index_incomplete", "budget_exhausted"} <= set(diagnostics)
     assert "match_source" not in result["messages"][0]
+
+
+@pytest.mark.parametrize("persist_available", [False, True])
+def test_oversize_feedback_supports_same_source_continuation_without_file_access(db, monkeypatch, persist_available):
+    from tools.budget_config import BudgetConfig
+    from tools.session_history_tool import NOTING_HISTORY_OVERSIZE_GUIDANCE
+    from tools.tool_result_storage import maybe_persist_tool_result
+
+    parent = main(db)
+    child = noting(db, parent)
+    original = "确切原文🙂" * 6000 + "最终来源尾部"
+    db.append_message(parent.session_id, "assistant", original, message_uid="oversized")
+    anchor = identity(parent, "oversized")
+    args = {"mode": "read", "message_identity": anchor, "before": 0, "after": 0,
+            "max_chars_per_message": 20000}
+    first = conversation_history(args, agent=child)
+    if not persist_available:
+        monkeypatch.setattr("tools.tool_result_storage._write_to_spillover", lambda *a: None)
+    feedback = maybe_persist_tool_result(first, "conversation_history", "oversized",
+                                        config=BudgetConfig(default_result_size=100, preview_size=20), noting=True)
+    assert NOTING_HISTORY_OVERSIZE_GUIDANCE in feedback
+    assert ("full output retained at" in feedback) is persist_available
+    chunks, offset = [], 0
+    while True:
+        result = call(child, **args, content_offset=offset)
+        assert result["success"], result
+        row = result["messages"][0]
+        assert row["message_uid"] == anchor["message_uid"]
+        chunks.append(row["content"])
+        offset = row["next_content_offset"]
+        if offset is None:
+            break
+    assert "".join(chunks) == original
+    other = main(db, "other")
+    refused = call(child, **(args | {"message_identity": identity(other, "other_user"),
+                                   "cross_conversation": True}), content_offset=0)
+    assert refused["error"]["code"] == "scope_denied"

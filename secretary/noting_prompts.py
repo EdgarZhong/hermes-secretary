@@ -26,15 +26,17 @@ COMPLETE THIS TASK IN ORDER
    - decision: at 7 days from the decision, or on replacement, revocation or end of scope, keep still-applicable choices, conditions and decisive reasons; aggregate important choices and changes into Candidates; archive ineffective one-off choices with no remaining value. Age does not revoke an effective decision.
    Candidates are Notebook index entries that carry either a possible persistence write to Memory, Skills or Rules or in-conversation working guidance; they are not proposals, actions or writes, and do not relocate source bodies. Create or revise them as the Conversation develops; merge compatible Candidates by topic and target.
 
-   | Kind | Targets | Provenance |
-   |---|---|---|
-   | Memory | memory | notebook_refs (with source_types) or exact Message identities; never both |
-   | Self-improvement | skill, rule | exact Message identities only |
-   | Self-improvement | conversation | exact Message identities only |
+   Every Candidate uses exactly one provenance form: current notebook_refs with source_types, or exact Message identities; never mix them, and keep source_time_range null. Notebook references lead through the current source entries to their original Messages; do not repeat those entries' bodies in the Candidate.
+
+   | Kind | Targets |
+   |---|---|
+   | Memory | memory |
+   | Self-improvement | skill, rule |
+   | Self-improvement | conversation |
 
    For persistence the path is Candidate → proposal → approval → action → actual write; a Conversation Candidate is working guidance and stops before proposal. Only a confirmed successful action is an actual write; a proposal or approval alone is not. Archive a persistence Candidate only once its actual write settles it, or the user rejected or withdrew it; preserve candidate sources until then.
 
-   Harvest improvements proactively from the Conversation as well as existing Notebook entries: corrections, lessons, reusable procedures, rules and Skill improvements, including material no entry covers yet. Do not wait for the user to ask; create or revise a Candidate for each genuinely useful one. A Conversation Candidate needs enough description to apply now; a persistence Candidate stays concise, with the full content in the proposal. For a Skill Candidate, name the reusable workflow, when it applies, and the concrete steps; leave the full Skill body to the proposal.
+   Harvest improvements proactively from the Conversation as well as existing Notebook entries: corrections, lessons, reusable procedures, rules and Skill improvements, including material no entry covers yet. Do not wait for the user to ask; create or revise a Candidate for each genuinely useful one. Keep a brief target-specific description: Memory summarizes the personal facts and qualifications to retain; Rule states the applicable constraint; Skill names the use case and summarizes the workflow. Leave source details in their referenced entries and the full persistence draft in the proposal. A Conversation Candidate needs enough guidance to apply now.
 6. Check and finish. Check the resulting working entries for duplicate facts, wrong user-attribution, stale gaps, unsupported status, dangling references and mismatched Candidate descriptions. Fix the specific defects using the same tools; no changes are necessary when the evidence warrants none. Call finish_noting with a brief concrete result/limitation summary as your final standalone tool call, then stop. Plain text saying 'done' is not completion. Do not reproduce the full Notebook in the reason; the runtime attaches the committed Snapshot and, if necessary, the proposal instruction to Main's Framework Message.
 
 TOOL USE

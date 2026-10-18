@@ -44,12 +44,12 @@
 
 | 范围 | 机制/正式接线证据 | 真实模型/用户结果边界 |
 |---|---|---|
-| 模型Notebook审计字段 | 6 RED→12独立节点PASS，覆盖inline/catalog/child多Turn wire及通知metadata；root review接收 | 固定源码尚未现场重新加载，本版真实模型/UI结果未执行 |
+| 模型Notebook审计字段 | 6 RED→12独立节点PASS，覆盖inline/catalog/child多Turn wire及通知metadata；root review接收 | 修后版本已加载，双owner自然Noting样本待整包复核；最新UI仍未验 |
 | 跨Profile列表 | 首包234相关PASS/typecheck；首次修补曾真实看到3条跨owner会话 | 后续owner/Pin补强的界面没有复验，不挪用首包Chrome截图为新版通过 |
 | 同ID owner及Pin全局顺序 | 原反例→68相关PASS，再补Pin重载反例→24相关PASS；各自按变更版本和实际影响记录，不相加假称一轮全量 | 受用户显示约束，最新UI未验 |
 | 既有NM/Reminder/压缩 | 历史第三轮报告与逐文件SHA可按相同接缝复用 | NM Bundle确实入上下文；Recall三样本0/0/1指针，pointer驱动新精读未独立证明；两600秒跟进、来源结算、22→24Thread各按其样本范围，不代表全轮 |
 
-当前用户明确禁止CU/CUA、外部浏览器及任何显示状态改变，包括open/open_in_codex、打开/导航可见页面、窗口切换/关闭。界面验收仅允许保证无显示变化的内置浏览器后台入口。当前公开工具没有独立可用的合规入口，能力核对在ignored browser-capability.md；不能将此限制当产品功能豁免，也不能用Chrome/jsdom/API代签UI通过。代码审查/后台机制取证继续进行，不操作用户屏幕。
+界面执行边界以PI-12为准：仅允许CUA下隐藏Codex IAB（visible:false），仍禁止外部浏览器、可见页面、桌面和任何显示变化。用户PI-16/18要求从本机反代53448进入双SPA同后端验收；已有准备产物随本次UI修复重建。API/jsdom不能代签UI。
 
 所有运行库在仓内ignored目录，terminal.cwd在git root外；Default仅实测读取，exam Space仅获授权合成资料操作。凭据、身份原文和NM私人正文不入Git/公开报告。只清理自有未来排期/runtime/poller/lease，不清理桌面或关闭用户窗口；服务/已授权测试资料按计划保留。
 
@@ -70,7 +70,31 @@ Q0完整报告为NOT PASS（31条矩阵，7节点反证3P/4F）。下表定义�
 | E04 / protocol包+证据映射 | 首先最小output-cap受控正式恢复；晚到/rewind、Reminder全宿主/ACK、NM丢ACK/Cron按同版本证据映射只补实际缺口 |
 | E05 / 合规UI Validation | 真实首Thinking/工具状态、跨Profile旧会话、提示计时/冷统计；无合规后台IAB接口仍记未验，不操作屏幕、不用jsdom/API代签 |
 | Q01–Q03 / root | 部署身份与测试权限分层、委派适用范围、正常rewind后归档暂停与长原文取证边界；未授权写权不扩大、未决定限制不冒称用户接受 |
+| D01 / 执行工具隔离窄包 | execute_code实际kernel scratch必须显式归当前Profile，不沿启动Profile的进程级tempfile默认目录；两个Profile各自首建与续用、原生单Profile默认和失败清理须有定向证据。不据路径或reused计数误报跨Profile共享变量，不扩大成执行器重构 |
 
 产品语义冲突给依据、影响和最小决策；必要工程空白按既有授权收敛并显眼记录。修复后全新独立复审仍检查全范围，历史失败保留，不能只核上表旧发现。
 
 当前固定快照详见baseline.txt；不变副本供独立审查，之后修复建立新版本和关闭证据，不能覆写本版失败。全部受影响检查按冻结基线，不放宽门禁求绿。相同原因连续三次修复无效时停止重复尝试，做根因复盘。
+
+
+### PI-18增量验收要求
+
+复用既有会话生命周期、历史／输出投影、事件回放和全局广播，补齐后台Turn可观察性：已连接、首次中途接入（含工具正在运行及ring早期事件淘汰）、断线重连、完成后打开；状态与完整Timeline按真实owner恢复，无漏项／重复，未打开会话全局运行状态变化可达，不resume全部会话。通过本机反代及隐藏IAB对账真实Reminder、WS和持久结果；此项尚未完成，不用旧cold执行成功代签。
+# PI-24 当前增量：NM Thread分叉同步与真实Metadata创建
+
+**PI-25后续修订：** 独立NM创建工具统一安装运行主机 `~/scrips/nmem-memory.py`，本机／云端一致，不依赖Hermes／插件／HERMES_HOME／仓库cwd；接收通用Metadata，调用方提供来源。metadata owner先实施独立工具和受控验证，Provider新路径精确英文已获PI-26批准并实施；v4已正式加载，B唯一模型apply及独立GET准确Metadata通过。此修订替换下面旧helper路径准备，不重开已完成测试。
+
+用户明确更正“归档”为“NM Thread同步”。不一致时的最终行为改为自动分叉接续，原安全暂停作为无法确认锚点/写入结果时的降级，不再把成功分叉后的暂停提示作为单独目标。
+
+| 任务 / Owner | 范围与依赖 | 完成判据 |
+|---|---|---|
+| NM原生消息身份契约 / nm_thread_native_ids 6.1/high | 只读官方CLI/一级文档；必要时限已有合成Thread核ID，不写NM | 确认原生Message ID读取/稳定性与CLI接口，不伪造ID，集中交接实现者 |
+| 自动分叉接续 / nm_thread_fork_impl 6.1/high | 个人插件同步/receipt/client和必要受控测试；禁止动任何Provider Prompt常量、Memory helper及主仓生产代码 | 首条引用旧NM Thread＋最后共同NM Message ID；第二条起差异后缀；后续/冷恢复/再分叉/并发/unknown/profile隔离；不重复共同前缀、不覆盖删除旧Thread |
+| 真实带Metadata创建 / metadata_live_acceptance＋root薄UI | 先准备；用户审批英文原文及root统一加载/release后才跑，旧失败对象保留 | Hermes模型实际调用专用入口，一次新合成Memory创建，官方同ID回读核正文/标签/Space及来源Metadata；失败保留不重试，资源回收 |
+| Provider一句原文 / root | PI-26精确英文已批准，已仅替换此前长句；v4正式安装加载 | 仅落实用户批准的精确英文句，不改其它无关提示；不引入Skill |
+
+子Agent禁止流水账和派生，整包交回；禁止任何显示变化，UI仅root自己的隐藏IAB。前序证据不重跑，原PI-23三类模型偏差不设新增阻塞。
+
+### v4实际编辑发现：E04历史显示分支一致性
+
+root经隐藏IAB对A正式Reply→Rewind and edit→Rewind and send后，NM同步canonical清洗路径6条、新NM Thread3条／22项对账通过；但同页及reload冷页仍显示退出当前分支的旧批准／assistant，再追加新UA。正式REST include_compacted=true返回旧两项active=0/compacted=1，故不是仅warm缓存推测。既有compaction历史应保留，rewind退出分支的尾部不应混入当前显示；由local_deployment_browser_validation先只读定位最小修补范围，root亲审后接线。关闭需正式History分支过滤契约／针对性负例、原A冷UI不含旧尾部且保留共同前缀与新UA。不得借此改用户表现层、重试Memory写入或重复100k旅程。

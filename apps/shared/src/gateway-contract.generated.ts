@@ -3171,6 +3171,8 @@ export interface TranscriptMessage {
   tool_call_id?: string | null
   timestamp?: number | null
   row_id?: number | null
+  message_uid?: string | null
+  tool_call_uid?: string | null
   display_kind?: string | null
   display_metadata?: unknown | null
   name?: string | null
@@ -3234,6 +3236,7 @@ export interface SessionResumeResult {
   turn_started_at?: number | null
   started_at?: number | null
   status?: string | null
+  state_snapshot?: TurnOutputSnapshot | null
   inflight?: InflightTurn | null
   queued?: QueuedPrompt | null
   pending_approval?: PendingApproval | null
@@ -3241,6 +3244,13 @@ export interface SessionResumeResult {
   pending_connection?: ConnectionRequestPayload | null
   todo_state?: TodoState | null
   auto_continue?: AutoContinue | null
+}
+/** Complete current/last native Turn display projection at one replay watermark. Adjacent token chunks may be joined; native typed references remain paired. Runtime-only: cold restore uses persisted transcript/assistant sidecars. */
+export interface TurnOutputSnapshot {
+  events: Record<string, unknown>[]
+  seq: number
+  epoch: string
+  complete: true
 }
 /** ``session_auto_continue._inflight_snapshot``: the live (or retained failed) turn a reconnecting client rebuilds its bubbles from. */
 export interface InflightTurn {
@@ -3304,6 +3314,7 @@ export interface SessionActivateResult {
   turn_started_at?: number | null
   started_at?: number | null
   status?: string | null
+  state_snapshot?: TurnOutputSnapshot | null
   inflight?: InflightTurn | null
   queued?: QueuedPrompt | null
   pending_approval?: PendingApproval | null
@@ -3342,6 +3353,7 @@ export interface SessionMostRecentResult {
   started_at?: number | null
   source?: string | null
 }
+/** The inherited profile argument retains its historical global-roster behavior. */
 export interface SessionActiveListParams {
   profile?: string | null
   current_session_id?: string | null
@@ -3361,6 +3373,11 @@ export interface SessionActiveItem {
   started_at: number
   status: LiveSessionStatus
   title: string
+  stored_session_id?: string | null
+  profile_name?: string | null
+  profile_home?: string | null
+  running?: boolean | null
+  turn_started_at?: number | null
 }
 export type LiveSessionStatus = 'idle' | 'starting' | 'waiting' | 'working' | 'streaming' | 'resuming'
 /** ``session_id`` is the STORED id. */
@@ -4634,6 +4651,7 @@ export interface SecretaryStateResult {
 }
 export interface ActiveTask {
   task_id: string
+  started_at?: string | null
 }
 export interface IdleEstimate {
   state: 'scheduled' | 'absent' | 'unknown'
@@ -5315,6 +5333,16 @@ export interface PetHatchProgressPayload {
 }
 /** ``change_watcher._CHANGE_WATCHES`` payload fn — ``{}`` for every watch except pet.changed. */
 export type ChangeSignalPayload = Record<string, unknown>
+/** Existing watcher signal, also emitted on native runtime start/settle/reclaim. */
+export interface SessionsChangedPayload {
+  runtime_id?: string | null
+  stored_session_id?: string | null
+  profile_name?: string | null
+  profile_home?: string | null
+  running?: boolean | null
+  turn_started_at?: number | null
+  [key: string]: unknown
+}
 export interface SteerPendingChangedPayload {
   turn_id: string | null
 }
@@ -5693,7 +5721,7 @@ export interface RpcMethods {
   'secretary.state': { params: SecretaryReadParams; result: SecretaryStateResult }
   /** Attach the frontend to a live session without closing the previously focused one. */
   'session.activate': { params: SessionActivateParams; result: SessionActivateResult }
-  /** Live sessions in this process, insertion order (not a DB browser). */
+  /** Live sessions in this process, insertion order; the legacy profile argument does not filter the global roster. */
   'session.active_list': { params: SessionActiveListParams; result: SessionActiveListResult }
   /** Set/clear archived (soft-hide, messages kept) on a session + lineage; Desktop PATCH parity. */
   'session.archive': { params: SessionArchiveParams; result: SessionArchiveResult }
@@ -6311,8 +6339,8 @@ export interface BackendGatewayEventMap {
   'session.title': SessionTitlePayload
   /** Mid-turn usage tick; message.complete carries the authoritative final usage. */
   'session.usage': SessionUsagePayload
-  /** state.db moved; refetch the session list. */
-  'sessions.changed': ChangeSignalPayload
+  /** Stored session or runtime changed; refetch session lists. */
+  'sessions.changed': SessionsChangedPayload
   /** The free-tier bootstrap finished (broadcast); the desktop's setup gate reads the record. */
   'setup.ready': SetupReadyPayload
   /** The active skin moved (name switch or live colour edit); repaint from this palette. */

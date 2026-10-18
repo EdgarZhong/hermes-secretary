@@ -188,6 +188,8 @@ If an old Conversation stores `(session_key, generation=7)` but the Channel curr
 
 ## 1.6 Message Identity
 
+> **2026-10-18 局部表达补充：** 全局规范身份不变；Notebook 的模型输入和可读来源使用 `source_message_uids`，由所属 Conversation 结构补全身份，不逐条重复 Ref。内部与全局 History 仍保留完整身份，fork 仍按 branch-local Ref 解释共享 UID；精确契约见 07 §4.1／§4.3。
+
 The canonical message identity is:
 
 ```text
@@ -535,7 +537,7 @@ No Schedule.
 
 ### Persistence Candidates
 
-> **第三轮适用性：** 原文来源、用户明确审批原则保留；结构和新工具面按07。下文拒绝／撤回即清除的旧要求不用于第三轮，不得将拒绝当成功分发；候选原位来源和分发结算按白板及07 §8.10–8.11。
+> **第三轮适用性：** 原文可追溯、用户明确审批原则保留；结构和新工具面按07。2026-10-18 用户确认：所有 Candidate 的 Notebook 条目引用与确切 Message Identity 引用二选一、禁止混用；refs 型按 Memory／Rule／Skill 身份做特化简述，不复写源正文，具体字段与局部 UID 见07 §4.1–4.3、§8.11。下文直接消息／时间范围二选一的旧 Candidate 结构已被替换，不能以时间范围代替确切直接来源。下文拒绝／撤回即清除的旧要求不用于第三轮，不得将拒绝当成功分发；候选原位来源和分发结算按白板及07 §8.10–8.11。
 
 `memory_candidate`, `rule_candidate`, and `skill_candidate` are drafts for later main-Assistant review.
 

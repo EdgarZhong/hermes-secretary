@@ -6,6 +6,7 @@ method_ctx.bind_module), so they reference server.py globals bare.
 
 import contextlib
 
+from .inflight_output import _set_session_running
 from .method_ctx import HandlerRegistry, bind_module
 
 _registry = HandlerRegistry()
@@ -595,7 +596,7 @@ def _persist_session_row_for_submit(rid, session, text=None, display_kind=None):
     # No turn thread will start, so neither resume nor the busy queue may see
     # this rejected prompt as live. Release the slot a turn would normally own.
     with session["history_lock"]:
-        session["running"] = False
+        _set_session_running(session, False)
         session["last_active"] = time.time()
         session.pop("_hosted_room_task", None)
         _clear_inflight_turn(session)
@@ -612,21 +613,26 @@ def _run_after_agent_ready(
     # The wait delivers the prompt when the still-running build completes, honors a cancel promptly, notices
     # the user once past the slow threshold, and only errors when the build itself fails or the bounded cap
     # expires. See #63078.
+    from tui_gateway.turn_terminal import token
+    expected_token = token(session)
     err = _wait_agent_for_prompt(session, rid, sid)
+    if token(session) is not expected_token:
+        return
     if err:
         # Terminal frame + retained snapshot (not a bare "error" event): the snapshot is
         # the only way resume shows this to a disconnected client.
         _emit_terminal_turn_error(
             sid, session, (err.get("error") or {}).get("message", "agent initialization failed"),
-            error_surface={"layer": "runtime", "code": "agent_init_failed", "retryable": True})
+            error_surface={"layer": "runtime", "code": "agent_init_failed", "retryable": True},
+            expected_token=expected_token)
         with session["history_lock"]:
-            session["running"] = False
+            _set_session_running(session, False)
             session["last_active"] = time.time()
         _emit("session.info", sid, _session_info(session.get("agent"), session))
         return
     with session["history_lock"]:
         if session.get("_turn_cancel_requested") or not session.get("running"):
-            session["running"] = False
+            _set_session_running(session, False)
             _clear_inflight_turn(session)
             # Without this emit the turn vanishes silently after {"status": "streaming"}.
             _emit("error", sid, {"message": (

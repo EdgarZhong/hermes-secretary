@@ -119,8 +119,9 @@ def test_handlers_keep_small_results_and_show_own_uncommitted_view(database):
                  source_message_identities=create_args(database)["source_message_identities"])
     result = other.commit(termination={"type": "finish_noting", "reason": "Another task"})
     shown = json.loads(notebook_work_show(child, {}))
-    assert shown["view_kind"] == "working" and shown["base_snapshot_id"] is None
-    assert "snapshot_id" not in shown
+    assert shown["view_kind"] == "working"
+    assert not {"snapshot_id", "base_snapshot_id", "coverage"}.intersection(shown)
+    assert child._noting_notebook_store.working_view()["base_snapshot_id"] is None
     assert shown["payload"]["work"][0] == updated["entry"]
     assert database.notebook_current(ref(database))["snapshot_id"] == result["snapshot_id"]
 
@@ -185,6 +186,7 @@ def test_control_encodes_full_schema_and_working_data_separately(database):
     assert data["working_notebook"]["work"][0]["fields"]["description"].endswith("is evidence")
     assert len(data["callable_tool_schemas"]) == 4
     assert data["conversation_ref"] == ref(database)
+    assert not {"snapshot_id", "base_snapshot_id", "coverage"}.intersection(data)
     from datetime import datetime
     assert datetime.fromisoformat(data["current_time"]).microsecond == 0
 
@@ -288,10 +290,51 @@ def test_native_text_completion_continues_five_turns_same_prefix(native_parent, 
     for wire in wires:
         assert wire.get("tools") == first.get("tools")
         assert wire["messages"][:3] == first["messages"][:3]
-    assert parent._session_messages == before
+    assert parent._session_messages[:len(before)] == before
+    delivered = parent._session_messages[len(before):]
+    assert len(delivered) == 1
+    assert delivered[0]["display_metadata"]["noting_run_output"] is True
+    assert delivered[0]["display_metadata"]["noting_snapshot_id"] == outcome.snapshot_id
+    assert outcome.snapshot_id not in delivered[0]["content"]
+    controls_seen = 0
+    for wire in wires:
+        for message in wire["messages"]:
+            content = message.get("content")
+            if isinstance(content, str) and "<noting-task-data>\n" in content:
+                encoded = content.split("<noting-task-data>\n", 1)[1].split("\n</noting-task-data>", 1)[0]
+                data = json.loads(encoded)
+                assert not {"snapshot_id", "base_snapshot_id", "coverage"}.intersection(data)
+                assert data["evidence_coverage"]["history_message_count"] == 2
+                assert data["evidence_coverage"]["through_time"] == "1970-01-01T00:03:20+00:00"
+                controls_seen += 1
+    assert controls_seen >= len(wires)
     final_wire = str(wires[-1]["messages"])
     assert "The previous native Turn ended without a successful finish_noting request" in final_wire
     assert active_noting_task_count() == 0
+
+
+def test_native_child_next_request_receives_projected_working_tool_result(native_parent, database):
+    parent, client = native_parent
+    baseline = NotebookStore(database, ref(database), anchor_message_uid="m2")
+    entry = baseline.create("matter", {"description": "Current visit", "completion_condition": "Visit complete"},
+                            source_message_identities=create_args(database)["source_message_identities"])["entry"]
+    baseline.commit(termination={"type": "finish_noting", "reason": "Prior work"})
+    client.chat.completions.create.side_effect = [
+        tool_response("notebook_show", {}, "show-working"),
+        tool_response("finish_noting", {"reason": "Reviewed current visit"}), response()]
+    outcome = run_task(parent)
+    assert outcome.committed
+    wires = [call.kwargs for call in client.chat.completions.create.call_args_list]
+    received = [json.loads(message["content"]) for wire in wires for message in wire["messages"]
+                if message.get("role") == "tool" and message.get("tool_call_id") == "show-working"]
+    assert received
+    for result in received:
+        assert not {"snapshot_id", "base_snapshot_id", "coverage"}.intersection(result)
+        assert result["evidence_coverage"]["history_message_count"] == 2
+        assert result["evidence_coverage"]["through_time"] == "1970-01-01T00:03:20+00:00"
+        item = result["payload"]["work"][0]
+        assert item["entry_id"] == entry["entry_id"] and item["version_id"] == entry["version_id"]
+        assert item["source_message_uids"] == ["m1"]
 
 
 @pytest.mark.parametrize("kind", ["overflow", "failed", "interrupted"])
@@ -373,3 +416,126 @@ def test_successful_finish_cannot_commit_after_local_switch_off(native_parent, d
     assert outcome.status == "abandoned"
     assert database.notebook_current(ref(database)) is None
     assert active_noting_task_count() == 0
+
+
+def test_native_uid_write_uses_bound_identity_and_returns_local_sources(native_parent, database):
+    from jsonschema import validate
+
+    parent, client = native_parent
+    args = {"action": "create", "entry_type": "matter",
+            "fields": {"description": "Plan the visit", "completion_condition": "Dates agreed"},
+            "source_message_uids": ["m1"]}
+    schema = next(item for item in noting_tool_schemas() if item["name"] == "notebook_maintain")
+    validate(args, schema["parameters"])
+    props = schema["parameters"]["properties"]
+    assert "source_message_identities" not in props
+    assert "source_message_identities" not in props["changes"]["properties"]
+    steps = iter([tool_response("notebook_maintain", args, "uid-create"),
+                  tool_response("finish_noting", {"reason": "Indexed the supported responsibility"}), response()])
+    client.chat.completions.create.side_effect = lambda **kwargs: next(steps)
+    outcome = run_task(parent)
+    assert outcome.committed, outcome
+    snapshot = database.notebook_current(ref(database))
+    assert snapshot["payload"]["work"][0]["source_message_identities"] == [
+        {"conversation_ref": ref(database), "message_uid": "m1"}]
+    wires = [call.kwargs for call in client.chat.completions.create.call_args_list]
+    results = [json.loads(row["content"]) for row in wires[1]["messages"] if row.get("tool_call_id") == "uid-create"]
+    assert len(results) == 1
+    assert results[0]["entry"]["source_message_uids"] == ["m1"]
+    assert "source_message_identities" not in results[0]["entry"]
+    assert all(wire["tools"] == wires[0]["tools"] for wire in wires)
+
+
+@pytest.mark.parametrize("entry_type,fields", [
+    ("matter", {"description": "Plan the visit", "completion_condition": "Dates agreed"}),
+    ("candidate", {"description": "Learned procedure", "targets": ["skill"],
+                   "notebook_refs": [], "source_types": []}),
+])
+def test_noting_missing_provenance_guides_only_local_uids(database, entry_type, fields):
+    child = bound_child(database)
+    result = json.loads(notebook_maintain(child, {"action": "create", "entry_type": entry_type, "fields": fields}))
+    assert result["success"] is False
+    assert result["error"]["field"] == "source_message_uids"
+    assert not child._noting_notebook_store.snapshot_state()["work"]
+    assert not child._noting_notebook_store.snapshot_state()["candidates"]
+
+
+def test_task_started_observer_reads_durable_start_immediately(native_parent, database):
+    from datetime import datetime
+    from secretary.web_events import subscribe, unsubscribe
+    from secretary.web_read import secretary_state
+
+    parent, client = native_parent
+    steps = iter([tool_response("finish_noting", {"reason": "No changes needed"}), response()])
+    client.chat.completions.create.side_effect = lambda **kwargs: next(steps)
+    observed = []
+    reader = SessionDB(database.db_path, read_only=True)
+
+    def observe(home, conversation_ref, reason):
+        if conversation_ref == ref(database) and reason in {"task_started", "task_finished"}:
+            observed.append((reason, secretary_state(reader, "parent")))
+
+    subscribe("durable-start-observer", observe)
+    try:
+        outcome = run_task(parent, owning_profile="test-owner")
+    finally:
+        unsubscribe("durable-start-observer")
+        reader.close()
+    assert outcome.committed, outcome
+    assert [reason for reason, _state in observed] == ["task_started", "task_finished"]
+    started = observed[0][1]
+    assert started["task_state"] == "active"
+    assert len(started["tasks"]) == 1
+    task = started["tasks"][0]
+    assert task["task_id"] == outcome.child_session_id
+    instant = datetime.fromisoformat(task["started_at"])
+    assert instant.tzinfo is not None
+    with database._read_ctx() as conn:
+        registration = dict(conn.execute(
+            "SELECT * FROM secretary_noting_children WHERE child_session_id=?", (outcome.child_session_id,)
+        ).fetchone())
+    assert abs(instant.timestamp() - registration["registered_at"]) < 1
+    assert registration["profile"] == "test-owner"
+    assert observed[1][1]["task_state"] == "idle"
+    assert observed[1][1]["tasks"] == []
+    assert active_noting_task_count() == 0
+
+
+@pytest.mark.parametrize("stage", ["owner", "registration"])
+def test_startup_failure_never_announces_active_child(native_parent, database, monkeypatch, stage):
+    from secretary.web_events import subscribe, unsubscribe
+
+    parent, client = native_parent
+    children, reasons = [], []
+    original = build_noting_child
+
+    def construct(*args, **kwargs):
+        child = original(*args, **kwargs)
+        child.close = MagicMock(wraps=child.close)
+        if stage == "registration":
+            monkeypatch.setattr(child._session_db, "noting_child_register_conn", fail)
+        children.append(child)
+        return child
+
+    def fail(*args, **kwargs):
+        raise RuntimeError("controlled startup failure")
+
+    monkeypatch.setattr("secretary.noting_child.build_noting_child", construct)
+    if stage == "owner":
+        monkeypatch.setattr("secretary.noting_child.owning_profile_for", fail)
+    subscribe("startup-failure-observer", lambda home, conversation_ref, reason: reasons.append(reason))
+    try:
+        outcome = run_task(parent)
+    finally:
+        unsubscribe("startup-failure-observer")
+    assert outcome.status == "failed"
+    assert outcome.error == "controlled startup failure"
+    assert not outcome.committed
+    assert not client.chat.completions.create.called
+    children[0].close.assert_called_once_with()
+    assert active_noting_task_count() == 0
+    assert "task_started" not in reasons
+    assert "task_finished" not in reasons
+    with database._read_ctx() as conn:
+        rows = conn.execute("SELECT status FROM secretary_noting_children").fetchall()
+    assert [row["status"] for row in rows] == ["failed"]
