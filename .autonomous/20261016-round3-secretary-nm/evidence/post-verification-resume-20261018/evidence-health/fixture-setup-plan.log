@@ -1,0 +1,24 @@
+▶ not activated — using HERMES_PYTHON: /Users/edgar/code/hermes-secretary/.venv/bin/python
+▶ running per-file parallel test suite via run_tests_parallel.py
+  (TZ=UTC LANG=C.UTF-8 PYTHONHASHSEED=0; clean env)
+▶ pre-compiling bytecode cache
+▶ launching test runner
+Discovered 2 test files (~2 tests) under ['tests/secretary/test_resume_fixture_bindings_retired_tool.py', 'tests/secretary/test_resume_fixture_bindings_scheduler_resume.py']; running with -j 1
+[ 50.0% |     1/~2 | ✓0 | ✗0] ✓ tests/secretary/test_resume_fixture_bindings_retired_tool.py (1 tests, 1.0s)
+[100.0% |     2/~2 | ✓0 | ✗0] ✓ tests/secretary/test_resume_fixture_bindings_scheduler_resume.py (1 tests, 0.5s)
+
+=== Summary: 2 files, 0 tests passed, 0 failed (100% complete) in 1.5s (1 workers) ===
+
+=== ✗ NO TESTS RAN — 0 collected across 2 files. This is NOT a pass. ===
+  Common causes: the selected venv has no pytest; a -k/-m filter matched nothing; or collection errored in every file.
+  Check the per-file output above for the real error.
+  Durations cached to test_durations.json (2 files)
+
+=== Per-file subprocess time distribution ===
+  Files:   2
+  Total subprocess CPU-wall: 1.5s  (runner wall: 1.5s, parallelism: 1x)
+  P50: 0.98s  P90: 0.98s  P95: 0.98s  P99: 0.98s  Max: 0.98s
+  <1s: 2 files (100%)  <2s: 2 files (100%)
+  Top 10 slowest:
+      0.98s  tests/secretary/test_resume_fixture_bindings_retired_tool.py
+      0.52s  tests/secretary/test_resume_fixture_bindings_scheduler_resume.py

@@ -1,0 +1,81 @@
+{
+  "scope": "post-verification bug continuation; not an independent gate",
+  "date": "2026-10-18",
+  "backend_base": "b9d355bcaae7053c8ca228524f6f63ac7362c4b1",
+  "frontend_base": "524e479a5fdc309feff0c0b367d23ec1550f21ce",
+  "buckets": {
+    "backend": {
+      "effective_passed": 117
+    },
+    "ui_inputs": {
+      "effective_passed": 52
+    },
+    "completion_ui": {
+      "passed": 87,
+      "integration_new_passed": 1
+    },
+    "evidence_binding_controls": {
+      "passed": 2
+    },
+    "completion_optional_read": {
+      "passed": 1
+    }
+  },
+  "limitations": [
+    "Buckets overlap; do not sum as a full suite",
+    "Existing review.summary orphan catalog failure retained",
+    "No fresh external real model/browser acceptance",
+    "Running round3 backend not restarted after final backend edits"
+  ],
+  "files": {
+    "backend/baseline-tests.log": "271f4c3439448db81d46d936d7c4f4e7b06f4398aa73c92ac2f62e522c311df2",
+    "backend/current-entry-tests.log": "e519d88c68fb5eae253d9dee066499b7a557703a22fdaa8b23aa1e2fef882396",
+    "backend/health-after.log": "1b01673792bda0e2f2badbb136460e22135ef4e9ead0062913002640609a31c2",
+    "backend/health-before.log": "c6ea027b35eb0bb35cb49a49d2dd406f19bb087dafccbb97296cc03d9c4c2a45",
+    "backend/health.log": "0e11492df12189da27cca4d5c17d2da33f54dc06da682e7a4178c4f6a1ef6716",
+    "backend/moved-neighborhood-tests.log": "a5cad182dd02b4db8fa97fa472bb2a901816af884ec1b4b3014a6de6cd98195d",
+    "backend/no-tmp.log": "fa48f930e6328d1b624f8e59830fd2e91dd94a234c86b1fd337b1cf1e1177185",
+    "backend/ruff.log": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+    "ui-inputs/green.log": "f615cf284f3d874203966b47f7a2e8b661fb680a3cbc9c3279bef127724af91d",
+    "ui-inputs/red.log": "b3b54c29b46a88ccb22382cdfeb3da742ee5b19583f5812244c1e5d501e5466e",
+    "ui-inputs/second-zone-and-slash.log": "03f3081b106146a91aeb2ffa439bb69c927f292ab5664255b957f4cb25e6240d",
+    "completion/check-2.log": "4738bee44e216122c9b910af12c181f9c5703c44ea1e50867059f05306ee495e",
+    "completion/check-final.log": "4b1260dfe4f36b0055808adb08a3282c01fff575ee649a3898f0874ab1ce07ee",
+    "completion/check.log": "8bfa5960cec98a3bd3583b28e4bc90e8b6ff84de43b1ce05fe05e721b144d8c8",
+    "completion/generate.log": "0a1b61e78f70bbc3f3347e6206e93fce51418942b5f9b97e5be1e8790e61e545",
+    "completion/python-green-2.log": "8cbf0399ca7601caa39d6890e0dbda2f52341019fb339858682bf60bb2f49626",
+    "completion/python-green.log": "97ae5a96e8f047b189ddc99a0202e825ee0540914de97052176c186aa437bdd3",
+    "completion/python-optional-read.log": "e2aee95e60bdf0f007f77a3a2e2fca3e02ac53482964b2efefc97850d49558f7",
+    "completion/python-red-2.log": "3b90575b872bd6cc622b8bfe7c23bf9a539156a9beea5eba9ffc97a737cfd041",
+    "completion/python-red.log": "9e659a5703293dd47282146f11919f056f142d0d5c62705d4a5ac8dd1bb7751e",
+    "completion/python-regression.log": "3c1c21afaebdc49a33c47c5acb212d73ab95735b49a60984809e50a40fde7731",
+    "completion/typecheck-integration.log": "36b9b5bc0b981a5ac0fea6920466caa8a81e131f360855e3102447dad183f1c5",
+    "completion/typecheck.log": "36b9b5bc0b981a5ac0fea6920466caa8a81e131f360855e3102447dad183f1c5",
+    "completion/ui-green-2.log": "c17c5499aa1d597e71a767261d34b5ca4df6f9c0b7e81e566575faccdec4e44f",
+    "completion/ui-green.log": "8d1674736e5c831046cdd1d7e58eee7d14d05fb1398524e1a21d0c4a3922cd15",
+    "completion/ui-hmr-integration.log": "217a8b04811fda05b5015b61060858f40f6b1c8d3def9e57e6c0de43961d2c86",
+    "completion/ui-red-2.log": "f36a4ede1a0e0b7517fdf99228d08ac5be6391c1cd8c7c433e889f2b8ccddca7",
+    "completion/ui-red.log": "609ced0cbb886462482cce014e4f110da24345cb2bb402692e1935ad5e5903cd",
+    "evidence-health/fixture-controls.log": "761871ca30d8ed9dd6a00eadf95625949d8639c57f1752d5ab98f46898d47c4a",
+    "evidence-health/fixture-setup-plan.log": "efad5ef828b4369d3b3b31dd495a018a2e648794a47ff5d91a38f59cda2ab2d4",
+    "evidence-health/health.log": "9dd08aa9868f5bd9fe49298b5f188eb07923401f1de2383ac5425e4ed32b7733",
+    "evidence-health/source-preservation.json": "b0132fcdabd9ed1afb232f57753c4d94a23632230f0a33393442c152807243b7",
+    "evidence-health/health.json": "4647e558c06f80331a159a3c5286a419a978378f10b111c82960809438a6ea52",
+    "completion/native-wire.json": "7074e969380ccb5a4379dafd1b71b3d4f1e61448de839b0fd28ba5a261ba3fba"
+  },
+  "source_sha256": {
+    "backend/secretary/noting_child.py": "ef736db0b15422322549077698fc9a4a69f81928d26b53ed752014af1d8f807c",
+    "backend/secretary/web_events.py": "547cbff74cbf951d3e76f0d5fcefeb5d594cf95242dc3818a4f9f589fc90e339",
+    "backend/secretary/web_read.py": "7e181f04e258050d776dc8391b226fe10a62999f3aede32b7e806a9b3a53e81b",
+    "backend/tui_gateway/contracts/web_read.py": "743cbd977a1bd799e778968dcf874cb22757cf8671f63e257da5fc2bfc681a42",
+    "backend/tui_gateway/methods_web_read.py": "1e2419020a523abc07c6bde17006be62456fd3f182ec376c682d010039862ece",
+    "backend/tests/secretary/test_web_completion.py": "54168705c3d86eec2ff99103be3c756541924c866c62ffed9494acf74afd4fc7",
+    "frontend/src/api/reads.ts": "1638726ecb3b9b51e0c6ff549ee58c0c4a3d7cc339d412ebf215d720a236bd2e",
+    "frontend/src/core/controller.ts": "a5a6914e70b93cd8e590d2b3ec4ddf3453f680ccccb59f80f40be0cdf59c1678",
+    "frontend/src/core/secretary-completion.ts": "81b8fd514df6fa10bc3f3f48b0b5ae5abe566b3dc28d7aca43482423e10d5141",
+    "frontend/src/core/conversation-title.ts": "5e894d9dec44202106fc57c6e2c8f0a7a9182364ebdbbab89e7eb139381453cb",
+    "frontend/src/core/schedule-time.ts": "54694ec740da51a74de44042d03b3a643ad7f4208bc6072916bc24c482d9515a",
+    "frontend/src/design/indicators.tsx": "d023d36311bf38d01414599c0c2cf207cc81b4bdf8b896fbaeabbdea4f4ec46f"
+  },
+  "frontend_commit": "7f0fea60463c6731f8e04a00db923d28b80ade19"
+}

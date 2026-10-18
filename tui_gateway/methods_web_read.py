@@ -54,8 +54,10 @@ def _secretary_handler(server, rid, params, *, read=None):
         return server._err(rid, 5010, "Owning Conversation read is unavailable")
 
 
-def _invalidation_sink(server, profile_home, ref, reason):
+def _invalidation_sink(server, profile_home, ref, reason, *, completion_snapshot_id=None):
     payload = {"profile_home": str(profile_home), "conversation_ref": ref, "reason": reason}
+    if completion_snapshot_id is not None:
+        payload["completion_snapshot_id"] = completion_snapshot_id
     if ref is None:
         server._broadcast_global_event("secretary.changed", payload)
         return
@@ -82,4 +84,5 @@ def register(server):
         server, rid, params, read=secretary_reads.notebook_read))
     server.register_method("secretary.schedules", lambda rid, params: _secretary_handler(
         server, rid, params, read=secretary_reads.schedules_read))
-    subscribe("tui_gateway", lambda home, ref, reason: _invalidation_sink(server, home, ref, reason))
+    subscribe("tui_gateway", lambda home, ref, reason, **metadata: _invalidation_sink(
+        server, home, ref, reason, **metadata), include_metadata=True)

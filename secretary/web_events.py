@@ -9,9 +9,9 @@ _lock = threading.Lock()
 _observers = {}
 
 
-def subscribe(key, observer):
+def subscribe(key, observer, *, include_metadata=False):
     with _lock:
-        _observers[key] = observer
+        _observers[key] = (observer, include_metadata)
 
 
 def unsubscribe(key):
@@ -19,7 +19,7 @@ def unsubscribe(key):
         _observers.pop(key, None)
 
 
-def changed(db, conversation_ref, reason):
+def changed(db, conversation_ref, reason, *, completion_snapshot_id=None):
     if db is None or not conversation_ref:
         return
     with _lock:
@@ -30,15 +30,19 @@ def changed(db, conversation_ref, reason):
     except (AttributeError, TypeError, ValueError, OSError):
         logger.debug("Secretary invalidation owner unavailable", exc_info=True)
         return
-    notify(home, conversation_ref, reason)
+    notify(home, conversation_ref, reason, completion_snapshot_id=completion_snapshot_id)
 
 
-def notify(profile_home, conversation_ref=None, reason="global_changed"):
+def notify(profile_home, conversation_ref=None, reason="global_changed", *, completion_snapshot_id=None):
     with _lock:
         observers = tuple(_observers.values())
-    for observer in observers:
+    for observer, include_metadata in observers:
         try:
-            observer(Path(profile_home).resolve(), conversation_ref, reason)
+            owner = Path(profile_home).resolve()
+            if include_metadata:
+                observer(owner, conversation_ref, reason, completion_snapshot_id=completion_snapshot_id)
+            else:
+                observer(owner, conversation_ref, reason)
         except Exception:
             logger.debug("Secretary invalidation observer failed", exc_info=True)
 

@@ -1,0 +1,17 @@
+
+> hermes-secretary-web@0.1.0 test
+> vitest run src/design/schedule-time.test.tsx src/core/controller.test.ts -t SchedulePanel absolute times|browser /title and /ai-title routing
+
+[file-viewer:vite-plugin] Copied 9/9 renderer assets to /Users/edgar/code/hermes-secretary-web/public/file-viewer
+
+ RUN  v4.1.11 /Users/edgar/code/hermes-secretary-web
+
+
+ Test Files  2 passed (2)
+      Tests  17 passed | 73 skipped (90)
+   Start at  20:21:48
+   Duration  971ms (transform 694ms, setup 0ms, import 766ms, tests 556ms, environment 0ms)
+
+real 3.95
+user 2.60
+sys 0.88

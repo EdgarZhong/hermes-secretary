@@ -1,0 +1,17 @@
+
+> hermes-secretary-web@0.1.0 test
+> vitest run src/design/schedule-time.test.tsx src/core/conversation-title.test.ts src/core/conversation-title-controller.test.ts src/core/controller-session-metadata.test.ts src/core/controller-schedule-table.test.ts
+
+[file-viewer:vite-plugin] Copied 9/9 renderer assets to /Users/edgar/code/hermes-secretary-web/public/file-viewer
+
+ RUN  v4.1.11 /Users/edgar/code/hermes-secretary-web
+
+
+ Test Files  5 passed (5)
+      Tests  45 passed (45)
+   Start at  03:21:21
+   Duration  721ms (transform 1.53s, setup 0ms, import 1.26s, tests 916ms, environment 0ms)
+
+real 2.98
+user 2.98
+sys 0.91

@@ -1,0 +1,29 @@
+▶ not activated — using HERMES_PYTHON: /Users/edgar/code/hermes-secretary/.venv/bin/python
+▶ running per-file parallel test suite via run_tests_parallel.py
+  (TZ=UTC LANG=C.UTF-8 PYTHONHASHSEED=0; clean env)
+▶ pre-compiling bytecode cache
+▶ launching test runner
+note: 'tests/secretary/test_web_completion.py::test_optional_pointer_read_failure_keeps_original_state_available' is a pytest node id; this runner is file-granular. Running the file with -k 'test_optional_pointer_read_failure_keeps_original_state_available'.
+note: 'tests/secretary/test_web_read.py::test_reads_pointer_notebook_off_and_no_side_effect' is a pytest node id; this runner is file-granular. Running the file with -k 'test_reads_pointer_notebook_off_and_no_side_effect'.
+note: 'tests/secretary/test_web_read.py::test_after_commit_hints_and_failure_isolation' is a pytest node id; this runner is file-granular. Running the file with -k 'test_after_commit_hints_and_failure_isolation'.
+note: 'tests/secretary/test_noting_child.py::test_run_noting_task_commits_snapshot_and_closes_child' is a pytest node id; this runner is file-granular. Running the file with -k 'test_run_noting_task_commits_snapshot_and_closes_child'.
+note: 'tests/secretary/test_noting_child.py::test_failed_turn_does_not_commit' is a pytest node id; this runner is file-granular. Running the file with -k 'test_failed_turn_does_not_commit'.
+Discovered 4 test files (~37 tests) under ['tests/secretary/test_web_completion.py', 'tests/secretary/test_web_read_child.py', 'tests/secretary/test_web_read.py', 'tests/secretary/test_web_read.py', 'tests/secretary/test_noting_child.py', 'tests/secretary/test_noting_child.py']; running with -j 10
+[  2.7% |     1/~37 | ✓0 | ✗0] ✓ tests/secretary/test_web_read_child.py (1 tests, 1.3s)
+[ 10.8% |     4/~37 | ✓1 | ✗0] ✓ tests/secretary/test_web_completion.py (1✓, 1.7s)
+[ 43.2% |    16/~37 | ✓3 | ✗0] ✓ tests/secretary/test_web_read.py (2✓, 2.1s)
+[100.0% |    37/~37 | ✓5 | ✗0] ✓ tests/secretary/test_noting_child.py (2✓, 15.8s)
+
+=== Summary: 4 files, 5 tests passed, 0 failed (100% complete) in 15.8s (10 workers) ===
+  Durations cached to test_durations.json (4 files)
+
+=== Per-file subprocess time distribution ===
+  Files:   4
+  Total subprocess CPU-wall: 20.9s  (runner wall: 15.8s, parallelism: 10x)
+  P50: 2.07s  P90: 15.78s  P95: 15.78s  P99: 15.78s  Max: 15.78s
+  <1s: 0 files (0%)  <2s: 2 files (50%)
+  Top 10 slowest:
+     15.78s  tests/secretary/test_noting_child.py
+      2.07s  tests/secretary/test_web_read.py
+      1.71s  tests/secretary/test_web_completion.py
+      1.32s  tests/secretary/test_web_read_child.py

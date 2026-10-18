@@ -1,0 +1,25 @@
+
+=== health (failed) ===
+tests/secretary/test_web_completion.py:10  F811  test_formal_completion_events
+    redefinition of unused name
+    fix: remove the shadowed definition
+tests/secretary/test_web_completion.py:10  F811  test_formal_completion_events
+    redefinition of unused name
+    fix: remove the shadowed definition
+tests/secretary/test_web_completion.py:10  F811  test_formal_completion_events
+    redefinition of unused name
+    fix: remove the shadowed definition
+tests/secretary/test_web_completion.py:66  F811  test_completion_metadata_is_opt_in_and_observer_failures_do_not_affect_commit
+    redefinition of unused name
+    fix: remove the shadowed definition
+
+code health: 7 files vs b9d355bcaae7: 4 blocking, 0 advisory (1.2s)
+
+Each function and file has its own cap: its value on main if it is already over target,
+otherwise the target. New code meets the target; existing code may only go down. Fix the code
+(the `fix:` line is the repo's remedy); a genuine exception takes a reviewed comment on the line,
+`# health: allow <RULE> -- <why>`. Rules and targets: scripts/code_health/config.py.
+Reproduce locally: python scripts/check --only health (every lint check: python scripts/check;
+on every push: python scripts/check --install-hook pre-push).
+
+scripts/check: 3 checks, FAILED: health

@@ -411,7 +411,8 @@ def commit_noting_snapshot(
     result = db._execute_write(commit)
     from secretary.web_events import changed
     try:
-        changed(db, conversation_ref, "notebook_changed")
+        changed(db, conversation_ref, "notebook_changed",
+                completion_snapshot_id=result["snapshot_id"] if result["pointer_changed"] else None)
     except Exception:
         logger.warning("Committed Notebook change observer failed", exc_info=True)
     return result

@@ -1,0 +1,182 @@
+▶ not activated — using HERMES_PYTHON: /Users/edgar/code/hermes-secretary/.venv/bin/python
+▶ running per-file parallel test suite via run_tests_parallel.py
+  (TZ=UTC LANG=C.UTF-8 PYTHONHASHSEED=0; clean env)
+▶ pre-compiling bytecode cache
+▶ launching test runner
+Discovered 4 test files (~28 tests) under ['tests/tui_gateway/test_cold_usage.py', 'tests/tui_gateway/test_secretary_read_profile_scope.py', 'tests/hermes_cli/test_model_switch_bare_custom_rows.py', 'tests/hermes_cli/test_inventory_reasoning_caps.py']; running with -j 10
+[ 39.3% |    11/~28 | ✓11 | ✗ 0] ✓ tests/hermes_cli/test_inventory_reasoning_caps.py (11✓, 2.6s)
+[ 46.4% |    13/~28 | ✓13 | ✗ 0] ✓ tests/hermes_cli/test_model_switch_bare_custom_rows.py (2✓, 4.7s)
+[ 50.0% |    14/~28 | ✓16 | ✗ 3] ✗ tests/tui_gateway/test_secretary_read_profile_scope.py (3✓ 3✗, 7.9s)
+
+  ╔╍ Failed: tests/tui_gateway/test_secretary_read_profile_scope.py ╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍
+  ║     def test_schedule_rpc_reports_target_profiles_timezone(tmp_path, monkeypatch, method, schedule):
+  ║         from tui_gateway import server
+  ║         from secretary.scheduler_table import apply_schedule_action_conn
+  ║         from hermes_constants import get_hermes_home, set_hermes_home_override, reset_hermes_home_override
+  ║         from hermes_time import reset_cache
+  ║         launch = tmp_path / "launch"; launch.mkdir()
+  ║         target = tmp_path / "target"; target.mkdir()
+  ║         (launch / "config.yaml").write_text("timezone: Asia/Tokyo\n")
+  ║         (target / "config.yaml").write_text("timezone: America/Los_Angeles\n")
+  ║         db = SessionDB(target / "state.db")
+  ║         db.create_session("s", source="cli")
+  ║         db.append_message("s", "user", "schedule please", message_uid="u1")
+  ║         ref = db.resolve_conversation_ref("s")
+  ║         db._execute_write(lambda conn: apply_schedule_action_conn(conn, ref, {"action":"create", "content":"check", "schedule":schedule, "delivery_mode":"instant"}, now=1792200000))
+  ║         monkeypatch.setattr(server, "_profile_home", lambda _: target)
+  ║         monkeypatch.delenv("HERMES_TIMEZONE", raising=False)
+  ║         token = set_hermes_home_override(str(launch)); reset_cache()
+  ║         before_env = dict(os.environ)
+  ║         try:
+  ║             result = server.handle_request({"jsonrpc":"2.0", "id":1, "method":method, "params":{"profile":"target", "stored_session_id":"s"}})
+  ║ >           assert result["result"]["schedules"][0]["timezone"] == "America/Los_Angeles", result
+  ║                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  ║ E           KeyError: 'schedules'
+  ║ 
+  ║ tests/tui_gateway/test_secretary_read_profile_scope.py:32: KeyError
+  ║ =========================== short test summary info ============================
+  ║ FAILED tests/tui_gateway/test_secretary_read_profile_scope.py::test_schedule_rpc_reports_target_profiles_timezone[every 2h-secretary.state]
+  ║ FAILED tests/tui_gateway/test_secretary_read_profile_scope.py::test_schedule_rpc_reports_target_profiles_timezone[0 10 * * *-secretary.state]
+  ║ FAILED tests/tui_gateway/test_secretary_read_profile_scope.py::test_schedule_rpc_reports_target_profiles_timezone[2030-10-18T10:00:00+08:00-secretary.state]
+  ║ ========================= 3 failed, 3 passed in 2.45s ==========================
+  ║
+  ║  Repro: python -m pytest tests/tui_gateway/test_secretary_read_profile_scope.py
+  ╚╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍
+
+[100.0% |    28/~28 | ✓36 | ✗ 3] ✓ tests/tui_gateway/test_cold_usage.py (20✓, 9.3s)
+
+=== Summary: 4 files, 36 tests passed, 3 failed (100% complete) in 9.3s (10 workers) ===
+  Durations cached to test_durations.json (3 files)
+
+=== Per-file subprocess time distribution ===
+  Files:   4
+  Total subprocess CPU-wall: 24.5s  (runner wall: 9.3s, parallelism: 10x)
+  P50: 7.87s  P90: 9.28s  P95: 9.28s  P99: 9.28s  Max: 9.28s
+  <1s: 0 files (0%)  <2s: 0 files (0%)
+  Top 10 slowest:
+      9.28s  tests/tui_gateway/test_cold_usage.py
+      7.87s  tests/tui_gateway/test_secretary_read_profile_scope.py
+      4.74s  tests/hermes_cli/test_model_switch_bare_custom_rows.py
+      2.63s  tests/hermes_cli/test_inventory_reasoning_caps.py
+
+=== Failure output ===
+
+--- tests/tui_gateway/test_secretary_read_profile_scope.py ---
+============================= test session starts ==============================
+platform darwin -- Python 3.14.7, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Users/edgar/code/hermes-secretary
+configfile: pyproject.toml
+plugins: anyio-4.14.2, asyncio-1.3.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 6 items
+
+tests/tui_gateway/test_secretary_read_profile_scope.py .F.F.F            [100%]
+
+=================================== FAILURES ===================================
+_ test_schedule_rpc_reports_target_profiles_timezone[every 2h-secretary.state] _
+
+tmp_path = PosixPath('/private/var/tmp/hermes-pytest-501/r-71hzgeb4/pytest-of-edgar/pytest-0/test_schedule_rpc_reports_targ1')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x108dd3230>
+method = 'secretary.state', schedule = 'every 2h'
+
+    @pytest.mark.parametrize("method", ["secretary.schedules", "secretary.state"])
+    @pytest.mark.parametrize("schedule", ["every 2h", "0 10 * * *", "2030-10-18T10:00:00+08:00"])
+    def test_schedule_rpc_reports_target_profiles_timezone(tmp_path, monkeypatch, method, schedule):
+        from tui_gateway import server
+        from secretary.scheduler_table import apply_schedule_action_conn
+        from hermes_constants import get_hermes_home, set_hermes_home_override, reset_hermes_home_override
+        from hermes_time import reset_cache
+        launch = tmp_path / "launch"; launch.mkdir()
+        target = tmp_path / "target"; target.mkdir()
+        (launch / "config.yaml").write_text("timezone: Asia/Tokyo\n")
+        (target / "config.yaml").write_text("timezone: America/Los_Angeles\n")
+        db = SessionDB(target / "state.db")
+        db.create_session("s", source="cli")
+        db.append_message("s", "user", "schedule please", message_uid="u1")
+        ref = db.resolve_conversation_ref("s")
+        db._execute_write(lambda conn: apply_schedule_action_conn(conn, ref, {"action":"create", "content":"check", "schedule":schedule, "delivery_mode":"instant"}, now=1792200000))
+        monkeypatch.setattr(server, "_profile_home", lambda _: target)
+        monkeypatch.delenv("HERMES_TIMEZONE", raising=False)
+        token = set_hermes_home_override(str(launch)); reset_cache()
+        before_env = dict(os.environ)
+        try:
+            result = server.handle_request({"jsonrpc":"2.0", "id":1, "method":method, "params":{"profile":"target", "stored_session_id":"s"}})
+>           assert result["result"]["schedules"][0]["timezone"] == "America/Los_Angeles", result
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           KeyError: 'schedules'
+
+tests/tui_gateway/test_secretary_read_profile_scope.py:32: KeyError
+_ test_schedule_rpc_reports_target_profiles_timezone[0 10 * * *-secretary.state] _
+
+tmp_path = PosixPath('/private/var/tmp/hermes-pytest-501/r-71hzgeb4/pytest-of-edgar/pytest-0/test_schedule_rpc_reports_targ3')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10ad0f8a0>
+method = 'secretary.state', schedule = '0 10 * * *'
+
+    @pytest.mark.parametrize("method", ["secretary.schedules", "secretary.state"])
+    @pytest.mark.parametrize("schedule", ["every 2h", "0 10 * * *", "2030-10-18T10:00:00+08:00"])
+    def test_schedule_rpc_reports_target_profiles_timezone(tmp_path, monkeypatch, method, schedule):
+        from tui_gateway import server
+        from secretary.scheduler_table import apply_schedule_action_conn
+        from hermes_constants import get_hermes_home, set_hermes_home_override, reset_hermes_home_override
+        from hermes_time import reset_cache
+        launch = tmp_path / "launch"; launch.mkdir()
+        target = tmp_path / "target"; target.mkdir()
+        (launch / "config.yaml").write_text("timezone: Asia/Tokyo\n")
+        (target / "config.yaml").write_text("timezone: America/Los_Angeles\n")
+        db = SessionDB(target / "state.db")
+        db.create_session("s", source="cli")
+        db.append_message("s", "user", "schedule please", message_uid="u1")
+        ref = db.resolve_conversation_ref("s")
+        db._execute_write(lambda conn: apply_schedule_action_conn(conn, ref, {"action":"create", "content":"check", "schedule":schedule, "delivery_mode":"instant"}, now=1792200000))
+        monkeypatch.setattr(server, "_profile_home", lambda _: target)
+        monkeypatch.delenv("HERMES_TIMEZONE", raising=False)
+        token = set_hermes_home_override(str(launch)); reset_cache()
+        before_env = dict(os.environ)
+        try:
+            result = server.handle_request({"jsonrpc":"2.0", "id":1, "method":method, "params":{"profile":"target", "stored_session_id":"s"}})
+>           assert result["result"]["schedules"][0]["timezone"] == "America/Los_Angeles", result
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           KeyError: 'schedules'
+
+tests/tui_gateway/test_secretary_read_profile_scope.py:32: KeyError
+_ test_schedule_rpc_reports_target_profiles_timezone[2030-10-18T10:00:00+08:00-secretary.state] _
+
+tmp_path = PosixPath('/private/var/tmp/hermes-pytest-501/r-71hzgeb4/pytest-of-edgar/pytest-0/test_schedule_rpc_reports_targ5')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10ada7b50>
+method = 'secretary.state', schedule = '2030-10-18T10:00:00+08:00'
+
+    @pytest.mark.parametrize("method", ["secretary.schedules", "secretary.state"])
+    @pytest.mark.parametrize("schedule", ["every 2h", "0 10 * * *", "2030-10-18T10:00:00+08:00"])
+    def test_schedule_rpc_reports_target_profiles_timezone(tmp_path, monkeypatch, method, schedule):
+        from tui_gateway import server
+        from secretary.scheduler_table import apply_schedule_action_conn
+        from hermes_constants import get_hermes_home, set_hermes_home_override, reset_hermes_home_override
+        from hermes_time import reset_cache
+        launch = tmp_path / "launch"; launch.mkdir()
+        target = tmp_path / "target"; target.mkdir()
+        (launch / "config.yaml").write_text("timezone: Asia/Tokyo\n")
+        (target / "config.yaml").write_text("timezone: America/Los_Angeles\n")
+        db = SessionDB(target / "state.db")
+        db.create_session("s", source="cli")
+        db.append_message("s", "user", "schedule please", message_uid="u1")
+        ref = db.resolve_conversation_ref("s")
+        db._execute_write(lambda conn: apply_schedule_action_conn(conn, ref, {"action":"create", "content":"check", "schedule":schedule, "delivery_mode":"instant"}, now=1792200000))
+        monkeypatch.setattr(server, "_profile_home", lambda _: target)
+        monkeypatch.delenv("HERMES_TIMEZONE", raising=False)
+        token = set_hermes_home_override(str(launch)); reset_cache()
+        before_env = dict(os.environ)
+        try:
+            result = server.handle_request({"jsonrpc":"2.0", "id":1, "method":method, "params":{"profile":"target", "stored_session_id":"s"}})
+>           assert result["result"]["schedules"][0]["timezone"] == "America/Los_Angeles", result
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           KeyError: 'schedules'
+
+tests/tui_gateway/test_secretary_read_profile_scope.py:32: KeyError
+=========================== short test summary info ============================
+FAILED tests/tui_gateway/test_secretary_read_profile_scope.py::test_schedule_rpc_reports_target_profiles_timezone[every 2h-secretary.state]
+FAILED tests/tui_gateway/test_secretary_read_profile_scope.py::test_schedule_rpc_reports_target_profiles_timezone[0 10 * * *-secretary.state]
+FAILED tests/tui_gateway/test_secretary_read_profile_scope.py::test_schedule_rpc_reports_target_profiles_timezone[2030-10-18T10:00:00+08:00-secretary.state]
+========================= 3 failed, 3 passed in 2.45s ==========================
+
+=== 1 file with test failures (3 tests failed) ===
+  tests/tui_gateway/test_secretary_read_profile_scope.py  (3 tests failed)

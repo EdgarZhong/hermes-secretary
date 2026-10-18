@@ -1,0 +1,12 @@
+tests/hermes_cli/test_model_switch_custom_providers.py:1  FILE_LINES  <module>
+    lines 2497 > 2441, its value on main (over target 2000: it may only go down)
+    fix: offset the growth in the same PR: move an existing function or class into a topical sibling `<stem>_<topic>.py` (moved code keeps its cap; see root AGENTS.md), or put new tests in a new `test_<stem>_<topic>.py`; new behaviour never goes into a facade
+
+code health: 3 files vs a51fd99abc78: 1 blocking, 0 advisory (1.3s)
+
+Each function and file has its own cap: its value on main if it is already over target,
+otherwise the target. New code meets the target; existing code may only go down. Fix the code
+(the `fix:` line is the repo's remedy); a genuine exception takes a reviewed comment on the line,
+`# health: allow <RULE> -- <why>`. Rules and targets: scripts/code_health/config.py.
+Reproduce locally: python scripts/check --only health (every lint check: python scripts/check;
+on every push: python scripts/check --install-hook pre-push).

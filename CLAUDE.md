@@ -7,6 +7,16 @@
 **已由用户确认并落地（2026-10-17）：** Schedule Table 的 `timezone` 字段属原规格空白（07 §6.1 只列字段名、未定格式）。实测实现按 `kind` 取两个来源：`once` 从 `run_at` 的 ISO 偏移反推得 `UTC+08:00`，`interval`/`cron` 取进程本地时区得系统缩写 `CST`；即使配置 `timezone: Asia/Shanghai`，`once` 仍是 `UTC+08:00`，属结构性不一致而非缺配置。用户确认采用「条目归属时区」口径：三种 `kind` 统一取 `hermes_time` 当前生效时区，配置了 IANA 时区返回其名称，未配置时返回 `UTC±HH:MM` 固定偏移，不再从 `run_at` 反推。影响范围：模型 `list`/`create`/`update` 返回的 Schedule 条目与 Web `ScheduleEntry.timezone`。**是否已实施：是。** 改于 `secretary/scheduler_time.py::schedule_timezone`，同步 07 §6.1；新增 2 项 kind 无关性测试，`tests/secretary/test_r3_scheduler.py` 49 项通过；不计入本轮 Verification 结论。
 
 
+## 进行中 · Notebook 局部来源 UID（2026-10-18）
+
+**用户确认：** Noting 只填 message_uid，Notebook 不逐条重复 conversation_ref，归属由结构保证；先同步规格再改实现，fork 继承和全局 Message Identity 仍正确。
+
+**方案与范围：** 07 §0／§4.1／§4.3 与白板 K6 已先同步。模型维护参数及可读条目改用 `source_message_uids`；可信绑定处补全完整身份，内部持久化／既有后端与 Web API 兼容保留完整身份及既有语义。只调整 Notebook 来源输入和可读输出，不改变 History 全局 Message Identity／跨会话工具契约、fork 共享不可变版本、合法路径与来源继承校验。无新增自主口径。
+
+**现场与保护：** 基线 `b9d355bcaa`，工作区已有其他任务修改（含根 CLAUDE／README、noting_child、web_read、Web DTO／生成契约及测试），全部保留，不提交他人变更、不重建运行库、不重启后端。PM `.venv` 与锁文件沿用；不跑大型基线检查。
+
+**当前阶段：** 规格已更新，准备实施及定向回归；尚无本次通过证据。完成条件覆盖新参数 create/update／拒绝非法 UID／原子无修改、fork 继承及父子隔离、全局身份回查，以及工具结果／控制消息／show／slash／Proposal／Framework 的局部来源投影。
+
 ## 已完成代码修复 · 冷态 Reminder 与 Files Profile（2026-10-18）
 
 **用户指令：** 拉取远端最新提交，根据最新文档修复两个 bug。依据为 [08](docs/08-profile-scheduler-files-clarification.md)；修复范围是常驻 serve 对冷态 Instant Reminder 的自动恢复投递，以及固定 Files Profile 与请求目录归属。既有其他审查问题不纳入本次关闭声明。
@@ -83,7 +93,25 @@
 
 **2026-10-17 追加 · handoff 用词纠正：** 已把 Notebook/Candidate/Persistence 文本里把外部写入写成 handoff 的 10 处（4 个文件）改为 writes / proposal materials / approved write / dispatched；`docs/07`、`agent/system_prompt.py`、`hermes_cli/cli_secretary_commands.py`、`secretary/noting_prompts.py` 已同步，07 与运行时常量逐字一致。上下文/任务交接语义的 handoff 未动。
 
-## WIP · 增量审查明确Bug修复（2026-10-17，Codex专职续修）
+## 已完成代码与定向复证 · 增量审查Bug续修（2026-10-18）
+
+**本次用户要求：** 距离中断已久，先理解最新代码并确认旧Bug是否仍在，再继续修复。当前基线后端`b9d355bcaa`、UI`524e479`，两仓开始时均干净；旧子Agent均未运行，不能把旧WIP测试或旧结论直接视为现版本通过。
+
+**用户要求启动后端（2026-10-18）：** 检查53445无监听后，沿既有`.hermes-dev/round3-local-20261017-l0/run-native.py`启动`hermes serve --host 127.0.0.1 --port 53445 --skip-build --isolated`，明确`HERMES_HOME=.hermes-dev/round3-runtime/profiles/round3`；launcher606、监听PID616，`/api/health`返回200、commit `b9d355bcaa`。日志仍在`backend-user-start.log`。不改用户配置/数据库；此时工作区含修复中的生产代码，后续改动不保证已由该进程加载，不自动重启。
+
+**编排：** 后端包复核F02冷恢复、F04所属时区及旧F10；前端读取包复核F07起名并修仍存在的F05时间格式化；完成判断包修仍存在的F09，沿既有事实/事件取得成功证据，保持API可选增量兼容。三包不交叉、不再派生；独占定向验证，主会话集中review和集成，不重复有效测试。Pin和5098已由其他工作推进，本次不接管；不恢复Orb倒计时，不修改已确认样式，不重启用户后端。
+
+**当前已接收的复核证据：** 两仓origin已fetch，HEAD与各自upstream均0/0。后端F02的所属库/当前模型、F04的目标时区和inventory旧健康修补在当前代码已有效，不重复修改生产逻辑；新增正式Context RPC、三kind Schedule及既有邻域有效并集117 PASS。旧超长测试2497→2441行，两条测试完整迁出且覆盖保留，精准health RED1→GREEN0/0。前端F05实际钟面/标签错配仍在并已修，F07旧history+live/hidden修复保留，另补真实Timeline分类/来源UID去重；相关有效并集52 PASS。主会话已集中review这两包，不重复其有效测试；完成高亮包仍在最终收口。
+
+**证据脚本健康修补：** 历史5条F811来自导入fixture同名参数，改为模块属性等价绑定；测试函数AST不变，原始源码Git版本/原SHA及旧失败日志保留，整理后哈希另记原manifest追加字段。canonical合法对照2 PASS（4.4秒），两文件冻结health 0 blocking/0 advisory（0.8秒），Ruff isolated/preview F811通过。一次仅setup-plan因runner不接受0 tests返回1，明确不计测试通过。报告与日志总入口`.hermes-dev/post-v2-resume-20261018/`；不将本次结果扩张为全项目门禁通过。
+
+**完成判断包已review接收：** 正式Noting事务返回`pointer_changed`时，沿既有`notebook_changed`带可选`completion_snapshot_id`；原三参observer默认不变，转发metadata须显式opt-in。既有`secretary.state`同事务读取可选`current_snapshot_id`，读取失败仅缺少附加高亮证据，不影响原状态。UI只在成功提示与最新accepted owner/pointer匹配时显示原高亮；连续task_finished不抹掉待确认的成功提示，无成功提示的冷读/rewind不亮，重复/非winner/foreign/旧pointer不亮。仅展示回执在内存去重，不新增状态库、调度器、RPC或schema；原有OpenRPC required清单亲核不变。理论边界：未引入pointer epoch，若从未展示的旧成功提示异常延迟至rewind后又回同一Snapshot，单凭ID不能识别该历史窗口；不宣称覆盖任意事件重排。
+
+**完成包验证与限制：** 真实child winner/nonwinner/failed经Gateway录帧→实际Controller专项7项＋既有Controller80项＝87 PASS；主会话review补保留Controller热更新字段初始化，新增定向1 PASS，未重跑87项；最终typecheck通过（第一次子Agent收敛后一次，主会话实际改TS后再一次）。Python正式child/observer兼容2 PASS、相关邻域5 PASS（与专项部分重叠，不简单相加），最后新增可选读取失败1 PASS；生成物一致性1 PASS。契约catalog另有既有`review.summary` orphan失败，原调用点集合与HEAD相同，不在本包改动，不写成全绿。相关7文件ruff/health/no-tmp通过（health0/0）；主会话不复跑有效测试。未跑新真实外部模型、浏览器实机或全量suite，未改Pin/Orb外观/5098/用户配置。
+
+**交付范围：** 主会话已集中审查三包源码、正式接线及证据。F02/F04保留后续已修实现并补证，F05/F07剩余输入边界/F09及旧F10明确项已收口；专项报告§8记录现状，第二次Verification原历史结论不改写。UI已提交同步`7f0fea6`，后端修复/测试/记录与本段同一提交交付。用户请求的round3进程PID616继续运行；后端最终修复发生在启动之后，不能宣称该进程已完整加载最终源码，未自动重启。提交排除用户同期白板/07改动，保留其工作区内容，不宣称整个主仓工作区干净。
+
+### 中断时点记录（历史，现状以上方复核为准）
 
 **用户决定（2026-10-17）：** 工作区保留已开始但未完成的增量审查 bug 修复；用户估计为 5 个、也可能只有 3 个，具体以 Codex 恢复后核对为准。这些 bug **不阻塞**当前开发，**不宣称已修复**。Codex 额度恢复后由 Codex 专职继续；其他 Agent 不接手这批 WIP，也不把现有改动当作完成。当前 WIP 的 3 项定向测试通过（`test_cold_usage.py` 2、`test_secretary_read_profile_scope.py` 1），仅证明当前检查点可运行，不证明 bug 已关闭。
 

@@ -223,3 +223,31 @@ def test_cold_breakdown_preserves_legacy_numbers_with_optional_availability(home
     restored = server._cold_context_breakdown(_session(target_home, history=None))
     assert restored["context_used"] == 9020
     assert restored["context_available"] is True
+
+
+@pytest.mark.parametrize("model_pick", [None, "override", "pending"])
+def test_cold_context_breakdown_rpc_keeps_owner_and_current_model(homes, monkeypatch, model_pick):
+    _launch, target, _launch_home, target_home = homes
+    _persist_reading(target)
+    session = _session(target_home, history=[])
+    if model_pick == "override":
+        session["model_override"] = {"model": "model-b", "provider": "custom"}
+    elif model_pick == "pending":
+        session["pending_model_switch"] = {"display_model": "model-b", "display_provider": "custom"}
+    monkeypatch.setitem(server._sessions, "cold-owner-rpc", session)
+
+    response = server.handle_request({"id": "breakdown", "method": "session.context_breakdown",
+                                    "params": {"session_id": "cold-owner-rpc"}})
+
+    assert "error" not in response, response
+    result = response["result"]
+    assert session["agent"] is None
+    if model_pick is None:
+        assert result["context_available"] is True
+        assert result["context_used"] == 9020
+        assert result["context_max"] == 20000
+        assert result["context_estimated"] is True
+    else:
+        assert result["context_available"] is False
+        assert result["context_invalidated"] is True
+        assert result["context_invalidation_reason"] == "model_changed"

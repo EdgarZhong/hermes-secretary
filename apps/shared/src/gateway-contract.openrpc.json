@@ -30660,6 +30660,18 @@
             ],
             "title": "Reason",
             "type": "string"
+          },
+          "completion_snapshot_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Completion Snapshot Id"
           }
         },
         "required": [
@@ -30768,6 +30780,18 @@
           "observed_at": {
             "title": "Observed At",
             "type": "string"
+          },
+          "current_snapshot_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Current Snapshot Id"
           }
         },
         "required": [

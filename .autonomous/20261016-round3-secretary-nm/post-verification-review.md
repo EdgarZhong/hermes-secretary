@@ -4,10 +4,12 @@
 
 用户要求检查第2次 Verification 之后由其他模型推进的功能与细节，识别真实需求是否落档、代码与文档/文档之间的冲突、潜在回归，以及只接了部分链路的功能。本报告是主会话专项审查，不是第3次独立 Verification，不改写第2次门禁结论。
 
+**2026-10-18续修阅读提示：** 下列基线反例与历史开放数量保留为当时事实；当前代码的复核、已被其他提交修好的项目及本次剩余修复统一见§8，不能据旧数量认定当前仍有同样缺陷。Pin已由用户另外指定的Agent实施，Orb外观获用户确认且不恢复倒计时，本次不接管其表现层。
+
 - 后端比较范围：`bd6207b6f2`（2026-10-17 12:28:29 第二次审查报告提交）至 `b6939f47e3ffdd81e507cc73a207e709fa0157d9`。开始时的两处本地模型选择器修改被其他会话提交为 `b6939f47e3`，本次已纳入读取；主会话没有替它们提交。
 - Web 比较范围：`d554546`（12:27:47，紧邻该时点）至 `50cc8fd52dfe64a8f4afb4fe2d2cbbf8b8e5454e`。读取正式入口、相关调用者、测试与相邻生命周期；Orb 的部分旧接线缺口注明为继承问题，不冒称都是这个区间新增。
 - 需求依据：现行 06、07、根 README/AGENTS/CLAUDE，以及本会话用户后续澄清。没有读取归档规格，没有将提交描述或测试预期自动当作用户需求。
-- 本次审查基线发现**7项产品缺陷/实现缺口，另有1项质量门禁阻断**；后续Profile增量中F01的原会话4001重试错投已窄修并复证，现为6项产品问题仍开放。用户现场Timeline的两项已复现问题已修复并review接收；新增Profile功能的接收与证据见§7。原第二次 Verification 的4项不符合和2项证据缺口仍独立保留，不混作本次新增问题。
+- 本次审查基线发现**7项产品缺陷/实现缺口，另有1项质量门禁阻断**；Profile增量关闭F01后当时剩6项，随后续修处置见§8。用户现场Timeline的两项已复现问题已修复并review接收；新增Profile功能的接收与证据见§7。原第二次 Verification 的4项不符合和2项证据缺口仍独立保留，不混作本次新增问题。
 
 **用户在本次审查中直接确认的优先口径：** 冷启动允许沿用上次可信读数作为估算；普通提示统一5秒，错误手动关闭；Scheduler说明缩短但不改批量载体语义；首段Thinking直到Turn结束才出现及首工具闪动须修复，由子Agent负责。
 
@@ -154,3 +156,25 @@ F01配置重试由`writeOwnedSessionConfig`固定原route/profile/runtime，4001
 有效并集**113项PASS**：新增Controller11、App/组件13、既有Controller80和metadata9。共11次Vitest、两次对应不同代码版本的typecheck通过；最后定向8项PASS，未重跑113项全套。中途104P/1F的空New Chat缓存回归通过收敛保留范围修正，原测试断言未改，仅失败项复测通过。主会话没有复跑子Agent有效测试。合成日志、脱敏原生观察与哈希见[evidence/post-verification-review/manifest.json](evidence/post-verification-review/manifest.json)的`profile_ui`及`profile-ui/`。
 
 真实只读观察确认default/round3名单、启动home唯一匹配round3；未修改用户Profile、重启后端、真实create/发送、调用模型、上传真实附件、连接NM或部署。请求owner及原生整套继承由受控Controller→App正式入口测试和后端接线源码共同核对，不冒称真实模型全链或浏览器视觉验收。其余6项产品问题及F10质量阻断继续开放；本次不是新的独立Verification/Validation，也不改写第三轮未通过结论。
+
+## 8. 2026-10-18恢复后的现状复核与剩余修复
+
+用户要求先重新理解现状再修，不直接续接旧补丁。两仓起点干净，fetch后均与远端同步：后端`b9d355bcaa`、UI`524e479`。旧WIP已被后续提交保留或修改，旧失败不能直接代表当前版本。
+
+| 项目 | 当前复核及本次处置 |
+|---|---|
+| F02 冷恢复owner/模型 | 后续`session_usage.py`已沿所属Profile DB/scope及当前模型恢复，允许旧值估算；保留生产机制，补正式Context RPC同ID不同库、context_max、model_override/pending切换失效证据 |
+| F04 后端时区 | 后续`methods_web_read.py`已使用native目标Profile scope；正式RPC复证三种kind均取目标时区，作用域/进程环境恢复；不再改相同生产逻辑 |
+| F05 前端钟面 | 仍存在，实际SchedulePanel取得RED；IANA含DST、固定UTC偏移统一格式化next/last，坏/缺失时区明确UTC回退，不伪贴本地钟面 |
+| F07 起名 | 旧history+live/hidden问题已修；仍有Framework/process/summary分类、附件注入和来源UID去重缺口，本次沿真实`projectMessage`分类/正文收口；正式Controller oneshot输入复证，标题prompt及命令语义不改 |
+| F09 失败高亮 | 仍存在，实际失败child帧喂给旧Controller取得RED；正式提交事务的winner才带可选成功Snapshot提示，UI沿既有state读取确认owner/当前pointer，pending提示不被紧随的task_finished取消；去重只针对已展示的成功，不把普通读当已提示。冷读、失败、非winner、foreign、旧pointer不伪成功，既有Orb外观不改 |
+| F10 旧13条阻断 | inventory/helper旧修补当前有效；2497行测试完整拆出两条，原文件回2441；5条fixture导入遮蔽改等价绑定，函数AST不变、历史源码/哈希/失败记录保留。按原规则精准检查通过，不改阈值，不据此宣称当前全项目健康通过 |
+| F06 Pin | 用户已明确分区/拖拽需求并交其他Agent实现；UI后续已包含Pin提交。本次保留，不再把旧缺失布局当最新现状，也不代签该独立功能的实机验收 |
+
+主会话review接收三个实现包，不重复有效测试。后端有效并集117 PASS；前端输入有效并集52 PASS；完成判断专项/Controller87 PASS，主会话热更新集成新增1 PASS。Python完成专项2 PASS、相关邻域5 PASS（部分重叠）、可选读失败新增1 PASS、生成一致性1 PASS；证据绑定合法对照2 PASS。各桶有重叠，不把它们直接相加当全套数量。最终集成typecheck通过，OpenRPC旧required清单未变。相关冻结健康检查均精准取证通过；一次仅setup-plan为0 tests，其他误探/fixture失败和既有catalog `review.summary` orphan失败均保留，未伪装成产品RED或全绿。
+
+兼容：仅新增可选state/event字段及有默认值的内部参数，原三参observer默认不变；可选pointer读取或observer失败不影响原任务/状态读取。没有新RPC、schema或持久状态表。理论边界：未增加pointer epoch，不能独凭Snapshot ID区分从未展示的旧成功hint异常延迟至rewind后又回同id的窗口；不宣称任意事件重排均有严格证明。
+
+全部日志、合成wire及源码哈希见本节关联的`evidence/post-verification-resume-20261018/manifest.json`；原始详细交接保留ignored `.hermes-dev/post-v2-resume-20261018/`。未发新外部真实模型请求或做浏览器实机验收，不重复全量suite，不启动新的Verification/Validation，不改写第二次门禁。
+
+用户另要求后端用round3运行：53445原无监听，沿既有run-native.py启动PID616，健康接口200。后续最终后端改动未自动重启加载，不能将运行中进程当成最终修复的现场验收。

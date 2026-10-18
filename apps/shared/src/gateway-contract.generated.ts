@@ -4630,6 +4630,7 @@ export interface SecretaryStateResult {
   tasks: ActiveTask[]
   next_idle: IdleEstimate
   observed_at: string
+  current_snapshot_id?: string | null
 }
 export interface ActiveTask {
   task_id: string
@@ -5339,6 +5340,7 @@ export interface SecretaryChangedPayload {
   profile_home: string
   conversation_ref: string | null
   reason: 'task_started' | 'task_finished' | 'notebook_changed' | 'local_changed' | 'idle_changed' | 'global_changed'
+  completion_snapshot_id?: string | null
 }
 export type ConnectorErrorReason = 'INVALID_PARAMS' | 'NOT_OWNER' | 'UNSUPPORTED_RUNTIME' | 'CONNECTOR_REQUEST_FAILED' | 'INVALID_CONNECTOR_RESPONSE' | 'UNKNOWN_TARGET' | 'LINK_STILL_VALID' | 'REISSUE_REFUSED' | 'UNKNOWN_OPERATION' | 'INVALID_ANSWER' | 'NEEDS_NOUS_AUTH' | 'CONNECTOR_NOT_FOUND' | 'TOOLS_UNAVAILABLE' | 'CONNECTORS_UNAVAILABLE' | 'CATALOG_UNAVAILABLE' | 'ACCOUNTS_UNAVAILABLE' | 'CONNECTION_NOT_FOUND' | 'POLICY_UNAVAILABLE' | 'POLICY_CONFLICT' | 'FORBIDDEN_SCOPE' | 'ORG_REQUIRED' | 'ORG_ACCESS_DENIED' | 'INVALID_POLICY'
 

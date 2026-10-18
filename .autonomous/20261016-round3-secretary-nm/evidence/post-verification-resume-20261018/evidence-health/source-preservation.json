@@ -1,0 +1,14 @@
+{
+  "test_v2_retired_tool.py": {
+    "original_revision": "b9d355bcaae7053c8ca228524f6f63ac7362c4b1",
+    "original_sha256": "6825e78c162f83c8e12bad42404f53979861753587f8ad812e50607b7b465538",
+    "binding_normalized_sha256": "ede95ed562168e2343f5ae19378a90dc7ae246396b65032b800953ac70a4add6",
+    "function_asts_unchanged": true
+  },
+  "test_v2_scheduler_resume.py": {
+    "original_revision": "b9d355bcaae7053c8ca228524f6f63ac7362c4b1",
+    "original_sha256": "674d1a52bd27808712e1e4ae5f98facc722bc185439c7d66d024b68c1f17bf9f",
+    "binding_normalized_sha256": "015b150cca8709348da9f67ed91f0ffc9ea359254c38c5f5fcfeac8fa8c95dec",
+    "function_asts_unchanged": true
+  }
+}

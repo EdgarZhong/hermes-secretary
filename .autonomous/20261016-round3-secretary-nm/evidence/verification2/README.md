@@ -2,6 +2,8 @@
 
 固定产品SHA：`b40fa1ff2a771066b4da1d8978a7abe44327e530`。这些文件记录第二次独立审查的原始失败和合法对照，不是修复补丁。审查结论与逐条覆盖只维护在上两级的 [verification.md](../../verification.md)。
 
+**2026-10-18源码绑定整理：** `test_v2_retired_tool.py`与`test_v2_scheduler_resume.py`仅将直接导入fixture改为模块属性绑定，消除冻结health的isolated/preview F811诊断；全部测试函数AST保持不变。历史运行源码原bytes仍可从Git提交`b9d355bcaae7053c8ca228524f6f63ac7362c4b1`读取，原始日志与`manifest.json.evidence_sha256`不重写为新结果；整理后哈希另记`subsequent_source_binding_normalization`。仅两条合法对照经canonical runner通过，未重新执行第二次Verification，也未改写其不通过结论。
+
 四组都使用官方PM Python 3.14.7、原锁dev/test环境、Linux x86_64，经 `scripts/run_tests.sh` 运行，禁文件重试、每次单文件单worker。10个参数用例为3 PASS / 7 FAIL；4次真正进入测试的runner wall合计8.7秒。另两次普通沙箱在收集前因原runner临时目录不可写退出，0 tests；保留sandbox日志，不将其混入产品计数。
 
 | 问题 | 脚本 | 原始输出 | 实际结果 |

@@ -1,0 +1,155 @@
+{
+  "cold": {
+    "stored_session_id": "S17",
+    "conversation_ref": "conv_d2c7da842175420fbf68370edcf58782",
+    "availability": "available",
+    "global_enabled": true,
+    "local_enabled": true,
+    "task_state": "idle",
+    "tasks": [],
+    "next_idle": {
+      "state": "absent",
+      "at": null
+    },
+    "current_snapshot_id": null,
+    "observed_at": "2026-10-18T03:27:18+00:00",
+    "profile": "default",
+    "profile_home": "/private/var/tmp/hermes-pytest-501/r-q3sp63__/pytest-of-edgar/pytest-0/test_formal_completion_events0"
+  },
+  "failed": {
+    "events": [
+      {
+        "type": "secretary.changed",
+        "session_id": "",
+        "payload": {
+          "profile_home": "/private/var/tmp/hermes-pytest-501/r-q3sp63__/pytest-of-edgar/pytest-0/test_formal_completion_events0",
+          "conversation_ref": "conv_d2c7da842175420fbf68370edcf58782",
+          "reason": "task_started"
+        }
+      },
+      {
+        "type": "secretary.changed",
+        "session_id": "",
+        "payload": {
+          "profile_home": "/private/var/tmp/hermes-pytest-501/r-q3sp63__/pytest-of-edgar/pytest-0/test_formal_completion_events0",
+          "conversation_ref": "conv_d2c7da842175420fbf68370edcf58782",
+          "reason": "task_finished"
+        }
+      }
+    ],
+    "state": {
+      "stored_session_id": "S17",
+      "conversation_ref": "conv_d2c7da842175420fbf68370edcf58782",
+      "availability": "available",
+      "global_enabled": true,
+      "local_enabled": true,
+      "task_state": "idle",
+      "tasks": [],
+      "next_idle": {
+        "state": "absent",
+        "at": null
+      },
+      "current_snapshot_id": null,
+      "observed_at": "2026-10-18T03:27:27+00:00",
+      "profile": "default",
+      "profile_home": "/private/var/tmp/hermes-pytest-501/r-q3sp63__/pytest-of-edgar/pytest-0/test_formal_completion_events0"
+    }
+  },
+  "winner": {
+    "events": [
+      {
+        "type": "secretary.changed",
+        "session_id": "",
+        "payload": {
+          "profile_home": "/private/var/tmp/hermes-pytest-501/r-q3sp63__/pytest-of-edgar/pytest-0/test_formal_completion_events0",
+          "conversation_ref": "conv_d2c7da842175420fbf68370edcf58782",
+          "reason": "task_started"
+        }
+      },
+      {
+        "type": "secretary.changed",
+        "session_id": "",
+        "payload": {
+          "profile_home": "/private/var/tmp/hermes-pytest-501/r-q3sp63__/pytest-of-edgar/pytest-0/test_formal_completion_events0",
+          "conversation_ref": "conv_d2c7da842175420fbf68370edcf58782",
+          "reason": "notebook_changed",
+          "completion_snapshot_id": "snap_5de19598b5ac4712be065e58405d63ef"
+        }
+      },
+      {
+        "type": "secretary.changed",
+        "session_id": "",
+        "payload": {
+          "profile_home": "/private/var/tmp/hermes-pytest-501/r-q3sp63__/pytest-of-edgar/pytest-0/test_formal_completion_events0",
+          "conversation_ref": "conv_d2c7da842175420fbf68370edcf58782",
+          "reason": "task_finished"
+        }
+      }
+    ],
+    "state": {
+      "stored_session_id": "S17",
+      "conversation_ref": "conv_d2c7da842175420fbf68370edcf58782",
+      "availability": "available",
+      "global_enabled": true,
+      "local_enabled": true,
+      "task_state": "idle",
+      "tasks": [],
+      "next_idle": {
+        "state": "absent",
+        "at": null
+      },
+      "current_snapshot_id": "snap_5de19598b5ac4712be065e58405d63ef",
+      "observed_at": "2026-10-18T03:27:27+00:00",
+      "profile": "default",
+      "profile_home": "/private/var/tmp/hermes-pytest-501/r-q3sp63__/pytest-of-edgar/pytest-0/test_formal_completion_events0"
+    }
+  },
+  "nonwinner": {
+    "events": [
+      {
+        "type": "secretary.changed",
+        "session_id": "",
+        "payload": {
+          "profile_home": "/private/var/tmp/hermes-pytest-501/r-q3sp63__/pytest-of-edgar/pytest-0/test_formal_completion_events0",
+          "conversation_ref": "conv_d2c7da842175420fbf68370edcf58782",
+          "reason": "task_started"
+        }
+      },
+      {
+        "type": "secretary.changed",
+        "session_id": "",
+        "payload": {
+          "profile_home": "/private/var/tmp/hermes-pytest-501/r-q3sp63__/pytest-of-edgar/pytest-0/test_formal_completion_events0",
+          "conversation_ref": "conv_d2c7da842175420fbf68370edcf58782",
+          "reason": "notebook_changed"
+        }
+      },
+      {
+        "type": "secretary.changed",
+        "session_id": "",
+        "payload": {
+          "profile_home": "/private/var/tmp/hermes-pytest-501/r-q3sp63__/pytest-of-edgar/pytest-0/test_formal_completion_events0",
+          "conversation_ref": "conv_d2c7da842175420fbf68370edcf58782",
+          "reason": "task_finished"
+        }
+      }
+    ],
+    "state": {
+      "stored_session_id": "S17",
+      "conversation_ref": "conv_d2c7da842175420fbf68370edcf58782",
+      "availability": "available",
+      "global_enabled": true,
+      "local_enabled": true,
+      "task_state": "idle",
+      "tasks": [],
+      "next_idle": {
+        "state": "absent",
+        "at": null
+      },
+      "current_snapshot_id": "snap_5de19598b5ac4712be065e58405d63ef",
+      "observed_at": "2026-10-18T03:27:27+00:00",
+      "profile": "default",
+      "profile_home": "/private/var/tmp/hermes-pytest-501/r-q3sp63__/pytest-of-edgar/pytest-0/test_formal_completion_events0"
+    }
+  }
+}

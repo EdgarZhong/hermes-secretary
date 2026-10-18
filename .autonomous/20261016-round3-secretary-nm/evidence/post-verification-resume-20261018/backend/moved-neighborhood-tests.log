@@ -1,0 +1,20 @@
+▶ not activated — using HERMES_PYTHON: /Users/edgar/code/hermes-secretary/.venv/bin/python
+▶ running per-file parallel test suite via run_tests_parallel.py
+  (TZ=UTC LANG=C.UTF-8 PYTHONHASHSEED=0; clean env)
+▶ pre-compiling bytecode cache
+▶ launching test runner
+Discovered 2 test files (~71 tests) under ['tests/tui_gateway/test_secretary_read_profile_scope.py', 'tests/hermes_cli/test_model_switch_custom_providers.py']; running with -j 10
+[  1.4% |     1/~71 | ✓3 | ✗0] ✓ tests/tui_gateway/test_secretary_read_profile_scope.py (3✓, 2.7s)
+[100.0% |    71/~71 | ✓79 | ✗ 0] ✓ tests/hermes_cli/test_model_switch_custom_providers.py (76✓, 67.9s)
+
+=== Summary: 2 files, 79 tests passed, 0 failed (100% complete) in 68.0s (10 workers) ===
+  Durations cached to test_durations.json (2 files)
+
+=== Per-file subprocess time distribution ===
+  Files:   2
+  Total subprocess CPU-wall: 70.6s  (runner wall: 68.0s, parallelism: 10x)
+  P50: 67.91s  P90: 67.91s  P95: 67.91s  P99: 67.91s  Max: 67.91s
+  <1s: 0 files (0%)  <2s: 0 files (0%)
+  Top 10 slowest:
+     67.91s  tests/hermes_cli/test_model_switch_custom_providers.py
+      2.67s  tests/tui_gateway/test_secretary_read_profile_scope.py

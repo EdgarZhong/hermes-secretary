@@ -1,0 +1,191 @@
+▶ not activated — using HERMES_PYTHON: /Users/edgar/code/hermes-secretary/.venv/bin/python
+▶ running per-file parallel test suite via run_tests_parallel.py
+  (TZ=UTC LANG=C.UTF-8 PYTHONHASHSEED=0; clean env)
+▶ pre-compiling bytecode cache
+▶ launching test runner
+Discovered 2 test files (~4 tests) under ['tests/secretary/test_web_completion.py', 'tests/tui_gateway/contracts/test_generated.py']; running with -j 10
+[ 50.0% |     2/~4 | ✓1 | ✗1] ✗ tests/tui_gateway/contracts/test_generated.py (1✓ 1✗, 6.8s)
+
+  ╔╍ Failed: tests/tui_gateway/contracts/test_generated.py ╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍
+  ║ 
+  ║ methods = {'gateway.capabilities': <function _ at 0x10fec5380>, 'client.capabilities': <function _ at 0x10fec5430>, 'ping': <function _ at 0x10fec54e0>, 'wake.start': <function _ at 0x10fec5590>, ...}
+  ║ emitted_events = {'agent.terminal.output', 'approval.cancelled', 'background.complete', 'billing.step_up.verification', 'bot_relay.outbox.pending', 'browser.controller.cancel', ...}
+  ║ server_requests = {'approval', 'clarify', 'display.install.sudo', 'preview.act', 'preview.read', 'secret', ...}
+  ║ 
+  ║     def assert_complete(methods: dict[str, object], emitted_events: set[str], server_requests: set[str]) -> None:
+  ║         """Every registered method / emitted event name / sent server request has a contract, and no
+  ║         contract is orphaned. Raises with the full lists."""
+  ║         problems = []
+  ║         if missing := sorted(set(methods) - set(METHODS)):
+  ║             problems.append(f"methods without a contract: {missing}")
+  ║         if orphan := sorted(set(METHODS) - set(methods)):
+  ║             problems.append(f"method contracts with no handler: {orphan}")
+  ║         if missing := sorted(emitted_events - set(EVENTS)):
+  ║             problems.append(f"events without a contract: {missing}")
+  ║         if orphan := sorted(set(EVENTS) - emitted_events):
+  ║             problems.append(f"event contracts nothing emits: {orphan}")
+  ║         if missing := sorted(server_requests - set(SERVER_REQUESTS)):
+  ║             problems.append(f"server requests without a contract: {missing}")
+  ║         if orphan := sorted(set(SERVER_REQUESTS) - server_requests):
+  ║             problems.append(f"server request contracts nothing sends: {orphan}")
+  ║         if problems:
+  ║ >           raise ContractViolation("tui_gateway/contracts is incomplete:\n  " + "\n  ".join(problems))
+  ║ E           tui_gateway.contracts.registry.ContractViolation: tui_gateway/contracts is incomplete:
+  ║ E             event contracts nothing emits: ['review.summary']
+  ║ 
+  ║ tui_gateway/contracts/registry.py:162: ContractViolation
+  ║ =========================== short test summary info ============================
+  ║ FAILED tests/tui_gateway/contracts/test_generated.py::test_catalog_covers_the_whole_wire
+  ║ 1 failed, 1 passed in 2.34s
+  ║
+  ║  Repro: python -m pytest tests/tui_gateway/contracts/test_generated.py -q -o junit_family=legacy --junitxml=.hermes-dev/post-v2-resume-20261018/completion/green.xml
+  ╚╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍
+
+[100.0% |     4/~4 | ✓2 | ✗2] ✗ tests/secretary/test_web_completion.py (1✓ 1✗, 28.0s)
+
+  ╔╍ Failed: tests/secretary/test_web_completion.py ╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍
+  ║         subscribe("completion-broken", lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("offline")), include_metadata=True)
+  ║         try:
+  ║ >           result = commit_noting_snapshot(
+  ║                 db, ref, empty_state(), anchor_message_uid="metadata-input", trigger_type="idle",
+  ║                 runtime_profile="NOTING", termination={"type": "finish_noting", "reason": "Reviewed"})
+  ║ 
+  ║ tests/secretary/test_web_completion.py:78: 
+  ║ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+  ║ secretary/noting_child.py:411: in commit_noting_snapshot
+  ║     result = db._execute_write(commit)
+  ║              ^^^^^^^^^^^^^^^^^^^^^^^^^
+  ║ hermes_state.py:1046: in _execute_write
+  ║     result = fn(self._conn)
+  ║              ^^^^^^^^^^^^^^
+  ║ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+  ║ 
+  ║ conn = <hermes_cli.sqlite_safe_read.TrackedConnection object at 0x10c7f88c0>
+  ║ 
+  ║     def commit(conn):
+  ║         enabled, reason = noting_trigger_gate(db, conversation_ref)
+  ║         if not enabled:
+  ║ >           raise NotingChildError(reason or "Noting is effectively disabled")
+  ║ E           secretary.noting_child.NotingChildError: runtime_unresolved
+  ║ 
+  ║ secretary/noting_child.py:405: NotingChildError
+  ║ ------------------------------ Captured log call -------------------------------
+  ║ WARNING  secretary.noting_runtime:noting_runtime.py:112 Noting is disabled until the Conversation's native Hermes context window and threshold have been resolved.
+  ║ =========================== short test summary info ============================
+  ║ FAILED tests/secretary/test_web_completion.py::test_completion_metadata_is_opt_in_and_observer_failures_do_not_affect_commit
+  ║ 1 failed, 1 passed in 13.07s
+  ║
+  ║  Repro: python -m pytest tests/secretary/test_web_completion.py -q -o junit_family=legacy --junitxml=.hermes-dev/post-v2-resume-20261018/completion/green.xml
+  ╚╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍
+
+
+=== Summary: 2 files, 2 tests passed, 2 failed (100% complete) in 28.0s (10 workers) ===
+
+=== Per-file subprocess time distribution ===
+  Files:   2
+  Total subprocess CPU-wall: 34.7s  (runner wall: 28.0s, parallelism: 10x)
+  P50: 27.95s  P90: 27.95s  P95: 27.95s  P99: 27.95s  Max: 27.95s
+  <1s: 0 files (0%)  <2s: 0 files (0%)
+  Top 10 slowest:
+     27.95s  tests/secretary/test_web_completion.py
+      6.79s  tests/tui_gateway/contracts/test_generated.py
+
+=== Failure output ===
+
+--- tests/tui_gateway/contracts/test_generated.py ---
+.F                                                                       [100%]
+=================================== FAILURES ===================================
+______________________ test_catalog_covers_the_whole_wire ______________________
+
+    def test_catalog_covers_the_whole_wire():
+        """Every registered method, every emitted event and every sent server request has a contract,
+        and no contract is orphaned (a deleted handler must take its contract with it)."""
+        from tui_gateway import server
+        from tui_gateway.contracts import registry
+    
+>       registry.assert_complete(server._methods, emitted_event_names(), sent_server_requests())
+
+tests/tui_gateway/contracts/test_generated.py:99: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+methods = {'gateway.capabilities': <function _ at 0x10fec5380>, 'client.capabilities': <function _ at 0x10fec5430>, 'ping': <function _ at 0x10fec54e0>, 'wake.start': <function _ at 0x10fec5590>, ...}
+emitted_events = {'agent.terminal.output', 'approval.cancelled', 'background.complete', 'billing.step_up.verification', 'bot_relay.outbox.pending', 'browser.controller.cancel', ...}
+server_requests = {'approval', 'clarify', 'display.install.sudo', 'preview.act', 'preview.read', 'secret', ...}
+
+    def assert_complete(methods: dict[str, object], emitted_events: set[str], server_requests: set[str]) -> None:
+        """Every registered method / emitted event name / sent server request has a contract, and no
+        contract is orphaned. Raises with the full lists."""
+        problems = []
+        if missing := sorted(set(methods) - set(METHODS)):
+            problems.append(f"methods without a contract: {missing}")
+        if orphan := sorted(set(METHODS) - set(methods)):
+            problems.append(f"method contracts with no handler: {orphan}")
+        if missing := sorted(emitted_events - set(EVENTS)):
+            problems.append(f"events without a contract: {missing}")
+        if orphan := sorted(set(EVENTS) - emitted_events):
+            problems.append(f"event contracts nothing emits: {orphan}")
+        if missing := sorted(server_requests - set(SERVER_REQUESTS)):
+            problems.append(f"server requests without a contract: {missing}")
+        if orphan := sorted(set(SERVER_REQUESTS) - server_requests):
+            problems.append(f"server request contracts nothing sends: {orphan}")
+        if problems:
+>           raise ContractViolation("tui_gateway/contracts is incomplete:\n  " + "\n  ".join(problems))
+E           tui_gateway.contracts.registry.ContractViolation: tui_gateway/contracts is incomplete:
+E             event contracts nothing emits: ['review.summary']
+
+tui_gateway/contracts/registry.py:162: ContractViolation
+=========================== short test summary info ============================
+FAILED tests/tui_gateway/contracts/test_generated.py::test_catalog_covers_the_whole_wire
+1 failed, 1 passed in 2.34s
+
+--- tests/secretary/test_web_completion.py ---
+.F                                                                       [100%]
+=================================== FAILURES ===================================
+_ test_completion_metadata_is_opt_in_and_observer_failures_do_not_affect_commit _
+
+db = <tests.secretary.test_noting_child.NotingSessionDB object at 0x10c2cc550>
+
+    def test_completion_metadata_is_opt_in_and_observer_failures_do_not_affect_commit(db):
+        from secretary.noting_child import commit_noting_snapshot
+        from secretary.web_events import subscribe, unsubscribe
+    
+        db.create_session("metadata", source="test")
+        db.append_message("metadata", "user", "Evidence", message_uid="metadata-input")
+        ref = db.resolve_conversation_ref("metadata")
+        legacy, modern = [], []
+        subscribe("completion-legacy", lambda home, owner, reason: legacy.append((home, owner, reason)))
+        subscribe("completion-modern", lambda home, owner, reason, **metadata: modern.append(metadata), include_metadata=True)
+        subscribe("completion-broken", lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("offline")), include_metadata=True)
+        try:
+>           result = commit_noting_snapshot(
+                db, ref, empty_state(), anchor_message_uid="metadata-input", trigger_type="idle",
+                runtime_profile="NOTING", termination={"type": "finish_noting", "reason": "Reviewed"})
+
+tests/secretary/test_web_completion.py:78: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+secretary/noting_child.py:411: in commit_noting_snapshot
+    result = db._execute_write(commit)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+hermes_state.py:1046: in _execute_write
+    result = fn(self._conn)
+             ^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+conn = <hermes_cli.sqlite_safe_read.TrackedConnection object at 0x10c7f88c0>
+
+    def commit(conn):
+        enabled, reason = noting_trigger_gate(db, conversation_ref)
+        if not enabled:
+>           raise NotingChildError(reason or "Noting is effectively disabled")
+E           secretary.noting_child.NotingChildError: runtime_unresolved
+
+secretary/noting_child.py:405: NotingChildError
+------------------------------ Captured log call -------------------------------
+WARNING  secretary.noting_runtime:noting_runtime.py:112 Noting is disabled until the Conversation's native Hermes context window and threshold have been resolved.
+=========================== short test summary info ============================
+FAILED tests/secretary/test_web_completion.py::test_completion_metadata_is_opt_in_and_observer_failures_do_not_affect_commit
+1 failed, 1 passed in 13.07s
+
+=== 2 files with test failures (2 tests failed) ===
+  tests/tui_gateway/contracts/test_generated.py  (1 test failed)
+  tests/secretary/test_web_completion.py  (1 test failed)

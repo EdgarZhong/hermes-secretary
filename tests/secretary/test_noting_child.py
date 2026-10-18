@@ -199,7 +199,7 @@ def test_run_noting_task_commits_snapshot_and_closes_child(parent, db, stub_clie
     notices = []
     parent.notice_callback = notices.append
     reasons = []
-    monkeypatch.setattr("secretary.web_events.changed", lambda db, ref, reason: reasons.append(reason))
+    monkeypatch.setattr("secretary.web_events.changed", lambda db, ref, reason, **metadata: reasons.append(reason))
     stub_client.chat.completions.create.side_effect = [
         _tool_response("finish_noting", {"reason": "No Notebook changes were needed."}, "finish"),
         mock_response("done"),

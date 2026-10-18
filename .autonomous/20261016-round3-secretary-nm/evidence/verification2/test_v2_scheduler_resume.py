@@ -7,7 +7,9 @@ import json
 
 import pytest
 
-from tests.secretary.test_r3_scheduler import store
+from tests.secretary import test_r3_scheduler as scheduler_fixtures
+
+store = scheduler_fixtures.store
 
 
 @pytest.mark.parametrize(

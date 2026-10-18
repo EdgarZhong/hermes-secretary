@@ -1,0 +1,18 @@
+▶ not activated — using HERMES_PYTHON: /Users/edgar/code/hermes-secretary/.venv/bin/python
+▶ running per-file parallel test suite via run_tests_parallel.py
+  (TZ=UTC LANG=C.UTF-8 PYTHONHASHSEED=0; clean env)
+▶ pre-compiling bytecode cache
+▶ launching test runner
+Discovered 1 test files (~3 tests) under ['tests/secretary/test_web_completion.py']; running with -j 1
+[100.0% |     3/~3 | ✓1 | ✗0] ✓ tests/secretary/test_web_completion.py (1✓, 1.6s)
+
+=== Summary: 1 files, 1 tests passed, 0 failed (100% complete) in 1.7s (1 workers) ===
+  Durations cached to test_durations.json (1 files)
+
+=== Per-file subprocess time distribution ===
+  Files:   1
+  Total subprocess CPU-wall: 1.6s  (runner wall: 1.7s, parallelism: 1x)
+  P50: 1.63s  P90: 1.63s  P95: 1.63s  P99: 1.63s  Max: 1.63s
+  <1s: 0 files (0%)  <2s: 1 files (100%)
+  Top 10 slowest:
+      1.63s  tests/secretary/test_web_completion.py

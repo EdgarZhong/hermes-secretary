@@ -1,0 +1,143 @@
+▶ not activated — using HERMES_PYTHON: /Users/edgar/code/hermes-secretary/.venv/bin/python
+▶ running per-file parallel test suite via run_tests_parallel.py
+  (TZ=UTC LANG=C.UTF-8 PYTHONHASHSEED=0; clean env)
+▶ pre-compiling bytecode cache
+▶ launching test runner
+Discovered 1 test files (~1 tests) under ['tests/secretary/test_web_completion.py']; running with -j 10
+[100.0% |     1/~1 | ✓1 | ✗0] ✓ tests/secretary/test_web_completion.py (1✓, 27.6s)
+
+=== Summary: 1 files, 1 tests passed, 0 failed (100% complete) in 27.6s (10 workers) ===
+
+=== ⚠ 1 FLAKY file (failed once, passed on retry — fix these) ===
+  tests/secretary/test_web_completion.py
+⚠ FLAKY: failed on attempt 1, passed on retry (attempt 2). Fix the flake — do not ignore this.
+--- first-attempt output ---
+F                                                                        [100%]
+=================================== FAILURES ===================================
+________________________ test_formal_completion_events _________________________
+
+stub_client = <MagicMock id='4475425456'>
+parent = <run_agent.AIAgent object at 0x10c5538c0>
+db = <tests.secretary.test_noting_child.NotingSessionDB object at 0x10c2f1a90>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10a917490>
+record_property = <function record_property.<locals>.append_property at 0x10ce22400>
+
+    def test_formal_completion_events(stub_client, parent, db, monkeypatch, record_property):
+        from secretary.noting_child import run_noting_task
+        from tests.tui_gateway.test_multi_client_fanout import RecordingTransport
+        from tui_gateway import server
+    
+        home = Path(db.db_path).parent
+        (home / "config.yaml").write_text("noting:\n  enabled: true\n")
+        ref = parent._secretary_conversation_ref
+        db.append_message("S17", "user", "New coverage", message_uid="m3", timestamp=1002)
+        parent._session_messages = db.get_messages_as_conversation("S17")
+        monkeypatch.setattr(server, "_sessions", {})
+        monkeypatch.setattr(server, "_profile_home", lambda _profile: home)
+        peer = RecordingTransport()
+        server.register_live_transport(peer)
+    
+        def read():
+            reply = server.handle_request({"jsonrpc": "2.0", "id": 1, "method": "secretary.state",
+                                           "params": {"stored_session_id": "S17", "profile": "default"}})
+            assert "error" not in reply, reply
+            return reply["result"]
+    
+        def run(anchor, *, fail=False):
+            peer.frames.clear()
+            stub_client.chat.completions.create.side_effect = (RuntimeError("provider down") if fail else [
+                _tool_response("finish_noting", {"reason": "Reviewed the Notebook."}, "finish"), mock_response("done")])
+            admission = db.noting_admit(ref, anchor, kind="idle")
+            assert admission is not None
+            outcome = run_noting_task(
+                parent, admission_id=admission, conversation_ref=ref, anchor_message_uid=anchor,
+                trigger_type="idle", runtime_profile="NOTING", task_instruction="Maintain the Notebook.",
+                parent_active_messages=parent._session_messages, state_provider=lambda _child: empty_state())
+            events = [frame["params"] for frame in peer.frames
+                      if frame.get("params", {}).get("type") == "secretary.changed"]
+            return outcome, {"events": events, "state": read()}
+    
+        try:
+            cold = read()
+            failed, failed_wire = run("m2", fail=True)
+            winner, winner_wire = run("m3")
+            late, late_wire = run("m1")
+            evidence = {"cold": cold, "failed": failed_wire, "winner": winner_wire, "nonwinner": late_wire}
+            record_property("completion_wire", json.dumps(evidence, ensure_ascii=False))
+            assert not failed.committed
+            assert winner.committed and winner.commit_result["pointer_changed"] is True
+            assert late.committed and late.commit_result["pointer_changed"] is False
+            assert all(not event["payload"].get("completion_snapshot_id") for event in failed_wire["events"])
+            assert all(not event["payload"].get("completion_snapshot_id") for event in late_wire["events"])
+            completions = [event for event in winner_wire["events"]
+                           if event["payload"].get("completion_snapshot_id")]
+>           assert len(completions) == 1
+E           assert 0 == 1
+E            +  where 0 = len([])
+
+tests/secretary/test_web_completion.py:59: AssertionError
+------------------------------ Captured log setup ------------------------------
+INFO     run_agent:agent_runtime_helpers.py:2095 OpenAI client created (agent_init, shared=True) thread=MainThread:8372527552 provider= base_url=https://openrouter.ai/api/v1 model=
+INFO     agent.model_metadata:model_metadata.py:2275 No model id provided for context length resolution — defaulting to 256,000 tokens.
+------------------------------ Captured log call -------------------------------
+INFO     run_agent:agent_runtime_helpers.py:2095 OpenAI client created (agent_init, shared=True) thread=MainThread:8372527552 provider= base_url=https://openrouter.ai/api/v1 model=
+INFO     agent.model_metadata:model_metadata.py:2275 No model id provided for context length resolution — defaulting to 256,000 tokens.
+INFO     agent.turn_context:turn_context.py:1123 conversation turn: session=noting_868b7dd5383f4077 model= provider=unknown platform=subagent history=2 msg='<noting-task> Maintain the Notebook.  CURRENT NOTING CONTROL The following schem...' origin=noting
+INFO     run_agent:client_lifecycle.py:206 OpenAI client closed (request_error_cleanup, shared=False, tcp_force_closed=0) thread=MainThread:8372527552 provider= base_url=https://openrouter.ai/api/v1 model=
+WARNING  agent.conversation_loop:turn_recovery.py:1322 API call failed (attempt 1/3) error_type=RuntimeError thread=MainThread:8372527552 provider= base_url=https://openrouter.ai/api/v1 model= summary=provider down
+WARNING  agent.conversation_loop:turn_recovery.py:1503 Retrying API call in 2.1682003810466504s (attempt 1/3) thread=MainThread:8372527552 provider= base_url=https://openrouter.ai/api/v1 model= policy=default error=provider down
+INFO     run_agent:client_lifecycle.py:206 OpenAI client closed (request_error_cleanup, shared=False, tcp_force_closed=0) thread=MainThread:8372527552 provider= base_url=https://openrouter.ai/api/v1 model=
+WARNING  agent.conversation_loop:turn_recovery.py:1322 API call failed (attempt 2/3) error_type=RuntimeError thread=MainThread:8372527552 provider= base_url=https://openrouter.ai/api/v1 model= summary=provider down
+WARNING  agent.conversation_loop:turn_recovery.py:1503 Retrying API call in 5.611752468943199s (attempt 2/3) thread=MainThread:8372527552 provider= base_url=https://openrouter.ai/api/v1 model= policy=default error=provider down
+INFO     run_agent:client_lifecycle.py:206 OpenAI client closed (request_error_cleanup, shared=False, tcp_force_closed=0) thread=MainThread:8372527552 provider= base_url=https://openrouter.ai/api/v1 model=
+WARNING  agent.conversation_loop:turn_recovery.py:1322 API call failed (attempt 3/3) error_type=RuntimeError thread=MainThread:8372527552 provider= base_url=https://openrouter.ai/api/v1 model= summary=provider down
+ERROR    agent.conversation_loop:turn_recovery.py:1234 API call failed after 3 retries. provider down | provider= model= msgs=4 tokens=~6,353
+INFO     run_agent:client_lifecycle.py:206 OpenAI client closed (agent_close, shared=True, tcp_force_closed=0) thread=MainThread:8372527552 provider= base_url=https://openrouter.ai/api/v1 model=
+INFO     run_agent:agent_runtime_helpers.py:2095 OpenAI client created (agent_init, shared=True) thread=MainThread:8372527552 provider= base_url=https://openrouter.ai/api/v1 model=
+INFO     agent.model_metadata:model_metadata.py:2275 No model id provided for context length resolution — defaulting to 256,000 tokens.
+INFO     agent.turn_context:turn_context.py:1123 conversation turn: session=noting_84952b895de94db8 model= provider=unknown platform=subagent history=3 msg='<noting-task> Maintain the Notebook.  CURRENT NOTING CONTROL The following schem...' origin=noting
+INFO     run_agent:client_lifecycle.py:206 OpenAI client closed (request_complete, shared=False, tcp_force_closed=0) thread=MainThread:8372527552 provider= base_url=https://openrouter.ai/api/v1 model=
+INFO     agent.conversation_loop:turn_usage.py:97 API call #1: model= provider=unknown in=? out=? total=? latency=0.0s usage=unavailable
+INFO     agent.tool_executor:tool_executor.py:1132 tool finish_noting completed (0.02s, 44 chars)
+INFO     run_agent:client_lifecycle.py:206 OpenAI client closed (request_complete, shared=False, tcp_force_closed=0) thread=MainThread:8372527552 provider= base_url=https://openrouter.ai/api/v1 model=
+INFO     agent.conversation_loop:turn_usage.py:97 API call #2: model= provider=unknown in=? out=? total=? latency=0.0s usage=unavailable
+INFO     agent.conversation_loop:turn_finalizer.py:383 Turn ended: reason=text_response(finish_reason=stop) model= api_calls=2/50 budget=2/50 tool_turns=1 last_msg_role=assistant response_len=4 session=noting_84952b895de94db8 origin=noting
+INFO     run_agent:client_lifecycle.py:206 OpenAI client closed (agent_close, shared=True, tcp_force_closed=0) thread=MainThread:8372527552 provider= base_url=https://openrouter.ai/api/v1 model=
+INFO     run_agent:agent_runtime_helpers.py:2095 OpenAI client created (agent_init, shared=True) thread=MainThread:8372527552 provider= base_url=https://openrouter.ai/api/v1 model=
+INFO     agent.model_metadata:model_metadata.py:2275 No model id provided for context length resolution — defaulting to 256,000 tokens.
+INFO     agent.turn_context:turn_context.py:1123 conversation turn: session=noting_5a7c6ddfd75a4c09 model= provider=unknown platform=subagent history=1 msg='<noting-task> Maintain the Notebook.  CURRENT NOTING CONTROL The following schem...' origin=noting
+INFO     run_agent:client_lifecycle.py:206 OpenAI client closed (request_complete, shared=False, tcp_force_closed=0) thread=MainThread:8372527552 provider= base_url=https://openrouter.ai/api/v1 model=
+INFO     agent.conversation_loop:turn_usage.py:97 API call #1: model= provider=unknown in=? out=? total=? latency=0.0s usage=unavailable
+INFO     agent.tool_executor:tool_executor.py:1132 tool finish_noting completed (0.01s, 44 chars)
+INFO     run_agent:client_lifecycle.py:206 OpenAI client closed (request_complete, shared=False, tcp_force_closed=0) thread=MainThread:8372527552 provider= base_url=https://openrouter.ai/api/v1 model=
+INFO     agent.conversation_loop:turn_usage.py:97 API call #2: model= provider=unknown in=? out=? total=? latency=0.0s usage=unavailable
+INFO     agent.conversation_loop:turn_finalizer.py:383 Turn ended: reason=text_response(finish_reason=stop) model= api_calls=2/50 budget=2/50 tool_turns=1 last_msg_role=assistant response_len=4 session=noting_5a7c6ddfd75a4c09 origin=noting
+INFO     run_agent:client_lifecycle.py:206 OpenAI client closed (agent_close, shared=True, tcp_force_closed=0) thread=MainThread:8372527552 provider= base_url=https://openrouter.ai/api/v1 model=
+=============================== warnings summary ===============================
+tests/secretary/test_web_completion.py::test_formal_completion_events
+  tests/secretary/test_web_completion.py:10: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    def test_formal_completion_events(stub_client, parent, db, monkeypatch, record_property):
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/secretary/test_web_completion.py::test_formal_completion_events
+1 failed, 1 warning in 12.75s
+
+
+--- retry output ---
+.                                                                        [100%]
+=============================== warnings summary ===============================
+tests/secretary/test_web_completion.py::test_formal_completion_events
+  tests/secretary/test_web_completion.py:10: PytestWarning: record_property is incompatible with junit_family 'xunit2' (use 'legacy' or 'xunit1')
+    def test_formal_completion_events(stub_client, parent, db, monkeypatch, record_property):
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+1 passed, 1 warning in 12.73s
+
+=== Per-file subprocess time distribution ===
+  Files:   1
+  Total subprocess CPU-wall: 27.6s  (runner wall: 27.6s, parallelism: 10x)
+  P50: 27.59s  P90: 27.59s  P95: 27.59s  P99: 27.59s  Max: 27.59s
+  <1s: 0 files (0%)  <2s: 0 files (0%)
+  Top 10 slowest:
+     27.59s  tests/secretary/test_web_completion.py

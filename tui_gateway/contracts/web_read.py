@@ -55,6 +55,7 @@ class SecretaryStateResult(Result):
     tasks: list[ActiveTask]
     next_idle: IdleEstimate
     observed_at: str
+    current_snapshot_id: str | None = None
 
 
 class NotebookReadResult(Result):
@@ -113,6 +114,7 @@ class SecretaryChangedPayload(Payload):
     profile_home: str
     conversation_ref: str | None
     reason: Literal["task_started", "task_finished", "notebook_changed", "local_changed", "idle_changed", "global_changed"]
+    completion_snapshot_id: str | None = None
 
 
 method("session.compaction_state", params=CompactionStateParams, result=CompactionStateResult)

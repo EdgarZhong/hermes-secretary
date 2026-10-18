@@ -105,6 +105,10 @@ Files 临时固定使用 `default` Profile 的文件后端与默认目录（前�
 
 Web 的 `/notebook` 是仅保存在浏览器内存中的四分区只读临时卡片，按调用顺序固定在命令发起时的 Timeline 位置，刷新后清除；任务状态与排期分别呈现，不展示内部 Anchor。
 
+Schedule Table 的绝对时间按条目所属时区显示，支持 IANA 时区及固定 `UTC±HH:MM` 偏移；缺失或无效时区用明确标记的 UTC 回退，不把浏览器本地钟面贴成条目时区。按需 AI 起名沿 Timeline 的真实可见消息分类合并历史与实时内容，以原生消息 UID 去除重叠，不将内部控制卡片作为聊天主题。
+
+Noting 成功高亮依据实际生效 Snapshot 的提交提示，并经所属 Conversation 的当前状态读取确认；单纯任务结束、失败或冷态读取不产生成功高亮。新增确认字段均为可选，旧客户端与旧后端仍沿原状态读取契约工作。
+
 `/notebook` 卡片时间标签为 `Updated at`，时间值沿用当前 Snapshot 的原生创建时间。后台进程和异步子 Agent 完成回报按原生 `display_kind` 显示为独立通知卡片，标题分别为 `process complete`、`async delegation complete`，复用 Framework Message 主题，默认折叠、可展开；前端不识别为 User Message，不提供 Reply／编辑。Noting Framework Message 保持原有展示。
 
 聊天历史首次加载最近 200 条后台消息，`Show More History` 每次向前加载 200 条；工具调用与结果计入条数。历史按需分页，不在浏览器持久化转录副本。

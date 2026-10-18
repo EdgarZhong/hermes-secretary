@@ -12,13 +12,13 @@ import json
 import pytest
 
 from secretary.noting_child import run_noting_task
-from tests.secretary.test_noting_child import (  # existing real-runtime fixture helpers
-    _tool_response,
-    db,
-    make_agent,
-    mock_response,
-    stub_client,
-)
+from tests.secretary import test_noting_child as child_fixtures
+
+_tool_response = child_fixtures._tool_response
+make_agent = child_fixtures.make_agent
+mock_response = child_fixtures.mock_response
+db = child_fixtures.db
+stub_client = child_fixtures.stub_client
 from tools.notebook_tool import NOTEBOOK_SHOW_SCHEMA
 
 

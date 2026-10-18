@@ -1,0 +1,185 @@
+▶ not activated — using HERMES_PYTHON: /Users/edgar/code/hermes-secretary/.venv/bin/python
+▶ running per-file parallel test suite via run_tests_parallel.py
+  (TZ=UTC LANG=C.UTF-8 PYTHONHASHSEED=0; clean env)
+▶ pre-compiling bytecode cache
+▶ launching test runner
+Discovered 1 test files (~1 tests) under ['tests/secretary/test_web_completion.py']; running with -j 10
+[100.0% |     1/~1 | ✓0 | ✗1] ✗ tests/secretary/test_web_completion.py (1✗, 31.0s)
+
+  ╔╍ Failed: tests/secretary/test_web_completion.py ╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍
+  ║ INFO     tools.registry:registry.py:381 check_fn check_video_generation_requirements returned False; dependent tools will be unavailable this turn
+  ║ WARNING  agent.auxiliary_client:auxiliary_client.py:2362 Auxiliary Nous client unavailable: no Nous authentication found (run: hermes auth).
+  ║ WARNING  agent.auxiliary_client:auxiliary_client.py:5033 resolve_provider_client: nous requested but Nous Portal not configured (run: hermes auth)
+  ║ WARNING  agent.auxiliary_client:auxiliary_client.py:2362 Auxiliary Nous client unavailable: no Nous authentication found (run: hermes auth).
+  ║ WARNING  agent.auxiliary_client:auxiliary_client.py:5033 resolve_provider_client: nous requested but Nous Portal not configured (run: hermes auth)
+  ║ INFO     tools.registry:registry.py:381 check_fn check_vision_requirements returned False; dependent tools will be unavailable this turn
+  ║ INFO     agent.credential_pool:credential_pool.py:2164 credential pool: no available entries (all exhausted or empty)
+  ║ INFO     tools.registry:registry.py:381 check_fn check_x_search_requirements returned False; dependent tools will be unavailable this turn
+  ║ INFO     tools.registry:registry.py:381 check_fn _check_xai_video_requirements returned False; dependent tools will be unavailable this turn
+  ║ INFO     tools.registry:registry.py:381 check_fn _check_yuanbao returned False; dependent tools will be unavailable this turn
+  ║ INFO     tools.tool_search:tool_search.py:378 tool_search activated (tier 1): 21 core/visible tools kept, 16 deferred (~5127 tokens), listing full (budget ~4000 tokens)
+  ║ INFO     agent.model_metadata:model_metadata.py:2275 No model id provided for context length resolution — defaulting to 256,000 tokens.
+  ║ INFO     tools.tool_search:tool_search.py:378 tool_search activated (tier 1): 21 core/visible tools kept, 16 deferred (~5127 tokens), listing full (budget ~4000 tokens)
+  ║ ------------------------------ Captured log call -------------------------------
+  ║ INFO     run_agent:agent_runtime_helpers.py:2095 OpenAI client created (agent_init, shared=True) thread=MainThread:8372527552 provider= base_url=https://openrouter.ai/api/v1 model=
+  ║ INFO     agent.model_metadata:model_metadata.py:2275 No model id provided for context length resolution — defaulting to 256,000 tokens.
+  ║ INFO     agent.turn_context:turn_context.py:1123 conversation turn: session=noting_405ab8ecf3df4c05 model= provider=unknown platform=subagent history=2 msg='<noting-task> Maintain the Notebook.  CURRENT NOTING CONTROL The following schem...' origin=noting
+  ║ INFO     run_agent:client_lifecycle.py:206 OpenAI client closed (request_error_cleanup, shared=False, tcp_force_closed=0) thread=MainThread:8372527552 provider= base_url=https://openrouter.ai/api/v1 model=
+  ║ WARNING  agent.conversation_loop:turn_recovery.py:1322 API call failed (attempt 1/3) error_type=RuntimeError thread=MainThread:8372527552 provider= base_url=https://openrouter.ai/api/v1 model= summary=provider down
+  ║ WARNING  agent.conversation_loop:turn_recovery.py:1503 Retrying API call in 2.996806523853272s (attempt 1/3) thread=MainThread:8372527552 provider= base_url=https://openrouter.ai/api/v1 model= policy=default error=provider down
+  ║ INFO     run_agent:client_lifecycle.py:206 OpenAI client closed (request_error_cleanup, shared=False, tcp_force_closed=0) thread=MainThread:8372527552 provider= base_url=https://openrouter.ai/api/v1 model=
+  ║ WARNING  agent.conversation_loop:turn_recovery.py:1322 API call failed (attempt 2/3) error_type=RuntimeError thread=MainThread:8372527552 provider= base_url=https://openrouter.ai/api/v1 model= summary=provider down
+  ║ WARNING  agent.conversation_loop:turn_recovery.py:1503 Retrying API call in 5.805465157296102s (attempt 2/3) thread=MainThread:8372527552 provider= base_url=https://openrouter.ai/api/v1 model= policy=default error=provider down
+  ║ INFO     run_agent:client_lifecycle.py:206 OpenAI client closed (request_error_cleanup, shared=False, tcp_force_closed=0) thread=MainThread:8372527552 provider= base_url=https://openrouter.ai/api/v1 model=
+  ║ WARNING  agent.conversation_loop:turn_recovery.py:1322 API call failed (attempt 3/3) error_type=RuntimeError thread=MainThread:8372527552 provider= base_url=https://openrouter.ai/api/v1 model= summary=provider down
+  ║ ERROR    agent.conversation_loop:turn_recovery.py:1234 API call failed after 3 retries. provider down | provider= model= msgs=4 tokens=~6,353
+  ║ INFO     run_agent:client_lifecycle.py:206 OpenAI client closed (agent_close, shared=True, tcp_force_closed=0) thread=MainThread:8372527552 provider= base_url=https://openrouter.ai/api/v1 model=
+  ║ =========================== short test summary info ============================
+  ║ FAILED tests/secretary/test_web_completion.py::test_formal_completion_events
+  ║ 1 failed in 14.65s
+  ║
+  ║  Repro: python -m pytest tests/secretary/test_web_completion.py -q
+  ╚╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍
+
+
+=== Summary: 1 files, 0 tests passed, 1 failed (100% complete) in 31.1s (10 workers) ===
+
+=== Per-file subprocess time distribution ===
+  Files:   1
+  Total subprocess CPU-wall: 31.0s  (runner wall: 31.1s, parallelism: 10x)
+  P50: 31.03s  P90: 31.03s  P95: 31.03s  P99: 31.03s  Max: 31.03s
+  <1s: 0 files (0%)  <2s: 0 files (0%)
+  Top 10 slowest:
+     31.03s  tests/secretary/test_web_completion.py
+
+=== Failure output ===
+
+--- tests/secretary/test_web_completion.py ---
+F                                                                        [100%]
+=================================== FAILURES ===================================
+________________________ test_formal_completion_events _________________________
+
+parent = <run_agent.AIAgent object at 0x10b0823c0>
+db = <tests.secretary.test_noting_child.NotingSessionDB object at 0x109795160>
+stub_client = <MagicMock id='4541008592'>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10948b490>
+
+    def test_formal_completion_events(parent, db, stub_client, monkeypatch):
+        from secretary.noting_child import run_noting_task
+        from tests.tui_gateway.test_multi_client_fanout import RecordingTransport
+        from tui_gateway import server
+    
+        home = Path(db.db_path).parent
+        (home / "config.yaml").write_text("noting:\n  enabled: true\n")
+        ref = parent._secretary_conversation_ref
+        db.append_message("S17", "user", "New coverage", message_uid="m3", timestamp=1002)
+        parent._session_messages = db.get_messages_as_conversation("S17")
+        monkeypatch.setattr(server, "_sessions", {})
+        monkeypatch.setattr(server, "_profile_home", lambda _profile: home)
+        peer = RecordingTransport()
+        server.register_live_transport(peer)
+    
+        def read():
+            reply = server.handle_request({"jsonrpc": "2.0", "id": 1, "method": "secretary.state",
+                                           "params": {"stored_session_id": "S17", "profile": "default"}})
+            assert "error" not in reply, reply
+            return reply["result"]
+    
+        def run(anchor, *, fail=False):
+            peer.frames.clear()
+            stub_client.chat.completions.create.side_effect = (RuntimeError("provider down") if fail else [
+                _tool_response("finish_noting", {"reason": "Reviewed the Notebook."}, "finish"), mock_response("done")])
+            admission = db.noting_admit(ref, anchor, kind="force")
+            assert admission is not None
+            outcome = run_noting_task(
+                parent, admission_id=admission, conversation_ref=ref, anchor_message_uid=anchor,
+                trigger_type="force", runtime_profile="NOTING", task_instruction="Maintain the Notebook.",
+                parent_active_messages=parent._session_messages, state_provider=lambda _child: empty_state())
+            events = [frame["params"] for frame in peer.frames
+                      if frame.get("params", {}).get("type") == "secretary.changed"]
+            return outcome, {"events": events, "state": read()}
+    
+        try:
+            cold = read()
+            failed, failed_wire = run("m2", fail=True)
+>           winner, winner_wire = run("m3")
+                                  ^^^^^^^^^
+
+tests/secretary/test_web_completion.py:49: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+anchor = 'm3', fail = False
+
+    def run(anchor, *, fail=False):
+        peer.frames.clear()
+        stub_client.chat.completions.create.side_effect = (RuntimeError("provider down") if fail else [
+            _tool_response("finish_noting", {"reason": "Reviewed the Notebook."}, "finish"), mock_response("done")])
+        admission = db.noting_admit(ref, anchor, kind="force")
+>       assert admission is not None
+E       assert None is not None
+
+tests/secretary/test_web_completion.py:37: AssertionError
+------------------------------ Captured log setup ------------------------------
+INFO     run_agent:agent_runtime_helpers.py:2095 OpenAI client created (agent_init, shared=True) thread=MainThread:8372527552 provider= base_url=https://openrouter.ai/api/v1 model=
+INFO     tools.registry:registry.py:381 check_fn _a2a_tools_available returned False; dependent tools will be unavailable this turn
+INFO     tools.registry:registry.py:381 check_fn check_browser_back_requirements returned False; dependent tools will be unavailable this turn
+INFO     tools.registry:registry.py:381 check_fn _browser_cdp_check returned False; dependent tools will be unavailable this turn
+INFO     tools.registry:registry.py:381 check_fn check_browser_click_requirements returned False; dependent tools will be unavailable this turn
+INFO     tools.registry:registry.py:381 check_fn check_browser_requirements returned False; dependent tools will be unavailable this turn
+INFO     tools.registry:registry.py:381 check_fn _browser_dialog_check returned False; dependent tools will be unavailable this turn
+INFO     tools.registry:registry.py:381 check_fn check_browser_navigate_requirements returned False; dependent tools will be unavailable this turn
+INFO     tools.registry:registry.py:381 check_fn check_browser_press_requirements returned False; dependent tools will be unavailable this turn
+INFO     tools.registry:registry.py:381 check_fn check_browser_scroll_requirements returned False; dependent tools will be unavailable this turn
+INFO     tools.registry:registry.py:381 check_fn check_browser_snapshot_requirements returned False; dependent tools will be unavailable this turn
+INFO     tools.registry:registry.py:381 check_fn check_browser_type_requirements returned False; dependent tools will be unavailable this turn
+INFO     tools.registry:registry.py:381 check_fn check_browser_vision_requirements returned False; dependent tools will be unavailable this turn
+INFO     tools.registry:registry.py:381 check_fn check_computer_use_requirements returned False; dependent tools will be unavailable this turn
+INFO     tools.registry:registry.py:381 check_fn check_cronjob_requirements returned False; dependent tools will be unavailable this turn
+INFO     tools.registry:registry.py:381 check_fn check_discord_tool_requirements returned False; dependent tools will be unavailable this turn
+INFO     tools.registry:registry.py:381 check_fn _check_feishu returned False; dependent tools will be unavailable this turn
+INFO     tools.registry:registry.py:381 check_fn _suffix_only returned False; dependent tools will be unavailable this turn
+INFO     tools.registry:registry.py:381 check_fn check_image_generation_requirements returned False; dependent tools will be unavailable this turn
+INFO     tools.registry:registry.py:381 check_fn <lambda> returned False; dependent tools will be unavailable this turn
+INFO     tools.registry:registry.py:381 check_fn check_react_requirements returned False; dependent tools will be unavailable this turn
+INFO     tools.registry:registry.py:381 check_fn _check_spotify_available returned False; dependent tools will be unavailable this turn
+INFO     tools.registry:registry.py:381 check_fn check_tts_requirements returned False; dependent tools will be unavailable this turn
+WARNING  agent.auxiliary_unavailable:auxiliary_unavailable.py:262 Auxiliary Nous client unavailable: Nous Portal runtime credentials unavailable: Hermes is not logged into Nous Portal. Run `hermes model` to re-authenticate. (code: nous_auth_missing)
+WARNING  agent.auxiliary_client:auxiliary_client.py:2362 Auxiliary Nous client unavailable: no Nous authentication found (run: hermes auth).
+WARNING  agent.auxiliary_client:auxiliary_client.py:5033 resolve_provider_client: nous requested but Nous Portal not configured (run: hermes auth)
+WARNING  agent.auxiliary_client:auxiliary_client.py:2362 Auxiliary Nous client unavailable: no Nous authentication found (run: hermes auth).
+WARNING  agent.auxiliary_client:auxiliary_client.py:5033 resolve_provider_client: nous requested but Nous Portal not configured (run: hermes auth)
+INFO     tools.registry:registry.py:381 check_fn check_video_requirements returned False; dependent tools will be unavailable this turn
+INFO     agent.credential_pool:credential_pool.py:2164 credential pool: no available entries (all exhausted or empty)
+INFO     tools.registry:registry.py:381 check_fn check_video_generation_requirements returned False; dependent tools will be unavailable this turn
+WARNING  agent.auxiliary_client:auxiliary_client.py:2362 Auxiliary Nous client unavailable: no Nous authentication found (run: hermes auth).
+WARNING  agent.auxiliary_client:auxiliary_client.py:5033 resolve_provider_client: nous requested but Nous Portal not configured (run: hermes auth)
+WARNING  agent.auxiliary_client:auxiliary_client.py:2362 Auxiliary Nous client unavailable: no Nous authentication found (run: hermes auth).
+WARNING  agent.auxiliary_client:auxiliary_client.py:5033 resolve_provider_client: nous requested but Nous Portal not configured (run: hermes auth)
+INFO     tools.registry:registry.py:381 check_fn check_vision_requirements returned False; dependent tools will be unavailable this turn
+INFO     agent.credential_pool:credential_pool.py:2164 credential pool: no available entries (all exhausted or empty)
+INFO     tools.registry:registry.py:381 check_fn check_x_search_requirements returned False; dependent tools will be unavailable this turn
+INFO     tools.registry:registry.py:381 check_fn _check_xai_video_requirements returned False; dependent tools will be unavailable this turn
+INFO     tools.registry:registry.py:381 check_fn _check_yuanbao returned False; dependent tools will be unavailable this turn
+INFO     tools.tool_search:tool_search.py:378 tool_search activated (tier 1): 21 core/visible tools kept, 16 deferred (~5127 tokens), listing full (budget ~4000 tokens)
+INFO     agent.model_metadata:model_metadata.py:2275 No model id provided for context length resolution — defaulting to 256,000 tokens.
+INFO     tools.tool_search:tool_search.py:378 tool_search activated (tier 1): 21 core/visible tools kept, 16 deferred (~5127 tokens), listing full (budget ~4000 tokens)
+------------------------------ Captured log call -------------------------------
+INFO     run_agent:agent_runtime_helpers.py:2095 OpenAI client created (agent_init, shared=True) thread=MainThread:8372527552 provider= base_url=https://openrouter.ai/api/v1 model=
+INFO     agent.model_metadata:model_metadata.py:2275 No model id provided for context length resolution — defaulting to 256,000 tokens.
+INFO     agent.turn_context:turn_context.py:1123 conversation turn: session=noting_405ab8ecf3df4c05 model= provider=unknown platform=subagent history=2 msg='<noting-task> Maintain the Notebook.  CURRENT NOTING CONTROL The following schem...' origin=noting
+INFO     run_agent:client_lifecycle.py:206 OpenAI client closed (request_error_cleanup, shared=False, tcp_force_closed=0) thread=MainThread:8372527552 provider= base_url=https://openrouter.ai/api/v1 model=
+WARNING  agent.conversation_loop:turn_recovery.py:1322 API call failed (attempt 1/3) error_type=RuntimeError thread=MainThread:8372527552 provider= base_url=https://openrouter.ai/api/v1 model= summary=provider down
+WARNING  agent.conversation_loop:turn_recovery.py:1503 Retrying API call in 2.996806523853272s (attempt 1/3) thread=MainThread:8372527552 provider= base_url=https://openrouter.ai/api/v1 model= policy=default error=provider down
+INFO     run_agent:client_lifecycle.py:206 OpenAI client closed (request_error_cleanup, shared=False, tcp_force_closed=0) thread=MainThread:8372527552 provider= base_url=https://openrouter.ai/api/v1 model=
+WARNING  agent.conversation_loop:turn_recovery.py:1322 API call failed (attempt 2/3) error_type=RuntimeError thread=MainThread:8372527552 provider= base_url=https://openrouter.ai/api/v1 model= summary=provider down
+WARNING  agent.conversation_loop:turn_recovery.py:1503 Retrying API call in 5.805465157296102s (attempt 2/3) thread=MainThread:8372527552 provider= base_url=https://openrouter.ai/api/v1 model= policy=default error=provider down
+INFO     run_agent:client_lifecycle.py:206 OpenAI client closed (request_error_cleanup, shared=False, tcp_force_closed=0) thread=MainThread:8372527552 provider= base_url=https://openrouter.ai/api/v1 model=
+WARNING  agent.conversation_loop:turn_recovery.py:1322 API call failed (attempt 3/3) error_type=RuntimeError thread=MainThread:8372527552 provider= base_url=https://openrouter.ai/api/v1 model= summary=provider down
+ERROR    agent.conversation_loop:turn_recovery.py:1234 API call failed after 3 retries. provider down | provider= model= msgs=4 tokens=~6,353
+INFO     run_agent:client_lifecycle.py:206 OpenAI client closed (agent_close, shared=True, tcp_force_closed=0) thread=MainThread:8372527552 provider= base_url=https://openrouter.ai/api/v1 model=
+=========================== short test summary info ============================
+FAILED tests/secretary/test_web_completion.py::test_formal_completion_events
+1 failed in 14.65s
+
+=== 1 file with test failures (1 test failed) ===
+  tests/secretary/test_web_completion.py  (1 test failed)

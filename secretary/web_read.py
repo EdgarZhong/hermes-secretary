@@ -65,6 +65,14 @@ def _next_idle(db, conn, ref, *, global_enabled, local_enabled, settings, now):
     return {"state": "scheduled", "at": format_timestamp(due, profile_home=Path(db.db_path).parent)}
 
 
+def _current_snapshot_id(db, conn, conversation_ref):
+    try:
+        return db._notebook_pointer_id_conn(conn, conversation_ref)
+    except Exception:
+        logger.debug("Optional browser Snapshot identity unavailable", exc_info=True)
+        return None
+
+
 def secretary_state(db, stored_session_id):
     now = time.time()
     global_enabled, settings = global_noting_config(db)
@@ -72,6 +80,7 @@ def secretary_state(db, stored_session_id):
     result = {"stored_session_id": stored_session_id, "conversation_ref": None,
               "availability": "unavailable", "global_enabled": global_enabled, "local_enabled": None,
               "task_state": "unknown", "tasks": [], "next_idle": {"state": "unknown", "at": None},
+              "current_snapshot_id": None,
               "observed_at": format_timestamp(now, profile_home=home)}
     with db._read_ctx() as conn:
         ref = db.resolve_conversation_ref_conn(conn, stored_session_id, read_only=True)
@@ -79,7 +88,9 @@ def secretary_state(db, stored_session_id):
             return result
         local = db.notebook_local_enabled_conn(conn, ref)
         task_state, tasks = _tasks(db, conn, ref)
+        snapshot_id = _current_snapshot_id(db, conn, ref)
         result.update(conversation_ref=ref, availability="available", local_enabled=local,
+                      current_snapshot_id=snapshot_id,
                       task_state=task_state, tasks=tasks,
                       next_idle=_next_idle(db, conn, ref, global_enabled=global_enabled, local_enabled=local,
                                            settings=settings, now=now))
