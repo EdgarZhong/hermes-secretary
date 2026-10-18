@@ -64,20 +64,23 @@ compression:
 
 | 对象 | 绑定 |
 |---|---|
-| Core 云安装记录 | `d215922256a479f7cb7346cef59a234bb71dd1b0`；安装记录解释器 Python 3.14.7，不能代签 PM 环境及最终服务 |
+| Core 云安装记录 | `d215922256a479f7cb7346cef59a234bb71dd1b0`；官方 PM frozen 构建 rc0、Python 3.14.7，lock 与该提交一致 |
 | UI 窄提交 | `d5b20aab1fb5e7ecf1c3cf10ed476b5ab7b22c99`，仅四任务文件；裸 commit 不含完整用户 overlay |
 | UI 实际构建输入 manifest SHA | `f4603149b04fd4262947eddf23481e2c5bbdcce7ca66d5c3c4e29eae3db23a18` |
 | Secretary dist | 439 文件，manifest SHA `abcbe7bd95af3a0e89ca1ad78831851b1f499372121c36b473cbbff55359c0b7` |
 | Dashboard dist | 67 文件，manifest SHA `cab847d3163f1916f956e033ee405b8cac7eecdd504f00eff1b45241c0922e4a`；沿用已验产物 |
-| Provider / 新快照工具 | 最终插件 commit、FILES 安装指纹与新增接收工具 SHA **待最终实施包绑定**，不得用早期快照工具 SHA 代签 |
+| Provider / 新快照工具 | Provider `a7225f6075c0ead8cad559db93be8da5525e09e8`，两Home共20份安装文件SHA已核；新增周期helper SHA `8e1ecc2de07f71a695588c7c6036d985536ffc7895558229be09d5baba0e97a4` 已审，实际两端同SHA、周期落库与离线接收恢复原件已绑定于sync/activation；workspace另有TCC等待 |
 
 固定 v5 两门禁只覆盖各自记录的软件范围；本轮 UI 图标 / 显示名、Provider 可选 Thread Space、新快照接收和云配置另按本轮证据接收，不重跑旧昂贵全套。静态产物逐文件核集合、大小和 SHA，再核清单本身；后端会注入 machine token / 改写 Dashboard 前缀，实际 HTML 不要求与 dist index 逐字相同。
 
-云 Core 用官方 PM 和既有 lock 构建 `.venv`，不裸 pip / uv 修改 PM 环境、不重新解析锁。以下为环境创建模板，`<approved-bootstrap-python>` 必须绑定实际解释器，不能直接执行占位符：
+云 Core 用官方 PM 和既有 lock 构建 `.venv`，不裸 pip / uv 修改 PM 环境、不重新解析锁。本轮实际环境创建命令如下；升级前核对应版本，不在服务活 Turn 中重建：
 
 ```bash
 cd /root/hermes-secretary
-<approved-bootstrap-python> -m pm.build_env --source . --out .venv --group dev --group test
+/root/.local/share/uv/python/cpython-3.14-linux-x86_64-gnu/bin/python3.14 -m pm.build_env \
+  --source . --out .venv \
+  --python /root/.local/share/uv/python/cpython-3.14-linux-x86_64-gnu/bin/python3.14 \
+  --extra web --extra anthropic --extra mcp --group dev --group test
 ```
 
 两个前端只交付 dist＋外置 SHA 清单，不上传独立 UI 源码仓、不在云端 npm 安装 / 构建。构建输入快照和日志留本机；静态目录不含 Home、SOUL、配置、凭据、DB 或日志。现产物中的构建路径字面量已按正式消费者核对为非运行依赖，不因此改写产物或丢失原指纹。
@@ -86,7 +89,7 @@ cd /root/hermes-secretary
 
 - `.hermes-dev/product-intent-review-20261018/deployment-release-20261019/`：用户定案 SOUL、preflight、cloud-deployment、sync。
 - `.hermes-dev/deployment-release-20261019/ui/`：UI `report.md`、`release-binding.json`、`commit-reception.json`、构建输入与产物清单。
-- 最终 unit 名称 / 路径、PM 完成结果、服务启动版本、48 会话 move 对账、MCP tools list、实际模型、同步与冷库接收命令，须由实施者完整交回后绑定；未交回写“待绑定”，不补写 PID 或 PASS。
+- 云运行整合收据：`cloud-deployment/34-integrated-success-receipt.result.json`，含最终PM/锁、unit/监听、48会话迁移、MCP/模型、精确自有Runtime回收与原服务保护；独立门禁不由此代签。同步与冷库实装收据仍须另绑定。
 
 ## 3. 原生注册、历史与个人插件
 
@@ -127,7 +130,7 @@ Alex 复用云 Pi 既有 `kimi-tools` 与 `feishu-notifier` 的 command / args /
 
 ## 4. Mutagen 方向与旧 Pi 清理顺序
 
-使用项目级配置，不覆盖 `~/.mutagen.yml`，不添加 setup / teardown 隐式命令。先核本机现有 sessions、端点、全局合并影响及范围重叠，必要时显式 `--no-global-configuration`。实际项目路径、session ID 和启动 / 状态命令**待同步实施包绑定**；不要猜 session 名或执行全局 terminate。
+使用项目级配置，不覆盖 `~/.mutagen.yml`，不添加 setup / teardown 隐式命令。先核本机现有 sessions、端点、全局合并影响及范围重叠，必要时显式 `--no-global-configuration`。实际配置本体为`~/dotfiles/hermes-secretary-sync/`，链接`~/.config/hermes-secretary-sync/mutagen.yml`；SSH专属Host为`hermes-secretary-sync`。三lane名称固定如下，精确ID/安装SHA在本轮ignored `sync/activation/installation-and-commit.json`；不要猜ID或执行全局terminate。
 
 | 逻辑用途 | 端点 | 模式与范围 |
 |---|---|---|
@@ -137,50 +140,67 @@ Alex 复用云 Pi 既有 `kimi-tools` 与 `feishu-notifier` 的 command / args /
 
 同一既有 SSH / Mutagen 通道分工，不另建 HTTP / rsync / S3。配置 session 排除整个 `.snapshots`、raw DB / WAL / SHM / journal、备份和其它运行态；未知新目录不能自动回传。`.env` 不进 allowlist。配置 / SOUL 双向冲突人工核对，不用 `two-way-resolved` 自动选胜方；接收 DB 不能反写配置 / SOUL。正式起同步前核真实 allowlist、方向与端点；“connected”不能证明内容已正确到达。
 
+**当前实装边界：** 配置lane实际8文件与snapshot lane实际1文件均watching无冲突；SOUL只核冻结SHA，六非SOUL配置预对齐只改变两config.yaml字节，无.env/云秘密回传。workspace lane仍等待macOS Desktop隐私授权；由用户手动允许Mutagen访问Desktop，Agent禁止代点或绕过TCC，也不自行换目录。放行后须完成自有marker双向/删除对账，不能把初始扫描或scratch通过写成正式workspace通过。
+
 **旧 Pi Mutagen 的关闭与清理必须最后执行。** 用户已允许清理，但先完成新云服务、共享 workspace、配置同步、有效快照回传和本机冷库对账，记录新旧 session ID / 端点后，只对确认属于旧 Pi 的精确 session 操作；不动其它同步、SSH、NM 或 OpenClaw 服务，不用清旧会话解决新链路故障。
 
 ## 5. 每 5 分钟 SQLite 快照与本机冷库
 
-云端每 **300 秒**独立产生一次快照。它不等待 Mac、SSH / Mutagen 握手或远端 ACK；Mac 离线不阻塞模型 / 服务，也不生成无限待传队列或无界日志。只保留固定当前完成包、有界状态 / 日志及接收端已验两槽；临时文件和失败重试必须有界。云 timer、Mac 接收调度、工具新子命令及确切状态路径**待实施包绑定，不以本节宣称已启用**。
+云端每 **300 秒**独立产生一次快照。它不等待 Mac、SSH / Mutagen 握手或远端 ACK；Mac 离线不阻塞模型 / 服务，也不生成无限待传队列或无界日志。只保留固定当前完成包、有界状态 / 日志及接收端已验两槽；临时文件和失败重试必须有界。云`hermes-secretary-snapshot.service/timer`已实际触发；Mac `gui/501/fyi.edgar.hermes-sqlite-mirror`已启动，300秒与WatchPaths到件触发、ThrottleInterval60、输出/dev/null。固定云状态`/root/.local/state/hermes-secretary-snapshot-staging/status.json`，Mac状态`~/.local/state/hermes-secretary-known-good/status.json`。两端受审工具SHA为`8e1ecc2de07f71a695588c7c6036d985536ffc7895558229be09d5baba0e97a4`；个人实现commit5c7fad17、实装状态commit892c6bf2。
 
 工具为 `/root/scrips/hermes-sqlite-snapshot.py`，个人部署工具不改 Core / Harness 生命周期。原生全 Home backup 的范围与本次窄清单不同，不用它替代这里的完成包契约。每库只读连接，通过 SQLite backup API 得一致副本；关连接后核 integrity / foreign_key_check、size、SHA。**保证单库内部一致，不承诺多个独立库同一事务时点。** 必需库为 `Alex/state.db`、`study/state.db`；额外 projects / receipts 库仅按最终已核存在的显式批准名单加入，不扫描未知 DB。
 
 固定名未压缩 `ZIP_STORED` 包含 manifest、manifest SHA 与全部 payload；同步树外暂存，完整 close / 校验后同文件系统原子 replace 到 `.snapshots/databases-current.zip`。Mutagen 只传完成包，Mac 离线时后续周期替换当前包，不堆积历史。稳定路径便于差分，但实际网络增量比例未测；每周期仍有完整 SQLite 副本读写成本，应监控磁盘空间及耗时。
 
-以下是既有工具的手动诊断模板，不代替最终周期命令；新增 `publish` / 接收实现的准确命令须从最终交接绑定：
+以下是既有工具的手动诊断模板，不代替最终周期命令；周期正式命令为下面的`publish-cycle`/`receive-cycle`，保留旧手动入口用于诊断：
 
 ```bash
 python3 /root/scrips/hermes-sqlite-snapshot.py snapshot \
   --profile-root /root/.hermes_profiles --sync-root /root/.hermes_profiles \
   --staging-root /root/.local/state/hermes-secretary-snapshot-staging \
   --publish-file /root/.hermes_profiles/.snapshots/databases-current.zip \
-  --database Alex/state.db --database study/state.db
+  --database Alex/state.db --database study/state.db --database Alex/projects.db
 ```
+
+实际周期入口：
+
+```bash
+/root/hermes-secretary/.venv/bin/python /root/scrips/hermes-sqlite-snapshot.py publish-cycle \
+  --profile-root /root/.hermes_profiles --sync-root /root/.hermes_profiles \
+  --staging-root /root/.local/state/hermes-secretary-snapshot-staging \
+  --publish-file /root/.hermes_profiles/.snapshots/databases-current.zip
+/Users/edgar/.local/share/mise/installs/python/3.13/bin/python3 ~/scrips/hermes-sqlite-snapshot.py receive-cycle \
+  --archive ~/.hermes_profiles/.snapshots/databases-current.zip \
+  --profile-root ~/.hermes_profiles --sync-root ~/.hermes_profiles \
+  --known-good-root ~/.local/state/hermes-secretary-known-good
+```
+
+云与Mac命令分别在对应机器运行，不额外启动第二个周期服务。只读状态入口：`systemctl status hermes-secretary-snapshot.timer --no-pager`（云）、`launchctl print gui/501/fyi.edgar.hermes-sqlite-mirror`（Mac）以及各自固定status.json。
 
 自动 DB 回传不打包凭据；配置 / SOUL 走第 4 节独立同步。若手动快照需附非凭据静态文件，逐项批准 `--static`，其副本仅作恢复参考、不反写本体。
 
 Mac 收到的包只是待验输入。先复制到同步树外私有暂存，严格验证精确 DB 集合、manifest SHA、每文件 size / SHA，无缺失、额外、重复或路径逃逸，再核 SQLite integrity / FK。坏包、半包、传输中断不改变已验槽和冷库。成功后原子提升固定 `current.zip`，旧已验包留固定 `previous.zip`，不无限累加。
 
-既有手动全包验证 / 提升入口如下；`<chosen-source-sha>` 用实际源完成包 SHA，附加库须与实际清单一致：
+既有手动全包验证 / 提升入口如下；`<chosen-source-sha>` 用实际源完成包 SHA，当前实装另有Alex/projects.db，以下已列入；未来其它已知可选库出现时，手动参数须与该次manifest一致：
 
 ```bash
 python3 ~/scrips/hermes-sqlite-snapshot.py verify \
   --archive ~/.hermes_profiles/.snapshots/databases-current.zip \
-  --database Alex/state.db --database study/state.db --archive-sha256 <chosen-source-sha>
+  --database Alex/state.db --database study/state.db --database Alex/projects.db --archive-sha256 <chosen-source-sha>
 python3 ~/scrips/hermes-sqlite-snapshot.py promote \
   --archive ~/.hermes_profiles/.snapshots/databases-current.zip \
   --sync-root ~/.hermes_profiles --known-good-root ~/.local/state/hermes-secretary-known-good \
-  --database Alex/state.db --database study/state.db --archive-sha256 <chosen-source-sha>
+  --database Alex/state.db --database study/state.db --database Alex/projects.db --archive-sha256 <chosen-source-sha>
 ```
 
-**完成回传还必须更新本机两个对应的冷态 `state.db`，仅有 ZIP 不算完成。** 接收器确认目标无运行进程 / 活连接、无 WAL / SHM / journal、路径与锁安全，先完整验证并准备所有副本，再逐库原子替换；目标忙、未知、坏包或锁冲突时暂停 / 拒绝，不覆盖活库、不删 sidecar 强行凑冷态。跨两文件不是全局事务；中途失败应准确记已应用集合并可由已验包重试 / 恢复，不冒称全包已应用。本机周期接收命令和真实离线 / 半包 / 忙库证据**待最终实现包绑定**。
+**完成回传还必须更新本机两个对应的冷态 `state.db`，仅有 ZIP 不算完成。** 接收器确认目标无运行进程 / 活连接、无 WAL / SHM / journal、路径与锁安全，先完整验证并准备所有副本，再逐库原子替换；目标忙、未知、坏包或锁冲突时暂停 / 拒绝，不覆盖活库、不删 sidecar 强行凑冷态。跨两文件不是全局事务；中途失败应准确记已应用集合并可由已验包重试 / 恢复，不冒称全包已应用。实际三库`Alex/state.db`、`study/state.db`、当时已存在的`Alex/projects.db`已回传到对应冷态路径，并核完整字节/逐表身份相等；两槽及initial原Pi inode保留。同包幂等、仅暂停本项目snapshot lane而云继续固定发布、恢复追上及launchd自动落库均有实装原件。半/坏包/忙库/部分失败保护复用同SHA的19不同实际SQLite受控节点，不在生产库制造故障；不冒称已真关机或长时间整网断线。
 
 灾难恢复只从已验包恢复到不存在的新根，不直接覆盖运行 Home：
 
 ```bash
 python3 ~/scrips/hermes-sqlite-snapshot.py restore-new-root \
   --archive ~/.local/state/hermes-secretary-known-good/current.zip \
-  --database Alex/state.db --database study/state.db --archive-sha256 <chosen-source-sha> \
+  --database Alex/state.db --database study/state.db --database Alex/projects.db --archive-sha256 <chosen-source-sha> \
   --destination <nonexistent-offline-recovery-root>
 ```
 
@@ -202,7 +222,14 @@ HERMES_DASHBOARD_PREFIX=/dashboard \
 
 `-p alex` 保留原生逻辑路径与多 Profile 发现；`--isolated` 绕过 attach-first，不表示多 worker。unit 使用绝对路径，显式 `User=root`、`HOME=/root`、`WorkingDirectory=/root/workspace`、必要 PATH / 上述环境，配 network-online 依赖、`Restart=on-failure`、`KillSignal=SIGTERM`、`TimeoutStopSec=180`、`UMask=0077` 及安装目标。EnvironmentFile 不展开 `$HOME`。日志有界，不复制整个 shell 环境或 Desktop 父进程 / SSH / token 环境，不带 `HERMES_SERVE_HEADLESS` 或另一路 Dashboard public_url。
 
-最终 backend / Caddy unit 名称和文件路径**待实施包绑定**。完成绑定后才使用相应 `systemctl status/show`、`journalctl -u` 和精确 stop / start 命令，本文不猜名称。源码 / HEAD 变化可能触发原生 code-skew guard，最终版本安全重绑定，不关 guard，不用全局 `serve --stop`、`pkill` 或强杀接管其它服务。
+已绑定专属unit：`/etc/systemd/system/hermes-secretary.service`、`/etc/systemd/system/hermes-secretary-proxy.service`，均 active/enabled；使用下列只读命令查看，不据历史PID杀进程：
+
+```bash
+systemctl status hermes-secretary.service hermes-secretary-proxy.service --no-pager
+journalctl -u hermes-secretary.service -n 100 --no-pager
+```
+
+源码 / HEAD 变化可能触发原生 code-skew guard，最终版本安全重绑定，不关 guard，不用全局 `serve --stop`、`pkill` 或强杀接管其它服务。
 
 ## 7. 反代、Tunnel 与 Access
 
@@ -217,20 +244,14 @@ HERMES_DASHBOARD_PREFIX=/dashboard \
 
 Caddy 仅回环，Host 改回 backend、删除 Origin；不剥 `/dashboard`，不另起 API 域名、CORS 或多 worker：
 
-```caddyfile
-{
-    admin off
-    auto_https off
-    persist_config off
-}
-http://127.0.0.1:53448 {
-    bind 127.0.0.1
-    reverse_proxy 127.0.0.1:53446 {
-        header_up Host 127.0.0.1:53446
-        header_up -Origin
-    }
-}
+正式Caddy为2.6.2，配置文件为`/root/.local/state/hermes-secretary/deployment/caddy.json`，二进制为`/root/.local/share/hermes-secretary/caddy/usr/bin/caddy`，由上述专属proxy unit读取。JSON设置admin disabled、admin.config.persist=false、自动HTTPS关闭、回环监听；路由不限制原始公网Host，向backend改写Host并删除Origin。旧Caddyfile的`persist_config off`在此版本不支持，不可照旧模板直接启服。保留已验JSON并在修改后先校验：
+
+```bash
+/root/.local/share/hermes-secretary/caddy/usr/bin/caddy validate \
+  --config /root/.local/state/hermes-secretary/deployment/caddy.json
 ```
+
+不另启全局Caddy服务。
 
 运行 Tunnel 的真实配置入口是 `/etc/cloudflared/config.yml`，不是 `/root/.cloudflared/config.yml`。新 hostname 指向 `http://127.0.0.1:53448`，保留原 SSH、NM、eb-data、OpenClaw 四入口及末尾 404；任何必要变更先校验、不替换其它入口。保留其它已有服务；不因它们的既有失败而接管修复。
 

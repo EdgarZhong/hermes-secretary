@@ -24,6 +24,20 @@ AC-01已确认：Candidate用Notebook refs或Message Identity，二选一禁止�
 
 并行：`cloud_deployment_preflight`执行真实云部署、PM/Homes/模型/MCP/历史workspace及新入口；`deployment_ui_alias_build`窄补alex/study现图标和显示名、保护用户表现层并只交静态产物；`study_thread_space_split`受审21节点源码已接收，安装新study插件且保持自身Space，再授权个人提交。Root负责最终源/产物/权限/依赖与SOUL精确字节核对及实际访问；同步Agent单独实现并核接收端，SOP由文档Agent收敛。SSH整链用任务隔离sandbox禁启动open/浏览器等；所有界面验收仍仅隐藏IAB，不动屏幕。
 
+**当前唯一需用户操作的同步阻塞：** macOS `tccd` 确认Mutagen daemon PID647请求 `kTCCServiceSystemPolicyDesktopFolder`，`~/Desktop/Alex` 初始扫描等待Desktop隐私授权。已async请用户亲自允许，未获答复不得视为批准；不得代点UI、绕TCC或自行改路径。云站/配置/数据库回传不受影响。待放行后只接续workspace `sync_Svc6Epz265hHktU7CcFUR0jE3TPl61MsUGjNWLRyvvA`，将自有marker `.hermes-sync-proof-0a0b0a1561054222b76dd9ab8330bc78` 做双向并清自己文件，再按精确旧Pi IDs最后清理。当前没有整轮完成声明。
+
+**冷UI新增证据：** 原Pi043冷Timeline可读、Files实际workspace空目录、Back精确原route/owner；study→Alex列表均49（48原历史+唯一测试），study无默认，Alex恢复k3-256k/high，截图/AX在ignored browser/validation-*。只读旧Pi `20261011_223117_07a84a`仍有idle Runtime `4edf8b55`、running=false/lease0/compression lock0，原8消息不变；不能证明仅root持有，未close旧用户会话。与已close的自有K3测试区分，不冒称全局Runtime0。
+
+## 云部署当前任务看板
+
+| 工作 / Owner | 状态与剩余 |
+|---|---|
+| 云运行 / cloud_deployment_preflight | 整包已root亲审：官方PM rc0/锁/单进程回环绑定、原48/6065迁移、MCP/双SPA/两WS/实际K3均已证；唯一新测试Runtime正式close资源0，服务active/enabled持续运行 |
+| 同步 / study_thread_space_split | 实装整包已root亲审：892c6bf2（实现5c7fad17）、两端helper8e1ecc2d；config8文件双向与snapshot1ZIP单向watching，云300秒timer和Mac300秒/到件receiver已真实落三库、逐表/完整SHA相等，隔离暂停/恢复追上通过。workspace WAITING_TCC，须用户手动允许Desktop；旧Pi五session不动，留最后 |
+| Verification / cloud_release_verification Astra/high | 最终独立复审12条符合，D13实装已关闭，仅D02 workspace TCC与D11公网登录后缺证；未发现需要扩开发的确定源码缺陷，不签全轮PASS，不挡运行 |
+| Validation / cloud_release_validation 6.1/high | 独立12目标/12场景、56份原件，接受只读Pi冷Timeline/Files返回/Profile往返和实际三库回传/断传恢复；workspace TCC和公网登录后未验保留，study无会话故侧栏图标未实证；门禁未关闭 |
+| 集成 / root | 已亲审SOP、UI/Provider/DB/同步实装及两份最终独立报告；六节final-delivery交接准确标未完，等待用户Desktop授权后仅接续workspace及旧Pi最后清理；自有隐藏页/SSH转发已关闭，云持续运行 |
+
 ## 历史：部署筹备等待阶段（已由上节放行覆盖）
 
 用户最新确认：云端代码仓库 `~/hermes-secretary`；Profile Home `~/.hermes_profiles/Alex`、`~/.hermes_profiles/study`；两者共用 **`~/workspace`（单数，替换此前workspaces）**，与本机 `~/Desktop/Alex` 通过Mutagen同步。另增Profile Home同步：本机`/Users/edgar/.hermes_profiles`↔云端`~/.hermes_profiles`。用户确认数据库最关键，同意运行时通过SQLite一致性快照经原有Mutagen通道回传；配置和SOUL同步，其它运行态不回传，原运行数据库不作双向文件覆盖。具体备份频率尚未定，不擅自启动服务。前端只上传构建产物，不上传源码仓库；Alex复用当前主助手头像图标、study复习图标。当前已准备本机静态Home、官方插件及SOUL编辑入口，SQLite快照工具/Mutagen草稿/SOP整包已root亲审接收，用户编辑后按定案字节上传，禁止再替用户改写SOUL；尚未部署、上传、启动Mutagen或云端服务。另需沿原流程把Pi新增聊天增量同步进原生Hermes原导入库，不混入本轮合成测试数据库。两SOUL可编辑本机路径为`/Users/edgar/.hermes_profiles/Alex/SOUL.md`及`/Users/edgar/.hermes_profiles/study/SOUL.md`。
@@ -34,11 +48,11 @@ AC-01已确认：Candidate用Notebook refs或Message Identity，二选一禁止�
 
 `study_thread_space_split`（6.1/high）负责个人Provider及相关定向测试/插件文档，禁止流水账及派生；root亲审后仅更新待部署study Home的配置与插件。原测试Profile/运行服务、云端和Mutagen不动；真实Default写入不作为此次定向测试动作。配置初始化生效，不做热切换。
 
-## 当前目标与用户最新决定
+## 历史：固定v5本机验收与部署筹备决定
 
 **用户后续纠正已落实：仅创建Metadata错误需删除后重建，普通字段可经批准通过CLI修改。** 该范围纠正后的实际Provider提示定向1项通过（0.2秒）、Ruff及diff检查通过；两测试Profile磁盘已同步，无重启／NM写入／新模型调用。
 
-第三轮固定v5本机Verification和Validation均已PASS（PI01–26范围）；继续收尾文档和新用户部署筹备，**明确尚未执行云端部署／Mutagen**。最高依据为最新产品文档及明确用户口径，技术规格也可错；不把未来愿景扩成当前开发。唯一轮次入口：[Snapshot Index](.autonomous/20261018-product-intent-review/snapshot-index.md)，计划/两门禁/最终判定在同目录。本机第三轮PI01–26实现与验收目标已完成；新部署筹备继续，云端运行和同步未验，不以构建、push或本机通过宣布上云完成。
+第三轮固定v5本机Verification和Validation均已PASS（PI01–26范围）；以下保存当时的收尾文档和新用户部署筹备记录，**该时点尚未执行云端部署／Mutagen；不是当前运行状态**。最高依据为最新产品文档及明确用户口径，技术规格也可错；不把未来愿景扩成当前开发。唯一轮次入口：[Snapshot Index](.autonomous/20261018-product-intent-review/snapshot-index.md)，计划/两门禁/最终判定在同目录。本机第三轮PI01–26实现与验收目标已完成；当时新部署仍为筹备阶段，云端运行和同步未验，不以构建、push或本机通过宣布上云完成。
 
 - root抓目标、场景、体验、编排、review和最终判定；实现/调查/实测6.1/high，只有独立Verification用Astra/high。子Agent不派生，整包一次交回，禁止流水账；无必要全局工作允许等待。通用规则只在AGENTS。
 - **静默方案最新决定（PI-21）：用户明确答“先保持现状，列为待决项”。** 不实施NO_REPLY新增句、过滤或“静默完成”展示协议；不改变deferred、未读/系统通知政策。无变化Reminder仍可能有业务汇报，作为明确待决/现状限制交付，保留原失败，不冒称静默已通过。具体提案仅在ignored `quiet-reminder-proposal.md`，不是授权。
@@ -50,7 +64,7 @@ AC-01已确认：Candidate用Notebook refs或Message Identity，二选一禁止�
 - **UIUX保护：** 用户现有布局、样式、动画、图标、Pin/拖拽及滚动为基线，只补状态/恢复接线，不接管Pin表现或整文件覆盖/挟带提交。
 - **显示保护：** 只许自己创建的隐藏Codex IAB（iab、visible:false）。禁止桌面、外部浏览器、open/open_in_codex及任何显示/焦点变化。不碰用户恢复页/旧Tab；没有合规路由如实记阻塞。
 
-## 当前版本与运行现场
+## 历史：固定v5本机版本与运行现场
 
 | 对象 | 当前有效定位 |
 |---|---|
@@ -67,7 +81,7 @@ AC-01已确认：Candidate用Notebook refs或Message Identity，二选一禁止�
 
 上述证据基址均为ignored `.hermes-dev/product-intent-review-20261018/`。SOP稳定入口在[README](README.md)，规则在[AGENTS](AGENTS.md)。不把本机成功写成云端/Linux/Tunnel/TLS/Access/手机通过。
 
-## 实测环境与访问授权
+## 历史：固定v5实测环境与访问授权
 
 两Profile位于 `.hermes-dev/validation-personal-20261018/runtime/profiles/{main-assistant,exam-assistant}`；terminal.cwd在Git root外 `/Users/edgar/code/Hermes Test/validation-{main,exam}-assistant-workspace`，防止根AGENTS污染模型上下文。两者Noting/Scheduler及联合Idle100000 tokens/5秒开启，模型容量262144保持，DeepSeek原生custom/chat_completions；不接Codex App Server/Proxy。
 
@@ -77,7 +91,7 @@ AC-01已确认：Candidate用Notebook refs或Message Identity，二选一禁止�
 - v3历史安装Provider `96f17766…`、helper `75d8dca1…`、76行Skill `89cb013e…`曾同步两测试Profile；真实A模型未读Skill、直接CLI创建，官方GET确认无hermes_provenance。PI-22包已root亲审接收：PI-22时点Provider `f14d2cfe…`及无Skill注册入口曾同步两测试Profile，原Skill文件/auto_load/本插件external_dirs已撤销，其它配置/SOUL保持；4项定向检查通过，helper未改。以上为历史PI-22状态；现v4已正式安装重启，真实B模型独立入口创建及同ID Metadata持久回读通过，未改写旧A失败。
 - Default不写，不触碰旧partial Memory `1805d328-eec9-4082-b0d2-e1051c1d6eac`，不清他人排期/历史/资源。所有凭据/原始私人材料仅本地ignored。
 
-## 唯一当前任务看板
+## 历史：固定v5任务看板（已由云部署看板接替）
 
 | 工作 / Owner | 状态、剩余与完成条件 |
 |---|---|
@@ -91,7 +105,7 @@ AC-01已确认：Candidate用Notebook refs或Message Identity，二选一禁止�
 | Pi新增聊天 / `pi_native_history_increment`＋root | 原库增量79条，48会话/6065消息，旧数据身份保持；Alex当前schema白名单兼容副本已核完整性/History和实际native resume。旧sessions.cwd优先于新配置，正式部署前需原生workspace move到共享目录，原cwd保留origin_json；未对发布Alex库执行move，不能声称当前已满足新workspace续聊 |
 | 最终集成/提交 / root | 亲审返回变更及上下游，版本与证据绑定，保护用户UI dirty和个人边界；范围内阶段commit自动push，最终release/门禁/产物分别记，不以push代验收 |
 
-## 已接收证据与实际边界
+## 历史：固定v5已接收证据与实际边界
 
 | 范围 | 已核事实 / 不可扩大结论 | 唯一报告入口（上述ignored基址，另注除外） |
 |---|---|---|
@@ -112,7 +126,7 @@ AC-01已确认：Candidate用Notebook refs或Message Identity，二选一禁止�
 | 本次一次大型检查 | ad4阶段冻结10 checks为9P/health1F、UI696P/3F/1skip；health组织超标原2节点＋检查修复，UI原3＋新2节点/typecheck关闭，均root审v3，不重跑大套 | `independent-reverification/`及各返回报告 |
 | 历史全量 | 混合工作区Python59466P/321F/71E/1421skip/1超时，3575.6秒；旧基线299F复现不是豁免。原UI603P/tsc仅当时版本。后续只定向关闭，不把历史全绿化 | `.hermes-dev/deploy-readiness-20261018/suite-triage.md`及failure-index/main-audit |
 
-## 下一步与结束条件
+## 历史：固定v5结束条件与部署筹备步骤
 
 1. 固定v5两独立门禁均已PASS，E04原A冷显示与安全加载关闭，FV02纯交流一次真实输入/一模型请求/零工具及新增内容或提醒、精确close资源0。不重复100k、600秒、Memory创建或大型套。
 2. 新部署筹备整包已root亲审接收，SQLite快照工具/接收两槽及9不同真实SQLite节点证据接受；28静态文件指纹/权限和实际测试源码绑定已核。数据库原文件不双向同步，不回传其它运行态。只准备不启动；UI alex/study图标/显示名仅最小提案，正式构建前处理。
