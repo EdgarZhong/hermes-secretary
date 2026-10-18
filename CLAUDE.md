@@ -2,15 +2,21 @@
 
 ## 自主口径收敛 · 待用户追认
 
-**AC-03 · 历史自主收敛已被PI-24调整：NM Thread同步不一致时不再以永久暂停作为目标行为。** 用户要求自动定位分叉点、新Thread首条接续旧NM Thread/原生Message ID、后续仅保存分叉内容。原5秒Notice/晚到重放仅为既有降级通路，成功分叉不得继续误报暂停；分叉无法安全完成时保留准确失败反馈，不自动覆盖或删除旧Thread。旧受控证据保留，不再以旧暂停场景单独设置上线阻塞。v4真实NM分叉已取得22项对账通过；root另发现编辑后UI仍展示旧尾部，正与canonical/正式History核对，尚不签整体通过。
+暂无。以下为已确认口径及关闭记录。
+
+**AC-03 · 历史自主收敛已被PI-24调整：NM Thread同步不一致时不再以永久暂停作为目标行为。** 用户要求自动定位分叉点、新Thread首条接续旧NM Thread/原生Message ID、后续仅保存分叉内容。原5秒Notice/晚到重放仅为既有降级通路，成功分叉不得继续误报暂停；分叉无法安全完成时保留准确失败反馈，不自动覆盖或删除旧Thread。旧受控证据保留，不再以旧暂停场景单独设置上线阻塞。v4真实NM分叉22项对账通过；root发现的编辑后旧尾部显示已由v5正式读取修复、原A冷REST/隐藏UI及独立复审关闭。本项无剩余待追认决定；准确降级反馈仍保留。
 
 AC-01已确认：Candidate用Notebook refs或Message Identity，二选一禁止混用；refs按Memory/Rule/Skill身份特化简述，不复写源正文。AC-02同源分页及配套文字已确认。先处理真正交付覆盖来源，最后关闭Candidate，未交付部分保留。
+
+## 实际部署筹备：等待用户编辑定案（不执行部署）
+
+用户最新确认：云端代码仓库 `~/hermes-secretary`；Profile Home `~/.hermes_profiles/Alex`、`~/.hermes_profiles/study`；两者共用 **`~/workspace`（单数，替换此前workspaces）**，与本机 `~/Desktop/Alex` 通过Mutagen同步。另增Profile Home同步：本机`/Users/edgar/.hermes_profiles`↔云端`~/.hermes_profiles`。用户确认数据库最关键，同意运行时通过SQLite一致性快照经原有Mutagen通道回传；配置和SOUL同步，其它运行态不回传，原运行数据库不作双向文件覆盖。具体备份频率尚未定，不擅自启动服务。前端只上传构建产物，不上传源码仓库；Alex复用当前主助手头像图标、study复习图标。当前已准备本机静态Home、官方插件及SOUL编辑入口，SQLite快照工具/Mutagen草稿/SOP整包已root亲审接收，用户编辑后按定案字节上传，禁止再替用户改写SOUL；尚未部署、上传、启动Mutagen或云端服务。另需沿原流程把Pi新增聊天增量同步进原生Hermes原导入库，不混入本轮合成测试数据库。两SOUL可编辑本机路径为`/Users/edgar/.hermes_profiles/Alex/SOUL.md`及`/Users/edgar/.hermes_profiles/study/SOUL.md`。
 
 ## 当前目标与用户最新决定
 
 **用户后续纠正已落实：仅创建Metadata错误需删除后重建，普通字段可经批准通过CLI修改。** 该范围纠正后的实际Provider提示定向1项通过（0.2秒）、Ruff及diff检查通过；两测试Profile磁盘已同步，无重启／NM写入／新模型调用。
 
-第三轮进入收尾及实际功能Validation，尽快交付。最高依据为最新产品文档及明确用户口径，技术规格也可错；不把未来愿景扩成当前开发。唯一轮次入口：[Snapshot Index](.autonomous/20261018-product-intent-review/snapshot-index.md)，计划/两门禁/最终判定在同目录。目标仍未完成，不以构建、push或阶段通过宣布部署就绪。
+第三轮固定v5本机Verification和Validation均已PASS（PI01–26范围）；继续收尾文档和新用户部署筹备，**明确尚未执行云端部署／Mutagen**。最高依据为最新产品文档及明确用户口径，技术规格也可错；不把未来愿景扩成当前开发。唯一轮次入口：[Snapshot Index](.autonomous/20261018-product-intent-review/snapshot-index.md)，计划/两门禁/最终判定在同目录。本机第三轮PI01–26实现与验收目标已完成；新部署筹备继续，云端运行和同步未验，不以构建、push或本机通过宣布上云完成。
 
 - root抓目标、场景、体验、编排、review和最终判定；实现/调查/实测6.1/high，只有独立Verification用Astra/high。子Agent不派生，整包一次交回，禁止流水账；无必要全局工作允许等待。通用规则只在AGENTS。
 - **静默方案最新决定（PI-21）：用户明确答“先保持现状，列为待决项”。** 不实施NO_REPLY新增句、过滤或“静默完成”展示协议；不改变deferred、未读/系统通知政策。无变化Reminder仍可能有业务汇报，作为明确待决/现状限制交付，保留原失败，不冒称静默已通过。具体提案仅在ignored `quiet-reminder-proposal.md`，不是授权。
@@ -26,14 +32,14 @@ AC-01已确认：Candidate用Notebook refs或Message Identity，二选一禁止�
 
 | 对象 | 当前有效定位 |
 |---|---|
-| 主仓 | main HEAD `11d9e62666379da405cb186a018f6af16eb230ad`＋dirty；D01五文件已同步，其余集成待提交。不得整树stage |
-| 独立UI | `../hermes-secretary-web`，HEAD `7f0fea60463c6731f8e04a00db923d28b80ade19`＋dirty；保留用户表现层变更 |
-| 个人插件 | `../hermes-nmem-provider`，`codex/round3-local-completion`，HEAD `55fb3aece06287347c72243e4b7077c35ef0a969`＋dirty；个人内容不入公开核心 |
-| 历史不变源码候选 | v3 set SHA `7de214d8…`保持历史；PI-24～26新分叉同步／独立工具包已root review，当前封存v4，旧v3不改写 |
-| 实际后端 | 53446，PID70121，官方PM Python 3.14.7/macOS arm64；原生 `-m hermes_cli.main dashboard --host 127.0.0.1 --port 53446 --skip-build --isolated --no-open`，不是serve握手页或Electron |
+| 主仓 | 源码候选提交 `0dc4232f597f0c36d070fd5eabd578366436fca3`（main，含E04读取修复）；本轮86文件已提交自动同步；固定v5两门禁已PASS，最终文档另行收束 |
+| 独立UI | `../hermes-secretary-web`，功能候选提交 `652f487a536874e0405fae547941be36950cc144`；19功能整文件＋App/Sidebar两窄patch已提交。用户表现层11路径dirty保留，实际验收产物含该受保护overlay |
+| 个人插件 | `../hermes-nmem-provider`，`codex/round3-local-completion`，候选提交 `3732f5503eccc0c97df0ea0238b140b9997e69df`，18文件已提交；后续运维快照工具/测试/文档提交`4d4a00e56316119ac2e66bc8ffe2c98ece64eaa5`已同步，既有Provider生产代码不变；个人内容不入公开核心 |
+| 历史不变源码候选 | v3 set SHA `7de214d8…`保持历史；PI-24～26新分叉同步／独立工具包已root review，v5 set SHA `272fbb07…f00c2a`含E04读取修复，旧v3/v4不改写 |
+| 本机验收后端 | 53446，v5验收时PID8471；收尾文档提交后的最终运行绑定见ignored `product-intent-review-20261018/final-service-binding.json`，官方PM Python 3.14.7/macOS arm64；原生 `-m hermes_cli.main dashboard --host 127.0.0.1 --port 53446 --skip-build --isolated --no-open`，不是serve握手页或Electron |
 | 实际反代 | Caddy 53448，L12真实响应中唯一一次优雅停启后PID77413（旧53882）；v4仅backend安全重启，反代未再次重启。入口 `http://127.0.0.1:53448/`，Dashboard `/dashboard/`，共用后端 |
 | 已加载产物 | Secretary `secretary-dist-v3` manifest `ac2ad3d842b0c37643588e66fb2618f68e8550e747355e153490e6658623373a`；Dashboard `cab847d3163f1916f956e033ee405b8cac7eecdd504f00eff1b45241c0922e4a` |
-| 安全加载证据 | v4 `standalone-final-load/result.json` SHA `67dbbcfea01e302bbd7f71ac35f2ee08e9f6483457d62988b687aa38a1308055`；5库在线备份/完整性OK、旧消息/root及身份配置保持。历史v3加载及serve/headless失败保留 |
+| 安全加载证据 | v5 `history-rewind-display-fix/load-v5/result.json` SHA `0c576016ba49dfe33378e28b98e8ad62feaf7b53d8819fe6cbe29599c3f17b11`；5库在线备份/完整性OK、旧消息/root及身份配置保持。原加载守卫、pyc误报及roster覆写瑕疵均如实保留 |
 | 原服务保护 | 原round3 53445及5173/5174一直保留，本包未动。旧记录PID60820/wrapper60815、40290、41912只作历史定位，操作前另核，禁止全局serve --stop |
 | 开发5098 | round3原配置 `gateway.model_code_skew_guard:false`；仅跳模型操作5098/503，不等于热更新或关闭其它保护 |
 
@@ -53,13 +59,14 @@ AC-01已确认：Candidate用Notebook refs或Message Identity，二选一禁止�
 
 | 工作 / Owner | 状态、剩余与完成条件 |
 |---|---|
-| 产品意图Verification / `product_intent_reverification` Astra/high | 53项独立判据，ad4/v2/v3源码及影响核对已交回，v4全范围30项判据已独立核；批准句实际B请求root证实仅一次，加载／Metadata／Thread真实证据E01–E03关闭。E04新确定History显示缺陷阻断，修后再统一复审；不重跑旧大套 |
-| 部署/Reminder / `local_deployment_browser_validation`＋root必要UI执行 | L09/L10/L11/L12整包收口，4ordinary/2once/2Conversation/1次Caddy重启；全部自有运行资源0，F04及真实断线恢复已由Astra核对。两张L12截图均为恢复画面，断线由实际AX/事件证明，不混称。worker现只读准备三仓提交/发布归属清单，不stage/commit/测试；禁止再次重启服务 |
+| 产品意图Verification / `product_intent_reverification` Astra/high | 53项独立判据，ad4/v2/v3源码及影响核对已交回，v4全范围30项判据已独立核；批准句实际B请求root证实仅一次，加载／Metadata／Thread真实证据E01–E03关闭。E04读取窄修复已亲审／70不同定向节点通过，v5实际REST/冷AX旧尾部消失、前缀及新UA保留，A33026cc0正式close资源0；新Astra25项全范围复审已PASS，加载/冷页/资源原件55项核对，后续文档收尾不重跑旧大套 |
+| 部署/Reminder / `local_deployment_browser_validation`＋root必要UI执行 | L09/L10/L11/L12整包收口，4ordinary/2once/2Conversation/1次Caddy重启；全部自有运行资源0，F04及真实断线恢复已由Astra核对。两张L12截图均为恢复画面，断线由实际AX/事件证明，不混称。worker现筹备新Alex/study静态Home、SQLite快照工具、Mutagen草稿与新布局SOP；只限获授权白名单，不部署/激活同步/改SOUL或Alex历史库 |
 | E02真实来源附件 / `metadata_live_acceptance` 6.1/high | A三输入已完成，唯一Memory `0c75569e-ed8c-40bc-b7ed-292e619cf6f9`正文/标签/Space正确，但模型走CLI创建、helper调用0，官方GET来源Metadata缺失，NOT_PASS_SOURCE_ATTACHMENT；原失败/旧对象保留，自有运行资源0。三次正式Noting child完成，第三父压缩20→9；实际全Messages型，refs先结算分支未新增覆盖；旧Candidate补叙述未补最终批准/结果来源身份，作为模型偏差保留。PI-22/后续纠正历史保留。当前独立工具已root亲审接收：~/scrips/nmem-memory.py与源码SHA256 256af367…ed1a9一致，标准Python -I -S／仓库外／无Hermes环境／通用Metadata受控11项通过，精确批准句1项通过；旧wrapper薄转同一创建实现。PI-26仅批准句已写源码，其它Prompt保持；Thread两包v4已统一加载，B单条真实模型唯一apply成功；独立CLI及GET核正文/标题/唯一标签/Space与真实accepted来源准确，自有资源0。报告§12及scenario-b/single-create-manifest.json记录范围；这是点名入口功能测试，不冒称自然路由 |
-| Q03已由PI-24改为NM Thread分叉同步 / nm_thread_fork_impl＋root | root已亲审同步owner／Provider出口／CLI分页／安装接线及pending先落盘、unknown只读确认、祖先锚点与header计数。原39项受控通过；root发现合法Space名称/别名误拒，窄修后6项定向通过（不重跑39），正式CLI解析真实ID后仍严格核Space，Default清ambient保持。两批依各自manifest复用。已统一安装；root真实编辑第3条user后，正式同步新Thread为system接续头＋编辑UM＋新assistant，原生锚点正确、共同4条未重传、旧Thread6条不变、pending清空。root同页及冷页仍见旧尾部，正式REST预过滤新退休副本导致旧compacted别名复活，local_deployment_browser_validation最小修SessionDB展示读取；不将底层通过代签UI。A已按正式close成功，资源全0；后续增量仍仅受控覆盖 |
-| 独立Validation / `final_user_validation` 6.1/high | 全新独立六节计划15目标/18母场景已root过目收口，最多4条短普通输入，晚到核对另1须明确release，新增Reminder0。复用100k/600秒及实际包，不重跑原生全套。该Agent唯一一次hidden IAB路由检查失败，无reset/换浏览器；正式执行时独立设计动作，root隐藏页薄执行、保存AX/PNG，Agent独立判定并明确非亲操。仍等最终Verification/release |
+| Q03已由PI-24改为NM Thread分叉同步 / nm_thread_fork_impl＋root | root已亲审同步owner／Provider出口／CLI分页／安装接线及pending先落盘、unknown只读确认、祖先锚点与header计数。原39项受控通过；root发现合法Space名称/别名误拒，窄修后6项定向通过（不重跑39），正式CLI解析真实ID后仍严格核Space，Default清ambient保持。两批依各自manifest复用。已统一安装；root真实编辑第3条user后，正式同步新Thread为system接续头＋编辑UM＋新assistant，原生锚点正确、共同4条未重传、旧Thread6条不变、pending清空。root同页及冷页仍见旧尾部，正式REST预过滤新退休副本导致旧compacted别名复活，local_deployment_browser_validation已完成SessionDB展示读取窄修，root亲审／70不同定向节点通过，v5加载／原A冷页复验通过；不将底层通过代签UI。A已按正式close成功，资源全0；后续增量仍仅受控覆盖 |
+| 独立Validation / `final_user_validation` 6.1/high | 全新独立六节计划15目标/18母场景已root过目收口，最多4条短普通输入，晚到核对另1须明确release，新增Reminder0。复用100k/600秒及实际包，不重跑原生全套。该Agent唯一一次hidden IAB路由检查失败，无reset/换浏览器；正式执行时独立设计动作，root隐藏页薄执行、保存AX/PNG，Agent独立判定并明确非亲操。v5正式Validation已PASS：15目标/18母场景，89原件指纹。FV02唯一main输入/1模型/0工具/0新增排期或内容条目；正式close资源0，E04按同源冷UI原件接收不重复操作。最终SOP/版本/DP01–05文档delta窄核已通过（validation §6.1），未增加产品动作 |
 | 静默 / 用户明确待决 | 保持现状，NO_REPLY提案不实施，不把原安静性失败改成通过或伪授权；最终明确限制 |
-| 云部署SOP / root已接收 | [docs/cloud-deployment-sop.md](docs/cloud-deployment-sop.md)已完整亲审，README稳定索引。官方PM/双SPA/单backend/反代/插件/备份升级回滚，云端步骤未执行；最终commit/产物信息待收尾填写 |
+| 新部署筹备 / `local_deployment_browser_validation`＋root | [docs/cloud-deployment-sop.md](docs/cloud-deployment-sop.md)依最新Home/共享workspace/静态产物/Mutagen与DB一致性快照口径改版；整包已root亲审接收：28配置/插件文件指纹与权限相符；独立快照工具9不同SQLite节点/检查通过，接收端全包验证后current/previous两槽。两用户SOUL/历史库未改，频率未定，云端与同步未执行 |
+| Pi新增聊天 / `pi_native_history_increment`＋root | 原库增量79条，48会话/6065消息，旧数据身份保持；Alex当前schema白名单兼容副本已核完整性/History和实际native resume。旧sessions.cwd优先于新配置，正式部署前需原生workspace move到共享目录，原cwd保留origin_json；未对发布Alex库执行move，不能声称当前已满足新workspace续聊 |
 | 最终集成/提交 / root | 亲审返回变更及上下游，版本与证据绑定，保护用户UI dirty和个人边界；范围内阶段commit自动push，最终release/门禁/产物分别记，不以push代验收 |
 
 ## 已接收证据与实际边界
@@ -85,10 +92,10 @@ AC-01已确认：Candidate用Notebook refs或Message Identity，二选一禁止�
 
 ## 下一步与结束条件
 
-1. v4两窄包已正式加载，B唯一模型创建及来源持久回读通过；原A/partial未修写。先收齐A新Thread整包与编辑UI尾部显示调查，不加普通输入或重演创建。
-2. A真实新NM Thread接续／原生消息锚点／不重复前缀已有22项通过；核对UI与正式历史一致性，root离页后仅回收自有owner。L12已接收，不重复100k／600秒／全量套。
-3. Astra同次53项复核全部实际证据及PI-21最新口径；独立6.1正式Validation经release执行，root只做必要薄UI接口，结果明确实际操作者。
-4. 完成范围内集成/提交/产物绑定与SOP版本字段，按delivery-evidence-review判定并更新[final-delivery](.autonomous/20261018-product-intent-review/final-delivery.md)。适用缺陷/必要证据未关闭则不宣称完整交付；用户明确延期项单列，不伪通过。
+1. 固定v5两独立门禁均已PASS，E04原A冷显示与安全加载关闭，FV02纯交流一次真实输入/一模型请求/零工具及新增内容或提醒、精确close资源0。不重复100k、600秒、Memory创建或大型套。
+2. 新部署筹备整包已root亲审接收，SQLite快照工具/接收两槽及9不同真实SQLite节点证据接受；28静态文件指纹/权限和实际测试源码绑定已核。数据库原文件不双向同步，不回传其它运行态。只准备不启动；UI alex/study图标/显示名仅最小提案，正式构建前处理。
+3. 最终版本/产物与文档已收束，独立Validation的SOP/DP文档delta窄核已通过，不重复产品动作；收尾提交后仅校正本机测试服务版本绑定、保护原round3。按delivery-evidence-review已更新[final-delivery](.autonomous/20261018-product-intent-review/final-delivery.md)。保留PI21待决、PI23非阻断观察及云端/平台未验。
+4. 用户先编辑两份SOUL并定案。收到正式部署放行后，才按最终字节核SHA上传、原生迁入历史会话cwd、配置生产参数和备份频率、启动云端服务/同步；此前不触云端或激活Mutagen。
 
 ## 历史入口与防重复
 

@@ -15,3 +15,10 @@ snapshot-set-sha256=ac550269de3b02303ce30d1d0bd74c72edebedbd3c2eaca74d1302358ffb
 hermes-secretary-manifest-sha256=542965d5eb76bda2f516a8d47219c35a4bba3eb601f81e588001b1126879e235
 hermes-secretary-web-manifest-sha256=c2b95d767e2c0c3dfc6b5e5ea46f1f07028a0bf2b7677aac1d244d4e227d01ab
 hermes-nmem-provider-manifest-sha256=828007e515a26b6388f692ec5e063f189ff124361a82f4154a0a78d333bca410
+
+# v5 post-integration candidate; historical initial baseline above remains unchanged
+v5-core-source-commit=0dc4232f597f0c36d070fd5eabd578366436fca3
+v5-ui-functional-commit=652f487a536874e0405fae547941be36950cc144
+v5-personal-commit=3732f5503eccc0c97df0ea0238b140b9997e69df
+v5-snapshot-set-sha256=272fbb072da400fe5119b87bbd742e366e3e2a6ab806e211554ebaa941f00c2a
+v5-ui-protected-overlay=manifest-bound;not-whole-staged

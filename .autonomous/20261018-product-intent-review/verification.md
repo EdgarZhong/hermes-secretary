@@ -1108,3 +1108,128 @@ B自有Thread本地正式ACK为2、pending=null、UID与canonical用户/最终as
 本次只确认正式出口偏差，不提前代替local_deployment_browser_validation的根因调查：合法压缩旧消息与rewind退休消息如何区分、正式REST/前端应该在哪里改，仍须其完整包。V4-02/16/18不能继续用本轮此前未覆盖此反例的“机制符合”概括当前编辑回退体验；这三项对此路径的状态更新为不符合，E04为当前阻断。PI23不含这类确定History出口偏差，不能豁免；NM旧Thread保持与当前页面应对应合法分支是两项不同契约。
 
 当前收口：**E01/E02/E03已关闭；批准句实际B请求root已证；E04未关闭，整体Verification不能PASS。** 等待已委派owner交根因/必要修复、版本绑定与针对性受控/实际证据；本审查不重新审全套、不重跑既有测试或执行任何产品动作。此前§6.5“E03待包/批准句缺完整正文”是当时事实，由本节窄补证更新。
+
+
+# v5 全新独立 Verification（2026-10-18，Astra/high）
+
+## 1. 审查对象与结论概览
+
+**最终补证复审：Verification PASS（固定v5、本轮已批准范围）。V5-E04与V5-ELOAD已由下文§6.1关闭；此前“待补证”保留为阶段历史。独立Validation仍须另行判定，PI21/PI23及长期/上云未验边界不变。**
+
+判据阶段：仅读取两项Skill、snapshot-index产品权威与PI01–26、产品原文、身份参考与两SOUL全文。未读取代码、测试、动态CLAUDE及历史报告。待审v5 snapshot-set SHA256 `272fbb072da400fe5119b87bbd742e366e3e2a6ab806e211554ebaa941f00c2a`。总体结论待调查；不预签最终加载及冷UI项。
+
+## 2. 独立要求清单与覆盖
+
+建立于实现调查之前。依据产品原文2026-10-18及PI01–26；以下初版保留，不以实现调整。身份参考只取风格，旧Pi调度/写权无效。当前要求与长期观察分离，PI21待决、PI23三类已确认不阻塞不能扩豁免。
+
+| 条款编号 | 来源位置及要求 | 类型/适用范围 | 规格解释及必要不变量 | 符合判据 | 核查位置 |
+|---|---|---|---|---|---|
+| V5-01 | 产品§1、3、11；身份参考；两SOUL | 身份/当前 | 完整生活、自然交流有自身价值，不强迫任务化；身份参考不继承Pi权限 | 部署SOUL无测试角色/时间尺度，答疑直接回应、事务委派遵守PI13 | §3同号 |
+| V5-02 | 产品§3.1、3.2、9 | 长期空间/当前 | Conversation持续，Session技术生命周期不迫使用户重开；允许多个空间 | 轮转、压缩、branch、rewind维持真实归属和连续历史 | §3同号 |
+| V5-03 | 产品§3.3、9；PI01、10 | 身份隔离/当前 | 同Profile可互搜；跨Profile不由History实现 | History按Profile归属；主助手只由NM读取考研Space | §3同号 |
+| V5-04 | 产品§4.1、5、7 | 记忆连续性/当前基础 | Notebook派生、原文可恢复；不能把摘要当原始事实 | 压缩交接+Notebook+History正式接线，覆盖区间和来源可核验 | §3同号 |
+| V5-05 | 产品§4.2、6 | 责任连续性/当前 | 真实接受的责任持续；保留原因/状态/阻塞/下一步，不创造任务 | Notebook组织与Noting责任维护、重启/并发/失败不丢已接受责任 | §3同号 |
+| V5-06 | 产品§4.3、6；PI13、21 | Reminder/当前与待决 | 未来24h Instant为行为约定不是代码强制；没有内容静默是目标但PI21保持现状 | 检查Prompt及Reminder正式唤醒；NO_REPLY新协议不实施，静默失败不伪报通过 | §3同号 |
+| V5-07 | 产品§5；PI08、15 | 事实/候选交付 | 建议≠批准；来源覆盖成功后结算，未覆盖责任/纠正/依赖不丢 | Candidate仅Notebook或Message一种来源，Notebook型特化简述；真实写结果决定关闭 | §3同号 |
+| V5-08 | 产品§7、9、10；PI02、23 | 实测与边界 | 上线前真实模型证据不等长期可靠；指定三模型偏差保留但不阻塞 | 区分模型/机制失败，确切记录豁免，不扩到Metadata或其它未验 | §3同号 |
+| V5-09 | PI01、02、03 | 实测配置 | 两真实Profile、真实NM/插件；普通user前置测试说明；10分钟一天不改时钟 | 实际配置和原始输入支持测试范围，SOUL可部署 | §3同号 |
+| V5-10 | PI04 | 联合压缩/当前 | 两个Profile Noting+Idle Compact同开，100000tokens/5秒，仅调触发 | 真实联合运行阈值及容量原生；触发、冻结、提交、恢复机制有效 | §3同号 |
+| V5-11 | PI05、09 | Prompt可见对象 | 内部Snapshot ID/Pointer/Coverage anchor不能进入Hermes模型正文，非仅UI隐藏 | 真实构建Prompt和Notebook工具输出清理；保留有意义覆盖与可操作来源身份 | §3同号 |
+| V5-12 | PI06 | Profile UI | 首页独立选择新Session原生环境，旧Conversation归属不变；侧栏跨Profile | 固定前端图标映射，不混model selector、不过滤掉别Profile | §3同号 |
+| V5-13 | PI07、19 | UIUX | 流式首Thinking、工具卡稳定、准确完成高亮，5秒普通/手关错误；保护用户表现层 | 连接/恢复不回滚布局动画Pin拖拽滚动；冷统计用可信值估算 | §3同号 |
+| V5-14 | PI08、14、22、26 | NM Memory创建 | 批准具体内容目标；窄入口一次创建正文及Metadata、复用连接；其它官方CLI | 实际模型调用与回读Metadata，partial/unknown先核实、不盲重试；无Skill竞争 | §3同号 |
+| V5-15 | PI10 | 原生/API兼容 | 关闭Secretary/非eligible零变化；沿原生Profile/模型/provider和API默认语义 | 正式分支接缝、可选参数兼容、失败不阻断主逻辑 | §3同号 |
+| V5-16 | PI11、12 | 执行限制 | 只有隐藏IAB允许UI，绝不改屏幕/焦点 | 只核操作者原件且明确非本审查者亲操，无外部浏览器代验 | §3同号 |
+| V5-17 | PI13、09、22、26 | Prompt授权 | 仅精确获批文字及History配套；框架Prompt不得无限调优 | 对照精确文本；Provider仅批准短句替换，保留其余，清除旧Skill | §3同号 |
+| V5-18 | PI16 | 部署拓扑 | 独立Secretary Web和原生Dashboard同域同后端，本地反代实际URL；非Electron | 反代入口、路由、WS、原生Dashboard原件；Access云端未验明示 | §3同号 |
+| V5-19 | PI17、18 | 全来源实时状态 | Web触发与否均可订阅真实执行；静默不抹除事件 | 实时、中途接入、完成恢复独立证据；完整Timeline不可用ring替代 | §3同号 |
+| V5-20 | PI20 | 交付SOP | 可执行上云步骤、版本产物、事实与未验区分 | 固定版本SOP覆盖真实部署且不冒称上云完成 | §3同号 |
+| V5-21 | PI24 | NM Thread同步分叉 | 已同步History不一致创建新Thread，保留旧；第一条引用原Thread+共同NM原生Message ID，第二条始增量 | 不重复相同前缀，不拿Hermes UID代替；失败不污染关联，真实分叉回读 | §3同号 |
+| V5-22 | PI25、26 | 独立工具 | ~/scrips/nmem-memory.py无需Hermes安装/HOME/cwd/模块；官方NM配置，内容及metadata来自调用方 | 独立部署产物、无隐式状态读取；批准英文一致且真实Memory元数据落库 | §3同号 |
+| V5-23 | 产品§3.3、5、9、12 | 未来范围 | 正式跨Conversation协作/跨Profile共享治理/完整决策演化为未来 | 不虚称已有，不强加首版全部实现；当前明确授权机制仍须完成 | §3同号 |
+| V5-24 | 产品§4、5、7；PI10 | 数据生命周期/必要推导 | 连续性须正确处理rewind/branch/新旧Session、事务提交、重启并发和关闭 | History与持久身份为源，Notebook原子性与独占写权、失败回退不制造历史 | §3同号 |
+| V5-25 | PI17、18、24；产品§5 | 历史展示/必要推导 | 显示与同步必须共同遵循有效分支和真实消息；恢复不能混旧前缀/截断窗口 | 分页、rewind/branch、工具/Thinking状态与正式持久历史一致，兼容旧调用 | §3同号 |
+
+## 3. 逐条实现证据
+
+本节路径约定：`S/`指`.hermes-dev/product-intent-review-20261018/delivery-snapshot-v5/`；`C/`、`U/`、`P/`分别指其`hermes-secretary/`、`hermes-secretary-web/`、`hermes-nmem-provider/`；`E/`指`.hermes-dev/product-intent-review-20261018/`。源码只读取固定S，不把moving工作区产品文件作为v5实现。旧报告仅定位；实际原件及精确差异另核。以下“符合”均受证据边界约束，不等同长期产品已验证。
+
+| 条款编号 | 正式入口及完整关键代码路径 | 方法、输入、配置及实际证据 | 证据位置 | 判定及理由 | 证据边界 |
+|---|---|---|---|---|---|
+| V5-01 | C的SOUL部署材料、`agent/secretary_prompt.py`与P Provider prelude | 对照产品/身份参考、两部署SOUL及清除测试专属身份前后原件；通常交流未被结构层强制改成事务 | E/`deployable-soul-policy.md`、`soul-policy-evidence/`、`authorized-prompt-sync.md` | 符合本轮身份及授权边界 | 真实样本不能证明长期自然交流质量；不继承身份参考旧Pi写权限 |
+| V5-02 | C/`hermes_state_secretary_identity.py`、`hermes_state_messages.py`、`hermes_state_secretary_notebook.py:279` | Session与Conversation绑定、压缩祖先、显式fork、rewind路径；重新核v5按UID最新代次先判有效性再分页/去重 | E/`history-rewind-display-fix/implementation.patch`、`result.json`、reader/native日志 | 机制符合；原A最终显示留V5-25补证 | 没有对生产历史做迁移；本轮运行库为可重建测试状态 |
+| V5-03 | C/`hermes_state_conversation_history.py:59–127,139–204`、`tools/session_history_tool.py`；P/`personal_provider.py` | 只接受宿主DB、Main或已绑定running Noting；Noting固定父Conversation；同Profile显式cross；NM空间配置继承 | E/`repair-nm-wiring.md`、`repair-kernel-profile-scratch.md`、`history-long-read.md`及绑定证据 | 符合：模型不能以参数选择其它Profile DB，子任务不能扩scope | NM授权为本轮明确两Profile/Space关系，不推广为任意跨Profile共享 |
+| V5-04 | C/`secretary/noting_surface.py`、`notebook_render.py`、`tools/session_history_tool.py:395–520`、`hermes_state_conversation_history.py:76–87` | Main History资格、压缩恢复footer和可读覆盖；Search切片不改写，Read按原文分页、digest/截断明示，同一读事务固定候选与路径 | E/`history-long-read.md`、`recall-first-read-live.md`、`repair-coverage.md` | 机制符合；Search未Read等真实偏差按PI23记录 | 不把Search摘要作为已读原文；不把PI23扩为历史真实性免责 |
+| V5-05 | C/`secretary/notebook_store.py`、`noting_tools.py`、`noting_child.py:590–750`、`framework_messages.py:250–370` | Main只读、Noting编辑完整Scratch并提交；退出/取消不提交；有效晚到Snapshot保留但不倒退pointer；完成通知在宿主边界发布 | E/`candidate-lifecycle-evidence.md`、`repair-noting-protocol.md`、`repair-coverage.md` | 当前责任连续基础符合 | 责任质量的长期观察未完成，不能由一次Notebook写入证明 |
+| V5-06 | C/`agent/secretary_prompt.py`、`tools/secretary_dispatch.py`、`tui_gateway/scheduler_host.py` | Reminder沿既有调度/owner唤醒，Instant24h为已批准政策；无新增代码时间硬阈值或未经批准NO_REPLY协议 | E/`repaired-reminder-live.md`、`quiet-reminder-contract-probe.md`、PI21 | 当前实现按用户选择保留；静默目标明确未解决 | PI21为待决并非通过静默验收；不能外推其它失败均不阻塞 |
+| V5-07 | C/`secretary/notebook_store.py`、`notebook_contract.py`、`noting_tools.py`、`noting_prompts.py` | Candidate Notebook/Message XOR及Notebook简述特化；先源后Candidate、partial/unknown纠正、实际写入结算；工具拒绝边界与生命周期原件 | E/`candidate-source-contract-sync.md`、`candidate-source-contract-green.xml`、`candidate-lifecycle-evidence.md`、traces | 符合现行PI15及生命周期契约 | 受控provider样本是机制证据，不冒称自然模型全链质量 |
+| V5-08 | C正式Main/Noting路径与P真实NM调用 | 区分真实运行、受控验证和失败；保留Search未Read、既有三类模型偏差与实际失败记录 | E/`main-natural-idle-live.md`、`exam-natural-idle-live.md`、`metadata-live-acceptance.md` | 本轮有限真实样本要求满足；长期观察未证 | 仅PI23所列偏差不阻塞；Metadata及History显示没有借用豁免 |
+| V5-09 | 两Profile部署配置、SOUL及P安装文件 | 原始普通user测试前缀、真实Profile/NM、压缩触发配置；时钟未改，10分钟一天是样本说明 | E/`soul-policy-evidence/`、natural-idle原件、`standalone-final-load/result.json` | 符合本轮配置及样本边界 | v4个人产物与v5逐文件同源；v5新backend实际装载另列 |
+| V5-10 | C/`secretary/noting_runtime.py:453–525,564–617`、`noting_timers.py`、`agent/context_compaction_request.py` | 真实Main101029、exam102871tokens，约5.026/5.025秒；原生usage/容量，先冻结派发、父独立压缩；任意Noting拒绝不取消native callback | E/`main-natural-idle-live.md`、`exam-natural-idle-live.md`、`repair-kernel-profile-scratch.md` | 联合机制及两Profile真实运行符合 | Main首驱动过早关闭abort及授权续跑保留，非首次无故障；未重复100k/600秒 |
+| V5-11 | C/`secretary/notebook_render.py`、`noting_tools.py`、`noting_surface.py`、`framework_messages.py` | 重新逐段审模型正文渲染与公开工具响应：完整Notebook+有意义覆盖，无内部snapshot/pointer/anchor；操作entry_id和History message_uid仍保留 | E/`repair-coverage.md`、framework/projection定向日志、`noting-protocol-targeted.log` | 符合模型可见边界 | API审计元数据不是模型正文；不把UI隐藏误认实现要求 |
+| V5-12 | U/`src/core/profiles.ts`、`components/ChatSelectors.tsx`、conversation controller | Profile独立于model；仅new时选择环境；旧owner保留；全局侧栏用(profile,id)身份 | E/`local-deployment-browser-validation.md`及root AX原件 | 符合静态接线与已有实际样本 | U的163文件与v4完全同源，overlay逐hash保护；本审查无UI亲操 |
+| V5-13 | U/`session-recovery.ts`、timeline projection/controller；C/`tui_gateway/inflight_output.py`、`turn_terminal.py` | 首Thinking/tool时间线依write seq聚合；terminal写原source row；普通与错误notice不同生命周期；实际L10冷AX包含Thinking与Interrupted工具卡 | E/`local-deployment-evidence/root-L10-cold-interrupted-ax.txt`、`websocket-state-recovery.md`、`cold-estimate-assertion-sync.md` | 所列呈现与恢复机制符合 | 不声称逐像素/每个Pin拖拽手势本次再验；真实原A退休尾残留转V5-25 |
+| V5-14 | P/`nmem_memory.py`、`personal_client.py`、`personal_provider.py`，独立部署脚本 | 核B26条持久消息/13工具调用，只有1次--apply；批准正文=actual输入；单次创建结果与独立GET的id/title/content/space、label、provenance一致 | E/`metadata-live-evidence/scenario-b/single-create-manifest.json`及其raw/GET/POST-close原件；本次`independent-verification-v5/live-original-crosscheck.json` | 符合真实一次创建含metadata和批准边界 | B是明确指令入口功能样本，非自然路由；旧A/partial不由本次擅改；unknown不得重试 |
+| V5-15 | C/`secretary/noting_runtime.py:99–123,145–172,564–617`、`noting_surface.py`及既有native调用缝 | 关闭/不eligible不进入新写路径；模型/provider仍原生；新增参数默认兼容；v5只改读取，不改writer/schema/API签名 | E/`history-rewind-display-fix/result.json`、native seams原始日志；noting-disabled回归 | 所列正式兼容边界符合 | 同源差异复用局部证据，不据此宣称Hermes全量测试全绿 |
+| V5-16 | root的UI取证记录及本审查行为 | 只核root hidden IAB AX/保存原件；本审查仅文件读取/hash/静态分析/报告写入，无UI/网络/服务操作 | E/`browser-capability.md`、root-L10/L12 AX、`independent-verification-v5/` | 符合本审查执行限制 | UI操作者root，不能将其执行写为审查者亲操 |
+| V5-17 | C/`agent/secretary_prompt.py`、History guidance；P/`personal_provider.py`批准句 | 对照PI13/26精确文本及旧Skill清理；Provider根句限定批准Memory创建；已取B真实provider-neutral request root hash绑定 | E/`authorized-prompt-sync.md`、`metadata-live-acceptance.md`§12、`standalone-final-load/result.json` | 符合授权文本和已证B请求范围 | 继承旧B真实root审查证据，不声称本次读取未提供的网络wire payload |
+| V5-18 | C Dashboard独立host、部署Caddy路由及U产物 | 本地双SPA/同域53448/同backend53446，WS/原生Dashboard原件；v4到v5前端/个人产物不变 | E/`local-deployment-browser-validation.md`、`local-deployment-evidence/`、`standalone-final-load/result.json` | 拓扑与既有运行符合；v5最终加载待闭环 | 本轮没有Cloudflare Access真实上云验收；不冒称公网完成 |
+| V5-19 | C/`tui_gateway/{scheduler_host,inflight_output,turn_terminal}.py`；U/`session-recovery.ts`与projection | 非Web来源可投递/订阅；snapshot+seq/epoch，buffer后接入，gap重新同步；L10真实中途冷接入、L12真实在途断线恢复与terminal来源行 | E/`local-deployment-evidence/`20项manifest原件hash全符；L12真实reasoning2118晚于baseline2112；本次`deployment-original-crosscheck.json` | 所列实时/中途/完成恢复符合 | L12只重启Caddy一次，非backend崩溃；断线PNG重复，断线依据AX+events而非PNG |
+| V5-20 | C/`docs/`云端SOP及本地隔离部署入口 | 检查双SPA、单backend、反代、Access准备、环境/权限与回滚步骤；版本固定与实际加载分开 | C/README稳定索引；云部署SOP；E/`standalone-final-load-plan.md`、v5加载原件（未完成） | 操作SOP具备；最终版本实际加载登记待主会话收口 | 版本产物更新属于交付闭环，不以过渡文档宣称最终运行版本已确认 |
+| V5-21 | P/`personal_thread_sync.py`、`personal_provider.py`的export/receipt链 | 独立比较A old6不变、新3(system/user/assistant)，header原Thread+old[3]原生anchor，new两条精确等于cleaned增量，不复传4条相同前缀 | E/`nm-thread-fork/live-manifest.json`、`implementation.md`§9及远端原件；本次`live-original-crosscheck.json` | 符合真实分叉机制；远端与本地receipt绑定一致 | 网络失败/后续增量仅受控部分不冒称真实网络故障；History UI另验 |
+| V5-22 | P/`nmem_memory.py`与部署`~/scrips/nmem-memory.py` | 源码无Hermes状态/模块依赖，官方NM连接配置、调用方输入metadata；v4正式安装helper SHA与v5相等 | E/`standalone-final-source-binding.json`、`metadata-live-evidence/standalone-helper/manifest.json`、B实际调用 | 符合独立产物与PI26批准入口 | 根目录按用户拼写scrips，不扩为迁移其它脚本/全局配置 |
+| V5-23 | 产品§3.3/5/9/12与PI范围 | 独立判据先区分未来跨Conversation治理与当前明确机制；不将已确认NM同步/metadata归未来 | 本报告§2初版；snapshot-index PI01–26 | 当前范围界定符合 | 长期责任/决策演化无长期实证；不因核心可用便声称愿景全部落实 |
+| V5-24 | C/`hermes_state_secretary_notebook.py:166–300`、`noting_child.py:590–750`、`framework_messages.py:250–370` | 同事务验证anchor在现行Foreground、完整校验/插入/按覆盖选择pointer；晚到不倒退，branch只继承合法anchor；C8当前pointer在durable append同事务重核 | E/`repair-coverage.md`、`candidate-lifecycle-evidence.md`、`repair-noting-protocol.md`及同源证据 | 原子性、独占写权与失败路径符合所审范围 | 只读入口不偷偷重选pointer；不以孤立helper代替宿主锁和事务正式接线 |
+| V5-25 | C/`hermes_state_messages.py`indexed/legacy/native读取；U controller refreshHistory/projection merge | v5在分页及总数之前查同UID最新代次；读取包括退休行以判定但不返回退休有效尾；explicit audit保留；8修前反例、70不同节点修后证据 | E/`history-rewind-display-fix/{implementation.patch,result.json}`及logs；原A旧REST/冷AX | 源码及受控修复符合；最终实际E04仍待v5加载后原A正式REST+冷AX核对 | 不允许仅用新Conversation、NM远端正确或受控测试代签原A冷显示 |
+
+## 4. 核心目标及验证方法审查
+
+审查采用先产品判据、后固定实现、再原始证据的顺序。上述25项覆盖本轮产品身份、长期空间、记忆/责任连续、Reminder、Candidate、双Profile、联合压缩、Prompt、UI、NM、部署、兼容及未来边界，并非只围绕E04旧缺陷复审。工程规格接受产品判据审查：白板旧示意中的混合来源及内部标识说明，不能覆盖PI15的XOR和PI05的模型可见对象边界；07旧轮次“尚未实施/后置”的状态也不能当本轮范围。实现核对按明确用户口径及最新正式契约。
+
+**版本与复用。** 本次独立逐文件hash校验v5三目录：core18202、UI163、personal703，均与各manifest一致；符号链接按链接内容核验、不跟随到moving工作区。相对v4：core仅7个文件变化，其中产品代码仅`hermes_state_messages.py`，另有该reader测试、CLAUDE及轮次报告；UI0变化；personal仅CLAUDE。对旧测试来源映射以其`expected`源hash重新比对：ad4可定位68项中40同源/28变化，v2为42/42同源，v3为5/7同源，另2项personal分叉代码及测试由后续真实A/定向证据替代。旧ad4变化不能整包默认为同源；本次仅复用未受影响路径和后续替换证据。完整结果见`E/independent-verification-v5/{source-integrity,evidence-source-reuse}.json`。
+
+**不把测试数量作为充分证明。** E04的8个RED是实际SessionDB压缩+rewind后的旧user-3残留断言；随后reader59P/2F原日志保留，2F为使用带持久内部字段fixture的restore调用，经改fresh输入定向2P，native seams9P；去重70节点为47既有+14新增+9接缝，不把多轮日志相加。index/legacy分页、count、resume、祖先和显式audit均静态核对；受控证据仍不能替代原A实际REST/冷页面。没有重跑100k、600秒、大型套或模型。
+
+**真实原件与测量局限。** A旧远端6条不变、新3条header及增量与canonical逐项比对；B26条持久message中13工具调用、唯一创建命令及GET元数据逐字段比对，相关原件hash无偏差；local deployment20项原件hash无偏差。L12的两个截图字节相同，不能据此证明断线视觉，实际断线/恢复证据取AX、seq及新reasoning；只证实Caddy重启，不写成backend崩溃。复用UI是操作者root的隐藏IAB原件，本审查未亲操。
+
+**既有不绿与当前覆盖分开。** 历史完整Python为59466P、321F、71E、1421skip及1timeout，不能改写成全绿；本轮既有10类检查中health失败经定向修复/复核，UI696P/3F/1skip中的3F及新增相关项有后续定向关闭。这里不依据总数签发全仓质量保证，采用本轮冻结范围、同源证据及失败分层。PI21静默保留现状、PI23三模型偏差、未来愿景/长期观察、云端Access未验均显式保留。
+
+## 5. 发现、整改优先级与范围外项
+
+| 问题编号 | 对应条款/代码位置 | 触发路径与事实 | 影响及阻断理由 | 建议修复与关闭证据 | 当前状态 |
+|---|---|---|---|---|---|
+| V5-E04 | V5-02/25；C/`hermes_state_messages.py` | 原A rewind已退休旧user/assistant在旧REST及冷AX仍出现；v5源码改为先判最新UID代次，再筛选/分页 | 核心历史真实性，不能以PI23、NM远端正确或受控测试豁免 | v5实际backend版本绑定；原A正式REST和零模型冷IAB AX显示新输入/输出且无两个旧UID/旧正文；资源关闭及保留事实 | 源码/受控修复已核；实际加载/冷页面最终包待核，当前阻断最终PASS |
+| V5-ELOAD | V5-18/20/25；v5加载交付 | 已见`load-v5/backend-started.json`新PID8471及旧PID退出，但`resume-error.json`仍为AssertionError且no_automatic_retry；无最终result/manifest，不能从启动记录推断成功 | 最终实际运行版本及状态保留证据未闭环；属于交付证据缺口，不自行认定新产品代码缺陷 | 提交一次完整加载最终包：source hash/命令/PID、旧状态与配置保护、原A REST、资源终态、root冷AX；失败原件保留并解释 | 等主会话取证；本审查不启动或修服务 |
+| V5-L01 | V5-06；PI21 | 无内容静默协议仍待用户决定，当前保留 | 用户明确暂不新增NO_REPLY；不以待决阻塞本轮其它已批准机制 | 保留待决与真实偏差，后续用户决定再收敛 | 当前有界非阻断；不写静默通过 |
+| V5-L02 | V5-08；PI23 | 三类指定模型偏差有真实失败样本 | 明确用户不阻塞仅限所列情形，不能推广 | 持续记录真实样本，长期行为另行观察 | 有界非阻断 |
+| V5-L03 | V5-01/05/18/23 | 长期责任演化、所有未来治理、真实Cloudflare Access及跨平台未完成实测 | 超出本轮已授权实际验收，禁止虚报完成 | 最终交付列清未验，后续独立任务补证 | 范围/证据边界，不要求本轮擅自扩实现 |
+
+除V5-E04实际关闭与V5-ELOAD最终包外，本轮固定v5全范围静态及所列原件审查未发现新的确定性阻断产品缺陷。此结论不等于“所有代码不存在缺陷”。
+
+## 6. 修复与独立复审
+
+v5源码完整集及manifest已独立核验：snapshot-set SHA256 `272fbb072da400fe5119b87bbd742e366e3e2a6ab806e211554ebaa941f00c2a`；core提交`0dc4232f597f0c36d070fd5eabd578366436fca3`，UI提交`652f487a536874e0405fae547941be36950cc144`加受保护overlay，personal提交`3732f5503eccc0c97df0ea0238b140b9997e69df`。manifest hashes分别`3c22055938139687ee40d77ce416938564b7b98c43252362e3ea6becc0fb2a40`、`d43fb844a31a20c0b088162ff5c32e14b2529f69f19996f5cae3adc5ecf8158b`、`837f8a90f5578c3e315ff5e392da420293453ead977338519dd78e2a86d0c2cb`。
+
+本次记录没有覆盖历史结论或修改初版判据。仅独立审查证据写入`E/independent-verification-v5/`；无产品代码/测试/其它报告修改，无测试执行、模型调用、NM操作、网络、服务或UI操作。
+
+**当前总体判定：待补证，不能签发PASS。** 已完成固定v5全范围源码/产品判据核对、E04修复静态审查与定向原件核验；剩余集中核查只需要V5-E04/V5-ELOAD完整实际包，不需要再重跑全范围审查、大型套或真实长模型。若最终包证明加载/原A冷显示及状态终态满足，可在本节追加限定复审关闭；若实际仍失败，保持阻断并给出原件定位。通过后由另一个全新独立Validation审查者判断实际产品入口的最终验收，不由本Verification替代。
+
+
+### 6.1 最终v5加载、原A冷显示与关闭资源的集中补证复审
+
+本次仅核上一阶段集中待核的V5-E04与V5-ELOAD，不重提判据、不重跑全范围审查或测试。读取本地保存原件、固定v5源码及离线PNG，未执行产品、UI、网络、模型、NM、服务或测试操作。root仍为隐藏IAB实际操作者；本审查者只阅读其完整AX并查看已保存PNG。
+
+| 问题编号 | 补证版本与原件 | 独立核对方法 | 实际结果 | 剩余边界 | 复审结论 |
+|---|---|---|---|---|---|
+| V5-ELOAD | `E/history-rewind-display-fix/load-v5/result.json` SHA `0c576016ba49dfe33378e28b98e8ad62feaf7b53d8819fe6cbe29599c3f17b11`，同目录manifest、restart脚本、原错误、cache解释及postload原件 | manifest52项逐文件hash；固定v5 reader源码SHA与实际fresh import指纹相等；审脚本TERM/单次Popen及protected核验路径；源码核原生cache清理；核HTTP/WS、全局roster、资源及五库/旧行证据 | 旧70121退出，新8471单次启动，Caddy77413及原round3进程保持；加载前后资源均0、health就绪/WS101；五库完整性ok、旧messages/root/bindings保持；两dist439/67文件不变，正式插件/配置/SOUL/helper保持 | fresh import是独立子进程指纹，不声称运行中解释器反射；初始被覆roster只有明确标注的二级转录；不是全程首次无失败 | 关闭 |
+| V5-E04 | 同目录`original-A-rest.json`；上级`root-cold-ui-result.json`、`root-A-fixed-cold-ax.txt`、`root-A-fixed-cold.png`、`root-after-fixed-newchat-ax.txt`、`cold-ui-resources.json` | 再算REST消息数组UID计数；与原A`live-after-fork.private.json`的16条identity/content逐条比对；完整AX逐段核旧尾缺失/共同前缀/新UA/Compaction；查看尾部PNG；独立比较close前后与旧实际receipt/thread_sync | 两退休UID各0，合法六条各1；REST17展示节点不误当canonical6条；16既有源内容hash全部一致；全AX保持共同四项、工具/Thinking、真实Compaction及新UA，旧批准/旧完成答复无残留；实际New Chat离页后精确33026cc0 close=true，各自资源0，未增ordinary/修改同步账本 | PNG只证明当前尾部视图，全量内容结论来自完整AX与REST；root未新增输入/编辑/模型调用；不冒称本审查者操作UI，也不替代另独立Validation | 关闭 |
+
+加载失败按原件保留并解释：第一次守卫发现原A runtime19048d39仍在（root此前goto根路径实际被恢复到A），当时未备份/TERM/启动；随后root真实点击New Chat离页并明确授权精确close，正式新收据核owner，稳定空roster后才唯一重载。初次`before-active.json`被续跑覆为新的停前空roster，`initial-blocked-roster.from-tool-output.json`只是二级转录，不能恢复原SHA；关闭前新的正式roster/close收据及原失败日志足以支持后续安全重载，不用二级转录证明未保存的原字节。
+
+第二次`resume-error.json`确为tester过宽安装目录指纹断言：`resume-execution.log`定位restart脚本209行；`post-load-protection-diff.json`与`post-cache-guard-resolution.json`只列exam五个旧pyc消失、protected无差异、产物仍匹配。已亲读固定v5 `hermes_cli/main.py:2287–2306,3552–3554`与`main_web_build.py:38–68`，确认启动HEAD指纹改变会递归清理checkout中的`__pycache__`，未排除ignored测试Home；属于原生可再生缓存清理，不是正式插件文件被改。随后只读继续审计，没有第二次重载、安装、缓存恢复或配置改动。此处修正的是测试指纹范围，没有放宽产品源码/配置/权限/静态产物保护，也不删除错误记录。
+
+最终冷页面资源包SHA `ca4051073db845c1593e9379c12908094e246b8df846c32e7210734b5ddfd3a8`：profile为exam、stored `20261018_211409_356f17`、Conversation `conv_08b0e53da01a40248939441b528142d5`，本次冷恢复owner `33026cc0`。已独立比较before/after bindings、canonical摘要/16身份、receipts、thread_sync完全一致，且16身份及receipt/thread_sync与原真实A分叉原件一致；实际REST源内容哈希按原脚本`sha256(json.dumps(content, ensure_ascii=False, sort_keys=True).encode())`口径16/16相符。close后active/runtime/lease/compression/child/schedule/claim/pending均0，其他owner关闭、ordinary输入、NM读写、服务重启均0。
+
+补证manifest52项加冷UI三项，共55项hash均匹配；核验摘要及逐项结果在`E/independent-verification-v5/load-cold-original-crosscheck.json`。冷AX SHA `24520c5bfd944269c8fd34a8aef3e978da1f00f2c8dcd1481a337b11722d8848`；PNG SHA `a57f28907276a204e5f27dd4a87cab1c8c732657fee40a05ac4742c51ff674bf`；New Chat离页AX SHA `fb4081be9f65064b0ff3cf4f36a2d2c74ff3a95c6ab41b03088f85a51ff2c0e7`。最后AX实际URL为`/new?profile=exam-assistant`，并有独立Profile选择器，不再以根路径推断已离开A。
+
+**最终总体判定：Verification PASS，限定固定v5、本轮产品意图与PI01–26已批准当前范围。** 原V5-E04和V5-ELOAD均关闭，§3中的加载/原A“待核”状态由本节正式更新；无剩余确定性阻断实现缺陷。PI21待决、PI23三模型偏差、不绿历史大套的既有失败分层、长期运行观察、真实云端Access/未验平台保持原边界；不得改写为全仓/全愿景/全平台通过。下一门禁由全新独立Validation依据实际产品入口及本次版本原件作出自己的结论；本报告不预签Validation或最终交付完成。

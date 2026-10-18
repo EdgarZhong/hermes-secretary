@@ -1,5 +1,7 @@
 # 产品意图复审与交付计划
 
+> 当前版本定位：本计划保留原始整改依据，表中“待验/未验”为编制时点记录；固定v5已由独立Verification与Validation全范围PASS，最终关闭映射见第6节。新用户部署筹备另依Snapshot Index的DP确认，不回改历史门禁范围。
+
 ## 1. 目标与依据
 
 最高产品依据为本轮snapshot-index指定的最新产品原文及用户明确口径，技术规格本身也是审查对象。固定版本及逐文件指纹见baseline.txt与ignored frozen-code/snapshot-set.json；不能把原HEAD当作全部待审代码版本。核心、UI、个人NM相互独立，个人资料不进入公开核心。
@@ -98,3 +100,16 @@ Q0完整报告为NOT PASS（31条矩阵，7节点反证3P/4F）。下表定义�
 ### v4实际编辑发现：E04历史显示分支一致性
 
 root经隐藏IAB对A正式Reply→Rewind and edit→Rewind and send后，NM同步canonical清洗路径6条、新NM Thread3条／22项对账通过；但同页及reload冷页仍显示退出当前分支的旧批准／assistant，再追加新UA。正式REST include_compacted=true返回旧两项active=0/compacted=1，故不是仅warm缓存推测。既有compaction历史应保留，rewind退出分支的尾部不应混入当前显示；由local_deployment_browser_validation先只读定位最小修补范围，root亲审后接线。关闭需正式History分支过滤契约／针对性负例、原A冷UI不含旧尾部且保留共同前缀与新UA。不得借此改用户表现层、重试Memory写入或重复100k旅程。
+
+## 6. 固定v5整改关闭与后续边界（2026-10-19）
+
+| 原整改组 | 当前版本关闭依据 | 结果及范围 |
+|---|---|---|
+| F01/F02/F03/output-cap、D01、Candidate来源/生命周期、API与原生兼容 | verification.md固定v5 §2–4全范围25项判据及同源原件映射；validation.md固定v5六节矩阵 | 当前批准范围通过；不把受控分支改称自然模型行为或全仓套全绿 |
+| S01/Q02/History配套、PI22/25/26 | 精确获批Prompt、Skill撤销、独立创建工具；B唯一模型apply和官方同IDGET实际Metadata，原件及请求root指纹 | 创建路径已关闭；旧A/partial失败保留、无补写；自然路由和K3不外推 |
+| PI24 NM Thread同步、历史编辑一致性E04、最终加载ELOAD | A真实分叉22项对账；hermes_state_messages最新UID先判有效；70不同定向节点；原A正式REST/冷AX及精确close；Verification §6.1 | 旧尾不复活、合法压缩/共同前缀/新UA保持；不修改用户表现层，资源0；原失败和取证限制保留 |
+| E01/E02/E03/E05、全来源后台状态与部署拓扑 | 双真实100k/5秒、原600秒跟进、L09–L12反代冷态/中断/恢复；Validation15目标/18母场景，唯一FV02交流输入 | 当前适用目标通过；自动Recall零pointer不冒称首次pointer精读，真实手机/云Linux/Access/长期效果未验 |
+| PI21与PI23 | 用户明确保持静默现状/列待决；明确三类模型偏差不阻塞 | 不伪造通过，也不重设开发门槛；范围只限明确决定 |
+| PI20交付SOP与Q6 | 固定v5源码/产物已绑定；最终简报与新布局SOP收束 | 文档最终delta单列窄核，不重开模型/UI/大型套；云部署没有执行 |
+
+固定集合与commit见Snapshot Index v5，两个独立报告的最终段为当前结论。新版云部署筹备按DP01–05进行：两个可编辑SOUL、原Pi增量及当前schema副本、共享workspace、配置/SOUL同步和一致性快照回传；用户明确要求先不部署，快照频率未定。Pi历史会话运行cwd需通过既有session.workspace.move在正式部署阶段统一，原来源cwd保留；当前不改发布库或启动业务。

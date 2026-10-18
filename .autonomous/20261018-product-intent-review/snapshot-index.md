@@ -64,3 +64,19 @@
 - hermes-nmem-provider: `/Users/edgar/code/hermes-secretary/.hermes-dev/product-intent-review-20261018/frozen-code/hermes-nmem-provider`；原HEAD `1eb8d9a2a4e81101255ee8ae3998275ab608e52f`+捕获时dirty；manifest SHA256 `828007e515a26b6388f692ec5e063f189ff124361a82f4154a0a78d333bca410`。
 
 完整清单：`.hermes-dev/product-intent-review-20261018/frozen-code/snapshot-set.json`。运行中的后端未因冻结重启，不把磁盘源码当现场已加载。判据落盘后以此固定副本审查，不按后来工作区变化改结论。若必须运行反证，优先固定副本；需在原PM环境运行时先核对受影响文件与固定清单一致，不能把不匹配版本结果归入本轮。
+
+## v5集成后固定候选（历史定位不覆盖）
+
+当前复审对象为ignored `delivery-snapshot-v5/snapshot-set.json`，SHA `272fbb072da400fe5119b87bbd742e366e3e2a6ab806e211554ebaa941f00c2a`；三仓完整只读副本／manifest同目录。Core源码提交`0dc4232f597f0c36d070fd5eabd578366436fca3`、UI功能提交`652f487a536874e0405fae547941be36950cc144`、个人提交`3732f5503eccc0c97df0ea0238b140b9997e69df`已自动同步且显式核远端一致。UI受保护表现层overlay随固定manifest／已构建产物验收，没有挟带整文件提交；裸UI功能commit不等于实际产物的完整源码树。v4→v5仅Core一个生产读取文件及其定向测试变化，UI生产零变化；当前动态文档另据报告更新。此候选不代表门禁／部署已通过，历史各版本结论不改。
+
+## 后续部署筹备确认（不回改固定v5的PI01–26门禁范围）
+
+| 编号 | 用户最新明确决定 |
+|---|---|
+| DP-01 | 先不要部署；先筹备将上传的两个Profile Home并提供两SOUL文件位置。用户编辑定案后原文上传、不再改写。主Profile名Alex，辅助名study；Alex复用当前主头像，study复习图标。 |
+| DP-02 | 云端代码仓库`~/hermes-secretary`；物理Home`~/.hermes_profiles/Alex`与`~/.hermes_profiles/study`；前端不上传源码仓库，只部署构建产物。 |
+| DP-03 | 两Profile共用同一个云端`~/workspace`（用户明确改为单数，替换先前workspaces），整个目录与本机`~/Desktop/Alex`走Mutagen；本机不存在可创建。 |
+| DP-04 | 另增本机`/Users/edgar/.hermes_profiles`↔云端`~/.hermes_profiles`同步。数据库最关键；用户同意云端唯一运行库，经SQLite一致性快照复用原Mutagen通道回传，配置与SOUL同步，其它运行态无需同步。不把正在变化的数据库做两端直接文件覆盖。备份频率尚未定，当前不启用。 |
+| DP-05 | 将Pi在此前原生Hermes导入后的新增聊天继续同步到原库，保留原数据／身份和既有导入方式；为新Alex部署筹备当前版本兼容副本，不把本轮合成测试历史搬到生产。 |
+
+上述为部署筹备而非上云执行授权。固定v5两个独立门禁仍只对其已冻结范围作判断；新部署文件与数据打包单列验证，不据此宣称云端／Mutagen运行已验。

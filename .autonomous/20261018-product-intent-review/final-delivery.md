@@ -1,43 +1,56 @@
-# 产品意图复审：当前交付判定（进行中）
+# 产品意图复审：本机第三轮交付判定
 
 ## 1. 目标状态与结束判定
 
-**目标尚未完成，继续执行中。** 当前固定v4源码及既有正式证据已由独立Astra/high复审，未发现新增确定源码阻断；新B来源Metadata真实创建回读通过，A的NM Thread自动分叉通过。root在A实际编辑验收发现History REST／冷UI仍展示退出当前分支的旧尾部，已列E04调查，不能签总体通过。独立Validation仍待正式release。没有执行云端部署。
+**固定v5、本轮PI01–26的本机实现与验收目标完成；独立Verification PASS、独立Validation PASS。** 主会话亲审接收两个报告、源码和核心实际结果后作此判定。原A编辑后旧尾部显示E04和最终加载ELOAD均已关闭，没有当前已知的范围内确定性代码阻断。
+
+用户随后新增的部署筹备整包已由主会话亲审接收：Alex/study静态Home和插件、SQLite快照/接收保护工具、Mutagen草稿及新布局SOP。等待用户编辑两SOUL定案，再按最终字节交付。**没有连接云端、上传、注册真实Profile、启动Mutagen/云服务/定时器；不能将本机通过称为已上云或Linux验收通过。** 备份频率与正式生产参数未定。
 
 ## 2. 本轮收敛与授权
 
-- 最新产品文档及后续用户口径优先，技术规格也接受审查；不扩大未来愿景。原冻结及历史失败保留于snapshot-index及原报告。
-- PI-15 Candidate来源用Notebook refs或Message Identity，二选一禁止混用；refs按身份特化简述、不复制正文。先处理真正交付正文及来源，最后关闭Candidate，未交付保留。
-- S01/Q02及History分页配套精确文字均已批准。PI-21 NO_REPLY／静默过滤方案保持现状、列为待决，无变化Reminder可能继续汇报，不冒称静默通过。
-- PI-23三类模型偏差经用户确认不阻塞：错误归因、截断Search声称完整Read／拼接原因、Noting补结果未补齐来源身份。保留原观察，不追加修复门槛，也不外推K3表现。
-- PI-24统一术语“NM Thread同步”；不一致自动新Thread，首条插件接续说明引用前一NM Thread及最后共同NM原生Message ID，后续仅分叉后缀。工程细化为祖先锚点注明实际所属Thread、无新后缀不创建空Thread；保留旧Thread，不盲重试未知写入。原暂停目标已被此项调整，失败时仍准确反馈。
-- PI-25独立工具统一运行用户 `~/scrips/nmem-memory.py`（本机／云端同拼写），无Hermes依赖、通用正文与Metadata由调用方提供。PI-26精确英文已批准并仅替换此前长句，其余Provider系统提示不动、Skill方案废弃。仅Metadata创建错误需要用户批准删除重建，普通字段仍官方CLI可改。
-- 唯一UI接口是root自己创建的隐藏Codex IAB，`visible:false`；禁止桌面、外部浏览器、可见页面及任何显示状态变化。用户现有UIUX／Pin表现受保护。
+- 产品判据以最新产品文档及后续用户口径为准，技术规格也接受审查；不扩充未来愿景。Snapshot Index保留原要求和历史失败。
+- Candidate来源为Notebook refs或Message Identity二选一；refs按Memory/Rule/Skill身份特化简述，不抄源正文。先结算实际交付覆盖来源、最后关闭Candidate，未交付和其它依赖保留。
+- S01/Q02及History分页文字按精确提案获批实施。PI21静默方案明确保持现状/列待决，不实施NO_REPLY新增句、过滤和新展示协议；无变化提醒仍可能汇报。
+- PI23三类模型偏差经用户确认不阻塞：错误归因；截断Search夸大完整Read/拼接原因；Noting补结果叙述却未补来源身份。原观察保留，不改通过、不外推K3，也不豁免真实Metadata或历史真实性。
+- PI24统一“NM Thread同步”。不一致自动新Thread，首条插件说明引用前一NM Thread及最后共同NM原生Message ID，仅保存分叉后缀、保留旧Thread。必要工程细化为祖先锚点注明真实所属Thread、无新后缀不创建空Thread，pending先落盘、未知写入只读核实。该细化已由独立审查按原判据接受，不冒称用户逐项指定内部实现。
+- 独立小工具本机/云端统一`~/scrips/nmem-memory.py`，不依赖Hermes。精确批准英文只替换Provider此前长句，其余提示不改、Skill方案废弃。创建一次携完整Metadata，其它操作官方CLI；只有创建Metadata错误需要用户批准删除重建，普通字段仍可编辑。
+- E04遵循最新消息代次决定有效分支，再筛选/分页/计数；显式审计和合法压缩仍保留。主会话原场景取证后，Astra按产品历史真实性判据复核接受；没有改数据writer/schema/UI表现或降低门禁。
+- 全程UI仅root隐藏Codex IAB，独立验收者审原件而非冒领亲操。用户既有UIUX、Pin和表现层dirty受保护。
 
 ## 3. 已完成与交付物
 
-- 既有F01可读覆盖、F02冻结父前缀、F03退休工具拒绝、output-cap、D01执行内核Profile隔离、Candidate契约、后台Turn完整输出与持久终态／冷恢复接线，均按当前同源证据及亲审范围接收，不重复大型套。
-- v4完整三仓固定集合SHA `27b624d059b2f17d7d1c7e33147a5da1048eef43544b92093517340759332afb`。Core HEAD `11d9e626…`、UI HEAD `7f0fea60…`、个人HEAD `55fb3aec…`均加未提交集成；最终提交和产物绑定尚待。个人插件依赖不进入公开核心。
-- 官方安装器已同步两Profile并安全重启仅backend53446/PID70121，反代53448/Caddy77413保持，原round3服务不动。5库在线备份完整性OK、旧消息/root/身份配置保持；正式加载在ignored `standalone-final-load/result.json`，不以文件存在代签完整模型出站文本。
-- 独立工具源码与安装SHA均 `256af367007db972d6f9ccf2164794d93ad6327d8942c4ead5d5400d9f3ed1a9`。标准Python、仓外cwd、无Hermes环境的help／preview和loopback apply已验。唯一POST携完整Metadata，按真实ID读回，unknown不自动重试。
-- 新B唯一真实模型apply创建Memory `64b1f9a0-369e-43ec-b464-d58edc3d39ff`；独立CLI／GET核正文／标题／唯一标签／Space准确，持久来源Metadata精确对应accepted原始消息。未代建／补写／第二创建，资源0。它是点名专用入口功能测试，不是自然路由证明；旧A和旧partial零修改，失败不改写。
-- A真实编辑导致正式同步新Thread仅3条：system接续说明＋编辑user＋新assistant；共同4条不重传、原生锚点正确、旧Thread6条身份／正文／时间指纹不变、pending清空。后续增量／再分叉／unknown依受控证据，未另加普通输入；A已正式close回执成功、自有运行资源0，History／同步账本保持。UI另案见第5节。
-- 云部署SOP已交付 [docs/cloud-deployment-sop.md](../../docs/cloud-deployment-sop.md)，含双SPA单backend、反代、官方PM、Profile／插件／独立工具、备份升级回滚；最终版本字段待提交收尾。它不代表Linux／Tunnel／TLS／Access已执行。
+固定三仓完整集合：ignored `delivery-snapshot-v5/snapshot-set.json`，SHA `272fbb072da400fe5119b87bbd742e366e3e2a6ab806e211554ebaa941f00c2a`。下列源码提交已自动push并显式核远端一致：
+
+| 对象 | 已接收源码定位 |
+|---|---|
+| Core | `0dc4232f597f0c36d070fd5eabd578366436fca3`，main |
+| 独立UI功能提交 | `652f487a536874e0405fae547941be36950cc144`，origin/secretary；实际验收含受保护表现层overlay，裸commit不是完整UI构建输入 |
+| 个人插件 | `3732f5503eccc0c97df0ea0238b140b9997e69df`，codex/round3-local-completion；不进入公开核心 |
+
+Secretary静态清单SHA `ac2ad3d842b0c37643588e66fb2618f68e8550e747355e153490e6658623373a`（439文件），Dashboard `cab847d3163f1916f956e033ee405b8cac7eecdd504f00eff1b45241c0922e4a`（67文件）；均为本机反代实际加载产物。UI源码不往云上传。
+
+- F01覆盖可读性、F02冻结前缀、F03退休工具拒绝、output-cap、D01执行内核Profile隔离、Candidate契约、全来源后台状态/持久终态/完整Timeline恢复均按对应版本正式路径证据接收。
+- B唯一真实模型apply创建Memory `64b1f9a0-369e-43ec-b464-d58edc3d39ff`，独立CLI和同ID GET确认正文/标签/Space及精确来源Metadata。实际请求root证实批准英文一次；旧A/partial对象未修写。这是点名入口功能测试，不是自然路由证明。
+- A实际编辑触发NM新Thread仅3条：接续system＋编辑user＋新assistant，共同4条不重传、旧6条不变。修后正式REST和冷页无旧批准/旧完成尾部，合法压缩/共同前缀/新UA保留；精确close后自有资源0。实际UI完整性没有被底层同步通过替代。
+- 单次v5 backend安全加载保留5库/身份/旧消息及静态产物。加载原始守卫失败、roster二级转录和pyc范围误报按原报告保留；不称首次无失败或运行内存反射。
+- 云部署入口：[部署SOP](../../docs/cloud-deployment-sop.md)。后续新增运维筹备另行接收：两个Home的28配置/插件文件指纹/权限已核；独立SQLite快照工具SHA `6d9d25bf78c526692dde70618f638b837be960e4fc6b134a80892a8a0852d237`，9不同真实SQLite节点通过，含WAL并发、一致离线恢复、半包/坏hash拒绝及坏输入不覆盖同步外current/previous已验槽。该运维增量个人提交`4d4a00e56316119ac2e66bc8ffe2c98ece64eaa5`已同步、工作区干净，既有Provider生产代码未变。复用同一Mutagen通道，未运行真实Home快照/同步；不冒称固定v5门禁覆盖新增运维代码。
 
 ## 4. Verification与Validation
 
-- 独立Astra/high先从固定原文建立30项v4全范围判据，再核三仓源码和同源正式证据；同次补核B真实创建与加载，E02关闭，E04前端历史一致性待查。B的request prelude、Session与持久root正文SHA一致，已证明精确批准句出现一次；不声称取得网络wire抓包。整体不签PASS。
-- 既有真实Main101029／Exam102871 tokens、约5秒自然联合Idle，双SOUL／Bundle、陌生NM目标实际CLI检索、600秒提醒及L09–L12冷态提醒／中途接入／Stop／断线恢复按同源范围复用。历史首次abort、旧source失败、静默输出和模型偏差均保留；不拿自动Recall零pointer称pointer驱动精读成功。
-- L10真实中断冷页面保留Thinking／成功工具／Interrupted详情，L12实际Caddy断线→同页恢复且不重发。两张L12 PNG均为恢复画面，断线依据AX／事件，不伪造截图；不声称backend crash实测。
-- 独立6.1 Validation六节计划已准备，待Verification通过和主会话release；root只做必要隐藏UI薄执行，验收者独立判定并如实标操作者。不会重复100k／600秒／全量或把已豁免模型观察重设门槛。
+[Verification](verification.md)固定v5段：全新Astra/high先独立提取25项全范围判据，再核固定三仓源码/正式接线/逐版本证据；最终§6.1独立核55件加载/原A冷显示原件关闭E04/ELOAD，**PASS**。没有代替Validation、运行新模型/UI或重复大型套。
+
+[Validation](validation.md)固定v5六节：独立6.1/high按15目标/18母场景核真实产品入口和89件指纹。复用同源双100k/5秒、原600秒跟进、B真实创建、A分叉及修后冷页、L09–12正常/中途接入/Stop/断线恢复；唯一新增FV02倾诉交流，一次普通输入、一模型请求、零工具/新增提醒或内容，直接回应交流意图。root隐藏IAB薄执行、验收者独立判定，精确close后资源0，**PASS**。
+
+两门禁没有声称全仓测试全绿、所有真实网络分支/长期质量/所有平台已验。L12只实停启Caddy、非backend crash，两PNG都是恢复视图，断线由AX/事件证明；FV02首个“live”采样实已final，不以它补签流式。完整结果与限制见原报告，历史失败不覆盖。Validation §6.1另对最终SOP/DP01–05及版本字段作集中只读文档delta核对通过，未增加产品动作；收尾提交后的本机服务绑定记录在ignored `final-service-binding.json`，不回改v5历史PID/证据。
 
 ## 5. 剩余、阻塞与影响
 
-- **E04待查：** A实际rewind编辑后canonical清洗6条、新NM Thread3条正确；正式REST include_compacted=true却返回已退出路径的旧批准和旧assistant（active=0/compacted=1），冷UI仍显示。需要区分合法压缩历史和退出分支尾部，最小修补正式History，不改用户表现层；完成原触发冷UI复验后再收口。
-- 独立门禁、最终范围内提交／自动同步、版本与静态产物绑定未完成。UI已有用户dirty须保护，不能整文件stage混入用户表现层。
-- PI-21静默明确待决、PI-23三类模型局限不阻塞。真实K3、云Linux／Tunnel／TLS／Access／手机、长期可靠性没有本次实测结论。自动Recall pointer首次精读／新refs自然模型分支未取得新增样本，不捏造已验。
-- 大型历史Python与UI检查中的失败按原版本和定向关闭证据解释，不宣传全量全绿；没有重新跑大型检查凑统计。
+本机PI01–26无剩余已知确定代码阻断。PI21静默待决、PI23三类模型局限按用户决定保留。自动Recall pointer首次精读、新refs型自然模型样本未取新增证据，不捏造已验；原历史Python大套非全绿，不改写统计。真实K3、云Linux/Tunnel/TLS/Access/手机/SSH Files及长期可靠性未验。
 
-## 6. 用户复核与继续条件
+后续部署尚未放行，属于用户要求的执行边界：两SOUL用户定案；正式模型/生产阈值/快照频率确认；alex/study UI别名提案落实/最终产物绑定；最后才上传、配置、启动并做云端实际验收。Pi原库已增量79条、总48会话/6065消息，Alex当前schema副本保持身份/来源；native resume发现历史cwd优先，新workspace正式迁移需按现成session.workspace.move执行，当前未改发布库。
 
-完成E04最小闭环和独立复核后，再执行独立Validation必要剩余场景，更新本简报、范围内提交及SOP版本字段。当前不宣称整体交付或部署就绪。用户可在本机反代查看真实B创建结果和A编辑后对话；旧Memory／NM Thread保留供核对。
+## 6. 用户复核建议与恢复条件
+
+先编辑本机两个唯一SOUL本体：`/Users/edgar/.hermes_profiles/Alex/SOUL.md`、`/Users/edgar/.hermes_profiles/study/SOUL.md`；定案后按SHA逐字交付，不再润色。部署采用两个物理Home、同一云端`~/workspace`，workspace与本机`~/Desktop/Alex`同步；配置/SOUL和数据库一致性快照复用Mutagen通道，活跃原始DB/WAL/SHM及其它运行态不双向覆盖。
+
+本机软件可复核现存53448入口、跨Profile侧栏和真实后台Timeline、A合法冷历史/新NM Thread及B带Metadata结果，无需新建Reminder/Memory或重跑100k。正式上云须用户定案放行后依SOP继续；本简报不代表已部署。

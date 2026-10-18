@@ -481,3 +481,146 @@ FV02精确正文：
 建议root审核的剩余实际动作只有：修后**原A冷UI零模型**复核；缺等价原件时**FV02纯交流最多1条**；同次必要owner/Files代表入口和精确资源回收，无新模型凑数。FV05重问、FV09新query、FV10第二次编辑/旧暂停Notice/晚到额外Turn、重复B创建均从执行集合删除。旧4条预算不扩用，所有未变大套0。若后续修补改变候选，按精确增量评估对应证据而非重开全套。
 
 最终仍需交给用户可复核的实际产品路径：两Profile与多Conversation归属；真实长Conversation后原话/纠正/未完成责任；唯一批准Memory真实正文/标签/来源（不公开私人正文）及用户当前已知模型边界；NM Thread正常增量和分叉接续、当前Timeline合法分支；后台任意接入/回收后完整结果；最新版部署SOP及云端未执行说明。长期帮助感、K3、手机/云端/SSH范围继续明确限制，最终目标完成判定归主会话。
+
+---
+
+# 最终候选 v5 · 独立 Validation 正式验收报告
+
+本段更新前述v3/v4准备时点的“未release／未执行／E04待关闭”状态，保留全部原失败、准备计划及复用限制。主会话已接受收窄清单并明确正式release；新独立Verification v5 §6.1已PASS，本验收者随后独立核同版本实际原件、作全范围用户结果判断，不以Verification结论代替本门禁。
+
+## 1. 结果概览
+
+**Validation PASS，限定固定v5、本轮产品意图及PI-01～26批准的当前范围。** 本轮必要实际路径均有真实入口结果或匹配的有效机制证据；E04当前分支历史显示缺陷关闭，唯一新增FV02纯交流符合输入意图，相关自有资源已回收。PI-21保持现状/待决的静默限制、PI-23明确不阻塞的三类模型偏差及未验平台继续显眼保留，不改记为相应能力通过。
+
+验收者`final_user_validation`独立提取全范围15目标/18母场景并完成前述计划、原件适用核查；不派生，不修改产品源码/测试/配置/人格。直接UI执行路由真实不可用，**所有实际UI均由root自己的隐藏Codex IAB visible:false薄执行，本验收者制定输入/预期，读取完整AX、raw及实际PNG后独立判定，非亲操**。已记录该角色边界，不拿API或模型自述替代用户可见结果。
+
+当前集合SHA256 **`272fbb072da400fe5119b87bbd742e366e3e2a6ab806e211554ebaa941f00c2a`**；Core `0dc4232f597f0c36d070fd5eabd578366436fca3`，UI `652f487a536874e0405fae547941be36950cc144`加受保护表现层overlay，个人Provider `3732f5503eccc0c97df0ea0238b140b9997e69df`。不能只用裸UI功能commit重建并声称等同被测完整树/静态产物。版本和实际加载、受保护UI完整性均纳入范围。
+
+本次独立结论只覆盖Mac本机、DeepSeek代理、53448同域双SPA及实际记录的代表路径；不是全仓所有测试绿、全未来愿景/长期良率、K3、手机触摸、Cloudflare Access/Tunnel/云端或Files SSH通过。软件验收结束与最终发布/交付元数据绑定分开；SOP最终源码/产物字段按root已说明的机械回填作窄只读复核，不重开产品旅程。
+
+## 2. 环境与准备
+
+| 项目 | 已核事实、准备及归因 |
+|---|---|
+| 固定清单 | 三仓manifest SHA分别`3c22055938139687ee40d77ce416938564b7b98c43252362e3ea6becc0fb2a40`、`d43fb844a31a20c0b088162ff5c32e14b2529f69f19996f5cae3adc5ecf8158b`、`837f8a90f5578c3e315ff5e392da420293453ead977338519dd78e2a86d0c2cb`，独立SHA核对。v4→v5全部文件条目比较：Core7件变化中唯一生产文件为`hermes_state_messages.py`，另1定向测试及5动态文档；UI零变化，个人仅CLAUDE变化。旧存储/压缩/工具/Scheduler真实证据保持原适用边界，显示读取变化由E04当前实测及定向正式机制补。 |
+| 实际加载 | `history-rewind-display-fix/load-v5/result.json` SHA`0c576016ba49dfe33378e28b98e8ad62feaf7b53d8819fe6cbe29599c3f17b11`；原backend70121→**8471**唯一启动，Caddy77413保持，仍53448 `/`和`/dashboard/`→53446单后端。正式dashboard/isolated/no-open命令，health/经反代WS101及正式只读调用成立。 |
+| 产物与原数据 | Secretary-dist-v3 439文件、Dashboard-dist-v3 67文件全部保持，清单SHA分别`ac2ad3d842b0c37643588e66fb2618f68e8550e747355e153490e6658623373a`、`cab847d3163f1916f956e033ee405b8cac7eecdd504f00eff1b45241c0922e4a`。5库online backup/integrity正常，旧messages/root/bindings保持；正式插件、两Profile配置/SOUL/政策/helper字节/权限保持。没有本验收者DB/API请求或服务控制。 |
+| 加载失败保留 | 根路径导航曾自动恢复A，初始guard阻断且未停启；root实际New Chat离页后才授权精确close并唯一加载。`before-active.json`续跑覆盖，初次roster只有明确二级转录，不假称原文件SHA恢复；close前新的正式owner回执仍在。第二次tester把原生HEAD变化清理5个exam旧pyc当正式安装漂移，原错误及差异保留；只读确认正式FILES/配置/静态产物未变，没有第二次重载/安装/恢复缓存。fresh import指纹是独立子进程，不声称运行中解释器反射。 |
+| 操作与预算 | 正式新增仅FV02一次普通输入、一次原生模型调用；root负责Send，目标Hermes实际响应，取证worker仅只读collect及获准精确close。本验收者模型/NM/API/UI/DB/服务操作全0。没有新增Memory/Reminder/Space/Skill/Rule、没有重复A编辑/冷UI、100k/600秒或大型套。 |
+| 保存与回收 | 原A E04冷UI owner33026cc0正式close=true，各自active/runtime/lease/compression/child/schedule/claim/pending均0，canonical/ledger保持；FV02 ownerc3d45386正式close=true同八类资源0。B此前owner不存在时guard不发送close、资源0的事实仍不同于这两次实际close，不混写。数据原文/Notebook/Memory/Thread保留，不关其他owner/旧round3/5173/5174/服务。 |
+| 屏幕约束 | 不调用浏览器/桌面/外部App，不打开可见页或面板，不用系统open/open_in_codex，不接管用户恢复页/旧Tab。root仅自己隐藏IAB薄执行；本验收者只离线查看已保存PNG，不产生显示控制变化。 |
+| 当前索引 | ignored `validation-final-v3/v5-final-independent-index.json`共89件本次指纹；包含加载52项、E04三项UI指纹及FV02清单24件逐项核对和本验收者的raw比较。v3旧131件、v4旧56件接收索引原样保留。对应离线核对器`v5-readonly-reception.py`、`v5-fv02-independent-reception.py`只读取既有文件，不触产品。指纹数量不是覆盖率。 |
+
+## 3. 用户目标与场景覆盖
+
+完整目标定义及权威来源沿前述FG01～15表，最新产品原文和明确用户口径优先；以下给当前判断及证据适用，不把“复用”偷换为本轮重做。
+
+| 目标与母场景 | 当前用户结果与判定 | 限制/例外 |
+|---|---|---|
+| FG01 通用身份/自然交流；FV01/02 | **通过**。Main/Exam实际SOUL/Bundle与具体帮助已接收；本次main真实纯倾诉回复保持交流，无任务化/保存/提醒，补足此前缺口。 | 一次交流不证明长期共情/人格良率；不以自称身份代签。 |
+| FG02 多空间/owner；FV01/03/12 | **通过当前适用范围**。双owner实际工具/全局侧栏切换及合法冷开有效；本次首页从exam选main仍保留跨Profile链接，实际新Conversation绑定main。 | 同ID/迟到/Pin精密项沿同版正式机制；不新开原生整套。 |
+| FG03 记忆与责任；FV04～06/08 | **通过当前连续性范围**。双真实100k、父压缩commit/child完成、同Conversation继续、纠正与未完成责任有真实原件；机制与v5匹配。 | 首次父aborted/driver恢复事实保留；PI-23错误归因等非阻塞观察不改成准确回答通过。 |
+| FG04 自动上下文管理；FV04/06 | **通过**。真实100k/5秒联合处理与后续使用、低阈值/打断/forced/晚到/非winner机制按原匹配证据接收。 | 不以手动compact/降阈值或新大套替代；未捕全Provider wire限制保留。 |
+| FG05 原始依据与合法历史；FV05/10 | **通过适用机制与当前合法呈现**。真实Search原句、Read/分页/同Profile跨域正式路径有效；E04修后原A完整AX/REST排除旧尾但保留合法压缩前缀/新UA。 | 旧模型摘录夸大/拼因果按PI-23保留，不补同题；不声称每次旧回答都Read过全文。 |
+| FG06 Notebook内容/权限；FV06～08 | **通过适用机制**。Main只读、Noting真实任务/四面可读范围、F01～03、35来源＋17provenance及旧10生命周期分版本接收，来源二选一/先源后Candidate保持。 | PI-23 Noting只补叙述未补身份的真实观察非阻塞，不写成身份已补；7天/72小时不缩时间伪验。 |
+| FG07 批准/真实交付；FV07/08 | **通过本轮必要实际创建链及配套机制**。B实际模型专用入口唯一apply、真实同ID独立CLI/GET准确正文/Space/标签/来源Metadata成立，PI-25/26执行有真实结果。 | B明确点名入口，非自然发现测试，也非B已完成全部Noting结算；旧A失败/partial不修写，后改/unknown/共享依赖沿正式机制分项，不伪制造所有NM网络故障。 |
+| FG08 NM上下文与召回；FV01/09 | **通过用户找回背景的实际代表链**。正确Bundle/Space、WM排除及陌生546字符实际自主CLI首次全文/忠实回答已接收，非已泄答案。 | 自动pointer实际0，positive-pointer首次精读未现场覆盖；不能冒称该路线成功，也不把整体Recall判失效或强迫内部路线命中再测。 |
+| FG09 行动连续性/适度主动；FV11/13 | **执行连续性通过；静默按用户待决**。真暖态及正式desktop冷恢复、647秒窗口、真实NM读/续排、Stop后续可用有实际原件。 | 暖态driver source=web及旧冷失败保留；无变化仍可能可读业务汇报属PI-21明确待决/延期，不计静默通过、不新建Reminder重试。 |
+| FG10 NM Thread同步；FV10/14 | **通过当前同步与自动分叉**。A真实编辑→插件首system旧Thread/最后共同NM原生Message ID→仅分叉后缀，旧远端不变，22项及raw对账成立；E04冷UI/最终资源已补足。 | 成功分叉不要求永久paused Notice；不能安全定位/unknown降级沿受控正式机制，不另造失败。后续再分叉等精密项非每项新实机。 |
+| FG11 后台任意接入；FV12/13 | **通过真实代表入口及完整恢复机制**。L09～L12覆盖在线首页、中途在跑工具接入、Stop、完成回收后冷开、真实断线同页恢复，身份/持久结果对账。 | root实操、非本验收者亲操；超ring按完整持久投影机制，不能说回放ring含全部早期delta。 |
+| FG12 流式/反馈/UIUX；FV12～15 | **通过本轮变化的实际代表链**。首Thinking Streaming、工具真实状态/终态、冷统计/全局运行和恢复均有root原件，UI表现overlay保护；E04不改变UI源。 | FV02的root-live已final，不用它替代L11首流式；单尾部PNG不代表所有像素/所有设备全验。 |
+| FG13 原生聊天/Files/兼容；FV03/10/15/16 | **接收本轮适用未变机制与实际代表入口**。owner/正式Send、原生Stop/rewind及冷恢复有实际结果；Files固定default/附件/关闭即原生/可选参数兼容按有效正式机制逐项映射，v5影响的History补原A。 | 不声称本次重跑Files完整导航、500MB传输、每IME/全部菜单或SSH/手机；未改相邻能力不新增整套门禁，原证据边界仍保留。 |
+| FG14 可部署交付；FV01/17 | **本机部署路径及SOP操作正文通过**。实际同源双SPA/HTTP/WS/单backend、产物/加载/备份保持有真实原件；SOP独立工具/官方PM/配置/访问/回滚步骤与批准契约一致。 | 云端未执行。SOP记录表及本机旧状态段待root按最终源码/产物机械回填，再窄只读核delta；不因填写字段再启产品/模型/测试。 |
+| FG15 帮助感与未来范围；FV18 | **本轮当前范围验收通过**。从真实输入、实际回复、连续性、获批写入与可观察执行反查目标，无剩余必须补测的当前缺口。 | 数月生活帮助感、K3/未来跨Profile委派等不被一次短验收证明，不增评分负担或概括写权。 |
+
+覆盖不是全部子项无条件通过：用户明确待决/非阻塞观察、未验平台与真实路径限制在本表及§5/6继续保留。删除重复场景是root过目接受后的执行收口，不能抹去旧失败或将没有发生的工具行为记为成功。
+
+## 4. 详细场景与执行结果
+
+### FV02 唯一新普通输入：真实交流、结果和后续状态
+
+root隐藏IAB Tab8从`/new?profile=exam-assistant`首页选择main，完整保留跨Profile列表，精确正文沿已批准机器清单，加既定完整测试前缀和实际准备T0/窗口后仅Send一次。实际URL：`http://127.0.0.1:53448/chat/20261018_234647_27a96e?profile=main-assistant`；Conv `conv_03317f785a28477faa29434e345b8c5c`，accepted UID `08ae88737e2c4fc3914156f67d6b1e80`，final UID `98ad43b47156472eaa6e31d6d76db693`。
+
+输入SHA`7dde42d9dbaf3dcb3867b7b9afc4f390f468b5e6a4f5fb4335b271255d2f14f6`；prepared T0为`2026-10-18T23:46:28.972698+08:00`，**原生持久user时间为`23:46:47.754118+08:00`**，差18.781420秒，均在声明10分钟窗口内。prepared稿的“本条发送时刻”不是抓到的prompt.submit ACK，不替代原生接纳时点；初次formatter TIME占位校验失败发生在产品发送前、无第二普通输入。
+
+实际正文仍为“今天被琐事打断，只想把烦躁说清楚，暂不计划/改作息；本次不保存、不建提醒、不自主跟进”的合成情境。完整回答首先说“那就先不聊计划”，随后区分琐事本身、被打断回不去状态及没做成原任务的落差，询问具体发生什么。独立判断：**回答承接交流目的，用探索问题延续对话，没有把探索固化为用户决定，没有给计划、默认编程或发起事务**。末尾“说细节，别总结”语气略有指令感，是本样本可观察风格限制，不构成本次意图偏离，也不声称一次样本已证明长期共情。
+
+原生持久canonical/physical恰为user＋assistant两行，一次Provider调用、tool_call_count0，实际final全文与`actual-final.txt`、终态complete、UI AX/PNG一致。本验收者完整读AX并实际查看`root-final.png`，看到独立Thinking卡、完整回答、idle及正常Composer；`root-sent-ax.txt`是发送中Cancel Send，`root-live-ax.txt`和`root-final-ax.txt`完全同hash，二者均已final，**不称捕获本次首流式**。首流式要求继续由L11原件支持。
+
+只读raw前后比较显示Notebook item/snapshot、Noting child/admission、Schedule、Pending Reminder全部不变。新增仅属于新Conversation的null pointer和idle bookkeeping各一条，不含内容条目，不是擅自建立计划或保存用户偏好。旧4条done排期及6条delivered见证保持，无新增业务或框架默认排期；main自动Thread同步关闭、本地NM receipt0。USER.md/MEMORY.md原不存在仍不存在，配置/SOUL/政策指纹不变。未额外请求远端NM GET，不能把本地零工具/零receipt说成远端逐对象全库审计。
+
+本次实际root由provider-neutral Context Prelude与规范化system_prompts绑定，SHA`9fe30b329b1868d084e17928916ce86c3815f838eb70a49a6d30f6e2347d4c5a`，含部署SOUL原文/Default Bundle/精确批准独立工具句，测试user前缀未插入root，cwd仍仓外，profile main/source desktop/DeepSeek原生custom。最初legacy sessions.system_prompt为NULL不等于无system prompt，后以实际Prelude及规范化绑定补证，无新模型。replay512条已truncated，预算判断基于完整持久两行及原生call统计，不称全Turn实时guard或全量event捕获。
+
+root实际click New Chat离页至`/new?profile=main-assistant`；获准worker精确close c3d45386一次，closed=true。before/after原始messages身份/投影、Notebook/Schedule tables、NM本地receipt及api/tool count保持；八类自有运行资源全0，无interrupt/其它owner close/服务动作。FV02结论：**通过**。24件清单指纹及24项本验收者raw核对均成立，详见`v5-final-independent-index.json`。
+
+### FV10/14/15 E04：只接收同版原A的一次修后冷UI，不重复操作
+
+v5实际修补限SessionDB显示读取：退出当前分支的UID最新退休代不能由旧compacted别名复活，同时合法压缩前缀仍显示。已只读接收正式定向负例及独立Verification机制判断，不重跑测试。加载包52件manifest与root三件UI原件指纹全部匹配；本验收者独立读raw及完整AX，并查看实际尾部PNG。
+
+原A REST返回17个展示节点，两退休UID各0，合法共同四条及新UA两条各1；与原真实`live-after-fork.private.json`的16条源identity/content逐项按原JSON hash口径比较全部一致。完整AX保持共同前四项、真实工具/Thinking、Compaction及新UA，旧批准/旧完成答复无残留；PNG只支持当前尾部，不冒称全长截图。实际URL为原exam A，New Chat离页原件确为`/new?profile=exam-assistant`，不再以根路径推断已离页。
+
+冷恢复owner33026cc0正式close=true；八类资源0，before/after bindings、canonical hash/16身份、receipts/thread_sync完全一致，身份也与原真实A分叉原件一致，没有新增ordinary/编辑/模型/NM操作。E04结论：**原缺陷关闭**；下层22项fork证据与上层当前合法History/用户可见结果已分别成立，不再要求旧成功分叉后永久暂停Notice。
+
+### 其余14母场景的实际路径与复用收束
+
+| 母场景 | 输入到结果的证据与当前处理 |
+|---|---|
+| FV01 | 两授权Profile实际SOUL/Bundle、D01两真实工具Turn、53448双SPA及v5加载；本次FV02真实root绑定补新实例身份，不发身份自述题。 |
+| FV03 | root首页main/exam/main全局列表、原owner冷打开与当前新main Send；同ID/迟到/Pin/草稿沿原正式机制，未新跑所有导航组合。 |
+| FV04 | 双100k真实阈值/5秒/父commit/child完成及后续交流；Main首次driver过早close父aborted/恢复、Exam准备driver与numpy失败均留存；不重新构造长上下文。 |
+| FV05 | 原Search原句/纠正实际结果＋Read/分页/跨Conversation正式机制；PI-23归因/截断夸大反例留存，原计划再问1题已取消。 |
+| FV06 | 原真实Noting task/工具/完整Framework及F01～03当前机制；23生产接缝匹配v3且到v5未变；新B不代签全部四面wire。 |
+| FV07 | B唯一真实模型调用独立创建入口，精确正文/标题/Space/标签/来源Metadata同ID独立CLI及GET已核；不重建旧A/partial，不称B是自然路由或完整三阶段整理旅程。 |
+| FV08 | 旧10生命周期/12child轨迹、当前35＋17来源契约分版本接收先源后Candidate/partial/unknown/后改/共享依赖；不造真实网络故障或追加Memory凑每种分支。 |
+| FV09 | 真实陌生全文自主CLI补读、正确Space/Bundle及WM排除；自动pointer0保留。无新query，不强制内部路线命中，不误称pointer首读现场通过。 |
+| FV11 | 真暖态/正式desktop647秒冷恢复/NM读/续排，保留driver source偏差及旧冷失败；安静反例按PI-21待决，不新Reminder/Prompt/过滤。 |
+| FV12 | L09在线首页Running/完成冷开、L10在跑工具首次接入、L11首Thinking Streaming、L12真实断线同页完整恢复；四接入时点与持久投影逐项映射。 |
+| FV13 | L10 Stop/interrupted持久和冷恢复、L12唯一接纳/新两行/旧14行关键字段不变/资源0，F04正式机制与当前源一致；不再次停启Caddy或发模型。 |
+| FV16 | Files固定default/原生附件/独立开关/关闭即原生/API兼容对应既有正式机制不变；本次不增加500MB、完整IME、SSH/手机实机，不假称这些本轮新传输已发生。 |
+| FV17 | 已完整只读SOP操作正文：官方PM构建、双dist、单dashboard后端/同源代理、Profile/仓外cwd、独立工具/精确授权、systemd/Access、备份/回滚及未验边界；版本/产物字段和旧本机状态段由root最终窄回填，不执行云端。 |
+| FV18 | 全范围从自然交流→长旅程/来源→精确批准外写→无人输入连续行动→前端任意接入和合法冷恢复逐目标反查；用真实输出和效果判断，不接受模型自评或场景数量通过率。 |
+
+其余14母场景及FV10/FV14/FV15共享E04以外的原有子项，其完整定义、原始SHA/版本边界与详细失败保留在前述v3/v4矩阵；没有把旧计划空状态当产品未具备，也不以新局部成功冲销旧事实。
+
+## 5. 问题、修复与复验
+
+| 问题 | 原触发及实际偏离 | 修复/当前结果 | 状态和边界 |
+|---|---|---|---|
+| E04/FV-P05 | A正式rewind编辑后，当前canonical已排除旧尾，但REST和cold UI旧compacted别名复活 | v5一个生产读取文件修补；正式负例/Verification支持；同原A一次cold UI＋17节点REST＋16源hash/ledger不变＋实际close资源0，独立接收 | **关闭**。不复做冷UI，不过滤全部compacted掩盖，不改UI/用户表现层。 |
+| ELOAD | 根路径恢复A导致guard阻断、首次roster文件后被覆盖；唯一重载后pyc被原生清理触发过宽tester断言 | root真实New Chat/精确close后单次70121→8471；正式保护/静态产物保持、WS/REST及资源证据成立；原失败/二级转录/cache范围保留 | **关闭当前加载问题**；不称首次无失败、原roster原SHA恢复或运行中内存反射。 |
+| FV02准备/取证边界 | raw body formatter TIME校验失败发生在发送前；prepared时间非实际接纳；root-live实为final；replay512截断；legacy prompt字段NULL | 实际只一条canonicaluser、一次Provider、final匹配；规范化root及真实Prelude支持；原生user时间分记；完整持久/表差异/close而非ring缺席证明零工具和零新增动作 | **不构成产品失败**，证据限制保留，无第二Send/模型补证，无首流式新声明。 |
+| 本验收者IAB | 唯一获准about:blank检查返回Browser is not available:iab | root自有隐藏IAB薄执行，验收者独立核完整AX/PNG/raw，归因明确 | **执行接口已合法补足**；不是本验收者亲操或外部浏览器替代，未再探路。 |
+| 旧A Metadata/partial | 旧真实写入来源附件缺失等历史失败 | B唯一新创建通过当前入口独立GET精确来源；旧对象原样未改/删/重建 | 旧失败不改通过，当前创建路径必要缺口已由新真实结果关闭。 |
+| PI-21安静性 | 无变化仍可能产生可读业务汇报 | 用户明确先保持现状、列待决；不实施NO_REPLY精确Prompt/过滤/静默完成提案，不继续碰运气重试 | **用户待决/延期限制**，不是静默通过或root擅豁免。 |
+| PI-23三类模型行为 | 用户假设错误归因；截断Search夸大完整核对/拼因果；Noting补叙述未补来源身份 | 用户明确三类不阻塞本轮，保留原实际观察，不加开发/重问/新整理样本 | **明确非阻塞观察**，不得扩大为Metadata持久化或当前History缺陷的豁免。 |
+| 历史全量与环境 | 旧Python大套非全绿、旧UI603P只属于当时版本，driver/source/依赖错误及未验平台仍在原报告 | 适用分支按独立Verification和本报告逐版本/路径核对；不重跑、不放宽规则/阈值/关闭检查 | 本PASS不宣称全仓/所有套全绿，不洗白原失败，云端/手机/K3/长期良率未验。 |
+
+没有新增仍待修的当前确定性阻断产品缺陷。PI-21/23的实际用户决定和环境范围在交付时仍需明确呈现；不得只显示“PASS”省略这些限制。
+
+## 6. 验收结论与推荐复核
+
+**本门禁结论为Validation PASS：固定v5及本轮已批准当前范围。** 判断基于独立全范围目标矩阵、已匹配的双100k/600秒/Noting/History/来源/原生机制，以及真实部署入口的B准确Metadata、A自动分叉＋修后合法冷页和唯一FV02交流结果。没有以零模型/模型自述替代必要真实结果，也没有为取得通过重做昂贵旅程或扩充写权。
+
+唯一新输入实际执行1/1；新Memory/Reminder/NM写/配置/人格/源码/服务动作0，FV05/FV09/重复A编辑/额外Notice核对/重复B创建均0。A与FV02精确正式close后资源全0；B此前不在active而未发送close的区别继续保留。全程UI由root隐藏IAB完成，本验收者只读判断，不冒领亲操。
+
+推荐用户最终复核少量已存在产物：53448首页两Profile旧Conversation共存及正确归属；原长Conversation的纠正与未完成责任；唯一批准B Memory的正文/标签/准确来源（不公开私人正文）；原A合法历史和新NM Thread接续说明/未重传共同前缀；L09～12后台状态及完整恢复；部署SOP。无需再为复核新建Reminder、Memory、100k旅程或追加评分。
+
+软件门禁完成不等于已经上云。SOP现有操作正文已核，root预告的最终源码/产物字段及“过渡产物/最终浏览器未验”旧状态段须随本次真实结果收束，交付时按机械文档delta窄核；不改执行语义、不重开UI/模型/大套。云端Access/Tunnel/Linux/systemd/手机/Files SSH、K3及数月帮助感继续列未验证；PI-21无变化业务汇报待决和PI-23模型行为观察继续显眼交付。最终目标结束/发布决定由主会话结合两门禁及交付文档负责。
+
+### 6.1 最终文档delta窄核与DP-01～05筹备边界（2026-10-19）
+
+**文档增量接收；固定v5 Validation PASS保持，不重开产品门禁。** 本次仅阅读当前Core CLAUDE、本轮plan/final-delivery/Snapshot Index和部署SOP，对照本报告v5原件结论与最新DP-01～05；另接收`deployment-preparation/result.md/result.json`及root亲审`root-reception.json`。只追加本段及ignored `validation-final-v3/doc-delta-reception.*`，未执行产品/模型/UI/API/NM/网络/服务/同步/定时器/测试/工具help，没有派生，没有读取用户SOUL/配置正文或真实数据库。
+
+当前SOP SHA256 **`cc8895eae428c4698d46ff18d35985c78974469db0ed2ba689c29ee1026d142a`**，与root最终接收指纹一致。原筹备`result.json`的SOP SHA `aa0b49a7…`属于root末次§8补充前版本；后续先将Pi本机隔离副本的alex原生owner/Web同参数resume/History消费事实写准，明确未构建模型、非正式库迁后/非云端结果；最后再将运维工具版本回填为已提交并同步的`4d4a00e56316119ac2e66bc8ffe2c98ece64eaa5`，现有Provider生产代码保持v5。中间SOP `a2a9b0bd…`已被最终元数据版替代，不误报旧清单损坏；旧SHA守卫在root回填时确曾停止一次，按明确新交接重核当前文档，没有产品操作。8份当前文档/接收报告指纹和对应检查落`doc-delta-reception.json`；未重算前89件原件、未复查273行helper实现或重跑9节点。28件静态配置/插件、源/安装helper SHA及9节点复用是**root亲审事实**，不是本验收者新实测。
+
+| 核查项 | 文档、命令顺序/参数及当前判断 |
+|---|---|
+| 固定v5事实与筹备分界 | 三commit、UI受保护overlay、439/67文件和两产物清单与本报告已验字段一致；固定v5两门禁PASS、PI-21待决/PI-23观察及未验平台清楚保留。Snapshot Index新增DP、plan§6、final-delivery及CLAUDE均明确新筹备不回改PI01～26门禁。SQLite工具明列v5之后运维筹备提交`4d4a00e5…`，现有Provider生产不变，UI alex/study图标/显示名仍是未应用提案，不能称现dist已含别名或新helper被v5覆盖。 |
+| DP-01 两SOUL、名称/图标 | 唯一本体为本机物理Alex/study各SOUL；用户编辑定案后逐字核SHA，不润色、覆盖、格式化或擅自chmod。Alex逻辑id规范化为alex、display_name保留Alex；图标别名提案需后续review/新构建绑定。本文不读取或证明用户最终SOUL字节。 |
+| DP-02 目录和前端产物 | Core `~/hermes-secretary`、物理`~/.hermes_profiles/{Alex,study}`和独立静态路径一致；云端PM按锁构建Core环境，两个前端仅交配套dist＋外置清单，不上传独立UI源码仓、不在云端npm构建，不复制本机venv/测试Home。官方Core仓内资源不被冒充另一份前端部署。 |
+| DP-03 共享workspace与原生owner | 单数`~/workspace`同时用于两Profile、default Files及服务WorkingDirectory，对应本机`~/Desktop/Alex`；不恢复旧workspaces布局。物理Home与逻辑控制根分开，`~/.hermes/profiles/alex -> ../../.hermes_profiles/Alex`及study软链相对层级相符；从控制根`HERMES_HOME="$HOME/.hermes"`加`-p alex dashboard --skip-build --isolated --no-open`启动唯一后端，未错误用物理Home当default或每Profile另起服务。 |
+| DP-04 同步与快照 | workspace/config的two-way-safe与快照云alpha→本机beta one-way-replica分开；config allowlist排除`.env`、rawDB/WAL/SHM、`.snapshots`和其它运行态，snapshot session只传已完成稳定包。未将用户批准“配置/SOUL同步”扩大为原始运行库双向覆盖。snapshot明确DB/static清单、同步根外staging、完成校验后同文件系统原子发布；接收verify/promote明确archive SHA/精确DB集合，known-good两槽在同步外，restore仅到不存在的新根；每库内部一致不冒称跨库/静态文件全局事务，实际网络差分未验。频率/精确DB集合等未定，无自动watcher/timer或已启Mutagen表述。 |
+| DP-05 Pi原库与正式cwd move | 原增量/兼容副本与本轮合成测试数据分开。文档明确旧sessions.cwd优先，不能只改terminal.cwd；共享目录及真实alex注册就绪、唯一后端空闲后，以`session.workspace.move`携`profile:alex`、精确stored `session_key`和云端绝对cwd逐个处理封存48会话，先核Ref/UID/源身份、后只读复核cwd/消息/root/binding，来源Mac cwd留`origin_json.imported_from.source_header.cwd`。不启动模型或resume原正式历史来凑结果，迁后再快照；本机隔离native消费不能代签已对发布Alex库执行move或云端owner已验。 |
+| 服务/验收顺序 | SOP为部署放行后的模板：先固定源码/静态产物、物理Home/原生注册和共享目录；原生单后端只读就绪后完成历史cwd move/对账，再恢复业务及授权的真实场景。systemd明确HOME/绝对路径且仍须补PATH/network/install目标/端口等定案，不声称当前模板已注册可直接开启。反代保留同源两SPA/两WS/单backend，Cloudflare由用户后续配置，不以本机成功替代公网/手机/Linux。 |
+
+未发现本次文档delta中与已批准产品契约冲突的确定性命令/参数错误；没有通过执行这些模板验证云端命令运行，也没有复审新增运维实现。当前SOP的版本/产物绑定及旧“最终本机浏览器未验”状态已收束，前述固定v5报告的SOP机械文档收尾项至此关闭。它不是新DP部署就绪/云端验收PASS：SOUL定案、生产模型/API/凭据/Noting参数、快照频率与实际DB清单、真实Linux服务/Mutagen匹配与传输、正式库迁后owner/cwd及新UI提案产物仍按文档列出的后续范围处理，当前均未激活。历史未验段保留原时点，不逐条回写。
