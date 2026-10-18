@@ -7,7 +7,7 @@
 | 用户需求 | 本索引§2逐条摘录当前用户指令；最终SOUL见ignored deployment-release-20261019/soul-final-manifest.private.json所列两原件 | 用户定案SOUL本轮不改，完整私人正文不入Git |
 | 权威规格 | docs/cloud-deployment-sop.md；docs/06-Hermes-Secretary-Web-UI-V1-Spec.md §0.7–0.8；docs/08-profile-scheduler-files-clarification.md | 二级，按本轮最新用户决定覆盖旧筹备状态，固定v5历史结论不回改 |
 | 编码指导 | AGENTS.md；个人仓AGENTS；UI仓AGENTS | 二级，显示/凭据/用户UI保护/原生兼容与既有检查不变 |
-| 会话确认 | 本索引§2 D01–D14 | 二级，后续明确用户变更追加，不冒称root推断为用户原话 |
+| 会话确认 | 本索引§2 D01–D15 | 二级，后续明确用户变更追加，不冒称root推断为用户原话 |
 
 ## 2. 口径与决策
 
@@ -28,5 +28,7 @@
 | D13 | 用户答复“每5分钟”，明确Mac离线不能使云端崩溃/无限积压日志，回传最终目标是本机两个Profile对应的state.db。源快照每300秒独立云本地执行、固定完成包；Mac上线经原Mutagen全包校验/两槽已验保护后原子更新各冷态DB，不把活库双向覆盖，配置SOUL不由快照回写；日志/状态有界。 |
 
 | D14 | 用户明确Access已配置并要求“先部署上，然后我直接看能不能访问”；先运行并接通服务，其余收尾不阻塞可访问入口。Mac匿名HTTPS已实得302→Cloudflare Access登录。旧Pi Mutagen可关闭清除但留最后清理；当前不动旧同步。 |
+
+| D15 | 用户最新结束目标：“完成部署工作，用当前已受信任的我的真实浏览器Edgarzhong那个Profile检查是否顺利访问到前端页面，然后，在主助手，使用DeepSeek模型，一个新conversation，让他做只读自查，确认部署成功，然后就可以完成清理，停下向我汇报了。” 本次窄授权受信任Chrome Profile（扩展显示Edgar）实际认证公网验收，不以SSH/IAB替代；保持不控制桌面/不系统open。Alex新Conversation仅只读，不写Memory/Thread/提醒/通知/文件/配置；不改变K3默认。自查与真实结果核定后精确清理旧Pi及自有测试资源，保留用户数据与新服务。 |
 
 数据库快照频率已由用户确认每5分钟，接收目标改为两个本机冷态state.db；新接收实现与真实离线/半包保护须本轮验证。公网Access已由用户配置，Mac匿名302跳转已证实；不修改其策略。正式DNS/Tunnel/系统服务/Mutagen在本轮部署授权内；保护现有服务及已有同步会话。固定v5产品两门禁作为不变接缝证据，不代签本轮云配置和新增代码。只有独立Verification用Astra/high，其余6.1/high，不派生子Agent。

@@ -8,11 +8,21 @@
 
 AC-01已确认：Candidate用Notebook refs或Message Identity，二选一禁止混用；refs按Memory/Rule/Skill身份特化简述，不复写源正文。AC-02同源分页及配套文字已确认。先处理真正交付覆盖来源，最后关闭Candidate，未交付部分保留。
 
-## 云部署已获放行（2026-10-19，执行中）
+## 最终公网验收与清理（用户最新目标，2026-10-19）
+
+当前目标：用用户当前受信任的真实浏览器Edgarzhong Profile检查公网前端，Alex新Conversation用DeepSeek严格只读自查，确认后清理旧同步/自有测试资源并停止汇报。**本次用户明确授权真实Chrome Profile，是此前仅隐藏IAB规则的此次窄例外；当前扩展仅有Chrome“Edgar”连接，沿其既有认证进入，无切桌面/原生App/系统open操作，不扩大为任意外部浏览器授权。** 之前本机v5和云部署阶段历史证据仍按当时边界保留。
+
+root实际通过该Chrome公网`hermes.edgarzhong.fyi`进入首页、加载会话列表和连接WS；Dashboard公网也已加载50会话/6087消息统计，未请求OTP。Alex新Conversation `20261019_020701_6a255b`选择deepseek-flash，高思考，已完成只读自查：7次API/12次工具调用，terminal/nmem status/doctor与公开网页替代抓取正常，收到NM Context Bundle；20条历史/12条工具结果保留。Profile配置仍kimi-coding/k3-256k/high/262144，离开自查页后New Chat实际恢复K3/high。仅本次自有Runtime `d62ee84e`已正式close，资源0/lease0；两自有Chrome页已关闭，原用户三页保持。
+
+两项6.1/high只读诊断与最终清理整包已root亲审，无在途子任务。Kimi Search/Fetch实际408/403/404失败；换公开目标、直连/既有代理均408，不能确定鉴权/策略/额度细因，不猜改Key/接口/代理。该轮NM自动召回真实超过默认2秒预算；同环境一次官方CLI搜索0.562秒成功，仅证明当前路径可用，不抹去超时或承诺召回质量。未改Core/Prompt/SOUL/业务配置或重启服务，未写Memory/Thread/提醒/通知。
+
+**最终清理已执行：** 用户最新D15要求公网/DS自查后清理；旧Pi五条同步已备份配置并仅按精确ID终止，新三条保持，未删用户目录/数据或重启daemon。先前“待workspace通过后清理”是Agent计划，已按用户最新结束顺序调整，不增加审批门禁。root最终只读复核：config与snapshot均watching；workspace仍scanning、两端scanned=false，Desktop隐私授权仍待用户操作，禁止代点/绕过。自有workspace marker待放行后双向验证/精确删除，完整同步目标未完成，不宣称全轮PASS。新证据位于ignored `deployment-release-20261019/final-acceptance-20261019/`；独立门禁报告保留原审查时点结论，不由root改签。
+
+## 云部署已运行（2026-10-19，里程碑与边界）
 
 **最新优先级（用户2026-10-19）：先部署并运行云端服务，用户直接访问；同步收尾及门禁报告不挡已授权服务启动。Access已由用户完成配置，Mac匿名实测302至Cloudflare Access登录路径。旧Pi Mutagen允许关闭清除，但明确留到最后清理，不与上线争用。**
 
-**入口已运行：** 云唯一backend PID3015797监听53446、专属Caddy PID3017385监听53448；公网Host经反代两SPA及health返回200，Tunnel业务route已接通。可访问`https://hermes.edgarzhong.fyi/`与`/dashboard/`，已告知用户直接验收。Alex48会话/6065消息逐项原生workspace.move完成，旧身份/原文/来源不变；study原生空库0/0。其余云服务保持；同步仍待实现整包root审阅/激活，模型/MCP只读核查继续，不能把当前入口可用扩大为整轮交付通过。实际入口/初始数据里程碑见ignored cloud-deployment交回与云`~/.local/state/hermes-secretary/deployment/{entry-ready,initial-data-cwd-ready}.json`。
+**入口已运行：** 云唯一backend PID3015797监听53446、专属Caddy PID3017385监听53448；公网Host经反代两SPA及health返回200，Tunnel业务route已接通。可访问`https://hermes.edgarzhong.fyi/`与`/dashboard/`。Alex初始48会话/6065消息逐项原生workspace.move完成，旧身份/原文/来源不变；study原生空库0/0。其余云服务保持；同步实装已root审阅/激活，config/snapshot已闭环，workspace独立等待TCC。最终真实公网与DS结果见上节，不把入口可用扩大为整轮交付通过。实际入口/初始数据里程碑见ignored cloud-deployment交回与云`~/.local/state/hermes-secretary/deployment/{entry-ready,initial-data-cwd-ready}.json`。
 
 **真实云端短验收已通过：** root隐藏IAB经专属SSH转发进入实际云反代，Alex显示k3-256k/high，切study仍保留48历史链接且无默认模型。唯一新测试Conversation `20261019_013755_07e1d7`实际返回“连接成功”，云正式API1次、17824输入/34输出、0工具，idle完成；测试页已离开至New Chat，指定云Agent仅回收此自有Runtime、保留历史。两MCP initialize/tools/list成功，kimi_search/kimi_fetch/notify可见。原生自动元数据256000兜底按正式目录事实补齐Alex context_length=262144，原生API热合并、PID不变，不改型号或Provider。以上不代签未完成DB回传或整轮独立门禁。
 
@@ -22,9 +32,9 @@ AC-01已确认：Candidate用Notebook refs或Message Identity，二选一禁止�
 
 最新明确口径：保留`thread_sync_space`功能，但study当前不设覆盖，NM Thread仍同步自己的考研Space；study不设默认模型，也不配置新增Idle节省参数。Alex用原生Kimi Code套餐Provider，复用云端现有Key；默认必须为**独立K3-256k型号**（官方模型目录已核实ID `k3-256k`），不是K3加上下文覆盖；thinking High。Alex开启联合Idle Compact+Noting，空闲500秒、阈值128K（按窗口单位131072 tokens落值）。DeepSeek作为Alex可选模型、非默认，用户明确允许本机DS Key上云。Alex复用云端已有MCP，至少Kimi Search/Fetch和飞书Notifier；只接入/探测，不因此发送通知。
 
-并行：`cloud_deployment_preflight`执行真实云部署、PM/Homes/模型/MCP/历史workspace及新入口；`deployment_ui_alias_build`窄补alex/study现图标和显示名、保护用户表现层并只交静态产物；`study_thread_space_split`受审21节点源码已接收，安装新study插件且保持自身Space，再授权个人提交。Root负责最终源/产物/权限/依赖与SOUL精确字节核对及实际访问；同步Agent单独实现并核接收端，SOP由文档Agent收敛。SSH整链用任务隔离sandbox禁启动open/浏览器等；所有界面验收仍仅隐藏IAB，不动屏幕。
+上述部署、UI、Provider及同步委派均已整包接收；无新增实现任务。Root已核源/产物/权限/依赖与SOUL精确字节，最终公网验收使用上节用户D15窄授权的真实Chrome；此前各阶段隐藏IAB证据按原边界保留。SSH整链保持任务隔离sandbox，禁止启动open/浏览器等。
 
-**当前唯一需用户操作的同步阻塞：** macOS `tccd` 确认Mutagen daemon PID647请求 `kTCCServiceSystemPolicyDesktopFolder`，`~/Desktop/Alex` 初始扫描等待Desktop隐私授权。已async请用户亲自允许，未获答复不得视为批准；不得代点UI、绕TCC或自行改路径。云站/配置/数据库回传不受影响。待放行后只接续workspace `sync_Svc6Epz265hHktU7CcFUR0jE3TPl61MsUGjNWLRyvvA`，将自有marker `.hermes-sync-proof-0a0b0a1561054222b76dd9ab8330bc78` 做双向并清自己文件，再按精确旧Pi IDs最后清理。当前没有整轮完成声明。
+**当前唯一需用户操作的同步阻塞：** macOS `tccd` 确认Mutagen daemon PID647请求 `kTCCServiceSystemPolicyDesktopFolder`，`~/Desktop/Alex` 初始扫描等待Desktop隐私授权。已async请用户亲自允许，未获答复不得视为批准；不得代点UI、绕TCC或自行改路径。云站/配置/数据库回传不受影响。待放行后只接续workspace `sync_Svc6Epz265hHktU7CcFUR0jE3TPl61MsUGjNWLRyvvA`，将自有marker `.hermes-sync-proof-0a0b0a1561054222b76dd9ab8330bc78` 做双向并清自己文件；旧Pi五条已按最新D15最终清理，不再重复操作。当前没有整轮完成声明。
 
 **冷UI新增证据：** 原Pi043冷Timeline可读、Files实际workspace空目录、Back精确原route/owner；study→Alex列表均49（48原历史+唯一测试），study无默认，Alex恢复k3-256k/high，截图/AX在ignored browser/validation-*。只读旧Pi `20261011_223117_07a84a`仍有idle Runtime `4edf8b55`、running=false/lease0/compression lock0，原8消息不变；不能证明仅root持有，未close旧用户会话。与已close的自有K3测试区分，不冒称全局Runtime0。
 
@@ -33,10 +43,10 @@ AC-01已确认：Candidate用Notebook refs或Message Identity，二选一禁止�
 | 工作 / Owner | 状态与剩余 |
 |---|---|
 | 云运行 / cloud_deployment_preflight | 整包已root亲审：官方PM rc0/锁/单进程回环绑定、原48/6065迁移、MCP/双SPA/两WS/实际K3均已证；唯一新测试Runtime正式close资源0，服务active/enabled持续运行 |
-| 同步 / study_thread_space_split | 实装整包已root亲审：892c6bf2（实现5c7fad17）、两端helper8e1ecc2d；config8文件双向与snapshot1ZIP单向watching，云300秒timer和Mac300秒/到件receiver已真实落三库、逐表/完整SHA相等，隔离暂停/恢复追上通过。workspace WAITING_TCC，须用户手动允许Desktop；旧Pi五session不动，留最后 |
+| 同步 / study_thread_space_split | 整包已接收：config8文件双向与snapshot1ZIP单向watching，云/Mac300秒周期已真实落三库；最新发布/接收包SHA8f97164a…6e1c13一致，断传代表恢复通过。workspace WAITING_TCC；旧Pi五session已最后精确清理，新三条保持 |
 | Verification / cloud_release_verification Astra/high | 最终独立复审12条符合，D13实装已关闭，仅D02 workspace TCC与D11公网登录后缺证；未发现需要扩开发的确定源码缺陷，不签全轮PASS，不挡运行 |
 | Validation / cloud_release_validation 6.1/high | 独立12目标/12场景、56份原件，接受只读Pi冷Timeline/Files返回/Profile往返和实际三库回传/断传恢复；workspace TCC和公网登录后未验保留，study无会话故侧栏图标未实证；门禁未关闭 |
-| 集成 / root | 已亲审SOP、UI/Provider/DB/同步实装及两份最终独立报告；六节final-delivery交接准确标未完，等待用户Desktop授权后仅接续workspace及旧Pi最后清理；自有隐藏页/SSH转发已关闭，云持续运行 |
+| 集成 / root | 已亲审SOP/实装/独立报告与D15新增真实公网、DS、清理证据；当前公网缺证已由root实测补齐，独立报告保留原时点。自有页/SSH转发/测试Runtime已清，云持续运行；仅待Desktop授权接续workspace，Kimi业务失败及单次NM超时准确交接，不宣称全轮PASS |
 
 ## 历史：部署筹备等待阶段（已由上节放行覆盖）
 

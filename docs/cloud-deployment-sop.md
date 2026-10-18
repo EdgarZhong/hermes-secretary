@@ -128,6 +128,8 @@ NM 客户端复用云主机官方配置，不复制 Mac 全局 NM 凭据，不�
 
 Alex 复用云 Pi 既有 `kimi-tools` 与 `feishu-notifier` 的 command / args / env 语义并转换为原生 `mcp_servers` 配置；检查实际 tools list 至少含 Kimi Search / Fetch 和 Notifier。只接入 / 探测，不因此发送飞书消息。凭据云内复用；DeepSeek Key 仅按已授权路径安全落地，不能随配置双向同步。
 
+协议发现与真实业务分别验收。D15真实模型调用暴露Kimi Search/Fetch的408/403/404失败，换公开目标及直连/现有代理均408；当前不把握手通过写成业务可用，也不凭通用HTTP错误盲改Key、端点或代理。NM Context Bundle/status正常与自动Recall为不同请求：本轮Recall默认2秒超时，后续同环境一次官方CLI查询0.562秒成功，保留该次降级事实，不据单次观察擅改预算。
+
 ## 4. Mutagen 方向与旧 Pi 清理顺序
 
 使用项目级配置，不覆盖 `~/.mutagen.yml`，不添加 setup / teardown 隐式命令。先核本机现有 sessions、端点、全局合并影响及范围重叠，必要时显式 `--no-global-configuration`。实际配置本体为`~/dotfiles/hermes-secretary-sync/`，链接`~/.config/hermes-secretary-sync/mutagen.yml`；SSH专属Host为`hermes-secretary-sync`。三lane名称固定如下，精确ID/安装SHA在本轮ignored `sync/activation/installation-and-commit.json`；不要猜ID或执行全局terminate。
@@ -142,7 +144,7 @@ Alex 复用云 Pi 既有 `kimi-tools` 与 `feishu-notifier` 的 command / args /
 
 **当前实装边界：** 配置lane实际8文件与snapshot lane实际1文件均watching无冲突；SOUL只核冻结SHA，六非SOUL配置预对齐只改变两config.yaml字节，无.env/云秘密回传。workspace lane仍等待macOS Desktop隐私授权；由用户手动允许Mutagen访问Desktop，Agent禁止代点或绕过TCC，也不自行换目录。放行后须完成自有marker双向/删除对账，不能把初始扫描或scratch通过写成正式workspace通过。
 
-**旧 Pi Mutagen 的关闭与清理必须最后执行。** 用户已允许清理，但先完成新云服务、共享 workspace、配置同步、有效快照回传和本机冷库对账，记录新旧 session ID / 端点后，只对确认属于旧 Pi 的精确 session 操作；不动其它同步、SSH、NM 或 OpenClaw 服务，不用清旧会话解决新链路故障。
+**旧 Pi Mutagen 的关闭与清理必须最后执行。** 用户最新D15明确真实公网访问、DeepSeek只读自查后清理并汇报；完成该顺序后，五条已核旧Pi session已备份配置并按精确ID暂停/终止，新三条保留，未删用户目录/数据或重启daemon。此前“待全部workspace往返后清理”是Agent计划，已按最新顺序调整；不重复清理。workspace的Desktop TCC仍单独待放行，不用清旧会话解决新链路故障。恢复配置/精确ID收据保存在受限`final-acceptance-20261019/ops/`，不动其它同步、SSH、NM或OpenClaw服务。
 
 ## 5. 每 5 分钟 SQLite 快照与本机冷库
 
@@ -263,6 +265,8 @@ Caddy 仅回环，Host 改回 backend、删除 Origin；不剥 `/dashboard`，�
 
 UI **仅由主会话通过自己创建的 Codex 隐藏 IAB（`iab`、`visible:false`）验收**，不使用桌面、外部浏览器、可见页、open / open_in_codex 或任何显示 / 焦点变化；没有合规接口就记未验。登录后入口未验、手机未验等按实际记录，不能从接口或匿名 302 推成 UI PASS。
 
+**本轮D15窄例外：** 用户明确指定其当前受信任Edgarzhong浏览器Profile进行最终公网验收，root仅沿既有Chrome扩展连接（名称Edgar）认证访问双SPA；真实完成Secretary发送/流式/终态及Dashboard会话数据/API加载，无OTP和桌面/原生App/系统open。仅关闭自己创建的两页，原用户三页保留。该次结果不扩大今后默认浏览器权限，也不从Dashboard数据加载推断另有原始WS握手抓包证据。
+
 只做本轮必要少量合成模型 / Reminder 场景并精确回收自有资源，复用固定 v5 不变接缝证据，不重跑旧 100k / 600 秒 / Memory 创建旅程或昂贵套。真实 Thinking / 工具 / 终态缺覆盖时如实记录；NO_REPLY 仍按用户决定保持未实施，不借部署改变权限或静默政策。先让正确配置的服务可用；文档待绑定字段和非阻断历史观察不作为停服理由，真实数据 / 凭据 / 访问保护问题则按事实处理。
 
-升级前固定版本 / 产物 / 配置 / SOUL 指纹和可恢复快照。等活动 Turn / Noting 结束，安全停唯一 backend、保留数据，在 `/root/hermes-secretary` 核固定版本 / lock / PM 环境后启服务；不在活 Turn 中 git pull 或替换解释器。失败保留新写入 / 日志 / 原库，schema 兼容时恢复配套源码＋dist；不兼容先核恢复点再离线恢复，不清空 Home、不用 Mac 旧库自动覆盖。旧 Pi Mutagen 清理仍是全部新链路确认后的最后一步。
+升级前固定版本 / 产物 / 配置 / SOUL 指纹和可恢复快照。等活动 Turn / Noting 结束，安全停唯一 backend、保留数据，在 `/root/hermes-secretary` 核固定版本 / lock / PM 环境后启服务；不在活 Turn 中 git pull 或替换解释器。失败保留新写入 / 日志 / 原库，schema 兼容时恢复配套源码＋dist；不兼容先核恢复点再离线恢复，不清空 Home、不用 Mac 旧库自动覆盖。旧 Pi Mutagen 已按§4/D15最后精确清理；剩余workspace权限和自有marker验证按现有lane接续。
