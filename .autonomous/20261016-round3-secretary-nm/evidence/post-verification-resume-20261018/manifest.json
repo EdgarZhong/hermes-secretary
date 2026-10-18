@@ -61,7 +61,7 @@
     "evidence-health/health.log": "9dd08aa9868f5bd9fe49298b5f188eb07923401f1de2383ac5425e4ed32b7733",
     "evidence-health/source-preservation.json": "b0132fcdabd9ed1afb232f57753c4d94a23632230f0a33393442c152807243b7",
     "evidence-health/health.json": "4647e558c06f80331a159a3c5286a419a978378f10b111c82960809438a6ea52",
-    "completion/native-wire.json": "7074e969380ccb5a4379dafd1b71b3d4f1e61448de839b0fd28ba5a261ba3fba"
+    "completion/native-wire.json": "d6530bee63b7e4b2593d8f1511014680e575360b2e8cefc8c8f877d6fb70bc31"
   },
   "source_sha256": {
     "backend/secretary/noting_child.py": "ef736db0b15422322549077698fc9a4a69f81928d26b53ed752014af1d8f807c",
@@ -77,5 +77,7 @@
     "frontend/src/core/schedule-time.ts": "54694ec740da51a74de44042d03b3a643ad7f4208bc6072916bc24c482d9515a",
     "frontend/src/design/indicators.tsx": "d023d36311bf38d01414599c0c2cf207cc81b4bdf8b896fbaeabbdea4f4ec46f"
   },
-  "frontend_commit": "7f0fea60463c6731f8e04a00db923d28b80ade19"
+  "frontend_commit": "7f0fea60463c6731f8e04a00db923d28b80ade19",
+  "native_wire_origin": "actual formal child/Gateway output; used as transport input for frontend RED and subsequent GREEN, synthetic isolated test data",
+  "backend_fix_commit": "d58cd3e5b8"
 }
