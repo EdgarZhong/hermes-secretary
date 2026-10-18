@@ -1,5 +1,5 @@
-"""Session-persistent Python kernels for execute_code: one child per (owner, mode,
-interpreter, cwd, tool-set), one code cell per call, state survives across calls.
+"""Session-persistent Python kernels for execute_code: one child per (profile, owner,
+mode, interpreter, cwd, tool-set), one code cell per call, state survives across calls.
 
 Constraints, in order: (1) SAME security envelope as per-call (``_build_child_env``
 scrubbing, ``_rpc_server_loop`` token + per-cell tool budget, ANSI strip + secret
@@ -368,13 +368,15 @@ class KernelRegistry:
         self.kernels: Dict[Tuple, Any] = {}
         self.lock, self._teardown = threading.Lock(), teardown
 
-    def shutdown(self, owner: Optional[str] = None, *, owner_matches: Optional[Callable[[str], bool]] = None) -> None:
+    def shutdown(self, owner: Optional[str] = None, *, owner_matches: Optional[Callable[[str], bool]] = None,
+                 key_matches: Optional[Callable[[Tuple], bool]] = None) -> None:
         """Tear down every kernel, every kernel one owner (key[0]) holds, or every kernel whose owner
-        satisfies ``owner_matches``."""
+        satisfies ``owner_matches``, restricted by ``key_matches`` when supplied."""
         with self.lock:
             doomed = [self.kernels.pop(key) for key in list(self.kernels)
-                      if (owner is None and owner_matches is None) or key[0] == owner
-                      or (owner_matches is not None and owner_matches(key[0]))]
+                      if (key_matches is None or key_matches(key))
+                      and ((owner is None and owner_matches is None) or key[0] == owner
+                           or (owner_matches is not None and owner_matches(key[0])))]
         for kernel in doomed:
             self._teardown(kernel)
 
@@ -444,14 +446,21 @@ def shutdown_all_kernels() -> None:
     _REGISTRY.shutdown()
 
 
+def _current_profile_kernel_matcher() -> Callable[[Tuple], bool]:
+    """Capture the calling profile before teardown runs outside the registry lock."""
+    from hermes_constants import hermes_home_key
+    profile_key = hermes_home_key()
+    return lambda key: key[-1] == profile_key
+
+
 def shutdown_kernels_for_owner(owner: str) -> None:
-    """Dispose every kernel a session owns — wired into ``tools.approval.clear_session``
+    """Dispose a session's kernels in the calling profile — wired into ``tools.approval.clear_session``
     so kernels die at the same boundary that clears approval/yolo state (/new, session close).
 
     See #88637.
     """
     if owner:
-        _REGISTRY.shutdown(owner)
+        _REGISTRY.shutdown(owner, key_matches=_current_profile_kernel_matcher())
 
 
 def delegated_child_owner_matcher(child_session_id: str) -> Callable[[str], bool]:
@@ -469,7 +478,7 @@ def shutdown_kernels_for_delegated_child(child_session_id: str) -> None:
     if not child_session_id:
         return
     matcher = delegated_child_owner_matcher(child_session_id)
-    _REGISTRY.shutdown(owner_matches=matcher)
+    _REGISTRY.shutdown(owner_matches=matcher, key_matches=_current_profile_kernel_matcher())
     from tools.code_kernel_remote import shutdown_remote_kernels_where
     shutdown_remote_kernels_where(matcher)
 
@@ -610,9 +619,11 @@ def _parent_process_handle(child_env: Dict[str, str]):
 
 def _spawn(kernel: SessionKernel, *, child_python: str, child_cwd: str,
            sandbox_tools: frozenset, max_tool_calls: int, task_id: str = "") -> None:
+    from hermes_constants import get_scratch_dir
     from tools.code_execution_env import _build_child_env
     from tools.code_execution_tool import generate_hermes_tools_module
-    kernel.tmpdir = tempfile.mkdtemp(prefix="hermes_kernel_")
+    # tempfile's cached default belongs to the launch profile, not this calling context.
+    kernel.tmpdir = tempfile.mkdtemp(prefix="hermes_kernel_", dir=get_scratch_dir())
     kernel.rpc_token = secrets.token_urlsafe(32)
     kernel.sentinel = "@@HERMES-KERNEL-" + secrets.token_urlsafe(16) + "@@"
     rpc_endpoint = _bind_rpc_socket(kernel)
@@ -851,9 +862,11 @@ def execute_in_session_kernel(
     code: str, *, task_id: str, mode: str, child_python: str, child_cwd: str,
     sandbox_tools: frozenset, timeout: int, max_tool_calls: int, reset: bool, is_interrupted,
 ) -> str:
-    """Run one cell in the (owner, mode, python, cwd, tools) session kernel. The owner is the
+    """Run one cell in the (owner, mode, python, cwd, tools, profile) session kernel. The owner is the
     session key (``_resolve_owner``), not the per-turn task id, so state survives across turns."""
-    key = (_resolve_owner(task_id) or "", mode, child_python, child_cwd, tuple(sorted(sandbox_tools)))
+    from hermes_constants import hermes_home_key
+    key = (_resolve_owner(task_id) or "", mode, child_python, child_cwd,
+           tuple(sorted(sandbox_tools)), hermes_home_key())
     exec_start = time.monotonic()
     from agent.delegation_context import is_delegated_child_context
     kernel, state_reset = _acquire_kernel(key, reset, pinned=is_delegated_child_context())

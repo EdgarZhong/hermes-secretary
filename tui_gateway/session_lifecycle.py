@@ -441,7 +441,7 @@ def _finalize_session(session: dict | None, end_reason: str = "tui_close") -> No
     # interpreter until kernel_idle_timeout. Only when the TUI owns the lifecycle: a viewer tab over a
     # gateway-owned session must not kill the gateway's kernels.
     if _tui_owns_lifecycle and session_key:
-        with contextlib.suppress(Exception):
+        with contextlib.suppress(Exception), _session_profile_runtime_scope(session, hydrate_secrets=False):
             from tools.approval import clear_session
             clear_session(str(session_key))
     # A session's in-flight background memory/skill review ends WITH the session too (#102895): the

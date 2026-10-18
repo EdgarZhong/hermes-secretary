@@ -35,6 +35,8 @@ _SECRET_SUBSTRINGS = ("KEY", "TOKEN", "SECRET", "PASSWORD", "CREDENTIAL", "PASSW
 # while still inheriting HERMES_HOME.
 _HERMES_CHILD_ALLOWED = frozenset({
     "HERMES_HOME", "HERMES_PROFILE", "HERMES_CONFIG", "HERMES_ENV", "HERMES_DELEGATED_CHILD_CONTEXT",
+    # Retain ownership of Hermes-exported temp vars so routed children can re-home them.
+    "HERMES_SCRATCH_DIR",
 })
 
 # Windows-only: without these the CRT itself fails — socket.socket() raises
