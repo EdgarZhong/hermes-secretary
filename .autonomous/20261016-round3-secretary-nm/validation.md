@@ -211,6 +211,14 @@ root接收创建分支修补并确认重装后执行：无ACK首批改为普通i
 
 结论：**VP-01的本次真实普通Main首批补归档→同Thread后续增量→回收后不重复场景通过，原失败整改取得正式关闭证据。** Thread实际ID及完整数据只留ignored，两个Thread-show原始证据文件权限0600；公开报告不展开正文。未复测Cron/未知ACK/网络丢ACK/跨端点竞争等其它分支，不把此成功扩大为长期exactly-once或全轮通过。VP-02提案/来源传递行为缺口、VP-03自述偏差及VP-05待澄清体验观察保持。
 
+### 5.3 NM实际注入与精读证据澄清（只读追核）
+
+复用§5.1的真实运行快照并以当前`state.db`只读核对，未发新模型/NM请求、未重启或研究实现。两Profile实际已调用会话均由`system_prompt_hash`关联到非空NM指导与Context Bundle；正文哈希与绑定键一致，当前DB仍匹配。main/exam的Bundle分别为2,993/2,986字符，包含真实身份与规则正文、正确Active Space；Working Memory仅38字符的omitted占位，无Working Memory正文。此为实际持久模型上下文证据，区别于环境报告仅证明客户端Bundle读取成功；未抓取线上HTTP请求。脱敏定位、指纹与计数见ignored `evidence/nm-injection-audit.json`。
+
+三个正式Recall样本自动pointer数依次为main **0**、exam **0**、exam **1**，均无unavailable；成功空结果不等于找到了相关Memory。main在空召回后主动检索，并从search结果取出546字符正文；exam首Turn手动search回传57字符合成Memory全文，与首轮实际`m show`正文一致。第二exam Turn虽实际注入该Memory的pointer，却没有新工具调用，不能说这次pointer触发了重新精读；前一Turn全文已在上下文。三个样本均未新调用`m show`；首轮另有明确show回读，两类证据分记。
+
+这次追核只确认历史测试SOUL下的既有上下文；root后续部署SOUL变更不由此证据代签。原失败、VP-02缺口及整体NOT PASS均不改写。
+
 ## 6. 验收结论与推荐复核
 
 **最新判定（第二次定向复验后）：Validation仍NOT PASS，剩余明确行为缺口为VP-02。** VP-01首批22条→同Thread后续24条、receipt/正文/身份与回收后不重复均取得真实证据；VP-04沿用5秒预算下三个正式Turn成功证据，不重跑。VP-02来源传递/提案查源缺口继续保留；VP-03为模型自述偏差，VP-05按root判断留作需澄清的体验观察。此结论不触发静态Verification，也不改写首轮和第一次复验的真实失败。

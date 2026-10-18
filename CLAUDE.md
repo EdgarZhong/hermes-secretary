@@ -4,13 +4,23 @@
 
 **暂无。** 用户确认的来源先结算、Candidate 后处理、Prompt 控制体量沿 R3-019；Schedule 三种 kind 统一使用条目所属时区已落 07 §6.1。最新验收顺序、真实 NM 授权与测试时间尺度见下方，不是 Agent 自主扩大范围。
 
+## 当前轮次：按最新产品意图自主复审至交付（2026-10-18）
+
+用户最新要求覆盖此前“静态推迟/等用户看报告”的排程：**继续自主实现直到交付；只有Verification使用Astra/high，所有实现、调查、测试使用GPT-6.1/high。技术规格本身也可能有错，以最新产品文档及后续明确用户口径为准。** 当前轮次唯一入口为[20261018-product-intent-review/snapshot-index.md](.autonomous/20261018-product-intent-review/snapshot-index.md)，计划/审查/后续重拟测试分别在同轮目录。第三轮旧索引/结果保持历史，不据旧PASS或规格豁免当前偏离。
+
+`product_intent_verification`是全新无主会话上下文Astra/high，先从固定产品原文建立判据，未收到代码快照前不查实现；root等待当前UI修补交回并集成后交固定三个仓库快照，防止审查移动目标。`validation_environment`继续6.1/high修侧栏Profile误筛选；`validation_profile_prep`的模型Notebook审计ID投影已root阅读接收，12独立节点及检查通过，尚未现场加载/真实模型补证。`validation_live`已整包交回NM注入与20条输入账本，只读追核不当新实测。
+
+审查后按报告统一委派修复，主会话重新拟定覆盖当前场景与功能的Validation计划并交6.1执行；必要时等待完整包，不亲自下场实现、不让Agent流水账、不重复测试。框架Prompt一般授权边界仍遵守用户明确限制；本次用户已明确的模型内部标识纠偏已授权，不把其余未决事项当所有工作停工理由。
+
+以下保留此前阶段证据与继承边界，涉及当前排程以本节为准。
+
 ## 当前目标与执行边界（2026-10-18）
 
 **上下文恢复首要要求（用户反复强调）：主会话按产品负责人工作，抓全局、场景设计、体验质量和上线取舍；这是尽快上线的使用验收，不是一般编码任务。控制开发成本和token开销，细节实现/调查交子Agent，高并行且不重复测试；无必要全局工作时等待完整交回。子Agent默认整包完成一次交回，中途仅无法继续的阻塞或必须由主会话决策时发消息；每次派遣重新强调，不把单步骤包装为阶段汇报（已写AGENTS通用规则）。不能因压缩上下文重新陷入逐文件排查、泛化重构或无限扩测。** 用户现已托管，等待集中报告；非必要不打断。正式实测已由validation_live整包交回，主会话已按真实结果复核接收，不全信DeepSeek、不擅改框架Prompt。
 
 第三轮进入**收尾与真实使用功能 Validation**，争取尽快部署。用户明确推迟静态 Verification：主会话设计场景及判据，GPT-6.1-sol/high 子 Agent 实际执行；后续静态复审仍用 Astra/high。历史 NOT PASS 保留，不阻止用户本次要求的 Validation，也不据此宣称部署就绪。**三份核心文档已精简；双Profile首轮真实功能实测完成，两项接入失败已修并真实复验，当前等待用户审阅来源交付的Prompt建议。** 本次以使用结果为中心，不扩大为一般编码任务；主会话管场景、边界、集成与判断，子 Agent 默认整包完成一次交回，中途仅真正阻塞或需主会话决策时汇报。
 
-最新授权见 [Snapshot Index R3-024～035](.autonomous/20261016-round3-secretary-nm/snapshot-index.md)，主会话场景与逐条消息前缀见 [Validation 计划](.autonomous/20261016-round3-secretary-nm/validation.md)。
+最新授权见 [Snapshot Index R3-024～038](.autonomous/20261016-round3-secretary-nm/snapshot-index.md)，主会话场景与逐条消息前缀见 [Validation 计划](.autonomous/20261016-round3-secretary-nm/validation.md)。
 
 - 新建本机主助手、考研助手两个隔离 Profile，安装个人插件接真实 NM；这覆盖本阶段旧 round3-only / fixture-only 限制。原 round3 共享服务保留，不访问或修改其用户会话。
 - **用户明确：两个Profile都开启Noting。** Scheduler亦按本次提醒场景启用；Default只读不禁止各自Notebook整理。
@@ -18,7 +28,7 @@
 - 主助手读取现有 **Default Space，只读**；考研助手使用用户已创建的 **“考研复习” Space**，允许测试写入，亦获准新建测试 Space。私人身份、凭据和原始材料不进入公开核心。
 - 主助手通过 Reminder 读取考研 Space 跟进活动，跨领域汇总走 NM，**不读取考研 Hermes Profile**。测试中**现实10分钟代表一天**，每天至少一次落成每10分钟实际排期；用真实时间标识测试日窗口，不改系统时钟或 Harness 内部时间规则。
 - 每条发给被测主模型的用户消息都附测试说明：按自己的 SOUL/职责为用户服务，禁止查仓库、研究/建议 Harness 代码；如实直接回答工作体验。工作区外文件禁读，已授权 NM 服务访问保留。观察实际工具行为与结果，不做复习角色戏、不向模型灌入验收答案。
-- 已读 `~/.pi/SYSTEM.md` 与用户提供的《场景、个人需求、长期愿景与产品设计原则》；两份测试 SOUL 已写在 ignored `validation-personal-20261018/personas/`。身份为长期私人顾问/考研专职助手；允许闲聊倾诉，不强制转任务。旧 Pi 工具、默认写权限及飞书任务不自动继承。测试配置/SOUL可调，**框架写死Prompt未经用户再次授权禁止修改**；实测一轮后再给建议。DeepSeek只作本轮代理模型，实际K3未测，不将其自述/建议当事实或正式模型结论。
+- 已读 `~/.pi/SYSTEM.md` 与用户提供的《场景、个人需求、长期愿景与产品设计原则》；两份SOUL已按用户最新要求清除测试背景，可直接作为部署身份文件，源文件在ignored `validation-personal-20261018/personas/`并同步各Profile。测试角色/10分钟尺度/文件边界仅由逐条user message前缀提供，不写SOUL。身份为长期私人顾问/考研专职助手；允许闲聊倾诉，不强制转任务。旧 Pi 工具、默认写权限及飞书任务不自动继承。测试配置/SOUL可调，**框架写死Prompt未经用户再次授权禁止修改**；实测一轮后再给建议。DeepSeek只作本轮代理模型，实际K3未测，不将其自述/建议当事实或正式模型结论。
 
 ## 当前看板与接续
 
@@ -27,11 +37,13 @@
 | 三份核心文档精简 | 已完成；主会话亲审两子 Agent 返回变更，核对规则、未结项与证据入口。README/AGENTS合并冗余，CLAUDE移除内嵌旧看板并保留原文快照；仅文档检查，不跑产品测试 |
 | 双 Profile 环境 | 已整包交回：53446后端PID91341、5174 UI PID41912；插件指纹、两SOUL、Noting/Scheduler、owner密钥、正式Bundle读取均核对。原round3保持。证据 `environment-report.md`及evidence环境清单 |
 | Default 只读 | 自动归档缺口已补：main archive_enabled=false，exam=true；正式manager/结束重试/上传出口无写定向证据。手动NM仍按SOUL/逐条消息授权限制并以实际轨迹核对，不宣称通用终端沙箱 |
-| 手动 NM 访问 | 插件的 Space 提示不是权限隔离；即使补自动归档开关，也不能声称限制任意 terminal CLI。尚未找到服务端操作级只读配置，未创建凭据；不得把 Space grant 当只读权限 |
+| 手动 NM 访问 | 插件的Space提示不是终端权限隔离。NM只读追核已确认双Profile实际绑定system prompt含非空Bundle（2993/2986字符）、正确Space及排除WM；正式Recall三样本pointer数0/0/1，查询工具返回实际正文。命中pointer的Turn未新精读，因为正文先前已在上下文，不能称pointer驱动精读已验。证据`evidence/nm-injection-audit.json` |
 | 归档配置修补 | 主会话已review接收：个人Provider可选archive_enabled（默认true），关闭时禁止自动归档/结束重试，保留Bundle/Recall；60 PASS及定向检查，未改Prompt。环境Agent获准安装，报告 `provider-archive-control.md` |
-| 身份资料 | 下载需求原文及SHA留ignored inputs；两SOUL已写，覆盖用户最新行为边界。主会话可据实测调测试Persona，保留每版及效果 |
+| 身份资料 | 下载需求原文及SHA留ignored inputs；两SOUL已改为部署身份文案并同步Profile，移除测试背景/10分钟尺度/测试官约束；原NM授权保留。旧版与新hash在`evidence/soul-deployment-cleanup.json`，已有系统快照不改写；测试语境只用逐条user message前缀 |
 | 功能 Validation | 首轮P01–P07及两段真实600秒窗口已完成，NOT PASS。双Notebook、批准边界、来源先归档、跨压缩History、cold/warm跨Space跟进有真实证据；自有未来排期/runtime/lease/poller已清零，保留环境。`validation_live`维护实际结果，不重跑已有效链 |
 | 首轮接入修复 | 已接收：VP-04在5秒预算下3个正式Turn自动Recall通过；VP-01真实首批22→同Thread同Space24，receipt/正文/旧前缀一致，回收后无重复。保留首轮及第一次补丁失败；7项定向+真实复验关闭本场景。没有框架Prompt修改或全量重跑 |
+| 首页Profile误筛选侧栏 | 用户发现切换首页Profile只显示该Profile会话，未经授权、偏离06 §2.11。`validation_environment`负责跨Profile列表/真实owner打开/新建Profile与draft边界的窄修及真实UI只读复验；不接管Pin表现层。此前Profile验收漏了跨Profile列表可见性，不能沿用旧113项结果宣称本行为正确 |
+| 模型Notebook内部标识 | 用户指出给Hermes AI的NOTING RESULT泄漏Snapshot/Coverage anchor内部ID，root先前误当人类展示已纠正。`validation_profile_prep`窄修完成通知及同步07英文模板，保留后台metadata/选择校验；同时只读检查其他模型输出，不混同已修的人类/notebook F13。待集中review/定向证据 |
 | 来源交付与体验建议 | VP-02仍缺提案原文核对/内容标签及Hermes来源Metadata，待用户决定短Prompt修订；不由测试SOUL灌答案。VP-03模型自述有误，VP-05安静/无记录汇报测试要求有张力，不直接认定代码Bug。当前整体验收仍NOT PASS，详见final-delivery当前段 |
 | 静态 Verification / 最终交付 | 按用户要求推迟；历史二审不通过。待实际功能结果后判定剩余修复与部署范围，不能用计划代替通过 |
 

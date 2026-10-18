@@ -16,6 +16,11 @@
 | R3-033 | 主助手与考研助手两个Profile都开启Noting | 用户本聊天明确确认；各自Notebook照常整理，与Default NM只读无冲突 |
 | R3-034 | 主会话作为产品负责人抓全局、场景设计和体验质量；尽快上线、控制开发成本与token，允许等待子Agent阶段交回；现开始托管，用户等集中报告 | 用户多次强调，并要求在上下文压缩后仍谨记；根CLAUDE当前目标顶部显眼保存，不因恢复重启细节调查或重复扩测 |
 | R3-035 | 两Profile开启节约上下文的Idle Compact + Noting，100k tokens后空闲几秒触发 | 用户最新明确；主会话将“几秒”取5秒作为测试配置，100000是触发阈值而非模型context window；使用现有联合Idle入口，保持真实模型/数据库时间 |
+| R3-036 | 两份SOUL.md必须是可直接部署的身份文案，不写当前测试背景；测试语境仅追加在每条user message前 | 用户本聊天明确要求；移除SOUL中的测试时间尺度/测试角色/测试专属文件约束，保留现有NM访问授权，不改框架Prompt或历史系统快照 |
+| R3-037 | 不向Hermes AI的Notebook结果正文展示内部Snapshot ID/Coverage anchor审计标识 | 用户明确纠偏：不是人类展示问题；遵循既有Prompt可见世界原则。仅模型正文清理，保留内部选择/校验、原始来源身份与客户端API兼容 |
+| R3-038 | 首页Profile下拉只选择新建环境，不能把已有Conversation侧栏过滤成当前Profile | 用户明确指出当前实现未经授权、要求按06 §2.11纠偏；侧栏跨Profile展示，行按真实owner打开及绘图标，保留各Profile独立状态与原生归属 |
+| R3-039 | 派遣Astra/high独立Verification，全面找不符合产品预期的问题；规格也可能有错，以最新产品文档为准；修复后重拟场景/功能覆盖测试 | 用户本聊天最新明确；新轮次`.autonomous/20261018-product-intent-review/`先独立建立判据再审固定实现，不沿旧静态推迟排程 |
+| R3-040 | 继续自主实现直到交付，只有verify者使用Astra，其余任务不用Astra | 用户本聊天最新明确；其他实施/调查/实测GPT-6.1/high，主会话继续全局统筹及集中交付 |
 
 动态执行见根 CLAUDE，现行场景见 validation.md。精简前完整看板保留在 snapshots/CLAUDE.before-validation-trim.txt，仅为只读历史，不是平行任务板。以下阶段记录均为历史时点；涉及环境、NM授权和门禁顺序时以 R3-024～029 为准，其余产品要求保持。
 

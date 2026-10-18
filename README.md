@@ -200,6 +200,7 @@ Python 测试统一使用上述 runner；环境准备见 [Development Setup](CON
 | Web UI 基线与保留契约 | 客户端、交互、设计系统、部署；思考档位见 §2.10，漂移开关见 §0.8；旧机制按 07 替换 | [06](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md) |
 | UI 只读 API 早期讨论（归档） | 已被正式 06 覆盖的早期讨论；旧 Memo 设计不进入新版 | [归档](docs/archived/06-ui-read-api-discussion.md) |
 | 通用协作 / 当前看板 | 用户规则、开发测试 SOP / 动态目标与未完成项 | [AGENTS](AGENTS.md)、[CLAUDE](CLAUDE.md) |
+| 产品意图复审与交付依据 | 最新产品文档、用户纠偏、独立审查及场景/功能覆盖验收入口 | [Snapshot Index](.autonomous/20261018-product-intent-review/snapshot-index.md) |
 | 第三轮依据索引 | Secretary改版与独立个人Provider的依据、会话口径及双仓库冻结记录入口 | [Snapshot Index](.autonomous/20261016-round3-secretary-nm/snapshot-index.md) |
 | 第二轮依据索引 | Web UI 轮次授权、规格来源与冻结权限 | [Snapshot Index](.autonomous/20261012-round2-web-ui/snapshot-index.md) |
 | 视觉交付与 Mock URL | 共享视觉组件接口、可点击全场景 Mock 清单及验收对账 | [视觉报告](.autonomous/20261012-round2-web-ui/visual-design.md) |
