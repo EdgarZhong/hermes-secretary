@@ -78,5 +78,10 @@
 | DP-03 | 两Profile共用同一个云端`~/workspace`（用户明确改为单数，替换先前workspaces），整个目录与本机`~/Desktop/Alex`走Mutagen；本机不存在可创建。 |
 | DP-04 | 另增本机`/Users/edgar/.hermes_profiles`↔云端`~/.hermes_profiles`同步。数据库最关键；用户同意云端唯一运行库，经SQLite一致性快照复用原Mutagen通道回传，配置与SOUL同步，其它运行态无需同步。不把正在变化的数据库做两端直接文件覆盖。备份频率尚未定，当前不启用。 |
 | DP-05 | 将Pi在此前原生Hermes导入后的新增聊天继续同步到原库，保留原数据／身份和既有导入方式；为新Alex部署筹备当前版本兼容副本，不把本轮合成测试历史搬到生产。 |
+| DP-06 | 用户后续要求study的NM同步配置独立拆出，NM Thread同步目标改为Default。保持现有考研Space的检索/Context Bundle与模型默认访问范围；仅自动Thread同步独立配置`thread_sync_space: default`，未配置沿旧行为，不迁旧数据、不扩大手动Memory写权。此为固定v5之后的部署增量。 |
 
 上述为部署筹备而非上云执行授权。固定v5两个独立门禁仍只对其已冻结范围作判断；新部署文件与数据打包单列验证，不据此宣称云端／Mutagen运行已验。
+
+### 后续部署放行与覆盖决定（2026-10-19）
+
+DP-07：用户两份SOUL已编辑定案，明确现在开始部署；Pi导入库明确归Alex。DP-06所述功能保留，但最新决定study不向Default同步，仍自己的考研Space，不设置thread_sync_space覆盖；study不设置默认模型，也不新增Alex的Idle节省配置。Alex选择原生Kimi Code套餐Provider而非平台API，复用云已有Key，默认独立K3-256k型号（不是K3加窗口覆盖），thinking High；仅Alex上下文节省开启，500秒/128K。Alex接入云已有MCP至少Kimi Search、Fetch、飞书Notifier；DeepSeek可选非默认，用户明确允许本机DS Key上云。最新放行解除此前“不启动部署/同步”的阶段条件，其余SOUL原文、数据归属、显示保护与凭据不入Git仍保持。

@@ -8,9 +8,25 @@
 
 AC-01已确认：Candidate用Notebook refs或Message Identity，二选一禁止混用；refs按Memory/Rule/Skill身份特化简述，不复写源正文。AC-02同源分页及配套文字已确认。先处理真正交付覆盖来源，最后关闭Candidate，未交付部分保留。
 
+## 云部署已获放行（2026-10-19，执行中）
+
+本轮唯一入口：`.autonomous/20261019-cloud-deployment/snapshot-index.md`；计划/两门禁/交付同目录。旧v5门禁只作原版本证据。公网域名已选`hermes.edgarzhong.fyi`；数据库快照周期正在等待用户5/10/30分钟答复。
+
+用户已完成两份SOUL编辑并明确“开始部署”；此前禁止云端操作的等待条件解除。两原文已冻结在ignored `deployment-release-20261019/`：Alex SHA `f260652e36b478687605721d8b7850a0a057769cc36aefb0aa1856e0129d56f1`，study SHA `8d88f3c9abea47dcc020245924be2862d87037c96bc29650ade32edd60a0148d`，不得再改写。Pi导入的48会话/6065消息库明确归Alex，study新库；共享云端`~/workspace`、两物理Home和Mutagen布局不变。
+
+最新明确口径：保留`thread_sync_space`功能，但study当前不设覆盖，NM Thread仍同步自己的考研Space；study不设默认模型，也不配置新增Idle节省参数。Alex用原生Kimi Code套餐Provider，复用云端现有Key；默认必须为**独立K3-256k型号**（准确ID待官方模型目录核实），不是K3加上下文覆盖；thinking High。Alex开启联合Idle Compact+Noting，空闲500秒、阈值128K。DeepSeek作为Alex可选模型、非默认，用户明确允许本机DS Key上云。Alex复用云端已有MCP，至少Kimi Search/Fetch和飞书Notifier；只接入/探测，不因此发送通知。
+
+并行：`cloud_deployment_preflight`只读核云真实布局、Code型号/Key位置、MCP与服务保护；`deployment_ui_alias_build`窄补alex/study现图标和显示名、保护用户表现层并只交静态产物；`study_thread_space_split`受审21节点源码已接收，安装新study插件且保持自身Space，再授权个人提交。Root负责最终源/产物/权限/依赖与SOUL精确字节核对，随后部署。SSH整链用任务隔离sandbox禁启动open/浏览器等；所有界面验收仍仅隐藏IAB，不动屏幕。
+
 ## 实际部署筹备：等待用户编辑定案（不执行部署）
 
 用户最新确认：云端代码仓库 `~/hermes-secretary`；Profile Home `~/.hermes_profiles/Alex`、`~/.hermes_profiles/study`；两者共用 **`~/workspace`（单数，替换此前workspaces）**，与本机 `~/Desktop/Alex` 通过Mutagen同步。另增Profile Home同步：本机`/Users/edgar/.hermes_profiles`↔云端`~/.hermes_profiles`。用户确认数据库最关键，同意运行时通过SQLite一致性快照经原有Mutagen通道回传；配置和SOUL同步，其它运行态不回传，原运行数据库不作双向文件覆盖。具体备份频率尚未定，不擅自启动服务。前端只上传构建产物，不上传源码仓库；Alex复用当前主助手头像图标、study复习图标。当前已准备本机静态Home、官方插件及SOUL编辑入口，SQLite快照工具/Mutagen草稿/SOP整包已root亲审接收，用户编辑后按定案字节上传，禁止再替用户改写SOUL；尚未部署、上传、启动Mutagen或云端服务。另需沿原流程把Pi新增聊天增量同步进原生Hermes原导入库，不混入本轮合成测试数据库。两SOUL可编辑本机路径为`/Users/edgar/.hermes_profiles/Alex/SOUL.md`及`/Users/edgar/.hermes_profiles/study/SOUL.md`。
+
+## study独立NM Thread同步目标（已改部署选择）
+
+用户要求“Study那个profile，它的同步配置能不能单独拆出来？我希望它的NM同步往Default里面做”。按既有Thread同步语义拆分：新增个人Provider可选`thread_sync_space`，study保持现有`space: space`（考研复习）供Context Bundle/Recall/模型默认访问，自动Thread同步目标曾拟独立为`default`，用户随后明确撤回当前配置：保留可选功能，study仍继承自己的考研Space、不写override。未配置新项沿原space与既有receipt key，保持原生兼容；本次不迁旧Thread/Memory/收据、不修改任何Provider系统提示或SOUL，不扩大手动Memory写入授权。此项为用户后续部署配置调整，不回改固定v5门禁范围。
+
+`study_thread_space_split`（6.1/high）负责个人Provider及相关定向测试/插件文档，禁止流水账及派生；root亲审后仅更新待部署study Home的配置与插件。原测试Profile/运行服务、云端和Mutagen不动；真实Default写入不作为此次定向测试动作。配置初始化生效，不做热切换。
 
 ## 当前目标与用户最新决定
 
