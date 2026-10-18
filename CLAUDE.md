@@ -12,7 +12,16 @@
 
 `product_intent_verification`是全新无主会话上下文Astra/high，先从固定产品原文建立判据，未收到代码快照前不查实现；三个仓库固定源码副本及逐文件SHA已封存到ignored `product-intent-review-20261018/frozen-code/`并整包交Astra，含捕获时dirty、不擅自提交他人工作；当前进入实现审查，不审后续移动工作区。`validation_environment`已交回跨Profile列表、同ID owner操作隔离、统一Pin持久顺序；root已集中review接收，234+后续68/24节点分别按版本/受影响范围留证不相加冒充新全量，最新UI受屏幕约束未复验；`validation_profile_prep`的模型Notebook审计ID投影已root阅读接收，12独立节点及检查通过，尚未现场加载/真实模型补证。`validation_live`已整包交回NM注入与20条输入账本，只读追核不当新实测。
 
-审查后按报告统一委派修复，主会话重新拟定覆盖当前场景与功能的Validation计划并交6.1执行；必要时等待完整包，不亲自下场实现、不让Agent流水账、不重复测试。框架Prompt一般授权边界仍遵守用户明确限制；本次用户已明确的模型内部标识纠偏已授权，不把其余未决事项当所有工作停工理由。
+**独立审查完整交回：NOT PASS。** 31条矩阵，固定三仓清单一致；canonical受控反证7节点3P/4F，没有重跑全量或操作屏幕。确认F01覆盖说明被ID清理误删、F02 ContextEngine可改Noting冻结父前缀、F03退休notebook_mutate仍被repair执行；S01每日自唤醒约定被弱化、S02双来源规格与exclusive契约冲突；其余部署/行为/恢复/UI缺证分别保留，不混称代码Bug。完整依据见本轮verification.md。
+
+| 当前整改包 | Owner / 边界与交回 |
+|---|---|
+| F01可读覆盖 | repair_notebook_coverage，6.1/high；已有可信DB锚点→无审计ID覆盖，Main/working/control/completion全接线；保留默认API/内部校验；另只读建议S02，不改其实现 |
+| F02/F03与output-cap定向取证 | repair_noting_protocol，6.1/high；正式请求冻结前缀、repair前退休名拒绝、未启用原生对照；不修改其他Prompt |
+| E02确定接线缺陷 | repair_nm_skill_wiring，6.1/high；仅个人helper Space参数层级和原生技能发现，不新建Memory/改Metadata传输/重启当前Profile；Metadata GET403/1010仍未关闭 |
+| Prompt与权限取舍 | root；已异步申请S01默认24h及Q02仅执行事务默认委派的精简Prompt授权，未答复不修改。部署SOUL权限分层、rewind后同步暂停和长原文可达性仍待集中收敛，未视为获批 |
+
+修复后主会话集中review、重新拟定覆盖当前场景与功能的Validation计划并交6.1执行；必要时等待完整包，不亲自下场实现、不让Agent流水账、不重复测试。框架Prompt一般授权边界仍遵守用户明确限制；本次用户已明确的模型内部标识纠偏已授权，不把其余未决事项当所有工作停工理由。
 
 以下保留此前阶段证据与继承边界，涉及当前排程以本节为准。
 
@@ -20,7 +29,7 @@
 
 **上下文恢复首要要求（用户反复强调）：主会话按产品负责人工作，抓全局、场景设计、体验质量和上线取舍；这是尽快上线的使用验收，不是一般编码任务。控制开发成本和token开销，细节实现/调查交子Agent，高并行且不重复测试；无必要全局工作时等待完整交回。子Agent默认整包完成一次交回，中途仅无法继续的阻塞或必须由主会话决策时发消息；每次派遣重新强调，不把单步骤包装为阶段汇报（已写AGENTS通用规则）。不能因压缩上下文重新陷入逐文件排查、泛化重构或无限扩测。** 用户现已托管，等待集中报告；非必要不打断。正式实测已由validation_live整包交回，主会话已按真实结果复核接收，不全信DeepSeek、不擅改框架Prompt。
 
-第三轮进入**收尾与真实使用功能 Validation**，争取尽快部署。用户明确推迟静态 Verification：主会话设计场景及判据，GPT-6.1-sol/high 子 Agent 实际执行；后续静态复审仍用 Astra/high。历史 NOT PASS 保留，不阻止用户本次要求的 Validation，也不据此宣称部署就绪。**三份核心文档已精简；双Profile首轮真实功能实测完成，两项接入失败已修并真实复验，当前等待用户审阅来源交付的Prompt建议。** 本次以使用结果为中心，不扩大为一般编码任务；主会话管场景、边界、集成与判断，子 Agent 默认整包完成一次交回，中途仅真正阻塞或需主会话决策时汇报。
+第三轮进入**收尾与真实使用功能 Validation**，争取尽快部署。用户明确推迟静态 Verification：主会话设计场景及判据，GPT-6.1-sol/high 子 Agent 实际执行；后续静态复审仍用 Astra/high。历史 NOT PASS 保留，不阻止用户本次要求的 Validation，也不据此宣称部署就绪。**三份核心文档已精简；双Profile首轮真实功能实测完成，两项接入失败已修并真实复验，来源交付现已确认helper参数与技能发现缺陷，不能仅归因为Prompt或模型；当前按顶部新轮次整改。** 本次以使用结果为中心，不扩大为一般编码任务；主会话管场景、边界、集成与判断，子 Agent 默认整包完成一次交回，中途仅真正阻塞或需主会话决策时汇报。
 
 最新授权见 [Snapshot Index R3-024～038](.autonomous/20261016-round3-secretary-nm/snapshot-index.md)，主会话场景与逐条消息前缀见 [Validation 计划](.autonomous/20261016-round3-secretary-nm/validation.md)。
 
@@ -46,7 +55,7 @@
 | 首轮接入修复 | 已接收：VP-04在5秒预算下3个正式Turn自动Recall通过；VP-01真实首批22→同Thread同Space24，receipt/正文/旧前缀一致，回收后无重复。保留首轮及第一次补丁失败；7项定向+真实复验关闭本场景。没有框架Prompt修改或全量重跑 |
 | 首页Profile误筛选侧栏 | 用户发现切换首页Profile只显示该Profile会话，未经授权、偏离06 §2.11。root已review列表合并、真实owner打开/写入/回写、同ID隔离及跨Profile Pin顺序刷新保留。早期3条真实DOM证据对应首次补丁；最新owner/Pin补强只后台测试，受用户屏幕约束未UI复验。此前113项未覆盖该行为，不代签当前通过 |
 | 模型Notebook内部标识 | 用户指出给Hermes AI的NOTING RESULT泄漏Snapshot/Coverage anchor内部ID，root先前误当人类展示已纠正。完成Framework/Main与Noting show/各Turn control均作模型投影，内部metadata/Store/默认API保留。root亲审接收，6 RED→12独立节点PASS及检查通过；待后续实际加载/Validation，不混同人类F13或把受控wire当现场模型样本 |
-| 来源交付与体验建议 | VP-02仍缺提案原文核对/内容标签及Hermes来源Metadata，待用户决定短Prompt修订；不由测试SOUL灌答案。VP-03模型自述有误，VP-05安静/无记录汇报测试要求有张力，不直接认定代码Bug。当前整体验收仍NOT PASS，详见final-delivery当前段 |
+| 来源交付与体验建议 | VP-02仍缺提案原文核对/内容标签及Hermes来源Metadata；已确认helper Space参数层级错误、技能根索引未展示，原Metadata GET遭403/1010且PATCH未验证。先修确定接线，不以短Prompt修订代替全链，不由测试SOUL灌答案。VP-03模型自述有误，VP-05安静/无记录汇报测试要求有张力，不直接认定代码Bug。当前整体验收仍NOT PASS，详见final-delivery当前段 |
 | 静态 Verification / 最终交付 | 按用户要求推迟；历史二审不通过。待实际功能结果后判定剩余修复与部署范围，不能用计划代替通过 |
 
 环境已按独立runtime root、53446后端管理两新Profile、5174 UI部署；见[环境报告](.hermes-dev/validation-personal-20261018/environment-report.md)。数据库在仓库ignored目录，terminal.cwd在Git root外，原round3保留。最初Bundle HTTP被Cloudflare403拒绝，已在个人客户端复用官方CLI context read，内容契约/Prompt不变；root review及两Space真实只读核验通过（`provider-bundle-cli.md`）。旧[准备报告](.hermes-dev/validation-personal-20261018/preparation.md)仅保留调查时点；不得用`hermes serve --stop`误停共享实例。
