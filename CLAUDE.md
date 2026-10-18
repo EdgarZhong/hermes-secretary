@@ -10,15 +10,21 @@ AC-01已确认：Candidate用Notebook refs或Message Identity，二选一禁止�
 
 ## 云部署已获放行（2026-10-19，执行中）
 
-本轮唯一入口：`.autonomous/20261019-cloud-deployment/snapshot-index.md`；计划/两门禁/交付同目录。旧v5门禁只作原版本证据。公网域名已选`hermes.edgarzhong.fyi`；数据库快照周期正在等待用户5/10/30分钟答复。
+**最新优先级（用户2026-10-19）：先部署并运行云端服务，用户直接访问；同步收尾及门禁报告不挡已授权服务启动。Access已由用户完成配置，Mac匿名实测302至Cloudflare Access登录路径。旧Pi Mutagen允许关闭清除，但明确留到最后清理，不与上线争用。**
+
+**入口已运行：** 云唯一backend PID3015797监听53446、专属Caddy PID3017385监听53448；公网Host经反代两SPA及health返回200，Tunnel业务route已接通。可访问`https://hermes.edgarzhong.fyi/`与`/dashboard/`，已告知用户直接验收。Alex48会话/6065消息逐项原生workspace.move完成，旧身份/原文/来源不变；study原生空库0/0。其余云服务保持；同步仍待实现整包root审阅/激活，模型/MCP只读核查继续，不能把当前入口可用扩大为整轮交付通过。实际入口/初始数据里程碑见ignored cloud-deployment交回与云`~/.local/state/hermes-secretary/deployment/{entry-ready,initial-data-cwd-ready}.json`。
+
+**真实云端短验收已通过：** root隐藏IAB经专属SSH转发进入实际云反代，Alex显示k3-256k/high，切study仍保留48历史链接且无默认模型。唯一新测试Conversation `20261019_013755_07e1d7`实际返回“连接成功”，云正式API1次、17824输入/34输出、0工具，idle完成；测试页已离开至New Chat，指定云Agent仅回收此自有Runtime、保留历史。两MCP initialize/tools/list成功，kimi_search/kimi_fetch/notify可见。原生自动元数据256000兜底按正式目录事实补齐Alex context_length=262144，原生API热合并、PID不变，不改型号或Provider。以上不代签未完成DB回传或整轮独立门禁。
+
+本轮唯一入口：`.autonomous/20261019-cloud-deployment/snapshot-index.md`；计划/两门禁/交付同目录。旧v5门禁只作原版本证据。公网域名已选`hermes.edgarzhong.fyi`；数据库快照周期已由用户确认每5分钟；Mac离线不影响云端、不无限积压/无界日志，最终经校验回传到本机两Profile各state.db冷态副本。
 
 用户已完成两份SOUL编辑并明确“开始部署”；此前禁止云端操作的等待条件解除。两原文已冻结在ignored `deployment-release-20261019/`：Alex SHA `f260652e36b478687605721d8b7850a0a057769cc36aefb0aa1856e0129d56f1`，study SHA `8d88f3c9abea47dcc020245924be2862d87037c96bc29650ade32edd60a0148d`，不得再改写。Pi导入的48会话/6065消息库明确归Alex，study新库；共享云端`~/workspace`、两物理Home和Mutagen布局不变。
 
-最新明确口径：保留`thread_sync_space`功能，但study当前不设覆盖，NM Thread仍同步自己的考研Space；study不设默认模型，也不配置新增Idle节省参数。Alex用原生Kimi Code套餐Provider，复用云端现有Key；默认必须为**独立K3-256k型号**（准确ID待官方模型目录核实），不是K3加上下文覆盖；thinking High。Alex开启联合Idle Compact+Noting，空闲500秒、阈值128K。DeepSeek作为Alex可选模型、非默认，用户明确允许本机DS Key上云。Alex复用云端已有MCP，至少Kimi Search/Fetch和飞书Notifier；只接入/探测，不因此发送通知。
+最新明确口径：保留`thread_sync_space`功能，但study当前不设覆盖，NM Thread仍同步自己的考研Space；study不设默认模型，也不配置新增Idle节省参数。Alex用原生Kimi Code套餐Provider，复用云端现有Key；默认必须为**独立K3-256k型号**（官方模型目录已核实ID `k3-256k`），不是K3加上下文覆盖；thinking High。Alex开启联合Idle Compact+Noting，空闲500秒、阈值128K（按窗口单位131072 tokens落值）。DeepSeek作为Alex可选模型、非默认，用户明确允许本机DS Key上云。Alex复用云端已有MCP，至少Kimi Search/Fetch和飞书Notifier；只接入/探测，不因此发送通知。
 
-并行：`cloud_deployment_preflight`只读核云真实布局、Code型号/Key位置、MCP与服务保护；`deployment_ui_alias_build`窄补alex/study现图标和显示名、保护用户表现层并只交静态产物；`study_thread_space_split`受审21节点源码已接收，安装新study插件且保持自身Space，再授权个人提交。Root负责最终源/产物/权限/依赖与SOUL精确字节核对，随后部署。SSH整链用任务隔离sandbox禁启动open/浏览器等；所有界面验收仍仅隐藏IAB，不动屏幕。
+并行：`cloud_deployment_preflight`执行真实云部署、PM/Homes/模型/MCP/历史workspace及新入口；`deployment_ui_alias_build`窄补alex/study现图标和显示名、保护用户表现层并只交静态产物；`study_thread_space_split`受审21节点源码已接收，安装新study插件且保持自身Space，再授权个人提交。Root负责最终源/产物/权限/依赖与SOUL精确字节核对及实际访问；同步Agent单独实现并核接收端，SOP由文档Agent收敛。SSH整链用任务隔离sandbox禁启动open/浏览器等；所有界面验收仍仅隐藏IAB，不动屏幕。
 
-## 实际部署筹备：等待用户编辑定案（不执行部署）
+## 历史：部署筹备等待阶段（已由上节放行覆盖）
 
 用户最新确认：云端代码仓库 `~/hermes-secretary`；Profile Home `~/.hermes_profiles/Alex`、`~/.hermes_profiles/study`；两者共用 **`~/workspace`（单数，替换此前workspaces）**，与本机 `~/Desktop/Alex` 通过Mutagen同步。另增Profile Home同步：本机`/Users/edgar/.hermes_profiles`↔云端`~/.hermes_profiles`。用户确认数据库最关键，同意运行时通过SQLite一致性快照经原有Mutagen通道回传；配置和SOUL同步，其它运行态不回传，原运行数据库不作双向文件覆盖。具体备份频率尚未定，不擅自启动服务。前端只上传构建产物，不上传源码仓库；Alex复用当前主助手头像图标、study复习图标。当前已准备本机静态Home、官方插件及SOUL编辑入口，SQLite快照工具/Mutagen草稿/SOP整包已root亲审接收，用户编辑后按定案字节上传，禁止再替用户改写SOUL；尚未部署、上传、启动Mutagen或云端服务。另需沿原流程把Pi新增聊天增量同步进原生Hermes原导入库，不混入本轮合成测试数据库。两SOUL可编辑本机路径为`/Users/edgar/.hermes_profiles/Alex/SOUL.md`及`/Users/edgar/.hermes_profiles/study/SOUL.md`。
 

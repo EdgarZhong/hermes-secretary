@@ -7,7 +7,7 @@
 | 用户需求 | 本索引§2逐条摘录当前用户指令；最终SOUL见ignored deployment-release-20261019/soul-final-manifest.private.json所列两原件 | 用户定案SOUL本轮不改，完整私人正文不入Git |
 | 权威规格 | docs/cloud-deployment-sop.md；docs/06-Hermes-Secretary-Web-UI-V1-Spec.md §0.7–0.8；docs/08-profile-scheduler-files-clarification.md | 二级，按本轮最新用户决定覆盖旧筹备状态，固定v5历史结论不回改 |
 | 编码指导 | AGENTS.md；个人仓AGENTS；UI仓AGENTS | 二级，显示/凭据/用户UI保护/原生兼容与既有检查不变 |
-| 会话确认 | 本索引§2 D01–D12 | 二级，后续明确用户变更追加，不冒称root推断为用户原话 |
+| 会话确认 | 本索引§2 D01–D14 | 二级，后续明确用户变更追加，不冒称root推断为用户原话 |
 
 ## 2. 口径与决策
 
@@ -25,5 +25,8 @@
 | D10 | 前端只上传构建产物，不上传独立UI源码仓；Alex复用既有主头像、study复用复习图标，首页显示Alex但native canonical owner为alex；用户现有UIUX/Pin/布局/滚动和未提交表现层保护。 |
 | D11 | 用户选hermes.edgarzhong.fyi，/与/dashboard同域同backend。Cloudflare Access沿用户自行配置安排，保留原Tunnel四入口/服务，不把未保护的原生machine-token入口公开；若Access未生效，先完成回环及安全占位，明确尚缺用户配置。 |
 | D12 | 仍仅允许隐藏Codex IAB验收、禁止任何桌面/外部浏览器/open/显示状态改变；SSH及cloudflared须禁止拉起浏览器。部署和验证不重跑固定v5昂贵套或已有100k/600秒旅程，隔离新增真实输入并精确回收自有资源。 |
+| D13 | 用户答复“每5分钟”，明确Mac离线不能使云端崩溃/无限积压日志，回传最终目标是本机两个Profile对应的state.db。源快照每300秒独立云本地执行、固定完成包；Mac上线经原Mutagen全包校验/两槽已验保护后原子更新各冷态DB，不把活库双向覆盖，配置SOUL不由快照回写；日志/状态有界。 |
 
-未决：数据库快照频率已向用户异步询问5/10/30分钟，未答不擅自设周期。公网Access是否已覆盖该hostname须实际检查，不修改其策略。正式DNS/Tunnel/系统服务/Mutagen在本轮部署授权内；保护现有服务及已有同步会话。固定v5产品两门禁作为不变接缝证据，不代签本轮云配置和新增代码。只有独立Verification用Astra/high，其余6.1/high，不派生子Agent。
+| D14 | 用户明确Access已配置并要求“先部署上，然后我直接看能不能访问”；先运行并接通服务，其余收尾不阻塞可访问入口。Mac匿名HTTPS已实得302→Cloudflare Access登录。旧Pi Mutagen可关闭清除但留最后清理；当前不动旧同步。 |
+
+数据库快照频率已由用户确认每5分钟，接收目标改为两个本机冷态state.db；新接收实现与真实离线/半包保护须本轮验证。公网Access已由用户配置，Mac匿名302跳转已证实；不修改其策略。正式DNS/Tunnel/系统服务/Mutagen在本轮部署授权内；保护现有服务及已有同步会话。固定v5产品两门禁作为不变接缝证据，不代签本轮云配置和新增代码。只有独立Verification用Astra/high，其余6.1/high，不派生子Agent。
