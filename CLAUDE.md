@@ -6,9 +6,11 @@
 
 ## 当前轮次：按最新产品意图自主复审至交付（2026-10-18）
 
+**桌面保护硬约束：用户其他桌面录屏，禁止CU/CUA、桌面/外部浏览器操作及抢焦点；界面验收只用非CU的Codex内置浏览器。禁止任何显示变化，包括open/open_in_codex、打开/导航可见页面、窗口激活/切换/最小化/关闭；只准保证不改显示的后台接口。已通知全部Agent。无此接口则记未验，不用Chrome替代。**
+
 用户最新要求覆盖此前“静态推迟/等用户看报告”的排程：**继续自主实现直到交付；只有Verification使用Astra/high，所有实现、调查、测试使用GPT-6.1/high。技术规格本身也可能有错，以最新产品文档及后续明确用户口径为准。** 当前轮次唯一入口为[20261018-product-intent-review/snapshot-index.md](.autonomous/20261018-product-intent-review/snapshot-index.md)，计划/审查/后续重拟测试分别在同轮目录。第三轮旧索引/结果保持历史，不据旧PASS或规格豁免当前偏离。
 
-`product_intent_verification`是全新无主会话上下文Astra/high，先从固定产品原文建立判据，未收到代码快照前不查实现；root等待当前UI修补交回并集成后交固定三个仓库快照，防止审查移动目标。`validation_environment`继续6.1/high修侧栏Profile误筛选；`validation_profile_prep`的模型Notebook审计ID投影已root阅读接收，12独立节点及检查通过，尚未现场加载/真实模型补证。`validation_live`已整包交回NM注入与20条输入账本，只读追核不当新实测。
+`product_intent_verification`是全新无主会话上下文Astra/high，先从固定产品原文建立判据，未收到代码快照前不查实现；三个仓库固定源码副本及逐文件SHA已封存到ignored `product-intent-review-20261018/frozen-code/`并整包交Astra，含捕获时dirty、不擅自提交他人工作；当前进入实现审查，不审后续移动工作区。`validation_environment`已交回跨Profile列表、同ID owner操作隔离、统一Pin持久顺序；root已集中review接收，234+后续68/24节点分别按版本/受影响范围留证不相加冒充新全量，最新UI受屏幕约束未复验；`validation_profile_prep`的模型Notebook审计ID投影已root阅读接收，12独立节点及检查通过，尚未现场加载/真实模型补证。`validation_live`已整包交回NM注入与20条输入账本，只读追核不当新实测。
 
 审查后按报告统一委派修复，主会话重新拟定覆盖当前场景与功能的Validation计划并交6.1执行；必要时等待完整包，不亲自下场实现、不让Agent流水账、不重复测试。框架Prompt一般授权边界仍遵守用户明确限制；本次用户已明确的模型内部标识纠偏已授权，不把其余未决事项当所有工作停工理由。
 
@@ -42,8 +44,8 @@
 | 身份资料 | 下载需求原文及SHA留ignored inputs；两SOUL已改为部署身份文案并同步Profile，移除测试背景/10分钟尺度/测试官约束；原NM授权保留。旧版与新hash在`evidence/soul-deployment-cleanup.json`，已有系统快照不改写；测试语境只用逐条user message前缀 |
 | 功能 Validation | 首轮P01–P07及两段真实600秒窗口已完成，NOT PASS。双Notebook、批准边界、来源先归档、跨压缩History、cold/warm跨Space跟进有真实证据；自有未来排期/runtime/lease/poller已清零，保留环境。`validation_live`维护实际结果，不重跑已有效链 |
 | 首轮接入修复 | 已接收：VP-04在5秒预算下3个正式Turn自动Recall通过；VP-01真实首批22→同Thread同Space24，receipt/正文/旧前缀一致，回收后无重复。保留首轮及第一次补丁失败；7项定向+真实复验关闭本场景。没有框架Prompt修改或全量重跑 |
-| 首页Profile误筛选侧栏 | 用户发现切换首页Profile只显示该Profile会话，未经授权、偏离06 §2.11。`validation_environment`负责跨Profile列表/真实owner打开/新建Profile与draft边界的窄修及真实UI只读复验；不接管Pin表现层。此前Profile验收漏了跨Profile列表可见性，不能沿用旧113项结果宣称本行为正确 |
-| 模型Notebook内部标识 | 用户指出给Hermes AI的NOTING RESULT泄漏Snapshot/Coverage anchor内部ID，root先前误当人类展示已纠正。`validation_profile_prep`窄修完成通知及同步07英文模板，保留后台metadata/选择校验；同时只读检查其他模型输出，不混同已修的人类/notebook F13。待集中review/定向证据 |
+| 首页Profile误筛选侧栏 | 用户发现切换首页Profile只显示该Profile会话，未经授权、偏离06 §2.11。root已review列表合并、真实owner打开/写入/回写、同ID隔离及跨Profile Pin顺序刷新保留。早期3条真实DOM证据对应首次补丁；最新owner/Pin补强只后台测试，受用户屏幕约束未UI复验。此前113项未覆盖该行为，不代签当前通过 |
+| 模型Notebook内部标识 | 用户指出给Hermes AI的NOTING RESULT泄漏Snapshot/Coverage anchor内部ID，root先前误当人类展示已纠正。完成Framework/Main与Noting show/各Turn control均作模型投影，内部metadata/Store/默认API保留。root亲审接收，6 RED→12独立节点PASS及检查通过；待后续实际加载/Validation，不混同人类F13或把受控wire当现场模型样本 |
 | 来源交付与体验建议 | VP-02仍缺提案原文核对/内容标签及Hermes来源Metadata，待用户决定短Prompt修订；不由测试SOUL灌答案。VP-03模型自述有误，VP-05安静/无记录汇报测试要求有张力，不直接认定代码Bug。当前整体验收仍NOT PASS，详见final-delivery当前段 |
 | 静态 Verification / 最终交付 | 按用户要求推迟；历史二审不通过。待实际功能结果后判定剩余修复与部署范围，不能用计划代替通过 |
 
