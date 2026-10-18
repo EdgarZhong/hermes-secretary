@@ -1,6 +1,25 @@
 # Snapshot Index：20261016-round3-secretary-nm
 
-## 当前阶段：第2次Verification已完成，公开主仓库门禁不通过（2026-10-17）
+## 当前阶段：收尾与真实使用 Validation（2026-10-18）
+
+| 口径编号 | 用户明确要求 | 来源与边界 |
+|---|---|---|
+| R3-024 | 推迟静态 Verification，优先真实使用功能 Validation；主会话设计，6.1 子 Agent 执行，观察模型是否按 Harness 机制行动，不做角色扮演 | 本聊天用户“Verification静态审查推迟掉”“第三轮自主实现，进入收尾和validation阶段”；不把历史不通过改写成通过 |
+| R3-025 | 本机新建主助手、考研助手 Profile，安装插件连接真实 NM；Default 只读，已创建“考研复习”及获授权新测试 Space 可写 | 覆盖本阶段 R3-018 round3-only 与历史 fixture-only/NM未授权限制；原 round3 保留，真实私人数据和身份不进公开仓库 |
+| R3-026 | 主助手每天至少安排一个 Reminder，读取考研 Space 跟进活动；跨领域汇总通过 NM，不读取考研 Hermes Profile | 用户本聊天明确说明的双助手使用方式；实测须观察实际工具执行与结果，不能只核对排期存在 |
+| R3-027 | 先读 `~/.pi/SYSTEM.md` 理解主助手身份，再结合待提供文档写主助手 SOUL；考研助手使用单独 SOUL 并观察行为差异 | 用户后续定位“.pi”；身份文档为参考材料，旧 Pi 的执行工具、写权限与通知安排不自动成为本次授权 |
+| R3-028 | 实测以现实10分钟代表一天，每条发给被测主模型的用户消息前置测试身份、时间收缩与禁止查代码/调查Harness说明；如实直接回答体验问题 | 用户本聊天补充；实际排期为每10分钟，保留此前授权的NM访问，禁止读另一Profile；具体前缀见validation.md，不改系统时钟或内部时间规则 |
+| R3-029 | 开工前先精简三份核心文档 | 用户本聊天明确要求；合并冗余及过时动态叙述，保留规则、未结问题与证据，不据精简修改产品或宣布通过 |
+| R3-030 | 新需求文档到达，授权搭建完整测试环境、修改Profile/SOUL及测试配置；代码bug可交子Agent修，框架内写死Prompt未经再次授权不得改 | 本聊天最新用户指令；先真实测一轮再给Harness/Prompt调优建议，不把环境Persona调优扩为框架Prompt授权 |
+| R3-031 | DeepSeek用于本轮实测，正式拟用更强K3；不全信DeepSeek的回答或建议，也不据它代表正式使用表现 | 区分客观代码/工具事实、配置问题、模型行为偏差与未测范围；K3不在本次实测模型范围 |
+| R3-032 | 高并行、提高token efficiency，主会话先建立使用验收心智模型、不陷入细节；子Agent阶段交回，减少中途碎片汇报 | 现以环境搭建、必要代码修补并行，独立实测串接；只有阻塞/需决策/完整阶段主动消息 |
+| R3-033 | 主助手与考研助手两个Profile都开启Noting | 用户本聊天明确确认；各自Notebook照常整理，与Default NM只读无冲突 |
+| R3-034 | 主会话作为产品负责人抓全局、场景设计和体验质量；尽快上线、控制开发成本与token，允许等待子Agent阶段交回；现开始托管，用户等集中报告 | 用户多次强调，并要求在上下文压缩后仍谨记；根CLAUDE当前目标顶部显眼保存，不因恢复重启细节调查或重复扩测 |
+| R3-035 | 两Profile开启节约上下文的Idle Compact + Noting，100k tokens后空闲几秒触发 | 用户最新明确；主会话将“几秒”取5秒作为测试配置，100000是触发阈值而非模型context window；使用现有联合Idle入口，保持真实模型/数据库时间 |
+
+动态执行见根 CLAUDE，现行场景见 validation.md。精简前完整看板保留在 snapshots/CLAUDE.before-validation-trim.txt，仅为只读历史，不是平行任务板。以下阶段记录均为历史时点；涉及环境、NM授权和门禁顺序时以 R3-024～029 为准，其余产品要求保持。
+
+## 历史阶段：第2次Verification已完成，公开主仓库门禁不通过（2026-10-17）
 
 正式逐条复审写回 [verification.md](verification.md)，主会话最终接受判断见 [final-delivery.md](final-delivery.md)。固定待审产品 `b40fa1ff2a771066b4da1d8978a7abe44327e530`；提交准备读取main `de810bafb055d7cbc8cf8948c1975b37ed808bf6`，该版本相对产品只增加两份文档更新。本次不是个人Provider复审、产品修复或Validation。
 
@@ -18,7 +37,7 @@ R3-016～018已覆盖原云端规划／Develop停止限制；现在按本地环�
 
 原ask-and-align与双仓文档基线已经完成。用户现在授权主会话接手详细Develop计划并提交；明确由多个独立网页Chat经GitHub连接器分支／多文件提交／PR协作，本会话统一处理PR；云端先完成可完成源码，随后回本地运行、测试及修复，再止于独立Verification／Validation之前。
 
-静态计划见[plan.md](plan.md)，动态编排唯一入口为仓库根[CLAUDE.md](../../../CLAUDE.md)。本次只编制并提交计划，没有实施产品代码、执行产品测试或启动门禁。历史冻结版本保留在[baseline.txt](baseline.txt)，不被规划提交替换。
+静态计划见[plan.md](plan.md)，动态编排唯一入口为仓库根[CLAUDE.md](../../CLAUDE.md)。本次只编制并提交计划，没有实施产品代码、执行产品测试或启动门禁。历史冻结版本保留在[baseline.txt](baseline.txt)，不被规划提交替换。
 
 路径说明：本索引下文未加Markdown链接的仓库路径默认相对hermes-secretary根；`../hermes-nmem-provider/`为独立个人仓库。
 

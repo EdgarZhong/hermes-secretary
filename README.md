@@ -2,32 +2,28 @@
 
 Hermes Secretary 是基于 [Nous Research 的 Hermes Agent](https://github.com/NousResearch/hermes-agent) 的公开扩展，面向长期对话中的工作状态维护、责任跟进与提醒。
 
-第三轮改版的已审语义见 [Notebook 白板](docs/notebook-ontology-whiteboard.html)，工具、英文提示文与接线契约见 [07](docs/07-scheduler-notebook-noting-compaction-redesign.md)。二者共同组成Secretary新设计依据；第三轮同时开展独立的个人NM接入，保持个人实现隔离，界面改版后置。旧 01／02／04／06 仅在明确保留的范围继承。通用规则见 [AGENTS.md](AGENTS.md)，当前状态、代码版本、任务与证据见 [CLAUDE.md](CLAUDE.md)。
-
-**阅读顺序：** AGENTS → CLAUDE → 白板 → 07 → 07 指定的旧规格保留段落。设计契约、实现接线和验收证据分别判断；当前集成状态以 CLAUDE 为准，旧轮次报告不能代替第三轮证据。
+已审语义见 [Notebook 白板](docs/notebook-ontology-whiteboard.html)，工具、英文提示文与接线契约见 [07](docs/07-scheduler-notebook-noting-compaction-redesign.md)；旧 01／02／04／06 按明确保留与替换范围使用。通用规则见 [AGENTS.md](AGENTS.md)，当前目标、代码版本与验收证据见 [CLAUDE.md](CLAUDE.md)。设计规格与历史报告不代表当前版本已通过验收。
 
 ## 核心架构
 
-沿用 Hermes 的 Agent Turn、physical Session、Gateway、原生工具、压缩与持久化，在既有接缝增量扩展。Conversation 原文是事实源，Notebook 是派生工作状态；Secretary 只向 profile-scoped `state.db` 增加自有表，不改原有表的 schema 或 ownership。现有官方 Dashboard（`web/` 与 `hermes_cli/web_server*.py`）仍是原生浏览器管理入口，独立 Secretary Web UI 的契约见 06。
+沿用 Hermes 的 Agent Turn、physical Session、Gateway、工具、压缩与持久化，在既有接缝增量扩展。Conversation 原文是事实源，Notebook 是派生工作状态；Secretary 只向 profile-scoped `state.db` 增加自有表，不改原有表的 schema 或 ownership。官方 Dashboard 与独立 Secretary Web UI 共用原生后端。
 
 | 模块 | 已落实的数据与职责边界 |
 |---|---|
 | Conversation Identity | `conversation_ref` 为稳定 ownership；physical Session、compression lineage 和 Gateway scope 为 locator |
 | Conversation History | 复用原生检索候选流及合法 History Foreground，以 `(conversation_ref,message_uid)` 返回规范来源；不建立第二份原文库 |
-| Notebook 数据层 | 三内容板块及 Candidates；稳定 entry 身份、不可变版本；Snapshot 固定版本映射，以原子 current pointer 发布；Main 只读 |
+| Notebook | 三内容板块及 Candidates；稳定 entry、不可变版本与原子发布的 Snapshot；Main 只读。Noting 以 `source_message_uids` 引用本 Conversation 来源，可信绑定补全归属；内部与全局 Message Identity 保留完整身份 |
 | Background Noting | 复用原生 AIAgent、持久 child 与冻结父前缀；任务生命周期和正式接线位于 `secretary/noting_*.py` |
 | Scheduler 数据层 | 独立的 Conversation Schedule Table、原生时间解析、claim／pending／ACK；不随 Notebook pointer 重选修改 |
-| 配置与 Main 提示 | `noting`、`scheduler` 独立配置解析；Notebook local 参与由 `/noting` 控制，配置与工具请求同步沿原生构建接缝 |
+| 配置与 Main 提示 | `noting`、`scheduler` 独立配置；Conversation-local Noting 参与由 `/noting` 控制，沿原生构建接缝接入 |
 | 时间与消息载体 | 可读带时区绝对时间，以及 timestamp、Framework、Instant/Deferred Reminder 的真实载体契约 |
-| Full Foreground | 内部逻辑审计投影：唯一 Context Prelude、真实消息节点与 Anchor/Snapshot 附着；Web 全量审计视图按 06 延后 |
+| Full Foreground | 内部逻辑审计投影：唯一 Context Prelude、真实消息节点与 Anchor/Snapshot 附着 |
 
-底层模块具备接口不代表全部 host 接线或整版验收已完成；正式运行和测试证据统一见 CLAUDE 及本轮报告。
-
-`hermes serve`／Dashboard 宿主在启动时及每轮后约5秒扫描其受管理 Profile 的持久排期。合法本地 Main 的 Instant Reminder 即使无浏览器连接、原 Runtime 已回收，也沿原生恢复与接纳入口处理；纯 deferred 不主动唤醒，busy 沿既有机制转 pending。新 Runtime 仍可按原生机制回收，消息渠道路由由其原 owner 负责。适用配置、失败及投递确认边界见 [08](docs/08-profile-scheduler-files-clarification.md)。
+`hermes serve`／Dashboard 宿主在启动时及每轮后约 5 秒扫描受管理 Profile 的持久排期。合法本地 Main 的 Instant Reminder 可在无浏览器、Runtime 已回收时沿原生入口恢复；deferred 不主动唤醒，busy 转 pending，消息渠道路由保留原 owner。配置、失败及投递确认边界见 [08 §2](docs/08-profile-scheduler-files-clarification.md#2-冷态-instant-reminder-的宿主责任)。
 
 ## Secretary Slash 入口
 
-命令复用 Hermes 共享 catalog、补全与执行链路。CLI、Gateway、官方 Dashboard 与 Web 的人类呈现边界按现行 02／06 及 07 的保留和替换条款处理。
+命令复用 Hermes 共享 catalog、补全与执行链路；客户端呈现边界按 02／06／07 的保留与替换条款处理。
 
 | 命令 | 行为 |
 |---|---|
@@ -45,7 +41,7 @@ Hermes Secretary 是基于 [Nous Research 的 Hermes Agent](https://github.com/N
 | [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent) / `upstream` | Hermes 官方上游 |
 | `hermes-upstream` | 纯官方 `upstream/main` 镜像，不用于项目开发 |
 
-上游同步执行 [文档保护 SOP](AGENTS.md#上游同步与核心文档保护-sop)。新 clone 如需官方上游，添加 `upstream` 后 fetch，先审查再集成。
+上游同步执行 [文档保护 SOP](AGENTS.md#上游同步与核心文档保护-sop)；新 clone 按需添加并 fetch `upstream`，审查后集成。
 
 ```text
 hermes-secretary/
@@ -64,7 +60,7 @@ hermes-secretary/
 
 ## 运行与开发环境
 
-本地开发与浏览器验收使用 localhost、隔离 `HERMES_HOME` / runtime。开发 Python 3.14 由 Hermes PM 提供；依赖按官方锁文件管理，不迁移 PM 或改全局 Python。Git、Git LFS、Node.js 与 JS workspace 环境见 [CONTRIBUTING.md](CONTRIBUTING.md) 和 `package.json`。
+本地开发与浏览器验收使用 localhost、隔离 `HERMES_HOME` / runtime。开发 Python 3.14 与依赖由 Hermes PM 和官方锁文件管理；Git、Git LFS、Node.js 与 JS workspace 环境见 [CONTRIBUTING.md](CONTRIBUTING.md) 和 `package.json`。
 
 按 [PM developer workflow](website/docs/reference/package-management.md#developer-workflow) 准备环境，在源码根目录激活：
 
@@ -81,7 +77,7 @@ Gateway 入口为 `hermes gateway`。官方 Dashboard 入口为 `hermes dashboar
 
 ### 模型代码版本漂移保护（开发开关）
 
-Hermes 在进程启动时记录 checkout 的 Git revision。运行中 checkout 变化后，模型列表、密钥保存、模型切换等模型操作会拒绝请求（TUI/Desktop RPC `5098`、Dashboard `503`），避免新旧模块混用导致的真实导入/运行错误。保护默认开启，未配置时行为不变。
+进程启动时记录 checkout 的 Git revision；运行中版本变化后，模型列表、密钥保存、模型切换等操作拒绝请求（TUI/Desktop RPC `5098`、Dashboard `503`）。保护默认开启。
 
 本地开发需要在同一 checkout 内继续这些模型操作时，在启动 Profile 的 `config.yaml`（默认 `~/.hermes/config.yaml`）中设置：
 
@@ -90,36 +86,26 @@ gateway:
   model_code_skew_guard: false
 ```
 
-也可执行 `hermes config set gateway.model_code_skew_guard false`。该策略由对应后端进程在启动时读取一次，同进程内所有 Profile 共用；修改后需重启该后端（gateway、dashboard/`hermes serve` 或 TUI）才生效。关闭只跳过上述模型操作的版本漂移拒绝：原始漂移检测、Cron 使用方、后端退休/watchdog、Session `4001` 保护、认证及模型/provider 校验均保持不变。它不是模块热更新，也不会保证已加载模块与磁盘代码兼容；真实导入或运行错误仍会正常暴露，必要时仍需重启。
-
+也可执行 `hermes config set gateway.model_code_skew_guard false`。后端启动时读取一次，同进程所有 Profile 共用；修改后需重启对应 gateway、dashboard/`hermes serve` 或 TUI。关闭只跳过模型操作的漂移拒绝，保留原始检测、Cron 使用方、退休/watchdog、Session `4001`、认证及模型/provider 校验。此开关不热更新模块，真实导入或运行错误仍会暴露，必要时仍需重启；详见 [06 §0.8](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md#08-development-opt-out-for-model-code-skew-guards-user-confirmed-2026-10-17)。
 
 ## 独立 Secretary Web 开发入口
 
-独立前端在并列本地仓库 `../hermes-secretary-web`，使用 React / TypeScript / Vite，直接调用原生 REST / WS；开发服务默认连接 `http://127.0.0.1:53445`。部署范围及验收进度见 CLAUDE；官方 Dashboard 与 Secretary 同源并存，见下节部署形态。
+独立前端位于并列本地仓库 `../hermes-secretary-web`，使用 React / TypeScript / Vite，直接调用原生 REST / WS；开发服务默认连接 `http://127.0.0.1:53445`。主要交互按以下规格定位：
 
-首页 / New Chat 通过独立下拉选择原生 Profile，已有 Conversation 保持原归属；草稿、模型选择及附件路径按 Profile 隔离。侧栏 Conversation 图标由前端 `src/core/profile-icons.tsx` 的集中固定映射提供；新增 Profile 需补充映射，未映射时使用通用图标。多个 Profile 可配置相同 Workspace，共享项目文件但各自保留会话、记忆与指令。交互契约见 [06 §2.11](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md#211-new-chat-profile-selection-and-conversation-icons-user-confirmed-2026-10-17)。
+| 主题 | 稳定边界与详细契约 |
+|---|---|
+| Profile | 仅 New Chat 选择归属，已有 Conversation、草稿与附件保持 owner；共享 Workspace 不合并身份。新增图标维护 `src/core/profile-icons.tsx`。[06 §2.11](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md#211-new-chat-profile-selection-and-conversation-icons-user-confirmed-2026-10-17) |
+| Files | 临时固定 `default`（`src/core/files.ts`），list／preview／download 同 owner；返回聊天恢复原 Profile 与路由。[08 §3](docs/08-profile-scheduler-files-clarification.md#3-files-固定-profile-的临时接线) |
+| Timeline | 原生消息分类、完成通知、200 条分页、滚动跟随与逐调用工具卡。[06 §1.4](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md#14-timeline-streaming-message-kinds-and-timestamps)、[§1.5](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md#15-tool-rendering-markdown-and-errors) |
+| Notebook／Noting | `/notebook` 为浏览器内存中的临时只读卡；运行状态与 Snapshot 成功高亮分别呈现。[06 §1.12](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md#112-slash-catalog-command-dispatch-and-human-only-notebook)、[§1.15](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md#115-secretary-orb-noting-status-and-memo-stick) |
+| 附件与 Send | 草稿附件总上限 500,000,000 bytes，复用原生附件与增量分片接口；Send／Steer／Stop／Interrupt 按真实 Turn 状态执行。[06 §1.7](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md#17-attach-entry-points-and-local-selection)、[§1.8](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md#18-primary-action-normative-decision-table) |
+| Context／Compaction | 原生 usage、冷恢复估算与精确计数分离；压缩状态和历史使用真实载体。[06 §1.13](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md#113-usage-cards-and-context-indicator)、[§1.14](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md#114-compaction-presence-cancellation-and-authentic-history) |
 
-Files 临时固定使用 `default` Profile 的文件后端与默认目录（前端单一入口 `src/core/files.ts`），目录、文本／媒体预览及下载保持同一归属；不跟随当前聊天切换。Back to Chat 恢复原聊天的 Profile 和路由，返回记录保存在当前标签页及浏览器历史项；新标签页没有返回记录时进入原链接 Profile 的 New Chat。聊天创建目录、草稿和附件仍归聊天自身 Profile。后端 `default-cwd?profile=P` 按 P 的配置解析本地默认目录；完整边界见 [08](docs/08-profile-scheduler-files-clarification.md)。
+Schedule Table 按条目时区（IANA／`UTC±HH:MM`）显示绝对时间，缺失或无效时区以明确标记的 UTC 回退；只读数据边界见 [06 §2.6](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md#26-secretary-human-only-read-contracts)。
 
-当前草稿全部附件合计上限为 500,000,000 bytes，选择时累计判断、移除后释放预算，发送时小文件沿原生 `file.attach`，分片使用增量 `file.upload_chunk` / `file.upload_abort`，元数据使用 `file.attachment_info`，并显式绑定本次图片。两个订阅同一会话的客户端共享原生实时事件；普通 Send 只在 Main Turn 空闲时启动新 Turn，活动时按既定 Steer/Stop/Interrupt 操作。
+在前端目录执行 `npm ci` 后，以 `npm run dev` 启动页面；`npm run typecheck`、`npm test`、`npm run build` 分别执行类型检查、测试与构建。静态工作台入口为 `npm run mock -- --port 5176` → `/mock.html`，不连接后端或模型；检查／构建用 `npm run mock:test`、`npm run mock:build`。场景和组件边界见 [Mock 交接说明](.autonomous/20261012-round2-web-ui/static-mock.md)。
 
-Web 的 `/notebook` 是仅保存在浏览器内存中的四分区只读临时卡片，按调用顺序固定在命令发起时的 Timeline 位置，刷新后清除；任务状态与排期分别呈现，不展示内部 Anchor。
-
-Schedule Table 的绝对时间按条目所属时区显示，支持 IANA 时区及固定 `UTC±HH:MM` 偏移；缺失或无效时区用明确标记的 UTC 回退，不把浏览器本地钟面贴成条目时区。按需 AI 起名沿 Timeline 的真实可见消息分类合并历史与实时内容，以原生消息 UID 去除重叠，不将内部控制卡片作为聊天主题。
-
-Noting 成功高亮依据实际生效 Snapshot 的提交提示，并经所属 Conversation 的当前状态读取确认；单纯任务结束、失败或冷态读取不产生成功高亮。新增确认字段均为可选，旧客户端与旧后端仍沿原状态读取契约工作。
-
-`/notebook` 卡片时间标签为 `Updated at`，时间值沿用当前 Snapshot 的原生创建时间。后台进程和异步子 Agent 完成回报按原生 `display_kind` 显示为独立通知卡片，标题分别为 `process complete`、`async delegation complete`，复用 Framework Message 主题，默认折叠、可展开；前端不识别为 User Message，不提供 Reply／编辑。Noting Framework Message 保持原有展示。
-
-聊天历史首次加载最近 200 条后台消息，`Show More History` 每次向前加载 200 条；工具调用与结果计入条数。历史按需分页，不在浏览器持久化转录副本。
-
-Context 冷恢复复用所属 Session 的原生持久读数和压缩后估算，使用模型身份与原生 `rewind_count` 判断失效；无需先启动模型调用或加载整段历史。显示估算与原生精确 usage anchor 分离，不影响模型计数与压缩判定。接口仅增加可选可用性/失效说明，保留旧客户端所需字段；行为契约见 06 §1.13–1.14。
-
-Timeline 视口状态只在页面内存保存，刷新回底；用户 Send 被接受后立即回底跟随，其他来源的新 Turn 不触发回底。手动滚动暂停跟随，停止控制 20 秒后仅在 Turn 仍活动时恢复。向前加载历史保留当前内容锚点。完整工具调用段通过原生提交事件提供有序身份与展示元数据；并行调用逐张展示、按调用段顺序固定位置，各自更新状态。
-
-在前端目录执行 `npm ci` 后，`npm run dev` 启动正式接线页面；`npm run typecheck`、`npm test`、`npm run build` 为类型、定向测试与构建入口。静态交互工作台使用 `npm run mock -- --port 5176`，访问 `/mock.html`；可选择场景、主题与四种视口，不连接真实后端或调用模型。`npm run mock:test` 和 `npm run mock:build` 分别验证、构建静态工作台。场景与组件边界见 [Mock 交接说明](.autonomous/20261012-round2-web-ui/static-mock.md)。
-
-## 部署形态（已确认）
+## 部署形态
 
 私有云端部署使用**一个域名、一套 Cloudflare Access、一个后端进程**：
 
@@ -177,7 +163,7 @@ Access 应用使用同一个 hostname，策略为 `Allow` + 邮箱白名单；�
 
 ## 代码规范与测试入口
 
-代码遵循 [AGENTS.md](AGENTS.md) 的 Hermes-first、原生兼容、facade/sibling、prompt-cache、profile 隔离与冻结检查约束。上游分区文档只作架构和环境参考。
+代码规范、原生兼容、Profile 隔离与开发测试 SOP 统一见 [AGENTS.md](AGENTS.md)。
 
 ```bash
 # 按官方 PM 创建全新环境；目标 .venv 必须尚不存在
@@ -194,24 +180,24 @@ npm run --workspace ui-tui check
 npm run --workspace apps/desktop check
 ```
 
-Git 提交后通过 [post-commit hook](.githooks/post-commit) 推送当前分支的 upstream；工作区首次使用时按 [Git 同步约束](AGENTS.md#本地-ci--cd-与回归防护) 检查实际 hooks 路径并保留已有 hooks 后安装。独立 UI 的正式本地 main 对应 origin/secretary；新功能分支无 upstream 时推 origin 同名。失败时本地提交保留，不强推。
+提交后由 [post-commit hook](.githooks/post-commit) 自动同步当前分支；首次安装、upstream 与失败处理见 [Git 同步约束](AGENTS.md#本地-ci--cd-与回归防护)。独立 UI 正式本地 main 对应 origin/secretary。
 
-Python 不绕过 canonical runner 直接运行 pytest；JS/UI 入口及环境准备见 [Development Setup](CONTRIBUTING.md#development-setup)。`.venv/`、`.hermes-dev/` 不入版本控制。GitHub Actions 保持关闭，质量门禁在本地执行；测试范围、独立门禁与证据复用流程见 AGENTS。
+Python 测试统一使用上述 runner；环境准备见 [Development Setup](CONTRIBUTING.md#development-setup)。`.venv/`、`.hermes-dev/` 不入版本控制。GitHub Actions 关闭，质量门禁在本地执行。
 
 ## 重要文档索引
 
 | 文档 | 内容 | 路径 |
 |---|---|---|
-| Secretary 改版实施契约 | 与已审白板互补：转向历程、术语、Conversation History、四工具 Noting、Scheduler、完整 Schema／反馈、英文提示文及源码接线路径 | [07](docs/07-scheduler-notebook-noting-compaction-redesign.md) |
-| Notebook 已审方案白板 | 三板块七类型、逐类型进退、信息流、Noting 完整任务与联合触发的已审语义；工具／英文提示细节在 07 定案；支持会议批注 | [白板](docs/notebook-ontology-whiteboard.html) |
+| Secretary 改版实施契约 | History、四工具 Noting、Scheduler、Schema、英文提示文与源码接线 | [07](docs/07-scheduler-notebook-noting-compaction-redesign.md) |
+| Notebook 已审方案白板 | 三板块七类型、进退、信息流、任务与联合触发语义；支持会议批注 | [白板](docs/notebook-ontology-whiteboard.html) |
 | V1 实施总纲 | 公开核心范围、边界与继承要求 | [01](docs/01-personal-hermes-v1-first-fork-iteration.md) |
-| 改版前 Core 规格与保留机制 | 第三轮只继承就地标明的 Identity、Foreground、Snapshot、runtime 和投递不变量；旧 Target 不作为新施工要求 | [02](docs/02-noting-system-specification.md) |
+| 改版前 Core 规格与保留机制 | 按标识继承 Identity、Foreground、Snapshot、runtime 和投递不变量 | [02](docs/02-noting-system-specification.md) |
 | Notebook 清理机制旧提案（归档） | 原 07 研讨，已由白板与新 07 替代，不作为施工要求 | [归档](docs/archived/notebook-cleanup-mechanism-proposal.md) |
 | Noting 文案／提醒结构旧提案（归档） | 原 08 研讨及旧英文草案，新版提示文以 07 为准 | [归档](docs/archived/noting-message-and-reminder-contract-proposal.md) |
 | 改版前 V1.5 增量与保留机制 | 按新版替换标识继承缓存前缀、持久 child、有限续跑等机制 | [04](docs/04-hermes-secretary-v1.5-implementation-spec.md) |
 | 上下文开销台账 | token 实测口径、基线与变更记录 | [05](docs/05-context-cost-ledger.md) |
 | Profile、冷态提醒与 Files 补充契约 | Profile 配置归属、serve 冷态 Instant 恢复、Files 固定归属及最低验收场景 | [08](docs/08-profile-scheduler-files-clarification.md) |
-| Web UI 基线与保留契约 | 继承原生客户端、交互、设计系统；Memo、旧类型／工具与开关按 07 替换；模型思考档位投影见 §2.10，模型代码漂移保护开发开关的已确认需求见 §0.8 | [06](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md) |
+| Web UI 基线与保留契约 | 客户端、交互、设计系统、部署；思考档位见 §2.10，漂移开关见 §0.8；旧机制按 07 替换 | [06](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md) |
 | UI 只读 API 早期讨论（归档） | 已被正式 06 覆盖的早期讨论；旧 Memo 设计不进入新版 | [归档](docs/archived/06-ui-read-api-discussion.md) |
 | 通用协作 / 当前看板 | 用户规则、开发测试 SOP / 动态目标与未完成项 | [AGENTS](AGENTS.md)、[CLAUDE](CLAUDE.md) |
 | 第三轮依据索引 | Secretary改版与独立个人Provider的依据、会话口径及双仓库冻结记录入口 | [Snapshot Index](.autonomous/20261016-round3-secretary-nm/snapshot-index.md) |
