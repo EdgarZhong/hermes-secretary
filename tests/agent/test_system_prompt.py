@@ -11,7 +11,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from agent.system_prompt import build_system_prompt, build_system_prompt_parts
+from agent.system_prompt import build_system_prompt, build_system_prompt_parts, platform_hint
 
 
 def _make_agent(**overrides):
@@ -615,7 +615,10 @@ def test_coding_prompt_orders_shared_context_before_workspace(monkeypatch):
 
 
 class TestTelegramRichMessagesHint:
-    """Verify that TELEGRAM_RICH_MESSAGES_HINT is conditionally included."""
+    """The Telegram hint resolver still applies the rich-messages extension.
+
+    The system prompt no longer embeds platform hints, so these pin the
+    resolver used by dynamic surface notes and delivery surfaces."""
 
     def test_base_hint_without_rich_messages(self, monkeypatch):
         """When rich_messages is False, only the base hint is used."""
@@ -624,10 +627,10 @@ class TestTelegramRichMessagesHint:
             mock_cfg.return_value = {
                 "gateway": {"platforms": {"telegram": {"extra": {"rich_messages": False}}}}
             }
-            stable = _stable_prompt(agent)
-        assert "Standard Markdown auto-converts" in stable
-        assert "lean into it" not in stable
-        assert "task lists" not in stable
+            hint = platform_hint(agent)
+        assert "Standard Markdown auto-converts" in hint
+        assert "lean into it" not in hint
+        assert "task lists" not in hint
 
     def test_rich_hint_with_rich_messages_enabled(self, monkeypatch):
         """When rich_messages is True in gateway.platforms, the extension
@@ -637,10 +640,10 @@ class TestTelegramRichMessagesHint:
             mock_cfg.return_value = {
                 "gateway": {"platforms": {"telegram": {"extra": {"rich_messages": True}}}}
             }
-            stable = _stable_prompt(agent)
-        assert "lean into it" in stable
-        assert "task lists" in stable
-        assert "math/formulas" in stable
+            hint = platform_hint(agent)
+        assert "lean into it" in hint
+        assert "task lists" in hint
+        assert "math/formulas" in hint
 
     def test_rich_hint_from_top_level_platforms(self):
         """Top-level ``platforms.telegram.extra.rich_messages`` is merged
@@ -650,9 +653,9 @@ class TestTelegramRichMessagesHint:
             mock_cfg.return_value = {
                 "platforms": {"telegram": {"extra": {"rich_messages": True}}}
             }
-            stable = _stable_prompt(agent)
-        assert "lean into it" in stable
-        assert "task lists" in stable
+            hint = platform_hint(agent)
+        assert "lean into it" in hint
+        assert "task lists" in hint
 
     def test_top_level_overrides_gateway_rich_messages(self):
         """Top-level ``platforms.telegram.extra`` wins over gateway.platforms
@@ -663,8 +666,8 @@ class TestTelegramRichMessagesHint:
                 "gateway": {"platforms": {"telegram": {"extra": {"rich_messages": False}}}},
                 "platforms": {"telegram": {"extra": {"rich_messages": True}}},
             }
-            stable = _stable_prompt(agent)
-        assert "lean into it" in stable
+            hint = platform_hint(agent)
+        assert "lean into it" in hint
 
     def test_gateway_extra_other_keys_does_not_block_top_level_rich_messages(self):
         """When gateway.platforms.telegram.extra has other keys but not
@@ -675,8 +678,8 @@ class TestTelegramRichMessagesHint:
                 "gateway": {"platforms": {"telegram": {"extra": {"disable_link_previews": True}}}},
                 "platforms": {"telegram": {"extra": {"rich_messages": True}}},
             }
-            stable = _stable_prompt(agent)
-        assert "lean into it" in stable
+            hint = platform_hint(agent)
+        assert "lean into it" in hint
 
 
 
@@ -704,9 +707,9 @@ class TestTelegramRichMessagesHint:
         monkeypatch.setattr(_cfgmod, "get_config_path", lambda: home / "config.yaml")
 
         agent = _make_agent(platform="telegram")
-        stable = _stable_prompt(agent)
-        assert "lean into it" in stable
-        assert "task lists" in stable
+        hint = platform_hint(agent)
+        assert "lean into it" in hint
+        assert "task lists" in hint
 
     def test_malformed_extra_value_falls_back_to_base_hint(self, tmp_path, monkeypatch):
         """A truthy non-mapping ``extra`` must not crash prompt construction —
@@ -717,9 +720,9 @@ class TestTelegramRichMessagesHint:
             mock_cfg.return_value = {
                 "gateway": {"platforms": {"telegram": {"extra": "not-a-map"}}}
             }
-            stable = _stable_prompt(agent)
-        assert "Standard Markdown auto-converts" in stable
-        assert "lean into it" not in stable
+            hint = platform_hint(agent)
+        assert "Standard Markdown auto-converts" in hint
+        assert "lean into it" not in hint
 
 
 _SKILLS = "SKILLS_INDEX_SENTINEL"

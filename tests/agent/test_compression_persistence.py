@@ -467,8 +467,8 @@ class TestStoredPromptCwdDrift:
 
 
 
-    def test_built_prompt_contains_platform_line(self):
-        """The built system prompt must carry a Platform: line so drift detection works."""
+    def test_built_prompt_omits_platform_line(self):
+        """Platform is not an identity field; new prompts carry no Platform: line."""
         import tempfile
         from pathlib import Path
         from unittest.mock import patch
@@ -492,7 +492,9 @@ class TestStoredPromptCwdDrift:
                 )
             agent.platform = "cli"
             parts = build_system_prompt_parts(agent)
-            assert "Platform: cli" in parts["volatile"], (
-                "Built prompt missing 'Platform: cli' — drift detection cannot read it"
-            )
+            full = "\n\n".join(parts[key] for key in ("stable", "context", "volatile") if parts[key])
+            assert "Platform: cli" not in full
+            # Runtime identity that IS part of the cache contract survives.
+            assert "Model: test/model" in full
+            assert "Provider: openrouter" in full
             db.close()

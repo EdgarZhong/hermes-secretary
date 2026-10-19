@@ -541,7 +541,7 @@ def _timestamp_line(agent: Any) -> str:
     if getattr(agent, "_bot_chat_timeless_prompt", False):
         timestamp_line = f"Timezone: {', '.join(_bits)}" if _bits else ""
     trailer = (("Session ID", agent.session_id if agent.pass_session_id else None), ("Model", agent.model),
-               ("Provider", agent.provider), ("Platform", agent.platform))
+               ("Provider", agent.provider))
     return timestamp_line + "".join(f"\n{label}: {value}" for label, value in trailer if value)
 
 
@@ -739,7 +739,14 @@ def _coding_parts(agent: Any) -> Tuple[List[str], List[str], List[str]]:
 def _post_workspace_parts(agent: Any) -> List[str]:
     """Blocks that follow the worktree-specific context: environment probe
     (config.yaml agent.environment_probe; one line, nothing when clean, skipped
-    for remote backends), bot-mode protocol, platform hint."""
+    for remote backends) and the bot-mode protocol.
+
+    Platform guidance is deliberately NOT part of the system prompt. The native
+    runtime names the PROCESS surface (``tui``/``desktop``/``weixin``), not the
+    interface the Conversation actually lands on, so a new Conversation must not
+    open with guidance or a ``Platform:`` identity for a surface it may not be on.
+    ``platform_hint()``/``PLATFORM_HINTS`` stay available for the surfaces that
+    still resolve their own delivery (cron) and for dynamic switch notes."""
     parts: List[str] = []
     if getattr(agent, "_environment_probe", True):
         try:
@@ -749,7 +756,6 @@ def _post_workspace_parts(agent: Any) -> List[str]:
             pass  # Probe failure must never block prompt build.
     if getattr(agent, "_bot_mode_protocol", True):
         parts.extend(_bot_mode_parts(agent))
-    parts.append(platform_hint(agent))
     return parts
 
 
