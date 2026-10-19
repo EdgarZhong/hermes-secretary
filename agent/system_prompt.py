@@ -465,10 +465,21 @@ def _cron_delivery_hint(agent: Any) -> str:
     return f"Delivery destination ({deliver_key}): {hint}" if hint else ""
 
 
+def effective_platform_hint_key(agent: Any) -> str:
+    """Stable prompt surface, independent of the actual agent.platform transport.
+
+    Do not use this for routing, adapter selection, or enabled toolsets.
+    """
+    mode = getattr(agent, "_secretary_host_mode", None)
+    if mode == "secretary_web":
+        return mode
+    return (getattr(agent, "platform", None) or "").lower().strip()
+
+
 def platform_hint(agent: Any) -> str:
     """Built-in/plugin platform hint + Telegram rich-messages opt-in + config
     override + desktop TUI clarifier; cron agents also carry their delivery channel's hint."""
-    platform_key = (agent.platform or "").lower().strip()
+    platform_key = effective_platform_hint_key(agent)
     _effective_hint = _resolve_platform_hint(agent, platform_key, _default_platform_hint(platform_key))
     if (getattr(agent, "_secretary_main_read_eligible", False)
             and getattr(agent, "_secretary_scheduler_enabled", False)
@@ -541,7 +552,7 @@ def _timestamp_line(agent: Any) -> str:
     if getattr(agent, "_bot_chat_timeless_prompt", False):
         timestamp_line = f"Timezone: {', '.join(_bits)}" if _bits else ""
     trailer = (("Session ID", agent.session_id if agent.pass_session_id else None), ("Model", agent.model),
-               ("Provider", agent.provider), ("Platform", agent.platform))
+               ("Provider", agent.provider), ("Platform", effective_platform_hint_key(agent)))
     return timestamp_line + "".join(f"\n{label}: {value}" for label, value in trailer if value)
 
 
