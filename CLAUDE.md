@@ -1,6 +1,6 @@
 # Hermes Secretary 当前主看板
 
-## 手机恢复与历史分层加载修复（2026-10-19，本地集成已验证，未提交/未部署）
+## 手机恢复与历史分层加载修复（2026-10-20 00:06 已部署首尔，待真机验收）
 
 用户在HTTP/3暂停及DSH任务包交接后明确要求开始改代码；补充要求保持其它优化，并先加载普通可见内容及Thinking/工具卡片外侧，折叠内部内容随后渐进加载。用户要求不再新增子Agent，root直接实现分层读取与集成；既有三项已在写的实现按原范围交回。线上仍保持仅暂停HTTP/3，不部署代码以免混入DSH协议对照。本轮不改分页200、默认模型、业务Prompt或生产DB/schema/index。
 
@@ -21,7 +21,9 @@
   - F4（中）：打开会话先串行等`?summary=true`，失败还会阻断history/resume。修：history立即并行，summary仅advisory（404仍路由走），native resume等存在性检查后再发。
   - F5/F6（低）：`exit_code`为整数值浮点（2.0）时卡片与补水后状态翻转；Python接受NaN/Infinity而浏览器JSON.parse拒绝。修：整数值浮点按整数判定，非标准常量拒绝解析。
 - 保留不修（已记录）：详情响应`pagination`仍报order/limit/offset但详情忽略它们（客户端不读，契约漂移）；后台补水按整页deferred行排队（规格允许“随后渐进”，真机再定）；`SessionList.refresh(older)`并发窗口在UI路径不可达。
-- 证据与报告统一`.hermes-dev/mobile-code-fixes-20261019/`；尚未提交、部署或完成真实手机验收。先前冻结80文件证据不修改；DSH任务书仍按线上旧代码仅协议对照执行。
+- **已部署（2026-10-20 00:06 +08）**：后端`9a0c479`（父`e879cf86`）已推`origin/main`并快进首尔，重启后PID144598→202401、`/api/health`=200、无schema变更；前端`83285d2`（父`8821080`）已推`origin/secretary`，439文件/manifest`7bd37306…`，原子exchange后live 456文件（17个旧哈希资源保留），入口`index-CRPV46M2.js`与本地dist逐字节一致，旧入口仍200。回滚点：后端`e879cf86`；前端`.secretary-before-83285d2-20261020T000620`（454文件，8821080构建）。报告与receipt在`.hermes-dev/seoul-frontend-20261019-83285d2/`（含首次tar带入453个`._*`、未切换即修正的记录）。
+- 真机验收未做：按`.hermes-dev/mobile-http2-retest-20261019/next-round-acceptance.md`的A1–A7由本机DSH执行；单测与部署本身不算验收通过。
+- 证据与报告统一`.hermes-dev/mobile-code-fixes-20261019/`；已提交并部署（见上），尚未完成真实手机验收。先前冻结80文件证据不修改；DSH任务书仍按线上旧代码仅协议对照执行。
 
 ## HTTP/3暂停与本机DSH复测交接（2026-10-19 23:00起）
 
