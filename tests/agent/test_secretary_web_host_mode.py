@@ -35,7 +35,7 @@ def test_secretary_ui_hint_is_independent_of_tui_transport():
     assert effective_platform_hint_key(agent) == "secretary_web"
     hint = platform_hint(agent)
     assert "Hermes Secretary Web UI" in hint
-    assert "terminal UI" not in hint.split("primary interaction surface", 1)[-1].lower()
+    assert "You are in the Hermes terminal UI" not in hint
     assert agent.platform == "tui"  # toolsets and other transport consumers untouched
 
 
