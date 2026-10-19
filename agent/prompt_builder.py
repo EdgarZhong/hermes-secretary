@@ -787,6 +787,15 @@ PLATFORM_HINTS = {
         "or URL in plain text. "
         f"{_LOCAL_CRON_DELIVERY_NOTE}"
     ),
+    "secretary_web": (
+        "This Conversation's primary interaction surface is Hermes Secretary Web UI, "
+        "not the terminal UI or the Hermes Desktop app. Normal assistant responses, "
+        "including streamed text and tool activity, belong in this Web UI Conversation. "
+        "Do not assume a response will be mirrored to messaging channels. If the user "
+        "asks you to send an external message, use an explicitly available messaging "
+        "tool (for example the MCP messages_send tool) with an authorized target; "
+        "do not claim it was delivered without a successful tool result."
+    ),
     "desktop": (
         # Every claim verified against the shipping renderer (inline-preview-directive.tsx). Widget text is
         # recipe-first: HOW (an inline widget IS a ::preview'd HTML file) and WHY (the frame injects the theme
