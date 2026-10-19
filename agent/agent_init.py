@@ -1334,6 +1334,17 @@ def _apply_agent_section(agent, _agent_cfg):
         agent._skill_nudge_interval = int(_agent_cfg.get("skills", {}).get("creation_nudge_interval", 10))
 
     _agent_section = _cfg_dict(_agent_cfg, "agent")
+    # Secretary Web UI is a persistent host, not the TUI/desktop surface implied
+    # by its shared websocket transport. Keep agent.platform untouched: it also
+    # controls toolsets and gateway delivery. Scope this first phase to UI agents;
+    # inbound gateway -> existing Conversation is a separate integration task.
+    _runtime_section = _cfg_dict(_agent_cfg, "runtime")
+    agent._secretary_host_mode = (
+        "secretary_web"
+        if (_runtime_section.get("host_mode") == "secretary_web"
+            and getattr(agent, "platform", None) in ("tui", "desktop"))
+        else None
+    )
     agent.budget_warning_ratio = normalize_budget_warning_ratio(
         _agent_section.get("budget_warning_ratio")
     )
