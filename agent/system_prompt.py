@@ -45,7 +45,7 @@ Candidates are not permission to write. Prepare a concrete proposal with the exa
 
 SECRETARY_TIME_GUIDANCE = """Time system: the latest <timestamp> supplied by the harness runtime marks the current time when that message arrives; evidence times, due times and Snapshot times retain their own meanings and are not the current time. Do not infer that a reminder is registered merely because its intended time appears in the conversation."""
 
-SCHEDULER_GUIDANCE = """Use scheduler to register and manage the current Conversation's Schedule Table as soon as future attention is needed: choose instant to attempt a wake-up when due, or deferred when the content can wait for the next model request. Route in-Conversation reminders and follow-ups to Scheduler; reserve Hermes Cron for explicitly requested Hermes-wide schedule management or independent recurring Agent tasks. Unless the user explicitly disables autonomous follow-up, keep at least one instant reminder due within the next 24 hours. Check existing commitments without inventing new tasks, and stay quiet when there is nothing useful to report; use the scheduler's coverage notice to identify missing coverage."""
+SCHEDULER_GUIDANCE = """Use scheduler to register and manage the current Conversation's Schedule Table as soon as future attention is needed: choose instant to attempt a wake-up when due, or deferred when the content can wait for the next model request. Route in-Conversation reminders and follow-ups to Scheduler; reserve Hermes Cron for explicitly requested Hermes-wide schedule management or independent recurring Agent tasks. Unless the user explicitly disables autonomous follow-up, keep at least one instant reminder due within the next 24 hours. Check existing commitments without inventing new tasks; use the scheduler's coverage notice to identify missing coverage."""
 
 SECRETARY_SESSION_SEARCH_GUIDANCE = """Use session_search only for scheduled jobs and background runs, never as a fallback for Conversation evidence."""
 
@@ -586,12 +586,16 @@ def _guidance_parts(agent: Any) -> List[str]:
     """Universal + tool-aware + model-gated guidance blocks, each gated by its config.yaml key."""
     parts: List[str] = []
     if agent.valid_tool_names:
-        parts += [
-            text for flag, text in (
-                ("_task_completion_guidance", TASK_COMPLETION_GUIDANCE),
-                ("_parallel_tool_call_guidance", PARALLEL_TOOL_CALL_GUIDANCE),
-            ) if getattr(agent, flag, True)
-        ]
+        # A Noting-enabled Main conversation is steered by the Notebook/Scheduler guidance
+        # below; the universal "Finishing the job" block contradicts SOUL's orchestration
+        # rule there, and that conversation's own acceptance duty covers finishing work.
+        noting_main = bool(
+            getattr(agent, "_secretary_main_read_eligible", False)
+            and getattr(agent, "_secretary_notebook_read_enabled", False))
+        if getattr(agent, "_task_completion_guidance", True) and not noting_main:
+            parts.append(TASK_COMPLETION_GUIDANCE)
+        if getattr(agent, "_parallel_tool_call_guidance", True):
+            parts.append(PARALLEL_TOOL_CALL_GUIDANCE)
     parts.append(_tool_guidance_block(agent))  # None/empty entries are dropped by _join_tier
     if getattr(agent, "_secretary_main_read_eligible", False):
         parts.append(HISTORY_SEARCH_GUIDANCE)

@@ -1277,7 +1277,7 @@ Candidates are not permission to write. Prepare a concrete proposal with the exa
 ### 8.6 Main · Scheduler（一段）
 
 ```text
-Use scheduler to register and manage the current Conversation's Schedule Table as soon as future attention is needed: choose instant to attempt a wake-up when due, or deferred when the content can wait for the next model request. Route in-Conversation reminders and follow-ups to Scheduler; reserve Hermes Cron for explicitly requested Hermes-wide schedule management or independent recurring Agent tasks. Unless the user explicitly disables autonomous follow-up, keep at least one instant reminder due within the next 24 hours. Check existing commitments without inventing new tasks, and stay quiet when there is nothing useful to report; use the scheduler's coverage notice to identify missing coverage.
+Use scheduler to register and manage the current Conversation's Schedule Table as soon as future attention is needed: choose instant to attempt a wake-up when due, or deferred when the content can wait for the next model request. Route in-Conversation reminders and follow-ups to Scheduler; reserve Hermes Cron for explicitly requested Hermes-wide schedule management or independent recurring Agent tasks. Unless the user explicitly disables autonomous follow-up, keep at least one instant reminder due within the next 24 hours. Check existing commitments without inventing new tasks; use the scheduler's coverage notice to identify missing coverage.
 ```
 
 ### 8.7 Main · Time

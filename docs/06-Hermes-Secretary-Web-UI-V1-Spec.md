@@ -236,7 +236,9 @@ Message ordering, Compaction lineage, framework carriers, UIDs and stream insert
 
 **视口信息不持久化（2026-10-15 用户确认）：** 滚动位置、手动控制状态和恢复计时只存在页面内存；不读写 localStorage 等持久存储。每次刷新页面回到 Timeline 底部并恢复默认跟随。
 
-**2026-10-15 滚动补充澄清（覆盖此前恢复跟随的含糊描述）：** Timeline 默认随内容高度向下增长而被动跟随底部，持续显示最新内容；用户 Send 被接受后回底并开始被动跟随。任何用户主动 Timeline 滚动（向上或向下）立即退出跟随，之后流式追加不得推动视口，按用户选定的高度位置阅读；停止手动滚动控制 20 秒后，若当时 Turn 仍在流式输出，则自动回底恢复被动跟随；期间再次手动滚动重新计时，触摸拖动与惯性滚动结束后计时。若到期时 Turn 已结束则保留位置。只有用户 Send 被后端接受会立即回底；不得监听所有 Turn 启动统一回底，Reminder 等自动触发的新 Turn 不改变阅读位置。首次只加载 200 条后台消息；更早历史仅通过上方按钮每次加载 200 条，不做自动分页。向前加载完成后，补偿顶部新增高度并锚定原可见内容在视口中的位置，不能跳顶、跳底、闪动或错位。
+**2026-10-15 滚动补充澄清（覆盖此前恢复跟随的含糊描述）：** Timeline 默认随内容高度向下增长而被动跟随底部，持续显示最新内容；用户 Send 被接受后回底并开始被动跟随。用户主动 Timeline 滚动（向上或向下）离开底部后立即退出跟随，之后流式追加不得推动视口，按用户选定的高度位置阅读；用户主动回到底部时立即恢复跟随；停止手动滚动控制 20 秒后，若当时 Turn 仍在流式输出，则自动回底恢复被动跟随；期间再次手动滚动重新计时，触摸拖动与惯性滚动结束后计时。若到期时 Turn 已结束则保留位置。用户主动回到底部之外，仅用户 Send 被后端接受会立即触发程序回底；不得监听所有 Turn 启动统一回底，Reminder 等自动触发的新 Turn 不改变阅读位置。首次只加载 200 条后台消息；更早历史仅通过上方按钮每次加载 200 条，不做自动分页。向前加载完成后，补偿顶部新增高度并锚定原可见内容在视口中的位置，不能跳顶、跳底、闪动或错位。
+
+**2026-10-19 用户确认底部恢复跟随：** 用户手动滚动后暂停自动跟随；若用户随后主动滚回 Timeline 底部，立即恢复跟随新的流式输出，不再等待原手动阅读暂停计时结束。仍在底部以上阅读时保持原阅读位置与既有暂停恢复规则；不能把程序性滚动或内容增长误认成用户主动回到底部。该补充覆盖此前“动过 Timeline 后即使回到底部仍继续暂停”的含糊口径。
 
 **2026-10-15 用户录屏确认补充：** 每次真实工具调用在动态 Timeline 中只有一张卡，构建、运行和完成在同一卡片原位更新。**并行 N 次调用必须展示 N 张独立卡片，不得将整组并行调用合并成一张卡。识别到完整工具调用段时，全部调用卡即按后端真实顺序出现在 Timeline；各卡身份和位置顺序始终稳定，即使 start/complete 到达顺序不同，也仅及时更新各自的真实状态，不重排、不追加替代卡。** 每段 Thinking 和每次调用独立收尾，不以整个 Turn 结束作为统一纠正点。动态内容转为静态历史时，条目数量、顺序与内容保持连续，不得靠结束后的历史重渲染消除重复或补出此前漏显的段。处于底部跟随状态时，内容增长、卡片折叠及历史对账不得自行中断跟随；用户主动上滚阅读时保持其阅读位置。用户新 Send 被原生接受后回到底部、恢复跟随；手动滚动暂停与 20 秒恢复条件遵循上述最终澄清。
 
@@ -273,6 +275,12 @@ The Composer is a responsive, rounded multiline input with the approved controls
 **Transfer timing:** Selecting/pasting/dropping an attachment MUST NOT immediately upload to Hermes. Save it locally with the draft, check type/size at selection, and only transfer after the user issues Send. Duplicate visible filenames are allowed; distinct local occurrence IDs and the native server-generated paths/references distinguish them. Do not rename in the Composer or assume a filename is a unique identity. **User-confirmed attachment budget (2026-10-13): all attachments in the current draft together MUST NOT exceed 500 MB (500,000,000 bytes).** Selection, paste and drop MUST account for attachments already present, including duplicate-name occurrences; removing an attachment releases its contribution to that budget. Enforce the combined budget before admitting selected content into the draft. This is an aggregate limit, not a 500 MB allowance per file. Verify the complete actual upload and native submission path at this limit, including browser memory and websocket/API transport behavior; an ACK alone is not evidence of Agent readability. Do not retain the provisional 16 MiB per-file cap.
 
 On historical messages: ordinary file attachments show only file type/name with an extension-derived icon; historical attachment chips are **not** click-to-preview, and no backend read-link reconstruction is required. Existing displayed image content may be restored only from real native history/projection, never from guessed local blob paths. PDF `pdf.attach` is not the default ordinary PDF mechanism (it renders pages into images, a different semantic action).
+
+**2026-10-19 user-confirmed display correction:** User bubbles MUST hide Hermes-generated `<memory-context>` recall blocks and their System note; keep the underlying native/model content unchanged. Restore native persisted `[Image attached at: <path>]` / `[screenshot]` carriers as authenticated, profile-owned image thumbnails with bounded width and height, using their real recorded paths. Keep ordinary user text and quoted/code examples intact. Handle both live multimodal input and refreshed flattened history, without depending on base64 image parts surviving persistence.
+
+**2026-10-19 user-confirmed core note wording:** New native recall wrappers state the sentence directly, with no `System note` label: `The following is recalled memory context, possibly relevant, not user input. This is the agent's persistent memory.` Remove the previous authoritative-data and all-responses instructions. Existing persisted API content is replayed unchanged; rendering and output sanitization remain compatible with every historical wrapper (labeled authoritative/informational forms and the earlier two-sentence note).
+
+**2026-10-19 user-confirmed capture behavior:** Compress photos locally from **Take Photo** before upload; selection/processing still performs no network upload before Send. Other attachment entry points retain their original bytes. Exact compression settings are an explicitly reported provisional choice in CLAUDE UI-CAM-01 until confirmed.
 
 ### 1.8. Primary action: normative decision table
 
@@ -842,3 +850,11 @@ Future goals remain recorded so omitting them from V1 is **not** a cancellation.
 > **第三轮适用性：** 下文薄客户端、原生复用与真实交互原则保留；末句固定Astra／视觉AI职责是第二轮历史编排，第三轮按新计划，不由此指定人员／模型。
 
 **Final normative invariant:** *The browser is a thin, reconstructible API client. Hermes/Secretary owns all committed conversation and runtime truth. The Web UI follows the confirmed user interactions exactly; source-grounded native reuse is preferred; exceptional backend changes are minimal and additive; the design system is centralized; GPT-6 Astra is responsible for integration and correctness, and the visual AI is responsible for styling without inventing product behavior.*
+
+
+### 聊天背景表现层澄清（2026-10-19 用户确认）
+
+- 仅表现层：New Chat 与 Conversation 共用完整聊天主面板背景，覆盖顶部、时间线及 Composer 下方，不能挂在 Welcome 局部容器内；不修改消息、路由或会话业务契约。
+- 材质与运动：以高模糊、柔和低饱和度的磨砂漫射为主，采用连续火雾质感，以流淌为主、减少翻卷。拒绝几片渐变色带的移动、长条拉伸或锐利轮廓。两种聊天状态均持续且明显可见地流动；减少动态效果偏好下降低流速。
+- 空间与切换：首页主要在画布中间、标题下方附近流淌；进入 Conversation 较快速向周边移位，再恢复常态流速。四周为主，允许偶尔漫入中心，无明确分界；返回首页反向聚拢，流动不断。保护文字、消息气泡及 Composer 的清晰度与操作。
+- 色彩：参考现有 Warm Foundation / Cool Accents 色卡；明暗模式分别调校颜色、亮度、模糊和混合参数。暖陶／浅琥珀与雾蓝／灰绿交融，以实际视觉而非数值混合比例判断，暖色整体略占优势。冷暖倾向随时间平滑变化，一段时间偏暖、一段时间稍偏冷，不做整屏突然切色。

@@ -112,7 +112,9 @@ def synchronize_main_read_prompt(agent, system_message=None):
         HISTORY_SEARCH_GUIDANCE, SCHEDULER_GUIDANCE, SECRETARY_SESSION_SEARCH_GUIDANCE,
         SECRETARY_WORK_AND_NOTEBOOK_GUIDANCE,
     )
-    from agent.prompt_builder import SECRETARY_MEMORY_APPROVAL, SECRETARY_SKILL_GATE
+    from agent.prompt_builder import (
+        SECRETARY_MEMORY_APPROVAL, SECRETARY_SKILL_GATE, TASK_COMPLETION_GUIDANCE,
+    )
     prompt = getattr(agent, "_cached_system_prompt", None)
     if not isinstance(prompt, str):
         return False
@@ -126,7 +128,12 @@ def synchronize_main_read_prompt(agent, system_message=None):
         and "memory" in names
         and (getattr(agent, "_memory_enabled", True) or getattr(agent, "_user_profile_enabled", True))
     )
+    task_completion = (
+        bool(getattr(agent, "_task_completion_guidance", True))
+        and not bool(getattr(agent, "_secretary_notebook_read_enabled", False))
+    )
     expected = (
+        (TASK_COMPLETION_GUIDANCE, task_completion),
         (HISTORY_SEARCH_GUIDANCE, True),
         (SECRETARY_WORK_AND_NOTEBOOK_GUIDANCE, bool(getattr(agent, "_secretary_notebook_read_enabled", False))),
         (SCHEDULER_GUIDANCE, bool(getattr(agent, "_secretary_scheduler_enabled", False)) and "scheduler" in names),

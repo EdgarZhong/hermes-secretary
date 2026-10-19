@@ -121,6 +121,20 @@ def test_prompt_matrix_at_native_guidance_assembly(noting, scheduler):
     assert _guidance_parts(current) == parts
 
 
+def test_noting_main_skips_finishing_the_job_guidance():
+    """The universal block contradicts SOUL's orchestration rule on a Noting Main."""
+    from agent.prompt_builder import TASK_COMPLETION_GUIDANCE
+    from agent.system_prompt import _guidance_parts
+
+    noting = agent(noting=True)
+    noting._task_completion_guidance = True
+    assert TASK_COMPLETION_GUIDANCE not in _guidance_parts(noting)
+
+    plain = agent(noting=False)
+    plain._task_completion_guidance = True
+    assert TASK_COMPLETION_GUIDANCE in _guidance_parts(plain)
+
+
 def test_native_search_guidance_unchanged_for_auxiliary_and_unavailable_search_absent():
     from agent.prompt_builder import SESSION_SEARCH_GUIDANCE
     from agent.system_prompt import SECRETARY_SESSION_SEARCH_GUIDANCE, _tool_guidance_block, _guidance_parts

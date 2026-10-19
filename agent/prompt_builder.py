@@ -1483,10 +1483,11 @@ def _render_skills_index(
         )
     return (
         "## Skills\n"
-        "Before replying, scan the skills below. If a skill matches or is even partially relevant to your "
-        "task, you MUST load it with skill_view(name) and follow its instructions. Err on the side of "
-        "loading — it is always better to have context you don't need than to miss critical steps, pitfalls, "
-        "or established workflows. Skills contain specialized knowledge — API endpoints, tool-specific "
+        "Before starting the actual work, review the skills below — check both direct matches and related "
+        "skills that cover the same steps, tools, or quality bar. If a skill applies, load it with "
+        "skill_view(name) and follow its instructions; it is better to check context you end up not needing "
+        "than to miss critical steps, pitfalls, or established workflows. Skills contain specialized "
+        "knowledge — API endpoints, tool-specific "
         "commands, and proven workflows that outperform general-purpose approaches. Load the skill "
         f"even if you think you could handle the task with basic tools like {_basic_tools}. "
         "Skills also encode the user's preferred approach, conventions, and quality standards for tasks like "

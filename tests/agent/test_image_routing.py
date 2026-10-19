@@ -129,6 +129,28 @@ class TestSupportsVisionOverride:
         cfg = {"model": {"supports_vision": False}}
         assert _supports_vision_override(cfg, "custom", "my-llava") is False
 
+    def test_providers_dict_per_model_supports_vision_for_builtin(self):
+        """Production shape for kimi-coding/k3-256k: a partial
+        ``providers.<provider>.models.<model>.supports_vision`` declaration.
+
+        A provider block with no ``base_url``/``api_key`` is tuning for the
+        built-in provider (see ``test_user_provider_timeout_only_entry``), so
+        it must not shadow the profile's endpoint or credentials. The
+        declaration is per-model: a sibling slug on the same provider stays
+        undecided and falls back to text.
+        """
+        cfg = {
+            "model": {"provider": "kimi-coding", "default": "k3-256k"},
+            "providers": {"kimi-coding": {"models": {"k3-256k": {"supports_vision": True}}}},
+        }
+        with patch("agent.models_dev.get_model_capabilities", return_value=None):
+            assert _supports_vision_override(cfg, "kimi-coding", "k3-256k") is True
+            assert _lookup_supports_vision("kimi-coding", "k3-256k", cfg) is True
+            assert decide_image_input_mode("kimi-coding", "k3-256k", cfg) == "native"
+            # Sibling model on the same provider is not declared and stays text.
+            assert _supports_vision_override(cfg, "kimi-coding", "k3") is None
+            assert decide_image_input_mode("kimi-coding", "k3", cfg) == "text"
+
 
 
 

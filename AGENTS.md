@@ -156,6 +156,9 @@
 
 ## 依赖与本地配置
 
+- **个人MCP工具目录（用户明确，2026-10-19）：** 后续个人MCP工具的源码及项目安装位置统一放运行主机的`~/tools/`；通过npm安装的工具除外。独立小工具`~/scrips/`约定仍按各自范围执行，不因此迁移无关项目。
+
+
 - **个人独立小工具（用户明确）：** NM Memory创建等此类小工具统一放运行主机的 `~/scrips/`（按用户指定拼写，本机与云端一致），不依赖Hermes安装、Provider目录、`HERMES_HOME`或仓库cwd；复用主机官方NM配置，不复制凭据。工具只接收调用方提供的内容与Metadata，不自行读取Hermes状态；这不是迁移现有无关脚本或修改全局配置的授权。
 - 安装优先 Homebrew、mise、nvm、uv；代码库 Python 用项目级 uv／虚拟环境，不用 `sudo pip`。本仓由 `activate`／`hermes pm` 及 PM 管隔离环境，不以裸 pip／uv 改 PM 环境，不因项目目标改全局 Python。
 - 工作区 `.venv` 用官方 `pm.build_env`、官方解释器、现有锁，含 `dev`／`test` groups；不迁移管理方式、不重解析／改写锁。运行状态可放 ignored `.hermes-dev/`，不提交运行数据／凭据。

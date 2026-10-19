@@ -2,9 +2,51 @@
 
 本文适用于独立 Secretary Web SPA＋原生 Hermes Web Dashboard、同源双 SPA、单后端和原生多 Profile。用户已于 2026-10-19 放行部署；本文记录操作口径，不以模板、上传或本机门禁代表云端成功。当前进度与待办只在根 [CLAUDE.md](../CLAUDE.md)，本轮依据及验收入口在 [Snapshot Index](../.autonomous/20261019-cloud-deployment/snapshot-index.md)。架构见 [06 §0.7–0.8](06-Hermes-Secretary-Web-UI-V1-Spec.md#07-confirmed-deployment-topology-and-dual-spa-routing-2026-10-17)、[08](08-profile-scheduler-files-clarification.md)。
 
-## 1. 固定布局与生产配置
+## 0. 首尔正式入口的认证运维
 
-云服务用户为 `root`，HOME 为 `/root`，SSH 使用本机既有 alias `alex`。云端 Ubuntu 24.04 / x86_64；不要把本机虚拟环境复制上云。
+首尔 Hermes 正式入口为 `hermes.edgarzhong.fyi`，使用 Authelia 双因素认证。旧 `test.edgarzhong.fyi` 已废弃，直接返回404。`eb-data.edgarzhong.fyi` 由 Caddy 反代 `127.0.0.1:8787`，保留 Ebbinghaus 原生 Bearer 鉴权，不套浏览器双因素跳转；`nmem.edgarzhong.fyi` 反代 `127.0.0.1:14242`，保留NM原生API令牌认证。三个域名均使用仅DNS的首尔A记录。
+
+首尔 Hermes 使用 `ubuntu` 服务布局、Caddy 公网 HTTPS；`auth.edgarzhong.fyi` 仅提供认证门户。本节描述首尔入口；下文的 `/root`、`alex` 与 Cloudflare Tunnel／Access 布局属于既有部署模板，不直接套用到首尔机。当前迁移进展只记根 `CLAUDE.md`。
+
+首尔稳定布局：Hermes仓库 `/home/ubuntu/hermes-secretary`，控制根 `/home/ubuntu/.hermes`，两实体Home `/home/ubuntu/.hermes_profiles/{Alex,study}`，通过控制根的 `profiles/{alex,study}` 注册；保留原生default，不通过前端隐藏规避身份解析。Ebbinghaus位于 `/opt/ebbinghaus`；NM官方0.10.101运行程序保持 `/usr/lib/Nowledge Mem`，原生四数据根保持原路径，`nmem.service`以root运行、只监听本地14242，客户端ubuntu使用自己的受限官方连接配置。NM使用阿里云专属Host的 `/compatible-mode/v1`、`qwen3.7-text-embedding`／1024维，启动器从 `/etc/secrets/dashscope.key` 读取Key，不加载本地GGUF；更换模型后必须原生reindex，不能因维数相同跳过。
+
+同步专用Host `hermes-secretary-sync` 指首尔ubuntu，不改北京 `alex` alias。workspace为首尔 `/home/ubuntu/workspace` ↔ Mac `/Users/edgar/Desktop/Alex` two-way-safe；配置只传8白名单文件；DB完成包由首尔 `.hermes_profiles/.snapshots/databases-current.zip` 单向传Mac，再由既有接收器核验后落冷库。首尔快照timer每五分钟独立发布，Mac离线不阻塞源发布；不得把rawDB改成双向同步。切换时暂停旧lane、核定当前源配置、预对齐后启用，按真实marker往返、配置SHA、自动快照落地验证，不能只看connected。实际版本和收据见根CLAUDE。
+
+Authelia 使用官方二进制，`/etc/authelia/configuration.yml` 仅在 `session` 下增加：
+
+```yaml
+redis:
+  host: /run/redis-authelia/redis.sock
+  port: 0
+  database_index: 0
+  timeout: 2s
+  max_retries: 0
+```
+
+Hermes 的 Provider 密钥由 systemd `LoadCredential` 从 `/etc/secrets/{kimi-code,deepseek}.key` 读取，启动 wrapper 在进程内注入原生 Provider 环境，不把 Key 放入 argv、仓库或非受限配置。Alex 的 Kimi Tools 项目位于 `~/tools/kimi-tools/`，复用同一 Kimi Key，Search/Fetch 地址为官方 `https://api.kimi.com/coding/v1/{search,fetch}`。Playwright MCP 通过 npm 安装；无头 Chromium 的精确安装路径使用专用 AppArmor userns 配置，保留浏览器沙箱，不修改系统全局 userns 限制。
+
+会话有效期 `12h`、空闲期限 `5d`、记住我 `1M`、Cookie 作用域及双因素规则保持原配置。启用 Redis 后不再使用 Authelia 的进程内会话存储；首次切换需重新登录一次。会话密钥仍只保存在受限云端配置中，不复制到仓库或输出日志。
+
+- 专属服务为 `redis-authelia.service`，配置 `/etc/redis-authelia.conf`，数据 `/var/lib/redis-authelia`。系统包默认 `redis-server.service` 停用，避免运行第二实例。
+- Redis `port 0`，仅监听上述 Unix socket；目录 `redis:authelia 0750`、socket `redis:authelia 0770`，普通用户无访问权限。不开放 Redis TCP 端口。
+- 使用 AOF、`appendfsync everysec`；正常重启会话可保留，非正常断电仍有最近约一秒写入的持久化窗口。Redis `maxmemory 64mb`、`noeviction`，systemd `MemoryMax=128M`，不靠驱逐有效会话腾空间。
+- `/etc/systemd/system/authelia.service.d/redis-session.conf` 用 `Wants`／`After` 启动并排序专属 Redis；Authelia 失败后重试。Redis 短时不可用时鉴权拒绝，恢复后继续读取原会话；不会回退为绕过认证。
+- 切换前备份在 `/var/backups/authelia/redis-session-<timestamp>/`，其中 `rollback.sh` 仅恢复该次原 Authelia 配置并移除本次 drop-in，再重启认证服务。回滚会切回内存会话，并再次要求登录，不处理 Hermes 数据库或前端产物。
+
+只读检查入口：
+
+```bash
+sudo systemctl is-active authelia redis-authelia
+sudo -u authelia redis-cli -s /run/redis-authelia/redis.sock PING
+sudo redis-cli -s /run/redis-authelia/redis.sock INFO persistence
+sudo systemctl show authelia redis-authelia -p MainPID -p NRestarts
+```
+
+会话修复验证应覆盖已登录／匿名请求交错、记住我开关、认证服务重启、Redis 正常重启和不可用后恢复。故障注入优先使用独立虚拟账号／数据库和回环认证实例，不在正在使用的用户会话上重复制造故障。浏览器验收需遵守本轮明确显示授权；不把隔离测试冒称手机锁屏或长期运行实测。
+
+## 1. 原北京部署模板与生产配置口径
+
+本节为原北京部署模板（首尔运行布局按§0），不是当前主机选择。模板服务用户为 `root`，HOME 为 `/root`，SSH 使用本机既有 alias `alex`。云端 Ubuntu 24.04 / x86_64；不要把本机虚拟环境复制上云。
 
 | 用途 | 云端 | Mac |
 |---|---|---|
@@ -69,7 +111,7 @@ compression:
 | UI 实际构建输入 manifest SHA | `f4603149b04fd4262947eddf23481e2c5bbdcce7ca66d5c3c4e29eae3db23a18` |
 | Secretary dist | 439 文件，manifest SHA `abcbe7bd95af3a0e89ca1ad78831851b1f499372121c36b473cbbff55359c0b7` |
 | Dashboard dist | 67 文件，manifest SHA `cab847d3163f1916f956e033ee405b8cac7eecdd504f00eff1b45241c0922e4a`；沿用已验产物 |
-| Provider / 新快照工具 | Provider `a7225f6075c0ead8cad559db93be8da5525e09e8`，两Home共20份安装文件SHA已核；新增周期helper SHA `8e1ecc2de07f71a695588c7c6036d985536ffc7895558229be09d5baba0e97a4` 已审，实际两端同SHA、周期落库与离线接收恢复原件已绑定于sync/activation；workspace另有TCC等待 |
+| Provider / 新快照工具 | Provider `a7225f6075c0ead8cad559db93be8da5525e09e8`，两Home共20份安装文件SHA已核；新增周期helper SHA `8e1ecc2de07f71a695588c7c6036d985536ffc7895558229be09d5baba0e97a4` 已审，实际两端同SHA、周期落库与离线接收恢复原件已绑定于sync/activation；workspace旧TCC等待已由首尔正式往返验证取代 |
 
 固定 v5 两门禁只覆盖各自记录的软件范围；本轮 UI 图标 / 显示名、Provider 可选 Thread Space、新快照接收和云配置另按本轮证据接收，不重跑旧昂贵全套。静态产物逐文件核集合、大小和 SHA，再核清单本身；后端会注入 machine token / 改写 Dashboard 前缀，实际 HTML 不要求与 dist index 逐字相同。
 
@@ -142,9 +184,9 @@ Alex 复用云 Pi 既有 `kimi-tools` 与 `feishu-notifier` 的 command / args /
 
 同一既有 SSH / Mutagen 通道分工，不另建 HTTP / rsync / S3。配置 session 排除整个 `.snapshots`、raw DB / WAL / SHM / journal、备份和其它运行态；未知新目录不能自动回传。`.env` 不进 allowlist。配置 / SOUL 双向冲突人工核对，不用 `two-way-resolved` 自动选胜方；接收 DB 不能反写配置 / SOUL。正式起同步前核真实 allowlist、方向与端点；“connected”不能证明内容已正确到达。
 
-**当前实装边界：** 配置lane实际8文件与snapshot lane实际1文件均watching无冲突；SOUL只核冻结SHA，六非SOUL配置预对齐只改变两config.yaml字节，无.env/云秘密回传。workspace lane仍等待macOS Desktop隐私授权；由用户手动允许Mutagen访问Desktop，Agent禁止代点或绕过TCC，也不自行换目录。放行后须完成自有marker双向/删除对账，不能把初始扫描或scratch通过写成正式workspace通过。
+**同步验收口径：** 三lane分别核workspace真实写入/删除往返、8配置文件两端SHA、单向完成包的自动接收及三库payload完整性；SOUL冲突按核定当前权威版本处理，不固定回盖旧冻结SHA。首尔切换已完成这些验证，旧Desktop TCC等待已关闭；Agent仍禁止代点或绕过TCC，不用初始扫描代替正式workspace往返。动态状态与完整证据只记根CLAUDE。
 
-**旧 Pi Mutagen 的关闭与清理必须最后执行。** 用户最新D15明确真实公网访问、DeepSeek只读自查后清理并汇报；完成该顺序后，五条已核旧Pi session已备份配置并按精确ID暂停/终止，新三条保留，未删用户目录/数据或重启daemon。此前“待全部workspace往返后清理”是Agent计划，已按最新顺序调整；不重复清理。workspace的Desktop TCC仍单独待放行，不用清旧会话解决新链路故障。恢复配置/精确ID收据保存在受限`final-acceptance-20261019/ops/`，不动其它同步、SSH、NM或OpenClaw服务。
+**旧 Pi Mutagen 的关闭与清理必须最后执行。** 用户最新D15明确真实公网访问、DeepSeek只读自查后清理并汇报；完成该顺序后，五条已核旧Pi session已备份配置并按精确ID暂停/终止，新三条保留，未删用户目录/数据或重启daemon。此前“待全部workspace往返后清理”是Agent计划，已按最新顺序调整；不重复清理。当时workspace的Desktop TCC另待放行；后续首尔正式往返已通过，不用清旧会话解决新链路故障。恢复配置/精确ID收据保存在受限`final-acceptance-20261019/ops/`，不动其它同步、SSH、NM或OpenClaw服务。
 
 ## 5. 每 5 分钟 SQLite 快照与本机冷库
 
