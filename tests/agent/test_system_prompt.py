@@ -482,6 +482,48 @@ class TestNamedProfileHintIntegration:
         assert "Active Hermes profile: default." in prompt
         assert f"under {root}/profiles/<name>/." in prompt
 
+    @pytest.mark.require_symlinks
+    @pytest.mark.parametrize("bound_home", ["lexical", "physical", None])
+    @pytest.mark.parametrize("secretary_enabled", [False, True])
+    def test_symlink_identity_prompt_and_plugin_use_db_owner(
+        self, tmp_path, monkeypatch, bound_home, secretary_enabled,
+    ):
+        import agent.system_prompt as system_prompt
+        from hermes_constants import reset_hermes_home_override, set_hermes_home_override
+
+        root = tmp_path / ".hermes"
+        external = tmp_path / "homes" / "Alex"
+        external.mkdir(parents=True)
+        (external / "config.yaml").touch()
+        alias = root / "profiles" / "alex"
+        alias.parent.mkdir(parents=True)
+        alias.symlink_to(external, target_is_directory=True)
+        monkeypatch.setattr(Path, "home", lambda: tmp_path)
+        monkeypatch.setenv("HERMES_HOME", str(alias))
+        agent = _make_agent(
+            _session_db=SimpleNamespace(db_path=external / "state.db"),
+            _secretary_main_read_eligible=secretary_enabled,
+            _secretary_notebook_read_enabled=secretary_enabled,
+        )
+        home = {"lexical": alias, "physical": external, None: None}[bound_home]
+        token = set_hermes_home_override(home)
+        try:
+            line = system_prompt._active_profile_line(agent)
+            assert "Active Hermes profile: alex." in line
+            assert f"reads and writes {home or external}/." in line
+            with patch("agent.coding_context._coding_mode", return_value="off"):
+                parts = _prompt_parts(agent)
+            assert line in parts["volatile"]
+            assert (system_prompt.SECRETARY_ROLE_GUIDANCE in parts["stable"]) is secretary_enabled
+            assert system_prompt._plugin_session_info(agent)["profile_name"] == "alex"
+            assert system_prompt._agent_skills_dir(agent).resolve() == external / "skills"
+            if bound_home != "lexical":
+                (alias.parent / "second").symlink_to(external, target_is_directory=True)
+                assert "Active Hermes profile: default." in system_prompt._active_profile_line(agent)
+                assert system_prompt._plugin_session_info(agent)["profile_name"] == "default"
+        finally:
+            reset_hermes_home_override(token)
+
 
 def test_stable_tier_is_identical_across_homes(tmp_path, monkeypatch):
     """The profile line names the home path, so it must live outside the stable tier:

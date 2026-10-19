@@ -431,12 +431,13 @@ def raise_if_read_blocked(path: str) -> None:
 
 def _resolve_active_profile_name() -> str:
     """Active profile name from HERMES_HOME: ``~/.hermes`` -> ``"default"``,
-    ``~/.hermes/profiles/X`` -> ``"X"``; ``"default"`` on any resolution failure."""
+    a registered named home (including symlink targets) -> its id; ``"default"`` on any
+    resolution failure."""
     try:
-        parts = _hermes_home_path().resolve().relative_to(_hermes_root_path().resolve() / "profiles").parts
+        from hermes_constants import profile_name_for_home
+        return profile_name_for_home(_hermes_home_path()) or "default"
     except (OSError, RuntimeError, ValueError):
         return "default"
-    return parts[0] if parts else "default"
 
 
 # --- Sandbox-mirror write guard ---

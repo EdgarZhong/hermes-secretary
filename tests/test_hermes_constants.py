@@ -75,6 +75,52 @@ class TestGetDefaultHermesRoot:
 
 
 
+@pytest.mark.require_symlinks
+class TestSymlinkProfileIdentity:
+    @pytest.fixture
+    def layout(self, tmp_path, monkeypatch):
+        root = tmp_path / ".hermes"
+        profiles = root / "profiles"
+        profiles.mkdir(parents=True)
+        external = tmp_path / "homes" / "Alex"
+        external.mkdir(parents=True)
+        (external / "config.yaml").touch()
+        alias = profiles / "alex"
+        alias.symlink_to(external, target_is_directory=True)
+        monkeypatch.setattr(hermes_constants, "get_default_hermes_root", lambda: root)
+        return root, external, alias
+
+    @pytest.mark.parametrize("physical", [False, True])
+    def test_symlink_identity_uses_registered_id(self, layout, physical):
+        _root, external, alias = layout
+        assert hermes_constants.profile_name_for_home(external if physical else alias) == "alex"
+
+    def test_symlink_identity_ambiguous_target_does_not_guess(self, layout):
+        root, external, alias = layout
+        other = root / "profiles" / "second"
+        other.symlink_to(external, target_is_directory=True)
+        assert hermes_constants.profile_name_for_home(external) is None
+        assert hermes_constants.profile_name_for_home(alias) == "alex"
+        assert hermes_constants.profile_name_for_home(other) == "second"
+
+    @pytest.mark.parametrize("invalid", ["missing-identity", "deleted", "invalid-id"])
+    def test_symlink_identity_reverse_lookup_requires_live_registration(self, layout, invalid):
+        root, external, alias = layout
+        if invalid == "missing-identity":
+            (external / "config.yaml").unlink()
+        elif invalid == "deleted":
+            hermes_constants.mark_named_profile_deleted(alias)
+        else:
+            alias.rename(root / "profiles" / "Invalid")
+        assert hermes_constants.profile_name_for_home(external) is None
+
+    def test_symlink_identity_does_not_infer_external_basename(self, layout, tmp_path):
+        external = tmp_path / "unregistered" / "alex"
+        external.mkdir(parents=True)
+        (external / "config.yaml").touch()
+        assert hermes_constants.profile_name_for_home(external) is None
+
+
 class TestGetHermesHome:
     """Tests for get_hermes_home() platform-aware fallback."""
 

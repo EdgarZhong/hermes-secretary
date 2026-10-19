@@ -281,7 +281,9 @@ def profile_name_for_home(path: str | Path | None) -> str | None:
     """Return the canonical profile id owning *path*, or ``None`` when it is not a profile home.
 
     The default home is the Hermes root itself, so its basename is an installation detail (``.hermes``
-    on POSIX and commonly ``hermes`` on Windows), not the profile id ``default``.
+    on POSIX and commonly ``hermes`` on Windows), not the profile id ``default``. Preserve the
+    lexical named-profile id before resolving symlinks. An external physical home can only be
+    named by a unique live registration under this root's ``profiles/`` directory.
     """
     if path is None or not str(path).strip():
         return None
@@ -298,9 +300,18 @@ def profile_name_for_home(path: str | Path | None) -> str | None:
             # <root>/profiles/<name> shape names the profile even when <root> carries no markers.
             if candidate.parent.name == "profiles" and not candidate.name.startswith("."):
                 return candidate.name
+        return _registered_profile_name_for_home(current, default_root)
     except (OSError, RuntimeError, ValueError):
         return None
-    return None
+
+
+def _registered_profile_name_for_home(home: Path, root: Path) -> str | None:
+    """Reverse a resolved DB home only through unique, live named-profile registrations."""
+    resolved = home.resolve(strict=False)
+    matches = [entry.name for entry in (root / "profiles").iterdir()
+               if PROFILE_ID_RE.fullmatch(entry.name) and named_profile_is_live(entry)
+               and entry.resolve(strict=False) == resolved]
+    return matches[0] if len(matches) == 1 else None
 
 
 def profile_tombstone_path(profile_home: Path) -> Path:

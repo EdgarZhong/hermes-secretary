@@ -280,16 +280,9 @@ def _agent_skills_dir(agent: Any) -> Optional[Path]:
 
 
 def _profile_name_for_home(home: Path) -> str:
-    """``<root>/profiles/X`` -> ``"X"``; anything else -> ``"default"``.
-    Uses ``get_default_hermes_root()`` (NOT ``get_hermes_home()``): on a bound
-    profile session the ambient home IS the profile dir, so every profile
-    would misreport as "default"."""
-    try:
-        from hermes_constants import get_default_hermes_root
-        rel = home.resolve().relative_to((get_default_hermes_root() / "profiles").resolve())
-        return rel.parts[0] if rel.parts else "default"
-    except (ValueError, OSError):
-        return "default"
+    """Name the owning profile, retaining the prompt's default fallback for unknown homes."""
+    from hermes_constants import profile_name_for_home
+    return profile_name_for_home(home) or "default"
 
 
 def _secretary_conversation(agent: Any) -> bool:
@@ -424,14 +417,10 @@ def _active_profile_line(agent: Any) -> str:
             "skills/plugins/cron/memories unless the user explicitly directs "
             "you to."
         )
-    # A non-default name is only returned when the resolved home is ALREADY
-    # <root>/profiles/<name>, so the profile home is the session home itself.
+    # The named profile owns this home, including an external home uniquely registered by symlink.
+    # Use the session home itself rather than appending /profiles/<name> again.
     profile_home = str(_agent_home_path) if _agent_home_path is not None else str(get_hermes_home())
-    # A non-default name is only ever returned when the resolved home is ALREADY <root>/profiles/<name> —
-    # that is exactly how both _profile_name_for_home() and _resolve_active_profile_name() derive it. So the
-    # profile home is the session home itself; appending /profiles/<name> again doubled it (#72894). The
-    # default profile's data sits at the ROOT (get_default_hermes_root()), which in ambient profile mode is
-    # NOT get_hermes_home().
+    # The default profile's data sits at the ROOT, not the active profile's get_hermes_home().
     default_root = get_default_hermes_root()
     return (
         f"Active Hermes profile: {active_profile}. This session reads "

@@ -88,3 +88,18 @@ class TestResolveActiveProfileName:
         monkeypatch.setattr(fs, "_hermes_home_path", _boom)
         # Should not raise — falls back to "default"
         assert fs._resolve_active_profile_name() == "default"
+
+    @pytest.mark.require_symlinks
+    @pytest.mark.parametrize("physical", [False, True])
+    def test_symlink_identity_uses_registered_owner(self, fake_hermes, monkeypatch, tmp_path, physical):
+        import agent.file_safety as fs
+
+        external = tmp_path / "homes" / "Alex"
+        external.mkdir(parents=True)
+        (external / "config.yaml").touch()
+        alias = fake_hermes["root"] / "profiles" / "alex"
+        alias.symlink_to(external, target_is_directory=True)
+        _set_active_home(monkeypatch, external if physical else alias)
+        assert fs._resolve_active_profile_name() == "alex"
+        (alias.parent / "second").symlink_to(external, target_is_directory=True)
+        assert fs._resolve_active_profile_name() == ("default" if physical else "alex")

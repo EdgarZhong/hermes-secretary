@@ -2119,18 +2119,17 @@ def _retarget_active_profile(old: str, new: str, message: str) -> None:
 
 def get_active_profile_name() -> str:
     """Profile name inferred from HERMES_HOME: ``"default"`` when unset or ``~/.hermes``, the
-    name under ``~/.hermes/profiles/<name>``, ``"custom"`` for any other path."""
-    from hermes_constants import get_hermes_home
-    resolved = get_hermes_home().resolve()
-    if resolved == _get_default_hermes_home().resolve():
+    registered name under ``~/.hermes/profiles/<name>`` (including symlink targets),
+    ``"custom"`` for any other path."""
+    from hermes_constants import get_hermes_home, profile_name_for_home
+    home = get_hermes_home()
+    name = profile_name_for_home(home)
+    if name == "default":
         return "default"
-    profiles_root = _get_profiles_root().resolve()
-    try:
-        parts = resolved.relative_to(profiles_root).parts
-        if len(parts) == 1 and _PROFILE_ID_RE.match(parts[0]):
-            return parts[0]
-    except ValueError:
-        pass
+    # A path inside a profile is not itself its home; keep the existing custom fallback.
+    if (name and _PROFILE_ID_RE.fullmatch(name)
+            and home.resolve() == (_get_profiles_root() / name).resolve()):
+        return name
     return "custom"
 
 
