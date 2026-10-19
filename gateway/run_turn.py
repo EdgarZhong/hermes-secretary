@@ -1459,35 +1459,9 @@ class GatewayTurnMixin:
             )
 
     def _hmwa_apply_message_timestamp(self, event, message_text):
-        """Keep platform time as metadata; strip timestamp prefixes and the Discord triggering note.
-        Only in-context rendering is gated by gateway.message_timestamps.enabled (default OFF)."""
-        from gateway.run import _load_gateway_config, _message_timestamps_enabled
-        from gateway.run_inbound import strip_discord_triggering_note
-        persist_user_message = None
-        persist_user_timestamp = None
-        try:
-            from hermes_time import get_timezone as _get_evt_tz
-            from gateway.message_timestamps import (
-                coerce_message_timestamp as _coerce_msg_ts,
-                render_user_content_with_timestamp as _render_msg_ts,
-                strip_leading_message_timestamps as _strip_msg_ts,
-            )
-            _evt_tz = _get_evt_tz()
-            if message_text and isinstance(message_text, str):
-                _clean_message_text, _embedded_ts = _strip_msg_ts(message_text, tz=_evt_tz)
-                persist_user_message = strip_discord_triggering_note(event, _clean_message_text)
-                _event_epoch = _coerce_msg_ts(getattr(event, "timestamp", None), tz=_evt_tz)
-                persist_user_timestamp = _event_epoch if _event_epoch is not None else _embedded_ts
-                if _message_timestamps_enabled(_load_gateway_config()):
-                    message_text = _render_msg_ts(_clean_message_text, persist_user_timestamp, tz=_evt_tz)
-                else:
-                    # Toggle off: the model sees the clean message; timestamp stored for later opt-in.
-                    message_text = _clean_message_text
-        except Exception as _ts_err:
-            logger.debug("Message timestamp injection failed (non-fatal): %s", _ts_err)
-        from agent.message_metadata import preserve_user_input_origin
-        message_text = preserve_user_input_origin(event.text, message_text)
-        return message_text, persist_user_message, persist_user_timestamp
+        """Thin delegator: the implementation lives in ``gateway/inbound_provenance.py``."""
+        from gateway.inbound_provenance import apply_message_timestamp
+        return apply_message_timestamp(event, message_text)
 
     async def _hmwa_stop_typing_for_turn(self, event, source):
         """Stop the typing indicator (never raises). Slack AI status is scoped to a thread/
@@ -3882,7 +3856,9 @@ class GatewayTurnMixin:
             if next_message is None:
                 return result
             from gateway.run_inbound import strip_discord_triggering_note
+            from gateway.inbound_provenance import wrap_inbound_origin
             next_persist_message = strip_discord_triggering_note(pending_event, next_message)
+            next_message = wrap_inbound_origin(pending_event, next_message)
             next_message_id = self._reply_anchor_for_event(pending_event)
             next_inbound_id = str(pending_event.message_id) if getattr(pending_event, "message_id", None) else None
             next_channel_prompt, next_source = self._pinned_channel_inputs(
