@@ -83,7 +83,9 @@ def test_real_warm_turn_switches_guidance_and_cron_together_without_mutating_reg
         _turn(agent)
         first = seen[-1]
         assert _root(first).count(SECRETARY_WORK_AND_NOTEBOOK_GUIDANCE) == 1
-        assert _root(first).count(SECRETARY_LOCAL_CRON_DELIVERY_APPEND) == 1
+        # Platform hints are no longer injected into a new Conversation's prompt;
+        # the Scheduler local-delivery note travels with that hint.
+        assert _root(first).count(SECRETARY_LOCAL_CRON_DELIVERY_APPEND) == 0
         target_schema = copy.deepcopy(_cron_schema(first))
         manifest = next(tool["function"]["description"] for tool in first["tools"]
                         if tool["function"]["name"] == "tool_search")
@@ -154,7 +156,7 @@ def test_cold_main_reconstruction_uses_current_global_gate_once(runtime, enabled
         assert result["completed"] is True
         root = _root(seen[-1])
         assert root.count(SECRETARY_WORK_AND_NOTEBOOK_GUIDANCE) == int(enabled)
-        assert root.count(SECRETARY_LOCAL_CRON_DELIVERY_APPEND) == int(enabled)
+        assert root.count(SECRETARY_LOCAL_CRON_DELIVERY_APPEND) == 0
         assert _cron_schema(seen[-1])["description"] == (
             SECRETARY_CRONJOB_DESCRIPTION if enabled else CRONJOB_SCHEMA["description"])
     finally:
