@@ -41,6 +41,10 @@ database:
 # null to disable the adjustment. Default: 4096.
 runtime:
   nofile_soft_limit: 4096
+  # Optional: stable primary interaction surface for a personal Secretary Web UI
+  # deployment using the shared TUI/Desktop websocket backend. This changes
+  # prompt guidance only, not session routes, toolsets, or Gateway auto-delivery.
+  # host_mode: secretary_web
 
 # =============================================================================
 # Attachments
