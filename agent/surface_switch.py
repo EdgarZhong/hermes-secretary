@@ -19,6 +19,12 @@ from agent.prompt_builder import RUNTIME_ENVIRONMENT_END, RUNTIME_ENVIRONMENT_HE
 
 logger = logging.getLogger("run_agent")
 
+# Temporary stopgap for Secretary Web UI: transport-derived agent.platform is not a
+# reliable host-surface identity. Dynamic corrections currently leak into user-message
+# content (including multimodal turns), breaking attachment rendering. Re-enable only
+# after host-mode and transport identity are separated.
+_SURFACE_SWITCH_NOTES_ENABLED = False
+
 _SURFACE_SWITCH_NOTE_PREFIX = "[System: This conversation is now being answered on a different interface: "
 # Closes the surface name in the note; platform names are free-form for plugin platforms, so the
 # terminator (not ".") delimits the parse.
@@ -114,6 +120,11 @@ def stage_surface_switch_note(agent: Any, prompt: str, conversation_history: Any
     MoA and codex_app_server turns never stamp the ``api_content`` sidecar, so the note could not
     be read back and would be re-sent every turn; those modes keep the stored prompt and skip the
     note entirely."""
+    if not _SURFACE_SWITCH_NOTES_ENABLED:
+        # Drop even a pending note on a reused agent. The normal turn-context path
+        # will then have nothing to append to this turn's user message.
+        agent._surface_switch_note = ""
+        return False
     if getattr(agent, "provider", None) == "moa" or getattr(agent, "api_mode", None) == "codex_app_server":
         return False
     current = str(getattr(agent, "platform", "") or "").strip()
