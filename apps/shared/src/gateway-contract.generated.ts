@@ -3774,6 +3774,22 @@ export interface SubmitIdleResult {
   survivor_user_row_ids?: (number | null)[] | null
   survivor_row_id_map?: Record<string, number | null> | null
   turn_isolation?: boolean | null
+  accepted_user?: MessageUserCommittedPayload | null
+}
+/** A normal Web idle submit's actual persisted user row, before its worker starts. */
+export interface MessageUserCommittedPayload {
+  stored_session_id: string
+  message: CommittedUserSource
+}
+/** The one actually committed driving row; no API sidecar or synthetic display kind. */
+export interface CommittedUserSource {
+  message_uid: string
+  row_id: number
+  role: 'user'
+  content: string
+  timestamp: number
+  display_kind?: string | null
+  display_metadata?: unknown | null
 }
 export interface SystemBatteryParams {
   profile?: string | null
@@ -4933,16 +4949,6 @@ export interface MessageSourceCommittedPayload {
   message: CommittedUserSource
   source_messages: NativeSourceMessage[]
   source_boundary: NativeSourceBoundary
-}
-/** The one actually committed driving row; no API sidecar or synthetic display kind. */
-export interface CommittedUserSource {
-  message_uid: string
-  row_id: number
-  role: 'user'
-  content: string
-  timestamp: number
-  display_kind?: string | null
-  display_metadata?: unknown | null
 }
 /** Ordered native source address; no content, image bytes or historic prefix. */
 export interface NativeSourceMessage {
@@ -6280,6 +6286,8 @@ export interface BackendGatewayEventMap {
   'message.source_committed': MessageSourceCommittedPayload
   /** A turn began streaming; no payload. */
   'message.start': Record<string, never>
+  /** A normal Web idle submit's real user row committed before its worker starts. */
+  'message.user_committed': MessageUserCommittedPayload
   /** The MoA aggregator started. */
   'moa.aggregating': MoaAggregatingPayload
   /** MoA phase transition (currently only ``aggregator``). */
@@ -6423,6 +6431,7 @@ export const GATEWAY_EVENT_TYPES = [
   'message.reaction',
   'message.source_committed',
   'message.start',
+  'message.user_committed',
   'moa.aggregating',
   'moa.phase',
   'moa.progress',

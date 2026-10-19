@@ -35,6 +35,13 @@ def wait_all(live):
         settled(live)
 
 
+def inflight_copy(live):
+    """Keep the opaque turn token's identity while copying mutable turn state."""
+    turn = live.session["inflight_turn"]
+    token = turn.get("_terminal_token")
+    return copy.deepcopy(turn, {id(token): token})
+
+
 def busy_error(result):
     assert result["error"] == {"code": 4009, "message": "session busy",
                                "data": {"accepted": False, "reason": "session_busy"}}
@@ -90,7 +97,7 @@ def test_already_busy_refuses_at_native_claim_without_busy_handler_or_mutation(l
     assert gate.entered.wait(5)
     assert "_idle_only_running_claim" not in live.session
     live.session["attached_images"] = ["unsent.png"]
-    before = (copy.deepcopy(live.db.get_messages("stored")), copy.deepcopy(live.session["inflight_turn"]))
+    before = (copy.deepcopy(live.db.get_messages("stored")), inflight_copy(live))
     live.session.update(client_surface="voice-live", voice_live_context="keep current context", voice_turn=True)
     def forbidden(*a, **k):
         raise AssertionError("idle-only must never enter native busy handler")
@@ -114,7 +121,7 @@ def test_new_request_before_claim_loses_to_other_client_without_mutation(live, m
     winning = rpc(winner, text="winning client")
     assert winning["result"]["status"] == "streaming" and gate.entered.wait(5)
     live.session["attached_images"] = ["new-staging.png"]
-    before = copy.deepcopy(live.db.get_messages("stored")), copy.deepcopy(live.session["inflight_turn"])
+    before = copy.deepcopy(live.db.get_messages("stored")), inflight_copy(live)
     release.set()
     busy_error(join_rpc(thread, results))
     assert before == (live.db.get_messages("stored"), live.session["inflight_turn"])
@@ -131,7 +138,7 @@ def test_legacy_past_idle_observation_retries_its_native_busy_policy(live, monke
     thread, results = start_rpc(method="prompt.submit", text="legacy after gap")
     assert entered.wait(5)
     assert rpc(text="web owns claim")["result"]["status"] == "streaming" and gate.entered.wait(5)
-    first_inflight = copy.deepcopy(live.session["inflight_turn"])
+    first_inflight = inflight_copy(live)
     release.set()
     result = join_rpc(thread, results)
     assert result["result"]["status"] == status
@@ -517,7 +524,7 @@ def test_images_busy_refusal_preserves_list_staging_and_current_native_row(live,
     assert rpc(text="other client active")["result"]["status"] == "streaming" and gate.entered.wait(5)
     photo = image_file(live)
     live.session["attached_images"] = ["other client draft.png"]
-    before = copy.deepcopy(live.db.get_messages("stored")), copy.deepcopy(live.session["inflight_turn"])
+    before = copy.deepcopy(live.db.get_messages("stored")), inflight_copy(live)
     busy_error(rpc(text="image draft must survive", image_paths=[str(photo)]))
     assert before == (live.db.get_messages("stored"), live.session["inflight_turn"])
     assert photo.is_file() and live.session["attached_images"] == ["other client draft.png"]

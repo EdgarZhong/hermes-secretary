@@ -227,6 +227,17 @@ class MessageSourceCommittedPayload(Payload):
     source_boundary: NativeSourceBoundary
 
 
+class MessageUserCommittedPayload(Payload):
+    """A normal Web idle submit's actual persisted user row, before its worker starts."""
+
+    stored_session_id: str
+    message: CommittedUserSource
+
+
+event("message.user_committed", MessageUserCommittedPayload,
+      doc="A normal Web idle submit's real user row committed before its worker starts.")
+
+
 event("message.source_committed", MessageSourceCommittedPayload,
       doc="An admitted Instant Reminder's real driving user row committed before the first model request.")
 

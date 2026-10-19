@@ -1,5 +1,67 @@
 # Hermes Secretary 当前主看板
 
+## 手机恢复与历史分层加载修复（2026-10-19，本地集成已验证，未提交/未部署）
+
+用户在HTTP/3暂停及DSH任务包交接后明确要求开始改代码；补充要求保持其它优化，并先加载普通可见内容及Thinking/工具卡片外侧，折叠内部内容随后渐进加载。用户要求不再新增子Agent，root直接实现分层读取与集成；既有三项已在写的实现按原范围交回。线上仍保持仅暂停HTTP/3，不部署代码以免混入DSH协议对照。本轮不改分页200、默认模型、业务Prompt或生产DB/schema/index。
+
+- 基线：主仓`e879cf863142a2277883d37cd57b747be3c68e35`，独立UI`8821080`；原有dirty为本轮诊断/交接文档。主仓PM `.venv`及原锁，UI既有node_modules，不改依赖。
+- root：历史`view=cards`可选投影、同接口`detail_row_ids`限12行详情、规格/看板、亲审集成。首屏保留真实身份/顺序/可见正文，折叠正文延后；未加载不冒充空内容，详情不跨compression spine或复活rewind行。默认API保持完整。
+- root 亲审收束（本轮新增）：
+  - 卡片状态与客户端`toolResultState`对齐：`content:null`在两侧都表示“空结果=complete”，不再出现完整投影/卡片/补水三态互翻；终端残片仅在确有`result`字段时写`display_tool_status`，字段缺失时保留客户端unknown回退。
+  - 详情读取尊重`include_compacted`：调用方没要归档展示历史时，不能靠物理行号单取一行；客户端page与detail请求均显式传`true`。
+  - 前端补一条对称替换规则：live已显示真实参数/结果、历史行只有延迟外壳时保留live；此前只写了反方向。`compact()`的`refreshHistory`统一带profile参数。
+- `mobile_recovery_frontend`：列表同owner合并/取消/渐进结果、恢复标题、已持久化user即时呈现、分层卡片与详情队列、相关行为测试；只改独立UI，不改视觉、分页或业务语义。该子Agent 23:29因额度中断未交报告，文件已由其写入，root补上述两处修复并跑通全部UI套件。
+- `web_delivery_backend`：列表/详情可选summary剔除重型origin_json；Web idle成功持久化点的可选accepted_user回执与message.user_committed可重放事件，兼容旧客户端及原生路径；正式合同/生成文件与定向测试。
+- `history_read_optimization`：只读legacy历史两次线性扫描替代逐行generation子查询，root已亲审接收；31新增+116既有测试通过，本机合成2191行VM步约1450万→6.67万，不外推云端实测。
+- 验证：`tests/hermes_cli/test_history_cards.py` 42项、legacy显示+5个既有回归文件147项、submit_idle相关85项通过；独立UI 57文件/836项通过且typecheck通过；`scripts/check --staged`（临时索引仅本轮20路径）10项ok、health 0 blocking。基线`review.summary`孤立合同声明仍失败，非本轮引入。
+- 新增边界测试：显式`/branch`代际不参与详情退休；详情不能翻页或取越权行；卡片+详情逐字段还原完整展示投影（reasoning、tool arguments、工具结果、终端残片）。
+- 独立对抗审查（无上下文子Agent，2026-10-20 00:00交回）发现6项，均未被既有套件覆盖，root已复核并修复：
+  - F1/F2（高/中）：`view=cards`下重连恢复出的live Thinking被排到回答之后甚至后续消息之后；无绑定live Thinking还会与空壳Thinking同时出现。修：延迟正文时把live Thinking放回其回答之前；未绑定节点归属最后一个延迟回答并清空壳。
+  - F3（中）：切会话后、B的history尚未schedule时展开卡片，会沿用A的locator补水。修：`select`清空locator/profile，`prioritize`由controller传入当前会话地址并回退到key。
+  - F4（中）：打开会话先串行等`?summary=true`，失败还会阻断history/resume。修：history立即并行，summary仅advisory（404仍路由走），native resume等存在性检查后再发。
+  - F5/F6（低）：`exit_code`为整数值浮点（2.0）时卡片与补水后状态翻转；Python接受NaN/Infinity而浏览器JSON.parse拒绝。修：整数值浮点按整数判定，非标准常量拒绝解析。
+- 保留不修（已记录）：详情响应`pagination`仍报order/limit/offset但详情忽略它们（客户端不读，契约漂移）；后台补水按整页deferred行排队（规格允许“随后渐进”，真机再定）；`SessionList.refresh(older)`并发窗口在UI路径不可达。
+- 证据与报告统一`.hermes-dev/mobile-code-fixes-20261019/`；尚未提交、部署或完成真实手机验收。先前冻结80文件证据不修改；DSH任务书仍按线上旧代码仅协议对照执行。
+
+## HTTP/3暂停与本机DSH复测交接（2026-10-19 23:00起）
+
+用户已明确授权暂停HTTP/3，并要求把之前三轮完整复测写成详细任务书，交给**本机DeepSeek Harness（DSH）的ds coding agent**执行；云端模型仍为Hermes deepseek-flash，不将任务书发送给云Hermes作为编排者。只做协议对照，本轮不改业务代码、DB、索引、分页或压缩。
+
+- 23:00:38–43（+08）应用仅增加`servers { protocols h1 h2 }`的已校验候选并重启Caddy，耗时5.29秒；PID65134→181221，Hermes144598、Authelia35490、Redis21608均保持。新配置SHA256 `16d3de9039648b296602657833bec1f7dc0a619c754276aa6c4ae6b7ff67d2c3`，原配置`1777603b33528967643d271dd58acda818d8956d3841206e74156dd35494dad1`。
+- 备份`/var/backups/caddy/http3-paused-20261019T230037/`；本地收据`.hermes-dev/mobile-http2-retest-20261019/cloud-cutover-receipt.json`。验证UDP443不再监听、TCP443保持；loopback TLS+证书+HTTP2正式Hermes匿名302、auth200。手机真实REST协商及三轮恢复表现待独立DSH采集，不能提前宣称问题解决。
+- **最新交接口径（用户明确）：只准备任务包，由用户自行命令本机DSH中的ds执行；主会话不再操控或启动DSH。** 详细任务书`docs/mobile-http2-retest-task.md`已完成并在README索引，包含可直接粘贴的交接指令、三轮完整步骤、底层采集、旧基线与交付要求。复测尚未开始，不宣称已派出或通过。
+- 先前三次headless交接均在实际模型/测试执行前因凭据或账号服务依赖失败，失败原件保留在`.hermes-dev/mobile-http2-retest-20261019/delegation/`；未改桌面/全局DSH配置。用户收窄范围后已停止这条排障路径，不再处理DSH接入，任务包不依赖这些失败会话。
+- **复测已完成（2026-10-19 23:17–23:50，本机DSH ds coding agent执行，未派生子Agent；代码未改）**：报告`runs/20261019T2330+0800/report.md`，同目录`environment.json`/`results.json`/`metrics.json`/`actions.jsonl`/`cleanup.json`/`manifest.json`（128文件10738937B，SHA256 `31176e43addfc62200bec687971f7f902e122bea8083ce17b24f2a745921bec1`，逐文件复核通过；固定副本`preserved-20261019T2352+0800/`）。要点：手机全部REST已h2、无QUIC错误；但590KB列表TTFB中位7.6–13.9秒、单请求最长146秒，R1出现5个`ERR_CONNECTION_ABORTED`；Caddy侧同一URL中位0.03–0.04秒却有115–139秒写出耗时，桌面同窗0.19–0.63秒——瓶颈仍在手机↔首尔路径，协议切换未带来可判定改善。未改代码缺陷全部复现：本端user气泡9–13秒、跨端user直到完成后回读（68.6秒）、R1唤醒90秒内0侧栏且标题“Conversation”，需整页重载才恢复。未恢复HTTP/3、未重启服务；测试QA会话`20261019_232723_ec8c4d`与消息保留，自建ADB转发与自有标签已清理。
+- **待验收（用户明确，2026-10-19 23:52）**：另一侧正在改代码；**部署完成后由本机DSH再跑一轮真实双端实测，验收代码修复成果**。验收标准与复用流程已固化在`.hermes-dev/mobile-http2-retest-20261019/next-round-acceptance.md`（A1本端气泡、A2跨端user、A3标题不依赖列表、A4列表合并/取消、A5分层加载、A6旧会话读取、A7一致性与无回归）；触发条件=修复已部署首尔+HTTP/3仍暂停+真实手机/桌面Chrome；不得用“代码已改/单测通过”代替实测，网络路径慢本身不计入代码验收失败。
+
+## 手机Chrome网络故障复查（2026-10-19，现阶段分析完成，故障未关闭）
+
+用户报告：桌面同URL约1秒、手机列表/标题/消息/统计需30–60秒；active turn中断线后恢复困难，刷新或切无active turn的Conversation也受影响。补充：手机始终前台、不锁屏也看不到桌面新建Conversation和user message，不能将故障限定为后台回收。用户已连接ADB并要求开始排查；本轮仅对手机Hermes页进行ADB/CDP取证，不扩大电脑显示操作权限。
+
+- 现场设备PHZ110 / Android16；ADB Chrome Hermes tab2479。首尔Hermes/Caddy/Authelia/Redis均active，未重启或改配置。
+- 首次页面Resource Timing：HTML约0.417秒；messages HTTP/3约25.607秒（TTFB0.369秒，正文25.236秒，273982传输bytes），随后详情约11.978秒（TTFB0.587秒，正文11.387秒）。静态资源命中缓存，不能把HTML成功当完整可用。
+- Caddy同25分钟窗口：手机113条REST/资源HTTP/3、5条WS HTTP/1.1升级；桌面145条HTTP/2、8条HTTP/1.1。手机约585KB列表最长72.8/82.6/84.3秒；桌面同类列表0.318秒。当前手机已完成请求无302/401，仅200/101；不能由此排除未完成/客户端失败请求。
+- 用户提出跨境UDP/QUIC不稳定假设。现证据支持协议路径差异，尚未做同手机同网络HTTP/2对照，不得断言蜂窝网络或UDP封锁为根因；WS另沿TCP需独立解释。
+- HTTP/1.1+HTTP/2候选已在首尔`/var/backups/caddy/mobile-h3-20261019T222805/`校验通过、原配置已备份，尚未应用。Caddy admin off，不能依赖热reload，实际需短暂restart；用户明确暂不验证、保持现场，该阶段候选未应用（后续用户放行并暂停HTTP/3见顶部新交接）；先深入只读取证，由用户另一侧DeepSeek复核下午事故监测。候选影响共用443监听的域名，不终止Hermes任务。
+- 用户追加明确授权：直接操作真实手机Chrome及桌面Chrome，可从任一端发起Turn并比较流式/刷新/切会话/断线恢复；**实测只用DeepSeek，不用Kimi**。R1通过桌面正式UI选择`deepseek-flash`后发送10×30秒顺序terminal休眠，Conversation `20261019_223240_2dc5b2`／Runtime `5d7275a5`；中断前只填草稿，未发送Kimi请求。两端CDP仅采元数据，敏感NetLog类别不启用。
+- 已证代码放大：`loadSessions`普通刷新无single-flight/取消/并发上限，逐事件重读全部Profile；allSettled等慢Profile，generation淘汰旧结果不终止下载。后端55行584934bytes，`origin_json`序列化约498823bytes；回环headers36.9ms/body0.8ms。HTTP内容无压缩。该机制不等于单次网络慢的根因。
+- R1手机首次messages5987bytes/0.867秒、流工具正常；列表约586KB三次37.3/54.2/55.7秒。桌面已有标题、手机Conversation：顶部只读sessions，未采用active resume info.title；输出snapshot无title但水位跳过旧title，缺列表行的title事件也只触发全表。源码证据充分，尚未保存该次resume字段原件，不冒充wire事实。
+- 人为刷新时间22:34:57（+08），已标记；随后WS约1.3秒ready、history约4秒恢复，不能当自发断线或永久失败。用户前台手动切其它会话messages约6.8秒，切回R1约4.2秒；保留用户“3–5秒可接受”现场观感，不宣称所有路径顺畅。22:37:05开始30秒真实灭屏/唤醒测试，桌面保持运行。
+- 原始NetLog已见QUIC收发与PTO retransmission枚举，但browser级可能包含其它连接，当前未完成目标源关联，不能给出丢包率或断言被拦；手机本轮已完成REST仍200，无抓到Failed fetch精确底层码。下午事故v2为Caddy→9091回环3秒dial超时/502，当前窗口Caddy错误级为空，不合并根因。监测复核由用户另一侧DeepSeek进行。
+- R1灭屏已复现真实底层失败：22:37:11手机WS关闭；22:37:35唤醒时7个已有200/h3响应头但未完正文的sessions请求同时`net::ERR_QUIC_PROTOCOL_ERROR`，同窗口NetLog quic_error85（官方QUIC_TOO_MANY_RTOS）。bootstrap请求另因本地20秒ready超时被Abort（不是同一种故障）。22:37:39.5 gateway.ready；列表Failed fetch错误至R1完成刷新才清。R1实际87个列表请求、28个大列表；手机大请求18.4–58.7秒，7失败；未完成列表峰值19（含三Profile小请求，不能写成19个大列表）。桌面同窗无相同失败。NetLog为browser级，不能据未关联来源推丢包率/运营商封锁。
+- R2正式手机UI/DS发送两次30秒terminal，电脑一直在线接收Thinking/工具，但user message直到`message.complete`后history刷新才补齐（3条对比时当时为phone2／desktop1）；R2约66秒后两端均完整。第二工具start桌面约快0.22秒、complete约快0.45秒，属正常到达延迟样本，不与失败合并。
+- 用户要求先固存再继续：R1/R2固定副本`.hermes-dev/mobile-network-20261019/preserved-r1-r2-20261019T224207/`，41文件/15051885bytes，manifest SHA256 `e785a75991626d5f34cac5f26c4fe5b885665a9b6c0187671f5309094b42fdd3`逐文件复核通过；不修改该副本。
+- R3用户点名300秒实测：同Conversation从手机DS正式发送10×30秒terminal；22:43:33关闭手机target2479，重开同URL得到2480，历史33.8KB/5.20秒、恢复活动流，但侧栏0链接/Loading与Conversation标题持续。保存截图/AX摘要后22:44:56关闭2480并改开不同旧Conversation URL得到2481，旧历史273.7KB/24.06秒，详情89.3KB/10.81秒；另一个Turn仍运行时同样慢。侧栏仍Loading/无入口，22:46:08按已知URL整页切回R3（不是SPA成功），历史42.4KB/3.47秒后恢复流。活动resume wire实见info_title_present=true/model=deepseek-flash，输出snapshot无title，补齐源码结论证据。
+- R3桌面同活动会话22:46:53刷新：HTTP2列表586.7KB/1.20秒、历史45.8KB/0.607秒，约4秒内UI采样完整标题/列表/Stop；中间瞬态显示Profile默认K3不等于发起Kimi请求，未点击Send。R3仍运行，最终完成/收尾证据待收，不提前签全场景通过。R3所有原件单独在`mobile-network-20261019/r3/`。
+- 用户后续正常样本（必须保留，不泛化缺陷）：手机新建Conversation后user气泡正常、电脑列表很快出现新会话；用户未复现自己手机该次气泡消失。因此本端问题限定为连接/拥塞时显示健壮性，不称手机必现或发送丢失。另有R2跨端user直到完成才回补的独立受测证据，不能拿它替代原始本端问题。
+- R3本端原件已闭环：手机submit_idle回执22:43:04.344、message.start22:43:04.367，自己的第3个user气泡约22:43:17.242才出现；post-submit history33.8KB请求在浏览器sendStart等待10129.8ms才发出，随后收到头并很快读完，支持请求积压时已接受输入缺临时显示保留。消息最终存在，不宣称数据库丢失。
+- R3已完成：两端message.complete约22:48:20，十次休眠最终DONE；phone之后仍无完整列表/标题的样本已保存；桌面后续用户自行浏览其它Conversation，主会话不改变其选择。无新增模型任务/协议切换/服务重启。已有有界采集完成后转分析。
+- 长导入会话用户追加量化：最长Pi041 path3共2191原生消息，正式latest/include_compacted/inline_images读取200条1148602bytes、100条707029bytes、50条290653bytes；云端loopback对应首头11.94/10.61/15.98秒，非仅网络下载。真实桌面该200页13.38秒，其中首头11.22秒、正文2.15秒；还需查服务端读取机制，不能宣称只改分页就解决。只读CPU profile已完成：50条17.224秒主要在_legacy_display_page；仅2条缺展示索引使2191条全量回退，SQL另有逐条generation相关子查询。未修改生产数据库/索引。
+- 最终证据固定副本：`.hermes-dev/mobile-network-20261019/preserved-complete-20261019T225604/`，80文件/39921645bytes，manifest SHA256 `96c02bd4395b22821eeb52a0e4013fbc10eaac3560c21c6f777b5166246fe080`，逐文件校验通过；原R1/R2副本仍原样保留。R3跨目标事件按seq去重确认1次message.start/10次tool.start/10次tool.complete/1次message.complete。自建ADB19222转发已移除，用户手机/电脑现有页面保留，不关闭其它页面。
+- HTTP/3旧基线分析整包：`.hermes-dev/mobile-network-20261019/analysis.md`；该阶段有界采集已完成，冻结原件按当时时点保留。该阶段尚未进行同网HTTP2对照、修改代码或协议配置；后续用户放行的协议暂停、DSH交接和本地代码修复以顶部当前看板为准，不能将旧“保持现场／未修改”当现行禁令。
+- ignored证据：`.hermes-dev/mobile-network-20261019/initial-timing.json`、`server-access.jsonl`、有界CDP采集。Cookie/token不保存。只读代码研究子Agent `mobile_recovery_readonly` 不改文件、不部署、不操作UI；主会话亲自取证/复核。
+
+
 ## 提示词修订台账（2026-10-19，用户要求记录）
 
 用户已明确：先自行弄清「稳定识别表面」的问题，再处理微信接入；**凡涉及表面识别的改动一律搁置**。

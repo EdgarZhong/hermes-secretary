@@ -20167,6 +20167,25 @@
         "title": "MessageSourceCommittedPayload",
         "type": "object"
       },
+      "MessageUserCommittedPayload": {
+        "additionalProperties": false,
+        "description": "A normal Web idle submit's actual persisted user row, before its worker starts.",
+        "properties": {
+          "stored_session_id": {
+            "title": "Stored Session Id",
+            "type": "string"
+          },
+          "message": {
+            "$ref": "#/components/schemas/CommittedUserSource"
+          }
+        },
+        "required": [
+          "stored_session_id",
+          "message"
+        ],
+        "title": "MessageUserCommittedPayload",
+        "type": "object"
+      },
       "MoaAggregatingPayload": {
         "additionalProperties": false,
         "properties": {
@@ -38449,6 +38468,17 @@
             ],
             "default": null,
             "title": "Turn Isolation"
+          },
+          "accepted_user": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MessageUserCommittedPayload"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
           }
         },
         "required": [
@@ -43639,6 +43669,18 @@
           "schema": {
             "type": "object",
             "additionalProperties": false
+          }
+        }
+      ]
+    },
+    {
+      "name": "message.user_committed",
+      "summary": "A normal Web idle submit's real user row committed before its worker starts.",
+      "params": [
+        {
+          "name": "payload",
+          "schema": {
+            "$ref": "#/components/schemas/MessageUserCommittedPayload"
           }
         }
       ]

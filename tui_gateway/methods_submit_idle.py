@@ -122,6 +122,59 @@ def _submit_claim_with_busy_policy(
             return error, fields
 
 
+def _idle_committed_user(session, staged):
+    """Read only the freshly staged row from its recorded profile/store and owner."""
+    from agent.context_compressor import _DB_PERSISTED_MARKER
+    from tui_gateway.contracts.events import MessageUserCommittedPayload
+
+    if not isinstance(staged, dict) or not staged.get(_DB_PERSISTED_MARKER):
+        return None
+    row_id, uid = staged.get("_row_id"), staged.get("message_uid")
+    owner, path = staged.get("_submit_row_session_id"), staged.get("_submit_row_db_path")
+    if (not isinstance(row_id, int) or isinstance(row_id, bool) or row_id <= 0
+            or not isinstance(uid, str) or not uid or not owner or not path):
+        return None
+    with _session_db(session) as db:
+        if db is None or Path(db.db_path).resolve() != Path(path).resolve():
+            return None
+        row = db._read_one(
+            "SELECT id, role, content, timestamp, message_uid, display_kind, display_metadata "
+            "FROM messages WHERE id = ? AND session_id = ? AND message_uid = ? AND role = 'user' AND active = 1",
+            (row_id, owner, uid))
+        if row is None:
+            return None
+        message = {key: row[key] for key in ("role", "content", "timestamp", "message_uid")}
+        message["row_id"] = row["id"]
+        if row["display_kind"] is not None:
+            message["display_kind"] = row["display_kind"]
+        if row["display_metadata"] is not None:
+            message["display_metadata"] = json.loads(row["display_metadata"])
+    payload = {"stored_session_id": owner, "message": message}
+    MessageUserCommittedPayload.model_validate(payload)
+    return payload
+
+
+def _submit_persist_with_receipt(rid, sid, session, text, display_kind, fields):
+    """Capture the native committed row before any worker can consume its staging dict."""
+    previous = session.get("_submit_user_row")
+    error = _persist_session_row_for_submit(rid, session, text, display_kind)
+    if error is not None:
+        return error
+    staged = session.get("_submit_user_row") or {}
+    if isinstance(staged.get("_row_id"), int):
+        fields["user_row_id"] = staged["_row_id"]
+    if not _idle_submit_requested() or staged is previous:
+        return None
+    try:
+        payload = _idle_committed_user(session, staged)
+        if payload is not None:
+            fields["accepted_user"] = payload
+            _emit("message.user_committed", sid, payload)
+    except Exception:
+        logger.debug("idle submit committed-user display unavailable", exc_info=True)
+    return None
+
+
 @method("prompt.submit_idle")
 def _(rid, params):
     session, error = _sess_nowait(params, rid)

@@ -1283,46 +1283,9 @@ class SessionMessagesMixin:
     def _legacy_display_page(self, session_id: str, *, active_clause: str, limit: Optional[int], offset: int,
                              latest: bool) -> List[Any]:
         """Project a legacy read-only display page without retaining transcript payloads."""
-        representatives: Dict[bytes, Tuple[int, int]] = {}
-        with self._read_ctx() as conn:
-            conn.execute("BEGIN")
-            try:
-                has_session_index = conn.execute(
-                    "SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = ?",
-                    ("idx_messages_session_id",),
-                ).fetchone() is not None
-                index_hint = "INDEXED BY idx_messages_session_id" if has_session_index else "NOT INDEXED"
-                generation_clause = (_DISPLAY_GENERATION_SQL.format(owner="messages")
-                    if active_clause and "message_uid" in self._message_column_names(conn) else "")
-                rows = conn.execute(
-                    "SELECT id, role, content, timestamp, tool_call_id, tool_calls, tool_name, active, "
-                    f"display_kind, display_metadata FROM messages {index_hint} "
-                    f"WHERE session_id = ?{active_clause}{generation_clause} ORDER BY id ASC",
-                    (session_id,))
-                for row in rows:
-                    if self._is_model_only_row(row):
-                        continue
-                    identity = self._display_identity(self._display_dedupe_key(row))
-                    current = representatives.get(identity)
-                    candidate = (row["active"], row["id"])
-                    if current is None or candidate > current:
-                        representatives[identity] = candidate
-                rows.close()
-
-                identities = list(representatives)
-                identities = identities[::-1][offset:][:limit][::-1] if latest else identities[offset:][:limit]
-                selected_ids = [representatives[identity][1] for identity in identities]
-                selected = {}
-                for start in range(0, len(selected_ids), 900):
-                    chunk = selected_ids[start:start + 900]
-                    selected.update({row["id"]: row for row in conn.execute(
-                        f"SELECT * FROM messages WHERE session_id = ?{active_clause} "
-                        f"AND id IN ({_placeholders(chunk)})",
-                        (session_id, *chunk))})
-                return [selected[row_id] for row_id in selected_ids if row_id in selected]
-            finally:
-                if conn.in_transaction:
-                    conn.execute("ROLLBACK")
+        from hermes_state_display_legacy import legacy_display_page
+        return legacy_display_page(self, session_id, active_clause=active_clause,
+                                   limit=limit, offset=offset, latest=latest)
 
     def _row_to_message_dict(self, row, *, warn_context: str, summary_flag: bool) -> Dict[str, Any]:
         """``dict(row)`` with content/tool_calls/display_metadata decoded; *summary_flag* keeps

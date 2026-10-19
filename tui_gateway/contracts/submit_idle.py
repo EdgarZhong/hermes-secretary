@@ -5,6 +5,7 @@ from pydantic import Field
 
 from .base import Result
 from .common import SessionParams
+from .events import MessageUserCommittedPayload
 from .registry import method
 
 
@@ -27,6 +28,7 @@ class SubmitIdleResult(Result):
     survivor_user_row_ids: list[int | None] | None = None
     survivor_row_id_map: dict[str, int | None] | None = None
     turn_isolation: bool | None = None
+    accepted_user: MessageUserCommittedPayload | None = None
 
 
 method("prompt.submit_idle", params=SubmitIdleParams, result=SubmitIdleResult,

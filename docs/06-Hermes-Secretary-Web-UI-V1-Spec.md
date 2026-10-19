@@ -191,6 +191,8 @@ Exactly **three main screen states** exist: **New Chat**, **Conversation**, **Fi
 
 Conversation list, title, ordering, archival/pin affordances (only if included by the approved design and native capability) use actual REST results. Do not add management controls just because Desktop has them. Empty/loading/error and a lost/deleted session are explicit, recoverable UI states.
 
+**2026-10-19 recovery implementation:** merge repeated list invalidations per owner, publish each Profile's successful page without waiting for another Profile, and cancel obsolete downloads. Optional `summary=true` on the existing session list/detail reads omits heavy provenance/configuration blobs; default callers retain their complete existing response. Current Conversation titles may use the owning native binding's `info.title` and authoritative title events/rename responses while the list is unavailable; stale list results cannot roll them back. Missing stored locators must still be verified read-only before a potentially restoring resume.
+
 **User-confirmed sidebar restoration (2026-10-13, R2-C80):** Retain the approved Mock's Sidebar separators, including between Files and the theme controls. Organize real Sessions by their actual update time into mutually exclusive Today, Yesterday, previous 7 days, previous 30 days, and older groups. Restore the real-page presentation; do not substitute a single generic Conversations section for the approved grouping. Missing native timestamps must not be invented. Turn activation or completion must not cause whole-list flashing. Keep the list scrollable while hiding the visible scrollbar, and preserve the approved Mock separators and compact theme-control layout.
 
 **User-confirmed Pin interaction (2026-10-17).** Place a Pin section between New Conversation and Today; hide it when empty and no drag approaches it. Long-pressing a Conversation lifts its card while temporarily retaining its original slot. Dragging upward toward New Conversation opens/expands the Pin area and reserves a drop slot; releasing there pins the Conversation. Multiple pinned cards can be reordered using the same long-press drag gesture. Pinned Conversations belong to that section instead of being duplicated in date groups. This explicitly replaces the old activity-only ordering/custom-drag exclusion in §2.6. The user has assigned implementation of Pin presentation/dragging to another Agent; this bug-fix task must preserve its concurrent changes.
@@ -200,6 +202,12 @@ Conversation list, title, ordering, archival/pin affordances (only if included b
 **2026-10-15 用户确认底部留白：** Conversation Timeline 底部 padding 与 scroll-padding-bottom 统一为用户最终指定的 **64px**，避开 Secretary 悬浮球并保留正文间隙；替代此前试调的 52px，不改既有滚动跟随规则。
 
 A Conversation has **one** Timeline. It includes the original ordered persisted messages, the live assistant stream and temporary pending-steer *visual* bubbles as a distinct non-persisted tail projection. No extra composer-level Queue card, separate In-flight panel or second transcript is permitted.
+
+**用户2026-10-19确认：历史分层加载。** 保持当前首屏200条及已有分页语义；先读取普通可见正文、Thinking/工具卡外侧的真实名称、状态与身份，折叠正文、工具参数和结果随后受控分批补齐，用户展开优先。未加载、读取失败与真实空正文必须区分，失败可显式重试；切换会话取消失效详情请求，不抢占当前会话读取。只保留内存中的展示投影，不新增持久缓存或合成历史。
+
+实现采用已有`GET /api/sessions/{id}/messages`的可选`view=cards`；每条真实消息用`deferred_details`标记省略的折叠字段，普通可见正文与UID/row ID/顺序保持。详情用同一路径的`detail_row_ids`（最多12个真实row ID）返回原完整投影，只允许当前已验证compression spine中仍可展示的行；过时详情不能复活rewind行或覆盖另一会话。默认不传参数时原响应完整。`display_tool_status`仅携带从原结果计算的已有卡片状态，不从缺少正文推断成功。
+
+本端及跨客户端的普通user消息以成功持久化点的真实row为依据：Web idle回执可选`accepted_user`与可重放`message.user_committed`事件同形，含`stored_session_id`及`message`（真实`row_id`、`message_uid`、role、content、timestamp和可选display字段）。接收后可立即呈现，不等待Thinking、整页历史或Turn结束；按正式身份去重。没有真实持久化依据不发该字段/事件，旧客户端/后端保留既有行为，原生`prompt.submit`行为不变；已接受后辅助历史读取失败不得变成发送失败或自动重发。
 
 | Rendered source | Timeline semantics | Default rendering |
 |---|---|---|

@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 _DELTA = frozenset({"message.delta", "reasoning.delta"})
 _DISPLAY = _DELTA | frozenset({
-    "message.start", "message.interim", "message.complete", "message.source_committed",
+    "message.start", "message.interim", "message.complete", "message.source_committed", "message.user_committed",
     "message.output_state", "message.output_committed", "message.output_delta",
     "tool.generating", "tool.start", "tool.complete", "tool.output", "error",
     "reasoning.available", "thinking.delta", "steer.consumed", "status.update",

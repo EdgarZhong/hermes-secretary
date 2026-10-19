@@ -179,12 +179,13 @@ def get_sessions(
     limit: int = Query(20, ge=0, le=100), offset: int = Query(0, ge=0), min_messages: int = 0,
     archived: str = "exclude", order: str = "created", source: str = None, sources: str = None,
     exclude_sources: str = None, cwd_prefix: str = None, full: bool = False,
-    profile: Optional[str] = None):
+    profile: Optional[str] = None, summary: bool = False):
     """List sessions.
 
     ``order=recent`` sorts by latest activity across the compression chain, so
     a long-running chat stays on page one after it auto-compresses onto a fresh
     id.  Rows omit ``system_prompt`` / ``model_config`` unless ``full=1``.
+    ``summary=true`` additionally omits the origin blob for sidebar consumers.
     """
     if archived not in ("exclude", "only", "include"):
         raise HTTPException(
@@ -231,6 +232,8 @@ def get_sessions(
                 # SQLite stores the flags as 0/1; expose real JSON booleans.
                 s["archived"] = bool(s.get("archived"))
                 s["pinned"] = bool(s.get("pinned"))
+                if summary:
+                    s.pop("origin_json", None)
             if not full:
                 _strip_session_list_rows(sessions)
             # ``storage`` tells an empty page apart from an unreadable store (#72046); same
@@ -560,7 +563,7 @@ async def get_session_stats(profile: Optional[str] = None):
 
 
 @manage_router.get("/api/sessions/{session_id}")
-async def get_session_detail(session_id: str, profile: Optional[str] = None):
+async def get_session_detail(session_id: str, profile: Optional[str] = None, summary: bool = False):
     def _detail(db):
         sid = _resolve_session_id(db, session_id)
         session = db.get_session(sid) if sid else None
@@ -577,6 +580,9 @@ async def get_session_detail(session_id: str, profile: Optional[str] = None):
         owned = cron_run_scheduler_owned(session, profile)
         if owned is not None:
             session["scheduler_owned"] = owned
+        if summary:
+            for field in ("origin_json", "system_prompt", "model_config"):
+                session.pop(field, None)
         return session
 
     return await asyncio.to_thread(_with_db, profile, _detail, read_only=True)
@@ -724,15 +730,29 @@ def _project_for_display(messages: list, *, home=None, inline_images: bool = Tru
 async def get_session_messages(
     session_id: str, profile: Optional[str] = None, limit: Optional[int] = Query(None, ge=0),
     offset: int = Query(0, ge=0), order: Optional[str] = Query(None),
-    include_compacted: bool = Query(False), inline_images: bool = Query(True)):
+    include_compacted: bool = Query(False), inline_images: bool = Query(True),
+    view: Optional[str] = None, detail_row_ids: Optional[str] = None):
+    from hermes_cli.web_history_cards import detail_row_ids as parse_detail_ids, history_cards, read_detail_rows
+
     if order not in (None, "oldest", "latest"):
         raise HTTPException(status_code=400, detail="order must be one of: oldest, latest")
+    if view not in (None, "cards"):
+        raise HTTPException(status_code=400, detail="view must be cards when supplied")
+    try:
+        detail_ids = parse_detail_ids(detail_row_ids)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if detail_ids is not None and view is not None:
+        raise HTTPException(status_code=400, detail="detail_row_ids cannot be combined with view")
 
     def _read(db):
         sid = _resolve_session_id(db, session_id)
         if not sid:
             return None
         sid = db.resolve_resume_session_id(sid)
+        if detail_ids is not None:
+            return sid, len(detail_ids), read_detail_rows(
+                db, sid, detail_ids, include_compacted=include_compacted)
         # Always page (an omitted limit used to load whole transcripts). Explicit
         # pagination anchors at the start; the default view is the latest page.
         default_page = limit is None
@@ -755,12 +775,15 @@ async def get_session_messages(
     projected_messages = await asyncio.to_thread(
         _project_for_display, messages, home=_history_profile_home(profile),
         inline_images=inline_images)
+    if view == "cards":
+        projected_messages = await asyncio.to_thread(history_cards, projected_messages)
     return {
         "session_id": sid,
         # The same stamp list rows carry, so the Desktop keys a page under the
         # owner it already routes the session by.
         "profile": _serving_profile(profile),
         "messages": projected_messages,
+        **({"projection": "cards"} if view == "cards" else {"projection": "details"} if detail_ids is not None else {}),
         "pagination": {
             "limit": _limit, "offset": offset,
             "order": order or ("latest" if limit is None else "oldest"),
