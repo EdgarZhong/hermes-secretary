@@ -930,9 +930,19 @@ def _stored_prompt_matches_runtime(agent, prompt: str) -> bool:
     stored_cwd = runtime_host_value(prompt, "Current working directory")
     if stored_cwd and stored_cwd != str(resolve_agent_cwd()):
         return False
-    # Platform is deliberately NOT an identity field: a surface switch does not invalidate the
-    # stored bytes, it only makes their interface section out of date, and that is corrected by
-    # agent.surface_switch.stage_surface_switch_note without touching the cached prefix (#104414).
+    # Opt-in Secretary Web UI needs a stable prompt surface even when the UI is
+    # backed by the shared TUI websocket. Migrate old TUI prompts ONCE; then
+    # preserve their bytes on subsequent resumes. Model/provider/cwd checks above
+    # remain unchanged. Without this opt-in, retain native cache-preserving
+    # surface-switch semantics.
+    from agent.system_prompt import effective_platform_hint_key
+    described = identity_line_value(prompt, "Platform")
+    target = effective_platform_hint_key(agent)
+    if target == "secretary_web" and described != target:
+        return False
+    if described == "secretary_web" and target != described:
+        return False
+    # Native platform switches are not cache invalidations.
     return True
 
 
