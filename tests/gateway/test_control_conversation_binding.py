@@ -91,6 +91,59 @@ def test_list_distinguishes_branch_and_binding_stays_original(control):
     assert not result["ok"] and result["error"]["code"] == "conversation_unavailable"
 
 
+def test_list_marks_caller_and_binding_as_independent_conversation_attributes(control):
+    db = control[2]
+    db.create_session("caller", "desktop", model="caller-model")
+    db.set_session_title("caller", "Caller")
+    original = db.resolve_conversation_ref("imported")
+    caller = db.resolve_conversation_ref("caller")
+    assert call(control, "bind", conversation_ref=original)["ok"]
+    result = call(control, "list", caller_locator="caller")
+    rows = {item["conversation_ref"]: item for item in result["conversations"]}
+    assert rows[caller]["is_self"] is True and rows[caller]["is_current_binding"] is False
+    assert rows[original]["is_self"] is False and rows[original]["is_current_binding"] is True
+    assert rows[caller]["title"] == "Caller" and rows[caller]["model"] == "caller-model"
+    assert rows[caller]["last_activity_at"] is not None
+    assert result["caller_context"]["conversation_ref"] == caller
+    assert "session_id" not in json.dumps(result)
+
+
+def test_bind_caller_needs_one_operation_and_list_can_mark_both_roles(control):
+    result = call(control, "bind", caller_locator="imported")
+    assert result["ok"] and result["changed"]
+    listing = call(control, "list", caller_locator="imported")
+    matches = [row for row in listing["conversations"] if row["is_self"]]
+    assert len(matches) == 1 and matches[0]["is_current_binding"] is True
+
+
+@pytest.mark.parametrize("locator", [None, "other-profile-only"])
+def test_list_without_resolvable_caller_reports_unknown_instead_of_guessing(control, locator):
+    assert call(control, "bind", caller_locator="imported")["ok"]
+    result = call(control, "list", caller_locator=locator)
+    assert result["ok"] and result["conversations"]
+    assert result["caller_context"]["available"] is False
+    assert all(item["is_self"] is None for item in result["conversations"])
+    assert sum(item["is_current_binding"] for item in result["conversations"]) == 1
+
+
+def test_list_limit_keeps_identity_information_and_compression_is_one_conversation(control):
+    db = control[2]
+    ref = db.resolve_conversation_ref("imported")
+    assert call(control, "bind", caller_locator="imported")["ok"]
+    db.end_session("imported", "compression")
+    db.create_session("tip", "pi-import", parent_session_id="imported", model="k3-256k")
+    db.create_session("newest", "desktop")
+    db._write_sql("UPDATE sessions SET last_activity_at=? WHERE id=?", (9999999999, "newest"))
+    result = call(control, "list", caller_locator="imported", limit=1)
+    assert len(result["conversations"]) == 1
+    assert result["conversations"][0]["conversation_ref"] == db.resolve_conversation_ref("newest")
+    assert result["caller_context"]["conversation_ref"] == ref
+    assert result["binding"]["conversation"]["conversation_ref"] == ref
+    all_rows = call(control, "list", caller_locator="imported")["conversations"]
+    matches = [row for row in all_rows if row["conversation_ref"] == ref]
+    assert len(matches) == 1 and matches[0]["is_self"] and matches[0]["is_current_binding"]
+
+
 def test_invalid_ref_and_multiple_peers_do_not_guess(control):
     for ref in ("", "imported", "conv_short"):
         assert call(control, "bind", conversation_ref=ref)["error"]["code"] == "invalid_ref"

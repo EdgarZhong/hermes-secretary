@@ -90,6 +90,21 @@ class ConversationBindingControl:
                 break
         return result
 
+    def _listing(self, entry, db, params):
+        try:
+            caller = {"available": True, **self._current(db, params)}
+        except BindingError as exc:
+            caller = {"available": False, "error": {"code": "self_conversation_unavailable", "message": str(exc)}}
+        binding = self._status(entry, db)
+        bound_ref = (binding.get("conversation") or {}).get("conversation_ref")
+        conversations = self._list(db, params.get("limit", 20))
+        for item in conversations:
+            row = self._conversation(db, item["conversation_ref"])
+            item.update(model=row.get("model"), last_activity_at=row.get("last_activity_at") or row.get("started_at"),
+                        is_self=item["conversation_ref"] == caller["conversation_ref"] if caller["available"] else None,
+                        is_current_binding=item["conversation_ref"] == bound_ref)
+        return {"conversations": conversations, "caller_context": caller, "binding": binding}
+
     def _bind(self, entry, db, ref):
         row = self._conversation(db, ref)
         if is_bound(entry) and entry.metadata[BINDING_KEY].get("conversation_ref") == ref:
@@ -135,7 +150,7 @@ class ConversationBindingControl:
             handlers = {
                 "status": lambda: {"binding": self._status(entry, db)},
                 "current": lambda: {"conversation": self._current(db, params)},
-                "list": lambda: {"conversations": self._list(db, params.get("limit", 20))},
+                "list": lambda: self._listing(entry, db, params),
                 "bind": bind, "unbind": lambda: self._unbind(entry, db),
             }
             if action not in handlers:
