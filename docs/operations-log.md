@@ -4,6 +4,12 @@
 
 ## 2026-10-20晚 · Gateway语音与缓存同步
 
+**后续追加已上线并真实验收（23:51部署）：** 用户要求转录回显与AI首条实际回复合成同一消息，不再单发转录通知；保留回显内容。`532cadb4d81e4dcca3dbb3ec4ba05c94fd4fb072`已提交push并快进首尔，Web／Gateway正常、微信connected，原绑定和此前Alex10155条／host2条消息保持。显式`gateway.stt.echo_transcripts_with_reply: true`已在控制根启用，默认false，既有echo关闭仍优先；本次仅微信路径启用。事件持有回显，首条模型interim／final／错误回复出口带入，成功ACK才消费；队列递归明确传递事件归属，无chat全局队列，人类投递增强不回写模型assistant历史。短回显与AI正文先聚合，绕过微信逐行拆分，仍保留原生大小限制。专项24项、相关71项与配置加载99项分组通过（重叠6项，共188个不同场景），主会话亲审接线、重试、队列及历史隔离；完整暂存树冻结10检查通过，0 blocking／advisory，另清理一处新文件EOF空行后diff检查通过。
+
+Alex Command Provider命令已增加16kHz单声道AAC64kbps压缩，复用命令临时目录及既有阿里脚本，adapter源码／Key／study配置不变。官方PM按现有锁安装FFmpeg9.0.1；旧样本WAV340844B→M4A49126B，新增编码0.1169秒，实测总5.0297秒，转录与旧结果完全相同；网络波动存在，不能把全部提速归因压缩。第二份真实样本经完整压缩Command Provider预检6.074秒、转录仍为“这是一条语音消息。”，原声保持、SILK和命令临时目录清理通过。用户新发语音已真实入库，模型输入仍有`Voice message transcript:`，assistant持久历史无投递回显头；用户明确确认“已收到合并回复，没有独立通知”，真实微信显示验收通过。随后另一条语音也正常入库。新语音处理后临时目录无残留。
+
+本次备份位于服务器`gateway-voice-20261020/deploy-reply-20261020T235155/`（同下述运维工作目录）；含原控制根／Alex／study config、Alex env、三库在线备份及旧提交`b0c9252`。回滚先检查空闲并正常停启，仅撤回根gateway合并开关和Alex此次Command变更、源码回退`b0c9252`，不回盖运行数据库；保留原阿里适配脚本和凭据，不把初轮接通一起撤销。证据：同级`round2-deploy-receipt.json`、`compression-preflight.json`、`compression-timing-audio_434b5f3b17c9.json`，以及本机ignored回显／配置测试日志。
+
 用户确认使用`paraformer-v2`非实时文件转写，复用Hermes原生STT Command Provider、原生SILK解码和已配置的DashScope Key，不接实时识别API。转写成功正文严格使用`Voice message transcript: <转录结果>`，取代此前来源／可能识别错误说明。用户接受阿里私有临时上传空间及48小时链接失效；本地原始媒体仍按Hermes原生24小时龄期清理，不作为永久原声归档，转录文字正常随message持久化。凭据只在获授权线上环境，不入Git。
 
 Noting预算收尾修复已提交并push `02964de`；语音前缀已提交并push `b0c9252`，前缀／原生Command Provider相关5文件33测试通过、冻结10检查通过。个人阿里适配及57项离线通过测试只放ignored `.hermes-dev/gateway-voice-20261020/`，正式脚本安装在服务器`~/scripts/alex/paraformer_stt.py`，root:root／0555＋immutable，SHA256为`e5d66d877805421d6a036d72b70369bafa4bd6aa867a96df0d562e401bb1fc6e`；未写入公开核心。
