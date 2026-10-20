@@ -335,6 +335,44 @@ class Request:
         return sum(d[index] for d in self.data)
 
 
+def _record_response(request, row, line_number, ts, active, key):
+    if request.headers is not None:
+        request.anomalies.add("multiple_response_events_without_redirect_marker")
+    request.receive_headers(row)
+
+
+def _record_data(request, row, line_number, ts, active, key):
+    request.data.append((ts, nonnegative(row.get("dataLength")), nonnegative(row.get("encodedDataLength"))))
+
+
+def _record_finished(request, row, line_number, ts, active, key):
+    request.encoded_bytes = nonnegative(row.get("encodedDataLength"))
+    request.close("completed", row, line_number, "loadingFinished")
+    active.pop(key, None)
+
+
+def _record_failed(request, row, line_number, ts, active, key):
+    # Do not copy arbitrary error text; it may contain URLs or queries.
+    error = row.get("errorText")
+    match = re.search(r"\bnet::[A-Z][A-Z0-9_]*\b", error) if isinstance(error, str) else None
+    request.error_code = match.group(0) if match else None
+    request.canceled_flag = boolean(row.get("canceled"))
+    request.blocked_reason = token(row.get("blockedReason"))
+    cancelled = request.canceled_flag is True or request.error_code == "net::ERR_ABORTED"
+    if cancelled:
+        request.cancellation_evidence = "cdp_canceled_flag" if request.canceled_flag is True else "ERR_ABORTED"
+    request.close("cancelled" if cancelled else "failed", row, line_number, "loadingFailed")
+    active.pop(key, None)
+
+
+_HTTP_RECORDERS = {
+    "Network.responseReceived": _record_response,
+    "Network.dataReceived": _record_data,
+    "Network.loadingFinished": _record_finished,
+    "Network.loadingFailed": _record_failed,
+}
+
+
 def read_source(path, source, targets):
     active = {}
     latest = {}
@@ -422,28 +460,7 @@ def read_source(path, source, targets):
                     request.anomalies.add("duplicate_terminal_event")
                     continue
                 request.anomalies.add("event_received_after_terminal_event")
-            if event == "Network.responseReceived":
-                if request.headers is not None:
-                    request.anomalies.add("multiple_response_events_without_redirect_marker")
-                request.receive_headers(row)
-            elif event == "Network.dataReceived":
-                request.data.append((ts, nonnegative(row.get("dataLength")), nonnegative(row.get("encodedDataLength"))))
-            elif event == "Network.loadingFinished":
-                request.encoded_bytes = nonnegative(row.get("encodedDataLength"))
-                request.close("completed", row, line_number, "loadingFinished")
-                active.pop(key, None)
-            elif event == "Network.loadingFailed":
-                # Do not copy arbitrary error text; it may contain URLs or queries.
-                error = row.get("errorText")
-                match = re.search(r"\bnet::[A-Z][A-Z0-9_]*\b", error) if isinstance(error, str) else None
-                request.error_code = match.group(0) if match else None
-                request.canceled_flag = boolean(row.get("canceled"))
-                request.blocked_reason = token(row.get("blockedReason"))
-                cancelled = request.canceled_flag is True or request.error_code == "net::ERR_ABORTED"
-                if cancelled:
-                    request.cancellation_evidence = "cdp_canceled_flag" if request.canceled_flag is True else "ERR_ABORTED"
-                request.close("cancelled" if cancelled else "failed", row, line_number, "loadingFailed")
-                active.pop(key, None)
+            _HTTP_RECORDERS[event](request, row, line_number, ts, active, key)
     for request in active.values():
         request.outcome = "capture_truncated"
         request.reason = "end_of_source_without_terminal_event"
