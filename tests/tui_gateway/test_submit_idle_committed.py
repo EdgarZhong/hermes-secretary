@@ -169,15 +169,19 @@ def test_empty_image_only_and_isolation_do_not_reuse_older_source(live, monkeypa
     image = image_file(live)
     result = rpc(image_paths=[str(image)] if image_only else [])
     wait_all(live)
-    assert result["result"]["status"] == "streaming" and "accepted_user" not in result["result"]
-    assert len([row for row in live.db.get_messages("stored") if row["role"] == "user"]) == 1
+    assert result["result"]["status"] == "streaming"
+    assert ("accepted_user" in result["result"]) is image_only
+    expected_rows = 2 if image_only else 1
+    assert len([row for row in live.db.get_messages("stored") if row["role"] == "user"]) == expected_rows
+    if image_only:
+        assert result["result"]["accepted_user"]["message"]["content"] == f"@image:{image}"
     live.session["running"] = False
     monkeypatch.setattr(server, "_session_uses_compute_host", lambda *a, **k: True)
     monkeypatch.setattr(server, "_submit_prompt_to_compute_host",
                         lambda rid, *a, **k: server._ok(rid, {"status": "streaming", "turn_isolation": True}))
     isolated = rpc(text="child not yet committed")
     assert "accepted_user" not in isolated["result"]
-    assert len([kind for kind, _, _ in live.frames if kind == "message.user_committed"]) == 1
+    assert len([kind for kind, _, _ in live.frames if kind == "message.user_committed"]) == expected_rows
 
 
 def test_hidden_row_receipt_preserves_real_display_kind(live, monkeypatch):

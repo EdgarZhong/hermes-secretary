@@ -1128,14 +1128,19 @@ class SessionMessagesMixin:
             "AND role = 'user' AND active = 1 AND content IS ?",
             (_scrub_surrogates(api_content), row_id, session_id, self._encode_content(content)))
 
-    def set_user_message_content(self, session_id: str, row_id: int, content: Any) -> int:
+    def set_user_message_content(self, session_id: str, row_id: int, content: Any,
+                                 *, expected_message_uid: Optional[str] = None) -> int:
         """Rewrite the content of ONE known active user row. Used when a user turn was written at submit
         time (before the agent ran) and the turn prologue then rewrote the prompt it persists (@-file
         expansion, native image parts): the early row must show what the transcript will replay, not the
-        raw keystrokes, and the turn must not append a second row for the same input."""
+        raw keystrokes, and the turn must not append a second row for the same input.
+        ``expected_message_uid`` additionally verifies an accepted row in the write transaction;
+        when provided, equal content acknowledges that same active row without rewriting it."""
         if not session_id or isinstance(row_id, bool) or not isinstance(row_id, int) or row_id <= 0:
             return 0
-        return self.secretary_set_user_content(session_id, row_id, content)
+        return self.secretary_set_user_content(
+            session_id, row_id, content,
+            **({"expected_message_uid": expected_message_uid} if expected_message_uid is not None else {}))
 
     def deactivate_message(self, session_id: str, row_id: int) -> int:
         """Deactivate ONE known row (id-addressed, idempotent; returns the affected row count). Used by

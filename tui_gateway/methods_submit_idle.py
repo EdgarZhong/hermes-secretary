@@ -154,10 +154,11 @@ def _idle_committed_user(session, staged):
     return payload
 
 
-def _submit_persist_with_receipt(rid, sid, session, text, display_kind, fields):
+def _submit_persist_with_receipt(rid, sid, session, text, display_kind, fields, image_paths=None):
     """Capture the native committed row before any worker can consume its staging dict."""
     previous = session.get("_submit_user_row")
-    error = _persist_session_row_for_submit(rid, session, text, display_kind)
+    error = _persist_session_row_for_submit(
+        rid, session, text, display_kind, **({"image_paths": image_paths} if image_paths else {}))
     if error is not None:
         return error
     staged = session.get("_submit_user_row") or {}
