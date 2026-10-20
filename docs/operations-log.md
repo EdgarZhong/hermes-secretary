@@ -2,6 +2,83 @@
 
 维护实际部署、故障处理、验证与回滚点；步骤和稳定布局见[部署SOP](cloud-deployment-sop.md)，当前任务只在根[CLAUDE](../CLAUDE.md)。以下时间均为Asia/Shanghai；PID、指纹和测试结论只对应记录时点，不代表实时状态。凭据、令牌、原始私人材料不写入本文件。
 
+
+## 2026-10-21 01:30 · 移动端阶段一与Noting联合上线
+
+用户确认不开worktree，完成阶段一并统一部署，允许直接协调Noting并行会话；C08明确先部署后简化Validation，不严格执行自主套件；C09明确健康重点是原会话Instant Reminder与微信链，禁止因部署失败擅自回退。本轮按该口径完成，不另设严格两门禁，不改检查等级。阶段二和蜂窝短网络实验未实施。
+
+**实际版本与变更：** 首尔Web和用户级Gateway均运行`0bdddfc133b830dd73db3b3dfbe23bc20edfd4e1`；前端`1d1b1a7c53b9baf86576d3c19ebdd5a8b9a98975`，439产物22662600B逐个SHA核对，55个沿用哈希URL字节一致；先后端就绪，保留旧hashed assets并最后原子替换HTML。后端图片投影`aaaa991`默认关闭，前端cards/details显式opt-in；纯图片受理`1df86af`在原持久行refs受理并原位认领，事务核owner/row/active/UID，不新增schema或队列。前端usage summary、显式详情需求、图片视口触发及Thinking首次Markdown已接线；旧预算修复02964de原已上线，不重复应用。Noting自有请求后缀仅补父冻结工具缺少schema，父顶层/root/prefix及原生Provider保持；真实短K3证据见下方独立交付节。
+
+Alex仅通过原生Profile scope/config/env writer更新`model.api_mode=chat_completions`、`model.base_url=https://api.kimi.com/coding/v1`及已有`KIMI_BASE_URL`同URL；密钥及其它env/config值读回保持。原生resolve_conversation_route定位绑定Conversation当前tip，再update_session_model完整写provider/base/mode两持久shape，保留k3-256k／High／262144。冷恢复reader实际解析与两次pool重入核对通过，1个有效凭据项endpoint一致；不经会强制回Anthropic的/model路径。没有批改其它Session、Profile或重放旧failed Noting。
+
+**发布与健康：** 01:28:30原生Web retirement准入后正常停启，三库SQLite backup API及quick_check、配置/旧静态/Caddy备份保全。01:28:38新Web/Gateway进程启动；切换期间01:28:34–46有7次连接拒绝502（14条error/access日志，非14独立请求），之后未再出现。后端真实JSON与微信connected通过后已发布前端；Caddy前一次idle检查短暂未通过，原因未直接留存，不推断有新Turn。没有回退或再次重启后端，复核idle且Noting数量未增后续完Caddy。2.11.7以原生SIGUSR1从原配置文件成功重载，PID181221保持，日志确认successfully reloaded；仅Hermes的sessions JSON／文本assets压缩，成功hashed JS/CSS才private immutable，HTML/auth/error/WS不扩缓存。
+
+部署后与停服SQLite备份逐行核对：原Alex10161行、host2行、study0行的内容与身份无改变/缺失，全部Schedule定义/generation/sequence/next时间保持，原微信绑定保持，host/study配置不变。目标7条启用Instant，最近**2026-10-21 10:00+08**；Scheduler enabled，serve-secretary扫描线程存在、无异常claim，Web与Gateway实际SHA正确、active/running且0自动重启，服务自启/Linger=yes，微信connected，发送工具可执行且SHA未变。01:33只读复核仍idle／pending0，Noting仍completed2/failed1。未新建或提前触发生产提醒，未生产微信测试发送；这证明当前就绪条件，不冒称未来已触达。
+
+**真实性能观察：** 相同Session、200行、同row ID/UID/role顺序摘要`f25960b3…f067`；原始正文/图片只留服务器0700目录，未下载或入Git。
+
+| 读取 | 上线前raw B | 上线后raw B | 上线前离线gzip B | 上线后离线gzip B |
+|---|---:|---:|---:|---:|
+| cards，同200行 | 863366 | 212094 | 544803 | 51160 |
+| full rows，同200行 | 1571854 | 920582 | 907567 | 413879 |
+| metadata full→summary消费者 | 215536 | 51683 | 81335 | 16898 |
+
+cards raw减少75.43%；新版本默认不传opt-in仍逐字保持原863366B。structured user图片1行/1图转换成功，fallback0；content651372B→90B，实际原图下载488384B、image/jpeg、字节/SHA与原文件一致。相同**已安装Caddy规则→唯一正式后端**的临时服务器回环监听器协商gzip：cards传输体54696B，解码212094B与原响应逐字一致；真实hashed JS1143399B→364049B并返回private immutable。它不是公网Authelia登录后的浏览器样本；离线gzip与Caddy压缩级别不同，不混为一个数值。
+
+自建隐藏IAB经临时获授权SSH回环/仅元数据relay读取同一正式后端：WS已open／正常恢复，200行cards GET响应212094B；usage summary确有summary=true，目标metadata两次各51683B，未为凑请求数合并其它正常消费者。静置约27秒详情0/图片0；显式展开1个Thinking，1次单行details GET6783B，之后闭合卡片未背景补水；图片尚距预取范围外时0下载，滚入后1次488384B并实际解码1920×2560。额外滚动未增加下载；退出/再次进入的完整几何记录未保留，不冒称完整线上reentry覆盖，该机制有定向单测。所有观察GET request body为0B，主要收益来自response传输和请求时机。回环浏览器cards headers/total约0.477/0.564s、详情0.133/0.180s、图片0.150/0.202s，仅本次Wi-Fi＋SSH观察，不推断蜂窝。正式公网入口仍正常跳Authelia登录页；没有登录态，未借用用户现有页或改鉴权。隐藏页、临时relay与SSH转发均关闭。
+
+**验证与限制：** 前端定向286及usage54（重叠）、typecheck/build通过；后端投影新26及原48、图片新增34与最终受影响60、Noting dynamic39/summary4/fallback3的有效证据均已亲审复用。原有History/sidecar/child计数污染、首次前端旧断言及Noting首400按原时点保留，不冒称全仓全绿。最终冻结10检查对50214cd基线：初次仅附包summarize_cdp有CC24/HX011两项，等价拆分事件分派后ruff/health0blocking/advisory；51事件×3筛选、2非法输入，原新输出逐字节一致，修正164eb4f。未做生产纯图发送Turn／公网已登录全流程／蜂窝长实验，未因这些可明确记录的简化验收边界阻止用户要求的部署。
+
+证据：本地ignored`.hermes-dev/mobile-phase1-20261021/`各实现包、`integration-check*.json/log`及`operations/after-redacted.json`、`browser-validation.json`、`reminder-before/after/final.json`、`deploy-receipt.json`、`final-service-health.json`。服务器备份与原始私有证据在`/home/ubuntu/.local/state/hermes-secretary/mobile-phase1-20261021/deploy-20261021T012830/`及其父目录。初始deploy日志保留idle断点，finish-deploy只续完Caddy/一致性核对，不掩盖断点。备份不等于自动回退授权；本轮没有执行代码/Caddy回退或运行DB回盖，出现问题仍按C09修复新版，不擅自执行旧版恢复命令。
+
+## 2026-10-21 · Noting历史失败与模型工具声明对照
+
+用户要求分析最近一次50轮Noting失败，并由独立子Agent先用DeepSeek真实重放。用户随后明确：直接复制本地每5分钟同步的数据库，用本地代码与独立隔离数据库运行；不再读取云端或复制云端材料。此前仅做云端只读日志／目标记录查询，未写云端；接到限制后停止云端访问。未改生产配置、会话或Notebook，未恢复旧任务、未部署。
+
+原失败`noting_0fd1567cdc064a58`为2026-10-20 manual admission3，21:38:15.280登记、21:51:31.656结束，模型`kimi-coding/k3-256k`／High。50次是第一个原生Turn内的API调用，不是50个外层Turn；全部调用`conversation_history`，47 read／3 search，13次空结果、18次正文截断，34次仅查assistant、12次仅查user、4次不限制role；76条返回对应74个不同UID，无完全相同参数重试，工具全success。没有调用`notebook_show`／`notebook_maintain`／`finish_noting`。模型早期已形成条目方案，后期多次准备从检索转为维护，但结构化调用仍停在History；不能仅用证据不足解释。没有工具名被修复成History的证据。旧runner把预算返回的completed False判failed，未进入最多5Turn续跑，无本次Snapshot；这是预算收尾机制与模型工具选择两层问题。预算窄修复的后续部署事实见10月20日晚记录，不改写旧任务结局。
+
+原50次主循环逐日志与DB交叉核算：非缓存输入49,909、缓存输入7,849,216、输出13,888，合计**7,913,013 tokens**；输入总计7,899,125，缓存命中99.37%。非缓存输入＋输出63,797不是总token。模型请求耗时合计约723.9秒，History执行合计28.34秒；上限后另一次约33.7秒总结请求未把usage计入账本，因此完整总量为已知小计加未知总结用量，不伪造精确全量或费用。脱敏逐次工具参数／结果计数见ignored`.hermes-dev/kimi-tool-contract-20261021/original-failure-trace.json`。
+
+主会话使用本地现有凭据和项目原生Kimi客户端，以虚构待办、`k3-256k`／High做独立声明方式对照，不执行模型返回的工具。Anthropic协议两次仅user正文声明schema，首个响应均调用正式列表内的notebook_show；两次把维护工具加入顶层tools，均直接返回完整notebook_maintain create。Chat协议两次正文声明，一次明确表示实际工具缺少维护／结束能力、一次说准备创建但调用show；两次顶层注册均选中maintain，但参数不完整，不能称业务成功；两次独立末尾system消息以结构化tools字段追加维护／结束定义，均直接返回完整create参数。共10个小样本；这是调用可达性证据，不是完整Noting验收，不泛化为所有模型／端点必然限制。原始请求、响应及哈希／用量留ignored`.hermes-dev/kimi-tool-contract-20261021/`，不公开原始推理正文。
+
+Kimi官方[动态工具文档](https://platform.kimi.ai/docs/guide/use-dynamic-tool-loading)及[工具调用最佳实践](https://platform.kimi.ai/docs/guide/kimi-k3-tool-calling-best-practice)规定动态定义用独立`role: system`消息的结构化`tools`字段，不能同时有content；仅把schema写成user正文JSON并非该机制。文档针对开放平台kimi-k3，本轮另实测Coding端点k3-256k的Chat协议接受该格式。当前项目为cache-parity保留父顶层tools，只在任务正文提供callable_tool_schemas；本地dispatch允许维护／结束名不代表provider正式工具面已注册。现有证据优先支持工具声明形式兼容差异；未擅自修改该冻结契约。
+
+DeepSeek在本地复制的独立数据库、仓库外Profile／cwd，以当前本地代码和既有`deepseek-flash`路由／Chat／High完成真实Noting：87.07秒、1个原生Turn、8次API请求；首个响应发5个maintain且全部成功，整轮27个maintain（23成功、4字段校验失败）、1次成功finish_noting、0次History；显式结束后正式Commit Gate成功提交19条目Snapshot。8个请求的顶层工具哈希一致，均未注册maintain／finish，未强制工具选择或改任务指令；4次失败为决策ends_when缺失／空，随后修正，不能隐去失败。请求usage与独立数据库一致：非缓存输入142,359、缓存输入1,039,232、输出12,042（含已报告推理5,974，不重复相加），合计**1,193,633 tokens**，没有额外预算总结请求。代码与运行脚本经主会话亲审，独立只读核对DB、provider trace、结束类型及Snapshot数量，未靠子Agent自报认定。
+
+相同性边界：原wrapper逐字恢复、旧child保存的root哈希一致、同anchor／已持久父工具prelude；本地恢复251条持久行，经原生sanitizer合并相邻user后实际首请求父历史250条，与原日志数量相同。另有5个旧工具结果的空白／控制字符归一、1个空assistant补placeholder；没有当晚完整请求，不能宣称逐字相同。模型／tokenizer／API transport改变，当前代码有预算兜底修复；本次8次即正常finish未触发兜底。使用既存round3 DeepSeek配置的262144窗口，未采用当前Alex自定义500000；未裁剪输入／触发窗口兜底。证据在ignored`.hermes-dev/noting-model-replay-20261021/summary.json`及`trace.jsonl`，原文／请求完整内容置private。该一次完整任务加Kimi小对照支持“当前suffix-only工具声明对不同模型／接口不具备一致行为”，不据此宣称所有Kimi工具调用有缺陷，或Notebook内容质量全面通过。
+
+用户进一步确认理解：动态工具要在API消息中单独结构化声明，而非仅写正文。官方及本轮实测支持Chat路径的末尾system.tools追加、既有前缀缓存保留和后续请求继续携带声明；新增尾部本身仍需处理。生产Anthropic路径尚未验证相同声明能力，本轮未修改API契约／路由／工具面。
+
+**后续Anthropic隔离探测完成：** 按用户要求，资料调查及真实API实测均委派“小贝子”，主会话仅研究代码边界并亲审返回脚本／实际wire请求。12次全部使用Coding端点`kimi-for-coding`／High，新增K3调用0次；只用虚构内容、不执行工具、不访问SSH／服务器／生产数据库，不改配置。Anthropic正文声明0/2、正式顶层注册2/2；末尾system.tools分别携OpenAI schema及Anthropic name/input_schema，各0/2，合计0/4。动态字段在原生构建完成后追加，SDK实际发出且HTTP200，因此不能归因本地转换器丢字段；输入量与无声明基线相同、返回未识别新工具，推断该端点未将扩展呈现为工具，但无服务端内部证据。Chat正文0/1、顶层注册1/1、末尾动态声明2/2，成功调用均通过参数校验。所测便宜模型能完成Chat动态声明能力验证，但不与K3等同，也不外推K3的Anthropic表现；官方没有给出可用于精确报价的K2.8／K3额度倍率。12次总输入含缓存6,875、其中缓存5,565、输出3,205，实际费用未知。完整报告与请求／响应哈希、前缀核验见ignored`.hermes-dev/kimi-anthropic-dynamic-20261021/report.md`及`all-results.json`，未为review重跑。
+
+**适配方案讨论边界，尚未实施：** 收窄为自己的Noting／原生请求接缝处集中做Provider／协议相关编码，不先扩展持久消息中间表示、数据库结构或Provider原生公共接口。路由信息来自继承冻结父runtime／parity后的child（model、provider、api_mode、base_url），不重读用户配置或live Parent；每次发送以child当前实际路由核对，不能向fallback端点沿用Kimi扩展。复用现有schema与权限，不从任意正文猜测工具注册。原生Anthropic转换器只提取system.content，不保留system.tools，故直接在通用历史插该消息不成立；若端点本身不支持，也不能靠接缝补出能力。**用户随后明确：Provider及其API格式选择必须沿用Hermes原生实现，不更改底层Provider协议、不为Noting切换Chat；此前提出的Chat路由选项撤回。** 后续仅考虑当前原生已选协议下的接缝兼容方式，所测Anthropic动态声明仍未找到可用格式；Chat实验只保留为比较证据，不作为协议迁移授权或已可实施方案。未改实现／配置／部署。
+
+**官方声明边界复核：** 用户追问后再次委派“小贝子”仅复核官方资料，没有新增模型调用。Kimi [Chat API](https://platform.kimi.ai/docs/api/chat)的messages结构明确列出Dynamic tool message；[动态工具文档](https://platform.kimi.ai/docs/guide/use-dynamic-tool-loading)的only kimi-k3限定的是模型，不是协议。官方[Messages API](https://platform.kimi.ai/docs/api/messages)未查到消息级动态工具格式，亦未查到明确禁止或“只能Chat”的声明。故不能将本次0/4概括为Anthropic协议必然不支持；只能断言所测Coding模型／端点／两种写法未生效。“兼容层忽略声明”是推断，具体服务端原因未知。主会话此前口头“Anthropic不支持”的概括过强，已向用户纠正；原始实验及结论限制保持。
+
+**实际K3-256k最小补验：** 用户随后单独授权实际模型最小验证，由“小贝子”执行，主会话亲审。严格3次、无重试，requested／returned model均为`k3-256k`，High，`https://api.kimi.com/coding/v1/messages`；仅虚构待办、不执行工具、不访问SSH或生产数据，不改配置／实现。正式顶层注册正对照1/1产生维护tool_use，JSON Schema及预期字段校验通过；顶层只读工具不变、末尾system.tools分别携OpenAI完整function schema及Anthropic name/description/input_schema，各0/1，返回均明确表示没有维护工具。所有请求HTTP200；动态声明在原生转换后追加、实际SDK wire含字段且无content，主会话独立重算3组请求／响应哈希并比对原消息及其他顶层字段不变。总输入含缓存1,665（fresh1,143／cache read522／write0）、输出510（含thinking263，不重复相加），共2,175 tokens；耗时相加16.843秒，实际费用未知。没有重测Chat或长会话，不为review重跑。结果与便宜模型方向一致，只覆盖这两个写法及端点；服务端内部原因未知，不改写官方声明边界。独立证据`.hermes-dev/kimi-anthropic-dynamic-20261021/k3-256k-summary.json`、同目录`k3-256k-probe.py`及报告新增小节；旧结果保留。
+
+### 后续协议授权与实施边界（2026-10-21）
+
+用户随后明确同意Kimi实际API使用OpenAI compatible，并确认采用最小方案：保留Hermes官方原生`kimi-coding` Provider，配置`model.api_mode: chat_completions`、`model.base_url: https://api.kimi.com/coding/v1`及原`k3-256k`／High；动态工具声明置于Secretary自身Noting请求接缝，不新造Provider、不改公共adapter签名／持久消息／数据库。此新授权覆盖前轮“禁止切换协议”的讨论边界；旧实验仍只对应当时端点。主会话离线直接调用原生runtime_provider及agent_init解析helper，确认显式api_mode优先于Coding URL默认Anthropic识别且保留原生Provider；零联网、零配置写入。
+
+用户进一步授权完成实施并听从“理解实验阶段一任务”会话指挥，交其统一提交／部署。本会话只本地源码／独立DB及仓库外cwd，交付前构造虚构短Conversation，通过实际K3-256k／High、原生父运行态继承及完整Noting维护→finish→Commit Gate实测，核真实HTTP wire、父root/tools/Active前缀、声明固定位置／续带、usage及持久结果。统一会话用户C08允许不严格执行自主套件，本会话引用其冻结基线，不另做重复大型门禁；代码亲审、定向测试和该真实模型证据仍必需。本会话不SSH／写生产配置／重放旧failed任务／单独部署，不暂存共享index。已有Conversation持久路由及Reminder冷恢复切换方式须交接，不能仅改默认配置即宣称旧会话已切换；跨Anthropic→Chat首次请求不承诺复用旧协议缓存。
+
+### Kimi Chat最小实现与真实短Noting交付（2026-10-21）
+
+本地代码交付为4个产品文件与2个测试文件：新增`secretary/noting_request.py`及`agent/iteration_summary_messages.py`，修改`agent/turn_request_assembly.py`与`agent/chat_completion_helpers.py`，新增`tests/secretary/test_noting_dynamic_tools.py`、`tests/secretary/test_noting_dynamic_fallback.py`。未改Provider、公共adapter签名、DB／持久消息格式、Noting runner或原Prompt／预算。大文件摘要构建按原入口薄转发移入同职责sibling，保原sanitizer patch点，4054→3984行，不放宽health规则。
+
+最终仅原生kimi-coding及aliases、精确`k3-256k`、`chat_completions`、官方HTTPS `api.kimi.com/coding/v1`启用动态消息；未验证模型／其它Moonshot主机／custom代理保持既有路径。声明来自canonical schema与child冻结顶层工具的name差集，父tools不变；差集空不发空消息。主循环与迭代上限summary都在可信child边界固定追加，按存活声明对象定位sanitizer后的边界，计量自然包含schema。主会话最初担心跨Provider retry泄漏，经正式Loop和原生fallback/下一Turn主路由恢复证明每次重组装，故未增加`turn_api_request`清理逻辑。
+
+首个完整真实HTTP请求因天然父25工具已含History、动态四schema重名而400；独立探针未覆盖该真实组合的验证缺口已承认并修复，失败原件保留。修复版39个dynamic、4个既有summary、3个原生fallback场景分组通过，6文件冻结health及pinned ruff通过；另一旧child整文件37过／1个活动任务计数污染，单项独立通过，未据此冒称原版整文件或全量全绿。统一会话负责最终staged冻结10检查及提交。
+
+真实复验使用全新仓库外Profile／state.db／cwd与三轮六条虚构野餐对话，原生`_make_agent`构建父root（9449字符）及25顶层工具，继承runtime/parity／High，默认Noting指令与50×最多5Turn预算。`k3-256k`实际Chat端点6/6 HTTP200，73.35秒、1Turn自然完成：History1次，maintain3次成功、单独finish2次成功（第二次幂等保留首次理由），最后原生Turn返回后Commit Gate提交唯一有效Snapshot。matter保留水果已买好，action保留出发前买两瓶水pending，decision只覆盖本次公交及分工；三条用户UID及正式内部来源／关系校验通过，无Candidate／排期／外部写入。主会话亲读Snapshot／audit，并独立复算6份wire：父正式投影[0:7]与顶层工具逐结构一致，动态消息固定位置7、仅show/maintain/finish三项，无重名，7受测产品文件hash全程一致。原生客户端UA实际`claude-code/0.1.0`，本轮沿用、不冒称HermesAgent身份。
+
+成功运行usage6/6齐全：输入162,288（cache134,912／fresh27,376）、输出2,045，总164,333 tokens；reasoning属输出不再加。此前400无usage，因此本任务7个实际请求的完整总token／实际费用未知。成功后的harness误将公开payload交内部校验，产品已正式提交；保留harness-error，由同一DB正式内部state只读补核，不再发模型。末次父内存tools/live数组及registry查询未落盘，明确未直接观察；6次实际wire父前缀／tools、持久原文UID、child ownership与连接关闭已证实，runner finally先unregister再close，不能把未观察项写成直接查询通过。
+
+精确部署配置交给统一会话：仅Alex设置原生`model.api_mode=chat_completions`、`model.base_url=https://api.kimi.com/coding/v1`及已有Profile `.env`键`KIMI_BASE_URL`同URL，保原Key／High／262144／其它Profile。池显式endpoint优先于model.base，env源每次load_pool重播种，不能只写YAML或手改池。独立虚构key双Profile、0外连／模型请求，以原生`_profile_runtime_scope`→`require_env_writable`→`save_env_value`实际持久化、重进scope三次load_pool、native credential swap与primary恢复子步骤，确认目标endpoint稳定且其它Profile／进程环境／Key原行保持；所测恢复是最小host shim，不冒称完整fallback Turn或线上验收。已有目标Conversation须`resolve_conversation_route`找当前tip，`update_session_model(... provider, base_url, api_mode)`同步顶层及gateway_runtime，再正常重启Web／Gateway owner冷恢复；不批改旧session、Reminder或绑定，不调用会强制Anthropic的`/model`来切这次协议，不承诺跨协议旧缓存复用。具体原生scope写法与冷恢复owner路径见ignored`routing-handoff.md`第10节；统一会话实机核实际source/全部有效池entry、目标ref、排期与微信链。
+
+交付入口：`.autonomous/20261021-noting-kimi-chat/final-delivery.md`；ignored `.hermes-dev/noting-kimi-chat-20261021/`中的`implementation-report.md`、`implementation-route-dedup-source-hashes.json`、`native-env-pool-summary.json`、`routing-handoff.md`及`real-short/real-short-report.md`。成功原件`run-20261021-012302/`、失败原件`run-20261021-011556/`，不上传包含请求／响应的私有证据。此段为本地交付事实；统一提交／上线实况由负责会话另记，不将其冒称本会话已部署。本会话无SSH／生产DB复制或修改／绑定或提醒变更／暂存提交。
+
 ## 2026-10-20晚 · Gateway语音与缓存同步
 
 **后续追加已上线并真实验收（23:51部署）：** 用户要求转录回显与AI首条实际回复合成同一消息，不再单发转录通知；保留回显内容。`532cadb4d81e4dcca3dbb3ec4ba05c94fd4fb072`已提交push并快进首尔，Web／Gateway正常、微信connected，原绑定和此前Alex10155条／host2条消息保持。显式`gateway.stt.echo_transcripts_with_reply: true`已在控制根启用，默认false，既有echo关闭仍优先；本次仅微信路径启用。事件持有回显，首条模型interim／final／错误回复出口带入，成功ACK才消费；队列递归明确传递事件归属，无chat全局队列，人类投递增强不回写模型assistant历史。短回显与AI正文先聚合，绕过微信逐行拆分，仍保留原生大小限制。专项24项、相关71项与配置加载99项分组通过（重叠6项，共188个不同场景），主会话亲审接线、重试、队列及历史隔离；完整暂存树冻结10检查通过，0 blocking／advisory，另清理一处新文件EOF空行后diff检查通过。
@@ -25,6 +102,7 @@ Noting预算收尾修复已提交并push `02964de`；语音前缀已提交并pus
 应用户询问另测同一旧音频分段：总13.4534秒，SILK解码1.2108秒、获取上传凭证1.4020秒、上传340844B WAV6.1175秒、提交0.1611秒、两次轮询0.1586秒、轮询sleep及本地开销1.0089秒、结果下载3.3945秒。上传＋下载约71%，未进一步分离DNS／TLS／正文传输，不能把耗时都归因模型计算，也不能将Alex约31秒响应时间算作ASR耗时。仍保持用户已定非实时API；未扩展为性能优化任务。
 
 备份与回滚：服务器`/home/ubuntu/.local/state/hermes-secretary/gateway-voice-20261020/deploy-20261020T232706/`含部署前3库在线备份、Alex原config／env、host／study原config和旧提交；`deploy-receipt.json`、`preflight.json`、`timing.json`、`e2e-receipt.json`在同级工作目录。撤销须先查空闲，正常停止服务，退回`fcf5d08`并只撤回Alex此次STT／Key新增、移除此次适配脚本后启服；不回盖运行数据库或用户后续配置。原声和转录私有材料仅留服务器。stuck技能已按本次用户明确要求改为完整报告直接贴给用户、默认不派subagent，由用户转网页端调研。
+
 
 ## 2026-10-20 · 第一版收尾
 

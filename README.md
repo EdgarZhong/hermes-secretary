@@ -8,9 +8,9 @@
 |---|---|
 | Conversation / History | `conversation_ref` 标识稳定归属，Session 是物理定位；原文为事实源，复用原生持久化与历史检索 |
 | Notebook | 三内容板块及 Candidates；稳定条目、不可变版本和原子 Snapshot；Main 只读、Noting 独占写入 |
-| Background Noting | 原生 AIAgent child、冻结父上下文、后台维护派生工作状态 |
+| Background Noting | 原生 AIAgent child、冻结父上下文、后台维护派生工作状态；K3 Coding Chat在自有后缀动态声明父工具表缺少的维护能力 |
 | Scheduler | 独立排期表、claim / pending / ACK；宿主约5秒扫描，合法本地 Main 的 Instant Reminder 可冷态恢复 |
-| Web / Gateway | 多Profile隔离、双SPA同源、消息渠道绑定持久Conversation；历史卡片首屏与详情渐进加载 |
+| Web / Gateway | 多Profile隔离、双SPA同源、消息渠道绑定持久Conversation；历史卡片首屏、显式详情补水与验证型图片引用／视口下载 |
 
 Secretary 只在Profile的 `state.db` 增加自有表，不改原表 schema / ownership。`noting`、`scheduler` 独立配置，`/noting` 控制当前Conversation参与。微信入站的回复由adapter发送，其它入口须显式调用发送工具。实现边界及已知限制见 [当前看板](CLAUDE.md)。
 

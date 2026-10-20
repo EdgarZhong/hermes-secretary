@@ -1,0 +1,2 @@
+316637ea2f1ebc9464d2b1d849ccb9ad3e53de65
+统一交付会话授权复用其冻结基线；Noting最新用户授权见snapshot-index.md。用户C08豁免严格套件，不等待单独冻结提交；index由统一会话管理。
