@@ -17,7 +17,7 @@ from agent.message_sanitization import _sanitize_messages_surrogates
 from agent.usage_anchor import anchored_context_tokens
 from agent.prompt_caching import build_prompt_cache_plan, effective_cache_ttl
 from agent.turn_context import build_api_messages
-from agent.cache_parity import normalize_cache_parity_request, split_frozen_cache_prefix
+from agent.cache_parity import split_frozen_cache_prefix
 
 logger = logging.getLogger("agent.conversation_loop")
 
@@ -174,6 +174,9 @@ def assemble_api_request(
 
     apply_rejected_thinking_suppression(agent, api_messages)
 
+    from secretary.noting_request import prepare_noting_request, normalize_noting_request
+    _noting_declaration = prepare_noting_request(agent, api_messages)
+
     # Runs unconditionally (not gated on context_compressor) so orphaned tool
     # results from session loading or manual message edits are always caught.
     api_messages = agent._sanitize_api_messages(api_messages)
@@ -202,8 +205,8 @@ def assemble_api_request(
     # provider, #67321) the synthetic continuation nudge is Codex-only control text: drop it
     # alongside the opaque replay state.
     _cross_protocol = agent.api_mode != "codex_responses"
-    api_messages = normalize_cache_parity_request(
-        agent, api_messages, drop_codex_reasoning_items=_cross_protocol,
+    api_messages = normalize_noting_request(
+        agent, api_messages, _noting_declaration, drop_codex_reasoning_items=_cross_protocol,
         drop_nudge_marker=_CODEX_INCOMPLETE_NUDGE if _cross_protocol else None,
     )
 
