@@ -30,6 +30,7 @@ from uuid import uuid4
 from types import SimpleNamespace
 
 from agent.message_metadata import build_noting_task_wrapper
+from agent.turn_failure_copy import is_max_iteration_handoff
 from hermes_state_secretary_notebook import RUNTIME_PROFILES, TRIGGER_TYPES
 from secretary.noting_prompts import DEFAULT_NOTING_TASK_INSTRUCTION, NOTING_CONTINUATION_INSTRUCTION
 
@@ -434,6 +435,7 @@ class NotingTaskOutcome:
     notice_error: Optional[str] = None
     commit_result: Optional[dict] = None
     termination: Optional[dict] = None
+    termination_summary: Optional[str] = None
 
 
 class _NotingFailureNotice:
@@ -647,6 +649,16 @@ def _run_child_turns(
                 or isinstance(result, dict) and result.get("failure_reason") == "context_overflow"):
             _force_task_close(child, runtime_profile, outcome, termination_type="context_overflow")
             return
+        if is_max_iteration_handoff(result) and not result.get("error") and not result.get("failure_reason"):
+            if getattr(child, "_secretary_noting_terminal_action_done", False):
+                outcome.status = "completed"
+            else:
+                _force_task_close(child, runtime_profile, outcome)
+                outcome.termination_summary = (
+                    "The native per-Turn iteration budget ended; the current legal Notebook working state "
+                    "was committed with unfinished work possible."
+                )
+            return
         if not _turn_completed(result):
             outcome.status = "failed"
             outcome.error = str(
@@ -719,7 +731,7 @@ def _commit_when_complete(
             if getattr(parent, "_secretary_conversation_ref", None) != conversation_ref:
                 logger.info("Committed Noting notice skipped after Parent switched Conversations")
                 return
-            summary = termination.get("reason") or {
+            summary = outcome.termination_summary or termination.get("reason") or {
                 "forced": "The five-Turn budget ended; the legal working view was committed with unfinished work possible.",
                 "context_overflow": "The context window was exhausted; the legal working view was committed with unfinished work possible.",
             }[termination["type"]]

@@ -15,7 +15,7 @@ def completion_body(snapshot, *, termination, summary, settings, profile_home, d
     entry_count = sum(len(entries) for entries in snapshot["payload"].values())
     kind = termination["type"]
     if kind == "forced":
-        summary += " The five-Turn budget ended; some Noting responsibilities may remain unfinished."
+        summary += " The Noting execution budget ended; some Noting responsibilities may remain unfinished."
     elif kind == "context_overflow":
         summary += " The context window was exhausted; some Noting responsibilities may remain unfinished."
     result = (

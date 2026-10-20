@@ -313,6 +313,71 @@ def test_native_text_completion_continues_five_turns_same_prefix(native_parent, 
     assert active_noting_task_count() == 0
 
 
+@pytest.mark.parametrize("trigger", ["idle", "force", "manual", "auto_compaction"])
+@pytest.mark.parametrize("changed", [False, True])
+def test_native_iteration_limit_commits_legal_work_for_every_trigger(
+    native_parent, database, monkeypatch, trigger, changed,
+):
+    parent, client = native_parent
+    monkeypatch.setattr("secretary.noting_child.NOTING_MAX_ITERATIONS", 1)
+    first = tool_response("notebook_maintain", create_args(database)) if changed else tool_response("notebook_show", {})
+    client.chat.completions.create.side_effect = [first, response("Work remains after the iteration budget.")]
+    admission = database.noting_admit(ref(database), "m2", kind=trigger)
+    outcome = run_noting_task(
+        parent, admission_id=admission, conversation_ref=ref(database), anchor_message_uid="m2",
+        trigger_type=trigger, runtime_profile="NOTING", task_instruction=DEFAULT_NOTING_TASK_INSTRUCTION,
+    )
+    assert outcome.committed and outcome.status == "completed", outcome
+    assert outcome.turns == 1 and outcome.termination == {"type": "forced"}
+    snapshot = database.notebook_current(ref(database))
+    assert len(snapshot["payload"]["work"]) == int(changed)
+    assert database.notebook_snapshot_audit(outcome.snapshot_id)["termination"] == {"type": "forced"}
+    assert database.noting_child(admission)["status"] == "completed"
+    notices = [row for row in database.get_messages("parent")
+               if (row.get("display_metadata") or {}).get("noting_run_output")]
+    assert len(notices) == 1
+    assert "Termination: forced" in notices[0]["content"]
+    assert "iteration" in notices[0]["content"]
+    assert "may remain unfinished" in notices[0]["content"]
+    assert "five-Turn" not in notices[0]["content"]
+    assert active_noting_task_count() == 0
+
+
+def test_finish_at_native_iteration_limit_retains_explicit_finish(native_parent, database, monkeypatch):
+    parent, client = native_parent
+    monkeypatch.setattr("secretary.noting_child.NOTING_MAX_ITERATIONS", 1)
+    client.chat.completions.create.side_effect = [
+        tool_response("finish_noting", {"reason": "Current work checked"}), response("Budget boundary summary"),
+    ]
+    outcome = run_task(parent)
+    assert outcome.committed, outcome
+    assert outcome.termination == {"type": "finish_noting", "reason": "Current work checked"}
+
+
+@pytest.mark.parametrize("failure", ["failed", "interrupted", "error", "failure_reason"])
+def test_iteration_exit_does_not_commit_actual_failed_or_interrupted_work(
+    native_parent, database, monkeypatch, failure,
+):
+    parent, _client = native_parent
+    original = build_noting_child
+
+    def construct(*args, **kwargs):
+        child = original(*args, **kwargs)
+
+        def run(**_kwargs):
+            assert json.loads(notebook_maintain(child, create_args(database)))["success"]
+            return {"completed": False, "final_response": "Partial work", "turn_exit_reason": "max_iterations_reached(50/50)",
+                    failure: True if failure in {"failed", "interrupted"} else "provider failure"}
+
+        child.run_conversation = run
+        return child
+
+    monkeypatch.setattr("secretary.noting_child.build_noting_child", construct)
+    outcome = run_task(parent)
+    assert not outcome.committed and database.notebook_current(ref(database)) is None
+    assert active_noting_task_count() == 0
+
+
 def test_native_child_next_request_receives_projected_working_tool_result(native_parent, database):
     parent, client = native_parent
     baseline = NotebookStore(database, ref(database), anchor_message_uid="m2")

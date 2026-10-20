@@ -99,7 +99,7 @@ Round Two 的 2 秒与 500 秒样本表明多轮 Noting 会产生显著重复输
 | 完整工作视图 | 任务开始和需要续 Turn 时由 runtime 附完整工作 Notebook；同一 Turn 的成功工具返回完整单条结果，足以跟踪变更 |
 | 有界续跑 | 同一 child 最多五个原生 Turn，既有每 Turn 内部循环上限继续使用；child 禁止自行 auto-compaction |
 | 显式结束 | `finish_noting(reason)` 成功才是正常结束信号；文本完成不算。标记后原生 Turn 返回才由 runner 提交，不把工具结果冒充提交收据 |
-| 预算兜底 | 五 Turn 用尽或已处理的 context overflow，仍以 forced 路径尝试提交当前合法完整状态，包括无修改视图；其他失败／中断不伪报成功 |
+| 预算兜底 | 原生每 Turn 迭代预算或五 Turn 预算用尽，均尝试提交当前合法完整状态，包括无修改视图；已处理的 context overflow 同样保留合法状态；其他失败／中断不伪报成功。所有 Trigger kind 共用此机制 |
 | 原子提交 | 沿同一事务验证参与开关、Anchor 有效性、版本与来源，插入完整 Snapshot 并按路径重选 pointer；晚结束的旧 Anchor 不回退当前结果 |
 | 重启与失败 | 重启不自动恢复 child；释放 admission、强引用、DB 等资源。Framework 当前排队为内存机制，不虚构重启后必达承诺 |
 | 身份与引用 | 新引用以当前合法路径校验；继承来源保留现有逐条版本绑定的依据，不可借一条合法旧引用给另一条新内容兜底 |
@@ -110,7 +110,7 @@ Noting **仅**拥有 `conversation_history`、`notebook_show`、`notebook_mainta
 
 只保留一种 Noting runtime profile。Trigger kind 仍记录 `idle / force / manual / auto_compaction` 以供审计；不再用工具名单、结束工具或任务 profile 区分是否压缩。`finish_noting` 不请求父压缩；正常／forced 提交均不调用 `compact_parent`。先前 compact_parent 的薄封装可被父 runtime 内部原生压缩调用吸收，但不得继续作为子工具。
 
-**结束枚举与展示：** 保留既有审计的三值：模型显式结束为 `finish_noting`，五Turn用尽为 `forced`，已处理的上下文溢出兜底为 `context_overflow`；`compact_parent` 退出。三者只在成功提交合法完整状态后出现在本次完成Framework中；`forced`／`context_overflow`同时说明未完成限制。元数据不进Notebook业务payload，也不混入普通notebook_show；不为Main开放内部审计查询。此处定案的是本次改版运行／反馈契约，不改写旧轮次当时的验收事实。
+**结束枚举与展示：** 保留既有审计的三值：模型显式结束为 `finish_noting`，原生每 Turn 迭代预算或五Turn预算用尽为 `forced`，已处理的上下文溢出兜底为 `context_overflow`；`compact_parent` 退出。`forced` 是预算收尾的结束标记，与 `force` Trigger kind 无关；Idle、手动、Force、Auto Compaction 共用处理。三者只在成功提交合法完整状态后出现在本次完成Framework中；`forced`／`context_overflow`同时说明未完成限制，通知不得将迭代上限误称为五Turn用尽。元数据不进Notebook业务payload，也不混入普通notebook_show；不为Main开放内部审计查询。2026-10-20用户再次确认预算耗尽即保存合法工作态，优先修代码机制，模型为何反复检索另行调查；不改变模型、Prompt或预算。此处补充当前运行／反馈契约，不改写旧轮次当时的验收事实。
 
 ## 4. Notebook 数据与工具契约
 
