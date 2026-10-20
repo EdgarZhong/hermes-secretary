@@ -36,6 +36,7 @@ from gateway.platforms.base import (
     cache_audio_from_bytes_async, cache_document_from_bytes_async, cache_image_from_bytes_async,
 )
 from gateway.platforms.event import MessageEvent, MessageType
+from gateway.voice_reply_echo import is_echo_payload, reply_payload
 from hermes_constants import get_hermes_home
 from utils import atomic_json_write
 from gateway.platforms._shared import extra_or_secret as _extra_or_env, get_scoped_secret as _wx_secret
@@ -1035,6 +1036,12 @@ class WeixinAdapter(OwnAccessPolicyMixin, BasePlatformAdapter):
             raise last_error
 
     async def send(self, chat_id: str, content: str, reply_to: Optional[str] = None, metadata: Optional[Dict[str, Any]] = None) -> SendResult:
+        async with reply_payload(self, chat_id, content, metadata) as payload:
+            result = await self._send_reply_payload(chat_id, payload.content, reply_to, payload.metadata)
+            payload.acknowledge(result)
+            return result
+
+    async def _send_reply_payload(self, chat_id: str, content: str, reply_to=None, metadata=None) -> SendResult:
         if not self._send_session or not self._token:
             return SendResult(success=False, error="Not connected")
         context_token = self._token_store.get(self._account_id, chat_id)
@@ -1053,8 +1060,11 @@ class WeixinAdapter(OwnAccessPolicyMixin, BasePlatformAdapter):
                 try:
                     await getattr(self, sender)(chat_id=chat_id, metadata=metadata, **{key: path})
                 except Exception as exc:
-                    logger.warning("[%s] %s delivery failed for %s: %s", self.name, label, path, exc)
-            chunks = [c for c in self._split_text(self.format_message(final_content)) if c and c.strip()]
+                    logger.warning("[%s] %s delivery failed for %s: %s", self.name, label, path, exc, exc_info=True)
+            formatted = self.format_message(final_content)
+            chunks = (_pack_markdown_blocks_for_weixin(formatted, self.MAX_MESSAGE_LENGTH)
+                      if is_echo_payload(metadata) else self._split_text(formatted))
+            chunks = [c for c in chunks if c and c.strip()]
             for idx, chunk in enumerate(chunks):
                 client_id = f"hermes-weixin-{uuid.uuid4().hex}"
                 await self._send_text_chunk(chat_id=chat_id, chunk=chunk, context_token=context_token, client_id=client_id)
@@ -1063,7 +1073,7 @@ class WeixinAdapter(OwnAccessPolicyMixin, BasePlatformAdapter):
                     await asyncio.sleep(self._send_chunk_delay_seconds)
             return SendResult(success=True, message_id=last_message_id)
         except Exception as exc:
-            logger.error("[%s] send failed to=%s: %s", self.name, _safe_id(chat_id), exc)
+            logger.error("[%s] send failed to=%s: %s", self.name, _safe_id(chat_id), exc, exc_info=True)
             return SendResult(success=False, error=str(exc))
 
     async def _ensure_typing_ticket(self, chat_id: str) -> Optional[str]:

@@ -26,6 +26,7 @@ from gateway.media_repair import repair_explicit_computer_use_media_paths
 from gateway.platforms.base import BasePlatformAdapter
 from gateway.platforms.base_exec_approval import ea_default_reason_text
 from gateway.turn_context import TurnContext
+from gateway.voice_reply_echo import reply_metadata
 from hermes_cli.config import cfg_get
 from utils import is_truthy_value
 
@@ -967,7 +968,7 @@ class TurnRunner:
                     )
                     stream_consumer = GatewayStreamConsumer(
                         adapter=adapter, chat_id=ctx.source.chat_id, config=consumer_cfg,
-                        metadata=ctx._status_thread_metadata,
+                        metadata=reply_metadata(ctx._status_thread_metadata, getattr(ctx, "reply_echo", None)),
                         on_new_message=(
                             (lambda: ctx.progress_queue.put(("__reset__",))) if ctx.progress_queue is not None else None
                         ),
@@ -1007,7 +1008,7 @@ class TurnRunner:
             if stream_consumer is not None:
                 stream_consumer.on_segment_break() if already_streamed else stream_consumer.on_commentary(text)
             elif not already_streamed and ctx._status_adapter and str(text or "").strip():
-                self._send_status_text(text, ctx._status_thread_metadata, "interim_assistant_callback scheduling error")
+                self._send_status_text(text, reply_metadata(ctx._status_thread_metadata, getattr(ctx, "reply_echo", None)), "interim_assistant_callback scheduling error")
 
         return stream_consumer, stream_delta_cb, interim_assistant_cb, want_interim_messages
 

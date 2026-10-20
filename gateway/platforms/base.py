@@ -4379,26 +4379,10 @@ class BasePlatformAdapter(ABC):
         self, event: MessageEvent, session_key: str, text_content: str, metadata: Dict[str, Any], *,
         reply_to: Optional[str], is_ephemeral_response: bool = False,
     ) -> "tuple[SendResult, BasePlatformAdapter]":
-        """The delivery-ledger bracket every final text goes through, on the CURRENT transport
-        (a reconnect may have replaced this adapter): record the obligation before the send,
-        send with retry, finalize from the result — so a refused final (flood control, a dead
-        transport) leaves a ledger row the boot sweep / runtime redelivery can act on. ``event``
-        supplies the source and the ledger identity (``ledger_message_id`` or ``message_id``).
-        Returns the result with the adapter that sent it: that adapter owns ``result.message_id``
-        (an ephemeral delete must go to the same transport)."""
-        delivery_adapter = self._final_delivery_adapter(event.source)
-        logger.info("[%s] Sending response (%d chars) to %s", delivery_adapter.name,
-                    len(text_content), event.source.chat_id)
-        obligation_id = await self._record_delivery_obligation(
-            event, session_key, text_content, delivery_adapter, is_ephemeral_response)
-        if obligation_id is not None:
-            await self._release_turn_marker(event)  # the ledger now owns the crash recovery
-        result = await delivery_adapter._send_with_retry(
-            chat_id=event.source.chat_id, content=text_content, reply_to=reply_to, metadata=metadata)
-        stop_reply_clock(delivery_adapter, event.source.chat_id, result)
-        if obligation_id is not None:
-            await self._finalize_delivery_obligation(obligation_id, result, event, delivery_adapter)
-        return result, delivery_adapter
+        from gateway.platforms.reply_delivery import send_final_reply
+        return await send_final_reply(
+            self, event, session_key, text_content, metadata,
+            reply_to=reply_to, is_ephemeral_response=is_ephemeral_response)
 
     async def _release_turn_marker(self, event: MessageEvent) -> None:
         """Clear the crash-recovery marker the runner handed to this delivery lifecycle
@@ -4418,27 +4402,9 @@ class BasePlatformAdapter(ABC):
         if ephemeral_ttl and ephemeral_ttl > 0 and result.success and result.message_id:
             delivery_adapter._schedule_ephemeral_delete(event.source.chat_id, result.message_id, ephemeral_ttl)
 
-    async def _notify_turn_error(self, event: MessageEvent, e: BaseException) -> Optional[dict]:
-        """Tell the user a turn failed rather than leaving radio silence (last resort:
-        a failing notice is logged, never raised). Returns the thread metadata used."""
-        _thread_metadata = None
-        try:
-            _thread_metadata = _thread_metadata_for_event(event)
-            error_detail = str(e)[:300] if str(e) else t("gateway.notify.turn_error_no_details")
-            # Only the policy reads bind the routed profile; the send stays in the launch scope
-            # as before, so delivery bookkeeping keeps landing where boot-time recovery reads it.
-            with self._media_delivery_scope(event.source):
-                content = None if diagnostic_wake_muted(event) else self.warning_text(
-                    t("gateway.notify.turn_error_detailed", error_type=type(e).__name__, error_detail=error_detail),
-                    t("gateway.notify.turn_error"),
-                    logical_platform=event.source.platform, chat_id=event.source.chat_id, metadata=_thread_metadata)
-            if content is None:
-                return _thread_metadata
-            await self.send(chat_id=event.source.chat_id, content=content, metadata=_thread_metadata)
-        except Exception as notify_err:
-            logger.error(
-                "[%s] Failed to send error notification to user: %s", self.name, notify_err, exc_info=True)
-        return _thread_metadata
+    async def _notify_turn_error(self, event, e):
+        from gateway.platforms.reply_delivery import notify_turn_error
+        return await notify_turn_error(self, event, e)
 
     async def _deliver_attachments(self, event: MessageEvent, extracted: "_ExtractedResponse",
                                    metadata: Dict[str, Any], *, anything_sent: bool,

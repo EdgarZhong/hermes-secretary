@@ -35,6 +35,7 @@ from gateway.session import (
 )
 from gateway.session_transcript import TranscriptReadError
 from gateway.turn_context import TurnContext
+from gateway.voice_reply_echo import adopt_terminal_echo, carry_terminal_echo, event_echo
 from gateway.turn_lease import DEFAULT_LEASE_WAIT, TurnLeaseTimeoutError
 from hermes_constants import get_hermes_home_override
 from pathlib import Path
@@ -2181,6 +2182,7 @@ class GatewayTurnMixin:
                     **reply_expected_metadata(event.reply_expected), **diagnostic_metadata(event)},
                 message_type=event.message_type,
                 scheduled_heartbeat=bool(getattr(event, "_heartbeat_session_id", None)),
+                reply_echo=event_echo(event),
             )
             _turn_seconds = time.monotonic() - _turn_started_monotonic
 
@@ -2188,6 +2190,7 @@ class GatewayTurnMixin:
             # send (bracketed by the adapter against this event) must be ledgered under that
             # message's id or it collides with an earlier turn's row carrying the same text. Reply
             # routing is untouched: the anchor still comes from this event.
+            adopt_terminal_echo(event, agent_result)
             if isinstance(agent_result, dict):
                 _terminal_inbound = agent_result.get("queued_terminal_inbound_id")
                 if _terminal_inbound:
@@ -2237,6 +2240,7 @@ class GatewayTurnMixin:
             )
 
         except Exception as e:
+            adopt_terminal_echo(event, e)
             return await self._hmwa_agent_error_reply(e, event, source, session_entry, session_key, prepared)
         finally:
             # Restore session context variables to their pre-handler state
@@ -2903,7 +2907,12 @@ class GatewayTurnMixin:
         """Profile-scoping wrapper around ``_run_agent_inner`` (same keyword parameters; pass-through
         when multiplexing is off)."""
         with self._profile_scope_for_source(source):
-            return await self._run_agent_inner(message, context_prompt, history, source, session_id, **turn_kwargs)
+            try:
+                result = await self._run_agent_inner(message, context_prompt, history, source, session_id, **turn_kwargs)
+            except Exception as exc:
+                carry_terminal_echo(exc, turn_kwargs.get("reply_echo"))
+                raise
+            return carry_terminal_echo(result, turn_kwargs.get("reply_echo"))
 
     def _run_agent_display_settings(self, source: SessionSource) -> "GatewayRunner._RunAgentDisplay":
         """Resolve per-platform display, progress, status and streaming-surface settings for a turn."""
@@ -3704,80 +3713,9 @@ class GatewayTurnMixin:
             pending = None
         return pending_event, pending
 
-    async def _run_agent_deliver_first_response(
-        self, turn_ctx: TurnContext, adapter: Any, response: Any, result: Any, stream_task: Any,
-    ) -> None:
-        """Deliver the first response before a queued follow-up runs, unless streaming already did."""
-        if turn_ctx.mute_notification_reply:
-            return
-        session_key = turn_ctx.session_key
-        _sc = turn_ctx.stream_consumer_holder[0]
-        if _sc and stream_task:
-            try:
-                await self._await_stream_task(stream_task)
-            except Exception as e:
-                logger.debug("Stream consumer wait before queued message failed: %s", e)
-        # Delivery uses the finalized task result (empty/failure normalization), not raw ``result``.
-        _delivery_result = response if isinstance(response, dict) else (result or {})
-        first_response = _delivery_result.get("final_response", "")
-        _already_streamed = self._run_agent_stream_confirmed_final_delivery(
-            _sc, first_response, previewed=bool(_delivery_result.get("response_previewed")),
-        )
-        # Same silence predicate as the normal path, else this branch leaks the literal marker.
-        if self._is_intentional_silence(_delivery_result, first_response):
-            if silence_allowed(turn_ctx.persist_user_display_kind, turn_ctx.reply_expected):
-                logger.info(
-                    "Queued follow-up for session %s: suppressing intentional silence marker before continuing.",
-                    session_key or "?",
-                )
-                first_response = ""
-            else:
-                logger.warning(
-                    "Queued follow-up for session %s: replacing a human-turn silence marker.",
-                    session_key or "?",
-                )
-                first_response = _unexpected_silence_reply()
-                _already_streamed = False
-        # Failed turns deliver their text but never their attachments (completed-turn parity).
-        _deliver_media = not _delivery_result.get("failed")
-        if first_response:
-            logger.info(
-                "Queued follow-up for session %s: final text delivery confirmed; delivering explicit media before continuing."
-                if _already_streamed else
-                "Queued follow-up for session %s: final stream delivery not confirmed; sending first response before continuing.",
-                session_key or "?",
-            )
-            try:
-                _text_delivered = await self._deliver_queued_first_response(
-                    first_response, source=turn_ctx.source, adapter=adapter,
-                    metadata=turn_ctx._status_thread_metadata, event_message_id=turn_ctx.event_message_id,
-                    text_already_delivered=_already_streamed,
-                    deliver_media=_deliver_media, stream_consumer=_sc,
-                    # The text send records a delivery-ledger obligation under this key, keyed on
-                    # the raw inbound id (the anchor above is only the reply target).
-                    session_key=session_key, inbound_message_id=turn_ctx.inbound_message_id,
-                )
-            except Exception as e:
-                logger.warning("Failed to send first response before queued message: %s", e)
-            else:
-                # One source of truth for "this turn's final already reached the chat": the normal
-                # completion path (`_hmwa_deliver_turn_response`) consults ``already_sent`` on the
-                # result the queued lane hands back. Every early `return result` after this point
-                # (follow-up text refused, stale goal continuation) otherwise re-sends the text the
-                # fallback just delivered — the #81052 duplicate. A REFUSED send reports False, and
-                # the completion send stays the fallback so the user is not left with nothing.
-                if _text_delivered and isinstance(result, dict):
-                    result["already_sent"] = True
-                    # The queued lane already uploaded this response's MEDIA: attachments; without
-                    # this the completion path's already_sent rescan uploads every file twice.
-                    result["media_already_delivered"] = _deliver_media
-        # Release deferred bg-review notifications: pop (no double-fire in base.py's finally) and call.
-        _bg_cb = self._pop_post_delivery_callback(adapter, session_key, turn_ctx.run_generation)
-        if callable(_bg_cb):
-            with suppress(Exception):
-                _bg_result = _bg_cb()
-                if inspect.isawaitable(_bg_result):
-                    await _bg_result
+    async def _run_agent_deliver_first_response(self, turn_ctx, adapter, response, result, stream_task):
+        from gateway.run_turn_first_response import deliver_first_response
+        return await deliver_first_response(self, turn_ctx, adapter, response, result, stream_task)
 
     async def _run_agent_queued_followup(
         self, turn_ctx: TurnContext, adapter: Any, pending: Optional[str], pending_event: Any,
@@ -3914,7 +3852,7 @@ class GatewayTurnMixin:
                 run_generation=run_generation, _interrupt_depth=_interrupt_depth + 1,
                 event_message_id=next_message_id, inbound_message_id=next_inbound_id,
                 channel_prompt=next_channel_prompt, message_type=next_message_type,
-                persist_user_message=next_persist_message,
+                persist_user_message=next_persist_message, reply_echo=event_echo(pending_event),
                 persist_user_display_kind=next_display_kind,
                 reply_expected=next_reply_expected,
                 persist_user_display_metadata={
@@ -3924,7 +3862,8 @@ class GatewayTurnMixin:
             await _run_followup_processing_hook(
                 _hook_adapter, pending_event, "on_processing_complete", _followup_cancel_outcome(_hook_adapter))
             raise
-        except BaseException:
+        except BaseException as exc:
+            carry_terminal_echo(exc, event_echo(pending_event), previous=getattr(turn_ctx, "reply_echo", None))
             await _run_followup_processing_hook(
                 _hook_adapter, pending_event, "on_processing_complete", ProcessingOutcome.FAILURE)
             raise
@@ -3947,7 +3886,7 @@ class GatewayTurnMixin:
                     (pending_event.metadata or {}).get("notification_category", "result")
                     if pending_event is not None and pending_event.internal else "result"),
             }
-        return merged
+        return carry_terminal_echo(merged, event_echo(pending_event), previous=getattr(turn_ctx, "reply_echo", None))
 
     async def _run_agent_cleanup_turn_tasks(
         self, turn_ctx: TurnContext, *, progress_task: Any, log_task: Any, interrupt_monitor: "asyncio.Task",
@@ -4246,7 +4185,7 @@ class GatewayTurnMixin:
         persist_user_display_metadata: Optional[dict] = None,
         reply_expected: Optional[bool] = None,
         scheduled_heartbeat: bool = False,
-        title_user_message: Optional[str] = None,
+        title_user_message: Optional[str] = None, reply_echo=None,
     ) -> Dict[str, Any]:
         """Run the agent; returns the full run_conversation result dict.
 
@@ -4286,6 +4225,7 @@ class GatewayTurnMixin:
             reply_expected=reply_expected,
             persist_user_display_metadata=persist_user_display_metadata, scheduled_heartbeat=scheduled_heartbeat,
             voice_turn=str(getattr(message_type, "value", message_type) or "").lower() == "voice",
+            reply_echo=reply_echo,
         )
         _status_thread_metadata = self._run_agent_bind_turn_wiring(
             turn_ctx, turn_runner, source, event_message_id, disp._native_slack_task_cards,
