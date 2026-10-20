@@ -65,7 +65,7 @@ async def test_enrich_message_with_transcription_returns_tuple_for_empty_content
         )
 
     # The redundant placeholder is stripped, leaving only the transcript prefix.
-    assert "hello from a captionless voice note" in result
+    assert result == "Voice message transcript: hello from a captionless voice note"
     assert "(The user sent a message with no text content)" not in result
     # Crucially, the transcripts are still surfaced so callers can echo them.
     assert transcripts == ["hello from a captionless voice note"]

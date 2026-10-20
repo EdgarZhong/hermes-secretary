@@ -1935,9 +1935,7 @@ class GatewayInboundMixin(GatewayPluginInjectionMixin):
                 "words. Do not guess at the content; ask the user "
                 "to resend or type it out.]"
             )
-        # Plain quoted line: a "The user sent a voice message..." wrapper read as a meta-instruction
-        # and made the LLM comment on voice mode instead.
-        return transcript, f'"{transcript}"'
+        return transcript, f"Voice message transcript: {transcript}"
 
     async def _enrich_message_with_transcription(
         self, user_text: str, audio_paths: List[str]
