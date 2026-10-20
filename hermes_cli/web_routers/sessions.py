@@ -726,12 +726,72 @@ def _project_for_display(messages: list, *, home=None, inline_images: bool = Tru
     return project_history_commentary(projected_messages, home=home)
 
 
+async def _project_user_image_refs(messages: list, *, profile=None, request=None) -> list:
+    """Replace only completely verified, locally downloadable image rows in a response copy.
+
+    The history helper proves the original inline parts match the files. The download
+    route then proves those same files are accessible through the client's existing
+    profile-scoped URL; constructing a FileResponse performs admission without streaming
+    or opening it. SSH workspaces cannot establish local/remote byte identity here.
+    """
+    from fastapi.responses import FileResponse
+    from hermes_cli.web_routers.files import _fs_backend, _fs_path, fs_download
+    from tui_gateway.session_history import _IMAGE_REF_RE, _user_image_display_text
+
+    logger = _log
+    candidates = [m for m in messages if m.get("role") == "user" and isinstance(m.get("content"), list)]
+    if not candidates:
+        return messages
+    try:
+        if await asyncio.to_thread(_fs_backend, profile) is not None:
+            return messages
+    except (HTTPException, OSError, ValueError):
+        return messages
+    except Exception:
+        logger.exception("History image download backend verification failed")
+        return messages
+
+    projected = []
+    for message in messages:
+        replacement = None
+        if message.get("role") == "user" and isinstance(message.get("content"), list):
+            try:
+                replacement = await asyncio.to_thread(_user_image_display_text, message["content"])
+                if replacement is not None:
+                    # Only the trailing native refs belong to the validated attachment list.
+                    refs = []
+                    for line in reversed(replacement.splitlines()):
+                        match = _IMAGE_REF_RE.fullmatch(line)
+                        if match is None:
+                            break
+                        value = match[1]
+                        refs.append(value[1:-1] if value[0] in ('`', '"', "'") else value)
+                    if not refs:
+                        replacement = None
+                    for path in refs:
+                        response = await fs_download(path, request=request, profile=profile)
+                        if (not isinstance(response, FileResponse)
+                                or Path(response.path) != _fs_path(path)
+                                or not (response.media_type or "").startswith("image/")):
+                            replacement = None
+                            break
+            except (HTTPException, OSError, ValueError):
+                replacement = None
+            except Exception:
+                # Read-side optimization failures must preserve the entire original row.
+                logger.exception("History image reference verification failed")
+                replacement = None
+        projected.append({**message, "content": replacement} if replacement is not None else message)
+    return projected
+
+
 @manage_router.get("/api/sessions/{session_id}/messages")
 async def get_session_messages(
     session_id: str, profile: Optional[str] = None, limit: Optional[int] = Query(None, ge=0),
     offset: int = Query(0, ge=0), order: Optional[str] = Query(None),
     include_compacted: bool = Query(False), inline_images: bool = Query(True),
-    view: Optional[str] = None, detail_row_ids: Optional[str] = None):
+    view: Optional[str] = None, detail_row_ids: Optional[str] = None,
+    prefer_image_refs: bool = Query(False), request: Request = None):
     from hermes_cli.web_history_cards import detail_row_ids as parse_detail_ids, history_cards, read_detail_rows
 
     if order not in (None, "oldest", "latest"):
@@ -772,6 +832,8 @@ async def get_session_messages(
     if result is None:
         raise HTTPException(status_code=404, detail=_NOT_FOUND)
     sid, _limit, messages = result
+    if prefer_image_refs is True and inline_images is True:
+        messages = await _project_user_image_refs(messages, profile=profile, request=request)
     projected_messages = await asyncio.to_thread(
         _project_for_display, messages, home=_history_profile_home(profile),
         inline_images=inline_images)
