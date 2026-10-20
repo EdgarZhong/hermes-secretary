@@ -30,6 +30,16 @@
 
 绑定不变量子包已root亲审：持久绑定owner统一限制reset／force_new／switch／compression推进；只有显式control解绑传窄授权参数。回流在全部await后再次检查当前store owner，覆盖A→B并发及已结束A，不把旧结果注入B；durable结果内容保留。耗尽压缩保持原Conversation并提示Web处理，suspended的内部事件不解挂起、真实新输入恢复原Conversation；清理／删除不隐式解绑。显式bind／unbind主库成功后才发布，失败保留原绑定。259相关测试通过（22新增真实SessionStore／DB／派发队列回归），冻结10检查通过，0 blocking／advisory，超长文件指标未增加；证据ignored`.hermes-dev/incident-20261020-reminder-weixin/binding-invariant/`。生产极端场景及微信实发未冒称通过。
 
+### 17:58 · 统一上线与交付
+
+用户催办后优先部署。完整集成暂存树22路径的最终冻结10检查全部通过，health14代码文件／0 blocking／0 advisory，未改规则或阈值；未为收尾重跑已有效的大型／定向套件。后端提交`fcf5d08ac587b43c5aafd2f3e8656a6c5b147432`已自动push并快进首尔，含微信slash与绑定不变量；前端保持原版本，不重构侧栏或重新构建。
+
+17:58:09原生Web active_list与Gateway control均确认运行任务0，在线备份host／Alex／study三库并核完整性；服务器原dirty CLAUDE及补丁另备份后，按用户文档清理授权恢复版本库文件再快进。正常停启Web及Gateway加载代码，发送工具按已确认SHA替换并重新保护。17:58:28回执：Web688083、Gateway688086，running／微信connected，Gateway code_sha与部署提交一致；服务器工作区干净。
+
+保护核对：原显式绑定不变；Alex `.env`、config与workspace SOUL／AGENTS字节保持；部署前Alex9956条／study0条消息逐行内容及身份缺失／改变均0。发送脚本为root:root／0555＋immutable，SHA与已审候选一致、help正常。随后使用真实原生control和现有Main身份，只读验证同ref保持原文、异ref精确来源头、缺身份原文，绑定前后保持；未调用iLink发送、未新增模型Turn。极端绑定场景仍以本地真实DB／worker验证为证，不冒称生产故障注入。
+
+备份：首尔`/home/ubuntu/.local/state/hermes-secretary/incident-20261020/v1-closeout-20261020T175809/`（三库在线备份、旧发送脚本、旧服务器CLAUDE及补丁、receipt）；本机ignored`.hermes-dev/repository-closeout-20261020/`含部署／预检脚本与日志。回滚代码到`dd93e0053b4a92f1c686bc41e4fe37463e854972`及旧脚本需先空闲检查、正常停启并恢复工具保护；不覆盖运行库或回滚已新增用户消息。后续纯文档收尾提交只同步仓库，不推进线上checkout，避免再次触发运行中Git漂移保护。
+
 ## 2026-10-20 17:14–17:19 · 微信Kimi凭据修复及冗余操作回滚
 
 **症状与根因：** 微信入站和目标路由正常，但模型报`missing_api_key`。Gateway进程虽有Kimi变量，多Profile作用域仍只读取目标Profile自己的凭据；Alex `.env`缺Kimi。注册路径`~/.hermes/profiles/alex`与实体`~/.hermes_profiles/Alex`是同一Home，不是双目录问题。最初误连旧北京`alex`仅查询服务状态，未修改；实际排查／修复在`seoul`。
