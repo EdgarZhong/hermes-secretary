@@ -6,7 +6,15 @@
 
 ## 当前阶段
 
-**移动端阶段一与Noting联合交付（2026-10-21用户确认执行）：** 用户明确不开worktree，开始完成阶段一；Noting与Provider留给另一并行会话，本会话负责最终统一验证、一起上线。使用gpt-6.1-sol／high，不使用Astra；已挂持续目标。用户允许直接向“分析品质会话未结束原因”会话协调，已通知文件边界和交接要求。阶段一覆盖P1-01～06、08；P1-07预算收尾已上线，只核验现状。共享接缝限定为纯图片持久受理／staged同一行认领，不覆盖Noting／Provider；同文件如有交叉先划符号范围或串行。工作前后端基线分别为50214cd4ab、83285d2be2，保留现有文档dirty。正式实现、证据、门禁与交付入口见[本轮索引](.autonomous/20261021-mobile-phase1/snapshot-index.md)和[计划](.autonomous/20261021-mobile-phase1/plan.md)。阶段二不实施；后续短手机实验依实际可用环境与既有显示保护执行。
+**Noting Kimi Chat实施（2026-10-21用户确认）：** 用户已明确同意保留原生Kimi Provider，以原生配置切换OpenAI compatible；该授权覆盖此前禁止切协议的讨论边界。动态工具声明放我们自己的Noting请求接缝，不新造Provider、不改持久消息格式／数据库；child继承父runtime/parity、High及冻结root/tools/Active前缀，声明只在自有后缀固定位置持续携带。用户进一步要求听从“理解实验阶段一任务”会话指挥，交付前以实际K3-256k构造真实短Noting，证明maintain→finish→正式commit。只本地独立Profile／DB／仓库外cwd，虚构内容，无SSH／生产数据操作；统一上线由另一会话负责。本会话不暂存／提交，交其串行冻结与最终提交。依据见[本轮索引](.autonomous/20261021-noting-kimi-chat/snapshot-index.md)。
+
+**移动端阶段一与Noting联合交付（2026-10-21用户确认执行）：** 用户明确不开worktree，开始完成阶段一；Noting与Provider留给另一并行会话，本会话负责最终统一验证、一起上线。使用gpt-6.1-sol／high，不使用Astra；已挂持续目标。用户允许直接向“分析品质会话未结束原因”会话协调，已通知文件边界和交接要求。阶段一覆盖P1-01～06、08；P1-07预算收尾已上线，只核验现状。前端1d1b1a7已构建并准备439产物，后端图片投影aaaa991已提交；纯图受理1df86af已补同内容认领DB/UID边界并提交，Noting真实K3／原生路由稳定性由并行会话收尾，生产尚未切换。用户随后明确授权不严格执行Autonomous Run：发布前亲审／相关测试／构建／备份，先部署后简单Validation，重点真实历史的字节、请求次数和时机，Wi-Fi耗时不外推蜂窝；用户进一步明确健康指后端Scheduler、既有会话明日Instant Reminder和微信发送链保持；禁止擅自因部署失败回退，保留现场并修复继续上线，不回盖运行DB、不新增或提前触发生产提醒。共享接缝限定为纯图片持久受理／staged同一行认领，不覆盖Noting／Provider；同文件如有交叉先划符号范围或串行。工作前后端基线分别为50214cd4ab、83285d2be2，保留现有文档dirty。正式实现、证据、门禁与交付入口见[本轮索引](.autonomous/20261021-mobile-phase1/snapshot-index.md)和[计划](.autonomous/20261021-mobile-phase1/plan.md)。阶段二不实施；后续短手机实验依实际可用环境与既有显示保护执行。
+
+**K3-256k最小Anthropic验证已完成（2026-10-21）：** 用户明确授权“小贝子”使用实际`k3-256k`补验证；严格3次真实请求、无重试，High、原生Coding Anthropic端点。正式顶层注册1/1成功且参数完整；末尾system.tools携OpenAI schema及Anthropic schema各0/1，模型均表示未提供维护工具。主会话亲审脚本并独立核验实际wire／响应哈希、精确模型ID和父前缀不变；不为review复跑。总输入含缓存1,665、输出510，合计2,175 tokens，实际费用未知。与便宜模型方向一致，但只证明所测两种写法未生效，不推为官方或所有Anthropic动态机制均不支持。仅本地隔离虚构内容，无Chat重测／长会话／SSH／生产数据，不改实现／配置／部署；证据见[运维记录](docs/operations-log.md)及ignored`k3-256k-summary.json`。
+
+**前轮便宜模型隔离验证已交回（2026-10-21）：** “小贝子”12次Coding `kimi-for-coding`／High验证中，Anthropic末尾两种动态封装0/4，顶层注册2/2；Chat动态2/2参数完整，不外推K3的Anthropic能力。历史上“不切协议”讨论限制已由最新用户授权覆盖；当前进入原生Chat配置及Noting接缝实施，实验原文与边界见[运维记录](docs/operations-log.md)。
+
+**Noting模型对照调查已完成（2026-10-21）：** 按用户要求直接复制本地同步DB，用本地代码／独立Profile及数据库跑DeepSeek；原wrapper／root恢复，实际发送父历史250条，投影差异如实保留。`deepseek-flash`／High在87.07秒、8次API、1个Turn内完成，27次maintain中23成功／4字段校验失败，正常finish并提交19条目；无History调用，总token1,193,633。原Kimi50次History已记录7,913,013 tokens，另有未入账总结用量。主会话亲审正式接线、请求工具哈希、usage及副本Snapshot；Kimi10个虚构内容对照支持正文schema与正式／动态工具声明的兼容差异，动态system.tools仅已实测Chat接口。用户确认理解独立结构化声明及缓存边界，未要求改生产Anthropic接口；未改Prompt／工具面／模型配置或部署。接到用户限制后未再访问云端或复制云端材料；完整范围、差异、证据与结论边界见[运维记录](docs/operations-log.md)。
 
 **语音体验第二步已上线并验收（2026-10-20）：** 首尔已上线`532cadb4d8`，显式启用`gateway.stt.echo_transcripts_with_reply`；转录保留到模型首条实际回复合并投递，成功ACK才消费，interim／final／错误及队列分支已覆盖，不污染模型assistant历史。Alex上传改为16kHz单声道AAC64kbps，原始SILK保留；341KB→49KB，压缩样本5.03秒／6.07秒、转录与旧结果一致，网络波动不作固定延迟承诺。188个不同相关场景的分组证据有效，完整冻结10检查通过。原绑定、既有10155条Alex消息、adapter／Key及study配置保持。新微信语音已入库且assistant历史无回显头；用户已明确确认“已收到合并回复，没有独立通知”，真实显示验收通过；运维与回滚见operations-log。
 

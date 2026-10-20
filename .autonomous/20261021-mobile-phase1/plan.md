@@ -2,7 +2,7 @@
 
 ## 目标与依据
 
-按snapshot-index.md与baseline.txt完成阶段一、集成另一会话Noting／Provider、统一验证并首尔上线。优先打通图片历史瘦身与纯图持久受理；不改现有产品交互及数据身份。上线前完成代码亲审、相关测试／构建和回退准备；部署后同200行窗口取得原／新bytes、fallback与下载权限、请求时机／次数证据并做简化Validation（用户C08授权不严格执行套件）。保留原数据，代码／静态／Caddy可分项回退，不回盖运行库。
+按snapshot-index.md与baseline.txt完成阶段一、集成另一会话Noting／Provider、统一验证并首尔上线。优先打通图片历史瘦身与纯图持久受理；不改现有产品交互及数据身份。上线前完成代码亲审、相关测试／构建和恢复材料准备；部署后同200行窗口取得原／新bytes、fallback与下载权限、请求时机／次数证据并做简化Validation（用户C08授权不严格执行套件）。保留原数据，准备代码／静态／Caddy可恢复材料，但依C09不擅自回退；保留运行库及新写入。
 
 ## 覆盖与任务
 
@@ -13,19 +13,19 @@
 | P1-03/C05 | 查询页原结构helper验证→授权可下载→响应副本refs→cards/details | 投影Agent：hermes_cli/web_routers/sessions.py，必要同层sibling，相关新增测试；session_history.py只读 | 不改helper权限；与纯图包只读依赖 | 正式HTTP+SQLite，默认／fallback／跨Profile／下载 | 纯图／caption／多图／损坏／缺文件 | 默认兼容、身份不变，合法refs可下载，无越权 |
 | P1-06/C05 | 原受理行持久refs、staged精确输入匹配、worker原位认领 | 受理Agent：tui_gateway/methods_prompt.py（仅可选image_paths透传）、tui_gateway/methods_submit_idle.py、session_workdir.py、session_history.py、prompt_turn.py、agent/turn_context.py、agent/image_routing.py及相关新增测试 | 与Noting会话接缝协调；不动provider／noting | 正式RPC+DB+worker屏障，native/text、持久失败／认领失败／旋转 | 纯图立即气泡，完成／刷新仍一行，原模型输入保持 | 同row/UID/owner，durable后失败保留，不重复／不伪回执 |
 | P1-07/C02 | 已上线预算补丁确认与外部Noting最终包接收 | 外部会话；主会话亲审 | 不重复补丁；最终修复范围由用户在另一会话确认 | 复用有效证据，影响处定向集成验证 | Noting结束／失败／资源清理 | 有可接收最终版本与证据，不冒称调查即完成 |
-| 全部/C01～07 | 集成、独立两门禁、构建、空闲窗口上线、回滚／证据 | 主会话+全新独立审查者 | 实现包亲审、定向测试及回退准备后部署；简化Validation在部署后执行 | 同版本有效证据；必要真实入口取证 | 登录／草稿／历史／图／展开／发送／Stop/Steer | 线上健康无新增回归；字节与请求时机证据闭环，Wi-Fi耗时不外推蜂窝 |
+| 全部/C01～07 | 集成、独立两门禁、构建、空闲窗口上线、回滚／证据 | 主会话（C08简化流程） | 实现包亲审、定向测试及回退准备后部署；简化Validation在部署后执行 | 同版本有效证据；必要真实入口取证 | 登录／草稿／历史／图／展开／发送／Stop/Steer | 后端Scheduler／Instant排期／微信路由和发送链可继续运行；字节与请求时机证据闭环，Wi-Fi耗时不外推蜂窝 |
 
 ## 当前状态与编排
 
 | 目标/任务 | 机制实现 | 正式接线 | 针对性验证 | 用户结果 | 当前负责人和下一步 |
 |---|---|---|---|---|---|
-| 前端包 | 待实施 | 待实施 | 待执行 | 待验 | 实施中 |
-| 后端投影 | 待实施 | 待实施 | 待执行 | 待验 | 实施中 |
-| 纯图受理 | 待实施 | 待实施 | 待执行 | 待验 | 实施中 |
-| 运维／集成 | 调查中 | 待接收 | 待执行 | 待验 | 主会话核生产版本、压缩、空闲与回退 |
-| Noting／Provider | 外部会话负责 | 未交接 | 沿外部证据 | 未验 | 等最终包，联合发布 |
+| 前端包 | 完成 | 完成 | 286定向＋usage54（重叠），typecheck/build通过 | 待部署后验 | 已亲审，前端1d1b1a7已push；439文件SHA上传通过 |
+| 后端投影 | 完成 | 完成 | 新26＋原48不同场景有效证据 | 待部署后验 | 已亲审／提交aaaa991 |
+| 纯图受理 | 完成 | 完成 | 新34及受影响60场景有效证据，旧失败已对照 | 待部署后验 | 主会话已复审，1df86af已提交推送 |
+| 运维／集成 | 完成准备 | 发布脚本已审 | 冻结10检查有效通过 | 待上线后验 | 备份与原生路由准备，禁自动回退 |
+| Noting／Provider | 实现已亲审 | 正式Loop与summary | 动态39／摘要4／回退3分组；真实K3短场景正常提交 | 本地短场景通过 | 等最终报告与文档收口，联合发布 |
 
-三个实现包文件不相交；session_history.py只有纯图包可改，投影包只读复用helper。子Agent不提交、不改动态核心文档、不再派生，不流水账；证据写ignored .hermes-dev/mobile-phase1-20261021/<包>/。前端包为所有前端文件唯一owner。主会话收到整包后亲审正式路径、数据与失败处理，按C08完成发布前验证与回退后上线；随后简化Validation。UI仅主会话创建隐藏IAB；不能合规则记录未验。
+三个实现包文件不相交；session_history.py只有纯图包可改，投影包只读复用helper。子Agent不提交、不改动态核心文档、不再派生，不流水账；证据写ignored .hermes-dev/mobile-phase1-20261021/<包>/。前端包为所有前端文件唯一owner。主会话收到整包后亲审正式路径、数据与失败处理，按C08/C09完成发布前验证与备份后上线；随后简化Validation。UI仅主会话创建隐藏IAB；不能合规则记录未验。
 
 ## 缺陷与整改
 
@@ -43,3 +43,14 @@
 生产只读原200行窗口：cards863366B/gzip544803B，full-session215536B，summary51683B；唯一structured user图片行10091，现有helper校验可转换（651372B→90B，不代表新API实测），fallback0。原始正文/图片仅留首尔受限证据目录。
 
 C08已明确调整：先部署、后简单Validation，重点真实历史传输bytes／图片fallback／背景详情请求与视口触发；保持线上健康是发布硬门槛。严格独立两门禁不再作阻断条件，前置相关测试与代码亲审不减少。不为Wi-Fi下时延做蜂窝效果承诺。
+
+C09用户纠正：后端健康以目标会话明日Instant Reminder自动触发及微信发送能力为核心，非泛UI清单。禁止部署失败自动回退；出现问题修复继续完成新版本上线。正式排期／绑定／Profile状态只读核验，不能新建或提前触发用户生产提醒。
+
+主会话亲审后端图片包通过：新增opt-in仅在True组合启用，原结构helper及同Profile正式fs_download准入，响应副本content，整行fallback；26新场景及48原兼容场景有效证据，未为review复跑。已提交aaaa991，待前端/纯图集成及生产同窗取证。
+当前生产目标会话既有7条启用instant；最近2026-10-21 10:00+08，内容显式微信触达，Scheduler启用/扫描线程存在、Gateway微信connected，工具可执行；证据ignored operations/reminder-before.json。新Kimi路由采用原生配置＋精确目标tip原生完整writer＋受控宿主重建，不用已知会强制回Anthropic的/model路径。
+
+发布准备：前端构建1d1b1a7，439文件22662600B，55个沿用哈希JS/CSS URL字节一致；候选已上传受限release目录，线上静态未改。Caddy2.11.7候选语法及8个响应压缩/缓存边界通过，另原生SIGUSR1同PID重载隔离实测通过；生产未改。正式入口隐藏IAB到Authelia登录页，未动用户现有页或登录；部署后可经获授权SSH回环观察单一正式后端真实历史/请求行为，明确区别公网认证链。
+
+主会话第二次亲审纯图包通过：text同内容认领反证6失败已关闭；图片统一实际DB校验与原setter事务内owner/row/active/UID，guarded等值no-op不clone，默认旧setter行为保留。新增34场景及相关受影响60项有效通过；两项History及旧sidecar失败均有冻结原版复现，不冒称全套绿。纯图包未动Noting或agent/turn_context.py。
+
+集成冻结检查：私有index与原始50214cd基线核10检查，8 guards/Ruff通过；随任务包新增的CDP汇总脚本有CC24及事件ladder两项，已等价事件分派拆分后ruff/health通过（0 blocking/advisory）。51事件×3筛选、2非法输入，原新输出逐字节一致；脚本修正164eb4f已提交。Noting6文件hash自审查后未变。完整证据ignored integration-check*.json/log。
