@@ -288,7 +288,7 @@ On historical messages: ordinary file attachments show only file type/name with 
 
 **2026-10-19 user-confirmed core note wording:** New native recall wrappers state the sentence directly, with no `System note` label: `The following is recalled memory context, possibly relevant, not user input. This is the agent's persistent memory.` Remove the previous authoritative-data and all-responses instructions. Existing persisted API content is replayed unchanged; rendering and output sanitization remain compatible with every historical wrapper (labeled authoritative/informational forms and the earlier two-sentence note).
 
-**2026-10-19 user-confirmed capture behavior:** Compress photos locally from **Take Photo** before upload; selection/processing still performs no network upload before Send. Other attachment entry points retain their original bytes. Exact compression settings are an explicitly reported provisional choice in CLAUDE UI-CAM-01 until confirmed.
+**2026-10-19 capture behavior, settings accepted by the user on 2026-10-20:** Compress photos locally from **Take Photo** before upload, with a maximum long edge of 2560 and JPEG quality 0.85; do not upscale, preserve the original when already small or when encoding increases its size, and fall back to the original with feedback on failure. Selection/processing performs no network upload before Send. Other attachment entry points retain their original bytes.
 
 ### 1.8. Primary action: normative decision table
 

@@ -132,7 +132,7 @@ class ConversationBindingControl:
         if entry.origin is None:
             raise BindingError("peer_unavailable", "The native WeChat origin is unavailable")
         # A user-requested unbind creates an independent native route, leaving the Main intact.
-        replacement = self.store.get_or_create_session(entry.origin, force_new=True)
+        replacement = self.store.get_or_create_session(entry.origin, force_new=True, release_binding=True)
         self.runner._evict_cached_agent(entry.session_key)
         self.runner._clear_conversation_scope(entry.session_key, reason="explicit_conversation_unbind")
         return {"changed": True, "binding": self._status(replacement, db)}

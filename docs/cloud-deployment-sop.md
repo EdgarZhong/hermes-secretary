@@ -23,7 +23,9 @@ redis:
   max_retries: 0
 ```
 
-Hermes 的 Provider 密钥由 systemd `LoadCredential` 从 `/etc/secrets/{kimi-code,deepseek}.key` 读取，启动 wrapper 在进程内注入原生 Provider 环境，不把 Key 放入 argv、仓库或非受限配置。Alex 的 Kimi Tools 项目位于 `~/tools/kimi-tools/`，复用同一 Kimi Key，Search/Fetch 地址为官方 `https://api.kimi.com/coding/v1/{search,fetch}`。Playwright MCP 通过 npm 安装；无头 Chromium 的精确安装路径使用专用 AppArmor userns 配置，保留浏览器沙箱，不修改系统全局 userns 限制。
+Web系统服务的 Provider 密钥由 systemd `LoadCredential` 从 `/etc/secrets/{kimi-code,deepseek}.key` 读取，启动 wrapper 在进程内注入原生 Provider 环境，不把 Key 放入 argv、仓库或非受限配置。**多Profile Gateway不继承启动进程的Provider密钥**：路由到Alex后，原生凭据作用域只读取该Profile的`.env`及正式外部凭据源；单凭`/proc/<pid>/environ`中存在Key不能判定可用。Alex的`KIMI_API_KEY`通过原生`save_env_value`保存到实体Home的受限`.env`（0600），不加入同步白名单或Git；注册路径`~/.hermes/profiles/alex`与实体路径`~/.hermes_profiles/Alex`指向同一Home。Gateway使用原生启动入口，不额外复制凭据到`~/.config/hermes-secrets/`或添加Provider注入drop-in。轮换Key时须同时核对Web服务和Profile级配置这些实际消费者，不放宽作用域隔离；以正式`_profile_runtime_scope`内Provider解析及真实认证验证，不能只查进程环境。每次入站重建Profile作用域，单独更新该`.env`无需重启Gateway。
+
+Alex 的 Kimi Tools 项目位于 `~/tools/kimi-tools/`，复用同一 Kimi Key，Search/Fetch 地址为官方 `https://api.kimi.com/coding/v1/{search,fetch}`。Playwright MCP 通过 npm 安装；无头 Chromium 的精确安装路径使用专用 AppArmor userns 配置，保留浏览器沙箱，不修改系统全局 userns 限制。
 
 会话有效期 `12h`、空闲期限 `5d`、记住我 `1M`、Cookie 作用域及双因素规则保持原配置。启用 Redis 后不再使用 Authelia 的进程内会话存储；首次切换需重新登录一次。会话密钥仍只保存在受限云端配置中，不复制到仓库或输出日志。
 

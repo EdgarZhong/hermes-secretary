@@ -1,8 +1,13 @@
 """Explicit messaging ingress bindings to durable Conversations, independent of runtimes."""
 
 import json
+import logging
+from contextlib import nullcontext
+from dataclasses import replace
 
 from hermes_state_common import _BOUNDARY_END_REASONS, _RECOVERABLE_END_REASONS
+
+logger = logging.getLogger(__name__)
 
 BINDING_KEY = "conversation_binding"
 _RUNTIME_ENDS = frozenset(_RECOVERABLE_END_REASONS) | {"ws_disconnect", "idle_timeout", "lru_evict", "tui_shutdown"}
@@ -12,7 +17,32 @@ def is_bound(entry):
     return isinstance(getattr(entry, "metadata", None), dict) and BINDING_KEY in entry.metadata
 
 
-def restore_binding(store, entry):
+def allows_bound_target(store, entry, session_id, *, current_tip=False):
+    """True permits this owner, False rejects it, None is unavailable proof. Writers hold _lock."""
+    if not is_bound(entry):
+        return True
+    binding = entry.metadata[BINDING_KEY]
+    ref = binding.get("conversation_ref") if isinstance(binding, dict) else None
+    db = store._db_for_key(entry.session_key)
+    if not ref or db is None:
+        return None
+    try:
+        if not db.get_session(session_id) or db.resolve_conversation_ref(session_id) != ref:
+            return False
+        route = db.resolve_conversation_route(ref) if current_tip else None
+        return not current_tip or bool(route and route["id"] == session_id)
+    except Exception:
+        logger.debug("Bound target ownership is unavailable for %s", entry.session_key, exc_info=True)
+        return None
+
+
+def restore_binding(store, entry, *, lock_held=False):
+    """Serialize restoration with explicit binding changes, including the database lookup."""
+    with nullcontext() if lock_held else store._lock:
+        return _restore_binding_locked(store, entry)
+
+
+def _restore_binding_locked(store, entry):
     """Resolve only an explicitly bound Conversation; never substitute a peer's other chat."""
     if not is_bound(entry):
         return False
@@ -57,13 +87,47 @@ def bind_conversation(store, session_key, session_id):
         entry = store._entries.get(session_key)
         if entry is None:
             raise ValueError("Messaging route does not exist")
-        old_metadata = dict(entry.metadata or {})
-        old_id, old_override = entry.session_id, entry.model_override
-        entry.metadata = {**old_metadata, BINDING_KEY: {"conversation_ref": ref}}
-        try:
-            restore_binding(store, entry)
-        except Exception:
-            entry.metadata, entry.session_id, entry.model_override = old_metadata, old_id, old_override
-            raise
-    store._save_entries()
+        candidate = replace(entry, metadata={**(entry.metadata or {}), BINDING_KEY: {"conversation_ref": ref}})
+        restore_binding(store, candidate, lock_held=True)
+        store._save_entry(session_key, entry_data=candidate.to_dict(), lock_held=True, require_primary=True)
+        entry.metadata = candidate.metadata
+        entry.session_id, entry.model_override = candidate.session_id, candidate.model_override
     return entry
+
+
+def unbind_conversation(store, source):
+    """Explicit control operation: persist an independent native route before publishing it."""
+    from gateway.session import SessionEntry
+    from gateway.session_lifecycle import _new_session_id, _now
+    store._ensure_loaded()
+    key = store._generate_session_key(source)
+    with store._lock:
+        old = store._entry_locked(key)
+        if old is None:
+            raise ValueError("Messaging route does not exist")
+        if not is_bound(old):
+            return old
+        now = _now()
+        candidate = SessionEntry(
+            session_key=key, session_id=_new_session_id(now), created_at=now, updated_at=now,
+            origin=old.origin, display_name=old.display_name, platform=old.platform,
+            chat_type=old.chat_type, transport_profile=old.transport_profile,
+        )
+        db = store._db_for_key(key)
+        if db is None:
+            raise ValueError("Conversation storage is unavailable")
+        db.create_session(**store._session_create_kwargs(
+            session_id=candidate.session_id, session_key=key, origin=old.origin,
+            source_value=old.platform.value if old.platform else "unknown",
+            display_name=old.display_name, parent_session_id=None,
+        ))
+        try:
+            store._save_entry(key, entry_data=candidate.to_dict(), lock_held=True, require_primary=True)
+        except Exception:
+            try:
+                db.delete_session(candidate.session_id)
+            except Exception:
+                logger.warning("Failed to remove unpublished unbind candidate %s", candidate.session_id, exc_info=True)
+            raise
+        store._entries[key] = candidate
+    return candidate

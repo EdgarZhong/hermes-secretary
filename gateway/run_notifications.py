@@ -256,15 +256,17 @@ class GatewayNotificationsMixin:
             return None
         return target_session_id
 
-    async def _resolve_async_delegation_session(
+    async def _resolve_async_delegation_session(self, session_entry, pinned_session_id):
+        resolved = await self._resolve_async_delegation_session_impl(session_entry, pinned_session_id)
+        # Final check uses the current owner after ALL awaits, including compression/switch completion.
+        if resolved is None or not self.session_store.binding_allows_session(session_entry.session_key, pinned_session_id):
+            return None
+        return resolved
+
+    async def _resolve_async_delegation_session_impl(
         self, session_entry: SessionEntry, pinned_session_id: str,
     ) -> Optional[SessionEntry]:
-        """Resolve an async completion to its verified owning gateway session.
-
-        Follow compression-rotation lineage (parent row ended, child continues), but never let a
-        late completion override an unrelated /new or restored route. Unknown ownership fails
-        closed; the result stays in the delegation records.
-        """
+        """Follow verified compression lineage; unknown/boundary ownership leaves results durable."""
         from gateway.run import _USER_BOUNDARY_END_REASONS
         session_db = cast(Any, self._session_db)
         if session_db is None:
@@ -274,8 +276,7 @@ class GatewayNotificationsMixin:
             )
             return None
         pinned_row = None
-        # Snapshot the run generation before the row lookup awaits: a /stop or /new landing while
-        # the lookup is pending must not let this completion re-point the route afterwards.
+        # Preserve the run generation across parent lookups to honour concurrent /stop and /new.
         run_generation = self._current_session_run_generation(session_entry.session_key)
         try:
             pinned_row = await session_db.get_session(pinned_session_id)
@@ -299,8 +300,8 @@ class GatewayNotificationsMixin:
                 )
                 return None
             if _end_reason != "compression":
-                # Idle/timeout end (scale-to-zero norm): the chat route is still valid, so deliver to its
-                # current session rather than drop (the row would be acked then silently lost).
+                # Idle/timeout end (scale-to-zero norm): use the current native route; the owner
+                # wrapper still rejects a result from a different explicitly bound Conversation.
                 logger.info(
                     "Async-delegation completion pinned to %s-ended session %s; "
                     "retargeting to the chat's current session %s.",
@@ -328,8 +329,7 @@ class GatewayNotificationsMixin:
                 session_entry.session_key, prior_session_id, target_session_id,
             )
         else:
-            # CAS on the session this completion resolved against: a route replaced meanwhile
-            # (/new, /resume) wins over the stale completion.
+            # CAS plus the binding owner protect concurrent explicit route changes.
             switched = await self.async_session_store.switch_session(
                 session_entry.session_key, target_session_id, expected_session_id=prior_session_id,
             )
@@ -1301,8 +1301,7 @@ class GatewayNotificationsMixin:
         if not adapter:
             return False
         if not adapter_supports_push(adapter):
-            # Non-push adapter (api_server): its chat_id IS the raw session id, so handle_message would
-            # key the wake under a build_session_key() that never matches — self-post instead.
+            # API chat_id is a raw session id; self-post instead of deriving a gateway key.
             raw_sid = str(evt.get("origin_session_id") or "").strip() or str(source.chat_id or "")
             return await self._self_post_api_server(adapter, synth_text, raw_sid, evt)
         try:
@@ -1403,11 +1402,18 @@ class GatewayNotificationsMixin:
                 self._completion_deliveries_inflight.add(identity)
             return seen
 
-    async def _classify_completion_target(self, parent_session_id: str) -> str:
-        """Classify an async-completion target before adapter acceptance: ``"deliver"`` (spawning
-        session live or compression-rotated with a live continuation; the resolver still retargets),
-        ``"terminal"`` (parent gone for good — unknown / user boundary like /new; drop the durable row
-        rather than falsely ack), ``"retry"`` (DB unavailable / rotation mid-flight; release the claim)."""
+    async def _classify_completion_target(self, parent_session_id: str, session_key: str = "") -> str:
+        verdict = await self._classify_completion_parent(parent_session_id)
+        if verdict == "deliver" and session_key:
+            allowed = self.session_store.binding_allows_session(session_key, parent_session_id)
+            if allowed is None:
+                return "retry"
+            if not allowed:
+                return "terminal"
+        return verdict
+
+    async def _classify_completion_parent(self, parent_session_id: str) -> str:
+        """Classify durable parent availability; route binding is checked after all lookups."""
         from gateway.run import _USER_BOUNDARY_END_REASONS
         session_db = getattr(self, "_session_db", None)
         if session_db is None:
@@ -1455,7 +1461,7 @@ class GatewayNotificationsMixin:
 
         parent_session_id = str(evt.get("parent_session_id") or "").strip()
         if parent_session_id:
-            verdict = await self._classify_completion_target(parent_session_id)
+            verdict = await self._classify_completion_target(parent_session_id, str(evt.get("session_key") or ""))
             if verdict != "deliver":
                 # Definitively closed targets still need the normal terminal disposition.
                 return verdict == "terminal"
@@ -1481,19 +1487,15 @@ class GatewayNotificationsMixin:
         return True
 
     async def _preflight_completion_delivery(self, evt: dict) -> "_CompletionClaim":
-        """Claim the durable row (async delegations) and verify the target before adapter acceptance.
-
-        Adapter acceptance is not proof of delivery: the inner resolver can still fail closed inside
-        the pipeline after acceptance, falsely acking the durable row. Verifying first gives drops an
-        honest durable disposition.
+        """Claim and verify before admission: the inner resolver can refuse after adapter acceptance,
+        so admission alone would falsely acknowledge a durable completion. Drops keep the result.
         """
         claim = self._CompletionClaim()
         evt_type = evt.get("type")
         if evt_type == "async_delegation" and not await self._completion_delivery_ready(evt):
             claim.proceed, claim.early_result = False, False
             return claim
-        # An interim per-task notice shares the batch's delegation_id but is not the durable
-        # completion; claiming that row here would acknowledge the FINAL result before it exists.
+        # Interim per-task notices must not claim the batch's final durable completion.
         if evt_type == "async_delegation" and not evt.get("task_failure_notice"):
             claim.delegation_id = str(evt.get("delegation_id") or "")
             if claim.delegation_id:
@@ -1509,16 +1511,12 @@ class GatewayNotificationsMixin:
                     return claim
         elif evt_type != "completion":
             return claim
-        # Background completions carry only session_key, so after /new the OLD session's notification
-        # would land in the NEW one. Stamped events get the async-delegation pre-flight; unstamped deliver.
+        # Stamped background completions must prove ownership; unstamped native events retain delivery.
         parent_session_id = str(evt.get("parent_session_id") or "").strip()
         if not parent_session_id:
             return claim
-        # Pre-flight (#65838-class): adapter acceptance is NOT proof of delivery — the inner #55578 resolver
-        # can still fail closed inside the message pipeline AFTER the adapter accepted, which would falsely
-        # acknowledge the durable row as delivered. Verify the target here, before acceptance, and give
-        # drops an honest durable disposition.
-        verdict = await self._classify_completion_target(parent_session_id)
+        # Verify ownership before adapter admission; acceptance alone cannot prove correct delivery.
+        verdict = await self._classify_completion_target(parent_session_id, str(evt.get("session_key") or ""))
         if verdict == "terminal":
             if evt_type == "async_delegation":
                 logger.warning(

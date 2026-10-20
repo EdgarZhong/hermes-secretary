@@ -908,6 +908,14 @@ class WeixinAdapter(OwnAccessPolicyMixin, BasePlatformAdapter):
         else:
             await self.handle_message(event)
 
+    async def _handle_message_while_active(self, event: MessageEvent, session_key: str) -> None:
+        """Send user slash commands to the runner's auth/refusal gate without cancelling work."""
+        self._canonicalize(event.source)
+        if not event.internal and event.get_command() is not None:
+            await self._dispatch_inline_reply(event)
+            return
+        await super()._handle_message_while_active(event, session_key)
+
     async def _collect_media(self, item: Dict[str, Any], media_paths: List[str], media_types: List[str]) -> None:
         spec = _INBOUND_MEDIA.get(item.get("type"))
         path, mime = await self._download_media(item, spec) if spec else (None, "")

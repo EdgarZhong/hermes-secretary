@@ -89,6 +89,12 @@ class SessionLifecycleMixin:
             return False
         return row is None or row.get("end_reason") is not None
 
+    def binding_allows_session(self, session_key: str, target_session_id: str) -> Optional[bool]:
+        """Check deferred work against the current binding owner, never a caller's stale entry."""
+        from gateway.conversation_binding import allows_bound_target
+        with self._lock:
+            return allows_bound_target(self, self._entry_locked(session_key), target_session_id)
+
     def _route_reset_reason(self, entry: SessionEntry) -> Optional[str]:
         """Only explicit suspension replaces a routed conversation; time never does."""
         return "suspended" if entry.suspended else None
@@ -231,12 +237,13 @@ class SessionLifecycleMixin:
         mapping is dropped (the transcript stays). ``max_age_days <= 0`` disables. Returns count."""
         if max_age_days is None or max_age_days <= 0:
             return 0
+        from gateway.conversation_binding import is_bound
         cutoff = _now() - timedelta(days=max_age_days)
         with self._lock:
             self._ensure_loaded_locked()
             removed_keys = [
                 key for key, entry in list(self._entries.items())
-                if not entry.suspended
+                if not entry.suspended and not is_bound(entry)
                 # The callback is keyed by session_key, NOT session_id.
                 and not self._has_active_processes_safe(entry.session_key, context="prune")
                 and entry.updated_at < cutoff

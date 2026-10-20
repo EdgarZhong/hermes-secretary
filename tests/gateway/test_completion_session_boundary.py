@@ -59,6 +59,7 @@ def _runner(adapter, *, session_db=...):
     runner.adapters = {Platform.TELEGRAM: adapter}
     runner.session_store = SimpleNamespace(
         _ensure_loaded=lambda: None,
+        binding_allows_session=lambda *_args: True,  # These native fixtures have no explicit binding.
         _entries={},
     )
     runner._session_source_cache = {}

@@ -1257,13 +1257,8 @@ class GatewayInboundMixin(GatewayPluginInjectionMixin):
         oldest orphan runs as THIS turn and the incoming event is parked behind the chain. Skipped
         for control commands and internal events."""
         try:
-            # ── FIFO orphan rescue (#99882) ──────────────────────────────── If this session went idle with
-            # a populated overflow (queued during a busy window whose post-turn drain never promoted — e.g.
-            # a compression-demoted follow-up after the compression window ended through an exit that
-            # skipped the promotion site), those events were silently orphaned. We are starting the next
-            # turn for this session NOW: re-stage the orphans in FIFO order and enqueue the incoming event
-            # behind them, so arrival order (#28503) holds: oldest orphan runs as this turn, the rest drain
-            # in order, the new message last.
+            # Rescue overflow stranded by a skipped post-turn promotion (e.g. compression demotion).
+            # Preserve arrival order (#28503): oldest orphan now, remaining FIFO, incoming message last.
             _orphan_adapter = self._delivery_adapter_for(source)
             if _orphan_adapter is None or getattr(event, "internal", False) or event.get_command():
                 return event, source, is_internal
@@ -1282,6 +1277,15 @@ class GatewayInboundMixin(GatewayPluginInjectionMixin):
             logger.debug("FIFO orphan rescue pre-claim failed for %s", _quick_key, exc_info=True)
             return event, source, is_internal
 
+    def _hm_admitted_event_notice(self, event: MessageEvent, source: SessionSource, is_internal: bool) -> Optional[str]:
+        """After authorization, refuse Weixin user commands before any session/control mutation."""
+        if not is_internal:
+            if source.platform == Platform.WEIXIN and event.get_command() is not None:
+                return "微信不支持 slash 命令，请回到 Web UI 管理会话；需要换绑时直接告诉 AI。"
+            from hermes_cli.observability.shared_metrics_events import record_gateway_slash_command
+            record_gateway_slash_command(event)
+        return self._hm_estop_gate(event, source, is_internal)
+
     async def _handle_message(self, event: MessageEvent) -> Optional[str]:
         """Handle an incoming message from any platform: auth → command check → running-agent
         interrupt → get/create session → build context → run agent → return response."""
@@ -1291,13 +1295,7 @@ class GatewayInboundMixin(GatewayPluginInjectionMixin):
         if _admitted is None:
             return None
         event, source, is_internal = _admitted
-        if not is_internal:
-            from hermes_cli.observability.shared_metrics_events import record_gateway_slash_command
-            record_gateway_slash_command(event)
-        # Teardown follows authorization/admission; rejected traffic cannot clear an active refusal.
-        # All entry lanes (including Discord passthrough) share this guard.
-
-        _paused_notice = self._hm_estop_gate(event, source, is_internal)
+        _paused_notice = self._hm_admitted_event_notice(event, source, is_internal)
         if _paused_notice is not None:
             return _paused_notice
 

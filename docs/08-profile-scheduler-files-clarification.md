@@ -20,9 +20,27 @@ Profile 选择器仅出现在首页／New Chat，用于决定即将创建的 Con
 
 同一 Conversation 的 Web 与微信入口共用历史及其实际模型路由；冷恢复统计按该路由解析 Context 上限，不能借用 Profile 当前默认模型的窗口。Kimi Coding 的 `k3-256k` 原生窗口为262144；DeepSeek 的自定义500000只在匹配的模型路由上生效，未知元数据不得以256000兜底冒充已知窗口。DeepSeek模型选择器保留一个正式Provider。
 
-微信绑定到持久 Conversation，跨Runtime回收、服务重启及compact沿同一Conversation接续，不自动退回另一条微信独立会话；显式解绑／新会话仍由用户决定。绑定记录复用原生路由条目的metadata，adapter保留接收者／投递者身份，不能改写被绑定Main的source或session_key来伪装绑定。工具成功须持久保存该身份关系。
+微信绑定到持久 Conversation，跨Runtime回收、服务重启及compact沿同一Conversation接续，不自动退回另一条微信独立会话；显式解绑／新会话仍由用户决定。绑定记录复用原生路由条目的metadata，adapter保留接收者／投递者身份，不能改写被绑定Main的source或session_key来伪装绑定。工具成功须持久保存该身份关系。用户操作fork／branch会创建新的Conversation；微信绑定留在分支前的原Conversation，新分支不继承绑定，不将分支视为原Conversation的Session延续。
+
+**2026-10-20 用户确认的不变量：** 只有显式调用绑定／解绑工具可以改变持久Conversation绑定；压缩耗尽、suspended恢复、后台delegation回流及其它自动路由恢复均不得替代绑定目标。A派发任务后已显式改绑B，A的晚到结果不能把绑定切回A，也不能注入B；保留其原有持久结果记录。允许沿同一Conversation合法compression lineage更新物理locator，不得以新Conversation冒充延续。未绑定的原生路径保持原行为。
+
+AI使用的绑定工具对外以Conversation ref为唯一目标身份，废弃Session ID参数／查询口径；内部可解析当前物理Session，不将该实现责任交给AI。当前Conversation查询必须依据调用方上下文，缺失时明确失败，不回退到当前绑定、最近会话或标题猜测。这是2026-10-20确认的接口要求；绑定操作由存活Gateway通过原生本地控制通道保存，工具不通过停启服务或离线改路由实现。
+
+工具统一位于`~/scripts/<profile>/weixin_bind.py`，每个工具只负责其自己的Profile，不提供跨Profile选择入口；当前只制作Alex工具。绑定调用方直接使用`bind --self`一步完成，不设单独的`self conversation`查询，也不保留`current`或`--current`别名。`list`只列所属Profile最近的Conversation，每个Conversation一条，带完整ref、标题等属性及`is_self`（调用方）和`is_current_binding`（当前通道的显式绑定目标）两个独立标记；两个身份相同则同一条都为true。调用方身份缺失时，列表仍可查询，但`is_self`为null并明确身份不可用，绑定调用方则失败，不猜测；明确来自其它Profile的调用直接拒绝（包括只读查询），不读取Alex状态。若调用方或绑定目标不在最近结果内，顶层身份／绑定信息仍说明其ref，不伪称未绑定。指定其它Conversation用`list`和`bind --conversation-ref <完整ref>`，`status`只查询绑定状态。
 
 保持Hermes原生收发：微信消息触发的Turn，由adapter投递原生回复；Web、Instant Reminder及其它入口触发的Turn，只有显式调用发送工具才发微信。Web显示与发送微信是两个独立动作，不把全部Web回答自动转微信。
+
+**主动发送来源标题（2026-10-20 用户确认）：** Alex显式微信发送工具在调用方Conversation与当前绑定不同时，自动在发给用户的消息头添加调用方Conversation标题；同一Conversation不加。该标注由工具完成，调用方AI的正常发送回执不增加来源标注说明。拿不到可靠调用方身份时保留发送，不猜测／添加标题；绑定或查询不可用时同样不猜，不为来源展示失败阻断原发送。不改变绑定，不新增发送次数；其它peer不得借用默认peer的绑定作判断。
+
+**2026-10-20 用户追加确认：** 微信不再提供原生slash命令控制；收到slash命令时直接拒绝执行，并提示回Web UI管理Conversation。不会将命令作为普通消息提交模型，也不触发会话重置、分支、切换或其它原生命令。换绑应回Web UI直接告诉AI，由既有工具完成；其它Platform的原生slash保持不变。此段是已确认需求，实现状态见CLAUDE。
+
+入口提示保留Hermes原生Gateway／其它Platform按消息来源轮换，以及入口切换时的notice注入；不在System Prompt注入“当前Platform”身份。SOUL.md与workspace AGENTS.md已可定初稿，不将模型行为指导挂成未实现工程功能。
+
+### 1.2 预置独立工具（2026-10-20 用户确认）
+
+个人小工具统一`~/scripts/`，本机与云端不保留旧拼写目录或别名。当前首尔保护对象为通用`nmem-memory.py`及Alex下的`alex_weixin_send.py`、`weixin_bind.py`：原件可读／可执行、防普通误改，扩展先读源码并在`~/scripts/custom/`另建副本，不自行解锁、替换原件。用户仅要求防下意识误操作，不扩大为账号或sudo权限隔离。
+
+Memory写入工具在preview与apply均必须显式传非空`--space`，Default也写`--space default`。缺失、空串、纯空白在输入读取、CLI及网络操作前拒绝；不得隐式继承Profile或环境目标。此要求只约束手动Memory创建工具，不修改Provider自动Thread同步的Space配置语义。
 
 ## 2. 冷态 Instant Reminder 的宿主责任
 

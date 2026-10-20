@@ -127,6 +127,9 @@ class SessionTranscriptMixin:
             return False
         if entry.session_id != original_session_id or canonical_session_id == original_session_id:
             return False
+        from gateway.conversation_binding import allows_bound_target
+        if not allows_bound_target(self, entry, canonical_session_id, current_tip=True):
+            return False
         logger.info(
             "SessionStore healed compressed session mapping: %s -> %s", entry.session_id,
             canonical_session_id)

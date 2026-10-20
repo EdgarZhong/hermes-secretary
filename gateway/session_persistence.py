@@ -353,7 +353,7 @@ class SessionPersistenceMixin:
         from gateway.conversation_binding import is_bound, restore_binding
         if is_bound(entry):
             try:
-                return entry if restore_binding(self, entry) else None
+                return entry if restore_binding(self, entry, lock_held=True) else None
             except Exception:
                 logger.warning("Bound Conversation unavailable for %s; preserving its binding", key, exc_info=True)
                 return None
@@ -496,15 +496,16 @@ class SessionPersistenceMixin:
 
     def _save_entry(
         self, session_key: str, *, entry_data: Optional[Dict[str, Any]] = None,
-        lock_held: bool = False) -> None:
+        lock_held: bool = False, require_primary: bool = False) -> None:
         """Persist ONE routing entry via UPSERT — the per-turn fast path (a full rewrite fsyncs a
-        multi-MB sessions.json). The key -> session_id mapping never changes here: structural
-        transitions use the full rewrite (which also refreshes the sessions.json mirror; it may lag
-        in metadata only). The revision comes from the shared routing generation counter; under
+        multi-MB sessions.json). Native structural transitions use a full rewrite; explicit binding
+        candidates require the primary UPSERT and refresh the mirror before publication.
+        The revision comes from the shared routing generation counter; under
         ``_save_lock`` the upsert is skipped if a full snapshot or a newer fast save of this key
         already persisted (the reverse case lives in ``_persist_routing_data``). No DB or a failed
         upsert falls back to the full rewrite. ``entry_data`` persists a candidate BEFORE it is
-        published to the live entry (failure-atomic transitions); the fallback carries it too."""
+        published to the live entry (failure-atomic transitions); the fallback carries it too.
+        Binding transitions require the primary write and also refresh the legacy mirror."""
         guard = contextlib.nullcontext() if lock_held else self._lock
         with guard:
             entry = self._entries.get(session_key)
@@ -514,6 +515,8 @@ class SessionPersistenceMixin:
             # The O(n) full snapshot is deferred to the fallback branch.
             entry_json, revision = json.dumps(serialized), self._next_routing_generation_locked()
         saver = self._routing_db_method("save_gateway_routing_entry")
+        if require_primary and saver is None:
+            raise OSError("Conversation binding primary storage is unavailable")
         if saver is not None:
             try:
                 with self._lazy("_save_lock", threading.Lock):
@@ -525,8 +528,12 @@ class SessionPersistenceMixin:
                         return
                     saver(session_key, entry_json, scope=self._routing_scope())
                     fast_persisted[session_key] = (revision, entry_json)
+                    if require_primary:
+                        self._mirror_binding_transition_locked(session_key, serialized)
                 return
             except Exception as exc:
+                if require_primary:
+                    raise
                 logger.warning(
                     "gateway.session: single-entry routing save failed for %r (%s); falling back "
                     "to full index rewrite", session_key, exc)
@@ -538,3 +545,14 @@ class SessionPersistenceMixin:
             self._persist_routing_data(fallback_data, revision)
         else:
             self._save_entries()
+
+    def _mirror_binding_transition_locked(self, session_key, serialized):
+        """Refresh the mirror after an authoritative binding commit; both store locks are held."""
+        if not getattr(self, "_write_sessions_json", True):
+            return
+        try:
+            data = self._entries_as_dicts()
+            data[session_key] = serialized
+            self._save_sessions_json(data)
+        except Exception:
+            logger.warning("Binding primary write succeeded but legacy mirror refresh failed", exc_info=True)

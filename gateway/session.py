@@ -890,10 +890,16 @@ class SessionStore(
 
     def get_or_create_session(
         self, source: SessionSource, force_new: bool = False, touch_activity: bool = True,
+        *, release_binding: bool = False,
     ) -> SessionEntry:
         """Single-flight session lookup/create per routing key: overlapping calls for one key (even
         concurrent ``force_new``) share the owner's result so only one transition and SQLite row is
         created. ``touch_activity=False`` (internal events) preserves the user-activity clock."""
+        if release_binding:
+            if not force_new:
+                raise ValueError("Explicit unbind requires force_new")
+            from gateway.conversation_binding import unbind_conversation
+            return unbind_conversation(self, source)
         session_key = self._generate_session_key(source)
         inflight_lock = self._lazy("_inflight_lock", threading.Lock)
         self._lazy("_inflight_sessions", dict)
@@ -929,9 +935,7 @@ class SessionStore(
     def _get_or_create_session_impl(
         self, source: SessionSource, force_new: bool = False, touch_activity: bool = True,
     ) -> SessionEntry:
-        """One routing transition for the single-flight owner. All blocking I/O (SQLite SELECTs,
-        index rewrite + fsync, recovery queries) runs *outside* ``self._lock``, which protects
-        only ``_entries`` / ``_loaded`` mutations."""
+        """Single-flight routing transition; DB recovery and index persistence run outside _lock."""
         session_key = self._generate_session_key(source)
         now = _now()
         if not force_new:
@@ -986,7 +990,10 @@ class SessionStore(
         decision = _RouteDecision()
         with self._lock:
             self._ensure_loaded_locked()
+            from gateway.conversation_binding import is_bound
             if force_new:
+                if is_bound(self._entries.get(session_key)):
+                    raise ValueError("Bound Conversation requires explicit unbind")
                 return decision
             entry = self._entries.get(session_key)
             if entry is None:
@@ -998,11 +1005,13 @@ class SessionStore(
                 entry, snapshot_sid, checks.canonical_id if checks else None
             )
             checked = entry.session_id == snapshot_sid
-            stale_hit = checked and checks.is_stale
-            reset_reason = checks.reset_reason if checked else None
+            bound = is_bound(entry)
+            stale_hit = checked and checks.is_stale and not bound
+            reset_reason = checks.reset_reason if checked and not bound else None
+            if bound and touch_activity:
+                entry.suspended = False  # User input resumes this Conversation; never creates a replacement.
             if stale_hit:
-                # Stale routing self-heal: drop the entry and fall through to recovery (reopens
-                # agent_close / ws_orphan_reap rows, fresh session for other end_reasons).
+                # Recover a stale native route; explicit bindings are retained above.
                 logger.warning(
                     "gateway.session: routing key %r -> %s is ended in state.db but still live in "
                     "sessions.json; dropping stale entry and recovering/recreating the session "
@@ -1053,6 +1062,9 @@ class SessionStore(
         with self._lock:
             current = self._entries.get(session_key)
             if current is None or (force_new and current is observed):
+                from gateway.conversation_binding import is_bound
+                if is_bound(current):
+                    raise ValueError("Bound Conversation requires explicit unbind")
                 self._entries[session_key] = current = candidate
         decision.entry = current
         decision.needs_save = True
@@ -1128,7 +1140,8 @@ class SessionStore(
         """Force reset a session, creating a new session ID."""
         with self._lock:
             old_entry = self._entry_locked(session_key)
-            if old_entry is None:
+            from gateway.conversation_binding import is_bound
+            if old_entry is None or is_bound(old_entry):
                 return None
             now = _now()
             session_id = _new_session_id(now)
@@ -1220,7 +1233,9 @@ class SessionStore(
             return 0
         with self._lock:
             self._ensure_loaded_locked()
-            dropped = [key for key, entry in self._entries.items() if entry.session_id == session_id]
+            from gateway.conversation_binding import is_bound
+            dropped = [key for key, entry in self._entries.items()
+                       if entry.session_id == session_id and not is_bound(entry)]
             for key in dropped:
                 self._entries.pop(key, None)
             if dropped:
@@ -1240,14 +1255,11 @@ class SessionStore(
         self, session_key: str, target_session_id: str, *, expected_session_id: Optional[str] = None,
         preserve_prompt_pin: bool = True,
     ) -> Optional[SessionEntry]:
-        """Point a session key at an existing session ID (``/resume``): ends the current row and
-        reopens the target so resume matches the CLI.
+        """CAS-repoint a native route, ending the prior row and reopening the target.
 
-        ``expected_session_id`` makes the repoint a compare-and-swap: ``None`` is returned when
-        the key no longer points at that session, so a caller that resolved against a snapshot
-        across an await (async-delegation re-pin) cannot overwrite a concurrent /new or /resume.
-        Prompt pins follow non-boundary repoints by default; /resume opts out explicitly because it
-        starts a different conversation on the same routing key.
+        Explicit bindings accept only their own Conversation and keep its metadata and lifecycle.
+        expected_session_id rejects concurrent /new or /resume. Prompt pins follow non-boundary
+        repoints; /resume opts out because it starts another conversation.
         """
         with self._lock:
             old_entry = self._entry_locked(session_key)
@@ -1259,7 +1271,14 @@ class SessionStore(
                     session_key, expected_session_id, old_entry.session_id,
                 )
                 return None
+            from gateway.conversation_binding import allows_bound_target, is_bound, restore_binding
+            if not allows_bound_target(self, old_entry, target_session_id, current_tip=True):
+                return None
             if old_entry.session_id == target_session_id:
+                return old_entry
+            if is_bound(old_entry):
+                restore_binding(self, old_entry, lock_held=True)
+                self._save()
                 return old_entry
             new_entry = self._replace_route_locked(
                 session_key, old_entry, target_session_id, _now(),
