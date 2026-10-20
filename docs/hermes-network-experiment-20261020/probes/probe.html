@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>首尔连接诊断探针</title>
+<style>
+  body{font:16px/1.5 system-ui,sans-serif;max-width:960px;margin:24px auto;padding:0 16px;color:#18212b}
+  h1{font-size:23px}label{display:block;margin:12px 0}input[type=text]{box-sizing:border-box;width:100%;max-width:560px;padding:8px;font:inherit}
+  button{padding:9px 15px;margin:8px 8px 8px 0;font:inherit}small{color:#4c5967}progress{width:100%;height:16px}
+  .scroll{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;vertical-align:top;padding:8px;border-bottom:1px solid #ccd3da}
+  code{overflow-wrap:anywhere}details{margin:20px 0}#status{min-height:3em;overflow-wrap:anywhere}
+</style>
+<h1>首尔连接诊断探针</h1>
+<p>只请求本目录的固定测试文件；打开页面不会自动下载它们。默认每轮约 <b>72 KiB</b>；包含大文件时约 <b>1.1 MiB</b>，另有协议开销。每个文件限时 30 秒，失败即停止本轮。</p>
+<form id="form">
+  <label>轮次标签<input id="runLabel" type="text" required maxlength="100" placeholder="例如 night-a1"></label>
+  <label>网络标签（手填）<input id="networkLabel" type="text" required maxlength="100" placeholder="例如 蜂窝 / Wi-Fi / 手机热点"></label>
+  <label>入口标签（手填）<input id="entryLabel" type="text" required maxlength="100" placeholder="例如 direct / orange / tunnel"></label>
+  <label><input id="large" type="checkbox"> 本轮也测 1 MiB 文件（8 KiB → 64 KiB → 1 MiB）</label>
+  <button id="start" type="submit">开始本轮</button>
+  <button id="stop" type="button" disabled>停止</button>
+  <button id="export" type="button" disabled>导出本轮 JSON</button>
+</form>
+<p><small>保持页面在前台。页面只保留当前轮，下一轮前请导出。网络标签由人填写；实际协议、远端 IP、出口和并发情况需配套 CDP 采集确认。</small></p>
+<p id="status" role="status" aria-live="polite">尚未开始。</p>
+<progress id="progress" max="1" value="0"></progress>
+<div class="scroll"><table>
+  <thead><tr><th>文件</th><th>状态</th><th>已读 / 预期字节</th><th>到 headers / 结束 ms</th><th>最大观察读间隔 ms</th></tr></thead>
+  <tbody id="rows"></tbody>
+</table></div>
+<details><summary>测量边界与状态说明</summary>
+  <p>计时使用 <code>performance.now()</code>。到 headers 包含 fetch 调用到响应头交给 JavaScript 的时间；到首块、完整 body 和结束分别记录。已读字节仅指交给 JavaScript reader 的响应体字节，不含 HTTP 头及其他传输开销。完整有效样本的 <code>body_KiB_s</code> 使用这些字节除以 headers 到 EOF 的时间；浏览器解码和缓冲会影响此值，它不是线上压缩后字节的速率。压缩控制与线上字节量须通过 Caddy 配置和 CDP 核实。</p>
+  <p>“最大观察读间隔”包括 headers 到首块、相邻有数据块，以及末块到 EOF/失败/中止的等待。另记录只计算相邻有数据块的最大间隔。JavaScript 数据块不是 TCP 包；调度、解压、页面冻结都可能影响这些值，不能单靠本页判断网络丢包。未配套 CDP 时，不具备同时段的并发请求、协议或远端 IP 证据。</p>
+  <p><code>aborted_timeout</code> 表示本页 30 秒计时器触发中止；<code>user_cancelled</code> 表示手动停止。两者都保留此前已读字节。浏览器冻结或挂起时计时器可能延后，JSON 会记录实际中止时间。</p>
+  <p>只接受 HTTP 200、二进制 Content-Type 和精确长度；HTML 登录页不会计为成功。重定向会被拒绝。鉴权由浏览器同源携带；探针不读取或导出 Cookie，也不访问聊天数据。JSON 仅保存人工标签、计时、计数和指定诊断响应头，不保存测试文件字节。CDP 与服务端日志须在本页之外采集。</p>
+</details>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const ASSETS = [
+  {name: 'payload-8k.bin', bytes: 8192},
+  {name: 'payload-64k.bin', bytes: 65536},
+  {name: 'payload-1m.bin', bytes: 1048576}
+];
+const TIMEOUT_MS = 30000;
+let currentRun = null;
+let running = false;
+let abortCurrent = null;
+let lastPaint = 0;
+const rows = new Map();
+const round = value => Math.round(value * 100) / 100;
+const shown = value => value === null || value === undefined ? '—' : String(value);
+
+function render(result, force = false) {
+  const now = performance.now();
+  if (!force && now - lastPaint < 250) return;
+  lastPaint = now;
+  const cells = rows.get(result.diag_id);
+  const values = [result.asset, result.status,
+    result.received_body_bytes + ' / ' + result.expected_bytes,
+    shown(result.request_to_headers_ms) + ' / ' + shown(result.request_to_end_ms),
+    shown(result.max_observed_read_gap_ms)];
+  values.forEach((value, index) => { cells[index].textContent = value; });
+  if (result.status !== 'queued' && !result.status.startsWith('not_run')) {
+    $('progress').max = result.expected_bytes;
+    $('progress').value = Math.min(result.received_body_bytes, result.expected_bytes);
+  }
+}
+
+async function measure(asset, result) {
+  const url = new URL(asset.name, location.href);
+  url.search = '';
+  url.searchParams.set('diag_id', result.diag_id);
+  url.hash = '';
+  result.request_path = url.pathname + url.search;
+  const controller = new AbortController();
+  let abortReason = null;
+  let lastReadAt = null;
+  let previousDataAt = null;
+  let reader = null;
+  let bodyDurationMs = null;
+  const started = performance.now();
+  result.started_at_utc = new Date().toISOString();
+  result.status = 'running';
+  const abort = reason => {
+    if (abortReason !== null) return;
+    abortReason = reason;
+    result.abort_requested_at_ms = round(performance.now() - started);
+    controller.abort();
+  };
+  abortCurrent = abort;
+  const timer = setTimeout(() => abort('aborted_timeout'), TIMEOUT_MS);
+  render(result, true);
+  $('status').textContent = '正在测试 ' + asset.name + '；diag_id=' + result.diag_id;
+  try {
+    const response = await fetch(url.href, {
+      credentials: 'same-origin', mode: 'same-origin', cache: 'no-store',
+      redirect: 'manual', headers: {'Accept': 'application/octet-stream'},
+      signal: controller.signal
+    });
+    const headersAt = performance.now();
+    result.request_to_headers_ms = round(headersAt - started);
+    result.http_status = response.status;
+    result.response_type = response.type;
+    result.response_headers = {};
+    ['content-type', 'content-length', 'content-encoding', 'cache-control',
+      'cf-cache-status', 'cf-ray', 'age', 'server-timing'].forEach(name => {
+        result.response_headers[name] = response.headers.get(name);
+      });
+    result.content_encoding_observed = response.headers.get('content-encoding');
+    const encoding = (result.content_encoding_observed || '').trim().toLowerCase();
+    result.compression_observation = !encoding ? 'no_encoding_header_requires_CDP_confirmation' :
+      (encoding === 'identity' ? 'identity_header_observed' : 'encoded_response_reader_bytes_are_decoded');
+    const type = (response.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+    if (response.type === 'opaqueredirect' || (response.status >= 300 && response.status < 400)) {
+      result.status = 'redirect_blocked';
+    } else if (response.status !== 200) {
+      result.status = 'unexpected_http_status';
+    } else if (!['application/octet-stream', 'application/x-binary', 'binary/octet-stream'].includes(type)) {
+      result.status = 'unexpected_content_type';
+    } else if (!response.body || !response.body.getReader) {
+      result.status = 'stream_reader_unavailable';
+    }
+    if (result.status !== 'running') {
+      if (response.body) await response.body.cancel();
+      return;
+    }
+    lastReadAt = headersAt;
+    reader = response.body.getReader();
+    while (true) {
+      const {done, value} = await reader.read();
+      const at = performance.now();
+      result.read_calls += 1;
+      if (done) {
+        result.body_complete = true;
+        result.request_to_body_done_ms = round(at - started);
+        bodyDurationMs = at - headersAt;
+        result.headers_to_body_done_ms = round(bodyDurationMs);
+        break;
+      }
+      if (!value || value.byteLength === 0) continue;
+      const gap = at - lastReadAt;
+      result.max_observed_read_gap_ms = Math.max(result.max_observed_read_gap_ms || 0, round(gap));
+      if (previousDataAt !== null) {
+        result.max_between_data_chunks_ms = Math.max(result.max_between_data_chunks_ms || 0, round(at - previousDataAt));
+      }
+      lastReadAt = at;
+      previousDataAt = at;
+      if (result.data_chunks === 0) result.request_to_first_body_chunk_ms = round(at - started);
+      result.data_chunks += 1;
+      result.received_body_bytes += value.byteLength;
+      if (result.received_body_bytes > result.expected_bytes) {
+        result.status = 'unexpected_body_length';
+        await reader.cancel();
+        break;
+      }
+      render(result);
+    }
+    if (result.status === 'running') {
+      result.status = result.received_body_bytes === result.expected_bytes ? 'ok' : 'unexpected_body_length';
+      if (result.status === 'ok' && bodyDurationMs > 0) {
+        result.body_KiB_s = round((result.received_body_bytes / 1024) / (bodyDurationMs / 1000));
+      }
+    }
+  } catch (error) {
+    if (abortReason) result.status = abortReason;
+    else if (result.status === 'running') result.status = 'fetch_or_stream_error';
+    result.error_name = error && error.name ? String(error.name) : 'Error';
+  } finally {
+    const ended = performance.now();
+    clearTimeout(timer);
+    abortCurrent = null;
+    if (abortReason) result.status = abortReason;
+    if (lastReadAt !== null) {
+      result.max_observed_read_gap_ms = Math.max(result.max_observed_read_gap_ms || 0, round(ended - lastReadAt));
+    }
+    result.request_to_end_ms = round(ended - started);
+    result.ended_at_utc = new Date().toISOString();
+    if (reader) { try { reader.releaseLock(); } catch (_) {} }
+    render(result, true);
+  }
+}
+
+$('form').addEventListener('submit', async event => {
+  event.preventDefault();
+  if (running) return;
+  if (['runLabel', 'networkLabel', 'entryLabel'].some(id => !$(id).value.trim())) {
+    $('status').textContent = '请填写轮次、网络和入口标签。';
+    return;
+  }
+  if (location.protocol !== 'https:' && location.protocol !== 'http:') {
+    $('status').textContent = '请先把本页和测试文件部署到受保护的 HTTP(S) 路径；file:// 不是有效实测。';
+    return;
+  }
+  const runId = Date.now().toString(36) + '-' + (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2));
+  const selected = $('large').checked ? ASSETS : ASSETS.slice(0, 2);
+  currentRun = {
+    schema_version: 1, probe_version: '2026-10-20.2', run_id: runId,
+    run_label: $('runLabel').value.trim(), network_label: $('networkLabel').value.trim(),
+    entry_label: $('entryLabel').value.trim(), labels_are_manual: true,
+    origin: location.origin, page_path: location.pathname,
+    started_at_utc: new Date().toISOString(), status: 'running', stop_requested: false,
+    timeout_per_file_ms: TIMEOUT_MS, planned_body_bytes: selected.reduce((sum, asset) => sum + asset.bytes, 0),
+    settings: {credentials: 'same-origin', cache: 'no-store', redirect: 'manual', mode: 'same-origin'},
+    interpretation: {
+      clock: 'performance.now; browser scheduling affects observations',
+      byte_count: 'body bytes delivered to JavaScript reader, not wire bytes',
+      body_KiB_s: 'complete length-validated samples only; reader KiB / seconds from headers to body EOF; not wire rate',
+      compression: 'Content-Encoding is an observation only; verify uncompressed Caddy .bin responses and actual wire bytes with external CDP',
+      max_observed_read_gap: 'headers/last data to next data or terminal EOF/error/abort; not TCP packet gaps',
+      max_between_data_chunks: 'between successive nonempty JavaScript chunks only',
+      protocol_remote_ip_and_concurrency: 'not collected here; use simultaneous external CDP capture',
+      timeout: '30-second JavaScript timer; suspension can delay actual abort',
+      integrity: 'HTTP 200 + binary content type + expected body byte count; SHA-256 is in assets-manifest.json, not checked in browser'
+    },
+    visibility_events: [{at_utc: new Date().toISOString(), state: document.visibilityState}],
+    results: selected.map((asset, index) => ({
+      asset: asset.name, diag_id: runId + '-' + (index + 1), expected_bytes: asset.bytes,
+      status: 'queued', received_body_bytes: 0, data_chunks: 0, read_calls: 0, body_complete: false,
+      request_to_headers_ms: null, request_to_first_body_chunk_ms: null,
+      request_to_body_done_ms: null, request_to_end_ms: null,
+      headers_to_body_done_ms: null, body_KiB_s: null,
+      content_encoding_observed: null, compression_observation: 'no_response_headers', wire_bytes_verified: false,
+      max_observed_read_gap_ms: null, max_between_data_chunks_ms: null
+    }))
+  };
+  rows.clear(); $('rows').replaceChildren(); $('progress').max = 1; $('progress').value = 0;
+  for (const result of currentRun.results) {
+    const row = document.createElement('tr');
+    const cells = Array.from({length: 5}, () => row.appendChild(document.createElement('td')));
+    rows.set(result.diag_id, cells); $('rows').appendChild(row); render(result, true);
+  }
+  running = true; $('start').disabled = true; $('stop').disabled = false; $('export').disabled = false;
+  ['runLabel', 'networkLabel', 'entryLabel', 'large'].forEach(id => { $(id).disabled = true; });
+  try {
+    for (let index = 0; index < selected.length; index++) {
+      if (currentRun.stop_requested) break;
+      await measure(selected[index], currentRun.results[index]);
+      if (currentRun.results[index].status !== 'ok') break;
+    }
+    for (const result of currentRun.results) {
+      if (result.status === 'queued') {
+        result.status = currentRun.stop_requested ? 'not_run_user_cancelled' : 'not_run_after_failure';
+        render(result, true);
+      }
+    }
+    currentRun.status = currentRun.stop_requested ? 'user_cancelled' :
+      (currentRun.results.every(result => result.status === 'ok') ? 'completed' : 'stopped_after_failure');
+  } catch (error) {
+    currentRun.status = 'probe_internal_error';
+    currentRun.error_name = error && error.name ? String(error.name) : 'Error';
+  } finally {
+    currentRun.ended_at_utc = new Date().toISOString();
+    running = false; $('start').disabled = false; $('stop').disabled = true;
+    ['runLabel', 'networkLabel', 'entryLabel', 'large'].forEach(id => { $(id).disabled = false; });
+    $('status').textContent = '本轮：' + currentRun.status + '。已保留所有已读字节计数，可导出 JSON。';
+  }
+});
+
+$('stop').addEventListener('click', () => {
+  if (!running) return;
+  currentRun.stop_requested = true;
+  if (abortCurrent) abortCurrent('user_cancelled');
+  $('status').textContent = '已请求停止；正在保留本轮结果。';
+});
+document.addEventListener('visibilitychange', () => {
+  if (running) currentRun.visibility_events.push({at_utc: new Date().toISOString(), state: document.visibilityState});
+});
+$('export').addEventListener('click', () => {
+  if (!currentRun) return;
+  const snapshot = {...currentRun, exported_at_utc: new Date().toISOString()};
+  const blob = new Blob([JSON.stringify(snapshot, null, 2) + '\n'], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url; link.download = 'hermes-network-' + currentRun.run_id + '.json';
+  document.body.appendChild(link); link.click(); link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+});
+</script>
+</html>

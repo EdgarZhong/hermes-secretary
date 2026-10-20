@@ -6,6 +6,8 @@
 
 ## 当前阶段
 
+**移动端阶段一与Noting联合交付（2026-10-21用户确认执行）：** 用户明确不开worktree，开始完成阶段一；Noting与Provider留给另一并行会话，本会话负责最终统一验证、一起上线。使用gpt-6.1-sol／high，不使用Astra；已挂持续目标。用户允许直接向“分析品质会话未结束原因”会话协调，已通知文件边界和交接要求。阶段一覆盖P1-01～06、08；P1-07预算收尾已上线，只核验现状。共享接缝限定为纯图片持久受理／staged同一行认领，不覆盖Noting／Provider；同文件如有交叉先划符号范围或串行。工作前后端基线分别为50214cd4ab、83285d2be2，保留现有文档dirty。正式实现、证据、门禁与交付入口见[本轮索引](.autonomous/20261021-mobile-phase1/snapshot-index.md)和[计划](.autonomous/20261021-mobile-phase1/plan.md)。阶段二不实施；后续短手机实验依实际可用环境与既有显示保护执行。
+
 **语音体验第二步已上线并验收（2026-10-20）：** 首尔已上线`532cadb4d8`，显式启用`gateway.stt.echo_transcripts_with_reply`；转录保留到模型首条实际回复合并投递，成功ACK才消费，interim／final／错误及队列分支已覆盖，不污染模型assistant历史。Alex上传改为16kHz单声道AAC64kbps，原始SILK保留；341KB→49KB，压缩样本5.03秒／6.07秒、转录与旧结果一致，网络波动不作固定延迟承诺。188个不同相关场景的分组证据有效，完整冻结10检查通过。原绑定、既有10155条Alex消息、adapter／Key及study配置保持。新微信语音已入库且assistant历史无回显头；用户已明确确认“已收到合并回复，没有独立通知”，真实显示验收通过；运维与回滚见operations-log。
 
 **首轮已完成 · Gateway语音与缓存同步（2026-10-20）：** 首尔已部署`b0c9252`，包含Noting修复`02964de`及严格的`Voice message transcript: <转录结果>`前缀。Alex复用原生STT Command Provider、SILK解码和原有Key，调用`paraformer-v2`非实时文件API；私有阿里临时链接48小时失效获用户接受，原生媒体缓存24小时龄期清理，转录message正常入库。真实新微信语音已转录，Alex回复由用户确认收到，临时文件清理通过；33项相关回归、57项适配离线测试和冻结10检查通过。配置只改Alex，原绑定及既有10153条消息保持；study／host配置不变。Profile Home已是8文件白名单，两Profile缓存探针实测均不回Mac，快照只有3数据库，无须改同步策略。13.45秒预检的主要耗时为上传6.12秒和结果下载3.39秒，真实新消息入库到Alex生成回复另约30.75秒，不混算为ASR耗时；首轮未实施音频压缩。详见运维记录和ignored `.hermes-dev/gateway-voice-20261020/`。stuck技能已按用户要求改为完整报告直接贴用户、默认不派子Agent；移动端网络调查独立保留。

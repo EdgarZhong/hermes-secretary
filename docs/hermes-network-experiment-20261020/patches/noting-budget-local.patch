@@ -1,0 +1,157 @@
+diff --git a/docs/07-scheduler-notebook-noting-compaction-redesign.md b/docs/07-scheduler-notebook-noting-compaction-redesign.md
+index 4df95b4098..9e770a54cd 100644
+--- a/docs/07-scheduler-notebook-noting-compaction-redesign.md
++++ b/docs/07-scheduler-notebook-noting-compaction-redesign.md
+@@ -99,7 +99,7 @@ Round Two 的 2 秒与 500 秒样本表明多轮 Noting 会产生显著重复输
+ | 完整工作视图 | 任务开始和需要续 Turn 时由 runtime 附完整工作 Notebook；同一 Turn 的成功工具返回完整单条结果，足以跟踪变更 |
+ | 有界续跑 | 同一 child 最多五个原生 Turn，既有每 Turn 内部循环上限继续使用；child 禁止自行 auto-compaction |
+ | 显式结束 | `finish_noting(reason)` 成功才是正常结束信号；文本完成不算。标记后原生 Turn 返回才由 runner 提交，不把工具结果冒充提交收据 |
+-| 预算兜底 | 五 Turn 用尽或已处理的 context overflow，仍以 forced 路径尝试提交当前合法完整状态，包括无修改视图；其他失败／中断不伪报成功 |
++| 预算兜底 | 原生每 Turn 迭代预算或五 Turn 预算用尽，均尝试提交当前合法完整状态，包括无修改视图；已处理的 context overflow 同样保留合法状态；其他失败／中断不伪报成功。所有 Trigger kind 共用此机制 |
+ | 原子提交 | 沿同一事务验证参与开关、Anchor 有效性、版本与来源，插入完整 Snapshot 并按路径重选 pointer；晚结束的旧 Anchor 不回退当前结果 |
+ | 重启与失败 | 重启不自动恢复 child；释放 admission、强引用、DB 等资源。Framework 当前排队为内存机制，不虚构重启后必达承诺 |
+ | 身份与引用 | 新引用以当前合法路径校验；继承来源保留现有逐条版本绑定的依据，不可借一条合法旧引用给另一条新内容兜底 |
+@@ -110,7 +110,7 @@ Noting **仅**拥有 `conversation_history`、`notebook_show`、`notebook_mainta
+ 
+ 只保留一种 Noting runtime profile。Trigger kind 仍记录 `idle / force / manual / auto_compaction` 以供审计；不再用工具名单、结束工具或任务 profile 区分是否压缩。`finish_noting` 不请求父压缩；正常／forced 提交均不调用 `compact_parent`。先前 compact_parent 的薄封装可被父 runtime 内部原生压缩调用吸收，但不得继续作为子工具。
+ 
+-**结束枚举与展示：** 保留既有审计的三值：模型显式结束为 `finish_noting`，五Turn用尽为 `forced`，已处理的上下文溢出兜底为 `context_overflow`；`compact_parent` 退出。三者只在成功提交合法完整状态后出现在本次完成Framework中；`forced`／`context_overflow`同时说明未完成限制。元数据不进Notebook业务payload，也不混入普通notebook_show；不为Main开放内部审计查询。此处定案的是本次改版运行／反馈契约，不改写旧轮次当时的验收事实。
++**结束枚举与展示：** 保留既有审计的三值：模型显式结束为 `finish_noting`，原生每 Turn 迭代预算或五Turn预算用尽为 `forced`，已处理的上下文溢出兜底为 `context_overflow`；`compact_parent` 退出。`forced` 是预算收尾的结束标记，与 `force` Trigger kind 无关；Idle、手动、Force、Auto Compaction 共用处理。三者只在成功提交合法完整状态后出现在本次完成Framework中；`forced`／`context_overflow`同时说明未完成限制，通知不得将迭代上限误称为五Turn用尽。元数据不进Notebook业务payload，也不混入普通notebook_show；不为Main开放内部审计查询。2026-10-20用户再次确认预算耗尽即保存合法工作态，优先修代码机制，模型为何反复检索另行调查；不改变模型、Prompt或预算。此处补充当前运行／反馈契约，不改写旧轮次当时的验收事实。
+ 
+ ## 4. Notebook 数据与工具契约
+ 
+diff --git a/secretary/noting_child.py b/secretary/noting_child.py
+index fb5d6ce11d..4736985ada 100644
+--- a/secretary/noting_child.py
++++ b/secretary/noting_child.py
+@@ -30,6 +30,7 @@ from uuid import uuid4
+ from types import SimpleNamespace
+ 
+ from agent.message_metadata import build_noting_task_wrapper
++from agent.turn_failure_copy import is_max_iteration_handoff
+ from hermes_state_secretary_notebook import RUNTIME_PROFILES, TRIGGER_TYPES
+ from secretary.noting_prompts import DEFAULT_NOTING_TASK_INSTRUCTION, NOTING_CONTINUATION_INSTRUCTION
+ 
+@@ -434,6 +435,7 @@ class NotingTaskOutcome:
+     notice_error: Optional[str] = None
+     commit_result: Optional[dict] = None
+     termination: Optional[dict] = None
++    termination_summary: Optional[str] = None
+ 
+ 
+ class _NotingFailureNotice:
+@@ -647,6 +649,16 @@ def _run_child_turns(
+                 or isinstance(result, dict) and result.get("failure_reason") == "context_overflow"):
+             _force_task_close(child, runtime_profile, outcome, termination_type="context_overflow")
+             return
++        if is_max_iteration_handoff(result) and not result.get("error") and not result.get("failure_reason"):
++            if getattr(child, "_secretary_noting_terminal_action_done", False):
++                outcome.status = "completed"
++            else:
++                _force_task_close(child, runtime_profile, outcome)
++                outcome.termination_summary = (
++                    "The native per-Turn iteration budget ended; the current legal Notebook working state "
++                    "was committed with unfinished work possible."
++                )
++            return
+         if not _turn_completed(result):
+             outcome.status = "failed"
+             outcome.error = str(
+@@ -719,7 +731,7 @@ def _commit_when_complete(
+             if getattr(parent, "_secretary_conversation_ref", None) != conversation_ref:
+                 logger.info("Committed Noting notice skipped after Parent switched Conversations")
+                 return
+-            summary = termination.get("reason") or {
++            summary = outcome.termination_summary or termination.get("reason") or {
+                 "forced": "The five-Turn budget ended; the legal working view was committed with unfinished work possible.",
+                 "context_overflow": "The context window was exhausted; the legal working view was committed with unfinished work possible.",
+             }[termination["type"]]
+diff --git a/secretary/noting_notifications.py b/secretary/noting_notifications.py
+index a405e41327..1272b08c6e 100644
+--- a/secretary/noting_notifications.py
++++ b/secretary/noting_notifications.py
+@@ -15,7 +15,7 @@ def completion_body(snapshot, *, termination, summary, settings, profile_home, d
+     entry_count = sum(len(entries) for entries in snapshot["payload"].values())
+     kind = termination["type"]
+     if kind == "forced":
+-        summary += " The five-Turn budget ended; some Noting responsibilities may remain unfinished."
++        summary += " The Noting execution budget ended; some Noting responsibilities may remain unfinished."
+     elif kind == "context_overflow":
+         summary += " The context window was exhausted; some Noting responsibilities may remain unfinished."
+     result = (
+diff --git a/tests/secretary/test_r3_child.py b/tests/secretary/test_r3_child.py
+index 96c91fd15b..eaf34849e3 100644
+--- a/tests/secretary/test_r3_child.py
++++ b/tests/secretary/test_r3_child.py
+@@ -313,6 +313,71 @@ def test_native_text_completion_continues_five_turns_same_prefix(native_parent,
+     assert active_noting_task_count() == 0
+ 
+ 
++@pytest.mark.parametrize("trigger", ["idle", "force", "manual", "auto_compaction"])
++@pytest.mark.parametrize("changed", [False, True])
++def test_native_iteration_limit_commits_legal_work_for_every_trigger(
++    native_parent, database, monkeypatch, trigger, changed,
++):
++    parent, client = native_parent
++    monkeypatch.setattr("secretary.noting_child.NOTING_MAX_ITERATIONS", 1)
++    first = tool_response("notebook_maintain", create_args(database)) if changed else tool_response("notebook_show", {})
++    client.chat.completions.create.side_effect = [first, response("Work remains after the iteration budget.")]
++    admission = database.noting_admit(ref(database), "m2", kind=trigger)
++    outcome = run_noting_task(
++        parent, admission_id=admission, conversation_ref=ref(database), anchor_message_uid="m2",
++        trigger_type=trigger, runtime_profile="NOTING", task_instruction=DEFAULT_NOTING_TASK_INSTRUCTION,
++    )
++    assert outcome.committed and outcome.status == "completed", outcome
++    assert outcome.turns == 1 and outcome.termination == {"type": "forced"}
++    snapshot = database.notebook_current(ref(database))
++    assert len(snapshot["payload"]["work"]) == int(changed)
++    assert database.notebook_snapshot_audit(outcome.snapshot_id)["termination"] == {"type": "forced"}
++    assert database.noting_child(admission)["status"] == "completed"
++    notices = [row for row in database.get_messages("parent")
++               if (row.get("display_metadata") or {}).get("noting_run_output")]
++    assert len(notices) == 1
++    assert "Termination: forced" in notices[0]["content"]
++    assert "iteration" in notices[0]["content"]
++    assert "may remain unfinished" in notices[0]["content"]
++    assert "five-Turn" not in notices[0]["content"]
++    assert active_noting_task_count() == 0
++
++
++def test_finish_at_native_iteration_limit_retains_explicit_finish(native_parent, database, monkeypatch):
++    parent, client = native_parent
++    monkeypatch.setattr("secretary.noting_child.NOTING_MAX_ITERATIONS", 1)
++    client.chat.completions.create.side_effect = [
++        tool_response("finish_noting", {"reason": "Current work checked"}), response("Budget boundary summary"),
++    ]
++    outcome = run_task(parent)
++    assert outcome.committed, outcome
++    assert outcome.termination == {"type": "finish_noting", "reason": "Current work checked"}
++
++
++@pytest.mark.parametrize("failure", ["failed", "interrupted", "error", "failure_reason"])
++def test_iteration_exit_does_not_commit_actual_failed_or_interrupted_work(
++    native_parent, database, monkeypatch, failure,
++):
++    parent, _client = native_parent
++    original = build_noting_child
++
++    def construct(*args, **kwargs):
++        child = original(*args, **kwargs)
++
++        def run(**_kwargs):
++            assert json.loads(notebook_maintain(child, create_args(database)))["success"]
++            return {"completed": False, "final_response": "Partial work", "turn_exit_reason": "max_iterations_reached(50/50)",
++                    failure: True if failure in {"failed", "interrupted"} else "provider failure"}
++
++        child.run_conversation = run
++        return child
++
++    monkeypatch.setattr("secretary.noting_child.build_noting_child", construct)
++    outcome = run_task(parent)
++    assert not outcome.committed and database.notebook_current(ref(database)) is None
++    assert active_noting_task_count() == 0
++
++
+ def test_native_child_next_request_receives_projected_working_tool_result(native_parent, database):
+     parent, client = native_parent
+     baseline = NotebookStore(database, ref(database), anchor_message_uid="m2")

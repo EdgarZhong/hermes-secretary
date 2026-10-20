@@ -1,0 +1,27 @@
+请接手 Hermes 移动端弱网第一板块，完成实现、必要验证，并按现有流程上线。
+
+用户已授权：今晚先优化及修已知缺陷；随后精简网络实测；拿到结果后才设计第二板块。产品表现和交互保持不变。首尔源站固定，终端不要求 VPN/代理 App。
+
+先读 PHASE1-IMPLEMENTATION.md。核对当前前后端 HEAD、工作树及仓库说明，保留他人未提交修改。附件 SHA 是审计基线，不能覆盖线上新代码。
+
+今晚重点：
+1. 对必要 REST JSON/静态文本使用 Caddy 现有 gzip；已生效则不重复。只给内容哈希静态资源适当浏览器长期缓存。
+2. usage-view 的现有 session fallback 使用 summary=true。
+3. 复用图片验证 helper 和受鉴权 fs/download：新增默认关闭的 prefer_image_refs 只读投影，cards/详情显式启用；前端真正进入视口才 fetch。失败保持 inline。这是削掉大历史 JSON 的关键，不能直接 inline_images=false。
+4. 复用现有按需详情入口，只停止无消费者需求的后台补水。
+5. 闭合 Thinking 延迟首次 Markdown 挂载；首次展开后保持原状态/动画。稳定未变 detailSources 引用。
+6. 修纯图片受理缺口：扩展原持久行与 staged worker 认领，同一次受理始终同一 row/UID；保留 caption/图片 refs，不能只改空 text guard，不能改模型原始 text。
+7. 独立应用 patches/noting-budget-local.patch，在实际 HEAD 定向验证 Commit Gate 和预算收尾。
+8. 部署补充真正 upstream ready 与 bootstrap/WS/ready 分段诊断。
+
+图片投影、按需详情、纯图片认领均作为边界明确的小补丁。先尽力完成指定验证；若实际代码证明必须引入新媒体/同步/提交机制，或单行认领不成立，记录具体阻断，仅该项后移，其余照常上线。“可回退”不代表可以跳验证。
+
+今晚不默认改 200 行分页，不删写后强制刷新，不放松 Send 状态，不换 SSE，不做持久缓存/event log/认证状态机，不改模型/Prompt/预算/数据库 schema。认证和 compact 位置未证明的根因不能猜改。
+
+遵守发布流程，在 Web turn、Noting child 和相关 Gateway 任务空闲窗口切换。Caddy reload 可能关闭现有 WS，验重连/草稿。后端就绪再发新前端，核对各 Noting 宿主版本。备份沿用现有一致性方式；不要复制正在写入的 SQLite 主文件冒充完整备份，也不要起第二套生产 scheduler 当 canary。
+
+已有上线授权，完成 diff、验证和回退准备后继续执行；真实访问/审批阻断须说明来源，不绕过。
+
+上线后执行 EXPERIMENT.md：10–15 分钟，20 分钟止步。蜂窝直连一轮、同机 Wi-Fi 一轮，必要时回蜂窝一次。Cloudflare 只作现成入口可选短测，不建四格矩阵、不切主域、不重建 Tunnel、不买 Argo。
+
+最后回交实施清单、commit/部署 SHA、验证原始结果、新旧字节/fallback、手机逐样本时序、残余问题与可执行回滚。第二板块等结果后再设计。
