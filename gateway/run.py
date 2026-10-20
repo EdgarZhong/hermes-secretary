@@ -5548,12 +5548,10 @@ async def _start_gateway_start_control_socket(runner):
     import atexit
     _control_server = None
     try:
-        # Started immediately after the PID-file claim: winning that O_EXCL race is the moment this process
-        # becomes the authoritative gateway for its HERMES_HOME, so from here on "does a socket answer?" is
-        # a truthful liveness/identity query for updater and fleet consumers. Strictly non-fatal: a bind
-        # failure only means consumers fall back to the process-scan/state-file layer, exactly as before
-        # this feature. See #92091.
+        # Start after the PID-file claim: socket identity proves this home's authoritative gateway.
+        # Binding remains non-fatal; consumers fall back to process/state-file discovery (#92091).
         from gateway.control_socket import GatewayControlServer
+        from gateway.control_conversation_binding import conversation_binding_verb
         from gateway.run_profile_reconcile import (
             migrate_profile_identity_verb, purge_profile_identity_verb,
             unserve_profile_verb, serve_profile_verb,
@@ -5607,6 +5605,7 @@ async def _start_gateway_start_control_socket(runner):
         _control_server = GatewayControlServer(
             verb_handlers={"pause-for-update": _pause_for_update_handler,
                            "rescan-profiles": _rescan_profiles_handler,
+                           "conversation-binding": conversation_binding_verb(runner, _main_loop),
                            "unserve-profile": unserve_profile_verb(runner),
                            "serve-profile": serve_profile_verb(runner),
                            "migrate-profile-identity": migrate_profile_identity_verb(runner),
