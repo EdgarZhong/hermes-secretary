@@ -2,6 +2,24 @@
 
 维护实际部署、故障处理、验证与回滚点；步骤和稳定布局见[部署SOP](cloud-deployment-sop.md)，当前任务只在根[CLAUDE](../CLAUDE.md)。以下时间均为Asia/Shanghai；PID、指纹和测试结论只对应记录时点，不代表实时状态。凭据、令牌、原始私人材料不写入本文件。
 
+## 2026-10-20晚 · Gateway语音与缓存同步
+
+用户确认使用`paraformer-v2`非实时文件转写，复用Hermes原生STT Command Provider、原生SILK解码和已配置的DashScope Key，不接实时识别API。转写成功正文严格使用`Voice message transcript: <转录结果>`，取代此前来源／可能识别错误说明。用户接受阿里私有临时上传空间及48小时链接失效；本地原始媒体仍按Hermes原生24小时龄期清理，不作为永久原声归档，转录文字正常随message持久化。凭据只在获授权线上环境，不入Git。
+
+Noting预算收尾修复已提交并push `02964de`；语音前缀已提交并push `b0c9252`，前缀／原生Command Provider相关5文件33测试通过、冻结10检查通过。个人阿里适配及57项离线通过测试只放ignored `.hermes-dev/gateway-voice-20261020/`，正式脚本安装在服务器`~/scripts/alex/paraformer_stt.py`，root:root／0555＋immutable，SHA256为`e5d66d877805421d6a036d72b70369bafa4bd6aa867a96df0d562e401bb1fc6e`；未写入公开核心。
+
+缓存同步已核实无需更改策略：Mutagen的Profile配置lane仅8文件白名单（Alex／study各`config.yaml`、`SOUL.md`、`nowledge-mem.json`、`profile.yaml`）；两端cache、日志、媒体和其它运行目录已排除。在服务器Alex／study的cache各建唯一临时标记后强制flush，两者均未到Mac，已删除探针。数据库完成包实查只有`Alex/state.db`、`Alex/projects.db`、`study/state.db`，不含缓存。Workspace双向同步另独立保持。证据为ignored目录的`sync-exclusion.json`。
+
+阿里业务空间原有Key对`paraformer-v2`上传策略探测HTTP200、ACL为private；未输出Key／签名。服务器原无pilk，通过官方PM和现有锁请求silk；首次缺clang编译失败，安装系统clang后重试PM成功。个人辅助脚本误用`import yaml`导致预检失败，独立只读诊断确认项目应使用`hermes_yaml`；新旧PM generation仅新增pilk0.2.4，其余包版本和锁一致，正式启动依赖正常，重启前原服务保持旧环境lease。已修辅助脚本，不再额外重建环境。未裸pip、改锁或修改模型／Prompt／预算。
+
+23:27首尔快进部署`b0c9252385f52d8212973e1e9b2fa9ee0d362b21`，一起包含Noting窄修复；正常停启Web／Gateway，微信connected，原Conversation绑定不变，部署前Alex10153条及host2条消息逐行内容与身份无改变／缺失。仅Alex新增STT command配置与自己0600的`.env`中的既有DashScope Key，使用原生profile secret scope及`env_passthrough`；host／study配置保持。首次尝试因辅助脚本多余Key字符限制拒绝，在写入Key前已回滚源码／配置并正常启服；改用原生dotenv写入接口后二次部署通过。未向其它Profile或全局进程注入Key。
+
+真实验证分两层：已有微信SILK经原生解码／Command Provider／阿里API预检成功（22字，13.49秒），不写Conversation、不触发Alex；随后用户新发微信语音于23:28:52入库，正文为timestamp后接`Voice message transcript: 这是一条语音消息。`，Alex在约30.75秒后生成回复，用户明确确认微信已收到，形成新入站到回复端到端证据。两层处理后原始SILK保持，`hermes-silk-*`及`hermes-cmd-stt-aliyun-paraformer-*`无残留。真实云失败未主动制造；上传／HTTP／任务失败、坏响应、超时、空结果由57项离线测试覆盖。未再次触发生产Noting预算耗尽或恢复历史failed任务。
+
+应用户询问另测同一旧音频分段：总13.4534秒，SILK解码1.2108秒、获取上传凭证1.4020秒、上传340844B WAV6.1175秒、提交0.1611秒、两次轮询0.1586秒、轮询sleep及本地开销1.0089秒、结果下载3.3945秒。上传＋下载约71%，未进一步分离DNS／TLS／正文传输，不能把耗时都归因模型计算，也不能将Alex约31秒响应时间算作ASR耗时。仍保持用户已定非实时API；未扩展为性能优化任务。
+
+备份与回滚：服务器`/home/ubuntu/.local/state/hermes-secretary/gateway-voice-20261020/deploy-20261020T232706/`含部署前3库在线备份、Alex原config／env、host／study原config和旧提交；`deploy-receipt.json`、`preflight.json`、`timing.json`、`e2e-receipt.json`在同级工作目录。撤销须先查空闲，正常停止服务，退回`fcf5d08`并只撤回Alex此次STT／Key新增、移除此次适配脚本后启服；不回盖运行数据库或用户后续配置。原声和转录私有材料仅留服务器。stuck技能已按本次用户明确要求改为完整报告直接贴给用户、默认不派subagent，由用户转网页端调研。
+
 ## 2026-10-20 · 第一版收尾
 
 用户确认部署基本告一段落、第一版正常可用，要求精简README／AGENTS／CLAUDE并保持后端、前端、插件三个工作区干净。稳定事实、协作规则和当前状态分别归位；历史轮次报告及固定证据不改写。

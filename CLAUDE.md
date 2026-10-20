@@ -6,14 +6,14 @@
 
 ## 当前阶段
 
-**当前任务 · Gateway语音与缓存同步（用户2026-10-20确认）：** `paraformer-v2`非实时文件转写，复用原生STT Command Provider和已有API Key；成功正文严格为`Voice message transcript: <转录结果>`，替代先前来源／识别错误提示。用户接受阿里私有临时上传空间及48小时链接失效，不为此另开OSS。转录文字按正常消息持久化；本轮清理适配临时文件，不删除原始媒体缓存。与Noting修复一起部署首尔并验证失败、清理、真实微信语音；未有真实输入不得冒称端到端通过。另核对Profile Home同步，排除持续生成的运行缓存，保留文档／配置及既定数据库快照；移动端网络调查独立保留。实现子Agent只产出ignored阿里脚本和离线测试，主会话亲审、接线与部署。
+**已完成 · Gateway语音与缓存同步（2026-10-20）：** 首尔已部署`b0c9252`，包含Noting修复`02964de`及严格的`Voice message transcript: <转录结果>`前缀。Alex复用原生STT Command Provider、SILK解码和原有Key，调用`paraformer-v2`非实时文件API；私有阿里临时链接48小时失效获用户接受，原生媒体缓存24小时龄期清理，转录message正常入库。真实新微信语音已转录，Alex回复由用户确认收到，临时文件清理通过；33项相关回归、57项适配离线测试和冻结10检查通过。配置只改Alex，原绑定及既有10153条消息保持；study／host配置不变。Profile Home已是8文件白名单，两Profile缓存探针实测均不回Mac，快照只有3数据库，无须改同步策略。13.45秒预检的主要耗时为上传6.12秒和结果下载3.39秒，真实新消息入库到Alex生成回复另约30.75秒，不混算为ASR耗时；性能优化未立项。详见运维记录和ignored `.hermes-dev/gateway-voice-20261020/`。stuck技能已按用户要求改为完整报告直接贴用户、默认不派子Agent；移动端网络调查独立保留。
 
-**已完成本地窄修复（2026-10-20晚用户确认并要求提交）：** Noting原生每Turn迭代预算耗尽时，经既有Commit Gate保存合法工作态，所有触发来源共用，与`force`触发无关；末次调用已成功finish时保留显式结束。无模型／Prompt／预算变更。13个新增边界场景通过，所在测试文件54项通过，冻结10检查通过；相关5文件首次156通过／2失败，两项均在原版复现（旧Snapshot ID正文断言、旧文件活动任务计数污染），不冒称全绿。修复已纳入本次提交，尚未部署，不能反推线上已修或恢复旧失败任务。生产任务21:38:15–21:51:31达到50次上限后failed、无Snapshot，`/notebook`为空；口径已同步07，证据在`.hermes-dev/pinned-mobile-20261020/`。
+**Noting预算窄修复已上线（2026-10-20晚用户确认）：** Noting原生每Turn迭代预算耗尽时，经既有Commit Gate保存合法工作态，所有触发来源共用，与`force`触发无关；末次调用已成功finish时保留显式结束。无模型／Prompt／预算变更。13个新增边界场景通过，所在测试文件54项通过，冻结10检查通过；相关5文件首次156通过／2失败，两项均在原版复现（旧Snapshot ID正文断言、旧文件活动任务计数污染），不冒称全绿。`02964de`已随`b0c9252`部署，未重跑线上预算耗尽场景、未恢复旧失败任务。21:38:15–21:51:31旧生产任务达到50次上限后failed、无Snapshot为部署前事实；口径已同步07，原证据在`.hermes-dev/pinned-mobile-20261020/`。
 
 **2026-10-20用户确认：部署基本告一段落，第一版可以正常使用。** 本轮文档／仓库整理及追加微信修复已完成，17:58部署首尔；后续按新任务推进，不自动重开旧挂账。
 
 - 首尔正式入口、双SPA、Alex / study Profile、NM / Ebbinghaus迁移及三条Mutagen同步已落地；旧部署等待、TCC阻塞与初始化过程不再是当前任务。
-- 已上线后端功能基线 `fcf5d08ac587b43c5aafd2f3e8656a6c5b147432`；前端 `83285d2be259f1ee9f7e24bba6dd4c70688831fe`；插件收尾 `f11a8db6c32e109bdc1de6c39c2920bcad14d617`已同步。后续纯文档提交不等于运行版本改变。
+- 已上线后端功能基线 `b0c9252385f52d8212973e1e9b2fa9ee0d362b21`（含Noting预算修复及语音前缀）；前端 `83285d2be259f1ee9f7e24bba6dd4c70688831fe`；插件收尾 `f11a8db6c32e109bdc1de6c39c2920bcad14d617`已同步。后续纯文档提交不等于运行版本改变。
 - Alex默认 `kimi-coding/k3-256k`，窗口262144、thinking High；Noting / Scheduler开启，联合Idle500秒／131072 tokens。已有Conversation保持自身模型配置；study不设默认模型，NM Thread目标仍继承考研Space，可选`thread_sync_space`能力保留。
 - 微信绑定采用原生Gateway control socket与Conversation ref；Alex工具 `~/scripts/alex/weixin_bind.py`，调用方直接 `bind --self`。Kimi凭据已补到Alex自己的受限`.env`；多余Gateway凭据注入与用户副本已回滚，正常重启后连接及原绑定保持。独立K3请求HTTP200；未把它冒称新微信消息端到端验收。
 - Prompt缓存清理已按当时授权完成，后续沿原生正常Turn懒构建，不追加离线重建。个人工具统一`~/scripts/`，只读保护、显式非空`--space`等规则见AGENTS／08。
