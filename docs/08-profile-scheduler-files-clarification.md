@@ -16,6 +16,14 @@ Profile 选择器仅出现在首页／New Chat，用于决定即将创建的 Con
 
 各 Profile 可以配置相同或不同的 `terminal.cwd`。共用 Workspace 只是可选部署方式，不是产品前提，不合并 Home、数据库、记忆、指令或会话历史。打开 Files 不修改任何已有 Conversation 的 cwd。
 
+### 1.1 模型窗口与微信入口绑定（2026-10-20 用户确认）
+
+同一 Conversation 的 Web 与微信入口共用历史及其实际模型路由；冷恢复统计按该路由解析 Context 上限，不能借用 Profile 当前默认模型的窗口。Kimi Coding 的 `k3-256k` 原生窗口为262144；DeepSeek 的自定义500000只在匹配的模型路由上生效，未知元数据不得以256000兜底冒充已知窗口。DeepSeek模型选择器保留一个正式Provider。
+
+微信绑定到持久 Conversation，跨Runtime回收、服务重启及compact沿同一Conversation接续，不自动退回另一条微信独立会话；显式解绑／新会话仍由用户决定。绑定记录复用原生路由条目的metadata，adapter保留接收者／投递者身份，不能改写被绑定Main的source或session_key来伪装绑定。工具成功须持久保存该身份关系。
+
+保持Hermes原生收发：微信消息触发的Turn，由adapter投递原生回复；Web、Instant Reminder及其它入口触发的Turn，只有显式调用发送工具才发微信。Web显示与发送微信是两个独立动作，不把全部Web回答自动转微信。
+
 ## 2. 冷态 Instant Reminder 的宿主责任
 
 ### 2.1 Runtime 可回收，排期不能因此停止
@@ -28,7 +36,7 @@ Profile 选择器仅出现在首页／New Chat，用于决定即将创建的 Con
 
 ### 2.2 投递、恢复与时效
 
-正常负载下采用已认可的约 5 秒到期扫描节奏。该节奏描述发现到期工作的频率，不是模型完成响应、外部网络送达或用户阅读的 5 秒硬保证；资源、原生接纳或 Provider 失败必须如实保留和报告，不能静默忽略。
+正常负载下，冷态Instant到期应在5秒扫描窗口内被发现并开始投递尝试；不增加来源名称白名单，合法导入Main同样覆盖。该节奏描述发现到期工作的频率，不是模型完成响应、外部网络送达或用户阅读的 5 秒硬保证；资源、原生接纳或 Provider 失败必须如实保留和报告，不能静默忽略。
 
 持久 `conversation_ref` 及其所属 Profile 是投递身份依据。若 Main Runtime 不存在，宿主必须沿原生恢复能力定位正确的当前物理 Session／合法 continuation，恢复 Main，再经原有 ingress 与原子接纳入口处理 Reminder。不得新建一个替代用户 Conversation、借用另一 Profile、错投同 Profile 的微信会话，或改成独立 Cron／Noting 子 Agent 执行。
 

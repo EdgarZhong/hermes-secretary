@@ -10,7 +10,6 @@ import threading
 
 logger = logging.getLogger(__name__)
 SCAN_INTERVAL_SECONDS = 5.0
-_LOCAL_MAIN_SOURCES = frozenset({"tui", "desktop", "cli"})
 
 
 def managed_profile_homes():
@@ -26,10 +25,14 @@ def _local_route(db, conversation_ref):
     from secretary.reminders import active_route
 
     route = active_route(db, conversation_ref)
-    # Messaging routes belong to their adapter even when a browser once viewed them.
-    if not route or route.get("session_key") or route.get("source") not in _LOCAL_MAIN_SOURCES:
+    from secretary.noting_runtime import _CHILD_SOURCES, _delegate_child_row
+    from tui_gateway.session_lifecycle import _is_gateway_owned_source
+
+    # The durable Main owns its schedule. Imported/local Main sources need no
+    # browser-created runtime to become eligible; actual messaging lanes stay adapter-owned.
+    if (not route or route.get("session_key") or route.get("source") in _CHILD_SOURCES
+            or _is_gateway_owned_source(route.get("source", ""))):
         return None
-    from secretary.noting_runtime import _delegate_child_row
     return None if _delegate_child_row(route) else route
 
 

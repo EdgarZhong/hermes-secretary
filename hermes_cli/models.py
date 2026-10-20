@@ -1681,7 +1681,7 @@ def _profile_live_catalog(normalized: str) -> Optional[list[str]]:
         return merge_profile_catalog(normalized, profile, list(live) if live else None)
     if not (profile.auth_type == "api_key" and profile.base_url):
         return list(profile.fallback_models) or None
-    api_key, base_url = _api_key_credentials(normalized)
+    api_key, base_url = _api_key_credentials(profile.name)  # Auth registry uses canonical names.
     return probe_profile_catalog(normalized, profile, api_key, base_url or profile.base_url or None)
 
 

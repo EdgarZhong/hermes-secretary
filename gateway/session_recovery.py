@@ -333,6 +333,10 @@ class SessionRecoveryMixin:
         db = self._db_for_key(session_key)
         if not db or not source:
             return
+        from gateway.conversation_binding import is_bound
+        if is_bound(self._entries.get(session_key)):
+            # The adapter owns ingress/delivery; the bound Main keeps its durable identity.
+            return
         recorder = getattr(db, "record_gateway_session_peer", None)
         if not callable(recorder):
             return

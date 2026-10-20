@@ -76,7 +76,7 @@ def _restored_cold_usage(session: dict) -> dict:
                 "context_used": used,
                 "context_estimated": True, "context_source": context["source"],
             }
-            limit = _configured_context_length()
+            limit = _restored_context_length(session, db, stored_id, model, _provider)
             if limit > 0:
                 usage["context_max"] = limit
                 usage["context_percent"] = max(0, min(100, round(used / limit * 100)))
@@ -86,16 +86,36 @@ def _restored_cold_usage(session: dict) -> dict:
         return {}
 
 
-def _configured_context_length() -> int:
-    """The scoped profile's declared ``model.context_length``, or 0 if undeclared/unreadable."""
+def _restored_context_length(session, db, stored_id, model, provider) -> int:
+    """Resolve the saved route's window without constructing an Agent or probing a provider."""
     try:
-        from hermes_cli.config import load_config_readonly
+        from types import SimpleNamespace
+        from agent.agent_init import config_context_length_for_runtime
+        from agent.model_metadata import _endpoint_scoped_context_length, get_cached_context_length
+        from hermes_cli.config import get_compatible_custom_providers, get_custom_provider_context_length, load_config_readonly
 
-        model = (load_config_readonly() or {}).get("model")
-        value = model.get("context_length") if isinstance(model, dict) else None
+        config = load_config_readonly() or {}
+        row = db.get_session(stored_id) or {}
+        saved = _parse_model_config(row.get("model_config"), quiet=True)
+        runtime = session.get("agent")
+        route = saved.get("gateway_runtime") or {}
+        provider = provider or saved.get("provider") or route.get("provider") or ""
+        base_url = (getattr(runtime, "base_url", "") or saved.get("base_url")
+                    or route.get("base_url") or "")
+        identity = SimpleNamespace(model=model, provider=provider, base_url=base_url)
+        pin = config_context_length_for_runtime(identity, config)
+        custom = get_custom_provider_context_length(
+            model=model, base_url=base_url, custom_providers=get_compatible_custom_providers(config))
+        known = _endpoint_scoped_context_length(model, base_url)
+        cached = get_cached_context_length(model, base_url)
+        value = pin or custom or known or cached
+        if not value:
+            from agent.models_dev import get_model_info
+            info = get_model_info(provider, model, config=config, allow_network=False)
+            value = getattr(info, "context_window", None)
         return int(value) if isinstance(value, int) and not isinstance(value, bool) and value > 0 else 0
     except Exception:
-        logger.debug("configured context length read failed", exc_info=True)
+        logger.debug("saved route context length read failed", exc_info=True)
         return 0
 
 

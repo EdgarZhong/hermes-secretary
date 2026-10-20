@@ -74,6 +74,30 @@ def test_bound_agent_new_native_reading_supersedes_cold_estimate(saved_context):
     assert usage["context_source"] == "provider_usage"
 
 
+def test_cold_k3_uses_its_native_window_after_profile_switch_to_deepseek(saved_context):
+    home, history = saved_context
+    db = server._get_db()
+    db.patch_session_model_config("stored", {
+        "model": "k3-256k", "provider": "kimi-coding", "base_url": "https://api.kimi.com/coding"})
+    persist_usage_anchor(SimpleNamespace(session_id="stored", _session_db=db),
+                         capture_usage_anchor(9000, 20, history, model="k3-256k"))
+    (home / "config.yaml").write_text(
+        "model:\n  default: deepseek-flash\n  provider: deepseek\n  context_length: 500000\n")
+    session = {"agent": None, "history": [], "session_key": "stored", "profile_home": str(home),
+               "model_override": {"model": "k3-256k", "provider": "kimi-coding"}}
+    cold = server._session_usage_snapshot(session)
+    assert cold["context_used"] == 9020
+    assert cold["context_max"] == 262144
+    assert cold["context_percent"] == 3
+    session["agent"] = SimpleNamespace(model="k3-256k", provider="kimi-coding",
+        context_compressor=SimpleNamespace(context_length=262144, last_prompt_tokens=0))
+    assert server._session_usage_snapshot(session)["context_max"] == 262144
+    from agent.model_metadata import get_model_context_length, save_context_length
+    save_context_length("k3-256k", "https://api.kimi.com/coding", 256000)
+    assert get_model_context_length("k3-256k", base_url="https://api.kimi.com/coding",
+                                    provider="kimi-coding") == 262144
+
+
 def test_native_breakdown_read_keeps_its_estimate_for_next_cold_binding(saved_context, monkeypatch):
     home, history = saved_context
     db = server._get_db()

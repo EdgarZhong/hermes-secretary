@@ -146,6 +146,21 @@ def test_no_client_cold_host_executes_native_main_and_durable_witness(cold):
     assert len(cold.calls) == 1
 
 
+def test_imported_main_runs_cold_without_a_browser_source_registration(cold):
+    db = cold.dbs[1]
+    db._execute_write(lambda conn: conn.execute(
+        "UPDATE sessions SET source='pi-import', created_source='pi-import' WHERE id='stored'"))
+    ref, schedule_id = create(db)
+    db.end_session("stored", "ws_orphan_reap")
+    assert not server._sessions
+    scheduler_host.scan_once()
+    _runtime_id, session = next(iter(server._sessions.items()))
+    settle(session)
+    assert len(cold.calls) == 1
+    assert db.resolve_conversation_ref(session["agent"].session_id) == ref
+    assert row(db, schedule_id)["state"] == "done"
+
+
 def test_no_due_and_disabled_owner_do_not_build_or_claim(cold):
     scheduler_host.scan_once()
     assert not server._sessions and not cold.built and not cold.polls

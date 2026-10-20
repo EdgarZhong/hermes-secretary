@@ -154,7 +154,11 @@ class GatewayAgentCacheMixin:
         is never persisted and is re-resolved. No-op when an in-memory override or nothing exists."""
         from gateway.run import _resolve_runtime_agent_kwargs_for_provider
         store = getattr(self, "session_store", None)
-        if self._session_model_override(session_key) is not None or store is None:
+        if store is None:
+            return
+        from gateway.conversation_binding import is_bound
+        bound = is_bound(getattr(store, "_entries", {}).get(session_key))
+        if self._session_model_override(session_key) is not None and not bound:
             return
         try:
             persisted = store.get_model_override(session_key)

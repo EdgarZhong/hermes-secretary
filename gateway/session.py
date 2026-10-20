@@ -941,6 +941,10 @@ class SessionStore(
         with self._lock:
             self._ensure_loaded_locked()
             observed = self._entries.get(session_key)
+        if not force_new and observed is not None:
+            from gateway.conversation_binding import restore_binding
+            if restore_binding(self, observed):
+                self._save_entries()
         # Phase 1b (no lock): compression tip + stale check + explicit suspension.
         checks = None
         if not force_new and observed is not None:

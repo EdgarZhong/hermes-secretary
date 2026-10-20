@@ -29,6 +29,17 @@ def kimi_profile():
     assert profile is not None, "kimi-coding provider profile must be registered"
     return profile
 
+
+def test_coding_key_catalog_uses_coding_endpoint(kimi_profile, monkeypatch):
+    from providers.base import ProviderProfile
+    calls = []
+    def fetch(_self, **kwargs):
+        calls.append(kwargs)
+        return ["k3", "k3-256k"]
+    monkeypatch.setattr(ProviderProfile, "fetch_models", fetch)
+    assert kimi_profile.fetch_models(api_key="sk-kimi-test") == ["k3", "k3-256k"]
+    assert calls[0]["base_url"] == "https://api.kimi.com/coding/v1"
+
 class TestKimiReasoningWireShape:
     """``build_api_kwargs_extras`` never emits thinking + reasoning_effort together."""
 

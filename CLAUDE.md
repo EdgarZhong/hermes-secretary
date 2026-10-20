@@ -1,5 +1,34 @@
 # Hermes Secretary 当前主看板
 
+## 线上 Instant Reminder 冷态漏投与微信会话分流（2026-10-20，排查已定位，未修复）
+
+### 当前优先：完整修复并重新部署（2026-10-20，用户已明确放行）
+
+- **实现已完成，正在部署**：冷扫描按持久Main／原生adapter ownership分工，不再使用`tui/desktop/cli`正向来源白名单；冷Context按实际route匹配自定义pin、已知端点窗口及缓存元数据，K3-256k端点262144优先于旧256000缓存；Kimi目录凭据改用注册Provider canonical name，正式端点发现与推理一致，canonical目录合并已配置模型。微信绑定复用gateway路由metadata保存conversation_ref，原位恢复并沿compression tip接续，不改Main的source／session_key，按目标会话恢复模型；原生未绑定路径不变。
+- **验证**：官方runner三批定向结果52／78／74项均通过，合并为146个不同测试节点（含新增绑定与导入冷态、K3上下限及目录接线）；首批health发现两个已有超长模块增长，已精简本次相关说明以保持各自不增长，未改阈值／规则；最终冻结10项本地检查全部ok、health 0 blocking。完整日志在本轮ignored证据目录的`targeted-tests.log`／`integration-tests.log`／`final-targeted-tests.log`／`check-final.log`。未跑全量套件，未发送生产测试消息。
+- **线上清理计划**：仅删除Alex配置中重复定义原生DeepSeek的自定义endpoint块，保留默认deepseek-flash和500000自定义窗口；工具候选调用同一持久绑定owner，并使用SQLite在线备份。部署前备份三库／配置／工具，等待活动Turn结束后重启Web宿主和原生Gateway；原有历史消息不搬移，不补发旧Reminder。
+
+- **用户最新确认（本轮）**：保持Hermes原生微信出站语义：微信入站触发的Turn由adapter把原生回复投递微信；其它入口触发的Turn必须显式调用工具才能发微信，不自动镜像全部回答。参考云端workspace AGENTS现行口径。DeepSeek Provider只保留一个；先查清重复来源是配置还是上游目录。用户明确指出500K是其DeepSeek自定义上限，不能用于K3置顶Pi会话；昨晚刚启动无此错，要求彻查Context冷恢复。
+
+- 用户先要求梳理，随后明确“赶紧改代码”及“接线接对，然后重新部署”，本轮root直接实施；不再重复复现用户已报告现象，只做修复验证。绑定以持久Conversation连续性为准。
+- 用户本轮提出的问题完整保留：New Chat 的 Kimi Coding 缺K3-256k；旧会话模型/provider不一致且用户观察到会话有独立保存配置；两个DS Provider令人困惑；置顶K3会话Context上限却显示DeepSeek；Instant冷态应由5秒扫描器及时触发；“微信消息触发的turn结束”相关问题待明确具体表现；昨晚模型工具绑定自己为何仍失效。
+- 已有明确产品意图（来源：用户本轮及既有交接原话）：Web为主入口，微信接入同一Conversation；模型可通过工具往微信发消息／文件，不要求所有Web assistant输出自动发微信；长期使用当前置顶Conversation并跨compact保持连续性。昨晚绑定执行02:34:15、工具02:34:27返回exit0且两次show正确，证明当时索引改写成功，不证明持久绑定成立。
+- 新发现事实，非用户确认口径：Alex当前Profile默认为deepseek/deepseek-flash且context_length=500000；置顶会话DB仍固定kimi-coding/k3-256k，真实上午请求也走K3；冷Context恢复代码读取Profile context_length，存在会话模型与上限错配。Provider目录与双DS尚未完成核查，不提前认定模型不存在／重复定义根因。
+- 来源已核：Gateway的stale路由丢弃／原生peer恢复在官方冻结基线已存在，当前项目未改该段；额外绑定脚本只改控制根gateway_routing.entry_json及sessions.json的session_id，未建立供恢复读取的长期跨入口绑定。原“自动恢复”须明确指原生微信路由恢复，不能混同Reminder冷恢复或用户请求的新机制。
+- 用户后续确认按上述需求修复／部署；微信触发Turn由原生adapter回复，其它入口必须工具发送；DeepSeek只保留一个；Context必须以实际模型为准，K3-256k为262144。禁止按来源名称限制合法Main。
+
+
+以下保留首轮只读取证事实；当前用户已放行修复和重新部署，执行状态以本节顶部为准。
+
+- 现场：首尔后端`e88772969d656bc3acfd53564c5e6217dee07de2`、PID292410，02:23:09启动，NRestarts=0；本地同提交，开始工作区干净。证据仅本地ignored `.hermes-dev/incident-20261020-reminder-weixin/`（四份Alex日志、控制根日志、schema、排期/消息/路由只读查询）。
+- 时间线（+08）：置顶Pi导入会话02:34:30.322被写`ws_orphan_reap`；10:00两条instant直到网页10:01:20.440连接、10:01:22.140开始Turn，排期接纳10:01:22.143/.894；11:30一次性提醒直到11:58:36.765开始Turn、11:58:37.648接纳（晚28分37.648秒），claim_attempts=115，不是从未登记或到期时间错误。11:33:32仅网页连接未恢复目标会话，未触发此Turn。
+- Reminder直接根因：`tui_gateway/scheduler_host.py::_local_route`只接受`tui/desktop/cli`且无session_key，实际置顶会话`source=created_source=pi-import`、session_key=NULL，被宿主冷扫描直接跳过；Gateway扫描遇无messaging key释放claim，故重试不等于投递。存活目标Runtime的poller能够投递，导致重开目标会话后才执行。旧冷态测试fixture只创建`tui`，没有覆盖导入Main。
+- 微信直接根因：10:05:59.967 `gateway.session`明确记录微信key原映射指向置顶Pi会话，因state.db已结束而丢弃映射；`_route_recover`按微信source/key查原生行，恢复到另一条微信会话。原Pi行没有微信source/key，无法由该恢复查询找回。`tui_gateway/session_lifecycle.py::_finalize_session`自动回收仅对desktop免结束，Pi导入网页Runtime仍写结束；不宜粗改全体原生生命周期。
+- 已证业务后果：10:05:59用户微信回复真实保存在另一条会话；11:58提醒检查原置顶会话，误判尚未回复并再次发微信。消息并未丢失，原会话刷新也不能读到另一个会话的消息。无需据此把所有微信实时推流缺口视为同一问题，流式链路尚未单独验收。
+- 建议最小修复包（尚未实施）：用现有Main/导入恢复契约纳入合法Pi导入冷扫描；保证明确绑定目标遇可恢复自动回收时原位恢复，不退回其它微信会话，核定绑定的持久事实源；保留明确结束/reset、Profile、generation、租约与原生未启用行为。新增实际组合行为回归：导入Main无Runtime自动到期、绑定后网页回收再微信输入同Conversation、用户微信回复后Reminder看到回复且不误追。不得仅增加白名单或强行清空ended_at后宣称全修复。
+- 首轮诊断历史状态：当时未修复／未部署／未运行测试；后续实现与测试已完成，见本节顶部。不补发提醒，不搬移历史消息。
+
+
 ## 手机恢复与历史分层加载修复（2026-10-20 00:06 已部署首尔，00:21–00:31 真机验收完成）
 
 用户在HTTP/3暂停及DSH任务包交接后明确要求开始改代码；补充要求保持其它优化，并先加载普通可见内容及Thinking/工具卡片外侧，折叠内部内容随后渐进加载。用户要求不再新增子Agent，root直接实现分层读取与集成；既有三项已在写的实现按原范围交回。线上仍保持仅暂停HTTP/3，不部署代码以免混入DSH协议对照。本轮不改分页200、默认模型、业务Prompt或生产DB/schema/index。

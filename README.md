@@ -21,6 +21,8 @@ Hermes Secretary 是基于 [Nous Research 的 Hermes Agent](https://github.com/N
 
 `hermes serve`／Dashboard 宿主在启动时及每轮后约 5 秒扫描受管理 Profile 的持久排期。合法本地 Main 的 Instant Reminder 可在无浏览器、Runtime 已回收时沿原生入口恢复；deferred 不主动唤醒，busy 转 pending，消息渠道路由保留原 owner。配置、失败及投递确认边界见 [08 §2](docs/08-profile-scheduler-files-clarification.md#2-冷态-instant-reminder-的宿主责任)。
 
+显式消息渠道绑定复用原生路由metadata记录持久Conversation；Runtime回收、重启和compression不改变绑定目标。微信触发的Turn由原生adapter回复，其它入口仅经显式发送工具发微信。冷Context按会话实际模型／Provider／端点恢复窗口，独立于Profile当前默认模型；详见[08 §1.1](docs/08-profile-scheduler-files-clarification.md#11-模型窗口与微信入口绑定2026-10-20-用户确认)。
+
 ## Secretary Slash 入口
 
 命令复用 Hermes 共享 catalog、补全与执行链路；客户端呈现边界按 02／06／07 的保留与替换条款处理。

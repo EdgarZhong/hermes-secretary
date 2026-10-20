@@ -42,7 +42,10 @@ class KimiProfile(ProviderProfile):
     ) -> list[str] | None:
         """Use Kimi Code's OpenAI-compatible surface for model discovery; the bare
         ``k3`` slug is only served there, so it is filtered off other endpoints."""
-        effective_base = (base_url or self.base_url or "").rstrip("/")
+        from hermes_cli.auth import _resolve_kimi_base_url
+
+        # Discovery must use the same key-dependent endpoint as inference.
+        effective_base = _resolve_kimi_base_url(api_key or "", self.base_url or "", base_url or "").rstrip("/")
         confirmed_coding_endpoint = _is_confirmed_kimi_coding_url(effective_base)
         if confirmed_coding_endpoint and urlparse(effective_base).path.rstrip("/") == "/coding":
             effective_base += "/v1"

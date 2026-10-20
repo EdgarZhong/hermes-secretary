@@ -83,6 +83,38 @@ def _empty_ctx(provider="orig", model="orig-model", base_url="orig-url"):
     )
 
 
+def test_canonical_provider_catalog_includes_configured_model_metadata(monkeypatch):
+    from types import SimpleNamespace
+    from hermes_cli import model_switch_providers as listing
+    from hermes_cli import models
+    monkeypatch.setattr(models, "CANONICAL_PROVIDERS", [SimpleNamespace(slug="kimi-coding", label="Kimi")])
+    monkeypatch.setattr(listing, "_auth_store_has_provider", lambda *_: True)
+    monkeypatch.setattr(listing, "_live_or_curated_ids", lambda *a, **k: ["kimi-k3"])
+    build = listing._PickerBuild(
+        current_provider="deepseek", current_base_url="", current_model="deepseek-flash",
+        max_models=None, for_picker=True, force_fresh_nous_tier=False,
+        probe_custom_providers=False, probe_current_custom_provider=False, refresh=False,
+        excluded=set(), curated={})
+    listing._lap_canonical_rows(build, {"kimi-coding": {"models": {"k3-256k": {"supports_vision": True}}}})
+    assert build.results[0]["models"] == ["k3-256k", "kimi-k3"]
+
+
+def test_live_catalog_resolves_credentials_using_registered_provider_name(monkeypatch):
+    from types import SimpleNamespace
+    from hermes_cli import models
+    import providers
+    profile = SimpleNamespace(name="kimi-coding", auth_type="api_key", base_url="https://api.moonshot.ai/v1")
+    monkeypatch.setattr(providers, "get_provider_profile", lambda _: profile)
+    requested = []
+    def credentials(name):
+        requested.append(name)
+        return "test-key", "https://api.kimi.com/coding"
+    monkeypatch.setattr(models, "_api_key_credentials", credentials)
+    monkeypatch.setattr(models, "probe_profile_catalog", lambda *args: ["k3-256k"])
+    assert models._profile_live_catalog("kimi-for-coding") == ["k3-256k"]
+    assert requested == ["kimi-coding"]
+
+
 
 
 

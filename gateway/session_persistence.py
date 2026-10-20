@@ -350,6 +350,13 @@ class SessionPersistenceMixin:
         """For a routing entry whose row has ended: ``"prune"``, a replacement entry (repoint), or
         None (keep as-is)."""
         from gateway.session_lifecycle import _now
+        from gateway.conversation_binding import is_bound, restore_binding
+        if is_bound(entry):
+            try:
+                return entry if restore_binding(self, entry) else None
+            except Exception:
+                logger.warning("Bound Conversation unavailable for %s; preserving its binding", key, exc_info=True)
+                return None
         recovered_entry = None
         if entry.origin is not None:
             try:
