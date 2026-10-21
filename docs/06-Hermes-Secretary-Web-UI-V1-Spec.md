@@ -178,6 +178,27 @@ Exactly **three main screen states** exist: **New Chat**, **Conversation**, **Fi
 - From Files, internal breadcrumbs/back-to-folder navigate the file hierarchy; they are **not** a substitute for the Files-level `Back to Chat`. Preserve native keyboard focus and standard link behavior.
 - Refresh/revisit restores the last shown route (New Chat, Conversation, Files list, or Files preview), selected conversation, relevant preview path and reading position, plus local drafts. Verify the target still exists and is authorized; if not, fall back safely without changing backend state.
 
+**用户确认 Android APK（2026-10-21）：** 使用 Tauri 2，前端构建资源内置 APK，业务仍连接现有线上 Hermes 服务并沿用认证；不把纯线上网页壳当作内置前端交付。重新打开恢复上次关闭时的 Conversation，复用现有本地路由及 Profile 归属和服务端有效性校验，不另建对话缓存。底部暂不增加安全区；顶部按真实系统状态栏／刘海尺寸避让，菜单、侧栏和通知不得与状态栏重叠。用户明确授权本任务启动并操作 Android 模拟器验收；先将原始分辨率与 density 调成整数倍率，实际验收 CSS 视口为 **360×792**，以 APK WebView 的实测尺寸为准，不能只用系统逻辑屏幕尺寸代替。打包及验收不包含生产服务配置或认证策略变更。
+
+**用户2026-10-21追加确认：** 顶部安全区不能为零，但状态栏下方的菜单／标题留白应比首次24px预览更紧凑。Android保留真实状态栏／刘海避让，将该区域下方间距由12px缩为4px、顶栏内容高度由64px缩为56px；普通浏览器外观保持原样。360×792浏览器预览标识的状态栏只用于视觉核对，不进入APK产品页面。
+
+用户随后对上述收紧预览确认“看起来不错”，采用该Android视觉。24px仅为当前模拟器状态栏实测，正式壳使用设备实时Insets，不把其它设备强制设为24px。最终补充确认：标题保持靠左，只保证在状态栏下方的56px内容带垂直居中，Android上下间距统一4px；此适配只对APK生效，普通网页不启用，显式Mock预览除外。
+
+**用户确认图标更新（2026-10-21，0.1.1）：** APK启动图标复用已有Hermes Secretary logo，居中放在现有主题色卡的深色背景上；不另行重设计logo。
+
+**用户确认自动恢复（2026-10-21，后续版本）：** APK在原生生命周期确认进入后台后，返回前台显式重载WebView网页和JS，不仅依赖前端重连；系统冻结无法精确判定。用户进一步要求考虑移动弱网、缺少刷新按钮时必须自动恢复，不能停在失效页面。短暂WS断线保留现有重连，持续失败／前台JS无健康响应由原生兜底并限制频率；不为短断快速循环刷新。不清Cookie／本地草稿与路由，通知目标跨刷新保留，第三方认证与原生附件交互不得被恢复刷新打断。**用户随后澄清：** 首次WS断线先尝试现有代码恢复，几次／几秒短时间内仍无法恢复时触发原生刷新；不能因刷新退避再等一分钟或更久。此口径覆盖先前Agent提出的45秒及分钟级退避方案。返回前台立即刷新，无JS／未就绪错误页也应有独立原生恢复能力，不能因为只允许一次刷新而永久停住。**最终追加确认：** 首次打开是正常加载，不额外重复刷新；解锁回前台及从后台回前台均立即原生重载，并将旧的退避计时和进度全部清空。此后监测WS是否实际connected；首次给10秒，未恢复则原生重载并重新计时，随后15秒、20秒、30秒，封顶30秒继续尝试；连接恢复停止该轮自动重载。再次切回前台始终立即重载并从10秒重新开始，不承接旧退避剩余时间。此最终口径覆盖前述分钟级及5秒单次刷新方案。JS持续响应且WS已连接的正常慢历史加载不判失败；明确初始化报错或JS无响应使用原生恢复兜底。
+
+#### Android 原生通知与临时后台保护（用户最终确认，2026-10-21）
+
+- **范围以现有观察能力为准。** 复用已有`session.active_list`、`sessions.changed`、`state.sessions[].running`及`gateway.ready`，识别现有列表监控范围内跨Conversation、跨Profile的Active Turn；不只看当前`state.live.active`，不要求由APK发起。全局运行监控不等于所有会话完整正文推流，不发现／监听原客户端不能观察的外部Turn。
+- **保持现有资源边界。** 不批量`session.resume`／`session.activate`，不取消`releaseInactiveViews()`，不破坏弱网优化、历史懒加载和Conversation切换。不改后端API契约、Gateway接线或WebSocket协议，不加全局查询、额外轮询、新推流、独立WS、FCM／Firebase或通知服务器。
+- **临时保活。** 至少一个被现有全局状态观察到的Active Turn时启用；各Turn结束逐一更新，全部结束后解除。尽可能保持同一WebView、JS和已有WS短暂后台运行，不另建Conversation／Agent Runtime状态。原生前台服务只提高存活概率，遵守后台启动限制、权限和系统时限；拒权、系统暂停／回收或强制结束不影响云端Turn。无长期驻留、进程重启自启、离线通知、补发或后台发现。
+- **完成依据。** Active→Idle只触发核验，不直接等同正常完成；用已有只读事件回放核实当前连续连接期间的正常完成，再按需读取既有只读Session History及必要详情，确认最终可见Assistant行实际持久化。不得用侧栏preview替代最终回复，缺失／截断／不可靠证据时放弃通知。Thinking、Tool Call、Compaction、Noting、中间正文、失败、取消不触发。Profile＋Stored Session ID区分owner，真实Turn／Message身份去重。
+- **断线边界。** 断线、状态未知、epoch变化使未完成核验失效；重连后观察到Idle不能推断刚刚完成或补发旧通知。重复事件、异步旧结果和重放不得重复通知。系统终止后不要求继续通知或补发。
+- **通知呈现。** 仅APK在后台且确实收到所跟踪Turn正常完成时发送Android本地通知；前台不发。标题固定“您的助理有一条消息”；正文直接取对应最终Assistant回复开头，适当去Markdown／多余换行并截断，无LLM摘要。不同Conversation完成可分别通知。
+- **点击和权限。** 处理Android通知权限，拒绝不得破坏对话。点击打开正确Profile的Conversation，尽可能定位该Assistant回复；冷启动保留通知目标、沿用认证，不向登录页注入业务内容。桥接只允许APK可信页面主frame，不向普通网页、第三方页或iframe开放原生通知能力；最小去重仅进程内，及时清理原生资源。
+- **验收。** 覆盖APK发起及电脑发起但APK已观察到的Turn；查看B时A完成；多个并发分别通知且最后解除保活；跨Profile同ID；前台抑制；断线／重连／重复事件；点击正确归属；观察范围外不扩接线；系统暂停／回收不保证通知、不影响云端执行。真实实机／模型与隔离测试证据分别记录，不把模拟或未验场景写成通过。最终交付前端资源内置、已签名且可直接在手机安装的APK。
+
 ### 1.3. Session list, New Chat and chat selection
 
 | Operation | Required behavior | Forbidden shortcut |
@@ -239,6 +260,18 @@ Message ordering, Compaction lineage, framework carriers, UIDs and stream insert
 **2026-10-18 user-confirmed background-Turn observability:** Whether a Turn is initiated by the Web UI or by a background Instant Reminder, opening the Web UI at any point MUST recover its true running/terminal state and complete available Timeline, including the triggering carrier, provided Thinking/reasoning, tool calls and their current/results states, and assistant output. Already connected viewers, first attachment during execution, reconnects and opening after completion are distinct required cases. Restore a consistent current-Turn view and then continue live events without gaps, duplicates or Profile-owner confusion; a bounded replay ring alone is insufficient when its earlier events have expired. Global Conversation state must initialize on connection and update for background work without opening or activating every Conversation. Reuse the existing session lifecycle, history/output projection, replay and global broadcast mechanisms; do not introduce a separate event store, scheduler or WebSocket service. Quiet follow-up does not authorize suppression of execution facts. This paragraph records the required behavior, not a claim that implementation or deployment validation is complete.
 
 **2026-10-18 user-confirmed presentation baseline:** The user has completed the UIUX polish. Final state/recovery wiring MUST preserve the user's latest layout, styling, animations, Profile icons, Pin/drag interactions and scrolling behavior. Reuse existing presentation components for necessary status visibility; do not redesign the interface or overwrite/inadvertently include the user's unrelated changes.
+
+**2026-10-21 用户确认 Timeline 中断与宽度：** 中断回执中的非持久取消说明不作为 Assistant 正文新增或覆盖输出；保留实际输出的正文、Thinking、工具状态以及已有 `turn_terminal` 历史投影位置。System 卡片左右边缘与 Assistant 阅读区对齐，`System ·` 标签与短正文同行；长正文仍可自然换行，不截断。Compaction 卡片左右边缘与加载历史按钮对齐，比 Assistant 阅读区更宽，仅调整宽度，保留既有底色、边框、图标、圆角和折叠交互。加载历史入口保持现状。
+
+**同日用户补充的分类边界：** 失败／中断提示卡片化仅针对具备明确失败／中断提示身份的消息，不把“后端生成的内容”整体视为状态卡片。slash命令返回继续遵循现有临时输出契约（含`temporary`／`command`的样式、生命周期和位置），不转换；模型实际回复及中断前真实部分回答保持正文表现。不得仅因整个Turn为interrupted或正文包含诊断用语就改变消息类型。
+
+**同日用户确认Heartbeat卡片：** 用户已确认浅色／暗色实际效果，沿下述样式落实。最新收敛仅调整这一条Heartbeat消息的卡片展示，其它消息与行为保持；不增加结束标记处理。对后端原生`role=user`且完整`<heartbeat>…</heartbeat>`包装的消息使用独立Heartbeat表现类型；source角色、原文及UID不变，前端不合成消息。沿Reminder／Framework同类卡片结构与阅读宽度，默认折叠、外部固定标题`Heartbeat`，使用心电波形图标与低饱和陶土橙色线／浅底，兼顾暗色主题；展开保留内层timestamp和原始正文／Additional prompt，仅隐藏外层heartbeat包装。不显示普通用户Reply／编辑、附件或额外外部时间标签。普通文本提及、Assistant引用和无包装的旧原生英文模板不猜测分类；`HEARTBEAT_OVER`不触发额外静默、调度或过滤行为。后端模板及全局Noting分支／UI唤醒契约见07 §8.15。
+
+**同日最终确认的失败提示展示（覆盖前述保留派生提示卡的口径）：** 对实际消息行的`display_kind=failed_turn`复用原`Turn interrupted`派生卡片外观，与Assistant阅读区对齐，只显示该行原文，不加`System ·`或其它标题／前缀。后端仅在明确生成取消诊断的分支为其落库消息设置既有`failed_turn`类型，不能以正文匹配或整个Turn中断为由标记模型回复。取消从`turn_terminal`额外派生`Turn interrupted`／`Turn failed`提示卡，即使没有独立提示行也不兜底合成；元数据用于真实部分输出、Thinking、工具的恢复、状态和去重功能保持。旧历史无类型行不自动猜测或迁移，slash返回完全保持现状。
+
+**同日用户要求审批弹窗排版修订：** 在保留现有主题和审批交互语义的前提下，改善移动端approval提权弹窗的信息层次、长命令／路径排版、文字与按钮布局，同时兼容桌面端；以实际前端组件分别提供移动端和桌面端截图。`once`／`deny`等原生choice及授权范围、关闭行为不变，不改变Clarify问答交互。
+
+**同日用户确认Patch replace审批diff：** 仅前端复用已接收的当前工具调用参数，为Patch replace模式提供审批前拟修改片段的差异渲染：路径、old_string、new_string及replace_all；新字符串为空时按删除展示。不得为此新增后端接口／diff字段，不将预览冒充执行后真实diff或完整文件。不扩大到V4A或write_file。审批只展示能与当前owner／当前待处理调用唯一对应的参数，不拿Terminal或其它调用参数猜测；缺少完整参数或存在歧义时保持原审批、选项与流程，不额外阻断审批。模型参数按文本转义显示，保留原文；非Patch审批及Clarify表现不变。
 
 ### 1.5. Tool rendering, Markdown and errors
 

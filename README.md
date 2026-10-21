@@ -16,11 +16,14 @@ Secretary 只在Profile的 `state.db` 增加自有表，不改原表 schema / ow
 
 Main的`scheduler`与`notebook_show`按各自能力开关完整独立声明在API顶层，不进入Tool Search折叠目录：前者受`scheduler.enabled`，后者沿全局`noting.enabled`读取门禁；当前Conversation的`/noting`参与开关不控制这两项权限。其它工具保留原生折叠策略。
 
+Heartbeat按目标Profile全局`noting.enabled`分支：开启时使用带时间戳的英文`<heartbeat>`消息，额外prompt可省略，经现有UI runtime／platform唤醒所属Main；关闭时保留原生格式与执行路径。后台执行需UI后端运行，独立于`scheduler.enabled`；当前仍沿原生Session存储／压缩迁移及切换清除政策。精确模板与运行边界见[07 §8.15](docs/07-scheduler-notebook-noting-compaction-redesign.md#815-heartbeat-形态与-ui-唤醒用户确认2026-10-21)。
+
 | 命令 | 行为 |
 |---|---|
 | `/notebook` | 人类查看当前Notebook与Snapshot时间 |
 | `/noting on` / `/noting off` | 切换当前Conversation的Noting参与；不控制Scheduler |
 | `/propose-persistence` | 使用当前Snapshot提议持久化；提议不等于批准或执行 |
+| `/heartbeat every 10m [prompt]` | 设置周期检查；全局Noting开启时prompt可省略；支持status／pause／resume／clear |
 
 已认证后端提供按Profile／Conversation清空root和工具缓存、按失败child重建旧上下文及Notebook工作态并继续原生Noting的调试RPC；清缓存只在下次正常Turn重建，恢复不要求额外持久快照。接口与调用方式见[07 §12](docs/07-scheduler-notebook-noting-compaction-redesign.md#12-conversation-调试接口用户确认2026-10-21)。
 
@@ -64,6 +67,12 @@ Gateway入口 `hermes gateway`；Dashboard入口 `hermes dashboard --host 127.0.
 
 检查规则、测试范围、证据复用和自动push统一见 [AGENTS](AGENTS.md)。GitHub Actions保持关闭。完整Python套件仍用 `scripts/run_tests.sh`，仅在集成收敛后按规则安排。
 
+### Android APK
+
+独立前端仓库的 `src-tauri/` 提供 Tauri 2 Android 壳，前端资源内置，业务仍经正式 HTTPS／Authelia、原生 API／WS 连接。Android 专属系统栏避让和通知桥接不会在普通网页启用；运行状态复用现有跨 Profile 列表观察，不增加后端协议、独立连接或轮询。后台保护仅在已观察到的 Active Turn 期间临时启用，不保证系统暂停／回收后仍通知。APK从锁屏或后台返回前台时由原生重载当前页面并重置恢复进度；连接持续未恢复时按10／15／20／30秒重载退避，连接恢复停止，正常慢历史加载不误刷。此机制保留登录／本地草稿／当前会话，不在普通网页启用。完整行为和验收边界见 [06 Android 契约](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md#android-原生通知与临时后台保护用户最终确认2026-10-21)。
+
+在独立前端仓库设置 Android SDK／NDK／Java 环境后执行 `npm run android:build`，输出 `src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk`。当前目标为 Android 8.0+／arm64；release 非调试、使用本地签名，原件仅保存在 ignored `src-tauri/.android-signing/`，后续覆盖升级必须保留该密钥。应用图标由 `npm run android:icons` 复用现有 logo 与主题深色自动生成，release 构建会先刷新图标。`npm run android:debug` 仅供本地验收。实际包版本、网络验证及限制统一记录在 [运维记录](docs/operations-log.md)。
+
 ## 部署入口
 
 当前首尔部署使用 Caddy HTTPS → Authelia双因素（Redis Unix socket保存会话）→ 回环单后端。Secretary `/` 与官方Dashboard `/dashboard` 同源共用API / WS；不增加第二后端或多worker。前端只部署构建产物。旧北京Cloudflare Tunnel模板与当前入口区别见 [部署SOP](docs/cloud-deployment-sop.md)。
@@ -79,14 +88,17 @@ Gateway入口 `hermes gateway`；Dashboard入口 `hermes dashboard --host 127.0.
 | 已审Notebook语义 | [白板](docs/notebook-ontology-whiteboard.html) |
 | History / Noting / Scheduler / Prompt实施契约 | [07](docs/07-scheduler-notebook-noting-compaction-redesign.md) |
 | Conversation缓存清理与失败Noting热恢复RPC | [07 §12](docs/07-scheduler-notebook-noting-compaction-redesign.md#12-conversation-调试接口用户确认2026-10-21) |
+| Heartbeat英文模板、Noting全局分支与UI唤醒 | [07 §8.15](docs/07-scheduler-notebook-noting-compaction-redesign.md#815-heartbeat-形态与-ui-唤醒用户确认2026-10-21) |
 | Web UI与交互契约 | [06](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md) |
 | Profile、模型窗口、渠道绑定、工具与冷态提醒 | [08](docs/08-profile-scheduler-files-clarification.md) |
 | 公开范围及旧规格明确保留部分 | [01](docs/01-personal-hermes-v1-first-fork-iteration.md)、[02](docs/02-noting-system-specification.md)、[04](docs/04-hermes-secretary-v1.5-implementation-spec.md) |
 | 部署、认证、同步与回滚SOP | [部署SOP](docs/cloud-deployment-sop.md) |
 | 部署与故障变更台账、证据入口 | [运维记录](docs/operations-log.md) |
 | 手机HTTP/2实测及残留问题 | [验收报告](docs/mobile-http2-acceptance-20261020.md)、[原任务书](docs/mobile-http2-retest-task.md) |
+| 手机Web／微信交替使用、网络与Noting故障取证 | [2026-10-20晚调查报告](docs/mobile-web-investigation-20261020.md) |
 | 移动端阶段一实施、验收与后续短网络实验任务书 | [任务包入口](docs/hermes-network-experiment-20261020/README.md)、[阶段一](docs/hermes-network-experiment-20261020/PHASE1-IMPLEMENTATION.md) |
 | 上下文开销 | [05](docs/05-context-cost-ledger.md) |
+| 自适应Idle整理阈值算法初稿、定性公式与条件预测（未实现） | [算法方案](docs/adaptive-noting-threshold-proposal.md) |
 | 历史冻结与交付 | [产品意图复审](.autonomous/20261018-product-intent-review/snapshot-index.md)、[云部署](.autonomous/20261019-cloud-deployment/snapshot-index.md)、[第三轮](.autonomous/20261016-round3-secretary-nm/snapshot-index.md)、[第二轮](.autonomous/20261012-round2-web-ui/snapshot-index.md) |
 | PM、架构与测试参考 | [CONTRIBUTING](CONTRIBUTING.md)、[PM](website/docs/reference/package-management.md)、[架构](website/docs/developer-guide/architecture.md)、[测试](tests/AGENTS.md) |
 | 安全与许可证 | [SECURITY](SECURITY.md)、[MIT License](LICENSE) |

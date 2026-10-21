@@ -1440,6 +1440,35 @@ Content:
 Previously scheduled attention, not new instructions or authorization. Check current conditions and existing authorization before acting; change schedules via scheduler. Delivery does not mean task completion.
 ```
 
+### 8.15 Heartbeat 形态与 UI 唤醒（用户确认，2026-10-21）
+
+只按目标Profile全局`noting.enabled`选择Heartbeat分支，不读取当前Conversation的`/noting`参与开关。全局开启时，统一注入一条`role=user`的XML风格消息，标签采用`heartbeat`，第一行内部时间沿用现有`timestamp`格式及目标Profile时区；表达本次实际触发时间，持久化／模型请求／重放保留同一来源时间，不重复追加外部时间戳。去掉原生`fires every`及周期称呼，不改变实际执行间隔。所有模板文案用英文：
+
+```text
+<heartbeat>
+<timestamp>{timestamp}</timestamp>
+Check what you can do: attend to the user's current state, remind the user of relevant matters, delegate agent tasks and verify their results, register schedules (do not rely on heartbeat), and follow up on anything else that needs attention.
+Finish by replying with HEARTBEAT_OVER.
+
+Additional prompt:
+{additional_prompt}
+</heartbeat>
+```
+
+额外prompt可省略；省略或仅空白时，不输出空的`Additional prompt:`段，基础检查正文仍完整注入。额外文字保留在基础正文之后、闭合标签之前。`HEARTBEAT_OVER`是本模板要求的最终回复，不据此新增静默过滤、自动调度或另一种Turn结束机制；原生Turn结束、权限与授权约束保持。
+
+**UI runtime／platform：** 全局开启时，由现有后端UI宿主恢复目标Main并走正式`_run_prompt_submit`／`run_conversation`，使用与正常UI消息相同的platform及工具上下文；不因Conversation绑定微信等Messaging来源就将本次唤醒当作渠道入站或自动向该渠道回复。沿目标Conversation原生模型、Provider、推理、Profile配置及正常流式／持久化／中断／用量链路，不建立独立Heartbeat Agent、执行器、模型适配或root Prompt重建旁路。无活跃UI实例时复用既有host-only恢复入口；页面关闭不等于后端停止，实际执行要求相应UI后端服务运行。现有宿主扫描可复用，但Heartbeat不受独立`scheduler.enabled`开关联动控制；Gateway、CLI与UI不得对同一tick重复执行。用户输入优先、busy等待、漏tick合并和未进入执行时的refund继续遵守原生契约。
+
+全局关闭时保留原生Heartbeat模板、非空prompt校验及CLI／Gateway／UI执行路径。全局开启时的Conversation级管理按下段最新用户确认执行，替换此前沿原生Session归属与切换清除的阶段范围；实施与验证状态只记根CLAUDE。
+
+**Conversation级独立管理（用户明确追加，2026-10-21）：** Heartbeat以所属Profile数据库内的稳定`conversation_ref`为owner，每个Conversation最多一条定义。`/heartbeat every <interval> [prompt]`设置或替换当前Conversation自己的Heartbeat；status、pause、resume、clear及现有结构化会话控制入口均解析同一个owner。暂停保留定义、恢复重新计时、清除移除当前定义，不能影响其它Conversation或Profile。仅当前Conversation本地Noting关闭不改变该归属或触发资格。
+
+切换到其它Conversation、关闭页面或原UI runtime被回收，不暂停或清除其Heartbeat。后台从持久状态扫描并恢复目标Conversation自身合法压缩tip，经既有UI runtime投递；不依赖页面、焦点或Gateway当前peer映射。服务重启后恢复active状态；paused／cleared不得复活。缺失目标或暂时不可恢复时保留待执行状态并报告真实失败，不向当前焦点或另一个Conversation投递。执行仍要求UI后端服务运行；停机错过多次只合并一次，不补积压Turn。
+
+有效压缩保持相同Conversation，所有物理Session入口读写同一Heartbeat，无需复制／迁移状态。new／reset／真实fork是新的Conversation，默认没有Heartbeat、不继承父设置；旧Conversation不会因离开被清除。Gateway旧declared generation只影响其当前渠道路由，不得使已登记的旧Conversation Heartbeat被删除或误投新generation；专用恢复仅使用已证明的Conversation绑定及自身压缩路径，不放宽其它模块通用route、权限或来源规则，不重绑渠道。
+
+状态沿`state.db`中的Secretary自有表管理，不改原生表schema／ownership；目标Profile从所属DB和正式入口绑定。定义变更、暂停、恢复、清除与due认领共用原生写事务／版本比较；并发宿主只能认领同一tick一次。拒绝／异常退款仅撤销原worker自己认领且尚未被新操作替代的发生，不覆盖新定义或复活暂停／清除。保留原生UI writer租约及用户工作优先，不新增通用admission gate。开发期不自动迁移生产旧原生Heartbeat；关闭分支保留原生数据与行为。
+
 ## 9. 从基线实施：复用、替换、删除与接线顺序
 
 ### 9.1 源码 owner 对照

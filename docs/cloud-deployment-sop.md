@@ -12,6 +12,8 @@
 
 同步专用Host `hermes-secretary-sync` 指首尔ubuntu，不改北京 `alex` alias。workspace为首尔 `/home/ubuntu/workspace` ↔ Mac `/Users/edgar/Desktop/Alex` two-way-safe；配置只传8白名单文件；DB完成包由首尔 `.hermes_profiles/.snapshots/databases-current.zip` 单向传Mac，再由既有接收器核验后落冷库。首尔快照timer每五分钟独立发布，Mac离线不阻塞源发布；不得把rawDB改成双向同步。切换时暂停旧lane、核定当前源配置、预对齐后启用，按真实marker往返、配置SHA、自动快照落地验证，不能只看connected。实际版本和收据见根CLAUDE。
 
+study使用原生`openai-codex`及ChatGPT订阅独立设备码授权，凭据只留实体Home的`auth.json`（0600），不在同步白名单、不导入Mac Codex登录态。默认`model.default: gpt-6-sol`、`agent.reasoning_effort: high`；`delegation.model: gpt-6.1-sol`同时覆盖普通子Agent与后台delegate_task，Provider／凭据及High沿原生继承。Noting按父冻结运行态继续使用主模型，不受delegation覆盖；已有Conversation仍遵循各自持久模型配置。当前部署版本在空命名Profile上首次`auth add`可能误报成功而未存凭据，首次授权优先使用`hermes -p study model --no-browser`中的订阅登录入口；最终须核Profile级凭据落盘、正式runtime解析与实际请求，不能只看成功提示。实际绕行与证据见运维记录。
+
 Authelia 使用官方二进制，`/etc/authelia/configuration.yml` 仅在 `session` 下增加：
 
 ```yaml
@@ -27,7 +29,7 @@ Web系统服务的 Provider 密钥由 systemd `LoadCredential` 从 `/etc/secrets
 
 Alex 的 Kimi Tools 项目位于 `~/tools/kimi-tools/`，复用同一 Kimi Key，Search/Fetch 地址为官方 `https://api.kimi.com/coding/v1/{search,fetch}`。Playwright MCP 通过 npm 安装；无头 Chromium 的精确安装路径使用专用 AppArmor userns 配置，保留浏览器沙箱，不修改系统全局 userns 限制。
 
-会话有效期 `12h`、空闲期限 `5d`、记住我 `1M`、Cookie 作用域及双因素规则保持原配置。启用 Redis 后不再使用 Authelia 的进程内会话存储；首次切换需重新登录一次。会话密钥仍只保存在受限云端配置中，不复制到仓库或输出日志。
+当前普通会话有效期与“记住我”均为 `31d`，空闲期限保留 `5d`：每天正常访问时不再因漏勾“记住我”走12小时期限，符合2026-10-21用户确认的至少一个月免重复登录目标；连续5天无认证访问的普通会话仍会失效，“记住我”按Authelia原生语义不受空闲期限制。期限用于新签发会话，不把已失效的旧Cookie恢复为有效。Cookie作用域、双因素规则和会话密钥保持；实际变更、证据与回滚见[运维记录](operations-log.md)。启用Redis后不再使用Authelia的进程内会话存储；首次切换需重新登录一次。会话密钥仍只保存在受限云端配置中，不复制到仓库或输出日志。
 
 - 专属服务为 `redis-authelia.service`，配置 `/etc/redis-authelia.conf`，数据 `/var/lib/redis-authelia`。系统包默认 `redis-server.service` 停用，避免运行第二实例。
 - Redis `port 0`，仅监听上述 Unix socket；目录 `redis:authelia 0750`、socket `redis:authelia 0770`，普通用户无访问权限。不开放 Redis TCP 端口。
@@ -305,7 +307,7 @@ Caddy 仅回环，Host 改回 backend、删除 Origin；不剥 `/dashboard`，�
 
 ## 8. 验收、升级与回滚
 
-按真实部署版本先验回环，再验公网。代表性检查包含：两个 SPA 资源、Dashboard 子路径刷新、同源 REST / 两 WS / 404 边界、Alex / study owner 与显示名 / 图标、跨 Profile 列表、Files default 共享 cwd、48 会话历史与来源对账、Alex 实际 `k3-256k` / high 和可选 DeepSeek、study 无默认 / 无新增 Idle / 自 Space、MCP tools list、5 分钟完成包、Mac 离线不中断云、坏包 / 忙库保护及最终冷库一致。
+按真实部署版本先验回环，再验公网。代表性检查包含：两个 SPA 资源、Dashboard 子路径刷新、同源 REST / 两 WS / 404 边界、Alex / study owner 与显示名 / 图标、跨 Profile 列表、Files default 共享 cwd、48 会话历史与来源对账、Alex 实际 `k3-256k` / high 和可选 DeepSeek、study订阅及主模型`gpt-6-sol`／High、委派`gpt-6.1-sol`／继承High、无新增Idle／自Space、MCP tools list、5 分钟完成包、Mac 离线不中断云、坏包 / 忙库保护及最终冷库一致。
 
 UI **仅由主会话通过自己创建的 Codex 隐藏 IAB（`iab`、`visible:false`）验收**，不使用桌面、外部浏览器、可见页、open / open_in_codex 或任何显示 / 焦点变化；没有合规接口就记未验。登录后入口未验、手机未验等按实际记录，不能从接口或匿名 302 推成 UI PASS。
 
