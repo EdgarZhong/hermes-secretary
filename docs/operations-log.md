@@ -13,7 +13,7 @@
 
 **校验脚本问题原样留证：** 首次readiness只以新版本＋微信connected结束等待，随后检查running时撞启动过渡期而失败；服务实际随后正常，无二次部署或重启。只读续验第一次漏定义config_paths，在历史／排期／绑定核验通过后报NameError；补齐后全部核验通过。保留两次原日志与最终receipt，不把临时核验失败抹掉或据此回退产品。
 
-**首次暴露时间的边界：** 用户追问上午Scheduler正常、Notebook本就存在。日志确认10:27微信入口与12:30TUI Reminder入口均为Coding Chat，同模型同端点；延迟工具目录计数为6与7，未留两次完整wire，不能认定具体差异。Notebook读能力只依Main资格／全局开关，不等待首个Snapshot或首调。坏schema并非在所有上下文下必然失败：上午成功记录真实保留；短新上下文无Notebook调用历史也可错误输出，因此Notebook首调／巨大Noting不是必要条件。已定位的是可重复触发条件与有效修复，不能断言Kimi内部解码机制、模型／后端是否变动或12:30为何首次暴露。
+**首次暴露时间的边界：** 用户追问上午Scheduler正常、Notebook本就存在。日志确认10:27微信入口与12:30TUI Reminder入口均为Coding Chat，同模型同端点；延迟工具目录计数为6与7；后续核对发现TUI的`_with_session_toolsets`额外补入`project`工具集，`desktop_project`被默认defer，微信无该补入路径。生产配置无platform_toolsets／tool_search／disabled覆盖；该工具schema估算181 tokens，恰与4331−4150差额吻合，因此计数增加由desktop_project解释，不能据此说Notebook此前缺席。未留两次完整wire，仍不能证明该额外工具导致Kimi首次失败。Notebook读能力只依Main资格／全局开关，不等待首个Snapshot或首调。坏schema并非在所有上下文下必然失败：上午成功记录真实保留；短新上下文无Notebook调用历史也可错误输出，因此Notebook首调／巨大Noting不是必要条件。已定位的是可重复触发条件与有效修复，不能断言Kimi内部解码机制、模型／后端是否变动或12:30为何首次暴露。
 
 **证据／回滚点：** 首尔`/home/ubuntu/.local/state/hermes-secretary/scheduler-schema-20261021/deploy-20261021T125730/`含三库受限备份、before.json和receipt.json；备份仅留服务器，不能在已有新消息后整库回盖。代码前版为`0bdddfc133`，如需回滚须另按授权和当前空闲状态处理，不自动执行。本机ignored`.hermes-dev/scheduler-tool-investigation-20261021/`保留部署脚本／原失败日志／最终核验、两批测试与检查、修复前后请求响应和deployment-receipt.json。前次调查原记录在下节，按原时点保留。
 
