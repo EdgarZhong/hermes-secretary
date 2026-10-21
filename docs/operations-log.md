@@ -3,6 +3,20 @@
 维护实际部署、故障处理、验证与回滚点；步骤和稳定布局见[部署SOP](cloud-deployment-sop.md)，当前任务只在根[CLAUDE](../CLAUDE.md)。以下时间均为Asia/Shanghai；PID、指纹和测试结论只对应记录时点，不代表实时状态。凭据、令牌、原始私人材料不写入本文件。
 
 
+
+## 2026-10-21 15:35 · Conversation调试RPC上线与置顶缓存清理
+
+**用户口径及实现：** 两项调试入口一并上线。`conversation.context_cache_clear`按Profile／Conversation原子清当前tip的System Prompt及完整工具pin，不在RPC重建或发模型Turn；已有Web／Gateway内存缓存在下一正常Turn沿原生路径同步。`secretary.noting_recover`及`secretary.noting_recovery_state`从原Admission／压缩边界、原文generation、失败child控制正文、成功Notebook维护回执与不可变版本重建旧Active Foreground／工作态，不新增专门恢复快照，不以缺专门快照或完整旧HTTP wire拒绝。旧父完整工具数组已不可得时仍可沿原control保存的可调用Schema恢复，并明确来源；具体参数和回执见[07 §12](07-scheduler-notebook-noting-compaction-redesign.md#12-conversation-调试接口用户确认2026-10-21)。恢复沿原生Provider、runner、Commit Gate和Framework安全接缝；失败原child、admission注册及旧消息保持，新child存原生审计和幂等身份。
+
+**验证与证据边界：** 缓存定向19、RPC6、原生restore25、Main工具面33通过；恢复定向24通过；独立实际loopback HTTP集成3通过（6次真实SDK请求），覆盖下一正常Turn携当前顶层工具／Vision退出、恢复旧多模态前缀及不可变工作态、模型恢复不占Main租约、晚到Main之后尾部发布、已有Main owner不被替换及原生队列flush、Profile／环境隔离、幂等和资源释放。主会话亲审正式接线，并核对最终源码指纹与集成证据一致。冻结10检查通过（health0）。生成产物一致性通过；全契约扫描1项`review.summary`孤立事件在原基线同样复现。原生Noting等回归147通过／1项全局active任务计数失败，旧未改基线亦复现；保留失败，不放宽检查或声称全套全绿。Loopback模型为确定性stub，证明真实传输与执行／持久化接线，不冒称真实K3语义或生产失败任务重跑验收。
+
+**部署：** 代码`c21b1d5b9cf795aaf993cecbdbff538e2d7d3815`已提交并自动push；首尔从`f7d93351ca`快进部署，空闲预检后正常停启Web／Gateway。三库SQLite backup＋quick_check通过；消息、排期、pending、身份绑定／aliases逐行hash、Profile配置／认证hash及微信绑定均保持。Web health和Gateway code_sha均为本次SHA，修改源码SHA一致，微信connected，两个unit均active/running、NRestarts0。没有自动回滚或DB恢复；未改变独立前端产物。
+
+**实际缓存清理：** 15:35通过正式`conversation.context_cache_clear`返回`cleared`，目标为Alex置顶Conversation `conv_8dc89e12cc9b42b5a77986f4d9b02cec`，解析当前tip `20261011_223115_59ad08`。此前root采用原生content-addressed hash存储，tools pin存在；清后三个持久缓存字段均NULL。三库全部sessions（只排除目标三缓存字段）、messages及所有Secretary业务表逐列hash前后相同，其他Profile缓存保持。本次模型请求0、生产Noting重跑0、排期写入0；只读查询恢复状态RPC返回not_found证明线上注册，无新增任务。下一次用户正常active时才重建，不额外操作主会话。此前旧Noting已一次性补回，本次不重复提交旧结果。
+
+**备份与收据：** 首尔受限`~/.local/state/hermes-secretary/conversation-debug-20261021/deploy-20261021T153444/`保存三库备份和部署收据；`clear-20261021T153548/`保存清理前Alex SQLite备份和清理收据。本机ignored`.hermes-dev/conversation-debug-20261021/`保留baseline、实现测试／原基线反证、独立integration-report、十项检查、部署及清缓存收据。需要撤销代码时人工选已知版本并正常重启，不恢复整库或覆盖后续数据；清掉的派生缓存由下次正常Turn重建。Kimi共同行为模式已写根CLAUDE看板，未把样本误称已证明的模型内部原因。
+
+
 ## 2026-10-21 13:44 · Alex模型选择器排除百炼自动目录
 
 **用户要求与定位：** 阿里云语音API Key令前端模型选择器自动列出百炼全部模型，用户要求排除，以免影响Kimi／DeepSeek／GPT选择。原生凭据发现将DASHSCOPE_API_KEY识别为百炼Provider凭据；只读前端同路model.options RPC（profile＋explicit_only:true）确认Alex有alibaba15、alibaba-cn169、alibaba-coding-plan10，共194模型条目；独立DeepSeek2、Kimi11。默认Profile仅DeepSeek2，study仅openai-codex14，不受本次自动目录影响。初次尝试REST查询三Profile均HTTPError，未取得目录；改用前端实际RPC取证，不把REST失败写成服务故障。

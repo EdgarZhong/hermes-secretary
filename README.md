@@ -22,6 +22,8 @@ Main的`scheduler`与`notebook_show`按各自能力开关完整独立声明在AP
 | `/noting on` / `/noting off` | 切换当前Conversation的Noting参与；不控制Scheduler |
 | `/propose-persistence` | 使用当前Snapshot提议持久化；提议不等于批准或执行 |
 
+已认证后端提供按Profile／Conversation清空root和工具缓存、按失败child重建旧上下文及Notebook工作态并继续原生Noting的调试RPC；清缓存只在下次正常Turn重建，恢复不要求额外持久快照。接口与调用方式见[07 §12](docs/07-scheduler-notebook-noting-compaction-redesign.md#12-conversation-调试接口用户确认2026-10-21)。
+
 ## 仓库与目录
 
 `origin` 为 [EdgarZhong/hermes-secretary](https://github.com/EdgarZhong/hermes-secretary)，`main` 为公开核心；`upstream` 为官方Hermes，`hermes-upstream` 为纯镜像。个人NM Provider独立于公开核心，独立前端在并列仓库 `../hermes-secretary-web`。
@@ -76,6 +78,7 @@ Gateway入口 `hermes gateway`；Dashboard入口 `hermes dashboard --host 127.0.
 | 当前阶段、未关闭事项 | [CLAUDE](CLAUDE.md) |
 | 已审Notebook语义 | [白板](docs/notebook-ontology-whiteboard.html) |
 | History / Noting / Scheduler / Prompt实施契约 | [07](docs/07-scheduler-notebook-noting-compaction-redesign.md) |
+| Conversation缓存清理与失败Noting热恢复RPC | [07 §12](docs/07-scheduler-notebook-noting-compaction-redesign.md#12-conversation-调试接口用户确认2026-10-21) |
 | Web UI与交互契约 | [06](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md) |
 | Profile、模型窗口、渠道绑定、工具与冷态提醒 | [08](docs/08-profile-scheduler-files-clarification.md) |
 | 公开范围及旧规格明确保留部分 | [01](docs/01-personal-hermes-v1-first-fork-iteration.md)、[02](docs/02-noting-system-specification.md)、[04](docs/04-hermes-secretary-v1.5-implementation-spec.md) |
