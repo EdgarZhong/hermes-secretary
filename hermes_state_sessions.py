@@ -761,6 +761,31 @@ class SessionSessionsMixin:
             self._delete_unreferenced_system_prompts(conn)
         self._execute_write(_do)
 
+    def clear_conversation_context_cache(self, conversation_ref: str) -> Optional[dict]:
+        """Clear only the current Conversation tip's root and tools pin atomically.
+
+        Resolve the tip and reuse native turn/compression ownership checks in the
+        same writer transaction, so a running owner cannot republish an old prefix
+        over the clear. No transcript or Secretary state is rewritten.
+        """
+        def _do(conn):
+            route = self.resolve_conversation_route_conn(conn, conversation_ref)
+            if route is None:
+                return None
+            session_id = route["id"]
+            self._check_transcript_write_guards(
+                conn, session_id, None, reject_active_turn_lease=True,
+                reject_active_compression_lock=True)
+            changed = any(route.get(key) is not None for key in (
+                "system_prompt", "system_prompt_hash", "tool_names"))
+            conn.execute(
+                "UPDATE sessions SET system_prompt = NULL, system_prompt_hash = NULL, "
+                "tool_names = NULL WHERE id = ?", (session_id,))
+            self._delete_unreferenced_system_prompts(conn)
+            return {"conversation_ref": conversation_ref, "stored_session_id": session_id,
+                    "status": "cleared" if changed else "already_clear"}
+        return self._execute_write(_do)
+
     def update_session_model(
         self, session_id: str, model: str, provider: Optional[str] = None, *,
         base_url: Optional[str] = None, api_mode: Optional[str] = None,

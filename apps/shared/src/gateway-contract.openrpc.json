@@ -745,6 +745,24 @@
       }
     },
     {
+      "name": "conversation.context_cache_clear",
+      "summary": "Clear the current Conversation root and tools pin; rebuild on its next normal turn.",
+      "params": [
+        {
+          "name": "params",
+          "schema": {
+            "$ref": "#/components/schemas/ConversationCacheClearParams"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/ConversationCacheClearResult"
+        }
+      }
+    },
+    {
       "name": "cron.manage",
       "summary": "List/add/remove/pause/resume cron jobs in the (optionally profile-scoped) cron store.",
       "params": [
@@ -3099,6 +3117,42 @@
         "name": "result",
         "schema": {
           "$ref": "#/components/schemas/NotebookReadResult"
+        }
+      }
+    },
+    {
+      "name": "secretary.noting_recover",
+      "summary": "",
+      "params": [
+        {
+          "name": "params",
+          "schema": {
+            "$ref": "#/components/schemas/NotingRecoveryParams"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/NotingRecoveryResult"
+        }
+      }
+    },
+    {
+      "name": "secretary.noting_recovery_state",
+      "summary": "",
+      "params": [
+        {
+          "name": "params",
+          "schema": {
+            "$ref": "#/components/schemas/NotingRecoveryParams"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/NotingRecoveryResult"
         }
       }
     },
@@ -12063,6 +12117,60 @@
           "capabilities"
         ],
         "title": "ControllerScope",
+        "type": "object"
+      },
+      "ConversationCacheClearParams": {
+        "additionalProperties": false,
+        "properties": {
+          "profile": {
+            "minLength": 1,
+            "title": "Profile",
+            "type": "string"
+          },
+          "conversation_ref": {
+            "minLength": 1,
+            "title": "Conversation Ref",
+            "type": "string"
+          }
+        },
+        "required": [
+          "profile",
+          "conversation_ref"
+        ],
+        "title": "ConversationCacheClearParams",
+        "type": "object"
+      },
+      "ConversationCacheClearResult": {
+        "additionalProperties": false,
+        "properties": {
+          "profile": {
+            "title": "Profile",
+            "type": "string"
+          },
+          "conversation_ref": {
+            "title": "Conversation Ref",
+            "type": "string"
+          },
+          "stored_session_id": {
+            "title": "Stored Session Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "cleared",
+              "already_clear"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "profile",
+          "conversation_ref",
+          "stored_session_id",
+          "status"
+        ],
+        "title": "ConversationCacheClearResult",
         "type": "object"
       },
       "CorrectionStatus": {
@@ -21237,6 +21345,156 @@
           "kind"
         ],
         "title": "NotificationShowPayload",
+        "type": "object"
+      },
+      "NotingRecoveryParams": {
+        "additionalProperties": false,
+        "properties": {
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "conversation_ref": {
+            "minLength": 1,
+            "title": "Conversation Ref",
+            "type": "string"
+          },
+          "failed_child_session_id": {
+            "minLength": 1,
+            "title": "Failed Child Session Id",
+            "type": "string"
+          },
+          "request_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Request Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "conversation_ref",
+          "failed_child_session_id",
+          "request_id"
+        ],
+        "title": "NotingRecoveryParams",
+        "type": "object"
+      },
+      "NotingRecoveryResult": {
+        "additionalProperties": false,
+        "properties": {
+          "operation_id": {
+            "title": "Operation Id",
+            "type": "string"
+          },
+          "child_session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Child Session Id"
+          },
+          "status": {
+            "enum": [
+              "not_found",
+              "queued",
+              "running",
+              "completed",
+              "failed",
+              "abandoned",
+              "incomplete",
+              "interrupted"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "committed": {
+            "title": "Committed",
+            "type": "boolean"
+          },
+          "snapshot_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snapshot Id"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "sources": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NotingRecoverySources"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "operation_id",
+          "child_session_id",
+          "status",
+          "committed",
+          "snapshot_id",
+          "error",
+          "sources"
+        ],
+        "title": "NotingRecoveryResult",
+        "type": "object"
+      },
+      "NotingRecoverySources": {
+        "additionalProperties": false,
+        "properties": {
+          "parent": {
+            "title": "Parent",
+            "type": "string"
+          },
+          "root": {
+            "title": "Root",
+            "type": "string"
+          },
+          "tools": {
+            "title": "Tools",
+            "type": "string"
+          },
+          "notebook": {
+            "title": "Notebook",
+            "type": "string"
+          }
+        },
+        "required": [
+          "parent",
+          "root",
+          "tools",
+          "notebook"
+        ],
+        "title": "NotingRecoverySources",
         "type": "object"
       },
       "OkResult": {

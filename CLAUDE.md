@@ -6,6 +6,8 @@
 
 ## 当前阶段
 
+**两项Conversation调试入口已实现、待部署（2026-10-21）：** 用户要求将按Conversation清空系统提示词缓存、失败Noting热恢复一并实现并上线；清理目标为Alex置顶会话，清后只等下次active原生重建，不主动离线重建／模型Turn。缓存清理须覆盖持久root与旧tools固定副本及对应内存；历史／排期不改。用户进一步明确：Noting恢复不新增专门持久快照，利用已有原文、压缩边界、子任务记录等重建失败当时Active Foreground与Notebook工作态，沿原生runner／Commit Gate及当前timeline尾部Framework发布；不以没有专门快照或缺少逐字wire为拒绝条件，不额外加门禁；穷尽现有原文／版本／子任务记录恢复，实际缺项具体报告，不用当前父上下文替代。
+
 **Alex百炼模型目录已排除（2026-10-21 13:44）：** 用户要求排除语音阿里云Key自动带入选择器的全部百炼模型列表，保留独立Kimi／DeepSeek／GPT。仅Alex设置model_catalog.excluded_providers为alibaba、alibaba-cn及Coding Plan／Token Plan的国际／中国共六slug。前端同一model.options RPC核实Alex百炼3组194条消失，Kimi11／DeepSeek2模型集合保持，study GPT14与默认DeepSeek2保持，当前Provider／模型未切换；语音Key、其它Profile配置和认证文件指纹不变。页面已有目录需重新加载；未控制用户页面，未作视觉验收，无代码／服务重启／模型请求。备份与收据见operations-log。
 
 **Alex／study工具配置已同步（2026-10-21 13:40）：** 用户要求关闭Alex的vision_analyze、不再顶层注入，并把这套工具配置原样复制给study。两者均agent.disabled_toolsets=[vision]；原生工具选择／折叠配置沿相同默认，kimi-tools与playwright完整定义复制、保持enabled和lazy。两Profile正式只读组装均26顶层，Web/TUI5个／微信4个原生折叠；延迟MCP未连接初始化，不计入此独立组装数量，加载后沿原生Tool Search折叠。模型／认证／Noting和Scheduler开关、其它配置与历史／排期保护表指纹保持，未重启服务或发模型请求。后续原生刷新／新Agent生效；备份和收据见operations-log。
@@ -47,6 +49,13 @@
 | 验证与限制 | 冻结10检查通过；真实回环历史／隐藏IAB请求行为有效。未做公网已登录／蜂窝长实验、生产发图Turn／微信测试发送；不冒称全量测试全绿 |
 
 本轮按用户明确豁免不另跑严格两独立门禁；前端286定向与usage54（重叠）、后端投影26及兼容48、纯图受理34及受影响60、Noting dynamic39／summary4／fallback3的原版本证据由主会话亲审复用。冻结检查对初始50214cd基线，附包CDP工具的两项问题已等价拆分并核51事件输出一致，最终0 blocking／advisory。工作区先前手机调查文档dirty保留，不整树提交。运维详情只在operations-log。
+
+## 后续任务看板
+
+| 事项 | 用户确认的范围／启动条件 |
+|---|---|
+| KIMI-TOOLS-01 · 共同行为模式 | Kimi遇到工具声明／缓存上下文兼容异常后，可能反复误调或无法调用；工具Schema变更后须核对真实API工具面，清目标Conversation的旧Prompt／工具缓存，待下次active原生重建。 |
+| NOTING-DEBUG-01 · 热态恢复调试入口 | 2026-10-21用户已启动实现并授权上线；利用已有持久原文／边界／子任务记录重建，不新增专门持久快照。可热态直接调用，从已有持久记录重建指定失败时刻的父上下文与内存Notebook工作态，继续原生runner／Commit Gate提交Snapshot，Framework Message追加当前timeline尾部；禁止直接强改数据库、临时代码旁路或替换为当前父上下文。应落实既有资料恢复、具体缺项反馈、失败审计、重复调用及与当前运行状态的关系，不新增恢复门禁。 |
 
 ## 保留事项（不因本轮收尾自动立项）
 

@@ -2539,7 +2539,7 @@ def _make_agent(
     model_override: dict | str | None = None, provider_override: str | None = None,
     reasoning_config_override: dict | None = None, service_tier_override: str | None = None,
     platform_override: str | None = None, context_cwd_is_launch_artifact: bool | None = None,
-    cwd_override: str | None = None, auth_user_id: str | None = None):
+    cwd_override: str | None = None, auth_user_id: str | None = None, side_agent: bool = False):
     # AC-4 test seam: dead unless armed by the isolated certify harness.
     from tui_gateway.synthetic_turn import maybe_build_synthetic_agent
     synthetic = maybe_build_synthetic_agent(session_id or key, model_override)
@@ -2568,7 +2568,7 @@ def _make_agent(
         requested_provider=runtime.get("requested_provider"),
         base_url=runtime.get("base_url"), api_key=runtime.get("api_key"), api_mode=runtime.get("api_mode"),
         acp_command=runtime.get("command"), acp_args=runtime.get("args"),
-        credential_pool=runtime.get("credential_pool"), quiet_mode=True,
+        credential_pool=runtime.get("credential_pool"), quiet_mode=True, side_agent=side_agent,
         verbose_logging=False,  # DEBUG agent logging; independent of tool_progress_mode
         reasoning_config=(
             reasoning_config_override if reasoning_config_override is not None else _load_reasoning_config(str(model or ""))),

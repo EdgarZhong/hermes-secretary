@@ -24,6 +24,7 @@ import logging
 import threading
 import time
 from dataclasses import dataclass
+from contextlib import nullcontext
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Sequence
 from uuid import uuid4
@@ -261,6 +262,10 @@ def build_noting_child(
         _disable_child_auto_compaction(child)
         child._secretary_noting_request_count = 0
         child._secretary_noting_parent_tools = copy.deepcopy(child.tools)
+        # Reuse the native content-addressed tools pin; no recovery snapshot.
+        child._ensure_db_session()
+        from tools.mcp_tool_agent import persist_agent_tool_names
+        persist_agent_tool_names(child)
     except BaseException:
         _close_child(child)
         raise
@@ -533,6 +538,9 @@ def run_noting_task(
     frozen_runtime: Optional[dict] = None,
     frozen_work: Optional[dict] = None,
     _failure_notice: Optional[_NotingFailureNotice] = None,
+    recovery_audit: Optional[dict] = None,
+    recovery_history: Optional[list] = None,
+    completion_scope: Optional[Callable] = None,
 ) -> NotingTaskOutcome:
     """Run one admitted Noting Task to its one-shot conclusion (02 §5.4, §5.8).
 
@@ -561,7 +569,8 @@ def run_noting_task(
             parent_conversation_ref=conversation_ref, frozen_runtime=frozen_runtime,
         )
     except Exception as exc:
-        finish_child_admission(parent_db, admission_id, status="failed")
+        if recovery_audit is None:
+            finish_child_admission(parent_db, admission_id, status="failed")
         failure_notice.publish(str(exc))
         raise
     child._secretary_noting_anchor_uid = anchor_message_uid
@@ -571,10 +580,12 @@ def run_noting_task(
     outcome = NotingTaskOutcome(status="incomplete", child_session_id=child_session_id)
     try:
         owning = owning_profile if owning_profile is not None else owning_profile_for(parent_db)
-        register_child_admission(
-            task_db, admission_id, child_session_id=child_session_id,
-            profile=owning or None,
-        )
+        if recovery_audit is None:
+            register_child_admission(
+                task_db, admission_id, child_session_id=child_session_id, profile=owning or None,
+            )
+        else:
+            child._session_init_model_config["_noting_recovery"] = copy.deepcopy(recovery_audit)
         # Observers may read immediately: publish active only after its durable start exists.
         register_active_noting_task(child_session_id, child)
         from secretary.noting_tools import initialize_notebook_work
@@ -585,17 +596,19 @@ def run_noting_task(
         )
         _run_child_turns(
             child, prefix, wrapper, runtime_profile, outcome,
-            admission_timestamp=admission_timestamp,
+            admission_timestamp=admission_timestamp, recovery_history=recovery_history,
         )
-        _commit_when_complete(task_db, conversation_ref, anchor_message_uid, trigger_type,
-                              runtime_profile, child, provider, outcome)
+        with completion_scope(child) if completion_scope is not None else nullcontext():
+            _commit_when_complete(task_db, conversation_ref, anchor_message_uid, trigger_type,
+                                  runtime_profile, child, provider, outcome)
     except Exception as exc:  # a crashed task never commits and never resumes
         outcome.status, outcome.error = "failed", str(exc)
         outcome.notice_error = str(exc)
         logger.error("Noting task %s failed: %s", admission_id, exc, exc_info=True)
     finally:
         failure_notice.publish(outcome.notice_error)
-        finish_child_admission(task_db, admission_id, status=outcome.status)
+        if recovery_audit is None:
+            finish_child_admission(task_db, admission_id, status=outcome.status)
         unregister_active_noting_task(child_session_id, child)
         _close_child(child)
     return outcome
@@ -631,11 +644,13 @@ def _force_task_close(child: Any, runtime_profile: str, outcome: NotingTaskOutco
 
 def _run_child_turns(
     child: Any, prefix: List[Dict[str, Any]], wrapper: str, runtime_profile: str,
-    outcome: NotingTaskOutcome, *, admission_timestamp: float,
+    outcome: NotingTaskOutcome, *, admission_timestamp: float, recovery_history=None,
 ) -> None:
     """Run one persistent child for at most five complete Turns (M27)."""
     child._cache_parity_frozen_prefix_count = len(prefix)
     history: Any = [_clone_message(message) for message in prefix]
+    if recovery_history:
+        history.extend(_clone_message(message) for message in recovery_history)
     while outcome.turns < _NOTING_TURN_LIMIT:
         outcome.turns += 1
         try:

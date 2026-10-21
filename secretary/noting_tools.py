@@ -51,6 +51,8 @@ def initialize_notebook_work(child, *, trigger_type, frozen_work=None):
 
     child._noting_notebook_lock = threading.RLock()
     options = {} if frozen_work is None else {"base_snapshot_id": frozen_work["base_snapshot_id"]}
+    if frozen_work is not None and "working_state" in frozen_work:
+        options["working_state"] = frozen_work["working_state"]
     child._noting_notebook_store = NotebookStore(
         child._session_db, child._secretary_parent_conversation_ref,
         anchor_message_uid=child._secretary_noting_anchor_uid,

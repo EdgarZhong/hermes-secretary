@@ -1090,7 +1090,9 @@ def build_turn_context(
     set_review_attended(getattr(agent, "_review_attended", False))
     agent._restore_primary_runtime()
     _publish_runtime_main(agent)
-    _refresh_mcp_tools_between_turns(agent)
+    from secretary.conversation_cache import remember_context_cache, synchronize_context_cache
+    if not synchronize_context_cache(agent):
+        _refresh_mcp_tools_between_turns(agent)
 
     if isinstance(user_message, str):
         user_message = preserve_user_input_origin(user_message, sanitize_surrogates(user_message))
@@ -1161,6 +1163,7 @@ def build_turn_context(
     if agent._cached_system_prompt is None:
         restore_or_build_system_prompt(agent, system_message, conversation_history)
     synchronize_main_read_prompt(agent, system_message)
+    remember_context_cache(agent)
     active_system_prompt = agent._cached_system_prompt
 
     # Bot Mode DM tool — injected ONLY into a bot's canonical "Bot Chat" session (same

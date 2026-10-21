@@ -1308,6 +1308,16 @@ export interface ConnectorPolicySetResult {
   revision: string
   effective: ConnectorPolicyEffectiveUnrestricted | ConnectorPolicyEffectiveDenyAll | ConnectorPolicyEffectiveAllow | ConnectorPolicyEffectiveDeny
 }
+export interface ConversationCacheClearParams {
+  profile: string
+  conversation_ref: string
+}
+export interface ConversationCacheClearResult {
+  profile: string
+  conversation_ref: string
+  stored_session_id: string
+  status: 'cleared' | 'already_clear'
+}
 /** ``tools/bot_desktop/runtime.py::DesktopStatus`` plus the lease and the profile it speaks for. */
 export interface DisplayStatus {
   profile: string
@@ -1908,6 +1918,27 @@ export interface ClientCapabilitiesParams {
 export interface ClientCapabilitiesResult {
   server_requests: string[]
   declines_not_shown?: boolean
+}
+export interface NotingRecoveryParams {
+  profile?: string | null
+  conversation_ref: string
+  failed_child_session_id: string
+  request_id: string
+}
+export interface NotingRecoveryResult {
+  operation_id: string
+  child_session_id: string | null
+  status: 'not_found' | 'queued' | 'running' | 'completed' | 'failed' | 'abandoned' | 'incomplete' | 'interrupted'
+  committed: boolean
+  snapshot_id: string | null
+  error: string | null
+  sources: NotingRecoverySources | null
+}
+export interface NotingRecoverySources {
+  parent: string
+  root: string
+  tools: string
+  notebook: string
 }
 export interface SteerPendingParams {
   session_id: string
@@ -5462,6 +5493,8 @@ export interface RpcMethods {
   'connectors.policy.set': { params: ConnectorPolicySetParams; result: ConnectorPolicySetResult }
   /** The scoped profile's cached or current tool list for one connector. */
   'connectors.tools': { params: ConnectorToolsParams; result: ConnectorToolsResult }
+  /** Clear the current Conversation root and tools pin; rebuild on its next normal turn. */
+  'conversation.context_cache_clear': { params: ConversationCacheClearParams; result: ConversationCacheClearResult }
   /** List/add/remove/pause/resume cron jobs in the (optionally profile-scoped) cron store. */
   'cron.manage': { params: CronManageParams; result: CronManageResult }
   /** Block/unblock NEW spawns globally (active children keep running); returns the new state. */
@@ -5723,6 +5756,8 @@ export interface RpcMethods {
   /** Restore the working tree (or one file) to a checkpoint by hash or 1-based index. */
   'rollback.restore': { params: RollbackRestoreParams; result: RollbackRestoreResult }
   'secretary.notebook_read': { params: SecretaryReadParams; result: NotebookReadResult }
+  'secretary.noting_recover': { params: NotingRecoveryParams; result: NotingRecoveryResult }
+  'secretary.noting_recovery_state': { params: NotingRecoveryParams; result: NotingRecoveryResult }
   'secretary.schedules': { params: SecretaryReadParams; result: SchedulesReadResult }
   'secretary.state': { params: SecretaryReadParams; result: SecretaryStateResult }
   /** Attach the frontend to a live session without closing the previously focused one. */
@@ -5952,6 +5987,7 @@ export const RPC_METHODS = [
   'connectors.policy.get',
   'connectors.policy.set',
   'connectors.tools',
+  'conversation.context_cache_clear',
   'cron.manage',
   'delegation.pause',
   'delegation.status',
@@ -6083,6 +6119,8 @@ export const RPC_METHODS = [
   'rollback.list',
   'rollback.restore',
   'secretary.notebook_read',
+  'secretary.noting_recover',
+  'secretary.noting_recovery_state',
   'secretary.schedules',
   'secretary.state',
   'session.activate',

@@ -81,7 +81,8 @@ class NotebookStore:
     """
 
     def __init__(self, db, conversation_ref, *, anchor_message_uid, trigger_type="idle",
-                 runtime_profile="NOTING", lock=None, clock=None, base_snapshot_id=_UNBOUND_BASE):
+                 runtime_profile="NOTING", lock=None, clock=None, base_snapshot_id=_UNBOUND_BASE,
+                 working_state=None):
         if db is None:
             raise NotebookValidationError("An owning SessionDB is required.")
         require_text(conversation_ref, "conversation_ref")
@@ -114,7 +115,8 @@ class NotebookStore:
                 raise NotebookValidationError("The bound base Snapshot is unavailable.", code="source_unavailable")
             if snapshot is not None and snapshot["conversation_ref"] != conversation_ref:
                 raise NotebookValidationError("The base Snapshot belongs to another Conversation.", code="scope_denied")
-            payload = None if snapshot is None else snapshot["payload"]
+            payload = (working_state if working_state is not None else
+                       None if snapshot is None else snapshot["payload"])
             valid_identity, valid_range = _source_checks_conn(db, conn, conversation_ref)
             self._state = NotebookWorkingState(
                 conversation_ref, payload, lock=self.lock, clock=clock,

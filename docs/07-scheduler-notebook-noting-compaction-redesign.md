@@ -1538,3 +1538,44 @@ Previously scheduled attention, not new instructions or authorization. Check cur
 ### 11.2 压缩摘要恢复指引对齐 History（2026-10-17 用户确认）
 
 用户确认：压缩摘要的恢复指引必须与 `HISTORY_SEARCH_GUIDANCE` 同一资格，只按合格 Main 判断（`_secretary_main_read_eligible`），不额外要求 Noting 全局开关。合格 Main 的 `## Context Recovery` 改为：仅说明本次摘要覆盖的是上一次压缩掉的 N 条消息（区间起止时间），并说明 `conversation_history` 可检索自本 Conversation 第一条消息以来全部消息（会话起始时间）；不出现 Session ID、`session_search` 或工具 Schema。非 Main 保留原生 footer。另确认 `compression.protect_first_n` 产品默认改为 0（一个会话专注一个主题，保头只会固化摘要已覆盖的轮次；衰减规则已使首次压缩后的会话不再保头）。
+
+
+## 12. Conversation 调试接口（用户确认，2026-10-21）
+
+本节为用户明确授权的调试与运维入口，不改变正常Noting冻结父前缀、自动触发和原生压缩路径，也不暴露为Main或Noting的模型工具。复用当前已认证后端与Profile／Conversation归属、原生Agent和状态层，不建立独立执行器。
+
+### 12.1 清理指定Conversation上下文缓存
+
+按Profile和conversation_ref定位当前执行Session，只清持久System Prompt及旧tools固定副本，并使拥有旧内存缓存的Web／Gateway Agent在下次正常active时采用清理／重建结果。只清Prompt而保留旧tools pin不足以完成此次工具Schema更新。RPC本身不重建root、不创建新Agent或触发模型请求，不Compact、不清空／改写消息，不改Notebook、排期、身份和模型路由。下一次active沿原生构建路径生成新root和当前工具Schema；重复清理保持幂等。
+
+### 12.2 失败Noting热恢复
+
+用户指定的实现路线是**从已有持久资料恢复失败当时的Active Foreground和Notebook工作态，不新增专门持久快照**。查原Admission／Anchor、失败child原有root和工具声明、压缩边界、原文及其版本、任务控制正文、成功维护回执与条目不可变版本；重建旧父前缀、原任务后缀和失败时已生效于工作视图的修改，保留多模态结构及entry／version身份，不能简单按当前active标记或拿当前父上下文代替。不得仅因没有专用快照或没有完整历史HTTP wire而拒绝，先利用已有源恢复；真正缺失的具体数据如实报告，不造代替历史。
+
+恢复后继续使用原生Noting runner、Provider路由／目标Profile凭据、工具执行和Commit Gate；失败原child和原始记录保留审计，不能将部分结果直接标成已提交。原生Snapshot选择仍按有效Anchor／pointer规则；新生效结果沿既有安全接缝将Framework Message追加当前timeline尾部，不回填旧时间、不改旧历史或已有排期。处理重复请求、运行状态和资源释放复用现有机制，不新增调试专属权限／开关／确认步骤、专门快照存储或额外恢复门禁。
+
+### 12.3 正式RPC与操作方式
+
+通过既有已认证WebSocket JSON-RPC入口调用，下列均为后端运维接口，不注入模型工具表。类型契约同时生成至`apps/shared/src/gateway-contract.generated.ts`与OpenRPC。
+
+| 方法 | 参数 | 回执 |
+|---|---|---|
+| `conversation.context_cache_clear` | 必填`profile`、`conversation_ref` | `profile`、`conversation_ref`、实际`stored_session_id`、`status`（`cleared`或`already_clear`） |
+| `secretary.noting_recover` | `profile`可选（沿原生当前Profile）；必填`conversation_ref`、`failed_child_session_id`、`request_id`（非空、最长128字符） | 异步操作身份、状态、提交结果及材料来源，见下文 |
+| `secretary.noting_recovery_state` | 与启动恢复相同；查询必须复用相同三项身份参数及目标Profile | 不启动模型、不新建任务，只返回现有操作状态；不存在为`not_found` |
+
+缓存清理遇原生正在运行的Turn或压缩锁返回`4010`，待该工作自然结束再调用；不打断运行Turn。未知Conversation返回`4001`，无效参数`4000`，存储不可用`5010`。示例：
+
+```json
+{"jsonrpc":"2.0","id":"clear-1","method":"conversation.context_cache_clear","params":{"profile":"<目标Profile>","conversation_ref":"<Conversation ref>"}}
+```
+
+恢复的`request_id`是调用方生成的幂等键；同Profile、Conversation、失败child和request_id重复调用返回同一操作，不重复运行。希望重新发起一次恢复时使用新的request_id。回执字段为`operation_id`、`child_session_id`、`status`、`committed`、`snapshot_id`、`error`、`sources`；其中`sources`具体报告parent／root／tools／notebook所用旧材料。状态可为`queued`、`running`、`completed`、`failed`、`abandoned`、`incomplete`、`interrupted`；未找到为`not_found`。完成不等于提交，必须看`committed`与`snapshot_id`。操作审计保存在原生新child的model_config，不另存冻结快照；服务重启后未完成且无存活原生租约的操作显示`interrupted`，可用新request_id从现存材料再次恢复。
+
+```json
+{"jsonrpc":"2.0","id":"recover-1","method":"secretary.noting_recover","params":{"profile":"<目标Profile>","conversation_ref":"<Conversation ref>","failed_child_session_id":"<失败child ID>","request_id":"<本次恢复唯一键>"}}
+```
+
+恢复参数或具体历史来源错误沿现有`4002`回执反馈，Profile数据库不可用为`4001`；不能因为缺专用快照或完整旧HTTP wire而拒绝。先取旧child完整工具pin／原父匹配pin／admission前已有prelude；若旧父完整数组已不可得，仍使用原控制正文里的完整可调用Schema继续，并在`sources.tools`明确这一来源，不声称与原wire逐字相等。运行中使用原生资源租约，模型恢复阶段不占Main Turn；完成发布才复用已有Main队列或短时取得Main原生租约，追加当前尾部。
+
+操作证据和部署记录统一见`docs/operations-log.md`，实施状态只记根CLAUDE。接口上线不等于已重跑生产旧任务。

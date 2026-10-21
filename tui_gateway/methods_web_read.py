@@ -75,6 +75,10 @@ def _invalidation_sink(server, profile_home, ref, reason, *, completion_snapshot
 
 
 def register(server):
+    from tui_gateway.methods_conversation_cache import register as register_cache
+    register_cache(server)
+    from tui_gateway.methods_noting_recovery import register as register_recovery
+    register_recovery(server)
     from secretary import web_read as secretary_reads
     from secretary.web_events import subscribe
     server.register_method("session.compaction_state", lambda rid, params: _compression_handler(server, rid, params))
