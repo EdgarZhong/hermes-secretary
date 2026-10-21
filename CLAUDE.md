@@ -6,6 +6,8 @@
 
 ## 当前阶段
 
+**Scheduler schema最小修复已部署（2026-10-21 12:57）：** 用户确认修复并部署，明确不动主会话历史和已有排期。`fba851b2ef`只为Kimi转换层无属性定义、未显式限制额外字段的泛型object补`additionalProperties:true`；保留required、明确关闭对象及类型字典约束。181项相关回归与冻结10检查通过，修复后三次隔离K3-256k／High查询／重复历史／创建均正确；部署后正式传输层再验重复历史查询正确。Web／Gateway实际同提交、微信connected、自动重启0；Alex10258条消息、20排期、13pending Reminder及三库全部历史／绑定前后全行SHA一致，配置指纹保持。未向主会话发测试消息、未改排期或回盖DB。原调查表明API schema触发Kimi兼容性问题；10:27与12:30均为Chat，上午成功不能被解释为协议切换。首次暴露的确切原因缺原始请求证据，Notebook首调／大快照不是必要条件。备份、两次临时校验脚本问题与最终收据见operations-log；证据ignored`.hermes-dev/scheduler-tool-investigation-20261021/`。
+
 **移动端阶段一与Noting联合交付已上线（2026-10-21 01:30）：** 未开worktree，三个实现包与并行Noting会话已亲审并集成；首尔Web／Gateway实际运行`0bdddfc133`，Secretary前端`1d1b1a7`的439文件SHA通过，Caddy2.11.7已加载限定gzip／私有哈希静态缓存。真实同200行cards 863366B→212094B，实际Caddy gzip54696B；唯一图转换成功／fallback0，引用实际可下载。隐藏IAB经SSH回环观察静置详情0／图片0，展开单卡1次6783B，进入视口单次488384B图片成功解码；公网只验Authelia入口，未冒称登录后或蜂窝验收。纯图片持久受理／同row UID原子认领及失败路径已完成定向测试，未加生产Turn。Noting真实K3/High在1Turn、6HTTP200中正常维护并正式提交3条Snapshot；保留首版400及harness额外校验误用证据。用户C08简化部署后Validation、C09禁止自动回退已落实；切换后空闲检查短暂未通过，保留新版正常运行并续完Caddy，无回退或回盖DB。部署后原Alex10161／host2行内容身份、全部排期和微信绑定保持；既有7条Instant中最近2026-10-21 10:00，Scheduler线程／微信connected／发送工具及原生冷恢复路由已核。未提前触发提醒或测试发送，不把未来触达写成已发生。完整范围、有效证据与限制见[本轮交付](.autonomous/20261021-mobile-phase1/final-delivery.md)及[运维记录](docs/operations-log.md)。持续目标已完成；阶段二及手机蜂窝短实验不在本轮实施。
 
 **K3-256k最小Anthropic验证已完成（2026-10-21）：** 用户明确授权“小贝子”使用实际`k3-256k`补验证；严格3次真实请求、无重试，High、原生Coding Anthropic端点。正式顶层注册1/1成功且参数完整；末尾system.tools携OpenAI schema及Anthropic schema各0/1，模型均表示未提供维护工具。主会话亲审脚本并独立核验实际wire／响应哈希、精确模型ID和父前缀不变；不为review复跑。总输入含缓存1,665、输出510，合计2,175 tokens，实际费用未知。与便宜模型方向一致，但只证明所测两种写法未生效，不推为官方或所有Anthropic动态机制均不支持。仅本地隔离虚构内容，无Chat重测／长会话／SSH／生产数据，不改实现／配置／部署；证据见[运维记录](docs/operations-log.md)及ignored`k3-256k-summary.json`。
@@ -23,7 +25,7 @@
 **2026-10-20用户确认：部署基本告一段落，第一版可以正常使用。** 本轮文档／仓库整理及追加微信修复已完成，17:58部署首尔；后续按新任务推进，不自动重开旧挂账。
 
 - 首尔正式入口、双SPA、Alex / study Profile、NM / Ebbinghaus迁移及三条Mutagen同步已落地；旧部署等待、TCC阻塞与初始化过程不再是当前任务。
-- 已上线后端功能基线 `0bdddfc133b830dd73db3b3dfbe23bc20edfd4e1`（含阶段一、Noting动态工具、原预算修复及语音链）；前端 `1d1b1a7c53b9baf86576d3c19ebdd5a8b9a98975`；插件收尾 `f11a8db6c32e109bdc1de6c39c2920bcad14d617`已同步。后续纯文档提交不等于运行版本改变。
+- 已上线后端功能基线 `fba851b2ef2cdcf640586b0929bb09888f4a48a0`（含阶段一、Noting动态工具、原预算修复、语音链及Kimi泛型schema修复）；前端 `1d1b1a7c53b9baf86576d3c19ebdd5a8b9a98975`；插件收尾 `f11a8db6c32e109bdc1de6c39c2920bcad14d617`已同步。后续纯文档提交不等于运行版本改变。
 - Alex默认 `kimi-coding/k3-256k`／原生Chat及Coding `/v1`，窗口262144、thinking High；目标绑定Conversation当前tip同路由，Noting / Scheduler开启，联合Idle500秒／131072 tokens。已有Conversation保持自身模型配置；study不设默认模型，NM Thread目标仍继承考研Space，可选`thread_sync_space`能力保留。
 - 微信绑定采用原生Gateway control socket与Conversation ref；Alex工具 `~/scripts/alex/weixin_bind.py`，调用方直接 `bind --self`。Kimi凭据已补到Alex自己的受限`.env`；多余Gateway凭据注入与用户副本已回滚，正常重启后连接及原绑定保持。独立K3请求HTTP200；未把它冒称新微信消息端到端验收。
 - Prompt缓存清理已按当时授权完成，后续沿原生正常Turn懒构建，不追加离线重建。个人工具统一`~/scripts/`，只读保护、显式非空`--space`等规则见AGENTS／08。

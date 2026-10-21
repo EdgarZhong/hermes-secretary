@@ -3,6 +3,42 @@
 维护实际部署、故障处理、验证与回滚点；步骤和稳定布局见[部署SOP](cloud-deployment-sop.md)，当前任务只在根[CLAUDE](../CLAUDE.md)。以下时间均为Asia/Shanghai；PID、指纹和测试结论只对应记录时点，不代表实时状态。凭据、令牌、原始私人材料不写入本文件。
 
 
+## 2026-10-21 12:57 · Kimi泛型参数schema最小修复部署
+
+用户明确确认“按最小改动修复这层schema，并部署；别动主会话历史和已有排期”。本轮仅修改`agent/moonshot_schema.py::_ensure_required_array`：当object没有properties定义且未显式提供additionalProperties时，补`additionalProperties:true`，保留现有required兼容处理；明确关闭对象、已有类型字典、其它Provider和主会话Prompt／工具注册方式不变。代码与现有测试两文件提交`fba851b2ef2cdcf640586b0929bb09888f4a48a0`，自动push成功；未整包提交其它会话dirty。
+
+**验证：** 主会话在官方PM环境执行两批定向测试：schema40＋Noting dynamic39、Chat transport57＋Tool Search45，共181项全部通过；新增4项含真实bridge到Chat wire的开放声明、目录不变／幂等、两种关闭对象拒绝额外字段、类型字典拒绝错误值。冻结10项检查对本次staged两文件通过，0 blocking／advisory；未跑无关全量套件。首尔同依赖环境使用修复文件原字节，独立SDK／虚构短内容、精确K3-256k／High三请求分别查询、带重复Notebook历史查询、完整create参数，均正确；返回调用未执行。部署后另从正式ChatCompletionsTransport生成wire并请求一次重复历史查询，仍正确返回`scheduler {action:list}`。合计4个修复后真实请求、无重试、4778 tokens，费用未知；不是生产主会话端到端Turn验收。
+
+**部署与不变性：** 云工作区干净，Web active0、Gateway active_agents0／无active_work，三库无有效Turn lease／运行中Noting。只读全行指纹及SQLite backup完成后正常停止Web／Gateway，代码由`0bdddfc133`快进至`fba851b2ef`并启动；两者实际运行同新提交，Web health ok，Gateway running、微信connected、自动重启0。Alex全部10258消息、20个排期注册、13个pending Reminder及70绑定／73别名，host2消息及绑定、study空历史／排期等保护表全行SHA前后一致；配置／SOUL／凭据文件仅比较指纹且保持，微信Conversation ref保持。没有主会话测试消息、排期新增／修改／触发、DB回盖或自动回退。实际source SHA256 `01f87a29486700847eb7371614c4c1670f3be2b05fd089bc78ae63bbd66f63c5`。
+
+**校验脚本问题原样留证：** 首次readiness只以新版本＋微信connected结束等待，随后检查running时撞启动过渡期而失败；服务实际随后正常，无二次部署或重启。只读续验第一次漏定义config_paths，在历史／排期／绑定核验通过后报NameError；补齐后全部核验通过。保留两次原日志与最终receipt，不把临时核验失败抹掉或据此回退产品。
+
+**首次暴露时间的边界：** 用户追问上午Scheduler正常、Notebook本就存在。日志确认10:27微信入口与12:30TUI Reminder入口均为Coding Chat，同模型同端点；延迟工具目录计数为6与7，未留两次完整wire，不能认定具体差异。Notebook读能力只依Main资格／全局开关，不等待首个Snapshot或首调。坏schema并非在所有上下文下必然失败：上午成功记录真实保留；短新上下文无Notebook调用历史也可错误输出，因此Notebook首调／巨大Noting不是必要条件。已定位的是可重复触发条件与有效修复，不能断言Kimi内部解码机制、模型／后端是否变动或12:30为何首次暴露。
+
+**证据／回滚点：** 首尔`/home/ubuntu/.local/state/hermes-secretary/scheduler-schema-20261021/deploy-20261021T125730/`含三库受限备份、before.json和receipt.json；备份仅留服务器，不能在已有新消息后整库回盖。代码前版为`0bdddfc133`，如需回滚须另按授权和当前空闲状态处理，不自动执行。本机ignored`.hermes-dev/scheduler-tool-investigation-20261021/`保留部署脚本／原失败日志／最终核验、两批测试与检查、修复前后请求响应和deployment-receipt.json。前次调查原记录在下节，按原时点保留。
+
+## 2026-10-21 · 置顶Main将Scheduler误调为Notebook：API schema兼容性调查
+
+用户要求区分调用错误、Harness串线和Kimi API格式触发，并倾向核对与此前Noting类似的API兼容性问题。本轮只调查与隔离复现，没有获授权实施修复。首尔运行`0bdddfc133b830dd73db3b3dfbe23bc20edfd4e1`；工具声明、分发与Chat解析的五个关键文件SHA与本机一致。只读Alex唯一置顶会话，12:30首次`tool_call`内部为`scheduler {}`，缺action而正确拒绝；之后至12:40共16次assistant实际调用`notebook_show {}`，不是UI误标或Scheduler执行器返回Notebook。`terminal`直调仍成功，10:27的Scheduler完整参数调用曾成功；后续多个用户Turn仍重复，不能断言换Turn会自愈。生产排期只读快照保留14:00／17:00及既有定义，没有13:00午饭重试；未新增、修改或触发提醒。
+
+**最小复现：** 主会话执行，首尔现有PM环境、OpenAI SDK直连原生Coding Chat端点、精确`k3-256k`／High；虚构短上下文，不经Hermes模型循环／工具执行器，不发送真实历史、不执行返回工具。12次请求、无重试，全部正常返回。请求前保存body与返回的SDK JSON；凭据仅在首尔读取，未复制或输出。
+
+| 对照 | 本次观察 |
+|---|---|
+| 原包装层，经`sanitize_moonshot_tools`，全新短上下文 | 0/3正确；返回`scheduler {}`或`notebook_show {}` |
+| 同包装层，不经过该转换，全新相同上下文 | 3/3正确返回`scheduler {action:list}` |
+| 原转换包装层，三条虚构Notebook重复历史 | 0/1正确；推理写出scheduler/list，实际调用Notebook空参数 |
+| 明确嵌套Scheduler参数schema | 2/2正确，分别为新上下文和相同重复历史 |
+| 泛型object显式`additionalProperties:true` | 1/1正确 |
+| `arguments`声明为JSON字符串 | 1/1正确；现有normalizer支持这种输入 |
+| 顶层独立Scheduler声明 | 1/1正确 |
+
+**触发点：** 原`tool_call.calls[].arguments`声明为`{type:object, description:...}`；`agent/moonshot_schema.py::_ensure_required_array`会补`required: []`。实测两组全新请求的工具schema逐字段差异仅此一项；标准jsonschema校验确认`{action:list}`在两份schema下均合法。加空required不应在标准语义上禁止额外字段，Kimi在该写法下却持续返回空对象或改选空参Notebook。证据支持“我方Kimi schema适配触发Provider／模型结构化输出兼容性问题”，没有支持执行器把Scheduler改名的证据。不能从API外部断言Kimi内部使用了哪种约束解码／缓存机制；生产故障无原始HTTP响应留存，持久记录已过SDK解析，本轮最小复现未重放生产长上下文。主会话模型对巨大Noting／自我模式锁死的解释不是根因证据；短新上下文也能复现。
+
+**候选与边界：** 优先评估Kimi适配中自由object的处理（例如显式保留`additionalProperties:true`），或让必要工具独立声明；删除required、字符串承载及具体嵌套均有小样本正向证据，不等于已完成全链路修复或兼容验收。尚未改Prompt、schema转换、工具面、生产配置、模型／会话、排期或服务；不追加本任务的生产Turn。仅按职责更新调查文档，保留原dirty。
+
+证据本机ignored`.hermes-dev/scheduler-tool-investigation-20261021/`：`production-evidence.json`为只读调用及排期快照，12组`*-request.json`／`*-response.json`、三批summary、`final-summary.json`及`manifest.json`；三份probe脚本与stdout保留。原始隔离请求／响应同留首尔仓库同名ignored目录，无凭据。实际token总量见`final-summary.json`，费用未知；这是API等价格式实验，不是生产完整链路验收。
+
 ## 2026-10-21 01:30 · 移动端阶段一与Noting联合上线
 
 用户确认不开worktree，完成阶段一并统一部署，允许直接协调Noting并行会话；C08明确先部署后简化Validation，不严格执行自主套件；C09明确健康重点是原会话Instant Reminder与微信链，禁止因部署失败擅自回退。本轮按该口径完成，不另设严格两门禁，不改检查等级。阶段二和蜂窝短网络实验未实施。
