@@ -31,6 +31,16 @@ def ui_heartbeat_enabled() -> bool:
         return False
 
 
+def heartbeat_set_note(native_note: str) -> str:
+    if not ui_heartbeat_enabled():
+        return native_note
+    return (
+        "Saved for this Conversation. The UI backend runs due heartbeats while it is running, "
+        "even after you switch conversations or close the page. Settings survive backend restarts. "
+        "/heartbeat pause | resume | clear to manage."
+    )
+
+
 def render_heartbeat(prompt: str, timestamp: float) -> str:
     from agent.message_metadata import build_user_wrapper
 

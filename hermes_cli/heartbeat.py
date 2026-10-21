@@ -14,7 +14,7 @@ import time
 from dataclasses import asdict, dataclass
 from typing import Any, Optional
 
-from secretary.heartbeat import ui_heartbeat_enabled
+from secretary.heartbeat import heartbeat_set_note, ui_heartbeat_enabled
 
 logger = logging.getLogger(__name__)
 
@@ -326,5 +326,5 @@ def migrate_heartbeat_to_session(old_session_id: str, new_session_id: str) -> bo
 
 __all__ = [
     "HeartbeatState", "HeartbeatManager", "parse_interval", "format_interval", "load_heartbeat", "save_heartbeat",
-    "migrate_heartbeat_to_session", "HEARTBEAT_PROMPT_TEMPLATE", "MIN_INTERVAL_SECONDS", "POLL_SECONDS",
+    "migrate_heartbeat_to_session", "HEARTBEAT_PROMPT_TEMPLATE", "MIN_INTERVAL_SECONDS", "POLL_SECONDS", "heartbeat_set_note",
 ]

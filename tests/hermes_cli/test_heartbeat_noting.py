@@ -81,6 +81,25 @@ def test_cli_command_allows_empty_extra_only_when_globally_enabled(enabled, monk
     assert bool(started) is enabled
 
 
+@pytest.mark.parametrize("enabled", [True, False])
+def test_cli_set_receipt_describes_selected_lifecycle(enabled, monkeypatch):
+    from hermes_cli import cli_commands_mixin as commands
+    configure(enabled)
+    manager = HeartbeatManager("cli-command")
+    output = []
+    monkeypatch.setattr(commands, "_cp", lambda *lines: output.extend(lines))
+    monkeypatch.setattr(commands, "_dim_line", lambda value: value)
+    owner = SimpleNamespace(_start_heartbeat_watchdog=lambda: None)
+    commands.CLICommandsMixin._heartbeat_set(owner, manager, "every 1m Check")
+    assert manager.is_active()
+    if enabled:
+        assert "Saved for this Conversation." in output[-1]
+        assert "close the page" in output[-1] and "Settings survive backend restarts." in output[-1]
+        assert "lives only while this Hermes process runs" not in output[-1]
+    else:
+        assert output[-1] == commands._t("heartbeat.set_note")
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("enabled", [True, False])
 async def test_gateway_command_allows_empty_extra_only_when_globally_enabled(enabled):

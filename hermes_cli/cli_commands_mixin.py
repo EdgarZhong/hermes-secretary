@@ -1904,7 +1904,7 @@ class CLICommandsMixin(CLISecretaryCommandsMixin, CLICommandsSessionToolsMixin):
 
     def _heartbeat_set(self, mgr, arg: str) -> None:
         """Set: ``/heartbeat every 10m <prompt>`` (also accepts ``10m <prompt>``)."""
-        from hermes_cli.heartbeat import parse_interval, format_interval, ui_heartbeat_enabled
+        from hermes_cli.heartbeat import parse_interval, format_interval, heartbeat_set_note, ui_heartbeat_enabled
         tokens = arg.split(None, 2)
         interval = None
         prompt = ""
@@ -1926,7 +1926,7 @@ class CLICommandsMixin(CLISecretaryCommandsMixin, CLICommandsSessionToolsMixin):
             return
         self._start_heartbeat_watchdog()
         _cp(f"  {_t('heartbeat.set', interval=format_interval(state.interval_seconds), prompt=state.prompt)}",
-            _dim_line(_t("heartbeat.set_note")))
+            _dim_line(heartbeat_set_note(_t("heartbeat.set_note"))))
 
     def _handle_review_command(self, cmd: str) -> None:
         """Dispatch /review — snapshot the last N messages (+ argument text as instructions) and
