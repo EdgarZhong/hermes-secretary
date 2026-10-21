@@ -3,6 +3,30 @@
 维护实际部署、故障处理、验证与回滚点；步骤和稳定布局见[部署SOP](cloud-deployment-sop.md)，当前任务只在根[CLAUDE](../CLAUDE.md)。以下时间均为Asia/Shanghai；PID、指纹和测试结论只对应记录时点，不代表实时状态。凭据、令牌、原始私人材料不写入本文件。
 
 
+## 2026-10-21 13:40 · Alex关闭Vision并将工具配置复制给study
+
+**用户确认：** 关闭Alex的Vision Analyze、不再注入顶层；随后确认其余顶层／折叠工具列表，并要求将Alex整套工具配置原样复制给现有study Profile。原生vision工具集仅含vision_analyze，故将vision加入agent.disabled_toolsets，在所有入口移除，不把它挪入折叠目录。
+
+**实施与验证：** 两者此前无tools／toolsets／platform_toolsets／disabled覆盖；Alex有kimi-tools、playwright两MCP定义，均enabled:true、lazy:true，study没有。复用原生Profile scope及raw config writer：Alex只增加agent.disabled_toolsets:[vision]；study原样复制tools、toolsets、platform_toolsets字段的存在性、agent.disabled_toolsets及mcp_servers定义。复制的是工具启动／参数／URL配置，未复制模型路由、账号认证、.env或auth.json；未启停MCP或发起工具／模型请求。原样比对写后raw config符合预期，host config、两者SOUL／凭据文件指纹保持；两Profile其它raw字段（含各自模型、Noting／Scheduler）保持。
+
+两Profile在真实运行依赖与Profile scope中，只读正式组装均26顶层，含scheduler／notebook_show且不含vision_analyze；Web/TUI原生折叠五项、微信四项少desktop_project，选用工具集相同。此进程未初始化延迟MCP，因此该计数不含MCP运行时工具，不表示两个MCP未启用；MCP加载后按原生Tool Search归入折叠目录。未连接或调用MCP，不冒称握手／实际查询验收。Web/TUI按原生between-turn refresh、新消息渠道Agent按创建时加载生效，不动历史工具记录／Prompt正文，不重启服务。
+
+**不变性与留存：** Alex／study历史、排期、pending、绑定及别名全行SHA前后一致；无DB写入、主会话测试消息、排期变更或模型请求。备份`/home/ubuntu/.local/state/hermes-secretary/main-direct-tools-20261021/tools-sync-20261021T134058/`有两份受限原config及receipt；本机ignored本轮目录有profile-tools-sync.py／log、profile-tools-receipt.json。线上代码仍f7d93351ca。撤销时须先核后续配置变更，仅撤本次vision禁用和study工具字段同步；不能覆盖之后新增配置，不恢复DB。
+
+## 2026-10-21 13:32 · Main Scheduler／Notebook完整顶层声明部署
+
+**用户确认与实现：** 用户确认Scheduler和Notebook Show完整独立进入API顶层tools、退出折叠目录，按各自开关注入；Noting关闭但Scheduler开启时Scheduler继续顶层。复用现有Main资格与能力开关，Scheduler只依scheduler.enabled，Notebook沿全局noting.enabled读取门禁，当前Conversation的/noting参与不控制二者；不开新增配置、不调整线上配置值。tools/secretary_dispatch集中判定，tools/tool_search在原生分类接缝排除两项折叠；同步正式目录、describe/call作用域和工具缓存键，避免Main／子任务缓存污染。非Main、Noting冻结子任务及其它原生工具保持原策略。代码、回归和07§8.2提交`f7d93351ca1d93a46e1d9979eee6888f272ad5ec`，自动push成功；未整包提交其它会话dirty。
+
+**验证：** 主会话官方PM环境定向验证Main正式TUI请求与开关组合、工具调用／关闭拒绝、目录移除、原生折叠保持及缓存隔离；r3 wiring52＋surface33＋tool_search45＋schema40＋Chat transport57＋Noting child37＋dynamic39，共303通过，child另1项失败。失败test_run_noting_task_commits_snapshot_and_closes_child末尾active_noting_task_count为1，目标child本身已关闭；在未改基线22c3542f33ee的独立git archive树复现同文件37通过／同1失败，保留原日志，不声称全绿。冻结10检查全部通过，health0 blocking／0 advisory。未跑无关全量。
+
+**部署与保护：** 首尔从fba851b2ef快进至f7d93351ca；Web active0、Gateway活动0且三库无有效Turn lease／运行Noting后，先只读全行指纹和SQLite backup，再正常停止／启动两服务。Web health与Gateway code_sha均为新版本，Gateway running、微信connected；三库messages、schedule_registry、pending_reminders、session_bindings、conversation_aliases保护表逐行SHA前后一致：Alex10266消息／20排期／13 pending／70绑定／73别名，host2消息及既有绑定、study空表保持。配置／SOUL／凭据仅比较指纹且不变，微信Conversation ref保持。未发送主会话测试消息、执行排期工具、提前触发提醒、回盖DB或自动回退。五个修改的source SHA与部署收据匹配。
+
+**生产版本正式组装：** 独立进程沿真实Alex Profile只读配置、原生入口选择与ChatCompletionsTransport组装，不启动生产Main或执行工具。Web/TUI和微信均27项顶层声明（原25加scheduler、notebook_show）；折叠目录分别为cronjob_manage、desktop_project、process_manage、session_search、todo_list五项，微信四项少desktop_project。前次10:27微信／12:30TUI的6→7目录变化由原生TUI补project解释，原Notebook早已在目录；platform是执行入口而非操作系统，不能据工具数量变化断言它触发Kimi故障。
+
+**真实模型样本与限制：** 原生Coding Chat端点、精确K3-256k／High、完整新27工具schema、虚构内容，四次隔离请求且无重试，返回调用全部不执行。带三条虚构旧Notebook包装调用历史时，Scheduler正确返回独立scheduler {action:list}；Notebook同样旧历史时未调用，直接复述旧虚构结果，失败样本原样保留。去旧历史后正确返回notebook_show {}，说明空参数顶层声明在此样本可调用；另显式tool_choice指定Notebook对照返回400，仅保留状态／错误类型，未取得错误正文，不推断具体原因。三次正常响应合计33195 tokens，400用量未知、费用未知；不能声称模型每次正确选工具或生产主会话端到端验收。首版probe有括号SyntaxError，未发模型请求；修正后的旧历史Notebook断言失败属于模型样本结果，不影响部署或据此回滚。
+
+**留存与回退边界：** 首尔受限`/home/ubuntu/.local/state/hermes-secretary/main-direct-tools-20261021/deploy-20261021T133201/`保留三库backup、before.json／receipt.json；本机ignored`.hermes-dev/main-direct-tools-20261021/`保留测试原失败／修正／基线日志、checks、部署日志／deployment-receipt、catalog-after、四次请求及已取得的三次响应、两个summary、脚本与manifest。前版fba851b2ef；若另获回退授权须先核当前空闲与后续变更，只处理代码、不回盖已有新数据。本次文档提交不改变生产代码版本。
+
 ## 2026-10-21 12:57 · Kimi泛型参数schema最小修复部署
 
 用户明确确认“按最小改动修复这层schema，并部署；别动主会话历史和已有排期”。本轮仅修改`agent/moonshot_schema.py::_ensure_required_array`：当object没有properties定义且未显式提供additionalProperties时，补`additionalProperties:true`，保留现有required兼容处理；明确关闭对象、已有类型字典、其它Provider和主会话Prompt／工具注册方式不变。代码与现有测试两文件提交`fba851b2ef2cdcf640586b0929bb09888f4a48a0`，自动push成功；未整包提交其它会话dirty。

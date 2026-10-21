@@ -14,6 +14,8 @@
 
 Secretary 只在Profile的 `state.db` 增加自有表，不改原表 schema / ownership。`noting`、`scheduler` 独立配置，`/noting` 控制当前Conversation参与。微信入站的回复由adapter发送，其它入口须显式调用发送工具。实现边界及已知限制见 [当前看板](CLAUDE.md)。
 
+Main的`scheduler`与`notebook_show`按各自能力开关完整独立声明在API顶层，不进入Tool Search折叠目录：前者受`scheduler.enabled`，后者沿全局`noting.enabled`读取门禁；当前Conversation的`/noting`参与开关不控制这两项权限。其它工具保留原生折叠策略。
+
 | 命令 | 行为 |
 |---|---|
 | `/notebook` | 人类查看当前Notebook与Snapshot时间 |
