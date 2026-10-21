@@ -2,9 +2,22 @@
 
 ## 自主口径收敛 · 待用户追认
 
-暂无。Android恢复退避已获用户明确确认：10／15／20／30秒；生命周期回前台立即刷新并清空退避，再从10秒开始。此前45秒、分钟级长退避及5秒单次刷新方案均已废弃。UI-CAM-01已获用户确认，拍照压缩保留当前实现。
+暂无。Android恢复退避已获用户明确确认：10／15／20／30秒；生命周期回前台立即刷新并清空退避，再从10秒开始。此前45秒、分钟级长退避及5秒单次刷新方案均已废弃。UI-CAM-01已获用户确认，拍照压缩保留当前实现。2026-10-21本轮用户明确确认：升级APK迁移至新的响铃＋横幅通知通道，并尽量保留用户主动静音设置；实现与验证进行中。
 
 ## 当前阶段
+
+**2026-10-21 手机多故障修复收尾：** 用户已放弃旧置顶Kimi工具调用调查与恢复。用户随后明确要求继续委派，先由三个Sol/high子Agent分担微信身份修复、提交／Heartbeat复核、时间线／滚动复核；后续由Sol/high接手Android380视口与图标修复，不再使用Astra／Extra。标题transport、Thinking详情跳位／工具错序、流式布局开销、Android通知通道已有实现和定向证据；主会话继续补齐丢ACK精确关联恢复、Heartbeat实际落库后即时卡片发布，并亲审正式接线及失败路径。用户要求全部修好并测过后准备上线；当前尚未部署本轮修改，不向生产会话发模型测试消息，不动旧历史／排期。用户最新明确更正为380，最终采用380 CSS px、Android壳真实扩大并等比显示；另追加launcher icon过度放大裁切反馈，已交`android_viewport_icon`修复两项。最终APK仍等全部集成验证后准备，不为赶包跳过其余问题。保留已有dirty及其它任务文档。隐藏IAB被Work设置禁用，界面实测缺口如实记录，不绕过显示保护。
+
+| 当前任务 | 当前状态／完成条件 |
+|---|---|
+| MOBILE-RENDER-02 | `timeline_final_review`复核投影／滚动。真实生产只读512帧＋200条cards回放已复现旧版737字符早期Thinking挂尾，候选版回到实际UID位置；公开虚构等价及空闲select回归通过。新增DOM复用锚点身份校验与程序滚动过滤，相关55项通过；子Agent亲审正式接线、补5个边界用例并修正新增ID契约断言，5份144项／真实回放／typecheck通过，主会话已亲读接收；普通浏览器／真机UI未验 |
+| SUBMISSION-RECOVERY-03 | `submission_review`复核可选提交ID、Profile／Conversation回执查询及事件／ACK竞态；不按文本猜成功、不重发、不复活rewind行。后端相关6份76项通过，冻结10检查0／0；待复核进程隔离／晚ACK错误提示与数据库新连接测试 |
+| HEARTBEAT-CARD-02 | 同上Agent复核；真实持久用户行回调即时发布，先于provider输出，重放UID去重，退休／未落库行不造卡；已纳入76项证据 |
+| WEIXIN-REBIND-03 | `weixin_identity_fix`负责绑定handler→原生初始化身份冲突；用户报告Desktop/Alex/问题报告-微信改绑会话身份冲突-2026-10-21.md为取证依据。必须保留旧Conversation身份、历史、Notebook／排期和用户新绑定，不合并旧ref，不吞冲突或自动回绑；已修Gateway构造将可变peer key冒充目标出生身份的接线错误，核目标owner后沿目标native key／compression身份；不改alias／历史。7份111项、冻结10检查0／0；主会话已读diff与正式构造／缓存／绑定清理接线，接收本地修复。生产只读确认无需修库；真实微信入站待部署后用户正常消息验证 |
+| AUX-TITLE-02 | 已修实际SDK与辅助推理参数不匹配；360相关及最终18重叠定向通过，冻结检查通过；未部署，新会话仍走旧代码 |
+| ANDROID-RECOVERY-02 | v2 HIGH响铃／横幅及主动静音迁移已实现，原生63／前端67通过；Sol/high `android_viewport_icon`现负责380逻辑视口及图标安全区／缩放／背景，保留通知和恢复规则。真机未验，最终APK等整包集成验证 |
+| KIMI-TOOLS-02 | 用户决定关闭，不自动重开；生产旧会话／历史／排期未改。证据`.hermes-dev/kimi-recurrence-20261021/`，无已证实精确根因 |
+
 
 **Conversation级Heartbeat已完成并上线（2026-10-21）：** 后端`ed94619da8`、固定前端`0b8843f`已联合上线；按目标Profile全局Noting分支，稳定Conversation自有状态、独立设置/暂停/恢复/清除，UI runtime后台唤醒，压缩共享，新建/reset/fork独立，关闭原生。156项有效定向、冻结10检查、独立负例与4个真实K3/High样本通过；正式serve关页/回收后自然61.9秒执行、148.6秒停机跨两due合一次、暂停/清除跨重启不复活已实测。首次成功回执遗留原生进程限制文字被主会话发现，旧门禁结论更正；已修补并经新独立36判据/18场景前置复审和实际WS en/zh输出复验。Alex原置顶Conversation已正式设7200秒/空prompt/active/count0；补发版只读核定义全字段、revision1及19:58:09到期锚点保持，未提前模型触发。两独立角色已补审最终三收据，Verification36条全部符合、Validation18项全通过，范围内整改清空；交付见`.autonomous/20261021-conversation-heartbeat/final-delivery.md`，持续目标完成归档。439文件及三库保护数据/配置/微信绑定对账一致，双SPA正常、Web/Gateway active且微信connected，NRestarts0。禁止Astra，全部子Agent sol/high；无新产品口径待追认。
 

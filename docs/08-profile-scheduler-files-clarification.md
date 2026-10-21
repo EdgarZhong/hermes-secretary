@@ -24,6 +24,9 @@ Profile 选择器仅出现在首页／New Chat，用于决定即将创建的 Con
 
 **2026-10-20 用户确认的不变量：** 只有显式调用绑定／解绑工具可以改变持久Conversation绑定；压缩耗尽、suspended恢复、后台delegation回流及其它自动路由恢复均不得替代绑定目标。A派发任务后已显式改绑B，A的晚到结果不能把绑定切回A，也不能注入B；保留其原有持久结果记录。允许沿同一Conversation合法compression lineage更新物理locator，不得以新Conversation冒充延续。未绑定的原生路径保持原行为。
 
+**初始化身份接线约束（2026-10-21故障修复）：** 显式绑定的消息入口key仅是可变投递定位符。Gateway构造被绑定Main时须先在所属Profile核实物理Session属于绑定ref，再沿用目标本身已有的原生session_key；目标无key则沿其原生compression身份解析，不用入口key替它认领declared alias。Gateway入口／接收者／投递者身份仍保留。既有source不同但key相同的历史alias可分别属于不同Conversation，不能据此迁移／清理或合并；目标内部真正的可信alias冲突仍拒绝。
+
+
 AI使用的绑定工具对外以Conversation ref为唯一目标身份，废弃Session ID参数／查询口径；内部可解析当前物理Session，不将该实现责任交给AI。当前Conversation查询必须依据调用方上下文，缺失时明确失败，不回退到当前绑定、最近会话或标题猜测。这是2026-10-20确认的接口要求；绑定操作由存活Gateway通过原生本地控制通道保存，工具不通过停启服务或离线改路由实现。
 
 工具统一位于`~/scripts/<profile>/weixin_bind.py`，每个工具只负责其自己的Profile，不提供跨Profile选择入口；当前只制作Alex工具。绑定调用方直接使用`bind --self`一步完成，不设单独的`self conversation`查询，也不保留`current`或`--current`别名。`list`只列所属Profile最近的Conversation，每个Conversation一条，带完整ref、标题等属性及`is_self`（调用方）和`is_current_binding`（当前通道的显式绑定目标）两个独立标记；两个身份相同则同一条都为true。调用方身份缺失时，列表仍可查询，但`is_self`为null并明确身份不可用，绑定调用方则失败，不猜测；明确来自其它Profile的调用直接拒绝（包括只读查询），不读取Alex状态。若调用方或绑定目标不在最近结果内，顶层身份／绑定信息仍说明其ref，不伪称未绑定。指定其它Conversation用`list`和`bind --conversation-ref <完整ref>`，`status`只查询绑定状态。

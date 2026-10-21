@@ -184,9 +184,11 @@ Exactly **three main screen states** exist: **New Chat**, **Conversation**, **Fi
 
 用户随后对上述收紧预览确认“看起来不错”，采用该Android视觉。24px仅为当前模拟器状态栏实测，正式壳使用设备实时Insets，不把其它设备强制设为24px。最终补充确认：标题保持靠左，只保证在状态栏下方的56px内容带垂直居中，Android上下间距统一4px；此适配只对APK生效，普通网页不启用，显式Mock预览除外。
 
-**用户确认图标更新（2026-10-21，0.1.1）：** APK启动图标复用已有Hermes Secretary logo，居中放在现有主题色卡的深色背景上；不另行重设计logo。
+**用户确认图标更新（2026-10-21，0.1.1）：** APK启动图标复用已有Hermes Secretary logo，居中放在现有主题色卡的深色背景上；不另行重设计logo。用户随后反馈launcher前景被过度放大裁切；后续修复须按adaptive icon前景安全区和普通图标实际mask核对，保持logo可辨、不过小、不露四周白边；背景沿深纸色填满，不修改logo内容。
 
 **用户确认自动恢复（2026-10-21，后续版本）：** APK在原生生命周期确认进入后台后，返回前台显式重载WebView网页和JS，不仅依赖前端重连；系统冻结无法精确判定。用户进一步要求考虑移动弱网、缺少刷新按钮时必须自动恢复，不能停在失效页面。短暂WS断线保留现有重连，持续失败／前台JS无健康响应由原生兜底并限制频率；不为短断快速循环刷新。不清Cookie／本地草稿与路由，通知目标跨刷新保留，第三方认证与原生附件交互不得被恢复刷新打断。**用户随后澄清：** 首次WS断线先尝试现有代码恢复，几次／几秒短时间内仍无法恢复时触发原生刷新；不能因刷新退避再等一分钟或更久。此口径覆盖先前Agent提出的45秒及分钟级退避方案。返回前台立即刷新，无JS／未就绪错误页也应有独立原生恢复能力，不能因为只允许一次刷新而永久停住。**最终追加确认：** 首次打开是正常加载，不额外重复刷新；解锁回前台及从后台回前台均立即原生重载，并将旧的退避计时和进度全部清空。此后监测WS是否实际connected；首次给10秒，未恢复则原生重载并重新计时，随后15秒、20秒、30秒，封顶30秒继续尝试；连接恢复停止该轮自动重载。再次切回前台始终立即重载并从10秒重新开始，不承接旧退避剩余时间。此最终口径覆盖前述分钟级及5秒单次刷新方案。JS持续响应且WS已连接的正常慢历史加载不判失败；明确初始化报错或JS无响应使用原生恢复兜底。
+
+**用户2026-10-21逻辑视口澄清：** 手机整页显示更多内容须由Android壳提供更大的实际逻辑视口并按手机屏幕等比显示；不采用前端按断点缩放整页的方案。用户最后明确选择380，采用380 CSS px作为手机竖屏目标（覆盖此前390建议），保持等比；横屏／大屏须避免因硬塞380反向放大，键盘弹出不改变缩放基准。后续须实测WebView的`window.innerWidth`与比例，以及Insets／键盘避让。最终APK等全部修复验证后统一准备。
 
 #### Android 原生通知与临时后台保护（用户最终确认，2026-10-21）
 
@@ -196,6 +198,7 @@ Exactly **three main screen states** exist: **New Chat**, **Conversation**, **Fi
 - **完成依据。** Active→Idle只触发核验，不直接等同正常完成；用已有只读事件回放核实当前连续连接期间的正常完成，再按需读取既有只读Session History及必要详情，确认最终可见Assistant行实际持久化。不得用侧栏preview替代最终回复，缺失／截断／不可靠证据时放弃通知。Thinking、Tool Call、Compaction、Noting、中间正文、失败、取消不触发。Profile＋Stored Session ID区分owner，真实Turn／Message身份去重。
 - **断线边界。** 断线、状态未知、epoch变化使未完成核验失效；重连后观察到Idle不能推断刚刚完成或补发旧通知。重复事件、异步旧结果和重放不得重复通知。系统终止后不要求继续通知或补发。
 - **通知呈现。** 仅APK在后台且确实收到所跟踪Turn正常完成时发送Android本地通知；前台不发。标题固定“您的助理有一条消息”；正文直接取对应最终Assistant回复开头，适当去Markdown／多余换行并截断，无LLM摘要。不同Conversation完成可分别通知。
+- **通知通道升级（用户确认，2026-10-21）。** APK覆盖升级迁移到新的响铃＋横幅通道，使用HIGH等级和系统默认提示音，尽量保留用户主动静音／关闭设置；不能以同名通道重新注册冒称旧等级已经提高。Android旧版本无法完整识别主动设置时须如实保留实现与验收限制。
 - **点击和权限。** 处理Android通知权限，拒绝不得破坏对话。点击打开正确Profile的Conversation，尽可能定位该Assistant回复；冷启动保留通知目标、沿用认证，不向登录页注入业务内容。桥接只允许APK可信页面主frame，不向普通网页、第三方页或iframe开放原生通知能力；最小去重仅进程内，及时清理原生资源。
 - **验收。** 覆盖APK发起及电脑发起但APK已观察到的Turn；查看B时A完成；多个并发分别通知且最后解除保活；跨Profile同ID；前台抑制；断线／重连／重复事件；点击正确归属；观察范围外不扩接线；系统暂停／回收不保证通知、不影响云端执行。真实实机／模型与隔离测试证据分别记录，不把模拟或未验场景写成通过。最终交付前端资源内置、已签名且可直接在手机安装的APK。
 
@@ -284,6 +287,13 @@ Message ordering, Compaction lineage, framework carriers, UIDs and stream insert
 **2026-10-15 用户录屏确认补充：** 每次真实工具调用在动态 Timeline 中只有一张卡，构建、运行和完成在同一卡片原位更新。**并行 N 次调用必须展示 N 张独立卡片，不得将整组并行调用合并成一张卡。识别到完整工具调用段时，全部调用卡即按后端真实顺序出现在 Timeline；各卡身份和位置顺序始终稳定，即使 start/complete 到达顺序不同，也仅及时更新各自的真实状态，不重排、不追加替代卡。** 每段 Thinking 和每次调用独立收尾，不以整个 Turn 结束作为统一纠正点。动态内容转为静态历史时，条目数量、顺序与内容保持连续，不得靠结束后的历史重渲染消除重复或补出此前漏显的段。处于底部跟随状态时，内容增长、卡片折叠及历史对账不得自行中断跟随；用户主动上滚阅读时保持其阅读位置。用户新 Send 被原生接受后回到底部、恢复跟随；手动滚动暂停与 20 秒恢复条件遵循上述最终澄清。
 
 **2026-10-15 结束瞬间连续性补充：** Turn 从 active 转为完成及随后的后台历史刷新期间，当前内容与视口必须连续，不得短暂跳回旧 Turn 再恢复。历史消息的操作栏在 active/idle 切换时保持占位高度稳定；已有被动跟随与分页锚定不能因后台历史请求而暂停。仍遵守用户手动滚动所有权，不把 Turn 完成新增为强制回底触发。
+
+**2026-10-21顺序／阅读修复契约：** 已结束Turn的流式Thinking／工具恢复须按真实消息UID／row与调用occurrence归属定位；已有真实持久位置时，完成回执的旧尾部锚点不得覆盖它。详情懒加载补齐只能原位替换对应facet，不能把同Turn剩余片段推到全局尾部；工具parent在分页外而result在页内时，仍按真实result位置显示唯一卡。阅读锚点除DOM仍连接外还须核对当前消息身份，防React复用到其它条目；程序放置产生的scroll事件不成为新的用户滚动请求。后台Heartbeat等自发Turn沿既有20秒／active规则，不新增强制回底条件。
+
+**2026-10-21提交受理恢复实现契约：** Web每次实际Send携可选`client_submission_id`，后端沿原生提交writer将其作为持久用户行的展示metadata保存，不进入模型消息。`message.user_committed`及直接受理回执可携同标识；`prompt.submission_status(session_id, profile?, client_submission_id)`只读核验目标Profile／Conversation内的精确受理事实，返回`accepted`及实际回执或`unknown`。未知不是未提交证明，不能据此自动重发；相同正文、running或其它会话事件都不能代替关联。晚到ACK不能重复消费草稿，后续草稿保留。退休／rewind行可证明历史上已受理，但客户端只刷新权威历史，不因回执插回退休行。省略ID的原生及旧客户端行为保持。
+
+**Heartbeat即时展示：** 沿原生用户行持久回调发布已落库Heartbeat原文与身份，前端现有完整`<heartbeat>`用户消息分类生成卡片；不等Turn结束，不以Thinking正文、status文案或`HEARTBEAT_OVER`推断／伪造卡片，重复事件与历史按UID合并。
+
 
 - Assistant text supports Markdown and code blocks with normal text selection/copy. Render links safely; regular `http(s)` links may open, but assistant local paths/`file://` URLs remain plain text in V1, not automatically resolved into Files.
 - Tool cards retain activity/identity while token deltas arrive, including incremental tool-call argument construction when native events expose them; secure sensitive payloads using existing redaction/authorization rules, not invented client heuristics.
