@@ -6,6 +6,8 @@
 
 ## 当前阶段
 
+**Alex百炼模型目录已排除（2026-10-21 13:44）：** 用户要求排除语音阿里云Key自动带入选择器的全部百炼模型列表，保留独立Kimi／DeepSeek／GPT。仅Alex设置model_catalog.excluded_providers为alibaba、alibaba-cn及Coding Plan／Token Plan的国际／中国共六slug。前端同一model.options RPC核实Alex百炼3组194条消失，Kimi11／DeepSeek2模型集合保持，study GPT14与默认DeepSeek2保持，当前Provider／模型未切换；语音Key、其它Profile配置和认证文件指纹不变。页面已有目录需重新加载；未控制用户页面，未作视觉验收，无代码／服务重启／模型请求。备份与收据见operations-log。
+
 **Alex／study工具配置已同步（2026-10-21 13:40）：** 用户要求关闭Alex的vision_analyze、不再顶层注入，并把这套工具配置原样复制给study。两者均agent.disabled_toolsets=[vision]；原生工具选择／折叠配置沿相同默认，kimi-tools与playwright完整定义复制、保持enabled和lazy。两Profile正式只读组装均26顶层，Web/TUI5个／微信4个原生折叠；延迟MCP未连接初始化，不计入此独立组装数量，加载后沿原生Tool Search折叠。模型／认证／Noting和Scheduler开关、其它配置与历史／排期保护表指纹保持，未重启服务或发模型请求。后续原生刷新／新Agent生效；备份和收据见operations-log。
 
 **Main工具顶层声明已部署（2026-10-21 13:32）：** 用户确认Scheduler／Notebook Show按各自独立能力开关完整进入API顶层`tools`、退出折叠目录；Scheduler仅受scheduler开关，Notebook沿既有全局Noting读取门禁，当前Conversation的Noting参与不控制二者。`f7d93351ca`已部署Web／Gateway；部署时正式Profile配置独立组装核实两入口均27个顶层工具（后续按用户要求关闭Vision后为26），原生折叠Web/TUI5个／微信4个，差异仅desktop_project。303项相关测试通过，1项Noting全局活动任务计数失败在未改基线同样复现；冻结10检查通过。隔离K3样本：重复旧历史的Scheduler正确，新上下文Notebook正确，重复旧Notebook历史时有一次复述旧结果未调用，指定tool_choice对照400；不声称模型行为全通过。三库历史／排期／待投递／绑定全行SHA及配置保持，无主会话测试消息、排期写入或自动回退。07§8.2、运维记录已同步；证据ignored`.hermes-dev/main-direct-tools-20261021/`。

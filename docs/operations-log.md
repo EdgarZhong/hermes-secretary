@@ -3,6 +3,16 @@
 维护实际部署、故障处理、验证与回滚点；步骤和稳定布局见[部署SOP](cloud-deployment-sop.md)，当前任务只在根[CLAUDE](../CLAUDE.md)。以下时间均为Asia/Shanghai；PID、指纹和测试结论只对应记录时点，不代表实时状态。凭据、令牌、原始私人材料不写入本文件。
 
 
+## 2026-10-21 13:44 · Alex模型选择器排除百炼自动目录
+
+**用户要求与定位：** 阿里云语音API Key令前端模型选择器自动列出百炼全部模型，用户要求排除，以免影响Kimi／DeepSeek／GPT选择。原生凭据发现将DASHSCOPE_API_KEY识别为百炼Provider凭据；只读前端同路model.options RPC（profile＋explicit_only:true）确认Alex有alibaba15、alibaba-cn169、alibaba-coding-plan10，共194模型条目；独立DeepSeek2、Kimi11。默认Profile仅DeepSeek2，study仅openai-codex14，不受本次自动目录影响。初次尝试REST查询三Profile均HTTPError，未取得目录；改用前端实际RPC取证，不把REST失败写成服务故障。
+
+**实施与验证：** 只在Alex原生model_catalog.excluded_providers增加六slug：alibaba、alibaba-cn、alibaba-coding-plan、alibaba-coding-plan-cn、alibaba-token-plan、alibaba-token-plan-cn，保留已有排除项。写后raw config与预期逐字段一致，仅该路径改变；保留STT用DASHSCOPE Key、模型路由／当前选项、voice及其它所有配置，host／study配置、两Profile的.env／auth／SOUL文件指纹保持。未改源码、未重启或执行模型请求／工具，不改DB。相同RPC后验Alex仅剩原DeepSeek2、Kimi11，194百炼条目移除；三个Profile的独立Provider模型列表按模型ID集合逐项对比及当前模型均保持。客户端已有内存列表需重新加载，未操作用户页面、不冒称视觉验收。
+
+**最终在线复核（用户要求收尾）：** Web／Gateway均active/running、NRestarts0，Web health ok、Gateway running且微信connected；两者实际运行f7d93351ca，五个修改source的SHA与部署receipt一致。仅只读检查，无重启或追加模型请求。首次健康脚本systemctl参数顺序错误，修正后核验通过；目录校验首次按顺序比较，把缓存返回的排列变化当失败，改为同Profile／同Provider模型ID集合比较后全部保持。final-health.json留最终收据，不把脚本错误当成服务故障。
+
+**留存与回退：** 原Alex配置与receipt在受限`/home/ubuntu/.local/state/hermes-secretary/main-direct-tools-20261021/exclude-alibaba-20261021T134457/`；本机ignored本轮目录留exclude-alibaba.py／log／receipt，provider-catalog-before/after.json及日志。后端仍运行f7d93351ca，文档提交不改变实际代码版本。撤销时仅从排除列表移除本次六项并保留后续变更，不删API Key、不整文件覆盖新配置、不恢复DB。
+
 ## 2026-10-21 13:40 · Alex关闭Vision并将工具配置复制给study
 
 **用户确认：** 关闭Alex的Vision Analyze、不再注入顶层；随后确认其余顶层／折叠工具列表，并要求将Alex整套工具配置原样复制给现有study Profile。原生vision工具集仅含vision_analyze，故将vision加入agent.disabled_toolsets，在所有入口移除，不把它挪入折叠目录。
