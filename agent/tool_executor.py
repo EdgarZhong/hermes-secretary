@@ -378,10 +378,11 @@ def _tool_search_scoped_names(agent) -> frozenset:
     if cached is not None and cached[0] == cache_key:
         return cached[1]
     try:
-        from tools.secretary_dispatch import filter_tool_definitions
-        names = _ts.scoped_deferrable_names(filter_tool_definitions(model_tools.get_tool_definitions(
-            enabled_toolsets=enabled, disabled_toolsets=disabled, quiet_mode=True, skip_tool_search_assembly=True,
-        ) or [], agent))
+        from tools.secretary_dispatch import filter_tool_definitions, secretary_surface_scope
+        with secretary_surface_scope(agent):
+            names = _ts.scoped_deferrable_names(filter_tool_definitions(model_tools.get_tool_definitions(
+                enabled_toolsets=enabled, disabled_toolsets=disabled, quiet_mode=True, skip_tool_search_assembly=True,
+            ) or [], agent))
     except Exception:
         names = frozenset()
     with contextlib.suppress(Exception):

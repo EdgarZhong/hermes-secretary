@@ -36,11 +36,22 @@ def secretary_surface_scope(agent):
         _SURFACE_AGENT.reset(token)
 
 
+def main_tool_is_direct(name, agent=None):
+    """Keep enabled Main capabilities independent of native deferred-tool policy."""
+    agent = _SURFACE_AGENT.get() if agent is None else agent
+    if (agent is None or getattr(agent, "_secretary_noting_child", False)
+            or not getattr(agent, "_secretary_main_read_eligible", False)):
+        return False
+    flag = {"scheduler": "_secretary_scheduler_enabled",
+            "notebook_show": "_secretary_notebook_read_enabled"}.get(name)
+    return bool(flag and getattr(agent, flag, False))
+
+
 def filter_tool_definitions(tools, agent=None):
     """Compose runtime Main capabilities on a catalog copy, never the global schema cache.
 
-    Native toolsets need not name the Main additions. A bridge may defer those
-    additions, so its raw catalog must receive the same runtime grants as tools[].
+    Native toolsets need not name the Main additions. Their raw definitions
+    receive the same runtime grants; enabled Main tools remain directly listed.
     """
     agent = _SURFACE_AGENT.get() if agent is None else agent
     if agent is None:

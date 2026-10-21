@@ -149,9 +149,13 @@ _DEFAULT_DEFERRED_TOOLS = frozenset(DEFAULT_CONFIG["tools"]["tool_search"]["defe
 def is_deferrable_tool_name(name: str, defer_tools: Optional[frozenset] = None) -> bool:
     """True if a tool is *eligible* for deferral: named in ``defer_tools`` (curated set or
     user override), OR an MCP tool, OR neither core nor a session-gated GUI surface (i.e. a
-    plugin tool). Bridge names never defer."""
+    plugin tool). Bridge names and enabled Main capabilities never defer."""
     if name in BRIDGE_TOOL_NAMES:
         return False
+    if name in {"scheduler", "notebook_show"}:
+        from tools.secretary_dispatch import main_tool_is_direct
+        if main_tool_is_direct(name):
+            return False
     if defer_tools is not None and name in defer_tools:
         return True
     if name in _core_tool_names():

@@ -127,7 +127,8 @@ def test_existing_agent_off_on_changes_actual_surface_at_next_turn(runtime, disa
     db, config = runtime
     agent = _agent(db, selected=["todo"])
     try:
-        memo = copy.deepcopy(model_tools._tool_defs_cache)
+        cached_entries = dict(model_tools._tool_defs_cache)
+        memo = copy.deepcopy(cached_entries)
         resolved_names = copy.deepcopy(model_tools._last_resolved_tool_names)
         configured_names = _names(agent.tools) - {"conversation_history", "notebook_show", "scheduler"}
         seen = _requests(agent)
@@ -148,7 +149,8 @@ def test_existing_agent_off_on_changes_actual_surface_at_next_turn(runtime, disa
         assert {"conversation_history", "notebook_show"} | configured_names <= _names(seen[-1]["tools"])
         assert "notebook_show" in agent.valid_tool_names
         _assert_guidance(seen[-1], True)
-        assert model_tools._tool_defs_cache == memo
+        # Config signatures may add/evict cache entries; existing schema objects stay untouched.
+        assert cached_entries == memo
         assert model_tools._last_resolved_tool_names == resolved_names
     finally:
         agent.close()

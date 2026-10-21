@@ -38,7 +38,7 @@ def notebook_dispatch_enabled(agent):
 
 def _reconcile_catalog(agent, tools):
     """Reassemble an existing native bridge after capability removal, preserving native tools."""
-    from tools.secretary_dispatch import filter_tool_definitions
+    from tools.secretary_dispatch import filter_tool_definitions, secretary_surface_scope
     from tools import tool_search
     if not any(_tool_name(tool) == "tool_search" for tool in tools):
         return tools
@@ -50,12 +50,13 @@ def _reconcile_catalog(agent, tools):
     )
     if not any(_tool_name(tool) in _MAIN_TOOLS | _NOTING_ONLY for tool in raw):
         return tools
-    raw = filter_tool_definitions(raw, agent)
-    deferred = tool_search.scoped_deferrable_names(raw)
-    visible = [tool for tool in tools if not tool_search.is_bridge_tool(_tool_name(tool))]
-    names = {_tool_name(tool) for tool in visible}
-    catalog = [tool for tool in raw if _tool_name(tool) in deferred - names]
-    return tool_search.assemble_tool_defs([*visible, *catalog], context_length=model_tools._resolve_active_context_length()).tool_defs
+    with secretary_surface_scope(agent):
+        raw = filter_tool_definitions(raw, agent)
+        deferred = tool_search.scoped_deferrable_names(raw)
+        visible = [tool for tool in tools if not tool_search.is_bridge_tool(_tool_name(tool))]
+        names = {_tool_name(tool) for tool in visible}
+        catalog = [tool for tool in raw if _tool_name(tool) in deferred - names]
+        return tool_search.assemble_tool_defs([*visible, *catalog], context_length=model_tools._resolve_active_context_length()).tool_defs
 
 
 def main_read_surface_enabled(agent) -> bool:

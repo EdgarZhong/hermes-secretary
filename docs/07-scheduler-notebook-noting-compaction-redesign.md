@@ -1250,6 +1250,8 @@ Force admission仍复用现有Framework producer发出接纳通知；只在成�
 
 切换版本只在允许的原生构造／重建／恢复边界同步root与真实provider请求tools；不每轮刷新。运行中的Noting继承其冻结版本，不中途换工具。关闭Scheduler时，不能留下指示模型调用不可用scheduler的Prompt；Noting关闭时，History仍可用。
 
+**Main工具独立声明补充（用户确认，2026-10-21）：** 在既有Main资格及各自能力开关允许时，`scheduler`和`notebook_show`以完整独立Schema出现在provider请求体顶层`tools`，不再列入Tool Search折叠目录或依赖`tool_call`包装。Scheduler仅受独立`scheduler.enabled`控制，Noting关闭时仍保持顶层声明；Notebook Show继续沿用Main／全局Noting读取门禁，会话Noting参与开关不改变读取权限。不改变Notebook只读、Scheduler权限与数据契约，不修改历史或既有排期；其它原生默认defer保持。实现状态只在根CLAUDE；版本切换仍遵守上段原生构造／重建／恢复边界。
+
 ### 8.3 Main · Secretary Role
 
 ```text
