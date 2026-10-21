@@ -916,6 +916,9 @@ def _invoke_agent(
     from tui_gateway.turn_terminal import source_observer
     agent._on_turn_user_persisted = source_observer(
         sid, session, agent, st.inflight_token, getattr(agent, "_on_turn_user_persisted", None))
+    from tui_gateway.heartbeat_presentation import user_observer
+    agent._on_turn_user_persisted = user_observer(
+        sid, session, agent, st.inflight_token, text, agent._on_turn_user_persisted)
     try:
         from tui_gateway.output_identity import observe_session_outputs
         from agent.notification_presentation import notification_turn, event_presentation_muted

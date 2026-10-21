@@ -3791,6 +3791,7 @@ export interface SubmitIdleParams {
   profile?: string | null
   text?: string
   image_paths?: string[]
+  client_submission_id?: string | null
   title_preview?: string | null
   truncate_before_user_ordinal?: number | null
   truncate_before_row_id?: number | null
@@ -3811,6 +3812,7 @@ export interface SubmitIdleResult {
 export interface MessageUserCommittedPayload {
   stored_session_id: string
   message: CommittedUserSource
+  client_submission_id?: string | null
 }
 /** The one actually committed driving row; no API sidecar or synthetic display kind. */
 export interface CommittedUserSource {
@@ -3821,6 +3823,15 @@ export interface CommittedUserSource {
   timestamp: number
   display_kind?: string | null
   display_metadata?: unknown | null
+}
+export interface SubmissionStatusParams {
+  session_id: string
+  profile?: string | null
+  client_submission_id: string
+}
+export interface SubmissionStatusResult {
+  status: 'accepted' | 'unknown'
+  accepted_user?: MessageUserCommittedPayload | null
 }
 export interface SystemBatteryParams {
   profile?: string | null
@@ -5739,6 +5750,8 @@ export interface RpcMethods {
   'prompt.background': { params: SideAgentParams; result: TaskIdResult }
   /** Side question over a snapshot of the live conversation; the answer arrives as btw.complete. */
   'prompt.btw': { params: SideAgentParams; result: TaskIdResult }
+  /** Read the exact persisted idle submission receipt. Unknown never authorizes resubmission. */
+  'prompt.submission_status': { params: SubmissionStatusParams; result: SubmissionStatusResult }
   /** Send a user turn to a live session; busy sessions queue / steer / redirect instead of refusing. */
   'prompt.submit': { params: PromptSubmitParams; result: PromptSubmitResult }
   /** Submit only if the native running claim is idle; competing turns refuse with 4009, never busy fallback. */
@@ -6110,6 +6123,7 @@ export const RPC_METHODS = [
   'projects.update',
   'prompt.background',
   'prompt.btw',
+  'prompt.submission_status',
   'prompt.submit',
   'prompt.submit_idle',
   'reload.env',

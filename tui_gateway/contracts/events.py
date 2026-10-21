@@ -232,6 +232,7 @@ class MessageUserCommittedPayload(Payload):
 
     stored_session_id: str
     message: CommittedUserSource
+    client_submission_id: str | None = None
 
 
 event("message.user_committed", MessageUserCommittedPayload,

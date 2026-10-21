@@ -17,6 +17,24 @@ def is_bound(entry):
     return isinstance(getattr(entry, "metadata", None), dict) and BINDING_KEY in entry.metadata
 
 
+def agent_session_key(store, session_key, session_id):
+    """Keep a bound Main's own identity key separate from its messaging ingress."""
+    store._ensure_loaded()
+    with store._lock:
+        entry = store._entries.get(session_key)
+        if not is_bound(entry):
+            return session_key
+        binding = entry.metadata[BINDING_KEY]
+        ref = binding.get("conversation_ref") if isinstance(binding, dict) else None
+        db = store._db_for_key(session_key)
+        row = db.get_session(session_id) if db is not None else None
+        if not ref or row is None or db.resolve_conversation_ref(session_id) != ref:
+            raise ValueError("Bound Conversation does not own the Agent Session")
+        # The peer key is a mutable delivery locator. Passing it to a different Main
+        # would claim the peer's declared alias during native Agent initialization.
+        return row.get("session_key") or None
+
+
 def allows_bound_target(store, entry, session_id, *, current_tip=False):
     """True permits this owner, False rejects it, None is unavailable proof. Writers hold _lock."""
     if not is_bound(entry):

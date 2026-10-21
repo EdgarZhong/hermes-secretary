@@ -3791,7 +3791,7 @@ def _prepare_same_provider_retry(
         effective_provider or resolved_provider, retry_model or final_model, messages,
         temperature=temperature, max_tokens=max_tokens, tools=tools, timeout=effective_timeout,
         extra_body=effective_extra_body, reasoning_config=reasoning_config,
-        base_url=retry_base or resolved_base_url, task=task,
+        base_url=retry_base or resolved_base_url, task=task, client=retry_client,
     )
     # Preserve per-request attribution headers (e.g. Copilot ``x-initiator``) so the retry keeps capability gating.
     if extra_headers:
@@ -4033,6 +4033,7 @@ def _fallback_request_kwargs(
     tools: Optional[list], temperature: Optional[float], max_tokens: Optional[int],
     effective_timeout: float, effective_extra_body: dict, reasoning_config: Optional[dict],
     fallback_entry: dict, task_config: dict, apply_fast_lane: bool,
+    client: Any = None,
 ) -> Dict[str, Any]:
     """Build request kwargs for one fallback destination (cache-section replan + fast-lane cap)."""
     fallback_max_tokens, fallback_extra_body = max_tokens, effective_extra_body
@@ -4047,7 +4048,8 @@ def _fallback_request_kwargs(
     fb_kwargs = _build_call_kwargs(
         destination.provider, destination.model, fallback_messages,
         temperature=temperature, max_tokens=fallback_max_tokens, tools=fallback_tools, timeout=effective_timeout,
-        extra_body=fallback_extra_body, reasoning_config=reasoning_config, base_url=destination.base_url, task=task)
+        extra_body=fallback_extra_body, reasoning_config=reasoning_config, base_url=destination.base_url,
+        task=task, client=client)
     return fb_kwargs
 
 
@@ -4082,9 +4084,9 @@ def _plan_fallback_candidate(
             provider, destination.base_url or str(getattr(client, "base_url", "") or ""),
             destination.api_mode, model or destination.model,
         )
-        return retry_destination, _fallback_request_kwargs(retry_destination, **common)
+        return retry_destination, _fallback_request_kwargs(retry_destination, client=client, **common)
 
-    return destination, _fallback_request_kwargs(destination, **common), _rebuild
+    return destination, _fallback_request_kwargs(destination, client=fb_client, **common), _rebuild
 
 
 def _quarantine_fallback_candidate(
@@ -6739,11 +6741,13 @@ def _build_call_kwargs(
     extra_body: Optional[dict] = None, reasoning_config: Optional[dict] = None,
     base_url: Optional[str] = None, task: Optional[str] = None,
     no_progress_timeout: Optional[float] = None,
+    client: Any = None,
 ) -> dict:
     """Build kwargs for .chat.completions.create() with model/provider adjustments.
     ``no_progress_timeout`` is a Codex-Responses-only extra (consumed by
     ``_CodexCompletionsAdapter.create``'s ``**kwargs`` catch-all); callers must only pass it
-    when the resolved client is a ``CodexAuxiliaryClient`` — real SDK clients don't accept it."""
+    when the resolved client is a ``CodexAuxiliaryClient`` — real SDK clients don't accept it.
+    ``client`` selects adapter-private reasoning fields from the actual resolved transport."""
     kwargs: Dict[str, Any] = {"model": model, "messages": messages, "timeout": timeout}
     if no_progress_timeout is not None:
         kwargs["no_progress_timeout"] = no_progress_timeout
@@ -6771,7 +6775,7 @@ def _build_call_kwargs(
     # OpenAI-compat wire ONCE here, before either path sees the config — the same entry clamp the
     # main transport applies (#89503); MoA aggregator/reference and aux calls 400'd without it (#112010).
     from agent.reasoning_effort import clamp_reasoning_config
-    from agent.auxiliary_reasoning_floor import known_reasoning_floor
+    from agent.auxiliary_reasoning_floor import known_reasoning_floor, uses_private_reasoning_config
     if isinstance(extra_body, dict):
         task_reasoning = extra_body.get("reasoning")
         if isinstance(task_reasoning, dict) and "enabled" in task_reasoning:
@@ -6789,19 +6793,10 @@ def _build_call_kwargs(
         merged_extra = without_unsupported_response_format(merged_extra, provider_norm, effective_base, model, task)
     if merged_extra:
         kwargs["extra_body"] = merged_extra
-    # Anthropic Messages adapters take reasoning via a private kwarg that plain OpenAI SDK clients
-    # would reject; Portal Claude is dual-wire, so include it only when the catalog id selects
-    # /v1/messages. A profile declaring api_mode=anthropic_messages (commandcode-anthropic) is on
-    # that wire regardless of URL shape — once it overrides build_api_kwargs_extras the generic
-    # ``extra_body.reasoning`` fallback the adapter used to read is gone, so this is the adapter's
-    # only path. _wrap_transport wraps such providers on the same declaration.
-    if reasoning_config and isinstance(reasoning_config, dict):
-        raw_base = base_url or ""
-        if (
-            provider_norm == "anthropic" or projection.messages_wire or _nous_on_messages_wire(provider_norm, model)
-            or _endpoint_speaks_anthropic_messages(raw_base) or _is_anthropic_compat_endpoint(provider_norm, raw_base)
-        ):
-            kwargs["_reasoning_config"] = dict(reasoning_config)
+    if reasoning_config and isinstance(reasoning_config, dict) and uses_private_reasoning_config(
+        client, provider_norm, model, base_url, projection.messages_wire,
+    ):
+        kwargs["_reasoning_config"] = dict(reasoning_config)
     # Conversation affinity (OpenCode relay, opt-in custom-provider header) — same key as the main
     # turn so compression/title/vision calls stay on the conversation's warm backend.
     from agent.opencode_affinity import merge_session_affinity_headers
@@ -7534,7 +7529,7 @@ def _prepare_aux_request(
         request_provider, final_model, messages, temperature=temperature, max_tokens=max_tokens,
         tools=tools, timeout=effective_timeout, extra_body=effective_extra_body,
         reasoning_config=reasoning_config, base_url=base_info or resolved_base_url, task=task,
-        no_progress_timeout=no_progress_timeout)
+        no_progress_timeout=no_progress_timeout, client=client)
     if extra_headers:
         kwargs["extra_headers"] = dict(extra_headers)
     # Convert image blocks for Anthropic-compatible endpoints (e.g. MiniMax)

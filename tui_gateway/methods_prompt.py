@@ -577,7 +577,8 @@ def _persist_session_row_for_submit(rid, session, text=None, display_kind=None, 
                 if db is not None:
                     _reopen_if_finalized(db, str(session.get("session_key") or ""))
             _persist_submit_user_row(
-                session, text, display_kind, **({"image_paths": image_paths} if image_paths else {}))
+                session, text, display_kind, accept_metadata=_idle_submit_metadata(),
+                **({"image_paths": image_paths} if image_paths else {}))
             return None
     except Exception as exc:
         failure = describe_storage_failure(exc)
@@ -660,6 +661,8 @@ def _lock_in_submit_turn(
             return _err(rid, 5035, "backend is retiring; reconnect to continue"), fields
         if (error := _idle_submit_claim_error(rid, session)) is not None:
             return error, fields
+        if (error := _idle_submission_reuse_error(rid, session)) is not None:
+            return error, fields
         # A watch session's run lives in the PARENT turn (own running flag False); typing
         # mid-run would build a second agent racing the child on the same stored session.
         if session.get("lazy") and _child_run_active(
@@ -699,6 +702,8 @@ def _(rid, params: dict) -> dict:
         if isinstance(title_preview, str) and title_preview.strip()
         else None
     )
+    if identity_metadata := _idle_submit_metadata():
+        display_metadata = {**(display_metadata or {}), **identity_metadata}
     if (stopped := _typed_stop_phrase_response(rid, text)) is not None:
         return stopped
     if params.get("interrupted"):

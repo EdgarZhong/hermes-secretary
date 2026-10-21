@@ -1,0 +1,2 @@
+57ffa1c355b4eef9b73f6ab10d3fb6da42b43176
+冻结文档：requirements、snapshot-index、根CLAUDE及06／08；README／AGENTS／07已在同树中。

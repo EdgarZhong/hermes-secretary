@@ -30,6 +30,28 @@ _FLOORED_ROUTES: set[tuple[str, str]] = set()
 _DISABLED_EFFORTS = {"none", "off", "disabled", "false", "0"}
 
 
+def uses_private_reasoning_config(
+    client: Any, provider: str, model: str, base_url: Optional[str], messages_wire: bool,
+) -> bool:
+    """Only the resolved Messages adapter consumes ``_reasoning_config``.
+
+    URL/profile guesses can disagree with explicit Chat mode on dual-wire endpoints (Kimi
+    Coding), where a plain SDK rejects the private kwarg before dispatch. Keep inference for
+    standalone kwargs builders that have no resolved client, preserving their existing API.
+    """
+    from agent.auxiliary_client import (
+        AnthropicAuxiliaryClient, AsyncAnthropicAuxiliaryClient,
+        _endpoint_speaks_anthropic_messages, _is_anthropic_compat_endpoint, _nous_on_messages_wire,
+    )
+    if client is not None:
+        return isinstance(client, (AnthropicAuxiliaryClient, AsyncAnthropicAuxiliaryClient))
+    raw_base = base_url or ""
+    return (
+        provider == "anthropic" or messages_wire or _nous_on_messages_wire(provider, model)
+        or _endpoint_speaks_anthropic_messages(raw_base) or _is_anthropic_compat_endpoint(provider, raw_base)
+    )
+
+
 def _route_key(provider: Optional[str], base_url: Optional[str]) -> str:
     """Endpoint host:port when known (a base_url override turns a named provider into ``custom``), else
     the provider name — the same key shape ``auxiliary_structured_output`` uses."""

@@ -2959,6 +2959,24 @@
       }
     },
     {
+      "name": "prompt.submission_status",
+      "summary": "Read the exact persisted idle submission receipt. Unknown never authorizes resubmission.",
+      "params": [
+        {
+          "name": "params",
+          "schema": {
+            "$ref": "#/components/schemas/SubmissionStatusParams"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/SubmissionStatusResult"
+        }
+      }
+    },
+    {
       "name": "prompt.submit",
       "summary": "Send a user turn to a live session; busy sessions queue / steer / redirect instead of refusing.",
       "params": [
@@ -20285,6 +20303,18 @@
           },
           "message": {
             "$ref": "#/components/schemas/CommittedUserSource"
+          },
+          "client_submission_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Client Submission Id"
           }
         },
         "required": [
@@ -38525,6 +38555,70 @@
         "title": "SubagentTailResult",
         "type": "object"
       },
+      "SubmissionStatusParams": {
+        "additionalProperties": false,
+        "properties": {
+          "session_id": {
+            "minLength": 1,
+            "title": "Session Id",
+            "type": "string"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "client_submission_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Client Submission Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "client_submission_id"
+        ],
+        "title": "SubmissionStatusParams",
+        "type": "object"
+      },
+      "SubmissionStatusResult": {
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "enum": [
+              "accepted",
+              "unknown"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "accepted_user": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MessageUserCommittedPayload"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "SubmissionStatusResult",
+        "type": "object"
+      },
       "SubmitIdleParams": {
         "additionalProperties": false,
         "properties": {
@@ -38556,6 +38650,21 @@
             },
             "title": "Image Paths",
             "type": "array"
+          },
+          "client_submission_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "pattern": "\\S",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Client Submission Id"
           },
           "title_preview": {
             "anyOf": [

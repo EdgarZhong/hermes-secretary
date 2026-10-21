@@ -301,3 +301,30 @@ Delegation风险有严格前提：回调携带派发时的`session_key`／`paren
 固定v5产品意图PI01–26及独立Verification／Validation按原版本PASS，入口[20261018索引](../.autonomous/20261018-product-intent-review/snapshot-index.md)。第三轮早期NOT PASS、真实模型误归因／Search完整性等失败和已接受非阻断观察不回写为成功；不将本次运维增量冒称旧门禁覆盖。
 
 历史全量Python／UI曾有失败，后续仅按影响定向关闭，不能宣称全量全绿；原件见ignored `.hermes-dev/deploy-readiness-20261018/suite-triage.md`和产品意图复审报告。旧Agent分工、旧PID与初始化等待不再是当前任务；需追溯时查对应轮次报告或Git历史。
+
+## 2026-10-21 手机多故障候选修复与新增微信改绑身份冲突（尚未部署）
+
+**用户范围与当前边界：** 用户已放弃旧置顶Kimi工具调用调查，改用新Conversation；不再尝试恢复旧工具行为、清root或改历史／排期。本轮继续修复标题、提交未知、Heartbeat卡片、Thinking／工具错位和阅读跳动，测过后准备上线。Android通知迁移已实现，但APK打包及壳提供更大实际逻辑视口推后；宽度由用户另给，保持比例，不用前端整页缩放。用户追加微信改绑后入站初始化失败报告，并重新要求委派；当前三名Sol/high分担微信身份修复、提交／Heartbeat复核、时间线／滚动复核，主会话集成。尚未部署或重启生产，无生产模型消息／微信测试发送。
+
+**标题与早期修复：** 实际OpenAI Chat SDK曾因Kimi双协议地址猜测收到Messages适配器私有`_reasoning_config`而在发送前报TypeError；现按真正解析的SDK／适配器决定私有参数，覆盖同步／异步、同Provider凭据重试与fallback重建，保留原生Messages推理行为。交接8文件360项及最终重叠18项、冻结检查通过；本轮主会话重新纳入10项transport用例。Thinking详情补齐退休时向剩余片段传真实前驱UID；工具parent在页外时按结果真实位置接管且去重；following流式布局不再每帧扫描全历史几何。原六文件交接212项／最后152项重叠复测通过，不累计重复样本。证据分别在ignored`.hermes-dev/aux-title-20261021/`和Web`.archive/mobile-render-02/`。
+
+**提交恢复与Heartbeat：** 沿既有原生writer把可选客户端提交标识写入实际用户行display metadata，不新增admission owner／存储表。只读RPC按Profile／Conversation核实受理事实，未知不重发；事件与晚ACK共用一次草稿消费，已退休行只证明受理、不插回时间线。进程隔离沿原生display metadata传递。Heartbeat从实际落库用户行回调发布原文和身份，早于provider输出，现有前端按真实包装分类为卡，不从Thinking／结束标记猜测消息。新增退休／不存在行负例及同Profile其它Conversation、跨Profile拒绝、旧客户端兼容、草稿保留与晚ACK回归；后端6文件76项通过、冻结10检查0 blocking／0 advisory，仍在子Agent最终亲审中。完整证据`.hermes-dev/mobile-fixes-final-tests.log`、`mobile-fixes-check.log`，不冒称生产Provider已验。
+
+**本次截图的历史Thinking挂尾已复现：** 主会话只读现行runtime512帧事件与最近200条正式REST cards，按Controller的完成回执／reconcile顺序本地回放。旧前端把一条737字符的早期Thinking挂在最终回答之后；候选版放回其消息UID对应位置。原因是投影的旧尾部`afterMessageUid`锚点覆盖了已确定的真实持久位置；新逻辑只在无真实位置时采用尾部锚点。补了虚构等价及无active Turn重新select回归，相关三份55项通过。私人原件只保留ignored`.hermes-dev/timeline-replay-20261021.json`，Web可重放脚本／旧版对照与身份摘要在ignored`.archive/timeline-replay-20261021/`，不提交私人消息正文。
+
+**无输入跳顶的确定性缺口：** 阅读锚点曾仅凭DOM仍连接就继续使用，未检测React是否已把该元素复用于另一消息。候选修复校验当前消息identity，过滤自身程序放置产生的scroll事件，保留外部程序选位但不因此启用following。新增重复8次layout／scroll回归；相关16项通过，最终复核继续检查20秒／手势／自发Turn不强制回底。隐藏IAB仍被Work设置禁用，遵守显示保护，没有用桌面／外部浏览器／可见页面补验；真实手机滚动与通知仍未实测。
+
+**扩大回归与基线：** 前端65文件首次1014通过／1跳过／1失败，唯一失败为新增client_submission_id使原exact参数断言过时，交时间线复核包定向修正；当前构建／TypeScript通过。后端扩大回归额外5项失败在未修改HEAD `ee2ba55efb18`的隔离副本逐项相同复现：contracts完整性扫描漏`review.summary`一项，以及Instant源测试四项旧fixture／旧文案断言。未放宽检查、删除测试或冒称全库绿；基线证据`.hermes-dev/mobile-baseline-tests.log`，对照`.hermes-dev/mobile-integration-backend.log`。最终交付以复核返回的新摘要为准。
+
+**微信新增问题：** 用户报告改绑新Conversation后入站在AIAgent初始化的ConversationIdentity解析抛alias冲突，出站发送不受影响；报告建议属待审方案，不据此执行DB迁移。修复验收要求绑定handler→正式原生初始化链路A→B成功，A与B各自身份／历史保持、压缩与跨Profile边界保持；不能把投递通道key当作新Conversation出生证明，也不能通过吞冲突、清历史或自动回绑兜底。生产只读取证，代码与测试由独立实现包返回后亲审，当前无生产数据处置。
+
+
+**时间线复核交回（同轮补充）：** Sol/high亲审Controller切换／恢复／details／消息退休及App→真实Timeline hook接线，未发现额外生产逻辑缺陷；补五个阅读／分页／跨Turn边界反例并更新新增提交ID契约断言，5文件144项通过、真实旧版失败／候选版通过回放、typecheck／差异检查通过。主会话亲读新增用例与差异后接收；没有为review复跑已有效的大套。完整交接Web ignored`.archive/timeline-final-review-20261021/handoff.md`，含文件哈希和原件边界。只读上线前状态确认首尔git干净，Web与Gateway仍运行`ed94619da8`、Gateway active_agents=0；这是预检收据，不是部署或后续长时空闲保证，见`.hermes-dev/mobile-release-preflight.json`。
+
+
+**微信身份修复交回（同轮补充）：** 新目标是已有desktop Main、native session_key为空，binding与compression_root自身一致。旧pi-import／desktop／weixin三种source下相同peer key的alias本身合法；错误是`_build_fresh_agent`把可变微信入口key传成新Main的`gateway_session_key`，使原生初始化推导出旧desktop declared alias，与新Main冲突。候选仅在`gateway/conversation_binding.py`核所属Profile与绑定ref、选择目标本身原生key（无则None），并在`run_turn_runner.py`正式构造接入；入口路由、source对象与收发参数不改，resolver仍拒绝真实冲突。7文件111项通过、冻结10检查0／0；覆盖真实控制handler A→B、原生初始化、历史／Notebook／排期全行保持、压缩／branch／跨Profile／未绑定／真冲突。主会话亲读三文件及绑定清缓存、构造参数下游后接收；不以复跑代review。生产只读确认目标记录一致，无需迁移alias或修库；尚未部署／重启，不主动发送生产微信模型测试。报告与原始收据ignored`.hermes-dev/weixin-rebind-20261021/report.md`。
+
+
+### 2026-10-21 托管最终候选构建与标题代表链路
+
+全前端66份1025通过、1跳过，最终dist构建成功439文件，清单SHA256 `ed540b2a693a8d53e9bd8fa3200f7f9d314523d8ad84f5f12f7a1f7d814424be`。Android380原生视口、Insets与完整图标资源主审接收，70项原生测试通过；版本0.1.3/1003签名APK待完成。标题使用本地更新代码与真实Kimi k3-256k/OpenAI SDK执行一次虚构文本请求，2.49秒生成“确认移动端会话标题功能正常”，请求未含私有`_reasoning_config`，无生产会话／Profile写入；首次harness参数遗漏在请求派发前失败，修正后仅实际派发1次。证据ignored `.hermes-dev/mobile-title-live-probe.json`及日志。最终后端10检查全部通过，0 blocking/advisory；并非全后端suite全绿，已有5项同基线失败保留。独立整包Verification进行中，真实UI尚未验，不部署。

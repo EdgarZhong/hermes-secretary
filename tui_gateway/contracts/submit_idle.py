@@ -13,6 +13,7 @@ class SubmitIdleParams(SessionParams):
     session_id: str = Field(min_length=1)
     text: str = ""
     image_paths: list[str] = Field(default_factory=list)
+    client_submission_id: str | None = Field(default=None, min_length=1, max_length=128, pattern=r"\S")
     title_preview: str | None = None
     truncate_before_user_ordinal: int | None = None
     truncate_before_row_id: int | None = None
@@ -33,3 +34,17 @@ class SubmitIdleResult(Result):
 
 method("prompt.submit_idle", params=SubmitIdleParams, result=SubmitIdleResult,
        doc="Submit only if the native running claim is idle; competing turns refuse with 4009, never busy fallback.")
+
+
+class SubmissionStatusParams(SessionParams):
+    session_id: str = Field(min_length=1)
+    client_submission_id: str = Field(min_length=1, max_length=128, pattern=r"\S")
+
+
+class SubmissionStatusResult(Result):
+    status: Literal["accepted", "unknown"]
+    accepted_user: MessageUserCommittedPayload | None = None
+
+
+method("prompt.submission_status", params=SubmissionStatusParams, result=SubmissionStatusResult,
+       doc="Read the exact persisted idle submission receipt. Unknown never authorizes resubmission.")
