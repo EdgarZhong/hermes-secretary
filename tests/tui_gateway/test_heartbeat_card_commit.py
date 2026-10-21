@@ -1,10 +1,15 @@
 """Real native Heartbeat persistence publishes before provider work, without waiting for turn end."""
 import threading
+import copy
+
+import pytest
 
 from secretary.heartbeat import render_heartbeat
 from tests.agent.test_run_agent import _mock_response
 from tests.tui_gateway.test_submit_idle import live as live, wait_all
 from tui_gateway import server
+
+_native_emit = server._emit
 
 
 def test_heartbeat_native_user_commit_is_visible_before_output_and_deduplicated(live, monkeypatch):
@@ -77,3 +82,62 @@ def test_actual_heartbeat_storage_failure_does_not_publish_a_card(live, monkeypa
     assert calls
     assert not [p for kind, _, p in live.frames if kind == "message.user_committed"]
     assert not [row for row in live.db.get_messages("stored") if row["role"] == "user"]
+
+
+@pytest.mark.parametrize("failure", ["before_ring", "transport_false", "after_ring"])
+def test_native_heartbeat_publication_recovers_only_before_replay_commit(live, monkeypatch, failure):
+    from tui_gateway import event_replay
+    text = render_heartbeat("publication boundary", 1800000000)
+    entered, release = threading.Event(), threading.Event()
+    live.releases.append(release)
+    attempts = []
+    faulted = []
+    original_freeze = event_replay._freeze_params
+    def freeze(params):
+        if failure == "before_ring" and params.get("type") == "message.user_committed" and not faulted:
+            faulted.append(True)
+            raise OSError("transient freeze failure before replay commit")
+        return original_freeze(params)
+    class Transport:
+        def write(self, frame):
+            attempts.append(copy.deepcopy(frame))
+            if frame.get("params", {}).get("type") == "message.user_committed":
+                if failure == "after_ring":
+                    raise OSError("transport exception after replay commit")
+                if failure == "transport_false":
+                    return False
+            return True
+        def close(self):
+            pass
+    def provider(kwargs):
+        entered.set()
+        assert release.wait(5)
+        return _mock_response(content="HEARTBEAT_OVER", finish_reason="stop")
+    live.session["transport"] = Transport()
+    monkeypatch.setattr(server, "_emit", _native_emit)
+    monkeypatch.setattr(event_replay, "_freeze_params", freeze)
+    monkeypatch.setattr(live.agent, "_interruptible_api_call", provider)
+    server._emit("error", "runtime", {"message": "an older unrelated event"})
+    assert server._run_prompt_submit("heartbeat-publication", "runtime", live.session, text)
+    assert entered.wait(5)
+    row = next(row for row in live.db.get_messages("stored") if row["role"] == "user")
+    def retained():
+        return [event for event in event_replay.events_since("runtime", 0)
+                if event["type"] == "message.user_committed"
+                and event.get("payload", {}).get("message", {}).get("message_uid") == row["message_uid"]]
+    def writes():
+        return [frame for frame in attempts if frame.get("params", {}).get("type") == "message.user_committed"]
+    expected_first = 0 if failure == "before_ring" else 1
+    assert len(retained()) == expected_first
+    assert len(writes()) == expected_first
+    assert bool(faulted) == (failure == "before_ring")
+    durable = {**row, "_row_id": row["id"], "_db_persisted": True}
+    live.agent._on_turn_user_persisted([durable], 0)
+    live.agent._on_turn_user_persisted([durable], 0)
+    # A failed pre-ring attempt recovers once; False and post-ring errors already
+    # have the real replay fact and must not create another seq or transport write.
+    assert len(retained()) == 1
+    assert len(writes()) == 1
+    assert retained()[0]["payload"]["message"]["row_id"] == row["id"]
+    release.set()
+    wait_all(live)

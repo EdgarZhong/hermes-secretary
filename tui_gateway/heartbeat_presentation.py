@@ -6,6 +6,21 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def _commit_retained(sid, payload):
+    """A transport exception can occur after the native replay entry committed."""
+    from tui_gateway.event_replay import events_since
+    source = payload["message"]
+    for event in events_since(sid, 0):
+        if event.get("type") != "message.user_committed":
+            continue
+        retained = event.get("payload") or {}
+        message = retained.get("message") or {}
+        if (retained.get("stored_session_id"), message.get("row_id"), message.get("message_uid")) == (
+                payload["stored_session_id"], source["row_id"], source["message_uid"]):
+            return True
+    return False
+
+
 def user_observer(sid, session, agent, expected_token, text, prior):
     """Observe the selected turn source; never infer a message from model output."""
     heartbeat = isinstance(text, str) and text.startswith("<heartbeat>") and text.rstrip().endswith("</heartbeat>")
@@ -64,8 +79,14 @@ def user_observer(sid, session, agent, expected_token, text, prior):
             # An inline prewrite can fail transiently before the native flush succeeds.
             if (session.get("inflight_turn") or {}).get("_committed_user_display_uid") == row["message_uid"]:
                 return
+            try:
+                server._emit("message.user_committed", sid, payload)
+            except Exception:
+                published = _commit_retained(sid, payload)
+                raise
+            # False may mean a disconnected peer after replay commit, or an
+            # intentional presentation mute; neither authorizes another event.
             published = True
-            server._emit("message.user_committed", sid, payload)
         except Exception:
             logger.debug("Heartbeat committed-user display unavailable", exc_info=True)
     return observe
