@@ -12,6 +12,12 @@ from gateway.session import SessionSource, SessionStore
 from hermes_cli.heartbeat import HeartbeatState, migrate_heartbeat_to_session, save_heartbeat
 
 
+@pytest.fixture(autouse=True)
+def native_mode():
+    from hermes_constants import get_hermes_home
+    (get_hermes_home() / "config.yaml").write_text("noting:\n  enabled: false\n")
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("boundary", ["reset", "suspend", "compression", "prepare-reset", "prepare-suspend", "unchanged"])
 async def test_admitted_heartbeat_executes_only_in_own_conversation(tmp_path, boundary):

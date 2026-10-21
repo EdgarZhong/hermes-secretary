@@ -1,5 +1,7 @@
 """Heartbeat ownership follows compression, but ends at a conversation boundary."""
 
+import pytest
+
 from gateway.config import GatewayConfig, Platform
 from gateway.session import SessionSource, SessionStore
 from hermes_cli.heartbeat import (
@@ -9,6 +11,12 @@ from hermes_cli.heartbeat import (
     migrate_heartbeat_to_session,
     save_heartbeat,
 )
+
+
+@pytest.fixture(autouse=True)
+def native_mode():
+    from hermes_constants import get_hermes_home
+    (get_hermes_home() / "config.yaml").write_text("noting:\n  enabled: false\n")
 
 
 def test_reset_clears_only_the_departing_conversations_heartbeat(tmp_path):

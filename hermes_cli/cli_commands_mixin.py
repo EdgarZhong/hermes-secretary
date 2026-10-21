@@ -1904,7 +1904,7 @@ class CLICommandsMixin(CLISecretaryCommandsMixin, CLICommandsSessionToolsMixin):
 
     def _heartbeat_set(self, mgr, arg: str) -> None:
         """Set: ``/heartbeat every 10m <prompt>`` (also accepts ``10m <prompt>``)."""
-        from hermes_cli.heartbeat import parse_interval, format_interval
+        from hermes_cli.heartbeat import parse_interval, format_interval, ui_heartbeat_enabled
         tokens = arg.split(None, 2)
         interval = None
         prompt = ""
@@ -1919,7 +1919,7 @@ class CLICommandsMixin(CLISecretaryCommandsMixin, CLICommandsSessionToolsMixin):
         if interval < 0:
             from hermes_cli.heartbeat import MIN_INTERVAL_SECONDS
             return _cp(f"  {_t('heartbeat.interval_too_small', min_seconds=MIN_INTERVAL_SECONDS)}")
-        if not prompt.strip():
+        if not prompt.strip() and not ui_heartbeat_enabled():
             return _cp(f"  {_t('heartbeat.prompt_required')}")
         state = _attempt(_t("heartbeat.invalid_label"), ValueError, mgr.set, prompt, interval)
         if state is _FAILED:

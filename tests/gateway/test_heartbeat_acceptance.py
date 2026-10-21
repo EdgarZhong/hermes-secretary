@@ -12,6 +12,12 @@ from hermes_cli.heartbeat import HeartbeatManager, HeartbeatState, save_heartbea
 from evals.heartbeat_idle_wire import WireAdapter
 
 
+@pytest.fixture(autouse=True)
+def native_mode():
+    from hermes_constants import get_hermes_home
+    (get_hermes_home() / "config.yaml").write_text("noting:\n  enabled: false\n")
+
+
 @pytest.mark.asyncio
 async def test_cancelled_admission_is_refunded_but_started_execution_is_not():
     runner = object.__new__(GatewayRunner)

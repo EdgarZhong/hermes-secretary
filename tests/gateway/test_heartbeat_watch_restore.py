@@ -14,6 +14,13 @@ from hermes_cli.heartbeat import HeartbeatManager, HeartbeatState
 from hermes_state import SessionDB
 
 
+@pytest.fixture(autouse=True)
+def native_mode(tmp_path):
+    home = tmp_path / ".hermes"
+    home.mkdir(exist_ok=True)
+    (home / "config.yaml").write_text("noting:\n  enabled: false\n")
+
+
 @pytest.mark.asyncio
 async def test_restore_retries_persisted_routes_in_their_own_profiles(tmp_path, monkeypatch):
     from gateway.run_heartbeat_restore import restore_heartbeat_watches
@@ -21,7 +28,7 @@ async def test_restore_retries_persisted_routes_in_their_own_profiles(tmp_path, 
     home = tmp_path / '.hermes'
     named = home / 'profiles' / 'work'
     named.mkdir(parents=True)
-    (named / 'config.yaml').write_text('{}')
+    (named / 'config.yaml').write_text('noting:\n  enabled: false\n')
     monkeypatch.setattr(Path, 'home', lambda: tmp_path)
     monkeypatch.setenv('HERMES_HOME', str(home))
     dbs = {str(p): SessionDB(db_path=p / 'state.db') for p in (home, named)}
@@ -89,7 +96,7 @@ async def test_restore_skips_session_sweep_when_no_heartbeats_exist(tmp_path, mo
     home = tmp_path / '.hermes'
     named = home / 'profiles' / 'work'
     named.mkdir(parents=True)
-    (named / 'config.yaml').write_text('{}')
+    (named / 'config.yaml').write_text('noting:\n  enabled: false\n')
     monkeypatch.setattr(Path, 'home', lambda: tmp_path)
     monkeypatch.setenv('HERMES_HOME', str(home))
     dbs = {str(p): SessionDB(db_path=p / 'state.db') for p in (home, named)}
@@ -184,7 +191,7 @@ async def test_restore_enters_each_profile_scope_once_per_scan(tmp_path, monkeyp
     home = tmp_path / '.hermes'
     named = home / 'profiles' / 'work'
     named.mkdir(parents=True)
-    (named / 'config.yaml').write_text('{}')
+    (named / 'config.yaml').write_text('noting:\n  enabled: false\n')
     monkeypatch.setattr(Path, 'home', lambda: tmp_path)
     monkeypatch.setenv('HERMES_HOME', str(home))
     dbs = {str(p): SessionDB(db_path=p / 'state.db') for p in (home, named)}

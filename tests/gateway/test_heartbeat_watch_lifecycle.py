@@ -11,6 +11,11 @@ from hermes_cli.heartbeat import HeartbeatManager, HeartbeatState, save_heartbea
 from hermes_constants import get_hermes_home
 
 
+@pytest.fixture(autouse=True)
+def native_mode():
+    (get_hermes_home() / "config.yaml").write_text("noting:\n  enabled: false\n")
+
+
 @pytest.mark.asyncio
 async def test_watches_read_and_admit_in_each_owner_profile(tmp_path, monkeypatch):
     monkeypatch.setattr('pathlib.Path.home', lambda: tmp_path)
@@ -35,7 +40,7 @@ async def test_watches_read_and_admit_in_each_owner_profile(tmp_path, monkeypatc
     for name in ('alpha', 'beta'):
         home = tmp_path / '.hermes' / 'profiles' / name
         home.mkdir(parents=True, exist_ok=True)
-        (home / 'config.yaml').write_text('{}\n')
+        (home / 'config.yaml').write_text('noting:\n  enabled: false\n')
         with _profile_runtime_scope(home):
             await runner._warm_goals_session_db('test')
             save_heartbeat(name, HeartbeatState(prompt=name, interval_seconds=60, created_at=1))

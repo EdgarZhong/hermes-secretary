@@ -23,6 +23,16 @@ CREATE TABLE IF NOT EXISTS secretary_session_bindings (
 );
 CREATE INDEX IF NOT EXISTS idx_secretary_binding_ref
     ON secretary_session_bindings(conversation_ref);
+CREATE TABLE IF NOT EXISTS secretary_heartbeats (
+    conversation_ref TEXT PRIMARY KEY REFERENCES secretary_conversations(conversation_ref),
+    prompt TEXT NOT NULL,
+    interval_seconds INTEGER NOT NULL CHECK(interval_seconds >= 60),
+    status TEXT NOT NULL CHECK(status IN ('active', 'paused', 'cleared')),
+    created_at REAL NOT NULL,
+    last_fired_at REAL NOT NULL DEFAULT 0,
+    fire_count INTEGER NOT NULL DEFAULT 0,
+    revision INTEGER NOT NULL DEFAULT 1
+);
 CREATE TABLE IF NOT EXISTS secretary_context_preludes (
     conversation_ref TEXT PRIMARY KEY REFERENCES secretary_conversations(conversation_ref),
     session_id TEXT NOT NULL,

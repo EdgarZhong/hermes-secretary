@@ -233,6 +233,45 @@ def _notif_gateway_owns_heartbeat(session: dict, session_key: str) -> bool:
         return False
 
 
+def _heartbeat_slash_session(params: dict, rid):
+    """Persist explicit Heartbeat intent through the existing UI owner before its slash worker."""
+    session, error = _sess_nowait(params, rid)
+    if error is not None:
+        return session, error
+    parts = _str_param(params, "command").strip().lstrip("/").split(maxsplit=1)
+    if not parts or parts[0].lower() not in {"heartbeat", "hb"}:
+        return session, None
+    from secretary.heartbeat import ui_heartbeat_enabled
+    with _session_profile_runtime_scope(session):
+        if ui_heartbeat_enabled() and _ensure_session_db_row(session) is False:
+            return session, _err(rid, 5031, "Heartbeat Conversation storage unavailable")
+    return session, None
+
+
+def _notif_ui_heartbeat_held(session: dict) -> bool:
+    from agent.estop import check_paused
+
+    return bool(check_paused("heartbeat", _secretary_logger)
+                or session.get("queued_prompt") or session.get("queued_prompts"))
+
+
+def _notif_prepare_ui_heartbeat_surface(sid: str, session: dict) -> bool:
+    """Correct only the leased UI runtime; native surface notes preserve the cached prefix."""
+    if _ensure_active_session_slot(sid, session) is not None:
+        return False
+    surface = session.get("source")
+    if surface not in {"tui", "desktop", "web"}:
+        surface = _resolve_session_platform()
+    session["source"] = surface
+    agent = session.get("agent")
+    if agent is not None:
+        from agent.surface_switch import stage_surface_switch_note
+        agent.platform = surface
+        if cached := getattr(agent, "_cached_system_prompt", None):
+            stage_surface_switch_note(agent, cached, session.get("history", []))
+    return True
+
+
 def _maybe_fire_tui_heartbeat_tick(sid: str, session: dict) -> None:
     """Fire a due /heartbeat prompt for an idle TUI/Desktop/dashboard session (#102056, #103044).
 
@@ -245,29 +284,40 @@ def _maybe_fire_tui_heartbeat_tick(sid: str, session: dict) -> None:
     """
     try:
         from hermes_cli.heartbeat import HeartbeatManager
+        from secretary.heartbeat import ui_heartbeat_enabled
     except Exception:
         return
     if not (sid_key := session.get("session_key") or ""):
         return
     mgr = HeartbeatManager(session_id=sid_key)
-    if not mgr.is_active() or not mgr.state.is_due() or _notif_gateway_owns_heartbeat(session, sid_key):
+    ui_mode = ui_heartbeat_enabled()
+    state = mgr.state
+    if (state is None or not state.is_due()
+            or (not ui_mode and _notif_gateway_owns_heartbeat(session, sid_key))):
         return  # not due, or the gateway poller owns the routed conversation — stays due there
+    if ui_mode and _notif_ui_heartbeat_held(session):
+        return
     if not _notif_claim_turn(session):
         return  # busy — the tick coalesces to the next idle poll
-    if not (prompt := mgr.due_prompt()):
-        _notif_release_turn(session)
-        return
     started = False
     try:
+        if ui_mode and not _notif_prepare_ui_heartbeat_surface(sid, session):
+            return
+        # Another UI driver may have completed between our initial read and idle claim.
+        mgr = HeartbeatManager(session_id=sid_key)
+        if not (prompt := mgr.due_prompt()):
+            return
         _emit("status.update", sid, {"kind": "heartbeat", "text": f"♥ heartbeat #{mgr.state.fire_count} firing…"})
-        started = bool(_run_prompt_submit(f"__heartbeat__{int(time.time() * 1000)}", sid, session, prompt))
+        if mgr.fire_is_current():
+            started = bool(_run_prompt_submit(f"__heartbeat__{int(time.time() * 1000)}", sid, session, prompt))
     except Exception as exc:
         _notif_log_failure("heartbeat dispatch failed", exc)
-    if not started:
-        # _run_prompt_submit releases ``running`` itself when it refuses the turn; make it unconditional.
-        _notif_release_turn(session)
-        with contextlib.suppress(Exception):
-            mgr.abandon_fire()
+    finally:
+        if not started:
+            # A refused submit or failing storage read must never leave the UI session busy.
+            _notif_release_turn(session)
+            with contextlib.suppress(Exception):
+                mgr.abandon_fire()
 
 
 def _secretary_deliver_claim(sid: str, session: dict, db, claim: dict, reminders) -> None:

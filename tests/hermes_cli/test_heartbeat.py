@@ -16,6 +16,12 @@ from hermes_cli.heartbeat import (
 )
 
 
+@pytest.fixture(autouse=True)
+def native_mode():
+    from hermes_constants import get_hermes_home
+    (get_hermes_home() / "config.yaml").write_text("noting:\n  enabled: false\n")
+
+
 # ──────────────────────────────────────────────────────────────────────
 # interval parsing
 # ──────────────────────────────────────────────────────────────────────

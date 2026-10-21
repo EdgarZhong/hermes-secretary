@@ -66,6 +66,7 @@ def scan_profile(home, *, stop=None):
     with server._session_profile_runtime_scope({"profile_home": str(home)}):
         db = acquire(home / "state.db")
         try:
+            scan_heartbeats(db, home, stop=stop)
             enabled = schedules.default_enablement(db)
             if not enabled(None):
                 return
@@ -92,6 +93,31 @@ def scan_profile(home, *, stop=None):
                         reminders.release_claim(db, claim)
         finally:
             release(db)
+
+
+def scan_heartbeats(db, home, *, stop=None):
+    """Recover due Heartbeats on the existing UI host, independently of Scheduler policy."""
+    from secretary.heartbeat_route import heartbeat_route
+    from secretary.heartbeat_store import due_conversations
+    from secretary.heartbeat import ui_heartbeat_enabled
+    from tui_gateway import server
+
+    if not ui_heartbeat_enabled():
+        return
+    for ref in due_conversations(db):
+        if stop is not None and stop.is_set():
+            return
+        try:
+            route = heartbeat_route(db, ref)
+            if not route:
+                logger.warning("Heartbeat has no recoverable Main home=%s ref=%s; definition remains due", home, ref)
+                continue
+            sid, session = resume_session(route["id"], home, server._resolve_session_platform(), exact_session=True)
+            if stop is not None and stop.is_set():
+                return
+            server._maybe_fire_tui_heartbeat_tick(sid, session)
+        except Exception:
+            logger.warning("Heartbeat UI recovery failed home=%s ref=%s", home, ref, exc_info=True)
 
 
 def scan_once(*, stop=None):
@@ -132,14 +158,14 @@ class SchedulerHost:
             self.stop_event.wait(SCAN_INTERVAL_SECONDS)
 
 
-def resume_session(target, home, source):
+def resume_session(target, home, source, *, exact_session=False):
     from tui_gateway import server
     from tui_gateway.method_ctx import rebind
 
-    return rebind(_resume_background_session, vars(server))(target, home, source)
+    return rebind(_resume_background_session, vars(server))(target, home, source, exact_session=exact_session)
 
 
-def _resume_background_session(target, home, source):
+def _resume_background_session(target, home, source, *, exact_session=False):
     """Host-only native resume; never attach a peer or schedule a resume auto-continue."""
     from tui_gateway.transport import bind_transport, reset_transport
 
@@ -160,7 +186,8 @@ def _resume_background_session(target, home, source):
             raise RuntimeError("Session storage unavailable")
         if (error := _resume_locate(ctx)) is not None:
             raise RuntimeError(error)
-        _resume_follow_tip(ctx)
+        if not exact_session:
+            _resume_follow_tip(ctx)
         if (error := _resume_guard(ctx)) is not None:
             raise RuntimeError(error)
         ctx.profile_resume_cwd = (_resumable_stored_cwd(_str_param(ctx.found, "cwd"), ctx.profile_home)

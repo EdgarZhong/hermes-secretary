@@ -1103,7 +1103,7 @@ def _(rid, params: dict) -> dict:
 
 @method("slash.exec")
 def _(rid, params: dict) -> dict:
-    session, err = _sess_nowait(params, rid)
+    session, err = _heartbeat_slash_session(params, rid)
     if err:
         return err
     cmd = params.get("command", "").strip()

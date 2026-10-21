@@ -135,7 +135,8 @@ class GatewayGoalCommandsMixin:
             return t("gateway.heartbeat.usage")
         if interval < 0:
             return t("gateway.heartbeat.interval_too_small", min_seconds=MIN_INTERVAL_SECONDS)
-        if not prompt.strip():
+        from secretary.heartbeat import ui_heartbeat_enabled
+        if not prompt.strip() and not ui_heartbeat_enabled():
             return t("gateway.heartbeat.prompt_required")
         state, err = _mgr_call(t("gateway.heartbeat.invalid_prefix"), mgr.set, prompt, interval, errors=(ValueError,))
         if err:

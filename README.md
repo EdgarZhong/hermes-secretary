@@ -16,7 +16,7 @@ Secretary 只在Profile的 `state.db` 增加自有表，不改原表 schema / ow
 
 Main的`scheduler`与`notebook_show`按各自能力开关完整独立声明在API顶层，不进入Tool Search折叠目录：前者受`scheduler.enabled`，后者沿全局`noting.enabled`读取门禁；当前Conversation的`/noting`参与开关不控制这两项权限。其它工具保留原生折叠策略。
 
-Heartbeat按目标Profile全局`noting.enabled`分支：开启时使用带时间戳的英文`<heartbeat>`消息，额外prompt可省略，经现有UI runtime／platform唤醒所属Main；关闭时保留原生格式与执行路径。后台执行需UI后端运行，独立于`scheduler.enabled`；当前仍沿原生Session存储／压缩迁移及切换清除政策。精确模板与运行边界见[07 §8.15](docs/07-scheduler-notebook-noting-compaction-redesign.md#815-heartbeat-形态与-ui-唤醒用户确认2026-10-21)。
+Heartbeat按目标Profile全局`noting.enabled`分支：开启时使用带时间戳的英文`<heartbeat>`消息，额外prompt可省略，经现有UI runtime／platform唤醒所属Main；关闭时保留原生格式与执行路径。后台执行需UI后端运行，独立于`scheduler.enabled`；状态按Profile与稳定Conversation保存在自有表；支持独立设置／暂停／恢复／清除，压缩续接共享，new／reset／fork不继承。切换页面、关闭连接、runtime回收及服务重启后仍由后台扫描恢复自身Main，不跟随当前Gateway绑定。精确模板与运行边界见[07 §8.15](docs/07-scheduler-notebook-noting-compaction-redesign.md#815-heartbeat-形态与-ui-唤醒用户确认2026-10-21)。
 
 | 命令 | 行为 |
 |---|---|

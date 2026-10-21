@@ -13,6 +13,7 @@ transcript is alternation-safe.
 """
 
 from agent.message_sanitization import close_interrupted_tool_sequence
+from agent.turn_failure_copy import FAILED_TURN_DISPLAY_KIND
 
 
 def _tool_tail():
@@ -70,4 +71,24 @@ def test_user_tail_is_left_untouched():
     messages = [{"role": "user", "content": "hi"}]
     assert close_interrupted_tool_sequence(messages, None) is False
     assert len(messages) == 1
+
+
+def test_explicit_banner_kind_only_applies_to_the_appended_visible_row():
+    messages = _tool_tail()
+    before = [dict(message) for message in messages]
+    text = "Operation interrupted: waiting for model response (1.8s elapsed)."
+
+    assert close_interrupted_tool_sequence(messages, text, display_kind=FAILED_TURN_DISPLAY_KIND)
+    assert messages[:-1] == before
+    assert messages[-1]["content"] == text
+    assert messages[-1]["display_kind"] == FAILED_TURN_DISPLAY_KIND
+    assert not close_interrupted_tool_sequence(messages, text, display_kind=FAILED_TURN_DISPLAY_KIND)
+    assert len(messages) == len(before) + 1
+
+
+def test_explicit_banner_kind_does_not_make_the_empty_placeholder_visible():
+    messages = _tool_tail()
+    close_interrupted_tool_sequence(messages, None, display_kind=FAILED_TURN_DISPLAY_KIND)
+    assert messages[-1]["content"] == ""
+    assert messages[-1]["display_kind"] == "hidden"
 

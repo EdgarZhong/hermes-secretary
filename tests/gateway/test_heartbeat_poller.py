@@ -14,6 +14,12 @@ from gateway.session import SessionSource, build_session_key
 from hermes_cli.heartbeat import HeartbeatManager
 
 
+@pytest.fixture(autouse=True)
+def native_mode():
+    from hermes_constants import get_hermes_home
+    (get_hermes_home() / "config.yaml").write_text("noting:\n  enabled: false\n")
+
+
 class _HeartbeatAdapter(BasePlatformAdapter):
     """Real adapter lifecycle with an in-memory wire transport, no bot/model."""
 

@@ -280,8 +280,8 @@ _REAL_USER_MARKER_PREFIX = f"<{_TIMESTAMP_TAG}>"
 _REAL_USER_MARKER_SUFFIX = f"</{_TIMESTAMP_TAG}>"
 
 # Secretary synthetic carriers own their full wrapper (02 §5.6). Only an instant
-# reminder carries an inner timestamp; other runtime carriers are never stamped.
-_SYNTHETIC_CARRIER_PREFIXES = ("<noting-task>", "<deferred-reminder>", "<instant-reminder>", "<framework-message>", "<system-reminder>", "<user-reminder>")
+# reminder and heartbeat carry an inner timestamp; other runtime carriers are never stamped.
+_SYNTHETIC_CARRIER_PREFIXES = ("<noting-task>", "<deferred-reminder>", "<instant-reminder>", "<framework-message>", "<system-reminder>", "<user-reminder>", "<heartbeat>")
 
 
 def format_user_timestamp_marker(timestamp: Optional[float] = None) -> str:

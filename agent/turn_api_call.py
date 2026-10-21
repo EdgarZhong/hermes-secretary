@@ -17,8 +17,9 @@ from typing import Any, Dict, Optional
 from agent.error_classifier import FailoverReason
 from agent.agent_runtime_helpers_placeholders import hidden_interrupt_placeholder_row
 from agent.message_metadata import append_message
+from agent.message_sanitization import close_interrupted_tool_sequence
 from agent.repetition_guard import REPETITION_LOOP_INTERRUPTED, is_runaway_repetition
-from agent.turn_failure_copy import site_copy, stamp_failure
+from agent.turn_failure_copy import FAILED_TURN_DISPLAY_KIND, site_copy, stamp_failure
 
 logger = logging.getLogger("agent.conversation_loop")
 
@@ -263,6 +264,11 @@ def handle_api_interrupt(
         final_response = _partial
     else:
         final_response = f"{INTERRUPT_WAITING_FOR_MODEL_PREFIX}{api_elapsed:.1f}s elapsed)."
+        # This branch owns the diagnostic, unlike a streamed model partial. Close only
+        # the tool tail the finalizer would already close, with explicit provenance.
+        close_interrupted_tool_sequence(
+            messages, final_response, display_kind=FAILED_TURN_DISPLAY_KIND,
+        )
     agent._persist_session(messages, conversation_history)
     return ApiInterruptVerdict("break", thinking_spinner, interrupted, final_response)
 

@@ -518,6 +518,9 @@ class CLILoopsMixin:
         """HeartbeatManager bound to the current session_id (see ``_session_bound_manager``)."""
         def load():
             from hermes_cli.heartbeat import HeartbeatManager
+            from secretary.heartbeat import ui_heartbeat_enabled
+            if ui_heartbeat_enabled() and (agent := getattr(self, "agent", None)) is not None:
+                agent._ensure_db_session()
             return lambda sid: HeartbeatManager(session_id=sid)
         return self._session_bound_manager("_heartbeat_manager", "heartbeat manager", load)
 
@@ -546,6 +549,9 @@ class CLILoopsMixin:
                         mgr = self._get_heartbeat_manager()
                         if mgr is None or not mgr.is_active():
                             continue
+                        from secretary.heartbeat import ui_heartbeat_enabled
+                        if ui_heartbeat_enabled():
+                            continue  # The existing serve-owned UI host drives this tick, when running.
                         busy = (
                             self._agent_running
                             or getattr(self, "_voice_recording", False)

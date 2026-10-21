@@ -144,6 +144,9 @@ class GatewayGoalsMixin:
                 return
             session_id = current
             watch[quick_key] = (source, session_id)
+        from secretary.heartbeat import ui_heartbeat_enabled
+        if ui_heartbeat_enabled():
+            return  # UI session-owner / serve host owns firing; never synthesize messaging ingress.
         adapter = self._delivery_adapter_for(source)
         if adapter is None or not adapter._message_handler:
             return

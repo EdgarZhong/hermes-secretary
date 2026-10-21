@@ -1,10 +1,13 @@
 from types import SimpleNamespace
 from typing import Any
 
+import pytest
+
+from agent.session_persistence import SessionPersistenceMixin
 from agent.turn_finalizer import finalize_turn
 
 
-class FakeAgent:
+class FakeAgent(SessionPersistenceMixin):
     def __init__(self):
         self.max_iterations = 90
         self.iteration_budget = SimpleNamespace(remaining=10, used=1, max_total=90)
@@ -479,3 +482,168 @@ def test_hard_failure_exit_reasons_still_fail_the_turn(monkeypatch):
     result = _finalize(FakeAgent(), exit_reason="repeated_outer_errors(RuntimeError)", final_response="stopped")
     assert result["failed"] is True and result["completed"] is False
     assert result["failure_reason"] == "loop_error" and result["error"] == "stopped"
+
+
+def _sqlite_interrupt_agent(tmp_path, monkeypatch):
+    from hermes_state import SessionDB
+
+    monkeypatch.setattr("hermes_cli.plugins.invoke_hook", lambda *_a, **_kw: [])
+    db = SessionDB(db_path=tmp_path / "state.db")
+    db.create_session("sess-test", source="cli")
+    agent = FakeAgent()
+    agent._session_db = db
+    agent._session_db_created = True
+    agent._current_streamed_assistant_text = ""
+    agent._has_pending_redirect = lambda: False
+    agent._vprint = lambda *_a, **_kw: None
+    agent._strip_think_blocks = lambda text: text
+    agent._emit_diagnostic_status = lambda *_a, **_kw: None
+    agent.thinking_callback = None
+    agent.log_prefix = ""
+
+    def persist(messages, conversation_history):
+        assert agent._flush_messages_to_session_db(messages, conversation_history)
+        agent.persisted_messages = db.get_messages_as_conversation(agent.session_id)
+
+    agent._persist_session = persist
+    return agent, db
+
+
+def _interrupt_tool_tail():
+    return [
+        {"role": "user", "content": "check"},
+        {"role": "assistant", "content": "Checking.", "tool_calls": [
+            {"id": "call-1", "type": "function", "function": {"name": "terminal", "arguments": "{}"}},
+        ]},
+        {"role": "tool", "tool_call_id": "call-1", "name": "terminal", "content": "ok"},
+    ]
+
+
+def _finish_interrupt_test(agent, messages, *, final_response, interrupted, api_calls=2):
+    return finalize_turn(
+        agent, final_response=final_response, api_call_count=api_calls, interrupted=interrupted,
+        failed=False, messages=messages, conversation_history=[], effective_task_id="task",
+        turn_id="turn", user_message="check", original_user_message="check", _should_review_memory=False,
+        _turn_exit_reason="interrupted_by_user" if interrupted else "unknown",
+    )
+
+
+@pytest.mark.parametrize("streamed", ["", "Visible draft.",
+    "Operation interrupted: waiting for model response (1.8s elapsed)."])
+def test_api_interrupt_source_type_survives_native_sqlite_flush(tmp_path, monkeypatch, streamed):
+    import time
+
+    from agent.turn_api_call import handle_api_interrupt
+    from agent.turn_retry_state import TurnRetryState
+
+    agent, db = _sqlite_interrupt_agent(tmp_path, monkeypatch)
+    agent._current_streamed_assistant_text = streamed
+    messages = _interrupt_tool_tail()
+    verdict = handle_api_interrupt(
+        agent, _retry=TurnRetryState(), thinking_spinner=None, messages=messages,
+        conversation_history=[], api_start_time=time.time(), interrupted=False, final_response=None,
+    )
+    first = db.get_messages_as_conversation(agent.session_id)
+    result = _finish_interrupt_test(
+        agent, messages, final_response=verdict.final_response, interrupted=verdict.interrupted,
+    )
+    reloaded = db.get_messages_as_conversation(agent.session_id)
+
+    assert len(reloaded) == 4
+    assert reloaded[-1]["content"] == result["final_response"] == (streamed or verdict.final_response)
+    assert reloaded[-1].get("display_kind") == (None if streamed else "failed_turn")
+    assert reloaded[-1].get("display_metadata") == ({"interrupted": True} if streamed else None)
+    assert reloaded[-1]["message_uid"] == first[-1]["message_uid"] == messages[-1]["message_uid"]
+    assert [(row["role"], row["content"]) for row in reloaded[:-1]] == [
+        ("user", "check"), ("assistant", "Checking."), ("tool", "ok"),
+    ]
+    assert not any(row.get("display_kind") for row in reloaded[:-1])
+
+    # A subsequent ordinary completion on the same agent has no diagnostic type to inherit.
+    messages.extend([{"role": "user", "content": "next"}, {"role": "tool", "content": "next result"}])
+    _finish_interrupt_test(agent, messages, final_response=verdict.final_response, interrupted=False)
+    assert db.get_messages_as_conversation(agent.session_id)[-1].get("display_kind") is None
+    db.close()
+
+
+def test_summary_interrupt_source_type_survives_native_sqlite_flush(tmp_path, monkeypatch):
+    from agent.chat_completion_helpers import handle_max_iterations
+
+    agent, db = _sqlite_interrupt_agent(tmp_path, monkeypatch)
+    agent.iteration_budget.remaining = 0
+    agent.api_mode = "chat_completions"
+    agent._handle_max_iterations = lambda messages, count: handle_max_iterations(agent, messages, count)
+
+    def interrupt_summary(*_args):
+        raise InterruptedError
+
+    # Keep the real summary helper's synthetic-nudge removal on cancellation.
+    monkeypatch.setattr("agent.chat_completion_helpers._iteration_summary_api_messages", lambda *_args: [])
+    monkeypatch.setattr("agent.chat_completion_helpers._chat_summary_attempt", lambda *_args: interrupt_summary)
+    messages = _interrupt_tool_tail()
+    result = _finish_interrupt_test(agent, messages, final_response=None, interrupted=False)
+    reloaded = db.get_messages_as_conversation(agent.session_id)
+    assert result["interrupted"] is True
+    assert len(reloaded) == 4
+    assert reloaded[-1]["content"] == result["final_response"]
+    assert reloaded[-1]["display_kind"] == "failed_turn"
+    assert reloaded[-1]["message_uid"] == messages[-1]["message_uid"]
+    from agent.message_metadata import without_persistence_fields
+    prompt_row = without_persistence_fields(reloaded[-1])
+    assert prompt_row["role"] == "assistant"
+    assert prompt_row["content"] == result["final_response"]
+    assert "display_kind" not in prompt_row
+    assert "display_metadata" not in prompt_row
+    assert [(row["role"], row["content"]) for row in reloaded[:-1]] == [
+        ("user", "check"), ("assistant", "Checking."), ("tool", "ok"),
+    ]
+    db.close()
+
+
+@pytest.mark.parametrize("source", ["api", "summary"])
+def test_empty_interrupt_keeps_native_user_tail_boundary(tmp_path, monkeypatch, source):
+    import time
+
+    from agent.conversation_loop import _close_durable_failed_turn
+    from agent.turn_api_call import handle_api_interrupt
+    from agent.turn_failure_copy import FAILED_TURN_NOTICE
+    from agent.turn_retry_state import TurnRetryState
+
+    agent, db = _sqlite_interrupt_agent(tmp_path, monkeypatch)
+    messages = [{"role": "user", "content": "check"}]
+    if source == "api":
+        verdict = handle_api_interrupt(
+            agent, _retry=TurnRetryState(), thinking_spinner=None, messages=messages,
+            conversation_history=[], api_start_time=time.time(), interrupted=False, final_response=None,
+        )
+        assert len(db.get_messages_as_conversation(agent.session_id)) == 1
+        result = _finish_interrupt_test(agent, messages, final_response=verdict.final_response, interrupted=True)
+    else:
+        agent.iteration_budget.remaining = 0
+
+        def interrupt_summary(*_args):
+            raise InterruptedError
+
+        agent._handle_max_iterations = interrupt_summary
+        result = _finish_interrupt_test(agent, messages, final_response=None, interrupted=False)
+    assert len(db.get_messages_as_conversation(agent.session_id)) == 1
+    _close_durable_failed_turn(agent, result)
+    _close_durable_failed_turn(agent, result)
+    reloaded = db.get_messages_as_conversation(agent.session_id)
+    assert len(reloaded) == 2
+    assert reloaded[-1]["content"] == FAILED_TURN_NOTICE
+    assert reloaded[-1]["display_kind"] == "failed_turn"
+    db.close()
+
+
+@pytest.mark.parametrize("interrupted", [False, True])
+def test_model_diagnostic_text_in_generic_tail_close_is_not_typed(tmp_path, monkeypatch, interrupted):
+    agent, db = _sqlite_interrupt_agent(tmp_path, monkeypatch)
+    text = "Operation interrupted: waiting for model response (1.8s elapsed)."
+    messages = _interrupt_tool_tail()
+    _finish_interrupt_test(agent, messages, final_response=text, interrupted=interrupted)
+    reloaded = db.get_messages_as_conversation(agent.session_id)
+    assert len(reloaded) == 4
+    assert reloaded[-1]["content"] == text
+    assert reloaded[-1].get("display_kind") is None
+    db.close()

@@ -1,0 +1,3 @@
+初始冻结依据提交：51300c06001e14af6bb91fd2c0d53b8c0b3fe9fa
+授权来源：本会话2026-10-21用户要求Conversation独立管理、不因Gateway丢失有效绑定，验后自主联合部署，设置Alex置顶2小时无额外prompt；禁止Astra。
+根AGENTS已存在于该提交树内，本轮未修改，无空修改。
