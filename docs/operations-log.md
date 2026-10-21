@@ -4,6 +4,20 @@
 
 
 
+## 2026-10-21 17:55–18:24 · Conversation级Heartbeat联合部署与Alex置顶设置
+
+**授权与版本：** 用户明确只看目标Profile全局`noting.enabled`，开启时采用英文XML／单timestamp及UI runtime；要求稳定Conversation独立管理、切换／关页不失活，验后自主联合部署，再为Alex实际置顶设置每两小时、无额外prompt。初次后端`f32d70f703fd8995f6652ca71ff72ef0d56d535e`，补发修复后端`ed94619da81547bcb9e27aab60b608b2310e6890`；固定前端`0b8843fb87bf0ba109f7b744f4ae96faf09df597`，归档SHA256 `89e05ae6de4ea4d716f31f9202a58069e1e2ec27738bb7bd5808d47da1eb3458`，439文件逐一SHA匹配，不含Android dirty。源码提交均自动push，未修改认证、Provider或锁。正式首尔PM Python3.14.8，本地3.14.7；`uv.lock` SHA `2bc4db483e9cba927cd7147f9ccbb09635f85bb3f1f36d6e9d51d06b65d1c67e`，依赖差异为空。
+
+**机制与验证：** `state.db`自有`secretary_heartbeats`按稳定ref保存定义及revision，全部正式控制入口共用owner；既有宿主扫描独立于Scheduler开关，按自身合法压缩tip冷恢复原生UI Main，保留writer租约／用户优先及CAS退款。原生关闭分支及数据保留，无批量迁移。有效定向156项，最终整合31文件及后续4文件修补的冻结10检查均通过／health0；修补针对性27项通过，独立2负例通过。隔离真实serve在close＋无WS后自然61.9秒触发；停机148.6秒跨两due只合一次；paused／cleared跨重启不复活，resume重锚。四个实际K3-256k／High样本均HTTP200；未变路径按精确diff复用。修补复验另有三Home／六原生进程／253帧真实HTTP/WS，新增外部／模型0，en／zh原生note逐字保持。固定前端917通过／1skip、typecheck／build及浅暗移动／桌面截图证据按精确版本复用。独立门禁及完整边界见[本轮Verification](../.autonomous/20261021-conversation-heartbeat/verification.md)、[Validation](../.autonomous/20261021-conversation-heartbeat/validation.md)。不声称全仓全绿、手机长期或生产微信触达验收。
+
+**回执遗漏与整改：** 初审只核状态而漏查正式设置成功note，首次生产RPC暴露“仅当前进程有效”与持久语义冲突；主会话接收原报告也未识别此项，原门禁结论已更正。按既有持久化要求，在Secretary sibling选择开启分支的准确说明，关闭分支直接返回原本地化note；不改模型模板／调度／数据。新无实现上下文审查者重新提取36条全范围判据，另一新验收者独立18场景复验，实际WS成功输出关闭缺陷。原失败及脚本假设纠正均保留，不改写为首轮成功；此为工程落实，无新增产品口径或授权。
+
+**发布与保护：** 分别在17:55:58及18:21:17确认无活动Turn／Noting／writer lease后快照三库和受限config／SOUL，再停用户Gateway及唯一system Web，精确快进并换固定静态包，正常启动。每次各自before／after的messages、排期、pending、绑定、alias全行SHA一致，补发版再包含Heartbeat表；配置／SOUL指纹及微信ref保持。两窗口Alex基线分别10398与10414条，按各自窗口对账，不把窗口间新增当作本次测试写入，也不回盖后续数据。最终Web／Gateway同ed、active/running、NRestarts0，微信connected；双SPA及关键JS／CSS实际200且哈希匹配，匿名HTML302至Authelia。最初公网诊断脚本未显式Accept而误用HTML跳转预期，已区分HTML302／JSON401并复核；没有改认证。仅接口验收，不冒称新登录后UI。
+
+**Alex正式设置：** 17:58:09由唯一实际pinned逻辑ref选中`conv_8dc89e12cc9b42b5a77986f4d9b02cec`（stored `20261011_223115_59ad08`），通过正式session.resume／slash.exec `/heartbeat every 2h`／control.read设置。最终补发版后只读同一owner，全部定义字段与初始相同：7200s、prompt空、active、fire_count0、revision1、created_at1792576689.5657868、last_fired_at0；next_due1792583889.5657868，即2026-10-21 19:58:09 Asia/Shanghai，届时沿原生idle规则执行。未重set／未提前触发模型Turn。其它Heartbeat、历史、排期及微信绑定保护对账保持。
+
+**恢复点与证据：** 首尔受限`~/.local/state/hermes-secretary/conversation-heartbeat-20261021/deploy-20261021T175558/`和`deploy-20261021T182117/`含三库／config快照及before/receipt；旧静态目录为`~/.local/share/hermes-secretary/static/secretary.before-heartbeat-20261021T175558`与`...T182117`。如需撤销，先等待空闲，人工选已知源码／对应静态目录并正常重启；保留现DB及后续新增，不整库恢复、不自动回滚。初始源码恢复点c21b1d5b9c，补发前为f32d70f703。脱敏收据和完整本地日志在ignored `.hermes-dev/conversation-heartbeat-20261021/`，独立审查／验收原件在相应verification、validation及r2目录；最终独立Verification36条全部符合、Validation18场景全通过，范围内整改关闭；见本轮[交付简报](../.autonomous/20261021-conversation-heartbeat/final-delivery.md)。凭据及原始私人库只留受限云端备份，不入Git。
+
 ## 2026-10-21 15:35 · Conversation调试RPC上线与置顶缓存清理
 
 **用户口径及实现：** 两项调试入口一并上线。`conversation.context_cache_clear`按Profile／Conversation原子清当前tip的System Prompt及完整工具pin，不在RPC重建或发模型Turn；已有Web／Gateway内存缓存在下一正常Turn沿原生路径同步。`secretary.noting_recover`及`secretary.noting_recovery_state`从原Admission／压缩边界、原文generation、失败child控制正文、成功Notebook维护回执与不可变版本重建旧Active Foreground／工作态，不新增专门恢复快照，不以缺专门快照或完整旧HTTP wire拒绝。旧父完整工具数组已不可得时仍可沿原control保存的可调用Schema恢复，并明确来源；具体参数和回执见[07 §12](07-scheduler-notebook-noting-compaction-redesign.md#12-conversation-调试接口用户确认2026-10-21)。恢复沿原生Provider、runner、Commit Gate和Framework安全接缝；失败原child、admission注册及旧消息保持，新child存原生审计和幂等身份。
