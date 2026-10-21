@@ -283,6 +283,50 @@ class TestToolListSanitizer:
         assert out == tools
 
 
+class TestDeferredToolArguments:
+    """Kimi's wire schema must retain arbitrary deferred-tool arguments."""
+
+    def test_chat_wire_keeps_bridge_arguments_open_without_mutating_catalog(self):
+        from agent.transports.chat_completions import ChatCompletionsTransport
+        from tools.tool_search import bridge_tool_schemas
+
+        tools = bridge_tool_schemas(2)
+        wire = ChatCompletionsTransport().build_kwargs(
+            model="k3-256k", messages=[], tools=tools,
+        )
+        bridge = next(t for t in wire["tools"] if t["function"]["name"] == "tool_call")
+        args = bridge["function"]["parameters"]["properties"]["calls"]["items"]["properties"]["arguments"]
+        assert args["additionalProperties"] is True
+        assert args["required"] == []
+        original = next(t for t in tools if t["function"]["name"] == "tool_call")
+        original_args = original["function"]["parameters"]["properties"]["calls"]["items"]["properties"]["arguments"]
+        assert "additionalProperties" not in original_args
+        assert "required" not in original_args
+        assert sanitize_moonshot_tools(wire["tools"]) == wire["tools"]
+
+    @pytest.mark.parametrize("properties", [None, {}])
+    def test_explicit_closed_object_still_rejects_extra_arguments(self, properties):
+        from jsonschema import ValidationError, validate
+
+        params = {"type": "object", "additionalProperties": False}
+        if properties is not None:
+            params["properties"] = properties
+        wire = sanitize_moonshot_tool_parameters(params)
+        validate({}, wire)
+        with pytest.raises(ValidationError):
+            validate({"action": "list"}, wire)
+
+    def test_typed_additional_properties_keep_their_value_constraint(self):
+        from jsonschema import ValidationError, validate
+
+        wire = sanitize_moonshot_tool_parameters({
+            "type": "object", "additionalProperties": {"type": "integer"},
+        })
+        validate({"count": 2}, wire)
+        with pytest.raises(ValidationError):
+            validate({"count": "two"}, wire)
+
+
 class TestRealWorldMCPShape:
     """End-to-end: a realistic MCP-style schema that used to 400 on Moonshot."""
 

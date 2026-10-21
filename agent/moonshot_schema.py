@@ -90,6 +90,10 @@ def _ensure_required_array(node: Dict[str, Any]) -> Dict[str, Any]:
     """Guarantee an object schema carries a ``required`` list, pruning names not in
     ``properties`` (Moonshot also rejects dangling names). Mutates and returns ``node``."""
     props = node.get("properties")
+    # Kimi can emit only {} for an unstructured object once required=[] is
+    # added. Preserve its implicit open shape explicitly on the wire.
+    if props is None and "additionalProperties" not in node:
+        node["additionalProperties"] = True
     req = node.get("required")
     if isinstance(req, list):
         if isinstance(props, dict):
