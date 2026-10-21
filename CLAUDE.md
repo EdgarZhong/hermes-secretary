@@ -1,7 +1,7 @@
 # Hermes Secretary 当前状态
 
 
-**托管集成更新（2026-10-21）：** 全部前端候选已收敛，最终66份1025项通过、1跳过，最终dist构建成功（439文件）；Android380与完整图标已亲审，70项原生通过，0.1.3/1003签名APK构建中。标题已通过真实Kimi k3-256k/OpenAI SDK单次隔离请求，2.49秒生成标题且无私有reasoning参数；无生产Conversation写入。后端冻结10检查0 blocking/advisory。独立Verification已派出；真实UI仍受隐藏IAB禁用限制，未作全验收／上线声明。唯一详细看板见本轮plan，生产未部署。
+**托管集成更新（2026-10-21）：** 后端产品快照`3b48cf0`、Web`bf279b2`已提交推送。最终前端68份1038项通过、1跳过；实际隐藏IAB复验详情加载后同UID Thinking保持手动展开及正文、19帧顺序／中途Heartbeat唯一卡、八次重排阅读锚偏移不变。修补包含Context引用稳定保护（80张静态卡不因纯文本帧重绘）。新版439文件dist构建成功，0.1.3/1003最终签名APK已完成，32,048,497bytes、SHA5c9cabe4…6f98b，实际439文件与新dist一致；旧ad7e484包只保留为中间候选。第三次全新独立Verification为19条17符合／0违规／2不足，F03/F04关闭；本轮受限交付，正式Validation未启动。真实Android视口／Insets／IME和实际通知响铃／横幅仍缺证据，未声明全验收或上线。详细看板见本轮plan，生产未部署。
 
 ## 自主口径收敛 · 待用户追认
 
@@ -9,18 +9,18 @@
 
 ## 当前阶段
 
-**2026-10-21 手机多故障修复收尾：** 用户已放弃旧置顶Kimi工具调用调查与恢复。用户随后明确要求继续委派，先由三个Sol/high子Agent分担微信身份修复、提交／Heartbeat复核、时间线／滚动复核；后续由Sol/high接手Android380视口与图标修复，不再使用Astra／Extra。标题transport、Thinking详情跳位／工具错序、流式布局开销、Android通知通道已有实现和定向证据；丢ACK精确关联恢复、Heartbeat实际落库后即时卡片发布已补齐并亲审正式接线及失败路径。用户要求全部修好并测过后准备上线；当前尚未部署本轮修改，不向生产会话发模型测试消息，不动旧历史／排期。用户最新明确更正为380，最终采用380 CSS px、Android壳真实扩大并等比显示；另追加launcher icon过度放大裁切反馈，已交`android_viewport_icon`修复两项。最终APK仍等全部集成验证后准备，不为赶包跳过其余问题。保留已有dirty及其它任务文档。隐藏IAB被Work设置禁用，界面实测缺口如实记录，不绕过显示保护。
+**2026-10-21 手机多故障修复收尾：** 采用Sol/high分包、主会话亲审集成。用户已放弃旧置顶Kimi工具调查与恢复，不重开、不动其历史／排期。用户最终明确Android逻辑视口380 CSS px、等比显示，覆盖390；通知升级迁移新响铃／横幅通道并保留可识别主动静音，launcher保完整logo／深纸背景。全部前端修补后统一dist与0.1.3/1003签名APK。只准备上线，不自动部署或向生产发测试消息。隐藏IAB现已恢复，只在自有隐藏页补组件实际呈现，不绕过显示保护；真Android运行与完整App验收仍未完成。
 
 | 当前任务 | 当前状态／完成条件 |
 |---|---|
-| MOBILE-RENDER-02 | `timeline_final_review`复核投影／滚动。真实生产只读512帧＋200条cards回放已复现旧版737字符早期Thinking挂尾，候选版回到实际UID位置；公开虚构等价及空闲select回归通过。新增DOM复用锚点身份校验与程序滚动过滤，相关55项通过；子Agent亲审正式接线、补5个边界用例并修正新增ID契约断言，5份144项／真实回放／typecheck通过，主会话已亲读接收；普通浏览器／真机UI未验 |
-| SUBMISSION-RECOVERY-03 | `submission_review`复核可选提交ID、Profile／Conversation回执查询及事件／ACK竞态；不按文本猜成功、不重发、不复活rewind行。最后45项后端与5项前端补充、既有4项恢复测试通过，冻结10检查0／0；原生worker入口仅进程内验证、数据库重开为新连接，不冒称OS进程重启 |
-| HEARTBEAT-CARD-02 | 同上Agent复核；真实持久用户行回调即时发布，先于provider输出，重放UID去重，退休／未落库行不造卡；最后4项真实持久／batch失败专测通过，含在45项中 |
-| WEIXIN-REBIND-03 | `weixin_identity_fix`负责绑定handler→原生初始化身份冲突；用户报告Desktop/Alex/问题报告-微信改绑会话身份冲突-2026-10-21.md为取证依据。必须保留旧Conversation身份、历史、Notebook／排期和用户新绑定，不合并旧ref，不吞冲突或自动回绑；已修Gateway构造将可变peer key冒充目标出生身份的接线错误，核目标owner后沿目标native key／compression身份；不改alias／历史。7份111项、冻结10检查0／0；主会话已读diff与正式构造／缓存／绑定清理接线，接收本地修复。生产只读确认无需修库；真实微信入站待部署后用户正常消息验证 |
-| AUX-TITLE-02 | 已修实际SDK与辅助推理参数不匹配；360相关及最终18重叠定向通过，冻结检查通过；未部署，新会话仍走旧代码 |
-| ANDROID-RECOVERY-02 | v2 HIGH响铃／横幅及主动静音迁移已实现，原生63／前端67通过；Sol/high `android_viewport_icon`现负责380逻辑视口及图标安全区／缩放／背景，保留通知和恢复规则。真机未验，最终APK等整包集成验证 |
-| KIMI-TOOLS-02 | 用户决定关闭，不自动重开；生产旧会话／历史／排期未改。证据`.hermes-dev/kimi-recurrence-20261021/`，无已证实精确根因 |
-
+| MOBILE-RENDER-02 | UID位置优先旧尾锚、同Turn后缀续接、工具occurrence／详情、DOM身份锚／程序scroll反馈与底部O(history)测量修复已实现。真实512帧＋200cards旧失败／新通过。浏览器新增F04后已修同身份手动展开的live→history交接，保真正完成折叠／scope及phase隔离／实际正文，并保护Context稳定引用。68份1038过1跳、稳定浏览器上述场景通过；F04第三次独立复审已关闭；设备未验 |
+| SUBMISSION-RECOVERY-03 | 可选ID沿原生writer落真实行，同Profile／Conversation只读核回执；晚ACK／unknown／后续草稿与rewind不复活处理已实现并亲审。45项后端、5项前端及既有4项恢复有效；worker仅进程内真实入口，新连接非OS重启 |
+| HEARTBEAT-CARD-02 | 真实落库observer即时卡片、源UID去重，不按Thinking造卡；追加emit前异常恢复／入环后不重复修补，17相关／最终7Heartbeat与10检查过，独立复审已关F03；真实浏览器中途唯一卡通过 |
+| WEIXIN-REBIND-03 | Gateway沿目标native身份初始化，入口peer key只投递；旧身份／历史／Notebook／排期及新绑定保持。7份111项与10检查过，主审接收；生产只读无需修库，真实入站仍待明确部署后正常用户消息 |
+| AUX-TITLE-02 | 实际SDK区分私有参数，18最终重叠定向及较早360相关通过；真实Kimi k3-256k/OpenAI SDK单请求2.49秒标题成功，无生产Conversation写；线上仍旧代码 |
+| ANDROID-RECOVERY-02 | v2 HIGH／主动静音迁移、恢复退避、原生380视口／Insets／图标safe zone与资源已实现。70原生过，实际资源mask亲审；最终同签名0.1.3/1003已统一打包。真WebView／键盘／vivo launcher／声音横幅未验，不冒称全绿 |
+| 独立门禁与交付 | 原始及第二次报告保留；F03关闭，第二次新增F04已修，第三位全新fork-none已审最终bf279b2，19条17符合／0违规／2不足。Android真实证据F01/F02仍阻断，正式Validation前置尚未通过，未启动，不把主会话组件补证冒充独立验收 |
+| KIMI-TOOLS-02 | 用户关闭，不自动重开；原会话／历史／排期未改，保留原调查时点，不宣称精确模型根因 |
 
 **Conversation级Heartbeat已完成并上线（2026-10-21）：** 后端`ed94619da8`、固定前端`0b8843f`已联合上线；按目标Profile全局Noting分支，稳定Conversation自有状态、独立设置/暂停/恢复/清除，UI runtime后台唤醒，压缩共享，新建/reset/fork独立，关闭原生。156项有效定向、冻结10检查、独立负例与4个真实K3/High样本通过；正式serve关页/回收后自然61.9秒执行、148.6秒停机跨两due合一次、暂停/清除跨重启不复活已实测。首次成功回执遗留原生进程限制文字被主会话发现，旧门禁结论更正；已修补并经新独立36判据/18场景前置复审和实际WS en/zh输出复验。Alex原置顶Conversation已正式设7200秒/空prompt/active/count0；补发版只读核定义全字段、revision1及19:58:09到期锚点保持，未提前模型触发。两独立角色已补审最终三收据，Verification36条全部符合、Validation18项全通过，范围内整改清空；交付见`.autonomous/20261021-conversation-heartbeat/final-delivery.md`，持续目标完成归档。439文件及三库保护数据/配置/微信绑定对账一致，双SPA正常、Web/Gateway active且微信connected，NRestarts0。禁止Astra，全部子Agent sol/high；无新产品口径待追认。
 

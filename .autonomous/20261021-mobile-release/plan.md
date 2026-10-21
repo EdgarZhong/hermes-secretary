@@ -21,12 +21,12 @@
 
 | 目标/任务 | 机制实现 | 正式接线 | 针对性验证 | 用户结果 | 当前负责人和下一步 |
 |---|---|---|---|---|---|
-| 标题 | 已交／主审接收 | 真实native helper | 360相关＋最后重叠18过；新10重跑有效 | 真实Kimi k3-256k/OpenAI SDK生成标题成功，2.49秒、1请求、无私有参数 | 独立门禁 |
-| 提交／Heartbeat | 已交／主审接收 | inline/worker/原生持久／Web | 最新45后端、5前端与既有4恢复过，检查10过 | UI仍未验 | 集成构建后门禁 |
-| 时间线／滚动 | 已交／主审接收 | select/replay/details/真实hook | 原212／最后152重叠；后5份144过；整体66份1025过1跳 | 真实历史回放通过；实际浏览器UI未验 | 门禁审查 |
-| 微信身份 | 已交／主审接收 | 真实handler→构造→native init | 111过，检查10过 | 无生产入站Turn验收 | 保当前绑定等部署后正常输入 |
-| Android380／图标 | 已交／主审接收 | 原生meta/settings/Insets及实际生成图标 | 70项原生全过；五档像素/三种mask通过 | 真WebView和vivo桌面未验 | 签名APK构建中 |
-| 集成dist／APK | 最终dist已构建，APK构建中 | 0.1.3/1003 | 439文件，清单SHA ed540b2a693a8d53e9bd8fa3200f7f9d314523d8ad84f5f12f7a1f7d814424be | 待门禁 | android_viewport_icon打包，release_verification独立审查 |
+| 标题 | 已交／主审接收 | 正式native helper | 18最终相关/真实SDK及单次Kimi标题成功 | 代表接口2.49秒成功，完整App新建未验 | FV01符合，未部署 |
+| 提交／Heartbeat | 已交／主审接收 | writer/worker/observer/Web | 45相关、最终17/7重叠及Web竞态，10检查过 | 真实浏览器中途唯一卡；提交完整App未验 | F03已独立关闭 |
+| 时间线／滚动 | 已交／主审接收 | select/details/replay/组件/hook | 最终68份1038过1跳，真实512帧反例；详情11/性能2 | 稳定浏览器详情原位/展开正文/19帧/8重排通过，非完整App | F04第三次独立关闭 |
+| 微信身份 | 已交／主审接收 | bind→native init | 111过及10检查过 | 未发生产入站 | FV13/14符合；部署后正常用户消息验收 |
+| Android380／图标／通知 | 已交／主审接收 | native viewport/channel/icon | 70原生过，五档像素/三mask/实际APK资源验证 | 真WebView/键盘/vivo/声音横幅未验 | F01/F02证据阻塞 |
+| 集成dist／APK | 最终439文件/签名APK已完成 | Web bf279b2、0.1.3/1003 | 清单555528b534bb2abec4464d1027fa1697de4254affbc2a0e495e9bf4c374f449e；实际APK逐SHA同版/同旧签名 | 未安装 | 主审及第三独立验包符合，未部署 |
 
 独立Verification只在全包集成收敛后新fork-none派出；先按冻结规格落独立判据，再查代码/证据。通过后另派新Validation，先场景计划交主会话过目，再执行；显示保护和API授权边界不变。两者不是大型套件复跑器。
 
@@ -36,12 +36,22 @@
 |---|---|---|---|---|---|---|
 | D01 | R02 晚ACK／预写失效／worker时间戳／rewind | 已补6个正式链路缺口 | 高，提交事实错误 | submission_review | 最新45后端＋5前端证据、主审 | 已关闭机制；UI验收待门禁 |
 | D02 | R06 真UID位置被尾锚覆盖 | 旧版真实回放失败、候选通过 | 高，历史错位 | 原渲染包＋主会话 | 实际回放及虚构回归，独立复核 | 已关闭机制 |
-| D03 | R07 DOM复用错锚与程序scroll反馈 | 新hook修补、8次重排/20秒反例通过 | 高，阅读跳动 | 主会话＋timeline_final_review | 144项含新边界、UI呈现待验 | 已关闭机制；UI待验 |
+| D03 | R07 DOM复用错锚与程序scroll反馈 | 新hook修补、8次重排/20秒反例通过 | 高，阅读跳动 | 主会话＋timeline_final_review | 144项含新边界、最终真实DOM八次reflow锚偏移不变 | 已关闭，设备仍未验 |
 | D04 | R12 peer key冒充目标出生身份 | helper核owner并选目标key | 高，微信入站崩溃 | weixin_identity_fix | 111项、生产只读无需修库 | 已关闭机制；真实入站待部署后 |
 | D05 | R10–11 380／图标裁切 | 已实现并亲审；真WebView与桌面证据仍缺 | 高，本轮新包要求 | android_viewport_icon | 70项＋图标像素／mask亲审；真实UI待验 | 已关闭机制；UI未验 |
-| E01 | R04–11实际UI | Work禁用隐藏IAB，禁止绕过 | 证据阻塞，不能伪造 | Validation | 合法隐藏IAB恢复或获授权入口后验证 | 未关闭；继续不依赖它的工作 |
+| E01 | R04–11实际UI | 隐藏IAB现已恢复；真实Android设备入口仍不可用 | 证据阻塞，不能伪造 | Validation | 补浏览器真实呈现；Android须合法真实运行入口 | 浏览器组件补证完成；真Android仍阻塞 |
+| D06 / F03 | Heartbeat发布前异常误去重 | 已按真实replay区分发布前/后，17项相关及7Heartbeat通过 | 中，少见发布失败恢复 | submission_review | 独立复审已核关闭 | 已关闭 |
+| D07 / F04 | 已完成Thinking详情接管 | 稳定真实浏览器：展开Thinking后相邻tool详情row41补齐，Thinking被历史facet重挂并折叠 | 中，违反原位补facet/手动展开连续性 | timeline_final_review | 正式组件＋Controller详情红绿；真实浏览器同UID手动展开/收起/状态转换及scope边界；新dist/APK和新独立整包复审 | 已关闭于bf279b2；正式红绿/真实DOM/第三次全范围复审及新包齐备 |
 | B01 | 范围外旧suite5失败 | 未改ee2ba55副本相同5失败 | 不归本轮，不放宽检查 | 已记录 | baseline和integration对照日志 | 范围外保留 |
 
 ## 取舍、快照与续接
 
 冻结文档提交见baseline；它在已授权实现之后固定接续轮次范围，不重写此前实施顺序。用户托管允许范围内本地阶段提交，按根规则每次自动push，不提交原有不相关dirty。生产只读预检显示git干净、运行ed94619，非部署。本轮确认380覆盖390，不再询问宽度。最终dist与APK等所有前端完成再构建，不用旧dist提前交最终包。源码／依赖未变化的既有有效证据复用；只针对集成、失败修复和证据存疑补跑。
+
+托管追加（F04前历史候选，以下旧产物非当前交付）：后端产品快照3b48cf0baeb3c49bb96849d24c6105bf6e39e6fc，Web ad7e4842c230bf65bf8b1d5491ea1a169407ca6a。正式emit入环前异常误置published已补：入环前允许重复回调恢复、False或入环后异常按真实replay去重，3个实际native链路对照先红后绿；17项相关/最终7Heartbeat/10检查过。无新发布器或重试调度。APK SHA256 40efadefc358bd2604709e490451064762ad2d1c017cf48c9cfff239ab4a9208；dist归档SHA256 0ea07e0885a7a3e7dd721e0f065b0dfb7e53a67d50e89ca1d4f7d5325d1b8454。查看器copiedAt生成时间差异只在构建层复用冻结JSON原字节，439全SHA门禁仍保留。
+
+独立初审与新fork-none复审已完成，保留历史：初审17符合/1违规/2不足；第二次以32独立条款核28符合/1违规/3不足，F03关闭、F04新增，Android真实运行缺口F01/F02仍在，正式Validation前置未通过，未启动。隐藏IAB恢复后主会话真实读DOM：稳定v2中途Heartbeat唯一卡、idle切换/详情顺序通过；八次reading几何偏移保持。新F04由稳定v2排除HMR后证实，按既有规格工程修补，无新增产品口径或用户待追认。旧dist/APK不能作为最终交付，修完前端再统一重建。
+
+最终实施更新：Web bf279b2dc5ec5553ff9e370696b153e4aadb52cd，Context owner按身份/phase计数语义稳定引用；80张静态memo卡纯增量仅一次渲染，新phase仍通知。正式Controller详情11项和性能2项红绿、相关114/最终25重叠通过；最终68份1038过1跳、typecheck/build过。browser-F04*稳定真实DOM证明原反例修复且正文保留，19步中途Heartbeat去重/顺序及八次重排锚偏移保持。最终dist439清单SHA555528b534bb2abec4464d1027fa1697de4254affbc2a0e495e9bf4c374f449e，最终APK SHA5c9cabe44fb5e0fa8fa580cdf46dc719d7a439887d3342fb37d844cdbce6f98b，32,048,497bytes；dist归档SHAf5b9b2cfb3bd7685a1ff8351312649659c0327cee8fdbf808b4956d2223563fd。release_final_verification第三次独立19条17符合/0违规/2不足，F03/F04关闭；F01/F02仍阻断，正式Validation未启动；不因组件UI通过就关闭真Android证据缺口。
+
+最终停止判定：本地实现、正式接线、开发期针对性验证与候选构建已收敛，整轮未完成；阻塞为合法真实Android运行证据F01/F02，不能用组件/公式关闭。未部署。恢复时先建立合规设备验收入口补证，再重开独立门禁及正式Validation；不重开旧Kimi。当前事实与产物见final-delivery.md。

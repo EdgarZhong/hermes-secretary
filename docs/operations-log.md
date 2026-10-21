@@ -328,3 +328,14 @@ Delegation风险有严格前提：回调携带派发时的`session_key`／`paren
 ### 2026-10-21 托管最终候选构建与标题代表链路
 
 全前端66份1025通过、1跳过，最终dist构建成功439文件，清单SHA256 `ed540b2a693a8d53e9bd8fa3200f7f9d314523d8ad84f5f12f7a1f7d814424be`。Android380原生视口、Insets与完整图标资源主审接收，70项原生测试通过；版本0.1.3/1003签名APK待完成。标题使用本地更新代码与真实Kimi k3-256k/OpenAI SDK执行一次虚构文本请求，2.49秒生成“确认移动端会话标题功能正常”，请求未含私有`_reasoning_config`，无生产会话／Profile写入；首次harness参数遗漏在请求派发前失败，修正后仅实际派发1次。证据ignored `.hermes-dev/mobile-title-live-probe.json`及日志。最终后端10检查全部通过，0 blocking/advisory；并非全后端suite全绿，已有5项同基线失败保留。独立整包Verification进行中，真实UI尚未验，不部署。
+
+
+### 2026-10-21 托管最终收尾：F03/F04闭合与受限候选交付（未部署）
+
+产品后端`3b48cf0baeb3c49bb96849d24c6105bf6e39e6fc`、Web`bf279b2dc5ec5553ff9e370696b153e4aadb52cd`均已提交推送。F03在原生emit入环前失败误置published，已改按真实replay区分发布前后，17相关／7最终Heartbeat通过；F04由稳定隐藏IAB发现：同UID已完成Thinking手动展开后，相邻工具详情接管令其折叠。按既有原位facet/交互连续规格新增当前Timeline内存选择owner，保真正完成自动折叠、scope与多phase隔离和实际正文；另修Context每帧广播性能缺口，80静态memo卡纯文本增量保持一次渲染，phase变化仍通知。
+
+最终Web68份1038过1跳，typecheck及build成功；原生70项未变源码证据有效，实际图标资源／mask完整。主会话仅自有隐藏IAB实际复验：详情Loading后同UID单卡展开／正文保持、十九次逐帧工具顺序及第5帧active Heartbeat唯一卡、真实上滚后八次reflow archive-26/-91.48px偏移不变。输入虚构、正式组件/Controller/真实DOM，不等完整App／真实Android。首版缺owner夹具及HMR混杂观察已排除并留原证据。
+
+最终APK0.1.3/1003，32,048,497bytes，SHA256 `5c9cabe44fb5e0fa8fa580cdf46dc719d7a439887d3342fb37d844cdbce6f98b`；与0.1.2同证书，minAPI26／arm64／release非debug、ZIP/ELF16KB及图标22资源/20PNG可见像素一致。内置439文件逐SHA匹配最终dist清单`555528b534bb2abec4464d1027fa1697de4254affbc2a0e495e9bf4c374f449e`。Tauri重新build唯一copiedAt差异，严格核其它438与JSON其余字段后复用本次冻结原字节，再全439通过才打包，未关门禁或改源码。dist归档11,421,381bytes、SHA256 `f5b9b2cfb3bd7685a1ff8351312649659c0327cee8fdbf808b4956d2223563fd`；主交付件及收据见ignored `.hermes-dev/mobile-release-20261021/final-artifacts.json`，F04前40ef包及原收据保留而不冒充当前包。
+
+三次独立Verification保留全部判据/旧结论，最终19条17符合／0违规／2不足，F03/F04关闭；F01实际WebView380/Insets/键盘、F02实际响铃/横幅仍不足，因此正式Validation未启动、整轮未完成，不能宣布全部测好或可直接上线。较广后端5个同基线旧失败保留，不称全绿。生产最终只读仍`ed94619da81547bcb9e27aab60b608b2310e6890`且gitclean，无部署、重启、测试消息、改绑／Profile配置／旧历史／排期写入。当前源码与候选可供审查，恢复须合规实际Android入口补证，再继续门禁与端到端验收。交付判定见`.autonomous/20261021-mobile-release/final-delivery.md`。
