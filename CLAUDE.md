@@ -1,7 +1,12 @@
 # Hermes Secretary 当前状态
 
+## 2026-10-22 用户授权上线与会话配置
 
-**托管集成更新（2026-10-21）：** 后端产品快照`3b48cf0`、Web`bf279b2`已提交推送。最终前端68份1038项通过、1跳过；实际隐藏IAB复验详情加载后同UID Thinking保持手动展开及正文、19帧顺序／中途Heartbeat唯一卡、八次重排阅读锚偏移不变。修补包含Context引用稳定保护（80张静态卡不因纯文本帧重绘）。新版439文件dist构建成功，0.1.3/1003最终签名APK已完成，32,048,497bytes、SHA5c9cabe4…6f98b，实际439文件与新dist一致；旧ad7e484包只保留为中间候选。第三次全新独立Verification为19条17符合／0违规／2不足，F03/F04关闭；本轮受限交付，正式Validation未启动。真实Android视口／Insets／IME和实际通知响铃／横幅仍缺证据，未声明全验收或上线。详细看板见本轮plan，生产未部署。
+用户已明确授权上线本轮固定后端／Web修复；上线后将Alex旧置顶会话的Heartbeat关闭，并将原配置迁移到最新置顶Conversation，周期保持每两小时。最新Conversation开启联合Idle Compact＋Noting，阈值120k，沿用其它配置。先核精确身份与原值，再走正式接口；不改历史或重开旧Kimi调查。Android0.1.3已由用户安装真机，用户今天自行测试；用户明确“下一次来，没报告问题就是好了”，按此口径在下一次反馈关闭真机待验项，目前仅记用户测试中，不冒称Agent实测。
+
+状态：后端`e9de406`（产品修补`3b48cf0`）与Web`bf279b2`已联合上线，运行版本／双SPA／439文件／微信连接／认证及受保护数据指纹均已核。上线前Web、Gateway及Noting空闲；无自动回滚或生产测试模型消息。用户APK报错确认是新字段与旧后端不匹配，本次部署已解除该版本冲突。Heartbeat已通过正式resume→pause／slash set→read→clear迁移：旧会话cleared，新唯一置顶会话active／7200秒／原空prompt，首轮预计2026-10-22 12:58北京时间；绑定／排期保持，未提前触发模型。新会话Noting原已开启并读回确认；120k按正式语义为120000，但参数属于Alex Profile共享，已向用户明确影响全部合格Conversation，等待确认后再写，当前仍131072／delay500秒。
+
+**托管集成更新（2026-10-21）：** 后端产品快照`3b48cf0`、Web`bf279b2`已提交推送。最终前端68份1038项通过、1跳过；实际隐藏IAB复验详情加载后同UID Thinking保持手动展开及正文、19帧顺序／中途Heartbeat唯一卡、八次重排阅读锚偏移不变。修补包含Context引用稳定保护（80张静态卡不因纯文本帧重绘）。新版439文件dist构建成功，0.1.3/1003最终签名APK已完成，32,048,497bytes、SHA5c9cabe4…6f98b，实际439文件与新dist一致；旧ad7e484包只保留为中间候选。第三次全新独立Verification为19条17符合／0违规／2不足，F03/F04关闭；本轮受限交付，正式Validation未启动。真实Android视口／Insets／IME和实际通知响铃／横幅仍缺证据，未声明全验收或上线。此段保留10月21日候选时点；10月22日已获授权并上线，当前状态以上方为准。
 
 ## 自主口径收敛 · 待用户追认
 
@@ -9,16 +14,16 @@
 
 ## 当前阶段
 
-**2026-10-21 手机多故障修复收尾：** 采用Sol/high分包、主会话亲审集成。用户已放弃旧置顶Kimi工具调查与恢复，不重开、不动其历史／排期。用户最终明确Android逻辑视口380 CSS px、等比显示，覆盖390；通知升级迁移新响铃／横幅通道并保留可识别主动静音，launcher保完整logo／深纸背景。全部前端修补后统一dist与0.1.3/1003签名APK。只准备上线，不自动部署或向生产发测试消息。隐藏IAB现已恢复，只在自有隐藏页补组件实际呈现，不绕过显示保护；真Android运行与完整App验收仍未完成。
+**2026-10-21 手机多故障修复收尾：** 采用Sol/high分包、主会话亲审集成。用户已放弃旧置顶Kimi工具调查与恢复，不重开、不动其历史／排期。用户最终明确Android逻辑视口380 CSS px、等比显示，覆盖390；通知升级迁移新响铃／横幅通道并保留可识别主动静音，launcher保完整logo／深纸背景。全部前端修补后统一dist与0.1.3/1003签名APK。10月22日用户新增上线及会话配置授权已落实到顶部，不向生产发测试消息。隐藏IAB现已恢复，只在自有隐藏页补组件实际呈现，不绕过显示保护；真Android运行与完整App验收仍未完成。
 
 | 当前任务 | 当前状态／完成条件 |
 |---|---|
 | MOBILE-RENDER-02 | UID位置优先旧尾锚、同Turn后缀续接、工具occurrence／详情、DOM身份锚／程序scroll反馈与底部O(history)测量修复已实现。真实512帧＋200cards旧失败／新通过。浏览器新增F04后已修同身份手动展开的live→history交接，保真正完成折叠／scope及phase隔离／实际正文，并保护Context稳定引用。68份1038过1跳、稳定浏览器上述场景通过；F04第三次独立复审已关闭；设备未验 |
 | SUBMISSION-RECOVERY-03 | 可选ID沿原生writer落真实行，同Profile／Conversation只读核回执；晚ACK／unknown／后续草稿与rewind不复活处理已实现并亲审。45项后端、5项前端及既有4项恢复有效；worker仅进程内真实入口，新连接非OS重启 |
 | HEARTBEAT-CARD-02 | 真实落库observer即时卡片、源UID去重，不按Thinking造卡；追加emit前异常恢复／入环后不重复修补，17相关／最终7Heartbeat与10检查过，独立复审已关F03；真实浏览器中途唯一卡通过 |
-| WEIXIN-REBIND-03 | Gateway沿目标native身份初始化，入口peer key只投递；旧身份／历史／Notebook／排期及新绑定保持。7份111项与10检查过，主审接收；生产只读无需修库，真实入站仍待明确部署后正常用户消息 |
-| AUX-TITLE-02 | 实际SDK区分私有参数，18最终重叠定向及较早360相关通过；真实Kimi k3-256k/OpenAI SDK单请求2.49秒标题成功，无生产Conversation写；线上仍旧代码 |
-| ANDROID-RECOVERY-02 | v2 HIGH／主动静音迁移、恢复退避、原生380视口／Insets／图标safe zone与资源已实现。70原生过，实际资源mask亲审；最终同签名0.1.3/1003已统一打包。真WebView／键盘／vivo launcher／声音横幅未验，不冒称全绿 |
+| WEIXIN-REBIND-03 | Gateway沿目标native身份初始化，入口peer key只投递；旧身份／历史／Notebook／排期及新绑定保持。7份111项与10检查过，主审接收；生产无需修库，新代码已部署，真实入站仍待正常用户消息 |
+| AUX-TITLE-02 | 实际SDK区分私有参数，18最终重叠定向及较早360相关通过；真实Kimi k3-256k/OpenAI SDK单请求2.49秒标题成功，无生产Conversation写；新代码已部署 |
+| ANDROID-RECOVERY-02 | v2 HIGH／主动静音迁移、恢复退避、原生380视口／Insets／图标safe zone与资源已实现。70原生过，实际资源mask亲审；最终同签名0.1.3/1003已统一打包。用户已安装0.1.3真机自行测试，按其“下次无问题报告即视为好了”口径等待反馈，不冒称Agent真机实测 |
 | 独立门禁与交付 | 原始及第二次报告保留；F03关闭，第二次新增F04已修，第三位全新fork-none已审最终bf279b2，19条17符合／0违规／2不足。Android真实证据F01/F02仍阻断，正式Validation前置尚未通过，未启动，不把主会话组件补证冒充独立验收 |
 | KIMI-TOOLS-02 | 用户关闭，不自动重开；原会话／历史／排期未改，保留原调查时点，不宣称精确模型根因 |
 
@@ -81,7 +86,7 @@
 **2026-10-20用户确认：部署基本告一段落，第一版可以正常使用。** 本轮文档／仓库整理及追加微信修复已完成，17:58部署首尔；后续按新任务推进，不自动重开旧挂账。
 
 - 首尔正式入口、双SPA、Alex / study Profile、NM / Ebbinghaus迁移及三条Mutagen同步已落地；旧部署等待、TCC阻塞与初始化过程不再是当前任务。
-- 已上线后端功能基线 `ed94619da81547bcb9e27aab60b608b2310e6890`（含此前能力、Conversation级Heartbeat、配套failed_turn标记及持久成功提示）；前端 `0b8843fb87bf0ba109f7b744f4ae96faf09df597`；插件收尾 `f11a8db6c32e109bdc1de6c39c2920bcad14d617`已同步。后续纯文档提交不等于运行版本改变。
+- 已上线后端功能基线 `e9de406ae288f85b81bde5bb836f345ed91ebe97`（产品修补`3b48cf0`，含本轮标题／提交恢复／Heartbeat卡片及微信身份修复）；前端 `bf279b2dc5ec5553ff9e370696b153e4aadb52cd`；插件收尾 `f11a8db6c32e109bdc1de6c39c2920bcad14d617`已同步。后续纯文档提交不等于运行版本改变。
 - Alex默认 `kimi-coding/k3-256k`／原生Chat及Coding `/v1`，窗口262144、thinking High；目标绑定Conversation当前tip同路由，Noting / Scheduler开启，联合Idle500秒／131072 tokens。已有Conversation保持自身模型配置；study默认`openai-codex/gpt-6-sol`／High，委派子Agent为`gpt-6.1-sol`并继承High，Noting跟随主模型；NM Thread目标仍继承考研Space，可选`thread_sync_space`能力保留。
 - 微信绑定采用原生Gateway control socket与Conversation ref；Alex工具 `~/scripts/alex/weixin_bind.py`，调用方直接 `bind --self`。Kimi凭据已补到Alex自己的受限`.env`；多余Gateway凭据注入与用户副本已回滚，正常重启后连接及原绑定保持。独立K3请求HTTP200；未把它冒称新微信消息端到端验收。
 - Prompt缓存清理已按当时授权完成，后续沿原生正常Turn懒构建，不追加离线重建。个人工具统一`~/scripts/`，只读保护、显式非空`--space`等规则见AGENTS／08。

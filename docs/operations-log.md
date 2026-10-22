@@ -339,3 +339,16 @@ Delegation风险有严格前提：回调携带派发时的`session_key`／`paren
 最终APK0.1.3/1003，32,048,497bytes，SHA256 `5c9cabe44fb5e0fa8fa580cdf46dc719d7a439887d3342fb37d844cdbce6f98b`；与0.1.2同证书，minAPI26／arm64／release非debug、ZIP/ELF16KB及图标22资源/20PNG可见像素一致。内置439文件逐SHA匹配最终dist清单`555528b534bb2abec4464d1027fa1697de4254affbc2a0e495e9bf4c374f449e`。Tauri重新build唯一copiedAt差异，严格核其它438与JSON其余字段后复用本次冻结原字节，再全439通过才打包，未关门禁或改源码。dist归档11,421,381bytes、SHA256 `f5b9b2cfb3bd7685a1ff8351312649659c0327cee8fdbf808b4956d2223563fd`；主交付件及收据见ignored `.hermes-dev/mobile-release-20261021/final-artifacts.json`，F04前40ef包及原收据保留而不冒充当前包。
 
 三次独立Verification保留全部判据/旧结论，最终19条17符合／0违规／2不足，F03/F04关闭；F01实际WebView380/Insets/键盘、F02实际响铃/横幅仍不足，因此正式Validation未启动、整轮未完成，不能宣布全部测好或可直接上线。较广后端5个同基线旧失败保留，不称全绿。生产最终只读仍`ed94619da81547bcb9e27aab60b608b2310e6890`且gitclean，无部署、重启、测试消息、改绑／Profile配置／旧历史／排期写入。当前源码与候选可供审查，恢复须合规实际Android入口补证，再继续门禁与端到端验收。交付判定见`.autonomous/20261021-mobile-release/final-delivery.md`。
+
+
+### 2026-10-22 用户授权联合上线与置顶会话Heartbeat迁移
+
+**授权与范围：** 用户明确允许上线10月21日候选，并将旧会话Heartbeat关闭、同配置每两小时迁移至最新置顶Conversation；最新Conversation开启Idle Compact＋Noting、阈值120k。Android0.1.3用户已安装真机，明确由其今天自行测试，下次回来没有报告问题视为好了；当前记用户测试中，不补造Agent真机PASS。阈值实际为Alex Profile共享，120k依现行K=1000为120000；已向用户明确全部合格Conversation受影响，尚待共享作用域确认，当前131072保持。
+
+**联合上线：** 上线前Web活跃0、Gateway active_agents=0、无有效writer lease／运行或registered Noting；生产git干净。原`ed94619da81547bcb9e27aab60b608b2310e6890`快进至固定`e9de406ae288f85b81bde5bb836f345ed91ebe97`（产品修补`3b48cf0`），Web`bf279b2dc5ec5553ff9e370696b153e4aadb52cd`的439文件逐SHA一致。Python3.14.8／原PM .venv保持，pyproject／uv.lock／PM无依赖差异，无云端npm构建。首尔10:51:38北京时间备份三库SQLite backup＋quick_check、配置与旧静态文件；顺序停止Gateway／Web后切换源码及静态目录，再正常启动两服务，无自动回滚。备份`/home/ubuntu/.local/state/hermes-secretary/release-20261022/deploy-20261022T105138`；旧静态`/home/ubuntu/.local/share/hermes-secretary/static/secretary.before-release-20261022T105138`。
+
+**上线后核验：** 两运行进程均报告新commit，Web／Gateway active/running、NRestarts=0；alex:weixin connected。host／Alex／study原消息、排期、Reminder、binding、alias及Heartbeat全表指纹部署前后保持（Alex10839消息），原Profile配置及凭据／SOUL指纹保持。双SPA 200、JS/CSS实际返回哈希与最终包一致，公网匿名仍302到正式认证。新只读`prompt.submission_status`线上WS携client_submission_id后正确进入session查找（预设不存在runtime返回4001），不再unknown method或extra field错误；未发生产测试消息或模型请求。用户APK截图即新字段被旧后端拒绝，已说明本次新增可选契约及发布顺序遗漏，部署解除新旧版本冲突；未冒称用户新发送已成功。新服务启动后两unit无error级日志。
+
+**Heartbeat正式迁移：** 目标由Alex唯一pinned和稳定ref核实：新stored `20261021_200341_2ce088`／`conv_a497994968694fe180ad6e4523afe9f2`，旧stored `20261011_223115_59ad08`／`conv_8dc89e12cc9b42b5a77986f4d9b02cec`。沿正式session.resume（omit/defer/no eager）返回runtime后，旧session.control pause→新slash.exec `/heartbeat every 2h`→control.read确认active/7200/空prompt→旧control clear并读回null；DB原生cleared墓碑保留旧定义，不手工SQL。新fire_count=0，第一due `2026-10-22T12:58:06.662358+08:00`。迁移前后排期、pending Reminder、binding及alias指纹一致，不复制旧fire_count／last_fired_at，不提前运行Heartbeat。最新Conversation secretary.state确认global/local enabled=true，本来已默认开启，因此未追加`/noting on`历史回执。
+
+**收据与回退边界：** ignored `.hermes-dev/release-20261022/`包含部署／后验／Heartbeat收据、WS探针、只读配置预检及脚本；受限完整配置／DB备份只留服务器，凭据不入Git。本次不改变schema／环境，可在确认空闲后人工恢复配套旧源码＋静态，始终保留最新数据库；禁止把旧备份自动覆盖现库。正式整轮Validation原缺口按10月21日历史报告保留，本次依据用户授权上线，不伪称两门禁或Android验收已全通过。
