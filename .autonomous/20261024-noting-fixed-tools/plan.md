@@ -20,11 +20,11 @@
 
 | 目标/任务 | 机制实现 | 正式接线 | 针对性验证 | 用户结果 | 当前负责人和下一步 |
 |---|---|---|---|---|---|
-| T1 | 已实现并亲审 | 正式Loop／执行器／invoke已核 | 权限32、surface33、child38等通过 | 待真实模型 | root接收；真实样本待T3 |
-| T2 | 已实现并亲审 | native normalizer／SDK／恢复已核 | 请求32、恢复20等通过 | 待真实模型 | root接收；真实样本待T3 |
+| T1 | 已实现并亲审 | 正式Loop／执行器／invoke已核 | 最终权限47、dispatch9等通过 | 真实拒绝与正常模型链已验 | 两门禁按同产品SHA复核 |
+| T2 | 已实现并亲审 | native normalizer／SDK／恢复已核 | 请求32、恢复20等通过 | 55HTTP实际wire及前缀已验 | 两门禁按同产品SHA复核 |
 | T3 | 核心取证已完成 | 实际Main/Idle/child/SDK/DB/compaction | 55HTTP200/全部四工具真实及N46 | 默认链及显式Show能力样本通过 | 已整包接收，模型已停止，失败原件保留 |
-| T4 | 旧包与新实现已审 | 正式发布脚本/保护已核 | 新版bundle/439SHA/只读preflight通过 | 待上线 | 等Val本地放行后stage/apply，部署后独立只读验真 |
-| T5 | 全新独立复审PASS | C01–C11全部符合 | 原反证通过/真实55HTTP材料独立核 | Validation计划中 | 计划先过目，本地验收放行部署，生产核后最终关闭 |
+| T4 | 今日旧包与新实现已审 | 正式stage/apply完成 | 服务版本/439SHA/三库十表及24配置前后相等 | 已上线0e14d4e/Web589df02 | 独立S7生产只读终验通过，已交付 |
+| T5 | 全新独立复审PASS | C01–C11全部符合 | 原反证/55HTTP/本地冷读通过 | Validation S1–S8全PASS | root亲审生产证据并完成六节最终交付 |
 
 T1、T2、T3白名单不相交；共享变更串行交root。不用worktree，不让子Agent提交／push／部署或派生。每包只在真阻塞／跨包接口决定／预定整包交回时发消息，不流水账；产品UI仅自建隐藏IAB，禁止用户已有页面／桌面／显示／焦点变化。
 
@@ -34,8 +34,8 @@ T1、T2、T3白名单不相交；共享变更串行交root。不用worktree，�
 
 | 问题编号 | 要求与触发条件 | 当前事实与影响 | 优先级及理由 | 修复负责人 | 关闭与复验条件 | 状态 |
 |---|---|---|---|---|---|---|
-| F01 | C01–C05原实现动态声明与重复Schema | 已知旧实现非本轮目标；固定prefix新增工具须同步权限与Prompt，不能只移tools | P1核心 | T1＋T2 | 全纵向路径／父子wire等价与硬拒绝、无重复Schema | 机制关闭，待真实模型及门禁 |
-| F02 | C04及07§7.2权限拒绝完整形状 | 拒绝有效但Loop/registry缺next_action，sync/concurrent/invoke仅错误字符串；独立审查已取得反证 | P1模型纠错契约 | 待当前短真实样本结束后T1修补，root提案已获Verification评审 | 单一policy标准scope_denied回执，全部正式入口含解包前拒绝和post诊断，零副作用/合法混批/后续合法调用；Schema/Prompt/wire不变 | 已关闭：47权限+9dispatch通过，全新独立复审原反证1通过并关闭 |
+| F01 | C01–C05原实现动态声明与重复Schema | 已知旧实现非本轮目标；固定prefix新增工具须同步权限与Prompt，不能只移tools | P1核心 | T1＋T2 | 全纵向路径／父子wire等价与硬拒绝、无重复Schema | 已关闭：真实55HTTP与独立全范围复审PASS、本地Validation通过 |
+| F02 | C04及07§7.2权限拒绝完整形状 | 拒绝有效但Loop/registry缺next_action，sync/concurrent/invoke仅错误字符串；独立审查已取得反证 | P1模型纠错契约 | T1已修补，root亲审／全新Verification关闭 | 单一policy标准scope_denied回执，全部正式入口含解包前拒绝和post诊断，零副作用/合法混批/后续合法调用；Schema/Prompt/wire不变 | 已关闭：47权限+9dispatch通过，全新独立复审原反证1通过并关闭 |
 | F03 | C07真实Show样本必须正常提交 | root分类HTTP护栏short40在总47时拦截end_requested后的原生收尾；只证明Show与finish接受，未证明Commit | P1验收证据缺口，非产品权限缺陷 | root预算修正／T3补证 | 新隔离任务原生steer方案，统一预算边界自检与至少3收尾余量；真实Show working、normal finish、Commit及释放；旧失败不改写 | 已关闭：新020652同child四工具全成功并正常Commit/Idle/Framework，55/70，独立复审核实 |
 
 ## 取舍、快照与续接
@@ -72,3 +72,9 @@ T1、T2、T3白名单不相交；共享变更串行交root。不用worktree，�
 - 实验工程缺陷F03：Show新样本request11真实读到working与同child最新版本、父仍旧Snapshot，request12独立finish accepted；但root内部short40分类上限在total47/50时拦截后续原生收尾，未过Commit Gate。原进程不热改/不复活，保留失败与收费计数。root承担预算设计错误，独立复审确认不当成产品缺陷、不降低完成条件。用户未设HTTP硬上限而明确授权付费完整验证；root修内部护栏为total70/short63/long7（47已用不归零、long绝不新增），只准一个新隔离同方案Show能力样本，先零请求预算边界自检、至少3HTTP收尾余量、默认Task/Root/Schema不动，真实finish/Commit仍为门槛。最终实耗与不足均如实报告。
 
 - 最终真实包接收：e2e/e2e-report.md与whole-package-audit.json，55HTTP全200、input1895028/cache1608837(含input)/output38714/total1933742，13默认Main零维护误调（2显式分支Main另列）。Noting Maintain37中23成功14参数拒绝，History4/Show2/Finish5 accepted，其中4正常提交/旧预算分支不提交；最后能力分支3维护零错。Show只显式控制触发，绝不回填自然统计。旧失败、统计修正、原件SHA全部保留。新独立Verification C01–C11全符合，F01机制/F02标准回执/F03验收工程缺口已关闭；产品仍1ea38ef，后续纯文档提交不重发模型。Val已新none/Sol high委派，未放行部署。
+
+- Validation完整G1–G8/S1–S8计划已root过目放行本地执行：明确/noting仅on/off与无参用法，不新增status需求；Framework非触发边界不扩大合法后台Turn；S6完整今日wire/标题/时间/Context/APK闭包均保留。先本地S1–S6/S8达门槛，再root stage/apply，S7后最终关闭。候选部署0e14d4e仅文档后继，产品同1ea，最终新表集dry/preflight均已通过，尚无云写。CLAUDE永久待追认段移回顶部，原“暂无”及既有确认事实保留。
+
+- 联合发布已执行：0e14d4e后端（产品同1ea38ef）与UI589df02/439文件，stage/apply verified，保护三库各10表、24配置/凭据、微信绑定及Dashboard全相等，两服务active/微信connected。运维收据与恢复点已记录；S7独立生产终验随后通过，全部范围内整改关闭。
+
+- 最终交付判定：独立Verification C01–C11全符合、Validation S1–S8全通过，最近完整复审/验收未产生新整改。root核实际运行/原件SHA/三库保护/备份/认证/API及WS，接收两报告，目标完成；最终简报见final-delivery.md。本次收尾仅文档提交，云保持已验0e14d4e，不为报告变动重启或发模型。

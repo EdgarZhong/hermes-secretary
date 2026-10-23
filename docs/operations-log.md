@@ -2,6 +2,14 @@
 
 维护实际部署、故障处理、验证与回滚点；步骤和稳定布局见[部署SOP](cloud-deployment-sop.md)，当前任务只在根[CLAUDE](../CLAUDE.md)。以下时间均为Asia/Shanghai；PID、指纹和测试结论只对应记录时点，不代表实时状态。凭据、令牌、原始私人材料不写入本文件。
 
+## 2026-10-24 · 固定工具与今日修补联合上线
+
+**执行与版本：** 本地独立Validation S1–S6/S8放行后，主会话于02:37:39–02:38:09经正式`hermes-secretary-sync`执行唯一发布`20261024-fixed-noting-0e14d4e`。云后端由`e9de406ae288f85b81bde5bb836f345ed91ebe97`快进至`0e14d4e52ffcded688ddaafbc0f2d1d91deebaed`；它相对已验产品`1ea38ef`仅四文档差异。Secretary静态对应独立Web`589df02706d3c6738789ff97fcb652a0bf76c398`，439文件逐SHA一致；Dashboard保留。今日`599d114`微信及时正文/Redirect/Framework、Idle成功前置、Kimi字段/标题、历史时间继承，以及Web Context/APK竖屏源码均在本次发布闭包。依赖/PM/锁未变，复用云正式环境，不带本地隔离阈值/模型/Persona/合成库。
+
+**过程与结果：** 新表集空闲预检→私有上传→停止Gateway及Web→停服复核/三库SQLite备份及配置备份→精确bundle快进→Linux原子交换Secretary目录→分别启动两服务→只读健康与数据对账。发布结果`verified`；实际Web/Gateway代码均`0e14d4e`，两服务active，Gateway running/微信connected，活动数0。三库各10表（messages、排期、提醒、会话绑定、别名、Heartbeat及Notebook item/snapshots/pointer/local_state）全行指纹前后相等，24配置/SOUL/凭据、微信绑定指纹及Dashboard文件集合均相等。root亲核完整收据；独立Validation S7随后只读重算保护表/配置/绑定/资产，与部署前及收据均相等，实际双SPA/API/两个WS通过、匿名HTML302/API401保护保持。三库备份integrity_check=ok、foreign_key_check=0、17份实际配置备份逐SHA一致，均0600；最终Validation S1–S8全部通过。无生产模型测试/渠道发送、旧失败任务重放、历史47错误时间行回填或数据库覆盖。
+
+**恢复点：** 云私有目录`/home/ubuntu/.local/state/hermes-secretary/release-20261024/20261024-fixed-noting-0e14d4e/`含`receipt.json`、`RECOVERY.txt`与`backup/`，0700目录/0600文件；旧静态保留在receipt.old_static_path。失败不自动覆盖数据库或新写入，人工代码/静态恢复须按RECOVERY先核当前状态；数据库恢复另行审查授权。本地受限原件`.hermes-dev/noting-fixed-tools-20261024/release/production-receipt.json`，stage/apply及前置检查日志同目录。APK0.1.4已产验包，不安装用户手机。
+
 ## 2026-10-24 · 固定工具自主轮阶段验证（本地，尚未部署）
 
 用户批准两维护工具原Schema／description完整固定API顶层，Main禁用提示、Noting四工具权限及运行时硬白名单；初始和续Turn不再重复Schema。首次阶段实现`f841170`，文档同步`4f503a2`，拒绝回执补齐`1ea38ef`均已提交并自动push；Schema canonical SHA与冻结原件一致。普通子Agent、Main混批、同步／并发／invoke及代理包装均受同一身份政策；显式旧Noting恢复只在freeze前补旧pin缺失原定义、标明旧工具缓存前缀一次变化，不改旧失败记录，也未重跑生产任务。
