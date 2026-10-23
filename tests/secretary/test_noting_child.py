@@ -165,6 +165,9 @@ def test_human_notebook_feedback_never_reaches_native_summary_engine(parent, db,
         observed.extend(messages)
         return messages
 
+    # This test owns summary visibility only; do not leave an unrelated async task
+    # running after its client/profile monkeypatches have been torn down.
+    (Path(db.db_path).parent / "config.yaml").write_text("noting:\n  enabled: false\n", encoding="utf-8")
     parent._compression_feasibility_checked = True
     monkeypatch.setattr(parent.context_compressor, "compress", summarize)
     parent._compress_context(history, None, force=True)
@@ -456,7 +459,7 @@ def test_semantic_control_is_noting_only_and_rejects_forgery(parent, db, stub_cl
     from secretary.noting_tools import initialize_notebook_work
     args = {"action": "create", "entry_type": "matter", "fields": {"description": "report", "completion_condition": "Delivered"},
             "source_message_identities": [{"conversation_ref": parent._secretary_conversation_ref, "message_uid": "m1"}]}
-    assert not json.loads(parent._invoke_tool("notebook_maintain", args, "main"))["success"]
+    assert not json.loads(parent._invoke_tool("notebook_maintain", args, "main")).get("success")
     child = build_noting_child(parent, runtime_profile="NOTING", parent_conversation_ref=parent._secretary_conversation_ref)
     try:
         child._secretary_noting_anchor_uid = "m2"

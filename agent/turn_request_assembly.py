@@ -174,8 +174,7 @@ def assemble_api_request(
 
     apply_rejected_thinking_suppression(agent, api_messages)
 
-    from secretary.noting_request import prepare_noting_request, normalize_noting_request
-    _noting_declaration = prepare_noting_request(agent, api_messages)
+    from agent.cache_parity import normalize_cache_parity_request
 
     # Runs unconditionally (not gated on context_compressor) so orphaned tool
     # results from session loading or manual message edits are always caught.
@@ -205,8 +204,8 @@ def assemble_api_request(
     # provider, #67321) the synthetic continuation nudge is Codex-only control text: drop it
     # alongside the opaque replay state.
     _cross_protocol = agent.api_mode != "codex_responses"
-    api_messages = normalize_noting_request(
-        agent, api_messages, _noting_declaration, drop_codex_reasoning_items=_cross_protocol,
+    api_messages = normalize_cache_parity_request(
+        agent, api_messages, drop_codex_reasoning_items=_cross_protocol,
         drop_nudge_marker=_CODEX_INCOMPLETE_NUDGE if _cross_protocol else None,
     )
 

@@ -69,6 +69,15 @@ def _partial_exit(agent, messages, conversation_history, api_call_count, final_r
     }, "truncated", True)
 
 
+def _repair_authorized_tool_call(agent, name):
+    """Native spelling repair cannot turn a permission denial into an executable call."""
+    from secretary.noting_child import noting_dispatch_block
+    if noting_dispatch_block(agent, name) is not None:
+        return None
+    repaired = agent._repair_tool_call(name)
+    return repaired if repaired and noting_dispatch_block(agent, repaired) is None else None
+
+
 def validate_tool_calls(
     agent: Any, assistant_message: Any, finish_reason: str, *, messages: List[Dict[str, Any]],
     conversation_history: Any, api_call_count: int, effective_task_id: Any,
@@ -100,7 +109,7 @@ def validate_tool_calls(
     repaired_ids = set()
     for tc in tool_calls:
         if tc.function.name not in valid_names:
-            repaired = agent._repair_tool_call(tc.function.name)
+            repaired = _repair_authorized_tool_call(agent, tc.function.name)
             if repaired:
                 agent._vprint(f"{agent.log_prefix}🔧 Auto-repaired tool name: '{tc.function.name}' -> '{repaired}'",
                               force=True, diagnostic=True)

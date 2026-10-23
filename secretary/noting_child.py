@@ -76,6 +76,9 @@ def noting_dispatch_block(agent: Any, tool_name: str) -> Optional[str]:
     actual execution funnels through the guard site that calls this.
     """
     if not getattr(agent, "_secretary_noting_child", False):
+        if tool_name in {"notebook_maintain", "finish_noting"}:
+            return (f"Notebook maintenance denied: {tool_name} is disabled for this runtime "
+                    "and reserved for a bound background Noting task.")
         return None
     if tool_name in NOTING_ALLOWED_TOOL_NAMES:
         return None
@@ -412,9 +415,8 @@ def _bind_child_identity(
     child._secretary_noting_anchor_uid = None
     child._secretary_noting_terminal_action_done = False
     child._secretary_noting_termination = None
-    # Local validation may recognize Noting-only structured calls even though the
-    # provider-facing top-level tools[] remains the frozen Parent array.
-    child.valid_tool_names = set(getattr(child, "valid_tool_names", set()) or set()) | set(NOTING_ALLOWED_TOOL_NAMES)
+    # Execution permissions are independent of the complete frozen advertised array.
+    child.valid_tool_names = set(NOTING_ALLOWED_TOOL_NAMES)
     child.suppress_status_output = True
     child.skip_background_review = True
     child._memory_nudge_interval = child._skill_nudge_interval = 0

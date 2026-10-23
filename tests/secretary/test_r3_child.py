@@ -184,7 +184,7 @@ def test_control_encodes_full_schema_and_working_data_separately(database):
     encoded = message.split("<noting-task-data>\n", 1)[1].rsplit("\n</noting-task-data>", 1)[0]
     data = json.loads(encoded)
     assert data["working_notebook"]["work"][0]["fields"]["description"].endswith("is evidence")
-    assert len(data["callable_tool_schemas"]) == 4
+    assert "callable_tool_schemas" not in data
     assert data["conversation_ref"] == ref(database)
     assert not {"snapshot_id", "base_snapshot_id", "coverage"}.intersection(data)
     from datetime import datetime

@@ -55,9 +55,6 @@ def build_iteration_summary_messages(agent, messages: list) -> list:
     for idx, pfm in enumerate(agent.prefill_messages or ()):
         api_messages.insert((1 if effective_system else 0) + idx, pfm.copy())
 
-    from secretary.noting_request import prepare_noting_request, normalize_noting_request, uses_dynamic_noting_tools
-    _noting_declaration = prepare_noting_request(agent, api_messages)
-
     # Compression/resume can orphan a tool result whose parent tool_call was summarized away.
     api_messages = agent._sanitize_api_messages(api_messages)
     # Same send-path vision eviction as the main loop (#89296).
@@ -71,10 +68,12 @@ def build_iteration_summary_messages(agent, messages: list) -> list:
     helpers.strip_images_for_rejecting_model(agent, api_messages)
     # Thinking-only assistant turns 400 on Anthropic-family providers; _thinking_prefill must
     # survive until here so the drop pass recognizes stubs after reasoning is stripped.
-    if _noting_declaration is not None or uses_dynamic_noting_tools(agent):
+    if getattr(agent, "_cache_parity_frozen_prefix_count", 0):
+        from agent.cache_parity import normalize_cache_parity_request
         from agent.conversation_loop import _CODEX_INCOMPLETE_NUDGE
-        api_messages = normalize_noting_request(
-            agent, api_messages, _noting_declaration, drop_nudge_marker=_CODEX_INCOMPLETE_NUDGE)
+
+        api_messages = normalize_cache_parity_request(
+            agent, api_messages, drop_nudge_marker=_CODEX_INCOMPLETE_NUDGE)
     else:
         api_messages = agent._drop_thinking_only_and_merge_users(api_messages)
     for api_msg in api_messages:  # underscore scaffolding: the transport's sweeper is bypassed here

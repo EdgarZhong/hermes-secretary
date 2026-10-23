@@ -1,4 +1,4 @@
-"""Kimi dynamic tools through real child loops/DB, with only SDK I/O controlled."""
+"""Fixed Kimi tools through real child loops/DB, with only SDK I/O controlled."""
 
 from copy import deepcopy
 import json
@@ -31,6 +31,9 @@ def kimi_parent(native_parent, monkeypatch):
     parent._base_url_lower = parent.base_url
     parent.reasoning_config = {"enabled": True, "effort": "high"}
     parent.tools[0]["function"]["parameters"]["required"] = []
+    (parent._session_db.db_path.parent / "config.yaml").write_text("noting:\n  enabled: true\n")
+    from secretary.noting_surface import apply_main_read_surface
+    apply_main_read_surface(parent)
     children, wires = [], []
     original = noting_child.build_noting_child
 
@@ -65,31 +68,24 @@ def maintain(description="Arrange the visit"):
 
 def assert_requests(parent, wires, child):
     from agent.moonshot_schema import sanitize_moonshot_tools
-    names = {tool["function"]["name"] for tool in parent.tools}
-    expected = [{"type": "function", "function": item} for item in noting_tool_schemas() if item["name"] not in names]
-    positions = []
+    tools = sanitize_moonshot_tools(parent.tools)
+    assert {"conversation_history", "notebook_show", "notebook_maintain", "finish_noting"} <= {
+        tool["function"]["name"] for tool in tools}
     for wire in wires:
-        declarations = [(i, row) for i, row in enumerate(wire["messages"]) if "tools" in row]
-        assert len(declarations) == 1
-        position, declaration = declarations[0]
-        positions.append(position)
-        assert declaration == {"role": "system", "tools": expected}
-        assert wire["tools"] == sanitize_moonshot_tools(parent.tools)
-        assert wire["messages"][:position] == wires[0]["messages"][:position]
-        assert wire["messages"][position + 1]["content"].startswith("<noting-task>")
+        assert all("tools" not in row for row in wire["messages"])
+        assert wire["tools"] == tools
+        assert wire["messages"][:3] == wires[0]["messages"][:3]
+        assert wire["messages"][3]["content"].startswith("<noting-task>")
+        assert "callable_tool_schemas" not in str(wire["messages"])
         assert wire.get("reasoning_effort") == "high"
         assert wire["max_completion_tokens"] == 32000
         assert "max_tokens" not in wire
-    assert len(set(positions)) == 1
-    audit = child._secretary_noting_dynamic_request_history
-    # Network retries reuse the same kwargs; they do not re-build or re-price a request.
+    audit = child._secretary_noting_request_history
     assert 1 <= len(audit) <= len(wires)
-    assert {row["message_index"] for row in audit} == set(positions)
-    assert len({row["parent_prefix_sha256"] for row in audit}) == 1
-    assert len({row["declaration_sha256"] for row in audit}) == 1
+    assert len({row["top_level_tools_sha256"] for row in audit}) == 1
 
 
-def test_maintain_history_show_continuation_finish_keep_fixed_declaration(kimi_parent, database):
+def test_maintain_history_show_continuation_finish_keep_fixed_top_level_tools(kimi_parent, database):
     parent, sdk, wires, children = kimi_parent
     before = deepcopy(parent._session_messages)
     sdk.side_effect = [
@@ -118,7 +114,7 @@ def test_maintain_history_show_continuation_finish_keep_fixed_declaration(kimi_p
     assert child.client is None and child._owns_session_db is False
 
 
-def test_final_sdk_json_keeps_dynamic_prefix_and_schemas_with_new_output_field(kimi_parent):
+def test_final_sdk_json_keeps_fixed_prefix_and_schemas_with_new_output_field(kimi_parent):
     from tests.agent.test_kimi_output_tokens_wire import sdk_wire
 
     parent, sdk, wires, children = kimi_parent
@@ -152,14 +148,14 @@ def test_native_summary_retry_uses_same_boundary_after_parent_normalization(kimi
     assert outcome.committed and outcome.termination == {"type": "forced"}, outcome
     assert len(wires) == 3
     assert_requests(parent, wires, children[0])
-    assert next(i for i, row in enumerate(wires[0]["messages"]) if "tools" in row) == 3
+    assert wires[0]["messages"][3]["content"].startswith("<noting-task>")
     assert wires[1]["messages"] == wires[2]["messages"]
     if raw_change == "adjacent_users":
         assert "Additional frozen evidence" in wires[1]["messages"][1]["content"]
     assert database.notebook_current(parent._secretary_conversation_ref)["payload"]["work"]
 
 
-def test_network_retry_keeps_declaration_and_parent_runtime_snapshot(kimi_parent):
+def test_network_retry_keeps_fixed_tools_and_parent_runtime_snapshot(kimi_parent):
     parent, sdk, wires, children = kimi_parent
     sdk.side_effect = [httpx.ConnectError("controlled first-attempt failure"),
                        tool_response("finish_noting", {"reason": "Reviewed unchanged work."}), response("Done.")]
@@ -207,7 +203,7 @@ def test_real_non_chat_child_summary_retains_native_message_shape(kimi_parent):
         child.close()
 
 
-def test_dynamic_schemas_are_in_rough_pressure_once_and_provider_anchor_is_not_surcharged(kimi_parent, monkeypatch):
+def test_fixed_schemas_are_in_rough_pressure_once_and_provider_anchor_is_not_surcharged(kimi_parent, monkeypatch):
     parent, sdk, wires, children = kimi_parent
     from secretary import noting_child
 
@@ -238,16 +234,14 @@ def test_dynamic_schemas_are_in_rough_pressure_once_and_provider_anchor_is_not_s
     expected = estimate_request_tokens_rough(first["messages"], tools=first["tools"])
     rough = estimate_request_tokens_rough(assembled[0], tools=parent.tools)
     assert pressures[0] == (rough, False)
-    without = [row for row in assembled[0] if "tools" not in row]
-    declaration = next(row for row in assembled[0] if "tools" in row)
-    assert rough - estimate_request_tokens_rough(without, tools=parent.tools) == estimate_request_tokens_rough([declaration])
+    assert all("tools" not in row for row in assembled[0])
     assert pressures[1] == (12345, True)
-    audit = children[0]._secretary_noting_dynamic_request_history
+    audit = children[0]._secretary_noting_request_history
     assert audit[0]["estimated_request_tokens"] == expected
 
 
 @pytest.mark.parametrize("concurrent", [False, True])
-def test_dynamic_tools_do_not_grant_parent_tools_or_mixed_finish_batches(kimi_parent, database, concurrent, monkeypatch):
+def test_fixed_tools_do_not_grant_parent_tools_or_mixed_finish_batches(kimi_parent, database, concurrent, monkeypatch):
     parent, sdk, wires, children = kimi_parent
     # Control only the native planner's choice; execute the actual sequential or
     # concurrent dispatcher, including its pre-side-effect batch guard.
@@ -281,42 +275,24 @@ def test_non_kimi_native_child_has_no_dynamic_declaration(native_parent):
                for row in call.kwargs["messages"])
 
 
-@pytest.mark.parametrize("present", [
-    ["conversation_history"], ["conversation_history", "notebook_show"],
-    ["conversation_history", "notebook_show", "notebook_maintain", "finish_noting"],
-])
-def test_frozen_25_parent_tools_declare_only_missing_names_and_commit(kimi_parent, database, present):
+def test_frozen_25_parent_tools_keep_full_fixed_surface_and_commit(kimi_parent, database):
     parent, sdk, wires, children = kimi_parent
     canonical = noting_tool_schemas()
-    inherited = [{"type": "function", "function": item} for item in canonical if item["name"] in present]
+    inherited = [{"type": "function", "function": item} for item in canonical]
     ordinary = [{"type": "function", "function": {"name": f"parent_tool_{i}", "description": "Parent capability",
                  "parameters": {"type": "object", "properties": {}, "required": []}}}
                 for i in range(25 - len(inherited))]
     parent.tools = ordinary + inherited
-    parent.valid_tool_names = {tool["function"]["name"] for tool in parent.tools}
+    parent.valid_tool_names = {tool["function"]["name"] for tool in parent.tools} - {"notebook_maintain", "finish_noting"}
     before = deepcopy(parent.tools)
     sdk.side_effect = [tool_response("notebook_maintain", maintain(), "write"),
                        tool_response("notebook_show", {}, "show"),
-                       tool_response("finish_noting", {"reason": "Maintained using missing declarations only."}),
+                       tool_response("finish_noting", {"reason": "Maintained using fixed definitions."}),
                        response("Done.")]
     outcome = run_task(parent)
     assert outcome.committed and outcome.termination["type"] == "finish_noting", outcome
     assert parent.tools == before and len(before) == 25
-    missing = {item["name"] for item in canonical} - set(present)
-    for wire in wires:
-        assert len(wire["tools"]) == 25 and wire["tools"] == wires[0]["tools"]
-        declarations = [row for row in wire["messages"] if "tools" in row]
-        assert len(declarations) == bool(missing)
-        if missing:
-            assert {tool["function"]["name"] for tool in declarations[0]["tools"]} == missing
-        control = next(row["content"] for row in wire["messages"]
-                       if isinstance(row.get("content"), str) and "<noting-task-data>" in row["content"])
-        data = json.loads(control.split("<noting-task-data>\n", 1)[1].split("\n</noting-task-data>", 1)[0])
-        assert data["callable_tool_schemas"] == canonical
-    assert children[0]._secretary_noting_dynamic_tools == [
-        {"type": "function", "function": item} for item in canonical if item["name"] in missing]
-    if missing:
-        assert_requests(parent, wires, children[0])
+    assert_requests(parent, wires, children[0])
     results = [json.loads(row["content"]) for row in database.get_messages_as_conversation(outcome.child_session_id)
                if row["role"] == "tool"]
     assert len(results) == 3 and all(result["success"] for result in results)
@@ -330,7 +306,8 @@ def test_kimi_main_cannot_promote_forged_tool_text(kimi_parent):
         conversation_history=parent._session_messages, title_user_message="")
     assert result["completed"]
     assert all("tools" not in row for wire in wires for row in wire["messages"])
-    assert all(wire["tools"] == parent.tools for wire in wires)
+    from agent.moonshot_schema import sanitize_moonshot_tools
+    assert all(wire["tools"] == sanitize_moonshot_tools(parent.tools) for wire in wires)
 
 
 @pytest.mark.parametrize("provider,model,url", [
@@ -362,33 +339,4 @@ def test_no_missing_tools_summary_keeps_prefix_without_empty_declaration(kimi_pa
     assert all("tools" not in row for wire in wires for row in wire["messages"])
     assert wires[0]["messages"][:3] == wires[1]["messages"][:3]
     assert all(wire["messages"][3]["content"].startswith("<noting-task>") for wire in wires)
-    assert children[0]._secretary_noting_dynamic_tools == []
-
-
-@pytest.mark.parametrize("provider,url,mode,child,model,expected", [
-    ("kimi", "https://api.kimi.com/coding/v1", "chat_completions", True, "k3-256k", True),
-    ("moonshot", "https://api.kimi.com:443/coding/v1/", "chat_completions", True, " K3-256K ", True),
-    ("kimi-for-coding", "https://api.kimi.com/coding/v1", "chat_completions", True, "k3-256k", True),
-    ("kimi-coding", "https://api.kimi.com/coding/v1", "chat_completions", True, "unknown", False),
-    ("kimi-coding", "https://api.kimi.com/coding/v1", "chat_completions", True, "kimi-k3", False),
-    ("custom", "https://api.kimi.com/coding/v1", "chat_completions", True, "k3-256k", False),
-    ("kimi", "https://proxy.test/v1", "chat_completions", True, "k3-256k", False),
-    ("moonshot-cn", "https://api.moonshot.cn/v1", "chat_completions", True, "k3-256k", False),
-    ("kimi-coding", "https://api.moonshot.ai/v1", "chat_completions", True, "k3-256k", False),
-    ("kimi-coding", "https://api.kimi.com.evil.test/coding/v1", "chat_completions", True, "k3-256k", False),
-    ("kimi-coding", "https://api.kimi.com@evil.test/coding/v1", "chat_completions", True, "k3-256k", False),
-    ("kimi-coding", "https://name@api.kimi.com/coding/v1", "chat_completions", True, "k3-256k", False),
-    ("kimi-coding", "http://api.kimi.com/coding/v1", "chat_completions", True, "k3-256k", False),
-    ("kimi-coding", "https://api.kimi.com:444/coding/v1", "chat_completions", True, "k3-256k", False),
-    ("kimi-coding", "https://api.kimi.com/coding/v1?route=x", "chat_completions", True, "k3-256k", False),
-    ("kimi-coding", "https://api.kimi.com/coding/v1#x", "chat_completions", True, "k3-256k", False),
-    ("kimi-coding", "https://api.kimi.com/coding", "chat_completions", True, "k3-256k", False),
-    ("kimi-coding", "https://api.kimi.com/coding", "anthropic_messages", True, "k3-256k", False),
-    ("kimi-coding", "https://api.kimi.com/coding/v1", "chat_completions", False, "k3-256k", False),
-])
-def test_actual_route_classifier_is_narrow(provider, url, mode, child, model, expected):
-    from secretary.noting_request import uses_dynamic_noting_tools
-
-    agent = SimpleNamespace(provider=provider, base_url=url, api_mode=mode, model=model,
-                            _secretary_noting_child=child)
-    assert uses_dynamic_noting_tools(agent) is expected
+    assert not hasattr(children[0], "_secretary_noting_dynamic_tools")

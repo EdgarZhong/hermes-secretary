@@ -1,1 +1,2 @@
 56b7ebc01131ea4eaad0a4690c0bfbab048c2803
+authorized-update 3ce7517dc7c4e6dbdae7de1607032c8281ff0e24 2026-10-24 user-request追加C11长上下文真实验证与既有恢复入口固定工具兼容

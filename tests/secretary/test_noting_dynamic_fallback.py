@@ -23,7 +23,7 @@ from tests.secretary.test_r3_child import (
     ("kimi-coding", "anthropic", "anthropic_messages"),
     ("deepseek", "kimi-coding", "chat_completions"),
 ])
-def test_native_fallback_and_next_turn_restore_rebuild_dynamic_surface(kimi_parent, monkeypatch, primary, fallback, mode):
+def test_native_fallback_and_next_turn_restore_keep_fixed_surface(kimi_parent, monkeypatch, primary, fallback, mode):
     from agent import conversation_loop
     from secretary import noting_child
 
@@ -100,21 +100,11 @@ def test_native_fallback_and_next_turn_restore_rebuild_dynamic_surface(kimi_pare
         else:
             assert "max_completion_tokens" not in wire
 
-    boundaries = []
-    for provider, _, request in assembled:
-        declarations = [(index, row) for index, row in enumerate(request) if "tools" in row]
-        if provider == "kimi-coding":
-            assert len(declarations) == 1
-            boundary, declaration = declarations[0]
-            boundaries.append(boundary)
-            assert set(declaration) == {"role", "tools"}
-            assert request[boundary + 1]["content"].startswith("<noting-task>")
-            assert [tool["function"]["name"] for tool in declaration["tools"]] == [
-                "conversation_history", "notebook_show", "notebook_maintain", "finish_noting"]
-        else:
-            assert declarations == []  # Before the destination's native converter.
-    assert boundaries and len(set(boundaries)) == 1
-    boundary = boundaries[0]
+    from agent.message_content import flatten_message_text
+    boundary = 3
+    assert all("tools" not in row for _, _, request in assembled for row in request)
+    assert all(flatten_message_text(request[boundary]["content"]).startswith("<noting-task>") for _, _, request in assembled)
+    assert all("callable_tool_schemas" not in str(request) for _, _, request in assembled)
     from agent.prompt_caching import strip_anthropic_cache_control
     from agent.message_content import flatten_message_text
     prefixes = [deepcopy(request[:boundary]) for _, _, request in assembled]
@@ -134,8 +124,11 @@ def test_native_fallback_and_next_turn_restore_rebuild_dynamic_surface(kimi_pare
         anthropic_wire = attempts[1][2]
         assert flatten_message_text(anthropic_wire["system"]) == "Frozen parent root"
         assert all("tools" not in row for row in anthropic_wire["messages"])
-        assert [tool["name"] for tool in anthropic_wire["tools"]] == ["terminal"]
+        assert [tool["name"] for tool in anthropic_wire["tools"]] == [tool["function"]["name"] for tool in expected_tools]
     else:
-        assert all(request["tools"] == expected_tools for _, _, request in attempts)
+        from agent.moonshot_schema import sanitize_moonshot_tools
+        for provider, _, request in attempts:
+            converted = sanitize_moonshot_tools(expected_tools) if provider == "kimi-coding" else expected_tools
+            assert request["tools"] == converted
     assert children[0].provider == primary and children[0].client is None
     assert children[0]._owns_session_db is False

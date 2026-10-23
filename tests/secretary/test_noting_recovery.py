@@ -98,6 +98,8 @@ def test_async_native_recovery_commits_preserved_versions_to_current_tail(native
     assert after[-1]["display_metadata"]["noting_snapshot_id"] == state["snapshot_id"]
     assert "later" not in {row.get("message_uid") for row in made[0]._session_messages or []}
     wires = [call.kwargs for call in client.chat.completions.create.call_args_list]
+    assert all("callable_tool_schemas" not in str(wire["messages"]) for wire in wires)
+    assert all("tools" not in row for wire in wires for row in wire["messages"])
     assert wires[0]["messages"][0]["content"] == "Frozen parent root"
     assert "After the failed task" not in str(wires)
     assert wires[0]["tools"][0]["function"]["name"] == "terminal"
@@ -111,7 +113,25 @@ def test_async_native_recovery_commits_preserved_versions_to_current_tail(native
     assert client.chat.completions.create.call_count == 3
 
 
-def test_original_control_tools_allow_recovery_without_full_parent_pin(native_parent, database):
+def _legacy_control_schemas(monkeypatch):
+    """Model an existing pre-fixed-tools task, without changing the current builder."""
+    from secretary import noting_tools
+    from secretary.noting_tools import noting_tool_schemas
+    original = noting_tools.noting_tool_control_message
+
+    def legacy(*args, **kwargs):
+        content = original(*args, **kwargs)
+        prefix, data = content.split("<noting-task-data>\n", 1)
+        encoded, suffix = data.split("\n</noting-task-data>", 1)
+        payload = json.loads(encoded)
+        payload["callable_tool_schemas"] = noting_tool_schemas()
+        return prefix + "<noting-task-data>\n" + json.dumps(payload) + "\n</noting-task-data>" + suffix
+
+    monkeypatch.setattr(noting_tools, "noting_tool_control_message", legacy)
+
+
+def test_original_control_tools_allow_recovery_without_full_parent_pin(native_parent, database, monkeypatch):
+    _legacy_control_schemas(monkeypatch)
     failed = failed_task(native_parent, database)
     database.update_session_tool_names(failed.child_session_id, None)
     recovered = reconstruct_noting(database, ref(database), failed.child_session_id)
@@ -119,7 +139,8 @@ def test_original_control_tools_allow_recovery_without_full_parent_pin(native_pa
     assert {tool["function"]["name"] for tool in recovered.tools} == {"conversation_history", "notebook_show", "notebook_maintain", "finish_noting"}
 
 
-def test_new_prelude_is_not_accepted_as_old_tools(native_parent, database):
+def test_new_prelude_is_not_accepted_as_old_tools(native_parent, database, monkeypatch):
+    _legacy_control_schemas(monkeypatch)
     failed = failed_task(native_parent, database)
     database.update_session_tool_names(failed.child_session_id, None)
     database.capture_secretary_prelude("parent", "new root", [])
@@ -370,3 +391,70 @@ def test_worker_native_construction_and_turn_keep_session_identity_task_local(na
         assert identities == [ack["operation_id"], ack["operation_id"]]
         assert get_session_env("HERMES_SESSION_ID") == "request-task-main"
     assert os.environ["HERMES_SESSION_ID"] == "other-process-main-identity"
+
+
+@pytest.mark.parametrize("complete_pin", [False, True], ids=["legacy-tools-upgraded", "fixed-tools-unchanged"])
+def test_recovery_constructs_fixed_tools_before_freeze_and_preserves_failed_records(
+        native_parent, database, monkeypatch, complete_pin):
+    from copy import deepcopy
+    from secretary import noting_child
+    from secretary.noting_tools import noting_tool_schemas
+
+    parent, client = native_parent
+    canonical = noting_tool_schemas()
+    if complete_pin:
+        parent.tools += [{"type": "function", "function": schema} for schema in canonical]
+    expected = deepcopy(parent.tools)
+    if not complete_pin:
+        expected += [{"type": "function", "function": schema} for schema in canonical
+                     if schema["name"] in {"notebook_maintain", "finish_noting"}]
+    failed = failed_task(native_parent, database)
+    original_session = database.get_session(failed.child_session_id)
+    original_rows = database.get_messages_as_conversation(failed.child_session_id)
+    recovered = reconstruct_noting(database, ref(database), failed.child_session_id)
+    assert recovered.sources["tools"] == "failed_child.tool_names"
+    assert "callable_tool_schemas" not in str(original_rows)
+    source_pin = deepcopy(recovered.tools)
+    pairs, children = [], []
+    native_freeze = noting_child.freeze_parent_runtime
+    native_build = noting_child.build_noting_child
+
+    def freeze(agent):
+        frozen = native_freeze(agent)
+        pairs.append((deepcopy(agent.tools), deepcopy(frozen["parity"].tools)))
+        return frozen
+
+    def build(*args, **kwargs):
+        child = native_build(*args, **kwargs)
+        children.append(child)
+        return child
+
+    monkeypatch.setattr(noting_child, "freeze_parent_runtime", freeze)
+    monkeypatch.setattr(noting_child, "build_noting_child", build)
+    client.chat.completions.create.reset_mock()
+    client.chat.completions.create.side_effect = [tool_response("notebook_show", {}, "show"),
+        tool_response("finish_noting", {"reason": "Reviewed recovered working state"}), response("Done")]
+    ack = start_recovery(database, ref(database), failed.child_session_id, "r1", parent_factory=factory(parent))
+    state = wait_recovery(database, failed)
+    assert state["committed"], state
+    assert children[0]._secretary_noting_parent_tools == expected
+    assert all(left == right == expected for left, right in pairs)
+    wires = [call.kwargs for call in client.chat.completions.create.call_args_list]
+    assert all(wire["tools"] == expected for wire in wires)
+    assert all("tools" not in row for wire in wires for row in wire["messages"])
+    assert all("callable_tool_schemas" not in str(wire["messages"]) for wire in wires)
+    if complete_pin:
+        assert expected == source_pin
+        assert state["sources"]["tools"] == "failed_child.tool_names"
+        assert set(state["sources"]) == {"parent", "root", "tools", "notebook"}
+    else:
+        assert state["sources"]["tools"].startswith("failed_child.tool_names+fixed_noting_maintenance_definitions")
+        assert "(notebook_maintain,finish_noting)" in state["sources"]["tools"]
+        assert "not_byte_identical" in state["sources"]["tools"]
+        assert set(state["sources"]) == {"parent", "root", "tools", "notebook"}
+    assert ack["sources"] == state["sources"]
+    assert database.get_session(failed.child_session_id) == original_session
+    assert database.get_messages_as_conversation(failed.child_session_id) == original_rows
+    assert reconstruct_noting(database, ref(database), failed.child_session_id).tools == source_pin
+    assert start_recovery(database, ref(database), failed.child_session_id, "r1", parent_factory=factory(parent)) == state
+    assert len(wires) == 3

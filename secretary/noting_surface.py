@@ -18,6 +18,9 @@ def _read_schema(name):
     if name == "scheduler":
         from tools.scheduler_tool import get_scheduler_schema
         return get_scheduler_schema()
+    if name in _NOTING_ONLY:
+        from secretary.noting_contract import FINISH_NOTING_SCHEMA, NOTEBOOK_MAINTAIN_SCHEMA
+        return FINISH_NOTING_SCHEMA if name == "finish_noting" else NOTEBOOK_MAINTAIN_SCHEMA
     from tools.notebook_tool import NOTEBOOK_SHOW_SCHEMA
     return NOTEBOOK_SHOW_SCHEMA
 
@@ -91,17 +94,19 @@ def apply_main_read_surface(agent):
     agent._secretary_notebook_read_enabled = notebook
     agent._secretary_scheduler_enabled = scheduler
     desired = ({"conversation_history"} | ({"notebook_show"} if notebook else set())
-               | ({"scheduler"} if scheduler else set())) if main else set()
-    removed = (_MAIN_TOOLS - desired) | RETIRED_SECRETARY_TOOLS | _NOTING_ONLY
+               | ({"scheduler"} if scheduler else set())
+               | (_NOTING_ONLY if notebook else set())) if main else set()
+    removed = ((_MAIN_TOOLS | _NOTING_ONLY) - desired) | RETIRED_SECRETARY_TOOLS
     resolved = [tool for tool in tools if _tool_name(tool) not in removed]
     names = {_tool_name(tool) for tool in resolved}
-    for name in ("conversation_history", "notebook_show", "scheduler"):
+    for name in ("conversation_history", "notebook_show", "scheduler", "notebook_maintain", "finish_noting"):
         if name in desired and name not in names:
             resolved.append({"type": "function", "function": copy.deepcopy(_read_schema(name))})
             names.add(name)
     from agent.secretary_prompt import apply_cron_schema_guidance
     agent.tools = apply_cron_schema_guidance(_reconcile_catalog(agent, resolved), enabled=scheduler)
-    agent.valid_tool_names = (set(getattr(agent, "valid_tool_names", set())) - removed) | (desired & names)
+    agent.valid_tool_names = ((set(getattr(agent, "valid_tool_names", set())) - removed)
+                              | (desired & names)) - _NOTING_ONLY
     return notebook
 
 

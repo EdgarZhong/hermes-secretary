@@ -130,7 +130,8 @@ def test_existing_agent_off_on_changes_actual_surface_at_next_turn(runtime, disa
         cached_entries = dict(model_tools._tool_defs_cache)
         memo = copy.deepcopy(cached_entries)
         resolved_names = copy.deepcopy(model_tools._last_resolved_tool_names)
-        configured_names = _names(agent.tools) - {"conversation_history", "notebook_show", "scheduler"}
+        configured_names = _names(agent.tools) - {"conversation_history", "notebook_show", "scheduler",
+                                                "notebook_maintain", "finish_noting"}
         seen = _requests(agent)
         if disabled_by == "local":
             db.notebook_set_local_enabled(agent._secretary_conversation_ref, False)
@@ -187,6 +188,8 @@ def test_child_construction_never_applies_main_surface(runtime, extra):
     try:
         assert "conversation_history" not in _names(agent.tools)
         assert "notebook_show" not in _names(agent.tools)
+        assert not {"notebook_maintain", "finish_noting"} & _names(agent.tools)
+        assert not {"notebook_maintain", "finish_noting"} & agent.valid_tool_names
     finally:
         agent.close()
 

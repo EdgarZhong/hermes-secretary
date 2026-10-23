@@ -158,7 +158,7 @@ def guard_noting_tool_batch(agent, tool_names):
 
 
 def noting_tool_schemas(profile="NOTING"):
-    """Suffix declarations only: never change the frozen provider tools array."""
+    """Return independent canonical definitions for the four authorized tools."""
     if profile != "NOTING":
         raise ValueError("Unknown Noting runtime profile")
     from tools.session_history_tool import CONVERSATION_HISTORY_SCHEMA
@@ -172,6 +172,8 @@ def noting_tool_control_message(profile="NOTING", *, notebook_state=None, conver
     """Encode all variable input as data after the exact frozen control text."""
     from secretary.notebook_model import SECTIONS
 
+    if profile != "NOTING":
+        raise ValueError("Unknown Noting runtime profile")
     data = {
         "conversation_ref": conversation_ref,
         "evidence_coverage": evidence_coverage(conversation_ref, coverage, db=db),
@@ -179,7 +181,6 @@ def noting_tool_control_message(profile="NOTING", *, notebook_state=None, conver
         "task_parameters": {"aging_days": 7, "implicit_gap_hours": 72},
         "working_notebook": readable_notebook_state(
             notebook_state if notebook_state is not None else {key: [] for key in SECTIONS}),
-        "callable_tool_schemas": noting_tool_schemas(profile),
     }
     return (CURRENT_NOTING_CONTROL + "\n\n<noting-task-data>\n"
             + json.dumps(data, ensure_ascii=False, sort_keys=True) + "\n</noting-task-data>")

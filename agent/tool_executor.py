@@ -464,8 +464,8 @@ class _ParsedCall:
 def _parse_tool_call(agent, tool_call, *, flatten_probe: bool = False) -> _ParsedCall:
     name = _canonical_tool_name(tool_call.function.name)
     args, parse_error = _parse_tool_arguments(tool_call.function.arguments)
-    scope_block = None
-    if parse_error is None:
+    scope_block = _noting_dispatch_block(agent, name)
+    if parse_error is None and scope_block is None:
         name, args, scope_block = _unwrap_tool_search_call(agent, name, args, flatten_probe=flatten_probe)
     return _ParsedCall(tool_call, name, args, [], parse_error, scope_block)
 
@@ -658,10 +658,9 @@ _PRUNED_TOOL_ARGUMENTS_MESSAGE = (
 
 
 def _noting_dispatch_block(agent, tool_name: str) -> Optional[str]:
-    """Noting-runtime dispatch policy, enforced at the one choke point both execution paths share.
+    """Trusted task policy shared by both batch executors and direct invocation.
 
-    The marker comes from the child's construction parameters (``_secretary_noting_profile``),
-    never from model-supplied arguments; non-Noting agents are unaffected.
+    Advertised maintenance definitions grant no execution authority to Main or other children.
     """
     try:
         from secretary.noting_child import noting_dispatch_block
@@ -669,7 +668,8 @@ def _noting_dispatch_block(agent, tool_name: str) -> Optional[str]:
         return noting_dispatch_block(agent, tool_name)
     except Exception:
         logger.debug("Noting dispatch policy unavailable", exc_info=True)
-        return "Noting dispatch policy unavailable" if getattr(agent, "_secretary_noting_profile", None) else None
+        restricted = getattr(agent, "_secretary_noting_child", False) or tool_name in {"notebook_maintain", "finish_noting"}
+        return "Noting dispatch policy unavailable" if restricted else None
 
 
 def _blocked_tool_result(agent, ref: _ToolCallRef, *, block_body: dict[str, Any] | None, block_error_type: str, guardrail_decision) -> str:

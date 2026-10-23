@@ -21,6 +21,23 @@ _RECOVERY_LOCK = threading.RLock()
 _WORKERS = {}
 
 
+def _prepare_fixed_recovery_tools(recovered):
+    """Upgrade missing maintenance definitions once, before the recovery prefix freezes."""
+    from secretary.noting_contract import FINISH_NOTING_SCHEMA, NOTEBOOK_MAINTAIN_SCHEMA
+
+    names = {tool.get("function", {}).get("name") for tool in recovered.tools}
+    missing = [schema for schema in (NOTEBOOK_MAINTAIN_SCHEMA, FINISH_NOTING_SCHEMA)
+               if schema["name"] not in names]
+    if not missing:
+        return
+    recovered.tools = [*recovered.tools, *(
+        {"type": "function", "function": copy.deepcopy(schema)} for schema in missing)]
+    additions = ",".join(schema["name"] for schema in missing)
+    recovered.sources = {**recovered.sources, "tools": (
+        recovered.sources["tools"] + f"+fixed_noting_maintenance_definitions({additions});"
+        "rebuilt_at_recovery_boundary;historical_tools_prefix_not_byte_identical")}
+
+
 def _operation_id(ref, failed_child, request_id):
     return "noting_recovery_" + hashlib.sha256(
         f"{ref}\0{failed_child}\0{request_id}".encode()).hexdigest()[:32]
@@ -66,6 +83,7 @@ def start_recovery(db, conversation_ref, failed_child_session_id, request_id, *,
         if existing["status"] != "not_found":
             return existing
         recovered = reconstruct_noting(db, conversation_ref, failed_child_session_id)
+        _prepare_fixed_recovery_tools(recovered)
         audit = {"conversation_ref": conversation_ref, "failed_child_session_id": failed_child_session_id,
                  "request_id": request_id, "admission_id": recovered.admission["admission_id"],
                  "status": "queued", "created_at": time.time(), "sources": recovered.sources}
