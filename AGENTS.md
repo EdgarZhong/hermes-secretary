@@ -57,7 +57,7 @@
 - 写具体“条件→动作→内容去向”；先读owner文本、规格和代码再改，规格与运行常量逐字一致。冻结父Prompt后执行新任务，显式作废父system／角色／规则／工具策略／任务／完成条件，仅遵循新任务及后续control message。
 - `## Context Recovery`：资格与`HISTORY_SEARCH_GUIDANCE`共用predicate；合格Main指向`conversation_history`，说明被压缩区间和Conversation起始时间，不出现Session ID或`session_search`；非Main保留原生footer，迭代替换旧footer。
 - 检查真实构建的全Prompt，包括project context、skills、runtime footer、memory／tool guidance和control message；改Prompt需分支／工具拒绝测试及真实模型样本，不能靠单样本或自报。
-- 保护cache prefix：会话中途不改历史、工具面、重载记忆或重建root System Prompt。Noting冻结父前缀，新工具只追加到任务及后续提示／control message并声明以此为准，遵守压缩／Noting cache-parity契约。
+- 保护cache prefix：会话中途不改历史、工具面、重载记忆或重建root System Prompt。工具面变更在父运行态正常构造／恢复边界生效并如实记录缓存变化；Noting冻结后继承父完整工具表，不在子任务临时补工具。任务及后续提示／control message明确当前身份权限，遵守压缩／Noting cache-parity契约。
 - 测试Profile的`terminal.cwd`必须在仓库Git root外；库内`.hermes-dev/`仍会加载根AGENTS。
 
 ## 实现与代码规范

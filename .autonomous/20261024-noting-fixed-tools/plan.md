@@ -49,3 +49,5 @@ T1、T2、T3白名单不相交；共享变更串行交root。不用worktree，�
 - 用户追加C11：真实kimi-for-coding必须验证超过N38的长前缀，选已有N46点；不先压缩，记录实际Usage而非K3推算。T3准备时给扩展成本方案，仍需root接收实现后才统一开跑。
 
 - root接收T1/T2：亲审顶层注册／ToolSearch direct／validator修复前拒绝／sync与concurrent／invoke guard、原生normalizer、初始续Turn去Schema与旧恢复边界；Schema owner无改。集成4文件116通过（初次命令中的不存在idle路径未被runner发现，已改用实际两文件另跑，不把遗漏记通过）。新恢复旧pin的一次tools前缀变化已明示来源。阶段提交仅机制检查，不宣称真实模型或部署验收。
+
+- root补齐README稳定架构及AGENTS缓存原则，去旧动态声明表述，来源为已批准C01/C03/C05，未改变检查规则／阈值。Idle两文件43通过，Web dist439files绑定589df02，tar/manifest保ignored。

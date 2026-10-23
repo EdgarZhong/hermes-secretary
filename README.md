@@ -8,13 +8,13 @@
 |---|---|
 | Conversation / History | `conversation_ref` 标识稳定归属，Session 是物理定位；原文为事实源，复用原生持久化与历史检索 |
 | Notebook | 三内容板块及 Candidates；稳定条目、不可变版本和原子 Snapshot；Main 只读、Noting 独占写入 |
-| Background Noting | 原生 AIAgent child、冻结父上下文、后台维护派生工作状态；K3 Coding Chat在自有后缀动态声明父工具表缺少的维护能力 |
+| Background Noting | 原生 AIAgent child、冻结父上下文及完整顶层工具表、后台维护派生工作状态；任务提示与运行时身份仅授权四工具，任务不重复Schema |
 | Scheduler | 独立排期表、claim / pending / ACK；宿主约5秒扫描，合法本地 Main 的 Instant Reminder 可冷态恢复 |
 | Web / Gateway | 多Profile隔离、双SPA同源、消息渠道绑定持久Conversation；历史卡片首屏、显式详情补水与验证型图片引用／视口下载 |
 
 Secretary 只在Profile的 `state.db` 增加自有表，不改原表 schema / ownership。`noting`、`scheduler` 独立配置，`/noting` 控制当前Conversation参与。微信入站的完整正式回复按消息及时由adapter发送，Redirect的半截正式正文并入对应通知；其它入口须显式调用发送工具，Framework等非触发式上下文注入不借用上一轮渠道adapter自动发送。实现边界及已知限制见 [当前看板](CLAUDE.md)。
 
-Main的`scheduler`与`notebook_show`按各自能力开关完整独立声明在API顶层，不进入Tool Search折叠目录：前者受`scheduler.enabled`，后者沿全局`noting.enabled`读取门禁；当前Conversation的`/noting`参与开关不控制这两项权限。其它工具保留原生折叠策略。
+Main的`scheduler`与`notebook_show`按各自能力开关完整独立声明在API顶层，不进入Tool Search折叠目录：前者受`scheduler.enabled`，后者沿全局`noting.enabled`读取门禁；当前Conversation的`/noting`参与开关不控制这两项权限。`notebook_maintain`与`finish_noting`也沿全局`noting.enabled`完整固定顶层且不折叠，Main只能看见定义、运行时禁止执行；绑定Noting仅授权`conversation_history`、`notebook_show`及这两工具。其它工具保留原生折叠策略。
 
 Heartbeat按目标Profile全局`noting.enabled`分支：开启时使用带时间戳的英文`<heartbeat>`消息，额外prompt可省略，经现有UI runtime／platform唤醒所属Main；关闭时保留原生格式与执行路径。后台执行需UI后端运行，独立于`scheduler.enabled`；状态按Profile与稳定Conversation保存在自有表；支持独立设置／暂停／恢复／清除，压缩续接共享，new／reset／fork不继承。切换页面、关闭连接、runtime回收及服务重启后仍由后台扫描恢复自身Main，不跟随当前Gateway绑定。精确模板与运行边界见[07 §8.15](docs/07-scheduler-notebook-noting-compaction-redesign.md#815-heartbeat-形态与-ui-唤醒用户确认2026-10-21)。
 
