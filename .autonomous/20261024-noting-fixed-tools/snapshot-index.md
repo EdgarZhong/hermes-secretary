@@ -24,5 +24,8 @@
 | C08 | 今日既有修补与本次改动统一提交、push并部署云端，验证实际版本及数据保护 | 后端599d114、前端589df02在交付闭包；不把隔离配置带生产 | user-request条10及追加“连同之前今天那些修复一块部署” |
 | C09 | 子Agent全部Sol系、不使用Astra；遵守显示保护和冻结10检查 | 自主流程含独立Verification／Validation；不降门禁，不伪称未验范围 | user-request条11；AGENTS |
 | C10 | 不动生产历史／排期／绑定、不重放旧失败任务、不改来源包裹／Thinking／Timeline机制 | 隔离验证与发布不是数据恢复授权；旧47错误副本恢复不属本轮 | user-request条12与已有明确保留范围 |
+| C11 | 追加真实kimi-for-coding长上下文样本，长度超过原N38；切换Noting后固定工具可调用且任务正常完成 | 主会话选已有N46点，不重新二分；实际Usage与父子wire取证，不能先缩短上下文；费用获用户明确接受 | user-request“冻结后用户追加”原话 |
 
 当前不存在阻断实施的未决产品问题；内部任务安排和测试预算写plan，不改用户完成标准。历史文档中“任务后缀四Schema／动态声明”由上述修订覆盖；其它保留契约不扩大。Schema canonical SHA冻结：notebook_maintain `4fbaab4cec9b50d7ed87888ba1a3cebaf6453b438d7a3ae06c2d7171b2b2ad3d`，finish_noting `59b73e172fd24a3c704f85b84adce58075d58fd8f965e9334544d288e20f0267`。
+
+2026-10-24工程接线收敛：显式恢复旧Noting时，若旧工具pin缺两维护定义，只在恢复父运行态构造、freeze之前补原canonical顶层定义；完整pin保持。原失败记录／Root／历史不改，source明确补齐，旧工具缓存前缀一次变化如实报告。此为既有恢复入口适配C01/C05，不增加恢复门槛，不实际重跑生产任务。
