@@ -345,7 +345,9 @@ def resolve_invoke_tool_executor(agent, function_name: str) -> Optional[InlineTo
     from agent.tool_executor import _noting_dispatch_block
     refusal = _noting_dispatch_block(agent, function_name)
     if refusal is not None:
-        return lambda agent, args, ctx: json.dumps({"error": refusal}, ensure_ascii=False)
+        from secretary.noting_child import noting_dispatch_refusal
+        return lambda agent, args, ctx: json.dumps(
+            noting_dispatch_refusal(agent, function_name, message=refusal), ensure_ascii=False)
     if function_name in INVOKE_TOOL_PRE_MEMORY_MANAGER_NAMES:
         return INLINE_TOOL_EXECUTORS[function_name]
     memory_manager = agent._memory_manager

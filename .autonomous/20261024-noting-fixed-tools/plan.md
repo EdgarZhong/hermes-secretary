@@ -24,7 +24,7 @@
 | T2 | 已实现并亲审 | native normalizer／SDK／恢复已核 | 请求32、恢复20等通过 | 待真实模型 | root接收；真实样本待T3 |
 | T3 | 准备方案已接收 | Alex隔离原生入口 | 零请求准备通过 | 待真实模型 | 批准50HTTP上限（短28／长22含内部重试），固定受测版本后开跑 |
 | T4 | 旧包已审 | 当前未部署 | 有效证据复用 | 待上线 | root核部署环境与产物；先只读 |
-| T5 | 未开始 | 未开始 | 未开始 | 未开始 | 集成后统一安排 |
+| T5 | 首审已完成未通过 | 32条正式路径已核 | 24符合/3不适用/1违规/4不足 | 未验收 | F02修补与真实证据补齐后全新独立复审，再Validation |
 
 T1、T2、T3白名单不相交；共享变更串行交root。不用worktree，不让子Agent提交／push／部署或派生。每包只在真阻塞／跨包接口决定／预定整包交回时发消息，不流水账；产品UI仅自建隐藏IAB，禁止用户已有页面／桌面／显示／焦点变化。
 
@@ -35,6 +35,7 @@ T1、T2、T3白名单不相交；共享变更串行交root。不用worktree，�
 | 问题编号 | 要求与触发条件 | 当前事实与影响 | 优先级及理由 | 修复负责人 | 关闭与复验条件 | 状态 |
 |---|---|---|---|---|---|---|
 | F01 | C01–C05原实现动态声明与重复Schema | 已知旧实现非本轮目标；固定prefix新增工具须同步权限与Prompt，不能只移tools | P1核心 | T1＋T2 | 全纵向路径／父子wire等价与硬拒绝、无重复Schema | 机制关闭，待真实模型及门禁 |
+| F02 | C04及07§7.2权限拒绝完整形状 | 拒绝有效但Loop/registry缺next_action，sync/concurrent/invoke仅错误字符串；独立审查已取得反证 | P1模型纠错契约 | 待当前短真实样本结束后T1修补，root提案已获Verification评审 | 单一policy标准scope_denied回执，全部正式入口含解包前拒绝和post诊断，零副作用/合法混批/后续合法调用；Schema/Prompt/wire不变 | 实现已交回并由root亲审；47权限+9原dispatch通过，待全新独立复审关闭 |
 
 ## 取舍、快照与续接
 
@@ -51,3 +52,11 @@ T1、T2、T3白名单不相交；共享变更串行交root。不用worktree，�
 - root接收T1/T2：亲审顶层注册／ToolSearch direct／validator修复前拒绝／sync与concurrent／invoke guard、原生normalizer、初始续Turn去Schema与旧恢复边界；Schema owner无改。集成4文件116通过（初次命令中的不存在idle路径未被runner发现，已改用实际两文件另跑，不把遗漏记通过）。新恢复旧pin的一次tools前缀变化已明示来源。阶段提交仅机制检查，不宣称真实模型或部署验收。
 
 - root补齐README稳定架构及AGENTS缓存原则，去旧动态声明表述，来源为已批准C01/C03/C05，未改变检查规则／阈值。Idle两文件43通过，Web dist439files绑定589df02，tar/manifest保ignored。
+
+- T3短真实样本已在4f503a2发3次HTTP且全部200（两Main＋原生manual summary），须保持WATCHED直到本场景交回；F02只影响拒绝结果，长N46待修补新版启动。独立审查以V06/§7.2评审root方案可接受，完整研讨留verification第5–6节；不降低原错误契约。
+
+- F02扩白名单仅agent/turn_tool_round.py现有混合批次content表达式：权限拒绝用同builder，其它invalid-name原样，不改控制流。root已批准并要求合法调用仍执行及拒绝完整形状。V32旧专项日志未定位，root当前UI589df02定向50通过，receipt绑定三源码/日志SHA；不再依赖仅历史99汇总。发布准备脚本已root全文亲审，分dry/preflight/stage/apply，bundle/439SHA/三库快照与finally启动边界可接受，实际云验留门禁后。
+
+- 独立首审32条：24符合／3有依据不适用／1违规／4证据不足；拒绝回执违规与真实Idle/四工具/N46/收尾缺口继续阻断。原报告和反证保留；修补后必须由全新fork_turns=none审查者全轮复审，不将root接收或提案认可当PASS。
+
+- F02最小修补已root亲审：同policy标准builder覆盖Loop/混批/registry/invoke/sync/concurrent，解析前代理拒绝仍统一；post-hook取message字符串，通用scope/plugin/未知工具/混合finish保持。最终47+原dispatch9通过、十检查health0/0，Schema/Prompt/合法成功wire未改。首短合法8HTTP可按明确影响边界复用；不宣称完整Idle或四工具已完成。

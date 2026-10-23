@@ -23,6 +23,17 @@ logger = logging.getLogger("agent.conversation_loop")
 _HOUSEKEEPING_TOOLS = frozenset({"memory", "todo_list", "skill_manage", "session_search"})
 
 
+def _invalid_batch_error_content(agent, name):
+    """Permission errors keep their contract while native unknown-name errors stay native."""
+    import json
+    from secretary.noting_child import noting_dispatch_refusal
+    refusal = noting_dispatch_refusal(agent, name)
+    if refusal is not None:
+        return json.dumps(refusal, ensure_ascii=False)
+    from agent.conversation_loop import _invalid_tool_name_error_content
+    return _invalid_tool_name_error_content(name, agent.valid_tool_names)
+
+
 @dataclass
 class ToolRoundVerdict:
     """``action``: ``"continue"`` (tools ran, next API call), ``"break"`` (turn ends:
@@ -54,8 +65,6 @@ def run_tool_round(
     durability invariant: resume must see the executed block if a destructive tool restarts
     Hermes; a failed canonical append ends the turn rather than running tools from
     process-only state."""
-    from agent.conversation_loop import _invalid_tool_name_error_content
-
     def _verdict(action: str, result: Optional[Dict[str, Any]] = None) -> ToolRoundVerdict:
         return ToolRoundVerdict(
             action=action, messages=messages, conversation_history=conversation_history,
@@ -116,9 +125,7 @@ def run_tool_round(
                 "role": "tool",
                 "name": tc.function.name,
                 "tool_call_id": coalesce_tool_call_id(tc),
-                "content": _invalid_tool_name_error_content(
-                    tc.function.name, agent.valid_tool_names
-                ),
+                "content": _invalid_batch_error_content(agent, tc.function.name),
             })
         assistant_message.tool_calls = [
             tc for tc in assistant_message.tool_calls if tc.function.name in agent.valid_tool_names

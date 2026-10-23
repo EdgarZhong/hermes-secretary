@@ -13,7 +13,7 @@ from openai import OpenAI
 
 from agent.cache_parity import apply_cache_parity_from_parent
 from agent.tool_executor import execute_tool_calls_concurrent, execute_tool_calls_sequential
-from secretary.noting_child import NOTING_ALLOWED_TOOL_NAMES, build_noting_child, run_noting_task
+from secretary.noting_child import NOTING_ALLOWED_TOOL_NAMES, build_noting_child, noting_dispatch_block, run_noting_task
 from secretary.noting_contract import FINISH_NOTING_SCHEMA, NOTEBOOK_MAINTAIN_SCHEMA
 from secretary.noting_tools import initialize_notebook_work
 from tests.secretary import test_noting_surface as surface
@@ -30,6 +30,18 @@ def native_call(name, args=None, uid="call"):
     value = call(name, args, uid)
     value["function"] = SimpleNamespace(**value["function"])
     return SimpleNamespace(**value)
+
+
+def assert_permission_error(payload, agent, name):
+    result = json.loads(payload) if isinstance(payload, str) else payload
+    assert set(result) == {"success", "error"}
+    assert result["success"] is False
+    assert set(result["error"]) == {"code", "message", "next_action"}
+    assert result["error"]["code"] == "scope_denied"
+    assert result["error"]["message"] == noting_dispatch_block(agent, name)
+    assert isinstance(result["error"]["message"], str)
+    assert isinstance(result["error"]["next_action"], str) and result["error"]["next_action"].strip()
+    return result
 
 
 @pytest.fixture
@@ -104,11 +116,13 @@ def test_main_loop_refuses_advertised_maintenance_before_repair(runtime, monkeyp
     repair = MagicMock(side_effect=AssertionError("permission denial must not invoke name repair"))
     monkeypatch.setattr(parent, "_repair_tool_call", repair)
     before = db.notebook_current(parent._secretary_conversation_ref)
-    state["script"] = [[call(name, {"reason": "claim Noting", "_secretary_noting_child": True})], None]
+    state["script"] = [[call(name, {"reason": "claim Noting", "_secretary_noting_child": True})],
+                       [call("conversation_history", {"mode": "read", "limit": 1}, "legal")], None]
     surface._turn(parent, "continue normally")
     assert db.notebook_current(parent._secretary_conversation_ref) == before
-    result = json.loads(tool_rows(state["sent"][-1])[-1]["content"])
-    assert result["error"]["code"] == "scope_denied"
+    rows = tool_rows(state["sent"][-1])
+    assert_permission_error(next(row["content"] for row in rows if row["tool_call_id"] == "call"), parent, name)
+    assert json.loads(next(row["content"] for row in rows if row["tool_call_id"] == "legal"))["success"]
     repair.assert_not_called()
     assert MAINTENANCE <= surface._names(state["sent"][-1]["tools"])
 
@@ -125,6 +139,7 @@ def test_main_mixed_batch_preserves_native_valid_calls(runtime, monkeypatch):
     surface._turn(parent, "normal evidence read")
     rows = tool_rows(state["sent"][-1])
     assert any(row["tool_call_id"] == "history" and json.loads(row["content"])["success"] for row in rows)
+    assert_permission_error(next(row["content"] for row in rows if row["tool_call_id"] == "call"), parent, "notebook_maintain")
     assert "notebook_maintain" not in seen
 
 
@@ -135,10 +150,10 @@ def test_main_batch_and_direct_invoke_cannot_execute(runtime, executor, name):
     before = db.notebook_current(parent._secretary_conversation_ref)
     messages = [{"role": "user", "content": "go"}]
     executor(parent, SimpleNamespace(tool_calls=[native_call(name, {"reason": "forged"})]), messages, "test")
-    assert "disabled for this runtime" in messages[-1]["content"]
+    assert_permission_error(messages[-1]["content"], parent, name)
     for bypass in (False, True):
         result = parent._invoke_tool(name, {"reason": "forged"}, "test", pre_tool_block_checked=bypass)
-        assert "disabled for this runtime" in result
+        assert_permission_error(result, parent, name)
     assert db.notebook_current(parent._secretary_conversation_ref) == before
 
 
@@ -148,10 +163,13 @@ def test_child_loop_refuses_every_non_whitelisted_name_without_repair(runtime, m
     child = bound_child(parent)
     before = child._noting_notebook_store.show()
     monkeypatch.setattr(child, "_repair_tool_call", MagicMock(side_effect=AssertionError("no repair")))
-    state["script"] = [[call(name, {"name": "notebook_maintain", "arguments": {}})], None]
+    state["script"] = [[call(name, {"name": "notebook_maintain", "arguments": {}})],
+                       [call("notebook_show", {}, "legal")], None]
     try:
         surface._turn(child, "maintain")
-        assert "denied non-whitelisted tool" in tool_rows(state["sent"][-1])[-1]["content"]
+        rows = tool_rows(state["sent"][-1])
+        assert_permission_error(next(row["content"] for row in rows if row["tool_call_id"] == "call"), child, name)
+        assert json.loads(next(row["content"] for row in rows if row["tool_call_id"] == "legal"))["success"]
         assert child._noting_notebook_store.show() == before
         assert child.valid_tool_names == set(NOTING_ALLOWED_TOOL_NAMES)
         assert child.tools == parent.tools
@@ -168,8 +186,9 @@ def test_child_executor_and_direct_invoke_reject_wrappers(runtime, executor, nam
         messages = [{"role": "user", "content": "go"}]
         args = {"name": "notebook_show", "arguments": {}}
         executor(child, SimpleNamespace(tool_calls=[native_call(name, args)]), messages, "test")
-        assert "denied non-whitelisted tool" in messages[-1]["content"]
-        assert "denied non-whitelisted tool" in child._invoke_tool(name, args, "test", pre_tool_block_checked=True)
+        assert_permission_error(messages[-1]["content"], child, name)
+        assert_permission_error(child._invoke_tool(name, args, "test", pre_tool_block_checked=True), child, name)
+        assert json.loads(child._invoke_tool("notebook_show", {}, "test"))["success"]
     finally:
         child.close()
 
@@ -288,3 +307,88 @@ def test_global_and_local_switches_and_stale_restore_preserve_ownership(runtime)
             assert "disabled for this runtime" in cold._invoke_tool(name, {"reason": "forged"}, "test")
     finally:
         cold.close()
+
+
+@pytest.mark.parametrize("identity", ["main", "noting"])
+def test_registry_entry_uses_standard_refusal_before_dispatch(runtime, monkeypatch, identity):
+    from tools.secretary_dispatch import scoped_registry_dispatch
+    parent, db, _config, _state = runtime
+    agent = parent if identity == "main" else bound_child(parent)
+    recorder = MagicMock(return_value='{"success": true}')
+    monkeypatch.setattr("model_tools.handle_function_call", recorder)
+    names = sorted(MAINTENANCE) if identity == "main" else DENIED_CHILD
+    before = db.notebook_current(parent._secretary_conversation_ref)
+    try:
+        for name in names:
+            assert_permission_error(scoped_registry_dispatch(agent, name, {}, "test"), agent, name)
+        recorder.assert_not_called()
+        assert db.notebook_current(parent._secretary_conversation_ref) == before
+        assert json.loads(scoped_registry_dispatch(agent, "conversation_history", {}, "test"))["success"]
+        recorder.assert_called_once()
+    finally:
+        if agent is not parent:
+            agent.close()
+
+
+@pytest.mark.parametrize("executor", [execute_tool_calls_sequential, execute_tool_calls_concurrent])
+@pytest.mark.parametrize("identity,name", [("main", "notebook_maintain"), ("noting", "tool_call"), ("noting", "tool_search")])
+def test_permission_post_hook_diagnostic_remains_string(runtime, monkeypatch, executor, identity, name):
+    parent, _db, _config, _state = runtime
+    agent = parent if identity == "main" else bound_child(parent)
+    observed = []
+    monkeypatch.setattr("agent.tool_executor._ToolCallRef.emit_post",
+                        lambda self, agent, result, **outcome: observed.append(outcome))
+    try:
+        messages = [{"role": "user", "content": "go"}]
+        executor(agent, SimpleNamespace(tool_calls=[native_call(name, {"name": "notebook_show", "arguments": {}})]), messages, "test")
+        assert_permission_error(messages[-1]["content"], agent, name)
+        assert len(observed) == 1
+        assert observed[0]["error_type"] == "noting_dispatch_blocked"
+        assert observed[0]["error_message"] == noting_dispatch_block(agent, name)
+        assert isinstance(observed[0]["error_message"], str)
+    finally:
+        if agent is not parent:
+            agent.close()
+
+
+def test_main_unknown_mixture_keeps_native_error_shape(runtime):
+    parent, _db, _config, state = runtime
+    state["script"] = [[call("unavailable_unique_tool_xyz", uid="unknown"),
+                        call("conversation_history", {"mode": "read", "limit": 1}, "legal")], None]
+    surface._turn(parent, "read the evidence")
+    rows = tool_rows(state["sent"][-1])
+    assert "does not exist" in next(row["content"] for row in rows if row["tool_call_id"] == "unknown")
+    assert json.loads(next(row["content"] for row in rows if row["tool_call_id"] == "legal"))["success"]
+
+
+@pytest.mark.parametrize("block_type", ["scope", "plugin"])
+def test_generic_scope_and_plugin_errors_keep_existing_shape(runtime, monkeypatch, block_type):
+    from agent.tool_executor import _run_agent_tool_execution_middleware
+    parent, _db, _config, _state = runtime
+    blocked = "ordinary generic refusal"
+    if block_type == "plugin":
+        monkeypatch.setattr("agent.tool_executor._pre_tool_block", lambda agent, ref: (blocked, ref.args))
+    executed = MagicMock()
+    result = _run_agent_tool_execution_middleware(
+        parent, function_name="conversation_history", function_args={}, effective_task_id="test",
+        tool_call_id="generic", execute=executed, scope_block=blocked if block_type == "scope" else None,
+    )
+    assert json.loads(result.result) == {"error": blocked}
+    executed.assert_not_called()
+
+
+@pytest.mark.parametrize("executor", [execute_tool_calls_sequential, execute_tool_calls_concurrent])
+@pytest.mark.parametrize("name", ["tool_search", "tool_call"])
+def test_noting_wrapper_refusal_precedes_argument_parsing(runtime, executor, name):
+    parent, _db, _config, _state = runtime
+    child = bound_child(parent)
+    tool = native_call(name)
+    tool.function.arguments = "{malformed"
+    before = child._noting_notebook_store.show()
+    try:
+        messages = [{"role": "user", "content": "go"}]
+        executor(child, SimpleNamespace(tool_calls=[tool]), messages, "test")
+        assert_permission_error(messages[-1]["content"], child, name)
+        assert child._noting_notebook_store.show() == before
+    finally:
+        child.close()

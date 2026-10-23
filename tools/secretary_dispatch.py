@@ -122,7 +122,7 @@ def secretary_validation_refusal(agent, assistant_message, finish_reason, messag
     names = [call.function.name for call in assistant_message.tool_calls]
     refusal = guard_noting_tool_batch(agent, names)
     if refusal is None:
-        from secretary.noting_child import noting_dispatch_block
+        from secretary.noting_child import noting_dispatch_block, noting_dispatch_refusal
         denied = [noting_dispatch_block(agent, name) for name in names]
         if not any(denied):
             return None
@@ -132,10 +132,10 @@ def secretary_validation_refusal(agent, assistant_message, finish_reason, messag
         append_message(messages, agent._build_assistant_message(assistant_message, finish_reason))
         _append_tool_error_results(
             messages, assistant_message.tool_calls,
-            lambda call: json.dumps({"success": False, "error": {
-                "code": "scope_denied", "message": noting_dispatch_block(agent, call.function.name)
-                or "Skipped: another call in this batch was denied; retry the authorized call.",
-            }}, ensure_ascii=False),
+            lambda call: json.dumps(noting_dispatch_refusal(
+                agent, call.function.name,
+                message="Skipped: another call in this batch was denied; retry the authorized call.",
+            ), ensure_ascii=False),
         )
         return ToolValidationVerdict(action="continue", result=None, mixed_invalid_batch=False)
     append_message(messages, agent._build_assistant_message(assistant_message, finish_reason))
@@ -148,11 +148,11 @@ def scoped_registry_dispatch(agent, *args, **kwargs):
     """Direct invoke uses the same catalog and Cron wording scopes as batch execution."""
     from agent.secretary_prompt import cron_schema_scope
     import model_tools
-    from secretary.noting_child import noting_dispatch_block
+    from secretary.noting_child import noting_dispatch_refusal
     name = args[0] if args else kwargs.get("function_name", "")
-    refusal = noting_dispatch_block(agent, name)
+    refusal = noting_dispatch_refusal(agent, name)
     if refusal is not None:
         import json
-        return json.dumps({"success": False, "error": {"code": "scope_denied", "message": refusal}})
+        return json.dumps(refusal, ensure_ascii=False)
     with cron_schema_scope(agent), secretary_surface_scope(agent):
         return model_tools.handle_function_call(*args, **kwargs)

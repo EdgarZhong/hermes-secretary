@@ -89,6 +89,22 @@ def noting_dispatch_block(agent: Any, tool_name: str) -> Optional[str]:
     )
 
 
+def noting_dispatch_refusal(agent: Any, tool_name: str, *, message: Optional[str] = None) -> Optional[dict]:
+    """Standard model-facing refusal; dispatch policy and its diagnostic string stay shared."""
+    denial = noting_dispatch_block(agent, tool_name)
+    if denial is None and message is None:
+        return None
+    next_action = (
+        "Retry this authorized call on its own." if denial is None else
+        "Use notebook_show to inspect the bound working Notebook."
+        if getattr(agent, "_secretary_noting_child", False) else
+        "Continue the current task without Notebook maintenance."
+    )
+    return {"success": False, "error": {
+        "code": "scope_denied", "message": denial or message, "next_action": next_action,
+    }}
+
+
 # ── Strong in-process ownership ───────────────────────────────────────────────────────
 # ``_active_noting_tasks[noting_session_id] = child`` keeps an in-flight child from being
 # discarded as an ordinary detached child by host eviction/LRU behavior (02 §5.4).

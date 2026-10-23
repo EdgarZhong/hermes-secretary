@@ -463,8 +463,8 @@ class _ParsedCall:
 
 def _parse_tool_call(agent, tool_call, *, flatten_probe: bool = False) -> _ParsedCall:
     name = _canonical_tool_name(tool_call.function.name)
-    args, parse_error = _parse_tool_arguments(tool_call.function.arguments)
     scope_block = _noting_dispatch_block(agent, name)
+    args, parse_error = _parse_tool_arguments(tool_call.function.arguments) if scope_block is None else ({}, None)
     if parse_error is None and scope_block is None:
         name, args, scope_block = _unwrap_tool_search_call(agent, name, args, flatten_probe=flatten_probe)
     return _ParsedCall(tool_call, name, args, [], parse_error, scope_block)
@@ -677,7 +677,9 @@ def _blocked_tool_result(agent, ref: _ToolCallRef, *, block_body: dict[str, Any]
     JSON the model sees) or by guardrail policy (``guardrail_decision``) and emit its terminal post_tool_call."""
     if block_body is not None:
         result = json.dumps(block_body, ensure_ascii=False)
-        error_type, error_message = block_error_type, block_body.get("message") or block_body["error"]
+        error_type = block_error_type
+        error_message = (block_body["error"]["message"] if error_type == "noting_dispatch_blocked"
+                         else block_body.get("message") or block_body["error"])
     else:
         result = agent._guardrail_block_result(guardrail_decision)
         error_type = "guardrail_block"
@@ -735,17 +737,19 @@ def _dispatch_authorized_once(
                                     block_error_type="legacy_tool_removed", guardrail_decision=None)
 
     block_message, block_error_type = scope_block, "tool_scope_block"
-    if block_message is None:
-        # Noting runtime policy first: a denied tool must not reach plugin hooks or guardrails.
-        noting_block = _noting_dispatch_block(agent, ref.name)
-        if noting_block is not None:
-            block_message, block_error_type = noting_block, "noting_dispatch_blocked"
+    # Recheck policy even when parsing already denied a wrapper before unwrapping.
+    noting_block = _noting_dispatch_block(agent, ref.name)
+    if noting_block is not None:
+        block_message, block_error_type = noting_block, "noting_dispatch_blocked"
     if block_message is None:
         block_error_type = "plugin_block"
         resolve = lambda: _pre_tool_block(agent, ref)  # noqa: E731
         block_message, ref.args = resolve() if authorization_gate is None else authorization_gate.run(resolve)
         state.args = ref.args
-    block_body = None if block_message is None else {"error": block_message}
+    from secretary.noting_child import noting_dispatch_refusal
+    block_body = (noting_dispatch_refusal(agent, ref.name, message=block_message)
+                  if block_error_type == "noting_dispatch_blocked" else
+                  None if block_message is None else {"error": block_message})
 
     # Checked once, after plugin modify hooks (which may replace arguments) and
     # before guardrails or real dispatch: a copied compression marker in an
