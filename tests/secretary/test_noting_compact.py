@@ -256,3 +256,58 @@ def test_low_idle_threshold_preserves_cooldown_and_no_receipt(tmp_path, monkeypa
         assert request_context_compaction(parent, relevant_threshold_tokens=100000).status == "already_below_threshold"
     finally:
         db.close()
+
+
+@pytest.mark.parametrize("boundary", ["close", "database", "conversation"])
+def test_expected_owner_is_rechecked_at_native_request_creation(tmp_path, monkeypatch, boundary):
+    from agent.context_compaction_request import _epoch, cancel_native_request
+
+    parent, db = make_parent(tmp_path, monkeypatch)
+    other = SessionDB(tmp_path / "other" / "state.db")
+    try:
+        parent.context_compressor.last_prompt_tokens = 500000
+        expected = (_epoch(parent), db, db.resolve_conversation_ref(parent.session_id))
+        compressed = _never_compress(monkeypatch, parent)
+        def rebind(*args):
+            if boundary == "close":
+                cancel_native_request(parent, boundary=True)
+            elif boundary == "database":
+                other.create_session(parent.session_id, source="test")
+                parent._session_db = other
+            else:
+                db.create_session("replacement", source="test")
+                parent.session_id = "replacement"
+            return False
+        monkeypatch.setattr("agent.conversation_compression._automatic_compression_gate_blocks", rebind)
+        result = request_context_compaction(parent, relevant_threshold_tokens=1000, expected_owner=expected,
+                                            wait_for_completion=True)
+        assert not result.ok and result.status == "owner_changed"
+        assert compressed["n"] == 0
+        assert getattr(parent, "_native_compaction_request", None) is None
+    finally:
+        parent._session_db = db
+        other.close()
+        db.close()
+
+
+def test_request_relevance_is_checked_again_after_native_request_creation(tmp_path, monkeypatch):
+    from agent import context_compaction_request as native
+
+    parent, db = make_parent(tmp_path, monkeypatch)
+    valid = [True]
+    start = native._start_idle_request
+    def invalidate(request, custom):
+        valid[0] = False
+        start(request, custom)
+    try:
+        parent.context_compressor.last_prompt_tokens = 500000
+        compressed = _never_compress(monkeypatch, parent)
+        monkeypatch.setattr(native, "_start_idle_request", invalidate)
+        owner = (native._epoch(parent), db, db.resolve_conversation_ref(parent.session_id), lambda: valid[0])
+        result = native.request_context_compaction(parent, relevant_threshold_tokens=1000,
+                                                   expected_owner=owner, wait_for_completion=True)
+        parent._native_compaction_worker.join(5)
+        assert not result.ok and not compressed["n"]
+        assert not parent._native_compaction_request.was_admitted
+    finally:
+        db.close()

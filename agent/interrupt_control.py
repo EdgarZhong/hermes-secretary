@@ -291,7 +291,7 @@ class InterruptControlMixin:
             notify(self)
         return True
 
-    def redirect(self, text: str) -> bool:
+    def redirect(self, text: str, *, on_applied=None) -> bool:
         """Redirect the active turn without converting it into a new task: during a model request only that
         request is cancelled (completed messages kept, partial reasoning becomes assistant context, the
         correction is appended as a real user message, the loop retries); during tool execution it degrades
@@ -325,6 +325,11 @@ class InterruptControlMixin:
                         worker_tids = list(tracker)
                     for tid in worker_tids:
                         _request_yield(tid)
+                if on_applied is not None:
+                    try:
+                        on_applied("")  # The model request raced into a tool; no partial checkpoint exists.
+                    except Exception:
+                        logger.debug("Redirect steer receipt failed", exc_info=True)
             return accepted
 
         _model_active = getattr(self, "_model_request_active", None)
@@ -334,9 +339,8 @@ class InterruptControlMixin:
             existing = _ic_slot(self, "_pending_redirect_lock", "_pending_redirect")
             if self._interrupt_requested and not existing:
                 return False
-            self._pending_redirect = (
-                f"{existing}\n\n[Additional user correction]\n{cleaned}" if existing else cleaned
-            )
+            from agent.redirect_observation import merge_redirect
+            self._pending_redirect = merge_redirect(existing, cleaned, on_applied)
             self._interrupt_requested = True
             self._interrupt_message = None
 

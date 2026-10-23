@@ -412,14 +412,16 @@ Notebook 最新有效快照：
 </article>
 <article class="card card-blue" data-card="P2" data-title="完成事件承载结束通知与 Notebook 快照。"><div class="kicker"><span class="card-id">P2</span><span class="status confirmed">已确认</span></div>
 <h3>完成事件承载结束通知与 Notebook 快照。</h3>
-<div class="pill-row"><span class="pill">联合触发</span><span>→</span><span class="pill">Compaction 可先完成</span><span>→</span><span class="pill current">Noting 完成 → Framework Message</span></div>
-<p>Framework Message 直接包含结束通知及本次有效快照。主会话连续运行时，可以在新区间收到；不等待下一次压缩，也不要求压缩等 Noting。</p>
+<div class="pill-row"><span class="pill">Idle：Noting 正常提交</span><span>→</span><span class="pill">父原生 Compaction</span><span>→</span><span class="pill current">Framework Message</span></div>
+<p><strong>2026-10-23 用户逐项确认：</strong>Idle 到点时已有 Noting 仍在运行，等它正常提交再压缩；已经正常提交，可以压缩；失败或强制结束，不做这次 Idle 压缩。按已有任务真实状态处理，不重复启动 Noting。用户随后明确：Idle compaction 之前相应 Noting 必须成功，仅限 Idle，其它 compaction 保持原有行为；无法运行 Noting 时也不做 Idle compaction。</p>
+<p><strong>2026-10-23 用户确认：</strong>仅 Idle 改为 Noting 正常结束、提交 Notebook 后才请求父 full compaction，对应 Framework 在 compaction 后注入。任何非正常结束均不触发本次 Idle full compaction；预算或上下文溢出已产生的合法快照仍照常提交并注入 Framework，且明确 Notebook 非正常结束。一般 API 错误可以没有新快照，沿用失败 Framework。</p>
+<p>普通自动／手动压缩及 Force 保留既有机制：Framework Message 直接包含结束通知及本次有效快照，主会话连续运行时仍可在新区间收到；不等待下一次压缩，也不要求这些原生压缩等待 Noting。</p>
 <p class="line-note">沿现有消息接缝追加，现有快照获取机制不变。快照覆盖边界之后的新对话／正式状态仍优先。</p>
 </article>
 </div>
 <div class="table-wrap spaced"><table><thead><tr><th>入口</th><th>执行方式</th></tr>
 </thead>
-<tbody><tr><td>Idle 联合入口</td><td>两个开关开启＋空闲和长度两阈值达标，同时触发两者。</td></tr>
+<tbody><tr><td>Idle 联合入口</td><td>两个开关开启＋空闲和长度两阈值达标，先 Noting；正常提交后父 full compaction，再注入 Framework。非正常结束不触发该压缩。</td></tr>
 <tr><td>手动 compaction</td><td>总开关开启后同时触发两者；已进入 Force 阶段则不重复启动 Noting。</td></tr>
 <tr><td>Force 联合流程</td><td>达到现有较早空间线先启动 Noting；后续压缩对应这次整理，压缩缩小占用前抑制重复 Noting。</td></tr>
 </tbody>
@@ -491,7 +493,7 @@ Notebook 最新有效快照：
 <article class="card spaced" data-card="D5" data-title="逐类型处理的时间参数。"><div class="kicker"><span class="card-id">D5</span><span class="status confirmed">已通过 · 2026.10.16</span></div><h3>逐类型处理的时间参数。</h3><p><strong>已确认：</strong>普通条目按对应时间依据采用 7 天，缺失警示 72 小时；语义条件更早成立时可在本次 Noting 处理。每个处理点同次完成精简与去留判断。</p><p><strong>执行点已收敛：</strong>到期后的下一次完整联合 Noting 执行，不因条目到期让 Main 另行调用 compaction；删除原 L5 额外触发建议。</p></article>
 <article class="card card-green" data-card="D6" data-title="联合机制与完成注入已确认。"><div class="kicker"><span class="card-id">D6</span><span class="status confirmed">已确认</span></div>
 <h3>联合机制与完成注入已确认。</h3>
-<p>普通同时并行，Force 仅时序不同；Idle 为自动节费入口。Noting 结束时以 Framework Message 注入通知与快照，允许跨区间晚到，沿用现有快照获取机制。</p>
+<p>普通自动／手动压缩仍与 Noting 并行，Force 保留既有空间与时序机制。2026-10-23 用户修订：Idle 先正常完成 Noting 并提交，再父 full compaction，最后注入 Framework；任何非正常结束不触发该 Idle 压缩。合法强制快照照常提交并明确非正常结束，一般 API 错误可以没有新快照。现有有效指针与快照读取机制保留，具体见 P2 与 07 §8.1。</p>
 </article>
 </div>
 <article class="card spaced card-note" data-card="D7" data-title="完整 Noting Task 与 System Message Prompt"><div class="kicker"><span class="card-id">D7</span><span class="status confirmed">用户授权自主收敛 · 2026.10.16</span></div><h3>完整 Noting Task 与 System Message Prompt</h3>

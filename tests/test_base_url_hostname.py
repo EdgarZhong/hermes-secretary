@@ -8,7 +8,9 @@ tests/agent/test_direct_provider_url_detection.py.
 
 from __future__ import annotations
 
-from utils import base_url_hostname, base_url_host_matches
+import pytest
+
+from utils import base_url_hostname, base_url_host_matches, is_official_kimi_chat_url
 
 
 # ─── base_url_hostname ────────────────────────────────────────────────────
@@ -117,4 +119,12 @@ class TestOllamaUrlHostCheck:
         assert base_url_host_matches(
             "https://ollama.com/api/generate", "ollama.com"
         ) is True
+
+
+@pytest.mark.parametrize("base_url", [
+    "", None, "api.kimi.com/coding/v1", "https://[invalid/coding/v1",
+    "https://api.kimi.com:bad/coding/v1", "https://api.kimi.com:99999/coding/v1",
+])
+def test_official_kimi_chat_requires_a_valid_https_origin(base_url):
+    assert is_official_kimi_chat_url(base_url) is False
 

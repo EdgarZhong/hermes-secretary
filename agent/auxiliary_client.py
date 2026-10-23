@@ -128,7 +128,7 @@ from agent.auxiliary_unavailable import (
     AuxiliaryClientUnavailable, clear_nous_credential_failure, missing_provider_credentials_message,
     nous_credential_failure_detail, record_nous_credential_failure)
 from hermes_constants import OPENROUTER_BASE_URL, hermes_home_key
-from utils import base_url_host_matches, base_url_hostname, base_url_origin, env_float, is_truthy_value, model_forces_max_completion_tokens, normalize_proxy_env_vars
+from utils import base_url_host_matches, base_url_hostname, base_url_origin, env_float, is_official_kimi_chat_url, is_truthy_value, model_forces_max_completion_tokens, normalize_kimi_chat_output_overrides, normalize_proxy_env_vars
 
 logger = logging.getLogger(__name__)
 
@@ -587,7 +587,7 @@ def _bare_model(model: Optional[str]) -> str:
 def _is_kimi_model(model: Optional[str]) -> bool:
     """True for any Kimi / Moonshot model that manages temperature server-side."""
     bare = _bare_model(model)
-    return bare.startswith("kimi-") or bare == "kimi"
+    return bare.startswith(("kimi-", "k3-")) or bare in {"kimi", "k3"}
 
 
 def _is_arcee_trinity_thinking(model: Optional[str]) -> bool:
@@ -5737,15 +5737,15 @@ def get_auxiliary_extra_body() -> dict:
     return _nous_extra_body() if auxiliary_is_nous else {}
 
 
-def auxiliary_max_tokens_param(value: int, *, model: Optional[str] = None) -> dict:
-    """Max-tokens kwarg for the auxiliary provider: direct OpenAI/Copilot and newer OpenAI-family
-    models (by ``model`` name, so custom endpoints fronting gpt-5.x are caught) need max_completion_tokens."""
+def auxiliary_max_tokens_param(value: int, *, model: Optional[str] = None, base_url: Optional[str] = None) -> dict:
+    """Official Kimi Chat / direct OpenAI/Copilot use max_completion_tokens.
+    Keep the OpenAI-family model fallback for custom endpoints fronting gpt-5.x."""
     _custom_host = base_url_hostname(_current_custom_base_url()) or ""
     direct_openai_family = (
         not _scoped_key_env("OPENROUTER_API_KEY") and _read_nous_auth() is None
         and (_custom_host in ("api.openai.com", "api.githubcopilot.com") or _custom_host.endswith(".githubcopilot.com"))
     )
-    if direct_openai_family or model_forces_max_completion_tokens(model):
+    if direct_openai_family or is_official_kimi_chat_url(base_url or "") or model_forces_max_completion_tokens(model):
         return {"max_completion_tokens": value}
     return {"max_tokens": value}
 
@@ -6766,7 +6766,7 @@ def _build_call_kwargs(
             kwargs["temperature"] = temperature
     provider_norm = str(provider or "").strip().lower()
     if max_tokens is not None and _forwards_max_tokens(provider, provider_norm, model, effective_base, task):
-        kwargs.update(auxiliary_max_tokens_param(max_tokens, model=model))  # picks max_completion_tokens where needed
+        kwargs.update(auxiliary_max_tokens_param(max_tokens, model=model, base_url=effective_base))
     if tools:
         kwargs["tools"] = _dedupe_tool_names(tools, provider, model)
     # Provider profiles are the source of truth for reasoning wire shapes (top-level, nested body,
@@ -6800,7 +6800,7 @@ def _build_call_kwargs(
     # Conversation affinity (OpenCode relay, opt-in custom-provider header) — same key as the main
     # turn so compression/title/vision calls stay on the conversation's warm backend.
     from agent.opencode_affinity import merge_session_affinity_headers
-    return merge_session_affinity_headers(kwargs, provider, base_url, _runtime_main_value("session_id") or None)
+    return merge_session_affinity_headers(normalize_kimi_chat_output_overrides(effective_base, kwargs), provider, base_url, _runtime_main_value("session_id") or None)
 
 
 def _validate_llm_response(
@@ -7112,7 +7112,7 @@ def _create_with_progress(
         retry_kwargs.pop("max_tokens", None)
         retry_kwargs.pop("max_completion_tokens", None)
         retry_kwargs.update(
-            auxiliary_max_tokens_param(affordable, model=str(kwargs.get("model") or "") or None))
+            auxiliary_max_tokens_param(affordable, model=str(kwargs.get("model") or "") or None, base_url=str(getattr(client, "base_url", "") or "")))
         logger.info("Auxiliary %s: credit-limited 402 (affordable=%d tokens); "
                     "retrying once with a clamped output cap instead of failing: %s",
                     task or "call", affordable, exc)

@@ -6,6 +6,7 @@ not a task state machine: child completion, failure and rewind never advance it.
 All writes preserve the caller's transaction and Hermes's native table ownership.
 """
 
+import json
 import sqlite3
 import time
 
@@ -48,6 +49,10 @@ CREATE TABLE IF NOT EXISTS secretary_noting_idle_state (
 """
 
 ADMISSION_KINDS = ("idle", "force", "manual", "auto_compaction")
+
+
+class NotingChildSnapshotOwnershipError(ValueError):
+    """The runner's claimed admission/child does not own this Snapshot."""
 
 _TURN_STARTED_UPSERT_SQL = (
     "INSERT INTO secretary_noting_idle_state "
@@ -173,6 +178,65 @@ class SecretaryNotingMixin:
     def noting_admission(self, admission_id):
         with self._read_ctx() as conn:
             return self.noting_admission_conn(conn, admission_id)
+
+    def noting_existing_admission_conn(self, conn, conversation_ref, interval_id, *, anchor=None):
+        """Find only the task which caused Force occupancy or exact-Anchor deduplication."""
+        condition, value = ("anchor_message_uid=?", anchor) if anchor is not None else ("kind=?", "force")
+        row = conn.execute(
+            "SELECT * FROM secretary_noting_admissions WHERE conversation_ref=? "
+            "AND compression_interval_id=? AND " + condition + " ORDER BY admission_id DESC LIMIT 1",
+            (conversation_ref, interval_id, value),
+        ).fetchone()
+        return dict(row) if row is not None else None
+
+    def noting_record_child_snapshot_conn(self, conn, admission_id, child_session_id, result):
+        """Bind the runner's real child to its Snapshot inside the original commit transaction."""
+        row = conn.execute(
+            "SELECT a.conversation_ref,a.anchor_message_uid,a.kind FROM secretary_noting_admissions a "
+            "JOIN secretary_noting_children c USING(admission_id) JOIN sessions s ON s.id=c.child_session_id "
+            "WHERE a.admission_id=? AND c.child_session_id=? AND c.status='running'",
+            (admission_id, child_session_id),
+        ).fetchone()
+        snapshot = conn.execute("SELECT conversation_ref,anchor_message_uid,trigger_type "
+                                "FROM secretary_notebook_snapshots WHERE snapshot_id=?",
+                                (result["snapshot_id"],)).fetchone()
+        if row is None or snapshot is None or tuple(row) != tuple(snapshot):
+            raise NotingChildSnapshotOwnershipError("Noting child and committed Snapshot ownership differ")
+        merged = self._merge_model_config_json(conn, child_session_id, {
+            "_secretary_noting_commit": {"admission_id": admission_id, "snapshot_id": result["snapshot_id"]},
+        }, on_missing="raise")
+        conn.execute("UPDATE sessions SET model_config=? WHERE id=?", (merged, child_session_id))
+
+    def noting_normal_child_snapshot_conn(self, conn, admission_id, conversation_ref, interval_id, *, live_snapshot_id=None):
+        """A durable normal finish+commit witness, never an arbitrary current/old Notebook."""
+        if self.noting_compaction_interval_conn(conn, conversation_ref) != interval_id:
+            return None
+        row = conn.execute(
+            "SELECT a.anchor_message_uid,a.kind,c.status,s.model_config FROM secretary_noting_admissions a "
+            "JOIN secretary_noting_children c USING(admission_id) JOIN sessions s ON s.id=c.child_session_id "
+            "WHERE a.admission_id=? AND a.conversation_ref=? AND a.compression_interval_id=?",
+            (admission_id, conversation_ref, interval_id),
+        ).fetchone()
+        if row is None or row["status"] not in {"running", "completed"}:
+            return None
+        try:
+            witness = (json.loads(row["model_config"] or "{}").get("_secretary_noting_commit") or {})
+        except (TypeError, ValueError, AttributeError):
+            witness = {}
+        if not isinstance(witness, dict):
+            witness = {}
+        snapshot_id = witness.get("snapshot_id") if witness.get("admission_id") == admission_id else live_snapshot_id
+        if snapshot_id is None:
+            return None
+        snapshot = conn.execute(
+            "SELECT snapshot_id,termination_json FROM secretary_notebook_snapshots WHERE snapshot_id=? "
+            "AND conversation_ref=? AND anchor_message_uid=? AND trigger_type=?",
+            (snapshot_id, conversation_ref, row["anchor_message_uid"], row["kind"]),
+        ).fetchone()
+        if (snapshot is None or self.anchor_position_conn(conn, conversation_ref, row["anchor_message_uid"]) is None
+                or json.loads(snapshot["termination_json"] or "{}").get("type") != "finish_noting"):
+            return None
+        return snapshot["snapshot_id"]
 
     # ── Child registry (02 §5.8, §6.16) ────────────────────────────────────
 

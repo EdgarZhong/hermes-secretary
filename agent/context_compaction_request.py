@@ -76,10 +76,12 @@ class NativeCompactionRequest:
     committed: bool = False
     durable_commit_succeeded: bool = False
     was_admitted: bool = False
+    relevance_check: Any = None
 
     def current(self):
         return (self.owner is _epoch(self.agent) and self.db is getattr(self.agent, '_session_db', None)
-                and self.conversation_ref == _ref(self.agent))
+                and self.conversation_ref == _ref(self.agent)
+                and (self.durable_commit_succeeded or self.relevance_check is None or self.relevance_check()))
 
     def bind_fence(self, fence):
         with _lock(self.agent):
@@ -135,7 +137,8 @@ class _NativeAdmissionReceipt:
             self.request.admit(fence)
 
 
-def request_context_compaction(agent, *, relevant_threshold_tokens=None, wait_seconds=5.0):
+def request_context_compaction(agent, *, relevant_threshold_tokens=None, wait_seconds=5.0,
+                               expected_owner=None, wait_for_completion=False):
     """Machine result for one native request; successful receipt is not completion."""
     from agent.conversation_compression import _automatic_compression_gate_blocks
     usage, native_threshold = read_context_usage(agent)
@@ -151,6 +154,12 @@ def request_context_compaction(agent, *, relevant_threshold_tokens=None, wait_se
         reason = getattr(agent.context_compressor, '_compression_block_reason', lambda: None)() or 'native_guard'
         return NativeCompactionResult(False, f'blocked:{reason}', usage, threshold)
     with _lock(agent):
+        if expected_owner is not None and (
+                expected_owner[0] is not _epoch(agent)
+                or expected_owner[1] is not getattr(agent, '_session_db', None)
+                or expected_owner[2] != _ref(agent)
+                or len(expected_owner) > 3 and not expected_owner[3]()):
+            return NativeCompactionResult(False, 'owner_changed', usage, threshold)
         request = vars(agent).get('_native_compaction_request')
         if request is None or request.completed.is_set():
             active = vars(agent).get('_native_compaction_turn') is not None
@@ -163,7 +172,8 @@ def request_context_compaction(agent, *, relevant_threshold_tokens=None, wait_se
             if not isinstance(messages, list) or getattr(agent, '_session_db', None) is None:
                 return NativeCompactionResult(False, 'no_parent_transcript', usage, threshold)
             request = NativeCompactionRequest(agent, time.monotonic() + max(0.0, wait_seconds), usage,
-                                              threshold, _epoch(agent), agent._session_db, _ref(agent), agent.session_id)
+                                              threshold, _epoch(agent), agent._session_db, _ref(agent), agent.session_id,
+                                              relevance_check=expected_owner[3] if expected_owner and len(expected_owner) > 3 else None)
             agent._native_compaction_request = request
             if not active:
                 request.state = 'claimed'
@@ -171,12 +181,18 @@ def request_context_compaction(agent, *, relevant_threshold_tokens=None, wait_se
     timeout = max(0.0, request.deadline - time.monotonic())
     # Completion without admission wakes the same event (with no successful state).
     request.admitted.wait(timeout)
+    admitted = False
     with _lock(agent):
         if request.was_admitted or request.committed:
-            return NativeCompactionResult(True, 'admitted', usage, threshold, 'native_safe_admission')
-        if request.completed.is_set():
+            admitted = True
+        elif request.completed.is_set():
             return NativeCompactionResult(False, 'native_error' if request.error else 'not_admitted', usage, threshold, request.error)
-        request.state = 'expired'
+        else:
+            request.state = 'expired'
+    if admitted:
+        if wait_for_completion:
+            request.completed.wait()
+        return NativeCompactionResult(True, 'admitted', usage, threshold, 'native_safe_admission')
     request.cancel('expired')
     return NativeCompactionResult(False, 'admission_timeout', usage, threshold)
 

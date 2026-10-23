@@ -889,24 +889,11 @@ class TurnRunner:
         except Exception:
             logger.debug("Failed to attach session title callback", exc_info=True)
 
-    async def _send_framework_status(self, message) -> None:
-        from secretary.framework_messages import framework_display_owned
-        from gateway.run_agent_cache import _first_agent
-        from contextlib import nullcontext
-        ctx, runner = self._ctx, self._runner
-        lock = getattr(runner, "_agent_cache_lock", None)
-        with lock if lock is not None else nullcontext():
-            parent = _first_agent(runner._agent_cache.get(ctx.session_key))
-            if not self._status_live() or not framework_display_owned(parent, message):
-                return
-        # Permanent timeline line: never edit a prior Framework or register it
-        # among temporary progress bubbles for post-response deletion.
-        await ctx._status_adapter.send(ctx._status_chat_id, str(message),
-                                       metadata=ctx._status_thread_metadata)
-
     def _status_callback_sync(self, event_type: str, message: str) -> None:
         if event_type == "framework":
-            self._schedule(self._send_framework_status(message), "Framework timeline delivery failed")
+            # Runtime control rows belong to the Conversation, not a reply to the
+            # last inbound channel. Persistence/Web/CLI presentation is owned by
+            # the publisher; this cached gateway callback must never push them.
             return
         from gateway.run import _prepare_gateway_status_message, _redact_gateway_user_facing_secrets, _send_or_update_status_coro
         from gateway.warning_notifications import is_warning_status, render_notification
@@ -949,7 +936,8 @@ class TurnRunner:
         plat_streaming = ctx.resolve_display_setting(ctx.user_config, platform_key, "streaming")
         want_stream_deltas = not ctx.scheduled_heartbeat and scfg.enabled_for(plat_streaming)
         want_interim_messages = bool(ctx.interim_assistant_messages_enabled) and not ctx.scheduled_heartbeat
-        if want_stream_deltas or want_interim_messages:
+        message_transport = ctx.source.platform == Platform.WEIXIN and not ctx.scheduled_heartbeat
+        if want_stream_deltas or want_interim_messages or message_transport:
             try:
                 from gateway.stream_consumer import GatewayStreamConsumer
                 adapter = self._runner._delivery_adapter_for(ctx.source)
@@ -964,7 +952,7 @@ class TurnRunner:
                         # A complete commentary message needs no edit cursor.  Keeping it on the
                         # consumer records what reached non-editable platforms, so an interim
                         # callback carrying the final answer participates in final-send dedup.
-                        on_missing_cursor="fallback" if want_interim_messages else "raise",
+                        on_missing_cursor="fallback" if want_interim_messages or message_transport else "raise",
                     )
                     stream_consumer = GatewayStreamConsumer(
                         adapter=adapter, chat_id=ctx.source.chat_id, config=consumer_cfg,
@@ -1253,6 +1241,19 @@ class TurnRunner:
         agent.step_callback = ctx._step_callback_sync if ctx._hooks_ref.loaded_hooks else None
         agent.stream_delta_callback = stream_delta_cb
         agent.interim_assistant_callback = interim_assistant_cb if want_interim_messages else None
+        consumer = self._stream_consumer()
+        capture = (ctx.source.platform == Platform.WEIXIN and not ctx.scheduled_heartbeat
+                   and not ctx.mute_notification_reply and consumer is not None)
+        agent._gateway_capture_assistant_text = capture
+        agent._gateway_capture_turn_id = None
+        agent._captured_assistant_text_parts = []
+        agent._assistant_message_callback = (
+            lambda uid, text: consumer.on_message(uid, text) if ctx._run_still_current() else None
+        ) if capture and want_interim_messages else None
+        if capture:
+            # Complete native messages have stable identities; never also post
+            # a provider's legacy text-only commentary preview on this lane.
+            agent.interim_assistant_callback = None
         agent.status_callback, agent.notice_callback = ctx._status_callback_sync, self._notice_callback_sync
         agent.notice_clear_callback = None  # sends can't be retracted
         agent.event_callback = ctx._event_callback_sync
@@ -1718,6 +1719,11 @@ class TurnRunner:
         ctx.result_holder[0] = result
         if stream_consumer is None:
             return
+        if (isinstance(result, dict) and ctx.source is not None and ctx.source.platform == Platform.WEIXIN
+                and not result.get("failed") and not result.get("interrupted")
+                and isinstance(result.get("final_response"), str)
+                and callable(getattr(type(stream_consumer), "bind_final_message", None))):
+            stream_consumer.bind_final_message(result.get("final_message_uid"), result["final_response"])
         # Pass final_response as the authoritative finalize payload: it includes post-stream
         # augmentation (verifier footer, explainer) the accumulator never saw. Adopt ONLY a genuinely
         # completed final: interrupt paths return {interrupted: True, completed: False} with a

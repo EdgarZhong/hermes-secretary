@@ -224,10 +224,12 @@ def _rebind_caller_session_context(agent) -> None:
 class CompressionFacadeMixin:
     """``_compress_context`` (see module docstring)."""
 
-    def request_context_compaction(self, *, relevant_threshold_tokens=None, wait_seconds=5.0):
+    def request_context_compaction(self, *, relevant_threshold_tokens=None, wait_seconds=5.0,
+                                   expected_owner=None, wait_for_completion=False):
         from agent.context_compaction_request import request_context_compaction
         return request_context_compaction(self, relevant_threshold_tokens=relevant_threshold_tokens,
-                                          wait_seconds=wait_seconds)
+                                          wait_seconds=wait_seconds, expected_owner=expected_owner,
+                                          wait_for_completion=wait_for_completion)
 
     def _compress_context(
         self, messages: list, system_message: str, *, approx_tokens: int = None, task_id: str = "default",

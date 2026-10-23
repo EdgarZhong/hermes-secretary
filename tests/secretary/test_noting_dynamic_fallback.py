@@ -93,6 +93,12 @@ def test_native_fallback_and_next_turn_restore_rebuild_dynamic_surface(kimi_pare
     assert switches == [(fallback, mode)]
     assert [provider for provider, _, _ in attempts] == [primary, fallback, primary, primary]
     assert [provider for provider, _, _ in assembled] == [primary, fallback, primary, primary]
+    for provider, _, wire in attempts:
+        if provider == "kimi-coding":
+            assert wire["max_completion_tokens"] == 32000
+            assert "max_tokens" not in wire
+        else:
+            assert "max_completion_tokens" not in wire
 
     boundaries = []
     for provider, _, request in assembled:

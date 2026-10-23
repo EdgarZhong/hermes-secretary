@@ -19,6 +19,15 @@ logger = logging.getLogger("run_agent")
 class StreamDeliveryMixin:
     """Stream ownership, delta/reasoning hook fan-out and interim-text dedup (see module docstring)."""
 
+    def _captures_assistant_text(self) -> bool:
+        """A gateway observation is borrowed by one native invocation only."""
+        if not getattr(self, "_gateway_capture_assistant_text", False):
+            return False
+        turn_id = getattr(self, "_current_turn_id", None)
+        if getattr(self, "_gateway_capture_turn_id", None) is None and turn_id:
+            self._gateway_capture_turn_id = turn_id
+        return bool(turn_id and self._gateway_capture_turn_id == turn_id)
+
     @staticmethod
     def _call_quietly(cb, *args) -> bool:
         """Call ``cb(*args)`` if set, swallowing errors; True when it ran without raising."""
@@ -78,6 +87,7 @@ class StreamDeliveryMixin:
         if ctx_scrubber is not None:
             deliver(ctx_scrubber.flush())
         self._current_streamed_assistant_text = ""
+        self._captured_assistant_text_parts = []
 
     @property
     def _current_streamed_assistant_text(self) -> str:
@@ -200,6 +210,17 @@ class StreamDeliveryMixin:
         different final summary."""
         if not isinstance(assistant_msg, dict):
             return
+        message_callback = getattr(self, "_assistant_message_callback", None)
+        if message_callback is not None:
+            if not self._captures_assistant_text():
+                return
+            from agent.message_metadata import stamp_message_uid
+            visible = self._interim_assistant_visible_text(assistant_msg)
+            if visible and visible != "(empty)":
+                stamp_message_uid(assistant_msg)
+                self._enqueue_stream_hook("on_interim_message", text=visible, already_streamed=False)
+                self._call_quietly(message_callback, assistant_msg["message_uid"], visible)
+            return
         commentary_parts = self._extract_codex_interim_visible_parts(assistant_msg)
         # Dedup within this message and against earlier deliveries, first occurrence wins.
         pending: dict[str, str] = {}
@@ -244,6 +265,8 @@ class StreamDeliveryMixin:
         self._ensure_stream_writer_state()
         with self._stream_writer_lock:
             self._stream_writer_token = token = self._stream_writer_token + 1
+            if self._captures_assistant_text():
+                self._captured_assistant_text_parts = []
         self._stream_writer_tls.token = token
         from agent.output_identity import observe_claim
         observe_claim(self, token)
@@ -330,6 +353,10 @@ class StreamDeliveryMixin:
                 text = text.lstrip("\n")
         if not text:
             return
+        if self._captures_assistant_text():
+            with self._stream_writer_lock:
+                if not self._stream_writer_superseded():
+                    vars(self).setdefault("_captured_assistant_text_parts", []).append(text)
         delivered = self._deliver_to_stream_callbacks(text)
         self._enqueue_stream_hook("on_stream_delta", delta=text, kind="text")
         if delivered:
@@ -376,4 +403,5 @@ class StreamDeliveryMixin:
                 return True
         except Exception:
             logger.debug("plugin stream hook consumer check failed", exc_info=True)
-        return self.stream_delta_callback is not None or getattr(self, "_stream_callback", None) is not None
+        return (self.stream_delta_callback is not None or getattr(self, "_stream_callback", None) is not None
+                or self._captures_assistant_text())

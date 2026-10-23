@@ -1223,11 +1223,13 @@ Noting可用notebook_show读取本任务编辑后的完整当前工作视图；�
 
 ### 8.1 父runtime联合触发与接线
 
-普通自动压缩、手动压缩、Idle入口在父runtime原生压缩接缝统一处理：在原生上下文被压缩前冻结Active前缀和Anchor，取得Noting admission后启动后台child，同时走原生compaction；不等待整理结束。父压缩原本必须执行时，Noting准入失败也不能阻止它。压缩失败与整理成功分开记录，不回滚合法Snapshot，不因重试压缩重复整理同一已受理范围。
+普通自动压缩、手动压缩在父runtime原生压缩接缝处理：在原生上下文被压缩前冻结Active前缀和Anchor，取得Noting admission后启动后台child，同时走原生compaction；不等待整理结束。父压缩原本必须执行时，Noting准入失败也不能阻止它。压缩失败与整理成功分开记录，不回滚合法Snapshot，不因重试压缩重复整理同一已受理范围。
 
-Force继续使用现行从ResolvedContextWindow与原生阈值推导的余量公式和能力检查，不重新估token、不硬编码模型窗口。达到Force线先启动一次Noting。现有同Anchor去重与已提交Force Snapshot检查不足以挡住in-flight期间新Anchor：必须在同一admission写事务内，以当前有效路径中最新成功提交的compaction边界（无则Conversation起点）为区间，检查该区间是否已有Force admission，并原子登记本次占用；所有联合入口共享此谓词。区间占用保存在现有admission所属的runtime压缩区间身份上，不能只依赖Anchor是否仍在展示路径；rewind不能通过让Anchor失效清掉这份占用。区间内换Anchor、child结束或失败均不解除；后续手动／自动／Idle达到压缩条件仅执行对应原生压缩。只有成功compaction形成新边界后，新区间才可再次整理；rewind使旧Anchor失效时仍不得在未成功压缩的高占用区间补起任务，先交原生压缩路径。Noting失败照常释放运行资源但保留区间占用证据，压缩仍可前进；不得越过Force空间边界补起更晚的大任务。
+**Idle时序修订（用户确认，2026-10-23）：** 仅Idle入口取消Noting与父full compaction并发启动，先运行Noting，正常`finish_noting`结束并通过Commit Gate提交Notebook后，才请求父原生full compaction；对应Framework Message须在本次compaction之后注入，不能先被它压入摘要。Noting任何非正常结束均不触发这次Idle full compaction，包括一般API失败、原生每Turn迭代预算／50调用预算用尽、五Turn用尽及context overflow。既有预算／溢出兜底仍提交合法工作态并按原生有效pointer规则投递Framework；所有自动强制而非正常结束的Framework必须明确Notebook非正常结束。**用户另明确确认：一般API错误可以没有新快照**，保留无新Snapshot的失败Framework，不因本次修订将所有错误变为快照提交。原生必须执行的自动／手动压缩及Force机制不因本条扩大变更；压缩自身失败不回滚已提交的合法Notebook，通知沿既有安全接缝处理。此段记录已确认契约，实施与验证状态只查根CLAUDE。
 
-Idle只在Main结束、仍空闲达到delay且实际占用达到threshold时进入联合流程；Main新Turn取消等待，Noting/其他child活动不重置Main计时。沿既有daemon timer与owner恢复，不新建调度器。四个入口均在Noting freeze／admission副作用前复用D01最近一次实际Main请求来源判据：已证External只拒绝Noting，必须进行的父原生压缩照常，History与独立Scheduler不受影响；未知来源沿旧规则，不新增拒绝分支。compression fence、当前route与profile验证继续复用。普通触发的去重以现有admission/anchor为基础，不能给每个入口造各自的后台队列。
+Force继续使用现行从ResolvedContextWindow与原生阈值推导的余量公式和能力检查，不重新估token、不硬编码模型窗口。达到Force线先启动一次Noting。现有同Anchor去重与已提交Force Snapshot检查不足以挡住in-flight期间新Anchor：必须在同一admission写事务内，以当前有效路径中最新成功提交的compaction边界（无则Conversation起点）为区间，检查该区间是否已有Force admission，并原子登记本次占用；所有联合入口共享此谓词。区间占用保存在现有admission所属的runtime压缩区间身份上，不能只依赖Anchor是否仍在展示路径；rewind不能通过让Anchor失效清掉这份占用。区间内换Anchor、child结束或失败均不解除；后续手动／自动达到压缩条件仅执行对应原生压缩。Idle因同区间或同Anchor已有Noting而不新建child时，2026-10-23用户逐项确认按已有任务状态处理：仍在运行则等它正常提交后再压缩；已正常提交则可以压缩；失败或强制结束不做这次Idle压缩。不得仅凭无新child跳过保护或永远不压缩；沿既有Conversation／压缩区间归属与当前任务状态复用，不重复启动Noting。用户随后明确总原则：Idle compaction之前相应Noting必须成功，仅限Idle，其它compaction保持原有行为。因此External等无法运行Noting的情况不允许直接Idle compaction，不设无成功Noting的Idle例外。只有成功compaction形成新边界后，新区间才可再次整理；rewind使旧Anchor失效时仍不得在未成功压缩的高占用区间补起任务，先交原生压缩路径。Noting失败照常释放运行资源但保留区间占用证据，必须进行的原生压缩仍可前进；不得越过Force空间边界补起更晚的大任务。
+
+Idle只在Main结束、仍空闲达到delay且实际占用达到threshold时进入联合流程；Main新Turn取消等待，Noting/其他child活动不重置Main计时。沿既有daemon timer与owner恢复，不新建调度器。四个入口均在Noting freeze／admission副作用前复用D01最近一次实际Main请求来源判据：已证External拒绝Noting，非Idle的父原生压缩照常；Idle必须满足相应Noting正常成功前提，无法整理则不Idle压缩。History与独立Scheduler不受影响；未知来源沿旧规则，不新增拒绝分支。compression fence、当前route与profile验证继续复用。普通触发的去重以现有admission/anchor为基础，不能给每个入口造各自的后台队列。
 
 Force admission仍复用现有Framework producer发出接纳通知；只在成功compaction后将该dispatch通知从当前上下文退休，原持久记录保留审计；失败／no-op压缩不使它过期。External拒绝仍复用现有Framework producer与同runtime／Conversation的suppression，不创建child、admission或Reminder。不在本次英文重写清单中的这两条通知沿用原有文案；不能因“旧Prompt替换”把producer一起删除。
 
@@ -1385,6 +1387,8 @@ The previous native Turn ended without a successful finish_noting request. Conti
 
 ### 8.13 完成注入与超限提案
 
+**渠道边界（用户确认，2026-10-23）：** Framework Message是Conversation内的非触发控制注入，不因最近active Turn来自微信或其它Messaging渠道而自动调用其adapter发送。此边界覆盖Noting完成／失败、Force接纳及External不可用等共用Framework producer；保留历史持久化和既有Web／CLI展示，不以正文匹配猜测消息类型。Deferred Reminder等其它非触发式上下文注入同样不能借用上一Turn的adapter直接发送；正常渠道入站回复、明确发送工具及既有触发Turn事件的契约分别保持。
+
 ```text
 NOTING RESULT
 Conversation: {conversation_ref}
@@ -1404,7 +1408,7 @@ CURRENT NOTEBOOK SNAPSHOT
 
 A先派发、B后派发而B先完成生效时，A后来提交不改变pointer，故不参与完成投递。A先完成并排队、之后B生效时，A旧通知在追加前被剔除。A已实际投递后B才生效，则可以随后投递B，形成正常状态推进。此规则保证投递采用现行有效结果，不承诺按任务派发顺序等待全部完成；rewind／fork的pointer重选继续按原路径逻辑，不据此凭空生成Noting完成通知。
 
-消息中的完成时间继续表达任务完成／结果提交时间，不改成派发时间，也不用于判断覆盖新旧。 `notebook_body`另含§4.5定义的Evidence coverage，使用完成事务已有DB/连接解析冻结边界；不能以Created at代替证据覆盖。保持既有safe append、busy／compression fence及live／durable同写；允许有效结果跨compaction区间晚到，不让压缩等待Noting。通知本身不启动Turn。
+消息中的完成时间继续表达任务完成／结果提交时间，不改成派发时间，也不用于判断覆盖新旧。 `notebook_body`另含§4.5定义的Evidence coverage，使用完成事务已有DB/连接解析冻结边界；不能以Created at代替证据覆盖。保持既有safe append、busy／compression fence及live／durable同写；普通自动／手动压缩允许有效结果跨compaction区间晚到，不等待Noting。Idle按§8.1的2026-10-23修订，正常提交后先compaction再注入对应Framework；所有非正常结束均不触发该Idle full compaction，已提交的强制结束Framework明确Notebook非正常结束。通知本身不启动Turn。
 
 runtime仅为将要投递的有效Snapshot计算正文Unicode字符数和现行独立条目数，三板块与Candidates均计入，来源正文/字段/ID计字符，引用不重复算条目。严格超过12,000字符或60条时，在**同一消息末尾**附以下块并展开共用指令；包装、通知、提案指令不计入Notebook字符数。不截断Notebook、不拒绝提交、不追加一个专门精简任务。
 
@@ -1521,7 +1525,7 @@ Additional prompt:
 | History消息时间/fork/跨域 | 回到正确逻辑来源，合法inactive分支可查，外域拒绝，auxiliary不冒充Main；gap补批不重复／不切路由，语法错/索引失败不伪装空结果 |
 | Search/Read边界 | 真实命中邻域、诚实fallback/partial、锚点不被limit或filter去掉；极大Read单结果与批次保护均不诱导越权文件读取；旧名/旧message_id恢复明确拒绝并指向新工具 |
 | Scheduler写入到投递 | 时间解析正确，instant idle/busy两路，ACK失败不丢失；改期/删除/暂停并发不旧定义复活；工具结果／instant携带24小时空档提示，排除本次发生、正常有覆盖不加提示 |
-| 联合触发与费用数据 | 普通并行、Force提前一次、Idle双条件；完整注入与热缓存机会真实可观测，不用静态Prompt推断节费 |
+| 联合触发与费用数据 | 普通自动／手动并行、Force提前一次；Idle双条件后正常Noting提交→原生压缩完成→Framework，非正常结束不发起Idle full compaction；完整注入与热缓存机会真实可观测，不用静态Prompt推断节费 |
 | Persistence | slash与超限共用指令；Main主动提案但写入仍明确批准；Noting只依据Conversation真实分发轨迹结算 |
 
 ## 10. 文档处置与保留依据

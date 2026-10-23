@@ -15,9 +15,11 @@ def completion_body(snapshot, *, termination, summary, settings, profile_home, d
     entry_count = sum(len(entries) for entries in snapshot["payload"].values())
     kind = termination["type"]
     if kind == "forced":
-        summary += " The Noting execution budget ended; some Noting responsibilities may remain unfinished."
+        summary += (" Notebook maintenance did not finish normally: the Noting execution budget ended; "
+                    "some Noting responsibilities may remain unfinished.")
     elif kind == "context_overflow":
-        summary += " The context window was exhausted; some Noting responsibilities may remain unfinished."
+        summary += (" Notebook maintenance did not finish normally: the context window was exhausted; "
+                    "some Noting responsibilities may remain unfinished.")
     result = (
         f"NOTING RESULT\nConversation: {snapshot['conversation_ref']}\n"
         f"Termination: {kind}\nSummary: {summary}\n\nCURRENT NOTEBOOK SNAPSHOT\n{body}"

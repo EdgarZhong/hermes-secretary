@@ -2,7 +2,8 @@
 
 The existing Main lifecycle, native usage and daemon timer feed one admission owner.
 Admission's durable native-boundary identity survives Anchor changes, failed children
-and rewind. Parent compression proceeds independently of background Noting results.
+and rewind. Native manual/auto compression proceeds independently of background
+Noting results; Idle compression follows a normally committed Notebook update.
 """
 
 import contextvars
@@ -54,6 +55,8 @@ class NotingDecision:
     reason: str = ""
     admission: Optional[NotingAdmission] = None
     compaction_due: bool = False
+    existing_admission: Optional[NotingAdmission] = None
+    reuse_status: str = ""
 
 
 def _skip(reason: str) -> NotingDecision:
@@ -384,7 +387,8 @@ def _freeze_and_admit(db: Any, conversation_ref: str, *, kind: str, frozen_ident
             return _skip("local_disabled")
         interval = db.noting_compaction_interval_conn(conn, conversation_ref)
         if db.noting_force_occupied_conn(conn, conversation_ref, interval):
-            return _skip("force_interval_occupied")
+            row = db.noting_existing_admission_conn(conn, conversation_ref, interval)
+            return _existing_decision(db, row, "force_interval_occupied")
         identity = frozen_identity or db.get_foreground_anchor_conn(conn, conversation_ref)
         if identity is None:
             return _skip("no_frozen_anchor")
@@ -392,12 +396,21 @@ def _freeze_and_admit(db: Any, conversation_ref: str, *, kind: str, frozen_ident
             return _skip("anchor_invalid")
         admission_id = db.noting_admit_conn(conn, conversation_ref, identity["message_uid"], kind=kind)
         if admission_id is None:
-            return _skip("same_anchor_admitted")
+            row = db.noting_existing_admission_conn(conn, conversation_ref, interval, anchor=identity["message_uid"])
+            return _existing_decision(db, row, "same_anchor_admitted")
         return NotingDecision("admit", "admitted", NotingAdmission(
             admission_id, conversation_ref, identity["message_uid"], kind, owning_profile(db),
             TASK_PROFILE_NOTING, interval,
         ))
     return db._execute_write(admit)
+
+
+def _existing_decision(db, row, reason):
+    admission = None if row is None else NotingAdmission(
+        row["admission_id"], row["conversation_ref"], row["anchor_message_uid"], row["kind"],
+        owning_profile(db), TASK_PROFILE_NOTING, row["compression_interval_id"],
+    )
+    return NotingDecision("skip", reason, existing_admission=admission)
 
 
 def _threshold_skip(measurement: ContextMeasurement) -> Optional[NotingDecision]:
@@ -542,14 +555,20 @@ def maybe_admit_force_from_pressure(agent: Any, measured_tokens: Any, *, message
     return decision.action + (":" + decision.reason if decision.reason else "")
 
 
-def _dispatch_joint_decision(parent, decision, messages, expected_conversation_ref):
+def _dispatch_joint_decision(parent, decision, messages, expected_conversation_ref, *, after_normal_commit=None):
     if decision.reason == "external_main_execution":
         from secretary.framework_messages import publish_external_execution_notice
         publish_external_execution_notice(parent, expected_conversation_ref=expected_conversation_ref)
     if decision.action != "admit":
+        if decision.existing_admission is not None and after_normal_commit is not None:
+            from secretary.noting_child import reuse_noting_for_idle
+            return replace(decision, reuse_status=reuse_noting_for_idle(
+                parent, decision.existing_admission, after_normal_commit,
+            ))
         return decision
     from secretary.noting_child import spawn_noting_task
-    spawn_noting_task(parent, decision.admission, parent_active_messages=messages)
+    spawn_noting_task(parent, decision.admission, parent_active_messages=messages,
+                      **({"after_normal_commit": after_normal_commit} if after_normal_commit is not None else {}))
     if decision.admission.kind == "force":
         from secretary.framework_messages import publish_framework_message
         publish_framework_message(
@@ -563,7 +582,7 @@ def _dispatch_joint_decision(parent, decision, messages, expected_conversation_r
 
 def prepare_joint_noting(parent, *, trigger, measurement=None, messages=None, now=None,
                           expected_period=None):
-    """Freeze/admit/spawn once before native compression; never wait for the child.
+    """Freeze/admit/spawn once; only Idle defers native compression until normal commit.
 
     Auto/manual callers invoke at their admitted native pre-compression seam. Idle is
     called by the existing timer; Force uses the native pressure measurement. This
@@ -602,7 +621,14 @@ def prepare_joint_noting(parent, *, trigger, measurement=None, messages=None, no
                 identity = _freeze_and_log_attempt(db, ref, trigger)
                 decision = (_skip("no_frozen_anchor") if identity is None else
                             _freeze_and_admit(db, ref, kind=trigger, frozen_identity=identity))
-        return _dispatch_joint_decision(parent, decision, messages, ref)
+        after_normal_commit = None
+        if trigger == "idle" and (decision.action == "admit" or decision.existing_admission is not None):
+            from secretary.noting_compact import idle_compaction_after_commit
+            after_normal_commit = idle_compaction_after_commit(
+                parent, conversation_ref=ref, threshold_tokens=settings_for_db(db).idle_threshold_tokens,
+                admission=decision.admission or decision.existing_admission,
+            )
+        return _dispatch_joint_decision(parent, decision, messages, ref, after_normal_commit=after_normal_commit)
     except Exception:
         logger.warning("Noting joint preparation failed for %s", trigger, exc_info=True)
         return (replace(decision, action="skip", reason="trigger_error")
@@ -611,9 +637,11 @@ def prepare_joint_noting(parent, *, trigger, measurement=None, messages=None, no
 
 def run_joint_cycle(parent, *, trigger, native_compact, measurement=None, messages=None,
                     now=None, expected_period=None):
-    """The native callback runs even if Noting is disabled, denied, occupied or failed."""
+    """Non-Idle native callbacks remain independent; Idle uses its normal-commit request."""
     decision = prepare_joint_noting(parent, trigger=trigger, measurement=measurement,
                                     messages=messages, now=now, expected_period=expected_period)
+    if trigger == "idle":
+        return decision, None
     return decision, native_compact()
 
 
@@ -657,8 +685,8 @@ def _run_idle_event(parent: Any, db: Any, conversation_ref: str, *,
                     now: Optional[float] = None, expected_period=None) -> str:
     """Run a real timer event or one missed-deadline catch-up through §4.8.
 
-    Re-reads the parent's native usage for Idle's length condition and spawns the
-    child off-thread before requesting parent compression; never raises into the poller.
+    Re-reads the parent's native usage and spawns the child off-thread. Its normal
+    Snapshot commit requests parent compression before completion publication.
     """
     from secretary.noting_timers import conversation_timer_lock
     try:
@@ -676,18 +704,9 @@ def _run_idle_event_locked(parent, db, conversation_ref, *, now, expected_period
     if main_turn_running(parent):
         return "skip:not_idle"
     decision = prepare_joint_noting(parent, trigger="idle", now=now, expected_period=expected_period)
-    # Idle compaction belongs to the parent, even when a Force child already owns
-    # this interval. An External rejection must never spawn a Noting child.
-    if decision.compaction_due:
-        from secretary.noting_compact import request_parent_compaction
-        settings = settings_for_db(db)
-        try:
-            result = request_parent_compaction(parent, threshold_tokens=settings.idle_threshold_tokens)
-            logger.info("Joint Idle native compaction outcome: %s", getattr(result, "status", result))
-        except Exception:
-            logger.warning("Joint Idle native compaction request failed", exc_info=True)
-        return "admitted" if decision.action == "admit" else "skip:" + decision.reason
-    return "skip:" + decision.reason
+    if decision.reuse_status:
+        return decision.reuse_status
+    return "admitted" if decision.action == "admit" else "skip:" + decision.reason
 
 
 def _freeze_and_log_attempt(db: Any, conversation_ref: str, kind: str):

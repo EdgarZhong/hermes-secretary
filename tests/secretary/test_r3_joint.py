@@ -191,7 +191,7 @@ def test_external_execution_fact_overrides_transport_shape_before_freeze(runtime
 
 
 @pytest.mark.parametrize("failure", ["freeze", "spawn"])
-def test_idle_native_compaction_survives_noting_preparation_failure(runtime, monkeypatch, failure):
+def test_idle_noting_preparation_failure_never_requests_compaction(runtime, monkeypatch, failure):
     parent, db, calls = runtime
     parent.context_compressor.update_from_response({"prompt_tokens": 50000})
     db.noting_idle_turn_finished(ref_of(db, "s"), 1000)
@@ -205,7 +205,7 @@ def test_idle_native_compaction_survives_noting_preparation_failure(runtime, mon
     parent.request_context_compaction = lambda **kwargs: native.append(kwargs)
     outcome = rt._run_idle_event(parent, db, ref_of(db, "s"), now=2000)
     assert outcome == "skip:trigger_error"
-    assert native == [{"relevant_threshold_tokens": 1, "wait_seconds": 5.0}]
+    assert native == []
 
 
 def test_rewind_across_successful_boundary_does_not_reopen_its_force_interval(runtime):

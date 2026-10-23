@@ -78,6 +78,8 @@ def assert_requests(parent, wires, child):
         assert wire["messages"][:position] == wires[0]["messages"][:position]
         assert wire["messages"][position + 1]["content"].startswith("<noting-task>")
         assert wire.get("reasoning_effort") == "high"
+        assert wire["max_completion_tokens"] == 32000
+        assert "max_tokens" not in wire
     assert len(set(positions)) == 1
     audit = child._secretary_noting_dynamic_request_history
     # Network retries reuse the same kwargs; they do not re-build or re-price a request.
@@ -114,6 +116,24 @@ def test_maintain_history_show_continuation_finish_keep_fixed_declaration(kimi_p
     assert all(row.get("content") != "Plan a visit" for row in durable)
     assert database.get_session(outcome.child_session_id)["end_reason"] is not None
     assert child.client is None and child._owns_session_db is False
+
+
+def test_final_sdk_json_keeps_dynamic_prefix_and_schemas_with_new_output_field(kimi_parent):
+    from tests.agent.test_kimi_output_tokens_wire import sdk_wire
+
+    parent, sdk, wires, children = kimi_parent
+    sdk.side_effect = [tool_response("finish_noting", {"reason": "Reviewed without changes."}), response("Done.")]
+    outcome = run_task(parent)
+    assert outcome.committed, outcome
+    assert_requests(parent, wires, children[0])
+    for request in wires:
+        kwargs = {key: value for key, value in request.items() if key != "stream"}
+        wire = sdk_wire(kwargs, stream=bool(request.get("stream")))
+        assert wire["max_completion_tokens"] == request["max_completion_tokens"] == 32000
+        assert "max_tokens" not in wire
+        assert wire["messages"] == request["messages"]
+        assert wire["tools"] == request["tools"]
+        assert wire["reasoning_effort"] == request["reasoning_effort"] == "high"
 
 
 @pytest.mark.parametrize("raw_change", ["adjacent_users", "missing_tool_id", "codex_nudge"])

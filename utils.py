@@ -754,6 +754,39 @@ def model_forces_max_completion_tokens(model: str) -> bool:
     return m.startswith(("gpt-4o", "gpt-4.1", "gpt-5", "o1", "o3", "o4"))
 
 
+def is_official_kimi_chat_url(base_url: str) -> bool:
+    """Confirmed Kimi Code / Moonshot Chat API bases, independent of the model slug."""
+    try:
+        parsed = _parse_base_url(base_url)
+        origin = base_url_origin(base_url)
+    except ValueError:
+        return False
+    if not parsed or origin[0] != "https" or origin[2] != 443:
+        return False
+    if parsed.username is not None or parsed.password is not None or parsed.query or parsed.fragment:
+        return False
+    paths = {
+        "api.kimi.com": {"/coding", "/coding/v1"},
+        "api.moonshot.ai": {"/v1"},
+        "api.moonshot.cn": {"/v1"},
+    }
+    return parsed.path.rstrip("/") in paths.get(origin[1], set())
+
+
+def normalize_kimi_chat_output_overrides(base_url: str, overrides: dict) -> dict:
+    """Rename official Kimi wire caps without changing caller override precedence or state."""
+    if not is_official_kimi_chat_url(base_url):
+        return overrides
+    normalized = dict(overrides)
+    if isinstance(normalized.get("extra_body"), dict):
+        normalized["extra_body"] = dict(normalized["extra_body"])
+    for fields in (normalized, normalized.get("extra_body")):
+        if isinstance(fields, dict) and "max_tokens" in fields:
+            legacy_cap = fields.pop("max_tokens")
+            fields.setdefault("max_completion_tokens", legacy_cap)
+    return normalized
+
+
 def base_url_origin(base_url: str) -> tuple[str, str, int]:
     """``(scheme, hostname, effective_port)`` for a base URL; ``("", "", 0)`` on no host/bad port.
 

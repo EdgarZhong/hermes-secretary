@@ -731,35 +731,40 @@ class SessionMessagesMixin:
         return row[0] if row else None
 
     def _carry_parent_timestamps(self, conn, parent_session_id: str, messages: List[Dict[str, Any]]) -> None:
-        """Adopt the durable parent row's timestamp onto carried handoff rows so the re-inserted child row keeps
-        the original's display identity (see _display_dedupe_key). Idempotent; never overwrites a timestamp the
-        dict already carries; rows with no match keep their caller-supplied/now_ts value.
+        """Restore missing authoring times BEFORE retiring the parent's active rows.
 
-        Content identity = _display_dedupe_key's content key minus the timestamp (role, encoded content,
-        tool_call_id, encoded tool_calls, tool_name). Donors are the parent's ACTIVE rows, consumed first-match-wins in id
-        order so two identical-content turns cannot both grab the same parent row. Best-effort: on any error
-        the insert falls back to today's behavior (publish-time stamp) and never breaks publish.
+        Durable UIDs name exact occurrences, including identical-content replies and pruned payloads.
+        Only legacy copies without a UID use the historical content match, consuming each donor once.
+        Explicit timestamps remain authoritative; an unknown UID never borrows another occurrence's time.
         """
         try:
-            candidates = [i for i, msg in enumerate(messages)
-                if isinstance(msg, dict) and coerce_epoch(msg.get("timestamp"), field="message timestamp") is None]
-            if not candidates:
+            if not any(isinstance(msg, dict) and coerce_epoch(msg.get("timestamp"), field="message timestamp") is None
+                       for msg in messages):
                 return
             donors: Dict[Tuple[Any, ...], List[Any]] = {}
+            by_uid = {}
             for row in conn.execute(
-                    "SELECT id, role, content, timestamp, tool_call_id, tool_calls, tool_name FROM messages "
+                    "SELECT id, message_uid, role, content, timestamp, tool_call_id, tool_calls, tool_name FROM messages "
                     "WHERE session_id = ? AND active = 1 ORDER BY id", (parent_session_id,)).fetchall():
                 donors.setdefault((row["role"], row["content"], row["tool_call_id"], row["tool_calls"],
-                    row["tool_name"]), []).append(row["timestamp"])
-            for i in candidates:
-                msg = messages[i]
+                    row["tool_name"]), []).append(row)
+                if row["message_uid"]:
+                    by_uid[(row["role"], row["message_uid"])] = row
+            consumed = set()
+            for msg in messages:
+                if not isinstance(msg, dict):
+                    continue
                 tool_calls = _parse_tool_calls(msg.get("tool_calls"))
                 key = (msg.get("role", "unknown"), self._encode_content(msg.get("content")),
                     msg.get("tool_call_id"), json.dumps(tool_calls) if tool_calls else None,
                     _scrub_surrogates(msg.get("tool_name")))
-                queue = donors.get(key)
-                if queue:
-                    msg["timestamp"] = queue.pop(0)
+                uid = message_uid_or_none(msg)
+                donor = (by_uid.get((msg.get("role"), uid)) if uid else
+                         next((row for row in donors.get(key, ()) if row["id"] not in consumed), None))
+                if donor is not None:
+                    consumed.add(donor["id"])
+                    if coerce_epoch(msg.get("timestamp"), field="message timestamp") is None:
+                        msg["timestamp"] = donor["timestamp"]
         except Exception:
             return  # Best-effort: a failed carry falls back to the publish-time stamp, never breaks publish.
 
@@ -950,6 +955,7 @@ class SessionMessagesMixin:
         covered_set.update(carried_ids)
         unseen = [row_id for row_id in active_ids if row_id not in covered_set]
         covered_active = [row_id for row_id in active_ids if row_id in covered_set]
+        self._carry_parent_timestamps(conn, session_id, compacted_messages)
         rewind_ids = list(carried_ids)
         if tail_count > 0:
             rewind_ids += self._tail_originals(covered_active, tail_count, merged_away)
@@ -962,10 +968,6 @@ class SessionMessagesMixin:
                 f"WHERE session_id = ? AND id IN ({placeholders})",
                 [session_id, *rewind_ids])
         conn.execute(_ARCHIVE_ACTIVE_SQL, (session_id,))
-        # Same identity carry as publish_compression_child (#59661): carried tail copies keep the
-        # durable row's timestamp so display dedupe still collapses generations. Donors are active-only;
-        # the rewound/archived originals above never donate, so this is a no-op for a clean compaction.
-        self._carry_parent_timestamps(conn, session_id, compacted_messages)
         inserted, tool_calls_total = self._insert_message_rows(conn, session_id, compacted_messages)
         if unseen:
             _ids, unseen_tool_calls = self._tail_rows_after_watermark(
@@ -1031,6 +1033,7 @@ class SessionMessagesMixin:
                     conn, session_id, compacted_messages, proved[0], tail_count=tail_count,
                     carried_messages=carried_messages, patched_model_config=patched_model_config, patch=patch,
                     merged_away=proved[1])
+            self._carry_parent_timestamps(conn, session_id, compacted_messages)
             tail_ids, tail_tool_calls = ([], 0) if watermark is None else self._tail_rows_after_watermark(
                 conn, "SELECT id, tool_calls FROM messages WHERE session_id = ? AND active = 1 AND id > ? ORDER BY id",
                 (session_id, int(watermark)))
@@ -1054,10 +1057,6 @@ class SessionMessagesMixin:
                 conn.execute(f"{_ARCHIVE_ACTIVE_SQL} AND id NOT IN ({placeholders})", [session_id, *rewind_ids])
             else:
                 conn.execute(_ARCHIVE_ACTIVE_SQL, (session_id,))
-            # Same identity carry as publish_compression_child (#59661): carried tail copies keep the
-            # durable row's timestamp so display dedupe still collapses generations. Donors are active-only;
-            # the rewound/archived originals above never donate, so this is a no-op for a clean compaction.
-            self._carry_parent_timestamps(conn, session_id, compacted_messages)
             inserted, tool_calls_total = self._insert_message_rows(conn, session_id, compacted_messages)
             if tail_ids:
                 self._clone_message_rows(conn, tail_ids)

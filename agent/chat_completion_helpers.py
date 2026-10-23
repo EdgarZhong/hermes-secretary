@@ -55,7 +55,7 @@ from agent.stream_single_writer import claim_stream_writer, stream_writer_is_cur
 from agent.output_identity import accept_response, bind_message, prepare_message
 from tools.terminal_tool_lifecycle import is_persistent_env
 from secretary.noting_runtime import dispatch_main_model_request
-from utils import base_url_host_matches, base_url_hostname, env_float, env_int
+from utils import base_url_host_matches, base_url_hostname, env_float, env_int, normalize_kimi_chat_output_overrides
 
 logger = logging.getLogger(__name__)
 _OPENROUTER_PROVIDER_SORT_VALUES = {"throughput", "latency", "price"}
@@ -1503,7 +1503,7 @@ def _build_chat_completions_kwargs(agent, api_messages, tools_for_api, reasoning
         tools=tools_for_api, base_url=agent.base_url, timeout=agent._resolved_api_call_timeout(),
         max_tokens=agent.max_tokens, ephemeral_max_output_tokens=_ephemeral_out,
         max_tokens_param_fn=agent._max_tokens_param, reasoning_config=reasoning_config,
-        request_overrides=request_overrides, session_id=getattr(agent, "session_id", None),
+        request_overrides=normalize_kimi_chat_output_overrides(agent.base_url, request_overrides), session_id=getattr(agent, "session_id", None),
         cache_scope_id=cache_scope_id, ollama_num_ctx=agent._ollama_num_ctx,
         provider_preferences=_prefs or None, openrouter_min_coding_score=agent.openrouter_min_coding_score,
         supports_reasoning=agent._supports_reasoning_extra_body(),

@@ -502,7 +502,7 @@ def test_framework_display_failures_owner_and_headless_boundaries(parent, db, mo
 @pytest.mark.asyncio
 @pytest.mark.parametrize('boundary', ['current', 'new_owner', 'new_ref', 'new_generation',
                                     'same_owner_copy', 'new_physical', 'same_owner_rotation', 'edited_uid'])
-async def test_gateway_framework_real_commit_checks_owner_at_async_send(parent, db, boundary):
+async def test_gateway_framework_real_commit_never_sends_to_transport(parent, db, boundary):
     import threading
     from types import SimpleNamespace
     from gateway.run_turn_runner import TurnRunner
@@ -557,8 +557,8 @@ async def test_gateway_framework_real_commit_checks_owner_at_async_send(parent, 
         parent._session_messages[-1]['content'] = 'changed content with old UID'
     for coroutine in scheduled:
         await coroutine
-    expected = ['first', 'second'] if boundary in {'current', 'same_owner_copy', 'same_owner_rotation'} else []
-    assert [row[1] for row in sent] == (['first'] if boundary == 'edited_uid' else expected)
+    assert not scheduled
+    assert not sent
     assert not ctx._cleanup_msg_ids
     assert len(db.get_messages('S17')) == 4  # Historical physical rows survive native rotation.
 

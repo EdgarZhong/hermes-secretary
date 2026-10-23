@@ -136,7 +136,7 @@ from agent.codex_responses_adapter import (
 )
 from agent.tool_guardrails import ToolGuardrailDecision, append_toolguard_guidance, toolguard_synthetic_result
 from hermes_cli.observability.shared_metrics_harness import record_guardrail_decision, record_guardrail_warnings
-from utils import base_url_host_matches, base_url_hostname, env_float, model_forces_max_completion_tokens
+from utils import base_url_host_matches, base_url_hostname, env_float, is_official_kimi_chat_url, model_forces_max_completion_tokens
 
 
 _MAX_TOOL_WORKERS = 8
@@ -676,9 +676,10 @@ class AIAgent(
         return AIAgent._model_requires_responses_api(model)
 
     def _max_tokens_param(self, value: int) -> dict:
-        """``max_completion_tokens`` for newer OpenAI families (and Azure / Copilot serving them), else
-        ``max_tokens``. URL-first, then model-name fallback for third-party endpoints fronting those models."""
+        """Official Kimi Chat and OpenAI routes use ``max_completion_tokens``.
+        Keep the OpenAI-family model fallback for third-party endpoints fronting those models."""
         if (self._is_direct_openai_url() or self._is_azure_openai_url() or self._is_github_copilot_url()
+                or is_official_kimi_chat_url(getattr(self, "base_url", ""))
                 or model_forces_max_completion_tokens(self.model)):
             return {"max_completion_tokens": value}
         return {"max_tokens": value}

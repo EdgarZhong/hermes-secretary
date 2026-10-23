@@ -34,6 +34,7 @@ from gateway.stream_consumer_fences import ensure_closed_code_fences
 from gateway.stream_consumer_transport import StreamTransportMixin
 from gateway.stream_consumer_fallback import StreamFallbackMixin
 from gateway.stream_consumer_think import StreamThinkFilterMixin
+from gateway.stream_consumer_messages import OrderedMessage, OrderedMessagesMixin
 
 logger = logging.getLogger("gateway.stream_consumer")
 
@@ -86,6 +87,7 @@ class _Tick:
     got_reopen_seed: bool = False
     approval_boundary: Optional[tuple] = None  # (future, cancelled_flag)
     commentary_text: Optional[str] = None
+    ordered_message: Any = None
     # Set by _push_update for _finalize_turn / _end_segment.
     update_visible: bool = False
     draft_final_fresh_send: bool = False
@@ -96,7 +98,7 @@ class _Tick:
         return not self.got_done and not self.got_segment_break and self.commentary_text is None
 
 
-class GatewayStreamConsumer(StreamTransportMixin, StreamFallbackMixin, StreamThinkFilterMixin):
+class GatewayStreamConsumer(StreamTransportMixin, StreamFallbackMixin, StreamThinkFilterMixin, OrderedMessagesMixin):
     """Async consumer that progressively edits a platform message with streamed tokens.
     Usage: ``agent.stream_delta_callback = consumer.on_delta``; ``create_task(consumer.run())``;
     after the agent finishes ``consumer.finish()`` then ``await task`` for the final edit."""
@@ -552,6 +554,9 @@ class GatewayStreamConsumer(StreamTransportMixin, StreamFallbackMixin, StreamThi
                     await self._abandon_native_stream()
                     return
                 tick = self._drain_queue()
+                if tick.ordered_message is not None:
+                    await self._deliver_message(tick.ordered_message)
+                    continue
 
                 # Boundary produces its own finalize and resets state, so it must
                 # run before got_done/segment_break processing.
@@ -594,6 +599,8 @@ class GatewayStreamConsumer(StreamTransportMixin, StreamFallbackMixin, StreamThi
                     await self._push_update(tick)
 
                 if tick.got_done:
+                    if self._confirm_ordered_final():
+                        return
                     await self._finalize_turn(tick)
                     return
 
@@ -662,6 +669,9 @@ class GatewayStreamConsumer(StreamTransportMixin, StreamFallbackMixin, StreamThi
                 return tick
             if item is _DONE:
                 tick.got_done = True
+                return tick
+            if isinstance(item, OrderedMessage):
+                tick.ordered_message = item
                 return tick
             if item is _NEW_SEGMENT:
                 tick.got_segment_break = True

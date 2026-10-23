@@ -2,6 +2,112 @@
 
 维护实际部署、故障处理、验证与回滚点；步骤和稳定布局见[部署SOP](cloud-deployment-sop.md)，当前任务只在根[CLAUDE](../CLAUDE.md)。以下时间均为Asia/Shanghai；PID、指纹和测试结论只对应记录时点，不代表实时状态。凭据、令牌、原始私人材料不写入本文件。
 
+## 2026-10-24 · 已审修补提交授权
+
+用户明确允许提交此前已亲审的后端与独立前端修补，按仓库规则提交后自动push，不部署。后端包含微信正文／Redirect／Framework、Idle成功前置、时间继承、Kimi wire／标题及对应测试与文档；前端包含竖屏／版本、此前已授权Context三文件及时间回归。原有未跟踪调查／算法稿不混入，凭据、ignored原始实验及APK不入Git。测试与冻结10检查复用上一节当前版本有效证据，提交前核对暂存范围及敏感内容。
+
+## 2026-10-23 · 并行修补主会话集成审查（本地，未部署）
+
+**微信新包主会话亲审：** 完整正式消息按原生`message_uid`进入既有consumer FIFO；Redirect沿原生持久化checkpoint取得独立清洗后的半截正文，和原Redirected通知合并排队。捕获不冒充展示／发送成功；同文不同身份分别发送，同身份最终回退依成功回执去重，未成功的final保留正式发送。已亲读writer／Turn／generation隔离、连续纠正合并、30秒防抖、实际发送在途顺序及最终消息身份接线；15文件SHA与交回证据一致。最终6文件56项通过（新增整链路12项），原生Redirect兼容3项通过；日志`.hermes-dev/weixin-message-final-integrated.log`及`weixin-message-native-redirect-compat.log`。Framework禁外发回归保持，来源追加与Thinking／空占位／Timeline不改。外部超时结果不确定时仍是既有最佳努力投递，不宣称外部exactly-once，未增持久重试队列。
+
+**合并版本检查：** 主会话使用独立临时index覆盖当前tracked修改及本轮10个新增Python文件，冻结10项检查全部通过，health 38代码文件、0 blocking／0 advisory；真实暂存区未改。范围与完整日志在`.hermes-dev/repair-review-20261023-final/check-paths.txt`、`checks.log`。旧包有效证据复用，未为review重跑无关大套。随后仅新增微信配置边界测试，生产代码14文件SHA保持；该测试最终版本及微信包冻结10再次通过，主会话核新SHA收据一致。
+
+**微信最终边界补核：** 真实微信adapter不支持消息编辑／native streaming，原有能力门禁使默认、显式off、显式on三种配置均不向文本consumer传delta，因此不会与UID完整消息路径双发；无需生产修补。三种配置各通过真实SDK流→原生运行→consumer→微信adapter模拟发送，Turn仍active时两条同文完整消息已发送，独立同文final第三条照发；Telegram实际adapter显式streaming保留原delta接线。最终5文件31项通过，其中整链路15项，日志`.hermes-dev/weixin-message-explicit-streaming.log`；更新收据`.hermes-dev/weixin-message-source.sha256`全15文件核验通过。前一集成56项与原生兼容3项对应未变生产代码继续有效，范围重叠不加总。没有真实渠道／生产UI验收。
+
+**撤回后验证：** 主会话在独立前端运行`npm run build`成功（exit 0），日志`.hermes-dev/gateway-origin-display-20261023/build-after-cancellation.log`。恢复原来源显示后的源码可构建；没有重新打包APK或改变来源追加逻辑。
+
+**最新撤回（覆盖本节下方来源显示候选）：** 用户明确“不用再尝试前端消除这层包裹，留着，也不用改包裹追加逻辑”。主会话先核四文件与候选SHA完全一致，再精确撤回`attachments.ts`／`projection.ts`接线、移除本任务新建`gateway-origin.ts`／测试；两 tracked 文件diff为空，原时间／Context／APK修补保持。下方337／19项及构建收据只记录取消前候选，不冒充仍在交付的功能。原始包裹追加逻辑不改；微信正式正文两项继续实施。本地dist按撤回后源码重建，不改写既有APK及原收据。
+
+**主会话审查范围：** 已亲读Kimi wire helper、Main／auxiliary构造和override／fallback优先级，Idle真实admission／child／Snapshot关联、正常提交回调／原生完成等待、非关键metadata故障保Snapshot、Framework发布竞态，以及时间继承的归档前事务／UID匹配。Kimi8文件及时间包3文件SHA均匹配各包有效证据；标题、APK竖屏和Framework误外发沿本节前文已审证据，不为审查机械重跑无关套件。没有新增真实模型调用、渠道发送或生产写入，没有提交／推送／部署。
+
+**Idle当前集成验证：** 主会话按正常成功前置条件与发布顺序的交叉边界，执行`test_idle_noting_commit_order.py`、`test_idle_noting_reuse.py`、`test_context_compaction_request.py`，共79项通过（19＋24＋36），0失败，24.0秒；官方PM解释器、正式`scripts/run_tests.sh`及隔离测试环境，日志`.hermes-dev/repair-review-20261023-idle-integration.log`。这是当前最终复用包与原生接线的集成证据，不用更早含失败的`-final-targeted.log`充当全绿。旧joint两项断言在未改HEAD复现；旧Snapshot ID正文断言亦有基线证据，不扩例外或改冻结检查。
+
+**前端Redirect来源显示：** 仅新增`src/core/gateway-origin.ts`并接入现有`attachments.userAttachmentDisplayText`／`projection.steerText`。严格识别消息起始的完整原生前缀、合法JSON字段及`platform=weixin`，保留正文内部同句／换行，其它渠道、代码引用、不完整或畸形输入保留原文；原消息对象／模型／DB不改。主会话已审实际显示接线和19项新增测试，四文件SHA核对一致。8文件337项相关测试通过，最终19项定向及typecheck通过，`npm run build`主会话执行成功；日志与收据在`.hermes-dev/gateway-origin-display-20261023/`。未浏览器／真机验收、未构建新APK；此前0.1.4竖屏包及其验包收据保持原样，不冒称包含本次新显示适配。
+
+**来源设计澄清：** 上游`0461da8e6f3`将原始JSON来源保留在每次Redirect／Steer忙时注入中，避免重写cached System Prompt或猜测delivery target；非微信专属。本项目`e88772969d`另为正常微信输入加XML，仅进`api_content`，持久`content`本来干净。前端本包只隐藏JSON来源段，不取消任何模型可见来源说明。微信及时投递／Redirect半截正文包仍在实施，其最终审查与交付证据随后续记。
+
+## 2026-10-23 · 微信Redirect正文与Timeline只读对账（调查时点，新改造随后获批）
+
+**范围与优先级：** 用户要求先核Redirect被截断正文是否正常落库／丢失及上下文保留，再核Web Timeline复现，之后讨论截断正文并入Redirected通知；Turn中途每条完整Assistant Message及时发微信的要求保持。仅只读调查与方案，确认后才改实现。通过正式首尔别名读取Alex的SQLite（`mode=ro`／`SessionDB(read_only=True)`）、日志及正式History投影函数，未发送渠道消息、调用模型或改生产数据。桌面报告为参考，其中“abort实锤半截正式正文丢失”“微信均杀Turn重开”等归因不直接接受。
+
+**真实库及恢复读取：** 当前Conversation的21:48:24 Assistant `e6d01dd2656540779b5340dc2b7dbe8b`（row11080）有396字正文，21:49:38的`4153777af92f49b2ba40d492507dffb7`（row11088）有527字正文；两条对应scheduler结果均存在。21:49:43最后Assistant row11090为61字，Gateway日志记录仅发送61字。两条完整正文均被当前原生恢复读取及`_build_gateway_agent_history`保留，`api_content`替换后仍396／527字；这是只读重建证据，不冒称取得当时下一次真实HTTP请求。证明所查完整正文并未从库丢失，而微信中途投递缺失。
+
+**截断部分的证据边界：** 21:47:51／21:48:30／21:48:41分别有row11078／11082／11084，均为零正文、`display_kind=hidden`及原生无输出占位sidecar；相邻纠正user的sidecar没有`Visible response before the interruption:`正文。日志有abort和21:48:30 Clean EOF，但Clean EOF文案对应源码条件也允许reasoning-only，故均不能单独证明已产生正式正文。现无该次原始增量留存，不能宣称“正常保存且没丢”，也不能认定报告所称丢失长度／内容。源码及虚构本地辅助验证确认：`_fire_stream_delta`只在有回调接受时记录`_current_streamed_assistant_text`，微信默认关闭streaming／interim时有正式部分输出无法被Redirect checkpoint保留的缺口；辅助验证有回调时26字进入Assistant及纠正sidecar，无回调时均无正文，不是生产事件重放。
+
+**用户追问后补核Thinking：** 21:47:33→21:47:51及21:48:30→21:48:41这两个用户消息间，真实库分别只有row11078／11084的hidden空占位，正文、reasoning／reasoning_content、reasoning_details、codex_reasoning_items及工具调用均为空；不是库中有Thinking而前端单独没显示。中间另一个21:47:51→21:48:30区间则有row11080的396字正文／1799字符reasoning及scheduler结果，须分开。源码的reasoning增量积累在请求局部`reasoning_parts`，`_fire_reasoning_delta`主要向回调转发，Redirect取消后的checkpoint仅取已缓存可见正文，不收未完成Thinking；流式取消抛出InterruptedError可跳过正常完整响应持久化。因此“模型在Thinking时被打断、已返回的Thinking未留存”是实现允许的情况，但无当次原始增量记录，无法证明这两次实际已经返回多少Thinking；也可能尚未返回增量。方案需分别审查已返回的展示Thinking与正式正文的保存，保持reasoning独立字段及原生Provider合法性，不把部分Thinking塞入Assistant正文或纠正消息正文，也不伪造未收到的推理。
+
+**Timeline对账：** 使用线上正式full／cards／details投影，按相同UID确认顺序为396字Assistant→scheduler结果→后续纠正消息→terminal调用／结果→527字Assistant→scheduler结果→61字尾段；cards只折叠工具详情，不改变正文及顺序。将用户第一长截图分段查看，所查段落正文／工具先后与上述一致；折叠Thinking卡不能仅凭外观认定空内容或未结束。尚未实测浏览器中运行时打断／重连，不把此局部匹配当全UI验收。原图未改，ignored分段查看图在`.hermes-dev/weixin-redirect-audit-20261023/`。
+
+**待确认方案：** 沿现有Redirect路径，正式正文捕获与已投递记录分开，保留think/context清理、writer fencing及未完成工具禁执行；原生Redirect checkpoint／持久化负责部分正文与纠正的顺序，Gateway在该请求收尾后取得对应正文，先完成已有中途发送，再将未外发部分并入对应Redirected通知，不因30秒ack防抖吞正文。微信开启现有完整interim正文通道，最终正文／发送回执按真实消息身份避免重复；不靠noop显示回调冒充已经投递，不复制通知文案进模型Assistant。新增部分正文进入后验证Web live→history／断线恢复的同UID与状态，不因本次截图未证实乱序就重排历史或改UI样式。具体实现及测试仍待用户确认，本次无实现修改。
+
+**用户随后收敛：** 认可hidden空占位合理，不再将其列为问题；Thinking留存的额外改造不启动。当前仅围绕完整正式消息中途外发、Redirect半截正式正文合并通知形成实施方案；保留既有占位和原生会话语义，所查Timeline顺序未见微信来源引起错乱，不重做渲染或历史存储。历史时间复制问题属于独立修补，不混作本次输出改造。
+
+## 2026-10-23 · Kimi输出字段N=38单变量验证（唯一新增请求）
+
+**授权与隔离：** 用户正式要求先最多一次真实请求，复用既有N=38失败请求，仅改`max_tokens:1`为`max_completion_tokens:1`。此前Anthropic Stuck报告已交付；用户随后纠正“先不要处理改回顶层”，工具／Prompt方案继续暂缓，其余已授权任务继续。新探针独立放在ignored`.hermes-dev/kimi-k3-prefix-boundary-20261023/max-completion-token-probe.py`，原`run_experiment.py`、fixtures、requests及原报告／结果未改写。先离线校验原固定生成器N38与`mid-4.json`／`retest-failure.json`一致，使用原脚本`load_key`与相同Provider默认headers，仅从既有本地凭据源入内存，不落凭据。
+
+**单变量与回执：** 原两份465,278字节wire完全一致，SHA256 `d8d85fca4b3e1f0d36f6bc4f2362bf867dbc3f89d7cc97a257caaec96e052901`；改名后SDK实际wire465,289字节，SHA256 `71fe6f696dd1a83bcb10f9fc75690bff9802cf9e77cf9538b6df2ee622c70480`。允许JSON键序变化，替回参数名后完整JSON一致，父root／26顶层tools／38单元历史／消息级动态Schema／完整Noting正文不变。URL仍`https://api.kimi.com/coding/v1/chat/completions`，model=`k3-256k`、reasoning_effort=high、stream=false、max_retries=0；不会同时带两输出字段。一次性exclusive启动标记防重发，HTTP request hook禁止第二次派发。
+
+**结果：** 北京时间22:22:13发出，严格1次、0.753秒，HTTP400，error.type=`invalid_authentication_error`，message=`Your request exceeded k3-256k model token limit: 262144`；无usage、未取得标准x-request-id／request-id。不是字段不支持的显式错误。属于用户给定情况B：**仅替换输出参数不足以解决N=38动态声明请求异常**，不能把正式兼容更新宣传成该400的已验证修复，也不能据此认定供应商内部根因。没有执行返回工具、运行Noting／Compaction或改生产Conversation／Notebook／Snapshot，无第二次请求或自动回退旧字段重试。
+
+**证据与后续：** 同目录子文件夹`max-completion-token-probe/`保存`preflight.json`、`result.json`、`call-started`与0600实际请求，原root等敏感内容不转贴报告。官方[常见问题](https://www.kimi.com/help/kimi-api/api-troubleshooting)明确旧字段deprecated且新旧同语义；公共端点与Coding产品边界分开判断。独立`kimi_output_wire`只做最小wire兼容及离线测试，不改内部预算、推理／fallback、Prompt／Schema／缓存或Noting生命周期；实施／测试后续记本节。当前尚未部署、提交或发供应商Issue。
+
+## 2026-10-23 · 竖屏APK、标题与非触发消息修补（本地候选）
+
+**本次后续用户最终确认：** 用户逐项同意“已有Noting仍运行等正常提交、已正常提交可压缩、失败／强制则不Idle压缩”，随后进一步明确总原则：**Idle compaction之前，相应Noting一定要成功；仅限Idle，其它compaction不用管。** 因而External等无法运行Noting的Idle不再保留直接压缩例外。正常成功须为`finish_noting`＋Commit Gate提交，不能拿合法forced／overflow快照或无关旧快照冒充。原子Agent继续补齐当前Conversation／压缩区间的已有任务复用与完成时序；下文先前“skip／External待确认”只保留当时调查过程，已由本段收敛。Prompt／工具Harness仍未获批准，保持未实施。
+
+**范围与版本：** 用户授权APK竖屏、AI标题故障、微信非触发注入及Idle时序修复，分三包Sol/high实施，主会话亲审。后端基线`255b430f4afdd61231e0970663384857afb6a1b1`，Web基线`bf279b2dc5ec5553ff9e370696b153e4aadb52cd`。原有调查文档dirty及获授权Context三文件保留；本次未commit／push／部署、未改生产配置或运行会话、未发送真实渠道消息／模型请求。Prompt／工具Harness仍在讨论，用户未批准实施；不能把本记录的已完成修补当作其授权。
+
+**标题：** 首尔只读日志确认10月22日10:56:52的Web `/ai-title`经原生`llm.oneshot`收到K3 HTTP400：`invalid temperature: only 1 is allowed for this model`，不是此前已修的私有`_reasoning_config`。`agent/auxiliary_client.py`既有Kimi温度省略机制补识别`k3`／`k3-*`，保留其它入口默认。离线真实RPC＋原生路由＋OpenAI SDK MockTransport＋SessionDB验证生成→`session.title`→写库→`session.info`，旧代码三个K3变体复现HTTP400；补后相关116项、温度4项、最终链路5项及Web46项通过，范围有重叠不加总。一般失败保留旧标题，后台自动标题持久化与回调亦覆盖。证据ignored`.hermes-dev/apk-title-20261023/`；未真实请求Kimi、未线上改名，实际输出质量待上线正常使用。
+
+**渠道：** 缓存Agent保留最近入站Turn的Gateway状态回调，Framework落库后旧`_send_framework_status`将其经上一adapter发送。现移除该发送函数，Gateway回调按权威`framework`事件直接结束，覆盖微信及其它共用渠道；历史持久化、Web／CLI展示、正常回复及明确发送保留。Noting完成／失败、Force接纳、External拒绝均经这一Framework producer；Deferred Reminder、记忆预取、插件上下文、provenance与预算／续行提示未发现同类直接adapter外发，触发Turn类事件不在此改动范围。新增真实回调绑定／原生Turn／正式回复整形及微信、Telegram adapter离线回归，旧版3失败／1通过，修补后4文件56项与冻结10检查通过；并发排队、持久化失败与八种owner／generation边界覆盖。主会话亲审正式发布及回调接线后接收。证据`.hermes-dev/gateway-framework-regression.log`、`gateway-framework-check.log`。
+
+**APK：** Manifest及Activity运行时均锁portrait，原生ForegroundRefresh 35项通过。按既有构建生成0.1.4/1004本地签名release，32,048,481字节，SHA256 `fdc72109129ccd2e9121a912a55eb6fe6e6262a09a40d314181a06f758f0ee08`；ignored`.hermes-dev/android-apk-20261023/Hermes-Secretary-0.1.4-arm64.apk`。证书SHA256 `449b5f36662cb5ff2979004ce6472ca5c8ea5d992b334e2a4191eda6e7e53ad9`与旧0.1.3一致；实际合并Manifest portrait=1、minAPI26／target36／arm64／非debug、ZIP／ELF16KB对齐通过，无私钥入包。439份APK内置前端文件与本次dist逐字节一致，包含此前明确授权且构建期间哈希保持的Context三文件，相关50项通过。五份版本配置同步0.1.4，两份lock仅根包／自身crate版本改变，第三方依赖记录不变。后端标题修补不在APK内，升级包本身不能使其在线生效。完整验包／dirty源码组成／补丁收据在同目录`package-verification-0.1.4.json`及构建日志；未安装或显示UI，真机旋转未实测。
+
+**Idle与整合边界：** 一般API错误可不产生新快照已获用户明确确认；正常Noting提交后压缩、非正常结束不触发本次Idle full compaction、强制快照Framework标明非正常结束及压缩后注入的候选已实施，仍在定向验证／主审。无新child的skip（Force区间占用／External等）旧行为是否保留，已询问用户、尚待确认，不把当前候选skip不压缩冒称已授权。主会话独立临时index检查当前15代码文件，冻结10检查全部通过，health 0 blocking／0 advisory，日志`.hermes-dev/repair-review-20261023-check.log`；未动真实暂存区，不重复跑已有效的较大测试。最终Idle交付与确认续记本节，不以此宣称全部需求完成。
+
+**Idle包最终证据／主审接收范围：** `.hermes-dev/idle-noting-order-final.log`为最终新增19项通过，覆盖真实原地／旋转压缩、请求句柄清除、Main中途active／安全点、既有fence排队、异常结束、关闭／重绑、压缩失败、回调异常及末次迭代正常finish；`idle-noting-order-final-targeted.log`中的timer20及既有child54通过可复用，该次新接线展示观察测试1失败后已修正，仅以最终19项日志判该文件通过，不将旧混合日志称全绿。`idle-noting-order-regression.log`含compact13、原生request36、runtime17、deadline5、busy6通过；三项旧失败（两项重复登记边界断言、一项旧Snapshot ID正文断言）在未改HEAD隔离复现，见`idle-noting-order-baseline.log`。另有旧active-task计数污染首次复现后runner重试通过，保留其flaky事实。主会话亲读提交回调、压缩受理／完成事件与Framework安全追加接线，接收已确认部分；skip产品策略仍待用户确认，未发布。两个新参数默认关闭／None保持原调用语义，不改变原生Force／manual／auto路径；未触碰待审批的Prompt或工具声明文件。
+
+## 2026-10-23 · 置顶会话 Idle Noting 超窗、空 Snapshot 与 Context 延迟调查
+
+**归因修正（用户请求Stuck报告后，以本段为当前结论）：** 父历史、任务正文、Schema、root等共同组成总请求预算，任务长短不是独立于总长度的因果变量。此前“完整任务＋动态声明组合”的表述只描述被测请求形态；删任一项同时降低总长度，现有证据不能证明正文语义触发，也不能证明Kimi内部token计算出错。错误源已确认是API；责任仍可能属于动态声明能力／有效长度门槛、隐含推理／输出预算、客户端使用扩展方式与支持范围，或服务端实现。用户提出的“总上下文增长到某阈值后动态声明失败”升为首要待验证假说。144866为成功对照的加和估计，非失败请求usage，不能据此宣布服务器错误计数。此前较强归因保留为本次调查过程，按本段收敛，不用它指导未经确认的修复。用户明确调用stuck后，未追加API、搜索、试错或派Agent，完整报告直接贴用户。
+
+**范围和身份：** 用户要求独立核查Alex提供的归因，重点查首次超窗和空结果；不授权修Noting、改线上配置或恢复任务。服务器只读确认运行后端`e9de406ae288f85b81bde5bb836f345ed91ebe97`；唯一Alex pinned为`20261021_200341_2ce088`／`conv_a497994968694fe180ad6e4523afe9f2`，不是10月21日曾恢复Notebook的另一Conversation。原工作区已有operations-log及两份未跟踪调查／算法稿，本次增量保留，不整树提交。
+
+**触发与父压缩：** 首尔Alex `logs/agent.log:30086–30162`记录10月23日14:14:20 `kind=idle`、anchor非压缩头、admitted；原配置`noting.idle.delay_seconds=500`／`threshold_tokens=131072`，`compression.enabled=true`／`threshold=0.8`／原生独立idle timer=0。此前14:05:59主请求实际input132561，超过长度线且随后空闲500秒，符合联合Idle。14:15:55父压缩`commit_status=committed`／`split_status=in_place_committed`，242→74／rough43187；DB有原生publication标记及压缩边界，后续同一会话14:58真实input42721、16:00约43–44K、16:02 input48102，故不能由前端曾显示100多K推断实际压缩未生效。16:23现存Web冷runtime从DB读回49043／262144（19%）；用户后续确认当前刷新即可恢复正确。
+
+**完整Noting轨迹与空结果：** admission5／child `noting_27dcca55ad1a4e35`：持久消息只有id10965的一条启动user，39399字符；`api_content`为空，无额外隐藏user sidecar，无Assistant、History、maintain或finish行，tool_call_count=0。启动任务正文的`working_notebook`四区全空，base_snapshot不存在；该Conversation此前没有旧Snapshot。14:14:21第一次SDK流式请求收到真实Kimi HTTP400，正文`Your request exceeded k3-256k model token limit: 262144`，随后原生返回`failure_reason=context_overflow`。这不是本地`NotingContextOverflow`预检拒绝；计数0只表示没有成功API用量入账，不表示未发HTTP请求。runner在普通failed处理之前捕捉已识别overflow，冻结原空工作态，标记completed，经Commit Gate提交空`snap_feb962bbd51f4c279b8ccd513658ed84`，termination=`context_overflow`；Framework如实含未完成限制及空四区。因此本次无“做了很多History却不能maintain”的轨迹，也无“旧非空Notebook被失败覆盖”证据。
+
+**规格裁决：** 07§3.1–3.2与02保留§5.8明确保完整冻结父root／顶层tools／Active前缀，child禁auto-compaction；已处理overflow保存当前合法态，04原条款明确允许原Snapshot或初始空四区、不得因零工具调用拒绝。故冻结100多K历史、禁止child压缩和此次保存空态符合现行技术契约；实质故障是第一请求无法被服务端接受、没有产出Notebook。不能未经用户确认改成截断父前缀、打开child压缩或为零维护加提交门槛。白板正常完成与普通失败条款仍须和明确预算／overflow例外区分，不把合法结构／coverage当成已完成内容整理。
+
+**请求本地核验：** 使用本机已同步冷DB的独立ignored副本及原生SDK组装，全部网络拦截，只在副本写诊断child。恢复原child root27529字符、父26工具49081字符、任务39399字符；新增动态声明仅`notebook_maintain`／`finish_noting`，17582字符，任务正文另含完整四工具Schema。SDK边界247条＝244父消息＋root＋动态声明＋任务（任务带原生timestamp），root仅一份，未发现整段父历史双份；原生输出上限32000，粗估输入158101。原运行日志history242，重建244为明确证据限制；未把重建冒充原始完整wire，原API dump缺失。此前10月21日18:29成功child与本次控制Schema哈希一致，同样26顶层工具／缺maintain与finish，轨迹有21次maintain＋1次finish；这排除“当前Schema从未能调用maintain”的笼统结论，不外推所有长上下文组合均可用。
+
+**用户授权的真实对照：** 用户先明确允许1次，再明确追加最多3次。均同原生Coding Chat端点／精确K3-256k／High、请求`max_tokens=1`、SDK `max_retries=0`；仅SDK请求，不进入生产Agent runner、不执行工具、不写生产Conversation，凭据只从服务器Alex受限.env入内存。请求body及SHA先固定，启动标记以独占创建防重复；按顺序执行4次后停止。各对照共用同一重建父root／tools／前缀，仅移除请求中动态system.tools声明或将最后任务content换成`Return OK.`：
+
+| 请求形态 | 实际结果 | Provider input | 耗时 |
+|---|---|---:|---:|
+| 完整任务＋动态声明 | HTTP400，同262144超窗；无usage | 未返回 | 1.135秒 |
+| 完整任务，移除动态声明 | 成功，finish_reason=length | 141525 | 12.038秒 |
+| 短任务，保留动态声明 | 成功，finish_reason=length | 136671 | 10.595秒 |
+| 短任务，移除动态声明 | 成功，finish_reason=length | 133330 | 5.529秒 |
+| 用户随后追加：两条短的虚构父消息＋原完整任务＋原动态声明，root与26顶层工具保持 | 成功，finish_reason=length | 29875 | 5.659秒 |
+
+由前三项成功对照加和估算完整组合为141525＋136671－133330＝144866，显著低于262144；这是因素加和推断，**不是失败请求的实测usage**。故证据强指向Kimi对完整任务正文与动态声明组合的处理／计数兼容问题，不能归因为100多K父前缀天然超过262K或客户端整段复制两遍；动态声明本身、完整任务本身各自成功，也不能称二者任一总是不可用。服务端内部如何计算、是否解析／扩展重复Schema不可见，未做供应商根因定论。前四次中成功三次共411526 input（含268288 cache）／12 completion；虽然每次请求max_tokens=1，服务端每次回报4 completion（其中reasoning1），如实保留，不冒称绝对1输出。失败请求无usage、实际费用未知。该次授权四次用完即停止，之后短上下文另获用户追加授权；未改变模型、重跑生产Noting或部署。
+
+**追加短上下文对照：** 上表最后一行由用户在前四次完成后单独要求，严格仅1次，仍High／max_tokens1／零重试。保留完整root、顶层tools、动态system.tools及39399字符任务正文；只将父244消息替为两条短的虚构user／assistant。API成功input29875，cache18176／completion4／length；这是请求接受性验证，不代表执行了maintain或完整Noting。五次累计4成功／1失败，成功input441401（含cache286464）／completion16；无额外调用。该结果符合此前短上下文动态工具成功的事实，也表明不能把本轮归纳成动态声明普遍失效；长前缀＋短任务＋动态同样成功，失败条件目前限定为已复现的完整三因素组合。内部隐含预算或token计数规则尚不可见，不把max_tokens1实验扩大为排除了所有服务端隐含预算。
+
+**Context小修补：** 用户先委派独立只读调查，后确认刷新已对、问题次要，并明确仅一两处接线可补。子Agent静态审查发现热Web Agent优先旧compressor、恢复旧message.complete.usage可能覆盖新binding、完成状态漏补读及source不兼容等条件；无当时浏览器事件与旧runtime回读，未断定本次唯一原因。用户授权范围内仅改独立前端`context-after-compaction.ts`接受原生`usage_anchor`、`compaction-view.ts`首次观察带operation_id的finished也沿原链补读，生产代码两行。两条精确回归旧版失败；修后相关99通过、typecheck／diff检查通过。主会话亲审正式后端phase/source契约、operation去重和原生读数保护，未复跑无关全套。当前3文件本地未提交／未推送／未构建／未部署；跨进程热读数、旧usage重放和失败读回重试不在此补丁内，未操作用户页面或冒称生产复验。
+
+**附带警告的边界：** 10月22日09:01的Force reserve>128K警告确实存在，当前配置通过且本次已admit。它证明当时resolved window／threshold能力条件不满足；仅凭警告不能证明全局`noting.enabled`配置被人改关又改开，不把它直接归为配置漂移。
+
+**证据：** 本机ignored `.hermes-dev/noting-idle-20261023/`留原生离线组装统计、隔离副本、one-token请求、5份server result及probe-summary；私人body／副本限本地受限目录，不进Git。首尔受限`~/.local/state/hermes-secretary/noting-audit-20261023/`保存对应请求／启动标记／响应收据与单次runner，不含Key。未新增Noting实现或部署；后续兼容修复仍须维持冻结前缀及提交契约，另行明确方案后推进。
+
+### Stuck交接：待研究问题与后续最小实验（仅方案，未执行）
+
+首要假设是动态声明路径有尚未识别的有效总输入门槛／隐含预算；父历史与任务合并计总上下文。待研究：Kimi Coding Chat是否正式支持`messages[*].role=system`携`tools`、其长上下文边界／Schema计费方式；`k3-256k`的262144是否在动态声明路径完全适用；High是否有不受max_tokens1影响的预留；错误type标invalid_authentication_error但同凭据其他形态成功，错误映射是否掩盖了实际限制；如何取得包含root／顶层tools／动态tools／reasoning replay／任务的权威请求token数。
+
+后续若获授权，保持root／26顶层tools／动态声明／完整任务逐字固定，仅在隔离输入里调父历史长度，配无动态声明的等长对照，找到接受／拒绝边界并重复边界点。用同token量普通填充替换任务Schema文本，以区分总长度效应和正文结构效应；全部短指令替换不是等长度对照。先核官方协议与预算含义，再决定是否需tokenize或受控模型调用；不默认某个128K上限，不自动增强调用预算，不动生产历史。最终必须区分文档化限制、客户端协议使用错误和可复现服务端缺陷，再选保持冻结前缀及合法工作态提交契约的最小修复。既有max_tokens1样本只证请求被接受，不证维护工具执行成功；原始242条wire缺失／重建244条差异仍须留在结论中。
+
 
 
 ## 2026-10-21 17:55–18:24 · Conversation级Heartbeat联合部署与Alex置顶设置
@@ -30,6 +136,20 @@
 
 **备份与收据：** 首尔受限`~/.local/state/hermes-secretary/conversation-debug-20261021/deploy-20261021T153444/`保存三库备份和部署收据；`clear-20261021T153548/`保存清理前Alex SQLite备份和清理收据。本机ignored`.hermes-dev/conversation-debug-20261021/`保留baseline、实现测试／原基线反证、独立integration-report、十项检查、部署及清缓存收据。需要撤销代码时人工选已知版本并正常重启，不恢复整库或覆盖后续数据；清掉的派生缓存由下次正常Turn重建。Kimi共同行为模式已写根CLAUDE看板，未把样本误称已证明的模型内部原因。
 
+
+## 2026-10-21 · Android APK 0.1.2 原生自动恢复交付
+
+**最终用户口径：** 首次打开是正常加载；锁屏后返回应用、从后台回前台均立即显式原生刷新，清空上一轮退避时间和进度。从刷新起先给WS10秒恢复机会，仍未connected则再次刷新并重新计时，后续15／20／30秒、封顶30秒；连接恢复停止该轮，下一次回前台始终重置为10秒，不继承30秒剩余等待。先前Agent提出的45秒／分钟级长退避、5秒单次刷新均已被后续口径覆盖，中间构建未交付。
+
+**实现：** MainActivity正式接ForegroundRefresh，由原生Handler／单调时钟监测当前WebView并直接reload，不依赖window.location.reload或只有前端WS重连。onStop标记真正后台，onResume立即刷新并reset；仅onPause的权限／失焦不额外刷，ActivityResultRegistry经startActivityForResult跟踪选文件／拍照结果，避免返回时吞附件；非Hermes认证页面不刷，配置重建沿正常冷启。reload前失效旧页面ready／Active，目标通知保留到新页ready；完成去重仍进程内保持。原生暂停／销毁清timer，不额外后台刷新或保活。实际connected和及时JS心跳停止自动重载，迟到pageStarted不推迟已有deadline。API层薄桥接只读取原Gateway.onState及每2秒本地健康信号；页面hidden抑制，Gateway.stop／pagehide清理，普通网页无bridge不启用。前台online且Gateway未connected时本地network-restored触发即时重载并重置退避，不额外探测服务器或新增网络权限。
+
+**慢网边界修正：** 既有Android通知ready在loadProfiles／历史恢复后发出，可能晚于正常慢历史读取；不以“尚未ready”直接判卡死。Controller仅明确初始化catch失败时发不含正文的initialization-failed信号；原生区分正常加载、明确报错、WS未恢复和JS健康信号消失，均复用同一退避owner。登录Cookie、localStorage、已持久化IndexedDB草稿和当前URL／Profile保持；不自动重发用户消息、不改变云端Turn。Controller文件保持2489行，没有扩大原超标指标。无后端／Gateway协议、新WS或全局状态轮询改造。
+
+**测试与实际运行：** 前端4文件92项通过（健康桥接13、原连接11、Profile恢复14、通知54），包括正常网页零新增网络、短断原重连、online立即触发、stop／pagehide释放、明确初始化失败与25秒正常pending分离；最终构建含tsc及Vite成功。原生52项通过（恢复34、桥接11、服务7），真实MainActivity/Wry生命周期与WebView.reload调用由Robolectric驱动，仅隔离Rust JNI；完整10／15／20／30序列及封顶、30秒后生命周期回来reset10秒、通知目标、Cookie、去重、Active清理、权限、第三方认证、附件URI返回均覆盖。主会话亲审源码和证据后，headless模拟器以最终签名release覆盖安装成功，真实服务器只读：后台切出／返回完整测试周期约1.076秒、锁屏／解锁周期约1.048秒观察到新JS timeOrigin且原Conversation／Profile不变（两周期均含0.8秒后台停留，不作为纯加载耗时）；主动关闭既有WS，3.487秒由原Gateway重连成功，之后未重载；临时使后续WS构造失败，11.550秒观察到新页（包含原生10秒窗口和HTTPS加载），12.166秒恢复真实gateway.ready。故障注入只作用当时JS上下文，原生reload后消失，没有生产消息提交或服务改动。最终WebView360×792、原流光canvas ready，验收前后截图及元数据ignored保存；30秒完整退避和附件返回属原生测试证据，不冒称物理网络／真实附件UI已验。
+
+**安装包：** ignored `.hermes-dev/android-apk-20261021/Hermes-Secretary-0.1.2-arm64.apk`，32155481字节／约30.7MiB，versionName0.1.2／code1002，Android8+／arm64，非debug；SHA256 `b8b044fef12fe2424a5adf31a909e42a6074821ae2166c7f7c5a99b6b57faafb`。证书仍`449b5f36662cb5ff2979004ce6472ca5c8ea5d992b334e2a4191eda6e7e53ad9`，可覆盖0.1.0／0.1.1。439份前端逐字节与dist一致，图标仍0.1.1既有logo深色底；22项资源接线及20张PNG可见RGBA、签名、ZIP／ELF16KB、无私钥入APK均通过。密钥保持ignored本地原件，原0.1.0／0.1.1交付包保留，未commit／push／云端部署。
+
+**证据与限制：** 前端target/android-evidence有android-health-frontend-final.log、android-0.1.2-release-final.log、verification-0.1.2.json及原生foreground-recovery-012-10-15-20-30/summary.json／源码哈希；主仓ignored android-apk-20261021有runtime-recovery.mjs、runtime-recovery-0.1.2.json及截图、安装包和验包JSON。自己的CDP转发已移除、后台验收模拟器关闭，保留用户登录数据。当前userdebug WebView强制DevTools的既有限制不变，release显式false仍保持。未真实手机安装／长期后台／节电／物理蜂窝切换验收，不保证OS终止或原生UI线程被系统阻塞后仍自动恢复；真实断网无法靠重载产生网络，前台会按已定节奏继续恢复，第三方认证仍由用户正常完成。
 
 ## 2026-10-21 13:44 · Alex模型选择器排除百炼自动目录
 
@@ -100,6 +220,87 @@
 **候选与边界：** 优先评估Kimi适配中自由object的处理（例如显式保留`additionalProperties:true`），或让必要工具独立声明；删除required、字符串承载及具体嵌套均有小样本正向证据，不等于已完成全链路修复或兼容验收。尚未改Prompt、schema转换、工具面、生产配置、模型／会话、排期或服务；不追加本任务的生产Turn。仅按职责更新调查文档，保留原dirty。
 
 证据本机ignored`.hermes-dev/scheduler-tool-investigation-20261021/`：`production-evidence.json`为只读调用及排期快照，12组`*-request.json`／`*-response.json`、三批summary、`final-summary.json`及`manifest.json`；三份probe脚本与stdout保留。原始隔离请求／响应同留首尔仓库同名ignored目录，无凭据。实际token总量见`final-summary.json`，费用未知；这是API等价格式实验，不是生产完整链路验收。
+
+
+
+## 2026-10-21 · Android APK 0.1.1 图标更新交付
+
+用户要求以已有logo配主题色卡中的深色背景，先打包0.1.1。复用public/assets/hermes-secretary-icon.png，背景选用既有dark paper #232120；用SVG图层保留原logo造型及颜色，交给本地Tauri图标管线生成普通／圆形图标与自适应前景／背景，留出裁切空间，不引入新图形设计。scripts/android-icons.mjs从现有tokens读取背景并生成资源，release构建先执行此步骤，README同步稳定入口。Tauri／Cargo／npm版本统一0.1.1，Android自动versionCode1001；Manifest正式设置icon及roundIcon，原签名密钥保持。
+
+**产物：** ignored `.hermes-dev/android-apk-20261021/Hermes-Secretary-0.1.1-arm64.apk`，32155961字节／30.7MiB，SHA256 `2d8a6926c3dfe00fd5362d3b4f3e45d6ba934921a737e7e6bc793d67bec99242`；证书仍为`449b5f36662cb5ff2979004ce6472ca5c8ea5d992b334e2a4191eda6e7e53ad9`，可覆盖升级0.1.0，不要求卸载。原0.1.0交付件保留，仅本地构建，无生产部署／提交／推送。
+
+**验证：** npm run android:build通过（含typecheck及Vite构建）；aapt读取versionName0.1.1／code1001、非debug、arm64与min26。正式资源表22项包含5档密度各4PNG及2自适应XML；Manifest和两套adaptive前景／背景引用正确，20张打包PNG经Java ImageIO逐像素核对可见RGBA与源资源一致，实际提取APK图标目视核对通过。439份前端与当前dist逐字节一致；相对0.1.0，438份逐字节相同，file-viewer清单仅copiedAt构建时间变化，去除该字段后完整JSON相同。apksigner同证书验证、zipalign16KB及ELF LOAD／RELRO16KB检查通过，无签名私钥／配置进入APK。
+
+**验包脚本修正与限制：** 初次对比将生成时间差异当运行态变化，检查后限定只允许copiedAt差异；AAPT会缩短资源路径并无损重编码PNG，因此以正式资源表解析引用及可见RGBA验证，未把原路径／编码字节不同写成产品缺陷。读取全部资源表超过Node默认缓冲时扩到8MiB，产品无需修复或重复构建。按用户前次要求不重新启动模拟器、不重复网络／通知验收；沿用0.1.0原时点证据和可靠性限制，不声明本次真机覆盖安装已实测。前端ignored src-tauri/target/android-evidence/有android-0.1.1-release.log、verify-0.1.1.mjs、verification-0.1.1.json及从APK提取的图标；主仓交付目录保留验包JSON及预览图。
+
+## 2026-10-21 · Android APK 0.1.0 本地签名交付
+
+**产物：** 独立前端仓库Tauri2，release前端439文件与当前dist逐字节一致；包名com.edgarzhong.hermessecretary、version1000、min26／target36、arm64、37297777字节。交付件ignored`.hermes-dev/android-apk-20261021/Hermes-Secretary-0.1.0-arm64.apk`，SHA256 `1135911a0ee04beb0a4d16fd9e6ce442ce3f998a356cd8a7088cf9f1447c08dc`；证书SHA256 `449b5f36662cb5ff2979004ce6472ca5c8ea5d992b334e2a4191eda6e7e53ad9`。签名密钥仅前端ignored src-tauri/.android-signing，后续覆盖升级须保留。ZIP16KB对齐及ELF LOAD／RELRO对齐通过，未验16KB真实设备。
+
+**实施：** 可信HTTPS主文档保留真实Authelia认证与白名单bootstrap，业务API／既有WS真实联网，仅精确静态清单改读APK。Android专属Insets顶部真实避让、应用顶栏自身56px／上下4px且靠左垂直居中，底部safe0；系统栏图标随主题。通知复用全局SessionActivity，Profile＋Stored ID隔离，不批量绑定或禁用releaseInactiveViews；Active取既有事件cursor，Idle按最多8帧终态＋完整持久receipt、既有History精确两行验证最终Assistant，15秒核验截止，断线／未知／epoch变更失效，UID／row去重。正文去Markdown截240字符，仅后台发标题“您的助理有一条消息”；点击归属Conversation并尽量定位已加载回复。临时dataSync服务辅助同一WebView／WS，WakeLock有10分钟时限，服务最长6小时及系统限制，全部Active结束释放；不sticky、不另建WS、无轮询／FCM／后端修改。
+
+**证据与限制：** 前端初版相关106项通过；主会话最终通知54＋定位／阅读18定向72项通过、typecheck通过，原生26项与主题脚本7场景通过（不同批次部分重叠，不相加为总用例数）。Android隔离虚构数据验收覆盖跨Profile同ID并发分别通知、前台抑制、仍有Active继续服务／全部结束释放和真实通知点击正确路由；该隔离通知验收不是生产Turn端到端。真实服务器浏览器到达Authelia无证书警告，用户只在模拟器亲自登录；已登录API三次200／111、99、100ms，h2＋TLS1.3 secure，WS101／2.209s ready，采样无loadingFailed。最终release覆盖保留登录，force-stop重开恢复同Profile与Conversation，WebView360×792、顶部24px／底部0，无界面错误。未发送生产测试消息、未更改生产认证／部署。真手机安装、生产APK／电脑真实Turn通知、长后台及节电未实测；系统暂停／回收、断线、不可观察外部Turn不保证通知且不补发，不影响云端Turn。
+
+**流光与环境：** 原shader未改；模拟器GPU关闭及WebView124的WebGL1 blocklist导致CSS降级。用户明确授权重启host GPU，模拟器临时`/data/local/tmp/webview-command-line`仅ignore-gpu-blocklist后canvas ready=true恢复原效果；该模拟器参数不入APK，尚未清理，不作真机渲染保证。release manifest非debug且DEX显式WebView调试false；当前userdebug系统的WebView124强制启用调试，源码与CDP现场已确认，普通user真机关闭效果未实测，不为此绕过系统限制。用户所指底部细黑边是物理1080×2400、逻辑覆盖1080×2376造成上下各12px letterbox，非网页安全区；准备改物理尺寸时已关闭模拟器，用户随后明确无需重测，因此未改AVD配置、不再重启。原配置备份留证据目录。
+
+**留存：** 主仓ignored android-apk-20261021含real-network.json、restore-before/after.json与截图、package-verification.json及隔离通知证据；前端src-tauri/target/android-evidence含验包、签名、原生测试、调试镜像override源码／证据。未提交／推送或云端发布本次变更；保留其它任务dirty。APK可独立卸载，线上Web无需回滚。
+
+## 2026-10-21 · Noting费用与自适应阈值分析（未改线上）
+
+**当前交付（优先于下方旧建议）：** 用户要求先判断当前置顶Kimi是否值得开及阈值，并单独写自适应算法初稿；补充明确简化公式用于定性关系、调优与算法研究，有价值但不替代实际求解。新增`docs/adaptive-noting-threshold-proposal.md`、README稳定索引，CLAUDE同步当前建议。本轮建议保留Idle提前整理，经济候选低谷80～96K、初始推荐96K＝98304；不直接改配置。现值131072／delay500秒保持，原生Force／auto不动。
+
+条件预测只读取本机既有截至13:05的50Turn／145API数字轨迹；18cold-first形成17闭合批次，严格排除5个压缩／负跳变／Notebook／异常批次，余12个，增长中位1427、均值4489、最大34261，平均6.58API／批次。修正情景另加入root减少6081、Notebook代理5000两批次，余14个；异常循环始终不进入预测训练。8种子、每条先300批次预热再1200共同外部批次、15%人为对数正态材料扰动、筛选后相邻双批次抽样；另4800批次延长窗口核末态。完整热请求计费、压缩后首父重新冷预填、Force先Note而auto独立、Idle按真实间隔与固定delay500。中央每100共同批次费用80K305／96K314／128K349／∞459元，Note次数10.4／8.0／4.9／2.8。96K相对80K约贵2.9%但少24%维护，相对现128K约少10%；较大底座＋较高维护工作量联合情景96K最低。本轮15情景96K相对∞模拟省约21%～34%、距各情景低点0～6.1%，均非实账、置信区间或现实保证。
+
+单Note11API形状及单完整Compaction2.18866元代估、reset53K含Notebook、缓存根2048的统一近似；情景覆盖reset48／60／65K、Note工作量0.75／1.5、首父部分／全部miss、native/provider比例0.9／1.12、delay60、零尾部及修正轨迹。缺真实阈值配对、异步Note/压缩重叠／admission忙碌／失败／载入延后、长期Notebook增长、压缩费用曲线和质量／额外检索响应；不能称正式runtime回放或长期最优。费用最低点与减少维护的建议取舍明确分开。独立只读复核无颠倒中央排序的账本／分母问题；发现最终Assistant尾部首Note读取应补fresh差额，已修正并重算，取整结论保持。联合不利情景每次额外维护若增加约1.78元恢复成本，96对128优势可被抵消，已写入方案。主会话亲审全文、参数算术与链接，diff空白检查通过；证据ignored`batch-threshold-forecast.py/json`及`analysis.md`。未新增云端访问／模型请求／数据库写入、未实现自适应。下方历次口径作为分析历史保留，以本段及最新固定历史事件为准。
+
+**最新用户纠正与统一求解（优先于下方旧讨论）：** 固定比较昨晚约21:38用户手动Compact，Noting假设昨晚热父成功；今天冷补跑只作成功任务用量样本、按父热重分类，维护仅计一次，不加原50call事故或第二次恢复费。只读服务器日志的时间/token数字，与本地同步145个正常主API账本逐类对齐；共同起点之后至最新完成请求13:05共18Turn／46API、8cold-first。正常API折算15.205476元，补上Notebook昨晚就出现的早期输入0.71元；无整理路线从今天以后实际prompt扣Notebook代理0.47元，再恢复被压历史。中央不整理35.017316元；整理正常15.915476＋热Noting4.746028＋Compact代估2.18866＝22.850164元，净12.167152元。参数情景净10.293312～12.403152元；不记中午异常两Turn的缩短收益仍净6.497312～8.142272元。Compact缺本次独立完整账本、Notebook代理分词、原始prompt差及反事实冷热/输出不确定，不称实际订阅账单、置信区间或长期策略证明。此前截止10:28／混合前半天窗口的暂关费用依据撤回。用户最新确认以每Conversation真实轨迹直接估阈值，“是否提前触发”包含在阈值候选内，不另求二元开关；T=∞代表原生接管，阈值为决策变量、长期总费用为目标，质量/安全/缓存条件作约束，不动全局资格及原生Force线。平方根公式只作方向解释，频率须区分cold批次与同批热聊。未改实现/开关/阈值/delay、未发模型。证据本机ignored`lastnight-fixed-scenario.py/json`及独立`lastnight-scenario-review.md`，完整分析记录保留历次口径与修正，不改写旧结论当时事实。
+
+**按真实冷启动轨迹的当前判断（补充）：** 本机只读已有脱敏逐API元数据，按相同42Turn／116请求和固定时间窗口计算，不再假设每Turn冷。Turn32→33的85940 prompt下降另以80000作敏感性；之后6个实际cold-first（用户5／Reminder1）、其余历史读取11次。条件反事实cold输入节省9.60～10.31元，正常热父维护预算6.93元、首次冷读9.26元，冷输入净余2.67～3.38／0.34～1.06元；计其余低价cached读取后全窗口费用优势约7.5%～8.8%／3.6%～4.9%。不开Idle的估计最大prompt138891未达196144 Force，本窗口不强加未来维护；两分支假定相同请求／输出／冷热及root事件，未真实重放cache，费用非订阅账单。维护沿用修复后成功单样本，未将50轮事故或补跑当日常费用，Notebook／Framework增加、额外找回／重试和质量损失未标定；不冒称长期收益。按用户“收益不明显则暂关”的偏好，主会话建议暂关Idle提前联合维护、保留最终Force／原生压缩，仅建议未执行。计算和完整限制本机ignored`cold-trajectory-replay.py/json`与analysis.md，未新增模型请求、云端访问或配置／数据库写入。
+
+**后续口径修正（用户明确）：** 要比较冷启动输入节省与Noting维护费用；上下文增长按相邻冷启动的实际prompt差，内部API累计usage不是增长，也不把同次使用的热续聊Turn当冷启动。此前全部Turn设冷的23%／35%模拟仅是反事实，不再作为实际置顶会话开关依据。只读本地同步Alex/state.db确认置顶主会话；可用逐请求元数据截至10月21日10:28，新同步聚合账本不能还原之后逐请求冷热。首请求至少80%未缓存定义下，非Reminder冷启动11次／10相邻段，剔3段跨压缩或已知负shift，7有效段上下文增长中位3164、均值6895、最大35589；含Reminder则12有效段中位1427、均值4489。区间差含期间Reminder及新输入，部署窗口与剔除有选择偏差，不作长期总体结论。热父条件预算单Noting＋Compaction约6.93元，删80K且被删部分未来均冷读时每次省1.60元、约5次覆盖整笔维护；仅粗回本线，不冒称实际净收益或订阅扣额。记录本机ignored`cold-start-context-growth.json`，没有新增模型请求／生产访问／配置写入；用户倾向关闭尚未执行。
+
+用户补充确认：GPT-6 Sol只开约256K窗口，本轮排除阶梯计价，继续按API等价预算；正常Turn首次请求冷、同Turn后续可热，Idle争取父缓存热。只读日志元数据与DB账本核对42个主Turn／116API，含7个Reminder，主账本fresh1271952／cache8793927／output43347逐项对齐。38个非压缩正增长相邻包均值2497、中位1025.5、最大10634；两端非Reminder29对均值2871，没有30K增长，部署调试短窗口与正增长筛选不代表长期总体。压缩后首次prompt只有48979／45864两点，后者含新输入；成功Noting11call与完整Compaction各仅1例，不能拟合可靠总体方差或不同阈值的因果费用函数。
+
+本机ignored`noting-cost-probability-20261021/`保存官方价格、统计、可复算numpy模拟、结果JSON、图及独立模型复核；没有新增模型请求／生产写入／配置改动。比较提前Idle维护与较晚Force Noting＋压缩，按完整周期总费用／总外层Turn数（两边都计末次维护）；约196K合并终点只是经济近似，并测209715／216000，未重放Force／auto时序或完整容量。经验包bootstrap与30K±15K额外到达材料情景分开，reset30K／48K及维护随机噪声均明确为假设。初稿把下一用户输入增长当父热缓存，独立复核后已修正为本Turn最后普通输入＋有界Assistant尾部，尾部首次cold；保留复核原意见，未把草算百分比当最终结果。修正后的经验包/reset48K中央预算128000线约2.420元/Turn、晚维护约3.162元/Turn（约23%模拟节省），80000候选约2.053（约35%）；这是按用户指定全冷主请求的条件费用模型，不是真实订阅扣额或已实现收益。30K情景对增长时点、维护曲线、容量更敏感，粗基准约7%模拟路径触及简化容量判据，不作真实故障率、部署安全或唯一最优点结论。GPT分别列普通fresh乐观价与全部fresh记30m写入价情景，不重复相加；沿用K3 token形状，尚无真实Sol Noting／压缩用量，不冒称GPT最优阈值已测。
+
+自适应讨论归为带延迟反馈／部分可观测质量约束的在线随机控制与维护重置问题，费用以相同正常使用量计算，并纳入额外找回调用、返回内容未来冷输入重读、再次维护、失败与返工。只观测当前阈值不能识别其它阈值的真实反事实；先影子估算、候选线与保守先验，再在另行确认的范围内做受控周期验证，不能承诺越用必省或用零History频次证明质量不降。当前建议K3保留128K附近起点，GPT同窗口先验证真实Noting及费用后再判断；自适应只讨论，未实现／立为已授权任务，开关／阈值／delay保持。
+
+## 2026-10-21 11:53 · 云端补回旧失败Noting完成
+
+用户明确授权直接在云端以K3-256k补回旧失败`noting_0fd1567cdc064a58`，完成Framework Message追加当前timeline尾部。此次授权覆盖此前本地隔离限制，仅针对本次生产补跑。用户随后纠偏：父上下文必须恢复失败当刻的冻结快照，不能采用当前父上下文；内存Notebook工作态恢复后继续原生runner与Snapshot提交，禁止强改库／代码旁路。热态调试入口只登记CLAUDE看板，今天先做一次性恢复，不实施入口。预检Web idle=true、Gateway active_agents=0、Noting completed2/failed1且无running、pending Reminder0；实际后端`0bdddfc133`，Alex原生kimi-coding/k3-256k、Chat、Coding /v1、262144。服务器受限SQLite backup已完成，quick_check=ok；旧root哈希`6b34b5b5…`、251条恢复前缀`150e5f63…`及保留部署备份的旧tools`d4f44878…`与前次调查一致，当时工作Notebook四区均为空。一次性脚本只调用原生租约／runner／内存工作态／Commit Gate／Framework发布函数，不执行生产裸SQL写入或monkey patch；首次初始化误从未绑定模块导入scope导致NameError，0模型请求，租约已释放；改用正式gateway.run scope后已启动。原admission3经原生重新绑定新child，旧child Session及原文保留，旧登记另存受限备份。运行控制中的current_time采用今天执行时间，父输入与Snapshot Anchor仍固定旧时刻；没有当晚完整wire，不能冒称逐字请求复现；最终结束、尾部与不变性验证见下段。
+
+**完成与复核：** 11:47:28开始、11:53:05正式commit，337.826秒，child`noting_36e6e2216ef04f61`；原生1Turn／11API，20次maintain中15成功、5失败（三次缺ends_when、两次source_types重复），随后纠正；finish_noting1次成功，History0。新`snap_7b7f6972049c4053a9ab064fd5f1d2a4`覆盖原Anchor`45233d02ff2c427ea3cbafecc3701c8d`，pointer_changed=true，4work／3situations／6discussion／2candidates，共15条目。正文13条均用时间范围来源、结束时间不超过旧Anchor；两Candidate沿Notebook refs，未使用逐消息UID来源。正式内部Snapshot校验与关系校验通过，不扩大为逐事实内容质量或当晚完整wire逐字复现。当前主会话只新增1条Framework结果carrier，正式REST最新cards读回同UID。执行后child已close、Web idle=true、Gateway active_agents0、租约0、微信connected、绑定ref保持。
+
+**不变性与用量：** 对执行前服务器SQLite备份逐行比较，主会话原消息所有列、模型／root／tools／cwd／结束元数据、旧失败child Session与103条原文所有列、20个Schedule定义和全部原绑定均保持。只增加新child的原生绑定；原admission3登记由原生register/finish重绑定并最终completed，旧failed登记独立备份，不声称该登记行没变。config.yaml／.env未写入，服务与代码不变。账本input_tokens155668（非缓存）＋cache_read_tokens1529600＋output_tokens8959，总1694227；reasoning3059属输出不重复加，11请求计账，无实际费用收据。脚本原校验将BLOB经JSON变字符串并将新child绑定计为异常，产品commit已成功后报错；保留该失败，不再发模型，改用只读SQLite原类型对比通过。独立验证脚本另有Path参数类型与工具正文附加后缀解析两处误用，均只读修正，无新模型／Notebook写入。
+
+**留存：** 服务器0700目录`/home/ubuntu/.local/state/hermes-secretary/noting-recovery-20261021/`含recover.py、verify.py、before.private.db／before-run.private.db、原登记／审计私有备份、started.json、outcome.private.json、receipt.json、verification.json及日志；原始数据只留服务器。Mac ignored`.hermes-dev/cloud-noting-recovery-20261021/`留脚本及不含正文的verification.json。未回盖数据库、未手工改Notebook或历史active标记、未改排期／微信绑定、未部署／重启。后续热态调试入口待单独实现；今天补跑已完成。
+
+**后续成本比较（用户指定先按API折算）：** 2026-10-21查询官方[K3发布页](https://www.kimi.com/news/kimi-k3)、[缓存计费说明](https://www.kimi.com/academy/best-practices-for-context-caching)与[价格说明](https://platform.kimi.com/docs/pricing/chat)：每百万tokens非缓存／默认5m写入20元、缓存命中2元、输出100元；写入与未缓存／缓存读取为互斥分类，不重复收费，既有父缓存写入为起点之前成本。Coding订阅未公开精确分项扣额，不能把API折算写成实际订阅账单。用当前真实Idle门槛131072、压缩后30000、每次增长30000且正常请求冷缓存，路线一正常输入30000＋60000＋90000＋120000＝300000／6元；路线二131072＋161072＋191072＝483216／9.66432元，最终Noting／Compaction按用户口径排除。按本次11请求轨迹将首次131072父前缀计为已缓存（其中2048本已命中），129024从fresh移入cache，得到26644非缓存＋1658624缓存＋8959输出，Noting折4.746028元；这是假定父缓存命中的反事实核算，并非再跑一遍热缓存实测。现有唯一完整K3 compression账本为10月20日02:24–02:26的1次请求：78468输入、6193输出、缓存0，折2.18866元；21:38另有压缩日志但无完整独立usage，不能混为同次样本。两路线小计12.934688元对9.66432元，路线一多3.270368元／33.84%；包含维护任务输出，不含未给出的正常主对话输出，两边正常输出每差1000token再差0.1元。此为现有任务样本与用户增长模型的预算比较，不承诺未来每次Noting／压缩相同；未改开关／配置、未新增模型请求。计算文件本机ignored`cloud-noting-recovery-20261021/cost-comparison-api.json`。
+
+**阈值前后移动的预算扫描：** 用户继而要求判断阈值是否能省钱，未授权改配置。沿用上段样本，以11次父前缀缓存读取线性调整Noting（非父部分／输出固定），Compaction仍固定2.18866元。原题两段口径中，100000阈值9.8511对11.6元、110000阈值10.0711对12.4元、115000阈值10.1811对12.8元，前移在账面可省15.1%／18.8%／20.5%；但分别只有3次对4次正常使用，不能将这种异长区间排名称为长期最优。另列完整重复周期模型，两侧均计周期末Noting＋Compaction，按每次增长30000／压缩后30000，实际在120000／150000／180000／210000维护时，每次正常使用均摊3.4304／3.3378／3.4022／3.5452元（主对话输出未计），150000最低，较210000约省5.85%。当前131072阈值会从120000跨到150000，已落该档，110000则跨到120000；不应因原题短段15–20%结果直接建议前移。此为单Noting／单完整Compaction样本外推，不证明不同窗口下请求数、后缀、摘要费用不变或真实最佳阈值；配置保持。完整可复算本机ignored`cloud-noting-recovery-20261021/cost-threshold-sweep.json`。
+
+## 2026-10-21 11:40 · study ChatGPT订阅与主／子模型分流完成
+
+**用户口径与实施：** 首尔study接入ChatGPT subscription，主模型GPT-6 Sol／High；普通子Agent和后台delegate_task用GPT-6.1 Sol，用户明确确认Noting继续跟随主模型。线上代码`0bdddfc133b830dd73db3b3dfbe23bc20edfd4e1`，不改源码、不重启服务。通过原生模型登录入口独立设备码授权，实体Home`/home/ubuntu/.hermes_profiles/study/auth.json`为0600；原生配置writer写`model.provider: openai-codex`、`model.base_url: https://chatgpt.com/backend-api/codex`、`model.default: gpt-6-sol`、`agent.reasoning_effort: high`、`delegation.model: gpt-6.1-sol`。委派同Provider／同凭据并继承High，Noting配置保持，沿父冻结运行态继承主模型。study其余配置保持，未批改已有Conversation的模型配置。
+
+**首次登录路径缺陷与绕行：** 首次用户完成设备码授权后，`auth add`输出成功，但study auth.json只有active_provider、无凭据池／singleton，正式runtime解析失败。代码核实首次空命名Profile的`add_entry → _persist → persist_pool_entries`误走root的UPDATE-ONLY分支，root原无该Provider行，导致新凭据未持久化。未修改源码，改用原生模型设置所用`_login_openai_codex(force_new_login=True)`／singleton存储路径，用户再次授权后凭据落盘并可正式解析。最初一次未授权登录因输出缓冲取消；授权码及Token均不进仓库。本次只绕行该缺陷，不宣称修复通用auth add实现。
+
+**验证与边界：** 在原生`_profile_runtime_scope(study)`内解析默认路由为openai-codex／codex_responses；原生catalog包含所选模型。主模型gpt-6-sol与经`_load_config → _resolve_delegation_credentials → _resolve_child_runtime`得到的gpt-6.1-sol，各通过原生Responses transport发1次真实请求，wire effort=high、返回模型ID正确、status=completed，回复均为`STUDY_PROVIDER_OK`。各29输入＋9输出＝38 tokens，合计76，无重试、不写Conversation历史。普通／后台委派复用同一构建路由已亲审，未另启动完整委派任务或Noting，不把最小请求写成完整旅程验收。Alex配置与任务开始前SHA一致，模型探针前后Alex凭据及控制根凭据SHA保持；无凭据导入、服务重启、数据库写入或配置同步白名单变化。
+
+**留存与回滚：** 受限目录`/home/ubuntu/.local/state/hermes-secretary/study-chatgpt-20261021`留原`config.yaml.before`、`receipt-before.json`、主模型配置收据`configured.json`、`validation.json`与`delegation-validation.json`；`config.before-delegation.yaml`供仅撤销委派分流。全部仅在服务器，不含导出的授权Token。仅回退委派时恢复分流前配置；回退本次完整配置时恢复原config，并通过原生study Provider logout移除本次授权，先核无后续配置／凭据新增，禁止覆盖新变更。原先study无auth.json；不处理Alex或控制根凭据，不回滚数据库或其它并行任务。
+
+
+## 2026-10-21 10:44 · 移动端重复登录续查与31天期限
+
+**用户口径：** 再次跳到Authelia登录页、需输入账号密码；每天正常访问时至少一个月免重复登录。用户随后表示可能漏勾“记住我”。不把这一推测写成已取得的浏览器勾选状态。
+
+**取证：** 正式Authelia v4.39.28，配置普通`expiration: 12h`、`inactivity: 5d`、全局及唯一域Cookie的`remember_me: 1M`。同手机UA脱敏摘要`096e68aa`在10月20日22:21:40.917密码认证200、22:21:53.338 TOTP200，10月21日10:26:31开始根路径302，间隔约12小时5分钟；同UA只作关联，非唯一设备ID。Authelia／Redis均自10月19日持续运行、NRestarts0；Redis evicted_keys0、1.73MiB／64MiB、noeviction，AOF及RDB状态ok。原普通12小时期限与此次复现高度一致；没有跳转前Cookie值／勾选状态／已过期Redis对象，不宣称已穷尽客户端丢Cookie等原因，也不反推20日晚所有失效均同因。
+
+**实施：** 只把全局expiration及全局／域remember_me三个值改为`31d`，保留5d空闲期及其余完整配置；官方validate-config通过。10:44:22仅正常重启Authelia，PID1103840；Redis PID21608保持，切换前TTL>60秒的全部键在切换后仍存在。未重启Hermes Web／Gateway，未改双因素规则、Cookie域、密钥或用户数据。
+
+**验证：** 同官方二进制、独立回环认证／独立Redis、虚构账号验证原配置：不勾选Cookie剩43198秒、勾选2591998秒；候选两者均2678399秒（31天），Redis TTL匹配、授权200、Secure／HttpOnly保留，两种Cookie经隔离认证重启及隔离Redis正常重启仍授权成功。生产validate及health200、运行配置与候选逐字一致，公网Accept:text/html匿名302到auth、Accept:application/json匿名401。首次切换脚本已完成配置／健康／键保留断言，末尾匿名请求未指定Accept导致401、预期302断言失败；按原生HTML／JSON差异修正检查后通过，未重复重启。生产匿名`/api/state`不签发认证Cookie，不将其冒称已验证生产登录后的31天Cookie；隔离Redis重启就绪时一次socket尚未创建的连接提示不影响后续PING及两种授权断言通过。手机新登录与31天长期运行未实测，已失效旧登录需用户重新认证一次。
+
+**留存与回滚：** 本地ignored `.hermes-dev/session-31d-20261021/`有probe.py、probe-result.json及deployment-result.json（均无生产凭据）。服务器受限备份 `/var/backups/authelia/session-31d-20261021T104225/`含原配置、候选、receipt.json及rollback.sh；回滚仅恢复原配置并重启Authelia，不清Redis、不处理Hermes数据。运行配置SHA256 `15468ee5abcfa21a3d9f2a2dd8473b3d8294370ba317f7920636f9fb3c0e86d6`。规则参考[官方Session说明](https://www.authelia.com/configuration/session/introduction/)、[v4.39.28密码认证实现](https://github.com/authelia/authelia/blob/v4.39.28/internal/handlers/handler_firstfactor_password.go)。
 
 ## 2026-10-21 01:30 · 移动端阶段一与Noting联合上线
 
@@ -202,6 +403,22 @@ Noting预算收尾修复已提交并push `02964de`；语音前缀已提交并pus
 备份与回滚：服务器`/home/ubuntu/.local/state/hermes-secretary/gateway-voice-20261020/deploy-20261020T232706/`含部署前3库在线备份、Alex原config／env、host／study原config和旧提交；`deploy-receipt.json`、`preflight.json`、`timing.json`、`e2e-receipt.json`在同级工作目录。撤销须先查空闲，正常停止服务，退回`fcf5d08`并只撤回Alex此次STT／Key新增、移除此次适配脚本后启服；不回盖运行数据库或用户后续配置。原声和转录私有材料仅留服务器。stuck技能已按本次用户明确要求改为完整报告直接贴给用户、默认不派subagent，由用户转网页端调研。
 
 
+## 2026-10-20晚 · 手机Web／微信交替使用取证与独立本地修复
+
+用户要求只取证、梳理机制和行为轨迹，报告及必要材料一起ZIP交由网页版Astra分析方案；不扩大为Runtime改造。报告见[手机Web／微信调查](mobile-web-investigation-20261020.md)，完整原反馈和22组覆盖索引随包。后端线上fcf5d08、前端83285d2保持；没有生产配置修改、服务重启或候选性能优化部署。
+
+服务器固定17:58:00—22:42:59的Web／Gateway／Caddy／Authelia／Redis journals，以及Alex／host现存应用日志，共9份11,674,025字节；源服务器`/home/ubuntu/.local/state/hermes-secretary/incident-20261020/mobile-web-evidence-20261020T224259/`，0700／0600。清单记录来源、inode、前后大小、SHA256，后续9份哈希全部一致。普通活日志顺序复制，非多文件原子快照。敏感原件不下载、不入Git或外传ZIP。access脱敏摘录稍晚至22:43:00.600，有1432日志记录（1428access＋4error），不是独立请求数。
+
+补充22:57:33以只读源连接做Alex SQLite online backup，186,507,264字节、quick_check=ok，原件`alex-state-at-20261020T225733.private.db`留同一服务器私有目录，独立manifest含SHA256；不当作早场快照，不下载进ZIP。
+
+ADB真实PHZ110手机两轮22:21:18—22:25:41、22:35:00—22:41:58，采集HTTP分段、WS RPC／事件元数据、UI计数与long tasks，无正文和认证值。观察及转发已移除，不关闭用户标签。唯一生产动作是用户明确授权代点已有Send一次（22:39，26字符、无图片），监测事先就绪；真实回执／user事件／气泡均成功。其余HTTP／DB／Runtime／control查询只读，无代发微信、无Compact／Noting重跑。
+
+同机蜂窝cards三次68.199／56.090／64.684秒，分别主要耗于headers后65.322／54.155／56.774秒；稳定Wi-Fi0.404秒，首个Wi-Fi轮为换网过渡不冒称完整纯Wi-Fi冷启动。WS重连／心跳可同时正常。服务器回环cards约0.063秒、正文864734B，其中图片user行约651943B；线上未启Content-Encoding。纯图片即时用户回执缺口已在正式RPC＋SQLite／Controller链离线复现。认证bootstrap有连续302，具体session失效原因未查明。早场未有手机包、纯文字偶发缺气泡／灰Send／滚动现场仍未闭环。
+
+按用户独立要求，本地修Noting每Turn迭代预算收尾：所有trigger统一，合法状态经原Commit Gate保存，forced为结束类型而非force触发，真实失败不伪成功。13新增场景通过、所在文件54通过、冻结10检查通过；相关5文件首次156通过／2失败，两项在原版也复现，保留原日志。未提交／未部署，不恢复旧failed任务。线上manual child在21:51达到50次上限，pointer仍空；模型50次检索而不结束另属模型行为，本轮未改Prompt／模型／预算。
+
+本机ignored`.hermes-dev/pinned-mobile-20261020/`包含原采集脚本、脱敏证据、测试日志、未上线修复patch和`astra-investigation-20261020.zip`。ZIP白名单文件有SHA256清单，敏感快照／图片／cookie值／未验证候选patch均排除。后续若实施或部署，另记范围和验证；本条只证明当晚取证与本地窄修复现状。
+
 ## 2026-10-20 · 第一版收尾
 
 用户确认部署基本告一段落、第一版正常可用，要求精简README／AGENTS／CLAUDE并保持后端、前端、插件三个工作区干净。稳定事实、协作规则和当前状态分别归位；历史轮次报告及固定证据不改写。
@@ -301,6 +518,7 @@ Delegation风险有严格前提：回调携带派发时的`session_key`／`paren
 固定v5产品意图PI01–26及独立Verification／Validation按原版本PASS，入口[20261018索引](../.autonomous/20261018-product-intent-review/snapshot-index.md)。第三轮早期NOT PASS、真实模型误归因／Search完整性等失败和已接受非阻断观察不回写为成功；不将本次运维增量冒称旧门禁覆盖。
 
 历史全量Python／UI曾有失败，后续仅按影响定向关闭，不能宣称全量全绿；原件见ignored `.hermes-dev/deploy-readiness-20261018/suite-triage.md`和产品意图复审报告。旧Agent分工、旧PID与初始化等待不再是当前任务；需追溯时查对应轮次报告或Git历史。
+
 
 ## 2026-10-21 手机多故障候选修复与新增微信改绑身份冲突（尚未部署）
 

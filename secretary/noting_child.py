@@ -92,6 +92,116 @@ def noting_dispatch_block(agent: Any, tool_name: str) -> Optional[str]:
 
 _ACTIVE_NOTING_TASKS: Dict[str, Any] = {}
 _ACTIVE_NOTING_LOCK = threading.Lock()
+# Task-local completion ownership covers asynchronous construction as well as a
+# registered child. It carries at most one Idle continuation, never queued Turns.
+_NOTING_COMPLETIONS: Dict[tuple, Any] = {}
+
+
+@dataclass
+class _NotingCompletion:
+    parent: Any
+    admission: Any
+    after_normal_commit: Optional[Callable] = None
+    notified: bool = False
+    closed: bool = False
+    snapshot_id: Optional[str] = None
+
+
+def _completion_key(db, admission_id):
+    return str(Path(db.db_path).resolve()), admission_id
+
+
+def _same_completion(handle, admission):
+    return handle is not None and all(getattr(handle.admission, name) == getattr(admission, name) for name in (
+        "admission_id", "conversation_ref", "anchor_message_uid", "kind", "compression_interval_id",
+    ))
+
+
+def _begin_completion(parent, admission, callback=None):
+    handle = _NotingCompletion(parent, admission, callback)
+    with _ACTIVE_NOTING_LOCK:
+        return _NOTING_COMPLETIONS.setdefault(_completion_key(parent._session_db, admission.admission_id), handle)
+
+
+def _end_completion(db, handle):
+    if handle is None:
+        return
+    from secretary.framework_messages import _lock
+    with _lock(handle.parent):
+        handle.closed = True
+        handle.after_normal_commit = None
+    with _ACTIVE_NOTING_LOCK:
+        key = _completion_key(db, handle.admission.admission_id)
+        if _NOTING_COMPLETIONS.get(key) is handle:
+            _NOTING_COMPLETIONS.pop(key)
+
+
+def reuse_noting_for_idle(parent, admission, callback):
+    """Attach before the real completion publisher, or reuse a durable normal commit."""
+    from secretary.framework_messages import _lock
+    db = parent._session_db
+    with _ACTIVE_NOTING_LOCK:
+        handle = _NOTING_COMPLETIONS.get(_completion_key(db, admission.admission_id))
+    if _same_completion(handle, admission):
+        with _lock(handle.parent):
+            if not handle.closed and not handle.notified:
+                # Multiple elapsed periods need only the latest live owner's
+                # continuation; the interval witness prevents duplicate compaction.
+                handle.after_normal_commit = callback
+                return "waiting_existing_noting"
+    with db._read_ctx() as conn:
+        snapshot_id = normal_noting_snapshot_conn(db, conn, admission)
+    if snapshot_id is None:
+        return "skip:existing_noting_not_successful"
+    # A previously published completion is history. Do not move or reissue it;
+    # there is no new Framework to order behind this later native request.
+    return "existing_noting_compaction_requested" if callback(wait_for_completion=False) else "skip:idle_compaction_not_admitted"
+
+
+def normal_noting_snapshot_conn(db, conn, admission):
+    """Use only the exact task's durable association or still-live commit receipt.
+
+    Native publication can call this under persist/DB locks. Never acquire a
+    Framework lock here; the registry lock only reads an immutable receipt.
+    """
+    with _ACTIVE_NOTING_LOCK:
+        handle = _NOTING_COMPLETIONS.get(_completion_key(db, admission.admission_id))
+        live_id = handle.snapshot_id if _same_completion(handle, admission) else None
+    return db.noting_normal_child_snapshot_conn(
+        conn, admission.admission_id, admission.conversation_ref, admission.compression_interval_id,
+        live_snapshot_id=live_id,
+    )
+
+
+def _publish_after_idle_completion(handle, outcome, publish, fallback=None):
+    """Linearize callback registration against the existing Framework publisher."""
+    from secretary.framework_messages import _lock
+    normal = bool(outcome.committed and outcome.termination.get("type") == "finish_noting")
+    if handle is None:
+        if normal and fallback is not None:
+            _run_completion_callback(fallback)
+        publish()
+        return
+    if normal:
+        with _ACTIVE_NOTING_LOCK:
+            handle.snapshot_id = outcome.snapshot_id
+    while True:
+        with _lock(handle.parent):
+            callback = handle.after_normal_commit if normal else None
+            handle.after_normal_commit = None
+            if callback is None:
+                publish()
+                handle.notified = True
+                return
+        # Never hold Framework/persist/DB locks while native compression waits.
+        _run_completion_callback(callback)
+
+
+def _run_completion_callback(callback):
+    try:
+        callback()
+    except Exception:
+        logger.warning("Noting post-commit compaction failed; retaining its completion notice", exc_info=True)
 
 
 def register_active_noting_task(child_session_id: str, child: Any) -> None:
@@ -401,6 +511,7 @@ def owning_profile_for(db: Any) -> str:
 def commit_noting_snapshot(
     db: Any, conversation_ref: str, state: Any, *, anchor_message_uid: str,
     trigger_type: str, runtime_profile: str, termination: dict,
+    admission_id=None, child_session_id=None,
 ) -> dict:
     """Recheck capability and insert/reselect under the same DB transaction."""
     from secretary.noting_runtime import noting_trigger_gate
@@ -409,10 +520,13 @@ def commit_noting_snapshot(
         enabled, reason = noting_trigger_gate(db, conversation_ref)
         if not enabled:
             raise NotingChildError(reason or "Noting is effectively disabled")
-        return db.notebook_commit_snapshot_result_conn(
+        result = db.notebook_commit_snapshot_result_conn(
             conn, conversation_ref, state, anchor_message_uid=anchor_message_uid,
             trigger_type=trigger_type, runtime_profile=runtime_profile, termination=termination,
         )
+        if admission_id is not None:
+            _record_child_commit(db, conn, admission_id, child_session_id, result)
+        return result
 
     result = db._execute_write(commit)
     from secretary.web_events import changed
@@ -422,6 +536,21 @@ def commit_noting_snapshot(
     except Exception:
         logger.warning("Committed Notebook change observer failed", exc_info=True)
     return result
+
+
+def _record_child_commit(db, conn, admission_id, child_session_id, result):
+    """Keep noncritical association failure from becoming a new Snapshot gate."""
+    from hermes_state_secretary_noting import NotingChildSnapshotOwnershipError
+    conn.execute("SAVEPOINT noting_child_commit_association")
+    try:
+        db.noting_record_child_snapshot_conn(conn, admission_id, child_session_id, result)
+    except NotingChildSnapshotOwnershipError:
+        raise
+    except Exception:
+        conn.execute("ROLLBACK TO noting_child_commit_association")
+        logger.warning("Noting commit association unavailable; retaining the legal Snapshot", exc_info=True)
+    finally:
+        conn.execute("RELEASE noting_child_commit_association")
 
 
 # ── The task ──────────────────────────────────────────────────────────────────────────
@@ -541,6 +670,8 @@ def run_noting_task(
     recovery_audit: Optional[dict] = None,
     recovery_history: Optional[list] = None,
     completion_scope: Optional[Callable] = None,
+    after_normal_commit: Optional[Callable[[], None]] = None,
+    _completion=None,
 ) -> NotingTaskOutcome:
     """Run one admitted Noting Task to its one-shot conclusion (02 §5.4, §5.8).
 
@@ -556,10 +687,18 @@ def run_noting_task(
     if runtime_profile not in RUNTIME_PROFILES:
         raise NotingChildError("Unknown Noting runtime profile")
     parent_db = getattr(parent, "_session_db", None)
+    completion = _completion
     failure_notice = _failure_notice or _NotingFailureNotice(parent, admission_id, conversation_ref)
     try:
+        admitted = parent_db.noting_admission(admission_id)
+        if completion is None and recovery_audit is None:
+            from secretary.noting_runtime import NotingAdmission
+            completion = _begin_completion(parent, NotingAdmission(
+                admission_id, conversation_ref, anchor_message_uid, trigger_type, owning_profile,
+                runtime_profile, admitted["compression_interval_id"],
+            ), after_normal_commit)
         if admission_timestamp is None:
-            admission_timestamp = parent_db.noting_admission(admission_id)["admitted_at"]
+            admission_timestamp = admitted["admitted_at"]
         prefix = freeze_parent_active_prefix(
             parent, anchor_message_uid, parent_active_messages, conversation_ref=conversation_ref)
         if frozen_work is None:
@@ -572,8 +711,10 @@ def run_noting_task(
         if recovery_audit is None:
             finish_child_admission(parent_db, admission_id, status="failed")
         failure_notice.publish(str(exc))
+        _end_completion(parent_db, completion)
         raise
     child._secretary_noting_anchor_uid = anchor_message_uid
+    child._secretary_noting_admission_id = admission_id if recovery_audit is None else None
     child_session_id = child.session_id
     task_db = child._session_db
     provider = state_provider or _default_state_provider
@@ -600,7 +741,8 @@ def run_noting_task(
         )
         with completion_scope(child) if completion_scope is not None else nullcontext():
             _commit_when_complete(task_db, conversation_ref, anchor_message_uid, trigger_type,
-                                  runtime_profile, child, provider, outcome)
+                                  runtime_profile, child, provider, outcome, after_normal_commit=after_normal_commit,
+                                  completion=completion)
     except Exception as exc:  # a crashed task never commits and never resumes
         outcome.status, outcome.error = "failed", str(exc)
         outcome.notice_error = str(exc)
@@ -611,6 +753,7 @@ def run_noting_task(
             finish_child_admission(task_db, admission_id, status=outcome.status)
         unregister_active_noting_task(child_session_id, child)
         _close_child(child)
+        _end_completion(parent_db, completion)
     return outcome
 
 
@@ -701,6 +844,8 @@ def _run_child_turns(
 def _commit_when_complete(
     parent_db: Any, conversation_ref: str, anchor_message_uid: str, trigger_type: str,
     runtime_profile: str, child: Any, provider: Callable[[Any], Optional[dict]], outcome: NotingTaskOutcome,
+    *, after_normal_commit: Optional[Callable[[], None]] = None,
+    completion=None,
 ) -> None:
     if outcome.status != "completed":
         return
@@ -729,6 +874,7 @@ def _commit_when_complete(
         outcome.commit_result = commit_noting_snapshot(
             parent_db, conversation_ref, state, anchor_message_uid=anchor_message_uid,
             trigger_type=trigger_type, runtime_profile=runtime_profile, termination=termination,
+            admission_id=getattr(child, "_secretary_noting_admission_id", None), child_session_id=child.session_id,
         )
         outcome.snapshot_id = outcome.commit_result["snapshot_id"]
         outcome.termination = copy.deepcopy(termination)
@@ -739,6 +885,13 @@ def _commit_when_complete(
         outcome.status, outcome.error = "abandoned", str(exc)
         outcome.notice_error = outcome.error
         logger.warning("Noting commit refused for %s: %s", conversation_ref, exc, exc_info=True)
+    _publish_after_idle_completion(
+        completion, outcome, lambda: _publish_committed_completion(child, conversation_ref, termination, outcome),
+        fallback=after_normal_commit,
+    )
+
+
+def _publish_committed_completion(child, conversation_ref, termination, outcome):
     if outcome.committed and outcome.commit_result["pointer_changed"]:
         try:
             from secretary.framework_messages import publish_noting_completion
@@ -771,6 +924,7 @@ def spawn_noting_task(
     parent: Any, admission: Any, *, instruction: Optional[str] = None,
     parent_active_messages: Optional[Sequence[Dict[str, Any]]] = None,
     owning_profile: Optional[str] = None,
+    after_normal_commit: Optional[Callable[[], None]] = None,
 ) -> threading.Thread:
     """Run one admitted Noting Task on a context-scoped worker thread.
 
@@ -779,6 +933,7 @@ def spawn_noting_task(
     """
     instruction = instruction or DEFAULT_NOTING_TASK_INSTRUCTION
     parent_db = getattr(parent, "_session_db", None)
+    completion = _begin_completion(parent, admission, after_normal_commit)
     failure_notice = _NotingFailureNotice(parent, admission.admission_id, admission.conversation_ref)
     try:
         prefix = freeze_parent_active_prefix(
@@ -789,6 +944,7 @@ def spawn_noting_task(
     except Exception as exc:
         finish_child_admission(parent_db, admission.admission_id, status="failed")
         failure_notice.publish(str(exc))
+        _end_completion(parent_db, completion)
         raise
 
     def _run() -> None:
@@ -804,12 +960,16 @@ def spawn_noting_task(
                     admission_timestamp=admitted_at, frozen_runtime=frozen_runtime, frozen_work=frozen_work,
                     owning_profile=owning_profile if owning_profile is not None else admission.profile,
                     _failure_notice=failure_notice,
+                    after_normal_commit=after_normal_commit,
+                    _completion=completion,
                 )
         except Exception as exc:
             finish_child_admission(parent_db, admission.admission_id, status="failed")
             failure_notice.publish(str(exc))
             logger.warning("Noting task %s failed", getattr(admission, "admission_id", None),
                            exc_info=True)
+        finally:
+            _end_completion(parent_db, completion)
 
     try:
         from agent.memory_provider import spawn_context_thread
@@ -818,5 +978,6 @@ def spawn_noting_task(
     except Exception as exc:
         finish_child_admission(parent_db, admission.admission_id, status="failed")
         failure_notice.publish(str(exc))
+        _end_completion(parent_db, completion)
         raise
     return worker

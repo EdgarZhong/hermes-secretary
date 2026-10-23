@@ -192,6 +192,8 @@ Exactly **three main screen states** exist: **New Chat**, **Conversation**, **Fi
 
 #### Android 原生通知与临时后台保护（用户最终确认，2026-10-21）
 
+**APK方向（用户确认，2026-10-23）：** Android壳固定竖屏，不随设备旋转自动切换横屏；合并Manifest及Activity运行时方向保持一致。普通网页沿原响应式行为，不由本条锁定方向。实际安装包和真机验证状态只记根CLAUDE及运维记录。
+
 - **范围以现有观察能力为准。** 复用已有`session.active_list`、`sessions.changed`、`state.sessions[].running`及`gateway.ready`，识别现有列表监控范围内跨Conversation、跨Profile的Active Turn；不只看当前`state.live.active`，不要求由APK发起。全局运行监控不等于所有会话完整正文推流，不发现／监听原客户端不能观察的外部Turn。
 - **保持现有资源边界。** 不批量`session.resume`／`session.activate`，不取消`releaseInactiveViews()`，不破坏弱网优化、历史懒加载和Conversation切换。不改后端API契约、Gateway接线或WebSocket协议，不加全局查询、额外轮询、新推流、独立WS、FCM／Firebase或通知服务器。
 - **临时保活。** 至少一个被现有全局状态观察到的Active Turn时启用；各Turn结束逐一更新，全部结束后解除。尽可能保持同一WebView、JS和已有WS短暂后台运行，不另建Conversation／Agent Runtime状态。原生前台服务只提高存活概率，遵守后台启动限制、权限和系统时限；拒权、系统暂停／回收或强制结束不影响云端Turn。无长期驻留、进程重启自启、离线通知、补发或后台发现。
@@ -265,6 +267,10 @@ Message ordering, Compaction lineage, framework carriers, UIDs and stream insert
 **2026-10-18 user-confirmed presentation baseline:** The user has completed the UIUX polish. Final state/recovery wiring MUST preserve the user's latest layout, styling, animations, Profile icons, Pin/drag interactions and scrolling behavior. Reuse existing presentation components for necessary status visibility; do not redesign the interface or overwrite/inadvertently include the user's unrelated changes.
 
 **2026-10-21 用户确认 Timeline 中断与宽度：** 中断回执中的非持久取消说明不作为 Assistant 正文新增或覆盖输出；保留实际输出的正文、Thinking、工具状态以及已有 `turn_terminal` 历史投影位置。System 卡片左右边缘与 Assistant 阅读区对齐，`System ·` 标签与短正文同行；长正文仍可自然换行，不截断。Compaction 卡片左右边缘与加载历史按钮对齐，比 Assistant 阅读区更宽，仅调整宽度，保留既有底色、边框、图标、圆角和折叠交互。加载历史入口保持现状。
+
+**2026-10-23 用户确认微信正文与Redirect：** 保留原生Redirect及hidden空占位，不改变Thinking留存或Timeline排序／渲染机制。微信Turn active中每条完整正式Assistant Message应及时投递，包括工具前正文，不等待Turn结束后仅发送final尾段。Redirect取消正式正文生成时，已收到且尚未外发的半截正式正文合并进对应同一条Redirected通知；已发送正文不重复，完整消息、合并通知、纠正后回复保持实际顺序。无正式正文时保留既有通知与空占位，不把Thinking当正文发送。模型上下文及持久化继续使用原生事实，不把渠道通知文案写成模型回复。
+
+**同日用户最终确认来源包裹保持：** 用户取消此前提出的前端来源包裹显示适配，保留上游Gateway JSON来源说明、现有追加逻辑及Web显示；不新增剥离适配，不改模型可见来源／数据库原文。本项目正常微信输入的XML仍仅进模型`api_content`，持久`content`保持用户正文，沿现有路径不变。
 
 **同日用户补充的分类边界：** 失败／中断提示卡片化仅针对具备明确失败／中断提示身份的消息，不把“后端生成的内容”整体视为状态卡片。slash命令返回继续遵循现有临时输出契约（含`temporary`／`command`的样式、生命周期和位置），不转换；模型实际回复及中断前真实部分回答保持正文表现。不得仅因整个Turn为interrupted或正文包含诊断用语就改变消息类型。
 

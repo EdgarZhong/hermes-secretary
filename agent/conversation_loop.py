@@ -319,13 +319,16 @@ def _moa_reference_metrics_for_hook(agent: Any) -> Any:
         return None
 
 
-def _apply_active_turn_redirect(agent: Any, messages: List[Dict[str, Any]], text: str) -> None:
+def _apply_active_turn_redirect(agent: Any, messages: List[Dict[str, Any]], text: str) -> str:
     """Append a provider-safe checkpoint and correction to the live turn so role alternation
     holds and cached messages stay byte-identical. INVARIANTS: raw chain-of-thought never enters
     replayable content (inlined CoT reads as a prefill jailbreak and bricks the session with
     empty-response storms); the interruption scaffold is replay text carried only in the user
     correction's ``api_content``; an on-screen-empty placeholder is ``display_kind=hidden``."""
-    visible = agent._strip_think_blocks(getattr(agent, "_current_streamed_assistant_text", "") or "").strip()
+    captured = ("".join(getattr(agent, "_captured_assistant_text_parts", ()))
+                if getattr(agent, "_captures_assistant_text", lambda: False)()
+                else getattr(agent, "_current_streamed_assistant_text", ""))
+    visible = agent._strip_think_blocks(captured or "").strip()
 
     checkpoint_parts = [_INTERRUPT_SCAFFOLD_MARKER]
     if is_runaway_repetition(visible):
@@ -349,7 +352,7 @@ def _apply_active_turn_redirect(agent: Any, messages: List[Dict[str, Any]], text
         # as assistant text the model echoes it (#81841).
         append_message(messages, {"role": "assistant", "content": visible} if visible else hidden_interrupt_placeholder_row())
     # Transcript shows the user's own words; the provider replays the scaffolded form.
-    append_message(messages, {"role": "user", "content": text, "api_content": correction})
+    append_message(messages, {"role": "user", "content": str(text), "api_content": correction})
 
     # Stateful scrubber for <memory-context> spans split across stream deltas (#5719).  sanitize_context()
     # alone can't survive chunk boundaries because the block regex needs both tags in one string.
@@ -358,7 +361,9 @@ def _apply_active_turn_redirect(agent: Any, messages: List[Dict[str, Any]], text
     # delta1 and 'Let me check' as delta2 — the regex erased delta1, so downstream state machines never
     # learned a block was open and leaked delta2 as content).
     agent._current_streamed_assistant_text = ""
+    agent._captured_assistant_text_parts = []
     agent._stream_needs_break = True
+    return visible
 
 
 def _is_copilot_provider(agent: Any) -> bool:

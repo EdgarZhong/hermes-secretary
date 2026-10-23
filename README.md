@@ -12,7 +12,7 @@
 | Scheduler | 独立排期表、claim / pending / ACK；宿主约5秒扫描，合法本地 Main 的 Instant Reminder 可冷态恢复 |
 | Web / Gateway | 多Profile隔离、双SPA同源、消息渠道绑定持久Conversation；历史卡片首屏、显式详情补水与验证型图片引用／视口下载 |
 
-Secretary 只在Profile的 `state.db` 增加自有表，不改原表 schema / ownership。`noting`、`scheduler` 独立配置，`/noting` 控制当前Conversation参与。微信入站的回复由adapter发送，其它入口须显式调用发送工具。实现边界及已知限制见 [当前看板](CLAUDE.md)。
+Secretary 只在Profile的 `state.db` 增加自有表，不改原表 schema / ownership。`noting`、`scheduler` 独立配置，`/noting` 控制当前Conversation参与。微信入站的完整正式回复按消息及时由adapter发送，Redirect的半截正式正文并入对应通知；其它入口须显式调用发送工具，Framework等非触发式上下文注入不借用上一轮渠道adapter自动发送。实现边界及已知限制见 [当前看板](CLAUDE.md)。
 
 Main的`scheduler`与`notebook_show`按各自能力开关完整独立声明在API顶层，不进入Tool Search折叠目录：前者受`scheduler.enabled`，后者沿全局`noting.enabled`读取门禁；当前Conversation的`/noting`参与开关不控制这两项权限。其它工具保留原生折叠策略。
 
@@ -69,7 +69,7 @@ Gateway入口 `hermes gateway`；Dashboard入口 `hermes dashboard --host 127.0.
 
 ### Android APK
 
-独立前端仓库的 `src-tauri/` 提供 Tauri 2 Android 壳，前端资源内置，业务仍经正式 HTTPS／Authelia、原生 API／WS 连接。Android 专属系统栏避让和通知桥接不会在普通网页启用；运行状态复用现有跨 Profile 列表观察，不增加后端协议、独立连接或轮询。后台保护仅在已观察到的 Active Turn 期间临时启用，不保证系统暂停／回收后仍通知。APK从锁屏或后台返回前台时由原生重载当前页面并重置恢复进度；连接持续未恢复时按10／15／20／30秒重载退避，连接恢复停止，正常慢历史加载不误刷。此机制保留登录／本地草稿／当前会话，不在普通网页启用。完整行为和验收边界见 [06 Android 契约](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md#android-原生通知与临时后台保护用户最终确认2026-10-21)。
+独立前端仓库的 `src-tauri/` 提供 Tauri 2 Android 壳，固定竖屏，前端资源内置，业务仍经正式 HTTPS／Authelia、原生 API／WS 连接。Android 专属系统栏避让和通知桥接不会在普通网页启用；运行状态复用现有跨 Profile 列表观察，不增加后端协议、独立连接或轮询。后台保护仅在已观察到的 Active Turn 期间临时启用，不保证系统暂停／回收后仍通知。APK从锁屏或后台返回前台时由原生重载当前页面并重置恢复进度；连接持续未恢复时按10／15／20／30秒重载退避，连接恢复停止，正常慢历史加载不误刷。此机制保留登录／本地草稿／当前会话，不在普通网页启用。完整行为和验收边界见 [06 Android 契约](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md#android-原生通知与临时后台保护用户最终确认2026-10-21)。
 
 在独立前端仓库设置 Android SDK／NDK／Java 环境后执行 `npm run android:build`，输出 `src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk`。当前目标为 Android 8.0+／arm64；release 非调试、使用本地签名，原件仅保存在 ignored `src-tauri/.android-signing/`，后续覆盖升级必须保留该密钥。应用图标由 `npm run android:icons` 复用现有 logo 与主题深色自动生成，release 构建会先刷新图标。`npm run android:debug` 仅供本地验收。实际包版本、网络验证及限制统一记录在 [运维记录](docs/operations-log.md)。
 

@@ -660,7 +660,11 @@ class GatewayBusySessionMixin:
         to *event*, so the reply must quote it (#115001). Both redirect entry points (busy
         interrupt mode and the priority path) go through here.
         """
-        if not self._try_agent_verb(running_agent, "redirect", text, session_key, event=event):
+        from gateway.weixin_redirect import redirect_with_receipt
+        redirected = redirect_with_receipt(self, running_agent, text, session_key, event)
+        if redirected is None:
+            redirected = self._try_agent_verb(running_agent, "redirect", text, session_key, event=event)
+        if not redirected:
             return False
         turn = self._fold_into_running_turn(running_agent, session_key, event)
         if turn is None:
@@ -880,6 +884,8 @@ class GatewayBusySessionMixin:
         is_queue_mode = effective_mode == "queue"
         is_steer_mode = effective_mode == "steer"
         is_redirect_mode = effective_mode == "interrupt" and redirected
+        if is_redirect_mode and getattr(event, "_weixin_redirect_ack_deferred", False):
+            return True
         if (
             effective_mode == "interrupt" and not redirected
             and running_agent and running_agent is not _AGENT_PENDING_SENTINEL

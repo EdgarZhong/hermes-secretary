@@ -25,6 +25,7 @@ def runtime(tmp_path, monkeypatch):
     dispatched = []
     ready = threading.Event()
     parent._test_idle_completed = threading.Event()
+    parent._test_idle_completions = []
     original_event = rt._run_idle_event
     def observe_event(*args, **kwargs):
         try:
@@ -34,6 +35,7 @@ def runtime(tmp_path, monkeypatch):
     monkeypatch.setattr(rt, "_run_idle_event", observe_event)
     def spawn(parent, admission, **kwargs):
         dispatched.append((admission, get_hermes_home(), threading.current_thread().daemon))
+        parent._test_idle_completions.append(kwargs.get("after_normal_commit"))
         ready.set()
     monkeypatch.setattr("secretary.noting_child.spawn_noting_task", spawn)
     yield parent, db, dispatched, ready
@@ -90,23 +92,39 @@ def test_timer_requires_actual_native_usage_threshold(runtime, usage, expected):
 
 
 @pytest.mark.parametrize("occupied", [False, True])
-def test_timer_force_interval_compacts_without_duplicate_noting(runtime, monkeypatch, occupied):
+def test_timer_force_interval_defers_compaction_until_its_noting_normal_commit(runtime, monkeypatch, occupied):
     parent, db, dispatched, ready = runtime
     if occupied:
         assert rt.maybe_admit_force_from_pressure(parent, 64000).startswith("admit")
         dispatched.clear()
         ready.clear()
+        parent._test_idle_completions.clear()
         add(db, "main", "next source", "m2")
     parent.context_compressor.update_from_response({"prompt_tokens": 64000})
     calls = []
     completed = threading.Event()
     parent.request_context_compaction = lambda **kwargs: (calls.append(kwargs), completed.set())[0]
     assert rt.note_main_turn_finished(parent)
-    assert completed.wait(2)
+    assert parent._test_idle_completed.wait(2)
     assert len(dispatched) == (0 if occupied else 1)
-    assert calls == [{"relevant_threshold_tokens": 1000, "wait_seconds": 5.0}]
+    assert calls == [] and not completed.is_set()
     if not occupied:
         assert dispatched[0][0].kind == "force"
+        from secretary.noting_child import commit_noting_snapshot
+        from secretary.notebook_model import SECTIONS
+        admission = dispatched[0][0]
+        db.create_session("timer-child", source="subagent", parent_session_id="main")
+        db.noting_child_register(admission.admission_id, child_session_id="timer-child", profile=None)
+        commit_noting_snapshot(
+            db, admission.conversation_ref, {section: [] for section in SECTIONS},
+            anchor_message_uid=admission.anchor_message_uid, trigger_type=admission.kind, runtime_profile="NOTING",
+            termination={"type": "finish_noting", "reason": "Current work checked."},
+            admission_id=admission.admission_id, child_session_id="timer-child",
+        )
+        parent._test_idle_completions[0]()
+        assert completed.is_set() and len(calls) == 1
+        assert calls[0]["relevant_threshold_tokens"] == 1000
+        assert calls[0]["wait_for_completion"] is True
 
 
 def test_timer_native_usage_failure_consumes_period_and_next_turn_recovers(runtime, monkeypatch, caplog):
@@ -228,10 +246,11 @@ def test_external_idle_period_consumed_without_freeze_then_native_can_run(runtim
     assert rt.note_actual_main_execution(parent, "external")
     monkeypatch.setattr(rt, "_freeze_and_log_attempt", lambda *args: pytest.fail("External must not freeze"))
     assert rt.note_main_turn_finished(parent)
-    assert completed.wait(2)
+    assert parent._test_idle_completed.wait(2)
     state = db.noting_idle_state(parent._secretary_conversation_ref)
     assert state["trigger_produced_at"] is not None
     assert not dispatched
+    assert not completed.is_set()
 
 
 def test_restart_retains_produced_period(tmp_path, monkeypatch):
@@ -277,7 +296,7 @@ def test_same_anchor_idle_skip_is_one_event_even_after_later_framework_row(runti
     freeze = rt._freeze_and_log_attempt
     monkeypatch.setattr(rt, "_freeze_and_log_attempt", lambda *args: (attempts.append(args), freeze(*args))[1])
     db.noting_idle_turn_finished(ref, time.time() - 10)
-    assert rt.maybe_run_idle_noting(parent, db, ref) == "skip:force_interval_occupied"
+    assert rt.maybe_run_idle_noting(parent, db, ref) == "skip:existing_noting_not_successful"
     add(db, "main", "framework completion", "m2")
     for _ in range(3):
         assert rt.maybe_run_idle_noting(parent, db, ref) == "skip:idle_trigger_produced"
