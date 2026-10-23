@@ -6,6 +6,23 @@
 
 用户明确允许提交此前已亲审的后端与独立前端修补，按仓库规则提交后自动push，不部署。后端包含微信正文／Redirect／Framework、Idle成功前置、时间继承、Kimi wire／标题及对应测试与文档；前端包含竖屏／版本、此前已授权Context三文件及时间回归。原有未跟踪调查／算法稿不混入，凭据、ignored原始实验及APK不入Git。测试与冻结10检查复用上一节当前版本有效证据，提交前核对暂存范围及敏感内容。
 
+**提交完成：** 后端`599d11467c8df2ce6e31be846a3d4069fafbb0ce`（44文件）已推`origin/main`，实际暂存冻结10检查通过、health38代码文件0 blocking／0 advisory；新增内容令牌／私钥模式0。前端`589df02`（12文件）已推`origin/secretary`，暂存diff检查通过，前端／APK既有验证收据继续有效；初次提交后本地仍ahead1，主会话显式普通push完成，未强推／fetch／merge。两仓未部署，后端两份原有未跟踪文稿保持。
+
+## 2026-10-24 · Kimi Coding Anthropic inline工具真实探针
+
+用户粘贴新的调查材料并明确授权先验证Anthropic动态声明，成功后才测N=38。主会话复核[Anthropic官方Inline定义与位置规则](https://platform.claude.com/docs/en/build-with-claude/mid-conversation-system-messages)以及[Kimi Coding端点／模型说明](https://www.kimi.com/code/docs/en/)，确认标准格式，不把Anthropic支持等同Kimi兼容承诺。独立ignored脚本直接HTTPX固定JSON发送`https://api.kimi.com/coding/v1/messages`，不用SDK／Hermes转换器处理短探针；真实`HermesAgent/0.21.5`身份、`anthropic-version:2023-06-01`及`anthropic-beta:inline-tools-2026-09-15`、`k3-256k`／High（adaptive thinking＋output_config.effort=high）、stream=false、零自动重试。短cap2048而非贴文128，避免思考截断造成工具未生效误判。仅虚构内容，不执行返回工具、不写生产库／Notebook／Snapshot，不改生产协议／Prompt／工具注册或提交供应商Issue。
+
+| 请求 | 北京时间 | HTTP／结果 | Usage | 耗时 |
+|---|---|---|---|---|
+| 末尾inline完整工具定义 | 00:23:38 | 400，`invalid_request_error / Invalid request Error`，无tool_use | 未返回 | 0.278秒 |
+| 同工具顶层注册正对照 | 00:23:54 | 200，`stop_reason=tool_use`，`notebook_maintain`参数严格为`{"description":"test-entry"}` | input240／output82，其中thinking30；cache0 | 5.030秒 |
+
+inline顶层只有notebook_show，新工具仅在User任务之后、数组末尾的system.content.tool_addition中以tool_definition携完整Schema。正对照只将同一定义移入顶层tools并移除已空system消息；离线重建核对其余JSON与全部脱敏Header相同。两次均无标准Request ID，成功response_id为`msg_lXus6RSmXNHwGxat2dNJ0WUc`。请求SHA分别`1b8d20b7b9a0d726387ac415cc7b1ac1d7407a8efa9a92e6a24813b0e73ff284`、`73cf68fed2b7aba7d5a42ee33dc476ffe8c9c39e5e3873b05e11b6c12fc34a0d`；响应SHA分别`a8a175ca090e79903801d6330d34263ed901fa72937869d8bb0cfd1ed12f8d1c`、`93a6a060f7db93499d88f4ae62cc34f00edc814c0381ef3602408d990b510088`，均从实际HTTP字节重算匹配。正对照已知用量322 Tokens，Thinking不重复相加；失败无Usage／费用未知。
+
+**判断与停止条件：** 顶层注册可调用证明本次认证、模型、High及普通Schema可用，同Beta Header也可接受；所测inline消息形态被拒。泛化400仍不能进一步区分system角色与tool_addition块的具体拒绝点，不能穷尽所有扩展；不是原Chat的Token Limit错误。动态声明成功前提不成立，**N=38未发送**：仅用原固定生成器／原失败wire离线校验并准备Anthropic变体，保Root正文、152条合成父消息、26父工具、Noting任务与两Schema，按协议调整序列化及任务→声明顺序、max_tokens1／High。跨协议不称单变量JSON实验，不声称验证缓存命中或修复原超窗。
+
+完整脱敏报告与派生核验`.hermes-dev/kimi-anthropic-inline-20261024/report.md`、`verified-results.json`，原始受限请求／响应及初版回执均保留；派生核验明确区分“工具可达”与“动态注册成功”，顶层正对照不计动态成功。目录0700／文件0600，凭据不落盘；此前N38历史实验与报告保持原样。
+
 ## 2026-10-23 · 并行修补主会话集成审查（本地，未部署）
 
 **微信新包主会话亲审：** 完整正式消息按原生`message_uid`进入既有consumer FIFO；Redirect沿原生持久化checkpoint取得独立清洗后的半截正文，和原Redirected通知合并排队。捕获不冒充展示／发送成功；同文不同身份分别发送，同身份最终回退依成功回执去重，未成功的final保留正式发送。已亲读writer／Turn／generation隔离、连续纠正合并、30秒防抖、实际发送在途顺序及最终消息身份接线；15文件SHA与交回证据一致。最终6文件56项通过（新增整链路12项），原生Redirect兼容3项通过；日志`.hermes-dev/weixin-message-final-integrated.log`及`weixin-message-native-redirect-compat.log`。Framework禁外发回归保持，来源追加与Thinking／空占位／Timeline不改。外部超时结果不确定时仍是既有最佳努力投递，不宣称外部exactly-once，未增持久重试队列。

@@ -1,6 +1,10 @@
 # Hermes Secretary 当前状态
 
-## 2026-10-24 · 当前：提交已审修补，隔离验证Anthropic动态工具
+## 2026-10-24 · 当前：修补已提交推送；Anthropic inline短探针失败，未发送N38
+
+**本次完成：** 后端`599d11467c8df2ce6e31be846a3d4069fafbb0ce`已推`origin/main`；前端`589df02`已推`origin/secretary`，无部署。后端暂存44文件的冻结10检查通过，health38文件0／0；前端复用上轮有效测试／构建。两份原有未跟踪调查／算法稿保持未提交。
+
+**真实API结果：** 2026-10-24北京00:23两次、零重试、真实Hermes身份、K3-256k／High／Anthropic Messages。符合官方位置与Beta的inline `tool_addition`短请求HTTP400（泛化Invalid request Error、无Usage）；同Header／Root／任务／模型／High／cap的顶层注册正对照HTTP200并返回完整`notebook_maintain({"description":"test-entry"})`，input240／output82（thinking30含其中）。因此本次inline形态未被该端点接受，未满足长请求前提，N38仅离线准备、没有发送。不能据此比较Anthropic长窗口或宣布原Chat超窗根因；也不泛化所有Anthropic扩展都不支持。证据`.hermes-dev/kimi-anthropic-inline-20261024/report.md`、`verified-results.json`；原始HTTP哈希已独立核验，未执行工具／写生产／改协议或Prompt。固定工具方案继续暂停。
 
 用户明确授权提交上一轮全部已审修补，依仓库约定commit后自动push；不含生产部署、47条历史时间恢复或工具固定顶层方案。后端／独立前端按现有分支提交，保留此前未跟踪的调查与算法稿，不扩大提交范围。
 
