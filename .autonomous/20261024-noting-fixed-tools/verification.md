@@ -2,7 +2,11 @@
 
 ## 1. 审查对象与结论概览
 
+以下首段为初审原时点记录；当前结论以其后的“全新独立复审当前汇总”及第3节新矩阵为准。
+
 审查者：独立 Verification（新上下文；不派生）。判据建立：2026-10-24。冻结基线 `56b7ebc01131ea4eaad0a4690c0bfbab048c2803`，授权追加 `3ce7517dc7c4e6dbdae7de1607032c8281ff0e24`；定位见同目录 snapshot-index.md、baseline.txt、user-request.md。待审 Core `4f503a22ca804b63717fda1104b6146420b525df`（产品与f841170一致）、Web `589df02706d3c6738789ff97fcb652a0bf76c398`。范围C01–C11；独立判据32条（初始28条＋交付闭包覆盖补录4条）；当前初审门禁不通过：32条中24符合、3有依据不适用、1违规、4证据不足。F01拒绝反馈契约违规及真实完整Idle/四工具/N46与最终收尾证据尚未齐备。生产部署尚未发生，本审查区分发布前符合性与发布后Validation。
+
+**全新独立复审当前汇总（2026-10-24）：门禁通过。** 新审查者 `/root/fixed_tools_reverification`，先原文判据落盘后调查；待审 Core `1ea38ef16addaac2cb441029e38f07578d3738dd`、Web `589df02706d3c6738789ff97fcb652a0bf76c398`。本次C01–C11全范围11条全部符合（C08为发布前机制与能力符合性），无违规／必要证据不足；原F01拒绝回执和R01真实工具／Idle链路证据缺口均已关闭。N46实际长前缀、默认Task正常短链及单列显式Show控制分支均有真实原件和独立核验。初审32条及4f503a2时点事实完整保留，不与本次数量混计。生产部署没有发生；此PASS允许进入独立Validation，不代表最终用户验收或已上线，部署后真实运行／数据保护仍须核验。
 
 ## 2. 独立要求清单与覆盖
 
@@ -48,6 +52,26 @@
 | V31 | C08/C10；冻结需求10之599d114；06§1.4时间事实契约 | 今日闭包/timestamp | 直接要求／必要保持：压缩复制保持原消息authoring time和UID；新摘要/新输出仍是新时间，不恢复生产47旧行 | 原地/covered/rotation及full/cards/details/resume均保持，UID优先、显式时间不改、错误回滚 | §3 V31 |
 | V32 | C08；冻结需求10精确绑定589df02；06§1.13/1.14 Context事实契约 | 今日闭包/Context显示 | 直接要求／必要保持：压缩完成只取当前owner正式Context，不以临时unavailable清掉旧有效值；显式invalidated仍清除；迟到不能覆盖新值 | 正式CompactionViews→ContextAfterCompaction→controller；并发/切换/重连/字段部分返回回归 | §3 V32 |
 
+### 全新独立复审判据（2026-10-24）
+
+本表由全新独立审查者 `/root/fixed_tools_reverification` 在读取代码、测试、动态看板、实现自评及旧审查结论之前形成并落盘。依据为初始冻结 `56b7ebc01131ea4eaad0a4690c0bfbab048c2803` 的用户需求、白板 K1/K6/N1–N4/P1–P6、07 的 2026-10-24 修订及保留契约、06 今日修补契约、部署 SOP §0/2/8，以及授权追加 `3ce7517dc7c4e6dbdae7de1607032c8281ff0e24` 的长上下文和恢复兼容要求。索引只用于定位；未以主会话的实现说明构建判据。以下 C01–C11 为本次全范围复审判据，不覆盖上方历史判据。
+
+| 条款编号 | 来源位置及要求 | 类型/适用范围 | 规格解释及必要不变量 | 符合判据 | 核查位置 |
+|---|---|---|---|---|---|
+| C01 | 用户需求 §已确认方案1、4、6；07 顶部修订、§3.1/8.2 | 机制；合格 Main／全局 Noting 开启；非适用保持原生 | 直接要求：两维护工具的完整 Schema、description、Provider 转换不改，只改变注册层级；完整顶层声明不能被 Tool Search 折叠；首次增加工具面允许旧缓存一次失效 | 与冻结原 canonical 逐字段比对；正式请求的顶层 tools 含完整定义；无 messages[*].tools 或消息级动态注册；关闭／非 eligible 路径没有新增行为 | 本次证据矩阵 C01 |
+| C02 | 用户需求2–5；07 §8.5/8.11 | Prompt；初始 Main 和 Noting 身份切换 | 直接要求：Main 明确禁用两工具；Noting 作废父 system／角色／规则／工具策略／任务／完成条件，并明确启用两工具、严格四工具；Main 其它能力保持 | 真实完整构建 Prompt 中出现已定英文；任务及后续控制消息当前身份清楚；不得借固定声明授予 Main 执行权 | 本次证据矩阵 C02 |
+| C03 | 用户需求4、9；07 修订、§3.1/8.11/8.12；白板 K6/N6 | 数据与机制；初始任务、同 child 所有续 Turn | 直接要求：任务不重复完整四 Schema，仅使用 API tools；保留完整工作 Notebook、时间、任务参数和必要权限指导；同 Turn 成功修改可通过单条结果跟踪 | 初始与续 Turn 正式消息都不含重复 Schema或动态声明；完整当前工作视图可见，续 Turn 含已成功修改；不能删掉工作数据来缩短输入 | 本次证据矩阵 C03 |
+| C04 | 用户需求5；07 修订、§3.2/4.5/5.1/7.2；白板 K1/K6 | 权限与状态；同步、并发、invoke、间接执行；普通子 Agent | 直接要求：可信运行身份及绑定工作态授予权限；Noting 仅四工具且 History 限父域；Main 和其它子 Agent 拒绝两维护工具。必要推导：不能用正文、参数、继承 Schema 或调用包装绕过；错误不改变状态、不泄露域外存在性 | 从正式入口追踪并取得拒绝证据；覆盖伪装、错误绑定、并发混批和间接路径；有效四工具保持可用；finish 与其它工具同批整批拒绝，end_requested 后不可再写 | 本次证据矩阵 C04 |
+| C05 | 用户需求6–7；07 §3.1/8.2；追加版本 §12.3；白板 P3 | 前缀与生命周期；新构造、冷/热恢复、旧任务显式恢复 | 直接要求：从实际父 Active 结构冻结，Root、完整 tools、消息及缓存作用域逐请求继承，冻结后只追加任务／控制数据；旧 pin 缺定义仅在重建父运行态 freeze 前补 canonical，完整 pin 不变，保历史原记录并报告 sources | 检查父子真实 wire/结构、续 Turn 和多模态；不从历史重拼普通父前缀、不对子临时补工具、不刷新 root/MCP/Provider；旧 pin 恢复定向证据显示补齐时点、来源及一次缓存变化诚实 | 本次证据矩阵 C05 |
+| C06 | 用户需求7–8；07 本轮修订；部署 SOP §0/1/3 | 环境、模型与隔离；Alex 本地完整链路 | 直接要求：实际 kimi-for-coding，Alex 原 Persona／业务 Prompt 保持，仅新增授权权限提示；允许仅隔离副本调低阈值／延迟；Home、runtime、DB、cwd 与生产隔离 | 环境与 Prompt 指纹、实际 Provider/model、隔离路径和配置差异可核；正式 CLI/RPC/原生 runner 完整接线，不用减 Prompt／假模型代签；无生产排期、外发或外部持久写入 | 本次证据矩阵 C06 |
+| C07 | 用户需求8–9；07 §3.1/4.5/8.1/8.13；白板 N1–N4/P2 | 模型行为、正常结束、提交及用户结果；短样本 | 直接要求：自然 Main 误调频率与确定性拒绝分别报告；不重复 Schema 的 Noting 实际能用四工具并正常 finish。必要推导：finish 成功只请求结束，原生 Turn 返回后 Commit Gate 发布合法完整 Snapshot；forced 不能冒称正常；Idle 正常提交→父 full compaction→Framework | 真实模型短链路有工具回执、finish_noting、合法 Snapshot、完整 Framework 与用户任务完成；错误调用被 Harness 拒绝且可纠正；保预算／失败／释放和有效 pointer 投递边界；未实际调用的四工具分支不得仅凭声明声称实测 | 本次证据矩阵 C07 |
+| C08 | 用户需求10及“之前今天修复一块部署”；06 §1.2.1 微信正文/Redirect、Heartbeat及 Android 竖屏；部署 SOP §0/2/6/8 | 联合交付；后端599d114修补、前端589df02与本次实现 | 直接要求：审查今日修补随最终产物纳入提交、push及云发布闭包；升级保护原数据／配置／排期／绑定，APK不自动安装。必要推导：部署能力、固定源码/产物/PM锁、可恢复备份、空闲停启、回滚方案须先可核；实际部署结果由部署后 Validation 核 | 静态确认两端修补完整接入最终版本，已有同版本机制证据可信；发布前具备执行能力与保护计划。记录“具备部署条件”与“已经部署验真”的边界，不用未来动作判已完成，也不要求本审查者写生产 | 本次证据矩阵 C08 |
+| C09 | 用户需求11；冻结 AGENTS 与自主套件流程 | 过程约束；全部子 Agent、检查与界面操作 | 直接要求：Sol 系/high、不使用 Astra、不再派生；固定十检查及阈值不降；只自建隐藏 IAB 无显示／焦点变化；先独立 Verification 后独立 Validation | 核本轮配置/记录、检查入口和结果版本；不以改门禁获得通过；没有合规 UI 手段则如实未验；不能把 Verification 代替用户验收 | 本次证据矩阵 C09 |
+| C10 | 用户需求12；07 本轮修订；06 微信/来源最终确认；部署 SOP §3/8 | 范围与数据安全；生产、恢复、公开仓库 | 直接要求：不恢复旧47错误时间、不实际重放旧生产失败 Noting、不更改其它 Provider 路由／Thinking／Timeline／来源包裹；凭据/Persona/历史/raw wire 不入 Git；隔离配置不带生产 | review 全部变更与待跟踪文件，核敏感证据 ignored/受限、生产改动计划精确；历史来源/模型原文保持，今日必要修补没有扩大语义或数据权限 | 本次证据矩阵 C10 |
+| C11 | 授权追加 user-request 最末节；追加版07顶部修订 | 真实长上下文；实际 kimi-for-coding、超过原N38 | 直接要求：已有 N46 长代表点、记录该模型实际 Usage；父 Main→Noting 切换后固定工具仍有效且正常结束；不得先压短再声称长样本 | 核完整请求/响应与父子 wire，证明实际输入长度超过原N38、无任务重复 Schema、无切换前自动压短、工具成功与正常 finish/合法 Snapshot；短成功、K3校准或受控 SDK 均不能替代 | 本次证据矩阵 C11 |
+
+薄弱处说明：C04 的“间接路径”、C05 的“正常恢复边界”、C08 的“部署闭包”没有规定唯一函数或脚本；审查仍以权限不可绕过、freeze 前完成工具面、数据保护和真实运行绑定为必要不变量，不降低为 helper 测试或准备文件存在。C07 对正常完成与 forced、Snapshot发布及Idle压缩先后已有明确规定，不属可自行改变的工程空白。本表形成后才进入实现调查。
+
 ## 3. 逐条实现证据
 
 本表为4f503a2初审事实，F01修补及T3真实执行材料尚待交回；每行解释见第2节，代码与证据用于验证事实，不反写判据。证据相对前缀为`.hermes-dev/noting-fixed-tools-20261024/`，另有显式旧包路径。
@@ -87,6 +111,24 @@
 | V31 | hermes_state_messages._carry_parent_timestamps→archive_and_compact/covered/publish_compression_child→full/cards/details/resume | UID优先且同文反序不会串时间；未知UID不借时间，显式timestamp保留；active归档前补time、异常恢复调用方；所有投影真DB检查 | timeline-timestamps-20261023/receipt.json哈希3项全一致；backend-tests.log 104；tests/hermes_state/test_compaction_timestamps.py | 符合：新压缩复制继承源时间，不恢复生产旧行 | 旧47错误历史修复不属授权，本轮没有迁移 |
 | V32 | CompactionViews.readContext→ContextAfterCompaction.read/observe→controller | unavailable不删pending/不invalidate旧值；显式context_invalidated处理；token/owner/lifecycle/revision拒绝迟到；已观察字段不被旧read覆盖；正式controller相关测试 | Web src/core/compaction-view.ts/context-after-compaction.ts/controller-context-compaction.test.ts；frontend-manifest/build；frontend-context-test.log当前589df02正式controller50通过；frontend-context-receipt.json；verification/context-independent-hash-check.json四项全真 | 符合：正式controller50项覆盖保留值/迟到/owner/显式失效，源码与日志哈希已核 | 本轮不是新造Context cache；不以单纯build当并发恢复测试通过 |
 
+### 全新独立复审证据矩阵（Core 1ea38ef／Web 589df02）
+
+下表按本次第2节独立 C01–C11 判据逐条核验，保留上表 V01–V32 初审时点记录。`reverification/`均指 ignored `.hermes-dev/noting-fixed-tools-20261024/reverification/`；真实模型原件位于同级 `e2e/`，不写入 Git。
+
+| 条款编号 | 正式入口及完整关键代码路径 | 方法、输入、配置及实际证据 | 证据位置 | 判定及理由 | 证据边界 |
+|---|---|---|---|---|---|
+| C01 | AIAgent构造／turn_context.prepare→noting_surface.apply_main_read_surface→registry filter→Tool Search direct→build_api_kwargs→Chat SDK；两canonical来自noting_contract | 独立重算canonical SHA与before字典逐字段相等；Provider运输转换文件无改；固定工具直出而Main执行名排除维护工具；真实Main及所有长child顶层28工具相等、无messages.tools | secretary/noting_surface.py:78；tools/secretary_dispatch.py:43；tools/tool_search.py:149；reverification/independent-binding-audit.json、independent-model-audit.json；固定权限47通过 | 符合：注册层级改变，原Schema／description／转换保持；正常构造边界生效 | 不把新增工具面与旧缓存字节相等混同；关闭／非Main路径由正式surface测试覆盖 |
+| C02 | system_prompt.NOTEBOOK_GUIDANCE→Main root；noting_prompts.DEFAULT_NOTING_TASK_INSTRUCTION＋CURRENT_NOTING_CONTROL→run_noting_task／continuation | 四段常量逐字存在授权追加版07；独立核长样本真实Root包含原Alex SOUL及Main禁用句，child任务启用两工具、作废父策略并限四工具；受控正式Main gate/冷恢复/两Turn SDK测试有效 | agent/system_prompt.py:40；secretary/noting_prompts.py；tests/secretary/test_fixed_noting_request.py；prompt/final-requests-tests.log；reverification/independent-binding-audit.json | 符合：模型可见当前权限明确，原业务Prompt保留 | Prompt声明不授予执行权，执行硬约束另核C04 |
+| C03 | noting_tools.noting_tool_control_message→run_noting_task.initial_instruction／_working_control→_run_child_turns续Turn；turn_request_assembly／iteration_summary_messages使用原生cache normalizer | control数据保完整working_notebook、7天/72h、时间及可读coverage，移除callable_tool_schemas；真实长7请求无动态声明/重复schema；正式两Turn多模态SDK、恢复与summary用例通过且源码/日志SHA一致 | secretary/noting_tools.py:171；secretary/noting_child.py:661/684/814；agent/turn_request_assembly.py:177；prompt/receipt.json、final-requests-tests.log、final-recovery-tests.log | 符合：初始／续Turn去重复定义，同时保工作数据及原生前缀归一化 | 真实长样本只有一个原生Noting Turn；续Turn与多模态结论来自真实SDK受控I/O机制证据 |
+| C04 | validator完整批预检→repair前后policy→sync/concurrent parse（包装解包前）→共同dispatch gate→inline invoke（含prechecked）／scoped_registry_dispatch→_bound_store；History可信父域绑定 | 亲读每入口；标准scope_denied含message/next_action；Main合法混批保History执行，Noting跨名单整批拒绝；finish混批无效果，end_requested锁定；47权限＋9原生dispatch有效。原初审失败的直接invoke反证在当前HEAD独立重跑1通过 | tools/secretary_dispatch.py:98/116/147；agent/tool_executor.py:464/660/737；agent/turn_tool_validation.py:72；secretary/noting_tools.py:33/115/141；permission-errors/version.json及日志；reverification/permission-error-contract.log | 符合：原F01（计划F02）关闭；权限不来自模型自称／参数／继承定义，错误回执契约已齐 | 非Noting其它工具、通用scope/plugin/未知名及finish混批错误格式保持；自然零误调不代替确定性拒绝 |
+| C05 | freeze_parent_runtime→apply_cache_parity_from_parent→freeze_parent_active_prefix→child构造／每次装配；恢复start_recovery._prepare_fixed_recovery_tools→parent_factory→freeze | 独立对照实际Main wire与4个长child wire全部父前缀及tools相等；完整N46结构保留。旧pin测试核缺两定义只在freeze前补、完整pin不变、sources明确非旧wire字节等价、原失败行/root/history未改；受控跨协议/多模态/续Turn证据按SHA接收 | agent/cache_parity.py:84/111；secretary/noting_child.py:400/415；secretary/noting_recovery.py:24/68；tests/secretary/test_noting_recovery.py；prompt/final-recovery-tests.log；reverification/independent-model-audit.json | 符合：冻结后不重建工具/root或改父消息，恢复边界补齐而非对子热补 | 未实际恢复旧生产任务；新运行的旧缓存一次变化已记录，不声称所有协议在线实测 |
+| C06 | tui_gateway._make_agent→AIAgent原生Provider→正式Loop／DB／timer／spawn；独立Home/runtime/cwd | preparation与执行脚本已亲读：SOUL逐字保留，config仅隔离模型别名/阈值/延迟/本地cwd等差异；安全审计限隔离写入及Kimi推理。独立核真实Root含原SOUL、长样本source SHA皆当前、实际model=kimi-for-coding/high，全部raw受限 | e2e/prepare.py、execute.py、preparation.json；run-long-20261024-012630/；reverification/independent-model-audit.json | 符合：实际Alex隔离原生运行，未缩减业务Prompt伪造低成本，生产源未修改 | MCP/微信禁用用于隔离，未冒称生产外部工具全复刻；最大上下文262144只是原配置pin／family默认，非端点最大窗口实证 |
+| C07 | 正式Main→Idle timer→真实Noting四工具→finish→Commit Gate→父native compaction→Framework→Main继续；失败／预算／pointer owner保留 | 默认短013830真实16HTTP200，History2、maintain15次（9参数拒绝后6成功）、finish1；正常Snapshot→Idle实际持久compaction→Framework→Main正确承接。显式控制短020652另8HTTP200，真实同child History1／Maintain3／Show1／Finish1全部成功；一条原生steer持久在tool结果后，Show读working中entry3/1新版本且父Snapshot未变，随后正常提交和Idle压缩／Framework，资源释放。SQLite独立核publication→Framework行序66<70、89<93 | e2e/run-short-20261024-013830/、run-short-20261024-020652/；reverification/independent-model-audit.json、show-completion-audit.json、native-framework-db-order.json；43Idle机制证据 | 符合：默认任务完整链路及显式Show可达／当前工作态／正常结束均已真实闭包，R01关闭 | 默认短9参数拒绝如实保留，不私定容忍率；显式Show是单列受控指令分支，不回填默认Task自然使用。额度截断旧样本不算成功；正式用户验收仍由独立Validation负责 |
+| C08 | Core祖先599d114修补＋固定工具1ea38ef；UI589df02→439dist；发布deploy.py dry/preflight/stage/apply→remote_release.preflight/backup/exchange/start/verify | 全文审发布脚本、独立tar439文件集合/逐SHA及bundle/目标/锁一致；Core和UI upstream均等目标。微信15文件、时间3文件、Context源码/50项日志指纹全真；标题5/温度4、Kimi wire58、Idle43及APK0.1.4原证据按实际同版本复用；已核首尔旧e9de406及正常unit只读预检、完整三库快照及保护表/配置/绑定指纹方案 | reverification/independent-binding-audit.json；frontend-context-receipt.json；release/dry-run-receipt.json、selfcheck-receipt.json、deploy.py、remote_release.py；cloud-preflight.json；ops今日入口 | 符合（发布前符合性）：联合修补完整纳入候选和安全发布路径，具备可审产物/恢复条件 | 当前没有部署；独立Validation须在本地链路通过后部署，再核真正Web/Gateway目标、保护数据、439静态及Dashboard；不安装用户手机、不以准备态代签生产 |
+| C09 | 本轮Sol/high委派与独立门禁；冻结十检查→相关暂存／临时index；本审查工具边界 | 本审查全新上下文、先原文判据后实现且不派生；未UI/收费API/SSH/生产写。冻结检查入口/锁/阈值diff为空，六文件最新十检查health0/0、前集成十检查有效；当前仅复跑原失败反证1项 | permission-errors/checks.json；root-permission-staged-check.log；root-staged-check.log；reverification/independent-binding-audit.json | 符合（本阶段）：无降门禁／改模型／显示边界；保留独立Validation顺序 | 真实用户验收及部署后核验尚在后续阶段，本报告不代签；没有重复大套 |
+| C10 | 双仓完整差异→隔离输入／执行审计→发布上传精确5文件、三库/配置备份与保护指纹；恢复仅构造兼容 | tracked差异没有凭据/Persona/历史/raw；ignored证据受限，UI clean，原两份untracked稿保留；微信来源包裹/Thinking/Timeline机制未扩大，时间修补只对新压缩复制生效；未调用生产旧恢复、未外发或改生产模型阈值 | git diff 599d114..1ea38ef及599d114/589df02闭包；e2e/execute.py；release/remote_release.py；reverification/independent-binding-audit.json | 符合：范围和数据权限保持，无旧47行恢复或生产重放 | 根文档／ops正在由root收尾，不将其dirty误当未经提交产品源码；生产实际保护指纹由部署后Validation核 |
+| C11 | N46184条合法历史→真实Main→manual joint冻结→真实Noting→maintain/finish→Snapshot/Framework | 独立解析每份raw wire/response：1Main140765 input、首Noting143828 input；46组184条逐字段完整，4child均无先压短，父前缀/工具一致；7HTTP200，maintain8与finish1全成功；1Turn正常提交、pointer_changed、Framework1、资源关闭 | e2e/run-long-20261024-012630/{wire-*.json,response-*.jsonl,events.jsonl,result.json,snapshot-audit.json}；reverification/independent-model-audit.json | 符合：实际kimi-for-coding超过原N38代表点，固定声明切换后工具有效且正常完成 | 1原生探针thinking disabled单列，不计High业务；长样本History/Show0不虚称四工具齐；不推测最大窗口／普遍成功率或实际费用 |
+
 ## 4. 核心目标及验证方法审查
 
 核心机制从正式AIAgent构造/恢复到provider顶层tools，经validator、完整批预检、同步/并发parser、inline/registry和真实绑定Store贯通，权限不由模型参数或正文决定。固定Schema与Main执行名分开，Noting工具定义继承父冻结数组但执行名精确四个。初始/续Turn仍附完整工作Notebook，动态注册已退出正常及summary接缝；缓存归一化继续区分父前缀/子后缀，恢复旧pin只在freeze前补齐且来源明确。
@@ -97,11 +139,30 @@
 
 检查冻结入口、lock、Provider Schema转换与canonical文件无变。微信发送证据为真实SDK流/原生Turn/consumer/实际adapter模拟发送，支持正式接线与顺序，未发送真实微信；标题证据为原生RPC与持久化、SDK受控响应，不声称模型标题质量。UI范围按固定589df02交付闭包审查；旧完整Heartbeat/失败卡/审批设计不扩大为重做验收，保留约束通过变更反查。生产实际部署/数据保护由部署后Validation核，不以本地报告代签。
 
+### 全新复审的机制与方法复核
+
+本次全轮复审从第2节 C01–C11 出发，重新亲读完整固定工具差异、今日599d114生产修补、589df02前端差异、所有关键执行接线及发布脚本，没有把初审清单当唯一范围。主动核查的反例包括：名称repair是否把拼写误调变成授权、tool_call/search是否在解包前溜过、prechecked invoke是否绕过policy、Main合法混批是否被一并丢弃、Noting finish混批与结束后写是否有副作用、旧恢复pin是否被子运行临时重建、父压缩先完成是否改变child长前缀、发布期间用户新写入是否被“保护”逻辑覆盖。这些路径均由共同policy、可信绑定／锁、freeze前恢复、原子Commit Gate及只拒绝不覆盖的发布流程满足；未发现新的代码偏离。
+
+权限错误契约使用原初审失败的相同独立反证在当前1ea38ef重跑，1 passed／0 failed，未发真实模型；这补证原F01关闭，而非复跑47项替代源码review。其余32请求、20恢复、47权限、9原dispatch、43Idle、Context50和今日微信／时间／标题／wire证据按当前源码及日志SHA复用，不累计重叠测试数字。旧Kimi包两个动态测试SHA不匹配是本轮有意替换，旧动态通过数不代签新固定声明。
+
+长样本的判断直接来自实际wire及返回Usage，独立重算184条N46内容、真实父请求前缀和4次child请求相等，原Alex SOUL完整出现在root，真实工具回执和合法Snapshot相互一致。长阶段文字摘要曾称创建“工作指导Candidate”，但实际Snapshot是8条含decision、candidates为空；本审查以工具回执／Snapshot为事实，未将摘要误差转成新增产品缺陷或候选成果。长任务足以关闭C11，不足以关闭C07的真实四工具与Idle链路；补短准备种子和任何no-op均不算真实正常完成。
+
+发布前审查确认固定bundle、439静态文件、既有PM/锁、首尔ubuntu两专属service、空闲/lease/Noting复核、停服后三库SQLite backup、配置/凭据0600备份、Linux renameat2原子目录交换、finally分别尝试重启及失败保留新写入／不自动回滚DB。C08的“符合”严格限发布前机制与能力；生产实际版本、服务与数据不在本次预签，必须后续Validation部署后核。
+
 ## 5. 发现、整改优先级与范围外项
 
 | 问题编号 | 对应条款/代码位置 | 触发路径与事实 | 影响及阻断理由 | 建议修复与关闭证据 | 当前状态 |
 |---|---|---|---|---|---|
 | F01/P2 | V06；07§7.2；tools/secretary_dispatch.py:130、147；agent/inline_tool_executors.py:346；agent/tool_executor.py:751 | Loop拒绝缺next_action；直接invoke与executor只返回error字符串；本地原生invoke反证1 failed | 权限有效但新固定权限工具的拒绝回执违反固定错误契约，影响模型一致纠错，阻断本门禁 | 主会话提出最小统一标准拒绝方案；核同步/并发/Loop/invoke/registry，拒绝前无效果且带scope_denied/message/next_action | 已证实，待提案与修复 |
+
+### 全新复审当前发现
+
+| 问题编号 | 对应条款/代码位置 | 触发路径与事实 | 影响及阻断理由 | 建议修复与关闭证据 | 当前状态 |
+|---|---|---|---|---|---|
+| 原F01（计划F02） | C04；noting_dispatch_refusal及Loop/registry/inline/executor | 原初审拒绝有效但缺固定错误结构；1ea38ef同一policy builder已贯通全部入口，当前独立原反证1通过、47＋9同SHA证据有效 | 原违规已消除；没有放宽权限或错误契约 | 同版本路径源码、标准shape、零副作用、合法混批和拒绝后合法调用已核 | 本次复审关闭，初审事实保留 |
+| R01 | C07；真实四工具覆盖中的notebook_show | 013830已证默认Task正常完整链路；020652显式原生steer分支进一步证同child四工具成功、Show working新版本、正常finish与Commit Gate／Idle压缩／Framework／释放 | 原必要真实分支缺口已补齐，没有改变产品Task／Schema／权限／完成条件；默认自然行为与显式请求分开报告 | 独立解析raw、只读SQLite核steer与publication顺序、Show-store-parent版本对照及正式提交全部满足 | 本次复审关闭；取证失败及内部预算修正原件保留 |
+
+本次没有新增范围外产品项。UI视觉、手机实机安装及旧生产失败任务重放没有执行；均不由此扩入本轮施工。
 
 ## 6. 修复与独立复审
 
@@ -112,3 +173,33 @@ F01关键研讨链补记：主会话同意07§7.2偏离，提议在同一权限o
 证据补齐：V32原缺口由主会话定向运行当前Web589df02的controller-context-compaction.test.ts关闭，50 passed/0 failed；Verification亲核三源码及日志SHA四项全真，未复跑无关前端套件。发布准备代码已亲读、439文件集合与tar SHA独立相等；未执行发布或任何云操作，不将准备态称生产通过。
 
 初审整包交回（2026-10-24）：全范围V01–V32已逐行核查并有可回查判定；24符合、3有依据不适用（V21–V23旧完整UI项目不属本轮新增范围）、1违规（V06/F01）、4证据不足（V17/V18/V19/V28）。F01根因及主会话方案已评审但未收到修复版；此时无关闭证据，不将方案认可冒称缺陷关闭。F02–F04分别对应真实链路、明确长样本和最终收尾。按套件，修复后应由全新独立审查者重新建立全轮判据并核旧问题/影响；本次有效反证、源码核查与指纹材料可复用，不能只复跑问题清单。
+
+### 全新独立复审记录
+
+新审查者 `/root/fixed_tools_reverification`，Core `1ea38ef16addaac2cb441029e38f07578d3738dd`／Web `589df02706d3c6738789ff97fcb652a0bf76c398`。完整阅读两门禁相关Skill，先按冻结56b7ebc及授权追加3ce7517原始规格建立C01–C11并落盘第2节，再读代码／测试／CLAUDE／plan／历史报告。全轮覆盖矩阵见第3节新表；没有仅复测旧问题或使用主会话方案反建判据。
+
+原F01（计划F02）研讨链仍沿初审保存：固定07§7.2 → 原错误结构反证失败 → 主会话提案由同一policy builder统一且保通用错误／诊断字符串 → 初审按原V06认可方向 → 1ea38ef实施 → 本次全新审查亲核全部接线与47＋9有效证据，再用原独立反证在当前HEAD取得1 passed，关闭。没有改变规格；此统一模型可见拒绝回执是最终汇报须摘要的工程收敛。
+
+长样本C11已关闭：actual kimi-for-coding Main140765／首Noting143828 input，7HTTP200，184条N46保留，8维护＋1独立finish，合法Snapshot与Framework及资源释放，独立后验`reverification/independent-model-audit.json`支撑。短补样`run-short-20261024-013228`14条准备历史的summary从约1096 tokens增至4111，原生would_grow／aborted正确拒绝，removed>0断言停止，未进Idle／Noting；这只属于如实保留的取证失败，不降低正常完成判据。主会话已安排在同总50HTTP预算内增加合法可缩准备历史补取证，判据／产品Task／Root／Schema／保护不变。
+
+本段为补齐Show前的阶段记录：当时尚未形成最终PASS，R01仍开放。发布前保护与能力已符合，生产切换和真实运行验真留后续独立Validation闭包；本审查不提交、push、部署、发收费API或操作可见UI。最新门禁结论见本节末尾及第1节当前汇总。
+
+发布能力补证：root随后实际执行仅只读`release/deploy.py preflight --target 1ea38ef...`。本审查亲读`release/preflight-receipt.json`及`root-preflight.log`：phase=preflight_passed，旧HEAD与Web/Gateway运行均e9de406，目标1ea38ef，两service active，Web活动0／Gateway活动0、微信connected，host/alex/study三库保护指纹、24配置指纹、Secretary439／Dashboard67文件已读，cloud_runtime_writes=0、production_model_requests=0。没有stage/apply/停启，故只补强C08发布前能力，不改变生产未上线结论；正式apply仍应重做瞬时空闲和指纹核验。
+
+短链补证复核：`run-short-20261024-013830`完整16HTTP200，actual kimi-for-coding/high、原Alex SOUL／父子wire相等；raw response独立重建实际Noting History2、Maintain15（9次非法action参数被Harness拒绝、随后6次成功）、独立finish1。快照提交1792777334.725528→父压缩开始1792777334.727995→durable_commit_succeeded且completed 1792777370.139622→Framework发布1792777370.146303，后续Main正确承接已完成和未完责任；来源校验、pointer及资源关闭通过。此关闭R01中的History／Idle／正常完成／承接部分，仍保留notebook_show真实0的唯一缺口。已向root交回该事实供其提出补证方案，未以模拟四工具覆盖或原Schema出现就判实测齐全。
+
+R01补证方法研讨：root提出保完整默认Noting Task／原Alex Root／tools／工作Notebook，仅在新任务合法后续control或未finish的原生continuation明确请求“inspect the complete current working Notebook, then continue the same task”；不改Schema、不强制tool_choice、不伪造工具结果、不复活已完成child。Verification依据原C07及用户要求“能否调用四工具”认可该方向：规格没有要求每个Noting工具都必须自然触发，不能新增“Show只能自然触发”的产品要求；自然误调频率针对Main，与确定性／明确请求的可达性试验分开即可。关闭仍需实际原生接缝、真实模型Loop→SDK→Store的Show成功及正常finish/Commit Gate；若声称Show读到本任务未提交修改，须有同child成功维护回执和对应entry/version。本评审不改判据／产品规格，也不将方案认可当分支已经通过，待T3实际证据。
+
+R01实际接缝提案复核：T3给出从已验隔离DB只读backup到新Profile、恢复Main新进度→正常Idle全新child，首个真实维护成功且未finish时一次`AIAgent.steer`的完整方案。Verifier亲读`interrupt_control.py:276`、`tool_executor.py:1244`、`agent_runtime_helpers.py:3759`、`pending_steer.append_steer_row`及`prompt_builder.steer_user_row`：它沿正式新role=user/display_kind=steer持久追加，不改既有tool结果／父prefix，不是复活完成child。root将控制文案简化为只包含模型可见对象，去除内部commit/publish说明及版本比较任务；内部观察器继续核entry/version/父旧Snapshot。Verifier确认可执行该方法，仍待真实Show及正常完成后才关闭R01；没有产品规则或数值容忍率调整。
+
+发布执行器保护补强定向复核：root在ignored `release/remote_release.py`的TABLES增加`secretary_notebook_item`、`secretary_notebook_snapshots`、`secretary_notebook_pointer`、`secretary_notebook_local_state`，名称与正式schema一致，沿同一只读事务全行类型保留排序SHA；三库完整SQLite backup、0600及失败不覆盖机制未变，selfcheck的动态表集亦包括这四表。`root-notebook-protection-selfcheck.log`／`root-notebook-protection-dry.log`通过，Verifier重算当前payload与新dry-run SHA一致、bundle/439静态/依赖绑定皆真。旧云preflight仍保留原时点，只能证明当时旧表集；正式stage/apply须按新脚本重新预检，实际四表不变由部署后Validation核。C08发布前结论保持，无产品或冻结检查变化。
+
+Show补证取证事故（R01保持开放）：`run-short-20261024-015853` request11已真实Show，观察器及实际返回证明same child未end_requested、父Snapshot未变，读取5条新维护版本；request12的finish_noting仅接受为end_requested。此后原生收尾请求被进程内硬编码short40分类上限阻断，当时总计47/50；不是HTTP错误或模型权限问题，不足以证明原生Turn正常返回／Snapshot提交。root决定不热patch、不复活原child，让失败正常回收；原件保留为Show可达与结束请求事实，不能计Commit成功。root承认内部分类额度未预留收尾，提出将新测试护栏统一为总70／short63／long固定已用7、计数47不归零，只用全新隔离任务重做同一已审Show分支，并先做预算边界零请求自检。Verifier确认这是本地取证工程修正，不是用户预算或冻结十检查阈值调整，也不改变C07判据；当前仍等新样本真实正常完成后才关闭R01。
+
+该旧样本随后完成失败回收，Verifier独立核`result.json`／原始事件：12HTTP均200，Show-before-finish及父Snapshot不变为真，finish回执仅end_requested，outcome.status=failed／committed=false／snapshot_id=null，snapshot_committed事件0，child_resources_released=true。独立收据`reverification/show-budget-failure-audit.json`。它作为真实失败边界的有效证据，支持“finish接受不等于提交、一般API错误不伪报快照、失败资源释放”；不计R01成功样本，不隐去额外成本。
+
+**最终完整复审与R01关闭（2026-10-24）：** 全新受控样本`run-short-20261024-020652`使用同1ea38ef产品、原Alex SOUL及Root／tools／完整默认Task，正常Main新进度后由原生Idle创建全新admission／child。8HTTP200，真实同一child调用History1、Maintain3、Show1、Finish1，全部成功；只追加一次已评审显式steer，不回填默认Task自然统计。Verifier独立解析raw response工具名及Usage，并只读实际SQLite核一条持久steer位于tool结果之后；原有消息没有改写。Show实际`view_kind=working`，entry3和1的version／fields等于当时Store工作态，版本不同于父已提交Snapshot；Show发生在end_requested之前且父Snapshot不变。然后同任务正常单独finish、原生Turn返回、Commit Gate提交合法Snapshot／pointer_changed=true、child资源关闭。快照事件1792778896.4868789→父压缩开始1792778896.489551→durable完成1792778951.935446→Framework1792778951.942698；实际DB publication row89早于Framework row93。默认成功短013830同样独立核row66<70。对应`reverification/independent-model-audit.json`、`show-completion-audit.json`、`native-framework-db-order.json`。
+
+截至本次取证，累计真实HTTP55（含已失败／准备探针与summary，不归零、不抹去），低于root修正后的内部70护栏；其中最后8次用于显式Show完整分支，没有追加长研究。默认短9参数拒绝、额度截断旧Show失败及长任务8创建0错误均原样保留；没有自行修改Schema／description／业务validator来换取通过，也不依据一次成功声称普遍零错或最大窗口实测。
+
+全范围C01–C11当前11符合，0违规、0必要证据不足；原F01（计划F02）及R01均关闭，无新增范围内产品缺陷。发布前执行器Notebook四表保护补强已定向核，当前bundle／439静态／Schema／Prompt／机制证据指纹仍绑定待审Core1ea38ef与Web589df02。原初审完整32条和其失败反证、各阶段发现／提案／评审／版本／关闭证据均保留。**Verification门禁通过，进入独立Validation。** 最终用户结果、云端stage/apply/服务目标版本及数据前后不变仍由后续独立Validation和root最终判定；本PASS不代签尚未发生的生产部署。本审查只修改verification.md和获准ignored证据，独立重跑原反证1项，其它有效证据按SHA复用；没有收费API、生产写、SSH、可见UI、提交或push。

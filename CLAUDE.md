@@ -8,15 +8,15 @@
 
 **用户追加长样本：** 已明确接受kimi-for-coding长上下文验证费用，必须覆盖超过原N38的场景；选既有N46合成点，实际Usage／wire取证，长前缀后切Noting、无任务Schema重复仍能调用并正常finish。T3已收新要求，仍先准备再统一开跑。恢复旧工具pin仅在显式恢复freeze前补原canonical定义并标来源，保持接口但不重跑生产旧任务。
 
-**当前阶段：** T1／T2整包已交回并经主会话亲审接收；固定顶层、权限执行及请求／恢复接线已落实，Schema原样。集成4文件116通过，Idle两文件43通过。本地Web589df02重新build成功；T3准备方案已接收，批准总50HTTP防失控上限（含重试／压缩），真实短链已在4f503a2开始（前3HTTP均200）；独立审查发现权限拒绝缺next_action的F02，标准回执修补已亲审接收，47权限及9原dispatch通过，Schema/Prompt/合法成功wire保持；短样本8HTTP全200但缺实际父压缩/其余三工具，不判完整通过。待新版固定后启动长N46并补持续事务短链。云端预检仍是旧e9de406，实际部署须两门禁放行。证据`.hermes-dev/noting-fixed-tools-20261024/`；两份既有未跟踪稿保留。
+**当前阶段：** Core产品`1ea38ef`、Web`589df02`已完整实现并通过全新独立Verification，C01–C11全部符合；独立Validation准备场景计划。真实取证已停止：55HTTP全200，N46 Main140765／首次Noting143828 input，固定184消息与父子Root/tools/前缀一致；默认完整Idle成功，最后显式steer能力样本同child History/Maintain/Show/Finish全成功、正常Snapshot→durable父压缩→Framework。默认13Main维护误调0，不外推普遍频率；总14次维护参数拒绝纠正及旧Show预算截断失败保留，不改Schema/description或默认Task凑通过。内部护栏70，实耗55；外部MCP禁用等本地隔离差异如实记录。Web专项50通过/build439产物绑定、发布脚本Notebook四表保护与只读预检已核。云仍旧e9de406，尚未stage/apply；等Val本地放行后root部署，Val再只读核生产闭包。两份既有未跟踪稿不提交。
 
-## 2026-10-24 · 当前：固定顶层工具方案重新对齐，待用户确认后实施
+## 2026-10-24 · 历史讨论：固定顶层工具方案对齐（已由顶部确认覆盖）
 
 用户要求先对齐两个工具description、Noting Task和Main／Noting白名单的具体改法，确认后才实施；随后明确倾向不改工具Schema／description，改在Main System Prompt说明禁用，在Noting Task说明启用且仅四工具。当前候选：两工具原Schema完整固定到API顶层tools，取消消息级动态声明；Main及其他非Noting身份拒绝维护／结束，真实绑定Noting仅准四工具；任务正文保留四工具完整Schema作为说明，权限不由正文自称或模型参数授予。具体文案和接线仍待确认，不改实现／生产配置／缓存，不新增API请求。
 
 本次回忆已对照运维记录：此前Scheduler反复空参／错调Notebook的“鬼上身”症状有泛型object经Kimi Schema转换后的兼容性证据及既有最小修复；没有证据证明description文字是原因。完整Schema原样保留指不修改其定义和既有Provider转换规则，新增至顶层工具列表仍会改变一次请求工具前缀，不能声称旧缓存字节不变。
 
-## 2026-10-24 · 当前：修补已提交推送；Anthropic inline短探针失败，未发送N38
+## 2026-10-24 · 历史阶段：修补已提交推送；Anthropic inline短探针失败，未发送N38
 
 **本次完成：** 后端`599d11467c8df2ce6e31be846a3d4069fafbb0ce`已推`origin/main`；前端`589df02`已推`origin/secretary`，无部署。后端暂存44文件的冻结10检查通过，health38文件0／0；前端复用上轮有效测试／构建。两份原有未跟踪调查／算法稿保持未提交。
 

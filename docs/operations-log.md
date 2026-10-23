@@ -2,6 +2,24 @@
 
 维护实际部署、故障处理、验证与回滚点；步骤和稳定布局见[部署SOP](cloud-deployment-sop.md)，当前任务只在根[CLAUDE](../CLAUDE.md)。以下时间均为Asia/Shanghai；PID、指纹和测试结论只对应记录时点，不代表实时状态。凭据、令牌、原始私人材料不写入本文件。
 
+## 2026-10-24 · 固定工具自主轮阶段验证（本地，尚未部署）
+
+用户批准两维护工具原Schema／description完整固定API顶层，Main禁用提示、Noting四工具权限及运行时硬白名单；初始和续Turn不再重复Schema。首次阶段实现`f841170`，文档同步`4f503a2`，拒绝回执补齐`1ea38ef`均已提交并自动push；Schema canonical SHA与冻结原件一致。普通子Agent、Main混批、同步／并发／invoke及代理包装均受同一身份政策；显式旧Noting恢复只在freeze前补旧pin缺失原定义、标明旧工具缓存前缀一次变化，不改旧失败记录，也未重跑生产任务。
+
+**机制证据：** 主会话亲审后集成4文件116通过、Idle两文件43通过；固定工具包请求32／恢复20等有效证据按文件SHA复用。独立首审发现07§7.2的拒绝回执不完整，原反证保留；主会话提议同policy标准builder、审查者认可后实现，全部正式入口统一`success:false`与`scope_denied/message/next_action`，其它通用scope/plugin/未知工具及finish混批保持，post-hook诊断仍为字符串。修补权限47及原dispatch9通过，实际暂存冻结十检查0 blocking／0 advisory。该修补由全新独立审查者复审，不将有效拒绝或方案认可当成已通过错误契约。
+
+**首个真实短样本：** Alex完整本机Persona、仓库外独立Home／runtime／cwd／新DB，kimi-for-coding／High原生Chat路由；未复制生产历史／排期／绑定，未启动外部MCP或发送渠道消息。`4f503a2`共8HTTP全部200：5自然Main、2Noting及1原生压缩能力探测；探测不是High业务样本。累计input131208／output1498／total132706，实际费用未知；自然Main维护误调0，仅此5Turn观察，不外推一般频率。父子实际Root／28顶层工具／冻结8条Active均等，无重复Schema／消息级工具注册；正常单独finish、合法空Snapshot／Framework及后续Main存在。
+
+**首短样本仍不满足完整验收：** 前置手动压缩4→4，insufficient_messages导致structural_backoff，随后Idle未实际完成父压缩；模型把一次性野餐判断为无需索引，只用Finish，缺其余三工具的真实覆盖。原样保留失败／不足，不改任务正文凑成功；计划在固定新版跑N46长样本及具有持续责任／足够历史的补充短场景。统一真实HTTP上限50，当前已用8；不擅自重发旧样本。
+
+**N46真实长样本已完成：** 受测`1ea38ef`，kimi-for-coding／High，末尾业务为持续三周工作坊。7HTTP全200、零重试／错误；Main实测input140765、首次Noting143828，每次Main/child发包前184条固定历史／46组完整强验，未先压短。Noting实际maintain8次全成功、最后单独finish，1Turn正常合法Snapshot／Framework；4个child请求与冻结父Root／28tools／Active相同，root另从raw独立核5业务请求相同且全High。累计input740319（cache591360含于input）／output8441／total748760，费用未知。仅证明所测长输入与任务切换可用，不声称旧K3动态400服务端根因已完全确认或最大窗口已实测。History/Show仍0，四工具覆盖及短Idle完整成功链继续补验；累计15/50HTTP，原短不足保留。
+
+**真实取证最终收敛：** 默认完整短链`013830`已证正常Snapshot→父native持久完成→Framework→后续Main正确，History2、Maintain6成功／9参数拒绝纠正、Finish1。Show能力另外通过原生`AIAgent.steer`在全新Noting任务中显式请求，不更改完整默认Task／Root／Schema；原`015853`样本因root内部short40分类护栏截断Finish后的收尾，保留为Show真实可达／finish accepted但未提交的失败。root修测试护栏为总70／short63／long固定7，计数不归零、保留3请求以上收尾余量；唯一重做`020652`实际8HTTP，History1／Maintain3／Show1／Finish1全成功，Show是当前working新版本而父仍旧Snapshot，随后正常Commit Gate→durable Idle压缩→Framework／释放，四工具真实能力闭合。该显式Show不回填默认自然统计。
+
+全包55HTTP全部200，input1895028／cache1608837（含于input）／output38714／total1933742，费用未知；4probe非High，Main／Noting及5summary High。默认13Main两维护工具误调0；共14维护参数拒绝（默认9＋旧Show5）后修正，未改Schema／description或业务validator，不能称普遍零错。四项源Alex指纹未变、所有child释放，无外发／生产写；完整`.hermes-dev/noting-fixed-tools-20261024/e2e/e2e-report.md`与汇总／原件SHA。全新独立Verification已全范围PASS，独立Validation开始计划，本节仍未部署；此前失败与初审不通过事实保留。
+
+**前端与发布准备：** 当前Web`589df02`专项controller-context-compaction 50通过，重新build成功；439文件集合／SHA绑定前端提交与归档，后端精确bundle及依赖未变离线核验通过。云端仍是预检旧`e9de406`，没有stage/apply或服务停启；两门禁及真实模型必要证据未关闭前不部署。证据根`.hermes-dev/noting-fixed-tools-20261024/`，审查／冻结／后续交付入口`.autonomous/20261024-noting-fixed-tools/`。原始wire／Persona／凭据只留受限ignored或独立隔离目录。
+
 ## 2026-10-24 · 已审修补提交授权
 
 用户明确允许提交此前已亲审的后端与独立前端修补，按仓库规则提交后自动push，不部署。后端包含微信正文／Redirect／Framework、Idle成功前置、时间继承、Kimi wire／标题及对应测试与文档；前端包含竖屏／版本、此前已授权Context三文件及时间回归。原有未跟踪调查／算法稿不混入，凭据、ignored原始实验及APK不入Git。测试与冻结10检查复用上一节当前版本有效证据，提交前核对暂存范围及敏感内容。

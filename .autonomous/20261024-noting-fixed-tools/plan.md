@@ -22,9 +22,9 @@
 |---|---|---|---|---|---|
 | T1 | 已实现并亲审 | 正式Loop／执行器／invoke已核 | 权限32、surface33、child38等通过 | 待真实模型 | root接收；真实样本待T3 |
 | T2 | 已实现并亲审 | native normalizer／SDK／恢复已核 | 请求32、恢复20等通过 | 待真实模型 | root接收；真实样本待T3 |
-| T3 | 准备方案已接收 | Alex隔离原生入口 | 零请求准备通过 | 待真实模型 | 批准50HTTP上限（短28／长22含内部重试），固定受测版本后开跑 |
-| T4 | 旧包已审 | 当前未部署 | 有效证据复用 | 待上线 | root核部署环境与产物；先只读 |
-| T5 | 首审已完成未通过 | 32条正式路径已核 | 24符合/3不适用/1违规/4不足 | 未验收 | F02修补与真实证据补齐后全新独立复审，再Validation |
+| T3 | 核心取证已完成 | 实际Main/Idle/child/SDK/DB/compaction | 55HTTP200/全部四工具真实及N46 | 默认链及显式Show能力样本通过 | 已整包接收，模型已停止，失败原件保留 |
+| T4 | 旧包与新实现已审 | 正式发布脚本/保护已核 | 新版bundle/439SHA/只读preflight通过 | 待上线 | 等Val本地放行后stage/apply，部署后独立只读验真 |
+| T5 | 全新独立复审PASS | C01–C11全部符合 | 原反证通过/真实55HTTP材料独立核 | Validation计划中 | 计划先过目，本地验收放行部署，生产核后最终关闭 |
 
 T1、T2、T3白名单不相交；共享变更串行交root。不用worktree，不让子Agent提交／push／部署或派生。每包只在真阻塞／跨包接口决定／预定整包交回时发消息，不流水账；产品UI仅自建隐藏IAB，禁止用户已有页面／桌面／显示／焦点变化。
 
@@ -35,7 +35,8 @@ T1、T2、T3白名单不相交；共享变更串行交root。不用worktree，�
 | 问题编号 | 要求与触发条件 | 当前事实与影响 | 优先级及理由 | 修复负责人 | 关闭与复验条件 | 状态 |
 |---|---|---|---|---|---|---|
 | F01 | C01–C05原实现动态声明与重复Schema | 已知旧实现非本轮目标；固定prefix新增工具须同步权限与Prompt，不能只移tools | P1核心 | T1＋T2 | 全纵向路径／父子wire等价与硬拒绝、无重复Schema | 机制关闭，待真实模型及门禁 |
-| F02 | C04及07§7.2权限拒绝完整形状 | 拒绝有效但Loop/registry缺next_action，sync/concurrent/invoke仅错误字符串；独立审查已取得反证 | P1模型纠错契约 | 待当前短真实样本结束后T1修补，root提案已获Verification评审 | 单一policy标准scope_denied回执，全部正式入口含解包前拒绝和post诊断，零副作用/合法混批/后续合法调用；Schema/Prompt/wire不变 | 实现已交回并由root亲审；47权限+9原dispatch通过，待全新独立复审关闭 |
+| F02 | C04及07§7.2权限拒绝完整形状 | 拒绝有效但Loop/registry缺next_action，sync/concurrent/invoke仅错误字符串；独立审查已取得反证 | P1模型纠错契约 | 待当前短真实样本结束后T1修补，root提案已获Verification评审 | 单一policy标准scope_denied回执，全部正式入口含解包前拒绝和post诊断，零副作用/合法混批/后续合法调用；Schema/Prompt/wire不变 | 已关闭：47权限+9dispatch通过，全新独立复审原反证1通过并关闭 |
+| F03 | C07真实Show样本必须正常提交 | root分类HTTP护栏short40在总47时拦截end_requested后的原生收尾；只证明Show与finish接受，未证明Commit | P1验收证据缺口，非产品权限缺陷 | root预算修正／T3补证 | 新隔离任务原生steer方案，统一预算边界自检与至少3收尾余量；真实Show working、normal finish、Commit及释放；旧失败不改写 | 已关闭：新020652同child四工具全成功并正常Commit/Idle/Framework，55/70，独立复审核实 |
 
 ## 取舍、快照与续接
 
@@ -60,3 +61,14 @@ T1、T2、T3白名单不相交；共享变更串行交root。不用worktree，�
 - 独立首审32条：24符合／3有依据不适用／1违规／4证据不足；拒绝回执违规与真实Idle/四工具/N46/收尾缺口继续阻断。原报告和反证保留；修补后必须由全新fork_turns=none审查者全轮复审，不将root接收或提案认可当PASS。
 
 - F02最小修补已root亲审：同policy标准builder覆盖Loop/混批/registry/invoke/sync/concurrent，解析前代理拒绝仍统一；post-hook取message字符串，通用scope/plugin/未知工具/混合finish保持。最终47+原dispatch9通过、十检查health0/0，Schema/Prompt/合法成功wire未改。首短合法8HTTP可按明确影响边界复用；不宣称完整Idle或四工具已完成。
+
+- C11已真实完成：1ea38ef，N46 Main140765／firstNoting143828实测输入，7HTTP全200，Noting8maintain+单独finish，合法Snapshot／Framework、资源释放、实际父子wire一致，root另独立重算原始5业务wire均保N46/Root/tools/High。不是旧K3单变量根因证明；窗口最大值未实测。e2e/long-stage-report.md及root-independent-long-check.json。完整四工具仍缺History/Show，补短prepared中间态已过目授权剩20短HTTP，预算累计15/50，禁止改Prompt凑成功。
+
+- 补短第二准备态真实4HTTP200，但约1096→4111 tokens的摘要被native would_grow/aborted保护拒绝；14→14与removed>0断言保留，不冒成功、不改增长保护。累计19/50。root批准新prepared中间态加4原history_unit（16只读诊断、从不执行）+原10业务原文/6Notebook，26消息，有真实可缩信息；先零网络核窗口再一次真实补短。总50不增额，内部预算重新分配short40/long10（已短12/长7），原收据不重写/计数不归零。此为测试准备与成本护栏工程调整，不变产品语义/Task/Root/Schema/结束/验收标准。
+
+- 新补短当前真实35/50HTTP累计：默认Task完成History2、maintain15中6成功9被invalid_argument拒绝并最终纠正、单独finish，原生Snapshot→durable Idle compaction→Framework→后续Main顺序已独立审查者核。root独立核9错为update fields/status/来源层级，不是权限绕过，错误未写；长8create0错分开报告，不泛称“少量”或发明误差率。唯一未真实Show。
+- Show补证方法收敛：原C07要求真实可达，不要求每工具默认自然触发（自然频率是Main约束）；独立复审认可额外显式控制请求能力样本。必须完整默认Task/Root/Schema/working视图不变，使用确有原生当前身份control/未finish continuation，不压制finish/复活已完成child；同child真实未提交修改后Show读取working及entry/version，再正常finish/Commit Gate。和默认Task自然轨迹分别报告；T3先交真实接缝/输入供过目，未获运行该分支。此为测试方法细化，不改产品任务/权限/结束或降低四工具真实要求。
+
+- 实验工程缺陷F03：Show新样本request11真实读到working与同child最新版本、父仍旧Snapshot，request12独立finish accepted；但root内部short40分类上限在total47/50时拦截后续原生收尾，未过Commit Gate。原进程不热改/不复活，保留失败与收费计数。root承担预算设计错误，独立复审确认不当成产品缺陷、不降低完成条件。用户未设HTTP硬上限而明确授权付费完整验证；root修内部护栏为total70/short63/long7（47已用不归零、long绝不新增），只准一个新隔离同方案Show能力样本，先零请求预算边界自检、至少3HTTP收尾余量、默认Task/Root/Schema不动，真实finish/Commit仍为门槛。最终实耗与不足均如实报告。
+
+- 最终真实包接收：e2e/e2e-report.md与whole-package-audit.json，55HTTP全200、input1895028/cache1608837(含input)/output38714/total1933742，13默认Main零维护误调（2显式分支Main另列）。Noting Maintain37中23成功14参数拒绝，History4/Show2/Finish5 accepted，其中4正常提交/旧预算分支不提交；最后能力分支3维护零错。Show只显式控制触发，绝不回填自然统计。旧失败、统计修正、原件SHA全部保留。新独立Verification C01–C11全符合，F01机制/F02标准回执/F03验收工程缺口已关闭；产品仍1ea38ef，后续纯文档提交不重发模型。Val已新none/Sol high委派，未放行部署。
