@@ -262,3 +262,5 @@ relations：普通关系归档时自动解除，情景／Candidate来源引用�
 **本轮集成进展：** A/B/C三个Sol包已接正式链路并由主会话亲审，功能快照`5ee2a94`已提交自动推送，冻结10检查通过；相关分区机制证据及主会话五文件121项精确版本补证有效。独立Verification初审不通过：F01无display_kind的可信Instant误取真人时间，F02 Kimi传输sanitize删掉null清除契约。F01已有两文件最小修补及26项、独立反例1项通过，待新审查者复审；F02纠正探针HTTP200且准确返回null（首探针tool_choice配置错误HTTP400保留）；已实现仅可信官方Coding保留nullable的传输修补，111项定向及相关115项回归有效，冻结10检查通过，不改变已批canonical Schema／description／validator。
 
 真实隔离Alex／kimi-for-coding已发送28次（27完整HTTP200、最后一次人工停止未完成），首轮正常Snapshot→durable Idle压缩→Framework→后续Main实际登记Schedule及完整／部分外写结算有效；第二轮连续8次清建议被拒，已因F02停费，不冒称整个端到端通过。准备从停止状态只读克隆续测第二轮，保留原失败；N46真实收费0、尚未执行。总请求护栏70（short45／long25），两个探针计入后已用30；生产尚未部署，Validation须待全新Verification复审通过。来源、精确边界和证据见本轮plan、verification及ignored E2E报告。
+
+全新独立复审新增F03：Create把Schema禁止的显式status:null／relations:null当省略，违反输入错误零副作用；root提出wire入口按canonical单一type拒绝显式null，内部Store默认与合法nullable／[]不变，Verifier已认可方向。B仅增7行工具入口校验，正式invoke／Loop及正例138项通过、独立原反例2项通过，root亲审接收；未因新增发现提前启动收费或发布。F01/F02修补快照81e458b已提交自动推送，不等同整轮门禁通过。

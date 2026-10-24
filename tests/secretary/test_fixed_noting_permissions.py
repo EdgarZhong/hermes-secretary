@@ -434,3 +434,132 @@ def test_raw_dispatch_scoped_noting_rejects_other_tools_and_old_alias(runtime):
         assert json.loads(parent._invoke_tool("notebook_maintain", {}, "old"))["error"]["code"] == "legacy_tool_removed"
     finally:
         child.close()
+
+
+def _notebook_item_rows(db):
+    return [tuple(row) for row in db._read_all("SELECT * FROM secretary_notebook_item ORDER BY id")]
+
+
+def _create_notebook_args(parent):
+    user_uid = next(row["message_uid"] for row in parent._session_messages if row["role"] == "user")
+    return {"entry_type": "matter", "fields": {
+        "description": "Send the report after review", "completion_condition": "Report accepted"},
+        "source_message_uids": [user_uid]}
+
+
+@pytest.mark.parametrize("path", ["invoke", "loop"])
+@pytest.mark.parametrize("field", ["entry_type", "fields", "status", "relations", "source_message_uids"])
+def test_create_explicit_nonnullable_null_has_no_working_or_item_writes(runtime, path, field):
+    parent, db, _config, state = runtime
+    child = bound_child(parent)
+    args = {**_create_notebook_args(parent), field: None}
+    before, items = child._noting_notebook_store.snapshot_state(), _notebook_item_rows(db)
+    try:
+        if path == "invoke":
+            result = json.loads(child._invoke_tool("notebook_create", args, "null-create"))
+        else:
+            state["script"] = [[call("notebook_create", args, "null-create")], None]
+            surface._turn(child, "Validate the report entry without changing invalid input.")
+            result = next(json.loads(row["content"]) for row in tool_rows(state["sent"][-1])
+                          if row["tool_call_id"] == "null-create")
+        assert result["success"] is False
+        assert result["error"]["code"] == "invalid_argument"
+        assert result["error"]["field"] == field
+        assert "null" in result["error"]["message"]
+        assert result["error"]["next_action"]
+        assert child._noting_notebook_store.snapshot_state() == before
+        assert _notebook_item_rows(db) == items
+    finally:
+        child.close()
+
+
+@pytest.mark.parametrize("field", ["entry_id", "fields", "status", "relations", "source_message_uids"])
+def test_update_explicit_nonnullable_null_preserves_existing_entry(runtime, field):
+    parent, db, _config, _state = runtime
+    child = bound_child(parent)
+    try:
+        made = json.loads(child._invoke_tool("notebook_create", _create_notebook_args(parent), "create"))
+        assert made["success"]
+        entry_id = made["entry"]["entry_id"]
+        before, items = child._noting_notebook_store.snapshot_state(), _notebook_item_rows(db)
+        result = json.loads(child._invoke_tool("notebook_update", {"entry_id": entry_id, field: None}, "null-update"))
+        assert result["success"] is False
+        assert result["error"]["code"] == "invalid_argument" and result["error"]["field"] == field
+        assert child._noting_notebook_store.snapshot_state() == before
+        assert _notebook_item_rows(db) == items
+    finally:
+        child.close()
+
+
+def test_omitted_defaults_empty_relations_and_approved_null_clears_remain_legal(runtime):
+    from datetime import datetime, timezone
+    parent, db, _config, _state = runtime
+    child = bound_child(parent)
+    try:
+        args = _create_notebook_args(parent)
+        created = json.loads(child._invoke_tool("notebook_create", args, "default-create"))
+        assert created["success"]
+        assert created["entry"]["status"] == "in_progress" and created["entry"]["relations"] == []
+        empty_relations = json.loads(child._invoke_tool("notebook_create", {**args, "relations": [],
+            "fields": {**args["fields"], "blocker": None},
+            "schedule_suggestion": None, "source_time_range": None}, "empty-relations"))
+        assert empty_relations["success"] and empty_relations["entry"]["relations"] == []
+        assert empty_relations["entry"].get("schedule_suggestion") is None
+        instant = datetime.fromtimestamp(next(row["timestamp"] for row in parent._session_messages
+            if row["role"] == "user"), timezone.utc).isoformat()
+        entry_id = created["entry"]["entry_id"]
+        changed = json.loads(child._invoke_tool("notebook_update", {"entry_id": entry_id,
+            "fields": {"blocker": "Awaiting review"}, "relations": [],
+            "source_time_range": {"start_time": instant, "end_time": instant},
+            "schedule_suggestion": {"content": "Review the report once feedback arrives.",
+                                    "schedule": "after reviewer feedback"}}, "populate"))
+        assert changed["success"]
+        cleared = json.loads(child._invoke_tool("notebook_update", {"entry_id": entry_id,
+            "fields": {"blocker": None}, "relations": [],
+            "schedule_suggestion": None, "source_time_range": None}, "clear"))
+        assert cleared["success"] and cleared["changed"]
+        entry = cleared["entry"]
+        assert "blocker" not in entry["fields"]
+        assert entry["relations"] == [] and entry.get("schedule_suggestion") is None and entry["source_time_range"] is None
+        assert entry["source_message_uids"] == args["source_message_uids"]
+    finally:
+        child.close()
+
+
+@pytest.mark.parametrize("name,args,field", [
+    ("notebook_archive", {"entry_id": None, "reason": "No longer needed"}, "entry_id"),
+    ("notebook_archive", {"entry_id": "unselected", "reason": None}, "reason"),
+    ("finish_noting", {"reason": None}, "reason"),
+    ("notebook_create", {"evidence_time": None}, "evidence_time"),
+    ("conversation_history", {"mode": "read", "roles": None}, "roles"),
+    ("notebook_show", {"entry_id": None}, "arguments"),
+])
+def test_existing_null_reason_readonly_and_read_selectors_do_not_mutate(runtime, name, args, field):
+    parent, db, _config, _state = runtime
+    child = bound_child(parent)
+    before, items = child._noting_notebook_store.snapshot_state(), _notebook_item_rows(db)
+    try:
+        result = json.loads(child._invoke_tool(name, args, "null-existing"))
+        assert result["success"] is False
+        assert result["error"]["code"] == "invalid_argument" and result["error"]["field"] == field
+        assert not child._secretary_noting_terminal_action_done
+        assert child._noting_notebook_store.snapshot_state() == before
+        assert _notebook_item_rows(db) == items
+    finally:
+        child.close()
+
+
+@pytest.mark.parametrize("field", ["status", "relations"])
+def test_empty_string_cannot_replace_a_rejected_null(runtime, field):
+    parent, db, _config, _state = runtime
+    child = bound_child(parent)
+    before, items = child._noting_notebook_store.snapshot_state(), _notebook_item_rows(db)
+    try:
+        result = json.loads(child._invoke_tool("notebook_create", {
+            **_create_notebook_args(parent), field: ""}, "empty-substitute"))
+        assert result["success"] is False
+        assert result["error"]["code"] == "invalid_argument" and result["error"]["field"] == field
+        assert child._noting_notebook_store.snapshot_state() == before
+        assert _notebook_item_rows(db) == items
+    finally:
+        child.close()

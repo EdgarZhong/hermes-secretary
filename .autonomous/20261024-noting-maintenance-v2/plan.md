@@ -56,3 +56,5 @@
 - Verification初审版本5ee2a94：23条15符合／5违规（F01/F02牵连）／3证据不足；两缺陷修复后由全新Sol独立全轮复审，未通过不启动Validation。无生产上线动作。
 
 - Root已接受最小续测计划resume-plan.md；准备0请求正式child wire通过，只读克隆源DB不变，新Main正常边界生成新child、不复用旧freeze，在线仍须验证真实Idle。F01/F02修补提交锁定后才收费；新的独立Verification已先基于冻结原文落判据，全轮复审进行中。
+
+- F03／P2（全新独立复审新增）：Create显式status:null／relations:null被内部None默认吞掉，真实invoke反例2失败。root提案在wire _mutation_args按canonical单一非nullable type拒绝显式null，Store内部Python默认不改，省略／[]／合法nullable保持；Verifier已确认方向符合R03/R04（原Schema落实，不改产品语义）。B限定noting_tools.py增7行与原权限测试补例，invoke+Loop零副作用及正例138项通过、独立反例2项通过；root亲审接收，真实收费继续等待最终修补SHA。

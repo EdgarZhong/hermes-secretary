@@ -79,6 +79,13 @@ def _mutation_args(args, schema):
     for field in parameters.get("required", []):
         if field not in args:
             raise NotebookValidationError(f"{schema['name']} requires {field}.", field=field)
+    for field, value in args.items():
+        value_type = parameters["properties"][field].get("type")
+        if value is None and isinstance(value_type, str) and value_type != "null":
+            raise NotebookValidationError(
+                f"{field} requires a {value_type} value; null is not accepted.", field=field,
+                next_action=f"Supply the documented {value_type} value; omit {field} only if it is optional.",
+            )
     return args
 
 
