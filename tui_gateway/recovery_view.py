@@ -223,7 +223,7 @@ def _persisted_event(event, known, tool_results):
     payload = event.get("payload") or {}
     identity = event.get("_output_identity") or payload
     uid = identity.get("message_uid") or identity.get("assistant_message_uid")
-    source = payload.get("message") or {}
+    source = payload.get("message") or payload.get("source_message") or {}
     if not uid and isinstance(source, dict):
         uid = source.get("message_uid")
     row = known.get(uid)
@@ -237,6 +237,22 @@ def _persisted_event(event, known, tool_results):
         # until that exact occurrence has a real result representative.
         return tool_uid in tool_results
     return True
+
+
+def _persisted_reasoning_notice(event, state, known):
+    if event.get("type") != "reasoning.available":
+        return False
+    for completed in state["events"]:
+        if completed.get("type") != "message.complete" or completed["seq"] < event["seq"]:
+            continue
+        receipt = (completed.get("payload") or {}).get("persisted_turn") or {}
+        sources = receipt.get("source_messages") or []
+        if receipt.get("complete") and sources and all(
+                (row := known.get(source.get("message_uid"))) is not None
+                and row.get("id") == source.get("row_id") and row.get("role") == source.get("role")
+                and row.get("visible") and row.get("active") for source in sources):
+            return True
+    return False
 
 
 def _idle_snapshot_accounted(state, known):
@@ -275,6 +291,8 @@ def _clean_snapshot(state, d1, *, running):
             discarded.add(event["seq"])
         elif running:
             events.append(copy.deepcopy(event))
+        elif _persisted_reasoning_notice(event, state, known):
+            discarded.add(event["seq"])
         elif event.get("type") not in ("message.start", "message.complete", "thinking.delta", "status.update"):
             # An idle runtime cannot lend the previous Turn's unpersisted output
             # to a rewritten transcript. Lack of evidence is a retryable failure.

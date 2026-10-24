@@ -347,6 +347,67 @@ def test_web_source_cannot_cross_turn_or_lease_capture(native, monkeypatch, muta
     assert not view["complete"] and view["reason"] in {"view_changed", "runtime_unavailable"}
 
 
+def settled_web_output(db, session):
+    """The same native frames and durable receipt as the real UI trace."""
+    holder = begin_web(db, session)
+    user = db.get_messages("stored")[0]
+    source = {"role": "user", "row_id": user["id"], "message_uid": user["message_uid"],
+              "has_content": True, "has_reasoning": False}
+    server._emit("message.user_committed", "runtime", {"stored_session_id": "stored", "message": {
+        "role": "user", "row_id": user["id"], "message_uid": user["message_uid"],
+        "content": user["content"], "timestamp": user["timestamp"]}})
+    db.append_message("stored", "assistant", "old live answer", message_uid="output-uid")
+    assistant = db.get_messages("stored")[-1]
+    output = {"role": "assistant", "row_id": assistant["id"], "message_uid": assistant["message_uid"],
+              "has_content": True, "has_reasoning": False}
+    server._emit("reasoning.available", "runtime", {"text": "old live answer"})
+    server._emit("message.output_committed", "runtime", {
+        "turn_id": "native-turn", "stored_session_id": "stored", "conversation_ref": "controlled", "source_message": output})
+    receipt = {"complete": True, "row_ids": [source["row_id"], output["row_id"]], "source_messages": [source, output]}
+    server._emit("message.complete", "runtime", {"text": "old live answer", "persisted_turn": receipt})
+    with session["history_lock"]:
+        session["running"] = False
+        server._clear_inflight_turn(session)
+    db.release_session_turn_lease("stored", holder)
+    return receipt
+
+
+@pytest.mark.parametrize("receipt_state", ["valid", "missing", "wrong_row", "retired"])
+def test_settled_web_notifications_use_existing_durable_receipt(native, receipt_state):
+    db, session, _home = native
+    receipt = settled_web_output(db, session)
+    completed = session["_inflight_output"]["events"][-1]["payload"]
+    if receipt_state == "missing":
+        completed.pop("persisted_turn")
+    elif receipt_state == "wrong_row":
+        completed["persisted_turn"]["source_messages"][-1]["row_id"] = 999999
+    elif receipt_state == "retired":
+        db.rewind_to_message("stored", receipt["source_messages"][0]["row_id"])
+    view = activate(request(db))
+    if receipt_state == "valid":
+        assert view["complete"] and not view["running"] and not view["state_snapshot"]["events"]
+    else:
+        assert not view["complete"] and view["reason"] == "runtime_unavailable"
+
+
+@pytest.mark.parametrize("event_type", ["message.delta", "reasoning.delta"])
+def test_settled_receipt_never_accepts_unknown_output(native, event_type):
+    db, session, _home = native
+    settled_web_output(db, session)
+    server._emit(event_type, "runtime", {"text": "unaccounted output"})
+    view = activate(request(db))
+    assert not view["complete"] and view["reason"] == "runtime_unavailable"
+
+
+def test_active_reasoning_notice_keeps_its_existing_display(native):
+    db, session, _home = native
+    begin_web(db, session)
+    server._emit("reasoning.available", "runtime", {"text": "active reasoning"})
+    view = activate(request(db))
+    assert view["complete"] and view["running"]
+    assert any(event["type"] == "reasoning.available" for event in view["state_snapshot"]["events"])
+
+
 @pytest.mark.parametrize("mutation",["replace","rewind","delete"])
 def test_settled_old_snapshot_never_revives_after_stable_formal_rewrite(native,mutation):
     db,session,_home=native
