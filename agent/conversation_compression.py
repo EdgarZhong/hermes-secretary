@@ -3182,7 +3182,7 @@ def _rebuild_system_prompt_at_boundary(agent: Any, system_message: str) -> str:
 
 def _salvage_or_refuse_grown_transcript(
     agent: Any, messages: list, compressed: list, *, system_message: str, attempt_started_at: float,
-    attempt_snapshot: dict,
+    attempt_snapshot: dict, allow_salvage: bool = True,
 ) -> Tuple[Optional[list], Optional[str]]:
     """Anti-growth guard at the COMMIT SITE (in-place commits before the gateway can inspect).
     Compares like-for-like rough estimates; on growth tries one mechanical salvage pass, else treats the
@@ -3197,7 +3197,7 @@ def _salvage_or_refuse_grown_transcript(
     # the attempt as a no-op: the original transcript stays untouched and durable.
     _rough_in = estimate_messages_tokens_rough(messages)
     _rough_out = estimate_messages_tokens_rough(compressed)
-    if _rough_out > _rough_in:
+    if _rough_out > _rough_in and allow_salvage:
         # Todo refresh and user-turn anchoring run after the compressor's own size check
         # and can tip a break-even candidate; give it one mechanical salvage pass.
         from agent.context_compressor import salvage_grown_transcript
@@ -3602,6 +3602,7 @@ def _commit_compaction(
     new_system_prompt: str, system_message: str, compressed_user_turn_outcome: str,
     messages_before_compression: Optional[list], made_progress: bool, attempt: _Attempt,
     verbatim_tail: Optional[list] = None, carried_messages: Optional[list] = None, native_request=None, force_notice_plan=None,
+    remove_default_tail: bool = False,
 ) -> _CommitOutcome:
     """Persist the compacted transcript: memory extraction, anti-growth guard, then the
     in-place archive or the parent->child rotation.
@@ -3628,7 +3629,7 @@ def _commit_compaction(
             _tail_tagged_ids = {id(m) for m in compressed if isinstance(m, dict) and m.pop("_compaction_tail", None)}
             compressed, _refused_sp = _salvage_or_refuse_grown_transcript(
                 agent, messages, compressed, system_message=system_message, attempt_started_at=attempt.started_at,
-                attempt_snapshot=attempt.snapshot,
+                attempt_snapshot=attempt.snapshot, allow_salvage=not remove_default_tail,
             )
             if compressed is None:
                 _restore_messages_snapshot(messages, messages_before_compression)
@@ -3801,6 +3802,7 @@ class _SummaryPhase:
     force_notice_plan: Any = None
     verbatim_tail: Optional[list] = None
     comparison_before: Optional[list] = None
+    remove_default_tail: bool = False
 
 def _run_summary_phase(
     agent: Any, messages: list, *, lease: _CompressionLease, in_place: bool, checkpoint_required: bool,
@@ -3846,7 +3848,9 @@ def _run_summary_phase(
         _activity_heartbeat = _CompressionActivityHeartbeat(
             agent, commit_fence=commit_fence, emit_client_status=lease.status_emitted,
         ).start()
-        with force_summary_scope(force_notice_plan):
+        from agent.context_compaction_tail_policy import select_no_default_tail, tail_policy_scope
+        remove_default_tail = select_no_default_tail(agent, trigger=noting_trigger, verbatim_tail=verbatim_tail)
+        with force_summary_scope(force_notice_plan), tail_policy_scope(remove_default_tail):
             compressed = _run_summary_dispatch(
                 agent, messages if force_notice_plan is None else force_notice_plan.working(),
                 compress_fn, compress_kwargs, commit_fence=commit_fence,
@@ -3894,7 +3898,7 @@ def _run_summary_phase(
     return _SummaryPhase(
         messages=messages, compressed=compressed, messages_before_compression=messages_before_compression,
         approx_tokens=approx_tokens, pre_msg_count=pre_msg_count,
-        force_notice_plan=force_notice_plan, verbatim_tail=verbatim_tail,
+        force_notice_plan=force_notice_plan, verbatim_tail=verbatim_tail, remove_default_tail=remove_default_tail,
         comparison_before=model_visible_messages(messages_before_compression) if force_notice_plan is None else force_notice_plan.comparison,
     )
 
@@ -4170,27 +4174,10 @@ def compress_context(
                 )
                 return messages, _existing_sp
         _warn_summary_or_aux_fallback(agent)
-        # A just-delivered reply the engine folded away must stay live or the
-        # next render drops it from the surface (#118900). It runs FIRST: the
-        # todo fold rewrites the trailing user row (its follower would no longer
-        # match) and both later passes place themselves around the tail, so the
-        # reply has to be back in its chronological slot before they look.
-        from agent.conversation_compression_reply_anchor import _ensure_compressed_keeps_last_assistant_reply
-
-        # `/compress here N` hands only the HEAD in as `messages` and carries the kept tail
-        # separately: the head's last assistant is an OLD reply the user explicitly asked to
-        # fold, not the just-delivered one (which lives in the verbatim tail), so the guard
-        # must not undo the compression it was asked for.
-        reinserted_reply = None if verbatim_tail else _ensure_compressed_keeps_last_assistant_reply(
-            candidate_source, compressed, session_id=agent.session_id,
+        from agent.context_compaction_tail_policy import prepare_candidate_anchors
+        reinserted_reply, compressed_user_turn_outcome = prepare_candidate_anchors(
+            agent, candidate_source, compressed, verbatim_tail=verbatim_tail, remove_default_tail=phase.remove_default_tail,
         )
-        if reinserted_reply is not None:
-            logger.info(
-                "Compression: engine folded away the just-delivered assistant reply; reinserted it into the "
-                "active set (session=%s).", agent.session_id or "none",
-            )
-        _fold_todo_snapshot(agent, compressed)
-        compressed_user_turn_outcome = _ensure_compressed_has_user_turn(candidate_source, compressed)
         new_system_prompt = _rebuild_system_prompt_at_boundary(agent, system_message)
         commit = _commit_compaction(
             agent, messages, compressed, in_place=in_place, lease=lease, new_system_prompt=new_system_prompt,
@@ -4202,7 +4189,7 @@ def compress_context(
             # of archiving it compacted=1 next to a fresh twin (display would show it twice). The
             # todo fold / user-anchor rows added above are NOT carried: they keep their own class.
             carried_messages=[reinserted_reply] if reinserted_reply is not None else None,
-            native_request=native_request, force_notice_plan=phase.force_notice_plan,
+            native_request=native_request, force_notice_plan=phase.force_notice_plan, remove_default_tail=phase.remove_default_tail,
         )
         if commit.refused_prompt is not None:
             return messages, commit.refused_prompt
@@ -4217,7 +4204,7 @@ def compress_context(
             compression_feasibility_skip=_compression_feasibility_skip, task_id=task_id,
         )
         from agent.context_compaction_request_publication import publish_native_commit
-        compressed = publish_native_commit(agent, commit, new_system_prompt, native_request)
+        compressed = publish_native_commit(agent, commit, new_system_prompt, native_request, restore_complete_context=phase.remove_default_tail)
         logger.info(
             "context compression done: session=%s messages=%d->%d rough_tokens=~%s awaiting_real_usage=true",
             agent.session_id or "none", _pre_msg_count, len(compressed), f"{_compressed_est:,}",

@@ -1,7 +1,6 @@
 """Fixed advertised tools and task-bound dispatch through real Loop/SDK/DB paths."""
 
 import copy
-import hashlib
 import json
 from contextlib import contextmanager
 from types import SimpleNamespace
@@ -14,11 +13,11 @@ from openai import OpenAI
 from agent.cache_parity import apply_cache_parity_from_parent
 from agent.tool_executor import execute_tool_calls_concurrent, execute_tool_calls_sequential
 from secretary.noting_child import NOTING_ALLOWED_TOOL_NAMES, build_noting_child, noting_dispatch_block, run_noting_task
-from secretary.noting_contract import FINISH_NOTING_SCHEMA, NOTEBOOK_MAINTAIN_SCHEMA
+from secretary.noting_contract import FINISH_NOTING_SCHEMA, NOTEBOOK_CREATE_SCHEMA, NOTEBOOK_UPDATE_SCHEMA, NOTEBOOK_ARCHIVE_SCHEMA
 from secretary.noting_tools import initialize_notebook_work
 from tests.secretary import test_noting_surface as surface
 
-MAINTENANCE = {"notebook_maintain", "finish_noting"}
+MAINTENANCE = {"notebook_create", "notebook_update", "notebook_archive", "finish_noting"}
 DENIED_CHILD = ["terminal", "scheduler", "tool_search", "tool_call", "delegate_task", "notebook_maintain_tool"]
 
 
@@ -53,6 +52,8 @@ def runtime(tmp_path, monkeypatch):
             payload = json.loads(request.content)
             state["sent"].append(payload)
             batch = state["script"].pop(0) if state["script"] else None
+            if callable(batch):
+                batch = batch(payload)
             message = {"role": "assistant", "content": "done" if batch is None else None}
             if batch is not None:
                 message["tool_calls"] = batch
@@ -90,16 +91,16 @@ def tool_rows(payload):
     return [row for row in payload["messages"] if row["role"] == "tool"]
 
 
+def result_entry(payload, call_id):
+    return next(json.loads(row["content"])["entry"] for row in tool_rows(payload) if row["tool_call_id"] == call_id)
+
+
 def test_schema_and_direct_catalog_are_fixed(runtime):
     from tools import tool_search
     from tools.secretary_dispatch import filter_tool_definitions, secretary_surface_scope
     parent, _db, _config, state = runtime
-    expected = {schema["name"]: schema for schema in (NOTEBOOK_MAINTAIN_SCHEMA, FINISH_NOTING_SCHEMA)}
-    frozen_hashes = {"notebook_maintain": "4fbaab4cec9b50d7ed87888ba1a3cebaf6453b438d7a3ae06c2d7171b2b2ad3d",
-                     "finish_noting": "59b73e172fd24a3c704f85b84adce58075d58fd8f965e9334544d288e20f0267"}
-    for schema in expected.values():
-        digest = hashlib.sha256(json.dumps(schema, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
-        assert digest == frozen_hashes[schema["name"]]
+    expected = {schema["name"]: schema for schema in (
+        NOTEBOOK_CREATE_SCHEMA, NOTEBOOK_UPDATE_SCHEMA, NOTEBOOK_ARCHIVE_SCHEMA, FINISH_NOTING_SCHEMA)}
     sent = {tool["function"]["name"]: tool["function"] for tool in state["sent"][-1]["tools"]}
     assert all(sent[name] == schema for name, schema in expected.items())
     with secretary_surface_scope(parent):
@@ -135,12 +136,12 @@ def test_main_mixed_batch_preserves_native_valid_calls(runtime, monkeypatch):
         seen.append(name)
         return original(name)
     monkeypatch.setattr(parent, "_repair_tool_call", repair)
-    state["script"] = [[call("notebook_maintain"), call("conversation_history", {"mode": "read", "limit": 1}, "history")], None]
+    state["script"] = [[call("notebook_create"), call("conversation_history", {"mode": "read", "limit": 1}, "history")], None]
     surface._turn(parent, "normal evidence read")
     rows = tool_rows(state["sent"][-1])
     assert any(row["tool_call_id"] == "history" and json.loads(row["content"])["success"] for row in rows)
-    assert_permission_error(next(row["content"] for row in rows if row["tool_call_id"] == "call"), parent, "notebook_maintain")
-    assert "notebook_maintain" not in seen
+    assert_permission_error(next(row["content"] for row in rows if row["tool_call_id"] == "call"), parent, "notebook_create")
+    assert "notebook_create" not in seen
 
 
 @pytest.mark.parametrize("executor", [execute_tool_calls_sequential, execute_tool_calls_concurrent])
@@ -163,7 +164,7 @@ def test_child_loop_refuses_every_non_whitelisted_name_without_repair(runtime, m
     child = bound_child(parent)
     before = child._noting_notebook_store.show()
     monkeypatch.setattr(child, "_repair_tool_call", MagicMock(side_effect=AssertionError("no repair")))
-    state["script"] = [[call(name, {"name": "notebook_maintain", "arguments": {}})],
+    state["script"] = [[call(name, {"name": "notebook_create", "arguments": {}})],
                        [call("notebook_show", {}, "legal")], None]
     try:
         surface._turn(child, "maintain")
@@ -193,7 +194,7 @@ def test_child_executor_and_direct_invoke_reject_wrappers(runtime, executor, nam
         child.close()
 
 
-def test_real_runner_uses_all_four_tools_finishes_and_keeps_parent_prefix(runtime):
+def test_real_runner_uses_all_six_tools_finishes_and_keeps_parent_prefix(runtime):
     parent, db, _config, state = runtime
     prefix = copy.deepcopy(parent._session_messages)
     anchor = prefix[-1]["message_uid"]
@@ -203,8 +204,16 @@ def test_real_runner_uses_all_four_tools_finishes_and_keeps_parent_prefix(runtim
     state["script"] = [
         [call("conversation_history", {"mode": "read", "limit": 2}, "read")],
         [call("notebook_show", {}, "show")],
-        [call("notebook_maintain", {"action": "create", "entry_type": "matter", "fields": {
-            "description": "send report", "completion_condition": "Report sent"}, "source_message_uids": [user_uid]}, "maintain")],
+        [call("notebook_create", {"entry_type": "matter", "fields": {
+            "description": "send report", "completion_condition": "Report sent"}, "source_message_uids": [user_uid]}, "create")],
+        lambda payload: [call("notebook_update", {"entry_id": result_entry(payload, "create")["entry_id"], "fields": {"blocker": "Awaiting review"},
+            "schedule_suggestion": {"content": "Follow up on the report after review; the report is still waiting for reviewer acceptance.",
+                                    "schedule": "after the reviewer responds"}}, "update")],
+        [call("notebook_create", {"entry_type": "matter", "fields": {
+            "description": "transient duplicate", "completion_condition": "merged"},
+            "source_message_uids": [user_uid]}, "temporary")],
+        lambda payload: [call("notebook_archive", {"entry_id": result_entry(payload, "temporary")["entry_id"],
+            "reason": "Duplicate scope is covered by the report entry."}, "archive")],
         [call("finish_noting", {"reason": "Indexed the report commitment."}, "finish")], None,
     ]
     admission = db.noting_admit(parent._secretary_conversation_ref, anchor, kind="manual")
@@ -213,12 +222,16 @@ def test_real_runner_uses_all_four_tools_finishes_and_keeps_parent_prefix(runtim
                              task_instruction="Maintain the Notebook.")
     assert outcome.committed and outcome.termination["type"] == "finish_noting"
     assert db.notebook_current(parent._secretary_conversation_ref)["payload"]["work"][0]["fields"]["description"] == "send report"
-    assert len(state["sent"]) == 5
+    current = db.notebook_current(parent._secretary_conversation_ref)["payload"]["work"]
+    assert len(current) == 1 and current[0]["fields"]["blocker"] == "Awaiting review"
+    assert current[0]["schedule_suggestion"]["schedule"] == "after the reviewer responds"
+    assert not db._read_all("SELECT * FROM secretary_schedule_registry")
+    assert len(state["sent"]) == 8
     for payload in state["sent"]:
         assert payload["tools"] == parent_request["tools"]
         assert payload["messages"][:len(parent_request["messages"]) + 1] == [*parent_request["messages"], {"role": "assistant", "content": "done"}]
     all_rows = tool_rows(state["sent"][-1])
-    assert {row["tool_call_id"] for row in all_rows} == {"read", "show", "maintain", "finish"}
+    assert {row["tool_call_id"] for row in all_rows} == {"read", "show", "create", "update", "temporary", "archive", "finish"}
     assert all(json.loads(row["content"])["success"] for row in all_rows)
     assert json.loads(all_rows[-1]["content"]) == {"success": True, "status": "end_requested"}
 
@@ -227,9 +240,9 @@ def test_child_loop_rejects_complete_finish_mixture_before_any_effect(runtime):
     parent, _db, _config, state = runtime
     child = bound_child(parent)
     user_uid = next(row["message_uid"] for row in parent._session_messages if row["role"] == "user")
-    mutation = {"action": "create", "entry_type": "matter", "fields": {
+    mutation = {"entry_type": "matter", "fields": {
         "description": "send report", "completion_condition": "Report sent"}, "source_message_uids": [user_uid]}
-    state["script"] = [[call("notebook_maintain", mutation, "write"), call("finish_noting", {"reason": "mixed"}, "mixed")],
+    state["script"] = [[call("notebook_create", mutation, "write"), call("finish_noting", {"reason": "mixed"}, "mixed")],
                        [call("notebook_show", {}, "show")], [call("finish_noting", {"reason": "done"}, "finish")], None]
     try:
         surface._turn(child, "maintain")
@@ -255,7 +268,7 @@ def test_finish_mixture_and_end_requested_do_not_mutate(runtime, executor):
         assert all(json.loads(row["content"])["error"]["code"] == "invalid_argument" for row in messages if row["role"] == "tool")
         assert not child._secretary_noting_terminal_action_done
         assert json.loads(child._invoke_tool("finish_noting", {"reason": "done"}, "test"))["status"] == "end_requested"
-        refused = json.loads(child._invoke_tool("notebook_maintain", {"action": "create"}, "test"))
+        refused = json.loads(child._invoke_tool("notebook_create", {}, "test"))
         assert refused["error"]["code"] == "state_conflict"
         assert child._noting_notebook_store.show() == before
         assert json.loads(child._invoke_tool("finish_noting", {"reason": "changed"}, "test"))["status"] == "end_requested"
@@ -331,7 +344,7 @@ def test_registry_entry_uses_standard_refusal_before_dispatch(runtime, monkeypat
 
 
 @pytest.mark.parametrize("executor", [execute_tool_calls_sequential, execute_tool_calls_concurrent])
-@pytest.mark.parametrize("identity,name", [("main", "notebook_maintain"), ("noting", "tool_call"), ("noting", "tool_search")])
+@pytest.mark.parametrize("identity,name", [("main", "notebook_create"), ("noting", "tool_call"), ("noting", "tool_search")])
 def test_permission_post_hook_diagnostic_remains_string(runtime, monkeypatch, executor, identity, name):
     parent, _db, _config, _state = runtime
     agent = parent if identity == "main" else bound_child(parent)
@@ -390,5 +403,34 @@ def test_noting_wrapper_refusal_precedes_argument_parsing(runtime, executor, nam
         executor(child, SimpleNamespace(tool_calls=[tool]), messages, "test")
         assert_permission_error(messages[-1]["content"], child, name)
         assert child._noting_notebook_store.show() == before
+    finally:
+        child.close()
+
+
+@pytest.mark.parametrize("name", sorted(MAINTENANCE))
+def test_raw_registry_cannot_authorize_main_from_arguments(runtime, name):
+    from tools.registry import registry
+    from tools.secretary_dispatch import secretary_surface_scope
+    parent, db, _config, _state = runtime
+    before = db.notebook_current(parent._secretary_conversation_ref)
+    forged = {"_secretary_noting_child": True, "reason": "claim Noting"}
+    assert_permission_error(registry.dispatch(name, forged, agent=parent), parent, name)
+    with secretary_surface_scope(parent):
+        assert_permission_error(registry.dispatch(name, forged), parent, name)
+    assert db.notebook_current(parent._secretary_conversation_ref) == before
+
+
+def test_raw_dispatch_scoped_noting_rejects_other_tools_and_old_alias(runtime):
+    from tools.registry import registry
+    from tools.secretary_dispatch import secretary_surface_scope
+    import model_tools
+    parent, _db, _config, _state = runtime
+    child = bound_child(parent)
+    try:
+        with secretary_surface_scope(child):
+            for name in ("terminal", "scheduler", "tool_call", "tool_search", "notebook_maintain"):
+                assert_permission_error(registry.dispatch(name, {}), child, name)
+                assert_permission_error(model_tools.handle_function_call(name, {}), child, name)
+        assert json.loads(parent._invoke_tool("notebook_maintain", {}, "old"))["error"]["code"] == "legacy_tool_removed"
     finally:
         child.close()

@@ -75,8 +75,8 @@ def _exclude_main_read_additions(child):
             else:
                 prompt = prompt.replace(module, "", 1)
         child._cached_system_prompt = prompt
-    child.tools = [tool for tool in child.tools if tool.get("function", {}).get("name") not in {"notebook_show", "notebook_maintain", "finish_noting"}]
-    child.valid_tool_names.difference_update({"notebook_show", "notebook_maintain", "finish_noting"})
+    child.tools = [tool for tool in child.tools if tool.get("function", {}).get("name") not in {"notebook_show", "notebook_maintain", "notebook_create", "notebook_update", "notebook_archive", "finish_noting"}]
+    child.valid_tool_names.difference_update({"notebook_show", "notebook_maintain", "notebook_create", "notebook_update", "notebook_archive", "finish_noting"})
     child._secretary_main_read_eligible = child._secretary_notebook_read_enabled = False
 
 
@@ -97,7 +97,7 @@ def apply_cache_parity_from_parent(child: Any, parent: Any, *, fork_tag: str | N
     child._cached_conversation_root = parent._conversation_root_id()
     child.tools = copy.deepcopy(getattr(parent, "tools", None) or [])
     child.valid_tool_names = {tool["function"]["name"] for tool in child.tools}
-    child.valid_tool_names.difference_update({"notebook_maintain", "finish_noting"})
+    child.valid_tool_names.difference_update({"notebook_maintain", "notebook_create", "notebook_update", "notebook_archive", "finish_noting"})
     if fork_tag != "noting":
         _exclude_main_read_additions(child)
     child._tool_snapshot_generation = _FROZEN_TOOL_SNAPSHOT_GENERATION

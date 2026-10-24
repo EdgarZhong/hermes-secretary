@@ -74,13 +74,20 @@ def _working_state(conn, ref, messages, initial):
             calls.update({call.get("id"): call.get("function", {}).get("name")
                           for call in message.get("tool_calls", []) if isinstance(call, dict)})
         if (message.get("role") != "tool" or
-                (message.get("tool_name") or calls.get(message.get("tool_call_id"))) != "notebook_maintain"):
+                (message.get("tool_name") or calls.get(message.get("tool_call_id"))) not in {"notebook_maintain", "notebook_create", "notebook_update", "notebook_archive"}):
             continue
         result = decoded(message.get("content"), {})
         if not isinstance(result, dict) or result.get("success") is not True:
             continue
-        entry = result.get("entry")
-        if isinstance(entry, dict) and entry.get("version_id"):
+        if result.get("archived") is True and result.get("entry_id"):
+            for section in SECTIONS:
+                state[section] = [entry for entry in state[section] if entry["entry_id"] != result["entry_id"]]
+        receipts = list(result.get("updated_entries", []))
+        if isinstance(result.get("entry"), dict):
+            receipts.append(result["entry"])
+        for entry in receipts:
+            if not isinstance(entry, dict) or not entry.get("version_id"):
+                continue
             restored = _restore_entry(conn, ref, entry)
             section = section_for_type(restored["entry_type"])
             entries = state[section]
@@ -89,9 +96,7 @@ def _working_state(conn, ref, messages, initial):
                 entries.append(restored)
             else:
                 entries[index] = restored
-        elif result.get("archived") is True and result.get("entry_id"):
-            for section in SECTIONS:
-                state[section] = [entry for entry in state[section] if entry["entry_id"] != result["entry_id"]]
+
     return state
 
 

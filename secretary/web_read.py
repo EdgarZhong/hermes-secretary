@@ -144,5 +144,5 @@ def notebook_read(db, stored_session_id):
         snapshot = db.notebook_current_conn(conn, ref)
     home = Path(db.db_path).parent
     return {"stored_session_id": stored_session_id, "availability": "available", "exists": snapshot is not None,
-            "output": render_notebook(snapshot, profile_home=home),
+            "output": render_notebook(snapshot, profile_home=home, db=db),
             "created_at": format_timestamp(snapshot["created_at"], profile_home=home) if snapshot else None}

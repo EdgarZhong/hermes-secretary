@@ -188,7 +188,11 @@ def _run(runtime, script, *, db=None, anchor="actual-result"):
 
 
 def _maintain(arguments):
-    return "notebook_maintain", arguments
+    arguments = dict(arguments)
+    action = arguments.pop("action", "create")
+    if action == "update":
+        arguments = {"entry_id": arguments["entry_id"], **arguments["changes"]}
+    return "notebook_" + action, arguments
 
 
 def _archive(entry, reason):
@@ -384,8 +388,8 @@ def test_forced_commit_after_conversion_is_recoverable_from_visible_state_and_hi
                 "conversation_ref": script.results["s02-0"]["conversation_ref"],
                 "message_uid": script.results["s02-0"]["payload"]["candidates"][0]["source_message_uids"][0]},
             "before": 0, "after": 0}),
-        ("notebook_maintain", recover_from_visible),
-        ("notebook_maintain", lambda script: {"action": "archive",
+        ("notebook_archive", lambda script: {key: value for key, value in recover_from_visible(script).items() if key != "action"}),
+        ("notebook_archive", lambda script: {
             "entry_id": recovered["candidate"]["entry_id"], "reason": "Recovered source successfully archived"}),
         _finish("Recovered from direct Message provenance and original proposal/approval/action"),
     ])

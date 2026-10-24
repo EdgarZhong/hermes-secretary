@@ -152,7 +152,7 @@ def is_deferrable_tool_name(name: str, defer_tools: Optional[frozenset] = None) 
     plugin tool). Bridge names and enabled Main capabilities never defer."""
     if name in BRIDGE_TOOL_NAMES:
         return False
-    if name in {"scheduler", "notebook_show", "notebook_maintain", "finish_noting"}:
+    if name in {"scheduler", "notebook_show", "notebook_create", "notebook_update", "notebook_archive", "finish_noting"}:
         from tools.secretary_dispatch import main_tool_is_direct
         if main_tool_is_direct(name):
             return False

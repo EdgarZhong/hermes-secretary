@@ -43,10 +43,10 @@ def test_actual_batch_rejects_mixed_finish_before_any_tool_or_hook(runtime, monk
     agent._secretary_noting_child = True
     agent._secretary_noting_profile = "NOTING"
     effects = []
-    monkeypatch.setattr("secretary.noting_tools.notebook_maintain", lambda *a: effects.append("mutation"))
+    monkeypatch.setattr("secretary.noting_tools.notebook_create", lambda *a: effects.append("mutation"))
     monkeypatch.setattr("secretary.noting_tools.finish_noting", lambda *a: effects.append("finish"))
     monkeypatch.setattr("agent.tool_executor._pre_tool_block", lambda *a: effects.append("hook"))
-    calls = [call("notebook_maintain", {"action": "archive"}), call("finish_noting", {"reason": "done"}, "c2")]
+    calls = [call("notebook_create", {"action": "archive"}), call("finish_noting", {"reason": "done"}, "c2")]
     messages = [{"role": "assistant", "tool_calls": [{"id": c.id, "type": "function", "function": {"name": c.function.name, "arguments": c.function.arguments}} for c in calls]}]
     try:
         getattr(tool_executor, executor)(agent, SimpleNamespace(tool_calls=calls), messages, "batch")
@@ -214,11 +214,11 @@ def test_bound_child_uses_all_four_tools_through_actual_dispatch(runtime, concur
     fn = execute_tool_calls_concurrent if concurrent else execute_tool_calls_sequential
     messages = []
     try:
-        args = {"action": "create", "entry_type": "matter", "fields": {"description": "Plan visit", "completion_condition": "Dates agreed"},
-                "source_message_identities": [{"conversation_ref": parent._secretary_conversation_ref, "message_uid": "m1"}]}
+        args = {"entry_type": "matter", "fields": {"description": "Plan visit", "completion_condition": "Dates agreed"},
+                "source_message_uids": ["m1"]}
         for number, (name, args) in enumerate([
             ("conversation_history", {"mode": "read", "limit": 5}),
-            ("notebook_maintain", args), ("notebook_show", {}), ("finish_noting", {"reason": "Indexed visit"}),
+            ("notebook_create", args), ("notebook_show", {}), ("finish_noting", {"reason": "Indexed visit"}),
         ]):
             fn(child, SimpleNamespace(tool_calls=[call(name, args, f"child{number}")]), messages, "child")
             result = json.loads([m for m in messages if m.get("role") == "tool"][-1]["content"])
@@ -251,7 +251,7 @@ def test_actual_dispatch_selects_noting_budget_feedback_from_runtime(runtime, mo
         from tools.session_history_tool import NOTING_HISTORY_OVERSIZE_GUIDANCE
         assert NOTING_HISTORY_OVERSIZE_GUIDANCE in content
         denied = json.loads(agent._invoke_tool("read_file", {"path": "synthetic-only"}, "denied-file"))
-        assert "Noting runtime denied non-whitelisted tool: read_file" in denied["error"]
+        assert "Noting runtime denied non-whitelisted tool: read_file" in denied["error"]["message"]
         assert "read_file" not in content and "execute_code" not in content
     finally:
         agent.close()
@@ -280,30 +280,30 @@ def test_actual_catalog_does_not_restore_disabled_or_noting_only_capabilities(ru
     agent = _agent(db, selected=["notebook", "scheduler", "noting", "session_search"])
     try:
         result = json.loads(agent._invoke_tool("tool_describe", {
-            "names": ["session_search", "scheduler", "notebook_show", "notebook_maintain", "finish_noting"]}, "catalog"))
+            "names": ["session_search", "scheduler", "notebook_show", "notebook_create", "finish_noting"]}, "catalog"))
         rendered = json.dumps(result)
         assert "session_search" in result.get("tools", {})
-        assert not {"scheduler", "notebook_show", "notebook_maintain", "finish_noting"}.intersection(result.get("tools", {}))
+        assert not {"scheduler", "notebook_show", "notebook_create", "finish_noting"}.intersection(result.get("tools", {}))
         assert "legacy_tool_removed" not in rendered
         bridge = next(tool for tool in agent.tools if tool["function"]["name"] == "tool_search")
-        for name in ("scheduler", "notebook_show", "notebook_maintain", "finish_noting"):
+        for name in ("scheduler", "notebook_show", "notebook_create", "finish_noting"):
             assert f"- {name}:" not in bridge["function"]["description"]
     finally:
         agent.close()
 
 
-@pytest.mark.parametrize("other", ["unknown_tool", "notebook_edit", "notebook_maintain"])
+@pytest.mark.parametrize("other", ["unknown_tool", "notebook_edit", "notebook_create"])
 def test_real_turn_rejects_original_finish_batch_before_native_filtering(runtime, monkeypatch, other):
     from tests.secretary.test_noting_child import mock_response
     db, _ = runtime
     agent = _agent(db)
     agent._secretary_noting_child = True
     agent._secretary_noting_profile = "NOTING"
-    agent.valid_tool_names |= {"finish_noting", "notebook_maintain"}
+    agent.valid_tool_names |= {"finish_noting", "notebook_create"}
     agent._secretary_noting_parent_tools = copy.deepcopy(agent.tools)
     effects = []
     monkeypatch.setattr("secretary.noting_tools.finish_noting", lambda *a: effects.append("finish"))
-    monkeypatch.setattr("secretary.noting_tools.notebook_maintain", lambda *a: effects.append("write"))
+    monkeypatch.setattr("secretary.noting_tools.notebook_create", lambda *a: effects.append("write"))
     def response(index):
         return mock_response(None, "tool_calls", [call("finish_noting", {"reason": "done"}), call(other, {}, "c2")]) if index == 1 else mock_response("stopped")
     seen = _requests(agent, response)
@@ -430,7 +430,7 @@ def test_formal_tui_default_surface_keeps_main_tools_direct(runtime, monkeypatch
         composed = filter_tool_definitions(raw, agent)
         assert composed == filter_tool_definitions(composed, agent)
         assert _names(composed) == (_names(raw) | {"conversation_history"}
-            | ({"scheduler"} if scheduler else set()) | ({"notebook_show"} if noting else set()))
+            | ({"scheduler"} if scheduler else set()) | ({"notebook_show", "notebook_create", "notebook_update", "notebook_archive", "finish_noting"} if noting else set()))
         assert len(composed) == len(_names(composed))
         for schema in composed:
             if schema["function"]["name"] in {"scheduler", "notebook_show"}:

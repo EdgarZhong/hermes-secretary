@@ -14,6 +14,7 @@ from secretary.notebook_contract import (
     SOURCE_NOT_PROVIDED, canonical_source_fields, local_source_error,
     outgoing_references, parse_time, public_state, require_text,
     validate_candidate_provenance, validate_fields, validate_references, validate_source_range,
+    validate_schedule_suggestion,
 )
 from secretary.notebook_contract import SECTIONS as SECTIONS
 from secretary.notebook_contract import TYPE_SECTIONS as TYPE_SECTIONS
@@ -29,7 +30,7 @@ class NotebookWorkingState:
 
     def __init__(self, conversation_ref, payload=None, *, validate_source_identity=None,
                  validate_source_range=None, validate_inherited_sources=None,
-                 insert_version=None, lock=None, clock=None):
+                 insert_version=None, insert_versions=None, lock=None, clock=None):
         require_text(conversation_ref, "conversation_ref")
         self.conversation_ref = conversation_ref
         self.lock = lock if lock is not None else RLock()
@@ -38,6 +39,7 @@ class NotebookWorkingState:
         self._validate_source_range = validate_source_range
         self._validate_inherited_sources = validate_inherited_sources
         self._insert_version = insert_version
+        self._insert_versions = insert_versions
         self._frozen = False
         state = deepcopy(payload) if payload is not None else {section: [] for section in SECTIONS}
         self._validate_state(state)
@@ -98,8 +100,8 @@ class NotebookWorkingState:
                 next_action="Search for the specific evidence in the allowed scope; keep it unknown if unavailable.",
             )
 
-    def _validate_entry(self, entry, *, fresh=False):
-        if not isinstance(entry, dict) or set(entry) != ENTRY_KEYS:
+    def _validate_entry(self, entry, *, fresh=False, source_entry=None):
+        if (not isinstance(entry, dict) or set(entry) - {"schedule_suggestion"} != ENTRY_KEYS):
             raise NotebookValidationError("Invalid internal Notebook entry shape.", field="entry")
         entry_type = entry["entry_type"]
         section_for_type(entry_type)
@@ -108,6 +110,7 @@ class NotebookWorkingState:
         if not isinstance(entry["archived"], bool):
             raise NotebookValidationError("Invalid archive marker.", field="archived")
         validate_fields(entry_type, entry["fields"])
+        validate_schedule_suggestion(entry.get("schedule_suggestion"))
         if not isinstance(entry["status"], str) or entry["status"] not in STATUSES[entry_type]:
             raise NotebookValidationError("Invalid status for this entry type.", field="status")
         relations = entry["relations"]
@@ -126,9 +129,9 @@ class NotebookWorkingState:
         for key in ("created_at", "updated_at", "last_processed_at"):
             if entry[key] is not None:
                 parse_time(entry[key], key)
-        self._validate_sources(entry, fresh=fresh)
+        self._validate_sources(entry if source_entry is None else source_entry, fresh=fresh)
 
-    def _validate_state(self, state, *, fresh_id=None):
+    def _validate_state(self, state, *, fresh_id=None, source_entries=None):
         if not isinstance(state, dict) or set(state) != set(SECTIONS):
             raise NotebookValidationError("Notebook requires work, situations, discussion and candidates arrays.")
         ids, versions = set(), set()
@@ -136,7 +139,9 @@ class NotebookWorkingState:
             if not isinstance(state[section], list):
                 raise NotebookValidationError("Notebook sections must be arrays.", field=section)
             for entry in state[section]:
-                self._validate_entry(entry, fresh=isinstance(entry, dict) and entry.get("entry_id") == fresh_id)
+                self._validate_entry(entry, fresh=isinstance(entry, dict) and entry.get("entry_id") == fresh_id,
+                                     source_entry=(source_entries or {}).get(entry.get("entry_id"))
+                                     if isinstance(entry, dict) else None)
                 if (section_for_type(entry["entry_type"]) != section or entry["entry_id"] in ids
                         or entry["version_id"] in versions):
                     raise NotebookValidationError("Wrong section or duplicate entry/version identity.", field=section)
@@ -194,7 +199,7 @@ class NotebookWorkingState:
 
     def create(self, entry_type, fields, *, status=None, relations=None,
                source_message_identities=SOURCE_NOT_PROVIDED, source_time_range=None,
-               source_message_uids=SOURCE_NOT_PROVIDED):
+               source_message_uids=SOURCE_NOT_PROVIDED, schedule_suggestion=None):
         with self.lock:
             self._require_writable()
             section = section_for_type(entry_type)
@@ -215,6 +220,8 @@ class NotebookWorkingState:
                      "source_message_identities": [] if identities is None else identities,
                      "source_time_range": deepcopy(source_time_range), "archived": False,
                      "created_at": None, "updated_at": None, "last_processed_at": None}
+            if schedule_suggestion is not None:
+                entry["schedule_suggestion"] = deepcopy(schedule_suggestion)
             draft = self.snapshot_state()
             draft[section].append(entry)
             try:
@@ -238,22 +245,24 @@ class NotebookWorkingState:
             self._require_writable()
             section, index = self._locate(entry_id)
             if not isinstance(changes, dict) or not changes or changes.keys() - CHANGE_KEYS:
-                raise NotebookValidationError("Expected nonempty changes with only editable properties.", field="changes")
+                raise NotebookValidationError("Supply at least one editable attribute besides entry_id.", field="entry_id")
             local_sources = "source_message_uids" in changes
             changes = canonical_source_fields(changes, self.conversation_ref)
             old = self._state[section][index]
             entry = deepcopy(old)
             field_changes = changes.get("fields", {})
             if not isinstance(field_changes, dict):
-                raise NotebookValidationError("Expected a fields patch object.", field="changes.fields")
+                raise NotebookValidationError("Expected a fields patch object.", field="fields")
             for key, value in changes.items():
-                if key != "fields":
+                if key == "schedule_suggestion" and value is None:
+                    entry.pop(key, None)
+                elif key != "fields":
                     entry[key] = deepcopy(value)
             allowed = (set(REQUIRED_FIELDS[entry["entry_type"]])
                        | set(OPTIONAL_FIELDS[entry["entry_type"]]) | COMMON_FIELDS)
             for key, value in field_changes.items():
                 if key not in allowed:
-                    raise NotebookValidationError("Field does not belong to this type.", field=f"changes.fields.{key}")
+                    raise NotebookValidationError("Field does not belong to this type.", field=f"fields.{key}")
                 if value is None and key not in REQUIRED_FIELDS[entry["entry_type"]] and key not in ARRAY_FIELDS:
                     entry["fields"].pop(key, None)
                 elif key in ARRAY_FIELDS and value == [] and key not in entry["fields"]:
@@ -286,15 +295,21 @@ class NotebookWorkingState:
             self._require_writable()
             require_text(reason, "reason")
             section, index = self._locate(entry_id)
-            referrers = []
-            for entries in self._state.values():
+            draft = self.snapshot_state()
+            referrers, cleanup = [], []
+            for entries in draft.values():
                 for entry in entries:
-                    if entry["archived"]:
+                    if entry["archived"] or entry["entry_id"] == entry_id:
                         continue
-                    fields = [field for target, field, _kind in outgoing_references(entry) if target == entry_id]
-                    if fields:
+                    protected = [field for target, field, kind in outgoing_references(entry)
+                                 if target == entry_id and kind is not None]
+                    if protected:
                         referrers.append({"entry_id": entry["entry_id"], "version_id": entry["version_id"],
-                                          "fields": fields})
+                                          "fields": protected})
+                    retained = [relation for relation in entry["relations"] if relation["entry_id"] != entry_id]
+                    if retained != entry["relations"]:
+                        cleanup.append((entry, deepcopy(entry)))
+                        entry["relations"] = retained
             if referrers:
                 raise NotebookValidationError(
                     f"Entry {entry_id} is still referenced by {[row['entry_id'] for row in referrers]}.",
@@ -302,17 +317,27 @@ class NotebookWorkingState:
                     next_action="Preserve needed content and update those references before archiving.",
                 )
             old = self._state[section][index]
-            entry = deepcopy(old)
-            entry["archived"] = True
-            entry["fields"]["processing_note"] = reason
-            draft = self.snapshot_state()
-            draft[section][index] = entry
-            self._validate_state(draft)
+            archived = draft[section][index]
+            archived["archived"] = True
+            archived["fields"]["processing_note"] = reason
+            source_entries = {entry["entry_id"]: previous for entry, previous in cleanup}
+            self._validate_state(draft, source_entries=source_entries)
             now = self._now()
-            entry["updated_at"] = entry["last_processed_at"] = now
-            draft[section][index] = self._persist(entry, old["version_id"])
-            self._state = draft
-            return {"success": True, "changed": True, "entry_id": entry_id, "archived": True}
+            archived["updated_at"] = archived["last_processed_at"] = now
+            changes = [(archived, old["version_id"])]
+            for entry, previous in cleanup:
+                entry["updated_at"] = now
+                changes.append((entry, previous["version_id"]))
+            saved = (self._insert_versions(deepcopy(changes)) if self._insert_versions is not None else
+                     [self._persist(entry, previous_id) for entry, previous_id in changes])
+            by_id = {entry["entry_id"]: entry for entry in saved}
+            self._state = {name: [by_id.get(entry["entry_id"], entry) for entry in entries]
+                           for name, entries in draft.items()}
+            result = {"success": True, "changed": True, "entry_id": entry_id, "archived": True}
+            if cleanup:
+                result["relations_removed_from"] = [entry["entry_id"] for entry, _old in cleanup]
+                result["updated_entries"] = [self.get(entry["entry_id"]) for entry, _old in cleanup]
+            return result
 
     def maintain(self, args):
         """Strict action router for C5; does not grant Main mutation authority."""
@@ -321,7 +346,7 @@ class NotebookWorkingState:
         action = args["action"]
         required = {"create": {"entry_type", "fields"}, "update": {"entry_id", "changes"},
                     "archive": {"entry_id", "reason"}}
-        optional = {"create": {"status", "relations", "source_message_identities", "source_message_uids", "source_time_range"},
+        optional = {"create": {"status", "relations", "schedule_suggestion", "source_message_identities", "source_message_uids", "source_time_range"},
                     "update": set(), "archive": set()}
         if action not in required:
             raise NotebookValidationError("Expected create, update or archive.", field="action")

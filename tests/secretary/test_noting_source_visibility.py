@@ -1,7 +1,7 @@
 """V2-F01 regression: only History-readable evidence may ground fresh Notebook provenance.
 
 This is the public-tool form of the review counterexample: real SessionDB, a registered
-Noting child, the bound ``notebook_maintain`` handler, ``finish_noting`` and the production
+Noting child, the bound ``notebook_create`` handler, ``finish_noting`` and the production
 Snapshot transaction.  Hidden and human-only rows are unreadable through History, so they
 must not become committed sources; a visible row remains a legal source.
 """
@@ -13,7 +13,7 @@ from types import SimpleNamespace
 import pytest
 
 from hermes_state import SessionDB
-from secretary.noting_tools import finish_noting, initialize_notebook_work, notebook_maintain
+from secretary.noting_tools import finish_noting, initialize_notebook_work, notebook_create
 
 
 @pytest.fixture
@@ -56,13 +56,12 @@ def maintain(child, conversation_ref, *, message_uid=None, instant=None):
         "description": "Retain the visit assertion.",
         "subjects": ["visit"], "time_context": "Current visit planning",
     }
-    arguments = {"action": "create", "entry_type": "situation", "fields": fields}
+    arguments = {"entry_type": "situation", "fields": fields}
     if message_uid is not None:
-        arguments["source_message_identities"] = [
-            {"conversation_ref": conversation_ref, "message_uid": message_uid}]
+        arguments["source_message_uids"] = [message_uid]
     else:
         arguments["source_time_range"] = {"start_time": instant, "end_time": instant}
-    return json.loads(notebook_maintain(child, arguments))
+    return json.loads(notebook_create(child, arguments))
 
 
 @pytest.mark.parametrize("visibility", ["human_only", "hidden"])

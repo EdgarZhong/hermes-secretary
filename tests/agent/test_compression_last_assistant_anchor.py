@@ -97,6 +97,9 @@ def _seed(tmp_path, tail_rows, fold, follower):
 
     from hermes_state import SessionDB
 
+    # These assertions cover native recency guards; Secretary full compaction has
+    # its own contract and intentionally summarizes the completed reply.
+    (tmp_path / "config.yaml").write_text("noting:\n  enabled: false\n")
     db = SessionDB(db_path=tmp_path / "state.db")
     session_id = "E2E_118900_REPLY"
     db.create_session(session_id, source="cli")

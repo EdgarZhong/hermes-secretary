@@ -3,12 +3,14 @@
 from contextlib import contextmanager
 from contextvars import ContextVar
 
-from secretary.noting_contract import FINISH_NOTING_SCHEMA, NOTEBOOK_MAINTAIN_SCHEMA
+from secretary.noting_contract import (
+    FINISH_NOTING_SCHEMA, NOTEBOOK_CREATE_SCHEMA, NOTEBOOK_UPDATE_SCHEMA, NOTEBOOK_ARCHIVE_SCHEMA,
+)
 from tools.registry import registry
 from tools.scheduler_tool import SCHEDULER_SCHEMA, scheduler_tool
 
 RETIRED_SECRETARY_TOOLS = frozenset({
-    "session_history", "noting_memo", "notebook_mutate", "notebook_manage", "notebook_edit", "notebook_schedule", "compact_parent",
+    "session_history", "noting_memo", "notebook_maintain", "notebook_mutate", "notebook_manage", "notebook_edit", "notebook_schedule", "compact_parent",
 })
 
 
@@ -19,7 +21,7 @@ def legacy_tool_removed(name):
     return {"success": False, "error": {
         "code": "legacy_tool_removed", "message": f"{name} is retired; this call was not executed.",
         "next_action": "Use conversation_history for original evidence, notebook_show for the current view, "
-                       "scheduler in Main for reminders, or notebook_maintain and standalone finish_noting in Noting. "
+                       "scheduler in Main for reminders, or notebook_create, notebook_update, notebook_archive and standalone finish_noting in Noting. "
                        "Main does not edit the Notebook or send maintenance memos.",
     }}
 
@@ -36,6 +38,12 @@ def secretary_surface_scope(agent):
         _SURFACE_AGENT.reset(token)
 
 
+def scoped_dispatch_refusal(name, agent=None):
+    """Apply the runtime identity at registry and bridge seams, never model arguments."""
+    from secretary.noting_child import noting_dispatch_refusal
+    return noting_dispatch_refusal(_SURFACE_AGENT.get() if agent is None else agent, name)
+
+
 def main_tool_is_direct(name, agent=None):
     """Keep enabled Main capabilities independent of native deferred-tool policy."""
     agent = _SURFACE_AGENT.get() if agent is None else agent
@@ -44,7 +52,9 @@ def main_tool_is_direct(name, agent=None):
         return False
     flag = {"scheduler": "_secretary_scheduler_enabled",
             "notebook_show": "_secretary_notebook_read_enabled",
-            "notebook_maintain": "_secretary_notebook_read_enabled",
+            "notebook_create": "_secretary_notebook_read_enabled",
+            "notebook_update": "_secretary_notebook_read_enabled",
+            "notebook_archive": "_secretary_notebook_read_enabled",
             "finish_noting": "_secretary_notebook_read_enabled"}.get(name)
     return bool(flag and getattr(agent, flag, False))
 
@@ -61,10 +71,10 @@ def filter_tool_definitions(tools, agent=None):
     main = bool(getattr(agent, "_secretary_main_read_eligible", False))
     allowed = {"conversation_history"} if main else set()
     if main and getattr(agent, "_secretary_notebook_read_enabled", False):
-        allowed.update({"notebook_show", "notebook_maintain", "finish_noting"})
+        allowed.update({"notebook_show", "notebook_create", "notebook_update", "notebook_archive", "finish_noting"})
     if main and getattr(agent, "_secretary_scheduler_enabled", False):
         allowed.add("scheduler")
-    secretary = {"conversation_history", "notebook_show", "scheduler", "notebook_maintain", "finish_noting"}
+    secretary = {"conversation_history", "notebook_show", "scheduler", "notebook_create", "notebook_update", "notebook_archive", "finish_noting"}
     resolved, names = [], set()
     for tool in tools:
         name = tool.get("function", {}).get("name")
@@ -75,7 +85,7 @@ def filter_tool_definitions(tools, agent=None):
     if main:
         from copy import deepcopy
         from secretary.noting_surface import _read_schema
-        for name in ("conversation_history", "notebook_show", "scheduler", "notebook_maintain", "finish_noting"):
+        for name in ("conversation_history", "notebook_show", "scheduler", "notebook_create", "notebook_update", "notebook_archive", "finish_noting"):
             if name in allowed and name not in names:
                 resolved.append({"type": "function", "function": deepcopy(_read_schema(name))})
     return resolved
@@ -88,10 +98,11 @@ def _noting_tool(name, args, agent):
 
 registry.register(name="scheduler", toolset="scheduler", schema=SCHEDULER_SCHEMA,
                   handler=lambda args, **kw: scheduler_tool(args, agent=kw.get("agent")), emoji="⏰")
-registry.register(name="notebook_maintain", toolset="noting", schema=NOTEBOOK_MAINTAIN_SCHEMA,
-                  handler=lambda args, **kw: _noting_tool("notebook_maintain", args, kw.get("agent")), emoji="📓")
-registry.register(name="finish_noting", toolset="noting", schema=FINISH_NOTING_SCHEMA,
-                  handler=lambda args, **kw: _noting_tool("finish_noting", args, kw.get("agent")), emoji="📓")
+for _schema in (NOTEBOOK_CREATE_SCHEMA, NOTEBOOK_UPDATE_SCHEMA, NOTEBOOK_ARCHIVE_SCHEMA, FINISH_NOTING_SCHEMA):
+    registry.register(name=_schema["name"], toolset="noting", schema=_schema,
+                      handler=lambda args, _name=_schema["name"], **kw: _noting_tool(_name, args, kw.get("agent")),
+                      emoji="📓")
+
 
 
 def reject_noting_mixed_finish(agent, tool_calls, messages, effective_task_id):

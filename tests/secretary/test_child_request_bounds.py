@@ -89,7 +89,8 @@ def test_real_assembled_child_request_overflow_commits_without_provider(parent, 
                if (row.get("display_metadata") or {}).get("noting_run_output")]
     assert len(notices) == 1
     assert "Termination: context_overflow" in notices[0]["content"]
-    assert outcome.snapshot_id in notices[0]["content"]
+    assert notices[0]["display_metadata"]["noting_snapshot_id"] == outcome.snapshot_id
+    assert outcome.snapshot_id not in notices[0]["content"]
     assert "CURRENT NOTEBOOK SNAPSHOT" in notices[0]["content"]
     assert "No new Snapshot" not in notices[0]["content"]
     assert all(row.get("message_uid") != "large-prefix" for row in db.get_messages_as_conversation(outcome.child_session_id))
@@ -192,7 +193,7 @@ def test_child_commit_uses_full_archived_snapshot_state(parent, db, stub_client)
                          source_message_identities=[{"conversation_ref": ref, "message_uid": "m1"}])["entry"]
     store.commit(termination={"type": "forced"})
     stub_client.chat.completions.create.side_effect = [
-        _tool_response("notebook_maintain", {"action": "archive", "entry_id": entry["entry_id"], "reason": "Delivered in full."}, "archive"),
+        _tool_response("notebook_archive", { "entry_id": entry["entry_id"], "reason": "Delivered in full."}, "archive"),
         _tool_response("finish_noting", {"reason": "Archived the completed report."}, "finish"), mock_response("done")]
     admission = db.noting_admit(ref, "m2", kind="idle")
     outcome = run_noting_task(parent, admission_id=admission, conversation_ref=ref, anchor_message_uid="m2",

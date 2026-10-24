@@ -16,10 +16,10 @@ from tests.secretary.test_noting_surface import (
 from tests.secretary.test_r3_child import response, run_task, tool_response
 
 
-MAIN_DISABLED = ("notebook_maintain and finish_noting are disabled for you and reserved for "
+MAIN_DISABLED = ("notebook_create, notebook_update, notebook_archive and finish_noting are disabled for you and reserved for "
                  "background Noting; do not call them even though their schemas are present.")
-NOTING_ENABLED = ("For this Noting task, notebook_maintain and finish_noting are enabled. "
-                  "Only conversation_history, notebook_show, notebook_maintain and finish_noting "
+NOTING_ENABLED = ("For this Noting task, notebook_create, notebook_update, notebook_archive and finish_noting are enabled. "
+                  "Only conversation_history, notebook_show, notebook_create, notebook_update, notebook_archive and finish_noting "
                   "are authorized; do not use any other advertised tool.")
 
 
@@ -34,7 +34,7 @@ def test_native_main_permission_guidance_follows_global_gate_and_local_stays_fix
         first = deepcopy(seen[-1])
         root = first["messages"][0]["content"]
         assert root.count(MAIN_DISABLED) == int(enabled)
-        assert ({"notebook_maintain", "finish_noting"} <= _names(first["tools"])) is enabled
+        assert ({"notebook_create", "notebook_update", "notebook_archive", "finish_noting"} <= _names(first["tools"])) is enabled
         db.notebook_set_local_enabled(agent._secretary_conversation_ref, False)
         _turn(agent, "Continue after local participation changed.")
         assert seen[-1]["messages"][0] == first["messages"][0]
@@ -131,7 +131,7 @@ def test_anthropic_noting_sdk_keeps_fixed_definitions_and_native_payload(kimi_pa
             client.messages.create(**kwargs)
     assert len(payloads) == len(attempts) == 1
     assert {tool["name"] for tool in payloads[0]["tools"]} >= {
-        "conversation_history", "notebook_show", "notebook_maintain", "finish_noting"}
+        "conversation_history", "notebook_show", "notebook_create", "notebook_update", "notebook_archive", "finish_noting"}
     assert all("tools" not in row for row in payloads[0]["messages"])
     assert "callable_tool_schemas" not in str(payloads[0]["messages"])
     assert "Frozen parent root" in str(payloads[0]["system"])
@@ -168,3 +168,27 @@ def test_main_wire_is_frozen_prefix_of_noting_wire_with_same_tools(runtime, enab
             assert "callable_tool_schemas" not in str(wire["messages"])
     finally:
         agent.close()
+
+
+def test_actual_task_wire_contains_separate_writing_and_lifecycle_guides(kimi_parent):
+    parent, sdk, wires, _children = kimi_parent
+    sdk.side_effect = [tool_response("finish_noting", {"reason": "Checked content and registration gaps."}), response()]
+    assert run_task(parent).committed
+    task = next(row["content"] for row in wires[0]["messages"]
+                if row.get("role") == "user" and isinstance(row.get("content"), str)
+                and row["content"].startswith("<noting-task>"))
+    assert "within roughly 150 Chinese characters or 80 English words" in task
+    assert "File paths do not count toward the soft length guide" in task
+    assert "do not list every file encountered" in task
+    assert "Write each description as a concise semantic index" in task
+    assert task.index("3. Create useful missing entries") < task.index("4. Settle actual writes") < task.index("5. Process entries")
+    assert task.index("5. Process entries") < task.index("6. Identify missing Schedule registrations") < task.index("7. Check and finish")
+    writing = task.split("3. Create useful missing entries", 1)[1].split("4. Settle actual writes", 1)[0]
+    lifecycle = task.split("5. Process entries", 1)[1].split("6. Identify missing Schedule registrations", 1)[0]
+    for kind in ("matter", "action", "situation", "implicit_gap", "question", "insight", "decision"):
+        assert "- " + kind + ":" in writing
+        assert "- " + kind + ":" in lifecycle
+    assert "scope left unsettled by the confirmed writes and the context needed to understand that remaining scope" in task
+    assert "Both content and schedule are semantic suggestions for Main" in task
+    assert "Write content as fully and self-containedly as practical" in task
+    assert "callable_tool_schemas" not in task

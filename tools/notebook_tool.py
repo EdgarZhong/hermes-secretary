@@ -19,7 +19,7 @@ def notebook_show(args=None, *, db=None, conversation_ref=None, effective_enable
                 "next_action": "Continue with visible evidence and authorized conversation_history.",
             }})
         view = show_notebook(db.notebook_current(conversation_ref), conversation_ref=conversation_ref,
-                             profile_home=Path(db.db_path).parent)
+                             profile_home=Path(db.db_path).parent, db=db)
         return json.dumps(model_notebook_view(view, db=db, profile_home=Path(db.db_path).parent)
                           if model_visible else view, ensure_ascii=False)
     except (ValueError, TypeError) as exc:

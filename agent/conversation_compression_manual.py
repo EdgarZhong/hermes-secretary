@@ -88,6 +88,7 @@ def compress_now(
     summary window exists."""
     from agent.context_compressor import _DB_PERSISTED_MARKER, _fresh_compaction_message_copy
     from agent.conversation_compression import finalize_context_engine_compression_notification
+    from agent.context_compaction_tail_policy import select_no_default_tail
     from agent.manual_compression_feedback import summarize_manual_compression
     from hermes_cli.partial_compress import (
         rejoin_compressed_head_and_tail, split_history_for_partial_compress, summarize_compress_preview)
@@ -105,7 +106,8 @@ def compress_now(
 
     compressor = getattr(agent, "context_compressor", None)
     has_content = getattr(compressor, "has_content_to_compress", None)
-    if skip_without_window and callable(has_content) and has_content(head) is False:
+    if (skip_without_window and not select_no_default_tail(agent, verbatim_tail=tail)
+            and callable(has_content) and has_content(head) is False):
         return CompressResult("nothing_to_do", before, before, before_tokens, before_tokens, request)
     # An in-place commit archives every durable row under the lease watermark, the kept tail's included, so
     # it must store the tail again itself. It gets copies because the insert writes row ids onto them. A copy

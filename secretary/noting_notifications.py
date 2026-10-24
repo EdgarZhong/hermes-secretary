@@ -4,6 +4,13 @@ from hermes_cli.cli_secretary_commands import PERSISTENCE_PROPOSAL_INSTRUCTION
 from secretary.notebook_render import render_notebook
 
 
+SCHEDULE_SUGGESTION_INSTRUCTION = (
+    "Schedule suggestions in this Notebook are semantic advice, not ready-to-submit Scheduler arguments. "
+    "Noting has not created or updated Schedules from them. "
+    "Consider creating or updating Schedules based on these suggestions."
+)
+
+
 class SupersededNotingResult(RuntimeError):
     """The queued Snapshot no longer owns the current pointer; drop this carrier."""
 
@@ -34,6 +41,9 @@ def completion_body(snapshot, *, termination, summary, settings, profile_home, d
             "This is a request to prepare an approvable proposal, not permission to write or discard pending material."
             "\n\n" + PERSISTENCE_PROPOSAL_INSTRUCTION
         )
+    if any(entry.get("schedule_suggestion") is not None
+           for entries in snapshot["payload"].values() for entry in entries):
+        result += "\n\n" + SCHEDULE_SUGGESTION_INSTRUCTION
     return result
 
 

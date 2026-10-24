@@ -11,7 +11,7 @@ import pytest
 from hermes_cli.cli_secretary_commands import notebook_command, propose_persistence_command
 from secretary.framework_messages import publish_noting_completion
 from secretary.notebook_store import NotebookStore
-from secretary.noting_tools import notebook_maintain, notebook_work_show
+from secretary.noting_tools import notebook_create, notebook_update, notebook_work_show
 from tests.secretary.test_r3_child import database as database, native_parent as native_parent, response
 from tools.notebook_tool import notebook_show
 
@@ -40,24 +40,24 @@ def time_book(database, monkeypatch):
     child = SimpleNamespace(_session_db=database, _secretary_noting_child=True,
         _secretary_parent_conversation_ref=ref, _secretary_noting_anchor_uid="time-source",
         _secretary_noting_profile="NOTING", _noting_notebook_store=store, _noting_notebook_lock=store.lock)
-    args = {"action": "create", "entry_type": "matter", "fields": {
-        "description": DESCRIPTION, "completion_condition": "reviewed", "evidence_time": EVIDENCE,
+    args = {"entry_type": "matter", "fields": {
+        "description": DESCRIPTION, "completion_condition": "reviewed",
         "last_progress_time": EVIDENCE, "processing_note": "Retain the supported responsibility"},
         "source_message_uids": ["time-source"],
         "source_time_range": deepcopy(SOURCE_RANGE)}
-    maintained = json.loads(notebook_maintain(child, args))
+    maintained = json.loads(notebook_create(child, args))
     assert maintained["success"], maintained
     question = deepcopy(args)
     question["entry_type"] = "question"
     question["fields"] = {"description": "What remains unresolved?", "unresolved_points": "Scope",
                           "last_discussion_time": EVIDENCE}
-    assert json.loads(notebook_maintain(child, question))["success"]
+    assert json.loads(notebook_create(child, question))["success"]
     situation = deepcopy(args)
     situation["entry_type"] = "situation"
     situation["fields"] = {"description": "Expressed circumstances", "subjects": ["user"],
-                           "time_context": DESCRIPTION, "evidence_time": None}
+                           "time_context": DESCRIPTION}
     situation["source_time_range"] = None
-    assert json.loads(notebook_maintain(child, situation))["success"]
+    assert json.loads(notebook_create(child, situation))["success"]
     return child, store, maintained
 
 
@@ -65,12 +65,13 @@ def assert_projected_entry(entry):
     assert entry["source_message_uids"] == ["time-source"]
     assert "source_message_identities" not in entry
     assert "conversation_ref" not in entry
+    assert entry["evidence_time"] == "2026-10-17T04:34:56+00:00"
+    assert "evidence_time" not in entry["fields"]
     assert entry["created_at"] == CLOCK_DISPLAY
     assert entry["updated_at"] == CLOCK_DISPLAY
     if entry["entry_type"] == "matter":
         assert entry["last_processed_at"] == CLOCK_DISPLAY
         assert entry["fields"]["description"] == DESCRIPTION
-        assert entry["fields"]["evidence_time"] == EVIDENCE_DISPLAY
         assert entry["fields"]["last_progress_time"] == EVIDENCE_DISPLAY
         assert entry["source_time_range"] == DISPLAY_RANGE
     elif entry["entry_type"] == "question":
@@ -82,14 +83,14 @@ def assert_projected_entry(entry):
         assert entry["source_time_range"] is None
 
 
-@pytest.mark.parametrize("surface", ["maintain", "working_show", "main_show", "slash", "proposal", "framework"])
+@pytest.mark.parametrize("surface", ["create", "working_show", "main_show", "slash", "web_read", "proposal", "framework"])
 def test_real_store_times_are_projected_only_at_product_outputs(time_book, surface):
     child, store, maintained = time_book
     db, ref = child._session_db, store.conversation_ref
     raw = store.snapshot_state()
     assert raw["work"][0]["created_at"] == CLOCK.isoformat()
     assert raw["work"][0]["source_time_range"] == SOURCE_RANGE
-    if surface == "maintain":
+    if surface == "create":
         assert_projected_entry(maintained["entry"])
     elif surface == "working_show":
         view = json.loads(notebook_work_show(child, {}))
@@ -114,6 +115,9 @@ def test_real_store_times_are_projected_only_at_product_outputs(time_book, surfa
         else:
             if surface == "slash":
                 output = notebook_command(db, "parent").output
+            elif surface == "web_read":
+                from secretary.web_read import notebook_read
+                output = notebook_read(db, "parent")["output"]
             else:
                 parent = SimpleNamespace(_session_db=db, session_id="parent", _secretary_conversation_ref=ref,
                     _session_messages=db.get_messages_as_conversation("parent"), _session_persist_lock=RLock(),
@@ -129,7 +133,7 @@ def test_real_store_times_are_projected_only_at_product_outputs(time_book, surfa
             assert "conversation_ref" not in output
             assert f'created_at: "{CLOCK_DISPLAY}"' in output
             assert f'last_processed_at: "{CLOCK_DISPLAY}"' in output
-            assert f"evidence_time: {EVIDENCE_DISPLAY}\n" in output
+            assert 'evidence_time: "2026-10-17T04:34:56+00:00"\n' in output
             assert f"last_progress_time: {EVIDENCE_DISPLAY}\n" in output
             assert f"last_discussion_time: {EVIDENCE_DISPLAY}\n" in output
             rendered_range = next(line.split("source_time_range: ", 1)[1] for line in output.splitlines()
@@ -149,16 +153,15 @@ def test_reading_projected_values_never_changes_precise_versions_or_noop(time_bo
     db = child._session_db
     before = [tuple(row) for row in db._read_all("SELECT * FROM secretary_notebook_item ORDER BY id")]
     notebook_work_show(child, {})
-    noop = json.loads(notebook_maintain(child, {"action": "update", "entry_id": entry["entry_id"],
-        "changes": {"fields": {"description": DESCRIPTION}}}))
+    noop = json.loads(notebook_update(child, {"entry_id": entry["entry_id"], "fields": {"description": DESCRIPTION}}))
     assert noop["success"] and noop["changed"] is False
     assert noop["entry"]["version_id"] == entry["version_id"]
     assert store.snapshot_state() == raw
     assert public_state(raw)["work"][0]["source_time_range"] == SOURCE_RANGE
     assert [tuple(row) for row in db._read_all("SELECT * FROM secretary_notebook_item ORDER BY id")] == before
-    invalid = json.loads(notebook_maintain(child, {"action": "create", "entry_type": "matter",
+    invalid = json.loads(notebook_create(child, {"entry_type": "matter",
         "fields": {"description": "Unsupported", "completion_condition": "none"},
-        "source_message_identities": [{"conversation_ref": store.conversation_ref, "message_uid": "missing"}]}))
+        "source_message_uids": ["missing"]}))
     assert invalid["success"] is False
     assert invalid["error"]["code"] == "source_unavailable"
     assert store.snapshot_state() == raw

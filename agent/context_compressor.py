@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 from agent.image_eviction_policy import outbound_image_retire_count
+from agent.context_compaction_tail_policy import no_default_tail, prune_for_attempt
 from agent.compression_marker import (
     ELISION_MARKER_MAX_LEN,
     _elision_marker,
@@ -3856,7 +3857,8 @@ Summary generation was unavailable, so this is a best-effort deterministic fallb
             (_LEAN_ANCHOR_HEADING, lambda: _redact_compaction_text(_build_anchor_index(turns_to_summarize))),
             (_LEAN_USER_MESSAGES_HEADING, lambda: _redact_compaction_text(_build_verbatim_user_section(turns_to_summarize))),
         ):
-            if secretary and heading == _LEAN_ANCHOR_HEADING:
+            if (secretary and heading == _LEAN_ANCHOR_HEADING) or (no_default_tail() and heading == _LEAN_USER_MESSAGES_HEADING):
+                summary = _replace_summary_section(summary, heading, "")
                 continue
             if heading not in summary:
                 summary += build()
@@ -4201,7 +4203,7 @@ Summary generation was unavailable, so this is a best-effort deterministic fallb
             # Restore any [SKILL_PRUNED] marker the summarizer paraphrased away.
             # See #32106.
             summary = _reinject_pruned_skill_markers(summary, _pruned_skill_names)
-            summary = self._ground_historical_task_snapshot(summary, turns_to_summarize)
+            summary = summary if no_default_tail() else self._ground_historical_task_snapshot(summary, turns_to_summarize)
             summary = self._augment_summary_lean(summary, turns_to_summarize)
             self._validate_summary_user_provenance(summary, has_user_turn)
             # A detached stale attempt must not publish its late summary onto shared compressor state:
@@ -5469,22 +5471,8 @@ Write only the summary body. Do not include any preamble or prefix."""
         return [m for idx, m in enumerate(messages) if idx not in blank] if blank else messages
 
     def _compress_window(self, messages: List[Dict[str, Any]]) -> tuple[int, int]:
-        """Return ``(compress_start, compress_end)`` for the summarizable middle."""
-        compress_start = self._align_boundary_forward(messages, self._protect_head_size(messages))
-        compress_end = self._find_tail_cut_by_tokens(messages, compress_start)
-        # A role collision can merge the summary into the first tail row; keep an actionable user
-        # event out of that slot by retaining an older assistant/tool bridge.
-        latest_actionable_idx = self._find_last_user_message_idx(messages, 0)
-        if compress_end == latest_actionable_idx:
-            bridge_idx = latest_actionable_idx - 1
-            bridge_role = messages[bridge_idx].get("role") if bridge_idx >= 0 else None
-            if bridge_role == "tool":
-                bridge_idx = self._align_boundary_backward(messages, latest_actionable_idx)
-            elif bridge_role != "assistant":
-                bridge_idx = -1
-            if bridge_idx > compress_start:
-                compress_end = bridge_idx
-        return compress_start, compress_end
+        from agent.context_compaction_tail_policy import compress_window
+        return compress_window(self, messages)
 
     def _log_compression_start(
         self, display_tokens: int, compress_start: int, compress_end: int, n_turns: int, tail_msgs: int,
@@ -5671,7 +5659,7 @@ Write only the summary body. Do not include any preamble or prefix."""
         # short text placeholder. Without this, tail messages keep their original multi-MB base-64 image
         # payloads forever, which can push every subsequent API request past the provider's body-size limit
         # and wedge the session. Port of Kilo-Org/kilocode#9434.
-        compressed = _strip_historical_media(compressed, spared=spared)
+        compressed = compressed if no_default_tail() else _strip_historical_media(compressed, spared=spared)
 
         # Like-for-like savings: current_tokens includes system prompt/tool schemas, new_estimate is
         # messages-only; comparing them fakes ~96% savings and kills the anti-thrashing guard.
@@ -5738,7 +5726,7 @@ Write only the summary body. Do not include any preamble or prefix."""
         telemetry = self._begin_compress_attempt(current_tokens, force)
         n_messages = len(messages)
         # Only need head + 3 tail messages minimum (token budget decides the real tail size)
-        _min_for_compress = self._protect_head_size(messages) + 3 + 1
+        _min_for_compress = 1 if no_default_tail() else self._protect_head_size(messages) + 3 + 1
         if n_messages <= _min_for_compress:
             self._structural_no_op_result(
                 telemetry, "insufficient_messages", f"only {n_messages} messages (need > {_min_for_compress})",
@@ -5750,9 +5738,7 @@ Write only the summary body. Do not include any preamble or prefix."""
         # assembled and measured from the pruned copy (#61932).
         canonical_messages = self._drop_blank_echoes(messages)
         # Phase 1: Prune old tool results (cheap, no LLM call)
-        messages, pruned_count = self._prune_old_tool_results(
-            messages, protect_tail_count=self.protect_last_n, protect_tail_tokens=self.tail_token_budget,
-        )
+        messages, pruned_count = prune_for_attempt(self, messages)
         if pruned_count and not self.quiet_mode:
             logger.info("Pre-compression: pruned %d old tool result(s)", pruned_count)
         messages = self._drop_blank_echoes(messages)
@@ -5770,7 +5756,7 @@ Write only the summary body. Do not include any preamble or prefix."""
             return canonical_messages
         turns_to_summarize = messages[compress_start:compress_end]
         # Lean mode demotes stale tail tool results before summary generation so stubs exist even if it aborts.
-        if getattr(self, "tail_mode", "lean") == "lean":
+        if not no_default_tail() and getattr(self, "tail_mode", "lean") == "lean":
             messages = self._demote_stale_tail_tools(messages, compress_end)
         scan = self._scan_window_handoffs(messages, compress_start, compress_end, turns_to_summarize)
         turns_to_summarize = scan.turns_to_summarize

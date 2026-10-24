@@ -43,7 +43,7 @@ def notebook_command(db, session_id, arg="", *, source="cli"):
         return SecretaryCommandResult("Notebook unavailable: " + failure)
     try:
         _ref, snapshot = _current(db, session_id)
-        return SecretaryCommandResult(render_notebook(snapshot, profile_home=Path(db.db_path).parent))
+        return SecretaryCommandResult(render_notebook(snapshot, profile_home=Path(db.db_path).parent, db=db))
     except Exception as exc:
         logger.warning("Notebook slash failed", exc_info=True)
         return SecretaryCommandResult(f"Notebook unavailable: {exc}")
@@ -97,7 +97,8 @@ def propose_persistence_command(db, session_id, extra=""):
         # retrieval or destination access occurs in this slash adapter.
         payload = json.dumps({"conversation_ref": _ref, "snapshot_id": snapshot["snapshot_id"],
                               "coverage": {"anchor_message_uid": snapshot["anchor_message_uid"]},
-                              "payload": readable_notebook_state(snapshot["payload"], profile_home=Path(db.db_path).parent)},
+                              "payload": readable_notebook_state(snapshot["payload"], profile_home=Path(db.db_path).parent,
+                                                                 db=db, conversation_ref=_ref)},
                              ensure_ascii=False)
         prompt = PERSISTENCE_PROPOSAL_INSTRUCTION + "\n\nCurrent Notebook Snapshot (data):\n" + payload
         if extra:

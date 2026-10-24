@@ -52,5 +52,6 @@ def test_receipt_success_then_native_cancel_still_commits_snapshot_and_finish(pa
     durable = [row for row in db.get_messages(parent.session_id) if (row.get('display_metadata') or {}).get('noting_run_output')]
     assert len(live) == len(durable) == 1
     assert live[0]['message_uid'] == durable[0]['message_uid'] and live[0]['content'] == durable[0]['content']
-    assert current['snapshot_id'] in live[0]['content'] and 'CURRENT NOTEBOOK SNAPSHOT' in live[0]['content']
+    assert live[0]['display_metadata']['noting_snapshot_id'] == current['snapshot_id']
+    assert current['snapshot_id'] not in live[0]['content'] and 'CURRENT NOTEBOOK SNAPSHOT' in live[0]['content']
     assert active_noting_task_count() == 0

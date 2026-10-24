@@ -609,7 +609,7 @@ def _resolve_active_context_length() -> int:
 # =============================================================================
 
 # Intercepted by the agent loop (need agent-level state); dispatch returns a stub error.
-_AGENT_LOOP_TOOLS = {"todo_list", "memory", "session_search", "conversation_history", "notebook_show", "scheduler", "notebook_maintain", "finish_noting", "delegate_task"}
+_AGENT_LOOP_TOOLS = {"todo_list", "memory", "session_search", "conversation_history", "notebook_show", "scheduler", "notebook_create", "notebook_update", "notebook_archive", "finish_noting", "delegate_task"}
 
 # Legacy tool-name aliases accepted at every dispatch seam (old sessions/saved
 # prompts keep working); schemas advertise only new names.
@@ -896,7 +896,10 @@ def handle_function_call(
     if not isinstance(function_args, dict):
         function_args = {}
     trace = list(tool_request_middleware_trace or [])
-    from tools.secretary_dispatch import legacy_tool_removed
+    from tools.secretary_dispatch import legacy_tool_removed, scoped_dispatch_refusal
+    refusal = scoped_dispatch_refusal(function_name)
+    if refusal is not None:
+        return json.dumps(refusal, ensure_ascii=False)
     retired = legacy_tool_removed(function_name)
     if retired is not None:
         return json.dumps(retired, ensure_ascii=False)

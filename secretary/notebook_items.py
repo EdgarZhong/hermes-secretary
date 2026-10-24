@@ -66,8 +66,33 @@ def require_item_owner(conn, row, conversation_ref):
         raise ValueError("Notebook version is not owned or inherited by this Conversation")
 
 
+def canonical_notebook_payload(payload):
+    """Read old working payloads through the same retired-field projection.
+
+    This changes no row. The Store's existing exact immutable-version and source
+    gates still validate every projected body before publishing a Snapshot.
+    New create/update input never goes through this compatibility function.
+    """
+    result = deepcopy(payload)
+    if isinstance(result, dict):
+        for entries in result.values():
+            if not isinstance(entries, list):
+                continue
+            for entry in entries:
+                fields = entry.get("fields") if isinstance(entry, dict) else None
+                if isinstance(fields, dict):
+                    for key in ("external_refs", "evidence_time"):
+                        fields.pop(key, None)
+    return result
+
+
 def item_entry(row, conversation_ref):
     entry = json.loads(row["payload_json"])
+    # Retired model inputs are hidden at hydration; INSERT-only rows and old
+    # Snapshot version lists remain untouched. Exact-version gates use this same
+    # projection, so compatibility never licenses reconstructed content.
+    for key in ("external_refs", "evidence_time"):
+        entry["fields"].pop(key, None)
     entry["entry_id"] = str(row["lineage_id"])
     entry["version_id"] = str(row["id"])
     entry["archived"] = bool(row["archived"])
@@ -78,14 +103,36 @@ def item_entry(row, conversation_ref):
     return entry
 
 
-def source_basis_conn(conn, conversation_ref, row, entry):
+def _archive_cleanup_claim(conn, conversation_ref, left, right):
+    """Only confirmed archived targets license automatic relation removal."""
+    if not same_source_claim(left, right, allow_relation_removal=True):
+        return False
+    removed = [relation for relation in left["relations"] if relation not in right["relations"]]
+    for relation in removed:
+        rows = conn.execute(
+            "SELECT * FROM secretary_notebook_item WHERE lineage_id=? AND archived=1",
+            (relation["entry_id"],),
+        ).fetchall()
+        if not rows:
+            return False
+        # Branches may legitimately share the archived immutable version.
+        if not any(row["conversation_ref"] == conversation_ref or
+                   _referenced_in_conversation(conn, conversation_ref, str(row["id"])) for row in rows):
+            return False
+    return True
+
+
+def source_basis_conn(conn, conversation_ref, row, entry, *, allow_relation_removal=False):
     """Only this exact claim's committed version licenses off-path inheritance.
 
     Unchanged sources on unrelated new content do NOT inherit a historical
     permission. A new claim must pass the current-path validator instead.
     """
     require_item_owner(conn, row, conversation_ref)
-    if not same_source_claim(item_entry(row, conversation_ref), entry):
+    previous = item_entry(row, conversation_ref)
+    if not same_source_claim(previous, entry) and not (
+        allow_relation_removal and _archive_cleanup_claim(conn, conversation_ref, previous, entry)
+    ):
         return None
     if _referenced_in_conversation(conn, conversation_ref, str(row["id"])):
         return row["id"]
@@ -95,12 +142,13 @@ def source_basis_conn(conn, conversation_ref, row, entry):
     require_item_owner(conn, basis, conversation_ref)
     if (basis["lineage_id"] != row["lineage_id"]
             or not _referenced_in_conversation(conn, conversation_ref, str(basis["id"]))
-            or not same_source_claim(item_entry(basis, conversation_ref), entry)):
+            or not _archive_cleanup_claim(conn, conversation_ref, item_entry(basis, conversation_ref), entry)):
         raise ValueError("Invalid Notebook source inheritance basis")
     return basis["id"]
 
 
-def insert_item_conn(conn, conversation_ref, entry, previous_id=None, *, source_basis_id=None):
+def insert_item_conn(conn, conversation_ref, entry, previous_id=None, *, source_basis_id=None,
+                     allow_relation_removal=False):
     """Allocate stable lineage and version under the caller's write transaction.
 
     ``previous_id`` is a version_id, not an entry_id. Return the complete internal
@@ -117,7 +165,7 @@ def insert_item_conn(conn, conversation_ref, entry, previous_id=None, *, source_
                 or entry["created_at"] != old["created_at"]):
             raise ValueError("Entry identity, type and first-created time are immutable")
     if source_basis_id is not None and (predecessor is None or source_basis_id != source_basis_conn(
-        conn, conversation_ref, predecessor, entry
+        conn, conversation_ref, predecessor, entry, allow_relation_removal=allow_relation_removal
     )):
         raise ValueError("Invalid Notebook source inheritance basis")
     sequence = conn.execute(

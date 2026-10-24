@@ -42,7 +42,7 @@ def count(db):
 
 
 def create(book, **kwargs):
-    return book.maintain({"action": "create", "entry_type": "matter", "fields": FIELDS, **kwargs})["entry"]
+    return book.create("matter", FIELDS, **kwargs)["entry"]
 
 
 def test_uid_create_update_noop_clear_and_legacy_compatibility(db):
@@ -53,8 +53,7 @@ def test_uid_create_update_noop_clear_and_legacy_compatibility(db):
     baseline = deepcopy(entry)
     assert book.update(entry["entry_id"], {"source_message_uids": ["anchor"]})["changed"] is False
     assert count(db) == 1 and book.get(entry["entry_id"]) == baseline
-    changed = book.maintain({"action": "update", "entry_id": entry["entry_id"],
-                            "changes": {"source_message_uids": ["evidence", "anchor"]}})["entry"]
+    changed = book.update(entry["entry_id"], {"source_message_uids": ["evidence", "anchor"]})["entry"]
     assert changed["source_message_identities"] == sources(book.conversation_ref, "evidence", "anchor")
     assert changed["version_id"] != entry["version_id"]
     cleared = book.update(entry["entry_id"], {"source_message_uids": [], "source_time_range": RANGE})["entry"]

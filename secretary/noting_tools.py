@@ -1,4 +1,4 @@
-"""Task-bound four-tool Noting surface; Snapshot publication belongs to the runner."""
+"""Task-bound six-tool Noting surface; Snapshot publication belongs to the runner."""
 
 from __future__ import annotations
 
@@ -13,7 +13,9 @@ from secretary.notebook_contract import NotebookValidationError, local_source_er
 from secretary.notebook_render import evidence_coverage, model_notebook_view, readable_notebook_entry, readable_notebook_state
 from secretary.noting_contract import (
     FINISH_NOTING_SCHEMA,
-    NOTEBOOK_MAINTAIN_SCHEMA,
+    NOTEBOOK_CREATE_SCHEMA,
+    NOTEBOOK_UPDATE_SCHEMA,
+    NOTEBOOK_ARCHIVE_SCHEMA,
     NOTEBOOK_SHOW_SCHEMA,
 )
 from secretary.noting_prompts import CURRENT_NOTING_CONTROL
@@ -63,14 +65,31 @@ def initialize_notebook_work(child, *, trigger_type, frozen_work=None):
     child._secretary_noting_finish_result = None
 
 
-def notebook_maintain(child, args):
-    """One semantic operation, under the same lock that accepts end_requested."""
+def _mutation_args(args, schema):
+    if not isinstance(args, dict):
+        raise NotebookValidationError("Tool arguments must be an object.", field="arguments")
+    parameters = schema["parameters"]
+    unknown = set(args) - parameters["properties"].keys()
+    if unknown:
+        field = sorted(unknown)[0]
+        raise NotebookValidationError(
+            f"{schema['name']} does not accept {field}.", field=field,
+            next_action="Use the tool's documented parameters directly; do not wrap them in action or changes.",
+        )
+    for field in parameters.get("required", []):
+        if field not in args:
+            raise NotebookValidationError(f"{schema['name']} requires {field}.", field=field)
+    return args
+
+
+def _notebook_mutation(child, args, schema):
+    """One typed operation under the lock that also accepts end_requested."""
     try:
         store = _bound_store(child)
         with store.lock:
             if getattr(child, "_secretary_noting_terminal_action_done", False):
                 return _encoded(_error(
-                    "The current state is end_requested; notebook_maintain cannot be applied.",
+                    f"The current state is end_requested; {schema['name']} cannot be applied.",
                     code="state_conflict", next_action="Use notebook_show to inspect the fixed view, then stop.",
                 ))
             from secretary.noting_runtime import noting_trigger_gate
@@ -79,23 +98,43 @@ def notebook_maintain(child, args):
                     "Noting is effectively disabled for the bound Conversation.", code="scope_denied",
                     next_action="Keep the existing view; do not retry through another tool.",
                 ))
-            result = store.maintain(args)
+            args = _mutation_args(args, schema)
+            if schema["name"] == "notebook_create":
+                result = store.create(**args)
+            elif schema["name"] == "notebook_update":
+                result = store.update(args["entry_id"], {key: value for key, value in args.items() if key != "entry_id"})
+            else:
+                result = store.archive(**args)
             child._noting_notebook_state = store.snapshot_state()
             if "entry" in result:
-                result["entry"] = readable_notebook_entry(result["entry"])
+                result["entry"] = readable_notebook_entry(
+                    result["entry"], db=child._session_db, conversation_ref=store.conversation_ref,
+                    state=child._noting_notebook_state)
+            if "updated_entries" in result:
+                result["updated_entries"] = [readable_notebook_entry(
+                    entry, db=child._session_db, conversation_ref=store.conversation_ref,
+                    state=child._noting_notebook_state) for entry in result["updated_entries"]]
             return _encoded(result)
     except NotebookValidationError as exc:
-        legacy_sources = isinstance(args, dict) and (
-            "source_message_identities" in args or (
-                isinstance(args.get("changes"), dict) and "source_message_identities" in args["changes"]))
-        if not legacy_sources:
-            local_source_error(exc)
+        local_source_error(exc)
         return _encoded(exc.as_result())
     except sqlite3.Error:
         return _encoded(_error(
             "The Notebook database is temporarily unavailable.", code="temporarily_unavailable",
             next_action="Keep the current work; retry only through the normal task lifecycle later.",
         ))
+
+
+def notebook_create(child, args):
+    return _notebook_mutation(child, args, NOTEBOOK_CREATE_SCHEMA)
+
+
+def notebook_update(child, args):
+    return _notebook_mutation(child, args, NOTEBOOK_UPDATE_SCHEMA)
+
+
+def notebook_archive(child, args):
+    return _notebook_mutation(child, args, NOTEBOOK_ARCHIVE_SCHEMA)
 
 
 def notebook_work_show(child, args):
@@ -105,7 +144,8 @@ def notebook_work_show(child, args):
             return _encoded(_error("notebook_show accepts only an empty argument object.", field="arguments"))
         with store.lock:
             view = model_notebook_view(store.working_view(), db=child._session_db)
-            view["payload"] = readable_notebook_state(view["payload"])
+            view["payload"] = readable_notebook_state(
+                view["payload"], db=child._session_db, conversation_ref=store.conversation_ref)
             return _encoded(view)
     except NotebookValidationError as exc:
         return _encoded(exc.as_result())
@@ -158,13 +198,14 @@ def guard_noting_tool_batch(agent, tool_names):
 
 
 def noting_tool_schemas(profile="NOTING"):
-    """Return independent canonical definitions for the four authorized tools."""
+    """Return independent canonical definitions for the six authorized tools."""
     if profile != "NOTING":
         raise ValueError("Unknown Noting runtime profile")
     from tools.session_history_tool import CONVERSATION_HISTORY_SCHEMA
 
     return copy.deepcopy([CONVERSATION_HISTORY_SCHEMA, NOTEBOOK_SHOW_SCHEMA,
-                          NOTEBOOK_MAINTAIN_SCHEMA, FINISH_NOTING_SCHEMA])
+                          NOTEBOOK_CREATE_SCHEMA, NOTEBOOK_UPDATE_SCHEMA, NOTEBOOK_ARCHIVE_SCHEMA,
+                          FINISH_NOTING_SCHEMA])
 
 
 def noting_tool_control_message(profile="NOTING", *, notebook_state=None, conversation_ref=None,
@@ -180,7 +221,8 @@ def noting_tool_control_message(profile="NOTING", *, notebook_state=None, conver
         "current_time": format_timestamp(current_time or datetime.now(timezone.utc)),
         "task_parameters": {"aging_days": 7, "implicit_gap_hours": 72},
         "working_notebook": readable_notebook_state(
-            notebook_state if notebook_state is not None else {key: [] for key in SECTIONS}),
+            notebook_state if notebook_state is not None else {key: [] for key in SECTIONS},
+            db=db, conversation_ref=conversation_ref),
     }
     return (CURRENT_NOTING_CONTROL + "\n\n<noting-task-data>\n"
             + json.dumps(data, ensure_ascii=False, sort_keys=True) + "\n</noting-task-data>")

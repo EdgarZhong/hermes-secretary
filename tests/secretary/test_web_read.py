@@ -14,7 +14,8 @@ from secretary.web_read import notebook_read, schedules_read, secretary_state
 
 @pytest.fixture
 def database(tmp_path):
-    (tmp_path / 'config.yaml').write_text('noting:\n  enabled: true\n  idle_delay_seconds: 3600\n')
+    (tmp_path / 'config.yaml').write_text(
+        'noting:\n  enabled: true\n  idle:\n    enabled: true\n    delay_seconds: 3600\n    threshold_tokens: 1000\n')
     db = SessionDB(tmp_path / 'state.db')
     db.create_session('main', source='cli')
     db.append_message('main', 'user', 'actual evidence', message_uid='m1')
@@ -314,7 +315,8 @@ def test_real_deadline_finished_hint_and_existing_ws_owner_path(database, monkey
     from tests.tui_gateway.test_multi_client_fanout import RecordingTransport
     db, ref = database
     home = Path(db.db_path).parent
-    (home / 'config.yaml').write_text('noting:\n  enabled: true\n  idle_delay_seconds: 0.05\n')
+    (home / 'config.yaml').write_text(
+        'noting:\n  enabled: true\n  idle:\n    enabled: true\n    delay_seconds: 0.05\n    threshold_tokens: 1000\n')
     parent = _agent(db, 'main')
     peer = RecordingTransport()
     monkeypatch.setattr(server, '_sessions', {'runtime': {'agent': parent, 'profile_home': str(home), 'transport': peer}})

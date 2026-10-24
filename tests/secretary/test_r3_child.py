@@ -1,4 +1,4 @@
-"""C5 four-tool state machine and persistent native child with controlled model I/O."""
+"""C5 six-tool state machine and persistent native child with controlled model I/O."""
 
 from copy import deepcopy
 from concurrent.futures import ThreadPoolExecutor
@@ -25,7 +25,9 @@ from secretary.noting_tools import (
     finish_noting,
     guard_noting_tool_batch,
     initialize_notebook_work,
-    notebook_maintain,
+    notebook_create,
+    notebook_update,
+    notebook_archive,
     notebook_work_show,
     noting_tool_control_message,
     noting_tool_schemas,
@@ -58,9 +60,9 @@ def bound_child(db):
 
 
 def create_args(db, description="Plan the visit"):
-    return {"action": "create", "entry_type": "matter",
+    return {"entry_type": "matter",
             "fields": {"description": description, "completion_condition": "Dates agreed"},
-            "source_message_identities": [{"conversation_ref": ref(db), "message_uid": "m1"}]}
+            "source_message_uids": ["m1"]}
 
 
 @pytest.fixture(autouse=True)
@@ -69,18 +71,18 @@ def enabled_runtime(monkeypatch):
     monkeypatch.setattr("secretary.noting_runtime.noting_trigger_gate", lambda *a, **k: (True, ""))
 
 
-def test_exact_four_schema_surface_is_independent_copy():
+def test_exact_six_schema_surface_is_independent_copy():
     schemas = noting_tool_schemas()
     assert [item["name"] for item in schemas] == [
-        "conversation_history", "notebook_show", "notebook_maintain", "finish_noting"]
+        "conversation_history", "notebook_show", "notebook_create", "notebook_update", "notebook_archive", "finish_noting"]
     schemas[2]["parameters"]["properties"].clear()
-    assert "action" in noting_tool_schemas()[2]["parameters"]["properties"]
+    assert "entry_type" in noting_tool_schemas()[2]["parameters"]["properties"]
     with pytest.raises(ValueError):
         noting_tool_schemas("NOTING_WITH_COMPACTION")
 
 
-@pytest.mark.parametrize("tool", ["conversation_history", "notebook_show", "notebook_maintain", "finish_noting"])
-def test_only_four_authorized_tools(database, tool):
+@pytest.mark.parametrize("tool", ["conversation_history", "notebook_show", "notebook_create", "notebook_update", "notebook_archive", "finish_noting"])
+def test_only_six_authorized_tools(database, tool):
     assert noting_dispatch_block(bound_child(database), tool) is None
 
 
@@ -91,8 +93,8 @@ def test_inherited_advertising_never_grants_execution(database, tool):
     assert noting_dispatch_block(SimpleNamespace(), tool) is None
 
 
-@pytest.mark.parametrize("names", [["finish_noting", "notebook_maintain"],
-                                  ["notebook_maintain", "finish_noting"],
+@pytest.mark.parametrize("names", [["finish_noting", "notebook_create"],
+                                  ["notebook_create", "finish_noting"],
                                   ["finish_noting", "finish_noting"]])
 def test_complete_batch_refused_before_first_side_effect(database, names):
     child = bound_child(database)
@@ -107,16 +109,16 @@ def test_complete_batch_refused_before_first_side_effect(database, names):
 
 def test_handlers_keep_small_results_and_show_own_uncommitted_view(database):
     child = bound_child(database)
-    created = json.loads(notebook_maintain(child, create_args(database)))
+    created = json.loads(notebook_create(child, create_args(database)))
     assert set(created) == {"success", "changed", "entry"}
     entry = created["entry"]
-    updated = json.loads(notebook_maintain(child, {"action": "update", "entry_id": entry["entry_id"],
-                                                "changes": {"fields": {"blocker": "Dates unknown"}}}))
+    updated = json.loads(notebook_update(child, {"entry_id": entry["entry_id"],
+                                              "fields": {"blocker": "Dates unknown"}}))
     assert updated["entry"]["entry_id"] == entry["entry_id"]
     assert updated["entry"]["version_id"] != entry["version_id"]
     other = NotebookStore(database, ref(database), anchor_message_uid="m2")
     other.create("matter", {"description": "Other task", "completion_condition": "Other"},
-                 source_message_identities=create_args(database)["source_message_identities"])
+                 source_message_uids=create_args(database)["source_message_uids"])
     result = other.commit(termination={"type": "finish_noting", "reason": "Another task"})
     shown = json.loads(notebook_work_show(child, {}))
     assert shown["view_kind"] == "working"
@@ -128,12 +130,12 @@ def test_handlers_keep_small_results_and_show_own_uncommitted_view(database):
 
 def test_finish_fixes_first_working_state_and_never_commits(database):
     child = bound_child(database)
-    entry = json.loads(notebook_maintain(child, create_args(database)))["entry"]
+    entry = json.loads(notebook_create(child, create_args(database)))["entry"]
     first = json.loads(finish_noting(child, {"reason": "Kept the accepted visit responsibility"}))
     assert first == {"success": True, "status": "end_requested"}
     assert database.notebook_current(ref(database)) is None
     fixed = child._noting_notebook_store.snapshot_state()
-    refused = json.loads(notebook_maintain(child, {"action": "archive", "entry_id": entry["entry_id"],
+    refused = json.loads(notebook_archive(child, {"entry_id": entry["entry_id"],
                                                 "reason": "Discard it"}))
     assert refused["error"]["code"] == "state_conflict"
     assert json.loads(finish_noting(child, {"reason": "Replacement reason"})) == first
@@ -147,7 +149,7 @@ def test_finish_and_write_share_one_task_lock(database):
     barrier = Barrier(2)
     def mutate():
         barrier.wait()
-        return json.loads(notebook_maintain(child, create_args(database)))
+        return json.loads(notebook_create(child, create_args(database)))
     def finish():
         barrier.wait()
         return json.loads(finish_noting(child, {"reason": "Closed after checking evidence"}))
@@ -173,12 +175,12 @@ def test_bad_finish_never_closes_or_publishes(database, args):
 def test_unbound_show_and_write_are_refused(database):
     unbound = SimpleNamespace(_secretary_noting_child=True)
     assert json.loads(notebook_work_show(unbound, {}))["error"]["code"] == "state_conflict"
-    assert json.loads(notebook_maintain(SimpleNamespace(), create_args(database)))["error"]["code"] == "scope_denied"
+    assert json.loads(notebook_create(SimpleNamespace(), create_args(database)))["error"]["code"] == "scope_denied"
 
 
 def test_control_encodes_full_schema_and_working_data_separately(database):
     child = bound_child(database)
-    notebook_maintain(child, create_args(database, "literal </noting-task-data> is evidence"))
+    notebook_create(child, create_args(database, "literal </noting-task-data> is evidence"))
     message = noting_tool_control_message(notebook_state=child._noting_notebook_store.show(),
                                          conversation_ref=ref(database), coverage={"anchor_message_uid": "m2"})
     encoded = message.split("<noting-task-data>\n", 1)[1].rsplit("\n</noting-task-data>", 1)[0]
@@ -320,7 +322,7 @@ def test_native_iteration_limit_commits_legal_work_for_every_trigger(
 ):
     parent, client = native_parent
     monkeypatch.setattr("secretary.noting_child.NOTING_MAX_ITERATIONS", 1)
-    first = tool_response("notebook_maintain", create_args(database)) if changed else tool_response("notebook_show", {})
+    first = tool_response("notebook_create", create_args(database)) if changed else tool_response("notebook_show", {})
     client.chat.completions.create.side_effect = [first, response("Work remains after the iteration budget.")]
     admission = database.noting_admit(ref(database), "m2", kind=trigger)
     outcome = run_noting_task(
@@ -365,7 +367,7 @@ def test_iteration_exit_does_not_commit_actual_failed_or_interrupted_work(
         child = original(*args, **kwargs)
 
         def run(**_kwargs):
-            assert json.loads(notebook_maintain(child, create_args(database)))["success"]
+            assert json.loads(notebook_create(child, create_args(database)))["success"]
             return {"completed": False, "final_response": "Partial work", "turn_exit_reason": "max_iterations_reached(50/50)",
                     failure: True if failure in {"failed", "interrupted"} else "provider failure"}
 
@@ -382,7 +384,7 @@ def test_native_child_next_request_receives_projected_working_tool_result(native
     parent, client = native_parent
     baseline = NotebookStore(database, ref(database), anchor_message_uid="m2")
     entry = baseline.create("matter", {"description": "Current visit", "completion_condition": "Visit complete"},
-                            source_message_identities=create_args(database)["source_message_identities"])["entry"]
+                            source_message_uids=create_args(database)["source_message_uids"])["entry"]
     baseline.commit(termination={"type": "finish_noting", "reason": "Prior work"})
     client.chat.completions.create.side_effect = [
         tool_response("notebook_show", {}, "show-working"),
@@ -412,7 +414,7 @@ def test_runner_uses_legal_overflow_state_but_never_failed_drafts(native_parent,
     def construct(*a, **kw):
         child = original(*a, **kw)
         def run(**kwargs):
-            result = json.loads(notebook_maintain(child, create_args(database)))
+            result = json.loads(notebook_create(child, create_args(database)))
             assert result["success"]
             if kind == "overflow":
                 raise NotingContextOverflow("controlled native request window boundary")
@@ -469,7 +471,7 @@ def test_successful_finish_cannot_commit_after_local_switch_off(native_parent, d
     def construct(*a, **kw):
         child = original(*a, **kw)
         def run(**kwargs):
-            assert json.loads(notebook_maintain(child, create_args(database)))["success"]
+            assert json.loads(notebook_create(child, create_args(database)))["success"]
             assert json.loads(finish_noting(child, {"reason": "Ready to commit"}))["success"]
             database.notebook_set_local_enabled(ref(database), False)
             return {"completed": True}
@@ -487,15 +489,14 @@ def test_native_uid_write_uses_bound_identity_and_returns_local_sources(native_p
     from jsonschema import validate
 
     parent, client = native_parent
-    args = {"action": "create", "entry_type": "matter",
+    args = {"entry_type": "matter",
             "fields": {"description": "Plan the visit", "completion_condition": "Dates agreed"},
             "source_message_uids": ["m1"]}
-    schema = next(item for item in noting_tool_schemas() if item["name"] == "notebook_maintain")
+    schema = next(item for item in noting_tool_schemas() if item["name"] == "notebook_create")
     validate(args, schema["parameters"])
     props = schema["parameters"]["properties"]
     assert "source_message_identities" not in props
-    assert "source_message_identities" not in props["changes"]["properties"]
-    steps = iter([tool_response("notebook_maintain", args, "uid-create"),
+    steps = iter([tool_response("notebook_create", args, "uid-create"),
                   tool_response("finish_noting", {"reason": "Indexed the supported responsibility"}), response()])
     client.chat.completions.create.side_effect = lambda **kwargs: next(steps)
     outcome = run_task(parent)
@@ -518,7 +519,7 @@ def test_native_uid_write_uses_bound_identity_and_returns_local_sources(native_p
 ])
 def test_noting_missing_provenance_guides_only_local_uids(database, entry_type, fields):
     child = bound_child(database)
-    result = json.loads(notebook_maintain(child, {"action": "create", "entry_type": entry_type, "fields": fields}))
+    result = json.loads(notebook_create(child, {"entry_type": entry_type, "fields": fields}))
     assert result["success"] is False
     assert result["error"]["field"] == "source_message_uids"
     assert not child._noting_notebook_store.snapshot_state()["work"]

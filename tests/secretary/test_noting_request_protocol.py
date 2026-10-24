@@ -117,8 +117,7 @@ def test_output_cap_retry_preserves_prefix_and_working_state(native_parent, data
         wires.append(deepcopy(kwargs))
         calls += 1
         if calls == 1:
-            return tool_response("notebook_maintain", {
-                "action": "create", "entry_type": "matter", "source_message_uids": ["m1"],
+            return tool_response("notebook_create", { "entry_type": "matter", "source_message_uids": ["m1"],
                 "fields": {"description": "Keep the pending visit", "completion_condition": "Visit arranged"},
             }, "working-write")
         if calls == 2 or repeated:

@@ -70,15 +70,16 @@ def _overlay_runtime_fields(durable, runtime):
     return durable
 
 
-def publish_native_commit(agent, commit, prompt, request=None):
+def publish_native_commit(agent, commit, prompt, request=None, *, restore_complete_context=False):
     """Called inside the existing native commit fence, before it is released."""
-    if request is None or not commit.session_commit_succeeded:
+    if (request is None and not restore_complete_context) or not commit.session_commit_succeeded:
         return commit.compressed
     from agent.context_compaction_request import _lock
     with _lock(agent):
-        request.durable_commit_succeeded = True
-        if not request.current():
-            raise RuntimeError('Native request owner changed after compression commit')
+        if request is not None:
+            request.durable_commit_succeeded = True
+            if not request.current():
+                raise RuntimeError('Native request owner changed after compression commit')
         durable = agent._session_db.get_messages_as_conversation(agent.session_id, include_row_ids=True)
         durable = _overlay_runtime_fields(durable, commit.compressed)
         live = getattr(agent, '_session_messages', None)
@@ -90,8 +91,9 @@ def publish_native_commit(agent, commit, prompt, request=None):
         agent._last_flushed_db_idx = len(durable)
         agent._flushed_db_message_ids = set()
         agent._db_flush_scan_prefix = None
-        request.committed = True
-        request.result = (durable, prompt)
+        if request is not None:
+            request.committed = True
+            request.result = (durable, prompt)
         return durable
 
 

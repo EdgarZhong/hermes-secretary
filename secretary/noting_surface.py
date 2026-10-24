@@ -3,7 +3,7 @@
 import copy
 
 _MAIN_TOOLS = {"conversation_history", "notebook_show", "scheduler"}
-_NOTING_ONLY = {"notebook_maintain", "finish_noting"}
+_NOTING_ONLY = {"notebook_create", "notebook_update", "notebook_archive", "finish_noting"}
 
 
 def _tool_name(tool):
@@ -19,8 +19,8 @@ def _read_schema(name):
         from tools.scheduler_tool import get_scheduler_schema
         return get_scheduler_schema()
     if name in _NOTING_ONLY:
-        from secretary.noting_contract import FINISH_NOTING_SCHEMA, NOTEBOOK_MAINTAIN_SCHEMA
-        return FINISH_NOTING_SCHEMA if name == "finish_noting" else NOTEBOOK_MAINTAIN_SCHEMA
+        from secretary.noting_tools import noting_tool_schemas
+        return next(schema for schema in noting_tool_schemas() if schema["name"] == name)
     from tools.notebook_tool import NOTEBOOK_SHOW_SCHEMA
     return NOTEBOOK_SHOW_SCHEMA
 
@@ -99,7 +99,7 @@ def apply_main_read_surface(agent):
     removed = ((_MAIN_TOOLS | _NOTING_ONLY) - desired) | RETIRED_SECRETARY_TOOLS
     resolved = [tool for tool in tools if _tool_name(tool) not in removed]
     names = {_tool_name(tool) for tool in resolved}
-    for name in ("conversation_history", "notebook_show", "scheduler", "notebook_maintain", "finish_noting"):
+    for name in ("conversation_history", "notebook_show", "scheduler", "notebook_create", "notebook_update", "notebook_archive", "finish_noting"):
         if name in desired and name not in names:
             resolved.append({"type": "function", "function": copy.deepcopy(_read_schema(name))})
             names.add(name)

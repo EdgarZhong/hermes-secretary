@@ -1,4 +1,4 @@
-"""Candidate provenance matrix: structure layer and notebook_maintain enforcement."""
+"""Candidate provenance matrix: structure layer and split maintenance enforcement."""
 
 import json
 from types import SimpleNamespace
@@ -8,7 +8,7 @@ import pytest
 from hermes_state import SessionDB
 from secretary.notebook_model import NotebookValidationError
 from secretary.notebook_store import NotebookStore
-from secretary.noting_tools import initialize_notebook_work, notebook_maintain
+from secretary.noting_tools import initialize_notebook_work, notebook_create, notebook_update, notebook_archive
 from tests.hermes_state._secretary_notebook_harness import add, make, open_notebook_db, ref_of
 
 RANGE = {"start_time": "2026-10-07T12:00:00+08:00", "end_time": "2026-10-07T12:00:10+08:00"}
@@ -112,7 +112,12 @@ def child(tmp_path, monkeypatch):
 
 
 def maintain(child, **args):
-    return json.loads(notebook_maintain(child, args))
+    action = args.pop("action")
+    if "source_message_identities" in args:
+        args["source_message_uids"] = [source["message_uid"] for source in args.pop("source_message_identities")]
+    if action == "update":
+        args = {"entry_id": args["entry_id"], **args["changes"]}
+    return json.loads({"create": notebook_create, "update": notebook_update, "archive": notebook_archive}[action](child, args))
 
 
 def test_tool_layer_accepts_memory_and_skill_refs(child):

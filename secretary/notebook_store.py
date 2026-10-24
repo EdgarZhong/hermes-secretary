@@ -60,9 +60,10 @@ def _inherited_sources_conn(conn, conversation_ref, entry, *, exact_version=Fals
 
 def validate_snapshot_state_conn(db, conn, conversation_ref, payload):
     """Revalidate versions, provenance and references in the commit transaction."""
+    from secretary.notebook_items import canonical_notebook_payload
     valid_identity, valid_range = _source_checks_conn(db, conn, conversation_ref)
     state = NotebookWorkingState(
-        conversation_ref, payload, validate_source_identity=valid_identity, validate_source_range=valid_range,
+        conversation_ref, canonical_notebook_payload(payload), validate_source_identity=valid_identity, validate_source_range=valid_range,
         validate_inherited_sources=lambda entry: _inherited_sources_conn(
             conn, conversation_ref, entry, exact_version=True),
     ).snapshot_state()
@@ -118,8 +119,9 @@ class NotebookStore:
             payload = (working_state if working_state is not None else
                        None if snapshot is None else snapshot["payload"])
             valid_identity, valid_range = _source_checks_conn(db, conn, conversation_ref)
+            from secretary.notebook_items import canonical_notebook_payload
             self._state = NotebookWorkingState(
-                conversation_ref, payload, lock=self.lock, clock=clock,
+                conversation_ref, canonical_notebook_payload(payload), lock=self.lock, clock=clock,
                 validate_source_identity=valid_identity, validate_source_range=valid_range,
                 validate_inherited_sources=lambda entry: _inherited_sources_conn(
                     conn, conversation_ref, entry, exact_version=True),
@@ -129,6 +131,7 @@ class NotebookStore:
         self._state._validate_source_range = self._valid_range
         self._state._validate_inherited_sources = self._inherited_sources
         self._state._insert_version = self._insert_version
+        self._state._insert_versions = self._insert_versions
 
     @property
     def base_snapshot_id(self):
@@ -150,25 +153,35 @@ class NotebookStore:
         with self._db._read_ctx() as conn:
             return _inherited_sources_conn(conn, self.conversation_ref, entry)
 
-    def _insert_version(self, entry, previous_version_id):
+    def _insert_version_conn(self, conn, entry, previous_version_id, *, relation_cleanup=False):
         from secretary.notebook_items import insert_item_conn, item_row_conn, source_basis_conn
 
-        def insert(conn):
-            basis = None
-            if previous_version_id is not None:
-                basis = source_basis_conn(conn, self.conversation_ref,
-                                          item_row_conn(conn, previous_version_id), entry)
-            if basis is None:
-                valid_identity, valid_range = _source_checks_conn(self._db, conn, self.conversation_ref)
-                if (not all(valid_identity(source) for source in entry["source_message_identities"])
-                        or (entry["source_time_range"] is not None and not valid_range(entry["source_time_range"]))):
-                    raise NotebookValidationError(
-                        "The source left the authorized current path before the write.", code="source_unavailable",
-                        next_action="Locate current evidence; this operation did not change the working Notebook.",
-                    )
-            return insert_item_conn(conn, self.conversation_ref, entry, previous_version_id, source_basis_id=basis)
+        basis = None
+        if previous_version_id is not None:
+            basis = source_basis_conn(conn, self.conversation_ref,
+                                      item_row_conn(conn, previous_version_id), entry,
+                                      allow_relation_removal=relation_cleanup)
+        if basis is None:
+            valid_identity, valid_range = _source_checks_conn(self._db, conn, self.conversation_ref)
+            if (not all(valid_identity(source) for source in entry["source_message_identities"])
+                    or (entry["source_time_range"] is not None and not valid_range(entry["source_time_range"]))):
+                raise NotebookValidationError(
+                    "The source left the authorized current path before the write.", code="source_unavailable",
+                    next_action="Locate current evidence; this operation did not change the working Notebook.",
+                )
+        return insert_item_conn(conn, self.conversation_ref, entry, previous_version_id,
+                                source_basis_id=basis, allow_relation_removal=relation_cleanup)
 
-        return self._db._execute_write(insert)
+    def _insert_version(self, entry, previous_version_id):
+        return self._db._execute_write(lambda conn: self._insert_version_conn(conn, entry, previous_version_id))
+
+    def _insert_versions(self, changes):
+        # Only archive invokes this batch: its first version is the archive and
+        # subsequent versions remove auxiliary relations, without changing claims.
+        return self._db._execute_write(lambda conn: [
+            self._insert_version_conn(conn, entry, previous_id, relation_cleanup=index > 0)
+            for index, (entry, previous_id) in enumerate(changes)
+        ])
 
     def snapshot_state(self):
         return self._state.snapshot_state()
@@ -187,10 +200,10 @@ class NotebookStore:
 
     def create(self, entry_type, fields, *, status=None, relations=None,
                source_message_identities=SOURCE_NOT_PROVIDED, source_time_range=None,
-               source_message_uids=SOURCE_NOT_PROVIDED):
+               source_message_uids=SOURCE_NOT_PROVIDED, schedule_suggestion=None):
         return self._state.create(entry_type, fields, status=status, relations=relations,
                                   source_message_identities=source_message_identities, source_time_range=source_time_range,
-                                  source_message_uids=source_message_uids)
+                                  source_message_uids=source_message_uids, schedule_suggestion=schedule_suggestion)
 
     def update(self, entry_id, changes):
         return self._state.update(entry_id, changes)

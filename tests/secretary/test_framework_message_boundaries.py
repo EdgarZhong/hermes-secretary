@@ -145,9 +145,11 @@ def test_real_producer_rows_survive_main_repair_wire_and_next_idle(
     monkeypatch.setattr('secretary.noting_child.spawn_noting_task', spawn)
     idle_result = rt._run_idle_event(parent, db, ref, now=finished + 3601)
     if producer == 'force':
-        # New Force admission owns this interval until successful compaction;
-        # inspect the still-intact real prefix without dispatching a duplicate child.
-        assert idle_result == 'skip:force_interval_occupied' and not frozen
+        # This fixture captured a Force admission without running its child.
+        # R11 requires a normal committed result before Idle can compact it;
+        # inspect the intact prefix without inventing a successful completion.
+        assert idle_result == 'skip:existing_noting_not_successful' and not frozen
+        assert db.notebook_current(ref) is None
         prefix = freeze_parent_active_prefix(parent, live[-1]['message_uid'])
         anchor_uid = prefix[-1]['message_uid']
     else:

@@ -31,7 +31,7 @@ def _prepare(runtime):
 
 
 def _source():
-    return _maintain({"action": "create", "entry_type": "matter", "fields": {
+    return _maintain({"entry_type": "matter", "fields": {
         "description": "I prefer quiet museums.",
         "completion_condition": "Visit preference understood",
     }, "source_message_uids": ["origin-a"]})
@@ -39,7 +39,7 @@ def _source():
 
 def _candidate(script, target, form):
     source = script.results["s02-0"]["entry"]
-    args = {"action": "create", "entry_type": "candidate", "fields": {
+    args = {"entry_type": "candidate", "fields": {
         "description": SUMMARIES[target], "targets": [target],
         "notebook_refs": [source["entry_id"]] if form == "refs" else [],
         "source_types": ["matter"] if form == "refs" else [],
@@ -54,7 +54,7 @@ def _candidate(script, target, form):
 def test_native_candidate_accepts_source_form_for_each_target(runtime, target, form):
     _prepare(runtime)
     script = _ProviderScript([
-        _source(), ("notebook_maintain", lambda script: _candidate(script, target, form)),
+        _source(), ("notebook_create", lambda script: _candidate(script, target, form)),
         ("notebook_show", {}), _finish("Indexed existing evidence; no proposal, approval or outside write"),
     ])
     outcome = _run(runtime, script)
@@ -104,7 +104,7 @@ def test_native_candidate_rejects_invalid_provenance_without_changing_source(run
         return args
 
     script = _ProviderScript([
-        _source(), ("notebook_maintain", bad_candidate), ("notebook_show", {}),
+        _source(), ("notebook_create", bad_candidate), ("notebook_show", {}),
         _finish("Refused invalid Candidate; preserved the existing source"),
     ])
     outcome = _run(runtime, script)
@@ -121,8 +121,8 @@ def test_native_candidate_rejects_invalid_provenance_without_changing_source(run
 
 @pytest.mark.parametrize("target", SUMMARIES)
 def test_callable_schema_advertises_each_existing_candidate_target(target):
-    schema = next(tool for tool in noting_tool_schemas() if tool["name"] == "notebook_maintain")
-    validate({"action": "create", "entry_type": "candidate", "fields": {
+    schema = next(tool for tool in noting_tool_schemas() if tool["name"] == "notebook_create")
+    validate({"entry_type": "candidate", "fields": {
         "description": SUMMARIES[target], "targets": [target], "notebook_refs": [], "source_types": [],
     }, "source_message_uids": ["original"]}, schema["parameters"])
 
@@ -132,14 +132,14 @@ def test_new_ref_targets_convert_atomically_without_claiming_a_write(runtime, ta
     _prepare(runtime)
 
     def convert(script):
-        return {"action": "update", "entry_id": script.results["s02-1"]["entry"]["entry_id"], "changes": {
+        return {"entry_id": script.results["s02-1"]["entry"]["entry_id"],
             "fields": {"notebook_refs": [], "source_types": []},
             "source_message_uids": ["origin-a"], "source_time_range": None,
-        }}
+        }
 
     script = _ProviderScript([
-        _source(), ("notebook_maintain", lambda script: _candidate(script, target, "refs")),
-        ("notebook_maintain", convert), ("notebook_show", {}),
+        _source(), ("notebook_create", lambda script: _candidate(script, target, "refs")),
+        ("notebook_update", convert), ("notebook_show", {}),
         _finish("Changed only source representation; Candidate and source remain unapproved"),
     ])
     outcome = _run(runtime, script)

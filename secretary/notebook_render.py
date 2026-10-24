@@ -11,10 +11,21 @@ from secretary.notebook_contract import EVIDENCE_TIMES, SECTIONS, public_state
 logger = logging.getLogger(__name__)
 
 
-def readable_notebook_entry(entry, *, profile_home=None):
+def readable_notebook_entry(entry, *, profile_home=None, db=None, conn=None, conversation_ref=None, state=None):
     """Project local source UIDs and display times without changing stored evidence."""
     projected = deepcopy(entry)
     projected.pop("archived", None)
+    for key in ("external_refs", "evidence_time"):
+        projected["fields"].pop(key, None)
+    if "evidence_time" not in projected or db is not None:
+        from secretary.notebook_evidence import evidence_time
+        interval = evidence_time(entry, db=db, conn=conn, conversation_ref=conversation_ref, state=state)
+        if interval is None:
+            projected["evidence_time"] = None
+        else:
+            times = {key: format_timestamp(value, profile_home=profile_home) for key, value in interval.items()}
+            projected["evidence_time"] = (times["start_time"] if interval["start_time"] == interval["end_time"]
+                                          else times)
     if "source_message_identities" in projected:
         projected["source_message_uids"] = [
             source["message_uid"] for source in projected.pop("source_message_identities")
@@ -32,9 +43,10 @@ def readable_notebook_entry(entry, *, profile_home=None):
     return projected
 
 
-def readable_notebook_state(state, *, profile_home=None):
+def readable_notebook_state(state, *, profile_home=None, db=None, conn=None, conversation_ref=None):
     """Reverse Candidate links always come from this complete current view."""
-    return {section: [readable_notebook_entry(entry, profile_home=profile_home) for entry in entries]
+    return {section: [readable_notebook_entry(entry, profile_home=profile_home, db=db, conn=conn,
+                                                       conversation_ref=conversation_ref, state=state) for entry in entries]
             for section, entries in public_state(state).items()}
 
 
@@ -92,7 +104,7 @@ def model_notebook_view(view, *, db=None, conn=None, profile_home=None):
     return projected
 
 
-def show_notebook(snapshot, *, conversation_ref=None, profile_home=None):
+def show_notebook(snapshot, *, conversation_ref=None, profile_home=None, db=None, conn=None):
     """Main's complete effective Snapshot envelope (07 sections 4.5 and 7.1).
 
     For an empty Notebook the trusted caller must supply its bound Conversation.
@@ -110,7 +122,8 @@ def show_notebook(snapshot, *, conversation_ref=None, profile_home=None):
             "snapshot_id": snapshot["snapshot_id"],
             "coverage": {"anchor_message_uid": snapshot["anchor_message_uid"]},
             "created_at": format_timestamp(snapshot["created_at"], profile_home=profile_home),
-            "payload": readable_notebook_state(snapshot["payload"], profile_home=profile_home)}
+            "payload": readable_notebook_state(snapshot["payload"], profile_home=profile_home, db=db, conn=conn,
+                                               conversation_ref=snapshot["conversation_ref"])}
 
 
 def _render_entry(entry):
@@ -120,7 +133,7 @@ def _render_entry(entry):
     for name, value in entry["fields"].items():
         rendered = value if isinstance(value, str) else json.dumps(value, ensure_ascii=False)
         lines.append(f"  {name}: {rendered}")
-    for name in ("relations", "source_message_uids", "source_time_range", "candidate_refs",
+    for name in ("relations", "source_message_uids", "source_time_range", "evidence_time", "schedule_suggestion", "candidate_refs",
                  "created_at", "updated_at", "last_processed_at"):
         lines.append(f"  {name}: {json.dumps(entry.get(name), ensure_ascii=False)}")
     return lines
@@ -135,7 +148,8 @@ def render_notebook(snapshot, *, profile_home=None, db=None, conn=None, model_vi
         coverage = evidence_coverage(snapshot["conversation_ref"], {"anchor_message_uid": snapshot["anchor_message_uid"]},
                                      db=db, conn=conn, profile_home=profile_home)
         lines.append("Evidence coverage: " + json.dumps(coverage, ensure_ascii=False))
-    state = readable_notebook_state(snapshot["payload"], profile_home=profile_home)
+    state = readable_notebook_state(snapshot["payload"], profile_home=profile_home, db=db, conn=conn,
+                                    conversation_ref=snapshot["conversation_ref"])
     for section in SECTIONS:
         lines.extend(["", section])
         if not state[section]:

@@ -293,7 +293,7 @@ def _tool_response(name, args, uid):
 
 def _read_then_mutate_responses():
     return [_tool_response("notebook_show", {}, "read"),
-            _tool_response("notebook_maintain", {"action": "create", "entry_type": "matter",
+            _tool_response("notebook_create", {"entry_type": "matter",
                                                "fields": {"description": "send report", "completion_condition": "Report sent"},
                                                "source_time_range": {"start_time": "1970-01-01T00:16:40+00:00",
                                                                      "end_time": "1970-01-01T00:16:41+00:00"}}, "write"),
@@ -327,10 +327,10 @@ def test_real_spawn_runs_semantic_tool_to_snapshot_and_close(parent, db, stub_cl
     assert record["status"] == "completed"
     rows = db.get_messages_as_conversation(record["child_session_id"])
     assert rows[0]["content"].startswith("<noting-task>")
-    assert "notebook_maintain" in rows[0]["content"]
+    assert "notebook_create" in rows[0]["content"]
     assert "conversation_history" in rows[0]["content"]
     assert len(rows) == 8 and all(row["content"] != "will do" for row in rows)
-    assert "notebook_maintain" in rows[0]["content"]
+    assert "notebook_create" in rows[0]["content"]
     assert "finish_noting" in rows[0]["content"]
     assert db.get_session(record["child_session_id"])["end_reason"] is not None
     calls = stub_client.chat.completions.create.call_args_list
@@ -414,7 +414,7 @@ def test_dispatch_freezes_prefix_runtime_before_worker(parent, db, stub_client, 
     assert db.noting_child(admission_id)["status"] == "completed"
     sent = stub_client.chat.completions.create.call_args_list[0].kwargs["messages"]
     task = next(row["content"] for row in sent if "<noting-task>" in str(row.get("content", "")))
-    assert "conversation_history" in task and "notebook_maintain" in task
+    assert "conversation_history" in task and "notebook_create" in task
     assert captured["frozen_work"]["base_snapshot_id"] is None
 
 
@@ -457,26 +457,26 @@ def test_text_only_completion_runs_five_turns_then_forces_snapshot(parent, db, s
 
 def test_semantic_control_is_noting_only_and_rejects_forgery(parent, db, stub_client):
     from secretary.noting_tools import initialize_notebook_work
-    args = {"action": "create", "entry_type": "matter", "fields": {"description": "report", "completion_condition": "Delivered"},
-            "source_message_identities": [{"conversation_ref": parent._secretary_conversation_ref, "message_uid": "m1"}]}
-    assert not json.loads(parent._invoke_tool("notebook_maintain", args, "main")).get("success")
+    args = {"entry_type": "matter", "fields": {"description": "report", "completion_condition": "Delivered"},
+            "source_message_uids": ["m1"]}
+    assert not json.loads(parent._invoke_tool("notebook_create", args, "main")).get("success")
     child = build_noting_child(parent, runtime_profile="NOTING", parent_conversation_ref=parent._secretary_conversation_ref)
     try:
         child._secretary_noting_anchor_uid = "m2"
         initialize_notebook_work(child, trigger_type="idle")
         assert not json.loads(child._invoke_tool("finish_noting", {"reason": "done", "unexpected": True}, "bad"))["success"]
-        made = json.loads(child._invoke_tool("notebook_maintain", args, "child"))
+        made = json.loads(child._invoke_tool("notebook_create", args, "child"))
         assert made["success"]
         uid = made["entry"]["entry_id"]
-        updated = json.loads(child._invoke_tool("notebook_maintain", {"action": "update", "entry_id": uid, "changes": {"fields": {"description": "updated report"}}}, "update"))
+        updated = json.loads(child._invoke_tool("notebook_update", {"entry_id": uid, "fields": {"description": "updated report"}}, "update"))
         assert updated["success"] and updated["entry"]["entry_id"] == uid
         state = child._noting_notebook_store.show()
         for invalid in [dict(args, payload_json=empty_state()), dict(args, fields={"description": "x", "next_due_at": 123}),
                         {"action": "sql", "query": "DROP TABLE messages"}]:
-            assert not json.loads(child._invoke_tool("notebook_maintain", invalid, "bad"))["success"]
+            assert not json.loads(child._invoke_tool("notebook_create", invalid, "bad"))["success"]
             assert child._noting_notebook_store.show() == state
         db.notebook_set_local_enabled(parent._secretary_conversation_ref, False)
-        assert not json.loads(child._invoke_tool("notebook_maintain", args, "disabled"))["success"]
+        assert not json.loads(child._invoke_tool("notebook_create", args, "disabled"))["success"]
     finally:
         child.close()
 

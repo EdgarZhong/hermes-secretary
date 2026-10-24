@@ -128,7 +128,7 @@ def test_every_type_including_candidate_requires_original_provenance(entry_type)
 def test_noop_and_reads_never_renew_runtime_or_evidence_times():
     clock = Clock()
     book = pure(clock)
-    body = {**FIELDS["matter"], "evidence_time": EVIDENCE, "blocker": None}
+    body = {**FIELDS["matter"], "last_progress_time": EVIDENCE, "blocker": None}
     entry = create(book, fields=body)
     assert "blocker" not in entry["fields"]
     before = book.snapshot_state()
@@ -141,7 +141,7 @@ def test_noop_and_reads_never_renew_runtime_or_evidence_times():
     assert clock.calls == 1
     changed = book.update(entry["entry_id"], {"fields": {"description": "Dates are being checked"}})["entry"]
     assert changed["created_at"] == entry["created_at"]
-    assert changed["fields"]["evidence_time"] == EVIDENCE
+    assert changed["fields"]["last_progress_time"] == EVIDENCE
     assert changed["last_processed_at"] is None
     processed = book.update(entry["entry_id"], {"fields": {"processing_note": "Retained the unfinished responsibility"}})["entry"]
     assert processed["last_processed_at"] == processed["updated_at"]
@@ -153,11 +153,10 @@ def test_gap_identification_clock_does_not_follow_rewrite_or_evidence_time():
     book = pure(Clock())
     gap = create(book, "implicit_gap")
     revised = book.update(gap["entry_id"], {"fields": {"description": "Host remains unknown",
-                                                     "evidence_time": EVIDENCE,
                                                      "processing_note": "Retained because dates depend on the host"}})["entry"]
     assert revised["created_at"] == gap["created_at"]
     assert revised["updated_at"] != gap["updated_at"]
-    assert revised["fields"]["evidence_time"] == EVIDENCE
+    assert "evidence_time" not in revised["fields"]
 
 
 def test_fields_merge_arrays_replace_and_null_clears_optional_singletons():
@@ -195,22 +194,24 @@ def test_invalid_patch_never_changes_working_state(patch):
     assert book.snapshot_state() == before
 
 
-def test_strict_action_arguments_and_structured_error_guidance():
+def test_typed_operations_return_structured_error_guidance_without_side_effects():
     book = pure()
     entry = create(book)
-    bad_args = [None, {}, {"action": "edit"}, {"action": "archive", "entry_id": entry["entry_id"]},
-                {"action": "update", "entry_id": entry["entry_id"], "changes": {"status": "paused"}, "reason": "mixed"},
-                {"action": "create", "entry_type": "matter", "fields": FIELDS["matter"], "status": None},
-                {"action": "archive", "entry_id": entry["entry_id"], "reason": "   "}]
+    invalid_operations = [
+        lambda: book.update(entry["entry_id"], {}),
+        lambda: book.update(entry["entry_id"], {"entry_type": "question"}),
+        lambda: book.create("unknown", FIELDS["matter"], source_message_identities=[SOURCE]),
+        lambda: book.archive(entry["entry_id"], "   "),
+    ]
     before = book.snapshot_state()
-    for args in bad_args:
+    for operation in invalid_operations:
         with pytest.raises(NotebookValidationError) as error:
-            book.maintain(args)
+            operation()
         result = error.value.as_result()
         assert result["success"] is False
         assert {"code", "message", "next_action"} <= result["error"].keys()
         assert book.snapshot_state() == before
-    result = book.maintain({"action": "update", "entry_id": entry["entry_id"], "changes": {"status": "paused"}})
+    result = book.update(entry["entry_id"], {"status": "paused"})
     assert result["entry"]["status"] == "paused" and result["changed"]
 
 
@@ -270,7 +271,7 @@ def test_archive_reports_all_referrers_and_preserves_internal_final_version():
         book.archive(situation["entry_id"], "Redundant background")
     assert error.value.code == "invalid_reference"
     assert {row["entry_id"] for row in error.value.details["referrers"]} == {
-        gap["entry_id"], action["entry_id"], candidate["entry_id"]}
+        gap["entry_id"], candidate["entry_id"]}
     assert book.snapshot_state() == before
     book.archive(gap["entry_id"], "No longer affects the retained situation")
     book.update(action["entry_id"], {"relations": []})

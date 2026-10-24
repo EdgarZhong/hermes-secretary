@@ -155,9 +155,19 @@ def _notebook_show(agent, args: dict, ctx: InlineToolContext) -> Any:
                          effective_enabled=notebook_dispatch_enabled(agent), model_visible=True)
 
 
-def _notebook_maintain(agent, args: dict, ctx: InlineToolContext) -> Any:
-    from secretary.noting_tools import notebook_maintain
-    return notebook_maintain(agent, args)
+def _notebook_create(agent, args: dict, ctx: InlineToolContext) -> Any:
+    from secretary.noting_tools import notebook_create
+    return notebook_create(agent, args)
+
+
+def _notebook_update(agent, args: dict, ctx: InlineToolContext) -> Any:
+    from secretary.noting_tools import notebook_update
+    return notebook_update(agent, args)
+
+
+def _notebook_archive(agent, args: dict, ctx: InlineToolContext) -> Any:
+    from secretary.noting_tools import notebook_archive
+    return notebook_archive(agent, args)
 
 
 def _scheduler(agent, args: dict, ctx: InlineToolContext) -> Any:
@@ -279,7 +289,9 @@ _RAW_INLINE_TOOL_EXECUTORS: Dict[str, InlineToolExecutor] = {
     "session_search": _session_search,
     "conversation_history": _conversation_history,
     "notebook_show": _notebook_show,
-    "notebook_maintain": _notebook_maintain,
+    "notebook_create": _notebook_create,
+    "notebook_update": _notebook_update,
+    "notebook_archive": _notebook_archive,
     "scheduler": _scheduler,
     "finish_noting": _finish_noting,
     "memory": _memory,

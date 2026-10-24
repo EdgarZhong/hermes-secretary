@@ -15,7 +15,7 @@ from tests.secretary.test_r3_child import (
 def failed_task(native_parent, database):
     parent, client = native_parent
     client.chat.completions.create.side_effect = [
-        tool_response("notebook_maintain", create_args(database), "create"),
+        tool_response("notebook_create", create_args(database), "create"),
         tool_response("finish_noting", {"reason": "Retained responsibility"}), response("Done"),
     ]
     def fail(_child):
@@ -136,7 +136,7 @@ def test_original_control_tools_allow_recovery_without_full_parent_pin(native_pa
     database.update_session_tool_names(failed.child_session_id, None)
     recovered = reconstruct_noting(database, ref(database), failed.child_session_id)
     assert recovered.sources["tools"] == "original_control_callable_schemas_parent_array_unavailable"
-    assert {tool["function"]["name"] for tool in recovered.tools} == {"conversation_history", "notebook_show", "notebook_maintain", "finish_noting"}
+    assert {tool["function"]["name"] for tool in recovered.tools} == {"conversation_history", "notebook_show", "notebook_create", "notebook_update", "notebook_archive", "finish_noting"}
 
 
 def test_new_prelude_is_not_accepted_as_old_tools(native_parent, database, monkeypatch):
@@ -146,7 +146,7 @@ def test_new_prelude_is_not_accepted_as_old_tools(native_parent, database, monke
     database.capture_secretary_prelude("parent", "new root", [])
     recovered = reconstruct_noting(database, ref(database), failed.child_session_id)
     assert recovered.sources["tools"] == "original_control_callable_schemas_parent_array_unavailable"
-    assert len(recovered.tools) == 4
+    assert len(recovered.tools) == 6
 
 
 def test_foreign_conversation_cannot_borrow_failed_child(native_parent, database):
@@ -174,7 +174,7 @@ def test_orphan_tool_call_is_repaired_by_native_turn_not_faked(native_parent, da
     parent, client = native_parent
     failed = failed_task(native_parent, database)
     database.append_message(failed.child_session_id, "assistant", "", tool_calls=[
-        {"id": "not_executed", "type": "function", "function": {"name": "notebook_maintain", "arguments": json.dumps(create_args(database, "Never executed"))}}])
+        {"id": "not_executed", "type": "function", "function": {"name": "notebook_create", "arguments": json.dumps(create_args(database, "Never executed"))}}])
     client.chat.completions.create.reset_mock()
     client.chat.completions.create.side_effect = [tool_response("finish_noting", {"reason": "Existing view checked"}), response("Done")]
     start_recovery(database, ref(database), failed.child_session_id, "r1", parent_factory=factory(parent))
@@ -232,9 +232,9 @@ def test_admitted_compaction_interval_excludes_earlier_full_history(native_paren
 def test_successful_archive_replay_does_not_revive_removed_entry(native_parent, database):
     parent, client = native_parent
     client.chat.completions.create.side_effect = [
-        tool_response("notebook_maintain", create_args(database, "Transient"), "first"),
-        tool_response("notebook_maintain", create_args(database, "Keep this"), "second"),
-        tool_response("notebook_maintain", {"action": "archive", "entry_id": "1", "reason": "Not needed"}, "archive"),
+        tool_response("notebook_create", create_args(database, "Transient"), "first"),
+        tool_response("notebook_create", create_args(database, "Keep this"), "second"),
+        tool_response("notebook_archive", { "entry_id": "1", "reason": "Not needed"}, "archive"),
         tool_response("finish_noting", {"reason": "Complete"}), response("Done"),
     ]
     def fail(_):
@@ -327,9 +327,9 @@ def test_branch_recovery_keeps_branch_path_and_rebinds_inherited_source_identity
         prefix = database._rows_to_conversation(source, session_id="branch", include_ancestors=False, repair_alternation=False)
     branch._session_messages = prefix
     admission = database.noting_admit(branch_ref, "b2", kind="manual")
-    args = {"action": "create", "entry_type": "matter", "fields": {"description": "Branch work", "completion_condition": "Done"},
-            "source_message_identities": [{"conversation_ref": branch_ref, "message_uid": "m1"}]}
-    client.chat.completions.create.side_effect = [tool_response("notebook_maintain", args),
+    args = {"entry_type": "matter", "fields": {"description": "Branch work", "completion_condition": "Done"},
+            "source_message_uids": ["m1"]}
+    client.chat.completions.create.side_effect = [tool_response("notebook_create", args),
                                                tool_response("finish_noting", {"reason": "Kept branch"}), response("done")]
     def fail(_):
         raise RuntimeError("Publication failure")
@@ -350,7 +350,7 @@ def test_branch_recovery_keeps_branch_path_and_rebinds_inherited_source_identity
 def test_base_snapshot_matches_original_view_instead_of_latest_created_snapshot(native_parent, database):
     from secretary.notebook_store import NotebookStore
     first = NotebookStore(database, ref(database), anchor_message_uid="m2")
-    first.maintain(create_args(database, "Existing responsibility"))
+    first.create(**create_args(database, "Existing responsibility"))
     expected = first.commit(termination={"type": "finish_noting", "reason": "Existing"})
     older = NotebookStore(database, ref(database), anchor_message_uid="m1", base_snapshot_id=None)
     unrelated = older.commit(termination={"type": "finish_noting", "reason": "Late older coverage"})
@@ -365,7 +365,7 @@ def test_other_tools_json_entry_is_not_replayed_as_a_maintenance_receipt(native_
     from secretary.notebook_store import NotebookStore
     failed = failed_task(native_parent, database)
     other = NotebookStore(database, ref(database), anchor_message_uid="m2")
-    unrelated = other.maintain(create_args(database, "Other task work"))
+    unrelated = other.create(**create_args(database, "Other task work"))
     database.append_message(failed.child_session_id, "tool", json.dumps(unrelated),
                             tool_name="conversation_history", tool_call_id="other-read")
     recovered = reconstruct_noting(database, ref(database), failed.child_session_id)
@@ -407,7 +407,7 @@ def test_recovery_constructs_fixed_tools_before_freeze_and_preserves_failed_reco
     expected = deepcopy(parent.tools)
     if not complete_pin:
         expected += [{"type": "function", "function": schema} for schema in canonical
-                     if schema["name"] in {"notebook_maintain", "finish_noting"}]
+                     if schema["name"] not in {tool["function"]["name"] for tool in expected}]
     failed = failed_task(native_parent, database)
     original_session = database.get_session(failed.child_session_id)
     original_rows = database.get_messages_as_conversation(failed.child_session_id)
@@ -449,7 +449,7 @@ def test_recovery_constructs_fixed_tools_before_freeze_and_preserves_failed_reco
         assert set(state["sources"]) == {"parent", "root", "tools", "notebook"}
     else:
         assert state["sources"]["tools"].startswith("failed_child.tool_names+fixed_noting_maintenance_definitions")
-        assert "(notebook_maintain,finish_noting)" in state["sources"]["tools"]
+        assert "(conversation_history,notebook_show,notebook_create,notebook_update,notebook_archive,finish_noting)" in state["sources"]["tools"]
         assert "not_byte_identical" in state["sources"]["tools"]
         assert set(state["sources"]) == {"parent", "root", "tools", "notebook"}
     assert ack["sources"] == state["sources"]
@@ -458,3 +458,30 @@ def test_recovery_constructs_fixed_tools_before_freeze_and_preserves_failed_reco
     assert reconstruct_noting(database, ref(database), failed.child_session_id).tools == source_pin
     assert start_recovery(database, ref(database), failed.child_session_id, "r1", parent_factory=factory(parent)) == state
     assert len(wires) == 3
+
+
+def test_recovery_preserves_archival_relation_cleanup_receipts_without_replaying_writes(native_parent, database):
+    parent, client = native_parent
+    client.chat.completions.create.side_effect = [
+        tool_response("notebook_create", create_args(database, "Temporary scope"), "one"),
+        tool_response("notebook_create", {**create_args(database, "Retained responsibility"),
+            "relations": [{"kind": "related_to", "entry_id": "1"}]}, "two"),
+        tool_response("notebook_archive", {"entry_id": "1", "reason": "Temporary scope is no longer needed"}, "archive"),
+        tool_response("finish_noting", {"reason": "Preserved the separate responsibility"}), response(),
+    ]
+    def unavailable(_):
+        raise RuntimeError("Controlled failure before publication")
+    failed = run_task(parent, state_provider=unavailable)
+    assert not failed.committed
+    rows = database.get_messages_as_conversation(failed.child_session_id)
+    receipt = next(json.loads(row["content"]) for row in rows if row.get("tool_call_id") == "archive")
+    retained = receipt["updated_entries"][0]
+    assert retained["entry_id"] == "2" and retained["relations"] == []
+    assert "source_message_identities" not in retained
+    before = [tuple(row) for row in database._read_all("SELECT * FROM secretary_notebook_item ORDER BY id")]
+    recovered = reconstruct_noting(database, ref(database), failed.child_session_id)
+    assert len(recovered.working_state["work"]) == 1
+    assert recovered.working_state["work"][0]["entry_id"] == retained["entry_id"]
+    assert recovered.working_state["work"][0]["version_id"] == retained["version_id"]
+    assert recovered.working_state["work"][0]["relations"] == []
+    assert before == [tuple(row) for row in database._read_all("SELECT * FROM secretary_notebook_item ORDER BY id")]

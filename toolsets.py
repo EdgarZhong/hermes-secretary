@@ -131,7 +131,7 @@ TOOLSETS = {
     "session_search": _ts("Search and recall past conversations with summarization", ["session_search"]),
     "conversation_history": _ts("Search/read original user Conversation messages", ["conversation_history"]),
     "scheduler": _ts("Manage the current Main Conversation Schedule Table", ["scheduler"]),
-    "noting": _ts("Task-bound Noting maintenance (runtime authorization required)", ["notebook_maintain", "finish_noting"]),
+    "noting": _ts("Task-bound Noting maintenance (runtime authorization required)", ["notebook_create", "notebook_update", "notebook_archive", "finish_noting"]),
     "notebook": _ts("Noting Notebook: read this Conversation's committed Snapshot", ["notebook_show"]),
     "connections": _ts("Remote connector discovery, execution, and account authorization", ["manage_connections"]),
     "project": _ts("Desktop Projects — create/switch named workspaces (GUI sessions only)", ["desktop_project"]),

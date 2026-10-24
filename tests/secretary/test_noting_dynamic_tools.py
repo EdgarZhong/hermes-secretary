@@ -62,14 +62,14 @@ def kimi_parent(native_parent, monkeypatch):
 
 
 def maintain(description="Arrange the visit"):
-    return {"action": "create", "entry_type": "matter", "source_message_uids": ["m1"],
+    return {"entry_type": "matter", "source_message_uids": ["m1"],
             "fields": {"description": description, "completion_condition": "Dates agreed"}}
 
 
 def assert_requests(parent, wires, child):
     from agent.moonshot_schema import sanitize_moonshot_tools
     tools = sanitize_moonshot_tools(parent.tools)
-    assert {"conversation_history", "notebook_show", "notebook_maintain", "finish_noting"} <= {
+    assert {"conversation_history", "notebook_show", "notebook_create", "notebook_update", "notebook_archive", "finish_noting"} <= {
         tool["function"]["name"] for tool in tools}
     for wire in wires:
         assert all("tools" not in row for row in wire["messages"])
@@ -90,7 +90,7 @@ def test_maintain_history_show_continuation_finish_keep_fixed_top_level_tools(ki
     before = deepcopy(parent._session_messages)
     sdk.side_effect = [
         tool_response("conversation_history", {"mode": "search", "query": "visit"}, "history"),
-        tool_response("notebook_maintain", maintain(), "write"),
+        tool_response("notebook_create", maintain(), "write"),
         tool_response("notebook_show", {}, "show"), response("Continue in the next Turn."),
         tool_response("finish_noting", {"reason": "Kept the accepted visit."}), response("Done."),
     ]
@@ -142,7 +142,7 @@ def test_native_summary_retry_uses_same_boundary_after_parent_normalization(kimi
            "codex_nudge": {"role": "user", "content": _CODEX_INCOMPLETE_NUDGE}}[raw_change]
     parent._session_messages.insert(1, row)
     monkeypatch.setattr("secretary.noting_child.NOTING_MAX_ITERATIONS", 1)
-    sdk.side_effect = [tool_response("notebook_maintain", maintain(), "write"), response(""),
+    sdk.side_effect = [tool_response("notebook_create", maintain(), "write"), response(""),
                        response("Work remains after the iteration limit.")]
     outcome = run_task(parent)
     assert outcome.committed and outcome.termination == {"type": "forced"}, outcome
@@ -248,11 +248,11 @@ def test_fixed_tools_do_not_grant_parent_tools_or_mixed_finish_batches(kimi_pare
     monkeypatch.setattr("agent.tool_dispatch_helpers._plan_tool_batch_segments",
                         lambda calls, **kw: [("parallel" if concurrent else "sequential", calls)])
     mixed = response(None, [
-        tool_response("notebook_maintain", maintain("Must not be written"), "bad-write").choices[0].message.tool_calls[0],
+        tool_response("notebook_create", maintain("Must not be written"), "bad-write").choices[0].message.tool_calls[0],
         tool_response("finish_noting", {"reason": "Invalid mixed batch"}, "bad-finish").choices[0].message.tool_calls[0],
     ])
     sdk.side_effect = [tool_response("terminal", {"command": "never execute"}, "denied"), mixed,
-                       tool_response("notebook_maintain", maintain(), "good-write"),
+                       tool_response("notebook_create", maintain(), "good-write"),
                        tool_response("finish_noting", {"reason": "Kept only the permitted change."}), response("Done.")]
     outcome = run_task(parent)
     assert outcome.committed, outcome
@@ -283,9 +283,9 @@ def test_frozen_25_parent_tools_keep_full_fixed_surface_and_commit(kimi_parent, 
                  "parameters": {"type": "object", "properties": {}, "required": []}}}
                 for i in range(25 - len(inherited))]
     parent.tools = ordinary + inherited
-    parent.valid_tool_names = {tool["function"]["name"] for tool in parent.tools} - {"notebook_maintain", "finish_noting"}
+    parent.valid_tool_names = {tool["function"]["name"] for tool in parent.tools} - {"notebook_create", "notebook_update", "notebook_archive", "finish_noting"}
     before = deepcopy(parent.tools)
-    sdk.side_effect = [tool_response("notebook_maintain", maintain(), "write"),
+    sdk.side_effect = [tool_response("notebook_create", maintain(), "write"),
                        tool_response("notebook_show", {}, "show"),
                        tool_response("finish_noting", {"reason": "Maintained using fixed definitions."}),
                        response("Done.")]

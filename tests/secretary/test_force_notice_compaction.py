@@ -144,7 +144,12 @@ def test_persisted_force_native_compaction_keeps_history_and_other_producer(runt
     assert not any((row.get('display_metadata') or {}).get('noting_force_dispatch') for row in db.get_messages(agent.session_id))
     history = db.get_history_foreground(conversation_ref=agent._secretary_conversation_ref)
     assert any(row.get('message_uid') == force['message_uid'] and row['content'] == force['content'] for row in history)
-    assert any('synthetic producer notification retained' in str(row.get('content')) for row in result)
+    # R10 full compaction summarizes covered Framework rows too; only the
+    # genuine new request must remain active. Other producers are never expired
+    # as Force dispatch, and their authentic rows remain in History.
+    assert 'synthetic producer notification retained' in summaries[0]
+    assert any('synthetic producer notification retained' in str(row.get('content')) for row in history)
+    assert any('the genuine newer question must survive' in str(row.get('content')) for row in result)
     assert '临近上下文上限' not in summaries[0]
     assert (agent.session_id != old_sid) is (not in_place)
 
@@ -155,7 +160,8 @@ def test_native_unsuccessful_boundary_keeps_original_force_queue(runtime, monkey
     queued = _force(agent, db, busy=True)
     before = copy.deepcopy(agent._session_messages)
     if failure == 'no-op':
-        agent.context_compressor.protect_first_n = 1000
+        # A no-op engine result is independent of Secretary's full-tail policy.
+        monkeypatch.setattr(agent.context_compressor, 'compress', lambda messages, **kw: messages)
     if failure == 'summary-failure':
         agent.context_compressor.abort_on_summary_failure = True
         def fail_summary(*args):
@@ -207,14 +213,14 @@ def test_native_force_inheritance_routes_expire_but_authentic_history_stays(runt
     assert not any(row.get('message_uid') == force['message_uid'] for row in active)
 
 
-def test_noop_cannot_expire_persisted_force_or_same_text_ordinary_user(runtime):
+def test_noop_cannot_expire_persisted_force_or_same_text_ordinary_user(runtime, monkeypatch):
     agent, db = runtime
     force = _force(agent, db)
     ordinary = {'role': 'user', 'content': force['content'],
                 'display_metadata': {'noting_force_dispatch': True}}
     append_message(agent._session_messages, ordinary)
     assert agent._flush_messages_to_session_db(agent._session_messages)
-    agent.context_compressor.protect_first_n = 1000
+    monkeypatch.setattr(agent.context_compressor, 'compress', lambda messages, **kw: messages)
     result, prompt = agent._compress_context(agent._session_messages, None, force=True)
     assert {row.get('message_uid') for row in result} >= {force['message_uid'], ordinary['message_uid']}
     assert len(db.get_messages(agent.session_id)) == len(result)
@@ -358,7 +364,7 @@ def test_successful_compaction_preserves_same_text_ordinary_user(runtime, monkey
     result, prompt = agent._compress_context(agent._session_messages, None, force=True)
     assert any(SUMMARY_PREFIX in str(row.get('content')) for row in result)
     assert any(row.get('message_uid') == ordinary['message_uid']
-               and row['content'] == force['content'] for row in result)
+               and force['content'] in row['content'] for row in result)
     assert all(row.get('message_uid') != force['message_uid'] for row in result)
     history = db.get_history_foreground(conversation_ref=agent._secretary_conversation_ref)
     assert any(row.get('message_uid') == force['message_uid'] and row['content'] == force['content']

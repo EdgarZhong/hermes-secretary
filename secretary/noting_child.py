@@ -46,7 +46,8 @@ _NOTING_TURN_LIMIT = 5
 # Advertising preserves the Parent's frozen tools; actual dispatch is limited
 # independently from construction time for every native execution path.
 NOTING_ALLOWED_TOOL_NAMES = frozenset({
-    "conversation_history", "notebook_show", "notebook_maintain", "finish_noting",
+    "conversation_history", "notebook_show", "notebook_create", "notebook_update",
+    "notebook_archive", "finish_noting",
 })
 NOTING_FINISH_TOOL_NAME = "finish_noting"
 
@@ -76,7 +77,7 @@ def noting_dispatch_block(agent: Any, tool_name: str) -> Optional[str]:
     actual execution funnels through the guard site that calls this.
     """
     if not getattr(agent, "_secretary_noting_child", False):
-        if tool_name in {"notebook_maintain", "finish_noting"}:
+        if tool_name in {"notebook_create", "notebook_update", "notebook_archive", "finish_noting"}:
             return (f"Notebook maintenance denied: {tool_name} is disabled for this runtime "
                     "and reserved for a bound background Noting task.")
         return None
@@ -84,7 +85,7 @@ def noting_dispatch_block(agent: Any, tool_name: str) -> Optional[str]:
         return None
     return (
         f"Noting runtime denied non-whitelisted tool: {tool_name}. Use only "
-        "conversation_history, notebook_show, notebook_maintain and finish_noting. "
+        "conversation_history, notebook_show, notebook_create, notebook_update, notebook_archive and finish_noting. "
         "Do not retry this tool or bypass the bound Conversation scope."
     )
 

@@ -17,23 +17,23 @@ TYPE_SECTIONS = {
 REQUIRED_FIELDS = {
     "matter": ("description", "completion_condition"),
     "action": ("description", "owner", "completion_condition"),
-    "situation": ("description", "subjects", "time_context"),
-    "implicit_gap": ("description", "situation_ref", "missing_information", "impact", "resolution_condition"),
-    "question": ("description", "unresolved_points"),
-    "insight": ("description", "certainty", "qualification"),
-    "decision": ("description", "scope", "valid_when", "ends_when"),
+    "situation": ("description", "subjects"),
+    "implicit_gap": ("description", "situation_ref", "missing_information", "impact"),
+    "question": ("description",),
+    "insight": ("description", "certainty"),
+    "decision": ("description", "scope"),
     "candidate": ("description", "targets", "notebook_refs", "source_types"),
 }
 OPTIONAL_FIELDS = {
     "matter": ("blocker", "last_progress_time"),
     "action": ("blocker", "last_progress_time"),
-    "situation": (), "implicit_gap": (),
-    "question": ("current_answer", "last_discussion_time"),
-    "insight": (), "decision": ("rationale",), "candidate": ("stage_evidence",),
+    "situation": ("time_context",), "implicit_gap": ("resolution_condition",),
+    "question": ("unresolved_points", "current_answer", "last_discussion_time"),
+    "insight": ("qualification",), "decision": ("valid_when", "ends_when", "rationale"), "candidate": ("stage_evidence",),
 }
-COMMON_FIELDS = {"domains", "external_refs", "evidence_time", "processing_note"}
-ARRAY_FIELDS = {"domains", "external_refs", "subjects", "targets", "notebook_refs", "source_types"}
-EVIDENCE_TIMES = {"evidence_time", "last_progress_time", "last_discussion_time"}
+COMMON_FIELDS = {"domains", "processing_note"}
+ARRAY_FIELDS = {"domains", "subjects", "targets", "notebook_refs", "source_types"}
+EVIDENCE_TIMES = {"last_progress_time", "last_discussion_time"}
 STATUSES = {
     "matter": ("in_progress", "paused", "completed", "terminated"),
     "action": ("pending", "in_progress", "waiting", "paused", "completed", "terminated"),
@@ -53,7 +53,7 @@ ENTRY_KEYS = {
     "source_message_identities", "source_time_range", "created_at", "updated_at",
     "last_processed_at", "archived",
 }
-CHANGE_KEYS = {"fields", "status", "relations", "source_message_identities", "source_message_uids", "source_time_range"}
+CHANGE_KEYS = {"fields", "status", "relations", "schedule_suggestion", "source_message_identities", "source_message_uids", "source_time_range"}
 SOURCE_NOT_PROVIDED = object()
 
 
@@ -189,6 +189,19 @@ def validate_fields(entry_type, fields):
             raise NotebookValidationError("Expected optional text or null.", field=field)
 
 
+def validate_schedule_suggestion(value):
+    """One semantic suggestion, never Scheduler input or an executable time."""
+    if value is None:
+        return
+    if not isinstance(value, dict) or set(value) != {"content", "schedule"}:
+        raise NotebookValidationError(
+            "Expected one object containing content and schedule.", field="schedule_suggestion",
+            next_action="Supply both semantic strings in one object, or null to clear the suggestion.",
+        )
+    for key in ("content", "schedule"):
+        require_text(value[key], f"schedule_suggestion.{key}")
+
+
 def validate_candidate_provenance(entry):
     """Return one exclusive provenance form, independent of Candidate target.
 
@@ -222,7 +235,7 @@ def validate_candidate_provenance(entry):
     return "messages"
 
 
-def same_source_claim(left, right):
+def same_source_claim(left, right, *, allow_relation_removal=False):
     """An inherited citation license is not transferable to a different claim.
 
     Administrative processing and archiving do not change the supported claim.
@@ -236,7 +249,18 @@ def same_source_claim(left, right):
                 "fields": fields, "status": entry["status"], "relations": entry["relations"],
                 "source_message_identities": entry["source_message_identities"],
                 "source_time_range": entry["source_time_range"]}
-    return claim(left) == claim(right)
+    left_claim, right_claim = claim(left), claim(right)
+    if allow_relation_removal:
+        # Runtime archive cleanup can only remove existing auxiliary relations;
+        # it cannot add a relationship or alter any supported content/provenance.
+        old_relations = left_claim["relations"]
+        new_relations = right_claim["relations"]
+        if any(relation not in old_relations for relation in new_relations):
+            return False
+        left_claim["relations"] = new_relations
+    left_claim["schedule_suggestion"] = left.get("schedule_suggestion")
+    right_claim["schedule_suggestion"] = right.get("schedule_suggestion")
+    return left_claim == right_claim
 
 
 def outgoing_references(entry):

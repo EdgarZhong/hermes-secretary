@@ -668,7 +668,7 @@ def _noting_dispatch_block(agent, tool_name: str) -> Optional[str]:
         return noting_dispatch_block(agent, tool_name)
     except Exception:
         logger.debug("Noting dispatch policy unavailable", exc_info=True)
-        restricted = getattr(agent, "_secretary_noting_child", False) or tool_name in {"notebook_maintain", "finish_noting"}
+        restricted = getattr(agent, "_secretary_noting_child", False) or tool_name in {"notebook_create", "notebook_update", "notebook_archive", "finish_noting"}
         return "Noting dispatch policy unavailable" if restricted else None
 
 

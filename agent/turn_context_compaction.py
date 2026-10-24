@@ -14,6 +14,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
+from agent.context_compaction_tail_policy import native_threshold_trigger
 from agent.context_engine import automatic_compaction_status_message
 from agent.conversation_compression import (
     IDLE_COMPACTION_STATUS_TEMPLATE, PREFLIGHT_COMPRESSION_STATUS_TEMPLATE,
@@ -381,7 +382,7 @@ def _run_preflight_passes(
         _orig_tokens = _preflight_tokens
         out.messages, out.active_system_prompt = agent._compress_context(
             _preflight_input, system_message, approx_tokens=_preflight_tokens,
-            task_id=effective_task_id,
+            task_id=effective_task_id, trigger=native_threshold_trigger(_compressor, _preflight_tokens),
         )
         if out.messages is _preflight_input and compression_skipped_due_to_lock(agent):
             # Lock-skip: another path holds the lock, so this is a DEFER, not proof of
