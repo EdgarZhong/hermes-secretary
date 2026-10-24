@@ -90,6 +90,7 @@ Gateway入口 `hermes gateway`；Dashboard入口 `hermes dashboard --host 127.0.
 | Conversation缓存清理与失败Noting热恢复RPC | [07 §12](docs/07-scheduler-notebook-noting-compaction-redesign.md#12-conversation-调试接口用户确认2026-10-21) |
 | Conversation级Heartbeat、英文模板与UI后台唤醒 | [07 §8.15](docs/07-scheduler-notebook-noting-compaction-redesign.md#815-heartbeat-形态与-ui-唤醒用户确认2026-10-21) |
 | Web UI与交互契约 | [06](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md) |
+| 页面恢复、展示缓存与统一交接实施方案 | [06 §1.4.1](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md#141-页面恢复过渡展示缓存与统一交接实施方案2026-10-24) |
 | Profile、模型窗口、渠道绑定、工具与冷态提醒 | [08](docs/08-profile-scheduler-files-clarification.md) |
 | 公开范围及旧规格明确保留部分 | [01](docs/01-personal-hermes-v1-first-fork-iteration.md)、[02](docs/02-noting-system-specification.md)、[04](docs/04-hermes-secretary-v1.5-implementation-spec.md) |
 | 部署、认证、同步与回滚SOP | [部署SOP](docs/cloud-deployment-sop.md) |
