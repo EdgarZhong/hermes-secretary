@@ -29,6 +29,7 @@
 |---|---|---|---|---|---|---|
 | PRE-01 | 并行源目录存在其它任务文档dirty | 已独立工作树仅拷本轮定稿/规则/CLAUDE条目，保护其它dirty | 已解决，避免提交污染 | root | 保存前置补丁/新树gitdiff确认 | 关闭 |
 | PRE-02 | 冻结CLAUDE尾部空行 | diffcheck提示新EOF空行，冻结提交已完成；已在后续计划更新去除 | 文档格式，不是运行缺陷 | root | 当前diffcheck通过 | 关闭 |
+| F04 | 更新／抽入其它历史事实时，该entry须保留足以支持所记内容的来源 | c5真实F04四条均补新progress，但matter新增“12箱”未引原采购单；采购action及最终Main能正确找到该原单，不能代签matter自身direct来源。事实正确、来源覆盖不完整 | P2，真实语义／证据时间索引质量；不增加NL硬门禁 | root对齐，Sol实现／真实取证 | 获批最小Task来源句实际注入后，同类新增数量由该entry自己的UID/ranges支持，保旧事实/进度及完整原生链；不得手修产物 | 待用户批准冻结Prompt单句；独立Verifier已确认问题及细化方向 |
 
 ## 取舍、快照与续接
 - 初始base5ea0f7fbaa，文档冻结a4faa767e6，自动push origin同名分支成功；baseline.txt已记录完整SHA，后续纳入阶段提交。
@@ -98,3 +99,10 @@
 - root已亲读B三份产品及旧pin→native恢复→Main apply→当前canonical pin→新Noting freeze上下游、恢复新audit及SDK测试，确认只更新变化的同名六定义、保其它工具顺序/字节；原生记录真实toolset cache break并best-effort pin，不热改已冻child，不Task再注Schema。最后Candidate措辞/测试迁移仍待B最终整包和依赖hash核对。
 - B最终5d包已交回并root亲审接收：Prompt仅追加用户明确软指导并准确改Candidate direct/ref二选一，未改未批F04补新来源句；五份旧测试保实体/生命周期/失败原子与旧immutable兼容，最后Finish改读durable回执且验证所有call/result严格交错。最终Candidate两文件70项、两种真实SDK混传2项及负例28定向（重叠不加总）通过；非Candidate68项及原有效81/4/33按影响复用。A/B共21文件SHA256与现树逐一一致，实际依赖canonical/renderer稳定，不为review复跑有效大套。
 - 当前A/B集成无已知机制缺口；来源软指导自然模型能否修正F04仍未证，N46及独立双门禁/部署仍未完成。root统一stage质量检查及阶段锁版后，D先最终零请求dry，再按明确授权收费F04；成功并亲审内容后才授权N46。
+- Root整包实际stage相对初始源码5ea检查73文件，冻结10全部通过，health0blocking/0advisory，日志.hermes-dev/noting-maintenance-v2/source-arrays-integrated-checks.log。功能锁版c5f57b2552f7618e890fabeefb2fbfdc68eb9e7c已提交自动push、clean/upstream一致；不等同模型质量或发布通过。D仅获最终F04/N46零请求正式dry，尚未--run授权。新Sol/high/forknone独立noting_v2_verification_v4已派，先只读5d最终规格独立判据落盘，再查全R01–R17/O01实现与有效证据；历史报告保留，第四审追加同verification.md。Validation未启动。
+- c5最终两个dry通过，root独立逐组786源码hash与关键wire/隔离字段核实，N46精确原生成器184消息未缩；ledger43不变。报告.hermes-dev/noting-maintenance-v2/e2e/final-c5-dry-report.md、proof.json。Root现仅授权F04一次收费（--scenario short --provenance-short --run，cap12/short55/total70），成功并亲审后另授权N46，不能自启后者；必须先核来源支持再付后续调用，保正常Finish后摘要完整推进，防误杀已提交阶段。V4独立29判据已落盘，完成其它静态/机制调查暂未核实新代码缺陷，等待当前真实证据后终局。
+- root针对c5完成一次云端只读preflight：183f1a5仍运行、双服务active、Gateway/微信connected、Web/Gateway活动0，工作树/依赖/三库无有效writer/compaction/Noting，配置/绑定/双静态与数据保护哈希已取得；production_model_requests=0、cloud_runtime_writes=0。回执.hermes-dev/noting-maintenance-v2/release/preflight-receipt.json，未stage/apply/stop/重启或改库。正式发布前仍须重复当时预检，不把当前空闲当将来保证。
+- c5 F04真实一次8请求正常结束，累计51；6个Noting工具结果均成功，无参数错误，合法Finish后Noting额外请求0。四条均补真实新progress；正常Snapshot→durable Idle full摘要→Framework→最终Main真实Show/History全完成，源Alex不变。root及独立V4分别亲读原Snapshot/childcalls/SQLite/原文，确认F04现收窄为matter新增12箱缺原采购单789edcb7来源，另一采购action已有该源、最终Main也准确History回读，但不自动补matter引用。raw .hermes-dev/noting-maintenance-v2/e2e/run-provenance-short-20261024-171957/，未人工改数据。
+- V4已依据白板I2/v2步骤2认可“保留仍需内容来源并补新增/变化断言来源”为原义务最小细化，不得读全History或盲堆旧source；新实证需该entry自身source可支持新数量等、保原生整链。root已向用户展示原因及精确英文候选句，异步询问仅改Task第二步一句；冻结Prompt未答不改。D不启动任何后续收费/N46，实际运行已自然退出，尚不具备终局门禁或发布条件。
+- V4当前c5完整审查已终结为27符合/1违规/1证据不足，独立六节与原始c5-short-independent-audit.json已交回root接收；修后按套件另派全新审查者，不要求原研讨审查者代签后继PASS。Validation仍未启动。root按delivery-evidence-review复核并将当前未完成/输入依赖/恢复步骤写final-delivery.md，goal保持active，不冒称用户暂停或目标完成。
+- D离线Request-ID观察hook6组通过，0新网络，ledger51/policy70/55/15不变。root澄清旧c5原send本来已捕获白名单头，8个实际http_response仅content-type，两个Request-ID头未提供；新hook只是显式null，不回填旧事件，也不改变请求/重试/预算。后续同前态fresh F04计划只准备，未批准新Prompt/配额/run。
