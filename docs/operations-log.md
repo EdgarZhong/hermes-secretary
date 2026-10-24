@@ -8,7 +8,7 @@
 
 **实现和验证：** 独立前端`f3a03ce32c0dd1e96719da210716caa2c1c7b8d4`已自动推送；四文件103定向测试、typecheck及build通过，439静态文件源码／逐SHA固定。后端四文件已亲审接收，正式RPC／原生AIAgent／SessionDB／fork／request assembly与外层fake SDK执行三文件41项通过、冻结10检查通过。并行runner共用XML路径，XML仅保留新文件22项，完整41以逐文件汇总日志为据。成功／失败均核业务表及父Main不变，覆盖真实压缩child当前tip、长正文／完整工具结果、effective root／prefill仅一次、native wire prefix相同、Profile／冷态／跨进程lease拒绝、工具调用不执行及无fallback。证据`.hermes-dev/ai-title-context-20261024/`，主会话SHA复核与接收见`root-implementation-review.json`；中间失败如实保留，未更改检查阈值。
 
-**自主收敛与当前限制：** 为取得一致快照，Main运行／跨进程DB Turn lease／压缩时明确报错，请空闲后重试；不等待、不排队、不以旧Web缓存或摘录回退。此为Agent自主收敛／待用户追认，已登记根CLAUDE。无可靠Prelude／durable Provider、custom engine或不支持detachment的transport同样明确失败。最终实现及预算修补均已上线并通过真实只生成验证，未修改生产标题。
+**自主收敛与当前限制：** 为取得一致快照，Main运行／跨进程DB Turn lease／压缩时明确报错，请空闲后重试；不等待、不排队、不以旧Web缓存或摘录回退。该限制原为Agent自主收敛，用户于2026-10-24明确追认：运行或压缩期间不触发AI标题生成，提示稍后空闲重试；已同步06规格并关闭根CLAUDE待追认项。无可靠Prelude／durable Provider、custom engine或不支持detachment的transport同样明确失败。最终实现及预算修补均已上线并通过真实只生成验证，未修改生产标题。
 
 
 **首版发布与真实验收：** `d771c1b32429446fdd56849f7a5f6bea0af67968`与Web`f3a03ce`已在首尔联合发布，约29.988秒。空闲预检、三库一致性备份及配置备份后源码由3338a25快进、Secretary目录原子交换；两服务实际d771c1b、active、微信connected，三库10保护表／配置凭据／绑定／Dashboard均前后一致，439前端文件逐SHA一致。云恢复点`/home/ubuntu/.local/state/hermes-secretary/release-20261024/20261024-ai-title-context-d771c1b/`，原始回执已私有收回。置顶完整上下文真实RPC携旧256预算返回不完整标题错误，无标题apply／业务Turn；原响应finish_reason未记，不能断言确切原因。保持上下文／模型／High不变、只提高8192的第二真实请求成功，12.833秒，保护表与配置保持。两次不是零失败单样本，候选标题仅存云私有与本地ignored。
