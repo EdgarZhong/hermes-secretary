@@ -414,3 +414,153 @@ N01旧阻断独立复核：业务observeControl在held入队前比较已知model
 供最终交付摘要的实质收敛：N02明确“成功读取”与“已展示快照写入”不可混同；N03明确旧画面保持不覆盖已确认Context不兼容失效；N04要求恢复覆盖当前实际图片组件读取而非只覆盖文本cards与折叠facet。均为冻结方向内工程收敛，不需改原规格。主会话应同步plan/CLAUDE并在最终汇报说明；当前三项全部未关闭。
 
 最终门禁结论：**不通过**。主仓`aed15db4d7175fdbf4b1ba6a4dece351255ce6cc`／Web`833d456e8c8a71f0388e902ac19dda7e5586eda8`的全范围审查完成，36/41符合、5/41违规，三个范围内阻断；实际APK按C17豁免/未验。不可进入Validation或宣称本轮完成；产品尚未改动，需主会话安排实现后由全新审查者重新提取全范围判据复审。
+
+# Verification v4：20261024-web-recovery
+
+## 1. 审查对象与结论概览
+
+审查者：全新独立 gpt-6.1-sol / high，未继承主会话实现解释，不派生。判据建立日期：2026-10-24。冻结原文：主仓 ba83d2b430e3448461dd7feb9f1acd8fc94c6cc9 的06 §0.4、§1.2现行替代、§1.3、§1.4（含R1–R10）、§1.13，以及08仅Profile／Files保持条款；该版本snapshot-index C01–C16仅定位，当前索引C17是唯一完成条件变更。候选：主仓06dc95c168dbeb0f8cb5fead0f597173176b073d；Web474cd4f61d6fe7b29917cdd07fb3f4f647401265。本轮索引及baseline：.autonomous/20261024-web-recovery/。本节与第2节首次落盘前仅阅读上述冻结原文、模板及两个必读Skill，未读实现、测试、旧报告、动态看板。历史报告追加前字节数及SHA由工具输出留存，未修改历史。结论：全范围43条审查完成，42符合／1违规（V4-32/N05）／0证据不足／0整项不适用；门禁不通过，不进入Validation。实际APK运行按C17本轮豁免／未验，Web实测、原生机制／单测、签名与内置资源不豁免。
+
+## 2. 独立要求清单与覆盖
+
+以下为只据冻结原文独立建立的起点；直接要求记“直”，由指定机制必然推出者记“推”。未以代码命名、测试预期解释规格。后续若修订必保留原判据与理由；当前无修订。表内核查位置均对应第3节同号行，尚待调查。
+
+| 条款编号 | 来源位置及要求 | 类型/适用范围 | 规格解释及必要不变量 | 符合判据 | 核查位置 |
+|---|---|---|---|---|---|
+| V4-01 | 06 §0.4、R6；C01/C10 薄客户端 | 约束／全部 | 直：只有白名单展示快照，服务端仍为事实源 | 无第二历史库、runtime账本、通用响应缓存、后台双端同步；缓存不省真实请求 | 第3节01 |
+| V4-02 | 08 §1/§3；R1/R5/R6 owner | 边界／跨Profile同ID、Files | 直：真实Profile／Conversation／server归属；推：晚到不得串owner | 发送／草稿／附件／恢复／配置owner稳定，Files固定单点且root/list/preview/download一致，不污染新聊天cwd及返回身份 | 第3节02 |
+| V4-03 | 06 §1.2现行替代、§1.3 | 行为／三页面与选择 | 直：New Chat导航无创建，打开既有对象原生历史，切换不取消Turn | 浏览器路线／Files返回保留；404只读确认安全退回不resume不存在对象；不批量激活其他Conversation | 第3节03 |
+| V4-04 | 06 §1.3、R5 | 行为／侧栏 | 直：缓存过渡、跨Profile分页保留、原地更新 | 每owner成功独立发布，当前可见旧页完整重读；不以first-page抹掉可见旧页；冷无缓存不误空，不闪全列表，不冒充实时运行状态 | 第3节04 |
+| V4-05 | R1；§1.4统一恢复 | 机制／全部触发 | 直：Controller唯一协调器；启动／重连同覆盖 | initialize/select/gateway.ready/online/visibility/Android统一入口；初始失败或未validated仍可恢复；并发同owner同连接合并dirty，不反复abort | 第3节05 |
+| V4-06 | R1代次与结果 | 机制／异步、取消 | 直：document/connection/epoch/recovery/demand各自生命周期 | owner/断线/epoch变更旧请求和提交失效；正常delta不重启；每资源ok/error/cancelled明确，合法空/unknown与失败retained分开 | 第3节06 |
+| V4-07 | R1重试 | 行为／网络与失败 | 直：retryable-error不可假idle/ready | 网络可用前台1/2/5秒封顶自动重试，断网隐藏暂停，新触发立即尝试；失败不靠下次gateway.ready，写操作不自动重放 | 第3节07 |
+| V4-08 | R1/R7 ready | 机制／当前可见提交 | 直：需求成功+历史流证明+React commit定位后ready | ready不由Promise fulfilled/connected/缓存或后台settled推断，需求变化重算，后台慢不阻塞；安全控制实时覆盖 | 第3节08 |
+| V4-09 | R2 REST范围读 | 机制／原生接口兼容 | 直：既有messages可选recovery参数任意可展示anchor | latest200/≤500，anchor非仅human，before/after有界；与offset/detail冲突400；每次完整cards，无缓存版本省正文，旧调用不变 | 第3节09 |
+| V4-10 | R2 coverage | 数据证明／窗口 | 直：owner/tip/lineage/边界/邻接/顺序/范围/digest | 展示字段及身份顺序SHA256，不混临时URL／请求时间，折叠详情另digest；只本轮内存有效 | 第3节10 |
+| V4-11 | R2 activate封套 | 机制／有能力后端 | 直：本轮REST receipt且server重读matched或全窗口替换 | 默认≤2窗且每窗≤500，detail12批，不静默漏可见；返回owner/epoch/cut/state/complete失败；capability宣告后才发参数，旧后端明确降级不能称通过 | 第3节11 |
+| V4-12 | R2 events.since | 机制／回放切点 | 直：events/latest/truncated/epoch同replay lock复制 | 不虚水位，锁外解码，字段兼容；open_requests不冒称DB共事务；并发stamp能验证原子性 | 第3节12 |
+| V4-13 | R3.1 SQL短事务 | 机制／真实数据库 | 直：一个显式只读BEGIN同conn读owner/spine/代表/范围正文 | UID退役、首次逻辑序、active/compacted/branch语义保持；多lineage先身份后窗口payload，不全量SELECT *；读不写索引/回填；事务后投影 | 第3节13 |
+| V4-14 | R3.2/7 D0/S/D1锁序 | 机制／恢复封套 | 直：attach后目标history_lock；DB→replay→DB不嵌套 | 无全局resume lock跑DB，history≤250ms等待，可重试不终止Turn；无锁内网络/图片/投影/等事件；短事务及大投影分别计时 | 第3节14 |
+| V4-15 | R3.3/4相容证明 | 机制／并发持久修改 | 直：比较D0原区间身份/顺序/内容、lineage/rewind/Turn owner | rewind/replacement/delete/压缩返回view_changed；append容许D1最新完整窗口，无法证连续coverage_gap；后端最多重做1次、前端最多2次立即重试，其后退避 | 第3节15 |
+| V4-16 | R3.5当前输出 | 机制／活动／idle／外部lease | 直：持久输出D1代表优先，退休UID不live复活 | 窗外只bounded身份归属查询；未持久输出必须当前Turn真实租约/起点支持；外部owner无正式快照runtime_unavailable沿relay重取，active不降级纯文字 | 第3节16 |
+| V4-17 | R3.6/末段 finite suffix | 机制／流恢复、epoch、溢出 | 直：有限B逐seq完整后缀，S后不断流 | staging按epoch/runtime/seq去重；ring截断先完整snapshot；held≤4096帧/8MiB超限明确缺口重建；缺帧不跳cursor，epoch/runtime/文档旧结果丢弃 | 第3节17 |
+| V4-18 | R3观察／投影拆分 | 机制／恢复中业务安全 | 直：observeControl与无副作用reduceProjection独立水位 | 观察先前进不跳过staging事件；审批撤销/受理/通知观察不暂停，无重复toast/通知/写 | 第3节18 |
+| V4-19 | R3.8历史失效 | 机制／正式writer与广播 | 直：session.info/Framework/complete及sessions.changed均入协调器 | 当前历史合并重读不读其他正文；rewind_count签名捕获同数replacement；正式rewind/edit/delete/compression writer完成后有原生广播，无任意mtime全历史轮询 | 第3节19 |
+| V4-20 | R4 viewport/facet需求 | 机制／滚动、展开 | 直：实际可见首尾持久别名/offset及facet source登记 | 需求不等新projection mount；离屏展开不阻塞，进入前校验；恢复前需求改动旧结果不满足新需求 | 第3节20 |
+| V4-21 | R4 bounded分页/覆盖 | 机制／深anchor及更早历史 | 直：latest和深anchor分有界窗，不offset追赶 | 首尾邻接重叠校验，冻结页尾，冲突整页重读；普通Load earlier同helper；loaded与validated分开，旧隐藏页不挡当前屏也不覆盖新页 | 第3节21 |
+| V4-22 | R4对齐公共前缀 | 行为／视觉连续判定，薄弱接线重点 | 直：真实左界与逻辑身份先对齐再比较实际可见内容 | 含正文/name/status/timestamp/已展示facet，折叠内容不参与；未验证/超时不得当anchor删除或前缀破坏 | 第3节22 |
+| V4-23 | R4深anchor到tail | 行为／非相邻窗口 | 直：明确分页间隔不是消息且不填全历史 | 动画只跨已验证挂载窗口/间隔；先将未验证中间页转间隔保留anchor；准备慢可先ready，不假报动画完成，准备好只执行一次 | 第3节23 |
+| V4-24 | R5 roster/配置 | 读取／当前owner权限 | 直：每轮重读roster及当前有效性；New Chat cwd依赖独立 | roster失败保展示不可创建；current chat不被无关default cwd卡住；标题真实metadata优先旧列表不回滚 | 第3节24 |
+| V4-25 | R5 Usage/Context/安全状态 | 读取／胶囊、pending、审批、发送 | 直：实际呈现scope及详情是依赖；安全状态不缓存 | 另一scope后台，unknown合法非error；模型兼容先失效；恢复中旧审批不可操作，受理事实只读核查不重发 | 第3节25 |
+| V4-26 | R5 Secretary/Schedules/Compaction | 读取／Orb及已开面板 | 直：当前显示所需字段本轮读取 | 折叠排期正文不阻塞；共响应不可伪分成功；相关配置/面板两入口完整，失败可恢复 | 第3节26 |
+| V4-27 | R5详情 | 读取／可见Thinking/tool展开 | 直：所有可见facet source rows在staging可读 | 12行批，无等React死锁，取消/替换明确结果，失败区别空并可重试，过时不复活rewind | 第3节27 |
+| V4-28 | R5 Files | 读取／root/list/text/media/第三方preview | 直：effect纳本轮代次，固定owner实读 | root/目录/metadata及呈现资源重取；不旧ObjectURL假新结果，第三方渲染失败明确；隐藏文件不下载；返回与深链接不串owner | 第3节28 |
+| V4-29 | R5登记可扩展性 | 机制／所有reader | 直：资源登记已安排/当前必需/结果覆盖 | mount及reconnect同覆盖；漏登记使恢复未满足的行为证据，非源码字符串断言/allSettled成功替代 | 第3节29 |
+| V4-30 | R6 DB/键/白名单 | 缓存／持久边界 | 直：独立secretary-display-v1，canonical服务origin+schema+profile+route | 不改drafts库，明确roster侧栏键；owner确认前精确候选不猜default；Timeline≤200+一可见窗，折叠正文不存；胶囊只展示统计；禁止项全部排除 | 第3节30 |
+| V4-31 | R6容量/失效/降级 | 缓存／边界 | 直：2MiB/16MiB/10会话、侧栏500/1MiB、TTL7天/LRU | 巨正文跳过整窗不假截断；schema/损坏/过期丢弃；quota等降级不挡网络；无缓存不等空历史 | 第3节31 |
+| V4-32 | R6写入/敏感性 | 缓存／异步与认证 | 直：已成功对账且展示后闲时合并≤1Hz，后台窗独立成功 | late IDB不盖真值，failed retained不刷新成功时间；404/owner消失删，rewind/压缩替换不旧窗merge复活；model/context失效；退出/认证失败停敏感展示清document投影 | 第3节32 |
+| V4-33 | R7不可变单次交接 | 机制／React/RenderStore | 直：业务实时state与visible/staged隔离，一次commitId快照 | 不共享可变binding导致深层泄漏；RenderStore仅合帧；旧画面保留，Timeline无remount/no clear，commit后同帧anchor定位才ready | 第3节33 |
+| V4-34 | R7滚动动画 | 表现／增长、输入、降动效 | 直：约240ms ease-out同reading owner，暂停instant/ResizeObserver抢位 | 当前anchor屏内位置保住后滚真实tail；delta继续，动画不续期末端最新；wheel/touch/key/拖取消不重播；无位移无动画，reduced-motion受控定位 | 第3节34 |
+| V4-35 | R7/§1.13胶囊动画 | 表现／普通更新及恢复 | 直：实际展示规范签名，首次/同值/换owner/切scope不伪闪 | 有效变化120ms高亮480ms淡回，600ms内合并不无限闪；不变open/selected/尺寸，不滚Timeline；reduced-motion短静态高亮 | 第3节35 |
+| V4-36 | §1.13统计语义 | 行为／Session/Latest/Context | 直：原生可信数值零有效，已知值增量保留，scope/owner隔离 | Latest为完成Turn不由差分编造，unknown不清旧有效值；冷Context可native估计，model/rewind失效而append/compaction不误失效，既有API读，不本地推token | 第3节36 |
+| V4-37 | R8 packet/信任 | 原生／APK，Web零行为 | 直：可信origin+主frame，hello/health不等ready | document/nativeRecovery/recovery/demand身份校验；onPageStarted旧文档失效，先recovering后ready仅当前代；普通Web无HermesAndroid零副作用 | 第3节37 |
+| V4-38 | R8 5秒/退避 | 原生／foreground/network/watchdog | 直：单调uptime固定5秒，重复resume/online合并不续期 | 等hello也不延长，ready且心跳有效才取消；超时已reload不可撤；connected不解除；冷首开正常，后10/15/20/30新document需ready，无JS独立兜底 | 第3节38 |
+| V4-39 | R8保护与目标 | 原生／认证、附件、通知 | 直：认证页不注入重载，Activity result保护原样 | 返回可信页hello恢复；通知目标跨reload保留且对应目标owner恢复完成才确认，当前页ready不能清他owner目标 | 第3节39 |
+| V4-40 | R9/C11–C16工程边界 | 约束／集成、保留能力 | 直：6.1实施门禁、不扩scope/后端服务/模型/生产 | 保留用户视觉/Pin/原生发送/编辑/认证/附件/通知；新模块分离facade不增加健康超标，现有规则阈值不放宽；提交push事实如实 | 第3节40 |
+| V4-41 | R10机制证据 | 验证／后端、Web、native | 直：全列场景有匹配版本有效证据，可复用不重跑无关大套 | 原子并发、真实双连接/跨进程正式writer、持续delta/lease、深anchor/详情/失败/owner/动画/5秒均覆盖，测试底座不绕正式路径，Python项目venv/run_tests | 第3节41 |
+| V4-42 | R10/C17产物与实测 | 完成条件／交付边界 | 直：Web实际结果+原生单测+内置签名资源匹配；实际APK本轮豁免 | 当前包签名及资源SHA与候选绑定；不启动模拟器；实际生命周期/相机/通知未验明确，Robolectric不冒称WebView实测，Web结果不豁免 | 第3节42 |
+| V4-43 | §1.4继承消息/呈现 | 保持／历史及流 | 直：真实消息投影、现有包装分类/临时命令/分页/阅读规则 | 恢复不合成历史、不丢重复Thinking/tool/正文、真实中断元数据不造卡；200分页、底部64px、用户视觉及正常人工阅读保持 | 第3节43 |
+
+## 3. 逐条实现证据
+
+各行承接第2节同编号的冻结原文、独立不变量、适用条件及判据，构成“原文→判据→正式路径→方法/观察→判定”的逐条链。路径默认Web仓`/Users/edgar/code/hermes-secretary-web`，`B:`为主仓`/Users/edgar/code/hermes-secretary`；`E`为主仓`.hermes-dev/web-recovery-20261024/`。证据简写：`F`=frontend/review-final-tests.log（12文件223项）；`N`=frontend/n01-final-tests.log（5文件113项）；`Q`=frontend/n02-n03-final-tests.log（3文件108项）；`I`=integrated-v4-tests.log（4文件52项）；`P`=presentation/frontend-final.log、cold-handoff-fix-final.log及capsule-baseline-review.log；`A`=presentation/android-final.log及ForegroundRefreshTest/AndroidBridgeStateTest/HermesBootstrapTest.xml（22+13+5=40项）；`B`=backend/rev10-final-tests.log（39项）、targeted-tests.log与native-stream探测；`V4`=verification-v4/。计数存在重叠，不相加。版本/影响复用边界见第4节，不冒称上述套件全部在当前候选重新执行。
+
+| 条款编号 | 正式入口及完整关键代码路径 | 方法、输入、配置及实际证据 | 证据位置 | 判定及理由 | 证据边界 |
+|---|---|---|---|---|---|
+| V4-01 | Controller.pageRecoveryOwner→ControllerPageRecovery→DisplayCache；既有REST/WS native seams | 阅读两仓冻结至候选的产品差异及新增模块；查独立展示DB/白名单、每轮实读、原草稿库独立 | controller.ts:172–175/487–527；display-cache.ts:4–276；F/Q；V4/version-audit.json | 符合；无第二SessionDB、通用响应库、持久事件cursor、BFF或写重放 | 认证展示失效单列32，不能以此结构符合覆盖N05 |
+| V4-02 | ProfileEnvironment→Controller.select/owned；core/files→Files→authorizedFile | 静态追Profile、draftKey、transaction owner和fixed FILES_PROFILE；F/P跨Profile同ID、迟到/返回/deep-link | profiles.ts:13–46/86–132；controller.ts:715–779；core/files.ts；Files.tsx:36–76/159–236 | 符合；固定Files default集中一处；root/list/preview/download同owner，聊天cwd/附件/模型配置不重归属 | 保持08授权边界，无新Workspace或跨Profile历史权 |
+| V4-03 | initialize/select/openConversation→attachConversation→summary存在校验→resume/activate；Files Back | F正式404不resume、回收runtime重新resume、New Chat不创建；读真实push/popstate、首发newCreate/idempotency_key | controller.ts:487–527/715–815/1120–1166；controller-page-recovery.ts:424–455；F/P | 符合；仅当前Conversation绑定；导航不发Turn/取消旧Turn，404安全退New Chat | 原本浏览器原生Back/Forward及阅读内存契约保持，不作设备手势实测 |
+| V4-04 | retain/readCache→SessionList.refresh/read→present/commit→Sidebar | read重读每owner已加载offset页、并发独立accept、旧画面loading不假空；F/P列表分页和保视觉；Q成功proof | session-list.ts:17–77；controller-page-recovery.ts:226–247/329–349/644–651；App.tsx:699–765；F/Q | 符合；不first-page清掉屏内旧页，不批量正文/activate，缓存去运行字段，标题revision保护，更新无整列表清空 | auth错误传播是32/N05，列表正常成功行为与缓存写时机本身已修 |
+| V4-05 | initialize/select/gateway.ready/online/visibility/Android→start→PageRecovery.run | 逐入口读正式接线；F/N/I实际Controller/App；唯一Coordinator且同owner/connectiondirty合并 | controller.ts:487–527/715–779/1330–1358；controller-page-recovery.ts:117–129/176–186；page-recovery.ts:104–123；F/N/I | 符合；初次无validated亦恢复，不凭binding跳过，所有已登记资源安排，短触发不abort饥饿 | N05是已观察认证事实未清理，不能由主干统一推断所有错误已闭合 |
+| V4-06 | PageOwner/pageOwnerKey→connection/context/resourceKey/cancel；Controller epoch/owner | F同epoch新连接、epoch换runtime、A→B→A与晚REST/IDB，读每资源version/current检查 | recovery-demand.ts:3–84；page-recovery.ts:61–155；controller-page-recovery.ts:187–198；F/Q/I | 符合；document仅内存、connection递增、recovery请求代次、demand仅实际依赖变化；正常delta不重启 | 已受理后台事务保原owner；对显式auth的失效漏接单列N05 |
+| V4-07 | read/results→requirements/run→retryable-error/scheduleRetry/localFailure | F空数组/zero/unknown/取消、初次失败及局部1/2/5重试/离线隐藏；I图片503自动重试；失败结果不当ok | page-recovery.ts:139–250；usage-view.ts:71–129；HistoryImageReader.read；F/Q/I | 符合通常读取结果与自动重试；retained不使required成功，撤需求解除慢读 | auth不应作为通常503重试，32/N05独立阻断 |
+| V4-08 | resources→reconcile→commitId→App/reading/Files layout→acknowledgeCommit→ready | F/I正式App冷/暖/迟mount/local commit、P读锚点、Q菜单/侧栏门、I图片门；亲读ready条件 | page-recovery.ts:158–215；controller-page-recovery.ts:560–568/680–699；App.tsx:685–707；Files.tsx:214–223；F/Q/I/P | 符合当前可见依赖与显示commit屏障；backgroundSettled单独，不等隐藏慢请求/Turn结束 | 普通隐藏失败不挡ready正确；认证失败的全document例外未接，32记违规 |
+| V4-09 | B:GET messages→_get_recovery_messages→selector/read_view/project_view；readRecoveryHistory | 真FastAPI+SQLite latest1400仅转200、任意assistant深anchor仅5；400参数冲突、旧接口完整保持 | B:hermes_cli/web_routers/sessions.py:788–890；hermes_state_recovery_view.py:24–45；tests/hermes_cli/test_recovery_view.py:37–148；B | 符合；新路径完整cards、有界200/≤500，非human-only around，无缓存版本省正文 | 原旧REST默认500兼容；新恢复latest200 |
+| V4-10 | read_view._read_window→project_view coverage/digest→HistoryWindows.accept/replace | 查first/last/邻居/order/position/returned/total，SHA256规范cards；REST/RPC真实fixture逐字节一致 | B:hermes_state_recovery_view.py:139–277；history-coverage.ts:12–58；V4/version-audit.json.fixturePair；B/F | 符合owner、lineage/tip、窗口证明与独立detail_digest；前端仅本轮内存索引 | 图片引用沿既有确定授权路径；digest不代替跨资源全局事务 |
+| V4-11 | resume能力宣告→attachConversation→REST receipt→activate recovery_view→parse_request/activate_payload | 后端正式handler/契约测试、前端原生fixture；最多2窗≤500/detail≤12，matched服务端重读，否则全窗replace；legacy显式失败 | B:tui_gateway/recovery_view.py:22–51/327–387；server.py:3047；controller-page-recovery.ts:455–525；B/F | 符合；能力协商后发新参数，receipt源于本轮REST，不静默裁可见字段；更多facet通过后续12批处理 | legacy保旧能力，但不被当新版一致恢复交付通过 |
+| V4-12 | B:session.events.since→event_replay.read_replay_cut | 读同锁复制bytes/events/latest/truncated/epoch、锁外解码；真实并发stamp及读间stamp测试，旧字段不删 | B:event_replay.py:133–143；methods_session.py:2193；test_tui_gateway_event_replay.py:192–325；B | 符合；事件与watermark同原子cut，无latest虚水位 | open_requests保持独立原生snapshot，未宣称DB共事务 |
+| V4-13 | B:read_view→_snapshot同conn→lineage/display CTE/bounds/details/identity | 读真实只读BEGIN实现与SQL；第二连接append仍旧snapshot、multi-lineage/UID退役/branch/旧identity、深窗payload计数 | B:hermes_state_recovery_view.py:47–255；hermes_state_timeline._snapshot；test_recovery_view.py；B | 符合；先身份顺序后有界payload，不SELECT *物化全部历史；读不补索引/写身份，投影在事务后 | legacy身份回退可在SQL读取必要展示字段，非Python整库正文镜像 |
+| V4-14 | B:activate attach→_capture history_lock→D0→snapshot S→D1→release→project | 真实history锁250ms timeout、DB/replay/global resume锁不嵌套断言；短读与投影计时独立 | B:tui_gateway/recovery_view.py:113–156/289–298/358–387；inflight_output.py:97–114；B；backend/read-timing.json | 符合；不拿写锁、网络/图片/投影在锁外，目标锁有界等待不终止Turn | read36.8ms/projection117.6ms为本机1200行样本，非SLA |
+| V4-15 | B:_proofs/_same_history/_coverage→activate最多两次；前端attempt<3 | 真独立进程正式replace/rewind/压缩/delete与独立连接append；重复改写失败、append超窗coverage_gap；非单锁假竞态 | B:tui_gateway/recovery_view.py:60–64/159–169/278–322；tests/tui_gateway/test_recovery_view.py:97–163/403–414；controller-page-recovery.ts:465–485；B | 符合；旧区间字段/身份/顺序、lineage/rewind被破坏不得接受；正常append可有限完成 | 持续破坏可失败退避，不为5秒放松证明 |
+| V4-16 | B:_native_source/_turn_context/_turn_proof/_clean_snapshot→D1身份/lease | B39活动真实source db/UID/row/holder、工具occurrence、稳定rewind/replace/delete旧idle尾；正式loopback SSE活动及终态probe | B:recovery_view.py:87–113/172–276；backend/rev10-native-stream-probe.json、rev10-settled-proof.json；B | 符合；D1持久代表优先，退休UID不复活；未持久输出有当前Turn租约/source；外部owner缺输出明确runtime_unavailable | 模型网络是本机合成SSE而非真实供应商；真实native gateway/DB/lease链未绕过 |
+| V4-17 | snapshot+read_replay_cut→validateEnvelope/installCut→suffix/held→正常event | B ring截断/持续delta/epoch；F完整suffix/held逐序、溢出及新owner；查4096/8MiB上限 | controller-page-recovery.ts:165–173/526–558；B:recovery_view.py:300–318；F/B | 符合；先snapshot再有限B逐seq，B后held有序续接，不跳游标、不等流静止 | 真实缺口明确失败重建，不能以纯assistant回退 |
+| V4-18 | Controller.event→observeControl→held；reduceProjection与cursor独立 | 查业务观察先执行、replayed不重复effects，staging仍重新reduce；F审批取消即时、held正常delta不漏、通知原去重 | controller.ts:1168–1236；controller-page-recovery.ts:148–163/526–558；controller-event-effects.ts；F/N/B | 符合；控制观察去重与投影水位分开，恢复中不暂停安全事件/受理/通知观察 | 非HTTP认证安全事实传播另N05，不能被此事件结构符合掩盖 |
+| V4-19 | session.info/Framework/complete/sessions.changed→startRecovery→writer通知/watcher | 沿原正式writer逐项：rewind_count、replace/user edit通知、delete行集合、compression计数/lineage、事件；真实跨进程Profile信号测试 | controller-event-effects.ts；controller.ts:1168–1207/1302–1324；B:history_notifications.py；change_watcher.py:125–207；B/报告backend | 符合；当前历史合并重读，不全库正文或任意DBmtime轮询；同数替换不漏失效 | 外部裸SQL不属支持实时writer；best-effort信号不是一致性版本 |
+| V4-20 | useTimelineReading.reportDemand→viewport/facet→PageRecovery.setDemand→reader key | P/F滚动/展开/收起/离屏与staging详情；I图片真实viewport unknown/visible/hidden，旧读代次current | chat-presentation.tsx:169–188/313–334；page-recovery.ts:61–79；controller-page-recovery.ts:405–423；HistoryImage.tsx:25–86；F/P/I | 符合；DOM旧画面可登记，无须新projection先mount；离屏撤阻塞、进入局部校验 | 几何测试受控，真实连续视觉留Validation |
+| V4-21 | HistoryWindows loaded/verified/invalidate/view；readWindows深anchor；loadEarlier | B1400行深anchor、F/P多窗/邻接/重叠/旧页；查普通loadEarlier同recovery helper、按anchor before200 | history-coverage.ts:12–59；controller-page-recovery.ts:512–526/689–706；B/F/P | 符合；不offset追赶，不合新旧offset；旧隐藏窗后台验证且不回盖当前主投影 | loadEarlier以首窗口或显式gap边界的持久身份定位；不从offset=0下载深处间隔 |
+| V4-22 | visibleWindowCompatibility→timelineSourceIdentities/timelineVisibleSignature→reconcile | F有序A/B重排、同UID正文/Thinking、tool aliases、expanded facet、左界变化；缺/歧义输出verified=false | history-coverage.ts:61–124；presentation-signature.ts；controller-page-recovery.ts:560–568；F/P | 符合；先边界身份对齐再有序可见签名，不仅ID；未证明不冒称已删除/前缀破坏 | 局部有界前缀结论不声称整个Conversation前缀证明 |
+| V4-23 | index.clear→current verified view/gaps→TimelineMessages分页控制→reading handoff | 查非相邻窗显式gap、旧未验证中间页不进入新view；P/F深anchor/tail及local延迟motion证据 | controller-page-recovery.ts:478–490；history-coverage.ts:38–58；App.tsx:138–146；chat-presentation.tsx:252–310；F/P/I | 符合；gap非消息，保anchor DOM/offset，不填全历史，准备/局部提交不取消合法一次motion | ready不等非可见页/240ms运动；实际顺滑度仍独立Validation |
+| V4-24 | profiles resource→roster/nativeLaunchProfile；defaultCwd→ProfileEnvironment；protectTitle | F roster失败/初次未validated/不可用Profile、New Chat配置、metadata及title revision；读实际路由权限 | controller-page-recovery.ts:268–301/321–325/392–396/424–454；profiles.ts；F/N | 符合；每轮校owner，失败不授创建权限；chat不等无关default cwd；旧标题不回滚新事件 | 普通读取失败事实保持；认证被字符串化的同类风险由N05整改要求覆盖 |
+| V4-25 | usage resource→UsageReadFacts；pending resource→native snapshot；compaction→context | Q原生Session/Latest scope及HTTP失败/unknown/zero，F pending/approval即时，I实际胶囊/Context；读contextRevision与不兼容窄退役 | controller-page-recovery.ts:351–380/572–607；controller.ts:1914–1941；usage-view.ts；F/Q/I | 符合正常需求与安全运行态不缓存；另一scope后台，合法unknown非失败，已知不兼容先失效 | 各reader明确认证失败清document问题不在此行关闭，见32 |
+| V4-26 | secretary/schedules/compaction registered→readSecretary/readSchedules→Secretary open需求 | 查Orb和panel字段、本轮shared响应真实成功/错误；F/N/P开关与慢面板撤需求 | controller-page-recovery.ts:359–380；controller.ts:1822–1875；App.tsx:841–849；F/P | 符合；可见字段本轮重读，未展开表正文不阻塞；不将shared响应伪拆成成功 | 本轮未改Scheduler产品/后台Noting契约，不扩审07并行任务 |
+| V4-27 | facet rows→selected staging history→detail batches12→commitHistoryView | 查staging无React effect依赖、detail精确UID/row匹配、数量/未deferred校验；F/P失败/取消/过时rewind | controller-page-recovery.ts:405–423；HistoryDetails；F/P；B details bounded tests | 符合；真空与未加载/失败分开，可重试，旧详情不复活被替换行 | 正常交互原hydrateDetails保留；HTTP认证传播需纳N05全reader边界 |
+| V4-28 | Files registered files-current→default-cwd→list/read-text/authorizedFile→preview stage/renderer→layout ack | P/F不同owner/text/blob/目录、renderer失败明确阻断、初读与online；查Files root/path/preview resource key与Abort、真实blob重取 | Files.tsx:46–76/159–223/259–270；FileViewerPreview.tsx；files-profile.test.tsx；file-viewer-recovery.test.tsx；P/F | 符合通常Files完整重读及失败ready边界，不旧ObjectURL当新结果，不下载隐藏文件 | binary认证401丢typed信息的静态路径同N05；本行不称认证安全全通过 |
+| V4-29 | recoveryResourceRules/register→expect files-current；组件动态image/Files→same page owner | F故意漏files reader及重挂/代次；I真实App图片503、解码失败、同URL、自动重试/局部屏障及隐藏慢图 | recovery-resources.ts；page-recovery.ts:82–96；controller-page-recovery.ts:114/321–403；HistoryImage.tsx；F/Q/I | 符合需求登记扩展机制，非仅源码字符串/allSettled断言；图片N04已接正式入口 | 每个新增reader仍须明确认证事实处理，不能靠普通resource契约免除N05 |
+| V4-30 | DisplayCache keyFor/sidebarKey→displayRows/displayCapsules/displaySidebar | Q fakeIDB、禁binary/runtime/审批/command/流草稿、旧side字段读过滤；核origin scheme/有效port与APK真实https origin | display-cache.ts:4–137/200–225；MainActivity.kt:112–139；Q/F；V4 audit | 符合独立DB、owner-key、白名单及≤200持久cards，未确认owner不借default | Inline image binary存在时跳过Timeline缓存，保胶囊；不缓存Blob |
+| V4-31 | validate/get/queue/flush→TTL/LRU/容量→内存降级 | Q真fake-IDB transaction quota、损坏capsules/rows/schema/TTL7天/10条/超2MiB；源码核总16MiB与side500/1MiB | display-cache.ts:138–276；display-cache.test.ts；Q/F | 符合；超大整窗跳过无假截断，存储失败不挡网络，无缓存不假空 | 不承诺浏览器存储耐久或离线同步 |
+| V4-32 | 成功proof→commit/layout/ackDisplay→cache；authenticationFailure→clearSensitive，但SessionList/图片HTTP绕过 | Q N02成功侧栏待layout、隐藏晚到、失败TTL/旧proof/owner；Q N03冷cache/迟IDB/旧RPC不复活。独立V4侧栏visible/hidden401与App图片401三反证失败 | controller-page-recovery.ts:100–106/249–263/644–699；session-list.ts:54–58；history-image-recovery.ts:57–58；api/files.ts:17；Q/I；V4/auth-counterexamples.log | **违规N05**；成功写入/Context/404/IDB分支已修，但HTTP明确401被普通Error或非required路径吞掉清理语义，敏感rows仍2且cacheAuthorized=true | 503保留是允许行为；仅明确认证401已反证，真实文件403须保持域错误，不能一律登出 |
+| V4-33 | cloneDisplay/present/retain/commit→RenderStore→App layout | 亲读structuredClone与visible/source/staged隔离；F可变binding mutation不泄漏、N菜单proof invalidation、I图片新stage不借旧commit | controller-page-recovery.ts:43–52/203–247/680–699；render-store.ts；F/N/Q/I | 符合不可变展示/业务即时安全覆盖主干，单commitId发布，Timeline不重挂 | N05是未收到明确认证失效的安全清理，不因隔离结构正确而豁免 |
+| V4-34 | useTimelineReading anchor/layout→handoff tick→输入cancel/late children observer | P43与F/I实际App冷有/无cache、暖motion/local、growing tail、人工取消/reduced；阅读source逐分支核 | chat-presentation.tsx:151–365；recovery-handoff.test.tsx；app-page-recovery.test.tsx；P/I/F | 符合约240ms有限时长到真实末尾，不被following/ResizeObserver抢位，用户取消不重播，layout后ready不等动画 | jsdom受控几何只能机制证明，真实视觉由下一门禁检查 |
+| V4-35 | Utilities→UsageSummary/ContextIndicator→useValueUpdateHighlight→theme animation | 查规范实际显示字段签名、hasData首次baseline、owner/scope/open重建；P/I同值/连续/真实变化/降动效 | App.tsx:359–435；indicators.tsx:16–34/90–101/126–143；theme.css末10行；P/I | 符合120ms亮+480ms淡、600ms内合并；不变真实open/selected、布局/Timeline，不以observed_at或引用触发 | source/window/估算信息仅按实际展示字段变化参与，不以网络次数制造提示 |
+| V4-36 | UsageViews/usage-counters→native saved anchor/API→Utilities→context retirement | Q/F native counters/zero/unknown/Latest完成Turn、cold估算；N03 model/provider/rewind窄退役及晚IDB/RPC/seq不复活、合法unknown保持 | usage-view.ts:30–129；usage-counters.ts；controller.ts:1237–1250/1914–1941；controller-page-recovery.ts:572–642；Q/I | 符合；不差分造统计，不新API；普通append/compact保合法估计，known model/rewind失效直至新可信读 | N03原问题独立闭合，未把所有运行缺字段当失效 |
+| V4-37 | AndroidBridgeTrust/parser→MainActivity packet→ForegroundRefresh；JS bridge→same start | A40/JS桥，检查trusted https主frame/文档/native/recovery/demand；hello非ready/health仅存活；网页无bridge零行为 | api/android-health.ts；AndroidBridgeState.kt:6–91；MainActivity.kt:75–139；ForegroundRefresh.kt:97–139；A/P | 符合身份与信任机制；当前轮必须先recovering再对应ready；onPageStarted清旧document | C17实际WebView运行未验；原生不替代上游页面依赖正确性 |
+| V4-38 | resumed/startRecovery/hello/recoveryState/checkHealth/reload | A22逐例4.9秒+心跳、5秒硬deadline、online/resume合并、无JS/旧包、10/15/20/30及新前台重置 | ForegroundRefresh.kt:42–137/192–217；ForegroundRefreshTest.xml；A | 符合单调固定5秒，等hello/owner切换不续期，connected不清deadline，超时先赢；首开不多reload | Robolectric证明native状态机，不冒称实际后台生命周期 |
+| V4-39 | ActivityResults/外部auth→ForegroundRefresh；NavigationMailbox→JS target navigate→owner ready ack | A相机/file ActivityResult registry、external page、通知target/mailbox/HermesBootstrap；F等待目标React ack | ForegroundRefresh.kt:42–81/141–182；AndroidBridgeState.kt:130–150；MainActivity.kt:70–107；controller-page-recovery.ts:102–108/141–147；A/F | 符合保护与通知目标保持；当前页ready只允许派发，目标owner完成才清目标 | 未实际登录/摄像头/通知点击或设备验收，C17豁免明示 |
+| V4-40 | frozen diff/分包报告→sibling集成→冻结十检查→build/push事实 | 读适用AGENTS/README/CLAUDE/index/baseline/plan及三包报告，核无生产/模型/设备操作，现有呈现/Pin/原生写入语义差异未改 | B/主仓AGENTS；reports三包；review-staged-ten-checks.log；V4/version-audit.json；两仓HEAD | 符合过程/范围与阈值保持；facade2518行低于原2556，新模块分离；他人dirty未纳本轮产品 | 普通继承回归不等于全部历史重验；身份认证语义当前N05另阻断 |
+| V4-41 | R10矩阵→真实DB/native/replay→Controller/App协议fixture→原生单测 | 独立读测试底座和预期，核B真实跨进程writer、有限delta/lease、F有界/失败/demand/owner、Q/I影响补证、A时限。V4新反证暴露auth漏接 | 第4节版本审计；tests/hermes_cli/test_recovery_view.py、tests/tui_gateway/test_recovery_view.py；F/Q/I/P/A；V4/auth-counterexamples.log | 符合验证方法和范围覆盖职责；不把helper绿测或大量计数掩盖N05失败 | 本行评价证据方法，不声明所有能力通过；Web用户结果尚须独立Validation |
+| V4-42 | npm android:build内置dist→signed APK→资源逐SHA；C17实际运行豁免 | 独立读取当前APK32086913字节、SHA256 027a411c…539254，unzip439个assets/secretary逐SHA与dist一致、无mismatch；签名v2日志与build | apk-v4-manifest.json、apk-v4-signature.log、android-build-v4.log；V4/version-audit.json | 符合本门禁构建及验收边界；真实APK仅用户明确豁免/未验，不启动模拟器；R8单测仍适用 | Web实际结果是后续Validation及最终交付条件，尚未完成、不由本行或构建冒称通过 |
+| V4-43 | native messages→sourceTimeline/reconcileLiveHistory→MessageSlot/Disclosure/temporary；全局activity | 核恢复差异未改真实role/content/UID、原wrapper/display_kind/terminal规则、64px/Pin/approval/patch表现；B cards46/timeline6/inflight/terminal回归与F/P | projection.ts（本轮未改）；App.tsx:138–350；controller.ts；session-recovery.ts；B/F/P | 符合继承消息及呈现保持；无伪历史/terminal提示，Thinking/tool/Reminder/Framework/临时slash仍原语义，人工阅读不被正常delta强拉 | 无真实供应商调用/新模型摘要证明要求；实际视觉仍由下一门禁 |
+
+## 4. 核心目标及验证方法审查
+
+**全范围43条，42符合、1违规（V4-32/N05）、0证据不足、0整项不适用。门禁不通过，不进入Validation。** 实际APK运行子场景是C17用户明确豁免／未验；它不使R8机制、原生单测、签名资源或Web实际结果要求失效。Web实际操作属于随后独立Validation及最终交付，当前未宣告完成。
+
+核心纵向路径已经正式落实：唯一恢复owner→roster/原生存在校验→当前Conversation有界REST完整receipt→activate D0/S/D1和native source/lease证明→完整输出snapshot与有限cut后缀/held逐序对账→不可变可见commit→React锚点/Files采用确认→ready。持续delta不要求结束；深anchor和tail可以分窗且有真实gap；隐藏旧页及未展开内容不阻塞当前。R5领域reader、Model/Thinking菜单、Files渲染、历史图片均已进入同一协调器。当前核心安全缺口是认证失败事实无法从部分正式HTTP路径抵达全document投影清理。
+
+反证与测试依据审查：
+
+1. 失败与合法unknown/zero的区分由R1/R5、§1.13直接要求。Q/F真实Controller `UsageReadFacts`、补充HTTP503、当前scope选择证明不是“Promise完成即成功”。图片503/解码失败正式App路径由I覆盖。缺失reader测试通过实际撤掉files-current观察未满足，不是源码字符串断言。
+2. 历史一致性依据R2/R3，B通过真实FastAPI/SessionDB/handler，并在D0/S/D1选定时点驱动独立进程正式replace/rewind/archive_and_compact/delete、另一连接append。wrapper只控制并发时点，不假SQL/假内存writer。源码核DB/replay锁不嵌套与250ms等待，持续native stamp可有限返回；read/projection分别计时。当前native SSE证据使用正式Dashboard WS/REST/真实native Turn/SQLite/租约，只把供应商替为回环合成SSE，证据明确外部模型调用0。
+3. 所有reader成功仍可能错误处理认证。V4依据原V4-32主动反问：明确401如果发生在SessionList包装或隐藏资源／图片blob路径，是否调用clearSensitive？三个实际反例均失败。可见side phase=retryable-error、隐藏side phase=committed、图片phase=retryable-error；三例retainedRows=2且cacheAuthorized=true，图片仍blob:attachment-1。隐藏side未模拟React ack，不能冒称其ready=true，但已观察该认证事实未取消恢复/缓存资格。此前直接调用authenticationFailure的绿测试只证明helper，未证明HTTP正式接线。重复一次探针仅为补精确状态日志，未扩无关套件。
+4. Q/I已覆盖N02/N03/N04修复影响：侧栏必须精确成功proof与实际投影/layout相匹配才写，失败/旧resource不续TTL；已知不兼容Context窄失效且迟IDB/RPC/旧seq不能复活；图片当前viewport需求、同URL本轮授权GET+decode、成功stage经full/local commit采用，hidden慢不挡、owner/StrictMode及URL释放有机制证据。没有以旧缺陷清单代替本次全范围审查。
+
+证据版本与复用：
+
+- 本审查开始及独立反证均固定主仓06dc95c168dbeb0f8cb5fead0f597173176b073d／Web474cd4f61d6fe7b29917cdd07fb3f4f647401265，产品只读。E/V4/version-audit.json记录逐源码SHA、探针SHA与两仓HEAD；主仓产品仍dd9a4c5等价，文档/07/运维等他人dirty未改。历史报告前133452字节的SHA256仍6ccf49af8675d7f3f3e2773c9d4fb3e9488bc5fe44b1c6a884a035482e623b78，逐字节保留。
+- integrated-v4 manifest24/24匹配，Q的modified+observed16/16匹配；图片早期manifest16项14同，改变的adapter/cache由Q及当前I52补集成。frontend/source-manifest27项25同，App及App测试由当前I代替；N01早期11项5同，未把N113整体冒称当前重跑，配置机制与后继adapter/controller修改按Q/I及源码差异核。post-verification13项10同，差异由Q补；P最早26项17同，Kotlin/JS桥/Files/preview/theme/signature未改可复用；reading/indicator后续manifest与P43、baseline及当前I补足影响。
+- backend REV-10 manifest11项10同，唯一不符为动态plan文字；10项产品/测试/原生依赖匹配，B39有效。其余未改接口复用replay17、watcher2、cards46、timeline6、原inflight14及terminal21、通知4、生成契约精确一致1的各自日志，不合计总数。catalog孤立旧review.summary在冻结树同runner已复现，仍属范围外旧失败，不称全仓绿。
+- A三XML测试数22/13/5、failures/errors/skipped均0；Kotlin/bridge源码与P manifest匹配，复用有效40项，不为审查重跑Gradle。APK独立读取32086913字节，SHA256 `027a411c5aeb1d0d44a93750a4da4274f95debc528438a17a448085c88539254`，439内置资源逐SHA匹配dist；签名日志v2有效、公钥指纹保持，build含tsc/Vite与正式Android构建。没有安装或运行APK。
+- 本次只新增认证定向反证（2文件3项失败，另14个从底座拷来的非目标测试通过filter未运行），未复跑无关大套、未UI/生产/设备/模型/提交。真实用户画面连续、动画观感和Web断线结果仍需在门禁通过后独立Validation，不以jsdom几何或native单测替代。
+
+## 5. 发现、整改优先级与范围外项
+
+| 问题编号 | 对应条款/代码位置 | 触发路径与事实 | 影响及阻断理由 | 建议修复与关闭证据 | 当前状态 |
+|---|---|---|---|---|---|
+| N05 / P1 | V4-32；冻结06 R6“退出／认证失败时停止展示敏感缓存并清本document投影”；session-list.ts:54–58、controller-page-recovery.ts:100–106/249–263；history-image-recovery.ts:57–58；api/files.ts:17 | 正式Controller冷读成功后online侧栏GET /api/sessions=401（sidebar可见／隐藏）；实际App已展示图片后同URL下一轮GET=401。三例均保两条敏感历史且cacheAuthorized=true；图片仍blob旧源。SessionList将RpcError字符串化，图片/authorizedFile转普通Error；隐藏错误不触发required失败回调 | 认证失效事实未抵达已有cancel/stop/clearSensitive；直接helper测试绿不能证明正式读路径。缓存及retained不能在明确认证失效后继续展示，范围内阻断 | 主会话统一传输观察提案见§6。关闭须正式visible/hidden侧栏、图片、Files blob401清敏感投影/取消proof且迟到不复活；503仍保留可重试，真实文件403不登出；旧token/已取消请求401晚到不清新身份 | 当前474cd4f已反证，未修；V4/auth-counterexamples.log 3失败；方案原则已认可，待新候选全新全范围复审 |
+
+范围外：旧catalog `review.summary`孤立事件失败有冻结树同runner复现，保持历史，不扩为本轮整改。未发现需改变产品语义、权限、完成条件或重新冻结的其它事项。当前N05属于既有R6明确要求的接线遗漏，不能通过弱化“认证失败”原判据关闭。
+
+## 6. 修复与独立复审
+
+本审查全新独立v4，完整读两个必读Skill，先仅据冻结原文+C17建立43条判据并落盘，交回约定里程碑，后读适用指导/索引/baseline/plan/源码/证据/旧报告；第2节判据未变。报告六节与表列保留，旧三轮133452字节原样；本次未退回补审。产品在全范围审查期间冻结，未在原候选移动后偷用旧证据。
+
+旧问题独立关闭复核：V01当前scope补读失败不假ready；V02普通有效Usage/Context成功事实可合并白名单缓存、失败不续TTL；V03/ N01实际Model/Thinking共享reader、配置观察早于held时失效旧proof、成功本地配置同入口；V04/REV-09晚mount及同轮local commit不抢滚尾；REV-10当前原生source/UID/lease证明真实普通Web Turn；这些正式路径与当前影响证据均已核，没有重开旧问题。
+
+| 研讨/复审项 | 原判据与初步发现 | 主会话提案及理由 | Verification评审/是否改变规格 | 实现版本与关闭证据 |
+|---|---|---|---|---|
+| N02旧项 | 原v3 R6只成功对账且展示数据写；本次原V4-32保持 | 精确sidebar rows/roster/context成功proof，当前投影匹配且ready/layout后写，hidden晚到独立成功不挡ready，同owner重取作废旧proof | 原R6方向保持，无规格变化；独立读当前实现/失败TTL/迟到/同owner反例 | 474cd4f；adapter sidebarStage/acknowledgeDisplay，Q108及I52匹配版本，原N02关闭 |
+| N03旧项 | 原v3 §1.13/R5/R6 known model/provider/rewind失效；本次原V4-25/32/36保持 | 已知失效窄覆盖Context，其余Timeline/anchor保留；fresh仍统一commit，冷cache身份确认及IDB/旧RPC/seq防复活 | 原判据保持，未知identity/普通append/compact不清合法估计；未增新产品失效规则 | 474cd4f；contextRevision/retireContext/UsageViews.observeIdentity/cache revision；Q108/I52及当前源码，原N03关闭 |
+| N04旧项 | 原v3通用恢复组件reader；本次原V4-20/28/29保持 | App传唯一recovery及scope，真实viewport图片登记，授权GET+decode、stage经full/local commit采用，自动重试/hidden/owner/对象URL清理 | 与R1/R4/R5/R7一致，非新整页循环；不等所有图、不以remount恢复 | 474cd4f；HistoryImage+HistoryImageReader+App正式props；I52与当前图片源码匹配，原N04普通失败/重连/呈现机制关闭；其HTTP认证传播另记新N05 |
+| N05本轮新项 | 原V4-32及R6；三条正式401反证失败后先落报告再反馈，未改判据迁就实现 | 主会话亲读后端鉴权/文件拒绝路径，提在现有HTTP传输观察点统一通知明确认证失效，Controller订阅后cancel/stop/clearSensitive，不依required失败/typed错误穿层；rest/authorizedFile/图片/其它正式读取共用薄helper，保业务错误，非新恢复循环 | 认可原R6内工程方向。明确同源API认证401触发；bootstrap403有明确认证来源可保留，真实files权限403是域错误不能一律logout。通知需带document/请求凭据代次资格，解析包装前处理，先失效恢复/待写proof；取消旧请求或旧token迟到不清新身份，旧IDB/RPC/图片不得复活；重新授权须新成功身份确认，旧roster迟到不能自解锁。无规格变更 | 当前474cd4f未修，N05不关闭。关闭要四类正式reader401、503/403对照、迟到新旧认证、缓存/RPC/image stage复活反例及新候选全新全范围Verification；认可提案不是实现通过 |
+
+供final-delivery.md与主会话最终汇报的实质收敛：N02/N03/N04在本候选已由当前证据关闭；本轮全范围新发现N05，必须从正式HTTP认证事实传播到已有document清理，hidden与错误包装不能绕过，文件权限403须保持域语义。门禁不通过，完成报告后交主会话安排整改；不能直接进入Validation或把C17实际APK豁免扩成认证/ Web验收豁免。

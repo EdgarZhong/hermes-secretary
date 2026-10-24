@@ -42,9 +42,10 @@
 | V04／REV-09 | C06/R7 冷开及晚挂载需落真实末尾 | 已修local取消motion及晚挂观察，实际开发复核末尾可见 | 阻断 | frontend＋presentation | 正式App及hook反例与独立V2已核；Web实际效果仍待Validation | V2已关闭机制缺口 |
 | REV-10 | C04/R3 普通Web活动Turn可恢复 | 已核当前原生来源／D1身份／租约，真实SSE活动及idle均成功 | 阻断 | backend | 39项恢复、35项原生及正式SSE证据，独立V2已核 | V2已关闭 |
 | N01 | R1/R5/R7 恢复中配置事件不能被旧菜单stage回盖 | 已修同步失效证明，既有旁路归唯一协调器；普通delta不重读 | 阻断 | frontend | 113项含Model/Thinking交错／迟到／失败与App最终DOM，独立V3已核 | V3已关闭 |
-| N02 | R6 侧栏缓存只写成功对账后的展示事实 | 成功摘要stage后核当前proof、投影和layout才写，隐藏晚到独立成功，失效／失败不续TTL | 阻断 | frontend | 正式Controller及共享App集成证据已过，须独立V4 | 已修补／亲审，待V4 |
-| N03 | R5/R6及§1.13 已知Context不兼容不得延续数字 | 当前已知model/provider/rewind窄退役，冷缓存身份确认及迟到IDB/RPC/seq保护，合法估计保留 | 阻断 | frontend | 108相关／52共享集成及typecheck已过，须独立V4和真实Web效果 | 已修补／亲审，待V4 |
-| N04 | R1/R5 组件内历史图片读取纳完整恢复 | 真实viewport需求接唯一协调器，同URL每轮重读／解码／失败原自动重试，full/local后采用 | 阻断 | presentation | 25图片／52共享App集成及typecheck已过，须独立V4和Web实测 | 已修补／亲审，待V4 |
+| N02 | R6 侧栏缓存只写成功对账后的展示事实 | 成功摘要stage后核当前proof、投影和layout才写，隐藏晚到独立成功，失效／失败不续TTL | 阻断 | frontend | 正式Controller及共享App集成，独立V4已核 | V4已关闭 |
+| N03 | R5/R6及§1.13 已知Context不兼容不得延续数字 | 已知model/provider/rewind窄退役，冷缓存身份确认及迟到IDB/RPC/seq保护，合法估计保留 | 阻断 | frontend | 108相关／52共享集成，独立V4已核；Web效果仍待Validation | V4已关闭机制缺口 |
+| N04 | R1/R5 组件内历史图片读取纳完整恢复 | 真实viewport需求接唯一协调器，同URL每轮重读／解码／失败原自动重试，full/local后采用 | 阻断 | presentation | 25图片／52共享App集成，独立V4已核；Web效果仍待Validation | V4已关闭机制缺口 |
+| N05 | R6 真实认证失败清本document敏感展示 | V4正式侧栏visible/hidden401及图片401反证：错误被包装或非required吞掉，旧历史/图片仍保留 | 阻断 | frontend | 明确认证传输通知先取消proof并清理；四类reader、503/403对照、旧凭据/旧roster迟到不授权 | 已派整改 |
 
 ## 取舍、快照与续接
 
@@ -136,3 +137,11 @@ N04整包已交回并亲审reader/组件/App两处props：同slot真实可见性
 N02/N03整包主会话亲读adapter/controller/cache/usage-view及正式反例后接收：成功侧栏精确proof经当前投影及ready/layout后写，retained失配Context同步窄退役；缓存自身key修订防新成功flush后旧IDB回盖，读RPC捕获Context代次，旧seq及held失效有保护。三个文件108项与typecheck有效，16项源码指纹全匹配。N04共享adapter/cache后变更由主会话补当前4文件52项App/图片/胶囊/阅读集成全部通过；未复跑无关大套。整合源码manifest在ignored integrated-v4-source-manifest.json。Web第四候选`474cd4f61d6fe7b29917cdd07fb3f4f647401265`已提交／自动push核同，正在重建APK；尚待全新独立V4，再按结果进入Validation。
 
 第四候选APK重建完成（包含tsc/Vite），32,086,913字节，SHA256 `027a411c5aeb1d0d44a93750a4da4274f95debc528438a17a448085c88539254`，439包内资源逐字节匹配当前dist，apksigner v2有效且证书未变；ignored apk-v4-manifest.json／apk-v4-signature.log／android-build-v4.log。当前实际APK仍按C17未验，不能把构建当生命周期结果。
+
+主仓第四候选`06dc95c168dbeb0f8cb5fead0f597173176b073d`已自动push／远端核同（只文档，后端产品仍dd9a4c5）。全新none／6.1-high verification_v4已派遣，先原文独立全范围判据，后实现/旧报告；写追加六节、保留历史，复用同版证据只必要反证。两仓产品冻结，V4通过前不派Validation。
+
+V4新增N05：真实HTTP认证401未沿SessionList包装／隐藏资源／图片普通Error传到清理。主会话核client rest、authorizedFile、HistoryImage及后端鉴权401与文件403路径，提案同源API明确401在传输观察点通知已有Controller，先取消恢复／待写proof再清document；隐藏读取同覆盖，不依赖required.failed，保错误原义与503重试，不将文件权限403当登出。请求凭据代次／取消过滤迟到401；新身份确认才恢复缓存资格，旧roster迟到不能授权。V4按原R6认可方向和正式reader／503／403／迟到关闭条件，未改规格。当前仍保持产品冻结，等待V4完整范围收尾后整改。
+
+用户状态询问已如实答复：当前已知N05阻断、Web Validation未执行、对应后端未部署；现有签名包版本仍0.1.4。用户要求的最终0.1.5版本已记C18，整改后统一版本标识／重建，不以旧包冒称新版、不据状态询问停止自主任务或放宽门禁。实际APK生命周期继续按C17豁免。
+
+V4完整报告已由主会话分段全部亲读接收：43项42符合／1违规，仅N05，前三轮所有项已核关闭。原frontend已获N05单包授权，统一明确HTTP认证观察接现有Controller取消／清理，包含所有正式读取及隐藏路径，区分文件403；不改原生/后端/样式/恢复机制，版本号由主会话随后统一0.1.5。待实现／亲审／定向证据后形成新候选再全新独立全范围复审。
