@@ -218,19 +218,27 @@ class SecretaryForegroundMixin:
             conn, ids, deleting_session_ids=session_ids if deleting_sessions else ())
 
     def secretary_set_user_content(self, session_id, row_id, content, *, expected_message_uid=None):
+        changed = False
         def mutate(conn):
+            nonlocal changed
+            changed = False
             row = conn.execute("SELECT message_uid,content FROM messages WHERE id=? AND session_id=? AND role='user' AND active=1",
                                (row_id, session_id)).fetchone()
             if row is None or (expected_message_uid is not None and row["message_uid"] != expected_message_uid):
                 return 0
             encoded = self._encode_content(content)
-            if expected_message_uid is not None and row["content"] == encoded:
+            if row["content"] == encoded:
                 return 1
             self.secretary_preserve_branch_sources_conn(conn, [row_id])
             count = conn.execute("UPDATE messages SET content=? WHERE id=?", (encoded, row_id)).rowcount
+            changed = bool(count)
             self.secretary_reconcile_session_conn(conn, session_id)
             return count
-        return self._execute_write(mutate)
+        result = self._execute_write(mutate)
+        if changed:
+            from hermes_state_history_notifications import notify_history_changed
+            notify_history_changed(self)
+        return result
 
     def _project_foreground_row(self, row, conversation_ref, *, full):
         uid = row.get("message_uid")

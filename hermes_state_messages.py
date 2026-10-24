@@ -844,6 +844,7 @@ class SessionMessagesMixin:
             elif _ended_by_compression(conn.execute(_ENDED_ROW_SQL, (session_id,)).fetchone()):
                 raise CompressionSessionClosedError(session_id)
             kept = kept_tool_calls = 0
+            changed = False
             if archive_dropped:
                 # Only the first len(messages)+1 live rows matter: the prefix to match plus the row whose
                 # id anchors the archive UPDATE (which itself covers every later row via `id >= ?`).
@@ -851,6 +852,7 @@ class SessionMessagesMixin:
                 kept = self._stamp_kept_live_prefix(live, messages)
                 kept_tool_calls = sum(_tool_calls_len(row[4], scalar=1) for row in live[:kept])
                 if kept < len(live):
+                    changed = True
                     # FTS triggers don't fire on `active`: replaced turns stay searchable (include_inactive=True).
                     self.secretary_exclude_branch_path_conn(conn, session_id, from_message_id=live[kept][0])
                     conn.execute("UPDATE messages SET active = 0 WHERE session_id = ? AND active = 1 AND id >= ?",
@@ -858,12 +860,15 @@ class SessionMessagesMixin:
             else:
                 self.secretary_exclude_branch_path_conn(conn, session_id, clear_all=True, kept_messages=messages, active_only=active_only)
                 self.secretary_preserve_session_sources_conn(conn, [session_id], active_only=active_only)
-                conn.execute(f"DELETE FROM messages WHERE session_id = ?{' AND active = 1' if active_only else ''}", (session_id,))
+                changed = bool(conn.execute(f"DELETE FROM messages WHERE session_id = ?{' AND active = 1' if active_only else ''}", (session_id,)).rowcount)
             inserted, inserted_tool_calls = self._insert_message_rows(conn, session_id, messages[kept:])
             conn.execute(f"{_SET_COUNTERS_SQL} WHERE id = ?",
                          (kept + inserted, kept_tool_calls + inserted_tool_calls, session_id))
             self.secretary_reconcile_session_conn(conn, session_id)
-        self._execute_transcript_write(_do, messages)
+            return changed or inserted > 0
+        if self._execute_transcript_write(_do, messages):
+            from hermes_state_history_notifications import notify_history_changed
+            notify_history_changed(self)
 
     @classmethod
     def _row_identity(cls, role: str, content: Any, tool_call_id: Any, tool_calls: Any) -> tuple:

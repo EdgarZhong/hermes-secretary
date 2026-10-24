@@ -3267,6 +3267,8 @@ export interface SessionResumeResult {
   turn_started_at?: number | null
   started_at?: number | null
   status?: string | null
+  recovery_view_version?: 1 | null
+  recovery_view?: Record<string, unknown> | null
   state_snapshot?: TurnOutputSnapshot | null
   inflight?: InflightTurn | null
   queued?: QueuedPrompt | null
@@ -3328,6 +3330,7 @@ export interface AutoContinue {
 export interface SessionActivateParams {
   session_id: string
   profile?: string | null
+  recovery_view?: Record<string, unknown> | null
   cols?: number | null
   omit_messages?: boolean
 }
@@ -3345,6 +3348,8 @@ export interface SessionActivateResult {
   turn_started_at?: number | null
   started_at?: number | null
   status?: string | null
+  recovery_view_version?: 1 | null
+  recovery_view?: Record<string, unknown> | null
   state_snapshot?: TurnOutputSnapshot | null
   inflight?: InflightTurn | null
   queued?: QueuedPrompt | null

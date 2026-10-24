@@ -3044,7 +3044,7 @@ def _live_session_payload(
     payload = {
         "info": _fallback_session_info(session), "message_count": len(history) if omit_messages else len(messages),
         "messages": messages,
-        "messages_omitted": omit_messages, "running": running, "turn_started_at": turn_started_at,
+        "messages_omitted": omit_messages, "recovery_view_version": 1, "running": running, "turn_started_at": turn_started_at,
         "session_id": sid, "session_key": _session_lookup_key(session, fallback=sid),
         "started_at": float(session.get("created_at") or time.time()),
         "status": status,

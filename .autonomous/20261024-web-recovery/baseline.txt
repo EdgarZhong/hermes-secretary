@@ -1,0 +1,5 @@
+backend_freeze=ba83d2b430e3448461dd7feb9f1acd8fc94c6cc9
+frontend_freeze=9fd115d3b016bb51a8a78dd1724684fd1890665c
+source_backend=5ea0f7fbaaa14df2d2b40c6cb0140cd2dda3eac4
+source_frontend=f3a03ce32c0dd1e96719da210716caa2c1c7b8d4
+branch=codex/web-recovery-20261024

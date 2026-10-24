@@ -31199,6 +31199,19 @@
             "default": null,
             "title": "Profile"
           },
+          "recovery_view": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Recovery View"
+          },
           "cols": {
             "anyOf": [
               {
@@ -31351,6 +31364,32 @@
             ],
             "default": null,
             "title": "Status"
+          },
+          "recovery_view_version": {
+            "anyOf": [
+              {
+                "const": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Recovery View Version"
+          },
+          "recovery_view": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Recovery View"
           },
           "state_snapshot": {
             "anyOf": [
@@ -34493,6 +34532,32 @@
             ],
             "default": null,
             "title": "Status"
+          },
+          "recovery_view_version": {
+            "anyOf": [
+              {
+                "const": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Recovery View Version"
+          },
+          "recovery_view": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Recovery View"
           },
           "state_snapshot": {
             "anyOf": [

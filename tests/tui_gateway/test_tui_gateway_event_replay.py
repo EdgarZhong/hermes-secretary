@@ -296,3 +296,36 @@ def test_truncation_detection_semantics():
     assert event_replay.is_truncated("s1", 5)
     # Unknown session: nothing evicted, nothing truncated.
     assert not event_replay.is_truncated("nope", 0)
+
+
+def test_atomic_cut_watermark_cannot_include_concurrent_stamp(monkeypatch):
+    event_replay._stamp_event(_frame("atomic"))
+    original = event_replay._thaw_params
+    copied, appended = threading.Event(), threading.Event()
+    def decode(payload, seq):
+        copied.set()
+        assert appended.wait(5)  # writer can run while this cut decodes
+        return original(payload,seq)
+    monkeypatch.setattr(event_replay,"_thaw_params",decode)
+    def stamp():
+        assert copied.wait(5)
+        event_replay._stamp_event(_frame("atomic"))
+        appended.set()
+    writer=threading.Thread(target=stamp)
+    writer.start()
+    cut=event_replay.read_replay_cut("atomic",0)
+    writer.join(5)
+    assert not writer.is_alive()
+    assert cut["latest_seq"] == 1 and [row["seq"] for row in cut["events"]] == [1]
+    assert cut["count"] == 1 and not cut["truncated"]
+    assert cut["epoch"] == event_replay.replay_epoch()
+    assert event_replay.latest_seq("atomic") == 2
+
+
+def test_atomic_cut_keeps_truncation_with_its_own_events(monkeypatch):
+    monkeypatch.setattr(event_replay,"_REPLAY_BUFFER_MAX",1)
+    for _ in range(3):
+        event_replay._stamp_event(_frame("cut"))
+    cut=event_replay.read_replay_cut("cut",0)
+    assert cut["truncated"] and cut["latest_seq"] == 3
+    assert [row["seq"] for row in cut["events"]] == [3]
