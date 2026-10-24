@@ -59,3 +59,13 @@ ControllerPageRecovery新增内部prepareDisplay：initialize安装生命周期�
 New Chat仅在原统一commit成功、当前没有binding／sending／创建或发送事务时建立该owner无Turn的idle事实，select不再提前赋active=false。Composer门槛、create／附件／native admission协议不改；Conversation未知状态继续未知。PageRecoveryHost只新增对既有profileSwitchBlocked的读取，无新增公共props或DTO。
 
 authenticatedFetch对相同origin且/api/路径的GET明确no-store，包含HistoryImageReader和authorizedFile；写请求、跨origin、静态资源不改cache策略。此为真实HTTP重读要求，独立IDB过渡cache及N05认证proof／401观察、Files域403和503重试语义不变。正式App.initialize／FirstSend与有限HTTP缓存反证见frontend.md对应七项及ignored frontend/val-fixes-source-manifest.json；真实浏览器复验仍待下一独立Validation。
+
+## N06 侧栏有界分页快照与普通成功写入（b0ff882之后）
+
+SidebarSnapshot内部v1包含rows及coverage[{profile,pages:[{offset,ids}]}]，只作展示／待重验范围；metadata没有more/cursor/成功权限。新格式严格验origin/roster/owner、0/100连续页界与行身份覆盖，并把500条／1MiB裁剪同步作用于coverage，单owner最多五个leading pages。旧数组继续兼容读取并形成有限待验需求；三参数putSidebar保持旧数组，正式成功写传可选第四参数真实coverage。sidebar/sidebarCandidate仍返回原rows，adapter改用新增snapshot读取。
+
+SessionList.requireCoverage只提高有限重读需求，不填真实pages。每个Profile真实读取保留页provenance、serial/signal/request-owner current proof，固定按API100推进，pinned额外行不改页界；失败／取消／新读取／切owner撤销旧成功资格。唯一sessions reader从offset0读满当前采用范围或真实more=false，所有required owner成功才stage，同commit／ack后写；hidden仍后台。普通loadSessions的成功分页／元数据刷新把本次实际proof交同adapter stage；未发请求no-op不续成功时间，普通stage另须已有实际App layout摘要匹配。Controller现有ack只附内部layout标识，无App源码／公共props／HTTP协议或PageRecovery算法变化。详情、真实App双document链及受控依赖边界见frontend.md N06七项和ignored frontend/n06-source-manifest.json。
+
+### Thinking 冷开／派生DOM身份接线小修（2026-10-24，b8f06ff后）
+
+Controller.hydrateDetails先选择当前key，避免冷document未经过select时HistoryDetails空owner而零GET。新增内部timelineReadingNodes枚举现有OrdinaryNode的HistoricalThinking DOM（parent.id+:thinking、kind thinking、text=reasoning，排列在message前），需求登记和visibleWindowCompatibility共用；facets／viewport字段、PageRecoveryPort及HTTP／恢复协议不变。展开正文由当前可见facet真实重取并同commit采用；collapsed不纳隐藏正文，unknown coverage仍unknown。75项相关测试／typecheck通过，真实页面展开与运动仍由主会话复核；细节与版本见frontend.md本次小修及ignored frontend/detail-source-manifest.json。

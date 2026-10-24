@@ -130,3 +130,49 @@ ignored证据：`.hermes-dev/web-recovery-20261024/frontend/accepted-tests.log`�
 6. **接口与范围。** 无公共恢复DTO、PageRecovery算法、组件props、后端／原生／版本／依赖／drafts库变化；App及presentation源码不改。仅adapter新增内部prepareDisplay，PageRecoveryHost复用既有profileSwitchBlocked只读事实；GET薄接缝自动覆盖现有binary两个reader及正式REST，N05的认证资格／清理顺序保留。新增测试app-initialize-recovery.test.tsx用新Controller替换App导出的测试实例以模拟新document，但initialize及所有正式机制均未替换。所有源码／测试在授权白名单内，无扩范围或待产品决策项。
 
 7. **交回与后续。** 本包未stage／commit／push。请主会话亲审三个产品diff、缓存首显到正式retain／commit的资格、New Chat无Turn事实及统一GET传输策略，按manifest集成新候选并重建0.1.5 APK；之后全新独立V6及全范围Validation重点复验VAL-01／03／04完整用户链。此处130项是机制／正式接线证据，不自行关闭任何门禁。
+
+## N06 侧栏分页展示缓存闭环整改（基于b0ff882，2026-10-24）
+
+1. **条款／根因。** 已恢复executing-plans、autonomous-run阅读和消息契约、两仓协作规则／主仓动态、本轮index/baseline/plan、冻结06 R1/R5/R6/R7与08归属，以及Verification v6完整六节和§5/6四项补充。按原判据复现两个正式App反例（n06-before.log两失败）：缓存200条已显示，但新SessionList无真实成功页记录，恢复仅GET offset0并以100条ready；普通Load older成功显示200后，未产生sidebarStage，缓存仍100。均为既有R5/R6闭环遗漏，无产品／权限／完成条件变更。
+
+2. **实际变更。** 新增同职责sidebar-coverage.ts，记录各Profile真实成功请求的leading pages及各页持久id；pinned backfill按首次出现的真实页归属，分页边界取API既有固定100推进，不按去重后行数推断。新格式侧栏快照为version/rows/coverage，只存展示白名单；500条与1MiB同时约束行和对应有限leading pages（每Profile最多offset0…400），体积裁剪不截断标题。严验格式、origin/roster、owner、页界连续、id归属／重复／遗漏、容量；损坏丢弃。旧数组仍兼容，以采用行形成最多五页的有限待验需求，不升级为网络成功事实。原三参数putSidebar仍可写旧数组，正式成功写入传第四参数真实coverage；DB schema／TTL／LRU／容量原则不改。
+
+3. **正式路径。** 前一document实际App Load older→Controller.loadSessions→SessionList真实REST成功proof→已发布摘要stage→实际App layout ack及当前owner/代次/投影匹配→白名单快照。新Controller.initialize连接前采用精确候选rows时只登记requireCoverage，绝不填SessionList.pages/more/cursor或权限；当前roster过滤后，唯一sessions reader从offset0完整读至本Profile当前显示所需有限范围，遇服务端真实more=false即止。所有当前必需页及活动读取成功后才stage／同commit／ack更新；若缓存晚于先前页结果才实际采用，失效原sessions证明补读，不能让旧单页满足新需求。普通分页／元数据刷新复用此stage/ack：refresh返回本次实际读取的成功proof，未发请求的no-op不返回新证明；每Profile失败／新读取／取消／owner变化使旧proof无资格。普通页面更新还核实际App layout中的摘要签名，不能仅以getSnapshot或fulfilled提前写。隐藏慢资源保原后台语义，独立成功发布后才写；App公共ack只增加内部layout标识，产品App源码无需修改。
+
+4. **验证。** 最终七个相关文件127项通过（n06-final-related.log），typecheck／git diff --check通过。新增正式App/Gateway联合文件12项，未手设Controller.state或替换initialize/connect/request／读取链：外部HTTP／Socket、IDB与jsdom几何受控，运行实际App effect、Controller、Gateway、SessionList、PageRecovery、RenderStore及按钮。覆盖无seed真实Load older读两页→正式缓存→新Controller/documentId、WS未ready即200条→展开后GET0/100且较早DOM行不消失；第二必要页503保200且不ready、解除后原自动重试；default/other同ID独立范围、某owner第二页失败不被另一owner成功吞；pinned造成201条但仍只读两个真实页；roster移除owner不读其页；服务端删短more=false只读offset0；普通元数据刷新成功更新值／successAt、失败及无请求no-op不续TTL；hold实际App layout ack时第二页已显示但cache仍100，释放才200；hidden第二页慢不挡ready、晚到当前成功才写，旧owner晚到不发布／不续cache。缓存另新增10项：500／1MiB连同coverage裁剪、pinned／同ID隔离、旧数组有限降级且不续成功时间、巨大offset／跳页／非法owner／重复／未知／遗漏id丢弃。SessionList新增2项核固定100和旧more=false／失败owner事实撤销。既有controller恢复、N02待commit／隐藏／同owner失效、VAL真实initialize/FirstSend、App图片和HTTP认证／Files路径按影响复验；没有重跑旧Profile五失败或无关大套。精准source/test/log SHA及原反证版本见ignored frontend/n06-source-manifest.json。
+
+5. **缺口与边界。** 这里“新document”由新的实际Controller／Gateway／PageRecovery documentId／缓存实例、保留IDB和URL构造；并非真实浏览器reload。外部Socket返回冻结真实恢复DTO，native Profiles/分页数据与时间屏障可控；没有供应商模型。DOM及layout是jsdom实际App机制证据，不冒称用户滚动、动画观感或真实HTTP缓存验收。未浏览器／UI／模型／服务／数据库运行数据操作，未构建APK／部署／改版本依赖；未改App产品源码、样式、Timeline、PageRecovery算法、后端、原生、HTTP auth或drafts库。旧五项Profile与catalog范围外记录保留，不称全仓绿。本包不关闭Verification或Validation，后续实际用户全旅程及EVID-01继续由独立Validation确认。
+
+6. **接口／范围。** 正式HTTP协议及api/sessions.ts未改。新增内部SidebarSnapshot/SidebarCoverage、SessionListProof/current及requireCoverage；refresh可选返回本次成功proof，原await调用兼容。DisplayCache原sidebar/sidebarCandidate继续返回rows，新增内部snapshot读取；putSidebar只增可选第四参数，旧数组读取／既有三参数调用兼容。Controller仅三行必要接线：request owner identity、普通成功proof交adapter、App ack标明layout；仍2540行，未增长facade超标指标。产品变更五文件（含新sidebar-coverage），测试三文件（含新正式App联合文件），均在白名单，无待权限／产品决策。
+
+7. **整包交回／后续。** 源已稳定、未stage／commit／push；报告契约与ignored n06-*证据已集中完成。请主会话亲读普通成功页→proof/stage→实际ack→缓存，以及新初始化采用coverage→逐owner完整必要读取→统一commit两端，按manifest集成候选并统一打包／独立门禁。新候选的全范围符合与实际用户结果仍由后续独立审查／Validation判定；本包不以自身127项宣布整轮完成。
+
+## 真实UI分页／重开停留缓存最小诊断（只读b8f06ff，2026-10-24）
+
+结论：最新实际UI明确显示`Recovery unavailable: runtime_unavailable`，应先沿后端当前Turn／source／lease恢复证明诊断，不把本次表现直接归因为N06侧栏proof或先改前端分页。正式源码顺序是readConversation先创建HistoryWindows，再readWindows读REST；只有activate封套complete之后才index.accept／replace／view和安装cut。封套runtime_unavailable会在安装窗口之前抛错，旧picture按R1/R7继续retained、ready不成立。因此“REST已有cards／模型已加载”不证明Conversation恢复完成，index存在也不证明已有当前可分页边界。若这时点击到历史分页，loadEarlier的first缺失分支确会return true，使Controller.refreshHistory不再走读取，静态上能解释零GET；这是一处静默处理边界，但本轮未获授权修改，也不以它掩盖后端拒绝恢复或放宽封套。S5明确错误是直接证据；S2更早截图／proxy切片没有同一时点封套状态，故仅列同因可能，不冒称已证明S2同根因。
+
+受控正式App小诊断仅2项，均通过（ignored frontend/pagination-diagnosis-app.log）：1200行范围、真实initialize/Gateway，外部Socket/REST回完整成功封套后，index含200行、phase committed/ready，真实App Load earlier按钮发anchor GET，读到row-800并扩展为400行；另一项在已显示200缓存但封套仍被控制延迟时，phase reading、index 0窗口、真实按钮disabled，释放封套后index200且按钮可用。fixture/JSON轨迹见pagination-diagnosis-app.test.tsx、before-click/after-click/precommit.json，全部位于ignored目录；它证明正常成功链与缓存等待链的区别，不代签实际浏览器，也没有替换initialize/connect/request或手设业务state。
+
+N06源码只改侧栏requireCoverage/proof/stage，不写HistoryWindows或Conversation封套；本次未见可据此认定N06导致全局Conversation失败的证据。最小建议是原backend实施者读取当前runtime_unavailable拒绝路径与真实服务证据，保留complete／owner／当前Turn校验，按正式生命周期恢复；前端不绕过、伪造idle／ready或用缓存充成功。主会话已明确停止扩大前端分页修补，本Agent照办并交回释放并发槽。未改任何产品／测试仓库文件，未UI／RPC／服务／DB／模型／提交；只读源SHA及本次证据见pagination-diagnosis-manifest.json。实际UI仍阻断，不关闭门禁。
+
+### 分页诊断后续纠正：按钮未实际在屏内（2026-10-24）
+
+主会话后续真实操作已定位本次“Load earlier零GET”的操作侧原因：此前offscreen Playwright locator click返回，并不等于按钮已实际滚入屏内或触发产品读取；真实向上滚至Timeline top=0、row1000可见后，再点击同locator，立即得到400个article／首行800。证据为ignored validation-final/s2-fixed-user-up-ax.txt、s2-fixed-visible-click-ax.txt；主会话另获backend各请求30–82ms且complete=true的只读补证。故当前1200行分页现象纠正为操作证据问题，不记新前端／N06产品失败，不继续猜index空或修改分页源码。前段“loadEarlier无first静默true”只是静态可能性，不是本次真实页面的已证根因；较早新Turn重开runtime_unavailable是独立后端问题，主会话已修52c5088并通过同document六段续流／结束／暖开验证，不与本次按钮问题混为一因。
+
+本Agent按最新指令停止产品诊断／源码修改；仅读取并本地脱敏dashboard-validation-final.log（该文件只有三条启动日志），核proxy path-only和当前源，没有HTTP／WS／prompt／UI／服务操作，未运行新套件。先前2项受控App成功路径仍仅作机制证据，不能代替上述真实操作结果。后续运动／人工输入验收由主会话继续实际滚入后完成；本段不关闭整轮门禁。
+
+## 真实运动证据收敛与冷开 Thinking 详情小修（b8f06ff，2026-10-24）
+
+1. **条款／实际根因。** 本包限原R1/R4/R5/R7可见展开依赖与显示交接，未改规格或新增门禁。真实稳定页Thinking101展开10秒仍Loading，父已留s2-final-detail-101-ax/png。正式Controller.detailRows本来就将不可变render source按UID／row映回业务当前rows，因此不是直接把clone传给current.includes的引用错误。确定根因是冷document的initialize→startRecovery不经过select，v1读取也未选择HistoryDetails owner；其key为空，prioritize的current=[]，wanted空直接resolve，零GET且deferred仍真。修前实际App反例复现完整恢复成功、真实Thinking按钮click后detailGets=0（detail-cold-before.log）。另独立接线缺口是HistoricalThinking现有DOM id为parent.id+:thinking，而需求登记只索引原nodes.id；普通Thinking子Disclosure因此丢失可见facet和其正文签名，重连无法按原唯一协调器等该详情。
+
+2. **实际变更。** Controller.hydrateDetails在原入口先选择当前key，一行接线保原HistoryDetails取消／引用及迟到接受规则。presentation-signature新增小型timelineReadingNodes，仅枚举OrdinaryNode已经实际渲染的Thinking DOM身份与reasoning文本，顺序Thinking→message；hook byId登记和history-coverage重建相容窗口复用同一映射。没有改sourceTimeline、持久历史、DTO、PageRecovery状态机或滚动算法；没有合成历史条目／新缓存／第二读取循环。Controller行数不增。其余原生／后端／视觉／版本／依赖／App产品源码均未动。
+
+3. **正式路径。** 实际App HistoricalThinking→useDeferredDetails→Controller.hydrateDetails→当前HistoryDetails owner→UID映回原业务row→正式details GET→原commitHistoryView发布正文；展开DOM经原reading hook登记thinking alias、当前source identities和实际正文签名→唯一PageRecovery facets reader→selected owner→真实detail_row_ids GET→同commit/layout。only-thinking viewport可按kind+持久source定位；展开reasoning变化为已证变化，collapsed隐藏正文变化不破坏前缀；未覆盖保持unknown。旧owner取消／迟到接受仍沿原规则。
+
+4. **验证／证据。** 五个相关现有文件75项通过（detail-final-related.log），typecheck通过（detail-typecheck.log），git diff --check通过。新增正式App冷恢复→真实Thinking click反例修前0GET、修后正文Expanded detail 101；同App把该Thinking滚入视口，直接检查登记visible facet及正文签名，再foreground重连并hold真正details响应，确认ready=false且旧正文保留无Loading；释放后ready=true且prefixCompatible/prefixVerified真。新增coverage反例核Thinking→message顺序、only-thinking展开相同／改变正文、collapsed同值、未知覆盖。既有HistoryDetails取消／晚到、reading人工取消／handoff等75项按影响复用本次结果，不跑无关大套。精确source/test/log SHA见detail-source-manifest.json。
+
+5. **真实运动证据边界。** 已亲读两轮原始JSON并汇总detail-motion-summary.json。首次2310样本只有top29.5→58389一次变动，Thinking始终Loading；不能称已通过运动，也不能仅据此归因prefixfalse或瞬时跟尾。第二轮闭合详情、无数据变化的2850样本实际为top0→57617→58309.5→58313，确有中间位置；5883到6286ms采样间隔403ms，较密文本／几何采集并不等于连续浏览器帧证明。源码已有handoff所有权guard：运行期间Resize／Mutation／普通reconcile不place，local同recovery保留原motion；只有未相容／reduce／已在尾等原分支instant。当前样本没有实际commit flags或matchMedia事实，不能由胶囊600ms推断reduce，也不宣布原首次两点是动画产品失败。anchorVisible字段只证明DOM节点存在，最终offset负数并不仍在屏内。后续父已采用仅scrollTop/sh轻采样与首个非tail变化立即真实wheel取消，方向足够，无新增性能门槛。
+
+6. **接口／范围。** 经父明确批准仅扩到chat-presentation、presentation-signature、history-coverage及两个现有测试；源变更四文件，测试两文件。ReadingNodes是现有DOM身份适配，不作为业务投影或第二真值，不改消息／HTTP／恢复协议与任何对外prop。原sourceTimeline有live Thinking时已抑制重复deferredReasoning，继续复用其输出；未知／歧义持久identity不作假相容。未派生、提交、UI／网络／模型／服务操作；未build/APK／部署。
+
+7. **交回与后续。** 请主会话亲读四源文件最小diff，再在其原页面真实展开101确认Expanded detail 101、在正文已加载的深anchor重连确认同commit保展开与衔接，并沿已计划轻采样验证人工取消。此前首次Loading前置证据保留，不以本次jsdom通过替代真实用户效果；最终APK重建与交付仍由主会话决定，本包不关门禁，无待产品决策。

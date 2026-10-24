@@ -4,23 +4,21 @@
 
 暂无。
 
-Android当前已发布版仍为回前台立即刷新、后续10／15／20／30秒退避；用户2026-10-24要求改为先恢复、5秒内网络读取及Socket／Turn恢复完成就不重载，具体范围见下方Timeline恢复条目；新版已在本轮工作树实施，原生定向验证通过，整体集成未完成；用户C17明确豁免本轮实际APK验收，不启动模拟器，交付注明未验。此前45秒、分钟级长退避及旧5秒单次刷新方案不作为当前实现；本次5秒恢复窗口是新的用户要求。UI-CAM-01已获用户确认，拍照压缩保留当前实现。2026-10-21本轮用户明确确认：升级APK迁移至新的响铃＋横幅通知通道，并尽量保留用户主动静音设置；已实施并完成原生定向测试，真机响铃／横幅未验。
+Android当前已发布版仍为回前台立即刷新、后续10／15／20／30秒退避；用户2026-10-24要求改为先恢复、5秒内网络读取及Socket／Turn恢复完成就不重载，具体范围见下方Timeline恢复条目；新版已完成本地实现、Web实际验证与0.1.5签名构建，原生定向验证通过，尚未部署生产；用户C17明确豁免本轮实际APK验收，不启动模拟器，交付注明未验。此前45秒、分钟级长退避及旧5秒单次刷新方案不作为当前实现；本次5秒恢复窗口是新的用户要求。UI-CAM-01已获用户确认，拍照压缩保留当前实现。2026-10-21本轮用户明确确认：升级APK迁移至新的响铃＋横幅通知通道，并尽量保留用户主动静音设置；已实施并完成原生定向测试，真机响铃／横幅未验。
 
-## 2026-10-24 · Web UI 过渡展示缓存与完整恢复（0.1.5修补候选待新独立门禁）
+## 2026-10-24 · Web UI 恢复与缓存（实现与Web实测收口，0.1.5已交付）
 
-用户授权按06 §1.4.1 R1–R10自主实现，全部gpt-6.1-sol/high、允许子Agent、主会话亲审集成，不再调用Astra。独立Verification/Validation轻量，先原文判据/场景、复用同版有效证据、必要反证，不重跑无关大套、不缩减覆盖。轮次`.autonomous/20261024-web-recovery/`、两仓分支`codex/web-recovery-20261024`；主仓冻结ba83d2b、Web冻结9fd115d3，原代码5ea0f7f/f3a03ce，索引/基线/plan为唯一依据与整改入口。
+用户最新要求不再擅加门禁、尽快收尾；本轮不追加全量Verification。展示缓存只用于冷启动/刷新/断线过渡，完整重读当前页面所需范围；历史与Socket/活动Turn统一交接。Files只接入通用重连读取和内存旧预览过渡，未新增Files持久缓存。
 
-目标：冷开/刷新/断线先显示有界缓存，当前页面完整重读，与Socket/活动Turn有限对账后一次交接；不扫全库/全部历史。保anchor并快速滚真实末尾，侧栏原地更新，Usage/Context有效变化轻亮。APK前台5秒内当前可见ready就不reload，超时和10/15/20/30退避保留。缓存不作runtime/游标/审批/Pending事实，不省请求。
+主仓产品52c5088、Web2346a03已提交并自动push核同；两仓分支codex/web-recovery-20261024。后端完成事件误拒已修：复用已有source_message身份和持久完成回执，无新协议/状态机/前置门槛。冷开详情补选当前owner，既有Thinking子DOM参与可见facet/签名，不改变历史投影。
 
-当前Web候选`b0ff8824cce5603e06aa1e73f962a3da6090c65e`（0.1.5）、后端产品`dd9a4c57dd7c182ad8497f9538e115bbab3131b0`，自动push/远端核同，未部署。三包和所有整改已亲审；V1–V5原发现/研讨保留verification.md。V5原时点18组通过后，真实Validation v1揭示VAL01连接前未读缓存、VAL03 New Chat恢复后Send禁用、VAL04 HTTP缓存绕实际资源GET，及EVID01运动帧/人工取消/Usage高亮用户证据缺口，主会话已更正旧通过适用性，不以单测代用户结果。ENV02是other夹具缺Provider，补自身loopback后真实UI同ID/Files深返回/重连复验关闭，未吞Pending或改产品。
+主会话亲审并实际自建隐藏IAB验证：连接前缓存/118条侧栏保留；真实NewChat发送、断线后续完整6段、完成后同document离开再暖开全文，DB只读user1+assistant1、fake仅1请求；两个胶囊0/13%→112/0%有效变化后约600ms高亮；三次实际分页至400/800正文；冷开Thinking1001真实展开成功、断线重连始终保留已展开内容，连续中间滚动位置至tail，真实wheel后不抢回；Files同URL实际GET503保旧/自动采用新图、原图SHA恢复。受构建触发Vite重载的样本作废，构建后重新取得稳定同页结果。没有真实供应商或生产操作。
 
-三项最新修补已集中交原frontend完成并亲审：initialize订阅后/connect前prepareDisplay，同owner后继retain不抹缓存；当前New Chat必需读取成功且无binding/sending/事务才同commit idle；同源/api/ GET no-store，原写/static/跨源/IDB语义保持。只改三个产品文件，Controller仍2540低于冻结2556。相关8文件130项、最终正式App.initialize/按钮/Enter/附件16项再验、typecheck通过，19源码依赖SHA匹配；所有计数按各时点复用、不累加。
+证据按范围复用：侧栏相关127项/typecheck、后端最后47项与health/ruff、详情相关75项/typecheck、原生40项均有效，范围重叠不累加，不称全仓绿。V1–V6历史保持；N06随后亲审/原反例与UI闭合，不冒称修后新独立全范围V通过；原Validation独立判读父会话隐藏IAB原始证据（其子会话无IAB，未回退Chrome）。完整边界与最终结论见本轮final-delivery.md。
 
-主会话仅自建隐藏IAB开发复核通过连接前缓存、同URLhistory/Files真实GET503保旧自动恢复、binary401清预览、New Chat有文Send可用/空禁用；未发送Turn、未改URL或清HTTP缓存，自有tabs均关闭/faults{}，证据ignored dev-browser-v6。它不替代下一轮独立Validation的活动Turn、实际内容变更、滚动/高亮结果。U1已实测通过的正式历史edit/replace/compact/rewind/delete、新epoch、503/401及owner/Files结果保留原版证据；新候选还须新全范围独立复审及完整Web复验。
+最终APK `.hermes-dev/web-recovery-20261024/Hermes-Secretary-0.1.5-2346a03-arm64.apk`，实值0.1.5/1005、32,091,269字节、SHA256 b92f0ade5594e5005c6f9b57e9f1ea1e2a4477920fce988492d5b6ede261b949；439内置资源同dist、v2原证书。旧包链接不覆盖。本轮实际APK生命周期按C17豁免未验；未授权部署生产，线上尚无配套新版后端，不能承诺安装后线上已获得整套新恢复能力。
 
-最新APK实值0.1.5/1005、32,088,433字节、SHA256 `b65e210f83ee670082f0f297a6a562e7e01199226213dfbabf0e6fdede8f6a54`，439资源匹配、v2同证书，ignored android-build-v6.log/apk-v6-*。用户C18最终0.1.5；C17豁免本轮实际APK生命周期，明确未验、不启动模拟器，原生40项按未变源码复用，不能当WebView实机通过。此前已发用户的0eef候选有Send禁用，已明确不要日常使用；新包尚未最终交付，须新门禁/最终delivery-evidence-review。
-
-本轮隔离53575（当前PID9754/session98813）、proxy53576、Vite5178、fake53577保持；53445/53446长驻不动。default1200行合成样本已通过正式writer重建、配置SHA保持，不在线回灌DB；other两行/自己的loopback及原PNG/文本保留。UI仅自建隐藏IAB，无真实模型/生产数据/部署。并行Noting等dirty保留，CLAUDE仅暂存本节与授权Android现状。
+唯一轮次.autonomous/20261024-web-recovery/；ignored原始证据.hermes-dev/web-recovery-20261024/。用户53445/53446及其他任务dirty保留，故障文件{}、合成文件已还原。
 
 ## 2026-10-24 · AI 标题按当前 Main 上下文命名（已上线并完成真实验证）
 

@@ -101,3 +101,12 @@ HERMES_BACKEND_URL=http://127.0.0.1:53576 npm run dev -- --host 127.0.0.1 --port
 停止方式：fake空闲时核`local-stream-api.pid`和53577仍对应本轮`local_stream_api.py`后，仅TERM该PID；如有活动流先走正式取消或等待60秒自然结束，再停fake。Dashboard同样仅核本轮53575 PID后TERM，重启沿上文同一隔离命令；proxy／Vite分别结束自己的终端。不得使用全局stop或触碰53445／53446。恢复原隔离配置可用现有正式配置writer读取上述备份后写回，但不能在本轮活动探测中途撤路由。
 
 **缺口／后续。** 本次真实结果证明正式native活动恢复与最终持久投影收敛，不证明实际模型效果或Web呈现；没有真实供应商／实际APK／任何UI验收。Web隐藏IAB仍由独立Validation执行，C17只豁免实际APK。产品／测试差异与本报告交主会话亲审、集成及新候选独立复审；本子Agent未提交／push／部署，未改根文档、规格、计划或他人文件。
+
+## 真实UI完成后暖恢复误判修补（2026-10-24补交）
+
+- **对应条款／已确认根因：** R2／R3持久真值接管。原create runtime `145d64ee`、stored `20261024_214847_26aadb` 的正式只读回放共27帧；真实DB user2415／assistant2416均active、无lease。seq20 `reasoning.available`为无UID的completed reasoning block；seq21 `message.output_committed`携真实assistant UID／row，但旧清理只查`payload.message`而漏`source_message`。二者依次触发idle `runtime_unavailable`，不是当前Turn来源或lease失效。
+- **实际变更／正式入口：** 仅`recovery_view.py`及对应测试。`_persisted_event`沿现有身份逻辑补读`source_message`；完成的`reasoning.available`复用同snapshot已有`message.complete.persisted_turn.complete`和D1真实source rows／UID／role／active／visible，确认后由持久窗口接管。没有新协议、请求、状态机或所有idle的新前置条件；active原reasoning展示仍保留，真正未知message／reasoning delta及退役／rewind拒绝保持。不是把所有无UID通知一律放过。
+- **正式反例／验证：** ignored `final-ui-diagnosis-read-rpc.json`是原runtime真实回放。`final-ui-diagnosis-test_replay.py`在独立进程以正式`inflight_output.record`重建实际帧，只读真实DB并调用正式activate：原27帧失败，只删seq20仍失败，再删seq21成功，空旧snapshot也成功；修前证据`final-ui-diagnosis-branch-proof.json`／`final-ui-diagnosis-replay.log`保留。修后同27帧无需删帧即complete=true、idle，见`final-ui-fixed-branch-proof.json`／`final-ui-fixed-replay.log`。没有新prompt、运行DB写入、服务重启或UI操作。
+- **影响测试：** 新7项覆盖完成接管、缺／错误完成回执、来源退役、未知message／reasoning delta、active reasoning保持；原39项恢复回归同时保留，加原真实trace反例共47项通过。health／ruff两项通过、0 blocking／0 advisory。结果在`final-ui-fixed-tests.log`、`final-ui-fixed-health.log`，实际源码和证据SHA见`final-ui-fixed-source-manifest.json`。全仓旧大套未跑。
+- **证据纠正／覆盖边界：** 前述REV-10 settled probe只证明当时读取到的空旧snapshot路径，不能替代真实create runtime保留完成帧后的暖导航。本次原UI失败与冷resume后成功可由上述实际帧反例解释。1200行seed的当前绑定／分页表现未在本包冒称已修；主会话复验同一真实暖开及分页后判断。
+- **接口影响／后续：** 无DTO变化，不改writer／DB／REST／前端／原生或规则。交主会话亲审并协调仅本轮服务加载修补，复验原warm reopen及分页；本子Agent未提交、push、重启服务、改运行库、调用模型、部署或派生。
