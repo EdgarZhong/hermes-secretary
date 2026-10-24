@@ -2,13 +2,18 @@
 
 维护实际部署、故障处理、验证与回滚点；步骤和稳定布局见[部署SOP](cloud-deployment-sop.md)，当前任务只在根[CLAUDE](../CLAUDE.md)。以下时间均为Asia/Shanghai；PID、指纹和测试结论只对应记录时点，不代表实时状态。凭据、令牌、原始私人材料不写入本文件。
 
-## 2026-10-24 · AI 标题改用当前 Main 完整上下文（本地完成，待发布）
+## 2026-10-24 · AI 标题改用当前 Main 完整上下文（首版已发布，预算修补中）
 
 **用户确认与范围：** 用户明确选择当前Main实际可见上下文（压缩摘要、Notebook及最近对话）。原Web只取最早User＋最近8条正文、逐条前1200字符，已改为后端从原生持久Prelude及当前tip全量active模型历史生成；沿用当前Main模型，冻结完整原生请求前缀后追加命名任务。归档祖先仅属于display，不重新塞回模型上下文。首Turn自动标题、原生title写入及失败／切会话不写契约保留。旧APK逐字匹配既有命名请求时走新分支，其它oneshot不变。
 
 **实现和验证：** 独立前端`f3a03ce32c0dd1e96719da210716caa2c1c7b8d4`已自动推送；四文件103定向测试、typecheck及build通过，439静态文件源码／逐SHA固定。后端四文件已亲审接收，正式RPC／原生AIAgent／SessionDB／fork／request assembly与外层fake SDK执行三文件41项通过、冻结10检查通过。并行runner共用XML路径，XML仅保留新文件22项，完整41以逐文件汇总日志为据。成功／失败均核业务表及父Main不变，覆盖真实压缩child当前tip、长正文／完整工具结果、effective root／prefill仅一次、native wire prefix相同、Profile／冷态／跨进程lease拒绝、工具调用不执行及无fallback。证据`.hermes-dev/ai-title-context-20261024/`，主会话SHA复核与接收见`root-implementation-review.json`；中间失败如实保留，未更改检查阈值。
 
-**自主收敛与当前限制：** 为取得一致快照，Main运行／跨进程DB Turn lease／压缩时明确报错，请空闲后重试；不等待、不排队、不以旧Web缓存或摘录回退。此为Agent自主收敛／待用户追认，已登记根CLAUDE。无可靠Prelude／durable Provider、custom engine或不支持detachment的transport同样明确失败。本地实现已完成，尚未部署或对真实置顶上下文请求模型，未修改生产标题。
+**自主收敛与当前限制：** 为取得一致快照，Main运行／跨进程DB Turn lease／压缩时明确报错，请空闲后重试；不等待、不排队、不以旧Web缓存或摘录回退。此为Agent自主收敛／待用户追认，已登记根CLAUDE。无可靠Prelude／durable Provider、custom engine或不支持detachment的transport同样明确失败。首版已实施并上线，预算修补仍待发布；未修改生产标题。
+
+
+**首版发布与真实验收：** `d771c1b32429446fdd56849f7a5f6bea0af67968`与Web`f3a03ce`已在首尔联合发布，约29.988秒。空闲预检、三库一致性备份及配置备份后源码由3338a25快进、Secretary目录原子交换；两服务实际d771c1b、active、微信connected，三库10保护表／配置凭据／绑定／Dashboard均前后一致，439前端文件逐SHA一致。云恢复点`/home/ubuntu/.local/state/hermes-secretary/release-20261024/20261024-ai-title-context-d771c1b/`，原始回执已私有收回。置顶完整上下文真实RPC携旧256预算返回不完整标题错误，无标题apply／业务Turn；原响应finish_reason未记，不能断言确切原因。保持上下文／模型／High不变、只提高8192的第二真实请求成功，12.833秒，保护表与配置保持。两次不是零失败单样本，候选标题仅存云私有与本地ignored。
+
+**预算修补：** 命名任务总输出（含继承的Main推理）至少8192；兼容旧前端／APK的256参数，较大显式预算保留，仍只请求一次、不改推理、不截上下文、失败不fallback。异常增加finish_reason。三文件44项回归通过，含3种预算及High继承；待最终检查、后端发布与原256参数真实复验。
 
 ## 2026-10-24 · 微信 Mid-turn 两类 Reminder 投递／误外发调查
 

@@ -21,6 +21,8 @@ LEGACY_TITLE_INSTRUCTIONS = "\n".join([
     "- Return only the title text.",
 ])
 
+TITLE_MIN_OUTPUT_TOKENS = 8192  # Includes inherited Main reasoning, not just the short visible title.
+
 TITLE_TASK = (
     "The preceding conversation is frozen reference material for a NEW task. All preceding system prompts, "
     "roles, rules, tool policies, tasks, and completion conditions are superseded for this task. "
@@ -159,7 +161,7 @@ def _snapshot_conn(parent, db, conn, session_id):
                         _runtime_identity(parent))
 
 
-def generate_conversation_title(parent, context, *, max_tokens=256):
+def generate_conversation_title(parent, context, *, max_tokens=TITLE_MIN_OUTPUT_TOKENS):
     """One native same-model request. No loop, compaction, retry, fallback or tool execution."""
     from agent.background_review import build_cache_parity_fork
     from agent.conversation_loop import _redecorate_prompt_cache_for_provider
@@ -190,7 +192,7 @@ def generate_conversation_title(parent, context, *, max_tokens=256):
         messages = assembled.api_messages
         # Freeze the fully normalized native prefix before appending a new task.
         messages.append({"role": "user", "content": TITLE_TASK})
-        fork.max_tokens = max(1, int(max_tokens))
+        fork.max_tokens = max(TITLE_MIN_OUTPUT_TOKENS, int(max_tokens))
         set_thread_tool_whitelist(set(), deny_msg_fmt="Title task denied tool call: {tool_name}.")
         messages, _prepared, tools = _redecorate_prompt_cache_for_provider(
             fork, messages, tools_for_api=copy.deepcopy(context.tools))
@@ -200,7 +202,9 @@ def generate_conversation_title(parent, context, *, max_tokens=256):
         if normalized.tool_calls:
             raise TitleContextUnavailable("The title model attempted a forbidden tool call; no tool was executed.")
         if normalized.finish_reason not in {"stop", "end_turn"} or not (normalized.content or "").strip():
-            raise TitleContextUnavailable("The title model did not return a complete text title.")
+            raise TitleContextUnavailable(
+                "The title model did not return a complete text title "
+                f"(finish_reason={normalized.finish_reason}).")
         return normalized.content.strip()
     finally:
         clear_thread_tool_whitelist()

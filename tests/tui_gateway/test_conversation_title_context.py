@@ -197,6 +197,8 @@ def test_model_failures_never_execute_tools_or_retry_with_a_digest(title_runtime
     before = business_state(rt)
     result = rpc()
     assert "error" in result, result
+    if failure == "length":
+        assert "finish_reason=length" in result["error"]["message"]
     assert len(rt.requests) == 1
     assert before == business_state(rt)
 
@@ -287,3 +289,16 @@ db.close()
             child.stdin.flush()
         child.wait(timeout=10)
     assert rpc().get("result", {}).get("text") == "当前完整上下文标题"
+
+
+@pytest.mark.parametrize("requested", [256, 4096, 16384])
+def test_full_context_title_budget_preserves_main_reasoning(title_runtime, requested):
+    rt = title_runtime
+    rt.parent.reasoning_config = {"enabled": True, "effort": "high"}
+    before = business_state(rt)
+    result = rpc(max_tokens=requested)
+    assert result.get("result", {}).get("text") == "当前完整上下文标题", result
+    assert len(rt.requests) == 1
+    assert rt.parent._requested_output_cap_from_api_kwargs(rt.requests[0]) == max(8192, requested)
+    assert rt.forks[0].reasoning_config == rt.parent.reasoning_config
+    assert before == business_state(rt)
