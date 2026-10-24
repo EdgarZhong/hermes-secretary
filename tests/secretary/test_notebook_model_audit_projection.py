@@ -6,6 +6,7 @@ from types import SimpleNamespace
 import pytest
 
 from hermes_state import SessionDB
+from hermes_time import format_timestamp
 from secretary.notebook_render import show_notebook
 from secretary.notebook_store import NotebookStore
 from tools.notebook_tool import notebook_show
@@ -30,7 +31,7 @@ def test_default_api_retains_audit_fields_while_model_projection_preserves_actio
     snapshot = db.notebook_current(ref)
     public = json.loads(notebook_show({}, db=db, conversation_ref=ref, effective_enabled=True))
     model = json.loads(notebook_show({}, db=db, conversation_ref=ref, effective_enabled=True, model_visible=True))
-    assert public == show_notebook(snapshot, profile_home=db.db_path.parent)
+    assert public == show_notebook(snapshot, profile_home=db.db_path.parent, db=db, conversation_ref=ref)
     assert public["snapshot_id"] == snapshot["snapshot_id"]
     assert public["coverage"] == {"anchor_message_uid": "source-uid"}
     assert not {"snapshot_id", "base_snapshot_id", "coverage"}.intersection(model)
@@ -40,6 +41,7 @@ def test_default_api_retains_audit_fields_while_model_projection_preserves_actio
     assert item["entry_id"] == entry["entry_id"]
     assert item["version_id"] == entry["version_id"]
     assert item["source_message_uids"] == ["source-uid"]
+    assert item["evidence_time"] == [format_timestamp(100, profile_home=db.db_path.parent)]
     assert db.notebook_current(ref) == snapshot
 
 

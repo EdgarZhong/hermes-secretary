@@ -402,7 +402,8 @@ def test_worker_native_construction_and_turn_keep_session_identity_task_local(na
     assert os.environ["HERMES_SESSION_ID"] == "other-process-main-identity"
 
 
-@pytest.mark.parametrize("complete_pin", [False, True], ids=["legacy-tools-upgraded", "fixed-tools-unchanged"])
+@pytest.mark.parametrize("complete_pin", [False, True, "stale"],
+                         ids=["legacy-tools-upgraded", "fixed-tools-unchanged", "same-name-contracts-refreshed"])
 def test_recovery_constructs_fixed_tools_before_freeze_and_preserves_failed_records(
         native_parent, database, monkeypatch, complete_pin):
     from copy import deepcopy
@@ -417,6 +418,13 @@ def test_recovery_constructs_fixed_tools_before_freeze_and_preserves_failed_reco
     if not complete_pin:
         expected += [{"type": "function", "function": schema} for schema in canonical
                      if schema["name"] not in {tool["function"]["name"] for tool in expected}]
+    if complete_pin == "stale":
+        for tool in parent.tools[1:]:
+            tool["function"]["description"] = "Historical definition of " + tool["function"]["name"]
+            if tool["function"]["name"] in {"notebook_create", "notebook_update"}:
+                properties = tool["function"]["parameters"]["properties"]
+                properties.pop("source_time_ranges", None)
+                properties["source_time_range"] = {"type": "object"}
     failed = failed_task(native_parent, database)
     original_session = database.get_session(failed.child_session_id)
     original_rows = database.get_messages_as_conversation(failed.child_session_id)
@@ -452,10 +460,15 @@ def test_recovery_constructs_fixed_tools_before_freeze_and_preserves_failed_reco
     assert all(wire["tools"] == expected for wire in wires)
     assert all("tools" not in row for wire in wires for row in wire["messages"])
     assert all("callable_tool_schemas" not in str(wire["messages"]) for wire in wires)
-    if complete_pin:
+    if complete_pin is True:
         assert expected == source_pin
         assert state["sources"]["tools"] == "failed_child.tool_names"
         assert set(state["sources"]) == {"parent", "root", "tools", "notebook"}
+    elif complete_pin == "stale":
+        assert expected != source_pin
+        assert "refreshed_canonical=" + ",".join(schema["name"] for schema in canonical) in state["sources"]["tools"]
+        assert "historical_tools_prefix_not_byte_identical" in state["sources"]["tools"]
+        assert json.loads(database.get_session(state["child_session_id"])["tool_names"])["tools"] == expected
     else:
         assert state["sources"]["tools"].startswith("failed_child.tool_names+fixed_noting_maintenance_definitions")
         assert "(conversation_history,notebook_show,notebook_create,notebook_update,notebook_archive,finish_noting)" in state["sources"]["tools"]

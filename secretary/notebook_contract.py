@@ -50,10 +50,10 @@ CANDIDATE_TARGETS = {"memory", "skill", "rule", "conversation"}
 PERSISTENCE_TARGETS = CANDIDATE_TARGETS - {"conversation"}
 ENTRY_KEYS = {
     "entry_id", "version_id", "entry_type", "fields", "status", "relations",
-    "source_message_identities", "source_time_range", "created_at", "updated_at",
+    "source_message_identities", "source_time_ranges", "created_at", "updated_at",
     "last_processed_at", "archived",
 }
-CHANGE_KEYS = {"fields", "status", "relations", "schedule_suggestion", "source_message_identities", "source_message_uids", "source_time_range"}
+CHANGE_KEYS = {"fields", "status", "relations", "schedule_suggestion", "source_message_identities", "source_message_uids", "source_time_range", "source_time_ranges"}
 SOURCE_NOT_PROVIDED = object()
 
 
@@ -103,17 +103,53 @@ def parse_time(value, field):
         ) from exc
 
 
-def validate_source_range(value):
+def validate_source_range(value, field="source_time_range"):
     if not isinstance(value, dict) or set(value) != {"start_time", "end_time"}:
         raise NotebookValidationError(
-            "Source time range requires both bounds.", field="source_time_range",
-            next_action="Supply start_time and end_time together, or null when another source remains.",
+            "Source time range requires both bounds.", field=field,
+            next_action="Supply start_time and end_time together; use [] to clear source_time_ranges.",
         )
-    start, end = (parse_time(value[key], f"source_time_range.{key}")
+    start, end = (parse_time(value[key], f"{field}.{key}")
                   for key in ("start_time", "end_time"))
     if start > end:
-        raise NotebookValidationError("Source time range is reversed.", field="source_time_range")
+        raise NotebookValidationError("Source time range is reversed.", field=field)
     return start, end
+
+
+def validate_source_ranges(value):
+    """Validate every explicit range; duplicates and overlaps are permitted."""
+    if not isinstance(value, list):
+        raise NotebookValidationError(
+            "Expected the complete source_time_ranges array.", field="source_time_ranges",
+            next_action="Supply an array of start_time/end_time objects; use [] to clear it.",
+        )
+    for index, interval in enumerate(value):
+        validate_source_range(interval, field=f"source_time_ranges[{index}]")
+
+
+def canonical_range_fields(values):
+    """Keep the old singleton only as a trusted internal/read compatibility form."""
+    result = deepcopy(values)
+    if "source_time_range" in result:
+        if "source_time_ranges" in result:
+            raise NotebookValidationError(
+                "Do not mix legacy and current range parameters.", field="source_time_ranges",
+                next_action="Use only source_time_ranges with the complete replacement array.",
+            )
+        interval = result.pop("source_time_range")
+        result["source_time_ranges"] = [] if interval is None else [interval]
+    return result
+
+
+def canonical_notebook_entry(entry):
+    """Project old fields without rewriting any immutable version's stored JSON."""
+    if not isinstance(entry, dict):
+        return deepcopy(entry)
+    result = canonical_range_fields(entry)
+    if isinstance(result.get("fields"), dict):
+        for key in ("external_refs", "evidence_time"):
+            result["fields"].pop(key, None)
+    return result
 
 
 def unique_strings(value, field):
@@ -128,7 +164,7 @@ def unique_strings(value, field):
 
 def canonical_source_fields(values, conversation_ref):
     """Bind local input once; persistent entries retain canonical identities."""
-    result = deepcopy(values)
+    result = canonical_range_fields(values)
     if "source_message_uids" not in result:
         return result
     if "source_message_identities" in result:
@@ -206,31 +242,31 @@ def validate_candidate_provenance(entry):
     """Return one exclusive provenance form, independent of Candidate target.
 
     ``refs`` follows current Notebook entries back to their original evidence;
-    ``messages`` cites exact Message identities directly. A Candidate never mixes
-    these forms or substitutes a time range for exact Message identities.
+    ``messages`` cites direct Message identities and/or explicit time ranges.
+    A Candidate never mixes direct evidence with Notebook references.
     """
     fields = entry["fields"]
     refs = fields["notebook_refs"]
     sources = entry["source_message_identities"]
-    source_range = entry["source_time_range"]
+    source_ranges = entry["source_time_ranges"]
     if refs:
-        if sources or source_range is not None:
+        if sources or source_ranges:
             raise NotebookValidationError(
-                "A Candidate cites either Notebook entries or Messages, not both.",
+                "A Candidate cites either Notebook entries or direct evidence, not both.",
                 field="source_message_identities",
-                next_action="Keep notebook_refs and clear Message provenance, or clear notebook_refs and cite Messages.",
+                next_action="Keep notebook_refs and clear Message UIDs/time ranges, or clear notebook_refs/source_types and cite direct evidence.",
             )
         return "refs"
     if fields["source_types"]:
         raise NotebookValidationError(
             "source_types requires notebook_refs.", field="fields.source_types",
-            next_action="Clear source_types when provenance is Message-based.",
+            next_action="Clear source_types when using direct Message UIDs or time ranges.",
         )
-    if source_range is not None or not sources:
+    if not source_ranges and not sources:
         raise NotebookValidationError(
-            "Message-referenced Candidates require exact Message identities.",
+            "Direct Candidates require at least one Message UID or time range.",
             field="source_message_identities",
-            next_action="Cite the Messages directly; do not use a time range.",
+            next_action="Supply source_message_uids, source_time_ranges, or both; keep notebook_refs/source_types empty.",
         )
     return "messages"
 
@@ -243,12 +279,13 @@ def same_source_claim(left, right, *, allow_relation_removal=False):
     This is a structural safeguard, not an attempt to infer semantic entailment.
     """
     def claim(entry):
+        entry = canonical_notebook_entry(entry)
         fields = deepcopy(entry["fields"])
         fields.pop("processing_note", None)
         return {"entry_id": entry["entry_id"], "entry_type": entry["entry_type"],
                 "fields": fields, "status": entry["status"], "relations": entry["relations"],
                 "source_message_identities": entry["source_message_identities"],
-                "source_time_range": entry["source_time_range"]}
+                "source_time_ranges": entry["source_time_ranges"]}
     left_claim, right_claim = claim(left), claim(right)
     if allow_relation_removal:
         # Runtime archive cleanup can only remove existing auxiliary relations;

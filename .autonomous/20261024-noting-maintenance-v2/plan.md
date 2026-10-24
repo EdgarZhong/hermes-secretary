@@ -91,3 +91,10 @@
 - 用户已明确：二选一只发生在直接对话证据与notebook_refs间接引用之间；直接内部IDs／时间段数组可单独或混用。07及索引R16/R17立即更新，前次“keep ranges empty”只属回答前临时实现记录，须移除最终限制及其Prompt；不改两模式互斥、标签映射、目标、审批、实际写入结算。
 - A负责validator/Schema/直接来源与refs相关数组用例；B负责Task对应句及其原五文件Candidate脚本/断言迁移，两者白名单不交叉。需测仅IDs、仅多段、混传、refs保持、模式切换完整清理、直接+refs混用拒绝及无来源拒绝零副作用。保旧仅IDs日志为历史，不以它签新契约。
 - 来源范围现已完整收口，仍不得提前收费或部署；A/B最终整包后root亲审/锁版，再依最终版本做F04/N46、全新独立Verification与Validation。
+
+### 来源数组整包主会话亲审
+- root已亲读A七份产品及正式Store/item/source-basis/投影调用链、Candidate最终validator与正反例，11文件SHA256 manifest逐一与现树一致。规范化仅作用读/内部兼容，当前API不保单范围alias；逐来源域与事务重核、精确version/继承资格、Noop/稳定ID及旧immutable字节保持。时间点不合宽段，显式range独立保留；F01可信Instant证明和Profile时区路径保留。
+- A最终Candidate相关15项、此前投影55项及七类型相关分区证据按源码影响有效复用；原171/216及中间临时Candidate证据保原时点，不冒称最终全量复跑。相邻12文件原152pass/45fail已由root交B处理5份旧脚本/期望，真实失败保留，等待最终B包。
+- root已亲读B三份产品及旧pin→native恢复→Main apply→当前canonical pin→新Noting freeze上下游、恢复新audit及SDK测试，确认只更新变化的同名六定义、保其它工具顺序/字节；原生记录真实toolset cache break并best-effort pin，不热改已冻child，不Task再注Schema。最后Candidate措辞/测试迁移仍待B最终整包和依赖hash核对。
+- B最终5d包已交回并root亲审接收：Prompt仅追加用户明确软指导并准确改Candidate direct/ref二选一，未改未批F04补新来源句；五份旧测试保实体/生命周期/失败原子与旧immutable兼容，最后Finish改读durable回执且验证所有call/result严格交错。最终Candidate两文件70项、两种真实SDK混传2项及负例28定向（重叠不加总）通过；非Candidate68项及原有效81/4/33按影响复用。A/B共21文件SHA256与现树逐一一致，实际依赖canonical/renderer稳定，不为review复跑有效大套。
+- 当前A/B集成无已知机制缺口；来源软指导自然模型能否修正F04仍未证，N46及独立双门禁/部署仍未完成。root统一stage质量检查及阶段锁版后，D先最终零请求dry，再按明确授权收费F04；成功并亲审内容后才授权N46。

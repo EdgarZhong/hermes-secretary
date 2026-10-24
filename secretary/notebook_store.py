@@ -164,7 +164,7 @@ class NotebookStore:
         if basis is None:
             valid_identity, valid_range = _source_checks_conn(self._db, conn, self.conversation_ref)
             if (not all(valid_identity(source) for source in entry["source_message_identities"])
-                    or (entry["source_time_range"] is not None and not valid_range(entry["source_time_range"]))):
+                    or not all(valid_range(interval) for interval in entry["source_time_ranges"])):
                 raise NotebookValidationError(
                     "The source left the authorized current path before the write.", code="source_unavailable",
                     next_action="Locate current evidence; this operation did not change the working Notebook.",
@@ -199,11 +199,13 @@ class NotebookStore:
         return self._state.get(entry_id)
 
     def create(self, entry_type, fields, *, status=None, relations=None,
-               source_message_identities=SOURCE_NOT_PROVIDED, source_time_range=None,
-               source_message_uids=SOURCE_NOT_PROVIDED, schedule_suggestion=None):
+               source_message_identities=SOURCE_NOT_PROVIDED, source_time_range=SOURCE_NOT_PROVIDED,
+               source_message_uids=SOURCE_NOT_PROVIDED, schedule_suggestion=None,
+               source_time_ranges=SOURCE_NOT_PROVIDED):
         return self._state.create(entry_type, fields, status=status, relations=relations,
                                   source_message_identities=source_message_identities, source_time_range=source_time_range,
-                                  source_message_uids=source_message_uids, schedule_suggestion=schedule_suggestion)
+                                  source_message_uids=source_message_uids, schedule_suggestion=schedule_suggestion,
+                                  source_time_ranges=source_time_ranges)
 
     def update(self, entry_id, changes):
         return self._state.update(entry_id, changes)

@@ -174,9 +174,27 @@ def _run(runtime, script, *, db=None, anchor="actual-result"):
         trigger_type="manual", runtime_profile="NOTING", admission_timestamp=500,
         task_instruction=DEFAULT_NOTING_TASK_INSTRUCTION,
     )
+    rows = database.get_messages_as_conversation(outcome.child_session_id)
+    calls = [call["id"] for row in rows if row.get("role") == "assistant"
+             for call in row.get("tool_calls", []) if call["id"] in script.issued]
+    receipts = [row for row in rows if row.get("role") == "tool" and row.get("tool_call_id") in script.issued]
+    assert calls == [row["tool_call_id"] for row in receipts] == script.issued
+    sequence = []
+    for row in rows:
+        if row.get("role") == "assistant":
+            sequence.extend(("call", call["id"]) for call in row.get("tool_calls", []) if call["id"] in script.issued)
+        elif row.get("role") == "tool" and row.get("tool_call_id") in script.issued:
+            sequence.append(("result", row["tool_call_id"]))
+    assert sequence == [(kind, call_id) for call_id in script.issued for kind in ("call", "result")]
+    # Finish intentionally has no next model request: take its canonical result from SQLite.
+    for row in receipts:
+        result = json.loads(row["content"])
+        call_id = row["tool_call_id"]
+        if call_id in script.results:
+            assert script.results[call_id] == result
+        script.results[call_id] = result
     assert len(script.results) == len(script.issued)
     assert not script.failures, script.failures
-    rows = database.get_messages_as_conversation(outcome.child_session_id)
     assert any(row.get("role") == "tool" for row in rows), "Native child must durably persist tool suffix"
     print("S02_TRACE " + json.dumps({
         "child_session_id": outcome.child_session_id, "committed": outcome.committed,
@@ -202,7 +220,7 @@ def _archive(entry, reason):
 def _convert(candidate, uids):
     return _maintain({"action": "update", "entry_id": candidate["entry_id"], "changes": {
         "fields": {"notebook_refs": [], "source_types": []},
-        "source_message_uids": uids, "source_time_range": None,
+        "source_message_uids": uids, "source_time_ranges": [],
     }})
 
 
@@ -233,7 +251,7 @@ def test_last_ref_conversion_keeps_evidence_then_archives_source_before_candidat
     assert converted["status"] == "awaiting_result"
     assert converted["fields"]["description"] == seeded.candidate["fields"]["description"]
     assert converted["source_message_uids"] == ["origin-a"]
-    assert converted["source_time_range"] is None
+    assert converted["source_time_ranges"] == []
     during = script.results["s02-3"]["payload"]
     assert len(during["work"]) == len(during["candidates"]) == 1
     assert during["candidates"][0]["fields"]["notebook_refs"] == []
@@ -335,7 +353,7 @@ def test_missing_exact_message_rejects_conversion_without_losing_time_range_sour
     assert script.results["s02-0"]["error"]["code"] == "source_unavailable"
     assert script.results["s02-1"]["error"]["code"] == "source_unavailable"
     assert script.results["s02-2"]["error"]["code"] == "invalid_reference"
-    assert _payload(runtime)["work"][0]["source_time_range"] == seeded.sources[0]["source_time_range"]
+    assert _payload(runtime)["work"][0]["source_time_ranges"] == seeded.sources[0]["source_time_ranges"]
     assert _payload(runtime)["candidates"][0]["version_id"] == seeded.candidate["version_id"]
 
 

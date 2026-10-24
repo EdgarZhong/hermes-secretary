@@ -25,6 +25,21 @@ def _read_schema(name):
     return NOTEBOOK_SHOW_SCHEMA
 
 
+def _refresh_noting_definitions(tools):
+    """Refresh same-name contracts at an existing Main/recovery boundary, keeping order."""
+    from secretary.noting_tools import noting_tool_schemas
+    canonical = {schema["name"]: {"type": "function", "function": schema}
+                 for schema in noting_tool_schemas()}
+    resolved, refreshed = [], []
+    for tool in tools:
+        name = _tool_name(tool)
+        if name in canonical and tool != canonical[name]:
+            tool = copy.deepcopy(canonical[name])
+            refreshed.append(name)
+        resolved.append(tool)
+    return resolved, refreshed
+
+
 def notebook_read_enabled(agent):
     """Global owning-profile gate; local participation never controls Main reads."""
     from secretary.noting_runtime import is_main_conversation_agent
@@ -98,6 +113,7 @@ def apply_main_read_surface(agent):
                | (_NOTING_ONLY if notebook else set())) if main else set()
     removed = ((_MAIN_TOOLS | _NOTING_ONLY) - desired) | RETIRED_SECRETARY_TOOLS
     resolved = [tool for tool in tools if _tool_name(tool) not in removed]
+    resolved, refreshed = _refresh_noting_definitions(resolved)
     names = {_tool_name(tool) for tool in resolved}
     for name in ("conversation_history", "notebook_show", "scheduler", "notebook_create", "notebook_update", "notebook_archive", "finish_noting"):
         if name in desired and name not in names:
@@ -107,6 +123,12 @@ def apply_main_read_surface(agent):
     agent.tools = apply_cron_schema_guidance(_reconcile_catalog(agent, resolved), enabled=scheduler)
     agent.valid_tool_names = ((set(getattr(agent, "valid_tool_names", set())) - removed)
                               | (desired & names)) - _NOTING_ONLY
+    if refreshed:
+        from hermes_cli.observability.shared_metrics_efficiency import record_cache_break
+        from tools.mcp_tool_agent import persist_agent_tool_names
+        record_cache_break(agent, "toolset_change")
+        if not getattr(agent, "_persist_disabled", False):
+            persist_agent_tool_names(agent)
     return notebook
 
 

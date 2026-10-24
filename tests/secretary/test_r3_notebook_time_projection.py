@@ -16,12 +16,16 @@ from tests.secretary.test_r3_child import database as database, native_parent as
 from tools.notebook_tool import notebook_show
 
 EVIDENCE = "2026-10-17T12:34:56.654321+08:00"
-EVIDENCE_DISPLAY = "2026-10-17T12:34:56+08:00"
+EVIDENCE_DISPLAY = "2026-10-17T04:34:56+00:00"
+LATER_DISPLAY = "2026-10-17T04:35:56+00:00"
 CLOCK = datetime.fromisoformat("2026-10-17T14:15:16.987654+08:00")
-CLOCK_DISPLAY = "2026-10-17T14:15:16+08:00"
+CLOCK_DISPLAY = "2026-10-17T06:15:16+00:00"
 SOURCE_RANGE = {"start_time": "2026-10-17T12:34:56.600000+08:00",
                 "end_time": "2026-10-17T12:34:56.700000+08:00"}
 DISPLAY_RANGE = {"start_time": EVIDENCE_DISPLAY, "end_time": EVIDENCE_DISPLAY}
+LATER_RANGE = {"start_time": "2026-10-17T04:35:56+00:00", "end_time": "2026-10-17T04:35:57+00:00"}
+SOURCE_RANGES = [SOURCE_RANGE, LATER_RANGE]
+DISPLAY_RANGES = [DISPLAY_RANGE, LATER_RANGE]
 DESCRIPTION = "Keep literal evidence text 2026-10-17T12:34:56.654321+08:00 unchanged."
 FINISH = {"type": "finish_noting", "reason": "Checked the original evidence"}
 
@@ -35,6 +39,8 @@ def time_book(database, monkeypatch):
         "timezone: UTC\nnoting:\n  enabled: true\n  persistence_proposal:\n    char_threshold: 1\n")
     database.append_message("parent", "user", "Original source evidence", message_uid="time-source",
                             timestamp=datetime.fromisoformat(EVIDENCE).timestamp())
+    database.append_message("parent", "user", "Later supporting evidence", message_uid="time-source-later",
+                            timestamp=datetime.fromisoformat(EVIDENCE).timestamp() + 60)
     ref = database.resolve_conversation_ref("parent")
     store = NotebookStore(database, ref, anchor_message_uid="time-source", clock=lambda: CLOCK)
     child = SimpleNamespace(_session_db=database, _secretary_noting_child=True,
@@ -43,8 +49,8 @@ def time_book(database, monkeypatch):
     args = {"entry_type": "matter", "fields": {
         "description": DESCRIPTION, "completion_condition": "reviewed",
         "last_progress_time": EVIDENCE, "processing_note": "Retain the supported responsibility"},
-        "source_message_uids": ["time-source"],
-        "source_time_range": deepcopy(SOURCE_RANGE)}
+        "source_message_uids": ["time-source", "time-source-later"],
+        "source_time_ranges": deepcopy(SOURCE_RANGES)}
     maintained = json.loads(notebook_create(child, args))
     assert maintained["success"], maintained
     question = deepcopy(args)
@@ -56,16 +62,17 @@ def time_book(database, monkeypatch):
     situation["entry_type"] = "situation"
     situation["fields"] = {"description": "Expressed circumstances", "subjects": ["user"],
                            "time_context": DESCRIPTION}
-    situation["source_time_range"] = None
+    situation["source_time_ranges"] = []
     assert json.loads(notebook_create(child, situation))["success"]
     return child, store, maintained
 
 
 def assert_projected_entry(entry):
-    assert entry["source_message_uids"] == ["time-source"]
+    assert entry["source_message_uids"] == ["time-source", "time-source-later"]
     assert "source_message_identities" not in entry
     assert "conversation_ref" not in entry
-    assert entry["evidence_time"] == "2026-10-17T04:34:56+00:00"
+    expected_times = [EVIDENCE_DISPLAY, LATER_DISPLAY] + (DISPLAY_RANGES if entry["entry_type"] != "situation" else [])
+    assert entry["evidence_time"] == expected_times
     assert "evidence_time" not in entry["fields"]
     assert entry["created_at"] == CLOCK_DISPLAY
     assert entry["updated_at"] == CLOCK_DISPLAY
@@ -73,14 +80,14 @@ def assert_projected_entry(entry):
         assert entry["last_processed_at"] == CLOCK_DISPLAY
         assert entry["fields"]["description"] == DESCRIPTION
         assert entry["fields"]["last_progress_time"] == EVIDENCE_DISPLAY
-        assert entry["source_time_range"] == DISPLAY_RANGE
+        assert entry["source_time_ranges"] == DISPLAY_RANGES
     elif entry["entry_type"] == "question":
         assert entry["last_processed_at"] is None
         assert entry["fields"]["last_discussion_time"] == EVIDENCE_DISPLAY
     else:
         assert entry["fields"]["time_context"] == DESCRIPTION
         assert "evidence_time" not in entry["fields"]
-        assert entry["source_time_range"] is None
+        assert entry["source_time_ranges"] == []
 
 
 @pytest.mark.parametrize("surface", ["create", "working_show", "main_show", "slash", "web_read", "proposal", "framework"])
@@ -89,7 +96,7 @@ def test_real_store_times_are_projected_only_at_product_outputs(time_book, surfa
     db, ref = child._session_db, store.conversation_ref
     raw = store.snapshot_state()
     assert raw["work"][0]["created_at"] == CLOCK.isoformat()
-    assert raw["work"][0]["source_time_range"] == SOURCE_RANGE
+    assert raw["work"][0]["source_time_ranges"] == SOURCE_RANGES
     if surface == "create":
         assert_projected_entry(maintained["entry"])
     elif surface == "working_show":
@@ -128,17 +135,17 @@ def test_real_store_times_are_projected_only_at_product_outputs(time_book, surfa
                 assert row["content"] == parent._session_messages[-1]["content"]
                 output = row["content"]
                 assert "PERSISTENCE PROPOSAL REQUEST" in output
-            assert 'source_message_uids: ["time-source"]' in output
+            assert 'source_message_uids: ["time-source", "time-source-later"]' in output
             assert "source_message_identities" not in output
             assert "conversation_ref" not in output
             assert f'created_at: "{CLOCK_DISPLAY}"' in output
             assert f'last_processed_at: "{CLOCK_DISPLAY}"' in output
-            assert 'evidence_time: "2026-10-17T04:34:56+00:00"\n' in output
+            assert 'evidence_time: ["2026-10-17T04:34:56+00:00"' in output
             assert f"last_progress_time: {EVIDENCE_DISPLAY}\n" in output
             assert f"last_discussion_time: {EVIDENCE_DISPLAY}\n" in output
-            rendered_range = next(line.split("source_time_range: ", 1)[1] for line in output.splitlines()
-                                  if "source_time_range: {" in line)
-            assert json.loads(rendered_range) == DISPLAY_RANGE
+            rendered_range = next(line.split("source_time_ranges: ", 1)[1] for line in output.splitlines()
+                                  if "source_time_ranges: [{" in line)
+            assert json.loads(rendered_range) == DISPLAY_RANGES
             assert DESCRIPTION in output
         assert db.notebook_current(ref) == snapshot
     assert store.snapshot_state() == raw
@@ -157,7 +164,7 @@ def test_reading_projected_values_never_changes_precise_versions_or_noop(time_bo
     assert noop["success"] and noop["changed"] is False
     assert noop["entry"]["version_id"] == entry["version_id"]
     assert store.snapshot_state() == raw
-    assert public_state(raw)["work"][0]["source_time_range"] == SOURCE_RANGE
+    assert public_state(raw)["work"][0]["source_time_ranges"] == SOURCE_RANGES
     assert [tuple(row) for row in db._read_all("SELECT * FROM secretary_notebook_item ORDER BY id")] == before
     invalid = json.loads(notebook_create(child, {"entry_type": "matter",
         "fields": {"description": "Unsupported", "completion_condition": "none"},

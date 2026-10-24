@@ -7,7 +7,9 @@ Snapshots hold ordered version IDs. No Agent can fetch arbitrary versions here.
 import json
 from copy import deepcopy
 
-from secretary.notebook_contract import SECTIONS, public_state, same_source_claim, section_for_type
+from secretary.notebook_contract import (
+    SECTIONS, canonical_notebook_entry, public_state, same_source_claim, section_for_type,
+)
 
 ITEM_SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS secretary_notebook_item (
@@ -75,24 +77,14 @@ def canonical_notebook_payload(payload):
     """
     result = deepcopy(payload)
     if isinstance(result, dict):
-        for entries in result.values():
-            if not isinstance(entries, list):
-                continue
-            for entry in entries:
-                fields = entry.get("fields") if isinstance(entry, dict) else None
-                if isinstance(fields, dict):
-                    for key in ("external_refs", "evidence_time"):
-                        fields.pop(key, None)
+        for section, entries in result.items():
+            if isinstance(entries, list):
+                result[section] = [canonical_notebook_entry(entry) for entry in entries]
     return result
 
 
 def item_entry(row, conversation_ref):
-    entry = json.loads(row["payload_json"])
-    # Retired model inputs are hidden at hydration; INSERT-only rows and old
-    # Snapshot version lists remain untouched. Exact-version gates use this same
-    # projection, so compatibility never licenses reconstructed content.
-    for key in ("external_refs", "evidence_time"):
-        entry["fields"].pop(key, None)
+    entry = canonical_notebook_entry(json.loads(row["payload_json"]))
     entry["entry_id"] = str(row["lineage_id"])
     entry["version_id"] = str(row["id"])
     entry["archived"] = bool(row["archived"])

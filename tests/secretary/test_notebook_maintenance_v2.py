@@ -155,7 +155,7 @@ def test_schema_accepts_flat_parameters_and_refuses_wrapper_and_readonly_input()
     create_properties = NOTEBOOK_CREATE_SCHEMA["parameters"]["properties"]
     update_properties = NOTEBOOK_UPDATE_SCHEMA["parameters"]["properties"]
     assert (create_properties.keys() & update_properties.keys()) == {
-        "fields", "status", "relations", "schedule_suggestion", "source_message_uids", "source_time_range"}
+        "fields", "status", "relations", "schedule_suggestion", "source_message_uids", "source_time_ranges"}
     validator = Draft7Validator(NOTEBOOK_UPDATE_SCHEMA["parameters"])
     assert list(validator.iter_errors({"entry_id": "1"}))
     for patch in ({"changes": {"status": "paused"}}, {"action": "update"}, {"entry_type": "matter"},
@@ -208,12 +208,12 @@ def test_source_time_priority_and_model_projection_are_readonly(owner, uids, sta
     store = book(owner)
     entry = create(store, source_message_uids=uids)
     before = store.snapshot_state()
-    interval = evidence_time(entry, db=db, conversation_ref=ref)
-    assert interval == {"start_time": datetime.fromtimestamp(start, timezone.utc).isoformat(),
-                        "end_time": datetime.fromtimestamp(end, timezone.utc).isoformat()}
+    epochs = [start] if start == end else [start, end]
+    intervals = [{"start_time": datetime.fromtimestamp(value, timezone.utc).isoformat(),
+                  "end_time": datetime.fromtimestamp(value, timezone.utc).isoformat()} for value in epochs]
+    assert evidence_time(entry, db=db, conversation_ref=ref) == intervals
     projected = readable_notebook_entry(entry, db=db, conversation_ref=ref)
-    expected = (format_timestamp(start) if start == end else
-                {"start_time": format_timestamp(start), "end_time": format_timestamp(end)})
+    expected = [format_timestamp(value) for value in epochs]
     assert projected["evidence_time"] == expected
     assert "evidence_time" not in projected["fields"]
     assert readable_notebook_entry(projected) == projected
@@ -228,20 +228,20 @@ def test_range_only_unknown_and_candidate_reference_time_keep_provenance_meaning
     store = book(owner)
     interval = {"start_time": "1970-01-01T00:01:40+00:00", "end_time": "1970-01-01T00:05:00+00:00"}
     source = create(store, source_message_uids=[], source_time_range=interval)
-    assert evidence_time(source, db=db, conversation_ref=ref) == interval
+    assert evidence_time(source, db=db, conversation_ref=ref) == [interval]
     uid_source = create(store, source_time_range=interval)
-    assert evidence_time(uid_source, db=db)["start_time"] == interval["start_time"]
-    assert evidence_time(uid_source, db=db)["end_time"] == interval["start_time"]
+    assert evidence_time(uid_source, db=db) == [
+        {"start_time": interval["start_time"], "end_time": interval["start_time"]}, interval]
     candidate = store.create("candidate", {**MINIMAL["candidate"], "notebook_refs": [source["entry_id"]],
                                            "source_types": ["matter"]})["entry"]
-    assert evidence_time(candidate, db=db, conversation_ref=ref, state=store.snapshot_state()) == interval
+    assert evidence_time(candidate, db=db, conversation_ref=ref, state=store.snapshot_state()) == [interval]
     store.commit(termination=FINISH)
-    assert evidence_time(candidate, db=db, conversation_ref=ref) == interval
+    assert evidence_time(candidate, db=db, conversation_ref=ref) == [interval]
     assert readable_notebook_entry(candidate, db=db, conversation_ref=ref)["fields"]["notebook_refs"] == [source["entry_id"]]
-    assert evidence_time(uid_source) is None
+    assert evidence_time(uid_source) == [interval]
     # A missing time is unknown even though the entry has runtime created_at.
     db._execute_write(lambda conn: conn.execute("UPDATE messages SET timestamp='unknown' WHERE message_uid='u1'"))
-    assert evidence_time(uid_source, db=db) is None
+    assert evidence_time(uid_source, db=db) == [interval]
     assert "evidence_time" not in store.snapshot_state()["work"][0]
 
 
@@ -384,8 +384,8 @@ def test_synthetic_user_carriers_do_not_override_human_or_assistant_evidence(own
     before, versions = store.snapshot_state(), count(db)
     interval = evidence_time(entry, db=db, conversation_ref=ref)
     timestamp = datetime.fromtimestamp(expected, timezone.utc).isoformat()
-    assert interval == {"start_time": timestamp, "end_time": timestamp}
-    assert readable_notebook_entry(entry, db=db, conversation_ref=ref)["evidence_time"] == format_timestamp(expected)
+    assert interval == [{"start_time": timestamp, "end_time": timestamp}]
+    assert readable_notebook_entry(entry, db=db, conversation_ref=ref)["evidence_time"] == [format_timestamp(expected)]
     assert store.snapshot_state() == before and count(db) == versions
 
 
@@ -411,7 +411,7 @@ def test_human_input_is_classified_by_native_metadata_not_heartbeat_words(owner,
                       display_kind=STEER_DISPLAY_KIND if typed_steer else None)
     entry = create(book(owner), source_message_uids=["human-quoted", "a2"])
     timestamp = datetime.fromtimestamp(800, timezone.utc).isoformat()
-    assert evidence_time(entry, db=db, conversation_ref=ref) == {"start_time": timestamp, "end_time": timestamp}
+    assert evidence_time(entry, db=db, conversation_ref=ref) == [{"start_time": timestamp, "end_time": timestamp}]
 
 
 def admitted_instant(owner, *, sid="main", now=None, recurring=False):
@@ -461,7 +461,7 @@ def test_real_instant_admission_receipt_does_not_get_human_time_priority(owner, 
     entry = create(store, source_message_uids=[stored["message_uid"], *other_sources])
     before, working = evidence_db_facts(db), store.snapshot_state()
     timestamp = datetime.fromtimestamp(stored["timestamp"] if expected is None else expected, timezone.utc).isoformat()
-    assert evidence_time(entry, db=db, conversation_ref=ref) == {"start_time": timestamp, "end_time": timestamp}
+    assert evidence_time(entry, db=db, conversation_ref=ref) == [{"start_time": timestamp, "end_time": timestamp}]
     assert evidence_db_facts(db) == before and store.snapshot_state() == working
 
 
@@ -474,7 +474,7 @@ def test_completed_instant_receipt_keeps_identity_after_schedule_changes(owner, 
     entry = create(book(owner), source_message_uids=[stored["message_uid"], "a2"])
     before = evidence_db_facts(db)
     timestamp = datetime.fromtimestamp(500, timezone.utc).isoformat()
-    assert evidence_time(entry, db=db, conversation_ref=ref) == {"start_time": timestamp, "end_time": timestamp}
+    assert evidence_time(entry, db=db, conversation_ref=ref) == [{"start_time": timestamp, "end_time": timestamp}]
     assert evidence_db_facts(db) == before
 
 
@@ -487,7 +487,7 @@ def test_real_instant_source_keeps_original_receipt_owner_in_legal_branch(owner)
     entry = create(branch, source_message_uids=[stored["message_uid"], "a2"])
     before = evidence_db_facts(db)
     timestamp = datetime.fromtimestamp(500, timezone.utc).isoformat()
-    assert evidence_time(entry, db=db, conversation_ref=branch_ref) == {"start_time": timestamp, "end_time": timestamp}
+    assert evidence_time(entry, db=db, conversation_ref=branch_ref) == [{"start_time": timestamp, "end_time": timestamp}]
     assert evidence_db_facts(db) == before
 
 
@@ -504,7 +504,7 @@ def test_foreign_same_uid_does_not_borrow_instant_receipt(owner, same_body):
     entry = create(store, source_message_uids=[stored["message_uid"], "foreign-assistant"])
     before = evidence_db_facts(db)
     timestamp = datetime.fromtimestamp(800, timezone.utc).isoformat()
-    assert evidence_time(entry, db=db, conversation_ref=foreign_ref) == {"start_time": timestamp, "end_time": timestamp}
+    assert evidence_time(entry, db=db, conversation_ref=foreign_ref) == [{"start_time": timestamp, "end_time": timestamp}]
     assert evidence_db_facts(db) == before
 
 
@@ -518,7 +518,7 @@ def test_human_exact_instant_wrapper_without_receipt_stays_human(owner, typed_st
                       display_kind=STEER_DISPLAY_KIND if typed_steer else None)
     entry = create(book(owner), source_message_uids=["human-instant-wrapper", "a2"])
     timestamp = datetime.fromtimestamp(700, timezone.utc).isoformat()
-    assert evidence_time(entry, db=db, conversation_ref=ref) == {"start_time": timestamp, "end_time": timestamp}
+    assert evidence_time(entry, db=db, conversation_ref=ref) == [{"start_time": timestamp, "end_time": timestamp}]
 
 
 def test_instant_without_assistant_keeps_unknown_source_time_without_side_effects(owner):
@@ -528,7 +528,7 @@ def test_instant_without_assistant_keeps_unknown_source_time_without_side_effect
     entry = create(store, source_message_uids=[stored["message_uid"]])
     db._execute_write(lambda conn: conn.execute("UPDATE messages SET timestamp='unknown' WHERE id=?", (stored["id"],)))
     before, working = evidence_db_facts(db), store.snapshot_state()
-    assert evidence_time(entry, db=db, conversation_ref=ref) is None
+    assert evidence_time(entry, db=db, conversation_ref=ref) == []
     assert evidence_db_facts(db) == before and store.snapshot_state() == working
 
 
@@ -540,5 +540,5 @@ def test_same_owner_uid_with_changed_body_cannot_borrow_old_instant_receipt(owne
     entry = create(book(owner), source_message_uids=[stored["message_uid"], "a2"])
     before = evidence_db_facts(db)
     timestamp = datetime.fromtimestamp(stored["timestamp"], timezone.utc).isoformat()
-    assert evidence_time(entry, db=db, conversation_ref=ref) == {"start_time": timestamp, "end_time": timestamp}
+    assert evidence_time(entry, db=db, conversation_ref=ref) == [{"start_time": timestamp, "end_time": timestamp}]
     assert evidence_db_facts(db) == before

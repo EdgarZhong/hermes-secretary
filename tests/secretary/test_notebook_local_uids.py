@@ -57,7 +57,8 @@ def test_uid_create_update_noop_clear_and_legacy_compatibility(db):
     assert changed["source_message_identities"] == sources(book.conversation_ref, "evidence", "anchor")
     assert changed["version_id"] != entry["version_id"]
     cleared = book.update(entry["entry_id"], {"source_message_uids": [], "source_time_range": RANGE})["entry"]
-    assert cleared["source_message_identities"] == [] and cleared["source_time_range"] == RANGE
+    assert cleared["source_message_identities"] == [] and cleared["source_time_ranges"] == [RANGE]
+    assert "source_time_range" not in cleared
     old = book.create("matter", FIELDS, source_message_identities=sources(book.conversation_ref, "anchor"))["entry"]
     assert book.update(old["entry_id"], {"source_message_identities": sources(book.conversation_ref, "evidence")})["changed"]
     book.commit(termination=FINISH)

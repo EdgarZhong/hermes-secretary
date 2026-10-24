@@ -2,44 +2,56 @@
 
 import json
 import logging
-from copy import deepcopy
 from pathlib import Path
 
 from hermes_time import format_timestamp
-from secretary.notebook_contract import EVIDENCE_TIMES, SECTIONS, public_state
+from secretary.notebook_contract import EVIDENCE_TIMES, SECTIONS, canonical_notebook_entry, parse_time, public_state
 
 logger = logging.getLogger(__name__)
 
 
+def _display_time(value, profile_home):
+    """All absolute Notebook timestamps use the owning Profile's timezone."""
+    if isinstance(value, str):
+        value = parse_time(value, "timestamp").timestamp()
+    return format_timestamp(value, profile_home=profile_home)
+
+
+def _display_interval(interval, profile_home, *, point=False):
+    rendered = {key: _display_time(value, profile_home) for key, value in interval.items()}
+    if point and parse_time(interval["start_time"], "start_time") == parse_time(interval["end_time"], "end_time"):
+        return rendered["start_time"]
+    return rendered
+
+
 def readable_notebook_entry(entry, *, profile_home=None, db=None, conn=None, conversation_ref=None, state=None):
-    """Project local source UIDs and display times without changing stored evidence."""
-    projected = deepcopy(entry)
+    """Project current provenance and source times without changing stored evidence."""
+    projected = canonical_notebook_entry(entry)
     projected.pop("archived", None)
-    for key in ("external_refs", "evidence_time"):
-        projected["fields"].pop(key, None)
-    if "evidence_time" not in projected or db is not None:
+    if db is not None and profile_home is None:
+        profile_home = Path(db.db_path).parent
+    already_readable = "source_message_identities" not in projected and isinstance(projected.get("evidence_time"), list)
+    if already_readable and db is None and profile_home is None:
+        return projected
+    if not isinstance(projected.get("evidence_time"), list) or db is not None:
         from secretary.notebook_evidence import evidence_time
-        interval = evidence_time(entry, db=db, conn=conn, conversation_ref=conversation_ref, state=state)
-        if interval is None:
-            projected["evidence_time"] = None
-        else:
-            times = {key: format_timestamp(value, profile_home=profile_home) for key, value in interval.items()}
-            projected["evidence_time"] = (times["start_time"] if interval["start_time"] == interval["end_time"]
-                                          else times)
+        intervals = evidence_time(entry, db=db, conn=conn, conversation_ref=conversation_ref, state=state)
+        projected["evidence_time"] = [_display_interval(interval, profile_home, point=True) for interval in intervals]
+    else:
+        projected["evidence_time"] = [_display_time(item, profile_home) if isinstance(item, str) else
+                                      _display_interval(item, profile_home, point=True)
+                                      for item in projected["evidence_time"]]
     if "source_message_identities" in projected:
         projected["source_message_uids"] = [
             source["message_uid"] for source in projected.pop("source_message_identities")
         ]
     for key in ("created_at", "updated_at", "last_processed_at"):
         if key in projected:
-            projected[key] = format_timestamp(projected[key], profile_home=profile_home)
+            projected[key] = _display_time(projected[key], profile_home)
     for key in EVIDENCE_TIMES & projected["fields"].keys():
-        projected["fields"][key] = format_timestamp(projected["fields"][key], profile_home=profile_home)
-    if projected.get("source_time_range") is not None:
-        projected["source_time_range"] = {
-            key: format_timestamp(value, profile_home=profile_home)
-            for key, value in projected["source_time_range"].items()
-        }
+        projected["fields"][key] = _display_time(projected["fields"][key], profile_home)
+    projected["source_time_ranges"] = [_display_interval(interval, profile_home)
+                                       for interval in projected.get("source_time_ranges", [])]
     return projected
 
 
@@ -111,6 +123,8 @@ def show_notebook(snapshot, *, conversation_ref=None, profile_home=None, db=None
     Working callers use NotebookStore.working_view(), never this projection.
     ``profile_home`` controls numeric display times; precise stored ISO evidence stays untouched.
     """
+    if db is not None and profile_home is None:
+        profile_home = Path(db.db_path).parent
     if snapshot is None:
         if not isinstance(conversation_ref, str) or not conversation_ref:
             raise ValueError("An empty Notebook view requires its bound Conversation Ref")
@@ -127,13 +141,12 @@ def show_notebook(snapshot, *, conversation_ref=None, profile_home=None, db=None
 
 
 def _render_entry(entry):
-    entry = readable_notebook_entry(entry)
     lines = [f"- {entry['entry_type']} [{entry['status']}]",
              f"  entry_id: {entry['entry_id']}", f"  version_id: {entry['version_id']}"]
     for name, value in entry["fields"].items():
         rendered = value if isinstance(value, str) else json.dumps(value, ensure_ascii=False)
         lines.append(f"  {name}: {rendered}")
-    for name in ("relations", "source_message_uids", "source_time_range", "evidence_time", "schedule_suggestion", "candidate_refs",
+    for name in ("relations", "source_message_uids", "source_time_ranges", "evidence_time", "schedule_suggestion", "candidate_refs",
                  "created_at", "updated_at", "last_processed_at"):
         lines.append(f"  {name}: {json.dumps(entry.get(name), ensure_ascii=False)}")
     return lines
@@ -141,6 +154,8 @@ def _render_entry(entry):
 
 def render_notebook(snapshot, *, profile_home=None, db=None, conn=None, model_visible=False):
     """Native slash text; complete data, no archive lookup or audit termination."""
+    if db is not None and profile_home is None:
+        profile_home = Path(db.db_path).parent
     if snapshot is None:
         return "This Conversation has no Notebook Snapshot yet."
     lines = ["Notebook", f"Created at: {format_timestamp(snapshot['created_at'], profile_home=profile_home)}"]

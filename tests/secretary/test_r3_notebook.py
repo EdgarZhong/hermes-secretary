@@ -539,7 +539,7 @@ def test_range_provenance_requires_current_known_evidence_not_just_valid_syntax(
     assert error.value.code == "source_unavailable" and book.snapshot_state() == before
     result = book.update(entry["entry_id"], {"source_time_range": None, "source_message_identities": [
         {"conversation_ref": book.conversation_ref, "message_uid": "m1"}]})
-    assert result["entry"]["source_time_range"] is None
+    assert result["entry"]["source_time_ranges"] == []
     with pytest.raises(NotebookValidationError):
         book.update(entry["entry_id"], {"source_message_identities": []})
 

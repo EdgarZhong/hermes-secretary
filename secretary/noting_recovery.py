@@ -22,21 +22,25 @@ _WORKERS = {}
 
 
 def _prepare_fixed_recovery_tools(recovered):
-    """Upgrade missing maintenance definitions once, before the recovery prefix freezes."""
+    """Refresh canonical definitions once, before the recovery prefix freezes."""
     from secretary.noting_tools import noting_tool_schemas
+    from secretary.noting_surface import _refresh_noting_definitions
 
     had_retired = any(tool.get("function", {}).get("name") == "notebook_maintain" for tool in recovered.tools)
     recovered.tools = [tool for tool in recovered.tools if tool.get("function", {}).get("name") != "notebook_maintain"]
+    recovered.tools, refreshed = _refresh_noting_definitions(recovered.tools)
     names = {tool.get("function", {}).get("name") for tool in recovered.tools}
     missing = [schema for schema in noting_tool_schemas()
                if schema["name"] not in names]
-    if not missing and not had_retired:
+    if not missing and not had_retired and not refreshed:
         return
     recovered.tools = [*recovered.tools, *(
         {"type": "function", "function": copy.deepcopy(schema)} for schema in missing)]
     additions = ",".join(schema["name"] for schema in missing)
     if had_retired:
         additions += ";retired_notebook_maintain_removed"
+    if refreshed:
+        additions += ";refreshed_canonical=" + ",".join(refreshed)
     recovered.sources = {**recovered.sources, "tools": (
         recovered.sources["tools"] + f"+fixed_noting_maintenance_definitions({additions});"
         "rebuilt_at_recovery_boundary;historical_tools_prefix_not_byte_identical")}

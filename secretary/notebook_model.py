@@ -11,9 +11,9 @@ from threading import RLock
 from secretary.notebook_contract import (
     ARRAY_FIELDS, CHANGE_KEYS, COMMON_FIELDS, ENTRY_KEYS, OPTIONAL_FIELDS,
     RELATION_KINDS, REQUIRED_FIELDS, STATUSES, NotebookValidationError,
-    SOURCE_NOT_PROVIDED, canonical_source_fields, local_source_error,
+    SOURCE_NOT_PROVIDED, canonical_notebook_entry, canonical_source_fields, local_source_error,
     outgoing_references, parse_time, public_state, require_text,
-    validate_candidate_provenance, validate_fields, validate_references, validate_source_range,
+    validate_candidate_provenance, validate_fields, validate_references, validate_source_ranges,
     validate_schedule_suggestion,
 )
 from secretary.notebook_contract import SECTIONS as SECTIONS
@@ -42,6 +42,9 @@ class NotebookWorkingState:
         self._insert_versions = insert_versions
         self._frozen = False
         state = deepcopy(payload) if payload is not None else {section: [] for section in SECTIONS}
+        if isinstance(state, dict):
+            state = {key: [canonical_notebook_entry(entry) for entry in entries]
+                     if isinstance(entries, list) else entries for key, entries in state.items()}
         self._validate_state(state)
         self._state = state
         numbers = [int(entry[key]) for entries in state.values() for entry in entries
@@ -74,9 +77,8 @@ class NotebookWorkingState:
             if identity in seen:
                 raise NotebookValidationError("Duplicate source Message Identity.", field="source_message_identities")
             seen.add(identity)
-        source_range = entry["source_time_range"]
-        if source_range is not None:
-            validate_source_range(source_range)
+        source_ranges = entry["source_time_ranges"]
+        validate_source_ranges(source_ranges)
         inherited = (not fresh and self._validate_inherited_sources is not None
                      and self._validate_inherited_sources(deepcopy(entry)))
         if inherited:
@@ -85,15 +87,15 @@ class NotebookWorkingState:
             if validate_candidate_provenance(entry) == "refs":
                 # Referenced entries carry their own provenance; validate_references checks them.
                 return
-        elif not sources and source_range is None:
+        elif not sources and not source_ranges:
             raise NotebookValidationError(
                 "Every entry requires at least one provenance form.", field="source_message_identities",
-                next_action="Supply supporting Message Identities or a bounded source_time_range.",
+                next_action="Supply supporting Message Identities, source_time_ranges, or both.",
             )
         valid_messages = all(self._validate_source_identity is not None
                              and self._validate_source_identity(deepcopy(source)) for source in sources)
-        valid_range = (source_range is None or (self._validate_source_range is not None
-                       and self._validate_source_range(deepcopy(source_range))))
+        valid_range = all(self._validate_source_range is not None
+                          and self._validate_source_range(deepcopy(interval)) for interval in source_ranges)
         if not valid_messages or not valid_range:
             raise NotebookValidationError(
                 "The requested source is not available on the authorized current path.", code="source_unavailable",
@@ -198,8 +200,9 @@ class NotebookWorkingState:
         return entry
 
     def create(self, entry_type, fields, *, status=None, relations=None,
-               source_message_identities=SOURCE_NOT_PROVIDED, source_time_range=None,
-               source_message_uids=SOURCE_NOT_PROVIDED, schedule_suggestion=None):
+               source_message_identities=SOURCE_NOT_PROVIDED, source_time_range=SOURCE_NOT_PROVIDED,
+               source_message_uids=SOURCE_NOT_PROVIDED, schedule_suggestion=None,
+               source_time_ranges=SOURCE_NOT_PROVIDED):
         with self.lock:
             self._require_writable()
             section = section_for_type(entry_type)
@@ -212,13 +215,17 @@ class NotebookWorkingState:
                 sources["source_message_identities"] = source_message_identities
             if source_message_uids is not SOURCE_NOT_PROVIDED:
                 sources["source_message_uids"] = source_message_uids
+            if source_time_range is not SOURCE_NOT_PROVIDED:
+                sources["source_time_range"] = source_time_range
+            if source_time_ranges is not SOURCE_NOT_PROVIDED:
+                sources["source_time_ranges"] = source_time_ranges
             sources = canonical_source_fields(sources, self.conversation_ref)
             identities = sources.get("source_message_identities")
             entry = {"entry_id": "__new__", "version_id": "__new__", "entry_type": entry_type,
                      "fields": fields, "status": STATUSES[entry_type][0] if status is None else status,
                      "relations": deepcopy(relations) if relations is not None else [],
                      "source_message_identities": [] if identities is None else identities,
-                     "source_time_range": deepcopy(source_time_range), "archived": False,
+                     "source_time_ranges": sources.get("source_time_ranges", []), "archived": False,
                      "created_at": None, "updated_at": None, "last_processed_at": None}
             if schedule_suggestion is not None:
                 entry["schedule_suggestion"] = deepcopy(schedule_suggestion)
@@ -346,7 +353,7 @@ class NotebookWorkingState:
         action = args["action"]
         required = {"create": {"entry_type", "fields"}, "update": {"entry_id", "changes"},
                     "archive": {"entry_id", "reason"}}
-        optional = {"create": {"status", "relations", "schedule_suggestion", "source_message_identities", "source_message_uids", "source_time_range"},
+        optional = {"create": {"status", "relations", "schedule_suggestion", "source_message_identities", "source_message_uids", "source_time_range", "source_time_ranges"},
                     "update": set(), "archive": set()}
         if action not in required:
             raise NotebookValidationError("Expected create, update or archive.", field="action")

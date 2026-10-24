@@ -167,8 +167,8 @@ NOTEBOOK_CREATE_SCHEMA = {'name': 'notebook_create',
                                                                                           'entry IDs for any '
                                                                                           'target. Use these '
                                                                                           'references or '
-                                                                                          'exact Message '
-                                                                                          'UIDs, never both; '
+                                                                                          'direct Message '
+                                                                                          'UIDs/time ranges, never both; '
                                                                                           'source bodies '
                                                                                           'remain in place.'},
                                                          'targets': {'type': 'array',
@@ -231,9 +231,11 @@ NOTEBOOK_CREATE_SCHEMA = {'name': 'notebook_create',
                                                          'valid_when, ends_when, rationale. candidate: '
                                                          'targets, notebook_refs, source_types; optional '
                                                          'stage_evidence. Candidate uses either '
-                                                         'notebook_refs with mapped source_types or exact '
-                                                         'source_message_uids with both arrays empty; never '
-                                                         'both. Use only fields belonging to the entry type. '
+                                                         'notebook_refs with mapped source_types and empty '
+                                                         'direct sources, or source_message_uids and/or '
+                                                         'source_time_ranges with notebook_refs/source_types '
+                                                         'empty; never mix the two modes. Use only fields '
+                                                         'belonging to the entry type. '
                                                          'Required text must be nonempty; do not invent '
                                                          'facts to fill it. Optional single-valued fields '
                                                          'may be cleared with null; arrays with []. On '
@@ -301,28 +303,11 @@ NOTEBOOK_CREATE_SCHEMA = {'name': 'notebook_create',
                                                                       'Conversation. Send the complete '
                                                                       'replacement array; Conversation '
                                                                       'ownership is supplied by the bound '
-                                                                      'Notebook.'},
-                               'source_time_range': {'anyOf': [{'type': 'object',
-                                                                'properties': {'start_time': {'type': 'string',
-                                                                                              'description': 'Inclusive '
-                                                                                                             'timezone-aware '
-                                                                                                             'ISO '
-                                                                                                             '8601 '
-                                                                                                             'timestamp.'},
-                                                                               'end_time': {'type': 'string',
-                                                                                            'description': 'Inclusive '
-                                                                                                           'timezone-aware '
-                                                                                                           'ISO '
-                                                                                                           '8601 '
-                                                                                                           'timestamp.'}},
-                                                                'required': ['start_time', 'end_time'],
-                                                                'additionalProperties': False},
-                                                               {'type': 'null'}],
-                                                     'description': 'Current-Conversation evidence interval; '
-                                                                    'supply both bounds together, or null to '
-                                                                    'clear when other valid provenance '
-                                                                    'remains. Not a Candidate source; keep '
-                                                                    'null for Candidates.'},
+                                                                      'Notebook. For content entries and '
+                                                                      'direct-source Candidates, Message UIDs and '
+                                                                      'source_time_ranges may be supplied '
+                                                                      'together; retain the sources '
+                                                                      'supporting the recorded content.'},
                                'schedule_suggestion': {'anyOf': [{'type': 'object',
                                                                   'properties': {'content': {'type': 'string',
                                                                                              'description': 'Semantic '
@@ -368,7 +353,38 @@ NOTEBOOK_CREATE_SCHEMA = {'name': 'notebook_create',
                                                                       'not ready-to-submit Scheduler '
                                                                       'arguments or evidence of '
                                                                       'registration. This tool does not '
-                                                                      'create or update Schedules.'}},
+                                                                      'create or update Schedules.'},
+                               'source_time_ranges': {'type': 'array',
+                                                      'items': {'type': 'object',
+                                                                'properties': {'start_time': {'type': 'string',
+                                                                                              'description': 'Inclusive '
+                                                                                                             'timezone-aware '
+                                                                                                             'ISO '
+                                                                                                             '8601 '
+                                                                                                             'timestamp.'},
+                                                                               'end_time': {'type': 'string',
+                                                                                            'description': 'Inclusive '
+                                                                                                           'timezone-aware '
+                                                                                                           'ISO '
+                                                                                                           '8601 '
+                                                                                                           'timestamp.'}},
+                                                                'required': ['start_time', 'end_time'],
+                                                                'additionalProperties': False},
+                                                      'description': 'Complete replacement array of evidence '
+                                                                     'intervals in this bound Conversation. '
+                                                                     'Each element requires timezone-aware '
+                                                                     'start_time and end_time; equal bounds '
+                                                                     'express one instant. Use [] to clear; '
+                                                                     'omit to keep unchanged on update. The '
+                                                                     'content entries and direct-source '
+                                                                     'Candidates may combine these '
+                                                                     'intervals with source_message_uids. '
+                                                                     'Every source must be available on the '
+                                                                     'authorized path. Candidates use either '
+                                                                     'direct Message UIDs/time ranges with '
+                                                                     'notebook_refs/source_types empty, or '
+                                                                     'notebook_refs with mapped source_types '
+                                                                     'and both direct-source arrays empty.'}},
                 'required': ['entry_type', 'fields'],
                 'additionalProperties': False}}
 
@@ -534,8 +550,8 @@ NOTEBOOK_UPDATE_SCHEMA = {'name': 'notebook_update',
                                                                                           'entry IDs for any '
                                                                                           'target. Use these '
                                                                                           'references or '
-                                                                                          'exact Message '
-                                                                                          'UIDs, never both; '
+                                                                                          'direct Message '
+                                                                                          'UIDs/time ranges, never both; '
                                                                                           'source bodies '
                                                                                           'remain in place.'},
                                                          'targets': {'type': 'array',
@@ -598,9 +614,11 @@ NOTEBOOK_UPDATE_SCHEMA = {'name': 'notebook_update',
                                                          'valid_when, ends_when, rationale. candidate: '
                                                          'targets, notebook_refs, source_types; optional '
                                                          'stage_evidence. Candidate uses either '
-                                                         'notebook_refs with mapped source_types or exact '
-                                                         'source_message_uids with both arrays empty; never '
-                                                         'both. Use only fields belonging to the entry type. '
+                                                         'notebook_refs with mapped source_types and empty '
+                                                         'direct sources, or source_message_uids and/or '
+                                                         'source_time_ranges with notebook_refs/source_types '
+                                                         'empty; never mix the two modes. Use only fields '
+                                                         'belonging to the entry type. '
                                                          'Required text must be nonempty; do not invent '
                                                          'facts to fill it. Optional single-valued fields '
                                                          'may be cleared with null; arrays with []. On '
@@ -668,28 +686,11 @@ NOTEBOOK_UPDATE_SCHEMA = {'name': 'notebook_update',
                                                                       'Conversation. Send the complete '
                                                                       'replacement array; Conversation '
                                                                       'ownership is supplied by the bound '
-                                                                      'Notebook.'},
-                               'source_time_range': {'anyOf': [{'type': 'object',
-                                                                'properties': {'start_time': {'type': 'string',
-                                                                                              'description': 'Inclusive '
-                                                                                                             'timezone-aware '
-                                                                                                             'ISO '
-                                                                                                             '8601 '
-                                                                                                             'timestamp.'},
-                                                                               'end_time': {'type': 'string',
-                                                                                            'description': 'Inclusive '
-                                                                                                           'timezone-aware '
-                                                                                                           'ISO '
-                                                                                                           '8601 '
-                                                                                                           'timestamp.'}},
-                                                                'required': ['start_time', 'end_time'],
-                                                                'additionalProperties': False},
-                                                               {'type': 'null'}],
-                                                     'description': 'Current-Conversation evidence interval; '
-                                                                    'supply both bounds together, or null to '
-                                                                    'clear when other valid provenance '
-                                                                    'remains. Not a Candidate source; keep '
-                                                                    'null for Candidates.'},
+                                                                      'Notebook. For content entries and '
+                                                                      'direct-source Candidates, Message UIDs and '
+                                                                      'source_time_ranges may be supplied '
+                                                                      'together; retain the sources '
+                                                                      'supporting the recorded content.'},
                                'schedule_suggestion': {'anyOf': [{'type': 'object',
                                                                   'properties': {'content': {'type': 'string',
                                                                                              'description': 'Semantic '
@@ -735,7 +736,38 @@ NOTEBOOK_UPDATE_SCHEMA = {'name': 'notebook_update',
                                                                       'not ready-to-submit Scheduler '
                                                                       'arguments or evidence of '
                                                                       'registration. This tool does not '
-                                                                      'create or update Schedules.'}},
+                                                                      'create or update Schedules.'},
+                               'source_time_ranges': {'type': 'array',
+                                                      'items': {'type': 'object',
+                                                                'properties': {'start_time': {'type': 'string',
+                                                                                              'description': 'Inclusive '
+                                                                                                             'timezone-aware '
+                                                                                                             'ISO '
+                                                                                                             '8601 '
+                                                                                                             'timestamp.'},
+                                                                               'end_time': {'type': 'string',
+                                                                                            'description': 'Inclusive '
+                                                                                                           'timezone-aware '
+                                                                                                           'ISO '
+                                                                                                           '8601 '
+                                                                                                           'timestamp.'}},
+                                                                'required': ['start_time', 'end_time'],
+                                                                'additionalProperties': False},
+                                                      'description': 'Complete replacement array of evidence '
+                                                                     'intervals in this bound Conversation. '
+                                                                     'Each element requires timezone-aware '
+                                                                     'start_time and end_time; equal bounds '
+                                                                     'express one instant. Use [] to clear; '
+                                                                     'omit to keep unchanged on update. The '
+                                                                     'content entries and direct-source '
+                                                                     'Candidates may combine these '
+                                                                     'intervals with source_message_uids. '
+                                                                     'Every source must be available on the '
+                                                                     'authorized path. Candidates use either '
+                                                                     'direct Message UIDs/time ranges with '
+                                                                     'notebook_refs/source_types empty, or '
+                                                                     'notebook_refs with mapped source_types '
+                                                                     'and both direct-source arrays empty.'}},
                 'required': ['entry_id'],
                 'minProperties': 2,
                 'additionalProperties': False}}

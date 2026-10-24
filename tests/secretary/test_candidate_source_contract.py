@@ -23,6 +23,7 @@ SUMMARIES = {
     "conversation": "Apply the quiet-visit preference when discussing this trip",
 }
 RANGE = {"start_time": "1970-01-01T00:01:40+00:00", "end_time": "1970-01-01T00:01:40+00:00"}
+RANGES = [RANGE, {"start_time": "1970-01-01T00:01:30+00:00", "end_time": "1970-01-01T00:01:40+00:00"}]
 
 
 def _prepare(runtime):
@@ -44,13 +45,15 @@ def _candidate(script, target, form):
         "notebook_refs": [source["entry_id"]] if form == "refs" else [],
         "source_types": ["matter"] if form == "refs" else [],
     }}
-    if form == "messages":
+    if form in {"messages", "mixed_direct"}:
         args["source_message_uids"] = ["origin-a"]
+    if form in {"ranges", "mixed_direct"}:
+        args["source_time_ranges"] = deepcopy(RANGES)
     return args
 
 
 @pytest.mark.parametrize("target", SUMMARIES)
-@pytest.mark.parametrize("form", ["refs", "messages"])
+@pytest.mark.parametrize("form", ["refs", "messages", "ranges", "mixed_direct"])
 def test_native_candidate_accepts_source_form_for_each_target(runtime, target, form):
     _prepare(runtime)
     script = _ProviderScript([
@@ -70,16 +73,20 @@ def test_native_candidate_accepts_source_form_for_each_target(runtime, target, f
         assert candidate["source_message_uids"] == []
     else:
         assert candidate["fields"]["notebook_refs"] == []
-        assert candidate["source_message_uids"] == ["origin-a"]
+        assert candidate["source_message_uids"] == (["origin-a"] if form != "ranges" else [])
+    expected_ranges = RANGES if form in {"ranges", "mixed_direct"} else []
+    assert candidate["source_time_ranges"] == expected_ranges
+    assert len(candidate["evidence_time"]) == (3 if form == "mixed_direct" else 2 if form == "ranges" else 1)
     persisted = runtime.db.notebook_current(runtime.db.resolve_conversation_ref("parent"))["payload"]
     assert persisted["candidates"][0]["fields"] == candidate["fields"]
-    if form == "messages":
-        assert persisted["candidates"][0]["source_message_identities"] == [
-            {"conversation_ref": runtime.db.resolve_conversation_ref("parent"), "message_uid": "origin-a"}]
+    assert persisted["candidates"][0]["source_time_ranges"] == expected_ranges
+    expected_sources = ([{"conversation_ref": runtime.db.resolve_conversation_ref("parent"), "message_uid": "origin-a"}]
+                        if form in {"messages", "mixed_direct"} else [])
+    assert persisted["candidates"][0]["source_message_identities"] == expected_sources
 
 
 @pytest.mark.parametrize("target", SUMMARIES)
-@pytest.mark.parametrize("bad", ["mixed", "range_only", "missing_uid", "foreign_uid", "foreign_ref"])
+@pytest.mark.parametrize("bad", ["mixed", "refs_ranges", "refs_both", "missing_uid", "foreign_uid", "foreign_ref", "none"])
 def test_native_candidate_rejects_invalid_provenance_without_changing_source(runtime, target, bad):
     _prepare(runtime)
     runtime.db.create_session("foreign", source="test", session_key="other")
@@ -91,16 +98,17 @@ def test_native_candidate_rejects_invalid_provenance_without_changing_source(run
     foreign_store.commit(termination={"type": "finish_noting", "reason": "Other Conversation"})
 
     def bad_candidate(script):
-        args = _candidate(script, target, "refs" if bad in {"mixed", "foreign_ref"} else "messages")
-        if bad == "mixed":
-            args["source_message_uids"] = ["origin-a"]
-        elif bad == "range_only":
-            args.pop("source_message_uids")
-            args["source_time_range"] = deepcopy(RANGE)
-        elif bad in {"missing_uid", "foreign_uid"}:
-            args["source_message_uids"] = ["not-on-current-path" if bad == "missing_uid" else "foreign-only"]
-        else:
-            args["fields"]["notebook_refs"] = [foreign["entry_id"]]
+        args = _candidate(script, target, "refs" if bad in {"mixed", "refs_ranges", "refs_both", "foreign_ref"} else "messages")
+        patches = {
+            "mixed": {"source_message_uids": ["origin-a"]},
+            "refs_ranges": {"source_time_ranges": [deepcopy(RANGE)]},
+            "refs_both": {"source_message_uids": ["origin-a"], "source_time_ranges": [deepcopy(RANGE)]},
+            "missing_uid": {"source_message_uids": ["not-on-current-path"]},
+            "foreign_uid": {"source_message_uids": ["foreign-only"]},
+            "none": {"source_message_uids": []},
+            "foreign_ref": {"fields": {**args["fields"], "notebook_refs": [foreign["entry_id"]]}},
+        }
+        args.update(patches[bad])
         return args
 
     script = _ProviderScript([
@@ -114,6 +122,8 @@ def test_native_candidate_rejects_invalid_provenance_without_changing_source(run
     expected = ("source_unavailable" if bad in {"missing_uid", "foreign_uid"}
                 else "invalid_reference" if bad == "foreign_ref" else "invalid_argument")
     assert refused["error"]["code"] == expected
+    if bad in {"refs_ranges", "refs_both"}:
+        assert "clear" in refused["error"]["next_action"].lower()
     payload = script.results["s02-2"]["payload"]
     assert not payload["candidates"]
     assert payload["work"][0]["version_id"] == script.results["s02-0"]["entry"]["version_id"]
@@ -128,13 +138,15 @@ def test_callable_schema_advertises_each_existing_candidate_target(target):
 
 
 @pytest.mark.parametrize("target", ["rule", "skill", "conversation"])
-def test_new_ref_targets_convert_atomically_without_claiming_a_write(runtime, target):
+@pytest.mark.parametrize("form", ["messages", "ranges", "mixed_direct"])
+def test_new_ref_targets_convert_atomically_without_claiming_a_write(runtime, target, form):
     _prepare(runtime)
 
     def convert(script):
         return {"entry_id": script.results["s02-1"]["entry"]["entry_id"],
             "fields": {"notebook_refs": [], "source_types": []},
-            "source_message_uids": ["origin-a"], "source_time_range": None,
+            "source_message_uids": ["origin-a"] if form != "ranges" else [],
+            "source_time_ranges": deepcopy(RANGES) if form != "messages" else [],
         }
 
     script = _ProviderScript([
@@ -148,6 +160,45 @@ def test_new_ref_targets_convert_atomically_without_claiming_a_write(runtime, ta
     assert converted["status"] == "proposed"
     assert converted["fields"]["description"] == SUMMARIES[target]
     assert converted["fields"]["notebook_refs"] == converted["fields"]["source_types"] == []
-    assert converted["source_message_uids"] == ["origin-a"]
-    assert converted["source_time_range"] is None
+    assert converted["source_message_uids"] == (["origin-a"] if form != "ranges" else [])
+    assert converted["source_time_ranges"] == (RANGES if form != "messages" else [])
     assert script.results["s02-3"]["payload"]["work"][0]["version_id"] == script.results["s02-0"]["entry"]["version_id"]
+
+
+@pytest.mark.parametrize("form", ["messages", "ranges", "mixed_direct"])
+def test_direct_candidate_requires_complete_source_clear_before_switch_to_refs(runtime, form):
+    _prepare(runtime)
+
+    def to_refs(script, clear=False):
+        source = script.results["s02-0"]["entry"]
+        candidate = script.results["s02-1"]["entry"]
+        arguments = {"entry_id": candidate["entry_id"], "fields": {
+            "notebook_refs": [source["entry_id"]], "source_types": ["matter"]}}
+        if clear:
+            arguments.update(source_message_uids=[], source_time_ranges=[])
+        return arguments
+
+    script = _ProviderScript([
+        _source(), ("notebook_create", lambda script: _candidate(script, "memory", form)),
+        ("notebook_update", to_refs), ("notebook_show", {}),
+        ("notebook_update", lambda script: to_refs(script, clear=True)), ("notebook_show", {}),
+        _finish("Changed provenance mode after clearing direct sources; no outside write"),
+    ])
+    outcome = _run(runtime, script)
+    assert outcome.committed, outcome
+    created = script.results["s02-1"]["entry"]
+    refused = script.results["s02-2"]
+    assert not refused["success"] and refused["error"]["code"] == "invalid_argument"
+    assert script.results["s02-3"]["payload"]["candidates"][0] == created
+    converted = script.results["s02-4"]["entry"]
+    source = script.results["s02-0"]["entry"]
+    assert converted["entry_id"] == created["entry_id"] and converted["version_id"] != created["version_id"]
+    assert converted["fields"]["description"] == created["fields"]["description"]
+    assert converted["status"] == created["status"] == "proposed"
+    assert converted["fields"]["notebook_refs"] == [source["entry_id"]]
+    assert converted["fields"]["source_types"] == ["matter"]
+    assert converted["source_message_uids"] == converted["source_time_ranges"] == []
+    shown = script.results["s02-5"]["payload"]
+    assert shown["candidates"][0] == converted
+    assert shown["work"][0]["version_id"] == source["version_id"]
+    assert shown["work"][0]["candidate_refs"] == [created["entry_id"]]
