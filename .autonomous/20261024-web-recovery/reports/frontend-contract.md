@@ -21,3 +21,11 @@
 App已按实际展示值使用胶囊内建签名，折叠隐藏字段不参与；Usage hasData按当前scope事实对象存在性，Context按真实context数值或明确unknown/available=false/invalidated语义，token-only usage对象不建基线。
 
 Gateway新增onAuthenticationFailure，只接受bootstrap明确HTTP401/403；Controller统一取消恢复、关闭旧socket、清本document敏感展示并禁止再读缓存，原生roster再次成功后恢复授权。普通网络异常/503不触发清除。现有前端无独立logout入口。
+
+## c4f2f6d之后整改接口
+
+RecoveryDemand新增可选capabilities/reasoning；App以configuration source登记受控Model/Thinking开关。resource表新增reasoning，读取正式config.get(key=reasoning,profile,session_id?)；models/catalog/reasoningCurrent进入隔离展示字段，当前菜单所需读暂存至统一commit。隐藏资源可后台完成；关闭解除required，覆盖键变化推进资源代次，A→B→A不复活旧请求。
+
+Controller.readUsageFacts返回UsageReadFacts（scope/runtimeId/epoch/serial/current及detail/session显式结果），恢复按usageView消费当前scope结果；原readUsage仍兼容返回原DTO。Latest不请求隐藏Session补读；合法unknown不当成网络失败。Controller.acknowledgeDisplay(state)由App layout调用；已布局ack恢复轮的正常成功Usage/Context更新也核对当前published render projection再白名单合并缓存。纯local commit不打断同owner的已证正常指标缓存合并，不减真实请求。
+
+阅读hook无需新增字段：现有local/recoveryId足以保留同owner合法motion和输入所有权；细节归presentation-contract.md。

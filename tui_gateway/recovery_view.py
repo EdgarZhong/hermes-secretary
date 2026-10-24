@@ -9,6 +9,7 @@ import copy
 import json
 import sqlite3
 import time
+from pathlib import Path
 
 from hermes_state_recovery_view import RecoveryViewError, digest, project_view, read_view, selector
 from tui_gateway import event_replay
@@ -82,6 +83,32 @@ def _references(state):
     return list(result.values())
 
 
+def _turn_context(session):
+    agent = session.get("agent")
+    turn = session.get("inflight_turn")
+    token = turn.get("_terminal_token") if isinstance(turn, dict) else None
+    return (id(agent), id(turn), token, getattr(agent, "_current_turn_id", None),
+            getattr(agent, "_active_session_turn_lease_holder", None), bool(session.get("running")))
+
+
+def _native_source(session, db, raw):
+    """Identity-only copy of this native Turn's observed durable user source."""
+    turn = session.get("inflight_turn")
+    if not session.get("running") or not isinstance(turn, dict) or turn.get("_terminal_token") is None:
+        return None
+    source = turn.get("_terminal_source")
+    if not isinstance(source, dict):
+        return None
+    path = source.get("db_path")
+    if not isinstance(path, str) or Path(path).resolve() != Path(db.db_path).resolve():
+        raise RecoveryViewError("owner_mismatch")
+    identity = {key: source.get(key) for key in ("session_id", "row_id", "message_uid")}
+    if (identity["session_id"] not in raw["lineage"] or type(identity["row_id"]) is not int
+            or not isinstance(identity["message_uid"], str) or not identity["message_uid"]):
+        raise RecoveryViewError("view_changed")
+    return identity
+
+
 def _capture(server, sid, session, request, selections, ids):
     lock = session["history_lock"]
     if not lock.acquire(timeout=0.25):
@@ -98,6 +125,8 @@ def _capture(server, sid, session, request, selections, ids):
             d0 = read_view(db, request["stored_id"], actual_profile, selections, details=ids)
             if server._session_lookup_key(session, fallback=sid) != d0["tip_id"]:
                 raise RecoveryViewError("view_changed")
+            context = _turn_context(session)
+            source = _native_source(session, db, d0)
             state = snapshot(session, sid, include_internal=True)
             running = bool(session.get("running"))
             # Snapshot S's watermark is also meaningful for confirmed idle with no
@@ -109,7 +138,10 @@ def _capture(server, sid, session, request, selections, ids):
                 if running or session.get("inflight_turn"):
                     raise RecoveryViewError("runtime_unavailable")
             d1 = read_view(db, request["stored_id"], actual_profile, selections, details=ids,
-                           proofs=_proofs(d0), identities=_references(state))
+                           proofs=_proofs(d0), identities=[*_references(state), *([source] if source else [])])
+            if (context != _turn_context(session) or source != _native_source(session, db, d1)
+                    or server._session_lookup_key(session, fallback=sid) != d1["tip_id"]):
+                raise RecoveryViewError("view_changed")
         runtime = {"running": running, "status": server._session_live_status(sid, session),
                    "turn_started_at": server._turn_started_at(session),
                    "history_version": int(session.get("history_version", 0)),
@@ -117,6 +149,7 @@ def _capture(server, sid, session, request, selections, ids):
                        event.get("payload", {}).get("turn_id") for event in reversed(state["events"])
                        if event.get("type") == "message.source_committed"), None),
                    "holder": getattr(session.get("agent"), "_active_session_turn_lease_holder", None),
+                   "native_source": source,
                    "inflight": server._inflight_snapshot(session), "queued": server._queued_prompt_snapshot(session)}
     finally:
         lock.release()
@@ -145,22 +178,33 @@ def _turn_proof(d0, d1, state, runtime):
     turn_id = runtime["turn_id"]
     holder = (lease1 or {}).get("holder", "")
     if (not turn_id or not holder or f":turn={turn_id}:platform=" not in holder
-            or (runtime["holder"] is not None and runtime["holder"] != holder)):
+            or runtime["holder"] != holder):
         raise RecoveryViewError("runtime_unavailable")
-    source = next((event.get("payload", {}) for event in state["events"]
-                   if event.get("type") == "message.source_committed"
-                   and event.get("payload", {}).get("turn_id") == turn_id), None)
-    if source is None:
-        raise RecoveryViewError("runtime_unavailable")
-    uid = (source.get("source_boundary") or {}).get("user_message_uid") or (source.get("message") or {}).get("message_uid")
-    if not uid or not any(row.get("message_uid") == uid and row.get("visible") and row.get("active") for row in d1["identities"]):
-        raise RecoveryViewError("view_changed")
+    _prove_source(d1, state, runtime)
     for event in state["events"]:
         payload = event.get("payload") or {}
         if payload.get("turn_id") and payload["turn_id"] != turn_id:
             raise RecoveryViewError("view_changed")
         if payload.get("stored_session_id") and payload["stored_session_id"] not in d1["lineage"]:
             raise RecoveryViewError("view_changed")
+
+
+def _prove_source(d1, state, runtime):
+    native = runtime.get("native_source")
+    if native is not None:
+        if not any(row.get("id") == native["row_id"] and row.get("message_uid") == native["message_uid"]
+                   and row.get("session_id") == native["session_id"] and row.get("role") == "user"
+                   and row.get("visible") and row.get("active") for row in d1["identities"]):
+            raise RecoveryViewError("view_changed")
+        return
+    source = next((event.get("payload", {}) for event in state["events"]
+                   if event.get("type") == "message.source_committed"
+                   and event.get("payload", {}).get("turn_id") == runtime["turn_id"]), None)
+    if source is None:
+        raise RecoveryViewError("runtime_unavailable")
+    uid = (source.get("source_boundary") or {}).get("user_message_uid") or (source.get("message") or {}).get("message_uid")
+    if not uid or not any(row.get("message_uid") == uid and row.get("visible") and row.get("active") for row in d1["identities"]):
+        raise RecoveryViewError("view_changed")
 
 
 def _tool_occurrences(row):

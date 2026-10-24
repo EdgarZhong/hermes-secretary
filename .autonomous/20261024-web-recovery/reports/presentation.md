@@ -41,11 +41,11 @@ Native在真实后台回归启动固定五秒，重复onResume／online合流，
 
 环境：Vitest/jsdom、React实际组件与真实PageRecovery协调器，外部网络／第三方renderer仅在依赖返回点受控；Android正式MainActivity／Wry生命周期在Robolectric API35运行，仅隔离JVM不能加载的Rust JNI。mise OpenJDK21.0.2、既有SDK／NDK；生成工程的`:app:testDebugUnitTest`简写有Arm／Universal歧义，使用明确Universal任务，未改Gradle规则。旧测试夹具直接替换state需补正式publish；不是以调整预期掩盖真实呈现行为。
 
-Robolectric不能证明实际WebView生命周期与画面连续。未运行真实APK后台／前台、杀JS、实际Authelia、设备拍照／附件或通知UI；未进行隐藏IAB图像验收，由本轮Validation统一执行。未改dist或打包，最终APK资源／签名校验由主会话统一安排。
+Robolectric不能证明实际WebView生命周期与画面连续。未运行真实APK后台／前台、杀JS、实际Authelia、设备拍照／附件或通知UI。用户C17已明确豁免本轮真实APK验收，本轮只做Web实际验收＋原生单测，无模拟器授权；未验事实保持。未进行隐藏IAB图像验收，由主会话／独立Validation统一执行。未改dist或打包，最终APK资源／签名校验由主会话统一安排。
 
 ## 五、缺口
 
-本包已知范围内机制／定向行为验证缺口：无。跨包最终收敛、后端真实DTO完整恢复、隐藏IAB用户验收、实际APK生命周期、最终构建与独立门禁尚不由本报告证明。真实APK权限／显示保护冲突由主会话处理，不能用上述40项单测代替。
+本包已知范围内机制／定向行为验证缺口：无。跨包最终收敛、后端真实DTO完整恢复、隐藏IAB用户验收、最终构建与独立门禁尚不由本报告证明。真实APK生命周期依用户C17本轮豁免，仍明确未验，不能用上述40项单测代替。
 
 ## 六、接口影响
 
@@ -53,7 +53,7 @@ Robolectric不能证明实际WebView生命周期与画面连续。未运行真�
 
 ## 七、建议后续
 
-主会话亲审上述正式路径、共享接口与SHA证据，检查frontend最终变更对本包的影响；集成后统一构建、冻结代码并运行两独立轻量门禁。实际APK安装／生命周期权限满足后再验并记录，交付声明保持真实边界。本子Agent不提交／push／部署。
+主会话亲审上述正式路径、共享接口与SHA证据，检查frontend最终变更对本包的影响；集成后统一构建、冻结代码并运行两独立轻量门禁。实际APK生命周期本轮豁免；后续若另行授权再验并记录，交付声明保持真实边界。本子Agent不提交／push／部署。
 
 ## R7 主会话亲审整改：未读取 placeholder 不能作为旧基线
 
@@ -64,3 +64,23 @@ Robolectric不能证明实际WebView生命周期与画面连续。未运行真�
 证据：`capsule-baseline-review.log`七项高亮测试通过（12项无关阅读用例跳过），新增Usage／Context各自的placeholder→首次零值、后续变化／600ms合并、换owner／view及placeholder→合法unknown→零→unknown。`capsule-baseline-typecheck.log`全仓类型检查通过。未重跑未受影响的Android、Files或其它大套。
 
 版本：`capsule-baseline-source-manifest.json`记录本次两个文件与当时App接线SHA，原`evidence-source-manifest.json`以revisions追加本次证据，不把原96项报告改写为新版全量验证。此项组件机制与针对性验证已完成；App语义接线由frontend包交回主会话审查。未提交、派生Agent或操作设备。
+
+## V04／冷启动停窗口起点：正式顺序整改交回
+
+1. **条款与触发。** 对应R4/R7可见需求与同一reading owner交接。主会话隐藏IAB的1200行实际场景停在最新200行窗口起点；独立Verification对固定旧候选`c4f2f6dca05a81d88fe1ca1e75d90dc9b0e182a7`另证晚消息子树挂载后top仍0。旧候选反证仍以`verification.md`及`verification/late-mount-candidate.log`为准，不改写成新工作树结果。
+
+2. **已核根因与实际变更。** frontend以实际App＋真实Controller/PageRecovery＋reading复现完整commit1→新DOM需求→local commit2/3后top0/target1100；hook无条件cancelHandoff，并用刚增高DOM反推following=false。已在chat-presentation内修复：同recoveryId的local commit只ack新需求，保留原motion对象和总时长；无motion的local提交保留原following／人工阅读所有权，不从刚变化的scrollHeight反推。cold首次无已建立阅读位置先置实际尾部再ack，暖unverified继续保anchor。
+
+   晚子树接缝补childList/characterData观察，DOM变化立即reconcile；需求登记合并下一帧，避免逐个中间mutation发布。ResizeObserver跟踪实际内容子节点，内容替换解除旧观察。用户输入取消仍清原motion，后续local不得重播。未改App/coordinator；无新公共接口，继续使用local/recoveryId。hook保持298行。
+
+3. **正式路径。** 实际App Chat的assistant-ui消息子树→reading DOM观察→既有following／anchor／handoff owner定位→当前viewport登记→PageRecovery验证当前需求并发布local→同owner ack；local不夺滚动所有权。frontend另修正式adapter旧context发起共享selected读取、缓存resolved undefined的问题，防缓存冷开在需求变更后复用失效共享结果；该修复及其白名单归frontend，不冒充hook单独完成。
+
+4. **证据与版本。** `presentation/cold-handoff-reproduction.log`为本次修改前四项局部反例失败，分别是local截断motion、local夺following、cold无anchor及晚子树；不是独立旧候选门禁报告。`cold-handoff-fix-final.log`两个reading文件43项通过，额外锁住输入取消后local不重播、全部内容子节点观察、DOM需求按帧合并。frontend运行的`frontend/handoff-integration.log`已复制为`presentation/cold-app-integration.log`：正式App＋Controller＋PageRecovery＋reading四项通过，覆盖无缓存cold、缓存等待后刷新、warm动画中新required依赖→local、人工取消后local不重播。`cold-handoff-typecheck.log`类型检查通过。各次结果保留自身时点；不复跑无关Android／Files大套。
+
+   `cold-handoff-source-manifest.json`记录新工作树hook／reading测试、正式App联合测试与其Controller/App依赖SHA，并单独记录固定旧候选hook SHA；原manifest以revisions追加。frontend仍继续V01–V03，若后续共享代码变化，按影响核复现证据。
+
+5. **缺口与边界。** 上述43＋4项是React/jsdom正式联调及DOM机制证据。主会话随后已对当前工作树新文档做真实隐藏IAB开发复核：scrollTop28950等于scrollHeight-clientHeight，实际截图可见row1199，两个自建页已关闭；该实测由主会话执行／归档，不冒充本子Agent的浏览器操作，也不代最终独立Validation。最终门禁仍须按新候选判V04是否关闭。本子Agent未操作任何页面、设备或模拟器；真实APK验收依用户C17本轮豁免，原生40项旧证据与本次无关源码保持。
+
+6. **接口影响。** 仅修改chat-presentation及对应recovery-handoff测试。PageRecovery local／recoveryId契约不变，不放宽需求校验；不改App/controller，不新增reader、后端协议或独立恢复循环，不对原生／业务写路径施加行为。
+
+7. **后续。** 此项机制、正式联调与定向证据已整包交回。主会话亲审滚动所有权和共享读取消边界，复用匹配SHA定向证据及已完成的1200行隐藏IAB开发复核；兄弟V03完毕后统一新候选，组织整轮复审与独立Validation。未提交、派生Agent、打包或部署。

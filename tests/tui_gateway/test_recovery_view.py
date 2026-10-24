@@ -238,6 +238,115 @@ def native_output(session, uid="output-uid", tool_uid=None):
             "native_payload":legacy["params"]["payload"],"source_event_seq":legacy["params"]["seq"]})
 
 
+def begin_web(db, session):
+    """Ordinary Web uses the real persisted-source observer, no Reminder event."""
+    from tui_gateway import turn_terminal
+    holder = "pid=123:turn=native-turn:platform=desktop"
+    assert db.try_acquire_session_turn_lease("stored", holder)
+    session["agent"]._active_session_turn_lease_holder = holder
+    session["agent"]._session_db = db
+    with session["history_lock"]:
+        session["running"] = True
+        server._start_inflight_turn(session, "Question")
+    row = dict(db.get_messages("stored")[0])
+    row["_row_id"] = row["id"]
+    observe = turn_terminal.source_observer("runtime", session, session["agent"], turn_terminal.token(session), None)
+    observe([row], 0)
+    assert session["inflight_turn"]["_terminal_source"]["message_uid"] == row["message_uid"]
+    native_output(session)
+    return holder
+
+
+def test_ordinary_web_native_source_recovers_without_reminder_event(native):
+    db, session, _home = native
+    req = request(db)
+    begin_web(db, session)
+    session["inflight_turn"]["_terminal_source"]["message"] = {"content": "untrusted cached text"}
+    view = activate(req)
+    assert view["complete"] and view["running"]
+    events = view["state_snapshot"]["events"]
+    assert not any(event["type"] == "message.source_committed" for event in events)
+    assert any(event["type"] == "message.delta" for event in events)
+
+
+def test_other_profile_actual_source_db_cannot_prove_same_stored_locator(native):
+    from tui_gateway import turn_terminal
+    db, session, home = native
+    begin_web(db, session)
+    with SessionDB(db_path=home / "other-profile.db") as other:
+        other.create_session("stored", source="desktop")
+        other.append_message("stored", "user", "other profile source")
+        session["agent"]._session_db = other
+        row = dict(other.get_messages("stored")[0])
+        row["_row_id"] = row["id"]
+        turn_terminal.source_observer("runtime", session, session["agent"], turn_terminal.token(session), None)([row], 0)
+    view = activate(request(db))
+    assert not view["complete"] and view["reason"] == "owner_mismatch"
+
+
+def test_native_source_must_be_a_user_row(native):
+    db, session, _home = native
+    begin_web(db, session)
+    assistant = db.get_messages("stored")[1]
+    session["inflight_turn"]["_terminal_source"].update(row_id=assistant["id"], message_uid=assistant["message_uid"])
+    view = activate(request(db))
+    assert not view["complete"] and view["reason"] == "view_changed"
+
+
+@pytest.mark.parametrize("field,value,reason", [
+    ("db_path", "/different-profile/state.db", "owner_mismatch"),
+    ("session_id", "other-conversation", "view_changed"),
+    ("row_id", 999999, "view_changed"),
+    ("message_uid", "unknown-user", "view_changed"),
+])
+def test_web_native_source_requires_exact_durable_owner_and_row(native, field, value, reason):
+    db, session, _home = native
+    begin_web(db, session)
+    session["inflight_turn"]["_terminal_source"][field] = value
+    view = activate(request(db))
+    assert not view["complete"] and view["reason"] == reason
+
+
+@pytest.mark.parametrize("mutation", ["replace", "rewind", "compression"])
+def test_web_native_source_retired_by_formal_writer_cannot_lend_live_output(native, mutation):
+    db, session, _home = native
+    begin_web(db, session)
+    if mutation == "replace":
+        db.replace_messages("stored", [{"role": "user", "content": "different source"}])
+    elif mutation == "rewind":
+        db.rewind_to_message("stored", db.get_messages("stored")[0]["id"])
+    else:
+        db.archive_and_compact("stored", [{"role": "user", "content": "summary", "_compressed_summary": True}])
+    view = activate(request(db))
+    # Rewind also revokes the real lease; either missing ownership or a retired
+    # source is an explicit refusal, never an active recovery success.
+    assert not view["complete"] and view["reason"] in {"view_changed", "runtime_unavailable"}
+
+
+@pytest.mark.parametrize("mutation", ["token", "turn", "holder", "missing_holder", "missing_source"])
+def test_web_source_cannot_cross_turn_or_lease_capture(native, monkeypatch, mutation):
+    db, session, _home = native
+    holder = begin_web(db, session)
+    original = recovery_view.snapshot
+    def takeover():
+        db.release_session_turn_lease("stored", holder)
+        assert db.try_acquire_session_turn_lease("stored", "pid=456:turn=native-turn:platform=desktop")
+    changes = {
+        "token": lambda: session["inflight_turn"].__setitem__("_terminal_token", object()),
+        "turn": lambda: setattr(session["agent"], "_current_turn_id", "other-turn"),
+        "holder": takeover,
+        "missing_holder": lambda: setattr(session["agent"], "_active_session_turn_lease_holder", None),
+        "missing_source": lambda: session["inflight_turn"].pop("_terminal_source", None),
+    }
+    def change(*args, **kwargs):
+        state = original(*args, **kwargs)
+        changes[mutation]()
+        return state
+    monkeypatch.setattr(recovery_view, "snapshot", change)
+    view = activate(request(db))
+    assert not view["complete"] and view["reason"] in {"view_changed", "runtime_unavailable"}
+
+
 @pytest.mark.parametrize("mutation",["replace","rewind","delete"])
 def test_settled_old_snapshot_never_revives_after_stable_formal_rewrite(native,mutation):
     db,session,_home=native

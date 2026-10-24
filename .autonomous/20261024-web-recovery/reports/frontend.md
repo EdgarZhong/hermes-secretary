@@ -1,6 +1,6 @@
 # F1／F2／F3／I1 整包交回
 
-状态：实现和本地定向验证完成，待主会话亲审及本轮独立门禁。未stage／commit／push，未部署、未调用真实模型、未操作浏览器／设备。依据为baseline.txt冻结06 R1/R4–R7/R9及R2/R3接口，保持08 Profile与Files归属。
+状态：初包已由主会话集成为c4f2f6d候选；本Agent追加整改包已完成并待新候选独立复审。下文保留各验证时点，本Agent未自行stage／commit／push，未部署、未调用真实模型、未操作浏览器／设备。依据为baseline.txt冻结06 R1/R4–R7/R9及R2/R3接口，保持08 Profile与Files归属。
 
 ## 条款与实际变更
 
@@ -42,3 +42,25 @@ ignored证据：`.hermes-dev/web-recovery-20261024/frontend/accepted-tests.log`�
 本次只改history-coverage/page-recovery/display-cache及各自测试，未改兄弟呈现/原生代码。定向机制3文件33项通过；受影响Controller正式adapter、阅读交接、Files回归3文件45项通过；同版本typecheck及git diff --check通过。此前17文件246项与build结果仍按原验证时点保留，未重复运行无关大套。
 
 新增ignored证据为frontend/review-fixes.log、review-fixes-integration.log及review-fixes-source-manifest.json；source-manifest.json仅更新本次6文件SHA256，其余版本保持先前记录。没有stage／commit／push，没有浏览器、设备或部署操作。
+
+## 独立审查及真实冷开整改包（c4f2f6d之后，2026-10-24）
+
+本包对应Verification原判据G03/G10/G13/G15/G16与V01–V03，及主会话隐藏IAB冷开阻断；不自行关闭独立门禁。
+
+### 根因与正式修补
+
+- 冷开／缓存刷新：正式App＋Controller＋PageRecovery＋阅读hook反例证明完整commit后首DOM/Secretary需求产生local commit，旧hook无条件取消正在滚尾的handoff并从尚未定位的DOM反推following=false。presentation包独占修hook：同恢复轮的local commit保留合法motion及原240ms期限，人工输入仍取消，晚挂消息子树可重定位。其变更与证据归presentation.md，本包记录正式联合版本。另缓存改变viewport首身份后，旧context可把resolved undefined放进新selectionKey共享Promise表，afterBinding有效reader反复复用形成微任务循环；adapter现拒绝旧context发起共享读，取消／失败的共享结果撤除。相同联合fixture与act等待不改，修后通过。
+- V01：UsageViews新增UsageReadFacts，明确scope/runtime/epoch/serial及detail/session各自ok/error/cancelled，原始fresh事实与保留展示分开。当前Session所需summary补读失败会使required reader失败并按1/2/5自动重读，不能靠detail fulfilled或旧总数ready；Latest只读取本scope所需明细，不等待隐藏Session补读。成功响应的合法unknown保持ok。旧readUsage兼容调用保持逐字段保留展示；恢复只消费显式读事实。
+- V02：正式session.usage／成功Context读取把可证当前owner/epoch/代次的原始成功事实送入adapter。原恢复轮已布局ack时，核对已发布render projection；App另提供layout确认。新恢复／新可见需求仍须其当前ready；验证过的窗口从缓存原样保留，仅通过原白名单合并capsules，串行写防并发覆盖。失败retained、隐藏失败scope、旧owner／旧代次不写、不续successAt。纯local菜单commit不使正在合并的同owner成功统计失效；认证／切owner／完整恢复仍取消旧写。
+- V03：实际受控Model/Thinking开关向唯一协调器登记capabilities/reasoning需求。model.options、commands.catalog与config.get均走带owner/runtime和覆盖代次的reader；删除独立吞错的useReasoningCurrent effect。菜单读成功暂存，当前可见所需配置齐备后随同一local/full commit接管；旧配置可继续展示，局部错误在App显示并自动重试。关闭慢菜单解除required等待，同连接online重新请求；native成功返回无value是合法unknown。显示字段纳入隔离projection，禁止谁先到就盖住当前菜单。
+- 覆盖键A→B→A反例修前确实复用旧A慢请求；PageRecovery现仅对覆盖身份变化的资源推进代次，即使字符串回到A也不能恢复旧request资格。正常同身份stream签名变化仍不触发读取／代次。
+
+### 当前证据与边界
+
+最终受影响12文件223项Vitest通过；包括实际App6项（无缓存cold、冷缓存等待真实请求后刷新、兼容warm动画中新visible proof、人工取消后local不重播、真实Model开关／同连接恢复／慢隐藏、Thinking初读／失败自动重试／online）、正式Controller V01/V02反例、隐藏scope、Context成功、失败TTL／迟到owner、菜单联合提交，以及缓存合并途中local commit。Coordinator另有覆盖键循环反证的修前失败和修后成功。旧原包246项、此前33／45项保持各自时点，不累加为本次计数。
+
+最终npm run build（含tsc -b）成功，git diff --check通过；Vite保留既有大chunk提示。controller.ts当前约2501行，仍低于冻结基线2556行；逻辑继续放sibling。未改presentation独占文件、后端封套DTO、drafts、依赖或Android文件。
+
+证据：ignored frontend/review-final-tests.log、review-final-build.log；修前handoff-reproduction.log、coverage-cycle-before.log保留。post-verification-source-manifest.json记录本包10文件及实际受影响呈现／测试版本，source-manifest.json同步本包文件SHA256。主会话自行隐藏IAB已另复核1200行真实末尾（top28950、1199可见），本包未操作页面，此结果不替代独立Validation。后端普通Turn新修与APK豁免由主会话另行编排；本报告不扩作后端／APK通过证据。
+
+下一步：主会话亲读本包接口、状态／失败／旧结果路径后统一新候选，交独立V2复审V01–V03及原全范围；本Agent没有stage／commit／push或部署动作。

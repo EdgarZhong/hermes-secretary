@@ -37,6 +37,7 @@
 |---|---|---|---|---|---|---|
 | RISK-01 | C15 原生真实UI验收与显示保护 | 用户C17明确豁免本轮实际APK验收；不启动模拟器 | 已按用户完成条件收口 | 主会话 | Web实测与原生单测照常；交付明确APK实际运行未验 | 已关闭（用户豁免） |
 | REV-09 | C06/R7 冷开需落真实末尾 | 真实隐藏IAB稳定显示row1000–1199但scrollTop=0，height29441/client491；未在末尾 | 阻断 | frontend＋presentation | 先查正式需求／commit／reading顺序根因，补集成反例并修复；不能绕开ready或需求校验 | 修复中 |
+| REV-10 | C04/R4 普通Web活动Turn可恢复 | 本地fake SSE经正式native Turn探测返回runtime_unavailable；原生普通来源有_terminal_source，但恢复仅认Reminder source_committed | 阻断 | backend | 同一受控捕获点核当前Turn原生来源及D1身份，保持lease／owner／rewind拒绝；正式SSE活动恢复及负例 | 修复中 |
 
 ## 取舍、快照与续接
 
@@ -98,3 +99,13 @@ RISK-01：已在可审APK及签名／资源核验之后向用户异步请求一�
 独立Verification初审已完整交回：20组判据全覆盖，14符合／6违规，对应四项阻断V01–V04。V01当前Session胶囊补充GET503被当成功，按当前必需scope保留成功／失败事实，合法unknown仍可成功，隐藏另一scope失败不额外阻塞；V02普通成功Usage／Context变更未写缓存，增加同owner仅成功字段白名单合并写，保已验证Timeline且失败retained不续TTL；V03实际打开模型／推理菜单的读取未完整登记，受控open状态、真实capabilities／config.get及展示字段纳同协调器，关菜单解除依赖；V04晚挂载消息未完成真实定位。主会话已亲读正式路径及全部报告，接受阻断并提出工程方案，Verification已依据原判据认可V01–V03方向。均交原6.1实现者整改，不改产品机制规格，后续新候选由全新独立审查者全范围复审。
 
 REV-09根因已由正式App＋Controller＋PageRecovery＋reading反例重现：完整commit1后首DOM及Secretary需求引发local commit2／3，hook每个commit都cancelHandoff，合法滚尾被局部提交取消；另有消息子树晚挂载观察边界。presentation独占hook修复，frontend独占正式App联合反例及其它集成，互不改相同文件。当前旧候选尚未合格，不进入Validation。
+
+REV-09整改整包主会话已亲读：同恢复局部commit保留合法跟尾／动画所有权、DOM晚挂载触发定位、人工取消不重播；43项阅读测试、4项正式App联合反例及typecheck有证据。自建隐藏IAB开发复核真实落row1199末尾；仍待新候选独立复审，不以主会话冒烟关闭门禁。
+
+REV-10由验收环境准备发现。授权backend仅扩recovery_view.py与对应测试：当前inflight_turn原生来源在受控捕获点绑定DB／lineage／row UID及lease，不伪造事件或放宽未知输出；保存失败证据后用本地fake SSE正式native Turn复核。允许重启本轮隔离53575，不碰用户53445／53446。无真实供应商API、无生产操作。
+
+前端第二候选`474a934f617faceeacfc670974fc72f559033276`已提交／自动push核远端一致。主会话亲读UsageReadFacts、成功capsule合并资格、菜单暂存／required登记、A→B→A资源代次与正式App接线；23项源码指纹全匹配。最终受影响12文件223项及build通过，旧阅读43项因正式App6项覆盖相同当前hook集成补证有效。正在重打APK，尚待backend REV-10整包及新独立Verification；不提前进入Validation。
+
+第二候选APK构建成功，439资源与当前dist逐字节匹配，apksigner v2有效且证书指纹保持。32,081,185字节，SHA256 `9e2339c0e840381ee3da862894b404b9464e61be1fa336a99c63bb370a5304f5`；源码绑定474a934，ignored `apk-final-manifest.json`／`apk-final-signature.log`／`android-build-final.log`。首次核验脚本误用assets前缀与不存在的build-tools版本，报错后按真实包目录／36.0.0重跑成功；不混用旧候选证据。实际APK仍按C17未验。
+
+REV-10整包主会话亲审接收：正式observer来源只取身份，D0/S/D1同history锁捕获并验证当前agent／Turn token／lease；真实DB／lineage／user UID与D1归属匹配，无DTO变化。39项封套与35项原生回归通过，health／ruff0阻断；真实native一次loopback SSE请求在Turn仍running时complete恢复，同runtime／精确正文／唯一assistant落库，结束后idle对账无未持久尾巴。当前Dashboard53575/PID7423，fake53577/PID228；详细安全控制与manifest在backend报告。所有整改仍待统一新独立复审关闭。
