@@ -2,6 +2,24 @@
 
 维护实际部署、故障处理、验证与回滚点；步骤和稳定布局见[部署SOP](cloud-deployment-sop.md)，当前任务只在根[CLAUDE](../CLAUDE.md)。以下时间均为Asia/Shanghai；PID、指纹和测试结论只对应记录时点，不代表实时状态。凭据、令牌、原始私人材料不写入本文件。
 
+## 2026-10-24 · AI 标题改用当前 Main 完整上下文（本地完成，待发布）
+
+**用户确认与范围：** 用户明确选择当前Main实际可见上下文（压缩摘要、Notebook及最近对话）。原Web只取最早User＋最近8条正文、逐条前1200字符，已改为后端从原生持久Prelude及当前tip全量active模型历史生成；沿用当前Main模型，冻结完整原生请求前缀后追加命名任务。归档祖先仅属于display，不重新塞回模型上下文。首Turn自动标题、原生title写入及失败／切会话不写契约保留。旧APK逐字匹配既有命名请求时走新分支，其它oneshot不变。
+
+**实现和验证：** 独立前端`f3a03ce32c0dd1e96719da210716caa2c1c7b8d4`已自动推送；四文件103定向测试、typecheck及build通过，439静态文件源码／逐SHA固定。后端四文件已亲审接收，正式RPC／原生AIAgent／SessionDB／fork／request assembly与外层fake SDK执行三文件41项通过、冻结10检查通过。并行runner共用XML路径，XML仅保留新文件22项，完整41以逐文件汇总日志为据。成功／失败均核业务表及父Main不变，覆盖真实压缩child当前tip、长正文／完整工具结果、effective root／prefill仅一次、native wire prefix相同、Profile／冷态／跨进程lease拒绝、工具调用不执行及无fallback。证据`.hermes-dev/ai-title-context-20261024/`，主会话SHA复核与接收见`root-implementation-review.json`；中间失败如实保留，未更改检查阈值。
+
+**自主收敛与当前限制：** 为取得一致快照，Main运行／跨进程DB Turn lease／压缩时明确报错，请空闲后重试；不等待、不排队、不以旧Web缓存或摘录回退。此为Agent自主收敛／待用户追认，已登记根CLAUDE。无可靠Prelude／durable Provider、custom engine或不支持detachment的transport同样明确失败。本地实现已完成，尚未部署或对真实置顶上下文请求模型，未修改生产标题。
+
+## 2026-10-24 · 微信 Mid-turn 两类 Reminder 投递／误外发调查
+
+**范围与纠偏：** 用户明确要求在微信Turn已运行时，分别检查Deferred及此时到期Instant能否进入同Main后续请求、投递原文是否经adapter误外发。前次静态入口检查不足以断言两者都已正常。此次只读调查与隔离虚构链路，未改产品代码／生产／配置、未发真实模型或微信消息。基线`669b0c87ff`，所核16个代码／锁文件逐SHA与线上产品`3338a25`一致。仅线上只读目标路由元数据，无消息正文／凭据读取；确认置顶目标source=desktop、session_key=NULL、profile=alex，因此Instant归Web宿主，不用原生Gateway来源测试冒充它。
+
+**Deferred正式链路已验：** Sol/high子Agent在真实SessionDB持久desktop/null路由、同AIAgent.platform=weixin、真实TurnRunner／consumer／WeixinAdapter上，首个供应商请求阻塞期间经Web `scheduler_host.scan_profile`扫描到期Deferred；同一Turn第二SDK请求实际携唯一carrier，响应未返回时pending仍1、有效响应后ACK变0，无新Web Runtime／Turn。微信最外层HTTP函数捕获仅预设AI正文，无提醒marker、载体或内部提示，status回调空。另原生Gateway来源4场景覆盖Deferred／busy Instant×同Turn工具续行／首响应直接final；Instant真实scan→adapter.handle_message→busy handler→pending，无未来Turn排队；无下一请求保持pending到后来用户Turn。五场景均1条process_complete user载体、请求marker0→1、ACK顺序正确。主会话亲读探针、请求及发送白名单、XML、正式接线并接收，未为review复跑。
+
+**发现未修的Instant跨进程缺口：** Web `_secretary_deliver_claim`的busy判断只读自身runtime.running；微信渠道的active-session key与物理会话ID不同。主会话独立子进程真实持有微信渠道key注册及同Conversation DB Turn lease，Web scan面对Deferred时pending1、不创建Web runtime；面对Instant时pending0、Web另起运行并在原生DB租约处等待。释放微信占用后，无需再次scan，已等待的Web运行即发1模型请求携Instant并完成。2个观测场景及XML通过，证明busy Instant没有按07§6.2转deferred，也未进入当前微信Turn。无提醒原文直接外发证据，不能把投递缺口写成adapter泄漏；此调查不授权自行实施修复。
+
+**补充分支、尝试与限制：** 同stored-ID active-session注册占用另2项为补充边界：Deferred pending1，Instant遭Web入口拒绝／release claim、释放后下一scan才另起Turn；它不是正式微信渠道key模拟。该探针初次-s导致runner统计0，保留为无有效通过判定，no-s＋XML复核2项通过。子Agent首轮Python3.14默认loop初始化错误、次轮工具前叙述误预期均只修ignored探针，最终4＋1项通过，失败日志保留。全部证据`.hermes-dev/weixin-midturn-reminder-20261024/`：`gateway-midturn-probe-report.md`、`gateway-probe-results-summary.json`、`web-database-lease-{instant,deferred}.json`、`production-route-metadata.json`及四份XML／完整日志。真实模型与微信网络使用外层替身，无真实微信显示验收；不保证模型不会在正常回复中复述提醒，也未以本次覆盖全部中断／空响应／长期故障。
+
 ## 2026-10-24 · AI 标题 K3.1 温度兼容修复上线
 
 **原因与范围：** 用户反馈 AI 标题仍出现 `invalid temperature: only 1 is allowed for this model`；首尔Alex日志10:32:46记录同类失败。上次已上线的`_is_kimi_model`仅识别`k3`／`k3-*`，遗漏今天切换的`k3.1-pro`，使Web `llm.oneshot`默认temperature0.3直达模型。修复`3338a25f0b4d2e33f9f979ef6dbb58f2a014b3be`在原生辅助客户端中识别K3数字小版本并沿原机制省略temperature，覆盖Pro／Highspeed、供应商前缀及大小写；相似的非Kimi名称保留原参数。不改标题Prompt、生成／写入语义、前端、Provider配置、依赖或锁。

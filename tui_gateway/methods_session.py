@@ -1236,30 +1236,8 @@ def _(rid, params: dict) -> dict:
     Runs under the session's profile scope (else ``params.profile`` / the launch scope): the aux
     task config and its API key otherwise resolved from the LAUNCH profile — a secondary's titles /
     project ideas ran on, and billed, the default profile's auxiliary provider."""
-    template = (params.get("template") or "").strip() or None
-    instructions = params.get("instructions") or ""
-    user_input = params.get("input") or ""
-    variables = params.get("variables") if isinstance(params.get("variables"), dict) else {}
-    try:
-        temperature = float(params["temperature"]) if params.get("temperature") is not None else 0.3
-    except (TypeError, ValueError):
-        temperature = 0.3
-    if not template and not str(instructions).strip() and not str(user_input).strip():
-        return _err(rid, 4030, "llm.oneshot requires a template or instructions/input")
-    session = _sessions.get(params.get("session_id") or "")
-    try:
-        from agent.oneshot import run_oneshot
-        with (_session_profile_runtime_scope(session) if session else contextlib.nullcontext()):
-            return _ok(rid, {"text": run_oneshot(
-                instructions=instructions, user_input=user_input, template=template, variables=variables,
-                task=(params.get("task") or "title_generation").strip() or "title_generation",
-                max_tokens=_int_param(params, "max_tokens", 1024) or 1024, temperature=temperature,
-                main_runtime=_main_runtime_from_agent(session.get("agent")) if session else None)})
-    except (KeyError, ValueError) as e:
-        return _err(rid, 4031 if isinstance(e, KeyError) else 4032, str(e))
-    except Exception as e:
-        logger.warning("llm.oneshot failed: %s", e)
-        return _err(rid, 5030, f"one-shot generation failed: {e}")
+    from tui_gateway.conversation_title import oneshot_rpc
+    return oneshot_rpc(rid, params)
 
 
 # ── handoff ──────────────────────────────────────────────────────────
