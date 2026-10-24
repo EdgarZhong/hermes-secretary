@@ -2,9 +2,9 @@
 
 ## 目标状态与结束判定
 
-**原目标未完成，保持active；本次R20两项获批Prompt调整已完成，磁盘追加任务已完成。** 当前产品`f497fd0b794301c4c813267258a73893a86c7e0c`已提交自动push；真实执行与786源码SHA一致。最终Kimi同Conversation两次正常Idle/压缩/Framework及后Main读取成立，但来源和未知进度仍有语义反例；Notebook-only及当前面额外结算缺证。Verification不能通过，Validation未启动，本轮未部署。生产最近只读核仍`183f1a573408fc69dbd97d735d0dc0740595f6da`。
+**原目标未完成，blocked（等待用户决定来源处理方向）；本次R20两项获批Prompt调整已完成，磁盘追加任务已完成。** 当前产品`f497fd0b794301c4c813267258a73893a86c7e0c`已提交自动push；真实执行与786源码SHA一致。最终Kimi同Conversation两次正常Idle/压缩/Framework及后Main读取成立，但来源和未知进度仍有语义反例；Notebook-only及当前面额外结算缺证。Verification不能通过，Validation未启动，本轮未部署。生产最近只读核仍`183f1a573408fc69dbd97d735d0dc0740595f6da`。
 
-本次不是用户暂停或完整完成；停止的是多轮无效的同类Prompt试错路径。根据Stuck“不要继续盲目试错，停下来……把完整正文直接贴给用户”的要求，向用户交完整问题报告及后续方法讨论，未经确认不继续改冻结Prompt/Schema，也不自动转剩余额度为新run权。目标状态工具仍active，不能提前complete或在未满足连续三次无进展条件时标blocked。
+本次不是用户暂停或完整完成；停止的是多轮无效的同类Prompt试错路径。根据Stuck“不要继续盲目试错，停下来……把完整正文直接贴给用户”的要求，向用户交完整问题报告及后续方法讨论，未经确认不继续改冻结Prompt/Schema，也不自动转剩余额度为新run权。同一来源契约待答阻塞已连续存在原失败交付及后续三个目标接续轮次。期间的原件哈希/DB归档核对、报告纠正是真实进展；截至本次全部独立收尾已结束、子Agent均terminal、实现树干净，已无不依赖用户决定的必要工作，现标blocked而非complete或用户paused。恢复条件：用户答复既有来源方向问题后继续对齐最小具体改法，再按原完整目标实施、真实补证、fresh全轮Verification与独立Validation、提交部署。
 
 ## 本轮收敛与授权
 
