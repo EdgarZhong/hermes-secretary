@@ -2,6 +2,16 @@
 
 维护实际部署、故障处理、验证与回滚点；步骤和稳定布局见[部署SOP](cloud-deployment-sop.md)，当前任务只在根[CLAUDE](../CLAUDE.md)。以下时间均为Asia/Shanghai；PID、指纹和测试结论只对应记录时点，不代表实时状态。凭据、令牌、原始私人材料不写入本文件。
 
+## 2026-10-24 · Notebook／Noting维护v2部署收尾（已上线）
+
+**最新授权：** 用户明确指出本轮对模型行为确定性的追求过度，要求停止追加核查，随后在获知尚未部署后明确指令“给我把部署收尾做完”。据此发布现有已提交版本，不再改Prompt／Schema／来源契约或追加模型测试。此前独立Verification的模型内容观察与缺证、Validation未执行均保留原记录，不能因本次上线回写为全门禁PASS；本次发布依据为最新用户指令。
+
+**执行与版本：** 主会话于21:29:17–21:29:42（Asia/Shanghai）在首尔hermes-secretary-sync执行唯一发布20261024-noting-v2-dd9189c，约25.299秒。后端从183f1a573408fc69dbd97d735d0dc0740595f6da精确快进至dd9189c19d7e4b4ffbdd3a46214586dbb1b96ed4；与真实受测产品f497fd0相比仅状态／授权文档差异。涵盖六工具固定顶层、Main／Noting权限、维护三工具扁平参数、七类字段／统一done／来源及证据时间数组、relations清理、Schedule语义建议、压缩分支及相关修补。此前今日微信／时间／Kimi／标题等已上线修补由祖先闭包保留。依赖、PM及锁未变，不带本地合成Profile／阈值／历史／凭据。
+
+**发布与保护结果：** 自然空闲且cloud clean→私有bundle上传→再预检→停止Gateway及Web→三库SQLite backup及配置备份→精确ff-only→分别启动两服务→核版本及数据。receipt.phase=verified；Web／Gateway均实际dd9189c且active，Gateway running、微信connected，最后活动数0。host／Alex／study三库各10保护表完整行指纹前后一致；24配置指纹、微信绑定、439份Secretary与67份Dashboard文件集合及SHA均相同。三库备份integrity_check=ok、foreign_key_check=0，root另核备份SHA与0600；未覆盖数据库、改生产配置／模型／排期／绑定、清缓存、重放旧任务或更换静态资源。本次生产测试模型请求0。
+
+**备份与证据：** 云私有/home/ubuntu/.local/state/hermes-secretary/release-20261024/20261024-noting-v2-dd9189c/保存receipt.json、RECOVERY.txt和backup/（三库与17份实际配置备份），目录0700／文件0600。三库备份大小host663552、Alex190738432、study475136 bytes。原始回执与主会话复核在本地ignored .hermes-dev/noting-maintenance-v2/release/{production-receipt-dd9189c.json,root-production-review-dd9189c.json}。需回退先核当前任务／新写入，空闲停两服务人工恢复已审旧代码并启动验真，保留最新运行库／配置／双SPA；禁止自动数据库回滚或盲重apply。
+
 ## 2026-10-24 · AI 标题改用当前 Main 完整上下文（已上线并完成真实验证）
 
 **用户确认与范围：** 用户明确选择当前Main实际可见上下文（压缩摘要、Notebook及最近对话）。原Web只取最早User＋最近8条正文、逐条前1200字符，已改为后端从原生持久Prelude及当前tip全量active模型历史生成；沿用当前Main模型，冻结完整原生请求前缀后追加命名任务。归档祖先仅属于display，不重新塞回模型上下文。首Turn自动标题、原生title写入及失败／切会话不写契约保留。旧APK逐字匹配既有命名请求时走新分支，其它oneshot不变。

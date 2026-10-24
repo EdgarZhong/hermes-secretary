@@ -242,30 +242,16 @@ Noting child `noting_27dcca55ad1a4e35` 的完整持久轨迹仅一条启动 user
 - 不把未验证写成通过；历史全量存在失败，后续定向通过不等于全量全绿。原报告、固定证据、Git历史均保留，不将旧PID、Agent编排或过时等待条件带入下一轮。
 
 
-## 2026-10-24 · 当前自主轮：Notebook／Noting维护v2
+## 2026-10-24 · Notebook／Noting维护v2已上线
 
-**当前产品锁版：** `f497fd0b794301c4c813267258a73893a86c7e0c`，分支`codex/noting-maintenance-v2`、独立树`/Users/edgar/code/hermes-secretary-noting-v2`，已自动push。原主仓与独立UI属于其它活动任务，dirty/服务/构建保护。生产发布收尾进行中。用户在获知当前实现/测试/模型观察后明确要求“给我把部署收尾做完”；按现有已提交产品发布，不追加模型测试、来源契约或Prompt改动。此前blocked已由本次明确指令解除，旧门禁结论保原时点，不改写为全部通过。
+**交付状态：** 用户在获知当前实现与模型观察后明确要求停止过度核查，并指令“给我把部署收尾做完”。已按当前已提交代码完成发布，不追加Prompt／Schema／来源契约调优或模型测试。此前等待来源方向的blocked状态已结束；旧Verification失败与Validation未执行原样保留，不冒称全门禁PASS，也不再据此追加本轮工作。
 
-**定稿依据：** 07顶部最终v2、Notebook白板、Snapshot Index R01–R20/O01；完整冻结SHA见baseline。R18两句、统一done及R20两处均已明确批准并实施，没有这几项剩余审批。R20仅移动已批准来源义务一句至create/update通用TOOL USE，且step2追加同情景澄清/修正原位update句；相邻R16混传段及below指代不动。除这两处，Task其余原文和两个control常量逐字不变。
+**实际运行版本：** 首尔Web／Gateway均`dd9189c19d7e4b4ffbdd3a46214586dbb1b96ed4`，产品代码等于已真实受测`f497fd0`，后续仅文档；两服务active，Gateway running、微信connected。由原183f1a5经已审backend-only流程自然空闲停服、备份、精确快进及启动，约25.299秒，receipt verified。三库各10保护表／24配置指纹／绑定保持；439 Secretary和67 Dashboard静态逐SHA保持。依赖／PM／生产模型／阈值／Persona／排期均未改，本次生产测试模型请求0。
 
-| 包/阶段 | 当前状态与下一步 |
-|---|---|
-| 数据/Schema/投影 | 六工具固定顶层、Main拒四写/Finish、Noting仅六；三维护工具扁平同字段同层；七类型、Schedule语义建议、relations清理、UID/时间段数组混传、runtime只读evidence_time数组、统一done及旧immutable仅读兼容均已实施亲审。A120项、B545不同项有效，不把受控SDK当自然语义证明 |
-| 压缩/Finish | local-off接线修补df已亲审，39定向含独立原反例及41相邻有效；真实阈值/here N保原尾，其它合格Main取消默认尾。Finish走原生收尾再runner Commit Gate，handler不提交。当前两次Idle真实正常提交→持久full→Framework已证 |
-| Proposal/R20 | 模型Proposal统一既有model_notebook_view，保正文/来源/可读coverage、API默认不变，64定向/209相邻有效。R20精确两处及正式整链新测试已亲审，147项有效；822加载源SHA核对一致。f497锁版前相对初始5ea实际stage81文件，冻结10全过、health0/0；不放宽规则 |
-| 当前真实Kimi | 最终唯一R20fresh于20:11启动、自然exit1；16请求全HTTP200、0Provider错误，同Conversation两次正常Idle整理/压缩/Framework及后Main实际Show/History成立。Main初次prompt141743、首次Noting146839，超过历史N38；7个Noting wire父Root/tools/Active逐项相等。真实结果目录见下 |
-| 当前语义失败 | F7-01：首周期对1/2/3新增进展却省略来源，继承旧证据；次周期补第二进展仍漏第一进展，饮水到货/容量确认缺自身证据支持。F7-02：Main先无据写胸牌尚未准备，Noting仅引用户责任消息写尚未开始，后Main继续传播。done=false本身合法，不能据此断言未开始；不是Schema语法错误 |
-| 稳定ID边界 | 此次4归档后容量并入既有1/3，无新situation重建，不能照搬旧df的4→8稳定ID违例，也不能硬绑旧四ID永存；接收条目缺来源仍属F7-01。自然原位update专门正例尚未由该变体建立 |
-| 取证缺口/预算 | Notebook-only P1公开history=[]被原生正常恢复补回摘要/旧历史，连续3次在HTTP/consume前拦下，P1/P2实际请求0；不是Provider失败，也不为测试改产品恢复。R12当前接口额外真实结算未执行。累计80=short51+long29，含历史probe2；96/59/37是内部guard、余量非run权。R20唯一run已消耗，无重试/R12授权 |
-| 独立审查/发布 | Fresh Sol/high V7先只读规格落32判据，再查源码及最终实际样本；终局27符合、3违规（R18/R20/I07对应上述两个内容问题）、2缺证（R12/R15），root已亲读完整报告与原证据接收。Validation未启动，不能部署。历史V4–V6报告保原时点，不以新版本回写 |
-| 磁盘 | 已正常移除13旧工作树、保分支；23独有小原件7,398,800字节先逐SHA留档，另清六处已核旧CI/依赖缓存。两批前后Data卷available净增4.142GiB至22.89GiB。共享PM、dirty/未集成/归属未明树、原始证据/APK/DB与活动Rust/Gradle保留；磁盘追加任务完成 |
+**已落实范围：** 六工具完整固定顶层；Main拒四写／Finish、Noting仅六；create/update/archive同字段同层；七类型及description软指导、第三写作／第五过滤独立；普通relations归档清理及关键来源保护；单个Schedule语义建议不自动登记；来源UID／时间段数组可混、runtime evidence_time只读数组；统一done、旧immutable仅读兼容；对应compaction原生阈值／here N／开关及Idle时序、Finish原生收尾与Proposal模型投影修补。
 
-**证据与职责：** `.autonomous/20261024-noting-maintenance-v2/`是本轮唯一索引/计划/双门禁/交付；最终真实目录`.hermes-dev/noting-maintenance-v2/e2e/run-r20-fresh-two-cycle-20261024-201158/`。D最终整包及两份终态DB已归档、root亲审接收，V7审查已终局，当前无活E2E/门禁任务；root维护看板/计划/交付。无新子任务或收费权。Root已亲读SDK3/9/11/12/16拼接正文和实际tool arguments、两次进展与独立DB发现，确认结构成功不等于内容忠实。
+**验证边界：** 已亲审相关实现并保留定向测试／冻结10检查。最终真实Kimi两Idle正常整理／持久压缩／Framework、长前缀>N38、后Main Show／History均已执行；本轮累计80请求，最新16全部HTTP200，两Finish后额外Noting请求0。来源遗漏及胸牌进度误写仍是原样保留的模型内容观察，不声称零错误；Notebook-only与额外结算场景未执行完成，不写成通过。用户最新要求按现有代码完成部署，故未继续收费／扩展验收。
 
-**当前后续：** 按Stuck停止同一路径重复试错并交完整问题报告；结构性来源决策/用户事实与Assistant解释的区分尚未定稿，不擅改Schema/Prompt或增自然语言硬门禁。Notebook-only方法需修正原生恢复假设，不能人工删历史/改Snapshot冒充通过。有效机制/长前缀/双周期证据保留；剩余内容问题、结算与独立承载证据、fresh双门禁及部署均未完成。磁盘运维记录及可恢复映射见`docs/operations-log.md`与ignored disk-audit。
+**磁盘追加已完成：** 正常释放13旧工作树、保分支及23独有小原件，另清六精确旧缓存；当时available净增4.142GiB至22.89GiB。共享PM、dirty／未集成树、唯一证据／数据库／APK及活Rust／Gradle保留。当前实现树已提交推送；主仓和UI其它任务未动。本轮无活E2E／审查Agent，不自动重开调优。
 
-**最终归档复核：** root核110份稳定原件、58份harness/派生报告、786份产品SHA全匹配；两份终态DB分别41表逐行逻辑hash等于原库、原库bytehash不变。E2E报告曾误把本次archive合并列稳定ID违规并归于root/V7，已退回纠正；旧报告/旧manifest及新旧SHA保更正收据，raw/DB/result/ledger未改。当前仅等待来源契约方向，既有待答不重复询问，不新增试跑/部署。证据`.hermes-dev/noting-maintenance-v2/root-r20-final-archive-review.json`及E2E最终报告。
-
-**阻塞审计：** 同一待答来源契约决定已持续原失败交付及后续三个goal接续轮次。期间归档哈希复核、DB持久化核对与报告误归因纠正分别构成真实进展，不冒称这些轮次无进展；当前所有独立收尾完成、Agent均terminal、实现树干净且upstream一致，未收到新口径，已无不依赖该决定的必要实施可推进。因此目标标blocked，不标complete/paused。恢复条件：用户答复既有来源契约方向问题并继续收敛具体改法，再按原完整范围修复/补证/fresh双门禁/部署；不降低判据或清掉F7-01/02、R12/R15。
-
-**最新用户授权与当前执行：** 用户先明确本轮对模型行为确定性要求过头、要求停止核查，随后询问交付并明确指令“给我把部署收尾做完”。现有代码按原产品f497发布，新增提交仅记录授权与运维；保留F7-01/02模型观察及旧R12/R15未执行事实，不追加调优/模型请求/独立验收轮次、不伪报原门禁通过。部署复用已审backend-only脚本，空闲/版本/dirty预检、三库配置备份、精确快进、两服务启动及健康/微信/受保护数据/静态核对；不改生产模型/阈值/Persona/排期/绑定或清缓存，不触主仓与UI活动修改。当前完成条件是已提交代码上线、服务健康和数据保持，结束后记录真实结果。上文历史阻塞及等待来源决定状态均由本次明确部署指令覆盖。
+**入口与恢复：** 实际部署和回退只见`docs/operations-log.md`最新条目；本轮完整历史／授权／两门禁原报告／交付在`.autonomous/20261024-noting-maintenance-v2/`。云恢复目录`/home/ubuntu/.local/state/hermes-secretary/release-20261024/20261024-noting-v2-dd9189c/`，原始receipt与root核对在ignored release目录。禁止将Mac副本或旧备份覆盖运行库；后续问题按新用户请求处理。
