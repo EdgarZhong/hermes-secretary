@@ -1,5 +1,22 @@
 # 07 · Secretary 改版实施契约：History、Scheduler、Notebook 与 Noting
 
+## 2026-10-24 追加R20：通用来源指导与同情景稳定ID（用户已确认）
+
+用户对两项最小Prompt调整明确答复“批准这两项最小调整”。本节优先于下文R18最初位于第2步的来源句位置，以及v2历史对照中的旧组织；不回写历史模型样本或验收结论。
+
+1. 将第2步现有来源指导原文整体移到create/update共用的`TOOL USE`段，文字不变、仅保留一份，使新建条目与更新条目都明确遵守：
+
+   `Keep sources supporting retained content and add sources for new or changed claims; do not replace all sources with only the newest message. For the same piece of evidence, Message IDs or one element of source_time_ranges is usually sufficient; there is no need to repeat it in both forms. Different pieces of evidence may mix Message IDs and source_time_ranges. The Candidate source restrictions below still apply.`
+
+   中文含义：保留仍在使用的内容的来源，补新增／变化断言来源；同一证据通常选IDs或一个范围元素即可，不要求重复；不同证据可混用，Candidate直接／间接限制保持。段内原`below`随原文保持；它指Candidate来源限制，实际限制定义及执行不变。
+2. 默认Task第2步在同事情匹配／保稳定ID指导处追加一句：
+
+   `When new evidence only resolves or corrects the same situation, update it in place rather than archiving and recreating it.`
+
+   中文：如果新证据只是澄清或修正同一个情景，就原位更新，不要先归档再重建。
+
+仅改这两项。Schema、description、六工具权限、来源结构与校验器、生命周期／结算／归档准入、Finish/提交不变；不是给所有旧条目永久保留ID，也不新增自然语言硬门禁、自动ID别名或模型结果修写。下一真实样本须核保留来源、同情景原位更新，以及真正过时／不同对象仍可正常归档创建；旧df失败原样保留。最终多周期、fresh独立双门禁及部署条件保持。
+
 ## 2026-10-24 追加：统一done终结标记（用户已确认）
 
 用户明确选择“采用统一done方案”。本节优先替换本文v2及历史Schema中Notebook条目细分status枚举；不改变Noting运行任务、Scheduler或其它对象的运行状态。

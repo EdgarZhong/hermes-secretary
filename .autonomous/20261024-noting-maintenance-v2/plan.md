@@ -185,3 +185,6 @@ Root亲读单产品diff及新四用例、原CLI/Gateway调用上下游，16份�
 
 ### 当前阶段交回与未完成边界
 Root完整接收V6六节终局及D七项报告：df27项22符合/3违规/2缺证；真实5次API、首长Idle完整链有效，但来源/稳定ID自然反例保持。D零网络同Conversation真实DBclone逻辑逐表一致/源hash不变，仅准备未初始化运行，cap19接线尚未实现，没有续测run权。F6-01投影修补由root亲审接收并实际stage80文件冻10全过；准备阶段提交，不代替fresh门禁。来源指导位置移动已询问用户未答，默认Task保持逐字；不自动收费重试或部署。当前goal active，磁盘追加实际完成，完整未完和恢复路径见final-delivery六节。
+
+### R20最新用户确认
+用户明确“批准这两项最小调整”，07顶部与索引立即同步：现有来源指导原文整体移至create/update通用TOOL USE，文字不变且仅一份；step2追加同一情景仅澄清/修正则原位更新不归档重建。D确认无活正式dry/模型进程，允许新产品修改。root先冻结本次授权，Sol限定Task与定向正式wire分支测试；不改Schema/description/权限/生命周期/validator/Store。不把原反例因改Prompt自动关闭，最终真实样本及fresh双门禁仍必需。

@@ -263,3 +263,5 @@ Noting child `noting_27dcca55ad1a4e35` 的完整持久轨迹仅一条启动 user
 **证据与职责：** 本轮`.autonomous/20261024-noting-maintenance-v2/`唯一看板/索引/双门禁/最终简报；完整原失败与历史进展留plan/verification及ignored实现/E2E报告，不用新口径改写旧样本。A/B/C各包已root亲审，当前proposal_projection_fix仅白名单产品与测试；D独占ignored E2E；V6独占verification；root独占三核心文档、plan/交付、ops与集成。子Agent禁止派生/流水账。
 
 **当前未完成：** proposal投影小修及定向证据、来源指导位置待用户答复、最终同Conversation多周期和Notebook-only自然语义证据、fresh双门禁、最终提交/云端部署。目标active，不以成功HTTP/阶段commit/空间释放冒称整轮完成。
+
+**R20用户批准：** 来源指导原文从第2步移TOOL USE共用段，第二步加同情景仅澄清/修正时原位update不重建句；已落07及索引。没有此项剩余审批。D确认无活dry/收费窗口，准备冻结依据再小改Prompt，最终新SHA一次0请求恢复dry；ledger64，尚无续测run权。原df真实反例不改写。
