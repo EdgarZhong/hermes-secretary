@@ -6,27 +6,23 @@
 
 Android当前已发布版仍为回前台立即刷新、后续10／15／20／30秒退避；用户2026-10-24要求改为先恢复、5秒内网络读取及Socket／Turn恢复完成就不重载，具体范围见下方Timeline恢复条目；新版已在本轮工作树实施，原生定向验证通过，整体集成未完成；用户C17明确豁免本轮实际APK验收，不启动模拟器，交付注明未验。此前45秒、分钟级长退避及旧5秒单次刷新方案不作为当前实现；本次5秒恢复窗口是新的用户要求。UI-CAM-01已获用户确认，拍照压缩保留当前实现。2026-10-21本轮用户明确确认：升级APK迁移至新的响铃＋横幅通知通道，并尽量保留用户主动静音设置；已实施并完成原生定向测试，真机响铃／横幅未验。
 
-## 2026-10-24 · Web UI 过渡展示缓存与完整恢复（自主实施中）
+## 2026-10-24 · Web UI 过渡展示缓存与完整恢复（菜单竞态已修，待第三候选复审）
 
-用户已授权按定稿方案启动一轮自主实现，全部使用`gpt-6.1-sol`，允许委派，主会话亲审／协调集成，测试与验收后交付。Astra只完成此前独立评审及正式方案，之后不再调用；所有代码及集成修补均由6.1执行。独立Verification／Validation轻量执行：先独立建立判据／场景，复用有效同版本证据，仅必要反证，不重跑无关大套或降低关键覆盖。
+用户已授权按06 §1.4.1 R1–R10自主实现，全部`gpt-6.1-sol`／high、允许子Agent、主会话亲审集成；Astra只完成此前评审与定稿，此后不再调用。独立Verification／Validation轻量执行：先独立判据／场景，复用有效同版本证据，必要反证，不重跑无关大套或缩减关键覆盖。
 
-轮次`.autonomous/20261024-web-recovery/`，两仓分支`codex/web-recovery-20261024`。冻结及远端哈希已核同：主仓`ba83d2b430e3448461dd7feb9f1acd8fc94c6cc9`、前端`9fd115d3b016bb51a8a78dd1724684fd1890665c`；原代码分别`5ea0f7f`／`f3a03ce`。依据与会话口径见snapshot-index，哈希见baseline.txt，当前执行表及整改见plan.md；正式细粒度方案在06 §1.4.1 R1–R10，README已索引。主会话完整阅读并接收Astra方案，另修正跨仓路径与I1代码由6.1实施的表述；不把设计推导当运行证据。
+轮次`.autonomous/20261024-web-recovery/`，两仓分支`codex/web-recovery-20261024`；主仓冻结`ba83d2b`、Web冻结`9fd115d3`，原代码`5ea0f7f`／`f3a03ce`。索引、基线、任务及整改见该目录snapshot-index.md／baseline.txt／plan.md，稳定入口已在README。
 
-三个6.1/high实现包已并行派发、子Agent不再派生：`backend_recovery`独占B1–B3后端范围读／原子cut／恢复封套；`frontend_recovery`独占F1/F2/F3/I1协调器／缓存／reader及Controller/App集成；`presentation_recovery`独占F4/A1视口／动画／Files与JS/Native5秒桥。共享接口按约定成包里程碑交接，根文档及本轮计划由主会话独占。未授权生产部署、真实模型请求或生产数据修改；阶段commit按既有hook自动push，不强推。07并行Noting及其CLAUDE等原有dirty均保留，不混入本轮提交；冻结仅暂存本轮文档片段。
+目标：冷开／刷新／断线先展示有界缓存，当前页面数据完整重读，与Socket／活动Turn在有限边界对账后统一交接；不读全部Conversation正文或全部历史。前缀相容保anchor后快速滚真实末尾；侧栏原地更新，两个胶囊实际值变化轻微高亮。APK回前台先恢复，当前可见ready在5秒内完成就不reload，超时及后续10／15／20／30秒退避保留。缓存不作为runtime／游标／Pending／审批事实。
 
-目标保持：冷开／刷新／断线先展示有界缓存；当前页面所需状态完整重读，隐藏资源后台；REST／WS在有限可证边界对账、可见需求就绪后统一交接；前缀未变保anchor并快速滚真实末尾，侧栏原地更新，两个胶囊实际值变化轻微高亮；APK回前台先恢复，5秒内可见ready则不reload，后续10/15/20/30退避保持。缓存不是runtime／pending／approval／游标等事实，不扫描全部Conversation或全部历史。
+三个实现包均已亲审：backend负责B1–B3，frontend负责F1／F2／F3／I1，presentation负责F4／A1；子Agent不再派生。首候选1ca5d68／c4f2f6d独立Verification不通过的四项阻断已整改：Session补读失败不误报ready、正常Usage／Context成功事实白名单合并缓存、实际Model／Thinking菜单纳唯一读取协调器、局部commit不取消合法滚尾且晚挂载能定位。活动流准备另发现并修复REV-10：普通Web Turn使用当前原生来源与D1持久身份／租约证明，不局限Reminder事件。技术细化未改冻结产品语义，仍待独立复审判关闭。
 
-三个初始整包已交回，主会话亲读正式接线、范围／cut、状态机、缓存和展示代码，并接收有序前缀、局部失败重试、侧栏缓存过滤及首次高亮等修补。首候选主仓1ca5d68／前端c4f2f6d已提交／自动push核同；冻结十检查通过（health 0／0），原生40项、展示及桥96项为各自版本证据。该候选APK构建／签名及439资源逐字节核验成功，但首轮独立Verification不通过，整改后需重新打包，不称最终交付。现环境有项目Python3.14.7、Node24.21.0、mise Java21、SDK／NDK27.2.12479018；无在线adb设备。UI只许自建隐藏IAB；实际APK按用户C17豁免，Web实测和原生单测仍执行。最终须delivery-evidence-review与final-delivery.md如实判定。
+当前代码候选：后端`dd9a4c57dd7c182ad8497f9538e115bbab3131b0`、Web`833d456e8c8a71f0388e902ac19dda7e5586eda8`，均自动push／远端SHA核同。Web最终受影响12文件223项及build通过；后端恢复39项、原生回归35项通过，准确暂存候选冻结十检查全部通过（health15文件0／0）。原生40项、呈现／桥及早期证据按各自源码manifest复用，不累加重叠计数。主会话隐藏IAB开发复核真实1200行末尾可见；本地fake SSE经正式native Turn断线后仍running时恢复成功，同runtime、正文精确且唯一assistant落库，结束后idle对账通过；这些不替代独立Web验收。
 
-用户冻结后补充C17：本轮明确豁免实际APK验收，仅完成Web实测与原生单测并明确平台未验边界；不启动模拟器。原产品机制要求不变，签名包不等于实际WebView验收通过。
+此前第二候选APK已重建，439资源与当前dist逐字节匹配、签名有效，SHA256 `9e2339c0e840381ee3da862894b404b9464e61be1fa336a99c63bb370a5304f5`；证据ignored apk-final-manifest.json／apk-final-signature.log／android-build-final.log。用户C17明确豁免本轮实际APK验收，仅Web实测与原生单测并写明平台未验；不启动模拟器，不以签名或Robolectric冒称实际WebView验收。
 
-当前候选仍未通过：主会话真实隐藏IAB复现冷开滚尾被局部commit取消；独立Verification已用正式反证指出Usage补充失败误报ready、普通成功胶囊更新未写缓存、已开模型／推理菜单读取漏登记。三个问题与滚动集成均由原6.1实现者整改；旧候选完整初审后，新候选另派独立复审，尚不进入Validation。
+独立V2全范围44项40符合／4违规，仅N01阻断；主会话已完整亲读接收，旧四项和REV-10确认关闭。N01现已整改亲审：配置变化在held前同步失效两菜单证明及旧串号，恢复中旁路归唯一owner，本地成功config写同入口；5文件113项与typecheck通过，11项指纹匹配。Web833d456已自动push核同，正重打APK；后端产品代码仍dd9a4c5。新候选须全新独立V3通过后才派Validation，两门禁未关闭，未部署。
 
-滚动整改整包已亲审，阅读43项及正式App联合4项反例通过；隐藏IAB开发复核真实落最新row1199末尾，仍待独立复审。活动流验收环境仅用本地fake OpenAI SSE经正式Dashboard／native Turn，发现普通Web Turn来源证明遗漏（REV-10）；backend最小修复当前原生来源与D1身份校验，保留lease／owner／rewind拒绝。无真实供应商请求、无生产变更，允许仅重启本轮隔离53575。Usage与菜单整包仍在收敛。
-
-前端整改整包现已亲审并形成第二候选`474a934`，自动push／远端SHA核同；受影响12文件223项及build通过，23项源码指纹全匹配。当前Session失败不ready、正常成功胶囊白名单更新缓存、实际Model／Thinking需求与暂存统一提交、覆盖键循环防旧请求复活均已补机制及正式App反例。APK正按该前端重打包；后端REV-10仍在修复。两门禁未关闭，未部署。
-
-后端REV-10现已整包亲审接收，39项恢复及35项原生回归通过；真实native一次本地SSE中断线，Turn仍运行时恢复成功，后续正文精确且只落一条assistant，结束后idle对账通过。第二候选APK已重建，439资源与dist逐字节匹配、签名有效，SHA256 `9e2339c0e840381ee3da862894b404b9464e61be1fa336a99c63bb370a5304f5`。主会话正在提交后端候选并启动新独立全范围复审，Web Validation尚未执行；实际APK按C17未验，未部署。
+隔离Dashboard53575／proxy53576／Vite5178／fake53577仅本轮自有；53445／53446他人长驻保持不动。UI只允许自建隐藏IAB；不真实模型、不生产数据／部署。07并行Noting等dirty保留，本轮CLAUDE只暂存本段及顶部Android现状。最终须delivery-evidence-review与final-delivery.md据证判定。
 
 ## 2026-10-24 · AI 标题按当前 Main 上下文命名（已上线并完成真实验证）
 

@@ -1,6 +1,6 @@
 # F1／F2／F3／I1 整包交回
 
-状态：初包已由主会话集成为c4f2f6d候选；本Agent追加整改包已完成并待新候选独立复审。下文保留各验证时点，本Agent未自行stage／commit／push，未部署、未调用真实模型、未操作浏览器／设备。依据为baseline.txt冻结06 R1/R4–R7/R9及R2/R3接口，保持08 Profile与Files归属。
+状态：主会话已集成c4f2f6d与第二候选474a934；最新N01整改包已完成，待主会话亲审、统一候选及同版本独立复审。下文保留各验证时点，本Agent未自行stage／commit／push，未部署、未调用真实模型、未操作浏览器／设备。依据为baseline.txt冻结06 R1/R4–R7/R9及R2/R3接口，保持08 Profile与Files归属。
 
 ## 条款与实际变更
 
@@ -64,3 +64,19 @@ ignored证据：`.hermes-dev/web-recovery-20261024/frontend/accepted-tests.log`�
 证据：ignored frontend/review-final-tests.log、review-final-build.log；修前handoff-reproduction.log、coverage-cycle-before.log保留。post-verification-source-manifest.json记录本包10文件及实际受影响呈现／测试版本，source-manifest.json同步本包文件SHA256。主会话自行隐藏IAB已另复核1200行真实末尾（top28950、1199可见），本包未操作页面，此结果不替代独立Validation。后端普通Turn新修与APK豁免由主会话另行编排；本报告不扩作后端／APK通过证据。
 
 下一步：主会话亲读本包接口、状态／失败／旧结果路径后统一新候选，交独立V2复审V01–V03及原全范围；本Agent没有stage／commit／push或部署动作。
+
+## N01 菜单恢复交错整改交回（基于474a934，2026-10-24）
+
+1. **对应条款。** R1要求已失效读取／成功证明不得满足当前ready，R5要求当前实际Model/Thinking菜单读取加入统一owner，R7要求完整可见交接。原V2反例的根因是session.info仅失效历史等资源，capabilities/reasoning已有成功结果及menuStages context仍合法；旧stage在新旁路响应之后随恢复commit回盖，出现ready=true但旧菜单。冻结规格及产品语义未改。
+
+2. **实际变更。** 已知model/provider/reasoning_effort/reasoning_effort_wire变化在业务观察时进入configuration-changed，单次invalidate同时推进capabilities/reasoning与其余必要资源的覆盖代次，并推进既有capabilitySerial。旧stage保留但context立即无资格，不靠最后清stage遮盖问题；仍required的菜单必须取得变更后的真实读取成功结果才可同一commit。恢复中capabilitiesForBinding只记录scope，不另发可覆盖展示的旁路；已有恢复owner时公开loadCapabilities也委托同一入口，未建立恢复owner时的原调用保留，旧legacy串号仍拒迟到结果。当前owner成功且不需confirmation的本地config.set同样失效；普通delta不触发配置重读。
+
+3. **正式路径。** session.info → observeControl按seq去重并比较已知配置字段 → startRecovery(configuration-changed) → adapter原子invalidate菜单成功证明＋旧串号 → 同一PageRecovery合并运行重新求required → 新capabilities/config.get暂存 → 完整/current local commit → 原App/reading布局ack。业务观察在held入队之前执行，投影重放不重复失效。成功setSessionConfig及当前owner显式Retry capabilities也复用此路径；旧owner结果没有当前展示资格。
+
+4. **验证。** 修前两个正式Controller反例（Model与Thinking）均失败在旧context仍current，见ignored frontend/n01-before.log。最终5文件113项通过（n01-final-tests.log）：其中10项N01 Controller场景覆盖旧成功stage、变更后请求失败不ready和自动重试、实际held帧、本地配置写与正在恢复合并、关闭／切owner后的迟到结果、普通delta无新增菜单读、legacy旧串号；实际App新增2项用真实Model/Thinking开关和最终DOM验证重叠恢复，释放Pending之前不提前采用fresh菜单，之后必须fresh并ready。相关既有配置owner／Usage／恢复路径一并通过。npm run typecheck及git diff --check通过；controller.ts当前2512行，低于冻结2556行。精确版本见n01-source-manifest.json；source-manifest.json仅更新本次4文件。
+
+5. **缺口与边界。** 依授权未重跑无关大套、build、浏览器、APK、模型或部署；此前223项及build只代表其原时点，本次不冒充当前打包／真实用户验收。受控依赖只位于正式RPC响应/时序屏障，协调器、Controller、held处理与实际App/reading均为正式实现。独立N01与全范围门禁是否关闭由主会话及审查者判定。
+
+6. **接口影响。** 仅新增内部reason configuration-changed；未改公共DTO、PageRecovery API、组件props、presentation源码或其它文件。loadCapabilities在已有恢复owner时归同一协调器，config写返回与confirmation语义保留；不新增恢复循环，不沿每delta重读。
+
+7. **建议后续。** 主会话亲读两个产品源码差异及上下游后统一新候选，用当前manifest交独立同版本复审；尤其核旧stage资格、新required失败与held/local顺序。原V2反例中旁路中途写入raw fresh的现象现被收敛，正式判据应核新读取证明与最终可见commit。未stage／commit／push，无待产品决策项。

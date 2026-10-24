@@ -36,8 +36,12 @@
 | 问题编号 | 要求与触发条件 | 当前事实与影响 | 优先级及理由 | 修复负责人 | 关闭与复验条件 | 状态 |
 |---|---|---|---|---|---|---|
 | RISK-01 | C15 原生真实UI验收与显示保护 | 用户C17明确豁免本轮实际APK验收；不启动模拟器 | 已按用户完成条件收口 | 主会话 | Web实测与原生单测照常；交付明确APK实际运行未验 | 已关闭（用户豁免） |
-| REV-09 | C06/R7 冷开需落真实末尾 | 真实隐藏IAB稳定显示row1000–1199但scrollTop=0，height29441/client491；未在末尾 | 阻断 | frontend＋presentation | 先查正式需求／commit／reading顺序根因，补集成反例并修复；不能绕开ready或需求校验 | 修复中 |
-| REV-10 | C04/R4 普通Web活动Turn可恢复 | 本地fake SSE经正式native Turn探测返回runtime_unavailable；原生普通来源有_terminal_source，但恢复仅认Reminder source_committed | 阻断 | backend | 同一受控捕获点核当前Turn原生来源及D1身份，保持lease／owner／rewind拒绝；正式SSE活动恢复及负例 | 修复中 |
+| V01 | R1/R5 可见Session补读503不能ready | 已保留detail/session原始成功事实，当前required失败自动重试，合法unknown不误拒绝 | 阻断 | frontend | 正式Controller反例及独立V2已核 | V2已关闭 |
+| V02 | R6 正常Usage/Context成功更新缓存 | 已按owner/epoch/代次合并白名单capsules，保已验证Timeline，失败不续TTL | 阻断 | frontend | 成功／失败TTL／迟到owner／local交错证据与独立V2已核 | V2已关闭 |
+| V03 | R5 实际Model/Thinking读取统一恢复 | 实际开关登记，capabilities/config reader暂存后commit，失败自动重试，关闭解除慢依赖 | 阻断 | frontend | 实际App菜单初读／online／失败／取消与独立V2已核 | 原问题V2已关；后继事件另N01 |
+| V04／REV-09 | C06/R7 冷开及晚挂载需落真实末尾 | 已修local取消motion及晚挂观察，实际开发复核末尾可见 | 阻断 | frontend＋presentation | 正式App及hook反例与独立V2已核；Web实际效果仍待Validation | V2已关闭机制缺口 |
+| REV-10 | C04/R3 普通Web活动Turn可恢复 | 已核当前原生来源／D1身份／租约，真实SSE活动及idle均成功 | 阻断 | backend | 39项恢复、35项原生及正式SSE证据，独立V2已核 | V2已关闭 |
+| N01 | R1/R5/R7 恢复中配置事件不能被旧菜单stage回盖 | V2反证后已修同步失效证明，既有旁路归唯一协调器；普通delta不重读 | 阻断 | frontend | 113项含Model/Thinking交错／迟到／失败与App最终DOM，新候选全新复审 | 已修补／亲审，待V3 |
 
 ## 取舍、快照与续接
 
@@ -60,11 +64,11 @@
 
 | 编号 | 初稿风险与要求 | 负责人 | 当前状态 |
 |---|---|---|---|
-| REV-01 | 撤除慢需求不挡；resource身份／代次防旧结果满足新需求 | frontend | 已反馈，待最终证据 |
-| REV-02 | 缓存嵌套原生content中的图片binary／data URL不得落盘；损坏rows/capsules可靠丢弃 | frontend | 已反馈，待最终证据 |
-| REV-03 | tool-only视口不能因alias未匹配而空集判相容；已展示facet参与前缀判等 | frontend＋presentation | 已协调，待最终证据 |
-| REV-04 | 同轮dirty历史失效不得复用旧成功读取；commit→需求变更→layout ack不死锁 | frontend | 已反馈，待最终证据 |
-| REV-05 | settled idle snapshot在恢复前正式replace／rewind／delete后不得复活旧输出；未知未持久输出须当前Turn证明 | backend | 已反馈，待反证／修复证据 |
+| REV-01 | 撤除慢需求不挡；resource身份／代次防旧结果满足新需求 | frontend | 整包亲审及定向证据已接收，待独立复审 |
+| REV-02 | 缓存嵌套原生content中的图片binary／data URL不得落盘；损坏rows/capsules可靠丢弃 | frontend | 整包亲审及定向证据已接收，待独立复审 |
+| REV-03 | tool-only视口不能因alias未匹配而空集判相容；已展示facet参与前缀判等 | frontend＋presentation | 整包亲审及定向证据已接收，待独立复审 |
+| REV-04 | 同轮dirty历史失效不得复用旧成功读取；commit→需求变更→layout ack不死锁 | frontend | 整包亲审及正式App证据已接收，待独立复审 |
+| REV-05 | settled idle snapshot在恢复前正式replace／rewind／delete后不得复活旧输出；未知未持久输出须当前Turn证明 | backend | 整包亲审及真实SQLite／native证据已接收，待独立复审 |
 
 后端契约整包已接收：reports/backend-contract.md与真实SQLite正式handler fixture；其定向检查初报107通过／1条未emit的review.summary旧catalog失败，已要求冻结代码隔离复现，未据此认定新版全绿。主会话不复跑有效测试来代替review。
 
@@ -109,3 +113,9 @@ REV-10由验收环境准备发现。授权backend仅扩recovery_view.py与对应
 第二候选APK构建成功，439资源与当前dist逐字节匹配，apksigner v2有效且证书指纹保持。32,081,185字节，SHA256 `9e2339c0e840381ee3da862894b404b9464e61be1fa336a99c63bb370a5304f5`；源码绑定474a934，ignored `apk-final-manifest.json`／`apk-final-signature.log`／`android-build-final.log`。首次核验脚本误用assets前缀与不存在的build-tools版本，报错后按真实包目录／36.0.0重跑成功；不混用旧候选证据。实际APK仍按C17未验。
 
 REV-10整包主会话亲审接收：正式observer来源只取身份，D0/S/D1同history锁捕获并验证当前agent／Turn token／lease；真实DB／lineage／user UID与D1归属匹配，无DTO变化。39项封套与35项原生回归通过，health／ruff0阻断；真实native一次loopback SSE请求在Turn仍running时complete恢复，同runtime／精确正文／唯一assistant落库，结束后idle对账无未持久尾巴。当前Dashboard53575/PID7423，fake53577/PID228；详细安全控制与manifest在backend报告。所有整改仍待统一新独立复审关闭。
+
+第二候选后端`dd9a4c57dd7c182ad8497f9538e115bbab3131b0`已提交／自动push核同；准确暂存候选冻结十检查全部通过，health15文件对原始5ea0f7f为0／0。全新none／6.1-high `verification_v2`已按轮派遣，先冻结原文＋用户C17独立提取全范围判据，之后才读实现／旧报告；保留v1历史，追加六节复审，复用同版本证据仅必要反证。V2通过后才另派独立Validation。
+
+V2已独立落44项全范围判据，后查实现发现N01。主会话亲读start/session.info/capabilitiesForBinding及其正式反证，提案配置事件失效capabilities/reasoning覆盖代次及旧stage资格，required重取后同commit，并核既有旁路串号／失败／关闭owner。Verification按原判据认可方向及关闭条件，未改规格；原frontend负责最小修补，V2继续固定旧候选完整范围审查。新候选须另全新独立复审，不能用移动工作树偷换当前审查对象。
+
+V2完整报告主会话已亲读接收：44项40符合／4违规，仅N01未关；旧四项及REV-10确认关闭。N01整改整包已亲审，已知配置字段变化在业务观察先于held时进入configuration-changed，同次失效菜单证明和旧串号；恢复中旁路收敛到原owner，成功local config写同入口。正式Model/Thinking修前两反例失败，修后相关5文件113项及typecheck通过，11项源码指纹匹配；未改presentation／PageRecovery／后端／原生。新Web候选`833d456e8c8a71f0388e902ac19dda7e5586eda8`已提交／自动push核同，重打APK中。后端产品代码仍dd9a4c5，新候选须全新V3全范围审查。
