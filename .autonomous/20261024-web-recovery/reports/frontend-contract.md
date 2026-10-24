@@ -51,3 +51,11 @@ api/http-auth.ts统一bootstrap、rest/patch、authorizedFile、HistoryImageRead
 Controller先撤销恢复／读取／待写proof，再清敏感投影、关闭gateway。AppState.displayAuthorized?:boolean是唯一新增可选展示信号：明确认证失败false、成功且凭据proof仍当前的Profile roster确认后true；socket ready、旧roster成功不能自行授权cache。Files只有false时清本地已采用／待采用data与preview stage/等待者，卸载预览释放URL；普通断线保旧。ProfileEnvironment既有load/loadDefault也核同proof以阻旧身份迟到发布。PageRecovery API／恢复DTO／组件恢复props保持。
 
 主会话已精确批准Files.tsx和profiles.ts两处扩白名单；完整正式HTTP→Controller／App／Files证据、原候选旧Profile五项同失败边界与源版本见frontend.md N05七项及ignored frontend/n05-source-manifest.json。
+
+## VAL-01／03／04 初始化与真实GET接缝（0eef280之后）
+
+ControllerPageRecovery新增内部prepareDisplay：initialize安装生命周期／认证订阅后、await Gateway.connect前调用，仅读精确origin/profile/route白名单展示cache并更新retained，不开始第二恢复循环、不发未连接RPC、不产生网络成功或ready。后继retain保留同owner已显示快照，旧owner／cacheSerial／恢复代次／认证撤销与真值提交继续取消迟到缓存资格。无合法cache维持loading，不宣称空历史。
+
+New Chat仅在原统一commit成功、当前没有binding／sending／创建或发送事务时建立该owner无Turn的idle事实，select不再提前赋active=false。Composer门槛、create／附件／native admission协议不改；Conversation未知状态继续未知。PageRecoveryHost只新增对既有profileSwitchBlocked的读取，无新增公共props或DTO。
+
+authenticatedFetch对相同origin且/api/路径的GET明确no-store，包含HistoryImageReader和authorizedFile；写请求、跨origin、静态资源不改cache策略。此为真实HTTP重读要求，独立IDB过渡cache及N05认证proof／401观察、Files域403和503重试语义不变。正式App.initialize／FirstSend与有限HTTP缓存反证见frontend.md对应七项及ignored frontend/val-fixes-source-manifest.json；真实浏览器复验仍待下一独立Validation。

@@ -673,3 +673,58 @@ A XML分别22/13/5项，failures/errors/skipped全0；未为审查重跑Gradle�
 供final-delivery及主会话最终汇报摘要：N05的收敛是把明确HTTP认证失效在解析包装前送达既有document owner，覆盖隐藏资源与图片/Files；保留文件权限403和503的原域语义，凭据代次与当前roster保证迟到不复活/不误清。当前0.1.5 APK签名/资源/实际版本符合，真实APK按用户C17豁免且未验。下一步另派独立Validation完成真实Web用户结果，之后主会话依据两门禁与当前产物作交付判定；本报告不作整轮完成声明。
 
 版本事实更正（主会话接收后）：§1已依据原version-audit.json区分初始派遣输入c43ccedd与实际审查文档HEAD c41776cf；后端产品dd9a4c5、Web0eef280及全部证据判定不变，未重跑测试。
+
+
+### Validation新反证与工程提案评审：VAL-01（2026-10-24，v5通过后追加）
+
+**当前状态：VAL-01成立且未关闭；固定Web `0eef2802725c7999636ca918e75d5513be608fcd` 当前不再具备Verification通过条件。** 上方18组符合及通过结论保留其原审查时点，不覆盖此后取得的新反证；本段按原判据更正当前判断，不改原条款或历史字节。后端产品仍dd9a4c5；本次仅核原文/固定源码/Validation现有AX，不运行测试、不操作UI、不改产品。
+
+| 问题编号 | 对应条款/代码位置 | 触发路径与事实 | 影响及阻断理由 | 建议修复与关闭证据 | 当前状态 |
+|---|---|---|---|---|---|
+| VAL-01 / P1 | 原C01、06 §1.3/§1.4“网络连接恢复就绪之前先展示快照”、R6“读取为启动并行过渡”；V5-01/12，V5-11关联缓存范围；web:controller.ts:493/528，controller-page-recovery.ts:216/230 | Validation先在localhost成功完成1200行/深分页/append恢复，再block_ws:true并延迟GET sessions 8秒后真实reload；两轮约10秒仍无缓存。现有AX为No messages yet、Loading conversations、Usage破折号；固定源码initializeOnce先await gateway.connect，再startRecovery，白名单cache仅由后续retain/readCache发起 | WS pending/reject期间根本未读缓存，违反冷开/刷新前置过渡展示，且无缓存读取时错误显示已确认空消息。原v5把直接startRecovery或已连/已释放ready的适配器证据外推为完整initialize入口，遗漏了“首次WS尚未就绪”条件；不是新增产品要求，也不是仅缺观感证据 | 主会话已提同owner连接前展示准备，以下按原判据认可并列关闭条件；须修补后正式入口机制证据、新候选全范围独立复审及Validation冷开结果 | **新增阻断，未关闭**；证据E/validation-v1/s1-cached-cold-ax.txt、s1-cached-wait.png；此时产品仍冻结 |
+
+主会话提案及理由：在同一ControllerPageRecovery owner中新增最小连接前展示准备接缝，生命周期/认证观察安装后、await gateway.connect前并行读取精确origin/Profile/route的白名单cache；只准备retained画面，不制造网络成功/commit/ready或runtime/审批/游标，不启动未连RPC/平行恢复循环/离线同步；连接后原PageRecovery仍完整重读、有限边界对账并统一交接。准备读绑定document/owner/cacheSerial/认证资格，切owner、明确认证失效、新真值提交作废迟到读；首publish/连接握手/后继retain不能抹掉已显示缓存。未知owner不借default；无/坏/禁用缓存维持loading且不挡connect。
+
+**Verification评审：认可该工程方向，不改变冻结规格或原判据；认可提案不等于实现通过。** 它满足C01/R6的启动时序，并继续使用原唯一展示owner及白名单。必要关闭条件如下：
+
+1. 从正式`Controller.initialize()`及真实Gateway延迟ready/连接拒绝入口取证，已存在合法IDB时，在WS未完成前可见同owner Timeline、侧栏及已取得Usage/Context展示值；恢复ready始终false，业务控制unknown/不可操作，不恢复runtime/审批/Pending/游标、不发未连领域RPC。不得只直接调用新准备helper或startRecovery证明正式接线。
+2. 释放连接后逐项确认本轮原完整REST/RPC、receipt/封套、当前Turn与cut对账仍发生，缓存不减少请求；已有缓存画面经过握手/首次publish/后继retain到真实commit期间不先清空，沿原前缀/anchor和胶囊签名规则交接，不伪造commit或提前ready。持续连接失败时仍可读缓存，缓存读取失败不能阻塞连接。
+3. 准备阶段和之后的owner切换、明确当前401/认证bootstrap403、新真值先提交、IDB晚到均有正式入口反例：旧读不复活旧owner/认证投影、不盖新真值；N05既有旧凭据/已取消请求401不能误清新身份及新roster授权边界保持。无需重跑无关大套，只补此接缝影响的有效证据。
+4. 未知Profile/owner不借default；New Chat/Files不借其它Conversation正文或胶囊；侧栏候选沿原roster规则。cache无/损坏/禁用/过期及Timeline窗口因容量跳过时，分别保合法独立胶囊/摘要并显示真实loading，不以缺缓存断言空历史或空列表；白名单/容量/TTL/成功时间规则不变。
+5. 修复后以新候选重新绑定源码/当前APK资源证据，按套件由全新独立Verification先建全范围判据再复审；独立Validation在实际Web冷开/刷新且WS阻断条件确认缓存可见、释放后真实交接无空闪。C17仅APK实际生命周期豁免保持，不能豁免该Web结果。固定旧候选的其余Validation旅程可以继续收集事实，不能因此把VAL-01或整轮判为通过。
+
+收敛记录：原判据 → Validation真实reload反例/正式initialize顺序 → 主会话连接前同owner准备提案 → Verification认可原边界内方向及上述必要证据 → 尚未实施/尚无关闭证据。无规格变更，未降低缓存/授权/完整读取要求。供最终交付摘要的实质项：前轮审查遗漏的是“首次WS未就绪”入口时序，必须由正式initialize先显示缓存并让后续真实恢复保持该画面；不能仅凭适配器内部存在cache能力宣布冷开已符合。
+
+
+### Validation新增反证与提案集中评审：VAL-03 / VAL-04（2026-10-24，沿原v5判据追加）
+
+本次产品仍固定Web `0eef2802725c7999636ca918e75d5513be608fcd`、后端产品 `dd9a4c57dd7c182ad8497f9538e115bbab3131b0`；主会话报告当前文档HEAD为9ada8bd，此处不替换原v5实际审查HEAD记录。仅回读冻结原文、原V5判据、固定源码及现有Validation文本/DOM/请求切片，未运行测试、浏览器、设备或修改产品/规格。VAL-01维持此前认可方向及未关闭状态，本次不重做。
+
+**当前判断：VAL-03、VAL-04均成立且未关闭；当前候选存在VAL-01/03/04三个已确认阻断，不具备门禁通过条件。** 原v5通过及矩阵保留历史时点，本段明确后续反证及证据适用性纠偏；不以旧绿测试或“用户结果交Validation”为由保留被反证的机制符合声明。
+
+| 问题编号 | 对应条款/代码位置 | 触发路径与事实 | 影响及阻断理由 | 建议修复与关闭证据 | 当前状态 |
+|---|---|---|---|---|---|
+| VAL-03 / P1 | 原06 §1.3 New Chat/First Send、R1/R5；V5-01/02/08/16；web:controller-page-recovery.ts:216/564/669 → App.tsx:528 → projection.ts:939/955 | 真实New Chat导航及reload，Profile/default模型已加载、Composer已有文本，Send仍disabled，未发prompt。s5-new-disabled.txt可见文本及recovery-fixture模型。固定源码retain无条件active=undefined/status=unknown；select先设false又被retain清掉，reconcile仅Conversation分支、commit未恢复New Chat；primaryAction将active undefined正确视为Unavailable | 成功恢复的无Session/Turn New Chat不能执行合法First Send。此前T Profile probe只断言model/cwd/create参数，未检查实际App发送可用性，不能覆盖本反例 | 主会话提案：必需真实读取成功后，同commit恢复真正未提交New Chat的无Session/Turn idle；以下原判据认可与关闭条件 | **新增阻断、未关闭**；E/validation-v1/s5-new-disabled.txt/.png |
+| VAL-04 / P1 | 原R5“二进制预览重取实际呈现资源”、R6/§1.4/C01每轮真实读取；V5-01/10/12/17；web:history-image-recovery.ts:61、api/files.ts:8 → http-auth.ts:28 | 浏览器已缓存同URL图片后，下一轮出现新blob但download503未触发；s4-proxy-503.jsonl完整15条中/api/fs/download为0；s4-503-dom.json含实际可见PNG和新blob；Files同路径也无GET（Validation交回）。源API证据200含ETag/Last-Modified、无Cache-Control；两个binary reader未指定fetch cache策略 | 默认HTTP缓存可让fetch/Blob/decode成功却未向服务器读取，原受控fetch测试未覆盖这层；服务端更新、503或当前401可被旧响应遮住。响应头本身不是唯一根因证明，但零GET+默认策略已否定“新Blob即本轮服务端重读”推导 | 主会话提案：正式同源API GET（至少两个binary reader）显式no-store，保旧图/原重试/认证权限与IDB语义；必须补已预热HTTP缓存后的真实服务器请求证据 | **新增阻断、未关闭**；E/validation-v1/s4-proxy-503.jsonl、s4-503-dom.json、s4-503-reconnected.txt/.png；E/val04-resource-headers.json |
+
+#### VAL-03 提案评审与必要关闭条件
+
+**认可主会话方向，无冻结规格变更；不等于当前已修。** New Chat并非“未知运行中的Conversation”：owner及当前必需数据已确认，且确为尚无Session/Turn的未提交New Chat时，idle是其真实状态。同一成功commit发布该事实符合R1/R5；不能把Conversation未恢复、Profile未确认或断线推断为idle，也不能只改按钮。
+
+1. 从正式App + Controller.initialize冷开/reload和真实导航到New Chat取证：当前roster/config/model/cwd等必需读取与统一commit完成后，合法文本可Send，空草稿无附件仍禁用；不能手设active=false、只测primaryAction或直接actionBinding。覆盖Files返回及切Profile，不借另一owner状态解锁。
+2. owner/roster未确认、必需读取进行中/失败、离线/认证失效、draft未就绪时保持原门禁。不能将所有unknown置false，不能凭旧model/cwd或cache赋予创建权限；迟到旧owner不能提前解锁。
+3. idle仅归真正无Session/Turn的New Chat，保首次create/附件上传/发送受理未定、已有发送事务、取消/未知受理、编辑/审批门禁与owner。导航/恢复不能预建Session、resume其它Conversation或自动重发；First Send仍沿原create→附件→native submit受理，防并发按钮/Enter重复创建或提交。
+4. 新候选须有正式状态接缝/实际App证据、全新独立复审及Validation；实际Web应能从New Chat发起获授权的本地合成Turn并完成原受理链，不能仅以按钮变亮关闭。固定旧候选S5因此未发prompt不记通过；无需真实模型。
+
+#### VAL-04 提案评审与必要关闭条件
+
+**认可正式同源API GET明确no-store的方向，无冻结规格变更；不等于当前已修。** 这是“每轮真实读取”的传输接缝收口，至少覆盖HistoryImageReader与Files authorizedFile；若统一施于正式同源API GET，亦在原R5/R6范围内。不能顺手改变写请求、跨origin或静态资源语义。新ObjectURL/fulfilled Promise/decode/对象身份只能证明内存处理，不能代替服务器收到本轮读取。
+
+1. 实际浏览器成功展示并预热HTTP缓存后，对同URL分别触发历史图片和Files二进制预览恢复；代理/源服务器切片证明本轮确收GET及精确Profile/path。不能用清浏览器缓存、改URL或重新挂载替代原场景；内容未变也须真实读取。fetch参数断言只能补充，不能独自关闭。
+2. 在已缓存条件注入503，当前可见资源不得算本轮成功/ready；保旧图/预览并进入原自动重试，隐藏资源仍依需求边界。解除后无需新gateway.ready或整页刷新即可重取采用；隔离实际文件合法变更后确认新内容到达，旧URL在实际替换/卸载后释放。
+3. 已缓存条件的当前401须真实抵达认证观察并清敏感投影/取消proof，HTTP缓存不能掩盖认证撤销；文件权限403保持域错误。N05旧凭据/取消/旧document迟到保护、owner切换、decode失败、full/local采用屏障及ObjectURL所有权继续成立，不能被no-store绕过。
+4. no-store只限制HTTP响应复用，不删除/禁用IDB过渡cache，不缩减完整读/分页/详情，不改白名单/TTL/成功写入资格，也不能将必需读失败当合法unknown或旧Blob成功。新候选按源码影响补机制与浏览器证据，再独立复审；不重复无关大套。
+
+VAL-02/ENV-02边界：主会话报告测试Profile无provider引发Agent AuthError，仅补自己的loopback隔离夹具；正式新runtime初次Pending4010、约500ms后成功。随后主会话已完整亲读Validation v1交回，确认ENV-02已在真实UI完整链关闭、故障配置恢复为空且自有tabs关闭。该项与VAL-03/04根因分开，不构成已确认产品缺陷，也不据此豁免Pending required、吞4010或改产品；本审查未自行重跑或代签该用户结果。主会话另报告EVID-01实际运动/Usage高亮证据缺口，须后续补证，本次未评审或宣称关闭该项。
+
+关键研讨链：原判据 → New Chat不可发送/HTTP零GET真实反例 → 固定源码与依赖边界核对 → 主会话分别提同commit恢复真实New Chat idle/正式GET no-store → Verification按原判据认可方向及必要证据 → 尚未实施、无关闭证据。原v5漏项是实际App发送可用性，以及浏览器HTTP缓存对“fetch即服务器重读”的影响。供最终交付摘要保留这两项实质收敛；不能仅改按钮、制造新Blob或迁就测试预期后宣称关闭。

@@ -22,10 +22,10 @@
 
 | 目标/任务 | 机制实现 | 正式接线 | 针对性验证 | 用户结果 | 当前负责人和下一步 |
 |---|---|---|---|---|---|
-| B1–B3 | 已交回、亲审中 | 已接正式REST／RPC | 新REST8＋RPC24及相关回归；旧catalog失败冻结复现 | UI未验 | 主会话核最终代码与证据，后续独立门禁 |
-| F1/F2/F3/I1 | 整包已交回，亲审整改中 | Controller／App全部已接 | 17文件246项＋typecheck/build通过；最终小修待补证 | UI未验 | frontend修有序前缀、局部失败自动重试和侧栏读过滤后主会话复核 |
-| F4/A1 | 已交回、亲审中 | 已交frontend接口，待整体核线 | 展示96、原生40通过；共享版本需核 | 实际APK／UI未验 | 主会话核最终代码、manifest与前端影响 |
-| V/U | 未开始 | 不适用 | 未执行 | 未验 | 集成完成后按轮派，不按子包逐个审 |
+| B1–B3 | 已亲审/提交dd9a4c5 | 正式REST/RPC与writer已接 | 恢复39/原生35/冻结十检查等按版本复用，V5核 | edit/replace/compact实测通过，其余U取证中 | 主会话保产品冻结，待完整Web验收 |
+| F1/F2/F3/I1 | 当前0eef280已亲审/提交 | 核心链已接，U发现入口/HTTP语义遗漏 | N05相关134项/typecheck/build及V5时点通过；VAL-01/03/04待修 | 缓存连接前首显/New Chat发送/真实资源重取阻断 | 三项已交回亲审/提交b0ff882，重建APK；新门禁待执行 |
+| F4/A1 | 已亲审/集成 | 展示/Files/原生桥已接 | 原生40及当前影响证据有效；APK0.1.5已构建核验 | Files文本/PNG/PDF/下载/返回通过；实际APKC17豁免 | 资源HTTP缓存缺口VAL-04纳后续同包整改 |
+| V/U | V1–V5已完整执行，V5原时点通过后被U新反证重新阻断 | U独立原文场景已批准并实际执行 | 不用旧通过代当前；新候选须新全轮复审/真实复验 | U继续固定0eef280，其余结果待完整报告 | 主会话集中亲审/整改/再门禁，不碎片放行 |
 
 主会话独占本轮内部文档与两仓根核心文档，源码全部由6.1子Agent修改。三个实现包并行白名单互斥；共享DTO经正式契约里程碑协调，不并行改相同文件。各实现者不再派生、不提交、不部署；禁止流水账，只有真正跨包接口／产品阻断、约定契约成包或最终交回才发消息。报告写入本轮reports/各包.md，含七项交回及证据定位；证据位于主仓ignored目录，日志不进Git。主会话亲读实际diff和上下游，不以复跑测试代review。
 
@@ -45,7 +45,11 @@
 | N02 | R6 侧栏缓存只写成功对账后的展示事实 | 成功摘要stage后核当前proof、投影和layout才写，隐藏晚到独立成功，失效／失败不续TTL | 阻断 | frontend | 正式Controller及共享App集成，独立V4已核 | V4已关闭 |
 | N03 | R5/R6及§1.13 已知Context不兼容不得延续数字 | 已知model/provider/rewind窄退役，冷缓存身份确认及迟到IDB/RPC/seq保护，合法估计保留 | 阻断 | frontend | 108相关／52共享集成，独立V4已核；Web效果仍待Validation | V4已关闭机制缺口 |
 | N04 | R1/R5 组件内历史图片读取纳完整恢复 | 真实viewport需求接唯一协调器，同URL每轮重读／解码／失败原自动重试，full/local后采用 | 阻断 | presentation | 25图片／52共享App集成，独立V4已核；Web效果仍待Validation | V4已关闭机制缺口 |
-| N05 | R6 真实认证失败清本document敏感展示 | V4正式侧栏visible/hidden401及图片401反证：错误被包装或非required吞掉，旧历史/图片仍保留 | 阻断 | frontend | 明确认证传输通知先取消proof并清理；四类reader、503/403对照、旧凭据/旧roster迟到不授权 | 已派整改 |
+| N05 | R6 真实认证失败清本document敏感展示 | 统一HTTP认证观察、proof撤销/Files本地清理、新身份确认已实施 | 原阻断 | frontend | 当前134项及V5独立旧反例/全范围核对 | V5已关闭；HTTP缓存绕实际请求另VAL-04 |
+| VAL-01 | C01/R6 真initialize在WS未就绪前读缓存 | 先await connect后retain，真实reload10秒仍空窗 | 阻断 | frontend（已统一派修） | 同owner连接前展示准备；真实initialize pending/reject、认证/owner/晚到、连接后完整交接及Web原场景 | 已亲审修补，待新独立门禁 |
+| VAL-02 | R5/08 other同ID恢复 | Pending4010因夹具缺Provider，真实Agent三次AuthError(no_provider_configured) | 环境阻断待复验，未认产品缺陷 | diagnose_val02 | 仅补other独立loopback路由/失败构建代次，正式Pending成功，再U实际S3 | 环境补正及独立真实S3复验已关闭，产品不改 |
+| VAL-03 | R1/R5/§1.3 New Chat可发送 | 正式导航/reload有文本Send仍disabled；成功恢复未还原无Turnactive=false | 阻断 | frontend（已统一派修） | 当前New Chat必需读取成功后同commit恢复正确idle，保原写门禁；正式App/真实UI Send | 已亲审修补，待新独立门禁 |
+| VAL-04 | R5/R6 每轮真实授权资源重取 | 新blob但精确download503未触发、代理零GET；两个reader缺HTTP cache策略 | 阻断 | frontend（已统一派修） | 正式GET no-store/真实浏览器已有HTTP缓存后同URL确到服务端；503/401/文件变化/URL释放 | 已亲审修补，待新独立门禁 |
 
 ## 取舍、快照与续接
 
@@ -155,3 +159,23 @@ N05整包主会话已亲读13文件实际变更及上下游：同源HTTP解析�
 第五候选APK已构建/核验：实际0.1.5/1005，32,087,857字节，SHA256 e4c5d68b371364ac2a3a03756f0c5094fedb21dbeabdd8aa3d902ecb15dac7b7；439内置资源匹配，v2有效同证书。android-build-v5.log、apk-v5-manifest/signature/badging证据已补交V5，产品未变；真实APK仍按C17未验，Web Validation尚未执行，生产未部署。
 
 主会话已完整亲读V5六节与18组全轮证据，接收18符合/0违规/0必要缺口结论，N05及旧发现关闭；独立新增8项定向通过。旧Profile五失败按正式输入/断言逐项独立裁判为过时内部函数断言、缺active_list/v1夹具、服务端cwd应重读及旧A挂起当前必要侧栏等测试边界，不作为产品偏离，保留日志并登记后续夹具维护。已另派全新none/6.1-high validation_v1，先原文独立场景完整落盘/交回主会话过目，批准后仅自建隐藏IAB实测。README旧APK概述按既有已实现R8同步，无新产品机制或权限。用户已收到0.1.5候选下载，明确未最终验收/后端未生产部署，最终交付仍待Validation。
+
+Validation独立完整计划S1–S8已落盘，主会话亲读/批准执行：冷开缓存/同epoch、深anchor/Thinking、同ID Profile与固定Files文本/PNG/PDF/返回、图片自动重试、真实native受控SSE、正式writer改写/新epoch/404及503/401。主会话只改ignored fault_proxy.py增加精确/api/ GET路径401/503故障（不合成成功/WS），核旧自有PID71019命令后重启53576为session45249，health200；未动产品/53445/53446。因127.0.0.1旧开发IDB，批准使用localhost:5178独立origin作无缓存起点（已核200），不得把新tab冒称新storage。S6需要时再协调仅重启53575，实际APK继续C17未验。
+
+Validation首开遇环境stale-module保护：原53575加载aed15db，文档HEAD已至9ada8bd。主会话核PID28202/53575命令后只重启本轮Dashboard，同隔离home/dist/skip-build/no-open；新PID2584、session43401、dashboard-validation-v5.log READY，53575/53576均200。后续验收期间不提交文档改变HEAD；无产品/53445/53446变更。首开前纠偏不替代S6已展示历史后新epoch恢复，已明确交接。
+
+Validation新增VAL-01（S1范围内阻断）：已有成功缓存的localhost真实reload且WS blocked时10秒仍No messages yet/侧栏loading/胶囊破折号。主会话亲读initializeOnce先await gateway.connect再startRecovery，readCache仅retain启动，确认原C01/R6连接前展示遗漏；已接受、不能据V5旧通过宣称当前整体通过。产品保持0eef280冻结，Validation继续完整其余旅程，整包后集中修补。主会话提案同ControllerPageRecovery最小连接前展示准备、不新恢复循环、不假ready；精确owner/认证/迟到guard、后继retain不清空，连接后原完整读取/对账保持。已交原V5按既有判据评审，后续新候选须全新独立全范围复审及真实原场景/影响复验。
+
+Validation追加VAL-02/S3：other同ID已授权会话持续pending steer owner is not ready、无法交接；固定Files文本/PNG/PDF/下载/返回owner与草稿正常。主会话定位required Pending调用原生_pending_rpc_session的agent None/锁未就绪4010，已派只读6.1/high diagnose_val02核合法deferred与fixture路由/agent_error，不先改产品。VAL-03/S5正式New Chat和reload后有文本仍Send disabled、未arm/未发prompt；主会话核retain无条件active undefined而New Chat成功reconcile未恢复无Turn语义，确认范围内阻断。拟当前New Chat必需恢复成功后在同commit恢复正确无会话active=false/idle，不改primaryAction全局unknown规则/发送受理/认证/draft门禁；待原判据评审。
+S6 replace/edit/compact真实UI已通过；主会话按请求只重启核自有PID2584的53575，新PID9754/session98813，dashboard-validation-epoch.log READY、双health200，用于原页已有历史跨epoch实测，未改HEAD/产品。S4 API图真实pathname/api/fs/download，已允许代理精确503验证是否HTTP缓存绕请求；不动public源，workspace PNG与文本已恢复。
+
+VAL-04/S4确认：真实可见历史PNG恢复获得新blob，但精确/api/fs/download=503故障仍未到达代理，该路径零GET（s4-proxy-503.jsonl/s4-503-dom.json/png）；Files二进制同路径亦有此缺口。主会话核两个正式binary reader未指定cache策略；直接正式API仅采响应头（首次未携会话token401，后经已有bootstrap仅内存取得token重取200，不输出/记录token），PNG ETag/Last-Modified存在且Cache-Control缺失，支持浏览器HTTP启发缓存复用。响应头证据ignored val04-resource-headers.json，不以新blob冒称服务端重取。拟在正式认证GET传输/二进制接缝明确no-store使每轮到达服务端，保持过渡展示IDB及旧图保留、403/503/401语义；需按原R5/R6评审及真实503/资源变化后复验。
+
+Validation v1完整六节已由主会话全部亲读接收：VAL01/03/04三阻断、EVID01真实运动帧/人工取消/Usage有效变化高亮证据缺口；ENV02仅fixture补正后真实UI同ID/Files深返回/重连已关。S6各正式writer/新epoch/404、S7 503与401、原生/包装证据已按边界接收。原V5已按原判据认可VAL03正确New Chat同commit idle/VAL04正式同源GET no-store方向，旧报告历史保留。三项已集中授权原frontend实施，禁止派生/提交/UI/模型/部署，白名单限controller/adapter/HTTP helper及正式入口测试，不改PageRecovery算法/后端/原生/视觉/版本。新候选须全新独立V6及全新Validation全范围复验，实际动画证据随S2/S5补足。
+主会话为下一候选用既有seed_validation.py seed经正式create_session/append_messages_batch重建default/recovery-validation 1200行；配置前后SHA完全一致、不回灌整库，无模型/产品改动，receipt ignored validation-reseed-receipt.json。当前other正确loopback配置及两行、recovery-image和原PNG/文本保留；所有UI均关闭。
+
+主会话额外亲看U1八张原截图：WSblocked的No messages yet/胶囊破折号与WSready-historydelayed的缓存两行/Usage0/Context12%对照；New Chat有输入但Send浅禁用；401后图文/列表清空；row400/Thinking401深anchor与append后1199/外部尾；other两消息/草稿/可Send及真实PDF预览。与报告事实一致，不据前后截图外推240ms运动/用户取消/高亮已完成，EVID01继续待补。
+
+VAL01/03/04整改整包已由主会话全部亲读：产品仅controller/adapter/http-auth三文件，prepareDisplay在connect前、后继retain保retained；New Chat当前成功commit且无binding/sending/事务才idle；同源/api/ GET no-store，写/static/跨源保持。实际App.initialize/Gateway/Socket/HTTP/IDB新16项，8文件130项及最终App16项/typecheck有效，19源码依赖SHA全匹配；不累加重叠计数。Web新候选b0ff8824cce5603e06aa1e73f962a3da6090c65e已自动push/核同，产品冻结。
+主会话隐藏IAB开发复核（dev-browser-v6/receipt及截图/AX/请求切片）：既有缓存真实reload且WS拒绝，0.64秒内文本/侧栏/Usage0/Context12%出现，WS拒绝期间history GET为0；恢复后正常读。未清HTTP缓存/未改URL，同URLhistory图503真实GET到代理，保旧640x360图、解除后自动采用新blob；Files PNG同URL503确到服务端，保旧真实预览并自动恢复，已缓存binary401真实GET后清自持预览。New Chat有原合成prompt Send enabled、清空后disabled，未发Turn；两个自建隐藏tabs3/4均关、faults{}。该开发证据不代独立Validation，活动流/内容变更/运动帧/高亮仍待复验。
+新0.1.5 APK再次构建成功，实值0.1.5/1005、32,088,433字节，SHA256 b65e210f83ee670082f0f297a6a562e7e01199226213dfbabf0e6fdede8f6a54；439资源逐字节匹配，v2同证书有效。ignored android-build-v6.log/apk-v6-manifest/signature/badging，候选独立命名含b0ff882与hash，未覆盖已发用户的旧b0eef候选。实际APK继续C17未验，下一步全新V6先原文判据再调查，通过后另全新Validation完整复验，最终交付未完成。
