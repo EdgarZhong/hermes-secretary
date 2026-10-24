@@ -365,8 +365,23 @@ def _base_kwargs(model: str, sanitized: list, tools: Any, params: dict, profile:
         api_kwargs["timeout"] = params["timeout"]
     if tools:
         # Moonshot/Kimi uses a stricter JSON Schema flavor; rewriting here also covers aggregator routes.
-        api_kwargs["tools"] = sanitize_moonshot_tools(tools) if is_moonshot_model(model) else tools
+        api_kwargs["tools"] = sanitize_moonshot_tools(
+            tools, preserve_nullable=_is_kimi_coding_nullable_route(params.get("base_url")),
+        ) if is_moonshot_model(model) else tools
     return api_kwargs
+
+
+def _is_kimi_coding_nullable_route(base_url: Any) -> bool:
+    """Nullable is confirmed only on the current official Coding Chat route.
+
+    The shared official helper also accepts legacy Moonshot hosts, whose
+    existing schema repairs must remain unchanged. Re-evaluate per build so a
+    fallback cannot inherit the previous endpoint's schema capability.
+    """
+    from utils import base_url_hostname, is_official_kimi_chat_url
+
+    route = str(base_url or "")
+    return is_official_kimi_chat_url(route) and base_url_hostname(route) == "api.kimi.com"
 
 
 def _finish_kwargs(api_kwargs: dict[str, Any], sanitized: list, params: dict, *, supports_prompt_cache_key: bool) -> dict[str, Any]:

@@ -19,7 +19,7 @@
 | A | 已实现并亲审 | 已接入正式路径 | 相关机制证据通过 | 待真实端到端 | notebook_data Sol/high |
 | B | 已实现并亲审 | 已接入正式路径 | 相关机制证据通过 | 待真实端到端 | tools_prompt Sol/high |
 | C | 已实现并亲审 | 已接入正式路径 | 相关机制证据通过 | 待真实端到端 | compaction_policy Sol/high |
-| D | 准备隔离与冻结完成 | 等包 | 不先跑大套基线 | 待执行 | root亲审/端到端 |
+| D | short首周期正常完成，第二周期因F02停止 | 正式原生链路 | 28请求（27完整HTTP200） | 第二周期／N46未完成 | root亲审；Sol最小续测准备 |
 
 同一工作树不交叉改文件；测试均经HERMES_PYTHON="$PWD/.venv/bin/python" scripts/run_tests.sh，.venv为与原PM lock一致的只读复用解释器，不改依赖。A/B共享接口如上，需额外文件先与root协调。子Agent不修改根文档、plan或相互文件、不派生、不提交，不访问生产或收费模型；各自完整交回一次报告，常规细节写ignored证据，禁止流水账。
 部署仅root：按docs/cloud-deployment-sop.md首尔布局，保护三库/配置/绑定/排期/静态资产，先自然空闲与活动检查，备份，再切正式已审提交/重启/读回；不把测试Profile、合成数据或临时阈值带到生产，不自动回盖DB。
@@ -34,7 +34,7 @@
 - 初始base5ea0f7fbaa，文档冻结a4faa767e6，自动push origin同名分支成功；baseline.txt已记录完整SHA，后续纳入阶段提交。
 - 不改规则冻结、检查阈值或等级；禁止假OS、绕过模型路由/正式DB/核心Loop，不给Noting Scheduler权限。源码复用正常，若生产旧Notebook payload需兼容，沿既有读写/不可变版本接缝最小处理，不重建正式库、不批量迁移或写原生表。
 - 显示保护：只允许自己创建的隐藏IAB（iab visible:false），禁止外部浏览器/桌面/用户页面及open/open_in_codex；不能后台验就记未验，不回退可见方式。
-- 独立验证/交付报告本轮模板已创建，尚未执行，不能由模板占位宣称通过。后续提交由root统一，不以push等同部署。
+- 独立Verification初审完成且不通过（F01/F02），需修后全新独立全轮复审；Validation与交付尚未执行。后续提交由root统一，不以push等同部署。
 
 ### 执行期接口协调（不改变产品规格）
 - A追加test_r3_notebook_time_projection.py，迁移旧工具及只读时间场景；B追加cache_parity.py仅普通delegate名单接线；C追加test_compression_last_assistant_anchor.py将旧tail断言明确限定Noting关闭的原生回归。三个文件所有权不交叉。
@@ -46,5 +46,13 @@
 - Root补CLI slash、Proposal、Web read所属DB参数，A跨表面9项通过。亲审反例揭露synthetic user时间优先级，A复用原生is_user_originated_turn修正，17项定向通过；不新增字段/来源授权门禁。
 - A基包7文件243通过；B权限58、Prompt/surface/framework59、生命周期修后96等有效分区通过（范围重叠不相加）；C新完整链路44、Force18、原生压缩器302及owner/source集复用。完整日志分别在ignored .hermes-dev/{notebook-data-v2,tools-prompt-v2,compaction-policy-v2}/report.md。
 - Root共享seam 5文件首跑117通过/2旧fixture失败；未改基线同2失败复现。旧Web read Idle fixture缺现行nested配置与threshold_tokens，B仅补测试配置，原断言全部保留，12项通过，故四个未改成功分区证据无需复跑。
-- 真实Kimi模型尚未请求；短/长harness由Sol D离线审查，准备零请求已核Alex SOUL及正式构造六工具、父子wire等。首个dry-long因并行源码变化触发harness hash拒绝，0HTTP，已停止并保留，非Provider故障。
+- 真实Kimi短链28请求：27完整HTTP200，1人工终止无完整响应；第一轮正常提交／Idle压缩／Framework／Main实际Schedule登记及完整部分结算有效，第二轮清建议8次失败后停止。N46仍0真实请求。报告在ignored E2E目录，保留全部失败；dry失败不可当Provider故障。
 - Root发布脚本只改后端，保护静态/三库/配置/绑定，离线备份/lease/双服务启动自检通过；未改云端运行态。当前生产183f1a5双服务active。
+
+### 5ee2a94 初审整改与续测
+- F01／P2：正式Instant carrier无display_kind，需在Notebook取时按既有持久回执、精确owner／UID／原文证明排除真人优先级。A已只改notebook_evidence.py和v2测试，26项＋独立真实Admission反例1项通过，root亲审接收，待新独立复审；不改原文、metadata、来源权限或计龄。
+- F02／P1：Kimi wire的Moonshot sanitize移除nullable，违背既定null清除。Sol探针首个误加tool_choice与thinking冲突HTTP400，root明确追加仅移除此参数的纠正探针HTTP200并准确返回null，原失败完整保留；已实现窄可信官方Coding路由保留nullable，其他Moonshot／聚合保持。不改canonical Schema／Prompt／empty-string validator。最终111项通过，相关transport57／cap58实现不再改变复用有效证据，冻结10检查通过，root亲审接收。两探针按short计入总70。
+- Sol D只准备从停止状态只读克隆续测，重建Main正常边界，不恢复旧child旧工具freeze，不重付首个成功周期；新HEAD锁定后root再授权收费。预算当前30／70，short30／45，long0／25；续测最多15请求。
+- Verification初审版本5ee2a94：23条15符合／5违规（F01/F02牵连）／3证据不足；两缺陷修复后由全新Sol独立全轮复审，未通过不启动Validation。无生产上线动作。
+
+- Root已接受最小续测计划resume-plan.md；准备0请求正式child wire通过，只读克隆源DB不变，新Main正常边界生成新child、不复用旧freeze，在线仍须验证真实Idle。F01/F02修补提交锁定后才收费；新的独立Verification已先基于冻结原文落判据，全轮复审进行中。

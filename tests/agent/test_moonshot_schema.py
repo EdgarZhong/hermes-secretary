@@ -12,6 +12,8 @@ These tests cover the repairs applied by ``agent/moonshot_schema.py``.
 
 from __future__ import annotations
 
+from copy import deepcopy
+
 import pytest
 
 from agent.moonshot_schema import (
@@ -305,23 +307,25 @@ class TestDeferredToolArguments:
         assert sanitize_moonshot_tools(wire["tools"]) == wire["tools"]
 
     @pytest.mark.parametrize("properties", [None, {}])
-    def test_explicit_closed_object_still_rejects_extra_arguments(self, properties):
+    @pytest.mark.parametrize("preserve_nullable", [False, True])
+    def test_explicit_closed_object_still_rejects_extra_arguments(self, properties, preserve_nullable):
         from jsonschema import ValidationError, validate
 
         params = {"type": "object", "additionalProperties": False}
         if properties is not None:
             params["properties"] = properties
-        wire = sanitize_moonshot_tool_parameters(params)
+        wire = sanitize_moonshot_tool_parameters(params, preserve_nullable=preserve_nullable)
         validate({}, wire)
         with pytest.raises(ValidationError):
             validate({"action": "list"}, wire)
 
-    def test_typed_additional_properties_keep_their_value_constraint(self):
+    @pytest.mark.parametrize("preserve_nullable", [False, True])
+    def test_typed_additional_properties_keep_their_value_constraint(self, preserve_nullable):
         from jsonschema import ValidationError, validate
 
         wire = sanitize_moonshot_tool_parameters({
             "type": "object", "additionalProperties": {"type": "integer"},
-        })
+        }, preserve_nullable=preserve_nullable)
         validate({"count": 2}, wire)
         with pytest.raises(ValidationError):
             validate({"count": "two"}, wire)
@@ -441,3 +445,62 @@ class TestUnionTypeList:
         assert sort["type"] == "string"
         assert sort["enum"] == ["asc", "desc"]
         assert params["properties"]["sort"]["type"] == ["string", "null"]
+
+
+class TestCodingNullable:
+    """Coding keeps null without bypassing the other Moonshot repairs."""
+
+    @pytest.mark.parametrize("shape", [
+        {"anyOf": [{"type": "object"}, {"type": "null"}], "type": "object"},
+        {"type": ["object", "null"]},
+    ])
+    def test_object_null_survives_with_open_object_repairs(self, shape):
+        from jsonschema import ValidationError, validate
+
+        params = {"type": "object", "properties": {"value": shape}}
+        before = deepcopy(params)
+        out = sanitize_moonshot_tool_parameters(params, preserve_nullable=True)
+        value = out["properties"]["value"]
+        assert "type" not in value
+        assert value["anyOf"][0]["required"] == []
+        assert value["anyOf"][0]["additionalProperties"] is True
+        validate({"value": None}, out)
+        validate({"value": {"arbitrary": 1}}, out)
+        with pytest.raises(ValidationError):
+            validate({"value": ""}, out)
+        assert params == before
+
+    def test_nullable_scalar_array_retains_enum_repairs_and_input(self):
+        params = {"type": "object", "properties": {
+            "sort": {"type": ["string", "null"], "enum": ["asc", "desc", None, ""], "nullable": True},
+        }}
+        before = deepcopy(params)
+        out = sanitize_moonshot_tool_parameters(params, preserve_nullable=True)
+        sort = out["properties"]["sort"]
+        assert sort == {"anyOf": [{"type": "string", "enum": ["asc", "desc"]}, {"type": "null"}]}
+        assert params == before
+
+    def test_nested_repairs_refs_conditionals_and_required_remain(self):
+        params = {"type": "object", "properties": {
+            "value": {"anyOf": [{"type": "object", "properties": {
+                "ref": {"$ref": "#/$defs/Data"},
+                "items": {"type": "array", "items": {"enum": ["valid", "", None]}},
+            }, "required": ["items", "missing"]}, {"type": "null"}], "nullable": True},
+        }, "$defs": {"Data": {"type": "object", "properties": {}}},
+            "allOf": [{"if": {"required": ["value"]}, "then": {"properties": {"mode": {"description": "mode"}}}}]}
+        out = sanitize_moonshot_tool_parameters(params, preserve_nullable=True)
+        branch = out["properties"]["value"]["anyOf"][0]
+        assert branch["required"] == ["items"]
+        assert branch["properties"]["ref"] == {"$ref": "#/$defs/Data"}
+        assert branch["properties"]["items"]["items"] == {"type": "string", "enum": ["valid"]}
+        assert "nullable" not in out["properties"]["value"]
+        assert out["$defs"]["Data"]["required"] == []
+        assert "type" not in out["allOf"][0]
+        assert out["allOf"][0]["then"]["properties"]["mode"]["type"] == "string"
+
+    def test_null_only_type_array_and_nonnullable_union_keep_valid_types(self):
+        out = sanitize_moonshot_tool_parameters({"properties": {
+            "clear": {"type": ["null"]}, "limit": {"type": ["number", "string"]},
+        }}, preserve_nullable=True)
+        assert out["properties"]["clear"] == {"type": "null"}
+        assert out["properties"]["limit"] == {"type": "number"}

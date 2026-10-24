@@ -412,3 +412,133 @@ def test_human_input_is_classified_by_native_metadata_not_heartbeat_words(owner,
     entry = create(book(owner), source_message_uids=["human-quoted", "a2"])
     timestamp = datetime.fromtimestamp(800, timezone.utc).isoformat()
     assert evidence_time(entry, db=db, conversation_ref=ref) == {"start_time": timestamp, "end_time": timestamp}
+
+
+def admitted_instant(owner, *, sid="main", now=None, recurring=False):
+    """Use actual Scheduler admission and native transaction to bind the receipt."""
+    from pathlib import Path
+    from secretary import reminders, schedules
+    from secretary.scheduler_time import epoch_to_utc_iso
+    from tests.secretary.reminder_runtime import bind_reminder_runtime, persist_native_carrier
+
+    db, ref = owner
+    if now is None:
+        import time
+        now = time.time()
+    Path(db.db_path).with_name("config.yaml").write_text("scheduler:\n  enabled: true\nnoting:\n  enabled: true\n")
+    bind_reminder_runtime(db, ref, sid)
+    table = schedules.SchedulerStore(db, ref, session_id=sid)
+    expression = "every 1m" if recurring else epoch_to_utc_iso(now - 10)
+    made = table.create("Review the pending booking", expression, "instant", now=now - 120 if recurring else now)
+    assert made["success"], made
+    claim = schedules.claim_due(db, made["schedule"]["schedule_id"], owner="notebook-evidence-v2", now=now)
+    assert claim
+    receipt = reminders.admit_active_reminder(db, claim, session_id=sid, now=now)
+    assert receipt
+    persist_native_carrier(db, sid, receipt["resolved"]["text"])
+    witness = reminders.active_admission_witness(receipt["resolved"]["text"])
+    assert witness.durable(db)
+    stored = db.get_messages(sid)[-1]
+    assert stored["role"] == "user" and not stored.get("display_kind")
+    proof = db._read_one("SELECT * FROM secretary_pending_reminders WHERE schedule_id=?",
+                         (made["schedule"]["schedule_id"],))
+    assert proof["origin_instant"] and proof["delivery_semantics"] == "user_reminder"
+    assert proof["carrier_message_uid"] == stored["message_uid"] and proof["carrier_content"] == stored["content"]
+    return table, made["schedule"]["schedule_id"], stored
+
+
+def evidence_db_facts(db):
+    return {name: [tuple(row) for row in db._read_all(f"SELECT * FROM {name} ORDER BY rowid")]
+            for name in ("messages", "secretary_pending_reminders", "secretary_schedule_registry",
+                         "secretary_notebook_item", "secretary_notebook_snapshots", "secretary_notebook_pointer")}
+
+
+@pytest.mark.parametrize("other_sources,expected", [(["a2"], 500), (["u2", "a2"], 300), ([], None)])
+def test_real_instant_admission_receipt_does_not_get_human_time_priority(owner, other_sources, expected):
+    db, ref = owner
+    _table, _schedule_id, stored = admitted_instant(owner)
+    store = book(owner)
+    entry = create(store, source_message_uids=[stored["message_uid"], *other_sources])
+    before, working = evidence_db_facts(db), store.snapshot_state()
+    timestamp = datetime.fromtimestamp(stored["timestamp"] if expected is None else expected, timezone.utc).isoformat()
+    assert evidence_time(entry, db=db, conversation_ref=ref) == {"start_time": timestamp, "end_time": timestamp}
+    assert evidence_db_facts(db) == before and store.snapshot_state() == working
+
+
+@pytest.mark.parametrize("action", ["pause", "delete"])
+def test_completed_instant_receipt_keeps_identity_after_schedule_changes(owner, action):
+    db, ref = owner
+    table, schedule_id, stored = admitted_instant(owner, recurring=True)
+    result = getattr(table, action)(schedule_id)
+    assert result["success"], result
+    entry = create(book(owner), source_message_uids=[stored["message_uid"], "a2"])
+    before = evidence_db_facts(db)
+    timestamp = datetime.fromtimestamp(500, timezone.utc).isoformat()
+    assert evidence_time(entry, db=db, conversation_ref=ref) == {"start_time": timestamp, "end_time": timestamp}
+    assert evidence_db_facts(db) == before
+
+
+def test_real_instant_source_keeps_original_receipt_owner_in_legal_branch(owner):
+    db, _ref = owner
+    _table, _schedule_id, stored = admitted_instant(owner)
+    make(db, "branch", "main", "_branched_from")
+    branch_ref = db.inherit_foreground_branch("main", "branch")
+    branch = NotebookStore(db, branch_ref, anchor_message_uid=stored["message_uid"])
+    entry = create(branch, source_message_uids=[stored["message_uid"], "a2"])
+    before = evidence_db_facts(db)
+    timestamp = datetime.fromtimestamp(500, timezone.utc).isoformat()
+    assert evidence_time(entry, db=db, conversation_ref=branch_ref) == {"start_time": timestamp, "end_time": timestamp}
+    assert evidence_db_facts(db) == before
+
+
+@pytest.mark.parametrize("same_body", [False, True])
+def test_foreign_same_uid_does_not_borrow_instant_receipt(owner, same_body):
+    db, _ref = owner
+    _table, _schedule_id, stored = admitted_instant(owner)
+    make(db, "foreign")
+    foreign_ref = ref_of(db, "foreign")
+    db.append_message("foreign", "user", stored["content"] if same_body else "A different human statement",
+                      message_uid=stored["message_uid"], timestamp=800)
+    db.append_message("foreign", "assistant", "The foreign assistant reply", message_uid="foreign-assistant", timestamp=900)
+    store = NotebookStore(db, foreign_ref, anchor_message_uid=stored["message_uid"])
+    entry = create(store, source_message_uids=[stored["message_uid"], "foreign-assistant"])
+    before = evidence_db_facts(db)
+    timestamp = datetime.fromtimestamp(800, timezone.utc).isoformat()
+    assert evidence_time(entry, db=db, conversation_ref=foreign_ref) == {"start_time": timestamp, "end_time": timestamp}
+    assert evidence_db_facts(db) == before
+
+
+@pytest.mark.parametrize("typed_steer", [False, True])
+def test_human_exact_instant_wrapper_without_receipt_stays_human(owner, typed_steer):
+    from agent.message_metadata import build_user_reminder_wrapper
+    from agent.prompt_builder import STEER_DISPLAY_KIND
+    db, ref = owner
+    wrapper = build_user_reminder_wrapper("SCHEDULED ATTENTION\nReview the pending booking.", timestamp=700)
+    db.append_message("main", "user", str(wrapper), message_uid="human-instant-wrapper", timestamp=700,
+                      display_kind=STEER_DISPLAY_KIND if typed_steer else None)
+    entry = create(book(owner), source_message_uids=["human-instant-wrapper", "a2"])
+    timestamp = datetime.fromtimestamp(700, timezone.utc).isoformat()
+    assert evidence_time(entry, db=db, conversation_ref=ref) == {"start_time": timestamp, "end_time": timestamp}
+
+
+def test_instant_without_assistant_keeps_unknown_source_time_without_side_effects(owner):
+    db, ref = owner
+    _table, _schedule_id, stored = admitted_instant(owner)
+    store = book(owner)
+    entry = create(store, source_message_uids=[stored["message_uid"]])
+    db._execute_write(lambda conn: conn.execute("UPDATE messages SET timestamp='unknown' WHERE id=?", (stored["id"],)))
+    before, working = evidence_db_facts(db), store.snapshot_state()
+    assert evidence_time(entry, db=db, conversation_ref=ref) is None
+    assert evidence_db_facts(db) == before and store.snapshot_state() == working
+
+
+def test_same_owner_uid_with_changed_body_cannot_borrow_old_instant_receipt(owner):
+    db, ref = owner
+    _table, _schedule_id, stored = admitted_instant(owner)
+    assert db.secretary_set_user_content("main", stored["id"], "A new human statement at this source",
+                                         expected_message_uid=stored["message_uid"]) == 1
+    entry = create(book(owner), source_message_uids=[stored["message_uid"], "a2"])
+    before = evidence_db_facts(db)
+    timestamp = datetime.fromtimestamp(stored["timestamp"], timezone.utc).isoformat()
+    assert evidence_time(entry, db=db, conversation_ref=ref) == {"start_time": timestamp, "end_time": timestamp}
+    assert evidence_db_facts(db) == before

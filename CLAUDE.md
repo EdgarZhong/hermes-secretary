@@ -244,7 +244,7 @@ Noting child `noting_27dcca55ad1a4e35` 的完整持久轨迹仅一条启动 user
 
 ## 2026-10-24 · Notebook／Noting／Compaction 方案已定稿
 
-唯一现行方案为07顶部v2及本轮最新确认；下面历史Schema／Prompt保留其版本，不冒称新方案已上线。用户已授权自主实施、Sol并行、主会话亲审及测试／端到端、通过后提交部署。本轮实现工作树为`/Users/edgar/code/hermes-secretary-noting-v2`，分支`codex/noting-maintenance-v2`；轮次`.autonomous/20261024-noting-maintenance-v2/`。源码基线5ea0f7fbaa、规格冻结a4faa767e6已提交自动推送；三个Sol包并行实施中，主目录其它dirty保留。
+唯一现行方案为07顶部v2及本轮最新确认；下面历史Schema／Prompt保留其版本，不冒称新方案已上线。用户已授权自主实施、Sol并行、主会话亲审及测试／端到端、通过后提交部署。本轮实现工作树为`/Users/edgar/code/hermes-secretary-noting-v2`，分支`codex/noting-maintenance-v2`；轮次`.autonomous/20261024-noting-maintenance-v2/`。源码基线5ea0f7fbaa、规格冻结a4faa767e6已提交自动推送；三个Sol包已完成集成，当前整改独立审查问题并补真实验证；主目录其它dirty保留。
 
 已确认：Notebook是给当前Conversation的清晰语义索引；七类必填性调整、删除external_refs；旧maintain拆为create／update／archive，参数扁平化、同字段同层、六工具身份白名单，固定顶层／父子前缀；完整description指导含1–3短句及150中文字符／80英文词软长度，不硬校验或截断。七类写作指导放第三步并适用于第二步更新，第五步独立保留过滤／候选表，不合并；原步骤先更新→补建→结算→过滤，新增Schedule步骤在结束前。
 
@@ -256,7 +256,9 @@ relations：普通关系归档时自动解除，情景／Candidate来源引用�
 
 材料引用已收口：实现只在Noting Task的description指导中补一处Prompt，文件路径不计软长度、不写计数校验，但不大量引用／罗列文件；只对真正重要材料，在相关条目description中直接保留路径／引用和用途，不新增材料字段、不恢复external_refs、不因文件存在独立建条、不扩大situation准入。
 
-最后P2b已由用户明确收口：保持原结算退出规则，实际成功写入外部的覆盖范围归档，不因仍有当前用途／将来可能有用保留Notebook余额；后续由Memory／Rules／Skills既有召回／生效机制承担。部分成功、后续变化和未完责任等未覆盖范围按原规则保留，不重复建立已交接索引／候选。此前Agent额外保留建议已撤回，07相关冲突句已清理。全部产品口径已定稿，无剩余产品审批项，不再整篇中英复审；正式运行代码尚未切换，本轮只有规格冻结提交，功能实现及验证正在进行，未部署。用户随后要求清退Prompt复核并查看最小修改，现已明确批准07 §6.4单处短语调整，不增加多处强调；原清退边界和未覆盖内容／未完责任保护不变。用户再次确认本轮实施包括完整六工具固定API顶层、Main拒绝create／update／archive／finish、Noting仅六工具、Task不重复Schema、maintain三分与参数同层扁平，以及Schedule追加建议。07顶部§0已补统一范围／行为／验收表，§6.4已更新批准状态，README已有07稳定入口；全部规格已收口，无剩余审批项。本轮已启动自主执行准备，源修改／测试／部署状态以本轮plan与报告为准。
+最后P2b已由用户明确收口：保持原结算退出规则，实际成功写入外部的覆盖范围归档，不因仍有当前用途／将来可能有用保留Notebook余额；后续由Memory／Rules／Skills既有召回／生效机制承担。部分成功、后续变化和未完责任等未覆盖范围按原规则保留，不重复建立已交接索引／候选。此前Agent额外保留建议已撤回，07相关冲突句已清理。全部产品口径已定稿，无剩余产品审批项，不再整篇中英复审；正式运行代码尚未切换；本轮功能快照5ee2a94已提交，独立审查整改及真实验证仍在进行，未部署。用户随后要求清退Prompt复核并查看最小修改，现已明确批准07 §6.4单处短语调整，不增加多处强调；原清退边界和未覆盖内容／未完责任保护不变。用户再次确认本轮实施包括完整六工具固定API顶层、Main拒绝create／update／archive／finish、Noting仅六工具、Task不重复Schema、maintain三分与参数同层扁平，以及Schedule追加建议。07顶部§0已补统一范围／行为／验收表，§6.4已更新批准状态，README已有07稳定入口；全部规格已收口，无剩余审批项。本轮已启动自主执行准备，源修改／测试／部署状态以本轮plan与报告为准。
 
 
-**本轮集成进展：** A/B/C三个Sol功能包已完成并由主会话亲审，代码已接正式链路，相关机制测试通过；主会话补齐CLI／Proposal／Web read只读时间DB接线、发现并修复synthetic user时间优先级。旧Web read两项基线失败经现行配置夹具修正，原断言保留、12项通过。统一质量检查／待验阶段提交正在进行；Sol D正在准备隔离Alex／真实Kimi短链路和N46长前缀，收费请求仍0；独立Verification／Validation及生产发布尚未执行，不能据阶段实现宣称已交付。详见本轮plan与后续报告。
+**本轮集成进展：** A/B/C三个Sol包已接正式链路并由主会话亲审，功能快照`5ee2a94`已提交自动推送，冻结10检查通过；相关分区机制证据及主会话五文件121项精确版本补证有效。独立Verification初审不通过：F01无display_kind的可信Instant误取真人时间，F02 Kimi传输sanitize删掉null清除契约。F01已有两文件最小修补及26项、独立反例1项通过，待新审查者复审；F02纠正探针HTTP200且准确返回null（首探针tool_choice配置错误HTTP400保留）；已实现仅可信官方Coding保留nullable的传输修补，111项定向及相关115项回归有效，冻结10检查通过，不改变已批canonical Schema／description／validator。
+
+真实隔离Alex／kimi-for-coding已发送28次（27完整HTTP200、最后一次人工停止未完成），首轮正常Snapshot→durable Idle压缩→Framework→后续Main实际登记Schedule及完整／部分外写结算有效；第二轮连续8次清建议被拒，已因F02停费，不冒称整个端到端通过。准备从停止状态只读克隆续测第二轮，保留原失败；N46真实收费0、尚未执行。总请求护栏70（short45／long25），两个探针计入后已用30；生产尚未部署，Validation须待全新Verification复审通过。来源、精确边界和证据见本轮plan、verification及ignored E2E报告。

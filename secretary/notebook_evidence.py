@@ -21,6 +21,26 @@ def _timestamp(value):
     return None
 
 
+def _instant_carrier(conn, row):
+    """Match a durable Instant receipt to the scoped source row's original owner.
+
+    A branch may read its parent's source row, so its current Conversation is
+    not the receipt owner. Joining the exact physical row's binding prevents a
+    foreign same-UID/body message from borrowing another Conversation's proof.
+    Schedule definitions/status may change after native persistence; receipts
+    remain the evidence of the original admitted carrier.
+    """
+    return conn.execute(
+        "SELECT 1 FROM secretary_pending_reminders p "
+        "JOIN secretary_session_bindings b ON b.conversation_ref=p.conversation_ref "
+        "JOIN messages m ON m.session_id=b.session_id "
+        "WHERE m.id=? AND m.session_id=? AND m.message_uid=? AND m.content=? AND m.role='user' "
+        "AND p.carrier_message_uid=m.message_uid AND p.carrier_content=m.content "
+        "AND (p.origin_instant=1 OR p.delivery_semantics='user_reminder') LIMIT 1",
+        (row["id"], row["session_id"], row["message_uid"], row["content"]),
+    ).fetchone() is not None
+
+
 def evidence_time(entry, *, db=None, conn=None, conversation_ref=None, state=None):
     """Resolve direct evidence only; refs-Candidates retain their source chain.
 
@@ -62,7 +82,7 @@ def evidence_time(entry, *, db=None, conn=None, conversation_ref=None, state=Non
         # native classification (including typed /steer and composite summaries)
         # instead of assigning human priority from role or guessing from prose.
         users = [row for row in selected if is_user_originated_turn(
-            {**row, "content": db._decode_content(row.get("content"))})]
+            {**row, "content": db._decode_content(row.get("content"))}) and not _instant_carrier(conn, row)]
         assistants = [row for row in selected if row.get("role") == "assistant"
                       and row.get("display_kind") != "hidden"]
         chosen = users or assistants or selected

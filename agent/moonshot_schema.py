@@ -6,6 +6,8 @@ flavored json schema". Rules: (1) every property schema carries a ``type``;
 arrays under scalar types may not contain null / empty string; (4) every object
 schema carries a ``required`` array, even an empty one. The ``#/definitions/`` →
 ``#/$defs/`` rewrite lives in ``tools/mcp_tool`` so it applies to all providers.
+Confirmed official Kimi Coding Chat routes retain nullable branches while
+applying the remaining repairs; legacy Moonshot and aggregator defaults do not.
 """
 
 from __future__ import annotations
@@ -32,29 +34,44 @@ def _empty_object_schema() -> Dict[str, Any]:
     return {"type": "object", "properties": {}, "required": []}
 
 
-def _repair_schema(node: Any) -> Any:
+def _repair_schema(node: Any, *, preserve_nullable: bool = False) -> Any:
     """Recursively apply the Moonshot repairs to a schema node."""
     if isinstance(node, list):
-        return [_repair_schema(item) for item in node]
+        return [_repair_schema(item, preserve_nullable=preserve_nullable) for item in node]
     if not isinstance(node, dict):
         return node
+
+    # Coding accepts the canonical anyOf nullable shape. Keep the legacy
+    # first-concrete-type repair for type arrays, but retain their null option
+    # using that same confirmed wire vocabulary.
+    types = node.get("type")
+    if preserve_nullable and isinstance(types, list) and "null" in types:
+        concrete = next((t for t in types if isinstance(t, str) and t not in {"", "null"}), None)
+        branch = {**node, "type": concrete or "null"}
+        node = {"anyOf": [branch, {"type": "null"}]} if concrete else branch
 
     repaired: Dict[str, Any] = {}
     for key, value in node.items():
         if key in _SCHEMA_MAP_KEYS and isinstance(value, dict):
-            repaired[key] = {sub_key: _repair_schema(sub_val) for sub_key, sub_val in value.items()}
+            repaired[key] = {
+                sub_key: _repair_schema(sub_val, preserve_nullable=preserve_nullable)
+                for sub_key, sub_val in value.items()
+            }
         elif (key in _SCHEMA_LIST_KEYS and isinstance(value, list)) or (
             key in _SCHEMA_NODE_KEYS and isinstance(value, dict)
         ):
-            repaired[key] = _repair_schema(value)
+            repaired[key] = _repair_schema(value, preserve_nullable=preserve_nullable)
         else:
             repaired[key] = value
 
-    # Rule 2, plus: Moonshot rejects null-type branches inside anyOf. Drop
+    # Rule 2, plus: legacy Moonshot rejects null-type branches inside anyOf. Drop
     # them; a single surviving branch is promoted into this node and falls
     # through to rules 1/3/4, otherwise the pruned anyOf is returned as-is.
     if "anyOf" in repaired and isinstance(repaired["anyOf"], list):
         repaired.pop("type", None)
+        if preserve_nullable:
+            repaired.pop("nullable", None)
+            return repaired
         non_null = [b for b in repaired["anyOf"] if isinstance(b, dict) and b.get("type") != "null"]
         if not non_null or len(non_null) == len(repaired["anyOf"]):
             return repaired
@@ -134,11 +151,11 @@ def _fill_missing_type(node: Dict[str, Any]) -> Dict[str, Any]:
     return {**node, "type": inferred}
 
 
-def sanitize_moonshot_tool_parameters(parameters: Any) -> Dict[str, Any]:
-    """Deep-copied, Moonshot-compatible object schema; input is not mutated."""
+def sanitize_moonshot_tool_parameters(parameters: Any, *, preserve_nullable: bool = False) -> Dict[str, Any]:
+    """Deep-copied object schema; nullable retention is opt-in for confirmed routes."""
     if not isinstance(parameters, dict):
         return _empty_object_schema()
-    repaired = _repair_schema(copy.deepcopy(parameters))
+    repaired = _repair_schema(copy.deepcopy(parameters), preserve_nullable=preserve_nullable)
     if not isinstance(repaired, dict):
         return _empty_object_schema()
     # Top-level must be an object schema.
@@ -147,7 +164,7 @@ def sanitize_moonshot_tool_parameters(parameters: Any) -> Dict[str, Any]:
     return _ensure_required_array(repaired)
 
 
-def sanitize_moonshot_tools(tools: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def sanitize_moonshot_tools(tools: List[Dict[str, Any]], *, preserve_nullable: bool = False) -> List[Dict[str, Any]]:
     """Apply ``sanitize_moonshot_tool_parameters`` to every tool's parameters.
 
     Returns the input list object itself when nothing needed repairing.
@@ -160,7 +177,7 @@ def sanitize_moonshot_tools(tools: List[Dict[str, Any]]) -> List[Dict[str, Any]]
         fn = tool.get("function") if isinstance(tool, dict) else None
         if isinstance(fn, dict):
             params = fn.get("parameters")
-            repaired = sanitize_moonshot_tool_parameters(params)
+            repaired = sanitize_moonshot_tool_parameters(params, preserve_nullable=preserve_nullable)
             if repaired is not params:
                 any_change = True
                 tool = {**tool, "function": {**fn, "parameters": repaired}}
