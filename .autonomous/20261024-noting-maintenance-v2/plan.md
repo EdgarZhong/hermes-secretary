@@ -16,10 +16,14 @@
 ## 当前状态与编排
 | 目标/任务 | 机制实现 | 正式接线 | 针对性验证 | 用户结果 | 当前负责人和下一步 |
 |---|---|---|---|---|---|
-| A | 已实现并亲审 | 已接入正式路径 | 相关机制证据通过 | 待真实端到端 | notebook_data Sol/high |
-| B | 已实现并亲审 | 已接入正式路径 | 相关机制证据通过 | 待真实端到端 | tools_prompt Sol/high |
-| C | 已实现并亲审 | 已接入正式路径 | 相关机制证据通过 | 待真实端到端 | compaction_policy Sol/high |
-| D | short首周期正常完成，第二周期因F02停止 | 正式原生链路 | 28请求（27完整HTTP200） | 第二周期／N46未完成 | root亲审；Sol最小续测准备 |
+| A/B与R16–R19 | 完成并由root亲审 | 正式链路已接 | done数据120项、工具/Prompt545不同项，完整原机制证据按影响复用 | 最终自然样本待核 | 无待批产品口径 |
+| C及local-off补核 | 完成并由root亲审 | 每次压缩读取全局、Main资格与会话局部开关 | 39定向含独立原反例、41相邻回归，冻结10全过 | 待同域真实多周期 | 最终产品df53696526b5ce5911b9d3e156cfe765785fdb54已锁 |
+| D真实模型 | df组合首周期完成，合法Finish/Idle durable/Framework | 完整N46与194条冻结Active；后半步骤未执行 | 5请求200、总64；harness旧ID访问KeyError停止，无活收费进程 | 来源F6-02及稳定ID F6-03违规；F05新胸牌场景尚未执行 | D仅离线续测方案，未授权更多收费 |
+| V | V5 local-off已修；V6全轮审查中，当前已确认三新增违规 | F6-01 proposal投影由Sol修，F6-02/03自然语义失败保持 | 先原文判据再代码/证据，首周期原始产物已独立补核 | Validation尚未启动，不能部署 | V6完整终局交回后root判定后继动作 |
+| 发布 | 脚本已亲审与本地自检 | backend-only，保护双SPA与三库/配置/绑定 | 生产仍183f1a5；只有只读预检 | 未部署 | 双门禁通过才正式执行 |
+| 磁盘 | 13旧树已正常移除、23小原件逐SHA留档 | 保分支/活树/共享PM/原始证据 | Data卷available观察净增1.699GiB、约20.45GiB可用 | 已实际释放 | CI/旧依赖继续只读核查，详opslog及ignored disk-audit报告 |
+
+以下各阶段记录保原时点，当前状态以本表与最新追加为准；不把旧版本通过或失败代签现版。
 
 同一工作树不交叉改文件；测试均经HERMES_PYTHON="$PWD/.venv/bin/python" scripts/run_tests.sh，.venv为与原PM lock一致的只读复用解释器，不改依赖。A/B共享接口如上，需额外文件先与root协调。子Agent不修改根文档、plan或相互文件、不派生、不提交，不访问生产或收费模型；各自完整交回一次报告，常规细节写ignored证据，禁止流水账。
 部署仅root：按docs/cloud-deployment-sop.md首尔布局，保护三库/配置/绑定/排期/静态资产，先自然空闲与活动检查，备份，再切正式已审提交/重启/读回；不把测试Profile、合成数据或临时阈值带到生产，不自动回盖DB。
@@ -29,7 +33,12 @@
 |---|---|---|---|---|---|---|
 | PRE-01 | 并行源目录存在其它任务文档dirty | 已独立工作树仅拷本轮定稿/规则/CLAUDE条目，保护其它dirty | 已解决，避免提交污染 | root | 保存前置补丁/新树gitdiff确认 | 关闭 |
 | PRE-02 | 冻结CLAUDE尾部空行 | diffcheck提示新EOF空行，冻结提交已完成；已在后续计划更新去除 | 文档格式，不是运行缺陷 | root | 当前diffcheck通过 | 关闭 |
-| F04 | 更新／抽入其它历史事实时，该entry须保留足以支持所记内容的来源 | c5真实F04四条均补新progress，但matter新增“12箱”未引原采购单；采购action及最终Main能正确找到该原单，不能代签matter自身direct来源。事实正确、来源覆盖不完整 | P2，真实语义／证据时间索引质量；不增加NL硬门禁 | root对齐，Sol实现／真实取证 | 获批最小Task来源句实际注入后，同类新增数量由该entry自己的UID/ranges支持，保旧事实/进度及完整原生链；不得手修产物 | 待用户批准冻结Prompt单句；独立Verifier已确认问题及细化方向 |
+| F04 | 更新／抽入其它历史事实时，该entry须保留足以支持所记内容的来源 | c5真实F04四条均补新progress，但matter新增“12箱”未引原采购单；采购action及最终Main能正确找到该原单，不能代签matter自身direct来源。事实正确、来源覆盖不完整 | P2，真实语义／证据时间索引质量；不增加NL硬门禁 | root对齐，Sol实现／真实取证 | 获批最小Task来源句实际注入后，同类新增数量由该entry自己的UID/ranges支持，保旧事实/进度及完整原生链；不得手修产物 | R18已批准并已落实；最终自然样本待核 |
+
+| F6-01 | /propose-persistence模型投影不得含内部Snapshot/anchor | 正式builder绕过model_notebook_view，原测试反向要求ID；独立原反例红 | P2，正式模型边界 | proposal_projection_fix Sol/root | 复用既有模型投影，CLI/Gateway/coverage降级/完整正文与immutable边界定向 | 已评审、实现中 |
+| F6-02 | 新建条目事实应有其来源支持 | df新situation8含两场各40人，但仅range覆盖最新进度，原plan在外 | P2，来源完整；事实并非虚构 | root对齐 | 用户决定是否将现有来源指导原文移至create/update通用段，随后自然样本，旧失败不改 | 未关闭；移动位置已询问，未答不改 |
+| F6-03 | 同一对象/类型/事情原位更新、stable ID | df旧situation4容量未知→确认，却archive4/create8 | P2，语义身份连续性 | root | 不以结构success豁免；现Prompt已明确keep stable ID，先复盘，不擅加第三处Prompt或NL门禁 | 未关闭 |
+| E6-01 | 同Conversation多周期与Notebook-only实际承载 | df首周期后harness KeyError，后半未执行；不把旧异会话样本相加代签 | 必要证据缺口 | root/D | 后半准确同域续测，合法归档允许/来源违规仍报失败，不重放首轮；另明确run权 | 未关闭 |
 
 ## 取舍、快照与续接
 - 初始base5ea0f7fbaa，文档冻结a4faa767e6，自动push origin同名分支成功；baseline.txt已记录完整SHA，后续纳入阶段提交。
@@ -165,3 +174,14 @@ D确认5d dry句柄63263自然exit0、请求0无活窗口后root才改源；需�
 用户追加完成本轮后释放无用工作树及盘点其它空间：disk_audit只读盘点报告/JSON已交，17GiB可用；14旧clean/集成候选1.64GiB，Rust重建缓存5.30GiB但UI/Java仍有活动，先保护；共享PM Python实链指主树.hermes-dev/tools、当前所有模型/失败证据/DB/APK/dirty原件不删。root后续亲核归属/ignored后正常remove、不force、不删分支，按批记录df实际释放；不以盘点当清理完成。
 
 最终锁版补证：local-tail-fix-locked-tests.log两文件39项通过（21.8秒，含V5原反例），local-tail-fix-regression.log四文件41项相邻回归有效；local-tail-fix-locked-checks.log实际stage相对初始5ea扫描77文件、冻结10全部ok、health0/0。首轮HX011测试分支增长通过等价table setup消除，未改检查规则/阈值，原红日志保留。root亲审selector只追加既有local读取，未改其他产品源；准备新功能锁版。
+
+### V6独立新增F6-01（修补待真实样本结束）
+独立审查发现/propose-persistence正式Main prompt envelope泄漏内部Snapshot ID/anchor、遗漏可读coverage，原旧测试反向要求泄漏；root亲读正式builder/CLI/Gateway/helper及07§4.5接受遗漏，不以旧存在排除本轮投影消费者。最小提案复用model_notebook_view包住现完整readable envelope，保正文/来源/done/可操作entry版本及extra，Prompt逐字/Store/API默认不变；补正式发送与覆盖失败降级测试。当前df536965真实组合窗口保源不动，待自然结束再修；原反例和旧证据保留，修后fresh全轮审查。
+
+磁盘追加已执行：六处旧CI/依赖精确缓存移除，共享PM与所有dirty源码/原件保持；两批合计观察available净增4.142GiB，现22.89GiB可用，原Rust/Gradle活缓存不动。详opslog/执行JSON。
+
+### F6-01投影包root亲审接收
+Root亲读单产品diff及新四用例、原CLI/Gateway调用上下游，16份产品/测试/依赖manifest SHA全部与现树一致。仅现完整readable envelope套既有model_notebook_view，保Prompt常量与extra、来源/done/entry版本；真实覆盖取原锚点边界，失败unavailable保正文；默认API保内部字段。CLI实际pending和正式Gateway slash.exec→type=send/message均覆盖，整库iterdump前后相同。64定向含原独立反例与209相邻通过，未为review复跑有效大套；包临时index冻10过。来源与stableID真实语义问题仍未关闭，移动来源指导待答不改。准备root实际stage统一冻10后阶段提交，未部署/未宣称整轮门禁通过。
+
+### 当前阶段交回与未完成边界
+Root完整接收V6六节终局及D七项报告：df27项22符合/3违规/2缺证；真实5次API、首长Idle完整链有效，但来源/稳定ID自然反例保持。D零网络同Conversation真实DBclone逻辑逐表一致/源hash不变，仅准备未初始化运行，cap19接线尚未实现，没有续测run权。F6-01投影修补由root亲审接收并实际stage80文件冻10全过；准备阶段提交，不代替fresh门禁。来源指导位置移动已询问用户未答，默认Task保持逐字；不自动收费重试或部署。当前goal active，磁盘追加实际完成，完整未完和恢复路径见final-delivery六节。

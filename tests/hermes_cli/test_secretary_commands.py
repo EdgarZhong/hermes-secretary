@@ -171,7 +171,9 @@ def test_proposal_reads_only_candidate_leads_and_preserves_source_identity(state
     payload = json.loads(result.prompt.split("Current Notebook Snapshot (data):\n", 1)[1].split("\n\nUser's additional request:", 1)[0])
     entry = payload["payload"]["candidates"][0]
     assert entry["entry_type"] == "candidate"
-    assert entry["source_message_identities"] == [{"conversation_ref": ref, "message_uid": "evidence"}]
+    assert payload["conversation_ref"] == ref
+    assert entry["source_message_uids"] == ["evidence"]
+    assert "source_message_identities" not in entry
     assert "source_evidence" not in payload
     assert "I prefer concise answers." not in result.prompt
     assert result.prompt.endswith("Revise only; do not execute")

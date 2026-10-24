@@ -5,7 +5,7 @@ import json
 import logging
 from pathlib import Path
 
-from secretary.notebook_render import readable_notebook_state, render_notebook
+from secretary.notebook_render import model_notebook_view, readable_notebook_state, render_notebook
 from secretary.noting_policy import configuration_guidance
 from secretary.noting_scope import settings_for_db
 
@@ -95,10 +95,12 @@ def propose_persistence_command(db, session_id, extra=""):
             return SecretaryCommandResult("This Conversation has no Notebook Snapshot yet.")
         # Supply the current view, including candidate-to-source relationships. No History
         # retrieval or destination access occurs in this slash adapter.
-        payload = json.dumps({"conversation_ref": _ref, "snapshot_id": snapshot["snapshot_id"],
-                              "coverage": {"anchor_message_uid": snapshot["anchor_message_uid"]},
-                              "payload": readable_notebook_state(snapshot["payload"], profile_home=Path(db.db_path).parent,
-                                                                 db=db, conversation_ref=_ref)},
+        payload = json.dumps(model_notebook_view(
+            {"conversation_ref": _ref, "snapshot_id": snapshot["snapshot_id"],
+             "coverage": {"anchor_message_uid": snapshot["anchor_message_uid"]},
+             "payload": readable_notebook_state(snapshot["payload"], profile_home=Path(db.db_path).parent,
+                                                db=db, conversation_ref=_ref)},
+            db=db, profile_home=Path(db.db_path).parent),
                              ensure_ascii=False)
         prompt = PERSISTENCE_PROPOSAL_INSTRUCTION + "\n\nCurrent Notebook Snapshot (data):\n" + payload
         if extra:

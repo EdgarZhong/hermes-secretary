@@ -211,7 +211,7 @@ def test_slash_off_has_no_memo_block_and_proposal_uses_current_complete_snapshot
         assert "Notebook" in notebook_command(db, "s").output
         result = propose_persistence_command(db, "s", "Only draft relevant items")
         assert result.prompt.startswith(PERSISTENCE_PROPOSAL_INSTRUCTION)
-        assert snapshot_id in result.prompt
+        assert snapshot_id not in result.prompt
         assert "Only draft relevant items" in result.prompt
         assert db.notebook_current(ref)["snapshot_id"] == snapshot_id
         assert not db.notebook_local_enabled(ref)

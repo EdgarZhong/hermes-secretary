@@ -24,7 +24,7 @@ Android恢复退避已获用户明确确认：10／15／20／30秒；生命周�
 
 用户反馈 AI 标题仍报 `invalid temperature: only 1 is allowed for this model`。旧规则只识别 `k3`／`k3-*`，遗漏今日切换的 `k3.1-pro`；已补齐带数字小版本的 K3 识别。修复`3338a25`已提交、自动推送并部署；4种新写法旧版同错误复现，284项相关回归通过，边界用例移至温度专项文件后30项通过（范围重叠不加总），冻结10检查通过。云端Web／Gateway实际运行`3338a25`、微信connected，三库保护表／配置／绑定／双SPA指纹一致；正式Alex `llm.oneshot`携temperature0.3、虚构短文本真实生成成功（7.104秒），未改生产标题或创建Turn。此前执行前复查因新活动任务拒绝，等自然空闲后才部署；不冒称浏览器／真机实际改名已验。保留已有文档dirty；证据ignored`.hermes-dev/ai-title-k31-20261024/`，回退入口及完整摘要见运维记录。
 
-## 2026-10-24 · 当前自主轮：固定工具／权限与今日修补联合上线
+## 2026-10-24 · 前序轮次：固定工具／权限与今日修补联合上线（后续v2见末节）
 
 **用户最新确认已覆盖下方待讨论状态：** 两工具Schema与description完全不改，固定API顶层tools；Main提示禁用，Noting提示放开且执行仅四工具。用户进一步明确：初始及续Turn不再重复完整Schema。父子Root／tools／Active前缀一致，运行时身份与白名单硬拦，不改其它职责／结束语义。自主轮`.autonomous/20261024-noting-fixed-tools/`，目标工具已挂；子Agent禁Astra，统一Sol/high，不再派生。
 
@@ -242,77 +242,24 @@ Noting child `noting_27dcca55ad1a4e35` 的完整持久轨迹仅一条启动 user
 - 不把未验证写成通过；历史全量存在失败，后续定向通过不等于全量全绿。原报告、固定证据、Git历史均保留，不将旧PID、Agent编排或过时等待条件带入下一轮。
 
 
-## 2026-10-24 · Notebook／Noting／Compaction 方案已定稿
+## 2026-10-24 · 当前自主轮：Notebook／Noting维护v2
 
-唯一现行方案为07顶部v2及本轮最新确认；下面历史Schema／Prompt保留其版本，不冒称新方案已上线。用户已授权自主实施、Sol并行、主会话亲审及测试／端到端、通过后提交部署。本轮实现工作树为`/Users/edgar/code/hermes-secretary-noting-v2`，分支`codex/noting-maintenance-v2`；轮次`.autonomous/20261024-noting-maintenance-v2/`。源码基线5ea0f7fbaa、规格冻结a4faa767e6已提交自动推送；三个Sol包已完成集成，当前整改独立审查问题并补真实验证；主目录其它dirty保留。
+**当前产品锁版：** `df53696526b5ce5911b9d3e156cfe765785fdb54`，分支`codex/noting-maintenance-v2`、独立树`/Users/edgar/code/hermes-secretary-noting-v2`；已自动push。原主仓及独立UI是其它活动任务，dirty/服务/构建均保护。生产仍183f1a5，本轮未部署。
 
-已确认：Notebook是给当前Conversation的清晰语义索引；七类必填性调整、删除external_refs；旧maintain拆为create／update／archive，参数扁平化、同字段同层、六工具身份白名单，固定顶层／父子前缀；完整description指导含1–3短句及150中文字符／80英文词软长度，不硬校验或截断。七类写作指导放第三步并适用于第二步更新，第五步独立保留过滤／候选表，不合并；原步骤先更新→补建→结算→过滤，新增Schedule步骤在结束前。
+**定稿依据与范围：** 07顶部最终v2、Notebook白板及本轮Snapshot Index R01–R19/O01，初始冻结a4、来源数组5c、Candidate边界5d61、R18/R19冻结d8，完整SHA见baseline。六工具固定顶层，Main拒四写/Finish、Noting仅六，Task不重复Schema；三维护工具扁平参数同字段同层；七类型/description软指导/第三写作与第五过滤分表/精选文件引用；relations普通引用归档自动解除而关键来源保护；单对象Schedule语义建议，Noting不登记，Main考虑创建更新。来源UID与时间段数组可混用，evidence_time只读数组由runtime派生；所有条目含Candidate统一done布尔，不自动归档/授权，旧immutable仅读兼容保语义。已批R18来源与未知进度两句已实现，不再待批；具体产品见07，不在看板复制完整Prompt。
 
-Schedule归Main，Noting每次检查缺口；每entry最多一个单对象建议，content／schedule都是语义建议，schedule普通字符串不校验时间语法，content尽量按真实投递正文自包含传递压缩后必要细节，不套description软长度。Main提示仅说明advice非工具参数且Noting未实际登记，考虑创建／更新；不强调重新复查、立即登记或照抄。用户明确Prompt可定稿、不必整篇中英复审，不再把已批参数／片段列为待审批；只整合已批口径，不扩大行为。
+| 包/阶段 | 当前状态与下一步 |
+|---|---|
+| 数据/Schema/投影 | A包root亲审及manifest精确，done数据120项有效；旧版本与新来源数组/审批结算/原子失败保持 |
+| 工具/Task/权限 | B包root亲审，545不同项有效；真实父子Root/tools/Active相同，合法Finish走原生收尾再runner提交，取消窗口保原锁内观察 |
+| 压缩 | 全局＋eligibleMain＋当前local参与判断；真实阈值/显式here N保原尾，其它默认尾进摘要。V5 local-off漏检已补，39定向含原独立反例及41相邻回归过；77文件冻10/health0/0 |
+| 当前真实Kimi | df唯一组合第一轮5请求均200：完整N46→正常Noting→Snapshot→durable Idle full→Framework，Finish后额外Noting请求0。harness硬绑旧entry4、合法归档替代后KeyError停止，非产品提交失败；旧结果保留。累计64=short51+long13，含probe2。第二周期/后Main/Notebook-only仍未执行 |
+| 续测 | D仅准备从此次真实最终DB只读clone、同Conversation/current route的后半段；不重放首轮/手修Notebook。local审计不硬绑ID且来源缺口如实记失败；global83/55/32、剩余19，未授续测run权 |
+| 来源质量 | 新situation8复制“两场各40人”但仅引本轮range，原plan不在其中，F04类缺口待最终审查。root已异步询问仅移动已批来源指导原文，从step2到create/update通用TOOL USE，文字/Schema/validator不变；**未答不改**，不是原R18未批准 |
+| 独立审查 | V5原版失败保历史，fresh V6先独立规格判据再全轮审df，已终局27项22符合/3违规/2缺证，不通过。新增F6-01投影、F6-02来源与F6-03稳定ID三项；proposal模型prompt漏剥内部snapshot/anchor；root最小方案获V6评审，Sol仅改正式投影及测试，root已亲审16份manifest、64定向/209相邻有效，不改Prompt/API默认/Store，准备阶段提交。修后fresh全轮审查，不以原研讨者签新版 |
+| Validation/发布 | 独立Validation未启动，必须最终Verification全范围关闭后先交完整计划、再实际入口验；双门禁后root提交backend-only部署验真，保护三库/配置/绑定/双SPA与线上模型阈值 |
+| 磁盘 | 已正常移除13旧工作树、保分支；23小原件7,398,800字节先逐SHA留档。另清六处已核旧CI/依赖缓存。两批前后Data卷available观察净增4.142GiB至22.89GiB；共享PM、所有dirty/未集成/归属未明树、原始证据/APK/DB及活动Rust/Gradle保留。详opslog与ignored disk-audit执行JSON |
 
-relations：普通关系归档时自动解除，情景／Candidate来源引用继续保护，不增加图门禁。evidence_time恢复模型可见且runtime派生只读、不可手填，按已确认来源算法，辅助过滤／候选判断，保持原有进展／讨论／gap计龄及未知语义，不自动到龄删除。
+**证据与职责：** 本轮`.autonomous/20261024-noting-maintenance-v2/`唯一看板/索引/双门禁/最终简报；完整原失败与历史进展留plan/verification及ignored实现/E2E报告，不用新口径改写旧样本。A/B/C各包已root亲审，当前proposal_projection_fix仅白名单产品与测试；D独占ignored E2E；V6独占verification；root独占三核心文档、plan/交付、ops与集成。子Agent禁止派生/流水账。
 
-压缩：Noting开且合格Main，原生阈值自动保留默认tail，其它取消默认tail；用户最新明确保留/compress here N slash命令及原生显式保尾，N按user消息起点计交流段、默认2。仅Idle要求正常Noting提交后压缩、durable后Framework；forced／overflow合法快照照常但不准Idle full compaction，标非正常结束；一般API失败可无新快照。不吞新消息／工具链、不因Framework开Turn或误发微信。
-
-材料引用已收口：实现只在Noting Task的description指导中补一处Prompt，文件路径不计软长度、不写计数校验，但不大量引用／罗列文件；只对真正重要材料，在相关条目description中直接保留路径／引用和用途，不新增材料字段、不恢复external_refs、不因文件存在独立建条、不扩大situation准入。
-
-最后P2b已由用户明确收口：保持原结算退出规则，实际成功写入外部的覆盖范围归档，不因仍有当前用途／将来可能有用保留Notebook余额；后续由Memory／Rules／Skills既有召回／生效机制承担。部分成功、后续变化和未完责任等未覆盖范围按原规则保留，不重复建立已交接索引／候选。此前Agent额外保留建议已撤回，07相关冲突句已清理。全部产品口径已定稿，无剩余产品审批项，不再整篇中英复审；正式运行代码尚未切换；本轮功能快照5ee2a94已提交，独立审查整改及真实验证仍在进行，未部署。用户随后要求清退Prompt复核并查看最小修改，现已明确批准07 §6.4单处短语调整，不增加多处强调；原清退边界和未覆盖内容／未完责任保护不变。用户再次确认本轮实施包括完整六工具固定API顶层、Main拒绝create／update／archive／finish、Noting仅六工具、Task不重复Schema、maintain三分与参数同层扁平，以及Schedule追加建议。07顶部§0已补统一范围／行为／验收表，§6.4已更新批准状态，README已有07稳定入口；全部规格已收口，无剩余审批项。本轮已启动自主执行准备，源修改／测试／部署状态以本轮plan与报告为准。
-
-
-**本轮集成进展：** A/B/C三个Sol包已接正式链路并由主会话亲审，功能快照`5ee2a94`已提交自动推送，冻结10检查通过；相关分区机制证据及主会话五文件121项精确版本补证有效。独立Verification初审不通过：F01无display_kind的可信Instant误取真人时间，F02 Kimi传输sanitize删掉null清除契约。F01已有两文件最小修补及26项、独立反例1项通过，待新审查者复审；F02纠正探针HTTP200且准确返回null（首探针tool_choice配置错误HTTP400保留）；已实现仅可信官方Coding保留nullable的传输修补，111项定向及相关115项回归有效，冻结10检查通过，不改变已批canonical Schema／description／validator。
-
-真实隔离Alex／kimi-for-coding已发送28次（27完整HTTP200、最后一次人工停止未完成），首轮正常Snapshot→durable Idle压缩→Framework→后续Main实际登记Schedule及完整／部分外写结算有效；第二轮连续8次清建议被拒，已因F02停费，不冒称整个端到端通过。准备从停止状态只读克隆续测第二轮，保留原失败；N46真实收费0、尚未执行。总请求护栏70（short45／long25），两个探针计入后已用30；生产尚未部署，Validation须待全新Verification复审通过。来源、精确边界和证据见本轮plan、verification及ignored E2E报告。
-
-全新独立复审新增F03：Create把Schema禁止的显式status:null／relations:null当省略，违反输入错误零副作用；root提出wire入口按canonical单一type拒绝显式null，内部Store默认与合法nullable／[]不变，Verifier已认可方向。B仅增7行工具入口校验，正式invoke／Loop及正例138项通过、独立原反例2项通过，root亲审接收；未因新增发现提前启动收费或发布。F01/F02修补快照81e458b已提交自动推送，不等同整轮门禁通过。
-
-**833真实续测纠正：** 13请求全部HTTP200（12完整、最后摘要被审计者SIGTERM截断），新null清建议成功；Finish首调用接受后模型另重复8次幂等请求，最后自然Turn返回并正常提交新Snapshot，故不能把重复Finish记成多次提交或已证实的runtime违约。停止判断过早与正常提交竞争，截断了随后父摘要，第二Framework／最终Show+History／N46未完成。收费停止，累计43（short43／long0／含probe2），不为凑证据自动重试。用户正在询问Finish后为何仍调模型；root提案沿原生工具轮收尾→Turn正常返回→Commit Gate，保持两阶段语义，不直接在Finish提交，待契约评审，尚未修改。
-
-独立最终复审另发现F04：旧short条目1/2/3新增进度未补对应最新消息provenance，内容本身符合对话但来源不足，旧样本不可无保留代签语义质量；正在只读核833快照是否自然补齐。不得回写旧样本／改模型参数／添加NL语义硬门禁。当前Prompt第二步只明确保旧来源，若需补“新增断言补新来源”的最小措辞，先与用户对齐，不擅改冻结Prompt。未部署。
-
-Finish原生收尾提案已获独立契约评审，属于原“最后单独调用并停止”的接线细化；B获准只实现结束接缝与正式Loop/SQLite边界测试，不改Schema/Prompt、不伪造模型final、不在handler提交。F04经833快照及原文复核未自然补齐，entry4亦有同类来源缺口；第三轮独立审查不通过（14符合／1违规／1证据不足）。root已展示并异步询问第二步一句来源提示的最小改法，尚未获答，不得将默认选项视作批准。收费仍停止43，N46和Validation/部署未开始。
-
-## 2026-10-24 · 自主验证中新来源模型调整（IDs取时已确认）
-
-用户最新要求：evidence_time改为只读数组，元素为时间戳或时间段；直接provenance保留Message IDs数组，时间段改为数组，允许两者混传，不二选一；同一证据通常用一种表达，靠Prompt软约束，代码不增加跨表达覆盖去重／时间重叠门禁。该方向替换旧“单时间段／UID优先而只投影UID时间”的对应口径，其他已批六工具、稳定身份、只读时间、Profile／来源权限与生命周期不因此扩大。用户已确认IDs派生数组：每条真实用户消息各列时间戳；没有用户时取最近一条Assistant；再无列全部来源时间。显式时间段仍加入结果，不被IDs覆盖。Candidate直接来源是否也允许时间段数组与IDs混用的异步问题尚待回答，notebook_refs模式保持原规则；新完整规格尚未冻结、相关代码未改。先前Prompt单句用户要求了解原因，root已用真实采购／报名／场地样本说明，不能记作已批准原候选文字；现需将新混传／软约束一并形成具体指导。Finish收尾包已交回，root亲审取消观察与原生清理同锁接缝；收费停止43。
-
-Finish包现已由root亲审接收：durable独立Finish后原生Turn立即返回、原Commit Gate提交；不再请求模型续写结束语。root实证发现并补齐clear前即时取消窗口，使用原生锁内可选观察回调，默认路径与bool返回保持；三个取消屏障、四正常正例和60项原生相邻回归有效，冻结10检查通过。源码与报告hash一致，未为review重跑大套。来源新契约／F04／N46及全新双门禁尚待，未部署；完整证据在本轮plan及ignored finish-report.md。
-
-Finish快照31c1791已提交自动push，整树干净；root实际staged针对初始源码基线69文件执行冻结10检查，health零blocking/advisory。已确认的七内容类型来源数组与通用只读投影现落到07及索引R06/R16，准备Sol并行实施：A数据／Schema／旧不可变读兼容，B权限提示软指导与正常边界完整Schema刷新。Candidate直接来源扩展保原不改、仍待用户答复；最终收费／双门禁／发布前收口。尚未批准的补新来源候选句不借此改入Prompt。
-
-已确认来源增量依据5c550162已提交推送，baseline保留初始a4并追加授权版本。A/B正在各自白名单并行实现；D只离线适配最小F04与新数组审计。Root已审F04前态和正式链路，批准仅内部重分配总70／short55／long15、计数43不改，F04单轮最多12、N46最多15；最终SHA及完整产品口径未锁前仍不收费，不自动转移未用配额。全仓来源字段实际消费者均在A/B边界内，旧不可变数据不迁移；发布脚本仍仅准备，未操作云端。
-
-**用户已补齐Candidate边界：** 二选一仅指直接对话证据与间接notebook_refs；直接内部允许IDs、时间段数组或混传。取消前次暂保的仅IDs／ranges为空限制，保refs与直接互斥、source_types映射、targets／approval／settlement原规则。07及索引R16/R17已立即同步；无剩余此项审批。A/B已收到修订协调，A改validator/canonical Schema/其新数组用例，B改Task及原Candidate测试，原仅IDs限制证据保历史、不作为最终通过依据。计费仍43，最终集成与验证未完成。
-
-最新依据5d61a5d已提交推送，baseline追加。A最终来源数组整包root已亲审七产品及数据/事务/投影链，11文件SHA256核实一致；Candidate15定向、此前投影55及七类型分区证据有效，冻10检查通过。B边界刷新/恢复pin/SDK接线已亲读，正完成最终Candidate提示和5份相邻旧脚本迁移；原45失败证据保留，未据修改期望冒称自然模型质量改善。F04/N46、独立双门禁与云端尚未执行。
-
-B最终5d包已接收，root亲审Task新措辞/五份测试迁移和原生恢复、完整工具表的接线；A/B共21文件SHA256与现树一致。Candidate70项、最终SDK两种混传2项及负例28项（重叠）通过；其余相关有效证据按源码影响复用，原失败不抹去。统一stage质量检查后保存功能锁版，再做零请求正式dry和真实F04/N46；未证明自然模型已补来源，不提前宣称质量问题修复。未部署。
-
-**当前锁版c5f57b2：** 整包已提交自动push，root实际stage相对初始5ea扫描73文件的冻结10检查通过、health0/0。D只获最终零请求F04/N46 dry，当前真实费用43保持，尚未run。全新Sol/high/forknone独立第四审已启动，先独立规格判据再查全轮，报告追加verification.md并保历史；Validation及部署等待门禁与真实证据，不改云端。
-
-两组c5正式dry已过，root逐组786源码hash及关键wire/prefix/隔离核实，N46原46组184条无缩短。现仅授权F04一次真实收费短链（单轮12、short55、总70；起始计数43），内容来源/Finish/Idle/durable/Framework及后续Main结果核实后才另授权N46；不自动重试/转预算。V4已有独立29项判据，已完成静态/机制调查暂未核实新产品缺陷，等待最终真实证据；Validation/发布未启动。
-
-root云只读preflight通过：运行仍183f1a5、双服务active、微信connected、无活动Main/Noting或有效writer/compaction锁，保护基线已取，生产模型请求和运行写入均0。仅准备发布，不stage/apply/停服务或改库；正式发布前仍重核空闲/基线，不覆盖其它线程改动。
-
-**c5真实F04已完成但来源质量仍未全过：** 8请求正常结束、累计51；Noting6工具结果全成功、参数错误0、Finish后额外请求0；Snapshot／durable Idle全文压缩／Framework／最终Main实际Show+History正常，四条均补新progress。残余是matter新增“12箱”漏原采购单来源；另一采购action引用及最终Main回查正确，不自动补matter direct引用。root与V4分别亲核原文/DB/工具轨迹，旧F04收窄仍存；当前不再收费、不启N46。V4已认可Task第二步最小补全来源义务方向，root给用户具体原因/英文候选，单句冻结Prompt修改仍待答。未改产物或Prompt、未进入Validation/部署。
-
-V4当前c5完整结论已接收：27符合／F04一违规／N46一缺证，不进入Validation；未来整改后由全新审查者全轮复审。root已按delivery-evidence-review复核并填写本轮final-delivery.md为当前未完成／等待单句用户决定的交接，目标保持active，不标完成或用户暂停。D所有真实进程已自然退出；Request-ID显式null观察hook仅离线6组通过，现仍51请求。原8响应白名单仅有content-type、未提供两个Request-ID，不虚构或回填；无生产变更。
-
-**继续独立N46工作：** f287e94只文档更新，产品代码与c5完全相同；root复核N46头部工具长前缀调用链不依赖待批来源句，可先推进用户已授权真实长样本。调整的是root先后编排，不改变F04未关闭、最终文本证据适用性／必要补验或双门禁要求。D须先核当前精确HEAD/786源码等价及零请求preflight，再仅一次N46真实run，原policy总70／long15、已用51保持；不改Prompt、不自动重试/转预算。来源句未获答仍不改，最终修后按影响补证，未部署。
-
-**N46已取得真实结果、独立补核中：** 同产品f287/c5的8请求均HTTP200，累计59（short51/long8）。首Main141662 tokens，Noting146064至155074，超过旧N38约131745校准量；root亲核4请求Root/tools/186条冻结Active精确一致，无动态声明，Finish后Noting追加0，正常Snapshot/Framework及后Main答复可查。manual样本不替Idle时序，D与原V4仍审计，暂不签整轮通过。旧短链F04保留，来源提示单句未获答不改；未进入Validation/部署。
-
-**N46独立补核新增F05：** action3/4把未报告的具体进度写为“尚未开始”，原pending默认不授权此事实断言；root认可P2内容反例，长机制成功保留。提案只补Task忠实提取一句“未报告进度保持未知，pending不证明未开始”，不改Schema/默认状态/校验器；与F04来源句分开审查/对齐，未实施。V4已独立核长前缀/Usage/正常提交/原文留存，当前两内容问题未关闭，未进入Validation/部署。
-
-**当前接续条件：** N46执行审计已自然交回，累计59，无存活收费进程。V4确认长机制具体缺证已补，但同一Conversation多次完整整理/压缩的最终内容连续性仍缺，不以不同会话样本相加代签。F04/F05两句具体文字已合并询问，用户当前只要求解释前因后果，root已答，未视作批准；Prompt/Schema/状态默认/validator均未改，Validation/部署未启动。后续获批后纳入同一隔离会话多周期验证与全新独立双门禁。
-
-**用户批准R18并提出状态简化：** F04来源句与F05进度未知提示两处已明确批准并写07/索引；用户同时建议不用细分状态而保留done。root已调查现有状态值用途，提出所有条目含Candidate统一done布尔、默认false未确证终结、true不代表成功、正文记录进度／原因且不自动归档；具体结构仍待答，未实施。来源句可独立落实，第二句按状态字段最终收口适配；不再把两处Prompt原文列作未批准，done结构不冒称已批。费用仍59，未部署。
-
-**R19已确认：** 用户答复“采用统一done方案”，全部Notebook条目含Candidate统一顶层done布尔（Create默认false，Update省略保持），删除细分status；终结不等成功，false不等未开始，具体情况语义记录；done不自动归档、不授权限，原结算/审批/引用保护保持，旧immutable只读兼容保语义。R18两句Prompt随之落实，第二句pending改done=false，无剩余此项审批。准备冻结本次依据并Sol分工实施；最终同会话多周期实证/全新双门禁/部署未完成，费用59无新run。
-
-**R18/R19实现已集成待锁版：** root亲审A六产品及新测试、B两句Prompt与12测试迁移和正式SDK/恢复/权限上下游，A7/7与B20/20 SHA精确。A120pass、B545不同用例通过（不含A），旧失败保留；done无自动归档/授权，旧状态语义只读兼容不改immutable，来源/时间/版本门槛保持。准备统一stage冻结10检查后提交锁版。D只零网络接双Idle＋完整N46＋Notebook-only探针，root接受方案；内部guard明确改83/55/32、实际59不变、组合cap24，尚无run权。最终真实语义/多周期与fresh双门禁/部署仍未完成。
-
-**当前最终源码5d73f4b：** done/R18整包root亲审、统一实际stage冻10过（77文件、health0/0），已自动push/upstream一致。当前锁产品，D只做组合最终0请求dry，费用仍59、没有--run权。新Sol/high/forknone V5按d8原文先独立全判据后查完整R01–R19/O01和最终真实证据；不以旧c5审查代签。云只读HEAD仍183f1a5，未部署；最终实际多周期/独立两门禁和发布尚未完成。
-
-**V5本轮接收及F5-01修补：** 原5d37项31符合/2违规（local-off漏检）/4真实证据不足，门禁不通过。root按独立评审最小补selector会话局部开关读取，不改Notebook读权限/threshold/here；39定向含原独立反例、41相邻回归通过，准备新锁版与D定向预检。原数据/Schema/两句Prompt不变。用户追加磁盘清理，Sol只读盘点已交：14旧树候选1.64GiB、Rust缓存5.30GiB；保护活任务、共享PM/DB/证据/签名APK，尚未实际清理。费用59未增、未部署，后续fresh双门禁保持。
-
-最终锁版补证：local-tail-fix-locked-tests.log两文件39项通过（21.8秒，含V5原反例），local-tail-fix-regression.log四文件41项相邻回归有效；local-tail-fix-locked-checks.log实际stage相对初始5ea扫描77文件、冻结10全部ok、health0/0。首轮HX011测试分支增长通过等价table setup消除，未改检查规则/阈值，原红日志保留。root亲审selector只追加既有local读取，未改其他产品源；准备新功能锁版。
+**当前未完成：** proposal投影小修及定向证据、来源指导位置待用户答复、最终同Conversation多周期和Notebook-only自然语义证据、fresh双门禁、最终提交/云端部署。目标active，不以成功HTTP/阶段commit/空间释放冒称整轮完成。

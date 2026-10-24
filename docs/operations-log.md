@@ -653,3 +653,10 @@ Delegation风险有严格前提：回调携带派发时的`session_key`／`paren
 **Heartbeat正式迁移：** 目标由Alex唯一pinned和稳定ref核实：新stored `20261021_200341_2ce088`／`conv_a497994968694fe180ad6e4523afe9f2`，旧stored `20261011_223115_59ad08`／`conv_8dc89e12cc9b42b5a77986f4d9b02cec`。沿正式session.resume（omit/defer/no eager）返回runtime后，旧session.control pause→新slash.exec `/heartbeat every 2h`→control.read确认active/7200/空prompt→旧control clear并读回null；DB原生cleared墓碑保留旧定义，不手工SQL。新fire_count=0，第一due `2026-10-22T12:58:06.662358+08:00`。迁移前后排期、pending Reminder、binding及alias指纹一致，不复制旧fire_count／last_fired_at，不提前运行Heartbeat。最新Conversation secretary.state确认global/local enabled=true，本来已默认开启，因此未追加`/noting on`历史回执。
 
 **收据与回退边界：** ignored `.hermes-dev/release-20261022/`包含部署／后验／Heartbeat收据、WS探针、只读配置预检及脚本；受限完整配置／DB备份只留服务器，凭据不入Git。本次不改变schema／环境，可在确认空闲后人工恢复配套旧源码＋静态，始终保留最新数据库；禁止把旧备份自动覆盖现库。正式整轮Validation原缺口按10月21日历史报告保留，本次依据用户授权上线，不伪称两门禁或Android验收已全通过。
+
+## 2026-10-24 · 本机旧工作树清理
+
+用户要求完成本轮并释放项目空间。root依据逐树HEAD/clean/祖先或补丁等价/交付记录/ignored及实时lsof复核，正常移除13个已集成旧checkout（Core5、UI8），保所有分支和可达原SHA；未使用force。23个独有验收JSON及模拟DB/WAL/SHM/SOUL整组（7,398,800字节）先存主仓ignored `.hermes-dev/worktree-retention-20261024/`，逐件SHA一致，不覆盖主仓同名不同原件。保当前主仓/Noting/UI与dirty、未集成及归属未确认树，保共享PM、签名/模型证据、原始数据库和活动构建。Data卷可用由19,658,160增至21,440,040 KiB，观察净增1.699 GiB（有并发变化）；清理执行/留档路径映射详本轮ignored `.hermes-dev/disk-audit-20261024/cleanup-execution.json`。源码恢复用保留分支或记录原SHA重新git worktree add，原件沿留档路径取回；未部署或改生产。
+
+### 旧缓存精确清理追加
+root依据cache_dependency_review再次核六精确目录实体、三树HEAD/package lock、无外部反向链接/进程/lease及共享Python保护，先退役旧CI installs再移除它们依赖的旧tools，再移除三个旧node_modules，共六目录。仅删除可重建缓存，不删父目录源码/数据/原件，不停进程、不改lock。共享PM Python实链及三lock保持。该批available观察净增2.583GiB；两批前后整体available净增4.142GiB至22.89GiB（同卷并发和共享块会影响，未把du当精确释放）。执行见ignored .hermes-dev/disk-audit-20261024/cache-cleanup-execution.json。Rust约5.30GiB与Gradle约0.50GiB仍活、保留。
