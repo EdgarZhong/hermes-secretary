@@ -240,3 +240,21 @@ Noting child `noting_27dcca55ad1a4e35` 的完整持久轨迹仅一条启动 user
 - 通用规则只在 [AGENTS](AGENTS.md)，稳定规格索引在 [README](README.md)。操作、实际版本、备份与回滚统一 [运维记录](docs/operations-log.md)；执行步骤见 [部署SOP](docs/cloud-deployment-sop.md)。
 - 固定v5产品意图复审及两门禁按其原版本保留：[Snapshot Index](.autonomous/20261018-product-intent-review/snapshot-index.md)。旧模型归因／Search完整性／Noting来源偏差为已接受的非阻断观察，不重开为新增开发。
 - 不把未验证写成通过；历史全量存在失败，后续定向通过不等于全量全绿。原报告、固定证据、Git历史均保留，不将旧PID、Agent编排或过时等待条件带入下一轮。
+
+
+## 2026-10-24 · Notebook／Noting／Compaction 方案已定稿
+
+唯一现行方案为07顶部v2及本轮最新确认；下面历史Schema／Prompt保留其版本，不冒称新方案已上线。用户已授权自主实施、Sol并行、主会话亲审及测试／端到端、通过后提交部署。本轮实现工作树为`/Users/edgar/code/hermes-secretary-noting-v2`，分支`codex/noting-maintenance-v2`；轮次`.autonomous/20261024-noting-maintenance-v2/`。启动时源码未改，正在建立冻结基线；主目录其它dirty保留。
+
+已确认：Notebook是给当前Conversation的清晰语义索引；七类必填性调整、删除external_refs；旧maintain拆为create／update／archive，参数扁平化、同字段同层、六工具身份白名单，固定顶层／父子前缀；完整description指导含1–3短句及150中文字符／80英文词软长度，不硬校验或截断。七类写作指导放第三步并适用于第二步更新，第五步独立保留过滤／候选表，不合并；原步骤先更新→补建→结算→过滤，新增Schedule步骤在结束前。
+
+Schedule归Main，Noting每次检查缺口；每entry最多一个单对象建议，content／schedule都是语义建议，schedule普通字符串不校验时间语法，content尽量按真实投递正文自包含传递压缩后必要细节，不套description软长度。Main提示仅说明advice非工具参数且Noting未实际登记，考虑创建／更新；不强调重新复查、立即登记或照抄。用户明确Prompt可定稿、不必整篇中英复审，不再把已批参数／片段列为待审批；只整合已批口径，不扩大行为。
+
+relations：普通关系归档时自动解除，情景／Candidate来源引用继续保护，不增加图门禁。evidence_time恢复模型可见且runtime派生只读、不可手填，按已确认来源算法，辅助过滤／候选判断，保持原有进展／讨论／gap计龄及未知语义，不自动到龄删除。
+
+压缩：Noting开且合格Main，原生阈值自动保留默认tail，其它取消默认tail；用户最新明确保留/compress here N slash命令及原生显式保尾，N按user消息起点计交流段、默认2。仅Idle要求正常Noting提交后压缩、durable后Framework；forced／overflow合法快照照常但不准Idle full compaction，标非正常结束；一般API失败可无新快照。不吞新消息／工具链、不因Framework开Turn或误发微信。
+
+材料引用已收口：实现只在Noting Task的description指导中补一处Prompt，文件路径不计软长度、不写计数校验，但不大量引用／罗列文件；只对真正重要材料，在相关条目description中直接保留路径／引用和用途，不新增材料字段、不恢复external_refs、不因文件存在独立建条、不扩大situation准入。
+
+最后P2b已由用户明确收口：保持原结算退出规则，实际成功写入外部的覆盖范围归档，不因仍有当前用途／将来可能有用保留Notebook余额；后续由Memory／Rules／Skills既有召回／生效机制承担。部分成功、后续变化和未完责任等未覆盖范围按原规则保留，不重复建立已交接索引／候选。此前Agent额外保留建议已撤回，07相关冲突句已清理。全部产品口径已定稿，无剩余产品审批项，不再整篇中英复审；当前运行代码仍未改，本轮未提交／部署。用户随后要求清退Prompt复核并查看最小修改，现已明确批准07 §6.4单处短语调整，不增加多处强调；原清退边界和未覆盖内容／未完责任保护不变。用户再次确认本轮实施包括完整六工具固定API顶层、Main拒绝create／update／archive／finish、Noting仅六工具、Task不重复Schema、maintain三分与参数同层扁平，以及Schedule追加建议。07顶部§0已补统一范围／行为／验收表，§6.4已更新批准状态，README已有07稳定入口；全部规格已收口，无剩余审批项。本轮已启动自主执行准备，源修改／测试／部署状态以本轮plan与报告为准。
+

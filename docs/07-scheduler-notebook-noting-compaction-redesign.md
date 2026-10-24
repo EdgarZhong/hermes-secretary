@@ -8,6 +8,351 @@
 >
 > **代码基线：** `a51fd99abc783f245ab855526a10862f2c89656a`。该提交保存了改版前全部已跟踪变更及文档，包括此前的流式显示修复；不是本轮代码实现或重新验收。当前运行行为仍查 02／04／06；实施本次改版时，本文件与已审白板对明确变更的部分优先，未覆盖的不变量继续继承。
 
+## 2026-10-24 · Notebook／Noting／Compaction 最终方案 v2（已定稿，未实施）
+
+本节汇总多轮已确认口径，替换此前未定稿v1及互相覆盖的讨论段落；用户最终明确外部成功交接后归档，不为仍可能有用保留Notebook副本，最后一个待定项已收口。方案已定稿，不再要求整篇中英复审；运行代码、Schema、Prompt、生产数据和已完成轮次验收均未据此更改。下方历史完整Schema与英文原文保持其原版本，不能将本稿视为已上线。
+
+### 0. 本轮实施范围与完成判据（用户明确确认）
+
+本轮包括Schedule追加建议，以下为统一实施清单；不是仅替换工具名／仅改Prompt，也不把今日其它独立任务混入。产品语义及本节Prompt已定稿，不再要求整篇中英复审。
+
+| 范围 | 必须落地的行为 | 验收重点 |
+|---|---|---|
+| 六工具固定声明 | conversation_history、notebook_show、notebook_create、notebook_update、notebook_archive、finish_noting完整固定于API顶层tools，父子共享冻结工具表；Noting不临时增删定义 | 实际序列化请求中工具可见，父子Root／tools／Active前缀一致，无messages级动态工具或Task重复Schema |
+| 四工具写入权限 | Main对create／update／archive／finish在可信运行时拒绝，History／Show继续正常可用；Noting仅允许上述六工具，不能调用Scheduler或其它声明工具 | 同步、并发、invoke及间接路径均按可信身份判定，拒绝无副作用；不能靠Prompt自称身份绕过 |
+| Schema拆分／扁平参数 | 旧maintain拆为create／update／archive，撤出当前执行面；同名字段在各工具中同层，Update无action／changes额外包裹 | 原位稳定entry_id、真实修改新版本、无变化不造版本；字段合并／数组替换及可选对象清除一致 |
+| Notebook与内容Prompt | 七类必填性调整、删除external_refs、只读runtime证据时间；通用description软长度与精选文件引用；第三步写作／第五步过滤指导各自独立 | 非法字段／权限不放宽，路径不计软长度但不罗列文件；时间用于处理判断不自动到龄删除 |
+| Schedule追加建议 | 所有entry类型可有零或一个顶层schedule_suggestion，内部content／schedule两字符串均为语义建议；每次Noting必查缺口，有需要补入；content自包含传递压缩后必要背景，schedule不做时间语法校验 | 不新增材料字段／Schedule引用或执行队列；Noting不能创建实际Schedule，建议不代表登记完成 |
+| Main条件提示 | 实际注入的Notebook有建议时，在Framework底部追加已定稿advice／未执行说明及考虑创建／更新Schedule提示 | 无建议不追加；非触发式，不自行开启Turn或外发微信；不把建议直接当Scheduler工具参数 |
+| Relations简化 | 普通relations在归档时一并解除；情景和Candidate来源引用维持必要保护 | 无悬空关系、无半归档半清理，不级联归档／改变其它业务状态，不新加图门禁 |
+| Compaction分支 | Noting开启且合格Main：原生阈值自动压缩保默认tail，其它取消默认tail；显式/compress here N保原生指定tail；关闭／非Main原生不变 | 被取消tail纳入摘要，不吞新消息／工具协议；仅Idle正常Noting提交后才压缩、durable后Framework；失败／强制收尾不准Idle full compaction |
+| 清退与防回流 | 外部成功交接范围按原结算规则归档，保留真正未结算范围；第4步只执行§6.4已批准的一处措辞微调 | 不因“仍有用”留余额，不误删未覆盖新变化／未完责任，不重建已结算索引或候选；不新增多处强硬提示 |
+
+Main的四工具禁用提示、Noting Task／当前control／续Turn的六工具权限提示须同步；Task只说明身份、职责与白名单，不再次携带Schema。完整父工具表可包含其它Main正常工具，Noting执行面仍精确六工具，不能为权限切换重建为另一份API声明表。规格与真实构建文本／请求需一致。
+
+### 1. 目的与不变边界（已确认）
+
+Notebook持续处于当前Conversation的上下文中，让Main知道正在推进什么、之前发生过什么，以及哪些既往事实、结果、转折和条件现在仍有用。它承载足以理解这些事情的内容与状态；具体数字、原话、材料及执行细节按需读conversation_history，不追求以最少文字找回全部细节，也不要求复制全部原文。
+
+仍使用七内容类型：matter、action、situation、implicit_gap、question、insight、decision；Candidate是额外聚合类型，目标、来源二选一、标签映射、提案／审批／实际写入边界保持。本轮不以History工具原参数恢复限制作为Notebook类型不足的证据，不新增history/details通用正文槽。Main只读Notebook，Noting维护Notebook；Schedule操作权仍独占归Main，Noting不获得Scheduler权限。已确认实际写入外部的覆盖范围按原结算规则退出Notebook，不因“仍有当前用途／将来可能有用”保留余额副本；后续读取／生效交给外部Memory／Rules／Skills的既有机制。未交接或未覆盖部分仍按原规则处理。
+
+### 2. 七类fields（必填性调整已确认）
+
+每类共同具有必填description，以及可选domains、processing_note。description聚焦可辨识的对象、当前意义和仍有用的关键结果／限定，不完整复述历史。Noting无法预知本次compaction摘要，模型提示只规定自身应记录什么，不要求它与未知摘要比较或补缺。用户已确认§6.1完整description指导，含通常1–3个短句、约150个中文字符或80个英文词以内的软长度；简单条目更短，必要时可适度超出，不硬校验、不截断、不凑字。processing_note只记本次具体处置和理由，不承担历史正文。
+
+| 类型 | 建议必填fields | 建议专用可选fields | 内容要求／相对现行变化 |
+|---|---|---|---|
+| matter事项 | description, completion_condition | blocker, last_progress_time | 整体目标、当前进度、未完责任及仍相关的已完成阶段；字段不变，未明确解除条件如实写未明确。 |
+| action行动 | description, owner, completion_condition | blocker, last_progress_time | 具体工作、责任人和完成依据；字段不变，区分委派、接受、报告完成和实际完成，不默认未知owner为用户。 |
+| situation情景 | description, subjects | time_context | time_context由必填改可选；承载身份、偏好、习惯、情绪、关系、事实与经历，不要求先关联工作。 |
+| implicit_gap缺失警示 | description, situation_ref, missing_information, impact | resolution_condition | resolution_condition由必填改可选；必须说明关联情景、具体缺项及实际影响，不编造未知补足方法。 |
+| question问题 | description | unresolved_points, current_answer, last_discussion_time | unresolved_points由必填改可选；保留用户实际问题、已形成讨论进展、仍未决点和仍有用的排除理由；已回答不必填“无”。 |
+| insight认识 | description, certainty | qualification | qualification由必填改可选；保留用户认识的确定程度，明确条件／例外有证据时必须记，不造“无限制”。 |
+| decision决定 | description, scope | valid_when, ends_when, rationale | valid_when/ends_when由必填改可选；保留实际选择、适用范围、已有条件和关键理由；缺省不等于永久、无条件或扩大授权。 |
+
+可选只表示未提供或不适用时可省略；原文已明确且影响理解的内容必须记录。Schema可空声明、类型必填指导和validator须一致，未知不能靠造事实满足必填。status词汇、relations及消息provenance保留在entry层级。用户已确认删除external_refs，不再新增schedule_refs；登记缺口用第4节语义建议承载。evidence_time恢复为模型可见的runtime派生只读字段，供过滤／候选整理的时间判断；不接受模型编辑，见第5节。
+
+材料引用已按用户最新口径收口：不新增独立材料／文件引用字段，不恢复external_refs。此项仅改Noting Task中一处description指导：只对真正重要、对后续理解或工作有用的材料，在相关条目的description中直接保留路径或引用，并简述它是什么及用途；文件路径不计软长度，引用需克制，不列所有遇到的文件；用户已确认该处Prompt措辞；不罗列所有读过的文件，不仅因出现一个文件就创建独立条目，也不扩大situation准入。具体材料内容按需回读，文件引用不替代消息provenance。已有工作草稿／方案及用户实际参与讨论中的备选内容沿原类型规则承载，未采纳状态保持，不升级为用户立场。
+
+### 3. create／update／archive拆分（含参数扁平化已获用户确认）
+
+用户再次明确：将旧notebook_maintain拆为create／update／archive三个工具，参数扁平化，同名属性不能在不同工具中处于不同层级。以下接口契约已批准，不重复请求审批：
+
+- notebook_create(entry_type, fields, status?, relations?, schedule_suggestion?, source_message_uids?, source_time_range?)：一次创建一条；ID与版本沿运行时既有机制分配。
+- notebook_update(entry_id, fields?, status?, relations?, schedule_suggestion?, source_message_uids?, source_time_range?)：无action、无changes包裹；entry_id之外至少提交一个修改属性。Create/Update同名参数始终处于同一层级。
+- notebook_archive(entry_id, reason)：单独归档；先保留仍需内容和来源。按已确认简化，普通relations随归档自动解除；gap情景引用和Candidate来源引用仍需明确处置，未处理则拒绝归档。
+
+Update规则：fields按键合并，未提交保持；文字替换对应值，数组全量替换。可选属性允许按契约用null清除；必填内容不能删空。schedule_suggestion为可选对象，建议整对象替换、null清除，不与fields混合。entry_id仅选目标，不可改成新ID；entry_type、version_id及运行时元数据不可编辑。同一事情更新稳定ID，实际修改生成新版本，无变化不造版本；另一件事创建新条目，不能复用同类型ID换主题。
+
+错误回执必须指明具体字段、原因和纠正动作，必要时给最小示例；不再统一报mixed-action。拒绝无副作用，不自动猜测／重写输入替模型通过。七类合法字段及Candidate原有来源约束继续校验，不能因拆工具而放宽内容权限。
+
+Noting执行白名单为六工具：conversation_history、notebook_show、notebook_create、notebook_update、notebook_archive、finish_noting（2026-10-24用户明确确认六工具方向，尚未实施）。Main禁止三个维护工具及finish，保留原有History／Show／Scheduler能力。工具定义完整固定在API顶层，不重复注入Task、不动态注册；父子Root/tools/冻结Active前缀一致，已运行child不热改。Finish仍最后独立调用、不得混批，接受结束和最终Snapshot提交仍是两个阶段。旧maintain退出当前可执行授权面，不保留模型可调用别名，旧轨迹只作历史证据。
+
+工具description实施文本（随已批准Schema拆分生效）：
+
+- Create: “Create one entry in this Noting task's working Notebook. Use the entry type's documented fields and supporting provenance. Record enough content for Main to understand the matter, situation or discussion and its current relevance. Use the entry_id returned by a successful call for later edits. Returned evidence time is derived and read-only. This tool does not create or change a Schedule.”
+- Update: “Update one existing entry in this Noting task's working Notebook. Supply entry_id and only the attributes to change, directly as tool parameters. fields merges by property; each supplied array replaces the complete array. Preserve still-relevant content and its sources. Keep the same subject and entry type; create a separate entry for a different matter. entry_id, entry_type and returned evidence time cannot be edited.”
+- Archive: “Archive one entry that no longer needs to remain in the current working Notebook. Supply its entry_id and a concrete reason. Preserve needed content and repair incoming references first. Apply this task's retention and settlement rules: remove confirmed successfully dispatched scope, preserving only later changes, unfinished responsibilities or other pending proposal needs not settled by that write. This tool does not delete original Conversation messages.”
+
+### 4. Schedule追加建议（已定稿）
+
+用户已确认本节Main／Noting的语义建议提示文定稿；尚未改运行代码。description后来已单独获用户确认，见§6.1；本节定稿不改变尚未实施的状态。
+
+所有Notebook条目（含Candidate）在entry顶层可有schedule_suggestion；不放fields。用户已明确一对一：每个条目最多一个建议，保持单对象，不变数组、不拆出额外条目容纳多项。内部只有content与schedule两个字段，两者均为语义建议，不是可直接提交的Scheduler参数。schedule按普通字符串保存，不在Notebook创建／更新／提交时增加CRON、日期／时区语法或可执行性校验，不复用Scheduler解析器；真正调用Scheduler时沿其原有规则处理。
+
+本轮最新用户口径替换此前建议层“排期必须CRON／带时区绝对时间”“Main直接照抄并立即核对登记”的措辞。可用自然语言表达建议排期；清楚的原有CRON或绝对时间也可保留，不能编造缺失时间或改变原本一次性／周期意图。Main如何注册沿现有Scheduler工具契约，不把建议层改成第二个时间解析器。
+
+Noting每次必须检查父Conversation未来要求、已接受责任及Main承诺的登记缺口；有缺口就在相关条目补建议，无缺口不造建议。content尽量完整、自包含，按照实际Schedule投递正文的方式写，把压缩后Main可能看不到、但后续处理必需的背景、对象、要做什么和必要条件传过去；不依赖“见上文”补足必要内容。description的软长度指导不套用于这个投递正文。Noting不获得Scheduler权限，不把建议视作登记成功。
+
+**Noting定稿Prompt · EN**
+
+```text
+Both content and schedule are semantic suggestions for Main, not ready-to-submit Scheduler arguments. Write content as fully and self-containedly as practical, in the form of the actual Schedule delivery body, including the relevant background, subject, intended action and necessary conditions that Main may no longer see after compaction. Describe the intended timing or recurrence in schedule without inventing missing information. Do not rely on earlier turns for necessary details, create a Schedule yourself or treat a suggestion as a successful registration.
+```
+
+**Noting定稿Prompt · 中文**
+
+content和schedule都是给Main的语义建议，不是可直接提交的Scheduler参数。content尽量完整、自包含，按照实际Schedule投递正文的方式写，包含压缩后Main可能看不到的相关背景、对象、预期行动和必要条件。schedule描述建议的时间或周期，不编造缺失信息。不要依赖较早对话补足必要细节，不要自行创建Schedule，也不要把建议视为登记成功。
+
+仅当实际注入的有效Notebook含建议时，在完成Framework最底部追加下面一句；无建议不加。不再强调Main重新复查有效性、立即登记或照抄参数，也不把这个提示当作新的授权。
+
+**Main定稿Prompt · EN**
+
+```text
+Schedule suggestions in this Notebook are semantic advice, not ready-to-submit Scheduler arguments. Noting has not created or updated Schedules from them. Consider creating or updating Schedules based on these suggestions.
+```
+
+**Main定稿Prompt · 中文**
+
+这份Notebook中的Schedule建议只是语义建议，不是可直接提交的Scheduler参数，Noting也没有据此创建或更新实际Schedule。请根据建议，考虑创建或更新Schedule。
+
+Framework仍非触发式注入，不自行启动Turn或外发微信。建议随Noting根据新证据正常维护，不新增独立的自动清理、过期拒绝或自动重排机制；单对象语义已确认，Main按已定稿提示考虑创建／更新。
+
+### 5. 只读证据时间（恢复模型可见字段、runtime派生已确认）
+
+用户本次要求把evidence_time加回模型可见视图，仍由runtime从消息provenance派生、只读，不让模型手填，不列入Create/Update可编辑输入。它供模型判断哪些条目应考虑过滤／候选整理，并非超过某年龄自动删除。区分事件发生时间time_context、来源消息时间、Notebook创建／更新时间。保持事项／行动last_progress_time、问题last_discussion_time、gap首次识别／created_at等既有计龄语义；来源组派生时间不能无条件替代所有类型的首次实质证据时刻，未知不能造日期。
+
+取时顺序：
+
+1. 来源只有时间范围：复用该范围。
+2. 来源是Message UIDs且含真实用户消息：仅取证据组内用户消息，一条显示单时刻，多条显示起止范围。
+3. 无用户消息但有Assistant：取最近Assistant消息的时刻。
+4. 两者都无：取全部引用消息时间范围。
+
+未知不能回填当前时间。推荐底层统一起止结构，单时刻起止相同，展示为一个时刻；在来源信息区展示，不放fields。工具说明明确“runtime-derived, read-only; do not supply on create or update”。推荐Show、初始／续Turn工作视图、维护回执和Framework正文复用同投影；UID与时间范围同时存在时优先UID推导、原范围仍展示；Candidate refs型沿已有来源链解释，不伪造直接证据时间，保持已确认取时及计龄语义。
+
+### 6. Noting Task完整职责与内容指导
+
+开头以第1节用途替换单纯“最小索引”倾向，保留会话外Candidate与结算职责；父角色／行为规则／工具策略／任务／完成条件在当前Noting任务作废，限六工具及可信父域，不改冻结父前缀。初始与续Turn均不重复Schema。
+
+七步：
+
+1. **对齐输入。** 确认当前Notebook、冻结父证据、时间和覆盖范围；已有证据足够就处理，仅为具体必要缺项Read/Search。覆盖边界不等于每条已被抽取，消息时间不等于事件时间，不造日期／承诺／授权／结果。
+2. **维护已有内容。** 根据新事实更新同一件事，保留仍相关的已发生结果、重要转折、条件和用户立场变化，不能只剩最近一句。保留内容对应来源，不一律替换成最新消息。新内容不继承旧批准，关联Candidate同步校正；另一件事另建条目。
+3. **补建有用内容。** 按七类记录正在推进、以及曾发生且现在仍帮助工作／理解用户／接续讨论的内容。纳入偏好／身份、情绪／关系经历、实际讨论和有用材料，不强迫每类都有条目。用户问题／认识／决定忠实归因；AI建议作为尚未采纳的工作／讨论材料，不升级为用户立场。
+4. **结算真实外部写入。** 按可见提案→明确批准→实际工具结果核对覆盖，先处理来源再处理Candidate；实际成功交接的覆盖范围按原规则归档，不因仍有当前用途或以后可能有用保留副本。部分成功仅结算成功范围，后续新变化、未完责任及其它未结算提案所需的未覆盖内容按原规则保留；完整来源确已处理后结束Candidate，部分结算则仅留未写入范围。不检查目标内部存储，不重复未知写入，不因重读历史或保留未覆盖部分重新生成已交接范围的索引／候选。
+5. **按类型处理保留与去留。** 删除重复而非追求最短；已完成行动仍可留有用结果，已回答问题可留答案和有用排除过程，已失效决定可保留解释现状的历史转折并标清失效，gap补足后答案回到situation并修引用。Candidate原有来源／目标／标签／审批规则保持；无当前用途、独立留存价值、未完责任／有效约束／讨论或待提案需要时才直接归档，终态／年龄本身不是自动删除许可；实际外部写入依第4步按成功覆盖范围结算退出，不以当前仍可能有用绕过结算。
+6. **Schedule追加建议。** 每次必须观察父会话未来安排及登记证据，有缺口就为相关entry补足第4节建议；无缺口不造提醒，不给Noting Scheduler权限，已解决建议沿真实结果处理。
+7. **检查并结束。** 核对重复、归因、状态、缺口、引用、建议及Candidate／来源一致性；检查是否抹去仍有用过去、只剩状态而事情不明、把AI备选写成认可，或造时间／条件。修具体问题，最后单独Finish，reason写实际结果及限制，不复制全簿；提交／完整Notebook注入仍由现有链路完成。
+
+Show按需读本任务working，工具错误按具体指导纠正，History过长按同源窗口／分页回读，不越权、不把路径预览当已读全文。Main指导、当前control和continuation同步新用途／六工具名单；不新增Agent循环、消息存储、调度器、独立Noting Memo或排期执行队列。
+
+### 6.0 根据当前compaction模板完成的设计审查（仅设计依据，不注入Noting）
+
+本次实际阅读agent/context_compressor.py的_SECTION_INSTRUCTIONS、_build_summary_prompt、_summary_template_sections与_LEAN_SESSION_LOG_SECTION，不只按“compaction一般是什么”推断。现行摘要要求包括：最新未满足请求、整体目标、约束与偏好、逐项工具动作／目标／结果、工作目录与分支／修改文件／测试／进程等活动现场、阻塞及原始错误、重要技术决定及理由、用户纠正与修复、已回答问题及答案、相关文件和关键具体值。lean模式追加按时间顺序的密集Session Log，要求保留标识符和结果；迭代摘要保留仍相关旧信息、追加完成动作并更新状态。它不是只写最近任务，也已覆盖决定／偏好／问答，不能假称这些只有Notebook保存。
+
+据此调优Notebook：按语义对象持续组织“这是什么／现在怎样／为什么仍值得注意”，让Main容易识别正在推进的事项及仍有用的过往信息；description不再复制执行现场、每轮过程、全部论证及命令输出。必要决定／纠正／条件允许与摘要重叠，不能因为假定“摘要可能会写”而遗漏。互补由设计者通过信息选择和组织方式实现；Noting不预知本次摘要，不在Prompt中要求其比较、查缺或避免与未知摘要重复。原生compaction Prompt本轮不改。
+
+### 6.1 2026-10-24 · Prompt重点修改前后中英对照（已定稿，未实施）
+
+用户明确要求审Prompt而非工具Schema／description；本节聚焦description写法、已有内容更新与Schedule追加建议。修改前逐字取自当前secretary/noting_prompts.py的DEFAULT_NOTING_TASK_INSTRUCTION，中文为对照译文；新增段落明确标注无旧文。未列出的归因、审批、Candidate来源及生命周期约束并未因此删除。六工具和字段必填性已确认，Prompt措辞及剩余产品边界仍待确认。
+
+#### Notebook用途
+
+**修改前 · EN**
+
+```text
+You are the Noting Agent for the bound Conversation. The Notebook has two jobs: index this Conversation's context for continuity, and extract and dispatch its settled information to Memory, Skills or Rules outside this Conversation. In one complete task, update existing Notebook indexes, create missing useful indexes, settle confirmed actual writes, and process aging or no-longer-needed entries into concise retained records, direct archives or aggregated Candidates. The Notebook manages memory inside this Conversation; Memory, Skills and Rules outside this Conversation own what happens after that dispatch.
+```
+
+**修改前 · 中文**
+
+你是绑定Conversation的Noting Agent。Notebook有两项职责：为Conversation上下文建立索引以保持连续性，以及提取并分发已稳定的信息到Conversation外的Memory、Skills或Rules。在一次完整任务中更新已有索引、补建有用索引、结算已确认的实际写入，并把达到处理时间或不再需要的条目整理为简洁保留记录、直接归档或聚合Candidate。Notebook管理Conversation内的记忆；外部Memory、Skills和Rules负责分发之后的事情。
+
+**修改后定稿 · EN**
+
+```text
+You are the Noting Agent for the bound Conversation. Keep the Notebook useful in Main's current context: it should explain what is being pursued, what has happened, and which earlier facts, outcomes, turning points and conditions still matter. Main should be able to understand those things from the Notebook and read Conversation history for specific missing details. Update existing entries, add missing useful content, prepare Candidates for Memory, Skills or Rules outside this Conversation, settle confirmed actual writes, and identify missing Schedule registrations for Main to handle. You maintain the Notebook; Main performs Schedule operations and authorized external writes.
+```
+
+**修改后定稿 · 中文**
+
+你是绑定Conversation的Noting Agent。让Notebook在Main当前上下文中持续有用：它应说明正在推进什么、曾经发生什么，以及哪些既往事实、结果、转折和条件现在仍然重要。Main应能够从Notebook理解这些事情，具体缺失细节再查Conversation历史。更新已有条目，补建遗漏的有用内容，为Conversation外的Memory、Skills或Rules形成Candidate，结算已确认的实际写入，并发现需要Main补齐的Schedule登记缺口。你维护Notebook；Main负责Schedule操作及已获授权的外部写入。
+
+#### description写法
+
+**修改前 · EN**
+
+```text
+Write concise descriptions, preferably one sentence, and short concrete attributes; there is no writing quota or length-based rejection.
+```
+
+**修改前 · 中文**
+
+描述应简洁，优先一句话，属性应简短具体；不设写作配额，也不因长度拒绝。
+
+**修改后定稿 · EN**
+
+```text
+Write each description as a concise semantic index for Main's current context.
+Select what will help Main recognize a relevant matter, understand the user, avoid contradicting an established choice or condition, or pick up a useful discussion. Include useful past information even when no action is pending; do not turn every entry into a task.
+Lead with the specific subject and its current significance. Keep the present position and only the earlier outcome, correction, turning point, condition or unresolved point needed to understand what still matters. Name the actual subject rather than using vague labels such as "the earlier issue" or "follow up."
+Do not write a turn-by-turn recap, an inventory of tool calls, a full argument or a copy of execution logs. Leave those details to conversation_history; retain a specific name, value or short reason when it is necessary to identify the item or avoid misunderstanding it. Do not repeat dedicated fields unless needed to make the description clear.
+When updating the same item, revise its account instead of appending every new turn. Remove superseded claims from the current position, while keeping a brief correction or change of view when it still explains the present situation. Preserve still-useful meaning, not every intermediate step.
+Include a file reference in description only when it is important for later understanding or follow-up, with a brief note on its purpose. File paths do not count toward the soft length guide; keep references selective and do not list every file encountered.
+Usually use one to three short sentences, within roughly 150 Chinese characters or 80 English words per description. Simple entries should be shorter. Exceed this soft guide when needed to preserve an important distinction, qualification or uncertainty; do not pad an entry to reach the suggested length.
+```
+
+**修改后定稿 · 中文**
+
+description应写成Main当前上下文中简明的语义索引。
+选择能帮助Main识别相关事项、理解用户、避免违背已确定选择或条件、接续有用讨论的信息。没有待执行动作的过往信息也可能有用，不要把每条记录都写成任务。
+先写明确对象及其当前意义。保留当前情况，以及理解什么仍然重要所需的关键既往结果、纠正、转折、条件或未决点。写出具体对象，不用“之前的问题”“继续跟进”等模糊标签代替。
+不要逐轮复述对话、罗列工具调用、展开完整论证或复制执行日志。这些细节留给conversation_history；辨识对象或避免误解所必需的具体名称、数值或简短理由仍应保留。除非为了说清楚，否则不重复专用字段。
+更新同一条目时修订其记录，不逐次追加新对话。已经被取代的说法不再作为当前结论，但仍能解释现状的纠正或立场变化应简短保留。保留仍有用的意义，不保留每一步中间过程。
+仅在材料对后续理解或跟进确实重要时，才在description中保留文件引用，并简述用途。文件路径不计入软长度指导；引用要有所选择，不罗列所有读过的文件。
+通常使用1–3个短句，每条约150个中文字符或80个英文词以内。简单条目应更短。重要区分、限定或不确定性需要时可以超过这个软指导；不要为了达到建议长度而凑字。
+
+用户明确确认以上完整description指导可以定稿，含软长度；该指导适用于按任务结算／过滤规则应留在Notebook的内容，不赋予已成功交接范围继续保留的例外。运行时尚未修改。七类内容指导的具体放置另见§6.2，不新增硬长度门禁或截断。Schedule建议content不受此description软长度限制。
+
+#### 第2步：更新已有条目
+
+**修改前 · EN**
+
+```text
+2. Update existing indexes. Match new corrections, progress, accepted commitments, decisions and tool outcomes to existing stable entry IDs. Change only what the evidence changes: content, status, relationships, provenance and genuine progress/discussion times. Repetition, reading or rewriting does not renew evidence age. Preserve meaningful qualifications and revise any linked Candidate description or references that the new facts make inaccurate; new content is not covered by an old approval.
+```
+
+**修改前 · 中文**
+
+2. 更新已有索引。将新的纠正、进展、已接受承诺、决定和工具结果对应到已有稳定条目ID。只修改证据改变的部分：内容、状态、关系、来源和真正的进展／讨论时间。重复、读取或改写不刷新证据年龄。保留有意义的限定，修正被新事实影响的Candidate描述或引用；新增内容不受旧批准覆盖。
+
+**修改后定稿 · EN**
+
+```text
+2. Update existing entries. Match new evidence to the same matter, situation or discussion and keep its stable entry_id. Change only what the evidence changes. Retain earlier outcomes, turning points, conditions and changes of view that still help Main understand the current situation; do not replace the whole account with the latest status. Keep supporting provenance for retained content, rather than replacing all sources with the newest message. Use a separate entry for a different subject. Revise linked Candidates when needed; new content is not covered by an old approval. Repetition, reading or rewriting does not renew substantive progress or discussion time.
+```
+
+**修改后定稿 · 中文**
+
+2. 更新已有条目。将新证据对应到同一事项、情景或讨论，保持稳定entry_id。只修改证据实际改变的部分。保留仍帮助Main理解当前情况的既往结果、转折、条件和立场变化；不要把整段记录替换成最新状态。为保留内容保留支持它的来源，不要把全部来源替换成最新消息。另一件事另建条目。必要时修正关联Candidate；新增内容不受旧批准覆盖。重复、读取或改写不会刷新实质进展或讨论时间。
+
+#### 新增第6步：Schedule追加建议
+
+**修改前 · EN**
+
+无对应段落（新增）。
+
+**修改前 · 中文**
+
+现行任务没有专门检查Schedule漏登记的步骤；现行第6步为Check and finish。
+
+**修改后定稿 · EN**
+
+```text
+6. Identify missing Schedule registrations. In every Noting task, check the parent Conversation for future requests, accepted responsibilities and Main's commitments that call for future attention. Use visible registration evidence to identify possible gaps; an intended time or a suggestion alone is not a successful registration. Add a suggestion to the relevant Notebook entry when needed. Both content and schedule are semantic suggestions for Main, not ready-to-submit Scheduler arguments. Write content as fully and self-containedly as practical, in the form of the actual Schedule delivery body, including the relevant background, subject, intended action and necessary conditions that Main may no longer see after compaction. Describe the intended timing or recurrence in schedule without inventing missing information. Do not rely on earlier turns for necessary details, create a Schedule yourself or treat a suggestion as a successful registration.
+```
+
+**修改后定稿 · 中文**
+
+6. 发现Schedule登记缺口。每次Noting都检查父Conversation中需要未来关注的要求、已接受责任和Main承诺，结合可见登记证据发现可能缺口；单有预定时间或建议不等于登记成功。有需要就在相关条目补建议。content和schedule都是给Main的语义建议，不是可直接提交的Scheduler参数。content尽量完整、自包含，按照实际Schedule投递正文的方式写，包含压缩后Main可能看不到的相关背景、对象、预期行动和必要条件。schedule描述建议的时间或周期，不编造缺失信息。不依赖较早对话补足必要细节，不自行创建Schedule，不把建议视为登记成功。
+
+#### 完成Framework底部的条件指令
+
+**修改前 · EN**
+
+无对应段落（新增）。
+
+**修改前 · 中文**
+
+现行没有Schedule建议专用尾部指令。
+
+**修改后定稿 · EN**
+
+```text
+Schedule suggestions in this Notebook are semantic advice, not ready-to-submit Scheduler arguments. Noting has not created or updated Schedules from them. Consider creating or updating Schedules based on these suggestions.
+```
+
+**修改后定稿 · 中文**
+
+这份Notebook中的Schedule建议只是语义建议，不是可直接提交的Scheduler参数，Noting也没有据此创建或更新实际Schedule。请根据建议，考虑创建或更新Schedule。
+
+### 6.2 第三步七类写作指导（与第五步过滤／候选整理独立，用户已确认）
+
+当前步骤顺序已核白板N1与secretary/noting_prompts.py：1对齐→2更新已有→3补建→4结算真实外部写入→5过滤／候选→6检查结束；本次方案只在检查前追加Schedule建议，成为第6建议／第7检查。当前是先补建后结算／过滤，不是先清退后补建。第5步不只是清退，还负责保留、精简及形成候选。
+
+用户明确确认两套规则不同，不要合并：第三步先说明七类条目分别该如何写，保留独立的七类写作指导；第五步另行说明七类条目分别如何过滤、保留／精简／归档及形成Candidate，保留独立的生命周期／候选整理表。类型相同不表示职责相同，不以任何一表替代另一表，也不把两套规则塞进同一段。第三步已有类型路由与写作指导在该步骤组织，第五步保留原有7天／72小时处理点、出口、Candidate、审批及来源约束。§6.1通用description原则集中写一次，适用于第三步创建及第二步更新。此为已确认的Prompt组织方式，尚未改运行实现或任务顺序。
+
+| 类型 | 第三步写作指导EN | 中文对照 |
+|---|---|---|
+| matter | Describe the concrete goal and current stage or blocker; retain an earlier result only when it still affects the work or explains the present position. Do not list every execution step. | 写清具体目标、当前阶段或阻碍；既往结果仍影响工作或解释现状时保留，不罗列每步执行。 |
+| action | Identify the concrete action, its current result or remaining step, and any dependency needed to understand it. Do not turn delegation, acceptance or a completion report into confirmed completion. | 写清具体行动、当前结果或剩余步骤及理解它所需的依赖，不把委派、接受或完成报告当成确认完成。 |
+| situation | Describe the specific circumstance, experience or preference and why it still helps Main understand the user or present situation. Keep a meaningful change when needed; no pending task is required. | 写清具体处境、经历或偏好及其对理解用户／现状的意义；必要时保留重要变化，不要求存在待办任务。 |
+| implicit_gap | State the specific unknown, the situation it belongs to and its present impact. Once answered, keep the evidenced answer with the situation rather than preserving the old warning as still missing. | 写清具体未知、所属情景和当前影响；回答后把有证据答案放回情景，不继续把旧警示当成缺失。 |
+| question | Preserve the user's actual question, the useful conclusion or discussion position reached so far and what remains open. Keep a discarded answer only when it prevents a likely misunderstanding or repeated dead end; distinguish unaccepted AI answers. | 保留用户实际问题、已有用结论或讨论进展及未决点；舍弃的答案仅在能避免误解或重走死路时简留，区分未采纳AI答案。 |
+| insight | State the understanding the user expressed or accepted, with the certainty and qualification needed to use it correctly. Preserve a change of view when it still matters, not the AI's full reasoning. | 写用户表达或接受的认识，保留正确使用所需的确定程度和限定；必要时保留立场变化，不复述AI完整推理。 |
+| decision | State the actual choice and scope; keep the decisive reason, condition or replacement that still governs how it should be applied. Do not restate the full debate or imply approval beyond the evidence. | 写实际选择和范围，保留仍影响适用方式的关键理由、条件或替代关系；不复述完整争论，不扩大有证据批准。 |
+
+这是第三步独立的写作／内容选择指导，不是每条都必须填满的模板，不新增结构或语义门禁。第五步独立保留其过滤与候选整理规则，不与本表合并；跨轮更新保留稳定对象及仍有用意义，原有生命周期处理点和合法出口不变。重要材料引用已确认直接放description，不新增字段或独立准入；外部成功写入范围按第4步结算退出，不能借本表“仍有用”的写作指导保留已交接副本。
+
+### 6.3 Relations现状审查与简化方向（用户已确认，未实施）
+
+现状据secretary/notebook_model.py与notebook_contract.py：relations是可选的条目间连接，支持part_of／depends_on／based_on／supersedes／related_to；[]合法且表示无关系，null、空ID、未知／已归档目标、自引用、相同kind＋目标重复会被拒绝。创建／更新在草稿上校验，失败不发布工作态修改。归档遍历全部仍有效条目的三类入向引用：普通relations、implicit_gap.situation_ref、candidate.notebook_refs；只要存在任意一类便以invalid_reference整体拒绝，并列出引用者和字段。不会归档成功后才留下这些悬空引用；归档不是物理删除聊天或旧版本。
+
+现行没有通用DAG／循环检测或关系真实性推断；不建议为此加新语义校验、级联业务状态或重试协议。基本身份／引用存在性检查合理，但普通relations与来源／情景引用一律阻断归档，对可选的辅助关系偏重。
+
+用户已确认P7方向：保留创建／更新时基本引用检查；归档时普通relations由运行时一并解除，不再要求模型逐个调用清理，回执说明受影响条目；不级联归档其它条目、不改其它业务状态、不删除正文／来源。gap.situation_ref与Candidate.notebook_refs仍需先明确处置，避免失去情景解释或待审批／待结算来源。这是已确认的设计替换，尚未改运行实现；实施前核对既有版本／原子提交接缝，避免半归档半清理。Prompt指导只说“有助于理解时才建立关系，关键事实和条件仍在正文中，不靠关系代替”，不要求凑关系，不新增关系数量／深度门禁。
+
+### 6.4 清退措辞复核与最小修改（用户已确认，运行时未改）
+
+用户要求设计者把清退边界落实为仓库约束，并复核现行Prompt；随后明确强调强度须平衡，不能多处过度催促导致误清退。本次只审实际secretary/noting_prompts.py及Main指导，不把先前“多处重复禁止／禁止任何摘要或指针”建议直接实施。
+
+现行Prompt已足够明确的部分：第3步不因重读旧证据重建已成功交接并结算的索引／Candidate；第4步先核真实成功及覆盖、全覆盖且无后续变化／未完责任／其它未完成提案需要才归档，否则处理剩余范围，失败／未知保持；第5步规定时间只是处理点、不自动失效；结算不能仅留saved／settled便条，也不检查外部保管质量。因此不全盘重写候选／过滤表，不新增自动归档、硬长度、时间／数量门禁或新的外部取证要求。
+
+唯一值得微调的是第4步重写剩余内容这一句：still-needed scope可被误扩张为一般“仍可能有用”；necessary context未明确服务哪部分。推荐只把保留范围和上下文限定到本次成功写入后仍未结算的范围。沿用前文已明确的未覆盖内容、后续变化、未完责任及其它未完成提案，不改这些保护条件。
+
+**修改前 · EN（实际运行原文中的局部短语）**
+
+```text
+only the still-needed scope and necessary context, explaining each retained part.
+```
+
+**修改前 · 中文**
+
+只保留仍需要的范围及必要上下文，并说明各保留部分。
+
+**最小修改定稿 · EN**
+
+```text
+only the scope left unsettled by the confirmed writes and the context needed to understand that remaining scope, explaining each retained part.
+```
+
+**最小修改定稿 · 中文**
+
+只保留经确认写入后尚未结算的范围，以及理解该剩余范围所需的上下文，并说明各保留部分。
+
+其它句子、第三／第五步职责、四项既有保护、失败／未知处理、源内容与Candidate先后顺序保持。已成功交接的内容不能仅因一般有用而留余额，真实剩余内容也不会因同条目部分成功就一并删除。新增AGENTS通用约束约束设计／审查Agent；不把整条仓库规则再灌进模型Prompt。用户已明确批准这一个最小修改；实施仅替换本段短语，不增加多处清退强调或改变保护条件。当前尚未改运行常量、未测试或部署，不冒称已验证模型行为。
+
+### 7. Compaction分支规则（已定稿）
+
+| 资格与真实触发原因 | 被覆盖旧原始尾部 |
+|---|---|
+| Noting开启＋满足Main Conversation条件，达到原生上下文阈值产生的自动压缩 | 原生保留策略继续生效 |
+| 同样资格，除上述阈值自动压缩外的其它压缩 | 取消默认旧尾部保留；显式/compress here N按用户最新确认保留其指定交流段 |
+| Noting关闭或非合格Main | 保持原生 |
+
+按真实触发原因判定，不能用force=False或宽泛auto标签代替。Force是提前启动Noting的阶段；后续父压缩若真正由原生阈值触发，仍走保留分支。overflow错误恢复等不是仅凭名称算阈值自动压缩。用户本次明确不禁用/compress here N，保留手动指定尾部的原生语义，此显式选择作为最新确认例外；不能保留命令名却忽略其指定的尾部。
+
+不留旧尾部的空闲成功边界，逻辑结果为重建System Prompt＋Compaction Message；正常完成Noting的Framework随后追加，其中包含完整Notebook及条件登记指令。取消tail必须从摘要输入区间选择做起，让旧尾部参与总结；不得摘要完成后删除根本没总结过的tail。按本次策略同时处理recency预算／消息下限／已完成旧user和assistant的再次回插，不能只设keep=0。
+
+压缩覆盖区间外新到的用户消息／Framework不能丢；未处理请求、合法steer及未闭合工具链须保真、安全处理，不能为了固定两三块而吞掉。原文仍在History／Timeline；压缩失败、取消、无进展或提交失败保原上下文，不借失败清尾。系统Prompt只在合法原生边界重建，不重写已冻结child的父前缀。
+
+时序保持：仅Idle要求正常Noting提交→父原生durable压缩→Framework。相应Noting仍运行时等其正常提交，已正常提交可继续；失败或强制结束不做这次Idle full compaction。工具调用／Turn预算耗尽或已处理context overflow等非正常收尾，仍按既有机制尝试提交合法快照、注入Framework，并明确Notebook非正常结束，不能将快照提交当作正常完成；一般API失败可以没有新快照。其它压缩路径维持已有Noting／compaction并行规则，不因取消tail擅自新增成功门槛或统一等待；没有新Notebook成功提交时不能伪造新Snapshot，Framework按实际结束结果沿既有契约处理。非触发Framework仍不自动开Turn或借最近微信来源外发。
+
+### 8. 本轮审批核对（全部定稿，无未决产品项）
+
+用户逐轮确认的范围已收口：删除external_refs；七类必填性调整；旧maintain拆成create／update／archive并扁平参数、同字段同层；六工具身份权限；固定顶层与前缀；完整description指导含软长度和精选文件引用（路径不计软长度）；第三步写作／第五步过滤两表独立；每entry最多一个Schedule语义建议、schedule普通字符串不校验时间语法及Main／Noting提示；relations简化；evidence_time恢复模型可见且runtime派生只读；压缩分支及Idle成功前置；保留/compress here N及显式保尾。
+
+最后P2b已明确否决Agent“仍有当前用途可保留已写入源内容”的额外建议，保持原分发结算／退出规则：按真实外部成功覆盖范围归档，不留可能有用的余额，不将Notebook变为无限增长历史；后续使用归外部Memory／Rules／Skills机制。部分成功、后续新变化、未完责任或其它未结算提案的未覆盖范围按原规则处理，不删除未完成范围，也不重建已交接索引／候选。
+
+没有剩余产品审批项。用户不要求再次整篇中英对照；实现按已批口径接线，不扩张字段、队列、门禁或权限。当前仍为方案定稿，未实施本轮运行代码、未提交／部署，不改写历史验收。
+
+### 9. 实施验收范围（当前尚未运行）
+
+验证三工具同层参数、精确拒绝及失败零副作用；七类字段／必填可选／稳定ID和新版本；Main越权拒绝及Noting精确六工具／间接路径；父子真实Root/tools/Active前缀；建议两字段的完整正文、时间意图、语义建议完整传递、普通字符串无时间语法门禁、Main简短考虑创建／更新指令与条件Framework；只读时间四级顺序、不可编辑及Unknown；所有压缩分支的模型请求／live／durable一致性、并发新消息、回插、工具协议、失败回滚与History／Timeline原文不丢。
+
+真实内容场景须覆盖工作进展、偏好／身份／情绪／关系、开放讨论／未采纳方案、事实纠正与仍有用历史，以及多次整理压缩后Main仅读Notebook能说清发生了什么和当前怎样；细节再查History。另覆盖外部写入完整成功退出、部分成功按范围结算、未覆盖变化保留，以及已交接内容不借“仍有用”回流Notebook／Candidate。真实模型／成本方案待实施授权后另定，不以正常HTTP或Finish代替内容质量，不把旧测试通过数代签新方案。
+
 ## 2026-10-24 · 固定顶层工具与身份权限修订（用户确认）
 
 本修订替换此前任务后缀完整Schema及Kimi消息级动态声明口径：`notebook_maintain`与`finish_noting`的完整定义、description及参数逐字段保持，沿合格Main／全局Noting门禁完整固定在API顶层tools，不进入Tool Search折叠目录。Main System Prompt明确两工具禁用；Noting任务明确放开它们且只能执行History／Show／Maintain／Finish四工具。执行权由可信运行时身份及绑定工作态决定，不能由模型正文或参数自称Noting取得；同步、并发、invoke及间接路径均不能绕过。普通子Agent不得因继承Schema取得两工具权限。

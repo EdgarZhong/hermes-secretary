@@ -51,6 +51,8 @@
 
 ## Harness 与 Prompt 设计
 
+- Notebook内容选择须服从已确认的生命周期与结算边界：外部成功交接范围按规则退出，不能因“以后可能仍有用”另设保留豁免；未覆盖内容、后续变化、未完责任及其必要上下文仍按原规则处理。审Prompt须同时防积压和误清退，不用宽泛有用性覆盖结算，也不把成功交接写成无条件删除整条记录。
+
 - Prompt是模型可见世界：只写Conversation、Notebook内容、工具结果、timestamp、当前及后续control message中的对象；不解释admission、versions、commit、Session轮转、DB row、派生字段或内部触发／投递名。强约束在schema、校验器和工具层保证。
 - Snapshot ID、Pointer、Coverage anchor审计标识不进模型正文；注入完整Notebook及有意义覆盖说明。History的message_uid、可操作entry_id和既有客户端API身份按各自契约保留；这不是人类UI隐藏要求。
 - 指代须有同段可见先行词；外部边界写“outside this Conversation”。层次分清：目的index／dispatch；状态Candidate→proposal→approval→action→actual write；触发用户／容量；投递普通Turn／Framework Message。`conversation_ref`／`notebook_refs`是ref，`candidate_refs`仅派生反向视图。
