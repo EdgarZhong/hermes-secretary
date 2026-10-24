@@ -4,11 +4,11 @@
 
 用户对两项最小Prompt调整明确答复“批准这两项最小调整”。本节优先于下文R18最初位于第2步的来源句位置，以及v2历史对照中的旧组织；不回写历史模型样本或验收结论。
 
-1. 将第2步现有来源指导原文整体移到create/update共用的`TOOL USE`段，文字不变、仅保留一份，使新建条目与更新条目都明确遵守：
+1. 将第2步已获批的R18来源句原文移到create/update共用的`TOOL USE`段，文字不变、仅保留一份，使新建条目与更新条目都明确遵守：
 
-   `Keep sources supporting retained content and add sources for new or changed claims; do not replace all sources with only the newest message. For the same piece of evidence, Message IDs or one element of source_time_ranges is usually sufficient; there is no need to repeat it in both forms. Different pieces of evidence may mix Message IDs and source_time_ranges. The Candidate source restrictions below still apply.`
+   `Keep sources supporting retained content and add sources for new or changed claims; do not replace all sources with only the newest message.`
 
-   中文含义：保留仍在使用的内容的来源，补新增／变化断言来源；同一证据通常选IDs或一个范围元素即可，不要求重复；不同证据可混用，Candidate直接／间接限制保持。段内原`below`随原文保持；它指Candidate来源限制，实际限制定义及执行不变。
+   中文：保留仍在使用的内容的对应来源，并补充新增或改变内容的来源；不要一律替换成最新消息。只移动这句R18来源义务；R16中同一证据择一、不同证据可混用及Candidate限制的原文保持原位置，避免移动其空间指代时另改未获批文字。
 2. 默认Task第2步在同事情匹配／保稳定ID指导处追加一句：
 
    `When new evidence only resolves or corrects the same situation, update it in place rather than archiving and recreating it.`

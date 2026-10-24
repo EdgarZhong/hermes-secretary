@@ -33,7 +33,7 @@
 | R15 | 实际Kimi Coding/隔离Alex Profile，真实长前缀超过历史N38，真实Main→Noting→压缩→Framework→后续Main代表链路 | 已授权付费及缩小隔离阈值；不动正式Conversation/Notebook/Snapshot、不改公开Persona | 先前用户“Kimi…Alex隔离副本”“阈值超过…n等于38”与本轮端到端授权 |
 | R18 | 默认Task第2步明确保留旧内容来源并补新增／改变断言来源；忠实提取追加全部可用证据未确证进度则保持未知、pending不代表未开始 | 仅两处最小Prompt修补，不增加代码语义门禁；用户同时提出done结构讨论，字段结构尚未批准，第二句待收口后适配 | 用户“同意这两处修改。但是第二处，你考虑一下…只保留一个可识别的done”中的明确Prompt批准；done具体方案另行询问未获答 |
 | R19 | 所有条目含Candidate删除细分status，统一顶层done布尔；Create默认false、Update省略保持；true确证终结不等成功，false未确证终结不等未开始；具体情况语义记录 | 不自动归档，不改原审批/结算/权限/来源；旧immutable只读兼容并保已知含义；R18第二句pending适配done=false | 用户对具体方案答复“采用统一 done 方案” |
-| R20 | 将已批来源指导原文从步骤2移到create/update通用TOOL USE，仅一份且文字不变；步骤2追加同情景仅澄清/修正时原位update、不归档重建的已批英文句 | 修create来源遗漏与同对象ID更换的自然反例；不改Schema/权限/validator/生命周期，不加NL门禁或自动别名 | 用户对替代上一来源位置问题的两项精确提案明确答复“批准这两项最小调整” |
+| R20 | 将已批R18来源义务句原文从步骤2移到create/update通用TOOL USE，仅一份且文字不变；步骤2追加同情景仅澄清/修正时原位update、不归档重建的已批英文句 | 修create来源遗漏与同对象ID更换的自然反例；不改Schema/权限/validator/生命周期，不加NL门禁或自动别名 | 用户对替代上一来源位置问题的两项精确提案明确答复“批准这两项最小调整” |
 | O01 | 不做Web恢复/Android/标题/Provider协议切换/上游Issue/个人Provider改造，不改生产Schema迁移策略 | 用户本轮明确范围 | 本轮范围表及排除事项 |
 
 未决产品项：无。用户已明确R17，来源数组增量及Candidate边界均收口；新规格尚待实现、真实验证、独立双门禁及发布，不据设计定稿宣称完成。工程衔接按已定机制收敛，不扩大权限、结束条件或硬门禁；重要自主取舍按AGENTS登记。
