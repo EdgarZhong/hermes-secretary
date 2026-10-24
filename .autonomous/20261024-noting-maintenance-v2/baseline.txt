@@ -8,3 +8,6 @@ a4faa767e6b7c1d01ec688a083c71576d58638a5
 
 2026-10-24 用户批准R18两处Prompt及R19统一done：d8e9d89105a7aa375af427886044ca80d954bdb7
 授权依据：用户“同意这两处修改”，随后对全部条目含Candidate的顶层done布尔、Create默认false、true确证终结而非成功、false未确证终结而非未开始、done不自动归档/授权、原结算与权限保持、旧immutable只读兼容的具体问题明确答复“采用统一 done 方案”。R18进度句pending随字段名适配done=false。
+
+2026-10-24 用户批准R20来源句位置与同情景稳定ID提示：2def3de89095d9cca44e2a53716311d2f014d8e5
+授权依据：用户对两项精确Prompt提案答复“批准这两项最小调整”。仅R18来源义务句原文从step2移通用TOOL USE，step2追加When new evidence only resolves or corrects the same situation, update it in place rather than archiving and recreating it.；不改Schema/description/权限/validator/生命周期。c243初稿相邻R16整段移动的表述由2def收窄为仅R18原句，避免不必要移动Candidate below指代；实施依据以2def精确文字为准。

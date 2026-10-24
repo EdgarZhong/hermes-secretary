@@ -190,3 +190,11 @@ Root完整接收V6六节终局及D七项报告：df27项22符合/3违规/2缺证
 用户明确“批准这两项最小调整”，07顶部与索引立即同步：现有来源指导原文整体移至create/update通用TOOL USE，文字不变且仅一份；step2追加同一情景仅澄清/修正则原位更新不归档重建。D确认无活正式dry/模型进程，允许新产品修改。root先冻结本次授权，Sol限定Task与定向正式wire分支测试；不改Schema/description/权限/生命周期/validator/Store。不把原反例因改Prompt自动关闭，最终真实样本及fresh双门禁仍必需。
 
 R20实施文字边界核清：仅移动用户此前逐字批准的R18来源义务一句；不把相邻R16的混传/去重软指导及Candidate below指代一并搬动，因此无需改变任何未获批指代或其原文。其创建/更新来源结构及Candidate约束仍照既有Schema/Task执行。
+
+### R20最终验证设计（root收敛，未收费）
+仅续旧df终态不能证明同情景未知→确认保持原ID，因为原4已被归档；不能将旧Task首周期代签R20。因此final fresh隔离Conversation复用完整原N46/192准备fixture，原两progress、两正常Idle、后MainShow/History和Notebook-only探针，按新Task完整取证。原df失败/64计数/旧claim不动；停止投入复杂cap19续测接线，已准备clone保阶段证据。D仅离线R20专用flag/authority/claim与完整计划，finalSHA后一次0请求dry再明确run权。预计19–21/cap24，但quota尚未重分配、ledger不改；另核R12新done/数组面最小自然结算样本与可复用证据范围，实际处理只沿可见合成历史proposal/approval/成功action轨迹，不实际触真实外部服务，不造生产状态。
+
+Root内部guard明确更新供D离线接线：total96/short59/long37；实际64=51+13、含probe2及旧请求authorized_limits不改，policy另追加decision。最终R20fresh组合cap24归long，若R12最小结算计划确认需要则另cap8归short，必须组合root亲审后独立run权，无自动重试/第二run/未用配额转移。quota不是收费权，当前仅离线准备、最终SHA后另给0请求dry。root一次云只读HEAD仍183f1a5，完整preflight未重做、0运行写/模型请求，证据release/r20-readonly-head时间文件。
+
+### R20整包root亲审接收
+Root亲读两文件实际diff和正式Main/default spawn/SDK/child/working/Finish路径，822份实际加载仓库源SHA全部一致；独立AST字符还原核除了R18原句移动与已批准same-situation句，默认Task其余逐字符及两个control常量全不变。新用例真实2 Turn、7请求、六工具实际成功，同情景原ID/新版本/旧+新来源、不同情景新建及过时归档、done省略保持和旧immutable不变；仅模型响应受控，不代自然语义。147定向相邻有效，包临时index冻10/health0/0，未为review重跑545套。准备root实际stage统一检查后锁版；原自然反例仍开放，D仅最终fresh组合与结算采证离线准备。
