@@ -153,3 +153,5 @@ N05最小扩白名单已批准：Files.tsx自持目录／preview stage／ObjectU
 N05整包主会话已亲读13文件实际变更及上下游：同源HTTP解析前观察、凭据/取消资格、撤销proof后清展示再stop、Files自持stage释放与roster重新授权均接正式入口；28源码依赖manifest全匹配。9文件134项及Profile定向1项、typecheck证据有效；扩大旧Profile检查另五失败在原474cd4f逐项同样复现，保留日志，不能冒称全绿，交新独立审查判断覆盖。Web 0.1.5候选`0eef2802725c7999636ca918e75d5513be608fcd`已提交/自动push核同。APK重建中，后端产品仍dd9a4c5。全新none/6.1-high verification_v5已按轮派遣，先冻结原文独立全范围判据再实现/旧报告，轻量复用有效证据；通过前不派Validation。
 
 第五候选APK已构建/核验：实际0.1.5/1005，32,087,857字节，SHA256 e4c5d68b371364ac2a3a03756f0c5094fedb21dbeabdd8aa3d902ecb15dac7b7；439内置资源匹配，v2有效同证书。android-build-v5.log、apk-v5-manifest/signature/badging证据已补交V5，产品未变；真实APK仍按C17未验，Web Validation尚未执行，生产未部署。
+
+主会话已完整亲读V5六节与18组全轮证据，接收18符合/0违规/0必要缺口结论，N05及旧发现关闭；独立新增8项定向通过。旧Profile五失败按正式输入/断言逐项独立裁判为过时内部函数断言、缺active_list/v1夹具、服务端cwd应重读及旧A挂起当前必要侧栏等测试边界，不作为产品偏离，保留日志并登记后续夹具维护。已另派全新none/6.1-high validation_v1，先原文独立场景完整落盘/交回主会话过目，批准后仅自建隐藏IAB实测。README旧APK概述按既有已实现R8同步，无新产品机制或权限。用户已收到0.1.5候选下载，明确未最终验收/后端未生产部署，最终交付仍待Validation。
