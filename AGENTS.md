@@ -88,6 +88,7 @@ Python只用`HERMES_PYTHON="$PWD/.venv/bin/python" scripts/run_tests.sh`，禁�
 - 大型检查只在集成收敛、交付前，派生独立Verification或Validation后统一安排一次，明确执行方／待测提交／相关范围；不测无关能力。使用官方PM `.venv`和lock、显式HERMES_PYTHON，不指生产用户。
 - 自主轮次依`autonomous-run`：全新`fork_turns=none`独立Verification先核冻结要求／指定机制／正式接线／证据，通过后Validation从实际入口验用户输入到输出；两者不充当大型套件复跑器，必要反证仍取真实证据。
 - 本地CD包括范围内review、阶段提交和必要构建；仅授权部署时才部署并验结果。push不代表构建、部署或验收。
+- 云端历史数据库备份最多保留最近两套完整三库；新备份核验且发布确认后，收尾须清理更旧的部署／调试库备份及其附属文件。先确保保留两套有效，不新建一份备份来备份待删备份。运行库及其WAL／SHM、当前云→Mac同步完成包`databases-current.zip`不属于历史备份，不能纳入清退。
 - **每次commit自动push**：主仓和独立UI推当前upstream，无upstream的功能分支推origin同名；UI本地main对应origin/secretary。新工作区先保留已有hook，再安装`.githooks/post-commit`到实际hooks目录并赋执行权，默认common hooks覆盖worktree。失败保留本地提交并处理，不强推、不自动fetch／merge／覆盖他人，不启CI。
 
 ## 分区架构与接线参考入口

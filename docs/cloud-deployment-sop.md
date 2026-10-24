@@ -2,6 +2,12 @@
 
 本文适用于独立 Secretary Web SPA＋原生 Hermes Web Dashboard、同源双 SPA、单后端和原生多 Profile。用户已于 2026-10-19 放行部署；本文记录操作口径，不以模板、上传或本机门禁代表云端成功。当前进度与待办只在根 [CLAUDE.md](../CLAUDE.md)，本轮依据及验收入口在 [Snapshot Index](../.autonomous/20261019-cloud-deployment/snapshot-index.md)。架构见 [06 §0.7–0.8](06-Hermes-Secretary-Web-UI-V1-Spec.md#07-confirmed-deployment-topology-and-dual-spa-routing-2026-10-17)、[08](08-profile-scheduler-files-clarification.md)。
 
+## 数据库备份保留
+
+按用户2026-10-24确认，云端历史数据库备份只保留最近两套完整host／Alex／study三库。新备份校验并发布确认后，将更旧的部署／调试数据库副本及对应WAL／SHM清退列为部署收尾；精确按备份清单删除，保留轻量收据，不额外复制或压缩待删库。清退前核保留两套的完整性／SHA及无活动引用，禁止触及运行库。配置备份和旧前端资源按各自任务处理，不随数据库清理扩大范围。
+
+`.hermes_profiles/.snapshots/databases-current.zip`是每五分钟覆盖的云→Mac同步完成包，不是累积的历史备份；保留既有发布／同步链，不因数据库历史只留两套而删除它。实际保留版本、执行记录及释放空间见运维记录。
+
 ## 0. 首尔正式入口的认证运维
 
 首尔 Hermes 正式入口为 `hermes.edgarzhong.fyi`，使用 Authelia 双因素认证。旧 `test.edgarzhong.fyi` 已废弃，直接返回404。`eb-data.edgarzhong.fyi` 由 Caddy 反代 `127.0.0.1:8787`，保留 Ebbinghaus 原生 Bearer 鉴权，不套浏览器双因素跳转；`nmem.edgarzhong.fyi` 反代 `127.0.0.1:14242`，保留NM原生API令牌认证。三个域名均使用仅DNS的首尔A记录。

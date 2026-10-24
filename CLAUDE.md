@@ -255,3 +255,7 @@ Noting child `noting_27dcca55ad1a4e35` 的完整持久轨迹仅一条启动 user
 **磁盘追加已完成：** 正常释放13旧工作树、保分支及23独有小原件，另清六精确旧缓存；当时available净增4.142GiB至22.89GiB。共享PM、dirty／未集成树、唯一证据／数据库／APK及活Rust／Gradle保留。当前实现树已提交推送；主仓和UI其它任务未动。本轮无活E2E／审查Agent，不自动重开调优。
 
 **入口与恢复：** 实际部署和回退只见`docs/operations-log.md`最新条目；本轮完整历史／授权／两门禁原报告／交付在`.autonomous/20261024-noting-maintenance-v2/`。云恢复目录`/home/ubuntu/.local/state/hermes-secretary/release-20261024/20261024-noting-v2-dd9189c/`，原始receipt与root核对在ignored release目录。禁止将Mac副本或旧备份覆盖运行库；后续问题按新用户请求处理。
+
+## 2026-10-24 · 云端历史数据库备份已收敛为两套
+
+用户明确只留两个备份，已保留最近dd9189c及183f1a5的完整三库共6文件、约366MiB，清退58旧库＋16附属文件，实测释放约3.84GiB，云盘使用率30%／余约39.76GiB。运行三库／两服务正常，配置及前端未动。当前同步ZIP是原位覆盖的传输载体，保留，不再误列历史备份；后续历史数据库最多两套的部署收尾规则已落AGENTS及SOP。精确清单和恢复点只见operations-log最新条目。
