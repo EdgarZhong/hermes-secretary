@@ -19,6 +19,7 @@ R18来源及未知进度两句已获批实施；R20最新获批仅把原来源�
 - 当前代码及各包由root亲审。done数据120项、工具/Task545不同项、local-off39及相邻41、Proposal64及相邻209、R20定向相邻147均按版本/路径保有效证据，不把重叠数量加总，不以受控SDK代自然模型结果。
 - f497锁版前相对初始5ea实际stage81文件，冻结10全过、health0/0；不放宽检查或重解析PM锁。R20新正式测试真实Main/default spawn/SDK/child Loop/SQLite/Finish两Turn，父子前缀、原位update/来源/done、归档/新主题及旧immutable保持；外部模型响应受控。
 - 唯一最终R20fresh隔离Alex run：`.hermes-dev/noting-maintenance-v2/e2e/run-r20-fresh-two-cycle-20261024-201158/`，当前f497，真实kimi-for-coding/High。16HTTP均200；首次Main prompt141743、首次Noting146839，超过原N38。7个Noting wire Root/tools/各自冻结Active逐项相等，无动态声明/Task重复Schema；同Conversation两次正常Finish→Snapshot→durable Idle full→Framework及后Main Show/History成立，两个child资源释放。执行自然exit1来自Notebook-only审计失败，不是Provider返回错误。
+- 最终E2E七项报告及两份终态DB已root亲审接收；110份稳定原件、58份harness/派生报告、786份产品SHA全匹配，两份DB各41表逐行逻辑hash与原库相同、原库bytehash不变。root退回并纠正报告把本次archive合并误列稳定ID违规的误述，旧全文/manifest及新旧SHA保更正收据，原始产物不改。复核收据`.hermes-dev/noting-maintenance-v2/root-r20-final-archive-review.json`。当前没有仍在运行的E2E或独立审查Agent。
 - 累计80请求=short51+long29（历史probe2含short）；96/59/37内部护栏不是用户指定预算，更不是自动续测权限。R20一次run已消费；R12未授权/未执行，没有新收费或生产模型请求。
 - 磁盘已正常移除13旧工作树、保全部分支，23独有小原件7,398,800bytes逐SHA先留档，DB/WAL/SHM整组未改写；清六精确旧CI/依赖缓存。Data卷available实测净增4.142GiB至22.89GiB。源码可达性另核两旧安装4466跟踪项blob均在保留refs可达；其余94为旧compiled web_dist。共享PM、所有dirty/未集成/归属未明树、数据库/证据/签名APK及活Rust/Gradle保留。运维记录见`docs/operations-log.md`，原件映射/执行收据在ignored disk-audit与worktree-retention。
 

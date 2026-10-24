@@ -260,6 +260,8 @@ Noting child `noting_27dcca55ad1a4e35` 的完整持久轨迹仅一条启动 user
 | 独立审查/发布 | Fresh Sol/high V7先只读规格落32判据，再查源码及最终实际样本；终局27符合、3违规（R18/R20/I07对应上述两个内容问题）、2缺证（R12/R15），root已亲读完整报告与原证据接收。Validation未启动，不能部署。历史V4–V6报告保原时点，不以新版本回写 |
 | 磁盘 | 已正常移除13旧工作树、保分支；23独有小原件7,398,800字节先逐SHA留档，另清六处已核旧CI/依赖缓存。两批前后Data卷available净增4.142GiB至22.89GiB。共享PM、dirty/未集成/归属未明树、原始证据/APK/DB与活动Rust/Gradle保留；磁盘追加任务完成 |
 
-**证据与职责：** `.autonomous/20261024-noting-maintenance-v2/`是本轮唯一索引/计划/双门禁/交付；最终真实目录`.hermes-dev/noting-maintenance-v2/e2e/run-r20-fresh-two-cycle-20261024-201158/`。D仅整包原始取证，V7独占verification，root维护看板/计划/交付并亲审；无新子任务或收费权。Root已亲读SDK3/9/11/12/16拼接正文和实际tool arguments、两次进展与独立DB发现，确认结构成功不等于内容忠实。
+**证据与职责：** `.autonomous/20261024-noting-maintenance-v2/`是本轮唯一索引/计划/双门禁/交付；最终真实目录`.hermes-dev/noting-maintenance-v2/e2e/run-r20-fresh-two-cycle-20261024-201158/`。D最终整包及两份终态DB已归档、root亲审接收，V7审查已终局，当前无活E2E/门禁任务；root维护看板/计划/交付。无新子任务或收费权。Root已亲读SDK3/9/11/12/16拼接正文和实际tool arguments、两次进展与独立DB发现，确认结构成功不等于内容忠实。
 
 **当前后续：** 按Stuck停止同一路径重复试错并交完整问题报告；结构性来源决策/用户事实与Assistant解释的区分尚未定稿，不擅改Schema/Prompt或增自然语言硬门禁。Notebook-only方法需修正原生恢复假设，不能人工删历史/改Snapshot冒充通过。有效机制/长前缀/双周期证据保留；剩余内容问题、结算与独立承载证据、fresh双门禁及部署均未完成。磁盘运维记录及可恢复映射见`docs/operations-log.md`与ignored disk-audit。
+
+**最终归档复核：** root核110份稳定原件、58份harness/派生报告、786份产品SHA全匹配；两份终态DB分别41表逐行逻辑hash等于原库、原库bytehash不变。E2E报告曾误把本次archive合并列稳定ID违规并归于root/V7，已退回纠正；旧报告/旧manifest及新旧SHA保更正收据，raw/DB/result/ledger未改。当前仅等待来源契约方向，既有待答不重复询问，不新增试跑/部署。证据`.hermes-dev/noting-maintenance-v2/root-r20-final-archive-review.json`及E2E最终报告。
