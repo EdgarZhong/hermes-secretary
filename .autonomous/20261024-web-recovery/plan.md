@@ -41,7 +41,10 @@
 | V03 | R5 实际Model/Thinking读取统一恢复 | 实际开关登记，capabilities/config reader暂存后commit，失败自动重试，关闭解除慢依赖 | 阻断 | frontend | 实际App菜单初读／online／失败／取消与独立V2已核 | 原问题V2已关；后继事件另N01 |
 | V04／REV-09 | C06/R7 冷开及晚挂载需落真实末尾 | 已修local取消motion及晚挂观察，实际开发复核末尾可见 | 阻断 | frontend＋presentation | 正式App及hook反例与独立V2已核；Web实际效果仍待Validation | V2已关闭机制缺口 |
 | REV-10 | C04/R3 普通Web活动Turn可恢复 | 已核当前原生来源／D1身份／租约，真实SSE活动及idle均成功 | 阻断 | backend | 39项恢复、35项原生及正式SSE证据，独立V2已核 | V2已关闭 |
-| N01 | R1/R5/R7 恢复中配置事件不能被旧菜单stage回盖 | V2反证后已修同步失效证明，既有旁路归唯一协调器；普通delta不重读 | 阻断 | frontend | 113项含Model/Thinking交错／迟到／失败与App最终DOM，新候选全新复审 | 已修补／亲审，待V3 |
+| N01 | R1/R5/R7 恢复中配置事件不能被旧菜单stage回盖 | 已修同步失效证明，既有旁路归唯一协调器；普通delta不重读 | 阻断 | frontend | 113项含Model/Thinking交错／迟到／失败与App最终DOM，独立V3已核 | V3已关闭 |
+| N02 | R6 侧栏缓存只写成功对账后的展示事实 | V3正式反证：Pending使全轮reading、visible旧标题时sessions reader已调用putSidebar新标题 | 阻断 | frontend | 成功事实待当前commit/layout及投影匹配才写；同owner资源重取失效、失败TTL、隐藏晚到 | 已派整改 |
+| N03 | R5/R6及§1.13 已知Context不兼容不得延续数字 | V3反证：model变化已使business invalidated，冻结render仍旧10%；原文要求已知model/rewind省略数字 | 阻断 | frontend | 窄覆盖失效而非提前新值；冷缓存实际binding确认、晚IDB、旧读防复活、合法旧估计保留 | 已派整改 |
+| N04 | R1/R5 组件内历史图片读取纳完整恢复 | V3正式App确认首次下载503后online恢复ready但同URL仍仅请求1次、无图 | 阻断 | presentation | 同一owner当前可见图片每轮真实重读／失败重试与就绪登记，隐藏不阻塞 | 提案评审认可，已派整改 |
 
 ## 取舍、快照与续接
 
@@ -119,3 +122,11 @@ REV-10整包主会话亲审接收：正式observer来源只取身份，D0/S/D1�
 V2已独立落44项全范围判据，后查实现发现N01。主会话亲读start/session.info/capabilitiesForBinding及其正式反证，提案配置事件失效capabilities/reasoning覆盖代次及旧stage资格，required重取后同commit，并核既有旁路串号／失败／关闭owner。Verification按原判据认可方向及关闭条件，未改规格；原frontend负责最小修补，V2继续固定旧候选完整范围审查。新候选须另全新独立复审，不能用移动工作树偷换当前审查对象。
 
 V2完整报告主会话已亲读接收：44项40符合／4违规，仅N01未关；旧四项及REV-10确认关闭。N01整改整包已亲审，已知配置字段变化在业务观察先于held时进入configuration-changed，同次失效菜单证明和旧串号；恢复中旁路收敛到原owner，成功local config写同入口。正式Model/Thinking修前两反例失败，修后相关5文件113项及typecheck通过，11项源码指纹匹配；未改presentation／PageRecovery／后端／原生。新Web候选`833d456e8c8a71f0388e902ac19dda7e5586eda8`已提交／自动push核同，重打APK中。后端产品代码仍dd9a4c5，新候选须全新V3全范围审查。
+
+第三候选为主仓`aed15db4d7175fdbf4b1ba6a4dece351255ce6cc`（只追加V2报告与进度，产品仍dd9a4c5）、Web833d456，两仓远端核同。新APK重建／签名v2有效／439资源逐字节匹配，32,081,553字节，SHA256 `d58e4979ace29015f70f75540752d2502feffb0a3dd5fb753fffae46c97cb509`；证据apk-v3-manifest.json／apk-v3-signature.log／android-build-v3.log。全新none／6.1-high verification_v3先独立原文判据后审全轮，代码冻结，不以复审旧缺陷代全范围；完成后再决定Validation。
+
+验收环境保活纠偏：backend交回后自有Dashboard／fake子进程已退出，主会话只读端口核实53575／53577空闲，53576／5178仍在。现由主会话持久exec终端重启同配置服务：Dashboard session68296，fake session72578；日志dashboard-validation-v3.log／local-stream-main.log。不触及53445／53446；这是环境恢复，不改变产品候选或已有按时点有效的原生探测证据。
+
+V3先独立41项判据后全范围审查发现N02/N03及HistoryImage遗漏。主会话提案N02复用ready/ack接缝保存精确成功事实，显示提交匹配后才写；隐藏晚到独立成功不挡ready，同owner重取也作废旧proof。N03回读冻结§1.13后提案只对已知不兼容的原生失效窄覆盖Context，保Timeline/anchor；fresh数值仍统一commit，冷缓存身份确认及迟到IDB/旧读不能复活，未知/普通缺字段不清合法估计。V3依据原判据均认可，未改规格。当前保持候选代码冻结，待完整报告后集中整改，不在审查途中移动工作树。
+
+V3完整整包已由主会话亲读接收：41项36符合／5违规，对应N02/N03/N04，N01及旧问题关闭。N04主会话提案同唯一协调器登记真实viewport图片依赖，同URL每轮授权读取／可呈现校验，stage后同full/local采用，失败原自动重试，隐藏不批量下载／不阻，owner／迟到／URL所有权清理；V3按原判据认可五组关闭条件。现允许两包并行整改：frontend独占adapter/controller/usage-view/cache及其Controller测试（禁App及App集成测试）；presentation独占HistoryImage及新sibling、App仅附件props约942–965、App集成测试仅图片反例；不改PageRecovery及原生。无新产品语义／权限，仍6.1，不派生／提交／UI／模型；整包后主会话亲审集成，再全新独立全范围复审。

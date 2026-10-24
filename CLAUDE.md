@@ -6,7 +6,7 @@
 
 Android当前已发布版仍为回前台立即刷新、后续10／15／20／30秒退避；用户2026-10-24要求改为先恢复、5秒内网络读取及Socket／Turn恢复完成就不重载，具体范围见下方Timeline恢复条目；新版已在本轮工作树实施，原生定向验证通过，整体集成未完成；用户C17明确豁免本轮实际APK验收，不启动模拟器，交付注明未验。此前45秒、分钟级长退避及旧5秒单次刷新方案不作为当前实现；本次5秒恢复窗口是新的用户要求。UI-CAM-01已获用户确认，拍照压缩保留当前实现。2026-10-21本轮用户明确确认：升级APK迁移至新的响铃＋横幅通知通道，并尽量保留用户主动静音设置；已实施并完成原生定向测试，真机响铃／横幅未验。
 
-## 2026-10-24 · Web UI 过渡展示缓存与完整恢复（菜单竞态已修，待第三候选复审）
+## 2026-10-24 · Web UI 过渡展示缓存与完整恢复（第三轮审查后补齐缓存与图片恢复）
 
 用户已授权按06 §1.4.1 R1–R10自主实现，全部`gpt-6.1-sol`／high、允许子Agent、主会话亲审集成；Astra只完成此前评审与定稿，此后不再调用。独立Verification／Validation轻量执行：先独立判据／场景，复用有效同版本证据，必要反证，不重跑无关大套或缩减关键覆盖。
 
@@ -18,9 +18,9 @@ Android当前已发布版仍为回前台立即刷新、后续10／15／20／30�
 
 当前代码候选：后端`dd9a4c57dd7c182ad8497f9538e115bbab3131b0`、Web`833d456e8c8a71f0388e902ac19dda7e5586eda8`，均自动push／远端SHA核同。Web最终受影响12文件223项及build通过；后端恢复39项、原生回归35项通过，准确暂存候选冻结十检查全部通过（health15文件0／0）。原生40项、呈现／桥及早期证据按各自源码manifest复用，不累加重叠计数。主会话隐藏IAB开发复核真实1200行末尾可见；本地fake SSE经正式native Turn断线后仍running时恢复成功，同runtime、正文精确且唯一assistant落库，结束后idle对账通过；这些不替代独立Web验收。
 
-此前第二候选APK已重建，439资源与当前dist逐字节匹配、签名有效，SHA256 `9e2339c0e840381ee3da862894b404b9464e61be1fa336a99c63bb370a5304f5`；证据ignored apk-final-manifest.json／apk-final-signature.log／android-build-final.log。用户C17明确豁免本轮实际APK验收，仅Web实测与原生单测并写明平台未验；不启动模拟器，不以签名或Robolectric冒称实际WebView验收。
+当前第三候选APK已重建，439资源与当前dist逐字节匹配、签名有效，SHA256 `d58e4979ace29015f70f75540752d2502feffb0a3dd5fb753fffae46c97cb509`；证据ignored apk-v3-manifest.json／apk-v3-signature.log／android-build-v3.log。用户C17明确豁免本轮实际APK验收，仅Web实测与原生单测并写明平台未验；不启动模拟器，不以签名或Robolectric冒称实际WebView验收。
 
-独立V2全范围44项40符合／4违规，仅N01阻断；主会话已完整亲读接收，旧四项和REV-10确认关闭。N01现已整改亲审：配置变化在held前同步失效两菜单证明及旧串号，恢复中旁路归唯一owner，本地成功config写同入口；5文件113项与typecheck通过，11项指纹匹配。Web833d456已自动push核同，正重打APK；后端产品代码仍dd9a4c5。新候选须全新独立V3通过后才派Validation，两门禁未关闭，未部署。
+独立V3全范围41项36符合／5违规，对应N02侧栏缓存早于可见commit、N03已知Context失配被retained逆盖、N04可见图片首次503后同URL重连不重试。N01及旧四项／REV-10均已独立关闭。主会话完整亲读报告，提出成功事实延后写、已知Context窄失效、图片接唯一协调器与真实视口需求方案；V3按原判据认可，未改规格。两包6.1并行整改：frontend独占缓存／Context及Controller测试；presentation独占HistoryImage、App附件props与图片App测试，文件不交叉。整改后主会话亲审，再全新独立全范围复审；当前不可进入Validation，未部署。主仓aed15db的产品仍dd9a4c5，Web833d456是V3被审候选，后续修补未提交。
 
 隔离Dashboard53575／proxy53576／Vite5178／fake53577仅本轮自有；53445／53446他人长驻保持不动。UI只允许自建隐藏IAB；不真实模型、不生产数据／部署。07并行Noting等dirty保留，本轮CLAUDE只暂存本段及顶部Android现状。最终须delivery-evidence-review与final-delivery.md据证判定。
 
