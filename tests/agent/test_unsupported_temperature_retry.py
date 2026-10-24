@@ -56,6 +56,12 @@ def test_openai_default_only_families_omit_temperature_up_front(model):
         assert _build_call_kwargs("openai-api", accepts, [], temperature=0.1)["temperature"] == 0.1
 
 
+@pytest.mark.parametrize("model", ["k30-pro", "k3po", "k3.custom"])
+def test_similarly_named_non_kimi_models_preserve_temperature(model):
+    kwargs = _build_call_kwargs("custom", model, [], temperature=0.3)
+    assert kwargs["temperature"] == 0.3
+
+
 def test_route_that_rejected_temperature_omits_it_next_call():
     """#51083: after one ``unsupported_value`` on temperature the route+model is remembered and the
     next call sends a single request without it; a different model on the route is unaffected."""

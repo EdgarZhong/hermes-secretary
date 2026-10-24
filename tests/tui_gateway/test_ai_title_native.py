@@ -72,7 +72,10 @@ def rpc(name, **params):
                                   "params": {"session_id": "runtime", **params}})
 
 
-@pytest.mark.parametrize("model", ["k3", "k3-256k", "moonshot/k3-256k"])
+@pytest.mark.parametrize("model", [
+    "k3", "k3-256k", "moonshot/k3-256k", "k3.1-pro",
+    "k3.1-pro-highspeed", "kimi-coding/k3.1-pro", "Moonshot/K3.1-Pro",
+])
 def test_ai_title_uses_real_oneshot_then_native_persistence_and_push(naming_runtime, model):
     runtime = naming_runtime
     runtime.agent.model = model

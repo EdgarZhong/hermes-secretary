@@ -587,7 +587,7 @@ def _bare_model(model: Optional[str]) -> str:
 def _is_kimi_model(model: Optional[str]) -> bool:
     """True for any Kimi / Moonshot model that manages temperature server-side."""
     bare = _bare_model(model)
-    return bare.startswith(("kimi-", "k3-")) or bare in {"kimi", "k3"}
+    return bare == "kimi" or bare.startswith("kimi-") or bool(re.match(r"k3(?:\.\d+)*(?:-|$)", bare))
 
 
 def _is_arcee_trinity_thinking(model: Optional[str]) -> bool:
