@@ -310,3 +310,9 @@ V4当前c5完整结论已接收：27符合／F04一违规／N46一缺证，不�
 **R19已确认：** 用户答复“采用统一done方案”，全部Notebook条目含Candidate统一顶层done布尔（Create默认false，Update省略保持），删除细分status；终结不等成功，false不等未开始，具体情况语义记录；done不自动归档、不授权限，原结算/审批/引用保护保持，旧immutable只读兼容保语义。R18两句Prompt随之落实，第二句pending改done=false，无剩余此项审批。准备冻结本次依据并Sol分工实施；最终同会话多周期实证/全新双门禁/部署未完成，费用59无新run。
 
 **R18/R19实现已集成待锁版：** root亲审A六产品及新测试、B两句Prompt与12测试迁移和正式SDK/恢复/权限上下游，A7/7与B20/20 SHA精确。A120pass、B545不同用例通过（不含A），旧失败保留；done无自动归档/授权，旧状态语义只读兼容不改immutable，来源/时间/版本门槛保持。准备统一stage冻结10检查后提交锁版。D只零网络接双Idle＋完整N46＋Notebook-only探针，root接受方案；内部guard明确改83/55/32、实际59不变、组合cap24，尚无run权。最终真实语义/多周期与fresh双门禁/部署仍未完成。
+
+**当前最终源码5d73f4b：** done/R18整包root亲审、统一实际stage冻10过（77文件、health0/0），已自动push/upstream一致。当前锁产品，D只做组合最终0请求dry，费用仍59、没有--run权。新Sol/high/forknone V5按d8原文先独立全判据后查完整R01–R19/O01和最终真实证据；不以旧c5审查代签。云只读HEAD仍183f1a5，未部署；最终实际多周期/独立两门禁和发布尚未完成。
+
+**V5本轮接收及F5-01修补：** 原5d37项31符合/2违规（local-off漏检）/4真实证据不足，门禁不通过。root按独立评审最小补selector会话局部开关读取，不改Notebook读权限/threshold/here；39定向含原独立反例、41相邻回归通过，准备新锁版与D定向预检。原数据/Schema/两句Prompt不变。用户追加磁盘清理，Sol只读盘点已交：14旧树候选1.64GiB、Rust缓存5.30GiB；保护活任务、共享PM/DB/证据/签名APK，尚未实际清理。费用59未增、未部署，后续fresh双门禁保持。
+
+最终锁版补证：local-tail-fix-locked-tests.log两文件39项通过（21.8秒，含V5原反例），local-tail-fix-regression.log四文件41项相邻回归有效；local-tail-fix-locked-checks.log实际stage相对初始5ea扫描77文件、冻结10全部ok、health0/0。首轮HX011测试分支增长通过等价table setup消除，未改检查规则/阈值，原红日志保留。root亲审selector只追加既有local读取，未改其他产品源；准备新功能锁版。

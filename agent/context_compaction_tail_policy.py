@@ -25,8 +25,11 @@ def select_no_default_tail(agent, *, trigger=None, verbatim_tail=None):
         return False
     if getattr(agent, "_secretary_noting_child", False):
         return False
+    from secretary.noting_runtime import noting_local_enabled
     from secretary.noting_surface import notebook_read_enabled
-    return bool(notebook_read_enabled(agent))
+    if not notebook_read_enabled(agent):
+        return False
+    return noting_local_enabled(agent._session_db, getattr(agent, "_secretary_conversation_ref", None))
 
 
 def no_default_tail():

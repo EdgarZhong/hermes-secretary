@@ -2,7 +2,7 @@
 
 ## 目标状态与结束判定
 
-**目标未完成，保持active；R18两处Prompt及R19统一done方案均已获批，准备按新依据实施和验证。** 当前产品代码对应c5f57b2552f7618e890fabeefb2fbfdc68eb9e7c，HEAD f287e94仅后续四文档变化，依据为初始a4、授权来源数组5c55016及Candidate边界5d61a5d，完整索引见snapshot-index.md／baseline.txt。当前Verification不通过，Validation未进入，N46已取得同版8请求真实结果，独立补核尚未完成，未部署；不能以自动化或短链成功冒称完成。用户批准或否决候选来源提示后，按其决定续接必要整改及真实验证；不将等待视为批准，也不将目标标为用户暂停。
+**目标未完成，保持active；R18两处Prompt与R19统一done已实现、亲审并锁版，最终真实多周期及两个门禁未完成。** 当前产品commit为5d73f4b9fd0a80c0eefb56676a2018de49cdac9f，已自动push；依据为初始a4、来源数组5c、Candidate边界5d61及R18/R19冻结d8e9d89，完整索引见snapshot-index.md／baseline.txt。A120项、B545不同项通过，root核manifest并实际stage相对初始源码扫描77文件、冻结10检查全过。新独立V5按d8原文先独立判据再审全轮，尚未通过；独立Validation未启动。D仅获最终同Conversation双Idle＋完整N46＋Notebook-only探针的零请求dry权，当前累计59，内部guard83/55/32、组合cap24，尚无--run权。云端只读HEAD仍183f1a5，未部署。以下阶段记录保留原时点，当前状态以本段及最新追加为准，不以旧c5审查或旧长样本代签新done版本。
 
 ## 本轮收敛与授权
 
@@ -59,3 +59,7 @@ V4已独立证明同版786产品指纹、完整184条历史及4请求冻结前�
 ## R18/R19实现集成（待最终实证）
 
 root已接收并亲审A/B，数据120项与B545不同项通过，全部manifest精确；尚不据此关闭自然内容反例或多周期缺证。D组合方案已接受，单轮最多24请求，内部guard83/55/32、实际59不变，最终锁版/零请求dry后另给唯一run权；未部署。旧c5独立报告保原判定，不代签新done版本，后续需fresh全轮Verification及独立Validation。
+
+## V5遗漏纠正及工程收敛
+
+原轮次漏核Conversation-local off的压缩尾部策略，C/global-off测试及root先前覆盖判断不足。V5以真实compressor/SQLite原反例发现local关闭仍full；root接受，提议复用既有owner/local读取、保持独立Notebook读门禁，V5按冻结off原生评审认可。root微小接线修补＋39定向含原反例、41相邻回归通过，保原失败/误夹具日志；真实门禁未据此通过。产品将重新锁版并做新SHA preflight，原5d dry仍仅原时点证据，最终还需fresh全轮Verification及Validation。用户新增磁盘盘点已完成，清理尚待亲核后执行，当前未删任何工作树或缓存。

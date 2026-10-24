@@ -66,16 +66,17 @@ def test_non_threshold_full_summarizes_completed_tail_and_never_reinserts(runtim
     assert no_default_tail() is False
 
 
-@pytest.mark.parametrize("mode", ["threshold", "off", "noting-child", "non-main"])
+@pytest.mark.parametrize("mode", ["threshold", "off", "local-off", "noting-child", "non-main"])
 def test_native_policy_is_unchanged_for_excluded_paths(runtime, tmp_path, mode):
     parent, db, prompts = runtime
     trigger = NATIVE_THRESHOLD_TRIGGER if mode == "threshold" else None
-    if mode == "off":
-        (tmp_path / "config.yaml").write_text("noting:\n  enabled: false\n")
-    elif mode == "noting-child":
-        parent._secretary_noting_child = True
-    elif mode == "non-main":
-        parent.side_agent = True
+    setup = {
+        "off": lambda: (tmp_path / "config.yaml").write_text("noting:\n  enabled: false\n"),
+        "local-off": lambda: db.notebook_set_local_enabled(parent._secretary_conversation_ref, False),
+        "noting-child": lambda: setattr(parent, "_secretary_noting_child", True),
+        "non-main": lambda: setattr(parent, "side_agent", True),
+    }
+    setup.get(mode, lambda: None)()
     parent.context_compressor.protect_first_n = 0
     result = compress(parent, trigger=trigger)
     assert len(result) > 1
@@ -85,8 +86,67 @@ def test_native_policy_is_unchanged_for_excluded_paths(runtime, tmp_path, mode):
     assert no_default_tail() is False
 
 
-def test_explicit_here_preserves_user_selected_exchange(runtime):
+@pytest.mark.parametrize("enabled", [False, True])
+def test_latest_local_participation_selects_each_real_attempt(runtime, enabled):
     parent, db, prompts = runtime
+    ref = parent._secretary_conversation_ref
+    db.notebook_set_local_enabled(ref, not enabled)
+    db.notebook_set_local_enabled(ref, enabled)
+    parent.context_compressor.protect_first_n = 0
+    result = compress(parent)
+    assert visible(result) == visible(db.get_messages_as_conversation(parent.session_id))
+    assert (len(result) == 1) is enabled
+    assert ("old answer 3" in str(prompts)) is enabled
+    assert no_default_tail() is False
+
+
+def test_same_main_rechecks_local_off_then_on_for_each_attempt(runtime):
+    parent, db, prompts = runtime
+    ref = parent._secretary_conversation_ref
+    parent.context_compressor.protect_first_n = 0
+    db.notebook_set_local_enabled(ref, False)
+    native = compress(parent)
+    assert len(native) > 1 and "old answer 3" in str(native)
+    assert "old answer 3" not in str(prompts)
+    assert visible(native) == visible(db.get_messages_as_conversation(parent.session_id))
+    db.notebook_set_local_enabled(ref, True)
+    full = compress(parent)
+    assert len(full) == 1 and "old answer 3" in str(prompts)
+    assert visible(full) == visible(db.get_messages_as_conversation(parent.session_id))
+    assert no_default_tail() is False
+
+
+def test_unreadable_local_participation_keeps_native_without_local_writes(runtime, monkeypatch):
+    parent, db, prompts = runtime
+    local_before = [tuple(row) for row in db._read_all("SELECT * FROM secretary_notebook_local_state")]
+
+    def unavailable(_conn, _ref):
+        raise RuntimeError("local participation unavailable")
+
+    monkeypatch.setattr(db, "notebook_local_enabled_conn", unavailable)
+    parent.context_compressor.protect_first_n = 0
+    result = compress(parent)
+    assert len(result) > 1 and "old answer 3" in str(result)
+    assert "old answer 3" not in str(prompts)
+    assert visible(result) == visible(db.get_messages_as_conversation(parent.session_id))
+    assert [tuple(row) for row in db._read_all("SELECT * FROM secretary_notebook_local_state")] == local_before
+    assert no_default_tail() is False
+
+
+def test_missing_selector_owner_uses_native_without_creating_binding(runtime):
+    from agent.context_compaction_tail_policy import select_no_default_tail
+    parent, db, _prompts = runtime
+    before = [tuple(row) for row in db._read_all("SELECT * FROM secretary_session_bindings")]
+    parent._secretary_conversation_ref = None
+    assert select_no_default_tail(parent) is False
+    assert parent._secretary_conversation_ref is None
+    assert [tuple(row) for row in db._read_all("SELECT * FROM secretary_session_bindings")] == before
+
+
+@pytest.mark.parametrize("local_enabled", [False, True])
+def test_explicit_here_preserves_user_selected_exchange(runtime, local_enabled):
+    parent, db, prompts = runtime
+    db.notebook_set_local_enabled(parent._secretary_conversation_ref, local_enabled)
     before = deepcopy(parent._session_messages)
     parent.context_compressor.protect_first_n = 0
     result = compress_now(parent, before, parse_compress_args("here 1"), system_message="")

@@ -147,3 +147,21 @@
 - D§13离线组合方案已root亲读接受：完整184diag＋8业务、4个合法前态；同一Conversation两次真实Idle正常整理/全文压缩，逐来源/进度检查后实际Show/History，另从真实最终DB只读backup的新原生Main以公开history=[]作Notebook-only承载探针，P1送前拒summary/旧正文污染，P2另History，不能用probe替正式链。正式分支正在接通，仅AST/helper零网络，不中间正式dry。
 - root明确内部费用guard由70/55/15调整为total83/short55/long32，实际59（short51/long8、含probe2）不改；新组合单轮最多24，全部请求计long桶，三重send前护栏、SDK0retry、禁止第二run/自动重分配。此为root内部护栏并非用户指定预算；配额更新不等run权。待最终commit/manifest/零请求dry由root核通过后仅一次--run授权，当前无新收费。
 - V4旧c5补证报告root已亲读接收：N46长子缺口关闭，F04/F05/E4-02仍未关闭，27/1/1为旧版本终局；新R18/R19不能用其代签，新完整模型结果取得后fresh全轮Verification再Validation。
+
+### 最终done版锁版与第五审
+
+Root统一stage相对初始5ea检查77文件、冻结10全部ok/health0/0，日志.hermes-dev/noting-maintenance-v2/done-integrated-checks.log；功能commit5d73f4b9fd0a80c0eefb56676a2018de49cdac9f已自动push且upstream相同，锁定产品不再改源/commit以免干扰取证。D现获一次最终正式零请求dry/preflight权限，组合AST/fixture接线+83/55/32与实际59、本轮24等逐send护栏/root工具前缀与probe安全边界须先交root亲审；仍无--run权。
+
+全新Sol/high/forknone第五审noting_v2_verification_v5已启动，指定d8e9d89原文、产品5d73f4b完整R01–R19/O01；先只读原文独立全判据追加verification，再源码/机制/现有证据，最终实际模型产物取得后补核；不预签通过、不替未来版本、不重复贵套。Verification尚未通过，Validation未启动。root本次只读SSH复核云HEAD仍183f1a5，0运行写/模型请求；仅HEAD不是完整preflight（ignored release/readonly-head-recheck.json）。
+
+### V5接收与局部开关接线修补
+
+V5全轮37独立判据已完成：31符合/2违规（同一F5-01）/4缺证（E5-01当前最终自然样本），旧报告原字节保留；root亲读具体反例与报告，当前不能进入Validation。F5-01：selector误用全局Notebook读门禁，未读Conversation-local，global on/local off手动压缩仍full。原C/root覆盖漏掉局部关闭组合，原global-off证据不足以证明这一分支；现补入正式反例与开关切换，未改原判据。
+
+root提案沿既有noting_local_enabled读取当前owner DB，每attempt在global+Main通过后判断local，缺ref/读失败恢复native；不改读取权限、admission/D01、真实threshold/here N/child早返回。V5按原off原生契约评审认可。root仅改selector及原tail测试；39定向（含独立原反例）通过，41相邻Idle/取消/提交回归通过。首测missing-ref假定被原生恢复合法归属纠正，保首红日志；缺归属只读selector无binding写专测、不可读local完整native压缩分别证明，不为错误夹具改变合法恢复。测试最终仅整理空行，语义AST未变。日志local-tail-fix-tests.log、local-tail-fix-final-tests.log、local-tail-fix-regression.log。
+
+D确认5d dry句柄63263自然exit0、请求0无活窗口后root才改源；需新commit及定向新SHA preflight，原5d dry保其版本不冒称现版。原A/B数据/Prompt/Schema均未动，已核有效证据按影响复用。最终锁版后fresh全轮Verifier，不由V5签其研讨后新版PASS。
+
+用户追加完成本轮后释放无用工作树及盘点其它空间：disk_audit只读盘点报告/JSON已交，17GiB可用；14旧clean/集成候选1.64GiB，Rust重建缓存5.30GiB但UI/Java仍有活动，先保护；共享PM Python实链指主树.hermes-dev/tools、当前所有模型/失败证据/DB/APK/dirty原件不删。root后续亲核归属/ignored后正常remove、不force、不删分支，按批记录df实际释放；不以盘点当清理完成。
+
+最终锁版补证：local-tail-fix-locked-tests.log两文件39项通过（21.8秒，含V5原反例），local-tail-fix-regression.log四文件41项相邻回归有效；local-tail-fix-locked-checks.log实际stage相对初始5ea扫描77文件、冻结10全部ok、health0/0。首轮HX011测试分支增长通过等价table setup消除，未改检查规则/阈值，原红日志保留。root亲审selector只追加既有local读取，未改其他产品源；准备新功能锁版。

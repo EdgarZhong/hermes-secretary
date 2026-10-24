@@ -336,3 +336,131 @@ E4-02研讨：本审查依据原V4-28/冻结§9指出同一Conversation多周期
 
 
 落盘前授权状态补记：root随后通知用户已经明确批准F04/F05两处Prompt修补，并已按R18追加文档依据；同时用户提出status仅保留done的结构讨论，具体done布尔方案仍待答。以上是后续授权/规格演进的当前状态，取代本块研讨时“二句待批准”的状态，不反写原历史报告。root明确目前仅文档变化、产品仍c5，故本审查继续只按原5d判据审已执行f287/c5结果：F04/F05未实施修补、未关闭，E4-02未补齐；不将未来status结构讨论或R18retarget到本次判定，不评价尚未实施版本。未来字段名/Schema/Task若变化，原pending保留条件需由fresh全轮审查者依用户最终确认的新原文重新核范围与影响，不能从本审查对两句方向的认可推导新结构已验证。
+
+
+# V5 · 全新独立完整轮次 Verification
+
+## 1. 审查对象与结论概览
+审查者：独立V5；日期2026-10-24；唯一工作树 `/Users/edgar/code/hermes-secretary-noting-v2`。待审产品 `5d73f4b9fd0a80c0eefb56676a2018de49cdac9f`，冻结权威 `d8e9d89105a7aa375af427886044ca80d954bdb7`。Snapshot Index/baseline仅作定位。范围R01–R19/O01及07未替换继承不变量。当前完整范围实施及现有机制审查已完成，真实最终多周期产物缺失。37行：31符合、2违规（同一F5-01）、4证据不足，0不适用；当前门禁不通过。
+
+## 2. 独立要求清单与覆盖
+独立建立于2026-10-24，实施调查前。此阶段仅读两Skill、索引/基线定位及指定版本07、白板（含交互卡文本）、02→04→01/06/08适用原文；未读源码、测试、旧报告、动态看板。最新done/来源数组/六工具/R18覆盖旧字段与提示；旧身份、原子性、权限与运行资源不变量仍适用。下表包含直接要求及规定机制必然不变量；未指定函数不豁免机制。原判据另存本文件，不因实施改写。
+
+| 条款编号 | 来源位置及要求 | 类型/适用范围 | 规格解释及必要不变量 | 符合判据 | 核查位置 |
+|---|---|---|---|---|---|
+| V5-01 | 07 v2§0/3；R01 | 声明/Main、Noting | 六工具固定API顶层；父可含其它工具 | 实际root/tools/Active一致；Task/control无Schema、无动态声明 | §3同编号 |
+| V5-02 | 07 v2§0/3；R02 | 权限/全部dispatch | Main拒四写，History/Show可用；Noting精确六工具 | 同步/并发/invoke/间接全可信身份校验、拒绝零副作用；普通子Agent无维护权 | §3同编号 |
+| V5-03 | 07 v2§3；R03 | 工具接口 | create/update/archive分拆，同名同层 | 无action/changes、旧maintain退出执行面；错误具体且不猜改 | §3同编号 |
+| V5-04 | 07 v2§2/3；R04 | 字段/八类型 | 七类型新必填表；Candidate目标标签不变 | schema/validator/说明一致；无external_refs；可选可清、必填不可删空 | §3同编号 |
+| V5-05 | 07 v2§3/旧§4.4；R03 | 版本/原子性 | 同事稳定ID、类型固定、修改新版本/no-op不造 | fields键合并、数组替换；锁串写；失败工作态零改，旧Snapshot固定版本 | §3同编号 |
+| V5-06 | 07顶部done；R19 | 输入/新写 | 八类型顶层done，create缺省false/update缺省保持 | null/非bool/status输入拒且零副作用；所有新写和模型投影同契约 | §3同编号 |
+| V5-07 | 07顶部done；R19 | 兼容/语义 | true终结非成功、false未确证非未开始 | 旧immutable只读规范化保进度/原因；不自动归档、授权或结算；精确版本同规范化 | §3同编号 |
+| V5-08 | 07来源追加/v2§3；R16 | 七类型来源 | ranges全替换数组和IDs混传、至少有效来源 | 父合法路径、时区范围验证；不加重叠/覆盖重复门禁；旧单范围只读兼容 | §3同编号 |
+| V5-09 | 07顶部Candidate边界；R17 | Candidate来源 | 直接IDs/ranges/混合与间接refs+标签互斥 | 直接refs/types空；间接直接空；模式切换清理，原目标/映射/保护不变 | §3同编号 |
+| V5-10 | 07 v2§5；R06 | 只读时间 | 每条真实用户各时刻；无用户最近Assistant；再无全部来源；范围独立加入 | unknown空数组、不造now、不压宽区间；Profile时区；禁止编辑 | §3同编号 |
+| V5-11 | 07 v2§5/§4.5；R06 | 投影/继承 | refs沿来源链聚合数组；所有模型面共用 | Show/task/续Turn/回执/Framework一致；progress/discussion/gap原时钟不被替代 | §3同编号 |
+| V5-12 | 07 v2§6.3；R07 | 归档/引用 | 普通relations原子解除，gap/Candidate来源保护 | 无悬空、半处理、级联状态或新图门禁；回执列影响条目 | §3同编号 |
+| V5-13 | 07 v2§4；R08 | Schedule建议 | 每entry含Candidate零或一个顶层两字符串对象 | 替换/null清除，不做时间语法门禁；无自动Scheduler/队列 | §3同编号 |
+| V5-14 | 07 v2§4/6；R08/R09 | 建议Prompt/注入 | 每次查登记缺口；content自包含、schedule保意图 | 有建议才Framework最底部定稿句；无建议省略；非触发、不微信外发 | §3同编号 |
+| V5-15 | 07 v2§6/6.1/6.2；R05 | 七步/内容指导 | 用途含有用过去；完整description指导；两七类型表独立 | 软1–3句/150中文或80词，路径不计/精选；无硬截断/未知摘要比较 | §3同编号 |
+| V5-16 | 07 R18/顶部done；R18 | 来源/进度Prompt | 保旧断言来源、补新断言；全可用证据未知保未知 | 两句获批英文逐字进入默认Task；不增语义硬门禁；多周期已知进度保持 | §3同编号 |
+| V5-17 | 白板C7/C8/I/U；07§8.11保留部分 | 归因/真实内容 | 研讨只用户自己或明确认可，模糊不扩、AI未采纳材料不升级 | 实际偏好/身份/情绪/关系/开放讨论/纠正/有用历史覆盖，不造事实/时间/授权 | §3同编号 |
+| V5-18 | 白板L7/L2；07 v2§5/6 | 生命周期 | 7天/gap72h处理点，非自动过期 | 进展/讨论/首次证据/gap识别分别计龄，重写不刷新；同次精简与去留 | §3同编号 |
+| V5-19 | 07 v2§6.4/步骤4；白板E/F；R12/R13 | 外部结算 | 提案批准实际写；只成功覆盖退出，保真正未结算范围 | 仅批准短语修补；不因一般有用留副本/回流；完整/部分/未知真实证据 | §3同编号 |
+| V5-20 | 07 v2§7；R10 | 压缩分支 | eligible+Noting真实原生阈值保默认tail，其余不保，here N例外 | off/非Main原生；不用force=False/宽auto替触发原因；Force早整理不改后因 | §3同编号 |
+| V5-21 | 07 v2§7；R10 | 摘要/协议 | 不保tail从摘要输入选区开始；recency/minimum/回插同步 | 覆盖旧尾全部总结；新消息/steer/工具链保真；request/live/durable一致，原文可回读 | §3同编号 |
+| V5-22 | 07 v2§7/§8.1；R11 | Idle顺序 | 正常finish且提交→durable父压缩→Framework | 在飞等成功/已有成功可压；failed/forced/overflow/External不Idle full；其它路径不新加门槛 | §3同编号 |
+| V5-23 | 07 v2§7；02§5.10继承 | 失败/取消 | 压缩失败/取消/no-op/写入失败保旧上下文，不借失败清尾 | 已合法Notebook不回滚；API失败可无新Snapshot；非正常通知如实 | §3同编号 |
+| V5-24 | 07§3.1/4.5/8.11–12 | 完成/预算 | 同child最多5Turn；文本非结束；finish独立、返回Turn后提交 | 混批执行前整批拒；结束锁写态/重复保持首次；forced/overflow合法态兜底含无改 | §3同编号 |
+| V5-25 | 07§3.1/8.1；02§5.2–5.5；04 C13 | 前缀/资源 | 父实际Active冻结含多模态；每请求不变；child只持久后缀 | retry/loop/continuation/父活动/配置改变不刷新；独立DB/强引用/close释放，无崩溃自动恢复 | §3同编号 |
+| V5-26 | 07来源追加/§12.2–3；R01/R16/R19 | 构造/恢复 | 同名旧Schema在正常构造/恢复更新，冻结后不热改；旧任务用原资料恢复 | old immutable不改，恢复done/ranges规范；来源说明缓存变化；无新恢复门槛 | §3同编号 |
+| V5-27 | 07§3.1/8.13/11.1；02§1/2.6–7 | 身份/并发 | Conversation跨压缩稳定、fork/reset新身份；Snapshot全量原子/合法Anchor/来源版本 | pointer按覆盖非完成时间；旧Anchor晚到不回退；fork不串写，并发不要求草稿合并 | §3同编号 |
+| V5-28 | 07§8.13；白板N3 | Framework | 仅自己新pointer通知；排队追加前同一致性边界复核，旧整条丢 | 完整Notebook+真实结束/完成时间+coverage，busy/fence/live/durable同写，无内部审计ID | §3同编号 |
+| V5-29 | 07§4.5/7；R06/R19 | 只读视图 | Main有效Snapshot、Noting自己的working，空成功，不可选scope | 无snapshot/base/anchor/普通结束审计；coverage真实未知诚实；外部API保持 | §3同编号 |
+| V5-30 | 07§8.10/8.13；白板L1/L6 | 容量/提案 | slash与严格超12000字符或60条共用指令，仅准备草稿 | 不截断/拒交/新整理；标签/来源/批准/实际写范围正确，不审Provider存储 | §3同编号 |
+| V5-31 | 07§8.1；04§4.5；02§4.6–8 | D01/Force | 四入口副作用前拒确证External，unknown原行为；Force原公式测量 | 同事务区间占用，换Anchor/失败/rewind不解，只有成功压缩开新区间 | §3同编号 |
+| V5-32 | 07§8.1/6.3；02§4.5 | Idle事件 | Main单次deadline+长度，Main新Turn取消，child不重计 | 不poll重造；catchup仅漏事件；local在deadline判断；原生idle互斥，坏配置本功能fail closed | §3同编号 |
+| V5-33 | 07§3/5/6.3/8.2；04§3；08§1 | Profile/资格/开关 | History常开，Noting全局+local，Scheduler独立，目标Profile | off/非eligible原生；warm/cold先同步Prompt/schema/dispatch，无独立provider/中途root刷新 | §3同编号 |
+| V5-34 | 07§5；02§1/2；04§2 | History继承 | 合法路径/规范身份，Main同Profile显式跨域/Noting父域，分页原文 | 不写binding/跨Profile；旧工具明确拒，预算不诱导文件越权；Recovery footer同资格 | §3同编号 |
+| V5-35 | 07§6/8.14；08§2 | Scheduler继承 | 原生Main工具/Table/parse/claim/lease/pending ACK，Notebook互不驱动 | 不破busy→deferred/撤销/真实请求ACK/冷宿主owner，无外发或新执行器 | §3同编号 |
+| V5-36 | 07 v2§9/顶部done/授权长样本；R15 | 实际模型 | Kimi Coding/Alex隔离真实超N38长Main→Noting→压缩→Framework→后续Main | 最终版同Conversation多周期，内容/进度/未知/来源/协议权限/前缀真实核查；HTTP/Finish非质量 | §3同编号 |
+| V5-37 | 01§1/4；07§2/3；R14/O01 | 范围/边界 | 公开核心、不扩个人/UI/Android/标题等；原生API/持久owner保持 | 不迁移生产/改锁；证据按SHA和路径复核；检查冻结不放宽；部署属主会话 | §3同编号 |
+
+## 3. 逐条实现证据
+| 条款编号 | 正式入口及完整关键代码路径 | 方法、输入、配置及实际证据 | 证据位置 | 判定及理由 | 证据边界 |
+|---|---|---|---|---|---|
+| V5-01 | Main apply_main_read_surface/filter_tool_definitions→native build/transport；freeze_parent_runtime→cache_parity→child loop | 读全固定surface/catalog及冻结构造；真实SDK scripted多请求（7 done-wire）保root/tools/消息前缀、无Task Schema；official Coding nullable branch保清除能力 | secretary/noting_surface.py:25,95；secretary/noting_child.py:345,410；agent/transports/chat_completions.py:368；tools-prompt-v2/done-wire-final.log及done-source-sha256.txt | 符合：完整六工具固定声明与每请求继承已接线，参数/description为当前done/ranges | 外部IO受控SDK证据，实际当前Kimi多周期另见36 |
+| V5-02 | noting_dispatch_block/refusal→tool_executor/inline/validation/invoke→scoped/raw registry | 读可信actor guard及完整batch preflight；done迁移86权限例含Main四拒/普通child/Noting非六/伪参数/raw registry；真实SQLite零副作用 | secretary/noting_child.py:73；tools/secretary_dispatch.py:35,127,164；agent/tool_executor.py:464；tools-prompt-v2/done-migration-first.log、done-source-sha256.txt | 符合：父声明不授执行权，间接入口同guard，拒绝不触handler | 随机模型未误调不是此负例的依据 |
+| V5-03 | canonical三Schema→_mutation_args→正式handler→Store；retired拒绝入口 | 核flat properties与required/unknown field；内部maintain仅Python适配，无可执行模型别名；current-wire及权限负例 | secretary/noting_contract.py；secretary/noting_tools.py:68,92；tools/secretary_dispatch.py:13；done-wire-final.log、done-migration-first.log | 符合：同字段同层，Update无action/changes包装；旧maintain明确拒绝 | 内部update(entry_id,changes)保兼容，不是wire层次 |
+| V5-04 | validate_fields→WorkingState._validate_entry→Store/Schema | 逐类型required/optional映射比冻结v2新表；最小八类型、可选null、退休/只读字段拒绝；无字数validator | secretary/notebook_contract.py:18,238；noting_contract.py；notebook-done-v2/locked-tests.log及manifest.sha256；tools-prompt-v2/done-migration-first.log | 符合：七类型必填表与当前Schema/validator同口径，Candidate原目标保持 | 语义限定是否忠实由实际模型内容单列 |
+| V5-05 | WorkingState锁/草稿→Store._insert_version_conn/_insert_versions→insert_item_conn→snapshot IDs | 读失败先验证后插入、archive多版本同事务；120 done例与71维护例含noop/合并/数组/失败回滚；旧item INSERT-only | secretary/notebook_model.py:199,249,302；notebook_store.py:162；notebook_items.py:142；notebook-done-v2/locked-tests.log、tools-prompt-v2/done-migration-first.log | 符合：稳定lineage/不可变version、no-op不造版本、不半改working | 引用语义真实结算另见19 |
+| V5-06 | create/update参数→reject_legacy_status/validate_done→新item及readable模型面 | 八类型默认/true/false、11种非法值、status输入原子拒绝；SDK含done并无status，Show/Framework同投影 | secretary/notebook_contract.py:188,199；notebook_model.py:199,249；tests/secretary/test_notebook_done_v2.py；locked-tests.log、done-wire-final.log | 符合：严格bool同层，省略语义一致，运行任务/coverage status不误删 | 不硬推断自然语言进度 |
+| V5-07 | canonical_notebook_entry→item_entry→exact-version/source_basis→public/readable | 读旧status映射及description保存原含义；旧JSON byte保留、幂等、fork、off-path与done变化新来源反例；done不触Scheduler/归档/授权 | secretary/notebook_contract.py:160,318；notebook_items.py:79,113,207；test_notebook_done_v2.py；locked-tests.log（指纹全匹配） | 符合：旧已知含义保留，统一规范化参与精确版本，done独立于archived | 旧revised保具体旧标记并映false，没有臆造成功 |
+| V5-08 | canonical_source_fields→validate_source_ranges→Store current-path检查→insert/commit重验 | 51来源例及SDK mixed wire：多range完整替换、IDs混合、重叠接受、非法半边不借合法另一半、旧单range读兼容、rewind race | secretary/notebook_contract.py:125,140,212；notebook_store.py:18,162；test_notebook_provenance_arrays.py；done-source-sha256.txt/done-migration-first.log | 符合：只当前数组wire，合法父路径且拒绝原子，无多表达重叠门禁 | 时间range只证明合法范围，断言支持属模型职责 |
+| V5-09 | validate_candidate_provenance→validate_references→WorkingState/commit | 直接IDs/ranges/混合；间接refs与type映射；切换须清另一组；Candidate不可引用Candidate；新labels不从done获得审批 | secretary/notebook_contract.py:279,359；tests/secretary/test_candidate_source_contract.py；done-migration-first.log（60）及done-wire-final.log | 符合：R17两模式边界完整，直接内部混合合法 | 映射保union必需集合，不替模型推断真实性 |
+| V5-10 | evidence_time→_message_points→native真实用户判定+durable Instant receipt→Profile render | 读真实user各点/最近Assistant/全部fallback、显式range追加；current71维护+51数组例覆盖synthetic、真人原样wrapper负对照、原receipt owner及Unknown | secretary/notebook_evidence.py:28,50,80；notebook_render.py:19,26；done-migration-first.log；done-source-sha256.txt | 符合：数组独立不压宽区间，不以now补未知；派生只读 | F01历史反例已由实际receipt关联修复；本次没有新模型调用 |
+| V5-11 | readable_notebook_entry/state→mutation receipt/Show/control/Framework；refs _referenced_time | 读current working state传递及db/ref；refs源条目聚合数组，未存直接provenance；created/progress/discussion/processed仅原字段时机 | secretary/noting_tools.py:125,155,231；notebook_evidence.py:106；notebook_render.py:59；done-wire-final.log、locked-tests.log | 符合：模型各投影同派生owner，未知保空，原生命周期clock不被替代 | 实际模型是否保恰当来源见16/36 |
+| V5-12 | WorkingState.archive→protected refs检查→Store._insert_versions同事务 | 读普通relation清除与referrers前置；失败第二INSERT全回滚、off-path旧claim只许可移除关系；updated_entries恢复精确版本 | notebook_model.py:302；notebook_store.py:185；notebook_items.py:92；noting_recovery_sources.py:64；维护71与recovery22日志 | 符合：保护gap/Candidate，无半清理/级联状态/图门禁 | 模型须先处理受保护来源引用，不能绕过 |
+| V5-13 | validate_schedule_suggestion→entry顶层→Store/readonly投影 | 所有八类型零/一对象、replace/null/noop、自然语句与非可执行时间仍接受；只两非空字符串 | notebook_contract.py:263；notebook_model.py:199,269；noting_contract.py；维护71、done120日志 | 符合：建议层不解析CRON，不产生Schedule或队列 | content是否自包含由模型证据补足 |
+| V5-14 | Task第6步→completion_body条件尾句→Framework.prepare_completion | 对冻结§4逐字核语义建议与自包含指导；只有实际snapshot suggestion才尾句，位于Proposal之后；强制权限拒Scheduler，完成不启Turn | noting_prompts.py:71；noting_notifications.py:19–44；framework_messages.py:167；tests/secretary/test_schedule_suggestion_framework_v2.py及原四例；done迁移与现有Framework证据 | 符合：条件提示/不注册/非触发正式接线完整 | 实际本轮建议质量仍并入36 |
+| V5-15 | DEFAULT Task/control/continuation→initial wrapper/_working_control/next Turn | 完整description获批英文逐句比；第3七类型写作与第5七类型处理独立；第6建议、第7结束，材料精选及路径免软长度；无未知摘要比较 | secretary/noting_prompts.py:3–90；noting_child.py:755,857；done-wire-final.log实际Task，源码同指纹 | 符合：内容指导与七步组织完整进入正式模型上下文，无长度硬门禁 | 自然模型结果不由字符串相等代签 |
+| V5-16 | Task R18两句→最终同Conversation多周期内容 | 两句已批准英文逐字入默认Task及真实SDK；尚待最终实际Kimi产物核保旧来源/新断言及未知进度/旧进展延续 | secretary/noting_prompts.py:11,29；tools-prompt-v2/done-wire-final.log；最终模型证据待交 | 证据不足：Prompt接线符合，但当前要求的自然多周期行为未核 | 旧c5样本不代签done版结果 |
+| V5-17 | 完整Task FAITHFUL/第2–5步→真实Notebook/后续Main | 静态归因/七类型/未知保护完整；受控输入不证明自然取舍；尚待最终偏好/关系/情绪/讨论/纠正/旧结果产物 | noting_prompts.py；冻结白板C7/C8/I/U及07v2§9；模型证据待交 | 证据不足：真实内容代表链尚未独立核实 | 不宣称每类必须凑条，也不以未随机产出某类定缺陷 |
+| V5-18 | Task第5步/readonly时间→runtime task parameters 7/72与processing_note时机 | 逐行核七类型生命周期语义；读写不刷新progress/discussion/created；noop不更新处理时间；无自动年龄删除代码 | noting_prompts.py:45–53；noting_tools.py:240；notebook_model.py:239,291；locked-tests.log及来源数组clock测试 | 符合：各自时钟与同次处理保留，统一done未变成自动清退 | 自然取舍由17/19单列，纯计时无额外定时器 |
+| V5-19 | Task第4步/第3防回流/Proposal→真实获批写轨迹→source/Candidate处理 | 核只获批短语替换及原四保护、先源后Candidate/部分范围；done不授权；机制settlement10通过；最终实际full/partial/unknown质量待交 | noting_prompts.py:42；hermes_cli/cli_secretary_commands.py Proposal；tests/secretary/test_candidate_settlement_lifecycle.py及done-migration-first.log | 证据不足：Prompt/来源保护机制符合，最终统一done模型结算产物尚未核 | 不审外部Provider内部保管；历史坏F04产物不销毁 |
+| V5-20 | compress_context→_run_summary_phase→select_no_default_tail→ContextVar→built-in window | 真threshold/explicit here N/全局off/非Main分支静态正确；但local off仍notebook_read_enabled=true，正式8条manual压到1条 | agent/context_compaction_tail_policy.py:21–29；noting_surface.py:43；本V5/test_local_off_tail.py与local-off-tail.log（1失败） | 违规：F5-01，局部关闭未原生回退；缺Noting背景整理仍清默认尾部 | 只隔离真实AIAgent/built-in compressor/SQLite，摘要外部返回受控 |
+| V5-21 | ContextVar→compress_window/required_tail_start/prune→prepare_candidate_anchors→native commit/publication | 读摘要选区、pending请求/多模态/steer/未闭tool保护、取消旧回插、所有保留设置不全局改；publication重读durable防竞态新消息丢失 | context_compaction_tail_policy.py:46–129；context_compressor.py:5473,5726,5759；context_compaction_request_publication.py:73；旧targeted-final44仅作历史辅助 | 符合：除20资格缺陷外，full摘要/协议与live durable机制接线正确 | 旧C manifest该policy文件hash不匹配，不能直接把44项整体称当前通过；必要关闭复验须当前版本 |
+| V5-22 | Main timer/admission→run_noting_task→Commit Gate→_publish_after_idle_completion→idle native request | 读正常snapshot精确关联、在飞回调注册线性化、已有正常成功复用、失败/forced/overflow不回调；非Idle不等child | noting_child.py:159–226,874–928；noting_runtime.py:555–623；noting_compact.py idle_compaction_after_commit；现有Idle19/reuse24机制证据（路径本轮未改） | 符合：Idle成功前提及durable→Framework顺序保持，未给非Idle加成功门槛 | 无收费Idle重跑；local关闭问题在20，不混成Idle已运行 |
+| V5-23 | 原生attempt/fence/rollback→commit outcome；runner非正常路径→failure/completion body | 读取消/失败/no-op/growth拒绝保原消息，合法Snapshot独立不回滚；API普通失败不commit；forced/overflow合法提交明确未正常 | conversation_compression.py:3184,3602,3802；noting_child.py:795–928；noting_notifications.py:24,48；finish-exit-final45、cancel/ownership既有日志 | 符合：失败不借full清尾，无伪造正常结束/快照 | 既有日志仅在对应源未变/实际机制匹配处复用，未全量复跑 |
+| V5-24 | 完整batch preflight→finish handler锁→durable tool pair→accepted_finish_round→native finalizer→runner | 读first receipt/standalone校验和返回Turn后才commit；预算1/50、混批、持久失败、中断/rewind反例；fiveTurn/overflow沿原runner | noting_tools.py:173–224；noting_completion.py:11–79；turn_finalizer.py:562–779；test_noting_finish_exit.py；finish-current-pair-final.log/finish-clear-race-after.log | 符合：正常Finish无额外模型请求，可信持久pair才结束；中断不伪提交 | 该结论是正式机制与受控SDK，不代表自然模型质量 |
+| V5-25 | actual parent freeze→cache_parity→dedicated SessionDB/child registry→loop/continuation→finally close | 读multimodal结构复制/Anchor身份、父实时freeze、原生provider继承、冻结工具表、suffix-only持久/5Turn；finally各路径释放强引用/child DB | noting_child.py:261–440,690–868,930；cache_parity.py:84–180；done-wire-final.log、finish-existing-updated.log对应源保持 | 符合：冻结父前缀与真实child生命周期非孤立helper，无自动崩溃恢复 | 真正当前长wire待36；byte相等不冒称缓存命中 |
+| V5-26 | Main正常Turn/restored pin→_refresh_noting_definitions；explicit recover→reconstruct receipts→prepare fixed tools→freeze | 读同名完整canonical替换及正常pin持久、旧Schema缓存变化说明；原资料重建准确版本含archive.updated_entries；已冻child不热改 | noting_surface.py:25–39,127；noting_recovery.py:24–46；noting_recovery_sources.py:54–101；current SDK7/recovery22及old/frozen分支测试 | 符合：done/ranges当前定义同步，原历史pin/Root/Active与immutable原件保留 | 显式恢复工具保能力，不授权重跑生产旧child；本审查没有调用恢复 |
+| V5-27 | identity/Foreground→Store固定base→commit validate exact version+Anchor→pointer覆盖排序/branch share | 读base在同读边界固定、snapshot事务来源重验/INSERT-only/pointer不按晚完成倒退、branch本地ref规范化；done测试fork/off-path不借旧据撑新done | hermes_state_secretary_notebook.py:163–310；notebook_store.py:73–123；notebook_items.py:79–227；done120、来源51、候选60与原身份接缝证据 | 符合：本轮修改保身份/合法路径/全量原子性；并发独立草稿不强求合并 | 没有篡改旧历史验收结论，未重跑全仓身份套件 |
+| V5-28 | pointer_changed→publish_committed_completion→队列→append_runtime_row prepare/record同写事务 | 读snapshot_if_current在prepare/append同事务双核及runtime owner/persist锁；旧消息Superseded整条丢，完整正文来源于有效Snapshot，建议尾句随后 | noting_child.py:912；framework_messages.py:142–225；noting_notifications.py:19；hermes_state_secretary_notebook.py:219；current SDK与既有Framework/race证据 | 符合：未生效/过时结果不投旧正文；busy/fence/live durable同写且非触发 | 新真实模型完整注入与后Main读取待36 |
+| V5-29 | Main notebook_show→show_notebook/model_notebook_view；Noting working Show→store.working_view | 读参数空对象/绑定store、本地UID投影、evidence_coverage真实DB Anchor→可读范围；unknown不阻断正文；外部默认DTO未删审计 | noting_tools.py:155；notebook_render.py:26,64,96,114,126；tools/notebook_tool.py；done120、model audit3/readonly projection日志 | 符合：Main/Noting正确视图，模型无内部snapshot/base/anchor/普通termination，空成功 | 审计ID留API内部，不用隐藏UI替代模型投影 |
+| V5-30 | slash Proposal常量→ordinary Main；completion_body→同消息计数+可选Proposal | 读精确Unicode len(rendered body)、current entry独立计数、strict>两阈值，提案共用常量/批准写范围；不截断/拒交/新Task | secretary/noting_notifications.py:21–44；hermes_cli/cli_secretary_commands.py；framework_messages.py:167；既有r3_framework/SDK机制证据 | 符合：容量只提案，批准/实际成功仍靠轨迹，不要求Provider内部存储证明 | 语义结算最终真实结果按19/36待核 |
+| V5-31 | 实际provider dispatch记录→Main memory/model_config→four-entry prepare→admission事务/interval | 读D01仅真实native/external更新，无请求不覆盖，unknown原行为；Force resolved公式、占用持久于区间不随anchor失效/失败释放 | noting_runtime.py:220–312,380–405,555–623；noting_policy.py:force_thresholds；hermes_state_secretary_noting.py admission/interval siblings；原D01/Force机制及源码保持 | 符合：本轮未以Schema/Prompt自称身份替权限，仍先D01后Noting副作用；必需非Idle压缩独立 | 不测外部模型/造OS；真实Kimi路线仍36 |
+| V5-32 | Main start/end→arm/cancel timer→single deadline claim→length/owner/participation→admission | 读timer与persisted claim单次事件、local在deadline决定、catchup漏事件、child不reset，正整数length/非负delay/旧key明确拒/原生idle互斥 | noting_runtime.py:315–378,470–548；noting_timers.py；noting_policy.py:108–160；现有timer/Idle/配置41证据与本轮源码未变 | 符合：不是poll重造Trigger，坏配置只关闭所属功能，owner遵目标Profile | UI计时/恢复不在本轮验收范围 |
+| V5-33 | Profile settings/global read surface→Noting effective gate与tail新策略 | Profile读取及History/Scheduler独立资格正常；但full策略只全局read gate，local背景关闭后仍改compaction | noting_scope.py:14–50；noting_surface.py:43,95；noting_runtime.py:102–116；context_compaction_tail_policy.py:21；local-off-tail.log | 违规：F5-01，读取资格误替Noting有效参与，破local off原生回退 | 不要求local off重建root/tools；修复不得改变读取工具前缀 |
+| V5-34 | conversation_history inline/registry→bound owner/History legal path→read/search/paging与footer | 读Noting parent限制、Main范围同Profile、纯read不写identity；当前SDK loop真实History/Show正例及scope负例；压缩footer同Main predicate | tools/session_history_tool.py；hermes_state_foreground/history siblings；inline_tool_executors.py:133；noting_surface.main_read_surface_enabled；固定权限/协议既有机制日志 | 符合：新工具更名/维护拆分未放宽History，投影派生不引新查询授权 | 这是继承接口不变量审查，不重新扩大为全History性能工程 |
+| V5-35 | Scheduler Main gate/Table→claim/lease/reminder request→witness/ACK；Notebook提交无reconcile | 对本轮diff核未新增Notebook→Schedule副作用；done tests已有真实排期在写done/归档后保持；Noting Scheduler各dispatch硬拒；Framework无adapter外发入口 | notebook_model.py/Store/commit；tools/scheduler_tool.py；secretary/reminder_request.py/reminders.py；tests/secretary/test_schedule_status_lifecycle.py及done120 | 符合：本轮建议和done不驱动排期，既有owner/ACK/非触发边界保留 | 未重验08所有冷宿主/UI/微信场景，不把既有其它工作扩成本轮新实现 |
+| V5-36 | 真实Kimi Coding/Alex隔离长Main→Noting→Compaction→Framework→后Main，同Conversation多周期 | 当前可读旧N46为c5产品，根/tools/186前缀及146064 input有wire，但done/R18改变Task后不能代当前多周期内容 | 历史run-long-20261024-174448仅辅助；最终5d73产物待主会话交精确路径 | 证据不足：当前版本实际多周期、F04/F05及Notebook-only内容结果未核，不预签通过 | 无自行收费调用；旧长样本可证明历史机制，不冒称最终Task已验证 |
+| V5-37 | 公开核心diff/依赖/规则入口→本地证据环境/只读审查 | 读87文件差异范围，不改原生schema ownership/锁/规则等级、无新loop/provider执行器/个人依赖；质量日志10 checks ok，manifest独立比对；本审查仅报告+ignored | source-evidence-audit.json；done-integrated-checks.log；git diff a4faa..5d73；根AGENTS/README/CONTRIBUTING | 符合：范围O01及公开/凭据边界保持，质量门禁未弱化 | 不签Validation/生产部署，已存在其它任务dirty原样保留 |
+
+## 4. 核心目标及验证方法审查
+
+本轮37条独立判据对应R01–R19/O01，覆盖六工具固定声明/可信权限、扁平参数/字段、统一done、来源数组/只读证据时间、普通关系清理/Schedule建议、内容七步/两表/来源与进度修补、外部结算、真实原因压缩策略、Idle顺序、完成/预算/中断、冻结缓存前缀/恢复/资源释放、身份/版本/并发/pointer、Framework完整非触发投递及公开/个人化边界。§2同编号记录冻结来源与必要机制，§3记录正式路径、方法、观察及具体证据边界；没有以实现命名重建判据。后续补充核读交互卡脚本与继承原文，没有改变原37条判据。
+
+核心纵向接线已落实为真实AIAgent/Store/SQLite/原生Loop链路，而非孤立helper：Main固定完整tools → runtime freeze → child六工具权限 → task私有工作态 → durable独立Finish call/result → 原生Turn完成 → Commit Gate →不可变Snapshot/pointer →一致性边界内完整Framework。统一done及来源数组贯穿这些路径，失败先验证/零副作用与历史不可变版本保留有当前指纹绑定的机制证据。新的局部关闭反例证明全局读取资格不能代替背景有效参与资格，详见F5-01；该缺陷不因其它正例通过而豁免。
+
+测试依据以冻结原文为先：done布尔的默认/保留/null拒绝、终结与archived/授权分离；来源每个真实用户独立时间、Assistant/fallback、显式范围独立加入及Candidate两模式互斥；归档普通关系原子解除/保护引用仍拒绝；压缩真实原因与必要工具链/新输入保留；Finish持久pair、预算、中断与Commit Gate分别判断。对应测试读取的是正式handler/SDK/native compressor/SessionDB，受控的是外部模型返回或异常注入，未用重写Store/压缩算法的镜像实现证明自己。Prompt字符串断言只证明文字正式注入，不证明自然模型的内容选择。
+
+证据版本按实际字节独立核查，详见 `.hermes-dev/noting-v2-verification-v5/source-evidence-audit.json`：36个实际读过的核心源路径与待审5d73字节一致；done专包6产品/1测试manifest全匹配，B最终done源清单21路径全匹配。读取原始日志确认A `locked-tests.log` 120通过；B首轮16文件543通过，后SDK增强为7通过，其余未变538项可复用，545为不同用例总数；两者有范围重叠，**不相加成整轮通过数**。原Finish/current-pair、中断、恢复、权限等日志按对应未变化路径复用，不以旧报告“已通过”作为证据。C `source-sha256.txt` 中tail-policy当前hash不匹配，其余列出8路径匹配；原44项日志仅作历史辅助，报告未将它冒称5d73当前全绿。冻结十检查现有 `done-integrated-checks.log` 为10 checks ok/0 blocking；未修改规则/等级/锁或重跑大型检查。
+
+V5唯一新增运行是隔离、无网络模型的反证：项目runner执行 `.hermes-dev/noting-v2-verification-v5/test_local_off_tail.py --file-retries 0 -q`，1项失败、runner wall 2.5秒，记录真正AIAgent、built-in压缩器及SQLite的8→1提交。其摘要Provider返回受控；待验证的资格选择、摘要选区、live/durable提交均为产品正式代码。该负例正是现有off正例只切全局配置而未切local状态所遗漏的错误实现。日志里的runner自动提示直接pytest不是实际执行命令，V5只使用获授权runner。
+
+实际模型证据边界已单独核查：`.hermes-dev/noting-v2-verification-v5/model-evidence-inventory.json` 记录可见产物；`run-long-20261024-174448` 的manifest版本为f287e94（产品c5等价），8个wire/7份response；`run-provenance-short-20261024-171957` 为c5。最新 `dry-combined-two-cycle-20261024-184534` 虽为5d73，但mode=dry、wire/response各0，不能证明真实Kimi或同Conversation内容接续。R18/R19改变Task与数据契约后，旧N46/旧F04/F05产物既不销毁，也不代替当前新样本；因此V5-16/17/19/36继续证据不足。V5未自行收费、未操作UI/云端/生产、未改产品测试/规格、未提交push部署；主会话已说明修后另派全新审查者。
+
+## 5. 发现、整改优先级与范围外项
+
+| 问题编号 | 对应条款/代码位置 | 触发路径与事实 | 影响及阻断理由 | 建议修复与关闭证据 | 当前状态 |
+|---|---|---|---|---|---|
+| F5-01 / P2 | V5-20/33；冻结02§4.3明确local off不得遗留Noting-specific compaction；07最终v2§7 off保持原生；`agent/context_compaction_tail_policy.py:21–29` | global noting=true且Main合格，`db.notebook_set_local_enabled(ref,False)`；正式manual `_compress_context`仍由`notebook_read_enabled`选full。V5反证8条旧消息→1 summary，`len(result)>1`原生保tail断言失败，live/durable均为该错误新策略 | `/noting off`只关背景整理却不能恢复原生压缩，越过参与边界取消默认尾部；原文尚在History不等于开关语义符合。范围内产品缺陷阻断Validation | 主会话提出selector在既有早返回后读取owner DB原local状态；不得改读取面/root/tools或扩大D01准入。关闭须local off→native、切回on→full，local不可读/缺ref→native且不写binding，以及全局off/非Main/child/真实threshold/here N回归；每例核摘要输入和request/live/durable、绑定当前SHA | 在5d73未修、未关闭。主会话认可并提案，V5评审方向可接受；修后fresh全轮审查 |
+| E5-01 / P1补证优先 | V5-16/17/19/36；07顶部R18/R19及v2§9、R15 | 当前可见真实样本仍为c5产品，5d73仅dry，无最终同Conversation多次整理/压缩、未知/已知进度保持、保留/新增断言来源、完整/部分/未知外写结算及后Main仅读Notebook的自然产物 | 字符串/受控工具脚本能证明接线，不能关闭F04/F05性质的真实内容缺口，也不能以HTTP200/Finish或不同Conversation单周期相加满足多周期完成条件；范围内必要证据缺失阻断Validation | 在修后最终锁版按既有授权提供实际Kimi Coding/Alex隔离、超N38长前缀及同Conversation多周期原始wire/response、child transcript、Snapshot/原文UID与范围、durable/live/后Main输入输出、源指纹和费用。审查逐断言核来源/进度/结算，无需额外扩成全平台或所有语义自动门禁 | V5不签通过；由主会话协调最终产物，新独立审查者按原文核查。V5没有启动收费请求 |
+
+范围外项：无新增。已知其它微信Instant/UI恢复/Android/标题/个人Provider等工作不据继承文档扩大成本轮实现或本审查阻断。F5-01源于本轮新增tail选择器，属于范围内。旧F01–F03的实际时间识别/nullable wire/空值结构拒绝修补路径已独立核读，当前机制证据可复用；不重写旧时点违规为历史通过。旧F04/F05在R18/R19完成后仍需新真实结果关闭，本V5仅登记当前证据不足，不据旧样本断言新模型必然失败。
+
+## 6. 修复与独立复审
+
+本次为全新V5完整范围审查，基于5d73产品与d8e9冻结依据；先保存原37条判据，再查实现、测试、旧报告。此前各轮报告原始字节保留，V5仅追加/维护自己六节；原独立判据另存 `criteria-initial.md`，没有降低判据容纳实现。本次无被主会话退回缺列/缺行的报告历史。
+
+实质研讨链：
+
+1. 原判据V5-20/33来自off原生回退；独立读selector发现其只复用全局Notebook read gate，随后用真实隔离压缩链取得1项失败反例。不是由主会话提供预期缺陷，也没有从旧问题清单反造判据。
+2. 主会话亲读冻结02与最新07后认可，提出最小selector接线：保true threshold、here N、Noting child早返回；global+Main仍用原read helper；通过后调用`noting_runtime.noting_local_enabled`读取`agent._session_db`与已有ref。无ref/不可读不猜归属、不写binding，按既有False回native；DB缺local行原helper默认True。只修selector及原tail-policy正式测试，不改readsurface、工具权限、D01/外部Provider准入。
+3. V5依据原判据评审方向可接受。必要证据为同owner local off/on切换、不可读/缺ref、全局off/非Main/child、真实threshold与here N均保各自语义；必须对摘要输入、live/durable与后续request核一致，记录源码SHA。不以helper bool单测代正式链，也不借修复重建root/tools。
+4. 本提案未改变产品规格；属于已授权工程修补。V5负责指出并评审，不代主会话实现。主会话明确修后另派全新审查者全轮复审，本V5不代签自己研讨后的最终PASS。
+
+供final-delivery及用户最终汇报的实质收敛项：新full压缩必须服从Conversation-local Noting参与，Notebook全局读取可用不代表背景参与开启；修补只影响每attempt策略选择，不改变读取工具前缀。另须显眼报告最终真实多周期证据完成前仍不能宣称本轮实现通过验收。
+
+最终V5判定：**门禁不通过**。37行中31符合、2违规（同一F5-01）、4证据不足（E5-01相关），0有依据不适用。当前产品5d73的F5-01及必要真实证据均未关闭，禁止进入Validation或据本报告宣称可部署。后续修复版本与真实产物由新独立审查者重新覆盖完整范围、核旧发现及新影响；V5仅交付当前版本审查结果。
