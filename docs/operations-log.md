@@ -2,6 +2,18 @@
 
 维护实际部署、故障处理、验证与回滚点；步骤和稳定布局见[部署SOP](cloud-deployment-sop.md)，当前任务只在根[CLAUDE](../CLAUDE.md)。以下时间均为Asia/Shanghai；PID、指纹和测试结论只对应记录时点，不代表实时状态。凭据、令牌、原始私人材料不写入本文件。
 
+## 2026-10-24 · AI 标题 K3.1 温度兼容修复上线
+
+**原因与范围：** 用户反馈 AI 标题仍出现 `invalid temperature: only 1 is allowed for this model`；首尔Alex日志10:32:46记录同类失败。上次已上线的`_is_kimi_model`仅识别`k3`／`k3-*`，遗漏今天切换的`k3.1-pro`，使Web `llm.oneshot`默认temperature0.3直达模型。修复`3338a25f0b4d2e33f9f979ef6dbb58f2a014b3be`在原生辅助客户端中识别K3数字小版本并沿原机制省略temperature，覆盖Pro／Highspeed、供应商前缀及大小写；相似的非Kimi名称保留原参数。不改标题Prompt、生成／写入语义、前端、Provider配置、依赖或锁。
+
+**本地证据：** 新增4种K3.1写法在修前均通过真实RPC→OpenAI SDK MockTransport复现相同400，旧3种通过；修后生成→原生`session.title`→SessionDB→`session.info`均通过，失败保留旧标题。四文件284项通过；新增3项边界用例从已超长的辅助测试文件移到现有温度专项文件，最终专项30项通过（与前述范围重叠，不加总）。冻结10检查最终全部通过、health 0 blocking／0 advisory；首次因超长测试文件增长未过，已撤回该文件改动，无改阈值／豁免。
+
+**发布与保护：** 修复提交自动推送`origin/main`。云端最初只读预检空闲通过，执行前复查发现新Web活动任务，未停服务即拒绝；自然结束后重新预检、停两专属服务、三库SQLite一致性备份及配置备份、源码从`0e14d4e52ffcded688ddaafbc0f2d1d91deebaed`快进`3338a25`并启动。服务实际版本均`3338a25`，Web／Gateway active、微信connected；三库各10张保护表、配置／凭据、微信绑定及Secretary／Dashboard全部静态文件SHA前后一致，未交换静态资源或改运行配置。发布回执phase=`verified`。
+
+**真实验收与限制：** 在正式回环WebSocket调用Alex `llm.oneshot`，沿Profile默认`k3.1-pro`、显式temperature0.3、输出上限256，虚构学习计划输入成功生成“优化学习计划与周末复盘”，7.104秒；未传真实Conversation、未调用标题写入或提交Turn。此为真实模型生成验证，持久化／推送有本地正式接线证据；未冒称浏览器／APK实际点选改名已验，无需前端构建或APK更新。仅发起一次验证RPC，无重发探针。
+
+**证据与回退：** 本地ignored`.hermes-dev/ai-title-k31-20261024/`保存定向测试／冻结检查、部署与真实RPC日志；云受限`/home/ubuntu/.local/state/hermes-secretary/ai-title-k31-20261024-3338a25/`保存`receipt.json`、`real-probe.json`、发布输入及`backup/`三库／配置。需回退先核当前活动任务及后续写入，再于空闲停两专属服务，将代码恢复原`0e14d4e`并启动验版本／健康；保留当前DB、配置和静态目录，不自动覆盖数据库，不重放提醒或Noting。
+
 ## 2026-10-24 · 固定工具与今日修补联合上线
 
 **执行与版本：** 本地独立Validation S1–S6/S8放行后，主会话于02:37:39–02:38:09经正式`hermes-secretary-sync`执行唯一发布`20261024-fixed-noting-0e14d4e`。云后端由`e9de406ae288f85b81bde5bb836f345ed91ebe97`快进至`0e14d4e52ffcded688ddaafbc0f2d1d91deebaed`；它相对已验产品`1ea38ef`仅四文档差异。Secretary静态对应独立Web`589df02706d3c6738789ff97fcb652a0bf76c398`，439文件逐SHA一致；Dashboard保留。今日`599d114`微信及时正文/Redirect/Framework、Idle成功前置、Kimi字段/标题、历史时间继承，以及Web Context/APK竖屏源码均在本次发布闭包。依赖/PM/锁未变，复用云正式环境，不带本地隔离阈值/模型/Persona/合成库。
