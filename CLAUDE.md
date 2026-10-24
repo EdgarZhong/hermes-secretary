@@ -244,7 +244,7 @@ Noting child `noting_27dcca55ad1a4e35` 的完整持久轨迹仅一条启动 user
 
 ## 2026-10-24 · 当前自主轮：Notebook／Noting维护v2
 
-**当前产品锁版：** `f497fd0b794301c4c813267258a73893a86c7e0c`，分支`codex/noting-maintenance-v2`、独立树`/Users/edgar/code/hermes-secretary-noting-v2`，已自动push。原主仓与独立UI属于其它活动任务，dirty/服务/构建保护。生产仍183f1a5，本轮未部署。**目标未完成、blocked（等待用户决定后续来源处理方向）；不再盲目修改Prompt或收费重试，当前失败须先与用户对齐后续方案。**
+**当前产品锁版：** `f497fd0b794301c4c813267258a73893a86c7e0c`，分支`codex/noting-maintenance-v2`、独立树`/Users/edgar/code/hermes-secretary-noting-v2`，已自动push。原主仓与独立UI属于其它活动任务，dirty/服务/构建保护。生产发布收尾进行中。用户在获知当前实现/测试/模型观察后明确要求“给我把部署收尾做完”；按现有已提交产品发布，不追加模型测试、来源契约或Prompt改动。此前blocked已由本次明确指令解除，旧门禁结论保原时点，不改写为全部通过。
 
 **定稿依据：** 07顶部最终v2、Notebook白板、Snapshot Index R01–R20/O01；完整冻结SHA见baseline。R18两句、统一done及R20两处均已明确批准并实施，没有这几项剩余审批。R20仅移动已批准来源义务一句至create/update通用TOOL USE，且step2追加同情景澄清/修正原位update句；相邻R16混传段及below指代不动。除这两处，Task其余原文和两个control常量逐字不变。
 
@@ -267,3 +267,5 @@ Noting child `noting_27dcca55ad1a4e35` 的完整持久轨迹仅一条启动 user
 **最终归档复核：** root核110份稳定原件、58份harness/派生报告、786份产品SHA全匹配；两份终态DB分别41表逐行逻辑hash等于原库、原库bytehash不变。E2E报告曾误把本次archive合并列稳定ID违规并归于root/V7，已退回纠正；旧报告/旧manifest及新旧SHA保更正收据，raw/DB/result/ledger未改。当前仅等待来源契约方向，既有待答不重复询问，不新增试跑/部署。证据`.hermes-dev/noting-maintenance-v2/root-r20-final-archive-review.json`及E2E最终报告。
 
 **阻塞审计：** 同一待答来源契约决定已持续原失败交付及后续三个goal接续轮次。期间归档哈希复核、DB持久化核对与报告误归因纠正分别构成真实进展，不冒称这些轮次无进展；当前所有独立收尾完成、Agent均terminal、实现树干净且upstream一致，未收到新口径，已无不依赖该决定的必要实施可推进。因此目标标blocked，不标complete/paused。恢复条件：用户答复既有来源契约方向问题并继续收敛具体改法，再按原完整范围修复/补证/fresh双门禁/部署；不降低判据或清掉F7-01/02、R12/R15。
+
+**最新用户授权与当前执行：** 用户先明确本轮对模型行为确定性要求过头、要求停止核查，随后询问交付并明确指令“给我把部署收尾做完”。现有代码按原产品f497发布，新增提交仅记录授权与运维；保留F7-01/02模型观察及旧R12/R15未执行事实，不追加调优/模型请求/独立验收轮次、不伪报原门禁通过。部署复用已审backend-only脚本，空闲/版本/dirty预检、三库配置备份、精确快进、两服务启动及健康/微信/受保护数据/静态核对；不改生产模型/阈值/Persona/排期/绑定或清缓存，不触主仓与UI活动修改。当前完成条件是已提交代码上线、服务健康和数据保持，结束后记录真实结果。上文历史阻塞及等待来源决定状态均由本次明确部署指令覆盖。
