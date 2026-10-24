@@ -196,6 +196,11 @@ def run_tool_round(
                     agent.stream_delta_callback(None)
         return _verdict("break")
 
+    from secretary.noting_completion import NOTING_FINISHED, accepted_finish_round
+    if accepted_finish_round(agent, assistant_message, messages):
+        _turn_exit_reason, final_response = NOTING_FINISHED, ""
+        return _verdict("break")
+
     # Reset per-turn retry counters so one truncation can't poison the turn.
     truncated_tool_call_retries = 0
     # Defer the paragraph break: _fire_stream_delta() prepends one "\n\n" when real

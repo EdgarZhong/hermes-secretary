@@ -272,10 +272,10 @@ def test_native_finish_commits_only_after_turn_returns_and_persists_suffix(nativ
     assert active_noting_task_count() == 0
     assert child_seen[0]._memory_manager is None
     wires = [call.kwargs for call in client.chat.completions.create.call_args_list]
-    assert len(wires) == 2
-    assert wires[0]["tools"] == wires[1]["tools"]
+    assert len(wires) == 1
     assert wires[0]["tools"][0]["function"]["name"] == "terminal"
-    assert wires[0]["messages"][:3] == wires[1]["messages"][:3]
+    assert rows[-1]["role"] == "tool"
+    assert json.loads(rows[-1]["content"])["status"] == "end_requested"
 
 
 def test_native_text_completion_continues_five_turns_same_prefix(native_parent, database):

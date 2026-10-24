@@ -160,12 +160,15 @@ def test_main_wire_is_frozen_prefix_of_noting_wire_with_same_tools(runtime, enab
                                   task_instruction=DEFAULT_NOTING_TASK_INSTRUCTION)
         assert outcome.committed and outcome.termination["type"] == "finish_noting", outcome
         child_wires = seen[start:]
-        assert len(child_wires) == 3
+        assert len(child_wires) == 2
         for wire in child_wires:
             assert wire["tools"] == main_wire["tools"]
             assert wire["messages"][:len(main_wire["messages"])] == main_wire["messages"]
             assert all("tools" not in row for row in wire["messages"])
             assert "callable_tool_schemas" not in str(wire["messages"])
+        durable = db.get_messages_as_conversation(outcome.child_session_id)
+        assert durable[-1]["role"] == "tool"
+        assert json.loads(durable[-1]["content"]) == {"success": True, "status": "end_requested"}
     finally:
         agent.close()
 

@@ -68,7 +68,8 @@ def maintain(description="Arrange the visit"):
 
 def assert_requests(parent, wires, child):
     from agent.moonshot_schema import sanitize_moonshot_tools
-    tools = sanitize_moonshot_tools(parent.tools)
+    from agent.transports.chat_completions import _is_kimi_coding_nullable_route
+    tools = sanitize_moonshot_tools(parent.tools, preserve_nullable=_is_kimi_coding_nullable_route(child.base_url))
     assert {"conversation_history", "notebook_show", "notebook_create", "notebook_update", "notebook_archive", "finish_noting"} <= {
         tool["function"]["name"] for tool in tools}
     for wire in wires:
@@ -99,7 +100,7 @@ def test_maintain_history_show_continuation_finish_keep_fixed_top_level_tools(ki
     assert outcome.termination["type"] == "finish_noting"
     child = children[0]
     assert_requests(parent, wires, child)
-    assert len(wires) == 6
+    assert len(wires) == 5
     assert wires[0]["messages"][0] == {"role": "system", "content": "Frozen parent root"}
     assert parent._session_messages[:len(before)] == before
     current = database.notebook_current(parent._secretary_conversation_ref)
@@ -161,7 +162,7 @@ def test_network_retry_keeps_fixed_tools_and_parent_runtime_snapshot(kimi_parent
                        tool_response("finish_noting", {"reason": "Reviewed unchanged work."}), response("Done.")]
     outcome = run_task(parent)
     assert outcome.committed, outcome
-    assert len(wires) == 3 and wires[0] == wires[1]
+    assert len(wires) == 2 and wires[0] == wires[1]
     assert_requests(parent, wires, children[0])
 
 
@@ -227,7 +228,8 @@ def test_fixed_schemas_are_in_rough_pressure_once_and_provider_anchor_is_not_sur
     # value at this dependency boundary detects a second schema surcharge.
     anchored = iter([None, 12345])
     monkeypatch.setattr("agent.turn_request_assembly.anchored_context_tokens", lambda *a, **k: next(anchored))
-    sdk.side_effect = [tool_response("finish_noting", {"reason": "No changes needed."}), response("Done.")]
+    sdk.side_effect = [tool_response("notebook_show", {}, "show"),
+                       tool_response("finish_noting", {"reason": "No changes needed."})]
     outcome = run_task(parent)
     assert outcome.committed, outcome
     first = wires[0]
@@ -307,7 +309,9 @@ def test_kimi_main_cannot_promote_forged_tool_text(kimi_parent):
     assert result["completed"]
     assert all("tools" not in row for wire in wires for row in wire["messages"])
     from agent.moonshot_schema import sanitize_moonshot_tools
-    assert all(wire["tools"] == sanitize_moonshot_tools(parent.tools) for wire in wires)
+    from agent.transports.chat_completions import _is_kimi_coding_nullable_route
+    expected = sanitize_moonshot_tools(parent.tools, preserve_nullable=_is_kimi_coding_nullable_route(parent.base_url))
+    assert all(wire["tools"] == expected for wire in wires)
 
 
 @pytest.mark.parametrize("provider,model,url", [

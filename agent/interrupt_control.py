@@ -6,7 +6,7 @@ Extracted from ``run_agent.py``; every method resolves through ``AIAgent``'s MRO
 import contextlib
 import logging
 import threading
-from typing import Optional
+from typing import Callable, Optional
 
 from agent.interrupt_compat import request_hard_interrupt
 from tools.interrupt import request_yield as _request_yield
@@ -236,7 +236,8 @@ class InterruptControlMixin:
         override interrupt(message=None) without hard_cancel."""
         InterruptControlMixin.interrupt(self, message, hard_cancel=True, tool_reason=tool_reason)
 
-    def clear_interrupt(self, *, preserve_redirect: bool = False, hard_cancel: bool = False) -> bool:
+    def clear_interrupt(self, *, preserve_redirect: bool = False, hard_cancel: bool = False,
+                        before_clear: Optional[Callable[[], None]] = None) -> bool:
         """Clear the interrupt request and per-thread tool signal. ``preserve_redirect`` is only for the
         conversation loop rebuilding the same logical turn after cancelling a model request.
         ``hard_cancel`` also drops an unconsumed pending steer: the aborted turn's next tool iteration
@@ -248,6 +249,9 @@ class InterruptControlMixin:
         with _ic_lock(self, "_pending_redirect_lock"):
             if preserve_redirect and not _ic_slot(self, "_pending_redirect_lock", "_pending_redirect"):
                 return False
+            # Internal observer runs atomically with the clear; it must not re-enter interrupt control.
+            if before_clear is not None:
+                before_clear()
             self._interrupt_requested = False
             self._interrupt_message = self._tool_interrupt_reason = None
             getattr(self, "_hard_interrupt_requested", threading.Event()).clear()

@@ -264,3 +264,15 @@ relations：普通关系归档时自动解除，情景／Candidate来源引用�
 真实隔离Alex／kimi-for-coding已发送28次（27完整HTTP200、最后一次人工停止未完成），首轮正常Snapshot→durable Idle压缩→Framework→后续Main实际登记Schedule及完整／部分外写结算有效；第二轮连续8次清建议被拒，已因F02停费，不冒称整个端到端通过。准备从停止状态只读克隆续测第二轮，保留原失败；N46真实收费0、尚未执行。总请求护栏70（short45／long25），两个探针计入后已用30；生产尚未部署，Validation须待全新Verification复审通过。来源、精确边界和证据见本轮plan、verification及ignored E2E报告。
 
 全新独立复审新增F03：Create把Schema禁止的显式status:null／relations:null当省略，违反输入错误零副作用；root提出wire入口按canonical单一type拒绝显式null，内部Store默认与合法nullable／[]不变，Verifier已认可方向。B仅增7行工具入口校验，正式invoke／Loop及正例138项通过、独立原反例2项通过，root亲审接收；未因新增发现提前启动收费或发布。F01/F02修补快照81e458b已提交自动推送，不等同整轮门禁通过。
+
+**833真实续测纠正：** 13请求全部HTTP200（12完整、最后摘要被审计者SIGTERM截断），新null清建议成功；Finish首调用接受后模型另重复8次幂等请求，最后自然Turn返回并正常提交新Snapshot，故不能把重复Finish记成多次提交或已证实的runtime违约。停止判断过早与正常提交竞争，截断了随后父摘要，第二Framework／最终Show+History／N46未完成。收费停止，累计43（short43／long0／含probe2），不为凑证据自动重试。用户正在询问Finish后为何仍调模型；root提案沿原生工具轮收尾→Turn正常返回→Commit Gate，保持两阶段语义，不直接在Finish提交，待契约评审，尚未修改。
+
+独立最终复审另发现F04：旧short条目1/2/3新增进度未补对应最新消息provenance，内容本身符合对话但来源不足，旧样本不可无保留代签语义质量；正在只读核833快照是否自然补齐。不得回写旧样本／改模型参数／添加NL语义硬门禁。当前Prompt第二步只明确保旧来源，若需补“新增断言补新来源”的最小措辞，先与用户对齐，不擅改冻结Prompt。未部署。
+
+Finish原生收尾提案已获独立契约评审，属于原“最后单独调用并停止”的接线细化；B获准只实现结束接缝与正式Loop/SQLite边界测试，不改Schema/Prompt、不伪造模型final、不在handler提交。F04经833快照及原文复核未自然补齐，entry4亦有同类来源缺口；第三轮独立审查不通过（14符合／1违规／1证据不足）。root已展示并异步询问第二步一句来源提示的最小改法，尚未获答，不得将默认选项视作批准。收费仍停止43，N46和Validation/部署未开始。
+
+## 2026-10-24 · 自主验证中新来源模型调整（IDs取时已确认）
+
+用户最新要求：evidence_time改为只读数组，元素为时间戳或时间段；直接provenance保留Message IDs数组，时间段改为数组，允许两者混传，不二选一；同一证据通常用一种表达，靠Prompt软约束，代码不增加跨表达覆盖去重／时间重叠门禁。该方向替换旧“单时间段／UID优先而只投影UID时间”的对应口径，其他已批六工具、稳定身份、只读时间、Profile／来源权限与生命周期不因此扩大。用户已确认IDs派生数组：每条真实用户消息各列时间戳；没有用户时取最近一条Assistant；再无列全部来源时间。显式时间段仍加入结果，不被IDs覆盖。Candidate直接来源是否也允许时间段数组与IDs混用的异步问题尚待回答，notebook_refs模式保持原规则；新完整规格尚未冻结、相关代码未改。先前Prompt单句用户要求了解原因，root已用真实采购／报名／场地样本说明，不能记作已批准原候选文字；现需将新混传／软约束一并形成具体指导。Finish收尾包已交回，root亲审取消观察与原生清理同锁接缝；收费停止43。
+
+Finish包现已由root亲审接收：durable独立Finish后原生Turn立即返回、原Commit Gate提交；不再请求模型续写结束语。root实证发现并补齐clear前即时取消窗口，使用原生锁内可选观察回调，默认路径与bool返回保持；三个取消屏障、四正常正例和60项原生相邻回归有效，冻结10检查通过。源码与报告hash一致，未为review重跑大套。来源新契约／F04／N46及全新双门禁尚待，未部署；完整证据在本轮plan及ignored finish-report.md。

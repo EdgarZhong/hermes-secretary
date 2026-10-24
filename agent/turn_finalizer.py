@@ -124,10 +124,11 @@ def _guarded_cleanup(label: str, fn: Callable[[], Any], errors: List[str], logge
 def _resolve_budget_fallback(
     agent, *, final_response, api_call_count, interrupted, failed, messages, _turn_exit_reason,
     _pending_verification_response, _pending_verification_response_previewed, logger,
+    controlled_completion=False,
 ) -> Tuple[Any, Any, bool, Any]:
     """Iteration-budget exhaustion. Returns ``(final_response, _turn_exit_reason,
     preserved_verification_fallback, interrupted)``."""
-    budget_exhausted = (
+    budget_exhausted = not controlled_completion and (
         api_call_count >= agent.max_iterations or agent.iteration_budget.remaining <= 0
     )
     preserved_verification_fallback = False
@@ -377,7 +378,7 @@ def _log_turn_exit(agent, messages, final_response, api_call_count, _turn_exit_r
         agent.session_id or "none",
         *((_turn_origin,) if _turn_origin else ()),
     )
-    if _last_msg_role == "tool" and not interrupted:
+    if _last_msg_role == "tool" and not interrupted and _turn_exit_reason != "noting_finished":
         logger.warning(
             "Turn ended with pending tool result (agent may appear stuck). "
             + _diag_msg + " last_tool=%s",
@@ -525,42 +526,19 @@ def apply_llm_output_transform(
     return final_response, transformed, pre_transform
 
 
-def finalize_turn(
-    agent, *, final_response, api_call_count, interrupted, failed, messages, conversation_history,
-    effective_task_id, turn_id, user_message, original_user_message, _should_review_memory,
-    _turn_exit_reason, _pending_verification_response=None,
-    _pending_verification_response_previewed=False,
-):
-    """Run the post-loop finalization and return the turn ``result`` dict."""
-    from agent.conversation_loop import logger
-
-    final_response, _turn_exit_reason, preserved_verification_fallback, interrupted = _resolve_budget_fallback(
-        agent, final_response=final_response, api_call_count=api_call_count,
-        interrupted=interrupted, failed=failed, messages=messages,
-        _turn_exit_reason=_turn_exit_reason,
-        _pending_verification_response=_pending_verification_response,
-        _pending_verification_response_previewed=_pending_verification_response_previewed,
-        logger=logger,
-    )
-
-    # A non-interrupted turn that fell out of the loop after a tool result, with no
-    # follow-up assistant text, is the Desktop/TUI "silent stop" (#55316, #54756): the
-    # composer returns to ready (or keeps spinning) while the durable transcript ends
-    # at a raw ``tool`` row — the user never learns the turn stopped, and the next user
-    # message lands as ``tool → user``. Interrupted tails keep
-    # ``close_interrupted_tool_sequence``; this is the non-interrupt sibling. Mint the
-    # exit reason, fail the turn, and synthesize the visible close so the tail close in
-    # ``_persist_step`` persists an assistant row. A turn that already streamed text is
-    # left alone: ``_recover_final_from_stream`` owns that recovery (#95514).
+def _resolve_pending_tool_result(agent, final_response, interrupted, failed, messages, exit_reason,
+                                 *, controlled_completion=False):
+    """Explain an unfinished native tool tail; accepted Noting Finish is already complete."""
     if (
-        not final_response
+        not controlled_completion
+        and not final_response
         and not interrupted
         and messages
         and isinstance(messages[-1], dict)
         and messages[-1].get("role") == "tool"
         and not (getattr(agent, "_current_streamed_assistant_text", "") or "").strip()
     ):
-        _turn_exit_reason = "pending_tool_result"
+        exit_reason = "pending_tool_result"
         failed = True
         final_response = ""
         try:
@@ -569,6 +547,7 @@ def finalize_turn(
                     agent._format_turn_completion_explanation("pending_tool_result", None) or ""
                 )
         except Exception:
+            logging.getLogger(__name__).exception("Pending-tool completion explanation failed")
             final_response = ""
         if not final_response:
             # The turn-completion explainer opt-out must not reintroduce the silent stop.
@@ -576,6 +555,36 @@ def finalize_turn(
                 "No reply: the turn stopped while a tool result was still pending. "
                 "Send `continue` to let the model summarize."
             )
+
+    return final_response, failed, exit_reason
+
+
+def finalize_turn(
+    agent, *, final_response, api_call_count, interrupted, failed, messages, conversation_history,
+    effective_task_id, turn_id, user_message, original_user_message, _should_review_memory,
+    _turn_exit_reason, _pending_verification_response=None,
+    _pending_verification_response_previewed=False,
+):
+    """Run the post-loop finalization and return the turn ``result`` dict."""
+    from agent.conversation_loop import logger
+    from secretary.noting_completion import clear_finish_interrupt, controlled_finish, interrupt_reason
+    noting_completed = controlled_finish(agent, _turn_exit_reason)
+    if noting_completed and agent.is_interrupted:
+        interrupted, _turn_exit_reason = True, interrupt_reason(agent)
+
+    final_response, _turn_exit_reason, preserved_verification_fallback, interrupted = _resolve_budget_fallback(
+        agent, final_response=final_response, api_call_count=api_call_count,
+        interrupted=interrupted, failed=failed, messages=messages,
+        _turn_exit_reason=_turn_exit_reason,
+        _pending_verification_response=_pending_verification_response,
+        _pending_verification_response_previewed=_pending_verification_response_previewed,
+        logger=logger, controlled_completion=noting_completed,
+    )
+
+    final_response, failed, _turn_exit_reason = _resolve_pending_tool_result(
+        agent, final_response, interrupted, failed, messages, _turn_exit_reason,
+        controlled_completion=noting_completed,
+    )
 
     # Loop exits that are failures in their own right (outer-loop error cap, shutdown, context
     # that could not be shrunk) carry the verdict the UI descriptor needs; a bare
@@ -592,7 +601,7 @@ def finalize_turn(
         final_response is not None
         and not failed
         and not interrupted
-        and (api_call_count < agent.max_iterations or str(_turn_exit_reason).startswith("text_response("))
+        and (noting_completed or api_call_count < agent.max_iterations or str(_turn_exit_reason).startswith("text_response("))
     )
 
     _rollback_interrupted_preflight_display(agent, interrupted)
@@ -624,9 +633,11 @@ def finalize_turn(
     def _persist_step():
         nonlocal final_response, final_message_uid
         _drop_transcript_scaffolding(agent, messages)
-        final_response, _recovered_from_stream = _recover_final_from_stream(
-            agent, final_response, interrupted, failed
-        )
+        _recovered_from_stream = False
+        if not noting_completed:
+            final_response, _recovered_from_stream = _recover_final_from_stream(
+                agent, final_response, interrupted, failed
+            )
         # Recovery paths (stream-recovered / prior-turn text) reach here with a response no
         # earlier seam transformed; the normal text turn already did this before its flush and
         # gets the recorded outcome back. Either way the tail close below writes the text the
@@ -641,6 +652,8 @@ def finalize_turn(
         agent._persist_session(messages, conversation_history)
 
     _guarded_cleanup("persist_session", _persist_step, _cleanup_errors, logger)
+    if noting_completed and any(error.startswith("persist_session:") for error in _cleanup_errors):
+        failed, completed, _turn_exit_reason = True, False, "session_persistence_failed"
 
     # Keep the gateway's separate in-memory history snapshot current even on
     # cleanup error, so a later prompt isn't sent with a pre-turn snapshot.
@@ -652,7 +665,7 @@ def finalize_turn(
     # Response transforms apply only to real, uninterrupted responses.
     if final_response and not interrupted:
         final_response = _append_file_mutation_footer(agent, final_response, logger)
-    if not interrupted:
+    if not interrupted and not noting_completed:
         final_response = _explain_abnormal_exit(
             agent, final_response, _turn_exit_reason, preserved_verification_fallback, logger,
         )
@@ -759,7 +772,11 @@ def finalize_turn(
     agent._reused_response_text = None
     if interrupted and agent._interrupt_message:
         result["interrupt_message"] = agent._interrupt_message
-    agent.clear_interrupt()
+    if noting_completed:
+        clear_finish_interrupt(agent, result)
+        completed, interrupted, _turn_exit_reason = result["completed"], result["interrupted"], result["turn_exit_reason"]
+    else:
+        agent.clear_interrupt()
     agent._stream_callback = None  # don't leak into future calls
 
     # A voice turn's model route ends with the turn: memory sync and the background review

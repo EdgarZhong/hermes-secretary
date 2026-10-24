@@ -110,7 +110,10 @@ def test_async_native_recovery_commits_preserved_versions_to_current_tail(native
     assert database.get_session(state["child_session_id"])["end_reason"]
     repeat = start_recovery(database, ref(database), failed.child_session_id, "r1", parent_factory=factory(parent))
     assert repeat == state
-    assert client.chat.completions.create.call_count == 3
+    assert client.chat.completions.create.call_count == 2
+    durable = database.get_messages_as_conversation(state["child_session_id"])
+    assert durable[-1]["role"] == "tool"
+    assert json.loads(durable[-1]["content"]) == {"success": True, "status": "end_requested"}
 
 
 def _legacy_control_schemas(monkeypatch):
@@ -270,7 +273,7 @@ def test_concurrent_same_request_runs_only_one_native_child(native_parent, datab
     finally:
         release.set()
     assert wait_recovery(database, failed)["committed"]
-    assert len(calls) == 2
+    assert len(calls) == 1
 
 
 def test_missing_original_anchor_reports_which_source_is_missing(native_parent, database):
@@ -280,18 +283,24 @@ def test_missing_original_anchor_reports_which_source_is_missing(native_parent, 
         reconstruct_noting(database, ref(database), failed.child_session_id)
 
 
-def test_cold_completion_uses_main_native_lease_without_blocking_model_recovery(native_parent, database):
+def test_cold_completion_uses_main_native_lease_without_blocking_model_recovery(native_parent, database, monkeypatch):
     from threading import Event
+    from run_agent import AIAgent
     parent, client = native_parent
     failed = failed_task(native_parent, database)
     finished_model = Event()
-    steps = iter([tool_response("finish_noting", {"reason": "Recovered"}), response("Done")])
-    def sdk(**kwargs):
-        result = next(steps)
-        if result.choices[0].finish_reason == "stop":
+    original_run = AIAgent.run_conversation
+    def run(agent, *args, **kwargs):
+        result = original_run(agent, *args, **kwargs)
+        if getattr(agent, "_secretary_noting_child", False):
+            assert result["completed"] and result["turn_exit_reason"] == "noting_finished"
+            durable = database.get_messages_as_conversation(agent.session_id)
+            assert durable[-1]["role"] == "tool"
+            assert json.loads(durable[-1]["content"]) == {"success": True, "status": "end_requested"}
             finished_model.set()
         return result
-    client.chat.completions.create.side_effect = sdk
+    monkeypatch.setattr(AIAgent, "run_conversation", run)
+    client.chat.completions.create.side_effect = [tool_response("finish_noting", {"reason": "Recovered"})]
     assert database.acquire_session_turn_lease("parent", "main-current", wait_seconds=0)
     try:
         start_recovery(database, ref(database), failed.child_session_id, "r1", parent_factory=factory(parent))
@@ -388,7 +397,7 @@ def test_worker_native_construction_and_turn_keep_session_identity_task_local(na
         ack = start_recovery(database, ref(database), failed.child_session_id, "r1", parent_factory=factory(parent))
         state = wait_recovery(database, failed)
         assert state["committed"], state
-        assert identities == [ack["operation_id"], ack["operation_id"]]
+        assert identities == [ack["operation_id"]]
         assert get_session_env("HERMES_SESSION_ID") == "request-task-main"
     assert os.environ["HERMES_SESSION_ID"] == "other-process-main-identity"
 
@@ -457,7 +466,10 @@ def test_recovery_constructs_fixed_tools_before_freeze_and_preserves_failed_reco
     assert database.get_messages_as_conversation(failed.child_session_id) == original_rows
     assert reconstruct_noting(database, ref(database), failed.child_session_id).tools == source_pin
     assert start_recovery(database, ref(database), failed.child_session_id, "r1", parent_factory=factory(parent)) == state
-    assert len(wires) == 3
+    assert len(wires) == 2
+    durable = database.get_messages_as_conversation(state["child_session_id"])
+    assert durable[-1]["role"] == "tool"
+    assert json.loads(durable[-1]["content"]) == {"success": True, "status": "end_requested"}
 
 
 def test_recovery_preserves_archival_relation_cleanup_receipts_without_replaying_writes(native_parent, database):

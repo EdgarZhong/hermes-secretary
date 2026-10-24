@@ -329,7 +329,9 @@ def test_real_spawn_runs_semantic_tool_to_snapshot_and_close(parent, db, stub_cl
     assert rows[0]["content"].startswith("<noting-task>")
     assert "notebook_create" in rows[0]["content"]
     assert "conversation_history" in rows[0]["content"]
-    assert len(rows) == 8 and all(row["content"] != "will do" for row in rows)
+    assert len(rows) == 7 and all(row["content"] != "will do" for row in rows)
+    assert rows[-1]["role"] == "tool"
+    assert json.loads(rows[-1]["content"]) == {"success": True, "status": "end_requested"}
     assert "notebook_create" in rows[0]["content"]
     assert "finish_noting" in rows[0]["content"]
     assert db.get_session(record["child_session_id"])["end_reason"] is not None
@@ -370,7 +372,7 @@ def test_native_retry_keeps_frozen_prefix_and_task_timestamp(parent, db, stub_cl
     worker.join(timeout=15)
     assert not worker.is_alive()
     assert db.noting_child(decision.admission.admission_id)["status"] == "completed"
-    assert len(sent) == 5
+    assert len(sent) == 4
     assert sent[0]["messages"] == sent[1]["messages"]
     task_position = next(index for index, row in enumerate(sent[0]["messages"])
                          if "<noting-task>" in str(row.get("content", "")))

@@ -226,11 +226,11 @@ def test_real_runner_uses_all_six_tools_finishes_and_keeps_parent_prefix(runtime
     assert len(current) == 1 and current[0]["fields"]["blocker"] == "Awaiting review"
     assert current[0]["schedule_suggestion"]["schedule"] == "after the reviewer responds"
     assert not db._read_all("SELECT * FROM secretary_schedule_registry")
-    assert len(state["sent"]) == 8
+    assert len(state["sent"]) == 7
     for payload in state["sent"]:
         assert payload["tools"] == parent_request["tools"]
         assert payload["messages"][:len(parent_request["messages"]) + 1] == [*parent_request["messages"], {"role": "assistant", "content": "done"}]
-    all_rows = tool_rows(state["sent"][-1])
+    all_rows = [row for row in db.get_messages_as_conversation(outcome.child_session_id) if row["role"] == "tool"]
     assert {row["tool_call_id"] for row in all_rows} == {"read", "show", "create", "update", "temporary", "archive", "finish"}
     assert all(json.loads(row["content"])["success"] for row in all_rows)
     assert json.loads(all_rows[-1]["content"]) == {"success": True, "status": "end_requested"}

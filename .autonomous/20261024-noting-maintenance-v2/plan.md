@@ -58,3 +58,23 @@
 - Root已接受最小续测计划resume-plan.md；准备0请求正式child wire通过，只读克隆源DB不变，新Main正常边界生成新child、不复用旧freeze，在线仍须验证真实Idle。F01/F02修补提交锁定后才收费；新的独立Verification已先基于冻结原文落判据，全轮复审进行中。
 
 - F03／P2（全新独立复审新增）：Create显式status:null／relations:null被内部None默认吞掉，真实invoke反例2失败。root提案在wire _mutation_args按canonical单一非nullable type拒绝显式null，Store内部Python默认不改，省略／[]／合法nullable保持；Verifier已确认方向符合R03/R04（原Schema落实，不改产品语义）。B限定noting_tools.py增7行与原权限测试补例，invoke+Loop零副作用及正例138项通过、独立反例2项通过；root亲审接收，真实收费继续等待最终修补SHA。
+
+### 833真实续测与当前讨论
+- resume13请求=Main1／Noting11／summary1，全部有HTTP200、12完整。真实null update1成功，Finish9次为1接受+8幂等重复；之后自然正常返回、提交snap_4f20592f24c14665830fb3a6882ba220。审计者停止判断过早，SIGTERM截断已开始摘要，durable=false、第二Framework无，不能记成结束机制确定缺陷。原错误解释及更正均保留resume-report.md／stopped-audit-corrected.json。当前总43／short43／long0，无活收费进程，N46未执行。
+- 用户追问工具设计与Finish为何后续请求；root提案只补工具轮合法Finish后的原生Turn收尾，随后仍runner Commit Gate，不改六工具Schema、Prompt、身份、混批、forced/overflow及提交条件；正在由独立Verifier评审是否属原契约接线细化，尚未实施。
+- F04（真实语义来源缺口）：旧short entry1/2/3新增进度未补新UID，range=null，原UID原文不支持新增断言；白板I2/第二步来源指导/R06有效时间/R15内容证据受影响。D只读审833快照，不收费；旧证据保留。若需要Prompt第二步一句明确新来源，先向用户对齐，不以语义硬门禁或人工改输出遮盖。
+
+### 当前独立研讨与实施边界
+- 原契约评审：Verifier已依据R03/R11与07§4.5认可Finish后原生收尾提案为既有两阶段提交接线细化（不是新增完成条件），条件是不在handler内commit、不伪造模型final、不绕过native finalization/owner/cancel。B已接限定实现包：可信首Finish结果持久→原生Loop结束→空输出正常finalize→runner Commit Gate，覆盖预算最后调用及失败/原生回归；Prompt／Schema不改。
+- F04已由D与Verifier分别只读确认833仍缺来源，另含entry4容量更新遗漏新消息。两份审计都保留原坏样本。root已向用户提交第二步单句before/after及异步确认，**尚未获答，不能实施Prompt改动**。未添加语义硬门禁或人工修模型结果。
+- 第三次独立复审833：16项14符合／1违规（F04）／1证据不足（E00），F01/F02/F03关闭；报告verification-final.md。后继收尾实现及任何获批Prompt补充完成后，另派全新独立审查者按新冻结依据全轮复审，再进入Validation。
+
+### 用户追加来源模型方向（尚未完整冻结，相关实现等待）
+- 用户直接要求evidence_time数组（点/段），source_time_ranges数组与Message IDs可混传；Prompt建议同一证据只选一种表达，代码不作覆盖去重或重叠门禁。必须保留新／旧事实实际来源，数组本身不自动修复漏来源。
+- 用户已确认IDs→evidence_time：每条真实用户消息各列一个时间戳；没有用户时取最近Assistant，再无则列全部来源时间。显式时间段独立加入数组，不被IDs覆盖。Candidate直接来源是否同样支持时间段数组与IDs混传尚待回答，notebook_refs模式及权限不扩大。新规格需同步07/索引与新冻结基线，再派数据／工具Prompt包，旧证据保留其版本。
+- 最终模型样本/新独立双门禁/部署应针对最终来源设计及Finish接缝，不以833旧坏样本冒充新通过。费用仍43，未再请求API。
+
+### Finish原生收尾包主会话接收
+- root已亲审noting_completion、tool round、finalizer、原生interrupt上下游及12文件差异，核对报告源码Git blob完全一致；合法durable单独Finish→原生break/finalize→原runner一次Commit Gate，无伪造final。Main/关闭/普通child、非法与混批仍原路径；最后预算合法Finish正常，持久化/owner/commit失败不冒称成功。
+- root亲审暴露clear前取消窗口并要求先反例；真实hard interrupt反例旧版会误提交，修补后在既有clear_interrupt锁内before_clear观察并更新result，原生继续负责全部清理、返回bool，默认None兼容原调用。三个取消屏障、四个正常正例及60项原生相邻回归通过，最终12文件冻结10检查0blocking/0advisory。有效源码hash及原失败在.hermes-dev/tools-prompt-v2/finish-report.md，未为review重跑有效大套。
+- 阶段接收不等同全轮通过；真实收费43保持，来源数组新规格、F04自然行为新证据、N46、全新独立双门禁及部署仍未完成。

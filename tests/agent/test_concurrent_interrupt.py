@@ -144,3 +144,30 @@ def test_clear_interrupt_clears_worker_tids(monkeypatch):
         "worker tid — stale interrupt can leak into the next turn"
     )
 
+
+@pytest.mark.parametrize("preserve_redirect", [False, True])
+def test_clear_observer_reads_pending_interrupt_under_native_lock(monkeypatch, preserve_redirect):
+    from tools.interrupt import is_interrupted, set_interrupt
+
+    agent = _make_agent(monkeypatch)
+    agent._pending_redirect_lock = threading.Lock()
+    redirect = {"text": "Correction"}
+    agent._pending_redirect = redirect
+    agent._interrupt_requested = True
+    agent._interrupt_message = "Pending cancellation"
+    set_interrupt(True, agent._execution_thread_id)
+    observed = []
+
+    def observe():
+        acquired = agent._pending_redirect_lock.acquire(blocking=False)
+        if acquired:
+            agent._pending_redirect_lock.release()
+        assert not acquired
+        observed.append((agent._interrupt_requested, agent._interrupt_message, is_interrupted()))
+
+    assert agent.clear_interrupt(preserve_redirect=preserve_redirect, before_clear=observe) is True
+    assert observed == [(True, "Pending cancellation", True)]
+    assert not agent._interrupt_requested and agent._interrupt_message is None
+    assert agent._pending_redirect is (redirect if preserve_redirect else None)
+    assert not is_interrupted()
+
