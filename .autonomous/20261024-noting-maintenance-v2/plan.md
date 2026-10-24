@@ -78,3 +78,8 @@
 - root已亲审noting_completion、tool round、finalizer、原生interrupt上下游及12文件差异，核对报告源码Git blob完全一致；合法durable单独Finish→原生break/finalize→原runner一次Commit Gate，无伪造final。Main/关闭/普通child、非法与混批仍原路径；最后预算合法Finish正常，持久化/owner/commit失败不冒称成功。
 - root亲审暴露clear前取消窗口并要求先反例；真实hard interrupt反例旧版会误提交，修补后在既有clear_interrupt锁内before_clear观察并更新result，原生继续负责全部清理、返回bool，默认None兼容原调用。三个取消屏障、四个正常正例及60项原生相邻回归通过，最终12文件冻结10检查0blocking/0advisory。有效源码hash及原失败在.hermes-dev/tools-prompt-v2/finish-report.md，未为review重跑有效大套。
 - 阶段接收不等同全轮通过；真实收费43保持，来源数组新规格、F04自然行为新证据、N46、全新独立双门禁及部署仍未完成。
+
+### 已确认来源数组增量的实施边界
+- 07顶部及v2§3/§5/§6第二步、索引R06/R16已同步已确认部分：七内容类型source_time_ranges完整数组与IDs混传；evidence_time数组点／段及每条真实用户取时算法；软指导同一处证据择一。未知空数组不造时间，沿原合法域逐来源校验；旧单范围仅读兼容规范化，不改不可变原件；当前API不列旧字段别名。
+- Candidate直接来源扩展仍待用户回答，现保原限制，只读refs链时间改数组；不把未答当批准。此独立选择不阻止通用数据与Schema更新，但最终收费、双门禁与发布前需收口。未获批准的“新增断言补新来源”候选句仍不实施，以用户此次明确软指导为界。
+- A接通用数据／Schema／projection与旧数据兼容；B接正常Main／恢复边界Schema刷新、Task软指导及正式wire测试；文件白名单不交叉，root负责文档／亲审和必要微小接线。新模型最终验证与N46待全部产品锁版，不重跑旧复杂失败流程。

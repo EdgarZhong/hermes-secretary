@@ -1,8 +1,10 @@
 # 07 · Secretary 改版实施契约：History、Scheduler、Notebook 与 Noting
 
-## 2026-10-24 自主验证期间追加：来源数组与混传（IDs取时已确认）
+## 2026-10-24 自主验证期间追加：来源数组与混传（已确认部分）
 
-用户新增方向：`evidence_time`改为runtime只读数组，元素为时间戳或时间段；直接消息来源的Message IDs与时间段数组可以同时提供，时间段由单对象改为`source_time_ranges`数组。同一处证据通常选择一种表达、不同证据允许混用，依靠Prompt软指导；不增加两种表达覆盖重复／时间段重叠的运行时门禁。用户已明确IDs取时：每条真实用户消息各列一个时间戳；没有用户时取最近一条Assistant；再无则列全部来源消息时间。显式时间段仍独立参与数组，不因提供IDs而丢弃。Candidate直接来源是否同样允许时间段数组与IDs混传尚待回答，其notebook_refs模式不据此扩大；旧数据兼容随完整方案再核。下文v2相冲突的单范围／UID优先投影口径待完整收口后逐条更新；在完成前不得把原规格称为新数组实现已定稿或上线。
+用户新增要求：`evidence_time`改为runtime只读数组，元素为时间戳或时间段；直接消息来源的Message IDs与时间段数组可以同时提供，时间段由单对象改为`source_time_ranges`数组。同一处证据通常选择一种表达、不同证据允许混用，依靠Prompt软指导；不增加两种表达覆盖重复／时间段重叠的运行时门禁。用户已明确IDs取时：每条真实用户消息各列一个时间戳；没有用户时取最近一条Assistant；再无则列全部来源消息时间。显式时间段仍独立参与数组，不因提供IDs而丢弃。下文v2对应接口、投影及Prompt指导已同步本次已确认变更；尚未据此宣称实现、真实模型验证或部署完成。
+
+**独立待决边界：** Candidate直接来源是否同样允许时间段数组与IDs混传尚待回答；在回答前保留原Candidate直接来源仅IDs的规则，不实施该范围扩展。其notebook_refs模式继续与直接消息来源互斥，目标／标签映射／审批／结算／引用保护不变。该独立选择不阻止七内容类型的已确认数组改造及通用只读时间投影；最终真实验证、独立双门禁和发布前仍须完整收口。
 
 
 > **2026-10-16 定案设计；尚未实施。** 白板整体已获用户审定，完整 Noting 提示文和工具细节由用户授权自主收敛。本文在该授权下给出实施契约；本轮只整理文档，不宣称运行代码、配置或测试库已经改版。
@@ -63,13 +65,15 @@ Notebook持续处于当前Conversation的上下文中，让Main知道正在推�
 
 用户再次明确：将旧notebook_maintain拆为create／update／archive三个工具，参数扁平化，同名属性不能在不同工具中处于不同层级。以下接口契约已批准，不重复请求审批：
 
-- notebook_create(entry_type, fields, status?, relations?, schedule_suggestion?, source_message_uids?, source_time_range?)：一次创建一条；ID与版本沿运行时既有机制分配。
-- notebook_update(entry_id, fields?, status?, relations?, schedule_suggestion?, source_message_uids?, source_time_range?)：无action、无changes包裹；entry_id之外至少提交一个修改属性。Create/Update同名参数始终处于同一层级。
+- notebook_create(entry_type, fields, status?, relations?, schedule_suggestion?, source_message_uids?, source_time_ranges?)：一次创建一条；ID与版本沿运行时既有机制分配。
+- notebook_update(entry_id, fields?, status?, relations?, schedule_suggestion?, source_message_uids?, source_time_ranges?)：无action、无changes包裹；entry_id之外至少提交一个修改属性。Create/Update同名参数始终处于同一层级。
 - notebook_archive(entry_id, reason)：单独归档；先保留仍需内容和来源。按已确认简化，普通relations随归档自动解除；gap情景引用和Candidate来源引用仍需明确处置，未处理则拒绝归档。
 
 Update规则：fields按键合并，未提交保持；文字替换对应值，数组全量替换。可选属性允许按契约用null清除；必填内容不能删空。schedule_suggestion为可选对象，建议整对象替换、null清除，不与fields混合。entry_id仅选目标，不可改成新ID；entry_type、version_id及运行时元数据不可编辑。同一事情更新稳定ID，实际修改生成新版本，无变化不造版本；另一件事创建新条目，不能复用同类型ID换主题。
 
 错误回执必须指明具体字段、原因和纠正动作，必要时给最小示例；不再统一报mixed-action。拒绝无副作用，不自动猜测／重写输入替模型通过。七类合法字段及Candidate原有来源约束继续校验，不能因拆工具而放宽内容权限。
+
+2026-10-24追加来源契约：`source_time_ranges`是完整替换数组，每个元素沿用`{start_time,end_time}`时区明确的ISO时间结构，单时刻可用相同起止值；用`[]`清空，未提供保持。七内容类型允许它与`source_message_uids`同时提供，每个来源仍须满足原有父Conversation／合法路径约束，至少有一种有效来源；不合并来源表达，不做覆盖重复或范围重叠检查。Candidate范围见顶部待决边界，当前仅IDs或notebook_refs原模式。旧单范围payload只在读取／内部兼容入口转为数组，不迁移、修改历史不可变item／Snapshot原件，不暴露旧字段为当前模型工具别名；原内部调用默认兼容，确切版本和来源继承比较使用同一规范化表示。Schema变更须在Main正常构造／恢复及Noting恢复新冻结边界更新完整定义，不只按同名工具存在就保留旧Schema；正在运行的冻结父子前缀不热改。
 
 Noting执行白名单为六工具：conversation_history、notebook_show、notebook_create、notebook_update、notebook_archive、finish_noting（2026-10-24用户明确确认六工具方向，尚未实施）。Main禁止三个维护工具及finish，保留原有History／Show／Scheduler能力。工具定义完整固定在API顶层，不重复注入Task、不动态注册；父子Root/tools/冻结Active前缀一致，已运行child不热改。Finish仍最后独立调用、不得混批，接受结束和最终Snapshot提交仍是两个阶段。旧maintain退出当前可执行授权面，不保留模型可调用别名，旧轨迹只作历史证据。
 
@@ -117,14 +121,14 @@ Framework仍非触发式注入，不自行启动Turn或外发微信。建议随N
 
 用户本次要求把evidence_time加回模型可见视图，仍由runtime从消息provenance派生、只读，不让模型手填，不列入Create/Update可编辑输入。它供模型判断哪些条目应考虑过滤／候选整理，并非超过某年龄自动删除。区分事件发生时间time_context、来源消息时间、Notebook创建／更新时间。保持事项／行动last_progress_time、问题last_discussion_time、gap首次识别／created_at等既有计龄语义；来源组派生时间不能无条件替代所有类型的首次实质证据时刻，未知不能造日期。
 
-取时顺序：
+2026-10-24用户追加规则替换旧单区间投影，结果始终为数组，元素可以是单时刻或起止范围：
 
-1. 来源只有时间范围：复用该范围。
-2. 来源是Message UIDs且含真实用户消息：仅取证据组内用户消息，一条显示单时刻，多条显示起止范围。
-3. 无用户消息但有Assistant：取最近Assistant消息的时刻。
-4. 两者都无：取全部引用消息时间范围。
+1. Message UIDs含真实用户消息：证据组内每条真实用户消息各列一个时间戳，不折叠成首尾区间。
+2. 无用户消息但有Assistant：取最近一条Assistant的时间戳。
+3. 两者都无：列出全部来源消息的时间戳，不合并成首尾区间。
+4. 显式`source_time_ranges`每个元素独立加入结果，不因存在IDs而丢弃；相同起止值可显示为单时刻。
 
-未知不能回填当前时间。推荐底层统一起止结构，单时刻起止相同，展示为一个时刻；在来源信息区展示，不放fields。工具说明明确“runtime-derived, read-only; do not supply on create or update”。推荐Show、初始／续Turn工作视图、维护回执和Framework正文复用同投影；UID与时间范围同时存在时优先UID推导、原范围仍展示；Candidate refs型沿已有来源链解释，不伪造直接证据时间，保持已确认取时及计龄语义。
+未知不能回填当前时间；未知部分不制造点／段，全未知以空数组表示。展示仍使用Profile时区；在来源信息区展示，不放fields。工具说明明确“runtime-derived, read-only; do not supply on create or update”。Show、初始／续Turn工作视图、维护回执和Framework正文共用该投影。Candidate refs型沿已有来源链聚合来源条目的证据数组，不合并成覆盖中间无证据时间的宽区间、不伪造直接来源；其准入与标签约束保持。此数组不改变progress／discussion／gap等原生命周期时钟，不引入自动删除或模型可编辑时间。
 
 ### 6. Noting Task完整职责与内容指导
 
@@ -133,7 +137,7 @@ Framework仍非触发式注入，不自行启动Turn或外发微信。建议随N
 七步：
 
 1. **对齐输入。** 确认当前Notebook、冻结父证据、时间和覆盖范围；已有证据足够就处理，仅为具体必要缺项Read/Search。覆盖边界不等于每条已被抽取，消息时间不等于事件时间，不造日期／承诺／授权／结果。
-2. **维护已有内容。** 根据新事实更新同一件事，保留仍相关的已发生结果、重要转折、条件和用户立场变化，不能只剩最近一句。保留内容对应来源，不一律替换成最新消息。新内容不继承旧批准，关联Candidate同步校正；另一件事另建条目。
+2. **维护已有内容。** 根据新事实更新同一件事，保留仍相关的已发生结果、重要转折、条件和用户立场变化，不能只剩最近一句。保留内容对应来源，不一律替换成最新消息。同一处证据通常选择Message IDs或一个时间段元素即可，不必重复表达；不同证据可混用IDs和时间段数组。该项为Prompt软指导，不做覆盖重复的代码门禁；Candidate暂保持顶部边界。新内容不继承旧批准，关联Candidate同步校正；另一件事另建条目。
 3. **补建有用内容。** 按七类记录正在推进、以及曾发生且现在仍帮助工作／理解用户／接续讨论的内容。纳入偏好／身份、情绪／关系经历、实际讨论和有用材料，不强迫每类都有条目。用户问题／认识／决定忠实归因；AI建议作为尚未采纳的工作／讨论材料，不升级为用户立场。
 4. **结算真实外部写入。** 按可见提案→明确批准→实际工具结果核对覆盖，先处理来源再处理Candidate；实际成功交接的覆盖范围按原规则归档，不因仍有当前用途或以后可能有用保留副本。部分成功仅结算成功范围，后续新变化、未完责任及其它未结算提案所需的未覆盖内容按原规则保留；完整来源确已处理后结束Candidate，部分结算则仅留未写入范围。不检查目标内部存储，不重复未知写入，不因重读历史或保留未覆盖部分重新生成已交接范围的索引／候选。
 5. **按类型处理保留与去留。** 删除重复而非追求最短；已完成行动仍可留有用结果，已回答问题可留答案和有用排除过程，已失效决定可保留解释现状的历史转折并标清失效，gap补足后答案回到situation并修引用。Candidate原有来源／目标／标签／审批规则保持；无当前用途、独立留存价值、未完责任／有效约束／讨论或待提案需要时才直接归档，终态／年龄本身不是自动删除许可；实际外部写入依第4步按成功覆盖范围结算退出，不以当前仍可能有用绕过结算。
