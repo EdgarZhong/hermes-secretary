@@ -198,3 +198,19 @@ Root内部guard明确更新供D离线接线：total96/short59/long37；实际64=
 
 ### R20整包root亲审接收
 Root亲读两文件实际diff和正式Main/default spawn/SDK/child/working/Finish路径，822份实际加载仓库源SHA全部一致；独立AST字符还原核除了R18原句移动与已批准same-situation句，默认Task其余逐字符及两个control常量全不变。新用例真实2 Turn、7请求、六工具实际成功，同情景原ID/新版本/旧+新来源、不同情景新建及过时归档、done省略保持和旧immutable不变；仅模型响应受控，不代自然语义。147定向相邻有效，包临时index冻10/health0/0，未为review重跑545套。准备root实际stage统一检查后锁版；原自然反例仍开放，D仅最终fresh组合与结算采证离线准备。
+
+### f497 R20真实终局与停止重复试跑（2026-10-24）
+
+R20已按用户最新批准实施、root精确亲审并锁版f497；147定向及实际81文件冻结10/health0/0有效。最终唯一fresh run自然结束，16HTTP全200、累计80=51short+29long。同Conversation两次normal Finish→Snapshot→durable Idle full→Framework及后Main Show/History已完成，7个Noting wire父前缀精确一致，首次Noting146839超过N38。不能用该机制结果签内容PASS。
+
+| 整改项 | 事实/完成条件 | 负责人/状态/验证 |
+|---|---|---|
+| F7-01 来源支持 | SDK3三Update新增事实却省略source；SDK11仅补第二progress仍漏第一，饮水到货/容量确认自身来源不完整。必须保旧/新断言可追证，不以地址合法或别条目证据兜底 | root待与用户对齐后续方法；V7独立确认，原始wire/两Snapshot保留。无新Schema/Prompt/语义硬门禁授权 |
+| F7-02 未知进度 | Main SDK9先无据尚未准备，Noting SDK12仅引责任user写尚未开始，后Main SDK16传播。done=false结构正确，具体语义错误 | root停止同类Prompt小改付费试跑；需区分责任、Main推断及已确认进度，方案未定，不先改产品 |
+| E7 独立承载 | 同currentSnapshot原生Main公开history=[]仍恢复旧summary/history；三次send前拦截，P1/P2 Provider0。修正测试入口假设，不为测试改产品正常恢复、不人工删库 | D仅取证，root后续方法提案及独立判据评审；当前未执行 |
+| R12 当前面结算 | 新done/来源数组/R20面真实完全/部分结算尚未运行，旧证据不能无条件代签 | 无独立run权，不因文件存在或剩余额度执行 |
+| 发布 | V7整包终局后root亲审，违规/缺证关闭、fresh全轮Verification及独立Validation才可部署 | 未进入Validation；生产183f1a5无变更 |
+
+本次情景4归档并入既有1/3，无新situation重建，不能照搬旧df稳定ID违例；接收项缺来源照实失败。不把所有原ID永存写成要求，也不据该例宣称自然原位update专门正例通过。累计80保原账，R20run消费后不能转剩余额度自动重试，R12未授予。技能Stuck要求停止重复盲试并向用户展示完整问题报告；继续只做证据收尾/准确文档，不扩产品行为。磁盘追加已完成，净释放观察4.142GiB，活树保留。
+
+V7整包已交回并由root亲读全32矩阵/六节及真实SDK接受：27符合、3违规（R18/R20/I07对应两个内容问题）、2缺证（R12/R15），不进入Validation。旧报告205911字节保持；R20测试加载独立计数823含ignored证据插件，原root822为原清单统计，不据单一数字替代逐SHA核对。当前源不改，停止重复试跑，准确交接而非完成/部署声明。
