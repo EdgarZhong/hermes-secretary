@@ -126,7 +126,7 @@ def test_bad_suggestions_leave_no_partial_versions(owner, value, operation):
         if operation == "create":
             create(store, schedule_suggestion=value)
         else:
-            store.update(entry["entry_id"], {"status": "paused", "schedule_suggestion": value})
+            store.update(entry["entry_id"], {"done": True, "schedule_suggestion": value})
     assert error.value.field.startswith("schedule_suggestion")
     assert store.snapshot_state() == before and count(db) == versions
 
@@ -155,10 +155,10 @@ def test_schema_accepts_flat_parameters_and_refuses_wrapper_and_readonly_input()
     create_properties = NOTEBOOK_CREATE_SCHEMA["parameters"]["properties"]
     update_properties = NOTEBOOK_UPDATE_SCHEMA["parameters"]["properties"]
     assert (create_properties.keys() & update_properties.keys()) == {
-        "fields", "status", "relations", "schedule_suggestion", "source_message_uids", "source_time_ranges"}
+        "fields", "done", "relations", "schedule_suggestion", "source_message_uids", "source_time_ranges"}
     validator = Draft7Validator(NOTEBOOK_UPDATE_SCHEMA["parameters"])
     assert list(validator.iter_errors({"entry_id": "1"}))
-    for patch in ({"changes": {"status": "paused"}}, {"action": "update"}, {"entry_type": "matter"},
+    for patch in ({"changes": {"done": True}}, {"status": "paused"}, {"action": "update"}, {"entry_type": "matter"},
                   {"evidence_time": "now"}, {"fields": {"evidence_time": "now"}},
                   {"fields": {"external_refs": []}}):
         assert list(validator.iter_errors({"entry_id": "1", **patch}))
@@ -256,7 +256,7 @@ def test_archive_atomically_cleans_only_auxiliary_relations_with_new_versions(ow
     assert result["relations_removed_from"] == [related["entry_id"]]
     current = store.get(related["entry_id"])
     assert current["relations"] == [{"kind": "related_to", "entry_id": unrelated["entry_id"]}]
-    assert current["fields"] == old["fields"] and current["status"] == old["status"]
+    assert current["fields"] == old["fields"] and current["done"] is old["done"]
     assert current["source_message_identities"] == old["source_message_identities"]
     assert current["entry_id"] == old["entry_id"] and current["version_id"] != old["version_id"]
     assert current["last_processed_at"] == old["last_processed_at"]

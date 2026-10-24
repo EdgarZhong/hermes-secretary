@@ -34,7 +34,7 @@ OPTIONAL_FIELDS = {
 COMMON_FIELDS = {"domains", "processing_note"}
 ARRAY_FIELDS = {"domains", "subjects", "targets", "notebook_refs", "source_types"}
 EVIDENCE_TIMES = {"last_progress_time", "last_discussion_time"}
-STATUSES = {
+LEGACY_STATUSES = {
     "matter": ("in_progress", "paused", "completed", "terminated"),
     "action": ("pending", "in_progress", "waiting", "paused", "completed", "terminated"),
     "situation": ("current", "expired"),
@@ -44,16 +44,20 @@ STATUSES = {
     "decision": ("active", "superseded", "revoked", "expired"),
     "candidate": ("proposed", "awaiting_approval", "approved", "awaiting_result"),
 }
+LEGACY_DONE_STATUSES = {
+    "completed", "terminated", "expired", "resolved", "invalid", "answered",
+    "withdrawn", "superseded", "revoked",
+}
 RELATION_KINDS = {"part_of", "depends_on", "based_on", "supersedes", "related_to"}
 SOURCE_TYPES = {"matter", "action", "situation", "question", "insight", "decision"}
 CANDIDATE_TARGETS = {"memory", "skill", "rule", "conversation"}
 PERSISTENCE_TARGETS = CANDIDATE_TARGETS - {"conversation"}
 ENTRY_KEYS = {
-    "entry_id", "version_id", "entry_type", "fields", "status", "relations",
+    "entry_id", "version_id", "entry_type", "fields", "done", "relations",
     "source_message_identities", "source_time_ranges", "created_at", "updated_at",
     "last_processed_at", "archived",
 }
-CHANGE_KEYS = {"fields", "status", "relations", "schedule_suggestion", "source_message_identities", "source_message_uids", "source_time_range", "source_time_ranges"}
+CHANGE_KEYS = {"fields", "done", "relations", "schedule_suggestion", "source_message_identities", "source_message_uids", "source_time_range", "source_time_ranges"}
 SOURCE_NOT_PROVIDED = object()
 
 
@@ -146,10 +150,44 @@ def canonical_notebook_entry(entry):
     if not isinstance(entry, dict):
         return deepcopy(entry)
     result = canonical_range_fields(entry)
+    if "status" in result:
+        status = result.pop("status")
+        entry_type = result.get("entry_type")
+        if ("done" in result or not isinstance(status, str) or not isinstance(entry_type, str)
+                or status not in LEGACY_STATUSES.get(entry_type, ())):
+            raise NotebookValidationError("Invalid legacy Notebook status representation.", field="status")
+        result["done"] = status in LEGACY_DONE_STATUSES
+        fields = result.get("fields")
+        if (isinstance(fields, dict) and isinstance(fields.get("description"), str)
+                and fields["description"].strip()):
+            # Preserve the old record's meaning without inventing a new fact,
+            # approval or disposition. This is a read projection, not a write.
+            meaning = f"Earlier record marked this {entry_type.replace('_', ' ')} as {status.replace('_', ' ')}."
+            if status == "pending":
+                meaning += " That marker does not establish whether work had started."
+            if entry_type == "candidate":
+                meaning += " That stage alone does not establish authorization or an actual write."
+            fields["description"] = fields["description"] + "\n" + meaning
     if isinstance(result.get("fields"), dict):
         for key in ("external_refs", "evidence_time"):
             result["fields"].pop(key, None)
     return result
+
+
+def reject_legacy_status(values):
+    if isinstance(values, dict) and "status" in values:
+        raise NotebookValidationError(
+            "status is no longer editable; use the top-level done boolean.", field="status",
+            next_action="Omit status; set done to true or false and record progress or outcomes in fields.description.",
+        )
+
+
+def validate_done(value):
+    if not isinstance(value, bool):
+        raise NotebookValidationError(
+            "done requires a boolean; null, numbers and strings are not accepted.", field="done",
+            next_action="Supply true or false; omit done on update to keep its current value.",
+        )
 
 
 def unique_strings(value, field):
@@ -275,7 +313,7 @@ def same_source_claim(left, right, *, allow_relation_removal=False):
     """An inherited citation license is not transferable to a different claim.
 
     Administrative processing and archiving do not change the supported claim.
-    Any content/status/relationship/provenance change must use current sources.
+    Any content/done/relationship/provenance change must use current sources.
     This is a structural safeguard, not an attempt to infer semantic entailment.
     """
     def claim(entry):
@@ -283,7 +321,7 @@ def same_source_claim(left, right, *, allow_relation_removal=False):
         fields = deepcopy(entry["fields"])
         fields.pop("processing_note", None)
         return {"entry_id": entry["entry_id"], "entry_type": entry["entry_type"],
-                "fields": fields, "status": entry["status"], "relations": entry["relations"],
+                "fields": fields, "done": entry["done"], "relations": entry["relations"],
                 "source_message_identities": entry["source_message_identities"],
                 "source_time_ranges": entry["source_time_ranges"]}
     left_claim, right_claim = claim(left), claim(right)
@@ -341,7 +379,7 @@ def validate_references(state):
 
 def public_state(state):
     """Complete current bodies with reverse Candidate links computed from this view."""
-    result = {section: [deepcopy(entry) for entry in state[section] if not entry.get("archived", False)]
+    result = {section: [canonical_notebook_entry(entry) for entry in state[section] if not entry.get("archived", False)]
               for section in SECTIONS}
     entries = {entry["entry_id"]: entry for section in SECTIONS for entry in result[section]}
     for entry in entries.values():

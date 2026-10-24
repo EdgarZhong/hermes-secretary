@@ -6,7 +6,7 @@ from threading import RLock
 
 from agent.message_visibility import model_visible_messages
 from secretary.notebook_contract import (
-    SOURCE_NOT_PROVIDED, NotebookValidationError, parse_time, require_text, validate_source_range,
+    SOURCE_NOT_PROVIDED, NotebookValidationError, canonical_notebook_entry, parse_time, require_text, validate_source_range,
 )
 from secretary.notebook_model import NotebookWorkingState
 
@@ -52,6 +52,7 @@ def _source_validator_conn(db, conn, conversation_ref):
 def _inherited_sources_conn(conn, conversation_ref, entry, *, exact_version=False):
     from secretary.notebook_items import item_entry, item_row_conn, source_basis_conn
 
+    entry = canonical_notebook_entry(entry)
     row = item_row_conn(conn, entry["version_id"])
     if exact_version and entry != item_entry(row, conversation_ref):
         raise ValueError("Notebook entry differs from its immutable version")
@@ -198,11 +199,11 @@ class NotebookStore:
     def get(self, entry_id):
         return self._state.get(entry_id)
 
-    def create(self, entry_type, fields, *, status=None, relations=None,
+    def create(self, entry_type, fields, *, done=False, relations=None,
                source_message_identities=SOURCE_NOT_PROVIDED, source_time_range=SOURCE_NOT_PROVIDED,
                source_message_uids=SOURCE_NOT_PROVIDED, schedule_suggestion=None,
-               source_time_ranges=SOURCE_NOT_PROVIDED):
-        return self._state.create(entry_type, fields, status=status, relations=relations,
+               source_time_ranges=SOURCE_NOT_PROVIDED, status=SOURCE_NOT_PROVIDED):
+        return self._state.create(entry_type, fields, done=done, status=status, relations=relations,
                                   source_message_identities=source_message_identities, source_time_range=source_time_range,
                                   source_message_uids=source_message_uids, schedule_suggestion=schedule_suggestion,
                                   source_time_ranges=source_time_ranges)

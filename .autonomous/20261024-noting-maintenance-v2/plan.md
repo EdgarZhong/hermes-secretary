@@ -138,3 +138,12 @@
 ### R19用户确认与本次实现分工
 
 用户已明确采用统一done方案，R18两句Prompt及R19结构口径收口，07/索引已同步。下一步A负责数据/Schema/只读旧记录兼容及专属新测试；B负责两处获批Task、六工具/权限实际请求与旧测试迁移，A的新done测试不交叉；D在最终锁版后补真实同一Conversation多周期链、F04/F05及必要长前缀，执行前另明确配额，不自启。Root亲审集成/规则检查/阶段提交；V4只完成旧c5补证，之后新最终版必须全新独立全轮Verification再Validation。只改Notebook条目状态，不改运行任务/Scheduler状态，不引入状态语义硬门禁或自动归档。
+
+### R18/R19整包root亲审与下一唯一真实组合
+
+- A六产品＋独占新测试7/7 SHA与现树一致，root亲读canonical旧状态映射/保留语义、strict bool、Store/Working及item/source_basis/exact-version、public render与120项测试。旧记录标记说明只在兼容读取补入description，原item/Snapshot字节不改，revised及Candidate阶段保守false；no-op、new version、来源/引用及Scheduler保护保持。
+- B13变更＋7依赖20/20 SHA与现树一致，root亲读两处Prompt精确diff和12份测试迁移，旧枚举改历史真实SQLite矩阵、旧输入明确拒绝，不删除失败/版本/审批结算断言；正式SDK核默认false/取消true、回执/Show/Finish/Snapshot/Framework及旧pin恢复。A120项、B545不同项有效，各自作用域分列，不用SDK注入声明自然语义已修。
+- root只读核独立前端通用[...]标签解析接受done=true/false，不依赖具体枚举；不改UI。原旧section纯文本回退不作为本轮新增改造。
+- D§13离线组合方案已root亲读接受：完整184diag＋8业务、4个合法前态；同一Conversation两次真实Idle正常整理/全文压缩，逐来源/进度检查后实际Show/History，另从真实最终DB只读backup的新原生Main以公开history=[]作Notebook-only承载探针，P1送前拒summary/旧正文污染，P2另History，不能用probe替正式链。正式分支正在接通，仅AST/helper零网络，不中间正式dry。
+- root明确内部费用guard由70/55/15调整为total83/short55/long32，实际59（short51/long8、含probe2）不改；新组合单轮最多24，全部请求计long桶，三重send前护栏、SDK0retry、禁止第二run/自动重分配。此为root内部护栏并非用户指定预算；配额更新不等run权。待最终commit/manifest/零请求dry由root核通过后仅一次--run授权，当前无新收费。
+- V4旧c5补证报告root已亲读接收：N46长子缺口关闭，F04/F05/E4-02仍未关闭，27/1/1为旧版本终局；新R18/R19不能用其代签，新完整模型结果取得后fresh全轮Verification再Validation。

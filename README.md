@@ -14,7 +14,7 @@
 
 Secretary 只在Profile的 `state.db` 增加自有表，不改原表 schema / ownership。`noting`、`scheduler` 独立配置，`/noting` 控制当前Conversation参与。微信入站的完整正式回复按消息及时由adapter发送，Redirect的半截正式正文并入对应通知；其它入口须显式调用发送工具，Framework等非触发式上下文注入不借用上一轮渠道adapter自动发送。实现边界及已知限制见 [当前看板](CLAUDE.md)。
 
-Main的`scheduler`与`notebook_show`按各自能力开关完整独立声明在API顶层，不进入Tool Search折叠目录：前者受`scheduler.enabled`，后者沿全局`noting.enabled`读取门禁；当前Conversation的`/noting`参与开关不控制这两项权限。`notebook_create`、`notebook_update`、`notebook_archive`与`finish_noting`也沿全局`noting.enabled`完整固定顶层且不折叠，Main只能看见定义、运行时禁止执行；绑定Noting仅授权`conversation_history`、`notebook_show`及这四工具。Create／Update同名属性同层，更新不使用action／changes包裹；旧maintain退出当前可执行面。其它工具保留原生折叠策略。
+Main的`scheduler`与`notebook_show`按各自能力开关完整独立声明在API顶层，不进入Tool Search折叠目录：前者受`scheduler.enabled`，后者沿全局`noting.enabled`读取门禁；当前Conversation的`/noting`参与开关不控制这两项权限。`notebook_create`、`notebook_update`、`notebook_archive`与`finish_noting`也沿全局`noting.enabled`完整固定顶层且不折叠，Main只能看见定义、运行时禁止执行；绑定Noting仅授权`conversation_history`、`notebook_show`及这四工具。Create／Update同名属性同层，更新不使用action／changes包裹；旧maintain退出当前可执行面。其它工具保留原生折叠策略。 Notebook条目统一使用顶层`done`布尔标记（Create默认false、Update省略保持）：true仅表示证据确认终结，不等于成功；false表示尚未确认终结，不等于未开始。具体进度与结果用语义字段记录；done不自动归档或授权。旧细分status仅读取兼容，不回写历史不可变记录。
 
 Notebook的`evidence_time`由运行时按消息来源派生，只读展示；条目可带单个`content`／`schedule`语义建议，Noting不登记排期，Framework仅向Main提示考虑创建／更新。Noting开启且合格Main的full compaction将默认旧尾部纳入摘要；真正达到原生阈值的自动压缩、显式`/compress here N`仍按原生保尾。仅Idle要求正常Noting提交→持久压缩→Framework；其它入口保持既有并行机制。完整字段、Prompt与分支见[07本轮定稿](docs/07-scheduler-notebook-noting-compaction-redesign.md)。
 

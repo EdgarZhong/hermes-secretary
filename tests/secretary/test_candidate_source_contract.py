@@ -44,6 +44,7 @@ def _candidate(script, target, form):
         "description": SUMMARIES[target], "targets": [target],
         "notebook_refs": [source["entry_id"]] if form == "refs" else [],
         "source_types": ["matter"] if form == "refs" else [],
+        "stage_evidence": "Existing evidence is indexed; no proposal, approval or outside write is established.",
     }}
     if form in {"messages", "mixed_direct"}:
         args["source_message_uids"] = ["origin-a"]
@@ -66,7 +67,8 @@ def test_native_candidate_accepts_source_form_for_each_target(runtime, target, f
     source = script.results["s02-0"]["entry"]
     candidate = script.results["s02-2"]["payload"]["candidates"][0]
     assert candidate["fields"]["description"] == SUMMARIES[target]
-    assert candidate["status"] == "proposed"
+    assert candidate["done"] is False
+    assert "no proposal, approval or outside write" in candidate["fields"]["stage_evidence"]
     assert script.results["s02-2"]["payload"]["work"][0]["version_id"] == source["version_id"]
     if form == "refs":
         assert candidate["fields"]["notebook_refs"] == [source["entry_id"]]
@@ -157,7 +159,8 @@ def test_new_ref_targets_convert_atomically_without_claiming_a_write(runtime, ta
     outcome = _run(runtime, script)
     assert outcome.committed, outcome
     converted = script.results["s02-2"]["entry"]
-    assert converted["status"] == "proposed"
+    assert converted["done"] is False
+    assert "no proposal, approval or outside write" in converted["fields"]["stage_evidence"]
     assert converted["fields"]["description"] == SUMMARIES[target]
     assert converted["fields"]["notebook_refs"] == converted["fields"]["source_types"] == []
     assert converted["source_message_uids"] == (["origin-a"] if form != "ranges" else [])
@@ -194,7 +197,8 @@ def test_direct_candidate_requires_complete_source_clear_before_switch_to_refs(r
     source = script.results["s02-0"]["entry"]
     assert converted["entry_id"] == created["entry_id"] and converted["version_id"] != created["version_id"]
     assert converted["fields"]["description"] == created["fields"]["description"]
-    assert converted["status"] == created["status"] == "proposed"
+    assert converted["done"] is created["done"] is False
+    assert converted["fields"]["stage_evidence"] == created["fields"]["stage_evidence"]
     assert converted["fields"]["notebook_refs"] == [source["entry_id"]]
     assert converted["fields"]["source_types"] == ["matter"]
     assert converted["source_message_uids"] == converted["source_time_ranges"] == []

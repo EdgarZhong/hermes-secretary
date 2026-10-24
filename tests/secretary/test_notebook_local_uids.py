@@ -78,7 +78,7 @@ def test_bad_uid_arrays_refuse_atomically_with_local_diagnostic(db, value, opera
         elif operation == "direct_create":
             book.create("matter", FIELDS, source_message_uids=value)
         else:
-            book.update(entry["entry_id"], {"source_message_uids": value, "status": "paused"})
+            book.update(entry["entry_id"], {"source_message_uids": value, "done": True})
     assert error.value.field == "source_message_uids"
     assert error.value.code == "invalid_argument"
     assert book.snapshot_state() == before and count(db) == versions
@@ -131,7 +131,7 @@ def test_unavailable_and_foreign_uid_never_grants_authority(db, uid, operation):
         if operation == "create":
             create(book, source_message_uids=["anchor", uid])
         else:
-            book.update(entry["entry_id"], {"source_message_uids": [uid], "status": "paused"})
+            book.update(entry["entry_id"], {"source_message_uids": [uid], "done": True})
     assert error.value.code == "source_unavailable"
     assert book.snapshot_state() == before and count(db) == versions
 

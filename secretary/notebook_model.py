@@ -10,9 +10,9 @@ from threading import RLock
 
 from secretary.notebook_contract import (
     ARRAY_FIELDS, CHANGE_KEYS, COMMON_FIELDS, ENTRY_KEYS, OPTIONAL_FIELDS,
-    RELATION_KINDS, REQUIRED_FIELDS, STATUSES, NotebookValidationError,
+    RELATION_KINDS, REQUIRED_FIELDS, NotebookValidationError,
     SOURCE_NOT_PROVIDED, canonical_notebook_entry, canonical_source_fields, local_source_error,
-    outgoing_references, parse_time, public_state, require_text,
+    outgoing_references, parse_time, public_state, reject_legacy_status, require_text, validate_done,
     validate_candidate_provenance, validate_fields, validate_references, validate_source_ranges,
     validate_schedule_suggestion,
 )
@@ -113,8 +113,7 @@ class NotebookWorkingState:
             raise NotebookValidationError("Invalid archive marker.", field="archived")
         validate_fields(entry_type, entry["fields"])
         validate_schedule_suggestion(entry.get("schedule_suggestion"))
-        if not isinstance(entry["status"], str) or entry["status"] not in STATUSES[entry_type]:
-            raise NotebookValidationError("Invalid status for this entry type.", field="status")
+        validate_done(entry["done"])
         relations = entry["relations"]
         if not isinstance(relations, list):
             raise NotebookValidationError("Expected a complete relations array.", field="relations")
@@ -199,12 +198,14 @@ class NotebookWorkingState:
         entry["version_id"] = version_id
         return entry
 
-    def create(self, entry_type, fields, *, status=None, relations=None,
+    def create(self, entry_type, fields, *, done=False, relations=None,
                source_message_identities=SOURCE_NOT_PROVIDED, source_time_range=SOURCE_NOT_PROVIDED,
                source_message_uids=SOURCE_NOT_PROVIDED, schedule_suggestion=None,
-               source_time_ranges=SOURCE_NOT_PROVIDED):
+               source_time_ranges=SOURCE_NOT_PROVIDED, status=SOURCE_NOT_PROVIDED):
         with self.lock:
             self._require_writable()
+            reject_legacy_status({} if status is SOURCE_NOT_PROVIDED else {"status": status})
+            validate_done(done)
             section = section_for_type(entry_type)
             validate_fields(entry_type, fields)
             # A cleared optional singleton has one representation: absent. Required
@@ -222,7 +223,7 @@ class NotebookWorkingState:
             sources = canonical_source_fields(sources, self.conversation_ref)
             identities = sources.get("source_message_identities")
             entry = {"entry_id": "__new__", "version_id": "__new__", "entry_type": entry_type,
-                     "fields": fields, "status": STATUSES[entry_type][0] if status is None else status,
+                     "fields": fields, "done": done,
                      "relations": deepcopy(relations) if relations is not None else [],
                      "source_message_identities": [] if identities is None else identities,
                      "source_time_ranges": sources.get("source_time_ranges", []), "archived": False,
@@ -251,6 +252,7 @@ class NotebookWorkingState:
         with self.lock:
             self._require_writable()
             section, index = self._locate(entry_id)
+            reject_legacy_status(changes)
             if not isinstance(changes, dict) or not changes or changes.keys() - CHANGE_KEYS:
                 raise NotebookValidationError("Supply at least one editable attribute besides entry_id.", field="entry_id")
             local_sources = "source_message_uids" in changes
@@ -353,15 +355,16 @@ class NotebookWorkingState:
         action = args["action"]
         required = {"create": {"entry_type", "fields"}, "update": {"entry_id", "changes"},
                     "archive": {"entry_id", "reason"}}
-        optional = {"create": {"status", "relations", "schedule_suggestion", "source_message_identities", "source_message_uids", "source_time_range", "source_time_ranges"},
+        optional = {"create": {"done", "relations", "schedule_suggestion", "source_message_identities", "source_message_uids", "source_time_range", "source_time_ranges"},
                     "update": set(), "archive": set()}
         if action not in required:
             raise NotebookValidationError("Expected create, update or archive.", field="action")
         supplied = set(args) - {"action"}
+        reject_legacy_status(args)
         if supplied - required[action] - optional[action] or required[action] - supplied:
             raise NotebookValidationError("Missing required or mixed-action parameters.", field="action",
                                           next_action="Supply only the parameters for the selected action.")
-        for key in ("status", "relations", "source_message_identities", "source_message_uids"):
+        for key in ("done", "relations", "source_message_identities", "source_message_uids"):
             if key in args and args[key] is None:
                 raise NotebookValidationError("Null is not allowed for this parameter.", field=key)
         kwargs = {key: value for key, value in args.items() if key != "action"}

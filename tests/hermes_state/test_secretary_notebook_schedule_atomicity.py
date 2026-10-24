@@ -81,7 +81,7 @@ def test_branch_notebook_inheritance_does_not_copy_main_schedule(prepared):
     assert rows(db, branch_ref) == [] and rows(db, ref) == before
 
 
-@pytest.mark.parametrize("fault", ["fields", "section", "duplicate", "status", "runtime", "source"])
+@pytest.mark.parametrize("fault", ["fields", "section", "duplicate", "status", "done", "runtime", "source"])
 def test_complete_snapshot_gate_rejects_invalid_state_without_schedule_mutation(prepared, fault):
     db, ref, _, _, _scheduler = prepared
     store = NotebookStore(db, ref, anchor_message_uid="a")
@@ -93,6 +93,7 @@ def test_complete_snapshot_gate_rejects_invalid_state_without_schedule_mutation(
         "section": lambda: payload["discussion"].append(payload["work"].pop()),
         "duplicate": lambda: payload["work"].append(deepcopy(item)),
         "status": lambda: item.update(status="forged"),
+        "done": lambda: item.update(done="forged"),
         "runtime": lambda: item.update(schedule={"claim_token": "forged"}),
         "source": lambda: item.update(source_message_identities=[{"conversation_ref": ref, "message_uid": "ghost"}]),
     }

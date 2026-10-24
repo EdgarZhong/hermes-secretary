@@ -14,7 +14,7 @@ from threading import RLock
 import pytest
 
 from hermes_state_secretary_notebook import NotebookError
-from secretary.notebook_contract import REQUIRED_FIELDS, SECTIONS, STATUSES, TYPE_SECTIONS
+from secretary.notebook_contract import LEGACY_STATUSES, REQUIRED_FIELDS, SECTIONS, TYPE_SECTIONS
 from secretary.notebook_model import NotebookValidationError, NotebookWorkingState
 from secretary.notebook_render import render_notebook, show_notebook
 from secretary.notebook_store import NotebookStore
@@ -83,19 +83,57 @@ def version_count(db):
 
 
 @pytest.mark.parametrize("entry_type", list(TYPE_SECTIONS))
-def test_types_have_stable_identity_immutable_versions_and_reopenable_states(entry_type):
+def test_types_have_stable_identity_immutable_versions_and_reopenable_done(entry_type):
     book = pure()
     entry = create(book, entry_type)
     assert set(book.show()) == set(SECTIONS)
     assert book.show()[TYPE_SECTIONS[entry_type]][-1] == entry
     original_id, original_version = entry["entry_id"], entry["version_id"]
-    for status in STATUSES[entry_type][1:] + STATUSES[entry_type][:1]:
-        result = book.update(original_id, {"status": status})
+    assert entry["done"] is False and "status" not in entry
+    for done in (True, False):
+        result = book.update(original_id, {"done": done})
         assert result["success"] and result["changed"]
+        assert result["entry"]["done"] is done
         assert result["entry"]["entry_id"] == original_id
         assert result["entry"]["version_id"] != original_version
         original_version = result["entry"]["version_id"]
     assert "type" not in entry and "archived" not in entry
+
+
+@pytest.mark.parametrize("entry_type,status", [(kind, status) for kind, statuses in LEGACY_STATUSES.items()
+                                              for status in statuses])
+def test_legacy_status_matrix_reads_real_immutable_versions_without_rewriting(db, entry_type, status):
+    from secretary.notebook_items import insert_item_conn
+
+    book = store(db)
+    original = create(book, entry_type)
+    state = book.snapshot_state()
+    section = TYPE_SECTIONS[entry_type]
+    legacy = next(entry for entry in state[section] if entry["entry_id"] == original["entry_id"])
+    legacy.pop("done")
+    legacy["status"] = status
+    stored = db._execute_write(lambda conn: insert_item_conn(conn, book.conversation_ref, legacy, original["version_id"]))
+    state[section] = [stored if entry["entry_id"] == original["entry_id"] else entry for entry in state[section]]
+    snapshot_id = db.notebook_commit_snapshot(book.conversation_ref, state, anchor_message_uid="m1", termination=FINISH)
+    item_json = db._read_one("SELECT payload_json FROM secretary_notebook_item WHERE id=?", (stored["version_id"],))[0]
+    snapshot_json = db._read_one("SELECT payload_json FROM secretary_notebook_snapshots WHERE snapshot_id=?", (snapshot_id,))[0]
+    assert json.loads(item_json)["status"] == status and "done" not in json.loads(item_json)
+    before_count = version_count(db)
+    terminal = {"completed", "terminated", "expired", "resolved", "invalid", "answered", "withdrawn", "superseded", "revoked"}
+    for _read in range(2):
+        restored = store(db).get(original["entry_id"])
+        assert restored["entry_id"] == original["entry_id"] and restored["version_id"] == stored["version_id"]
+        assert restored["done"] is (status in terminal) and "status" not in restored
+        assert original["fields"]["description"] in restored["fields"]["description"]
+        assert status.replace("_", " ") in restored["fields"]["description"]
+        assert restored["fields"]["description"].count("Earlier record marked") == 1
+        if status == "pending":
+            assert "does not establish whether work had started" in restored["fields"]["description"]
+        if entry_type == "candidate":
+            assert "does not establish authorization or an actual write" in restored["fields"]["description"]
+    assert version_count(db) == before_count
+    assert db._read_one("SELECT payload_json FROM secretary_notebook_item WHERE id=?", (stored["version_id"],))[0] == item_json
+    assert db._read_one("SELECT payload_json FROM secretary_notebook_snapshots WHERE snapshot_id=?", (snapshot_id,))[0] == snapshot_json
 
 
 @pytest.mark.parametrize("entry_type,field", [(kind, field) for kind, fields in REQUIRED_FIELDS.items()
@@ -133,7 +171,7 @@ def test_noop_and_reads_never_renew_runtime_or_evidence_times():
     assert "blocker" not in entry["fields"]
     before = book.snapshot_state()
     for changes in ({"fields": {"description": body["description"]}}, {"fields": {"blocker": None}},
-                    {"fields": {"domains": []}}, {"status": "in_progress"}, {"relations": []}):
+                    {"fields": {"domains": []}}, {"done": False}, {"relations": []}):
         assert book.update(entry["entry_id"], changes)["changed"] is False
     book.show()["work"][0]["fields"].clear()
     book.get(entry["entry_id"])["fields"].clear()
@@ -211,8 +249,9 @@ def test_typed_operations_return_structured_error_guidance_without_side_effects(
         assert result["success"] is False
         assert {"code", "message", "next_action"} <= result["error"].keys()
         assert book.snapshot_state() == before
-    result = book.update(entry["entry_id"], {"status": "paused"})
-    assert result["entry"]["status"] == "paused" and result["changed"]
+    result = book.update(entry["entry_id"], {"fields": {"blocker": "Paused while awaiting dates"}})
+    assert result["entry"]["done"] is False and result["changed"]
+    assert result["entry"]["fields"]["blocker"] == "Paused while awaiting dates"
 
 
 def test_candidates_keep_sources_in_place_map_labels_and_derive_reverse_refs():
@@ -294,7 +333,7 @@ def test_working_operations_serialize_and_freeze_is_idempotent():
     frozen = book.freeze()
     assert book.freeze() == frozen
     with pytest.raises(NotebookValidationError) as error:
-        book.update(entries[0]["entry_id"], {"status": "paused"})
+        book.update(entries[0]["entry_id"], {"done": True})
     assert error.value.code == "state_conflict"
     assert book.snapshot_state() == frozen and len(book.show()["work"]) == 16
 
@@ -307,9 +346,9 @@ def test_committed_snapshot_roundtrip_exact_versions_and_noop_writes(db):
     assert book.commit(termination=FINISH) == receipt
     again = store(db, "m2")
     before_count = version_count(db)
-    assert again.update(first["entry_id"], {"status": "in_progress"})["changed"] is False
+    assert again.update(first["entry_id"], {"done": False})["changed"] is False
     assert version_count(db) == before_count
-    changed = again.update(first["entry_id"], {"status": "paused"})["entry"]
+    changed = again.update(first["entry_id"], {"fields": {"blocker": "Paused while awaiting dates"}})["entry"]
     second = again.commit(termination={"type": "forced"})
     assert second["snapshot_id"] != receipt["snapshot_id"]
     assert db.notebook_snapshot_audit(receipt["snapshot_id"])["payload"]["work"][0]["version_id"] == first["version_id"]
@@ -486,7 +525,7 @@ def test_insert_failure_rolls_back_without_publishing_working_state(db, monkeypa
         raise sqlite3.OperationalError("injected transaction rollback")
     monkeypatch.setattr(items, "insert_item_conn", fail_after_insert)
     with pytest.raises(sqlite3.OperationalError):
-        book.update(entry["entry_id"], {"status": "paused"})
+        book.update(entry["entry_id"], {"fields": {"blocker": "Paused while awaiting dates"}})
     assert version_count(db) == count and book.snapshot_state() == before
 
 
@@ -579,10 +618,11 @@ def test_fork_shares_immutable_versions_but_not_updates_or_scheduler_state(db, m
     inherited = child.get(entry["entry_id"])
     assert inherited["version_id"] == entry["version_id"]
     assert inherited["source_message_identities"] == [{"conversation_ref": branch_ref, "message_uid": "m1"}]
-    edited = child.update(entry["entry_id"], {"status": "paused"})["entry"]
+    edited = child.update(entry["entry_id"], {"fields": {"blocker": "Paused while awaiting dates"}})["entry"]
     child.commit(termination=FINISH)
     assert edited["entry_id"] == entry["entry_id"] and edited["version_id"] != entry["version_id"]
-    assert db.notebook_current(parent.conversation_ref)["payload"]["work"][0]["status"] == "in_progress"
+    assert db.notebook_current(parent.conversation_ref)["payload"]["work"][0]["done"] is False
+    assert "blocker" not in db.notebook_current(parent.conversation_ref)["payload"]["work"][0]["fields"]
     db.notebook_reselect_pointer(parent.conversation_ref)
     assert not any(name.startswith("noting_memo_") for name in dir(db))
 

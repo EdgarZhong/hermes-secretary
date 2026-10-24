@@ -243,42 +243,13 @@ NOTEBOOK_CREATE_SCHEMA = {'name': 'notebook_create',
                                                          'properties remain. Returned evidence_time is '
                                                          'runtime-derived, read-only; do not supply on '
                                                          'create or update.'},
-                               'status': {'type': 'string',
-                                          'enum': ['in_progress',
-                                                   'paused',
-                                                   'completed',
-                                                   'terminated',
-                                                   'pending',
-                                                   'waiting',
-                                                   'open',
-                                                   'answered',
-                                                   'withdrawn',
-                                                   'current',
-                                                   'revised',
-                                                   'active',
-                                                   'superseded',
-                                                   'revoked',
-                                                   'expired',
-                                                   'missing',
-                                                   'resolved',
-                                                   'invalid',
-                                                   'proposed',
-                                                   'awaiting_approval',
-                                                   'approved',
-                                                   'awaiting_result'],
-                                          'description': 'States by entry_type (first is the default on '
-                                                         'create): '
-                                                         'matter=in_progress|paused|completed|terminated; '
-                                                         'action=pending|in_progress|waiting|paused|completed|terminated; '
-                                                         'situation=current|expired; '
-                                                         'implicit_gap=missing|resolved|invalid; '
-                                                         'question=open|answered|withdrawn; '
-                                                         'insight=current|revised|withdrawn; '
-                                                         'decision=active|superseded|revoked|expired; '
-                                                         'candidate=proposed|awaiting_approval|approved|awaiting_result. '
-                                                         'Use the evidence-supported target state; '
-                                                         'corrections and reopening are allowed. A stage is '
-                                                         'not approval or dispatch evidence by itself.'},
+                               'done': {'type': 'boolean',
+                                        'description': 'True only when available evidence confirms this entry is concluded; '
+                                                       'concluded does not mean successful. False means conclusion is not '
+                                                       'confirmed, not that work has not started. Create defaults to false; '
+                                                       'omitted on update keeps the current value. Record progress, outcome '
+                                                       'and reasons in the semantic fields. Does not archive an entry or '
+                                                       'grant approval, write permission or settlement.'},
                                'relations': {'type': 'array',
                                              'items': {'type': 'object',
                                                        'properties': {'kind': {'type': 'string',
@@ -626,42 +597,13 @@ NOTEBOOK_UPDATE_SCHEMA = {'name': 'notebook_update',
                                                          'properties remain. Returned evidence_time is '
                                                          'runtime-derived, read-only; do not supply on '
                                                          'create or update.'},
-                               'status': {'type': 'string',
-                                          'enum': ['in_progress',
-                                                   'paused',
-                                                   'completed',
-                                                   'terminated',
-                                                   'pending',
-                                                   'waiting',
-                                                   'open',
-                                                   'answered',
-                                                   'withdrawn',
-                                                   'current',
-                                                   'revised',
-                                                   'active',
-                                                   'superseded',
-                                                   'revoked',
-                                                   'expired',
-                                                   'missing',
-                                                   'resolved',
-                                                   'invalid',
-                                                   'proposed',
-                                                   'awaiting_approval',
-                                                   'approved',
-                                                   'awaiting_result'],
-                                          'description': 'States by entry_type (first is the default on '
-                                                         'create): '
-                                                         'matter=in_progress|paused|completed|terminated; '
-                                                         'action=pending|in_progress|waiting|paused|completed|terminated; '
-                                                         'situation=current|expired; '
-                                                         'implicit_gap=missing|resolved|invalid; '
-                                                         'question=open|answered|withdrawn; '
-                                                         'insight=current|revised|withdrawn; '
-                                                         'decision=active|superseded|revoked|expired; '
-                                                         'candidate=proposed|awaiting_approval|approved|awaiting_result. '
-                                                         'Use the evidence-supported target state; '
-                                                         'corrections and reopening are allowed. A stage is '
-                                                         'not approval or dispatch evidence by itself.'},
+                               'done': {'type': 'boolean',
+                                        'description': 'True only when available evidence confirms this entry is concluded; '
+                                                       'concluded does not mean successful. False means conclusion is not '
+                                                       'confirmed, not that work has not started. Create defaults to false; '
+                                                       'omitted on update keeps the current value. Record progress, outcome '
+                                                       'and reasons in the semantic fields. Does not archive an entry or '
+                                                       'grant approval, write permission or settlement.'},
                                'relations': {'type': 'array',
                                              'items': {'type': 'object',
                                                        'properties': {'kind': {'type': 'string',

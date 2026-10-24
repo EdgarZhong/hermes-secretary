@@ -50,6 +50,7 @@ def test_refused_operations_keep_working_and_committed_state(db):
     before = store.show()
     for operation in (lambda: store.create("decision", {"description": "missing conditions"}),
                       lambda: store.update(entry["entry_id"], {"status": "forged"}),
+                      lambda: store.update(entry["entry_id"], {"done": "forged"}),
                       lambda: store.update(entry["entry_id"], {"fields": {"unknown_field": "x"}})):
         with pytest.raises(NotebookValidationError):
             operation()

@@ -423,6 +423,8 @@ def test_recovery_constructs_fixed_tools_before_freeze_and_preserves_failed_reco
             tool["function"]["description"] = "Historical definition of " + tool["function"]["name"]
             if tool["function"]["name"] in {"notebook_create", "notebook_update"}:
                 properties = tool["function"]["parameters"]["properties"]
+                properties.pop("done", None)
+                properties["status"] = {"type": "string"}
                 properties.pop("source_time_ranges", None)
                 properties["source_time_range"] = {"type": "object"}
     failed = failed_task(native_parent, database)

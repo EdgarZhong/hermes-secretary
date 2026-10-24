@@ -130,7 +130,8 @@ def _seed(runtime, *, two=False, shared=False, ranged=False, corrected=False, ou
         "description": "Record museum preference" + (" and booking" if two else ""),
         "targets": ["memory"], "notebook_refs": [entry["entry_id"] for entry in sources],
         "source_types": [entry["entry_type"] for entry in sources],
-    }, status="awaiting_result")["entry"]
+        "stage_evidence": "The proposal awaits its actual write result.",
+    }, done=False)["entry"]
     other = None
     if shared:
         other = store.create("candidate", {
@@ -248,7 +249,8 @@ def test_last_ref_conversion_keeps_evidence_then_archives_source_before_candidat
     assert script.results["s02-0"]["error"]["code"] == "invalid_reference"
     assert script.results["s02-1"]["success"] is False
     converted = script.results["s02-2"]["entry"]
-    assert converted["status"] == "awaiting_result"
+    assert converted["done"] is False
+    assert converted["fields"]["stage_evidence"] == seeded.candidate["fields"]["stage_evidence"]
     assert converted["fields"]["description"] == seeded.candidate["fields"]["description"]
     assert converted["source_message_uids"] == ["origin-a"]
     assert converted["source_time_ranges"] == []
@@ -282,8 +284,10 @@ def test_partial_multiple_sources_preserves_unwritten_responsibility_and_ref_for
     candidate = payload["candidates"][0]
     assert candidate["fields"]["notebook_refs"] == [remaining["entry_id"]]
     assert candidate["source_message_identities"] == []
-    assert candidate["status"] == "awaiting_result"
-    assert payload["work"][0]["status"] == "pending"
+    assert candidate["done"] is False
+    assert candidate["fields"]["stage_evidence"] == seeded.candidate["fields"]["stage_evidence"]
+    assert payload["work"][0]["done"] is False
+    assert payload["work"][0]["fields"]["description"] == remaining["fields"]["description"]
 
 
 def test_shared_source_is_retained_before_settled_candidate_closes_without_conversion(runtime):
@@ -317,7 +321,7 @@ def test_later_source_correction_is_not_covered_by_approval_of_older_version(run
     assert outcome.committed, outcome
     retained = _payload(runtime)["work"][0]
     assert retained["fields"]["description"] == "Booking still needs follow-up until Friday."
-    assert retained["status"] == "in_progress"
+    assert retained["done"] is False
     assert [source["message_uid"] for source in retained["source_message_identities"]] == ["correction"]
     assert not _payload(runtime)["candidates"]
 

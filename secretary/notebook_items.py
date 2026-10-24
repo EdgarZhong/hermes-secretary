@@ -201,6 +201,7 @@ def snapshot_item_ids_conn(conn, conversation_ref, payload):
     ids, lineages = [], set()
     for section in SECTIONS:
         for entry in payload[section]:
+            entry = canonical_notebook_entry(entry)
             row = item_row_conn(conn, entry["version_id"])
             require_item_owner(conn, row, conversation_ref)
             if row["lineage_id"] in lineages:

@@ -27,6 +27,8 @@ def _legacy(tools):
             function["description"] = "Historical definition of " + function["name"]
         if function["name"] in {"notebook_create", "notebook_update"}:
             properties = function["parameters"]["properties"]
+            properties.pop("done", None)
+            properties["status"] = {"type": "string"}
             properties.pop("source_time_ranges", None)
             properties["source_time_range"] = {"type": "object"}
     return legacy
@@ -49,18 +51,23 @@ def _assert_current(tools):
         assert by_name[name] == canonical
     for name in ("notebook_create", "notebook_update"):
         properties = by_name[name]["function"]["parameters"]["properties"]
+        assert properties["done"]["type"] == "boolean" and "status" not in properties
         assert properties["source_time_ranges"]["type"] == "array"
         assert "source_message_uids" in properties and "source_time_range" not in properties
 
 
 @pytest.mark.parametrize("kind", ["matter", "candidate"])
-def test_sdk_mixed_sources_survive_create_update_receipts_snapshot_and_framework(runtime, kind):
+@pytest.mark.parametrize("done", [False, True], ids=["still-unsettled", "confirmed-cancelled"])
+def test_sdk_mixed_sources_survive_create_update_receipts_snapshot_and_framework(runtime, kind, done):
     parent, db, _config, state = runtime
+    if done:
+        from tests.secretary import test_noting_surface as surface
+        surface._turn(parent, "The report was cancelled. Withdraw its retention proposal; no outside write occurred.")
     prefix, root = copy.deepcopy(parent._session_messages), parent._cached_system_prompt
     parent_wire = copy.deepcopy(state["sent"][-1])
     tools = copy.deepcopy(state["sent"][-1]["tools"])
     _assert_current(tools)
-    uid = next(row["message_uid"] for row in prefix if row["role"] == "user")
+    uid = next(row["message_uid"] for row in reversed(prefix) if row["role"] == "user")
     timestamp = next(row["timestamp"] for row in db.get_messages(parent.session_id) if row["message_uid"] == uid)
     point = datetime.fromtimestamp(timestamp, timezone.utc).isoformat()
     start = datetime.fromtimestamp(timestamp - 60, timezone.utc).isoformat()
@@ -69,12 +76,14 @@ def test_sdk_mixed_sources_survive_create_update_receipts_snapshot_and_framework
     fields = ({"description": "send report", "completion_condition": "Report sent"} if kind == "matter" else
               {"description": "Retain the report commitment", "targets": ["memory"], "notebook_refs": [], "source_types": []})
     changed_fields = {"blocker": "Awaiting review"} if kind == "matter" else {"description": "Report commitment still awaits review"}
+    if done:
+        changed_fields = {"description": "Report cancelled; its retention proposal was withdrawn without an outside write."}
     section = "work" if kind == "matter" else "candidates"
     state["sent"].clear()
     state["script"] = [
         [call("notebook_create", {"entry_type": kind, "fields": fields, **provenance}, "create")],
         lambda payload: [call("notebook_update", {"entry_id": result_entry(payload, "create")["entry_id"],
-            "fields": changed_fields, **provenance}, "update")],
+            "fields": changed_fields, "done": done, **provenance}, "update")],
         [call("notebook_show", {}, "show")],
         [call("finish_noting", {"reason": "Indexed the report with its sources."}, "finish")],
     ]
@@ -93,17 +102,24 @@ def test_sdk_mixed_sources_survive_create_update_receipts_snapshot_and_framework
     assert "The Candidate source restrictions below still apply" in task
     assert "either direct Conversation evidence (Message IDs, source_time_ranges, or both) or current notebook_refs with source_types" in task
     assert "do not mix direct and referenced provenance" in task
-    assert "Keep supporting provenance for retained content, rather than replacing all sources with the newest message." in task
+    assert "Keep sources supporting retained content and add sources for new or changed claims; do not replace all sources with only the newest message." in task
+    assert "When the available evidence does not establish an action's progress, leave it unknown; done=false does not mean the work has not started." in task
     rows = db.get_messages_as_conversation(outcome.child_session_id)
     results = {row["tool_call_id"]: json.loads(row["content"]) for row in rows if row["role"] == "tool"}
     assert all(result["success"] for result in results.values())
     for name in ("create", "update"):
         entry = results[name]["entry"]
         assert len(entry["evidence_time"]) == 3
+        assert entry["done"] is (done if name == "update" else False) and "status" not in entry
     assert results["show"]["payload"][section][0]["evidence_time"] == results["update"]["entry"]["evidence_time"]
     entry = db.notebook_current(parent._secretary_conversation_ref)["payload"][section][0]
     assert entry["source_message_identities"][0]["message_uid"] == uid
     assert entry["source_time_ranges"] == ranges
+    assert entry["done"] is done and "status" not in entry
+    if done:
+        assert entry["fields"]["description"] == changed_fields["description"]
+        assert "[done=true]" in parent._session_messages[-1]["content"]
+        assert changed_fields["description"] in parent._session_messages[-1]["content"]
     from hermes_time import format_timestamp
     assert format_timestamp(timestamp, profile_home=db.db_path.parent) in parent._session_messages[-1]["content"]
 

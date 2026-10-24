@@ -230,3 +230,109 @@ F04研讨：旧已提交样本重要进度/容量漏新支持来源，旧失败�
 
 ### 第四审最终交回判定
 2026-10-24，主会话已接收本版完整调查与实际短链事实，并要求按当前c5终结报告；这不是要求停止整轮目标。六节报告齐全、29条全范围判据未修改、历史原文保留；逐条状态为27符合/1违规/1证据不足，无不适用项。**Verification不通过；不能进入Validation或据此宣称交付/部署完成。** F04原始数量来源反例真实存在；N46实际未执行，二者均无未来计划代证。未批准的Prompt修改尚未实施，本审查认可最小提案方向不等于用户授权。下一步归root：取得用户对冻结Prompt具体改文的决定，按决定修补/锁版并取得所需真实证据，再按套件派全新独立全轮复审；本审查不承担实现，不签后继自己研讨修补的最终PASS。
+
+
+# c5f57b2 同产品／第四审 N46 补证（f287e94，2026-10-24）
+
+## 1. 审查对象与结论概览
+本块是第四审收到同一产品真实长链后的追加核验，保留前232行历史报告及原29条独立判据，不重做或缩减R01–R17/O01，不代签后继Prompt版本。原待审产品为`c5f57b2552f7618e890fabeefb2fbfdc68eb9e7c`，本次实际执行HEAD为`f287e94f3fb371294029bf507451ff89c87282ee`。自行核Git树差异仅四份文档（final-delivery、plan、verification、CLAUDE），并逐一重算result中的786项源码：与c5 Git blob及当前文件均精确相等，0差异。故这份实际API结果可以补证c5产品，不能用于尚未实施的Task修改。
+
+**Verification仍不通过：29条仍为27符合／1违规（V4-07，F04续存并新增F05）／1证据不足（V4-28）。** 原E4-01的N46实际长前缀及完整单周期代表链子缺口已关闭；V4-28原有“同一Conversation多次整理压缩后的真实内容连续性”尚无完整产物，另记E4-02。HTTP200和正常Finish不关闭F04/F05，也不把两个不同Conversation的各一次成功相加为多周期。本审查未发起收费请求、未运行测试、未改变源码/测试/原产物/环境，无提交、推送、部署或Validation。
+
+补证依据仍为5d61a5d指定原文、原Snapshot Index与baseline；已恢复autonomous-run、spec-implementation-review和本审查原29判据，再读实际wire、response、SQLite只读副本及原始用户文本。以下证据简称延用原报告E与V；L=`E/run-long-20261024-174448/`，独立详细审计为`V/n46-independent-audit.json`，D报告仅作定位，未以其ok字段代替原始核验。
+
+## 2. 独立要求清单与覆盖
+原第2节起始判据原字节未改，SHA256为`f158a7c2f5ea7fc053e118727faaaafb9bb92bbe3a210e549d2921843bb9d3bd`。本表仅定位本次证据影响的原要求，不新增或替换判据；原29条完整覆盖由下节逐条继承。
+
+| 条款编号 | 来源位置及要求 | 类型/适用范围 | 规格解释及必要不变量 | 符合判据 | 核查位置 |
+|---|---|---|---|---|---|
+| V4-01/02/03/08/14/15/17/19/21/25/26 | 原第2节同号；07 v2§3–7及继承不变量 | 本次真实API/权限/状态/持久化/缓存及读取 | 原要求不变；完整广告不授执行权，声明/自然未误调不替强制负例，Finish与提交分离 | 实际六Schema/无重复Task、父前缀每请求一致、正式Loop/存储/正常Finish/压缩/Framework与后Main实际结果 | 本块第3–4节及原同号矩阵 |
+| V4-07 | 原第2节V4-07；冻结07 v2§6，FAITHFUL EXTRACTION、步骤1/2/3/7；白板U1/I2 | 来源、事实与未知状态 | 未报告具体行动进度不能变成确定“未开始”；pending待办默认不证明零进度。这是原忠实提取/unsupported status要求的实际反例，不改原状态词表 | 每条重要断言有可定位支持，未知保持未知；原内容纠正/用户立场/已有进展保护不变 | 本块第3节六条语义审读、第5节F04/F05 |
+| V4-28 | 原第2节V4-28；冻结07 v2§9第363行及长样本授权第371行 | 当前实际Kimi代表链与内容结果 | 实际Usage须超过N38且不得缩父前缀；完整单周期与多周期是不同覆盖项；Main仅Notebook理解要求不能由summary+Notebook联合载体无条件代证 | 真N46完整历史/全父前缀/六工具/完整正常链；同一Conversation多次完整整理压缩后对象、过程、现状正确，细节按需History | 本块第3–5节；E4-01关闭子缺口，E4-02保留 |
+
+## 3. 逐条实现证据
+以下29行是本次追加后的逐条当前状态。未受新证据影响的行完整继承原第2节原文→判据和第3节入口→方法→具体文件→观察→理由；786产品指纹及四文档diff支持适用性，未以“源码没变”替代原正式机制证据。涉及新长链的成功只增加相应证据，原强制拒绝、失败/恢复、Identity/Profile/版本分支仍以原同号实际机制证据为据。
+
+| 条款编号 | 正式入口及完整关键代码路径 | 方法、输入、配置及实际证据 | 证据位置 | 判定及理由 | 证据边界 |
+|---|---|---|---|---|---|
+| V4-01 | 原V4-01完整surface→freeze→cache parity→SDK路径 | 长链四次Noting逐请求root/tools/186父Active完全等于冻结原件，六Schema顶层完整、Task仅一次无Schema | L/wire-002/004–007.json、frozen-parent-wire-1.json；V/n46-independent-audit.json | 符合：实际长上下文仍保持固定工具面与父前缀 | 自然只调用History/Create/Finish，不要求凑齐六工具 |
+| V4-02 | 原V4-02可信身份→Loop/dispatch→bound Store路径 | 原强制拒绝分区继承；本长链8次child调用无越权、无外部Schedule/terminal调用 | 原V4-02 B权限证据；L/child-transcript-1.json | 符合：已有可信权限机制无产品变更，真实链无新增越权 | 自然未误调不替强制权限负例 |
+| V4-03 | 原V4-03 Schema→mutation→Working→SQLite路径 | 6次正式create各稳定entry/version、合法source数组；Snapshot与只读SQLite一致；原update/noop/null证据继承 | 原V4-03 A/B；L/snapshot.json、completed-state.db | 符合：长链正式创建及提交成功，原变更/清除语义保持 | 长链无Update/Archive，不冒称自然全操作覆盖 |
+| V4-04 | 原V4-04参数校验→结构化错误→零副作用路径 | 继承实际错误/拒绝分区；本长链8调用8成功回执、0参数错误，无纠正重试 | 原V4-04；L/child-transcript-1.json、events.jsonl | 符合：错误机制已有有效证据，真实成功不与其冲突 | 旧probe首400属tool_choice与thinking配置组合，不是拒nullable |
+| V4-05 | 原V4-05七类Schema/validator→Store路径 | 原七类结构正式证据继承；本次situation/matter/action/gap实际创建 | 原V4-05 A证据；L/snapshot.json | 符合：字段与Schema机制保持 | 语义未开始反例归V4-07，不能由合法pending结构豁免 |
+| V4-06 | 原V4-06 Task DESCRIPTION→正式SDK路径 | 默认Task原文本未变，四次实际请求只有一份Task；无截断或额外准入 | 原V4-06；L/actual-noting-task-messages-noting_a17c8be809a24630.json | 符合：描述软指导机制及范围保持 | 不由文案正确推导自然输出每条忠实 |
+| V4-07 | Task忠实提取/七步→正式Loop→SQLite→Snapshot→Framework | 短链F04未改；长链entry3/4将未报告的具体进度写成“尚未开始/当前尚未开始”，唯一用户源未确证；pending默认不能赋予正文事实 | L/snapshot.json、child-transcript-1.json、completed-state.db、framework-durable.json；V/n46-independent-audit.json | 违规：F04续存＋新增F05/P2；两处已提交确定零进度缺证 | 后Main未复述不撤销Notebook反例；不声称行动实际已开始 |
+| V4-08 | 原V4-08 evidence派生→所有模型投影路径 | 六条都引用唯一真实用户源ce85f…，runtime evidence_time为其单点，不误用维护时间；原优先级/refs/数组分支继承 | 原V4-08；L/child-transcript-1.json、framework-durable.json | 符合：真实单点派生与正式投影一致 | 来源是否支持每个断言仍需V4-07语义核验 |
+| V4-09 | 原V4-09 Prompt生命周期表/Working clock路径 | 原时钟/noop/processing分区继承，未改字段和生命周期代码 | 原V4-09；V/evidence-version-audit.json、n46-independent-audit.json | 符合：无续龄机制变化 | 本次一次整理不冒称真实七天跨期测试 |
+| V4-10 | 原V4-10 canonical数组→逐源检查→事务路径 | 原七类混传/非法半边/旧读取证据继承；长链六条合法IDs且ranges=[] | 原V4-10 A；L/snapshot.json | 符合：最终数组Schema及正式持久化一致 | 空ranges成功不替原多段/混传/失败机制证据 |
+| V4-11 | 原V4-11 Candidate模式→refs/commit路径 | 原最终Candidate70与实际SDK2有效证据继承，产品指纹无差异 | 原V4-11 B；V/evidence-version-audit.json | 符合：直接/间接模式及转换契约保持 | 长样本没有Candidate，不把它当该分支自然补证 |
+| V4-12 | 原V4-12 Main构造/恢复刷新→新freeze路径 | 原同名旧定义/运行中不热改正式分区继承；长链四次冻表一致 | 原V4-12；L/wire-004–007.json | 符合：冻结版本与实际长链相符 | 本次未重启恢复，不替原恢复分支 |
+| V4-13 | 原V4-13 archive→关联清理→同事务路径 | 原归档/引用保护/INSERT失败回滚证据继承，相关产品完全未变 | 原V4-13 A；V/evidence-version-audit.json | 符合：原子归档和保护规则保持 | 没有自然Archive调用，不冒称重验 |
+| V4-14 | 原V4-14 Schedule建议Schema→Task→entry路径 | matter建议content/schedule完整；明确现阶段不建提醒，注册前先确认；无实际Scheduler | 原V4-14；L/snapshot.json、child-transcript-1.json | 符合：语义建议完整且不授操作权 | 每周一次是模型建议而非用户已批准周期 |
+| V4-15 | 原V4-15 Snapshot→Framework→Main提示路径 | 有建议的完整Notebook进入live/durable Framework，后Main正常回应；没有触发新Schedule/外发 | 原V4-15；L/framework-live.json、framework-durable.json、wire-008.json | 符合：实际发布与建议提示接线保持 | 这不是用户授权注册；没有触达外部渠道 |
+| V4-16 | 原V4-16 原生reason分支→tail策略路径 | 原阈值/manual/here/force/overflow/off分区证据继承；本次manual实际186→1 | 原V4-16 C；L/native-manual-before.json、native-manual-after.json | 符合：manual取消默认旧tail正式生效 | 本次manual不能用来覆盖Idle或阈值其它分支 |
+| V4-17 | 原V4-17 原生request→live/durable原子压缩路径 | manual后旧184原文/role/tool协议逐条完整保存在History，active0/compacted1；summary持久化后后Main带summary+Notebook | 原V4-17 C；L/completed-state.db、parent-history-final.json、wire-008.json | 符合：本次原文保留与实际单周期连续性成立 | 并发/取消失败仍继承原正式证据；非Notebook-only |
+| V4-18 | 原V4-18 Idle成功门控→durable→Framework路径 | 原Idle分支证据和c5短链顺序保持；本N46是manual，summary可先完成 | 原V4-18及短链events；L/events.jsonl | 符合：本次没有相悖Idle观察 | 明确不以manual先压缩误判Idle违规或替Idle先后要求 |
+| V4-19 | 原V4-19 Finish pair→native break/finalize→Commit Gate→release路径 | 一次normal Finish为最后调用、后继Noting请求0；随后Snapshot/Framework/child结束，资源释放；进程自然exit0 | L/child-transcript-1.json、events.jsonl、process-ended-proof.json | 符合：长上下文正常关闭、提交与释放真实完成 | forced/API失败等仍由原正式机制分区证明 |
+| V4-20 | 原V4-20 proposal/approval/action→按范围settlement路径 | 原具体真实完整/部分结算与防回流证据继承，本次无实际外部写入轨迹 | 原V4-20证据及矩阵 | 符合：相关机制/Task未变，旧有效具体结果保持 | 本次不冒称重验外部成功结算，未来来源句影响仍须审 |
+| V4-21 | 原V4-21 freeze Anchor→合法版本→Snapshot pointer事务路径 | 6 entry/version与Snapshot/SQLite一致，正常pointer发布；原rewind/fork/晚提交负例继承 | 原V4-21；L/snapshot-audit.json、completed-state.db | 符合：本次正式事务与原版本机制一致 | 自然单分支不替并发/rewind负例 |
+| V4-22 | 原V4-22 pointer锁检查→Framework队列追加路径 | 原旧pointer抑制/完整正文机制证据继承；当前完整Snapshot实际live/durable发布 | 原V4-22；L/framework-live.json、framework-durable.json | 符合：本次完整通知接线成立 | 本次无双提交竞态，不替原队列竞态证据 |
+| V4-23 | 原V4-23 单deadline/admission→Idle/Force联合入口路径 | 原deadline取消、双阈值、Force区间占用正式证据继承；相关源指纹精确 | 原V4-23 A/B/C；V/evidence-version-audit.json | 符合：事件及占用机制保持 | manual代表链不新增Idle/Force真实触发次数 |
+| V4-24 | 原V4-24 actual dispatch→Profile绑定→native/external分支路径 | 原分派来源/外域拒绝分区继承；当前为隔离Alex副本原生实际Kimi Coding路线 | 原V4-24；L/config.json、manifest.json、events.jsonl | 符合：原生Provider/Profile路线保持 | 不触生产/云，不改另一Dashboard或Provider |
+| V4-25 | 原V4-25 freeze父runtime→持久child→suffix→资源释放路径 | 四个长child请求冻结前缀全等，独立child正常结束，无额外Noting请求或资源残留 | 原V4-25；L/frozen-parent-wire-1.json、wire-004–007.json、result.json | 符合：真实长前缀与生命周期兑现 | 未运行恢复重启分支，继承原机制证据 |
+| V4-26 | 原V4-26 inline Show/History→bound scope→render/recovery路径 | child History1读取真实父源，后Main获得完整Framework；短链Main Show+History有效证据保留 | 原V4-26；L/child-transcript-1.json、wire-008.json | 符合：原文读取与模型投影机制保持 | N46后Main没有额外Show/History，不虚报调用 |
+| V4-27 | 原V4-27 Secretary自有存储/原生接缝→只读API路径 | Git四文档差异与786产品SHA双核；本次实际隔离库，无schema迁移/生产写或新API | 原V4-27；V/n46-independent-audit.json | 符合：架构/归属/只读边界保持 | 不新增UI/APK/全平台验收范围 |
+| V4-28 | 实际Main→冻父Noting→正常Finish/Commit；并行manual→Framework→后Main | 真实184历史/186冻父前缀完整，Main141662/Noting146064>N38 131745；8HTTP200，single manual链成功；同Conversation多周期与Notebook-only真实内容仍缺 | L/wire-*.json、response-*.jsonl、events.jsonl、snapshot.json、native-manual-*.json、main-result-2.json；V/n46-independent-audit.json | 证据不足：E4-01长前缀子缺口关闭，E4-02原多周期内容连续性缺口保留；F04/F05内容亦不通过 | 不同Conversation的一次Idle与一次manual不能相加；API成功不代语义质量 |
+| V4-29 | 原V4-29 全轮产品/依赖/规则入口边界审查路径 | 四文档diff且全部786产品等价；本审查仅报告与ignored证据追加，无收费/源码/测试修改 | 原V4-29；V/n46-independent-audit.json、n46-report-audit.json | 符合：公开范围与授权边界保持 | 不签未来Prompt、不进入Validation/部署 |
+
+### 六条Notebook及后Main的真实语义审读
+唯一业务用户原文UID为`ce85f837a0df4792b0f5bad75b172033`，2026-10-24T17:44:51+08:00：现在开始三周工作坊；首周招20人、第二周用户讲义交小林校对、第三周现场；用户核A-17/写讲义，小林场地/报名入口；预算280；容量和讲义截止未知；活动结束且费用结清才整体完成；持续讨论但不建提醒、不外发、不写文件或外部记忆。前184条是只读诊断，不提供这两具体行动的进度。六entry均直接引用该真实UID、ranges=[]，evidence_time为该真实单点。
+
+| entry | 原断言与来源核对 | 判断与边界 |
+|---|---|---|
+| 1 situation | 双方分工、预算280和三周启动与唯一原文相符 | 有源；预算约束为当前预算的工作解释，不扩权限 |
+| 2 matter | 20人/三周节点、整体完成条件、两未知、禁止外发/注册均有源 | 主业务有源；每周一次是模型建议，content明确现阶段不建提醒且任何注册先确认，不能升为用户承诺；实际Scheduler/Reminder为0 |
+| 3 action | 核A-17和用户owner有源；正文另写“尚未开始” | F05：无逐项进度证据仍确定写零进度；pending只表示待办，不证明该事实 |
+| 4 action | 写讲义/第二周交小林/截止未知有源；正文另写“当前尚未开始” | F05同上；项目现在启动不必然意味着用户此前未着手讲义 |
+| 5 gap | 容量未知、20人目标、小林管场地有源；关联situation1 | 缺口成立；容量影响与向小林取信息为工作推导，未发明容量答案或已批准承诺 |
+| 6 gap | 截止未知与第二周交校对有源；关联situation1 | 缺口成立；与小林对齐是拟议解决方式，不能升为用户已批准的具体截止或新承诺 |
+
+后Main真实最终回复正确保留双方职责、20人、280元、两个未知、三周节奏和活动结束+费用结清，没有新工具/外发。实际wire8为root加一个原生合并user载体：其中同时有durable summary、完整Notebook Framework和新user。这证明本单周期联合上下文连续性；既不修复entry3/4已提交的“未开始”，也不构成仅读Notebook的隔离证明。
+
+## 4. 核心目标及验证方法审查
+本次已核真实长前缀的输入→输出，而非只看文件中ok:true：首Main实际wire完整保留46组184条内容/role/tool_calls/tool_call_id；冻结api_prefix186条（另含业务user与首Main答复），Noting四个请求逐一对root、完整顶层tools、全部186父Active做结构精确比较。fixture SHA256为`7c32105cd7685847fc5b761682f61d04a35447aafa07aaa319cd7c4e81554ccc`。六工具完整Schema已在顶层，当前数组Schema无旧单范围键；Task一次，无Schema包、messages.tools或重复工具定义；output budget32000及high推理继承。Main实际prompt141662，首次Noting146064，后续149716/153726/155074，均超过旧N38校准131745；没有先缩历史再冒称长样本。与字节比较分开核Provider实际cached计数，未从相等擅推命中。
+
+逐原始响应（含非stream标题provider_response）汇总8请求全部HTTP200：prompt788732、completion9304、total798036、cached616960。无参数拒绝/重试；request-id与x-request-id此次逐条记录为null，不能伪造有值或回填短样本旧header。实际child为History1/Create6/Finish1，8调用8成功回执；只要求六工具固定可用及授权，未因合成样本强求六个全部调用。自然未误调不替原受控强制拒绝证据。wire6中文参数JSON双unicode转义经原生coerce后，回执/SQLite/Framework中文均正确，没有参数错误；这不是产品编码失败。
+
+时序依events与durable边界：Main完成1792835114.565166；manual/Noting启动1792835114.5889542；summary请求3和Noting请求4并行。父manual压缩完成1792835181.630193，186→1摘要；正常Finish接受1792835236.831487；Snapshot事务commit1792835236.8487868，事件确认1792835236.8535419；Framework发布1792835236.876568；child结束1792835236.894062；后Main结束1792835243.790227。summary为DB row188/UID`fcc779d797974e9ba47fe1626da32cba`，Framework为row201/UID`4d80785e88a64d9b9e242be633c49619`。184条原文与协议逐条仍在History，active0/compacted1。本样本是非Idle manual，不要求等Noting才压缩；result.native_compactions=[]只是Idle观察器未触发，不能反称manual没运行，也不能代旧Idle先后判据。
+
+Finish后额外Noting模型请求0，child资源释放，session39143自然exit0且无手动signal。独立调查只读已完成DB副本（mode=ro&immutable=1），未改真实run。原短链的Snapshot→durable Idle→Framework成功仍保持；原权限/失败/恢复/并发/版本等机制证据按原29矩阵和指纹复用，未重跑昂贵套件。
+
+真实内容反例说明现有“调用成功/UID存在/结构合法”检查允许错误语义通过：F04 entry新数量有历史事实但漏本entry支持源；F05合法pending仍可能伴随无证据的零进度正文。不能用Schema或默认状态修辞替语义核验。原V4-28所需同Conversation多次整理压缩后的真实内容仍缺：c5短链是prepared前态后一次真实Idle，N46是另一新Conversation后一次manual；旧不同版本/中断样本不无条件相加。后续必须在最终获准Task下完整多周期自然链审内容及必要History，原机制证据可复用，真实语义不能豁免。
+
+## 5. 发现、整改优先级与范围外项
+
+| 问题编号 | 对应条款/代码位置 | 触发路径与事实 | 影响及阻断理由 | 建议修复与关闭证据 | 当前状态 |
+|---|---|---|---|---|---|
+| E4-01（长子缺口） | V4-28/R15；冻结07第371行 | 实际Main141662/Noting146064>N38，全184/186前缀与6Schema不缩；正常Finish/单周期manual/Framework/后Main成功 | 原必要长接口子证据缺口已消除；不再把N46写为未发或未完成 | 独立原始wire/usage/SQLite/exit/786SHA审计已完成 | 仅此具体子缺口关闭；V4-28整行仍证据不足 |
+| E4-02（原多周期余项） | 原V4-28；冻结07 v2§9第363行 | 两个Conversation各一次真实压缩；没有同一Conversation最终产品下多次完整真实整理压缩及Main仅读Notebook的内容产物 | 必要证据不足，阻断Validation；不是本次临时新增验收范围 | root纳入最终获批Task自然多周期整链；持续追原事实/纠正/进展/来源/未完责任和Main理解，细节真实History；不得拼不同Conversation或用summary联合结果替代 | 未关闭；不自行收费，不签未来计划 |
+| F04（续存/P2） | V4-07/28；白板I2、07步骤2 | 原c5短链entry1“饮水12箱已到货”两direct source无12、ranges/relations空；采购单仅entry2有 | 条目重要数量缺其支持源；本长样本不是此更新反例关闭证据 | 精确来源句获批实际入Task后，保留/新增重要断言逐条有本entry可定位真实来源；允许移除非必要数量，不硬塞所有UID；原关闭条件保持 | 未关闭；原坏产物保留 |
+| F05（新增/P2） | V4-07/28；FAITHFUL EXTRACTION、步骤1/3/7；白板U1 | entry3/4正文“尚未开始/当前尚未开始”，唯一用户原文只定责任/计划，未报告逐项进度 | 把未知确定成零进度，污染提交Notebook；pending默认及后Main未复述均不豁免；不声称事实已开始 | 主会话最小忠实提取提示方向已评审，须用户批准实际入Task；关闭证据①未知不写未开始②明确零/已有/完成准确③旧进展遇新消息未重述不丢④最终注入与正常链保持 | 已核实违规，未实施修补，未关闭 |
+
+范围外新增发现：无。Schedule建议“每周一次”保为模型待确认建议，未确证有实际注册/越权，未升级为用户意图；gap解决条件保为工作推导。未新增UI/平台/生产/外部发布验收，显示保护遵守，全程无浏览器或桌面操作。
+
+## 6. 修复与独立复审
+本次为原第四审同产品证据追加，不是修补后未来版本的独立复审。已恢复原29判据并复核相关正式机制、版本和原始长接口结果。前232行报告及原第2节字节原样保留；旧“当时N46未发”是历史事实，本块把当前子缺口据实关闭，不反写历史。29行当前状态仍27符合/1违规/1证据不足，不适用0；两个P2事实缺陷归同一V4-07，不能按缺陷个数改成26/2/1。V4-28长证据现成，但其原多周期真实内容覆盖未齐，仍证据不足。**当前c5同产品Verification不通过，不进入Validation；整轮目标继续由root推进。**
+
+F05研讨链：原忠实提取/保不确定性及检查unsupported status → 当前真实用户未报告逐项进度，而模型把待办写为未开始 → 本审查确认反例并指出pending默认只管待办结构 → root接受，提议仅在FAITHFUL EXTRACTION原不造事实句后补未知进度指导，不改Schema/default status/validator，不加NL门禁或全History强读 → Verifier评审方向符合原义，但“unreported”必须指全部可用证据未知，不能因最新消息未重述覆盖既有进展 → root采纳，精确待批句为：`When the available evidence does not establish an action's progress, leave it unknown; pending does not mean the work has not started.`（可用证据无法确定行动进度时保持未知；pending不代表工作尚未开始。）原所有限定保留。该方向落实既有义务，不新增状态或完成条件；评审认可不代用户授权，当前源码/规格未改。
+
+必要关闭证据四项同时保留：①新自然默认Task遇未逐项报告进度时，不再确定写未开始，省略/未知均可；②有明确未开始、已有进展、已完成证据时仍准确提取，pending原默认及合法更新不变；③旧证据已有进展而新消息未重述时，不退回unknown且保真实来源；④获批最终Task确注入真实请求，原生Finish/提交/压缩/Framework正常，受控正式注入机制证据与自然模型语义分开审。受控响应不能替①自然质量，单样本也不豁免③及原多周期要求。
+
+F04研讨延续原记录：root只提保留内容来源并为新/变化断言加支持源的Task步骤2最小细化；Verifier认可忠于原来源义务，未认可硬编码UID、每次全历史、无差别累积来源或放宽支持标准。root将F04与上述精确F05句合成一题并明确替代前次待答单句题；截至本补证二句用户均尚未批准/实施，本审查没有修改冻结Prompt。此授权状态不是Verifier新增审批规则，按root既有冻结规则处理。
+
+E4-02研讨：本审查依据原V4-28/冻结§9指出同一Conversation多周期未有完整产物，不能相加两份不同Conversation的单周期；root认可，保留范围边界及27/1/1，将其纳入最终获批Prompt版自然多周期整链，不自动收费，也不把本次长机制成功缩成全内容通过。未来Task变更后须核既有机制/长前缀证据适用性并取得必要受影响语义证据；最终锁版后由全新独立Verifier全轮复审，不能由本审查签自己研讨整改的未来最终PASS。
+
+本次七项整包交回（最新授权状态以本节末补记为准）：1 版本/冻结/完整29条原判据及本次补核范围见第1–2节；2 修改仅verification追加与V ignored审计，产品/测试/原产物/环境不变；3 29行可追溯当前状态及六entry语义见第3节；4 实际wire/usage/持久化/关闭/缓存及方法边界见第4节，新增测试0/新增收费0；5 F04、F05、E4-02及关闭条件见第5节，E4-01长子缺口已闭；6 两处精确Prompt提案仍待用户决定，未改权限/接口/生产数据；7 root亲审接收后继续获批实施/补证/锁版并派fresh全轮复审，全部范围内阻断关闭前不进入Validation。本补证的F05实质研讨、E4-02覆盖边界和N46已证结论应由root摘要到final-delivery及用户最终汇报。
+
+
+落盘前授权状态补记：root随后通知用户已经明确批准F04/F05两处Prompt修补，并已按R18追加文档依据；同时用户提出status仅保留done的结构讨论，具体done布尔方案仍待答。以上是后续授权/规格演进的当前状态，取代本块研讨时“二句待批准”的状态，不反写原历史报告。root明确目前仅文档变化、产品仍c5，故本审查继续只按原5d判据审已执行f287/c5结果：F04/F05未实施修补、未关闭，E4-02未补齐；不将未来status结构讨论或R18retarget到本次判定，不评价尚未实施版本。未来字段名/Schema/Task若变化，原pending保留条件需由fresh全轮审查者依用户最终确认的新原文重新核范围与影响，不能从本审查对两句方向的认可推导新结构已验证。

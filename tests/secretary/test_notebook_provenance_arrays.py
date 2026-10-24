@@ -60,7 +60,7 @@ def test_malformed_ranges_refuse_whole_operation_without_versions(owner, value, 
         if operation == "create":
             create(store, source_time_ranges=value)
         else:
-            store.update(entry["entry_id"], {"status": "paused", "source_time_ranges": value})
+            store.update(entry["entry_id"], {"done": True, "source_time_ranges": value})
     assert error.value.field.startswith("source_time_ranges")
     assert store.snapshot_state() == before and count(db) == versions
 
@@ -84,8 +84,9 @@ def test_ranges_replace_clear_omit_noop_and_never_renew_lifecycle_clock(owner):
     changed = store.update(entry["entry_id"], {"source_time_ranges": [point(200)]})["entry"]
     assert changed["entry_id"] == entry["entry_id"] and changed["version_id"] != entry["version_id"]
     assert changed["source_time_ranges"] == [point(200)]
-    paused = store.update(entry["entry_id"], {"status": "paused"})["entry"]
+    paused = store.update(entry["entry_id"], {"fields": {"blocker": "Paused while awaiting dates"}})["entry"]
     assert paused["source_time_ranges"] == [point(200)]
+    assert paused["done"] is False and paused["fields"]["blocker"] == "Paused while awaiting dates"
     cleared = store.update(entry["entry_id"], {"source_time_ranges": []})["entry"]
     assert cleared["source_time_ranges"] == []
     before, versions = store.snapshot_state(), count(db)

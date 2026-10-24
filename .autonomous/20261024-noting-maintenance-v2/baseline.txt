@@ -5,3 +5,6 @@ a4faa767e6b7c1d01ec688a083c71576d58638a5
 
 2026-10-24 用户补齐Candidate直接／间接边界：5d61a5dca8d3f2df8e4e2094b85978b2a855148e
 授权依据：用户答复“直接证据来源与间接notebook条目引用是二选一的，直接证据来源内部允许混用”。替换上一修订的Candidate临时仅IDs限制，来源数组及Candidate范围完整收口。
+
+2026-10-24 用户批准R18两处Prompt及R19统一done：d8e9d89105a7aa375af427886044ca80d954bdb7
+授权依据：用户“同意这两处修改”，随后对全部条目含Candidate的顶层done布尔、Create默认false、true确证终结而非成功、false未确证终结而非未开始、done不自动归档/授权、原结算与权限保持、旧immutable只读兼容的具体问题明确答复“采用统一 done 方案”。R18进度句pending随字段名适配done=false。

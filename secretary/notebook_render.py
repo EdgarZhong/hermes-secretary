@@ -141,7 +141,7 @@ def show_notebook(snapshot, *, conversation_ref=None, profile_home=None, db=None
 
 
 def _render_entry(entry):
-    lines = [f"- {entry['entry_type']} [{entry['status']}]",
+    lines = [f"- {entry['entry_type']} [done={json.dumps(entry['done'])}]",
              f"  entry_id: {entry['entry_id']}", f"  version_id: {entry['version_id']}"]
     for name, value in entry["fields"].items():
         rendered = value if isinstance(value, str) else json.dumps(value, ensure_ascii=False)
