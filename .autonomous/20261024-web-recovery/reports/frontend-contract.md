@@ -1,6 +1,6 @@
 # 前端恢复共享契约
 
-本轮 F1 接口已落盘：`web:src/core/recovery-demand.ts`、`web:src/core/page-recovery.ts`。正式 Controller／App 接线及后台、局部需求机制已实现并经过定向验证；最新 N02/N03 整改基于833d456，待主会话亲审、统一候选与独立同版本复审。下列保留基础接口，后文补充为最终接线口径。
+本轮 F1 接口已落盘：`web:src/core/recovery-demand.ts`、`web:src/core/page-recovery.ts`。正式 Controller／App 接线及后台、局部需求机制已实现并经过定向验证；最新 N05 认证整改基于474cd4f，待主会话亲审、统一候选与独立同版本复审。下列保留基础接口，后文补充为最终接线口径。
 
 - Controller 将公开 `pageRecovery: PageRecoveryPort`。`getSnapshot/subscribe` 可交 `useSyncExternalStore`；`getDemand/setDemand(source, demand | undefined)` 管理组件需求，每个组件使用独立 source，卸载时解除。
 - `RecoveryDemand.viewport = {first,last,aliases,offset}`；first/last/aliases 用 `timelineReadingKey` 或持久 UID/row alias。offset 只在内存；不保存阅读位置。`facets = [{id, rows:NativeMessage[],visible:boolean}]`，只让实际可见已展开 rows 阻塞，offscreen 可后台。
@@ -42,3 +42,12 @@ capabilitiesForBinding在恢复中不另发旁路；loadCapabilities已有恢复
 sessions成功结果只stage：精确roster、白名单rows、ReadContext和摘要签名；当前ready/layout-ack后匹配published snapshot及current proof才写。隐藏慢列表继续独立后台成功，晚到先发布并验证，旧owner／同owner重取旧context／失败不写。整轮conversation pending cache同样核当前Context/Usage事实及投影签名。
 
 Context已知model/provider不兼容或原生显式rewind是隔离展示的一处窄失效：立即清retained/visible Context数字，保Timeline与其它胶囊；当前required Context旧证明失效，fresh仍经统一commit接管。适配器保留已显示缓存的兼容身份，后到binding确认可退役；未知身份、通用custom provider标签、Thinking变化、普通缺字段／unavailable／断网不推断失配。DisplayCache.retireContext保successAt且只删Context；同key内存修订阻旧IDB结果回滚，包含新值已flush。无公共props／DTO／PageRecovery接口变化，App与N04无需新增接线。详见frontend.md N02/N03七项交回及ignored n02-n03-source-manifest.json。
+
+
+## N05 HTTP 认证观察与展示清理（474cd4f之后）
+
+api/http-auth.ts统一bootstrap、rest/patch、authorizedFile、HistoryImageReader的HTTP观察；仅同源native API明确401与bootstrap明确403触发既有Controller。观察发生在body解析／错误包装前，hidden不例外；通知带当前document/请求凭据对象代次/signal/attempt的current资格。旧或取消结果不能清新身份，普通Files 403和503不推断登出。实际token仍只由原native bootstrap写入，不新增认证协议／凭据持久化或写重放。
+
+Controller先撤销恢复／读取／待写proof，再清敏感投影、关闭gateway。AppState.displayAuthorized?:boolean是唯一新增可选展示信号：明确认证失败false、成功且凭据proof仍当前的Profile roster确认后true；socket ready、旧roster成功不能自行授权cache。Files只有false时清本地已采用／待采用data与preview stage/等待者，卸载预览释放URL；普通断线保旧。ProfileEnvironment既有load/loadDefault也核同proof以阻旧身份迟到发布。PageRecovery API／恢复DTO／组件恢复props保持。
+
+主会话已精确批准Files.tsx和profiles.ts两处扩白名单；完整正式HTTP→Controller／App／Files证据、原候选旧Profile五项同失败边界与源版本见frontend.md N05七项及ignored frontend/n05-source-manifest.json。

@@ -145,3 +145,11 @@ V4新增N05：真实HTTP认证401未沿SessionList包装／隐藏资源／图片
 用户状态询问已如实答复：当前已知N05阻断、Web Validation未执行、对应后端未部署；现有签名包版本仍0.1.4。用户要求的最终0.1.5版本已记C18，整改后统一版本标识／重建，不以旧包冒称新版、不据状态询问停止自主任务或放宽门禁。实际APK生命周期继续按C17豁免。
 
 V4完整报告已由主会话分段全部亲读接收：43项42符合／1违规，仅N05，前三轮所有项已核关闭。原frontend已获N05单包授权，统一明确HTTP认证观察接现有Controller取消／清理，包含所有正式读取及隐藏路径，区分文件403；不改原生/后端/样式/恢复机制，版本号由主会话随后统一0.1.5。待实现／亲审／定向证据后形成新候选再全新独立全范围复审。
+
+N05最小扩白名单已批准：Files.tsx自持目录／preview stage／ObjectURL不随core清理卸载，只在认证专用displayAuthorized=false时清空本地展示／等待者并释放URL，普通断线cancelled保原样；profiles.ts既有load/loadDefault在请求前捕获同HTTP认证proof、采用前current guard，避免旧roster/cwd迟到重新resolved/发布。Controller只增内存认证展示标记，当前成功身份确认才恢复；对应Files/Profile定向反例允许。无新认证产品／路由／PageRecovery／视觉改动，属原N05完整链收口。
+
+主会话接续完成C18的微小版本集成：package.json、package-lock.json根与本包元数据、tauri.conf.json、Cargo.toml和Cargo.lock仅hermes-secretary package统一0.1.5，未重解析依赖或安装；与N05实现白名单不交叉。尚未以新源码构建APK，当前旧包仍0.1.4，认证整包交回及亲审后重建并核实际versionName/versionCode。
+
+N05整包主会话已亲读13文件实际变更及上下游：同源HTTP解析前观察、凭据/取消资格、撤销proof后清展示再stop、Files自持stage释放与roster重新授权均接正式入口；28源码依赖manifest全匹配。9文件134项及Profile定向1项、typecheck证据有效；扩大旧Profile检查另五失败在原474cd4f逐项同样复现，保留日志，不能冒称全绿，交新独立审查判断覆盖。Web 0.1.5候选`0eef2802725c7999636ca918e75d5513be608fcd`已提交/自动push核同。APK重建中，后端产品仍dd9a4c5。全新none/6.1-high verification_v5已按轮派遣，先冻结原文独立全范围判据再实现/旧报告，轻量复用有效证据；通过前不派Validation。
+
+第五候选APK已构建/核验：实际0.1.5/1005，32,087,857字节，SHA256 e4c5d68b371364ac2a3a03756f0c5094fedb21dbeabdd8aa3d902ecb15dac7b7；439内置资源匹配，v2有效同证书。android-build-v5.log、apk-v5-manifest/signature/badging证据已补交V5，产品未变；真实APK仍按C17未验，Web Validation尚未执行，生产未部署。

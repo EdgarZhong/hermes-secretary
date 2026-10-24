@@ -6,25 +6,19 @@
 
 Android当前已发布版仍为回前台立即刷新、后续10／15／20／30秒退避；用户2026-10-24要求改为先恢复、5秒内网络读取及Socket／Turn恢复完成就不重载，具体范围见下方Timeline恢复条目；新版已在本轮工作树实施，原生定向验证通过，整体集成未完成；用户C17明确豁免本轮实际APK验收，不启动模拟器，交付注明未验。此前45秒、分钟级长退避及旧5秒单次刷新方案不作为当前实现；本次5秒恢复窗口是新的用户要求。UI-CAM-01已获用户确认，拍照压缩保留当前实现。2026-10-21本轮用户明确确认：升级APK迁移至新的响铃＋横幅通知通道，并尽量保留用户主动静音设置；已实施并完成原生定向测试，真机响铃／横幅未验。
 
-## 2026-10-24 · Web UI 过渡展示缓存与完整恢复（0.1.5候选认证清理整改中）
+## 2026-10-24 · Web UI 过渡展示缓存与完整恢复（0.1.5候选独立复审中）
 
-用户已授权按06 §1.4.1 R1–R10自主实现，全部`gpt-6.1-sol`／high、允许子Agent、主会话亲审集成；Astra只完成此前评审与定稿，此后不再调用。独立Verification／Validation轻量执行：先独立判据／场景，复用有效同版本证据，必要反证，不重跑无关大套或缩减关键覆盖。
+用户授权按06 §1.4.1 R1–R10自主实现，全部`gpt-6.1-sol`／high、允许子Agent、主会话亲审集成；不再调用Astra。独立Verification／Validation轻量执行：先原文独立判据／场景，复用同版本有效证据，仅必要反证，不重跑无关大套、不缩减关键覆盖。
 
-轮次`.autonomous/20261024-web-recovery/`，两仓分支`codex/web-recovery-20261024`；主仓冻结`ba83d2b`、Web冻结`9fd115d3`，原代码`5ea0f7f`／`f3a03ce`。索引、基线、任务及整改见该目录snapshot-index.md／baseline.txt／plan.md，稳定入口已在README。
+轮次`.autonomous/20261024-web-recovery/`，两仓分支`codex/web-recovery-20261024`；主仓冻结`ba83d2b`、Web冻结`9fd115d3`，原代码`5ea0f7f`／`f3a03ce`。index／baseline／plan为依据与整改入口。目标：冷开／刷新／断线先展示有界缓存，当前页面完整重读，与Socket及活动Turn有限边界对账后统一交接；不读全库或全部历史。前缀相容保anchor后快速滚真实末尾，侧栏原地更新，Usage／Context实际值变化轻亮。APK前台5秒内当前可见ready就不reload，超时及10／15／20／30退避保留，隐藏慢请求不触发重载。
 
-目标：冷开／刷新／断线先展示有界缓存，当前页面数据完整重读，与Socket／活动Turn在有限边界对账后统一交接；不读全部Conversation正文或全部历史。前缀相容保anchor后快速滚真实末尾；侧栏原地更新，两个胶囊实际值变化轻微高亮。APK回前台先恢复，当前可见ready在5秒内完成就不reload，超时及后续10／15／20／30秒退避保留。缓存不作为runtime／游标／Pending／审批事实。
+三个实现包及后续整改均已亲审。当前Web产品候选`0eef2802725c7999636ca918e75d5513be608fcd`（0.1.5）、后端产品`dd9a4c57dd7c182ad8497f9538e115bbab3131b0`，均自动push／核远端同SHA。历次独立审查发现的Usage成功／失败事实、菜单统一读取及交错、冷开滚尾、侧栏缓存提交屏障、Context窄失效、图片重连读取及认证清理均有修补；历史失败和研讨保留verification.md。V4原候选43项42符合／1违规，只剩N05；当前N05修补已交回并亲审，全新V5先原文建立全轮判据后复审，不能以实现自评提前关闭。
 
-三个实现包均已亲审：backend负责B1–B3，frontend负责F1／F2／F3／I1，presentation负责F4／A1；子Agent不再派生。首候选1ca5d68／c4f2f6d独立Verification不通过的四项阻断已整改：Session补读失败不误报ready、正常Usage／Context成功事实白名单合并缓存、实际Model／Thinking菜单纳唯一读取协调器、局部commit不取消合法滚尾且晚挂载能定位。活动流准备另发现并修复REV-10：普通Web Turn使用当前原生来源与D1持久身份／租约证明，不局限Reminder事件。技术细化未改冻结产品语义，仍待独立复审判关闭。
+N05四类正式HTTP共用解析前认证观察，凭据／取消／document代次过滤旧401；先撤销proof并清敏感展示再stop，Files清自持预览，新凭据的当前roster确认后才恢复缓存资格。普通文件权限403仍域错误，503保画面并自动重试。当前相关9文件134项、Profile定向1项及typecheck通过，28源码／依赖manifest匹配。扩大检查未修改旧Profile文件另五失败在原474cd4f逐项同样复现，保留证据，不冒称全绿，独立复审须判断其适用覆盖。此前108项／图片25项／共享App52项、后端恢复39项／原生回归35项及冻结十检查、原生40项按版本与范围复用，重叠计数不累加。
 
-当前代码候选：后端`dd9a4c57dd7c182ad8497f9538e115bbab3131b0`、Web`474cd4f61d6fe7b29917cdd07fb3f4f647401265`，均自动push／远端SHA核同。Web最终受影响12文件223项及build通过；后端恢复39项、原生回归35项通过，准确暂存候选冻结十检查全部通过（health15文件0／0）。原生40项、呈现／桥及早期证据按各自源码manifest复用，不累加重叠计数。主会话隐藏IAB开发复核真实1200行末尾可见；本地fake SSE经正式native Turn断线后仍running时恢复成功，同runtime、正文精确且唯一assistant落库，结束后idle对账通过；这些不替代独立Web验收。
+当前0.1.5 APK构建成功，实际versionName0.1.5／versionCode1005，32,087,857字节，SHA256 `e4c5d68b371364ac2a3a03756f0c5094fedb21dbeabdd8aa3d902ecb15dac7b7`；439内置资源逐字节匹配当前dist，v2签名有效且证书未变，证据ignored apk-v5-manifest.json／apk-v5-signature.log／apk-v5-badging.log／android-build-v5.log。用户C18确定最终0.1.5；C17明确豁免本轮实际APK生命周期验收，仅Web实测与原生单测，必须写明实际平台未验，不启动模拟器。独立Web Validation尚未执行；构建不等于整轮完成，V5通过后才派另全新Validation，最后delivery-evidence-review据证交付。
 
-当前第四候选APK已重建，439资源与当前dist逐字节匹配、签名有效，SHA256 `027a411c5aeb1d0d44a93750a4da4274f95debc528438a17a448085c88539254`；证据ignored apk-v4-manifest.json／apk-v4-signature.log／android-build-v4.log。用户C17明确豁免本轮实际APK验收，仅Web实测与原生单测并写明平台未验；不启动模拟器，不以签名或Robolectric冒称实际WebView验收。
-
-第四候选Web474cd4f（0.1.4标识）已编码、亲审、相关108项／图片25项／共享App52项与build通过，自动push核同；APK签名与439资源匹配。独立V4完整43项42符合／1违规：N02/N03/N04及所有旧问题关闭，仅N05认证401在sidebar包装／hidden／图片普通Error路径未清敏感旧画面。主会话已完整亲读接收，统一传输认证观察方案经V4按原R6认可，原frontend正在修补；403文件权限仍是域错误，503仍保留重试，取消/凭据代次/旧roster不得复活。后端产品仍dd9a4c5，未部署。
-
-用户最新询问0.1.5 APK，已如实答现包仍0.1.4、N05阻断及Web实际验收尚未完成，不能当验收版交付。最终构建版本0.1.5已记C18，修补后同步metadata／重建；原门禁及Web实测不豁免，实际APK仅按C17豁免。新候选须全新Verification通过后才派Validation，当前继续自主实施。
-
-隔离Dashboard53575／proxy53576／Vite5178／fake53577仅本轮自有；53445／53446他人长驻保持不动。UI只允许自建隐藏IAB；不真实模型、不生产数据／部署。07并行Noting等dirty保留，本轮CLAUDE只暂存本段及顶部Android现状。最终须delivery-evidence-review与final-delivery.md据证判定。
+主会话先前隐藏IAB开发复核1200行末尾可见，本地fake SSE正式native Turn断线后仍running时完整恢复，同runtime／精确正文／唯一assistant落库、最终idle对账通过；这些不替代独立Web验收。本轮隔离Dashboard53575／proxy53576／Vite5178／fake53577仅自有，53445／53446长驻不动。UI仅自建隐藏IAB，不真实模型、不生产数据／部署；对应后端尚未部署生产。并行Noting等dirty保留，CLAUDE只暂存本段及获授权顶部Android现状。
 
 ## 2026-10-24 · AI 标题按当前 Main 上下文命名（已上线并完成真实验证）
 

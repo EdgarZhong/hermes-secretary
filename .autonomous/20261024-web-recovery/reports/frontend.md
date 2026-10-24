@@ -1,6 +1,6 @@
 # F1／F2／F3／I1 整包交回
 
-状态：主会话已集成至833d456；最新N02/N03整改包已完成，待主会话亲审、与N04统一候选及同版本独立复审。下文保留各验证时点，本Agent未自行stage／commit／push，未部署、未调用真实模型、未操作浏览器／设备。依据为baseline.txt冻结06 R1/R4–R7/R9及R2/R3接口，保持08 Profile与Files归属。
+状态：主会话已集成至474cd4f；最新N05认证整改包已完成，待主会话亲审、统一候选及同版本独立复审。下文保留各验证时点，本Agent未自行stage／commit／push，未部署、未调用真实模型、未操作浏览器／设备。依据为baseline.txt冻结06 R1/R4–R7/R9及R2/R3接口，保持08 Profile与Files归属。
 
 ## 条款与实际变更
 
@@ -97,3 +97,20 @@ ignored证据：`.hermes-dev/web-recovery-20261024/frontend/accepted-tests.log`�
 6. **接口影响。** 无公共DTO、PageRecovery API或组件props变化；仅adapter内部Context代次／窄退役接缝、统一摘要白名单复用和DisplayCache内部retireContext（可选current/兼容身份guard）。Controller事件控制路径先做明确失效，正常Context补读捕获同代次后才能采用；原scope、合法unknown/available和业务通知语义保持。未改App、presentation、后端、drafts、依赖或Android。
 
 7. **下一步。** 请主会话亲读7文件正式diff及读→stage→commit/layout→白名单写、held/旧seq和身份失配上下游，结合N04统一新候选后交独立同版本复审。本Agent未stage、commit或push，无待产品决策项；当前验证不替代最终Validation。
+
+
+## N05 正式 HTTP 认证清理整改（基于474cd4f，2026-10-24）
+
+1. **对应条款与根因。** 已复读executing-plans、autonomous-run阅读／阶段交接契约、本轮index/baseline/plan，以及冻结06 R6与R1/R5失败边界；读取V4 §5/6的原判据与原三项正式反证。原问题是SessionList把HTTP 401字符串化，历史图片／authorizedFile包装普通Error，hidden错误也不进入required.failed，导致认证失效后旧history/sidebar/blob仍展示；原直接调用authenticationFailure的helper测试不能证明这条链。冻结规格未改。
+
+2. **实际变更。** 全src正式fetch清单核实只有bootstrap、rest/patch、authorizedFile及HistoryImageReader四个传输点，现共用api/http-auth.ts薄接缝；仅mock fixture保留独立fetch。相同origin的/api明确401在body解析／领域包装前同步通知既有Controller；bootstrap明确认证403保留，普通Files 403是域错误，503／断网仍原retained和1/2/5重试。每次请求捕获document、当前凭据对象代次、取消signal及bootstrap attempt资格，通知携可复核current proof；旧token、同token但新bootstrap代次、取消请求和旧attempt不能清新身份。模块无恢复定时器、自动重发或认证协议；不猜redirect/TypeError，不记录URL、token、正文，不自行写cookie或制造token，token仍只由既有成功native bootstrap赋值。
+
+3. **正式路径与清理顺序。** HTTP观察→current proof→撤销凭据资格→PageRecovery.cancel→静默撤销读取／待写proof、capability/secretary/schedule/draft代次→清document不可变展示和业务敏感字段、displayAuthorized=false→Gateway.stop。静默清理覆盖列表、历史／detail、Context、Usage、Pending及旧binding flight，取消过程不会额外发布旧敏感画面；晚到REST/RPC/IDB/menu/图片不能重新采用。当前成功roster还须其原始凭据proof有效，socket ready或旧roster成功都不能自行恢复cacheAuthorized；新凭据的真实当前Profile确认后才允许读展示缓存。主会话另批准的两处精确扩白名单已接：Files.tsx仅在displayAuthorized=false时清本地data/previewStages/accepted/等待者并卸载预览以释放其ObjectURL，普通cancelled断线不清；profiles.ts的既有load/loadDefault捕获同proof，防旧roster/cwd迟到resolved／发布。HistoryImage本体不改，reader只替换统一HTTP helper。
+
+4. **针对性证据。** 当前9个相关文件134项通过（n05-final-related-tests.log），包含15项新增：传输观察2、旧bootstrap401/403两项、正式Controller visible/hidden sidebar与迟到proof三项、实际App同URL旧图片后401一项、真实Gateway＋Controller／挂载Files联合七项。联合fixture实际运行Gateway bootstrap DOMParser、WebSocket/RPC、Controller、PageRecovery、REST/authorizedFile与Files组件，只在HTTP响应、native RPC/事件和第三方viewer-ready边界供确定输入；没有替换认证／清理机制或手调helper充作正式链。证据覆盖：解析前清理、hidden包装不漏、取消先于stop、迟到cache/menu/roster/cwd/传统history/binding、跨真实bootstrap新凭据的旧无signal401、已取消401、bootstrap403、新socket ready但当前roster仍慢不能解锁；Files metadata/binary权限403保留、binary503不等新gateway.ready自动恢复、binary401清旧stage/URL且重新授权后仍等新二进制提交。另旧Profile目录owner定向1项通过（n05-profile-proof.log）。typecheck、git diff --check通过；Controller为2540行，低于冻结2556行。n05-source-manifest.json记录本包13文件及实际依赖、日志散列。
+
+5. **现有失败与边界。** 扩大检查的未修改controller-profiles.test.ts有五项失败（含旧ensureBinding初始化断言、旧cwd/模型采用假设和一个超时）；已在独立临时源树对原474cd4f逐项复现相同五项，见n05-expanded-profiles.log、n05-baseline-profiles.log及n05-profile-baseline-comparison.json（sameFailures=true），临时树已清理，未回滚共享源码、未修改预期消除失败。本包不冒称该旧文件全绿，认证相关旧roster/cwd及当前授权则有上述正式新反例。未跑无关大套/build，未操作UI／浏览器／模型／原生／部署，未stage/commit/push。viewer用既有ready合同替身，实际第三方渲染和真实用户效果不属于本次机制测试结论。主会话同期自行升0.1.5；本包未改版本／依赖／原生文件，测试启动标0.1.4，最终typecheck标0.1.5，认证源码未随版本小集成改变。
+
+6. **接口影响。** 新增仅document内HTTP观察／凭据proof helper；rest/patch/RpcError、authorizedFile原返回与领域错误保持。AppState新增可选displayAuthorized（undefined保持既有调用），仅明确认证失败false、当前有效roster成功true，供Files区分普通断网和认证清理。PageRecovery状态机、恢复DTO、server/backend协议、样式、容量／TTL／LRU、drafts库不改；Controller内部invalidateDisplayReads只撤销读取与cache proof，不发送／重放写操作。新增源文件为api/http-auth.ts，新增测试为api/http-auth.test.ts和core/http-auth.integration.test.tsx。
+
+7. **建议后续。** 请主会话亲读13文件、明确401的传输资格、静默清理顺序、重新授权proof及Files本地stage清理；版本0.1.5由主会话统一候选／构建后交全新独立同版本Verification，再决定Web Validation。原V4三项失败证据保留，本包通过不自行关闭门禁；无待产品决策项。既有五项Profile测试差异另有原候选对照，不夹带改行为或改断言。
