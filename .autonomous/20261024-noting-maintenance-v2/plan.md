@@ -106,3 +106,35 @@
 - V4已依据白板I2/v2步骤2认可“保留仍需内容来源并补新增/变化断言来源”为原义务最小细化，不得读全History或盲堆旧source；新实证需该entry自身source可支持新数量等、保原生整链。root已向用户展示原因及精确英文候选句，异步询问仅改Task第二步一句；冻结Prompt未答不改。D不启动任何后续收费/N46，实际运行已自然退出，尚不具备终局门禁或发布条件。
 - V4当前c5完整审查已终结为27符合/1违规/1证据不足，独立六节与原始c5-short-independent-audit.json已交回root接收；修后按套件另派全新审查者，不要求原研讨审查者代签后继PASS。Validation仍未启动。root按delivery-evidence-review复核并将当前未完成/输入依赖/恢复步骤写final-delivery.md，goal保持active，不冒称用户暂停或目标完成。
 - D离线Request-ID观察hook6组通过，0新网络，ledger51/policy70/55/15不变。root澄清旧c5原send本来已捕获白名单头，8个实际http_response仅content-type，两个Request-ID头未提供；新hook只是显式null，不回填旧事件，也不改变请求/重试/预算。后续同前态fresh F04计划只准备，未批准新Prompt/配额/run。
+
+### 等待Prompt决定期间的独立N46取证
+- root复核发现N46工具可调用性及长前缀完整链可独立于单句来源提示继续；此前“先F04全部语义通过才N46”是root编排顺序，不是用户产品要求。为推进用户明确授权的>N38真实模型目标，现调整顺序，保F04未关闭及最终双门禁要求，不以此降低判据。
+- 当前HEAD f287e94仅四文档变化，相对c5全部产品代码/测试及786受测源码均不变。D先以当前HEAD记录精确版本及同c5代码等价，最小零请求preflight后可按root明确授权仅一次N46 --scenario long --run，原46组184消息、真实Main→Noting→正常提交→manual native full压缩／Framework→后续Main；原序列由实际机制决定并分别审，不混作Idle成功门槛。不得因调序修改Prompt、模型、工具、validator或截短历史。
+- 原收费policy70/short55/long15及已用51不变，N46硬cap15，无重复run、SDKmax_retries0，无自动再分配。F04修后以及最终文本对既有N46证据的适用性必须再评估，必要受影响长样本仍须补，不能提前豁免；当前N46只按实际版本和声明范围交付，不关闭F04或允许部署。
+
+### N46同版真实取证已取得（独立补核中）
+
+- 执行HEAD f287e94（产品与c5相同），实际run-long-20261024-174448完成；8个HTTP200，累计59（short51/long8，含probe2）。root亲核首Main prompt141662、Noting146064/149716/153726/155074，超过旧N38约131745校准量；不把校准量称旧服务端实测。
+- root逐结构比对4个Noting请求：Root/tools/186条冻结Active完全相同，无messages.tools，仅max_completion_tokens=32000；独立证据.hermes-dev/noting-maintenance-v2/n46-root-wire-audit.json。正常Finish后无Noting追加请求；6条正常Snapshot及Framework和后Main答复存在，原184历史仍保留。该样本为manual非Idle，不替代既有Idle时序证据。
+- D仍完成执行审计；原V4获派只补同产品长样本条款与内容质量，不签未来Prompt新版PASS。F04旧短样本来源缺口保持、单句提示仍待用户明确答复；Validation/部署未启动。
+
+### F05／N46独立内容反例（Prompt提案未实施）
+
+- V4独立核实：action3/4正文断言“尚未开始／当前尚未开始”，唯一业务用户仅交代筹备启动与当前责任，未报告每项具体进度；原pending默认不构成正文零进度事实。依据原FAITHFUL EXTRACTION、白板U1及步骤7 unsupported status，P2内容偏离，不撤销N46长机制成功。
+- root提案仅于FAITHFUL EXTRACTION既有禁止无依据添加事实句后追加：`Keep unreported progress unknown; a pending action does not establish that work has not started.` 不改status默认/Schema/validator，不加NL门禁或强制全History；原样本保留。V4评审方向后，冻结Prompt具体文字交用户决定；当前未改源。
+- 后续必要证据：未报告进度的新自然行动不写确定未开始；明确已开始/未开始的受控正式提示分支保原提取语义，不以原pending默认遮蔽事实。最终新Prompt版仍须全新独立全轮复审；无自动新收费。
+
+### 后续验收边界与待用户决定的精确文字
+
+- F05候选措辞已细化为 `When the available evidence does not establish an action's progress, leave it unknown; pending does not mean the work has not started.`，强调全部现有证据，不能因最新消息未重述而清掉旧已知进展。V4按原判据认可方向，待新自然样本及最终fresh审查，不代用户批准。
+- root已将F04来源句与本F05句合并一题，明确替代旧单句问题；用户答复“为什么要做这样的修补？前因后果也再发一下”，root已逐例解释，因此仍未批准。产品Prompt、Schema、状态默认及validator均保持c5，不再收费。
+- E4-01原范围余项：最终同一Conversation的多次真实整理/压缩后内容连续性缺证。当前c5 short与f287 N46是两个不同Conversation的一次完整链，不能相加代签；旧833父摘要被审计中断且最终Task/来源面已变，也不能无保留复用为此证据。root接受V4边界，后续获批最终版须补同一隔离会话多周期链，核历史关键内容、已知进展不被清空、未知不造状态、新/旧来源、实际History细节找回及Framework；N46具体长机制证据保留有效。
+- 费用累计59、无存活E2E、没有新run权；原policy70/55/15不自行扩大。后续所需配额由root按最终验证方案明确决定，不能因已有配额或宽泛自主授权让执行者自启。
+
+### R18已批准，status简化仍在对齐
+
+用户已明确同意F04/F05两处Prompt修改；07及索引R18立即落档。root已只读核现有条目status仅枚举校验/默认/展示及内容claim比较，无按这些细分值自动归档／推进提交；Noting任务运行status与Notebook条目status是不同对象。用户提出仅保留done，root建议所有条目含Candidate统一done布尔，默认false=未确证终结、true=确证终结而非成功；具体进度/原因语义记录、done不等archive、原审批/结算/权限保持、旧immutable只读兼容。具体方案已异步询问待答，不当已批准。先独立落实获批来源句，第二句等字段收口，避免过时pending文字；不新增收费。
+
+### R19用户确认与本次实现分工
+
+用户已明确采用统一done方案，R18两句Prompt及R19结构口径收口，07/索引已同步。下一步A负责数据/Schema/只读旧记录兼容及专属新测试；B负责两处获批Task、六工具/权限实际请求与旧测试迁移，A的新done测试不交叉；D在最终锁版后补真实同一Conversation多周期链、F04/F05及必要长前缀，执行前另明确配额，不自启。Root亲审集成/规则检查/阶段提交；V4只完成旧c5补证，之后新最终版必须全新独立全轮Verification再Validation。只改Notebook条目状态，不改运行任务/Scheduler状态，不引入状态语义硬门禁或自动归档。

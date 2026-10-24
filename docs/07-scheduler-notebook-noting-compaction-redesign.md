@@ -1,5 +1,25 @@
 # 07 · Secretary 改版实施契约：History、Scheduler、Notebook 与 Noting
 
+## 2026-10-24 追加：统一done终结标记（用户已确认）
+
+用户明确选择“采用统一done方案”。本节优先替换本文v2及历史Schema中Notebook条目细分status枚举；不改变Noting运行任务、Scheduler或其它对象的运行状态。
+
+- 所有Notebook条目含Candidate，移除当前模型可创建／更新的status字段及按类型枚举，统一为条目顶层`done`布尔字段，Create/Update同层；Create省略默认false，Update省略保持，显式null或非布尔值拒绝且零副作用。
+- `done=true`仅表示可用证据已确认该条目所记录事情终结；完成、取消、撤回、被替代等实际结果与必要条件用description等既有语义字段忠实记录，不将终结等同成功。`done=false`表示尚未确认终结，不代表未开始，也不抹掉已有进展；具体进度、暂停、等待和未知用语义记录，不强行枚举现实状态。
+- `done`与archived分离，不自动归档／删除，不成为终态一律清退许可；原清退／结算／引用保护／候选审批规则保持。Candidate的提案／批准／实际写入仍靠可见内容与证据，done不授予任何执行权限，成功交接范围仍按原结算规则退出。
+- 旧不可变item/Snapshot不回写，仅在既有读取兼容边界规范化；不能因转换抹掉原已知进度或终结原因。内部新写及模型所有投影/回执/Show/Task/Framework均采用同一done契约，不保模型可编辑status别名；精确版本／来源继承用相同规范化表示。
+- 已获批R18第二句随字段名适配为：`When the available evidence does not establish an action's progress, leave it unknown; done=false does not mean the work has not started.` R18来源句保持已确认原文。不新增自然语言语义校验／自动推断进度，不改变原生Finish与提交门槛。
+- 最终版本按同一Conversation多次整理／压缩验证内容接续、已知进展保留、未知不造状态、来源覆盖、工具协议／权限及父子冻结前缀；独立双门禁和部署条件保持。本节已定案，尚未据此宣称代码／测试／部署完成。
+
+## 2026-10-24 验证后最小Prompt修补（用户已确认）
+
+用户明确“同意这两处修改”。仅修改默认Noting Task：
+
+1. 第2步来源句替换为：`Keep sources supporting retained content and add sources for new or changed claims; do not replace all sources with only the newest message.` 保留仍需内容的来源，同时补充新增／改变内容的对应来源，不一律换成最新消息。
+2. FAITHFUL EXTRACTION既有禁止无依据添加事实句后追加：`When the available evidence does not establish an action's progress, leave it unknown; pending does not mean the work has not started.` 未确证进度保持未知；依据全部可用证据，不因最新消息未重述而清掉既有进展。
+
+不增加自然语言语义硬门禁，不改变权限、结束条件或来源结构。用户随后已明确采用统一done方案，第二句按顶部done契约替换pending字段名；本节原pending句保留其最初批准时点，当前实施以顶部最终文字为准。后续按最终版本补真实模型与同会话多周期验证及全新独立双门禁。
+
 ## 2026-10-24 自主验证期间追加：来源数组与混传（已确认）
 
 用户新增要求：`evidence_time`改为runtime只读数组，元素为时间戳或时间段；直接消息来源的Message IDs与时间段数组可以同时提供，时间段由单对象改为`source_time_ranges`数组。同一处证据通常选择一种表达、不同证据允许混用，依靠Prompt软指导；不增加两种表达覆盖重复／时间段重叠的运行时门禁。用户已明确IDs取时：每条真实用户消息各列一个时间戳；没有用户时取最近一条Assistant；再无则列全部来源消息时间。显式时间段仍独立参与数组，不因提供IDs而丢弃。下文v2对应接口、投影及Prompt指导已同步本次已确认变更；尚未据此宣称实现、真实模型验证或部署完成。
@@ -137,7 +157,7 @@ Framework仍非触发式注入，不自行启动Turn或外发微信。建议随N
 七步：
 
 1. **对齐输入。** 确认当前Notebook、冻结父证据、时间和覆盖范围；已有证据足够就处理，仅为具体必要缺项Read/Search。覆盖边界不等于每条已被抽取，消息时间不等于事件时间，不造日期／承诺／授权／结果。
-2. **维护已有内容。** 根据新事实更新同一件事，保留仍相关的已发生结果、重要转折、条件和用户立场变化，不能只剩最近一句。保留内容对应来源，不一律替换成最新消息。同一处证据通常选择Message IDs或一个时间段元素即可，不必重复表达；不同证据可混用IDs和时间段数组。该项为Prompt软指导，不做覆盖重复的代码门禁；Candidate二选一仅指直接证据与notebook_refs，直接内部同样可混用。新内容不继承旧批准，关联Candidate同步校正；另一件事另建条目。
+2. **维护已有内容。** 根据新事实更新同一件事，保留仍相关的已发生结果、重要转折、条件和用户立场变化，不能只剩最近一句。保留仍需内容的对应来源，并补充新增或改变内容的来源，不一律替换成最新消息。同一处证据通常选择Message IDs或一个时间段元素即可，不必重复表达；不同证据可混用IDs和时间段数组。该项为Prompt软指导，不做覆盖重复的代码门禁；Candidate二选一仅指直接证据与notebook_refs，直接内部同样可混用。新内容不继承旧批准，关联Candidate同步校正；另一件事另建条目。
 3. **补建有用内容。** 按七类记录正在推进、以及曾发生且现在仍帮助工作／理解用户／接续讨论的内容。纳入偏好／身份、情绪／关系经历、实际讨论和有用材料，不强迫每类都有条目。用户问题／认识／决定忠实归因；AI建议作为尚未采纳的工作／讨论材料，不升级为用户立场。
 4. **结算真实外部写入。** 按可见提案→明确批准→实际工具结果核对覆盖，先处理来源再处理Candidate；实际成功交接的覆盖范围按原规则归档，不因仍有当前用途或以后可能有用保留副本。部分成功仅结算成功范围，后续新变化、未完责任及其它未结算提案所需的未覆盖内容按原规则保留；完整来源确已处理后结束Candidate，部分结算则仅留未写入范围。不检查目标内部存储，不重复未知写入，不因重读历史或保留未覆盖部分重新生成已交接范围的索引／候选。
 5. **按类型处理保留与去留。** 删除重复而非追求最短；已完成行动仍可留有用结果，已回答问题可留答案和有用排除过程，已失效决定可保留解释现状的历史转折并标清失效，gap补足后答案回到situation并修引用。Candidate原有来源／目标／标签／审批规则保持；无当前用途、独立留存价值、未完责任／有效约束／讨论或待提案需要时才直接归档，终态／年龄本身不是自动删除许可；实际外部写入依第4步按成功覆盖范围结算退出，不以当前仍可能有用绕过结算。
@@ -229,12 +249,12 @@ description应写成Main当前上下文中简明的语义索引。
 **修改后定稿 · EN**
 
 ```text
-2. Update existing entries. Match new evidence to the same matter, situation or discussion and keep its stable entry_id. Change only what the evidence changes. Retain earlier outcomes, turning points, conditions and changes of view that still help Main understand the current situation; do not replace the whole account with the latest status. Keep supporting provenance for retained content, rather than replacing all sources with the newest message. Use a separate entry for a different subject. Revise linked Candidates when needed; new content is not covered by an old approval. Repetition, reading or rewriting does not renew substantive progress or discussion time.
+2. Update existing entries. Match new evidence to the same matter, situation or discussion and keep its stable entry_id. Change only what the evidence changes. Retain earlier outcomes, turning points, conditions and changes of view that still help Main understand the current situation; do not replace the whole account with the latest status. Keep sources supporting retained content and add sources for new or changed claims; do not replace all sources with only the newest message. Use a separate entry for a different subject. Revise linked Candidates when needed; new content is not covered by an old approval. Repetition, reading or rewriting does not renew substantive progress or discussion time.
 ```
 
 **修改后定稿 · 中文**
 
-2. 更新已有条目。将新证据对应到同一事项、情景或讨论，保持稳定entry_id。只修改证据实际改变的部分。保留仍帮助Main理解当前情况的既往结果、转折、条件和立场变化；不要把整段记录替换成最新状态。为保留内容保留支持它的来源，不要把全部来源替换成最新消息。另一件事另建条目。必要时修正关联Candidate；新增内容不受旧批准覆盖。重复、读取或改写不会刷新实质进展或讨论时间。
+2. 更新已有条目。将新证据对应到同一事项、情景或讨论，保持稳定entry_id。只修改证据实际改变的部分。保留仍帮助Main理解当前情况的既往结果、转折、条件和立场变化；不要把整段记录替换成最新状态。保留仍需内容的对应来源，并补充新增或改变内容的来源；不要把全部来源替换成最新消息。另一件事另建条目。必要时修正关联Candidate；新增内容不受旧批准覆盖。重复、读取或改写不会刷新实质进展或讨论时间。
 
 #### 新增第6步：Schedule追加建议
 

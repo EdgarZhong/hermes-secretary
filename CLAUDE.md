@@ -296,3 +296,15 @@ root云只读preflight通过：运行仍183f1a5、双服务active、微信connec
 **c5真实F04已完成但来源质量仍未全过：** 8请求正常结束、累计51；Noting6工具结果全成功、参数错误0、Finish后额外请求0；Snapshot／durable Idle全文压缩／Framework／最终Main实际Show+History正常，四条均补新progress。残余是matter新增“12箱”漏原采购单来源；另一采购action引用及最终Main回查正确，不自动补matter direct引用。root与V4分别亲核原文/DB/工具轨迹，旧F04收窄仍存；当前不再收费、不启N46。V4已认可Task第二步最小补全来源义务方向，root给用户具体原因/英文候选，单句冻结Prompt修改仍待答。未改产物或Prompt、未进入Validation/部署。
 
 V4当前c5完整结论已接收：27符合／F04一违规／N46一缺证，不进入Validation；未来整改后由全新审查者全轮复审。root已按delivery-evidence-review复核并填写本轮final-delivery.md为当前未完成／等待单句用户决定的交接，目标保持active，不标完成或用户暂停。D所有真实进程已自然退出；Request-ID显式null观察hook仅离线6组通过，现仍51请求。原8响应白名单仅有content-type、未提供两个Request-ID，不虚构或回填；无生产变更。
+
+**继续独立N46工作：** f287e94只文档更新，产品代码与c5完全相同；root复核N46头部工具长前缀调用链不依赖待批来源句，可先推进用户已授权真实长样本。调整的是root先后编排，不改变F04未关闭、最终文本证据适用性／必要补验或双门禁要求。D须先核当前精确HEAD/786源码等价及零请求preflight，再仅一次N46真实run，原policy总70／long15、已用51保持；不改Prompt、不自动重试/转预算。来源句未获答仍不改，最终修后按影响补证，未部署。
+
+**N46已取得真实结果、独立补核中：** 同产品f287/c5的8请求均HTTP200，累计59（short51/long8）。首Main141662 tokens，Noting146064至155074，超过旧N38约131745校准量；root亲核4请求Root/tools/186条冻结Active精确一致，无动态声明，Finish后Noting追加0，正常Snapshot/Framework及后Main答复可查。manual样本不替Idle时序，D与原V4仍审计，暂不签整轮通过。旧短链F04保留，来源提示单句未获答不改；未进入Validation/部署。
+
+**N46独立补核新增F05：** action3/4把未报告的具体进度写为“尚未开始”，原pending默认不授权此事实断言；root认可P2内容反例，长机制成功保留。提案只补Task忠实提取一句“未报告进度保持未知，pending不证明未开始”，不改Schema/默认状态/校验器；与F04来源句分开审查/对齐，未实施。V4已独立核长前缀/Usage/正常提交/原文留存，当前两内容问题未关闭，未进入Validation/部署。
+
+**当前接续条件：** N46执行审计已自然交回，累计59，无存活收费进程。V4确认长机制具体缺证已补，但同一Conversation多次完整整理/压缩的最终内容连续性仍缺，不以不同会话样本相加代签。F04/F05两句具体文字已合并询问，用户当前只要求解释前因后果，root已答，未视作批准；Prompt/Schema/状态默认/validator均未改，Validation/部署未启动。后续获批后纳入同一隔离会话多周期验证与全新独立双门禁。
+
+**用户批准R18并提出状态简化：** F04来源句与F05进度未知提示两处已明确批准并写07/索引；用户同时建议不用细分状态而保留done。root已调查现有状态值用途，提出所有条目含Candidate统一done布尔、默认false未确证终结、true不代表成功、正文记录进度／原因且不自动归档；具体结构仍待答，未实施。来源句可独立落实，第二句按状态字段最终收口适配；不再把两处Prompt原文列作未批准，done结构不冒称已批。费用仍59，未部署。
+
+**R19已确认：** 用户答复“采用统一done方案”，全部Notebook条目含Candidate统一顶层done布尔（Create默认false，Update省略保持），删除细分status；终结不等成功，false不等未开始，具体情况语义记录；done不自动归档、不授权限，原结算/审批/引用保护保持，旧immutable只读兼容保语义。R18两句Prompt随之落实，第二句pending改done=false，无剩余此项审批。准备冻结本次依据并Sol分工实施；最终同会话多周期实证/全新双门禁/部署未完成，费用59无新run。
