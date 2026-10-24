@@ -20,7 +20,8 @@
 | R04 | 七类字段必填性按07；删除external_refs，文件引用仅在description精选记录，路径不计软长度 | 不增文件字段、不扩独立材料准入、不列全文件 | 用户“删除”“只需要改一个prompt”“路径不计…不要大量瞎引用” |
 | R05 | description完整指导与1–3短句、约150中文字符/80英文词软长度；第三步写作、第五步过滤两表独立 | 索引清晰有效、不复述历史、不要求Noting比较未知摘要；无硬长度门禁 | 用户确认description及“不要合并” |
 | R06 | evidence_time模型可见、runtime派生只读数组：每条真实用户各一个时间戳，无用户取最近Assistant，再无列全部来源时间；显式时间段数组独立加入；Candidate refs沿原来源链聚合数组 | 不让模型手填，不把分散证据压成宽区间；保持原7天/72小时及progress/discussion/gap计龄，未知不造日期 | 原只读时间确认＋用户“evidence time加成数组”及取时答复“每条用户消息各列一个时间戳…” |
-| R16 | 七内容类型source_time_ranges数组与IDs可混传，每段沿原起止结构、数组完整替换；同一处证据通常二择一仅Prompt软指导，无跨表达覆盖重复／重叠硬门禁；兼容旧单范围只读规范化，不改历史原件 | 多时点证据保留；同字段同层及来源域不变；当前API只声明新数组 | 用户“时间段同样改成数组…provenance可以混传…prompt软约束” |
+| R16 | 七内容类型及Candidate直接来源source_time_ranges数组与IDs可混传，每段沿原起止结构、数组完整替换；同一处证据通常二择一仅Prompt软指导，无跨表达覆盖重复／重叠硬门禁；兼容旧单范围只读规范化，不改历史原件 | 多时点证据保留；同字段同层及来源域不变；当前API只声明新数组 | 用户“时间段同样改成数组…provenance可以混传…prompt软约束”及Candidate后续明确 |
+| R17 | Candidate二选一仅指直接对话证据 vs 间接notebook_refs；直接内部可IDs、时间段数组或混传，间接仍直接数组为空及source_types标签映射；直接模式refs/source_types为空 | 移除旧仅IDs／range必须为空限制，不放宽两模式混用、目标、标签、审批、结算或引用保护 | 用户答复“直接证据来源与间接notebook条目引用是二选一的，直接证据来源内部允许混用” |
 | R07 | relations普通关系归档同时解除；gap情景/Candidate来源仍保护 | 无悬空、原子清理、不级联状态、不加图门禁 | 用户确认简化门禁 |
 | R08 | 每entry零或一Schedule建议，entry顶层content+schedule两语义字符串；Noting必查漏登记，content自包含完整，schedule不作时间语法校验 | Noting无Scheduler权限，Main考虑创建/更新；建议不代表实际登记 | 用户“一对一”“普通字符串”“只是advice”“未实际创建schedule” |
 | R09 | 注入Notebook含建议时Framework最底部追加已定稿Main提示，非触发、不误发微信 | 不要求立即照抄或再作强制复查，不增队列/强制注册 | 用户逐句确认Main/Noting提示 |
@@ -32,4 +33,4 @@
 | R15 | 实际Kimi Coding/隔离Alex Profile，真实长前缀超过历史N38，真实Main→Noting→压缩→Framework→后续Main代表链路 | 已授权付费及缩小隔离阈值；不动正式Conversation/Notebook/Snapshot、不改公开Persona | 先前用户“Kimi…Alex隔离副本”“阈值超过…n等于38”与本轮端到端授权 |
 | O01 | 不做Web恢复/Android/标题/Provider协议切换/上游Issue/个人Provider改造，不改生产Schema迁移策略 | 用户本轮明确范围 | 本轮范围表及排除事项 |
 
-未决产品项：Candidate直接来源是否也允许时间段数组与IDs混传已异步询问，未答不算确认；此项暂不实施，保留原仅IDs或notebook_refs模式，不阻止七内容类型及只读时间数组的已确认改造。最终收费验证、独立双门禁及发布前须完整收口。工程衔接按已定机制收敛，不扩大权限、结束条件或硬门禁；重要自主取舍按AGENTS登记。
+未决产品项：无。用户已明确R17，来源数组增量及Candidate边界均收口；新规格尚待实现、真实验证、独立双门禁及发布，不据设计定稿宣称完成。工程衔接按已定机制收敛，不扩大权限、结束条件或硬门禁；重要自主取舍按AGENTS登记。

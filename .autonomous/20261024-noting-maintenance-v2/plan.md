@@ -83,3 +83,11 @@
 - 07顶部及v2§3/§5/§6第二步、索引R06/R16已同步已确认部分：七内容类型source_time_ranges完整数组与IDs混传；evidence_time数组点／段及每条真实用户取时算法；软指导同一处证据择一。未知空数组不造时间，沿原合法域逐来源校验；旧单范围仅读兼容规范化，不改不可变原件；当前API不列旧字段别名。
 - Candidate直接来源扩展仍待用户回答，现保原限制，只读refs链时间改数组；不把未答当批准。此独立选择不阻止通用数据与Schema更新，但最终收费、双门禁与发布前需收口。未获批准的“新增断言补新来源”候选句仍不实施，以用户此次明确软指导为界。
 - A接通用数据／Schema／projection与旧数据兼容；B接正常Main／恢复边界Schema刷新、Task软指导及正式wire测试；文件白名单不交叉，root负责文档／亲审和必要微小接线。新模型最终验证与N46待全部产品锁版，不重跑旧复杂失败流程。
+- Root亲审F04最小前态计划：全新隔离DB四条真实旧事实支持的prepared entry→自然新progress→默认Task→真实Idle/Finish/提交/durable压缩/Framework→后续Main Show/History，不能给模型UID/修源提示、不人工改输出；新断言必须由实际来源支持，数量/责任/未完义务保持。D仅获离线数组审计适配及最终dry准备，尚未授权发送。Root批准内部总70不变、short55/long15的配额重分配；已用43计数不改，F04单轮cap12，N46 cap15，SDK max_retries0、不自动转移未用配额。此决定不是新收费启动，待最终SHA锁定再逐链授权。
+- Root零网络独立核N46材料：只从原kimi-k3-prefix-boundary-20261023/run_experiment.py AST取compact/history_unit函数，在无模型调用下重建46组；与当前long-history-n46.json全184条逐结构完全相等。证据.hermes-dev/noting-maintenance-v2/n46-fixture-generator-audit.json含原生成器及fixture SHA，不只依赖N标签。真实wire未缩短及Provider Usage仍须在线取证，不能以该离线核对替代。
+- B发现Candidate旧Prompt要求“keep source_time_range null”与新Schema数组不符；root已批准仅同步为“keep source_time_ranges empty”，保原IDs/refs二择一及全部权限，不是Candidate来源范围扩展，也不借此改未批准F04候选句。当前Task中同一字段名/空值语义与新Schema必须一致。
+
+### Candidate来源边界后续用户确认（替换上段临时保留限制）
+- 用户已明确：二选一只发生在直接对话证据与notebook_refs间接引用之间；直接内部IDs／时间段数组可单独或混用。07及索引R16/R17立即更新，前次“keep ranges empty”只属回答前临时实现记录，须移除最终限制及其Prompt；不改两模式互斥、标签映射、目标、审批、实际写入结算。
+- A负责validator/Schema/直接来源与refs相关数组用例；B负责Task对应句及其原五文件Candidate脚本/断言迁移，两者白名单不交叉。需测仅IDs、仅多段、混传、refs保持、模式切换完整清理、直接+refs混用拒绝及无来源拒绝零副作用。保旧仅IDs日志为历史，不以它签新契约。
+- 来源范围现已完整收口，仍不得提前收费或部署；A/B最终整包后root亲审/锁版，再依最终版本做F04/N46、全新独立Verification与Validation。

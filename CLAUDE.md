@@ -278,3 +278,7 @@ Finish原生收尾提案已获独立契约评审，属于原“最后单独调�
 Finish包现已由root亲审接收：durable独立Finish后原生Turn立即返回、原Commit Gate提交；不再请求模型续写结束语。root实证发现并补齐clear前即时取消窗口，使用原生锁内可选观察回调，默认路径与bool返回保持；三个取消屏障、四正常正例和60项原生相邻回归有效，冻结10检查通过。源码与报告hash一致，未为review重跑大套。来源新契约／F04／N46及全新双门禁尚待，未部署；完整证据在本轮plan及ignored finish-report.md。
 
 Finish快照31c1791已提交自动push，整树干净；root实际staged针对初始源码基线69文件执行冻结10检查，health零blocking/advisory。已确认的七内容类型来源数组与通用只读投影现落到07及索引R06/R16，准备Sol并行实施：A数据／Schema／旧不可变读兼容，B权限提示软指导与正常边界完整Schema刷新。Candidate直接来源扩展保原不改、仍待用户答复；最终收费／双门禁／发布前收口。尚未批准的补新来源候选句不借此改入Prompt。
+
+已确认来源增量依据5c550162已提交推送，baseline保留初始a4并追加授权版本。A/B正在各自白名单并行实现；D只离线适配最小F04与新数组审计。Root已审F04前态和正式链路，批准仅内部重分配总70／short55／long15、计数43不改，F04单轮最多12、N46最多15；最终SHA及完整产品口径未锁前仍不收费，不自动转移未用配额。全仓来源字段实际消费者均在A/B边界内，旧不可变数据不迁移；发布脚本仍仅准备，未操作云端。
+
+**用户已补齐Candidate边界：** 二选一仅指直接对话证据与间接notebook_refs；直接内部允许IDs、时间段数组或混传。取消前次暂保的仅IDs／ranges为空限制，保refs与直接互斥、source_types映射、targets／approval／settlement原规则。07及索引R16/R17已立即同步；无剩余此项审批。A/B已收到修订协调，A改validator/canonical Schema/其新数组用例，B改Task及原Candidate测试，原仅IDs限制证据保历史、不作为最终通过依据。计费仍43，最终集成与验证未完成。
