@@ -1,6 +1,6 @@
 # F1／F2／F3／I1 整包交回
 
-状态：主会话已集成c4f2f6d与第二候选474a934；最新N01整改包已完成，待主会话亲审、统一候选及同版本独立复审。下文保留各验证时点，本Agent未自行stage／commit／push，未部署、未调用真实模型、未操作浏览器／设备。依据为baseline.txt冻结06 R1/R4–R7/R9及R2/R3接口，保持08 Profile与Files归属。
+状态：主会话已集成至833d456；最新N02/N03整改包已完成，待主会话亲审、与N04统一候选及同版本独立复审。下文保留各验证时点，本Agent未自行stage／commit／push，未部署、未调用真实模型、未操作浏览器／设备。依据为baseline.txt冻结06 R1/R4–R7/R9及R2/R3接口，保持08 Profile与Files归属。
 
 ## 条款与实际变更
 
@@ -80,3 +80,20 @@ ignored证据：`.hermes-dev/web-recovery-20261024/frontend/accepted-tests.log`�
 6. **接口影响。** 仅新增内部reason configuration-changed；未改公共DTO、PageRecovery API、组件props、presentation源码或其它文件。loadCapabilities在已有恢复owner时归同一协调器，config写返回与confirmation语义保留；不新增恢复循环，不沿每delta重读。
 
 7. **建议后续。** 主会话亲读两个产品源码差异及上下游后统一新候选，用当前manifest交独立同版本复审；尤其核旧stage资格、新required失败与held/local顺序。原V2反例中旁路中途写入raw fresh的现象现被收敛，正式判据应核新读取证明与最终可见commit。未stage／commit／push，无待产品决策项。
+
+
+## N02/N03 缓存写入与 Context 兼容失效整改（基于833d456，2026-10-24）
+
+1. **条款与根因。** 已复读executing-plans、autonomous-run子Agent阅读／消息契约、本轮index/baseline/plan及冻结06 R5/R6/R7、§1.13。N02原sessions reader在真实读取完成后直接putSidebar，Pending仍延迟、旧render尚未交接时已经续缓存；N03只清业务Context，冻结的retained/visible仍显示旧模型10%。本包保留原产品规格与R6容量、TTL、LRU及白名单原则，不新增恢复owner或恢复循环。
+
+2. **实际变更。** sessions严格读取精确roster、各Profile列表及活动事实，成功后只暂存白名单摘要与ReadContext。复用当前ready/layout-ack接缝，核owner、资源覆盖代次和published snapshot摘要签名后才putSidebar；隐藏慢侧栏不挡ready，晚到独立成功必须仍具当前proof且已发布才写。同owner重新失效会使旧stage context立即无资格；失败、retained或旧owner不续时间。整轮Timeline/胶囊pending cache也核当前Context/Usage成功证明及已发布投影签名，防ack间隙失效或更新的旧stage写入。
+
+3. **正式 Context 路径。** session.info／原生显式context_invalidated在业务观察、进入held队列之前撤销当前Context代次；已知模型或精确provider失配立即窄覆盖retained/visible中的Context，保history对象、Timeline、其它Usage与锚点，当前required Context必须重新读。绑定初次确认也比较已显示缓存的model/provider身份；缓存先到时把身份保留在内存供稍后确认，绑定先到时过滤并清除不兼容缓存部分。旧snapshot、IDB、RPC和旧seq不能复活退役数值；新可信数字仍暂存至当前full/local commit。正常append、compaction、身份缺失、网络失败及原生unavailable占位继续保合法同owner估计；Thinking变化不算Context失配。原生通用路由标签custom（以及unknown/auto）不作为精确provider冲突证明，明确provider-A→provider-B会失效，与原已有通用标签兼容语义一致。
+
+4. **缓存机制与证据。** DisplayCache.retireContext只移除Context部分，保Timeline/Usage及原successAt；guard和可选身份比较防旧清理删新证明。IDB读回在await之后按同key内存修订核对，包含新条目已经flush、queued已清空的时序；晚到旧读不得回滚新成功／失效。正常成功Context缓存合并同时携带当前已知兼容身份；缺字段或unavailable导致的保留估计不当成新成功写入。修前两项正式Controller反例均失败，见ignored frontend/n02-n03-before.log（提前putSidebar和仍显示10%）；最终三文件108项通过，见n02-n03-final-tests.log。新增21项（正式Controller 15项、Usage/Context 1项、缓存5项）覆盖：Pending＋ack屏障、隐藏慢侧栏／独立晚到／owner撤除、同owner重取旧stage失效、失败TTL、冻结model/provider窄失效、冷缓存先到／晚到绑定确认、完整required读与正常压缩Context读迟到、真实有限Socket cut后的旧seq、held rewind、合法missing/unknown/unavailable估计、普通断网、Context-only退休及IDB晚到（含flush后）。npm run typecheck和git diff --check通过；controller.ts为2518行，仍低于冻结2556行。源版本及证据散列见n02-n03-source-manifest.json，source-manifest.json仅更新本包7文件。
+
+5. **缺口与边界。** 本次只跑获授权的三个相关机制／正式Controller测试文件与typecheck；没有重复无关大套、build、App联合测试、浏览器、APK、模型或部署。App/HistoryImage/presentation及app-page-recovery.test.tsx的工作区变更归N04，本包未修改；不以旧绿或兄弟证据冒充当前整候选门禁。额外修订记录是document内防旧IDB结果回滚的身份元数据，不写入缓存或扩大持久化容量。独立N02/N03是否关闭由主会话及Verification按原判据确认。
+
+6. **接口影响。** 无公共DTO、PageRecovery API或组件props变化；仅adapter内部Context代次／窄退役接缝、统一摘要白名单复用和DisplayCache内部retireContext（可选current/兼容身份guard）。Controller事件控制路径先做明确失效，正常Context补读捕获同代次后才能采用；原scope、合法unknown/available和业务通知语义保持。未改App、presentation、后端、drafts、依赖或Android。
+
+7. **下一步。** 请主会话亲读7文件正式diff及读→stage→commit/layout→白名单写、held/旧seq和身份失配上下游，结合N04统一新候选后交独立同版本复审。本Agent未stage、commit或push，无待产品决策项；当前验证不替代最终Validation。

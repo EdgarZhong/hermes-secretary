@@ -30,3 +30,13 @@ Native ForegroundRefresh用uptime固定五秒；onResume真实后台返回与onl
 ## 证据边界
 
 定向Vitest及Robolectric日志：`.hermes-dev/web-recovery-20261024/presentation/`。最终计数及剩余边界写presentation.md。未操作用户页面／设备／AVD；Robolectric不等于实际APK生命周期验收。用户C17明确豁免本轮真实APK验收，Web实际验收与原生单测继续；无模拟器授权。构建由主会话在集成后统一安排。
+
+## N04 历史图片恢复（833d456 后追加整改）
+
+`<HistoryImage url={url} scope={controller.key()} recovery={controller.pageRecovery}/>` 新增可选recovery；App仅历史附件两处接入唯一port，未改Controller/PageRecovery。旧调用保留授权近视口读取，内联`data:image/`仍直接呈现。
+
+每个实际slot使用独立`history-image:<React useId>`登记reader和demand，重复URL不互相覆盖。初次visibility为unknown，必须等真实几何或零margin IntersectionObserver判定；unknown为required且等待，不以空集ready。零margin决定必需，240px只做近视口预取；登记表安排隐藏reader时直接跳过下载。离屏撤除阻塞；滚入使覆盖key失效，使用当前轮的授权GET＋解码结果校验，经local commit采用。可复用同轮已成功的近视口预取，不借上轮URL结果充当新读取。
+
+`history-image-recovery.ts`封装单slot读取、取消及ObjectURL所有权。每轮GET使用same-origin凭据及既有session token，校验HTTP／image MIME，并通过真实`Image.decode()`（老浏览器load/error回退）后才返回成功stage；失败交原协调器1/2/5秒重试。stage记录read context.current及recoveryId，accept另记录之前的commitId，只有同轮后继full/local commit才能渲染；旧图／占位保留到交接，图片自身不设置ready。实际img与该commit同次DOM提交，沿父级reading layout ack。
+
+owner／connection／epoch失效沿唯一协调器context资格；轮次变化、取消、URL/scope替换、卸载取消不适用下载。旧stage不能采用；未采用URL在失败／取消／新轮释放，已展示旧URL只在实际替换或slot卸载时释放。StrictMode effect清理重挂载重新激活reader，不复用已撤销URL。未增加核心接口或整页恢复循环。

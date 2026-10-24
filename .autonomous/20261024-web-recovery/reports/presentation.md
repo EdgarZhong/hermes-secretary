@@ -84,3 +84,23 @@ Robolectric不能证明实际WebView生命周期与画面连续。未运行真�
 6. **接口影响。** 仅修改chat-presentation及对应recovery-handoff测试。PageRecovery local／recoveryId契约不变，不放宽需求校验；不改App/controller，不新增reader、后端协议或独立恢复循环，不对原生／业务写路径施加行为。
 
 7. **后续。** 此项机制、正式联调与定向证据已整包交回。主会话亲审滚动所有权和共享读取消边界，复用匹配SHA定向证据及已完成的1200行隐藏IAB开发复核；兄弟V03完毕后统一新候选，组织整轮复审与独立Validation。未提交、派生Agent、打包或部署。
+
+## N04／历史图片正式读取：整包整改交回
+
+1. **条款与依据。** 对应冻结06 §1.4／R1/R4/R5组件读取、R7统一交接及原授权附件行为保持。独立V3固定Web候选`833d456e8c8a71f0388e902ac19dda7e5586eda8`的`verification-v3/attachment.test.tsx`／`attachment.log`证明首次图片GET503后online其余资源ready=true、GET仍1次且无img；该旧反证保持原时点。主会话提案已由V3按原判据认可五组关闭条件，未改产品规格。
+
+2. **实际变更。** HistoryImage新增可选PageRecoveryPort，每个挂载slot独立useId登记，key包含scope／URL／当前必需状态。unknown初次可见性等待真实测量或Observer，不能先空需求ready；零margin判定实际viewport，240px保近视口预取。隐藏登记reader不下载，离屏撤阻塞，滚入重新校验当前轮覆盖。下载和解码放新同职责`history-image-recovery.ts`，每新轮同URL重新授权GET，HTTP／image MIME／Image.decode（兼容load/error）成功才可返回stage；失败交唯一协调器原1/2/5秒重试。
+
+   接受后仅暂存，需同recoveryId、仍current且commitId晚于accept前的commit，才在full/local提交渲染；不能借旧local commit提前显示。旧图或占位保留，图片不直接回报ready。read资格沿唯一owner／connection／epoch context；新轮、取消及URL/scope／卸载清理不适用请求。ObjectURL按slot实际ownership管理：未显示的失败／取消／过时URL释放，旧显示图在实际新图采用后或卸载时才释放。正式入口StrictMode清理重挂载亦可继续读取，不复用撤销URL。
+
+3. **正式路径。** App `historicalAttachments`的内联引用／路径引用两处HistoryImage仅增加`recovery={controller.pageRecovery}`；inline data旧直接回退不进入下载。实际viewport→slot demand／register→同PageRecovery初始／online／重连／自动retry reader→授权GET＋可解码校验→accept stage→同full/local commit DOM→既有reading父级layout ack。没有remount新轮、独立恢复循环或核心接口修改；原URL/scope变化的key仅保其内容owner隔离。
+
+4. **证据与版本。** `presentation/image-recovery-final.log`两个文件25项通过：HistoryImage11项（含原4项授权／URLscope清理／非图片拒绝，以及unknown／隐藏、重复URL slot、近视口预取、local屏障、connection取消、迟到scope decode、StrictMode）；正式App14项包含新增6项图片用例，覆盖首次503→online与无online自动retry、1/2/5精确退避、成功后同URL重连GET、门前保旧图及full commit采用、可见慢图挡／离屏解除／滚入local、decode失败重试。其余8项现有正式App回归一并通过。图片App组使用与正式入口一致的StrictMode、真实Controller／PageRecovery／reading；仅外部GET／Image.decode返回及DOM几何受控。
+
+   `image-typecheck-final.log`全仓类型检查通过，白名单`git diff --check`通过。`image-recovery-source-manifest.json`记录本次5个变更文件与11个调用依赖共16项SHA、测试时间及证据，所有记录源码mtime均早于该次测试开始，无测试后源变更；原`evidence-source-manifest.json`追加revision，未篡改旧96项／V04／原生证据。兄弟N02/N03仍独立修改其白名单，后续共享源码变化按manifest判断影响。
+
+5. **缺口与边界。** 本包组件及正式App机制定向证据已满足上述工程关闭条件；真实浏览器图片解码、实际滚动／画面效果仍待新候选独立Validation。没有操作任何UI、页面、设备、模型或生产服务；测试中的decode受控成功／失败不能冒称浏览器实测。真实APK仍按C17本轮豁免且未验，此次未改原生或构建/dist。
+
+6. **接口影响与边界。** 仅改`HistoryImage.tsx`及对应test、新同职责reader sibling、App两处附件prop和`app-page-recovery.test.tsx`图片组；不碰Controller/PageRecovery／Context/cache／样式／原生。可选recovery保持旧调用兼容；重复URL依slot登记不互相覆盖。N04是本报告早期“不改App”范围后的主会话明确最小扩白名单，不能据此扩大其它App接线。其它dirty保持原样。
+
+7. **后续。** 主会话亲读可见性初次等待、stage/full/local采用、取消及URL所有权，复用匹配SHA的25项与typecheck证据；待兄弟N02/N03整包后统一候选，再全轮独立Verification及实际Web Validation。此报告是实现交回，不自行判N04门禁关闭，不派生、提交／push或部署。

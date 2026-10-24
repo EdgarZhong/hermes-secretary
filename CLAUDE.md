@@ -6,7 +6,7 @@
 
 Android当前已发布版仍为回前台立即刷新、后续10／15／20／30秒退避；用户2026-10-24要求改为先恢复、5秒内网络读取及Socket／Turn恢复完成就不重载，具体范围见下方Timeline恢复条目；新版已在本轮工作树实施，原生定向验证通过，整体集成未完成；用户C17明确豁免本轮实际APK验收，不启动模拟器，交付注明未验。此前45秒、分钟级长退避及旧5秒单次刷新方案不作为当前实现；本次5秒恢复窗口是新的用户要求。UI-CAM-01已获用户确认，拍照压缩保留当前实现。2026-10-21本轮用户明确确认：升级APK迁移至新的响铃＋横幅通知通道，并尽量保留用户主动静音设置；已实施并完成原生定向测试，真机响铃／横幅未验。
 
-## 2026-10-24 · Web UI 过渡展示缓存与完整恢复（第三轮审查后补齐缓存与图片恢复）
+## 2026-10-24 · Web UI 过渡展示缓存与完整恢复（第四候选待独立复审）
 
 用户已授权按06 §1.4.1 R1–R10自主实现，全部`gpt-6.1-sol`／high、允许子Agent、主会话亲审集成；Astra只完成此前评审与定稿，此后不再调用。独立Verification／Validation轻量执行：先独立判据／场景，复用有效同版本证据，必要反证，不重跑无关大套或缩减关键覆盖。
 
@@ -16,11 +16,11 @@ Android当前已发布版仍为回前台立即刷新、后续10／15／20／30�
 
 三个实现包均已亲审：backend负责B1–B3，frontend负责F1／F2／F3／I1，presentation负责F4／A1；子Agent不再派生。首候选1ca5d68／c4f2f6d独立Verification不通过的四项阻断已整改：Session补读失败不误报ready、正常Usage／Context成功事实白名单合并缓存、实际Model／Thinking菜单纳唯一读取协调器、局部commit不取消合法滚尾且晚挂载能定位。活动流准备另发现并修复REV-10：普通Web Turn使用当前原生来源与D1持久身份／租约证明，不局限Reminder事件。技术细化未改冻结产品语义，仍待独立复审判关闭。
 
-当前代码候选：后端`dd9a4c57dd7c182ad8497f9538e115bbab3131b0`、Web`833d456e8c8a71f0388e902ac19dda7e5586eda8`，均自动push／远端SHA核同。Web最终受影响12文件223项及build通过；后端恢复39项、原生回归35项通过，准确暂存候选冻结十检查全部通过（health15文件0／0）。原生40项、呈现／桥及早期证据按各自源码manifest复用，不累加重叠计数。主会话隐藏IAB开发复核真实1200行末尾可见；本地fake SSE经正式native Turn断线后仍running时恢复成功，同runtime、正文精确且唯一assistant落库，结束后idle对账通过；这些不替代独立Web验收。
+当前代码候选：后端`dd9a4c57dd7c182ad8497f9538e115bbab3131b0`、Web`474cd4f61d6fe7b29917cdd07fb3f4f647401265`，均自动push／远端SHA核同。Web最终受影响12文件223项及build通过；后端恢复39项、原生回归35项通过，准确暂存候选冻结十检查全部通过（health15文件0／0）。原生40项、呈现／桥及早期证据按各自源码manifest复用，不累加重叠计数。主会话隐藏IAB开发复核真实1200行末尾可见；本地fake SSE经正式native Turn断线后仍running时恢复成功，同runtime、正文精确且唯一assistant落库，结束后idle对账通过；这些不替代独立Web验收。
 
-当前第三候选APK已重建，439资源与当前dist逐字节匹配、签名有效，SHA256 `d58e4979ace29015f70f75540752d2502feffb0a3dd5fb753fffae46c97cb509`；证据ignored apk-v3-manifest.json／apk-v3-signature.log／android-build-v3.log。用户C17明确豁免本轮实际APK验收，仅Web实测与原生单测并写明平台未验；不启动模拟器，不以签名或Robolectric冒称实际WebView验收。
+当前第四候选APK已重建，439资源与当前dist逐字节匹配、签名有效，SHA256 `027a411c5aeb1d0d44a93750a4da4274f95debc528438a17a448085c88539254`；证据ignored apk-v4-manifest.json／apk-v4-signature.log／android-build-v4.log。用户C17明确豁免本轮实际APK验收，仅Web实测与原生单测并写明平台未验；不启动模拟器，不以签名或Robolectric冒称实际WebView验收。
 
-独立V3全范围41项36符合／5违规，对应N02侧栏缓存早于可见commit、N03已知Context失配被retained逆盖、N04可见图片首次503后同URL重连不重试。N01及旧四项／REV-10均已独立关闭。主会话完整亲读报告，提出成功事实延后写、已知Context窄失效、图片接唯一协调器与真实视口需求方案；V3按原判据认可，未改规格。两包6.1并行整改：frontend独占缓存／Context及Controller测试；presentation独占HistoryImage、App附件props与图片App测试，文件不交叉。整改后主会话亲审，再全新独立全范围复审；当前不可进入Validation，未部署。主仓aed15db的产品仍dd9a4c5，Web833d456是V3被审候选，后续修补未提交。
+独立V3确认N01及旧问题关闭，新增N02侧栏缓存写时机、N03已知Context失配、N04可见图片恢复遗漏。主会话提方案经V3按原判据认可，未改产品定义；两包已整包亲审接收：侧栏成功proof经投影/ready/layout后写；已知Context窄退役、防晚IDB/RPC/seq复活；图片接唯一协调器/真实viewport，授权重读＋解码、失败原重试、full/local commit后采用，隐藏不阻。相关108项、图片25项及typecheck通过；主会话共享当前版本App/图片/胶囊/阅读4文件52项全部通过。Web474cd4f自动push核同，APK重打及签名／资源核验已完成。后端产品仍dd9a4c5，主仓文档已至7d0627d。新候选须全新独立V4，通过后才派Web Validation；当前未完成验收，未部署。
 
 隔离Dashboard53575／proxy53576／Vite5178／fake53577仅本轮自有；53445／53446他人长驻保持不动。UI只允许自建隐藏IAB；不真实模型、不生产数据／部署。07并行Noting等dirty保留，本轮CLAUDE只暂存本段及顶部Android现状。最终须delivery-evidence-review与final-delivery.md据证判定。
 

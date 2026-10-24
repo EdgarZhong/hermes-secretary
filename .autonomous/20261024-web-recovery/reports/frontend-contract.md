@@ -1,6 +1,6 @@
 # 前端恢复共享契约
 
-本轮 F1 接口已落盘：`web:src/core/recovery-demand.ts`、`web:src/core/page-recovery.ts`。当前为接口里程碑，正式 Controller 接线、后台及局部需求语义和测试仍在实现；不声明整包完成。
+本轮 F1 接口已落盘：`web:src/core/recovery-demand.ts`、`web:src/core/page-recovery.ts`。正式 Controller／App 接线及后台、局部需求机制已实现并经过定向验证；最新 N02/N03 整改基于833d456，待主会话亲审、统一候选与独立同版本复审。下列保留基础接口，后文补充为最终接线口径。
 
 - Controller 将公开 `pageRecovery: PageRecoveryPort`。`getSnapshot/subscribe` 可交 `useSyncExternalStore`；`getDemand/setDemand(source, demand | undefined)` 管理组件需求，每个组件使用独立 source，卸载时解除。
 - `RecoveryDemand.viewport = {first,last,aliases,offset}`；first/last/aliases 用 `timelineReadingKey` 或持久 UID/row alias。offset 只在内存；不保存阅读位置。`facets = [{id, rows:NativeMessage[],visible:boolean}]`，只让实际可见已展开 rows 阻塞，offscreen 可后台。
@@ -35,3 +35,10 @@ Controller.readUsageFacts返回UsageReadFacts（scope/runtimeId/epoch/serial/cur
 Controller业务观察对session.info的model/provider/reasoning_effort/reasoning_effort_wire已知变化调用内部configuration-changed。adapter在同一个invalidate中推进capabilities/reasoning覆盖代次和其它必要读，并使既有capabilitySerial过时；暂存context随即失效，仍required的新菜单读成功后才可随同一commit展示。held帧在业务观察时失效，replayed projection不重复失效；普通delta不进入此分支。本地当前owner成功config写（非confirm_required）也用同入口。
 
 capabilitiesForBinding在恢复中不另发旁路；loadCapabilities已有恢复owner时委托同一恢复，未启动恢复的既有调用保持。无公共DTO/API/props变化；关闭或切owner继续由原需求／owner代次取消旧资格。精确证据与范围见frontend.md的N01七项交回及ignored n01-source-manifest.json。
+
+
+## N02/N03 展示缓存与 Context 失效补充（833d456之后）
+
+sessions成功结果只stage：精确roster、白名单rows、ReadContext和摘要签名；当前ready/layout-ack后匹配published snapshot及current proof才写。隐藏慢列表继续独立后台成功，晚到先发布并验证，旧owner／同owner重取旧context／失败不写。整轮conversation pending cache同样核当前Context/Usage事实及投影签名。
+
+Context已知model/provider不兼容或原生显式rewind是隔离展示的一处窄失效：立即清retained/visible Context数字，保Timeline与其它胶囊；当前required Context旧证明失效，fresh仍经统一commit接管。适配器保留已显示缓存的兼容身份，后到binding确认可退役；未知身份、通用custom provider标签、Thinking变化、普通缺字段／unavailable／断网不推断失配。DisplayCache.retireContext保successAt且只删Context；同key内存修订阻旧IDB结果回滚，包含新值已flush。无公共props／DTO／PageRecovery接口变化，App与N04无需新增接线。详见frontend.md N02/N03七项交回及ignored n02-n03-source-manifest.json。
