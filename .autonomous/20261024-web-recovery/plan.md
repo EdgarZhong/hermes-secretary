@@ -35,7 +35,8 @@
 
 | 问题编号 | 要求与触发条件 | 当前事实与影响 | 优先级及理由 | 修复负责人 | 关闭与复验条件 | 状态 |
 |---|---|---|---|---|---|---|
-| RISK-01 | C15 原生真实UI验收与显示保护 | 当前规则只许隐藏IAB，实际APK生命周期不能以Robolectric替代 | 交付证据风险 | 主会话 | 核获授权环境／可行隐藏路径；否则明确边界并获得所需授权 | 待核 |
+| RISK-01 | C15 原生真实UI验收与显示保护 | 用户C17明确豁免本轮实际APK验收；不启动模拟器 | 已按用户完成条件收口 | 主会话 | Web实测与原生单测照常；交付明确APK实际运行未验 | 已关闭（用户豁免） |
+| REV-09 | C06/R7 冷开需落真实末尾 | 真实隐藏IAB稳定显示row1000–1199但scrollTop=0，height29441/client491；未在末尾 | 阻断 | frontend＋presentation | 先查正式需求／commit／reading顺序根因，补集成反例并修复；不能绕开ready或需求校验 | 修复中 |
 
 ## 取舍、快照与续接
 
@@ -84,3 +85,16 @@ APK环境补查：PackagedWebViewClient.ORIGIN及isHermes固定生产HTTPS域，
 主会话实际隔离只读探测：REST recovery_view200／200行、原生roster1且path全在本轮home、session.resume能力v1／idle成功；无prompt／模型调用。后端与前端fixture正式接口形状一致。
 
 集成候选：前端c4f2f6d已提交并自动push核同；主会话已核REV-06～08最终代码及相应行为证据，frontend两个最终manifest全匹配、两仓真实fixture逐字节一致。三包代码已稳定，正式冻结候选后开始独立门禁与APK构建；不宣称验收已过。
+
+
+集成候选与构建：主仓`1ca5d68581e0fa09d824a95ac2682e8afaf158fd`、前端`c4f2f6dca05a81d88fe1ca1e75d90dc9b0e182a7`均提交／自动push核同，未合并或部署。最终npm run android:build成功并包含本次前端build；439个包内静态逐字节一致，apksigner v2验证成功。APK SHA256 `6a125e9573e0b337abed7630d99bbd84c3a4c90354cde95f086696f5236a9b99`，32,078,449字节；路径与签名公钥指纹见ignored apk-manifest.json／apk-signature.log。构建日志android-build.log，既有chunk／Gradle弃用提示未改规则消除。
+
+独立6.1/high、fork_turns=none的`verification_v1`已按全轮派遣：先只读冻结原文落独立判据，再读实现，复用有效证据，必要反证，报告六节结构精炼。主会话未以实现说明替代判据。V通过后才派另一个全新Validation。
+
+RISK-01：已在可审APK及签名／资源核验之后向用户异步请求一次明确选择。用户现已明确选择C17：本轮豁免实际APK验收，完成Web实测／原生单测并明确未验边界。RISK-01按该完成条件关闭，无模拟器或生产APK访问授权；后续门禁读取Snapshot Index补充，不冒称真机通过。
+
+主会话隐藏IAB开发冒烟：真实history／侧栏／胶囊显示成功，但冷开停在latest窗口起点row1000，未落真实末尾row1199，正在排查；尚不当作独立Validation结果。
+
+独立Verification初审已完整交回：20组判据全覆盖，14符合／6违规，对应四项阻断V01–V04。V01当前Session胶囊补充GET503被当成功，按当前必需scope保留成功／失败事实，合法unknown仍可成功，隐藏另一scope失败不额外阻塞；V02普通成功Usage／Context变更未写缓存，增加同owner仅成功字段白名单合并写，保已验证Timeline且失败retained不续TTL；V03实际打开模型／推理菜单的读取未完整登记，受控open状态、真实capabilities／config.get及展示字段纳同协调器，关菜单解除依赖；V04晚挂载消息未完成真实定位。主会话已亲读正式路径及全部报告，接受阻断并提出工程方案，Verification已依据原判据认可V01–V03方向。均交原6.1实现者整改，不改产品机制规格，后续新候选由全新独立审查者全范围复审。
+
+REV-09根因已由正式App＋Controller＋PageRecovery＋reading反例重现：完整commit1后首DOM及Secretary需求引发local commit2／3，hook每个commit都cancelHandoff，合法滚尾被局部提交取消；另有消息子树晚挂载观察边界。presentation独占hook修复，frontend独占正式App联合反例及其它集成，互不改相同文件。当前旧候选尚未合格，不进入Validation。
