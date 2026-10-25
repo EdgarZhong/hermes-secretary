@@ -6,7 +6,7 @@
 
 ## 当前阶段
 
-2026-10-26紧急恢复：用户置顶会话在Skill Create Constructing期间先不可见，23:42显式Stop后仍空白；已确认持久turn_terminal存在但恢复层未对账已中断输出，非这次Compact补丁引入。`context_after_compaction`已恢复处理通用修复／定向反例；root负责发布及线上恢复。00:03仍有自动Noting后续压缩活动，预检拒绝且尚未重启服务。用户明确确认“等这轮结束后恢复”，不得中断本轮后台任务；自然空闲后立即恢复并核正式正文／Socket恢复边界。前端完整包已实现及复审，最新动态验收由恢复后的review Agent补齐，不阻塞本次后端恢复。
+2026-10-26紧急恢复已上线：置顶会话在Skill Create Constructing期间先不可见，23:42显式Stop后仍空白；已确认持久turn_terminal存在但恢复层未对账已中断输出，非Compact补丁引入。通用恢复补丁`fd57123`已亲审、定向验证、冻结10检查、提交／push及main发布，Web／Gateway同版本且active。按用户明确选择等后台自动Noting／压缩自然结束（00:07:20），未中断任务；正式目标200条正文、activate complete=true／idle，root独立隐藏IAB已见正文及可编辑输入、正确模型／推理，Context19%。前端完整包已实现及复审，最新动态验收由恢复后的review Agent补齐，尚未部署。Stop之前Constructing等待的更细原因继续只读取证，不能把已修的Stop后恢复遗漏当作前者根因。
 
 2026-10-25追加当前工作：用户要求从调试接口立即补跑一次最近原生Compact未伴随的置顶会话Noting；已读回23:28目标local_enabled=true／task idle（主会话未改该开关），现有RPC只有失败恢复，正在以原生manual接缝补最小单次入口，由`context_after_compaction`实现／测试，主会话发布并调用，不能把旧失败child冒充本次整理，不额外Compact或改自动配置。Context高亮新口径已确认：数值实时更新，只有正式Turn结束时单次高亮，工具／流式／缓存／重连更新不高亮；由前端实现Agent和独立review继续落实。隐藏IAB已对root恢复，Thinking及工具内层A→B→A真实位置保持补验通过，活动连续性尚在验证。
 
@@ -22,13 +22,13 @@
 
 | 项目 | 已核结果 |
 |---|---|
-| 后端 | `93d3b71a1033640044d7f135134f7ab05cf3fe3f`已提交／自动push并上线，云端检出main，双服务实际同版本且active、微信connected；默认／Alex总时限1000秒，partial摘要原生提交＋notice。后继纯文档提交不改变运行版本 |
+| 后端 | `fd5712351512e99e8d828f9263d3756eb6f0adac`已提交／自动push并上线，云端检出main，双服务实际同版本且active、微信connected；追加中断终态输出对账，默认／Alex总时限1000秒及partial摘要提交保持。后继纯文档提交不改变运行版本 |
 | 前端 | `d644d4a08854b6a7cc5fb1b77f99fb9ef02d525e`已提交／自动push并上线，439静态逐SHA及HTTP入口资源核验通过；0.1.4回退结束。顶部同步横幅移除，聊天滚动条隐藏，Thinking按正式消息身份归属；浏览器需刷新一次载入 |
 | Android | 已交付0.1.7／1007未改，仍内置原f3eb130；本次仅Web修复／发布，未重打APK，不能宣称内置前端与当前网页一致；实际生命周期未验 |
 | Noting／压缩 | 跨进程活动证明覆盖子任务、多Turn、Notebook提交、父压缩及Framework实际结算；独立压缩fence不提前报idle，不新增Main准入锁 |
 | Context | 旧热runtime不得覆盖有效压缩边界；本次22:17尝试未提交、80–81%为原文真实占用，非刷新缺陷。22:47另一次旧版尝试22:56已成功，不能冒称新修复效果；当前不为此修改Context逻辑 |
 | 数据保护 | 历史、Notebook、排期、配置、绑定及Dashboard发布前后对账通过；保留最近两套完整三库，旧6个备份文件已清理，运行库及同步ZIP保持 |
-| 已有会话设置 | 用户本次要求暂停Alex置顶会话空闲整理／压缩：原生noting off已完成，local_enabled=false／next_idle absent／task idle；只改目标Conversation参与开关，不自动恢复。Alex全局Idle延迟500秒／阈值96K保持；旧Pi041排期暂停及Heartbeat清除保持 |
+| 已有会话设置 | 先前noting off的历史回执保留；23:28已只读发现local_enabled=true，主会话未执行恢复开关，不再把历史false当当前事实。随后23:51自动Idle Noting运行并于00:07完成后续压缩；本轮未额外触发重复Noting。用户要求的单次调试RPC本地已完成，尚未发布／调用。Alex全局Idle延迟500秒／阈值96K保持 |
 
 本轮第二次Idle触发符合机制：Main在18:20:06结束时输入114739，500秒后启动Noting；18:35:49正常提交后压缩，18:43:46完成26→1，随后Framework追加。18:59–19:01又有真实Main请求，因此当前有效Context不是仅摘要时的30970。详细时间线、失败尝试和证据仅见运维记录。
 
@@ -36,6 +36,7 @@
 
 | 工作 | 状态 |
 |---|---|
+| 置顶会话Stop后空白／不可控 | 已恢复并发布fd57123；正式200正文、Socket complete=true／idle及隐藏IAB实际显示和输入可用。中断源／输出精确对账，原生文件49项及最后19项定向通过（重叠不相加），其余4关联文件89项通过，冻结10检查通过；原反例与首次测试预期错误保留 |
 | Conversation切换首帧缓存／阅读位置 | 进行中；先复现服务端、草稿及IDB延迟下A→B→A的第一帧，再修正式恢复链路；覆盖普通／active、快速切换与旧轮次失效，不以最终加载或动画存在判通过 |
 | 前端活动Turn显示状态系统性抖动 | 用户新报Constructing、首delta前、工具→Thinking／串并行工具接缝及可能网络抖动时Stop变灰Send、Usage／Context反复高亮；按未确认终态被误画idle的系统性问题调查，不预定WS为根因。前端原实现Agent负责唯一写入，独立review负责定位复审；Compact本次发布不等待或混入本项 |
 | 原生Compact超时／截断已有摘要保留 | 实现及主会话亲审完成：10文件187项、补日志后31项定向及冻结10检查通过；覆盖lean／legacy保尾、超时／length／窗口error部分摘要、无第二模型请求、晚线程不回退durable／Context／成功回执。1000秒默认／Alex配置已读回；main后端93d3b71已verified，网页沿用d644d4a，最新历史／Notebook／配置／绑定／Dashboard及439静态保护通过 |

@@ -3,11 +3,17 @@
 维护实际部署、故障处理、验证与回滚点；步骤和稳定布局见[部署SOP](cloud-deployment-sop.md)，当前任务只在根[CLAUDE](../CLAUDE.md)。以下时间均为Asia/Shanghai；PID、指纹和测试结论只对应记录时点，不代表实时状态。凭据、令牌、原始私人材料不写入本文件。
 
 
-## 2026-10-26 · 置顶会话中断后恢复阻塞（处理中）
+## 2026-10-26 · 置顶会话中断后恢复修复上线
 
 用户确认先在Skill Create Constructing阶段不可见，随后显式Stop，页面只剩Load earlier且无法操作。23:42:45原生记录interrupted_during_api_call，存在4079字符reasoning及持久turn_terminal；正式200条消息读取成功但activate返回runtime_unavailable。原有Web恢复层未识别这份中断输出证明，持续拒绝交接；代码对比确认非1000秒／partial Compact改动引入。当前实现通用持久终态与对应流式输出对账，不能仅因idle或user_committed跳过安全验证。
 
-同代码Web重启尝试在活动预检阶段拒绝，未停服、未切版本、未写数据库。23:51自动Noting开始，23:57:17模型整理结束，随后父原生压缩仍在生成；00:03有效writer lease属于该父压缩，非用户Main仍在运行。用户明确选择等这轮结束后恢复，不中断任务。恢复执行器只在Web／Gateway／三库原生活动检查全部通过后重启Web，保当前代码、数据及配置，再核目标完整读取与正式Socket恢复；当前尚未执行重启。受限证据在ignored `.hermes-dev/live-recovery-stuck-20261025/`及云端同名config-changes目录，不收私密正文。
+同代码Web重启尝试在活动预检阶段拒绝，未停服、未切版本、未写数据库。23:51自动Noting开始，23:57:17模型整理结束，随后父原生压缩仍在生成；00:03有效writer lease属于该父压缩，非用户Main仍在运行。用户明确选择等这轮结束后恢复，不中断任务。恢复执行器只在Web／Gateway／三库原生活动检查全部通过后重启Web，保当前代码、数据及配置，再核目标完整读取与正式Socket恢复；该时点尚未执行重启。受限证据在ignored `.hermes-dev/live-recovery-stuck-20261025/`及云端同名config-changes目录，不收私密正文。
+
+最终未单独执行同代码重启：在等待期间修复已经收敛，因此直接发布最小永久补丁。以有界identity查询取得来源终态和输出digest，复用原生terminal投影及持久输出对账，校验真实异常状态、来源row／UID、已闭合后缀、单Turn／lineage、typed／legacy输出配对与关闭状态；未知／后到／内容不一致仍拒绝，不以idle单独证明成功。4实现／测试文件，主会话亲审；正式反例先败后过，原生文件49项通过，最后收紧unknown error后19项定向通过，其余4关联文件89项通过，重叠不加总；冻结10检查0阻断。初次2项失败属于legacy submit无可选user_committed的测试／接线路径预期，最终兼容两正式入口并保留反例日志。
+
+后台压缩00:07:20自然结束，空闲预检通过后提交／自动push并从main发布`fd5712351512e99e8d828f9263d3756eb6f0adac`；沿用d644d4a／439静态，不混入待发布前端或manual Noting RPC。云端receipt verified，两服务实际同版本且active、微信connected，保护表／Notebook／配置／绑定／Dashboard及静态SHA对账通过。目标正式resume／200条messages／activate complete=true、running=false、status=idle；root经仅回环SSH转发自建隐藏IAB，实际正文及可编辑输入、k3.1-pro／high已显示，Context19%，未发送生产模型请求、未代操作用户页面。发布证据在ignored同目录release及云`release-20261024/20261026-interrupted-recovery-fd57123/`。本轮自动Noting已经执行，不将其冒称新manual调试RPC调用，也不再重复启动整理。用户已获告知会话可用及旧页面必要时刷新一次。
+
+发布收尾核验新fd57123及前次93d3b71两套完整三库的SHA、integrity和外键后保留6库，清理更旧2b6d5ec三库197316608字节；运行库／WAL／SHM和同步ZIP保持。自建线上核验隐藏页及临时回环SSH转发已关闭。
 
 ## 2026-10-25 · Compact部分摘要保留及1000秒上线
 
