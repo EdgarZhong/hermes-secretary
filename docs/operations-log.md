@@ -3,13 +3,13 @@
 维护实际部署、故障处理、验证与回滚点；步骤和稳定布局见[部署SOP](cloud-deployment-sop.md)，当前任务只在根[CLAUDE](../CLAUDE.md)。以下时间均为Asia/Shanghai；PID、指纹和测试结论只对应记录时点，不代表实时状态。凭据、令牌、原始私人材料不写入本文件。
 
 
-## 2026-10-25 · Compact失败取证与1000秒配置（代码修复尚未发布）
+## 2026-10-25 · Compact部分摘要保留及1000秒上线
 
 用户明确本次优先研究置顶会话Compact等待10分钟失败，随后要求立即修复并部署：保持思考和原生保尾，总时限1000秒；长度／窗口截断及超时均采用已收到的可用非空摘要，摘要末尾加系统notice说明不完整，不因缺少正常结束标记整次失败。明确Stop及无内容不伪造摘要。
 
 只读取证确认22:17:00摘要请求发到原生kimi-coding／k3.1-pro，prompt76444字符；300／598秒分别距最近实质流式进展1.8／4.2秒，22:26:59达600秒总上限，取消发生在摘要提交前。原生保留原文续跑，22:28:08正常完成，80–81%是未压缩上下文真实占用；不是已提交压缩后Context旧值。更晚22:36的failed_turn通知属于约6秒后显式Stop的新Turn。原始证据ignored `.hermes-dev/context-after-native-compaction-20261025/`，不将未记录的正文／reasoning分项冒称事实。
 
-已经正式`set_config_value('compression.context_total_ceiling_seconds','1000')`写入Alex Profile；原值未显式配置（有效默认600），读回有效idle300／total1000，规范化配置除该key外完全相同，无服务重启／模型调用。受限配置备份及回执在`/home/ubuntu/.local/state/hermes-secretary/config-changes/compact-total-1000-20261025/`。部分摘要修复已完成：仅native compression安装attempt-owned采集，Chat／Responses／Anthropic保留已收prefix，length／明确窗口错误／timeout均接入非空非拒绝摘要采用；host超时冻结候选，通过原生replacement fence提交，原fence保持取消，不重发模型。notice在实际摘要正文末尾、原生END边界之前；lean／legacy原生保尾和正常续跑保持，旧worker退出后durable／Context边界／completed回执与无失败cooldown均对账。主会话亲审及10文件187项通过，异常日志微修后31项通过，冻结10检查0 blocking／0 advisory；初次仅新增catch缺日志已修，未放宽门禁。尚未发布，运行后端仍2b6d5ec、网页仍d644d4a。
+已经正式`set_config_value('compression.context_total_ceiling_seconds','1000')`写入Alex Profile；原值未显式配置（有效默认600），读回有效idle300／total1000，规范化配置除该key外完全相同，无服务重启／模型调用。受限配置备份及回执在`/home/ubuntu/.local/state/hermes-secretary/config-changes/compact-total-1000-20261025/`。部分摘要修复已完成：仅native compression安装attempt-owned采集，Chat／Responses／Anthropic保留已收prefix，length／明确窗口错误／timeout均接入非空非拒绝摘要采用；host超时冻结候选，通过原生replacement fence提交，原fence保持取消，不重发模型。notice在实际摘要正文末尾、原生END边界之前；lean／legacy原生保尾和正常续跑保持，旧worker退出后durable／Context边界／completed回执与无失败cooldown均对账。主会话亲审及10文件187项通过，异常日志微修后31项通过，冻结10检查0 blocking／0 advisory；初次仅新增catch缺日志已修，未放宽门禁。已提交并自动push：功能7209cb6、纯EOF整理93d3b71（range diff检查通过）。复用既有发布器及d644d4a verified静态，从main空闲预检／复检后发布93d3b71；receipt verified，Web／Gateway实际提交一致、双服务active／微信connected，默认与Alex有效total均1000。数据／Notebook／配置／绑定／Dashboard及439静态发布对账通过；生产模型测试0。云受限`release-20261024/20261025-compact-partial-93d3b71/`，本地ignored `.hermes-dev/compact-truncation-1000-20261025/release/`。收尾保新发布与前次2b6d5ec两套完整三库（6 DB），核SHA／integrity／FK后清旧noting-context-final三库195469312字节，运行库和同步ZIP未动。未代用户刷新页面；前端缓存／状态抖动尚未发布，不算本次完成。
 
 ## 2026-10-25 · 置顶Noting关闭范围复核（未追加运行变更）
 

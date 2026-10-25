@@ -6,11 +6,11 @@
 
 ## 当前阶段
 
-2026-10-25当前优先：用户明确停止主会话其它工作并研究置顶会话Compact等10分钟失败，已只读核实22:17摘要到22:27达600秒总上限，300/598秒仍有流式进展，无本次提交；22:28原文续跑完成，80–81%为真实占用。用户随后明确授权立即修复并部署：保留思考与原生带保尾路径，总时限改1000秒；超时或长度／窗口截断只要已经取得非空摘要，采用已收到内容完成原生压缩，并在摘要末尾追加系统notice说明不完整，不因截断直接判失败；无返回内容不伪造摘要，显式Stop仍尊重停止。`context_after_compaction`负责正式流式部分结果到原生提交链路及测试，主会话负责亲审、默认／Alex运行配置、冻结检查、main提交及发布；本次发布优先仅后端Compact，沿用已验证d644d4a网页，不等待或混入未验前端变更。前端首帧／展开详情由`conversation_first_frame`独立收口，禁止触碰用户页面；若隐藏IAB不可用则记真实验收缺口。
+2026-10-25当前优先：用户明确停止主会话其它工作并研究置顶会话Compact等10分钟失败，已只读核实22:17摘要到22:27达600秒总上限，300/598秒仍有流式进展，无本次提交；22:28原文续跑完成，80–81%为真实占用。用户随后明确授权立即修复并部署：保留思考与原生带保尾路径，总时限改1000秒；超时或长度／窗口截断只要已经取得非空摘要，采用已收到内容完成原生压缩，并在摘要末尾追加系统notice说明不完整，不因截断直接判失败；无返回内容不伪造摘要，显式Stop仍尊重停止。`context_after_compaction`负责正式流式部分结果到原生提交链路及测试，主会话已完成亲审、默认／Alex配置、冻结检查、main提交及发布；Compact后端93d3b71已线上verified，沿用d644d4a网页，未混入未验前端变更。前端首帧／展开详情由`conversation_first_frame`独立收口，禁止触碰用户页面；若隐藏IAB不可用则记真实验收缺口。
 
 2026-10-25追加：用户实测所有Conversation切换会短暂首屏空白，随后才加载及快速滚动，明确不符合缓存避免空窗的首要目标。当前正在修复同owner暖切换的正文、阅读位置及恢复交接；用户确认“从哪里离开，回到哪里”，快速滚动只用于缓存画面衔接实时画面。前端子Agent `conversation_first_frame`负责正式Controller／阅读hook及定向反例，主会话负责规格、亲审、实际隐藏IAB与最终判定；尚未完成或发布。另核实此前置顶会话`noting off`关闭了全部触发方式，较“暂停空闲触发”范围更大；不能将现有实现耦合说成用户要求，不自动恢复，也不擅改整个Alex Profile，待明确纠正范围。
 
-2026-10-25：正常Turn完成后恢复误拒及Thinking跨Turn错位均已修复、亲审、验证并上线；按用户追加要求移除两条顶部同步／重试横幅，隐藏聊天区右侧滚动条而保留滚动能力。生产后端main为`2b6d5ec`，网页为`d644d4a`，联合发布及只读核验通过。Alex置顶会话已原生noting off，空闲整理／相连压缩暂停，不自动恢复；其它会话／Profile及Scheduler／Heartbeat保持。后端在现有main签出`/Users/edgar/code/hermes-secretary-web-release`，前端源码在`../hermes-secretary-web`的main；不开新worktree、不启自主套件。主仓原有presentation报告dirty保留。
+上一发布（2026-10-25）：正常Turn完成后恢复误拒及Thinking跨Turn错位均已修复、亲审、验证并上线；按用户追加要求移除两条顶部同步／重试横幅，隐藏聊天区右侧滚动条而保留滚动能力。生产后端main为`2b6d5ec`，网页为`d644d4a`，联合发布及只读核验通过。Alex置顶会话已原生noting off，空闲整理／相连压缩暂停，不自动恢复；其它会话／Profile及Scheduler／Heartbeat保持。后端在现有main签出`/Users/edgar/code/hermes-secretary-web-release`，前端源码在`../hermes-secretary-web`的main；不开新worktree、不启自主套件。主仓原有presentation报告dirty保留。
 
 通用规则只查[AGENTS](AGENTS.md)，稳定事实／规格索引只查[README](README.md)，历史操作与回退只查[运维记录](docs/operations-log.md)。已结束的Agent编排与逐次发布流水不作为当前任务。
 
@@ -18,11 +18,11 @@
 
 | 项目 | 已核结果 |
 |---|---|
-| 后端 | `2b6d5ec655135caaca141f68b5853e80ecb84283`已提交／自动push，云端检出main，双服务实际同版本且active、微信connected；后继纯文档提交不改变运行版本 |
+| 后端 | `93d3b71a1033640044d7f135134f7ab05cf3fe3f`已提交／自动push并上线，云端检出main，双服务实际同版本且active、微信connected；默认／Alex总时限1000秒，partial摘要原生提交＋notice。后继纯文档提交不改变运行版本 |
 | 前端 | `d644d4a08854b6a7cc5fb1b77f99fb9ef02d525e`已提交／自动push并上线，439静态逐SHA及HTTP入口资源核验通过；0.1.4回退结束。顶部同步横幅移除，聊天滚动条隐藏，Thinking按正式消息身份归属；浏览器需刷新一次载入 |
 | Android | 已交付0.1.7／1007未改，仍内置原f3eb130；本次仅Web修复／发布，未重打APK，不能宣称内置前端与当前网页一致；实际生命周期未验 |
 | Noting／压缩 | 跨进程活动证明覆盖子任务、多Turn、Notebook提交、父压缩及Framework实际结算；独立压缩fence不提前报idle，不新增Main准入锁 |
-| Context | 旧热runtime不能覆盖新压缩读数，冷热读取共用有效边界并计入Framework增量；生产正式恢复后两API及重复读取同为55,716／262,144（21%），真实Chrome自动恢复一致、未刷新 |
+| Context | 旧热runtime不得覆盖有效压缩边界；本次22:17尝试未提交、80–81%为原文真实占用，非刷新缺陷。22:47另一次旧版尝试22:56已成功，不能冒称新修复效果；当前不为此修改Context逻辑 |
 | 数据保护 | 历史、Notebook、排期、配置、绑定及Dashboard发布前后对账通过；保留最近两套完整三库，旧6个备份文件已清理，运行库及同步ZIP保持 |
 | 已有会话设置 | 用户本次要求暂停Alex置顶会话空闲整理／压缩：原生noting off已完成，local_enabled=false／next_idle absent／task idle；只改目标Conversation参与开关，不自动恢复。Alex全局Idle延迟500秒／阈值96K保持；旧Pi041排期暂停及Heartbeat清除保持 |
 
@@ -34,7 +34,7 @@
 |---|---|
 | Conversation切换首帧缓存／阅读位置 | 进行中；先复现服务端、草稿及IDB延迟下A→B→A的第一帧，再修正式恢复链路；覆盖普通／active、快速切换与旧轮次失效，不以最终加载或动画存在判通过 |
 | 前端活动Turn显示状态系统性抖动 | 用户新报Constructing、首delta前、工具→Thinking／串并行工具接缝及可能网络抖动时Stop变灰Send、Usage／Context反复高亮；按未确认终态被误画idle的系统性问题调查，不预定WS为根因。前端原实现Agent负责唯一写入，独立review负责定位复审；Compact本次发布不等待或混入本项 |
-| 原生Compact超时／截断已有摘要保留 | 实现及主会话亲审完成：10文件187项、补日志后31项定向及冻结10检查通过；覆盖lean／legacy保尾、超时／length／窗口error部分摘要、无第二模型请求、晚线程不回退durable／Context／成功回执。1000秒Alex配置已生效；正准备main后端发布，网页沿用d644d4a |
+| 原生Compact超时／截断已有摘要保留 | 实现及主会话亲审完成：10文件187项、补日志后31项定向及冻结10检查通过；覆盖lean／legacy保尾、超时／length／窗口error部分摘要、无第二模型请求、晚线程不回退durable／Context／成功回执。1000秒默认／Alex配置已读回；main后端93d3b71已verified，网页沿用d644d4a，最新历史／Notebook／配置／绑定／Dashboard及439静态保护通过 |
 | 本次Context未更新判断复核 | 已查正式API与真实提交边界：该次Compact未成功，续跑使用原文，80–81%与服务端一致；用户已确认可能误判，仅检查，不为此改Context逻辑 |
 | 置顶Noting关闭范围复核 | 已确认会话参与开关挡住所有Noting，Idle子开关为Profile级；用户反对被说成两者联动要求，当前未再变更运行设置，纠正方案待明确 |
 | 本次恢复／Thinking／界面修复 | 联合上线收据verified；REST最新200、正式Socket恢复complete=true、入口无两条横幅、439资源与目标包一致；用户当前Main运行亦能正常恢复。置顶local_enabled=false／next_idle absent读回保持。未代刷新用户页，不把接口验证冒称用户浏览器使用已验 |
