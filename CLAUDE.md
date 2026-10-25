@@ -1,5 +1,19 @@
 # Hermes Secretary 当前状态
 
+## 自主口径收敛 · 待用户追认
+
+暂无。
+
+## 2026-10-25 · Gateway Noting 状态跨进程读取与通知（实施中）
+
+用户要求查生产库并只读查看其真实Chrome当前页面；本次明确授权仅用于此项核对，未刷新／导航／点击／切焦点，也未中断任务或重启服务。18:38页面Secretary仍为`Task state unknown`；同Conversation的Idle Noting于18:28:26登记、已持久43条子会话消息，child仍running。18:39正式只读`secretary_state`仍返回unknown／tasks空，但新Notebook Snapshot已提交，日志显示原生压缩进行中。此前18:06仅0.8秒的context_overflow任务与当前任务不同，不再以任务过短解释当前现象。
+
+用户随后明确授权跨进程读取与通知一起修复，覆盖Noting到压缩收尾完整生命周期，按通用机制测试后部署；原生主Turn已串行，不再新增主会话并发门禁。缺口：`secretary/web_read.py::_tasks`只认当前进程`_ACTIVE_NOTING_TASKS`，`secretary/web_events.py`的开始／结束观察通知也仅在进程内。修复复用原生租约算法／定时续期提供整项任务活动证明，证明存Secretary自有独立租约表，避免占用Main会话键空间；保留陈旧running／跨Profile保护，本地强引用按DB／child隔离。仅凭child模型Turn租约不能覆盖后续Main压缩阶段；已补审独立父压缩fence分支，Framework实际落库／丢弃／失败结算后才最终释放任务。通知复用中央事件接缝与既有跨进程失效信号／WebSocket，不新增轮询、独立Socket或任务账本，不要求前端猜active。
+
+主会话负责生命周期／状态读取、正式接线亲审、定向验证与自然空闲窗口发布；Sol/high通知子Agent完成中央事件及Context包，另一Sol/high亲审并完成Framework settlement包，不再派生。现有两仓main，无新worktree／自主套件；Web会话自己的0.1.7文档8a7a5ca已提交，他人presentation dirty保持。实现及亲审已收敛：跨进程任务／通知／原生命周期8文件102项、存储13项、Framework边界61项通过；Context首批63项、追加尾段4文件61项及最终专用16项通过；最新原生联合链路2文件26项及真实start_recovery延后收尾单例通过，范围重叠不加总。冻结10检查全过／health0 blocking0 advisory；未跑全仓。旧失败Noting内容重建空列表的历史测试在原HEAD2122223同例复现，不把本轮生命周期验证冒称该独立内容问题已修。证据统一原工作区ignored `.hermes-dev/noting-crossprocess-20261025/`。当前待自然空闲窗口部署，保护前端刚上线f3eb130的439静态、Dashboard、业务数据及配置，不以本地通过冒称线上完成。
+
+用户追加第二次压缩及Context不回落调查：生产事实为18:20:06最后Main请求输入114739，超过98304；空闲500秒于18:28:26触发Idle，18:35:49正常Noting提交后父压缩，18:43:46完成26→1、粗估30970，随后Framework追加。第二次符合原有机制；18:52真实页面Context62%／持久展示估值162517与提交结果不符。修复范围追加原生Context读数的新鲜度与正式热／冷读取接线，防旧Web runtime覆盖新Gateway压缩估值；不修改阈值、触发策略、Prompt或模型路由。通知子Agent接续此独立范围，主会话另请Sol/high只读review任务presence；不扩大成自主门禁或全仓回归。
+
 ## 2026-10-25 · 前端体验修复与0.1.7（已部署／已打包）
 
 用户授权修复Web会话自查的六类问题，做好定向验证／页面实测，由Web会话主导重新部署前端，最后交付0.1.7签名APK；已挂当前目标。不启大型自主套件、不新增门禁；没有后端代码改动需求时不唤醒旧后端会话。本轮只在现有两仓main工作，不新开树，保护他人dirty；主仓既有presentation报告dirty保持。
@@ -11,10 +25,6 @@
 用户追加英文短提示、正常暂态不弹协议错误和持续故障明确局部说明已落实。截图宽度回归由本轮display:contents包装破坏直接子CSS选择器造成，已换Fragment恢复原布局：Assistant／Thinking／工具／System同左4%右10%阅读区，Compaction与加载历史更宽。正式Timeline集成回归已覆盖，隐藏IAB最终dist实际桌面768px容器左右30.72／76.80px，移动366px容器左右14.63／36.59px，没有样式重设计。
 
 最终9文件288项定向测试、typecheck／build通过，原生Robolectric44项零失败；主会话亲审，另完成一次轻量独立只读review。隐藏IAB实测缓存冷读、1200历史、异会话通知保滚动、附属503隔离、核心503期间侧栏操作后自动恢复、缺失目标保路由及显式选择、最终桌面／移动宽度。未跑全仓回归；profiles测试3条既有失败已在原HEAD复现，不冒称全仓绿。实际APK生命周期按C17用户豁免仍未验，不开模拟器。证据复用ignored .hermes-dev/web-recovery-20261024/performance/017-*及017-ui/，最终包／manifest／部署收据在release-017/，发布和回退入口见运维记录。另一个会话的Noting／Context改造不计入本次前端交付，不由前端伪造数值。
-
-## 自主口径收敛 · 待用户追认
-
-暂无。
 
 ## 2026-10-25 · 恢复机制自查与去格式耦合（已收敛上线）
 

@@ -6,25 +6,74 @@ Helpers are rebound onto server.py, preserving the facade's public/patchable sea
 from .method_ctx import bind_module
 
 
-def _retain_context_breakdown_estimate(agent, payload: dict) -> dict:
+def _retain_context_breakdown_estimate(agent, payload: dict, *, messages=None) -> dict:
     """Keep an existing native rough readout for restart recovery without changing its response."""
     try:
-        from agent.usage_anchor import persist_context_estimate, persisted_context_estimate
+        from agent.usage_anchor import persist_context_estimate, runtime_context_current
 
-        previous = persisted_context_estimate(
-            getattr(agent, "_session_db", None), getattr(agent, "session_id", None), model=getattr(agent, "model", None),
-        )
+        previous = _agent_context_reading(agent)
         if previous and previous.get("invalidation_reason"):
             payload.update(context_available=False, context_invalidated=True,
                            context_invalidation_reason=previous["invalidation_reason"])
             return payload
+        if runtime_context_current(agent, messages=messages) is False:
+            return _replace_stale_context_breakdown(agent, payload)
         tokens = payload.get("context_used")
         if (payload.get("context_source") == "local_estimate" and isinstance(tokens, int)
                 and not isinstance(tokens, bool) and tokens >= 0):
-            persist_context_estimate(agent, tokens)
+            persist_context_estimate(agent, tokens, messages=messages)
+            if runtime_context_current(agent, messages=messages) is False:
+                return _replace_stale_context_breakdown(agent, payload)
     except Exception:
         logger.debug("native context estimate retention failed", exc_info=True)
     return payload
+
+
+def _agent_context_reading(agent):
+    from agent.usage_anchor import persisted_context_estimate
+    return persisted_context_estimate(
+        getattr(agent, "_session_db", None), getattr(agent, "session_id", None),
+        model=getattr(agent, "model", None), recover_legacy=True)
+
+
+def _replace_stale_context_breakdown(agent, payload):
+    previous = _agent_context_reading(agent)
+    payload.update(categories=[], estimated_total=0, context_available=bool(previous and "tokens" in previous))
+    if previous and "tokens" in previous:
+        _apply_context_reading(payload, previous)
+    else:
+        payload.update(context_used=0, context_percent=0)
+    return payload
+
+
+def _apply_context_reading(payload, reading):
+    used = int(reading["tokens"])
+    limit = payload.get("context_max", 0) or 0
+    payload.update(context_used=used, context_source=reading["source"], context_estimated=True,
+                   context_percent=max(0, min(100, round(used / limit * 100))) if limit else 0)
+
+
+def _reconciled_context_usage(session, usage):
+    """Keep live counters while a newer durable owner supplies Context after a rewrite."""
+    agent = session.get("agent")
+    if agent is None:
+        return usage
+    try:
+        from agent.usage_anchor import runtime_context_current
+        with _session_profile_runtime_scope(session, hydrate_secrets=False), _session_db(session) as db:
+            stored_id = str(session.get("stored_session_id") or session.get("session_key") or "")
+            current = runtime_context_current(agent, db, stored_id, session.get("history"))
+        if current is not False:
+            return usage
+        restored = _restored_cold_usage(session)
+        context_keys = {"context_used", "context_max", "context_percent", "context_estimated", "context_source",
+                        "context_invalidated", "context_invalidation_reason"}
+        result = {key: value for key, value in usage.items() if key not in context_keys}
+        result.update({key: value for key, value in restored.items() if key in context_keys})
+        return result
+    except Exception:
+        logger.debug("live context reconciliation failed", exc_info=True)
+        return usage
 
 
 def _cold_context_breakdown(session: dict) -> dict:
@@ -63,7 +112,7 @@ def _restored_cold_usage(session: dict) -> dict:
                 model = str(getter(stored_id, "model", "") or "") if callable(getter) else ""
             from agent.usage_anchor import persisted_context_estimate
 
-            context = persisted_context_estimate(db, stored_id, history, model=model)
+            context = persisted_context_estimate(db, stored_id, history, model=model, recover_legacy=True)
             if not context:
                 return {}
             if context.get("invalidation_reason"):

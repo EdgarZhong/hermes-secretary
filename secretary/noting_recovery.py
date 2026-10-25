@@ -153,15 +153,18 @@ class _RecoveryFailureNotice:
         self.db, self.ref, self.parent, self.admission_id = db, ref, parent, admission_id
         self.published = False
 
-    def publish(self, reason):
+    def publish(self, reason, *, on_settled=None):
+        from secretary.framework_messages import _settle_callback
         if not reason or self.published:
+            _settle_callback(on_settled)
             return
         self.published = True
         from secretary.noting_child import _NotingFailureNotice
         try:
             with _publication_scope(self.db, self.ref, self.parent) as publisher:
-                _NotingFailureNotice(publisher, self.admission_id, self.ref).publish(reason)
+                _NotingFailureNotice(publisher, self.admission_id, self.ref).publish(reason, on_settled=on_settled)
         except Exception:
+            _settle_callback(on_settled)
             logger.warning("Recovery failure notice could not reach the native current tail", exc_info=True)
 
 

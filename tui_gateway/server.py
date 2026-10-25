@@ -2194,7 +2194,8 @@ def _session_usage_snapshot(session: dict | None) -> dict:
     mirror_usage = _metadata_mirror(session).get("usage")
     if sess.get("agent") is not None and not (sess.get("_compute_host_active") and isinstance(mirror_usage, dict)):
         usage = _get_usage(sess["agent"])
-        return usage if "context_used" in usage else {**_restored_cold_usage(sess), **usage}
+        usage = usage if "context_used" in usage else {**_restored_cold_usage(sess), **usage}
+        return _reconciled_context_usage(sess, usage)
     return dict(mirror_usage) if isinstance(mirror_usage, dict) and mirror_usage else _restored_cold_usage(sess)
 
 

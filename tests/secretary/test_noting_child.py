@@ -295,8 +295,7 @@ def _read_then_mutate_responses():
     return [_tool_response("notebook_show", {}, "read"),
             _tool_response("notebook_create", {"entry_type": "matter",
                                                "fields": {"description": "send report", "completion_condition": "Report sent"},
-                                               "source_time_range": {"start_time": "1970-01-01T00:16:40+00:00",
-                                                                     "end_time": "1970-01-01T00:16:41+00:00"}}, "write"),
+                                               "source_message_uids": ["m1", "m2"]}, "write"),
             mock_response("Maintained.")]
 
 

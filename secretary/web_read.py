@@ -31,27 +31,31 @@ def global_noting_config(db):
 
 def _tasks(db, conn, ref):
     from secretary.noting_child import _ACTIVE_NOTING_LOCK, _ACTIVE_NOTING_TASKS
+    from secretary.noting_task_presence import running_tasks, task_is_live
+
     target = Path(db.db_path).resolve()
     home = Path(db.db_path).parent
     with _ACTIVE_NOTING_LOCK:
         children = tuple(_ACTIVE_NOTING_TASKS.items())
     # The child registry owns the durable start instant. A live child is readable only
     # while its registration row exists; never derive a start from page load or admission.
-    running = conn.execute(
-        "SELECT c.child_session_id, c.registered_at FROM secretary_noting_children c "
-        "JOIN secretary_noting_admissions a ON a.admission_id=c.admission_id "
-        "WHERE a.conversation_ref=? AND c.status='running'", (ref,)).fetchall()
+    running = running_tasks(conn, ref)
     started_at = {row["child_session_id"]: row["registered_at"]
                   for row in running if row["child_session_id"]}
     live = []
-    for child_id, child in children:
+    for (_owner_path, child_id), child in children:
         owned_db = getattr(child, "_session_db", None)
-        if (owned_db is not None and Path(owned_db.db_path).resolve() == target
+        if (child_id in started_at and owned_db is not None and Path(owned_db.db_path).resolve() == target
                 and getattr(child, "_secretary_parent_conversation_ref", None) == ref):
             task = {"task_id": child_id}
             if child_id in started_at:
                 task["started_at"] = format_timestamp(started_at[child_id], profile_home=home)
             live.append(task)
+    local_ids = {task["task_id"] for task in live}
+    now = time.time()
+    for child_id, started in started_at.items():
+        if child_id not in local_ids and task_is_live(conn, child_id, now):
+            live.append({"task_id": child_id, "started_at": format_timestamp(started, profile_home=home)})
     return ("active" if live else "unknown" if running else "idle"), live
 
 

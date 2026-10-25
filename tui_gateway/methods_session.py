@@ -1350,7 +1350,7 @@ def _(rid, params: dict, session: dict) -> dict:
         with _session_profile_runtime_scope(session):
             with session["history_lock"]:
                 history = list(session.get("history", []))
-                payload = _retain_context_breakdown_estimate(agent, compute_session_context_breakdown(agent, history))
+                payload = _retain_context_breakdown_estimate(agent, compute_session_context_breakdown(agent, history), messages=history)
             # Structured per-file rows so the Desktop popover can explain "why is my CLAUDE.md ignored?".
             payload["context_files"] = context_file_sources_for_agent(agent)
         return _ok(rid, payload)

@@ -3499,7 +3499,7 @@ def _finish_compaction_boundary(
     compressor.awaiting_real_usage_after_compression = True
     # Transcript rewritten: invalidate the usage anchor's base snapshot explicitly
     # (its structural check would fail closed anyway); estimate until re-anchored.
-    set_usage_anchor(agent, None, context_estimate=_compressed_est)
+    set_usage_anchor(agent, None, context_estimate=_compressed_est, context_messages=compressed)
     # Arm the effectiveness verdict only after a completed rewrite crosses the
     # boundary so later usage isn't charged to an attempt that changed nothing.
     if compression_made_progress:

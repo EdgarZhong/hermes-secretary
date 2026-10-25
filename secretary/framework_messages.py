@@ -5,6 +5,7 @@ import threading
 import time
 from contextlib import nullcontext
 from dataclasses import dataclass
+from typing import Callable
 
 from agent.message_metadata import append_message, build_framework_message_wrapper
 
@@ -25,6 +26,7 @@ class _QueuedFrameworkMessage:
     snapshot_id: str | None = None
     termination: dict | None = None
     summary: str | None = None
+    on_settled: Callable[[], None] | None = None
 
     def __iter__(self):
         yield self.conversation_ref
@@ -255,13 +257,15 @@ def retire_queued_force_notices(parent, db, conversation_ref, captured):
 
 
 def publish_framework_message(parent, body, *, display_metadata=None, expected_conversation_ref=None, _producer=None,
-                              _snapshot_id=None, _termination=None, _summary=None):
+                              _snapshot_id=None, _termination=None, _summary=None, _on_settled=None):
     """Publish only through the owning runtime; never start a Turn or durable pending work."""
     with _lock(parent):
         if not _runtime_valid(parent):
+            _settle_callback(_on_settled)
             return False
         conversation_ref = parent._secretary_conversation_ref
         if expected_conversation_ref is not None and conversation_ref != expected_conversation_ref:
+            _settle_callback(_on_settled)
             return False
         metadata = {"display_text": str(body), "origin": "framework",
                     "producer": _producer or "framework", **dict(display_metadata or {})}
@@ -270,10 +274,28 @@ def publish_framework_message(parent, body, *, display_metadata=None, expected_c
         row = {"role": "user", "content": build_framework_message_wrapper(body),
                "timestamp": time.time(), "display_kind": "process_complete",
                "display_metadata": metadata}
-        vars(parent).setdefault("_secretary_framework_messages", []).append(
-            _QueuedFrameworkMessage(conversation_ref, row, _producer, _snapshot_id, _termination, _summary))
-    flush_framework_messages(parent)
+        message = _QueuedFrameworkMessage(
+            conversation_ref, row, _producer, _snapshot_id, _termination, _summary, _on_settled)
+        vars(parent).setdefault("_secretary_framework_messages", []).append(message)
+    try:
+        flush_framework_messages(parent)
+    except BaseException:
+        if _on_settled is not None:
+            with _lock(parent):
+                pending = parent._secretary_framework_messages
+                pending[:] = [queued for queued in pending if queued is not message]
+            _settle_callback(_on_settled)
+        raise
     return True
+
+
+def _settle_callback(callback):
+    """Callbacks only release an in-memory claim; never close task owners here."""
+    if callback is not None:
+        try:
+            callback()
+        except Exception:
+            logger.warning("Framework carrier settlement callback failed", exc_info=True)
 
 
 def _wait_for_fence(parent):
@@ -301,6 +323,9 @@ def flush_framework_messages(parent):
         if not pending:
             return 0
         conversation_ref = getattr(parent, "_secretary_conversation_ref", None)
+        for message in pending:
+            if message.conversation_ref != conversation_ref:
+                _settle_callback(message.on_settled)
         pending[:] = [message for message in pending if message.conversation_ref == conversation_ref]
         if not pending:
             return 0
@@ -311,6 +336,8 @@ def flush_framework_messages(parent):
         rows = list(pending)
         pending.clear()  # at-most-once, including persistence failure
         if not _runtime_valid(parent):
+            for message in rows:
+                _settle_callback(message.on_settled)
             return 0
         written = 0
         for message in rows:
@@ -327,10 +354,12 @@ def flush_framework_messages(parent):
                     logger.debug("Superseded Noting Framework carrier discarded")
                 else:
                     logger.warning("Framework tail write failed", exc_info=True)
+            finally:
+                _settle_callback(message.on_settled)
         return written
 
 
-def publish_noting_completion(parent, commit_result, *, termination, summary):
+def publish_noting_completion(parent, commit_result, *, termination, summary, on_settled=None):
     """Queue only the Snapshot selected by this successful commit transaction.
 
     The queue retains its Snapshot ID, not an unconditional rendered body. Actual
@@ -344,23 +373,25 @@ def publish_noting_completion(parent, commit_result, *, termination, summary):
             or not isinstance(termination, dict)
             or termination.get("type") not in {"finish_noting", "forced", "context_overflow"}
             or not isinstance(summary, str) or not summary.strip()):
+        _settle_callback(on_settled)
         return False
     return publish_framework_message(
         parent, "", display_metadata={"noting_run_output": True,
                                       "noting_snapshot_id": commit_result["snapshot_id"]},
         expected_conversation_ref=getattr(parent, "_secretary_conversation_ref", None),
         _producer="noting_completion", _snapshot_id=commit_result["snapshot_id"],
-        _termination=dict(termination), _summary=summary,
+        _termination=dict(termination), _summary=summary, _on_settled=on_settled,
     )
 
 
-def publish_noting_failure(parent, *, conversation_ref, specific_reason):
+def publish_noting_failure(parent, *, conversation_ref, specific_reason, on_settled=None):
     """A real no-Snapshot failure is a Framework fact, never a successful receipt."""
     if not isinstance(specific_reason, str) or not specific_reason.strip():
+        _settle_callback(on_settled)
         return False
     from secretary.noting_notifications import failure_body
     return publish_framework_message(
         parent, failure_body(conversation_ref, specific_reason),
         display_metadata={"noting_run_output": True}, expected_conversation_ref=conversation_ref,
-        _producer="noting_failure",
+        _producer="noting_failure", _on_settled=on_settled,
     )

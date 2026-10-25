@@ -143,3 +143,111 @@ def test_turn_release_noop_and_signal_failure_preserve_native_lease_contract(tmp
         assert db.release_session_turn_lease('stored', 'owner') is None
         assert db._read_one('SELECT holder FROM session_turn_leases') is None
         db.release_session_turn_lease('stored', 'owner')
+
+
+def test_external_noting_lifecycle_wakes_watcher_without_local_observers(tmp_path, monkeypatch):
+    """Committed task-only changes wake another process, including the burst tail."""
+    home, other = tmp_path / 'alex', tmp_path / 'other'
+    home.mkdir(); other.mkdir()
+    with SessionDB(home / 'state.db') as db, SessionDB(other / 'state.db') as foreign:
+        for owner in (db, foreign):
+            owner.create_session('same', source='desktop')
+            owner.append_message('same', 'user', 'Evidence', message_uid='anchor')
+        monkeypatch.setattr(server, '_watcher_home', lambda: other)
+        monkeypatch.setattr(server, '_served_profile_homes', [home])
+        before = server._sessions_sig()
+        events = []
+        monkeypatch.setattr(server, '_broadcast_global_event', lambda kind, payload: events.append((kind, payload)))
+        monkeypatch.setattr(server, '_change_sigs', {'sessions.changed': before})
+        monkeypatch.setattr(server, '_change_checked_at', {})
+        monkeypatch.setattr(server, '_change_broadcast_at', {})
+        monkeypatch.setattr(server, '_CHANGE_WATCHES', {'sessions.changed': (0.5, server._sessions_sig, lambda: {})})
+        script = '''import sys
+from pathlib import Path
+from hermes_state import SessionDB
+from secretary.web_events import _observers, changed
+assert not _observers
+with SessionDB(Path(sys.argv[1])) as db:
+    ref = db.resolve_conversation_ref('same')
+    admission = db.noting_admit(ref, 'anchor', kind='idle')
+    db.noting_child_register(admission, child_session_id='noting-child', profile='alex')
+    print('started committed', flush=True)
+    assert sys.stdin.readline().strip() == 'notify'
+    changed(db, ref, 'task_started')
+    print('started notified', flush=True)
+    assert sys.stdin.readline().strip() == 'finish'
+    db.noting_child_finish(admission, status='completed')
+    print('finished committed', flush=True)
+    assert sys.stdin.readline().strip() == 'notify'
+    changed(db, ref, 'task_finished')
+    print('finished notified', flush=True)
+    assert sys.stdin.readline().strip() == 'exit'
+'''
+        child = subprocess.Popen([sys.executable, '-u', '-c', script, str(home / 'state.db')],
+                                 stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        try:
+            assert child.stdout.readline().strip() == 'started committed'
+            row = db._read_one('SELECT * FROM secretary_noting_children')
+            assert row['status'] == 'running' and row['finished_at'] is None
+            assert server._sessions_sig() == before
+            assert not notification_path(home / 'state.db').exists()
+            child.stdin.write('notify\n'); child.stdin.flush()
+            assert child.stdout.readline().strip() == 'started notified'
+            started = server._sessions_sig()
+            assert started[0] == before[0] and started[1] != before[1]
+            assert started[1][0] == before[1][0]  # task-only writes leave session rows unchanged
+            server._broadcast_watched_changes(now=100.0)
+            assert events == [('sessions.changed', {})]
+            child.stdin.write('finish\n'); child.stdin.flush()
+            assert child.stdout.readline().strip() == 'finished committed'
+            row = db._read_one('SELECT * FROM secretary_noting_children')
+            assert row['status'] == 'completed' and row['finished_at'] is not None
+            assert server._sessions_sig() == started
+            child.stdin.write('notify\n'); child.stdin.flush()
+            assert child.stdout.readline().strip() == 'finished notified'
+            finished = server._sessions_sig()
+            assert finished[0] == before[0] and finished[1] != started[1]
+            assert finished[1][0] == before[1][0]
+            assert not notification_path(other / 'state.db').exists()
+            assert foreign._read_one('SELECT * FROM secretary_noting_children') is None
+            server._broadcast_watched_changes(now=100.6)
+            assert events == [('sessions.changed', {})]
+            server._broadcast_watched_changes(now=102.1)
+            assert events == [('sessions.changed', {}), ('sessions.changed', {})]
+            child.stdin.write('exit\n'); child.stdin.flush()
+            _, error = child.communicate(timeout=15)
+            assert child.returncode == 0, error
+        finally:
+            if child.poll() is None:
+                child.kill(); child.communicate(timeout=5)
+
+
+@pytest.mark.parametrize('failure', ['write', 'unexpected'])
+def test_secretary_signal_failure_preserves_local_owner_and_completion_metadata(tmp_path, monkeypatch, failure):
+    from secretary.web_events import changed, subscribe, unsubscribe
+
+    home = tmp_path / 'alex'
+    home.mkdir()
+    with SessionDB(home / 'state.db') as db:
+        db.create_session('same', source='desktop')
+        ref = db.resolve_conversation_ref('same')
+        if failure == 'write':
+            monkeypatch.setattr('hermes_state_history_notifications.notification_path', lambda _path: home)
+        else:
+            def fail(_db):
+                raise RuntimeError('signal unavailable')
+            monkeypatch.setattr('hermes_state_history_notifications.notify_history_changed', fail)
+        legacy, modern = [], []
+        subscribe('signal-legacy', lambda *args: legacy.append(args))
+        subscribe('signal-modern', lambda *args, **metadata: modern.append((args, metadata)), include_metadata=True)
+        try:
+            assert changed(db, ref, 'notebook_changed', completion_snapshot_id='snapshot') is None
+            expected = (home.resolve(), ref, 'notebook_changed')
+            assert legacy == [expected]
+            assert modern == [(expected, {'completion_snapshot_id': 'snapshot'})]
+            assert db.get_session('same')['id'] == 'same'
+        finally:
+            unsubscribe('signal-legacy')
+            unsubscribe('signal-modern')
+        assert changed(db, ref, 'task_finished') is None
+        assert db.get_session('same')['id'] == 'same'

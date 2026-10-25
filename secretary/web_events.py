@@ -1,4 +1,4 @@
-"""In-process invalidation observers; no scheduler, transcript or socket ownership."""
+"""Best-effort invalidation signals; no scheduler, transcript or socket ownership."""
 
 import logging
 import threading
@@ -22,6 +22,13 @@ def unsubscribe(key):
 def changed(db, conversation_ref, reason, *, completion_snapshot_id=None):
     if db is None or not conversation_ref:
         return
+    try:
+        from hermes_state_history_notifications import notify_history_changed
+        # Task-only commits do not move the watcher's session-row digest. Wake
+        # other processes through its existing signal even with no local observer.
+        notify_history_changed(db)
+    except Exception:
+        logger.debug("Secretary cross-process invalidation failed", exc_info=True)
     with _lock:
         if not _observers:
             return

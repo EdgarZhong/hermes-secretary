@@ -35,7 +35,7 @@ def test_schema_init_is_idempotent_inside_the_callers_transaction(db):
             "SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE 'secretary_noting_%'")}
     assert names == {
         "secretary_noting_admissions", "secretary_noting_children", "secretary_noting_idle_state",
-        "secretary_noting_compaction_state",
+        "secretary_noting_compaction_state", "secretary_noting_task_leases",
     }
 
 

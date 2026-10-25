@@ -32,7 +32,8 @@ def test_real_task_start_finish_events(parent, db, stub_client):
                                 trigger_type='idle', runtime_profile='NOTING', task_instruction='review')
         assert outcome.committed, outcome
         assert observed and all(state['task_state'] == 'active' for state in observed)
-        assert all(state['tasks'] == [{'task_id': outcome.child_session_id}] for state in observed)
+        assert all(len(state['tasks']) == 1 and state['tasks'][0]['task_id'] == outcome.child_session_id
+                   and 'started_at' in state['tasks'][0] for state in observed)
         # Round 3 retired Memo: the live projection must not resurrect it.
         assert all('memo_count' not in state and 'memo_entries' not in state for state in observed)
         final = secretary_state(db, parent.session_id)

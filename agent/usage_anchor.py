@@ -21,6 +21,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
@@ -169,7 +170,171 @@ def _serialize(anchor: Any) -> Optional[Dict[str, Any]]:
     return serialized
 
 
-def _display_context_snapshot(agent: Any, anchor: Any, context_estimate: Any) -> Optional[Dict[str, Any]]:
+def _context_boundary_conn(conn, session_id):
+    """Bounded native transcript identities; appends preserve, rewrites replace them."""
+    row = conn.execute("SELECT rewind_count FROM sessions WHERE id=?", (session_id,)).fetchone()
+    if row is None:
+        return None
+    first = conn.execute("SELECT id, message_uid FROM messages WHERE session_id=? AND active=1 "
+                         "ORDER BY id LIMIT 1", (session_id,)).fetchone()
+    summary = conn.execute("SELECT id, message_uid FROM messages WHERE session_id=? AND active=1 "
+                           "AND _compressed_summary=1 ORDER BY id DESC LIMIT 1", (session_id,)).fetchone()
+    return {"rewind_count": int(row[0] or 0), "first": list(first) if first else None,
+            "summary": list(summary) if summary else None}
+
+
+def _context_boundary(db, session_id):
+    reader = getattr(db, "_read_ctx", None)
+    if not callable(reader):
+        return None
+    with reader() as conn:
+        return _context_boundary_conn(conn, session_id)
+
+
+def _display_message_fingerprint(db, message):
+    identity = db._row_identity(message.get("role"), message.get("content"),
+                                message.get("tool_call_id"), message.get("tool_calls"))
+    raw = json.dumps((identity, message.get("api_content")), sort_keys=True, default=str)
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def _priced_context_tail(db, session_id, messages, *, durable=None):
+    """Prove the priced messages are the durable active prefix, never stamp an unseen DB tail."""
+    if not isinstance(messages, list):
+        return None
+    durable = db.get_messages_as_conversation(session_id, include_row_ids=True) if durable is None else durable
+    if len(messages) > len(durable):
+        return None
+    for priced, stored in zip(messages, durable):
+        if (not isinstance(priced, dict) or not priced.get("message_uid")
+                or priced["message_uid"] != stored.get("message_uid")
+                or _display_message_fingerprint(db, priced) != _display_message_fingerprint(db, stored)):
+            return None
+    if not messages:
+        return {"id": 0, "count": 0}
+    last = durable[len(messages) - 1]
+    return {"id": last["_row_id"], "count": len(messages), "message_uid": last["message_uid"],
+            "fingerprint": _display_message_fingerprint(db, last)}
+
+
+def _priced_tail_valid_conn(db, conn, session_id, tail):
+    cutoff, count = int(tail["id"]), int(tail["count"])
+    actual = conn.execute("SELECT COUNT(*) FROM messages WHERE session_id=? AND active=1 AND id<=?",
+                          (session_id, cutoff)).fetchone()[0]
+    if actual != count:
+        return False
+    if cutoff == 0:
+        return count == 0
+    row = conn.execute("SELECT * FROM messages WHERE session_id=? AND active=1 AND id=?",
+                       (session_id, cutoff)).fetchone()
+    if row is None or row["message_uid"] != tail["message_uid"]:
+        return False
+    message = db._rows_to_conversation([row], session_id=session_id, include_ancestors=False,
+                                       repair_alternation=False)[0]
+    return _display_message_fingerprint(db, message) == tail["fingerprint"]
+
+
+def _local_context_tokens(db, session_id, reading):
+    """Read-only native rough delta after a proven paid prefix; repeated reads share the base."""
+    tokens, tail = int(reading["tokens"]), reading.get("priced_tail")
+    if not isinstance(tail, dict):
+        return tokens
+    from agent.model_metadata import estimate_messages_tokens_rough
+    with db._read_ctx() as conn:
+        if not _priced_tail_valid_conn(db, conn, session_id, tail):
+            return None
+        rows = conn.execute("SELECT * FROM messages WHERE session_id=? AND active=1 AND id>? ORDER BY id",
+                            (session_id, tail["id"])).fetchall()
+        messages = db._rows_to_conversation(rows, session_id=session_id, include_ancestors=False,
+                                            repair_alternation=False)
+        if _context_boundary_conn(conn, session_id) != reading.get("transcript_boundary"):
+            return None
+    return tokens + (estimate_messages_tokens_rough(messages) if messages else 0)
+
+
+def _save_context_snapshot(db, session_id, snapshot, expected, *, prompt_pin=None):
+    def save(conn):
+        if _context_boundary_conn(conn, session_id) != snapshot["transcript_boundary"]:
+            return False
+        if snapshot.get("priced_tail") and not _priced_tail_valid_conn(db, conn, session_id, snapshot["priced_tail"]):
+            return False
+        row = conn.execute("SELECT model_config FROM sessions WHERE id=?", (session_id,)).fetchone()
+        config = json.loads(row[0] or "{}")
+        if config.get(USAGE_CONTEXT_MODEL_CONFIG_KEY) != expected:
+            return False
+        if prompt_pin is not None:
+            pin = conn.execute(
+                "SELECT COALESCE(sp.prompt,s.system_prompt), COALESCE(tp.prompt,s.tool_names) "
+                "FROM sessions s LEFT JOIN system_prompts sp ON sp.hash=s.system_prompt_hash "
+                "LEFT JOIN system_prompts tp ON tp.hash=s.tool_names WHERE s.id=?", (session_id,)).fetchone()
+            if tuple(pin) != prompt_pin:
+                return False
+        merged = db._merge_model_config_json(conn, session_id, {USAGE_CONTEXT_MODEL_CONFIG_KEY: snapshot})
+        conn.execute("UPDATE sessions SET model_config=? WHERE id=?", (merged, session_id))
+        return True
+    return db._execute_write(save)
+
+
+def _recover_legacy_context(session_db, session_id, row, reading, boundary):
+    """Reprice a legacy display cache from the native committed request, never a stale Agent."""
+    from agent.model_metadata import estimate_request_tokens_rough
+
+    prompt, tool_pin = row.get("system_prompt"), row.get("tool_names")
+    pin = json.loads(tool_pin) if isinstance(tool_pin, str) else tool_pin
+    tools = pin.get("tools") if isinstance(pin, dict) else None
+    if not isinstance(prompt, str) or not isinstance(tools, list) or any(not isinstance(tool, dict) for tool in tools):
+        return None
+    messages = session_db.get_messages_as_conversation(session_id, include_row_ids=True)
+    tokens = estimate_request_tokens_rough(messages, system_prompt=prompt, tools=tools)
+    snapshot = {"session_id": session_id, "tokens": tokens, "rewind_count": int(row.get("rewind_count") or 0),
+                "model": reading.get("model"), "source": "local_estimate", "transcript_boundary": boundary}
+    snapshot["priced_tail"] = _priced_context_tail(session_db, session_id, messages, durable=messages)
+    try:
+        saved = _save_context_snapshot(session_db, session_id, snapshot, reading, prompt_pin=(prompt, tool_pin))
+    except Exception:
+        logger.debug("legacy context recovery persistence unavailable", exc_info=True)
+        saved = False
+    if not saved:
+        current = session_db.get_session_model_config_value(session_id, USAGE_CONTEXT_MODEL_CONFIG_KEY, None)
+        if current != reading:
+            return persisted_context_estimate(session_db, session_id, model=reading.get("model"))
+        latest = session_db.get_session(session_id) or {}
+        if (_context_boundary(session_db, session_id) != boundary
+                or (latest.get("system_prompt"), latest.get("tool_names")) != (prompt, tool_pin)):
+            return None
+    restored = _local_context_tokens(session_db, session_id, snapshot)
+    return {"tokens": restored, "source": "local_estimate"} if restored is not None else None
+
+
+def runtime_context_current(agent, db=None, session_id=None, messages=None):
+    """False only when a runtime cannot own the current durable transcript boundary."""
+    db = db if db is not None else getattr(agent, "_session_db", None)
+    session_id = session_id or getattr(agent, "session_id", None)
+    try:
+        boundary = _context_boundary(db, session_id)
+        if boundary is None:
+            return None
+        owner = (str(Path(db.db_path).resolve()), session_id)
+        captured = getattr(agent, "_usage_context_boundary", None)
+        if captured is not None:
+            return captured == (owner, boundary)
+        # Before this runtime has made a native reading, a completed compaction
+        # belongs to its durable owner, not to a possibly older compressor cache.
+        if boundary["summary"]:
+            return False
+        history = messages if isinstance(messages, list) else getattr(agent, "_session_messages", None)
+        if isinstance(history, list) and history and boundary["first"]:
+            uid = next((msg.get("message_uid") for msg in history if isinstance(msg, dict)
+                        and msg.get("message_uid")), None)
+            if uid:
+                return uid == boundary["first"][1]
+        return False if boundary["first"] else None
+    except Exception:
+        logger.debug("runtime context boundary unavailable", exc_info=True)
+        return None
+
+
+def _display_context_snapshot(agent: Any, anchor: Any, context_estimate: Any, *, context_messages=None) -> Optional[Dict[str, Any]]:
     """Prepare display metadata without making native exact-anchor persistence depend on it."""
     if anchor is None and context_estimate is None:
         return None
@@ -181,18 +346,27 @@ def _display_context_snapshot(agent: Any, anchor: Any, context_estimate: Any) ->
         tokens = anchor["prompt_tokens"] + anchor["completion_tokens"] if anchor else int(context_estimate)
         if tokens < 0:
             return None
-        return {
+        snapshot = {
             "session_id": agent.session_id, "tokens": tokens, "rewind_count": int(row.get("rewind_count") or 0),
             "model": anchor.get("model") if anchor else _normalized_model(getattr(agent, "model", None)),
             "source": "usage_anchor" if anchor else "local_estimate",
         }
+        boundary = _context_boundary(agent._session_db, agent.session_id)
+        if boundary is not None:
+            snapshot["transcript_boundary"] = boundary
+            if anchor is None and isinstance(context_messages, list):
+                tail = _priced_context_tail(agent._session_db, agent.session_id, context_messages)
+                if tail is None:
+                    return None
+                snapshot["priced_tail"] = tail
+        return snapshot
     except Exception:
         logger.debug("display context snapshot unavailable", exc_info=True)
         return None
 
 
 def persist_usage_anchor(
-    agent: Any, anchor: Optional[Dict[str, Any]], *, context_estimate: Optional[int] = None,
+    agent: Any, anchor: Optional[Dict[str, Any]], *, context_estimate: Optional[int] = None, context_messages: Any = None,
 ) -> None:
     """Write (or clear, ``None``) the session row's anchor blob. Best-effort: the row may not exist yet."""
     if getattr(agent, "_persist_disabled", False):
@@ -204,38 +378,54 @@ def persist_usage_anchor(
     try:
         serialized = _serialize(anchor)
         patch = {USAGE_ANCHOR_MODEL_CONFIG_KEY: serialized}
-        snapshot = _display_context_snapshot(agent, serialized, context_estimate)
+        snapshot = _display_context_snapshot(agent, serialized, context_estimate, context_messages=context_messages)
         if snapshot is not None:
             patch[USAGE_CONTEXT_MODEL_CONFIG_KEY] = snapshot
         patcher(session_id, patch)
+        if snapshot is not None and "transcript_boundary" in snapshot:
+            agent._usage_context_boundary = (
+                (str(Path(agent._session_db.db_path).resolve()), session_id), snapshot["transcript_boundary"])
     except Exception:
         logger.debug("usage anchor persist failed", exc_info=True)
 
 
-def persist_context_estimate(agent: Any, tokens: int) -> None:
+def persist_context_estimate(agent: Any, tokens: int, *, messages: Any = None) -> None:
     """Save a native display estimate without touching the exact anchor; unchanged polls do not write."""
     if getattr(agent, "_persist_disabled", False):
         return
-    snapshot = _display_context_snapshot(agent, None, tokens)
+    priced = messages if isinstance(messages, list) else getattr(agent, "_session_messages", None)
+    snapshot = _display_context_snapshot(agent, None, tokens, context_messages=priced)
     if snapshot is None:
         return
     db = getattr(agent, "_session_db", None)
     try:
+        if runtime_context_current(agent, messages=messages) is False:
+            return
         current = db.get_session_model_config_value(agent.session_id, USAGE_CONTEXT_MODEL_CONFIG_KEY, None)
-        if current != snapshot:
+        if current == snapshot:
+            return
+        boundary = snapshot.get("transcript_boundary")
+        if boundary is None or boundary["first"] is None:
+            # Legacy lightweight owners and empty Sessions retain their prior contract.
             db.patch_session_model_config(agent.session_id, {USAGE_CONTEXT_MODEL_CONFIG_KEY: snapshot})
+            return
+        if "priced_tail" not in snapshot:
+            return
+
+        _save_context_snapshot(db, agent.session_id, snapshot, current)
     except Exception:
         logger.debug("display context estimate persist failed", exc_info=True)
 
 
 def set_usage_anchor(
     agent: Any, anchor: Optional[Dict[str, Any]], *, turn_base: bool = False, context_estimate: Optional[int] = None,
+    context_messages: Any = None,
 ) -> None:
     """Install ``anchor`` on the agent (``None`` clears) and mirror it to the session row."""
     agent._usage_anchor = anchor
     if turn_base or anchor is None:
         agent._turn_base_usage_anchor = anchor
-    persist_usage_anchor(agent, anchor, context_estimate=context_estimate)
+    persist_usage_anchor(agent, anchor, context_estimate=context_estimate, context_messages=context_messages)
 
 
 def restore_usage_anchor(agent: Any, conversation_history: Optional[List[Dict[str, Any]]]) -> None:
@@ -297,14 +487,16 @@ def persisted_anchor_context(
 
 
 def persisted_context_estimate(
-    session_db: Any, session_id: Any, messages: Any = None, *, model: Any = None,
+    session_db: Any, session_id: Any, messages: Any = None, *, model: Any = None, recover_legacy: bool = False,
 ) -> Optional[Dict[str, Any]]:
-    """Read-only cold display estimate, never an input to native compression accounting.
+    """Cold display estimate, never an input to native compression accounting.
 
     Native exact anchors may be cleared on compaction or replay repair. Their last observed
     reading, or the compaction owner's rough estimate, survives for the display until another
     native reading replaces it. A durable rewind or known model mismatch invalidates it.
     No transcript load or agent construction is needed for deferred-history resumes.
+    Optional legacy recovery reprices only a compacted Session's committed prompt,
+    tools pin and active transcript, then best-effort binds that reading to its boundary.
     A known invalidation returns only ``invalidation_reason`` so incremental clients can
     retire a previous readout; absent or unreadable readings return None.
     """
@@ -328,6 +520,9 @@ def persisted_context_estimate(
                 return None
             if int(reading["rewind_count"]) != rewind_count:
                 return {"invalidation_reason": "rewind"}
+            boundary = reading.get("transcript_boundary")
+            if boundary is not None and _context_boundary(session_db, session_id) != boundary:
+                return None
         elif anchor and rewind_count == 0:
             # Earlier native anchors have no rewind generation; only an untouched Session
             # can safely reuse one as a display estimate.
@@ -340,11 +535,19 @@ def persisted_context_estimate(
         current, priced_by = _normalized_model(model), _normalized_model(reading.get("model"))
         if current and priced_by and current != priced_by:
             return {"invalidation_reason": "model_changed"}
+        if recover_legacy and "transcript_boundary" not in reading:
+            boundary = _context_boundary(session_db, session_id)
+            if boundary and boundary["summary"]:
+                return _recover_legacy_context(session_db, session_id, row, reading, boundary)
         tokens = int(reading["tokens"])
         if tokens < 0:
             return None
         # Preserve the native delta estimate when the exact priced prefix still matches.
         precise = anchored_context_tokens(messages, anchor) if isinstance(messages, list) else None
+        if precise is None and reading.get("source") == "local_estimate":
+            tokens = _local_context_tokens(session_db, session_id, reading)
+            if tokens is None:
+                return None
         return {"tokens": precise if precise is not None else tokens,
                 "source": "usage_anchor" if precise is not None else reading.get("source") or "usage_anchor"}
     except Exception:

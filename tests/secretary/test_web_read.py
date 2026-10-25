@@ -162,7 +162,9 @@ def test_live_child_owner_stale_and_cross_database(database, tmp_path):
         assert secretary_state(other, 'main')['task_state'] == 'idle'
         other.close()
         child._secretary_parent_conversation_ref = 'wrong-ref'
-        assert secretary_state(db, 'main')['task_state'] == 'unknown'
+        # The committed child/admission owner and its live task lease remain
+        # authoritative across processes; an unrelated local binding cannot move it.
+        assert secretary_state(db, 'main')['task_state'] == 'active'
     finally:
         unregister_active_noting_task('child', child)
     db.noting_child_finish(admission, status='failed')

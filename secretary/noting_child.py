@@ -107,10 +107,10 @@ def noting_dispatch_refusal(agent: Any, tool_name: str, *, message: Optional[str
 
 
 # ── Strong in-process ownership ───────────────────────────────────────────────────────
-# ``_active_noting_tasks[noting_session_id] = child`` keeps an in-flight child from being
+# ``_ACTIVE_NOTING_TASKS[(db_path, noting_session_id)] = child`` keeps an in-flight child from being
 # discarded as an ordinary detached child by host eviction/LRU behavior (02 §5.4).
 
-_ACTIVE_NOTING_TASKS: Dict[str, Any] = {}
+_ACTIVE_NOTING_TASKS: Dict[tuple, Any] = {}
 _ACTIVE_NOTING_LOCK = threading.Lock()
 # Task-local completion ownership covers asynchronous construction as well as a
 # registered child. It carries at most one Idle continuation, never queued Turns.
@@ -125,6 +125,7 @@ class _NotingCompletion:
     notified: bool = False
     closed: bool = False
     snapshot_id: Optional[str] = None
+    task_lifecycle: Any = None
 
 
 def _completion_key(db, admission_id):
@@ -143,9 +144,11 @@ def _begin_completion(parent, admission, callback=None):
         return _NOTING_COMPLETIONS.setdefault(_completion_key(parent._session_db, admission.admission_id), handle)
 
 
-def _end_completion(db, handle):
+def _end_completion(db, handle, *, task_cleanup=False):
     if handle is None:
         return
+    if handle.task_lifecycle is not None and not task_cleanup:
+        return  # The worker returned; its queued carrier still owns final cleanup.
     from secretary.framework_messages import _lock
     with _lock(handle.parent):
         handle.closed = True
@@ -225,18 +228,44 @@ def _run_completion_callback(callback):
 
 
 def register_active_noting_task(child_session_id: str, child: Any) -> None:
+    from secretary.noting_task_presence import start_task_presence
+
+    path = getattr(getattr(child, "_session_db", None), "db_path", None)
+    key = (str(Path(path).resolve()) if path is not None else None, child_session_id)
     with _ACTIVE_NOTING_LOCK:
-        _ACTIVE_NOTING_TASKS[child_session_id] = child
+        current = _ACTIVE_NOTING_TASKS.get(key)
+        if current is child:
+            return
+        if current is not None:
+            raise NotingChildError("The Noting child already has an active owner in this database")
+        _ACTIVE_NOTING_TASKS[key] = child
+        child._secretary_task_registry_key = key
+    presence = start_task_presence(getattr(child, "_session_db", None), child_session_id)
+    with _ACTIVE_NOTING_LOCK:
+        current = _ACTIVE_NOTING_TASKS.get(key)
+        if current is child:
+            child._secretary_task_presence = presence
+    if current is not child:
+        if presence is not None:
+            presence.close()
+        return
     _notify_task_observer(child, "task_started")
 
 
 def unregister_active_noting_task(child_session_id: str, child: Any = None, *, reason: str = "task_finished") -> bool:
     """Identity-scoped removal (idempotent); True when a slot was removed."""
     with _ACTIVE_NOTING_LOCK:
-        current = _ACTIVE_NOTING_TASKS.get(child_session_id)
+        key = getattr(child, "_secretary_task_registry_key", None) if child is not None else None
+        if key is None:
+            matches = [candidate for candidate in _ACTIVE_NOTING_TASKS if candidate[1] == child_session_id]
+            key = matches[0] if len(matches) == 1 else None
+        current = _ACTIVE_NOTING_TASKS.get(key)
         if current is None or (child is not None and current is not child):
             return False
-        del _ACTIVE_NOTING_TASKS[child_session_id]
+        del _ACTIVE_NOTING_TASKS[key]
+    presence = getattr(current, "_secretary_task_presence", None)
+    if presence is not None:
+        presence.close()
     _notify_task_observer(current, reason)
     return True
 
@@ -247,9 +276,12 @@ def _notify_task_observer(child, reason):
             getattr(child, "_secretary_parent_conversation_ref", None), reason)
 
 
-def active_noting_task(child_session_id: str) -> Any:
+def active_noting_task(child_session_id: str, *, db=None) -> Any:
     with _ACTIVE_NOTING_LOCK:
-        return _ACTIVE_NOTING_TASKS.get(child_session_id)
+        if db is not None:
+            return _ACTIVE_NOTING_TASKS.get((str(Path(db.db_path).resolve()), child_session_id))
+        matches = [child for key, child in _ACTIVE_NOTING_TASKS.items() if key[1] == child_session_id]
+        return matches[0] if len(matches) == 1 else None
 
 
 def active_noting_task_count() -> int:
@@ -601,20 +633,27 @@ class _NotingFailureNotice:
         self.db = getattr(parent, "_session_db", None)
         self.published = False
 
-    def publish(self, reason: Optional[str]) -> None:
+    def publish(self, reason: Optional[str], *, on_settled=None) -> None:
+        from secretary.framework_messages import _settle_callback
         if not reason or self.published:
+            _settle_callback(on_settled)
             return
         parent = self.parent
         if (getattr(parent, "_secretary_conversation_ref", None) != self.conversation_ref
                 or getattr(parent, "_session_db", None) is not self.db):
+            _settle_callback(on_settled)
             return
         # Shared by runner and worker; neither a failed callback nor a missing
         # UI notice callback makes a second attempt or changes task outcome.
         self.published = True
         try:
             from secretary.framework_messages import publish_noting_failure
-            publish_noting_failure(parent, conversation_ref=self.conversation_ref, specific_reason=reason)
+            published = publish_noting_failure(parent, conversation_ref=self.conversation_ref, specific_reason=reason,
+                                               on_settled=on_settled)
+            if published is not True:
+                _settle_callback(on_settled)
         except Exception:
+            _settle_callback(on_settled)
             logger.warning("Noting failure Framework message could not be published", exc_info=True)
         if not callable(getattr(parent, "notice_callback", None)):
             return
@@ -695,8 +734,9 @@ def run_noting_task(
     """Run one admitted Noting Task to its one-shot conclusion (02 §5.4, §5.8).
 
     Entry point for the admission flow (T3B / main session): the caller has already
-    admitted the Anchor and owns the idempotence record; this returns only after the child
-    is closed and, when the task completed, the Snapshot commit gate has run.
+    admitted the Anchor and owns the idempotence record; this returns after execution
+    and the Snapshot commit gate. A deferred Framework carrier retains the child
+    owner until the carrier is published or retired, without blocking this worker.
     ``parent_active_messages`` is the Parent's Active context frozen at admission; when
     omitted the Parent's current live transcript is used (still truncated at the Anchor).
     ``admission_id`` is T3B's durable admission handle (``NotingAdmission.admission_id``).
@@ -767,12 +807,24 @@ def run_noting_task(
         outcome.notice_error = str(exc)
         logger.error("Noting task %s failed: %s", admission_id, exc, exc_info=True)
     finally:
-        failure_notice.publish(outcome.notice_error)
-        if recovery_audit is None:
-            finish_child_admission(task_db, admission_id, status=outcome.status)
-        unregister_active_noting_task(child_session_id, child)
-        _close_child(child)
-        _end_completion(parent_db, completion)
+        from secretary.noting_task_lifecycle import task_lifecycle
+        lifecycle = task_lifecycle(child)
+        if completion is not None:
+            completion.task_lifecycle = lifecycle
+        try:
+            failure_notice.publish(outcome.notice_error, on_settled=lifecycle.carrier())
+        finally:
+            def close_task():
+                try:
+                    if recovery_audit is None:
+                        finish_child_admission(task_db, admission_id, status=outcome.status)
+                finally:
+                    try:
+                        unregister_active_noting_task(child_session_id, child)
+                    finally:
+                        _close_child(child)
+                        _end_completion(parent_db, completion, task_cleanup=True)
+            lifecycle.execution_finished(close_task)
     return outcome
 
 
@@ -922,7 +974,16 @@ def _publish_committed_completion(child, conversation_ref, termination, outcome)
                 "forced": "The five-Turn budget ended; the legal working view was committed with unfinished work possible.",
                 "context_overflow": "The context window was exhausted; the legal working view was committed with unfinished work possible.",
             }[termination["type"]]
-            publish_noting_completion(parent, outcome.commit_result, termination=termination, summary=summary)
+            from secretary.noting_task_lifecycle import task_lifecycle
+            settled = task_lifecycle(child).carrier()
+            try:
+                published = publish_noting_completion(parent, outcome.commit_result, termination=termination,
+                                                      summary=summary, on_settled=settled)
+                if published is not True:
+                    settled()
+            except BaseException:
+                settled()
+                raise
         except Exception:
             logger.warning("Committed Noting finish notice could not be published", exc_info=True)
 

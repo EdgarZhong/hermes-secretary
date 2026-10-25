@@ -38,6 +38,12 @@ CREATE TABLE IF NOT EXISTS secretary_noting_children (
     registered_at REAL NOT NULL,
     finished_at REAL
 );
+CREATE TABLE IF NOT EXISTS secretary_noting_task_leases (
+    child_session_id TEXT PRIMARY KEY,
+    holder TEXT NOT NULL,
+    acquired_at REAL NOT NULL,
+    expires_at REAL NOT NULL
+);
 CREATE TABLE IF NOT EXISTS secretary_noting_idle_state (
     conversation_ref TEXT PRIMARY KEY REFERENCES secretary_conversations(conversation_ref),
     last_turn_started_at REAL,

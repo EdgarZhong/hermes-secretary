@@ -211,7 +211,7 @@ def reconstruct_noting(db, conversation_ref, failed_child_session_id):
     if failed is None:
         raise NotingRecoveryError("Missing failed child Session")
     from secretary.noting_child import active_noting_task
-    if active_noting_task(failed_child_session_id) is not None:
+    if active_noting_task(failed_child_session_id, db=db) is not None:
         raise NotingRecoveryError("The requested child still owns an active native Noting task")
     with db._read_ctx() as conn:
         rows = conn.execute("SELECT * FROM messages WHERE session_id=? ORDER BY id", (failed_child_session_id,)).fetchall()

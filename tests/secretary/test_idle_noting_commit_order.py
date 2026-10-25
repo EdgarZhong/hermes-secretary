@@ -289,8 +289,10 @@ def test_native_iteration_boundary_compacts_only_for_successful_finish(
 
 def test_existing_nonrequest_native_compaction_defers_framework_to_its_fence(idle_runtime, monkeypatch):
     from agent.conversation_compression import CompressionCommitFence
+    from tests.secretary.test_noting_task_settlement import capture_close, remote_state
 
     parent, db, client, workers = idle_runtime
+    children, closed, _close_threads = capture_close(parent, monkeypatch)
     finish_responses(client)
     entered, release, displayed = threading.Event(), threading.Event(), threading.Event()
     responses = iter([
@@ -322,10 +324,17 @@ def test_existing_nonrequest_native_compaction_defers_framework_to_its_fence(idl
         assert not workers[0].is_alive()
         assert getattr(parent, "_native_compaction_request", None) is None
         assert parent._secretary_framework_messages and not result_rows(parent)
+        assert not closed.is_set()
+        assert db.noting_child(1)["status"] == "running"
+        assert remote_state(db, parent.session_id)["task_state"] == "active"
         release.set()
         native.join(10)
         assert not native.is_alive() and results
         assert displayed.wait(5)
+        assert closed.wait(5)
+        assert db.noting_child(1)["status"] == "completed"
+        assert db.get_session(children[0].session_id)["ended_at"] is not None
+        assert remote_state(db, parent.session_id)["task_state"] == "idle"
         assert len(result_rows(parent)) == 1
     finally:
         release.set()
