@@ -3,6 +3,20 @@
 维护实际部署、故障处理、验证与回滚点；步骤和稳定布局见[部署SOP](cloud-deployment-sop.md)，当前任务只在根[CLAUDE](../CLAUDE.md)。以下时间均为Asia/Shanghai；PID、指纹和测试结论只对应记录时点，不代表实时状态。凭据、令牌、原始私人材料不写入本文件。
 
 
+## 2026-10-26 · 冷刷新正文缓存修复及内存／持久分层上线
+
+用户实测559598b刷新约一秒只有Load earlier、无正文，要求回顾前端整改原始目标，并再次明确：同document内存负责视口／阅读／展开与临时显示、可用内存无需持久快照展示读取；持久缓存跨document生命周期，解决刷新／冷启空窗。root已承认用暖切换验收覆盖冷刷的交付判断错误。原始“保画面→后台完整恢复→一致接管”覆盖Timeline／侧栏／底部胶囊，动画不是替代目标。
+
+root自建隐藏IAB经仅回环代理复现旧版：IDBopen约6ms、conversation get约0.5ms，但条目944bytes只有胶囊；284ms只LoadEarlier，2344ms网络正文才有246节点。当前正式200cards的2条已落库Steer用户行被displayRows临时状态筛选整页拒绝；immutable基线逐行定位，仅排除这2行时其余198行可安全缓存，远小于2MiB。修复完整保留200行及原顺序，不能通过过滤真实Steer或截断正文造缓存。
+
+缓存先投影正文／卡片壳白名单，再检查及计算容量；不访问Thinking正文、工具参数结果或其他不显示字段，旧条目也先净化。侧栏候选以原schema key范围查询，不克隆其它Conversation正文；启动同owner缓存读取不再因网络恢复代次作废。保单Conversation2MiB／总16MiB／10项／TTL／LRU和完整恢复权限语义。加速后暴露REST Context误提前改retained的N03时序，使用明确观察来源区分native实时更新与REST staging，确定性先败后过，旧断言未放宽。冷缓存主体193相关项通过，入口fLf；原先尝试的0a4eabf只上传、未上线。
+
+随后按用户最新明确分层，增加内存owner可用性，已确认空会话与未知loading分开；有可用内存时绕过Conversation／侧栏持久展示读取，临时显示保留，后台完整恢复继续。胶囊写入复用RAM镜像；Context字段失效维护异步保留磁盘正文及原成功时间，root发现的“无RAM条目就删整条”中间方案已撤回并以反例覆盖。最终4文件200项通过、typecheck/build/diff及独立接线审通过，Controller仍2550行；与前193重叠，不累计宣称全仓绿。源提交并自动push0a4eabf、c29b457，最终入口CnxAPGw6。
+
+root实际Cnx隐藏页在正常载入一次后，阻断WS并延迟所有API4秒，再直接刷新：持久条目417265bytes／200行，取值10.5ms，导航644.3ms已246节点／6可见，首次出现LoadEarlier时正文已在，输入禁用；解除故障后同页无需reload恢复模型／输入。之后同document离开再回到目标，会话首帧246节点／视口57510.5保持，持久快照展示读取0；后端正常重读未跳过。其它fLf样本取值119.5ms、DBopen至正文449.7ms亦保留，不挑快样本或承诺导航／渲染零耗时。全部为只读生产接口＋自建隐藏页，无生产模型测试、未操作用户现有页面。
+
+最终仅静态发布`c29b4570a0e469aa2dcedc76da499f81cf0e7da8`，439资源及正式HTTP JS／CSS SHA verified；后端fd57123、Web PID3874452／Gateway PID3874455保持，双服务active／微信connected，配置和Dashboard不变，无数据库写入或新备份。云受限`release-20261024/20261026-memory-persistent-c29b457/`及旧静态交换点保存恢复材料；本地ignored `.hermes-dev/cold-cache-first-paint-20261026/`保存实现／review／匿名UI计时及release-final收据。旧版胶囊-only条目没有正文可凭空恢复，已明确告知新版至少一次正常载入后才能建立正文缓存；下次刷新载入新版，不代刷新用户页。本轮只Web，不重打APK。
+
 ## 2026-10-26 · 前端首帧、Turn连续性与Working位置上线
 
 用户确认切回Conversation的第一眼不能空白，离开位置和展开状态应保留；快速滚动仅衔接缓存与实时内容。实现同owner的document内暖画面／阅读位置（有界10会话），在首个异步读取前同步呈现，IDB精确key读取先于草稿／网络；缓存仍不恢复动作权限、不跳过当前页面完整读取。Thinking／工具展开及结果内层阅读按原生身份保持，真实内容更新和终态照常处理。
