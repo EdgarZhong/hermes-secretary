@@ -101,6 +101,8 @@ class LiveSessionSnapshot(Result):
     turn_started_at: float | None = None
     started_at: float | None = None
     status: str | None = None  # a LiveSessionStatus value
+    recovery_view_version: Literal[1] | None = None
+    recovery_view: dict[str, JsonValue] | None = None
     state_snapshot: TurnOutputSnapshot | None = None
     inflight: InflightTurn | None = None
     queued: QueuedPrompt | None = None
@@ -218,6 +220,7 @@ method("session.resume", params=SessionResumeParams, result=SessionResumeResult,
 
 
 class SessionActivateParams(SessionParams):
+    recovery_view: dict[str, JsonValue] | None = None
     cols: int | None = None  # sent by the desktop; the handler keeps the session's current width
     omit_messages: bool = False
 

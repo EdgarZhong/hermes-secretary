@@ -691,7 +691,7 @@ def _resume_live_unpersisted(ctx: _Resume, live_sid: str, live: dict) -> dict:
     # Desktop picker on every reload while the session was still live, and back once it had been dropped.
     model, provider = _live_session_identity(live)
     return _ok(ctx.rid, _attach_todo_state({
-        "session_id": live_sid, "stored_session_id": str(live.get("session_key") or ""),
+        "recovery_view_version": 1, "session_id": live_sid, "stored_session_id": str(live.get("session_key") or ""),
         "message_count": len(messages), "messages": messages,
         "info": {"model": model, "provider": provider, "lazy": True,
                  "desktop_contract": DESKTOP_BACKEND_CONTRACT,
@@ -864,7 +864,7 @@ def _resume_response(
         message_count = len(count_source) if ctx.omit_messages else len(messages)
     if not info.get("usage") and (usage := _session_usage_snapshot(record)):
         info = {**info, "usage": usage}
-    payload = {"session_id": sid, "resumed": ctx.target, "message_count": message_count, "messages": messages,
+    payload = {"recovery_view_version": 1, "session_id": sid, "resumed": ctx.target, "message_count": message_count, "messages": messages,
                **({"messages_omitted": ctx.omit_messages} if hydrating is None else {"hydrating": hydrating}),
                "info": info, "inflight": None, "running": running, "session_key": ctx.target,
                "started_at": record["created_at"] if started_at is None else started_at, "status": status}
@@ -1046,17 +1046,10 @@ def _(rid, params: dict) -> dict:
 
 @_session_method("session.activate")
 def _(rid, params: dict, session: dict) -> dict:
-    """Attach the frontend to a live TUI session without closing the previously focused one."""
-    sid = str(params.get("session_id") or "")
-    # Only the rebind is atomic with grace expiry; the payload (a DB history read unless
-    # ``omit_messages``) must not hold the process-wide resume lock.
-    with _session_resume_lock:
-        if (refusal := _reattach_refusal(rid, sid, session)) is not None:
-            return refusal
-        with session["history_lock"]:
-            _rebind_live_transport(sid, session, current_transport() or _stdio_transport)
-    return _ok(rid, _live_session_payload(
-        sid, session, touch=True, omit_messages=is_truthy_value(params.get("omit_messages", False))))
+    """Attach through the native optional bounded recovery envelope."""
+    import sys
+    from tui_gateway.recovery_view import activate
+    return activate(sys.modules[__name__], rid, params, session)
 
 
 @method("session.delete")
@@ -2197,12 +2190,11 @@ def _(rid, params: dict) -> dict:
     except (TypeError, ValueError):
         return _err(rid, -32602, "invalid params: last_seen must be an integer")
     from tui_gateway import event_replay as er
-    frames = er.events_since(sid, last_seen)
+    cut = er.read_replay_cut(sid, last_seen)
     # ``epoch``: in-process seq — clients reset watermarks when this differs from gateway.ready's.
     # ``open_requests``: server→client requests still unanswered — the ring cannot carry "a question still
     # waiting", so the reconnecting client re-delivers these to its request handlers.
-    return _ok(rid, {"events": frames, "latest_seq": er.latest_seq(sid), "truncated": er.is_truncated(sid, last_seen),
-                     "count": len(frames), "epoch": er.replay_epoch(), "open_requests": _open_requests(sid)})
+    return _ok(rid, {**cut, "open_requests": _open_requests(sid)})
 
 
 @method("session.events.stats")

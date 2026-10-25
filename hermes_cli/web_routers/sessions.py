@@ -791,9 +791,19 @@ async def get_session_messages(
     offset: int = Query(0, ge=0), order: Optional[str] = Query(None),
     include_compacted: bool = Query(False), inline_images: bool = Query(True),
     view: Optional[str] = None, detail_row_ids: Optional[str] = None,
-    prefer_image_refs: bool = Query(False), request: Request = None):
+    prefer_image_refs: bool = Query(False), request: Request = None,
+    recovery_view: Optional[int] = None, anchor_uid: Optional[str] = None,
+    anchor_row_id: Optional[int] = None, before: Optional[int] = None, after: Optional[int] = None):
     from hermes_cli.web_history_cards import detail_row_ids as parse_detail_ids, history_cards, read_detail_rows
 
+    if recovery_view is not None:
+        if request is not None and "offset" in request.query_params:
+            raise HTTPException(status_code=400, detail="offset cannot be combined with recovery_view")
+        return await _get_recovery_messages(
+            session_id, profile, recovery_view, anchor_uid, anchor_row_id, before, after,
+            limit, offset, order, view, detail_row_ids)
+    if any(value is not None for value in (anchor_uid, anchor_row_id, before, after)):
+        raise HTTPException(status_code=400, detail="anchor parameters require recovery_view=1")
     if order not in (None, "oldest", "latest"):
         raise HTTPException(status_code=400, detail="order must be one of: oldest, latest")
     if view not in (None, "cards"):
@@ -850,6 +860,36 @@ async def get_session_messages(
             "limit": _limit, "offset": offset,
             "order": order or ("latest" if limit is None else "oldest"),
             "returned": len(projected_messages)}}
+
+
+async def _get_recovery_messages(session_id, profile, version, anchor_uid, anchor_row_id,
+                                 before, after, limit, offset, order, view, detail_ids):
+    from hermes_state_recovery_view import RecoveryViewError, project_view, read_view, selector
+
+    if version != 1 or offset != 0 or detail_ids is not None or order is not None or view not in (None, "cards"):
+        raise HTTPException(status_code=400, detail="recovery_view=1 cannot be combined with offset/order/detail parameters")
+    selection = {"kind": "anchor" if anchor_uid is not None or anchor_row_id is not None else "latest"}
+    selection.update({key: value for key, value in dict(anchor_uid=anchor_uid, anchor_row_id=anchor_row_id,
+                     before=before, after=after, limit=limit).items() if value is not None})
+    if selection["kind"] == "latest" and (before is not None or after is not None):
+        raise HTTPException(status_code=400, detail="before/after require an anchor")
+    if selection["kind"] == "anchor" and limit is not None:
+        raise HTTPException(status_code=400, detail="anchor ranges use before/after instead of limit")
+    try:
+        selected = selector(selection)
+        raw = await asyncio.to_thread(_with_db, profile,
+            lambda db: read_view(db, session_id, _serving_profile(profile), [selected]), read_only=True)
+        if raw is None:
+            raise RecoveryViewError("not_found")
+        projected = await asyncio.to_thread(project_view, raw, home=_history_profile_home(profile))
+    except RecoveryViewError as exc:
+        raise HTTPException(status_code=404 if exc.reason in ("not_found", "anchor_not_found") else 400,
+                            detail=exc.reason) from exc
+    window = projected["windows"][0]
+    return {"session_id": raw["tip_id"], "profile": raw["profile"], "projection": "cards",
+            "messages": window["messages"], "coverage": window["coverage"], "selector": selected,
+            "pagination": {"limit": selected.get("limit", selected.get("before", 0) + selected.get("after", 0) + 1),
+                           "returned": len(window["messages"]), "order": "logical"}}
 
 
 def _timeline_session_id(db, session_id: str, owner: str) -> str:

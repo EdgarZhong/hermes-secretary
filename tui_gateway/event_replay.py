@@ -130,6 +130,19 @@ def _stamp_event(obj: dict, *, observe=None) -> None:
                     break
 
 
+def read_replay_cut(sid: str, last_seen: int) -> dict:
+    """Copy ring bytes and all watermarks at ONE cut; decode outside the lock."""
+    key = sid or ""
+    with _replay_lock:
+        buf = _replay_buffers.get(key)
+        snapshots = [(seq, payload) for seq, payload, _size in buf if seq > last_seen] if buf else []
+        latest = _replay_next_seq.get(key, 0)
+        truncated = last_seen < _replay_evicted_through.get(key, 0)
+        epoch = _REPLAY_EPOCH
+    events = [_thaw_params(payload, seq) for seq, payload in snapshots]
+    return {"events": events, "latest_seq": latest, "truncated": truncated, "epoch": epoch, "count": len(events)}
+
+
 def events_since(sid: str, last_seen: int) -> list[dict]:
     """Recorded EVENT OBJECTS (each frame's ``params`` dict) with seq > last_seen for *sid*.
 

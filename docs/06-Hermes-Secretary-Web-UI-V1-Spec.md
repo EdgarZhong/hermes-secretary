@@ -95,15 +95,15 @@ Round 2 uses a separate **local frontend repository beside this backend workspac
 
 | State | Authoritative owner | Browser treatment |
 |---|---|---|
-| Session list, stored transcript, titles, pinned/archived metadata, Lineage | Hermes SessionDB | Fetch on demand; no durable browser mirror or second repository. |
+| Session list, stored transcript, titles, pinned/archived metadata, Lineage | Hermes SessionDB | Fetch on demand; 2026-10-24允许下文限定的过渡展示快照，不建立可写镜像或第二历史库；恢复仍完整重读页面所需范围。 |
 | `conversation_ref`, Notebook, Memo, Noting task/schedules | Secretary Core `state.db`/runtime | Read via native or minimally additive read interfaces; never client-derive truth. |
-| Agent Turn lifecycle, Pending Steers, execution progress, usage, Compaction | TUI Gateway / Agent Core | Live in-memory projection from actual RPC/event/REST facts; refresh/reconnect resynchronizes. |
+| Agent Turn lifecycle, Pending Steers, execution progress, usage, Compaction | TUI Gateway / Agent Core | Live in-memory projection from actual RPC/event/REST facts; refresh/reconnect resynchronizes. 仅Usage／Context已取得的展示数值可按2026-10-24边界缓存，不包含运行事实。 |
 | Stored Session ID → Runtime ID map, event high-water marks, inflight render state | Browser working memory | Minimal transient Map/state; not persisted; recreated with existing `session.resume`/`session.activate`. |
 | Unsubmitted text, selected photos/files and their Blobs, New Chat draft | Browser local persistence | Allowed, scoped by draft/Conversation and recoverable across same-browser reloads (IndexedDB for binary where appropriate). |
-| Last route, Files return target, scroll position, explicitly chosen presentation preferences | Browser local persistence / URL history | Allowed, sparse and device-local; validation against server on restore. |
+| Last route, Files return target, explicitly chosen presentation preferences | Browser local persistence / URL history | Allowed, sparse and device-local; validation against server on restore. 滚动位置／阅读锚点依2026-10-15确认只留内存。 |
 | Existing config such as `terminal.cwd`, actual active model/effort | Hermes native config/session | Display source of truth from native API; a *not-yet-applied user selection* may be local draft only. |
 
-The implementation MUST NOT introduce a persisted API-response cache, client SessionDB replica, client-held Notebook records, client-managed turn ledger, independent unread watermarks, or background synchronization to make those local copies agree with the server. Small **in-memory** render buffers and pending UI state are inevitable; use no more than required. Optimize pagination and render performance before inventing more state layers. Losing browser storage may lose **unsubmitted** data and local presentation preferences, but MUST NOT destroy already accepted server data.
+The implementation MUST NOT introduce a general persisted API-response cache, client SessionDB replica, client-held Notebook records, client-managed turn ledger, independent unread watermarks, or background synchronization to make those local copies agree with the server. **2026-10-24明确例外：** Timeline、Conversation侧栏、UsageSummary／ContextIndicator可保存按owner隔离、容量有界、可丢弃的展示快照；白名单和失效规则见§1.4.1，不保存整份API响应，不跳过本轮真实读取，不恢复runtime、审批、Pending或事件游标。该例外替代旧的全面禁止展示持久缓存口径，其余薄客户端限制保留。Small **in-memory** render buffers and pending UI state are inevitable; use no more than required. Losing browser storage may lose **unsubmitted** data and local presentation preferences, but MUST NOT destroy already accepted server data.
 
 ### 0.5. Additive compatibility and data provenance
 
@@ -182,6 +182,8 @@ Exactly **three main screen states** exist: **New Chat**, **Conversation**, **Fi
 
 **用户2026-10-21追加确认：** 顶部安全区不能为零，但状态栏下方的菜单／标题留白应比首次24px预览更紧凑。Android保留真实状态栏／刘海避让，将该区域下方间距由12px缩为4px、顶栏内容高度由64px缩为56px；普通浏览器外观保持原样。360×792浏览器预览标识的状态栏只用于视觉核对，不进入APK产品页面。
 
+**2026-10-24适用性说明：** 上段“不另建对话缓存”由§0.4、§1.4的限定展示快照例外替代；仍不建立第二Conversation库。下方2026-10-21“返回前台立即刷新、connected即停止重载”记录旧版行为与当时口径；新目标为§1.4.1的先保留页面恢复、5秒内本轮可见依赖及Socket／Turn就绪则不重载，超时原生兜底。后续10／15／20／30秒退避、首次正常加载及认证／附件／通知保护继续保留。此替代不改写旧版交付和验收事实，新方案尚未实施。
+
 用户随后对上述收紧预览确认“看起来不错”，采用该Android视觉。24px仅为当前模拟器状态栏实测，正式壳使用设备实时Insets，不把其它设备强制设为24px。最终补充确认：标题保持靠左，只保证在状态栏下方的56px内容带垂直居中，Android上下间距统一4px；此适配只对APK生效，普通网页不启用，显式Mock预览除外。
 
 **用户确认图标更新（2026-10-21，0.1.1）：** APK启动图标复用已有Hermes Secretary logo，居中放在现有主题色卡的深色背景上；不另行重设计logo。用户随后反馈launcher前景被过度放大裁切；后续修复须按adaptive icon前景安全区和普通图标实际mask核对，保持logo可辨、不过小、不露四周白边；背景沿深纸色填满，不修改logo内容。
@@ -217,6 +219,8 @@ Exactly **three main screen states** exist: **New Chat**, **Conversation**, **Fi
 
 Conversation list, title, ordering, archival/pin affordances (only if included by the approved design and native capability) use actual REST results. Do not add management controls just because Desktop has them. Empty/loading/error and a lost/deleted session are explicit, recoverable UI states.
 
+**用户2026-10-24确认：Conversation侧栏展示缓存。** 页面冷启动、刷新后及断线期间，先展示上次成功获取的Conversation列表快照，不必等请求或Socket就绪；保持跨Profile列表及各行真实owner归属。网络恢复仍完整读取列表，结果到达后原地更新并更新缓存，不做Timeline式衔接动画，也不先清空列表造成闪烁。缓存只承担过渡展示，不作为置顶、归档、删除或Turn运行状态的实时事实，不改变后端权威及既有列表分页语义；首次请求未完成不能仅因缓存缺失就显示“No conversations yet”。与下方Timeline及底部两个卡片共用展示缓存边界，尚未实施。
+
 **2026-10-19 recovery implementation:** merge repeated list invalidations per owner, publish each Profile's successful page without waiting for another Profile, and cancel obsolete downloads. Optional `summary=true` on the existing session list/detail reads omits heavy provenance/configuration blobs; default callers retain their complete existing response. Current Conversation titles may use the owning native binding's `info.title` and authoritative title events/rename responses while the list is unavailable; stale list results cannot roll them back. Missing stored locators must still be verified read-only before a potentially restoring resume.
 
 **User-confirmed sidebar restoration (2026-10-13, R2-C80):** Retain the approved Mock's Sidebar separators, including between Files and the theme controls. Organize real Sessions by their actual update time into mutually exclusive Today, Yesterday, previous 7 days, previous 30 days, and older groups. Restore the real-page presentation; do not substitute a single generic Conversations section for the approved grouping. Missing native timestamps must not be invented. Turn activation or completion must not cause whole-list flashing. Keep the list scrollable while hiding the visible scrollbar, and preserve the approved Mock separators and compact theme-control layout.
@@ -225,11 +229,25 @@ Conversation list, title, ordering, archival/pin affordances (only if included b
 
 ### 1.4. Timeline, streaming, message kinds and timestamps
 
+**用户2026-10-24追加：渲染驱动的统一恢复提交点。** 冷启动／刷新及重连恢复期间，保留现有／缓存画面，REST与Socket在后台恢复；不能各自先到就单独替换对应可见投影，也不能等全部历史读取完毕才开始对账。同步条件由当前实际展示内容及维持其身份／顺序／正确性所需的数据依赖决定：前端须跟踪当前可见Timeline范围、已展开内容和其他当前呈现组件所依赖资源的本轮就绪情况，而不是仅查看某个整页Promise或Socket connected。该依赖集的历史／读取结果就绪，且Socket／活动Turn恢复至可确认边界并完成历史／事件对账后，一次提交连贯的可见投影，再执行已确认的前缀滚动衔接和卡片数据变化动画。单纯等待两个Promise完成不能代替一致性校验；具体边界及对账机制须依据现有消息身份、epoch和事件恢复契约设计，不凭请求完成时刻假定服务端原子快照。
+
+当前不展示的已安排读取可异步完成，不阻塞本次可见交接；更早历史、未展开详情仍沿既有按需语义，不因此全量下载。滚动、展开、切换页面／owner时重新确定展示依赖并校验就绪，过时结果不得满足新依赖；不能因隐藏内容慢而冻结当前可见界面。恢复期间Socket新事件继续有序接收／暂存和对账，避免丢失、重复及旧历史覆盖新输出；恢复边界不要求等待Turn结束或等待事件流永久静止，统一提交后恢复正常流式呈现，不给后续每次delta增加REST屏障。可见恢复完成与后台读取全部完成分开定义；APK5秒恢复成功条件对应当前可见依赖和Socket／Turn恢复就绪，未展示内容的慢请求不单独触发整页重载。本条细化并替代下文“请求返回即接管／全部读取完成”的宽泛表述；普通恢复之外的正常卡片更新仍按各自有效数据变化轻量动画。当前只确认交接语义，具体机制尚未实现。
+
+**用户2026-10-24澄清“全量快照”的读取范围：** 采用当前页面所需状态快照；Conversation正文及会话状态只读取页面上当前打开的Conversation，不下载其他Conversation正文或逐一激活其runtime。即使是当前Conversation，也不要求下载全部历史，只读当前页面需要的分页范围，早期历史与折叠详情保持按需加载。Conversation侧栏独立读取列表摘要，不等同于读取列表中每个会话的正文。通用恢复原则要求上述范围内该重读的资源完整覆盖，不扩大数据下载范围。
+
 **2026-10-15 用户确认底部留白：** Conversation Timeline 底部 padding 与 scroll-padding-bottom 统一为用户最终指定的 **64px**，避开 Secretary 悬浮球并保留正文间隙；替代此前试调的 52px，不改既有滚动跟随规则。
 
 A Conversation has **one** Timeline. It includes the original ordered persisted messages, the live assistant stream and temporary pending-steer *visual* bubbles as a distinct non-persisted tail projection. No extra composer-level Queue card, separate In-flight panel or second transcript is permitted.
 
-**用户2026-10-19确认：历史分层加载。** 保持当前首屏200条及已有分页语义；先读取普通可见正文、Thinking/工具卡外侧的真实名称、状态与身份，折叠正文、工具参数和结果随后受控分批补齐，用户展开优先。未加载、读取失败与真实空正文必须区分，失败可显式重试；切换会话取消失效详情请求，不抢占当前会话读取。只保留内存中的展示投影，不新增持久缓存或合成历史。
+**用户2026-10-19确认：历史分层加载。** 保持当前首屏200条及已有分页语义；先读取普通可见正文、Thinking/工具卡外侧的真实名称、状态与身份，折叠正文、工具参数和结果随后受控分批补齐，用户展开优先。未加载、读取失败与真实空正文必须区分，失败可显式重试；切换会话取消失效详情请求，不抢占当前会话读取。不合成历史；原“只保留内存、不新增持久缓存”限制由下方2026-10-24确认的过渡展示缓存边界补充替代。
+
+**用户2026-10-24确认：本地缓存仅作过渡展示。** 页面冷启动、刷新页面后、断线期间，以及历史请求与网络连接恢复就绪之前，先展示本地保存的快照，避免加载空窗；范围包含Timeline、Conversation侧栏列表以及底部UsageSummary／ContextIndicator两个卡片。不做复杂双端状态同步，不以缓存减少请求，不改成基于缓存的增量历史请求。每次仍按既有完整历史读取流程获取服务端内容，保留既有首屏／分页契约；服务端内容返回后接管展示并更新缓存，不能用旧快照复活已删除或rewind掉的消息。缓存按服务端和真实Profile／Conversation归属隔离，不能借其他owner的旧数据填充当前页面。Turn active时，Socket重连握手后还须通过正式状态恢复／事件回放对齐当前流式输出；缓存不是运行状态、事件游标或历史事实源，不得把旧快照当作已经恢复完成。此处确认产品边界，不代表缓存已实现；缓存载荷、容量和交接机制的正式技术方案见§1.4.1，仍待实施与验证。
+
+**用户2026-10-24追加确认：缓存到真实 Timeline 的视觉衔接。** 真实历史到达后，比较缓存展示与真实Timeline的最长公共前缀；比较仅用于视觉衔接，不改变全量读取或引入双端同步。若当前缓存视口显示的内容处于未变化的公共前缀内，接入真实内容时保留该视口的消息锚点与屏内位置，再用快速滚动动画衔接至真实Timeline末尾；禁止先清空再重绘、瞬间跳到底部或以重新挂载制造刷新感。前缀判等须包含消息身份与实际展示内容，不能只凭ID相同就认定未变化。若当前所见内容不在公共前缀内（例如另一客户端已经rewind），允许按真实结果重新呈现及定位，不要求伪造连续衔接。无位移则无需制造滚动；Turn active时仍沿正式恢复接入当前流式输出，不能为动画推迟或遗漏真实状态更新。动画的内部技术默认与实现计划见§1.4.1，尚未实施。
+
+**用户2026-10-24进一步确认：完整重请求属于Web UI通用恢复机制。** 网页与APK断线重连后均重新执行当前页面所需的完整服务端读取，覆盖初次刷新会获取的有效数据；不得仅连上Socket、补事件或因旧内存／binding存在而跳过应重读的数据。完整重请求不改变已有历史分页和详情按需加载范围，也不全库扫描所有会话。恢复完成须覆盖本轮请求结果及Socket／活动Turn状态恢复，不能仅以connected或旧缓存就绪作成功依据。保留已有页面和阅读位置，按上方前缀契约交接。APK回前台另有新的5秒恢复窗口要求：先保留页面，窗口内本轮网络读取及Socket／Turn恢复完成则不重载，超时由原生兜底；本条替代§1.2中旧的回前台立即刷新口径，不给普通网页新增5秒强制重载。前端缓存及交接逻辑共用于网页／APK；APK前端资源内置，须重打包安装后生效。当前仅确认机制与调查，尚未实施。
+
+**架构原则与扩展契约（用户2026-10-24确认）。** 目的在于减少用户手动刷新或APK自动整页重载：任何页面打开／冷启动及断线重连，在网络可用、读取成功后都应自动收敛到服务端最新状态。初始读取与重连恢复必须共享完整的页面数据覆盖；新增请求必须同时接入两条路径，不能留下仅组件mount或整页刷新才重读的数据。范围包括当前页面依赖的Profile／配置、侧栏列表、会话历史、Usage／Context、Secretary／Schedules／Pending／Compaction及当前已打开的Files目录／预览、详情等既有按需读取；不因此提前展开或下载尚未需要的内容。恢复须有本轮owner及完成／失败边界，不能把发起请求、吞掉异常、旧结果或Socket connected当作全部成功；切换页面／Profile、再次断线及服务epoch变化使对应旧结果失效。读取与活动Turn恢复协调，不能丢失／重复新到输出，不自动重放发送或其他写操作。新增读取的验证须覆盖无整页重载的重连后数据更新及失败恢复；通用约束同时记入AGENTS，不依赖某轮任务看板提醒。此为实施契约，现状不因文档确认而自动视为符合。
 
 实现采用已有`GET /api/sessions/{id}/messages`的可选`view=cards`；每条真实消息用`deferred_details`标记省略的折叠字段，普通可见正文与UID/row ID/顺序保持。详情用同一路径的`detail_row_ids`（最多12个真实row ID）返回原完整投影，只允许当前已验证compression spine中仍可展示的行；过时详情不能复活rewind行或覆盖另一会话。默认不传参数时原响应完整。`display_tool_status`仅携带从原结果计算的已有卡片状态，不从缺少正文推断成功。
 
@@ -281,6 +299,171 @@ Message ordering, Compaction lineage, framework carriers, UIDs and stream insert
 **同日用户要求审批弹窗排版修订：** 在保留现有主题和审批交互语义的前提下，改善移动端approval提权弹窗的信息层次、长命令／路径排版、文字与按钮布局，同时兼容桌面端；以实际前端组件分别提供移动端和桌面端截图。`once`／`deny`等原生choice及授权范围、关闭行为不变，不改变Clarify问答交互。
 
 **同日用户确认Patch replace审批diff：** 仅前端复用已接收的当前工具调用参数，为Patch replace模式提供审批前拟修改片段的差异渲染：路径、old_string、new_string及replace_all；新字符串为空时按删除展示。不得为此新增后端接口／diff字段，不将预览冒充执行后真实diff或完整文件。不扩大到V4A或write_file。审批只展示能与当前owner／当前待处理调用唯一对应的参数，不拿Terminal或其它调用参数猜测；缺少完整参数或存在歧义时保持原审批、选项与流程，不额外阻断审批。模型参数按文本转义显示，保留原文；非Patch审批及Clarify表现不变。
+
+#### 1.4.1. 页面恢复、过渡展示缓存与统一交接实施方案（2026-10-24）
+
+**当前状态：本轮6.1实现、主会话亲审、相关测试及实际Web收尾已完成，最终0.1.5/1005已签名构建；用户要求不再追加全量复审。实际APK生命周期按C17豁免未验，生产尚未部署。当前版本、独立报告的实际覆盖与交付边界统一见根CLAUDE及本轮final-delivery.md；下列产品契约不因执行状态改变。** 动态进度与最终结论以根CLAUDE及本轮`.autonomous/20261024-web-recovery/`为准。以下未来语气保留定稿时的计划语义，不表示当前尚未启动；原冻结方案可从`ba83d2b`读取。本节由独立Astra方案审查后形成，此后不再调用Astra。产品定义沿§1.3、§1.4及§1.13，不改变5秒硬兜底、滚向真实末尾或完整重读范围。结构、参数、容量、锁序、分包为内部技术决定，不冒称用户逐项指定；原代码基线为前端`f3a03ce32c0dd1e96719da210716caa2c1c7b8d4`。
+
+**目标和非目标。** 页面打开、刷新、初次失败后恢复、连接重建、APK回前台均经过同一个恢复入口；保留可读旧画面，重读当前需求，取得可证明相容的历史／事件投影后交接。浏览器不新增自动整页重载。不会建立通用增量同步协议、持久事件日志、客户端SessionDB、BFF、新Conversation生命周期或全库扫描；不回放写操作，不为这轮工作重写通知或发送受理机制。服务端各独立资源不承诺同一物理瞬间的全局事务；这里的“一致”是owner相同、历史覆盖可证明、Turn输出无缺口／重复、失效与新事件有序收敛。
+
+**实际基线。** Controller已有历史完整重读、binding、epoch、回放和UID对账；`session.activate`已有`state_snapshot`，快照和seq共用replay lock。RenderStore只是渲染合帧。REST页未携范围证明，`events.since`的数组与latest_seq分开取锁，部分reader吞错，Files和展开状态在组件内部，APK以connected取消deadline；这些不能直接组合成新恢复完成条件。复用原投影、typed output身份、提交受理、详情批次和阅读owner；增量补齐下列接缝。
+
+**R1 · 单一恢复owner与结果契约。** 新增前端`core/page-recovery.ts`，Controller持有唯一实例；页面／组件登记需求，不各自创建整页恢复循环。
+
+- `pageOwner = { serverOrigin, profile, screen, storedId? }`；Conversation的storedId为当前路由locator，另存服务端确认的`conversation_ref`／compression tip映射，不以runtime ID作缓存主键。Files的resource owner固定`FILES_PROFILE + root + path + preview`，与聊天Profile分离。
+- `documentId`在每次JS文档启动生成，仅内存；`connectionId`在每次真实WS建立时递增，即使同epoch也不同；`epoch`沿现协议。`recoveryId`在启动／重新恢复时递增，兼作请求取消与提交代次。`demandVersion`仅在当前展示依赖实际变化时递增。资源请求只另有自己的requestId，不再增加平行的全页代次。
+- `ReadResult<T> = { owner, recoveryId, requestId, coverage?, status: 'ok'|'error'|'cancelled', value?, error? }`；合法空数组、合法unknown数值、已确认404／不可用Profile分别是带明确语义的ok结果或路由失效结果，不以truthy判断。失败后保留的展示数据独立标记`retained`，不能转成ok；取消不能以resolve空值满足依赖。既有公共reader签名可保留，由内部adapter提供该结果，禁止从Promise fulfilled反推成功。
+- 状态为`retained → reading → reconciling → committed`，失败为`retryable-error`，owner／连接过时为`cancelled`。读取中保留画面，业务控制状态可以更新为unknown／不可操作；错误不自动当idle。网络可用且上次可见读取失败时自动重试，前台按1／2／5秒封顶重试，断网或隐藏时暂停；新恢复触发立即尝试，不依赖下一次gateway.ready。相同owner／同连接的并发触发合并为一次运行和一个dirty标志，不能不停abort重启。
+- owner切换、再次断线、epoch变化取消不适用请求和本轮提交资格；仍需保留的后台事务由既有发送／审批owner继续管理。正常delta不递增recoveryId。恢复完成后的滚动／展开是局部需求读取，不把整页退回冻结状态；恢复提交前的需求变化重新求当前集合，保留仍有效结果。
+- `readyForDisplay`只在当前需求全部成功、历史／流恢复证明有效并完成React该次提交后成立；`backgroundSettled`另记，不参与APK5秒成功条件。写操作回执、审批撤销、断线失效和通知观察继续同步处理，不能通过暂停真实事件消费保持画面。
+
+**R2 · 选定的最小后端增量：有界范围读＋既有activate恢复封套。** 不采用“REST／WS各等一次”方案，也不新增服务端长期快照库或DB schema。增加纯读sibling `hermes_state_recovery_view.py`、`tui_gateway/recovery_view.py`；既有REST与RPC薄接线共用前者。
+
+| 接口增量（均可选，旧调用完全保持） | 精确定义 |
+|---|---|
+| `GET /api/sessions/{id}/messages`的`recovery_view=1`、`anchor_uid`／`anchor_row_id`、`before`、`after` | recovery页可围绕任意仍可展示的消息定位，不能照搬现有仅human prompt的`/messages/around`。默认仍latest 200、单页最多500；不与旧offset或detail参数混用，冲突返回400。每次回完整所选cards窗口，不接受缓存版本来省略正文。 |
+| 同响应新增`coverage` | `{version:1, profile, requested_id, tip_id, lineage, window, digest}`；window含首／尾逻辑身份、前驱／后继、是否真实首／尾、逻辑顺序坐标、实际返回范围。digest为规范cards展示字段及身份／顺序的SHA256，排除临时URL、请求时间；折叠正文不进入cards digest，已展开字段另有detail digest。coverage只在本轮内存有效。 |
+| `session.activate`可选`recovery_view` | `{version:1, stored_id, profile, windows:[{selector, receipt}], details:[row identity…]}`。selector为latest或有界anchor范围，receipt必须来自本轮已完成的完整REST读取；默认最多两个窗口（当前视口窗口、最新页），单窗口≤500，detail沿12行批次。超出时分有界需求批次，不静默裁掉可见行。 |
+| activate响应新增`recovery_view` | 返回owner、epoch、stream cut、各窗口`matched`或该窗口**完整替换**cards、所需详情与范围证明、当前运行状态及`state_snapshot`、`complete`／明确失败原因。matched只表示服务端本次重读与receipt一致，不能由前端缓存自行确认；不匹配返回整个所需窗口，不发送行增删补丁。 |
+| `session.events.since` | 内部新增原子`read_replay_cut`helper，一次replay lock复制`events / latest_seq / truncated / epoch`的同一切点；锁外解码。原方法名、参数和原返回字段保持。open_requests仍按既有request snapshot规则对账，不谎称与DB共事务。 |
+
+能力由普通`session.resume/activate`响应的可选`recovery_view_version:1`宣告，`LiveSessionSnapshot`同步增该字段；收到后才发送新参数，封套内仍校验version。老后端继续现有读／回放和错误提示，不声称完成新版一致恢复，也不把兼容降级视为本轮交付通过。恢复封套是现有activate已有messages／state_snapshot读能力的有界扩展，不负责创建runtime；第一次只沿现有只读存在校验→resume／activate取得当前唯一binding，不批量绑定其他Conversation。
+
+**R3 · 历史读事务与封套的证明算法。** 选用“有限切点＋有界重读校验”，不引入所有writer必须维护的新revision。`history_version`仅是运行态辅助证据，`rewind_count`只覆盖rewind，二者都不能冒充所有历史变化版本。
+
+1. 纯读helper在**一个显式SQLite只读BEGIN事务、同一conn**内解析真实owner、compression spine、逻辑代表行、范围边界及所需正文；finally结束事务后才做图片引用、Markdown／cards投影。不能串调各自借新conn的`get_messages`来假装同一快照；沿`hermes_state_timeline._snapshot`的短事务模式。SQL复用现有UID退役、display_identity／首次逻辑顺序、active／compacted及branch排除语义；多段lineage先在SQL计算必要身份，再只取窗口payload，不沿当前多段`SELECT *`物化全部正文。旧只读库不得为GET补索引或回填身份。
+2. activate恢复helper先完成既有attach，再只持有目标session的`history_lock`，不持有全局resume lock跑DB读取。第一次短读D0确定本轮所需窗口、当前尾界、lineage／rewind计数、相关代表行字段摘要，以及当前Turn的持久起点／实际租约owner核对材料。D0释放DB事务后，在replay lock内复制完整输出快照和切点S，随后释放replay lock。第二次独立短读D1重新核对D0已覆盖区间，并取得**当前完整最新窗口**、可见anchor窗口和已展开详情。所有数据均有界；普通append不要求最后seq停止增长。
+3. D0与D1中原有区间的逻辑顺序、代表身份或实际展示字段变化，lineage／rewind发生变化，或当前活动Turn归属失效，均不得交接；返回`view_changed`，前端重读受影响的完整窗口后重试。后端每次封套最多重做一次，前端同轮最多两次立即重试，随后进入可重试错误／既有退避，不能在锁内无限循环到Turn结束。正常文本delta不改持久窗口，不触发该重试。
+4. D1相对D0的普通尾部追加不使整轮失败：D1完整最新窗口提供持久真值，S之前的输出来自完整快照，S之后继续从同一绑定的真实事件流接入。若短读间新增量超过本次最新窗口，且与仍需展示的D0窗口不能证明覆盖连续，则返回明确`coverage_gap`并重读所需窗口；不能靠去重猜测没有漏行。未展示间隔依R4保留缺口，不要求为了封套读取全部间隔。
+5. 快照中已持久化的节点按UID／真实row／tool occurrence与D1对账：D1有代表行时以该行的已展示字段为准；已退役／rewind的UID不得作为live尾巴复活。对快照涉及、但不在所选窗口内的持久身份只做有界分批存在性／归属查询，不拉正文。未持久化输出只能属于被本次锁内运行态与D1正式Turn租约／起点共同确认的当前Turn；外部owner已接管但本runtime没有其正式输出快照时返回`runtime_unavailable`，沿现有原生恢复／relay接线重取，不伪造空闲或借前一Turn文本。快照缺失仅在原生已确认idle且没有未对账输出时允许；active不得以`inflight.assistant`纯文字回退声称完整。
+6. D0、S、D1不是“DB与WS共用一个原子事务”。证明是：D0原有展示区间在D1仍相同，D1补足当前所需持久尾部；S输出的持久部分与D1身份相容，未持久部分有当前Turn依据；S之后的帧完整保留。D1之后新发生的变化属于后继更新，不要求无限追逐。由原子replay cut取得至有限水位B的连续后缀，按`(epoch,runtime,seq)`排序去重后在staging对账，B后的已到帧紧接提交正常处理。不可凭latest_seq跳过尚未收到的帧。
+7. 锁序固定为`目标history_lock → 短DB read事务（结束） → replay lock（结束） → 短DB read事务（结束）`，DB和replay lock**不嵌套**；不持锁做网络、图片读取／转换、投影序列化或等待下一事件。不取得SQLite写锁，不阻塞／接管模型请求；目标history lock采用有界等待，拿不到返回可重试状态，不终止Turn。测试须用真实双连接／跨进程写入覆盖D0/S/D1之间的rewind、追加与压缩，不以单进程锁测试代替。
+8. 已有`session.info`／Framework／complete等当前历史失效入口全部接入协调器。`sessions.changed`除侧栏外，也对当前Conversation登记一次合并历史重读；不因此读其他正文。补`change_watcher`的`rewind_count`签名，覆盖相同消息数量的undo／replacement；正式原生对当前消息内容的更新若没有现成失效通知，在该writer完成点复用现有变更广播，禁止只因DB任意表mtime变化就轮询全部历史。实现包必须列出本轮涉及的rewind／edit／delete／compression正式writer到失效入口的接线证据；外部直接SQL不作为受支持实时写接口。
+
+该算法在正常持续delta时能取得有限边界；破坏性改写持续发生时可以报告未恢复并重试，不能为了“必须5秒成功”接纳未证明数据。ring截断先用完整快照替换起点，再原子取后缀；缺口可由held帧补齐但必须逐序证明。新epoch、runtime替换、旧document／旧recovery结果全部丢弃；严禁旧cursor跨epoch继续使用。回放期间后继事件仅在投影staging暂存，安全／业务观察仍执行；恢复的副作用去重，不重复toast、完成通知或写入。
+
+入口拆为`observeControl(event)`与无副作用`reduceProjection(event, target)`：前者按已接收seq去重，后者按目标投影已应用seq去重，不能因为业务观察已经前进就跳过staging尚未覆盖的事件。held队列默认上限4096帧／8MiB，超限作明确恢复缺口，取更新完整快照重新建立起点；不得丢帧后报ready。目标history lock单次等待上限250ms，失败释放并交普通重试；DB短事务与大正文投影分别计时，以验收证据核实未长时间卡住Turn writer。
+
+**R4 · 可见需求、覆盖窗口与分页。** `core/history-coverage.ts`管理有序窗口及明确间隔；它是当前页面读结果索引，不是另一个持久历史库。`useTimelineReading`向协调器报告实际视口内第一／最后节点的持久别名和屏内offset；各Disclosure登记已展开的facet及其source identities。只登记DOM里实际可见的详情；已展开但远离视口的正文可以后台重读，进入视口前再校验。read demand来源不依赖新projection已经发布。
+
+- 冷启动从缓存最新窗口或空loading开始，仍请求latest 200；没有缓存不显示已确认空会话。暖恢复按当前阅读anchor有界定位，anchor不在latest 200时另读anchor窗口，不从offset=0逐页追赶到老位置。真值明确找不到anchor才允许刷新感；超时／未验证不等同anchor已删除。
+- 每页完整读取，默认200、上限500；按稳定逻辑顺序／身份选择相邻范围，首次最新页后冻结该页尾界用于后续分页。不能把新页offset与旧页offset直接拼接。返回的前驱／后继与已知重叠行用于校验邻接，冲突重读受影响整页；新append只扩展末端，rewind／代表替换按R3失效。旧offset接口继续服务旧客户端，前端新恢复路径使用有界anchor选择，普通“Load earlier messages”接同一helper。
+- 保留“加载过”与“本轮已验证”两种覆盖状态；已加载但不可见的旧页后台恢复，不挡当前屏。滚动使未验证页进入视口时，该局部保持旧画面／明确更新中，完成相同owner下的局部对账再采用；不能称旧页已验证，也不能让后台旧页覆盖当前页。收起／离屏解除对应阻塞需求，已经发出的有用请求可后台完成。
+- 比较对象是**对齐的展示快照窗口**：取恢复前当前屏及必要相邻节点组成有界窗口，冷缓存窗口最多200行；以真实左边界和逻辑身份对齐后，对该窗口从左到右求最长公共前缀。窗口起点不同先定位同一边界，不能直接数组第0项比较。判等包括可见正文、卡片名称／状态、timestamp和当前已展示facet；未展开正文不参与。恢复期间保留内存中已确认的窗口边界，不持久化滚动位置。该局部结论不宣称整个Conversation前缀已验证。
+- 动画终点是本次提交采用的**最新持久窗口＋已对齐live尾部**。深处anchor窗口与最新窗口不相邻时保留明确的分页间隔控制，复用“Load earlier messages”样式／加载语义；间隔不是timeline message，不伪造相邻历史、不把未读取内容画成旧正文，也不自动填满两窗口之间所有历史。动画路径只遍历当前挂载且本轮已验证的窗口与明确的分页间隔；尚未验证的已挂载中间页先转为该分页间隔，保留anchor所在DOM及offset，再开始动画。因而无需下载全部历史来滚向真实末尾。正常相邻页面不新增间隔。
+- 当前屏真值已提交后，动画准备与非可见页恢复不影响APK ready；动画需要的挂载区间尚未完成就先保持已恢复的锚点画面，准备好再执行一次，不假报动画已完成。用户主动滚动／展开时以新需求为准；不能在等待时把整页业务重新冻结。
+
+**R5 · 读取登记表与组件接线。** 新增`core/recovery-resources.ts`只集中reader登记和依赖规则，领域读取仍在原模块。`initialize/select/gateway.ready/online/visibility/Android恢复事件`调用同一`startRecovery(reason)`；初始化是否成功、是否已有validatedRoutes均不作为重试资格。route不存在时按正式404退到New Chat并清相应展示缓存，不能resume一个已删除locator。
+
+| 资源／正式owner | 可见提交依赖 | 后台／按需及接线 |
+|---|---|---|
+| Profile roster／当前Profile有效性 | 当前所有页的owner校验；新聊天Profile菜单实际展示数据 | `profiles.ts`每轮重读；失败保留展示不赋予创建权限。默认cwd在New Chat配置／发送依赖中重读；当前聊天不为无关默认cwd阻塞。 |
+| 侧栏摘要／真实标题 | 侧栏可见时其已显示列表范围；当前标题以当前owner有效metadata为依赖 | 跨Profile并发页保留，每个owner独立结果；隐藏侧栏请求后台，展开时读取其本轮必要页。不逐个加载会话正文或runtime。不能用一次first-page替换删掉屏内已加载更早列表页。 |
+| 当前Conversation cards／活动状态／stream | 始终是该Conversation当前可见范围依赖 | R2–R4；其余曾加载页后台。没有打开Conversation的New Chat／Files不绑定任意历史runtime。 |
+| UsageSummary／ContextIndicator | 当前显示的胶囊字段及已展开详情 | 胶囊显示Session或Latest Turn对应字段；另一视图可后台。沿usage原生失效／retained语义，context_unknown是真值，读取失败不是unknown真值。模型／provider变化先处理兼容失效。 |
+| Pending／审批／发送受理事实 | 当前Composer、Pending气泡、审批面板所需状态与可用动作 | 不从缓存恢复；恢复中撤销失效的可操作状态，既有准确受理状态检查只读执行，不自动重发。未打开详情后台。 |
+| Secretary／Schedules／Compaction | 当前Orb状态、已打开面板／排期列表及Context压缩状态所需字段 | 未展开排期正文不阻塞；仍按既有范围后台请求。结构上共享一个响应时可以等该响应，不能为了“拆小”伪造部分字段已成功。 |
+| Thinking／tool详情 | 当前视口内已展开facet的所有source rows | 组件把展开身份登记给协调器，HistoryDetails可针对staging cards加载，12行一批；取消／被替换记录明确结果。无需先把staging节点发布给React来触发effect。 |
+| Files root／directory／preview | Files页当前root和目录，预览打开时其metadata与实际呈现文件 | root、列表、preview effect纳入恢复代次；固定FILES_PROFILE。文本预览需读新文本；二进制预览按现有授权文件路径重取实际展示资源，隐藏文件不下载；第三方预览渲染失败明确失败，不能用旧ObjectURL算新读取。 |
+
+外观组件的open状态／viewport报告只决定依赖，不直接写恢复完成。所有资源均在本轮开始登记是否已安排、是否当前必需、结果覆盖；不能把`Promise.allSettled`全部结束当ready。新增reader必须在此登记初始／重连入口和失效边界，相关测试应能故意漏掉登记并观察恢复未满足，而非仅检查源码字符串。
+
+**R6 · 持久展示快照。** 新增`core/display-cache.ts`，使用独立IndexedDB `secretary-display-v1`，不修改现有drafts库。键为`[schemaVersion, canonical server origin, profile, stored route id]`；侧栏键另以server origin与明确owner roster命名，各行保留profile。origin包含scheme／host／有效port，不取WebView文件路径作server identity。首次真实owner确认前只读精确URL／已确认Profile匹配的候选，未能确认owner时不借default Profile填充。
+
+| 项 | 白名单／限制 |
+|---|---|
+| Timeline | 最新最多200条已持久化cards的身份、顺序、展示正文／timestamp／卡片外侧字段和附件引用；普通文本完整保存，折叠工具参数／结果／Thinking正文不持久化。可存一个当前可见的额外有界窗口，但不保存阅读位置；冷开默认最新窗口。 |
+| 侧栏 | 已成功读到的列表页摘要：真实owner/id、标题、preview、分组时间、pinned／archived展示字段及页覆盖；没有runtime_id/running/status/turn_started_at。管理操作仍向服务端校验，不以旧置顶／归档事实作写成功依据。 |
+| 胶囊 | Session Total／Latest Turn已经取得的展示数值、零值／unknown、原统计scope、context估算／失效语义、兼容所需model/provider及来源；不保存active／compacting、完整usage事件或恢复游标。 |
+| 明确禁止 | runtime/binding、seq、approval、pending、发送事务、临时command／temporary／steer节点、未持久化流式草稿、Notebook／Schedules实体、认证令牌、附件Blob、图片二进制或整个API响应。 |
+
+容量默认单Conversation 2MiB、总16MiB、最多10个Conversation，侧栏最多500条／1MiB；7天TTL，LRU淘汰，访问时间写入合并。单条正文过大不截断成假完整快照：跳过该Timeline窗口缓存，胶囊／侧栏仍可独立保存。schema不符、结构校验失败或过期条目直接丢弃；quota／私密模式／损坏均降级内存，不阻断网络恢复。不存在缓存不等于空历史。
+
+读取为启动并行过渡，只要真值已提交就不能让迟到IDB覆盖它。写入仅取本轮已成功对账并展示的白名单数据，后台窗口独立成功才更新对应缓存；合并至一次空闲写入，最多每秒一次，pagehide只尽力flush。不从恢复失败后保留的数值刷新“最后成功时间”。服务端404／明确owner消失时删相应条目；rewind／压缩以本轮真值替换原窗口，已删除消息不得从另一个旧窗口merge回来；模型／上下文不兼容时按原失效规则丢弃Context部分，不能延续错误百分比。退出／认证失败时停止展示敏感缓存并清本document投影；缓存无法授权访问或绕过登录。
+
+**R7 · 单次表现层交接与动画。** `Controller.state`仍是实时业务状态；新增明确的`visibleView`与`stagedView`，由协调器发布一次带`commitId`的不可变展示快照。RenderStore消费该展示快照并保留原流式合帧能力，不承担一致性判断。禁止把同一个可变binding对象同时放进staging与visible，避免无publish的深层变更泄漏。连接／错误／安全禁用等即时控制状态单独覆盖，不把过渡画面包装成可操作旧审批。
+
+- 交接前从现阅读owner取anchor与offset；提交后layout effect在同一帧先恢复该anchor的屏内位置，不清空、不换Conversation key、不重新mount Timeline。最长公共前缀覆盖当前所见时，进入`handoff-scroll`模式，暂停原`following → instant`及ResizeObserver抢位；用同一reading owner执行约240ms ease-out滚向提交后的尾部，结束后恢复原跟随策略。无位移不动画；已证前缀破坏允许重定位。
+- 动画目标以本次提交尾部为有限起点；期间真实delta继续呈现并更新尾部几何，动画总时长不续期，结束落在当时真实末尾，不等Turn结束。用户wheel／touch／键盘／拖滚动条立即取消本次自动动画并交还既有人工阅读规则，不在用户手势结束后重播旧交接。`prefers-reduced-motion`用一次受控定位替代运动，仅属可访问性降动效，不取消数据交接或最终末尾目标。
+- Usage／Context比较**当前实际呈现值的规范签名**，包含视图、数字／unknown、估算标识、窗口与实际显示字段，不比较对象引用、observed_at或请求完成次数。首次无旧数据建立基线不闪；同值不闪；实际有效变化背景高亮一次约120ms、约480ms淡回；600ms内连续变化合并、不重置无限闪烁。切owner重建基线，不把另一会话当旧值；用户切Session／Latest视图不伪装成后端数据更新。动画独立于真实selected/open状态，不改尺寸、不触发Timeline滚动，降动效时只保留短暂静态高亮。
+- 可见恢复ready在该次展示commit与anchor定位完成后回报；无需等240ms动画、缓存写入或背景所有请求完成。
+
+**R8 · APK JS／Native闭环。** 保留可信origin＋主frame检查和现有health心跳，只扩展packet parser与原生ForegroundRefresh；网页没有HermesAndroid时该层零行为。
+
+| 方向／包 | 字段与动作 |
+|---|---|
+| JS→Native `recovery-hello` | `{documentId, protocol:1}`；onPageStarted使旧document失效，Native接受当前可信页hello后记身份。不是恢复成功。 |
+| Native→JS `hermes:android-recover` | `{documentId, nativeRecoveryId, reason:'foreground'|'network'|'watchdog'}`；由evaluateJavascript派发。JS入口调用同一startRecovery，不只重新connect。 |
+| JS→Native `recovery-state` | `{documentId,nativeRecoveryId,recoveryId,demandVersion,state:'recovering'|'ready'|'failed'}`；ready必须来自R1/R7当前页面完成。Native只接收当前document＋nativeRecoveryId，旧包忽略；当前轮先recovering后ready，旧connected不得解除deadline。 |
+| JS→Native `health` | 保留connection并增documentId／最近recoveryId，只证JS存活与连接；不证本轮页面读取完成。 |
+
+原生确认真正从后台回前台且不是受保护的Activity result返回时，用单调uptime启动`nativeRecoveryId++`和**固定5秒deadline**，保留页面，投递恢复事件。若JS尚未hello则等待其hello后投递，但deadline仍从回前台开始；无响应到期照常兜底。重复onResume／online合并同一未完成原生轮次，不重置5秒；owner切换只改变JS需求版本，不能借此无限延长原生deadline。deadline前收到对应ready且心跳有效才取消重载，5秒后先到的超时判定赢，旧页ready不能撤回已经执行的reload。
+
+`online`不再调用立即reload：可信前台有JS时发起／合并同一恢复窗口，WS未断但REST失效也能恢复。首次正常冷启动不额外走回前台5秒重载，沿正常加载和既有无响应看门狗；初始化失败依可见恢复结果，不把吞错视作ready。兜底reload后依旧10／15／20／30秒封顶重试，每个新document必须完成对应恢复而非只connected；原生看门狗保持无JS独立能力。再次真实回前台重新开始5秒窗口及后续退避，不承接上次剩余时间。
+
+第三方认证页不注入恢复事件／业务数据，不自动重载打断登录；回到可信页后正常hello／恢复。拍照／文件选择的activityResults保护原样保留，返回后续读可发生但不以5秒抢断附件处理。通知目标继续由原生navigation保存，当前文档ready不等于已完成目标Conversation恢复；派发目标路由后由该owner的恢复完成回执确认，不能提前清目标。升级APK才取得新前端与协议；JS／Native版本不匹配保留旧能力明确降级，不能宣传新恢复已交付。
+
+**R9 · 实施工作包与集成顺序（本节只规划，不派发执行）。** **用户最新模型约束：本方案交回后不再调用Astra；后续代码改造统一由`gpt-6.1-sol`执行，允许委派subagent，主会话负责复核／协调，不安排任何Astra实施或后续评审。** 默认high，子Agent不再派生；此条覆盖06中旧轮次的固定Astra分工，仅对本次后续工作适用，不改旧验收事实。表内路径以主仓为默认；`web:`表示独立`hermes-secretary-web`根。每包只改其白名单，公共Controller／App最终接线由集成包独占；确需超白名单先向主会话说明具体依赖，不顺手扩写其它能力。新模块用于分离现有超大facade，不增加其健康超标指标。
+
+| 包／依赖 | 修改白名单与接口产出 | 完成判据及定向验证 |
+|---|---|---|
+| B1 范围读／无依赖 | 新`hermes_state_recovery_view.py`；`hermes_state_messages.py`只抽取可复用纯读接缝；`hermes_cli/web_routers/sessions.py`可选参数接线；`tests/hermes_cli/test_recovery_view.py`（新）／`test_history_cards.py` | 单conn事务、任意anchor、multi-lineage代表与UID退役、窗口证明、详情边界；旧接口响应不变。用真实SQLite证明深anchor不加载全正文、跨页插删不漏行；纯mock SQL不够。 |
+| B2 原子事件切点／无依赖 | `tui_gateway/event_replay.py`、`tui_gateway/methods_session.py`对应events.since接线、`tui_gateway/contracts/sessions.py`对应返回契约；`tests/tui_gateway/test_tui_gateway_event_replay.py` | events/latest/truncated同锁切点，真实并发stamp测试；原seq／epoch与ring上限不变。 |
+| B3 恢复封套／B1、B2 | 新`tui_gateway/recovery_view.py`；`tui_gateway/server.py`／`tui_gateway/methods_session.py`仅activate helper调用；`tui_gateway/contracts/sessions.py`可选字段；`tui_gateway/change_watcher.py`既有签名；新`tests/tui_gateway/test_recovery_view.py`／已有`tests/tui_gateway/test_inflight_output_recovery.py` | D0/S/D1、锁序、跨进程rewind／压缩、租约交接、ring缺口、持续delta有限完成；成功和失败DTO交F1。补已有writer通知时精确列实际缺少的writer文件，经主会话review后才加入白名单。 |
+| F1 协调器与数据接口／B1–B3契约可先用真实DTO fixture | `web:src/core/page-recovery.ts`、`web:src/core/history-coverage.ts`、`web:src/core/recovery-resources.ts`（新）；`web:src/api/types.ts`／`web:src/api/client.ts`读取接口；各新模块同名test | 结果结构、取消、需求版本、有限cut、staging提交及无缓存成功捷径；把后端真实输出固定fixture用于接线测试，不能只造理想DTO。 |
+| F2 展示缓存／F1类型 | `web:src/core/display-cache.ts`及test（新），只读取现drafts实现，不改drafts库 | fake-indexeddb测试owner、schema、TTL、quota、容量、旧IDB晚到、模型兼容、无runtime／临时节点；真实UI冷开再验。 |
+| F3 reader适配／F1类型 | `web:src/core/profiles.ts`、`web:src/core/session-list.ts`、`web:src/core/usage-view.ts`、`web:src/core/history-details.ts`及对应test；Secretary等Controller内reader仅产出补丁说明交I1 | 初始／重连同覆盖，结果不吞错冒充成功；history详情能读staging而非依赖React effect；侧栏可见旧页恢复正确。 |
+| F4 UI需求与动画／F1类型、F2接口 | `web:src/components/chat-presentation.tsx`、`web:src/components/Files.tsx`、`web:src/design/indicators.tsx`、`web:src/design/theme.css`（设计层只修改UsageSummary／ContextIndicator样式及动画）；`web:src/components/timeline-reading.test.tsx`、`web:src/components/presentation.integration.test.tsx`、`web:src/components/files-profile.test.tsx`及新恢复交接测试 | viewport／facet登记、可见窗口及分页间隔、无remount、anchor连续、人工输入、降动效、同值不闪；App调用点由I1接。 |
+| A1 APK闭环／F1恢复结果协议 | `web:src/api/android-health.ts`及test；Android路径均在`web:src-tauri/gen/android/app/src/`：`main/java/com/edgarzhong/hermessecretary/ForegroundRefresh.kt`、`main/java/com/edgarzhong/hermessecretary/AndroidBridgeState.kt`中的AndroidPacket parser、`main/java/com/edgarzhong/hermessecretary/MainActivity.kt`、`test/java/com/edgarzhong/hermessecretary/ForegroundRefreshTest.kt`、`test/java/com/edgarzhong/hermessecretary/AndroidBridgeStateTest.kt` | generation闭环、4.9秒ready／5秒失败、online／onResume合并、旧包、无JS、认证／附件／通知目标；不改通知内容、通道或保活策略。 |
+| I1 GPT-6.1代码集成／B1–A1 | `web:src/core/controller.ts`、`web:src/core/session-recovery.ts`、`web:src/core/render-store.ts`、`web:src/core/projection.ts`必要对账接缝、`web:src/App.tsx`、对应controller恢复测试；代码由`gpt-6.1-sol`执行，主会话亲审／协调，主仓README／AGENTS／CLAUDE由主会话独占 | initialize/select/gateway.ready/readers/Files/Android正式接线；旧发送受理／通知／编辑流程无回归。完成新状态机和矩阵证据才更新实现状态；不以包测试通过替代亲审。 |
+
+可并行的是B1与B2、F2与F3及A1协议实现；B3与B2共用`methods_session.py/contracts/sessions.py`必须顺序集成，不能同时编辑。F4与I1不同时修改App，所有样式改动保留用户现视觉。B3后先完成前后端真实DTO对接，再合F2／F3、F4、A1，最后I1整体审查及隐藏UI／原生验收。仅到未来获准实施时才创建任务／分工；本方案不授权提交、push或部署。
+
+**R10 · 验收矩阵与可执行验证入口。** 下列全部为待执行；现有测试报告仅证明原版本，不能填充新能力结果。
+
+**本轮后续明确授权C17：用户在可审签名APK之后豁免实际APK验收，仅完成Web实测与原生单测，并明确APK实际运行未验边界。** 不启动模拟器，不以Robolectric冒称实际WebView验收；R8产品机制、APK构建／签名／资源匹配和Web实际验收要求保持。下表为冻结验收判据，执行结果按本轮报告记录，不将定稿时的“待执行”当成当前动态状态。
+
+| 场景 | 应验证的行为／证据 |
+|---|---|
+| REST先／后到、同epoch重连、初次cold | 同一可见commit；没先清空／各自覆盖；每轮真实请求都发生 |
+| 复制events后并发stamp、ring截断、快照后真缺口、新epoch | 原子cut无虚水位，逐序补齐／有限失败；新epoch不接旧游标 |
+| D0/S/D1间append、同数replacement、跨进程rewind／压缩／delete | 无旧节点复活、无假相容；用真实独立DB连接／进程及正式writer，不用手改内存假装跨进程 |
+| 活动Turn持续delta、结束后立即新Turn、外部lease接管 | 不等待Turn结束；snapshot＋suffix无重复／丢失；缺正式relay证据不报idle或ready |
+| 旧anchor在很深历史、缓存起点变化、多页插删 | 有界定位，稳定覆盖证明；不得无界回读，不能把未验证当前缀破坏 |
+| 已加载1000行但只看最新屏，隐藏详情／Profile页很慢 | 可见交接和APK ready不等全量；隐藏旧页重新进入视口有独立就绪校验 |
+| 展开详情后断线；恢复中展开／收起／滚动 | staging详情可加载、无等React死锁，旧需求撤除，新需求不被旧结果满足 |
+| 深anchor与tail不相邻、交接动画中增长／用户输入 | 明确分页间隔，无旧未验证正文冒充通路；无instant抢位，输入取消，最终末尾正确 |
+| 跨Profile同ID、route切换、旧IDB／REST晚到、Files固定owner | 无越owner展示／缓存污染；列表不绑定所有runtime；Files root/preview确实重读 |
+| reader失败／取消／合法空／unknown／404；初次未validated | 不误报ready；错误可自动重试，404不恢复不存在Conversation |
+| Usage同值、实际变化、连续更新、模型切换、降动效 | 只对有效展示变化高亮，旧值不当新真值，布局和timeline位置不动 |
+| APK4.9秒ready、5秒超时、旧document/nativeId、online先到 | 按当前轮次解除或兜底，无connected捷径、不无限续期；后续10/15/20/30保持 |
+| APK冷启动、无JS、认证、拍照附件、通知目标跨刷新 | 首次不额外刷新，受保护流程不被打断，真实目标owner恢复后才完成导航 |
+
+前端在独立仓库执行（新增文件创建后才运行对应命令）：
+
+```bash
+npm run test -- src/core/page-recovery.test.ts src/core/history-coverage.test.ts src/core/display-cache.test.ts src/core/controller-state-recovery.test.ts src/core/controller-mobile-recovery.test.ts
+npm run test -- src/core/controller-profiles.test.ts src/core/session-list.test.ts src/core/history-details.test.ts src/core/controller-usage-view.test.ts src/core/controller-usage-source.test.ts src/api/android-health.test.ts
+npm run test -- src/components/timeline-reading.test.tsx src/components/presentation.integration.test.tsx src/components/files-profile.test.tsx src/components/recovery-handoff.test.tsx
+npm run typecheck
+npm run build
+```
+
+主仓使用既有项目虚拟环境与隔离测试库，不直接pytest；新增集成测试须默认禁真实模型与外部网络：
+
+```bash
+HERMES_PYTHON="$PWD/.venv/bin/python" scripts/run_tests.sh tests/hermes_cli/test_recovery_view.py tests/hermes_cli/test_history_cards.py tests/hermes_cli/test_session_timeline.py tests/tui_gateway/test_recovery_view.py tests/tui_gateway/test_tui_gateway_event_replay.py tests/tui_gateway/test_inflight_output_recovery.py
+.venv/bin/python scripts/check --staged --only footguns,shebangs,no-tmp,config-writers,os-marker-fakes,case-collisions,lazy-deps,profile-archives,ruff,health
+```
+
+冻结检查在未来有对应staged候选时运行；不为跑命令暂存他人dirty、不放宽规则／阈值、不重复跑无关大套。Android在已安装项目所需JDK／SDK／NDK的环境、前端build成功后，从独立仓库执行：
+
+```bash
+cd src-tauri/gen/android
+./gradlew :app:testDebugUnitTest --tests 'com.edgarzhong.hermessecretary.ForegroundRefreshTest' --tests 'com.edgarzhong.hermessecretary.AndroidBridgeStateTest' --tests 'com.edgarzhong.hermessecretary.HermesBootstrapTest'
+```
+
+JS／原生单测不能证明实际WebView生命周期与画面连续。后续验收只使用自建隐藏IAB连接隔离本地服务／合成真实协议fixture：记录请求次数、owner、recoveryId、commitId、cut、coverage、各资源完成／失败与滚动anchor offset；断网后用正式写入口改变隔离数据，再恢复网络核对。不得调用真实模型，不能操作用户现有页。需真实APK验证后台→前台、杀死JS／WS、通知目标、相机附件及5秒reload计数，保存版本／安装包资源SHA与原生日志；若当前显示保护或授权不允许操作模拟器／真机，明确该部分未验，不以Robolectric替代。最终重打包沿`npm run android:build`，签名／资源匹配核验后才称APK包含新能力；打包与安装／部署权限分开处理。
 
 ### 1.5. Tool rendering, Markdown and errors
 
@@ -427,7 +610,9 @@ Under/near the Composer, show a restrained usage component with two equal-size v
 
 **User-confirmed visibility (2026-10-13, R2-C73):** Once usage data for the selected actual Session has been successfully fetched, show it regardless of whether a Turn is running or idle. Turn activity MUST NOT suppress successful Session usage data. Latest Turn retains its completed-Turn meaning; fields for which no valid value has been obtained remain unknown. New Chat remains excluded under R2-C16.
 
-**User-confirmed incremental updates (2026-10-14):** For each field in both bottom capsules and their expanded views, update only when a new valid native value is obtained for the same Session and corresponding statistical view; zero is valid. Missing fields, unknown results, failed reads and Turn-state changes do not clear a previously valid in-memory value. Values never obtained remain unknown. Retention is memory-only, never frontend persistence, and must not leak across Sessions or incompatible views.
+**User-confirmed incremental updates (2026-10-14):** For each field in both bottom capsules and their expanded views, update only when a new valid native value is obtained for the same Session and corresponding statistical view; zero is valid. Missing fields, unknown results, failed reads and Turn-state changes do not clear a previously valid in-memory value. Values never obtained remain unknown. The former memory-only restriction is superseded only by the user-confirmed transitional display cache below; retention must not leak across Sessions or incompatible views.
+
+**用户2026-10-24确认：底部两个卡片缓存与通用数据更新动画。** UsageSummary（Session Total／Latest Turn对应统计）及ContextIndicator均保存已成功取得的展示数据，页面冷启动、刷新后及断线期间先显示同一owner的上次值；新值返回后原地接管并更新缓存。两个卡片的轻量动画以实际展示数据变化为触发条件，覆盖缓存交接、Turn结束及其他时点的Usage／Context有效更新，不仅用于请求返回或刷新缓存；重复请求返回相同展示值不触发。动画采用用户进一步指定的轻微选中态高亮：胶囊背景短暂亮起一次后柔和淡回，不改变实际选中／展开状态，不连续闪烁。须让用户能察觉“数据更新了”但不抢夺注意力，连续变化合并提示，避免逐帧／逐事件闪动。保持卡片位置和尺寸稳定，不先清空数值，不触发Timeline滚动；具体时长、强度和合并节奏按§1.4.1的内部技术默认实施并验证。保持原统计视图、零值及未知字段语义，不由缓存推算新的token或百分比；缓存不跳过usage／Context读取，也不能恢复旧的active／compacting状态或作为整轮恢复完成依据。真实模型／上下文不兼容时沿原失效规则处理，不能以缓存延续错误统计。尚未实施。
 
 Session Total SHOULD refresh as real native model-call/turn usage updates are available; Latest Turn switches to the most recently **completed** Turn, not the latest arbitrary assistant text segment. Missing/incompatible counters with no previously valid value are shown as unavailable/unknown, **not** obtained by dubious subtraction of lifetime aggregates. Cost presentation should not direct attention away from the conversation.
 
@@ -439,7 +624,7 @@ The adjacent Context control is a compact percentage ring, with an expanded deta
 - **User clarification (2026-10-17): previous readings are allowed as cold-start estimates.** After a cold start or a recycled runtime, restore usable Context and Session Total readouts from the same Session’s persisted native readings rather than requiring an exact live measurement. Reusing the previous value as an estimate is explicitly authorized: Context can use its persisted usage anchor, while Session Total can use the existing native persisted Session counters or the previous trustworthy value for that statistical view. These are usable estimates until superseded by valid live readings; do not reject them merely because no live runtime measurement exists. If there is no trustworthy previous value, omit the number rather than label it unknown. The expanded Context panel states, in one short sentence, that the value appears after the next model response (“Shows after the next model response.”) instead of printing placeholders. This clarification permits estimates; it does not relax Session/profile ownership or the following known-model-mismatch rules.
 - **User clarification (2026-10-17, cold restart follow-up): cold Context estimates become invalid only after a model switch or rewind.** Restore the same Session’s persisted native usage record across backend restart and runtime rebinding; ordinary append, compaction, and derived Framework messages must not by themselves suppress this authorized estimate. Keep the model’s exact native usage-anchor validation separate from the cold UI estimate. Compare the native model identity and rewind generation; an anchor persisted before model identity was recorded has no opinion and may still restore. A known model change or rewind omits the number until a new trustworthy observation is available. This is Hermes’s native usage anchor, independent of the Notebook coverage anchor.
 - Restoring must reuse an existing native read path. Do not add a dedicated API for this; if no existing read carries the persisted anchor, stop and escalate instead of inventing one.
-- A value restored this way is replaced by live numbers as soon as a real runtime reports them; no frontend persistence and no cross-Session leakage.
+- A value restored this way is replaced by live numbers as soon as a real runtime reports them; frontend persistence is limited to the transitional display snapshots authorized above on 2026-10-24, with no cross-Session leakage.
 
 **Additive API compatibility:** Reuse `session.resume` / `session.info.usage` and `session.context_breakdown`; no new endpoint or required request field. The optional `context_available` distinguishes unavailable legacy numeric placeholders, while optional `context_invalidated` and `context_invalidation_reason` (`model_changed` / `rewind`) explicitly retire an existing Context readout. Absent hints retain legacy compatibility. Original required breakdown fields and native exact anchor behavior remain unchanged; auxiliary display persistence is best-effort.
 
@@ -872,7 +1057,7 @@ A feature is not accepted because its button is present or its RPC returned 200.
 
 > **第三轮适用性：** 保留如实报告、兼容和薄客户端原则；Astra/Sol固定分工仅属第二轮，本轮角色按新计划。
 
-The final implementation report MUST contain: (a) current source revision and changed files; (b) native-reuse versus additive-delta list with why each addition was needed; (c) verified client/backend contract results and existing-client compatibility; (d) test matrix with real evidence and known limitations; (e) design-system token/component governance checks; (f) proof of no new backend service, client business database or durable API history cache; and (g) a concise list of unresolved items, if any, without declaring them complete.
+The final implementation report MUST contain: (a) current source revision and changed files; (b) native-reuse versus additive-delta list with why each addition was needed; (c) verified client/backend contract results and existing-client compatibility; (d) test matrix with real evidence and known limitations; (e) design-system token/component governance checks; (f) proof of no new backend service, client business database or durable API history cache beyond the transitional display snapshots explicitly authorized on 2026-10-24; and (g) a concise list of unresolved items, if any, without declaring them complete.
 
 **Change control:** no engineering, review or visual role may reinterpret a V1 product behavior, add an unrequested page/interaction, alter an existing native API or expand future scope without explicit user authorization. Astra leads technical decisions and Sol implements within assigned scope; neither may silently replace approved UX with a weaker behavior.
 

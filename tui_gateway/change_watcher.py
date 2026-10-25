@@ -126,7 +126,7 @@ _SESSION_SIGNATURE_FIELDS = (
     "id", "source", "session_key", "display_name", "model", "parent_session_id",
     "started_at", "ended_at", "end_reason", "message_count", "tool_call_count",
     "cwd", "git_branch", "git_repo_root", "title", "title_source", "profile_name",
-    "archived", "pinned", "hidden", "last_read_at", "handoff_state",
+    "archived", "pinned", "hidden", "last_read_at", "handoff_state", "rewind_count",
 )
 # path -> (database/WAL mtime, session-table digest). The mtime guard keeps the
 # normal 0.5 s watch pass stat-only; SQLite is read only after another process
@@ -200,8 +200,9 @@ def _sessions_sig():
     change signal. Hashing only those rows avoids false Desktop refreshes from
     unrelated state.db writes such as gateway heartbeats.
     """
+    from hermes_state_history_notifications import notification_path
     return tuple(
-        _session_db_content_sig(root / "state.db")
+        (_session_db_content_sig(root / "state.db"), _watcher_mtime_ns(notification_path(root / "state.db")))
         for root in (_watcher_home(), *_served_profile_homes)
     )
 
