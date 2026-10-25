@@ -2,6 +2,20 @@
 
 维护实际部署、故障处理、验证与回滚点；步骤和稳定布局见[部署SOP](cloud-deployment-sop.md)，当前任务只在根[CLAUDE](../CLAUDE.md)。以下时间均为Asia/Shanghai；PID、指纹和测试结论只对应记录时点，不代表实时状态。凭据、令牌、原始私人材料不写入本文件。
 
+## 2026-10-25 · 恢复／Thinking归属修复与界面收口联合上线
+
+**用户确认与现象：** 按部署前停下要求完成汇报后，用户明确上线；追加确认Alex置顶会话暂停空闲整理／压缩，两条顶部同步／重试横幅都移除，聊天区右侧不显示滚动条。随后用户描述新Turn Thinking跑到上一条Thinking下方，要求查最新版且不预设只有Steer触发。原0.1.4回退过早，但独立核查确认f3a03ce→原f3eb130的projection没有变化，原0.1.7亦可复现，不能把它写成仅旧版缺陷。
+
+**Thinking与界面实现：** 前端统一以source.message_uid／sourceMessageUid／nativeMessageUid证明Thinking owner，删除从历史最后一个deferred reasoning壳借owner的两处推断；真正同owner延迟facet先于常规去重处理，保其自己的Thinking补齐。Controller真实入口反例从c.steer→完成→无UID交接→新Turn→reasoning开始，在原版Thinking索引2、最新user4，修复后顺序正确；已提交新user及普通新Turn同样覆盖，不对Steer做场景硬编码。App仅移除两条顶层同步／重试横幅，恢复验证及退避保持；真实缺失owner、连接／操作反馈保持各自入口。CSS隐藏.hs-timeline原生条身并取消固定gutter，保overflow滚动；独立前端AGENTS及本轮06追加口径有效。
+
+**验证与证据：** Thinking85项定向、typecheck及差异审查通过；首次较宽236项在产品修复前有新增反例1及其它既有5项失败，不能由本次定向通过改写全套结果。主会话亲审正式接线后，最终恢复／页面／阅读4文件136项及build再次通过，6文件前端改动仅本次范围。隐藏IAB实际确认长正文右侧无条、仍可滚动；此前同隔离Profile真实5Turn、自然carry、同document恢复／503重试、草稿／Thinking保留证据保持各自范围。原生后端173项／最终31项及冻结10检查证据未变，不为review复跑大套。12份旧DTO无reasoning.delta，仅用于持久／延迟详情契约，不冒称流式排序证据。本地ignored`.hermes-dev/turn-completion-recovery-20261025/`保存thinking-before/after、补丁、最终测试／构建及UI图；不把隔离页面说成用户页已代验。
+
+**提交与发布：** 后端`2b6d5ec655135caaca141f68b5853e80ecb84283`已推main，前端`d644d4a08854b6a7cc5fb1b77f99fb9ef02d525e`已推origin/secretary。复用既有ai-title联合发布器及原remote_release.py的空闲、保护、备份、快进、原子静态切换和启动核验；只绑定本工作区及新artifact路径，不另建发布机制。初次绑定旧签出默认cwd在本地被拒，修正后无云影响；上传前复检遇Web活动两次拒绝、未停服／切换，独立检查随后Web0／三库有效Main租约0，等自然空闲后stage／apply成功。双服务实际2b6d5ec且active、微信connected，云端分支main；静态d644d4a／439文件与manifest逐SHA一致，Dashboard及10保护表／配置／绑定前后保持。部署期间保最新运行库，无自动数据库回滚或生产模型测试。
+
+**正式只读复核：** 实际HTTP入口JS／CSS／图标SHA匹配，入口代码不含两条同步横幅文案；Alex置顶旧会话最新200cards及正式activate恢复complete=true。核验当时有真实Main活动，恢复仍成功；Secretary local_enabled=false／next_idle absent／task idle，保持本次暂停要求。不刷新／操作用户当前页面，不触发生产模型请求；已提醒用户刷新一次载入新JS／CSS。APK0.1.7旧包未改，内置f3eb130与当前Web不同，本轮不包含重新打包或真机验收。
+
+**恢复与收尾：** 云受限`/home/ubuntu/.local/state/hermes-secretary/release-20261024/20261025-turn-recovery-2b6d5ec/`保存verified收据、post-release-verification及恢复说明，静态回退点由其old_static_path记录。最新本次及20261025-noting-context-final两套完整host／Alex／study三库校验后保留，清理更旧20261025-noting-context三库及sidecar；运行库／WAL／SHM、配置与databases-current.zip不动。不自动恢复原0.1.4或旧数据库；必要回退先核正在运行任务及版本兼容。
+
 ## 2026-10-25 · 暂停Alex置顶会话后台整理及相连空闲压缩
 
 用户在确认修复上线后，明确要求暂时关闭Alex置顶会话的空闲自动压缩和整理笔记。已核Alex数据库全部pinned物理行归属同一目标Conversation，经正式`noting_command(..., 'off')`写入会话参与偏好，不直接SQL写表、不新增Profile／独立Idle配置。读回local_enabled=false、global_enabled=true、next_idle absent、task idle；其它Conversation参与状态、当前Notebook Snapshot及Profile配置SHA保持。此开关暂停目标后台Noting及其相连Idle后压缩，保留已有Notebook、原生手动／容量压缩及Scheduler／Heartbeat，不自动恢复。无服务重启、历史写入或模型调用；受限回执`/home/ubuntu/.local/state/hermes-secretary/config-changes/pinned-noting-off-20261025/receipt.json`，后续恢复须用户明确要求再原生noting on。

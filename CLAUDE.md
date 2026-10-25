@@ -6,7 +6,7 @@
 
 ## 当前阶段
 
-2026-10-25：正常Web Turn完成后的恢复误拒已在本地修复、亲审及验收。部署前已按要求停下汇报，**用户现已明确确认上线，并要求暂时关闭Alex置顶会话的空闲自动压缩和整理笔记**。正在通过原生会话参与开关关闭该目标后台Noting及相连Idle压缩，并准备main联合发布；其它会话／Profile及Scheduler／Heartbeat保持。当前线上仍为回退网页f3a03ce／后端7bc57298，实际切换后更新版本。后端在现有main签出`/Users/edgar/code/hermes-secretary-web-release`，前端源码仍在`../hermes-secretary-web`的main；不开新worktree、不启自主套件。主仓原有presentation报告dirty保留。
+2026-10-25：正常Turn完成后恢复误拒及Thinking跨Turn错位均已修复、亲审、验证并上线；按用户追加要求移除两条顶部同步／重试横幅，隐藏聊天区右侧滚动条而保留滚动能力。生产后端main为`2b6d5ec`，网页为`d644d4a`，联合发布及只读核验通过。Alex置顶会话已原生noting off，空闲整理／相连压缩暂停，不自动恢复；其它会话／Profile及Scheduler／Heartbeat保持。后端在现有main签出`/Users/edgar/code/hermes-secretary-web-release`，前端源码在`../hermes-secretary-web`的main；不开新worktree、不启自主套件。主仓原有presentation报告dirty保留。
 
 通用规则只查[AGENTS](AGENTS.md)，稳定事实／规格索引只查[README](README.md)，历史操作与回退只查[运维记录](docs/operations-log.md)。已结束的Agent编排与逐次发布流水不作为当前任务。
 
@@ -14,9 +14,9 @@
 
 | 项目 | 已核结果 |
 |---|---|
-| 后端 | 本轮代码已提交并推送main；云端检出main，Web／Gateway实际运行`7bc57298be9fa4ee24de97f70d13c5b9c4a7de4c`，双服务active、微信connected |
-| 前端 | 已紧急回退到`f3a03ce32c0dd1e96719da210716caa2c1c7b8d4`（0.1.4）；439静态逐SHA及HTTP入口资源核验通过，无服务重启。浏览器需刷新一次载入；源码main仍为f3eb130，未经新授权不得重新覆盖回退版 |
-| Android | 已交付0.1.7／1007未改；内置f3eb130网页与本次回退后的生产网页已不同，不能再宣称二者一致。本次用户要求正常Web立即可用，未重打APK；实际生命周期未验 |
+| 后端 | `2b6d5ec655135caaca141f68b5853e80ecb84283`已提交／自动push，云端检出main，双服务实际同版本且active、微信connected；后继纯文档提交不改变运行版本 |
+| 前端 | `d644d4a08854b6a7cc5fb1b77f99fb9ef02d525e`已提交／自动push并上线，439静态逐SHA及HTTP入口资源核验通过；0.1.4回退结束。顶部同步横幅移除，聊天滚动条隐藏，Thinking按正式消息身份归属；浏览器需刷新一次载入 |
+| Android | 已交付0.1.7／1007未改，仍内置原f3eb130；本次仅Web修复／发布，未重打APK，不能宣称内置前端与当前网页一致；实际生命周期未验 |
 | Noting／压缩 | 跨进程活动证明覆盖子任务、多Turn、Notebook提交、父压缩及Framework实际结算；独立压缩fence不提前报idle，不新增Main准入锁 |
 | Context | 旧热runtime不能覆盖新压缩读数，冷热读取共用有效边界并计入Framework增量；生产正式恢复后两API及重复读取同为55,716／262,144（21%），真实Chrome自动恢复一致、未刷新 |
 | 数据保护 | 历史、Notebook、排期、配置、绑定及Dashboard发布前后对账通过；保留最近两套完整三库，旧6个备份文件已清理，运行库及同步ZIP保持 |
@@ -28,15 +28,19 @@
 
 | 工作 | 状态 |
 |---|---|
-| 正常Turn完成后恢复失败／紧急回退 | 已验后端修复获用户上线确认；相关173项／最终专项31项、前端118项及冻结10检查通过。用户已确认两条同步／重试横幅都移除、后台自动恢复保留，并明确聊天区不显示右侧滚动条，滚动能力保留。前端最小修改及定向验证后联合发布，无需再次等待授权；另核最新版Thinking是否会错挂到上一条消息，按表现检查、不限定Steer机制 |
+| 本次恢复／Thinking／界面修复 | 联合上线收据verified；REST最新200、正式Socket恢复complete=true、入口无两条横幅、439资源与目标包一致；用户当前Main运行亦能正常恢复。置顶local_enabled=false／next_idle absent读回保持。未代刷新用户页，不把接口验证冒称用户浏览器使用已验 |
 | 后端实现、集成亲审、定向验证 | 已完成；正式接线与跨进程、owner、过期、异常和结算边界已覆盖 |
-| 上一轮前后端联合部署与线上核验 | 原版本证据保留；本次紧急回退后网页为f3a03ce，修复版尚未发布 |
+| 上一轮前后端联合部署与线上核验 | 原版本证据按历史时点保留；本次回退已结束，当前版本以上线表为准 |
 | 原0.1.7重新打包 | 原包及签名／439资源核验保留；本次未重打APK，与当前回退网页不同 |
 | 核心文档整理 | 已收敛为稳定入口／通用规则／当前看板；历史原文和报告保留，详见运维记录 |
 
-后端子Agent整包已交回，主会话已亲审并等价整理专项测试条件表、完成最终代码检查及实际隐藏页面验收。用户已确认发布，按已验文件SHA提交／自动push并复用既有发布器，保护presentation dirty；不在生产触发模型测试、不打断活动Turn。云端只发布main，规则见AGENTS。
+两个子Agent整包均已亲审；主会话负责整合、实际隐藏页、最终构建与发布。复用已有发布器，活动预检拒绝时不切换，等待自然空闲后完成联合发布，保最新数据库；未触发生产模型测试。当前范围收口，保护presentation dirty；云端只发布main，规则见AGENTS。
 
 ## 验证摘要与边界
+
+Thinking问题在原0.1.7同样存在，本次才修复：历史末条延迟reasoning不能作为新Thinking的owner，统一以source／native消息UID判断，并保真正延迟facet补齐。Controller反例先败（Thinking索引2、最新用户4）后过；普通连续Turn、carry及已提交新user对照、own／foreign／unbound owner共85项定向及typecheck通过。首次较宽测试另有5项既有失败，保留原日志，不称全仓绿。追加横幅／CSS后及Thinking整合后，136项恢复／阅读回归与最终build通过；隐藏IAB实际右侧无可见条，滚动仍有效。证据`.hermes-dev/turn-completion-recovery-20261025/thinking-*.txt`、`frontend-final-*.log`和`ui/no-scrollbar*.png`；原85项与136项有交叉，不加总。
+
+本次联合发布云受限`release-20261024/20261025-turn-recovery-2b6d5ec/`，本地ignored同证据目录`release/`。正式旧会话REST／Socket及会话开关读回通过，生产模型测试0；439静态、历史／Notebook／排期／配置／绑定／Dashboard保护通过，备份按最近两套收尾。活动窗口拒绝及本地发布器默认cwd误用均保留，不冒充首次全成功；具体见运维记录。原冻结修复待确认和回退材料均保留历史时点，当前状态以上线表为准。
 
 本次修复证据统一ignored`.hermes-dev/turn-completion-recovery-20261025/summary.json`，子Agent原生链路证据在`.hermes-dev/heartbeat-recovery-20261025/`。实际反例为后端idle／完整历史但恢复runtime_unavailable；漏查完成回执来源、带Steer后缀误依赖单用户complete，以及无正文／UID的队列交接混入display快照均已修。七文件最终173项通过；原pending容量夹具首次5秒等待超时，runner重试及独立定向复测通过，不称首次全绿。主会话等价测试重构后31项无重试通过／25.2秒；冻结10检查最终0 blocking／0 advisory，初次仅测试HX011已修。前端118项及typecheck通过，产品未改；439本地dist同f3eb130原manifest。隐藏IAB真实SSE模型替身完成5Turn，原故障复现、修复后自然carry、同document后端重启／断线／503自动重试、Thinking／草稿保留及外部追加收敛均已验；5user／6assistant含唯一外部追加、无重发。生产修复期操作0、真实供应商请求0；未跑全仓、未做APK真机，不将隔离验收冒称线上已修。
 
