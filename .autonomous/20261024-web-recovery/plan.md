@@ -33,4 +33,4 @@
 
 主仓产品52c5088、Web2346a03已提交并自动push核同。最新APK为 `.hermes-dev/web-recovery-20261024/Hermes-Secretary-0.1.5-2346a03-arm64.apk`，SHA256 `b92f0ade5594e5005c6f9b57e9f1ea1e2a4477920fce988492d5b6ede261b949`，32,091,269字节，439内置资源零差异、v2同证书。
 
-原始证据统一ignored `.hermes-dev/web-recovery-20261024/`；最新实际页面在validation-final，包核验在apk-delivery-*，详情机制在frontend/detail-*。Verification历史和原Validation判读保留，不伪造最后一次独立全范围审查通过。实际APK未验、生产未部署，用户使用线上仍需配套后端上线。原隔离服务仅用于本轮，用户53445/53446与其他任务dirty不动。
+原始证据统一ignored `.hermes-dev/web-recovery-20261024/`；最新实际页面在validation-final，包核验在apk-delivery-*，详情机制在frontend/detail-*。Verification历史和原Validation判读保留，不伪造最后一次独立全范围审查通过。实际APK生命周期仍按C17未验；用户10/25追加授权后已合回main并上线配套后端90e8435，截图对应真实旧会话已核对200行及完整恢复。原隔离服务仅用于本轮，用户53445/53446与其他任务dirty不动。
