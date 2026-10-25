@@ -1,4 +1,4 @@
-"""Auxiliary Responses normalization must not certify a partial checkpoint."""
+"""Auxiliary Responses normalization preserves terminal limits and refusals for summary policy."""
 
 from types import SimpleNamespace
 
@@ -37,7 +37,7 @@ def _adapter_response(final, *, streamed, base_url=""):
     ).create(messages=[{"role": "user", "content": "Summarize the task."}])
 
 
-def test_compressor_rejects_actual_adapter_partial_summary(monkeypatch):
+def test_compressor_adopts_actual_adapter_partial_summary(monkeypatch):
     partial = SimpleNamespace(
         status="incomplete", output=[_message("PARTIAL_CHECKPOINT")],
         incomplete_details={"reason": "max_output_tokens"}, error=None,
@@ -63,10 +63,12 @@ def test_compressor_rejects_actual_adapter_partial_summary(monkeypatch):
     result = compressor.compress(messages, current_tokens=999999, force=True)
 
     assert calls == [None]
-    assert result == original and messages == original
-    assert compressor._previous_summary is None
-    assert compressor._last_summary_truncated_failure is True
-    assert compressor._last_compress_aborted is True
+    from agent.compression_partial import TRUNCATION_NOTICE
+    assert result != original
+    assert "PARTIAL_CHECKPOINT" in compressor._previous_summary
+    assert compressor._previous_summary.endswith(TRUNCATION_NOTICE)
+    assert not compressor._last_summary_truncated_failure
+    assert not compressor._last_compress_aborted
 
 
 _TOOL_CALL = SimpleNamespace(
@@ -128,3 +130,13 @@ def test_actual_adapter_preserves_completion_contract(
     if expected_finish == "tool_calls":
         call, = choice.message.tool_calls
         assert (call.id, call.function.name, call.function.arguments) == ("call_1", "inspect", '{"path":"x"}')
+
+
+def test_compressor_still_rejects_content_filtered_actual_adapter_partial(monkeypatch):
+    final = SimpleNamespace(status='incomplete', output=[_message('Plausible but filtered')],
+                            incomplete_details={'reason': 'content_filter'}, error=None, usage=None)
+    monkeypatch.setattr('agent.context_compressor.call_llm', lambda **kw: _adapter_response(final, streamed=True))
+    monkeypatch.setattr('agent.context_compressor.get_model_context_length', lambda *a, **kw: 100000)
+    compressor = ContextCompressor(model='test/model', quiet_mode=True)
+    assert compressor._generate_summary([{'role': 'user', 'content': 'Summarize'}]) is None
+    assert compressor._previous_summary is None

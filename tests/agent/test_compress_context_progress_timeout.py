@@ -128,11 +128,11 @@ class TestResolveContextCompressionTimeouts:
         above the ceiling raises the ceiling too, and a larger explicit idle is kept."""
         import agent.auxiliary_client as aux
         monkeypatch.setattr(aux, "_effective_aux_timeout", lambda task, timeout: 300.0)
-        assert resolve_context_compression_timeouts({}) == (300.0, 600.0)
-        assert resolve_context_compression_timeouts({"context_timeout_seconds": 900}) == (900.0, 900.0)
+        assert resolve_context_compression_timeouts({}) == (300.0, 1000.0)
+        assert resolve_context_compression_timeouts({"context_timeout_seconds": 900}) == (900.0, 1000.0)
         monkeypatch.setattr(aux, "_effective_aux_timeout", lambda task, timeout: 900.0)
-        assert resolve_context_compression_timeouts({}) == (900.0, 900.0)
-        assert resolve_context_compression_timeouts({"context_timeout_seconds": 0}) == (0.0, 600.0)
+        assert resolve_context_compression_timeouts({}) == (900.0, 1000.0)
+        assert resolve_context_compression_timeouts({"context_timeout_seconds": 0}) == (0.0, 1000.0)
 
     def test_zero_idle_disables_wrapper(self):
         idle, ceiling = resolve_context_compression_timeouts(

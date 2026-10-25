@@ -117,6 +117,7 @@ def aux_probe_mode():
 
 
 from agent.credential_pool import load_pool
+from agent.auxiliary_chat_stream import _ChatStreamAccumulator
 from agent.model_metadata import MINIMUM_CONTEXT_LENGTH, get_model_context_length
 from hermes_cli.config import get_hermes_home
 from hermes_cli.config_providers import _canonical_api_mode
@@ -373,6 +374,7 @@ def _anthropic_aux_stream_event_hook() -> Callable[[Any], None]:
     started = time.monotonic()
 
     def _on_event(event: Any) -> None:
+        from agent.compression_partial import observe_stream_event
         if _anthropic_event_has_content(event):
             _notify_aux_provider_response()
         else:
@@ -383,6 +385,7 @@ def _anthropic_aux_stream_event_hook() -> Callable[[Any], None]:
             raise TimeoutError(
                 "Anthropic auxiliary stream timed out at the host compression "
                 f"deadline after {time.monotonic() - started:.0f}s (the caller already stopped waiting)")
+        observe_stream_event(event)
 
     return _on_event
 
@@ -1359,6 +1362,7 @@ class _CodexStreamGuard:
         self.check_cancelled()
 
     def on_event(self, _event: Any) -> None:
+        from agent.compression_partial import observe_stream_event
         # TTFP telemetry records every frame, but forward progress (compression commit fence,
         # no-progress window) counts only substantive payloads — keepalives must not re-arm,
         # so a zombie stream dies at the same window as a dead connection.
@@ -1371,6 +1375,7 @@ class _CodexStreamGuard:
         else:
             _notify_aux_timing_response()
         self.check_cancelled()
+        observe_stream_event(_event)
 
     def finish(self) -> None:
         """Owner ``finally``: stop the watchdog and release FDs a stranger-thread timeout only shut down."""
@@ -1601,6 +1606,10 @@ class _CodexCompletionsAdapter:
                 if tc.function.name in wire_aliases:
                     tc.function.name = wire_aliases[tc.function.name]
         except Exception as exc:
+            from agent.compression_partial import response_after_timeout
+            partial = response_after_timeout(TimeoutError(guard.timeout_message()) if guard.timed_out.is_set() else exc)
+            if partial is not None:
+                return partial
             if guard.timed_out.is_set():
                 raise TimeoutError(guard.timeout_message()) from exc
             logger.debug("Codex auxiliary Responses API call failed: %s", exc)
@@ -1613,7 +1622,8 @@ class _CodexCompletionsAdapter:
             tool_calls=tool_calls_raw or None,
         )
         choice = SimpleNamespace(index=0, message=message, finish_reason=finish_reason)
-        return SimpleNamespace(choices=[choice], model=model, usage=usage)
+        return SimpleNamespace(choices=[choice], model=model, usage=usage,
+                               incomplete_details=getattr(final, "incomplete_details", None))
 
 
 class _ChatShim:
@@ -1785,14 +1795,17 @@ class _AnthropicCompletionsAdapter:
                 if not isinstance(existing, dict):
                     existing = {}
                 anthropic_kwargs["extra_body"] = {**existing, **passthrough}
-        response = create_anthropic_message(
+        from agent.compression_partial import call_with_partial
+        response = call_with_partial(lambda: create_anthropic_message(
             self._client,
             anthropic_kwargs,
             # Record provider-response timing every event, but tick forward progress only for
             # substantive payloads so keepalives can't hold a stalled summary open. None keeps
             # the fast get_final_message path.
             on_stream_event=(_anthropic_aux_stream_event_hook() if _aux_progress_active() else None),
-        )
+        ))
+        if hasattr(response, "choices"):
+            return response  # compression-only normalized partial from a timed-out stream
         _nr = get_transport("anthropic_messages").normalize_response(response, strip_tool_prefix=self._is_oauth)
         usage = None
         if hasattr(response, "usage") and response.usage:
@@ -7195,139 +7208,17 @@ def _aggregate_chat_stream(
         model=model, total_ceiling=total_ceiling, host_deadline=_current_aux_stream_deadline())
     try:
         consume_chat_stream(chunks, acc, no_progress)
+    except Exception as exc:
+        from agent.compression_partial import response_after_timeout
+        partial = response_after_timeout(exc)
+        if partial is None:
+            raise
+        return partial
     finally:
         _close_chunk_stream(chunks)
     return acc.finish()
 
 
-# Reasoning-detail fields whose non-empty text counts as forward progress.
-_REASONING_DETAIL_TEXT_FIELDS = ("summary", "thinking", "content", "text")
-
-
-class _ChatStreamAccumulator:
-    """Shared per-chunk accumulation so sync and async aggregation cannot drift."""
-
-    def __init__(self, model: str = "", total_ceiling: Optional[float] = None,
-                 host_deadline: Optional[float] = None):
-        self._started = time.monotonic()
-        self._total_ceiling = total_ceiling
-        # Absolute instant the waiting host gives up; checked alongside (not instead of) the
-        # ceiling, and unaffected by pre-construction dispatch/TTFT.
-        # Checked as well as (not instead of) the ceiling above: the ceiling still bounds callers with no
-        # host deadline, and the host deadline is absolute, so it is unaffected by however long dispatch and
-        # TTFT took before this accumulator was constructed. See #99692.
-        self._host_deadline = host_deadline
-        self.content_parts: List[str] = []
-        self.reasoning_parts: List[str] = []
-        self.reasoning_details: List[Any] = []
-        self.tool_calls_acc: Dict[int, Dict[str, Any]] = {}
-        self.finish_reason = self.usage = None
-        self.resp_id = ""
-        self.resp_model = model or ""
-
-    def _check_deadlines(self) -> None:
-        """Raise TimeoutError past the total ceiling or the host deadline."""
-        now = time.monotonic()
-        if self._total_ceiling is not None and (now - self._started) >= self._total_ceiling:
-            raise TimeoutError(f"Auxiliary streamed call timed out after {self._total_ceiling:.0f}s "
-                               "total ceiling (stream still open but over budget)")
-        if self._host_deadline is not None and now >= self._host_deadline:
-            raise TimeoutError("Auxiliary streamed call timed out at the host compression "
-                               f"deadline after {time.monotonic() - self._started:.0f}s "
-                               "(the caller already stopped waiting; streaming on would only "
-                               "pin its session lease)")
-
-    def _feed_reasoning_details(self, delta: Any) -> bool:
-        """Collect ``reasoning_details`` (OpenRouter-style thinking); True only when a detail
-        carries text, so structural/signed envelopes can't keep a stall alive."""
-        reasoning_details = getattr(delta, "reasoning_details", None)
-        if reasoning_details is None:
-            model_extra = getattr(delta, "model_extra", None)
-            if isinstance(model_extra, dict):
-                reasoning_details = model_extra.get("reasoning_details")
-        if not isinstance(reasoning_details, list):
-            return False
-        made_progress = False
-        for detail in reasoning_details:
-            self.reasoning_details.append(detail)
-            if isinstance(detail, dict) and any(
-                isinstance(detail.get(f), str) and detail[f] for f in _REASONING_DETAIL_TEXT_FIELDS):
-                made_progress = True
-        return made_progress
-
-    def _feed_tool_calls(self, delta: Any) -> bool:
-        """Merge tool-call fragments by index; True when any fragment carried data."""
-        made_progress = False
-        for tc in (getattr(delta, "tool_calls", None) or []):
-            idx = getattr(tc, "index", 0) or 0
-            acc = self.tool_calls_acc.setdefault(idx, {"id": "", "name": "", "arguments": []})
-            if getattr(tc, "id", None):
-                acc["id"] = tc.id
-                made_progress = True
-            fn = getattr(tc, "function", None)
-            if fn is not None:
-                if getattr(fn, "name", None):
-                    acc["name"] = fn.name
-                    made_progress = True
-                if getattr(fn, "arguments", None):
-                    acc["arguments"].append(fn.arguments)
-                    made_progress = True
-        return made_progress
-
-    def feed(self, chunk: Any) -> bool:
-        # Every frame records transport timing (TTFP); only a substantive payload ticks the
-        # forward-progress hook that keeps compression alive (and is reported as True).
-        _notify_aux_timing_response()
-        self._check_deadlines()
-        self.resp_id = getattr(chunk, "id", None) or self.resp_id
-        self.resp_model = getattr(chunk, "model", None) or self.resp_model
-        chunk_usage = getattr(chunk, "usage", None)
-        if chunk_usage:
-            self.usage = chunk_usage
-        choices = getattr(chunk, "choices", None) or []
-        if not choices:
-            return False
-        choice = choices[0]
-        self.finish_reason = getattr(choice, "finish_reason", None) or self.finish_reason
-        delta = getattr(choice, "delta", None)
-        if delta is None:
-            return False
-        made_progress = False
-        from agent.message_content import flatten_message_text
-
-        piece = flatten_message_text(getattr(delta, "content", None), sep="")
-        if piece:
-            self.content_parts.append(piece)
-            made_progress = True
-        reasoning_piece = getattr(delta, "reasoning", None) or getattr(delta, "reasoning_content", None)
-        if reasoning_piece is None and isinstance(getattr(delta, "model_extra", None), dict):
-            reasoning_piece = delta.model_extra.get("reasoning") or delta.model_extra.get("reasoning_content")
-        reasoning_piece = flatten_message_text(reasoning_piece, sep="")
-        if reasoning_piece:
-            self.reasoning_parts.append(reasoning_piece)
-            made_progress = True
-        # Evaluate both unconditionally: they accumulate state, not just progress.
-        made_progress |= self._feed_reasoning_details(delta)
-        made_progress |= self._feed_tool_calls(delta)
-        if made_progress:
-            _notify_aux_progress()
-        return made_progress
-
-    def finish(self) -> Any:
-        tool_calls = None
-        if self.tool_calls_acc:
-            tool_calls = [
-                SimpleNamespace(id=acc["id"], type="function", function=SimpleNamespace(
-                    name=acc["name"], arguments="".join(acc["arguments"])))
-                for _idx, acc in sorted(self.tool_calls_acc.items())]
-        message = SimpleNamespace(
-            role="assistant", content="".join(self.content_parts), tool_calls=tool_calls,
-            reasoning="".join(self.reasoning_parts) or None,
-            reasoning_details=self.reasoning_details or None,
-        )
-        choice = SimpleNamespace(index=0, message=message, finish_reason=self.finish_reason or "stop")
-        return SimpleNamespace(id=self.resp_id, model=self.resp_model, object="chat.completion",
-                               choices=[choice], usage=self.usage)
 
 
 async def _aggregate_chat_stream_async(

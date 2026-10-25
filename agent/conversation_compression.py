@@ -482,6 +482,8 @@ class CompressionCommitFence:
         self._cancelled_lock_release: Optional[Callable[[], None]] = None
         self._cancelled_lock_release_requested = False
         # Touched per streamed token so waiters tell SLOW-but-alive from HUNG (no fixed wall-clock kill).
+        from agent.compression_partial import PartialCapture
+        self.partial = PartialCapture()
         self._last_progress = time.monotonic()
         self._progress_observed = False
         self._deadline: float | None = None
@@ -666,7 +668,7 @@ class CompressionCommitFence:
 
 # Defaults for the in-agent progress-aware wrap; mirror hermes_cli.config.DEFAULT_CONFIG["compression"] keys.
 DEFAULT_CONTEXT_TIMEOUT_SECONDS = 120.0
-DEFAULT_CONTEXT_TOTAL_CEILING_SECONDS = 600.0
+DEFAULT_CONTEXT_TOTAL_CEILING_SECONDS = 1000.0
 
 # Unlike explicit_interrupt, a /stop after the stall window arms the durable backoff (no automatic re-entry).
 # Distinct from ``explicit_interrupt``: a /stop that arrived after the summary stream had already crossed
@@ -848,6 +850,8 @@ def _record_stall_interrupted_backoff(
     """Persist a stall-interrupted cooldown after snapshot restore.
     Must run *after* ``_restore_compressor_attempt_state`` so rollback cannot wipe the new row. Returns True
     when the backoff was recorded."""
+    if commit_fence is not None and commit_fence.partial.adopted:
+        return False  # a frozen prefix is being published by the replacement owner
     if not compression_attempt_stalled(commit_fence=commit_fence, started_at=started_at):
         return False
     compressor = getattr(agent, "context_compressor", None)
@@ -1052,39 +1056,7 @@ def _run_pinned_compression_retry(
     return result_msgs, result_prompt
 
 
-def _await_worker_within_budget(
-    future: Any, fence: CompressionCommitFence, *, idle: float, ceiling: float, wait_started: float
-) -> Tuple[bool, Any]:
-    """Poll ``future`` under the idle budget + ceiling; ``(True, result)`` when it settled."""
-    while True:
-        waited = time.monotonic() - wait_started
-        remaining_ceiling = ceiling - waited
-        if remaining_ceiling <= 0:
-            return False, None
-        # Charge idle budget from LAST PROGRESS, not slice start, or silence could approach 2x the budget.
-        since_progress = fence.seconds_since_progress()
-        wait_slice = min(max(idle - since_progress, 0.005), remaining_ceiling)
-        try:
-            return True, future.result(timeout=wait_slice)
-        except concurrent.futures.TimeoutError:
-            # Aliases builtin TimeoutError (3.11+): also fires when the WORKER died with one (#63892).
-            # A settled future never unsettles — re-waiting spun ~2k iter/s; take the stall path now.
-            if future.done():
-                exc = future.exception()
-                if exc is None:
-                    return True, future.result()
-                logger.info("Context compression worker exited with %r — taking the stall path", exc)
-                return False, None
-            waited = time.monotonic() - wait_started
-            since_progress = fence.seconds_since_progress()
-            if not fence.deadline_exceeded and since_progress < idle and waited < ceiling:
-                logger.info(
-                    "Context compression still streaming after %.0fs (last progress %.1fs ago) — extending wait (ceiling %.0fs)",
-                    waited, since_progress, ceiling,
-                )
-                continue
-            return False, None
-
+from agent.compression_wait import _await_worker_within_budget  # noqa: E402
 
 def _await_in_flight_commit(
     future: Any, *, ceiling: float, wait_started: float, on_commit_overrun: Optional[Callable[[float, float], None]]
@@ -1269,6 +1241,11 @@ def run_compress_context_with_progress_timeout(
         since_progress = fence.seconds_since_progress()
         # Lease is free, so run the fallback BEFORE on_timeout: that callback records
         # the summary-failure cooldown, which would no-op the retry's summary call.
+        from agent.compression_partial import recover_partial
+        partial = recover_partial(fence, worker=fallback_worker or worker, messages=messages,
+                                  telemetry_agent=telemetry_agent, new_fence=new_fence)
+        if partial is not None:
+            return partial
         if stall_fallback:
             recovered = _retry_compression_on_fallback_chain(
                 worker=fallback_worker or worker, messages=messages, system_prompt_fallback=system_prompt_fallback,
@@ -1317,7 +1294,7 @@ def run_compress_context_with_progress_timeout(
         # stall-fallback retry below needs a prompt host return (pinned by the #76354 S3 latency contract),
         # and the fence poison + attempt-generation supersession already protect state against its late
         # unwind.
-        if total_exhausted:
+        if total_exhausted and fence.partial.freeze() is None:
             # A total-ceiling candidate may be unwinding a healthy provider call; keep its
             # lease until it exits so no other attempt overlaps the unchanged source.
             fence.retain_compression_lock_until_worker_done()
@@ -1341,7 +1318,7 @@ def run_compress_context_with_progress_timeout(
         # Idle-timeout: cancel won pre-commit. Also free the worker's durable lease via
         # the holder-qualified hook so a NEW compressor can acquire at once (no ABA).
         handled_exit = True
-        _release_cancelled_worker(future, fence, total_exhausted=total_exhausted, ceiling=ceiling)
+        _release_cancelled_worker(future, fence, total_exhausted=total_exhausted and fence.partial.freeze() is None, ceiling=ceiling)
         # Leave the future on the shared pool: fence cancel won, so a late
         # commit cannot land (same detachment model as gateway hygiene).
         return _recover_from_stall()
@@ -2998,6 +2975,7 @@ def _run_summary_dispatch(
     # flow. Any active hook (even no-op) selects the streamed path: the timeout is
     # inactivity-based and a byte-trickling provider hits the stream total ceiling.
     from agent.auxiliary_client import aux_interrupt_protection, aux_progress_hook, aux_stream_deadline
+    from agent.compression_partial import capture_scope
     _progress_hook = commit_fence.touch_progress if commit_fence is not None else (lambda: None)
     # Return leg: cancel frees the owner but the provider daemon streams on to its
     # own larger ceiling; share the host deadline so orphan streams stop with it.
@@ -3030,6 +3008,7 @@ def _run_summary_dispatch(
             compressed = messages
         else:
             with (
+                capture_scope(commit_fence.partial if commit_fence is not None else None),
                 aux_progress_hook(_progress_hook), aux_stream_deadline(_host_stream_deadline),
                 aux_interrupt_protection(cancel_check=_compression_cancel_requested),
             ):

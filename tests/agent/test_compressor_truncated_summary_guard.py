@@ -1,23 +1,8 @@
-"""Truncated compaction summaries must never become checkpoints.
-
-Port of earendil-works/pi#7048 (commit 97fa14e39): a summarization response
-whose ``finish_reason == "length"`` contains PARTIAL text — the generation
-stopped on the output-token cap mid-summary. Persisting it as the compaction
-checkpoint silently truncates the conversation's memory and feeds the cut-off
-text back into every subsequent iterative-update prompt.
-
-Covers all three compressor summarization sites:
-  1. ``_generate_summary`` (main batch summary) — length stop raises, falls
-     back to main model once, then ABORTS compression preserving messages.
-  2. ``_micro_summarize_one`` (micro-compact rolling summary) — length stop
-     discards the partial merge (returns None) so the exchange stays
-     unabsorbed.
-(The former third site, ``_build_chunk_digests``, was removed on main by
-#96603 — lean digests now ride the single ``_generate_summary`` request, so
-its guard is covered by site 1.)
-"""
+"""Usable truncated summaries commit with a notice; empty/refused results stay unusable."""
 
 from unittest.mock import MagicMock, patch
+
+from agent.compression_partial import TRUNCATION_NOTICE
 
 import pytest
 
@@ -92,76 +77,31 @@ class TestSummaryRefusalGuard:
 
 
 class TestGenerateSummaryTruncationGuard:
-    def test_length_stop_is_rejected_and_aborts(self):
-        """A length-stopped summary must not become a checkpoint; with no
-        distinct aux model to fall back from, compression ABORTS and the
-        session is preserved unchanged."""
-        with patch("agent.context_compressor.get_model_context_length", return_value=100000):
-            c = ContextCompressor(
-                model="test", quiet_mode=True,
-                protect_first_n=2, protect_last_n=2,
-                abort_on_summary_failure=False,
-            )
-        msgs = _msgs()
-        with patch(
-            "agent.context_compressor.call_llm",
-            return_value=_mock_response("partial summary that got cut o", "length"),
-        ):
-            result = c.compress(msgs, current_tokens=999999, force=True)
-
-        assert result == msgs
-        assert c._last_summary_truncated_failure is True
-        assert c._last_compress_aborted is True
-        assert c._last_summary_fallback_used is False
-        # The partial text must never be stored for iterative updates.
-        assert c._previous_summary is None or "cut o" not in (c._previous_summary or "")
-
-    def test_length_stop_falls_back_to_main_model_once(self):
-        """With a distinct aux summary model, a length stop retries once on
-        the main model (which may have a larger output budget) and succeeds."""
-        with patch("agent.context_compressor.get_model_context_length", return_value=100000):
-            c = ContextCompressor(
-                model="main-model",
-                summary_model_override="small-aux-model",
-                quiet_mode=True,
-            )
-        truncated = _mock_response("partial...", "length")
-        ok = _mock_response("full summary via main model", "stop")
-        with patch(
-            "agent.context_compressor.call_llm",
-            side_effect=[truncated, ok],
-        ) as mock_call:
-            result = c._generate_summary(_msgs(2))
-
-        assert mock_call.call_count == 2
-        assert result is not None
-        assert "full summary via main model" in result
-        assert c._last_summary_truncated_failure is False
-
-    def test_repeated_truncation_escalates_cooldown_across_turns(self):
-        """#69637: a later turn (e.g. an async delegation completion arriving after the cooldown lapsed)
-        must not re-arm a fresh flat 30s attempt. Consecutive length-stopped summaries walk the durable
-        60s -> 300s -> 900s ladder, one LLM call per turn, and the transcript is preserved every time."""
+    def test_length_stop_is_accepted_with_notice(self):
         with patch("agent.context_compressor.get_model_context_length", return_value=100000):
             c = ContextCompressor(model="test", quiet_mode=True, protect_first_n=2, protect_last_n=2)
-        clock = [1000.0]
-        recorded = []
-        with (
-            patch("agent.context_compressor.time.monotonic", side_effect=lambda: clock[0]),
-            patch("agent.context_compressor.call_llm", return_value=_mock_response("partial...", "length")) as call,
-        ):
-            for _turn in range(4):
-                msgs = _msgs()
-                assert c.compress(msgs, current_tokens=999999) == msgs
-                cooldown = c._summary_failure_cooldown_until - clock[0]
-                recorded.append(round(cooldown))
-                clock[0] += cooldown + 1  # the next turn arrives right after the cooldown lapses
-        assert recorded == [60, 300, 900, 900]
-        assert call.call_count == 4
-        # Truncation keeps its own streak: the timeout ladder (which arms the deterministic stall
-        # fallback via _prior_timeout_failures) is untouched.
-        assert c._consecutive_timeout_failures == 0
-        assert c._consecutive_truncation_failures == 4
+        with patch("agent.context_compressor.call_llm", return_value=_mock_response("partial summary", "length")):
+            result = c.compress(_msgs(), current_tokens=999999, force=True)
+        assert any("partial summary" in m.get("content", "") for m in result)
+        assert c._previous_summary.endswith(TRUNCATION_NOTICE)
+        assert not c._last_compress_aborted
+        assert not c._last_summary_truncated_failure
+
+    def test_length_stop_does_not_request_another_model(self):
+        with patch("agent.context_compressor.get_model_context_length", return_value=100000):
+            c = ContextCompressor(model="main-model", summary_model_override="small-aux-model", quiet_mode=True)
+        with patch("agent.context_compressor.call_llm", return_value=_mock_response("partial", "length")) as call:
+            result = c._generate_summary(_msgs(2))
+        assert call.call_count == 1
+        assert result.endswith(TRUNCATION_NOTICE)
+
+    def test_accepted_partial_does_not_arm_failure_cooldown(self):
+        with patch("agent.context_compressor.get_model_context_length", return_value=100000):
+            c = ContextCompressor(model="test", quiet_mode=True)
+        with patch("agent.context_compressor.call_llm", return_value=_mock_response("partial", "length")):
+            assert c._generate_summary(_msgs(2))
+        assert c._summary_failure_cooldown_until == 0
+        assert c._consecutive_timeout_failures == c._consecutive_truncation_failures == 0
 
     def test_other_transient_failures_keep_short_cooldown(self):
         """Control: empty-content stays on the flat 30s rung and does not bump the truncation streak."""
@@ -254,7 +194,7 @@ class TestGenerateSummaryTruncationGuard:
 
 
 class TestMicroSummarizeTruncationGuard:
-    def test_length_stop_discards_partial_merge(self):
+    def test_length_stop_keeps_partial_merge_with_notice(self):
         with patch("agent.context_compressor.get_model_context_length", return_value=100000):
             c = ContextCompressor(model="test", quiet_mode=True)
         c._micro_compact_rolling_summary = "existing rolling summary"
@@ -263,7 +203,7 @@ class TestMicroSummarizeTruncationGuard:
             return_value=_mock_response("partial merge tex", "length"),
         ):
             result = c._micro_summarize_one("user: hi\nassistant: hello")
-        assert result is None
+        assert result == "partial merge tex\n\n" + TRUNCATION_NOTICE
 
     def test_stop_finish_reason_merges(self):
         with patch("agent.context_compressor.get_model_context_length", return_value=100000):

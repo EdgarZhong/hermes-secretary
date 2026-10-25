@@ -138,16 +138,10 @@ class MicroCompactionMixin:
             logger.info("micro-summarization call failed: %s", exc)
             return None
 
-        # A length stop means a partial merge; leave the exchange unabsorbed so a later pass retries.
-        if _cc()._response_finish_reason(response) == "length":
-            logger.warning(
-                "micro-summarization output hit the token cap (finish_reason=length) — discarding partial summary",
-            )
-            return None
 
-        message = response.choices[0].message
-        content = message.get("content") if isinstance(message, dict) else getattr(message, "content", message)
-        content = (content if isinstance(content, str) else str(content) if content else "").strip()
+        from agent.auxiliary_client import extract_content_or_reasoning
+        from agent.compression_partial import annotate_summary, response_truncated
+        content = extract_content_or_reasoning(response, max_reasoning_chars=8000)
 
         from agent.agent_runtime_helpers import strip_think_blocks
         content = strip_think_blocks(None, content).strip()
@@ -157,7 +151,7 @@ class MicroCompactionMixin:
         if _cc()._is_refusal_response(response, content):
             logger.warning("micro-summarization returned refusal content — discarding unusable summary")
             return None
-        return content
+        return annotate_summary(content, response_truncated(response))
 
     def _needs_defrag(self) -> bool:
         """Return True when the rolling summary is large enough to defrag."""

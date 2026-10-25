@@ -660,7 +660,7 @@ DEFAULT_CONFIG = {
         # tokens move. Clamped >= context_timeout_seconds when that is > 0. A started SessionDB
         # commit is never abandoned: past the ceiling it is logged (WARNING, then ERROR) and
         # surfaced on the warning channel while the host keeps waiting.
-        "context_total_ceiling_seconds": 600,
+        "context_total_ceiling_seconds": 1000,
         # Non-system head messages kept verbatim in ADDITION to the (always protected) system
         # prompt. Product default 0: a Conversation is one topic, so the protected head only
         # fossilizes turns the summary already covers (and the decay rule drops it after the first

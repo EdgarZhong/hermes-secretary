@@ -30,7 +30,10 @@ from agent.auxiliary_client import (
     _message_field,
     aux_interrupt_protection,
     call_llm,
-    extract_content_or_reasoning,
+)
+from agent.compression_partial import (
+    PartialSummary, adopted_summary, annotate_summary, response_finish_reason as _response_finish_reason,
+    response_truncated,
 )
 from agent.context_engine import ContextEngine, sanitize_memory_context
 from agent.context_compressor_prellm import PreLlmSkipMixin
@@ -147,26 +150,7 @@ def _is_hygiene_preagent_only_cooldown(error: object) -> bool:
     return any(marker in text for marker in _HYGIENE_PREAGENT_ONLY_COOLDOWN_MARKERS)
 
 
-def _response_finish_reason(response: Any) -> str:
-    """Lowercased ``choices[0].finish_reason`` of a dict- or object-shaped response; ``""`` when unreadable."""
-    try:
-        if isinstance(response, dict):
-            first = (response.get("choices") or [{}])[0]
-            reason = first.get("finish_reason") if isinstance(first, dict) else getattr(first, "finish_reason", None)
-        else:
-            choices = getattr(response, "choices", None) or []
-            reason = getattr(choices[0], "finish_reason", None) if choices else None
-        return str(reason).strip().lower() if reason else ""
-    except Exception:
-        return ""
-
-
-# Marker for a length-stopped (PARTIAL) summary; the except-branch classifier keys
-# on this exact substring, so keep raise sites and classifier in sync.
-# RuntimeError marker raised when the summarizer's generation stopped on the output-token cap
-# (``finish_reason == "length"``). A length stop means the summary text is PARTIAL — persisting it as a
-# compaction checkpoint would silently truncate the conversation's memory and feed the cut-off text back
-# into every subsequent iterative-update prompt. (Ported from earendil-works/pi#7048 / commit 97fa14e39.)
+# Legacy failure marker retained for restored cooldown compatibility; usable partial text is accepted.
 _TRUNCATED_SUMMARY_MARKER = "finish_reason=length"
 
 # A provider can return a natural-language refusal with finish_reason="stop". It is
@@ -217,7 +201,10 @@ def _is_refusal_response(response: Any, content: str) -> bool:
     An explicit provider ``message.refusal`` wins even when ``content`` looks like a
     summary; otherwise fall back to the prose detector on the extracted content.
     """
-    return bool(_response_refusal_text(response)) or _is_summary_refusal(content)
+    from agent.compression_partial import field
+    blocked = _response_finish_reason(response) in {"content_filter", "refusal"} or field(
+        field(response, "incomplete_details", {}), "reason") == "content_filter"
+    return blocked or bool(_response_refusal_text(response)) or _is_summary_refusal(content)
 
 
 def _is_summary_access_or_quota_error(exc: Exception) -> bool:
@@ -4070,8 +4057,9 @@ Summary generation was unavailable, so this is a best-effort deterministic fallb
 
     def _call_summary_llm(self, prompt: str, prompt_started_at: float) -> str:
         """Issue the single aux summary call; return validated content text.
-        Raises RuntimeError for empty content or a length-truncated (PARTIAL) summary so the failure
-        routes through main-model fallback + cooldown instead of wiping the compacted turns."""
+        Empty/refused responses fail; a usable partial remains an explicitly annotated summary."""
+        if (partial := adopted_summary()) is not None:
+            return partial
         # call_llm writes the route it actually selected; never pre-resolve a second, stale pair.
         _aux_route: Dict[str, str] = {}
         call_kwargs: Dict[str, Any] = {
@@ -4121,7 +4109,7 @@ Summary generation was unavailable, so this is a best-effort deterministic fallb
             )
         if self._compression_cancelled():
             raise AuxiliaryExplicitCancellation()
-        # Reasoning-field fallback (DeepSeek/Qwen/Kimi put the summary in reasoning_content); capped.
+        from agent.auxiliary_client import extract_content_or_reasoning
         content = extract_content_or_reasoning(response, max_reasoning_chars=8000)
         where = f"(provider={self.provider or 'auto'} model={self.summary_model or self.model})"
         # Some OpenAI-compatible proxies (e.g. cmkey.cn, one-api channels) return a well-formed HTTP 200
@@ -4138,22 +4126,7 @@ Summary generation was unavailable, so this is a best-effort deterministic fallb
             # established fallback/cooldown/abort path for an empty body, so it
             # can never be committed as `_previous_summary`.
             raise RuntimeError(f"Context compression LLM returned refusal content {where}")
-        # A finish_reason of "length" means the summarizer hit its output token cap mid-generation: the text
-        # present is PARTIAL. Persisting a partial summary as the compaction checkpoint silently truncates
-        # the conversation's memory — the cut-off text replaces the real middle turns AND is fed back into
-        # every subsequent iterative update prompt, compounding the loss across compactions. Treat it as a
-        # failure so it routes through the same main-model fallback + abort machinery as other degraded
-        # responses instead of becoming a checkpoint. (Ported from earendil-works/pi#7048.)
-        # A length stop means the merged rolling summary is partial — persisting it would silently drop the
-        # tail of the merge and feed the cut-off text into every later micro-compact pass. Leave the
-        # exchange unabsorbed instead; a later pass retries it. (Same class as _generate_summary's guard;
-        # pi#7048.)
-        if _response_finish_reason(response) == "length":
-            raise RuntimeError(
-                f"Context compression summary was truncated ({_TRUNCATED_SUMMARY_MARKER}): generation hit the output "
-                f"token cap and the summary is incomplete {where}"
-            )
-        return content
+        return PartialSummary(content) if response_truncated(response) else content
 
     def _generate_summary(
         self, turns_to_summarize: List[Dict[str, Any]], focus_topic: Optional[str] = None,
@@ -4195,6 +4168,7 @@ Summary generation was unavailable, so this is a best-effort deterministic fallb
         prompt = self._build_summary_prompt(content_to_summarize, summary_budget, focus_topic, memory_context, has_user_turn)
         try:
             content = self._call_summary_llm(prompt, prompt_started_at)
+            partial = isinstance(content, PartialSummary)
             # Strip <think> blocks: they would be stored, injected, and compounded on every iterative update.
             from agent.agent_runtime_helpers import strip_think_blocks
             content = strip_think_blocks(None, content).strip() or content
@@ -4205,6 +4179,7 @@ Summary generation was unavailable, so this is a best-effort deterministic fallb
             summary = _reinject_pruned_skill_markers(summary, _pruned_skill_names)
             summary = summary if no_default_tail() else self._ground_historical_task_snapshot(summary, turns_to_summarize)
             summary = self._augment_summary_lean(summary, turns_to_summarize)
+            summary = annotate_summary(summary, partial)
             self._validate_summary_user_provenance(summary, has_user_turn)
             # A detached stale attempt must not publish its late summary onto shared compressor state:
             # the fallback already advanced _previous_summary and owns the cooldown/error fields. The

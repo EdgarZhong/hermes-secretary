@@ -2,6 +2,19 @@
 
 维护实际部署、故障处理、验证与回滚点；步骤和稳定布局见[部署SOP](cloud-deployment-sop.md)，当前任务只在根[CLAUDE](../CLAUDE.md)。以下时间均为Asia/Shanghai；PID、指纹和测试结论只对应记录时点，不代表实时状态。凭据、令牌、原始私人材料不写入本文件。
 
+
+## 2026-10-25 · Compact失败取证与1000秒配置（代码修复尚未发布）
+
+用户明确本次优先研究置顶会话Compact等待10分钟失败，随后要求立即修复并部署：保持思考和原生保尾，总时限1000秒；长度／窗口截断及超时均采用已收到的可用非空摘要，摘要末尾加系统notice说明不完整，不因缺少正常结束标记整次失败。明确Stop及无内容不伪造摘要。
+
+只读取证确认22:17:00摘要请求发到原生kimi-coding／k3.1-pro，prompt76444字符；300／598秒分别距最近实质流式进展1.8／4.2秒，22:26:59达600秒总上限，取消发生在摘要提交前。原生保留原文续跑，22:28:08正常完成，80–81%是未压缩上下文真实占用；不是已提交压缩后Context旧值。更晚22:36的failed_turn通知属于约6秒后显式Stop的新Turn。原始证据ignored `.hermes-dev/context-after-native-compaction-20261025/`，不将未记录的正文／reasoning分项冒称事实。
+
+已经正式`set_config_value('compression.context_total_ceiling_seconds','1000')`写入Alex Profile；原值未显式配置（有效默认600），读回有效idle300／total1000，规范化配置除该key外完全相同，无服务重启／模型调用。受限配置备份及回执在`/home/ubuntu/.local/state/hermes-secretary/config-changes/compact-total-1000-20261025/`。部分摘要修复已完成：仅native compression安装attempt-owned采集，Chat／Responses／Anthropic保留已收prefix，length／明确窗口错误／timeout均接入非空非拒绝摘要采用；host超时冻结候选，通过原生replacement fence提交，原fence保持取消，不重发模型。notice在实际摘要正文末尾、原生END边界之前；lean／legacy原生保尾和正常续跑保持，旧worker退出后durable／Context边界／completed回执与无失败cooldown均对账。主会话亲审及10文件187项通过，异常日志微修后31项通过，冻结10检查0 blocking／0 advisory；初次仅新增catch缺日志已修，未放宽门禁。尚未发布，运行后端仍2b6d5ec、网页仍d644d4a。
+
+## 2026-10-25 · 置顶Noting关闭范围复核（未追加运行变更）
+
+用户质疑Background Noting为何关闭，并明确反对把“联动”归为其要求。源码复核：`/noting off`控制Conversation-local全部Noting参与；`noting.idle.enabled`另为Profile级空闲触发子开关。此前为限定只影响目标Conversation，使用会话参与开关暂停了所有触发方式；不能把实现耦合或该选择冒称用户要求。22:28只读复核目标local_enabled=false、全局enabled=true、任务idle、next_idle absent；Alex Profile的Idle仍true／500秒／98304阈值。未再次改变参与或Profile配置；准确纠正范围尚待明确，不自动全开，也不擅改其它Conversation。原操作回执与历史条目保留。
+
 ## 2026-10-25 · 恢复／Thinking归属修复与界面收口联合上线
 
 **用户确认与现象：** 按部署前停下要求完成汇报后，用户明确上线；追加确认Alex置顶会话暂停空闲整理／压缩，两条顶部同步／重试横幅都移除，聊天区右侧不显示滚动条。随后用户描述新Turn Thinking跑到上一条Thinking下方，要求查最新版且不预设只有Steer触发。原0.1.4回退过早，但独立核查确认f3a03ce→原f3eb130的projection没有变化，原0.1.7亦可复现，不能把它写成仅旧版缺陷。

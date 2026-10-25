@@ -387,6 +387,8 @@ only the scope left unsettled by the confirmed writes and the context needed to 
 
 时序保持：仅Idle要求正常Noting提交→父原生durable压缩→Framework。相应Noting仍运行时等其正常提交，已正常提交可继续；失败或强制结束不做这次Idle full compaction。工具调用／Turn预算耗尽或已处理context overflow等非正常收尾，仍按既有机制尝试提交合法快照、注入Framework，并明确Notebook非正常结束，不能将快照提交当作正常完成；一般API失败可以没有新快照。其它压缩路径维持已有Noting／compaction并行规则，不因取消tail擅自新增成功门槛或统一等待；没有新Notebook成功提交时不能伪造新Snapshot，Framework按实际结束结果沿既有契约处理。非触发Framework仍不自动开Turn或借最近微信来源外发。
 
+**用户2026-10-25追加确认：原生Compact超时及截断。** 保留原生模型／Provider及thinking配置，不以关思考换速度。原生上下文压缩总等待上限调整为1000秒；触发路径仍按上表保留原生尾部，不把正常阈值自动压缩改成取消尾部／前置替换的专项路径。超时、输出长度或上下文窗口上限导致摘要截断，只要已经收到可用的非空摘要，就以已收到内容完成原生Compact，并在采用的摘要末尾追加系统notice，明确因何截断、内容可能不完整；不因缺正常结束回执或finish_reason=length直接判整次摘要失败。流式已收部分结果也必须保留；超时须冻结候选并通过合法提交边界采用，不能允许旧线程在新边界后迟到写入。明确用户Stop仍尊重停止；无返回内容、拒绝或实际提交失败不伪造摘要。正常完整摘要不加截断notice。此追加替代旧技术实现“length摘要一律失败”的限制，不改变History原文、保尾、Snapshot及Framework职责。
+
 ### 8. 本轮审批核对（全部定稿，无未决产品项）
 
 用户逐轮确认的范围已收口：删除external_refs；七类必填性调整；旧maintain拆成create／update／archive并扁平参数、同字段同层；六工具身份权限；固定顶层与前缀；完整description指导含软长度和精选文件引用（路径不计软长度）；第三步写作／第五步过滤两表独立；每entry最多一个Schedule语义建议、schedule普通字符串不校验时间语法及Main／Noting提示；relations简化；evidence_time恢复模型可见且runtime派生只读；压缩分支及Idle成功前置；保留/compress here N及显式保尾。
