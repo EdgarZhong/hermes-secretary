@@ -2,6 +2,18 @@
 
 维护实际部署、故障处理、验证与回滚点；步骤和稳定布局见[部署SOP](cloud-deployment-sop.md)，当前任务只在根[CLAUDE](../CLAUDE.md)。以下时间均为Asia/Shanghai；PID、指纹和测试结论只对应记录时点，不代表实时状态。凭据、令牌、原始私人材料不写入本文件。
 
+## 2026-10-25 · Web恢复配套后端从main上线与两套备份轮换
+
+**授权与版本：** 用户0.1.5截图报恢复v1不支持，根因是前端已交而配套后端未上线，不是旧会话数据障碍。用户明确“现在部署配套后端”，随后要求先并行工作树合回main、确认无冲突并主动汇报。main先合入Noting69cc865再合入Web恢复219bfc2，90e8435ca596b7a72abe0f347bfa281b7ef5d0cc已自动push，两个分支均为其祖先，无源码冲突。相关4文件75项通过，依赖/PM/lock未变；未追加独立全审。另写部署器未上传/执行，改用并行Noting已使用的原后端发布命令。
+
+**实际发布：** 首尔hermes-secretary-sync从dd9189c快进至90e8435，release为20261025-web-recovery-main，33.239秒；receipt.phase=verified。Web/Gateway均实际90e8435且active、Gateway running/微信connected。三库10保护表、配置/凭据/绑定、439 Secretary及67 Dashboard完整资源指纹前后一致；三库备份完整性通过。未发布新静态、未改模型/配置/认证、未迁移旧会话、未发业务Turn或真实模型请求。
+
+**原问题核对：** 截图标题唯一对应的生产旧会话，经正式session.resume、recovery cards GET和session.activate返回version1、200行、complete=true、idle；私人locator只留受限收据。原APK2346a03无需重建；实际手机未代操作，实际APK生命周期仍按此前用户豁免未验。最初完整目标SHA抄写错误在本地被拒、未上传；首次只读核对误用不存在排序字段、未改库，纠正后通过，失败不倒写成功。
+
+**两套保留：** 保留本次20261025-web-recovery-main及上一轮20261024-noting-v2-dd9189c的完整host/alex/study，共6库，逐SHA和完整性核对有效；清理更旧20261024-ai-title-budget-183f1a5一套3库，共191,873,024字节。配置备份/轻量记录不动，不另复制待删库；运行库及其sidecar和同步databases-current.zip保持。旧标题条目中的数据库恢复点已过期，不再作可用备份。
+
+**证据与回退：** 云私有 /home/ubuntu/.local/state/hermes-secretary/release-20261024/20261025-web-recovery-main/{receipt.json,RECOVERY.txt,old-conversation-recovery.json,backup-retention.json}；本机原主仓ignored .hermes-dev/web-recovery-20261024/production-20261025/。回退需先确认实际活动与新写入，空闲停专属服务后恢复兼容旧代码，保留最新运行库，不自动数据库回滚。服务器保持产品90e8435，不因本地后续文档提交触发无必要重启。
+
 ## 2026-10-24 · 云端数据库旧备份清退（仅留两套）
 
 **授权与范围：** 用户明确“就给我留下两个备份，其他的删掉”。保留最新Noting发布20261024-noting-v2-dd9189c及上一轮20261024-ai-title-budget-183f1a5的完整三库，共6文件；删除其余58个历史库副本及16个对应WAL／SHM，包含旧部署／故障调查副本与3个零散state.db.bak。配置备份、旧前端资源、轻量报告不动，不新建数据库备份。
