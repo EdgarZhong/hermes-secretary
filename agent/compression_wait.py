@@ -39,4 +39,3 @@ def _await_worker_within_budget(
                 )
                 continue
             return False, None
-

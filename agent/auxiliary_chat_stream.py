@@ -151,4 +151,3 @@ class _ChatStreamAccumulator:
         choice = SimpleNamespace(index=0, message=message, finish_reason=self.finish_reason or "stop")
         return SimpleNamespace(id=self.resp_id, model=self.resp_model, object="chat.completion",
                                choices=[choice], usage=self.usage)
-
