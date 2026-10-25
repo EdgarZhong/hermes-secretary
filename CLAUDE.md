@@ -10,7 +10,7 @@
 
 后端产品`351770e`与前端`c0a6558`已提交、自动push并联合上线，发布receipt=verified。修复旧导入会话在选定Profile数据库中因历史profile_name标签被recovery／timeline误拒404，以及Web换模型后遗留Gateway route快照和冷Context模型字段；前端子资源404保画面自动恢复，真实删除从权威列表移除、旧页面显示明确错误及返回入口，均不静默转New Chat，并减少切换时无效全量复制。派041已用正式REST核元数据／最新200cards／锚点21条／详情／Timeline均200，Socket两窗口恢复complete=true；Context约155K／1M、16%、deepseek-flash。旧路由经原生writer仅校正gateway_runtime，无历史／Notebook变更、无模型请求。
 
-冷态详细Usage RPC按原契约unknown；前端既有fallback正式读取同Session持久四项计数，可显示Total26403875、缓存命中率约85.83%，未把恢复runtime零计数当累计值，未新增账本或推算Turn数／Latest Turn。实际公网隐藏IAB因无登录态进入正常认证页，已关闭，未算已登录页面验收；真机生命周期沿C17豁免未验。0.1.6/1006同证书APK已构建，439内置文件与生产静态逐SHA一致，交付路径和校验见运维记录。
+既定产品要求是冷启动／runtime回收后恢复同Session的Context与Session Total，不能因缺少热运行态显示未知；单个详细Usage RPC当前返回unknown只是实现事实，不构成产品豁免。前端既有fallback正式读取同Session持久四项计数，可显示Total26403875、缓存命中率约85.83%，未把恢复runtime零计数当累计值，未新增账本或推算Turn数／Latest Turn。实际公网隐藏IAB因无登录态进入正常认证页，已关闭，未算已登录页面验收；真机生命周期沿C17豁免未验。0.1.6/1006同证书APK已构建，439内置文件与生产静态逐SHA一致，交付路径和校验见运维记录。
 
 用户已确认模型上下文隐藏version_id、保留entry_id及编号机制；内部版本／Snapshot与人类审计保留。Main、Noting初始／续Turn、Framework、读取／维护结果与提案提示已接线。Heartbeat已明确自查提醒而非用户消息，需与用户对接的事项在用户回归时主动汇报；不新增队列／检测机制，原触发／渠道／权限保持。以上随本次统一上线。Notebook投影239项有效回归、Heartbeat22项、提案14项、404修补69项、冷route／Context61项及冻结10检查通过；前端104项／typecheck／build与隐藏移动视口故障恢复证据通过，范围重叠不加总。完整原始日志在ignored `.hermes-dev/notebook-context-20261025/`，首次失败保留；无新增真实模型或微信测试。
 

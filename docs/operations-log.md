@@ -10,11 +10,13 @@
 
 **正式发布：** 13:16:28–13:16:50于首尔复用原联合发布脚本，后端90e8435精确快进351770e，439份Secretary静态原子交换为c0a6558；依赖／PM／lock未变。空闲预检、停两服务、三库及配置备份、版本切换、重启、资源与数据对账全部成功，receipt.phase=verified。Web／Gateway实际351770e且active，微信connected；三库10保护表、配置／凭据／绑定、Dashboard完整指纹保持，439新静态逐SHA一致。未发送模型请求或真实微信测试；connected不等于已证实微信出站prepare恢复。
 
-**线上原问题核验：** 发布后确认Pi041空闲并持有原生Turn lease，通过SessionDB.update_session_model将旧嵌套路由同步为已保存的deepseek-flash／deepseek；配置唯一变化gateway_runtime，usage anchor／历史／Notebook保持。正式REST读取metadata／最新200cards／锚点21行／详情／Timeline全部200；session.resume→context_breakdown／usage→session.activate两窗口完整恢复complete=true。Context返回155205／1000000、16%、local_estimate及正确模型，不靠新Turn制造用量。详细usage_detail的ephemeral owner为空依旧返回unknown，这是既有接口边界；按06§1.13和前端savedSession正式fallback读取summary=true得到input3728097、cache_read22574407、cache_write0、output101371，故累计Total26403875、缓存命中率85.83%可恢复。未新增统计账本、伪造Turn数或Latest Turn。公网自建隐藏IAB无登录态，正常进入认证页后关闭；不冒称已登录UI或用户手机实测，实际APK生命周期沿C17豁免未验。
+**线上原问题核验：** 发布后确认Pi041空闲并持有原生Turn lease，通过SessionDB.update_session_model将旧嵌套路由同步为已保存的deepseek-flash／deepseek；配置唯一变化gateway_runtime，usage anchor／历史／Notebook保持。正式REST读取metadata／最新200cards／锚点21行／详情／Timeline全部200；session.resume→context_breakdown／usage→session.activate两窗口完整恢复complete=true。Context返回155205／1000000、16%、local_estimate及正确模型，不靠新Turn制造用量。详细usage_detail的ephemeral owner为空时返回unknown，这是本次观测到的接口实现事实，不是产品允许冷启动丢失Usage的设计。按06§1.13既定冷恢复要求和前端savedSession正式fallback读取summary=true得到input3728097、cache_read22574407、cache_write0、output101371，故累计Total26403875、缓存命中率85.83%可恢复。未新增统计账本、伪造Turn数或Latest Turn。公网自建隐藏IAB无登录态，正常进入认证页后关闭；不冒称已登录UI或用户手机实测，实际APK生命周期沿C17豁免未验。
 
 **APK与静态：** 最终签名0.1.6/1006 arm64 APK为32,092,289bytes，SHA256 `39664d3c43978c9f127cbabf20bd1b56e4efe5ac0ceb74be75f485060252c0b7`，v2签名证书与原包相同。439内置文件、dist和生产manifest逐SHA一致；静态tar最终SHA `0738c09305cad77d26ec4d16e84377c90271ea0ed80dafb1ed9ad06c8fca0808`。最初tar含macOS附属文件，在上传前已重新打包并独立核验，不算成功发布样本。APK本地交付文件`.hermes-dev/web-recovery-20261024/release-016/Hermes-Secretary-0.1.6-c0a6558-arm64.apk`，未安装用户手机。
 
 **备份、证据与回退：** 云私有`/home/ubuntu/.local/state/hermes-secretary/release-20261024/20261025-pi041-351770e-016/`含receipt／RECOVERY、原路由0600恢复材料、正式接口核验／持久Usage回执及backup-retention。本地ignored `.hermes-dev/notebook-context-20261025/`保测试及发布原件。核最新本次与前一20261025-web-recovery-main两套host／Alex／study三库共6库SHA、SQLite完整性及FK有效后，删除更旧20261024-noting-v2-dd9189c一套3库，191877120bytes；运行库、sidecar、配置和databases-current.zip保持。更早条目数据库恢复点按轮换过期。回退先核后续写入和活动任务，空闲停专属服务后恢复已审旧代码／配套静态，保最新运行库及配置，不自动DB回滚或重放Noting／Reminder。旧route恢复材料只供精确审查，禁止覆盖后续用户模型选择；本地后继纯文档提交无需再重启生产。
+
+**需求核对纠正：** 发布后Agent错误提问“是否也要求重启后恢复历史详细统计”，把单个RPC实现限制误说成原设计，用户明确指出此前已确认冷启动问题。已回查Web会话原话“刷新或者，页面冷启动的时候实际上也应该先读缓存”“还有，底部的两个 usage 卡片也要缓存”，并核06§1.13于10/17已确认同Session持久原生读数恢复Context／Session Total及10/24展示缓存。撤销该重复确认问题；这是既有范围，不能因冷态、缺owner或详细RPC未知而清空已有可信值／拒绝累计恢复，也不需要用户重新授权。保留缺少真实Latest Turn回执时不造数据的边界，不能将此边界扩大为整个Usage不可恢复。
 
 ## 2026-10-25 · Alex Idle Noting 改为96K，保留500秒延迟
 
