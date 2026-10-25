@@ -2,6 +2,16 @@
 
 维护实际部署、故障处理、验证与回滚点；步骤和稳定布局见[部署SOP](cloud-deployment-sop.md)，当前任务只在根[CLAUDE](../CLAUDE.md)。以下时间均为Asia/Shanghai；PID、指纹和测试结论只对应记录时点，不代表实时状态。凭据、令牌、原始私人材料不写入本文件。
 
+## 2026-10-25 · Web体验修复、阅读宽度恢复与0.1.7
+
+**范围和验证：** 用户授权由Web会话主导前端修复／部署，交付0.1.7。最终Web f3eb13024f3bbfd501db1e7f7391aaf7fdd3e304已推origin/secretary：附属读取失败独立恢复、核心重试不被显示需求变化取消、异会话通知不抢阅读位置、有效卡片缓存保留、明确缺失目标保路由／显式选择、APK终态与明确离线不循环刷新。英文静态文案，正常暂态不弹协议错误，持续问题给简短局部说明。移除恢复分页新增display:contents包装，以Fragment恢复原Assistant／Thinking／工具／System阅读边界，Compaction及加载历史保宽；正式Timeline结构回归和隐藏IAB桌面／移动实际像素核对通过。9文件288项、typecheck／构建通过；原生Robolectric44项零失败。实际IAB另覆盖缓存冷读、1200历史、异会话通知、附属失败、核心503中改变显示需求后自动恢复、缺失目标保路由。全仓未跑，既有profiles3条失败原HEAD可复现；APK生命周期按用户C17豁免未实测。
+
+**静态发布：** 复用既有remote_release.py的解包／精确SHA／renameat2目录交换函数，仅更新Secretary静态目录。收据phase=verified，439文件同最终dist，正式HTTP入口/assets/index-Qs17WLqu.js及实际返回SHA正确；Web／Gateway PID3700100／3700103前后保持，Dashboard逐SHA保持。未停服务、部署后端、操作生产DB／配置／绑定或发送模型／微信消息。静态更新不需新增DB备份，既有最近两套完整备份未动。并行后端会话已收到新静态精确manifest，后续发布以此为保护基线。
+
+**APK：** Hermes-Secretary-0.1.7-f3eb130-arm64.apk，versionName0.1.7／versionCode1007，32095461字节，SHA256 faa6912eade3b3420ebf83027015ef7aefea49e730756fa373bd9864a0e006d7；apksigner验证原证书449b5f36662cb5ff2979004ce6472ca5c8ea5d992b334e2a4191eda6e7e53ad9，439 assets/secretary文件与已发布dist逐SHA一致。旧包不覆盖。
+
+**证据与回退：** 本地ignored .hermes-dev/web-recovery-20261024/performance/017-*及017-ui/，最终包／manifest／部署收据在release-017/。云受限/home/ubuntu/.local/state/hermes-secretary/release-20261024/20261025-web-017-f3eb130/receipt.json保存完整前后静态清单；旧Secretary静态在同文件系统/home/ubuntu/.local/share/hermes-secretary/static/.secretary-stage-017-f3eb130。必要时审查后复用同一目录原子交换回退静态，无需恢复DB或重启服务；不要用旧静态覆盖本次发布后又更新的新版本。后端Noting／Context另案仍由原会话负责，本轮不以旧卡片数值伪造后端状态。
+
 ## 2026-10-25 · 恢复机制自查：移除身份格式耦合
 
 **用户要求与自查：** 用户明确实现须为正式、优雅的通用机制，禁止临时补丁、具体情景硬编码和散落接线。自查5017beb发现外部Turn分类依赖holder的pid／turn／platform固定文本格式，本地证明也含同类字符串检查；这是不必要的跨层协议耦合。恢复读取本来已有同Profile／Conversation、未过期租约、前后快照一致性及本地Agent holder，数据库租约才是事实源，字符串只应是不透明身份。已在根AGENTS登记该通用规则，未改Codex全局规则。

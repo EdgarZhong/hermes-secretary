@@ -71,7 +71,7 @@ Gateway入口 `hermes gateway`；Dashboard入口 `hermes dashboard --host 127.0.
 
 ### Android APK
 
-独立前端仓库的 `src-tauri/` 提供 Tauri 2 Android 壳，固定竖屏，前端资源内置，业务仍经正式 HTTPS／Authelia、原生 API／WS 连接。Android 专属系统栏避让和通知桥接不会在普通网页启用；运行状态复用现有跨 Profile 列表观察，不增加后端协议、独立连接或轮询。后台保护仅在已观察到的 Active Turn 期间临时启用，不保证系统暂停／回收后仍通知。APK从锁屏或后台返回前台时由原生重载当前页面并重置恢复进度；连接持续未恢复时按10／15／20／30秒重载退避，连接恢复停止，正常慢历史加载不误刷。此机制保留登录／本地草稿／当前会话，不在普通网页启用。完整行为和验收边界见 [06 Android 契约](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md#android-原生通知与临时后台保护用户最终确认2026-10-21)。
+独立前端仓库的 `src-tauri/` 提供 Tauri 2 Android 壳，固定竖屏，前端资源内置，业务仍经正式 HTTPS／Authelia、原生 API／WS 连接。Android 专属系统栏避让和通知桥接不会在普通网页启用；运行状态复用现有跨 Profile 列表观察，不增加后端协议、独立连接或轮询。后台保护仅在已观察到的 Active Turn 期间临时启用，不保证系统暂停／回收后仍通知。APK从锁屏或后台返回时先保留当前页面，网络可用时给予本轮历史／Socket／Turn恢复5秒窗口，完成则不重载；附属读取独立更新，不拖住已核验正文。明确不存在或Profile不可用的结果页面、明确离线的存活页面停止无意义恢复重载，等待用户操作或网络恢复；真正JS无心跳及无法恢复时保留原生兜底与退避。此机制保留登录／本地草稿／当前会话，不在普通网页启用。完整行为和验收边界见 [06 Android 契约](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md#android-原生通知与临时后台保护用户最终确认2026-10-21)。
 
 在独立前端仓库设置 Android SDK／NDK／Java 环境后执行 `npm run android:build`，输出 `src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk`。当前目标为 Android 8.0+／arm64；release 非调试、使用本地签名，原件仅保存在 ignored `src-tauri/.android-signing/`，后续覆盖升级必须保留该密钥。应用图标由 `npm run android:icons` 复用现有 logo 与主题深色自动生成，release 构建会先刷新图标。`npm run android:debug` 仅供本地验收。实际包版本、网络验证及限制统一记录在 [运维记录](docs/operations-log.md)。
 
