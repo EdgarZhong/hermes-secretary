@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import copy
 import json
-import re
 import sqlite3
 import time
 from pathlib import Path
@@ -111,10 +110,9 @@ def _native_source(session, db, raw):
 
 
 def _external_turn_holder(session, raw):
-    """A native external Turn is normal; its unpersisted stream is not local."""
+    """Compare opaque ownership against the valid lease from this DB snapshot."""
     holder = (raw.get("lease") or {}).get("holder", "")
-    if session.get("running") or not re.fullmatch(
-            r"pid=[1-9][0-9]*(?::pidns=[^:]+)?:turn=.+:platform=[A-Za-z0-9_-]+", holder):
+    if session.get("running") or not holder:
         return None
     if holder == getattr(session.get("agent"), "_active_session_turn_lease_holder", None):
         return None
@@ -197,8 +195,7 @@ def _turn_proof(d0, d1, state, runtime):
         return
     turn_id = runtime["turn_id"]
     holder = (lease1 or {}).get("holder", "")
-    if (not turn_id or not holder or f":turn={turn_id}:platform=" not in holder
-            or runtime["holder"] != holder):
+    if not turn_id or not holder or runtime["holder"] != holder:
         raise RecoveryViewError("runtime_unavailable")
     _prove_source(d1, state, runtime)
     for event in state["events"]:

@@ -68,8 +68,7 @@ def activate(req):
     return reply["result"]["recovery_view"]
 
 
-def begin(db, session):
-    holder = "pid=123:turn=native-turn:platform=desktop"
+def begin(db, session, holder="pid=123:turn=native-turn:platform=desktop"):
     assert db.try_acquire_session_turn_lease("stored",holder)
     session["agent"]._active_session_turn_lease_holder = holder
     with session["history_lock"]:
@@ -181,11 +180,12 @@ def test_repeated_rewrite_is_bounded_failure(native,monkeypatch):
     assert not result["complete"] and result["reason"] == "view_changed" and len(attempts)==2
 
 
-def test_foreign_lease_and_missing_full_snapshot_never_claim_idle_or_ready(native):
+def test_external_lease_is_normal_but_missing_local_snapshot_is_not(native):
     db, session, _home=native
     req=request(db)
     db.try_acquire_session_turn_lease("stored","external-owner")
-    assert activate(req)["reason"] == "runtime_unavailable"
+    external = activate(req)
+    assert external["complete"] and external["running"] and external["live_output_available"] is False
     db.release_session_turn_lease("stored","external-owner")
     session["running"]=True
     session["inflight_turn"]={"assistant":"unproved text"}
@@ -613,15 +613,15 @@ def test_tool_occurrence_identity_uses_exact_uid_not_substring(native):
     assert not result["complete"] and result["reason"] == "view_changed"
 
 
-@pytest.mark.parametrize('platform', ['weixin', 'telegram'])
-def test_external_native_turn_recovers_fresh_history_without_gateway_token_stream(native, platform):
+@pytest.mark.parametrize('holder', ['opaque lease identity', 'owner/v2:worker:any',
+                                         'pid=123:turn=external-native-turn:platform=weixin'])
+def test_external_turn_recovers_from_authoritative_opaque_lease_identity(native, holder):
     db, session, _home = native
     # A previous local Turn's unpersisted output cannot stand for this Gateway Turn.
     inflight_output.start(session)
     native_output(session)
     db.append_message('stored', 'user', 'New external question')
     req = request(db)
-    holder = f'pid=123:turn=external-native-turn:platform={platform}'
     assert db.try_acquire_session_turn_lease('stored', holder)
     result = activate(req)
     assert result['complete'] and result['running'] and result['status'] == 'working'
@@ -633,3 +633,13 @@ def test_external_native_turn_recovers_fresh_history_without_gateway_token_strea
     assert result['complete'] and result['running']
     assert result['windows'][0]['messages'][-1]['content'] == 'External result persisted while still running'
     db.release_session_turn_lease('stored', holder)
+
+
+def test_local_turn_proof_uses_opaque_holder_equality_and_committed_source(native):
+    db, session, _home = native
+    begin(db, session, holder='opaque-local-lease')
+    native_output(session)
+    result = activate(request(db))
+    assert result['complete'] and result['running']
+    assert result.get('live_output_available') is not False
+    assert result['state_snapshot']['events']
