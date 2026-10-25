@@ -238,10 +238,11 @@ def _read_identities(conn, sql, params, lineage, identities):
             predicates.append(f"m.{key}=:ref{i}")
             bound[f"ref{i}"] = item.get("message_uid") or item.get("tool_call_uid") or item.get("row_id")
         rows = conn.execute(sql + "SELECT m.id,m.role,m.message_uid,m.tool_call_uid,m.tool_call_uids,m.session_id,m.active,m.compacted,o.sort_id, "
-                            f"{_sql_json_extract('m.display_metadata', '$.turn_terminal.source_message_uid')} AS terminal_source_uid "
+                            "LENGTH(m.content)>0 AS content,LENGTH(m.reasoning)>0 AS reasoning, "
+                            f"{_sql_json_extract('m.display_metadata', '$.turn_terminal')} AS terminal_metadata "
                             "FROM ordered o JOIN messages m ON m.id=o.row_id WHERE "
                             + " OR ".join(predicates), bound).fetchall()
-        visible = [dict(row) for row in rows]
+        visible = [_terminal_identity(dict(row)) for row in rows]
         result.extend({**row, "visible": True} for row in visible)
         marks = ",".join(":" + key for key in params)
         known = conn.execute("SELECT m.id,m.role,m.message_uid,m.tool_call_uid,m.tool_call_uids,m.session_id,m.active,m.compacted "
@@ -256,6 +257,17 @@ def _read_identities(conn, sql, params, lineage, identities):
                 result.append({**dict(row), "visible": False})
                 seen.add(key)
     return result
+
+
+def _terminal_identity(row):
+    metadata = row.pop("terminal_metadata", None)
+    terminal = json.loads(metadata) if isinstance(metadata, str) else {}
+    if isinstance(terminal, dict):
+        row.update(terminal_source_uid=terminal.get("source_message_uid"),
+                   terminal_status=terminal.get("status"),
+                   terminal_outputs_complete=terminal.get("outputs_complete", True),
+                   terminal_outputs_digest=digest(terminal.get("outputs", [])))
+    return row
 
 
 def digest(value):

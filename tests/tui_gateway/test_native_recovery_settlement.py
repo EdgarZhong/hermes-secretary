@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import copy
+import json
 import threading
 from pathlib import Path
 from types import SimpleNamespace
@@ -48,7 +49,7 @@ def runtime(live, monkeypatch):
     return live
 
 
-def start(runtime, monkeypatch, *, source="prompt.submit_idle", steer=False, outcome="complete", ordinal=0):
+def start(runtime, monkeypatch, *, source="prompt.submit_idle", steer=False, outcome="complete", ordinal=0, partial=False):
     entered, release, second, finish = (threading.Event() for _ in range(4))
     runtime.releases.extend([release, finish])
     calls = []
@@ -56,6 +57,10 @@ def start(runtime, monkeypatch, *, source="prompt.submit_idle", steer=False, out
     def provider(kwargs):
         calls.append(kwargs)
         if len(calls) == 1:
+            if partial:
+                runtime.agent._claim_stream_writer()
+                runtime.agent.reasoning_callback("Partial native reasoning")
+                runtime.agent.tool_gen_callback(TOOL)
             entered.set()
             assert release.wait(5)
             if steer:
@@ -229,3 +234,67 @@ def test_native_exceptional_finish_does_not_lend_old_output_to_the_next_turn(run
     assert result["complete"] and not result["running"], result
     next_gate = start(runtime, monkeypatch, ordinal=1)
     assert settle(runtime, next_gate)["complete"]
+
+
+@pytest.mark.parametrize("source_method", ["prompt.submit", "prompt.submit_idle"])
+@pytest.mark.parametrize("status", ["interrupted", "error"])
+def test_native_constructing_then_stop_recovers_from_durable_terminal(runtime, monkeypatch, source_method, status):
+    gate = start(runtime, monkeypatch, source=source_method, outcome=status, partial=True)
+    active = activate(request(runtime.db))
+    assert active["complete"] and active["running"]
+    assert any(event["type"] == "reasoning.delta" for event in active["state_snapshot"]["events"])
+    if status == "interrupted":
+        server._interrupt_session_turn("runtime", runtime.session)
+    idle = settle(runtime, gate)
+    rows = runtime.db.get_messages("stored")
+    source = next(row for row in rows if row["role"] == "user")
+    terminal = source["display_metadata"]["turn_terminal"]
+    assert terminal["status"] == status
+    assert terminal["outputs"] == [{"kind": "reasoning", "text": "Partial native reasoning",
+                                    "message_uid": terminal["outputs"][0]["message_uid"]}]
+    events = recovery_view.snapshot(runtime.session, "runtime", include_internal=True)["events"]
+    assert any(event["type"] == "tool.generating" for event in events)
+    assert any(event["type"] == "message.user_committed" for event in events) is (source_method == "prompt.submit_idle")
+    assert not any(event["type"] == "message.source_committed" for event in events)
+    assert idle["complete"] and not idle["running"], idle
+    assert not idle["state_snapshot"]["events"]
+    next_gate = start(runtime, monkeypatch, ordinal=1)
+    assert settle(runtime, next_gate)["complete"]
+
+
+@pytest.mark.parametrize("damage", ["missing", "source", "status", "text", "uid", "incomplete", "row",
+                                  "pair", "pair_uid", "turn", "stored", "unclosed", "untyped", "later", "unknown_error"])
+def test_stopped_partial_requires_exact_native_terminal_and_output_owner(runtime, monkeypatch, damage):
+    gate = start(runtime, monkeypatch, outcome="interrupted", partial=True)
+    server._interrupt_session_turn("runtime", runtime.session)
+    assert settle(runtime, gate)["complete"]
+    source = next(row for row in runtime.db.get_messages("stored") if row["role"] == "user")
+    metadata = source["display_metadata"]
+    terminal = metadata["turn_terminal"]
+    events = runtime.session["_inflight_output"]["events"]
+    pair = next(event["payload"] for event in events if event["type"] == "tool.output")
+    receipt = next(event["payload"]["persisted_turn"] for event in events if event["type"] == "message.complete")
+    mutations = {
+        "missing": lambda: metadata.pop("turn_terminal"),
+        "source": lambda: terminal.update(source_message_uid="unknown"),
+        "status": lambda: terminal.update(status="error"),
+        "text": lambda: terminal["outputs"][0].update(text="different partial"),
+        "uid": lambda: terminal["outputs"][0].update(message_uid="unknown"),
+        "incomplete": lambda: terminal.update(outputs_complete=False),
+        "row": lambda: receipt.update(user_row_id=999999),
+        "pair": lambda: pair.update(native_payload={"name": "different"}),
+        "pair_uid": lambda: pair.update(assistant_message_uid="unknown"),
+        "turn": lambda: pair.update(turn_id="unknown"),
+        "stored": lambda: pair.update(stored_session_id="unknown"),
+        "unclosed": lambda: events.__setitem__(slice(None), [event for event in events if not (
+            event["type"] == "message.output_state" and event["payload"]["state"] == "uncommitted")]),
+        "untyped": lambda: events.__setitem__(slice(None), [event for event in events if event["type"] != "tool.output"]),
+        "later": lambda: server._emit("reasoning.delta", "runtime", {"text": "unknown late output"}),
+        "unknown_error": lambda: events.insert(-1, {"type": "error", "seq": events[-1]["seq"] - 1,
+                                                   "payload": {"message": "unaccounted error"}}),
+    }
+    mutations[damage]()
+    runtime.db._execute_write(lambda conn: conn.execute("UPDATE messages SET display_metadata=? WHERE id=?",
+                                                       (json.dumps(metadata), source["id"])))
+    result = activate(request(runtime.db))
+    assert not result["complete"] and result["reason"] == "runtime_unavailable", result

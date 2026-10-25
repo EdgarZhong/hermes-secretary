@@ -316,9 +316,77 @@ def _idle_snapshot_accounted(state, known):
     return False
 
 
+def _terminal_output_frames(events, lineage):
+    """Require the native typed owner and exact legacy pairing, including draft tools."""
+    by_seq = {event["seq"]: event for event in events}
+    turns = set()
+    opened = {event.get("payload", {}).get("message_uid") for event in events
+              if event["type"] == "message.output_state" and event.get("payload", {}).get("state") == "open"}
+    closed = {event.get("payload", {}).get("message_uid") for event in events
+              if event["type"] == "message.output_state" and event.get("payload", {}).get("state") in {"closed", "uncommitted"}}
+    paired = set()
+    typed = {"message.output_delta", "tool.output", "message.output_state"}
+    for event in events:
+        if event["type"] not in typed:
+            continue
+        payload = event.get("payload") or {}
+        if not payload.get("turn_id") or payload.get("stored_session_id") not in lineage:
+            return False
+        turns.add(payload["turn_id"])
+        if event["type"] == "message.output_state":
+            continue
+        source = by_seq.get(payload.get("source_event_seq"))
+        expected = payload.get("native_type") if event["type"] == "message.output_delta" else "tool." + str(payload.get("phase"))
+        if source is None or source["type"] != expected or source.get("payload") != payload.get("native_payload"):
+            return False
+        uid = payload.get("message_uid") or payload.get("assistant_message_uid")
+        if uid not in closed:
+            return False
+        paired.add(source["seq"])
+    legacy = {"message.delta", "reasoning.delta", "message.interim", "tool.generating", "tool.start", "tool.complete"}
+    return len(turns) == 1 and opened <= closed and all(
+        event["seq"] in paired for event in events if event["type"] in legacy)
+
+
+def _terminal_snapshot_accounted(state, d1, known):
+    from hermes_state_turn_terminal import _reconcile_outputs
+    from tui_gateway.turn_terminal import observed_output_events
+    events = state["events"]
+    if not events or events[-1]["type"] != "message.complete":
+        return False
+    payload = events[-1].get("payload") or {}
+    receipt = payload.get("persisted_turn") or {}
+    sources = receipt.get("source_messages") or []
+    if payload.get("status") not in {"error", "interrupted", "cancelled"} or not _completion_sources_accounted(receipt, known):
+        return False
+    source = known[sources[0]["message_uid"]]
+    if (source.get("terminal_source_uid") != source["message_uid"]
+            or source.get("terminal_status") != ("interrupted" if payload["status"] == "cancelled" else payload["status"])
+            or source.get("terminal_outputs_complete") is not True
+            or not _closed_source_boundary(receipt, sources, known)):
+        return False
+    committed = [event.get("payload", {}).get("message") or {} for event in events
+                 if event["type"] in {"message.user_committed", "message.source_committed"}]
+    # Legacy submit need not emit user_committed. Its native completion receipt
+    # still proves the exact source; any additional source frame must agree.
+    if any(row.get("message_uid") != source["message_uid"] or row.get("row_id") != source["id"] for row in committed):
+        return False
+    if not _terminal_output_frames(events, d1["lineage"]):
+        return False
+    allowed = {"message.user_committed", "message.source_committed", "message.start", "message.complete",
+               "message.delta", "reasoning.delta", "message.interim", "message.output_delta", "message.output_state",
+               "message.output_committed", "tool.generating", "tool.start", "tool.complete", "tool.output",
+               "reasoning.available", "thinking.delta", "status.update"}
+    if any(event["type"] not in allowed for event in events):
+        return False
+    outcome = {"outputs": observed_output_events(events)}
+    _reconcile_outputs(outcome, [row for row in known.values() if row.get("visible") and row.get("active")])
+    return outcome.get("outputs_complete", True) and digest(outcome.get("outputs", [])) == source.get("terminal_outputs_digest")
+
+
 def _clean_snapshot(state, d1, *, running):
     known = {row["message_uid"]: row for row in d1["identities"] if row.get("message_uid")}
-    if not running and _idle_snapshot_accounted(state, known):
+    if not running and (_idle_snapshot_accounted(state, known) or _terminal_snapshot_accounted(state, d1, known)):
         return {**state, "events": []}
     tools = {row["tool_call_uid"] for row in d1["identities"]
              if row.get("tool_call_uid") and row.get("role") == "tool"}

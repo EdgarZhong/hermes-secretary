@@ -103,7 +103,11 @@ def observed_outputs(session, sid):
     if state is None:
         text = (session.get("inflight_turn") or {}).get("assistant")
         return [{"kind": "message", "text": text}] if text else []
-    events = state["events"]
+    return observed_output_events(state["events"])
+
+
+def observed_output_events(events):
+    """Project the same native output facts for terminal persistence and recovery."""
     identities = {item["payload"]["source_event_seq"]: item["payload"] for item in events
                   if item["type"] in {"message.output_delta", "tool.output"}}
     segments = []

@@ -3,6 +3,12 @@
 维护实际部署、故障处理、验证与回滚点；步骤和稳定布局见[部署SOP](cloud-deployment-sop.md)，当前任务只在根[CLAUDE](../CLAUDE.md)。以下时间均为Asia/Shanghai；PID、指纹和测试结论只对应记录时点，不代表实时状态。凭据、令牌、原始私人材料不写入本文件。
 
 
+## 2026-10-26 · 置顶会话中断后恢复阻塞（处理中）
+
+用户确认先在Skill Create Constructing阶段不可见，随后显式Stop，页面只剩Load earlier且无法操作。23:42:45原生记录interrupted_during_api_call，存在4079字符reasoning及持久turn_terminal；正式200条消息读取成功但activate返回runtime_unavailable。原有Web恢复层未识别这份中断输出证明，持续拒绝交接；代码对比确认非1000秒／partial Compact改动引入。当前实现通用持久终态与对应流式输出对账，不能仅因idle或user_committed跳过安全验证。
+
+同代码Web重启尝试在活动预检阶段拒绝，未停服、未切版本、未写数据库。23:51自动Noting开始，23:57:17模型整理结束，随后父原生压缩仍在生成；00:03有效writer lease属于该父压缩，非用户Main仍在运行。用户明确选择等这轮结束后恢复，不中断任务。恢复执行器只在Web／Gateway／三库原生活动检查全部通过后重启Web，保当前代码、数据及配置，再核目标完整读取与正式Socket恢复；当前尚未执行重启。受限证据在ignored `.hermes-dev/live-recovery-stuck-20261025/`及云端同名config-changes目录，不收私密正文。
+
 ## 2026-10-25 · Compact部分摘要保留及1000秒上线
 
 用户明确本次优先研究置顶会话Compact等待10分钟失败，随后要求立即修复并部署：保持思考和原生保尾，总时限1000秒；长度／窗口截断及超时均采用已收到的可用非空摘要，摘要末尾加系统notice说明不完整，不因缺少正常结束标记整次失败。明确Stop及无内容不伪造摘要。
