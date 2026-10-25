@@ -3,6 +3,14 @@
 维护实际部署、故障处理、验证与回滚点；步骤和稳定布局见[部署SOP](cloud-deployment-sop.md)，当前任务只在根[CLAUDE](../CLAUDE.md)。以下时间均为Asia/Shanghai；PID、指纹和测试结论只对应记录时点，不代表实时状态。凭据、令牌、原始私人材料不写入本文件。
 
 
+## 2026-10-26 · Android 0.1.7按最新前端重新构建
+
+用户明确要求新构建0.1.7并交付，并确认目标为Android APK。以已上线前端`c29b4570a0e469aa2dcedc76da499f81cf0e7da8`的精确dist沿正式`npm run android:build`构建，临时配置仅跳过重复Vite构建，避免file-viewer时间字段产生静态差异；未修改产品源码、版本或签名材料。前端工作区保持clean，生产服务／数据库／用户页面未操作。
+
+新包`Hermes-Secretary-0.1.7-c29b457-arm64.apk`已复制到`/Users/edgar/Downloads/`，32102121字节，SHA256 `fc1e7ab2354a4d61a4366ce57814b95e85e97a4bd7fd76df8806335967e79684`。aapt核对0.1.7／1007、包名com.edgarzhong.hermessecretary、minSDK26、仅arm64-v8a、release非debug；apksigner验证原证书`449b5f36662cb5ff2979004ce6472ca5c8ea5d992b334e2a4191eda6e7e53ad9`，zipalign16KB通过。APK内439份assets/secretary与最终线上manifest逐SHA一致，包含本轮冷刷新持久缓存、内存分层及此前Working末尾等修复；未包含签名文件。旧安装包保留。
+
+构建／签名／资源及交付副本回执在ignored `.hermes-dev/android-017-c29b457-20261026/`，前端既有200项相关测试及隐藏IAB证据沿精确同字节dist复用；本次未重复全套、未安装到真机，不称Android实际生命周期验收通过。
+
 ## 2026-10-26 · 冷刷新正文缓存修复及内存／持久分层上线
 
 用户实测559598b刷新约一秒只有Load earlier、无正文，要求回顾前端整改原始目标，并再次明确：同document内存负责视口／阅读／展开与临时显示、可用内存无需持久快照展示读取；持久缓存跨document生命周期，解决刷新／冷启空窗。root已承认用暖切换验收覆盖冷刷的交付判断错误。原始“保画面→后台完整恢复→一致接管”覆盖Timeline／侧栏／底部胶囊，动画不是替代目标。
