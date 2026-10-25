@@ -2,6 +2,16 @@
 
 维护实际部署、故障处理、验证与回滚点；步骤和稳定布局见[部署SOP](cloud-deployment-sop.md)，当前任务只在根[CLAUDE](../CLAUDE.md)。以下时间均为Asia/Shanghai；PID、指纹和测试结论只对应记录时点，不代表实时状态。凭据、令牌、原始私人材料不写入本文件。
 
+## 2026-10-25 · 恢复机制自查：移除身份格式耦合
+
+**用户要求与自查：** 用户明确实现须为正式、优雅的通用机制，禁止临时补丁、具体情景硬编码和散落接线。自查5017beb发现外部Turn分类依赖holder的pid／turn／platform固定文本格式，本地证明也含同类字符串检查；这是不必要的跨层协议耦合。恢复读取本来已有同Profile／Conversation、未过期租约、前后快照一致性及本地Agent holder，数据库租约才是事实源，字符串只应是不透明身份。已在根AGENTS登记该通用规则，未改Codex全局规则。
+
+**最小整改与证据：** 产品ab2934242840f2b06370c4b0a1e5b6c615191703仅在recovery_view.py去掉正则依赖及本地holder格式检查，净减3行，保留身份相等、当前Turn／正式源消息、D0/D1／owner／连续回放检查。公共lease释放提交后的失效通知保持：此处提交权威所有权变化，仅确实删除本人租约才通知，不按渠道／调用方另接finalizer，也不把它当正常完成回执。四文件83项回归及冻结10检查通过／health0 blocking0 advisory；4条不透明身份用例改前失败、改后通过，含含空格／分隔符的外部token、本地不透明token和原生格式。既有前端74项证据有效复用，DTO／产品资源不变，不为review重跑全量或重打包。
+
+**发布保护与结果：** 首次已通过空闲预检，但apply复检发现新Gateway工作，主动拒绝，receipt.events为空、无备份／停服／版本切换；保留失败收据，不覆盖或盲重试同一apply。等活动自然结束、复检Web0／Gateway0后，18:04:25–18:04:49在独立尝试记录中复用既有发布命令，从5017beb切至ab29342。receipt=verified；Web／Gateway均实际ab29342且active、微信connected，三库10保护表、配置／凭据／绑定、439 Secretary及Dashboard完整指纹保持。未发送生产模型／微信测试消息、未中断活动Turn、未修改此前Pi041排期停用结果。
+
+**恢复点与轮换：** 云受限`/home/ubuntu/.local/state/hermes-secretary/release-20261024/20261025-recovery-owner-ab29342-retry1/`保存receipt、RECOVERY及三库／配置；无停服的首次拒绝记录在同级不带retry1目录。核本次与20261025-gateway-web-5017beb两套完整6库的SHA、SQLite完整性及FK有效后，清理更旧20261025-pi041-351770e-016一套3库193601536bytes；运行库、sidecar、配置及databases-current.zip不动。本地ignored`.hermes-dev/gateway-web-recovery-20261025/mechanism-review/`保存前后测试、检查及两次发布证据。回退先核活动和后续写入，空闲停专属服务恢复已审5017beb代码、保最新运行库／配置／兼容静态，不自动DB回滚或重放任务。后继纯文档提交无需再重启。
+
 ## 2026-10-25 · 停用旧Pi041 Conversation全部Scheduler
 
 用户明确要求关闭此前派041会话在生产库中的全部Scheduler。17:47:58于Alex实际state.db核对精确stored locator、pi-import来源、会话标题及Conversation ref后，通过原生SchedulerStore.pause逐项暂停4条active排期，未直接SQL写表、删除定义或关闭Profile全局Scheduler；12条已完成排期保持。正式schedules_read读回总16条、paused4、completed12、active0，ID集合保持；目标Heartbeat原已cleared，未改其它Conversation／Profile、Notebook或历史。每项操作成功回执及前后清单保存云受限`/home/ubuntu/.local/state/hermes-secretary/schedule-changes/pi041-pause-all-20261025-174758/`，私人locator及排期正文只留该0600回执。恢复时须用户明确要求，再按该清单走原生resume，不自动恢复已暂停任务或重放旧提醒；本次无服务重启／代码部署／模型或微信发送。
