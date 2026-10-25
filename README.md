@@ -12,13 +12,15 @@
 | Scheduler | 独立排期表、claim / pending / ACK；宿主约5秒扫描，合法本地 Main 的 Instant Reminder 可冷态恢复 |
 | Web / Gateway | 多Profile隔离、双SPA同源、消息渠道绑定持久Conversation；历史卡片首屏、显式详情补水与验证型图片引用／视口下载 |
 
-Secretary 只在Profile的 `state.db` 增加自有表，不改原表 schema / ownership。`noting`、`scheduler` 独立配置，`/noting` 控制当前Conversation参与。微信入站的完整正式回复按消息及时由adapter发送，Redirect的半截正式正文并入对应通知；其它入口须显式调用发送工具，Framework等非触发式上下文注入不借用上一轮渠道adapter自动发送。实现边界及已知限制见 [当前看板](CLAUDE.md)。
+Secretary只在Profile的`state.db`增加自有表，复用原生执行、存储和压缩。主要边界：
 
-Main的`scheduler`与`notebook_show`按各自能力开关完整独立声明在API顶层，不进入Tool Search折叠目录：前者受`scheduler.enabled`，后者沿全局`noting.enabled`读取门禁；当前Conversation的`/noting`参与开关不控制这两项权限。`notebook_create`、`notebook_update`、`notebook_archive`与`finish_noting`也沿全局`noting.enabled`完整固定顶层且不折叠，Main只能看见定义、运行时禁止执行；绑定Noting仅授权`conversation_history`、`notebook_show`及这四工具。Create／Update同名属性同层，更新不使用action／changes包裹；旧maintain退出当前可执行面。其它工具保留原生折叠策略。 Notebook条目统一使用顶层`done`布尔标记（Create默认false、Update省略保持）：true仅表示证据确认终结，不等于成功；false表示尚未确认终结，不等于未开始。具体进度与结果用语义字段记录；done不自动归档或授权。旧细分status仅读取兼容，不回写历史不可变记录。
+- Main只读Notebook，Notebook工具定义完整固定API顶层；绑定Noting仅可执行`conversation_history`、`notebook_show`、`notebook_create`、`notebook_update`、`notebook_archive`、`finish_noting`。Scheduler独立开关；条目`done`不等于成功或归档，证据时间由原始来源派生。
+- Idle遵循正常Noting提交→持久压缩→Framework；必要自动／手动压缩保留原生时序。Noting开启且合格Main的full compaction默认将旧尾部纳入摘要，真正达到原生阈值的自动压缩及显式`/compress here N`保留原生保尾。
+- Web可跨进程读取Main及Noting完整生命周期状态；Gateway没有实时输出直连时仍能读取最新持久历史，落库／结束经既有Socket通知恢复。Context读数绑定当前压缩边界并计入后续内容，旧runtime不能覆盖新读数。
+- Heartbeat沿目标Profile唤醒所属Conversation，是自查提醒；需要用户对接的事项在用户回归时汇报。开启Noting时使用带时间戳的`<heartbeat>`，额外prompt可省略；开关、冷恢复及隔离见[07](docs/07-scheduler-notebook-noting-compaction-redesign.md)。
+- 微信回复走原生adapter；Redirect、Framework与其它入口的触达边界见07。入口识别保留原生来源切换notice，不在root System Prompt注入当前Platform身份。
 
-Notebook的`evidence_time`由运行时按消息来源派生，只读展示；条目可带单个`content`／`schedule`语义建议，Noting不登记排期，Framework仅向Main提示考虑创建／更新。Noting开启且合格Main的full compaction将默认旧尾部纳入摘要；真正达到原生阈值的自动压缩、显式`/compress here N`仍按原生保尾。仅Idle要求正常Noting提交→持久压缩→Framework；其它入口保持既有并行机制。完整字段、Prompt与分支见[07本轮定稿](docs/07-scheduler-notebook-noting-compaction-redesign.md)。
-
-Heartbeat按目标Profile全局`noting.enabled`分支：开启时使用带时间戳的英文`<heartbeat>`消息，额外prompt可省略，经现有UI runtime／platform唤醒所属Main；关闭时保留原生格式与执行路径。后台执行需UI后端运行，独立于`scheduler.enabled`；状态按Profile与稳定Conversation保存在自有表；支持独立设置／暂停／恢复／清除，压缩续接共享，new／reset／fork不继承。切换页面、关闭连接、runtime回收及服务重启后仍由后台扫描恢复自身Main，不跟随当前Gateway绑定。精确模板与运行边界见[07 §8.15](docs/07-scheduler-notebook-noting-compaction-redesign.md#815-heartbeat-形态与-ui-唤醒用户确认2026-10-21)。
+字段、权限、Prompt、触发分支和投递契约统一见[07](docs/07-scheduler-notebook-noting-compaction-redesign.md)，Web恢复见[06](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md)。
 
 | 命令 | 行为 |
 |---|---|
@@ -71,13 +73,13 @@ Gateway入口 `hermes gateway`；Dashboard入口 `hermes dashboard --host 127.0.
 
 ### Android APK
 
-独立前端仓库的 `src-tauri/` 提供 Tauri 2 Android 壳，固定竖屏，前端资源内置，业务仍经正式 HTTPS／Authelia、原生 API／WS 连接。Android 专属系统栏避让和通知桥接不会在普通网页启用；运行状态复用现有跨 Profile 列表观察，不增加后端协议、独立连接或轮询。后台保护仅在已观察到的 Active Turn 期间临时启用，不保证系统暂停／回收后仍通知。APK从锁屏或后台返回时先保留当前页面，网络可用时给予本轮历史／Socket／Turn恢复5秒窗口，完成则不重载；附属读取独立更新，不拖住已核验正文。明确不存在或Profile不可用的结果页面、明确离线的存活页面停止无意义恢复重载，等待用户操作或网络恢复；真正JS无心跳及无法恢复时保留原生兜底与退避。此机制保留登录／本地草稿／当前会话，不在普通网页启用。完整行为和验收边界见 [06 Android 契约](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md#android-原生通知与临时后台保护用户最终确认2026-10-21)。
+独立前端的`src-tauri/`提供Tauri 2 Android壳，固定竖屏、内置网页，经正式HTTPS／Authelia连接同一API／WS。系统栏、通知和临时后台保护仅在APK生效；后台保护限已观察到的活动Turn，不保证系统挂起后仍通知。返回前台保留页面，网络可用时给予历史／Socket／Turn恢复5秒窗口，成功不重载；离线、目标明确缺失、JS失活及失败兜底按[06 Android契约](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md#android-原生通知与临时后台保护用户最终确认2026-10-21)处理，保留登录、草稿和会话。
 
 在独立前端仓库设置 Android SDK／NDK／Java 环境后执行 `npm run android:build`，输出 `src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk`。当前目标为 Android 8.0+／arm64；release 非调试、使用本地签名，原件仅保存在 ignored `src-tauri/.android-signing/`，后续覆盖升级必须保留该密钥。应用图标由 `npm run android:icons` 复用现有 logo 与主题深色自动生成，release 构建会先刷新图标。`npm run android:debug` 仅供本地验收。实际包版本、网络验证及限制统一记录在 [运维记录](docs/operations-log.md)。
 
 ## 部署入口
 
-当前首尔部署使用 Caddy HTTPS → Authelia双因素（Redis Unix socket保存会话）→ 回环单后端。Secretary `/` 与官方Dashboard `/dashboard` 同源共用API / WS；不增加第二后端或多worker。前端只部署构建产物。旧北京Cloudflare Tunnel模板与当前入口区别见 [部署SOP](docs/cloud-deployment-sop.md)。
+当前首尔部署使用 Caddy HTTPS → Authelia双因素（Redis Unix socket保存会话）→ 回环单后端。Secretary `/` 与官方Dashboard `/dashboard` 同源共用API / WS；不增加第二后端或多worker。云端检出main，仅发布已合入main的后端代码；前端只部署构建产物。旧北京Cloudflare Tunnel模板与当前入口区别见 [部署SOP](docs/cloud-deployment-sop.md)。
 
 运维步骤、Profile布局、凭据与同步责任见SOP；实际变更、验证和回滚点统一记录在 [运维记录](docs/operations-log.md)，不再堆入核心文档。
 
@@ -97,10 +99,9 @@ Gateway入口 `hermes gateway`；Dashboard入口 `hermes dashboard --host 127.0.
 | 部署、认证、同步与回滚SOP | [部署SOP](docs/cloud-deployment-sop.md) |
 | 部署与故障变更台账、证据入口 | [运维记录](docs/operations-log.md) |
 | 手机HTTP/2实测及残留问题 | [验收报告](docs/mobile-http2-acceptance-20261020.md)、[原任务书](docs/mobile-http2-retest-task.md) |
-| 手机Web／微信交替使用、网络与Noting故障取证 | [2026-10-20晚调查报告](docs/mobile-web-investigation-20261020.md) |
+| 手机Web／微信交替使用、网络与Noting故障取证 | [运维记录](docs/operations-log.md)中的10/20调查与证据入口 |
 | 移动端阶段一实施、验收与后续短网络实验任务书 | [任务包入口](docs/hermes-network-experiment-20261020/README.md)、[阶段一](docs/hermes-network-experiment-20261020/PHASE1-IMPLEMENTATION.md) |
 | 上下文开销 | [05](docs/05-context-cost-ledger.md) |
-| 自适应Idle整理阈值算法初稿、定性公式与条件预测（未实现） | [算法方案](docs/adaptive-noting-threshold-proposal.md) |
 | 历史冻结与交付 | [产品意图复审](.autonomous/20261018-product-intent-review/snapshot-index.md)、[云部署](.autonomous/20261019-cloud-deployment/snapshot-index.md)、[第三轮](.autonomous/20261016-round3-secretary-nm/snapshot-index.md)、[第二轮](.autonomous/20261012-round2-web-ui/snapshot-index.md) |
 | PM、架构与测试参考 | [CONTRIBUTING](CONTRIBUTING.md)、[PM](website/docs/reference/package-management.md)、[架构](website/docs/developer-guide/architecture.md)、[测试](tests/AGENTS.md) |
 | 安全与许可证 | [SECURITY](SECURITY.md)、[MIT License](LICENSE) |

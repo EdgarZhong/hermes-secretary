@@ -2,6 +2,24 @@
 
 维护实际部署、故障处理、验证与回滚点；步骤和稳定布局见[部署SOP](cloud-deployment-sop.md)，当前任务只在根[CLAUDE](../CLAUDE.md)。以下时间均为Asia/Shanghai；PID、指纹和测试结论只对应记录时点，不代表实时状态。凭据、令牌、原始私人材料不写入本文件。
 
+## 2026-10-25 · 跨进程Noting全生命周期、Context与0.1.7联合收尾
+
+**授权与范围：** 用户要求同时修复跨进程状态读取和通知，覆盖Noting到压缩收尾完整生命周期，通用机制测试后部署；随后要求前端一并部署、重打0.1.7，后端合main，并确认以后云端只运行main、分支完成后及时合并。沿现有两仓main实施，无新worktree／自主套件；后端实际签出为hermes-secretary-web-release，原presentation dirty保持。
+
+**真实归因：** 18:38用户当前Chrome仍`Task state unknown`，但生产Idle Noting自18:28:26起已43条子消息、后续正常提交；Web只认本进程活动对象，开始／结束通知也仅进程内。第二次压缩并非重复误触发：18:20:06 Main最后输入114739，高于98304；500秒后Idle，18:35:49 Noting正常提交，18:43:46父压缩26→1、粗估30970，随后Framework追加。18:52页面仍62%，持久local_estimate162517可被旧Web热runtime覆盖。18:59–19:01又有真实Main请求，最后输入54604；这些真实使用不属于本轮测试请求，不能继续拿仅2条压缩后正文当最终计量基线。
+
+**实现：** 主包94bdd4f复用原生租约算法／周期服务，在Secretary自有仅liveness表记录证明，与Main租约键空间隔离；既有child／recovery仍为身份与结果权威，本地注册按DB／child隔离。任务清理等待“执行完成＋自身Framework carrier结算”，含独立压缩fence、owner变化、supersede和写失败，不等待Main或新增准入锁。中央changed接缝复用既有跨进程失效信号→sessions.changed→当前页面重读。Context绑定所属DB／Session及当前压缩边界，rough写入核来源正文并作事务CAS；legacy旧读数用持久root、完整工具pin与活动正文懒纠偏，计入已证明末端后的Framework增量，不重复加算。原生压缩只增一处传当前compressed证明，不修改Prompt／模型／触发阈值。初次线上核验另发现breakdown没有携当前history验证有效provider anchor，粗估65061与usage55716分歧；补充7bc5729沿同一helper显式传history，统一优先有效原生读数。
+
+**验证：** 任务／通知等8文件102项、存储13项、Framework边界61项通过；真实start_recovery延后结算单例通过。Context原批63项、尾段4文件61项／专用16项、最终读取对齐专用17项及冷读26项通过，原生Noting→压缩→Framework→Context联合26项通过；范围重叠不加总。冻结10检查均通过，health0 blocking／0 advisory；未跑全仓。原历史Noting内容重建空列表反例在干净HEAD2122223复现，保留旧失败，不宣称内容恢复已修。迭代中的素材、旧测试Schema参数、测试表清单和脚本误用均保留原日志，不冒充首次全绿。模型I/O由隔离stub控制，生产测试模型／微信发送0；上线后未人为触发收费Noting样本。
+
+**正式发布与核验：** 复用既有发布执行器，自然空闲预检／复检、停服务、三库与配置备份、精确快进main、同字节最新静态交换及启动核验；94bdd4f与最终7bc57298be9fa4ee24de97f70d13c5b9c4a7de4c两次收据均verified。最终Web／Gateway实际7bc5729、双服务active／微信connected，云端分支main；前端f3eb13024f3bbfd501db1e7f7391aaf7fdd3e304的439静态及Dashboard保持，历史／Notebook／排期／配置／绑定对账一致。最终REST最新200cards、Socket完整恢复complete=true；两Context API和重复读取均55716／262144、21%、usage_anchor，当前10条活动正文；native rough65061另保留估算身份。用户明确授权只读查看其真实Chrome，本次未刷新／导航／点击／切焦点，页面自动恢复到Context21%、Secretary idle；这项授权不改默认显示保护。
+
+**0.1.7重新打包：** 新包`Hermes-Secretary-0.1.7-f3eb130-rebuild-20261025-192616-arm64.apk`，0.1.7／1007，32,095,441字节，SHA256 `2aedc7e4dd794af6bea36075516ce33a1de1aacf2f3edbe726bd9b505431a912`。复用原证书449b5f36662cb5ff2979004ce6472ca5c8ea5d992b334e2a4191eda6e7e53ad9，439 assets与最终联合发布manifest逐SHA一致；重封包复用已发布dist，避免仅copiedAt时间变化，未改产品源码或另切静态。旧包保留；本地位置为原工作区ignored `.hermes-dev/web-recovery-20261024/release-017/`。实际APK生命周期仍沿用户C17豁免未实测，不称真机验收通过。
+
+**备份与恢复：** 已核最新`20261025-noting-context-final`和前一`20261025-noting-context`两套host／Alex／study的SHA、完整性、外键，共6库；清退更旧ab29342与5017beb的6个备份文件，387,215,360字节。未动运行库／WAL／SHM或databases-current.zip。最终云私有收据与RECOVERY在`/home/ubuntu/.local/state/hermes-secretary/release-20261024/20261025-noting-context-final/`，本地原始证据统一ignored `.hermes-dev/noting-crossprocess-20261025/`；无自动回滚或运行库覆盖。
+
+**核心文档规整：** 按用户追加要求，README保稳定架构／运行与索引，AGENTS保完整规则并压缩重复措辞，CLAUDE只留当前版本／唯一看板／未关闭边界；去除重复历史阶段、过时版本和已结束编排，撤出两处无跟踪文件的失效索引，不发布原未跟踪调查／算法稿。保留47条旧时间副本未恢复且无写入授权的边界。旧CLAUDE完整时点由`git show 7bc5729:CLAUDE.md`保留；既有运维记录、冻结报告、原失败和原用户授权未改写，不把已关闭事项重新立项。本次文档提交不改变云端已加载代码，不为纯文档重启生产。
+
 ## 2026-10-25 · Web体验修复、阅读宽度恢复与0.1.7
 
 **范围和验证：** 用户授权由Web会话主导前端修复／部署，交付0.1.7。最终Web f3eb13024f3bbfd501db1e7f7391aaf7fdd3e304已推origin/secretary：附属读取失败独立恢复、核心重试不被显示需求变化取消、异会话通知不抢阅读位置、有效卡片缓存保留、明确缺失目标保路由／显式选择、APK终态与明确离线不循环刷新。英文静态文案，正常暂态不弹协议错误，持续问题给简短局部说明。移除恢复分页新增display:contents包装，以Fragment恢复原Assistant／Thinking／工具／System阅读边界，Compaction及加载历史保宽；正式Timeline结构回归和隐藏IAB桌面／移动实际像素核对通过。9文件288项、typecheck／构建通过；原生Robolectric44项零失败。实际IAB另覆盖缓存冷读、1200历史、异会话通知、附属失败、核心503中改变显示需求后自动恢复、缺失目标保路由。全仓未跑，既有profiles3条失败原HEAD可复现；APK生命周期按用户C17豁免未实测。
