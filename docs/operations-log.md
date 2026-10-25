@@ -2,6 +2,18 @@
 
 维护实际部署、故障处理、验证与回滚点；步骤和稳定布局见[部署SOP](cloud-deployment-sop.md)，当前任务只在根[CLAUDE](../CLAUDE.md)。以下时间均为Asia/Shanghai；PID、指纹和测试结论只对应记录时点，不代表实时状态。凭据、令牌、原始私人材料不写入本文件。
 
+## 2026-10-25 · Gateway active时Web访问阻断回归与完成历史主动更新
+
+**问题与最新需求：** 用户截图显示微信运行时Web只有`Recovery unavailable: runtime_unavailable`。新恢复封套把Web没有Gateway进程输出快照判为失败，前端继而阻断已经成功读到的REST历史，首次无缓存即空白。用户明确这属于正常使用，不接受报错、只读或只显示旧缓存；可以缺Gateway逐字输出流，其余功能保持。用户同时明确Gateway为active Turn且WebSocket仍连接时，Turn结束必须及时主动更新历史，替代此前接受不主动推送的约定。中途提出的只读preview／保留错误候选已撤销，未上线。Gateway输出原本没有直连Web的实时流，不等同WebSocket被断开；本次回归属于恢复门禁。
+
+**最小修补：** 后端5017bebb4c666087efb5449b23e4ece33d30baa7在既有recovery_view接缝识别同Profile实际库中的native外部Turn lease。Web本地未运行、holder与本地Agent不同且D0/D1历史／租约稳定时，正常返回complete=true、running=true／working及可信的本地WS切点，历史仍是本次最新有界REST／数据库读取；可选live_output_available=false只说明缺Gateway输出流，不冒用旧local inflight、伪造idle或编造Turn起点。未知holder、本地active缺正式快照、错误owner及不相容事实仍拒绝。原生release_session_turn_lease提交后，仅确实删除当前holder时写既有history失效信号，现有0.5秒watcher／2秒合并尾沿通过同一WS发sessions.changed，驱动当前页面自动重读持久历史；不新增WS／通用调度器／数据库账本，不以通知信号冒充正常完成回执。
+
+**验证与前端兼容：** 后端4相关文件81项及冻结10检查通过。覆盖weixin／telegram运行中正常恢复、旧本地输出排除、运行中追加的最新持久正文、真实独立进程经DurableTurnLease释放后，即使最后正文早已读过，仍唤醒watcher，且合并尾沿不丢；错误／重复release和信号失败保原租约契约。首测试子进程Path参数错误已修，原日志保留，未将该次算有效产品反证。Web main436d3a0bb52311037370a565d8c34527bf241da9相对生产c0a6558仅AGENTS及两测试，无产品变化；74项与typecheck通过，主会话亲审。实际App组件jsdom验证正常ready、输入未禁用、Thinking详情走真实读取入口、Usage／Context存在、运行中重新REST及完成通知后新增正文／idle自动接管，含旧active响应晚到不覆盖完成；不是线上浏览器或真机实测。现有0.1.6包无需重打。
+
+**发布与线上核对：** 17:40:56–17:41:19，空闲预检Web0／Gateway0后复用前次联合发布命令，由351770e精确快进5017beb；同一439份c0a6558静态逐SHA保持，未发布新前端产品。receipt.phase=verified，Web及Gateway实际5017beb且active，微信connected；三库10保护表、配置／凭据／绑定、Dashboard与Secretary资源对账均通过。正式REST元数据／最新200cards／锚点21条／详情／Timeline均200，WS两窗口complete=true，Context可用；未发模型请求／微信测试消息，不创建生产合成历史，不抢断活动Turn。发布后的真实Gateway运行浏览器展示未代操作，不能将隔离测试当线上真机验收。
+
+**收据、备份与回退：** 云私有`/home/ubuntu/.local/state/hermes-secretary/release-20261024/20261025-gateway-web-5017beb/`保存receipt、RECOVERY、三库／配置、正式REST／WS结果和备份轮换记录；本地ignored`.hermes-dev/gateway-web-recovery-20261025/`保测试／检查／发布日志。新发布与前次20261025-pi041-351770e-016共两套6库逐SHA、SQLite完整性与FK有效，清理更旧20261025-web-recovery-main一套3库193601536bytes，运行库／WAL／SHM、配置及databases-current.zip保持。准备阶段本地系统Python缺hashlib.file_digest在上传前退出，改用等价SHA计算后成功，未改生产或依赖。回退先核当前活动及后续写入，空闲停专属服务后恢复已审351770e代码及兼容静态，保最新运行库与配置，不自动DB回滚或重放任务。纯状态文档后继提交无需再重启。
+
 ## 2026-10-25 · Pi041恢复404、冷Context与Notebook提示联合发布（0.1.6）
 
 **授权与版本：** 用户明确不用自主实现套件，两仓main工作，后端聊天统一部署，Web聊天负责前端并打包0.1.6。后端产品`351770eaeb1bdbfb7d4761ec1afbc84cbb91713c`、Web`c0a65589ba9a840420f4909e535df5473a3ea690`已提交自动push；后端使用既有main签出，临时worktree改动逐文件迁入后清理，未混入他人presentation报告。Notebook模型投影隐藏version_id／保entry_id、Heartbeat自查及回归汇报提示也包含在本发布；不改变版本存储、人类审计、触发或渠道权限。Conversation起始时间漂移及微信prepare failed未纳入本次修复。
