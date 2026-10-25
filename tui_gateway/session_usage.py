@@ -11,33 +11,33 @@ def _retain_context_breakdown_estimate(agent, payload: dict, *, messages=None) -
     try:
         from agent.usage_anchor import persist_context_estimate, runtime_context_current
 
-        previous = _agent_context_reading(agent)
+        previous = _agent_context_reading(agent, messages=messages)
         if previous and previous.get("invalidation_reason"):
             payload.update(context_available=False, context_invalidated=True,
                            context_invalidation_reason=previous["invalidation_reason"])
             return payload
         if runtime_context_current(agent, messages=messages) is False:
-            return _replace_stale_context_breakdown(agent, payload)
+            return _replace_stale_context_breakdown(agent, payload, messages=messages)
         tokens = payload.get("context_used")
         if (payload.get("context_source") == "local_estimate" and isinstance(tokens, int)
                 and not isinstance(tokens, bool) and tokens >= 0):
             persist_context_estimate(agent, tokens, messages=messages)
             if runtime_context_current(agent, messages=messages) is False:
-                return _replace_stale_context_breakdown(agent, payload)
+                return _replace_stale_context_breakdown(agent, payload, messages=messages)
     except Exception:
         logger.debug("native context estimate retention failed", exc_info=True)
     return payload
 
 
-def _agent_context_reading(agent):
+def _agent_context_reading(agent, *, messages=None):
     from agent.usage_anchor import persisted_context_estimate
     return persisted_context_estimate(
-        getattr(agent, "_session_db", None), getattr(agent, "session_id", None),
+        getattr(agent, "_session_db", None), getattr(agent, "session_id", None), messages,
         model=getattr(agent, "model", None), recover_legacy=True)
 
 
-def _replace_stale_context_breakdown(agent, payload):
-    previous = _agent_context_reading(agent)
+def _replace_stale_context_breakdown(agent, payload, *, messages=None):
+    previous = _agent_context_reading(agent, messages=messages)
     payload.update(categories=[], estimated_total=0, context_available=bool(previous and "tokens" in previous))
     if previous and "tokens" in previous:
         _apply_context_reading(payload, previous)

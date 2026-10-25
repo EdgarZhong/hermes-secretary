@@ -130,6 +130,25 @@ def test_compacted_context_drops_for_old_hot_and_deferred_cold_readers(live_cont
     assert db.get_session('stored')['message_count'] == 1  # same count as the pre-compaction transcript
 
 
+def test_stale_runtime_breakdown_uses_the_same_recovered_provider_anchor_as_usage(live_context):
+    db, agent, session = live_context
+    _compress(db)
+    current = db.get_messages_as_conversation('stored')
+    # A later native owner observes provider usage. Web still holds its old
+    # Agent, while formal history recovery has read the current transcript.
+    native = SimpleNamespace(session_id='stored', _session_db=db, model=agent.model)
+    set_usage_anchor(native, capture_usage_anchor(6000, 40, current, model=agent.model))
+    db.append_message('stored', 'assistant', 'The priced response')
+    current = db.get_messages_as_conversation('stored')
+    persist_context_estimate(native, 65061, messages=current)
+    session['history'] = current
+    assert db.get_session_model_config_value('stored', '_usage_context')['source'] == 'local_estimate'
+    usage = _rpc('session.usage')
+    breakdown = _rpc('session.context_breakdown')
+    assert usage['context_used'] == breakdown['context_used'] == 6040
+    assert usage['context_source'] == breakdown['context_source'] == 'usage_anchor'
+
+
 def test_rough_write_cannot_relabel_its_old_tokens_after_concurrent_compaction(live_context, monkeypatch):
     db, agent, _session = live_context
     execute = db._execute_write
