@@ -2,6 +2,7 @@
 
 import json
 import logging
+from copy import deepcopy
 from pathlib import Path
 
 from hermes_time import format_timestamp
@@ -62,6 +63,21 @@ def readable_notebook_state(state, *, profile_home=None, db=None, conn=None, con
             for section, entries in public_state(state).items()}
 
 
+def model_notebook_data(value):
+    """Hide immutable item versions in Notebook data sent to a model.
+
+    Results can contain entries or partial entry references inside error details
+    and archival effects. ``fields`` is user content, not an audit envelope, so
+    its keys and nested values must remain intact.
+    """
+    if isinstance(value, dict):
+        return {key: deepcopy(item) if key == "fields" else model_notebook_data(item)
+                for key, item in value.items() if key != "version_id" or "entry_id" not in value}
+    if isinstance(value, list):
+        return [model_notebook_data(item) for item in value]
+    return value
+
+
 def _evidence_coverage_conn(db, conn, conversation_ref, anchor_uid, profile_home):
     positions = db._notebook_anchor_positions_conn(conn, conversation_ref)
     if anchor_uid not in positions:
@@ -107,8 +123,8 @@ def evidence_coverage(conversation_ref, coverage, *, db=None, conn=None, profile
 
 def model_notebook_view(view, *, db=None, conn=None, profile_home=None):
     """Keep actionable Notebook data; audit ownership stays in the runtime/API."""
-    projected = {key: value for key, value in view.items()
-                 if key not in {"snapshot_id", "base_snapshot_id", "coverage"}}
+    projected = model_notebook_data({key: value for key, value in view.items()
+                                    if key not in {"snapshot_id", "base_snapshot_id", "coverage"}})
     projected["evidence_coverage"] = (
         {"status": "none", "description": "No Notebook has been committed for this Conversation."}
         if view.get("view_kind") == "snapshot" and view.get("snapshot_id") is None else
@@ -142,7 +158,9 @@ def show_notebook(snapshot, *, conversation_ref=None, profile_home=None, db=None
 
 def _render_entry(entry):
     lines = [f"- {entry['entry_type']} [done={json.dumps(entry['done'])}]",
-             f"  entry_id: {entry['entry_id']}", f"  version_id: {entry['version_id']}"]
+             f"  entry_id: {entry['entry_id']}"]
+    if "version_id" in entry:
+        lines.append(f"  version_id: {entry['version_id']}")
     for name, value in entry["fields"].items():
         rendered = value if isinstance(value, str) else json.dumps(value, ensure_ascii=False)
         lines.append(f"  {name}: {rendered}")
@@ -165,6 +183,8 @@ def render_notebook(snapshot, *, profile_home=None, db=None, conn=None, model_vi
         lines.append("Evidence coverage: " + json.dumps(coverage, ensure_ascii=False))
     state = readable_notebook_state(snapshot["payload"], profile_home=profile_home, db=db, conn=conn,
                                     conversation_ref=snapshot["conversation_ref"])
+    if model_visible:
+        state = model_notebook_data(state)
     for section in SECTIONS:
         lines.extend(["", section])
         if not state[section]:

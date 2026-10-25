@@ -9,7 +9,7 @@ import pytest
 
 from hermes_cli.cli_secretary_commands import PERSISTENCE_PROPOSAL_INSTRUCTION, propose_persistence_command
 from hermes_time import format_timestamp
-from secretary.notebook_render import readable_notebook_state, show_notebook
+from secretary.notebook_render import model_notebook_data, readable_notebook_state, show_notebook
 from secretary.notebook_store import NotebookStore
 from tests.hermes_state._secretary_notebook_harness import add, make, open_notebook_db, ref_of
 
@@ -58,12 +58,13 @@ def assert_projection(prompt, committed, *, unavailable=False):
     db, ref, snapshot, expected = committed
     projected = proposal_data(prompt)
     assert projected["conversation_ref"] == ref
-    assert projected["payload"] == expected
+    assert projected["payload"] == model_notebook_data(expected)
     assert all(projected["payload"][section] for section in ("work", "situations", "discussion", "candidates"))
     matter = projected["payload"]["work"][0]
     assert matter["done"] is True and projected["payload"]["candidates"][0]["done"] is False
     assert matter["entry_id"] == snapshot["payload"]["work"][0]["entry_id"]
-    assert matter["version_id"] == snapshot["payload"]["work"][0]["version_id"]
+    assert "version_id" not in matter
+    assert "version_id" not in prompt
     assert matter["source_message_uids"] == ["user-source"]
     assert matter["source_time_ranges"] == [{"start_time": format_timestamp(90, profile_home=db.db_path.parent),
                                                "end_time": format_timestamp(110, profile_home=db.db_path.parent)}]

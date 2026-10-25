@@ -84,7 +84,8 @@ def test_single_carrier_contains_complete_snapshot_and_native_identity(runtime):
     assert render_notebook(snapshot, profile_home=Path(db.db_path).parent, db=db, model_visible=True) in body
     assert '"history_message_count": 2' in body
     assert '"through_time": "1970-01-01T00:03:20+00:00"' in body
-    assert entry["entry_id"] in body and entry["version_id"] in body
+    assert f"entry_id: {entry['entry_id']}" in body and "version_id:" not in body
+    assert f"version_id: {entry['version_id']}" in render_notebook(snapshot, db=db)
     assert "为家人确定探访日期 🌄" in body
     assert "Snapshot:" not in body and "Coverage anchor:" not in body
     assert result["snapshot_id"] not in body and "Termination: finish_noting" in body

@@ -26,6 +26,12 @@ RANGE = {"start_time": "1970-01-01T00:01:40+00:00", "end_time": "1970-01-01T00:0
 RANGES = [RANGE, {"start_time": "1970-01-01T00:01:30+00:00", "end_time": "1970-01-01T00:01:40+00:00"}]
 
 
+def _assert_same_source(current, original):
+    assert current["entry_id"] == original["entry_id"]
+    assert current["fields"] == original["fields"]
+    assert "version_id" not in current and "version_id" not in original
+
+
 def _prepare(runtime):
     runtime.db.append_message("parent", "user", "Review the existing evidence without writing outside.",
                               message_uid="actual-result", timestamp=300)
@@ -69,7 +75,7 @@ def test_native_candidate_accepts_source_form_for_each_target(runtime, target, f
     assert candidate["fields"]["description"] == SUMMARIES[target]
     assert candidate["done"] is False
     assert "no proposal, approval or outside write" in candidate["fields"]["stage_evidence"]
-    assert script.results["s02-2"]["payload"]["work"][0]["version_id"] == source["version_id"]
+    _assert_same_source(script.results["s02-2"]["payload"]["work"][0], source)
     if form == "refs":
         assert candidate["fields"]["notebook_refs"] == [source["entry_id"]]
         assert candidate["source_message_uids"] == []
@@ -128,7 +134,7 @@ def test_native_candidate_rejects_invalid_provenance_without_changing_source(run
         assert "clear" in refused["error"]["next_action"].lower()
     payload = script.results["s02-2"]["payload"]
     assert not payload["candidates"]
-    assert payload["work"][0]["version_id"] == script.results["s02-0"]["entry"]["version_id"]
+    _assert_same_source(payload["work"][0], script.results["s02-0"]["entry"])
 
 
 @pytest.mark.parametrize("target", SUMMARIES)
@@ -165,7 +171,7 @@ def test_new_ref_targets_convert_atomically_without_claiming_a_write(runtime, ta
     assert converted["fields"]["notebook_refs"] == converted["fields"]["source_types"] == []
     assert converted["source_message_uids"] == (["origin-a"] if form != "ranges" else [])
     assert converted["source_time_ranges"] == (RANGES if form != "messages" else [])
-    assert script.results["s02-3"]["payload"]["work"][0]["version_id"] == script.results["s02-0"]["entry"]["version_id"]
+    _assert_same_source(script.results["s02-3"]["payload"]["work"][0], script.results["s02-0"]["entry"])
 
 
 @pytest.mark.parametrize("form", ["messages", "ranges", "mixed_direct"])
@@ -195,7 +201,8 @@ def test_direct_candidate_requires_complete_source_clear_before_switch_to_refs(r
     assert script.results["s02-3"]["payload"]["candidates"][0] == created
     converted = script.results["s02-4"]["entry"]
     source = script.results["s02-0"]["entry"]
-    assert converted["entry_id"] == created["entry_id"] and converted["version_id"] != created["version_id"]
+    assert converted["entry_id"] == created["entry_id"]
+    assert "version_id" not in converted and "version_id" not in created
     assert converted["fields"]["description"] == created["fields"]["description"]
     assert converted["done"] is created["done"] is False
     assert converted["fields"]["stage_evidence"] == created["fields"]["stage_evidence"]
@@ -204,5 +211,5 @@ def test_direct_candidate_requires_complete_source_clear_before_switch_to_refs(r
     assert converted["source_message_uids"] == converted["source_time_ranges"] == []
     shown = script.results["s02-5"]["payload"]
     assert shown["candidates"][0] == converted
-    assert shown["work"][0]["version_id"] == source["version_id"]
+    _assert_same_source(shown["work"][0], source)
     assert shown["work"][0]["candidate_refs"] == [created["entry_id"]]

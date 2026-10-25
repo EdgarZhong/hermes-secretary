@@ -43,6 +43,8 @@ def test_cold_messaging_heartbeat_runs_ui_platform_and_target_profile_with_local
     user = next(row for row in db.get_messages("stored") if "<heartbeat>" in str(row["content"]))
     wire = [row for row in cold.calls[0][1]["messages"] if "<heartbeat>" in str(row.get("content"))]
     assert len(wire) == 1 and wire[0]["content"] == user["content"]
+    assert "This is a self-check reminder, not a user message." in wire[0]["content"]
+    assert "If any matter needs coordination with the user, proactively report it when the user returns." in wire[0]["content"]
     assert user["timestamp"] == state(db).last_fired_at
     assert user["content"].count("<timestamp>") == 1
     assert "Additional prompt:" not in user["content"]

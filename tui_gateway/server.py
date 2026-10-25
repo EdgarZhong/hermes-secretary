@@ -1620,10 +1620,9 @@ def _stored_session_runtime_overrides(row: dict | None) -> dict:
 
 
 def _runtime_model_config(agent, existing: dict | None = None) -> dict:
-    """Merge the agent's CURRENT runtime identity onto the row's persisted ``model_config``. Falsy agent
-    attributes DELETE the key rather than skip the write: resume reads provider/endpoint from this JSON
-    (model column written separately), so a stale provider would route the resumed chat to the wrong endpoint."""
+    """Persist the current runtime, retiring the previous gateway route; empty values delete keys."""
     config = dict(existing or {})
+    config.pop("gateway_runtime", None)
     attr = lambda k: str(getattr(agent, k, "") or "").strip()
     model, provider, base_url = attr("model"), attr("provider"), attr("base_url")
     if provider.lower() == "custom":

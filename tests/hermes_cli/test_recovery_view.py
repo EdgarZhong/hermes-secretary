@@ -99,7 +99,7 @@ def test_lineage_representatives_retired_uids_branch_and_details(store, legacy):
     current = client.get("/api/sessions/recovery/messages?recovery_view=1").json()
     assert "answer" not in [row.get("content") for row in current["messages"]]
     with pytest.raises(RecoveryViewError):
-        read_view(db,"recovery","foreign",[selector()])
+        read_view(db,"foreign","default",[selector()])
     with pytest.raises(RecoveryViewError):
         read_view(db,"recovery","default",[selector()],details=list(range(1,14)))
 

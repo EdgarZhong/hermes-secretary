@@ -10,7 +10,10 @@ from datetime import datetime, timezone
 
 from hermes_time import format_timestamp
 from secretary.notebook_contract import NotebookValidationError, local_source_error
-from secretary.notebook_render import evidence_coverage, model_notebook_view, readable_notebook_entry, readable_notebook_state
+from secretary.notebook_render import (
+    evidence_coverage, model_notebook_data, model_notebook_view,
+    readable_notebook_entry, readable_notebook_state,
+)
 from secretary.noting_contract import (
     FINISH_NOTING_SCHEMA,
     NOTEBOOK_CREATE_SCHEMA,
@@ -22,7 +25,7 @@ from secretary.noting_prompts import CURRENT_NOTING_CONTROL
 
 
 def _encoded(result):
-    return json.dumps(result, ensure_ascii=False)
+    return json.dumps(model_notebook_data(result), ensure_ascii=False)
 
 
 def _error(message, *, code="invalid_argument", field=None, next_action=None):
@@ -150,10 +153,10 @@ def notebook_work_show(child, args):
         if not isinstance(args, dict) or args:
             return _encoded(_error("notebook_show accepts only an empty argument object.", field="arguments"))
         with store.lock:
-            view = model_notebook_view(store.working_view(), db=child._session_db)
+            view = store.working_view()
             view["payload"] = readable_notebook_state(
                 view["payload"], db=child._session_db, conversation_ref=store.conversation_ref)
-            return _encoded(view)
+            return _encoded(model_notebook_view(view, db=child._session_db))
     except NotebookValidationError as exc:
         return _encoded(exc.as_result())
 
@@ -227,9 +230,9 @@ def noting_tool_control_message(profile="NOTING", *, notebook_state=None, conver
         "evidence_coverage": evidence_coverage(conversation_ref, coverage, db=db),
         "current_time": format_timestamp(current_time or datetime.now(timezone.utc)),
         "task_parameters": {"aging_days": 7, "implicit_gap_hours": 72},
-        "working_notebook": readable_notebook_state(
+        "working_notebook": model_notebook_data(readable_notebook_state(
             notebook_state if notebook_state is not None else {key: [] for key in SECTIONS},
-            db=db, conversation_ref=conversation_ref),
+            db=db, conversation_ref=conversation_ref)),
     }
     return (CURRENT_NOTING_CONTROL + "\n\n<noting-task-data>\n"
             + json.dumps(data, ensure_ascii=False, sort_keys=True) + "\n</noting-task-data>")

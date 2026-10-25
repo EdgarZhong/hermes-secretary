@@ -36,7 +36,7 @@ def _cold_context_breakdown(session: dict) -> dict:
         "context_percent": usage.get("context_percent", 0) or 0, "context_used": usage.get("context_used", 0) or 0,
         "estimated_total": 0, "context_estimated": usage.get("context_estimated", False),
         "context_source": usage.get("context_source", "provider_usage"),
-        "model": _metadata_mirror(session).get("model", ""),
+        "model": _live_session_identity(session)[0],
         "context_available": "context_used" in restored and not restored.get("context_invalidated", False),
         **({"context_invalidated": True, "context_invalidation_reason": restored["context_invalidation_reason"]}
            if restored.get("context_invalidated") else {}),

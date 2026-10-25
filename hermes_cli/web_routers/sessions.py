@@ -893,11 +893,11 @@ async def _get_recovery_messages(session_id, profile, version, anchor_uid, ancho
 
 
 def _timeline_session_id(db, session_id: str, owner: str) -> str:
-    # Durable jump addresses are exact ids, never title/prefix guesses. A NULL
-    # legacy owner belongs to this profile's store, just like /messages pages.
+    # Durable jump addresses are exact ids, never title/prefix guesses. _with_db
+    # selected the owner's store; historical profile_name labels do not reroute
+    # or exclude rows from that store, matching ordinary /messages and resume.
     def owned(sid):
-        row = db._read_one("SELECT profile_name FROM sessions WHERE id = ?", (sid,))
-        return row is not None and row["profile_name"] in (None, owner)
+        return db._read_one("SELECT 1 FROM sessions WHERE id = ?", (sid,)) is not None
 
     if not owned(session_id):
         raise HTTPException(status_code=404, detail=_NOT_FOUND)

@@ -2,6 +2,14 @@
 
 维护实际部署、故障处理、验证与回滚点；步骤和稳定布局见[部署SOP](cloud-deployment-sop.md)，当前任务只在根[CLAUDE](../CLAUDE.md)。以下时间均为Asia/Shanghai；PID、指纹和测试结论只对应记录时点，不代表实时状态。凭据、令牌、原始私人材料不写入本文件。
 
+## 2026-10-25 · Alex Idle Noting 改为96K，保留500秒延迟
+
+**用户确认与执行：** 用户核对最近一次真实Noting缓存后，明确要求保留500秒延迟，将上下文阈值改为96K；沿既有方案明确的96K＝98,304 tokens。12:44:37–40通过生产正式CLI `hermes -p alex config set noting.idle.threshold_tokens 98304`写入，再用原生`config get`读回98304。Alex实体Home配置完整语义对比唯一变化为`noting.idle.threshold_tokens: 131072→98304`；`delay_seconds=500`、Noting开关、原生`compression.threshold=0.8`及独立Idle timer=0保持，权限仍0600。该配置为Alex Profile共享，适用于全部合格Conversation；触发判定沿`settings_for_db`重新加载目标Profile配置，不需要服务重启，未人为触发Noting／压缩／模型请求，尚无新阈值下的实际任务验收。
+
+**调整依据与边界：** 最近一次真实Idle任务在10:31:28 Main结束后约500秒、10:39:48启动；Noting首次输入135131、缓存131072（97.0%），24请求累计输入3562703、缓存3532800（99.16%）、非缓存29903、输出15412，与session_model_usage一致。证明该次500秒后父→Noting热前缀有效，不保证供应商所有未来缓存保留时间。压缩后Main首请求2048／38286（5.3%），后续38144／38738（98.5%）；压缩摘要本身缺独立缓存用量，不算整链路全部热缓存。
+
+**恢复点与前置失败：** 云受限`/home/ubuntu/.local/state/hermes-secretary/config-changes/idle-noting-96k-20261025-124437/`保存0600原配置及receipt；原SHA256为`9858536940e036f21fc0d1fba14ea43368fa4b27a24898dabbfe6ee120adfbae`，新值为`34606f84a5f28228fd7b67f71937cdcd4baf1e203674c993d6520f521381c76b`。如需回退，仅通过同一正式CLI将该键设回131072，不覆盖后续其它配置。前三次直接以Web `.venv`调用writer的准备脚本均在导入yaml时报缺依赖，未执行写入；最终改用现有Gateway正式launcher成功，没有安装依赖、修改PM环境或重启服务。
+
 ## 2026-10-25 · Web恢复配套后端从main上线与两套备份轮换
 
 **授权与版本：** 用户0.1.5截图报恢复v1不支持，根因是前端已交而配套后端未上线，不是旧会话数据障碍。用户明确“现在部署配套后端”，随后要求先并行工作树合回main、确认无冲突并主动汇报。main先合入Noting69cc865再合入Web恢复219bfc2，90e8435ca596b7a72abe0f347bfa281b7ef5d0cc已自动push，两个分支均为其祖先，无源码冲突。相关4文件75项通过，依赖/PM/lock未变；未追加独立全审。另写部署器未上传/执行，改用并行Noting已使用的原后端发布命令。

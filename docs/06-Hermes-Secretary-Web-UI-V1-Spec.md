@@ -219,6 +219,8 @@ Exactly **three main screen states** exist: **New Chat**, **Conversation**, **Fi
 
 Conversation list, title, ordering, archival/pin affordances (only if included by the approved design and native capability) use actual REST results. Do not add management controls just because Desktop has them. Empty/loading/error and a lost/deleted session are explicit, recoverable UI states.
 
+**用户2026-10-25确认：** 已删除Conversation应从最新权威列表移除。旧缓存、旧链接或已打开页面遇到该Conversation确实不存在时，保留当前定位并显示明确不存在／已删除错误和返回入口，禁止静默重定向New Chat。历史、详情、锚点等子读取失败或404不能等同Conversation不存在；当前owner的精确元数据读取才用于判断存在性，子读取失败按页面恢复契约保留过渡内容并恢复读取。后端使用已选Profile的实际数据库归属，不因导入会话遗留的`profile_name`标签误拒正常存在会话，不新增跨库查找或修改用户历史。
+
 **用户2026-10-24确认：Conversation侧栏展示缓存。** 页面冷启动、刷新后及断线期间，先展示上次成功获取的Conversation列表快照，不必等请求或Socket就绪；保持跨Profile列表及各行真实owner归属。网络恢复仍完整读取列表，结果到达后原地更新并更新缓存，不做Timeline式衔接动画，也不先清空列表造成闪烁。缓存只承担过渡展示，不作为置顶、归档、删除或Turn运行状态的实时事实，不改变后端权威及既有列表分页语义；首次请求未完成不能仅因缓存缺失就显示“No conversations yet”。与下方Timeline及底部两个卡片共用展示缓存边界，尚未实施。
 
 **2026-10-19 recovery implementation:** merge repeated list invalidations per owner, publish each Profile's successful page without waiting for another Profile, and cancel obsolete downloads. Optional `summary=true` on the existing session list/detail reads omits heavy provenance/configuration blobs; default callers retain their complete existing response. Current Conversation titles may use the owning native binding's `info.title` and authoritative title events/rename responses while the list is unavailable; stale list results cannot roll them back. Missing stored locators must still be verified read-only before a potentially restoring resume.

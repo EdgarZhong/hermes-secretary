@@ -167,8 +167,10 @@ def test_exact_owner_lineage_validation_and_bounded_jump(timeline_store):
         assert page["profile"] == profile
         assert page["entries"][0]["preview"] == expected
     db._write_sql("UPDATE sessions SET profile_name = 'wrong-owner' WHERE id = 'timeline-tip'")
-    assert client.get(f"/api/sessions/{sid}/timeline").status_code == 404
-    assert client.get(f"/api/sessions/{sid}/messages/around?row_id={row_id}").status_code == 404
+    same_store = client.get(f"/api/sessions/{sid}/timeline").json()
+    assert same_store["profile"] == "default" and same_store["entries"][0]["preview"] == "tip ask"
+    jump = client.get(f"/api/sessions/{sid}/messages/around?row_id={row_id}").json()
+    assert jump["profile"] == "default" and jump["messages"][0]["id"] == row_id
 
 
 def test_timeline_sql_never_reads_tool_columns_or_writes(timeline_store, monkeypatch):

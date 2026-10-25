@@ -23,35 +23,38 @@ class Peer:
 
 
 @pytest.fixture
-def native(tmp_path, monkeypatch):
+def native(tmp_path, monkeypatch, request):
     monkeypatch.setenv("HERMES_HOME", str(tmp_path))
-    db = SessionDB(db_path=tmp_path / "state.db")
-    db.create_session("stored", source="desktop")
+    profile = getattr(request, "param", "default")
+    home = tmp_path if profile == "default" else tmp_path / "profiles" / profile
+    home.mkdir(parents=True, exist_ok=True)
+    db = SessionDB(db_path=home / "state.db")
+    db.create_session("stored", source="pi-import" if profile != "default" else "desktop", profile_name="default")
     db.append_messages_batch("stored", [{"role":"user","content":"Question","timestamp":1},
                                         {"role":"assistant","content":"Answer","timestamp":2}])
     agent = SimpleNamespace(model="controlled", session_id="stored", _current_turn_id="native-turn",
                             _active_session_turn_lease_holder=None)
-    session = {"_sid":"runtime", "agent":agent, "session_key":"stored", "profile_home":str(tmp_path),
+    session = {"_sid":"runtime", "agent":agent, "session_key":"stored", "profile_home":str(home),
                "history":[], "history_lock":threading.Lock(), "created_at":1., "running":False,
                "transport":Peer()}
     monkeypatch.setattr(server,"_sessions",{"runtime":session})
     monkeypatch.setattr(server,"_fallback_session_info",lambda _session:{"model":"controlled"})
-    monkeypatch.setattr(server,"profile_name_for_home",lambda home:"default")
-    monkeypatch.setattr(server,"_launch_home",lambda:str(tmp_path))
-    monkeypatch.setattr(server,"_current_profile_name",lambda:"default")
+    monkeypatch.setattr(server,"profile_name_for_home",lambda home:profile)
+    monkeypatch.setattr(server,"_launch_home",lambda:str(home))
+    monkeypatch.setattr(server,"_current_profile_name",lambda:profile)
     @contextlib.contextmanager
     def owner(_session):
         yield db
     monkeypatch.setattr(server,"_session_db",owner)
     event_replay.reset_replay_state()
-    yield db, session, tmp_path
+    yield db, session, home
     db.close()
 
 
-def request(db, selections=None, details=()):
+def request(db, selections=None, details=(), *, profile="default"):
     selections = selections or [selector()]
-    projected = project_view(read_view(db,"stored","default",selections))
-    return {"version":1,"profile":"default","stored_id":"stored",
+    projected = project_view(read_view(db,"stored",profile,selections))
+    return {"version":1,"profile":profile,"stored_id":"stored",
             "windows":[{"selector":item["selector"],"receipt":item["coverage"]} for item in projected["windows"]],
             "details":list(details)}
 
@@ -92,6 +95,22 @@ def test_formal_idle_envelope_matches_and_full_replacement_after_append(native):
     assert changed["complete"] and not changed["windows"][0]["matched"]
     assert [row["content"] for row in changed["windows"][0]["messages"]] == ["Question","Answer","Later"]
     assert changed["stream_cut"]["latest_seq"] >= changed["stream_cut"]["snapshot_seq"]
+
+
+@pytest.mark.parametrize("native", ["alex"], indirect=True)
+def test_imported_profile_label_does_not_override_actual_runtime_owner(native):
+    db, _session, _home = native
+    req = request(db, profile="alex")
+    result = activate(req)
+    assert result["complete"] and result["owner"]["profile"] == "alex"
+    assert result["windows"][0]["matched"]
+    assert db.get_session("stored")["profile_name"] == "default"
+    wrong = json.loads(json.dumps(req))
+    wrong["profile"] = "study"
+    for window in wrong["windows"]:
+        window["receipt"]["profile"] = "study"
+    denied = activate(wrong)
+    assert not denied["complete"] and denied["reason"] == "owner_mismatch"
 
 
 def test_d0_s_d1_external_append_and_finite_delta_suffix(native, monkeypatch):
@@ -269,6 +288,7 @@ def test_ordinary_web_native_source_recovers_without_reminder_event(native):
     assert any(event["type"] == "message.delta" for event in events)
 
 
+@pytest.mark.parametrize("native", ["default", "alex"], indirect=True)
 def test_other_profile_actual_source_db_cannot_prove_same_stored_locator(native):
     from tui_gateway import turn_terminal
     db, session, home = native
@@ -280,7 +300,7 @@ def test_other_profile_actual_source_db_cannot_prove_same_stored_locator(native)
         row = dict(other.get_messages("stored")[0])
         row["_row_id"] = row["id"]
         turn_terminal.source_observer("runtime", session, session["agent"], turn_terminal.token(session), None)([row], 0)
-    view = activate(request(db))
+    view = activate(request(db, profile=server.profile_name_for_home(home)))
     assert not view["complete"] and view["reason"] == "owner_mismatch"
 
 

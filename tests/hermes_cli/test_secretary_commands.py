@@ -173,6 +173,9 @@ def test_proposal_reads_only_candidate_leads_and_preserves_source_identity(state
     assert entry["entry_type"] == "candidate"
     assert payload["conversation_ref"] == ref
     assert entry["source_message_uids"] == ["evidence"]
+    stored = db.notebook_current(ref)["payload"]["candidates"][0]
+    assert entry["entry_id"] == stored["entry_id"]
+    assert "version_id" in stored and "version_id" not in result.prompt
     assert "source_message_identities" not in entry
     assert "source_evidence" not in payload
     assert "I prefer concise answers." not in result.prompt

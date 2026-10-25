@@ -36,10 +36,11 @@ def test_default_api_retains_audit_fields_while_model_projection_preserves_actio
     assert public["coverage"] == {"anchor_message_uid": "source-uid"}
     assert not {"snapshot_id", "base_snapshot_id", "coverage"}.intersection(model)
     assert model["conversation_ref"] == ref
-    assert model["payload"] == public["payload"]
+    assert public["payload"]["work"][0]["version_id"] == entry["version_id"]
     item = model["payload"]["work"][0]
     assert item["entry_id"] == entry["entry_id"]
-    assert item["version_id"] == entry["version_id"]
+    assert "version_id" not in item
+    assert item == {key: value for key, value in public["payload"]["work"][0].items() if key != "version_id"}
     assert item["source_message_uids"] == ["source-uid"]
     assert item["evidence_time"] == [format_timestamp(100, profile_home=db.db_path.parent)]
     assert db.notebook_current(ref) == snapshot
@@ -58,6 +59,7 @@ def test_formal_inline_and_catalog_model_routes_exclude_audit_envelope(notebook,
     for result in (inline, catalog):
         assert not {"snapshot_id", "base_snapshot_id", "coverage"}.intersection(result)
         assert result["payload"]["work"][0]["entry_id"] == entry["entry_id"]
+        assert "version_id" not in result["payload"]["work"][0]
 
 
 def test_empty_model_show_preserves_success_and_default_api_nulls(tmp_path):

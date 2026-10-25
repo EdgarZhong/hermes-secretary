@@ -7,9 +7,11 @@ import logging
 logger = logging.getLogger(__name__)
 
 HEARTBEAT_INSTRUCTION = (
+    "This is a self-check reminder, not a user message.\n"
     "Check what you can do: attend to the user's current state, remind the user of relevant matters, "
     "delegate agent tasks and verify their results, register schedules (do not rely on heartbeat), "
     "and follow up on anything else that needs attention.\n"
+    "If any matter needs coordination with the user, proactively report it when the user returns.\n"
     "Finish by replying with HEARTBEAT_OVER."
 )
 

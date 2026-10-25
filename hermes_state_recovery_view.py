@@ -47,8 +47,10 @@ def _integer(value, low, high):
 
 
 def _owned_row(conn, sid, profile):
+    # The caller already selected the Profile's state.db. Historical imports
+    # can retain another profile_name label; it is not this store's ownership.
     row = conn.execute("SELECT * FROM sessions WHERE id=?", (sid,)).fetchone()
-    if row is None or row["profile_name"] not in (None, profile):
+    if row is None:
         raise RecoveryViewError("not_found")
     return dict(row)
 

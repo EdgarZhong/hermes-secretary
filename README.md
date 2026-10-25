@@ -7,7 +7,7 @@
 | 模块 | 职责 |
 |---|---|
 | Conversation / History | `conversation_ref` 标识稳定归属，Session 是物理定位；原文为事实源，复用原生持久化与历史检索 |
-| Notebook | 三内容板块及 Candidates；稳定条目、不可变版本和原子 Snapshot；Main 只读、Noting 独占写入 |
+| Notebook | 三内容板块及 Candidates；稳定条目、不可变版本和原子 Snapshot；Main 只读、Noting 独占写入；模型以稳定 entry_id 指代条目，内部版本标识仅保留于存储与人类审计 |
 | Background Noting | 原生 AIAgent child、冻结父上下文及完整顶层工具表、后台维护派生工作状态；任务提示与运行时身份仅授权六工具，任务不重复Schema |
 | Scheduler | 独立排期表、claim / pending / ACK；宿主约5秒扫描，合法本地 Main 的 Instant Reminder 可冷态恢复 |
 | Web / Gateway | 多Profile隔离、双SPA同源、消息渠道绑定持久Conversation；历史卡片首屏、显式详情补水与验证型图片引用／视口下载 |

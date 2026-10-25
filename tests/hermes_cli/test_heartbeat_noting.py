@@ -34,6 +34,7 @@ def test_empty_prompt_and_native_template_follow_global_switch(enabled):
             mgr.set("", 60)
         state = mgr.set("native extra", 60)
         assert state.render_prompt() == HEARTBEAT_PROMPT_TEMPLATE.format(interval="1m", prompt="native extra")
+        assert "self-check reminder" not in state.render_prompt()
         return
     # The deliberately conflicting idle setting disables Noting execution, not this global switch.
     assert ui_heartbeat_enabled()
@@ -44,6 +45,8 @@ def test_empty_prompt_and_native_template_follow_global_switch(enabled):
     prompt = mgr.due_prompt(now=1000)
     assert prompt.startswith("<heartbeat>\n<timestamp>") and prompt.endswith("</heartbeat>")
     assert HEARTBEAT_INSTRUCTION in prompt and "Additional prompt:" not in prompt
+    assert "This is a self-check reminder, not a user message." in prompt
+    assert "If any matter needs coordination with the user, proactively report it when the user returns." in prompt
     assert mgr.state.last_fired_at == prompt.source_timestamp == 1000
     assert user_input_timestamp_marker({"role": "user", "content": str(prompt), "timestamp": 2000}) == ""
     assert not HeartbeatManager("switch").state.is_due(now=1001)

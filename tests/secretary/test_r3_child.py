@@ -112,10 +112,12 @@ def test_handlers_keep_small_results_and_show_own_uncommitted_view(database):
     created = json.loads(notebook_create(child, create_args(database)))
     assert set(created) == {"success", "changed", "entry"}
     entry = created["entry"]
+    original_version = child._noting_notebook_store.get(entry["entry_id"])["version_id"]
     updated = json.loads(notebook_update(child, {"entry_id": entry["entry_id"],
                                               "fields": {"blocker": "Dates unknown"}}))
     assert updated["entry"]["entry_id"] == entry["entry_id"]
-    assert updated["entry"]["version_id"] != entry["version_id"]
+    assert "version_id" not in entry and "version_id" not in updated["entry"]
+    assert child._noting_notebook_store.get(entry["entry_id"])["version_id"] != original_version
     other = NotebookStore(database, ref(database), anchor_message_uid="m2")
     other.create("matter", {"description": "Other task", "completion_condition": "Other"},
                  source_message_uids=create_args(database)["source_message_uids"])
@@ -280,6 +282,9 @@ def test_native_finish_commits_only_after_turn_returns_and_persists_suffix(nativ
 
 def test_native_text_completion_continues_five_turns_same_prefix(native_parent, database):
     parent, client = native_parent
+    baseline = NotebookStore(database, ref(database), anchor_message_uid="m2")
+    entry = baseline.create(**create_args(database))["entry"]
+    baseline.commit(termination={"type": "finish_noting", "reason": "Prior work"})
     client.chat.completions.create.return_value = response("I am done")
     before = deepcopy(parent._session_messages)
     outcome = run_task(parent)
@@ -308,6 +313,8 @@ def test_native_text_completion_continues_five_turns_same_prefix(native_parent, 
                 assert not {"snapshot_id", "base_snapshot_id", "coverage"}.intersection(data)
                 assert data["evidence_coverage"]["history_message_count"] == 2
                 assert data["evidence_coverage"]["through_time"] == "1970-01-01T00:03:20+00:00"
+                item = data["working_notebook"]["work"][0]
+                assert item["entry_id"] == entry["entry_id"] and "version_id" not in item
                 controls_seen += 1
     assert controls_seen >= len(wires)
     final_wire = str(wires[-1]["messages"])
@@ -400,7 +407,7 @@ def test_native_child_next_request_receives_projected_working_tool_result(native
         assert result["evidence_coverage"]["history_message_count"] == 2
         assert result["evidence_coverage"]["through_time"] == "1970-01-01T00:03:20+00:00"
         item = result["payload"]["work"][0]
-        assert item["entry_id"] == entry["entry_id"] and item["version_id"] == entry["version_id"]
+        assert item["entry_id"] == entry["entry_id"] and "version_id" not in item
         assert item["source_message_uids"] == ["m1"]
 
 

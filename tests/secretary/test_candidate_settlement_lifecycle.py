@@ -146,7 +146,8 @@ def _seed(runtime, *, two=False, shared=False, ranged=False, corrected=False, ou
         })["entry"]
     store.commit(termination={"type": "finish_noting", "reason": "Prior indexed evidence"})
     proposal = {"candidate": candidate["entry_id"], "destination": "synthetic-space",
-                "sources": [{"entry_id": entry["entry_id"], "version_id": entry["version_id"]}
+                "sources": [{"entry_id": entry["entry_id"], "content_scope": entry["fields"]["description"],
+                             "source_message_uids": [source["message_uid"] for source in entry["source_message_identities"]]}
                             for entry in [first] + sources[1:]]}
     db.append_message("parent", "assistant", "Proposal " + json.dumps(proposal),
                       message_uid="proposal", timestamp=200)
@@ -392,13 +393,14 @@ def test_forced_commit_after_conversion_is_recoverable_from_visible_state_and_hi
         original = script.results["s02-2"]["messages"][0]
         assert original["message_uid"] == uids[0]
         assert original["content"] == "I prefer quiet museums."
-        source = next(entry for entry in shown["work"] if entry["source_message_uids"] == uids and
-                      {"entry_id": entry["entry_id"], "version_id": entry["version_id"]} in source_refs)
-        assert {"entry_id": source["entry_id"], "version_id": source["version_id"]} in source_refs
+        source = next(entry for entry in shown["work"] if entry["source_message_uids"] == uids and any(
+            reference["entry_id"] == entry["entry_id"] and reference["content_scope"] == entry["fields"]["description"]
+            and reference["source_message_uids"] == uids for reference in source_refs))
+        assert "version_id" not in source
         assert pending["fields"]["description"] == "Record museum preference"
         recovered.update(source=source, candidate=pending)
         return {"action": "archive", "entry_id": source["entry_id"],
-                "reason": "Original exact source/version still present; successful approved coverage confirmed"}
+                "reason": "Original source content and provenance still present; successful approved coverage confirmed"}
 
     second = _ProviderScript([
         ("notebook_show", {}),

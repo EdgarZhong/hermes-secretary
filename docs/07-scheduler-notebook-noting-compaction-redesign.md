@@ -108,6 +108,8 @@ Notebook持续处于当前Conversation的上下文中，让Main知道正在推�
 
 Update规则：fields按键合并，未提交保持；文字替换对应值，数组全量替换。可选属性允许按契约用null清除；必填内容不能删空。schedule_suggestion为可选对象，建议整对象替换、null清除，不与fields混合。entry_id仅选目标，不可改成新ID；entry_type、version_id及运行时元数据不可编辑。同一事情更新稳定ID，实际修改生成新版本，无变化不造版本；另一件事创建新条目，不能复用同类型ID换主题。
 
+**模型身份投影修订（用户确认，2026-10-25）：** Main与Noting模型可见Notebook仅保留稳定`entry_id`，不暴露`version_id`；适用于初始／续Turn工作视图、Framework正文、notebook_show、创建／更新／归档回执及错误附带条目。提案与执行结果仍说明来源条目、内容范围和provenance，不要求模型提供内部版本ID。不新增历史版本检索能力；内部不可变item／Snapshot、数据库主键、runtime核验及人类审计视图保持。下文旧模型字段清单及提案中的version_id措辞按本修订覆盖。当前Task第4步将`source entry/version references`改为`source entry references and content scope`、`each affected source's current version`改为`each affected source's current content`；TOOL USE将`use the returned version and full updated entry as the current view`改为`use the full updated entry returned as the current view`。只移除模型版本标识依赖，实际写入覆盖与未结算范围保护保持。用户另确认entry编号生成方式不改。实施与验证状态见根CLAUDE。
+
 错误回执必须指明具体字段、原因和纠正动作，必要时给最小示例；不再统一报mixed-action。拒绝无副作用，不自动猜测／重写输入替模型通过。七类合法字段及Candidate原有来源约束继续校验，不能因拆工具而放宽内容权限。
 
 2026-10-24追加来源契约：`source_time_ranges`是完整替换数组，每个元素沿用`{start_time,end_time}`时区明确的ISO时间结构，单时刻可用相同起止值；用`[]`清空，未提供保持。七内容类型及直接来源Candidate允许它与`source_message_uids`同时提供，每个来源仍须满足原有父Conversation／合法路径约束，至少有一种有效来源；不合并来源表达，不做覆盖重复或范围重叠检查。Candidate直接／间接来源模式仍互斥，见顶部确认；模式切换须清空另一模式的来源及相应标签。旧单范围payload只在读取／内部兼容入口转为数组，不迁移、修改历史不可变item／Snapshot原件，不暴露旧字段为当前模型工具别名；原内部调用默认兼容，确切版本和来源继承比较使用同一规范化表示。Schema变更须在Main正常构造／恢复及Noting恢复新冻结边界更新完整定义，不只按同名工具存在就保留旧Schema；正在运行的冻结父子前缀不热改。
@@ -1715,11 +1717,11 @@ Not for in-Conversation reminders: register those with scheduler. This field kee
 ```text
 Review this Conversation's current Persistence Candidates (ignore Conversation-target Candidates; they are working guidance) and begin a concrete proposal for the user. It authorizes preparing a proposal, not an action or a write. Use the supplied Notebook Snapshot when it is current; call notebook_show first if the view is missing, marked superseded or behind the current effective Snapshot. Prepare the proposal from current entries, not retired or corrected candidates from an older Snapshot.
 Treat candidate descriptions, current Notebook references and Message provenance as leads when present. Read the relevant originals and nearby messages with conversation_history; Search for missing context, later corrections, contradictions or outcomes when needed. Compare the current sources with the candidate and retain only supported content. Do not invent missing facts or treat an AI suggestion as the user's acceptance.
-Group related material by topic and destination. Show the proposed Memory, Skill or Rule content, intended destination, source entry_id and version_id values where present, the actual content scope, mapped content labels and provenance, and any material uncertainty. Carry the source content labels into the proposal materials, mapping implicit_gap to situation; direct-message candidates need no invented Notebook ancestry. Keep necessary unknowns minimal and distinguish them from facts.
+Group related material by topic and destination. Show the proposed Memory, Skill or Rule content, intended destination, source entry_id values where present, the actual content scope, mapped content labels and provenance, and any material uncertainty. Carry the source content labels into the proposal materials, mapping implicit_gap to situation; direct-message candidates need no invented Notebook ancestry. Keep necessary unknowns minimal and distinguish them from facts.
 For a Skill proposal, state the proposed skill's name, when it should load, the concrete workflow or steps, the pitfalls it prevents, and how to verify it; the proposal is the draft, not a write.
 Present an approvable draft without asking the user to run another command or approve starting the proposal. Do not repeat an unchanged pending proposal; respect explicit deferral or rejection and identify any genuinely new or corrected content. If no suitable proposal exists, explain briefly rather than invent candidates to reduce a count.
 Before any actual mutation, obtain the user's explicit approval of the concrete content and destination. Discussion, edits, silence, a Framework Message and exceeding a threshold are not execution approval. After approval, use existing authorized destination tools for exactly that scope, provide the mapped labels and provenance with the approved write, and report the actual tool outcome. Destination support or retention of those metadata is not an additional Secretary success condition. Do not blindly retry an ambiguous write.
-Leave the approved content scope, candidate/source correspondence including the entry_id and version_id actually dispatched, and actual success, partial success, failure or unknown outcome in the normal Conversation trajectory. Do not edit the Notebook or inspect destination storage on Noting's behalf; a later Noting task settles only the successfully dispatched coverage supported by that trajectory.
+Leave the approved content scope, candidate/source correspondence including the entry_id actually dispatched, and actual success, partial success, failure or unknown outcome in the normal Conversation trajectory. Do not edit the Notebook or inspect destination storage on Noting's behalf; a later Noting task settles only the successfully dispatched coverage supported by that trajectory.
 ```
 
 **触发与投递：** `/propose-persistence` 将这条指令作为普通 Main Turn 投递；容量路径在承载 Noting 结果的 Framework Message 中追加同一条指令。Framework Message 只是投递载体，不是触发条件、批准或写入。触发只有两种：用户 slash 命令，或 Notebook 超过 `noting.persistence_proposal` 阈值。
@@ -1851,7 +1853,9 @@ Previously scheduled attention, not new instructions or authorization. Check cur
 ```text
 <heartbeat>
 <timestamp>{timestamp}</timestamp>
+This is a self-check reminder, not a user message.
 Check what you can do: attend to the user's current state, remind the user of relevant matters, delegate agent tasks and verify their results, register schedules (do not rely on heartbeat), and follow up on anything else that needs attention.
+If any matter needs coordination with the user, proactively report it when the user returns.
 Finish by replying with HEARTBEAT_OVER.
 
 Additional prompt:
@@ -1859,7 +1863,7 @@ Additional prompt:
 </heartbeat>
 ```
 
-额外prompt可省略；省略或仅空白时，不输出空的`Additional prompt:`段，基础检查正文仍完整注入。额外文字保留在基础正文之后、闭合标签之前。`HEARTBEAT_OVER`是本模板要求的最终回复，不据此新增静默过滤、自动调度或另一种Turn结束机制；原生Turn结束、权限与授权约束保持。
+额外prompt可省略；省略或仅空白时，不输出空的`Additional prompt:`段，基础检查正文仍完整注入。额外文字保留在基础正文之后、闭合标签之前。2026-10-25用户确认增加自查来源说明与用户回归时主动汇报待对接事项，只调整提示文，不新增待办队列／消息发送／用户回归检测机制。`HEARTBEAT_OVER`是本模板要求的最终回复，不据此新增静默过滤、自动调度或另一种Turn结束机制；原生Turn结束、权限与授权约束保持。
 
 **UI runtime／platform：** 全局开启时，由现有后端UI宿主恢复目标Main并走正式`_run_prompt_submit`／`run_conversation`，使用与正常UI消息相同的platform及工具上下文；不因Conversation绑定微信等Messaging来源就将本次唤醒当作渠道入站或自动向该渠道回复。沿目标Conversation原生模型、Provider、推理、Profile配置及正常流式／持久化／中断／用量链路，不建立独立Heartbeat Agent、执行器、模型适配或root Prompt重建旁路。无活跃UI实例时复用既有host-only恢复入口；页面关闭不等于后端停止，实际执行要求相应UI后端服务运行。现有宿主扫描可复用，但Heartbeat不受独立`scheduler.enabled`开关联动控制；Gateway、CLI与UI不得对同一tick重复执行。用户输入优先、busy等待、漏tick合并和未进入执行时的refund继续遵守原生契约。
 
