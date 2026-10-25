@@ -611,3 +611,25 @@ def test_tool_occurrence_identity_uses_exact_uid_not_substring(native):
     native_output(session,tool_uid="tool-occurrence")
     result=activate(request(db))
     assert not result["complete"] and result["reason"] == "view_changed"
+
+
+@pytest.mark.parametrize('platform', ['weixin', 'telegram'])
+def test_external_native_turn_recovers_fresh_history_without_gateway_token_stream(native, platform):
+    db, session, _home = native
+    # A previous local Turn's unpersisted output cannot stand for this Gateway Turn.
+    inflight_output.start(session)
+    native_output(session)
+    db.append_message('stored', 'user', 'New external question')
+    req = request(db)
+    holder = f'pid=123:turn=external-native-turn:platform={platform}'
+    assert db.try_acquire_session_turn_lease('stored', holder)
+    result = activate(req)
+    assert result['complete'] and result['running'] and result['status'] == 'working'
+    assert result['live_output_available'] is False
+    assert result['state_snapshot']['events'] == []
+    assert 'inflight' not in result
+    db.append_message('stored', 'assistant', 'External result persisted while still running')
+    result = activate(req)
+    assert result['complete'] and result['running']
+    assert result['windows'][0]['messages'][-1]['content'] == 'External result persisted while still running'
+    db.release_session_turn_lease('stored', holder)

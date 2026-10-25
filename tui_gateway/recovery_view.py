@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import copy
 import json
+import re
 import sqlite3
 import time
 from pathlib import Path
@@ -109,6 +110,17 @@ def _native_source(session, db, raw):
     return identity
 
 
+def _external_turn_holder(session, raw):
+    """A native external Turn is normal; its unpersisted stream is not local."""
+    holder = (raw.get("lease") or {}).get("holder", "")
+    if session.get("running") or not re.fullmatch(
+            r"pid=[1-9][0-9]*(?::pidns=[^:]+)?:turn=.+:platform=[A-Za-z0-9_-]+", holder):
+        return None
+    if holder == getattr(session.get("agent"), "_active_session_turn_lease_holder", None):
+        return None
+    return holder
+
+
 def _capture(server, sid, session, request, selections, ids):
     lock = session["history_lock"]
     if not lock.acquire(timeout=0.25):
@@ -127,30 +139,34 @@ def _capture(server, sid, session, request, selections, ids):
                 raise RecoveryViewError("view_changed")
             context = _turn_context(session)
             source = _native_source(session, db, d0)
-            state = snapshot(session, sid, include_internal=True)
-            running = bool(session.get("running"))
+            external = _external_turn_holder(session, d0)
+            state = None if external else snapshot(session, sid, include_internal=True)
+            running = bool(session.get("running")) or bool(external)
             # Snapshot S's watermark is also meaningful for confirmed idle with no
             # native output. An active runtime NEVER falls back to plain text.
             if state is None:
                 with event_replay._replay_lock:
                     state = {"events": [], "seq": event_replay._replay_next_seq.get(sid, 0),
                              "epoch": event_replay.replay_epoch(), "complete": True}
-                if running or session.get("inflight_turn"):
+                if not external and (running or session.get("inflight_turn")):
                     raise RecoveryViewError("runtime_unavailable")
             d1 = read_view(db, request["stored_id"], actual_profile, selections, details=ids,
                            proofs=_proofs(d0), identities=[*_references(state), *([source] if source else [])])
             if (context != _turn_context(session) or source != _native_source(session, db, d1)
+                    or external != _external_turn_holder(session, d1)
                     or server._session_lookup_key(session, fallback=sid) != d1["tip_id"]):
                 raise RecoveryViewError("view_changed")
-        runtime = {"running": running, "status": server._session_live_status(sid, session),
-                   "turn_started_at": server._turn_started_at(session),
+        runtime = {"running": running, "status": "working" if external else server._session_live_status(sid, session),
+                   "external_holder": external,
+                   "turn_started_at": None if external else server._turn_started_at(session),
                    "history_version": int(session.get("history_version", 0)),
                    "turn_id": getattr(session.get("agent"), "_current_turn_id", None) or next((
                        event.get("payload", {}).get("turn_id") for event in reversed(state["events"])
                        if event.get("type") == "message.source_committed"), None),
-                   "holder": getattr(session.get("agent"), "_active_session_turn_lease_holder", None),
+                   "holder": external or getattr(session.get("agent"), "_active_session_turn_lease_holder", None),
                    "native_source": source,
-                   "inflight": server._inflight_snapshot(session), "queued": server._queued_prompt_snapshot(session)}
+                   "inflight": None if external else server._inflight_snapshot(session),
+                   "queued": server._queued_prompt_snapshot(session)}
     finally:
         lock.release()
     return d0, state, d1, runtime
@@ -171,6 +187,10 @@ def _turn_proof(d0, d1, state, runtime):
     lease0, lease1 = d0["lease"], d1["lease"]
     if (lease0 or {}).get("holder") != (lease1 or {}).get("holder"):
         raise RecoveryViewError("view_changed")
+    if runtime.get("external_holder"):
+        if runtime["external_holder"] != (lease1 or {}).get("holder"):
+            raise RecoveryViewError("view_changed")
+        return
     if not runtime["running"]:
         if lease1 is not None:
             raise RecoveryViewError("runtime_unavailable")
@@ -339,6 +359,7 @@ def _envelope(server, sid, session, request, selections, receipts, ids):
             "state_snapshot": state, "stream_cut": {"snapshot_seq": state["seq"], "latest_seq": suffix["latest_seq"],
                                                        "events": suffix["events"], "truncated": False},
             "running": runtime["running"], "status": runtime["status"],
+            **({"live_output_available": False} if runtime.get("external_holder") else {}),
             "turn_started_at": runtime["turn_started_at"],
             **({"inflight": runtime["inflight"]} if runtime["inflight"] else {}),
             **({"queued": runtime["queued"]} if runtime["queued"] else {})}

@@ -4,6 +4,12 @@
 
 暂无。
 
+## 2026-10-25 · Gateway运行中Web访问回归与完成主动更新（紧急修复中）
+
+用户报告微信Turn运行时首次打开Web只有`Recovery unavailable: runtime_unavailable`，明确要求立即修复。已定位新恢复机制：Web本地没有Gateway进程的正式输出快照，DB外部Turn lease导致完整封套拒绝；前端把成功REST持久历史也挡在完整恢复之后，首次无缓存即空白。用户随后明确微信运行是正常使用，不接受报错／只读／旧缓存；此前只读过渡候选已撤销。最终最小方案：后端以同owner真实native外部Turn lease及D0/D1稳定事实确认Gateway运行，正常完成持久历史与本地WS切点交接，显示最新REST历史、保留其他正常功能；明确没有Gateway实时输出流，不伪造idle／旧Turn输出，不取消Gateway任务。
+
+用户最新明确变更：Gateway为active Turn且WebSocket仍连接时，Turn结束须及时主动更新活跃Web UI历史；**替代此前接受“不主动推送”的约定，以本次为准**。后端复用原生Turn lease提交后history失效信号→既有WS sessions.changed，前端自动重读当前页面有界历史并完成正式交接；不等用户刷新，不扫描其他Conversation正文，不新增独立WS／调度器或重放写操作。主会话负责后端、规格、跨进程回归和统一发布；Web聊天负责合法外部Turn恢复及完成通知行为回归。后端4文件81项及冻结10检查通过；首次测试子进程Path传参错误已纠正，原日志保留；前端确认现有产品即可接受合法external封套，只补回归，无产品／静态／APK变化。尚未部署。两仓main，不开新树／不启自主套件，不打断正在运行的生产Turn，部署前须确认空闲；APK是否需更新按最终前端产物统一交付。
+
 ## 2026-10-25 · Pi041恢复、Notebook投影与Heartbeat（已统一上线，0.1.6已打包）
 
 用户明确本聊天负责全部后端，Web聊天`评估 Timeline 本地缓存方案`负责前端，双方直接协调；不启用自主实现套件，由本聊天统一部署前后端，Web负责0.1.6签名APK。用户要求非必要不开worktree，本轮修改已迁入现有后端main签出`/Users/edgar/code/hermes-secretary-web-release`，临时树已清理；前端在其main实施，原目录他人dirty保留。

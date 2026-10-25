@@ -739,10 +739,12 @@ class SessionCompressionMixin:
             return
         def _do(conn):
             conversation_id = self._session_turn_lease_key_on_conn(conn, session_id)
-            conn.execute(
+            return conn.execute(
                 "DELETE FROM session_turn_leases WHERE conversation_id = ? AND holder = ?",
-                (conversation_id, holder))
-        self._execute_write(_do)
+                (conversation_id, holder)).rowcount > 0
+        if self._execute_write(_do):
+            from hermes_state_history_notifications import notify_history_changed
+            notify_history_changed(self)
 
     def get_compression_lock_holder(self, session_id: str) -> Optional[str]:
         """Current (non-expired) holder for ``session_id``, or None. Diagnostic only."""
