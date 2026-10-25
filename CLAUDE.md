@@ -4,19 +4,23 @@
 
 暂无。
 
-## 2026-10-25 · Pi041恢复404与冷Usage／Context（修复中）
+## 2026-10-25 · Pi041恢复、Notebook投影与Heartbeat（已统一上线，0.1.6已打包）
 
-用户明确本聊天负责全部后端，Web聊天`评估 Timeline 本地缓存方案`负责前端，双方直接协调；不启用自主实现套件，解决当前阻碍使用问题后由本聊天统一部署前后端，前端另打包0.1.6签名APK。用户明确非必要不开worktree，本轮已有修改已逐文件迁入现有main签出`/Users/edgar/code/hermes-secretary-web-release`；不再在旧Web功能分支或新建分支实施，原目录他人dirty保留。当前范围：Pi041（导入旧会话）普通元数据／历史200但recovery_view=1与timeline404；换deepseek-flash后冷路由双shape不一致及Usage／Context冷恢复；前端404误退New Chat和切换卡顿。前端独占Web仓，主会话独占后端核心文档与统一发布；404独立实现由既有Sol/high子Agent处理，主会话亲审、修冷route及接线、整合Notebook／Heartbeat已通过包与最终验收。严守Profile／Conversation隔离，不改生产历史／Notebook／排期／绑定，不用重发模型消息掩盖冷读。404修补4文件69项通过；冷route／Context修补4文件61项通过（首轮新测试模型字段缺口及旧返回假设失败保留，修正后重验）。前端另获用户确认：真实删除须从权威列表移除，已打开旧链接显示明确不存在和返回入口，不能静默转New Chat；已同步06。
+用户明确本聊天负责全部后端，Web聊天`评估 Timeline 本地缓存方案`负责前端，双方直接协调；不启用自主实现套件，由本聊天统一部署前后端，Web负责0.1.6签名APK。用户要求非必要不开worktree，本轮修改已迁入现有后端main签出`/Users/edgar/code/hermes-secretary-web-release`，临时树已清理；前端在其main实施，原目录他人dirty保留。
 
-## 2026-10-25 · Notebook模型版本信息与Heartbeat提示调整（实施中）
+后端产品`351770e`与前端`c0a6558`已提交、自动push并联合上线，发布receipt=verified。修复旧导入会话在选定Profile数据库中因历史profile_name标签被recovery／timeline误拒404，以及Web换模型后遗留Gateway route快照和冷Context模型字段；前端子资源404保画面自动恢复，真实删除从权威列表移除、旧页面显示明确错误及返回入口，均不静默转New Chat，并减少切换时无效全量复制。派041已用正式REST核元数据／最新200cards／锚点21条／详情／Timeline均200，Socket两窗口恢复complete=true；Context约155K／1M、16%、deepseek-flash。旧路由经原生writer仅校正gateway_runtime，无历史／Notebook变更、无模型请求。
 
-用户确认模型上下文隐藏`version_id`、保留`entry_id`，并再次确认编号生成方式不改；内部不可变版本／Snapshot与人类审计视图保留。覆盖Main、Noting初始及续Turn视图、Framework、读取／维护结果及相关提案提示。用户同时要求Heartbeat明确“不是用户消息，是自查提醒”，有事项需要与用户对接时，在用户回归时主动汇报；保留原触发、渠道、权限及结束语义。本轮已依用户最新要求迁入现有main签出`/Users/edgar/code/hermes-secretary-web-release`，临时工作树已清理；Notebook投影239项有效回归、Heartbeat两文件22项及提案入口定向检查通过，主会话已亲审正式接线。随本轮Pi041修补统一发布，尚未部署；不混入旧Web分支dirty或试发渠道。已另查明Conversation起始时间漂移，本轮尚未获明确修复指令，不并入这两项改造。
+冷态详细Usage RPC按原契约unknown；前端既有fallback正式读取同Session持久四项计数，可显示Total26403875、缓存命中率约85.83%，未把恢复runtime零计数当累计值，未新增账本或推算Turn数／Latest Turn。实际公网隐藏IAB因无登录态进入正常认证页，已关闭，未算已登录页面验收；真机生命周期沿C17豁免未验。0.1.6/1006同证书APK已构建，439内置文件与生产静态逐SHA一致，交付路径和校验见运维记录。
+
+用户已确认模型上下文隐藏version_id、保留entry_id及编号机制；内部版本／Snapshot与人类审计保留。Main、Noting初始／续Turn、Framework、读取／维护结果与提案提示已接线。Heartbeat已明确自查提醒而非用户消息，需与用户对接的事项在用户回归时主动汇报；不新增队列／检测机制，原触发／渠道／权限保持。以上随本次统一上线。Notebook投影239项有效回归、Heartbeat22项、提案14项、404修补69项、冷route／Context61项及冻结10检查通过；前端104项／typecheck／build与隐藏移动视口故障恢复证据通过，范围重叠不加总。完整原始日志在ignored `.hermes-dev/notebook-context-20261025/`，首次失败保留；无新增真实模型或微信测试。
+
+本次保留最新Pi041发布及前一Web恢复发布两套完整三库，SHA／完整性有效，更旧一套3库已清退。部署及恢复点详见[运维记录](docs/operations-log.md)。Conversation起始时间漂移和微信prepare failed仍为此前已定位／调查的独立事项，本次未修，不因本轮完成而标为解决。
 
 ## 2026-10-25 · Alex Idle Noting 阈值调整
 
 用户确认保留500秒Idle延迟，将上下文阈值调整为96K（98,304 tokens）。12:44已通过正式`hermes -p alex config set`修改Alex Profile共享的`noting.idle.threshold_tokens`并原生读回；完整配置语义对比仅此项131072→98304，延迟500秒及原生压缩80%保持。作用于Alex所有合格Conversation，正常触发判定重新读取，无服务重启或人为模型请求；尚未产生新阈值下的实际Noting样本。备份、回执及前置环境失败见运维台账。
 
-Android当前已发布版仍为回前台立即刷新、后续10／15／20／30秒退避；用户2026-10-24要求改为先恢复、5秒内网络读取及Socket／Turn恢复完成就不重载，具体范围见下方Timeline恢复条目；新版已完成本地实现、Web实际验证与0.1.5签名构建，原生定向验证通过，配套后端已于10/25上线；用户C17明确豁免本轮实际APK验收，不启动模拟器，交付注明未验。此前45秒、分钟级长退避及旧5秒单次刷新方案不作为当前实现；本次5秒恢复窗口是新的用户要求。UI-CAM-01已获用户确认，拍照压缩保留当前实现。2026-10-21本轮用户明确确认：升级APK迁移至新的响铃＋横幅通知通道，并尽量保留用户主动静音设置；已实施并完成原生定向测试，真机响铃／横幅未验。
+Android当前交付版为0.1.6/1006；用户2026-10-24确认的先恢复、5秒内网络读取及Socket／Turn恢复完成就不重载已随0.1.5实现并在0.1.6保留，原生定向验证通过，前后端已于10/25配套上线；用户C17明确豁免本轮实际APK验收，不启动模拟器，交付注明未验。此前45秒、分钟级长退避及旧5秒单次刷新方案不作为当前实现；本次5秒恢复窗口是新的用户要求。UI-CAM-01已获用户确认，拍照压缩保留当前实现。2026-10-21本轮用户明确确认：升级APK迁移至新的响铃＋横幅通知通道，并尽量保留用户主动静音设置；已实施并完成原生定向测试，真机响铃／横幅未验。
 
 ## 2026-10-25 · Web恢复接口合回main并上线（已完成）
 
