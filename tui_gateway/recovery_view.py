@@ -68,7 +68,9 @@ def _references(state):
     for event in state.get("events", []):
         payload = event.get("payload") or {}
         identity = event.get("_output_identity") or {}
-        candidates = [payload.get("message"), payload.get("source_message"), *payload.get("source_messages", [])]
+        receipt = payload.get("persisted_turn") or {}
+        candidates = [payload.get("message"), payload.get("source_message"), *(payload.get("source_messages") or []),
+                      *(receipt.get("source_messages") or [])]
         for key in ("message_uid", "assistant_message_uid"):
             uid = payload.get(key) or identity.get(key)
             if uid:
@@ -256,6 +258,33 @@ def _persisted_event(event, known, tool_results):
     return True
 
 
+def _closed_source_boundary(receipt, sources, known):
+    boundary = receipt.get("source_boundary") or {}
+    first, last = sources[0], sources[-1]
+    normal_finish = last.get("role") == "assistant" and last.get("row_id") == receipt.get("final_assistant_row_id")
+    terminal_finish = known[first["message_uid"]].get("terminal_source_uid") == first["message_uid"]
+    return (all(boundary.get(key) is True for key in (
+                "prefix_unchanged", "compression_unchanged", "all_rows_committed"))
+            and first.get("role") == "user" and first["message_uid"] == boundary.get("user_message_uid")
+            and first.get("row_id") == receipt.get("user_row_id")
+            and receipt.get("row_ids") == [source.get("row_id") for source in sources]
+            and (normal_finish or terminal_finish))
+
+
+def _completion_sources_accounted(receipt, known):
+    """Prove the completed native suffix independently of the single-user fast path."""
+    sources = receipt.get("source_messages") or []
+    if not sources or not all(
+            (row := known.get(source.get("message_uid"))) is not None
+            and row.get("id") == source.get("row_id") and row.get("role") == source.get("role")
+            and row.get("visible") and row.get("active") for source in sources):
+        return False
+    # A consumed steer deliberately leaves the legacy whole-Turn receipt
+    # incomplete. Its closed, fully committed suffix can still account for
+    # notifications; failures instead close at the native terminal source row.
+    return bool(receipt.get("complete") or _closed_source_boundary(receipt, sources, known))
+
+
 def _persisted_reasoning_notice(event, state, known):
     if event.get("type") != "reasoning.available":
         return False
@@ -263,11 +292,7 @@ def _persisted_reasoning_notice(event, state, known):
         if completed.get("type") != "message.complete" or completed["seq"] < event["seq"]:
             continue
         receipt = (completed.get("payload") or {}).get("persisted_turn") or {}
-        sources = receipt.get("source_messages") or []
-        if receipt.get("complete") and sources and all(
-                (row := known.get(source.get("message_uid"))) is not None
-                and row.get("id") == source.get("row_id") and row.get("role") == source.get("role")
-                and row.get("visible") and row.get("active") for source in sources):
+        if _completion_sources_accounted(receipt, known):
             return True
     return False
 

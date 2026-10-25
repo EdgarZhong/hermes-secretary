@@ -304,6 +304,8 @@ Message ordering, Compaction lineage, framework carriers, UIDs and stream insert
 
 **同日用户确认Patch replace审批diff：** 仅前端复用已接收的当前工具调用参数，为Patch replace模式提供审批前拟修改片段的差异渲染：路径、old_string、new_string及replace_all；新字符串为空时按删除展示。不得为此新增后端接口／diff字段，不将预览冒充执行后真实diff或完整文件。不扩大到V4A或write_file。审批只展示能与当前owner／当前待处理调用唯一对应的参数，不拿Terminal或其它调用参数猜测；缺少完整参数或存在歧义时保持原审批、选项与流程，不额外阻断审批。模型参数按文本转义显示，保留原文；非Patch审批及Clarify表现不变。
 
+**2026-10-25用户追加界面要求：** 移除页面顶部灰色`Syncing conversation…`及黄色`Conversation updates unavailable. Retrying…`同步／重试横幅，后台自动恢复、状态验证及重试继续执行；不由隐藏提示假称恢复成功。真实会话不存在、Profile不可用及操作／连接失败按各自已有就地反馈处理，不恢复这两条顶层横幅。聊天时间线保留滚轮、触摸及键盘滚动能力，但隐藏右侧可见原生滚动条，不为它保留固定gutter；侧栏既有隐藏滚动条规则保持。
+
 #### 1.4.1. 页面恢复、过渡展示缓存与统一交接实施方案（2026-10-24）
 
 **本节为6.1恢复机制的产品契约，执行版本、发布状态、独立报告的覆盖及交付边界以根CLAUDE和运维记录为准；历史final-delivery.md仅对应当时交付，不代表后续修补仍未上线。** 动态进度与最终结论以根CLAUDE及本轮`.autonomous/20261024-web-recovery/`为准。以下未来语气保留定稿时的计划语义，不表示当前尚未启动；原冻结方案可从`ba83d2b`读取。本节由独立Astra方案审查后形成，此后不再调用Astra。产品定义沿§1.3、§1.4及§1.13，不改变5秒硬兜底、滚向真实末尾或完整重读范围。结构、参数、容量、锁序、分包为内部技术决定，不冒称用户逐项指定；原代码基线为前端`f3a03ce32c0dd1e96719da210716caa2c1c7b8d4`。

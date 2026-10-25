@@ -2,6 +2,32 @@
 
 维护实际部署、故障处理、验证与回滚点；步骤和稳定布局见[部署SOP](cloud-deployment-sop.md)，当前任务只在根[CLAUDE](../CLAUDE.md)。以下时间均为Asia/Shanghai；PID、指纹和测试结论只对应记录时点，不代表实时状态。凭据、令牌、原始私人材料不写入本文件。
 
+## 2026-10-25 · 暂停Alex置顶会话后台整理及相连空闲压缩
+
+用户在确认修复上线后，明确要求暂时关闭Alex置顶会话的空闲自动压缩和整理笔记。已核Alex数据库全部pinned物理行归属同一目标Conversation，经正式`noting_command(..., 'off')`写入会话参与偏好，不直接SQL写表、不新增Profile／独立Idle配置。读回local_enabled=false、global_enabled=true、next_idle absent、task idle；其它Conversation参与状态、当前Notebook Snapshot及Profile配置SHA保持。此开关暂停目标后台Noting及其相连Idle后压缩，保留已有Notebook、原生手动／容量压缩及Scheduler／Heartbeat，不自动恢复。无服务重启、历史写入或模型调用；受限回执`/home/ubuntu/.local/state/hermes-secretary/config-changes/pinned-noting-off-20261025/receipt.json`，后续恢复须用户明确要求再原生noting on。
+
+## 2026-10-25 · Turn完成后恢复误拒本地修复与验收，部署前停止
+
+**授权与边界：** 紧急回退后用户明确“继续修，测好了，再给我部署，部署之前，先停下，告诉我”。本次仅本地修复／验证，完成后停下等待确认；未commit／push／部署，不操作生产，线上仍为后端7bc57298＋网页f3a03ce。沿现有main签出实施，不开新worktree／自主套件；presentation原dirty保持。后端子Agent负责整包，主会话亲审、等价测试整理、统一检查和实际页面验收。
+
+**根因与实现：** 普通UI Turn及Heartbeat结束时，恢复读取没有查询`message.complete.persisted_turn.source_messages`全部来源身份，导致真实持久结果无法证明；同Turn消费Steer后，原生单用户快捷回执complete=false也被误当作来源后缀不完整。另一路自然结束carry会在后继Turn发出无正文／UID的`steer.consumed`队列交接回执，混入display快照后成为无法持久对账的旧Turn事件。`recovery_view.py`增补完成回执来源的有界身份查询，正常结束／原生终结元数据及完整稳定来源边界共同证明后缀，只用于已存输出通知结算，不改变原生complete含义；未知／错误身份、缺行、压缩变化、后继无依据输出仍拒绝。`inflight_output.py`按现有事件契约区分无message／UID的纯控制交接，不进入Timeline display快照，原始发送及replay保持；有正文／UID的Steer仍须正常证明。无Prompt、模型、数据库结构、前端产品或规则变更，非特定Conversation／Heartbeat补丁。
+
+**原生测试：** 子Agent以官方PM解释器＋标准`scripts/run_tests.sh`验证实际worktree源码；原版普通／Heartbeat／消费Steer回归12项中8失败、自然carry独立失败，均留日志。修后7相关文件最终173通过，原pending容量夹具首次`Event.wait(5)`超时、runner重试及另外定向复测通过；范围重叠不加总，不称首次全绿。主会话亲审后将新增负例的if/elif等价改成参数表，最终专项31项无重试通过、25.2秒，覆盖多Turn、普通／Heartbeat／两提交入口、工具批次Steer／自然carry、error／interrupt、空回执／坏身份／未知后继输出及页外身份。原生错误／取消沿真实provider异常及持久终结接线，不以源码字符串或镜像算法代替。统一冻结10检查首次仅测试HX011阻断，等价整理后全部通过，health0 blocking／0 advisory；未改门禁、阈值或加豁免。
+
+**主会话实际Web验收：** 全新库外`/private/var/tmp/hermes-turn-completion-20261025/`Profile／cwd、53517后端／53518本地SSE替身／53519故障代理；只使用自己新建的隐藏IAB，不操作用户页面或外部浏览器。前端原f3eb130／439dist与已留存manifest逐SHA一致；Controller／App／PageRecovery三文件118项及typecheck通过，产品未改。原版实际第一Turn成功，第二Turn流式中真实Steer→自然carry至后继Turn完成后，复现idle／6行历史完整但恢复runtime_unavailable，页面黄条及侧栏Running残留，事件组合与生产一致。载入修复后在同document自动重连，未发送草稿保留；再做同样真实发送／Steer／后继Turn，结束后封套complete=true、idle、黄条消失且Running清除。随后断WS、通过正式SessionDB向隔离库追加唯一外部正文，保持真实REST503到页面明确提示重试；解除故障后不刷新页面自动采用外部追加、保留展开Thinking及草稿。最终5user／6assistant（含唯一外部追加）、5次本地模拟供应商请求，自动恢复未重发写操作；真实供应商／生产模型请求0。未跑全仓、未验APK真机，不把隔离通过写成已上线。
+
+**证据与待发布：** 最终文件SHA、测试范围和UI断言统一本工作区ignored`.hermes-dev/turn-completion-recovery-20261025/summary.json`；`ui/before-steer-complete.png`／`ui/after-recovery.png`及对应真实REST／RPC／AX原件保存前后反例。子Agent初始交接与原始失败在`.hermes-dev/heartbeat-recovery-20261025/handoff-report.json`，主会话只改测试条件表后的最新SHA以summary为准，不改写旧交接时点。生产修复期操作0；代码与证据已备好，后端正式提交及发布、恢复f3eb130静态均等待用户下一步明确确认。现有APK0.1.7原包未改，生产网页仍保持f3a03ce紧急回退，不能提前宣称版本重新配套。
+
+## 2026-10-25 · 正常Web Turn完成后恢复失败，按用户要求紧急回退网页
+
+**反馈与证据：** 用户最初关联Heartbeat，随后明确普通Web Turn结束也出现黑色同步条及黄色`Conversation updates unavailable. Retrying…`，当时正常使用Alex置顶会话。生产独立只读连接确认同一runtime `running=false`／`status=idle`，REST最新200条历史成功，正式恢复封套连续两次`complete=false`／`reason=runtime_unavailable`。快照保留上一Turn的输出／控制事件，没有Reminder专属source事件；只证明恢复链路失败，未完成逐事件根因判定，不将问题限定Heartbeat或误称模型仍在运行。普通Turn及Heartbeat本身均有近期持久来源；未触发模型测试。
+
+**用户决定与实施：** 用户明确要求立刻回退稳定版本、优先恢复前端使用；随即停止修复调查和子Agent。选择引入统一页面恢复机制前、2026-10-24已verified发布的Web `f3a03ce32c0dd1e96719da210716caa2c1c7b8d4`（0.1.4），仅回退Secretary网页资源，避开失败封套；后端仍7bc57298／main，保留当前全部数据库、配置、排期及绑定。复用云端`20261024-ai-title-budget-183f1a5/input/`原静态包、manifest及`remote_release.py`的`extract_static`／`exchange_static`函数，经archive SHA及439文件集合／SHA核验后renameat2原子交换；不新写发布器、不停服务、不备份或恢复数据库。当前浏览器已载入的新版脚本不会因静态替换自行卸载，已明确告知用户刷新一次载入回退版。
+
+**结果与边界：** 收据verified；439静态逐SHA、正式回环HTTP入口与入口JS／CSS的实际响应SHA通过，Web PID前后3742575，无服务重启、数据库写入或模型请求。未刷新／操作用户现有页面，用户刷新后的真实使用仍待反馈，不把静态校验冒称浏览器端到端通过。APK0.1.7内置网页未改，与回退后生产静态已不同；本次未重新打包。前端源码main仍f3eb130，后续发布不得未经授权重新覆盖本次回退。原0.1.7交付／验收保留历史时点，新增生产反例不改写旧报告。
+
+**恢复点：** 云端受限`/home/ubuntu/.local/state/hermes-secretary/release-20261024/20261025-emergency-web-rollback-f3a03ce/receipt.json`保存前后版本与静态清单；回退前f3eb130资源保留在`/home/ubuntu/.local/share/hermes-secretary/static/.secretary-before-emergency-rollback-20261025`。仅用户明确要求恢复新版时再核实际静态、复用同一原子交换并验HTTP；不得自动恢复新版或覆盖运行数据库。静态回退不新增历史数据库备份，既有最近两套三库及同步ZIP保持。
+
 ## 2026-10-25 · 跨进程Noting全生命周期、Context与0.1.7联合收尾
 
 **授权与范围：** 用户要求同时修复跨进程状态读取和通知，覆盖Noting到压缩收尾完整生命周期，通用机制测试后部署；随后要求前端一并部署、重打0.1.7，后端合main，并确认以后云端只运行main、分支完成后及时合并。沿现有两仓main实施，无新worktree／自主套件；后端实际签出为hermes-secretary-web-release，原presentation dirty保持。

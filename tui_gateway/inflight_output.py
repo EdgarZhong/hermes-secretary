@@ -22,6 +22,18 @@ _DISPLAY = _DELTA | frozenset({
 })
 
 
+def _display_event(params: dict) -> bool:
+    kind = params.get("type")
+    if kind not in _DISPLAY:
+        return False
+    payload = params.get("payload") or {}
+    # A native followup handoff only retires pending input. It has no Timeline
+    # message to recover, unlike a steer inserted into the current transcript.
+    # The original control frame still travels through transport and replay.
+    return not (kind == "steer.consumed" and payload.get("message") is None
+                and payload.get("message_uid") is None)
+
+
 def start(session: dict) -> None:
     with event_replay._replay_lock:
         session["_inflight_output"] = {"events": [], "complete": True}
@@ -67,7 +79,7 @@ def record(session: dict, params: dict, identity: dict | None = None) -> None:
     Failure marks the projection incomplete, so a partial snapshot is never advertised.
     """
     state = session.get("_inflight_output")
-    if not isinstance(state, dict) or not state.get("complete") or params.get("type") not in _DISPLAY:
+    if not isinstance(state, dict) or not state.get("complete") or not _display_event(params):
         return
     try:
         event = copy.deepcopy(params)
