@@ -397,7 +397,7 @@ Message ordering, Compaction lineage, framework carriers, UIDs and stream insert
 
 - 交接前从现阅读owner取anchor与offset；提交后layout effect在同一帧先恢复该anchor的屏内位置，不清空、不换Conversation key、不重新mount Timeline。最长公共前缀覆盖当前所见时，进入`handoff-scroll`模式，暂停原`following → instant`及ResizeObserver抢位；用同一reading owner执行约240ms ease-out滚向提交后的尾部，结束后恢复原跟随策略。无位移不动画；已证前缀破坏允许重定位。
 - 动画目标以本次提交尾部为有限起点；期间真实delta继续呈现并更新尾部几何，动画总时长不续期，结束落在当时真实末尾，不等Turn结束。用户wheel／touch／键盘／拖滚动条立即取消本次自动动画并交还既有人工阅读规则，不在用户手势结束后重播旧交接。`prefers-reduced-motion`用一次受控定位替代运动，仅属可访问性降动效，不取消数据交接或最终末尾目标。
-- Usage／Context比较**当前实际呈现值的规范签名**，包含视图、数字／unknown、估算标识、窗口与实际显示字段，不比较对象引用、observed_at或请求完成次数。首次无旧数据建立基线不闪；同值不闪；实际有效变化背景高亮一次约120ms、约480ms淡回；600ms内连续变化合并、不重置无限闪烁。切owner重建基线，不把另一会话当旧值；用户切Session／Latest视图不伪装成后端数据更新。动画独立于真实selected/open状态，不改尺寸、不触发Timeline滚动，降动效时只保留短暂静态高亮。
+- Usage／Context比较**当前实际呈现值的规范签名**，包含视图、数字／unknown、估算标识、窗口与实际显示字段，不比较对象引用、observed_at或请求完成次数。首次无旧数据建立基线不闪；同值不闪；Usage实际有效变化背景高亮一次约120ms、约480ms淡回；600ms内连续变化合并、不重置无限闪烁。Context高亮时机按2026-10-25追加口径，仅由当前owner新的正式Turn结束事实触发一次，不能由数值变化、请求返回或恢复交接直接触发。切owner重建基线，不把另一会话当旧值；用户切Session／Latest视图不伪装成后端数据更新。动画独立于真实selected/open状态，不改尺寸、不触发Timeline滚动，降动效时只保留短暂静态高亮。
 - 可见恢复ready在该次展示commit与anchor定位完成后回报；无需等240ms动画、缓存写入或背景所有请求完成。
 
 **R8 · APK JS／Native闭环。** 保留可信origin＋主frame检查和现有health心跳，只扩展packet parser与原生ForegroundRefresh；网页没有HermesAndroid时该层零行为。
@@ -503,6 +503,8 @@ JS／原生单测不能证明实际WebView生命周期与画面连续。后续�
 - A disconnected or stale feed displays a recoverable status; on reconnect, native replay plus REST history is reconciled instead of appending duplicated fragments.
 
 **2026-10-15 流式速度联调修订：** 纯正文／推理增量及其原生身份配对投影（`message.output_delta` 的对应 `native_type`）必须共享同一按帧渲染合并策略，不能由每条身份事件打穿合并并造成已完成内容持续积压。仅合并中间画面，原生事件、文本、顺序、身份及控制状态仍逐条同步处理；interim 边界、控制与终态立即发布最新完整投影并取消过期待绘制帧。真实终态竞争仍由后端拒绝，前端明确说明本轮已结束、Steer 未被接受、草稿已保留，不自动转成普通 Prompt。
+
+**用户2026-10-26确认：Working转圈位置。** 活动回复的Working／流式等待转圈统一放在当前已呈现正文、Thinking及工具卡片之后，不留在某条较早回复气泡里、夹在正文与后续活动卡片之间。只调整呈现位置，不改变原生消息／卡片顺序或将转圈作为Turn活动与操作权限证明。
 
 ### 1.6. Composer contents, layout and keyboard
 
@@ -622,9 +624,11 @@ Under/near the Composer, show a restrained usage component with two equal-size v
 
 **User-confirmed visibility (2026-10-13, R2-C73):** Once usage data for the selected actual Session has been successfully fetched, show it regardless of whether a Turn is running or idle. Turn activity MUST NOT suppress successful Session usage data. Latest Turn retains its completed-Turn meaning; fields for which no valid value has been obtained remain unknown. New Chat remains excluded under R2-C16.
 
+**用户2026-10-25确认：Context只在Turn结束时高亮。** Context数值持续及时更新，不为动画延迟或批量结算；同一Turn中Constructing、工具串／并行衔接、Thinking、首个delta前及其他流式／读取更新都不高亮。仅当前owner新的正式Turn结束事实触发一次；异常断线不构成Turn结束，历史恢复／事件重放不能重复播放结束动画，切owner不能借用另一会话的结束事实。此条替代上轮Context“任意有效数值变化都可高亮”的规则，不改变原统计来源及读取契约。
+
 **User-confirmed incremental updates (2026-10-14):** For each field in both bottom capsules and their expanded views, update only when a new valid native value is obtained for the same Session and corresponding statistical view; zero is valid. Missing fields, unknown results, failed reads and Turn-state changes do not clear a previously valid in-memory value. Values never obtained remain unknown. The former memory-only restriction is superseded only by the user-confirmed transitional display cache below; retention must not leak across Sessions or incompatible views.
 
-**用户2026-10-24确认：底部两个卡片缓存与通用数据更新动画。** UsageSummary（Session Total／Latest Turn对应统计）及ContextIndicator均保存已成功取得的展示数据，页面冷启动、刷新后及断线期间先显示同一owner的上次值；新值返回后原地接管并更新缓存。两个卡片的轻量动画以实际展示数据变化为触发条件，覆盖缓存交接、Turn结束及其他时点的Usage／Context有效更新，不仅用于请求返回或刷新缓存；重复请求返回相同展示值不触发。动画采用用户进一步指定的轻微选中态高亮：胶囊背景短暂亮起一次后柔和淡回，不改变实际选中／展开状态，不连续闪烁。须让用户能察觉“数据更新了”但不抢夺注意力，连续变化合并提示，避免逐帧／逐事件闪动。保持卡片位置和尺寸稳定，不先清空数值，不触发Timeline滚动；具体时长、强度和合并节奏按§1.4.1的内部技术默认实施并验证。保持原统计视图、零值及未知字段语义，不由缓存推算新的token或百分比；缓存不跳过usage／Context读取，也不能恢复旧的active／compacting状态或作为整轮恢复完成依据。真实模型／上下文不兼容时沿原失效规则处理，不能以缓存延续错误统计。尚未实施。
+**用户2026-10-24确认：底部两个卡片缓存与通用数据更新动画。** UsageSummary（Session Total／Latest Turn对应统计）及ContextIndicator均保存已成功取得的展示数据，页面冷启动、刷新后及断线期间先显示同一owner的上次值；新值返回后原地接管并更新缓存。UsageSummary的轻量动画以实际展示数据变化为触发条件，重复请求返回同值不触发。ContextIndicator的触发时机由2026-10-25追加确认替代：实时更新数据，但仅在正式Turn结束时单次高亮；缓存交接、恢复请求、工具衔接及Turn内流式更新均不触发高亮。动画采用用户进一步指定的轻微选中态高亮：胶囊背景短暂亮起一次后柔和淡回，不改变实际选中／展开状态，不连续闪烁。须让用户能察觉“数据更新了”但不抢夺注意力，连续变化合并提示，避免逐帧／逐事件闪动。保持卡片位置和尺寸稳定，不先清空数值，不触发Timeline滚动；具体时长、强度和合并节奏按§1.4.1的内部技术默认实施并验证。保持原统计视图、零值及未知字段语义，不由缓存推算新的token或百分比；缓存不跳过usage／Context读取，也不能恢复旧的active／compacting状态或作为整轮恢复完成依据。真实模型／上下文不兼容时沿原失效规则处理，不能以缓存延续错误统计。
 
 Session Total SHOULD refresh as real native model-call/turn usage updates are available; Latest Turn switches to the most recently **completed** Turn, not the latest arbitrary assistant text segment. Missing/incompatible counters with no previously valid value are shown as unavailable/unknown, **not** obtained by dubious subtraction of lifetime aggregates. Cost presentation should not direct attention away from the conversation.
 

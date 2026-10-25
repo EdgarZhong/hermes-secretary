@@ -3,6 +3,18 @@
 维护实际部署、故障处理、验证与回滚点；步骤和稳定布局见[部署SOP](cloud-deployment-sop.md)，当前任务只在根[CLAUDE](../CLAUDE.md)。以下时间均为Asia/Shanghai；PID、指纹和测试结论只对应记录时点，不代表实时状态。凭据、令牌、原始私人材料不写入本文件。
 
 
+## 2026-10-26 · 前端首帧、Turn连续性与Working位置上线
+
+用户确认切回Conversation的第一眼不能空白，离开位置和展开状态应保留；快速滚动仅衔接缓存与实时内容。实现同owner的document内暖画面／阅读位置（有界10会话），在首个异步读取前同步呈现，IDB精确key读取先于草稿／网络；缓存仍不恢复动作权限、不跳过当前页面完整读取。Thinking／工具展开及结果内层阅读按原生身份保持，真实内容更新和终态照常处理。
+
+工具／模型接缝的假idle来自普通失效恢复过早清活动与Pending事实，以及当前受理至首delta／NewChat正式绑定交接缺口。现在同owner／runtime且连续连接保已有真实控制事实，仍执行完整恢复；断线显示最后已知未结束的禁用Stop并撤销操作权限，真实idle／完成及时结束。通用error不当Turn终态。Context读数实时、迟到旧读不覆盖新事件，仅当前正式Turn结束单次高亮，恢复不补闪；Usage保持实际可见值变化规则。用户发布前追加Working位置，现将原回复气泡内指示移至所有已显示正文／Thinking／工具卡片之后，保持原消息顺序及原生状态归属。
+
+前端源码main依次提交并自动push b9081b8、59d0761、559598b，最终入口`index-DONDZaGf.js`；18文件功能包436相关项、Pending等价抽取147项通过，均保各阶段范围、不相加。主会话发现Controller2553基线增长至2621不符既有健康要求，已将相关Pending owner抽至95行sibling，Controller降至2550；主会话及独立review逐步骤核对等价。Working正式DOM顺序反例先败后过；最后4文件152项通过／1项旧guard展示断言失败，该失败在原d644纯HEAD副本同样复现。2个旧键盘夹具补正式Pending快照以符合新权限契约，保持原callback断言，未削弱产品guard；不称全仓绿。类型／构建和diff通过。
+
+独立隐藏IAB实际271c两Turn／4并行工具、4次本地受限API，首stored帧禁用Stop、活动无假Send、断线约6.3秒禁用Stop后无需刷新自动恢复；活动Context高亮0、每Turn完成1。2秒GET延迟下普通正文／展开Thinking首帧与位置保持。Pending等价抽取后D5额外暖首帧烟测通过。最终DOND实际“正文→Constructing”中唯一Working位于最后卡片下方、同左边缘，结束消失；2次本地API，0生产模型请求。完整收据／阶段范围在ignored `.hermes-dev/conversation-first-frame-20261025/`，最终静态包及原子发布wrapper在`release-working/`；旧候选仅上传未切线上。该时点等待最终独立复核，计划仅替换静态资源，不重启Web／Gateway或改数据库／配置。
+
+最终独立复核通过，22源SHA与559598b及DOND构建一致，实际24个转圈采样均在卡片之后且不在消息气泡内，Constructing时下方20px并同左边缘；没有新增发布阻断。随后复用既有extract_static／exchange_static完成439资源原子切换，receipt verified：后端保持fd57123，Web PID3874452／Gateway PID3874455前后相同，双服务active／微信connected，配置和Dashboard指纹保持；正式HTTP入口及JS／CSS资源SHA匹配，无数据库写入／新备份／生产模型测试。回退点保留于`secretary.release-20261026-cache-working-559598b`，受限发布证据`release-20261024/20261026-cache-working-559598b/`。已告知用户下次刷新载入；没有代刷新用户页或重打APK。旧候选b908／59d均未上线，不能将其上传冒称发布。
+
 ## 2026-10-26 · 置顶会话中断后恢复修复上线
 
 用户确认先在Skill Create Constructing阶段不可见，随后显式Stop，页面只剩Load earlier且无法操作。23:42:45原生记录interrupted_during_api_call，存在4079字符reasoning及持久turn_terminal；正式200条消息读取成功但activate返回runtime_unavailable。原有Web恢复层未识别这份中断输出证明，持续拒绝交接；代码对比确认非1000秒／partial Compact改动引入。当前实现通用持久终态与对应流式输出对账，不能仅因idle或user_committed跳过安全验证。
@@ -14,6 +26,8 @@
 后台压缩00:07:20自然结束，空闲预检通过后提交／自动push并从main发布`fd5712351512e99e8d828f9263d3756eb6f0adac`；沿用d644d4a／439静态，不混入待发布前端或manual Noting RPC。云端receipt verified，两服务实际同版本且active、微信connected，保护表／Notebook／配置／绑定／Dashboard及静态SHA对账通过。目标正式resume／200条messages／activate complete=true、running=false、status=idle；root经仅回环SSH转发自建隐藏IAB，实际正文及可编辑输入、k3.1-pro／high已显示，Context19%，未发送生产模型请求、未代操作用户页面。发布证据在ignored同目录release及云`release-20261024/20261026-interrupted-recovery-fd57123/`。本轮自动Noting已经执行，不将其冒称新manual调试RPC调用，也不再重复启动整理。用户已获告知会话可用及旧页面必要时刷新一次。
 
 发布收尾核验新fd57123及前次93d3b71两套完整三库的SHA、integrity和外键后保留6库，清理更旧2b6d5ec三库197316608字节；运行库／WAL／SHM和同步ZIP保持。自建线上核验隐藏页及临时回环SSH转发已关闭。
+
+Stop前进一步只读取证：该轮274.7秒停在首次模型流式请求构造工具调用阶段，有reasoning、generating／constructing，未出现tool.start／complete，数据库无本轮已提交调用／结果，尚未进入工具执行器。显式Stop先于stream_interrupt_abort及连接清理，随后记录interrupted_during_api_call；Stop清理共用的“stale stream”日志不能证明供应商先超时。现存证据缺工具名、参数长度及逐chunk时间，不能据界面“Skill Create”认定具体函数，亦不能区分持续慢生成与中途停滞；未找到Stop前超时、窗口／输出截断证据。不将这项证据缺口冒称已由恢复补丁解决。
 
 ## 2026-10-25 · Compact部分摘要保留及1000秒上线
 

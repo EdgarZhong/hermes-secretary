@@ -6,7 +6,9 @@
 
 ## 当前阶段
 
-2026-10-26紧急恢复已上线：置顶会话在Skill Create Constructing期间先不可见，23:42显式Stop后仍空白；已确认持久turn_terminal存在但恢复层未对账已中断输出，非Compact补丁引入。通用恢复补丁`fd57123`已亲审、定向验证、冻结10检查、提交／push及main发布，Web／Gateway同版本且active。按用户明确选择等后台自动Noting／压缩自然结束（00:07:20），未中断任务；正式目标200条正文、activate complete=true／idle，root独立隐藏IAB已见正文及可编辑输入、正确模型／推理，Context19%。前端完整包已实现及复审，最新动态验收由恢复后的review Agent补齐，尚未部署。Stop之前Constructing等待的更细原因继续只读取证，不能把已修的Stop后恢复遗漏当作前者根因。
+2026-10-26当前前端已上线559598b：Working从回复气泡内移至当前时间线末尾，在正文／Thinking／工具卡片之后，保原生顺序与运行状态语义。正式顺序反例先败后过，最终4文件152通过／1项原d644已存在的guard展示断言失败；补足2个旧键盘夹具的正式Pending证明且保持原断言。DOND真实Constructing单转圈在最后卡片下方20px、同左边缘、持续旋转，结束消失；独立复核通过。439静态原子切换及HTTP资源SHA已verified，Web／Gateway PID保持、双服务active、配置／Dashboard保持，无模型测试请求或数据库写入；旧b908／59d候选未上线。
+
+2026-10-26紧急恢复已上线：置顶会话在Skill Create Constructing期间先不可见，23:42显式Stop后仍空白；已确认持久turn_terminal存在但恢复层未对账已中断输出，非Compact补丁引入。通用恢复补丁`fd57123`已亲审、定向验证、冻结10检查、提交／push及main发布，Web／Gateway同版本且active。按用户明确选择等后台自动Noting／压缩自然结束（00:07:20），未中断任务；正式目标200条正文、activate complete=true／idle，root独立隐藏IAB已见正文及可编辑输入、正确模型／推理，Context19%。前端后继静态发布已完成，版本与证据见上文。Stop之前Constructing等待的更细原因继续只读取证，不能把已修的Stop后恢复遗漏当作前者根因。
 
 2026-10-25追加当前工作：用户要求从调试接口立即补跑一次最近原生Compact未伴随的置顶会话Noting；已读回23:28目标local_enabled=true／task idle（主会话未改该开关），现有RPC只有失败恢复，正在以原生manual接缝补最小单次入口，由`context_after_compaction`实现／测试，主会话发布并调用，不能把旧失败child冒充本次整理，不额外Compact或改自动配置。Context高亮新口径已确认：数值实时更新，只有正式Turn结束时单次高亮，工具／流式／缓存／重连更新不高亮；由前端实现Agent和独立review继续落实。隐藏IAB已对root恢复，Thinking及工具内层A→B→A真实位置保持补验通过，活动连续性尚在验证。
 
@@ -23,7 +25,7 @@
 | 项目 | 已核结果 |
 |---|---|
 | 后端 | `fd5712351512e99e8d828f9263d3756eb6f0adac`已提交／自动push并上线，云端检出main，双服务实际同版本且active、微信connected；追加中断终态输出对账，默认／Alex总时限1000秒及partial摘要提交保持。后继纯文档提交不改变运行版本 |
-| 前端 | `d644d4a08854b6a7cc5fb1b77f99fb9ef02d525e`已提交／自动push并上线，439静态逐SHA及HTTP入口资源核验通过；0.1.4回退结束。顶部同步横幅移除，聊天滚动条隐藏，Thinking按正式消息身份归属；浏览器需刷新一次载入 |
+| 前端 | `559598b230c9ee30486056251b2dc15f54c925d4`已提交／自动push并上线，入口DONDZaGf／439静态及HTTP SHA核验通过；同owner暖首帧／阅读位置、Turn显示连续性、Context仅正式结束高亮、Working末尾位置已验。原横幅移除／滚动条隐藏／Thinking身份归属保持；下次刷新载入 |
 | Android | 已交付0.1.7／1007未改，仍内置原f3eb130；本次仅Web修复／发布，未重打APK，不能宣称内置前端与当前网页一致；实际生命周期未验 |
 | Noting／压缩 | 跨进程活动证明覆盖子任务、多Turn、Notebook提交、父压缩及Framework实际结算；独立压缩fence不提前报idle，不新增Main准入锁 |
 | Context | 旧热runtime不得覆盖有效压缩边界；本次22:17尝试未提交、80–81%为原文真实占用，非刷新缺陷。22:47另一次旧版尝试22:56已成功，不能冒称新修复效果；当前不为此修改Context逻辑 |
@@ -37,8 +39,8 @@
 | 工作 | 状态 |
 |---|---|
 | 置顶会话Stop后空白／不可控 | 已恢复并发布fd57123；正式200正文、Socket complete=true／idle及隐藏IAB实际显示和输入可用。中断源／输出精确对账，原生文件49项及最后19项定向通过（重叠不相加），其余4关联文件89项通过，冻结10检查通过；原反例与首次测试预期错误保留 |
-| Conversation切换首帧缓存／阅读位置 | 进行中；先复现服务端、草稿及IDB延迟下A→B→A的第一帧，再修正式恢复链路；覆盖普通／active、快速切换与旧轮次失效，不以最终加载或动画存在判通过 |
-| 前端活动Turn显示状态系统性抖动 | 用户新报Constructing、首delta前、工具→Thinking／串并行工具接缝及可能网络抖动时Stop变灰Send、Usage／Context反复高亮；按未确认终态被误画idle的系统性问题调查，不预定WS为根因。前端原实现Agent负责唯一写入，独立review负责定位复审；Compact本次发布不等待或混入本项 |
+| Conversation切换首帧缓存／阅读位置 | 已上线559598b；436相关项及类型／构建通过，271c真实暖首帧／Thinking展开、D5抽取后暖首帧均通过。Pending owner等价抽取后Controller2550行（原基线2553），新sibling95行，147定向通过，独立接线审查通过；最终Working复审通过，439静态已verified |
+| 前端活动Turn显示状态系统性抖动 | 已上线559598b：同owner连续活动／Pending保留、断线禁用Stop、当前受理／NewChat桥接、Context实时但正式结束一次高亮。271c真实两Turn并行工具／首stored帧／6.3秒断线及D5等价接线／暖首帧证据承接，DOND新增Working实际位置已验；0生产模型测试 |
 | 原生Compact超时／截断已有摘要保留 | 实现及主会话亲审完成：10文件187项、补日志后31项定向及冻结10检查通过；覆盖lean／legacy保尾、超时／length／窗口error部分摘要、无第二模型请求、晚线程不回退durable／Context／成功回执。1000秒默认／Alex配置已读回；main后端93d3b71已verified，网页沿用d644d4a，最新历史／Notebook／配置／绑定／Dashboard及439静态保护通过 |
 | 本次Context未更新判断复核 | 已查正式API与真实提交边界：该次Compact未成功，续跑使用原文，80–81%与服务端一致；用户已确认可能误判，仅检查，不为此改Context逻辑 |
 | 置顶Noting关闭范围复核 | 已确认会话参与开关挡住所有Noting，Idle子开关为Profile级；用户反对被说成两者联动要求，当前未再变更运行设置，纠正方案待明确 |
