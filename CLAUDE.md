@@ -4,6 +4,10 @@
 
 暂无。
 
+## 2026-10-25 · 旧Pi041排期关闭（已完成）
+
+用户明确停用之前派041会话的全部Scheduler。17:47:58核精确身份后，原生SchedulerStore暂停4条active，schedules_read读回16条中paused4／completed12／active0；Heartbeat原已cleared。保留定义和其它会话／全局配置，操作回执见运维记录。用户在Web会话另要求重新打包0.1.6，该会话已交436d3a0同版本签名新包，只有资源复制时间差，无产品变化或部署；旧包保留，最新地址与SHA见运维记录。
+
 ## 2026-10-25 · Gateway运行中Web访问回归与完成主动更新（已修复上线）
 
 用户报告微信Turn运行时首次打开Web只有`Recovery unavailable: runtime_unavailable`，明确要求立即修复。已定位新恢复机制：Web本地没有Gateway进程的正式输出快照，DB外部Turn lease导致完整封套拒绝；前端把成功REST持久历史也挡在完整恢复之后，首次无缓存即空白。用户随后明确微信运行是正常使用，不接受报错／只读／旧缓存；此前只读过渡候选已撤销。最终最小方案：后端以同owner真实native外部Turn lease及D0/D1稳定事实确认Gateway运行，正常完成持久历史与本地WS切点交接，显示最新REST历史、保留其他正常功能；明确没有Gateway实时输出流，不伪造idle／旧Turn输出，不取消Gateway任务。

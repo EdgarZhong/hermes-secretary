@@ -2,6 +2,14 @@
 
 维护实际部署、故障处理、验证与回滚点；步骤和稳定布局见[部署SOP](cloud-deployment-sop.md)，当前任务只在根[CLAUDE](../CLAUDE.md)。以下时间均为Asia/Shanghai；PID、指纹和测试结论只对应记录时点，不代表实时状态。凭据、令牌、原始私人材料不写入本文件。
 
+## 2026-10-25 · 停用旧Pi041 Conversation全部Scheduler
+
+用户明确要求关闭此前派041会话在生产库中的全部Scheduler。17:47:58于Alex实际state.db核对精确stored locator、pi-import来源、会话标题及Conversation ref后，通过原生SchedulerStore.pause逐项暂停4条active排期，未直接SQL写表、删除定义或关闭Profile全局Scheduler；12条已完成排期保持。正式schedules_read读回总16条、paused4、completed12、active0，ID集合保持；目标Heartbeat原已cleared，未改其它Conversation／Profile、Notebook或历史。每项操作成功回执及前后清单保存云受限`/home/ubuntu/.local/state/hermes-secretary/schedule-changes/pi041-pause-all-20261025-174758/`，私人locator及排期正文只留该0600回执。恢复时须用户明确要求，再按该清单走原生resume，不自动恢复已暂停任务或重放旧提醒；本次无服务重启／代码部署／模型或微信发送。
+
+## 2026-10-25 · 用户要求重新打包0.1.6（Web会话交包，无部署）
+
+Web会话收到用户明确重新打包要求，已按正式前端436d3a0重构建0.1.6/1006 arm64；无源码改动／部署。新文件`.hermes-dev/web-recovery-20261024/release-016/Hermes-Secretary-0.1.6-436d3a0-arm64.apk`，32,092,289bytes，SHA256 `0c6d986ec0de2532b35d1f7f7e40d497cc1aa4dde5de313e0f6da3436fc93e74`；原证书v2与439内置文件逐SHA核验通过。相对生产c0a6558仅依赖生成的file-viewer/flyfish-viewer-assets.json中copiedAt时间变化，其余438文件与该文件其它字段一致，不算产品变化。精确manifest-436d3a0.json及旧包保留，由Web会话直接交包；真实APK生命周期仍沿既有豁免未验，本次不重发生产静态或重启后端。
+
 ## 2026-10-25 · Gateway active时Web访问阻断回归与完成历史主动更新
 
 **问题与最新需求：** 用户截图显示微信运行时Web只有`Recovery unavailable: runtime_unavailable`。新恢复封套把Web没有Gateway进程输出快照判为失败，前端继而阻断已经成功读到的REST历史，首次无缓存即空白。用户明确这属于正常使用，不接受报错、只读或只显示旧缓存；可以缺Gateway逐字输出流，其余功能保持。用户同时明确Gateway为active Turn且WebSocket仍连接时，Turn结束必须及时主动更新历史，替代此前接受不主动推送的约定。中途提出的只读preview／保留错误候选已撤销，未上线。Gateway输出原本没有直连Web的实时流，不等同WebSocket被断开；本次回归属于恢复门禁。
