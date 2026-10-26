@@ -3,6 +3,16 @@
 维护实际部署、故障处理、验证与回滚点；步骤和稳定布局见[部署SOP](cloud-deployment-sop.md)，当前任务只在根[CLAUDE](../CLAUDE.md)。以下时间均为Asia/Shanghai；PID、指纹和测试结论只对应记录时点，不代表实时状态。凭据、令牌、原始私人材料不写入本文件。
 
 
+## 2026-10-26 · 追加完成744ac30网页发布，纠正只交APK遗漏
+
+用户明确闪动客户端为移动端网页版，并质疑严重流输出不可见是否找到根因／已修。主会话解释已复现的前端机制（发送受理／运行通知触发恢复，旧画面冻结挡住已收到的User／Thinking／工具／正文，Stop沿业务态更新），不能推给网络。上轮仅代码／APK交付而漏发网页，线上只读核对确实还是c29b457；这份遗漏已明确承认并追加发布，不把本地已修冒称当时线上已修。
+
+首尝旧alex入口在SSH连接阶段EOF，没有执行生产命令；重读SOP后使用首尔seoul入口，只读核main／后端fd57123／双服务active／旧439静态逐SHA一致。待发dist与已交0.1.8 APK的439内置资源逐SHA相同，源码744ac30及工作区干净；归档SHA `2af7acdee00f3b169cffadca85994add49d727fd6e08207de223afaa95c1d9e0`。复用上次已审apply-static及extract_static／renameat2，仅改本次版本／目录／期望入口，上传dist和外置清单，不上传前端源码或凭据。
+
+云受限`release-20261024/20261026-stream-reading-744ac30/`收据verified，439静态与正式HTTP入口`index-CJ6XWfgz.js`／CSS等实际响应SHA全部匹配。Web PID3874452／Gateway PID3874455前后相同，双服务active、微信connected，后端fd57123／配置／Dashboard指纹保持；无数据库写入、新备份、重启、任务中断或生产模型测试。旧静态原子交换保留于`secretary.release-20261026-stream-reading-744ac30`，可按既有交换恢复。Mac证据ignored`.hermes-dev/frontend-018-20261026/release/production-receipt.json`、manifest及apply日志。
+
+已告知手机打开中的旧页面需刷新载入新JS；未操作用户页面，不冒称生产手机推流或键盘真机验收通过。Composer移动端网页版闪动继续单独定位，桌面移动尺寸／合成App未复现不代表已关闭。
+
 ## 2026-10-26 · 0.1.8重连阅读与恢复期实时输出修复、APK交付
 
 用户报告idle重连被拉底、Composer满高输入时Timeline闪动、保持连接发送后直到Turn结束才看到消息，以及旧0.1.7包损坏。本轮确认重连与持续连接手动规则分开，口径立即写入06。阅读反例改前4失败、改后通过；idle前缀兼容保持锚点，active／已证前缀破坏才回底，普通失效和迟到局部commit不抢位，空闲手动滚动不启动后来Turn的补计时。正式App六条warm／active／idle／取消组合通过。
