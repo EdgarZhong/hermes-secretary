@@ -188,3 +188,37 @@ c3fdd47db95698820a26e78e5233b6412cc99edc730c21649b8414cff428fe06  hermes_state_m
 ```
 
 原始临时证据的受限副本统一在ignored `.hermes-dev/noting-chain-20261027/review-evidence/`；报告中历史路径对应运行当时，副本同名。
+
+## 10. V01预览保真修复（4032f44后续）
+
+### 条款、依据与改动
+
+已读本轮`verification.md`第5/6节V01及获接受的工程提案。原实现仅凭精确Gateway纯文本JSON头便剥离内容，无法区分框架生成文本与真人从CLI/普通user/steer粘贴的同格式正文；display_kind、Session平台都不提供该注入证明。07/C11要求清本项目注入timestamp/HTML标签，并未要求额外删除这个纯文本来源头。撤回这项额外清理恢复原文保真，无需新gateway元数据链或数据迁移。
+
+只改`tools/conversation_history_projection.py`与`tests/secretary/test_history_source_modes.py`：删除`_strip_gateway_origin`及调用、无用途json import；真实leading timestamp、可信native Steer外框、可信系统HTML/XML及native Compression清理代码保持。旧Gateway测试保留原输入顺序，仅将额外清理期待改为按200头尾保留完整纯文本；新增CLI/weixin来源×普通user/steer/native steer frame六种粘贴反例，核真实外层timestamp仍清除、JSON头/用户HTML/日期保持、role仍user、Search系统筛选不误纳入、Read与持久原文不变及读路径无写副作用。
+
+没有改独立Verification反例或其期待、verification.md、gateway、用户输入pipeline、Schema、owner/权限、Notebook或其它Agent文件；没有派生、模型/生产操作、提交。
+
+### 验证、版本与原始证据
+
+基线HEAD `4032f44b10`。官方runner：
+
+```bash
+HERMES_PYTHON="$PWD/.venv/bin/python" scripts/run_tests.sh tests/secretary/test_history_source_modes.py tests/secretary/test_history_compression_parts.py tests/secretary/test_history_content_paging.py .autonomous/20261027-noting-provenance-history/reports/verification-preview-counterexample.py -q
+```
+
+最终**4文件107通过、0失败，8.6秒**（53+30+23+1），其中原独立V01反例原样通过。包含真实timestamp/可信Steer、可信系统包装延迟timestamp、native Compression清壳/同UID分部、独立角色分页、权限与HTML/date保护回归。
+
+对本次两文件以私有Git index、基线4032f44执行正式`--staged --only ruff,health`：**2 files、0 blocking/0 advisory（0.5秒），2 checks ok**。本次两文件diffcheck通过，规则/阈值未改，真实共享Git index未动。
+
+长期本地原始证据（ignored）：
+
+- `.hermes-dev/noting-chain-20261027/review-evidence/history-v01-tests-final.log`
+- `.hermes-dev/noting-chain-20261027/review-evidence/history-v01-check.log`
+- `.hermes-dev/noting-chain-20261027/review-evidence/history-v01-version.sha256`（两个交付文件及未改独立反例的SHA）
+
+### 接口影响、缺口与后续
+
+模型接口和权限不变；纯文本Gateway来源头作为原内容保留，Get Meta继续200头尾预算，Read仍原文。实现端V01修复及定向证据已具备；独立Verification仍由主会话交回审查者复核当前提交，不能由实现者冒称门禁已通过。建议以本节两个源文件指纹和原独立反例证据复审，无需重跑无关昂贵模型。
+
+本次同一基线4032f44、私有index纳入上述两文件及本报告追加内容的正式十项检查也已全部通过：`scripts/check --staged --base 4032f44`，`10 checks, ok`，health仍0 blocking/0 advisory。长期原日志：`.hermes-dev/noting-chain-20261027/review-evidence/history-v01-full-check.log`。本报告和两源文件最终diffcheck通过。
