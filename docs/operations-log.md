@@ -922,3 +922,10 @@ root依据cache_dependency_review再次核六精确目录实体、三树HEAD/pac
 前端22文件504项通过、6项明确跳过：5项已复现基线失败及1项可选wire夹具。后端5文件73项通过；whole-wire的review.summary既有孤立契约失败已于改前98a707e隔离复现。Typecheck、冻结TS复杂度、主仓10项冻结检查通过。生成协议仅暂存本轮两个字段，其他手动Noting入口dirty原样保留；隔离暂存快照的生成一致性通过。隐藏IAB390×844验证了未展开0次／展开1次／关闭重连无多余列表读取、隐藏摘要、断线球保留和26px胶囊；不等同Android Chrome真机绘制／APK安装验证。最终APK见CLAUDE和交付收据。
 
 最终Git同步：前端`20c92677eee72a8aedd909787f4b203e4e2dc691`，后端`4b04546bdc1c5cbd1fb1ad6f84ab615969e388f7`。本地交付`Hermes-Secretary-0.1.8-20c9267-arm64.apk`，32,106,741字节，SHA256 `73d6ce39dd5e8fa7f05557f7b77db6424471bafba4850289bd6aa279dcab622a`；439内置资源与dist逐字节一致，ZIP CRC、原证书v2签名、arm64 ELF及ZIP的16KB对齐、交付副本SHA均通过，旁附verification.json与sha256；未部署、未真机安装。
+
+
+## 2026-10-26 Compaction末尾Conversation start取值修复（本地未部署）
+
+用户再次明确：末尾是整个Conversation起点，直接由History Foreground第一条确定。根因是`SummaryDispatchMixin._summarize_window`每次从当前内存messages取min(timestamp)写入`_conversation_started_at`，正文被压缩／裁剪后该最早值已不是Conversation开始；旧格式测试直接设置此字段，没有检验真实来源。已删除该赋值及生产读取，footer沿既有`get_history_foreground(current_session)[0].timestamp`生成；压缩区间起止仍独立计算。方法归入既有summary sibling，无新时间缓存／推测规则；不改Root Prompt，不回写旧消息／摘要。
+
+真实DB反例旧代码3项失败（9月21日起点误写为内存后段9月22日）。修后原地压缩和Session轮转各三轮＋关闭重开DB／重建compressor，Foreground第一条UID与时间均稳定；非单调时间、foreign Conversation、旧RAM字段与确定性摘要路径也覆盖。3文件96项＋4文件105项＝7文件201项通过，10项冻结检查通过。只本地代码／测试／Git同步；既有已持久摘要不改写，后端部署后后续压缩才使用修正逻辑。无需重打前端20c9267 APK。

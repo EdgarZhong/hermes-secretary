@@ -1402,6 +1402,7 @@ question 已回答时 unresolved_points 可明确“无”，答案在 current_a
 7. 底层适配同时返回内部diagnostics，区分正常完成、实际降级、未完成、语法错误与执行失败。现行接口某些故障仅返回空数组，不能由此猜测“无命中”；History用真实diagnostics映射error/warning/partial，原生session_search公开行为保持不变。
 8. 用真实返回消息构造输出；rank只决定选择次序，不冒充置信度。跨会话按首次相关命中出现顺序分组、组内保留相对顺序，不编造标题或总命中数。
 9. **压缩摘要的恢复指引与History同资格：** 合格 Main 的 lean 摘要 `## Context Recovery` 只写一条——本次摘要覆盖的是**上一次压缩**掉的 N 条消息（被压缩区间起止时间），而 `conversation_history` 可检索自本 Conversation 第一条消息以来全部消息（会话起始时间）；不得出现 Session ID、`session_search` 或工具 Schema。非合格 Main（Cron、Noting child、delegate、review、side agent 等）保留原生 `session_search` footer。摘要被后续压缩迭代携带时，新 footer 必须替换旧段而不是仅在缺失时追加。
+   **2026-10-26用户再次明确：** 末尾Conversation start必须直接取当前Conversation的History Foreground第一条消息timestamp；内存上下文会被压缩／裁剪，不是起点来源，不能取其min(timestamp)，不能以本次／上次压缩区间开始代替。原地压缩、Session轮转、冷恢复均须保持与Foreground第一条一致；不另建时间缓存或推测兜底。
 
 **`partial` 定义：** true表示受候选预算、结果limit或不能完成membership判断影响，未确认全部合法命中；false只表示本次可用底层查询的候选已枚举并完成验证。它不保证自然语言语义上不存在其他证据。非法query、权限拒绝、索引完全不可用是error，不能报成功空数组。有效降级检索可成功，必要时附一条具体warning；不假报用了FTS。
 

@@ -174,7 +174,8 @@ class TestSecretaryRecoveryFooter:
     def _secretary_compressor(self):
         c = _mk_compressor()
         c._secretary_history_recovery = True
-        c._conversation_started_at = 1_792_239_921.0
+        c._session_db = MagicMock(db_path=None)
+        c._session_db.get_history_foreground.return_value = [{"timestamp": 1_792_239_921.0}]
         return c
 
     def test_last_compaction_scope_and_conversation_history(self):

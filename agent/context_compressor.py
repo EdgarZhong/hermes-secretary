@@ -3820,17 +3820,6 @@ Summary generation was unavailable, so this is a best-effort deterministic fallb
             logger.info("Lean tail: demoted %d stale tool result(s)", demoted)
         return result
 
-    def _secretary_recovery_footer(self, region_len: int, turns: List[Dict[str, Any]]) -> str:
-        """Recovery footer for an eligible Main Conversation (Secretary History policy)."""
-        profile_home = None
-        db_path = getattr(getattr(self, "_session_db", None), "db_path", None)
-        if db_path:
-            from pathlib import Path
-            profile_home = str(Path(db_path).parent)
-        start, end = _region_instants(turns, profile_home)
-        conversation_start = _format_instant(getattr(self, "_conversation_started_at", None), profile_home)
-        return _build_secretary_recovery_footer(region_len, start, end, conversation_start)
-
     def _augment_summary_lean(self, summary: str, turns_to_summarize: List[Dict[str, Any]]) -> str:
         """Append deterministic lean-mode sections to a summary; no-op in legacy mode."""
         if getattr(self, "tail_mode", "lean") != "lean":

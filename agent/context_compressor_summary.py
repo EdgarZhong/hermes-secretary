@@ -27,6 +27,20 @@ def _accepts_keyword_argument(callable_obj: Any, name: str) -> bool:
 
 
 class SummaryDispatchMixin:
+    def _secretary_recovery_footer(self, region_len: int, turns: List[Dict[str, Any]]) -> str:
+        """Recovery footer for an eligible Main Conversation (Secretary History policy)."""
+        from agent.context_compressor import _build_secretary_recovery_footer, _format_instant, _region_instants
+
+        profile_home = None
+        db_path = getattr(getattr(self, "_session_db", None), "db_path", None)
+        if db_path:
+            from pathlib import Path
+            profile_home = str(Path(db_path).parent)
+        start, end = _region_instants(turns, profile_home)
+        first = self._session_db.get_history_foreground(self._session_id)[0]
+        conversation_start = _format_instant(first["timestamp"], profile_home)
+        return _build_secretary_recovery_footer(region_len, start, end, conversation_start)
+
     def _apply_summary_route(self, call_kwargs: dict, pinned: Optional[Dict[str, Any]] = None) -> None:
         """Pin the summary route onto ``call_kwargs`` for both compression entry points.
 
@@ -79,13 +93,6 @@ class SummaryDispatchMixin:
             if isinstance(telemetry, dict):
                 telemetry["failure_class"] = "stall_deterministic_fallback"
             return None
-        # Recovery-guidance context: the Conversation's first message instant, taken from the
-        # history being compacted (the protected head normally carries it). Fallback: unset.
-        _stamps = [
-            msg.get("timestamp") for msg in messages
-            if isinstance(msg.get("timestamp"), (int, float)) and not isinstance(msg.get("timestamp"), bool)
-        ]
-        self._conversation_started_at = min(_stamps) if _stamps else None
         # Focus-topic derivation scans user turns; only pay when a summary is generated.
         summary_kwargs: Dict[str, Any] = {
             "focus_topic": focus_topic or self._derive_auto_focus_topic(messages),
