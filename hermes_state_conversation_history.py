@@ -11,6 +11,7 @@ from pathlib import Path
 
 from agent.message_visibility import model_visible_messages
 from hermes_state_secretary_identity import ConversationIdentityError
+from hermes_state_message_provenance import enrich_message_source, semantic_role
 
 
 class HistoryError(ValueError):
@@ -130,11 +131,13 @@ def resolve_history_scope_conn(db, conn, agent):
 class HistoryPaths:
     """Cache only paths of actual candidates/anchors, not every Profile transcript."""
 
-    def __init__(self, db, conn, scope):
+    def __init__(self, db, conn, scope, *, include_auxiliary=False):
         self.db, self.conn, self.scope = db, conn, scope
+        self.include_auxiliary = include_auxiliary
         self._paths = {}
         self._by_uid = {}
         self._fork_of = {}
+        self._tool_invocations = {}
 
     def _user_owned(self, ref):
         from secretary.noting_runtime import _CHILD_SOURCES, _NON_MAIN_PLATFORMS, _delegate_child_row
@@ -186,7 +189,11 @@ class HistoryPaths:
             if not self._user_owned(ref):
                 self._paths[ref] = None
                 return None
-            rows = [row for row in model_visible_messages(self.db.get_history_foreground_conn(self.conn, ref))
+            reader = (self.db.get_history_auxiliary_foreground_conn if self.include_auxiliary
+                      else self.db.get_history_foreground_conn)
+            foreground = [enrich_message_source(self.db, self.conn, row, content_decoded=True)
+                          for row in reader(self.conn, ref)]
+            rows = [row for row in model_visible_messages(foreground)
                     if row.get("kind") == "message" and row.get("display_kind") != "hidden"
                     and row.get("role") in {"user", "assistant", "tool", "system"}]
         except ConversationIdentityError as exc:
@@ -194,14 +201,44 @@ class HistoryPaths:
         # The native real-user predicate also admits steer, not framework/reminder
         # carriers. A user-owned Session plus real interaction establishes a user
         # Conversation; a DB binding or synthetic user role alone does not.
-        if not any(row["role"] == "user" and row.get("display_kind") in (None, "", "steer") for row in rows):
+        if not any(semantic_role(row) == "user" for row in rows):
             self._paths[ref] = None
             return None
         if any(not isinstance(row.get("message_uid"), str) or not row["message_uid"].strip() for row in rows):
             raise unavailable_source()
+        from tools.conversation_history_projection import ToolInvocations
+
+        self._tool_invocations[ref] = ToolInvocations(foreground, {row["message_uid"] for row in rows})
+        rows = self._coalesce_system_parts(rows)
         self._paths[ref] = rows
-        self._by_uid[ref] = {row["message_uid"]: row for row in rows}
+        self._by_uid[ref] = {}
+        for row in rows:
+            self._by_uid[ref].setdefault(row["message_uid"], []).append(row)
         return rows
+
+    def _coalesce_system_parts(self, rows):
+        """Only already-visible same-UID system parts share one role selector."""
+        from agent.context_compressor import _MERGED_SUMMARY_DELIMITER, _content_text_for_contains
+
+        result, system_positions = [], {}
+        for row in rows:
+            uid = row["message_uid"]
+            if semantic_role(row) != "system" or uid not in system_positions:
+                if semantic_role(row) == "system":
+                    system_positions[uid] = len(result)
+                result.append(row)
+                continue
+            index = system_positions[uid]
+            previous = result[index]
+            if previous["id"] != row["id"]:
+                raise unavailable_source()
+            content = self.db._decode_content(self.source_row(row)["content"])
+            parts = [previous, row]
+            if _MERGED_SUMMARY_DELIMITER in _content_text_for_contains(content):
+                parts.reverse()
+            result[index] = dict(previous, content=content, projection_kind="system_context",
+                                 is_compaction=True, _history_preview_parts=parts)
+        return result
 
     def require(self, ref):
         rows = self.rows(ref)
@@ -257,7 +294,20 @@ class HistoryPaths:
     def winner(self, ref, uid):
         if self.rows(ref) is None:
             return None
-        return self._by_uid[ref].get(uid)
+        parts = self._by_uid[ref].get(uid, [])
+        return next((row for row in parts if not row.get("is_compaction")), parts[0] if parts else None)
+
+    def parts(self, ref, uid):
+        if self.rows(ref) is None:
+            return []
+        return self._by_uid[ref].get(uid, [])
+
+    def tool_invocations(self, ref):
+        from tools.conversation_history_projection import ToolInvocations
+
+        if ref not in self._tool_invocations:
+            self._tool_invocations[ref] = ToolInvocations(self.require(ref))
+        return self._tool_invocations[ref]
 
     def source_row(self, row):
         """Point-read canonical source metadata; never hydrate an unauthorized candidate."""

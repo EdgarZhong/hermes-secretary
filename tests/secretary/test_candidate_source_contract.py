@@ -60,7 +60,7 @@ def _candidate(script, target, form):
 
 
 @pytest.mark.parametrize("target", SUMMARIES)
-@pytest.mark.parametrize("form", ["refs", "messages", "ranges", "mixed_direct"])
+@pytest.mark.parametrize("form", ["refs", "messages"])
 def test_native_candidate_accepts_source_form_for_each_target(runtime, target, form):
     _prepare(runtime)
     script = _ProviderScript([
@@ -78,19 +78,14 @@ def test_native_candidate_accepts_source_form_for_each_target(runtime, target, f
     _assert_same_source(script.results["s02-2"]["payload"]["work"][0], source)
     if form == "refs":
         assert candidate["fields"]["notebook_refs"] == [source["entry_id"]]
-        assert candidate["source_message_uids"] == []
+        assert candidate["provenance"] == []
     else:
         assert candidate["fields"]["notebook_refs"] == []
-        assert candidate["source_message_uids"] == (["origin-a"] if form != "ranges" else [])
-    expected_ranges = RANGES if form in {"ranges", "mixed_direct"} else []
-    assert candidate["source_time_ranges"] == expected_ranges
-    assert len(candidate["evidence_time"]) == (3 if form == "mixed_direct" else 2 if form == "ranges" else 1)
+        assert candidate["provenance"] == [["origin-a"]]
+    assert len(candidate["evidence_time"]) == 1
     persisted = runtime.db.notebook_current(runtime.db.resolve_conversation_ref("parent"))["payload"]
     assert persisted["candidates"][0]["fields"] == candidate["fields"]
-    assert persisted["candidates"][0]["source_time_ranges"] == expected_ranges
-    expected_sources = ([{"conversation_ref": runtime.db.resolve_conversation_ref("parent"), "message_uid": "origin-a"}]
-                        if form in {"messages", "mixed_direct"} else [])
-    assert persisted["candidates"][0]["source_message_identities"] == expected_sources
+    assert persisted["candidates"][0]["provenance"] == candidate["provenance"]
 
 
 @pytest.mark.parametrize("target", SUMMARIES)
@@ -131,7 +126,7 @@ def test_native_candidate_rejects_invalid_provenance_without_changing_source(run
                 else "invalid_reference" if bad == "foreign_ref" else "invalid_argument")
     assert refused["error"]["code"] == expected
     if bad in {"refs_ranges", "refs_both"}:
-        assert "clear" in refused["error"]["next_action"].lower()
+        assert refused["error"]["field"] == "source_time_ranges"
     payload = script.results["s02-2"]["payload"]
     assert not payload["candidates"]
     _assert_same_source(payload["work"][0], script.results["s02-0"]["entry"])
@@ -146,15 +141,14 @@ def test_callable_schema_advertises_each_existing_candidate_target(target):
 
 
 @pytest.mark.parametrize("target", ["rule", "skill", "conversation"])
-@pytest.mark.parametrize("form", ["messages", "ranges", "mixed_direct"])
+@pytest.mark.parametrize("form", ["messages"])
 def test_new_ref_targets_convert_atomically_without_claiming_a_write(runtime, target, form):
     _prepare(runtime)
 
     def convert(script):
         return {"entry_id": script.results["s02-1"]["entry"]["entry_id"],
             "fields": {"notebook_refs": [], "source_types": []},
-            "source_message_uids": ["origin-a"] if form != "ranges" else [],
-            "source_time_ranges": deepcopy(RANGES) if form != "messages" else [],
+            "source_message_uids": ["origin-a"],
         }
 
     script = _ProviderScript([
@@ -169,12 +163,11 @@ def test_new_ref_targets_convert_atomically_without_claiming_a_write(runtime, ta
     assert "no proposal, approval or outside write" in converted["fields"]["stage_evidence"]
     assert converted["fields"]["description"] == SUMMARIES[target]
     assert converted["fields"]["notebook_refs"] == converted["fields"]["source_types"] == []
-    assert converted["source_message_uids"] == (["origin-a"] if form != "ranges" else [])
-    assert converted["source_time_ranges"] == (RANGES if form != "messages" else [])
+    assert converted["provenance"] == [["origin-a"]]
     _assert_same_source(script.results["s02-3"]["payload"]["work"][0], script.results["s02-0"]["entry"])
 
 
-@pytest.mark.parametrize("form", ["messages", "ranges", "mixed_direct"])
+@pytest.mark.parametrize("form", ["messages"])
 def test_direct_candidate_requires_complete_source_clear_before_switch_to_refs(runtime, form):
     _prepare(runtime)
 
@@ -184,7 +177,7 @@ def test_direct_candidate_requires_complete_source_clear_before_switch_to_refs(r
         arguments = {"entry_id": candidate["entry_id"], "fields": {
             "notebook_refs": [source["entry_id"]], "source_types": ["matter"]}}
         if clear:
-            arguments.update(source_message_uids=[], source_time_ranges=[])
+            arguments.update(source_message_uids=[])
         return arguments
 
     script = _ProviderScript([
@@ -208,8 +201,24 @@ def test_direct_candidate_requires_complete_source_clear_before_switch_to_refs(r
     assert converted["fields"]["stage_evidence"] == created["fields"]["stage_evidence"]
     assert converted["fields"]["notebook_refs"] == [source["entry_id"]]
     assert converted["fields"]["source_types"] == ["matter"]
-    assert converted["source_message_uids"] == converted["source_time_ranges"] == []
+    assert converted["provenance"] == []
     shown = script.results["s02-5"]["payload"]
     assert shown["candidates"][0] == converted
     _assert_same_source(shown["work"][0], source)
     assert shown["work"][0]["candidate_refs"] == [created["entry_id"]]
+
+
+@pytest.mark.parametrize("target", SUMMARIES)
+@pytest.mark.parametrize("form", ["ranges", "mixed_direct"])
+def test_retired_time_ranges_cannot_create_direct_candidate(runtime, target, form):
+    _prepare(runtime)
+    script = _ProviderScript([
+        _source(), ("notebook_create", lambda script: _candidate(script, target, form)),
+        ("notebook_show", {}), _finish("Retired source range input was refused"),
+    ])
+    outcome = _run(runtime, script)
+    assert outcome.committed, outcome
+    refused = script.results["s02-1"]
+    assert not refused["success"] and refused["error"]["field"] == "source_time_ranges"
+    assert not script.results["s02-2"]["payload"]["candidates"]
+    _assert_same_source(script.results["s02-2"]["payload"]["work"][0], script.results["s02-0"]["entry"])

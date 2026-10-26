@@ -65,7 +65,7 @@ def test_candidate_provenance_matrix(book, targets, use_refs, use_message, valid
                          source_message_identities=sources)["entry"]
     assert entry["fields"]["targets"] == targets
     assert entry["fields"]["notebook_refs"] == refs
-    assert entry["source_message_identities"] == sources
+    assert entry["provenance"] == ([[source["message_uid"] for source in sources]] if sources else [])
 
 
 def test_candidate_range_is_not_a_provenance_form(book):

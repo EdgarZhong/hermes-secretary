@@ -87,7 +87,9 @@ def test_unreadable_history_cannot_ground_new_provenance(runtime, visibility, pr
               if provenance == "uid" else maintain(child, conversation_ref, instant=instant))
 
     assert result["success"] is False, result
-    assert result["error"]["code"] == "source_unavailable", result
+    assert result["error"]["code"] == ("source_unavailable" if provenance == "uid" else "invalid_argument"), result
+    if provenance == "range":
+        assert result["error"]["field"] == "source_time_range"
     assert store.snapshot_state() == before
     assert database.notebook_current(conversation_ref) is None
 

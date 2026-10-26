@@ -5,7 +5,6 @@ whether a natural model follows the new guidance.
 """
 
 from copy import deepcopy
-from datetime import datetime, timezone
 import json
 
 from secretary.notebook_store import NotebookStore
@@ -25,17 +24,18 @@ from tests.secretary import test_noting_surface as surface
 
 
 SOURCE_GUIDANCE = (
-    "Keep sources supporting retained content and add sources for new or changed claims; "
-    "do not replace all sources with only the newest message."
+    "Select only the exact Message UIDs needed to support the recorded changes; "
+    "do not use time ranges or long consecutive message runs as provenance. "
+    "Do not repeat UIDs within the submitted array."
 )
 IN_PLACE_GUIDANCE = (
     "When new evidence only resolves or corrects the same situation, update it in place "
     "rather than archiving and recreating it."
 )
-R16_GUIDANCE = (
-    "For the same piece of evidence, Message IDs or one element of source_time_ranges is usually "
-    "sufficient; there is no need to repeat it in both forms. Different pieces of evidence may "
-    "mix Message IDs and source_time_ranges. The Candidate source restrictions below still apply."
+TASK_SOURCE_GUIDANCE = (
+    "On every edit, submit the attribute changes and source_message_uids for this task’s complete flat UID array together. "
+    "Later edits overwrite the supplied attribute values and this same array, preserving earlier tasks’ provenance nodes. "
+    "Continuing the same task in another Turn does not create another node."
 )
 OLD_FACTS = (
     "Workshop Alpha has ended: 40 people attended in Room Cedar; its seating capacity was unknown. "
@@ -68,7 +68,8 @@ def assert_delivered_task(wires, parent_request):
         step2 = task.split("2. Update existing entries.", 1)[1].split("3. Create useful missing entries.", 1)[0]
         shared = task.split("TOOL USE\n", 1)[1].split(CURRENT_NOTING_CONTROL, 1)[0]
         assert "keep its stable entry_id. " + IN_PLACE_GUIDANCE in step2
-        assert R16_GUIDANCE in step2 and SOURCE_GUIDANCE not in step2
+        assert TASK_SOURCE_GUIDANCE in step2 and SOURCE_GUIDANCE not in step2
+        assert "source_time_ranges" not in task
         assert "Supply create/update attributes directly as tool parameters, without action or changes wrappers. " + SOURCE_GUIDANCE in shared
         assert task.count(SOURCE_GUIDANCE) == task.count(IN_PLACE_GUIDANCE) == 1
         assert CURRENT_NOTING_CONTROL in task
@@ -78,8 +79,12 @@ def assert_delivered_task(wires, parent_request):
     assert len(continuations) == 1 and CURRENT_NOTING_CONTROL in continuations[0]
 
 
-def test_default_task_initial_and_continuation_keep_same_situation_and_sources(runtime, monkeypatch):
-    parent, db, _config, state = runtime
+def test_default_task_initial_and_continuation_keep_same_situation_and_sources(runtime, monkeypatch, tmp_path):
+    parent, db, config, state = runtime
+    cwd = tmp_path / "workspace"
+    cwd.mkdir()
+    monkeypatch.setenv("TERMINAL_CWD", str(cwd))
+    config.write_text(f"noting:\n  enabled: true\nterminal:\n  cwd: {cwd}\n", encoding="utf-8")
     surface._turn(parent, OLD_FACTS)
     ref = parent._secretary_conversation_ref
     old_user = latest_user(db, parent.session_id)
@@ -95,8 +100,6 @@ def test_default_task_initial_and_continuation_keep_same_situation_and_sources(r
 
     surface._turn(parent, NEW_FACTS)
     new_user = latest_user(db, parent.session_id)
-    instant = datetime.fromtimestamp(new_user["timestamp"], timezone.utc).isoformat()
-    new_range = {"start_time": instant, "end_time": instant}
     parent_request = deepcopy(state["sent"][-1])
     anchor = parent._session_messages[-1]["message_uid"]
     state["sent"].clear()
@@ -105,7 +108,7 @@ def test_default_task_initial_and_continuation_keep_same_situation_and_sources(r
         [call("notebook_show", {}, "show-existing")],
         [call("notebook_update", {"entry_id": situation["entry_id"],
                "fields": {"description": NEW_DESCRIPTION},
-               "source_message_uids": [old_user["message_uid"]], "source_time_ranges": [new_range]}, "same-situation")],
+               "source_message_uids": [new_user["message_uid"]]}, "same-situation")],
         None,  # A text final is not Finish: keep the complete Task for the next Turn.
         [call("notebook_create", {"entry_type": "situation", "fields": {
             "description": "Workshop Beta will take place in Room Maple.", "subjects": ["Workshop Beta"]},
@@ -146,12 +149,13 @@ def test_default_task_initial_and_continuation_keep_same_situation_and_sources(r
     assert updated["fields"]["description"] == NEW_DESCRIPTION
     assert updated["fields"]["subjects"] == situation["fields"]["subjects"]
     assert updated["done"] is True  # Update omitted done: preserve the known terminal state.
-    assert updated["source_message_identities"] == [{"conversation_ref": ref, "message_uid": old_user["message_uid"]}]
-    assert updated["source_time_ranges"] == [new_range]
+    assert updated["provenance"] == [[old_user["message_uid"]], [new_user["message_uid"]]]
+    assert updated["evidence_time"][:1] == situation["evidence_time"]
+    assert len(updated["evidence_time"]) == len(updated["provenance"]) == 2
     beta = result_entry(wires[-1], "different-event")
     assert beta["entry_id"] not in {situation["entry_id"], obsolete["entry_id"]}
     assert entries[beta["entry_id"]]["done"] is False
-    assert beta["source_message_uids"] == [new_user["message_uid"]]
+    assert beta["provenance"] == [[new_user["message_uid"]]]
     assert dict(db._read_one("SELECT * FROM secretary_notebook_snapshots WHERE snapshot_id=?",
                             (old_commit["snapshot_id"],))) == old_snapshot
     rows = db.get_messages_as_conversation(children[0].session_id)

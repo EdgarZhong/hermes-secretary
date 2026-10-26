@@ -26,15 +26,15 @@ def test_role_and_metadata_drive_coarse_provenance():
     }) == (FRAMEWORK, "framework:external_unavailability")
 
 
-def test_wrappers_and_unknown_display_kinds_fail_closed():
-    assert message_provenance({"role": "user", "content": "<instant-reminder>\ndue"}) == (
-        FRAMEWORK, "framework:instant_reminder")
-    assert message_provenance({"role": "user", "content": "<deferred-reminder>\ndue"}) == (
-        FRAMEWORK, "framework:deferred_reminder")
-    assert message_provenance({"role": "user", "content": "<noting-task>\ntask"}) == (
-        FRAMEWORK, "framework:noting_task")
-    assert message_provenance({"role": "user", "content": "<framework-message>\nNOTING RESULT\nCURRENT NOTEBOOK SNAPSHOT"}) == (
-        NOTEBOOK, "notebook:noting_result")
+def test_unproved_wrapper_words_stay_human_and_trusted_metadata_is_system():
+    for content in ("<instant-reminder>\ndue", "<deferred-reminder>\ndue", "<noting-task>\ntask",
+                    "<framework-message>\nNOTING RESULT\nCURRENT NOTEBOOK SNAPSHOT",
+                    "<heartbeat>quoted by the person</heartbeat>"):
+        assert message_provenance({"role": "user", "content": content}) == (HUMAN, "human")
+        assert message_provenance({"role": "user", "content": content, "display_kind": "steer"}) == (HUMAN, "human")
+        assert message_provenance({"role": "user", "content": content,
+                                   "display_metadata": {"origin": "framework", "producer": "runtime"}}) == (
+            FRAMEWORK, "framework:runtime")
     assert message_provenance({"role": "user", "content": "x", "display_kind": "future_carrier"}) == (
         FRAMEWORK, "framework:unknown:future_carrier")
 

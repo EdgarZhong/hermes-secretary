@@ -113,7 +113,7 @@ def test_handlers_keep_small_results_and_show_own_uncommitted_view(database):
     assert set(created) == {"success", "changed", "entry"}
     entry = created["entry"]
     original_version = child._noting_notebook_store.get(entry["entry_id"])["version_id"]
-    updated = json.loads(notebook_update(child, {"entry_id": entry["entry_id"],
+    updated = json.loads(notebook_update(child, {"entry_id": entry["entry_id"], "source_message_uids": ["m1"],
                                               "fields": {"blocker": "Dates unknown"}}))
     assert updated["entry"]["entry_id"] == entry["entry_id"]
     assert "version_id" not in entry and "version_id" not in updated["entry"]
@@ -408,7 +408,7 @@ def test_native_child_next_request_receives_projected_working_tool_result(native
         assert result["evidence_coverage"]["through_time"] == "1970-01-01T00:03:20+00:00"
         item = result["payload"]["work"][0]
         assert item["entry_id"] == entry["entry_id"] and "version_id" not in item
-        assert item["source_message_uids"] == ["m1"]
+        assert item["provenance"] == [["m1"]]
 
 
 @pytest.mark.parametrize("kind", ["overflow", "failed", "interrupted"])
@@ -509,12 +509,11 @@ def test_native_uid_write_uses_bound_identity_and_returns_local_sources(native_p
     outcome = run_task(parent)
     assert outcome.committed, outcome
     snapshot = database.notebook_current(ref(database))
-    assert snapshot["payload"]["work"][0]["source_message_identities"] == [
-        {"conversation_ref": ref(database), "message_uid": "m1"}]
+    assert snapshot["payload"]["work"][0]["provenance"] == [["m1"]]
     wires = [call.kwargs for call in client.chat.completions.create.call_args_list]
     results = [json.loads(row["content"]) for row in wires[1]["messages"] if row.get("tool_call_id") == "uid-create"]
     assert len(results) == 1
-    assert results[0]["entry"]["source_message_uids"] == ["m1"]
+    assert results[0]["entry"]["provenance"] == [["m1"]]
     assert "source_message_identities" not in results[0]["entry"]
     assert all(wire["tools"] == wires[0]["tools"] for wire in wires)
 

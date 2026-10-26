@@ -28,7 +28,7 @@ def test_notebook_business_state_cannot_control_schedule(owner, operation):
     item = store.create("matter", {"description": "review report", "completion_condition": "accepted"},
                         source_message_identities=[{"conversation_ref": ref, "message_uid": "a"}])["entry"]
     if operation == "complete":
-        store.update(item["entry_id"], {"done": True, "fields": {"description": "Report review completed"}})
+        store.update(item["entry_id"], {"source_message_uids": ["a"], "done": True, "fields": {"description": "Report review completed"}})
     else:
         store.archive(item["entry_id"], "Completed review")
     store.commit(termination={"type": "forced"})

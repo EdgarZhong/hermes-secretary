@@ -22,7 +22,7 @@ from hermes_state import SessionDB
 
 @pytest.fixture
 def model_endpoint():
-    endpoint = SimpleNamespace(requests=[], replies=[], entered=threading.Event(),
+    endpoint = SimpleNamespace(requests=[], replies=[], finish_responses=[], entered=threading.Event(),
                                release=threading.Event(), pause=False)
 
     class Handler(BaseHTTPRequestHandler):
@@ -36,6 +36,9 @@ def model_endpoint():
                     self.send_error(504)
                     return
             message = endpoint.replies.pop(0)
+            if any(call.get("function", {}).get("name") == "finish_noting"
+                   for call in message.get("tool_calls", [])):
+                endpoint.finish_responses.append(len(endpoint.requests))
             body = json.dumps({"id": "fixture-completion", "object": "chat.completion",
                                "created": int(time.time()), "model": "deepseek-chat",
                                "choices": [{"index": 0, "message": message,
@@ -205,7 +208,7 @@ def test_clear_rpc_waits_for_normal_native_turn_and_rebuilds_full_surface(debug_
 def _failed_child(runtime):
     from agent.message_metadata import build_noting_task_wrapper
     from secretary.notebook_store import NotebookStore
-    from secretary.noting_tools import noting_tool_control_message
+    from secretary.noting_tools import noting_tool_control_message, noting_tool_schemas
 
     db, ref = runtime.stores["target"], runtime.ref
     db.append_message("parent", "user", "Pre-compaction source", message_uid="pre")
@@ -215,25 +218,32 @@ def _failed_child(runtime):
     db.append_message("parent", "assistant", "Frozen local response", message_uid="anchor")
     tools = [{"type": "function", "function": {"name": "terminal", "description": "Frozen tool schema",
               "parameters": {"type": "object", "properties": {"command": {"type": "string"}}}}}]
+    tools.extend({"type": "function", "function": schema} for schema in noting_tool_schemas())
     store = NotebookStore(db, ref, anchor_message_uid="anchor", trigger_type="manual")
     initial = store.create("matter", {"description": "Initial responsibility", "completion_condition": "Done"},
                            source_message_identities=[{"conversation_ref": ref, "message_uid": "evidence"}])["entry"]
     base = store.commit(termination={"type": "finish_noting", "reason": "Existing baseline"})
     admission = db.noting_admit(ref, "anchor", kind="manual")
-    working = NotebookStore(db, ref, anchor_message_uid="anchor", trigger_type="manual")
+    working = NotebookStore(db, ref, anchor_message_uid="anchor", trigger_type="manual", task_id=str(admission))
     control = noting_tool_control_message(notebook_state=working.show(), conversation_ref=ref,
                                           coverage=working.coverage, db=db)
-    maintained = working.update(initial["entry_id"], {"fields": {"description": "Successfully maintained before failure"}})
+    maintained = working.update(initial["entry_id"], {"fields": {"description": "Successfully maintained before failure"},
+                                                       "source_message_uids": ["evidence"]})
     db.create_session("failed-child", source="subagent", parent_session_id="parent", model="deepseek-chat",
                       system_prompt="Frozen failed child root", cwd=str(runtime.cwd),
                       model_config={"_delegate_from": "parent", "provider": "deepseek",
                                     "base_url": runtime.endpoint.url, "api_mode": "chat_completions"})
     db.update_session_tool_names("failed-child", {"version": "old", "tools": tools})
     db.append_message("failed-child", "user", build_noting_task_wrapper(control))
-    call = _tool("notebook_maintain", {"action": "update", "entry_id": initial["entry_id"],
-                                      "changes": {"fields": {"description": "Successfully maintained before failure"}}}, "old-maintain")
+    call = _tool("notebook_update", {"entry_id": initial["entry_id"],
+                                      "fields": {"description": "Successfully maintained before failure"},
+                                      "source_message_uids": ["evidence"]}, "prior-update")
     db.append_message("failed-child", "assistant", "", tool_calls=call["tool_calls"])
-    db.append_message("failed-child", "tool", json.dumps(maintained), tool_call_id="old-maintain", tool_name="notebook_maintain")
+    from secretary.notebook_render import model_notebook_data, readable_notebook_entry
+    receipt = {**maintained, "entry": readable_notebook_entry(
+        maintained["entry"], db=db, conversation_ref=ref, state=working.snapshot_state())}
+    db.append_message("failed-child", "tool", json.dumps(model_notebook_data(receipt)),
+                      tool_call_id="prior-update", tool_name="notebook_update")
     db.noting_child_register(admission, child_session_id="failed-child", profile="target")
     db.noting_child_finish(admission, status="failed")
     db.end_session("failed-child", "fixture_interrupted")
@@ -284,7 +294,7 @@ def test_recovery_rpc_native_http_commit_preserves_failed_records_and_appends_cu
         worker.join(timeout=3)
         assert not worker.is_alive()
     assert state["operation_id"] == ack["operation_id"]
-    assert len(endpoint.requests) == 3
+    assert endpoint.finish_responses == [len(endpoint.requests)]
     assert all(request["authorization"] == "Bearer fixture-target-key" for request in endpoint.requests)
     first = endpoint.requests[0]["body"]
     assert first["tools"] == tools
@@ -310,7 +320,7 @@ def test_recovery_rpc_native_http_commit_preserves_failed_records_and_appends_cu
     assert runtime.stores["launch"].get_session("parent") == launch
     assert dict(os.environ) == environment
     assert _rpc(runtime, "secretary.noting_recover", **params) == state
-    assert len(endpoint.requests) == 3
+    assert endpoint.finish_responses == [len(endpoint.requests)]
     assert not _rows(db, "session_turn_leases")
     assert db.get_session(state["child_session_id"])["end_reason"]
 
@@ -352,7 +362,7 @@ def test_recovery_preserves_existing_native_main_and_uses_its_framework_queue(de
             after = db.get_messages_as_conversation("parent")
             assert after[-1]["display_metadata"]["noting_snapshot_id"] == state["snapshot_id"]
             assert _rows(db, "messages", "WHERE session_id=?", ("parent",))[:len(before)] == before
-            assert len(endpoint.requests) == 2
+            assert endpoint.finish_responses == [len(endpoint.requests)]
         finally:
             endpoint.release.set()
             mark_framework_turn(live, running=False)

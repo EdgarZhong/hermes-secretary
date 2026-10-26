@@ -85,9 +85,9 @@ def test_minimal_types_and_single_suggestion_survive_snapshot_and_reopen(owner, 
 def test_new_optional_type_fields_can_be_added_and_cleared(owner, kind, key):
     store = book(owner)
     entry = create(store, kind)
-    added = store.update(entry["entry_id"], {"fields": {key: "Supported condition"}})["entry"]
+    added = store.update(entry["entry_id"], {"source_message_uids": ["u1"], "fields": {key: "Supported condition"}})["entry"]
     assert added["fields"][key] == "Supported condition"
-    cleared = store.update(entry["entry_id"], {"fields": {key: None}})["entry"]
+    cleared = store.update(entry["entry_id"], {"source_message_uids": ["u1"], "fields": {key: None}})["entry"]
     assert key not in cleared["fields"]
     assert cleared["entry_id"] == entry["entry_id"]
     assert cleared["version_id"] != added["version_id"]
@@ -98,17 +98,17 @@ def test_suggestion_whole_replacement_noop_clear_and_unparsed_schedule(owner):
     store = book(owner)
     entry = create(store, schedule_suggestion=SUGGESTION)
     before = count(db)
-    assert not store.update(entry["entry_id"], {"schedule_suggestion": deepcopy(SUGGESTION)})["changed"]
+    assert not store.update(entry["entry_id"], {"source_message_uids": ["u1"], "schedule_suggestion": deepcopy(SUGGESTION)})["changed"]
     assert count(db) == before
     replacement = {"content": "Follow up on the agreed visit with the host.", "schedule": "This is semantic advice, not CRON!"}
-    changed = store.update(entry["entry_id"], {"schedule_suggestion": replacement})["entry"]
+    changed = store.update(entry["entry_id"], {"source_message_uids": ["u1"], "schedule_suggestion": replacement})["entry"]
     assert changed["schedule_suggestion"] == replacement
     assert changed["entry_id"] == entry["entry_id"]
     assert changed["version_id"] != entry["version_id"]
     assert changed["created_at"] == entry["created_at"]
-    cleared = store.update(entry["entry_id"], {"schedule_suggestion": None})["entry"]
+    cleared = store.update(entry["entry_id"], {"source_message_uids": ["u1"], "schedule_suggestion": None})["entry"]
     assert "schedule_suggestion" not in cleared
-    assert not store.update(entry["entry_id"], {"schedule_suggestion": None})["changed"]
+    assert not store.update(entry["entry_id"], {"source_message_uids": ["u1"], "schedule_suggestion": None})["changed"]
     store.commit(termination=FINISH)
     assert "schedule_suggestion" not in book(owner).get(entry["entry_id"])
 
@@ -126,7 +126,7 @@ def test_bad_suggestions_leave_no_partial_versions(owner, value, operation):
         if operation == "create":
             create(store, schedule_suggestion=value)
         else:
-            store.update(entry["entry_id"], {"done": True, "schedule_suggestion": value})
+            store.update(entry["entry_id"], {"source_message_uids": ["u1"], "done": True, "schedule_suggestion": value})
     assert error.value.field.startswith("schedule_suggestion")
     assert store.snapshot_state() == before and count(db) == versions
 
@@ -138,8 +138,8 @@ def test_retired_and_readonly_fields_cannot_enter_new_input(owner, key):
     entry = create(store)
     before, versions = store.snapshot_state(), count(db)
     for invoke in (lambda: create(store, fields={**BODY, key: "2030-01-01T00:00:00Z"}),
-                   lambda: store.update(entry["entry_id"], {"fields": {key: None}}),
-                   lambda: store.update(entry["entry_id"], {key: None})):
+                   lambda: store.update(entry["entry_id"], {"source_message_uids": ["u1"], "fields": {key: None}}),
+                   lambda: store.update(entry["entry_id"], {"source_message_uids": ["u1"], key: None})):
         with pytest.raises(NotebookValidationError):
             invoke()
         assert store.snapshot_state() == before and count(db) == versions
@@ -155,7 +155,7 @@ def test_schema_accepts_flat_parameters_and_refuses_wrapper_and_readonly_input()
     create_properties = NOTEBOOK_CREATE_SCHEMA["parameters"]["properties"]
     update_properties = NOTEBOOK_UPDATE_SCHEMA["parameters"]["properties"]
     assert (create_properties.keys() & update_properties.keys()) == {
-        "fields", "done", "relations", "schedule_suggestion", "source_message_uids", "source_time_ranges"}
+        "fields", "done", "relations", "schedule_suggestion", "source_message_uids"}
     validator = Draft7Validator(NOTEBOOK_UPDATE_SCHEMA["parameters"])
     assert list(validator.iter_errors({"entry_id": "1"}))
     for patch in ({"changes": {"done": True}}, {"status": "paused"}, {"action": "update"}, {"entry_type": "matter"},
@@ -189,9 +189,9 @@ def test_legacy_immutable_payload_hydrates_without_rewriting_or_losing_sources(o
                                                                     "version_id": legacy["version_id"]}]})
     current = restored.get(entry["entry_id"])
     assert "external_refs" not in current["fields"] and "evidence_time" not in current["fields"]
-    assert current["source_message_identities"] == entry["source_message_identities"]
-    assert not restored.update(entry["entry_id"], {"fields": {"description": BODY["description"]}})["changed"]
-    new = restored.update(entry["entry_id"], {"schedule_suggestion": SUGGESTION})["entry"]
+    assert current["provenance"] == entry["provenance"]
+    assert not restored.update(entry["entry_id"], {"source_message_uids": ["u1"], "fields": {"description": BODY["description"]}})["changed"]
+    new = restored.update(entry["entry_id"], {"source_message_uids": ["u1"], "schedule_suggestion": SUGGESTION})["entry"]
     assert new["fields"]["last_progress_time"] == "2021-01-01T00:00:00Z"
     restored.commit(termination=FINISH)
     assert db._read_one("SELECT payload_json FROM secretary_notebook_item WHERE id=?", (legacy["version_id"],))[0] == raw_item
@@ -208,12 +208,12 @@ def test_source_time_priority_and_model_projection_are_readonly(owner, uids, sta
     store = book(owner)
     entry = create(store, source_message_uids=uids)
     before = store.snapshot_state()
-    epochs = [start] if start == end else [start, end]
-    intervals = [{"start_time": datetime.fromtimestamp(value, timezone.utc).isoformat(),
-                  "end_time": datetime.fromtimestamp(value, timezone.utc).isoformat()} for value in epochs]
+    intervals = [{"start_time": datetime.fromtimestamp(start, timezone.utc).isoformat(),
+                  "end_time": datetime.fromtimestamp(end, timezone.utc).isoformat()}]
     assert evidence_time(entry, db=db, conversation_ref=ref) == intervals
     projected = readable_notebook_entry(entry, db=db, conversation_ref=ref)
-    expected = [format_timestamp(value) for value in epochs]
+    expected = ([format_timestamp(start)] if start == end else
+                [{"start_time": format_timestamp(start), "end_time": format_timestamp(end)}])
     assert projected["evidence_time"] == expected
     assert "evidence_time" not in projected["fields"]
     assert readable_notebook_entry(projected) == projected
@@ -223,26 +223,18 @@ def test_source_time_priority_and_model_projection_are_readonly(owner, uids, sta
     assert store.snapshot_state() == before
 
 
-def test_range_only_unknown_and_candidate_reference_time_keep_provenance_meaning(owner):
+def test_uid_unknown_and_candidate_reference_time_keep_provenance_meaning(owner):
     db, ref = owner
     store = book(owner)
-    interval = {"start_time": "1970-01-01T00:01:40+00:00", "end_time": "1970-01-01T00:05:00+00:00"}
-    source = create(store, source_message_uids=[], source_time_range=interval)
-    assert evidence_time(source, db=db, conversation_ref=ref) == [interval]
-    uid_source = create(store, source_time_range=interval)
-    assert evidence_time(uid_source, db=db) == [
-        {"start_time": interval["start_time"], "end_time": interval["start_time"]}, interval]
+    db._execute_write(lambda conn: conn.execute("UPDATE messages SET timestamp='unknown' WHERE message_uid='u1'"))
+    source = create(store)
+    assert evidence_time(source) == [None]
     candidate = store.create("candidate", {**MINIMAL["candidate"], "notebook_refs": [source["entry_id"]],
                                            "source_types": ["matter"]})["entry"]
-    assert evidence_time(candidate, db=db, conversation_ref=ref, state=store.snapshot_state()) == [interval]
+    assert evidence_time(candidate, state=store.snapshot_state()) == [None]
     store.commit(termination=FINISH)
-    assert evidence_time(candidate, db=db, conversation_ref=ref) == [interval]
+    assert evidence_time(candidate, db=db, conversation_ref=ref) == [None]
     assert readable_notebook_entry(candidate, db=db, conversation_ref=ref)["fields"]["notebook_refs"] == [source["entry_id"]]
-    assert evidence_time(uid_source) == [interval]
-    # A missing time is unknown even though the entry has runtime created_at.
-    db._execute_write(lambda conn: conn.execute("UPDATE messages SET timestamp='unknown' WHERE message_uid='u1'"))
-    assert evidence_time(uid_source, db=db) == [interval]
-    assert "evidence_time" not in store.snapshot_state()["work"][0]
 
 
 def test_archive_atomically_cleans_only_auxiliary_relations_with_new_versions(owner):
@@ -257,7 +249,7 @@ def test_archive_atomically_cleans_only_auxiliary_relations_with_new_versions(ow
     current = store.get(related["entry_id"])
     assert current["relations"] == [{"kind": "related_to", "entry_id": unrelated["entry_id"]}]
     assert current["fields"] == old["fields"] and current["done"] is old["done"]
-    assert current["source_message_identities"] == old["source_message_identities"]
+    assert current["provenance"] == old["provenance"]
     assert current["entry_id"] == old["entry_id"] and current["version_id"] != old["version_id"]
     assert current["last_processed_at"] == old["last_processed_at"]
     assert result["updated_entries"] == [current]
@@ -313,8 +305,8 @@ def test_archive_cleanup_preserves_committed_off_path_claim_without_licensing_ne
     restored.archive(target["entry_id"], "Scope settled")
     cleaned = restored.get(related["entry_id"])
     assert cleaned["relations"] == []
-    assert cleaned["source_message_identities"] == related["source_message_identities"]
-    restored.update(related["entry_id"], {"fields": {"processing_note": "Same evidence retained"}})
+    assert cleaned["provenance"] == related["provenance"]
+    restored.update(related["entry_id"], {"source_message_uids": ["u1"], "fields": {"processing_note": "Same evidence retained"}})
     restored.commit(termination=FINISH)
     reopened = book(owner)
     before, versions = reopened.snapshot_state(), count(db)
@@ -340,14 +332,14 @@ def test_legacy_off_path_payload_keeps_version_gate_and_exact_provenance_basis(o
     db.notebook_reselect_pointer(ref)
     raw["version_id"] = legacy["version_id"]
     restored = book(owner, working_state={**payload, "work": [raw]})
-    assert not restored.update(entry["entry_id"], {"fields": {"description": BODY["description"]}})["changed"]
-    result = restored.update(entry["entry_id"], {"fields": {"processing_note": "Reviewed the unchanged old claim"}})
-    assert result["entry"]["source_message_identities"] == legacy["source_message_identities"]
+    assert not restored.update(entry["entry_id"], {"source_message_uids": ["u1"], "fields": {"description": BODY["description"]}})["changed"]
+    result = restored.update(entry["entry_id"], {"source_message_uids": ["u1"], "fields": {"processing_note": "Reviewed the unchanged old claim"}})
+    assert result["entry"]["provenance"] == legacy["provenance"] + [["u1"]]
     restored.commit(termination=FINISH)
     resumed = book(owner)
     before, versions = resumed.snapshot_state(), count(db)
     with pytest.raises(NotebookValidationError):
-        resumed.update(entry["entry_id"], {"fields": {"description": "Borrowed evidence for a new claim"}})
+        resumed.update(entry["entry_id"], {"source_message_uids": ["u2"], "fields": {"description": "Borrowed evidence for a new claim"}})
     assert resumed.snapshot_state() == before and count(db) == versions
 
 
@@ -525,10 +517,10 @@ def test_instant_without_assistant_keeps_unknown_source_time_without_side_effect
     db, ref = owner
     _table, _schedule_id, stored = admitted_instant(owner)
     store = book(owner)
-    entry = create(store, source_message_uids=[stored["message_uid"]])
     db._execute_write(lambda conn: conn.execute("UPDATE messages SET timestamp='unknown' WHERE id=?", (stored["id"],)))
+    entry = create(store, source_message_uids=[stored["message_uid"]])
     before, working = evidence_db_facts(db), store.snapshot_state()
-    assert evidence_time(entry, db=db, conversation_ref=ref) == []
+    assert evidence_time(entry, db=db, conversation_ref=ref) == [None]
     assert evidence_db_facts(db) == before and store.snapshot_state() == working
 
 

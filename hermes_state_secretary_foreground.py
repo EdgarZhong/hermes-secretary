@@ -4,8 +4,20 @@ import copy
 import json
 import time
 
-from agent.context_compressor import ContextCompressor, MODEL_ONLY_DISPLAY_METADATA_KEY, split_user_originated_turn
+from agent.context_compressor import (
+    ContextCompressor, MODEL_ONLY_DISPLAY_METADATA_KEY, _handoff_only_content, split_user_originated_turn,
+)
 from hermes_state_secretary_identity import ConversationIdentityError
+
+
+def _foreground_winners(rows):
+    """The same latest physical generation and validity for every projection."""
+    winners = {}
+    for index, row in enumerate(rows):
+        winners[row["message_uid"]] = (index, row)
+    return [row for _, row in sorted(winners.values(), key=lambda item: item[0])
+            if row.get("_branch_valid", True)
+            and (row.get("_inherited") or row.get("active") or row.get("compacted"))]
 
 
 def request_tool_schemas(payload):
@@ -277,21 +289,15 @@ class SecretaryForegroundMixin:
         rows = self._foreground_source_rows_conn(conn, conversation_ref)
         # The most recent physical generation decides validity AND path position:
         # a surviving tail follows its compaction boundary, and retired copies do not revive.
-        winners = {}
         carrier_sources = {}
-        for index, row in enumerate(rows):
+        for row in rows:
             uid = row.get("message_uid")
-            winners[uid] = (index, row)
             if full and row["role"] == "user":
                 projection = self._project_foreground_row(row, conversation_ref, full=True)
                 if projection["is_compaction"] and projection["has_user_turn"]:
                     carrier_sources.setdefault(uid, row)
         result = []
-        for _, row in sorted(winners.values(), key=lambda item: item[0]):
-            if not row.get("_branch_valid", True):
-                continue
-            if not row.get("_inherited") and not (row.get("active") or row.get("compacted")):
-                continue
+        for row in _foreground_winners(rows):
             source = carrier_sources.get(row.get("message_uid"), row)
             override = row.get("_branch_live_override") or (row if source is not row else None)
             original = self._project_foreground_row(source, conversation_ref, full=full)
@@ -310,6 +316,34 @@ class SecretaryForegroundMixin:
 
     def get_history_foreground_conn(self, conn, conversation_ref):
         return self._foreground_conn(conn, conversation_ref, full=False)
+
+    def get_history_auxiliary_foreground_conn(self, conn, conversation_ref):
+        """Explicit History message parts, without Full's Prelude or audit data.
+
+        Use the current legal winner for both parts. A mixed carrier has one
+        native UID and separate system/human projections; no identity is minted.
+        Default History and Full APIs keep their original projection behavior.
+        """
+        result = []
+        for row in _foreground_winners(self._foreground_source_rows_conn(conn, conversation_ref)):
+            source = row.get("_branch_live_override") or row
+            metadata = self._decode_display_metadata(source.get("display_metadata")) or {}
+            if metadata.get(MODEL_ONLY_DISPLAY_METADATA_KEY):
+                continue
+            live = self._project_foreground_row(source, conversation_ref, full=False)
+            carrier = self._project_foreground_row(source, conversation_ref, full=True)
+            if (carrier is not None and carrier["is_compaction"]
+                    and not metadata.get("human_only") and source.get("display_kind") != "hidden"):
+                carrier.update(content=_handoff_only_content(self._decode_content(source["content"])),
+                               tool_calls=None, tool_call_id=None, tool_name=None)
+                result.append(carrier)
+                if live is not None:
+                    live["projection_kind"] = "user_message"
+            if live is not None:
+                result.append(live)
+        for position, part in enumerate(result):
+            part["path_position"] = position
+        return result
 
     def get_full_foreground_conn(self, conn, conversation_ref):
         rows = self._foreground_conn(conn, conversation_ref, full=True)

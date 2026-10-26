@@ -244,8 +244,10 @@ def test_successful_archive_replay_does_not_revive_removed_entry(native_parent, 
         raise RuntimeError("Publication failure")
     failed = run_task(parent, state_provider=fail)
     recovered = reconstruct_noting(database, ref(database), failed.child_session_id)
-    assert [entry["entry_id"] for entry in recovered.working_state["work"]] == ["2"]
-    assert recovered.working_state["work"][0]["fields"]["description"] == "Keep this"
+    active = [entry for entry in recovered.working_state["work"] if not entry["archived"]]
+    assert [entry["entry_id"] for entry in active] == ["2"]
+    assert active[0]["fields"]["description"] == "Keep this"
+    assert [entry["entry_id"] for entry in recovered.working_state["work"] if entry["archived"]] == ["1"]
 
 
 def test_concurrent_same_request_runs_only_one_native_child(native_parent, database):
@@ -349,7 +351,7 @@ def test_branch_recovery_keeps_branch_path_and_rebinds_inherited_source_identity
         database.append_message("parent", "user", "Other branch later evidence", message_uid="foreign-tail")
         recovered = reconstruct_noting(database, branch_ref, failed.child_session_id)
         assert [row["message_uid"] for row in recovered.prefix] == ["m1", "b1", "b2"]
-        assert recovered.working_state["work"][0]["source_message_identities"][0]["conversation_ref"] == branch_ref
+        assert recovered.working_state["work"][0]["provenance"] == [["m1"]]
         assert "Other branch later evidence" not in str(recovered.prefix)
     finally:
         branch._end_session_on_close = False
@@ -507,8 +509,11 @@ def test_recovery_preserves_archival_relation_cleanup_receipts_without_replaying
     assert "source_message_identities" not in retained
     before = [tuple(row) for row in database._read_all("SELECT * FROM secretary_notebook_item ORDER BY id")]
     recovered = reconstruct_noting(database, ref(database), failed.child_session_id)
-    assert len(recovered.working_state["work"]) == 1
-    assert recovered.working_state["work"][0]["entry_id"] == retained["entry_id"]
-    assert recovered.working_state["work"][0]["version_id"] == retained["version_id"]
-    assert recovered.working_state["work"][0]["relations"] == []
+    active = [entry for entry in recovered.working_state["work"] if not entry["archived"]]
+    archived = [entry for entry in recovered.working_state["work"] if entry["archived"]]
+    assert len(active) == len(archived) == 1
+    assert active[0]["entry_id"] == retained["entry_id"] and active[0]["version_id"]
+    assert archived[0]["entry_id"] == "1" and archived[0]["fields"]["processing_note"] == "Temporary scope is no longer needed"
+    assert "version_id" not in retained
+    assert active[0]["relations"] == []
     assert before == [tuple(row) for row in database._read_all("SELECT * FROM secretary_notebook_item ORDER BY id")]

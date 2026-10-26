@@ -7,13 +7,14 @@ before allocating an immutable version or replacing the working view.
 from copy import deepcopy
 from datetime import datetime, timezone
 from threading import RLock
+from uuid import uuid4
 
 from secretary.notebook_contract import (
     ARRAY_FIELDS, CHANGE_KEYS, COMMON_FIELDS, ENTRY_KEYS, OPTIONAL_FIELDS,
     RELATION_KINDS, REQUIRED_FIELDS, NotebookValidationError,
-    SOURCE_NOT_PROVIDED, canonical_notebook_entry, canonical_source_fields, local_source_error,
+    SOURCE_NOT_PROVIDED, canonical_notebook_entry, canonical_source_fields,
     outgoing_references, parse_time, public_state, reject_legacy_status, require_text, validate_done,
-    validate_candidate_provenance, validate_fields, validate_references, validate_source_ranges,
+    unique_strings, validate_candidate_provenance, validate_fields, validate_references,
     validate_schedule_suggestion,
 )
 from secretary.notebook_contract import SECTIONS as SECTIONS
@@ -30,13 +31,16 @@ class NotebookWorkingState:
 
     def __init__(self, conversation_ref, payload=None, *, validate_source_identity=None,
                  validate_source_range=None, validate_inherited_sources=None,
-                 insert_version=None, insert_versions=None, lock=None, clock=None):
+                 insert_version=None, insert_versions=None, lock=None, clock=None, task_id=None,
+                 derive_evidence_time=None):
         require_text(conversation_ref, "conversation_ref")
         self.conversation_ref = conversation_ref
+        self.task_id = task_id if task_id is not None else uuid4().hex
+        require_text(self.task_id, "task_id")
+        self._derive_evidence_time = derive_evidence_time
         self.lock = lock if lock is not None else RLock()
         self._clock = clock if clock is not None else _utc_now
         self._validate_source_identity = validate_source_identity
-        self._validate_source_range = validate_source_range
         self._validate_inherited_sources = validate_inherited_sources
         self._insert_version = insert_version
         self._insert_versions = insert_versions
@@ -59,52 +63,59 @@ class NotebookWorkingState:
         return value.isoformat()
 
     def _validate_sources(self, entry, *, fresh=False):
-        sources = entry["source_message_identities"]
-        if not isinstance(sources, list):
-            raise NotebookValidationError("Expected a Message Identity array.", field="source_message_identities")
-        seen = set()
-        for source in sources:
-            if not isinstance(source, dict) or set(source) != {"conversation_ref", "message_uid"}:
-                raise NotebookValidationError("Expected a canonical Message Identity.", field="source_message_identities")
-            for key in ("conversation_ref", "message_uid"):
-                require_text(source[key], f"source_message_identities.{key}")
-            if source["conversation_ref"] != self.conversation_ref:
-                raise NotebookValidationError(
-                    "Notebook sources must belong to the bound Conversation.", code="scope_denied",
-                    next_action="Use the supplied parent Conversation; do not retry in another scope.",
-                )
-            identity = (source["conversation_ref"], source["message_uid"])
-            if identity in seen:
-                raise NotebookValidationError("Duplicate source Message Identity.", field="source_message_identities")
-            seen.add(identity)
-        source_ranges = entry["source_time_ranges"]
-        validate_source_ranges(source_ranges)
-        inherited = (not fresh and self._validate_inherited_sources is not None
-                     and self._validate_inherited_sources(deepcopy(entry)))
-        if inherited:
+        groups, owners, times = (entry[key] for key in ("provenance", "provenance_tasks", "evidence_time"))
+        if not all(isinstance(value, list) for value in (groups, owners, times)) or not len(groups) == len(owners) == len(times):
+            raise NotebookValidationError("Provenance and derived time nodes must align.", field="provenance")
+        unique_strings(owners, "provenance_tasks")
+        for group, interval in zip(groups, times):
+            unique_strings(group, "source_message_uids")
+            if not group:
+                raise NotebookValidationError("A direct provenance node cannot be empty.", field="source_message_uids")
+            if interval is not None:
+                from secretary.notebook_contract import validate_source_range
+                validate_source_range(interval, field="evidence_time")
+        if entry["entry_type"] == "candidate" and validate_candidate_provenance(entry) == "refs":
             return
-        if entry["entry_type"] == "candidate":
-            if validate_candidate_provenance(entry) == "refs":
-                # Referenced entries carry their own provenance; validate_references checks them.
-                return
-        elif not sources and not source_ranges:
+        if not groups:
+            raise NotebookValidationError("Every direct entry requires Message UIDs.", field="source_message_uids")
+        inherited = (self._validate_inherited_sources(deepcopy(entry))
+                     if not fresh and self._validate_inherited_sources is not None else 0)
+        for group in groups[inherited:]:
+            if not all(self._validate_source_identity is not None and self._validate_source_identity(
+                    {"conversation_ref": self.conversation_ref, "message_uid": uid}) for uid in group):
+                raise NotebookValidationError(
+                    "The requested source is not available on the authorized current path.", code="source_unavailable",
+                    field="source_message_uids", next_action="Locate specific evidence on the allowed path.")
+
+    def _apply_sources(self, entry, sources):
+        refs = entry["fields"].get("notebook_refs", []) if entry["entry_type"] == "candidate" else []
+        if refs:
+            if sources not in (SOURCE_NOT_PROVIDED, []):
+                raise NotebookValidationError("Referenced Candidates cannot mix direct Message UIDs.", field="source_message_uids")
+            if entry["provenance"]:
+                if sources != [] or entry["provenance_tasks"] != [self.task_id]:
+                    raise NotebookValidationError(
+                        "Only this Task's sole uncommitted direct-source node can be cleared.", field="source_message_uids",
+                        next_action="Preserve earlier Task nodes; only a new current Task slot can switch to Notebook refs.")
+                for key in ("provenance", "provenance_tasks", "evidence_time"):
+                    entry[key] = []
+            return
+        if sources is SOURCE_NOT_PROVIDED or not sources:
             raise NotebookValidationError(
-                "Every entry requires at least one provenance form.", field="source_message_identities",
-                next_action="Supply supporting Message Identities, source_time_ranges, or both.",
-            )
-        valid_messages = all(self._validate_source_identity is not None
-                             and self._validate_source_identity(deepcopy(source)) for source in sources)
-        valid_range = all(self._validate_source_range is not None
-                          and self._validate_source_range(deepcopy(interval)) for interval in source_ranges)
-        if not valid_messages or not valid_range:
-            raise NotebookValidationError(
-                "The requested source is not available on the authorized current path.", code="source_unavailable",
-                next_action="Search for the specific evidence in the allowed scope; keep it unknown if unavailable.",
-            )
+                "Every edit requires this Task's complete supporting Message UID array.", field="source_message_uids",
+                next_action="Submit the attribute changes and complete source_message_uids together.")
+        interval = self._derive_evidence_time(sources) if self._derive_evidence_time is not None else None
+        if entry["provenance_tasks"] and entry["provenance_tasks"][-1] == self.task_id:
+            entry["provenance"][-1], entry["evidence_time"][-1] = deepcopy(sources), interval
+        else:
+            entry["provenance"].append(deepcopy(sources))
+            entry["provenance_tasks"].append(self.task_id)
+            entry["evidence_time"].append(interval)
 
     def _validate_entry(self, entry, *, fresh=False, source_entry=None):
         if (not isinstance(entry, dict) or set(entry) - {"schedule_suggestion"} != ENTRY_KEYS):
             raise NotebookValidationError("Invalid internal Notebook entry shape.", field="entry")
+        require_text(entry["write_task_id"], "write_task_id")
         entry_type = entry["entry_type"]
         section_for_type(entry_type)
         require_text(entry["entry_id"], "entry_id")
@@ -196,6 +207,7 @@ class NotebookWorkingState:
         if previous_version_id is None:
             entry["entry_id"] = version_id
         entry["version_id"] = version_id
+        entry["write_task_id"] = self.task_id
         return entry
 
     def create(self, entry_type, fields, *, done=False, relations=None,
@@ -205,39 +217,28 @@ class NotebookWorkingState:
         with self.lock:
             self._require_writable()
             reject_legacy_status({} if status is SOURCE_NOT_PROVIDED else {"status": status})
+            if source_time_range is not SOURCE_NOT_PROVIDED or source_time_ranges is not SOURCE_NOT_PROVIDED:
+                raise NotebookValidationError("Time ranges are not editable sources; use Message UIDs.", field="source_time_ranges")
             validate_done(done)
             section = section_for_type(entry_type)
             validate_fields(entry_type, fields)
-            # A cleared optional singleton has one representation: absent. Required
-            # text/arrays were checked above, so null cannot hide a missing value.
             fields = {key: deepcopy(value) for key, value in fields.items() if value is not None}
             sources = {}
             if source_message_identities is not SOURCE_NOT_PROVIDED:
                 sources["source_message_identities"] = source_message_identities
             if source_message_uids is not SOURCE_NOT_PROVIDED:
                 sources["source_message_uids"] = source_message_uids
-            if source_time_range is not SOURCE_NOT_PROVIDED:
-                sources["source_time_range"] = source_time_range
-            if source_time_ranges is not SOURCE_NOT_PROVIDED:
-                sources["source_time_ranges"] = source_time_ranges
             sources = canonical_source_fields(sources, self.conversation_ref)
-            identities = sources.get("source_message_identities")
             entry = {"entry_id": "__new__", "version_id": "__new__", "entry_type": entry_type,
-                     "fields": fields, "done": done,
-                     "relations": deepcopy(relations) if relations is not None else [],
-                     "source_message_identities": [] if identities is None else identities,
-                     "source_time_ranges": sources.get("source_time_ranges", []), "archived": False,
+                     "fields": fields, "done": done, "relations": deepcopy(relations) if relations is not None else [],
+                     "provenance": [], "provenance_tasks": [], "write_task_id": self.task_id, "evidence_time": [], "archived": False,
                      "created_at": None, "updated_at": None, "last_processed_at": None}
+            self._apply_sources(entry, sources.get("source_message_uids", SOURCE_NOT_PROVIDED))
             if schedule_suggestion is not None:
                 entry["schedule_suggestion"] = deepcopy(schedule_suggestion)
             draft = self.snapshot_state()
             draft[section].append(entry)
-            try:
-                self._validate_state(draft, fresh_id="__new__")
-            except NotebookValidationError as error:
-                if source_message_uids is not SOURCE_NOT_PROVIDED:
-                    local_source_error(error)
-                raise
+            self._validate_state(draft, fresh_id="__new__")
             now = self._now()
             entry["created_at"] = entry["updated_at"] = now
             note = entry["fields"].get("processing_note")
@@ -255,7 +256,6 @@ class NotebookWorkingState:
             reject_legacy_status(changes)
             if not isinstance(changes, dict) or not changes or changes.keys() - CHANGE_KEYS:
                 raise NotebookValidationError("Supply at least one editable attribute besides entry_id.", field="entry_id")
-            local_sources = "source_message_uids" in changes
             changes = canonical_source_fields(changes, self.conversation_ref)
             old = self._state[section][index]
             entry = deepcopy(old)
@@ -263,6 +263,8 @@ class NotebookWorkingState:
             if not isinstance(field_changes, dict):
                 raise NotebookValidationError("Expected a fields patch object.", field="fields")
             for key, value in changes.items():
+                if key == "source_message_uids":
+                    continue
                 if key == "schedule_suggestion" and value is None:
                     entry.pop(key, None)
                 elif key != "fields":
@@ -279,16 +281,24 @@ class NotebookWorkingState:
                     continue
                 else:
                     entry["fields"][key] = deepcopy(value)
+            validate_done(entry["done"])
+            validate_fields(entry["entry_type"], entry["fields"])
+            validate_schedule_suggestion(entry.get("schedule_suggestion"))
+            sources = changes.get("source_message_uids", SOURCE_NOT_PROVIDED)
+            if not changes.keys() & {"fields", "done", "relations", "schedule_suggestion"}:
+                raise NotebookValidationError("Supply attribute changes together with Message UIDs.", field="entry_id")
+            if entry == old and sources is SOURCE_NOT_PROVIDED:
+                return {"success": True, "changed": False, "entry": self.get(entry_id)}
+            # Validate submitted sources even for an attribute no-op; do not create
+            # a source-only version when there is no actual Notebook edit.
+            checked = deepcopy(entry)
+            self._apply_sources(checked, sources)
             draft = self.snapshot_state()
-            draft[section][index] = entry
-            try:
-                self._validate_state(draft)
-            except NotebookValidationError as error:
-                if local_sources:
-                    local_source_error(error)
-                raise
+            draft[section][index] = checked
+            self._validate_state(draft)
             if entry == old:
                 return {"success": True, "changed": False, "entry": self.get(entry_id)}
+            entry = checked
             now = self._now()
             entry["updated_at"] = now
             note = field_changes.get("processing_note")
@@ -355,7 +365,7 @@ class NotebookWorkingState:
         action = args["action"]
         required = {"create": {"entry_type", "fields"}, "update": {"entry_id", "changes"},
                     "archive": {"entry_id", "reason"}}
-        optional = {"create": {"done", "relations", "schedule_suggestion", "source_message_identities", "source_message_uids", "source_time_range", "source_time_ranges"},
+        optional = {"create": {"done", "relations", "schedule_suggestion", "source_message_identities", "source_message_uids"},
                     "update": set(), "archive": set()}
         if action not in required:
             raise NotebookValidationError("Expected create, update or archive.", field="action")

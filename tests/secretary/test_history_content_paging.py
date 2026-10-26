@@ -137,13 +137,13 @@ def test_default_read_payload_stays_compatible_and_tool_body_stays_opt_in(db):
     db.append_message("main", "tool", "秘密工具正文" * 5000,
                       tool_name="terminal", message_uid="tool")
     for offset in (0, 1000):
-        omitted = read(agent, message_identity=identity(agent, "tool"),
-                       content_offset=offset)["messages"][0]
-        assert omitted["content_omitted"] == "tool_result" and "content" not in omitted
-        assert "next_content_offset" not in omitted
+        omitted = read(agent, message_identity=identity(agent, "tool"), content_offset=offset)
+        assert omitted["error"]["code"] == "source_unavailable"
     included = read(agent, message_identity=identity(agent, "tool"), content_offset=1000,
-                    include_tool_content=True)["messages"][0]
-    assert included["content"] == ("秘密工具正文" * 5000)[1000:3000]
+                    include_auxiliary=True)["messages"][0]
+    original = content_text({"arguments": None, "result": "秘密工具正文" * 5000})
+    assert included["content"] == original[1000:3000]
+    assert "content_digest" not in included
 
 
 def test_every_continuation_rechecks_legal_fork_path_and_rewind(db):

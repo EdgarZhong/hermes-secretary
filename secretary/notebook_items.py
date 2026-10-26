@@ -8,7 +8,8 @@ import json
 from copy import deepcopy
 
 from secretary.notebook_contract import (
-    SECTIONS, canonical_notebook_entry, public_state, same_source_claim, section_for_type,
+    SECTIONS, canonical_notebook_entry, provenance_prefix, public_state, same_source_claim, section_for_type,
+    validate_provenance_transition,
 )
 
 ITEM_SCHEMA_SQL = """
@@ -88,10 +89,8 @@ def item_entry(row, conversation_ref):
     entry["entry_id"] = str(row["lineage_id"])
     entry["version_id"] = str(row["id"])
     entry["archived"] = bool(row["archived"])
-    # Fork shares immutable rows; only the hydrated Message Identity is rebound.
-    if row["conversation_ref"] != conversation_ref:
-        for source in entry["source_message_identities"]:
-            source["conversation_ref"] = conversation_ref
+    # UID nodes are local to the owning/inheriting Conversation. Forks share
+    # the exact immutable payload and never rewrite its sources or node times.
     return entry
 
 
@@ -114,17 +113,17 @@ def _archive_cleanup_claim(conn, conversation_ref, left, right):
     return True
 
 
-def source_basis_conn(conn, conversation_ref, row, entry, *, allow_relation_removal=False):
-    """Only this exact claim's committed version licenses off-path inheritance.
-
-    Unchanged sources on unrelated new content do NOT inherit a historical
-    permission. A new claim must pass the current-path validator instead.
-    """
+def source_basis_conn(conn, conversation_ref, row, entry, *, allow_relation_removal=False, mutable_task_id=None):
+    """Find a committed same-lineage basis for unchanged historical nodes only."""
     require_item_owner(conn, row, conversation_ref)
     previous = item_entry(row, conversation_ref)
-    if not same_source_claim(previous, entry) and not (
-        allow_relation_removal and _archive_cleanup_claim(conn, conversation_ref, previous, entry)
-    ):
+    committed = _referenced_in_conversation(conn, conversation_ref, str(row["id"]))
+    validate_provenance_transition(previous, entry, mutable_task_id=None if committed else mutable_task_id)
+    changed_without_node = (previous["provenance"] == entry["provenance"]
+                            and previous["provenance_tasks"] == entry["provenance_tasks"]
+                            and not same_source_claim(previous, entry))
+    if (changed_without_node and _referenced_in_conversation(conn, conversation_ref, str(row["id"]))
+            and not (allow_relation_removal and _archive_cleanup_claim(conn, conversation_ref, previous, entry))):
         return None
     if _referenced_in_conversation(conn, conversation_ref, str(row["id"])):
         return row["id"]
@@ -133,14 +132,22 @@ def source_basis_conn(conn, conversation_ref, row, entry, *, allow_relation_remo
     basis = item_row_conn(conn, str(row["source_basis_id"]))
     require_item_owner(conn, basis, conversation_ref)
     if (basis["lineage_id"] != row["lineage_id"]
-            or not _referenced_in_conversation(conn, conversation_ref, str(basis["id"]))
-            or not _archive_cleanup_claim(conn, conversation_ref, item_entry(basis, conversation_ref), entry)):
+            or not _referenced_in_conversation(conn, conversation_ref, str(basis["id"]))):
+        raise ValueError("Invalid Notebook source inheritance basis")
+    if provenance_prefix(item_entry(basis, conversation_ref), entry) != len(item_entry(basis, conversation_ref)["provenance"]):
         raise ValueError("Invalid Notebook source inheritance basis")
     return basis["id"]
 
 
+def inherited_source_count_conn(conn, conversation_ref, row, entry):
+    basis = source_basis_conn(conn, conversation_ref, row, entry)
+    if basis is None:
+        return 0
+    return provenance_prefix(item_entry(item_row_conn(conn, str(basis)), conversation_ref), entry)
+
+
 def insert_item_conn(conn, conversation_ref, entry, previous_id=None, *, source_basis_id=None,
-                     allow_relation_removal=False):
+                     allow_relation_removal=False, mutable_task_id=None):
     """Allocate stable lineage and version under the caller's write transaction.
 
     ``previous_id`` is a version_id, not an entry_id. Return the complete internal
@@ -151,15 +158,22 @@ def insert_item_conn(conn, conversation_ref, entry, previous_id=None, *, source_
     if predecessor is not None:
         require_item_owner(conn, predecessor, conversation_ref)
         old = item_entry(predecessor, conversation_ref)
+        committed = _referenced_in_conversation(conn, conversation_ref, str(predecessor["id"]))
+        validate_provenance_transition(old, entry, mutable_task_id=None if committed else mutable_task_id)
         if predecessor["archived"]:
             raise ValueError("Archived Notebook versions cannot be edited")
         if (entry["entry_id"] != old["entry_id"] or entry["entry_type"] != old["entry_type"]
                 or entry["created_at"] != old["created_at"]):
             raise ValueError("Entry identity, type and first-created time are immutable")
     if source_basis_id is not None and (predecessor is None or source_basis_id != source_basis_conn(
-        conn, conversation_ref, predecessor, entry, allow_relation_removal=allow_relation_removal
+        conn, conversation_ref, predecessor, entry, allow_relation_removal=allow_relation_removal,
+        mutable_task_id=mutable_task_id
     )):
         raise ValueError("Invalid Notebook source inheritance basis")
+    if source_basis_id is not None:
+        basis_entry = item_entry(item_row_conn(conn, str(source_basis_id)), conversation_ref)
+        if provenance_prefix(basis_entry, entry) != len(basis_entry["provenance"]):
+            raise ValueError("Invalid Notebook source inheritance basis")
     sequence = conn.execute(
         "SELECT seq FROM sqlite_sequence WHERE name = 'secretary_notebook_item'"
     ).fetchone()

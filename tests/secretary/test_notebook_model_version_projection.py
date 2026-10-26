@@ -42,7 +42,7 @@ def test_create_update_archive_outputs_keep_stable_ids_and_internal_versions(chi
     store = child._noting_notebook_store
     original = store.get(target["entry_id"])
     assert "version_id" not in target and original["version_id"]
-    updated = json.loads(notebook_update(child, {
+    updated = json.loads(notebook_update(child, {"source_message_uids": ["evidence"],
         "entry_id": target["entry_id"], "fields": {"description": "Visit completed"}, "done": True,
     }))["entry"]
     current = store.get(target["entry_id"])
@@ -101,7 +101,7 @@ def test_nested_error_entries_are_projected_without_rewriting_body_fields(child,
     def refuse(*args, **kwargs):
         raise NotebookValidationError("Inspect affected entries", details=details)
     monkeypatch.setattr(child._noting_notebook_store, "update", refuse)
-    result = json.loads(notebook_update(child, {"entry_id": entry["entry_id"], "done": True}))
+    result = json.loads(notebook_update(child, {"source_message_uids": ["evidence"], "entry_id": entry["entry_id"], "done": True}))
     projected = result["error"]["details"]["affected_entries"][0]
     assert projected["entry_id"] == entry["entry_id"] and "version_id" not in projected
     assert projected["fields"] == before["affected_entries"][0]["fields"]

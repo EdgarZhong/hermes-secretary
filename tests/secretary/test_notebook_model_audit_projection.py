@@ -41,7 +41,7 @@ def test_default_api_retains_audit_fields_while_model_projection_preserves_actio
     assert item["entry_id"] == entry["entry_id"]
     assert "version_id" not in item
     assert item == {key: value for key, value in public["payload"]["work"][0].items() if key != "version_id"}
-    assert item["source_message_uids"] == ["source-uid"]
+    assert item["provenance"] == [["source-uid"]]
     assert item["evidence_time"] == [format_timestamp(100, profile_home=db.db_path.parent)]
     assert db.notebook_current(ref) == snapshot
 

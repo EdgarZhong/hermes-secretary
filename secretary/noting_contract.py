@@ -215,34 +215,42 @@ NOTEBOOK_CREATE_SCHEMA = {'name': 'notebook_create',
                                                                                            'trajectory.'}},
                                           'required': ['description'],
                                           'additionalProperties': False,
-                                          'description': 'All types require description. Common optional '
-                                                         'fields: domains, processing_note. '
-                                                         'Required/optional fields by type: matter: '
-                                                         'completion_condition; optional blocker, '
-                                                         'last_progress_time. action: owner, '
-                                                         'completion_condition; optional blocker, '
-                                                         'last_progress_time. situation: subjects; optional '
-                                                         'time_context. implicit_gap: situation_ref, '
-                                                         'missing_information, impact; optional '
-                                                         'resolution_condition. question: description only; '
-                                                         'optional unresolved_points, current_answer, '
-                                                         'last_discussion_time. insight: certainty; optional '
-                                                         'qualification. decision: scope; optional '
-                                                         'valid_when, ends_when, rationale. candidate: '
-                                                         'targets, notebook_refs, source_types; optional '
-                                                         'stage_evidence. Candidate uses either '
-                                                         'notebook_refs with mapped source_types and empty '
-                                                         'direct sources, or source_message_uids and/or '
-                                                         'source_time_ranges with notebook_refs/source_types '
-                                                         'empty; never mix the two modes. Use only fields '
-                                                         'belonging to the entry type. '
-                                                         'Required text must be nonempty; do not invent '
-                                                         'facts to fill it. Optional single-valued fields '
-                                                         'may be cleared with null; arrays with []. On '
-                                                         'update, fields merges by property and omitted '
-                                                         'properties remain. Returned evidence_time is '
-                                                         'runtime-derived, read-only; do not supply on '
-                                                         'create or update.'},
+                                          'description': 'All types require description. Common '
+                                                         'optional fields: domains, '
+                                                         'processing_note. Required/optional '
+                                                         'fields by type: matter: '
+                                                         'completion_condition; optional '
+                                                         'blocker, last_progress_time. action: '
+                                                         'owner, completion_condition; optional '
+                                                         'blocker, last_progress_time. '
+                                                         'situation: subjects; optional '
+                                                         'time_context. implicit_gap: '
+                                                         'situation_ref, missing_information, '
+                                                         'impact; optional '
+                                                         'resolution_condition. question: '
+                                                         'description only; optional '
+                                                         'unresolved_points, current_answer, '
+                                                         'last_discussion_time. insight: '
+                                                         'certainty; optional qualification. '
+                                                         'decision: scope; optional valid_when, '
+                                                         'ends_when, rationale. candidate: '
+                                                         'targets, notebook_refs, source_types; '
+                                                         'optional stage_evidence. Candidate '
+                                                         'uses either notebook_refs with mapped '
+                                                         'source_types and empty direct '
+                                                         'sources, or source_message_uids with '
+                                                         'notebook_refs/source_types empty; '
+                                                         'never mix the two modes. Use only '
+                                                         'fields belonging to the entry type. '
+                                                         'Required text must be nonempty; do '
+                                                         'not invent facts to fill it. Optional '
+                                                         'single-valued fields may be cleared '
+                                                         'with null; arrays with []. On update, '
+                                                         'fields merges by property and omitted '
+                                                         'properties remain. Returned '
+                                                         'evidence_time is runtime-derived, '
+                                                         'read-only; do not supply on create or '
+                                                         'update.'},
                                'done': {'type': 'boolean',
                                         'description': 'True only when available evidence confirms this entry is concluded; '
                                                        'concluded does not mean successful. False means conclusion is not '
@@ -270,15 +278,27 @@ NOTEBOOK_CREATE_SCHEMA = {'name': 'notebook_create',
                                                             'complete replacement array.'},
                                'source_message_uids': {'type': 'array',
                                                        'items': {'type': 'string'},
-                                                       'description': 'Exact supporting Message UIDs in this '
-                                                                      'Conversation. Send the complete '
-                                                                      'replacement array; Conversation '
-                                                                      'ownership is supplied by the bound '
-                                                                      'Notebook. For content entries and '
-                                                                      'direct-source Candidates, Message UIDs and '
-                                                                      'source_time_ranges may be supplied '
-                                                                      'together; retain the sources '
-                                                                      'supporting the recorded content.'},
+                                                       'description': 'Exact supporting Message '
+                                                                      "UIDs for this entry's "
+                                                                      'current Noting Task '
+                                                                      'node. Every actual edit '
+                                                                      'must include both the '
+                                                                      'attribute changes and '
+                                                                      'this complete '
+                                                                      'replacement array. Later '
+                                                                      'calls and native Turns '
+                                                                      'of the same Task replace '
+                                                                      'this node; older Task '
+                                                                      'nodes are read-only. No '
+                                                                      'change creates no node. '
+                                                                      'Candidates use either '
+                                                                      'direct Message UIDs with '
+                                                                      'notebook_refs/source_types '
+                                                                      'empty, or notebook_refs '
+                                                                      'with mapped source_types '
+                                                                      'and no direct Message '
+                                                                      'UIDs. Time ranges are '
+                                                                      'not accepted.', 'uniqueItems': True},
                                'schedule_suggestion': {'anyOf': [{'type': 'object',
                                                                   'properties': {'content': {'type': 'string',
                                                                                              'description': 'Semantic '
@@ -324,38 +344,7 @@ NOTEBOOK_CREATE_SCHEMA = {'name': 'notebook_create',
                                                                       'not ready-to-submit Scheduler '
                                                                       'arguments or evidence of '
                                                                       'registration. This tool does not '
-                                                                      'create or update Schedules.'},
-                               'source_time_ranges': {'type': 'array',
-                                                      'items': {'type': 'object',
-                                                                'properties': {'start_time': {'type': 'string',
-                                                                                              'description': 'Inclusive '
-                                                                                                             'timezone-aware '
-                                                                                                             'ISO '
-                                                                                                             '8601 '
-                                                                                                             'timestamp.'},
-                                                                               'end_time': {'type': 'string',
-                                                                                            'description': 'Inclusive '
-                                                                                                           'timezone-aware '
-                                                                                                           'ISO '
-                                                                                                           '8601 '
-                                                                                                           'timestamp.'}},
-                                                                'required': ['start_time', 'end_time'],
-                                                                'additionalProperties': False},
-                                                      'description': 'Complete replacement array of evidence '
-                                                                     'intervals in this bound Conversation. '
-                                                                     'Each element requires timezone-aware '
-                                                                     'start_time and end_time; equal bounds '
-                                                                     'express one instant. Use [] to clear; '
-                                                                     'omit to keep unchanged on update. The '
-                                                                     'content entries and direct-source '
-                                                                     'Candidates may combine these '
-                                                                     'intervals with source_message_uids. '
-                                                                     'Every source must be available on the '
-                                                                     'authorized path. Candidates use either '
-                                                                     'direct Message UIDs/time ranges with '
-                                                                     'notebook_refs/source_types empty, or '
-                                                                     'notebook_refs with mapped source_types '
-                                                                     'and both direct-source arrays empty.'}},
+                                                                      'create or update Schedules.'}},
                 'required': ['entry_type', 'fields'],
                 'additionalProperties': False}}
 
@@ -569,34 +558,42 @@ NOTEBOOK_UPDATE_SCHEMA = {'name': 'notebook_update',
                                                                                            'trajectory.'}},
                                           'required': [],
                                           'additionalProperties': False,
-                                          'description': 'All types require description. Common optional '
-                                                         'fields: domains, processing_note. '
-                                                         'Required/optional fields by type: matter: '
-                                                         'completion_condition; optional blocker, '
-                                                         'last_progress_time. action: owner, '
-                                                         'completion_condition; optional blocker, '
-                                                         'last_progress_time. situation: subjects; optional '
-                                                         'time_context. implicit_gap: situation_ref, '
-                                                         'missing_information, impact; optional '
-                                                         'resolution_condition. question: description only; '
-                                                         'optional unresolved_points, current_answer, '
-                                                         'last_discussion_time. insight: certainty; optional '
-                                                         'qualification. decision: scope; optional '
-                                                         'valid_when, ends_when, rationale. candidate: '
-                                                         'targets, notebook_refs, source_types; optional '
-                                                         'stage_evidence. Candidate uses either '
-                                                         'notebook_refs with mapped source_types and empty '
-                                                         'direct sources, or source_message_uids and/or '
-                                                         'source_time_ranges with notebook_refs/source_types '
-                                                         'empty; never mix the two modes. Use only fields '
-                                                         'belonging to the entry type. '
-                                                         'Required text must be nonempty; do not invent '
-                                                         'facts to fill it. Optional single-valued fields '
-                                                         'may be cleared with null; arrays with []. On '
-                                                         'update, fields merges by property and omitted '
-                                                         'properties remain. Returned evidence_time is '
-                                                         'runtime-derived, read-only; do not supply on '
-                                                         'create or update.'},
+                                          'description': 'All types require description. Common '
+                                                         'optional fields: domains, '
+                                                         'processing_note. Required/optional '
+                                                         'fields by type: matter: '
+                                                         'completion_condition; optional '
+                                                         'blocker, last_progress_time. action: '
+                                                         'owner, completion_condition; optional '
+                                                         'blocker, last_progress_time. '
+                                                         'situation: subjects; optional '
+                                                         'time_context. implicit_gap: '
+                                                         'situation_ref, missing_information, '
+                                                         'impact; optional '
+                                                         'resolution_condition. question: '
+                                                         'description only; optional '
+                                                         'unresolved_points, current_answer, '
+                                                         'last_discussion_time. insight: '
+                                                         'certainty; optional qualification. '
+                                                         'decision: scope; optional valid_when, '
+                                                         'ends_when, rationale. candidate: '
+                                                         'targets, notebook_refs, source_types; '
+                                                         'optional stage_evidence. Candidate '
+                                                         'uses either notebook_refs with mapped '
+                                                         'source_types and empty direct '
+                                                         'sources, or source_message_uids with '
+                                                         'notebook_refs/source_types empty; '
+                                                         'never mix the two modes. Use only '
+                                                         'fields belonging to the entry type. '
+                                                         'Required text must be nonempty; do '
+                                                         'not invent facts to fill it. Optional '
+                                                         'single-valued fields may be cleared '
+                                                         'with null; arrays with []. On update, '
+                                                         'fields merges by property and omitted '
+                                                         'properties remain. Returned '
+                                                         'evidence_time is runtime-derived, '
+                                                         'read-only; do not supply on create or '
+                                                         'update.'},
                                'done': {'type': 'boolean',
                                         'description': 'True only when available evidence confirms this entry is concluded; '
                                                        'concluded does not mean successful. False means conclusion is not '
@@ -624,15 +621,27 @@ NOTEBOOK_UPDATE_SCHEMA = {'name': 'notebook_update',
                                                             'complete replacement array.'},
                                'source_message_uids': {'type': 'array',
                                                        'items': {'type': 'string'},
-                                                       'description': 'Exact supporting Message UIDs in this '
-                                                                      'Conversation. Send the complete '
-                                                                      'replacement array; Conversation '
-                                                                      'ownership is supplied by the bound '
-                                                                      'Notebook. For content entries and '
-                                                                      'direct-source Candidates, Message UIDs and '
-                                                                      'source_time_ranges may be supplied '
-                                                                      'together; retain the sources '
-                                                                      'supporting the recorded content.'},
+                                                       'description': 'Exact supporting Message '
+                                                                      "UIDs for this entry's "
+                                                                      'current Noting Task '
+                                                                      'node. Every actual edit '
+                                                                      'must include both the '
+                                                                      'attribute changes and '
+                                                                      'this complete '
+                                                                      'replacement array. Later '
+                                                                      'calls and native Turns '
+                                                                      'of the same Task replace '
+                                                                      'this node; older Task '
+                                                                      'nodes are read-only. No '
+                                                                      'change creates no node. '
+                                                                      'Candidates use either '
+                                                                      'direct Message UIDs with '
+                                                                      'notebook_refs/source_types '
+                                                                      'empty, or notebook_refs '
+                                                                      'with mapped source_types '
+                                                                      'and no direct Message '
+                                                                      'UIDs. Time ranges are '
+                                                                      'not accepted.', 'uniqueItems': True},
                                'schedule_suggestion': {'anyOf': [{'type': 'object',
                                                                   'properties': {'content': {'type': 'string',
                                                                                              'description': 'Semantic '
@@ -678,38 +687,7 @@ NOTEBOOK_UPDATE_SCHEMA = {'name': 'notebook_update',
                                                                       'not ready-to-submit Scheduler '
                                                                       'arguments or evidence of '
                                                                       'registration. This tool does not '
-                                                                      'create or update Schedules.'},
-                               'source_time_ranges': {'type': 'array',
-                                                      'items': {'type': 'object',
-                                                                'properties': {'start_time': {'type': 'string',
-                                                                                              'description': 'Inclusive '
-                                                                                                             'timezone-aware '
-                                                                                                             'ISO '
-                                                                                                             '8601 '
-                                                                                                             'timestamp.'},
-                                                                               'end_time': {'type': 'string',
-                                                                                            'description': 'Inclusive '
-                                                                                                           'timezone-aware '
-                                                                                                           'ISO '
-                                                                                                           '8601 '
-                                                                                                           'timestamp.'}},
-                                                                'required': ['start_time', 'end_time'],
-                                                                'additionalProperties': False},
-                                                      'description': 'Complete replacement array of evidence '
-                                                                     'intervals in this bound Conversation. '
-                                                                     'Each element requires timezone-aware '
-                                                                     'start_time and end_time; equal bounds '
-                                                                     'express one instant. Use [] to clear; '
-                                                                     'omit to keep unchanged on update. The '
-                                                                     'content entries and direct-source '
-                                                                     'Candidates may combine these '
-                                                                     'intervals with source_message_uids. '
-                                                                     'Every source must be available on the '
-                                                                     'authorized path. Candidates use either '
-                                                                     'direct Message UIDs/time ranges with '
-                                                                     'notebook_refs/source_types empty, or '
-                                                                     'notebook_refs with mapped source_types '
-                                                                     'and both direct-source arrays empty.'}},
+                                                                      'create or update Schedules.'}},
                 'required': ['entry_id'],
                 'minProperties': 2,
                 'additionalProperties': False}}

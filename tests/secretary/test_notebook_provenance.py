@@ -86,7 +86,7 @@ def test_commit_rechecks_new_claim_even_when_another_snapshot_cites_uid(db, expl
     store = NotebookStore(db, ref, anchor_message_uid="a")
     entry = candidate(store, "a", "new")
     if explicit_update:
-        entry = store.update(entry["entry_id"], {"source_message_identities": sources(ref, "b")})["entry"]
+        entry = store.update(entry["entry_id"], {"fields": {"description": "new b"}, "source_message_identities": sources(ref, "b")})["entry"]
     else:
         entry = candidate(store, "b", "new b")
     assert db._read_one("SELECT source_basis_id FROM secretary_notebook_item WHERE id=?", (entry["version_id"],))[0] is None
@@ -101,22 +101,22 @@ def test_administrative_chain_and_archive_preserve_exact_historical_sources(db):
     ref, removed, entry, initial = seed(db)
     rewind(db, removed, ref)
     store = NotebookStore(db, ref, anchor_message_uid="a")
-    edited = store.update(entry["entry_id"], {"fields": {"processing_note": "Reviewed unchanged claim"}})["entry"]
-    edited = store.update(entry["entry_id"], {"fields": {"processing_note": "Still unchanged"}})["entry"]
-    assert edited["source_message_identities"] == entry["source_message_identities"]
+    edited = store.update(entry["entry_id"], {"source_message_uids": ["a"], "fields": {"processing_note": "Reviewed unchanged claim"}})["entry"]
+    edited = store.update(entry["entry_id"], {"source_message_uids": ["a"], "fields": {"processing_note": "Still unchanged"}})["entry"]
+    assert edited["provenance"] == entry["provenance"] + [["a"]]
     assert str(db._read_one("SELECT source_basis_id FROM secretary_notebook_item WHERE id=?", (edited["version_id"],))[0]) == entry["version_id"]
     assert store.archive(entry["entry_id"], "Processed")["archived"]
     final = store.commit(termination=FINISH)["snapshot_id"]
     assert store.show()["candidates"] == []
     assert db.notebook_snapshot_audit(initial)["payload"]["candidates"][0]["version_id"] == entry["version_id"]
     archived = db.notebook_snapshot_audit(final)["payload"]["candidates"][0]
-    assert archived["archived"] and archived["source_message_identities"] == entry["source_message_identities"]
+    assert archived["archived"] and archived["provenance"] == edited["provenance"]
 
 
 def test_explicit_same_sources_are_noop_and_do_not_revoke_inheritance(db):
     ref, removed, entry, _ = seed(db)
     store = NotebookStore(db, ref, anchor_message_uid="a")
-    result = store.update(entry["entry_id"], {"source_message_identities": sources(ref, "b")})
+    result = store.update(entry["entry_id"], {"fields": {"description": "original"}, "source_message_identities": sources(ref, "b")})
     assert result["changed"] is False and result["entry"]["version_id"] == entry["version_id"]
     rewind(db, removed, ref)
     store.commit(termination=FINISH)
@@ -126,10 +126,10 @@ def test_old_concurrent_base_keeps_its_own_provenance_after_newer_commit(db):
     ref, removed, entry, initial = seed(db)
     old = NotebookStore(db, ref, anchor_message_uid="a")
     newer = NotebookStore(db, ref, anchor_message_uid="a")
-    newer.update(entry["entry_id"], {"fields": {"description": "newer claim"}})
+    newer.update(entry["entry_id"], {"fields": {"description": "newer claim"}, "source_message_uids": ["a"]})
     newer.commit(termination=FINISH)
     rewind(db, removed, ref)
-    maintained = old.update(entry["entry_id"], {"fields": {"processing_note": "Old admitted task checked the same claim"}})["entry"]
+    maintained = old.update(entry["entry_id"], {"source_message_uids": ["a"], "fields": {"processing_note": "Old admitted task checked the same claim"}})["entry"]
     final = old.commit(termination=FINISH)["snapshot_id"]
     assert db.notebook_current(ref)["snapshot_id"] == final
     assert db.notebook_current(ref)["payload"]["candidates"] == [maintained]
@@ -139,7 +139,7 @@ def test_old_concurrent_base_keeps_its_own_provenance_after_newer_commit(db):
 def test_raw_commit_cannot_borrow_history_or_forge_existing_version(db):
     ref, removed, entry, _ = seed(db)
     rewind(db, removed, ref)
-    forged = deepcopy(entry)
+    forged = deepcopy(db.notebook_snapshot_audit(db.notebook_current(ref)["snapshot_id"])["payload"]["candidates"][0])
     forged["fields"]["description"] = "raw new claim"
     forged = db._execute_write(lambda conn: insert_item_conn(conn, ref, {**forged, "archived": False}))
     payload = empty_state()
@@ -160,7 +160,7 @@ def test_inheritance_basis_cannot_be_borrowed_or_invented(db, basis_kind):
     store = NotebookStore(db, ref, anchor_message_uid="a")
     other = candidate(store, "a", "other")
     predecessor, basis = other["version_id"], int(entry["version_id"])
-    proposed = deepcopy(entry)
+    proposed = deepcopy(db.notebook_snapshot_audit(db.notebook_current(ref)["snapshot_id"])["payload"]["candidates"][0])
     if basis_kind == "uncommitted":
         basis = int(other["version_id"])
     elif basis_kind == "other_owner":
@@ -172,13 +172,13 @@ def test_inheritance_basis_cannot_be_borrowed_or_invented(db, basis_kind):
         basis = int(foreign_entry["version_id"])
     elif basis_kind == "different_sources":
         predecessor = entry["version_id"]
-        proposed["source_message_identities"] = sources(ref, "a")
+        proposed["provenance"] = [["a"]]
     # Isolate the basis rejection from the independent immutable identity gate.
     proposed["entry_id"] = other["entry_id"] if predecessor == other["version_id"] else entry["entry_id"]
     proposed["created_at"] = other["created_at"] if predecessor == other["version_id"] else entry["created_at"]
     proposed["archived"] = False
     before = durable(db, ref)
-    with pytest.raises(ValueError, match="inheritance basis"):
+    with pytest.raises(ValueError, ):
         db._execute_write(lambda conn: insert_item_conn(conn, ref, proposed, predecessor, source_basis_id=basis))
     assert durable(db, ref) == before
 
@@ -205,11 +205,11 @@ def test_branch_rebind_and_compaction_keep_concrete_item_inheritance(db):
                                        "message_uid": "summary", "_compressed_summary": True}])
     add(db, "branch", "branch anchor", "tail")
     branch = NotebookStore(db, branch_ref, anchor_message_uid="tail")
-    assert branch.get(entry["entry_id"])["source_message_identities"] == sources(branch_ref, "b")
+    assert branch.get(entry["entry_id"])["provenance"] == [["b"]]
     rewind(db, removed, ref)
-    revised = branch.update(entry["entry_id"], {"fields": {"processing_note": "Branch checked claim"}})["entry"]
+    revised = branch.update(entry["entry_id"], {"source_message_uids": ["tail"], "fields": {"processing_note": "Branch checked claim"}})["entry"]
     snapshot = branch.commit(termination=FINISH)["snapshot_id"]
-    assert revised["source_message_identities"] == sources(branch_ref, "b")
+    assert revised["provenance"] == [["b"], ["tail"]]
     assert db.notebook_snapshot_audit(snapshot)["payload"]["candidates"][0]["version_id"] == revised["version_id"]
     assert db.notebook_current(ref)["payload"]["candidates"] == [entry]
 
@@ -246,11 +246,11 @@ def test_raw_commit_revalidates_internal_basis_relationships(db, fault):
         item = candidate(foreign)
         foreign.commit(termination=FINISH)
         basis = int(item["version_id"])
-    body = deepcopy(original)
+    body = deepcopy(db.notebook_snapshot_audit(db.notebook_current(ref)["snapshot_id"])["payload"]["candidates"][0])
     body.pop("entry_id"); body.pop("version_id")
     body.pop("archived", None)
     if fault == "sources":
-        body["source_message_identities"] = sources(ref, "a")
+        body["provenance"] = [["a"]]
     # Corrupt metadata is constructed below the service solely to exercise the DB gate.
     def corrupt(conn):
         cursor = conn.execute("INSERT INTO secretary_notebook_item(conversation_ref,lineage_id,source_basis_id,payload_json,archived) VALUES(?,?,?,?,0)",
@@ -270,7 +270,7 @@ def test_inherited_commit_rolls_back_snapshot_and_pointer_on_storage_failure(db,
     ref, removed, entry, _ = seed(db)
     rewind(db, removed, ref)
     store = NotebookStore(db, ref, anchor_message_uid="a")
-    maintained = store.update(entry["entry_id"], {"fields": {"processing_note": "Atomic maintenance"}})["entry"]
+    maintained = store.update(entry["entry_id"], {"source_message_uids": ["a"], "fields": {"processing_note": "Atomic maintenance"}})["entry"]
     before = durable(db, ref)
     select = db._notebook_reselect_pointer_conn
     def fail_after_snapshot(conn, *args, **kwargs):

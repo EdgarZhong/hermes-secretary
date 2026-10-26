@@ -54,10 +54,10 @@ CANDIDATE_TARGETS = {"memory", "skill", "rule", "conversation"}
 PERSISTENCE_TARGETS = CANDIDATE_TARGETS - {"conversation"}
 ENTRY_KEYS = {
     "entry_id", "version_id", "entry_type", "fields", "done", "relations",
-    "source_message_identities", "source_time_ranges", "created_at", "updated_at",
+    "provenance", "provenance_tasks", "write_task_id", "evidence_time", "created_at", "updated_at",
     "last_processed_at", "archived",
 }
-CHANGE_KEYS = {"fields", "done", "relations", "schedule_suggestion", "source_message_identities", "source_message_uids", "source_time_range", "source_time_ranges"}
+CHANGE_KEYS = {"fields", "done", "relations", "schedule_suggestion", "source_message_identities", "source_message_uids"}
 SOURCE_NOT_PROVIDED = object()
 
 
@@ -107,28 +107,17 @@ def parse_time(value, field):
         ) from exc
 
 
-def validate_source_range(value, field="source_time_range"):
+def validate_source_range(value, field="evidence_time"):
     if not isinstance(value, dict) or set(value) != {"start_time", "end_time"}:
         raise NotebookValidationError(
-            "Source time range requires both bounds.", field=field,
-            next_action="Supply start_time and end_time together; use [] to clear source_time_ranges.",
+            "Derived evidence time requires both bounds.", field=field,
+            next_action="Evidence time is runtime-derived; supply valid source Message UIDs instead.",
         )
     start, end = (parse_time(value[key], f"{field}.{key}")
                   for key in ("start_time", "end_time"))
     if start > end:
         raise NotebookValidationError("Source time range is reversed.", field=field)
     return start, end
-
-
-def validate_source_ranges(value):
-    """Validate every explicit range; duplicates and overlaps are permitted."""
-    if not isinstance(value, list):
-        raise NotebookValidationError(
-            "Expected the complete source_time_ranges array.", field="source_time_ranges",
-            next_action="Supply an array of start_time/end_time objects; use [] to clear it.",
-        )
-    for index, interval in enumerate(value):
-        validate_source_range(interval, field=f"source_time_ranges[{index}]")
 
 
 def canonical_range_fields(values):
@@ -201,21 +190,49 @@ def unique_strings(value, field):
 
 
 def canonical_source_fields(values, conversation_ref):
-    """Bind local input once; persistent entries retain canonical identities."""
-    result = canonical_range_fields(values)
-    if "source_message_uids" not in result:
-        return result
+    """Bind internal canonical identity input to the one editable local UID slot."""
+    result = deepcopy(values)
     if "source_message_identities" in result:
-        raise NotebookValidationError(
-            "Supply only one source Message representation.", field="source_message_uids",
-            next_action="Use source_message_uids alone; omit source_message_identities.",
-        )
-    uids = result.pop("source_message_uids")
-    unique_strings(uids, "source_message_uids")
-    result["source_message_identities"] = [
-        {"conversation_ref": conversation_ref, "message_uid": uid} for uid in uids
-    ]
+        if "source_message_uids" in result:
+            raise NotebookValidationError("Supply only one source representation.", field="source_message_uids")
+        sources = result.pop("source_message_identities")
+        if not isinstance(sources, list):
+            raise NotebookValidationError("Expected Message identities.", field="source_message_uids")
+        for source in sources:
+            if (not isinstance(source, dict) or set(source) != {"conversation_ref", "message_uid"}
+                    or source["conversation_ref"] != conversation_ref):
+                raise NotebookValidationError("Source belongs to another Conversation.", code="scope_denied",
+                                              field="source_message_uids")
+        result["source_message_uids"] = [source["message_uid"] for source in sources]
+    if "source_message_uids" in result:
+        unique_strings(result["source_message_uids"], "source_message_uids")
     return result
+
+
+def provenance_prefix(left, right):
+    """Count identical licensed nodes, including their immutable derived times."""
+    count = 0
+    for old, new in zip(zip(left["provenance_tasks"], left["provenance"], left["evidence_time"]),
+                        zip(right["provenance_tasks"], right["provenance"], right["evidence_time"])):
+        if old != new:
+            break
+        count += 1
+    return count
+
+
+def validate_provenance_transition(previous, entry, *, mutable_task_id=None):
+    """A task can replace its tail slot; earlier tasks' nodes never change."""
+    old_tasks, tasks = previous["provenance_tasks"], entry["provenance_tasks"]
+    count = provenance_prefix(previous, entry)
+    append = len(tasks) == len(old_tasks) + 1 and count == len(old_tasks)
+    replace = (bool(tasks) and tasks == old_tasks and count >= len(tasks) - 1)
+    unchanged = count == len(old_tasks) == len(tasks)
+    clear_current = (mutable_task_id is not None and old_tasks == [mutable_task_id]
+                     and previous["write_task_id"] == mutable_task_id and not tasks
+                     and entry["entry_type"] == "candidate" and bool(entry["fields"]["notebook_refs"])
+                     and not entry["provenance"] and not entry["evidence_time"])
+    if not (append or replace or unchanged or clear_current):
+        raise NotebookValidationError("Earlier Task provenance nodes are immutable.", field="source_message_uids")
 
 
 def local_source_error(error):
@@ -277,35 +294,19 @@ def validate_schedule_suggestion(value):
 
 
 def validate_candidate_provenance(entry):
-    """Return one exclusive provenance form, independent of Candidate target.
-
-    ``refs`` follows current Notebook entries back to their original evidence;
-    ``messages`` cites direct Message identities and/or explicit time ranges.
-    A Candidate never mixes direct evidence with Notebook references.
-    """
+    """Direct UID chains and current Notebook references are exclusive."""
     fields = entry["fields"]
-    refs = fields["notebook_refs"]
-    sources = entry["source_message_identities"]
-    source_ranges = entry["source_time_ranges"]
+    refs, sources = fields["notebook_refs"], entry["provenance"]
     if refs:
-        if sources or source_ranges:
+        if sources:
             raise NotebookValidationError(
-                "A Candidate cites either Notebook entries or direct evidence, not both.",
-                field="source_message_identities",
-                next_action="Keep notebook_refs and clear Message UIDs/time ranges, or clear notebook_refs/source_types and cite direct evidence.",
-            )
+                "A Candidate cites either Notebook entries or direct Message UIDs, not both.",
+                field="source_message_uids", next_action="Keep one source form; prior Task nodes cannot be removed.")
         return "refs"
     if fields["source_types"]:
-        raise NotebookValidationError(
-            "source_types requires notebook_refs.", field="fields.source_types",
-            next_action="Clear source_types when using direct Message UIDs or time ranges.",
-        )
-    if not source_ranges and not sources:
-        raise NotebookValidationError(
-            "Direct Candidates require at least one Message UID or time range.",
-            field="source_message_identities",
-            next_action="Supply source_message_uids, source_time_ranges, or both; keep notebook_refs/source_types empty.",
-        )
+        raise NotebookValidationError("source_types requires notebook_refs.", field="fields.source_types")
+    if not sources:
+        raise NotebookValidationError("Direct Candidates require Message UIDs.", field="source_message_uids")
     return "messages"
 
 
@@ -322,8 +323,8 @@ def same_source_claim(left, right, *, allow_relation_removal=False):
         fields.pop("processing_note", None)
         return {"entry_id": entry["entry_id"], "entry_type": entry["entry_type"],
                 "fields": fields, "done": entry["done"], "relations": entry["relations"],
-                "source_message_identities": entry["source_message_identities"],
-                "source_time_ranges": entry["source_time_ranges"]}
+                "provenance": entry["provenance"], "provenance_tasks": entry["provenance_tasks"],
+                "evidence_time": entry["evidence_time"]}
     left_claim, right_claim = claim(left), claim(right)
     if allow_relation_removal:
         # Runtime archive cleanup can only remove existing auxiliary relations;
@@ -384,6 +385,8 @@ def public_state(state):
     entries = {entry["entry_id"]: entry for section in SECTIONS for entry in result[section]}
     for entry in entries.values():
         entry.pop("archived", None)
+        entry.pop("provenance_tasks", None)
+        entry.pop("write_task_id", None)
         entry["candidate_refs"] = []
     for candidate in result["candidates"]:
         for target in candidate["fields"]["notebook_refs"]:

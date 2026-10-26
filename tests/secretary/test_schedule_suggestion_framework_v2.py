@@ -44,7 +44,7 @@ def test_absent_or_cleared_suggestion_adds_no_main_instruction(runtime, clear):
     entry = store.create("matter", {"description": "Museum visit", "completion_condition": "Dates agreed"},
                          source_message_uids=["m1"], **({"schedule_suggestion": ADVICE} if clear else {}))["entry"]
     if clear:
-        assert store.update(entry["entry_id"], {"schedule_suggestion": None})["changed"]
+        assert store.update(entry["entry_id"], {"source_message_uids": ["m1"], "schedule_suggestion": None})["changed"]
     assert publish(parent, commit(store))
     assert SCHEDULE_SUGGESTION_INSTRUCTION not in notices(db)[-1]["content"]
     parent.run_conversation.assert_not_called()

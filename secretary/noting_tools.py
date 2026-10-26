@@ -51,7 +51,7 @@ def _bound_store(child):
     return store
 
 
-def initialize_notebook_work(child, *, trigger_type, frozen_work=None):
+def initialize_notebook_work(child, *, trigger_type, frozen_work=None, task_id=None):
     from secretary.notebook_store import NotebookStore
 
     child._noting_notebook_lock = threading.RLock()
@@ -62,7 +62,7 @@ def initialize_notebook_work(child, *, trigger_type, frozen_work=None):
         child._session_db, child._secretary_parent_conversation_ref,
         anchor_message_uid=child._secretary_noting_anchor_uid,
         trigger_type=trigger_type, runtime_profile=child._secretary_noting_profile,
-        lock=child._noting_notebook_lock, **options,
+        lock=child._noting_notebook_lock, task_id=task_id, **options,
     )
     child._noting_notebook_state = child._noting_notebook_store.snapshot_state()
     child._secretary_noting_finish_result = None

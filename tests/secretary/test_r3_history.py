@@ -97,7 +97,7 @@ def test_mode_conflicts_are_presence_sensitive(db, args, field):
     assert result["error"]["field"] == field
 
 
-@pytest.mark.parametrize("field,value", [("limit", 20), ("roles", []), ("query", "x"),
+@pytest.mark.parametrize("field,value", [("limit", 20), ("query", "x"),
                                          ("start_time", None), ("end_time", "1800000000")])
 def test_anchored_read_rejects_filters_before_defaults(db, field, value):
     agent = main(db)
@@ -409,23 +409,16 @@ def test_native_cjk_fallback_preserves_boolean_and_phrase(db, monkeypatch):
     assert call(agent, mode="search", query="上海 OR 排除")["returned"] == 2
 
 
-def test_explicit_tool_body_is_digest_by_default_and_capped_on_request(db):
+def test_explicit_tool_body_has_head_tail_result_without_hash(db):
     agent = main(db)
     body = "x" * 75000 + " longtoolneedle"
     db.append_message("main", "tool", body, tool_call_id="call-1", message_uid="tool", tool_name="terminal")
-    result = call(agent, mode="search", query="longtoolneedle", roles=["tool"])
+    assert call(agent, mode="search", query="longtoolneedle", roles=["tools"])["returned"] == 0
+    result = call(agent, mode="search", query="longtoolneedle", roles=["tools"], include_auxiliary=True)
     assert result["success"] and result["returned"] == 1
     row = result["messages"][0]
-    assert row["kind"] == "tool" and row["tool_name"] == "terminal"
-    assert "match_source" not in row
-    assert "content" not in row and row["content_digest"].startswith("sha256:")
-    assert row["content_chars"] == len(body)
-    assert "fallback" in result["warning"]
-    capped = call(agent, mode="search", query="longtoolneedle", roles=["tool"],
-                  include_tool_content=True, max_chars_per_message=1000)
-    capped_row = capped["messages"][0]
-    assert "longtoolneedle" in capped_row["content"] and capped_row["truncated"] is True
-    assert len(capped_row["content"]) <= 802
+    assert row["role"] == "tools" and row["content"] == {"arguments": None, "result": body[:100] + body[-100:]}
+    assert "content_digest" not in row
 
 
 def test_failures_are_errors_and_do_not_mutate_index_state(db, monkeypatch):
@@ -497,11 +490,13 @@ def test_tool_call_only_hit_is_audit_only_and_excluded_by_default(db):
     ])
     default = call(agent, mode="search", query="toolcallneedle")
     assert default["success"] and default["returned"] == 0
-    result = call(agent, mode="search", query="toolcallneedle", include_tool_calls=True)
+    assert call(agent, mode="search", query="toolcallneedle", include_tool_calls=True)["returned"] == 0
+    result = call(agent, mode="search", query="toolcallneedle", include_auxiliary=True)
     assert result["returned"] == 1
     row = result["messages"][0]
-    assert row["excerpt_kind"] == "fallback" and row["tool_calls"][0]["name"] == "example"
-    assert "args_digest" in row["tool_calls"][0] and "arguments" not in row["tool_calls"][0]
+    assert row["role"] == "tools"
+    assert row["content"]["tool_calls"][0]["arguments"] == '{"q":"toolcallneedle"}'
+    assert "args_digest" not in json.dumps(row)
 
 
 def test_read_preserves_multimodal_structure_without_claiming_attachment_read(db):
@@ -614,10 +609,10 @@ def test_notebook_and_framework_carriers_are_labelled_not_human(db):
     default = call(agent, mode="search", query="provneedle")
     assert [row["message_uid"] for row in default["messages"]] == ["human"]
     assert default["messages"][0]["kind"] == "human"
-    notebook = call(agent, mode="search", query="provneedle", kinds=["notebook"])
+    notebook = call(agent, mode="search", query="provneedle", kinds=["notebook"], include_auxiliary=True)
     assert [(row["kind"], row["source"]) for row in notebook["messages"]] == [
         ("notebook", "notebook:noting_result")]
-    framework = call(agent, mode="search", query="provneedle", kinds=["framework"])
+    framework = call(agent, mode="search", query="provneedle", kinds=["framework"], include_auxiliary=True)
     assert framework["messages"][0]["kind"] == "framework"
 
 
@@ -626,12 +621,13 @@ def test_self_history_is_excluded_until_explicitly_audited(db):
     db.append_message("main", "tool", "selfneedle result body", message_uid="self",
                       timestamp=1800000001, tool_name="conversation_history", tool_call_id="c1")
     assert call(agent, mode="search", query="selfneedle")["returned"] == 0
-    assert call(agent, mode="search", query="selfneedle", roles=["tool"])["returned"] == 0
-    audited = call(agent, mode="search", query="selfneedle", roles=["tool"], include_self_history=True)
+    assert call(agent, mode="search", query="selfneedle", roles=["tools"])["returned"] == 0
+    audited = call(agent, mode="search", query="selfneedle", roles=["tools"], include_self_history=True, include_auxiliary=True)
     assert audited["returned"] == 1
     row = audited["messages"][0]
-    assert row["kind"] == "tool" and row["content_omitted"] == "tool_result"
-    assert "content" not in row and row["content_digest"].startswith("sha256:")
+    assert row["kind"] == "tool" and row["role"] == "tools"
+    assert row["content"] == {"arguments": None, "result": "selfneedle result body"}
+    assert "content_digest" not in row
 
 
 def test_unanchored_read_reports_limit_more_and_remaining(db):
@@ -665,13 +661,15 @@ def test_read_caps_keep_anchor_and_report_dropped_neighbours(db):
     assert len(read["messages"][0]["content"]) <= 2000
 
 
-def test_read_tool_digest_is_reported_as_truncated(db):
+def test_read_tool_content_is_bounded_without_hash(db):
     agent = main(db)
     db.append_message("main", "tool", "T" * 90000, message_uid="tool", timestamp=1800000001,
                       tool_name="terminal", tool_call_id="c1")
-    read = call(agent, mode="read", message_identity=identity(agent, "tool"), before=0, after=0)
+    assert call(agent, mode="read", message_identity=identity(agent, "tool"), before=0, after=0)["error"]["code"] == "source_unavailable"
+    read = call(agent, mode="read", message_identity=identity(agent, "tool"), before=0, after=0,
+                include_auxiliary=True)
     assert read["success"] and read["returned"] == 1
-    assert read["messages"][0]["content_omitted"] == "tool_result"
+    assert "content_digest" not in read["messages"][0]
     assert read["anchor_truncated"] is True and read["messages_truncated"] is True
 
 

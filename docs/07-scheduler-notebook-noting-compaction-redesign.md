@@ -1,5 +1,17 @@
 # 07 · Secretary 改版实施契约：History、Scheduler、Notebook 与 Noting
 
+## 2026-10-27 · 本轮实现接口与验证状态
+
+用户已授权实现、测试及上线。本节记录已接入代码的接口；生产是否完成以operations-log为准，下方讨论中的“尚未实施”保留其原时点，不能据此推断当前交付状态。
+
+- History新增`mode=get_meta`，必填闭区间`start_time/end_time`，可选`include`复用Search查询语义、`roles`按`user/assistant/tools/system`过滤。顶层`cross_conversation=false`与`include_auxiliary=false`独立；所有模式含定点Read及邻居统一限制默认范围。Get Meta每条只有`message_uid/timestamp/role/content`，头尾各100字符；超过200或无法证明完整时拒绝并要求缩窗。跨域结果按外层Conversation分组。
+- 工具Search返回同次调用参数／结果各200字符头尾；Read沿既有字符上限和`content_offset`读完整canonical JSON，不返回工具哈希代替原文；缺失或歧义为null，不猜配。预览清理只处理项目有证据的外壳，保留原消息及用户自写HTML／日期。
+- 编辑输入`source_message_uids: UID[]`代表当前Task完整槽，普通属性补丁按键合并，提交数组／对象覆盖对应值。对外`provenance: UID[][]`；同Task覆盖末槽，下一Task真编辑追加，无真实属性变化不新增版本或来源。旧节点不可改。Candidate直接UID链与`notebook_refs+source_types`二选一。
+- 持久`evidence_time: ({start_time,end_time}|null)[]`与直接来源链逐索引对应，按已确认优先级及原timestamp派生。运行态内部`provenance_tasks`记槽owner、`write_task_id`记版本owner，由可信Task传入，不是模型参数；普通模型／人类投影隐藏owner，模型另隐藏version_id。相同时刻的可读投影为单时刻，未知保留null槽。
+- 本轮真实模型首样本暴露“只补Schedule建议时顺手改description”；第2更新步增加仅编辑`schedule_suggestion`及其来源、其它属性不变的明确句，落实用户原定边界。失败样本保留，复验待完成。来源分类另补真人自写标签／typed steer／foreign同UID与真实系统载体的反例，统一History与Evidence time的可信分类。
+- 联动工程边界：原生混合压缩载体可在同一个UID下具有真人片段与system摘要片段；默认仍真人视图，显式辅助才增加摘要视图，Get Meta不增加第五字段，anchored Read可用语义roles选择同一UID的具体片段；默认锚点优先原非压缩片段（可为user／assistant／tools），同UID同role的system内容合为一个可选视图，分页固定同一片段，不造UID、不暴露Full的Prelude／audit／隐藏内容。纯摘要可读不等于取得Notebook新事实引用资格，原始来源门禁保持。Candidate来源切换仅可清本Task尚未提交的唯一direct工作槽再转合法refs；旧Task任一节点不得因此删改。两项为实现既定语义的Agent工程收敛，根CLAUDE登记待追认。
+- 当前实现／集成验证中，尚未上线；不将已有单元／受控SDK证据代替真实模型行为或独立双门禁。唯一置顶Notebook人工转换只作用核准目标的来源字段，保留各历史版本非来源事实、Snapshot及其它对象，先副本演练后停服执行。
+
 ## 2026-10-26 · 跨区间保真与按Task分组的来源链（用户已确认语义，尚未实施）
 
 本节记录用户在讨论中明确的语义，覆盖下文与之冲突的旧维护／来源设计；不表示已经修改运行代码、Schema、Prompt或生产数据。用户已确认修订后的精简Prompt稿及接口／数据语义，2026-10-27补齐Evidence time时间含义确认，设计口径已收口；未获确认的Agent建议不自动成为定案。

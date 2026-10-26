@@ -789,7 +789,7 @@ def run_noting_task(
         # Observers may read immediately: publish active only after its durable start exists.
         register_active_noting_task(child_session_id, child)
         from secretary.noting_tools import initialize_notebook_work
-        initialize_notebook_work(child, trigger_type=trigger_type, frozen_work=frozen_work)
+        initialize_notebook_work(child, trigger_type=trigger_type, frozen_work=frozen_work, task_id=str(admission_id))
         initial_instruction = task_instruction + "\n\n" + _working_control(child)
         wrapper = build_noting_task_wrapper(
             initial_instruction, timestamp=admission_timestamp if admission_timestamp is not None else time.time(),

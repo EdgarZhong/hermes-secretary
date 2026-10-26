@@ -91,7 +91,7 @@ def test_types_have_stable_identity_immutable_versions_and_reopenable_done(entry
     original_id, original_version = entry["entry_id"], entry["version_id"]
     assert entry["done"] is False and "status" not in entry
     for done in (True, False):
-        result = book.update(original_id, {"done": done})
+        result = book.update(original_id, {"source_message_uids": ["m1"], "done": done})
         assert result["success"] and result["changed"]
         assert result["entry"]["done"] is done
         assert result["entry"]["entry_id"] == original_id
@@ -177,20 +177,20 @@ def test_noop_and_reads_never_renew_runtime_or_evidence_times():
     book.get(entry["entry_id"])["fields"].clear()
     assert book.snapshot_state() == before
     assert clock.calls == 1
-    changed = book.update(entry["entry_id"], {"fields": {"description": "Dates are being checked"}})["entry"]
+    changed = book.update(entry["entry_id"], {"source_message_uids": ["m1"], "fields": {"description": "Dates are being checked"}})["entry"]
     assert changed["created_at"] == entry["created_at"]
     assert changed["fields"]["last_progress_time"] == EVIDENCE
     assert changed["last_processed_at"] is None
-    processed = book.update(entry["entry_id"], {"fields": {"processing_note": "Retained the unfinished responsibility"}})["entry"]
+    processed = book.update(entry["entry_id"], {"source_message_uids": ["m1"], "fields": {"processing_note": "Retained the unfinished responsibility"}})["entry"]
     assert processed["last_processed_at"] == processed["updated_at"]
-    assert book.update(entry["entry_id"], {"fields": {"processing_note": processed["fields"]["processing_note"]}})["changed"] is False
+    assert book.update(entry["entry_id"], {"source_message_uids": ["m1"], "fields": {"processing_note": processed["fields"]["processing_note"]}})["changed"] is False
     assert clock.calls == 3
 
 
 def test_gap_identification_clock_does_not_follow_rewrite_or_evidence_time():
     book = pure(Clock())
     gap = create(book, "implicit_gap")
-    revised = book.update(gap["entry_id"], {"fields": {"description": "Host remains unknown",
+    revised = book.update(gap["entry_id"], {"source_message_uids": ["m1"], "fields": {"description": "Host remains unknown",
                                                      "processing_note": "Retained because dates depend on the host"}})["entry"]
     assert revised["created_at"] == gap["created_at"]
     assert revised["updated_at"] != gap["updated_at"]
@@ -200,9 +200,9 @@ def test_gap_identification_clock_does_not_follow_rewrite_or_evidence_time():
 def test_fields_merge_arrays_replace_and_null_clears_optional_singletons():
     book = pure()
     entry = create(book, fields={**FIELDS["matter"], "domains": ["family", "travel"], "blocker": "No reply"})
-    result = book.update(entry["entry_id"], {"fields": {"domains": ["travel"], "blocker": None}})["entry"]
+    result = book.update(entry["entry_id"], {"source_message_uids": ["m1"], "fields": {"domains": ["travel"], "blocker": None}})["entry"]
     assert result["fields"] == {**FIELDS["matter"], "domains": ["travel"]}
-    assert book.update(entry["entry_id"], {"fields": {"domains": []}})["entry"]["fields"]["domains"] == []
+    assert book.update(entry["entry_id"], {"source_message_uids": ["m1"], "fields": {"domains": []}})["entry"]["fields"]["domains"] == []
     before = book.snapshot_state()
     for changes in ({}, {"fields": {"description": None}}, {"fields": {"owner": None}},
                     {"fields": {"domains": None}}, {"entry_type": "action"}, {"version_id": "999"},
@@ -236,8 +236,8 @@ def test_typed_operations_return_structured_error_guidance_without_side_effects(
     book = pure()
     entry = create(book)
     invalid_operations = [
-        lambda: book.update(entry["entry_id"], {}),
-        lambda: book.update(entry["entry_id"], {"entry_type": "question"}),
+        lambda: book.update(entry["entry_id"], {"source_message_uids": ["m1"], }),
+        lambda: book.update(entry["entry_id"], {"source_message_uids": ["m1"], "entry_type": "question"}),
         lambda: book.create("unknown", FIELDS["matter"], source_message_identities=[SOURCE]),
         lambda: book.archive(entry["entry_id"], "   "),
     ]
@@ -249,7 +249,7 @@ def test_typed_operations_return_structured_error_guidance_without_side_effects(
         assert result["success"] is False
         assert {"code", "message", "next_action"} <= result["error"].keys()
         assert book.snapshot_state() == before
-    result = book.update(entry["entry_id"], {"fields": {"blocker": "Paused while awaiting dates"}})
+    result = book.update(entry["entry_id"], {"source_message_uids": ["m1"], "fields": {"blocker": "Paused while awaiting dates"}})
     assert result["entry"]["done"] is False and result["changed"]
     assert result["entry"]["fields"]["blocker"] == "Paused while awaiting dates"
 
@@ -262,7 +262,7 @@ def test_candidates_keep_sources_in_place_map_labels_and_derive_reverse_refs():
         "notebook_refs": [matter["entry_id"], gap["entry_id"]], "source_types": ["matter", "situation"]}, sources=False)
     assert book.get(matter["entry_id"])["candidate_refs"] == [candidate["entry_id"]]
     original_source_version = matter["version_id"]
-    updated = book.update(matter["entry_id"], {"fields": {"description": "New information about the same visit"}})["entry"]
+    updated = book.update(matter["entry_id"], {"source_message_uids": ["m1"], "fields": {"description": "New information about the same visit"}})["entry"]
     assert updated["version_id"] != original_source_version
     assert book.get(candidate["entry_id"])["fields"]["notebook_refs"] == [matter["entry_id"], gap["entry_id"]]
     raw = book.snapshot_state()
@@ -272,7 +272,7 @@ def test_candidates_keep_sources_in_place_map_labels_and_derive_reverse_refs():
                    {"source_types": ["implicit_gap"]}, {"targets": ["memory", "memory"]},
                    {"notebook_refs": [candidate["entry_id"]]}):
         with pytest.raises(NotebookValidationError):
-            book.update(candidate["entry_id"], {"fields": fields})
+            book.update(candidate["entry_id"], {"source_message_uids": ["m1"], "fields": fields})
         assert book.snapshot_state() == before
     book.update(candidate["entry_id"], {"fields": {"notebook_refs": [], "source_types": []},
                                         "source_message_identities": [SOURCE]})
@@ -287,7 +287,7 @@ def test_wrong_type_dangling_self_and_duplicate_relations_are_rejected():
                       [{"kind": "related_to", "entry_id": matter["entry_id"]}],
                       [{"kind": "invalid", "entry_id": matter["entry_id"]}]):
         with pytest.raises(NotebookValidationError):
-            book.update(matter["entry_id"], {"relations": relations})
+            book.update(matter["entry_id"], {"source_message_uids": ["m1"], "relations": relations})
         assert book.snapshot_state() == before
     with pytest.raises(NotebookValidationError) as error:
         create(book, "implicit_gap", fields={**FIELDS["implicit_gap"], "situation_ref": matter["entry_id"]})
@@ -295,7 +295,7 @@ def test_wrong_type_dangling_self_and_duplicate_relations_are_rejected():
     other = create(book, "action")
     relation = {"kind": "part_of", "entry_id": matter["entry_id"]}
     with pytest.raises(NotebookValidationError):
-        book.update(other["entry_id"], {"relations": [relation, relation]})
+        book.update(other["entry_id"], {"source_message_uids": ["m1"], "relations": [relation, relation]})
 
 
 def test_archive_reports_all_referrers_and_preserves_internal_final_version():
@@ -313,7 +313,7 @@ def test_archive_reports_all_referrers_and_preserves_internal_final_version():
         gap["entry_id"], candidate["entry_id"]}
     assert book.snapshot_state() == before
     book.archive(gap["entry_id"], "No longer affects the retained situation")
-    book.update(action["entry_id"], {"relations": []})
+    book.update(action["entry_id"], {"source_message_uids": ["m1"], "relations": []})
     book.update(candidate["entry_id"], {"fields": {"notebook_refs": [], "source_types": []},
                                         "source_message_identities": [SOURCE]})
     result = book.archive(situation["entry_id"], "Necessary evidence remains in the direct-message candidate")
@@ -333,7 +333,7 @@ def test_working_operations_serialize_and_freeze_is_idempotent():
     frozen = book.freeze()
     assert book.freeze() == frozen
     with pytest.raises(NotebookValidationError) as error:
-        book.update(entries[0]["entry_id"], {"done": True})
+        book.update(entries[0]["entry_id"], {"source_message_uids": ["m1"], "done": True})
     assert error.value.code == "state_conflict"
     assert book.snapshot_state() == frozen and len(book.show()["work"]) == 16
 
@@ -346,9 +346,9 @@ def test_committed_snapshot_roundtrip_exact_versions_and_noop_writes(db):
     assert book.commit(termination=FINISH) == receipt
     again = store(db, "m2")
     before_count = version_count(db)
-    assert again.update(first["entry_id"], {"done": False})["changed"] is False
+    assert again.update(first["entry_id"], {"source_message_uids": ["m1"], "done": False})["changed"] is False
     assert version_count(db) == before_count
-    changed = again.update(first["entry_id"], {"fields": {"blocker": "Paused while awaiting dates"}})["entry"]
+    changed = again.update(first["entry_id"], {"source_message_uids": ["m1"], "fields": {"blocker": "Paused while awaiting dates"}})["entry"]
     second = again.commit(termination={"type": "forced"})
     assert second["snapshot_id"] != receipt["snapshot_id"]
     assert db.notebook_snapshot_audit(receipt["snapshot_id"])["payload"]["work"][0]["version_id"] == first["version_id"]
@@ -368,8 +368,8 @@ def test_working_view_never_reload_new_parent_pointer_and_late_commit_is_success
     entry = create(initial)
     base = initial.commit(termination=FINISH)
     older, newer = store(db, "m2"), store(db, "m3")
-    older.update(entry["entry_id"], {"fields": {"description": "Older task result"}})
-    newer.update(entry["entry_id"], {"fields": {"description": "Newer task result"}})
+    older.update(entry["entry_id"], {"source_message_uids": ["m1"], "fields": {"description": "Older task result"}})
+    newer.update(entry["entry_id"], {"source_message_uids": ["m1"], "fields": {"description": "Newer task result"}})
     effective = newer.commit(termination=FINISH)
     working = older.working_view()
     assert working["view_kind"] == "working" and "snapshot_id" not in working
@@ -403,11 +403,11 @@ def test_compaction_carry_does_not_promote_old_anchor_past_new_human_anchor(db, 
     rows = db.get_full_foreground("s")[1:]
     assert next(row["message_id"] for row in rows if row["message_uid"] == "m3") > next(
         row["message_id"] for row in rows if row["message_uid"] == "human")
-    current.update(entry["entry_id"], {"fields": {"description": "Current accepted outcome"}})
+    current.update(entry["entry_id"], {"source_message_uids": ["m1"], "fields": {"description": "Current accepted outcome"}})
     result = current.commit(termination=FINISH)
     assert result["pointer_changed"]
     assert result["effective_snapshot_id"] == result["snapshot_id"] != previous["snapshot_id"]
-    late.update(entry["entry_id"], {"fields": {"description": "Older task outcome"}})
+    late.update(entry["entry_id"], {"source_message_uids": ["m1"], "fields": {"description": "Older task outcome"}})
     late_result = late.commit(termination=FINISH)
     assert not late_result["pointer_changed"]
     assert db.notebook_snapshot_audit(late_result["snapshot_id"])
@@ -426,7 +426,7 @@ def test_fork_inherits_logical_coverage_after_parent_compaction_carries_old_uid(
                if not (row.get("display_metadata") or {}).get("human_only")]
     db.archive_and_compact("s", [{"role": "assistant", "content": "Compaction summary",
                                   "message_uid": "summary", "_compressed_summary": True}, *visible])
-    current.update(entry["entry_id"], {"fields": {"description": "Current accepted outcome"}})
+    current.update(entry["entry_id"], {"source_message_uids": ["m1"], "fields": {"description": "Current accepted outcome"}})
     current.commit(termination=FINISH)
     make(db, "branch", "s", "_branched_from")
     branch_ref = db.inherit_foreground_branch("s", "branch")
@@ -438,7 +438,7 @@ def test_fork_inherits_logical_coverage_after_parent_compaction_carries_old_uid(
     assert db.notebook_current(branch_ref)["anchor_message_uid"] == "human"
     new_row = add(db, "branch", "Branch has a new outcome", "branch-new", timestamp=500)
     branch = NotebookStore(db, branch_ref, anchor_message_uid="branch-new")
-    branch.update(entry["entry_id"], {"fields": {"description": "New branch outcome"}})
+    branch.update(entry["entry_id"], {"source_message_uids": ["m1"], "fields": {"description": "New branch outcome"}})
     assert branch.commit(termination=FINISH)["pointer_changed"]
     make(db, "nested", "branch", "_branched_from")
     nested_ref = db.inherit_foreground_branch("branch", "nested")
@@ -460,7 +460,7 @@ def test_composite_carrier_user_projection_remains_newer_coverage_and_rewinds(db
                                + "\n\nThe genuine new user request", message_uid="composite",
                                _compressed_summary=True, timestamp=400)
     current = store(db, "composite")
-    current.update(entry["entry_id"], {"fields": {"description": "Outcome from the genuine user request"}})
+    current.update(entry["entry_id"], {"source_message_uids": ["m1"], "fields": {"description": "Outcome from the genuine user request"}})
     result = current.commit(termination=FINISH)
     assert result["pointer_changed"]
     assert db.notebook_current(current.conversation_ref)["snapshot_id"] == result["snapshot_id"]
@@ -525,7 +525,7 @@ def test_insert_failure_rolls_back_without_publishing_working_state(db, monkeypa
         raise sqlite3.OperationalError("injected transaction rollback")
     monkeypatch.setattr(items, "insert_item_conn", fail_after_insert)
     with pytest.raises(sqlite3.OperationalError):
-        book.update(entry["entry_id"], {"fields": {"blocker": "Paused while awaiting dates"}})
+        book.update(entry["entry_id"], {"source_message_uids": ["m1"], "fields": {"blocker": "Paused while awaiting dates"}})
     assert version_count(db) == count and book.snapshot_state() == before
 
 
@@ -554,12 +554,12 @@ def test_inherited_sources_are_bound_to_the_same_claim_not_unrelated_new_content
     db.notebook_reselect_pointer(book.conversation_ref)
     inherited = store(db)
     assert inherited.get(entry["entry_id"])["version_id"] == entry["version_id"]
-    processed = inherited.update(entry["entry_id"], {"fields": {"processing_note": "Retained the inherited indexed claim"}})
+    processed = inherited.update(entry["entry_id"], {"source_message_uids": ["m1"], "fields": {"processing_note": "Retained the inherited indexed claim"}})
     assert processed["changed"]
     before = inherited.snapshot_state()
-    for operation in (lambda: inherited.update(entry["entry_id"], {"fields": {"description": "Unrelated claim"}}),
+    for operation in (lambda: inherited.update(entry["entry_id"], {"source_message_uids": ["m2"], "fields": {"description": "Unrelated claim"}}),
                       lambda: create(inherited, uid="m2"),
-                      lambda: inherited.update(entry["entry_id"], {"source_message_identities": [
+                      lambda: inherited.update(entry["entry_id"], {"done": True, "source_message_identities": [
                           {"conversation_ref": book.conversation_ref, "message_uid": "m3"}]})):
         with pytest.raises(NotebookValidationError) as error:
             operation()
@@ -567,20 +567,17 @@ def test_inherited_sources_are_bound_to_the_same_claim_not_unrelated_new_content
     assert inherited.commit(termination=FINISH)["pointer_changed"]
 
 
-def test_range_provenance_requires_current_known_evidence_not_just_valid_syntax(db):
+def test_range_provenance_is_retired_even_when_it_contains_current_evidence(db):
     book = store(db)
-    entry = book.create("situation", FIELDS["situation"], source_time_range=RANGE)["entry"]
-    assert entry["source_message_identities"] == []
     before = book.snapshot_state()
-    with pytest.raises(NotebookValidationError) as error:
-        book.update(entry["entry_id"], {"source_time_range": {
-            "start_time": "2000-01-01T00:00:00Z", "end_time": "2000-01-02T00:00:00Z"}})
-    assert error.value.code == "source_unavailable" and book.snapshot_state() == before
-    result = book.update(entry["entry_id"], {"source_time_range": None, "source_message_identities": [
-        {"conversation_ref": book.conversation_ref, "message_uid": "m1"}]})
-    assert result["entry"]["source_time_ranges"] == []
     with pytest.raises(NotebookValidationError):
-        book.update(entry["entry_id"], {"source_message_identities": []})
+        book.create("situation", FIELDS["situation"], source_time_range=RANGE)
+    assert book.snapshot_state() == before
+    entry = create(book)
+    before = book.snapshot_state()
+    with pytest.raises(NotebookValidationError):
+        book.update(entry["entry_id"], {"source_time_ranges": [RANGE], "done": True})
+    assert book.snapshot_state() == before
 
 
 def test_cross_conversation_and_cross_profile_sources_never_leak(db, tmp_path):
@@ -617,8 +614,8 @@ def test_fork_shares_immutable_versions_but_not_updates_or_scheduler_state(db, m
     child = NotebookStore(db, branch_ref, anchor_message_uid="m1")
     inherited = child.get(entry["entry_id"])
     assert inherited["version_id"] == entry["version_id"]
-    assert inherited["source_message_identities"] == [{"conversation_ref": branch_ref, "message_uid": "m1"}]
-    edited = child.update(entry["entry_id"], {"fields": {"blocker": "Paused while awaiting dates"}})["entry"]
+    assert inherited["provenance"] == [["m1"]]
+    edited = child.update(entry["entry_id"], {"source_message_uids": ["m1"], "fields": {"blocker": "Paused while awaiting dates"}})["entry"]
     child.commit(termination=FINISH)
     assert edited["entry_id"] == entry["entry_id"] and edited["version_id"] != entry["version_id"]
     assert db.notebook_current(parent.conversation_ref)["payload"]["work"][0]["done"] is False
@@ -697,7 +694,7 @@ def test_explicit_base_captured_before_worker_never_reloads_new_parent_pointer(d
     first_result = first.commit(termination=FINISH)
     frozen = freeze_notebook_start(db, first.conversation_ref)
     newer = store(db, "m2")
-    newer.update(original["entry_id"], {"fields": {"description": "Parent received later evidence"}})
+    newer.update(original["entry_id"], {"source_message_uids": ["m1"], "fields": {"description": "Parent received later evidence"}})
     newer.commit(termination=FINISH)
     delayed = store(db, "m1", **frozen)
     assert delayed.base_snapshot_id == first_result["snapshot_id"]

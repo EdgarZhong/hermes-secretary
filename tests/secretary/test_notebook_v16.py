@@ -29,7 +29,7 @@ def test_real_version_chain_snapshot_references_and_archive_isolation(owner):
     first = NotebookStore(db, ref, anchor_message_uid="m1")
     original = create(first); a = first.commit(termination={"type": "forced"})["snapshot_id"]
     second = NotebookStore(db, ref, anchor_message_uid="m2")
-    revised = second.update(original["entry_id"], {"fields": {"description": "revised report"}})["entry"]
+    revised = second.update(original["entry_id"], {"source_message_uids": ["m1"], "fields": {"description": "revised report"}})["entry"]
     assert revised["entry_id"] == original["entry_id"] and revised["version_id"] != original["version_id"]
     second.archive(original["entry_id"], "Delivered")
     b = second.commit(termination={"type": "forced"})["snapshot_id"]
@@ -56,14 +56,14 @@ def test_concurrent_task_versions_and_branch_keep_parent_immutable(owner):
     first.commit(termination={"type": "forced"})
     old = NotebookStore(db, ref, anchor_message_uid="m1")
     new = NotebookStore(db, ref, anchor_message_uid="m2")
-    a = old.update(item["entry_id"], {"fields": {"description": "old task"}})["entry"]
-    b = new.update(item["entry_id"], {"fields": {"description": "new task"}})["entry"]
+    a = old.update(item["entry_id"], {"source_message_uids": ["m1"], "fields": {"description": "old task"}})["entry"]
+    b = new.update(item["entry_id"], {"source_message_uids": ["m1"], "fields": {"description": "new task"}})["entry"]
     old.commit(termination={"type": "forced"}); new.commit(termination={"type": "forced"})
     assert a["entry_id"] == b["entry_id"] and a["version_id"] != b["version_id"]
     make(db, "branch", "main", "_branched_from")
     branch_ref = db.inherit_foreground_branch("main", "branch")
     branch = NotebookStore(db, branch_ref, anchor_message_uid="m2")
-    branch.update(item["entry_id"], {"fields": {"description": "branch"}})
+    branch.update(item["entry_id"], {"source_message_uids": ["m1"], "fields": {"description": "branch"}})
     branch.commit(termination={"type": "forced"})
     assert db.notebook_current(ref)["payload"]["work"] == [b]
 

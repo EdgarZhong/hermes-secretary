@@ -1,7 +1,6 @@
 """Current provenance contracts across real SDK, Main restore and frozen Noting paths."""
 
 import copy
-from datetime import datetime, timezone
 import json
 
 import pytest
@@ -52,13 +51,13 @@ def _assert_current(tools):
     for name in ("notebook_create", "notebook_update"):
         properties = by_name[name]["function"]["parameters"]["properties"]
         assert properties["done"]["type"] == "boolean" and "status" not in properties
-        assert properties["source_time_ranges"]["type"] == "array"
+        assert "source_time_ranges" not in properties
         assert "source_message_uids" in properties and "source_time_range" not in properties
 
 
 @pytest.mark.parametrize("kind", ["matter", "candidate"])
 @pytest.mark.parametrize("done", [False, True], ids=["still-unsettled", "confirmed-cancelled"])
-def test_sdk_mixed_sources_survive_create_update_receipts_snapshot_and_framework(runtime, kind, done):
+def test_sdk_task_uid_sources_survive_create_update_receipts_snapshot_and_framework(runtime, kind, done):
     parent, db, _config, state = runtime
     if done:
         from tests.secretary import test_noting_surface as surface
@@ -69,10 +68,7 @@ def test_sdk_mixed_sources_survive_create_update_receipts_snapshot_and_framework
     _assert_current(tools)
     uid = next(row["message_uid"] for row in reversed(prefix) if row["role"] == "user")
     timestamp = next(row["timestamp"] for row in db.get_messages(parent.session_id) if row["message_uid"] == uid)
-    point = datetime.fromtimestamp(timestamp, timezone.utc).isoformat()
-    start = datetime.fromtimestamp(timestamp - 60, timezone.utc).isoformat()
-    ranges = [{"start_time": start, "end_time": point}, {"start_time": point, "end_time": point}]
-    provenance = {"source_message_uids": [uid], "source_time_ranges": ranges}
+    provenance = {"source_message_uids": [uid]}
     fields = ({"description": "send report", "completion_condition": "Report sent"} if kind == "matter" else
               {"description": "Retain the report commitment", "targets": ["memory"], "notebook_refs": [], "source_types": []})
     changed_fields = {"blocker": "Awaiting review"} if kind == "matter" else {"description": "Report commitment still awaits review"}
@@ -97,24 +93,21 @@ def test_sdk_mixed_sources_survive_create_update_receipts_snapshot_and_framework
     expected_prefix = [*parent_wire["messages"], {"role": "assistant", "content": "done"}]
     assert all(wire["messages"][:len(expected_prefix)] == expected_prefix for wire in state["sent"])
     task = state["sent"][0]["messages"][len(expected_prefix)]["content"]
-    assert "Message IDs or one element of source_time_ranges is usually sufficient" in task
-    assert "Different pieces of evidence may mix Message IDs and source_time_ranges" in task
-    assert "The Candidate source restrictions below still apply" in task
-    assert "either direct Conversation evidence (Message IDs, source_time_ranges, or both) or current notebook_refs with source_types" in task
-    assert "do not mix direct and referenced provenance" in task
-    assert "Keep sources supporting retained content and add sources for new or changed claims; do not replace all sources with only the newest message." in task
+    assert "Select only the exact Message UIDs needed to support the recorded changes" in task
+    assert "Every Candidate uses exactly one source form" in task
+    assert "Later edits overwrite the supplied attribute values and this same array, preserving earlier tasks’ provenance nodes" in task
     assert "When the available evidence does not establish an action's progress, leave it unknown; done=false does not mean the work has not started." in task
     rows = db.get_messages_as_conversation(outcome.child_session_id)
     results = {row["tool_call_id"]: json.loads(row["content"]) for row in rows if row["role"] == "tool"}
     assert all(result["success"] for result in results.values())
     for name in ("create", "update"):
         entry = results[name]["entry"]
-        assert len(entry["evidence_time"]) == 3
+        assert len(entry["evidence_time"]) == 1
+        assert entry["provenance"] == [[uid]]
         assert entry["done"] is (done if name == "update" else False) and "status" not in entry
     assert results["show"]["payload"][section][0]["evidence_time"] == results["update"]["entry"]["evidence_time"]
     entry = db.notebook_current(parent._secretary_conversation_ref)["payload"][section][0]
-    assert entry["source_message_identities"][0]["message_uid"] == uid
-    assert entry["source_time_ranges"] == ranges
+    assert entry["provenance"] == [[uid]]
     assert entry["done"] is done and "status" not in entry
     if done:
         assert entry["fields"]["description"] == changed_fields["description"]

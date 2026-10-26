@@ -45,24 +45,23 @@ def create(book, **kwargs):
     return book.create("matter", FIELDS, **kwargs)["entry"]
 
 
-def test_uid_create_update_noop_clear_and_legacy_compatibility(db):
+def test_uid_create_update_noop_and_internal_identity_input(db):
     book = store(db)
     entry = create(book, source_message_uids=["anchor"])
-    assert entry["source_message_identities"] == sources(book.conversation_ref, "anchor")
+    assert entry["provenance"] == [["anchor"]]
     assert "source_message_uids" not in book.snapshot_state()["work"][0]
-    baseline = deepcopy(entry)
-    assert book.update(entry["entry_id"], {"source_message_uids": ["anchor"]})["changed"] is False
-    assert count(db) == 1 and book.get(entry["entry_id"]) == baseline
-    changed = book.update(entry["entry_id"], {"source_message_uids": ["evidence", "anchor"]})["entry"]
-    assert changed["source_message_identities"] == sources(book.conversation_ref, "evidence", "anchor")
+    assert not book.update(entry["entry_id"], {"fields": {"description": FIELDS["description"]},
+                                            "source_message_uids": ["anchor"]})["changed"]
+    assert count(db) == 1
+    changed = book.update(entry["entry_id"], {"done": True, "source_message_uids": ["evidence", "anchor"]})["entry"]
+    assert changed["provenance"] == [["evidence", "anchor"]]
     assert changed["version_id"] != entry["version_id"]
-    cleared = book.update(entry["entry_id"], {"source_message_uids": [], "source_time_range": RANGE})["entry"]
-    assert cleared["source_message_identities"] == [] and cleared["source_time_ranges"] == [RANGE]
-    assert "source_time_range" not in cleared
+    with pytest.raises(NotebookValidationError):
+        book.update(entry["entry_id"], {"done": False, "source_message_uids": [], "source_time_range": RANGE})
     old = book.create("matter", FIELDS, source_message_identities=sources(book.conversation_ref, "anchor"))["entry"]
-    assert book.update(old["entry_id"], {"source_message_identities": sources(book.conversation_ref, "evidence")})["changed"]
+    assert book.update(old["entry_id"], {"done": True, "source_message_identities": sources(book.conversation_ref, "evidence")})["changed"]
     book.commit(termination=FINISH)
-    assert db.notebook_current(book.conversation_ref)["payload"]["work"][0]["source_message_identities"] == []
+    assert db.notebook_current(book.conversation_ref)["payload"]["work"][0]["provenance"] == [["evidence", "anchor"]]
 
 
 @pytest.mark.parametrize("value", [None, "anchor", {}, 1, True, [None], [1], [True], [""], ["  "],
@@ -106,7 +105,7 @@ def test_clearing_last_provenance_and_empty_candidate_reports_local_field(db):
     entry = create(book, source_message_uids=["anchor"])
     before, versions = book.snapshot_state(), count(db)
     for invoke in (
-        lambda: book.update(entry["entry_id"], {"source_message_uids": []}),
+        lambda: book.update(entry["entry_id"], {"done": True, "source_message_uids": []}),
         lambda: book.create("candidate", {"description": "Keep visit outcome", "targets": ["memory"],
                                           "notebook_refs": [], "source_types": []}, source_message_uids=[]),
     ):
@@ -141,7 +140,7 @@ def test_projection_is_repeatable_and_storage_remains_canonical(db):
     entry = create(book, source_message_uids=["anchor", "evidence"])
     raw = book.snapshot_state()
     projected = readable_notebook_entry(entry)
-    assert projected["source_message_uids"] == ["anchor", "evidence"]
+    assert projected["provenance"] == [["anchor", "evidence"]]
     assert "source_message_identities" not in projected
     assert readable_notebook_entry(projected) == projected
     state = readable_notebook_state(raw)
@@ -150,7 +149,7 @@ def test_projection_is_repeatable_and_storage_remains_canonical(db):
     snapshot = db.notebook_current(book.conversation_ref)
     assert show_notebook(snapshot)["payload"] == state
     text = render_notebook(snapshot)
-    assert 'source_message_uids: ["anchor", "evidence"]' in text
+    assert 'provenance: [["anchor", "evidence"]]' in text
     assert "source_message_identities" not in text and book.conversation_ref not in text
     assert book.snapshot_state() == raw
 
@@ -165,8 +164,8 @@ def test_fork_shares_version_rebinds_history_and_keeps_parent_child_edits_separa
     branch = store(db, "branch")
     inherited = branch.get(original["entry_id"])
     assert inherited["version_id"] == original["version_id"] and count(db) == 1
-    assert inherited["source_message_identities"] == sources(branch_ref, "evidence")
-    assert readable_notebook_entry(inherited)["source_message_uids"] == ["evidence"]
+    assert inherited["provenance"] == [["evidence"]]
+    assert readable_notebook_entry(inherited)["provenance"] == [["evidence"]]
     for sid, ref in (("parent", parent.conversation_ref), ("branch", branch_ref)):
         agent = SimpleNamespace(_session_db=db, session_id=sid, platform="cli", _secretary_conversation_ref=ref)
         result = json.loads(conversation_history({"mode": "read", "message_identity": sources(ref, "evidence")[0],
@@ -195,8 +194,8 @@ def test_local_uid_cannot_reuse_inherited_off_path_evidence_for_new_claim(db):
     db.rewind_to_message("parent", removed)
     db.notebook_reselect_pointer(parent.conversation_ref)
     loaded = store(db)
-    assert not loaded.update(entry["entry_id"], {"source_message_uids": ["evidence"]})["changed"]
-    loaded.update(entry["entry_id"], {"fields": {"processing_note": "Checked unchanged claim"}})
+    assert not loaded.update(entry["entry_id"], {"fields": {"description": FIELDS["description"]}})["changed"]
+    loaded.update(entry["entry_id"], {"fields": {"processing_note": "Checked unchanged claim"}, "source_message_uids": ["anchor"]})
     before, versions = loaded.snapshot_state(), count(db)
     with pytest.raises(NotebookValidationError) as error:
         loaded.update(entry["entry_id"], {"fields": {"description": "New unsupported claim"},

@@ -49,9 +49,9 @@ def test_refused_operations_keep_working_and_committed_state(db):
     entry = candidate(store)
     before = store.show()
     for operation in (lambda: store.create("decision", {"description": "missing conditions"}),
-                      lambda: store.update(entry["entry_id"], {"status": "forged"}),
-                      lambda: store.update(entry["entry_id"], {"done": "forged"}),
-                      lambda: store.update(entry["entry_id"], {"fields": {"unknown_field": "x"}})):
+                      lambda: store.update(entry["entry_id"], {"source_message_uids": ["a"], "status": "forged"}),
+                      lambda: store.update(entry["entry_id"], {"source_message_uids": ["a"], "done": "forged"}),
+                      lambda: store.update(entry["entry_id"], {"source_message_uids": ["a"], "fields": {"unknown_field": "x"}})):
         with pytest.raises(NotebookValidationError):
             operation()
     assert store.show() == before and db.notebook_current(ref) is None
@@ -110,7 +110,7 @@ def test_store_continues_branch_without_changing_parent(db):
     branch_ref = db.inherit_foreground_branch("p", "b")
     add(db, "b", "branch follow-up", "b1")
     branch = NotebookStore(db, branch_ref, anchor_message_uid="b1")
-    assert branch.get(entry["entry_id"])["source_message_identities"][0]["conversation_ref"] == branch_ref
+    assert branch.get(entry["entry_id"])["provenance"] == entry["provenance"]
     new = candidate(branch, "b1", "branch-local")
     branch.commit(termination=FINISH)
     assert db.notebook_current(branch_ref)["payload"]["candidates"][-1] == new
@@ -127,8 +127,8 @@ def test_committed_offpath_claim_allows_administrative_maintenance(db):
     store.commit(termination=FINISH)
     db.rewind_to_message("s", removed)
     again = NotebookStore(db, ref, anchor_message_uid="a")
-    edited = again.update(entry["entry_id"], {"fields": {"processing_note": "Reviewed the unchanged claim"}})["entry"]
-    assert edited["source_message_identities"] == entry["source_message_identities"]
+    edited = again.update(entry["entry_id"], {"source_message_uids": ["a"], "fields": {"processing_note": "Reviewed the unchanged claim"}})["entry"]
+    assert edited["provenance"] == entry["provenance"] + [["a"]]
     again.commit(termination=FINISH)
     assert db.notebook_current(ref)["payload"]["candidates"] == [edited]
 

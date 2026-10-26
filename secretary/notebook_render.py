@@ -31,28 +31,18 @@ def readable_notebook_entry(entry, *, profile_home=None, db=None, conn=None, con
     projected.pop("archived", None)
     if db is not None and profile_home is None:
         profile_home = Path(db.db_path).parent
-    already_readable = "source_message_identities" not in projected and isinstance(projected.get("evidence_time"), list)
-    if already_readable and db is None and profile_home is None:
-        return projected
-    if not isinstance(projected.get("evidence_time"), list) or db is not None:
-        from secretary.notebook_evidence import evidence_time
-        intervals = evidence_time(entry, db=db, conn=conn, conversation_ref=conversation_ref, state=state)
-        projected["evidence_time"] = [_display_interval(interval, profile_home, point=True) for interval in intervals]
-    else:
-        projected["evidence_time"] = [_display_time(item, profile_home) if isinstance(item, str) else
-                                      _display_interval(item, profile_home, point=True)
-                                      for item in projected["evidence_time"]]
-    if "source_message_identities" in projected:
-        projected["source_message_uids"] = [
-            source["message_uid"] for source in projected.pop("source_message_identities")
-        ]
+    from secretary.notebook_evidence import evidence_time
+    intervals = evidence_time(entry, db=db, conn=conn, conversation_ref=conversation_ref, state=state)
+    projected["evidence_time"] = [None if interval is None else
+                                  _display_time(interval, profile_home) if isinstance(interval, str) else
+                                  _display_interval(interval, profile_home, point=True) for interval in intervals]
+    projected.pop("provenance_tasks", None)
+    projected.pop("write_task_id", None)
     for key in ("created_at", "updated_at", "last_processed_at"):
         if key in projected:
             projected[key] = _display_time(projected[key], profile_home)
     for key in EVIDENCE_TIMES & projected["fields"].keys():
         projected["fields"][key] = _display_time(projected["fields"][key], profile_home)
-    projected["source_time_ranges"] = [_display_interval(interval, profile_home)
-                                       for interval in projected.get("source_time_ranges", [])]
     return projected
 
 
@@ -72,7 +62,7 @@ def model_notebook_data(value):
     """
     if isinstance(value, dict):
         return {key: deepcopy(item) if key == "fields" else model_notebook_data(item)
-                for key, item in value.items() if key != "version_id" or "entry_id" not in value}
+                for key, item in value.items() if key not in {"provenance_tasks", "write_task_id"} and (key != "version_id" or "entry_id" not in value)}
     if isinstance(value, list):
         return [model_notebook_data(item) for item in value]
     return value
@@ -164,7 +154,7 @@ def _render_entry(entry):
     for name, value in entry["fields"].items():
         rendered = value if isinstance(value, str) else json.dumps(value, ensure_ascii=False)
         lines.append(f"  {name}: {rendered}")
-    for name in ("relations", "source_message_uids", "source_time_ranges", "evidence_time", "schedule_suggestion", "candidate_refs",
+    for name in ("relations", "provenance", "evidence_time", "schedule_suggestion", "candidate_refs",
                  "created_at", "updated_at", "last_processed_at"):
         lines.append(f"  {name}: {json.dumps(entry.get(name), ensure_ascii=False)}")
     return lines

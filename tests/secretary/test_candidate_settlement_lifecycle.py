@@ -111,13 +111,11 @@ def runtime(tmp_path, monkeypatch):
     db.close()
 
 
-def _seed(runtime, *, two=False, shared=False, ranged=False, corrected=False, outcome="success"):
+def _seed(runtime, *, two=False, shared=False, early_anchor=False, corrected=False, outcome="success"):
     db = runtime.db
     ref = db.resolve_conversation_ref("parent")
-    store = NotebookStore(db, ref, anchor_message_uid="stable-anchor" if ranged else "correction")
-    source_args = ({"source_time_range": {"start_time": "1970-01-01T00:01:40+00:00",
-                                         "end_time": "1970-01-01T00:01:40+00:00"}}
-                   if ranged else {"source_message_uids": ["origin-a"]})
+    store = NotebookStore(db, ref, anchor_message_uid="stable-anchor" if early_anchor else "correction")
+    source_args = {"source_message_uids": ["origin-a"]}
     first = store.create("matter", {"description": "I prefer quiet museums.",
                                    "completion_condition": "Preference recorded"}, **source_args)["entry"]
     sources = [first]
@@ -147,7 +145,7 @@ def _seed(runtime, *, two=False, shared=False, ranged=False, corrected=False, ou
     store.commit(termination={"type": "finish_noting", "reason": "Prior indexed evidence"})
     proposal = {"candidate": candidate["entry_id"], "destination": "synthetic-space",
                 "sources": [{"entry_id": entry["entry_id"], "content_scope": entry["fields"]["description"],
-                             "source_message_uids": [source["message_uid"] for source in entry["source_message_identities"]]}
+                             "provenance": entry["provenance"]}
                             for entry in [first] + sources[1:]]}
     db.append_message("parent", "assistant", "Proposal " + json.dumps(proposal),
                       message_uid="proposal", timestamp=200)
@@ -222,7 +220,7 @@ def _archive(entry, reason):
 def _convert(candidate, uids):
     return _maintain({"action": "update", "entry_id": candidate["entry_id"], "changes": {
         "fields": {"notebook_refs": [], "source_types": []},
-        "source_message_uids": uids, "source_time_ranges": [],
+        "source_message_uids": uids,
     }})
 
 
@@ -253,8 +251,7 @@ def test_last_ref_conversion_keeps_evidence_then_archives_source_before_candidat
     assert converted["done"] is False
     assert converted["fields"]["stage_evidence"] == seeded.candidate["fields"]["stage_evidence"]
     assert converted["fields"]["description"] == seeded.candidate["fields"]["description"]
-    assert converted["source_message_uids"] == ["origin-a"]
-    assert converted["source_time_ranges"] == []
+    assert converted["provenance"] == [["origin-a"]]
     during = script.results["s02-3"]["payload"]
     assert len(during["work"]) == len(during["candidates"]) == 1
     assert during["candidates"][0]["fields"]["notebook_refs"] == []
@@ -284,7 +281,7 @@ def test_partial_multiple_sources_preserves_unwritten_responsibility_and_ref_for
     assert [entry["entry_id"] for entry in payload["work"]] == [remaining["entry_id"]]
     candidate = payload["candidates"][0]
     assert candidate["fields"]["notebook_refs"] == [remaining["entry_id"]]
-    assert candidate["source_message_identities"] == []
+    assert candidate["provenance"] == []
     assert candidate["done"] is False
     assert candidate["fields"]["stage_evidence"] == seeded.candidate["fields"]["stage_evidence"]
     assert payload["work"][0]["done"] is False
@@ -296,6 +293,7 @@ def test_shared_source_is_retained_before_settled_candidate_closes_without_conve
     script = _ProviderScript([
         _maintain({"action": "update", "entry_id": seeded.sources[0]["entry_id"], "changes": {
             "fields": {"processing_note": "Retain full body for the other unapproved Candidate"},
+            "source_message_uids": ["origin-a", "actual-result"],
         }}),
         _archive(seeded.candidate, "This approved write settled; shared source retained"), _finish(),
     ])
@@ -323,7 +321,7 @@ def test_later_source_correction_is_not_covered_by_approval_of_older_version(run
     retained = _payload(runtime)["work"][0]
     assert retained["fields"]["description"] == "Booking still needs follow-up until Friday."
     assert retained["done"] is False
-    assert [source["message_uid"] for source in retained["source_message_identities"]] == ["correction"]
+    assert retained["provenance"] == seeded.sources[0]["provenance"] + [["correction"]]
     assert not _payload(runtime)["candidates"]
 
 
@@ -339,8 +337,8 @@ def test_unconfirmed_destination_outcome_preserves_candidate_and_source(runtime,
     assert _payload(runtime)["candidates"][0]["version_id"] == seeded.candidate["version_id"]
 
 
-def test_missing_exact_message_rejects_conversion_without_losing_time_range_source(runtime):
-    seeded = _seed(runtime, ranged=True)
+def test_missing_exact_message_rejects_conversion_without_losing_prior_source_node(runtime):
+    seeded = _seed(runtime, early_anchor=True)
     removed = runtime.db._read_one("SELECT id FROM messages WHERE message_uid='origin-a'")[0]
     runtime.db.rewind_to_message("parent", removed)
     runtime.db.notebook_reselect_pointer(seeded.ref)
@@ -358,7 +356,7 @@ def test_missing_exact_message_rejects_conversion_without_losing_time_range_sour
     assert script.results["s02-0"]["error"]["code"] == "source_unavailable"
     assert script.results["s02-1"]["error"]["code"] == "source_unavailable"
     assert script.results["s02-2"]["error"]["code"] == "invalid_reference"
-    assert _payload(runtime)["work"][0]["source_time_ranges"] == seeded.sources[0]["source_time_ranges"]
+    assert _payload(runtime)["work"][0]["provenance"] == seeded.sources[0]["provenance"]
     assert _payload(runtime)["candidates"][0]["version_id"] == seeded.candidate["version_id"]
 
 
@@ -383,7 +381,7 @@ def test_forced_commit_after_conversion_is_recoverable_from_visible_state_and_hi
         shown = script.results["s02-0"]["payload"]
         pending = shown["candidates"][0]
         assert pending["fields"]["notebook_refs"] == []
-        uids = pending["source_message_uids"]
+        uids = [uid for group in pending["provenance"] for uid in group]
         history = script.results["s02-1"]["messages"]
         contents = "\n".join(str(row.get("content", "")) for row in history)
         assert "Approve this museum preference only" in contents
@@ -393,9 +391,9 @@ def test_forced_commit_after_conversion_is_recoverable_from_visible_state_and_hi
         original = script.results["s02-2"]["messages"][0]
         assert original["message_uid"] == uids[0]
         assert original["content"] == "I prefer quiet museums."
-        source = next(entry for entry in shown["work"] if entry["source_message_uids"] == uids and any(
+        source = next(entry for entry in shown["work"] if entry["provenance"] == pending["provenance"] and any(
             reference["entry_id"] == entry["entry_id"] and reference["content_scope"] == entry["fields"]["description"]
-            and reference["source_message_uids"] == uids for reference in source_refs))
+            and reference["provenance"] == pending["provenance"] for reference in source_refs))
         assert "version_id" not in source
         assert pending["fields"]["description"] == "Record museum preference"
         recovered.update(source=source, candidate=pending)
@@ -406,11 +404,11 @@ def test_forced_commit_after_conversion_is_recoverable_from_visible_state_and_hi
         ("notebook_show", {}),
         ("conversation_history", {"mode": "read", "message_identity": {
             "conversation_ref": reopened.resolve_conversation_ref("parent"), "message_uid": "actual-result"},
-            "before": 4, "after": 0, "include_tool_content": True}),
+            "before": 4, "after": 0, "include_tool_content": True, "include_auxiliary": True}),
         ("conversation_history", lambda script: {
             "mode": "read", "message_identity": {
                 "conversation_ref": script.results["s02-0"]["conversation_ref"],
-                "message_uid": script.results["s02-0"]["payload"]["candidates"][0]["source_message_uids"][0]},
+                "message_uid": script.results["s02-0"]["payload"]["candidates"][0]["provenance"][0][0]},
             "before": 0, "after": 0}),
         ("notebook_archive", lambda script: {key: value for key, value in recover_from_visible(script).items() if key != "action"}),
         ("notebook_archive", lambda script: {

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from datetime import datetime
 from typing import Any
 
 HUMAN = "human"
@@ -59,16 +60,9 @@ _SYNTHETIC_DISPLAY_KINDS = frozenset({
 _HUMAN_DISPLAY_KINDS = frozenset({"", "steer"})
 SYNTHETIC_DISPLAY_KINDS = _SYNTHETIC_DISPLAY_KINDS
 
-# Wrapper tags emitted by the runtime before a carrier is persisted.  The
-# durable wrapper is the fallback witness for historical rows that predate the
-# explicit display_metadata origin stamp.
-_WRAPPER_SOURCES = (
-    ("<framework-message>", "framework:framework_message"),
-    ("<instant-reminder>", "framework:instant_reminder"),
-    ("<deferred-reminder>", "framework:deferred_reminder"),
-    ("<noting-task>", "framework:noting_task"),
-    ("[CONTEXT COMPACTION", "framework:compaction"),
-)
+# Legacy text by itself is not a provenance stamp: people may quote any
+# wrapper. Persisted admission receipts or exact native producer framing can
+# enrich the source before this pure classifier is called.
 _NOTEBOOK_TEXT_MARKERS = ("CURRENT NOTEBOOK SNAPSHOT", "NOTING RESULT")
 
 
@@ -99,6 +93,26 @@ def message_provenance(row: Any) -> tuple[str, str]:
     if not isinstance(row, dict):
         return FRAMEWORK, "framework:unknown"
     role = row.get("role")
+    if row.get("is_compaction") and row.get("projection_kind") in {"compaction", "system_context"}:
+        return FRAMEWORK, "framework:compaction"
+    metadata = row.get("display_metadata")
+    if not isinstance(metadata, dict):
+        metadata = {}
+    origin = metadata.get("origin")
+    display_kind = row.get("display_kind")
+    # Runtime provenance outranks the native provider role, including assistant
+    # and user carriers. Plain user text mentioning Notebook is never a stamp.
+    if origin or metadata.get("noting_run_output") or metadata.get("noting_snapshot_id"):
+        if origin == NOTEBOOK or metadata.get("noting_run_output") or metadata.get("noting_snapshot_id"):
+            return NOTEBOOK, "notebook:noting_result"
+        return FRAMEWORK, "framework:" + str(metadata.get("producer") or origin)
+    if display_kind and display_kind not in _HUMAN_DISPLAY_KINDS:
+        if _notebook_body(row, metadata):
+            return NOTEBOOK, "notebook:noting_result"
+        detail = metadata.get("producer") or display_kind
+        if display_kind not in _SYNTHETIC_DISPLAY_KINDS:
+            detail = "unknown:" + str(display_kind)
+        return FRAMEWORK, "framework:" + str(detail)
     if role == "tool":
         return TOOL, f"tool:{_tool_name(row)}"
     if role == "assistant":
@@ -106,45 +120,115 @@ def message_provenance(row: Any) -> tuple[str, str]:
     if role == "system":
         return SYSTEM, "system"
     if role != "user":
-        label = role if isinstance(role, str) and role else "unknown"
-        return FRAMEWORK, f"framework:{label}"
-
-    metadata = row.get("display_metadata")
-    if not isinstance(metadata, dict):
-        metadata = {}
-
-    if _notebook_body(row, metadata):
-        return NOTEBOOK, "notebook:noting_result"
-
-    origin = metadata.get("origin")
-    if isinstance(origin, str) and origin.strip():
-        producer = metadata.get("producer")
-        detail = producer if isinstance(producer, str) and producer.strip() else origin.strip()
-        if origin.strip() == NOTEBOOK:
-            return NOTEBOOK, f"notebook:{detail}"
-        return FRAMEWORK, f"framework:{detail}"
-
-    display_kind = row.get("display_kind")
-    if isinstance(display_kind, str) and display_kind.strip():
-        kind = display_kind.strip()
-        if kind in _HUMAN_DISPLAY_KINDS:
-            return HUMAN, "human"
-        producer = metadata.get("producer")
-        detail = producer if isinstance(producer, str) and producer.strip() else kind
-        if kind == "process_complete":
-            # The body marker above already caught Notebook results; this is a
-            # framework carrier such as a reminder or an external notice.
-            return FRAMEWORK, f"framework:{detail}"
-        if kind in _SYNTHETIC_DISPLAY_KINDS:
-            return FRAMEWORK, f"framework:{detail}"
-        return FRAMEWORK, f"framework:unknown:{kind}"
-
-    content = row.get("content")
-    if isinstance(content, str):
-        for prefix, source in _WRAPPER_SOURCES:
-            if content.startswith(prefix):
-                return FRAMEWORK, source
+        return FRAMEWORK, "framework:" + str(role or "unknown")
     return HUMAN, "human"
+
+
+def instant_carrier(conn, row):
+    """Exact native admission proof, bound to the physical source's owner.
+
+    Never look up a receipt by UID alone or by the caller's Conversation. A
+    branch keeps the original row/session owner; a foreign identical UID/body
+    or a changed same-owner body cannot borrow this proof.
+    """
+    if not isinstance(row.get("content"), str):
+        return False
+    return conn.execute(
+        "SELECT 1 FROM secretary_pending_reminders p "
+        "JOIN secretary_session_bindings b ON b.conversation_ref=p.conversation_ref "
+        "JOIN messages m ON m.session_id=b.session_id "
+        "WHERE m.id=? AND m.session_id=? AND m.message_uid=? AND m.content=? AND m.role='user' "
+        "AND p.carrier_message_uid=m.message_uid AND p.carrier_content=m.content "
+        "AND (p.origin_instant=1 OR p.delivery_semantics='user_reminder') LIMIT 1",
+        (row.get("id"), row.get("session_id"), row.get("message_uid"), row.get("content")),
+    ).fetchone() is not None
+
+
+# Exact secretary/heartbeat.py producer before 351770eaeb1bdbfb7d4761ec1afbc84cbb91713c.
+# Keep the complete historical instruction, rather than matching its keywords.
+_LEGACY_HEARTBEAT_INSTRUCTION = (
+    "Check what you can do: attend to the user's current state, remind the user of relevant matters, "
+    "delegate agent tasks and verify their results, register schedules (do not rely on heartbeat), "
+    "and follow up on anything else that needs attention.\n"
+    "Finish by replying with HEARTBEAT_OVER."
+)
+
+
+def _legacy_heartbeat(content, timestamp):
+    """Recognize the complete native producer, never arbitrary heartbeat words."""
+    from secretary.heartbeat import HEARTBEAT_INSTRUCTION
+
+    if not isinstance(content, str):
+        return False
+    opening, closing = "<heartbeat>\n", "\n</heartbeat>"
+    if not content.startswith(opening) or not content.endswith(closing):
+        return False
+    stamp, separator, body = content[len(opening):-len(closing)].partition("\n")
+    if not separator or not stamp.startswith("<timestamp>") or not stamp.endswith("</timestamp>"):
+        return False
+    try:
+        instant = datetime.fromisoformat(stamp[len("<timestamp>"):-len("</timestamp>")].replace("Z", "+00:00"))
+        if instant.tzinfo is None or abs(instant.timestamp() - float(timestamp)) >= 1:
+            return False
+    except (TypeError, ValueError, OverflowError, OSError):
+        return False
+    instructions = (HEARTBEAT_INSTRUCTION, _LEGACY_HEARTBEAT_INSTRUCTION)
+    return any(body == instruction or body.startswith(instruction + "\n\nAdditional prompt:\n")
+               for instruction in instructions)
+
+
+def _native_reminder_origin(conn, row):
+    if not isinstance(row.get("content"), str):
+        return None
+    if instant_carrier(conn, row):
+        return "instant_reminder"
+    found = conn.execute(
+        "SELECT 1 FROM secretary_pending_reminders p "
+        "JOIN secretary_session_bindings b ON b.conversation_ref=p.conversation_ref "
+        "JOIN messages m ON m.session_id=b.session_id "
+        "WHERE m.id=? AND m.session_id=? AND m.message_uid=? AND m.content=? AND m.role='user' "
+        "AND p.carrier_message_uid=m.message_uid AND p.carrier_content=m.content LIMIT 1",
+        (row.get("id"), row.get("session_id"), row.get("message_uid"), row.get("content")),
+    ).fetchone()
+    return "deferred_reminder" if found is not None else None
+
+
+def enrich_message_source(db, conn, row, *, content_decoded=False):
+    """Decode a real source and add read-only runtime provenance evidence.
+
+    Existing trusted metadata wins. Steer is the native human-source witness,
+    so its quoted wrapper is never reinterpreted as an autonomous admission.
+    """
+    result = dict(row)
+    if not content_decoded and isinstance(result.get("content"), str):
+        result["content"] = db._decode_content(result["content"])
+    metadata = result.get("display_metadata")
+    if isinstance(metadata, str):
+        metadata = json.loads(metadata)
+    result["display_metadata"] = dict(metadata) if isinstance(metadata, dict) else {}
+    if message_provenance(result)[0] != HUMAN or result.get("display_kind") == "steer":
+        return result
+    # Query against the exact raw source bytes, not the decoded/projected view.
+    origin = _native_reminder_origin(conn, row)
+    if origin is None and _legacy_heartbeat(result.get("content"), result.get("timestamp")):
+        origin = "heartbeat"
+    if origin is not None:
+        result["display_metadata"].update(origin="framework", producer=origin)
+    return result
+
+
+def semantic_role(row: Any) -> str:
+    """Public role of the evidence, independent of the provider storage role."""
+    kind, _ = message_provenance(row)
+    if kind == HUMAN:
+        return "user"
+    if kind == ASSISTANT:
+        if normalize_tool_calls(row.get("tool_calls")) and not content_text(row.get("content")).strip():
+            return "tools"
+        return "assistant"
+    if kind == TOOL:
+        return "tools"
+    return "system"
 
 
 def content_text(content: Any) -> str:

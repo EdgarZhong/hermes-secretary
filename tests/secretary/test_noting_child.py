@@ -469,7 +469,7 @@ def test_semantic_control_is_noting_only_and_rejects_forgery(parent, db, stub_cl
         made = json.loads(child._invoke_tool("notebook_create", args, "child"))
         assert made["success"]
         uid = made["entry"]["entry_id"]
-        updated = json.loads(child._invoke_tool("notebook_update", {"entry_id": uid, "fields": {"description": "updated report"}}, "update"))
+        updated = json.loads(child._invoke_tool("notebook_update", {"entry_id": uid, "fields": {"description": "updated report"}, "source_message_uids": ["m1"]}, "update"))
         assert updated["success"] and updated["entry"]["entry_id"] == uid
         state = child._noting_notebook_store.show()
         for invalid in [dict(args, payload_json=empty_state()), dict(args, fields={"description": "x", "next_due_at": 123}),

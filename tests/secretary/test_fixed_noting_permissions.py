@@ -207,6 +207,7 @@ def test_real_runner_uses_all_six_tools_finishes_and_keeps_parent_prefix(runtime
         [call("notebook_create", {"entry_type": "matter", "fields": {
             "description": "send report", "completion_condition": "Report sent"}, "source_message_uids": [user_uid]}, "create")],
         lambda payload: [call("notebook_update", {"entry_id": result_entry(payload, "create")["entry_id"], "fields": {"blocker": "Awaiting review"},
+            "source_message_uids": [user_uid],
             "schedule_suggestion": {"content": "Follow up on the report after review; the report is still waiting for reviewer acceptance.",
                                     "schedule": "after the reviewer responds"}}, "update")],
         [call("notebook_create", {"entry_type": "matter", "fields": {
@@ -492,7 +493,6 @@ def test_update_explicit_nonnullable_null_preserves_existing_entry(runtime, fiel
 
 
 def test_omitted_defaults_empty_relations_and_approved_null_clears_remain_legal(runtime):
-    from datetime import datetime, timezone
     parent, db, _config, _state = runtime
     child = bound_child(parent)
     try:
@@ -503,26 +503,24 @@ def test_omitted_defaults_empty_relations_and_approved_null_clears_remain_legal(
         assert "status" not in created["entry"]
         empty_relations = json.loads(child._invoke_tool("notebook_create", {**args, "relations": [],
             "fields": {**args["fields"], "blocker": None},
-            "schedule_suggestion": None, "source_time_ranges": []}, "empty-relations"))
+            "schedule_suggestion": None}, "empty-relations"))
         assert empty_relations["success"] and empty_relations["entry"]["relations"] == []
         assert empty_relations["entry"].get("schedule_suggestion") is None
-        instant = datetime.fromtimestamp(next(row["timestamp"] for row in parent._session_messages
-            if row["role"] == "user"), timezone.utc).isoformat()
         entry_id = created["entry"]["entry_id"]
         changed = json.loads(child._invoke_tool("notebook_update", {"entry_id": entry_id,
             "fields": {"blocker": "Awaiting review"}, "relations": [],
-            "source_time_ranges": [{"start_time": instant, "end_time": instant}],
+            "source_message_uids": args["source_message_uids"],
             "schedule_suggestion": {"content": "Review the report once feedback arrives.",
                                     "schedule": "after reviewer feedback"}}, "populate"))
         assert changed["success"]
         cleared = json.loads(child._invoke_tool("notebook_update", {"entry_id": entry_id,
             "fields": {"blocker": None}, "relations": [],
-            "schedule_suggestion": None, "source_time_ranges": []}, "clear"))
+            "source_message_uids": args["source_message_uids"], "schedule_suggestion": None}, "clear"))
         assert cleared["success"] and cleared["changed"]
         entry = cleared["entry"]
         assert "blocker" not in entry["fields"]
-        assert entry["relations"] == [] and entry.get("schedule_suggestion") is None and entry["source_time_ranges"] == []
-        assert entry["source_message_uids"] == args["source_message_uids"]
+        assert entry["relations"] == [] and entry.get("schedule_suggestion") is None
+        assert entry["provenance"] == [args["source_message_uids"]]
     finally:
         child.close()
 

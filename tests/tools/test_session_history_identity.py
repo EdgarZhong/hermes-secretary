@@ -56,15 +56,28 @@ def test_registered_identity_read_survives_repeated_compaction_and_returns_later
                                         {"role": "assistant", "content": "later correction", "message_uid": "correction", "timestamp": 200}],
                                tail_count=1)
     result = invoke(db, {"mode": "read", "message_identity": identity, "before": 0, "after": 2})
-    assert result["success"] and [r["content"] for r in result["messages"]] == ["candidate source", "recorded event", "later correction"]
-    assert len({r["message_uid"] for r in result["messages"]}) == 3
+    assert result["success"] and [r["content"] for r in result["messages"]] == ["candidate source", "later correction"]
+    auxiliary = invoke(db, {"mode": "read", "message_identity": identity, "before": 0, "after": 10,
+                            "include_auxiliary": True})
+    assert auxiliary["success"]
+    original_rows = [r for r in auxiliary["messages"] if r["message_uid"] in {"source", "event", "correction"}]
+    assert [r["content"] for r in original_rows] == ["candidate source", "recorded event", "later correction"]
+    assert [r["role"] for r in original_rows] == ["user", "system", "assistant"]
+    boundaries = [r for r in auxiliary["messages"] if r["message_uid"].startswith("boundary-")]
+    assert {r["message_uid"] for r in boundaries} == {"boundary-0", "boundary-1"}
+    assert all(r["role"] == "system" for r in boundaries)
+    assert len({r["message_uid"] for r in result["messages"]}) == 2
+    assert len({r["message_uid"] for r in auxiliary["messages"]}) == 5
     precise = invoke(db, {"mode": "read", "message_id": original, "before": 0, "after": 0})
     assert precise["error"]["code"] == "legacy_tool_removed"
     assert all(set(row) == {"message_uid", "timestamp", "role", "kind", "source", "content"}
                for row in result["messages"])
     assert not invoke(db, {"mode": "read", "message_identity": identity, "roles": ["system"]})["success"]
     filtered = invoke(db, {"mode": "read", "roles": ["system"], "start_time": "125", "end_time": "175"})
-    assert [r["content"] for r in filtered["messages"]] == ["recorded event"]
+    assert filtered["messages"] == []
+    filtered_auxiliary = invoke(db, {"mode": "read", "roles": ["system"], "start_time": "125",
+                                     "end_time": "175", "include_auxiliary": True})
+    assert [r["content"] for r in filtered_auxiliary["messages"]] == ["recorded event"]
     assert invoke(db, {"mode": "search", "query": "root secret"})["returned"] == 0
     assert invoke(db, {"mode": "search", "query": "scaffold"})["returned"] == 0
 

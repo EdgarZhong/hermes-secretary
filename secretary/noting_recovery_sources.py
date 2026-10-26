@@ -51,44 +51,82 @@ def _control_data(messages):
     raise NotingRecoveryError("Missing failed child initial CURRENT NOTING CONTROL working_notebook")
 
 
-def _restore_entry(conn, ref, entry):
-    version = entry.get("version_id") if isinstance(entry, dict) else None
-    try:
-        row = item_row_conn(conn, version)
-        require_item_owner(conn, row, ref)
-        return item_entry(row, ref)
-    except ValueError as exc:
-        raise NotingRecoveryError(f"Missing owned immutable Notebook version: {version}") from exc
+def _receipt_body(entry):
+    """Only immutable item content identifies a receipt; reverse refs are derived."""
+    from secretary.notebook_render import model_notebook_data
+    return {key: value for key, value in model_notebook_data(entry).items() if key != "candidate_refs"}
 
 
-def _working_state(conn, ref, messages, initial):
-    state = {section: [] for section in SECTIONS}
-    for section in SECTIONS:
-        for entry in initial.get(section, []):
-            state[section].append(_restore_entry(conn, ref, entry))
-    # Successful tool results are receipts of already-persisted versions. Never
-    # replay maintain, which would allocate new identities and operation times.
+def _restore_entry(db, conn, ref, entry, task_id, state):
+    from secretary.notebook_render import readable_notebook_entry
+    if not isinstance(entry, dict) or not isinstance(entry.get("entry_id"), str):
+        raise NotingRecoveryError("Missing successful Notebook receipt identity")
+    matches = []
+    for row in conn.execute("SELECT * FROM secretary_notebook_item WHERE lineage_id=?", (entry["entry_id"],)):
+        try:
+            require_item_owner(conn, row, ref)
+        except ValueError:
+            continue
+        restored = item_entry(row, ref)
+        if restored.get("write_task_id") != task_id:
+            continue
+        projected = readable_notebook_entry(restored, db=db, conn=conn, conversation_ref=ref, state=state)
+        if _receipt_body(projected) == _receipt_body(entry):
+            matches.append(restored)
+    if len(matches) != 1:
+        raise NotingRecoveryError("Missing or ambiguous owned immutable Notebook receipt")
+    return matches[0]
+
+
+def _restore_archive(conn, ref, entry, task_id, reason):
+    """Recover the final archived item, preserving its Snapshot audit reference."""
+    expected = copy.deepcopy(entry)
+    expected["archived"] = True
+    expected["fields"]["processing_note"] = reason
+    metadata = {"version_id", "updated_at", "last_processed_at", "write_task_id"}
+    expected = {key: value for key, value in expected.items() if key not in metadata}
+    matches = []
+    for row in conn.execute("SELECT * FROM secretary_notebook_item WHERE lineage_id=? AND archived=1", (entry["entry_id"],)):
+        try:
+            require_item_owner(conn, row, ref)
+        except ValueError:
+            continue
+        candidate = item_entry(row, ref)
+        if candidate.get("write_task_id") == task_id and {
+                key: value for key, value in candidate.items() if key not in metadata} == expected:
+            matches.append(candidate)
+    if len(matches) != 1:
+        raise NotingRecoveryError("Missing or ambiguous owned final archived Notebook item")
+    return matches[0]
+
+
+def _working_state(db, conn, ref, messages, initial, task_id, base):
+    if base is None:
+        state = {section: [] for section in SECTIONS}
+    else:
+        state = db.notebook_snapshot_audit_conn(conn, base)["payload"]
     calls = {}
     for message in messages:
         if message.get("role") == "assistant":
-            calls.update({call.get("id"): call.get("function", {}).get("name")
+            calls.update({call.get("id"): call.get("function", {})
                           for call in message.get("tool_calls", []) if isinstance(call, dict)})
-        if (message.get("role") != "tool" or
-                (message.get("tool_name") or calls.get(message.get("tool_call_id"))) not in {"notebook_maintain", "notebook_create", "notebook_update", "notebook_archive"}):
+        call = calls.get(message.get("tool_call_id"), {})
+        tool = message.get("tool_name") or call.get("name")
+        if message.get("role") != "tool" or tool not in {"notebook_create", "notebook_update", "notebook_archive"}:
             continue
         result = decoded(message.get("content"), {})
         if not isinstance(result, dict) or result.get("success") is not True:
             continue
         if result.get("archived") is True and result.get("entry_id"):
+            arguments = decoded(call.get("arguments"), {})
             for section in SECTIONS:
-                state[section] = [entry for entry in state[section] if entry["entry_id"] != result["entry_id"]]
+                state[section] = [_restore_archive(conn, ref, entry, task_id, arguments.get("reason"))
+                                  if entry["entry_id"] == result["entry_id"] else entry for entry in state[section]]
         receipts = list(result.get("updated_entries", []))
-        if isinstance(result.get("entry"), dict):
+        if isinstance(result.get("entry"), dict) and result.get("changed") is not False:
             receipts.append(result["entry"])
         for entry in receipts:
-            if not isinstance(entry, dict) or not entry.get("version_id"):
-                continue
-            restored = _restore_entry(conn, ref, entry)
+            restored = _restore_entry(db, conn, ref, entry, task_id, state)
             section = section_for_type(restored["entry_type"])
             entries = state[section]
             index = next((i for i, old in enumerate(entries) if old["entry_id"] == restored["entry_id"]), None)
@@ -96,7 +134,6 @@ def _working_state(conn, ref, messages, initial):
                 entries.append(restored)
             else:
                 entries[index] = restored
-
     return state
 
 
@@ -162,12 +199,23 @@ def _base_snapshot(db, conn, ref, admitted_at, data):
         snapshot = db.notebook_snapshot_audit_conn(conn, explicit)
         if snapshot and snapshot["conversation_ref"] == ref:
             return explicit
-    initial_ids = [entry["version_id"] for section in SECTIONS for entry in data["working_notebook"].get(section, [])]
+    from secretary.notebook_render import model_notebook_data, readable_notebook_state
+    initial = data["working_notebook"]
+    matched = {}
     for row in conn.execute("SELECT snapshot_id,payload_json FROM secretary_notebook_snapshots "
                             "WHERE conversation_ref=? AND created_at<=? ORDER BY created_at DESC,rowid DESC", (ref, admitted_at)):
-        if decoded(row["payload_json"]) == initial_ids:
-            return row["snapshot_id"]
-    return None  # Complete reconstructed work does not require a surviving base pointer.
+        snapshot = db.notebook_snapshot_audit_conn(conn, row["snapshot_id"])
+        projected = model_notebook_data(readable_notebook_state(
+            snapshot["payload"], db=db, conn=conn, conversation_ref=ref))
+        if projected == initial:
+            matched.setdefault(row["payload_json"], row["snapshot_id"])
+    if len(matched) > 1:
+        raise NotingRecoveryError("Ambiguous original immutable Snapshot for initial Notebook")
+    if matched:
+        return next(iter(matched.values()))
+    if any(initial.get(section) for section in SECTIONS):
+        raise NotingRecoveryError("Missing original immutable Snapshot for nonempty initial Notebook")
+    return None
 
 
 def _find_admission(db, conn, ref, failed, messages, data):
@@ -231,8 +279,9 @@ def reconstruct_noting(db, conversation_ref, failed_child_session_id):
         if not isinstance(root, str):
             raise NotingRecoveryError("Missing failed child and original parent root system prompt")
         tools, tool_source = _tools(db, conn, failed, conversation_ref, admission["admitted_at"], data, root)
-        working = _working_state(conn, conversation_ref, messages, data["working_notebook"])
         base = _base_snapshot(db, conn, conversation_ref, admission["admitted_at"], data)
+        working = _working_state(db, conn, conversation_ref, messages, data["working_notebook"],
+                                 str(admission["admission_id"]), base)
     suffix = copy.deepcopy(messages)
     for message in suffix:
         # The new durable child owns its replay suffix; original rows stay intact.

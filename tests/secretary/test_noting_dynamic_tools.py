@@ -105,7 +105,7 @@ def test_maintain_history_show_continuation_finish_keep_fixed_top_level_tools(ki
     assert parent._session_messages[:len(before)] == before
     current = database.notebook_current(parent._secretary_conversation_ref)
     assert current["payload"]["work"][0]["fields"]["description"] == "Arrange the visit"
-    assert current["payload"]["work"][0]["source_message_identities"][0]["message_uid"] == "m1"
+    assert current["payload"]["work"][0]["provenance"] == [["m1"]]
     durable = database.get_messages_as_conversation(outcome.child_session_id)
     tool_results = [json.loads(row["content"]) for row in durable if row["role"] == "tool"]
     assert len(tool_results) == 4 and all(result["success"] for result in tool_results)

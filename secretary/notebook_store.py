@@ -1,12 +1,11 @@
 """Task-bound Notebook service; each task keeps its own base and complete view."""
 
 from copy import deepcopy
-from datetime import datetime, timezone
 from threading import RLock
 
 from agent.message_visibility import model_visible_messages
 from secretary.notebook_contract import (
-    SOURCE_NOT_PROVIDED, NotebookValidationError, canonical_notebook_entry, parse_time, require_text, validate_source_range,
+    SOURCE_NOT_PROVIDED, NotebookValidationError, canonical_notebook_entry, require_text,
 )
 from secretary.notebook_model import NotebookWorkingState
 
@@ -14,57 +13,32 @@ from secretary.notebook_model import NotebookWorkingState
 _UNBOUND_BASE = object()
 
 
-def _source_checks_conn(db, conn, conversation_ref):
-    """Use the native legal History path, not a separate Notebook evidence index."""
+def _source_validator_conn(db, conn, conversation_ref):
+    """Current legal native path is the sole authority for a new UID node."""
     history = [row for row in model_visible_messages(list(db.get_history_foreground_conn(conn, conversation_ref)))
                if row.get("kind") == "message" and row.get("display_kind") != "hidden"
                and row.get("role") in {"user", "assistant", "tool", "system"}]
     on_path = {row["message_identity"]["message_uid"] for row in history if row.get("message_identity")}
-    timestamps = []
-    for row in history:
-        if not row.get("message_identity"):
-            continue
-        value = row.get("timestamp")
-        try:
-            if isinstance(value, (int, float)) and not isinstance(value, bool):
-                timestamps.append(datetime.fromtimestamp(value, timezone.utc))
-            elif isinstance(value, str):
-                timestamps.append(parse_time(value, "timestamp"))
-        except (ValueError, OverflowError, OSError):
-            # Unknown evidence time is not manufactured from operation time.
-            continue
-
-    def valid_identity(source):
-        return (isinstance(source, dict) and source.get("conversation_ref") == conversation_ref
-                and source.get("message_uid") in on_path)
-
-    def valid_range(source_range):
-        start, end = validate_source_range(source_range)
-        return any(start <= timestamp <= end for timestamp in timestamps)
-
-    return valid_identity, valid_range
-
-
-def _source_validator_conn(db, conn, conversation_ref):
-    return _source_checks_conn(db, conn, conversation_ref)[0]
+    return lambda source: (isinstance(source, dict) and source.get("conversation_ref") == conversation_ref
+                           and source.get("message_uid") in on_path)
 
 
 def _inherited_sources_conn(conn, conversation_ref, entry, *, exact_version=False):
-    from secretary.notebook_items import item_entry, item_row_conn, source_basis_conn
+    from secretary.notebook_items import item_entry, item_row_conn, inherited_source_count_conn
 
     entry = canonical_notebook_entry(entry)
     row = item_row_conn(conn, entry["version_id"])
     if exact_version and entry != item_entry(row, conversation_ref):
         raise ValueError("Notebook entry differs from its immutable version")
-    return source_basis_conn(conn, conversation_ref, row, entry) is not None
+    return inherited_source_count_conn(conn, conversation_ref, row, entry)
 
 
 def validate_snapshot_state_conn(db, conn, conversation_ref, payload):
     """Revalidate versions, provenance and references in the commit transaction."""
     from secretary.notebook_items import canonical_notebook_payload
-    valid_identity, valid_range = _source_checks_conn(db, conn, conversation_ref)
+    valid_identity = _source_validator_conn(db, conn, conversation_ref)
     state = NotebookWorkingState(
-        conversation_ref, canonical_notebook_payload(payload), validate_source_identity=valid_identity, validate_source_range=valid_range,
+        conversation_ref, canonical_notebook_payload(payload), validate_source_identity=valid_identity,
         validate_inherited_sources=lambda entry: _inherited_sources_conn(
             conn, conversation_ref, entry, exact_version=True),
     ).snapshot_state()
@@ -84,7 +58,7 @@ class NotebookStore:
 
     def __init__(self, db, conversation_ref, *, anchor_message_uid, trigger_type="idle",
                  runtime_profile="NOTING", lock=None, clock=None, base_snapshot_id=_UNBOUND_BASE,
-                 working_state=None):
+                 working_state=None, task_id=None):
         if db is None:
             raise NotebookValidationError("An owning SessionDB is required.")
         require_text(conversation_ref, "conversation_ref")
@@ -119,17 +93,17 @@ class NotebookStore:
                 raise NotebookValidationError("The base Snapshot belongs to another Conversation.", code="scope_denied")
             payload = (working_state if working_state is not None else
                        None if snapshot is None else snapshot["payload"])
-            valid_identity, valid_range = _source_checks_conn(db, conn, conversation_ref)
+            valid_identity = _source_validator_conn(db, conn, conversation_ref)
             from secretary.notebook_items import canonical_notebook_payload
             self._state = NotebookWorkingState(
-                conversation_ref, canonical_notebook_payload(payload), lock=self.lock, clock=clock,
-                validate_source_identity=valid_identity, validate_source_range=valid_range,
+                conversation_ref, canonical_notebook_payload(payload), lock=self.lock, clock=clock, task_id=task_id,
+                derive_evidence_time=lambda uids: self._derive_time(uids),
+                validate_source_identity=valid_identity,
                 validate_inherited_sources=lambda entry: _inherited_sources_conn(
                     conn, conversation_ref, entry, exact_version=True),
             )
         # Subsequent operations check the current legal path, not a startup cache.
         self._state._validate_source_identity = self._valid_source
-        self._state._validate_source_range = self._valid_range
         self._state._validate_inherited_sources = self._inherited_sources
         self._state._insert_version = self._insert_version
         self._state._insert_versions = self._insert_versions
@@ -144,34 +118,42 @@ class NotebookStore:
 
     def _valid_source(self, source):
         with self._db._read_ctx() as conn:
-            return _source_checks_conn(self._db, conn, self.conversation_ref)[0](source)
-
-    def _valid_range(self, source_range):
-        with self._db._read_ctx() as conn:
-            return _source_checks_conn(self._db, conn, self.conversation_ref)[1](source_range)
+            return _source_validator_conn(self._db, conn, self.conversation_ref)(source)
 
     def _inherited_sources(self, entry):
         with self._db._read_ctx() as conn:
             return _inherited_sources_conn(conn, self.conversation_ref, entry)
 
-    def _insert_version_conn(self, conn, entry, previous_version_id, *, relation_cleanup=False):
-        from secretary.notebook_items import insert_item_conn, item_row_conn, source_basis_conn
+    def _derive_time(self, uids):
+        from secretary.notebook_evidence import derive_evidence_time
+        with self._db._read_ctx() as conn:
+            return derive_evidence_time(self._db, conn, self.conversation_ref, uids)
 
+    def _insert_version_conn(self, conn, entry, previous_version_id, *, relation_cleanup=False):
+        from secretary.notebook_contract import provenance_prefix
+        from secretary.notebook_evidence import derive_evidence_time
+        from secretary.notebook_items import insert_item_conn, item_entry, item_row_conn, source_basis_conn
+
+        entry["write_task_id"] = self._state.task_id
         basis = None
         if previous_version_id is not None:
             basis = source_basis_conn(conn, self.conversation_ref,
                                       item_row_conn(conn, previous_version_id), entry,
-                                      allow_relation_removal=relation_cleanup)
-        if basis is None:
-            valid_identity, valid_range = _source_checks_conn(self._db, conn, self.conversation_ref)
-            if (not all(valid_identity(source) for source in entry["source_message_identities"])
-                    or not all(valid_range(interval) for interval in entry["source_time_ranges"])):
+                                      allow_relation_removal=relation_cleanup, mutable_task_id=self._state.task_id)
+        inherited = (0 if basis is None else provenance_prefix(
+            item_entry(item_row_conn(conn, str(basis)), self.conversation_ref), entry))
+        valid_identity = _source_validator_conn(self._db, conn, self.conversation_ref)
+        for group in entry["provenance"][inherited:]:
+            if not all(valid_identity({"conversation_ref": self.conversation_ref, "message_uid": uid}) for uid in group):
                 raise NotebookValidationError(
                     "The source left the authorized current path before the write.", code="source_unavailable",
-                    next_action="Locate current evidence; this operation did not change the working Notebook.",
-                )
+                    next_action="Locate current evidence; this operation did not change the working Notebook.")
+        # Only a newly written/replaced current task node gets a fresh derivation.
+        if entry["provenance_tasks"] and entry["provenance_tasks"][-1] == self._state.task_id and not relation_cleanup and not entry["archived"]:
+            entry["evidence_time"][-1] = derive_evidence_time(
+                self._db, conn, self.conversation_ref, entry["provenance"][-1])
         return insert_item_conn(conn, self.conversation_ref, entry, previous_version_id,
-                                source_basis_id=basis, allow_relation_removal=relation_cleanup)
+                                source_basis_id=basis, allow_relation_removal=relation_cleanup, mutable_task_id=self._state.task_id)
 
     def _insert_version(self, entry, previous_version_id):
         return self._db._execute_write(lambda conn: self._insert_version_conn(conn, entry, previous_version_id))

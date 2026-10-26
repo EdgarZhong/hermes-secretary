@@ -2,7 +2,8 @@
 
 ## 自主口径收敛 · 待用户追认
 
-暂无。
+- **Agent自主收敛／待追认：混合压缩载体的读取。** 原空白：一个native UID可同时承载压缩摘要与真人消息，而用户要求辅助开关能读取Compression且Get Meta仍仅四字段。决定：默认保留原真人视图；显式辅助允许同UID的system摘要视图，Get Meta／Search按语义部分分别返回，anchored Read允许现有roles参数选部分，默认锚点优先原非压缩部分；同UID同role的system内容合并为一个视图；不造UID、不放开Full／隐藏内容。理由：使明确要求在native混合载体下可操作。影响：Read新增可选roles适用位置，同UID可有不同语义投影。已实现，201项History接受测试及56项原生路径通过；待独立门禁；不改变Message Identity或Notebook新证据准入。
+- **Agent自主收敛／待追认：Candidate同Task来源形式切换。** 原空白：旧合法direct→refs操作与新旧Task节点不可删约束如何同时成立。决定：仅尚未提交且唯一节点属于本Task时，允许显式清空当前工作槽并切为合法refs；任何旧Task直接节点仍禁止删改。理由：继承原来源二选一操作并保持旧节点约束。影响：当前Task工作态边界，无迁移／旧节点特权。已实现，正式工具／恢复／原子失败98项通过；待独立门禁。
 
 ## 2026-10-27 · Noting来源链／History调优（实施中）
 
@@ -10,7 +11,7 @@
 
 范围：Get Meta、统一语义role／默认辅助消息排除、闭区间、工具参数及结果展示；每条目每Task一个不可改旧节点的来源链、runtime只读对应Evidence time；已审Noting／History Prompt。独立History／Notebook／Prompt实现包，主会话亲审集成、真实模型证据、独立Verification→Validation后统一部署。上线时仅人工转换Alex仍用的唯一置顶Conversation的Notebook，保留消息、排期、绑定、其它Profile／Conversation和前端；不建通用迁移层。正式机`ssh alex`，上线沿既有SOP／发布工具，备份最多两套三库。
 
-冻结依据及任务覆盖见本轮Snapshot Index／plan。当前先文档冻结，未改产品／生产；部署、数据转换及实际版本只记operations-log，结果未发生前不声明通过。
+冻结依据及任务覆盖见本轮Snapshot Index／plan。冻结提交`02d55fdb45b4fb7c883fb477f4469912f4707f70`已自动push。三个实现包并行收敛，History专属136项先通过；已识别并修补既有Task恢复接缝。正式机只读核对仍为`6ef9459`，两服务active；Alex唯一置顶目标已确认，51个历史item／29个当前引用。真实模型先用旧kimi-for-coding别名两失败，已纠正线上实际k3.1-pro/high；实际型号在正确已有排期前提下两Task通过，保留失败及夹具不足样本。全Secretary87文件首轮1703过／105失败，74项来源契约适配已关闭；另2个RPC旧计数／旧工具夹具按现行契约修正，完整正式入口3项通过。当前29项／8文件失败已在冻结基线复现，原断言保留，不冒称分区全绿。目标Notebook副本51版本／8Snapshot／55节点通过并由主会话复核；尚未停服或改生产，部署实际版本只记operations-log。
 
 ## 2026-10-26 · Scheduler二级切换卡顿与0.1.8重建
 
