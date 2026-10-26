@@ -920,3 +920,5 @@ root依据cache_dependency_review再次核六精确目录实体、三树HEAD/pac
 用户明确服务器迁移期间禁止自主上线；本阶段只本地实现、测试、Git同步和APK构建。Noting悬浮球按Profile全局开关显示，与Socket连接解耦；排期只展开才取详情，概览使用secretary.state的schedule_count。读取合并连续失效，过期请求不确认新的完成回执。后端secretary.schedules在SQL阶段过滤done且完成严格超过24小时的条目，只返回hidden_count；已删除不计数、paused保留，24小时整点仍展示。前端底部呈现简短摘要。Usage／Context胶囊32→26px，底栏36→30px，文字与胶囊轮廓保持。
 
 前端22文件504项通过、6项明确跳过：5项已复现基线失败及1项可选wire夹具。后端5文件73项通过；whole-wire的review.summary既有孤立契约失败已于改前98a707e隔离复现。Typecheck、冻结TS复杂度、主仓10项冻结检查通过。生成协议仅暂存本轮两个字段，其他手动Noting入口dirty原样保留；隔离暂存快照的生成一致性通过。隐藏IAB390×844验证了未展开0次／展开1次／关闭重连无多余列表读取、隐藏摘要、断线球保留和26px胶囊；不等同Android Chrome真机绘制／APK安装验证。最终APK见CLAUDE和交付收据。
+
+最终Git同步：前端`20c92677eee72a8aedd909787f4b203e4e2dc691`，后端`4b04546bdc1c5cbd1fb1ad6f84ab615969e388f7`。本地交付`Hermes-Secretary-0.1.8-20c9267-arm64.apk`，32,106,741字节，SHA256 `73d6ce39dd5e8fa7f05557f7b77db6424471bafba4850289bd6aa279dcab622a`；439内置资源与dist逐字节一致，ZIP CRC、原证书v2签名、arm64 ELF及ZIP的16KB对齐、交付副本SHA均通过，旁附verification.json与sha256；未部署、未真机安装。
