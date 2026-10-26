@@ -76,7 +76,7 @@ Gateway入口 `hermes gateway`；Dashboard入口 `hermes dashboard --host 127.0.
 
 独立前端的`src-tauri/`提供Tauri 2 Android壳，固定竖屏、内置网页，经正式HTTPS／Authelia连接同一API／WS。系统栏、通知和临时后台保护仅在APK生效；后台保护限已观察到的活动Turn，不保证系统挂起后仍通知。返回前台保留页面，网络可用时给予历史／Socket／Turn恢复5秒窗口，成功不重载；离线、目标明确缺失、JS失活及失败兜底按[06 Android契约](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md#android-原生通知与临时后台保护用户最终确认2026-10-21)处理，保留登录、草稿和会话。
 
-在独立前端仓库设置 Android SDK／NDK／Java 环境后执行 `npm run android:build`，输出 `src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk`。当前目标为 Android 8.0+／arm64；release 非调试、使用本地签名，原件仅保存在 ignored `src-tauri/.android-signing/`，后续覆盖升级必须保留该密钥。应用图标由 `npm run android:icons` 复用现有 logo 与主题深色自动生成，release 构建会先刷新图标。`npm run android:debug` 仅供本地验收。实际包版本、网络验证及限制统一记录在 [运维记录](docs/operations-log.md)。
+在独立前端仓库设置 Android SDK／NDK／Java 环境后执行 `npm run android:build`，输出 `src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk`。当前目标为 Android 8.0+／arm64；release 非调试、使用本地签名，原件仅保存在 ignored `src-tauri/.android-signing/`，后续覆盖升级必须保留该密钥。应用图标由 `npm run android:icons` 复用现有 logo 与主题深色自动生成，release 构建会先刷新图标。`npm run android:debug` 仅供本地验收。 正式构建还需要 Python 3.11+（仅标准库），完成后自动检查 ZIP 全条目 CRC、原证书／v2 签名、版本／ABI、ZIP／ELF 16KB 对齐及内置前端与 dist 逐 SHA 一致。可单独运行 `npm run android:verify`；使用 `npm run android:verify -- --delivery <新文件路径.apk>` 仅在全部校验成功后原子生成交付副本，同时输出 `.sha256` 与 `.verification.json`，拒绝覆盖已有文件；`npm run android:test` 验证截断／CRC／签名／版本／资源等拒绝路径。产物校验不代替设备安装与生命周期验收。实际包版本、网络验证及限制统一记录在 [运维记录](docs/operations-log.md)。
 
 ## 部署入口
 

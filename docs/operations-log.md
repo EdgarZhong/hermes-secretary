@@ -3,6 +3,18 @@
 维护实际部署、故障处理、验证与回滚点；步骤和稳定布局见[部署SOP](cloud-deployment-sop.md)，当前任务只在根[CLAUDE](../CLAUDE.md)。以下时间均为Asia/Shanghai；PID、指纹和测试结论只对应记录时点，不代表实时状态。凭据、令牌、原始私人材料不写入本文件。
 
 
+## 2026-10-26 · 0.1.8重连阅读与恢复期实时输出修复、APK交付
+
+用户报告idle重连被拉底、Composer满高输入时Timeline闪动、保持连接发送后直到Turn结束才看到消息，以及旧0.1.7包损坏。本轮确认重连与持续连接手动规则分开，口径立即写入06。阅读反例改前4失败、改后通过；idle前缀兼容保持锚点，active／已证前缀破坏才回底，普通失效和迟到局部commit不抢位，空闲手动滚动不启动后来Turn的补计时。正式App六条warm／active／idle／取消组合通过。
+
+实时问题已用正式send链路复现：受理后history-invalidated和运行通知触发完整恢复，retained只透active／status而挡住新节点。修复同已核验绑定的连续流呈现，完整重读继续，历史／详情／cut暂存到统一reconcile；请求快慢不改变消息呈现，断线／owner／epoch／鉴权／错误边界保留。隐藏IAB合成App实际发送1次：历史与Pending未返回已显示User／Thinking／工具／正文；历史到达仅staged，后续delta即时出现；Pending释放后ready=true且active=true，3次有界历史读取，无重发／生产模型请求。Controller保持2550行。
+
+前端main提交`744ac30ff3194c29b06dd7bce552e8904749f5f4`及origin/secretary同SHA；9文件271项集成、恢复文件86项及APK校验12项通过，重叠不累加，类型／build及diff通过。另4项New Chat／侧栏旧断言在HEAD隔离副本同样失败，保留baseline日志，不称全仓绿。Composer正式App200行／220显示节点的桌面／390×844长输入未复现闪动：idle零Timeline DOM变更／scrollTo，input／dock／Timeline几何与消息身份保持；stream只原位更新正文，active无delta输入也无变动。未修改Composer产品代码；已询问用户具体客户端，此项未关闭。
+
+原0.1.7 c29b457的构建原件与Downloads副本同字节，CRC／签名等通过，较早三份亦通过ZIP／签名／对齐；未确定手机／传输错误原因。正式构建新增完整验证及默认旧收据撤销，拒绝截断、CRC、版本／签名／ABI／资源不符和重复交付；只有通过后原子生成新包与SHA／JSON收据，保留旧交付。
+
+新包`Hermes-Secretary-0.1.8-744ac30-arm64.apk`已放Downloads，32103077字节；SHA256 `80f69e7e1a70743649af3d014b294518ce2f40554e1de64e43ea6255c9e116dd`，版本0.1.8／1008、原证书`449b5f36662cb5ff2979004ce6472ca5c8ea5d992b334e2a4191eda6e7e53ad9`、Android8+／arm64／release非debug。ZIP全条目CRC、v2签名、ZIP／ELF16KB及439份内置资源同最终dist、交付副本哈希全部通过。没有ADB设备，未安装或做真实Android生命周期，不以产物检查冒称已安装可用；本轮网页未部署，线上前端仍c29b457，后端／服务／数据库／配置未操作。证据ignored`.hermes-dev/frontend-018-20261026/`及交付旁`.sha256`／`.verification.json`。其余并行后端修改未混入前端提交。
+
 ## 2026-10-26 · Android 0.1.7按最新前端重新构建
 
 用户明确要求新构建0.1.7并交付，并确认目标为Android APK。以已上线前端`c29b4570a0e469aa2dcedc76da499f81cf0e7da8`的精确dist沿正式`npm run android:build`构建，临时配置仅跳过重复Vite构建，避免file-viewer时间字段产生静态差异；未修改产品源码、版本或签名材料。前端工作区保持clean，生产服务／数据库／用户页面未操作。
