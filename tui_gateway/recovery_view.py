@@ -273,11 +273,13 @@ def _closed_source_boundary(receipt, sources, known):
 
 def _completion_sources_accounted(receipt, known):
     """Prove the completed native suffix independently of the single-user fast path."""
+    # Compaction retires prompt rows but preserves their exact display identity.
+    # Rewind/deletion still fail the visible-row and receipt identity checks.
     sources = receipt.get("source_messages") or []
     if not sources or not all(
             (row := known.get(source.get("message_uid"))) is not None
             and row.get("id") == source.get("row_id") and row.get("role") == source.get("role")
-            and row.get("visible") and row.get("active") for source in sources):
+            and row.get("visible") and (row.get("active") or row.get("compacted")) for source in sources):
         return False
     # A consumed steer deliberately leaves the legacy whole-Turn receipt
     # incomplete. Its closed, fully committed suffix can still account for
@@ -380,7 +382,8 @@ def _terminal_snapshot_accounted(state, d1, known):
     if any(event["type"] not in allowed for event in events):
         return False
     outcome = {"outputs": observed_output_events(events)}
-    _reconcile_outputs(outcome, [row for row in known.values() if row.get("visible") and row.get("active")])
+    _reconcile_outputs(outcome, [row for row in known.values()
+                                 if row.get("visible") and (row.get("active") or row.get("compacted"))])
     return outcome.get("outputs_complete", True) and digest(outcome.get("outputs", [])) == source.get("terminal_outputs_digest")
 
 

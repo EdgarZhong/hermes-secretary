@@ -172,6 +172,19 @@ def test_completion_sources_are_probed_even_outside_the_latest_page(runtime, mon
     assert not result["state_snapshot"]["events"]
 
 
+@pytest.mark.parametrize("steer", [False, True])
+def test_completed_reasoning_recovers_after_native_history_compaction(runtime, monkeypatch, steer):
+    gate = start(runtime, monkeypatch, steer=steer)
+    assert settle(runtime, gate)["complete"]
+    runtime.db.archive_and_compact("stored", [{"role": "user", "content": "summary", "_compressed_summary": True}])
+    state = recovery_view.snapshot(runtime.session, "runtime", include_internal=True)
+    raw = recovery_view.read_view(runtime.db, "stored", "default", [], identities=recovery_view._references(state))
+    assert any(row["visible"] and not row["active"] and row["compacted"] for row in raw["identities"])
+    result = activate(request(runtime.db))
+    assert result["complete"] and not result["running"], result
+    assert not result["state_snapshot"]["events"]
+
+
 def test_natural_steer_handoff_preserves_control_replay_and_recovers_followup(runtime, monkeypatch):
     entered, release = threading.Event(), threading.Event()
     runtime.releases.append(release)
@@ -260,6 +273,18 @@ def test_native_constructing_then_stop_recovers_from_durable_terminal(runtime, m
     assert not idle["state_snapshot"]["events"]
     next_gate = start(runtime, monkeypatch, ordinal=1)
     assert settle(runtime, next_gate)["complete"]
+
+
+@pytest.mark.parametrize("status", ["interrupted", "error"])
+def test_native_partial_terminal_still_recovers_after_compaction(runtime, monkeypatch, status):
+    gate = start(runtime, monkeypatch, outcome=status, partial=True)
+    if status == "interrupted":
+        server._interrupt_session_turn("runtime", runtime.session)
+    assert settle(runtime, gate)["complete"]
+    runtime.db.archive_and_compact("stored", [{"role": "user", "content": "summary", "_compressed_summary": True}])
+    result = activate(request(runtime.db))
+    assert result["complete"] and not result["running"], result
+    assert not result["state_snapshot"]["events"]
 
 
 @pytest.mark.parametrize("damage", ["missing", "source", "status", "text", "uid", "incomplete", "row",

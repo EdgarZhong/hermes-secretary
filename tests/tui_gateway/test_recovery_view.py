@@ -392,19 +392,21 @@ def settled_web_output(db, session):
     return receipt
 
 
-@pytest.mark.parametrize("receipt_state", ["valid", "missing", "wrong_row", "retired"])
+@pytest.mark.parametrize("receipt_state", ["valid", "compacted", "missing", "wrong_row", "retired"])
 def test_settled_web_notifications_use_existing_durable_receipt(native, receipt_state):
     db, session, _home = native
     receipt = settled_web_output(db, session)
     completed = session["_inflight_output"]["events"][-1]["payload"]
-    if receipt_state == "missing":
-        completed.pop("persisted_turn")
-    elif receipt_state == "wrong_row":
-        completed["persisted_turn"]["source_messages"][-1]["row_id"] = 999999
-    elif receipt_state == "retired":
-        db.rewind_to_message("stored", receipt["source_messages"][0]["row_id"])
+    mutate = {
+        "valid": lambda: None,
+        "missing": lambda: completed.pop("persisted_turn"),
+        "wrong_row": lambda: completed["persisted_turn"]["source_messages"][-1].update(row_id=999999),
+        "retired": lambda: db.rewind_to_message("stored", receipt["source_messages"][0]["row_id"]),
+        "compacted": lambda: db.archive_and_compact("stored", [{"role": "user", "content": "summary", "_compressed_summary": True}]),
+    }
+    mutate[receipt_state]()
     view = activate(request(db))
-    if receipt_state == "valid":
+    if receipt_state in {"valid", "compacted"}:
         assert view["complete"] and not view["running"] and not view["state_snapshot"]["events"]
     else:
         assert not view["complete"] and view["reason"] == "runtime_unavailable"
