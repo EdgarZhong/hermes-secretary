@@ -913,3 +913,10 @@ Delegation风险有严格前提：回调携带派发时的`session_key`／`paren
 
 ### 旧缓存精确清理追加
 root依据cache_dependency_review再次核六精确目录实体、三树HEAD/package lock、无外部反向链接/进程/lease及共享Python保护，先退役旧CI installs再移除它们依赖的旧tools，再移除三个旧node_modules，共六目录。仅删除可重建缓存，不删父目录源码/数据/原件，不停进程、不改lock。共享PM Python实链及三lock保持。该批available观察净增2.583GiB；两批前后整体available净增4.142GiB至22.89GiB（同卷并发和共享块会影响，未把du当精确释放）。执行见ignored .hermes-dev/disk-audit-20261024/cache-cleanup-execution.json。Rust约5.30GiB与Gradle约0.50GiB仍活、保留。
+
+
+## 2026-10-26 本地收尾：Noting按需读取、旧排期摘要与紧凑胶囊（未部署）
+
+用户明确服务器迁移期间禁止自主上线；本阶段只本地实现、测试、Git同步和APK构建。Noting悬浮球按Profile全局开关显示，与Socket连接解耦；排期只展开才取详情，概览使用secretary.state的schedule_count。读取合并连续失效，过期请求不确认新的完成回执。后端secretary.schedules在SQL阶段过滤done且完成严格超过24小时的条目，只返回hidden_count；已删除不计数、paused保留，24小时整点仍展示。前端底部呈现简短摘要。Usage／Context胶囊32→26px，底栏36→30px，文字与胶囊轮廓保持。
+
+前端22文件504项通过、6项明确跳过：5项已复现基线失败及1项可选wire夹具。后端5文件73项通过；whole-wire的review.summary既有孤立契约失败已于改前98a707e隔离复现。Typecheck、冻结TS复杂度、主仓10项冻结检查通过。生成协议仅暂存本轮两个字段，其他手动Noting入口dirty原样保留；隔离暂存快照的生成一致性通过。隐藏IAB390×844验证了未展开0次／展开1次／关闭重连无多余列表读取、隐藏摘要、断线球保留和26px胶囊；不等同Android Chrome真机绘制／APK安装验证。最终APK见CLAUDE和交付收据。

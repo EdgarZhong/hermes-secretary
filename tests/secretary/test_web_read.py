@@ -91,6 +91,64 @@ def test_secretary_state_round3_projection_has_no_memo(database):
     assert _contents(db) == before
 
 
+@pytest.mark.parametrize('age,hidden', [(86399, False), (86400, False), (86401, True)])
+def test_completed_schedule_details_stop_at_the_strict_24h_boundary(database, monkeypatch, age, hidden):
+    import json
+    from secretary import web_read
+    from secretary.scheduler_table import apply_schedule_action_conn
+    db, ref = database
+    now = time.time()
+    ended = _schedule(db, ref, content='Old schedule body ' * 1000)
+    paused = _schedule(db, ref, content='Paused remains visible')
+    deleted = _schedule(db, ref, content='Deleted must not count')
+    def prepare(conn):
+        conn.execute("UPDATE secretary_schedule_registry SET state='done',once_consumed_at=?,updated_at=? WHERE schedule_id=?",
+                     (now-age, now, ended))
+        conn.execute("UPDATE secretary_schedule_registry SET enabled=0,updated_at=? WHERE schedule_id=?", (now-100000, paused))
+        apply_schedule_action_conn(conn, ref, {'action': 'delete', 'schedule_id': deleted}, now=now)
+    db._execute_write(prepare)
+    db.create_session('other-schedule-owner', source='cli')
+    _schedule(db, db.resolve_conversation_ref('other-schedule-owner'), content='Foreign schedule must not count')
+    before = _contents(db)
+    monkeypatch.setattr(web_read.time, 'time', lambda: now)
+    read = SessionDB(db.db_path, read_only=True)
+    try:
+        result = schedules_read(read, 'main')
+        assert result['hidden_count'] == int(hidden)
+        assert result['count'] == len(result['schedules']) == 2-int(hidden)
+        assert {item['schedule_id'] for item in result['schedules']} == ({paused} if hidden else {paused, ended})
+        assert ('Old schedule body' in json.dumps(result)) is not hidden
+        assert secretary_state(read, 'main')['schedule_count'] == 2
+        assert _contents(db) == before
+    finally:
+        read.close()
+
+
+def test_old_completed_rows_are_excluded_before_detail_projection_and_rpc_serialization(database, monkeypatch):
+    from secretary import scheduler_table, web_read
+    from tui_gateway import server
+    db, ref = database
+    now = time.time()
+    ended = _schedule(db, ref, content='Never transfer this expired detail')
+    db._execute_write(lambda conn: conn.execute(
+        "UPDATE secretary_schedule_registry SET state='done',once_consumed_at=NULL,last_fired_at=NULL,updated_at=? WHERE schedule_id=?",
+        (now-86401, ended)))
+    def reject_projection(*args, **kwargs):
+        raise AssertionError('Hidden entry must not be materialized for display')
+    monkeypatch.setattr(scheduler_table, 'schedule_public_conn', reject_projection)
+    monkeypatch.setattr(web_read.time, 'time', lambda: now)
+    monkeypatch.setattr(server, '_profile_home', lambda profile: Path(db.db_path).parent)
+    for method in ['secretary.state', 'secretary.schedules']:
+        result = server.handle_request({'jsonrpc': '2.0', 'id': 1, 'method': method,
+                                        'params': {'stored_session_id': 'main', 'profile': 'default'}})
+        assert 'error' not in result, result
+        if method == 'secretary.state':
+            assert result['result']['schedule_count'] == 1
+        else:
+            assert result['result']['schedules'] == []
+            assert result['result']['count'] == 0 and result['result']['hidden_count'] == 1
+
+
 def test_schedules_read_unbound_session_is_unavailable(database):
     db, _ref = database
     db._execute_write(lambda conn: conn.execute(

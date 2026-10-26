@@ -4711,6 +4711,7 @@ export interface SecretaryStateResult {
   next_idle: IdleEstimate
   observed_at: string
   current_snapshot_id?: string | null
+  schedule_count?: number | null
 }
 export interface ActiveTask {
   task_id: string
@@ -4738,6 +4739,7 @@ export interface SchedulesReadResult {
   observed_at: string
   schedules: ScheduleEntry[]
   count: number
+  hidden_count?: number
 }
 /** One Schedule Table row, field-for-field with the runtime's ``schedule_public_conn``. */
 export interface ScheduleEntry {

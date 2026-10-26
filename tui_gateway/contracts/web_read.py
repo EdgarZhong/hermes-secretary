@@ -57,6 +57,7 @@ class SecretaryStateResult(Result):
     next_idle: IdleEstimate
     observed_at: str
     current_snapshot_id: str | None = None
+    schedule_count: int | None = None
 
 
 class NotebookReadResult(Result):
@@ -109,6 +110,7 @@ class SchedulesReadResult(Result):
     observed_at: str
     schedules: list[ScheduleEntry]
     count: int
+    hidden_count: int = 0
 
 
 class SecretaryChangedPayload(Payload):

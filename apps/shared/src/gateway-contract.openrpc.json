@@ -30898,6 +30898,11 @@
           "count": {
             "title": "Count",
             "type": "integer"
+          },
+          "hidden_count": {
+            "default": 0,
+            "title": "Hidden Count",
+            "type": "integer"
           }
         },
         "required": [
@@ -31111,6 +31116,18 @@
             ],
             "default": null,
             "title": "Current Snapshot Id"
+          },
+          "schedule_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Schedule Count"
           }
         },
         "required": [

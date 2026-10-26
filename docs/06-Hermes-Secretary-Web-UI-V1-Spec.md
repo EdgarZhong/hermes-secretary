@@ -316,6 +316,8 @@ Message ordering, Compaction lineage, framework carriers, UIDs and stream insert
 
 **用户2026-10-26追加确认：Noting显示与弱网读取。** 先完成当前恢复状态修复及验证，再优化Noting。悬浮球的显示资格只由当前Profile的全局Noting开关决定，与实时连接状态解耦；已确认全局开启后，断线／重连、会话参与开关、任务是否运行或详情读取失败均不使球消失。当前Profile开关尚未确认时不能以Socket connected冒充已恢复。Noting状态保持实时，不新增持久缓存；数据只按实际可见范围获取，悬浮球只取必要状态，展开后才取对应详情，收起后不为隐藏内容持续重复读取，减少弱网下对实时输出带宽的争抢。此条覆盖此前把完整Secretary状态都作为默认展示读取／持久缓存的冲突口径；运行状态与完成信号保持真实，不以减少读取丢失变化或伪造idle。实现状态见CLAUDE。
 
+**用户2026-10-26追加确认：排期列表有界返回。** 结束超过24小时的排期，后端不返回条目细节，只返回已隐藏数量；前端在列表底部显示简短英文摘要。过滤在后端查询阶段执行，不先把细节传到前端。已删除排期不返回，也不计入隐藏数量；暂停与未结束排期保留。采用现有真实结束时间，超过24小时才隐藏，恰好24小时仍展示；不能证明结束时间的旧数据不误隐藏。轻量状态提供排期计数，完整可见列表只在用户展开时读取；既有Scheduler写操作和模型工具列表语义不变。
+
 **2026-10-25用户追加界面要求：** 移除页面顶部灰色`Syncing conversation…`及黄色`Conversation updates unavailable. Retrying…`同步／重试横幅，后台自动恢复、状态验证及重试继续执行；不由隐藏提示假称恢复成功。真实会话不存在、Profile不可用及操作／连接失败按各自已有就地反馈处理，不恢复这两条顶层横幅。聊天时间线保留滚轮、触摸及键盘滚动能力，但隐藏右侧可见原生滚动条，不为它保留固定gutter；侧栏既有隐藏滚动条规则保持。
 
 #### 1.4.1. 页面恢复、过渡展示缓存与统一交接实施方案（2026-10-24）
@@ -648,6 +650,8 @@ Under/near the Composer, show a restrained usage component with two equal-size v
 **用户2026-10-25确认：Context只在Turn结束时高亮。** Context数值持续及时更新，不为动画延迟或批量结算；同一Turn中Constructing、工具串／并行衔接、Thinking、首个delta前及其他流式／读取更新都不高亮。仅当前owner新的正式Turn结束事实触发一次；异常断线不构成Turn结束，历史恢复／事件重放不能重复播放结束动画，切owner不能借用另一会话的结束事实。此条替代上轮Context“任意有效数值变化都可高亮”的规则，不改变原统计来源及读取契约。
 
 **User-confirmed incremental updates (2026-10-14):** For each field in both bottom capsules and their expanded views, update only when a new valid native value is obtained for the same Session and corresponding statistical view; zero is valid. Missing fields, unknown results, failed reads and Turn-state changes do not clear a previously valid in-memory value. Values never obtained remain unknown. The former memory-only restriction is superseded only by the user-confirmed transitional display cache below; retention must not leak across Sessions or incompatible views.
+
+**用户2026-10-26追加：** Composer下方Usage与Context两个胶囊继续压低卡片高度，主要减少上下留白，保持文字大小及胶囊轮廓。当前实现高度32→26px、上下内边距4→2px，所在底栏36→30px；不改展开详情的排版。
 
 **用户2026-10-24确认：底部两个卡片缓存与通用数据更新动画。** UsageSummary（Session Total／Latest Turn对应统计）及ContextIndicator均保存已成功取得的展示数据，页面冷启动、刷新后及断线期间先显示同一owner的上次值；新值返回后原地接管并更新缓存。UsageSummary的轻量动画以实际展示数据变化为触发条件，重复请求返回同值不触发。ContextIndicator的触发时机由2026-10-25追加确认替代：实时更新数据，但仅在正式Turn结束时单次高亮；缓存交接、恢复请求、工具衔接及Turn内流式更新均不触发高亮。动画采用用户进一步指定的轻微选中态高亮：胶囊背景短暂亮起一次后柔和淡回，不改变实际选中／展开状态，不连续闪烁。须让用户能察觉“数据更新了”但不抢夺注意力，连续变化合并提示，避免逐帧／逐事件闪动。保持卡片位置和尺寸稳定，不先清空数值，不触发Timeline滚动；具体时长、强度和合并节奏按§1.4.1的内部技术默认实施并验证。保持原统计视图、零值及未知字段语义，不由缓存推算新的token或百分比；缓存不跳过usage／Context读取，也不能恢复旧的active／compacting状态或作为整轮恢复完成依据。真实模型／上下文不兼容时沿原失效规则处理，不能以缓存延续错误统计。
 

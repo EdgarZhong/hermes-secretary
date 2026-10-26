@@ -86,6 +86,18 @@ def _current_snapshot_id(db, conn, conversation_ref):
         return None
 
 
+_HIDDEN_SCHEDULE = "state='done' AND COALESCE(once_consumed_at,last_fired_at,updated_at,?) < ?"
+
+
+def _schedule_counts(conn, ref, now):
+    cutoff = now - 24 * 60 * 60
+    row = conn.execute(
+        f"SELECT COUNT(*), COALESCE(SUM(CASE WHEN {_HIDDEN_SCHEDULE} THEN 1 ELSE 0 END),0) "
+        "FROM secretary_schedule_registry WHERE conversation_ref=?", (cutoff, cutoff, ref),
+    ).fetchone()
+    return int(row[0]), int(row[1])
+
+
 def secretary_state(db, stored_session_id):
     now = time.time()
     global_enabled, settings = global_noting_config(db)
@@ -93,7 +105,7 @@ def secretary_state(db, stored_session_id):
     result = {"stored_session_id": stored_session_id, "conversation_ref": None,
               "availability": "unavailable", "global_enabled": global_enabled, "local_enabled": None,
               "task_state": "unknown", "tasks": [], "next_idle": {"state": "unknown", "at": None},
-              "current_snapshot_id": None,
+              "current_snapshot_id": None, "schedule_count": 0,
               "observed_at": format_timestamp(now, profile_home=home)}
     with db._read_ctx() as conn:
         ref = db.resolve_conversation_ref_conn(conn, stored_session_id, read_only=True)
@@ -103,6 +115,7 @@ def secretary_state(db, stored_session_id):
         task_state, tasks = _tasks(db, conn, ref)
         snapshot_id = _current_snapshot_id(db, conn, ref)
         result.update(conversation_ref=ref, availability="available", local_enabled=local,
+                      schedule_count=_schedule_counts(conn, ref, now)[0],
                       current_snapshot_id=snapshot_id,
                       task_state=task_state, tasks=tasks,
                       next_idle=_next_idle(db, conn, ref, global_enabled=global_enabled, local_enabled=local,
@@ -113,25 +126,30 @@ def secretary_state(db, stored_session_id):
 def schedules_read(db, stored_session_id):
     """Read-only Schedule Table of the session's Conversation.
 
-    The list projection is the Scheduler's own (``apply_schedule_action_conn`` with the
-    ``list`` action, which only SELECTs), so the browser displays exactly the rows the
-    model tool returns — no second field mapping to drift. Unbound Conversations are
-    reported unavailable, like ``secretary_state``.
+    Reuse the Scheduler's row projection, excluding completed rows older than 24h
+    before loading their content. The model tool's complete list is unchanged.
+    Unbound Conversations are reported unavailable, like ``secretary_state``.
     """
-    from secretary.scheduler_table import apply_schedule_action_conn
+    from secretary.scheduler_table import schedule_public_conn
 
     now = time.time()
     home = Path(db.db_path).parent
     result = {"stored_session_id": stored_session_id, "conversation_ref": None,
               "availability": "unavailable", "observed_at": format_timestamp(now, profile_home=home),
-              "schedules": [], "count": 0}
+              "schedules": [], "count": 0, "hidden_count": 0}
     with db._read_ctx() as conn:
         ref = db.resolve_conversation_ref_conn(conn, stored_session_id, read_only=True)
         if ref is None:
             return result
-        listed = apply_schedule_action_conn(conn, ref, {"action": "list"}, now=now, profile_home=home)
+        _total, hidden = _schedule_counts(conn, ref, now)
+        cutoff = now - 24 * 60 * 60
+        rows = conn.execute(
+            f"SELECT * FROM secretary_schedule_registry WHERE conversation_ref=? AND NOT ({_HIDDEN_SCHEDULE}) ORDER BY schedule_id",
+            (ref, cutoff, cutoff),
+        ).fetchall()
+        values = [schedule_public_conn(conn, dict(row), profile_home=home) for row in rows]
         result.update(conversation_ref=ref, availability="available",
-                      schedules=listed["schedules"], count=listed["count"])
+                      schedules=values, count=len(values), hidden_count=hidden)
     return result
 
 
