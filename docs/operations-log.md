@@ -3,6 +3,17 @@
 维护实际部署、故障处理、验证与回滚点；步骤和稳定布局见[部署SOP](cloud-deployment-sop.md)，当前任务只在根[CLAUDE](../CLAUDE.md)。以下时间均为Asia/Shanghai；PID、指纹和测试结论只对应记录时点，不代表实时状态。凭据、令牌、原始私人材料不写入本文件。
 
 
+## 2026-10-26 · Scheduler Tag切换修复、静态上线与0.1.8暂存
+
+用户明确问题是悬浮球已展开后，一级Tag→Scheduler二级卡顿，要求修复并重建0.1.8但先不交付，同时移出Alex同步区旧APK。根因不是点击处理器await请求，而是SecretaryOrb将层级变更及ResizeObserver数据尺寸变化都映射为整板opacity=0／pointer-events=none的360ms玻璃ghost；响应填充列表会再次隐藏／排队动画。前端`0947ed5f25fe9d412e25ab6ab6248aefcd64c55e`删除这两条遮挡路径，层级即时提交、仅140ms位移，不改变球本身展开／关闭动画；不增加预取／持久缓存，按需读取及恢复机制保持。
+
+改前真实Tag导航反例失败，改后4文件112项通过，typecheck与冻结d02f211 TypeScript度量通过。真实App隐藏IAB390×844受控请求延迟3秒，首次可见约30ms；648采样帧中透明帧、不可点击帧和ghost为0，排期只读1次。未返回5秒时能返回一级，迟到数据不重开二级；原球生命周期回归通过。截图在前端ignored`.archive/qa018/status-evidence/scheduler-{pending,delayed-rows}.png`；IAB不冒称Android Chrome真机性能。
+
+按既有上线授权仅原子交换Secretary静态：439文件逐SHA、HTTP入口`index-CK9phWFS.js`及其引用资源通过，Dashboard不变；后端保持6ef9459，Web PID66043和Gateway PID保持，服务active／微信connected，配置指纹保持，不重启服务／写数据库／调用生产模型。云回执`~/.local/state/hermes-secretary/release-20261024/20261026-scheduler-0947ed5/receipt.json`为verified；旧20c9267静态留在`static/secretary.release-20261026-scheduler-0947ed5`，回退只需核现版本并反向原子交换，不回滚数据。本机发布收据在`.hermes-dev/frontend-018-20261026/scheduler-release/`。
+
+新APK仍0.1.8／1008，32,106,601字节，SHA256 `1ffb96ff4476fdb261d01c8d1170f61c02e3eeacb17cd4ffde82085758f7b463`；原证书449b5f…53ad9、v2签名、ZIP CRC、ZIP／ELF16KB对齐及439内置前端资源核验通过。前端ignored`.archive/qa018/apk-staging/Hermes-Secretary-0.1.8-0947ed5-arm64.apk`及SHA／verification收据仅本地暂存，未发送或放入Downloads／同步区；无真机不宣称已安装。旧20c9267 APK与SHA已移出Mac`~/Desktop/Alex`及云`/home/ubuntu/workspace`并复核同步后仍不存在；Downloads旧原件保留，云旧副本移到`~/.local/state/hermes-secretary/retained-installers/`。
+
+
 ## 2026-10-26 · 正式Alex迁移收尾、飞书MCP与0.1.8联合发布（完成）
 
 **正式入口与退役：** 用户已确认四域名DNS切换，本轮从迁移会话“好，之前那台服务器其实…”接手中断的MCP及运维收尾，并获前后端上线授权。正式首尔Alex为`43.128.131.30`／ubuntu，`alex`和`hermes-secretary-sync`均指该机；从云端解析hermes／auth／nmem／eb-data四域名均为该IP。本机Clash的198.18地址仅为本地fake-IP，不当作真实DNS。**第一台实验用首尔机`43.128.156.186`（`seoul`）已废弃，准备回收，不再承载生产服务或同步源。** 只读复核其Hermes／Gateway／NM／艾宾浩斯／认证及监测timer均不运行、自启关闭；Caddy留有先前停机超时的failed状态但无运行服务。尚未销毁实例或删除旧原始冷态数据／密钥，不能把“待回收”记成已回收。
