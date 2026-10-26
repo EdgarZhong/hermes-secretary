@@ -222,3 +222,5 @@ HERMES_PYTHON="$PWD/.venv/bin/python" scripts/run_tests.sh tests/secretary/test_
 模型接口和权限不变；纯文本Gateway来源头作为原内容保留，Get Meta继续200头尾预算，Read仍原文。实现端V01修复及定向证据已具备；独立Verification仍由主会话交回审查者复核当前提交，不能由实现者冒称门禁已通过。建议以本节两个源文件指纹和原独立反例证据复审，无需重跑无关昂贵模型。
 
 本次同一基线4032f44、私有index纳入上述两文件及本报告追加内容的正式十项检查也已全部通过：`scripts/check --staged --base 4032f44`，`10 checks, ok`，health仍0 blocking/0 advisory。长期原日志：`.hermes-dev/noting-chain-20261027/review-evidence/history-v01-full-check.log`。本报告和两源文件最终diffcheck通过。
+
+交付归档说明：上述独立反证历史命令中的源文件现存 `.hermes-dev/noting-chain-20261027/review-evidence/verification-preview-counterexample.py`；原字节／断言未改。各Verification原始证据迁移与SHA见同目录 `verification-evidence-archive-map.json`，历史执行命令和结论保持原时点。

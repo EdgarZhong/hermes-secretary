@@ -3,6 +3,22 @@
 维护实际部署、故障处理、验证与回滚点；步骤和稳定布局见[部署SOP](cloud-deployment-sop.md)，当前任务只在根[CLAUDE](../CLAUDE.md)。以下时间均为Asia/Shanghai；PID、指纹和测试结论只对应记录时点，不代表实时状态。凭据、令牌、原始私人材料不写入本文件。
 
 
+
+## 2026-10-27 · Noting来源链／History Get Meta正式发布（完成）
+
+用户明确授权“开始改吧。改完，测好，上线”。两个独立门禁通过后，将`3426c0fc9579dc0589fd0a831741b535aee71ca2`从已审基线快进合入origin/main，再在正式首尔Alex（ssh alex／ubuntu）保持检出main、由6ef9459快进发布。实际完成时间`2026-10-27T02:33:34.053517+08:00`，发布收据`~/.local/state/hermes-secretary/release-20261027/20261027-noting-chain-3426c0f/receipt.json`为verified。后继文档提交不代表生产代码再次部署。本轮没有纳入原工作区／本地main的手动Noting调试等他人dirty。
+
+**行为与验证：** Noting每条目每Task一个UID来源槽，同Task覆盖／后Task追加、旧节点只读，Evidence time对应逐槽从原消息timestamp派生；无进展不润色，未明确推迟的“稍后处理”缺排期时仅建议。History新增Get Meta，统一真实语义role、默认真人／Assistant和显式辅助／跨域开关，闭时间区间、四字段头尾预览；Search工具参数／结果预览及Read完整有界续读。已审精简Prompt生效，清退／结算／finish及父工具缓存边界保持。独立Verification38项（37符合／1本地生产不适用）和Validation17适用场景通过；40文件1094项、本次保真修复107项、最终真实Linux7文件132项通过，Linux18,394 Git blobs按原attributes核验，十项冻结检查通过。隔离真实k3.1-pro/high两Task6HTTP200保留wire与后继8源码差异边界；旧29项／8文件及Prelude15项冻结基线失败原断言保留，不宣称全分区全绿。
+
+**切换及数据：** 自然空闲、三库无有效writer／压缩lease或Noting后，只读核51条目标payload／8Snapshot／81源消息proof未变，停两服务并SQLite backup三库，核integrity／FK／SHA，再快进代码。在单事务中只转换Alex获准唯一置顶Conversation的51个历史item来源JSON；正文、fields、done、关系、建议、身份／日期、8Snapshot及pointer保持。31条目×Task独立节点在历史版本累计55次出现、180 UID引用、81不同UID；不是恢复旧模型当时未保存的精确选择意图。转换前目标rows SHA `4d5e8746a1abb8aa70aac96cf84e3c6813aef128fede1418575a130c8f237039`，后`645c77c15bdef5a5f55a79b378101583a0c6d35c46c850ff17f841ac1807f0d2`；schema SHA `18cd745093463ff381c6fc989ff66e8d1ad5f2249b416d4337701bff4efd27f1`保持，其它所有表／非目标item前后指纹一致。未建通用迁移／兼容层。
+
+**上线后验真：** Web／Gateway实际commit均3426c0f，active／running，Gateway PID275424，微信connected。正式REST Profiles及Socket profiles.list、secretary.state、secretary.notebook_read、secretary.schedules通过；目标Notebook完整28,109 UTF-8字节，来源链可读且内部owner隐藏，pointer不变；Alex39排期当前详情4条／hidden35，study无会话。HTTP入口6资源核SHA；Secretary0947ed5的439文件和Dashboard集合／SHA、全部配置及微信绑定保持。最终正式代码在运行库只读复验51版本／8Snapshot／累计55来源组／180引用／162投影，integrity及FK通过。未造生产合成消息、未调用生产模型、未发微信／飞书；connected不冒称主动外发旧问题已修。
+
+**备份与收尾：** 本次backup保存host696,320字节／Alex201,650,176／study483,328及配置，轻量SHA见私有receipt。与20261026-formal-alex-018-20c9267那套合计两套完整三库，发布后逐库重核SHA／integrity／FK。精确清除本轮研究副本`Alex/.secretary-conversion-20261027/state-before.db(.gz)`两文件，释放313,501,635字节，无活动引用；运行库、WAL／SHM和现行databases-current.zip未触碰。收据`backup-retention.json`留本发布目录。本地私有完整证据在ignored `.hermes-dev/noting-chain-20261027/release/`。
+
+**恢复边界：** 本次来源新结构与旧代码不兼容，禁止单独回退源码或自动回滚DB；先读RECOVERY.txt／receipt，核当前版本、新写入、兼容性及权限，优先保留现场向前修复。没有发生自动回退。混合UID辅助投影选择及Candidate本Task未提交槽转换属于独立审查认可的工程细化，仍明确记CLAUDE待用户追认，不冒称额外用户确认。最终覆盖及限制见[交付报告](../.autonomous/20261027-noting-provenance-history/final-delivery.md)。
+
+
 ## 2026-10-26 · Scheduler Tag切换修复、静态上线与0.1.8暂存
 
 用户明确问题是悬浮球已展开后，一级Tag→Scheduler二级卡顿，要求修复并重建0.1.8但先不交付，同时移出Alex同步区旧APK。根因不是点击处理器await请求，而是SecretaryOrb将层级变更及ResizeObserver数据尺寸变化都映射为整板opacity=0／pointer-events=none的360ms玻璃ghost；响应填充列表会再次隐藏／排队动画。前端`0947ed5f25fe9d412e25ab6ab6248aefcd64c55e`删除这两条遮挡路径，层级即时提交、仅140ms位移，不改变球本身展开／关闭动画；不增加预取／持久缓存，按需读取及恢复机制保持。
