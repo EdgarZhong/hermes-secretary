@@ -4,6 +4,14 @@
 
 暂无。
 
+## 2026-10-27 · Noting来源链／History调优（实施中）
+
+用户已确认全部语义和精简Prompt，并明确“开始改吧。改完，测好，上线”。轮次`.autonomous/20261027-noting-provenance-history/`，工作区`/Users/edgar/code/hermes-secretary-noting-chain`，分支`codex/noting-provenance-history-20261027`，基于main `d1de4db49b`；为隔离旧目录及main调试dirty新建，原修改保持。
+
+范围：Get Meta、统一语义role／默认辅助消息排除、闭区间、工具参数及结果展示；每条目每Task一个不可改旧节点的来源链、runtime只读对应Evidence time；已审Noting／History Prompt。独立History／Notebook／Prompt实现包，主会话亲审集成、真实模型证据、独立Verification→Validation后统一部署。上线时仅人工转换Alex仍用的唯一置顶Conversation的Notebook，保留消息、排期、绑定、其它Profile／Conversation和前端；不建通用迁移层。正式机`ssh alex`，上线沿既有SOP／发布工具，备份最多两套三库。
+
+冻结依据及任务覆盖见本轮Snapshot Index／plan。当前先文档冻结，未改产品／生产；部署、数据转换及实际版本只记operations-log，结果未发生前不声明通过。
+
 ## 2026-10-26 · Scheduler二级切换卡顿与0.1.8重建
 
 用户明确卡顿发生在一级面板点击Tag切换Scheduler二级，不是打开球；要求修复、重建0.1.8暂不交付。前端0947ed5已提交／自动push：移除层级及异步尺寸更新触发整板隐藏360ms的玻璃动画，层级改为立即可见可操作的140ms轻量位移；球展开／关闭动画保持，数据到达不重启导航过渡，按需读取与恢复owner不变。旧APK及SHA已移出Mac和云端Alex工作同步区，Downloads原副本及云端同步区外副本保留。
