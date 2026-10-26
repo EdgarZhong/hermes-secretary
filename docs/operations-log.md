@@ -3,6 +3,25 @@
 维护实际部署、故障处理、验证与回滚点；步骤和稳定布局见[部署SOP](cloud-deployment-sop.md)，当前任务只在根[CLAUDE](../CLAUDE.md)。以下时间均为Asia/Shanghai；PID、指纹和测试结论只对应记录时点，不代表实时状态。凭据、令牌、原始私人材料不写入本文件。
 
 
+## 2026-10-26 · 正式Alex迁移收尾、飞书MCP与0.1.8联合发布（完成）
+
+**正式入口与退役：** 用户已确认四域名DNS切换，本轮从迁移会话“好，之前那台服务器其实…”接手中断的MCP及运维收尾，并获前后端上线授权。正式首尔Alex为`43.128.131.30`／ubuntu，`alex`和`hermes-secretary-sync`均指该机；从云端解析hermes／auth／nmem／eb-data四域名均为该IP。本机Clash的198.18地址仅为本地fake-IP，不当作真实DNS。**第一台实验用首尔机`43.128.156.186`（`seoul`）已废弃，准备回收，不再承载生产服务或同步源。** 只读复核其Hermes／Gateway／NM／艾宾浩斯／认证及监测timer均不运行、自启关闭；Caddy留有先前停机超时的failed状态但无运行服务。尚未销毁实例或删除旧原始冷态数据／密钥，不能把“待回收”记成已回收。
+
+**迁移前序结果补记：** 按原会话已执行回执，NM四原生数据根直接冷拷贝，未使用导入导出包；艾宾浩斯及NM沿用API token，Authelia保留账号／密码hash／TOTP及身份库但不继承旧登录会话。原生PM登记／环境恢复后Gateway及微信正常。三条Mutagen按新端点重建，原会话已验证工作区marker双向读写／删除、8配置SHA及三库完成包与Mac冷库逐SHA一致（同步包实际含Alex/projects.db、Alex/state.db、study/state.db，不混称host三库发布备份）。健康探针和5分钟快照timer已恢复。本轮复核配置和快照通道正常，工作区正传用户新增大文件，不把传输中误记为空闲或故障。
+
+**临时文件清理：** 原迁移会话已清除源机临时归档1,925,834,696字节、目标临时目录1,935,809,614字节及Mac整个中转目录61,134,668字节；本轮复核两机`/var/backups/alex-migration-20261026`不存在。运行库、现行同步完成包、Mac冷库与旧机原始数据保持；不引用已删除的私有临时收据作为仍可访问文件。
+
+**飞书MCP补完：** 中断时本机代码与三项凭据已上传，Alex配置已写、study未写；正式Hermes PM缺mcp SDK。安装又发现迁移父目录`~/.hermes/cache`误归root，修正该目录归属ubuntu；沿官方`hermes pm install ripgrep --extra mcp`补锁定ripgrep及mcp，最终extras为anthropic／mcp／messaging／silk，原组合、源码锁和Profile其它设置保持。两Profile均使用`/home/ubuntu/tools/feishu-notifier-mcp/.venv/bin/feishu-notifier-mcp`，enabled／lazy=true；凭据在仓库外`~/.config/feishu-notifier-mcp/credentials.json`，ubuntu所有、0600。通过原生配置保存及各Profile作用域初始化／tools.list，均仅notify；未发送通知。接入收据和study修改前配置位于云`~/.local/state/hermes-secretary/feishu-mcp-20261026/`。服务随后正常重启，新运行态使用补齐后的PM环境，不中途改活动Turn工具面。
+
+**联合发布：** 后端main由fd5712351512e99e8d828f9263d3756eb6f0adac快进到`6ef94591fe7da00a4e30df3c7009dd4972269ff1`（功能代码453401d）；Secretary静态为`20c92677eee72a8aedd909787f4b203e4e2dc691`。覆盖统一Composer单行恢复状态／真实就绪资格、实时输出恢复／重连滚动／输入布局修复、Noting按需读取和独立显隐、24小时结束排期摘要、胶囊压高及Foreground第一条Conversation start。没有带入另一路手动Noting调试dirty或Noting提案，未重写旧摘要。
+
+**发布验证：** 切换前Web活动0、Gateway active_agents0／无active_work，三库无活动lease／Noting；停两服务后SQLite backup、integrity_check／FK／SHA通过，再切代码及原子交换静态。最终Web／Gateway实际commit均为6ef9459，active／running，微信connected；全6系统业务／认证服务及用户Gateway均active、NRestarts=0。前后保护表hash／配置／微信绑定一致，Dashboard集合与SHA保持，Secretary439文件逐SHA一致，HTTP入口6资源内容一致。REST Profiles与Socket profiles.list、secretary.state、secretary.schedules通过；Alex真实样本39条排期返回5条详情＋34条hidden_count，全局Noting为true；study无Conversation，不伪造会话测试。公网HTTPS Hermes匿名401、auth200、NM health200、艾宾浩斯匿名401；匿名状态码不冒称已登录手机UI验收。未触发生产模型请求，未发送测试微信／飞书消息。
+
+**恢复点与范围：** 云发布收据`~/.local/state/hermes-secretary/release-20261024/20261026-formal-alex-018-20c9267/receipt.json`为verified，同目录RECOVERY.txt及backup保存本轮host／Alex／study三库与配置；新正式机此目录仅一套完整发布备份，没有超过两套限额的旧库需清退。旧静态位于同父静态目录的`secretary.release-20261026-formal-alex-018-20c9267`。如需回退先核新写入及空闲，按主分支已审反向提交配套静态恢复，禁止自动回滚数据库／切detached。本机轻量发布与验证材料在`.hermes-dev/frontend-018-20261026/production-alex/`。
+
+**APK与规则：** 0.1.8／1008为20c9267构建，32,106,741字节，SHA256 `73d6ce39dd5e8fa7f05557f7b77db6424471bafba4850289bd6aa279dcab622a`。原证书、v2签名、ZIP CRC、16KB对齐和439内置资源核验见前述交付记录；本次再次核对交付副本SHA，未宣称真机安装。用户要求微信文件传输助手或备用工作区交付；因Mac锁定、Computer Use无原生应用，按备用方案复制至Mac`~/Desktop/Alex/Hermes-Secretary-0.1.8-20c9267-arm64.apk`及校验文件，云端`/home/ubuntu/workspace/`同名APK及校验文件已到位，32,106,741字节／SHA一致；为避免大文件同步队列等待，先传受限临时文件、校SHA后原子移入工作区，临时副本已消失。全局`~/.codex/AGENTS.md`服务器段精简为仅正式机两条，未加入实验机历史长说明。
+
+
 ## 2026-10-26 · 统一Composer恢复状态与压缩回执误拒（本地，未发布）
 
 用户批准先修订06再实现，明确服务器迁移中不得自主上线，并要求本轮主会话独立处理、不再委派子Agent。当前本地将页面恢复owner实际结果派生为统一availability：当前可见必需数据／流状态、React提交和恢复操作资格一致；Composer固定单行仅Connecting／Restoring／Retrying三模板，多个等待项3秒轮换，移除其它聊天页自动读取失败横幅／Toast。Socket connected不冒充完整就绪，普通同owner背景读取不锁操作，输入保留。Secretary不再等待无关历史cut，secretary.changed等刷新失败自动重试；REST 30秒可取消超时。Android回执也等待相同完整恢复结果。

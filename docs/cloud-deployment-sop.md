@@ -16,7 +16,7 @@
 
 首尔稳定布局：Hermes仓库 `/home/ubuntu/hermes-secretary`，控制根 `/home/ubuntu/.hermes`，两实体Home `/home/ubuntu/.hermes_profiles/{Alex,study}`，通过控制根的 `profiles/{alex,study}` 注册；保留原生default，不通过前端隐藏规避身份解析。Ebbinghaus位于 `/opt/ebbinghaus`；NM官方0.10.101运行程序保持 `/usr/lib/Nowledge Mem`，原生四数据根保持原路径，`nmem.service`以root运行、只监听本地14242，客户端ubuntu使用自己的受限官方连接配置。NM使用阿里云专属Host的 `/compatible-mode/v1`、`qwen3.7-text-embedding`／1024维，启动器从 `/etc/secrets/dashscope.key` 读取Key，不加载本地GGUF；更换模型后必须原生reindex，不能因维数相同跳过。
 
-同步专用Host `hermes-secretary-sync` 指首尔ubuntu，不改北京 `alex` alias。workspace为首尔 `/home/ubuntu/workspace` ↔ Mac `/Users/edgar/Desktop/Alex` two-way-safe；配置只传8白名单文件；DB完成包由首尔 `.hermes_profiles/.snapshots/databases-current.zip` 单向传Mac，再由既有接收器核验后落冷库。首尔快照timer每五分钟独立发布，Mac离线不阻塞源发布；不得把rawDB改成双向同步。切换时暂停旧lane、核定当前源配置、预对齐后启用，按真实marker往返、配置SHA、自动快照落地验证，不能只看connected。实际版本和收据见根CLAUDE。
+日常SSH `alex`与同步专用Host `hermes-secretary-sync`均指正式首尔`43.128.131.30`／ubuntu，私钥`~/.ssh/alex_vps.pem`。workspace为首尔 `/home/ubuntu/workspace` ↔ Mac `/Users/edgar/Desktop/Alex` two-way-safe；配置只传8白名单文件；DB完成包由首尔 `.hermes_profiles/.snapshots/databases-current.zip` 单向传Mac，再由既有接收器核验后落冷库。首尔快照timer每五分钟独立发布，Mac离线不阻塞源发布；不得把rawDB改成双向同步。切换时暂停旧lane、核定当前源配置、预对齐后启用，按真实marker往返、配置SHA、自动快照落地验证，不能只看connected。实际版本和收据见根CLAUDE。
 
 study使用原生`openai-codex`及ChatGPT订阅独立设备码授权，凭据只留实体Home的`auth.json`（0600），不在同步白名单、不导入Mac Codex登录态。默认`model.default: gpt-6-sol`、`agent.reasoning_effort: high`；`delegation.model: gpt-6.1-sol`同时覆盖普通子Agent与后台delegate_task，Provider／凭据及High沿原生继承。Noting按父冻结运行态继续使用主模型，不受delegation覆盖；已有Conversation仍遵循各自持久模型配置。当前部署版本在空命名Profile上首次`auth add`可能误报成功而未存凭据，首次授权优先使用`hermes -p study model --no-browser`中的订阅登录入口；最终须核Profile级凭据落盘、正式runtime解析与实际请求，不能只看成功提示。实际绕行与证据见运维记录。
 
@@ -53,6 +53,79 @@ sudo systemctl show authelia redis-authelia -p MainPID -p NRestarts
 ```
 
 会话修复验证应覆盖已登录／匿名请求交错、记住我开关、认证服务重启、Redis 正常重启和不可用后恢复。故障注入优先使用独立虚拟账号／数据库和回环认证实例，不在正在使用的用户会话上重复制造故障。浏览器验收需遵守本轮明确显示授权；不把隔离测试冒称手机锁屏或长期运行实测。
+
+## 0.1 第二台首尔正式服务器迁移SOP
+
+本节用于**现用首尔临时机→第二台首尔正式机**，覆盖Hermes、Nowledge Mem（NM）、艾宾浩斯数据服务及共同依赖。新机沿用Alex名称；SSH别名使用`alex`，不代表把Hermes的Alex Profile改名。正式机已完成迁移，执行结果与原实验机废弃／待回收状态见运维记录。旧北京机已关闭，不能作为本轮数据源；其历史模板／备份只作追溯。
+
+**本轮认证口径（2026-10-26用户确认，优先于下方通用保会话步骤）：** NM和艾宾浩斯复用现有API token；Authelia保留原账号、密码hash、2FA注册／TOTP及其持久库和加密密钥，但不继承旧登录会话／放行记录。新机Redis从空会话状态启动，不导入源机AOF会话；切换后重新登录。源机认证数据留作回滚，不因不迁会话扩大删除持久身份或轮换两服务API token。
+
+**本轮复制／安全范围（同日用户确认）：** 本机如需中转，数据／归档／临时备份放仓库外独立私有目录，禁止放进任何Hermes Secretary相关目录；本轮目录为`~/Library/Caches/alex-migration-20261026`（0700）。NM正常停服后直接复制原生数据库、WAL等附属文件／索引及完整四数据根，不使用NM提供的导入／导出数据包功能。监测、健康检查、小工具、timer／cron一并迁移；网络安全有效策略与源机统一，腾讯云TCP443由用户放行，主会话验证主机内防火墙及公网连通。SSH host key和当前登录公钥属于新机身份，禁止拿旧机身份文件覆盖；健康检查自动拉起在业务恢复后启用。
+
+### A. 固定源和目标、盘点范围
+
+| 对象 | 盘点与迁移要求 |
+|---|---|
+| 源临时机 | 已废弃、待回收实验机`seoul`（原IP `43.128.156.186`），用户`ubuntu`；`hermes-secretary-sync`已切新机，不能再用它执行源端命令。以实际运行进程、systemd unit、配置和文件为准记录版本／路径／所有者／权限／容量，不能只看仓库HEAD |
+| 目标正式机 | `alex`→`43.128.131.30`／`ubuntu`，新专用私钥`~/.ssh/alex_vps.pem`（0600），已实测登录；架构x86_64／Linux内核6.8。OS为Ubuntu24.04，实际环境已核；初次连接主机密钥仅按原生首次信任留存，仍须与云控制台可信指纹核对。未复用已回收北京密钥，SSH配置本体仍在`~/dotfiles`并由软链接引用 |
+| Hermes | Core及个人插件实际commit／dirty、本机对应可恢复源码、配套双SPA产物及完整SHA清单；官方PM、现有lock和运行依赖。新OS原生建环境，不复制Mac或旧主机`.venv` |
+| Hermes持久状态 | 控制根`/home/ubuntu/.hermes`、实体Home`/home/ubuntu/.hermes_profiles/{Alex,study}`及profile注册软链接；host／Alex／study三运行库、Conversation身份／历史／Notebook／排期／Heartbeat／pending／渠道绑定、实际引用的附件／媒体、workspace、Skills和规则。控制根还存在`kanban.db`、`shared-state.db`、pairing、pending_messages、hooks、auth等，须逐项判定持久状态并纳入正式迁移清单；不能只复制`state.db`或8文件同步白名单，也不因此扩大日常同步范围 |
+| Hermes配置／凭据 | Profile配置与SOUL、`.env`、study原生`auth.json`、Web machine token、微信adapter凭据／绑定文件、`/etc/secrets/`实际消费者、服务unit／drop-in、启动wrapper、语音转录／上传及解码依赖、`~/tools/`和`~/scripts/`实际工具。受限传输／恢复原权限，不能进入Git／公开日志，不能混用Profile凭据 |
+| NM | 官方程序`/usr/lib/Nowledge Mem`；四数据根`/root/.local/share/NowledgeGraph`、`/root/.config/co.nowledge.mem.desktop`、`/root/.nowledge-mem`、`/root/ai-now`。覆盖图／正文／usage／SQLite等存储、搜索索引、Spaces／认证／远程LLM配置、CLI状态和Working Memory／归档／Skills／Library源文件。服务配置、ubuntu客户端连接配置／token及`/etc/secrets/dashscope.key`单独核权限。不能用Memory导出或只复制图数据库替代完整恢复 |
+| 艾宾浩斯 | `/opt/ebbinghaus`源码／lock与实际运行依赖；权威库`/opt/ebbinghaus/data/ebbinghaus.db`及WAL／SHM；环境文件`/etc/ebbinghaus/server.env`、Bearer token及服务配置。现启动链使用`runtime/node-v24.21.0-linux-x64/bin/node`→server内tsx→`server/src/index.ts`，Node约束`>=24.21.0 <25`，better-sqlite3须匹配新机架构和Node ABI；不能把旧原生模块直接用于异构新机 |
+| 公网与认证 | Caddy配置／实际版本／TLS存储；Authelia配置、用户文件、二次认证数据库及加密／签名／session密钥；专属Redis配置和完整持久化集合。保留Cookie域／期限及NM、eb-data原生API认证，不能只迁移登录页 |
+| 同步与外部消费者 | 三条Mutagen精确ID／端点／模式／ignore／8文件白名单；源快照service／timer、Mac冷库接收器；所有使用`hermes`／`auth`／`nmem`／`eb-data`域名或旧IP的客户端、API调用、MCP、Web／APK与脚本 |
+
+在受限运维目录记录新旧机映射、运行版本、配置路径及SHA、三服务数据清单、DNS A／AAAA／代理状态／TTL、各服务启动命令和恢复点；公开运维记录只保存脱敏摘要和入口。凭据文件只核权限、存在性和安全指纹，不输出内容。迁移沿现有产品配置，不顺带升级NM、换embedding模型、改Profile语义或迁OpenClaw。
+
+**服务作用域现场核对表：** Hermes Web是系统级`hermes-secretary.service`（User=ubuntu、cwd=`/home/ubuntu/workspace`），Gateway是ubuntu**用户级**`hermes-gateway.service`，不能在系统级查不到它就视为停用。NM为系统级`nmem.service`（root、cwd=`/root`），艾宾浩斯为系统级`ebbinghaus-sync.service`（cwd=`/opt/ebbinghaus`），另有`hermes-secretary-snapshot.timer`和认证相关unit。目标要恢复实际systemd层级及用户Linger／自启，不按名字猜作用域。
+
+**NM版本与认证待核：** 历史验收为官方0.10.101，正式迁移前重新取运行程序真实版本；包管理器未识别版本不能用历史记录冒充当前证明。NM远程LLM／认证加密配置跨机可移植性、Authelia实际storage／用户文件及secret绑定、Caddy证书存储／续签、NM全部写入客户端、艾宾浩斯全部设备／外部消费者、当前完整数据体积均须现场核清，缺失项明确保留，不能虚构默认路径。现机路径已确认不等于已具备全套恢复证据。
+
+**艾宾浩斯客户端边界：** V2 macOS／Android客户端持有完整本地SQLite，后台经HTTP同步到云端权威库；`server_seq`游标、设备身份、outbox和连接凭据留客户端。迁移窗口前核各设备已上传／待上传范围，正常完成已有同步后暂停新增同步写入；离线设备的待上传数据仍留原客户端，恢复后核幂等接续和游标，不把本地工作库或旧V1测试库覆盖到云端。客户端契约见Ebbinghaus-v2仓库README与部署留档，其中旧北京`ssh alex`／Tunnel拓扑不作现入口依据。
+
+### B. 新机准备与预复制（源保持服务）
+
+1. 新机完成SSH／sudo、时间同步、磁盘及防火墙准备；明确数据容量、临时归档空间和恢复空间。保持现有Linux用户／目录布局可减少路径改写；若目标布局不同，先列出软链接、unit、wrapper、AppArmor／Chromium路径和客户端配置的完整映射，不能全局字符串替换。
+2. 安装源机对应版本的运行程序及依赖：Hermes官方PM环境／lock、配套双SPA、NM官方程序、艾宾浩斯环境、Caddy／Authelia／专属Redis。固定服务用户、UID／GID权限及`LoadCredential`消费者，验证配置语法；目标后台任务及Gateway暂不启用。
+   Hermes不能只重建项目`.venv`：原生Gateway启动器使用`HERMES_HOME/installs/<install_key>/facts.json`及已保存workspace／lock、feature／plugin选择。迁移这些登记与记录后用官方`pm repair`重建原生已提交环境，不复制旧venv，也不伪造facts或改Gateway启动路径绕过PM；核实际Web／Gateway运行版本和control socket就绪后再算恢复。按深层路径打包时也须恢复所需父目录的源所有者／权限（尤其`~/.local`、`~/.local/state`），不能只校子文件SHA。
+3. 可先传静态源码／产物、依赖清单和大文件；活跃数据库／NM文件的首轮拷贝只是预热，不能作为切换快照。通过已核主机身份的SSH受限传输，不能把凭据塞进命令行、Git或共享包。最终数据包须有相对路径清单、文件SHA及所有者／权限／软链接信息。
+4. 以回环或自己建立的SSH转发预验新机，不提前改生产DNS。恢复副本的Hermes不能连接真实微信、启动Scheduler／Heartbeat／Noting等写入任务；NM副本不得启动会写数据的后台工作。使用正式入口的只读检查，并留意启动本身可能升级Schema／产生任务；必须先固定兼容版本和恢复副本。
+5. 核定迁移窗口和未完成工作：活动Turn／Noting／委派、到期Reminder／Heartbeat、NM索引／后台任务、艾宾浩斯请求，以及同步冲突。准备需要暂停／恢复的精确unit／timer／session清单和源机恢复顺序。此阶段源机仍是唯一生产写入方。
+
+### C. 停写与最终一致副本
+
+1. 暂停三条Mutagen的精确session并保存模式／端点／过滤规则，暂停源快照timer，避免最终快照期间Mac双向修改或旧完成包覆盖新冷库。保留Mac已验`current`／`previous`及当前完成包，不把Mac冷库当最新源。
+2. 从已记录的公网入口暂时挡住新写入，防止Web、微信、NM客户端和艾宾浩斯外部请求继续写。等待活动Turn／Noting／委派自然结束；再停源Hermes Web／Gateway及实际后台写入者，停止NM写入／索引和艾宾浩斯服务。停服顺序按现场unit及依赖核对，不能凭服务名字猜测或使用广域`pkill`。
+3. 停止Authelia写入和专属Redis后，保存Redis完整AOF／RDB集合及manifest（现AOF目录`/var/lib/redis-authelia/appendonlydir`）、Authelia二次认证库／用户配置／密钥。NM正常退出、确认无残留写入进程／打开写FD后保存四数据根的完整同批副本；嵌入式多文件数据库不能从运行中文件随意拼接。各SQLite用既有backup接口或已确认无写入的完整停服副本，记录WAL／SHM处理结果，不能只拷主文件遗漏已提交WAL，不能删除WAL／SHM来伪造干净停机。
+4. 把源最后快照与预复制差量对齐，核清单／SHA、权限／所有者／软链接、各SQLite完整性及foreign_key_check基线。跨独立库不声称事务原子性；停写窗口内固定共同业务边界，记录截止时间及待处理任务状态。NM对每种数据存储做对应完整性／打开验证，不把SQLite检查套到全部存储。
+5. 新机保持生产写入关闭，恢复相同路径和权限，逐服务核数据／schema／原生启动解析、回环只读API和认证拒绝边界。源最终副本、配置和源码／静态配套版本保持可恢复；此时发现问题，直接继续用源机，无须切DNS。
+
+### D. 切换域名、后台owner与同步
+
+1. 新机受保护的Caddy／认证先就绪，检查`hermes.edgarzhong.fyi`、`auth.edgarzhong.fyi`、`nmem.edgarzhong.fyi`、`eb-data.edgarzhong.fyi`的证书、正确Host路由和匿名拒绝；NM和艾宾浩斯仍沿原生token认证。检查A及AAAA，避免遗漏旧IPv6记录；是否有代理以源实际配置为准。
+2. 旧机继续拒绝外部写入且后台保持停止，切四域名的实际DNS记录到新机；传播期间不能让缓存旧IP的客户端把写入留在源机。必要时旧入口维持明确维护状态；采用旧机转发新机须单独核实际配置，不作为默认已实现能力。保留原记录／TTL供回滚。
+3. 确定新机成为唯一生产数据owner后，按依赖启动NM／艾宾浩斯，再启动Hermes Web／Gateway和其后台任务。核微信只有一端在线、原Conversation绑定保持，Scheduler／Heartbeat／pending经原生语义恢复，不手动重放所有错过任务；源快照timer保持关闭，新机独立发布。
+4. `alex`固定指新正式机；切`hermes-secretary-sync`前保持旧session暂停，留存旧主机可恢复连接入口。虽然别名字符串相同，远端owner已改变，不能直接恢复旧Mutagen archive；核对预对齐结果后按已保存模式／ignore重建三lane，避免旧归档的删除／冲突解释带到新机。SSH主机指纹须独立核对，不关闭StrictHostKeyChecking。
+5. workspace真实marker创建／修改／删除往返；配置只核定的8文件SHA并验证双向、`.env`／auth／cache／raw DB仍排除；快照只传稳定`databases-current.zip`，等待新机timer自然发布及Mac接收器校验host／Alex／study三库。保留坏包／忙库保护，不让过期包反盖新库；单纯connected不算迁移成功。
+
+### E. 验收、回滚与回收
+
+| 范围 | 最少证据 |
+|---|---|
+| Hermes | 进程实际版本／配置；两SPA、API／WS；两个Profile和当前Conversation完整恢复；历史／身份／Notebook／排期／Heartbeat／pending／微信绑定指纹；受引用附件和workspace可读；Provider／工具解析。不通过生产合成消息或新增真实模型调用验证，除非本轮另有明确授权 |
+| NM | 受原token保护的正式status、Memory／Thread／Space／关系及资源的数量与抽样只读内容；图／向量／正文存储可读；同embedding模型／1024维和云Host解析正确。迁移保持同模型且完整索引时先验证，不无条件重建；若实际缺索引／变模型再按原生流程处理，真实embedding请求和成本单独记录 |
+| 艾宾浩斯 | 健康检查、原Bearer认证成功／未授权拒绝、数据库完整性／schema及记录数量、只读抽样内容；原客户端继续使用同域名和token。服务启动不等于真实读写业务验证；有必要的写入验证先用隔离副本或单独确认 |
+| 认证／同步 | Authelia匿名拦截、二次认证数据、原Cookie适用条件及Redis持久化加载；TLS／四域名／DNS；三lane正式数据往返、自动三库完成包与Mac冷库新鲜度。登录页302不等于原登录态保留成功 |
+
+界面仍只允许自己创建的隐藏IAB；无合规登录态或手机实测条件时明确记未验，不操作用户页面。原Authelia会话只有在Cookie域、session密钥、Redis数据、软件兼容和期限均满足时才可能保留；迁移是否免登录必须实测，不能先作保证。启动／恢复出现问题，先保留日志及原数据，不清库重建或回盖旧快照。
+
+Authelia现有“启用Redis前”的`rollback.sh`会切回内存会话并重新要求登录，只适用于那次配置变更，不能用作本轮跨主机迁移回滚脚本；不迁移登录态须先明确接受重新登录，不能由Agent自行省略该数据。
+
+**回滚分两种情况：** 新机尚未接受生产写入时，停止目标服务，恢复原DNS／同步端点和源机服务即可，仍只允许一端生产写入；新机已经接受任何写入时，必须先冻结目标、留存新写入和最终副本，核兼容性并完成回迁／数据对账后才能恢复源机。仅把DNS改回旧机或拿旧快照覆盖会丢失新数据，不能作为此阶段回滚步骤。DNS传播期间两端始终避免同时接收业务写入。
+
+三服务、认证、真实消费者及同步验收确认完成后，才回收临时首尔机服务、旧同步lane／SSH密钥和云资源。云端Hermes历史三库备份遵守最近两套完整集合的既有规则，NM／艾宾浩斯恢复包不混入该计数、不借此扩删；不删除唯一恢复点。记录实际迁移／回滚结果到operations-log，当前状态更新CLAUDE。
+
 
 ## 1. 原北京部署模板与生产配置口径
 

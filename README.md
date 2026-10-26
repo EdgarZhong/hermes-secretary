@@ -80,7 +80,7 @@ Gateway入口 `hermes gateway`；Dashboard入口 `hermes dashboard --host 127.0.
 
 ## 部署入口
 
-当前首尔部署使用 Caddy HTTPS → Authelia双因素（Redis Unix socket保存会话）→ 回环单后端。Secretary `/` 与官方Dashboard `/dashboard` 同源共用API / WS；不增加第二后端或多worker。云端检出main，仅发布已合入main的后端代码；前端只部署构建产物。旧北京Cloudflare Tunnel模板与当前入口区别见 [部署SOP](docs/cloud-deployment-sop.md)。
+正式服务器为首尔 Alex（`ssh alex`，ubuntu，`43.128.131.30`）；部署使用 Caddy HTTPS → Authelia双因素（Redis Unix socket保存会话）→ 回环单后端。Secretary `/` 与官方Dashboard `/dashboard` 同源共用API / WS；不增加第二后端或多worker。云端检出main，仅发布已合入main的后端代码；前端只部署构建产物。旧北京Cloudflare Tunnel模板与当前入口区别见 [部署SOP](docs/cloud-deployment-sop.md)。
 
 运维步骤、Profile布局、凭据与同步责任见SOP；实际变更、验证和回滚点统一记录在 [运维记录](docs/operations-log.md)，不再堆入核心文档。
 

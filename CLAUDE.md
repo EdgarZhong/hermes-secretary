@@ -6,9 +6,9 @@
 
 ## 当前阶段
 
-**2026-10-26：用户正在迁移服务器，禁止自主上线、部署静态、更新／重启生产服务或为此操作迁移服务器。本轮仅本地代码、测试、Git同步及APK构建。用户明确本轮由主会话处理全部工作，已停止子Agent，不再委派。**
+**2026-10-26最新授权：用户已允许前后端上线，SSH `alex`为正式首尔43.128.131.30／ubuntu；由主会话独立接完迁移会话未完成的飞书notifier MCP（Alex、study均启用），发布本轮代码并恢复Hermes云端正常运行。同步修订全局服务器规则、补齐运维记录；第一台实验用首尔机废弃、准备回收，不再作为生产源。原迁移期间禁止上线约束已被本次授权替代。**
 
-已按用户指定顺序完成统一恢复修复与b33e428阶段APK核验，再完成Noting按需优化。悬浮球仅由当前Profile全局开关决定，与连接状态解耦；未展开排期不取详情，概览用轻量计数，同owner突发失效合并为一个在途请求加一次最新读取，未生效的旧读不消费完成通知。不新增持久缓存。后端查询排除结束严格超过24小时的排期，仅返回hidden_count；删除不返回／不计数，暂停保留，原生模型工具完整列表不变。用户新增胶囊压高已落实：Usage／Context从32降至26px，字体／胶囊圆角不变，底栏36降至30px。最终0.1.8／20c9267已构建并完成交付副本完整性核验，全部尚未部署。用户明确追加修复Compaction message末尾的Conversation start：只取该Conversation的History Foreground第一条timestamp，禁止用内存最早时间或本次压缩区间代替，禁止另猜起点。已删除_summarize_window的内存min(timestamp)，Compaction footer直接读取get_history_foreground(current_session)[0].timestamp；真实数据库反例改前3失败、改后3通过，7文件201项相关测试与10项冻结检查通过。未部署，不改写生产历史／旧摘要。
+已按用户指定顺序完成统一恢复修复与b33e428阶段APK核验，再完成Noting按需优化。悬浮球仅由当前Profile全局开关决定，与连接状态解耦；未展开排期不取详情，概览用轻量计数，同owner突发失效合并为一个在途请求加一次最新读取，未生效的旧读不消费完成通知。不新增持久缓存。后端查询排除结束严格超过24小时的排期，仅返回hidden_count；删除不返回／不计数，暂停保留，原生模型工具完整列表不变。用户新增胶囊压高已落实：Usage／Context从32降至26px，字体／胶囊圆角不变，底栏36降至30px。最终0.1.8／20c9267已构建并完成交付副本完整性核验，已随本轮在正式Alex上线。用户明确追加修复Compaction message末尾的Conversation start：只取该Conversation的History Foreground第一条timestamp，禁止用内存最早时间或本次压缩区间代替，禁止另猜起点。已删除_summarize_window的内存min(timestamp)，Compaction footer直接读取get_history_foreground(current_session)[0].timestamp；真实数据库反例改前3失败、改后3通过，7文件201项相关测试与10项冻结检查通过。已上线；不改写生产历史／旧摘要。
 
 统一恢复状态本地实现完成：PageRecovery复用原有owner、轮次、读取结果与提交点，派生当前可见依赖的availability；Composer单行提示、主按钮恢复资格及Android恢复／导航回执同源。只有Connecting to Hermes…、Restoring {对象}…、Retrying {对象}…三模板，固定20px单行、随Composer宽度、省略号、多个真实等待对象3秒轮换。移除聊天页其它自动恢复横幅／Toast；草稿保留可编辑，真实写操作及未确认回执反馈保留。已恢复同owner的普通后台刷新不重新锁定操作；隐藏预取不进入完整恢复资格。REST读取增加30秒可取消超时，失败交给既有owner自动重试。
 
@@ -16,26 +16,28 @@
 
 通用规则见[AGENTS](AGENTS.md)，稳定入口见[README](README.md)，逐次部署／故障历史见[运维记录](docs/operations-log.md)。历史CLAUDE可由f812c1d等已提交时点读取，不把旧阶段的“当前／正在”继续作为任务编排。
 
+本轮发布及迁移收尾已完成：Alex、study飞书MCP握手均仅notify，未发通知；Hermes恢复正常运行。旧实验首尔机废弃、待回收，未销毁实例。全局服务器规则已精简。具体版本、验证、备份与限制统一见[运维记录顶部](docs/operations-log.md)。APK已交付Alex工作同步区，本机与云端32,106,741字节及SHA一致。
+
 ## 当前交付与运行版本
 
 | 项目 | 已核结果 |
 |---|---|
 | 本轮本地代码 | 前端`20c92677eee72a8aedd909787f4b203e4e2dc691`、后端`453401db2af67dc25a808f23f5e3cc1b386a8d65`均已自动push；文档后继提交不等同代码部署 |
-| 后端线上最后核验版本 | fd5712351512e99e8d828f9263d3756eb6f0adac；当前压缩回执修复仅本地，迁移禁令之后未再访问服务器 |
-| 前端线上最后核验版本 | 388839cda07d3a428ccfc924de85a504ee25cb77，439静态与HTTP入口index-Dhu8Zuse.js／index-D-MUF2u6.css验证通过；本轮统一状态尚未部署 |
+| 后端线上最后核验版本 | 6ef94591fe7da00a4e30df3c7009dd4972269ff1；新正式Alex的Web／Gateway实际版本已核，微信connected |
+| 前端线上最后核验版本 | 20c92677eee72a8aedd909787f4b203e4e2dc691；439静态逐SHA及HTTP入口资源验证通过，本轮统一状态已上线 |
 | 已交付APK | 最新0.1.8／1008：`/Users/edgar/Downloads/Hermes-Secretary-0.1.8-20c9267-arm64.apk`，32,106,741字节，SHA256 `73d6ce39dd5e8fa7f05557f7b77db6424471bafba4850289bd6aa279dcab622a`；原证书、ZIP CRC／v2签名／16KB对齐、439内置资源及交付副本一致性通过。未真机安装；旧388839c文件保留，但非本轮最新包 |
-| 运行设置 | 历史noting off不代表当前值；最后已核local_enabled=true，默认／Alex压缩总时限1000秒及Idle500秒／96K保持。本轮不改运行配置或调用生产模型 |
+| 运行设置 | 历史noting off不代表当前值；最后已核local_enabled=true，默认／Alex压缩总时限1000秒及Idle500秒／96K保持。本轮只追加授权飞书MCP配置／官方PM mcp依赖，不改模型或调用生产模型 |
 | 保留他人工作 | presentation报告、手动Noting调试入口／协议生成、07等原dirty保持，不纳入本轮恢复补丁提交 |
 
 ## 唯一任务看板
 
 | 工作 | 状态与完成边界 |
 |---|---|
-| Composer统一恢复契约 | 本地实现与正式App链路已验，已提交／自动push前端b33e428，等价抽取217项及复杂度检查通过；未部署 |
-| 压缩后完成回执恢复误拒 | 本地正式入口及原生链路105项通过；补充中断／失败压缩路径7项通过，10项冻结检查通过；已提交／自动push后端98a707e，未部署 |
+| Composer统一恢复契约 | 本地实现与正式App链路已验，已提交／自动push前端b33e428，等价抽取217项及复杂度检查通过；已部署正式Alex |
+| 压缩后完成回执恢复误拒 | 本地正式入口及原生链路105项通过；补充中断／失败压缩路径7项通过，10项冻结检查通过；已提交／自动push后端98a707e，已部署正式Alex |
 | 0.1.8重新构建 | 20c9267最终APK已构建并核验，唯一新文件名与SHA／verification sidecar已生成；无真机不声称安装验证 |
 | Noting弱网按需读取／显示解耦 | 已提交／自动push前端20c9267、后端4b04546；本地实现及主会话隐藏IAB已验：未展开0次、展开1次、关闭／重连无额外列表读；底部隐藏摘要、全局开关控制球、断线球保留；不新增持久缓存 |
-| Compaction末尾Conversation start | 已按用户再次明确的Foreground第一条修复，真实DB连续三轮原地压缩／Session轮转／冷恢复稳定；非单调时间与foreign owner反例覆盖。7文件201项及10项冻结检查通过，已提交／自动push后端453401d，未部署 |
+| Compaction末尾Conversation start | 已按用户再次明确的Foreground第一条修复，真实DB连续三轮原地压缩／Session轮转／冷恢复稳定；非单调时间与foreign owner反例覆盖。7文件201项及10项冻结检查通过，已提交／自动push后端453401d，已部署正式Alex |
 | 重连阅读／流式漏显 | 388839c已交付：idle前缀兼容保视口；active或已证前缀失配才回底；连续连接手动20秒规则独立。旧恢复冻结挡住已到达消息的机制、首次NewChat／冷active慢Pending路径已补齐。本轮回归继续验证 |
 | Composer满高闪动 | 小数scrollTop钳制导致的无效重复scrollTo已修：原90次含30次无位移，修后105次均有实际位移。未修改键盘／布局；Android Chrome真机绘制尚未验，不把桌面窄窗口等同问题全部关闭 |
 | 既有工具展开状态 | construction→UID admission展开保持测试在未修改388839c隔离副本同样失败，已留证；本轮不改断言掩盖，不与流式可见修复混为一谈 |
