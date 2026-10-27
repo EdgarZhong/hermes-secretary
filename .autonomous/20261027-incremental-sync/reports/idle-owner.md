@@ -136,3 +136,7 @@ HERMES_PYTHON=/tmp/hermes-incremental-verify-20261027-32f3cf02da9a/test-env/bin/
 - 汇总与指纹：`linux-final-summary.json`记录163唯一测试的证据组合及各日志SHA；命令／耗时分别在`isolated-run.json`、`four-case-ssh.json`、`final-collect.json`。最终补测日志SHA256为`9da7c9a0318e7390f598c3983ce069e46c06f17f57b713bdd652e121217b95aa`。
 - **清理已完成：** 先成功取回所有日志与四份JSON并在本地核SHA，再核远端根路径／非symlink／对应commit／测试成功后，用`shutil.rmtree`只删除`/tmp/hermes-incremental-verify-20261027-32f3cf02da9a`。`cleanup.json`、`cleanup.log`、`cleanup-command.json`明确记录解析后精确路径与`exists_after=false`。该目录包含本次源码导出、独立PM env／cache／home和证据；未删其它tmp、生产备份或运行目录。
 - 无产品文件新改动、无commit／push／部署、无生产checkout／venv／配置／数据库／服务／凭据变更、无重启或显示操作。整轮独立门禁仍由主会话组织；本节只关闭本次Linux目标平台定向证据缺口。
+
+## 11. 干净检出测试夹具收尾
+
+只增加EVIDENCE.mkdir(parents=True, exist_ok=True)，不改业务断言。main HEAD隔离Git归档初始无ignored目录，官方runner仅重跑4个后台例全部通过，9.5秒；目录由测试自行创建。证据为增量工作区ignored fixture-portability/{tests.log,result.json,command.txt}。先main 5fc54fc233a0379321c13c22494923e06f302dad，再纳增量；产品源码不变，先前Linux163项机制证据仍保持原范围。

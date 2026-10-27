@@ -132,6 +132,7 @@ def test_background_heartbeat_then_idle(cold, monkeypatch, reap, compact):
                   "final_period": db.noting_idle_state(ref),
                   "post_failure_attach": rt.maybe_run_idle_noting(parent, db, ref),
                   "effective_snapshot": db.notebook_current(ref)}
+        EVIDENCE.mkdir(parents=True, exist_ok=True)
         (EVIDENCE / f"result-{reap}-{compact}.json").write_text(json.dumps(record, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
         assert freezes[0]["owner_id"] == id(parent) and freezes[0]["source_len"] > 0
         assert outcomes == ["admitted"]

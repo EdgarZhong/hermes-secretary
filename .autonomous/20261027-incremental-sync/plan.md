@@ -81,3 +81,7 @@
 |---|---|---|---|
 | test_idle_noting_owner证据写盘依赖ignored目录已存在 | 主会话／U16 | 测试自行创建精确证据目录或用既有临时目录，保断言；干净隔离导出仅重验4项，修复按main先纳再集成 | 待修，产品源码无新增失败 |
 | I1最终三个浏览器复验 | 主会话 | 隐藏IAB工具恢复后，真实Python/SQLite/HTTP/WS同document核epoch仅一次snapshot、详情单请求且冷重开复用、合法unavailable停止轮询；保草稿与Context表现 | 工具报disabled与用户开启截图冲突，连接重置未解 |
+
+## 用户最新执行调整
+
+用户明确两仓提交后直接进Validation，停止本地Verification，由其自行把准确版本和原口径prompt交给云端AI结合skill静态审查。本地Verifier已中断，无通过结论。主会话继续独立Validation的计划审阅／实际验收与集成收尾，不把顺序调整冒称V1通过。重启后隐藏IAB已恢复；测试目录初始化修复已先main 5fc54fc233a0379321c13c22494923e06f302dad，四例干净导出通过，现纳入增量。

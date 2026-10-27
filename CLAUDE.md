@@ -7,7 +7,7 @@
 
 ## 2026-10-27 · 增量同步与免刷新恢复（执行中）
 
-用户恢复执行后，前端91ad72f已提交自动push，后端产品862326c0a7／文档e26b8d1062；Linux7文件163项组合证据已完成并亲审核SHA。当前为配合用户重启Codex保存断点，未最终验收或部署。浏览器工具反复返回disabled，但用户截图显示开关始终开启；重置cua连接仍同错，根因未知，不能称用户禁用。独立Verification已中断且仅复制模板，未完成独立判据；Validation未开始。自有本地夹具服务已停止。详见本轮final-delivery.md重启断点。
+用户重启应用后隐藏IAB恢复可用，已继续最终联调。最新明确要求：停掉本地Verification，静态审查由用户交云端AI结合skill执行，直接推进独立Validation；此用户口径优先于原V1→V2顺序。主体代码前端91ad72f、后端862326c0a7已提交push；Linux163项已覆盖通过，未验收或部署。本地Verifier已中断，无通过结论；云端审查prompt见本轮reports/cloud-static-review-prompt.md。
 
 用户明确本轮自主执行，跳过Ask and Align：先调查Restore慢于刷新原因，先在main修复独立问题，再在前后端同名新分支实现游标增量同步与SPA免刷新恢复。保持产品／视觉／交互语义；复用Desktop原生能力，缺口只增可选API字段。APK取消恢复中的自动刷新；历史缓存须经服务端增量对账，不省略有效性校验。新会话正常取消请求不得弹Signal Aborted；修复Android键盘收起闪屏；微信只限制会话管理Slash，会话内交互保持，每条完整Assistant Message立即发送、不等Turn结束。main修复阶段按用户豁免不运行严格双门禁，新机制集成后完整执行。用户追加明确：网络恢复期间Notebook图标保持同owner最后有效状态，不闪unknown；首次无状态不伪造成功，真实状态变化正常更新。主会话设计与集成审查，子Agent统一6.1 sol/high，仅真正阻塞或整包完成汇报。未授权生产部署／真实微信测试发送。
 
