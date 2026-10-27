@@ -13,7 +13,7 @@ U01–U17仍生效，用户明确自主执行且跳过Ask and Align；旧模糊�
 - 独立main修复已纳入：Signal Aborted／Notebook、键盘、微信、Toast、Idle owner；U16 main0a5d09cdcf，增量集成0b596ad4c7。
 - 后端增量＋U17已亲审提交862326c0a7，前端缓存／增量／压缩及收尾已亲审提交91ad72f。Android免reload6ba37b4已接入。
 - 最新前端六文件SHA与244项、typecheck、build和冻结度量匹配。原454、316等证据分别保持原版本／范围，未合称单次全套。
-- Linux隔离官方PM环境7文件163项覆盖通过：首次159通过、4个证据目录错误；mkdir后只补测4项均通过。主会话核19份日志及结构化记录SHA全匹配，远端自建/tmp已核验删除。没有产品／锁／生产环境改动。
+- Linux隔离官方PM环境7文件163项覆盖通过：首次159通过、4个证据目录错误；mkdir后只补测4项均通过。主会话核16份日志及结构化记录SHA全匹配，远端自建/tmp已核验删除。没有产品／锁／生产环境改动。
 - 后端原工作区、main其它dirty、前端.DS_Store全部保留。最终候选未部署。
 
 ## Verification 与 Validation
