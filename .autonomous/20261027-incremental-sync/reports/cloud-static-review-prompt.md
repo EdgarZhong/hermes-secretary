@@ -4,7 +4,7 @@
 
 ## 精确审查版本
 
-- 后端仓库：https://github.com/EdgarZhong/hermes-secretary ，分支 `codex/incremental-sync-20261027`。主体实现提交 `862326c0a71547e3315e66eb76496a5ab8ccb1dd`；下面版本回执将给出包含最后测试夹具修复的当前完整待审HEAD。初冻 `cf5742c70b26e0dc954eabcb4b07c232c5231013`；独立main问题修复也要覆盖，不只审初冻后的diff：微信main `e1b124d450`、Idle main `0a5d09cdcf`（集成 `0b596ad4c7`）；最后测试目录初始化修复不改业务代码。
+- 后端仓库：https://github.com/EdgarZhong/hermes-secretary ，分支 `codex/incremental-sync-20261027`。主体实现提交 `862326c0a71547e3315e66eb76496a5ab8ccb1dd`；最终待审HEAD为 `44eb0be4c3a2c7e9f13157740514fd40bd83aa50`（包含最后测试夹具修复；后继本prompt文档更新不改变产品源码）。初冻 `cf5742c70b26e0dc954eabcb4b07c232c5231013`；独立main问题修复也要覆盖，不只审初冻后的diff：微信main `e1b124d450`、Idle main `0a5d09cdcf`（集成 `0b596ad4c7`）；最后测试目录初始化修复不改业务代码。
 - 前端仓库：https://github.com/EdgarZhong/hermes-still-chat ，同名分支。待审完整提交 `91ad72f3898be4e6d98461f69566a76b54595290`。初冻 `c39086c1879cd46370bdc8f4e3d98a3c290aecc3`；还须覆盖本轮独立main修复 `5cbef57`（取消／Notebook）、`37a8e4c`（键盘）、`810aca3`（Toast，功能分支 `03ef6d5`）、`6ba37b4`（Android免reload）。
 - 获取上述指定对象后固定commit，不能仅拉各仓main或任意最新HEAD。两仓尚未部署。
 
