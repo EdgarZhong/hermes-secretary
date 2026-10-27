@@ -1,0 +1,78 @@
+# U16 · Idle Noting 父 owner 生命周期修复交回
+
+状态：实施完成，待主会话亲审／集成；未提交、未push、未部署。执行工作区 `/Users/edgar/code/hermes-secretary-idle-noting-owner`，分支 `codex/idle-noting-owner-20261027`。
+
+## 1. 对应条款
+
+- U16、plan末尾主会话设计、07 §8.1新增生命周期条款；白板P1–P5／N1–N4的联合生命周期、正常提交与完成投递要求；保留02 §4.8／§5.4／§5.11的原子准入、持久child、真实Active冻结与缓存前缀。
+- 原始Downloads问题报告已完整审读；使用虚构隔离Profile／Session／正文，不复制生产个案身份到实现或测试。
+- 主会话本轮补充收敛：global／local／Idle关闭仍沿既有terminal cleanup，不增加重开自动补跑；“未消费due／period／trigger保持”针对关闭、epoch退休、owner被替代、弱引用消失及真实前缀不可用等生命周期失效。开关off不freeze／不admission／不起child，原开关状态断言保留。
+- 未改schema、Prompt、预算、阈值、Provider、调度器、生成协议、增量包recovery/history/web routers，也未改三核心或规格文档。未派生子Agent。
+
+## 2. 实际变更
+
+1. `noting_timers`既有记录改为内部`_IdleTimer`：weak exact parent、DB／Conversation runtime key、原生epoch、原period，以及有效／firing事实。`holds_pending_timer`不再把同DB/ref其它父对象视为持有者。timer firing保持记录直至同步准备交接；过期attach也借同一记录做短暂准备保护，不建新账本。线程start失败移除准确登记，保留durable deadline。
+2. `refresh_maintenance`在host锁外重新读所属Profile的有效设置、局部参与、当前session、period；`holds_maintenance`在host锁内只读短时注册事实及现有completion，既不查DB／网络，也不解析路径。已claim同周期的firing记录不因trigger时间更新而出现保护真空。
+3. orphan、TTL、LRU接同一维护predicate；有效等待／有界工作沿原grace延期，cap沿原live-work豁免。关闭、归档／删除、开关失效、epoch变动与owner替换会失去豁免，不新增忙等或永久保活。
+4. `noting_scope`保存可信runtime binding；closed对象不可重新bind。迟到host tick对“曾binding但已非current”的A先skip，不能抢回B；真实新Main／构造的通用bind边界保持。
+5. Idle同步准备复用原生`_session_persist_lock`和epoch：核owner／当前route／归档后，真实冻结父Active前缀，再claim／admit并预注册现有completion。`close()`在同一短锁内标旧owner关闭、退休epoch、准确取消旧timer；通知、资源关闭和所有Framework发布在该锁外。没有真实可冻结前缀明确返回`parent_context_unavailable`，不消费周期，不拼DB前缀、不新建临时Agent。
+6. 既有`_NotingCompletion`增补epoch、准确Idle continuation owner及native request交接事实。新child、等待现有child、已正常完成任务复用压缩，均保到原生压缩／Framework收尾。已完成任务复用只等原生`request.completed`事件释放，不重发旧Framework、不建任务账本；pending交接防原child cleanup抢先移除。准备／派发失败总能释放预注册completion；Force派发通知失败不破坏已启动child的owner。
+7. 测试夹具补真实活动前缀；local off仍可有待清退timer，但它不再产生回收豁免，因此对应`holds_pending_timer`断言改为false，原period清退／重开断言未放宽。模拟改Conversation的旧测试增加真实身份边界bind，并先断言host tick自身不能重bind。旧cold测试唯一代码更新为内部timer记录`.timer`定位；其失效配置未改。
+
+8. **主会话亲审后的窄修补：** 首包47e7f531仍有cleanup在等待Framework前读取pending、以及begin返回后才登记pending的两处TOCTOU；主会话指出后，本次将handle选取／创建与`native_pending`及准确continuation owner登记合到一次ACTIVE短临界区。`_end_completion`先取得Framework锁，再在ACTIVE短临界区重新核pending／request／lifecycle，并原子closed／pop；固定Framework→ACTIVE，不在ACTIVE区等待Framework／persist／DB／native。callback与等待线程保持锁外。`noting_compact`只增内部callable属性，显式暴露已有relevant函数身份；child在persist短锁仅读当前request，并同时核parent／db／Conversation／epoch与relevance函数身份，不调用relevant，不将另一轮请求完成事件误当作本次receipt。主会话已明确批准这一最小内部接缝。
+
+
+## 3. 正式路径与锁顺序
+
+`scan_profile → 原生后台resume → 真Main Heartbeat → note_main_turn_finished → 原daemon timer → _run_idle_event → 短persist身份核验／真freeze／claim／admission／completion → 锁外spawn_noting_task → 真child工具循环 → Commit Gate → 正常finish后原生request_context_compaction → 摘要引擎／durable publication → Framework → 原task生命周期cleanup`。
+
+普通orphan回调先在sessions锁外刷新维护资格，再在resume／sessions锁下核准确注册事实。TTL／LRU同样先刷新后claim；新predicate没有sessions→conversation／persist／Framework反向等待。Idle同步准备的persist锁不包Framework或模型请求；child正常提交后的压缩等待发生在现有child工作线程。已完成任务复用只等待原生admission receipt返回，native完成事件在独立context-scoped轻量收尾线程处理，不新增调度器／模型执行器。
+
+## 4. 验证证据与版本
+
+执行环境：`macOS-26.7-arm64-arm-64bit`，官方PM `Python 3.14.7`，所有Python测试通过`HERMES_PYTHON="$PWD/.venv/bin/python" scripts/run_tests.sh`，不直接pytest。Profile cwd均为Git root外临时目录；后台场景fixture禁止socket connect／connect_ex。模型与摘要只在返回边界提供受控数据，真实freeze、child、DB、Commit Gate、native compaction及publication均执行。真实Provider／微信／生产请求为0。
+
+- 基线HEAD：`e1b124d4509cebf8b71a436a2237031cb3bf2087`。
+- 最终可审tree：`8ffc46f25e02caa1d610c85c4b072c23b658d73d`（未commit，14个变更文件含新测试；替换首包47e7f531）；逐文件SHA见`source-manifest.json`。
+- 完整补丁：`/Users/edgar/code/hermes-secretary-idle-noting-owner/.hermes-dev/incremental-sync-20261027/idle-owner/idle-owner.patch`，SHA256 `16c53b7f8dacb52e95cfce5f9916218235120ba06bad5d444ad1afd341c12f33`。真实Git index保持未暂存；检查使用ignored临时index。
+- 证据目录：`/Users/edgar/code/hermes-secretary-idle-noting-owner/.hermes-dev/incremental-sync-20261027/idle-owner/`。
+
+| 证据 | 结果与精确含义 |
+|---|---|
+| `before.log` | 原HEAD同一后台Heartbeat→native orphan→Idle反例：1通过／1失败；失败直接证明父owner被提前弹出。此时尚未修改产品代码 |
+| `targeted-3.log` | 当时7文件105项全通过：timer、Main忙闲、真实child／正常压缩／失败／复用；后续边界补强按下述定向复测 |
+| `final-targeted.log` | 7文件112项中111通过，1项旧模拟身份切换测试缺真实bind边界；现已补输入与拒绝断言，由`final-directed.log`关闭，未删断言 |
+| `final-directed.log` | busy 6、reuse 25、owner 23，54项全通过；包括主会话追加A→B→A迟到host tick、预注册派发异常、Provider／forced／取消矩阵 |
+| `final-timer.log` | owner 24＋timer 20，44项全通过；新增timer.start失败释放／合法attach恢复 |
+| `final-completion.log` | 首包completion补强时reuse 25＋commit-order 19，44项通过；主会话后续发现的TOCTOU不能由该日志排除，已由下述原子barrier测试补证 |
+| `final-check-3.log` | 首包47e7f531十项检查通过，health 13文件0 blocking／0 advisory；该版本已由本次窄修补替换 |
+| `completion-atomic-1.log` | 三个确定性新增反例均通过：旧cleanup已开始且等待Framework时新reuse先reserve；旧cleanup先closed／pop时新handle登记；同parent／epoch的另一轮native request槽不得附着 |
+| `completion-atomic-final.log` | 原子修补主路径定向3文件71项全通过：reuse 28＋commit-order 19＋owner 24；24.2秒，仍保真实child／原生压缩／Framework路径 |
+| `completion-atomic-owner-final.log` | 最后补强request引用须同时匹配当前parent epoch／Conversation后，定向重测3个原子barrier／同owner槽替换反例全通过（4.1秒） |
+| `completion-atomic-check-final.log` | 最后14文件十项冻结检查全部通过，health 0 blocking／0 advisory；`git diff --check`通过，未改规则／阈值／等级 |
+| `native-regression-1.log` | 原生orphan races 29、startup sweep 10、gateway-owned reap 8、profile flush 3、close tool sequence 5，共55项通过；native compaction另32通过／4失败。新增failure夹具初次漏termination的4失败已在最终owner矩阵全部关闭 |
+| `baseline-native.log` | 完整HEAD隔离导出中同样复现native compaction 4失败与cold resume 17 setup错误，证明不是本轮新增；导出来源为上述HEAD，测试配置未改 |
+| `targeted-2.log` | 原冷Scheduler宿主20项通过；其它中间失败日志保留，不作为当前通过凭据 |
+
+最终七个聚焦文件的适用测试合计116项，以上同版本定向证据组合覆盖；不是一次116项的单次总跑，不冒称全仓绿。`source-manifest.json`给最终文件SHA；每次中间日志属于对应修补前状态，主会话亲审后的最后completion原子修补以`completion-atomic-final.log`的71项、最后`completion-atomic-owner-final.log`的3项及当前十检查为准。首包源码指纹另保存在`source-manifest-before-completion-atomic.json`，不改写历史日志。
+
+后台新增场景的4路（保留／实际orphan × 不压缩／真原生摘要引擎）自然触发Idle，记录准确父对象与非空prefix、completed child、Snapshot；真压缩在`_call_summary_llm`返回边界给虚构摘要，核durable commit及其后Framework。摘要期间再调用实际orphan仍保留父owner，结束后再次orphan可正常清退。另覆盖长期Main反复orphan、TTL／cap压力、exact旧owner取消不碰B、跨DB同ref取消隔离、close先赢／freeze先赢、弱引用消失、无前缀保原周期后合法attach、各种失败不压缩与旧Notebook保留、forced合法快照及保护释放。明确的失败注入不作为成功freeze／spawn证据。
+
+## 5. 缺口与限制
+
+- Linux真实目标平台定向未执行，按分派由主会话集成安排；本地为macOS arm64，不伪造OS。不把受控返回边界当真实模型行为验收。
+- native compaction基线4失败：`test_supported_framework_writer_can_create_native_foreign_tail`原地／轮转两项、`test_foreign_framework_cannot_forge_a_summary_publication`、`test_ordinary_native_compaction_keeps_credential_refresh_and_status_seams`；均检查旧摘要标记。未改断言，未将它们说成通过。
+- `test_cold_noting_resume`的17例在setup使用旧`noting.idle_delay_seconds`等已退出配置而被配置门禁关闭，基线同样无period；没有用这套失效夹具冒称冷恢复通过。当前合法attach／无前缀／真实后台resume已由新增原生测试覆盖。
+- 未执行生产旧失败Noting补跑、数据库重置／迁移、真实模型、真实微信、UI、部署。独立Verification／Validation仍属主会话整轮门禁。
+
+## 6. 接口影响
+
+公开API／schema／默认预算／开关清退语义保持。`_begin_completion`仅增内部默认参数`native_pending=False`，用于原子reserve；compaction callback仅增内部relevant身份属性，不改native API。内部`prepare_joint_noting`与`_run_idle_event`只增可选`expected_owner`；timer取消只增可选exact parent及通知控制。`_timers`是内部实现记录，由tuple改dataclass；对应私有测试定位已改。closed父实例不再被判Main，避免关闭后的旧producer或host tick复活运行身份。没有更改Noting正常结束／强制快照、非Idle压缩独立前进和原pointer规则。
+
+## 7. 建议后续
+
+主会话亲审此tree／补丁，重点核原生锁顺序、completion事件交接、A→B迟到tick及异常释放。按约定先合main再并入增量分支；集成后只对变化及Linux目标平台取定向证据，保留基线失败说明，再进入整轮独立双门禁。无需改模型／Prompt或生产配置；上线必须另有授权及实际发布验证。
+
+## 8. 主会话接收（2026-10-27）
+
+主会话亲审完整源码、正式接线、锁顺序、准确request身份、失败释放与确定性barrier测试；最终14文件SHA与manifest逐一一致。先在main提交0a5d09cdcf并自动push，再将同一14文件补丁接入增量分支；07只纳本轮生命周期段，main原有dirty逐字保持。已关闭本包主会话发现的迟到owner抢绑定和cleanup／reuse竞态。Linux定向与整轮独立门禁尚未执行，未部署。

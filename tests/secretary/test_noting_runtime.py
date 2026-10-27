@@ -71,6 +71,7 @@ def _agent(db, sid):
         pass
     runtime = Runtime()
     runtime.__dict__.update(vars(agent))
+    runtime._session_messages = db.get_messages_as_conversation(sid)
     bind_main_runtime(runtime)
     db._test_runtime_agents = [*getattr(db, "_test_runtime_agents", []), runtime]
     return runtime

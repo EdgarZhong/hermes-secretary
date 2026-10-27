@@ -2,6 +2,7 @@
 
 import json
 import threading
+import time
 
 import pytest
 
@@ -417,3 +418,178 @@ def test_joint_cycle_idle_facade_cannot_run_native_callback_before_normal_commit
         assert len(result_rows(parent)) == 1 and db.get_native_request_publication(parent.session_id)
     finally:
         release.set()
+
+
+def test_completed_task_retains_exact_parent_until_native_request_settles(idle_runtime, monkeypatch):
+    from secretary.noting_timers import holds_maintenance, refresh_maintenance
+    parent, db, client, workers = idle_runtime
+    finish_responses(client)
+    admission = force(parent)
+    workers[0].join(10)
+    assert not workers[0].is_alive()
+    assert refresh_maintenance(parent)
+    entered, release = threading.Event(), threading.Event()
+    def summary(messages, **kwargs):
+        entered.set()
+        assert release.wait(10)
+        return _summary(messages, **kwargs)
+    monkeypatch.setattr(parent.context_compressor, "compress", summary)
+    try:
+        assert start_idle(parent, db) == "existing_noting_compaction_requested"
+        assert entered.wait(10)
+        assert holds_maintenance(parent)
+        assert noting_child.holds_parent_completion(parent)
+        assert not parent._native_compaction_request.completed.is_set()
+    finally:
+        release.set()
+    parent._native_compaction_worker.join(10)
+    deadline = time.monotonic() + 10
+    while holds_maintenance(parent) and time.monotonic() < deadline:
+        time.sleep(.01)
+    assert not holds_maintenance(parent)
+    assert noting_child._completion_key(db, admission.admission_id) not in noting_child._NOTING_COMPLETIONS
+
+
+@pytest.mark.parametrize("cleanup_first", [False, True], ids=["reuse-reserves-first", "cleanup-commits-first"])
+def test_native_reuse_reservation_and_old_cleanup_commit_are_atomic(idle_runtime, monkeypatch, cleanup_first):
+    from contextlib import contextmanager
+    from secretary import framework_messages
+    from secretary.noting_timers import holds_maintenance, refresh_maintenance
+    parent, db, client, workers = idle_runtime
+    finish_responses(client)
+    refresh_maintenance(parent)
+    cleanup_entered, release_cleanup, request_returned, release_request = (threading.Event() for _ in range(4))
+    summary_entered, release_summary = threading.Event(), threading.Event()
+    cleanup_ident, old_handles, results, errors = [], [], [], []
+    real_lock, real_end = framework_messages._lock, noting_child._end_completion
+    real_request = parent.request_context_compaction
+    gate_used = threading.Event()
+
+    @contextmanager
+    def framework_gate(owner):
+        if (cleanup_ident and threading.get_ident() == cleanup_ident[0] and not gate_used.is_set()):
+            gate_used.set()
+            cleanup_entered.set()
+            assert release_cleanup.wait(10)
+        with real_lock(owner):
+            yield
+
+    def cleanup(db, handle, *, task_cleanup=False):
+        if task_cleanup and not cleanup_ident:
+            cleanup_ident.append(threading.get_ident())
+            old_handles.append(handle)
+        return real_end(db, handle, task_cleanup=task_cleanup)
+
+    def request(**kwargs):
+        receipt = real_request(**kwargs)
+        request_returned.set()
+        assert release_request.wait(10)
+        return receipt
+
+    def summary(messages, **kwargs):
+        summary_entered.set()
+        assert release_summary.wait(10)
+        return _summary(messages, **kwargs)
+
+    def reuse():
+        try:
+            results.append(start_idle(parent, db))
+        except BaseException as exc:
+            errors.append(exc)
+
+    monkeypatch.setattr(framework_messages, "_lock", framework_gate)
+    monkeypatch.setattr(noting_child, "_end_completion", cleanup)
+    monkeypatch.setattr(parent, "request_context_compaction", request)
+    monkeypatch.setattr(parent.context_compressor, "compress", summary)
+    admission = force(parent)
+    reuse_thread = threading.Thread(target=reuse)
+    key = noting_child._completion_key(db, admission.admission_id)
+    try:
+        assert cleanup_entered.wait(10)
+        old = old_handles[0]
+        assert old.notified and not old.closed
+        if cleanup_first:
+            release_cleanup.set()
+            workers[0].join(10)
+            assert not workers[0].is_alive() and old.closed
+            assert key not in noting_child._NOTING_COMPLETIONS
+        reuse_thread.start()
+        assert request_returned.wait(10) and summary_entered.wait(10)
+        current = noting_child._NOTING_COMPLETIONS[key]
+        assert current.native_pending and not current.closed
+        assert (current is old) is not cleanup_first
+        if not cleanup_first:
+            release_cleanup.set()
+            workers[0].join(10)
+            assert not workers[0].is_alive()
+            assert noting_child._NOTING_COMPLETIONS[key] is current and not old.closed
+        assert holds_maintenance(parent)
+        release_request.set()
+        reuse_thread.join(10)
+        assert not reuse_thread.is_alive() and not errors
+        assert results == ["existing_noting_compaction_requested"]
+        assert holds_maintenance(parent) and not current.closed
+        release_summary.set()
+        parent._native_compaction_worker.join(10)
+        deadline = time.monotonic() + 10
+        while noting_child.holds_parent_completion(parent) and time.monotonic() < deadline:
+            time.sleep(.01)
+        assert not noting_child.holds_parent_completion(parent)
+        assert key not in noting_child._NOTING_COMPLETIONS
+    finally:
+        release_cleanup.set()
+        release_request.set()
+        release_summary.set()
+        for worker in workers:
+            worker.join(10)
+        if reuse_thread.ident is not None:
+            reuse_thread.join(10)
+        if worker := getattr(parent, "_native_compaction_worker", None):
+            worker.join(10)
+
+
+def test_completed_reuse_never_attaches_another_round_native_request_slot(idle_runtime, monkeypatch):
+    from agent.context_compaction_request import NativeCompactionRequest, _lock
+    from secretary.noting_timers import refresh_maintenance
+    parent, db, client, workers = idle_runtime
+    finish_responses(client)
+    admission = force(parent)
+    workers[0].join(10)
+    assert not workers[0].is_alive()
+    refresh_maintenance(parent)
+    entered, release = threading.Event(), threading.Event()
+    own_requests, other_requests = [], []
+    real_request = parent.request_context_compaction
+
+    def summary(messages, **kwargs):
+        entered.set()
+        assert release.wait(10)
+        return _summary(messages, **kwargs)
+
+    def replace_after_receipt(**kwargs):
+        receipt = real_request(**kwargs)
+        assert entered.wait(10)
+        with _lock(parent):
+            own = parent._native_compaction_request
+            other = NativeCompactionRequest(
+                parent, own.deadline, own.usage, own.threshold, own.owner, own.db,
+                own.conversation_ref, own.session_id, relevance_check=lambda: True)
+            own_requests.append(own)
+            other_requests.append(other)
+            parent._native_compaction_request = other
+        return receipt
+
+    monkeypatch.setattr(parent.context_compressor, "compress", summary)
+    monkeypatch.setattr(parent, "request_context_compaction", replace_after_receipt)
+    try:
+        assert start_idle(parent, db) == "existing_noting_compaction_requested"
+        assert own_requests and other_requests
+        assert not other_requests[0].completed.is_set()
+        # Both native identities match parent/epoch/Profile/Conversation; only the
+        # callback's explicit relevance identity distinguishes the replacement.
+        assert not noting_child.holds_parent_completion(parent)
+        assert noting_child._completion_key(db, admission.admission_id) not in noting_child._NOTING_COMPLETIONS
+    finally:
+        release.set()
+        parent._native_compaction_worker.join(10)
+    assert own_requests[0].completed.is_set() and not other_requests[0].completed.is_set()

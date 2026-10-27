@@ -126,6 +126,12 @@ class _NotingCompletion:
     closed: bool = False
     snapshot_id: Optional[str] = None
     task_lifecycle: Any = None
+    owner_epoch: Any = None
+    continuation_parent: Any = None
+    continuation_epoch: Any = None
+    native_request: Any = None
+    cleanup_requested: bool = False
+    native_pending: bool = False
 
 
 def _completion_key(db, admission_id):
@@ -138,25 +144,53 @@ def _same_completion(handle, admission):
     ))
 
 
-def _begin_completion(parent, admission, callback=None):
-    handle = _NotingCompletion(parent, admission, callback)
+def _begin_completion(parent, admission, callback=None, *, native_pending=False):
+    from agent.context_compaction_request import _epoch
+    handle = _NotingCompletion(parent, admission, callback, owner_epoch=_epoch(parent))
+    key = _completion_key(parent._session_db, admission.admission_id)
     with _ACTIVE_NOTING_LOCK:
-        return _NOTING_COMPLETIONS.setdefault(_completion_key(parent._session_db, admission.admission_id), handle)
+        current = _NOTING_COMPLETIONS.get(key)
+        if current is None or current.closed:
+            current = _NOTING_COMPLETIONS[key] = handle
+        if native_pending:
+            current.native_pending = True
+            current.continuation_parent = parent
+            current.continuation_epoch = handle.owner_epoch
+        return current
+
+
+def holds_parent_completion(parent):
+    """Existing task ownership includes child, native compact and carrier settlement."""
+    epoch = vars(parent).get("_native_compaction_owner")
+    with _ACTIVE_NOTING_LOCK:
+        return any(not handle.closed and (
+            handle.parent is parent and handle.owner_epoch is epoch
+            or handle.continuation_parent is parent and handle.continuation_epoch is epoch)
+            for handle in _NOTING_COMPLETIONS.values())
 
 
 def _end_completion(db, handle, *, task_cleanup=False):
     if handle is None:
         return
-    if handle.task_lifecycle is not None and not task_cleanup:
-        return  # The worker returned; its queued carrier still owns final cleanup.
     from secretary.framework_messages import _lock
+    key = _completion_key(db, handle.admission.admission_id)
     with _lock(handle.parent):
-        handle.closed = True
-        handle.after_normal_commit = None
-    with _ACTIVE_NOTING_LOCK:
-        key = _completion_key(db, handle.admission.admission_id)
-        if _NOTING_COMPLETIONS.get(key) is handle:
-            _NOTING_COMPLETIONS.pop(key)
+        # Reservation and retirement share the same final registry transaction.
+        # Never decide before waiting for Framework: reuse may reserve meanwhile.
+        with _ACTIVE_NOTING_LOCK:
+            if task_cleanup:
+                handle.cleanup_requested = True
+            request = handle.native_request
+            if handle.native_pending or request is not None and not request.completed.is_set():
+                return
+            if handle.task_lifecycle is not None and not task_cleanup:
+                return  # The queued carrier still owns final task cleanup.
+            handle.closed = True
+            handle.after_normal_commit = None
+            handle.continuation_parent = None
+            handle.continuation_epoch = None
+            if _NOTING_COMPLETIONS.get(key) is handle:
+                _NOTING_COMPLETIONS.pop(key)
 
 
 def reuse_noting_for_idle(parent, admission, callback):
@@ -170,7 +204,10 @@ def reuse_noting_for_idle(parent, admission, callback):
             if not handle.closed and not handle.notified:
                 # Multiple elapsed periods need only the latest live owner's
                 # continuation; the interval witness prevents duplicate compaction.
-                handle.after_normal_commit = callback
+                from agent.context_compaction_request import _epoch
+                with _ACTIVE_NOTING_LOCK:
+                    handle.after_normal_commit = callback
+                    handle.continuation_parent, handle.continuation_epoch = parent, _epoch(parent)
                 return "waiting_existing_noting"
     with db._read_ctx() as conn:
         snapshot_id = normal_noting_snapshot_conn(db, conn, admission)
@@ -178,7 +215,60 @@ def reuse_noting_for_idle(parent, admission, callback):
         return "skip:existing_noting_not_successful"
     # A previously published completion is history. Do not move or reissue it;
     # there is no new Framework to order behind this later native request.
-    return "existing_noting_compaction_requested" if callback(wait_for_completion=False) else "skip:idle_compaction_not_admitted"
+    accepted = _reuse_committed_completion(parent, admission, callback)
+    return "existing_noting_compaction_requested" if accepted else "skip:idle_compaction_not_admitted"
+
+
+def _reuse_committed_completion(parent, admission, callback):
+    """Retain the same task owner through its admitted native request's completion."""
+    from agent.context_compaction_request import _epoch
+    from agent.memory_provider import spawn_context_thread
+    owner_epoch = _epoch(parent)
+    handle = _begin_completion(parent, admission, native_pending=True)
+    try:
+        accepted = callback(wait_for_completion=False)
+        request = _matching_native_request(parent, admission, callback, owner_epoch) if accepted else None
+        with _ACTIVE_NOTING_LOCK:
+            handle.native_pending = False
+            handle.native_request = request
+        if request is None or request.completed.is_set():
+            _end_completion(parent._session_db, handle, task_cleanup=handle.cleanup_requested)
+            return accepted
+        def settled():
+            request.completed.wait()
+            with _ACTIVE_NOTING_LOCK:
+                if handle.native_request is not request:
+                    return
+                handle.native_request = None
+                cleanup = handle.cleanup_requested or handle.task_lifecycle is None
+            if cleanup:
+                _end_completion(parent._session_db, handle, task_cleanup=True)
+        spawn_context_thread(settled, name=f"noting-native-{admission.admission_id}", daemon=True).start()
+        return accepted
+    except BaseException:
+        with _ACTIVE_NOTING_LOCK:
+            handle.native_request = None
+            handle.native_pending = False
+        _end_completion(parent._session_db, handle, task_cleanup=handle.cleanup_requested)
+        raise
+
+
+def _matching_native_request(parent, admission, callback, owner_epoch):
+    """Read the exact callback's native request; a later slot is never its receipt."""
+    from agent.context_compaction_request import _lock
+    relevance = getattr(callback, "_native_relevance_check", None)
+    if relevance is None:
+        return None
+    with _lock(parent):
+        request = getattr(parent, "_native_compaction_request", None)
+        if (request is not None and request.agent is parent and request.owner is owner_epoch
+                and owner_epoch is vars(parent).get("_native_compaction_owner")
+                and getattr(parent, "_secretary_conversation_ref", None) == admission.conversation_ref
+                and request.db is parent._session_db
+                and request.conversation_ref == admission.conversation_ref
+                and request.relevance_check is relevance):
+            return request
+    return None
 
 
 def normal_noting_snapshot_conn(db, conn, admission):

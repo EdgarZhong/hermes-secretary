@@ -167,6 +167,7 @@ def test_timer_native_usage_failure_consumes_period_and_next_turn_recovers(runti
     monkeypatch.setattr('agent.context_compaction_request.read_context_usage', available)
     assert rt.note_main_turn_started(parent)
     add(db, 'main', 'next actual main input', 'm2')
+    parent._session_messages = db.get_messages_as_conversation("main")
     parent.context_compressor.update_from_response({'prompt_tokens': 8137})
     completed.clear()
     assert rt.note_main_turn_finished(parent)
@@ -218,7 +219,7 @@ def test_deadline_closed_event_is_terminal_and_only_global_off_prevents_new_time
     assert not dispatched and not reads
     assert db.noting_idle_state(ref) is None
     assert rt.note_main_turn_finished(parent) is (gate == 'local')
-    assert timers.holds_pending_timer(parent) is (gate == 'local')
+    assert not timers.holds_pending_timer(parent)
 
 
 def test_attach_recovers_past_deadline_once_and_future_deadline_arms(runtime):
@@ -231,6 +232,7 @@ def test_attach_recovers_past_deadline_once_and_future_deadline_arms(runtime):
     for _ in range(4):
         assert rt.maybe_run_idle_noting(parent, db, ref) == "skip:idle_trigger_produced"
     add(db, "main", "next main", "m2")
+    parent._session_messages = db.get_messages_as_conversation("main")
     ready.clear()
     db.noting_idle_turn_finished(ref, time.time(), due_at=time.time() + 0.12)
     assert rt.maybe_run_idle_noting(parent, db, ref) == "skip:timer_armed"
@@ -327,7 +329,7 @@ def test_framework_queue_flushes_at_turn_end_after_gate_closes(runtime, gate):
     assert len(durable) == len(live) == 1
     assert durable[0]["message_uid"] == live[0]["message_uid"]
     assert durable[0]["message_uid"] == db.get_messages(parent.session_id)[-1]["message_uid"]
-    assert timers.holds_pending_timer(parent) is (gate == "local")
+    assert not timers.holds_pending_timer(parent)
     assert not dispatched
 
 

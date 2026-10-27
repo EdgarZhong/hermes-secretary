@@ -60,3 +60,15 @@
 旧的模糊片段保持懒取，新Turn精确主动取Thinking。B1旧“从最近可证明source保守多取”方案作废：最近可证明source之后出现无法判断是否启动Turn的typed行且无当前原生精确来源时，返回空latest_thinking，不主动补旧详情。新Turn在通用原生构建接缝合并display_metadata.turn_source，值仅为原生message_uid与turn_id；复用原持久化、必要准确行metadata补写与原lease guards，不改正文／schema／Provider wire／模型cache prefix。普通append通知／Steer／历史回放不生成标记。新标记优先于typed/queued的弱推断，实际active原生来源仍优先；冷恢复与跨渠道来源需按同快照身份验证。
 
 扩展B1白名单仅agent/turn_context.py、必要小sibling agent/turn_source.py、确需的agent/session_persistence.py或既有DB metadata writer接缝及对应tests，不碰U16 owner包。原生写入失败为展示级best effort，不阻主Turn；测试覆盖真实typedTurn持久化到冷读、同型仅通知、旧模糊片段懒取、queued/Steer/Framework、异常标记与wire剥离。
+
+## I1亲审整改追踪（2026-10-27）
+
+| 项 | 负责人 | 完成条件与复验 | 当前状态 |
+|---|---|---|---|
+| 压缩终态Context读取失败重试、合法unknown不无限轮询 | F1 | 正式Controller失败后成功、合法unavailable结束本次读取且保旧值；隐藏IAB观察 | 修补交回待最终复验 |
+| 已finished压缩后epoch恢复重复200条快照 | F1 | 同owner先等在途历史settle再强制终态对账；必要snapshot最多一次，其后delta；无死锁及owner越界 | 实施中；反例见integration报告 |
+| 首次展开同一旧详情重复REST | F1 | 无staged共享HistoryDetails；真正staged仍隔离；实际App首次展开一次、完整缓存重连无需重取 | 实施中 |
+| U17旧typed来源缺口 | B1 | 旧模糊lazy，新真Turn持久来源及冷恢复，Provider wire不变 | 实施中，用户已确认 |
+| U16旧completion清理撞新native复用 | U16 | reserve与关闭各自原子提交，Framework→ACTIVE锁序；两种barrier时序及压缩结束释放 | 已亲审关闭；main 0a5d09cdcf，同补丁接入增量，Linux待验 |
+
+全轮门禁尚未启动；上述问题关闭并完成主会话集成后统一派遣，不以局部通过代替整轮验收。
