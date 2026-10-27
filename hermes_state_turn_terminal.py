@@ -1,10 +1,43 @@
-"""Persist an exceptional Turn outcome on its real accepted source message.
+"""Persist native Turn provenance and exceptional outcomes on the accepted source.
 
 Uses the existing message metadata writer/transaction; no message, schema or event journal.
 """
 from __future__ import annotations
 
 import json
+
+
+def persist_turn_source(db, session_id, row_id, marker, *, turn_lease_holder=None, compression_lock_holder=None):
+    """Backfill only this exact native UID's display metadata, under native guards."""
+    uid, turn_id = marker.get("message_uid"), marker.get("turn_id")
+    if type(row_id) is not int or not isinstance(uid, str) or not uid or not isinstance(turn_id, str) or not turn_id.strip():
+        return False
+    lineage = db._resume_lineage_ids(session_id)
+    marks = ",".join("?" for _ in lineage)
+    def write(conn):
+        db._check_transcript_write_guards(conn, session_id, compression_lock_holder,
+                                         turn_lease_holder=turn_lease_holder, reject_active_turn_lease=True)
+        source = conn.execute("SELECT role,message_uid FROM messages WHERE id=? "
+                              f"AND session_id IN ({marks})", (row_id, *lineage)).fetchone()
+        if source is None or tuple(source) != ("user", uid):
+            return False
+        generation = conn.execute("SELECT active,compacted FROM messages WHERE message_uid=? "
+                                  f"AND session_id IN ({marks}) ORDER BY id DESC LIMIT 1", (uid, *lineage)).fetchone()
+        if generation is None or not (generation[0] or generation[1]):
+            return False
+        row = conn.execute("SELECT id,display_metadata FROM messages WHERE role='user' AND message_uid=? "
+                           f"AND session_id IN ({marks}) AND (active=1 OR compacted=1) "
+                           "ORDER BY active DESC,id DESC LIMIT 1", (uid, *lineage)).fetchone()
+        if row is None:
+            return False
+        metadata = db._decode_display_metadata(row["display_metadata"]) or {}
+        if metadata.get("turn_source") == marker:
+            return True
+        metadata["turn_source"] = dict(marker)
+        conn.execute("UPDATE messages SET display_metadata=? WHERE id=?",
+                     (db._encode_display_metadata(metadata), row["id"]))
+        return True
+    return db._execute_write(write, patience_s=0.0)
 
 
 def _reconcile_outputs(outcome, rows):

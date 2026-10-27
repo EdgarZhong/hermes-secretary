@@ -205,7 +205,8 @@ def _details(db, conn, sql, params, details):
     return [db._row_to_message_dict(row, warn_context="recovery details", summary_flag=True) for row in rows]
 
 
-def read_view(db, requested_id, profile, selectors, *, details=(), proofs=(), identities=()):
+def read_view(db, requested_id, profile, selectors, *, details=(), proofs=(), identities=(),
+              history_sync=False, native_source=None):
     """Raw D read: all owner, lineage, windows, details and lease on one conn."""
     with _snapshot(db) as conn:
         lineage = _lineage(db, conn, requested_id, profile)
@@ -219,12 +220,21 @@ def read_view(db, requested_id, profile, selectors, *, details=(), proofs=(), id
         refs = _read_identities(conn, sql, params, lineage, identities)
         tail = conn.execute(sql + "SELECT m.id,m.message_uid,m.role,m.timestamp FROM ordered o "
                             "JOIN messages m ON m.id=o.row_id WHERE m.role='user' ORDER BY o.position DESC LIMIT 1", params).fetchone()
+        extra = {}
+        if history_sync:
+            from hermes_state_history_sync import read_latest_thinking
+            # A retained local snapshot cannot identify a newer external Turn.
+            # Lease identities are opaque; only exact ownership is meaningful.
+            if lease and lease["expires_at"] > time.time() and (native_source or {}).get("_holder") != lease["holder"]:
+                native_source = None
+            extra = {"db_path": str(db.db_path), "history_sync": True,
+                     "latest_thinking": read_latest_thinking(db, conn, sql, params, total, native_source)}
     return {"profile": profile, "requested_id": requested_id, "tip_id": lineage[-1]["id"],
             "lineage": [row["id"] for row in lineage],
             "rewind": [(row["id"], row.get("rewind_count", 0)) for row in lineage],
             "windows": windows, "details": detail_rows, "identities": refs,
             "turn_start": dict(tail) if tail else None,
-            "lease": dict(lease) if lease and lease["expires_at"] > time.time() else None}
+            "lease": dict(lease) if lease and lease["expires_at"] > time.time() else None, **extra}
 
 
 def _read_identities(conn, sql, params, lineage, identities):
@@ -286,6 +296,16 @@ def project_view(raw, *, home=None):
         cards = history_cards(_project_for_display(messages, home=home, inline_images=True))
         coverage = {key: raw[key] for key in ("profile", "requested_id", "tip_id", "lineage")}
         coverage.update(version=1, window=item["window"], digest=digest(cards))
-        windows.append({"selector": item["selector"], "messages": cards, "coverage": coverage})
+        window = {"selector": item["selector"], "messages": cards, "coverage": coverage}
+        if raw.get("history_sync"):
+            from hermes_state_history_sync import detail_revisions
+            full = _project_for_display(item["messages"], home=home, inline_images=True)
+            window["detail_revisions"] = detail_revisions(full)
+        windows.append(window)
     details = _project_for_display(raw["details"], home=home, inline_images=True)
-    return {**raw, "windows": windows, "details": details, "detail_digest": digest(details)}
+    extra = {}
+    if raw.get("history_sync"):
+        from hermes_state_history_sync import project_latest_thinking, with_detail_revisions
+        details = with_detail_revisions(details)
+        extra["latest_thinking"] = project_latest_thinking(raw["latest_thinking"], home=home)
+    return {**raw, "windows": windows, "details": details, "detail_digest": digest(details), **extra}

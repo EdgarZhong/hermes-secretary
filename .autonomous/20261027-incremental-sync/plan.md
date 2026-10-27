@@ -68,7 +68,7 @@
 | 压缩终态Context读取失败重试、合法unknown不无限轮询 | F1 | 正式Controller失败后成功、合法unavailable结束本次读取且保旧值；隐藏IAB观察 | 修补交回待最终复验 |
 | 已finished压缩后epoch恢复重复200条快照 | F1 | 同owner先等在途历史settle再强制终态对账；必要snapshot最多一次，其后delta；无死锁及owner越界 | 实施中；反例见integration报告 |
 | 首次展开同一旧详情重复REST | F1 | 无staged共享HistoryDetails；真正staged仍隔离；实际App首次展开一次、完整缓存重连无需重取 | 实施中 |
-| U17旧typed来源缺口 | B1 | 旧模糊lazy，新真Turn持久来源及冷恢复，Provider wire不变 | 实施中，用户已确认 |
+| U17旧typed来源缺口 | B1 | 旧模糊lazy，新真Turn持久来源及冷恢复，Provider wire不变 | 已亲审关闭；U17正式Turn持久化／冷进程读取与wire回归通过 |
 | U16旧completion清理撞新native复用 | U16 | reserve与关闭各自原子提交，Framework→ACTIVE锁序；两种barrier时序及压缩结束释放 | 已亲审关闭；main 0a5d09cdcf，同补丁接入增量，Linux待验 |
 
 全轮门禁尚未启动；上述问题关闭并完成主会话集成后统一派遣，不以局部通过代替整轮验收。

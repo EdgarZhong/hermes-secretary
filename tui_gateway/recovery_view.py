@@ -24,6 +24,8 @@ def parse_request(value):
         raise RecoveryViewError("invalid_request", "recovery_view.version must be 1")
     if not isinstance(value.get("stored_id"), str) or not isinstance(value.get("profile"), str):
         raise RecoveryViewError("invalid_request", "stored_id and profile are required")
+    if "sync_version" in value and (type(value["sync_version"]) is not int or value["sync_version"] != 1):
+        raise RecoveryViewError("invalid_request", "recovery_view.sync_version must be 1")
     windows = value.get("windows")
     if not isinstance(windows, list) or not 1 <= len(windows) <= 2:
         raise RecoveryViewError("invalid_request", "recovery requires one or two windows")
@@ -31,6 +33,8 @@ def parse_request(value):
     for window in windows:
         if not isinstance(window, dict) or not isinstance(window.get("receipt"), dict):
             raise RecoveryViewError("invalid_request", "each window requires a REST coverage receipt")
+        if value.get("sync_version") == 1 and "cursor" in window and not isinstance(window["cursor"], str):
+            raise RecoveryViewError("invalid_request", "window cursor must be a string")
         selections.append(selector(window.get("selector")))
         receipt = window["receipt"]
         if (receipt.get("version") != 1 or receipt.get("profile") != value["profile"]
@@ -89,8 +93,73 @@ def _turn_context(session):
     agent = session.get("agent")
     turn = session.get("inflight_turn")
     token = turn.get("_terminal_token") if isinstance(turn, dict) else None
+    source = turn.get("_terminal_source") if isinstance(turn, dict) else None
+    source_identity = tuple(source.get(key) for key in ("db_path", "session_id", "row_id", "message_uid")) if isinstance(source, dict) else None
     return (id(agent), id(turn), token, getattr(agent, "_current_turn_id", None),
-            getattr(agent, "_active_session_turn_lease_holder", None), bool(session.get("running")))
+            getattr(agent, "_active_session_turn_lease_holder", None), bool(session.get("running")),
+            bool(session.get("_manual_compress_active")),
+            (turn.get("streaming"), turn.get("status")) if isinstance(turn, dict) else None, source_identity)
+
+
+def _source_hint(session):
+    turn = session.get("inflight_turn")
+    return turn.get("_terminal_source") if isinstance(turn, dict) else None
+
+
+def _history_sync_source(session, db_path):
+    """Copy native source identities only; never copy a retained output body."""
+    source = _source_hint(session)
+    active = bool(session.get("running")) and not session.get("_manual_compress_active")
+    if isinstance(source, dict) and isinstance(source.get("db_path"), str):
+        if Path(source["db_path"]).resolve() == Path(db_path).resolve():
+            return {**{key: source.get(key) for key in ("row_id", "message_uid", "session_id")},
+                    "_holder": getattr(session.get("agent"), "_active_session_turn_lease_holder", None), "_active": active}
+    with event_replay._replay_lock:
+        state = session.get("_inflight_output")
+        if not isinstance(state, dict) or state.get("complete") is not True:
+            return None
+        for event in state.get("events", []):
+            if event.get("type") not in {"message.source_committed", "message.user_committed", "message.complete"}:
+                continue
+            payload = event.get("payload") or {}
+            receipt = payload.get("persisted_turn") or {}
+            candidates = [payload.get("message"), *(receipt.get("source_messages") or [])]
+            for row in candidates:
+                if (isinstance(row, dict) and row.get("role") == "user" and row.get("message_uid")
+                        and type(row.get("row_id")) is int):
+                    return {"row_id": row["row_id"], "message_uid": row["message_uid"],
+                            "session_id": row.get("session_id") or payload.get("stored_session_id"),
+                            "_holder": getattr(session.get("agent"), "_active_session_turn_lease_holder", None), "_active": active}
+    return None
+
+
+def _settled_manual_source(session, raw, db_path):
+    source = _source_hint(session)
+    if not isinstance(source, dict) or not isinstance(source.get("db_path"), str):
+        return False
+    if Path(source["db_path"]).resolve() != Path(db_path).resolve():
+        return False
+    return any(row.get("id") == source.get("row_id") and row.get("message_uid") == source.get("message_uid")
+               and row.get("session_id") == source.get("session_id") and row.get("role") == "user"
+               and row.get("visible") and (row.get("active") or row.get("compacted"))
+               and row.get("terminal_source_uid") == source.get("message_uid")
+               and row.get("terminal_status") == "error" and row.get("terminal_outputs_complete") is True
+               for row in raw["identities"])
+
+
+def _manual_maintenance(session, raw, db_path):
+    """Prove a native busy maintenance phase, never borrow an actual Turn lease."""
+    if not session.get("_manual_compress_active") or not session.get("running"):
+        return False
+    if raw.get("lease") is not None:
+        raise RecoveryViewError("view_changed")
+    turn = session.get("inflight_turn")
+    if turn is None:
+        return True
+    if (isinstance(turn, dict) and turn.get("streaming") is False and turn.get("status") == "error"
+            and _settled_manual_source(session, raw, db_path)):
+        return True
+    raise RecoveryViewError("runtime_unavailable")
 
 
 def _native_source(session, db, raw):
@@ -134,38 +203,47 @@ def _capture(server, sid, session, request, selections, ids):
         with server._session_db(session) as db:
             if db is None:
                 raise RecoveryViewError("runtime_unavailable")
-            d0 = read_view(db, request["stored_id"], actual_profile, selections, details=ids)
+            sync_args = {}
+            manual_source = _source_hint(session) if session.get("_manual_compress_active") else None
+            manual_refs = [manual_source] if isinstance(manual_source, dict) else []
+            if request.get("sync_version") == 1:
+                sync_args = {"history_sync": True, "native_source": _history_sync_source(session, db.db_path)}
+            d0 = read_view(db, request["stored_id"], actual_profile, selections, details=ids,
+                           identities=manual_refs, **sync_args)
             if server._session_lookup_key(session, fallback=sid) != d0["tip_id"]:
                 raise RecoveryViewError("view_changed")
             context = _turn_context(session)
-            source = _native_source(session, db, d0)
+            maintenance = _manual_maintenance(session, d0, db.db_path)
+            source = None if maintenance else _native_source(session, db, d0)
             external = _external_turn_holder(session, d0)
             state = None if external else snapshot(session, sid, include_internal=True)
             running = bool(session.get("running")) or bool(external)
             # Snapshot S's watermark is also meaningful for confirmed idle with no
-            # native output. An active runtime NEVER falls back to plain text.
+            # native output. A generating Turn NEVER falls back to plain text.
             if state is None:
                 with event_replay._replay_lock:
                     state = {"events": [], "seq": event_replay._replay_next_seq.get(sid, 0),
                              "epoch": event_replay.replay_epoch(), "complete": True}
-                if not external and (running or session.get("inflight_turn")):
+                if not external and not maintenance and (running or session.get("inflight_turn")):
                     raise RecoveryViewError("runtime_unavailable")
             d1 = read_view(db, request["stored_id"], actual_profile, selections, details=ids,
-                           proofs=_proofs(d0), identities=[*_references(state), *([source] if source else [])])
-            if (context != _turn_context(session) or source != _native_source(session, db, d1)
+                           proofs=_proofs(d0), identities=[*_references(state), *manual_refs, *([source] if source else [])], **sync_args)
+            if (context != _turn_context(session) or maintenance != _manual_maintenance(session, d1, db.db_path)
+                    or (not maintenance and source != _native_source(session, db, d1))
                     or external != _external_turn_holder(session, d1)
                     or server._session_lookup_key(session, fallback=sid) != d1["tip_id"]):
                 raise RecoveryViewError("view_changed")
         runtime = {"running": running, "status": "working" if external else server._session_live_status(sid, session),
                    "external_holder": external,
-                   "turn_started_at": None if external else server._turn_started_at(session),
+                   "manual_maintenance": maintenance,
+                   "turn_started_at": None if external or maintenance else server._turn_started_at(session),
                    "history_version": int(session.get("history_version", 0)),
                    "turn_id": getattr(session.get("agent"), "_current_turn_id", None) or next((
                        event.get("payload", {}).get("turn_id") for event in reversed(state["events"])
                        if event.get("type") == "message.source_committed"), None),
                    "holder": external or getattr(session.get("agent"), "_active_session_turn_lease_holder", None),
                    "native_source": source,
-                   "inflight": None if external else server._inflight_snapshot(session),
+                   "inflight": None if external or maintenance else server._inflight_snapshot(session),
                    "queued": server._queued_prompt_snapshot(session)}
     finally:
         lock.release()
@@ -177,16 +255,22 @@ def _same_history(d0, d1, count):
         return False
     originals = [item for item in d0["windows"] if item["coverage"]["window"]["first"] is not None]
     proofs = d1["windows"][count:]
-    return len(originals) == len(proofs) and all(
+    return (len(originals) == len(proofs) and all(
         old["coverage"]["digest"] == new["coverage"]["digest"]
         and old["coverage"]["window"]["returned"] == new["coverage"]["window"]["returned"]
+        and old.get("detail_revisions") == new.get("detail_revisions")
         for old, new in zip(originals, proofs)) and d0["detail_digest"] == d1["detail_digest"]
+        and d0.get("latest_thinking") == d1.get("latest_thinking"))
 
 
 def _turn_proof(d0, d1, state, runtime):
     lease0, lease1 = d0["lease"], d1["lease"]
     if (lease0 or {}).get("holder") != (lease1 or {}).get("holder"):
         raise RecoveryViewError("view_changed")
+    if runtime.get("manual_maintenance"):
+        if lease0 is not None or lease1 is not None:
+            raise RecoveryViewError("view_changed")
+        return
     if runtime.get("external_holder"):
         if runtime["external_holder"] != (lease1 or {}).get("holder"):
             raise RecoveryViewError("view_changed")
@@ -436,15 +520,21 @@ def _envelope(server, sid, session, request, selections, receipts, ids):
         raise RecoveryViewError("view_changed")
     _turn_proof(d0, d1, state, runtime)
     _coverage(d0, d1, len(selections))
-    state = _clean_snapshot(state, d1, running=runtime["running"])
+    state = _clean_snapshot(state, d1, running=runtime["running"] and not runtime.get("manual_maintenance"))
     suffix = event_replay.read_replay_cut(sid, state["seq"])
     if suffix["truncated"] or suffix["epoch"] != state["epoch"]:
         raise RecoveryViewError("replay_gap")
     windows = []
-    for item, receipt in zip(d1["windows"], receipts):
+    for item, receipt, requested in zip(d1["windows"], receipts, request["windows"]):
         matched = item["coverage"] == receipt
+        synchronized = {}
+        if request.get("sync_version") == 1:
+            from hermes_state_history_sync import synchronize_window
+            synchronized = synchronize_window(d1, item, requested.get("cursor"))
+            matched = matched and synchronized["sync"]["mode"] == "delta" and not synchronized["messages"]
         windows.append({"selector": item["selector"], "coverage": item["coverage"], "matched": matched,
-                        **({} if matched else {"messages": item["messages"]})})
+                        **({"sync": synchronized["sync"]} if synchronized else {}),
+                        **({} if matched else {"messages": synchronized.get("messages", item["messages"])})})
     return {"version": 1, "owner": {"profile": d1["profile"], "stored_id": request["stored_id"],
                                     "tip_id": d1["tip_id"], "runtime_id": sid},
             "epoch": state["epoch"], "complete": True, "windows": windows,

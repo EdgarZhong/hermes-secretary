@@ -11,7 +11,7 @@
 
 用户后续要求已立即写入06顶部C0–C3：缓存／同步逐项矩阵D01–D18、表现层转换S01–S18及表现／操作资格P01–P10；Timeline最近500条，完整已取详情同消息计数并复用，未取详情懒加载，旧半截不持久化，最新Turn Thinking主动拉取／核验前缀缓存，不建逐Thinking游标。设计表与独立main修复已完成；方案已冻结，前后端增量包正在实施，Android免刷新包已亲审并阶段提交。用户追加U13：手动compact期间／完成后不得一直Retrying Chat／Usage，Context须按原生状态显示loading环与Compacting，完成后恢复最新值。已确认线上轻量compaction_state返回active/computing而旧画面保留层遮住状态；后端manual压缩复用running与普通Turn恢复证明不匹配已确认，B1修复中。F1已整包交回；主会话追加终态Context失败重试、合法unknown有限观察、epoch恢复重复全量、首次展开重复详情读的定向修补与实际IAB复验。
 
-用户已确认U17：旧的模糊系统触发片段保持Thinking懒取；新Turn在原生接缝补最小内部来源标记，精确主动取Thinking。B1已交回主体（9文件199项），正在补此已确认缺口；不把原有typed显示类型猜成真实Turn。
+用户已确认U17：旧的模糊系统触发片段保持Thinking懒取；新Turn在原生接缝补最小内部来源标记，精确主动取Thinking。B1／U17已整包交回并亲审：11文件，原生Turn接缝标记／必要metadata回填保lease guard和模型wire；旧模糊片段保持懒取。U17 8文件124项与末次REST／RPC61项、十检查通过。增量正式联调与整轮门禁继续；不把typed显示类型猜成真实Turn。
 
 用户继续追加U14／U15：压缩成功不得因客户端固定11分钟超时弹失败；Toast阴影不能在圆角外形成直角灰底。前者与F1压缩生命周期一起修复；后者已亲审两条CSS及隐藏IAB旧／新截图，main提交810aca3，已并入增量03ef6d5并自动push，保持原UI设计。
 
@@ -24,7 +24,7 @@ main独立修复：后端e1b124d、前端5cbef57／37a8e4c均已提交并自动p
 | 前端恢复根因、游标方案、Signal Aborted | 根因已定位；独立取消请求／Notebook修复已提交；增量接口与缓存方案已冻结，实施中 |
 | 微信Slash范围与逐消息投递 | 已亲审：管理命令规范化拒绝，其余走原生权限；完整消息沿FIFO事件唤醒。改前9反例失败；15文件279项及追加2项通过，十检查通过；未真实微信试发 |
 | Android键盘闪屏 | 主会话已亲审提交37a8e4c；组件11项、原生10项及隐藏IAB真实像素证据通过；真机未验 |
-| 游标增量、SPA／APK免刷新 | main修复完成；同名分支已创建，冻结`.autonomous/20261027-incremental-sync/`；B1实施中、F1交回后定向修补中，Android包已亲审提交6ba37b4（82项原生测试通过，无真机）；双门禁未执行 |
+| 游标增量、SPA／APK免刷新 | main修复完成；同名分支已创建，冻结`.autonomous/20261027-incremental-sync/`；B1已亲审接收、F1交回后定向修补中，Android包已亲审提交6ba37b4（82项原生测试通过，无真机）；双门禁未执行 |
 
 用户追加U16：一并修复Downloads报告中的Idle Noting父owner回收缺陷。主会话采用精确维护依赖／原生epoch失效／短锁冻结方案，独立工作区`/Users/edgar/code/hermes-secretary-idle-noting-owner`（main基线e1b124d，临时codex/idle-noting-owner-20261027）实施，亲审后先纳main再并入增量分支。报告含生产个案不复制入公开仓库；不补跑历史失败、不修改生产配置／数据或部署。父owner失效保留未消费周期；global/local关闭仍按原生terminal cleanup清退，不增加重开补跑。纳入本轮最终双门禁。U16首包已交回并亲审，A→B→A迟到tick保护已补；主会话发现的旧completion清理／新native复用并发窗口已用原子reserve／清退关闭，末次71项及最后3项定向测试、十检查通过。已先提交main 0a5d09cdcf并自动push，同一14文件补丁已接入本增量分支；Linux及整轮门禁待执行。
 

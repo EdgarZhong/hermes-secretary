@@ -793,7 +793,8 @@ async def get_session_messages(
     view: Optional[str] = None, detail_row_ids: Optional[str] = None,
     prefer_image_refs: bool = Query(False), request: Request = None,
     recovery_view: Optional[int] = None, anchor_uid: Optional[str] = None,
-    anchor_row_id: Optional[int] = None, before: Optional[int] = None, after: Optional[int] = None):
+    anchor_row_id: Optional[int] = None, before: Optional[int] = None, after: Optional[int] = None,
+    history_sync: Optional[int] = None, sync_cursor: Optional[str] = None):
     from hermes_cli.web_history_cards import detail_row_ids as parse_detail_ids, history_cards, read_detail_rows
 
     if recovery_view is not None:
@@ -801,7 +802,7 @@ async def get_session_messages(
             raise HTTPException(status_code=400, detail="offset cannot be combined with recovery_view")
         return await _get_recovery_messages(
             session_id, profile, recovery_view, anchor_uid, anchor_row_id, before, after,
-            limit, offset, order, view, detail_row_ids)
+            limit, offset, order, view, detail_row_ids, history_sync, sync_cursor)
     if any(value is not None for value in (anchor_uid, anchor_row_id, before, after)):
         raise HTTPException(status_code=400, detail="anchor parameters require recovery_view=1")
     if order not in (None, "oldest", "latest"):
@@ -814,6 +815,8 @@ async def get_session_messages(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     if detail_ids is not None and view is not None:
         raise HTTPException(status_code=400, detail="detail_row_ids cannot be combined with view")
+    if detail_ids is not None and history_sync not in (None, 1):
+        raise HTTPException(status_code=400, detail="history_sync must be 1")
 
     def _read(db):
         sid = _resolve_session_id(db, session_id)
@@ -842,6 +845,10 @@ async def get_session_messages(
     if result is None:
         raise HTTPException(status_code=404, detail=_NOT_FOUND)
     sid, _limit, messages = result
+    canonical = None
+    if detail_ids is not None and history_sync == 1:
+        canonical = await asyncio.to_thread(_project_for_display, messages,
+                                           home=_history_profile_home(profile), inline_images=True)
     if prefer_image_refs is True and inline_images is True:
         messages = await _project_user_image_refs(messages, profile=profile, request=request)
     projected_messages = await asyncio.to_thread(
@@ -849,6 +856,9 @@ async def get_session_messages(
         inline_images=inline_images)
     if view == "cards":
         projected_messages = await asyncio.to_thread(history_cards, projected_messages)
+    if canonical is not None:
+        from hermes_state_history_sync import with_detail_revisions
+        projected_messages = with_detail_revisions(projected_messages, canonical=canonical)
     return {
         "session_id": sid,
         # The same stamp list rows carry, so the Desktop keys a page under the
@@ -863,11 +873,14 @@ async def get_session_messages(
 
 
 async def _get_recovery_messages(session_id, profile, version, anchor_uid, anchor_row_id,
-                                 before, after, limit, offset, order, view, detail_ids):
+                                 before, after, limit, offset, order, view, detail_ids,
+                                 history_sync=None, sync_cursor=None):
     from hermes_state_recovery_view import RecoveryViewError, project_view, read_view, selector
 
     if version != 1 or offset != 0 or detail_ids is not None or order is not None or view not in (None, "cards"):
         raise HTTPException(status_code=400, detail="recovery_view=1 cannot be combined with offset/order/detail parameters")
+    if history_sync not in (None, 1):
+        raise HTTPException(status_code=400, detail="history_sync must be 1")
     selection = {"kind": "anchor" if anchor_uid is not None or anchor_row_id is not None else "latest"}
     selection.update({key: value for key, value in dict(anchor_uid=anchor_uid, anchor_row_id=anchor_row_id,
                      before=before, after=after, limit=limit).items() if value is not None})
@@ -878,7 +891,8 @@ async def _get_recovery_messages(session_id, profile, version, anchor_uid, ancho
     try:
         selected = selector(selection)
         raw = await asyncio.to_thread(_with_db, profile,
-            lambda db: read_view(db, session_id, _serving_profile(profile), [selected]), read_only=True)
+            lambda db: read_view(db, session_id, _serving_profile(profile), [selected],
+                                 **({"history_sync": True} if history_sync == 1 else {})), read_only=True)
         if raw is None:
             raise RecoveryViewError("not_found")
         projected = await asyncio.to_thread(project_view, raw, home=_history_profile_home(profile))
@@ -886,10 +900,14 @@ async def _get_recovery_messages(session_id, profile, version, anchor_uid, ancho
         raise HTTPException(status_code=404 if exc.reason in ("not_found", "anchor_not_found") else 400,
                             detail=exc.reason) from exc
     window = projected["windows"][0]
+    synchronized = {}
+    if history_sync == 1:
+        from hermes_state_history_sync import synchronize_window
+        synchronized = synchronize_window(projected, window, sync_cursor)
     return {"session_id": raw["tip_id"], "profile": raw["profile"], "projection": "cards",
-            "messages": window["messages"], "coverage": window["coverage"], "selector": selected,
+            "messages": window["messages"], "coverage": window["coverage"], "selector": selected, **synchronized,
             "pagination": {"limit": selected.get("limit", selected.get("before", 0) + selected.get("after", 0) + 1),
-                           "returned": len(window["messages"]), "order": "logical"}}
+                           "returned": window["coverage"]["window"]["returned"], "order": "logical"}}
 
 
 def _timeline_session_id(db, session_id: str, owner: str) -> str:

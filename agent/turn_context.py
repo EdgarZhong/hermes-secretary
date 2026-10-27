@@ -708,11 +708,18 @@ def _stage_turn_user_message(
     if persist_user_display_kind:
         user_msg["display_kind"] = persist_user_display_kind
     if persist_user_display_metadata:
-        user_msg["display_metadata"] = persist_user_display_metadata
+        if isinstance(persist_user_display_metadata, dict):
+            existing_metadata = user_msg.get("display_metadata")
+            user_msg["display_metadata"] = {
+                **(existing_metadata if isinstance(existing_metadata, dict) else {}), **persist_user_display_metadata}
+        else:
+            user_msg["display_metadata"] = persist_user_display_metadata
     # The platform message id survives the turn-start flush; restart drain-window
     # recovery dedups via ``has_platform_message_id`` against this row.
     if persist_user_platform_id is not None:
         user_msg["platform_message_id"] = persist_user_platform_id
+    from agent.turn_source import stage_source
+    stage_source(agent, user_msg, pending_cli_message)
     return user_msg, pending_cli_message
 
 
@@ -1031,6 +1038,8 @@ def _persist_turn_start(
     def _ensure_and_persist() -> None:
         agent._ensure_db_session()
         agent._persist_session(messages, conversation_history)
+        from agent.turn_source import persist_source_if_needed
+        persist_source_if_needed(agent, messages)
 
     _persist_under_lock(
         agent, _ensure_and_persist,
