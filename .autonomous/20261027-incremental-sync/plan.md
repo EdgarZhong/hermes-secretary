@@ -30,7 +30,7 @@
 ## 当前状态与编排
 
 - M0：前端5cbef57与37a8e4c已亲审提交／push，未部署；微信包已亲审，main e1b124d已提交／push。
-- B1／F1：已派遣实施；A1已交回且主会话亲审，82项原生测试通过，无真机证据。main修复完成并冻结后并行，源码范围不交叉。任何契约真阻塞向主会话整点报告；不发流水账、不再派生。
+- B1／F1：实施及主会话代码审查已完成；A1已交回且主会话亲审，82项原生测试通过，无真机证据。main修复完成并冻结后并行，源码范围不交叉。任何契约真阻塞向主会话整点报告；不发流水账、不再派生。
 - 主会话已查恢复链串行、无条件隐藏读取、warm旧分页更多及APK5秒deadline。正式数据量证据待I1。
 - 主会话亲审接线，独立门禁按整轮执行，不逐包派Verifier。
 
@@ -65,9 +65,9 @@
 
 | 项 | 负责人 | 完成条件与复验 | 当前状态 |
 |---|---|---|---|
-| 压缩终态Context读取失败重试、合法unknown不无限轮询 | F1 | 正式Controller失败后成功、合法unavailable结束本次读取且保旧值；隐藏IAB观察 | 修补交回待最终复验 |
-| 已finished压缩后epoch恢复重复200条快照 | F1 | 同owner先等在途历史settle再强制终态对账；必要snapshot最多一次，其后delta；无死锁及owner越界 | 实施中；反例见integration报告 |
-| 首次展开同一旧详情重复REST | F1 | 无staged共享HistoryDetails；真正staged仍隔离；实际App首次展开一次、完整缓存重连无需重取 | 实施中 |
+| 压缩终态Context读取失败重试、合法unknown不无限轮询 | F1 | 正式Controller失败后成功、合法unavailable结束本次读取且保旧值；隐藏IAB观察 | 代码已亲审；最终IAB复验受本地浏览器禁用阻断 |
+| 已finished压缩后epoch恢复重复200条快照 | F1 | 同owner先等在途历史settle再强制终态对账；必要snapshot最多一次，其后delta；无死锁及owner越界 | 代码已亲审；最终IAB复验待执行，反例见integration报告 |
+| 首次展开同一旧详情重复REST | F1 | 无staged共享HistoryDetails；真正staged仍隔离；实际App首次展开一次、完整缓存重连无需重取 | 代码已亲审；最终IAB复验待执行 |
 | U17旧typed来源缺口 | B1 | 旧模糊lazy，新真Turn持久来源及冷恢复，Provider wire不变 | 已亲审关闭；U17正式Turn持久化／冷进程读取与wire回归通过 |
 | U16旧completion清理撞新native复用 | U16 | reserve与关闭各自原子提交，Framework→ACTIVE锁序；两种barrier时序及压缩结束释放 | 已亲审关闭；main 0a5d09cdcf，同补丁接入增量，Linux待验 |
 
