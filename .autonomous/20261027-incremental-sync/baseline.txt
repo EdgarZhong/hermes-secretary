@@ -1,0 +1,7 @@
+cf5742c70b26e0dc954eabcb4b07c232c5231013
+前端冻结基线：c39086c1879cd46370bdc8f4e3d98a3c290aecc3
+后端工作区：/Users/edgar/code/hermes-secretary-incremental-sync
+前端工作区：/Users/edgar/code/hermes-secretary-web
+同名分支：codex/incremental-sync-20261027
+独立main修复基线：后端e1b124d；前端5cbef57、37a8e4c（均已自动push，未部署）。
+用户口径来源：本轮会话；跳过Ask and Align，设计先落D/S/P表；原产品状态不变，增量机制完成后完整双门禁。

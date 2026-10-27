@@ -9,7 +9,7 @@
 
 用户明确本轮自主执行，跳过Ask and Align：先调查Restore慢于刷新原因，先在main修复独立问题，再在前后端同名新分支实现游标增量同步与SPA免刷新恢复。保持产品／视觉／交互语义；复用Desktop原生能力，缺口只增可选API字段。APK取消恢复中的自动刷新；历史缓存须经服务端增量对账，不省略有效性校验。新会话正常取消请求不得弹Signal Aborted；修复Android键盘收起闪屏；微信只限制会话管理Slash，会话内交互保持，每条完整Assistant Message立即发送、不等Turn结束。main修复阶段按用户豁免不运行严格双门禁，新机制集成后完整执行。用户追加明确：网络恢复期间Notebook图标保持同owner最后有效状态，不闪unknown；首次无状态不伪造成功，真实状态变化正常更新。主会话设计与集成审查，子Agent统一6.1 sol/high，仅真正阻塞或整包完成汇报。未授权生产部署／真实微信测试发送。
 
-用户后续要求已立即写入06顶部C0–C3：缓存／同步逐项矩阵D01–D18、表现层转换S01–S18及表现／操作资格P01–P10；Timeline最近500条，完整已取详情同消息计数并复用，未取详情懒加载，旧半截不持久化，最新Turn Thinking主动拉取／核验前缀缓存，不建逐Thinking游标。设计表与独立main修复已完成；当前冻结新分支方案，新机制尚未实施。
+用户后续要求已立即写入06顶部C0–C3：缓存／同步逐项矩阵D01–D18、表现层转换S01–S18及表现／操作资格P01–P10；Timeline最近500条，完整已取详情同消息计数并复用，未取详情懒加载，旧半截不持久化，最新Turn Thinking主动拉取／核验前缀缓存，不建逐Thinking游标。设计表与独立main修复已完成；方案已冻结，前后端增量包正在实施，Android免刷新包已亲审并阶段提交。用户追加U13：手动compact期间／完成后不得一直Retrying Chat／Usage，Context须按原生状态显示loading环与Compacting，完成后恢复最新值。已确认线上轻量compaction_state返回active/computing而旧画面保留层遮住状态；后端manual压缩复用running与普通Turn恢复证明不匹配正在取证，尚未宣称修复。
 
 main独立修复：后端e1b124d、前端5cbef57／37a8e4c均已提交并自动push。增量工作区为`/Users/edgar/code/hermes-secretary-incremental-sync`及`/Users/edgar/code/hermes-secretary-web`，同名分支`codex/incremental-sync-20261027`；为隔离后端main其它dirty建立平铺worktree。
 
@@ -17,10 +17,10 @@ main独立修复：后端e1b124d、前端5cbef57／37a8e4c均已提交并自动p
 
 | 工作 | 负责人／状态 |
 |---|---|
-| 前端恢复根因、游标方案、Signal Aborted | 根因已定位；独立取消请求／Notebook修复已提交；增量接口与缓存方案冻结准备中 |
+| 前端恢复根因、游标方案、Signal Aborted | 根因已定位；独立取消请求／Notebook修复已提交；增量接口与缓存方案已冻结，实施中 |
 | 微信Slash范围与逐消息投递 | 已亲审：管理命令规范化拒绝，其余走原生权限；完整消息沿FIFO事件唤醒。改前9反例失败；15文件279项及追加2项通过，十检查通过；未真实微信试发 |
 | Android键盘闪屏 | 主会话已亲审提交37a8e4c；组件11项、原生10项及隐藏IAB真实像素证据通过；真机未验 |
-| 游标增量、SPA／APK免刷新 | main修复完成；同名分支已创建，冻结`.autonomous/20261027-incremental-sync/`；待三包实施及双门禁 |
+| 游标增量、SPA／APK免刷新 | main修复完成；同名分支已创建，冻结`.autonomous/20261027-incremental-sync/`；两增量包实施中，Android包已亲审（82项原生测试通过，无真机）；双门禁未执行 |
 
 ## 2026-10-27 · Noting来源链／History调优（已上线）
 

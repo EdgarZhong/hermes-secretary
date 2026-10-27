@@ -7,7 +7,7 @@
 | 用户需求 | 本索引“口径与决策”；docs/06-Hermes-Secretary-Web-UI-V1-Spec.md 顶部C0–C3及D／S／P表 | 二级，用户本轮明确要求主会话整理设计表；工程细化允许，不改产品语义 |
 | 权威规格 | docs/06-Hermes-Secretary-Web-UI-V1-Spec.md 顶部新契约优先，其余现有UI／原生归属／交互保持；docs/07-scheduler-notebook-noting-compaction-redesign.md 保留Notebook语义，不改其机制 | 二级；本轮不改07、不把07其它目标纳入本轮 |
 | 编码指导 | 根AGENTS.md；独立UI仓库根AGENTS.md；autonomous-run／executing-plans／两个独立门禁与交付Skill | 二级；用户授权范围内执行，不引入上游新规则 |
-| 会话确认口径 | 本索引以下U01–U12 | 二级 |
+| 会话确认口径 | 本索引以下U01–U13 | 二级 |
 
 ## 口径与决策
 
@@ -25,5 +25,7 @@
 | U10 | 新会话正常turn不闪Signal Aborted；键盘收起不闪屏；恢复Notebook不闪unknown | 首条及Notebook追加；真错误／真unknown继续呈现，不全局吞异常 |
 | U11 | 微信会话管理slash可限制，会话内交互保留；每条Assistant Message即发送 | 首条；沿原生授权、busy路由和消息UID，不等Turn结束、不人工延迟；无真实微信发送授权 |
 | U12 | 表先整理完整，之后据此区分设计问题与编码bug；新改造完整verification／validation | 最新消息；D／S／P稳定编号，main修复阶段不严格双门禁，最终集成统一独立门禁 |
+
+| U13 | compact后持续Retrying Chat／Usage且Context未显示loading环／Compacting，须修复 | 用户截图追加；确认原生压缩状态及时展示，运行／完成／失败及重连均按原生命周期收敛，不隐藏真正恢复失败或改变操作权限 |
 
 用户未授权：部署、调用生产模型、真实微信测试发送；本轮只本地实现／阶段提交及既有自动push。UI只许自己创建隐藏IAB（visible:false）；不控制桌面、不用外部浏览器、不动用户页面。Android缺真机证据须明确，不冒称通过。
