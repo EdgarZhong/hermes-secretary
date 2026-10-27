@@ -38,4 +38,6 @@
 
 ## 恢复执行后的候选与环境边界
 
-后端候选862326c0a7，前端候选91ad72f3898be4e6d98461f69566a76b54595290；最后六文件SHA与244项、typecheck、build和冻结度量证据一致，主会话已审上下游和owner／revision保护。当前已重启精确版本真实Python／SQLite／HTTP／WS隔离夹具，未调用模型或微信。隐藏IAB创建被工具拒绝：Local browser use is disabled in Work settings；未操作其它浏览器或用户页。最终epoch单snapshot、详情单请求及unavailable停止观察的实际浏览器复验尚未执行；上述旧反例保留，不以受控单测替代本项。独立Verification将核全部冻结要求及证据边界。
+后端候选862326c0a7，前端候选91ad72f3898be4e6d98461f69566a76b54595290；最后六文件SHA与244项、typecheck、build和冻结度量证据一致，主会话已审上下游和owner／revision保护。当前已重启精确版本真实Python／SQLite／HTTP／WS隔离夹具，未调用模型或微信。隐藏IAB创建被工具拒绝：Local browser use is disabled in Work settings；用户随后截图证明开关已开启，重建连接仍同错，实际根因未知，不能据此断言用户关闭设置；未操作其它浏览器或用户页。最终epoch单snapshot、详情单请求及unavailable停止观察的实际浏览器复验尚未执行；上述旧反例保留，不以受控单测替代本项。独立Verification将核全部冻结要求及证据边界。
+
+Linux7文件163项证据及19份日志／记录SHA已由主会话核对，全部相符；自建远程工作区已删除。复测时证据目录需预建，新增测试可移植性整改已登记plan，不改写既有产品路径测试结果。用户准备重启Codex，本地fixture服务5637/5638已正常停止；最后运行配置与SHA留在ignored runtime.json。

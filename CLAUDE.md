@@ -7,7 +7,7 @@
 
 ## 2026-10-27 · 增量同步与免刷新恢复（执行中）
 
-用户已明确恢复本次自主实现。当前代码集成收尾，尚未验收或部署；隐藏IAB因Work设置禁用受阻，已请求用户启用，继续代码审查与独立门禁准备。
+用户恢复执行后，前端91ad72f已提交自动push，后端产品862326c0a7／文档e26b8d1062；Linux7文件163项组合证据已完成并亲审核SHA。当前为配合用户重启Codex保存断点，未最终验收或部署。浏览器工具反复返回disabled，但用户截图显示开关始终开启；重置cua连接仍同错，根因未知，不能称用户禁用。独立Verification已中断且仅复制模板，未完成独立判据；Validation未开始。自有本地夹具服务已停止。详见本轮final-delivery.md重启断点。
 
 用户明确本轮自主执行，跳过Ask and Align：先调查Restore慢于刷新原因，先在main修复独立问题，再在前后端同名新分支实现游标增量同步与SPA免刷新恢复。保持产品／视觉／交互语义；复用Desktop原生能力，缺口只增可选API字段。APK取消恢复中的自动刷新；历史缓存须经服务端增量对账，不省略有效性校验。新会话正常取消请求不得弹Signal Aborted；修复Android键盘收起闪屏；微信只限制会话管理Slash，会话内交互保持，每条完整Assistant Message立即发送、不等Turn结束。main修复阶段按用户豁免不运行严格双门禁，新机制集成后完整执行。用户追加明确：网络恢复期间Notebook图标保持同owner最后有效状态，不闪unknown；首次无状态不伪造成功，真实状态变化正常更新。主会话设计与集成审查，子Agent统一6.1 sol/high，仅真正阻塞或整包完成汇报。未授权生产部署／真实微信测试发送。
 
@@ -28,7 +28,7 @@ main独立修复：后端e1b124d、前端5cbef57／37a8e4c均已提交并自动p
 | Android键盘闪屏 | 主会话已亲审提交37a8e4c；组件11项、原生10项及隐藏IAB真实像素证据通过；真机未验 |
 | 游标增量、SPA／APK免刷新 | main修复完成；同名分支已创建，冻结`.autonomous/20261027-incremental-sync/`；B1已亲审接收、F1最终修补已亲审接收，Android包已亲审提交6ba37b4（82项原生测试通过，无真机）；双门禁未执行 |
 
-用户追加U16：一并修复Downloads报告中的Idle Noting父owner回收缺陷。主会话采用精确维护依赖／原生epoch失效／短锁冻结方案，独立工作区`/Users/edgar/code/hermes-secretary-idle-noting-owner`（main基线e1b124d，临时codex/idle-noting-owner-20261027）实施，亲审后先纳main再并入增量分支。报告含生产个案不复制入公开仓库；不补跑历史失败、不修改生产配置／数据或部署。父owner失效保留未消费周期；global/local关闭仍按原生terminal cleanup清退，不增加重开补跑。纳入本轮最终双门禁。U16首包已交回并亲审，A→B→A迟到tick保护已补；主会话发现的旧completion清理／新native复用并发窗口已用原子reserve／清退关闭，末次71项及最后3项定向测试、十检查通过。已先提交main 0a5d09cdcf并自动push，同一14文件补丁已接入本增量分支；Linux定向收尾已恢复，整轮门禁待执行。
+用户追加U16：一并修复Downloads报告中的Idle Noting父owner回收缺陷。主会话采用精确维护依赖／原生epoch失效／短锁冻结方案，独立工作区`/Users/edgar/code/hermes-secretary-idle-noting-owner`（main基线e1b124d，临时codex/idle-noting-owner-20261027）实施，亲审后先纳main再并入增量分支。报告含生产个案不复制入公开仓库；不补跑历史失败、不修改生产配置／数据或部署。父owner失效保留未消费周期；global/local关闭仍按原生terminal cleanup清退，不增加重开补跑。纳入本轮最终双门禁。U16首包已交回并亲审，A→B→A迟到tick保护已补；主会话发现的旧completion清理／新native复用并发窗口已用原子reserve／清退关闭，末次71项及最后3项定向测试、十检查通过。已先提交main 0a5d09cdcf并自动push，同一14文件补丁已接入本增量分支；Linux定向7文件163项已覆盖通过（159项原证据＋4项目录准备后补测）；整轮门禁未完成。
 
 ## 2026-10-27 · Noting来源链／History调优（已上线）
 

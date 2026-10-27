@@ -69,6 +69,15 @@
 | 已finished压缩后epoch恢复重复200条快照 | F1 | 同owner先等在途历史settle再强制终态对账；必要snapshot最多一次，其后delta；无死锁及owner越界 | 代码已亲审；最终IAB复验待执行，反例见integration报告 |
 | 首次展开同一旧详情重复REST | F1 | 无staged共享HistoryDetails；真正staged仍隔离；实际App首次展开一次、完整缓存重连无需重取 | 代码已亲审；最终IAB复验待执行 |
 | U17旧typed来源缺口 | B1 | 旧模糊lazy，新真Turn持久来源及冷恢复，Provider wire不变 | 已亲审关闭；U17正式Turn持久化／冷进程读取与wire回归通过 |
-| U16旧completion清理撞新native复用 | U16 | reserve与关闭各自原子提交，Framework→ACTIVE锁序；两种barrier时序及压缩结束释放 | 已亲审关闭；main 0a5d09cdcf，同补丁接入增量，Linux待验 |
+| U16旧completion清理撞新native复用 | U16 | reserve与关闭各自原子提交，Framework→ACTIVE锁序；两种barrier时序及压缩结束释放 | 已亲审关闭；main 0a5d09cdcf，同补丁接入增量，Linux163项已覆盖通过 |
 
 全轮门禁尚未启动；上述问题关闭并完成主会话集成后统一派遣，不以局部通过代替整轮验收。
+
+## 重启断点（2026-10-27）
+
+前端91ad72f已提交push；backend产品862326c0a7、文档e26b8d1062。Linux163项（159＋4定向）完成，日志SHA与清理记录已亲核。为用户重启Codex暂停，Verification /root/verification_incremental 已中断，只复制模板，尚无判据／结论；重启恢复后先读本轮索引、baseline、plan、reports再继续。Validation未派遣。本地夹具5637/5638已停止。
+
+| 新发现／缺口 | 负责人 | 完成条件 | 状态 |
+|---|---|---|---|
+| test_idle_noting_owner证据写盘依赖ignored目录已存在 | 主会话／U16 | 测试自行创建精确证据目录或用既有临时目录，保断言；干净隔离导出仅重验4项，修复按main先纳再集成 | 待修，产品源码无新增失败 |
+| I1最终三个浏览器复验 | 主会话 | 隐藏IAB工具恢复后，真实Python/SQLite/HTTP/WS同document核epoch仅一次snapshot、详情单请求且冷重开复用、合法unavailable停止轮询；保草稿与Context表现 | 工具报disabled与用户开启截图冲突，连接重置未解 |
