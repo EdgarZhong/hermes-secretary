@@ -27,7 +27,7 @@ class OrderedMessagesMixin:
         return True
 
     def on_message(self, identity, text):
-        self._queue.put(OrderedMessage(identity, text))
+        self._enqueue(OrderedMessage(identity, text))
 
     async def _deliver_message(self, message):
         import asyncio

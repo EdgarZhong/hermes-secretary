@@ -968,6 +968,7 @@ class TurnRunner:
                     # is never fed the final reply's deltas — mark it so the duplicate-risk
                     # diagnostic in ``_run_agent_mark_streamed_delivery`` stays silent.
                     stream_consumer.stream_deltas_enabled = consumer_stream_deltas
+                    stream_consumer.native_message_delivery = message_transport
             except Exception as err:
                 logger.debug("Could not set up stream consumer: %s", err)
         # Deltas tee to the stream consumer (when text streaming is on) and to streaming TTS.
@@ -1249,7 +1250,7 @@ class TurnRunner:
         agent._captured_assistant_text_parts = []
         agent._assistant_message_callback = (
             lambda uid, text: consumer.on_message(uid, text) if ctx._run_still_current() else None
-        ) if capture and want_interim_messages else None
+        ) if capture else None
         if capture:
             # Complete native messages have stable identities; never also post
             # a provider's legacy text-only commentary preview on this lane.

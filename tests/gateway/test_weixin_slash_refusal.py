@@ -1,6 +1,7 @@
-"""Weixin user slash commands refuse before controls, busy handling, or agent input."""
+"""Weixin only refuses session management; in-session commands retain native controls."""
 
 import asyncio
+from contextlib import asynccontextmanager
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
@@ -13,11 +14,10 @@ from gateway.platforms.weixin import WeixinAdapter
 from gateway.session import SessionSource, build_session_key
 
 
-REFUSAL = "微信不支持 slash 命令，请回到 Web UI 管理会话；需要换绑时直接告诉 AI。"
+REFUSAL = "微信不支持会话管理 slash 命令，请回到 Web UI 管理会话；需要换绑时直接告诉 AI。"
 COMMANDS = [
-    "/new", "/reset", "/stop", "/branch", "/resume another-session",
-    "/approve", "/deny", "/status", "/plugin-action", "/skill-action",
-    "/definitely-unknown", "  /new@bot  ", "@image:attachment.png\n/new",
+    "/new", "/reset", "/clear", "/branch", "/fork", "/resume another-session",
+    "/sessions", "/topic", "/fresh", "/nested", "  /NEW@bot  ", "@image:attachment.png\n/new",
 ]
 
 
@@ -36,6 +36,8 @@ def _runner(monkeypatch, *, authorized=True, busy=False):
 
     runner = object.__new__(GatewayRunner)
     runner.config = GatewayConfig()
+    runner.config.quick_commands = {"fresh": {"type": "alias", "target": "/reset"},
+                                    "nested": {"type": "alias", "target": "/fresh"}}
     runner.session_store = MagicMock()
     runner._session_key_for_source = MagicMock(side_effect=build_session_key)
     runner._is_user_authorized_for_source = MagicMock(return_value=authorized)
@@ -134,7 +136,7 @@ async def test_weixin_real_active_adapter_preserves_task_guard_and_pending(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("text", ["/new", "/unknown"])
+@pytest.mark.parametrize("text", ["/new", "/unknown", "/stop", "/approve", "/deny", "/status"])
 async def test_unauthorized_weixin_idle_keeps_original_auth_refusal(monkeypatch, text):
     runner = _runner(monkeypatch, authorized=False)
     event = _event(text)
@@ -210,3 +212,105 @@ async def test_other_platforms_still_dispatch_native_slash(monkeypatch, platform
 
     runner._handle_status_command.assert_awaited_once()
     runner._handle_message_with_agent.assert_not_called()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("command", ["status", "approve", "deny", "stop"])
+@pytest.mark.parametrize("busy", [False, True])
+async def test_weixin_in_session_commands_reach_native_dispatch(monkeypatch, command, busy):
+    runner = _runner(monkeypatch, busy=busy)
+    handler = AsyncMock(return_value="native reply")
+    if command == "stop" and busy:
+        runner._busy_stop_command = handler
+    else:
+        setattr(runner, f"_handle_{command}_command", handler)
+    runner._async_profile_scope_for_source = lambda source: _scope()
+
+    assert await runner._handle_message(_event(f"/{command}")) == "native reply"
+    handler.assert_awaited_once()
+    runner._handle_message_with_agent.assert_not_called()
+
+
+@asynccontextmanager
+async def _scope():
+    yield
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("target", ["/new", "reset", "/FORK@bot", "/resume old"])
+@pytest.mark.parametrize("busy", [False, True])
+async def test_quick_alias_cannot_bypass_session_management_gate(monkeypatch, target, busy):
+    runner = _runner(monkeypatch, busy=busy)
+    runner.config.quick_commands = {"shortcut": {"type": "alias", "target": target}}
+
+    assert await runner._handle_message(_event("/shortcut")) == REFUSAL
+    _assert_no_control_or_turn(runner)
+
+
+@pytest.mark.asyncio
+async def test_unknown_weixin_command_keeps_native_unknown_reply(monkeypatch):
+    runner = _runner(monkeypatch)
+    monkeypatch.setattr("gateway.run._check_unavailable_skill", lambda command: None)
+    reply = await runner._handle_message(_event("/definitely-unknown"))
+    assert reply and reply != REFUSAL and "definitely-unknown" in reply
+    runner._hm_dispatch_idle_commands.assert_awaited_once()
+    runner._handle_message_with_agent.assert_not_called()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("command", ["status", "approve", "deny"])
+async def test_active_adapter_uses_native_command_route(monkeypatch, command):
+    runner = _runner(monkeypatch, busy=True)
+    adapter = WeixinAdapter(PlatformConfig(enabled=True, token="test-token"))
+    adapter.set_message_handler(runner._handle_message)
+    adapter._send_with_retry = AsyncMock(return_value=SendResult(success=True))
+    handler = AsyncMock(return_value="native reply")
+    setattr(runner, f"_handle_{command}_command", handler)
+    runner._async_profile_scope_for_source = lambda source: _scope()
+    event = _event(f"/{command}")
+    key = build_session_key(event.source)
+    guard = adapter._active_sessions[key] = asyncio.Event()
+    held = asyncio.Event()
+    task = adapter._session_tasks[key] = asyncio.create_task(held.wait())
+    pending = adapter._pending_messages[key] = _event("queued")
+    try:
+        await adapter.handle_message(event)
+
+        handler.assert_awaited_once()
+        assert adapter._active_sessions[key] is guard
+        assert adapter._session_tasks[key] is task and not task.done()
+        assert adapter._pending_messages[key] is pending
+        assert adapter._send_with_retry.await_args.kwargs["content"] == "native reply"
+    finally:
+        held.set()
+        await task
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("authorized", [False, True])
+async def test_active_stop_keeps_runner_authorization_before_native_cancellation(monkeypatch, authorized):
+    runner = _runner(monkeypatch, authorized=authorized, busy=True)
+    runner._interrupt_and_clear_session = AsyncMock()
+    adapter = WeixinAdapter(PlatformConfig(enabled=True, token="test-token"))
+    adapter.set_message_handler(runner._handle_message)
+    adapter._send_with_retry = AsyncMock(return_value=SendResult(success=True))
+    adapter.cancel_session_processing = AsyncMock()
+    event = _event("/stop")
+    key = build_session_key(event.source)
+    guard = adapter._active_sessions[key] = asyncio.Event()
+    held = asyncio.Event()
+    task = adapter._session_tasks[key] = asyncio.create_task(held.wait())
+    try:
+        await adapter.handle_message(event)
+
+        assert adapter._active_sessions[key] is guard and not task.done()
+        adapter.cancel_session_processing.assert_not_awaited()
+        if authorized:
+            runner._interrupt_and_clear_session.assert_awaited_once()
+            assert runner._interrupt_and_clear_session.await_args.kwargs["invalidation_reason"] == "stop_command"
+        else:
+            runner._interrupt_and_clear_session.assert_not_awaited()
+            runner._hm_report_ignored_dm.assert_awaited_once()
+    finally:
+        held.set()
+        await task

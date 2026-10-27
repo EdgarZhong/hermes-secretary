@@ -5,6 +5,21 @@
 - **Agent自主收敛／待追认：混合压缩载体的读取。** 原空白：一个native UID可同时承载压缩摘要与真人消息，而用户要求辅助开关能读取Compression且Get Meta仍仅四字段。决定：默认保留原真人视图；显式辅助允许同UID的system摘要视图，Get Meta／Search按语义部分分别返回，anchored Read允许现有roles参数选部分，默认锚点优先原非压缩部分；同UID同role的system内容合并为一个视图；不造UID、不放开Full／隐藏内容。理由：使明确要求在native混合载体下可操作。影响：Read新增可选roles适用位置，同UID可有不同语义投影。已实现，201项History接受测试及56项原生路径通过；独立Verification／Validation已通过，已上线；不改变Message Identity或Notebook新证据准入。
 - **Agent自主收敛／待追认：Candidate同Task来源形式切换。** 原空白：旧合法direct→refs操作与新旧Task节点不可删约束如何同时成立。决定：仅尚未提交且唯一节点属于本Task时，允许显式清空当前工作槽并切为合法refs；任何旧Task直接节点仍禁止删改。理由：继承原来源二选一操作并保持旧节点约束。影响：当前Task工作态边界，无迁移／旧节点特权。已实现，正式工具／恢复／原子失败98项通过；独立Verification／Validation已通过，已上线。
 
+## 2026-10-27 · 增量同步与免刷新恢复（执行中）
+
+用户明确本轮自主执行，跳过Ask and Align：先调查Restore慢于刷新原因，先在main修复独立问题，再在前后端同名新分支实现游标增量同步与SPA免刷新恢复。保持产品／视觉／交互语义；复用Desktop原生能力，缺口只增可选API字段。APK取消恢复中的自动刷新；历史缓存须经服务端增量对账，不省略有效性校验。新会话正常取消请求不得弹Signal Aborted；修复Android键盘收起闪屏；微信只限制会话管理Slash，会话内交互保持，每条完整Assistant Message立即发送、不等Turn结束。main修复阶段按用户豁免不运行严格双门禁，新机制集成后完整执行。用户追加明确：网络恢复期间Notebook图标保持同owner最后有效状态，不闪unknown；首次无状态不伪造成功，真实状态变化正常更新。主会话设计与集成审查，子Agent统一6.1 sol/high，仅真正阻塞或整包完成汇报。未授权生产部署／真实微信测试发送。
+
+用户后续要求已立即写入06顶部C0–C3：缓存／同步逐项矩阵D01–D18、表现层转换S01–S18及表现／操作资格P01–P10；Timeline最近500条，完整已取详情同消息计数并复用，未取详情懒加载，旧半截不持久化，最新Turn Thinking主动拉取／核验前缀缓存，不建逐Thinking游标。当前先完成设计表与独立main修复，新机制尚未实施。
+
+当前：后端main位于`/Users/edgar/code/hermes-secretary-web-release`，已快进33f3b64a55；前端main位于`/Users/edgar/code/hermes-secretary-web`，37a8e4c（Signal Aborted／Notebook图标5cbef57、键盘闪屏37a8e4c已亲审提交并自动push，未部署）。保留原Noting调试dirty；07补丁临时保存后已恢复，stash 47c6bbc仅作保险，不混入本轮提交。原始工作区dirty不动。
+
+| 工作 | 负责人／状态 |
+|---|---|
+| 前端恢复根因、游标方案、Signal Aborted | 根因已定位；独立取消请求／Notebook修复已提交；增量接口与缓存方案冻结准备中 |
+| 微信Slash范围与逐消息投递 | 已亲审：管理命令规范化拒绝，其余走原生权限；完整消息沿FIFO事件唤醒。改前9反例失败；15文件279项及追加2项通过，十检查通过；未真实微信试发 |
+| Android键盘闪屏 | 主会话已亲审提交37a8e4c；组件11项、原生10项及隐藏IAB真实像素证据通过；真机未验 |
+| 游标增量、SPA／APK免刷新 | main修复完成后冻结方案、前后端同名分支；待实施及双门禁 |
+
 ## 2026-10-27 · Noting来源链／History调优（已上线）
 
 用户已确认全部语义和精简Prompt，并明确“开始改吧。改完，测好，上线”。轮次`.autonomous/20261027-noting-provenance-history/`，工作区`/Users/edgar/code/hermes-secretary-noting-chain`，分支`codex/noting-provenance-history-20261027`，基于main `d1de4db49b`；为隔离旧目录及main调试dirty新建，原修改保持。

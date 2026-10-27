@@ -14,6 +14,7 @@ from gateway.display_config import resolve_display_setting
 from gateway.platforms.event import MessageEvent
 from gateway.platforms.base import SendResult
 from gateway.run_turn_runner import TurnRunner
+from gateway.session import build_session_key
 from tests.agent.test_streaming import _make_stream_chunk as chunk, _make_tool_call_delta as tool_delta
 from tests.gateway.test_framework_injection_delivery import _wire
 
@@ -131,10 +132,12 @@ async def test_verification_budget_reuses_same_native_message_without_second_sen
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("streaming", [None, False, True])
-async def test_complete_messages_deliver_while_turn_active_and_equal_final_is_not_lost(runtime, streaming):
+@pytest.mark.parametrize("interim_enabled", [False, True])
+async def test_complete_messages_deliver_while_turn_active_and_equal_final_is_not_lost(runtime, streaming, interim_enabled):
     rt = runtime
     rt.runner.config.streaming.enabled = True
-    if streaming is not None:
+    rt.ctx.interim_assistant_messages_enabled = interim_enabled
+    if streaming is not None or not interim_enabled:
         rt.ctx.user_config = {"display": {"platforms": {"weixin": {"streaming": streaming}}}}
         turn = TurnRunner(rt.runner, rt.ctx)
         rt.consumer, delta, interim, wanted = turn._setup_stream_consumer("weixin")
@@ -366,6 +369,164 @@ def test_weixin_default_changes_only_complete_message_verbosity():
     assert resolve_display_setting({}, "weixin", "interim_assistant_messages") is True
     assert resolve_display_setting({}, "weixin", "streaming") is False
     assert resolve_display_setting({}, "signal", "interim_assistant_messages") is False
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("stale", [False, True])
+async def test_complete_message_wakes_idle_consumer_from_agent_thread(runtime, stale):
+    rt = runtime
+    waiting, woke = asyncio.Event(), asyncio.Event()
+    current = [True]
+    rt.consumer._run_still_current = lambda: current[0]
+
+    class ObservedReady(asyncio.Event):
+        async def wait(self):
+            waiting.set()
+            await super().wait()
+            woke.set()
+
+    rt.consumer._queue_ready = ObservedReady()
+    consumer_task = asyncio.create_task(rt.consumer.run())
+    try:
+        await asyncio.wait_for(waiting.wait(), timeout=5)
+        current[0] = not stale
+        await asyncio.to_thread(rt.consumer.on_message, "complete-before-tool-finish", "ready now")
+        await asyncio.wait_for(woke.wait(), timeout=5)
+        if stale:
+            await asyncio.wait_for(consumer_task, timeout=5)
+            assert not rt.sent
+        else:
+            await wait_for(lambda: rt.sent == ["ready now"])
+            assert not consumer_task.done()
+    finally:
+        rt.consumer.finish()
+        await asyncio.wait_for(consumer_task, timeout=5)
+
+
+@pytest.mark.asyncio
+async def test_native_message_is_sent_before_blocked_tool_returns_with_interim_disabled(runtime, monkeypatch):
+    rt = runtime
+    rt.ctx.interim_assistant_messages_enabled = False
+    turn = TurnRunner(rt.runner, rt.ctx)
+    rt.consumer, delta, interim, wanted = turn._setup_stream_consumer("weixin")
+    turn._wire_turn_agent_callbacks(rt.agent, {}, None, delta, interim, wanted)
+    entered, release = threading.Event(), threading.Event()
+    execute = rt.agent._execute_tool_calls
+
+    def blocked_tool(*args):
+        entered.set()
+        assert release.wait(10)
+        return execute(*args)
+
+    monkeypatch.setattr(rt.agent, "_execute_tool_calls", blocked_tool)
+
+    def streams(index):
+        if index == 1:
+            yield chunk(content="complete before tool")
+            yield chunk(tool_calls=[tool_delta(tc_id="blocked", name="notebook_show", arguments="{}")],
+                        finish_reason="tool_calls")
+        else:
+            yield chunk(content="after tool", finish_reason="stop")
+
+    rt.sdk(streams)
+    native, consumer_task = start(rt)
+    try:
+        await wait_for(entered.is_set)
+        await wait_for(lambda: rt.sent == ["complete before tool"])
+        assert not native.done() and not rt.tools
+    finally:
+        release.set()
+    result = await finish(rt, native, consumer_task)
+    assert result["completed"] and rt.sent == ["complete before tool", "after tool"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("authorized", [False, True])
+async def test_real_active_adapter_stop_interrupts_only_authorized_native_turn(runtime, monkeypatch, authorized):
+    rt = runtime
+    rt.ctx.source.user_id = "user"
+    key = build_session_key(rt.ctx.source)
+    rt.runner._session_state("peer").turn.clear()
+    state = rt.runner._session_state(key)
+    state.turn.agent, state.turn.ctx = rt.agent, rt.ctx
+    rt.runner._agent_cache.clear()
+    rt.runner._persist_active_agents = lambda: None
+    rt.runner._hm_pending_reply_intercepts = AsyncMock(return_value=None)
+    rt.runner._hm_evict_idle_stale_agent = lambda key: None
+    rt.runner._hm_evict_reaped_agent = lambda key: None
+    rt.runner._hm_estop_gate = lambda *args: None
+    rt.runner._is_user_authorized_for_source = lambda source: authorized
+    rt.runner._get_unauthorized_dm_behavior = lambda *args, **kwargs: "ignore"
+    rt.runner._hm_report_ignored_dm = AsyncMock()
+    rt.adapter._send_with_retry = AsyncMock(return_value=SendResult(success=True))
+    rt.adapter.cancel_session_processing = AsyncMock(wraps=rt.adapter.cancel_session_processing)
+    monkeypatch.setattr("hermes_cli.lifecycle.ainvoke_hook", AsyncMock(return_value=[]))
+    entered, observed_stop = threading.Event(), threading.Event()
+    results = []
+    execute = rt.agent._execute_tool_calls
+
+    def blocked_tool(*args):
+        entered.set()
+        assert rt.agent._hard_interrupt_requested.wait(10)
+        observed_stop.set()
+        return execute(*args)
+
+    monkeypatch.setattr(rt.agent, "_execute_tool_calls", blocked_tool)
+    rt.sdk(lambda index: iter([
+        chunk(content="before stop"),
+        chunk(tool_calls=[tool_delta(tc_id="blocked-stop", name="notebook_show", arguments="{}")],
+              finish_reason="tool_calls"),
+    ]))
+
+    async def handler(event):
+        if event.text == "opening":
+            result = await asyncio.to_thread(rt.agent.run_conversation, "opening",
+                                             conversation_history=rt.agent._session_messages, title_user_message="")
+            results.append(result)
+            rt.consumer.finish()
+            return None
+        return await rt.runner._handle_message(event)
+
+    rt.adapter.set_message_handler(handler)
+    consumer_task = asyncio.create_task(rt.consumer.run())
+    await rt.adapter.handle_message(MessageEvent(text="opening", source=rt.ctx.source, message_id="opening"))
+    owner = rt.adapter._session_tasks[key]
+    pending = MessageEvent(text="queued human text", source=rt.ctx.source, message_id="pending")
+    try:
+        await wait_for(entered.is_set)
+        rt.adapter._pending_messages[key] = pending
+        await rt.adapter.handle_message(MessageEvent(text="/stop", source=rt.ctx.source, message_id="stop"))
+        rt.adapter.cancel_session_processing.assert_not_awaited()
+        if authorized:
+            await asyncio.wait_for(owner, timeout=10)
+            assert observed_stop.is_set() and results[0]["interrupted"]
+            assert not rt.runner._is_session_running(key)
+            assert key not in rt.adapter._active_sessions and key not in rt.adapter._session_tasks
+            assert key not in rt.adapter._pending_messages
+        else:
+            assert not observed_stop.is_set() and not owner.done()
+            assert not rt.agent._hard_interrupt_requested.is_set()
+            assert rt.adapter._pending_messages[key] is pending
+            rt.runner._hm_report_ignored_dm.assert_awaited_once()
+    finally:
+        rt.adapter._pending_messages.pop(key, None)
+        rt.agent.hard_interrupt()
+        await asyncio.wait_for(owner, timeout=10)
+        rt.consumer.finish()
+        await asyncio.wait_for(consumer_task, timeout=5)
+
+
+@pytest.mark.parametrize("kind", ["heartbeat", "mute"])
+def test_heartbeat_and_muted_turn_do_not_capture_or_send_native_messages(runtime, kind):
+    rt = runtime
+    rt.ctx.scheduled_heartbeat = kind == "heartbeat"
+    rt.ctx.mute_notification_reply = kind == "mute"
+    rt.ctx.stream_consumer_holder[0] = None
+    turn = TurnRunner(rt.runner, rt.ctx)
+    consumer, delta, interim, wanted = turn._setup_stream_consumer("weixin")
+    turn._wire_turn_agent_callbacks(rt.agent, {}, None, delta, interim, wanted)
+    assert consumer is None and rt.agent._assistant_message_callback is None
+    assert not rt.agent._gateway_capture_assistant_text
 
 
 def test_editable_telegram_streaming_keeps_native_delta_sink(parent, db, stub_client):

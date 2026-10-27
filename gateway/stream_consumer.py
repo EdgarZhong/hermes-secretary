@@ -146,6 +146,9 @@ class GatewayStreamConsumer(StreamTransportMixin, StreamFallbackMixin, StreamThi
         self._max_fallback_flood_retry_seconds = 5.0
 
         self._queue: queue.Queue = queue.Queue()
+        self._queue_ready = asyncio.Event()
+        self._consumer_loop = None
+        self.native_message_delivery = False
         # Every real preview id on screen this response (fresh-final deletes them all);
         # the per-segment set holds only the active segment so failure recovery never
         # deletes an earlier finalized preamble/commentary.
@@ -248,7 +251,7 @@ class GatewayStreamConsumer(StreamTransportMixin, StreamFallbackMixin, StreamThi
     def on_tool_progress(self, line: str) -> None:
         """Thread-safe: overlay a tool-progress line in the native bubble until the next delta."""
         if line:
-            self._queue.put((_TOOL_PROGRESS, line))
+            self._enqueue((_TOOL_PROGRESS, line))
 
     def _compose_frame_content(self) -> str:
         """Native frame content: text, with any tool-progress lines below a rule."""
@@ -379,7 +382,7 @@ class GatewayStreamConsumer(StreamTransportMixin, StreamFallbackMixin, StreamThi
 
     def on_segment_break(self) -> None:
         """Finalize the current stream segment and start a fresh message."""
-        self._queue.put(_NEW_SEGMENT)
+        self._enqueue(_NEW_SEGMENT)
 
     def close_for_approval_prompt(
         self, placeholder: str | None = None, reason: str = "Approval", reopen: bool = False,
@@ -403,13 +406,13 @@ class GatewayStreamConsumer(StreamTransportMixin, StreamFallbackMixin, StreamThi
         self._boundary_reason = reason or "Approval"
         self._boundary_reopen = bool(reopen)
         cancelled_flag = {"cancelled": False}
-        self._queue.put((_APPROVAL_BOUNDARY, boundary_future, cancelled_flag))
+        self._enqueue((_APPROVAL_BOUNDARY, boundary_future, cancelled_flag))
         return boundary_future, cancelled_flag
 
     def on_commentary(self, text: str) -> None:
         """Queue a completed interim assistant commentary message."""
         if text:
-            self._queue.put((_COMMENTARY, text))
+            self._enqueue((_COMMENTARY, text))
 
     def flush_pending_sync(self, timeout: float = 5.0) -> bool:
         """Block the agent worker thread until everything queued so far is delivered:
@@ -417,7 +420,7 @@ class GatewayStreamConsumer(StreamTransportMixin, StreamFallbackMixin, StreamThi
         segment, sets the event.  False on timeout (consumer task may not be running)."""
         evt = threading.Event()
         try:
-            self._queue.put((_FLUSH, evt))
+            self._enqueue((_FLUSH, evt))
         except Exception:
             return False
         return evt.wait(timeout=max(0.0, float(timeout)))
@@ -431,7 +434,7 @@ class GatewayStreamConsumer(StreamTransportMixin, StreamFallbackMixin, StreamThi
         """Thread-safe: request an EAGER native re-seed after a clarify answer.  No-op unless
         reopen-pending, so a stray call can't open a spurious bubble mid-stream or on approval."""
         if self._reopen_seed_pending():
-            self._queue.put(_REOPEN_SEED)
+            self._enqueue(_REOPEN_SEED)
 
     def _notify_new_message(self) -> None:
         """Fire the on_new_message callback, swallowing any errors."""
@@ -531,20 +534,40 @@ class GatewayStreamConsumer(StreamTransportMixin, StreamFallbackMixin, StreamThi
         boundary: the current message is finalized and subsequent text goes out as a new
         message below any tool-progress messages."""
         if text:
-            self._queue.put(text)
+            self._enqueue(text)
         elif text is None:
             self.on_segment_break()
+
+    def _enqueue(self, item) -> None:
+        """Queue on the existing FIFO and wake native message delivery without batching."""
+        self._queue.put(item)
+        loop = self._consumer_loop
+        if self.native_message_delivery and loop is not None:
+            with contextlib.suppress(RuntimeError):
+                loop.call_soon_threadsafe(self._queue_ready.set)
+
+    async def _wait_for_work(self) -> None:
+        # Other transports retain their native preview rate-limit tick. Weixin complete
+        # messages wait only for enqueue notifications, never for a batching timer.
+        if not self.native_message_delivery:
+            await asyncio.sleep(0.05)
+            return
+        self._queue_ready.clear()
+        if not self._queue.empty():
+            return
+        await self._queue_ready.wait()
 
     def finish(self, final_text: Optional[str] = None) -> None:
         """Signal stream completion.  ``final_text`` is the AUTHORITATIVE completed
         final_response (incl. post-stream augmentation the accumulator never saw); the drain
         loop adopts it as the finalize payload.  Interrupt/error paths call ``finish()`` bare."""
         if final_text is not None:
-            self._queue.put((_FINAL_TEXT, final_text))
-        self._queue.put(_DONE)
+            self._enqueue((_FINAL_TEXT, final_text))
+        self._enqueue(_DONE)
 
     async def run(self) -> None:
         """Async task that drains the queue and edits the platform message."""
+        self._consumer_loop = asyncio.get_running_loop()
         self._len_fn, self._safe_limit = self._resolve_length_budget()
         await self._start_transports()
         try:
@@ -614,13 +637,14 @@ class GatewayStreamConsumer(StreamTransportMixin, StreamFallbackMixin, StreamThi
                 if tick.got_flush:
                     self._signal_flush(tick.flush_event)
 
-                await asyncio.sleep(0.05)  # Small yield to not busy-loop
+                await self._wait_for_work()
 
         except asyncio.CancelledError:
             await self._on_cancelled()
         except Exception as e:
             logger.error("Stream consumer error: %s", e)
         finally:
+            self._consumer_loop = None
             self._wake_flush_waiters()
 
     # ── run() collaborators ─────────────────────────────────────────────

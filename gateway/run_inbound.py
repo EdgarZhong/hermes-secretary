@@ -1278,10 +1278,12 @@ class GatewayInboundMixin(GatewayInboundSTTMixin, GatewayPluginInjectionMixin):
             return event, source, is_internal
 
     def _hm_admitted_event_notice(self, event: MessageEvent, source: SessionSource, is_internal: bool) -> Optional[str]:
-        """After authorization, refuse Weixin user commands before any session/control mutation."""
+        """After authorization, refuse Weixin session management before control mutation."""
         if not is_internal:
-            if source.platform == Platform.WEIXIN and event.get_command() is not None:
-                return "微信不支持 slash 命令，请回到 Web UI 管理会话；需要换绑时直接告诉 AI。"
+            if source.platform == Platform.WEIXIN:
+                from gateway.weixin_commands import is_session_management_command, SESSION_MANAGEMENT_REFUSAL
+                if is_session_management_command(event, self._hm_quick_commands()):
+                    return SESSION_MANAGEMENT_REFUSAL
             from hermes_cli.observability.shared_metrics_events import record_gateway_slash_command
             record_gateway_slash_command(event)
         return self._hm_estop_gate(event, source, is_internal)

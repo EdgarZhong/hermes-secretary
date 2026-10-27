@@ -910,9 +910,19 @@ class WeixinAdapter(OwnAccessPolicyMixin, BasePlatformAdapter):
             await self.handle_message(event)
 
     async def _handle_message_while_active(self, event: MessageEvent, session_key: str) -> None:
-        """Send user slash commands to the runner's auth/refusal gate without cancelling work."""
+        """Refuse session management without cancelling work; keep native busy controls."""
         self._canonicalize(event.source)
-        if not event.internal and event.get_command() is not None:
+        from gateway.weixin_commands import is_session_management_command
+        from hermes_cli.commands import is_interrupt_then_dispatch, resolve_command
+        command = event.get_command()
+        # Unknown spellings may be configured quick aliases. Let the runner resolve them
+        # under its authorization gate before they can mutate or interrupt this session.
+        if not event.internal and command and (
+            is_session_management_command(event) or resolve_command(command) is None
+            or is_interrupt_then_dispatch(command)
+        ):
+            # The runner's authorized busy handler owns /stop cancellation. The base
+            # cancel-handoff would cancel even when that handler refused authorization.
             await self._dispatch_inline_reply(event)
             return
         await super()._handle_message_while_active(event, session_key)
