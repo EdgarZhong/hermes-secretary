@@ -44,3 +44,13 @@
 - B1工程细化（2026-10-27，主会话决策）：现有DB无独立详情版本列，跨首屏Thinking候选同一行可能含工具参数；为保证完整revision检测原位修改，允许服务端短读该候选的完整原生字段，锁外算hash，仅传Thinking字段。这不改变客户端懒加载或缓存白名单；需反例证明同一行工具参数变更改变revision但不出现在latest_thinking响应。未新增schema或锁内投影。
 
 - U13追加：compact原生active状态须立即穿过历史保留画面，Context不等待Chat／Usage；压缩busy与生成Turn恢复证明需区分，完成／取消／失败／断线均沿现有生命周期安全收敛。主会话先查明并设计，再交B1／F1实施及反例；无生产写操作。
+
+- U14工程方案：仅session.compress默认取消客户端固定完成期限，保普通RPC30秒与显式deadline；socket断开仍释放pending为IndeterminateError。压缩入口专门将未决交原生观察，不报确定失败、不重发、不清未确认草稿；真实错误保留。U15修复Toast父滚动容器裁切阴影，主会话定案为把阴影绘制置于裁切后层级，保既有几何/滚动/交互；main隔离修复后并入功能分支，实际截图验边缘。
+
+## U16 · Idle父owner生命周期包（主会话设计）
+
+采用最窄保留现有父实例方案，不新增冷恢复扫描器：在noting_timers现有记录绑定准确weak owner、原生compaction epoch与原period；查询维护依赖须同时核对这些事实和当前有效开关／周期。timer firing到同步冻结/已受理completion之间连续交接保护；用现有_NotingCompletion的准确parent/admission及notified/closed生命周期覆盖child、父压缩和发布，不另建任务账本。普通orphan和TTL/LRU共享维护依赖predicate，沿原生周期重新检查；这是有界活跃维护工作，cap沿已有live-work豁免，不能无条件永久保活或忙等。
+
+显式关闭/替换仍沿原生close边界。复用context_compaction_request原生owner epoch及_session_persist_lock，使close与准备阶段同步身份核验/冻结具有确定先后；cancel timer只取消准确旧owner，不影响同DB/ref新owner，不改durable due/period/trigger。避免sessions_lock、conversation_timer_lock、registry、persist、Framework锁反向嵌套；回收predicate在sessions_lock内只能短时读准确注册事实，不在此读DB/等待网络。准备检查必须在claim/admission之前，不用空列表return掩盖消费后失败。若valid parent真无可冻结上下文，保留未消费周期供合法attach，不循环重试或重建Agent。
+
+白名单：secretary/noting_timers.py、noting_scope.py、noting_runtime.py、noting_child.py、noting_compact.py；tui_gateway/session_lifecycle.py、session_reaper.py；run_agent.py仅既有close接缝；必要独立小sibling；对应tests。禁止改schema/Prompt/预算/阈值/Provider/新scheduler/生成协议；不改增量包文件。Main/开关关闭/非eligible原生行为保持；不修改失败记录，不发真实模型/微信。报告的真实后台Heartbeat→native orphan→Idle复现必须改前失败修后正常，覆盖精确owner/period/跨Profile/回收冻结并发/显式关闭/新owner旧回调/成功Noting→真实假摘要压缩commit→Framework/失败释放。官方runner；Linux定向验证由主会话集成安排。实现整包交回、主会话亲审后先main，再并入增量分支，统一双门禁。

@@ -7,7 +7,7 @@
 | 用户需求 | 本索引“口径与决策”；docs/06-Hermes-Secretary-Web-UI-V1-Spec.md 顶部C0–C3及D／S／P表 | 二级，用户本轮明确要求主会话整理设计表；工程细化允许，不改产品语义 |
 | 权威规格 | docs/06-Hermes-Secretary-Web-UI-V1-Spec.md 顶部新契约优先，其余现有UI／原生归属／交互保持；docs/07-scheduler-notebook-noting-compaction-redesign.md 保留Notebook语义，不改其机制 | 二级；本轮不改07、不把07其它目标纳入本轮 |
 | 编码指导 | 根AGENTS.md；独立UI仓库根AGENTS.md；autonomous-run／executing-plans／两个独立门禁与交付Skill | 二级；用户授权范围内执行，不引入上游新规则 |
-| 会话确认口径 | 本索引以下U01–U13 | 二级 |
+| 会话确认口径 | 本索引以下U01–U16 | 二级 |
 
 ## 口径与决策
 
@@ -27,5 +27,12 @@
 | U12 | 表先整理完整，之后据此区分设计问题与编码bug；新改造完整verification／validation | 最新消息；D／S／P稳定编号，main修复阶段不严格双门禁，最终集成统一独立门禁 |
 
 | U13 | compact后持续Retrying Chat／Usage且Context未显示loading环／Compacting，须修复 | 用户截图追加；确认原生压缩状态及时展示，运行／完成／失败及重连均按原生命周期收敛，不隐藏真正恢复失败或改变操作权限 |
+
+| U14 | 压缩已正常完成却弹session.compress timed out错误，必须消除 | 用户第二张截图；等待回执超时不是原生失败，不丢仍可到达的成功回执，不自动重发，确定失败仍反馈 |
+| U15 | Toast圆角外出现不明直角灰色区域，须修复 | 用户同图追加；修阴影/裁切边界，保原Toast位置、尺寸、颜色、关闭和堆叠语义 |
+
+| U16 | 一并修复报告所述Idle Noting父owner被回收后仍触发，交子Agent实施 | 用户明确提供Downloads报告并要求一块修；报告旧“未授权修改”被本消息替代，部署/生产补跑仍未授权。保原一次空闲期与正常提交门槛 |
+
+补充依据：`/Users/edgar/Downloads/Alex-Idle-Noting-问题报告与修复方案-20261027.md`，SHA256 `64bf78d55c3f82ed55317cd77ca8d93fab6c5d9fa4b2cb25f5e563ec0083bc8e`；根因、原生复现和边界以该报告为输入，实施由本轮主会话方案决定；不把生产个案身份写入公开实现。权威长期约束补入07 §8.1（本项获授权修改07，原UI增量范围仍不改其它Noting语义）。
 
 用户未授权：部署、调用生产模型、真实微信测试发送；本轮只本地实现／阶段提交及既有自动push。UI只许自己创建隐藏IAB（visible:false）；不控制桌面、不用外部浏览器、不动用户页面。Android缺真机证据须明确，不冒称通过。

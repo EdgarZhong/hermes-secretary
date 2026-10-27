@@ -5,3 +5,6 @@ cf5742c70b26e0dc954eabcb4b07c232c5231013
 同名分支：codex/incremental-sync-20261027
 独立main修复基线：后端e1b124d；前端5cbef57、37a8e4c（均已自动push，未部署）。
 用户口径来源：本轮会话；跳过Ask and Align，设计先落D/S/P表；原产品状态不变，增量机制完成后完整双门禁。
+
+2026-10-27依据增补：394a08604f（U13 compact恢复、S14与P07；原冻结要求不撤销）。
+Android免刷新阶段：前端6ba37b4453a0adb69eaa9e5117c5b2351ab381b2，已亲审、原生82项证据SHA匹配并自动push；未部署。
