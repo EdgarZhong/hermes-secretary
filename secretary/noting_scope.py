@@ -3,6 +3,7 @@
 from contextlib import contextmanager
 import logging
 from pathlib import Path
+import threading
 from weakref import WeakValueDictionary
 
 logger = logging.getLogger(__name__)
@@ -48,6 +49,7 @@ def scheduler_settings_for_db(db):
 # Read-only associations with existing main Agents, not durable capability state. A cold
 # host must resolve its normal target main runtime before scanning/admitting Secretary work.
 _main_runtimes = WeakValueDictionary()
+_main_runtime_lock = threading.RLock()
 
 
 def _runtime_key(db, conversation_ref):
@@ -58,17 +60,35 @@ def bind_main_runtime(agent):
     """Remember a proven main runtime at its existing construction/Turn/Idle boundary."""
     from secretary.noting_runtime import is_main_conversation_agent
 
-    if not is_main_conversation_agent(agent):
+    if getattr(agent, "_secretary_parent_closed", False) or not is_main_conversation_agent(agent):
         return False
     db = agent._session_db
     ref = getattr(agent, "_secretary_conversation_ref", None)
     if not ref:
         return False
     try:
-        _main_runtimes[_runtime_key(db, ref)] = agent
+        with _main_runtime_lock:
+            if getattr(agent, "_secretary_parent_closed", False):
+                return False
+            key = _runtime_key(db, ref)
+            agent._secretary_main_runtime_binding = (db, ref, key)
+            _main_runtimes[key] = agent
         return True
     except TypeError:
         return False  # Scripted runtimes without lifetime ownership are not proof.
+
+
+def is_current_main_runtime(parent):
+    """Read only the exact construction/attach owner; safe under host session locks."""
+    db = getattr(parent, "_session_db", None)
+    ref = getattr(parent, "_secretary_conversation_ref", None)
+    if db is None or not ref or getattr(parent, "_secretary_parent_closed", False):
+        return False
+    binding = getattr(parent, "_secretary_main_runtime_binding", None)
+    if binding is None or binding[0] is not db or binding[1] != ref:
+        return False
+    with _main_runtime_lock:
+        return _main_runtimes.get(binding[2]) is parent
 
 
 def runtime_configuration_failure(db, conversation_ref):

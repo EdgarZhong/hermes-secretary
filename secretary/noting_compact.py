@@ -52,4 +52,5 @@ def idle_compaction_after_commit(parent, *, conversation_ref, threshold_tokens, 
             logger.warning("Joint Idle native compaction request failed", exc_info=True)
             return False
 
+    compact._native_relevance_check = relevant
     return compact

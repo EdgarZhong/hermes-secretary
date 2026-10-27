@@ -219,7 +219,9 @@ def _session_is_lru_evictable(sid: str, session: dict) -> bool:
     it loses its client): never evict a session mid-turn, awaiting input, still building, owning live delegated
     work, or on a live transport. Lazy watch sessions never start a build, so their unset agent_ready must not
     make them immortal."""
-    if session.get("running") or _session_pending_kind(sid) or _session_has_active_delegations(sid, session):
+    from secretary.noting_timers import holds_maintenance
+    if (session.get("running") or _session_pending_kind(sid) or holds_maintenance(session.get("agent"))
+            or _session_has_active_delegations(sid, session)):
         return False
     ready = session.get("agent_ready")
     if ready is not None and not ready.is_set() and not session.get("lazy"):
@@ -248,7 +250,15 @@ def _session_is_evictable(sid: str, session: dict, now: float) -> bool:
     return (now - last_active) > _SESSION_TTL_S and (now - created_at) > _SESSION_TTL_S
 
 
+def _refresh_noting_maintenance() -> None:
+    from secretary.noting_timers import refresh_maintenance
+    for session in _reaper_session_snapshot():
+        if (parent := session.get("agent")) is not None:
+            refresh_maintenance(parent)
+
+
 def _reap_idle_sessions() -> None:
+    _refresh_noting_maintenance()
     now = time.time()
     try:  # piggyback the incremental flush on the reaper tick — no new timer subsystem
         _flush_dirty_sessions()
@@ -340,14 +350,13 @@ def _enforce_session_cap() -> None:
     cap = _max_live_sessions()
     if cap <= 0:
         return
+    _refresh_noting_maintenance()
     with _sessions_lock:
         if len(_sessions) <= cap:
             return
         evictable = [(sid, s) for sid, s in _sessions.items() if _session_is_lru_evictable(sid, s)]
     # Oldest-touched first; evict only down to the cap (may stop short: live sessions are never eligible).
-    from secretary.noting_timers import holds_pending_timer
-    evictable.sort(key=lambda kv: (holds_pending_timer(kv[1].get("agent")),
-                                  float(kv[1].get("last_active") or 0.0)))
+    evictable.sort(key=lambda kv: float(kv[1].get("last_active") or 0.0))
     for sid, _s in evictable:
         with _sessions_lock:
             if len(_sessions) <= cap:

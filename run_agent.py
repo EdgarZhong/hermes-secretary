@@ -951,8 +951,15 @@ class AIAgent(
     def close(self) -> None:
         """Release every resource this agent holds (idempotent); each phase is guarded so one failure never
         blocks the rest."""
-        from agent.context_compaction_request import cancel_native_request
-        cancel_native_request(self, boundary=True)
+        from agent.context_compaction_request import _lock, cancel_native_request
+        with _lock(self):
+            self._secretary_parent_closed = True
+            cancel_native_request(self, boundary=True)
+            from secretary.noting_timers import cancel_parent_idle_timer
+            cancelled_idle = cancel_parent_idle_timer(self, notify=False)
+        if cancelled_idle:
+            from secretary.web_events import changed
+            _quietly(changed, self._session_db, self._secretary_conversation_ref, "idle_changed")
         # close() is the hard owner boundary; shutdown_memory_provider() is idempotent so gateway pre-calls
         # never double-extract.
         session_messages = getattr(self, "_session_messages", None)

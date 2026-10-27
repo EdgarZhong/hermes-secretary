@@ -401,7 +401,7 @@ def test_main_claim_during_cold_build_cannot_consume_old_deadline(cold, monkeypa
     assert cold.live.db.noting_idle_state(cold.ref)["trigger_produced_at"] is None
     anchor = record["history"][-1]["message_uid"]
     from secretary import noting_timers
-    timer = noting_timers._timers[noting_timers._runtime_key(cold.live.db, cold.ref)][0]
+    timer = noting_timers._timers[noting_timers._runtime_key(cold.live.db, cold.ref)].timer
     timer.target()  # Deliver the held scheduler's actual new-period callback.
     wait_snapshot(cold)
     assert cold.live.db.notebook_current(cold.ref)["anchor_message_uid"] == anchor

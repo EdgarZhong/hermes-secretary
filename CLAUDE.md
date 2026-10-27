@@ -9,16 +9,18 @@
 
 用户明确本轮自主执行，跳过Ask and Align：先调查Restore慢于刷新原因，先在main修复独立问题，再在前后端同名新分支实现游标增量同步与SPA免刷新恢复。保持产品／视觉／交互语义；复用Desktop原生能力，缺口只增可选API字段。APK取消恢复中的自动刷新；历史缓存须经服务端增量对账，不省略有效性校验。新会话正常取消请求不得弹Signal Aborted；修复Android键盘收起闪屏；微信只限制会话管理Slash，会话内交互保持，每条完整Assistant Message立即发送、不等Turn结束。main修复阶段按用户豁免不运行严格双门禁，新机制集成后完整执行。用户追加明确：网络恢复期间Notebook图标保持同owner最后有效状态，不闪unknown；首次无状态不伪造成功，真实状态变化正常更新。主会话设计与集成审查，子Agent统一6.1 sol/high，仅真正阻塞或整包完成汇报。未授权生产部署／真实微信测试发送。
 
-用户后续要求已立即写入06顶部C0–C3：缓存／同步逐项矩阵D01–D18、表现层转换S01–S18及表现／操作资格P01–P10；Timeline最近500条，完整已取详情同消息计数并复用，未取详情懒加载，旧半截不持久化，最新Turn Thinking主动拉取／核验前缀缓存，不建逐Thinking游标。当前先完成设计表与独立main修复，新机制尚未实施。
+用户后续要求已立即写入06顶部C0–C3：缓存／同步逐项矩阵D01–D18、表现层转换S01–S18及表现／操作资格P01–P10；Timeline最近500条，完整已取详情同消息计数并复用，未取详情懒加载，旧半截不持久化，最新Turn Thinking主动拉取／核验前缀缓存，不建逐Thinking游标。设计表已冻结；新机制正在前后端同名分支codex/incremental-sync-20261027实施，本main仅接收已亲审的独立修复。
 
-当前：后端main位于`/Users/edgar/code/hermes-secretary-web-release`，已快进33f3b64a55；前端main位于`/Users/edgar/code/hermes-secretary-web`，37a8e4c（Signal Aborted／Notebook图标5cbef57、键盘闪屏37a8e4c已亲审提交并自动push，未部署）。保留原Noting调试dirty；07补丁临时保存后已恢复，stash 47c6bbc仅作保险，不混入本轮提交。原始工作区dirty不动。
+当前：后端main位于`/Users/edgar/code/hermes-secretary-web-release`，此前独立修复e1b124d；前端main位于`/Users/edgar/code/hermes-secretary-web-toast`，810aca3（Signal Aborted／Notebook图标5cbef57、键盘闪屏37a8e4c已亲审提交并自动push，未部署）。保留原Noting调试dirty；07补丁临时保存后已恢复，stash 47c6bbc仅作保险，不混入本轮提交。原始工作区dirty不动。
 
 | 工作 | 负责人／状态 |
 |---|---|
-| 前端恢复根因、游标方案、Signal Aborted | 根因已定位；独立取消请求／Notebook修复已提交；增量接口与缓存方案冻结准备中 |
+| 前端恢复根因、游标方案、Signal Aborted | 根因已定位；独立取消请求／Notebook修复已提交；增量接口与缓存方案已冻结，同名分支实施中 |
 | 微信Slash范围与逐消息投递 | 已亲审：管理命令规范化拒绝，其余走原生权限；完整消息沿FIFO事件唤醒。改前9反例失败；15文件279项及追加2项通过，十检查通过；未真实微信试发 |
 | Android键盘闪屏 | 主会话已亲审提交37a8e4c；组件11项、原生10项及隐藏IAB真实像素证据通过；真机未验 |
-| 游标增量、SPA／APK免刷新 | main修复完成后冻结方案、前后端同名分支；待实施及双门禁 |
+| 游标增量、SPA／APK免刷新 | 同名分支实施／联调中；本main未接入增量机制，最终双门禁待执行 |
+
+用户追加Idle Noting父owner回收问题已亲审修复并纳入本次main提交：准确owner／epoch／周期维护保护覆盖定时等待、真实冻结、Noting正常提交、父压缩及Framework收尾；显式关闭仍生效，旧owner不消费周期。末次原子交接71项及最后3项定向测试、十检查通过；有效聚焦116项分阶段证据与原生回收55项证据保持。原生压缩4项及旧cold配置17项基线失败已复现，不冒称全仓通过。修复随后同步增量分支，Linux及整轮双门禁待执行；未部署、不补跑生产失败。实施包最终tree8ffc46f25e02caa1d610c85c4b072c23b658d73d；报告在增量分支`.autonomous/20261027-incremental-sync/reports/idle-owner.md`。
 
 ## 2026-10-27 · Noting来源链／History调优（已上线）
 

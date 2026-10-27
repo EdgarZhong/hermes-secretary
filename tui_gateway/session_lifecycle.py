@@ -926,6 +926,11 @@ def _schedule_ws_orphan_reap(
                 return
         # Serialize the re-check against session.resume (rebinds under _session_resume_lock). Claim teardown by popping
         # under both locks, then release the resume lock before slow finalization. Order: resume_lock -> sessions_lock.
+        from secretary.noting_timers import holds_maintenance, refresh_maintenance
+        with _sessions_lock:
+            maintenance_parent = (_sessions.get(sid) or {}).get("agent")
+        if maintenance_parent is not None:
+            refresh_maintenance(maintenance_parent)
         reschedule_delay = interrupt_session = session = None
         with _session_resume_lock, _sessions_lock:
             # Keep ownership through interrupt I/O and continuation registration. A cancelled
@@ -945,7 +950,7 @@ def _schedule_ws_orphan_reap(
                 current.pop("_client_gone_interrupt_polls", None)
                 _pending_ws_reaps.pop(sid, None)
                 return
-            if _session_has_active_delegations(sid, current):
+            if holds_maintenance(current.get("agent")) or _session_has_active_delegations(sid, current):
                 reschedule_delay = _WS_ORPHAN_REAP_GRACE_S
             elif not current.get("running"):
                 session = _pop_session_by_id(sid)

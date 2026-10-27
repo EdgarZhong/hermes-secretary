@@ -190,7 +190,7 @@ def test_off_main_preserves_real_lifecycle_and_reopening_never_infers_an_end(bus
     assert state['last_turn_started_at'] > time.time() - 5
     if gate == 'local':
         assert state['due_at'] == state['last_turn_finished_at'] + 0.12
-        assert timers.holds_pending_timer(parent)
+        assert not timers.holds_pending_timer(parent)
         assert not ready.wait(0.18) and db.noting_idle_state(ref) is None
     else:
         assert state['due_at'] is None and not timers.holds_pending_timer(parent)
@@ -220,6 +220,9 @@ def test_main_lifecycle_cannot_cross_conversation_or_auxiliary(busy_runtime, mon
     parent._session_messages = db.get_messages_as_conversation('other')
     ref = parent._secretary_conversation_ref
     assert rt.maybe_run_idle_noting(parent, db, old_ref) == 'skip:not_main_owner'
+    assert rt.maybe_run_idle_noting(parent, db, ref) == 'skip:not_main_owner'
+    from secretary.noting_scope import bind_main_runtime
+    assert bind_main_runtime(parent)  # A real identity/Turn boundary, never a stale host tick.
     assert rt.maybe_run_idle_noting(parent, db, ref) == 'skip:not_idle'
     assert db.noting_idle_state(ref) is None
     parent.side_agent = True
