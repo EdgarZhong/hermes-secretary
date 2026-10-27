@@ -51,6 +51,12 @@
 
 采用最窄保留现有父实例方案，不新增冷恢复扫描器：在noting_timers现有记录绑定准确weak owner、原生compaction epoch与原period；查询维护依赖须同时核对这些事实和当前有效开关／周期。timer firing到同步冻结/已受理completion之间连续交接保护；用现有_NotingCompletion的准确parent/admission及notified/closed生命周期覆盖child、父压缩和发布，不另建任务账本。普通orphan和TTL/LRU共享维护依赖predicate，沿原生周期重新检查；这是有界活跃维护工作，cap沿已有live-work豁免，不能无条件永久保活或忙等。
 
-显式关闭/替换仍沿原生close边界。复用context_compaction_request原生owner epoch及_session_persist_lock，使close与准备阶段同步身份核验/冻结具有确定先后；cancel timer只取消准确旧owner，不影响同DB/ref新owner，不改durable due/period/trigger。避免sessions_lock、conversation_timer_lock、registry、persist、Framework锁反向嵌套；回收predicate在sessions_lock内只能短时读准确注册事实，不在此读DB/等待网络。准备检查必须在claim/admission之前，不用空列表return掩盖消费后失败。若valid parent真无可冻结上下文，保留未消费周期供合法attach，不循环重试或重建Agent。
+显式关闭/替换仍沿原生close边界。复用context_compaction_request原生owner epoch及_session_persist_lock，使close与准备阶段同步身份核验/冻结具有确定先后；cancel timer只取消准确旧owner，不影响同DB/ref新owner，不改durable due/period/trigger。避免sessions_lock、conversation_timer_lock、registry、persist、Framework锁反向嵌套；回收predicate在sessions_lock内只能短时读准确注册事实，不在此读DB/等待网络。准备检查必须在claim/admission之前，不用空列表return掩盖消费后失败。若valid parent真无可冻结上下文，保留未消费周期供合法attach，不循环重试或重建Agent。这里的保留周期限定父owner关闭／epoch退休／替换等生命周期失效；global/local开关关闭仍沿既有claim的terminal cleanup清退未消费period，不freeze／admission／起child，不增加重新开启后的自动补跑。
 
 白名单：secretary/noting_timers.py、noting_scope.py、noting_runtime.py、noting_child.py、noting_compact.py；tui_gateway/session_lifecycle.py、session_reaper.py；run_agent.py仅既有close接缝；必要独立小sibling；对应tests。禁止改schema/Prompt/预算/阈值/Provider/新scheduler/生成协议；不改增量包文件。Main/开关关闭/非eligible原生行为保持；不修改失败记录，不发真实模型/微信。报告的真实后台Heartbeat→native orphan→Idle复现必须改前失败修后正常，覆盖精确owner/period/跨Profile/回收冻结并发/显式关闭/新owner旧回调/成功Noting→真实假摘要压缩commit→Framework/失败释放。官方runner；Linux定向验证由主会话集成安排。实现整包交回、主会话亲审后先main，再并入增量分支，统一双门禁。
+
+## U17 · 最新Thinking来源兼容（用户已确认）
+
+旧的模糊片段保持懒取，新Turn精确主动取Thinking。B1旧“从最近可证明source保守多取”方案作废：最近可证明source之后出现无法判断是否启动Turn的typed行且无当前原生精确来源时，返回空latest_thinking，不主动补旧详情。新Turn在通用原生构建接缝合并display_metadata.turn_source，值仅为原生message_uid与turn_id；复用原持久化、必要准确行metadata补写与原lease guards，不改正文／schema／Provider wire／模型cache prefix。普通append通知／Steer／历史回放不生成标记。新标记优先于typed/queued的弱推断，实际active原生来源仍优先；冷恢复与跨渠道来源需按同快照身份验证。
+
+扩展B1白名单仅agent/turn_context.py、必要小sibling agent/turn_source.py、确需的agent/session_persistence.py或既有DB metadata writer接缝及对应tests，不碰U16 owner包。原生写入失败为展示级best effort，不阻主Turn；测试覆盖真实typedTurn持久化到冷读、同型仅通知、旧模糊片段懒取、queued/Steer/Framework、异常标记与wire剥离。

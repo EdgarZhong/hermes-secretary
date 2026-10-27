@@ -7,7 +7,7 @@
 | 用户需求 | 本索引“口径与决策”；docs/06-Hermes-Secretary-Web-UI-V1-Spec.md 顶部C0–C3及D／S／P表 | 二级，用户本轮明确要求主会话整理设计表；工程细化允许，不改产品语义 |
 | 权威规格 | docs/06-Hermes-Secretary-Web-UI-V1-Spec.md 顶部新契约优先，其余现有UI／原生归属／交互保持；docs/07-scheduler-notebook-noting-compaction-redesign.md 保留Notebook语义，不改其机制 | 二级；本轮不改07、不把07其它目标纳入本轮 |
 | 编码指导 | 根AGENTS.md；独立UI仓库根AGENTS.md；autonomous-run／executing-plans／两个独立门禁与交付Skill | 二级；用户授权范围内执行，不引入上游新规则 |
-| 会话确认口径 | 本索引以下U01–U16 | 二级 |
+| 会话确认口径 | 本索引以下U01–U17 | 二级 |
 
 ## 口径与决策
 
@@ -36,3 +36,5 @@
 补充依据：`/Users/edgar/Downloads/Alex-Idle-Noting-问题报告与修复方案-20261027.md`，SHA256 `64bf78d55c3f82ed55317cd77ca8d93fab6c5d9fa4b2cb25f5e563ec0083bc8e`；根因、原生复现和边界以该报告为输入，实施由本轮主会话方案决定；不把生产个案身份写入公开实现。权威长期约束补入07 §8.1（本项获授权修改07，原UI增量范围仍不改其它Noting语义）。
 
 用户未授权：部署、调用生产模型、真实微信测试发送；本轮只本地实现／阶段提交及既有自动push。UI只许自己创建隐藏IAB（visible:false）；不控制桌面、不用外部浏览器、不动用户页面。Android缺真机证据须明确，不冒称通过。
+
+| U17 | 旧的模糊片段保持懒取；新Turn精确主动取Thinking | 用户明确选择推荐项：不把旧无来源标记的系统触发消息猜成Turn，也不从更早Turn扩大主动读取；新Turn允许最小内部来源标记，无逐Thinking游标 |
