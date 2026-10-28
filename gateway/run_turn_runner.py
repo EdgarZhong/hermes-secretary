@@ -1720,11 +1720,10 @@ class TurnRunner:
         ctx.result_holder[0] = result
         if stream_consumer is None:
             return
-        if (isinstance(result, dict) and ctx.source is not None and ctx.source.platform == Platform.WEIXIN
-                and not result.get("failed") and not result.get("interrupted")
-                and isinstance(result.get("final_response"), str)
-                and callable(getattr(type(stream_consumer), "bind_final_message", None))):
-            stream_consumer.bind_final_message(result.get("final_message_uid"), result["final_response"])
+        from gateway.stream_consumer_messages import finish_native_message
+        if (ctx.source is not None and ctx.source.platform == Platform.WEIXIN
+                and finish_native_message(ctx, result, stream_consumer)):
+            return
         # Pass final_response as the authoritative finalize payload: it includes post-stream
         # augmentation (verifier footer, explainer) the accumulator never saw. Adopt ONLY a genuinely
         # completed final: interrupt paths return {interrupted: True, completed: False} with a

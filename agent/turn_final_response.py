@@ -11,7 +11,8 @@ from dataclasses import dataclass
 import logging
 from typing import Any, Dict, Optional
 
-from agent.message_metadata import append_message
+from agent.message_metadata import append_message, message_uid_or_none
+from agent.message_sanitization import _sanitize_surrogates
 from agent.reasoning_promotion import answer_in_reasoning_capability
 from agent.repetition_guard import STOP_PATH_MIN_CHARS, is_runaway_repetition
 from agent.turn_failure_copy import stamp_failure
@@ -51,6 +52,25 @@ class FinalResponseVerdict:
     _pending_verification_response_previewed: Any
     api_call_count: int
     result: Optional[Dict[str, Any]] = None
+
+
+def _emit_flushed_final(agent, final_msg, final_response, flushed):
+    """Publish a complete native message on the opted-in lane before turn cleanup."""
+    # Failed / disabled persistence keeps the existing tail fallback. Do not mint
+    # an identity for delivery, or promote an interrupted fragment to a final.
+    if (
+        flushed is True
+        and message_uid_or_none(final_msg) is not None
+        and getattr(agent, "_assistant_message_callback", None) is not None
+        and not getattr(agent, "_interrupt_requested", False)
+    ):
+        # Deliver the finalized visible projection under the real row's identity:
+        # native carriers can also contain commentary, and length continuation
+        # keeps individual fragments in history while returning their joined text.
+        agent._emit_interim_assistant_message({
+            "role": "assistant", "message_uid": final_msg["message_uid"],
+            "content": _sanitize_surrogates(final_response),
+        })
 
 
 def finish_text_response(
@@ -358,10 +378,10 @@ def finish_text_response(
             final_msg["content"] = final_response
 
     append_message(messages, final_msg)
-    # Make the answer durable before leaving the loop (_DB_PERSISTED_MARKER keeps
-    # _persist_session idempotent). Failure must NOT abort the turn: finalize retries.
+    # Flush before complete-message delivery; failures keep the finalizer retry.
     try:
-        agent._flush_messages_to_session_db(messages, conversation_history)
+        flushed = agent._flush_messages_to_session_db(messages, conversation_history)
+        _emit_flushed_final(agent, final_msg, final_response, flushed)
     except Exception:
         logger.warning(
             "final text-turn flush failed (session=%s) — reply is "

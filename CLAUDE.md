@@ -5,46 +5,30 @@
 - **Agent自主收敛／待追认：混合压缩载体的读取。** 原空白：一个native UID可同时承载压缩摘要与真人消息，而用户要求辅助开关能读取Compression且Get Meta仍仅四字段。决定：默认保留原真人视图；显式辅助允许同UID的system摘要视图，Get Meta／Search按语义部分分别返回，anchored Read允许现有roles参数选部分，默认锚点优先原非压缩部分；同UID同role的system内容合并为一个视图；不造UID、不放开Full／隐藏内容。理由：使明确要求在native混合载体下可操作。影响：Read新增可选roles适用位置，同UID可有不同语义投影。已实现，201项History接受测试及56项原生路径通过；独立Verification／Validation已通过，已上线；不改变Message Identity或Notebook新证据准入。
 - **Agent自主收敛／待追认：Candidate同Task来源形式切换。** 原空白：旧合法direct→refs操作与新旧Task节点不可删约束如何同时成立。决定：仅尚未提交且唯一节点属于本Task时，允许显式清空当前工作槽并切为合法refs；任何旧Task直接节点仍禁止删改。理由：继承原来源二选一操作并保持旧节点约束。影响：当前Task工作态边界，无迁移／旧节点特权。已实现，正式工具／恢复／原子失败98项通过；独立Verification／Validation已通过，已上线。
 
-## 2026-10-27 · 增量同步与免刷新恢复（执行中）
+## 2026-10-27 · 增量同步与免刷新恢复（第二迭代执行中）
 
-**U22最新要求：** 已挂本轮自主目标，持续实施；第一轮后Verification／Validation各最多两次正式全轮复审／复验，第三轮必须作为最终收敛轮次。开发期反例／定向测试不充作碎片门禁；本地Verifier仍停、云端审查安排保持。不以次数上限豁免真实缺陷或虚称通过，未收敛如实交付缺口且不开第四轮。
+**当前完成条件（U22／U23）：** 持续自主执行；第一轮之后Verification与Validation各最多再两次正式全轮复审／复验，第三轮内完成两仓main集成、正式Alex上线和原签名0.1.9 APK交付。次数上限不豁免缺陷或证据缺口，不开第四轮。本地Verifier按用户要求停止，静态审查由用户云端AI承担；开发定向测试／主会话亲审不冒充独立门禁。生产模型和真实微信测试外发不在授权内。
 
-**U23追加发布授权：** 最终收敛必须包含main集成、正式Alex上线及0.1.9 APK构建交付，第三轮之内完成；早先未授权部署只保留历史时点，当前以本项为准。执行按既有发布SOP核配置/运行库/版本/前端资源/健康与回滚，APK保原签名并核版本/完整性；生产模型和真实微信代发仍不在授权范围。
+唯一计划／索引在[本轮目录](.autonomous/20261027-incremental-sync/plan.md)。原始需求U01–U23、缓存D01–D18、表现S01–S18和操作P01–P10已落档。保持原产品／视觉／操作资格，主目标仍是500条消息与完整已取详情缓存、游标同步、SPA／APK无需刷新恢复，不为填缓存预读或重新发起写操作。
 
-**第二次迭代已获用户明确授权（2026-10-28）：** 本次自主实现带上U20联合Noting／压缩新机制，并纳入云端整改计划。原审BE44eb0be4c3／FE91ad72f，8项根因F01–F08及3项证据E01–E03保留；用户补入原始Verification后已核SHA并保存本轮reports，§6内嵌反例保留，其它附件不冒称已取得。plan顶部为唯一新编排与C-U20主会话接线设计，C-IDLE旧串行时序按U20替换，Gateway保护和开关跨due目标保留。本地Verifier继续停止，无部署或真实外发。
-
-三个原子Agent已在用户要求下恢复：r2_cache负责F03/F04，r2_backend_sync负责F05/F06，r2_weixin负责F08；此前额度失败不算交回。root已提交前端1a906aef96ff4f089a0a371e653c1c2d855be7f3：Steer6＋Slash4正式中间态／App用例通过，Approval相关4文件57通过，typecheck通过；旧Timeline7失败在原91ad独立导出同样7失败，保持基线证据，不称全仓绿。Slash压缩成功后第二次catalog属于合法history-invalidated新恢复；命令发送只加入一次在途目录，不开configuration-changed额外轮次。
-
-**2026-10-28恢复断点：** 原自主轮仍以增量同步／500条缓存／SPA和APK免刷新及表现不回归为主目标，未完成最终验收或部署。新增联合Noting／压缩业务口径已从原工作区同步到本分支07顶部并登记U20；原07其它实现事实保留。普通联合触发／取消、已提交保留、旧任务特殊finish审计排除、Force仅Turn结束触发且不可取消／封区间、Full Foreground独立注入均已收口；当前U20尚无产品代码，先由主会话补接线设计再委派实施。
-
-前端实际HEAD91ad72f；Steer、Approval、Slash仍有未提交集成修改。Approval独立main已82840b9推送，功能分支尚待提交；Steer新增6个正式中间态用例修后通过，旧Timeline失败须先辨基线；Slash用例仍暴露成功后重复catalog请求，未关闭。此前Sol额度中断的报告不算独立验收通过。本地Verifier保持停止，云端审查版本待最终修补提交后更新。后续按本轮plan继续，不以讨论收口冒称代码交付。
-
-新增U19审批面板自变：已用真实组件/ServerRequests复现两个中间态缺口，root正在修复同请求不移队列、已核验Diff按request与owner固定保留并与write target同屏。权限和不同request不得合并。子Agent在额度限制下中断，Validation报告未关闭；Steer已留部署版/候选双显反例，Slash目录有未验收partial diff，均不得冒称完成。
-
-新增U18待诊断：Steer在旧Turn终态后交新Turn瞬间临时气泡／正式带时间消息双显数秒。主会话已检查carrier／native source／历史交接，尚未确认根因；6.1 sol定向构造正式Controller/App中间态反例，产品不改，主会话定方案。纳入Validation，静态审查仍由用户云端承担。
-
-用户重启应用后隐藏IAB恢复可用，已继续最终联调。最新明确要求：停掉本地Verification，静态审查由用户交云端AI结合skill执行，直接推进独立Validation；此用户口径优先于原V1→V2顺序。主体代码前端91ad72f、后端862326c0a7已提交push；Linux163项已覆盖通过，未验收或部署。本地Verifier已中断，无通过结论；独立Validation /root/validation_sync 已派遣，27项场景计划已亲阅并批准执行，核心动态旅程优先、同版本有效证据复用，root自有测试页已关闭避免并行缓存写入；云端审查prompt见本轮reports/cloud-static-review-prompt.md。
-
-用户明确本轮自主执行，跳过Ask and Align：先调查Restore慢于刷新原因，先在main修复独立问题，再在前后端同名新分支实现游标增量同步与SPA免刷新恢复。保持产品／视觉／交互语义；复用Desktop原生能力，缺口只增可选API字段。APK取消恢复中的自动刷新；历史缓存须经服务端增量对账，不省略有效性校验。新会话正常取消请求不得弹Signal Aborted；修复Android键盘收起闪屏；微信只限制会话管理Slash，会话内交互保持，每条完整Assistant Message立即发送、不等Turn结束。main修复阶段按用户豁免不运行严格双门禁，新机制集成后完整执行。用户追加明确：网络恢复期间Notebook图标保持同owner最后有效状态，不闪unknown；首次无状态不伪造成功，真实状态变化正常更新。主会话设计与集成审查，子Agent统一6.1 sol/high，仅真正阻塞或整包完成汇报。未授权生产部署／真实微信测试发送。
-
-用户后续要求已立即写入06顶部C0–C3：缓存／同步逐项矩阵D01–D18、表现层转换S01–S18及表现／操作资格P01–P10；Timeline最近500条，完整已取详情同消息计数并复用，未取详情懒加载，旧半截不持久化，最新Turn Thinking主动拉取／核验前缀缓存，不建逐Thinking游标。设计表与独立main修复已完成；方案已冻结，前后端增量代码已完成并进入集成审查，Android免刷新包已亲审并阶段提交。用户追加U13：手动compact期间／完成后不得一直Retrying Chat／Usage，Context须按原生状态显示loading环与Compacting，完成后恢复最新值。已确认线上轻量compaction_state返回active/computing而旧画面保留层遮住状态；后端manual压缩复用running与普通Turn恢复证明不匹配已确认，B1已修复并接收。F1及终态Context失败重试、合法unknown有限观察、epoch恢复重复全量、首次展开重复详情读均已交回并通过主会话代码审查；最终IAB复验待本地浏览器恢复可用。
-
-用户已确认U17：旧的模糊系统触发片段保持Thinking懒取；新Turn在原生接缝补最小内部来源标记，精确主动取Thinking。B1／U17已整包交回并亲审：11文件，原生Turn接缝标记／必要metadata回填保lease guard和模型wire；旧模糊片段保持懒取。U17 8文件124项与末次REST／RPC61项、十检查通过。增量正式联调与整轮门禁继续；不把typed显示类型猜成真实Turn。
-
-用户继续追加U14／U15：压缩成功不得因客户端固定11分钟超时弹失败；Toast阴影不能在圆角外形成直角灰底。前者与F1压缩生命周期一起修复；后者已亲审两条CSS及隐藏IAB旧／新截图，main提交810aca3，已并入增量03ef6d5并自动push，保持原UI设计。
-
-main独立修复：后端e1b124d、前端5cbef57／37a8e4c均已提交并自动push。增量工作区为`/Users/edgar/code/hermes-secretary-incremental-sync`及`/Users/edgar/code/hermes-secretary-web`，同名分支`codex/incremental-sync-20261027`；为隔离后端main其它dirty建立平铺worktree。
-
-保护基线：后端main位于`/Users/edgar/code/hermes-secretary-web-release`，本轮独立修复后为e1b124d；前端main位于`/Users/edgar/code/hermes-secretary-web-toast`，810aca3（Signal Aborted／Notebook图标5cbef57、键盘闪屏37a8e4c、Toast 810aca3均已亲审提交并自动push，未部署）。保留原Noting调试dirty；07补丁临时保存后已恢复，stash 47c6bbc仅作保险，不混入本轮提交。原始工作区dirty不动。
-
-| 工作 | 负责人／状态 |
+| 工作包 | 当前实际状态／交接 |
 |---|---|
-| 前端恢复根因、游标方案、Signal Aborted | 根因已定位；独立取消请求／Notebook修复已提交；增量接口与缓存方案已冻结，实施中 |
-| 微信Slash范围与逐消息投递 | 已亲审：管理命令规范化拒绝，其余走原生权限；完整消息沿FIFO事件唤醒。改前9反例失败；15文件279项及追加2项通过，十检查通过；未真实微信试发 |
-| Android键盘闪屏 | 主会话已亲审提交37a8e4c；组件11项、原生10项及隐藏IAB真实像素证据通过；真机未验 |
-| 游标增量、SPA／APK免刷新 | main修复完成；同名分支已创建，冻结`.autonomous/20261027-incremental-sync/`；B1已亲审接收、F1最终修补已亲审接收，Android包已亲审提交6ba37b4（82项原生测试通过，无真机）；双门禁未执行 |
+| 原独立修复及主体增量机制 | 已提交／push，尚未按本轮发布；历史记录与证据见reports/integration.md |
+| U18 Steer／U19 Approval／冷Slash目录竞态 | 前端1a906ae及后续类型／复杂度修补已提交；正式中间态／App反例通过，待当前集成浏览器复验 |
+| F03/F04缓存 | 前端0ea002e已亲审提交：完整详情字段保留，窗口／详情／已核验前缀合计500身份预算，证明失效时仅退役selector；95项及真实IDB证据，见reports/r2-cache.md |
+| F05/F06后端增量 | 后端918efda已亲审提交：同源Thinking合法尾追加、正式CAS实际改文提交后通知；132项及末次22项定向证据，见reports/r2-backend-sync.md；实际App接收待联调 |
+| F01/F02前端恢复 | 已整包交回并亲审，166项＋末次14项通过；复杂度棘轮两处窄拆分进行中，未提交；见reports/r2-frontend-recovery.md |
+| F08微信逐消息发送 | 已整包交回，root亲审中；final持久UID后立即沿既有FIFO投递、尾部成功回执去重；150项及最后47项影响复测，不真实外发；见reports/r2-weixin.md |
+| U20／F07／E02联合Noting | 主会话接线设计在plan，r2_joint_noting实施中；普通手动／Idle／原生auto并发联合触发取消、已提交保留，Force仅Turn结束不可取消并封区间，特殊替代审计透明跳过，Note独立四时点检查后原FM推送；尚未亲审验收 |
+| E01/E03与动态体验 | root准备同夹具流量／时序／必要读取及D07客户端范围证据；已有旧候选隐藏IAB记录只按旧版本引用，不当作当前候选通过 |
+| 第二次整轮门禁 | 尚未送审／执行；待全部集成后固定两仓SHA，云端静态复审＋独立实际用户Validation。第一轮被额度中断的本地报告不算通过 |
+| 发布／APK | U23已明确授权；0.1.9元数据cb4c769已提交，尚未最终构建／交付／上线。生产只读基线后端3426c0f，Web系统服务和Gateway用户服务active；正式前端0947ed5保持 |
 
-用户追加U16：一并修复Downloads报告中的Idle Noting父owner回收缺陷。主会话采用精确维护依赖／原生epoch失效／短锁冻结方案，独立工作区`/Users/edgar/code/hermes-secretary-idle-noting-owner`（main基线e1b124d，临时codex/idle-noting-owner-20261027）实施，亲审后先纳main再并入增量分支。报告含生产个案不复制入公开仓库；不补跑历史失败、不修改生产配置／数据或部署。父owner失效保留未消费周期；global/local关闭仍按原生terminal cleanup清退，不增加重开补跑。纳入本轮最终双门禁。U16首包已交回并亲审，A→B→A迟到tick保护已补；主会话发现的旧completion清理／新native复用并发窗口已用原子reserve／清退关闭，末次71项及最后3项定向测试、十检查通过。已先提交main 0a5d09cdcf并自动push，同一14文件补丁已接入本增量分支；Linux定向7文件163项已覆盖通过（159项原证据＋4项目录准备后补测）；整轮门禁未完成。
+前后端实施目录分别为`/Users/edgar/code/hermes-secretary-incremental-sync`与`/Users/edgar/code/hermes-secretary-web`，同名`codex/incremental-sync-20261027`分支。三个实现包现已交回，只有r2_joint_noting仍改产品；r2_frontend_recovery只做指定复杂度拆分，r2_weixin接续只读发布准备。子Agent6.1 sol/high、不再派生、不流水账；主会话负责方案、亲审、接线、正式门禁与发布。
+
+保护原main工作区的Noting调试／生成协议／07／presentation等他人dirty。新状态表必须兼容正式旧库，仅加Secretary自有伴随表／读取视图，不重建生产数据库。冻结检查不增删放宽；已有no-tmp历史报告七处基线问题保持真实记录，不称十检查全绿。旧Timeline七项失败在原91ad同样存在，不能据此替代部署基线或当前用户体验判断。真机Android和真实微信送达未验，包校验／受控adapter证据不冒称实机或真实外发。
+
+U20详口径见07顶部及plan接线设计；旧“先Noting再压缩／FM结算后才终态”已被替换。U17旧模糊片段保持懒取，新Turn沿原生source精确主动取Thinking，不设逐Thinking游标。用户确认与原始云端报告保留索引，不改写旧审查时点结论。界面验收只许自建隐藏IAB，不动用户浏览器／桌面。
 
 ## 2026-10-27 · Noting来源链／History调优（已上线）
 
