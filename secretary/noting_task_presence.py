@@ -31,8 +31,8 @@ def task_is_live(conn, child_session_id, now):
 def running_tasks(conn, conversation_ref):
     """Ordinary admissions and explicit recovery keep their existing durable owners."""
     return conn.execute(
-        "SELECT c.child_session_id, c.registered_at FROM secretary_noting_children c "
-        "JOIN secretary_noting_admissions a ON a.admission_id=c.admission_id "
+        "SELECT c.child_session_id, c.registered_at FROM secretary_noting_task_children c "
+        "JOIN secretary_noting_task_admissions a ON a.admission_id=c.admission_id "
         "WHERE a.conversation_ref=? AND c.status='running' "
         "UNION ALL SELECT id, json_extract(model_config, '$._noting_recovery.created_at') "
         "FROM sessions WHERE ended_at IS NULL AND json_valid(model_config) "

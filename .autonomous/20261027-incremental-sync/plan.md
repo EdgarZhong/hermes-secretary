@@ -145,3 +145,20 @@ Validation已派全新fork-none sol/high `/root/validation_sync`，先独立从U
 同一待审批请求的Diff/写入目标/理由应同一面板，背景更新不自动换队列或退成少信息面板。root反例改前两项失败：receive重复id将其移尾；瞬态live工具节点消失即丢Diff。方案：保持现有请求位置；首次按原严格关联核验的Diff作为该请求的只读展示证据保留，以profile/conversation/runtime/request id/command/工具身份隔离；关键身份变化撤销，审批权限仍由ServerRequests原状态控制；Command与Diff同屏。新首帧仍严格匹配，不猜未取得Diff，不扩大批准范围。
 
 额度中断：validation_sync、steer_handoff_repro、slash_catalog_fix均未整包交回，保已有日志/partial diff，root只按实际证据接收。当前本地Verifier保持停止，云端审查版本需在后继修复commit后更新。
+
+### C-U20主会话亲审补修（2026-10-28，第二轮送审前）
+
+| 项 | 亲审事实与指定窄修 | 当前状态 |
+|---|---|---|
+| C-R1 真正Main Turn边界 | 原turn_facade在native lease受理前标started、释放后才标finished，Force检查短锁不能证明真实相邻Turn边界；移现有观察至真实受理/释放边界，结束markfalse/占用/Force按既有Framework→persist原子接缝，不加Main admission gate，不锁跨模型。须以真实run_conversation+lease而非只直接hook证明 | r2_joint_noting_resume追加实现/反例，待亲审 |
+| C-R2 旧registry后续生命周期 | 统一views可读旧admission，但register/finish仅UPDATE新attempt表，旧合法调用可能退化，dead-task只扫描新表；按实际行所属表兼容，不按整数格式猜归属，不迁移旧库；初始化保全与后续依法终态分开 | 同包补旧schema/running/expired lease/attach及旧API用例 |
+| C-R3 Note幂等键 | 最新有效Snapshot可跨多次成功压缩仍无新版本；幂等应按目标边界，不能全局禁止同Snapshot在后继新区间再次注入。保每个目标interval一次，移除跨interval全局snapshot UNIQUE/拦截，原资格/队列重选/事务回执不变 | 同包补首次已落FM后第二成功边界无新有效Snapshot及重复检查反例 |
+| C-R4 Note读取失败不得误报压缩失败 | adopt_native_publication属于原生成功commit后的Note展示增量，其资格读异常须日志隔离并返回；原生result/commit不被推翻、不吞原生异常、不伪receipt，后续检查可补偿 | 同包定向真实native成功后Note读抛错反例 |
+
+三项是统一门禁前主会话设计与接线审查，不计新的正式Verification/Validation轮次。原180＋3及十检查证据只按对应源码保留；追加改动按影响定向补证，不重复全量。
+
+## U25／U26用户追加（第二轮门禁前纳入）
+
+用户已确认冷启动新document首次真实可见历史提交后统一立刻到底，不受加载期用户滚动阻止；同页warm/reconnect保持。root方案复用PageRecovery document与commit/ack一次资格，useTimelineReading只在该提交instant到底，不能用组件mount猜新document。cold_start_viewport仅改page-recovery/types/chat-presentation及必要小sibling/测试，不碰App/layout或后端。
+
+APK主动顶栏下拉先出浏览器原型。最新设计替换此前整页下移：页面/背景静止、圆背板橙环从顶部中央浮现、约200手指位移经阻尼映射固定80px指示器行程、40背板/24橙环按token、阈值全亮后release一次reload；正文起手/控件tap不劫持，取消/回退收回。header_pull_refresh_preview只新增隔离组件/CSS/测试及ignored原型，不改正式App/layout，root隐藏IAB截图/动态预览后再接APK。正式Web不自动开启。主会话亲审并接线；8313旧候选APK已核但不再当最终包，最终源SHA后重建。原三轮上限/范围内门禁与正式上线完成条件保持。

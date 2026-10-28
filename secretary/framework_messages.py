@@ -163,12 +163,12 @@ def append_runtime_row(parent, messages, row, *, expected_conversation_ref=None,
             settings = settings_for_db(db)
 
         def prepare_completion(conn, target_session_id, _rows):
-            from secretary.noting_notifications import SupersededNotingResult, completion_body
+            from secretary.noting_notifications import completion_body
             from pathlib import Path
 
-            snapshot = db.notebook_snapshot_if_current_conn(conn, expected_conversation_ref, snapshot_id)
-            if snapshot is None:
-                raise SupersededNotingResult("The pending Noting Snapshot has been superseded")
+            from secretary.noting_notes import qualified_snapshot_conn
+            snapshot = qualified_snapshot_conn(db, conn, expected_conversation_ref, snapshot_id,
+                                               row["display_metadata"].get("noting_target_interval"))
             audit = db.notebook_snapshot_audit_conn(conn, snapshot_id)
             if audit["termination"] != termination:
                 raise RuntimeError("Noting completion audit differs from the committed Snapshot")
@@ -191,9 +191,12 @@ def append_runtime_row(parent, messages, row, *, expected_conversation_ref=None,
                         or binding is None or binding[0] != expected_conversation_ref):
                     raise RuntimeError("Framework target no longer belongs to its runtime")
             if snapshot_id is not None:
-                from secretary.noting_notifications import SupersededNotingResult
-                if db.notebook_snapshot_if_current_conn(conn, expected_conversation_ref, snapshot_id) is None:
-                    raise SupersededNotingResult("The pending Noting Snapshot has been superseded")
+                from secretary.noting_notes import qualified_snapshot_conn
+                interval = row["display_metadata"].get("noting_target_interval")
+                qualified_snapshot_conn(db, conn, expected_conversation_ref, snapshot_id, interval)
+                conn.execute("INSERT INTO secretary_noting_note_receipts "
+                             "(conversation_ref,interval_id,snapshot_id,carrier_message_uid) VALUES (?,?,?,?)",
+                             (expected_conversation_ref, interval, snapshot_id, row["message_uid"]))
                 # The DB write lock orders this live append with all Snapshot
                 # commits. The outer framework/persist locks hide retry drafts
                 # from Main; on rollback the live row is removed before release.
@@ -360,28 +363,11 @@ def flush_framework_messages(parent):
 
 
 def publish_noting_completion(parent, commit_result, *, termination, summary, on_settled=None):
-    """Queue only the Snapshot selected by this successful commit transaction.
-
-    The queue retains its Snapshot ID, not an unconditional rendered body. Actual
-    content preparation, pointer check and live append share the native write
-    transaction while holding framework -> persist -> DB locks. DB-only Snapshot
-    commits never acquire the host locks, so there is no reverse lock order.
-    """
-    if (not isinstance(commit_result, dict) or commit_result.get("pointer_changed") is not True
-            or not isinstance(commit_result.get("snapshot_id"), str)
-            or commit_result.get("snapshot_id") != commit_result.get("effective_snapshot_id")
-            or not isinstance(termination, dict)
-            or termination.get("type") not in {"finish_noting", "forced", "context_overflow"}
-            or not isinstance(summary, str) or not summary.strip()):
+    from secretary.noting_notes import check_note_delivery
+    try:
+        return check_note_delivery(parent)
+    finally:
         _settle_callback(on_settled)
-        return False
-    return publish_framework_message(
-        parent, "", display_metadata={"noting_run_output": True,
-                                      "noting_snapshot_id": commit_result["snapshot_id"]},
-        expected_conversation_ref=getattr(parent, "_secretary_conversation_ref", None),
-        _producer="noting_completion", _snapshot_id=commit_result["snapshot_id"],
-        _termination=dict(termination), _summary=summary, _on_settled=on_settled,
-    )
 
 
 def publish_noting_failure(parent, *, conversation_ref, specific_reason, on_settled=None):

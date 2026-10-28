@@ -3,7 +3,7 @@
 The existing Main lifecycle, native usage and daemon timer feed one admission owner.
 Admission's durable native-boundary identity survives Anchor changes, failed children
 and rewind. Native manual/auto compression proceeds independently of background
-Noting results; Idle compression follows a normally committed Notebook update.
+Noting results; Idle uses the same native pre-summary joint entrance.
 """
 
 import contextvars
@@ -104,16 +104,25 @@ def noting_trigger_gate(
 ) -> tuple[bool, str]:
     """``(enabled, reason)`` for global AND conversation-local Noting (02 §4.2, §6.6)."""
     settings = settings_for_db(db) if settings is None else settings
+    enabled, reason = noting_commit_gate(db, conversation_ref, settings=settings)
+    if not enabled:
+        return False, reason
+    failure = runtime_configuration_failure(db, conversation_ref)
+    if failure:
+        logger.warning("%s", configuration_guidance(failure))
+    return (False, failure) if failure else (True, "")
+
+
+def noting_commit_gate(db, conversation_ref, *, settings=None):
+    """An admitted frozen task still obeys participation, independently of its live parent."""
+    settings = settings_for_db(db) if settings is None else settings
     if not settings.enabled:
         if settings.configuration_failure:
             logger.warning("%s", configuration_guidance(settings.configuration_failure))
         return False, settings.configuration_failure or "global_disabled"
     if not noting_local_enabled(db, conversation_ref):
         return False, "local_disabled"
-    failure = runtime_configuration_failure(db, conversation_ref)
-    if failure:
-        logger.warning("%s", configuration_guidance(failure))
-    return (False, failure) if failure else (True, "")
+    return True, ""
 
 
 def noting_lifecycle_gate(db, conversation_ref, *, settings):
@@ -239,6 +248,8 @@ _MAIN_REQUEST_SCOPE = contextvars.ContextVar("secretary_main_request_scope", def
 @contextmanager
 def main_model_request_scope(agent: Any, payload: dict, *, external: bool = False):
     """Bind only the Main conversation request; worker threads inherit this context."""
+    from secretary.noting_notes import check_note_delivery
+    check_note_delivery(agent)
     token = _MAIN_REQUEST_SCOPE.set((agent, payload, external))
     try:
         yield
@@ -356,13 +367,23 @@ def note_main_turn_started(agent: Any, *, at: Optional[float] = None) -> bool:
 
 def note_main_turn_finished(agent: Any, *, at: Optional[float] = None) -> bool:
     """Persist any actual request-source fact, then record the real Main Turn end."""
-    persist_main_execution_source(agent)
-    recorded = _record_main_turn_event(agent, at, started=False)
-    if (getattr(agent, "_secretary_main_turn_running", False)
-            or getattr(agent, "_secretary_framework_messages", None)):
-        from secretary.framework_messages import mark_framework_turn
-        mark_framework_turn(agent, running=False)
-    return recorded
+    if not is_main_conversation_agent(agent):
+        return False
+    db, ref = getattr(agent, "_session_db", None), _main_conversation_ref(agent)
+    if db is None or not ref:
+        return False
+    from secretary.noting_timers import conversation_timer_lock
+    from secretary.framework_messages import _lock as framework_lock, mark_framework_turn
+    from agent.context_compaction_request import _lock
+    from secretary.noting_force_end import check_force_at_turn_end
+    with conversation_timer_lock(db, ref), framework_lock(agent), _lock(agent):
+        persist_main_execution_source(agent)
+        recorded = _record_main_turn_event(agent, at, started=False)
+        if (getattr(agent, "_secretary_main_turn_running", False)
+                or getattr(agent, "_secretary_framework_messages", None)):
+            mark_framework_turn(agent, running=False)
+        check_force_at_turn_end(agent)
+        return recorded
 
 
 # ── Trigger admission (02 §4.8, §4.9, §4.11) ───────────────────────────────
@@ -378,7 +399,7 @@ def idle_candidates(db: Any, *, settings: Optional[NotingSettings] = None, now: 
 
 
 def _freeze_and_admit(db: Any, conversation_ref: str, *, kind: str, frozen_identity=None,
-                      participation_decided=False) -> NotingDecision:
+                      participation_decided=False, operation_id=None) -> NotingDecision:
     """A claimed Idle event owns its local decision; other entrances decide in this transaction."""
     if not callable(getattr(db, "noting_admit_conn", None)):
         return _skip("noting_schema_unavailable")
@@ -394,7 +415,7 @@ def _freeze_and_admit(db: Any, conversation_ref: str, *, kind: str, frozen_ident
             return _skip("no_frozen_anchor")
         if db.anchor_position_conn(conn, conversation_ref, identity["message_uid"]) is None:
             return _skip("anchor_invalid")
-        admission_id = db.noting_admit_conn(conn, conversation_ref, identity["message_uid"], kind=kind)
+        admission_id = db.noting_admit_conn(conn, conversation_ref, identity["message_uid"], kind=kind, operation_id=operation_id)
         if admission_id is None:
             row = db.noting_existing_admission_conn(conn, conversation_ref, interval, anchor=identity["message_uid"])
             return _existing_decision(db, row, "same_anchor_admitted")
@@ -502,15 +523,7 @@ def _idle_decision(
     def decide():
         if execution_source == "external":
             return _skip("external_main_execution")
-        thresholds = force_thresholds(measurement.resolved_context_window, measurement.hermes_auto_compaction_threshold)
-        if thresholds.capability_failure:
-            return _skip("capability_failure:" + thresholds.capability_failure)
-        # Force owns its reserve even when first observed by an overdue Idle event.
-        kind = "force" if thresholds.measured_usage_triggers(measurement.measured_tokens) else "idle"
-        identity = _freeze_and_log_attempt(db, conversation_ref, kind)
-        if identity is None:
-            return _skip("no_frozen_anchor")
-        return _freeze_and_admit(db, conversation_ref, kind=kind, frozen_identity=identity, participation_decided=True)
+        return NotingDecision("request", "idle_compaction_due", compaction_due=True)
     # The parent's due fact survives all Noting errors after both conditions held.
     return replace(_guarded(conversation_ref, decide), compaction_due=True)
 
@@ -548,7 +561,7 @@ def apply_notebook_surface_gate(agent: Any) -> bool:
 
 
 def maybe_admit_force_from_pressure(agent: Any, measured_tokens: Any, *, messages=None) -> str:
-    """Existing preflight facade; four-entry preparation has one implementation."""
+    """Pressure facade retained for callers with an already-observed Main Turn end."""
     from secretary.noting_policy import measurement_from_agent
     decision = prepare_joint_noting(agent, trigger="force",
                                     measurement=measurement_from_agent(agent, measured_tokens), messages=messages)
@@ -566,79 +579,43 @@ def _dispatch_joint_decision(parent, decision, messages, expected_conversation_r
                 parent, decision.existing_admission, after_normal_commit,
             ))
         return decision
-    from secretary.noting_child import spawn_noting_task
-    spawn_noting_task(parent, decision.admission, parent_active_messages=messages,
-                      **({"after_normal_commit": after_normal_commit} if after_normal_commit is not None else {}))
+    from secretary.noting_joint import retire_invalid_tasks
+    retire_invalid_tasks(parent._session_db, expected_conversation_ref)
     if decision.admission.kind == "force":
-        try:
-            from secretary.framework_messages import publish_framework_message
-            publish_framework_message(
-                parent,
-                "The context is nearing its limit, and a Notebook update task has been dispatched. Consider compacting soon. When you do, prioritize preserving the content after this message.",
-                expected_conversation_ref=decision.admission.conversation_ref,
-                display_metadata={"noting_force_dispatch": True}, _producer="force_dispatch",
-            )
-        except Exception:
-            logger.warning("Noting dispatch notice failed; the child retains its completion owner", exc_info=True)
+        from secretary.noting_force_dispatch import dispatch_force
+        dispatch_force(parent, decision.admission, messages)
+    else:
+        from secretary.noting_child import spawn_noting_task
+        spawn_noting_task(parent, decision.admission, parent_active_messages=messages)
     return decision
 
 
 def prepare_joint_noting(parent, *, trigger, measurement=None, messages=None, now=None,
-                          expected_period=None, expected_owner=None):
+                          expected_period=None, expected_owner=None, operation_id=None):
     if trigger != "idle":
-        return _prepare_joint_noting(parent, trigger=trigger, measurement=measurement, messages=messages,
-                                     now=now, expected_period=expected_period)
-    # This synchronous region never waits for a child or native summary. Close
-    # either invalidates first, or observes a fully frozen/admitted completion.
-    from agent.context_compaction_request import _epoch, _lock
-    from secretary.noting_scope import is_current_main_runtime
-    completion = None
-    with _lock(parent):
-        if (getattr(parent, "_secretary_parent_closed", False) or not is_current_main_runtime(parent)
-                or expected_owner is not None and _epoch(parent) is not expected_owner):
-            return _skip("not_main_owner")
-        db = parent._session_db
-        ref = _main_conversation_ref(parent)
-        row = db.get_session(parent.session_id)
-        with db._read_ctx() as conn:
-            route = db.resolve_conversation_route_conn(conn, ref)
-        if not row or row.get("archived") or not route or route["id"] != parent.session_id:
-            return _skip("not_main_owner")
-        settings = settings_for_db(db)
-        if (settings.enabled and settings.idle_enabled and _persisted_main_execution(parent) != "external"
-                and noting_trigger_gate(db, ref, settings=settings)[0]):
-            from secretary.noting_child import NotingChildError, freeze_parent_active_prefix
-            with db._read_ctx() as conn:
-                identity = db.get_foreground_anchor_conn(conn, ref)
-            if identity is None:
-                return _skip("parent_context_unavailable")
-            try:
-                messages = freeze_parent_active_prefix(parent, identity["message_uid"], messages,
-                                                       conversation_ref=ref)
-            except NotingChildError:
-                return _skip("parent_context_unavailable")
-        decision, callback = _prepare_joint_noting(
-            parent, trigger=trigger, measurement=measurement, messages=messages,
-            now=now, expected_period=expected_period, dispatch=False)
-        if decision.action == "admit":
-            from secretary.noting_child import _begin_completion
-            completion = _begin_completion(parent, decision.admission, callback)
-    try:
-        return _dispatch_joint_decision(parent, decision, messages, ref, after_normal_commit=callback)
-    except Exception:
-        if completion is not None:
-            from secretary.noting_child import _end_completion, finish_child_admission
-            try:
-                finish_child_admission(db, decision.admission.admission_id, status="failed")
-            finally:
-                _end_completion(db, completion)
-        logger.warning("Noting joint dispatch failed for Idle", exc_info=True)
-        return replace(decision, action="skip", reason="trigger_error")
+        from agent.context_compaction_request import _lock
+        from secretary.framework_messages import _lock as framework_lock
+        from secretary.noting_scope import is_current_main_runtime
+        if not is_main_conversation_agent(parent):
+            return _skip("not_main")
+        if getattr(parent, "_secretary_main_runtime_binding", None) is None:
+            bind_main_runtime(parent)
+        with framework_lock(parent), _lock(parent):
+            if (getattr(parent, "_secretary_main_runtime_binding", None) is not None
+                    and not is_current_main_runtime(parent)):
+                return _skip("not_main_owner")
+            if trigger == "force" and getattr(parent, "_secretary_main_turn_running", False):
+                return _skip("main_turn_running")
+            return _prepare_joint_noting(parent, trigger=trigger, measurement=measurement, messages=messages,
+                                         now=now, expected_period=expected_period, operation_id=operation_id)
+    from secretary.noting_idle_joint import request_idle_joint
+    return request_idle_joint(parent, measurement=measurement, messages=messages, now=now,
+                              expected_period=expected_period, expected_owner=expected_owner)
 
 
 def _prepare_joint_noting(parent, *, trigger, measurement=None, messages=None, now=None,
-                           expected_period=None, dispatch=True):
-    """Freeze/admit/spawn once; only Idle defers native compression until normal commit.
+                           expected_period=None, dispatch=True, operation_id=None):
+    """Freeze/admit/spawn once, independently of native summary completion.
 
     Auto/manual callers invoke at their admitted native pre-compression seam. Idle is
     called by the existing timer; Force uses the native pressure measurement. This
@@ -646,7 +623,7 @@ def _prepare_joint_noting(parent, *, trigger, measurement=None, messages=None, n
     """
     decision = None
     try:
-        if trigger not in {"force", "idle", "manual", "auto_compaction"}:
+        if trigger not in {"force", "idle", "manual", "auto_compaction", "native_idle"}:
             return _skip("invalid_trigger")
         if not is_main_conversation_agent(parent):
             return _skip("not_main") if dispatch else (_skip("not_main"), None)
@@ -654,20 +631,11 @@ def _prepare_joint_noting(parent, *, trigger, measurement=None, messages=None, n
         ref = _main_conversation_ref(parent)
         if not ref:
             return _skip("no_ref") if dispatch else (_skip("no_ref"), None)
-        if trigger != "idle":
-            bind_main_runtime(parent)
         source = _persisted_main_execution(parent) if trigger == "idle" else main_execution_for_force(parent)
-        decision = _joint_trigger_decision(parent, db, ref, trigger, measurement, source, now, expected_period)
-        after_normal_commit = None
-        if trigger == "idle" and (decision.action == "admit" or decision.existing_admission is not None):
-            from secretary.noting_compact import idle_compaction_after_commit
-            after_normal_commit = idle_compaction_after_commit(
-                parent, conversation_ref=ref, threshold_tokens=settings_for_db(db).idle_threshold_tokens,
-                admission=decision.admission or decision.existing_admission,
-            )
+        decision = _joint_trigger_decision(parent, db, ref, trigger, measurement, source, now, expected_period, operation_id)
         if not dispatch:
-            return decision, after_normal_commit
-        return _dispatch_joint_decision(parent, decision, messages, ref, after_normal_commit=after_normal_commit)
+            return decision, None
+        return _dispatch_joint_decision(parent, decision, messages, ref)
     except Exception:
         logger.warning("Noting joint preparation failed for %s", trigger, exc_info=True)
         failure = (replace(decision, action="skip", reason="trigger_error")
@@ -675,7 +643,7 @@ def _prepare_joint_noting(parent, *, trigger, measurement=None, messages=None, n
         return failure if dispatch else (failure, None)
 
 
-def _joint_trigger_decision(parent, db, ref, trigger, measurement, source, now, expected_period):
+def _joint_trigger_decision(parent, db, ref, trigger, measurement, source, now, expected_period, operation_id=None):
     if trigger == "force":
         return (_skip("no_measurement") if measurement is None else
                 try_admit_force(db, ref, measurement, execution_source=source))
@@ -694,12 +662,13 @@ def _joint_trigger_decision(parent, db, ref, trigger, measurement, source, now, 
         return _skip("external_main_execution")
     identity = _freeze_and_log_attempt(db, ref, trigger)
     return (_skip("no_frozen_anchor") if identity is None else
-            _freeze_and_admit(db, ref, kind=trigger, frozen_identity=identity))
+            _freeze_and_admit(db, ref, kind="idle" if trigger == "native_idle" else trigger,
+                              frozen_identity=identity, operation_id=operation_id))
 
 
 def run_joint_cycle(parent, *, trigger, native_compact, measurement=None, messages=None,
                     now=None, expected_period=None):
-    """Non-Idle native callbacks remain independent; Idle uses its normal-commit request."""
+    """Native callbacks remain independent of the Noting result."""
     decision = prepare_joint_noting(parent, trigger=trigger, measurement=measurement,
                                     messages=messages, now=now, expected_period=expected_period)
     if trigger == "idle":
@@ -756,7 +725,7 @@ def _run_idle_event(parent: Any, db: Any, conversation_ref: str, *,
     """Run a real timer event or one missed-deadline catch-up through §4.8.
 
     Re-reads the parent's native usage and spawns the child off-thread. Its normal
-    Snapshot commit requests parent compression before completion publication.
+    Native admission starts the child and summary independently.
     """
     from secretary.noting_timers import conversation_timer_lock
     try:

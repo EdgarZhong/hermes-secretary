@@ -95,7 +95,7 @@ def test_async_native_recovery_commits_preserved_versions_to_current_tail(native
     assert snapshot["anchor_message_uid"] == "m2"
     after = database.get_messages_as_conversation("parent")
     assert after[:len(before)] == before
-    assert after[-1]["display_metadata"]["noting_snapshot_id"] == state["snapshot_id"]
+    assert after == before  # This interval cannot receive its own Note.
     assert "later" not in {row.get("message_uid") for row in made[0]._session_messages or []}
     wires = [call.kwargs for call in client.chat.completions.create.call_args_list]
     assert all("callable_tool_schemas" not in str(wire["messages"]) for wire in wires)
@@ -202,10 +202,14 @@ def test_rebound_registry_keeps_original_failed_child_recoverable(native_parent,
     failed = failed_task(native_parent, database)
     database.create_session("later-recovery", source="subagent", parent_session_id="parent",
                             model_config={"_delegate_from": "parent"})
-    database.noting_child_register(1, child_session_id="later-recovery", profile=None)
-    database.noting_child_finish(1, status="completed")
+    admission = database._read_one("SELECT admission_id FROM secretary_noting_task_admissions")["admission_id"]
+    # Reproduce the historical recovery tool's overwritten registry fact. The
+    # current registration API cannot revive an already-ended task.
+    database._execute_write(lambda conn: conn.execute(
+        "UPDATE secretary_noting_attempts SET child_session_id=? WHERE admission_id=?",
+        ("later-recovery", admission)))
     recovered = reconstruct_noting(database, ref(database), failed.child_session_id)
-    assert recovered.admission["admission_id"] == 1
+    assert recovered.admission["admission_id"] == admission
     assert recovered.working_state["work"][0]["entry_id"] == "1"
 
 
@@ -285,7 +289,7 @@ def test_missing_original_anchor_reports_which_source_is_missing(native_parent, 
         reconstruct_noting(database, ref(database), failed.child_session_id)
 
 
-def test_cold_completion_uses_main_native_lease_without_blocking_model_recovery(native_parent, database, monkeypatch):
+def test_cold_completion_is_independent_of_main_native_lease_and_note_waits_next_interval(native_parent, database, monkeypatch):
     from threading import Event
     from run_agent import AIAgent
     parent, client = native_parent
@@ -309,14 +313,15 @@ def test_cold_completion_uses_main_native_lease_without_blocking_model_recovery(
         assert finished_model.wait(5), "Recovery incorrectly waited for Main before running the child"
         database.append_messages_batch("parent", [{"role": "assistant", "content": "Current Main finished"}],
                                        turn_lease_holder="main-current")
-        assert database.notebook_current(ref(database)) is None
+        state = wait_recovery(database, failed)
+        assert state["committed"], state
+        assert database.notebook_current(ref(database))["snapshot_id"] == state["snapshot_id"]
     finally:
         database.release_session_turn_lease("parent", "main-current")
-    state = wait_recovery(database, failed)
-    assert state["committed"], state
     rows = database.get_messages_as_conversation("parent")
-    assert rows[-2]["content"] == "Current Main finished"
-    assert rows[-1]["display_metadata"]["noting_snapshot_id"] == state["snapshot_id"]
+    assert rows[-1]["content"] == "Current Main finished"
+    assert not any((row.get("display_metadata") or {}).get("noting_snapshot_id") == state["snapshot_id"]
+                   for row in rows)
 
 
 def test_branch_recovery_keeps_branch_path_and_rebinds_inherited_source_identity(native_parent, database):

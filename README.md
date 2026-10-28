@@ -16,7 +16,7 @@ Secretary只在Profile的`state.db`增加自有表，复用原生执行、存储
 
 - Main只读Notebook，Notebook工具定义完整固定API顶层；绑定Noting仅可执行`conversation_history`、`notebook_show`、`notebook_create`、`notebook_update`、`notebook_archive`、`finish_noting`。Scheduler独立开关；条目`done`不等于成功或归档，证据时间由原始来源派生。
 - History提供Get Meta／Search／Read，默认只当前Conversation的真实用户和Assistant；跨域、辅助消息分别显式开启。Notebook来源按Task保存UID链，真实编辑与本Task来源同时提交，Evidence time逐节点只读派生；接口见07顶部。
-- Idle遵循正常Noting提交→持久压缩→Framework；必要自动／手动压缩保留原生时序。Noting开启且合格Main的full compaction默认将旧尾部纳入摘要，真正达到原生阈值的自动压缩及显式`/compress here N`保留原生保尾。
+- 手动、Idle及未提前派出Force的原生自动压缩共用并发联合入口；压缩不等待Noting，取消只联合撤销对应未提交工作，已提交Notebook保留。Force只在Main Turn结束检查、不可取消并封住当前区间后续整理；成功压缩解除。Note按合法来源独立沿原FM推送，活跃Turn等待既有间隙。具体契约见[07顶部](docs/07-scheduler-notebook-noting-compaction-redesign.md)。Noting开启且合格Main的full compaction默认将旧尾部纳入摘要，真正达到原生阈值的自动压缩及显式`/compress here N`保留原生保尾。
 - Web可跨进程读取Main及Noting完整生命周期状态；Gateway没有实时输出直连时仍能读取最新持久历史，落库／结束经既有Socket通知恢复。Context读数绑定当前压缩边界并计入后续内容，旧runtime不能覆盖新读数。
 - Web同一document优先保留内存画面及阅读状态；刷新／冷启使用同owner持久正文与卡片壳过渡，折叠详情不进入快照。两层均不替代后台完整读取与正式Socket／Turn恢复，不提供运行状态或操作权限；读取和衔接契约见06。
 - Heartbeat沿目标Profile唤醒所属Conversation，是自查提醒；需要用户对接的事项在用户回归时汇报。开启Noting时使用带时间戳的`<heartbeat>`，额外prompt可省略；开关、冷恢复及隔离见[07](docs/07-scheduler-notebook-noting-compaction-redesign.md)。

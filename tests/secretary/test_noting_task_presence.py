@@ -10,9 +10,11 @@ from datetime import datetime
 import pytest
 
 from hermes_state import SessionDB
-from tests.secretary.test_idle_noting_commit_order import finish_responses, result_rows, start_idle
+from tests.secretary.test_idle_noting_commit_order import result_rows
+from tests.secretary.test_joint_noting_u20 import admissions, compress_async, finish_provider
+from tests.agent.test_context_compaction_request import _summary
 
-pytest_plugins = ["tests.secretary.test_idle_noting_commit_order"]
+pytest_plugins = ["tests.secretary.test_noting_child", "tests.secretary.test_joint_noting_u20"]
 
 _READ_STATE = """
 import json,sys
@@ -38,65 +40,49 @@ def remote_state(db, session_id):
 
 
 @pytest.mark.parametrize("in_place", [True, False], ids=["in-place", "rotation"])
-def test_other_process_observes_task_through_committed_notebook_and_native_summary(
-        idle_runtime, monkeypatch, tmp_path, in_place):
-    parent, db, client, workers = idle_runtime
+def test_other_process_observes_child_terminal_before_native_summary_ends(runtime, monkeypatch, tmp_path, in_place):
+    parent, db, client, workers = runtime
     parent.compression_in_place = in_place
-    finish_responses(client)
+    finish_provider(client)
     ref, original_session = parent._secretary_conversation_ref, parent.session_id
-    entered, release = threading.Event(), threading.Event()
-    model_states = []
+    entered, release, model_entered, model_release = [threading.Event() for _ in range(4)]
     responses = iter(client.chat.completions.create.side_effect)
-
     def respond(**kwargs):
-        if not model_states:
-            model_states.append(remote_state(db, original_session))
+        model_entered.set()
+        assert model_release.wait(10)
         return next(responses)
-
-    def summarize(prompt, started):
+    def summary(messages, **kwargs):
         entered.set()
-        assert release.wait(30)
-        return "## Progress\nThe frozen dialogue was reviewed."
-
+        assert release.wait(10)
+        return _summary(messages, **kwargs)
     client.chat.completions.create.side_effect = respond
-    monkeypatch.setattr(parent.context_compressor, "_call_summary_llm", summarize)
+    monkeypatch.setattr(parent.context_compressor, "compress", summary)
+    native, _, errors = compress_async(parent, force=True)
     try:
-        assert start_idle(parent, db) == "admitted"
-        assert entered.wait(25)
-        child = db._read_one("SELECT child_session_id,registered_at FROM secretary_noting_children "
-                             "WHERE status='running'")
-        assert child is not None and db.notebook_current(ref) is not None
-        # The model Turn has ended; the whole Task still owns commit/summary/publication.
-        assert db._read_one("SELECT 1 FROM session_turn_leases WHERE conversation_id=?",
-                            (child["child_session_id"],)) is None
+        assert entered.wait(10) and model_entered.wait(10)
+        child = db.noting_child(admissions(db)[0]["admission_id"])
         state = remote_state(db, original_session)
-        assert model_states[0]["task_state"] == state["task_state"] == "active"
-        assert state["current_snapshot_id"] == db.notebook_current(ref)["snapshot_id"]
+        assert state["task_state"] == "active"
         assert state["tasks"][0]["task_id"] == child["child_session_id"]
-        assert abs(datetime.fromisoformat(state["tasks"][0]["started_at"]).timestamp()
-                   - child["registered_at"]) < 1
-        assert workers[0].is_alive() and not result_rows(parent)
-        # A second Profile with the same stored id has neither this Task nor its lease.
+        assert abs(datetime.fromisoformat(state["tasks"][0]["started_at"]).timestamp() - child["registered_at"]) < 1
         with SessionDB(tmp_path / "other" / "state.db") as other:
             other.create_session(original_session, source="desktop")
             other.resolve_conversation_ref(original_session)
             assert remote_state(other, original_session)["task_state"] == "idle"
+        model_release.set()
+        workers[0].join(10)
+        assert not workers[0].is_alive() and native.is_alive()
+        state = remote_state(db, original_session)
+        assert state["task_state"] == "idle" and db.notebook_current(ref) is not None
+        assert not result_rows(parent)
     finally:
         release.set()
-        for worker in workers:
-            worker.join(15)
-    assert not workers[0].is_alive() and len(result_rows(parent)) == 1
-    assert remote_state(db, original_session)["task_state"] == "idle"
+        model_release.set()
+        native.join(10)
+    assert errors == [] and len(result_rows(parent)) == 1
     assert db._read_one("SELECT 1 FROM secretary_noting_task_leases WHERE child_session_id=?",
                         (child["child_session_id"],)) is None
     assert (parent.session_id == original_session) is in_place
-    # The real native commit prices the summary; its later Framework increases
-    # current cold Context without reviving the pre-compaction transcript.
-    from agent.usage_anchor import persisted_context_estimate
-    reading = db.get_session_model_config_value(parent.session_id, "_usage_context")
-    assert reading["priced_tail"]["count"] == 1
-    current_context = persisted_context_estimate(db, parent.session_id, model=parent.model, recover_legacy=True)
-    assert current_context["tokens"] > reading["tokens"]
 
 
 def test_presence_renews_and_expired_or_unproven_registration_stays_unknown(tmp_path):
@@ -165,32 +151,42 @@ def test_recovery_presence_uses_existing_native_operation_owner_without_rebindin
 
 
 @pytest.mark.parametrize("failure", ["unavailable", "summary_error"])
-def test_observation_or_native_summary_failure_never_changes_committed_notebook(
-        idle_runtime, monkeypatch, failure):
-    parent, db, client, workers = idle_runtime
-    finish_responses(client)
+def test_observation_or_native_failure_preserves_already_committed_notebook(runtime, monkeypatch, failure):
+    parent, db, client, workers = runtime
+    finish_provider(client)
+    entered, release, model_entered, model_release = [threading.Event() for _ in range(4)]
     if failure == "unavailable":
         def unavailable(_presence):
             raise OSError("Observation store unavailable")
         monkeypatch.setattr("secretary.noting_task_presence._TaskPresence.start", unavailable)
-
-    def summarize(prompt, started):
-        state = remote_state(db, parent.session_id)
-        observed.append(state["task_state"])
+    responses = iter(client.chat.completions.create.side_effect)
+    def respond(**kwargs):
+        model_entered.set()
+        assert model_release.wait(10)
+        return next(responses)
+    def summary(messages, **kwargs):
+        entered.set()
+        assert release.wait(10)
         if failure == "summary_error":
             raise RuntimeError("Native summary unavailable")
-        return "## Progress\nReviewed."
-
-    observed = []
-    monkeypatch.setattr(parent.context_compressor, "_call_summary_llm", summarize)
-    assert start_idle(parent, db) == "admitted"
-    workers[0].join(25)
-    assert not workers[0].is_alive()
-    assert observed == ["unknown" if failure == "unavailable" else "active"]
-    assert db.notebook_current(parent._secretary_conversation_ref) is not None
-    assert len(result_rows(parent)) == 1
-    assert remote_state(db, parent.session_id)["task_state"] == "idle"
-    assert db._read_one("SELECT 1 FROM session_turn_leases") is None
+        return _summary(messages, **kwargs)
+    client.chat.completions.create.side_effect = respond
+    monkeypatch.setattr(parent.context_compressor, "compress", summary)
+    native, _, errors = compress_async(parent, force=True)
+    try:
+        assert entered.wait(10) and model_entered.wait(10)
+        assert remote_state(db, parent.session_id)["task_state"] == ("unknown" if failure == "unavailable" else "active")
+        model_release.set()
+        workers[0].join(10)
+        assert not workers[0].is_alive()
+        assert db.notebook_current(parent._secretary_conversation_ref) is not None
+        assert remote_state(db, parent.session_id)["task_state"] == "idle"
+    finally:
+        release.set()
+        model_release.set()
+        native.join(10)
+    assert bool(errors) == (failure == "summary_error")
+    assert len(result_rows(parent)) == int(failure == "unavailable")
     assert db._read_one("SELECT 1 FROM secretary_noting_task_leases") is None
 
 

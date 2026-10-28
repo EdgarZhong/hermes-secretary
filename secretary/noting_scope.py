@@ -73,6 +73,10 @@ def bind_main_runtime(agent):
             key = _runtime_key(db, ref)
             agent._secretary_main_runtime_binding = (db, ref, key)
             _main_runtimes[key] = agent
+        from secretary.noting_cache_owner import recover_dead_tasks
+        recover_dead_tasks(db, ref)
+        from secretary.noting_notes import check_note_delivery
+        check_note_delivery(agent)
         return True
     except TypeError:
         return False  # Scripted runtimes without lifetime ownership are not proof.
@@ -108,3 +112,8 @@ def runtime_configuration_failure(db, conversation_ref):
         return force_thresholds(compressor.context_length, compressor.threshold_tokens).capability_failure or ""
     except (AttributeError, TypeError, ValueError):
         return "runtime_unresolved"
+
+
+def current_main_runtime(db, conversation_ref):
+    with _main_runtime_lock:
+        return _main_runtimes.get(_runtime_key(db, conversation_ref))

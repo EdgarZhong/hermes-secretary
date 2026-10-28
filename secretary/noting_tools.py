@@ -97,13 +97,16 @@ def _notebook_mutation(child, args, schema):
     try:
         store = _bound_store(child)
         with store.lock:
+            from secretary.noting_joint import task_state
+            if task_state(child) != "admitted":
+                return _encoded(_error("This Noting task is no longer active.", code="state_conflict"))
             if getattr(child, "_secretary_noting_terminal_action_done", False):
                 return _encoded(_error(
                     f"The current state is end_requested; {schema['name']} cannot be applied.",
                     code="state_conflict", next_action="Use notebook_show to inspect the fixed view, then stop.",
                 ))
-            from secretary.noting_runtime import noting_trigger_gate
-            if not noting_trigger_gate(child._session_db, store.conversation_ref)[0]:
+            from secretary.noting_runtime import noting_commit_gate
+            if not noting_commit_gate(child._session_db, store.conversation_ref)[0]:
                 return _encoded(_error(
                     "Noting is effectively disabled for the bound Conversation.", code="scope_denied",
                     next_action="Keep the existing view; do not retry through another tool.",
@@ -171,6 +174,9 @@ def finish_noting(child, args):
         if not isinstance(reason, str) or not reason.strip():
             return _encoded(_error("finish_noting requires a nonempty reason.", field="reason"))
         with store.lock:
+            from secretary.noting_joint import task_state
+            if task_state(child) != "admitted":
+                return _encoded(_error("This Noting task is no longer active.", code="state_conflict"))
             previous = child._secretary_noting_finish_result
             if previous is not None:
                 return _encoded(previous)

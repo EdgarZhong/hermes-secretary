@@ -69,3 +69,5 @@ Linux7文件163项证据及16份日志／记录SHA已由主会话核对，全部
 
 - root开发联调：隐藏窄屏390×844，CDP声明150ms/64KiB下载/32KiB上传；不把CDP设置等同WebSocket实际受限带宽或端到端性能改进。相同document43687199，断线期间正式append1行后同页恢复ready、最新200行包含新消息，draft14字符始终相同、无通知；delta1行18509字节，历史REST0，总REST3043/RPC20843（含附属读取/心跳）。存档root-dev-weak-*.json/png；DOM每帧/Mutation/100ms检查在窗口内记录12个变化观察，timeline不可见/空白0、Notebook unknown0、草稿变化0、alerts0；只证明这些采样边界，非Android真机绘制或逐像素零闪。
 - 同窄屏实际输入框冷Slash /compact Send：1次session.compress，活动态Context: Compacting且hs-ring-spin=true；终态succeeded、ready、草稿清空、Context取到新250值、无Retrying/错误通知、同document。原始root-dev-slash-compact-{during,completed}.json/png。外部摘要依赖受控，原生maintenance接缝真实，不冒称U20全链已验。
+
+- root-dev-reading-* 是未完成开发观察：其间并行夹具源码扩展后隐藏页标题由自定义fixture变为正式Hermes Secretary，诊断panel消失、document更换，不能用该段证明或否定产品同页恢复/锚点保持。产品src未发现location.reload/assign等调用；隔离Vite虽hmr:false仍监视源码，现专用ignored配置再设watch:null，待夹具整包后重启并固定源；正式Validation须Page导航事件+documentId复核，无意reload使该场景无效而非预填通过。此前完成的CAS/weak/compact各自同document原始资料保留原结论边界。

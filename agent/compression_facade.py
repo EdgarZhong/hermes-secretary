@@ -320,6 +320,8 @@ class CompressionFacadeMixin:
                 )
             _mirror_result_onto_live_lists(self, result, messages, direct_path=direct_path)
             _rebind_caller_session_context(self)
+            from secretary.noting_native_link import adopt_native_publication
+            adopt_native_publication(self, registration, messages, result)
             observation_failed = False
             return result
         finally:
@@ -341,6 +343,8 @@ class CompressionFacadeMixin:
                     self._active_compression_commit_fence = fence_stack[-1].fence
                 else:
                     vars(self).pop("_active_compression_commit_fence", None)
+            from secretary.noting_native_link import finish_native_joint
+            finish_native_joint(self, registration)
             # Restore whatever the caller had, so a compaction never leaks its tag into the surrounding scope.
             if token is not None:
                 reset_conversation_context(token)

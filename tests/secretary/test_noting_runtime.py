@@ -131,7 +131,7 @@ def test_local_off_deadline_is_terminal_but_main_timer_lifecycle_continues(db):
     assert db.noting_idle_state(ref)["last_turn_finished_at"] == 1500.0
 
 
-def test_idle_admits_after_the_delay_with_the_frozen_anchor(db):
+def test_idle_requests_native_work_after_delay_and_freezes_at_native_entrance(db):
     make(db, "s")
     add(db, "s", "first", "m1")
     add(db, "s", "second", "m2")
@@ -145,12 +145,8 @@ def test_idle_admits_after_the_delay_with_the_frozen_anchor(db):
     assert (early.action, early.reason) == ("skip", "not_idle")
 
     due = _idle(db, ref, now=2000.0)
-    assert due.action == "admit"
-    admission = due.admission
-    assert admission.anchor_message_uid == "m2"
-    assert admission.kind == "idle"
-    assert admission.task_profile == TASK_PROFILE_NOTING
-    assert db.noting_admission(admission.admission_id)["anchor_message_uid"] == "m2"
+    assert due.action == "request" and due.compaction_due
+    assert due.admission is None and _admission_count(db) == 0
 
     repeat = _idle(db, ref, now=2100.0)
     assert (repeat.action, repeat.reason) == ("skip", "idle_trigger_produced")
@@ -180,7 +176,7 @@ def test_non_main_turns_never_touch_the_timer(db):
     state = db.noting_idle_state(ref)
     assert (state["last_turn_started_at"], state["last_turn_finished_at"]) == (1000.0, 1500.0)
     # The main Conversation is still idle despite all that child/hygiene activity.
-    assert _idle(db, ref, now=2000.0).action == "admit"
+    assert _idle(db, ref, now=2000.0).action == "request"
 
 
 def test_new_main_turn_resets_the_idle_timer(db):
@@ -195,7 +191,7 @@ def test_new_main_turn_resets_the_idle_timer(db):
 
     assert rt.note_main_turn_finished(agent, at=2500.0) is True
     assert _idle(db, ref, now=2999.0).reason == "not_idle"
-    assert _idle(db, ref, now=3000.0).action == "admit"
+    assert _idle(db, ref, now=3000.0).action == "request"
 
 
 def test_idle_requires_actual_length_and_has_one_runtime_profile(db):
@@ -210,21 +206,21 @@ def test_idle_requires_actual_length_and_has_one_runtime_profile(db):
     below = _idle(db, below_ref, measurement=_measurement(40_000), settings=settings, now=2000.0)
     at = _idle(db, at_ref, measurement=_measurement(55_000), settings=settings, now=2000.0)
     assert below.reason == "below_idle_threshold"
-    assert at.admission.task_profile == TASK_PROFILE_NOTING
-    assert at.admission.kind == "idle"
+    assert at.action == "request" and at.compaction_due
+    assert at.admission is None
 
 
-def test_idle_above_force_reserve_uses_single_force_occupation(db):
+def test_idle_above_force_reserve_still_uses_native_joint_path(db):
     make(db, "s")
     add(db, "s", "first", "m1")
     ref = ref_of(db, "s")
     db.noting_idle_turn_finished(ref, 1000.0)
     first = _idle(db, ref, measurement=_measurement(70_000), now=2000.0)
-    assert first.admission.kind == "force"
+    assert first.action == "request" and first.admission is None
     add(db, "s", "second", "m2")
     db.noting_idle_turn_finished(ref, 1200.0)
-    assert _idle(db, ref, measurement=_measurement(70_000), now=2000.0).reason == "force_interval_occupied"
-    assert _admission_count(db) == 1
+    assert _idle(db, ref, measurement=_measurement(70_000), now=2000.0).action == "request"
+    assert _admission_count(db) == 0
 
 
 def test_force_admission_boundaries_and_same_anchor_dedupe(db):
@@ -285,7 +281,7 @@ def test_no_admission_without_a_frozen_anchor(db):
 
     idle = _idle(db, ref, now=2000.0)
     force = rt.try_admit_force(db, ref, _measurement(64_000))
-    assert (idle.action, idle.reason) == ("skip", "no_frozen_anchor")
+    assert idle.action == "request" and idle.admission is None
     assert (force.action, force.reason) == ("skip", "no_frozen_anchor")
     assert _admission_count(db) == 0
 
@@ -375,7 +371,7 @@ def test_d01_external_gate_runs_only_after_a_real_trigger_and_before_admission(d
     db.noting_idle_turn_finished(idle_ref, 1100.0)  # A later native main idle period is independent.
     assert _idle(
         db, idle_ref, now=2000.0, execution_source="native",
-    ).action == "admit"
+    ).action == "request"
 
 
 def test_d01_actual_execution_fact_persists_and_no_request_does_not_overwrite(db):

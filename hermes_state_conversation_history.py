@@ -103,8 +103,8 @@ def resolve_history_scope_conn(db, conn, agent):
         if not isinstance(ref, str) or not ref or not parent_id:
             raise denied()
         task = conn.execute(
-            "SELECT a.conversation_ref FROM secretary_noting_children c "
-            "JOIN secretary_noting_admissions a ON a.admission_id=c.admission_id "
+            "SELECT a.conversation_ref FROM secretary_noting_task_children c "
+            "JOIN secretary_noting_task_admissions a ON a.admission_id=c.admission_id "
             "WHERE c.child_session_id=? AND c.status='running' AND c.finished_at IS NULL",
             (agent.session_id,),
         ).fetchall()

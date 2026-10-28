@@ -17,14 +17,21 @@ logger = logging.getLogger(__name__)
 _UNKNOWN = object()
 
 
-def prepare_noting_for_native_compression(agent, messages, *, trigger=None, force=False, verbatim_tail=None):
+def prepare_noting_for_native_compression(agent, messages, *, trigger=None, force=False, verbatim_tail=None, commit_fence=None):
     """The sole native pre-summary increment; Idle already froze its child before requesting this work."""
-    if trigger == 'noting_joint_idle':
-        return
     try:
         from secretary.noting_runtime import prepare_joint_noting
         active = [*messages, *verbatim_tail] if verbatim_tail else messages
-        prepare_joint_noting(agent, trigger='manual' if force else 'auto_compaction', messages=active)
+        from secretary.noting_native_link import operation_for_fence
+        operation_id = operation_for_fence(agent, commit_fence)
+        if commit_fence is not None and commit_fence.is_cancelled:
+            return
+        prepare_joint_noting(agent, trigger=('native_idle' if trigger == 'noting_joint_idle' else
+                                            'manual' if force else 'auto_compaction'),
+                            messages=active, operation_id=operation_id)
+        if commit_fence is not None and commit_fence.is_cancelled:
+            from secretary.noting_joint import cancel_operation
+            cancel_operation(agent, operation_id)
     except Exception:
         logger.warning('Noting preparation failed; native compression continues', exc_info=True)
 

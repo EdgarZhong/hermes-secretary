@@ -197,7 +197,8 @@ def _base_snapshot(db, conn, ref, admitted_at, data):
     explicit = data.get("base_snapshot_id")
     if explicit:
         snapshot = db.notebook_snapshot_audit_conn(conn, explicit)
-        if snapshot and snapshot["conversation_ref"] == ref:
+        if (snapshot and snapshot["conversation_ref"] == ref
+                and (snapshot.get("termination") or {}).get("type") != "superseded"):
             return explicit
     from secretary.notebook_render import model_notebook_data, readable_notebook_state
     initial = data["working_notebook"]
@@ -205,6 +206,8 @@ def _base_snapshot(db, conn, ref, admitted_at, data):
     for row in conn.execute("SELECT snapshot_id,payload_json FROM secretary_notebook_snapshots "
                             "WHERE conversation_ref=? AND created_at<=? ORDER BY created_at DESC,rowid DESC", (ref, admitted_at)):
         snapshot = db.notebook_snapshot_audit_conn(conn, row["snapshot_id"])
+        if (snapshot.get("termination") or {}).get("type") == "superseded":
+            continue
         projected = model_notebook_data(readable_notebook_state(
             snapshot["payload"], db=db, conn=conn, conversation_ref=ref))
         if projected == initial:
@@ -222,8 +225,8 @@ def _find_admission(db, conn, ref, failed, messages, data):
     parent_id = failed.get("parent_session_id")
     if not parent_id or db.resolve_conversation_ref_conn(conn, parent_id, read_only=True) != ref:
         raise NotingRecoveryError("Failed child parent lineage is not bound to the requested Conversation")
-    registration = conn.execute("SELECT a.* FROM secretary_noting_children c "
-                                "JOIN secretary_noting_admissions a USING(admission_id) "
+    registration = conn.execute("SELECT a.* FROM secretary_noting_task_children c "
+                                "JOIN secretary_noting_task_admissions a USING(admission_id) "
                                 "WHERE c.child_session_id=? AND a.conversation_ref=?", (failed["id"], ref)).fetchone()
     if registration is not None:
         return dict(registration)
@@ -234,7 +237,7 @@ def _find_admission(db, conn, ref, failed, messages, data):
     # Older recovery tools rebound the single child registry slot. Locate its
     # surviving admission from the original child/control rather than erasing it.
     candidates = [dict(row) for row in conn.execute(
-        "SELECT * FROM secretary_noting_admissions WHERE conversation_ref=? AND admitted_at<=? ORDER BY admitted_at DESC,admission_id DESC",
+        "SELECT * FROM secretary_noting_task_admissions WHERE conversation_ref=? AND admitted_at<=? ORDER BY admitted_at DESC,admission_id DESC",
         (ref, failed["started_at"]))]
     from hermes_time import format_timestamp
     content = messages[0].get("content", "") if messages else ""
@@ -269,6 +272,8 @@ def reconstruct_noting(db, conversation_ref, failed_child_session_id):
         if data.get("conversation_ref") != conversation_ref:
             raise NotingRecoveryError("Failed child control Conversation differs from the requested Conversation")
         admission = _find_admission(db, conn, conversation_ref, failed, messages, data)
+        if admission.get("state") in {"superseded", "cancelled"}:
+            raise NotingRecoveryError("A retired Noting task is audit-only and cannot be recovered")
         parent_rows = _parent_rows(db, conn, conversation_ref, admission, rows)
         prefix = db._rows_to_conversation(parent_rows, session_id=failed["parent_session_id"],
                                           include_ancestors=False, repair_alternation=False, include_summary_markers=True)

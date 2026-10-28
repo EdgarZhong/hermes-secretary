@@ -132,6 +132,7 @@ class _NotingCompletion:
     native_request: Any = None
     cleanup_requested: bool = False
     native_pending: bool = False
+    frozen_work: Any = None
 
 
 def _completion_key(db, admission_id):
@@ -172,25 +173,14 @@ def holds_parent_completion(parent):
 def _end_completion(db, handle, *, task_cleanup=False):
     if handle is None:
         return
-    from secretary.framework_messages import _lock
     key = _completion_key(db, handle.admission.admission_id)
-    with _lock(handle.parent):
-        # Reservation and retirement share the same final registry transaction.
-        # Never decide before waiting for Framework: reuse may reserve meanwhile.
-        with _ACTIVE_NOTING_LOCK:
-            if task_cleanup:
-                handle.cleanup_requested = True
-            request = handle.native_request
-            if handle.native_pending or request is not None and not request.completed.is_set():
-                return
-            if handle.task_lifecycle is not None and not task_cleanup:
-                return  # The queued carrier still owns final task cleanup.
-            handle.closed = True
-            handle.after_normal_commit = None
-            handle.continuation_parent = None
-            handle.continuation_epoch = None
-            if _NOTING_COMPLETIONS.get(key) is handle:
-                _NOTING_COMPLETIONS.pop(key)
+    with _ACTIVE_NOTING_LOCK:
+        handle.closed = True
+        handle.after_normal_commit = None
+        handle.continuation_parent = None
+        handle.continuation_epoch = None
+        if _NOTING_COMPLETIONS.get(key) is handle:
+            _NOTING_COMPLETIONS.pop(key)
 
 
 def reuse_noting_for_idle(parent, admission, callback):
@@ -613,13 +603,7 @@ def finish_child_admission(db: Any, admission_id: Any, *, status: str) -> None:
         return
     try:
         def finish(conn):
-            if not fn(conn, admission_id, status=status):
-                conn.execute(
-                    "INSERT OR IGNORE INTO secretary_noting_children "
-                    "(admission_id, status, registered_at, finished_at) "
-                    "SELECT admission_id, ?, ?, ? FROM secretary_noting_admissions WHERE admission_id = ?",
-                    (status, time.time(), time.time(), admission_id),
-                )
+            fn(conn, admission_id, status=status)
         db._execute_write(finish)
     except Exception:
         logger.warning("Failed to record Noting admission status for %s", admission_id, exc_info=True)
@@ -655,16 +639,19 @@ def commit_noting_snapshot(
     admission_id=None, child_session_id=None,
 ) -> dict:
     """Recheck capability and insert/reselect under the same DB transaction."""
-    from secretary.noting_runtime import noting_trigger_gate
+    from secretary.noting_runtime import noting_commit_gate
 
     def commit(conn):
-        enabled, reason = noting_trigger_gate(db, conversation_ref)
+        enabled, reason = noting_commit_gate(db, conversation_ref)
         if not enabled:
             raise NotingChildError(reason or "Noting is effectively disabled")
+        from secretary.noting_joint import require_commit, record_commit
+        require_commit(conn, admission_id)
         result = db.notebook_commit_snapshot_result_conn(
             conn, conversation_ref, state, anchor_message_uid=anchor_message_uid,
             trigger_type=trigger_type, runtime_profile=runtime_profile, termination=termination,
         )
+        record_commit(conn, admission_id, result["snapshot_id"])
         if admission_id is not None:
             _record_child_commit(db, conn, admission_id, child_session_id, result)
         return result
@@ -825,8 +812,8 @@ def run_noting_task(
 
     Entry point for the admission flow (T3B / main session): the caller has already
     admitted the Anchor and owns the idempotence record; this returns after execution
-    and the Snapshot commit gate. A deferred Framework carrier retains the child
-    owner until the carrier is published or retired, without blocking this worker.
+    and the Snapshot commit gate. Task ownership ends with execution; deferred
+    Framework delivery remains owned by the parent runtime.
     ``parent_active_messages`` is the Parent's Active context frozen at admission; when
     omitted the Parent's current live transcript is used (still truncated at the Anchor).
     ``admission_id`` is T3B's durable admission handle (``NotingAdmission.admission_id``).
@@ -956,6 +943,11 @@ def _run_child_turns(
     if recovery_history:
         history.extend(_clone_message(message) for message in recovery_history)
     while outcome.turns < _NOTING_TURN_LIMIT:
+        from secretary.noting_joint import task_state
+        qualified = task_state(child)
+        if qualified != "admitted":
+            outcome.status = qualified
+            return
         outcome.turns += 1
         try:
             result = child.run_conversation(
@@ -963,6 +955,10 @@ def _run_child_turns(
             )
         except NotingContextOverflow:
             _force_task_close(child, runtime_profile, outcome, termination_type="context_overflow")
+            return
+        qualified = task_state(child)
+        if qualified != "admitted":
+            outcome.status = qualified
             return
         if (getattr(child, "_secretary_noting_context_overflow", False)
                 or isinstance(result, dict) and result.get("failure_reason") == "context_overflow"):
@@ -1010,8 +1006,8 @@ def _commit_when_complete(
 ) -> None:
     if outcome.status != "completed":
         return
-    from secretary.noting_runtime import noting_trigger_gate
-    enabled, reason = noting_trigger_gate(parent_db, conversation_ref)
+    from secretary.noting_runtime import noting_commit_gate
+    enabled, reason = noting_commit_gate(parent_db, conversation_ref)
     if not enabled:
         outcome.status, outcome.error = "abandoned", reason
         return
@@ -1053,29 +1049,9 @@ def _commit_when_complete(
 
 
 def _publish_committed_completion(child, conversation_ref, termination, outcome):
-    if outcome.committed and outcome.commit_result["pointer_changed"]:
-        try:
-            from secretary.framework_messages import publish_noting_completion
-            parent = child._secretary_noting_parent
-            if getattr(parent, "_secretary_conversation_ref", None) != conversation_ref:
-                logger.info("Committed Noting notice skipped after Parent switched Conversations")
-                return
-            summary = outcome.termination_summary or termination.get("reason") or {
-                "forced": "The five-Turn budget ended; the legal working view was committed with unfinished work possible.",
-                "context_overflow": "The context window was exhausted; the legal working view was committed with unfinished work possible.",
-            }[termination["type"]]
-            from secretary.noting_task_lifecycle import task_lifecycle
-            settled = task_lifecycle(child).carrier()
-            try:
-                published = publish_noting_completion(parent, outcome.commit_result, termination=termination,
-                                                      summary=summary, on_settled=settled)
-                if published is not True:
-                    settled()
-            except BaseException:
-                settled()
-                raise
-        except Exception:
-            logger.warning("Committed Noting finish notice could not be published", exc_info=True)
+    if outcome.committed:
+        from secretary.noting_notes import check_note_delivery
+        check_note_delivery(child._secretary_noting_parent)
 
 
 def _close_child(child: Any) -> None:
@@ -1095,6 +1071,7 @@ def spawn_noting_task(
     parent_active_messages: Optional[Sequence[Dict[str, Any]]] = None,
     owning_profile: Optional[str] = None,
     after_normal_commit: Optional[Callable[[], None]] = None,
+    start_gate=None,
 ) -> threading.Thread:
     """Run one admitted Noting Task on a context-scoped worker thread.
 
@@ -1111,6 +1088,7 @@ def spawn_noting_task(
         frozen_runtime = freeze_parent_runtime(parent)
         admitted_at = parent_db.noting_admission(admission.admission_id)["admitted_at"]
         frozen_work = freeze_notebook_start(parent_db, admission.conversation_ref)
+        completion.frozen_work = frozen_work
     except Exception as exc:
         finish_child_admission(parent_db, admission.admission_id, status="failed")
         failure_notice.publish(str(exc))
@@ -1119,6 +1097,10 @@ def spawn_noting_task(
 
     def _run() -> None:
         try:
+            if start_gate is not None:
+                start_gate.wait()
+            if parent_db.noting_admission(admission.admission_id)["state"] != "admitted":
+                return
             from secretary.noting_scope import owning_db_scope
             with owning_db_scope(parent_db):
                 run_noting_task(

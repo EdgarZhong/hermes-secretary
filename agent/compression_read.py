@@ -61,6 +61,8 @@ def cancel_compression(agent, operation_id):
         if result is not True:
             return {"operation_id": operation_id, "outcome": "too_late"}
         registration.observation.cancel_requested = True
+        from secretary.noting_joint import cancel_operation
+        cancel_operation(agent, operation_id)
         return {"operation_id": operation_id, "outcome": "cancelled"}
 
 

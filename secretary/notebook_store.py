@@ -89,6 +89,8 @@ class NotebookStore:
                         db.notebook_snapshot_audit_conn(conn, self._base_snapshot_id))
             if self._base_snapshot_id is not None and snapshot is None:
                 raise NotebookValidationError("The bound base Snapshot is unavailable.", code="source_unavailable")
+            if snapshot is not None and (snapshot.get("termination") or {}).get("type") == "superseded":
+                raise NotebookValidationError("A superseded audit cannot be a task base.", code="scope_denied")
             if snapshot is not None and snapshot["conversation_ref"] != conversation_ref:
                 raise NotebookValidationError("The base Snapshot belongs to another Conversation.", code="scope_denied")
             payload = (working_state if working_state is not None else

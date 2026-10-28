@@ -66,11 +66,19 @@ def refresh_maintenance(parent):
 
 def holds_maintenance(parent):
     """Exact, live maintenance exemption; no DB, policy I/O or parent locks here."""
-    if parent is None or not getattr(parent, "_secretary_maintenance_allowed", False):
+    if parent is None:
         return False
     from secretary.noting_scope import is_current_main_runtime
     if not is_current_main_runtime(parent):
         return False
+    if getattr(parent, "_active_compression_commit_fence", None) is not None:
+        return True
+    request = getattr(parent, "_native_compaction_request", None)
+    if (request is not None and not request.completed.is_set()
+            and request.owner is vars(parent).get("_native_compaction_owner")
+            and request.db is getattr(parent, "_session_db", None)
+            and request.conversation_ref == getattr(parent, "_secretary_conversation_ref", None)):
+        return True
     if holds_pending_timer(parent):
         return True
     from secretary.noting_child import holds_parent_completion

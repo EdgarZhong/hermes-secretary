@@ -86,6 +86,10 @@ def init_secretary_noting_schema(cursor):
     for statement in SECRETARY_NOTING_SCHEMA_SQL.split(";"):
         if statement.strip():
             cursor.execute(statement)
+    from secretary.noting_attempts import init_attempts
+    init_attempts(cursor)
+    from secretary.noting_notes import NOTE_RECEIPT_SCHEMA
+    cursor.execute(NOTE_RECEIPT_SCHEMA)
 
 
 def _require_text(value, label):
@@ -150,12 +154,12 @@ class SecretaryNotingMixin:
 
     def noting_force_occupied_conn(self, conn, conversation_ref, interval_id=None):
         interval = interval_id or self.noting_compaction_interval_conn(conn, conversation_ref)
-        return conn.execute("SELECT 1 FROM secretary_noting_admissions WHERE conversation_ref=? "
+        return conn.execute("SELECT 1 FROM secretary_noting_task_admissions WHERE conversation_ref=? "
                             "AND compression_interval_id=? AND kind='force' LIMIT 1",
                             (conversation_ref, interval)).fetchone() is not None
 
-    def noting_admit_conn(self, conn, conversation_ref, anchor_message_uid, *, kind):
-        """Anchor deduplication and Force interval occupancy share this write transaction."""
+    def noting_admit_conn(self, conn, conversation_ref, anchor_message_uid, *, kind, operation_id=None):
+        from secretary.noting_attempts import admit_attempt
         _require_text(conversation_ref, "An owning Conversation Ref")
         _require_text(anchor_message_uid, "A frozen Anchor Message UID")
         if kind not in ADMISSION_KINDS:
@@ -163,13 +167,7 @@ class SecretaryNotingMixin:
         interval = self.noting_compaction_interval_conn(conn, conversation_ref)
         if self.noting_force_occupied_conn(conn, conversation_ref, interval):
             return None
-        cursor = conn.execute(
-            "INSERT OR IGNORE INTO secretary_noting_admissions "
-            "(conversation_ref, anchor_message_uid, kind, compression_interval_id, admitted_at) "
-            "VALUES (?, ?, ?, ?, ?)",
-            (conversation_ref, anchor_message_uid, kind, interval, time.time()),
-        )
-        return cursor.lastrowid if cursor.rowcount == 1 else None
+        return admit_attempt(conn, conversation_ref, anchor_message_uid, kind, interval, operation_id)
 
     def noting_admit(self, conversation_ref, anchor_message_uid, *, kind):
         return self._execute_write(lambda conn: self.noting_admit_conn(
@@ -177,7 +175,7 @@ class SecretaryNotingMixin:
 
     def noting_admission_conn(self, conn, admission_id):
         row = conn.execute(
-            "SELECT * FROM secretary_noting_admissions WHERE admission_id = ?", (admission_id,),
+            "SELECT * FROM secretary_noting_task_admissions WHERE admission_id = ?", (admission_id,),
         ).fetchone()
         return None if row is None else dict(row)
 
@@ -189,8 +187,8 @@ class SecretaryNotingMixin:
         """Find only the task which caused Force occupancy or exact-Anchor deduplication."""
         condition, value = ("anchor_message_uid=?", anchor) if anchor is not None else ("kind=?", "force")
         row = conn.execute(
-            "SELECT * FROM secretary_noting_admissions WHERE conversation_ref=? "
-            "AND compression_interval_id=? AND " + condition + " ORDER BY admission_id DESC LIMIT 1",
+            "SELECT * FROM secretary_noting_task_admissions WHERE conversation_ref=? "
+            "AND compression_interval_id=? AND state NOT IN ('cancelled','superseded','failed','abandoned') AND " + condition + " ORDER BY admitted_at DESC LIMIT 1",
             (conversation_ref, interval_id, value),
         ).fetchone()
         return dict(row) if row is not None else None
@@ -198,8 +196,8 @@ class SecretaryNotingMixin:
     def noting_record_child_snapshot_conn(self, conn, admission_id, child_session_id, result):
         """Bind the runner's real child to its Snapshot inside the original commit transaction."""
         row = conn.execute(
-            "SELECT a.conversation_ref,a.anchor_message_uid,a.kind FROM secretary_noting_admissions a "
-            "JOIN secretary_noting_children c USING(admission_id) JOIN sessions s ON s.id=c.child_session_id "
+            "SELECT a.conversation_ref,a.anchor_message_uid,a.kind FROM secretary_noting_task_admissions a "
+            "JOIN secretary_noting_task_children c USING(admission_id) JOIN sessions s ON s.id=c.child_session_id "
             "WHERE a.admission_id=? AND c.child_session_id=? AND c.status='running'",
             (admission_id, child_session_id),
         ).fetchone()
@@ -218,8 +216,8 @@ class SecretaryNotingMixin:
         if self.noting_compaction_interval_conn(conn, conversation_ref) != interval_id:
             return None
         row = conn.execute(
-            "SELECT a.anchor_message_uid,a.kind,c.status,s.model_config FROM secretary_noting_admissions a "
-            "JOIN secretary_noting_children c USING(admission_id) JOIN sessions s ON s.id=c.child_session_id "
+            "SELECT a.anchor_message_uid,a.kind,c.status,s.model_config FROM secretary_noting_task_admissions a "
+            "JOIN secretary_noting_task_children c USING(admission_id) JOIN sessions s ON s.id=c.child_session_id "
             "WHERE a.admission_id=? AND a.conversation_ref=? AND a.compression_interval_id=?",
             (admission_id, conversation_ref, interval_id),
         ).fetchone()
@@ -248,14 +246,20 @@ class SecretaryNotingMixin:
 
     def noting_child_register_conn(self, conn, admission_id, *, child_session_id, profile):
         """Bind the spawned child Session to its admission; re-registration only rebinds identity."""
-        if conn.execute(
-            "SELECT 1 FROM secretary_noting_admissions WHERE admission_id = ?", (admission_id,),
+        attempt = conn.execute("SELECT 1 FROM secretary_noting_attempts WHERE admission_id=?",
+                               (admission_id,)).fetchone()
+        if attempt is None and conn.execute(
+            "SELECT 1 FROM secretary_noting_admissions WHERE admission_id=?", (admission_id,),
         ).fetchone() is None:
             raise ValueError("Unknown Noting admission")
         _require_text(child_session_id, "A child Session id")
         if profile is not None and (not isinstance(profile, str) or not profile.strip()):
             raise ValueError("A child profile name must be a nonempty string when provided")
-        conn.execute(_CHILD_REGISTER_SQL, (admission_id, child_session_id, profile or None, time.time()))
+        if attempt is None:
+            conn.execute(_CHILD_REGISTER_SQL, (admission_id, child_session_id, profile or None, time.time()))
+        else:
+            from secretary.noting_attempts import register_attempt_child
+            register_attempt_child(conn, admission_id, child_session_id, profile)
 
     def noting_child_register(self, admission_id, *, child_session_id, profile):
         return self._execute_write(lambda conn: self.noting_child_register_conn(
@@ -264,11 +268,12 @@ class SecretaryNotingMixin:
     def noting_child_finish_conn(self, conn, admission_id, *, status):
         """Record the child's terminal status; False when the admission has no child row."""
         _require_text(status, "A child terminal status")
-        cursor = conn.execute(
-            "UPDATE secretary_noting_children SET status = ?, finished_at = ? WHERE admission_id = ?",
-            (status, time.time(), admission_id),
-        )
-        return cursor.rowcount == 1
+        if conn.execute("SELECT 1 FROM secretary_noting_attempts WHERE admission_id=?",
+                        (admission_id,)).fetchone() is None:
+            return conn.execute("UPDATE secretary_noting_children SET status=?,finished_at=? WHERE admission_id=?",
+                                (status, time.time(), admission_id)).rowcount == 1
+        from secretary.noting_attempts import finish_attempt_child
+        return finish_attempt_child(conn, admission_id, status)
 
     def noting_child_finish(self, admission_id, *, status):
         return self._execute_write(lambda conn: self.noting_child_finish_conn(
@@ -276,7 +281,7 @@ class SecretaryNotingMixin:
 
     def noting_child_conn(self, conn, admission_id):
         row = conn.execute(
-            "SELECT * FROM secretary_noting_children WHERE admission_id = ?", (admission_id,),
+            "SELECT * FROM secretary_noting_task_children WHERE admission_id = ?", (admission_id,),
         ).fetchone()
         return None if row is None else dict(row)
 

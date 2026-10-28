@@ -49,7 +49,8 @@ END;
 
 _SNAPSHOT_CANDIDATES_SQL = (
     "SELECT snapshot_id, anchor_message_uid, created_at, rowid AS insert_order "
-    "FROM secretary_notebook_snapshots WHERE conversation_ref = ?"
+    "FROM secretary_notebook_snapshots WHERE conversation_ref = ? "
+    "AND COALESCE(json_extract(termination_json, '$.type'),'')<>'superseded'"
 )
 _SNAPSHOT_BY_ID_SQL = "SELECT * FROM secretary_notebook_snapshots WHERE snapshot_id = ?"
 _INSERT_SNAPSHOT_SQL = (
@@ -109,7 +110,7 @@ def _termination_json(termination):
         if not isinstance(reason, str) or not reason.strip():
             raise NotebookError("finish_noting termination requires a nonempty reason")
         value = {"type": kind, "reason": reason.strip()}
-    elif isinstance(kind, str) and kind in {"forced", "context_overflow"}:
+    elif isinstance(kind, str) and kind in {"forced", "context_overflow", "superseded"}:
         if set(termination) != {"type"}:
             raise NotebookError(f"{kind} termination accepts no extra fields")
         value = {"type": kind}
@@ -199,7 +200,8 @@ class SecretaryNotebookMixin:
         if snapshot_id is None:
             return None
         row = conn.execute(_SNAPSHOT_BY_ID_SQL, (snapshot_id,)).fetchone()
-        if row is None or row["conversation_ref"] != conversation_ref:
+        if (row is None or row["conversation_ref"] != conversation_ref
+                or json.loads(row["termination_json"] or "{}").get("type") == "superseded"):
             raise NotebookError("The current pointer references an unavailable Snapshot")
         return _snapshot_record(conn, row)
 
@@ -209,7 +211,8 @@ class SecretaryNotebookMixin:
         if snapshot_id is None:
             return None
         row = conn.execute(_SNAPSHOT_BY_ID_SQL, (snapshot_id,)).fetchone()
-        if row is None or row["conversation_ref"] != conversation_ref:
+        if (row is None or row["conversation_ref"] != conversation_ref
+                or json.loads(row["termination_json"] or "{}").get("type") == "superseded"):
             raise NotebookError("The current pointer references an unavailable Snapshot")
         return _snapshot_record(conn, row, include_archived=True)["payload"]
 
@@ -290,7 +293,8 @@ class SecretaryNotebookMixin:
             (parent_conversation_ref,),
         ).fetchall()
         for source in sources:
-            if source["anchor_message_uid"] not in positions:
+            if (source["anchor_message_uid"] not in positions
+                    or json.loads(source["termination_json"] or "{}").get("type") == "superseded"):
                 continue
             conn.execute(_INSERT_SNAPSHOT_SQL, (
                 "snap_" + uuid.uuid4().hex, branch_conversation_ref, source["anchor_message_uid"],

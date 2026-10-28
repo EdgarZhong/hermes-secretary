@@ -912,6 +912,9 @@ class GatewayAgentCacheMixin:
         resume, so terminal sandbox, browser daemon and bg processes outlive the AIAgent instance."""
         if agent is None:
             return
+        from secretary.noting_cache_owner import claim_cache_release
+        if not claim_cache_release(agent):
+            return
         with suppress(Exception):
             if hasattr(agent, "release_clients"):
                 agent.release_clients()
@@ -990,7 +993,9 @@ class GatewayAgentCacheMixin:
             return agent is not None and agent is not _AGENT_PENDING_SENTINEL and id(agent) not in running_ids
 
         def _is_evictable(key: str, agent: Any) -> bool:
-            return _is_live(agent) and transcript_persistence_caught_up(agent)
+            from secretary.noting_timers import refresh_maintenance, holds_maintenance
+            refresh_maintenance(agent)
+            return _is_live(agent) and not holds_maintenance(agent) and transcript_persistence_caught_up(agent)
 
         with _lock:
             ordered = [(key, _first_agent(entry)) for key, entry in _cache.items()]
@@ -998,6 +1003,8 @@ class GatewayAgentCacheMixin:
                 ordered, is_evictable=_is_evictable, max_evictions=bounds.max_evictions_per_pass,
                 protect_recent=bounds.protect_recent,
             )
+            from secretary.noting_cache_owner import claim_cache_release
+            plan = [(key, agent) for key, agent in plan if claim_cache_release(agent)]
             for key, _ in plan:
                 _cache.pop(key, None)
         if not plan:
@@ -1065,7 +1072,9 @@ class GatewayAgentCacheMixin:
         # history) to protect a long-running one. Cache may stay over cap until the next insert.
         cap = self._agent_cache_cap()
         candidates = [(key, _tuple_agent(_cache.get(key))) for key in list(_cache.keys())[:max(0, len(_cache) - cap)]]
-        evict_plan = [(key, agent) for key, agent in candidates if agent is None or id(agent) not in running_ids]
+        from secretary.noting_cache_owner import claim_cache_release
+        evict_plan = [(key, agent) for key, agent in candidates
+                      if (agent is None or id(agent) not in running_ids) and claim_cache_release(agent)]
         for key, _ in evict_plan:
             _cache.pop(key, None)
         remaining_over_cap = len(_cache) - cap
@@ -1102,7 +1111,9 @@ class GatewayAgentCacheMixin:
                 last_activity = getattr(agent, "_last_activity_ts", None)
                 if last_activity is None or (now - last_activity) <= idle_ttl:
                     continue
-                to_evict.append((key, agent))
+                from secretary.noting_cache_owner import claim_cache_release
+                if claim_cache_release(agent):
+                    to_evict.append((key, agent))
             for key, _ in to_evict:
                 _cache.pop(key, None)
         for key, agent in to_evict:

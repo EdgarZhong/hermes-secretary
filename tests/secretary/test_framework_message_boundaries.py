@@ -29,7 +29,7 @@ def profile(db, stub_client, parent):
         parent.context_compressor.update_from_response({'prompt_tokens': 8000})
         # Framework tests keep native compaction as a controlled boundary; its
         # implementation/interval transition is independently owned by C7.
-        parent.request_context_compaction = lambda **kwargs: SimpleNamespace(status='cooldown')
+        parent.request_context_compaction = lambda **kwargs: SimpleNamespace(ok=True, status='admitted')
         yield
         from secretary.noting_timers import cancel_idle_timer
         cancel_idle_timer(db, db.resolve_conversation_ref('S17'))
@@ -42,9 +42,9 @@ def _produce(parent, db, stub_client, monkeypatch, kind):
     ref = parent._secretary_conversation_ref
     rt.bind_main_runtime(parent)
     if kind == 'finish':
-        db.noting_idle_turn_finished(ref, 1000, due_at=1001)
-        from secretary.noting_policy import measurement_from_agent
-        decision = rt.try_admit_idle(db, ref, now=2000, measurement=measurement_from_agent(parent, 8000))
+        # This suite exercises the producer after its native pre-summary
+        # admission. Trigger concurrency is covered by the U20 native Loop suite.
+        decision = rt._freeze_and_admit(db, ref, kind='idle')
         assert decision.action == 'admit'
         stub_client.chat.completions.create.side_effect = [
             _tool_response('finish_noting', {'reason': 'Boundary work complete'}, 'finish'),
@@ -54,6 +54,7 @@ def _produce(parent, db, stub_client, monkeypatch, kind):
         worker.join(15)
         assert not worker.is_alive()
         assert db.notebook_current(ref)
+        _next_interval(parent, db)
     elif kind == 'force':
         parent.context_compressor.context_length = 130000
         parent.context_compressor.threshold_tokens = 75000
@@ -69,6 +70,18 @@ def _produce(parent, db, stub_client, monkeypatch, kind):
     cancel_idle_timer(db, ref)
     return next(row for row in reversed(parent._session_messages)
                 if row.get('display_kind') == 'process_complete')
+
+
+def _next_interval(parent, db):
+    from agent.context_compressor import COMPRESSED_SUMMARY_METADATA_KEY
+    from secretary.noting_notes import check_note_delivery
+    # Retain the complete native tail so these tests can inspect every original
+    # Framework/human identity after a real durable successful boundary.
+    rows = [{'role': 'assistant', 'content': 'Summary for the next interval',
+             COMPRESSED_SUMMARY_METADATA_KEY: True}, *copy.deepcopy(parent._session_messages)]
+    db.archive_and_compact(parent.session_id, rows)
+    parent._session_messages = db.get_messages_as_conversation(parent.session_id, include_row_ids=True)
+    assert check_note_delivery(parent)
 
 
 def _stage_human(parent, text, timestamp):
@@ -144,16 +157,17 @@ def test_real_producer_rows_survive_main_repair_wire_and_next_idle(
         frozen.append((admission, freeze_parent_active_prefix(owner, admission.anchor_message_uid)))
     monkeypatch.setattr('secretary.noting_child.spawn_noting_task', spawn)
     idle_result = rt._run_idle_event(parent, db, ref, now=finished + 3601)
+    assert idle_result == 'idle_compaction_requested'
     if producer == 'force':
-        # This fixture captured a Force admission without running its child.
-        # R11 requires a normal committed result before Idle can compact it;
-        # inspect the intact prefix without inventing a successful completion.
-        assert idle_result == 'skip:existing_noting_not_successful' and not frozen
+        # Force occupies Noting only. The independent native request proceeds.
+        assert not frozen
         assert db.notebook_current(ref) is None
         prefix = freeze_parent_active_prefix(parent, live[-1]['message_uid'])
         anchor_uid = prefix[-1]['message_uid']
     else:
-        assert idle_result == 'admitted'
+        # The controlled native requester above has not executed its summary
+        # seam. Invoke that same real entrance before checking prefix identity.
+        assert rt.prepare_joint_noting(parent, trigger='native_idle').action == 'admit'
         admission, prefix = frozen[0]
         anchor_uid = admission.anchor_message_uid
     assert any(row.get('message_uid') == human['message_uid'] for row in prefix)
@@ -216,6 +230,7 @@ def test_three_real_framework_producers_keep_three_identities_in_main(parent, db
     worker = spawn_noting_task(parent, parent._test_force_admission)
     worker.join(15)
     assert not worker.is_alive() and db.notebook_current(parent._secretary_conversation_ref)
+    _next_interval(parent, db)
     finish = copy.deepcopy(parent._session_messages[-1])
     external = copy.deepcopy(_produce(parent, db, stub_client, monkeypatch, 'external'))
     frameworks = [force, finish, external]

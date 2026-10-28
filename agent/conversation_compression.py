@@ -3813,7 +3813,7 @@ def _run_summary_phase(
                 approx_tokens = 0  # Adopted rows need native re-measurement.
                 # The adopted list is durable; skip it on the post-compression flush.
                 agent._persist_user_message_idx = len(messages)
-        prepare_noting_for_native_compression(agent, messages, trigger=noting_trigger, force=force, verbatim_tail=verbatim_tail)
+        prepare_noting_for_native_compression(agent, messages, trigger=noting_trigger, force=force, verbatim_tail=verbatim_tail, commit_fence=commit_fence)
         # Freeze/rollback use the raw history; every compression consumer shares the visible source.
         raw_messages, messages = messages, model_visible_messages(messages)
         verbatim_tail = None if verbatim_tail is None else model_visible_messages(verbatim_tail)
@@ -4255,7 +4255,7 @@ def _compress_context_via_codex_app_server(
         agent._emit_status(COMPACTION_STATUS)
     _activity_heartbeat = _CompressionActivityHeartbeat(agent, emit_client_status=True).start()
     try:
-        prepare_noting_for_native_compression(agent, messages, trigger=noting_trigger, force=force)
+        prepare_noting_for_native_compression(agent, messages, trigger=noting_trigger, force=force, commit_fence=commit_fence)
         result = dispatch_codex_compaction(agent, codex_session, commit_fence, admission_receipt, snapshot_is_current)
     except BaseException:
         _activity_heartbeat.stop("context compression failed")

@@ -133,7 +133,7 @@ def _publication_scope(db, ref, cold_parent):
     if route is None:
         raise NotingRecoveryError("Conversation current publication route is unavailable")
     target = route["id"]
-    if not db.acquire_session_turn_lease(target, holder):
+    if not db.acquire_session_turn_lease(target, holder, wait_seconds=0):
         raise NotingRecoveryError("Native Main Turn lease unavailable for completion publication")
     try:
         with db._read_ctx() as conn:
@@ -215,11 +215,6 @@ def _run_recovery(key, audit, recovered, parent_factory):
             frozen["session_id"] = recovered.failed_child["parent_session_id"]
             prefix = freeze_parent_active_prefix(parent, recovered.admission["anchor_message_uid"],
                                                   recovered.prefix, conversation_ref=audit["conversation_ref"])
-            @contextmanager
-            def completion_scope(child):
-                with _publication_scope(db, audit["conversation_ref"], parent) as publisher:
-                    child._secretary_noting_parent = publisher
-                    yield
             parent._session_messages = db.get_messages_as_conversation(parent.session_id, include_row_ids=True)
             outcome = run_noting_task(
                 parent, admission_id=recovered.admission["admission_id"], conversation_ref=audit["conversation_ref"],
@@ -228,7 +223,7 @@ def _run_recovery(key, audit, recovered, parent_factory):
                 parent_active_messages=prefix, admission_timestamp=recovered.admission["admitted_at"],
                 session_id=key[1], frozen_runtime=frozen,
                 frozen_work={"base_snapshot_id": recovered.base_snapshot_id, "working_state": recovered.working_state},
-                recovery_audit=audit, recovery_history=recovered.suffix, completion_scope=completion_scope,
+                recovery_audit=audit, recovery_history=recovered.suffix,
                 _failure_notice=_RecoveryFailureNotice(db, audit["conversation_ref"], parent, recovered.admission["admission_id"]))
             audit.update(status=outcome.status, committed=outcome.committed, snapshot_id=outcome.snapshot_id,
                          error=outcome.error, finished_at=time.time())
