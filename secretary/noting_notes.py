@@ -39,23 +39,28 @@ def select_note_conn(db, conn, ref):
     if conn.execute("SELECT 1 FROM secretary_noting_note_receipts WHERE conversation_ref=? AND interval_id=?",
                     (ref, interval)).fetchone() is not None:
         return None
+    from secretary.noting_note_sources import snapshot_source_intervals_conn
+    source_intervals = snapshot_source_intervals_conn(conn, ref)
     snapshots = conn.execute(
         "SELECT s.snapshot_id,s.anchor_message_uid,s.rowid AS sequence FROM secretary_notebook_snapshots s "
-        "WHERE s.conversation_ref=? AND COALESCE(json_extract(s.termination_json,'$.type'),'')<>'superseded' "
-        "AND NOT EXISTS (SELECT 1 FROM secretary_noting_task_admissions a WHERE a.snapshot_id=s.snapshot_id "
-        "AND a.compression_interval_id=?)",
-        (ref, interval)).fetchall()
+        "WHERE s.conversation_ref=? AND COALESCE(json_extract(s.termination_json,'$.type'),'')<>'superseded'",
+        (ref,)).fetchall()
     candidates = [(positions[row["anchor_message_uid"]], row["sequence"], row["snapshot_id"])
-                  for row in snapshots if row["anchor_message_uid"] in positions
+                  for row in snapshots if source_intervals.get(row["snapshot_id"]) != interval
+                  and row["anchor_message_uid"] in positions
                   and positions[row["anchor_message_uid"]] < boundary]
     if not candidates:
         return None
     position, _sequence, snapshot_id = max(candidates)
     # Only the most recent source task can still change the selected result.
+    from secretary.noting_note_sources import recovery_source_tasks_conn
+    tasks = [dict(row) for row in conn.execute(
+        "SELECT * FROM secretary_noting_task_admissions WHERE conversation_ref=? AND state<>'superseded'",
+        (ref,))]
+    tasks.extend(recovery_source_tasks_conn(conn, ref))
     latest = [(positions[row["anchor_message_uid"]], row["admitted_at"], row["state"])
-              for row in conn.execute("SELECT * FROM secretary_noting_task_admissions WHERE conversation_ref=? "
-                                      "AND state<>'superseded' AND compression_interval_id<>?", (ref, interval))
-              if row["anchor_message_uid"] in positions and positions[row["anchor_message_uid"]] < boundary]
+              for row in tasks if row["compression_interval_id"] != interval
+              and row["anchor_message_uid"] in positions and positions[row["anchor_message_uid"]] < boundary]
     if latest:
         source, _admission_id, state = max(latest)
         if source >= position and state == "admitted":

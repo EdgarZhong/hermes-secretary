@@ -1,5 +1,9 @@
 # 运维记录
 
+## 2026-10-29 · Alex Noting／Compact只读复盘
+
+按用户反馈只读核查，未重启服务、触发模型或改生产库。正式后端3426c0f、前端0947ed5，Web／Gateway均active。Force admission17于00:47:06准入，00:55:20实际提交Notebook Snapshot、00:55:21任务完成；Force Noting本身不等于已执行Compact。用户随后手动Compact于01:06:47取得锁，新summary实际于01:13:50落库，01:14:09核旧summary已compacted、新summary生效且锁已释放，未见压缩失败字段。时间均Asia/Shanghai。仅记状态事实，不收录Notebook正文／业务内容；前端误恢复另在当前实现轮次修复，不能据UI提示断言真实Socket断开或服务器卡死。
+
 维护实际部署、故障处理、验证与回滚点；步骤和稳定布局见[部署SOP](cloud-deployment-sop.md)，当前任务只在根[CLAUDE](../CLAUDE.md)。以下时间均为Asia/Shanghai；PID、指纹和测试结论只对应记录时点，不代表实时状态。凭据、令牌、原始私人材料不写入本文件。
 
 

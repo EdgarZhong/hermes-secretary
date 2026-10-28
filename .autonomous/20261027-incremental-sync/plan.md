@@ -2,6 +2,8 @@
 
 ## 第二次迭代（2026-10-28，用户已授权纳入U20）
 
+**当前阻塞补修（2026-10-29）：** Noting开始／提交／结束复用全局history wake，导致空owner sessions.changed误触发当前Chat／Usage恢复；Socket仍连接时，暂不可用响应可误撤销原操作资格。root指定独立Secretary跨进程wake，保留原history失效；native sessions.changed只增可选完整变更会话scope，能证明当前物理会话未变才不启动其恢复，未知／真实历史改写保持原恢复。原生事件与API默认兼容，不以隐藏提示或强ready代替修复。C-R5/C-R6已亲审接收，62项及冻结检查复用。
+
 **U22自主目标及轮次上限：** 已按用户明确要求创建自主目标，持续推进。第一轮后Verification、Validation各最多再两次正式全轮复审／复验，对应第二、第三轮；所有包的反例、开发测试、主会话review和集成先闭合再统一送审，不按包开启门禁。用户U24已将Verification改回本地；先前云端安排仅为历史。第三轮为最终允许轮次，上限不作为带缺陷通过或放宽阈值的理由；仍有缺口则明确未完成，不开启第四轮。
 
 **U23最终发布完成条件：** 用户最新明确授权最终正式上线及0.1.9 APK打包交付，覆盖本计划及旧报告中的“未授权部署”历史限制。最终候选通过后合入两仓main、按既有cloud-deployment-sop/operations-log发布Alex（ssh alex），云端保持main，核实际后端版本及前端资源/健康/配置与三库保护；准备可用回滚点并最多保留两套有效三库历史备份。APK按现有签名与架构构建0.1.9，核versionName/versionCode递增、签名/ZIP/资源SHA/包哈希并按既有交付入口交付。无真机时如实记机制/包核验边界，不假称实机通过。生产模型调用及真实微信测试外发仍未获授权。
@@ -171,3 +173,21 @@ APK主动顶栏下拉先出浏览器原型。最新设计替换此前整页下�
 用户原话及明确目标已落06顶部及索引。root已扫描正式原生/前端：ForegroundRefresh无reload，现仅冷启动loadUrl、真实认证redirect导航、用户按钮/顶栏手势reload；不过PackagedWebViewClient.appDocument的临时网络异常／5xx返回静态unavailable页，SPA尚未启动，所以不能同页自愈。此为主会话开发接线发现，独立Verifier仍处于仅规格判据阶段，不算正式门禁发现／新一轮。
 
 root指定窄修：临时bootstrap传输失败／暂时服务错误时返回现有内置SPA和明确deferred bootstrap标记，无token／无伪授权；Gateway只在此APK专属初始提示下首尝试走现有freshBootstrapToken，原current/abort/凭据撤销/自动retry/可见恢复均复用，不做原生循环loadUrl/reload。正常200 bootstrap路径、300..399 Authelia自然导航、真实401/403撤权与默认Web无标记调用保持；Malformed/过大引导不当成网络成功。仅native PackagedWebViewClient+必要small sibling、Gateway最小接缝/types及定向native/TS测试可改。root review/接线，先反例再窄修；新源后更新候选/APK，第二轮实现调查才开始。
+
+
+### C-R5主会话收尾发现（第二轮实现调查开始前）
+
+真实RPC反例已证：当前区间保留tail UID的失败普通Noting显式恢复时，原failed admission不重新绑定（正确），但新Snapshot未关联来源区间，selector错误将其投回同一区间，实际FM与receipt均落库。superseded审计草稿恢复拒绝/未泄漏对照通过。原始证据见r2-joint-noting末节及ignored recovery-source-review；这不是正式Verifier发现，不能计新整轮。
+
+root方案：仅recovery路径由runner传可信原admission，经commit同conn核Conversation/Anchor及有效来源；Snapshot现有termination_json在同一INSERT附内部noting_origin={admission_id,compression_interval_id}，与普通type/reason工具termination输入严格隔离。DB notebook_commit_snapshot_result_conn仅新增默认None内部参数/必要小helper，原默认行为保持；原失败Task/child/owner不复活、不改写。Note同一来源资格读取normal关联或新内部审计，旧recovery无审计时只读已有Session recovery audit+原admission事实核对，不迁移旧库、不改Full来源顺序/目标interval receipt一次机制。来源矛盾不能默默借资格。白名单noting_child/noting_notes/必要小sibling/hermes_state_secretary_notebook与相关回归；不新表/事件队列/gate/Prompt。真实同区间无FM、后继边界合法晚到一次、旧形状兼容与事务回滚补证，定向检查不复跑180。
+
+用户已获e545359预览APK（Downloads preview文件，SHA41a193804d481a87bb2f28956c3b18659a88c8c0bc5204893ad9d52447e4d5e2），原签名/439资源/0.1.9及完整性全部通过；这是用户主动要看效果的预交付，不作门禁/上线已完成结论。Backend仍3426线上，后端C-R5及正式双门禁/部署尚未完。
+
+
+### C-R6与U28（第二轮统一门禁前收口）
+
+C-R6正式反例：最新来源显式recovery在SDK运行，但原admission仍failed；旧Note在Main间隙flush抢先落库，占后继区间唯一receipt。root设计同一Note资格纳入实际recovery在飞源，复用已有recovery native lease和可信审计，已提交Snapshot原子origin证明完成便解除pending，不等末尾model_config清理；queued前建立既有lease，失败/结束释放，终态唤醒同一资格检查，无新队列/通用FM变更/Main gate。明确跨进程极窄“lease已预留、Session尚未durable”竞争：重读仍无事实则沿既有NotingRecoveryError/4002如实busy拒绝，重用同request_id，不伪queued/另开任务/短轮询；成功受理后原幂等不变。此为未受理前真实预留状态的工程收敛，不新增错误码或权限。
+
+U28是用户真机对原U26的失败反馈，原话及“完全没出现”已落索引，原APK e545严格校验只能证明包，不能覆盖手机触摸。root设计并由apk_header_pointer_capture实施正常h1 implicit→container explicit迁移的lost事件不能冒泡取消；只container自己的capture loss才取消，pointercancel仍取消。改前2反例失败，FE d1a53cf窄修+正式AppFrame/TopNav/AndroidHeaderRefresh/StrictMode正反例31项/types/冻结健康通过；没有扩大正文起手/改变阈值/移页面。新预览d1a53cf APK已按用户要看包交付Downloads，SHAfb651a0bbeae025776016d58fa594b68aa2f0fb16faeaf88aa6b3983ef564a2d，32123717字节，原签名/439资源/0.1.9(1009)/ZIP/16KB核验通过；修后手机尚未确认，不能宣称唯一根因/实机已通过。
+
+独立Validation新增R57–R62六条已root逐项过目，计划共62场景/24目标，保原56；无正式执行。U28映射原R51/52/54历史失败，后继用户复验与当前版本正式场景分清。独立V的125判据仍已过目、实现调查尚未开始；C-R6整包完成及FE d1a版重锁后接续同一次第二轮。

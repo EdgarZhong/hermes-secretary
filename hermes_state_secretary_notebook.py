@@ -119,6 +119,23 @@ def _termination_json(termination):
     return json.dumps(value, ensure_ascii=False, sort_keys=True)
 
 
+def _snapshot_termination_json(termination, noting_origin):
+    raw = _termination_json(termination)
+    if noting_origin is None:
+        return raw
+    value = json.loads(raw)
+    value["noting_origin"] = deepcopy(noting_origin)
+    return json.dumps(value, ensure_ascii=False, sort_keys=True)
+
+
+def _branch_termination_json(raw):
+    value = json.loads(raw or "{}")
+    if "noting_origin" not in value:
+        return raw
+    value.pop("noting_origin")
+    return json.dumps(value, ensure_ascii=False, sort_keys=True)
+
+
 def _snapshot_record(conn, row, *, include_archived=False):
     from secretary.notebook_items import hydrate_snapshot_conn
 
@@ -236,7 +253,8 @@ class SecretaryNotebookMixin:
         return self._notebook_reselect_pointer_conn(conn, conversation_ref)
 
     def notebook_commit_snapshot_result_conn(self, conn, conversation_ref, state, *, anchor_message_uid,
-                                             trigger_type="idle", runtime_profile="NOTING", termination=None):
+                                             trigger_type="idle", runtime_profile="NOTING", termination=None,
+                                             noting_origin=None):
         """I-N: validate, insert and choose pointer once, returning transaction facts.
 
         A valid late result is a successful commit even when pointer_changed is
@@ -251,7 +269,7 @@ class SecretaryNotebookMixin:
             raise NotebookError("A Snapshot requires its frozen Anchor Message UID")
         if anchor_message_uid not in self._notebook_anchor_positions_conn(conn, conversation_ref):
             raise NotebookError("The frozen Anchor is not on the current Full Foreground")
-        termination_json = _termination_json(termination)
+        termination_json = _snapshot_termination_json(termination, noting_origin)
         from secretary.notebook_store import validate_snapshot_state_conn
         from secretary.notebook_items import snapshot_item_ids_conn
         try:
@@ -299,7 +317,7 @@ class SecretaryNotebookMixin:
             conn.execute(_INSERT_SNAPSHOT_SQL, (
                 "snap_" + uuid.uuid4().hex, branch_conversation_ref, source["anchor_message_uid"],
                 source["trigger_type"], source["runtime_profile"], source["payload_json"],
-                source["termination_json"], source["created_at"],
+                _branch_termination_json(source["termination_json"]), source["created_at"],
             ))
         return self._notebook_reselect_pointer_conn(conn, branch_conversation_ref)
 

@@ -636,7 +636,7 @@ def owning_profile_for(db: Any) -> str:
 def commit_noting_snapshot(
     db: Any, conversation_ref: str, state: Any, *, anchor_message_uid: str,
     trigger_type: str, runtime_profile: str, termination: dict,
-    admission_id=None, child_session_id=None,
+    admission_id=None, child_session_id=None, origin_admission_id=None,
 ) -> dict:
     """Recheck capability and insert/reselect under the same DB transaction."""
     from secretary.noting_runtime import noting_commit_gate
@@ -647,9 +647,13 @@ def commit_noting_snapshot(
             raise NotingChildError(reason or "Noting is effectively disabled")
         from secretary.noting_joint import require_commit, record_commit
         require_commit(conn, admission_id)
+        from secretary.noting_note_sources import recovery_origin_conn
+        origin = recovery_origin_conn(db, conn, conversation_ref, anchor_message_uid, origin_admission_id,
+                                      child_session_id=child_session_id if origin_admission_id is not None else None)
         result = db.notebook_commit_snapshot_result_conn(
             conn, conversation_ref, state, anchor_message_uid=anchor_message_uid,
             trigger_type=trigger_type, runtime_profile=runtime_profile, termination=termination,
+            noting_origin=origin,
         )
         record_commit(conn, admission_id, result["snapshot_id"])
         if admission_id is not None:
@@ -786,6 +790,11 @@ def _working_control(child):
     )
 
 
+def _bind_noting_commit_identity(child, admission_id, recovery_audit):
+    child._secretary_noting_admission_id = admission_id if recovery_audit is None else None
+    child._secretary_noting_origin_admission_id = admission_id if recovery_audit is not None else None
+
+
 def run_noting_task(
     parent: Any, *,
     admission_id: Any,
@@ -850,7 +859,7 @@ def run_noting_task(
         _end_completion(parent_db, completion)
         raise
     child._secretary_noting_anchor_uid = anchor_message_uid
-    child._secretary_noting_admission_id = admission_id if recovery_audit is None else None
+    _bind_noting_commit_identity(child, admission_id, recovery_audit)
     child_session_id = child.session_id
     task_db = child._session_db
     provider = state_provider or _default_state_provider
@@ -1032,6 +1041,7 @@ def _commit_when_complete(
             parent_db, conversation_ref, state, anchor_message_uid=anchor_message_uid,
             trigger_type=trigger_type, runtime_profile=runtime_profile, termination=termination,
             admission_id=getattr(child, "_secretary_noting_admission_id", None), child_session_id=child.session_id,
+            origin_admission_id=getattr(child, "_secretary_noting_origin_admission_id", None),
         )
         outcome.snapshot_id = outcome.commit_result["snapshot_id"]
         outcome.termination = copy.deepcopy(termination)

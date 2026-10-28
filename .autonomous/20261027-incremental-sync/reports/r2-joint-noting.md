@@ -133,3 +133,145 @@ root已提交C为`27c74b094f`；本次仅处理其发起的`origin/main`历史me
 **零差异证明：** 逐hunk生成候选后，四文件均与HEAD逐字一致，已仅`git add`这四文件；无unmerged条目。非白名单index条目在操作前后逐字不变。全部index tree与HEAD tree同为`4b98595279d1afe786d6e830876d15f65fcf8b12`，`git diff --cached HEAD`为空；四文件源码SHA见`merge-u16/resolution.json`。报告补记仅留在工作区未暂存；其它文件未改。merge仍由root掌握，未commit或abort。
 
 因实际源码／依赖／冻结检查入口均未变化，本次不重跑测试或健康大套，复用27c74b094f已审46项及十检查有效证据；不宣称新增测试通过。`git diff --check`及四文件AST解析通过。root可继续最终merge审查与提交，当前无源码整改或冲突遗留。
+
+## 显式恢复来源区间只读窄查（2026-10-29，产品未改）
+
+root提出的来源关联疑点已取得**正式入口真实反例**：存在合法当前区间失败Task，经`secretary.noting_recover` RPC恢复后，同区间错误注入完整Note。不是单凭`admission_id=None`的静态推断。另一个superseded半成品对照场景通过，未发现其进入恢复基础或模型输入。本次只写ignored隔离证据及本报告；没有改产品／现有tests／其它文档，没有提交／部署／UI／真实模型，也不代替整轮Verifier。
+
+### 触发与实际结果
+
+1. 在关闭Noting时，通过真实native `_compress_context`成功生成边界B1；该原生路径保留默认tail。随后开启Noting；此时尾部的合法m9 UID仍沿原始来源保留，当前Full Foreground将其展示在B1之后。
+2. 发起下一次真实手动native Compact，其pre-summary正式准入普通Noting，实际冻结Anchor为**m9**，admission的`compression_interval_id=compaction:S17:11`，等于当前B1区间。没有手填Anchor／admission／区间。Noting用真实工具创建合法工作态后，受控SDK返回不可重试400，任务明确failed；待该终态已写，再令受控summary抛错，第二次Compact不提交新边界。当前区间仍B1，原Task保持failed、snapshot_id为空，并非cancelled／superseded，所以显式恢复合法。
+3. 通过实际`server.handle_request`的`secretary.noting_recover`路由、目标Profile DB和正式`_run_recovery`／Noting Loop恢复该失败child。只控制SDK响应及host构造凭据依赖，未替换准入、恢复重建、提交、Note selector或FM写入。恢复提交成功，保留了先前合法工作内容。
+4. **实际观察：** 恢复Snapshot `snap_54fbbea62bbd4163920f4f66492a857e`被写入B1的Note receipt，目标`interval_id=compaction:S17:11`与原Task所属区间完全相同；对应完整Notebook FM真实落库，carrier UID `78af6ce8265f4e5a9cf70f1b7702dd10`。恢复Snapshot在`secretary_noting_task_admissions`里没有任何snapshot关联行；原admission仍failed／snapshot_id为空。违例发生在真实发布，而非仅helper返回候选。
+
+原始JSON的Full路径末尾为B1(id11,path_position8)、m10(id12,path_position9)、m9(id13,path_position10)；正式selector的原始来源位置却是m9 `(8,0)`、B1 `(10,0)`。这使carried旧UID仍满足来源在边界前的必要条件；对普通任务，所属区间关联会再排除“本区间自己的Snapshot”。显式recovery没有该关联，因而漏过第二层资格。
+
+### 根因与修补所需事实（不自行定方案）
+
+- `run_noting_task`在`noting_child.py:853`有意不把显式recovery写成原失败admission的普通执行。`commit_noting_snapshot`仍正常写Snapshot，但`noting_joint.record_commit`对None不建立attempt→Snapshot关联；这本身服务于“恢复独立owner、原失败注册不重绑定”的既有契约，不能简单将原failed admission恢复成admitted／committed来修。
+- `_parent_rows`确实按原admission的真实`compression_interval_id`和child首条消息horizon分段、截至合法Anchor；本例恢复前缀正确来自B1区间，并未错误读入别的压缩代。这个来源分段不等于Note投递的区间资格记录。
+- `select_note_conn`在`noting_notes.py:42`起只从`secretary_noting_task_admissions.snapshot_id`查所属区间。`_run_recovery`虽在recovery Session的`model_config._noting_recovery`写了原`admission_id`和最终`committed/snapshot_id`（`noting_recovery.py:228`），selector没有消费该持久事实，故恢复结果漏掉当前区间排除。
+- root设计最小修补时需要保留：恢复Snapshot的原来源区间可追溯；原失败Task／child记录不改写、不假装重新准入；新旧压缩边界上的合法晚到结果仍可进入后继区间；同区间不得因缺少普通attempt关联而回注。现有recovery audit包含原admission及最终snapshot事实，可供方案评估；是否复用它或在提交同事务记录独立来源关联，由root决定。本次不新增schema、gate、mailbox或选择算法。
+- 不能仅把carried UID一律改按最新物理行排序来掩盖缺口；原覆盖／晚到与本区间排除是两个独立判据，必须同时保留。
+
+### superseded半成品对照
+
+真实第一任务已生成工作项`Audit-only partial work`，其SDK在飞时由新的真实native准入替代，留下`termination=superseded`审计；新任务从上一有效Notebook（此例为空）开始后也受控失败。正式RPC恢复旧superseded child立即返回4002 `A retired Noting task is audit-only and cannot be recovered`，零新增SDK请求。新failed child可正常显式恢复，其`base_snapshot_id=None`、重建工作态为空、最终Snapshot为空；实际恢复SDK请求中没有旧审计文字。与`reconstruct_noting`先拒绝superseded／cancelled、`_base_snapshot`跳过superseded及`NotebookStore`拒绝审计base的源码一致。本次不据此扩大宣称所有恢复竞态已证明安全。
+
+### 版本、命令与证据
+
+- 读取开始时HEAD cbbd7e45aa；隔离取证固定的HEAD为`8fcbd7aa844acf3d3aa214bbb9f5cb4f1516a89f`。已核两者间本次9个相关产品文件无diff；它们与源码副本SHA在运行后也完全一致。
+- 所有产物在ignored `.hermes-dev/incremental-sync-20261027/r2-joint-noting/recovery-source-review/`：完整反例`test_recovery_source_review.py`、产品及fixture源码`.source`、`source-sha256.json`、两份`*-observation.json`、`summary.json`及`evidence-sha256.json`。
+- 官方runner最终执行：`HERMES_PYTHON="$PWD/.venv/bin/python" scripts/run_tests.sh -j 1 --file-retries 0 .hermes-dev/incremental-sync-20261027/r2-joint-noting/recovery-source-review/test_recovery_source_review.py`，**1个预期契约反例失败、1个审计排除对照通过**，日志`final-with-wire.log`，约3秒。失败断言要求本区间无Note，实际却存在真实receipt与FM，产品尚未修复。没有运行180项或其它大套。
+- `first-run.log`第一次误预期实际Anchor为m10，真实native准入实际选择m9；已只修正ignored夹具为读取正式admission的Anchor，不作为产品缺陷计数。原日志及后续`same-interval-run.log`、`final-run.log`全部保留；最终反例不再假设Anchor。
+
+结论交root：**当前区间显式recovery Note来源关联是真缺口，需设计并实施后再定向复验；superseded审计排除在本次正式对照链上成立。** 现有隔离反例可由root移入后继正式测试或用于修后证据，本次未改任何产品或现有tests。
+
+## C-R5显式恢复来源补齐与branch兼容（2026-10-29，待root亲审，未提交）
+
+### 1. 对应条款与授权
+
+落实07顶部U20“本区间自己的Note不得注回本区间”、plan正式接线第5／6条，以及root亲审C-R5指定方案。显式recovery仍为独立child／owner，原failed admission及child不重绑定、不改成admitted／committed。root另明确授权`hermes_state_secretary_notebook.py`的Snapshot提交内部可选参数及branch复制时剥除内部来源关联；其余范围不扩大。C-R6在飞候选问题另列，未混作本次已修。
+
+### 2. 实际变更
+
+- `secretary/noting_child.py`：从已核的恢复runner admission传递独立`origin_admission_id`，不改变普通`admission_id` CAS／record_commit。写事务内以`db.noting_admission_conn`查实际所属行，核Conversation／Anchor及非cancelled／superseded，由`noting_note_sources.recovery_origin_conn`构造来源；原failed记录完全保留。
+- `hermes_state_secretary_notebook.py`：`notebook_commit_snapshot_result_conn(..., noting_origin=None)`仅增内部可选参数。严格`_termination_json`仍原样只允许模型／工具的type／reason；小helper在验证后构造副本，仅recovery将`noting_origin={admission_id,compression_interval_id}`随Snapshot同一INSERT耐久。没有INSERT后UPDATE，不等待recovery Session事后patch；Snapshot与pointer／items任一失败仍由原事务完整回滚。默认None序列化结果保持原样。
+- `secretary/noting_note_sources.py`：一次Conversation限定的元数据查询统一读取普通admission关联、新Snapshot内部origin和既有committed recovery Session witness。旧形状只读，不改旧Snapshot／admission／child；核实际ref、snapshot、Anchor、原admission、failed-child与恢复Session原parent关系，不按ID格式猜owner；不读消息／工具内容，不逐Snapshot发查询。多来源owner／interval冲突抛出准确错误，外层既有best-effort检查记录日志并停止该次Note，不能默借另一来源权限。
+- `secretary/noting_notes.py`：只增加上述来源区间关联过滤；Full原始来源排序、最近相关普通pending判据、目标interval单次receipt、同事务重选／原FM机制均保持。内部origin未进入Notebook正文、六工具Schema或Prompt。
+- branch接缝：原`notebook_inherit_branch_conn`会复制termination_json。按root明确方案，仅新branch Snapshot副本剥除`noting_origin`，保持普通admission关联原本不跨ref复制的语义；原Snapshot不变，payload／provenance／Anchor／termination type原样继承，superseded仍在原guard跳过。普通无origin termination保留原字节。
+
+### 3. 正式路径与反例闭合
+
+原ignored真实反例转入正式`tests/secretary/test_recovery_note_source_u20.py`。真实SessionDB、native `_compress_context`、Noting SDK Loop与`server.handle_request→secretary.noting_recover→_run_recovery`均执行；仅控制SDK结果／native summary及host构造凭据依赖，未替换准入、提交、selector、FM或receipt机制。
+
+- B1后carried m9正式准入、Noting失败且第二次压缩失败，当前仍B1；正式RPC恢复提交成功，pointer自然演进、原failed admission／child逐项保持；**同B1无完整Notebook FM／receipt**。
+- 在真实恢复提交后的通知callback内、`_run_recovery`尚未写committed／snapshot_id的原危险窗口，直接核实际Session witness仍不完整，但selector已能依原子origin排除本区间；并非事后补关联才碰巧正确。
+- 后继真实native成功边界后，恢复Snapshot尽早投递一次；后继普通Noting明确受控400失败，没有新有效Snapshot遮盖该结果。重复检查／重新bind／重开DB不重复。另覆盖先成功到后继边界、恢复结果晚到时立即合法投递一次。
+- 旧形状fixture明确用真实Snapshot INSERT的原可选参数缺省路径准备，不使用当前recovery writer、不UPDATE不可变Snapshot；仅在隔离fixture中准备既有completed recovery Session witness，验证无origin旧Snapshot也排除本区间、后继边界可投递。
+- 在真实Snapshot INSERT后／pointer重选处令恢复提交失败，事务内已见origin；异常后Snapshot／pointer无半条提交、原failed事实保持，后续真实native Compact仍成功且无伪receipt。
+- missing／foreign Conversation／wrong Anchor／cancelled／superseded来源均拒绝；工具termination伪造origin仍被严格白名单拒绝；故意冲突的恢复witness明确报`Conflicting Note source owners`且不投递。branch真实继承及后继native archive publication可选中合法副本，父来源审计保持。
+- superseded模型基础排除复用未改的recovery_sources／notebook_store／joint路径与此前正式对照；本次13项Note分区包含其pointer／branch／模型base排除回归，未扩大为所有竞态已证明。
+
+### 4. 验证结果与原始证据
+
+源码基于`8fcbd7aa844acf3d3aa214bbb9f5cb4f1516a89f`。最终5个变更文件（4产品＋1测试）与5个未变相关源原件、SHA、完整patch／独立index tree及按函数健康指标，保存于ignored `recovery-source-review/c-r5/`；精确入口为`source-sha256.json`、`product-and-tests.patch`、`index-tree.txt`、`health-metrics.json`。主工作区真实index未暂存本包，未commit／push。所有日志在同级`recovery-source-review/`，不覆盖原C-R5缺陷证据。
+
+所有pytest均经官方runner：
+
+- `HERMES_PYTHON="$PWD/.venv/bin/python" scripts/run_tests.sh -j 1 --file-retries 0 tests/secretary/test_recovery_note_source_u20.py tests/secretary/test_noting_recovery.py tests/secretary/test_joint_noting_notes_u20.py`：**3文件46项通过**（11新回归＋22恢复＋13Note），`c-r5-regression-first.log`。
+- branch增量后同runner定向新文件：**12项通过**，`c-r5-branch-second.log`；最后补显式`branch_ref != ref`断言并只重跑`-k branch`，**1项通过／11 deselected**，`c-r5-branch-final.log`。不把重复项加总成新的通过数。
+- 相同runner对既有`tests/hermes_state/test_secretary_notebook.py -k branch`：**1通过、1已知基线失败、11 deselected**，`c-r5-existing-branch.log`。失败仍为旧`source_message_identities`字段断言KeyError；已在未含本包的`a5018ffd8206`干净基线实跑记录于`head-baseline-tests.log`。本次不改该旧断言。`c-r5/existing-branch-baseline.json`核当前test／notebook_model／notebook_items与当时原件SHA相同；notebook_store仅多既有superseded base拒绝（原forced测试不走该分支），差异存`notebook-store-baseline.diff`。
+- 独立ignored Git index只收本次5文件：`.venv/bin/python scripts/check --staged --base HEAD --only footguns,shebangs,no-tmp,config-writers,os-marker-fakes,case-collisions,lazy-deps,profile-archives,ruff,health`，**10项通过、health 0 blocking／0 advisory**，`c-r5-quality-final2.log`。规则／阈值／豁免均未修改。`run_noting_task` CC11／107行、branch复制CC5／23行保持；Snapshot writer CC6／36行、selector CC6／32行；新来源helper CC5／17行，均未增长自身超标指标。
+- 早期导入名／把失败提示FM误计为完整Note／尝试UPDATE不可变Snapshot的fixture失误日志原样保留，最终fixture已改为正式bind、按snapshot标识计完整Note及旧形状INSERT。这些不记成产品缺陷。第一次branch夹具误预期尚无新native边界就可投递，后改为真实branch后继publication。
+
+### 5. 缺口与C-R6独立候选
+
+C-R5及root指定branch兼容已实现并有上述定向证据。没有做UI、生产、真实模型或发布；不宣称整轮Verification／Validation通过。没有复跑180项或其它大套。
+
+另按root要求只读单列的在飞recovery候选已由root确认为**C-R6待设计**，本次未改实现：旧有效m1 Snapshot在B1已投递，m9普通Task失败；B2成功时旧Note在Main busy队列等待。正式显式恢复同m9已进入真实SDK屏障，Main间隙flush仍只见原admission为failed，同事务重选把旧Snapshot落B2、占唯一receipt；随后恢复完成的新Snapshot无法再投B2。两次普通admission均为m9／B1区间、failed，实际来源位置相同。旧Snapshot由真实writer作为早来源晚到fixture准备；RPC／在飞SDK／FM队列／append与receipt均真实。根因仅记录为独立recovery owner未进入现有pending来源资格，不能只看model_config running永久阻塞Note。
+
+C-R6证据独立保留：`test_pending_recovery_probe.py`、`pending-probe-final.log`（1个预期契约反例失败）、`pending-observation.json`（包括所有真实admission及path），不混入C-R5通过数。root已要求先交C-R5整包，待其按既有native recovery lease／queued注册／origin提交事实指定最小方案；本包未新增队列／Main gate或顺便重写pending选择。
+
+### 6. 接口影响
+
+仅两个默认None内部可选参数：`commit_noting_snapshot(..., origin_admission_id=None)`与`notebook_commit_snapshot_result_conn(..., noting_origin=None)`。普通CAS／record_commit、原failed admission／child、公开API返回、工具参数、Prompt、schema及生产历史数据无变更。新审计只随新recovery Snapshot INSERT；旧恢复关联只读现有metadata。branch仅去掉不跨ref的内部owner关联，不改Notebook内容。
+
+### 7. 建议后续动作
+
+root亲审C-R5／branch的5文件diff及源码SHA后统一集成；按已确认C-R6候选另给最小设计，沿保留反例定向关闭。独立Verifier／Validation仍由root按整轮统一安排，本包不自行提交或开启门禁。
+
+## C-R6显式恢复在飞来源资格（2026-10-29，待root整包亲审，未提交）
+
+### 1. 对应条款与授权
+
+落实U20／plan第5、6条的最新相关来源等待、同事务Note资格重选，以及root已确认的C-R6反例。按root指定方案复用既有recovery native Turn lease、独立recovery Session audit和C-R5原子origin，不新增schema、调度器、通用队列、Main gate或FM机制。root另确认：另一进程已持现有recovery lease但尚无durable Session、重读仍not_found时，允许既有NotingRecoveryError／4002极窄拒绝`being reserved; retry the same request`；已有durable记录的重复请求仍返回原状态，不伪queued、不换ID、不自动重放、不新增轮询等待。
+
+### 2. 实际变更
+
+- `noting_note_sources.recovery_source_tasks_conn`将显式恢复纳入现有最新相关来源集合，实际关联同DB／ref的recovery audit→原admission→合法Anchor／来源区间，并核failed-child及原parent关系。沿Full原始来源位置与当前边界判断；原admission为failed不再掩盖独立恢复的queued／running状态。
+- 活跃性只依既有`recovery:operation_id` native lease的有效期、精确holder及原生PID存活判断；新audit持久`lease_holder`以区分失效旧owner。旧无holder审计沿既有lease事实兼容。不会仅凭running字符串或`_WORKERS`字典残留永久等待，不解析holder格式，不在DB事务内取得`_RECOVERY_LOCK`。
+- `noting_origin`仅recovery新增内部`recovery_session_id`。Snapshot同事务核可信child audit及其实际native lease owner，防已失去lease的在飞旧worker继续提交。提交完成即由该operation的原子Snapshot证明解除它自己的pending，不依赖SDK清理或事后audit patch；同一failed admission上的另一个恢复operation仍独立判断，不能借别人的Snapshot解pending。branch既有剥除整个origin的窄接缝自然覆盖此内部字段，正文／工具／Prompt不见该字段。
+- `start_recovery`先受理现有native recovery lease，再对外持久queued Session；新holder具有独立token，worker以同一holder接手并沿原renew/finally释放。专属SessionDB构造移到queued发布前；失败在尚未受理阶段释放预留，不伪造queued成功。有效queued接手使用同native行的holder／未过期CAS，过期或被另一owner接管者不能复活执行。
+- 启动线程失败对已存在queued Session明确failed、结束并释放；parent构造失败沿原worker失败路径明确终态。成功、失败、lease失效后的finally在释放恢复lease后，通过准确当前父owner调用既有`check_note_delivery`补检查；状态读取确认interrupted也补同一检查。冷父仍沿原`_publication_scope`，无新Turn，不把恢复末尾展示／补偿异常变成原生Compact异常。
+- `select_note_conn`只把上述来源事实合入原latest集合，保留原来源位置排序、普通admission、目标interval一次receipt和实际append同事务资格复核；没有重写通用FM，也未改变原failed admission／child或任务来源业务口径。
+
+### 3. 正式路径与反例闭合
+
+新增精确正式回归`tests/secretary/test_recovery_note_pending_u20.py`，沿真实SQLite、native Compact、Noting SDK Loop、recovery RPC／实际start入口、现有FM队列与实际append。仅在SDK／worker开始／构造处控制结果或时序。
+
+- 原反例：旧m1完整Snapshot在B1投递，m9普通任务失败，B2成功时旧Note排队；显式恢复进入真实SDK在飞后，Main间隙flush不得先占旧receipt。成功时新恢复Snapshot实际FM／receipt仅一次；失败时旧候选经终态补检查重新择取、实际落库一次。
+- 在成功提交callback内核audit仍running／committed尚未事后patch、recovery lease仍持有，新Note已经实际落库，证明不会被自己的清理短窗挡住。两个不同request恢复同一admission时，A提交不能解除较新B的pending；B失败后A结果才由补检查投递。
+- queued在worker尚未接手的屏障前已具精确native owner；该时点flush仍等最新来源，重复同request无第二worker／SDK。持`_RECOVERY_LOCK`的另一线程不阻实际FM append资格检查，验证DB事务没有反向取该registry锁。
+- 线程start失败、parent构造失败、queued前专属DB构造失败均不留假成功／悬空lease；已有queued失败写terminal，尚无durable Session的构造失败保原错误并释放。失败后准确父owner可立即重新取得旧Note候选。
+- expired／无lease／不同holder的旧queued不会阻Note或随后复活执行；旧worker不会释放新holder的lease。在飞SDK失去owner后，来源提交校验明确abandon，不能迟到新增Snapshot。
+- 真实并发两个同request RPC只进入一次SDK／一次恢复Loop，原failed记录保持。真实独立子进程持native lease、尚无Session时，RPC按已确认4002拒绝；该进程释放后同request显式重试仅执行一次，未误释放对方lease或暗中重试。
+- 真实子进程留下running audit及未到期lease后退出，沿原生PID死亡事实判interrupted，不等待字符串状态；相同request不会自动重放。另覆盖同DB其它ref，以及复制相同ref／operation标识但无对应lease的独立DB，不借全局worker事实互串。
+- C-R5的12项当前区间／旧形状／原子回滚／合法晚到／来源拒绝／branch回归，22项既有恢复及13项Note分区同时通过；不据此扩大宣称全轮所有分区或独立门禁已通过。
+
+### 4. 验证、版本与证据
+
+- 本次基于HEAD `8fcbd7aa844acf3d3aa214bbb9f5cb4f1516a89f`，C-R5及本次C-R6共同7文件候选（5产品＋2测试）均未提交。精确源码副本／SHA、完整patch、独立index tree、逐函数指标位于ignored `recovery-source-review/c-r6/{source-sha256.json,product-and-tests.patch,index-tree.txt,health-metrics.json}`，摘要`summary.json`。真实共享index未暂存本包；root其它docs／APK工作未改。
+- 最终官方命令：`HERMES_PYTHON="$PWD/.venv/bin/python" scripts/run_tests.sh -j 1 --file-retries 0 tests/secretary/test_recovery_note_pending_u20.py tests/secretary/test_recovery_note_source_u20.py tests/secretary/test_noting_recovery.py tests/secretary/test_joint_noting_notes_u20.py`，**4文件62项通过**（15 pending＋12 source＋22 recovery＋13 Note），36.6秒，原日志`c-r6-final-tests.log`。没有重跑180项或无关大套。
+- 原ignored正式probe在本次最初修后定向也通过，`c-r6-first.log`（probe1＋C-R5 source12）。其修后JSON另存`c-r6/fixed-probe-observation.json`：before1／在飞仍1／结束后2。改前原失败日志`pending-probe-final.log`、原反例源码及C-R5源码副本继续保留。
+- 最终独立ignored index只收7个候选文件：`.venv/bin/python scripts/check --staged --base HEAD --only footguns,shebangs,no-tmp,config-writers,os-marker-fakes,case-collisions,lazy-deps,profile-archives,ruff,health`，**10项通过、health 0 blocking／0 advisory**，`c-r6-quality-final.log`。规则／阈值／豁免不变，`git diff --check`通过。先前C-R5已证旧branch字段断言基线失败仍保留原事实，C-R6没有重跑或改写它。
+- 过程日志保留：`c-r6-second.log`的启动错误fixture误按RPC封装、专属DB构造故障误打到RPC上游及独立脚本Path参数错误；修后`c-r6-third.log`11项通过。扩展matrix的`c-r6-fourth.log`14通过／1个lease丢失fixture遗漏显式interrupted观察；补状态观察后定向通过并纳入最终62项。没有把这些夹具错误算作额外产品缺陷。
+
+### 5. 缺口与证据保留说明
+
+C-R6指定范围已实现并取得上述定向证据，待root亲审；没有UI、生产、真实模型、外发、commit／push或独立Verifier。Linux PID namespace的未知／外部namespace仍沿原生TTL保守语义，不伪造平台验证；实际独立进程取证在本机Darwin完成。
+
+证据维护中有一处明确纠正：原ignored probe自带同名JSON写入，C-R6最初修后复跑使`pending-observation.json`被修后观察重写。当前该JSON**不得再作改前证据**；已另存修后文件并在`c-r6/summary.json`标明。原`pending-probe-final.log`失败原文及原C-R5源码／probe保持，`c-r5-evidence-sha256.json`保存了原JSON哈希；不冒称原JSON仍逐字保留，也不手工重造原始观测。改前结论继续由原失败日志和原源码／正式入口反例支撑。
+
+### 6. 接口影响
+
+沿C-R5两个默认None内部参数；`_run_recovery`新增默认None的内部`lease_holder/reserved_db`以接续同owner及专属DB。新增内部审计`lease_holder`与origin的`recovery_session_id`，均不进模型正文／工具参数／公开业务数据。既有request成功受理后的幂等返回不变；只有root已确认的尚未受理预留竞争使用既有4002明确拒绝。没有更换lease类型／表、原admission归属、Main admission、六工具Schema、Prompt、发布脚本、前端或规则。
+
+### 7. 建议后续动作
+
+root亲审C-R5＋branch＋C-R6整体候选，重点核同事务可信origin、operation专属提交证明、queued lease接手、准确owner补检查及本次极窄busy错误。可直接复用最终62项／十检查及源码SHA；本包未开启逐包门禁，统一候选及整轮V继续由root负责。
+
+## Root集成接收 C-R5／C-R6（2026-10-29）
+
+已完整复核7文件及正式runner／selector／FM提交上下游：来源写入同一Snapshot事务、原failed admission保持、branch副本不借父来源、operation单独证明提交、queued先具原生lease且旧owner不能复活、终态准确父owner补查与锁顺序均符合U20。7文件当前SHA逐一匹配c-r6/source-sha256.json；复用最终62项及十检查，不重复大套。接收进入统一候选，尚非独立Verification／Validation通过。Noting通知误触发恢复另由root设计独立修补，不混作本包证据。
