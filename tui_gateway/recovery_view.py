@@ -250,6 +250,26 @@ def _capture(server, sid, session, request, selections, ids):
     return d0, state, d1, runtime
 
 
+def _thinking_prefix(d0, d1):
+    """Keep every old Thinking fact; only new durable tail rows may extend it."""
+    old, new = d0.get("latest_thinking"), d1.get("latest_thinking")
+    if old is None or new is None:
+        return old == new
+    if old["source"] != new["source"] or new["order"][:len(old["order"])] != old["order"]:
+        return False
+    if old["rows"] != new["rows"][:len(old["rows"])]:
+        return False
+    if any(old[key][str(row_id)] != new[key].get(str(row_id))
+           for key in ("positions", "revisions") for row_id in old["order"]):
+        return False
+    # A formerly non-Thinking row gaining reasoning is an old-row rewrite,
+    # even when it was outside the requested page. D1 additions must start
+    # beyond D0's entire durable cut, in the authoritative logical order.
+    cut = d0["windows"][0]["coverage"]["window"]["total"]
+    tail = [new["positions"][str(row_id)] for row_id in new["order"][len(old["order"]):]]
+    return all(position >= cut for position in tail) and all(left < right for left, right in zip(tail, tail[1:]))
+
+
 def _same_history(d0, d1, count):
     if any(d0[key] != d1[key] for key in ("tip_id", "lineage", "rewind")):
         return False
@@ -260,7 +280,7 @@ def _same_history(d0, d1, count):
         and old["coverage"]["window"]["returned"] == new["coverage"]["window"]["returned"]
         and old.get("detail_revisions") == new.get("detail_revisions")
         for old, new in zip(originals, proofs)) and d0["detail_digest"] == d1["detail_digest"]
-        and d0.get("latest_thinking") == d1.get("latest_thinking"))
+        and _thinking_prefix(d0, d1))
 
 
 def _turn_proof(d0, d1, state, runtime):

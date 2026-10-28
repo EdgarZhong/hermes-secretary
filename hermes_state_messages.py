@@ -483,7 +483,12 @@ class SessionMessagesMixin:
                 turn_lease_holder=turn_lease_holder, turn_lease_ttl_seconds=turn_lease_ttl_seconds)
             if prepare_rows is not None:
                 prepare_rows(conn, session_id, messages)
-            from agent.transcript_repair import resolve_and_repair_transcript_batch
+            from agent.transcript_repair import resolve_and_repair_transcript_batch, transcript_row_snapshot
+            rewrite_versions = {}
+            def preserve_rewrite(conn, row_id):
+                row = conn.execute("SELECT * FROM messages WHERE id = ?", (row_id,)).fetchone()
+                rewrite_versions.setdefault(row_id, transcript_row_snapshot(row))
+                self.secretary_preserve_branch_sources_conn(conn, [row_id])
             inserted_rows = resolve_and_repair_transcript_batch(
                 conn,
                 session_id,
@@ -492,15 +497,22 @@ class SessionMessagesMixin:
                 decode_content_fn=self._decode_content,
                 serialize_message_fn=lambda msg, timestamp: self._serialized_message_row(session_id, msg, timestamp),
                 decode_row_fn=self._decoded_repair_row,
-                before_rewrite=lambda conn, row_id: self.secretary_preserve_branch_sources_conn(conn, [row_id]),
+                before_rewrite=preserve_rewrite,
             )
             inserted, tool_calls_total = self._insert_message_rows(conn, session_id, inserted_rows)
             self._bump_session_counters(conn, session_id, inserted, tool_calls_total, unit=False)
             self.secretary_reconcile_session_conn(conn, session_id)
             if before_commit is not None:
                 before_commit(conn, session_id, inserted_rows)
-            return inserted
-        return self._execute_transcript_write(_do, messages, patience_s=self._TRANSCRIPT_WRITE_PATIENCE_S)
+            rewritten = any(transcript_row_snapshot(conn.execute(
+                "SELECT * FROM messages WHERE id = ?", (row_id,)).fetchone()) != version
+                for row_id, version in rewrite_versions.items())
+            return inserted, rewritten
+        inserted, rewritten = self._execute_transcript_write(_do, messages, patience_s=self._TRANSCRIPT_WRITE_PATIENCE_S)
+        if rewritten:
+            from hermes_state_history_notifications import notify_history_changed
+            notify_history_changed(self)
+        return inserted
 
     _ROW_STATE_KEYS = ("_row_id", DB_ROW_SNAPSHOT, "timestamp")
 
