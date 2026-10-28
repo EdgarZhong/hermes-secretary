@@ -71,3 +71,18 @@ Linux7文件163项证据及16份日志／记录SHA已由主会话核对，全部
 - 同窄屏实际输入框冷Slash /compact Send：1次session.compress，活动态Context: Compacting且hs-ring-spin=true；终态succeeded、ready、草稿清空、Context取到新250值、无Retrying/错误通知、同document。原始root-dev-slash-compact-{during,completed}.json/png。外部摘要依赖受控，原生maintenance接缝真实，不冒称U20全链已验。
 
 - root-dev-reading-* 是未完成开发观察：其间并行夹具源码扩展后隐藏页标题由自定义fixture变为正式Hermes Secretary，诊断panel消失、document更换，不能用该段证明或否定产品同页恢复/锚点保持。产品src未发现location.reload/assign等调用；隔离Vite虽hmr:false仍监视源码，现专用ignored配置再设watch:null，待夹具整包后重启并固定源；正式Validation须Page导航事件+documentId复核，无意reload使该场景无效而非预填通过。此前完成的CAS/weak/compact各自同document原始资料保留原结论边界。
+
+
+## 第二轮集成封口与新增冷启／顶栏刷新（2026-10-28）
+
+候选后端`2dc4398284bff5506dcf8f95b6507ff66ca71915`、前端`bc02d01d7e0eb8c9a35b6855dc984374cf6f1cee`；两仓main历史已按no-ff/no-commit及核心文档保护纳入，源产品相对合并前零变化。后端四文件十hunk逐段接线核对在r2-joint-noting末节，不因冲突恢复U20明确替换的旧串行等待。其它main工作区dirty未动。此为开发集成候选，不是独立门禁通过。
+
+U25前端ba7decd：PageRecovery一次document资格只由首个真实Conversation commit的实际布局ack消费，local交接继承未消费标记；Timeline当次instant到底，不受加载期旧输入／触摸阻止；之后暖恢复与新人工阅读保持。root审正式owner/commit/ack与reconcile接线后接收，5文件115项、types和冻结健康证据见前端ignored cold-start-viewport/report.md及日志；浏览器真路径交独立R47–49。
+
+U26先独立原型后正式接线03a9689，AppFrame只新增可选mainRef；AndroidHeaderRefresh限定top document＋native packaged标记＋既有HermesAndroid bridge，普通Web不启用。正式自动恢复不调用reload。组件仅在非交互topbar起手，阻尼cap、释放一次、回拖/cancel、正文/控件保护；监听主容器直属TopNav替换以恢复touch-action并取消旧手势，不监听流式正文子树。root发现mouse会选字，已窄修合格pointerdown的默认动作；未禁正文选字。
+
+root自建隐藏IAB预览127.0.0.1:5209，390×844真实CDP mouse：半程图half-mobile.png、阈值armed-mobile.png（已向用户内嵌交付）、深色armed-dark-mobile.png；80px下降封顶后手指再多下拉200px，indicator仍top36/40高，header top0、canvas top-40均不变；释放页面真实reload一次，URL保持，预览计数0→1；正文起手phase idle、回拖未达收回计数仍1。原始cap-final.json/截图在前端ignored header-refresh-preview，旧armed.png/half.png为画幅未校准开发图不当正式证据。IAB不支持CDP touch，mouse不能冒称Android真实手指、WebView命中或真机手感；DOM25项也不冒充真触摸。
+
+前端组件25项；root接线后App＋组件2文件83项通过，integration-tests.log；typecheck通过；正式冻结TS度量5文件0 blocking/0 advisory，integration-health.json及完整source SHA。U25独立115与U26整合83有复用文件，不合并宣传总测试数。原型源码/清单与现有主题保持，不修改全局字体/配色。
+
+后端最终C42源码SHA及十检查有效证据、末次46项已核；发布保护脚本在最终schema上本地再演练27例全通过、零SSH/生产写/模型调用，脚本SHA08c010b4347796ba537b2c516adac16f0358bf791e2a6f2b54794166091f41a3。APK重建及正式部署尚未完成。第二轮独立Validation原46＋U25/U26十场景共56项已过目，待新本地Verifier整轮审查后执行，不按包开门禁。

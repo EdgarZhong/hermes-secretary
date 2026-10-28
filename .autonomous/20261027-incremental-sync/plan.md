@@ -162,3 +162,5 @@ Validation已派全新fork-none sol/high `/root/validation_sync`，先独立从U
 用户已确认冷启动新document首次真实可见历史提交后统一立刻到底，不受加载期用户滚动阻止；同页warm/reconnect保持。root方案复用PageRecovery document与commit/ack一次资格，useTimelineReading只在该提交instant到底，不能用组件mount猜新document。cold_start_viewport仅改page-recovery/types/chat-presentation及必要小sibling/测试，不碰App/layout或后端。
 
 APK主动顶栏下拉先出浏览器原型。最新设计替换此前整页下移：页面/背景静止、圆背板橙环从顶部中央浮现、约200手指位移经阻尼映射固定80px指示器行程、40背板/24橙环按token、阈值全亮后release一次reload；正文起手/控件tap不劫持，取消/回退收回。header_pull_refresh_preview只新增隔离组件/CSS/测试及ignored原型，不改正式App/layout，root隐藏IAB截图/动态预览后再接APK。正式Web不自动开启。主会话亲审并接线；8313旧候选APK已核但不再当最终包，最终源SHA后重建。原三轮上限/范围内门禁与正式上线完成条件保持。
+
+第二轮root集成接收：U25 ba7decd与U26 03a9689已纳入FEbc02d01，正式Android限定入口已接；两仓main历史纳入BE2dc4398／FEbc02d01，产品零合并增量。root已过目新增R47–56，完整Validation56项门禁前计划通过。接下来本地全新上下文完整Verification，不逐包审；APK按FEbc02d01构建中。

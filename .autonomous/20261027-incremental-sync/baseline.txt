@@ -21,3 +21,5 @@ Linux隔离7文件163项证据已覆盖862326c0a7，16份SHA核对一致。重�
 
 2026-10-28用户口径增补冻结：5c22e614c4915795e5bc272c4f4dc7f61da4e55e。07顶部U20完整业务契约已落实施分支；用户随后明确本次自主实现纳入U20并继续第二次迭代。原始冻结及前次审查版本均保留，不改写历史结论。
 云端整改计划原件：reports/cloud-remediation-plan-20261028.md；SHA256 cb165ec8e2b4797fcb5c06161563603f99e809e81e7ace8f3014c437320ff059。用户随后补入原Verification，已按SHA256 3546c0e1138804f25a4e24fcc8ca5d9f3dd1486399445b9300135a0f2b5b24bf核验并逐字保存在reports/cloud-verification-20261027.md；原§6内嵌反例保留，额外附件未冒称取得。
+
+2026-10-28第二轮完整集成候选：backend2dc4398284bff5506dcf8f95b6507ff66ca71915；frontendbc02d01d7e0eb8c9a35b6855dc984374cf6f1cee。包含U20/C-R1–R4、F01–F08、U18/U19及最新U25/U26；两仓已审main历史已纳入，产品源码clean。U24本地独立Verification待正式启动，Validation56场景计划已由root过目但未执行；不改写第一轮云端/partial结论。0.1.9 APK正在按此FE重建，8313旧候选不作本轮最终产物。
