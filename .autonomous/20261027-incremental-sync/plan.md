@@ -1,5 +1,24 @@
 # 实施计划：20261027-incremental-sync
 
+## 第二次迭代（2026-10-28，用户已授权纳入U20）
+
+原轮未交付，继续同一索引／计划与两仓同名分支。整改输入原文保存在`reports/cloud-remediation-plan-20261028.md`，原待审BE44eb0be4c3／FE91ad72f；8项根因、3类证据事项保留原编号，报告所述27条违规／43条静态符合／4条证据不足不直接变成当前版本结论。原始Verification及反例原件尚未取得，先按明确场景构造正式反例，不据计划转述冒称已读取原报告。
+
+U20最新用户业务契约优先：云端计划C包及旧IDLE判据中“先Noting再压缩、任务等待FM结算”的旧时序被替换。保留F07真实Gateway维护资源保护和E02开关／跨due证据目标，改按并发独立提交、联合取消、Note独立推送选择与任务及时终态验收。冻结质量检查、原前端D/S/P、主按钮权限与全部未冲突条款保持。
+
+| 包／根因 | 主会话指定机制与正式路径 | 唯一修改范围／依赖 | 必要证据／用户旅程 |
+|---|---|---|---|
+| A-FE：F01/F02 | loadEarlier并入现有owner、恢复代次、认证撤销及连接资格；完成前后均核资格。仅确证anchor_not_found退役selector／复用证明，建立合法必要窗口；不吞网络／owner错误 | controller-page-recovery/page-recovery及认证接线；先由root收敛现有Steer／Slash接线，缓存文件归B | A01–A03及Z01/Z05：迟到成功／失败不复活旧历史，RPC失效锚点同document有限收敛 |
+| A-BE：F05/F06 | D0/S/D1保持旧身份／内容／revision，允许同source最新Thinking有合法尾追加；旧行变更／删除／换源仍拒绝。正式writer实际CAS改文提交后通知，no-op／回滚不通知 | tui_gateway/recovery_view、hermes_state_messages及必要change_watcher；不改U20生命周期或D finalizer | A04–A06：RESTcursor→sync v1 activate，正式SQLite writer→watcher；最终由Z接实际App |
+| B-CACHE：F03/F04 | 同UID／物理代表／详情revision的Thinking子集更新保留已取完整字段。统一窗口／详情／已核验前缀的最近500身份预算，淘汰最旧，损坏配对的selector证明退役，绝不改造服务端receipt | history-coverage/history-sync/display-cache及必要详情前缀sibling；禁止改大Controller，窄接口root接入 | B01–B04：窗口外完整详情→Thinking更新→真实IDB冷读；500+1新前缀／同UID落库不双计 |
+| C-U20：F07/E02及U20 | 主会话先设计完整接线；普通三入口同时触发／联合取消；已提交保留；替代审计不可消费；Force仅Turn结束、不可取消及封区间；四时点检查有效来源快照，经原FM推送。Gateway维护保护覆盖普通回收，及时释放终态 | secretary/noting及框架／自有状态表、native compaction接缝、Gateway cache；与D共享run_turn_runner仅由root协调；不加通用scheduler/mailbox | C01–C04按新时序重写；U20全部成功顺序／取消／替代／Force／重启／注入去重；真实DB与正式native loop，外部模型结果受控 |
+| D-WX：F08 | 普通final完成输出变换和原生消息身份后，进入既有完整消息callback/FIFO；不能等micro-compaction/finalizer结束；尾部按UID及成功事实去重 | agent/turn_final_response、必要turn_finalizer、gateway/run_turn_runner及专属tests；不改Gateway cache或U20触发owner | D01–D03：正式Loop屏障阻塞收尾时已交adapter；不同UID同文不漏、同UID不重、失败不伪成功 |
+| Z：E01/E03、U18/U19及全轮 | root亲审所有接线；先核D07规格对象对应客户端；原版本证据分层复用；同200长正文夹具核请求依赖／全轮传输／动态就绪。保全部既有异常闪现修复 | root独占大型集成夹具、索引／计划与云端版本prompt；U18/U19/Slash现有未提交diff先关闭 | Z01–Z07及27条违规映射；真机／外发缺口如实保留；不只凭终态截图称零闪 |
+
+并行按4个总槽位安排：第一组B-CACHE、A-BE、D-WX可独立，root收敛前端旧diff并设计C-U20；下一组A-FE、C-U20按实际空槽及文件依赖推进，不要求报告建议五路同时运行。具体方案由root先冻结；子Agent仅6.1 sol/high实施，不派生、不流水账，只整包完成或真阻塞交回。
+
+全范围复审仍由用户云端执行，本地Verifier保持停止；最终送审固定新的完整BE/FE SHA，带可访问且脱敏的原始证据附件。Validation复用不受影响证据，改动范围在新候选复验，独立报告未完成不冒称通过。不因新增U20抹去F01–F08/E01–E03，或把旧IDLE时序直接照抄回产品。
+
 ## 2026-10-28 · 恢复原自主轮与追加口径
 
 原目标不变：500条消息及同条详情缓存、游标增量、SPA与APK免刷新恢复、D/S/P表现状态不回归，独立缺陷及最终动态验收闭合。原轮尚未交付，不另建替代看板或宣布验收完成。本地Verification继续依用户要求停止，云端静态审查prompt须更新到后继实际版本。
