@@ -7,7 +7,9 @@
 
 ## 2026-10-27 · 增量同步与免刷新恢复（执行中）
 
-**第二次迭代已获用户明确授权（2026-10-28）：** 本次自主实现带上U20联合Noting／压缩新机制，并纳入云端整改计划。原件已按原SHA保存本轮reports，原审BE44eb0be4c3／FE91ad72f，8项根因F01–F08及3项证据E01–E03保留；原始Verification／反例尚缺，不称已读74条原判据。plan顶部为本轮唯一新编排；C-IDLE旧串行时序按U20替换，Gateway保护和开关跨due目标保留。第一组可并行B缓存、A后端同步、D微信，root先收敛原前端diff与C-U20设计；不启动本地Verifier，不部署或真实外发。
+**第二次迭代已获用户明确授权（2026-10-28）：** 本次自主实现带上U20联合Noting／压缩新机制，并纳入云端整改计划。原审BE44eb0be4c3／FE91ad72f，8项根因F01–F08及3项证据E01–E03保留；用户补入原始Verification后已核SHA并保存本轮reports，§6内嵌反例保留，其它附件不冒称已取得。plan顶部为唯一新编排与C-U20主会话接线设计，C-IDLE旧串行时序按U20替换，Gateway保护和开关跨due目标保留。本地Verifier继续停止，无部署或真实外发。
+
+三个原子Agent已在用户要求下恢复：r2_cache负责F03/F04，r2_backend_sync负责F05/F06，r2_weixin负责F08；此前额度失败不算交回。root已提交前端1a906aef96ff4f089a0a371e653c1c2d855be7f3：Steer6＋Slash4正式中间态／App用例通过，Approval相关4文件57通过，typecheck通过；旧Timeline7失败在原91ad独立导出同样7失败，保持基线证据，不称全仓绿。Slash压缩成功后第二次catalog属于合法history-invalidated新恢复；命令发送只加入一次在途目录，不开configuration-changed额外轮次。
 
 **2026-10-28恢复断点：** 原自主轮仍以增量同步／500条缓存／SPA和APK免刷新及表现不回归为主目标，未完成最终验收或部署。新增联合Noting／压缩业务口径已从原工作区同步到本分支07顶部并登记U20；原07其它实现事实保留。普通联合触发／取消、已提交保留、旧任务特殊finish审计排除、Force仅Turn结束触发且不可取消／封区间、Full Foreground独立注入均已收口；当前U20尚无产品代码，先由主会话补接线设计再委派实施。
 

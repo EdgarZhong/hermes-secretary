@@ -2,7 +2,7 @@
 
 ## 第二次迭代（2026-10-28，用户已授权纳入U20）
 
-原轮未交付，继续同一索引／计划与两仓同名分支。整改输入原文保存在`reports/cloud-remediation-plan-20261028.md`，原待审BE44eb0be4c3／FE91ad72f；8项根因、3类证据事项保留原编号，报告所述27条违规／43条静态符合／4条证据不足不直接变成当前版本结论。原始Verification及反例原件尚未取得，先按明确场景构造正式反例，不据计划转述冒称已读取原报告。
+原轮未交付，继续同一索引／计划与两仓同名分支。整改输入原文保存在`reports/cloud-remediation-plan-20261028.md`，原待审BE44eb0be4c3／FE91ad72f；8项根因、3类证据事项保留原编号，报告所述27条违规／43条静态符合／4条证据不足不直接变成当前版本结论。原始Verification已由用户补入Downloads，逐字复制`reports/cloud-verification-20261027.md`并核SHA3546c0e1138804f25a4e24fcc8ca5d9f3dd1486399445b9300135a0f2b5b24bf；§6内嵌反例原样保留，额外附件未冒称已取得。
 
 U20最新用户业务契约优先：云端计划C包及旧IDLE判据中“先Noting再压缩、任务等待FM结算”的旧时序被替换。保留F07真实Gateway维护资源保护和E02开关／跨due证据目标，改按并发独立提交、联合取消、Note独立推送选择与任务及时终态验收。冻结质量检查、原前端D/S/P、主按钮权限与全部未冲突条款保持。
 
@@ -18,6 +18,17 @@ U20最新用户业务契约优先：云端计划C包及旧IDLE判据中“先Not
 并行按4个总槽位安排：第一组B-CACHE、A-BE、D-WX可独立，root收敛前端旧diff并设计C-U20；下一组A-FE、C-U20按实际空槽及文件依赖推进，不要求报告建议五路同时运行。具体方案由root先冻结；子Agent仅6.1 sol/high实施，不派生、不流水账，只整包完成或真阻塞交回。
 
 全范围复审仍由用户云端执行，本地Verifier保持停止；最终送审固定新的完整BE/FE SHA，带可访问且脱敏的原始证据附件。Validation复用不受影响证据，改动范围在新候选复验，独立报告未完成不冒称通过。不因新增U20抹去F01–F08/E01–E03，或把旧IDLE时序直接照抄回产品。
+
+### C-U20正式接线设计（主会话2026-10-28指定，实施前依据）
+
+1. **身份与正式事实。** 保留Profile／Conversation／原生成功压缩边界／不透明operation_id／admission／child／snapshot独立身份。取消关联绑定具体native compression fence的正式operation_id，禁止按同Conversation所有任务泛取消，禁止解析holder字符串。复用现有Secretary自有admission/children/presence和compaction_state；必要持久字段仅加自有表，开发隔离库重建，不做生产迁移，不创建通用调度器或新Loop。普通同Anchor取消后可重新准入，历史审计保留，不能原UNIQUE使取消永久占位；Force本区间占用仍保留到真实成功压缩。
+2. **普通三入口。** 原生压缩通过自身安全／lease边界后，在现有pre-summary接缝冻结准确完整父前缀并准入Noting；Idle删除after_normal_commit的等待，改用同一原生request路径并行，不造第二压缩执行器。native fence取消／失败收尾关联该未提交普通Noting；同一正式cancel/commit竞争用Secretary任务提交资格的一次事务确定，已提交不撤销。安全锁不跨模型/网络。未启用／非eligible／External保既有原生分支。
+3. **替代。** 新普通任务或Force准入时，先原子撤销旧未提交非Force任务的有效提交资格；工具工作锁冻结已有完整工作态，以`superseded`专属结束审计保存，不调用finish_noting模型工具、不新增模型请求、不提升pointer、不作为新task基础。然后从上一完整有效快照冻结新工作视图。旧API/工具晚返回不得继续改视图或恢复有效提交；native interrupt用于停止旧执行，不持任务锁等待网络。特殊审计结果在pointer选择、Main show、Noting初始化、branch继承、注入及debug recovery等模型消费路径统一排除；人类审计保留。普通Compact取消则丢未提交稿，与替代审计区分，不把其伪装成可消费forced/context_overflow结果。
+4. **Force。** 移除turn_preflight两处Force发起，以及Idle中把超线改派Force的旁路；只保真正Main Turn结束的统一hook。读取原生已解决窗口／阈值及包含Turn尾的占用，不新增估算器或改公式。短时确认当前真实owner／本次Turn已结束、冻结前缀、持久准入与带稳定身份的原生FM提示同边界落实；线程启动失败有明确失败状态且提示不冒称仍执行，重复hook不多发。不修改通用FM投递机制；Force不得被Compact取消或替代，直到成功压缩才解除该区间后续Noting禁用；真实失败／进程死亡明确终态，不伪装用户取消或永远running。
+5. **快照提交与注入拆开。** 正常任务以自己的有效提交资格和合法来源／完整工作视图提交，不等待父runtime空闲、压缩完成、通知或句柄存活。child完成立即写终态并释放资源，不再用NotingTaskLifecycle.carrier留运行owner等待FM。提交后只唤醒统一Note资格检查。快照选择复用Full Foreground合法anchor位置与真实成功边界，跳superseded审计；不能取全库最大created_at或只看全局current pointer。当前区间自己的Note不得注入本区间。选中最近来源的对应任务尚未结束时，等待该最新来源结果或其明确失败终态，不为旧无效任务等待；更老任务已在替代路径失效，无须等所有历史任务。
+6. **四处统一检查。** Noting提交、native压缩成功发布、父runtime恢复／合法attach、下一模型请求前调用同一幂等selector；新建snapshot或成功边界只有提交后唤醒。通过既有publish_framework_message推送，通用busy等待和Turn间隙接入保持，不新增mailbox或turn内注入。原append_runtime_row仅接受global current snapshot的guard须改为Note专属、同事务重新选中验证，避免较新区间快照遮住应注入的上区间结果。实际FM row与对应目标边界／snapshot回执同事务，重复检查／排队／重启不重发；append失败未算成功，旧runtime/旧目标边界不得乱写，跨更后继区间按当前合法路径重新选取。必要回执只在Secretary自有状态中保存，不另建通用消息队列。
+7. **F07/E02维护保护。** 当前仍需父原始前缀／原生压缩资源的准确维护依赖接入Gateway TTL/LRU/pressure选择和实际soft release；检查与释放在既有owner锁下有确定先后，无先检查后清空漏洞。终态不被FM等待拖延；必要FM责任由既有父owner机制处理，不靠保持已结束child。explicit close/替换使旧回调失效，失效任务及时收尾；开关跨due终结与暂不可用owner保due的原有区别保持。
+8. **开发期反例矩阵。** 真实SQLite/native Loop验证Noting先／Compact先、commit与cancel双屏障、取消后同Anchor重试、旧工作态特殊结束且新任务从完整快照开始、迟到工具/模型回调零有效提交、Force仅Turn结束／重复hook一次提示／取消Compact不杀Force／成功边界解封、不同Profile/owner、注入反序／两次压缩／排队后被替代／append失败重试／重启任务终态。F07使用真正Gateway cache三种普通回收，E02用实际开关及跨due，不用DB伪父前缀或AST孤立helper代替正式路径。
 
 ## 2026-10-28 · 恢复原自主轮与追加口径
 
