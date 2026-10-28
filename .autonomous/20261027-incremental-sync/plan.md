@@ -2,7 +2,7 @@
 
 ## 第二次迭代（2026-10-28，用户已授权纳入U20）
 
-**U22自主目标及轮次上限：** 已按用户明确要求创建自主目标，持续推进。第一轮后Verification、Validation各最多再两次正式全轮复审／复验，对应第二、第三轮；所有包的反例、开发测试、主会话review和集成先闭合再统一送审，不按包开启门禁。用户静态审查交云端安排保持；不擅自以本地Agent替代。第三轮为最终允许轮次，上限不作为带缺陷通过或放宽阈值的理由；仍有缺口则明确未完成，不开启第四轮。
+**U22自主目标及轮次上限：** 已按用户明确要求创建自主目标，持续推进。第一轮后Verification、Validation各最多再两次正式全轮复审／复验，对应第二、第三轮；所有包的反例、开发测试、主会话review和集成先闭合再统一送审，不按包开启门禁。用户U24已将Verification改回本地；先前云端安排仅为历史。第三轮为最终允许轮次，上限不作为带缺陷通过或放宽阈值的理由；仍有缺口则明确未完成，不开启第四轮。
 
 **U23最终发布完成条件：** 用户最新明确授权最终正式上线及0.1.9 APK打包交付，覆盖本计划及旧报告中的“未授权部署”历史限制。最终候选通过后合入两仓main、按既有cloud-deployment-sop/operations-log发布Alex（ssh alex），云端保持main，核实际后端版本及前端资源/健康/配置与三库保护；准备可用回滚点并最多保留两套有效三库历史备份。APK按现有签名与架构构建0.1.9，核versionName/versionCode递增、签名/ZIP/资源SHA/包哈希并按既有交付入口交付。无真机时如实记机制/包核验边界，不假称实机通过。生产模型调用及真实微信测试外发仍未获授权。
 
@@ -150,12 +150,12 @@ Validation已派全新fork-none sol/high `/root/validation_sync`，先独立从U
 
 | 项 | 亲审事实与指定窄修 | 当前状态 |
 |---|---|---|
-| C-R1 真正Main Turn边界 | 原turn_facade在native lease受理前标started、释放后才标finished，Force检查短锁不能证明真实相邻Turn边界；移现有观察至真实受理/释放边界，结束markfalse/占用/Force按既有Framework→persist原子接缝，不加Main admission gate，不锁跨模型。须以真实run_conversation+lease而非只直接hook证明 | r2_joint_noting_resume追加实现/反例，待亲审 |
-| C-R2 旧registry后续生命周期 | 统一views可读旧admission，但register/finish仅UPDATE新attempt表，旧合法调用可能退化，dead-task只扫描新表；按实际行所属表兼容，不按整数格式猜归属，不迁移旧库；初始化保全与后续依法终态分开 | 同包补旧schema/running/expired lease/attach及旧API用例 |
-| C-R3 Note幂等键 | 最新有效Snapshot可跨多次成功压缩仍无新版本；幂等应按目标边界，不能全局禁止同Snapshot在后继新区间再次注入。保每个目标interval一次，移除跨interval全局snapshot UNIQUE/拦截，原资格/队列重选/事务回执不变 | 同包补首次已落FM后第二成功边界无新有效Snapshot及重复检查反例 |
-| C-R4 Note读取失败不得误报压缩失败 | adopt_native_publication属于原生成功commit后的Note展示增量，其资格读异常须日志隔离并返回；原生result/commit不被推翻、不吞原生异常、不伪receipt，后续检查可补偿 | 同包定向真实native成功后Note读抛错反例 |
+| C-R1 真正Main Turn边界 | 原turn_facade在native lease受理前标started、释放后才标finished，Force检查短锁不能证明真实相邻Turn边界；移现有观察至真实受理/释放边界，结束markfalse/占用/Force按既有Framework→persist原子接缝，不加Main admission gate，不锁跨模型。须以真实run_conversation+lease而非只直接hook证明 | 已关闭于27c74b094f：root已亲审真实lease边界及正式run_conversation反例 |
+| C-R2 旧registry后续生命周期 | 统一views可读旧admission，但register/finish仅UPDATE新attempt表，旧合法调用可能退化，dead-task只扫描新表；按实际行所属表兼容，不按整数格式猜归属，不迁移旧库；初始化保全与后续依法终态分开 | 已关闭于27c74b094f：实际所属表分派及旧schema/running/expired lease/attach/旧API证据 |
+| C-R3 Note幂等键 | 最新有效Snapshot可跨多次成功压缩仍无新版本；幂等应按目标边界，不能全局禁止同Snapshot在后继新区间再次注入。保每个目标interval一次，移除跨interval全局snapshot UNIQUE/拦截，原资格/队列重选/事务回执不变 | 已关闭于27c74b094f：真实连续边界／同Snapshot／重复检查事务证据 |
+| C-R4 Note读取失败不得误报压缩失败 | adopt_native_publication属于原生成功commit后的Note展示增量，其资格读异常须日志隔离并返回；原生result/commit不被推翻、不吞原生异常、不伪receipt，后续检查可补偿 | 已关闭于27c74b094f：native成功后Note读取抛错不改原生结果，后继检查补偿 |
 
-三项是统一门禁前主会话设计与接线审查，不计新的正式Verification/Validation轮次。原180＋3及十检查证据只按对应源码保留；追加改动按影响定向补证，不重复全量。
+四项是统一门禁前主会话设计与接线审查，不计新的正式Verification/Validation轮次。原180＋3及十检查证据只按对应源码保留；追加改动按影响定向补证，不重复全量。
 
 ## U25／U26用户追加（第二轮门禁前纳入）
 

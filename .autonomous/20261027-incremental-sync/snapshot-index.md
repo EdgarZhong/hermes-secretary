@@ -48,4 +48,4 @@
 
 ### 第二迭代D07范围勘误（主会话2026-10-28）
 
-06顶部已补D07客户端对象：已有索引入口的Desktop；独立Web/APK冻结c39086c只有Timeline/Show More/阅读保持，本轮不新增索引UI。原行与历史审查保留，不以当前无实现直接豁免。用户依据U04无产品/体验变化；主会话承认原表漏标对象，非用户新增确认。原生Desktop文件timeline-index.ts/use-timeline-history.ts/timeline.tsx与Web基线App入口的证据定位见integration报告；E03仍交云端独立核对。
+06顶部已补D07客户端对象：已有索引入口的Desktop；独立Web/APK冻结c39086c只有Timeline/Show More/阅读保持，本轮不新增索引UI。原行与历史审查保留，不以当前无实现直接豁免。用户依据U04无产品/体验变化；主会话承认原表漏标对象，非用户新增确认。原生Desktop文件timeline-index.ts/use-timeline-history.ts/timeline.tsx与Web基线App入口的证据定位见integration报告；E03仍按U24交本地独立Verifier核对。
