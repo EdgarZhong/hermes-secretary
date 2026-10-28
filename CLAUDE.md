@@ -7,7 +7,15 @@
 
 ## 2026-10-27 · 增量同步与免刷新恢复（执行中）
 
-用户重启应用后隐藏IAB恢复可用，已继续最终联调。最新明确要求：停掉本地Verification，静态审查由用户交云端AI结合skill执行，直接推进独立Validation；此用户口径优先于原V1→V2顺序。主体代码前端91ad72f、后端862326c0a7已提交push；Linux163项已覆盖通过，未验收或部署。本地Verifier已中断，无通过结论；云端审查prompt见本轮reports/cloud-static-review-prompt.md。
+**2026-10-28恢复断点：** 原自主轮仍以增量同步／500条缓存／SPA和APK免刷新及表现不回归为主目标，未完成最终验收或部署。新增联合Noting／压缩业务口径已从原工作区同步到本分支07顶部并登记U20；原07其它实现事实保留。普通联合触发／取消、已提交保留、旧任务特殊finish审计排除、Force仅Turn结束触发且不可取消／封区间、Full Foreground独立注入均已收口；当前U20尚无产品代码，先由主会话补接线设计再委派实施。
+
+前端实际HEAD91ad72f；Steer、Approval、Slash仍有未提交集成修改。Approval独立main已82840b9推送，功能分支尚待提交；Steer新增6个正式中间态用例修后通过，旧Timeline失败须先辨基线；Slash用例仍暴露成功后重复catalog请求，未关闭。此前Sol额度中断的报告不算独立验收通过。本地Verifier保持停止，云端审查版本待最终修补提交后更新。后续按本轮plan继续，不以讨论收口冒称代码交付。
+
+新增U19审批面板自变：已用真实组件/ServerRequests复现两个中间态缺口，root正在修复同请求不移队列、已核验Diff按request与owner固定保留并与write target同屏。权限和不同request不得合并。子Agent在额度限制下中断，Validation报告未关闭；Steer已留部署版/候选双显反例，Slash目录有未验收partial diff，均不得冒称完成。
+
+新增U18待诊断：Steer在旧Turn终态后交新Turn瞬间临时气泡／正式带时间消息双显数秒。主会话已检查carrier／native source／历史交接，尚未确认根因；6.1 sol定向构造正式Controller/App中间态反例，产品不改，主会话定方案。纳入Validation，静态审查仍由用户云端承担。
+
+用户重启应用后隐藏IAB恢复可用，已继续最终联调。最新明确要求：停掉本地Verification，静态审查由用户交云端AI结合skill执行，直接推进独立Validation；此用户口径优先于原V1→V2顺序。主体代码前端91ad72f、后端862326c0a7已提交push；Linux163项已覆盖通过，未验收或部署。本地Verifier已中断，无通过结论；独立Validation /root/validation_sync 已派遣，27项场景计划已亲阅并批准执行，核心动态旅程优先、同版本有效证据复用，root自有测试页已关闭避免并行缓存写入；云端审查prompt见本轮reports/cloud-static-review-prompt.md。
 
 用户明确本轮自主执行，跳过Ask and Align：先调查Restore慢于刷新原因，先在main修复独立问题，再在前后端同名新分支实现游标增量同步与SPA免刷新恢复。保持产品／视觉／交互语义；复用Desktop原生能力，缺口只增可选API字段。APK取消恢复中的自动刷新；历史缓存须经服务端增量对账，不省略有效性校验。新会话正常取消请求不得弹Signal Aborted；修复Android键盘收起闪屏；微信只限制会话管理Slash，会话内交互保持，每条完整Assistant Message立即发送、不等Turn结束。main修复阶段按用户豁免不运行严格双门禁，新机制集成后完整执行。用户追加明确：网络恢复期间Notebook图标保持同owner最后有效状态，不闪unknown；首次无状态不伪造成功，真实状态变化正常更新。主会话设计与集成审查，子Agent统一6.1 sol/high，仅真正阻塞或整包完成汇报。未授权生产部署／真实微信测试发送。
 

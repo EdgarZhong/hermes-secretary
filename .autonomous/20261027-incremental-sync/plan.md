@@ -1,5 +1,15 @@
 # 实施计划：20261027-incremental-sync
 
+## 2026-10-28 · 恢复原自主轮与追加口径
+
+原目标不变：500条消息及同条详情缓存、游标增量、SPA与APK免刷新恢复、D/S/P表现状态不回归，独立缺陷及最终动态验收闭合。原轮尚未交付，不另建替代看板或宣布验收完成。本地Verification继续依用户要求停止，云端静态审查prompt须更新到后继实际版本。
+
+U20完整确认节已从原工作区07同步到本实施分支，保留本分支已有规格事实；尚未改U20产品代码。主会话先补正式接线／事务方案，再按明确白名单交6.1 sol实施，亲自集成。不能把规则重新开放为产品讨论，也不借此改变原前端缓存／状态契约。
+
+优先序：完成现有前端Steer／Approval／Slash修补及定向验证；推进U20后端接线设计与实施；集成后复验受影响的压缩、Notebook、恢复用户路径并更新云端审查版本。已有同版本有效证据复用，无关大套不重跑。未获生产部署、模型调用或真实微信外发授权。
+
+U20验收必须覆盖普通手动／Idle／原生自动压缩并发触发与联合取消、已完整提交结果保留、旧在飞任务特殊finish审计且所有模型消费跳过、新任务继承完整快照、Force仅Turn结束触发且不可取消／封区间、成功压缩解封、Full Foreground有效快照独立注入与去重、重启不悬空；FM保持现有推送及Turn间隙接入机制。
+
 ## 目标与依据
 
 依据snapshot-index.md、基线baseline.txt（冻结时填写）、06顶部C0–C3及D01–D18／S01–S18／P01–P10。已冻结cf5742c（前端c39086c），进入实施；baseline.txt记录精确版本。先main独立修复，再同名codex/incremental-sync-20261027前后端分支。核心优先：实际页面当前窗口增量→完整详情复用→同页实时恢复→请求并行／按需→APK不重载。完成要求是正式链路、针对性证据、独立Verification与Validation全部适用判据闭合，不以单测数量替代。
@@ -79,9 +89,23 @@
 
 | 新发现／缺口 | 负责人 | 完成条件 | 状态 |
 |---|---|---|---|
-| test_idle_noting_owner证据写盘依赖ignored目录已存在 | 主会话／U16 | 测试自行创建精确证据目录或用既有临时目录，保断言；干净隔离导出仅重验4项，修复按main先纳再集成 | 待修，产品源码无新增失败 |
+| test_idle_noting_owner证据写盘依赖ignored目录已存在 | 主会话／U16 | 测试自行创建精确证据目录或用既有临时目录，保断言；干净隔离导出仅重验4项，修复按main先纳再集成 | 已关闭：main5fc54fc233／增量44eb0be4c3，干净导出4项通过 |
 | I1最终三个浏览器复验 | 主会话 | 隐藏IAB工具恢复后，真实Python/SQLite/HTTP/WS同document核epoch仅一次snapshot、详情单请求且冷重开复用、合法unavailable停止轮询；保草稿与Context表现 | 工具报disabled与用户开启截图冲突，连接重置未解 |
 
 ## 用户最新执行调整
 
 用户明确两仓提交后直接进Validation，停止本地Verification，由其自行把准确版本和原口径prompt交给云端AI结合skill静态审查。本地Verifier已中断，无通过结论。主会话继续独立Validation的计划审阅／实际验收与集成收尾，不把顺序调整冒称V1通过。重启后隐藏IAB已恢复；测试目录初始化修复已先main 5fc54fc233a0379321c13c22494923e06f302dad，四例干净导出通过，现纳入增量。
+
+Validation已派全新fork-none sol/high `/root/validation_sync`，先独立从U01-U17与06/07范围提取完整用户场景并按技能模板落盘，主会话审阅计划后执行；本地静态Verifier `/root/verification_sync_resumed` 已中断。root已关闭自有测试页，避免同origin IDB/草稿后台写入干扰独立验收。服务8189/5199仍在隔离fixture运行，未部署。
+
+主会话已审27项独立Validation计划并批准执行：优先组合验证200长正文冷暖加载/同页断线变化/详情复用/慢Usage/压缩及epoch；其余复用同版本有效证据，不重复大套。补充要求：新tab不等于无缓存，V01须准备自有fixture干净entry；动态过渡明确DOM rAF/MutationObserver采样或如实报告频率边界，不能从阶段截图推断零闪。计时区分缓存首显、正文切点、可操作和附属完成。真实Compact由用户动作入口验证，受控依赖仅准备/控制时序。缺设备/外发授权如实记录，不虚构通过。
+
+## U18用户新增动态反馈
+
+部署版排队Steer在旧Turn结束后启动新Turn时短暂双显，仅第二条有Timeline时间，随后随流式合一。root定向调查carrier/native source/历史与pending提交，不按全局同文去重。/root/steer_handoff_repro 仅新增正式中间态行为反例、只读产品，回交真实根因后root先设计再实施。V28须逐中间帧/呈现核一条，不只看终态；版本原91ad72f尚未因此改产品。
+
+## U19审批面板稳定性（用户明确追加）
+
+同一待审批请求的Diff/写入目标/理由应同一面板，背景更新不自动换队列或退成少信息面板。root反例改前两项失败：receive重复id将其移尾；瞬态live工具节点消失即丢Diff。方案：保持现有请求位置；首次按原严格关联核验的Diff作为该请求的只读展示证据保留，以profile/conversation/runtime/request id/command/工具身份隔离；关键身份变化撤销，审批权限仍由ServerRequests原状态控制；Command与Diff同屏。新首帧仍严格匹配，不猜未取得Diff，不扩大批准范围。
+
+额度中断：validation_sync、steer_handoff_repro、slash_catalog_fix均未整包交回，保已有日志/partial diff，root只按实际证据接收。当前本地Verifier保持停止，云端审查版本需在后继修复commit后更新。

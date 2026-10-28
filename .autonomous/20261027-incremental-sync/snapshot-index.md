@@ -5,9 +5,9 @@
 | 输入类别 | 实际文件路径／位置 | 修改等级 |
 |---|---|---|
 | 用户需求 | 本索引“口径与决策”；docs/06-Hermes-Secretary-Web-UI-V1-Spec.md 顶部C0–C3及D／S／P表 | 二级，用户本轮明确要求主会话整理设计表；工程细化允许，不改产品语义 |
-| 权威规格 | docs/06-Hermes-Secretary-Web-UI-V1-Spec.md 顶部新契约优先，其余现有UI／原生归属／交互保持；docs/07-scheduler-notebook-noting-compaction-redesign.md 保留Notebook语义，不改其机制 | 二级；U16明确授权07 §8.1父owner生命周期增补，不把07其它目标纳入本轮 |
+| 权威规格 | docs/06-Hermes-Secretary-Web-UI-V1-Spec.md 顶部新契约优先，其余现有UI／原生归属／交互保持；docs/07-scheduler-notebook-noting-compaction-redesign.md 的2026-10-28解耦重设计节是U20最新依据 | 二级；U16父owner补修保留；U20替换明确冲突的旧触发／取消／注入机制，其它Notebook语义保持 |
 | 编码指导 | 根AGENTS.md；独立UI仓库根AGENTS.md；autonomous-run／executing-plans／两个独立门禁与交付Skill | 二级；用户授权范围内执行，不引入上游新规则 |
-| 会话确认口径 | 本索引以下U01–U17 | 二级 |
+| 会话确认口径 | 本索引以下U01–U20 | 二级 |
 
 ## 口径与决策
 
@@ -30,7 +30,12 @@
 | U15 | Toast圆角外出现不明直角灰色区域，须修复 | 用户同图追加；修阴影/裁切边界，保原Toast位置、尺寸、颜色、关闭和堆叠语义 |
 | U16 | 一并修复报告所述Idle Noting父owner被回收后仍触发，交子Agent实施 | 用户明确提供Downloads报告并要求一块修；报告旧“未授权修改”被本消息替代，部署/生产补跑仍未授权。保原一次空闲期与正常提交门槛 |
 | U17 | 旧的模糊片段保持懒取；新Turn精确主动取Thinking | 用户明确选择推荐项：不把旧无来源标记的系统触发消息猜成Turn，也不从更早Turn扩大主动读取；新Turn允许最小内部来源标记，无逐Thinking游标 |
+| U20 | 联合Noting／压缩重设计；业务口径已收口，具体规则见07顶部2026-10-28节 | 用户本会话连续确认；同步的是最新用户口径，不把原故障报告中的人工改库／重启操作视为授权 |
+
+用户新增U18：当前部署前端中，排队Steer在旧Turn结束后成为新Turn输入时，短暂出现两条相同消息，仅第二条有Timeline时间，数秒流式输出后合一。要求查明同瞬间的两种身份／表现层交接，并纳入当前候选回归；尚未确认根因，不冒称生产复现。
 
 补充依据：`/Users/edgar/Downloads/Alex-Idle-Noting-问题报告与修复方案-20261027.md`，SHA256 `64bf78d55c3f82ed55317cd77ca8d93fab6c5d9fa4b2cb25f5e563ec0083bc8e`；根因、原生复现和边界以该报告为输入，实施由本轮主会话方案决定；不把生产个案身份写入公开实现。权威长期约束补入07 §8.1（本项获授权修改07，原UI增量范围仍不改其它Noting语义）。
 
 用户未授权：部署、调用生产模型、真实微信测试发送；本轮只本地实现／阶段提交及既有自动push。UI只许自己创建隐藏IAB（visible:false）；不控制桌面、不用外部浏览器、不动用户页面。Android缺真机证据须明确，不冒称通过。
+
+用户新增U19（2026-10-28）：Approval面板在用户无操作时从已可审阅Diff自行跳成只有write target的面板，被迫在后者approve，不符合预期；同一审批的信息应在一个稳定面板。不同请求权限不得误合并。root已用两个实际React/ServerRequests反例确认重复receive将当前请求移尾、瞬态工具节点丢失使Diff退化；不冒称完整生产PageAgentCmd时序已复现。
