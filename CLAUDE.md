@@ -17,16 +17,16 @@
 | U18 Steer／U19 Approval／冷Slash目录竞态 | 前端1a906ae及后续类型／复杂度修补已提交；正式中间态／App反例通过，待当前集成浏览器复验 |
 | F03/F04缓存 | 前端0ea002e已亲审提交：完整详情字段保留，窗口／详情／已核验前缀合计500身份预算，证明失效时仅退役selector；95项及真实IDB证据，见reports/r2-cache.md |
 | F05/F06后端增量 | 后端918efda已亲审提交：同源Thinking合法尾追加、正式CAS实际改文提交后通知；132项及末次22项定向证据，见reports/r2-backend-sync.md；实际App接收待联调 |
-| F01/F02前端恢复 | 已整包交回并亲审，166项＋末次14项通过；复杂度棘轮两处窄拆分进行中，未提交；见reports/r2-frontend-recovery.md |
-| F08微信逐消息发送 | 已整包交回，root亲审中；final持久UID后立即沿既有FIFO投递、尾部成功回执去重；150项及最后47项影响复测，不真实外发；见reports/r2-weixin.md |
-| U20／F07／E02联合Noting | 主会话接线设计在plan，r2_joint_noting实施中；普通手动／Idle／原生auto并发联合触发取消、已提交保留，Force仅Turn结束不可取消并封区间，特殊替代审计透明跳过，Note独立四时点检查后原FM推送；尚未亲审验收 |
+| F01/F02前端恢复 | 已整包交回并亲审，166项＋末次14项通过；复杂度窄拆分完成且无增长，前端8313cf2已提交；见reports/r2-frontend-recovery.md |
+| F08微信逐消息发送 | 已亲审提交后端a5018ff；final持久UID后立即沿既有FIFO投递、尾部成功回执去重；150项及最后47项影响复测，不真实外发；见reports/r2-weixin.md |
+| U20／F07／E02联合Noting | 主会话接线设计在plan，r2_joint_noting_resume接续实施中；普通手动／Idle／原生auto并发联合触发取消、已提交保留，Force仅Turn结束不可取消并封区间，特殊替代审计透明跳过，Note独立四时点检查后原FM推送；尚未亲审验收 |
 | E01/E03与动态体验 | root准备同夹具流量／时序／必要读取及D07客户端范围证据；已有旧候选隐藏IAB记录只按旧版本引用，不当作当前候选通过 |
 | 第二次整轮门禁 | 尚未送审／执行；待全部集成后固定两仓SHA，云端静态复审＋独立实际用户Validation。第一轮被额度中断的本地报告不算通过 |
-| 发布／APK | U23已明确授权；0.1.9元数据cb4c769已提交，尚未最终构建／交付／上线。生产只读基线后端3426c0f，Web系统服务和Gateway用户服务active；正式前端0947ed5保持 |
+| 发布／APK | U23已明确授权；0.1.9元数据cb4c769已提交，8313cf2候选APK已构建并通过原签名／0.1.9(1009)／ZIP／16KB及439内置资源一致性核验，尚未最终交付／上线。生产只读基线后端3426c0f，Web系统服务和Gateway用户服务active；正式前端0947ed5保持 |
 
-前后端实施目录分别为`/Users/edgar/code/hermes-secretary-incremental-sync`与`/Users/edgar/code/hermes-secretary-web`，同名`codex/incremental-sync-20261027`分支。三个实现包现已交回，只有r2_joint_noting仍改产品；r2_frontend_recovery只做指定复杂度拆分，r2_weixin接续只读发布准备。子Agent6.1 sol/high、不再派生、不流水账；主会话负责方案、亲审、接线、正式门禁与发布。
+前后端实施目录分别为`/Users/edgar/code/hermes-secretary-incremental-sync`与`/Users/edgar/code/hermes-secretary-web`，同名`codex/incremental-sync-20261027`分支。其余实现包均已亲审提交，只有r2_joint_noting_resume仍改产品；重启后旧Agent已停止，新validation_round2先独立制定整轮计划，release_preflight只读准备发布。隐藏IAB已恢复；root开发联调确认正式CAS改文→watcher→App同document自动delta更新1条，草稿保留，不把该开发证据冒称独立验收通过。子Agent6.1 sol/high、不再派生、不流水账；主会话负责方案、亲审、接线、正式门禁与发布。
 
-保护原main工作区的Noting调试／生成协议／07／presentation等他人dirty。新状态表必须兼容正式旧库，仅加Secretary自有伴随表／读取视图，不重建生产数据库。冻结检查不增删放宽；已有no-tmp历史报告七处基线问题保持真实记录，不称十检查全绿。旧Timeline七项失败在原91ad同样存在，不能据此替代部署基线或当前用户体验判断。真机Android和真实微信送达未验，包校验／受控adapter证据不冒称实机或真实外发。
+保护原main工作区的Noting调试／生成协议／07／presentation等他人dirty。新状态表必须兼容正式旧库，仅加Secretary自有伴随表／读取视图，不重建生产数据库。冻结检查不增删放宽；no-tmp旧报告七处仅加既有允许的历史取证说明，原行原结论保留，原字节与SHA已在ignored存档；单项扫描通过，未改检查规则／阈值／baseline；当前全轮十项尚未统一执行。旧Timeline七项失败在原91ad同样存在，不能据此替代部署基线或当前用户体验判断。真机Android和真实微信送达未验，包校验／受控adapter证据不冒称实机或真实外发。
 
 U20详口径见07顶部及plan接线设计；旧“先Noting再压缩／FM结算后才终态”已被替换。U17旧模糊片段保持懒取，新Turn沿原生source精确主动取Thinking，不设逐Thinking游标。用户确认与原始云端报告保留索引，不改写旧审查时点结论。界面验收只许自建隐藏IAB，不动用户浏览器／桌面。
 
@@ -73,7 +73,7 @@ U20详口径见07顶部及plan接线设计；旧“先Noting再压缩／FM结算
 | 运行设置 | 历史noting off不代表当前值；最后已核local_enabled=true，默认／Alex压缩总时限1000秒及Idle500秒／96K保持。本轮只追加授权飞书MCP配置／官方PM mcp依赖，不改模型或调用生产模型 |
 | 保留他人工作 | presentation报告、手动Noting调试入口／协议生成、07等原dirty保持，不纳入本轮恢复补丁提交 |
 
-## 唯一任务看板
+## 前轮交付事实索引（本轮唯一任务看板见顶部）
 
 | 工作 | 状态与完成边界 |
 |---|---|

@@ -92,6 +92,7 @@
 | 实际测试范围／次数 | 0文件、0项、0次执行；预定三文件`test_idle_noting_owner.py`、`test_idle_noting_reuse.py`、`test_noting_timers.py`未执行，不能将预期72项记成通过 |
 | 生产与清理边界 | 未修改生产checkout／venv／配置／数据库／服务／凭据，未重启或调用模型／微信／生产CLI。未创建远端专用/tmp目录、未上传源码或生成远端测试产物，因此无远端专用目录需清理；未触碰其它/tmp或生产备份 |
 
+<!-- no-tmp: ok — 此行仅保留已完成、目录已清理的历史Linux取证原路径，不是现行可执行指南；新运行须由平台scratch helper生成隔离路径。 -->
 依赖具备后，待主会话提供获授权的测试解释器／隔离环境再执行原定命令；本次没有自行扩大权限。原定但**未运行**的入口为：在专用`/tmp/hermes-incremental-verify-<唯一后缀>/source`中，设置独立tmp `HERMES_HOME`、显式`HERMES_PYTHON=/home/ubuntu/hermes-secretary/.venv/bin/python`，经`scripts/run_tests.sh -j 2 --file-retries 0 tests/tui_gateway/test_idle_noting_owner.py tests/secretary/test_idle_noting_reuse.py tests/secretary/test_noting_timers.py -q --tb=short`执行；Profile cwd仍须在源码Git root外。缺pytest时未尝试启动该入口，避免runner转向自动环境构建而改动未授权依赖。
 
 
@@ -103,13 +104,17 @@
 
 - 精确commit：`862326c0a71547e3315e66eb76496a5ab8ccb1dd`；从本地Git提交归档，上传后核SHA256为`f90a7d370653d11aef43864dbd5b503de4d843aa747999ce6e70e10b875bcb22`。对应本地`/Users/edgar/code/hermes-secretary-idle-noting-owner/.hermes-dev/incremental-sync-20261027/idle-owner/linux/source-862326c0a7.tar.gz`及`linux/integrated-manifest.json`。
 - U16原14文件逐一匹配接收manifest；远端提取、首次执行后、四例复测后均保持一致，未修改产品代码、测试断言或规则。新增B1／U17所涉四个测试文件SHA另记`linux/final-evidence/result.json`。
+<!-- no-tmp: ok — 此行仅保留已完成、目录已清理的历史Linux取证原路径，不是现行可执行指南；新运行须由平台scratch helper生成隔离路径。 -->
 - Linux：`Linux-6.8.0-138-generic-x86_64-with-glibc2.39`；Python 3.14.8、pytest 9.1.1；解释器prefix为`/tmp/hermes-incremental-verify-20261027-32f3cf02da9a/test-env`，产物位于专用tmp工作区内。
+<!-- no-tmp: ok — 此行仅保留已完成、目录已清理的历史Linux取证原路径，不是现行可执行指南；新运行须由平台scratch helper生成隔离路径。 -->
 - 官方PM创建命令（source目录执行）：`/home/ubuntu/hermes-secretary/.venv/bin/python -B -m pm.build_env --source . --out /tmp/hermes-incremental-verify-20261027-32f3cf02da9a/test-env --python /home/ubuntu/hermes-secretary/.venv/bin/python --cache /tmp/hermes-incremental-verify-20261027-32f3cf02da9a/pm-cache --group dev --group test`，默认frozen，退出0，用时23.118秒。生产Python只作启动器，未向其venv安装依赖；未裸pip／uv、未`--resolve`、未改lock或用户配置。
+<!-- no-tmp: ok — 此行仅保留已完成、目录已清理的历史Linux取证原路径，不是现行可执行指南；新运行须由平台scratch helper生成隔离路径。 -->
 - `HERMES_HOME=/tmp/hermes-incremental-verify-20261027-32f3cf02da9a/home`，`HERMES_RUNTIME_DIR=/tmp/hermes-incremental-verify-20261027-32f3cf02da9a/home/tools`，PM缓存及TMPDIR均在本次tmp根内。测试由canonical runner提供每文件隔离temp Profile，terminal.cwd位于源码Git root外；真实后台测试fixture禁用socket connect／connect_ex，只控制Provider／摘要返回边界，继续运行真实child、DB、Commit Gate和原生压缩publication。没有生产模型／微信请求。
 - `uv.lock`前后SHA256：`2bc4db483e9cba927cd7147f9ccbb09635f85bb3f1f36d6e9d51d06b65d1c67e`；`pyproject.toml`前后SHA256：`cadde2f6a92574d292103f43abf66408b1d841cd9ea332ca7f3e3dfc5dcc87fd`；二者也与0a5d09cdcf一致。PM和测试前后核验均未变化。
 
 ### 首次七文件与唯一补测
 
+<!-- no-tmp: ok — 此行仅保留已完成、目录已清理的历史Linux取证原路径，不是现行可执行指南；新运行须由平台scratch helper生成隔离路径。 -->
 首次使用上述新环境，显式`HERMES_PYTHON=/tmp/hermes-incremental-verify-20261027-32f3cf02da9a/test-env/bin/python`，通过`bash scripts/run_tests.sh -j 2 --file-retries 0`一次执行以下7文件，runner耗时115.7秒（完整进程117.453秒）：
 
 | 测试文件 | 首次实际结果 | 最终覆盖 |
@@ -125,6 +130,7 @@
 首次合计159通过／4失败；四失败均为`test_background_heartbeat_then_idle`在写`source/.hermes-dev/incremental-sync-20261027/idle-owner/result-*.json`时发生`FileNotFoundError`，源码归档不含ignored证据目录。不是模型／冻结／Snapshot错误；原始失败日志完整保留，未改断言。主会话授权且用户恢复自主执行后，仅`mkdir`上述精确目录，复用原PM环境执行：
 
 ```bash
+<!-- no-tmp: ok — 此行仅保留已完成、目录已清理的历史Linux取证原路径，不是现行可执行指南；新运行须由平台scratch helper生成隔离路径。 -->
 HERMES_PYTHON=/tmp/hermes-incremental-verify-20261027-32f3cf02da9a/test-env/bin/python bash scripts/run_tests.sh -j 2 --file-retries 0 tests/tui_gateway/test_idle_noting_owner.py -k test_background_heartbeat_then_idle -q --tb=short
 ```
 
@@ -134,6 +140,7 @@ HERMES_PYTHON=/tmp/hermes-incremental-verify-20261027-32f3cf02da9a/test-env/bin/
 
 - 本地根：`/Users/edgar/code/hermes-secretary-idle-noting-owner/.hermes-dev/incremental-sync-20261027/idle-owner/linux/`；`final-evidence/`含首次`tests.log`、PM构建、解释器核验、`result.json`及最终`four-case-retest.log/json`，`four-case-results/`含四份实际结构化Snapshot／child／压缩结果。
 - 汇总与指纹：`linux-final-summary.json`记录163唯一测试的证据组合及各日志SHA；命令／耗时分别在`isolated-run.json`、`four-case-ssh.json`、`final-collect.json`。最终补测日志SHA256为`9da7c9a0318e7390f598c3983ce069e46c06f17f57b713bdd652e121217b95aa`。
+<!-- no-tmp: ok — 此行仅保留已完成、目录已清理的历史Linux取证原路径，不是现行可执行指南；新运行须由平台scratch helper生成隔离路径。 -->
 - **清理已完成：** 先成功取回所有日志与四份JSON并在本地核SHA，再核远端根路径／非symlink／对应commit／测试成功后，用`shutil.rmtree`只删除`/tmp/hermes-incremental-verify-20261027-32f3cf02da9a`。`cleanup.json`、`cleanup.log`、`cleanup-command.json`明确记录解析后精确路径与`exists_after=false`。该目录包含本次源码导出、独立PM env／cache／home和证据；未删其它tmp、生产备份或运行目录。
 - 无产品文件新改动、无commit／push／部署、无生产checkout／venv／配置／数据库／服务／凭据变更、无重启或显示操作。整轮独立门禁仍由主会话组织；本节只关闭本次Linux目标平台定向证据缺口。
 
