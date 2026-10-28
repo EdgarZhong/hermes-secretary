@@ -164,3 +164,10 @@ Validation已派全新fork-none sol/high `/root/validation_sync`，先独立从U
 APK主动顶栏下拉先出浏览器原型。最新设计替换此前整页下移：页面/背景静止、圆背板橙环从顶部中央浮现、约200手指位移经阻尼映射固定80px指示器行程、40背板/24橙环按token、阈值全亮后release一次reload；正文起手/控件tap不劫持，取消/回退收回。header_pull_refresh_preview只新增隔离组件/CSS/测试及ignored原型，不改正式App/layout，root隐藏IAB截图/动态预览后再接APK。正式Web不自动开启。主会话亲审并接线；8313旧候选APK已核但不再当最终包，最终源SHA后重建。原三轮上限/范围内门禁与正式上线完成条件保持。
 
 第二轮root集成接收：U25 ba7decd与U26 03a9689已纳入FEbc02d01，正式Android限定入口已接；两仓main历史纳入BE2dc4398／FEbc02d01，产品零合并增量。root已过目新增R47–56，完整Validation56项门禁前计划通过。接下来本地全新上下文完整Verification，不逐包审；APK按FEbc02d01构建中。
+
+
+## U27再次明确：APK没有任何自动刷新依赖
+
+用户原话及明确目标已落06顶部及索引。root已扫描正式原生/前端：ForegroundRefresh无reload，现仅冷启动loadUrl、真实认证redirect导航、用户按钮/顶栏手势reload；不过PackagedWebViewClient.appDocument的临时网络异常／5xx返回静态unavailable页，SPA尚未启动，所以不能同页自愈。此为主会话开发接线发现，独立Verifier仍处于仅规格判据阶段，不算正式门禁发现／新一轮。
+
+root指定窄修：临时bootstrap传输失败／暂时服务错误时返回现有内置SPA和明确deferred bootstrap标记，无token／无伪授权；Gateway只在此APK专属初始提示下首尝试走现有freshBootstrapToken，原current/abort/凭据撤销/自动retry/可见恢复均复用，不做原生循环loadUrl/reload。正常200 bootstrap路径、300..399 Authelia自然导航、真实401/403撤权与默认Web无标记调用保持；Malformed/过大引导不当成网络成功。仅native PackagedWebViewClient+必要small sibling、Gateway最小接缝/types及定向native/TS测试可改。root review/接线，先反例再窄修；新源后更新候选/APK，第二轮实现调查才开始。

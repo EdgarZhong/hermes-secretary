@@ -9,7 +9,7 @@
 
 **当前完成条件（U22／U23）：** 持续自主执行；第一轮之后Verification与Validation各最多再两次正式全轮复审／复验，第三轮内完成两仓main集成、正式Alex上线和原签名0.1.9 APK交付。次数上限不豁免缺陷或证据缺口，不开第四轮。用户U24已明确将Verification改回本地，第二轮集成锁定后派全新上下文6.1 sol/high全范围独立审查；开发定向测试／主会话亲审不冒充独立门禁。生产模型和真实微信测试外发不在授权内。
 
-唯一计划／索引在[本轮目录](.autonomous/20261027-incremental-sync/plan.md)。原始需求U01–U26、缓存D01–D18、表现S01–S20和操作P01–P11已落档。保持原产品／视觉／操作资格，主目标仍是500条消息与完整已取详情缓存、游标同步、SPA／APK无需刷新恢复，不为填缓存预读或重新发起写操作。
+唯一计划／索引在[本轮目录](.autonomous/20261027-incremental-sync/plan.md)。原始需求U01–U27、缓存D01–D18、表现S01–S20和操作P01–P11已落档。保持原产品／视觉／操作资格，主目标仍是500条消息与完整已取详情缓存、游标同步、SPA／APK无需刷新恢复，不为填缓存预读或重新发起写操作。
 
 | 工作包 | 当前实际状态／交接 |
 |---|---|
@@ -21,9 +21,10 @@
 | F08微信逐消息发送 | 已亲审提交后端a5018ff；final持久UID后立即沿既有FIFO投递、尾部成功回执去重；150项及最后47项影响复测，不真实外发；见reports/r2-weixin.md |
 | U20／F07／E02联合Noting | 后端27c74b094f已亲审提交／push，root提出的C-R1–R4四处接线补修全部纳入，末次5文件46项及42文件十检查通过；普通手动／Idle／原生auto并发联合触发取消、已提交保留，Force仅Turn结束不可取消并封区间，特殊替代审计透明跳过，Note独立四时点检查后原FM推送；正式独立门禁待统一执行 |
 | E01/E03与动态体验 | D07原表漏标客户端范围已在06顶部勘误，仅约束已有入口的Desktop；Web/APK不新增索引UI，E03交独立Verifier核对；root准备同夹具流量／时序／必要读取证据；已有旧候选隐藏IAB记录只按旧版本引用，不当作当前候选通过 |
-| 第二次整轮门禁 | 候选已集成，BE2dc4398、FEbc02d01，root锁定后派本地全新上下文Verification；Validation原46＋新增10场景共56项计划已过目，门禁通过后执行。第一轮partial不算通过 |
+| 第二次整轮门禁 | 本地全新Verifier正在仅按规格建立判据，尚未查实现；用户U27再次明确免刷新SPA，root在原生冷启发现临时网络失败仍落静态页的前置缺口，需在实现调查前更新最终候选；未开启额外正式轮次。Validation原56场景已过目，待补对应入口 |
 | U25冷启动视口 | 用户已确认新document首次真实历史提交后一次立刻到底，加载期用户滚动不阻止；cold_start_viewport已交回，root审查正式commit/ack接线后接收并提交ba7decd；5文件115项、types与冻结健康通过，同页规则保持 |
 | U26顶栏手动刷新预览 | 用户新明确体验变更：APK only，页面／背景静止，Chrome式圆背板橙圈阻尼与cap；root已先交付隐藏IAB真实原型截图，CDP真实mouse验证cap/松手一次reload/正文不起手/浅深主题；03a9689已接正式APK packaged native入口、普通Web关闭，25组件＋83整合项、types/health通过；无真机touch，bc02d01重建中 |
+| U27 APK引导失败同页恢复 | 原生自动reload已取消；冷启bootstrap传输失败/暂时服务错误仍落静态重试页，未进入SPA，root设计最小APK专属deferred-bootstrap接缝修正，认证／默认Web保持。bc02 APK已严格核验但后继需按新源重建 |
 | 发布／APK | U23已明确授权；0.1.9元数据cb4c769已提交，8313cf2候选APK已构建并通过原签名／0.1.9(1009)／ZIP／16KB及439内置资源一致性核验，尚未最终交付／上线。生产只读基线后端3426c0f，Web系统服务和Gateway用户服务active；正式前端0947ed5保持 |
 
 前后端实施目录分别为`/Users/edgar/code/hermes-secretary-incremental-sync`与`/Users/edgar/code/hermes-secretary-web`，同名`codex/incremental-sync-20261027`分支。C、原恢复包及U25/U26均已亲审提交；两仓main历史已按SOP纳入候选（BE2dc4398／FEbc02d01），合并产品tree零增量，不触碰其它main工作区dirty。validation_round2已补完并过目56场景，release_preflight及27项本地发布保护演练已完成。隐藏IAB已恢复；root开发联调确认正式CAS改文→watcher→App同document自动delta更新1条，草稿保留，不把该开发证据冒称独立验收通过。子Agent6.1 sol/high、不再派生、不流水账；主会话负责方案、亲审、接线、正式门禁与发布。
