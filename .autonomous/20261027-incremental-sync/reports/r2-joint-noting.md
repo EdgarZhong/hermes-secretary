@@ -108,3 +108,28 @@
 ### 7. 交回建议
 
 root继续亲审A／B／Note／R4的实际diff及42份源码manifest，重点核正式lease锁序、等待者不能抢先写running／pending、旧终态保留和同interval事务幂等。接收后统一固定BE／FE版本再按U24派全轮门禁；本包没有自行commit／push／派生／部署或扩大发布范围。
+
+## main历史纳入的四文件冲突交回（2026-10-28）
+
+root已提交C为`27c74b094f`；本次仅处理其发起的`origin/main`历史merge：当前HEAD `0ca4a3ef3fe7e4a0d84cb58b3d020ad2f1653876`，MERGE_HEAD `5fc54fc233a0379321c13c22494923e06f302dad`。仅四个源码文件共10个hunk，未提交／push。README／AGENTS／CLAUDE保持root按SOP恢复后的HEAD内容。
+
+完整保存stage1／2／3、`0a5d09cdcf`原始逐文件补丁、incoming→C差异及决策于ignored `.hermes-dev/incremental-sync-20261027/r2-joint-noting/merge-u16/`。已核四个stage3文件均与`0a5d09cdcf`相应文件**逐字一致**；并逐hunk审视原U16目标与最新U20接线，不使用整文件ours命令。
+
+| 冲突 | 保留及替代依据 |
+|---|---|
+| noting_child H1：`frozen_work` | 保留C新增字段，供异步child尚未构造时的替代审计保存合法基础；U16原准确owner／epoch／request字段全部保留。 |
+| noting_child H2：`_end_completion` | 保留C立即终态释放与同registry精确handle关闭。main旧等待native／FM结算的child生命周期已由U20明确替换；活跃native资源改由当前owner的fence／request及cache release原子保护，不重新使已结束child等待FM。 |
+| noting_runtime H1：Force dispatch | 保留C稳定admission身份、start_gate和提示失败明确终态，替代旧“提示失败仅日志、child继续”的分离状态；仍走原push FM。 |
+| noting_runtime H2：prepare／Idle接缝 | 保留C `operation_id`和`request_idle_joint`。该sibling在persist锁内继续核准确实例、epoch、DB/ref、当前route、archive、开关和可冻结前缀，再消费due／请求原生压缩；native pre-summary才冻结并准入child。原U16关闭／替换先后关系与缺前缀保due目标均保留，旧串行callback由U20并行机制替换。 |
+| noting_runtime H3：source／callback | 保留独立任务提交，不恢复`after_normal_commit`串行压缩。原生／External来源事实仍在；owner bind位于合法wrapper及attach，保C的Framework→persist锁序，不能把bind／Note检查重新移回反序锁区。 |
+| noting_runtime H4：trigger参数 | 保留可选`operation_id`，对应真实native registration的联合取消身份；`expected_period/expected_owner`沿Idle sibling完整传递。 |
+| noting_runtime H5：native_idle映射 | 保留内部`native_idle`→持久kind `idle`及operation关联，兼容原schema枚举，不恢复无关联的旧准入。 |
+| noting_scope H1：attach尾部 | 保留准确weak runtime绑定后的dead-task清理与统一Note检查。main原closed判断、registry RLock、DB/ref绑定及实例相等判断原样在；不因合并而删除U20四时点中的恢复检查。 |
+| noting_timers H1：policy早退 | 保留C对已受理工作的资源保护：待触发timer仍由原`refresh_maintenance`、`entry.valid`及准确owner限制；已在飞child／native资源不能因为Idle开关切换而提前回收，终态会释放。不能恢复main对所有维护资源统一以Idle policy短路的旧前提。 |
+| noting_timers H2：native保护 | 保留当前准确owner的活跃fence／request保护，后者核epoch、DB、Conversation、完成状态；原pending timer／completion owner检查均保留，覆盖同步冻结→真实native工作交接。 |
+
+额外核对：U16的`_begin_completion`、`holds_parent_completion`、`_same_completion`、`_reuse_committed_completion`、`_matching_native_request`，timer准确实例／epoch／period、cancel旧owner不伤新owner、firing到冻结不断档、start失败释放、attach补偿，以及scope准确绑定，共20个相关函数在incoming与C中逐字一致。`_run_idle_event`仅说明文字变为U20时序，去docstring后AST一致，原`expected_owner`传播完整。`request_idle_joint`、`claim_cache_release`、原生close接缝与TUI/Gateway实际维护调用另已亲读；旧串行reuse helper不再是新Idle正式入口，不能以恢复其等待条件覆盖U20。
+
+**零差异证明：** 逐hunk生成候选后，四文件均与HEAD逐字一致，已仅`git add`这四文件；无unmerged条目。非白名单index条目在操作前后逐字不变。全部index tree与HEAD tree同为`4b98595279d1afe786d6e830876d15f65fcf8b12`，`git diff --cached HEAD`为空；四文件源码SHA见`merge-u16/resolution.json`。报告补记仅留在工作区未暂存；其它文件未改。merge仍由root掌握，未commit或abort。
+
+因实际源码／依赖／冻结检查入口均未变化，本次不重跑测试或健康大套，复用27c74b094f已审46项及十检查有效证据；不宣称新增测试通过。`git diff --check`及四文件AST解析通过。root可继续最终merge审查与提交，当前无源码整改或冲突遗留。
