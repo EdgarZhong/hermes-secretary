@@ -365,13 +365,13 @@ def finish_text_response(
     # assistant row as settled, so a transform after this write would reach the user but never
     # the stored/replayed transcript (#44239). finalize_turn reads the recorded outcome; like
     # there, an interrupted turn keeps the raw text.
-    from agent.turn_finalizer import apply_llm_output_transform
-    _transformed = False
-    if not getattr(agent, "_interrupt_requested", False):
-        final_response, _transformed, _ = apply_llm_output_transform(
-            agent, final_response, turn_id=getattr(agent, "_current_turn_id", "") or "", logger=logger,
-        )
-    if _transformed:
+    from agent.turn_finalizer import prepare_final_response
+    _previous_response, final_response = final_response, prepare_final_response(
+        agent, final_response, turn_id=getattr(agent, "_current_turn_id", "") or "",
+        exit_reason=f"text_response(finish_reason={finish_reason})",
+        interrupted=bool(getattr(agent, "_interrupt_requested", False)), logger=logger,
+    )
+    if final_response != _previous_response:
         if _promoted:
             final_msg["api_content"] = final_response
         else:

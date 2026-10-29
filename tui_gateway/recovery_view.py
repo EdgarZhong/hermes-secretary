@@ -6,7 +6,6 @@ capturing raw facts, never while projecting or serializing their display form.
 from __future__ import annotations
 
 import copy
-import json
 import sqlite3
 import time
 from pathlib import Path
@@ -14,6 +13,7 @@ from pathlib import Path
 from hermes_state_recovery_view import RecoveryViewError, digest, project_view, read_view, selector
 from tui_gateway import event_replay
 from tui_gateway.inflight_output import snapshot
+from tui_gateway.recovery_output_dependencies import active_output_dependencies, tool_occurrences as _tool_occurrences
 
 
 _RETRYABLE = {"view_changed", "coverage_gap", "replay_gap"}
@@ -330,18 +330,6 @@ def _prove_source(d1, state, runtime):
         raise RecoveryViewError("view_changed")
 
 
-def _tool_occurrences(row):
-    try:
-        mapping = json.loads(row.get("tool_call_uids") or "{}")
-    except (TypeError, ValueError):
-        mapping = {}
-    values = mapping.values() if isinstance(mapping, dict) else ()
-    result = {value for item in values for value in (item if isinstance(item, list) else [item]) if isinstance(value, str)}
-    if row.get("tool_call_uid"):
-        result.add(row["tool_call_uid"])
-    return result
-
-
 def _persisted_event(event, known, tool_results):
     payload = event.get("payload") or {}
     identity = event.get("_output_identity") or payload
@@ -514,8 +502,14 @@ def _clean_snapshot(state, d1, *, running):
             # An idle runtime cannot lend the previous Turn's unpersisted output
             # to a rewritten transcript. Lack of evidence is a retryable failure.
             raise RecoveryViewError("runtime_unavailable")
+    retained = {event["seq"] for event in events}
+    if running:
+        retained.update(active_output_dependencies(state["events"], events, known))
     result = []
-    for event in events:
+    for original in state["events"]:
+        if original["seq"] not in retained:
+            continue
+        event = copy.deepcopy(original)
         if (event.get("payload") or {}).get("source_event_seq") in discarded:
             continue
         event.pop("_output_identity", None)

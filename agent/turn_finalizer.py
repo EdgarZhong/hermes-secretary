@@ -454,6 +454,165 @@ def _last_turn_reasoning(messages) -> Optional[Any]:
     return None
 
 
+def prepare_final_response(
+    agent, final_response, *, turn_id, exit_reason, interrupted=False,
+    controlled_completion=False, preserved_verification_fallback=False, logger,
+):
+    """Resolve this Turn's visible final before its first durable assistant write.
+
+    Preserve native hook order: transform existing text before advisories; an empty
+    exit's newly generated explanation is transformed afterwards. Only a genuine
+    Turn identity may memoize the result for finalizer/failed-flush retries.
+    """
+    if interrupted:
+        return final_response
+    recorded = getattr(agent, "_prepared_final_response", None)
+    if turn_id and isinstance(recorded, tuple) and recorded[0] == turn_id:
+        return recorded[1]
+    if final_response:
+        final_response, _, _ = apply_llm_output_transform(
+            agent, final_response, turn_id=turn_id, logger=logger,
+        )
+        final_response = _append_file_mutation_footer(agent, final_response, logger)
+    if not controlled_completion:
+        final_response = _explain_abnormal_exit(
+            agent, final_response, exit_reason, preserved_verification_fallback, logger,
+        )
+    if final_response:
+        final_response, _, _ = apply_llm_output_transform(
+            agent, final_response, turn_id=turn_id, logger=logger,
+        )
+    if isinstance(final_response, str):
+        from agent.redact import redact_sensitive_text
+        final_response = redact_sensitive_text(_sanitize_surrogates(final_response))
+    if turn_id:
+        agent._prepared_final_response = (turn_id, final_response)
+    return final_response
+
+
+def _final_carrier_in_prefix(tail, history):
+    return any(before is tail or
+               (before.get("message_uid") is not None and before.get("message_uid") == tail.get("message_uid")) or
+               (type(before.get("_row_id")) is int and before.get("_row_id") == tail.get("_row_id"))
+               for before in history or [])
+
+
+def _current_final_source(agent, messages, history, turn_id):
+    """A native source boundary, never text equality, proves the current suffix."""
+    from agent.pending_steer import native_source_suffix
+    start = getattr(agent, "_persist_user_message_idx", None)
+    if not turn_id or turn_id != getattr(agent, "_current_turn_id", None):
+        return False
+    source = native_source_suffix(messages, start)
+    if not source or len(source) < 2 or start != len(history or []):
+        return False
+    marker = (messages[start].get("display_metadata") or {}).get("turn_source")
+    if marker != {"message_uid": source[0]["message_uid"], "turn_id": turn_id}:
+        return False
+    if _final_carrier_in_prefix(messages[-1], history):
+        return False
+    return all(before.get("_row_id") is not None and before.get("_row_id") == after.get("_row_id")
+               and before.get("message_uid") == after.get("message_uid")
+               for before, after in zip(history or [], messages[:start]))
+
+
+def _needs_final_carrier_update(agent, tail, final_response, turn_id):
+    if (not final_response or not isinstance(tail, dict) or tail.get("role") != "assistant"
+            or tail.get("tool_calls") or not tail.get("content")):
+        return False  # Preserve native tool/blank/promoted-reasoning tail rules.
+    if tail["content"] != final_response:
+        return True
+    recorded = getattr(agent, "_final_carrier_cas", None)
+    return (not tail.get(_DB_PERSISTED_MARKER) and isinstance(recorded, tuple)
+            and recorded[:3] == (turn_id, tail.get("message_uid"), tail.get("_row_id")))
+
+
+def _validate_final_source_row(agent, messages, final_row_id, turn_id):
+    """A windowed live history cannot authorize rewriting a row before its DB source."""
+    from agent.message_metadata import message_uid_or_none
+    source = messages[agent._persist_user_message_idx]
+    source_id, source_uid = source.get("_row_id"), message_uid_or_none(source)
+    if type(source_id) is not int or source_uid is None or final_row_id <= source_id:
+        raise RuntimeError("Final carrier does not follow its durable native source")
+    db = agent._session_db
+    row = db._read_one(
+        "SELECT * FROM messages WHERE session_id=? AND id=? AND role='user' AND active=1",
+        (agent.session_id, source_id),
+    )
+    if row is None or row["message_uid"] != source_uid:
+        raise RuntimeError("Final carrier durable native source identity is unavailable")
+    if row["display_kind"] == "hidden" or db._is_model_only_row(row):
+        raise RuntimeError("Final carrier durable native source is not visible")
+    marker = (db._decode_display_metadata(row["display_metadata"]) or {}).get("turn_source")
+    if marker != {"message_uid": source_uid, "turn_id": turn_id}:
+        raise RuntimeError("Final carrier durable native source Turn changed")
+
+
+def _prepare_final_carrier(agent, messages, history, final_response, turn_id):
+    """Amend only this Turn's final carrier; a durable carrier uses native row CAS."""
+    from agent.message_metadata import DB_ROW_SNAPSHOT, message_uid_or_none
+    from agent.transcript_repair import transcript_row_snapshot
+    tail = messages[-1] if messages else None
+    if not _needs_final_carrier_update(agent, tail, final_response, turn_id):
+        return None
+    if not _current_final_source(agent, messages, history, turn_id):
+        raise RuntimeError("Final carrier is outside the current native Turn source")
+    row_id = tail.get("_row_id")
+    if type(row_id) is not int:
+        if tail.get(_DB_PERSISTED_MARKER) or isinstance(tail.get(DB_ROW_SNAPSHOT), str):
+            raise RuntimeError("Final carrier durable row address is unavailable")
+        tail["content"] = final_response
+        return None
+    uid = message_uid_or_none(tail)
+    if uid is None:
+        raise RuntimeError("Final carrier message identity is unavailable")
+    db, holder = agent._session_db, getattr(agent, "_active_session_turn_lease_holder", None)
+    if not holder or not db.refresh_session_turn_lease(agent.session_id, holder):
+        raise RuntimeError("Final carrier native Turn lease is no longer held")
+    _validate_final_source_row(agent, messages, row_id, turn_id)
+    row = db._read_one("SELECT * FROM messages WHERE session_id=? AND id=? AND active=1",
+                       (agent.session_id, row_id))
+    if row is None or row["role"] != "assistant" or row["message_uid"] != uid:
+        raise RuntimeError("Final carrier durable identity changed")
+    snapshot = transcript_row_snapshot(row)
+    identity = (turn_id, uid, row_id)
+    recorded = getattr(agent, "_final_carrier_cas", None)
+    if isinstance(recorded, tuple) and recorded[0] != turn_id:
+        recorded = None
+    if recorded is None:
+        if db._decode_content(row["content"]) != tail["content"]:
+            raise RuntimeError("Final carrier changed before decoration")
+        recorded = (*identity, tail.get(DB_ROW_SNAPSHOT, snapshot))
+        agent._final_carrier_cas = recorded
+    if recorded != (*identity, snapshot):
+        raise RuntimeError("Final carrier compare-and-swap lost")
+    tail.update(db._decoded_repair_row(row))
+    tail.update(content=final_response)
+    tail[DB_ROW_SNAPSHOT] = snapshot
+    tail.pop(_DB_PERSISTED_MARKER, None)
+    agent._db_flush_scan_prefix = None
+    return row_id, uid, final_response, tail
+
+
+def _confirm_final_carrier(agent, prepared):
+    """Native CAS adopts a concurrent winner; never report that as our final body."""
+    if prepared is None:
+        return
+    row_id, uid, content, tail = prepared
+    confirmed = False
+    try:
+        row = agent._session_db._read_one(
+            "SELECT * FROM messages WHERE session_id=? AND id=? AND active=1", (agent.session_id, row_id),
+        )
+        if row is None or row["message_uid"] != uid or agent._session_db._decode_content(row["content"]) != content:
+            raise RuntimeError("Final carrier compare-and-swap did not persist the final body")
+        confirmed = True
+    finally:
+        if not confirmed:
+            tail.pop(_DB_PERSISTED_MARKER, None)
+            agent._db_flush_scan_prefix = None
+
+
 def _apply_output_hooks(
     agent, final_response, logger, *, platform, effective_task_id, turn_id, original_user_message,
     messages,
@@ -469,7 +628,9 @@ def _apply_output_hooks(
         agent, final_response, turn_id=turn_id, platform=platform, logger=logger,
     )
     # Detached forks are internal work and must not publish turns under the parent's session ID.
-    if not getattr(agent, "_persist_disabled", False):
+    if (not getattr(agent, "_persist_disabled", False)
+            and (not turn_id or getattr(agent, "_post_llm_call_turn_id", None) != turn_id)):
+        agent._post_llm_call_turn_id = turn_id
         _invoke_hook_safely(
             "post_llm_call", logger,
             session_id=agent.session_id,
@@ -642,14 +803,21 @@ def finalize_turn(
         # earlier seam transformed; the normal text turn already did this before its flush and
         # gets the recorded outcome back. Either way the tail close below writes the text the
         # user will see, never the raw model text (#44239).
-        if final_response and not interrupted:
-            final_response, _, _ = apply_llm_output_transform(agent, final_response, turn_id=turn_id, logger=logger)
+        final_response = prepare_final_response(
+            agent, final_response, turn_id=turn_id, exit_reason=_turn_exit_reason,
+            interrupted=interrupted, controlled_completion=noting_completed,
+            preserved_verification_fallback=preserved_verification_fallback, logger=logger,
+        )
+        prepared = None if interrupted else _prepare_final_carrier(
+            agent, messages, conversation_history, final_response, turn_id,
+        )
         _close_transcript_tail(agent, messages, final_response, interrupted, _recovered_from_stream)
-        if messages and messages[-1].get("role") == "assistant":
-            final_message_uid = messages[-1].get("message_uid")
         if not interrupted and not failed:
             _micro_compact_after_turn(agent, messages, final_response, logger, effective_task_id)
         agent._persist_session(messages, conversation_history)
+        _confirm_final_carrier(agent, prepared)
+        if messages and messages[-1].get("role") == "assistant":
+            final_message_uid = messages[-1].get("message_uid")
 
     _guarded_cleanup("persist_session", _persist_step, _cleanup_errors, logger)
     if noting_completed and any(error.startswith("persist_session:") for error in _cleanup_errors):
@@ -661,14 +829,6 @@ def finalize_turn(
         agent._session_messages = messages
 
     _log_turn_exit(agent, messages, final_response, api_call_count, _turn_exit_reason, interrupted, logger)
-
-    # Response transforms apply only to real, uninterrupted responses.
-    if final_response and not interrupted:
-        final_response = _append_file_mutation_footer(agent, final_response, logger)
-    if not interrupted and not noting_completed:
-        final_response = _explain_abnormal_exit(
-            agent, final_response, _turn_exit_reason, preserved_verification_fallback, logger,
-        )
 
     _platform = getattr(agent, "platform", None) or ""
     _response_transformed = False

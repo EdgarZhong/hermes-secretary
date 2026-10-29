@@ -97,5 +97,5 @@ def test_recovery_path_tail_row_carries_transformed_text(db_agent, monkeypatch):
 
     assert result["final_response"].startswith("REWRITTEN:RECOVERED TEXT")
     assert messages[-1]["role"] == "assistant"
-    assert messages[-1]["content"] == "REWRITTEN:RECOVERED TEXT"
+    assert messages[-1]["content"] == result["final_response"]
     assert calls.count("transform_llm_output") == 1
