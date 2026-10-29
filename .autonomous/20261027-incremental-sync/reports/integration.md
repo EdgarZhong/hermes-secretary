@@ -143,6 +143,18 @@ root执行一次官方统一质量检查：BE de45e332629f3555f79c790c36e4469a83
 
 原始DOM/RPC/DB事实integration/root-noting-ui-20261029.json、采样分析root-noting-ui-observations.json，图root-noting-ui-complete.png；全部源/夹具manifest root-noting-manifest-20261029.json SHA42561279255afe6611c50e28fada658e5b027a6f6a81204eaaef6d33bb1446b0（BE13044／FE240源），原samples按该documentId及t78005..138506过滤。ROOT开发记录不充作正式62场景已验，也非真实模型／Force触发资格证明，后者另有native Loop专项。tab6已关闭，8189/5199已按PID停止；正式Validation待统一整改最终M0重建，不能继续复用旧HOME混签。
 
+## 第三轮候选、U30与发布入口收尾（2026-10-29）
+
+后端e794890967（产品b15822a06e）／前端73a42326118b150ea957dfbac28e05de81334e6a锁定进入第三轮独立阶段二。U30三文件源码SHA与子Agent76项／types／冻结健康证据一致；root已全文审实际MarkdownTextPrimitive接线、AST/source资格、Unicode域名例外、原生GFM尾部规则、最多一次重解析和复制原文保持，已提交／push；无截图授权或真实临时码操作。
+
+新0.1.9／1009原签名APK73a4232已暂存，32,126,325字节，SHA256 a1647fd46ecbe836d09d08b545956c85df2a94988ef0a974c0e31d6eecb02b14；v2／ZIP／arm64／min26／ELF及ZIP16KB、439内置资源与dist逐SHA全部严格通过。原build最后系统python3.9无file_digest失败；使用官方BE.venv解释器重新校验同一产物通过。生成dist仅多一个.DS_Store，先核其它439全部相同，再保留生成元数据到ignored并仅清除dist副本，用户public原件保持。证据FE android-019-final-73a4232-{build,verify}.log及APK sidecars；未据此宣称新包真机运行通过。按用户现有APK先用要求，不主动交付或要求更新。
+
+紧急上线在任何生产切换前因计划上传路径错误退出，详operations-log。原发布保护执行器SHA08c010b保持；root在本地运行其实际main入口，错路径在apply前拒绝、正确input/release-plan.json恰一次到达apply边界；已上传的bundle／前端manifest／439文件SHA与prerequisite亦正式verify_inputs通过。3项定向结果release/entrypoint-selfcheck-receipt.json，零网络／云写／服务切换，不把它称作已上线。
+
+正式Validation新M0已启动全新Git外HOME／真实SQLite／REST／native WS及App入口，源e794／73a；未沿用旧HOME。manifest integration/final-m0-20261029.json及final-u30-input.json记录同UID正式CAS准备的虚构Markdown，仍200条，无模型／生产写；root未打开业务WS或UI。第三轮V通过与独立场景计划过目之前不正式执行验收。
+
+K04隔离真实模型补证已一次执行：默认Task、原生k3.1-pro／kimi-coding／high，一个Task12次HTTP200，正式finish_noting提交Snapshot且Main正式Show读到snapshot，2486产品源及lock逐请求／前后相同。原始wire／SSE／input／Snapshot／Show在ignored k04-model-current，完全合成五条上下文，不读取生产配置／数据库或外发。root已完整核身份与学历／日期更正、复盘偏好、紧张仍继续、外教与导师分离、未采纳AI建议／用户否定边界、开放毕业资格问题与用户认识，内容忠实；不以条目数量或HTTP200代判，不夸大单Task样本为所有多周期／超长／Compact分支。独立Verifier仍须核真实wire、来源及适用性；旧R2-E01不足历史保留，不由root自签关闭。
+
 ### 第二轮独立Verification结论与R2-V02文档整改
 
 第二轮完整125条调查已结束，不通过；原六节报告逐字保存在reports/verification-round2.md（原verification.md亦保留该时点），并未把方案认可或开发UI通过冒称门禁关闭。R2-V01隔离整改中；R2-V02已按既有06最终契约纠正README的“折叠详情不缓存／5秒自动刷新兜底”及CLAUDE统一检查旧状态，保留历史运维时点，不降低要求。R2-E01内容样本与R2-E02跨进程Instant组合原始依据仍在核查，不用口头范围豁免或未改源码代替证据。第三轮只独立判据准备，尚未审最终实现。

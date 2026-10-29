@@ -207,3 +207,11 @@ U28是用户真机对原U26的失败反馈，原话及“完全没出现”已�
 **后续覆盖／实际结果：** apply要求input/release-plan.json，而本次计划误放工作目录plan.json，FileNotFoundError在创建receipt及任何生产切换前退出。只读核main3426c0f、Web/Gateway active，没有上线。用户随后明确“不着急了…先不用…临时的东西…赶紧继续，尽快收敛”，停止临时发布，恢复最终集成及门禁后统一上线。最终发布须沿既有读取契约放置release-plan.json，并定向演练实际调用；不能以旧27项保护测试替代上传入口正确性。
 
 **第三轮交接：** R2-V01已亲审集成b15822a06e，原反例及23项／十检查通过，未签独立关闭；R2-V02文档已更正；R2-E02单一旧busy Instant组合按原冻结保留，其余影响照常核。R2-E01当前真实内容补证准备完成待root审阅。U30已亲审提交FE73a42326118b150ea957dfbac28e05de81334e6a，76项及types／冻结健康有效。第三轮166判据已完整过目，不开第四轮、不降低证据要求。
+
+## 第三轮R3-V01：完成Summary不得强化用户决定（已评审实施中）
+
+当前一次真实Noting样本12HTTP正常完成，Snapshot／Main Show忠实保留“未决定休学／未接受把项目交导师”，但finish reason写成“不休学／不交项目”，真实noting_notes→completion_body会把它送给Main，不能作为无消费审计字段免除。root方案按原B06/B14/N13/B13获独立Verifier接受：保留reason／Task／Schema，在正式FM Summary与完整Notebook之间明确Summary仅描述维护、事实及不确定性／接受／决定以Snapshot为准。只改noting_notifications及正式链窄测试；原始失败保留，不重采Noting。main_notebook_show_regression按root设计实施、准备独立Main消费runner后交审，未批准额外模型调用。关闭须正式publisher→durable carrier→下一原生request证据，forced／overflow限制与proposal／建议／一次注入回归，及一次隔离Main同时核四类不同极性事实。仍在同次第三轮复审，不新增第四轮、不改变结束／提交／投递／外发权限。
+
+**门禁分阶段交接已获独立Verifier评审接受：** 产品实现范围全部闭合（含R3-V01）后给“可进入Validation产品旅程”的明确结论；U23最终main／发布／线上资源与数据保护收据仍记待交付，不写符合或N/A、不据此宣称全门禁／总目标完成。UI旅程完成后最终发布，再由同次第三轮补收实际交付事实；仅补上线事实不新开第四轮，避免“必须先发布才许验页面／必须先验页面才许发布”的执行循环。最新只读发布前检因Web仍有活动会话拒绝，零停服／换源／数据写，不取消既有工作；最终切换须实际安全空闲。
+
+**U32最新硬交付：** 用户15:21:32+08明确“20分钟内必须上线和给我新的APK”，截止15:41:32，覆盖U31不急及暂不交付安排。root优先必要核验后实际发布／交付，记录未闭门禁，不以期限宣称通过。当前全167条审查只余R3-V01实际Main消费；补丁五行已亲审、6项经正式publisher／持久FM／下一native request通过。52项相关通过、12项既有turn_source/display_metadata断言失败保留，不为上线抹平；真实Main消费准备并行，原始失败不清除。

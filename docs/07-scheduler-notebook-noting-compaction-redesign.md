@@ -1915,10 +1915,13 @@ NOTING RESULT
 Conversation: {conversation_ref}
 Termination: {termination}
 Summary: {summary}
+Summary reports only the Noting task's work. For Conversation facts, uncertainty, user acceptance and decisions, use the CURRENT NOTEBOOK SNAPSHOT below; do not infer or strengthen them from Summary.
 
 CURRENT NOTEBOOK SNAPSHOT
 {notebook_body}
 ```
+
+**第三轮工程收敛（2026-10-29，落实既有保真／审计边界）：** 当前真实样本的Notebook保留“未决定”，但finish reason曾简写成“不做”，会在同一FM造成事实极性冲突。保留真实reason、结束权限、完整簿及现有FM接线，只在Summary与Snapshot之间明确上述消费职责；不改Noting Task／Schema／父冻结前缀，不以重新采样挑选好结果代替修复。Summary不是新的Conversation事实来源，不能覆盖或强化完整Notebook中的不确定性和接受范围；审计原件保持，常规Show仍不混入审计。
 
 **完成通知由生效指针变更触发，不由任意Snapshot提交触发（用户确认）。** 沿既有Anchor＋Full Foreground选择当前生效Snapshot：
 

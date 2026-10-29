@@ -29,7 +29,11 @@ def completion_body(snapshot, *, termination, summary, settings, profile_home, d
                     "some Noting responsibilities may remain unfinished.")
     result = (
         f"NOTING RESULT\nConversation: {snapshot['conversation_ref']}\n"
-        f"Termination: {kind}\nSummary: {summary}\n\nCURRENT NOTEBOOK SNAPSHOT\n{body}"
+        f"Termination: {kind}\nSummary: {summary}\n"
+        "Summary reports only the Noting task's work. For Conversation facts, uncertainty, "
+        "user acceptance and decisions, use the CURRENT NOTEBOOK SNAPSHOT below; "
+        "do not infer or strengthen them from Summary.\n\n"
+        f"CURRENT NOTEBOOK SNAPSHOT\n{body}"
     )
     char_threshold = settings.persistence_proposal_char_threshold
     entry_threshold = settings.persistence_proposal_entry_threshold

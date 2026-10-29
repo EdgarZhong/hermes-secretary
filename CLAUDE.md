@@ -11,6 +11,8 @@
 
 **U31最新执行安排：** 紧急发布在切换前因计划文件上传／读取路径不一致退出，正式Alex仍main3426c0f、两服务active，没有停服／换源／换静态／生产库写入。用户随后明确“不着急了…先不用…临时的东西…赶紧继续，尽快收敛”，停止临时发布，回到最终集成→第三轮Verification→正式Validation→统一上线；现有APK先继续使用，不主动要求更新。最终上线授权及三轮上限保留。
 
+**U32最新覆盖：** 用户15:21:32+08明确20分钟内必须上线并给新APK，截止15:41:32；优先已授权正式发布与73a原签名0.1.9交付，未完成门禁如实保留，不以期限代签。第三轮全167条调查只有R3-V01消费取证未闭；FM窄修6项正式链测试通过，root亲审提交，真实Main样本并行准备；不扩生产模型／真实微信外发授权。
+
 唯一计划／索引在[本轮目录](.autonomous/20261027-incremental-sync/plan.md)。原始需求U01–U30、缓存D01–D18、表现S01–S20和操作P01–P11已落档。保持原产品／视觉／操作资格，主目标仍是500条消息与完整已取详情缓存、游标同步、SPA／APK无需刷新恢复，不为填缓存预读或重新发起写操作。
 
 | 工作包 | 当前实际状态／交接 |
@@ -23,11 +25,12 @@
 | F08微信逐消息发送 | 已亲审提交后端a5018ff；final持久UID后立即沿既有FIFO投递、尾部成功回执去重；150项及最后47项影响复测，不真实外发；见reports/r2-weixin.md |
 | U20／F07／E02联合Noting | 后端27c74b094f已亲审提交／push，root提出的C-R1–R4四处接线补修全部纳入，末次5文件46项及42文件十检查通过；普通手动／Idle／原生auto并发联合触发取消、已提交保留，Force仅Turn结束不可取消并封区间，特殊替代审计透明跳过，Note独立四时点检查后原FM推送；正式独立门禁待统一执行 |
 | E01/E03与动态体验 | D07原表漏标客户端范围已在06顶部勘误，仅约束已有入口的Desktop；Web/APK不新增索引UI，E03交独立Verifier核对；root准备同夹具流量／时序／必要读取证据；已有旧候选隐藏IAB记录只按旧版本引用，不当作当前候选通过 |
-| 第二次整轮门禁 | 第二轮独立Verification在de45/11353b8调查中，已发现R2-V01：native普通error/no_change被误联取消Noting。第二轮完整报告已保留为不通过；root方案按原N01/N02获评审，隔离修补23项及十检查通过、root亲审接回，第三轮统一复审后才可关闭。Validation62计划含U29已准备，正式执行仍未开始 |
+| 整轮门禁 | 第二轮de45/11353b8完整不通过原件保持；R2-V01技术失败误联取消已亲审集成b158，23项／十检查通过，待第三轮独立关闭。第三轮166判据已进入完整调查；Validation66场景／25目标已过目，尚未正式执行。产品实现审查闭合后先验UI，再发布并在同次第三轮补收U23交付事实，不开第四轮、不预签上线 |
 | U25冷启动视口 | 用户已确认新document首次真实历史提交后一次立刻到底，加载期用户滚动不阻止；cold_start_viewport已交回，root审查正式commit/ack接线后接收并提交ba7decd；5文件115项、types与冻结健康通过，同页规则保持 |
 | Main notebook_show线上反馈 | 用户转述Main自述无工具且只限Noting，既定只读Main资格不变；只读核线上3426持久工具表有Show且同会话23:42实际调用成功；争议请求wire缺失，缺工具未确证。新候选17项正式Main工具接线通过；用户明确停止深挖旧逻辑，继续以新链路实际注入／读取为准，未改Prompt或扩大旧版追查 |
 | Noting误恢复补修 | root已亲审接收：独立Secretary token、可信child独立history token、原生sessions.changed完整scope与FE437b9aa正式owner消费；原生租约释放／两处改文／两处recovery reservation均准确通知，Main／未知仍global。专项21、watcher26、历史9、manual18、FE12及十检查通过；保真实断线与Main历史authority，待统一独立门禁 |
-| U30 Markdown链接误识别 | root已全文亲审接收，提交FE73a4232；仅修source可证明的GFM裸链接中文边界，沿同parser一次重解析恢复格式。76项／types／冻结健康通过，不执行截图登录、不存授权码；尚需独立审查及APK重建 |
+| U30 Markdown链接误识别 | root已全文亲审接收，提交FE73a4232；仅修source可证明的GFM裸链接中文边界，沿同parser一次重解析恢复格式。76项／types／冻结健康通过，不执行截图登录、不存授权码；73a最终0.1.9 APK已重建且439资源／原签名／ZIP／16KB严格通过，仅暂存，独立审查与实际UI待验 |
+| K04内容取证／R3-V01 | 当前一次隔离真实Noting 12HTTP正常finish并提交Snapshot，Main Show成功，root亲审身份／偏好／情绪／关系／纠正与未采纳方案内容及原始wire一致性。独立审查发现finish reason会在后继FM强化未决定事项；保留真实reason／Task／Schema，只明确Summary与Snapshot事实职责的root方案已获评审，窄修与Main消费取证准备中，不重采Noting |
 | U29真机视觉反馈 | 用户已确认起手正常，但要求圈旋转放慢、阈值补明显高光／光晕；FE6628a2e已提交：旋转540→240度、等待700→1300ms、阈值主题高光／光晕；32项与types通过，root隐藏IAB浅深主题／回拖已核，不改已正常手势时序／行程／区域，新视觉真机反馈待 |
 | U28真机触摸起手失败 | 用户e545实测标题栏完全无圆盘；root确认子lost capture冒泡误cancel，FE d1a53cf已亲审提交，31项及正式wrapper/StrictMode/types/健康通过。已交付`/Users/edgar/Downloads/Hermes-Secretary-0.1.9-preview-d1a53cf-arm64.apk`：32123717字节、SHAfb651a0bbeae025776016d58fa594b68aa2f0fb16faeaf88aa6b3983ef564a2d，439资源/原签名/ZIP/16KB/1009已核；用户随后明确反馈“之前你给我的第2次APK已经可以正常下拉刷新了”，d1a53cf预览实际顶栏起手故障已获真机关闭；其余场景不据此代签 |
 | U26顶栏手动刷新预览 | 用户新明确体验变更：APK only，页面／背景静止，Chrome式圆背板橙圈阻尼与cap；root已先交付隐藏IAB真实原型截图，CDP真实mouse验证cap/松手一次reload/正文不起手/浅深主题；03a9689已接正式APK packaged native入口、普通Web关闭，25组件＋83整合项、types/health通过；无真机touch，后继d1a53cf预览已交付，最终包待当前修补后重建 |
