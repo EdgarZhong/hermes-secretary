@@ -258,9 +258,10 @@ def handle_api_interrupt(
         append_message(messages, hidden_interrupt_placeholder_row())
         final_response = REPETITION_LOOP_INTERRUPTED
     elif _partial:
-        append_message(messages, {
+        from agent.output_identity import bind_stream_partial
+        append_message(messages, bind_stream_partial(agent, {
             "role": "assistant", "content": _partial, "display_metadata": {"interrupted": True},
-        })
+        }))
         final_response = _partial
     else:
         final_response = f"{INTERRUPT_WAITING_FOR_MODEL_PREFIX}{api_elapsed:.1f}s elapsed)."

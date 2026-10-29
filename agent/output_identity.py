@@ -8,7 +8,7 @@ import logging
 import threading
 from dataclasses import dataclass
 
-from agent.message_metadata import stamp_message_uid, index_tool_call_uids, resolve_tool_call_uid
+from agent.message_metadata import stamp_message_uid, index_tool_call_uids, resolve_tool_call_uid, message_uid_or_none
 
 logger = logging.getLogger(__name__)
 _built = contextvars.ContextVar("native_output_message", default=None)
@@ -22,6 +22,7 @@ class Candidate:
     writer: int | None
     stored_session_id: str | None = None
     conversation_ref: str | None = None
+    claimed: bool = False
 
 
 class OutputIdentity:
@@ -127,6 +128,37 @@ class OutputIdentity:
             _built.set((self, candidate))
         return message
 
+    def _partial_candidate(self, message):
+        candidate = self.current
+        if self.closed or candidate is None or not candidate.claimed:
+            return None
+        if (not candidate.turn_id or not candidate.request_id
+                or candidate.turn_id != getattr(self.agent, "_current_turn_id", None)
+                or candidate.request_id != getattr(self.agent, "_current_api_request_id", None)
+                or candidate.writer != getattr(self.agent, "_stream_writer_token", None)):
+            return None
+        original = candidate.message
+        uid = message_uid_or_none(original)
+        if (not uid or original.get("role") != "assistant" or set(original) != {"role", "message_uid"}
+                or any(owned is original or owned.get("message_uid") == uid for owned in self.messages)):
+            return None
+        if (message.get("role") != "assistant" or not isinstance(message.get("content"), str)
+                or not set(message) <= {"role", "content", "display_metadata", "message_uid"}
+                or ("message_uid" in message and message["message_uid"] != uid)):
+            return None
+        return candidate
+
+    def bind_stream_partial(self, message):
+        """Borrow only the live, unbound claimed stream object; never mint a replacement."""
+        with self.agent._stream_writer_lock, self.lock:
+            candidate = self._partial_candidate(message)
+            if candidate is not None:
+                message["message_uid"] = candidate.message["message_uid"]
+                candidate.message = message
+                self.messages.append(message)
+                _built.set((self, candidate))
+        return message
+
     def owns_result(self, message):
         uid = message.get("_tool_call_uid")
         if not uid:
@@ -213,7 +245,10 @@ def observe_claim(agent, token):
     try:
         owner = _owner(agent)
         if owner:
-            agent._stream_writer_tls.output_candidate = owner.candidate(token)
+            candidate = owner.candidate(token)
+            candidate.claimed = (type(token) is int and token > 0
+                and agent._stream_writer_tls.token == token and agent._stream_writer_token == token)
+            agent._stream_writer_tls.output_candidate = candidate
     except Exception:
         logger.debug("native output claim observation failed", exc_info=True)
 
@@ -243,6 +278,15 @@ def bind_message(agent, message):
         return owner.bind(message) if owner else message
     except Exception:
         logger.debug("native output object observation failed", exc_info=True)
+        return message
+
+
+def bind_stream_partial(agent, message):
+    try:
+        owner = _owner(agent)
+        return owner.bind_stream_partial(message) if owner else message
+    except Exception:
+        logger.debug("native interrupted partial observation failed", exc_info=True)
         return message
 
 
