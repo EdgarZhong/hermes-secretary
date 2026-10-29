@@ -231,7 +231,7 @@ def install_parent_gateway(parent, db, monkeypatch):
 
     def view():
         from hermes_state_recovery_view import project_view, read_view, selector
-        
+
         projected = project_view(read_view(db, parent.session_id, "default", [selector()]))
         request = {"version": 1, "profile": "default", "stored_id": parent.session_id,
                    "windows": [{"selector": item["selector"], "receipt": item["coverage"]}
