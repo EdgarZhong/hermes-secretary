@@ -300,7 +300,16 @@ def test_eligible_main_keeps_each_real_input_uid_and_timestamp(parent, db, monke
         assert old['timestamp'] == 1700000400 and new['timestamp'] == 1700000500
         assert new['content'] == 'next native user'
         assert not old.get('_absorbed_message_uids') and not new.get('_absorbed_message_uids')
-        assert not old.get('display_metadata') and not new.get('display_metadata')
+        assert not old.get('display_metadata')
+        metadata = new['display_metadata']
+        assert isinstance(metadata, dict)
+        assert set(metadata) == {'turn_source'}
+        turn_source = metadata['turn_source']
+        assert isinstance(turn_source, dict)
+        assert set(turn_source) == {'message_uid', 'turn_id'}
+        assert turn_source['message_uid'] == new['message_uid']
+        assert isinstance(turn_source['turn_id'], str)
+        assert turn_source['turn_id'].strip()
         assert _project(live) == _project(durable)
         payload = '\n'.join(str(row.get('content', '')) for row in requests[0]['messages'])
         counts = {str(t): payload.count(format_user_timestamp_marker(t).strip()) for t in (1700000400, 1700000500)}

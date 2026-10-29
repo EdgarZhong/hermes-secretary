@@ -1,5 +1,15 @@
 # 运维记录
 
+## 2026-10-29 · 增量同步与免刷新恢复正式上线、0.1.9交付（完成）
+
+用户15:21:32+08追加“20分钟内必须上线和给我新的APK”。正式Alex于15:35:43完成切换并verified，距截止15:41:32尚有约5分48秒。云端保持检出main，3426c0f快进到`d1722505695a355b322512122950b5dedfd4cfc6`；Secretary静态为`73a42326118b150ea957dfbac28e05de81334e6a`。两仓远端main／secretary均已同步，不触其它本地main的dirty。旧紧急尝试的计划路径错误、后续第一次因Web活动拒绝均保留原失败收据；本次r2在自然空闲且三库无writer／compression／Noting后停Gateway和Web、三库SQLite backup、快进代码、原子换静态、重启及验真，没有取消既有工作。
+
+**上线与保护核验：** Web、Gateway实际代码均d172，active／running、微信connected；439个Secretary文件逐SHA匹配，Dashboard集合／SHA保持，配置／凭据指纹／微信绑定及所有既有messages／Secretary保护表保持，只允许已审新增空伴随表。新备份三库integrity／FK／SHA通过。主收据`~/.local/state/hermes-secretary/release-20261028/final-20261029-d172250-r2/receipt.json`为verified，无自动数据库回滚；先读RECOVERY.txt再处理任何恢复，不覆盖新写入。随后只读HTTP实际入口六资源匹配manifest；合法machine-token请求的Alex33行样本完整37503字节，无变化delta0行／3670字节。此为正式服务协议与传输证据，不是手机时延或200行全场景实测；未发生产模型或微信／飞书消息。补充收据postrelease-readonly.json保存同目录。
+
+**APK与收尾：** 原签名0.1.9／1009、arm64／min26／非debug、v2／ZIP及ELF16KB、439内置资源与dist全部严格核验，交付`/Users/edgar/Downloads/Hermes-Secretary-0.1.9-73a4232-arm64.apk`，32126325字节，SHA256 `a1647fd46ecbe836d09d08b545956c85df2a94988ef0a974c0e31d6eecb02b14`；sidecar及交付副本再次核验，用户已获链接。并保留3426发布备份与本次备份两套完整三库，逐库重核integrity／FK／SHA后仅删除旧018发布的三库及其WAL／SHM共9文件、202928128字节，配置／轻量收据、运行库及databases-current.zip不动；backup-retention.json留同目录。
+
+第三轮独立168条产品Verification及交付事实已核，R3-V01正式FM链及一次真实Main消费关闭；相关12条既有空metadata测试oracle问题如实保留，不称全套全绿。独立66场景Validation正在接续，子Agent首次IAB不可用、root自建隐藏IAB成功并已关闭让位；不把部署／包／局部用户预览反馈冒称整轮动态验收或新包真机通过。当前产品版本已上线，后继文档／测试提交不代表再次重启生产。
+
 ## 2026-10-29 · 增量恢复紧急发布尝试（未切换）
 
 用户先要求优先上线供现有APK使用。已将已审BE c247a9739e（产品b15822a06e）快进推到origin/main、FE11353b8推到origin/secretary，并上传437静态439文件及增量bundle；push和上传不等于上线。执行器读取input/release-plan.json，而本次计划误放工作目录plan.json，FileNotFoundError在创建receipt／停服／切源／静态交换／数据库备份前退出。只读复核正式Alex仍检出main3426c0fc9579dc0589fd0a831741b535aee71ca2，Web与Gateway均active；未触发生产模型、微信或生产库写入。私有工作目录release-20261028/urgent-20261029-1057保留现场。用户随后取消临时发布优先，要求继续尽快完整收敛；最终发布须修正输入位置并演练真实调用，不将本次记为上线成功。
