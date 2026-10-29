@@ -34,7 +34,7 @@
 
 前后端实施目录分别为`/Users/edgar/code/hermes-secretary-incremental-sync`与`/Users/edgar/code/hermes-secretary-web`，同名`codex/incremental-sync-20261027`分支。C、原恢复包及U25/U26均已亲审提交；两仓main历史已按SOP纳入候选（BE2dc4398／FEbc02d01），合并产品tree零增量，不触碰其它main工作区dirty。validation_round2已补完并过目56场景，release_preflight及27项本地发布保护演练已完成。隐藏IAB已恢复；root开发联调确认正式CAS改文→watcher→App同document自动delta更新1条，草稿保留，不把该开发证据冒称独立验收通过。子Agent6.1 sol/high、不再派生、不流水账；主会话负责方案、亲审、接线、正式门禁与发布。
 
-保护原main工作区的Noting调试／生成协议／07／presentation等他人dirty。新状态表必须兼容正式旧库，仅加Secretary自有伴随表／读取视图，不重建生产数据库。冻结检查不增删放宽；no-tmp旧报告七处仅加既有允许的历史取证说明，原行原结论保留，原字节与SHA已在ignored存档；单项扫描通过，未改检查规则／阈值／baseline；当前全轮十项尚未统一执行。旧Timeline七项失败在原91ad同样存在，不能据此替代部署基线或当前用户体验判断。真机Android和真实微信送达未验，包校验／受控adapter证据不冒称实机或真实外发。
+保护原main工作区的Noting调试／生成协议／07／presentation等他人dirty。新状态表必须兼容正式旧库，仅加Secretary自有伴随表／读取视图，不重建生产数据库。冻结检查不增删放宽；no-tmp旧报告七处仅加既有允许的历史取证说明，原行原结论保留，原字节与SHA已在ignored存档；单项扫描通过，未改检查规则／阈值／baseline；de45版本已统一执行冻结十项且70文件health 0／0，后继整改须按影响补查。旧Timeline七项失败在原91ad同样存在，不能据此替代部署基线或当前用户体验判断。Android完整生命周期与真实微信送达未完整实测；用户已确认d1顶栏起手正常，不能扩大为新视觉及全部生命周期通过；包校验／受控adapter不冒称实机或真实外发。
 
 U20详口径见07顶部及plan接线设计；旧“先Noting再压缩／FM结算后才终态”已被替换。U17旧模糊片段保持懒取，新Turn沿原生source精确主动取Thinking，不设逐Thinking游标。用户确认与原始云端报告保留索引，不改写旧审查时点结论。界面验收只许自建隐藏IAB，不动用户浏览器／桌面。
 

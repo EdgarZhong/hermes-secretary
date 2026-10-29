@@ -18,7 +18,7 @@ Secretary只在Profile的`state.db`增加自有表，复用原生执行、存储
 - History提供Get Meta／Search／Read，默认只当前Conversation的真实用户和Assistant；跨域、辅助消息分别显式开启。Notebook来源按Task保存UID链，真实编辑与本Task来源同时提交，Evidence time逐节点只读派生；接口见07顶部。
 - 手动、Idle及未提前派出Force的原生自动压缩共用并发联合入口；压缩不等待Noting，取消只联合撤销对应未提交工作，已提交Notebook保留。Force只在Main Turn结束检查、不可取消并封住当前区间后续整理；成功压缩解除。Note按合法来源独立沿原FM推送，活跃Turn等待既有间隙。具体契约见[07顶部](docs/07-scheduler-notebook-noting-compaction-redesign.md)。Noting开启且合格Main的full compaction默认将旧尾部纳入摘要，真正达到原生阈值的自动压缩及显式`/compress here N`保留原生保尾。
 - Web可跨进程读取Main及Noting完整生命周期状态；Gateway没有实时输出直连时仍能读取最新持久历史，落库／结束经既有Socket通知恢复。Context读数绑定当前压缩边界并计入后续内容，旧runtime不能覆盖新读数。
-- Web同一document优先保留内存画面及阅读状态；刷新／冷启使用同owner持久正文与卡片壳过渡，折叠详情不进入快照。两层均不替代后台完整读取与正式Socket／Turn恢复，不提供运行状态或操作权限；读取和衔接契约见06。
+- Web同一document优先保留内存画面及阅读状态；刷新／冷启使用同owner持久正文及完整已取详情过渡，正文按最近500条消息统一计数；未取旧详情保持懒取，未核验的半截详情不持久化。两层均不替代后台完整读取与正式Socket／Turn恢复，不提供运行状态或操作权限；读取和衔接契约见06。
 - Heartbeat沿目标Profile唤醒所属Conversation，是自查提醒；需要用户对接的事项在用户回归时汇报。开启Noting时使用带时间戳的`<heartbeat>`，额外prompt可省略；开关、冷恢复及隔离见[07](docs/07-scheduler-notebook-noting-compaction-redesign.md)。
 - 微信回复走原生adapter；Redirect、Framework与其它入口的触达边界见07。入口识别保留原生来源切换notice，不在root System Prompt注入当前Platform身份。
 
@@ -75,7 +75,7 @@ Gateway入口 `hermes gateway`；Dashboard入口 `hermes dashboard --host 127.0.
 
 ### Android APK
 
-独立前端的`src-tauri/`提供Tauri 2 Android壳，固定竖屏、内置网页，经正式HTTPS／Authelia连接同一API／WS。系统栏、通知和临时后台保护仅在APK生效；后台保护限已观察到的活动Turn，不保证系统挂起后仍通知。返回前台保留页面，网络可用时给予历史／Socket／Turn恢复5秒窗口，成功不重载；离线、目标明确缺失、JS失活及失败兜底按[06 Android契约](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md#android-原生通知与临时后台保护用户最终确认2026-10-21)处理，保留登录、草稿和会话。
+独立前端的`src-tauri/`提供Tauri 2 Android壳，固定竖屏、内置网页，经正式HTTPS／Authelia连接同一API／WS。系统栏、通知和临时后台保护仅在APK生效；后台保护限已观察到的活动Turn，不保证系统挂起后仍通知。返回前台和网络恢复沿同一SPA自动重连并对账历史／Socket／Turn，不自动整页重载；冷启临时引导网络失败由内置SPA承接自动重试。顶栏支持用户主动下拉刷新，认证导航及自然进程冷启动保留；具体边界按[06 Android契约](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md#android-原生通知与临时后台保护用户最终确认2026-10-21)处理，保留登录、草稿和会话。
 
 在独立前端仓库设置 Android SDK／NDK／Java 环境后执行 `npm run android:build`，输出 `src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk`。当前目标为 Android 8.0+／arm64；release 非调试、使用本地签名，原件仅保存在 ignored `src-tauri/.android-signing/`，后续覆盖升级必须保留该密钥。应用图标由 `npm run android:icons` 复用现有 logo 与主题深色自动生成，release 构建会先刷新图标。`npm run android:debug` 仅供本地验收。 正式构建还需要 Python 3.11+（仅标准库），完成后自动检查 ZIP 全条目 CRC、原证书／v2 签名、版本／ABI、ZIP／ELF 16KB 对齐及内置前端与 dist 逐 SHA 一致。可单独运行 `npm run android:verify`；使用 `npm run android:verify -- --delivery <新文件路径.apk>` 仅在全部校验成功后原子生成交付副本，同时输出 `.sha256` 与 `.verification.json`，拒绝覆盖已有文件；`npm run android:test` 验证截断／CRC／签名／版本／资源等拒绝路径。产物校验不代替设备安装与生命周期验收。实际包版本、网络验证及限制统一记录在 [运维记录](docs/operations-log.md)。
 

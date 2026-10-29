@@ -142,3 +142,7 @@ root执行一次官方统一质量检查：BE de45e332629f3555f79c790c36e4469a83
 源为de45产品（运行HEAD0c33仅docs）／FE11353b8，外置隔离HOME c8z40tee。新ignored控制只替代child执行依赖；准入、registry、native child Session／append／lease释放、Snapshot提交、watcher→Sink→真实Peer WS→Controller／React均正式执行。隐页tab6，documentId d9f7d463-2a6d-4401-ae09-54a2d14e5c61。实际草稿Noting regression draft，Noting注册→child写入和lease释放→Snapshot成功及终态全过程，Main activate／Usage／Pending／Resume四类RPC均0新增，recoveryId始终1、ready=true，Send可用、草稿保留。期间23个已记录变化采样只running/finished/idle，无unknown、恢复提示或错误。随后原Framework publisher真实追加父FM，watcher使recoveryId1→2，正式Framework message卡出现，ready与Send恢复/保持、同document及草稿不变，证明未过滤当前历史真实变化。
 
 原始DOM/RPC/DB事实integration/root-noting-ui-20261029.json、采样分析root-noting-ui-observations.json，图root-noting-ui-complete.png；全部源/夹具manifest root-noting-manifest-20261029.json SHA42561279255afe6611c50e28fada658e5b027a6f6a81204eaaef6d33bb1446b0（BE13044／FE240源），原samples按该documentId及t78005..138506过滤。ROOT开发记录不充作正式62场景已验，也非真实模型／Force触发资格证明，后者另有native Loop专项。tab6已关闭，8189/5199已按PID停止；正式Validation待统一整改最终M0重建，不能继续复用旧HOME混签。
+
+### 第二轮独立Verification结论与R2-V02文档整改
+
+第二轮完整125条调查已结束，不通过；原六节报告逐字保存在reports/verification-round2.md（原verification.md亦保留该时点），并未把方案认可或开发UI通过冒称门禁关闭。R2-V01隔离整改中；R2-V02已按既有06最终契约纠正README的“折叠详情不缓存／5秒自动刷新兜底”及CLAUDE统一检查旧状态，保留历史运维时点，不降低要求。R2-E01内容样本与R2-E02跨进程Instant组合原始依据仍在核查，不用口头范围豁免或未改源码代替证据。第三轮只独立判据准备，尚未审最终实现。
