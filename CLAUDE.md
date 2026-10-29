@@ -9,7 +9,7 @@
 
 **当前完成条件（U22／U23）：** 持续自主执行；第一轮之后Verification与Validation各最多再两次正式全轮复审／复验，第三轮内完成两仓main集成、正式Alex上线和原签名0.1.9 APK交付。次数上限不豁免缺陷或证据缺口，不开第四轮。用户U24已明确将Verification改回本地，第二轮集成锁定后派全新上下文6.1 sol/high全范围独立审查；开发定向测试／主会话亲审不冒充独立门禁。生产模型和真实微信测试外发不在授权内。
 
-唯一计划／索引在[本轮目录](.autonomous/20261027-incremental-sync/plan.md)。原始需求U01–U28、缓存D01–D18、表现S01–S20和操作P01–P11已落档。保持原产品／视觉／操作资格，主目标仍是500条消息与完整已取详情缓存、游标同步、SPA／APK无需刷新恢复，不为填缓存预读或重新发起写操作。
+唯一计划／索引在[本轮目录](.autonomous/20261027-incremental-sync/plan.md)。原始需求U01–U29、缓存D01–D18、表现S01–S20和操作P01–P11已落档。保持原产品／视觉／操作资格，主目标仍是500条消息与完整已取详情缓存、游标同步、SPA／APK无需刷新恢复，不为填缓存预读或重新发起写操作。
 
 | 工作包 | 当前实际状态／交接 |
 |---|---|
@@ -23,8 +23,10 @@
 | E01/E03与动态体验 | D07原表漏标客户端范围已在06顶部勘误，仅约束已有入口的Desktop；Web/APK不新增索引UI，E03交独立Verifier核对；root准备同夹具流量／时序／必要读取证据；已有旧候选隐藏IAB记录只按旧版本引用，不当作当前候选通过 |
 | 第二次整轮门禁 | 本地全新Verifier已独立落盘125条完整判据并经root逐项过目，尚未查实现；U27原生冷启入口已修并提交FEe545359；C-R5/C-R6已亲审接收；新增Noting误触发Chat恢复阻塞，先修通知归属后重锁最终候选；未开启额外正式轮次。Validation原56场景已过目，待补对应入口 |
 | U25冷启动视口 | 用户已确认新document首次真实历史提交后一次立刻到底，加载期用户滚动不阻止；cold_start_viewport已交回，root审查正式commit/ack接线后接收并提交ba7decd；5文件115项、types与冻结健康通过，同页规则保持 |
+| Main notebook_show线上反馈 | 用户转述Main自述无工具且只限Noting，既定只读Main资格不变；main_notebook_show_regression只读对照线上3426与当前候选及真实工具名／开关，未确证前不归因模型或宣称修好，不输出业务正文／凭据 |
 | Noting误恢复阻塞 | 正式注册／提交／结束借全局history token触发空owner sessions.changed，候选及部署版均有额外Chat／Usage读取及runtime_unavailable误撤销资格反例；root指定独立Secretary wake＋完整可证明session变更scope，前后端并行修补，实际Socket保持connected；真实Main历史失效不得跳过 |
-| U28真机触摸起手失败 | 用户e545实测标题栏完全无圆盘；root确认子lost capture冒泡误cancel，FE d1a53cf已亲审提交，31项及正式wrapper/StrictMode/types/健康通过。已交付`/Users/edgar/Downloads/Hermes-Secretary-0.1.9-preview-d1a53cf-arm64.apk`：32123717字节、SHAfb651a0bbeae025776016d58fa594b68aa2f0fb16faeaf88aa6b3983ef564a2d，439资源/原签名/ZIP/16KB/1009已核；修后用户真机确认待回，不能以mouse/DOM仿真代签 |
+| U29真机视觉反馈 | 用户已确认起手正常，但要求圈旋转放慢、阈值补明显高光／光晕；FE6628a2e已提交：旋转540→240度、等待700→1300ms、阈值主题高光／光晕；32项与types通过，root隐藏IAB浅深主题／回拖已核，不改已正常手势时序／行程／区域，新视觉真机反馈待 |
+| U28真机触摸起手失败 | 用户e545实测标题栏完全无圆盘；root确认子lost capture冒泡误cancel，FE d1a53cf已亲审提交，31项及正式wrapper/StrictMode/types/健康通过。已交付`/Users/edgar/Downloads/Hermes-Secretary-0.1.9-preview-d1a53cf-arm64.apk`：32123717字节、SHAfb651a0bbeae025776016d58fa594b68aa2f0fb16faeaf88aa6b3983ef564a2d，439资源/原签名/ZIP/16KB/1009已核；用户随后明确反馈“之前你给我的第2次APK已经可以正常下拉刷新了”，d1a53cf预览实际顶栏起手故障已获真机关闭；其余场景不据此代签 |
 | U26顶栏手动刷新预览 | 用户新明确体验变更：APK only，页面／背景静止，Chrome式圆背板橙圈阻尼与cap；root已先交付隐藏IAB真实原型截图，CDP真实mouse验证cap/松手一次reload/正文不起手/浅深主题；03a9689已接正式APK packaged native入口、普通Web关闭，25组件＋83整合项、types/health通过；无真机touch，后继d1a53cf预览已交付，最终包待当前修补后重建 |
 | C-R5／C-R6 显式恢复Note资格 | root已完整亲审接收：Snapshot同事务来源／operation证明、branch去父关联、原生恢复lease受理接手及终态补检查；7文件源码SHA与62项／十检查证据逐一匹配，待统一独立门禁，不作为正式V已通过 |
 | U27 APK引导失败同页恢复 | 原生自动reload已取消；冷启bootstrap传输失败/暂时服务错误仍落静态重试页，未进入SPA，root指定最小APK专属deferred-bootstrap接缝已亲审提交FEe545359；native13/前端35/types/健康通过，认证／默认Web保持。bc02旧APK严格核验保留，e545新包已严格核验并按用户明确要求交付预览，正式全轮验收尚未完成 |

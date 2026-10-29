@@ -106,3 +106,11 @@ root指出首包hint缺JS侧平台限定，已窄修并以真实iframe及普通W
 FE d1a53cfe35ae5173df48a550bc45048d64133598只增加lostCapture target===container判断，原pointercancel/控件/区域/cap/回拖保持。root亲审+31项受影响回归（含实际wrapper/ref/StrictMode和gating正反例）、types/冻结TS度量通过；原始证据前端ignored header-touch-capture/。隐藏IAB的CDP pointerType:pen未复现implicit迁移，不能把它冒称真实touch；IAB dispatchTouchEvent不支持，未回退桌面/外部浏览器。自建tab4已关闭/viewport reset。
 
 d1a新APK按原构建签名重打，只有生成dist.DS_Store与包差异，精确保留该元数据后移除生成副本，439业务资源严格全匹配；用户原public/.DS_Store不动。原证书449b5f36...、0.1.9/1009、ZIP/16KB及交付副本全部通过；Downloads preview-d1a53cf-arm64.apk，32123717字节，SHAfb651a0bbeae025776016d58fa594b68aa2f0fb16faeaf88aa6b3983ef564a2d。是修正版预览，不冒称后端已发布/全门禁关闭；修后手机反馈仍待。旧e545预览与其包证据保留原版本失败事实。
+
+### 用户确认第二次APK手势正常（2026-10-29）
+
+用户明确反馈“之前你给我的第2次APK已经可以正常下拉刷新了”，对应最新已交付d1a53cf预览。U26-H01实际顶栏起手故障获真机关闭，旧e545失败不抹除。只按用户真实回报范围采信，不将其扩大为完整Android生命周期或所有组合验收通过；Noting通知误恢复仍是当前独立阻塞，继续修复。
+
+### U29阈值高光与舒缓旋转（2026-10-29）
+
+FE 6628a2e只改下拉角度540→240度、刷新等待700→1300ms，以及armed/refreshing主题橙色高光、近／远光晕和SVG光晕。原手势时序／区域／cap／capture及一次reload不变；回拖解除armed立即撤销高光。32组件／正式wrapper回归、types、diff-check通过。root自己创建隐藏IAB tab5，390×844实际mouse下拉，核半程120度、全程240度、armed才有三层橙色shadow与SVG filter，回拖恢复filter none；松手一次原reload，计数0→1。浅／深实际截图在FE ignored header-refresh-preview/armed-glow-{light,dark}-mobile.png；当前最终CSS已重启watch:null预览并重载核实，不以旧transform缓存冒签。tab5已关闭、viewport reset。无新增真机U29视觉确认，不将此前d1真机起手正常回报代替新视觉实测。
