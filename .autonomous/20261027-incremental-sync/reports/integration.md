@@ -122,3 +122,13 @@ FE 6628a2e只改下拉角度540→240度、刷新等待700→1300ms，以及arme
 ### 当前会话失效范围前端接收
 
 root已亲审FE437b9aa的controller sibling：当前physical owner取正式binding／已核recovery owner，Profile与home必须一致；真实已证lineage命中必恢复，新continuation同Conversation ref亦恢复。只能明确异home或同home实际不同ref才排除当前正文恢复，未知／冲突／旧payload保留广义失效，侧栏仍刷新。48项＋末次24项及共享native DTO12项按各自范围复用，types／冻结健康通过；BE实际scope/ref快照接线待同包亲审，不先签全链完成。
+
+### FE437b9aa最终APK候选（尚未发布／交付）
+
+root并行构建完成：ignored apk-staging/Hermes-Secretary-0.1.9-437b9aa-arm64.apk，32,125,181字节，SHA256 2165bc2a00c83442dc62dea2fcce751d3a7b08c0f2e340c3f2729f13101da48a。原证书449b5f36…53ad9、0.1.9/1009、min26/arm64/nondebug、ZIP/v2/ELF16KB及439内置文件同dist全部严格通过。构建最后只因生成dist/.DS_Store（源public原件保留）与Tauri自动排除不一致退出1；root逐SHA确认唯一该元数据缺项，保留生成副本后仅移除dist元数据，正式android-verify.py全通过并生成新副本收据。日志android-019-final-437b9aa-{build,verify}.log。预览d1用户真机确认不代签新包安装；该包只暂存，仍待BE归属修补统一门禁、正式上线与最终交付。
+
+### Root接收Noting误恢复修补（完整源已核）
+
+已逐段亲审9个BE源／测试文件与FE正式消费helper：task-only变化走独立Secretary wake；实际child native lease释放及改文走可信DB registry/audit分类的独立noting-history opaque token，原生watcher仍发sessions.changed；合并时枚举全部已证child真实owner/ref，未知、超上限、Main marker同时变化保守global。scope baseline只在seed或实际广播成功后推进，floor合并／旧探测／失败广播不吞事件。recovery两处reserved显式通知真实child，父Main publication lease保持原global，native DELETE/holder语义未改。事件及内部参数仅增可选，默认／未知原行为保持，无新表／日志／调度器、无authority降级。
+
+最终9文件SHA逐一匹配FE ignored noting-connection-regression/backend-fixed-source-sha256.txt；专项21、既有watcher26、历史通知9、manual18，FE真实DTO12及types／冻结十检查0/0证据按适用范围复用，不重复加总成全仓绿。旧0947同12项仍4失败，反例有效。正式普通child Loop、Main真实Turn-end Force dispatch FM、Compact summary回调／Note FM、recovery成功／构造失败／启动失败均已实际封套恢复可用；不据此虚称当次字面Connecting的真实Socket根因。整轮Verification及真实App门禁尚未通过，后继统一锁源。

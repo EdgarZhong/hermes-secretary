@@ -24,7 +24,7 @@
 | 第二次整轮门禁 | 本地全新Verifier已独立落盘125条完整判据并经root逐项过目，尚未查实现；U27原生冷启入口已修并提交FEe545359；C-R5/C-R6已亲审接收；新增Noting误触发Chat恢复阻塞，先修通知归属后重锁最终候选；未开启额外正式轮次。Validation原56场景已过目，待补对应入口 |
 | U25冷启动视口 | 用户已确认新document首次真实历史提交后一次立刻到底，加载期用户滚动不阻止；cold_start_viewport已交回，root审查正式commit/ack接线后接收并提交ba7decd；5文件115项、types与冻结健康通过，同页规则保持 |
 | Main notebook_show线上反馈 | 用户转述Main自述无工具且只限Noting，既定只读Main资格不变；只读核线上3426持久工具表有Show且同会话23:42实际调用成功；争议请求wire缺失，缺工具未确证。新候选17项正式Main工具接线通过；用户明确停止深挖旧逻辑，继续以新链路实际注入／读取为准，未改Prompt或扩大旧版追查 |
-| Noting误恢复阻塞 | 正式注册／提交／结束借全局history token触发空owner sessions.changed，候选及部署版均有额外Chat／Usage读取及runtime_unavailable误撤销资格反例；root指定独立Secretary wake＋完整可证明session变更scope，前后端并行修补，实际Socket保持connected；真实Main历史失效不得跳过 |
+| Noting误恢复补修 | root已亲审接收：独立Secretary token、可信child独立history token、原生sessions.changed完整scope与FE437b9aa正式owner消费；原生租约释放／两处改文／两处recovery reservation均准确通知，Main／未知仍global。专项21、watcher26、历史9、manual18、FE12及十检查通过；保真实断线与Main历史authority，待统一独立门禁 |
 | U29真机视觉反馈 | 用户已确认起手正常，但要求圈旋转放慢、阈值补明显高光／光晕；FE6628a2e已提交：旋转540→240度、等待700→1300ms、阈值主题高光／光晕；32项与types通过，root隐藏IAB浅深主题／回拖已核，不改已正常手势时序／行程／区域，新视觉真机反馈待 |
 | U28真机触摸起手失败 | 用户e545实测标题栏完全无圆盘；root确认子lost capture冒泡误cancel，FE d1a53cf已亲审提交，31项及正式wrapper/StrictMode/types/健康通过。已交付`/Users/edgar/Downloads/Hermes-Secretary-0.1.9-preview-d1a53cf-arm64.apk`：32123717字节、SHAfb651a0bbeae025776016d58fa594b68aa2f0fb16faeaf88aa6b3983ef564a2d，439资源/原签名/ZIP/16KB/1009已核；用户随后明确反馈“之前你给我的第2次APK已经可以正常下拉刷新了”，d1a53cf预览实际顶栏起手故障已获真机关闭；其余场景不据此代签 |
 | U26顶栏手动刷新预览 | 用户新明确体验变更：APK only，页面／背景静止，Chrome式圆背板橙圈阻尼与cap；root已先交付隐藏IAB真实原型截图，CDP真实mouse验证cap/松手一次reload/正文不起手/浅深主题；03a9689已接正式APK packaged native入口、普通Web关闭，25组件＋83整合项、types/health通过；无真机touch，后继d1a53cf预览已交付，最终包待当前修补后重建 |
@@ -74,10 +74,10 @@ U20详口径见07顶部及plan接线设计；旧“先Noting再压缩／FM结算
 
 | 项目 | 已核结果 |
 |---|---|
-| 本轮本地代码 | 后端`3426c0fc9579dc0589fd0a831741b535aee71ca2`已合入origin/main并上线；前端0947ed5保持，后继文档提交不等同代码部署 |
+| 本轮本地代码 | 新候选后端C-R5/C-R6已在b16968f4b7提交，Noting通知归属补修待接收；前端437b9aa已提交。尚未发布，本地候选不等同下行线上版本 |
 | 后端线上最后核验版本 | 3426c0fc9579dc0589fd0a831741b535aee71ca2；正式Alex的Web／Gateway实际版本、RPC和目标Notebook已核，微信connected |
 | 前端线上最后核验版本 | 0947ed5f25fe9d412e25ab6ab6248aefcd64c55e；Scheduler即时切换已上线，439静态逐SHA及HTTP入口资源验证通过 |
-| 已交付APK | 最新0.1.8／1008：`/Users/edgar/Downloads/Hermes-Secretary-0.1.8-20c9267-arm64.apk`，32,106,741字节，SHA256 `73d6ce39dd5e8fa7f05557f7b77db6424471bafba4850289bd6aa279dcab622a`；原证书、ZIP CRC／v2签名／16KB对齐、439内置资源及交付副本一致性通过。未真机安装；旧388839c文件保留，但非本轮最新包 |
+| 已交付APK | 最新为0.1.9／1009预览d1a53cf（Downloads preview-d1a53cf-arm64.apk），用户已确认顶栏能正常下拉；32,123,717字节、SHA fb651a0bbeae025776016d58fa594b68aa2f0fb16faeaf88aa6b3983ef564a2d。最终候选437b9aa已构建严格校验，尚未交付；原正式0.1.8／20c9267保留，不混作最新预览 |
 | 运行设置 | 历史noting off不代表当前值；最后已核local_enabled=true，默认／Alex压缩总时限1000秒及Idle500秒／96K保持。本轮只追加授权飞书MCP配置／官方PM mcp依赖，不改模型或调用生产模型 |
 | 保留他人工作 | presentation报告、手动Noting调试入口／协议生成、07等原dirty保持，不纳入本轮恢复补丁提交 |
 

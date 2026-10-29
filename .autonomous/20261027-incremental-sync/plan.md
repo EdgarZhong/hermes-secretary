@@ -2,7 +2,7 @@
 
 ## 第二次迭代（2026-10-28，用户已授权纳入U20）
 
-**当前阻塞补修（2026-10-29）：** Noting开始／提交／结束复用全局history wake，导致空owner sessions.changed误触发当前Chat／Usage恢复；Socket仍连接时，暂不可用响应可误撤销原操作资格。root指定独立Secretary跨进程wake，保留原history失效；native sessions.changed只增可选完整变更会话scope，能证明当前物理会话未变才不启动其恢复，未知／真实历史改写保持原恢复。原生事件与API默认兼容，不以隐藏提示或强ready代替修复。C-R5/C-R6已亲审接收，62项及冻结检查复用。
+**当前阻塞补修（2026-10-29）：** Noting开始／提交／结束复用全局history wake，导致空owner sessions.changed误触发当前Chat／Usage恢复；Socket仍连接时，暂不可用响应可误撤销原操作资格。root指定独立Secretary跨进程wake、可信Noting child独立history wake，保留Main／未知原history失效；native sessions.changed只增可选完整变更会话scope，能证明当前物理会话未变才不启动其恢复，未知／真实历史改写保持原恢复。原生事件与API默认兼容，不以隐藏提示或强ready代替修复。C-R5/C-R6已亲审接收，62项及冻结检查复用。
 
 **U22自主目标及轮次上限：** 已按用户明确要求创建自主目标，持续推进。第一轮后Verification、Validation各最多再两次正式全轮复审／复验，对应第二、第三轮；所有包的反例、开发测试、主会话review和集成先闭合再统一送审，不按包开启门禁。用户U24已将Verification改回本地；先前云端安排仅为历史。第三轮为最终允许轮次，上限不作为带缺陷通过或放宽阈值的理由；仍有缺口则明确未完成，不开启第四轮。
 
@@ -191,3 +191,5 @@ C-R6正式反例：最新来源显式recovery在SDK运行，但原admission仍fa
 U28是用户真机对原U26的失败反馈，原话及“完全没出现”已落索引，原APK e545严格校验只能证明包，不能覆盖手机触摸。root设计并由apk_header_pointer_capture实施正常h1 implicit→container explicit迁移的lost事件不能冒泡取消；只container自己的capture loss才取消，pointercancel仍取消。改前2反例失败，FE d1a53cf窄修+正式AppFrame/TopNav/AndroidHeaderRefresh/StrictMode正反例31项/types/冻结健康通过；没有扩大正文起手/改变阈值/移页面。新预览d1a53cf APK已按用户要看包交付Downloads，SHAfb651a0bbeae025776016d58fa594b68aa2f0fb16faeaf88aa6b3983ef564a2d，32123717字节，原签名/439资源/0.1.9(1009)/ZIP/16KB核验通过；修后手机尚未确认，不能宣称唯一根因/实机已通过。
 
 独立Validation新增R57–R62六条已root逐项过目，计划共62场景/24目标，保原56；无正式执行。U28映射原R51/52/54历史失败，后继用户复验与当前版本正式场景分清。独立V的125判据仍已过目、实现调查尚未开始；C-R6整包完成及FE d1a版重锁后接续同一次第二轮。
+
+**发布后数据保护补充检查：** 现有受限发布执行器严格要求启动前后messages及Secretary表相同（只容许新增空伴随表）。U20新runtime恢复可能合法补注旧最新Note并写FM／receipt；若该动作恰在发布启动后发生，不能改写收据为通过、关闭保护或自动回滚DB。保留原拒绝及现场，逐行只读比对三库发布备份与运行库，核是否仅为既定真实Note载体与同事务receipt及其必要计数；无法完整解释则保持未验并向前修。该检查是已授权自动注入的发布取证边界，不新增业务写授权。最终source／bundle尚未锁定，不提前apply。

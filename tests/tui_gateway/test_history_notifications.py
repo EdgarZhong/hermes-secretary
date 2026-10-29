@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from hermes_state import SessionDB
-from hermes_state_history_notifications import notification_path
+from hermes_state_history_notifications import notification_path, secretary_notification_path
 from tui_gateway import server
 
 
@@ -113,7 +113,7 @@ with SessionDB(Path(sys.argv[1])) as db:
             assert child.returncode == 0, error
             after = server._sessions_sig()
             assert after[0] == before[0] and after[1] != before[1]
-            assert after[1][0] == before[1][0]  # no new session/message row needed
+            assert after[1][1] == before[1][1]  # no new session/message row needed
             assert notification_path(home / 'state.db').exists()
             assert not notification_path(other / 'state.db').exists()
             assert db._read_one('SELECT holder FROM session_turn_leases') is None
@@ -162,6 +162,10 @@ def test_external_noting_lifecycle_wakes_watcher_without_local_observers(tmp_pat
         monkeypatch.setattr(server, '_change_checked_at', {})
         monkeypatch.setattr(server, '_change_broadcast_at', {})
         monkeypatch.setattr(server, '_CHANGE_WATCHES', {'sessions.changed': (0.5, server._sessions_sig, lambda: {})})
+        from secretary.web_events import subscribe, unsubscribe
+        hints = []
+        subscribe('external-noting-observer', lambda owner, ref, reason: hints.append((owner, ref, reason)))
+        server._broadcast_watched_changes(now=98.0)
         script = '''import sys
 from pathlib import Path
 from hermes_state import SessionDB
@@ -187,37 +191,40 @@ with SessionDB(Path(sys.argv[1])) as db:
                                  stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         try:
             assert child.stdout.readline().strip() == 'started committed'
-            row = db._read_one('SELECT * FROM secretary_noting_children')
+            row = db._read_one('SELECT * FROM secretary_noting_task_children')
             assert row['status'] == 'running' and row['finished_at'] is None
             assert server._sessions_sig() == before
             assert not notification_path(home / 'state.db').exists()
             child.stdin.write('notify\n'); child.stdin.flush()
             assert child.stdout.readline().strip() == 'started notified'
             started = server._sessions_sig()
-            assert started[0] == before[0] and started[1] != before[1]
-            assert started[1][0] == before[1][0]  # task-only writes leave session rows unchanged
+            assert started == before  # task-only writes leave transcript signals unchanged
+            started_marker = secretary_notification_path(home / 'state.db').stat().st_mtime_ns
             server._broadcast_watched_changes(now=100.0)
-            assert events == [('sessions.changed', {})]
+            assert hints == [(home.resolve(), None, 'global_changed')]
+            assert not [event for event in events if event[0] == 'sessions.changed']
             child.stdin.write('finish\n'); child.stdin.flush()
             assert child.stdout.readline().strip() == 'finished committed'
-            row = db._read_one('SELECT * FROM secretary_noting_children')
+            row = db._read_one('SELECT * FROM secretary_noting_task_children')
             assert row['status'] == 'completed' and row['finished_at'] is not None
             assert server._sessions_sig() == started
             child.stdin.write('notify\n'); child.stdin.flush()
             assert child.stdout.readline().strip() == 'finished notified'
             finished = server._sessions_sig()
-            assert finished[0] == before[0] and finished[1] != started[1]
-            assert finished[1][0] == before[1][0]
+            assert finished == before
+            assert secretary_notification_path(home / 'state.db').stat().st_mtime_ns != started_marker
             assert not notification_path(other / 'state.db').exists()
-            assert foreign._read_one('SELECT * FROM secretary_noting_children') is None
+            assert foreign._read_one('SELECT * FROM secretary_noting_task_children') is None
             server._broadcast_watched_changes(now=100.6)
-            assert events == [('sessions.changed', {})]
+            assert hints == [(home.resolve(), None, 'global_changed')] * 2
             server._broadcast_watched_changes(now=102.1)
-            assert events == [('sessions.changed', {}), ('sessions.changed', {})]
+            assert hints == [(home.resolve(), None, 'global_changed')] * 2
+            assert not [event for event in events if event[0] == 'sessions.changed']
             child.stdin.write('exit\n'); child.stdin.flush()
             _, error = child.communicate(timeout=15)
             assert child.returncode == 0, error
         finally:
+            unsubscribe('external-noting-observer')
             if child.poll() is None:
                 child.kill(); child.communicate(timeout=5)
 
@@ -232,11 +239,11 @@ def test_secretary_signal_failure_preserves_local_owner_and_completion_metadata(
         db.create_session('same', source='desktop')
         ref = db.resolve_conversation_ref('same')
         if failure == 'write':
-            monkeypatch.setattr('hermes_state_history_notifications.notification_path', lambda _path: home)
+            monkeypatch.setattr('hermes_state_history_notifications.secretary_notification_path', lambda _path: home)
         else:
             def fail(_db):
                 raise RuntimeError('signal unavailable')
-            monkeypatch.setattr('hermes_state_history_notifications.notify_history_changed', fail)
+            monkeypatch.setattr('hermes_state_history_notifications.notify_secretary_changed', fail)
         legacy, modern = [], []
         subscribe('signal-legacy', lambda *args: legacy.append(args))
         subscribe('signal-modern', lambda *args, **metadata: modern.append((args, metadata)), include_metadata=True)

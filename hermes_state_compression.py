@@ -733,8 +733,8 @@ class SessionCompressionMixin:
             ).rowcount > 0
         return bool(self._execute_write(_do))
 
-    def release_session_turn_lease(self, session_id: str, holder: str) -> None:
-        """Release a turn lease iff ``holder`` still owns it; idempotent."""
+    def release_session_turn_lease(self, session_id: str, holder: str, *, notification_session_id=None) -> None:
+        """Release iff ``holder`` owns it; an audit notification owner never changes the lease key."""
         if not session_id or not holder:
             return
         def _do(conn):
@@ -744,7 +744,7 @@ class SessionCompressionMixin:
                 (conversation_id, holder)).rowcount > 0
         if self._execute_write(_do):
             from hermes_state_history_notifications import notify_history_changed
-            notify_history_changed(self)
+            notify_history_changed(self, session_id=session_id if notification_session_id is None else notification_session_id)
 
     def get_compression_lock_holder(self, session_id: str) -> Optional[str]:
         """Current (non-expired) holder for ``session_id``, or None. Diagnostic only."""

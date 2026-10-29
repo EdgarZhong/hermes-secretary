@@ -511,7 +511,7 @@ class SessionMessagesMixin:
         inserted, rewritten = self._execute_transcript_write(_do, messages, patience_s=self._TRANSCRIPT_WRITE_PATIENCE_S)
         if rewritten:
             from hermes_state_history_notifications import notify_history_changed
-            notify_history_changed(self)
+            notify_history_changed(self, session_id=session_id)
         return inserted
 
     _ROW_STATE_KEYS = ("_row_id", DB_ROW_SNAPSHOT, "timestamp")
@@ -880,7 +880,7 @@ class SessionMessagesMixin:
             return changed or inserted > 0
         if self._execute_transcript_write(_do, messages):
             from hermes_state_history_notifications import notify_history_changed
-            notify_history_changed(self)
+            notify_history_changed(self, session_id=session_id)
 
     @classmethod
     def _row_identity(cls, role: str, content: Any, tool_call_id: Any, tool_calls: Any) -> tuple:

@@ -142,7 +142,7 @@ def _start_reserved_recovery(db, key, audit, recovered, parent_factory):
         finally:
             if worker_db is not None:
                 worker_db.close()
-            db.release_session_turn_lease("recovery:" + key[1], audit["lease_holder"])
+            db.release_session_turn_lease("recovery:" + key[1], audit["lease_holder"], notification_session_id=key[1])
             _notify_recovery_settled(db, audit["conversation_ref"], None)
         raise
 
@@ -298,7 +298,7 @@ def _run_recovery(key, audit, recovered, parent_factory, *, lease_holder=None, r
         finally:
             try:
                 if claimed and db is not None:
-                    db.release_session_turn_lease(lease_key, holder)
+                    db.release_session_turn_lease(lease_key, holder, notification_session_id=key[1])
             finally:
                 if db is not None:
                     _notify_recovery_settled(db, audit["conversation_ref"], parent)

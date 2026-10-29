@@ -132,6 +132,10 @@ _SESSION_SIGNATURE_FIELDS = (
 # normal 0.5 s watch pass stat-only; SQLite is read only after another process
 # actually commits.
 _sessions_db_sig_cache: dict[str, tuple[int | None, tuple | None]] = {}
+_sessions_db_scope_cache: dict[str, tuple | None] = {}
+_sessions_probe_scope: dict[str, tuple] = {}
+_sessions_broadcast_scope: dict[str, tuple] = {}
+_secretary_wake_sigs: dict[str, int | None] = {}
 
 
 def _session_db_content_sig(db_path: Path):
@@ -151,7 +155,7 @@ def _session_db_content_sig(db_path: Path):
         return cached[1]
     if not db_path.exists():
         _sessions_db_sig_cache[cache_key] = (mtime, None)
-
+        _sessions_db_scope_cache[cache_key] = None
         return None
 
     conn = None
@@ -162,22 +166,38 @@ def _session_db_content_sig(db_path: Path):
 
         conn = _connect_tracked_db(read_only_db_uri(db_path), tracking_path=db_path,
                                    uri=True, timeout=0.05)
+        conn.execute("BEGIN")
         available = {row[1] for row in conn.execute("PRAGMA table_info(sessions)")}
         fields = tuple(field for field in _SESSION_SIGNATURE_FIELDS if field in available)
+        row_scope = {} if set(_SESSION_SIGNATURE_FIELDS).issubset(available) else None
         if not fields:
             # A state.db without a readable sessions table (foreign schema, legacy
             # or transient file): keep the old mtime contract so any move still
             # wakes the sidebar instead of silently never broadcasting.
             signature = ("mtime-fallback", mtime)
         else:
-            order = " ORDER BY id" if "id" in available else ""
-            rows = conn.execute(f"SELECT {', '.join(fields)} FROM sessions{order}")
+            bound = conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='secretary_session_bindings'").fetchone()
+            reference = "b.conversation_ref" if bound else "NULL"
+            join = " LEFT JOIN secretary_session_bindings b ON b.session_id=s.id" if bound else ""
+            order = " ORDER BY s.id" if "id" in available else ""
+            columns = ", ".join(f"s.{field}" for field in fields)
+            rows = conn.execute(f"SELECT {columns}, {reference} FROM sessions s{join}{order}")
             digest = hashlib.blake2b(digest_size=16)
             for row in rows:
-                digest.update(repr(tuple(row)).encode("utf-8", "backslashreplace"))
+                encoded = repr(tuple(row[:-1])).encode("utf-8", "backslashreplace")
+                digest.update(encoded)
                 digest.update(b"\0")
+                if row_scope is not None:
+                    identity = row[0]
+                    if not isinstance(identity, str) or not identity or identity in row_scope:
+                        row_scope = None
+                    else:
+                        ref = row[-1] if isinstance(row[-1], str) and row[-1] else None
+                        row_scope[identity] = (hashlib.blake2b(encoded, digest_size=16).digest(), ref)
             signature = (fields, digest.digest())
+        _sessions_db_scope_cache[cache_key] = tuple(sorted(row_scope.items())) if row_scope is not None else None
     except Exception:  # noqa: BLE001 - preserve the old wake-up signal if the read probe cannot run
+        _sessions_db_scope_cache[cache_key] = None
         # A busy/locked read after a good one keeps the last digest and leaves the cached mtime
         # stale so the next pass re-reads: digest -> mtime -> digest would broadcast twice.
         if cached is not None and cached[1] is not None and cached[1][0] != "mtime-fallback":
@@ -200,11 +220,99 @@ def _sessions_sig():
     change signal. Hashing only those rows avoids false Desktop refreshes from
     unrelated state.db writes such as gateway heartbeats.
     """
-    from hermes_state_history_notifications import notification_path
-    return tuple(
-        (_session_db_content_sig(root / "state.db"), _watcher_mtime_ns(notification_path(root / "state.db")))
-        for root in (_watcher_home(), *_served_profile_homes)
-    )
+    from hermes_state_history_notifications import notification_path, noting_history_notification_path
+    global _sessions_probe_scope
+    signatures, scopes = [], {}
+    for root in _change_profile_homes():
+        path = root / "state.db"
+        signature = _session_db_content_sig(path)
+        marker = _watcher_mtime_ns(notification_path(path))
+        noting_marker = _watcher_mtime_ns(noting_history_notification_path(path))
+        previous = _sessions_broadcast_scope.get(str(root))
+        child_scope = _noting_changed_scope(path, noting_marker) if previous and noting_marker != previous[2] else None
+        signatures.append((str(root), signature, marker, noting_marker))
+        scopes[str(root)] = (marker, _sessions_db_scope_cache.get(str(path)), noting_marker, child_scope)
+    _sessions_probe_scope = scopes
+    return tuple(signatures)
+
+
+def _change_profile_homes():
+    primary = _watcher_home().resolve()
+    others = {Path(home).resolve() for home in tuple(_served_profile_homes)} - {primary}
+    return [primary, *sorted(others, key=str)]
+
+
+def _noting_changed_scope(db_path, marker):
+    from hermes_state import _connect_tracked_db
+    from hermes_state_holders import read_only_db_uri
+    from hermes_state_history_notifications import noting_history_notification_path
+    from hermes_state_noting_notifications import noting_history_scope
+
+    conn = None
+    try:
+        conn = _connect_tracked_db(read_only_db_uri(db_path), tracking_path=db_path, uri=True, timeout=0.05)
+        conn.execute("BEGIN")
+        scope = noting_history_scope(conn)
+        return scope if _watcher_mtime_ns(noting_history_notification_path(db_path)) == marker else None
+    except Exception:
+        logger.debug("Noting history scope unavailable; using native global invalidation", exc_info=True)
+        return None
+    finally:
+        if conn is not None:
+            conn.close()
+
+
+def _merge_noting_scope(changed, home, child_scope):
+    if child_scope is None:
+        return False
+    for identity, ref in child_scope:
+        existing = next((row for row in changed if row["profile_home"] == home and row["session_id"] == identity), None)
+        if existing is not None and existing.get("conversation_ref") != ref:
+            return False
+        if existing is None:
+            changed.append({"profile_home": home, "session_id": identity, "conversation_ref": ref})
+    return True
+
+
+def _sessions_changed_payload():
+    """Only complete row differences since the last broadcast can narrow a hint."""
+    before, after = _sessions_broadcast_scope, _sessions_probe_scope
+    if before.keys() != after.keys():
+        return {}
+    changed = []
+    for home, (marker, rows, noting_marker, child_scope) in after.items():
+        old_marker, old_rows, old_noting_marker, _ = before[home]
+        if marker != old_marker or rows is None or old_rows is None:
+            return {}
+        old, current = dict(old_rows), dict(rows)
+        for identity in sorted(old.keys() | current.keys()):
+            if old.get(identity) == current.get(identity):
+                continue
+            row = {"profile_home": home, "session_id": identity}
+            ref = (current.get(identity) or old[identity])[1]
+            if identity in old and identity in current and old[identity][1] != ref:
+                ref = None
+            if ref is not None:
+                row["conversation_ref"] = ref
+            changed.append(row)
+        if noting_marker != old_noting_marker and not _merge_noting_scope(changed, home, child_scope):
+            return {}
+    return {"scope_complete": True, "changed_sessions": changed}
+
+
+def _broadcast_secretary_if_changed():
+    from hermes_state_history_notifications import secretary_notification_path
+    from secretary.web_events import notify
+
+    current = {}
+    for home in _change_profile_homes():
+        key = str(home)
+        signature = _watcher_mtime_ns(secretary_notification_path(home / "state.db"))
+        current[key] = signature
+        if key in _secretary_wake_sigs and signature != _secretary_wake_sigs[key]:
+            notify(home, None, "global_changed")
+    _secretary_wake_sigs.clear()
+    _secretary_wake_sigs.update(current)
 
 
 def _projects_sig():
@@ -310,6 +418,7 @@ def _broadcast_watched_changes(now: float | None = None) -> None:
     """One pass: recompute due signatures, broadcast events whose signature moved.
     First sighting seeds silently so a gateway boot never fires a refresh storm."""
     now = time.monotonic() if now is None else now
+    _broadcast_secretary_if_changed()
     for event, (interval, sig_fn, payload_fn) in _CHANGE_WATCHES.items():
         if now - _change_checked_at.get(event, -interval) < interval:
             continue
@@ -320,16 +429,26 @@ def _broadcast_watched_changes(now: float | None = None) -> None:
             continue
         if event not in _change_sigs:
             _change_sigs[event] = sig
+            if event == "sessions.changed":
+                _sessions_broadcast_scope.clear()
+                _sessions_broadcast_scope.update(_sessions_probe_scope)
             continue
         floor = _CHANGE_BROADCAST_FLOOR_S.get(event, 0.0)
         if sig == _change_sigs[event]:
             continue
         if floor and now - _change_broadcast_at.get(event, -floor) < floor:
             continue  # floored: old signature stays so it re-fires when the window opens
+        try:
+            payload = _sessions_changed_payload() if event == "sessions.changed" else payload_fn()
+            _broadcast_global_event(event, payload)
+        except Exception:  # noqa: BLE001 - a failed broadcast cannot consume its change
+            logger.debug("Change broadcast failed; retaining its prior signature", exc_info=True)
+            continue
         _change_sigs[event] = sig
         _change_broadcast_at[event] = now
-        with contextlib.suppress(Exception):
-            _broadcast_global_event(event, payload_fn())
+        if event == "sessions.changed":
+            _sessions_broadcast_scope.clear()
+            _sessions_broadcast_scope.update(_sessions_probe_scope)
 
 
 _skin_watcher_started = False
