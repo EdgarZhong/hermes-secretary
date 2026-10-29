@@ -114,3 +114,11 @@ d1a新APK按原构建签名重打，只有生成dist.DS_Store与包差异，精�
 ### U29阈值高光与舒缓旋转（2026-10-29）
 
 FE 6628a2e只改下拉角度540→240度、刷新等待700→1300ms，以及armed/refreshing主题橙色高光、近／远光晕和SVG光晕。原手势时序／区域／cap／capture及一次reload不变；回拖解除armed立即撤销高光。32组件／正式wrapper回归、types、diff-check通过。root自己创建隐藏IAB tab5，390×844实际mouse下拉，核半程120度、全程240度、armed才有三层橙色shadow与SVG filter，回拖恢复filter none；松手一次原reload，计数0→1。浅／深实际截图在FE ignored header-refresh-preview/armed-glow-{light,dark}-mobile.png；当前最终CSS已重启watch:null预览并重载核实，不以旧transform缓存冒签。tab5已关闭、viewport reset。无新增真机U29视觉确认，不将此前d1真机起手正常回报代替新视觉实测。
+
+### Main Show反馈调查与用户后续收敛
+
+用户转述Main声称无notebook_show且仅Noting可用。只读调查见ignored main-notebook-show/report.md：线上持久pin包含Show、global/local开启，同一会话10-28 23:42:43实际Show成功；没有争议那次最终API tools wire，不以pin／旧成功证明该次工具存在，也不把模型自述当缺工具事实。候选工具构造／direct catalog／request assembly／Main dispatch与3426相同，未冒称本轮已有专门修复；17项正式接线覆盖顶层Show、Main执行、local off、global切换、陈旧pin冷恢复及身份隔离通过。用户随后明确旧注入逻辑不再深挖，只确保新逻辑；已停止新增线上追查，未改Prompt／配置／产品。新U20仍按同事务真实FM、下一区间资格与父runtime恢复核查，不以任务成功字样代替注入。
+
+### 当前会话失效范围前端接收
+
+root已亲审FE437b9aa的controller sibling：当前physical owner取正式binding／已核recovery owner，Profile与home必须一致；真实已证lineage命中必恢复，新continuation同Conversation ref亦恢复。只能明确异home或同home实际不同ref才排除当前正文恢复，未知／冲突／旧payload保留广义失效，侧栏仍刷新。48项＋末次24项及共享native DTO12项按各自范围复用，types／冻结健康通过；BE实际scope/ref快照接线待同包亲审，不先签全链完成。
