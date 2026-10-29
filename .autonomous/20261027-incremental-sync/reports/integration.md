@@ -86,3 +86,23 @@ root自建隐藏IAB预览127.0.0.1:5209，390×844真实CDP mouse：半程图hal
 前端组件25项；root接线后App＋组件2文件83项通过，integration-tests.log；typecheck通过；正式冻结TS度量5文件0 blocking/0 advisory，integration-health.json及完整source SHA。U25独立115与U26整合83有复用文件，不合并宣传总测试数。原型源码/清单与现有主题保持，不修改全局字体/配色。
 
 后端最终C42源码SHA及十检查有效证据、末次46项已核；发布保护脚本在最终schema上本地再演练27例全通过、零SSH/生产写/模型调用，脚本SHA08c010b4347796ba537b2c516adac16f0358bf791e2a6f2b54794166091f41a3。APK重建及正式部署尚未完成。第二轮独立Validation原46＋U25/U26十场景共56项已过目，待新本地Verifier整轮审查后执行，不按包开门禁。
+
+
+## U27初始临时引导失败补齐（2026-10-29）
+
+root依据用户再次明确的同页SPA目标查到：APK appDocument的初始网络IOException/408/429/5xx曾返回静态Retry页面，SPA没启动；ForegroundRefresh本身已无自动reload，不能仅删计时器就称冷启网络恢复完整。root设计后apk_cold_boot_recovery实施五文件，已亲审提交前端e545359（含MainActivity原构造兼容的可选network supplier、共用既有packaged renderer、可选BOOTSTRAP_PENDING初始提示）。Gateway仅pending=true+真实packaged DOM+top window时首尝试走现有freshBootstrapToken，之后仍同一Gateway/PageRecovery/document自动重试/读必要数据。正常200/30x自然认证导航、真实401/403/非法引导/本地资源失败及普通Web默认行为保留，无新reload/loadUrl或owner。
+
+root指出首包hint缺JS侧平台限定，已窄修并以真实iframe及普通Web有hint反例补证。最终native13项源码不变复用，前端3文件35项、types及冻结TS健康通过；正式shouldInterceptRequest/AssetManager和真实Controller/PageRecovery分别证明两个接缝，不冒称真实AndroidWebView网络栈/物理手势。原始反例、完整报告及最终源码SHA在前端ignored apk-cold-boot-recovery/，client SHA60d7593d5774422f44b7622f53ac1346e576a08fc16f6b916b9c313c6cae4466；native SHA18ad2b3f7566386835397c5789675e10fa89e780a87afbf93ea9a3c2bc748b6a。
+
+旧bc02d01 APK已构建严格通过（439内置文件、原证书、0.1.9/1009、ZIP及16KB），SHA da49cfe02bd8d5772603e9815ff1689efe73b20be8233c981d7ba4d0de0be178、32123673字节，作为旧候选保留；最终需e545359新dist/APK，正在重建，不用旧包冒签U27。
+
+开发夹具在正式Validation前补基础设施：HMR关闭且watch:null；重载当前/chat或Files路由仍返回同一observer宿主、script使用绝对入口，保真实地址；被动DOM/rAF observer先装再首次React render并记appMountedAt，避免漏cache首显；新样本独立validation-round2/dom-samples.jsonl，不追加第一轮历史；JS '/' bootstrap直通实际隔离native HTTP，不能用Vite lastBootstrap旧值伪恢复。未改产品，不把未执行场景记通过。服务在更改期间已按PID停止，最终源/夹具重新freeze后再启动。
+
+
+## U28用户真机预览反例与触摸接管窄修（2026-10-29）
+
+用户对e545359预览实际反馈：标题栏下拉无响应，再往上是状态栏/系统控制中心；补答“完全没出现”。root没有据此要求用户改从状态栏起手，按原S19/P11缺陷处理。W3C Pointer Events §9.4与§4.1.3.2说明direct touch隐式capture及transfer次序；正式组件旧cancel监听所有冒泡lost，受控UA pending-capture时序在实际组件取得改前2失败，正常迁移会清掉pending container，标题低progress可能仍在上缘外，所以用户肉眼无圆盘与此相符，但不能证明手机唯一根因。
+
+FE d1a53cfe35ae5173df48a550bc45048d64133598只增加lostCapture target===container判断，原pointercancel/控件/区域/cap/回拖保持。root亲审+31项受影响回归（含实际wrapper/ref/StrictMode和gating正反例）、types/冻结TS度量通过；原始证据前端ignored header-touch-capture/。隐藏IAB的CDP pointerType:pen未复现implicit迁移，不能把它冒称真实touch；IAB dispatchTouchEvent不支持，未回退桌面/外部浏览器。自建tab4已关闭/viewport reset。
+
+d1a新APK按原构建签名重打，只有生成dist.DS_Store与包差异，精确保留该元数据后移除生成副本，439业务资源严格全匹配；用户原public/.DS_Store不动。原证书449b5f36...、0.1.9/1009、ZIP/16KB及交付副本全部通过；Downloads preview-d1a53cf-arm64.apk，32123717字节，SHAfb651a0bbeae025776016d58fa594b68aa2f0fb16faeaf88aa6b3983ef564a2d。是修正版预览，不冒称后端已发布/全门禁关闭；修后手机反馈仍待。旧e545预览与其包证据保留原版本失败事实。
