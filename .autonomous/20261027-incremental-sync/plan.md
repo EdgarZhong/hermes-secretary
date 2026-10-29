@@ -193,3 +193,9 @@ U28是用户真机对原U26的失败反馈，原话及“完全没出现”已�
 独立Validation新增R57–R62六条已root逐项过目，计划共62场景/24目标，保原56；无正式执行。U28映射原R51/52/54历史失败，后继用户复验与当前版本正式场景分清。独立V的125判据仍已过目、实现调查尚未开始；C-R6整包完成及FE d1a版重锁后接续同一次第二轮。
 
 **发布后数据保护补充检查：** 现有受限发布执行器严格要求启动前后messages及Secretary表相同（只容许新增空伴随表）。U20新runtime恢复可能合法补注旧最新Note并写FM／receipt；若该动作恰在发布启动后发生，不能改写收据为通过、关闭保护或自动回滚DB。保留原拒绝及现场，逐行只读比对三库发布备份与运行库，核是否仅为既定真实Note载体与同事务receipt及其必要计数；无法完整解释则保持未验并向前修。该检查是已授权自动注入的发布取证边界，不新增业务写授权。最终source／bundle尚未锁定，不提前apply。
+
+## 第二轮独立审查整改 R2-V01（方案已评审，尚未实施／关闭）
+
+审查者以正式AIAgent/native Compact＋SQLite＋Noting Loop反例确认：摘要RuntimeError被finish_operation按非completed一律取消，违反U20提交独立。root方案：显式用户取消事实与error/no_change/expired分开；只在同operation接受的提交前取消确实赢时联取消普通未提交任务，保留已提交及Force。手动原入口保留；Idle新Turn撤销接真实NativeCompactionRequest.cancel且核原fence取消结果，技术expired不联取消；prepare派发期间race核同registration显式cancel_requested，不凭is_cancelled（timeout亦会设置）。fallback换fence保原registration，取消输给提交不倒标。失败后Note仍待真实成功新区间且一次投递。审查者按原N01/N02认可方向，要求上述正反分支与child提交前后证据，未签关闭。
+
+实施隔离在父目录hermes-secretary-incremental-remediation，分支codex/incremental-r2-remediation-20261029；原de45/11353b8完整审查继续不移动目标。实现子Agent只能改指定native取消／joint接缝与定向测试，不再派生；root亲审集成，第二轮完整结论后统一按第三轮复审，不隐匿改源或开第四轮。
