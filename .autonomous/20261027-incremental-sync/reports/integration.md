@@ -136,3 +136,9 @@ root并行构建完成：ignored apk-staging/Hermes-Secretary-0.1.9-437b9aa-arm6
 ### 最终集成冻结检查
 
 root执行一次官方统一质量检查：BE de45e332629f3555f79c790c36e4469a83cc0a1e，base origin/main实际5fc54fc233a0379321c13c22494923e06f302dad。命令scripts/check --commit de45e332629f3555f79c790c36e4469a83cc0a1e --base origin/main --only冻结10项；全部通过，health对70文件0blocking/0advisory，6.5秒。原日志.hermes-dev/incremental-sync-20261027/final-integrated-quality.log。非全仓测试、不重复子包大套，规则／阈值未变。新专项测试暂存发现尾空白，后继de45仅清该一行，产品及AST不变；最终diff-check干净。第二轮独立125条Verification阶段二已按最终BE／FE11353b8正式接续，尚未签通过；首个正式Validation仍待其门禁与M0，ignored QA接线不改产品。
+
+### Root实际App：Noting通知与父FM反向对照（开发联调，非正式Validation）
+
+源为de45产品（运行HEAD0c33仅docs）／FE11353b8，外置隔离HOME c8z40tee。新ignored控制只替代child执行依赖；准入、registry、native child Session／append／lease释放、Snapshot提交、watcher→Sink→真实Peer WS→Controller／React均正式执行。隐页tab6，documentId d9f7d463-2a6d-4401-ae09-54a2d14e5c61。实际草稿Noting regression draft，Noting注册→child写入和lease释放→Snapshot成功及终态全过程，Main activate／Usage／Pending／Resume四类RPC均0新增，recoveryId始终1、ready=true，Send可用、草稿保留。期间23个已记录变化采样只running/finished/idle，无unknown、恢复提示或错误。随后原Framework publisher真实追加父FM，watcher使recoveryId1→2，正式Framework message卡出现，ready与Send恢复/保持、同document及草稿不变，证明未过滤当前历史真实变化。
+
+原始DOM/RPC/DB事实integration/root-noting-ui-20261029.json、采样分析root-noting-ui-observations.json，图root-noting-ui-complete.png；全部源/夹具manifest root-noting-manifest-20261029.json SHA42561279255afe6611c50e28fada658e5b027a6f6a81204eaaef6d33bb1446b0（BE13044／FE240源），原samples按该documentId及t78005..138506过滤。ROOT开发记录不充作正式62场景已验，也非真实模型／Force触发资格证明，后者另有native Loop专项。tab6已关闭，8189/5199已按PID停止；正式Validation待统一整改最终M0重建，不能继续复用旧HOME混签。
