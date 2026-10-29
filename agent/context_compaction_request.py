@@ -22,14 +22,15 @@ def prepare_noting_for_native_compression(agent, messages, *, trigger=None, forc
     try:
         from secretary.noting_runtime import prepare_joint_noting
         active = [*messages, *verbatim_tail] if verbatim_tail else messages
-        from secretary.noting_native_link import operation_for_fence
-        operation_id = operation_for_fence(agent, commit_fence)
+        from secretary.noting_native_link import registration_for_fence, cancel_requested
+        registration = registration_for_fence(agent, commit_fence)
+        operation_id = registration.observation.operation_id if registration is not None else None
         if commit_fence is not None and commit_fence.is_cancelled:
             return
         prepare_joint_noting(agent, trigger=('native_idle' if trigger == 'noting_joint_idle' else
                                             'manual' if force else 'auto_compaction'),
                             messages=active, operation_id=operation_id)
-        if commit_fence is not None and commit_fence.is_cancelled:
+        if cancel_requested(agent, registration):
             from secretary.noting_joint import cancel_operation
             cancel_operation(agent, operation_id)
     except Exception:
@@ -121,8 +122,8 @@ class NativeCompactionRequest:
                 self.completed.set()
                 self.admitted.set()
         if fence is not None:
-            fence.revoke_commit_admission()
-            fence.cancel_before_commit()
+            from secretary.noting_native_link import cancel_request_fence
+            cancel_request_fence(self.agent, fence, state=state)
 
 
 def read_context_usage(agent):
@@ -227,7 +228,7 @@ def _run_idle_request(request, custom):
         agent._active_session_turn_lease_holder = holder
         def refresh():
             if not db.refresh_session_turn_lease(request.session_id, holder):
-                request.cancel()
+                request.cancel("expired")
         handle = schedule(refresh, 60.0)
         from agent.context_compaction_request_publication import refresh_request_history
         messages = refresh_request_history(agent, agent._session_messages)

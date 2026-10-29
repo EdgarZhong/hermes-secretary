@@ -5,22 +5,53 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def operation_for_fence(parent, fence):
+def registration_for_fence(parent, fence):
+    """A fence may be the old side of this same live fallback registration."""
     lock = vars(parent).get("_compression_commit_fence_lock")
     if lock is None or fence is None:
         return None
     with lock:
+        indexed = getattr(fence, "_secretary_joint_registration", None)
         for entry in vars(parent).get("_compression_commit_fence_stack", ()):
-            if entry.fence is fence:
-                return entry.observation.operation_id
+            if entry is indexed or entry.fence is fence:
+                return entry
     return None
+
+
+def operation_for_fence(parent, fence):
+    registration = registration_for_fence(parent, fence)
+    return registration.observation.operation_id if registration is not None else None
+
+
+def cancel_requested(parent, registration):
+    lock = vars(parent).get("_compression_commit_fence_lock")
+    if lock is None or registration is None:
+        return False
+    with lock:
+        return registration.observation.cancel_requested
+
+
+def cancel_request_fence(parent, fence, *, state):
+    # Capture this live registration before the native blocking cancellation. It
+    # can finish or swap fences while cancellation waits; its identity stays fixed.
+    registration = registration_for_fence(parent, fence)
+    fence.revoke_commit_admission()
+    accepted = fence.cancel_before_commit()
+    if accepted and state == "cancelled" and registration is not None:
+        with parent._compression_commit_fence_lock:
+            registration.observation.cancel_requested = True
+            operation_id = registration.observation.operation_id
+        from secretary.noting_joint import cancel_operation
+        cancel_operation(parent, operation_id)
+    return accepted
 
 
 def finish_native_joint(parent, registration):
     try:
         from secretary.noting_joint import finish_operation
         finish_operation(parent, registration.observation.operation_id,
-                         succeeded=registration.observation.state == "completed")
+                         succeeded=registration.observation.state == "completed",
+                         cancel_requested=registration.observation.cancel_requested)
     except Exception:
         logger.warning("Native joint Noting settlement failed", exc_info=True)
 

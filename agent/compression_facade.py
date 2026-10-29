@@ -32,6 +32,7 @@ class _CommitFenceRegistration:
         self.fence = fence
         from agent.compression_read import CompressionObservation
         self.observation = CompressionObservation()
+        fence._secretary_joint_registration = self
 
 
 def _timeout_fallback_prompt(agent, system_message: str) -> str:
@@ -170,6 +171,7 @@ def _run_under_progress_timeout(
         # it on the slot hard_interrupt() reads, but only while this attempt still owns the
         # top registration. A later attempt's live fence must not be clobbered.
         retry_fence = CompressionCommitFence()
+        retry_fence._secretary_joint_registration = registration
         if native_request is not None:
             native_request.bind_fence(retry_fence)
         with fence_registration_lock:

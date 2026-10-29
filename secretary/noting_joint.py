@@ -107,8 +107,8 @@ def cancel_operation(parent, operation_id):
     retire_invalid_tasks(db, ref)
 
 
-def finish_operation(parent, operation_id, *, succeeded):
-    if not succeeded:
+def finish_operation(parent, operation_id, *, succeeded=None, cancel_requested=False):
+    if cancel_requested:
         cancel_operation(parent, operation_id)
     from secretary.noting_notes import check_note_delivery
     check_note_delivery(parent)

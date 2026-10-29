@@ -146,3 +146,7 @@ root执行一次官方统一质量检查：BE de45e332629f3555f79c790c36e4469a83
 ### 第二轮独立Verification结论与R2-V02文档整改
 
 第二轮完整125条调查已结束，不通过；原六节报告逐字保存在reports/verification-round2.md（原verification.md亦保留该时点），并未把方案认可或开发UI通过冒称门禁关闭。R2-V01隔离整改中；R2-V02已按既有06最终契约纠正README的“折叠详情不缓存／5秒自动刷新兜底”及CLAUDE统一检查旧状态，保留历史运维时点，不降低要求。R2-E01内容样本与R2-E02跨进程Instant组合原始依据仍在核查，不用口头范围豁免或未改源码代替证据。第三轮只独立判据准备，尚未审最终实现。
+
+### Root接收R2-V01（原第二轮失败保留）
+
+完整亲审隔离remediation四产品／两测试，六文件SHA与r2-v01/summary.json逐一匹配，接回前原工作区四产品均与0c33/de45逐字相同。native error/no_change/expired不再由succeeded推断联合取消，明确accepted cancel才联取消普通未提交任务；原错误仍正常返回，不假成功。Idle refresh失效用expired，手动原接口保持；派发后race查同registration明确事实；初始／fallback两个fence只索引既有registration，parent锁内验证成员、DB取消在锁外，两种swap及旧operation隔离有正式屏障反例。取消输native commit、Force及已提交沿原CAS保留；错误后Snapshot等真实后继新区间一次注入。复用23项／原V反例复红转绿及十检查，不重跑62或180项。原件在隔离worktree ignored r2-v01/，原V2判定不改写；本接收不代表独立关闭，统一第三轮复审待最终SHA。
