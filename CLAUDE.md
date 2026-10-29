@@ -21,7 +21,7 @@
 | F08微信逐消息发送 | 已亲审提交后端a5018ff；final持久UID后立即沿既有FIFO投递、尾部成功回执去重；150项及最后47项影响复测，不真实外发；见reports/r2-weixin.md |
 | U20／F07／E02联合Noting | 后端27c74b094f已亲审提交／push，root提出的C-R1–R4四处接线补修全部纳入，末次5文件46项及42文件十检查通过；普通手动／Idle／原生auto并发联合触发取消、已提交保留，Force仅Turn结束不可取消并封区间，特殊替代审计透明跳过，Note独立四时点检查后原FM推送；正式独立门禁待统一执行 |
 | E01/E03与动态体验 | D07原表漏标客户端范围已在06顶部勘误，仅约束已有入口的Desktop；Web/APK不新增索引UI，E03交独立Verifier核对；root准备同夹具流量／时序／必要读取证据；已有旧候选隐藏IAB记录只按旧版本引用，不当作当前候选通过 |
-| 第二次整轮门禁 | 本地全新Verifier已独立落盘125条完整判据并经root逐项过目，尚未查实现；U27原生冷启入口已修并提交FEe545359；C-R5/C-R6已亲审接收；新增Noting误触发Chat恢复阻塞，先修通知归属后重锁最终候选；未开启额外正式轮次。Validation原56场景已过目，待补对应入口 |
+| 第二次整轮门禁 | 本地全新Verifier已独立落盘125条完整判据并经root逐项过目，尚未查实现；U27原生冷启入口已修并提交FEe545359；C-R5/C-R6与Noting通知归属已亲审提交，最终BEde45e33262／FE11353b8已锁源并接续同次阶段二审查；未开启额外正式轮次。Validation原56场景已过目，待补对应入口 |
 | U25冷启动视口 | 用户已确认新document首次真实历史提交后一次立刻到底，加载期用户滚动不阻止；cold_start_viewport已交回，root审查正式commit/ack接线后接收并提交ba7decd；5文件115项、types与冻结健康通过，同页规则保持 |
 | Main notebook_show线上反馈 | 用户转述Main自述无工具且只限Noting，既定只读Main资格不变；只读核线上3426持久工具表有Show且同会话23:42实际调用成功；争议请求wire缺失，缺工具未确证。新候选17项正式Main工具接线通过；用户明确停止深挖旧逻辑，继续以新链路实际注入／读取为准，未改Prompt或扩大旧版追查 |
 | Noting误恢复补修 | root已亲审接收：独立Secretary token、可信child独立history token、原生sessions.changed完整scope与FE437b9aa正式owner消费；原生租约释放／两处改文／两处recovery reservation均准确通知，Main／未知仍global。专项21、watcher26、历史9、manual18、FE12及十检查通过；保真实断线与Main历史authority，待统一独立门禁 |
@@ -74,7 +74,7 @@ U20详口径见07顶部及plan接线设计；旧“先Noting再压缩／FM结算
 
 | 项目 | 已核结果 |
 |---|---|
-| 本轮本地代码 | 新候选后端C-R5/C-R6已在b16968f4b7提交，Noting通知归属补修待接收；前端437b9aa已提交。尚未发布，本地候选不等同下行线上版本 |
+| 本轮本地代码 | 新候选后端de45e33262与前端11353b8已提交／push，产品源冻结；第二轮独立Verification已进入实现审查。尚未发布，本地候选不等同下行线上版本 |
 | 后端线上最后核验版本 | 3426c0fc9579dc0589fd0a831741b535aee71ca2；正式Alex的Web／Gateway实际版本、RPC和目标Notebook已核，微信connected |
 | 前端线上最后核验版本 | 0947ed5f25fe9d412e25ab6ab6248aefcd64c55e；Scheduler即时切换已上线，439静态逐SHA及HTTP入口资源验证通过 |
 | 已交付APK | 最新为0.1.9／1009预览d1a53cf（Downloads preview-d1a53cf-arm64.apk），用户已确认顶栏能正常下拉；32,123,717字节、SHA fb651a0bbeae025776016d58fa594b68aa2f0fb16faeaf88aa6b3983ef564a2d。最终候选437b9aa已构建严格校验，尚未交付；原正式0.1.8／20c9267保留，不混作最新预览 |

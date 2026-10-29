@@ -132,3 +132,7 @@ root并行构建完成：ignored apk-staging/Hermes-Secretary-0.1.9-437b9aa-arm6
 已逐段亲审9个BE源／测试文件与FE正式消费helper：task-only变化走独立Secretary wake；实际child native lease释放及改文走可信DB registry/audit分类的独立noting-history opaque token，原生watcher仍发sessions.changed；合并时枚举全部已证child真实owner/ref，未知、超上限、Main marker同时变化保守global。scope baseline只在seed或实际广播成功后推进，floor合并／旧探测／失败广播不吞事件。recovery两处reserved显式通知真实child，父Main publication lease保持原global，native DELETE/holder语义未改。事件及内部参数仅增可选，默认／未知原行为保持，无新表／日志／调度器、无authority降级。
 
 最终9文件SHA逐一匹配FE ignored noting-connection-regression/backend-fixed-source-sha256.txt；专项21、既有watcher26、历史通知9、manual18，FE真实DTO12及types／冻结十检查0/0证据按适用范围复用，不重复加总成全仓绿。旧0947同12项仍4失败，反例有效。正式普通child Loop、Main真实Turn-end Force dispatch FM、Compact summary回调／Note FM、recovery成功／构造失败／启动失败均已实际封套恢复可用；不据此虚称当次字面Connecting的真实Socket根因。整轮Verification及真实App门禁尚未通过，后继统一锁源。
+
+### 最终集成冻结检查
+
+root执行一次官方统一质量检查：BE de45e332629f3555f79c790c36e4469a83cc0a1e，base origin/main实际5fc54fc233a0379321c13c22494923e06f302dad。命令scripts/check --commit de45e332629f3555f79c790c36e4469a83cc0a1e --base origin/main --only冻结10项；全部通过，health对70文件0blocking/0advisory，6.5秒。原日志.hermes-dev/incremental-sync-20261027/final-integrated-quality.log。非全仓测试、不重复子包大套，规则／阈值未变。新专项测试暂存发现尾空白，后继de45仅清该一行，产品及AST不变；最终diff-check干净。第二轮独立125条Verification阶段二已按最终BE／FE11353b8正式接续，尚未签通过；首个正式Validation仍待其门禁与M0，ignored QA接线不改产品。
