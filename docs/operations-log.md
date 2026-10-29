@@ -1,5 +1,9 @@
 # 运维记录
 
+## 2026-10-29 · 增量恢复紧急发布尝试（未切换）
+
+用户先要求优先上线供现有APK使用。已将已审BE c247a9739e（产品b15822a06e）快进推到origin/main、FE11353b8推到origin/secretary，并上传437静态439文件及增量bundle；push和上传不等于上线。执行器读取input/release-plan.json，而本次计划误放工作目录plan.json，FileNotFoundError在创建receipt／停服／切源／静态交换／数据库备份前退出。只读复核正式Alex仍检出main3426c0fc9579dc0589fd0a831741b535aee71ca2，Web与Gateway均active；未触发生产模型、微信或生产库写入。私有工作目录release-20261028/urgent-20261029-1057保留现场。用户随后取消临时发布优先，要求继续尽快完整收敛；最终发布须修正输入位置并演练真实调用，不将本次记为上线成功。
+
 ## 2026-10-29 · Alex Noting／Compact只读复盘
 
 按用户反馈只读核查，未重启服务、触发模型或改生产库。正式后端3426c0f、前端0947ed5，Web／Gateway均active。Force admission17于00:47:06准入，00:55:20实际提交Notebook Snapshot、00:55:21任务完成；Force Noting本身不等于已执行Compact。用户随后手动Compact于01:06:47取得锁，新summary实际于01:13:50落库，01:14:09核旧summary已compacted、新summary生效且锁已释放，未见压缩失败字段。时间均Asia/Shanghai。仅记状态事实，不收录Notebook正文／业务内容；前端误恢复另在当前实现轮次修复，不能据UI提示断言真实Socket断开或服务器卡死。

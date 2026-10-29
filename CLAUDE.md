@@ -5,9 +5,11 @@
 - **Agent自主收敛／待追认：混合压缩载体的读取。** 原空白：一个native UID可同时承载压缩摘要与真人消息，而用户要求辅助开关能读取Compression且Get Meta仍仅四字段。决定：默认保留原真人视图；显式辅助允许同UID的system摘要视图，Get Meta／Search按语义部分分别返回，anchored Read允许现有roles参数选部分，默认锚点优先原非压缩部分；同UID同role的system内容合并为一个视图；不造UID、不放开Full／隐藏内容。理由：使明确要求在native混合载体下可操作。影响：Read新增可选roles适用位置，同UID可有不同语义投影。已实现，201项History接受测试及56项原生路径通过；独立Verification／Validation已通过，已上线；不改变Message Identity或Notebook新证据准入。
 - **Agent自主收敛／待追认：Candidate同Task来源形式切换。** 原空白：旧合法direct→refs操作与新旧Task节点不可删约束如何同时成立。决定：仅尚未提交且唯一节点属于本Task时，允许显式清空当前工作槽并切为合法refs；任何旧Task直接节点仍禁止删改。理由：继承原来源二选一操作并保持旧节点约束。影响：当前Task工作态边界，无迁移／旧节点特权。已实现，正式工具／恢复／原子失败98项通过；独立Verification／Validation已通过，已上线。
 
-## 2026-10-27 · 增量同步与免刷新恢复（第二迭代执行中）
+## 2026-10-27 · 增量同步与免刷新恢复（最终集成与第三轮收敛）
 
 **当前完成条件（U22／U23）：** 持续自主执行；第一轮之后Verification与Validation各最多再两次正式全轮复审／复验，第三轮内完成两仓main集成、正式Alex上线和原签名0.1.9 APK交付。次数上限不豁免缺陷或证据缺口，不开第四轮。用户U24已明确将Verification改回本地，第二轮集成锁定后派全新上下文6.1 sol/high全范围独立审查；开发定向测试／主会话亲审不冒充独立门禁。生产模型和真实微信测试外发不在授权内。
+
+**U31最新执行安排：** 紧急发布在切换前因计划文件上传／读取路径不一致退出，正式Alex仍main3426c0f、两服务active，没有停服／换源／换静态／生产库写入。用户随后明确“不着急了…先不用…临时的东西…赶紧继续，尽快收敛”，停止临时发布，回到最终集成→第三轮Verification→正式Validation→统一上线；现有APK先继续使用，不主动要求更新。最终上线授权及三轮上限保留。
 
 唯一计划／索引在[本轮目录](.autonomous/20261027-incremental-sync/plan.md)。原始需求U01–U30、缓存D01–D18、表现S01–S20和操作P01–P11已落档。保持原产品／视觉／操作资格，主目标仍是500条消息与完整已取详情缓存、游标同步、SPA／APK无需刷新恢复，不为填缓存预读或重新发起写操作。
 
@@ -25,7 +27,7 @@
 | U25冷启动视口 | 用户已确认新document首次真实历史提交后一次立刻到底，加载期用户滚动不阻止；cold_start_viewport已交回，root审查正式commit/ack接线后接收并提交ba7decd；5文件115项、types与冻结健康通过，同页规则保持 |
 | Main notebook_show线上反馈 | 用户转述Main自述无工具且只限Noting，既定只读Main资格不变；只读核线上3426持久工具表有Show且同会话23:42实际调用成功；争议请求wire缺失，缺工具未确证。新候选17项正式Main工具接线通过；用户明确停止深挖旧逻辑，继续以新链路实际注入／读取为准，未改Prompt或扩大旧版追查 |
 | Noting误恢复补修 | root已亲审接收：独立Secretary token、可信child独立history token、原生sessions.changed完整scope与FE437b9aa正式owner消费；原生租约释放／两处改文／两处recovery reservation均准确通知，Main／未知仍global。专项21、watcher26、历史9、manual18、FE12及十检查通过；保真实断线与Main历史authority，待统一独立门禁 |
-| U30 Markdown链接误识别 | 用户新截图：裸URL吞中文及code/strong标记；root指定仅修source可证明的GFM裸链接边界并沿同parser一次重解析恢复格式，apk_header_pointer_capture实施；不执行截图登录、不存授权码；最终FE须重锁与APK重建 |
+| U30 Markdown链接误识别 | root已全文亲审接收，提交FE73a4232；仅修source可证明的GFM裸链接中文边界，沿同parser一次重解析恢复格式。76项／types／冻结健康通过，不执行截图登录、不存授权码；尚需独立审查及APK重建 |
 | U29真机视觉反馈 | 用户已确认起手正常，但要求圈旋转放慢、阈值补明显高光／光晕；FE6628a2e已提交：旋转540→240度、等待700→1300ms、阈值主题高光／光晕；32项与types通过，root隐藏IAB浅深主题／回拖已核，不改已正常手势时序／行程／区域，新视觉真机反馈待 |
 | U28真机触摸起手失败 | 用户e545实测标题栏完全无圆盘；root确认子lost capture冒泡误cancel，FE d1a53cf已亲审提交，31项及正式wrapper/StrictMode/types/健康通过。已交付`/Users/edgar/Downloads/Hermes-Secretary-0.1.9-preview-d1a53cf-arm64.apk`：32123717字节、SHAfb651a0bbeae025776016d58fa594b68aa2f0fb16faeaf88aa6b3983ef564a2d，439资源/原签名/ZIP/16KB/1009已核；用户随后明确反馈“之前你给我的第2次APK已经可以正常下拉刷新了”，d1a53cf预览实际顶栏起手故障已获真机关闭；其余场景不据此代签 |
 | U26顶栏手动刷新预览 | 用户新明确体验变更：APK only，页面／背景静止，Chrome式圆背板橙圈阻尼与cap；root已先交付隐藏IAB真实原型截图，CDP真实mouse验证cap/松手一次reload/正文不起手/浅深主题；03a9689已接正式APK packaged native入口、普通Web关闭，25组件＋83整合项、types/health通过；无真机touch，后继d1a53cf预览已交付，最终包待当前修补后重建 |
@@ -75,7 +77,7 @@ U20详口径见07顶部及plan接线设计；旧“先Noting再压缩／FM结算
 
 | 项目 | 已核结果 |
 |---|---|
-| 本轮本地代码 | 新候选后端de45e33262与前端11353b8已提交／push，产品源冻结；第二轮独立Verification已进入实现审查。尚未发布，本地候选不等同下行线上版本 |
+| 本轮本地代码 | 后端c247a9739e（产品b15822a06e）与前端73a4232已提交／push；第二轮不通过，第三轮166判据已落盘，待最终调查及验收。尚未发布，本地候选不等同下行线上版本 |
 | 后端线上最后核验版本 | 3426c0fc9579dc0589fd0a831741b535aee71ca2；正式Alex的Web／Gateway实际版本、RPC和目标Notebook已核，微信connected |
 | 前端线上最后核验版本 | 0947ed5f25fe9d412e25ab6ab6248aefcd64c55e；Scheduler即时切换已上线，439静态逐SHA及HTTP入口资源验证通过 |
 | 已交付APK | 最新为0.1.9／1009预览d1a53cf（Downloads preview-d1a53cf-arm64.apk），用户已确认顶栏能正常下拉；32,123,717字节、SHA fb651a0bbeae025776016d58fa594b68aa2f0fb16faeaf88aa6b3983ef564a2d。最终候选437b9aa已构建严格校验，尚未交付；原正式0.1.8／20c9267保留，不混作最新预览 |
