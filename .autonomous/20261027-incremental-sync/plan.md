@@ -1,5 +1,13 @@
 # 实施计划：20261027-incremental-sync
 
+## 2026-10-30 · 草稿归账缺口已修、交付及定向独立关闭（同第三轮）
+
+V31／V32正式Rewind受理后当前草稿清空，V33主动冷启却出现早先`/compact`；root确认仅自有tab19，V32至V33未填字或预置，旧页并发不能解释。独立QA保连续样本及未通过边界。只读源码发现adoptDraftScope选择canonical时未删除legacy路由副本；preferSavedDraft忽略较新空草稿，能把已消费旧副本重新选回。当前IDB和owner映射原件保留，不凭候选因果冒称唯一根因。
+
+root限定修复机制：canonical采用成功后清退同owner旧路由副本；带有效时间的已清空草稿参与新旧仲裁，不能让旧非空内容覆盖较新的清空事实；受理清理沿既有原子草稿内容／附件选择，仅推进该事实时间，不等IndexedDB才承认服务端受理。保留未知受理不清草稿、用户新编辑／附件及其它owner，旧无时间草稿按既有兼容路径处理。不新增存储表／恢复状态机／写重放。先以真实IDB＋正式Controller建立红例，定向修复、root亲审及原第三轮影响核查／真实用户路径复验，不开第四轮或复跑大套。独立QA继续其余V组补判，不能因已上线而放过此分支。
+
+交付FE13db1320e672e613737f20900abb7450bff25858：62项、类型／冻结健康通过，真实26例旧版17失败／9通过，失败重试中间4红保留；root仅把旧“保留legacy”断言改为清退并定向1通过。独立机制审接收，实际D1–10覆盖原受理→空→暖恢复→冷启（391秒仍空、submit3→4后不再增）、退出Reply和未提交编辑保真，真实IDB空canonical和旧key清退有证。D0漏测试proxy是无效环境样本，已关闭纠正，未当产品失败。已正式静态发布13db、交付原签名APK051b0231…，后端00f／PID／配置／绑定／三库保持；首次tar漏secretary顶层被交换前拒绝，修正后用同正式extract_static本地439通过，再r2 verified。原件在integration/draft-canonical-retirement-review.md、validation-m0-draft-13db132.json及release/static-20261030-13db132-r2/；最终独立QA与Verifier均接收并关闭R3-V07，核新正式资源／APK。完整66场景仍7限定通过／58部分／0当前失败／1不适用，不把定向关闭或整场均有代表执行当全部子分支完成。
+
 ## 第二次迭代（2026-10-28，用户已授权纳入U20）
 
 **当前阻塞补修（2026-10-29）：** Noting开始／提交／结束复用全局history wake，导致空owner sessions.changed误触发当前Chat／Usage恢复；Socket仍连接时，暂不可用响应可误撤销原操作资格。root指定独立Secretary跨进程wake、可信Noting child独立history wake，保留Main／未知原history失效；native sessions.changed只增可选完整变更会话scope，能证明当前物理会话未变才不启动其恢复，未知／真实历史改写保持原恢复。原生事件与API默认兼容，不以隐藏提示或强ready代替修复。C-R5/C-R6已亲审接收，62项及冻结检查复用。
@@ -248,6 +256,6 @@ root方案：仅同非空Turn的operation可复用／查status；其它生成新
 
 ## 最新阶段交付与剩余验收（原第三轮接续）
 
-BE00f0／FEccd与原签名ccd 0.1.9 APK均已正式交付，版本／439资源／HTTP六入口／PID／配置／绑定／Dashboard及两套三库收尾已核，详operations顶部。独立Verification最终产品／正式机制／发布与APK通过；原168判据不重提。独立Validation关闭Z段中断残留、Compacting退旧值与中文粗体三缺陷，真实WS失败后同doc恢复也通过；仍7限定通过／47部分／11未执行／1不适用，不签整体收敛。
+BE00f0／FE13db与原签名13db 0.1.9 APK均已正式交付，版本／439资源／HTTP六入口／PID／配置／绑定／Dashboard及两套三库收尾已核，详operations顶部。独立Verification最终产品／正式机制／发布与APK接收；原168判据不重提。独立Validation关闭Z段中断残留、Compacting退旧值与中文粗体三缺陷及后继D组草稿归账，真实WS失败后同doc恢复也通过；最终7限定通过／58部分／0当前失败／1不适用，整场有代表不等子分支齐全，不签整体收敛。
 
-W段追加：最新Thinking／活动Turn恢复、明确压缩失败／未知回执、真实Toast形状与关闭、两份同名附件受理后丢WS的正式链已有原件；等待原QA补判。仅fixture Vite的dev-client自身连接丢失触发过poll/reload，已保console/新旧doc/模块加载失败原件；不混为产品刷新或连续同document。ignored plugin仅省略该dev transport.connect，保CSS／React助手与所有产品源码，变更边界及served client SHA见integration/vite-dev-reconnect-boundary.json。新listener30335、原BE18132／QsxSwA继续；剩余本地路径沿原batch2/3，不开第四轮、不为已有效范围复跑测试。真实Android／外部登录／真实外发限制与CJK自主待追认明确保留。
+W段最新Thinking／活动Turn恢复、明确压缩失败／未知回执、真实Toast形状与关闭、两份同名附件受理后丢WS，以及后续V／D补验均已由原QA判读。仅fixture Vite的dev-client自身连接丢失触发过poll/reload，已保console/新旧doc/模块加载失败原件；不混为产品刷新或连续同document。ignored plugin仅省略该dev transport.connect，保CSS／React助手与所有产品源码，变更边界及served client SHA见integration/vite-dev-reconnect-boundary.json。最终自有Vite47843、原BE18132／QsxSwA保留，唯一业务页已关闭；D0测试proxy遗漏的无效样本另保纠正边界。剩余必要子分支沿原报告，不开第四轮、不为已有效范围复跑测试。真实Android／外部登录／真实外发限制与CJK自主待追认明确保留。

@@ -1,5 +1,17 @@
 # 运维记录
 
+## 2026-10-30 · 草稿清空冷恢复补丁、静态13db与0.1.9（已发布）
+
+前端13db1320e672e613737f20900abb7450bff25858已推正式origin/secretary，修复较新空canonical被旧路由草稿复活：成功持久后才退旧，失败映射可重试，受理消费推进事实时间。62项／类型／冻结健康及独立机制审通过；实际Rewind受理后暖／冷均为空、两附件不复活、391秒提交计数不再增加。后续独立QA与Verifier均已关闭该定向缺陷并接收正式资源／APK事实，完整Validation仍有部分覆盖，未签全轮完成。
+
+Secretary静态沿已审执行器原子交换，收据release-20261028/static-20261030-13db132-r2/receipt.json verified，SHA a5eca247b994a853e688f75a3b45054d330fea5347045e0f7e7db9c6d610c7ec；439文件／HTTP六入口逐SHA。后端main00f0b28、Web／Gateway实际版本及PID保持、active／running、微信connected，配置／绑定／Dashboard保持，无重启、数据库写或模型调用，三库备份两套保持。旧ccd静态保留可回退。初次静态包漏secretary顶层，在extract_static交换前被拒绝；failed/prepared原收据和日志保，远端439旧资源未变，只清自己空stage；正确包先调用同正式extract_static本地439通过，再使用新r2目录发布，未放宽检查或改发布器。
+
+交付/Users/edgar/Downloads/Hermes-Secretary-0.1.9-13db132-arm64.apk，32127749字节，SHA256 051b0231964d7762a3bc89b7ed5544fc1751ccffea9d5bd365db07f8e7161081；0.1.9／1009、原证书／v2／ZIP与ELF16KB／439内置资源及交付副本均严格通过。构建预置既有PM Python；仅将生成dist的元数据移存ignored，public用户原件未动；旧包不覆盖。包不代签真机生命周期。
+
+## 2026-10-30 · 已交付版本只读复核（无发布变更）
+
+通过SSH重新读取正式Alex：仍检出main，源码／Web实际版本／Gateway实际版本均为00f0b2879e0dede672cee0bb06989d9a032eb937；Web与Gateway active，Gateway running、PID418097，微信connected。Secretary静态439项仍逐SHA匹配ccd4cfa6ed6f23f99e2b78878848cebd76394093的发布manifest。Downloads已交付0.1.9 APK再次核SHA256仍为bdb131ce0e173d0bc9094fe27cf9d3ab7f0c9bedfb5e114ee41cd29d1087d1a6。仅只读核对，无重启、数据／配置写入或模型调用；原件见本轮ignored release/postrelease-20261030-readonly.json。不把服务connected或包完整性当成手机网络体验／微信消息送达验收。
+
 ## 2026-10-29 · 恢复接线后继补丁、最终网页和0.1.9（已发布，整体验收继续）
 
 正式Alex已从main d172快进到 `00f0b2879e0dede672cee0bb06989d9a032eb937`，先与FE ce69fbe配套发布，收据 `release-20261028/stage-20261029-00f0b28/receipt.json` verified。两实际服务同00f、active／running、微信connected；数据库保护表、配置、绑定、Dashboard一致。新备份与d172备份两套完整三库逐库SHA／integrity／FK通过，仅清退旧3426三库及其sidecar共9文件；运行库与同步完成包不动。正式HTTP六资源通过，未调用生产模型或外发。

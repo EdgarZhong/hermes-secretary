@@ -9,9 +9,11 @@
 
 ## 2026-10-27 · 增量同步与免刷新恢复（最终集成与第三轮收敛）
 
-**最新实际交付：** BE main `00f0b2879e0dede672cee0bb06989d9a032eb937`、FE `ccd4cfa6ed6f23f99e2b78878848cebd76394093` 均已正式 verified 上线；最终原签名0.1.9 APK已交 Downloads 并给链接，SHA `bdb131ce0e173d0bc9094fe27cf9d3ab7f0c9bedfb5e114ee41cd29d1087d1a6`、32128117字节。静态后继更新未重启服务／写库，两套完整三库已核并清退旧备份。独立源码影响审及三个真实动态缺陷定向复验通过，首次Socket失败真实消费后同document恢复也通过。完整66场景仍7项限定通过／47项部分通过／11项未执行／1项不适用，尚未签整轮完成；继续补原范围本地必要旅程，外部动作／设备限制分记。下文旧版本与待验表述是各包原时点记录，当前实际状态以本段、唯一plan及operations顶部为准。
+**10月30日草稿补修已交付且定向独立关闭：** V33的Rewind受理后冷启复活旧Slash草稿已修于FE13db132；canonical成功写入才清退legacy，较新空草稿参与仲裁，失败回退映射可重试，受理消费推进事实时间。真实IDB／正式Controller基线17红、最终62项及类型／冻结健康通过，独立机制审接收；实际D1–10验证退出Reply、未提交编辑冷启、受理后暖／冷保持空、391秒无复活／无重放。已静态上线及交付原签名13db APK，独立QA与Verifier均已关闭R3-V07并核最终交付；原V33失败、D0环境失误和首次静态包拒绝全部保留，不开启第四轮。
 
-**当前新增接线补修：** 独立动态N5／root P7证实原生中断partial直接append新UID，原stream作为terminal residual重复可见。root限定仅在明确保存当前partial的接缝绑定sameTurn／request／writer候选原身份，由原flush与terminal归账；不按同文去重、不改旧库／正文／权限。实现与同轮补审中。原Interrupt操作／Steer可见交接及Approval恢复已取得独立限定通过，原始失败保留。
+**最新实际交付：** BE main `00f0b2879e0dede672cee0bb06989d9a032eb937`、FE `13db1320e672e613737f20900abb7450bff25858` 均已正式 verified 上线；最终原签名0.1.9 APK已交 Downloads 并给链接，SHA `051b0231964d7762a3bc89b7ed5544fc1751ccffea9d5bd365db07f8e7161081`、32127749字节。静态后继更新未重启服务／写库，两套完整三库仍保留。前三个动态缺陷和首次Socket失败恢复的有效证据保持；D组独立补判后为7项限定通过／58项部分通过／0项当前失败／1项不适用，整场均有执行记录不代表全部子分支已齐，尚未签整轮完成。外部动作／设备限制分记。下文旧版本与待验表述是各包原时点记录，当前实际状态以本段、唯一plan及operations顶部为准。
+
+**中断partial补修已关闭并发布：** 独立动态N5／root P7证实原生中断partial直接append新UID，原stream作为terminal residual重复可见。root限定仅在明确保存当前partial的接缝绑定sameTurn／request／writer候选原身份，由原flush与terminal归账；不按同文去重、不改旧库／正文／权限。00f0b28实现、同轮独立影响审及Z段实际UI复验均已接收并上线。原Interrupt操作／Steer可见交接及Approval恢复已取得独立限定通过，原始失败保留。
 
 **正式原生补证的新接线整改：** 完整工具callbacks证实final footer晚于首次持久化导致idle恢复证明不全，以及active恢复裁剪丢失typed工具owner依赖导致Diff不可重建；root分别限定首次final flush／running snapshot依赖闭包修复，不放宽receipt或权限。两项已亲审提交4be80c7并自动push；最终两原生ASGI场景2项通过、冻结十检查及health 0／0通过，同次第三轮影响审与实际复验继续，详plan当前表。原legacy夹具缺事实与这两处真实产品反例明确分开。
 
@@ -46,7 +48,7 @@
 | U26顶栏手动刷新预览 | 用户新明确体验变更：APK only，页面／背景静止，Chrome式圆背板橙圈阻尼与cap；root已先交付隐藏IAB真实原型截图，CDP真实mouse验证cap/松手一次reload/正文不起手/浅深主题；03a9689已接正式APK packaged native入口、普通Web关闭，25组件＋83整合项、types/health通过；无真机touch，后继d1a53cf预览已交付，最终包待当前修补后重建 |
 | C-R5／C-R6 显式恢复Note资格 | root已完整亲审接收：Snapshot同事务来源／operation证明、branch去父关联、原生恢复lease受理接手及终态补检查；7文件源码SHA与62项／十检查证据逐一匹配，待统一独立门禁，不作为正式V已通过 |
 | U27 APK引导失败同页恢复 | 原生自动reload已取消；冷启bootstrap传输失败/暂时服务错误仍落静态重试页，未进入SPA，root指定最小APK专属deferred-bootstrap接缝已亲审提交FEe545359；native13/前端35/types/健康通过，认证／默认Web保持。bc02旧APK严格核验保留，e545新包已严格核验并按用户明确要求交付预览，正式全轮验收尚未完成 |
-| 发布／APK | U32期限内15:35:43正式Alex main d172／FE73a verified，Web／Gateway实际同SHA且active、微信connected；73a原签名0.1.9 APK已交Downloads／给链接。439资源／HTTP入口／保护数据／配置／绑定已核，最新两套三库重新核验并清旧018。独立动态验收继续，详operations-log |
+| 发布／APK | U32原期限内d172／73a及APK已交；当前BE00f／FE13db已verified，439资源／HTTP6及PID／配置／绑定保持。原签名0.1.9-13db APK已交Downloads／给链接；两套三库保持。独立动态验收继续，详operations-log |
 
 前后端实施目录分别为`/Users/edgar/code/hermes-secretary-incremental-sync`与`/Users/edgar/code/hermes-secretary-web`，同名`codex/incremental-sync-20261027`分支。C、原恢复包及U25/U26均已亲审提交；两仓main历史已按SOP纳入候选（BE2dc4398／FEbc02d01），合并产品tree零增量，不触碰其它main工作区dirty。validation_round2已补完并过目56场景，release_preflight及27项本地发布保护演练已完成。隐藏IAB已恢复；root开发联调确认正式CAS改文→watcher→App同document自动delta更新1条，草稿保留，不把该开发证据冒称独立验收通过。子Agent6.1 sol/high、不再派生、不流水账；主会话负责方案、亲审、接线、正式门禁与发布。
 
@@ -90,10 +92,10 @@ U20详口径见07顶部及plan接线设计；旧“先Noting再压缩／FM结算
 
 | 项目 | 已核结果 |
 |---|---|
-| 本轮本地代码 | 后端产品d172250与前端73a4232已合主干并上线；第二轮不通过历史保持，第三轮产品Verification通过，独立动态Validation继续；后继仅文档／测试提交不混作实际生产版本 |
+| 本轮本地代码 | 后端产品00f0b28与前端13db132已合正式远端主干并上线；第二轮不通过历史保持，第三轮产品Verification、后继草稿机制、独立D组用户结果与最终交付均已接收；完整Validation仍有部分覆盖，后继文档／测试提交不混作实际生产版本 |
 | 后端线上最后核验版本 | 00f0b2879e0dede672cee0bb06989d9a032eb937；正式Alex检出main，两实际服务同源、active／running，微信connected，数据／配置／绑定保护已核 |
-| 前端线上最后核验版本 | ccd4cfa6ed6f23f99e2b78878848cebd76394093；439静态及HTTP六资源逐SHA、Dashboard和两个服务PID保持 |
-| 已交付APK | 最新0.1.9／1009：Downloads/Hermes-Secretary-0.1.9-ccd4cfa-arm64.apk，32128117字节，SHA bdb131ce0e173d0bc9094fe27cf9d3ab7f0c9bedfb5e114ee41cd29d1087d1a6；原证书／439资源／v2／ZIP／16KB／交付副本通过；不冒称新包真机全生命周期已验 |
+| 前端线上最后核验版本 | 13db1320e672e613737f20900abb7450bff25858；439静态及HTTP六资源逐SHA、Dashboard和两个服务PID保持 |
+| 已交付APK | 最新0.1.9／1009：Downloads/Hermes-Secretary-0.1.9-13db132-arm64.apk，32127749字节，SHA 051b0231964d7762a3bc89b7ed5544fc1751ccffea9d5bd365db07f8e7161081；原证书／439资源／v2／ZIP／16KB／交付副本通过；不冒称新包真机全生命周期已验 |
 | 运行设置 | 历史noting off不代表当前值；最后已核local_enabled=true，默认／Alex压缩总时限1000秒及Idle500秒／96K保持。本轮只追加授权飞书MCP配置／官方PM mcp依赖，不改模型或调用生产模型 |
 | 保留他人工作 | presentation报告、手动Noting调试入口／协议生成、07等原dirty保持，不纳入本轮恢复补丁提交 |
 
