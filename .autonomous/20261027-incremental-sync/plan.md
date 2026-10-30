@@ -1,5 +1,12 @@
 # 实施计划：20261027-incremental-sync
 
+## 当前收口状态（2026-10-30）
+
+产品BE88ed／FE5f已正式main上线，原签名0.1.9-5f APK已交付；当前产品无未关闭的已确认本轮缺陷。下方T10／R3-V09是根因与方案历史，已由156项、第三轮独立机制审及T11–15原document实际链关闭。独立Validation50限定通过／15部分／0失败／1不适用；U/O/C60份、真实六库恢复、KB空Enter/Escape、Header连续动画及原始预览交付时序均获同第三轮原验收者接收。无必须新增的本地最小路径；剩余设备／真实认证及外部授权边界，不开第四轮、不重复全量。
+
+root已实际取得KB1–3及HM1–6，integration/final-keyboard-header/含原件／PNG／动态分析：真实空Enter无提交、Escape退出Reply恢复原草稿；浅深等待93/92帧、实测约1300ms/圈，正文／顶栏／背景固定，释放各一次reload。诊断环形覆盖与非外圆shadow采样限制均明示，不冒真机触摸。R50已找到原始rollout第6877行：23:46用户可见实际原型图早于23:49首次APK接线，精确摘录及图片SHA/Git时刻已获原QA补判R50限定通过；不冒交互URL或用户确认全部细节。物理设备／真实认证恢复／真实外发保持未验边界。
+
+
 ## 2026-10-30 · T10确定失败后手动维护清空恢复快照（原第三轮新反例）
 
 R27补验T7/T9实际SDK中途失败沿原生续写上限结束，五次不同API输出UID保留为终态残段，不按同文去重。T9仍committed；随后实际/compact确定失败，T10起Socket仍connected、必要Chat持续runtime_unavailable（recoveryId41），无任何夹具read故障／延迟。原件doc9b8756d1...的T7–T10保留。不是用5条同文表象直接判重复缺陷。
@@ -289,3 +296,10 @@ W段最新Thinking／活动Turn恢复、明确压缩失败／未知回执、真�
 root亲审3产品文件／3测试与完整原生payload后接收有界旧row→当前代表事实证明及维护免reset。最终受影响4文件156通过；旧链19红／34绿，候选53绿；独立第三轮局部影响补收中，原失败页面实际复验和发布待完成。证据：`maintenance-output-retention/alias-delivery-handoff.json`，不得以候选完成冒称生产已修。
 
 同次第三轮收口：独立Verifier SHA2d30bea4关闭R3-V09；独立QA SHAf6b8803f关闭用户结果，42限定通过／23部分／0失败／1不适用。88ed1ca正式发布verified于21:13:41+08，收据及两套备份／HTTP6见operations-log。FE5f APK原件兼容且已交，整体剩余边界仍按报告，不冒全轮通过。
+
+### 原第三轮U/O/C整包实际路径补证
+51份带精确document/raw-line的实际UI原件已交原QA补判，入口`integration/UOC-user-path-summary.json`；原生Usage latest2500→0、Session保2500、模型256k→8192失效与下一Turn恢复；开着菜单重连、真实Tab及unsupported拒绝；global/local/首次无值/真实unknown/跨Profile独立；两同名49B+68B图片Blob冷恢复ID/SHA相等、单次受理后冷稿空、图片404自动恢复和离屏重连0新图读；另无缓存首History503自动重试并继续编辑/展开。最初缓存anchor没命中history故障已保未命中事实，不混用，独立补测已真实命中。
+
+两套真实云备份六库已实际SQLite backup→隔离副本→正式SessionDB只读/正常打开，14原生语义样本及全表UID指纹一致，源SHA/完整性/FK保持，工作副本全部删除；root亲审script和收据并核SHA，R44由原QA补判，非生产rollback。
+
+范围外既存观察：混合文件与图片的native user正文在generated Attached Context后又含image hint时，原解析展示两个文件标签各两次，并保展开附文；不是重复用户行/发送。FE attachments.ts和content.ts与冻结前c39086c逐Gitblob相同；原件`integration/C-mixed-attachment-existing-display-observation.json`，未扩大产品变更或掩盖为已修。

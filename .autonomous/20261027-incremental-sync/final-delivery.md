@@ -1,52 +1,47 @@
-# Final Delivery：20261027-incremental-sync（阶段已上线，整体验收未闭）
+# 本轮交付：增量同步、免刷新恢复与0.1.9 APK
 
 ## 目标状态与结束判定
 
-上线与0.1.9 APK交付已完成。U32原20分钟窗口起点2026-10-29 15:21:32+08，首次正式发布15:35:43、73a APK在截止前交付；其后按用户要求继续修复与验收，当前后继BE88ed1ca／FE5f974b3已上线，最新5f包已交付。10月30日先只读重核旧ccd交付，随后补修草稿归账并原子发布13db，439资源及HTTP六入口匹配、服务active／微信connected、无重启／写库；最新Downloads包SHA一致。整体自主目标尚未完成，不能把阶段发布写成全范围验收通过；保留同第三轮报告，不新开第四轮。
+**产品实施、两仓主干集成、正式上线与APK交付已完成；整体自主目标未宣称全部验收关闭。** 当前后端88ed1ca／前端5f974b3。首次20分钟窗口内已发布d172／73a并交包，其后发现的草稿归账、阅读抢位与维护恢复缺陷均已修复，独立影响审与原路径复验关闭，当前版本已上线。不新开第四轮，不重复全量门禁。
 
-自主接续L组补验新增OBS-READING-CAS-01／R3-V08 P1：普通在线CAS仅更新已展开Thinking详情时，原UID／row／content和阅读anchor仍存，却因prefix失配误走重连分支跳底。独立QA与Verifier已确认原持续连接阅读契约偏离，发现时全产品通过撤回；13db发布／草稿定向关闭的历史事实不变。root限定共用精确anchor resolver、普通提交保仍存活阅读owner／20秒期限、真重连／冷首显／全anchor退役保持的窄修，已实现于FE5f974b3，79项及类型／冻结健康通过，root亲审及独立机制接收；Y0/Y1实际同条CAS后新全文自动更新且scroll7979.5保持。已正式发布及交包，原第三轮报告继续补收。原L6/L7与CAS写入／连接owner原件保留，不把截断CDP的0次关闭冒成完整连接证据。
-
-当前接续：原第三轮最新Validation42限定通过／23部分通过／0失败／1不适用，SHAf6b8803f4cb3a94d11baab1e85025eb0d88958d455de4f93b269a481588a844f。T10旧失败保留；R3-V09／OBS-MAINT-TERM-01已由156项回归、独立机制补审及T11–15同document真实用户链关闭。维护免reset与有界同事务物理换代证明已提交88ed1ca并于21:13:41+08正式verified，Web／Gateway同源active、微信connected，保护数据／配置／绑定／Dashboard保持；439静态与HTTP6通过，两套完整三库保留、旧9文件清退。整体验收仍未完成，不新开第四轮。
+第三轮Verification168条判据已无违规／证据不足；当前Validation50项限定通过／15项部分通过／0项当前失败／1项不适用，最后KB／HM及原始预览交付回执已由原验收者补判。部分项主要是物理Android、真实认证恢复与外部送达等现场边界；没有整场未执行不代表全部子分支完整。不将上线、签名包或限定测试通过写成整轮全部通过。
 
 ## 本轮收敛与授权
 
-沿U01–U32、06、07最新契约：500条消息统一计数、详情归同条、旧模糊Thinking懒取／新精确Turn主动读、游标对账、冷document首个真实提交一次到底、同页恢复保持阅读、APK取消业务自动刷新。联合Noting与压缩控制／独立提交／四时点FM投递保持用户最新口径。
+沿U01–U32与06的D/S/P状态表、07最新U20业务契约：最近500消息统一计数，完整已取详情归同条；旧模糊Thinking懒取，新精确Turn主动获取，复用原窗口游标与原生身份；缓存仅过渡，当前页面所需数据必须向服务端对账。冷document首次真实历史显示统一一次到底，同页恢复保持既定阅读规则。APK取消业务自动刷新，仅合法顶栏用户手势主动刷新。
 
-工程收敛已由独立Verifier核正式接线：final完整正文在首次flush前确定，fallback只在当前源／UID／lease／CAS证明齐全时补同条；running恢复保幸存工具的精确owner依赖；中断partial绑定真实stream候选UID，由原提交与terminal归账，禁止同文去重。Compacting保留仅属同owner／epoch／runtime的显示事实，不恢复Cancel或业务权限。中文粗体跨完整link／code／math兄弟是已登记的自主兼容细化、仍待用户追认，不冒称CommonMark原允许；原文、Copy、目的地址与安全过滤保持。
+普通手动／Idle／原生auto的Noting与压缩联合触发取消，Snapshot提交与新区间注入独立；Force仅Turn结束检查、不可取消并封闭当前区间。四时点检查沿既有FM推送，不新建mailbox或通用调度器。微信沿原生UID每条完整Assistant Message及时交既有FIFO，不等收尾；没有真实微信测试外发。
 
-后续草稿归账窄修同样获独立机制审接收：同owner canonical先持久成功才清退旧route，较新空值参与仲裁、受理消费推进事实时间；失败只回退本次尚现行的scope映射供重试，保护新输入／附件和其它owner。受理仍不等待IDB，不自动重放写。这是原草稿保真要求的修复，没有新增产品操作或存储schema；真实D组及最终交付事实已由独立QA与Verifier接收，R3-V07关闭。
+Verification工程研讨已落实到正式接线：完整final在首次flush前确定；中断partial绑定同Turn原stream身份，禁止同文去重；运行恢复保typed工具精确owner依赖，稳住同一Approval的Diff。草稿canonical成功持久后退役legacy，较新空值参与仲裁；阅读仅在原anchor确退役时走原fallback。维护busy不再误清上一已结算快照，原生物理换代只在同DB snapshot、有界显式引用、唯一当前代表与完整事实相同时承认内部别名，活动Turn仍严格。公共API默认、旧receipt／event和存储事实保持。
+
+中文粗体跨完整link／code／math兄弟的兼容是已登记的自主细化、待用户追认；源消息／Copy／地址和协议过滤保持，不冒称CommonMark原生支持。其它待追认项见根CLAUDE顶部，不把Agent工程判断冒充用户确认。
 
 ## 已完成与交付物
 
-- 正式后端：88ed1ca7e34c2be5dbcdbc9b30b55ca6ed5407fe，Alex检出main，Web／Gateway实际同源且active／running，微信connected。
-- 正式前端：5f974b3bd70a67180039067df1e3b0356532e3cc，439资源及HTTP六入口核SHA；后继静态交换未重启服务、未写数据库，PID／配置／绑定／Dashboard保持。
-- 最新APK：[Hermes-Secretary-0.1.9-5f974b3-arm64.apk](/Users/edgar/Downloads/Hermes-Secretary-0.1.9-5f974b3-arm64.apk)，32127841字节，SHA256 81a121d1537991534cd844d4060e29955b00d3121694a10702847069bdb28867；原证书、v2、ZIP／ELF16KB、439内置资源及交付副本严格通过。包核验不代签手机生命周期。
-- 正式收据：release-20261028/stage-20261029-00f0b28/receipt.json及static-20261030-13db132-r2/receipt.json均verified；后者SHA a5eca247b994a853e688f75a3b45054d330fea5347045e0f7e7db9c6d610c7ec。原两套完整三库逐库SHA／integrity／FK与旧9文件清退证据保持，本次无新数据库备份／写入。首次13db静态包缺顶层目录被交换前拒绝，原件保留；同正式解包函数本地439通过后才重试。详细事实见[运维记录](../../docs/operations-log.md)。
-
-新5f静态收据static-20261030-5f974b3/receipt.json为verified，SHA8e47edcaf24702a07dc2970d1d7184fb597664d7c10f205089648a8d7d634cd9；同版APK已交链接。Y2复开不重取、Y3真实冷启按U25到底、Y4完整详情持久复用、Y5/Y6真实分页600条、Y7实际IDB联合500身份（100–599）及同条详情完整性均有原件；本次不重跑整套。
+- **正式后端：** `88ed1ca7e34c2be5dbcdbc9b30b55ca6ed5407fe`。21:13:41+08发布收据verified；本次收尾SSH又核Alex检出main、system hermes-secretary与user hermes-gateway均active。
+- **正式前端：** `5f974b3bd70a67180039067df1e3b0356532e3cc`，439静态及HTTP六资源逐SHA匹配；正常运行不需用户刷新网页来换后端。
+- **APK：** [Hermes-Secretary-0.1.9-5f974b3-arm64.apk](/Users/edgar/Downloads/Hermes-Secretary-0.1.9-5f974b3-arm64.apk)，0.1.9／1009、32127841字节；SHA256 `81a121d1537991534cd844d4060e29955b00d3121694a10702847069bdb28867`。原证书、v2、ZIP／ELF16KB、439内置资源及交付副本通过，本次又核副本SHA一致。
+- 最后维护发布收据SHA `e4ea2040cf1c9015742bca86217a0bc3ad09addb0e69b0810d39844ece7c8aec`；5f静态收据SHA `8e47edcaf24702a07dc2970d1d7184fb597664d7c10f205089648a8d7d634cd9`。保护运行数据、配置、绑定、Dashboard；只保留最近两套有效三库，旧9文件已清。逐次事实见[运维记录](../../docs/operations-log.md)。
 
 ## Verification 与 Validation
 
-Verification：原168条判据及失败历史保留，最新独立结论接收00f0／5f974b3产品实现、正式机制与已授权发布／APK交付。R3-V08在正式CAS运行、U25／完整详情复用／500身份缓存与最终生产及新APK证据补收后，恢复本Verifier的符合判定；当前独立报告SHA2d30bea41dfa200559c7f353a3626048c93a4b1bc18e1265053c220ddaef2e6f。独立QA用户结果仍按其原报告补判，Verifier不代签完整Validation。未重复大套或模型取证。相关旧测试失败按原时点和基线反例保留，不声称全仓测试全绿。
+第三轮独立Validation报告SHA `391f07d707bca9d2f62b9fc3f4cc681de96427df2ee5c8e42b75ef89fcefb708`，六节66行完整；R27与R50最终限定通过，本地最小用户路径已齐。第三轮独立Verification仍按原168条全范围判据；最后88ed维护修复及正式交付已补收，报告SHA `2d30bea41dfa200559c7f353a3626048c93a4b1bc18e1265053c220ddaef2e6f`。最后受影响4文件156项及冻结十检查通过；复用有效前轮证据，不复跑大套，不声称全仓测试全绿。原基线失败、第二轮不通过和第三轮原触发反例保留。
 
-前版13db的R3-V07机制、D组独立用户结果与正式静态／APK交付亦已接收；该时点Verification报告SHA16fb8be82c206d61867a094438a82206f9661f756cc06b916a0c1e11e405fd5f，Validation报告SHA058d3c6235ffb84ef54310db78d622bd37052ff7ad86992ca08c7c343560e039。该时点66场景为7项限定通过／58项部分通过／0项当前失败／1项不适用；没有整场未执行不代表全部子分支齐全，完整Validation仍未关闭。
+独立Validation由原验收者判定，root只作获准自建隐藏IAB远程手。已实际验证长历史delta0／1／异epoch、真实CAS更新保阅读、600条分页及IDB联合500身份、完整Thinking持久复用、冷启动统一到底、慢Usage／Pending、首WS／首必要History503同document自动恢复、Noting／Compacting不误断连、完整双Approval与Steer撤回、草稿及三Blob精确保真。U/O/C60份唯一label原件已接收；Usage真零与模型切换、Slash候选Tab和冷目录、Orb开关／真unknown／跨owner、可见图片404重试／离屏0重下均按真实范围补判。
 
-Validation：独立验收者按原66场景／25目标判定，root仅作为其已批准隐藏IAB远程手。已限定验证200长历史delta0／delta1／异epoch、冷加载期间手滚后一次到底、同页阅读／草稿保持、Thinking复用、慢Usage／Pending／RPC与REST503、Noting不误恢复、Schedules／Files、真实Steer／Withdraw／Interrupt、完整审批与双Deny。Z段独立关闭三项新实际缺陷：中断消息无重复残留、Compacting在断线／恢复24个动态样本保持、原N30正确且301字节Copy精确；真实首次WS失败后同document恢复通过。原裁切图／未命中控制／legacy夹具失败未删除，修后完整图和合法native链分层记录。
+两套真实保留云备份六库在私有隔离目录恢复、正式SessionDB打开及14个有界原生语义样本均一致，六源SHA／integrity／FK保持，恢复副本及WAL／SHM已清理；不等同生产回滚或模型实际运行，收据SHA `ec9e540e95c6c355710c3f40d5bd3971fdd4a92c71cbc1666eeb9579244f74df`。
 
-W段当时独立补判为7项限定通过／51项部分通过／7项未执行／1项不适用；最新Thinking／活动恢复、确定压缩失败与未知回执、提示关闭、双同名附件Send受理后丢连接已有分项证据。V段又补了Profile消失后恢复、NewChat cwd与首Turn、子详情404自动重试、真实撤权后8018ms旧详情返回仍不复权、Usage范围与未知、真实Rewind及旧尾在暖／冷恢复不复活、权威不存在返回有效会话等用户路径，已由原QA逐项独立补判；其发现的草稿复活随后由D组定向关闭，原失败保留。观察期间Vite开发客户端因自身WS丢失自动poll/reload，console及新旧document原件已保留；该边界不能拼为产品同页恢复或归因产品，正式构建无Vite客户端。仅ignored验收配置排除此开发连接，不改产品／库。
+最后KB1–3真实空Enter无提交、Reply编辑Escape恢复旧草稿，native无Prompt／create／edit写。HM1–6浅深真实拖动／回拖／松手，等待各采93／92帧，从实际SVG矩阵测约1300ms一圈；布局固定，每个有效release各一次reload。为观察实际等待只加外部网络1500ms延迟，产品源未改，已恢复0；原件、PNG、环形覆盖／内环shadow采样限制均记ignored integration/final-keyboard-header/。两个自建页与三本地服务已清理，正式服务未动。这些不是Android物理触摸验收。
 
 ## 剩余、阻塞与影响
 
-继续补原范围可执行本地用户旅程：Thinking各身份分支、删除／rewind／代表退役、迟到分页／anchor、子404／不存在／Profile不可用、在途撤权、Usage scope／未知／模型兼容、冷Slash与New Chat cwd、附件与受理不明、Compact取消／未知、Toast组合、主动刷新冷启后半。各已有机制证据可匹配版本复用，不为review复跑大套。
+1. Android真机的后台冻结／自然冷启／弱网／IME收起绘制、当前新视觉及全手势组合尚缺完整现场证据。用户确认d1第二个预览APK能起手，只关闭该旧故障；不扩大为当前全部生命周期通过。
+2. 真实认证登录后的合法恢复未完整现场验；实际401／403撤权和迟到读取不复权已有证据，不能伪造登录成功。微信逐消息正式机制已验，但真实逐条送达未获测试外发授权，不试发代用户签收。
+3. 历史原型交付顺序已补原始会话记录：10月28日23:46确向用户展示实际原型图，早于23:49首次APK接入。精确原件、行SHA、图字节SHA与Git时刻已获原QA接收，R50限定通过；不冒称给过交互URL或用户已确认全部细节。
+4. 混合文件＋图片存在Attached Context／附件标签重复的既存展示观察；attachments/content与冻结前c39086c逐Gitblob一致，非重复用户受理，不把它误报本轮回归或冒称已修。
 
-Android物理触摸／WebView全生命周期、真实外部登录恢复、真实微信逐条送达没有完整当前现场证据；显示保护及未授权外发边界保持，不将其冒签通过。用户d1下拉起手反馈仅关闭原起手故障。验收子代理一次工具侧transport中断已记，保落盘报告接续，不视为线上故障。
-
-V组新增草稿归账缺陷已修于13db并交付：真实Rewind发送后V31／32当前草稿空，V33主动冷启读回旧Slash草稿，原件保留；62项／类型／冻结健康及独立机制审通过。实际D1–10补了退出Reply、未提交Rewind冷启和真正受理后暖／冷清空，391秒仍无草稿复活／提交计数不再增；D8真实IDB为空canonical、legacy已退役。独立QA定向结果及最终事实已接收、R3-V07关闭，该时点无未关闭的已确认产品缺陷；后续新L组阅读问题与5f修复按顶部当前事实保留，不能据此直接签全门禁。D0漏测试后端地址是已封存纠正的无效环境样本。V10旧分页在A完成后才切B，只支持普通切换，不支持“旧成功迟到B隔离”，原先时序推断已更正，不能将其当该分支通过。
+当前没有未关闭的已确认本轮产品缺陷；上述证据缺口仍使完整目标未达全部门禁条件。按用户最多第三轮约束，不擅开第四轮。当前本地实施、发布与可执行验证已收口；恢复全范围验收所需外部条件是：在用户允许的显示保护边界下取得真实Android设备旅程、真实合法登录恢复及获明确授权的外部送达结果。后续仅接原报告这些证据及用户反馈，必要实际缺陷再按原范围修复，不用重复本地套件代替外部结果。
 
 ## 用户复核建议
 
-可使用上方最新5f974b3 APK，既有包仍兼容新后端。重点观察同页重连、阅读位置／草稿、Noting和Compacting、长历史首显、完整Approval及顶栏刷新阈值高光。用户使用反馈不替代本轮独立验收。D组与最新交付独立结论已补收；仍须按原报告处理必要子分支／外部限制，保持第三轮上限与实际证据边界。
-
-
-## 2026-10-30 最后后端补丁正式收据
-`release-20261028/stage-20261030-maintenance-final/receipt.json`为verified，本地SHAe4ea2040cf1c9015742bca86217a0bc3ad09addb0e69b0810d39844ece7c8aec；88ed1ca已从main发布，实际两服务一致、Gateway PID1070994／running／weixin connected。原签名5f APK无需重包，交付副本保持。156项定向、冻结十检查、独立机制与T11–15实际同doc链通过，不将其扩大成所有23部分项通过；真实设备／认证／外发限制保持。
+可直接使用上方新APK，现有包亦兼容新后端。重点看手机离线回到在线是否同页恢复、历史阅读与草稿是否保留、Noting／Compacting是否再误显断连、完整Diff是否稳定，以及顶栏圆盘节奏与达线光晕。用户反馈与独立验收分记，不把未反馈等同已通过。

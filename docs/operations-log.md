@@ -1,5 +1,11 @@
 # 运维记录
 
+## 2026-10-30 · 两套真实保留备份隔离恢复核验
+
+在已发布88ed main的既有PM Python3.14.8下，仅以两套原verified收据指定的host／Alex／study六库作源，逐SHA／bytes／integrity／FK核验后，通过SQLite backup恢复至新建云端0700私有临时根；HERMES_HOME和cwd隔离，正式SessionDB只读及正常打开后有限原生消息／Foreground／Notebook完整hydrate／pointer／audit共14条语义样本摘要一致。六库全表／schema／UID总体摘要一致，本次正常初始化无表内容变化。导入前audit拒网络、SDK、外部写与子进程；恢复阶段网络／SDK调用与外部写尝试0，网络和SDK各一次预置自测在系统调用前被拒，另7次子进程探测被拒，首次过宽导入保护失败原件保留。
+
+全部显式句柄关闭，临时副本及WAL／SHM随自有临时根清理，后继SSH确认不存在。六源SHA保持、integrity全ok／FK0，两套原备份及运行库／配置／服务／同步包均保持；没有把恢复库下载到本地或执行生产回滚／模型／外发。云脱敏收据`stage-20261030-maintenance-final/real-backup-restore-final-20261030-attempt2.json`（0600），SHAec9e540e95c6c355710c3f40d5bd3971fdd4a92c71cbc1666eeb9579244f74df；本地ignored `integration/real-backup-restore-final/`含脚本、manifest、脱敏原件与root接收，原QA补判R44，不新增生产回滚门禁。
+
 ## 2026-10-30 · 维护后恢复不再永久重试（已发布）
 
 最后后端修复`88ed1ca7e34c2be5dbcdbc9b30b55ca6ed5407fe`已自动推功能分支、快进推origin/main，21:13:41+08沿原已审执行器从main正式发布并verified。三产品文件：手动压缩借busy不清已结算快照；原生压缩复制同UID到新物理行时，仅在同一SQLite snapshot为显式旧row／唯一当前代表核完整原文、时间、工具和终态事实，内部证明接入全部已结算回执／committed帧；活动Turn来源仍严格，公开API／旧事件／DB内容不改。原链19红／34绿、候选53绿，最终4文件156通过；冻结十检查0／0。独立第三轮R3-V09机制关闭，168判据保持。
