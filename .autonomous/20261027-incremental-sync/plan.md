@@ -217,3 +217,37 @@ U28是用户真机对原U26的失败反馈，原话及“完全没出现”已�
 **U32最新硬交付：** 用户15:21:32+08明确“20分钟内必须上线和给我新的APK”，截止15:41:32，覆盖U31不急及暂不交付安排。root优先必要核验后实际发布／交付，记录未闭门禁，不以期限宣称通过。当前全167条审查只余R3-V01实际Main消费；补丁五行已亲审、6项经正式publisher／持久FM／下一native request通过。52项相关通过、12项既有turn_source/display_metadata断言失败保留，不为上线抹平；真实Main消费准备并行，原始失败不清除。
 
 **U32实际结果与剩余：** 15:35:43在正式main完成BE d172／FE73a verified，原签名0.1.9 APK已交Downloads并给链接；均在20分钟内，原始receipt／线上HTTP与delta／两套三库保留见operations-log。R3-V01唯一真实Main请求200，未决定／未接受／继续准备／禁止外发四极性正确，0工具／新Noting，第三轮独立认可关闭；产品实现及U23/U32交付事实通过。独立Validation66场景继续；子Agent IAB首次Unavailable、root自建隐藏页成功并关闭，正协调安全重试／远程手，不改场景判据或冒充已执行。R3-T01十二条旧oracle按U17只改测试的窄维护交main_notebook_show_regression，不变已上线产品、不为该提交重启服务。
+
+
+## Validation定向缺陷 VAL-R25-01（当前整改）
+
+真实隐藏IAB顺序：Steer A自然旧Turn→新Turn交接结束；另新Turn排队B/C并撤回B；保未发送草稿及真实filechooser选择的fixture-note.txt后点击Interrupt。当前snapshot.turn_id与snapshot.operation.turn_id不同，FE controller.interruptPending无条件复用旧operation_id查status，native如实unknown且C仍pending。独立验收者已核原件F1–F7及native RPC，判产品失败，不能当夹具问题或冒签R25。
+
+root方案：仅同非空Turn的operation可复用／查status；其它生成新operation并调用原interrupt_pending，保同Turn幂等、原poll、单次消费／草稿附件不入payload，不自动补Prompt。main_notebook_show_regression负责FE窄修及行为正反例；root亲审／正式接线；原第三轮Verifier影响补审，不开启第四轮或复跑全量。新源M0后原序列真实复验，关闭须新operation与当前Turn一致、只消费C且draft／attachment保留；同Turn重入仍status。原73a失败及既有上线／APK交付事实保留。修后最终静态／APK定向更新与正式交付仍待完成，不以旧包证明修后。
+
+
+**VAL-R25-01实施交回与环境边界：** FE ce69fbe已亲审提交／自动push，仅controller身份接缝／既有pending sibling及定向测试；当前Turn精确匹配且operation_id非空白才复用status，首请求和poll固定session/profile/turn/operation，unknown不补发。11项通过、types及冻结TS结构度量通过；17项旧controller失败在HEAD同名复现保留。独立Verifier同次影响审认可源码与DTO层证据，正式native消费／真实UI／发布产物仍待补。新ce原签名0.1.9 APK仅ignored候选，32126493B／SHA3f94b5602f99701946e3744455d3b9fdce61ca024a4dc1f3d5e4da0b22f3274b，439资源／v2／ZIP／16KB严格校验通过；首次调用系统Python缺file_digest与dist生成.DS_Store失败保留，改用现有项目Python并保留生成元数据副本后原校验器通过，未改规则／用户原文件／重建产品。
+
+**Approval夹具原生边界：** G1–G6原件证明legacy tool.start无正式持久工具事实，严格Diff拒绝；手工begin/finish留下无身份正文／工具帧，idle recovery_view._clean_snapshot无法对账而runtime_unavailable。独立只读SQLite／事件／源码已核，当前不支持判产品回归；A/B重复通知次序稳定观察保留，Diff保留／重连／Deny未签。root指定只控制真实AIAgent的SDK响应／屏障，恢复原_run_prompt_submit／interrupt、真实工具gate和输出／终态writer，ignored夹具实施中；不放宽产品proof／不伪scope或receipt／不动线上。新合法M0后补实际旅程，保旧失败与上下文，不再修影子生命周期。
+
+
+## 正式原生夹具补全后发现的两处恢复接线缺口（开发补证，待独立同轮影响审）
+
+| 编号／负责人 | 原始事实与root方案 | 完成判据与当前状态 |
+|---|---|---|
+| native-final-display／main_notebook_show_regression | 正式_agent_cbs、原生双patch及Deny之后，file-mutation footer在首次final flush后才加到raw，DB209仍原文，receipt因此无final row，idle reasoning notice无法对账。原件native-run-check/run-pkdz3o17/failed-recovery.json。只将本Turn最终装饰移到首次持久化前，normal/fallback共用，保hook一次、当前UID、失败与promoted语义；正常路径在首次flush前装饰；fallback仅当前Turn源行／DB顺序／UID／lease证明齐全时沿既有CAS原位补齐同条carrier，禁止改旧历史或放宽receipt | 实际native result／DB final一致、footer一次、receipt／idle recovery成功，正常／中断／失败／prefix不变；实施中，未签关闭 |
+| live-output-dependency／recovery_live_output_dependencies | 合法实时双patch Diff ready，但同次active recovery裁剪掉已持久open/committed owner帧，幸存tool无重建身份，两Diff unavailable。原件同目录active-approval.json／preview-result.json。只在running有界snapshot中对幸存typed帧保留同精确owner的原生state/committed依赖，保原顺序／seq／配对；不合成字段、不全量保正文、不放宽idle／foreign proof | 正式recovery→FE实际replay两个Diff保持ready且身份正确，已完成tool／正文退休、foreign与无证明仍拒绝；实施中，未签关闭 |
+
+两项不是继续修旧legacy夹具；正式callbacks完整后的真实反例必须保。此前未装callbacks的局部通过不能代表合法native链。它们都属于原恢复／Approval要求，不新增用户产品语义；不做第四轮全量审查，只在当前第三轮核受影响路径并复用其它有效证据。正式线上仍d172／73a及已交APK，不因测试构造改写上线事实。
+
+**最终联合补验（4be80c7／FE ce69fbe）：** 七文件亲审提交并自动push；联合正式ASGI两个场景2 pass／0 fail，12.4秒；十项冻结检查全部通过，health 0／0。sourceguard与Unicode/redaction红绿事实在原报告追加节，历史证据不覆盖。新native M0 TYGBRk、hidden IAB12/document c6adaca5-d409-4229-adbb-601aeeb3d68c，独立同轮影响审与实际UI复验进行中；未部署此后继版本。
+
+**native interrupted partial身份缺口：** 真实N5/P7中原stream UID1f28与native partial row206 UIDeb1d不同，durable与terminal残留各可见。root方案：仅handle_api_interrupt明确partial路径append前，在可选OutputIdentity观察层证明sameTurn／request／现行writer、候选未bound／未persist／非tool、目标身份无矛盾时绑定原candidate到同一dict；正常flush提供精确committed，原terminal_before_commit自然退休；其它情况保原native行为。不改正文／旧DB／receipt／按文去重；main_notebook_show_regression实施，原Verifier同次影响审，不开第四轮。
+
+**后继进展：** 原生partial身份补丁00f0b28已亲审提交并自动push，17新／3原interrupt／2正常-tool及一次真实SDK原生11检查通过，root增量十检查通过（health 0／0），同轮独立补审／实际UI待。FE另两窄修：OBS-U30-STRONG-01跨已解析inline的CJK兼容（CLAUDE登记自主收敛待追认）；OBS-COMPACT-01同owner已确认active断线退旧Context约1.635秒，仅scope化保显示、权限仍撤销。两项实施后最终统一M0补原故障，不重跑已有效旅程。ce原签名APK已交付且核副本，正式服务尚d172／73a。
+
+## 最新阶段交付与剩余验收（原第三轮接续）
+
+BE00f0／FEccd与原签名ccd 0.1.9 APK均已正式交付，版本／439资源／HTTP六入口／PID／配置／绑定／Dashboard及两套三库收尾已核，详operations顶部。独立Verification最终产品／正式机制／发布与APK通过；原168判据不重提。独立Validation关闭Z段中断残留、Compacting退旧值与中文粗体三缺陷，真实WS失败后同doc恢复也通过；仍7限定通过／47部分／11未执行／1不适用，不签整体收敛。
+
+W段追加：最新Thinking／活动Turn恢复、明确压缩失败／未知回执、真实Toast形状与关闭、两份同名附件受理后丢WS的正式链已有原件；等待原QA补判。仅fixture Vite的dev-client自身连接丢失触发过poll/reload，已保console/新旧doc/模块加载失败原件；不混为产品刷新或连续同document。ignored plugin仅省略该dev transport.connect，保CSS／React助手与所有产品源码，变更边界及served client SHA见integration/vite-dev-reconnect-boundary.json。新listener30335、原BE18132／QsxSwA继续；剩余本地路径沿原batch2/3，不开第四轮、不为已有效范围复跑测试。真实Android／外部登录／真实外发限制与CJK自主待追认明确保留。

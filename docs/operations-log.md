@@ -1,5 +1,19 @@
 # 运维记录
 
+## 2026-10-29 · 恢复接线后继补丁、最终网页和0.1.9（已发布，整体验收继续）
+
+正式Alex已从main d172快进到 `00f0b2879e0dede672cee0bb06989d9a032eb937`，先与FE ce69fbe配套发布，收据 `release-20261028/stage-20261029-00f0b28/receipt.json` verified。两实际服务同00f、active／running、微信connected；数据库保护表、配置、绑定、Dashboard一致。新备份与d172备份两套完整三库逐库SHA／integrity／FK通过，仅清退旧3426三库及其sidecar共9文件；运行库与同步完成包不动。正式HTTP六资源通过，未调用生产模型或外发。
+
+随后仅原子更新Secretary静态为 `ccd4cfa6ed6f23f99e2b78878848cebd76394093`，439文件和HTTP六资源逐SHA通过；后端00f、两个服务PID、配置／绑定和Dashboard保持，零服务重启、零数据库写入。收据 `release-20261028/static-20261029-ccd4cfa/receipt.json` verified，原ce静态保留为可回退点。两仓对应远端main／secretary已快进，其他本地main工作区dirty未触碰。
+
+最终交付 `/Users/edgar/Downloads/Hermes-Secretary-0.1.9-ccd4cfa-arm64.apk`，0.1.9／1009、32128117字节，SHA256 `bdb131ce0e173d0bc9094fe27cf9d3ab7f0c9bedfb5e114ee41cd29d1087d1a6`。原证书、v2、ZIP／ELF16KB、439内置资源和交付副本严格通过，sidecar保留。构建成功；自动校验仍调用系统旧Python而缺file_digest，保留原错误，改用既有项目PM Python运行原校验器。生成dist的.DS_Store存入ignored证据，用户public原件保持；未放宽检查或重复构建。
+
+同次第三轮独立源码审查与实际页面定向复验关闭中断重复正文、Compacting恢复退旧值和跨inline中文粗体三项缺陷，首次Socket失败后同document恢复也有实际证据。中文粗体兼容边界仍是CLAUDE登记的自主收敛待追认，不冒称CommonMark原支持。完整66场景Validation仍有部分通过／未执行，不以发布、包或定向结果代签整体完成。
+
+## 2026-10-29 · 后继0.1.9 APK交付（线上后端保持）
+
+用户催促尽快取得新版APK，FE ce69fbe的Interrupt同Turn身份修复已由独立实际页面复验：新operation仅消费C，未发送草稿／附件保持。原签名包沿原严格校验器交付`/Users/edgar/Downloads/Hermes-Secretary-0.1.9-ce69fbe-arm64.apk`，32126493字节，SHA256 `3f94b5602f99701946e3744455d3b9fdce61ca024a4dc1f3d5e4da0b22f3274b`；v2／ZIP／ELF16KB／439资源及交付副本通过，verification sidecar保留。该包兼容当前d172接口；Secretary网页静态仍73a，后端仍d172，本次没有切换服务／静态／库，不将APK交付冒称后继补丁已上线。Markdown中文粗体兼容及恢复中Compacting闪变另修，新后端00f0b28中断partial身份补丁待独立影响审及最终发布。
+
 ## 2026-10-29 · 增量同步与免刷新恢复正式上线、0.1.9交付（完成）
 
 用户15:21:32+08追加“20分钟内必须上线和给我新的APK”。正式Alex于15:35:43完成切换并verified，距截止15:41:32尚有约5分48秒。云端保持检出main，3426c0f快进到`d1722505695a355b322512122950b5dedfd4cfc6`；Secretary静态为`73a42326118b150ea957dfbac28e05de81334e6a`。两仓远端main／secretary均已同步，不触其它本地main的dirty。旧紧急尝试的计划路径错误、后续第一次因Web活动拒绝均保留原失败收据；本次r2在自然空闲且三库无writer／compression／Noting后停Gateway和Web、三库SQLite backup、快进代码、原子换静态、重启及验真，没有取消既有工作。

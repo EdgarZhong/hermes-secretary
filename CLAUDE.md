@@ -2,10 +2,20 @@
 
 ## 自主口径收敛 · 待用户追认
 
+- **Agent自主收敛／待追认：中文粗体兼容的inline兄弟范围。** 原空白：既有中文标点邻接`**`兼容仅能处理单text节点；合法链接／inline code把同一显示范围切开后，末端无空格紧接中文的星号仍为字面。决定：同段／标题／表格格内，保原source双星／转义／CJK外侧与标点内侧证明，允许兼容span包含完整已解析link／inlineCode／inlineMath兄弟；内部payload／地址不变，不在其中寻找星号，不跨换行／block／模糊嵌套。理由：消除AST分割造成的兼容不一致。影响：扩展现有非标准CommonMark的中文粗体兼容，不冒称标准本来支持或原截图同型回归；源消息／Copy／安全协议保持。已实施于ccd4cfa并上线，111项及实际N30／Copy复验通过，待用户追认，可局部回退。
+
 - **Agent自主收敛／待追认：混合压缩载体的读取。** 原空白：一个native UID可同时承载压缩摘要与真人消息，而用户要求辅助开关能读取Compression且Get Meta仍仅四字段。决定：默认保留原真人视图；显式辅助允许同UID的system摘要视图，Get Meta／Search按语义部分分别返回，anchored Read允许现有roles参数选部分，默认锚点优先原非压缩部分；同UID同role的system内容合并为一个视图；不造UID、不放开Full／隐藏内容。理由：使明确要求在native混合载体下可操作。影响：Read新增可选roles适用位置，同UID可有不同语义投影。已实现，201项History接受测试及56项原生路径通过；独立Verification／Validation已通过，已上线；不改变Message Identity或Notebook新证据准入。
 - **Agent自主收敛／待追认：Candidate同Task来源形式切换。** 原空白：旧合法direct→refs操作与新旧Task节点不可删约束如何同时成立。决定：仅尚未提交且唯一节点属于本Task时，允许显式清空当前工作槽并切为合法refs；任何旧Task直接节点仍禁止删改。理由：继承原来源二选一操作并保持旧节点约束。影响：当前Task工作态边界，无迁移／旧节点特权。已实现，正式工具／恢复／原子失败98项通过；独立Verification／Validation已通过，已上线。
 
 ## 2026-10-27 · 增量同步与免刷新恢复（最终集成与第三轮收敛）
+
+**最新实际交付：** BE main `00f0b2879e0dede672cee0bb06989d9a032eb937`、FE `ccd4cfa6ed6f23f99e2b78878848cebd76394093` 均已正式 verified 上线；最终原签名0.1.9 APK已交 Downloads 并给链接，SHA `bdb131ce0e173d0bc9094fe27cf9d3ab7f0c9bedfb5e114ee41cd29d1087d1a6`、32128117字节。静态后继更新未重启服务／写库，两套完整三库已核并清退旧备份。独立源码影响审及三个真实动态缺陷定向复验通过，首次Socket失败真实消费后同document恢复也通过。完整66场景仍7项限定通过／47项部分通过／11项未执行／1项不适用，尚未签整轮完成；继续补原范围本地必要旅程，外部动作／设备限制分记。下文旧版本与待验表述是各包原时点记录，当前实际状态以本段、唯一plan及operations顶部为准。
+
+**当前新增接线补修：** 独立动态N5／root P7证实原生中断partial直接append新UID，原stream作为terminal residual重复可见。root限定仅在明确保存当前partial的接缝绑定sameTurn／request／writer候选原身份，由原flush与terminal归账；不按同文去重、不改旧库／正文／权限。实现与同轮补审中。原Interrupt操作／Steer可见交接及Approval恢复已取得独立限定通过，原始失败保留。
+
+**正式原生补证的新接线整改：** 完整工具callbacks证实final footer晚于首次持久化导致idle恢复证明不全，以及active恢复裁剪丢失typed工具owner依赖导致Diff不可重建；root分别限定首次final flush／running snapshot依赖闭包修复，不放宽receipt或权限。两项已亲审提交4be80c7并自动push；最终两原生ASGI场景2项通过、冻结十检查及health 0／0通过，同次第三轮影响审与实际复验继续，详plan当前表。原legacy夹具缺事实与这两处真实产品反例明确分开。
+
+**当前验收整改：VAL-R25-01。** 独立动态验收发现Interrupt跨Turn复用上一Turn operation导致unknown；原73a真实失败已保，FE ce69fbe已按严格同Turn身份窄修提交／自动push，11项及types／冻结度量通过，同次第三轮源码影响补审认可；待正式原生旅程复验再更新前端／APK。15:35:43已上线BE d172／FE73及原签名APK交付事实保持，不声称整体完成。
 
 **当前完成条件（U22／U23）：** 持续自主执行；第一轮之后Verification与Validation各最多再两次正式全轮复审／复验，第三轮内完成两仓main集成、正式Alex上线和原签名0.1.9 APK交付。次数上限不豁免缺陷或证据缺口，不开第四轮。用户U24已明确将Verification改回本地，第二轮集成锁定后派全新上下文6.1 sol/high全范围独立审查；开发定向测试／主会话亲审不冒充独立门禁。生产模型和真实微信测试外发不在授权内。
 
@@ -81,9 +91,9 @@ U20详口径见07顶部及plan接线设计；旧“先Noting再压缩／FM结算
 | 项目 | 已核结果 |
 |---|---|
 | 本轮本地代码 | 后端产品d172250与前端73a4232已合主干并上线；第二轮不通过历史保持，第三轮产品Verification通过，独立动态Validation继续；后继仅文档／测试提交不混作实际生产版本 |
-| 后端线上最后核验版本 | d1722505695a355b322512122950b5dedfd4cfc6；正式Alex检出main，Web／Gateway实际代码一致、active／running，微信connected，保护数据／配置／绑定已核 |
-| 前端线上最后核验版本 | 73a42326118b150ea957dfbac28e05de81334e6a；439静态逐SHA及HTTP六入口资源已核，Dashboard保持 |
-| 已交付APK | 最新0.1.9／1009：Downloads/Hermes-Secretary-0.1.9-73a4232-arm64.apk，32126325字节、SHA a1647fd46ecbe836d09d08b545956c85df2a94988ef0a974c0e31d6eecb02b14，原证书／439资源／v2／ZIP／16KB及交付副本严格通过。旧d1起手真机反馈仅属旧预览，不代签本包全部生命周期 |
+| 后端线上最后核验版本 | 00f0b2879e0dede672cee0bb06989d9a032eb937；正式Alex检出main，两实际服务同源、active／running，微信connected，数据／配置／绑定保护已核 |
+| 前端线上最后核验版本 | ccd4cfa6ed6f23f99e2b78878848cebd76394093；439静态及HTTP六资源逐SHA、Dashboard和两个服务PID保持 |
+| 已交付APK | 最新0.1.9／1009：Downloads/Hermes-Secretary-0.1.9-ccd4cfa-arm64.apk，32128117字节，SHA bdb131ce0e173d0bc9094fe27cf9d3ab7f0c9bedfb5e114ee41cd29d1087d1a6；原证书／439资源／v2／ZIP／16KB／交付副本通过；不冒称新包真机全生命周期已验 |
 | 运行设置 | 历史noting off不代表当前值；最后已核local_enabled=true，默认／Alex压缩总时限1000秒及Idle500秒／96K保持。本轮只追加授权飞书MCP配置／官方PM mcp依赖，不改模型或调用生产模型 |
 | 保留他人工作 | presentation报告、手动Noting调试入口／协议生成、07等原dirty保持，不纳入本轮恢复补丁提交 |
 
