@@ -1,5 +1,9 @@
 # 07 · Secretary 改版实施契约：History、Scheduler、Notebook 与 Noting
 
+## 2026-10-31 · Force 的 Main 完成边界与客户端交接
+
+用户再次明确：Main Turn结束后才触发Force，派生时Framework提示须立即注入并可见；后台Noting不能与Main运行状态混杂，也不能使已结束Main继续转圈、Composer持续恢复或禁用正常主按钮／Compact。用正式生命周期、消息身份及完成边界正向保证，不能靠临时过滤或放宽恢复证明。Main完成事实不受随后追加Framework影响；Framework保留在所属Conversation完整历史中且不启动新Main Turn。恢复及刷新后，已落盘的最后回复和Framework应能沿正式历史／恢复链路重新显示，不能因旧回执永久卡住。本条重申既定结束触发及前后台独立契约，不改变Force不可取消、冻结上下文／跨进程owner保护或普通联合入口语义。
+
 ## 2026-10-28 · Noting与压缩解耦重设计（用户已确认，当前实施依据）
 
 本节产品口径已经用户收口，U21明确纳入本轮自主实现；下列“尚须设计／尚未实施”描述保留讨论确认时点，工程设计以本轮plan、当前实施及验收状态以CLAUDE为准，不能据旧时点否定后续明确实现授权。
