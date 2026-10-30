@@ -1,5 +1,12 @@
 # 运维记录
 
+## 2026-10-31 · Force 完成回执故障紧急救援（产品修复另行发布）
+
+用户连续报告Main已结束而Force／后台Noting后Composer持续Restoring、按钮和Compact不可用，刷新后尾部不可见，并明确要求立即营救。只读确认实际最后Assistant和Force Framework均已落盘；消息完成事件却含不完整回执，正式恢复返回runtime_unavailable。Noting于00:39结束，主会话仍无法恢复。
+
+00:42:26+08在Web活动0、Gateway活动0且无活动Noting／压缩的只读核对后，仅重启`hermes-secretary.service`，新Web PID1163638；Gateway PID1070994保持。健康版本仍88ed1ca，正式REST再次读到尾部Assistant与Framework，未改历史、Notebook、配置、模型／阈值或绑定。用户随后明确确认已能触发压缩。此次为清除失效Web运行态的救援，不声称根因修复；本轮已授权自主修复、前后端发布及原签名新APK。后续只读检查曾发现活动会话，未停服务，正式发布必须另等自然空闲。证据位于ignored `.hermes-dev/force-completion-20261031/`，不将用户正文或凭据入Git。
+
+
 ## 2026-10-30 · 两套真实保留备份隔离恢复核验
 
 在已发布88ed main的既有PM Python3.14.8下，仅以两套原verified收据指定的host／Alex／study六库作源，逐SHA／bytes／integrity／FK核验后，通过SQLite backup恢复至新建云端0700私有临时根；HERMES_HOME和cwd隔离，正式SessionDB只读及正常打开后有限原生消息／Foreground／Notebook完整hydrate／pointer／audit共14条语义样本摘要一致。六库全表／schema／UID总体摘要一致，本次正常初始化无表内容变化。导入前audit拒网络、SDK、外部写与子进程；恢复阶段网络／SDK调用与外部写尝试0，网络和SDK各一次预置自测在系统调用前被拒，另7次子进程探测被拒，首次过宽导入保护失败原件保留。

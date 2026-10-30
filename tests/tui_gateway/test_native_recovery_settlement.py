@@ -49,7 +49,8 @@ def runtime(live, monkeypatch):
     return live
 
 
-def start(runtime, monkeypatch, *, source="prompt.submit_idle", steer=False, outcome="complete", ordinal=0, partial=False):
+def start(runtime, monkeypatch, *, source="prompt.submit_idle", steer=False, outcome="complete", ordinal=0, partial=False,
+          prompt_tokens=None):
     entered, release, second, finish = (threading.Event() for _ in range(4))
     runtime.releases.extend([release, finish])
     calls = []
@@ -75,7 +76,11 @@ def start(runtime, monkeypatch, *, source="prompt.submit_idle", steer=False, out
         if outcome == "error":
             response = httpx.Response(401, request=httpx.Request("POST", "http://invalid.local/v1"))
             raise openai.AuthenticationError("controlled provider rejection", response=response, body=None)
-        return _mock_response(content="Finished", finish_reason="stop", reasoning_content="Native reasoning")
+        response = _mock_response(content="Finished", finish_reason="stop", reasoning_content="Native reasoning")
+        if prompt_tokens is not None:
+            response.usage = SimpleNamespace(prompt_tokens=prompt_tokens, completion_tokens=200,
+                                             total_tokens=prompt_tokens + 200)
+        return response
 
     monkeypatch.setattr(runtime.agent, "_interruptible_api_call", provider)
     text = render_heartbeat("Check current matters", 1800000000 + ordinal) if source == "heartbeat" else f"User input {ordinal}"
@@ -170,6 +175,175 @@ def test_completion_sources_are_probed_even_outside_the_latest_page(runtime, mon
     result = activate(request(runtime.db))
     assert result["complete"] and not result["running"]
     assert not result["state_snapshot"]["events"]
+
+
+def force_wire(runtime, client, previous=None):
+    """Actual REST/RPC/replay envelopes for downstream App recovery verification."""
+    response = client.get("/api/sessions/stored/messages", params={"recovery_view": 1, "history_sync": 1})
+    assert response.status_code == 200, response.text
+    rest = response.json()
+    req = {"version": 1, "sync_version": 1, "profile": "default", "stored_id": "stored", "windows": [
+        {"selector": rest["selector"], "receipt": rest["coverage"], "cursor": rest["sync"]["cursor"]}]}
+    reply = server._methods["session.activate"]("wire", {
+        "session_id": "runtime", "omit_messages": True, "recovery_view": req})
+    assert "error" not in reply, reply
+    base = previous or rest
+    snapshot_req = {**req, "windows": [{"selector": base["selector"], "receipt": base["coverage"]}]}
+    snapshot = server._methods["session.activate"]("snapshot-wire", {
+        "session_id": "runtime", "omit_messages": True, "recovery_view": snapshot_req})
+    assert "error" not in snapshot, snapshot
+    assert snapshot["result"]["recovery_view"]["complete"]
+    if previous is not None:
+        assert not snapshot["result"]["recovery_view"]["windows"][0]["matched"]
+    detail_ids = [str(row["id"]) for row in rest["messages"] if row.get("deferred_details")]
+    details = None
+    if detail_ids:
+        detail_response = client.get("/api/sessions/stored/messages", params={"detail_row_ids": ",".join(detail_ids)})
+        assert detail_response.status_code == 200, detail_response.text
+        details = detail_response.json()
+    secretary = server.handle_request({"id": "secretary", "method": "secretary.state", "params": {
+        "profile": "default", "stored_session_id": "stored"}})
+    assert "error" not in secretary, secretary
+    return copy.deepcopy({"rest": rest, "activate": reply["result"], "activate_snapshot": snapshot["result"],
+                          "details": details, "secretary": secretary["result"],
+                          "events": event_replay.events_since("runtime", 0)})
+
+
+@pytest.mark.parametrize("followup", [False, True])
+@pytest.mark.parametrize("steer", [False, True])
+def test_turn_end_force_keeps_main_settled_while_child_runs(runtime, monkeypatch, tmp_path, steer, followup):
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from hermes_cli.web_routers.sessions import manage_router
+    from secretary import noting_child
+    from secretary.noting_scope import bind_main_runtime
+    from secretary.web_read import secretary_state
+    from tests.agent.test_context_compaction_request import _summary
+    from tests.secretary.test_noting_child import _tool_response
+
+    config = runtime.home / "config.yaml"
+    config.write_text(config.read_text().replace("noting:\n  enabled: false", "noting:\n  enabled: true")
+                      + f"terminal:\n  cwd: {runtime.home}\n")
+    bind_main_runtime(runtime.agent)
+    monkeypatch.setattr("hermes_state.DEFAULT_DB_PATH", runtime.home / "state.db")
+    app = FastAPI()
+    app.include_router(manage_router)
+    client = TestClient(app)
+    entered, release = threading.Event(), threading.Event()
+    workers = []
+    spawn = noting_child.spawn_noting_task
+
+    def track(*args, **kwargs):
+        worker = spawn(*args, **kwargs)
+        workers.append(worker)
+        return worker
+
+    def child_provider(kwargs):
+        entered.set()
+        assert release.wait(10)
+        return _tool_response("finish_noting", {"reason": "Reviewed"}, "finish")
+
+    build_child = noting_child.build_noting_child
+
+    def controlled_child(*args, **kwargs):
+        child = build_child(*args, **kwargs)
+        child._disable_streaming = True
+        child._interruptible_api_call = child_provider
+        return child
+
+    monkeypatch.setattr(noting_child, "spawn_noting_task", track)
+    monkeypatch.setattr(noting_child, "build_noting_child", controlled_child)
+    gate = start(runtime, monkeypatch, steer=steer, prompt_tokens=63_900)
+    runtime.agent.context_compressor.context_length = 130_000
+    runtime.agent.context_compressor.threshold_tokens = 75_000
+    wire = {"steer": steer, "followup": followup, "pre": force_wire(runtime, client)}
+    try:
+        idle = settle(runtime, gate)
+        assert entered.wait(5), "Force must start a real background child"
+        rows = runtime.db.get_messages("stored")
+        notices = [row for row in rows if (row.get("display_metadata") or {}).get("noting_force_dispatch")]
+        assert len(notices) == 1
+        assert secretary_state(runtime.db, "stored")["task_state"] == "active"
+        assert idle["complete"] and not idle["running"], idle
+        assert not idle["state_snapshot"]["events"]
+        events = event_replay.events_since("runtime", 0)
+        completion = next(event["payload"] for event in events if event["type"] == "message.complete")
+        receipt = completion["persisted_turn"]
+        assert receipt["source_messages"][-1]["role"] == "assistant"
+        assert receipt["final_assistant_row_id"] < notices[0]["id"]
+        assert notices[0]["id"] not in receipt["row_ids"]
+        assert any(event["type"] == "status.update" and event["payload"].get("kind") == "framework" for event in events)
+        assert any(row.get("message_uid") == notices[0]["message_uid"] for row in runtime.session["history"])
+        wire["active"] = force_wire(runtime, client, previous=wire["pre"]["rest"])
+        if followup:
+            next_gate = start(runtime, monkeypatch, ordinal=1)
+            assert any(notices[0]["content"] in row.get("content", "") for row in next_gate.calls[0]["messages"])
+            assert secretary_state(runtime.db, "stored")["task_state"] == "active"
+            assert settle(runtime, next_gate)["complete"]
+            runtime.agent.compression_in_place = True
+            runtime.agent._compression_feasibility_checked = True
+            monkeypatch.setattr(runtime.agent.context_compressor, "compress", _summary)
+            compact = server.handle_request({"id": "compact", "method": "session.compress", "params": {
+                "session_id": "runtime"}})
+            assert "error" not in compact, compact
+            assert compact["result"]["status"] == "compressed" and compact["result"]["removed"] > 0, compact
+            assert secretary_state(runtime.db, "stored")["task_state"] == "active"
+            assert activate(request(runtime.db))["complete"]
+    finally:
+        release.set()
+        for worker in workers:
+            worker.join(10)
+            assert not worker.is_alive()
+    assert activate(request(runtime.db))["complete"]
+    wire["finished"] = force_wire(runtime, client, previous=wire["pre"]["rest"])
+    client.close()
+    (tmp_path / "native-force-wire.json").write_text(json.dumps(wire, ensure_ascii=False, indent=2) + "\n")
+
+
+@pytest.mark.parametrize("steer", [False, True])
+def test_native_final_identity_closes_before_unrelated_framework_tail(runtime, monkeypatch, steer):
+    from secretary.framework_messages import publish_framework_message
+    from secretary.noting_scope import bind_main_runtime
+
+    bind_main_runtime(runtime.agent)
+    gate = start(runtime, monkeypatch, steer=steer)
+    # Queue through the formal push publisher while Main runs. Its native end
+    # observation flushes these unrelated producers after the final output.
+    for text in ("An unrelated background operation finished", "A later notification arrived"):
+        assert publish_framework_message(runtime.agent, text)
+    assert settle(runtime, gate)["complete"]
+    rows = runtime.db.get_messages("stored")
+    assert all(row["display_kind"] == "process_complete" for row in rows[-2:])
+    events = event_replay.events_since("runtime", 0)
+    receipt = next(event["payload"]["persisted_turn"] for event in events if event["type"] == "message.complete")
+    assert receipt["final_assistant_row_id"] == rows[-3]["id"]
+    assert receipt["row_ids"][-1] == rows[-3]["id"]
+    assert receipt["source_messages"][-1]["message_uid"] == rows[-3]["message_uid"]
+    assert [row["message_uid"] for row in runtime.session["history"]][-2:] == [row["message_uid"] for row in rows[-2:]]
+
+
+@pytest.mark.parametrize("damage", ["missing", "empty", "user", "duplicate", "uncommitted", "body"])
+def test_completed_native_final_identity_requires_exact_committed_output(runtime, monkeypatch, damage):
+    from agent.context_compaction_request import finish_native_turn
+
+    def damage_result(*args, **kwargs):
+        result = finish_native_turn(*args, **kwargs)
+        messages = result["messages"]
+        mutations = {
+            "missing": lambda: result.update(final_message_uid="unknown-final"),
+            "empty": lambda: result.update(final_message_uid=None),
+            "user": lambda: result.update(final_message_uid=messages[0]["message_uid"]),
+            "duplicate": lambda: messages.append(copy.deepcopy(messages[-1])),
+            "uncommitted": lambda: messages[-1].pop("_row_id"),
+            "body": lambda: messages[-1].update(content="A different durable body"),
+        }
+        mutations[damage]()
+        return result
+
+    monkeypatch.setattr("agent.context_compaction_request.finish_native_turn", damage_result)
+    gate = start(runtime, monkeypatch)
+    idle = settle(runtime, gate)
+    assert not idle["complete"] and idle["reason"] == "runtime_unavailable", idle
 
 
 @pytest.mark.parametrize("steer", [False, True])

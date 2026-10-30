@@ -1008,6 +1008,25 @@ def _absorb_turn_result(
     return status_note
 
 
+def _turn_receipt_messages(result: dict, status: str) -> list | None:
+    """Close the native Turn at its finalized output identity, keeping later history intact."""
+    messages = result.get("messages")
+    if not isinstance(messages, list):
+        return None
+    if status != "complete" or "final_message_uid" not in result:
+        return messages  # Older runtimes retain their original transcript-tail contract.
+    uid = result["final_message_uid"]
+    if not isinstance(uid, str) or not uid:
+        return None
+    matches = [index for index, message in enumerate(messages) if message.get("message_uid") == uid]
+    if len(matches) != 1:
+        return None
+    # run_conversation's lease finalizer can append Framework messages after the
+    # Loop finalized and persisted this output. They belong to the Conversation,
+    # while this receipt proves only the Main Turn that produced the output.
+    return messages[:matches[0] + 1]
+
+
 def _persisted_turn_receipt(st: _TurnRun, raw: Any, status: str) -> dict | None:
     """Report committed row addresses, never a text/timestamp search for a matching turn.
 
@@ -1018,7 +1037,7 @@ def _persisted_turn_receipt(st: _TurnRun, raw: Any, status: str) -> dict | None:
     from agent.context_compressor import _DB_PERSISTED_MARKER
     from agent.pending_steer import native_source_boundary, native_source_suffix
 
-    messages = st.result.get("messages")
+    messages = _turn_receipt_messages(st.result, status)
     start = getattr(st.agent, "_persist_user_message_idx", None)
     if (not isinstance(messages, list) or type(start) is not int or not 0 <= start < len(messages)
             or messages[start].get("role") != "user"):
