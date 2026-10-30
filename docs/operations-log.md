@@ -1,5 +1,13 @@
 # 运维记录
 
+## 2026-10-30 · 维护后恢复不再永久重试（已发布）
+
+最后后端修复`88ed1ca7e34c2be5dbcdbc9b30b55ca6ed5407fe`已自动推功能分支、快进推origin/main，21:13:41+08沿原已审执行器从main正式发布并verified。三产品文件：手动压缩借busy不清已结算快照；原生压缩复制同UID到新物理行时，仅在同一SQLite snapshot为显式旧row／唯一当前代表核完整原文、时间、工具和终态事实，内部证明接入全部已结算回执／committed帧；活动Turn来源仍严格，公开API／旧事件／DB内容不改。原链19红／34绿、候选53绿，最终4文件156通过；冻结十检查0／0。独立第三轮R3-V09机制关闭，168判据保持。
+
+实际隐藏IAB原失败document9b8756d1未reload，服务新epoch后T11自动committed／草稿保；T12真实Send经受控SDK失败，T13实际compact显示Compacting，T14确定摘要失败后恢复Send，T15后继Send完成，均无永久Retry。真失败Toast保留，未调用真实模型。独立QA关闭OBS-MAINT-TERM-01，Validation42限定通过／23部分／0失败／1不适用，整轮未闭。
+
+正式Web／Gateway实际版本均88ed1ca、active／running、微信connected；Gateway PID1070994。前端仍5f974b3，439文件及HTTP六入口逐SHA通过；既有保护数据、配置／绑定、Dashboard保持。新三库备份逐库SHA／integrity／FK通过，与前次00f两套保留，只清退d172旧三库及sidecar共9文件；运行库及databases-current.zip不动，无生产测试模型或外发。收据`release-20261028/stage-20261030-maintenance-final/receipt.json`，本地SHAe4ea2040cf1c9015742bca86217a0bc3ad09addb0e69b0810d39844ece7c8aec，backup-retention.json保清理原件。仍原签名0.1.9-5f APK，32127841字节、SHA81a121d1537991534cd844d4060e29955b00d3121694a10702847069bdb28867，无需重包。
+
 ## 2026-10-30 · 普通详情更新保阅读位置、5f974b3及0.1.9（已发布）
 
 用户再次要求20分钟内上线并提供新APK。本次正式前端`5f974b3bd70a67180039067df1e3b0356532e3cc`已快进推origin/secretary，于2026-10-30T19:15:59.301721+08:00经已审静态执行器原子交换并verified。439个文件逐SHA及HTTP六入口匹配；后端main`00f0b2879e0dede672cee0bb06989d9a032eb937`、Web／Gateway同源且active／running、微信connected。Web／Gateway PID、配置、绑定和Dashboard保持，0服务重启／数据库写入／模型请求，不增加第三套三库备份。收据`release-20261028/static-20261030-5f974b3/receipt.json`，本地原件SHA`8e47edcaf24702a07dc2970d1d7184fb597664d7c10f205089648a8d7d634cd9`。前版静态由原交换目录保留供回退，不执行自动回滚。
