@@ -313,6 +313,22 @@ def test_native_source_must_be_a_user_row(native):
     assert not view["complete"] and view["reason"] == "view_changed"
 
 
+def test_settled_alias_never_rebinds_a_real_active_turn_source(native):
+    db, session, _ = native
+    holder = begin_web(db, session)
+    source = dict(session["inflight_turn"]["_terminal_source"])
+    db.release_session_turn_lease("stored", holder)
+    db.archive_and_compact("stored", db.get_messages_as_conversation("stored", include_row_ids=True))
+    assert db.try_acquire_session_turn_lease("stored", holder)
+    try:
+        raw = read_view(db, "stored", "default", [selector()], identities=[source])
+        assert any(row["id"] != source["row_id"] for row in raw["identities"])
+        view = activate(request(db))
+        assert not view["complete"] and view["reason"] == "view_changed"
+    finally:
+        db.release_session_turn_lease("stored", holder)
+
+
 @pytest.mark.parametrize("field,value,reason", [
     ("db_path", "/different-profile/state.db", "owner_mismatch"),
     ("session_id", "other-conversation", "view_changed"),

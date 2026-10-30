@@ -146,3 +146,99 @@ def test_recovery_keeps_existing_multimodal_attachment_projection(store):
     legacy=client.get("/api/sessions/recovery/messages?view=cards").json()
     recovery=client.get("/api/sessions/recovery/messages?recovery_view=1").json()
     assert recovery["messages"][0]["content"] == legacy["messages"][0]["content"] == content
+
+
+def alias_pair(db, mode):
+    db.append_messages_batch("recovery", [
+        {"role": "user", "content": "original question", "timestamp": 11},
+        {"role": "assistant", "content": "original partial", "timestamp": 12, "reasoning": "original thinking",
+         "tool_calls": [{"id": "call", "type": "function", "function": {"name": "terminal", "arguments": "{}"}}],
+         "tool_call_uids": {"call": "native-tool"}, "display_metadata": {"turn_terminal": {
+             "source_message_uid": "native-source", "status": "error", "outputs": [{"kind": "message", "text": "tail"}]}}},
+    ])
+    old = dict(db._read_one("SELECT * FROM messages ORDER BY id DESC LIMIT 1"))
+    messages = db.get_messages_as_conversation("recovery", include_row_ids=True)
+    if mode == "rotate":
+        db.publish_compression_child(parent_session_id="recovery", child_session_id="tip", source="desktop",
+                                     messages=messages, require_compression_lease=False)
+    else:
+        db.archive_and_compact("recovery", messages)
+    current = dict(db._read_one("SELECT * FROM messages WHERE message_uid=? ORDER BY id DESC LIMIT 1", (old["message_uid"],)))
+    reference = {"message_uid": old["message_uid"], "row_id": old["id"], "session_id": old["session_id"], "role": old["role"]}
+    return old, current, reference
+
+
+@pytest.mark.parametrize("mode", ["in_place", "rotate"])
+def test_explicit_settled_alias_proves_only_unchanged_native_successor(store, monkeypatch, mode):
+    import hermes_state_recovery_view as reader
+    db, client, _ = store
+    old, current, ref = alias_pair(db, mode)
+    digested = []
+    original = getattr(reader, "_reference_fact_digest", None)
+    def track(row):
+        digested.append(row["id"])
+        return original(row)
+    if original is not None:
+        monkeypatch.setattr(reader, "_reference_fact_digest", track)
+    for refs in ([], [{"message_uid": ref["message_uid"]}], [{**ref, "row_id": current["id"]}]):
+        raw = read_view(db, "recovery", "default", [selector()], identities=refs)
+        assert not digested and not any(row.get("_settled_reference_aliases") for row in raw["identities"])
+    raw = read_view(db, "recovery", "default", [selector()], identities=[ref] * 105)
+    representative = next(row for row in raw["identities"] if row["id"] == current["id"])
+    assert representative.get("_settled_reference_aliases") == [{"row_id": old["id"], "session_id": old["session_id"]}]
+    assert digested == [old["id"], current["id"]]  # one requested pair, no UID-generation body scan
+    response = client.get("/api/sessions/recovery/messages?recovery_view=1").json()
+    assert "_settled_reference_aliases" not in json.dumps(response)
+
+
+@pytest.mark.parametrize("field,value", [
+    ("content", "rewritten partial"), ("timestamp", 99), ("role", "user"),
+    ("reasoning", "rewritten thinking"), ("reasoning_content", "new thinking"),
+    ("reasoning_details", '[{"text":"new detail"}]'), ("tool_call_id", "another-result"),
+    ("tool_calls", '[{"id":"different-call"}]'), ("tool_name", "different-tool"),
+    ("effect_disposition", "changed"), ("tool_call_uid", "different-tool-uid"),
+    ("tool_call_uids", '{"call":"different-occurrence"}'), ("platform_message_id", "different-message"),
+    ("finish_reason", "different-finish"), ("_compressed_summary", 1), ("display_kind", "steer"),
+    ("display_metadata", '{"turn_terminal":{"source_message_uid":"native-source","status":"error","outputs":[]}}'),
+    ("absorbed_message_uids", '["different-uid"]'),
+])
+def test_settled_alias_rejects_any_source_or_settlement_fact_rewrite(store, field, value):
+    db, _client, _ = store
+    _old, current, ref = alias_pair(db, "in_place")
+    db._write_sql(f"UPDATE messages SET {field}=? WHERE id=?", (value, current["id"]))
+    raw = read_view(db, "recovery", "default", [selector()], identities=[ref])
+    assert not any(row.get("_settled_reference_aliases") for row in raw["identities"])
+
+
+@pytest.mark.parametrize("invalid", ["missing_uid", "missing_old", "wrong_uid", "foreign", "rewind", "earlier", "ambiguous"])
+def test_settled_alias_rejects_unproved_or_retired_reference(store, invalid):
+    db, _client, _ = store
+    old, current, ref = alias_pair(db, "in_place")
+    db.create_session("foreign", source="desktop")
+    user_id = db._read_one("SELECT id FROM messages WHERE role='user' AND active=1 ORDER BY id DESC LIMIT 1")[0]
+    actions = {
+        "missing_uid": lambda: ref.pop("message_uid"),
+        "missing_old": lambda: db._write_sql("DELETE FROM messages WHERE id=?", (old["id"],)),
+        "wrong_uid": lambda: ref.update(row_id=old["id"] - 1),
+        "foreign": lambda: db._write_sql("UPDATE messages SET session_id='foreign' WHERE id=?", (old["id"],)),
+        "rewind": lambda: db.rewind_to_message("recovery", user_id),
+        "earlier": lambda: ref.update(row_id=current["id"] + 1),
+        "ambiguous": lambda: db._write_sql("UPDATE messages SET display_identity=? WHERE id=?",
+                                            (b"another-display-group", old["id"])),
+    }
+    actions[invalid]()
+    raw = read_view(db, "recovery", "default", [selector()], identities=[ref])
+    assert not any(row.get("_settled_reference_aliases") for row in raw["identities"])
+
+
+def test_settled_alias_compares_json_structure_and_ignores_untrusted_metadata_alias(store):
+    db, _client, _ = store
+    old, current, ref = alias_pair(db, "in_place")
+    metadata = json.loads(current["display_metadata"])
+    db._write_sql("UPDATE messages SET display_metadata=? WHERE id=?", (json.dumps(metadata, indent=2), current["id"]))
+    raw = read_view(db, "recovery", "default", [selector()], identities=[ref])
+    assert any(row.get("_settled_reference_aliases") for row in raw["identities"])
+    metadata["_settled_reference_aliases"] = [{"row_id": old["id"], "session_id": old["session_id"]}]
+    db._write_sql("UPDATE messages SET display_metadata=? WHERE id=?", (json.dumps(metadata), current["id"]))
+    raw = read_view(db, "recovery", "default", [selector()], identities=[ref])
+    assert not any(row.get("_settled_reference_aliases") for row in raw["identities"])

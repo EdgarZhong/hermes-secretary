@@ -266,7 +266,71 @@ def _read_identities(conn, sql, params, lineage, identities):
             if key not in seen:
                 result.append({**dict(row), "visible": False})
                 seen.add(key)
+    _settled_reference_aliases(conn, params, result, identities)
     return result
+
+
+_REFERENCE_FACT_COLUMNS = (
+    "role", "content", "timestamp", "reasoning", "reasoning_content", "reasoning_details",
+    "tool_call_id", "tool_calls", "tool_name", "effect_disposition", "tool_call_uid", "tool_call_uids",
+    "platform_message_id", "finish_reason", "_compressed_summary", "display_kind", "display_metadata",
+    "absorbed_message_uids",
+)
+_REFERENCE_JSON_COLUMNS = frozenset({
+    "tool_calls", "tool_call_uids", "reasoning_details", "display_metadata", "absorbed_message_uids",
+})
+
+
+def _reference_fact_digest(row):
+    """All display/settlement facts; model replay and physical lifecycle are not source text."""
+    facts = {key: row[key] for key in _REFERENCE_FACT_COLUMNS}
+    for key in _REFERENCE_JSON_COLUMNS:
+        if isinstance(facts[key], str):
+            try:
+                facts[key] = json.loads(facts[key])
+            except (ValueError, TypeError):
+                return None
+    return digest(facts)
+
+
+def _settled_reference_aliases(conn, params, rows, references):
+    """Prove only explicit old-row/current-display pairs on the caller's SQLite snapshot."""
+    visible = {}
+    for row in rows:
+        if row.get("visible"):
+            visible.setdefault(row.get("message_uid"), {})[row["id"]] = row
+    pairs = {}
+    for ref in references:
+        uid, old_id = ref.get("message_uid"), ref.get("row_id")
+        candidates = visible.get(uid, {})
+        if not isinstance(uid, str) or not uid.strip() or type(old_id) is not int or old_id <= 0 or len(candidates) != 1:
+            continue
+        current_id, current = next(iter(candidates.items()))
+        if old_id < current_id and (current.get("active") or current.get("compacted")):
+            pairs[old_id, uid] = current_id
+    marks = ",".join(":" + key for key in params)
+    requested = list(pairs)
+    aliases = {}
+    for offset in range(0, len(requested), 100):
+        batch = requested[offset:offset + 100]
+        ids = sorted({value for old_id, uid in batch for value in (old_id, pairs[old_id, uid])})
+        bound = {**params, **{f"a{i}": value for i, value in enumerate(ids)}}
+        id_marks = ",".join(f":a{i}" for i in range(len(ids)))
+        columns = ",".join(_REFERENCE_FACT_COLUMNS)
+        facts = {row["id"]: row for row in conn.execute(
+            f"SELECT id,session_id,message_uid,{columns} FROM messages "
+            f"WHERE id IN ({id_marks}) AND session_id IN ({marks})", bound).fetchall()}
+        for old_id, uid in batch:
+            current_id = pairs[old_id, uid]
+            old, current = facts.get(old_id), facts.get(current_id)
+            if old is None or current is None or old["message_uid"] != uid or current["message_uid"] != uid:
+                continue
+            old_digest = _reference_fact_digest(old)
+            if old_digest is not None and old_digest == _reference_fact_digest(current):
+                aliases.setdefault(current_id, []).append({"row_id": old_id, "session_id": old["session_id"]})
+    for row in rows:
+        if row.get("visible") and row["id"] in aliases:
+            row["_settled_reference_aliases"] = aliases[row["id"]]
 
 
 def _terminal_identity(row):

@@ -7,7 +7,14 @@
 - **Agent自主收敛／待追认：混合压缩载体的读取。** 原空白：一个native UID可同时承载压缩摘要与真人消息，而用户要求辅助开关能读取Compression且Get Meta仍仅四字段。决定：默认保留原真人视图；显式辅助允许同UID的system摘要视图，Get Meta／Search按语义部分分别返回，anchored Read允许现有roles参数选部分，默认锚点优先原非压缩部分；同UID同role的system内容合并为一个视图；不造UID、不放开Full／隐藏内容。理由：使明确要求在native混合载体下可操作。影响：Read新增可选roles适用位置，同UID可有不同语义投影。已实现，201项History接受测试及56项原生路径通过；独立Verification／Validation已通过，已上线；不改变Message Identity或Notebook新证据准入。
 - **Agent自主收敛／待追认：Candidate同Task来源形式切换。** 原空白：旧合法direct→refs操作与新旧Task节点不可删约束如何同时成立。决定：仅尚未提交且唯一节点属于本Task时，允许显式清空当前工作槽并切为合法refs；任何旧Task直接节点仍禁止删改。理由：继承原来源二选一操作并保持旧节点约束。影响：当前Task工作态边界，无迁移／旧节点特权。已实现，正式工具／恢复／原子失败98项通过；独立Verification／Validation已通过，已上线。
 
+## 2026-10-30 · 最后维护恢复修复收口
+
+主会话已亲审三个产品文件及正式原生回归：手动压缩借用busy不再清除已结算输出快照；同一DB snapshot仅为显式旧row引用比较唯一当前代表的完整显示／终态事实，所有已结算回执与committed帧共用内部证明，活动Turn来源保持严格。156项受影响回归通过，ruff／冻结health 0／0；独立第三轮R3-V09补收及原失败document实际复验进行中，不冒称已部署。线上仍BE00f／FE5f，Downloads已有原签名5f新版0.1.9 APK。
+
+
 ## 2026-10-27 · 增量同步与免刷新恢复（最终集成与第三轮收敛）
+
+**当前接续：T10恢复反例待窄修。** 同第三轮已补X中段切回／工具冷复用／真实隔离服务重启、M三类Markdown流式→冷恢复／Copy、G联合Cancel两极性与后继可用、T发送前Cancel保原草稿49B Blob且0prompt。T9确定失败已结算后，实际/compact再失败导致T10Chat永久runtime_unavailable；root定位维护忙边缘误清原生终态快照，将仅沿既有_manual_compress_active区分真实新Turn reset。原线上00f／5f及已交APK保持，不冒当前全产品通过；原反例、指定窄修与复验入口见plan顶部。
 
 **自主接续补验：** 上轮草稿修复／发布属实际进展。本次沿原第三轮R13／R16补准旧分页在owner切换后才完成的成功／失败与详情迟到；原V10未命中不改写。A经正式Rewind后仅10条，使用同夹具B的长历史作为慢请求owner、实际切回A，保持同一正式代码路径与精确Profile隔离；只改隔离准备数据及取证，不改产品／重新部署／扩大外发权限。沿原独立QA补判，不新开第四轮。
 

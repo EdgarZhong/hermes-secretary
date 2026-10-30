@@ -84,7 +84,7 @@ def _references(state):
             result["tool:" + tool_uid] = {"tool_call_uid": tool_uid}
         for message in candidates:
             if isinstance(message, dict) and (message.get("message_uid") or message.get("row_id")):
-                key = message.get("message_uid") or message["row_id"]
+                key = (message.get("message_uid"), message.get("row_id"))
                 result[key] = {"message_uid": message.get("message_uid"), "row_id": message.get("row_id")}
     return list(result.values())
 
@@ -139,12 +139,23 @@ def _settled_manual_source(session, raw, db_path):
         return False
     if Path(source["db_path"]).resolve() != Path(db_path).resolve():
         return False
-    return any(row.get("id") == source.get("row_id") and row.get("message_uid") == source.get("message_uid")
-               and row.get("session_id") == source.get("session_id") and row.get("role") == "user"
-               and row.get("visible") and (row.get("active") or row.get("compacted"))
+    return any(_settled_reference_matches(row, {**source, "role": "user"})
                and row.get("terminal_source_uid") == source.get("message_uid")
                and row.get("terminal_status") == "error" and row.get("terminal_outputs_complete") is True
                for row in raw["identities"])
+
+
+def _settled_reference_matches(row, reference):
+    """Exact native address first, then an internal same-snapshot DB proof of retirement."""
+    if (not row or row.get("message_uid") != reference.get("message_uid") or not reference.get("message_uid")
+            or row.get("role") != reference.get("role") or not row.get("visible")
+            or not (row.get("active") or row.get("compacted"))):
+        return False
+    addresses = [{"row_id": row.get("id"), "session_id": row.get("session_id")},
+                 *row.get("_settled_reference_aliases", [])]
+    return any(item["row_id"] == reference.get("row_id")
+               and (reference.get("session_id") is None or item["session_id"] == reference["session_id"])
+               for item in addresses)
 
 
 def _manual_maintenance(session, raw, db_path):
@@ -368,10 +379,8 @@ def _completion_sources_accounted(receipt, known):
     # Compaction retires prompt rows but preserves their exact display identity.
     # Rewind/deletion still fail the visible-row and receipt identity checks.
     sources = receipt.get("source_messages") or []
-    if not sources or not all(
-            (row := known.get(source.get("message_uid"))) is not None
-            and row.get("id") == source.get("row_id") and row.get("role") == source.get("role")
-            and row.get("visible") and (row.get("active") or row.get("compacted")) for source in sources):
+    if not sources or not all(_settled_reference_matches(known.get(source.get("message_uid")), source)
+                              for source in sources):
         return False
     # A consumed steer deliberately leaves the legacy whole-Turn receipt
     # incomplete. Its closed, fully committed suffix can still account for
@@ -391,6 +400,11 @@ def _persisted_reasoning_notice(event, state, known):
     return False
 
 
+def _settled_source_frames_match(events, source):
+    return all(_settled_reference_matches(source, event.get("payload", {}).get("message") or {})
+               for event in events if event.get("type") in {"message.user_committed", "message.source_committed"})
+
+
 def _idle_snapshot_accounted(state, known):
     sources = [event.get("payload") or {} for event in state["events"]
                if event.get("type") == "message.source_committed"]
@@ -405,7 +419,10 @@ def _idle_snapshot_accounted(state, known):
         # source_committed proves this exact source once existed. The bounded
         # D1 identity query now proves it deleted/retired; all of that Turn is
         # obsolete. An unknown output WITHOUT this source proof is rejected.
-        if row is None or not row.get("visible") or row.get("terminal_source_uid") == uid:
+        if row is None or not row.get("visible"):
+            return True
+        if (row.get("terminal_source_uid") == uid and _settled_reference_matches(row, source)
+                and _settled_source_frames_match(state["events"], row)):
             return True
     return False
 
@@ -459,11 +476,9 @@ def _terminal_snapshot_accounted(state, d1, known):
             or source.get("terminal_outputs_complete") is not True
             or not _closed_source_boundary(receipt, sources, known)):
         return False
-    committed = [event.get("payload", {}).get("message") or {} for event in events
-                 if event["type"] in {"message.user_committed", "message.source_committed"}]
     # Legacy submit need not emit user_committed. Its native completion receipt
     # still proves the exact source; any additional source frame must agree.
-    if any(row.get("message_uid") != source["message_uid"] or row.get("row_id") != source["id"] for row in committed):
+    if not _settled_source_frames_match(events, source):
         return False
     if not _terminal_output_frames(events, d1["lineage"]):
         return False

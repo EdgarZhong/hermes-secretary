@@ -1,5 +1,21 @@
 # 实施计划：20261027-incremental-sync
 
+## 2026-10-30 · T10确定失败后手动维护清空恢复快照（原第三轮新反例）
+
+R27补验T7/T9实际SDK中途失败沿原生续写上限结束，五次不同API输出UID保留为终态残段，不按同文去重。T9仍committed；随后实际/compact确定失败，T10起Socket仍connected、必要Chat持续runtime_unavailable（recoveryId41），无任何夹具read故障／延迟。原件doc9b8756d1...的T7–T10保留。不是用5条同文表象直接判重复缺陷。
+
+root定位：_manual_compress_turn先设已有_manual_compress_active再用_set_session_running(True)标忙，后者误把非生成维护当新Main Turn调用inflight_output.reset，丢失前一已结算原生终态快照；失败inflight_turn仍留作原生状态，维护结束后_capture对None快照与旧inflight合法拒绝，故永久重试。指定最小修复：_set_session_running仅在真实新生成忙边缘重置；利用既有_manual_compress_active owner标记跳过此维护重置，不新增字段／参数／恢复兜底，不放宽capture／原生证明。真正新Turn／正常默认调用仍原样reset；维护异常／成功退出保持已结算快照，重连可核终态与持久历史。以真实SessionDB/原生stream/正式恢复payload的旧版红例→修后绿例证明，保未知／错误owner和真新Turn负对照，再原T9→/compact→T10实际复验。产品只改tui_gateway/inflight_output.py及必要原测试，root亲审集成、原第三轮独立影响补收，不开第四轮；现5f APK兼容该纯后端修复。
+
+追加原生对照：Noting off同一error源经真实ContextCompressor成功in-place／rotation后，原source UID／完整error终态事实保留而物理row27→40，旧源退役，新代表可见；基线和首候选均拒绝，completed两版均绿。此前“范围外”分类撤回，不能仅选source归档正例签收。原矩阵integration/maintenance-output-retention/noting-off-comparison.json（每版12例，6红6绿）保留。
+
+root补足方案（待原Verifier局部影响评审）：沿既有有界_read_identities提供内部原生物理引用别名证明；只有明确旧row_id+非空message_uid的引用，原行确实存在于当前Conversation lineage且已retired，唯一当前可见代表同UID／role，当前row为后继物理代表，并逐字／结构核原文、timestamp、工具事实、display_kind及完整终态metadata等事实一致，才产生只供内部证明的(old row,old session) alias。无别名需求零额外读；按既有100条batch有限读取显式旧行＋当前行，不扫UID全代、不读其它Conversation、不按同文或位置猜归属。正常原row/session精确匹配优先；_settled_manual_source和_completion_sources_accounted使用同一可信匹配helper，DB路径／Profile／lineage／visible／active或compacted／closed receipt／typed frames／terminal digest／D0-D1切点和真实Main租约全部保持。只对已结算证明可用，运行源_prove_source仍原row严格；缺UID/缺旧行/正文或终态改写/rewind/跨owner/并发证据不相容一律拒绝，不改DB、旧event、receipt、水位或公开API。95项有效证据保留，只定向补原24例红绿及错误alias反例，再一次集成相关范围。
+
+## 2026-10-30 · 第三轮剩余本地用户路径补收
+
+独立QA已收L/Y并关闭阅读问题，当前11限定通过／54部分／1不适用；不重开全轮。root实际X0–10补中段跨Profile往返保位、旧工具参数／结果完整懒取后冷复用，以及真实隔离服务进程18132→65824／epoch变化的同document恢复和后继delta1，原件integration/X-user-path-summary.json。仍以原产品5f／00f和匹配M0取证，不把新夹具进程当生产改版。
+
+R29/R35采用Skill允许的合法中间态：隔离同owner原生CompressionCommitFence／registration与实际operation_id绑定的正式Noting admission，公共session.compaction_state／cancel全部走正式handler，不提供伪造cancelled DTO／直接操作UI状态。只控制外部摘要计算等待，未提交与已提交两极性复用正式store／commit／cancel；用户实际点击Cancel后读原数据库及后继可用状态。夹具准备／清理必须显眼标注，不能冒成用户重新触发完整原生Compact或真实模型运行；触发／竞态沿原已验机制互补。委派只改ignored fixture_joint_cancel.py、fixture_dependencies.py与server.py，root亲审、重启仅自有8189、更新M0后才UI；无产品／生产修改，无全套重跑，无第四轮。
+
 ## 2026-10-30 · OBS-READING-CAS-01普通更新抢阅读owner（5f已修复发布，同第三轮补收）
 
 原R04补验发现：L6已展开旧Thinking405／row408，scroll7979.5；正式SessionDB CAS仅更新reasoning、UID／row／content不变（integration/L-old-detail-cas.json），L7自动delta1与detail408成功到新版全文，却把idle视口推到320585。当前PageRecovery connectionId1、commit reason sessions.changed；CDP关闭事件查询有截断，不以0次闭合作完整证据。原独立QA依据06:356／538确认实现偏离，原L6/L7保留。
@@ -267,3 +283,7 @@ root方案：仅同非空Turn的operation可复用／查status；其它生成新
 BE00f0／FE13db与原签名13db 0.1.9 APK均已正式交付，版本／439资源／HTTP六入口／PID／配置／绑定／Dashboard及两套三库收尾已核，详operations顶部。独立Verification最终产品／正式机制／发布与APK接收；原168判据不重提。独立Validation关闭Z段中断残留、Compacting退旧值与中文粗体三缺陷及后继D组草稿归账，真实WS失败后同doc恢复也通过；最终7限定通过／58部分／0当前失败／1不适用，整场有代表不等子分支齐全，不签整体收敛。
 
 W段最新Thinking／活动Turn恢复、明确压缩失败／未知回执、真实Toast形状与关闭、两份同名附件受理后丢WS，以及后续V／D补验均已由原QA判读。仅fixture Vite的dev-client自身连接丢失触发过poll/reload，已保console/新旧doc/模块加载失败原件；不混为产品刷新或连续同document。ignored plugin仅省略该dev transport.connect，保CSS／React助手与所有产品源码，变更边界及served client SHA见integration/vite-dev-reconnect-boundary.json。最终自有Vite47843、原BE18132／QsxSwA保留，唯一业务页已关闭；D0测试proxy遗漏的无效样本另保纠正边界。剩余必要子分支沿原报告，不开第四轮、不为已有效范围复跑测试。真实Android／外部登录／真实外发限制与CJK自主待追认明确保留。
+
+
+### R3-V09 最终候选接收（2026-10-30）
+root亲审3产品文件／3测试与完整原生payload后接收有界旧row→当前代表事实证明及维护免reset。最终受影响4文件156通过；旧链19红／34绿，候选53绿；独立第三轮局部影响补收中，原失败页面实际复验和发布待完成。证据：`maintenance-output-retention/alias-delivery-handoff.json`，不得以候选完成冒称生产已修。

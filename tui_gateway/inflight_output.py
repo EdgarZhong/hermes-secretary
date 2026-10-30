@@ -128,7 +128,8 @@ def _set_session_running(session: dict, running: bool) -> None:
     """Mutate the native flag, preserving standalone sibling callers and old defaults.
     Existing callers hold the history owner lock. Display failure cannot block a Turn.
     """
-    if running and not session.get("running"):
+    # Manual compaction borrows the busy flag, but does not start a new Turn.
+    if running and not session.get("running") and not session.get("_manual_compress_active"):
         reset(session)
     session["running"] = running
     try:
