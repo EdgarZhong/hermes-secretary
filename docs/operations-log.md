@@ -1,5 +1,18 @@
 # 运维记录
 
+## 2026-10-31 · Force完成边界／Pending恢复修复正式发布、0.1.10交付
+
+用户明确授权睡眠期间自主解决、前后端重新部署、新APK交付及子Agent；本轮索引`.autonomous/20261031-force-completion/`。双门禁后，BE `ef9051f2f5a51d2ed95e27c969848d0f9823992b`正常快进至origin/main，FE `6c132a44a56fab8a72ddc6d51354d9923e2b78cb`正常快进至origin/secretary，未触其它本地main工作区dirty。正式Alex于**01:24:38+08**在main发布verified：先检查Web／Gateway自然空闲、三库无有效writer／压缩锁／Noting，停止两专属服务、SQLite三库备份、快进代码、原子换静态、恢复服务并验真。没有取消用户工作，没有自动数据库回滚。
+
+Web和Gateway实际版本均ef9051f，两服务active，Gateway PID1182019／running、微信connected；439个Secretary文件逐SHA匹配6c132a4构建，实际HTTP六资源一致。既有messages／Secretary保护表、配置、绑定及Dashboard静态均保持。正式只读历史窗口5行带完整coverage／sync；原故障最后assistant13441仍243字符、Framework13442仍215字符，均保留。未发生产测试消息、模型请求或微信外发。
+
+收据：`~/.local/state/hermes-secretary/release-20261028/stage-20261031-force-completion/receipt.json`（verified）、`backup-retention.json`、`postrelease-history.json`及`RECOVERY.txt`；本地ignored `.hermes-dev/force-completion-20261031/release/`保留发布输入、SHA、日志及只读收据。新发布与上一88ed发布两套完整三库逐库SHA／integrity／FK核验后，仅清退更旧00f发布三库及WAL／SHM共9文件；运行库／sidecar及`databases-current.zip`不动。
+
+原签名APK交付`/Users/edgar/Downloads/Hermes-Secretary-0.1.10-6c132a4-arm64.apk`，0.1.10／1010、32127165字节，SHA256 `4f3c795f808bf8aa979e6ee6444cad4605e0920912613ea155ed0538129bb063`。v2原证书、ZIP CRC、ZIP／ELF16KB、arm64／min26／非debug、439内置资源与最终dist及交付副本均严格核验，SHA与verification sidecar保留；旧APK不覆盖。最初预备0.1.10构建未含后继Pending修复，未交付；最终重建与交付以本行SHA为准。只移动生成dist的.DS_Store，用户public等原件保持。
+
+修复机制是原生final UID封闭Main回执、未adopt的Pending读取沿原恢复重试；没有移动Force接缝、等待child、放宽证明或改模型／阈值／Schema。177项＋最终4／6、FE273项及冻结检查通过；独立Verification候选产品通过，独立Validation7场景通过／0失败（真实隐藏IAB、受控SDK、真实Loop／DB）。实际验证child活动时Send／Compact、冷刷新尾部及Thinking、断线期间child完成、Pending依赖失败后同页自动恢复。真实Android安装／生命周期未验，不以验包代签；上一大轮外部设备边界保持。
+
+
 ## 2026-10-31 · Force 完成回执故障紧急救援（产品修复另行发布）
 
 用户连续报告Main已结束而Force／后台Noting后Composer持续Restoring、按钮和Compact不可用，刷新后尾部不可见，并明确要求立即营救。只读确认实际最后Assistant和Force Framework均已落盘；消息完成事件却含不完整回执，正式恢复返回runtime_unavailable。Noting于00:39结束，主会话仍无法恢复。

@@ -14,18 +14,18 @@
 ## 当前状态与编排
 | 目标/任务 | 机制实现 | 正式接线 | 针对性验证 | 用户结果 | 当前负责人和下一步 |
 |---|---|---|---|---|---|
-| B | 原生final UID封闭回执 | 正式Web→Loop→Force／FM→activate通过 | 六文件177项、最终4＋6及冻结十检查；root亲审接收，backend.md | 子任务活动时后继发送／Compact可用 | 已集成，待独立门禁 |
-| F | Pending未采用却报成功已最小修复 | 正式Controller／App／PageRecovery／IDB已接线 | 9文件273项、typecheck及冻结TS度量通过；见frontend.md | App DOM／真实IDB通过；隐藏IAB待隔离入口 | frontend收尾浏览器证据，root亲审 |
-| I | 目标active | 部署器／签名原件已在既有工作区 | 尚未执行门禁 | 已救援，不冒称修复 | root冻结、集成、最终判定 |
+| B | 原生final UID封闭回执 | 正式Web→Loop→Force／FM→activate通过 | 六文件177项、最终4＋6及冻结十检查；root亲审接收，backend.md | 子任务活动时后继发送／Compact可用 | 已集成，双门禁通过 |
+| F | Pending未采用却报成功已最小修复 | 正式Controller／App／PageRecovery／IDB已接线 | 9文件273项、typecheck及冻结TS度量通过；见frontend.md | 自建隐藏IAB实际Send→Force held→冷刷尾部/详情→后继Send→Compact→child结束→同页重连通过 | frontend整包交回；root已提交6c132a4，进入独立门禁 |
+| I | 目标完成 | BEef9051f／FE6c132a4已提交push | Verification12条全部符合；Validation7场景通过；原签名APK已交付 | 01:24:38发布verified，原尾部保持；交付事实独立补核通过 | root已完成交付判定，final-delivery.md |
 
-后端现有分支继续承载本轮，前端同目录沿既有codex/incremental-sync-20261027分支实施（无其它产品dirty，仅用户.DS_Store不动）。源码不交叉；子Agent不得再派生、不自行commit／部署。报告仅整包交回，真阻塞才中报。UI严格只许自建Codex隐藏IAB（iab、visible:false），不能桌面／外部浏览器／可见页／用户页面。主会话无重复实现，亲审正式链与证据。
+后端现有分支继续承载本轮，前端同目录在codex/force-completion-20261031分支实施（无其它产品dirty，仅用户.DS_Store不动）。源码不交叉；子Agent不得再派生、不自行commit／部署。报告仅整包交回，真阻塞才中报。UI严格只许自建Codex隐藏IAB（iab、visible:false），不能桌面／外部浏览器／可见页／用户页面。主会话无重复实现，亲审正式链与证据。
 
 ## 缺陷与整改
 | 问题编号 | 要求与触发条件 | 当前事实与影响 | 优先级及理由 | 修复负责人 | 关闭与复验条件 | 状态 |
 |---|---|---|---|---|---|---|
-| F01 | Main正常结束后Force追加FM | 旧回执以共享历史尾行猜最终assistant，实际complete=false；现由原生final UID封闭 | P0，用户不可操作 | backend | 原反例、Main／child隔离、后继发送／Compact均通过 | 开发关闭，待门禁 |
-| F02 | 刷新后最后输出／FM不见 | 已证服务端13441／13442完整落盘；前端尾部缓存与失败交接待核 | P0，无法恢复 | frontend | 实际App暖／冷恢复、IDB及操作资格 | 待核 |
+| F01 | Main正常结束后Force追加FM | 旧回执以共享历史尾行猜最终assistant，实际complete=false；现由原生final UID封闭 | P0，用户不可操作 | backend | 原反例、Main／child隔离、后继发送／Compact均通过 | 双门禁通过 |
+| F02 | 首次恢复失败后Pending先于新cut返回 | 未adopt却报成功导致pendingSnapshot永久缺失；已改失败重试；正常尾部／FM缓存不缺实现 | P0，无法恢复 | frontend | 273项及隐藏IAB暖冷／真实IDB、后继Send／Compact通过 | 双门禁通过 |
 
 ## 取舍、快照与续接
 
-00:42:26用户紧急授权救援：只读确认Web0／Gateway0且无活动Noting后重启Web，Gateway保持；health正常、正式REST末回复243字符及FM215字符存在，用户随后确认已能压缩。此为应急恢复，不是产品修复。原始证据在.hermes-dev/force-completion-20261031/；无凭据或用户正文进Git。当前待冻结为文档基线，已写测试未实施产品；首有效反例before-3.log中2失败均在正式恢复complete断言。
+00:42:26用户紧急授权救援：只读确认Web0／Gateway0且无活动Noting后重启Web，Gateway保持；health正常、正式REST末回复243字符及FM215字符存在，用户随后确认已能压缩。此为应急恢复，不是产品修复。原始证据在.hermes-dev/force-completion-20261031/；无凭据或用户正文进Git。最初冻结点产品未改，首有效反例before-3.log中2失败均在正式恢复complete断言；现两处修复、双门禁、main发布及APK交付全部闭合。

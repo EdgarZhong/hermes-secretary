@@ -1,8 +1,12 @@
 # Hermes Secretary 当前状态
 
-## 2026-10-31 · Force 后 Main 完成交接故障（紧急修复中）
+## 2026-10-31 · Force 后 Main 完成交接故障（已完成并发布）
 
-用户明确要求立即修复并重新部署；00:42只重启Web完成紧急救援，用户确认可压缩后，明确授权继续自主修复、前后端重新部署、交付新APK并恢复子Agent协作。本轮已挂active目标；主会话负责集成、门禁和发布，后端／前端／隔离联调分别由独立实现Agent承接。新包计划0.1.10／原签名。线上88ed／5f在00:29触发Force后，Main已idle但完成回执complete=false：最终assistant之后追加的Force Framework被错误计入Turn尾部，阻断恢复并留住转圈／操作锁。范围为正式完成边界、Framework独立展示与后台Noting不影响Main交接；不放宽恢复证明，不改生产历史、模型或阈值。原自主轮的外部设备验收限制仍保留，本故障单独修复，不冒称整轮完成。
+用户授权立即救援、随后自主修复、前后端重新部署、新APK和子Agent。00:42只重启空闲Web完成救援；本轮产品BE `ef9051f`／FE `6c132a4`已于01:24:38+08正式main发布verified，两实际服务同源active、微信connected。原故障尾部13441／13442完整保留；439静态及HTTP六资源、保护表／配置／绑定、两套三库已核。0.1.10／1010原签名APK已交Downloads，SHA4f3c795f…bb063，32127165字节，439内置资源严格一致。运维细节统一见operations-log。
+
+前后端都有问题：Force FM后追加污染共享结果的尾部推断，使真实完成被拒；随后Pending未采用却误报读取成功，使Send仍锁。现在用原生final UID封闭Main回执，并让未采用Pending沿既有失败／重试收敛；完整Framework历史保留，不移动Force接缝、不放宽恢复或缓存权限。上次回归手造成功回执漏过真实Web收尾，本轮真入口反例改前失败、修后通过。
+
+主会话已亲审，BE177项＋最终4／6、冻结十检查；FE273项、types／TS度量通过。独立Verification产品通过；独立Validation7适用场景通过、0失败，含真实隐藏IAB暖冷恢复、child活动时后继Send／Compact、断网期间child完成和Pending失败自动重试。最终发布及交付事实已独立补核，Verification12条全部符合／0缺口；本轮目标完成，最终简报已落盘。本轮索引／两报告／最终简报见`.autonomous/20261031-force-completion/`。原自主轮真机／外部验收边界独立保留，不冒称整个旧轮完成。两工作区原dirty及用户.DS_Store未动。
 
 ## 自主口径收敛 · 待用户追认
 
