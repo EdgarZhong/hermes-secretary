@@ -2,6 +2,8 @@
 
 ## 1. 结果概览
 
+**本次只读盘点补充：** 原D组7/58/1统计及状态不变；58项剩余证据逐项收口见第6节末。root另请先判的L6/L7已核为普通详情revision更新抢走仍存活阅读anchor的实现偏离OBS-READING-CAS-01，待修/待定向复验；D时点“0开放缺陷”不代表此新偏离已关闭。其余新L组尚未独立补判。
+
 **D组最新定向结论：OBS-DRAFT-COLD-01／R3-V07实际用户结果已复验通过，原V33失败保留。** 候选FE `13db1320e672e613737f20900abb7450bff25858`，BE运行产品仍00f；M0 `integration/validation-m0-draft-13db132.json` SHA256 `9e62f17a710a217b9611643aaaef692602c0cf0b4c4ef898d6c8380c74d5ea4d`，32条源/夹具hash逐项一致，新Controller／drafts为0772c28d…／03dc976b…；BE HEAD ca55为记录后继，不冒产品变化。正确Vite pid47843/proxy8189，root只读核实际BE pid18132/外置HOME QsxSwA。root仅自建业务tab21取原件，D1–D3 docdbb3…、D4–D6 doc03eba…、D7–D9 doc44fe…明确分开。
 
 D2原退出恢复由完整动态证明；D3静态probe滞后不冒最终输入，D4冷开实际保未提交文字/两原附件引用且无编辑事务。D5实际确认Rewind才唯一受理row222，D6重连及D7新doc空稿/无附件/ready/无alert，D8真实只读IDB canonical空且legacy退役，D9全幅390×844已独立view。79/95/20个有限普通动态样本、原生RPC/自己mode=ro持久User与root IDB原件相互核对，未把完成返回计数当总入站数，也未修改库/Controller/输入凑结果。原D0为环境proxy误连默认local53445，只读/隐藏诊断后关闭，纠正原件保留，不计产品结论；当前JSONL的旧D0-before-native-cas是早期CAS，不能混作本次无效D0。
@@ -288,6 +290,8 @@ U27是在原56项外明确补足冷启前置入口；R57–R62不得缩为已有
 
 本阶段起手M0为4be／ce；N/P/Q结果按其确证执行时点与受影响模块分层，未为每条Q原件重采全源码manifest，不能将后继未提交源或HMR变化冒成ce全树仍逐字一致。后继BE00f0…及两FE修补尚未作为本阶段已验源；产品dirty和root文档变化不由本验收者改动。root已保存`integration/validation-m0-final-native-final-stats.json`（SHA256 `2abaaf3af4dad5f0c9be63458b159f825ef5b397031e572a5a00a113b9f722d2`）、关闭其全部自建隐藏IAB并仅停原6241／6242，线上不由本验收者操作。后继统一M0＋同轮影响Verification满足后，继续原66场景的未验分支及3个实际失败定向复验，不重开全量或第四轮、不删未验。首WS失败控制曾被normal清0，明确未命中待合法顺序补；Q15只是redirect:error拒绝，非正常登录。
 
+| OBS-READING-CAS-01 | L6已展开旧Thinking405/row408，中段7979.5；正式CAS仅改reasoning、同UID/row/content；L7自动delta1+detail408新正文到位却跳320585到底 | 同doc/idle/草稿保，原展开Thinking由屏内y319.2移出到约−312286；06:356/538持续连接普通失效不得夺reading owner。prefixCompatible=false不足以证明仍存活阅读候选已退休 | **新实际实现偏离，待窄修及独立定向复验。** 原D组0开放缺陷仅保其时点，本次58partial盘点不重算原66状态，也不预签其余L组 | 当前FE13db/BE00f；root拟仅普通提交且精确阅读候选仍存时保持原owner/20秒规则，尚无修后通过 | partial-inventory-13db132/L6-L7-semantic-blocker-index.json及两原JSON/CAS；完整connectionId/commit动态待L整包固化，不把截断CDP的0关闭当无断证明；U25/真实重连active/真正候选退休原规则必须保留 |
+
 ## 6. 验收结论与推荐复核
 
 **D组最新定向结论：OBS-DRAFT-COLD-01／R3-V07实际用户结果已复验通过，原V33失败保留。** 候选FE `13db1320e672e613737f20900abb7450bff25858`，BE运行产品仍00f；M0 `integration/validation-m0-draft-13db132.json` SHA256 `9e62f17a710a217b9611643aaaef692602c0cf0b4c4ef898d6c8380c74d5ea4d`，32条源/夹具hash逐项一致，新Controller／drafts为0772c28d…／03dc976b…；BE HEAD ca55为记录后继，不冒产品变化。正确Vite pid47843/proxy8189，root只读核实际BE pid18132/外置HOME QsxSwA。root仅自建业务tab21取原件，D1–D3 docdbb3…、D4–D6 doc03eba…、D7–D9 doc44fe…明确分开。
@@ -329,3 +333,91 @@ root过目此次66场景准备并通知第三轮V通过＋M0可执行后，按�
 ### U26-H01 用户真机修后回报（2026-10-29）
 
 用户原话：“之前你给我的第2次 APK 已经可以正常下拉刷新了，我在这里反馈一下”。按连续交付顺序对应preview-d1a53cf-arm64.apk（SHA fb651a0bbeae025776016d58fa594b68aa2f0fb16faeaf88aa6b3983ef564a2d）。这是真实手机修后确认，原“顶栏完全无圆盘／不能下拉刷新”缺陷关闭；保留e545旧负例及受控定位历史。该回报仅证明用户实际正常下拉刷新，不代签R51/R52/R54全部阈值／控件／主题／取消／不自动刷新组合，也不冒称独立第二轮Validation已执行。正式场景仍按矩阵逐项补证。
+
+### 58项partial证据收口盘点（2026-10-30，同次第三轮；本次未执行新场景）
+
+本节按原冻结06 C0/C3及D/S/P、U25–30、07顶部U20/§8.1与08继承范围，逐项把“尚缺实际用户代表”“可由已有正式机制补齐的不变量”和“设备/外部授权缺口”分开。**原66行/25目标、D组时点7项限定通过/58项partial/1项不适用与全部历史失败不变；这里不把任何partial改通过，也不先签root正在收集的L组分页、冷详情或IDB预算。** 有有效范围即复用；代码未改、标题存在、测试数量或mock返回本身都不是通过证据。正式机制仅在其实际执行入口/输入/观察与当前源接缝逐项相配时补对应子项，不能替代原要求中的用户可见结果、真实模型内容或硬件。
+
+**本次新增语义阻断单列：OBS-READING-CAS-01。** root请求即时判定后，本验收者仅先独立读取L6/L7两份原JSON、`integration/L-old-detail-cas.json`及实际scroll源。旧Thinking405/row408已完整展开，L6 scroll7979.5/屏内y319.2；正式CAS只改reasoning、UID/row/content不变，L7确有delta1＋detail408自动200/4772B，新详情到位但scroll320585到底、原展开项y约−312286，当前idle/同doc/同稿。冻结06:356明确持续连接手动离底/20秒仅active回底，06:538明确普通失效/局部提交不重夺reading owner；现chat-presentation:306–333在非recoveryHandoff但prefixCompatible=false时落入重连回底。前缀签名变动不证明仍存活的阅读候选已退休，故按该已核实际现象判实现偏离，影响R04/R07/R49/P08，待窄修及独立复验。root提供的connectionId1/commit reason需要随完整动态原件固化，截断CDP日志的WebSocketClosed=0不证明全程无断；不把本条预签为其余L组通过。修补建议仅复用同一精确anchor匹配：普通提交旧候选仍合法存活时保reading owner/20s计时，不改变新document首次到底、真正重连active或确证候选全退休的旧规则。原V14真实删锚允许到底结论保留。**因此D组“0开放实际缺陷”仅是当时快照，不能在本新增偏离未闭时继续宣称当前无阻断。** 取证`partial-inventory-13db132/L6-L7-semantic-blocker-index.json`及两原JSON/CAS副本；本次未改产品、服务、库或UI。
+
+**避免重复的收口顺序：**
+
+1. 先收root已安排的真在途取消/旧详情revision冷复用/真实IDB预算原件，严格按请求时序与document分组；旧V10无效时序不改。L6/7阅读偏离先修后沿原用户链定向，不能用后继终态覆盖。
+2. 优先读下列K1–K8正式case补不变量，只有未具必要输入到输出代表或原件无法定位的部分才追加最小本地路径。尤其quota/半截/真空/500统一预算、取消竞态/Force/四检查，不要求每个分支都再跑隐藏浏览器或真实Provider。
+3. 尚缺的本地用户代表可合并：旧工具/Thinking详情与最新前缀；owner在途及必要时真实重启；胶囊真值/开关/合法菜单目录；Files局部错误与实际Cancel Send/确定失败；一次普通Compact取消联Noting与后续可用；有限视觉/代码块Copy；新doc必要失败/active及暖切anchor。表内共用已有旅程，不把所有数据×网络×权限×平台乘成新矩阵。菜单缺合法目录先补外依赖，禁止伪造产品能力。
+4. 原R43/44正式旧版合成副本/备份恢复演练缺口保持原partial，但U23已要求且已验的回滚准备/两套有效三库/保护事实不撤回；不倒增未明确要求的生产恢复演练为新发布门禁。真实登录、新Provider、微信送达与物理设备只记权限/能力边界，不自动豁免、通过或要求越权取证。
+
+**正式机制索引与源适用性：** 完整逐文件/单元SHA及原件SHA在`execution-d172/partial-inventory-13db132/partial-inventory-source-audit.json`；以下K编号供58行逐项引用，不是新的测试套件或场景。
+
+- **K1 缓存/详情：** FE `r2-cache/{identity.json,baseline.log,final-tests.log}`及当前`r2-cache.test.ts` B01–B04/`display-cache.test.ts`损坏、quota、7日/10会话case；五个指纹（四产品/一测试）现逐项精确匹配，另外display-cache/history-details/history-sync三测试与0ea002e逐字同。原95项是真实fake-indexeddb transaction/objectStore＋正式类，不是IAB IDB导出；原场景用户代表仍需各自已有/本次真实App观察互补。
+- **K2 当前页面恢复/owner/可见需求：** FE `r2-frontend-recovery/{A01-*.json,A02-*.json,regression.log,health-followup-tests.log}`。当前loadEarlier/retryIncompleteEnvelope/retireAnchor/captureRead四正式单元与已执行8313cf2逐单元哈希相等，原14测试文件也逐字同；166/14日志保持各自原时点。U25改了layout ack、ccd加Compaction展示记忆，不能称整份PageRecovery/Controller从未变化；这些接缝由U25原件、Z及第三轮V02/V31单独支撑。Controller/HTTP/WS/IDB/App确实正式执行，返回及延迟是外依赖受控，仍非隐藏浏览器/真机。
+- **K3 后端增量/原生cut：** BE `r2-backend-sync/{sha256.txt,targeted.log,final-tests.log}`、原wire字节/SQLite/REST/RPC原件及独立V01/V07。旧132/22所处messages与recovery_view整文件hash不能冒当前全同：后继消息通知及typed工具依赖闭包有独立影响审/实际CAS、N/Z恢复证据。以具体原测试正式append/CAS/row revision/source/cut与当前路径匹配，缺重启/真实gap观测不由旧数量填上。
+- **K4 胶囊/命令/审批/Files/Toast：** 第三轮V02/V04/V07已审正式`controller-usage-view`/`controller-context-compaction`/`controller-page-recovery`/`app-page-recovery`及相应component测试、原App/unknown receipt/Approval日志。上述四测试和usage-view与73逐字同，产品后继Controller/drafts/pending/Compaction变更按D/Z/N/V及影响审分开，不把这些旧日志笼统称13db整套通过。用于补该测试确实执行/断言的分支；仅有测试标题、源码存在或汇总数而无当时来源匹配的，仍是待补证据，不自动通过。
+- **K5 U20/来源/原生生命周期：** `joint-cumulative-source.json`对review-final42＋C-R6＋R2-V01＋通知修补累计55条重新核：37个产品文件当前全精确匹配；18测试中两份后继扩展有差异，保原时点，不声称当前测试全相同/重跑。原native SDK/SQLite/NotebookStore双屏障、R2-V01红→绿23、c-r6正式来源/恢复/FM与Gateway sweep按分支复用；不是孤立helper。K04真实Noting12请求和唯一真实Main consumer的wire/资格/原文/回答仍各一代表，来源2486全同只属原时点，不能宣称未来所有内容质量。
+- **K6 APK/native入口：** `native-readonly-applicability.json`中android-recovery三指定源与U27十三源记录现16条均逐hash匹配（有重复路径，不是16独立文件）；原82/13及35TS的正式入口/旧回执/通知附件/普通Web边界分层复用，不改称真实设备。原native19份除已由后继覆盖的PackagedWebViewClient外同源关系保持。
+- **K7 视觉/Markdown：** H取证四个Header/theme产品源现仍逐hash相等（41828060…/1a790398…/1b2696eb…/44c4ffe1…）；原组件/wrapper与H真实mouse/像素、V普通Web对照互补。Markdown保Z/N的真实SDK原文/DOM/Copy及ccd受审CJK-b sibling机制，13db未改该模块；不从hash推旋转主观速度或全部分块视觉。原始素材/完整hash在source audit与原H/Z证据，不新读危险外链。
+- **K8 草稿/附件消费：** FE13db `draft-retirement`同包真实IDB/正式Controller26红绿与62最终机制、D1–D10实际native Rewind/暖冷/IDB/全幅已独立收。unknown/新输入/另一owner/put或delete失败只按相应正式case复用，不把它们全称D现场；本次不重复旧缺陷成功链。
+- **K9 发布/保护：** `release/static-20261030-13db132-r2`正式verified、首次交换前Refusal、439资源/HTTP6/原签名APK与两套三库retention的只读核验已落D交付证据。部署/包不是模型、UI全部分支、设备或实际恢复演练。
+
+| 原partial/原依据 | 收口方式（非新状态） | 尚缺本地最小证据/已经足够的代表 | 已有正式机制可补子项与边界 | 设备/外部权限/原范围限制 |
+|---|---|---|---|---|
+| `R02` D01–04／08–11 S02 | 平台为主 | C3–C5缓存先显/15s真实必要读取/首commit、P暖切、Q503恢复已具代表，不重复该组。 | K1/K2保缓存不授ready与暖owner；读原冷/暖机制补未见分支。 | 剩Android物理前置并R31/R57，不用再做同一IAB冷开代替。 |
+| `R03` U07 D02–05 P06 | 本地详情包 | 已验旧Thinking收开/同页复用；补一个旧工具参数/结果完整读取→收起→冷开版本确认后复用的用户结果，可与R04共一次。L组未先签。 | K1 B01完整tool_calls/terminal/result字段冷读及正式HistoryDetails不重取；不把该机制叫浏览器实操。 | 无须真实Provider；虚构工具输出沿正式writer准备，不能直接改DOM。 |
+| `R04` D02–05 S12 | 本地详情包＋新缺陷 | 原半截/真空可先由K1 B02及K2版本读补齐；本地核心补可见展开revision自动更新/隐藏不预读/冷后不借旧版。L6/7已出现阅读跳底偏离，先修后原链定向，不先签整组。 | K1四种版本边界/真实空与deferred、K2无sync详情重用与改版拒绝；晚旧auth结果已有V25/26。 | 不必为每一种字段再造同一全旅程；必须保“半截未持久”为实际缓存/正式事务证据。 |
+| `R05` U08／17 D04／15 | 优先补证据链 | 先从既有controller-incremental-sync主动latest/完整prefix原件串起source→有限snapshot→持久候选→同UID终态；W0仅已有全文不能证明prefetch。缺链才补一次未展开最新Thinking恢复/冷读代表。 | K1拒未证prefix/同UID不双计；K2正式Controller主动最新与旧懒取；K3原生Turn来源/合法尾追加/有限cut。 | 不需要新真实模型；旧模糊来源负例用既有正式case，不穷举所有触发渠道。 |
+| `R07` D01／09 S11 C3.2 | 机制可补 | Q3/Q4已具断线外部新增→同页最新代表，D0–D2具在线CAS delta1/不抢阅读；不因本行旧“待验”再重复。新L6/7同UID详情变化却抢底须另修。 | K3正式CAS no-op/rollback不通知、成功提交后通知；K2权威order与去重。 | 生产库/模型不需也不允许写；只复用隔离writer与原日志。 |
+| `R08` C3.2 D01–05 S14 | 机制可补 | 已具两次实际确认Rewind/同页与新doc旧尾退休；无需再跑该成功链。补齐证明对应的同UID换代表/压缩退役记录即可。 | K1 B02代表/UID/revision边界；K2原子替换/冷提示拒旧；K3正式改删/rewind/compact顺序。 | 外部SQL删锚只证读恢复，不能代正式delete writer通知；可复用正式writer case。 |
+| `R09` S06 C3.2／5 | 本地恢复包 | E换epoch是控制值变化，不能写成进程重启；若无既有真实restart浏览器原件，补一次隔离服务真实重启→同页新cut/必要snapshot→后继delta，保草稿且不重放。 | K3 cursor过期/新实例有界snapshot；K2丢旧运行权限、错误owner/epoch不冒删除。 | 非生产重启；无需对所有缓存/active组合重做此链。 |
+| `R10` D15 S05–06／11；08§2.3 | 机制优先 | W1/W2已具活动未结束就ready/Stop、Z具partial单UID闭环；ring-gap与外部Gateway采用已有正式恢复case补有序后缀/外部lease→持久历史更新。若缺真实gap原件才补一个本地代表。 | K2外部active无Web输出与有限suffix；K3原生epoch/seq/snapshot；不把Z单例当全部gap。 | 外部Gateway可用隔离原生lease/受控Provider；不需要真实微信或真实模型。 |
+| `R11` S08–09 D08–12／14 P01–05 | 机制可补 | E1/E3–E7已具真实Usage慢/必要失败/503/Pending慢及自动收敛，不重复。 | K2 Pending失败→仅Pending重试、continuity保流、active下Usage/Context并行与局部失败；补原正式case的owner/调用/结果映射。 | 无需再延迟所有附属项组合；保动作资格未提前放行。 |
+| `R12` U06 C0 D01–05 P08 | 机制为主，L待收 | Q已具200→400→600且早页阅读不被持久预算裁掉；root拟导真实IDB仅补原预算事实，当前不签。 | K1 B03/B04窗口+详情+核验prefix合计500、同UID落库一格、selector整体退休；5源/原15预算例精确匹配。 | 原要求不是“每个设备必须导出IDB”；不新增该门禁，也不为填500预取。 |
+| `R13` S07／14 C3.4–5 | 本地在途包 | 原V10先完成再切owner未命中，必须保留。补真request发出→owner已切→旧成功/失败后继时点，新owner正文/错误/草稿不受影响；rootL仅待整包，不据口述签。 | K2 A01四撤销×success/failure/auth及当前503对照；取消后服务端200不等客户端已收到晚成功。 | 可由一个实际取消代表加正式“不可取消/晚返回”case互补，不硬要求浏览器消费已取消body。 |
+| `R15` C0 S18 | 机制可补 | 损坏/配额/10会话/7天是明确原要求；已有正式事务证据可收口，不强制真实填盘或再造十个UI会话。 | K1 display-cache corrupt/schema/quota、7日TTL/10会话及真实IDB交易写败保内存；结合已有冷启动真读取代表。 | 若原交易缺草稿独立性观察，仅补该接缝，不损坏用户缓存/磁盘。 |
+| `R16` C0 S07；08§1 | 本地在途包 | P具跨Profile/Files固定owner/各自草稿；冷同ID隔离及晚详情/Orb按K2补。rootL的真在途取消/晚服务端完成需按原网络和动态分判，未先签。 | K2 captureRead/loadEarlier/current及A01旧owner；App晚Secretary/IDB、同storedId不同Profile；新owner首帧不借旧。 | 不把相同标题当身份，不为证明隔离访问别人的Profile/真实页面。 |
+| `R17` D09 S15 | 机制可补 | V8/9权威Profile缺失恢复、V18子详情404、V34–36真不存在返回已具实际代表。 | K2当前精确metadata404才退休缓存，旧404/子资源404不删目标；原已缓存Conversation真删的正式App case可补。 | 不需要删除生产Conversation或重做V34无缓存不存在。 |
+| `R18` C0 S16 | 授权边界 | V25/26已具401撤权与旧detail晚服务完成不复活；原document真实认证恢复→重新核owner/未提交稿仍缺。 | K2 auth cancelPending/清敏感/拒晚IDB与网络；K6原生真实导航/凭据入口；不把normal依赖复位当登录。 | 真实Authelia/账号登录未授权；不造认证成功/token或从缓存恢复旧审批权限。 |
+| `R19` D10–11 P07 | 本地胶囊包/机制互补 | V27–29已具Session/Latest未知scope。零值/一次失败保旧值可先复核正式Usage case；若无可读用户输出则补一组合法0→unknown/失败→恢复。合法模型目录为空，不能冒实际切换。 | K4真实valid-zero/字段独立/compatible scope/model失效/Turn完成高亮；usage-view及原测试与73逐字同，Controller后继差异单列。 | 模型变更可只改隔离合法配置/只读菜单，不发模型；无合法目录则是依赖缺口而非平台豁免。 |
+| `R20` D12 P05；07／08 | 本地开关包 | N14–24具真实Task状态和Main独立，Files无球。补global off/local off/首次无值与真unknown的一个受控状态代表，前后旧owner不借值。 | K2 secretary reader保last-known/真unknown非失败；K4真实task_state→Orb、完成提示一次；K5开关不改History/Scheduler。 | 不把技术失败强造unknown或强求失败图标；不调用真实Noting模型。 |
+| `R21` D13 S09 | 机制可补 | N18–22慢Schedule导航/关后迟到不重开/已开重连新文已具代表；补原请求窗口“未开0明细”及Notebook当前一级字段映射。 | K2 demands/registerResources与Schedule展开/关闭/重试；不要求重新证明全部动画每帧，也不新增实体持久缓存。 | 若要补像素，取一份有效全幅即可，不重跑8秒慢链。 |
+| `R22` D16 C3.4；06§1.12；08§1 | 合法目录依赖 | NewChat qa-b/cwd/首Turn与冷catalog后compact已具代表。候选/Tab和合法不支持对照须接真实complete.slash目录；开菜单期间恢复新值须合法model/options/config。 | K2按打开注册/晚旧menu撤销；K4 cold command catalog不误送Prompt；不能从fixture未实现候选判产品失败或通过。 | 模型目录/complete.slash当前夹具不齐，可补外部依赖边界，禁止手写菜单/Controller能力或新增模型请求。 |
+| `R23` D18；08§3 | 本地附件/Files包 | P1–6已具固定Files owner、外变同页读新文/BackB。补一个授权Download及一个局部错误/已开媒体恢复代表；原其余格式可按已有组件正式机制。 | K2当前Files demands/cancel/owner；K4 fs/list/read-text/media授权与原错误分支，查原case/版本后复用。 | 下载只到自建隔离目录；不访问真实用户文件/权限。物理相机另R31。 |
+| `R24` D06／14／17 P03–04 | 本地附件/取消包 | W8–10实际两同名文件受理不明/只读回执、D退出/未提交冷开/受理空稿已足，不重做。尚需实际Cancel Send在受理前退出并恢复捕获draft，以及已受理不能假撤销/不停止Turn的边界。 | K8 26例真实IDB/正式Controller保新输入/附件occurrence/unknown/外owner/写失败；K2/K4图片当前视口授权及独立失败，不将其叫实机。 | 图片用虚构小资源；不读系统剪贴板/用户相册。新File Blob跨冷启字节未证，不能以旧引用chip冒充。 |
+| `R26` U19 D14 P09 | 机制可补 | N6–13与P8已具合法双Diff/稳定面板/重连/双Deny和全幅，不重复。 | K4 server-requests同request重复/工具退休时已审内容留存、关键身份变更撤旧proof、不同runtime/snapshot隔离，核正式typed工具依赖及4be影响审。 | 不实际Allow写真实仓库；原非法legacy工具G样本不替合法retire对抗case。 |
+| `R27` U10 P03–04／09 | 本地发送失败包 | NewChat正常首Turn/Steer/Interrupt/partial修后均已具；补一组实际用户取消或确定Provider失败仍可继续输入/发送，空Enter/Escape按原组件正式case互补。 | K2 App accepted/live/true error，K4 composerActionPolicy/Cancel Send与Stop；K8受理消费保新输入；不可全局吞异常。 | Provider输出/错误可受控，无新真实模型；IME/Android Chrome绘制只设备可证。 |
+| `R28` U13 D11 S14 P07 | 机制可补 | N25–29公开compact、新draft保与Z2–5同ownerCompacting穿重连已具实际代表，不重复该缺陷复验。 | K4 Context失败/unavailable/晚旧operation/真0正式case；K5原生成功摘要真实carrier/压缩边界；不以受控摘要声称真实模型质量。 | 不需等待新真实压缩模型；实际用户取消与R29共用一次。 |
+| `R29` U14 P09；U20 | 本地联合取消包 | W3–7已具确定失败真Toast与unknown断线只读收敛、两attempt不重发；剩实际用户Compact cancel旅程可与R35同一次。 | K4无默认11min deadline/显式期限保留/迟到不同operation不误清稿；K5 accepted cancel与error/no_change/expired分判。 | 不重等11分钟或调用真实压缩模型；原deadline相关正式测试/源码接线须配对，不从短等待外推。 |
+| `R30` U15 P09 | 本地视觉补片 | W4一条真实错误Toast圆角和实际关闭已具。补两条真实不同错误堆叠/普通提示保原5秒的一组有限观察，或复用同组件已有正式计时/堆叠原件。 | K4 Toast容器/真实关闭与error持久/ordinary timer；不能只看单张图推所有时长。 | 不新增所有屏宽穷举；390完整视口加原桌面组件断言足作各自范围。 |
+| `R31` U09–10 S17 P10 | 设备限制 | 浏览器同页、70秒首pending、active恢复已有代表；无需继续用窄IAB冒充手机。 | K6 native82/后继13与Viewport9逐源适用；原生调用/回执/附件通知保护可复用。 | 物理WebView前后台冻结/弱网/IME/Android Chrome满高Composer绘制、相机/权限/通知仍无现场。显示保护不允许桌面/外部/用户页替代。 |
+| `R34` U20 | 机制可补 | N14–17实际子Noting不锁Main/父FM才更新、N25–29真实maintenance UI分层保留；不要求再跑三入口×双先后六次浏览器。 | K5正式native双屏障三入口/两完成顺序、Snapshot独立终态和真实父FM；37产品当前精确匹配，原日志各自时点不加总。 | 既有K04真实Noting12请求用于内容代表；不新增三入口真实模型压缩并发。 |
+| `R35` U20 | 本地联合取消包 | 缺实际用户Cancel→普通未提交Noting终止/已提交保留→下次任务仍可用的UI代表；与R29一次。提交竞态不要求逐个UI撞时序。 | K5 R2-V01红→绿23例：明确accepted cancel才联取消，error/no_change/expired独立、commit胜出/Force保留、旧operation fence；4产品2测试原源匹配。 | 受控child/model依赖，正式admission/registry/writer必须真实；不伪造任务成功或直接写App状态。 |
+| `R36` U20 | 机制可补 | 原SDK/NotebookStore特殊审计、旧迟到拒绝/新从完整S0已有正式动态；没有“再做多个真实模型内容样本”新门禁。 | K5 superseded审计不入base/有效head、迟到tools/finish不生效、消费者透明跳过；核本Task/source内容原件。 | 更复杂多周期真实内容质量未验保限制；新Provider调用未授权，不自动豁免原来源正确性。 |
+| `R37` U20 | 机制可补 | Force触发是Main正式结束内部边界，原native Turn-end与下一wire证据可收口；不另造UI按钮或重跑所有触发入口。 | K5真实lease/SDK/Turn-end、阈值一次admission+FM、重复hook与worker失败终态；现N Orb通用显示代表只补表现。 | 无新真实模型；不能用字符串提示代唯一真实Task/回执。 |
+| `R38` U20 | 机制可补 | 原正式Force不可取消/不可替代/成功压缩才解封已具；若需要UI状态，用R20/R35通用真实state呈现补，不重做完整Force流程。 | K5 Force区间占用、cancel不误伤、abandoned不伪解封/后继成功新区间准入；不可把普通Noting取消当Force样本。 | 设备层不是Force内部资格证据；无需线上cache或生产压缩。 |
+| `R39` U20 Full Foreground | 机制可补 | 一个真实Main消费四极性及原Noting内容样本已保；其余来源选择用正式来源反墙钟/边界原件补，不要求每个组合都发真实模型。 | K5 source路径/两边界/排队重选/原子Snapshot、K04 consumer durableFM/qualification/wire/response语义；旧audit源2486全同只属当时。 | 新真实模型未授权；现source/后继模块按影响分层，不把一次Main正确当所有内容概率保证。 |
+| `R40` U20 | 机制可补 | 已有实际Main忙时排队→合法边界一次FM/第二检查不重复；四检查首次满足/append回滚/恢复用既有正式链补，无需额外UI投递四遍。 | K5四检查共predicate、row/receipt同事务、append失败不算成功、旧owner/重启不多发；与K04真实consumer分层。 | 不用真实外发证明FM内部持久成功；不启动额外模型Turn凑消费。 |
+| `R41` U16／20；07§8.1 | 机制可补 | 原真实Gateway TTL/LRU/pressure sweep、准确parent依赖终态释放与开关跨due已具；不以只有predicate代替该正式链。 | K5 run_agent_cache/Idle freeze/admission/native owner/terminal cleanup原测试及37源匹配；旧callback不伤新owner/不消费due。 | 不必操作线上Gateway cache或调用模型；原独立busy跨进程保留事项不扩大豁免。 |
+| `R42` U04／16／20；08§1 | 本地开关包/机制互补 | 跨Profile实际聊天/Files已具；local Noting off时History/Scheduler仍能读、A任务当前B不借Orb可与R20同一组，避免同Profile再重跑。 | K5 global off/非Main/External原native路径0新增准入、同ref不同DB隔离；K2 scoped invalidation真实owner。 | 真实微信或External服务权限未扩大；受控派发边界不冒真实送达。 |
+| `R43` U20／23 | 原计划增强/持久机制 | 生产真实旧库非破坏打开/新M0已具；“正式旧版生成的合成副本→候选重开→中断/终态/下一请求”仍无完整原件。若补只用外置合成库或已有获准副本，不重建生产。 | K5合法legacy registry/死亡任务/已提交Snapshot/FM回执恢复；旧shape机制与真正旧版生成副本明确分开。 | 不复制生产数据；此副本演练是原计划增强，不能倒增为U23未明定的新发布门禁。 |
+| `R44` U23 | 交付收据已具/演练缺口 | 两套完整三库integrity/FK/清退/回滚准备收据已核；实际恢复演练仍未执行，保partial不伪写。 | K9两个真实发布备份及正式保护脚本/retention，不能由push/包hash代替。 | 未授权生产回滚/复制生产库；不为演练新增真实生产动作或第三套备份，额外演练不倒增发布门禁。 |
+| `R47` U25 S01–02 P08 | 优先机制补读 | C真实缓存loading手滚→首commit7ms到底已具。active/无cache加载手滚先核正式U25四组合/ack证据；若缺实际轨迹，补一个新doc在必要历史未commit前手滚并观首commit即可。 | K2 PageRecovery首document资格/旧ack拒绝、当前Timeline真实layout消费；active恢复沿既有而非重复U25。 | 物理手指/系统冷启仍设备；不要求每一种附属失败再组合手滚。 |
+| `R48` U25 S07–08／16 | 优先机制补读 | Q首503/缓存未ready不消费已具；旧owner未commit切换/初始必要history失败用正式PageRecovery case补，缺可观察链才与R13/R58共一个冷doc代表。 | K2 stale owner ack/失败重试/缓存不授commit；K6 bootstrap不是授ready；不要把已消费后的切owner当新冷资格。 | 认证后真登录分支并R18，不伪造认证成功凑U25。 |
+| `R49` U25 U09 S05–06／10–11 P08 | 本地阅读影响项 | C/D同doc恢复/CAS守中段已有，暖切草稿不等阅读锚点。补一次中段A→B→A的anchor+offset；新增L6/7普通详情revision抢底须修后定向保同一阅读owner/计时。 | K2暖memory owner/原阅读恢复；chat-presentation普通commit与真实reconnect分判，不能只以prefix签名变化冒anchor退休。 | 不改V14已明确删除全部阅读候选时允许回最近末尾的结论；不扩大为永不回底。 |
+| `R50` U26 | 历史事实已具 | 可拖实际原型、截图交付先于APK的原时点保留，不需重做预览/等待第二次确认。 | K7真实Header组件H0–H18+原交付索引；普通Web负对照V4/5独立保留。 | 实机体验属于后续R51–59，不用本行缺实机反向抹掉预览已交事实。 |
+| `R51` U26／U28／U29 P10／P11 | 设备为主 | H顶栏mouse合法、正文/按钮/Composer反例及后续可点可输已具；其它控件/多指逻辑先复用组件/wrapper正式case。 | K7 Header资格/capture/区域/TopNav替换/cleanup；用户d1真机正常起手只关闭原缺陷。 | 物理touch/Files/系统栏、IME与全手势现场未齐；不得浏览器伪造HermesAndroid桥接后称APK。 |
+| `R52` U26／U29 | 本地视觉补片＋设备 | H浅深达线亮边/光晕/cap/几何已具；尚需连续有限轨迹观察“舒缓旋转”，可用同真实组件预览，不要求逐毫秒/任意速度穷举。 | K7原32组件/正式wrapper保资格；240度/1300ms仅实现机制，不能独自替代实际节奏判断。 | 真实手机手感/新视觉未获真机确认；不把d1旧起手反馈当U29视觉完成。 |
+| `R53` U26／U29 | 本地视觉补片＋设备 | H浅深仅松手各一次reload已具。refreshing立即导航没采足等待旋转；若自然等待段可取一段有限rAF/像素轨迹，不能改产品状态强留画面或只引CSS常量。 | K7 painted refreshing frame/一次callback/cleanup；预览host外部导航控制须单列，不冒正式APK时延。 | 真实APK手势释放到新SPA仍设备；一次组件回调不能代R56业务冷收敛。 |
+| `R54` U26／U29 | 本地视觉补片＋设备 | H回拖/未达释放/下次可用已具，深色settled退光已见；补回拖边界的有限连续样本/浅主题对应，真实pointercancel若无能力继续未验。 | K7 pointercancel/lostcapture/多指/禁用清理与armed资格原组件case；逻辑取消不是物理UA触摸证明。 | 不要求所有控件×主题×毫秒笛卡尔积；精确退光时延没采便不声称已测。 |
+| `R55` U26 U04 P10 | 设备为主 | V4/5正式普通Web无pending/无marker真实不启pull已具；K7有真实packaged wrapper正反对照，勿重复普通Web拖动。 | K6/K7 top/packaged/native bridge资格、旧调用默认；包439同源证据只是构建层。 | 当前原签名APK实际安装/手势现场未验，不能用UA或窄窗代。 |
+| `R56` U25／26 D01–05／14／17 S01–02／08／16 P04／09／10 | 冷启包/机制互补 | V17未发送单附件及D4未提交编辑仅draft/两引用、D5–10已受理空稿跨暖冷已具，勿重跑。剩冷active/未决事务等先用K2/K8正式当前case补；只有缺一个实际必要链才与R47/R58合并补。 | K8精确owner/新输入/写失败/unknown/alias退休；K2新doc真读取/无重放，K1旧详情冷复用；不要求全事务×全部网络组合。 | 两既有native引用不是新File Blob冷开字节证明；APK手势前半/自然进程/真登录分别设备或外部限制。 |
+| `R57` U27 P10 | 设备限制 | K6正式shouldInterceptRequest/AssetManager临时错误进入同一内置SPA与Q首pending后半已具，不再直接开ready页面代首次失败。 | K6 Packaged8+Bootstrap5源同/TS35普通Web边界；临时5xx不给假token、非法引导仍拒。 | 真正Android进程首次加载/WebView网络栈现场缺；隐藏IAB不能证明该前半。 |
+| `R58` U27 C0 D01／14／15 S01／08 | 优先机制补读 | Q真实503跨70秒自动取得凭据/数据与Z0首WS确拒一次后同docready已具。慢凭据/首必要History失败先补正式起始失败调用与重试原件，缺链才一组冷页，不重跑503和WS代表。 | K6初始bootstrap/TS35+K2必要资源失败自动退避/ready权限屏障；不手写token/ready。 | 真实凭据登录不可从正常fixture bootstrap推出；物理WebView另R57。 |
+| `R59` U27 P10 S08／17 | 设备为主 | Q首pending约70秒跨旧deadline仍同doc并恢复已具；无无限时间证明要求。缺心跳/重复信号/暂停的内部调用可复用K6正式case。 | K6 ForegroundRefresh无5/35s/watchdog自动reload、旧packet拒绝/重复signal；JS实际后半已有，不重复长等。 | 系统后台冻结/JS暂停/进程自然终止只设备；允许认证真实导航不冒业务恢复reload。 |
+| `R60` U27 S16 C0 P10 | 授权边界/机制互补 | Q13/14真401/403撤敏感及Q15 redirect:error拒302已有；App未读到gate401，不能写已登录。既有拒绝/认证入口语义需按正式流程核，不擅加新403文案需求。 | K6原生正常200/30x导航和401/403拒绝；K2显式auth撤权，fetch普通网络例外保过渡；原流程与暂离线分开。 | 真实登录/权限恢复原document重新核owner未授权；同源隔离gate不是Authelia成功认证。 |
+| `R61` U27默认兼容 P10；U04 | 机制可补＋设备 | 普通Web无hint/首Socket/顶栏负对照V4/5及V19/26撤权已有；默认Web/旧调用/iframe不借APK能力用K6正式对照补。 | K6 TS35包含false hint/普通Web/真实iframe；client.ts 60d7593…及相关types/test现精确同源。 | 不把普通Web首次HTML根本未下载扩成APK内置离线入口；APK前半仍设备。 |
+| `R62` U27／U25 D01–05／09–15／17 P01–05／08–10 | 冷启包/机制互补 | Q3/4已有持久草稿+缓存首503→外部新增→同doc真commit/一次到底/可编辑。附件/已展详情/active等按R03/R05/R56最小公共链补，不逐项乘开所有网络态。 | K1/2历史与详情版本不复活、K8草稿独立事务、K6首pending不授权限；D已关闭草稿缺陷不重开。 | 系统物理冷启/两同名新Blob/真实登录保持限制；仅chip不证字节。 |
+| `R63` U30、06§1.5 | 优先原动态补读 | 原301B无空格边界Z12/Z13终态/全幅/Copy已具；先解析既有N/Z连续样本与native分块，不足才一组受控分块→终态→冷开同源正文，和R64–66共用。 | K7一次GFM parse/源position及CJK sibling新机制；不是CommonMark原允许或用户逐条确认；旧N30失败保。 | 无需新真实模型/外链访问；未完成切片只按当时合法Markdown判，不强求每个chunk已成终态。 |
+| `R64` U30、06§1.5 | 同R63最小复用 | Unicode裸URL/显式目的fragment/code字面+Copy已具；缺该节点冷后DOM/href对应可与R63一次取齐，不再发独立三套。 | K7 source资格/Unicode host例外/显式目的不重写；浏览器百分号编码语义等价要与raw记录对应。 | 未访问外链不是证据缺陷；不需要真的打开Unicode测试域名。 |
+| `R65` U30、06§1.5 | 本地Copy/像素补片 | N32/33已有代码/math字面与消息Copy精确；补实际代码块Copy到获准sink及math完整可见像素，可与R63同冷页一次，不能只比较anchor数。 | K7 Markdown原fenced/KaTeX AST隔离/原消息Copy与SDK既有strip；不把KaTeX多层text当重复正文。 | sink仅替writeText外部出口且实际点产品Copy，不读系统剪贴板/宣称OS落地；若隐藏工具不允许则保未验。 |
+| `R66` U30、06§1.5／§4.5 | 同R63最小复用 | N34–36已有safe协议/虚构路径普通文与同页恢复/精确Copy；冷docDOM和一份有效全幅可并R63–65，不重做危险协议执行。 | K7安全URL过滤/target与rel及本地路径不转Files；保原消息正文与复制内容。 | 无需执行javascript/data/file链接或读任何真实文件；测试使用TEST/虚构路径。 |
+
+**盘点结论与完成条件：** 本次只整理已有证据及必要补证，不新增运行、不改变原58个partial的状态。能以已验证用户代表＋当前适用正式case闭合的子项，不再要求重复有效用户链；缺调用/输入/观察或源适用性就保持证据缺口，不能仅因代码相同升级。真正未齐的本地代表及OBS-READING-CAS-01仍需补判；真实登录/新增模型或微信动作未授权、物理Android/触摸/IME/通知缺设备的部分继续显眼未验，显示保护不允许外部/可见浏览器、桌面或用户页面替代。收齐原要求的各适用证据后仍由root按同轮门禁判断目标，不开第四轮，不把“每行已有代表”写成全部子分支通过。

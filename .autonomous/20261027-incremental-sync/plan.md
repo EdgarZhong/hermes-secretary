@@ -1,5 +1,13 @@
 # 实施计划：20261027-incremental-sync
 
+## 2026-10-30 · OBS-READING-CAS-01普通更新抢阅读owner（5f已修复发布，同第三轮补收）
+
+原R04补验发现：L6已展开旧Thinking405／row408，scroll7979.5；正式SessionDB CAS仅更新reasoning、UID／row／content不变（integration/L-old-detail-cas.json），L7自动delta1与detail408成功到新版全文，却把idle视口推到320585。当前PageRecovery connectionId1、commit reason sessions.changed；CDP关闭事件查询有截断，不以0次闭合作完整证据。原独立QA依据06:356／538确认实现偏离，原L6/L7保留。
+
+root指定：把既有精确anchor／durable alias查找抽成一个小helper，供anchoredTop和普通提交判定复用；非recoveryHandoff提交且原阅读候选仍在实际DOM时，内容／facet revision变化也不重置reading owner、following或20秒计时。只有所有候选确证退役才沿原fallback；真重连active／已证前缀破坏、冷doc首次真实提交一次到底、Send accepted、局部commit和原follow规则不变。现有“invalidated anchor”单测仅改prefix flag但原DOM alias未退役，须改成真实全alias替换的负对照，不以旧测试描述覆盖用户契约。仅chat-presentation与相关真实React hook／DOM几何测试，先红后绿、冻结度量无增长、root亲审、同轮影响审与原CAS实际复验；不加API／状态机／持久视口，不开第四轮。
+
+实施与交付：FE5f974b3，root亲审共用resolver及真退役负对照；基线8红／40绿，最终79绿／类型／health通过，独立机制接收。Y0/Y1正式CAS后旧Thinking新全文且阅读7979.5保持，Y2复开无新增请求；Y3冷document一次到底，Y4完整详情持久复用，Y5/Y6分页600条仍可读，Y7真实IDB联合500身份100–599／同条详情不额外占位。5f已正式verified439／HTTP6及原签名APK交付，原反例保留；按原两报告补判，不新全轮。
+
 ## 2026-10-30 · 草稿归账缺口已修、交付及定向独立关闭（同第三轮）
 
 V31／V32正式Rewind受理后当前草稿清空，V33主动冷启却出现早先`/compact`；root确认仅自有tab19，V32至V33未填字或预置，旧页并发不能解释。独立QA保连续样本及未通过边界。只读源码发现adoptDraftScope选择canonical时未删除legacy路由副本；preferSavedDraft忽略较新空草稿，能把已消费旧副本重新选回。当前IDB和owner映射原件保留，不凭候选因果冒称唯一根因。
