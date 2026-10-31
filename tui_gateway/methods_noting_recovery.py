@@ -60,5 +60,21 @@ def _noting_recovery_state(rid, params):
     return _noting_recovery_rpc(rid, params, start=False)
 
 
+@method("secretary.noting_start")
+@_profile_scoped
+def _noting_start(rid, params):
+    from tui_gateway import server
+    from tui_gateway.noting_debug import debug_noting_rpc
+    return debug_noting_rpc(server, rid, params, start=True)
+
+
+@method("secretary.noting_state")
+@_profile_scoped
+def _noting_state(rid, params):
+    from tui_gateway import server
+    from tui_gateway.noting_debug import debug_noting_rpc
+    return debug_noting_rpc(server, rid, params, start=False)
+
+
 def register(server):
     bind_module(globals(), server)

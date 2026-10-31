@@ -1940,6 +1940,23 @@ export interface NotingRecoverySources {
   tools: string
   notebook: string
 }
+export interface NotingStartParams {
+  profile: string
+  conversation_ref: string
+  request_id: string
+}
+export interface NotingStartResult {
+  operation_id: string
+  profile: string
+  conversation_ref: string
+  stored_session_id: string
+  admission_id: number | null
+  child_session_id: string | null
+  status: 'not_found' | 'queued' | 'running' | 'completed' | 'failed' | 'abandoned' | 'incomplete' | 'interrupted' | 'skipped' | 'cancelled' | 'superseded'
+  reason: string | null
+  committed: boolean
+  snapshot_id: string | null
+}
 export interface SteerPendingParams {
   session_id: string
   profile?: string | null
@@ -5778,6 +5795,8 @@ export interface RpcMethods {
   'secretary.notebook_read': { params: SecretaryReadParams; result: NotebookReadResult }
   'secretary.noting_recover': { params: NotingRecoveryParams; result: NotingRecoveryResult }
   'secretary.noting_recovery_state': { params: NotingRecoveryParams; result: NotingRecoveryResult }
+  'secretary.noting_start': { params: NotingStartParams; result: NotingStartResult }
+  'secretary.noting_state': { params: NotingStartParams; result: NotingStartResult }
   'secretary.schedules': { params: SecretaryReadParams; result: SchedulesReadResult }
   'secretary.state': { params: SecretaryReadParams; result: SecretaryStateResult }
   /** Attach the frontend to a live session without closing the previously focused one. */
@@ -6142,6 +6161,8 @@ export const RPC_METHODS = [
   'secretary.notebook_read',
   'secretary.noting_recover',
   'secretary.noting_recovery_state',
+  'secretary.noting_start',
+  'secretary.noting_state',
   'secretary.schedules',
   'secretary.state',
   'session.activate',

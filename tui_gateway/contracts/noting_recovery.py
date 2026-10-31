@@ -33,3 +33,27 @@ class NotingRecoveryResult(Result):
 
 method("secretary.noting_recover", params=NotingRecoveryParams, result=NotingRecoveryResult)
 method("secretary.noting_recovery_state", params=NotingRecoveryParams, result=NotingRecoveryResult)
+
+
+class NotingStartParams(Params):
+    profile: str = Field(min_length=1)
+    conversation_ref: str = Field(min_length=1)
+    request_id: str = Field(min_length=1, max_length=128)
+
+
+class NotingStartResult(Result):
+    operation_id: str
+    profile: str
+    conversation_ref: str
+    stored_session_id: str
+    admission_id: int | None
+    child_session_id: str | None
+    status: Literal["not_found", "queued", "running", "completed", "failed", "abandoned",
+                    "incomplete", "interrupted", "skipped", "cancelled", "superseded"]
+    reason: str | None
+    committed: bool
+    snapshot_id: str | None
+
+
+method("secretary.noting_start", params=NotingStartParams, result=NotingStartResult)
+method("secretary.noting_state", params=NotingStartParams, result=NotingStartResult)

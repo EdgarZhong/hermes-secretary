@@ -3175,6 +3175,42 @@
       }
     },
     {
+      "name": "secretary.noting_start",
+      "summary": "",
+      "params": [
+        {
+          "name": "params",
+          "schema": {
+            "$ref": "#/components/schemas/NotingStartParams"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/NotingStartResult"
+        }
+      }
+    },
+    {
+      "name": "secretary.noting_state",
+      "summary": "",
+      "params": [
+        {
+          "name": "params",
+          "schema": {
+            "$ref": "#/components/schemas/NotingStartParams"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/NotingStartResult"
+        }
+      }
+    },
+    {
       "name": "secretary.schedules",
       "summary": "",
       "params": [
@@ -21525,6 +21561,134 @@
           "notebook"
         ],
         "title": "NotingRecoverySources",
+        "type": "object"
+      },
+      "NotingStartParams": {
+        "additionalProperties": false,
+        "properties": {
+          "profile": {
+            "minLength": 1,
+            "title": "Profile",
+            "type": "string"
+          },
+          "conversation_ref": {
+            "minLength": 1,
+            "title": "Conversation Ref",
+            "type": "string"
+          },
+          "request_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Request Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "profile",
+          "conversation_ref",
+          "request_id"
+        ],
+        "title": "NotingStartParams",
+        "type": "object"
+      },
+      "NotingStartResult": {
+        "additionalProperties": false,
+        "properties": {
+          "operation_id": {
+            "title": "Operation Id",
+            "type": "string"
+          },
+          "profile": {
+            "title": "Profile",
+            "type": "string"
+          },
+          "conversation_ref": {
+            "title": "Conversation Ref",
+            "type": "string"
+          },
+          "stored_session_id": {
+            "title": "Stored Session Id",
+            "type": "string"
+          },
+          "admission_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Admission Id"
+          },
+          "child_session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Child Session Id"
+          },
+          "status": {
+            "enum": [
+              "not_found",
+              "queued",
+              "running",
+              "completed",
+              "failed",
+              "abandoned",
+              "incomplete",
+              "interrupted",
+              "skipped",
+              "cancelled",
+              "superseded"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "committed": {
+            "title": "Committed",
+            "type": "boolean"
+          },
+          "snapshot_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snapshot Id"
+          }
+        },
+        "required": [
+          "operation_id",
+          "profile",
+          "conversation_ref",
+          "stored_session_id",
+          "admission_id",
+          "child_session_id",
+          "status",
+          "reason",
+          "committed",
+          "snapshot_id"
+        ],
+        "title": "NotingStartResult",
         "type": "object"
       },
       "OkResult": {
