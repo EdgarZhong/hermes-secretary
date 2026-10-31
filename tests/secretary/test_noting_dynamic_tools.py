@@ -63,6 +63,7 @@ def kimi_parent(native_parent, monkeypatch):
 
 def maintain(description="Arrange the visit"):
     return {"entry_type": "matter", "source_message_uids": ["m1"],
+            "source_description": "The user requested a visit plan.",
             "fields": {"description": description, "completion_condition": "Dates agreed"}}
 
 

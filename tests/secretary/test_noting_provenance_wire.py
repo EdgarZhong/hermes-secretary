@@ -68,7 +68,7 @@ def test_sdk_task_uid_sources_survive_create_update_receipts_snapshot_and_framew
     _assert_current(tools)
     uid = next(row["message_uid"] for row in reversed(prefix) if row["role"] == "user")
     timestamp = next(row["timestamp"] for row in db.get_messages(parent.session_id) if row["message_uid"] == uid)
-    provenance = {"source_message_uids": [uid]}
+    provenance = {"source_message_uids": [uid], "source_description": "The user stated the report responsibility or its cancellation."}
     fields = ({"description": "send report", "completion_condition": "Report sent"} if kind == "matter" else
               {"description": "Retain the report commitment", "targets": ["memory"], "notebook_refs": [], "source_types": []})
     changed_fields = {"blocker": "Awaiting review"} if kind == "matter" else {"description": "Report commitment still awaits review"}
@@ -85,6 +85,10 @@ def test_sdk_task_uid_sources_survive_create_update_receipts_snapshot_and_framew
     ]
     outcome = _run(parent)
     assert outcome.committed and len(state["sent"]) == 4, outcome
+    from tests.secretary.test_joint_noting_notes_u20 import compact
+    from secretary.noting_notes import check_note_delivery
+    compact(parent, db, "description-wire-boundary")
+    assert check_note_delivery(parent)
     for wire in state["sent"]:
         assert wire["tools"] == tools
         assert wire["messages"][0] == {"role": "system", "content": root}
@@ -95,7 +99,7 @@ def test_sdk_task_uid_sources_survive_create_update_receipts_snapshot_and_framew
     task = state["sent"][0]["messages"][len(expected_prefix)]["content"]
     assert "Select only the exact Message UIDs needed to support the recorded changes" in task
     assert "Every Candidate uses exactly one source form" in task
-    assert "Later edits overwrite the supplied attribute values and this same array, preserving earlier tasks’ provenance nodes" in task
+    assert "Later edits overwrite the supplied attribute values and this same evidence group, preserving earlier tasks’ provenance nodes" in task
     assert "When the available evidence does not establish an action's progress, leave it unknown; done=false does not mean the work has not started." in task
     rows = db.get_messages_as_conversation(outcome.child_session_id)
     results = {row["tool_call_id"]: json.loads(row["content"]) for row in rows if row["role"] == "tool"}
@@ -104,6 +108,7 @@ def test_sdk_task_uid_sources_survive_create_update_receipts_snapshot_and_framew
         entry = results[name]["entry"]
         assert len(entry["evidence_time"]) == 1
         assert entry["provenance"] == [[uid]]
+        assert entry["provenance_descriptions"] == [provenance["source_description"]]
         assert entry["done"] is (done if name == "update" else False) and "status" not in entry
     assert results["show"]["payload"][section][0]["evidence_time"] == results["update"]["entry"]["evidence_time"]
     entry = db.notebook_current(parent._secretary_conversation_ref)["payload"][section][0]

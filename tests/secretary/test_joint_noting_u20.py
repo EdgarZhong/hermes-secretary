@@ -236,7 +236,8 @@ def test_replacement_freezes_audit_and_new_child_uses_last_complete_snapshot(run
         child = noting_child.active_noting_task(child_id, db=db)
         from secretary.noting_tools import notebook_create
         created = json.loads(notebook_create(child, {"entry_type": "matter", "fields": {
-            "description": "Uncommitted work", "completion_condition": "Review"}, "source_message_uids": ["m1"]}))
+            "description": "Uncommitted work", "completion_condition": "Review"}, "source_message_uids": ["m1"],
+            "source_description": "The user requested a visit plan."}))
         assert created["success"]
         db.append_message(parent.session_id, "user", "New evidence", message_uid="new-source")
         parent._session_messages = db.get_messages_as_conversation(parent.session_id)

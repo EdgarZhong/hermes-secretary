@@ -54,10 +54,10 @@ CANDIDATE_TARGETS = {"memory", "skill", "rule", "conversation"}
 PERSISTENCE_TARGETS = CANDIDATE_TARGETS - {"conversation"}
 ENTRY_KEYS = {
     "entry_id", "version_id", "entry_type", "fields", "done", "relations",
-    "provenance", "provenance_tasks", "write_task_id", "evidence_time", "created_at", "updated_at",
+    "provenance", "provenance_descriptions", "provenance_tasks", "write_task_id", "evidence_time", "created_at", "updated_at",
     "last_processed_at", "archived",
 }
-CHANGE_KEYS = {"fields", "done", "relations", "schedule_suggestion", "source_message_identities", "source_message_uids"}
+CHANGE_KEYS = {"fields", "done", "relations", "schedule_suggestion", "source_message_identities", "source_message_uids", "source_description"}
 SOURCE_NOT_PROVIDED = object()
 
 
@@ -139,6 +139,10 @@ def canonical_notebook_entry(entry):
     if not isinstance(entry, dict):
         return deepcopy(entry)
     result = canonical_range_fields(entry)
+    if "provenance_descriptions" not in result and isinstance(result.get("provenance"), list):
+        # Missing legacy descriptions stay explicitly unknown. Never rewrite or
+        # infer historical wording from UIDs, times or the current entry text.
+        result["provenance_descriptions"] = [None] * len(result["provenance"])
     if "status" in result:
         status = result.pop("status")
         entry_type = result.get("entry_type")
@@ -210,27 +214,28 @@ def canonical_source_fields(values, conversation_ref):
 
 
 def provenance_prefix(left, right):
-    """Count identical licensed nodes, including their immutable derived times."""
+    """Count identical licensed nodes, including descriptions and derived times."""
+    left, right = canonical_notebook_entry(left), canonical_notebook_entry(right)
     count = 0
-    for old, new in zip(zip(left["provenance_tasks"], left["provenance"], left["evidence_time"]),
-                        zip(right["provenance_tasks"], right["provenance"], right["evidence_time"])):
+    keys = ("provenance_tasks", "provenance", "provenance_descriptions", "evidence_time")
+    for old, new in zip(zip(*(left[key] for key in keys)), zip(*(right[key] for key in keys))):
         if old != new:
             break
         count += 1
     return count
 
 
-def validate_provenance_transition(previous, entry, *, mutable_task_id=None):
+def validate_provenance_transition(previous, entry, *, mutable_task_id=None, allow_tail_replacement=True):
     """A task can replace its tail slot; earlier tasks' nodes never change."""
     old_tasks, tasks = previous["provenance_tasks"], entry["provenance_tasks"]
     count = provenance_prefix(previous, entry)
     append = len(tasks) == len(old_tasks) + 1 and count == len(old_tasks)
-    replace = (bool(tasks) and tasks == old_tasks and count >= len(tasks) - 1)
+    replace = (allow_tail_replacement and bool(tasks) and tasks == old_tasks and count >= len(tasks) - 1)
     unchanged = count == len(old_tasks) == len(tasks)
     clear_current = (mutable_task_id is not None and old_tasks == [mutable_task_id]
                      and previous["write_task_id"] == mutable_task_id and not tasks
                      and entry["entry_type"] == "candidate" and bool(entry["fields"]["notebook_refs"])
-                     and not entry["provenance"] and not entry["evidence_time"])
+                     and not entry["provenance"] and not entry["provenance_descriptions"] and not entry["evidence_time"])
     if not (append or replace or unchanged or clear_current):
         raise NotebookValidationError("Earlier Task provenance nodes are immutable.", field="source_message_uids")
 
@@ -324,6 +329,7 @@ def same_source_claim(left, right, *, allow_relation_removal=False):
         return {"entry_id": entry["entry_id"], "entry_type": entry["entry_type"],
                 "fields": fields, "done": entry["done"], "relations": entry["relations"],
                 "provenance": entry["provenance"], "provenance_tasks": entry["provenance_tasks"],
+                "provenance_descriptions": entry["provenance_descriptions"],
                 "evidence_time": entry["evidence_time"]}
     left_claim, right_claim = claim(left), claim(right)
     if allow_relation_removal:

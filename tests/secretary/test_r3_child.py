@@ -62,7 +62,7 @@ def bound_child(db):
 def create_args(db, description="Plan the visit"):
     return {"entry_type": "matter",
             "fields": {"description": description, "completion_condition": "Dates agreed"},
-            "source_message_uids": ["m1"]}
+            "source_message_uids": ["m1"], "source_description": "The user requested a visit plan."}
 
 
 @pytest.fixture(autouse=True)
@@ -114,6 +114,7 @@ def test_handlers_keep_small_results_and_show_own_uncommitted_view(database):
     entry = created["entry"]
     original_version = child._noting_notebook_store.get(entry["entry_id"])["version_id"]
     updated = json.loads(notebook_update(child, {"entry_id": entry["entry_id"], "source_message_uids": ["m1"],
+                                              "source_description": "The user requested a visit plan.",
                                               "fields": {"blocker": "Dates unknown"}}))
     assert updated["entry"]["entry_id"] == entry["entry_id"]
     assert "version_id" not in entry and "version_id" not in updated["entry"]
@@ -202,6 +203,8 @@ def response(text="done", calls=None):
 
 
 def tool_response(name, args, call_id="call-finish"):
+    if name in {"notebook_create", "notebook_update"} and args.get("source_message_uids"):
+        args = {"source_description": "The user requested a visit plan.", **args}
     call = SimpleNamespace(id=call_id, type="function",
                            function=SimpleNamespace(name=name, arguments=json.dumps(args)))
     return response(None, [call])

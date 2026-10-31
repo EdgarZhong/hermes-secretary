@@ -17,6 +17,8 @@ from secretary.noting_child import DEFAULT_NOTING_TASK_INSTRUCTION, run_noting_t
 
 
 def _reply(name=None, arguments=None, call_id=""):
+    if name in {"notebook_create", "notebook_update"} and (arguments or {}).get("source_message_uids"):
+        arguments = {"source_description": "The user discussed quiet museums and the outstanding visit responsibility.", **arguments}
     calls = None if name is None else [SimpleNamespace(
         id=call_id, type="function",
         function=SimpleNamespace(name=name, arguments=json.dumps(arguments)),

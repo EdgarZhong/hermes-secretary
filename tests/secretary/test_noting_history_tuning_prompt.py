@@ -17,8 +17,8 @@ from tests.secretary.test_r3_child import response, tool_response
 
 
 HISTORY_GUIDANCE = (
-    "When context is insufficient, use Get Meta to recognize messages by time and short head-and-tail previews, "
-    "Search to locate matching content, or Read to inspect original details, including a selected tool call’s "
+    "Get Meta recognizes messages by time and short head-and-tail previews, "
+    "Search locates matching content, and Read inspects original details, including a selected tool call’s "
     "arguments and result. All modes default to this Conversation and real user/assistant messages; "
     "cross-Conversation and auxiliary-message access require their respective explicit top-level controls and authorization."
 )
@@ -42,9 +42,9 @@ APPROVED_GUIDANCE = (
     "Keep an entry unchanged when the visible dialogue contains no substantive user mention or progress concerning it. "
     "An Assistant prompt, a due Reminder or no response does not establish a content or state change. "
     "When the user only says “handle it later” / “稍后处理” without explicit postponement, keep description, done and every other ordinary "
-    "attribute unchanged; if a Schedule registration is missing, edit only schedule_suggestion and its supporting source_message_uids.",
-    "Otherwise, update the same entry’s evidence-supported attributes. On every edit, submit the attribute changes and source_message_uids "
-    "for this task’s complete flat UID array together. Later edits overwrite the supplied attribute values and this same array, preserving earlier tasks’ provenance nodes. "
+    "attribute unchanged; if a Schedule registration is missing, edit only schedule_suggestion and its supporting source_message_uids and source_description.",
+    "Otherwise, update the same entry’s evidence-supported attributes. On every edit, submit the attribute changes, source_description and source_message_uids "
+    "for this task’s complete flat UID array together. Later edits overwrite the supplied attribute values and this same evidence group, preserving earlier tasks’ provenance nodes. "
     "Continuing the same task in another Turn does not create another node.",
     "Select only the exact Message UIDs needed to support the recorded changes; do not use time ranges or long consecutive message runs as provenance. "
     "Do not repeat UIDs within the submitted array. Ordinary fields merge by property; supplied ordinary arrays and objects replace their corresponding values. "
@@ -130,7 +130,7 @@ def test_native_noting_initial_and_continuation_keep_guidance_permissions_and_fi
         step2 = task.split("2. Update existing entries.", 1)[1].split("3. Create useful missing entries.", 1)[0]
         assert (
             "When the user only says “handle it later” / “稍后处理” without explicit postponement, keep description, done and every other "
-            "ordinary attribute unchanged; if a Schedule registration is missing, edit only schedule_suggestion and its supporting source_message_uids."
+            "ordinary attribute unchanged; if a Schedule registration is missing, edit only schedule_suggestion and its supporting source_message_uids and source_description."
         ) in step2
         assert "source_time_ranges" not in task
         assert "current interval" not in task and "previous interval" not in task

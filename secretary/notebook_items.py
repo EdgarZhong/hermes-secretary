@@ -118,7 +118,8 @@ def source_basis_conn(conn, conversation_ref, row, entry, *, allow_relation_remo
     require_item_owner(conn, row, conversation_ref)
     previous = item_entry(row, conversation_ref)
     committed = _referenced_in_conversation(conn, conversation_ref, str(row["id"]))
-    validate_provenance_transition(previous, entry, mutable_task_id=None if committed else mutable_task_id)
+    validate_provenance_transition(previous, entry, mutable_task_id=None if committed else mutable_task_id,
+                                   allow_tail_replacement=not committed)
     changed_without_node = (previous["provenance"] == entry["provenance"]
                             and previous["provenance_tasks"] == entry["provenance_tasks"]
                             and not same_source_claim(previous, entry))
@@ -159,7 +160,8 @@ def insert_item_conn(conn, conversation_ref, entry, previous_id=None, *, source_
         require_item_owner(conn, predecessor, conversation_ref)
         old = item_entry(predecessor, conversation_ref)
         committed = _referenced_in_conversation(conn, conversation_ref, str(predecessor["id"]))
-        validate_provenance_transition(old, entry, mutable_task_id=None if committed else mutable_task_id)
+        validate_provenance_transition(old, entry, mutable_task_id=None if committed else mutable_task_id,
+                                       allow_tail_replacement=not committed)
         if predecessor["archived"]:
             raise ValueError("Archived Notebook versions cannot be edited")
         if (entry["entry_id"] != old["entry_id"] or entry["entry_type"] != old["entry_type"]

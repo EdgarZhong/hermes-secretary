@@ -50,6 +50,7 @@ def time_book(database, monkeypatch):
         "description": DESCRIPTION, "completion_condition": "reviewed",
         "last_progress_time": EVIDENCE, "processing_note": "Retain the supported responsibility"},
         "source_message_uids": ["time-source", "time-source-later"],
+        "source_description": "The user supplied original and later supporting evidence.",
         }
     maintained = json.loads(notebook_create(child, args))
     assert maintained["success"], maintained
@@ -126,6 +127,8 @@ def test_real_store_times_are_projected_only_at_product_outputs(time_book, surfa
                 parent = SimpleNamespace(_session_db=db, session_id="parent", _secretary_conversation_ref=ref,
                     _session_messages=db.get_messages_as_conversation("parent"), _session_persist_lock=RLock(),
                     _secretary_main_turn_running=False, platform="cli", side_agent=False, _persist_disabled=False)
+                from tests.secretary.test_joint_noting_notes_u20 import compact
+                compact(parent, db, "projection-next-interval")
                 assert publish_noting_completion(parent, result, termination=FINISH, summary="Checked evidence")
                 row = db.get_messages("parent")[-1]
                 assert row["display_metadata"]["noting_run_output"] is True

@@ -33,8 +33,8 @@ IN_PLACE_GUIDANCE = (
     "rather than archiving and recreating it."
 )
 TASK_SOURCE_GUIDANCE = (
-    "On every edit, submit the attribute changes and source_message_uids for this task’s complete flat UID array together. "
-    "Later edits overwrite the supplied attribute values and this same array, preserving earlier tasks’ provenance nodes. "
+    "On every edit, submit the attribute changes, source_description and source_message_uids for this task’s complete flat UID array together. "
+    "Later edits overwrite the supplied attribute values and this same evidence group, preserving earlier tasks’ provenance nodes. "
     "Continuing the same task in another Turn does not create another node."
 )
 OLD_FACTS = (
@@ -108,11 +108,13 @@ def test_default_task_initial_and_continuation_keep_same_situation_and_sources(r
         [call("notebook_show", {}, "show-existing")],
         [call("notebook_update", {"entry_id": situation["entry_id"],
                "fields": {"description": NEW_DESCRIPTION},
-               "source_message_uids": [new_user["message_uid"]]}, "same-situation")],
+               "source_message_uids": [new_user["message_uid"]],
+               "source_description": "The user confirmed that the same Workshop Alpha room has 40 seats."}, "same-situation")],
         None,  # A text final is not Finish: keep the complete Task for the next Turn.
         [call("notebook_create", {"entry_type": "situation", "fields": {
             "description": "Workshop Beta will take place in Room Maple.", "subjects": ["Workshop Beta"]},
-            "source_message_uids": [new_user["message_uid"]]}, "different-event")],
+            "source_message_uids": [new_user["message_uid"]],
+            "source_description": "The user said Workshop Beta will be in Room Maple."}, "different-event")],
         [call("notebook_archive", {"entry_id": obsolete["entry_id"],
                "reason": "The temporary issue is obsolete and has no remaining value."}, "obsolete")],
         [call("finish_noting", {"reason": "Corrected Alpha in place, indexed Beta and removed the obsolete issue."}, "finish")],

@@ -295,7 +295,8 @@ def _read_then_mutate_responses():
     return [_tool_response("notebook_show", {}, "read"),
             _tool_response("notebook_create", {"entry_type": "matter",
                                                "fields": {"description": "send report", "completion_condition": "Report sent"},
-                                               "source_message_uids": ["m1", "m2"]}, "write"),
+                                               "source_message_uids": ["m1", "m2"],
+                                               "source_description": "The user discussed planning and the assistant noted undecided dates."}, "write"),
             mock_response("Maintained.")]
 
 
@@ -459,7 +460,7 @@ def test_text_only_completion_runs_five_turns_then_forces_snapshot(parent, db, s
 def test_semantic_control_is_noting_only_and_rejects_forgery(parent, db, stub_client):
     from secretary.noting_tools import initialize_notebook_work
     args = {"entry_type": "matter", "fields": {"description": "report", "completion_condition": "Delivered"},
-            "source_message_uids": ["m1"]}
+            "source_message_uids": ["m1"], "source_description": "The user requested a visit plan."}
     assert not json.loads(parent._invoke_tool("notebook_create", args, "main")).get("success")
     child = build_noting_child(parent, runtime_profile="NOTING", parent_conversation_ref=parent._secretary_conversation_ref)
     try:
@@ -469,7 +470,8 @@ def test_semantic_control_is_noting_only_and_rejects_forgery(parent, db, stub_cl
         made = json.loads(child._invoke_tool("notebook_create", args, "child"))
         assert made["success"]
         uid = made["entry"]["entry_id"]
-        updated = json.loads(child._invoke_tool("notebook_update", {"entry_id": uid, "fields": {"description": "updated report"}, "source_message_uids": ["m1"]}, "update"))
+        updated = json.loads(child._invoke_tool("notebook_update", {"entry_id": uid, "fields": {"description": "updated report"},
+            "source_message_uids": ["m1"], "source_description": "The user requested a visit plan."}, "update"))
         assert updated["success"] and updated["entry"]["entry_id"] == uid
         state = child._noting_notebook_store.show()
         for invalid in [dict(args, payload_json=empty_state()), dict(args, fields={"description": "x", "next_due_at": 123}),

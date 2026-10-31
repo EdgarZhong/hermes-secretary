@@ -154,7 +154,7 @@ def _render_entry(entry):
     for name, value in entry["fields"].items():
         rendered = value if isinstance(value, str) else json.dumps(value, ensure_ascii=False)
         lines.append(f"  {name}: {rendered}")
-    for name in ("relations", "provenance", "evidence_time", "schedule_suggestion", "candidate_refs",
+    for name in ("relations", "provenance", "provenance_descriptions", "evidence_time", "schedule_suggestion", "candidate_refs",
                  "created_at", "updated_at", "last_processed_at"):
         lines.append(f"  {name}: {json.dumps(entry.get(name), ensure_ascii=False)}")
     return lines

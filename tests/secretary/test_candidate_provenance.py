@@ -117,6 +117,8 @@ def maintain(child, **args):
         args["source_message_uids"] = [source["message_uid"] for source in args.pop("source_message_identities")]
     if action == "update":
         args = {"entry_id": args["entry_id"], **args["changes"]}
+    if args.get("source_message_uids"):
+        args.setdefault("source_description", "The assistant described the lesson.")
     return json.loads({"create": notebook_create, "update": notebook_update, "archive": notebook_archive}[action](child, args))
 
 

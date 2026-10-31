@@ -32,12 +32,13 @@ class NotebookWorkingState:
     def __init__(self, conversation_ref, payload=None, *, validate_source_identity=None,
                  validate_source_range=None, validate_inherited_sources=None,
                  insert_version=None, insert_versions=None, lock=None, clock=None, task_id=None,
-                 derive_evidence_time=None):
+                 derive_evidence_time=None, require_source_description=False):
         require_text(conversation_ref, "conversation_ref")
         self.conversation_ref = conversation_ref
         self.task_id = task_id if task_id is not None else uuid4().hex
         require_text(self.task_id, "task_id")
         self._derive_evidence_time = derive_evidence_time
+        self._require_source_description = require_source_description
         self.lock = lock if lock is not None else RLock()
         self._clock = clock if clock is not None else _utc_now
         self._validate_source_identity = validate_source_identity
@@ -63,10 +64,15 @@ class NotebookWorkingState:
         return value.isoformat()
 
     def _validate_sources(self, entry, *, fresh=False):
-        groups, owners, times = (entry[key] for key in ("provenance", "provenance_tasks", "evidence_time"))
-        if not all(isinstance(value, list) for value in (groups, owners, times)) or not len(groups) == len(owners) == len(times):
-            raise NotebookValidationError("Provenance and derived time nodes must align.", field="provenance")
+        groups, owners, times, descriptions = (entry[key] for key in (
+            "provenance", "provenance_tasks", "evidence_time", "provenance_descriptions"))
+        if (not all(isinstance(value, list) for value in (groups, owners, times, descriptions))
+                or not len(groups) == len(owners) == len(times) == len(descriptions)):
+            raise NotebookValidationError("Provenance, descriptions and derived time nodes must align.", field="provenance")
         unique_strings(owners, "provenance_tasks")
+        for description in descriptions:
+            if description is not None:
+                require_text(description, "source_description")
         for group, interval in zip(groups, times):
             unique_strings(group, "source_message_uids")
             if not group:
@@ -87,30 +93,43 @@ class NotebookWorkingState:
                     "The requested source is not available on the authorized current path.", code="source_unavailable",
                     field="source_message_uids", next_action="Locate specific evidence on the allowed path.")
 
-    def _apply_sources(self, entry, sources):
+    def _apply_sources(self, entry, sources, description=SOURCE_NOT_PROVIDED, *, require_description=False):
         refs = entry["fields"].get("notebook_refs", []) if entry["entry_type"] == "candidate" else []
         if refs:
             if sources not in (SOURCE_NOT_PROVIDED, []):
                 raise NotebookValidationError("Referenced Candidates cannot mix direct Message UIDs.", field="source_message_uids")
+            if description is not SOURCE_NOT_PROVIDED:
+                raise NotebookValidationError(
+                    "Referenced Candidates read evidence descriptions from their source entries.", field="source_description")
             if entry["provenance"]:
                 if sources != [] or entry["provenance_tasks"] != [self.task_id]:
                     raise NotebookValidationError(
                         "Only this Task's sole uncommitted direct-source node can be cleared.", field="source_message_uids",
                         next_action="Preserve earlier Task nodes; only a new current Task slot can switch to Notebook refs.")
-                for key in ("provenance", "provenance_tasks", "evidence_time"):
+                for key in ("provenance", "provenance_descriptions", "provenance_tasks", "evidence_time"):
                     entry[key] = []
             return
         if sources is SOURCE_NOT_PROVIDED or not sources:
             raise NotebookValidationError(
                 "Every edit requires this Task's complete supporting Message UID array.", field="source_message_uids",
                 next_action="Submit the attribute changes and complete source_message_uids together.")
+        if description is SOURCE_NOT_PROVIDED:
+            if require_description:
+                raise NotebookValidationError(
+                    "Every new or revised evidence group requires a description.", field="source_description",
+                    next_action="Submit one sentence about only this group's messages with its complete source_message_uids.")
+            description = None  # Compatibility for trusted pre-description Python callers only.
+        else:
+            require_text(description, "source_description")
         interval = self._derive_evidence_time(sources) if self._derive_evidence_time is not None else None
         if entry["provenance_tasks"] and entry["provenance_tasks"][-1] == self.task_id:
             entry["provenance"][-1], entry["evidence_time"][-1] = deepcopy(sources), interval
+            entry["provenance_descriptions"][-1] = description
         else:
             entry["provenance"].append(deepcopy(sources))
             entry["provenance_tasks"].append(self.task_id)
             entry["evidence_time"].append(interval)
+            entry["provenance_descriptions"].append(description)
 
     def _validate_entry(self, entry, *, fresh=False, source_entry=None):
         if (not isinstance(entry, dict) or set(entry) - {"schedule_suggestion"} != ENTRY_KEYS):
@@ -213,7 +232,8 @@ class NotebookWorkingState:
     def create(self, entry_type, fields, *, done=False, relations=None,
                source_message_identities=SOURCE_NOT_PROVIDED, source_time_range=SOURCE_NOT_PROVIDED,
                source_message_uids=SOURCE_NOT_PROVIDED, schedule_suggestion=None,
-               source_time_ranges=SOURCE_NOT_PROVIDED, status=SOURCE_NOT_PROVIDED):
+               source_time_ranges=SOURCE_NOT_PROVIDED, status=SOURCE_NOT_PROVIDED,
+               source_description=SOURCE_NOT_PROVIDED):
         with self.lock:
             self._require_writable()
             reject_legacy_status({} if status is SOURCE_NOT_PROVIDED else {"status": status})
@@ -231,9 +251,11 @@ class NotebookWorkingState:
             sources = canonical_source_fields(sources, self.conversation_ref)
             entry = {"entry_id": "__new__", "version_id": "__new__", "entry_type": entry_type,
                      "fields": fields, "done": done, "relations": deepcopy(relations) if relations is not None else [],
-                     "provenance": [], "provenance_tasks": [], "write_task_id": self.task_id, "evidence_time": [], "archived": False,
+                     "provenance": [], "provenance_descriptions": [], "provenance_tasks": [],
+                     "write_task_id": self.task_id, "evidence_time": [], "archived": False,
                      "created_at": None, "updated_at": None, "last_processed_at": None}
-            self._apply_sources(entry, sources.get("source_message_uids", SOURCE_NOT_PROVIDED))
+            self._apply_sources(entry, sources.get("source_message_uids", SOURCE_NOT_PROVIDED), source_description,
+                                require_description=self._require_source_description)
             if schedule_suggestion is not None:
                 entry["schedule_suggestion"] = deepcopy(schedule_suggestion)
             draft = self.snapshot_state()
@@ -263,7 +285,7 @@ class NotebookWorkingState:
             if not isinstance(field_changes, dict):
                 raise NotebookValidationError("Expected a fields patch object.", field="fields")
             for key, value in changes.items():
-                if key == "source_message_uids":
+                if key in {"source_message_uids", "source_description"}:
                     continue
                 if key == "schedule_suggestion" and value is None:
                     entry.pop(key, None)
@@ -287,12 +309,14 @@ class NotebookWorkingState:
             sources = changes.get("source_message_uids", SOURCE_NOT_PROVIDED)
             if not changes.keys() & {"fields", "done", "relations", "schedule_suggestion"}:
                 raise NotebookValidationError("Supply attribute changes together with Message UIDs.", field="entry_id")
-            if entry == old and sources is SOURCE_NOT_PROVIDED:
+            description = changes.get("source_description", SOURCE_NOT_PROVIDED)
+            if entry == old and sources is SOURCE_NOT_PROVIDED and description is SOURCE_NOT_PROVIDED:
                 return {"success": True, "changed": False, "entry": self.get(entry_id)}
             # Validate submitted sources even for an attribute no-op; do not create
             # a source-only version when there is no actual Notebook edit.
             checked = deepcopy(entry)
-            self._apply_sources(checked, sources)
+            self._apply_sources(checked, sources, description,
+                                require_description=self._require_source_description and entry != old)
             draft = self.snapshot_state()
             draft[section][index] = checked
             self._validate_state(draft)
@@ -365,7 +389,7 @@ class NotebookWorkingState:
         action = args["action"]
         required = {"create": {"entry_type", "fields"}, "update": {"entry_id", "changes"},
                     "archive": {"entry_id", "reason"}}
-        optional = {"create": {"done", "relations", "schedule_suggestion", "source_message_identities", "source_message_uids"},
+        optional = {"create": {"done", "relations", "schedule_suggestion", "source_message_identities", "source_message_uids", "source_description"},
                     "update": set(), "archive": set()}
         if action not in required:
             raise NotebookValidationError("Expected create, update or archive.", field="action")

@@ -217,13 +217,9 @@ def test_branch_gets_an_independent_notebook(db):
     assert branch_state["created_at"] == db.notebook_current(parent_ref)["created_at"]
     assert branch_state["payload"]["candidates"][0]["entry_id"] == entry["entry_id"]
     assert branch_state["payload"]["candidates"][0]["fields"] == entry["fields"]
-    assert branch_state["payload"]["candidates"][0]["source_message_identities"] == [
-        {"conversation_ref": branch_ref, "message_uid": "early"}]
-    rebound = deepcopy(branch_state["payload"])
-    for inherited_entry in rebound["candidates"]:
-        for source in inherited_entry["source_message_identities"]:
-            source["conversation_ref"] = parent_ref
-    assert rebound == db.notebook_current(parent_ref)["payload"]
+    assert branch_state["payload"]["candidates"][0]["provenance"] == [["early"]]
+    assert branch_state["payload"]["candidates"][0]["provenance_descriptions"] == [None]
+    assert branch_state["payload"] == db.notebook_current(parent_ref)["payload"]
     with pytest.raises(NotebookError, match="once"):
         db.notebook_inherit_branch(parent_ref, branch_ref)
 

@@ -58,20 +58,22 @@ def test_selector_only_receives_child_suffix_across_requests_and_turns(configure
     monkeypatch.setattr(noting_child, "build_noting_child", capture)
     client.chat.completions.create.side_effect = [
         tool_response("notebook_show", {}, "show"), response("Continue next Turn."),
-        tool_response("finish_noting", {"reason": "Reviewed the unchanged work."}), response("Done."),
+        tool_response("finish_noting", {"reason": "Reviewed the unchanged work."}),
     ]
     before = deepcopy(parent._session_messages)
     outcome = run_task(parent)
     assert outcome.committed and outcome.turns == 2, outcome
     wires = [call.kwargs for call in client.chat.completions.create.call_args_list]
-    assert len(wires) == 4
+    # Successful standalone finish ends the native Turn without a further
+    # model request; the retained Task/control still spans both Turns.
+    assert len(wires) == 3
     prefix = wires[0]["messages"][:3]
     assert "Plan a visit" in str(prefix) and "Dates are undecided" in str(prefix)
     assert all(wire["messages"][:3] == prefix for wire in wires)
     assert all(wire["tools"] == wires[0]["tools"] for wire in wires)
     assert all("Selected request context." in str(wire["messages"][3:]) for wire in wires)
     selections = children[0].context_compressor.selections
-    assert len(selections) == 4
+    assert len(selections) == len(wires)
     assert all("Plan a visit" not in str(parts) and "Dates are undecided" not in str(parts)
                for parts in selections)
     assert parent._session_messages[:len(before)] == before

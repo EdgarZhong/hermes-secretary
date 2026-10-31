@@ -15,6 +15,8 @@ def runtime(tmp_path, monkeypatch):
 
 
 def call(name, args=None, ident="c1"):
+    if name in {"notebook_create", "notebook_update"} and (args or {}).get("source_message_uids"):
+        args = {"source_description": "The user discussed the report responsibility.", **args}
     return SimpleNamespace(id=ident, type="function", function=SimpleNamespace(name=name, arguments=json.dumps(args or {})))
 
 

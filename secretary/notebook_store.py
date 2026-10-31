@@ -58,7 +58,7 @@ class NotebookStore:
 
     def __init__(self, db, conversation_ref, *, anchor_message_uid, trigger_type="idle",
                  runtime_profile="NOTING", lock=None, clock=None, base_snapshot_id=_UNBOUND_BASE,
-                 working_state=None, task_id=None):
+                 working_state=None, task_id=None, require_source_description=False):
         if db is None:
             raise NotebookValidationError("An owning SessionDB is required.")
         require_text(conversation_ref, "conversation_ref")
@@ -99,6 +99,7 @@ class NotebookStore:
             from secretary.notebook_items import canonical_notebook_payload
             self._state = NotebookWorkingState(
                 conversation_ref, canonical_notebook_payload(payload), lock=self.lock, clock=clock, task_id=task_id,
+                require_source_description=require_source_description,
                 derive_evidence_time=lambda uids: self._derive_time(uids),
                 validate_source_identity=valid_identity,
                 validate_inherited_sources=lambda entry: _inherited_sources_conn(
@@ -186,11 +187,12 @@ class NotebookStore:
     def create(self, entry_type, fields, *, done=False, relations=None,
                source_message_identities=SOURCE_NOT_PROVIDED, source_time_range=SOURCE_NOT_PROVIDED,
                source_message_uids=SOURCE_NOT_PROVIDED, schedule_suggestion=None,
-               source_time_ranges=SOURCE_NOT_PROVIDED, status=SOURCE_NOT_PROVIDED):
+               source_time_ranges=SOURCE_NOT_PROVIDED, status=SOURCE_NOT_PROVIDED,
+               source_description=SOURCE_NOT_PROVIDED):
         return self._state.create(entry_type, fields, done=done, status=status, relations=relations,
                                   source_message_identities=source_message_identities, source_time_range=source_time_range,
                                   source_message_uids=source_message_uids, schedule_suggestion=schedule_suggestion,
-                                  source_time_ranges=source_time_ranges)
+                                  source_time_ranges=source_time_ranges, source_description=source_description)
 
     def update(self, entry_id, changes):
         return self._state.update(entry_id, changes)

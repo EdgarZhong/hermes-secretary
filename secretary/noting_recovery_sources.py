@@ -53,8 +53,10 @@ def _control_data(messages):
 
 def _receipt_body(entry):
     """Only immutable item content identifies a receipt; reverse refs are derived."""
+    from secretary.notebook_contract import canonical_notebook_entry
     from secretary.notebook_render import model_notebook_data
-    return {key: value for key, value in model_notebook_data(entry).items() if key != "candidate_refs"}
+    return {key: value for key, value in model_notebook_data(canonical_notebook_entry(entry)).items()
+            if key != "candidate_refs"}
 
 
 def _restore_entry(db, conn, ref, entry, task_id, state):
@@ -201,7 +203,8 @@ def _base_snapshot(db, conn, ref, admitted_at, data):
                 and (snapshot.get("termination") or {}).get("type") != "superseded"):
             return explicit
     from secretary.notebook_render import model_notebook_data, readable_notebook_state
-    initial = data["working_notebook"]
+    from secretary.notebook_items import canonical_notebook_payload
+    initial = canonical_notebook_payload(data["working_notebook"])
     matched = {}
     for row in conn.execute("SELECT snapshot_id,payload_json FROM secretary_notebook_snapshots "
                             "WHERE conversation_ref=? AND created_at<=? ORDER BY created_at DESC,rowid DESC", (ref, admitted_at)):

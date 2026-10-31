@@ -223,7 +223,8 @@ def test_typed_tool_views_hide_owner_and_reject_old_sources(owner, monkeypatch):
                             _secretary_noting_anchor_uid="u1", _secretary_noting_profile="NOTING",
                             _secretary_noting_child=True, _secretary_noting_terminal_action_done=False)
     initialize_notebook_work(child, trigger_type="manual", task_id="formal-admission")
-    result = json.loads(notebook_create(child, {"entry_type": "matter", "fields": BODY, "source_message_uids": ["u1"]}))
+    result = json.loads(notebook_create(child, {"entry_type": "matter", "fields": BODY,
+        "source_message_uids": ["u1"], "source_description": "The user discussed the visit."}))
     entry = result["entry"]
     assert entry["provenance"] == [["u1"]] and "version_id" not in entry and "provenance_tasks" not in entry
     before, versions = child._noting_notebook_store.snapshot_state(), facts(db)

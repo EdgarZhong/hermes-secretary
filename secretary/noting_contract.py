@@ -276,6 +276,15 @@ NOTEBOOK_CREATE_SCHEMA = {'name': 'notebook_create',
                                                        'additionalProperties': False},
                                              'description': 'Only real current relationships; send the '
                                                             'complete replacement array.'},
+                               'source_description': {'type': 'string',
+                                                      'minLength': 1,
+                                                      'description': "Required for each new or revised direct evidence group. "
+                                                                     "One sentence about only this group's messages, complementing "
+                                                                     "the entry description with a historical evidence overview for Main. "
+                                                                     "Submit with the complete source_message_uids; both replace this "
+                                                                     "Task's slot together. Omit for notebook_refs Candidates; read their "
+                                                                     "source entries. For direct sources, returned provenance_descriptions aligns by index "
+                                                                     "with provenance and evidence_time; null marks missing legacy text."},
                                'source_message_uids': {'type': 'array',
                                                        'items': {'type': 'string'},
                                                        'description': 'Exact supporting Message '
@@ -619,6 +628,15 @@ NOTEBOOK_UPDATE_SCHEMA = {'name': 'notebook_update',
                                                        'additionalProperties': False},
                                              'description': 'Only real current relationships; send the '
                                                             'complete replacement array.'},
+                               'source_description': {'type': 'string',
+                                                      'minLength': 1,
+                                                      'description': "Required for each new or revised direct evidence group. "
+                                                                     "One sentence about only this group's messages, complementing "
+                                                                     "the entry description with a historical evidence overview for Main. "
+                                                                     "Submit with the complete source_message_uids; both replace this "
+                                                                     "Task's slot together. Omit for notebook_refs Candidates; read their "
+                                                                     "source entries. For direct sources, returned provenance_descriptions aligns by index "
+                                                                     "with provenance and evidence_time; null marks missing legacy text."},
                                'source_message_uids': {'type': 'array',
                                                        'items': {'type': 'string'},
                                                        'description': 'Exact supporting Message '

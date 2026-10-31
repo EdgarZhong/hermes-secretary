@@ -22,6 +22,8 @@ DENIED_CHILD = ["terminal", "scheduler", "tool_search", "tool_call", "delegate_t
 
 
 def call(name, args=None, uid="call"):
+    if name in {"notebook_create", "notebook_update"} and (args or {}).get("source_message_uids"):
+        args = {"source_description": "The user stated the report responsibility.", **args}
     return {"id": uid, "type": "function", "function": {"name": name, "arguments": json.dumps(args or {})}}
 
 
@@ -445,7 +447,7 @@ def _create_notebook_args(parent):
     user_uid = next(row["message_uid"] for row in parent._session_messages if row["role"] == "user")
     return {"entry_type": "matter", "fields": {
         "description": "Send the report after review", "completion_condition": "Report accepted"},
-        "source_message_uids": [user_uid]}
+        "source_message_uids": [user_uid], "source_description": "The user stated the report responsibility."}
 
 
 @pytest.mark.parametrize("path", ["invoke", "loop"])
@@ -510,12 +512,14 @@ def test_omitted_defaults_empty_relations_and_approved_null_clears_remain_legal(
         changed = json.loads(child._invoke_tool("notebook_update", {"entry_id": entry_id,
             "fields": {"blocker": "Awaiting review"}, "relations": [],
             "source_message_uids": args["source_message_uids"],
+            "source_description": "The user stated the report responsibility.",
             "schedule_suggestion": {"content": "Review the report once feedback arrives.",
                                     "schedule": "after reviewer feedback"}}, "populate"))
         assert changed["success"]
         cleared = json.loads(child._invoke_tool("notebook_update", {"entry_id": entry_id,
             "fields": {"blocker": None}, "relations": [],
-            "source_message_uids": args["source_message_uids"], "schedule_suggestion": None}, "clear"))
+            "source_message_uids": args["source_message_uids"], "schedule_suggestion": None,
+            "source_description": "The user stated the report responsibility."}, "clear"))
         assert cleared["success"] and cleared["changed"]
         entry = cleared["entry"]
         assert "blocker" not in entry["fields"]

@@ -59,6 +59,7 @@ def maintain(child, conversation_ref, *, message_uid=None, instant=None):
     arguments = {"entry_type": "situation", "fields": fields}
     if message_uid is not None:
         arguments["source_message_uids"] = [message_uid]
+        arguments["source_description"] = "The assistant made an assertion about the visit."
     else:
         arguments["source_time_range"] = {"start_time": instant, "end_time": instant}
     return json.loads(notebook_create(child, arguments))

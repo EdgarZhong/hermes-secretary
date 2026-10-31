@@ -33,7 +33,7 @@ def child(tmp_path, monkeypatch):
 def create(child, description="Visit", **options):
     return json.loads(notebook_create(child, {
         "entry_type": "matter", "fields": {"description": description, "completion_condition": "Visit complete"},
-        "source_message_uids": ["evidence"], **options,
+        "source_message_uids": ["evidence"], "source_description": "The user raised a visit and a related follow-up.", **options,
     }))["entry"]
 
 
@@ -43,6 +43,7 @@ def test_create_update_archive_outputs_keep_stable_ids_and_internal_versions(chi
     original = store.get(target["entry_id"])
     assert "version_id" not in target and original["version_id"]
     updated = json.loads(notebook_update(child, {"source_message_uids": ["evidence"],
+        "source_description": "The user raised a visit and a related follow-up.",
         "entry_id": target["entry_id"], "fields": {"description": "Visit completed"}, "done": True,
     }))["entry"]
     current = store.get(target["entry_id"])

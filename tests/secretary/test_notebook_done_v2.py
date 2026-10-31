@@ -73,6 +73,7 @@ def book(owner, **kwargs):
 
 
 def create(store, kind="action", **kwargs):
+    kwargs.setdefault("source_description", "The user discussed the visit and its remaining responsibility.")
     fields = deepcopy(kwargs.pop("fields", FIELDS[kind]))
     if kind == "implicit_gap":
         fields["situation_ref"] = create(store, "situation")["entry_id"]
@@ -374,10 +375,12 @@ def test_receipts_show_task_and_framework_share_done_and_original_progress(owner
     child = bind_child(owner)
     store = child._noting_notebook_store
     result = json.loads(notebook_create(child, {"entry_type": "action", "fields": FIELDS["action"],
-                                               "source_message_uids": ["u1"]}))
+                                               "source_message_uids": ["u1"],
+                                               "source_description": "The user discussed the visit."}))
     assert result["success"] and result["entry"]["done"] is False, result
     entry = result["entry"]
-    updated = json.loads(notebook_update(child, {"source_message_uids": ["u1"], "entry_id": entry["entry_id"], "done": True}))
+    updated = json.loads(notebook_update(child, {"source_message_uids": ["u1"], "entry_id": entry["entry_id"], "done": True,
+                                               "source_description": "The user discussed the visit."}))
     assert updated["success"] and updated["entry"]["done"] is True, updated
     shown = json.loads(notebook_work_show(child, {}))["payload"]["work"][0]
     assert shown == updated["entry"]
