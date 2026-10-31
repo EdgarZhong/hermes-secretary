@@ -571,20 +571,20 @@ class TestRegression_ToolsetScoping:
 
 
 # ---------------------------------------------------------------------------
-# Catalog listing (skills-style progressive disclosure)
+# Stable discovery entry points and live catalog retrieval
 # ---------------------------------------------------------------------------
 
 
-class TestCatalogListing:
+class TestStableDiscovery:
 
 
-    def test_default_listing_cap_bounds_fixed_catalog_overhead(self):
-        """The default manifest must not grow back to the old 20K-token cap."""
+    def test_catalog_growth_does_not_change_any_bridge_schema(self):
+        """A larger catalog changes discovery results, never the fixed tool prefix."""
         from tools.registry import registry
         from tools.tool_search import (
             ToolSearchConfig,
             assemble_tool_defs,
-            estimate_tokens_from_schemas,
+            bridge_tool_schemas,
         )
 
         defs = []
@@ -600,15 +600,12 @@ class TestCatalogListing:
 
         cfg = ToolSearchConfig.from_raw(None)
         result = assemble_tool_defs(defs, context_length=1_000_000, config=cfg)
-        search = next(
-            td for td in result.tool_defs
-            if td["function"]["name"] == "tool_search"
-        )
-        description_tokens = estimate_tokens_from_schemas([search])
-        # Includes the bridge schema around the listing, so allow modest
-        # framing overhead above the 4K listing budget.
-        assert description_tokens < 4500
-        assert result.listing_form in {"names", "groups", "mixed"}
+        small = assemble_tool_defs(defs[:1], context_length=1000, config=cfg)
+        assert result.tool_defs == small.tool_defs == bridge_tool_schemas(0)
+        assert result.deferred_count == 500
+        assert small.deferred_count == 1
+        assert result.listing_form == small.listing_form == "none"
+        assert result.tier == small.tier == 2
 
 
 
@@ -627,18 +624,111 @@ class TestCatalogListing:
         )
 
 
-    def test_assembly_listing_off_keeps_legacy_description(self):
-        from tools.tool_search import assemble_tool_defs, ToolSearchConfig
-        for i in range(30):
-            self._register(f"mcp_x_{i}")
-        defs = [_td(f"mcp_x_{i}", "Deferred.") for i in range(30)]
+    @pytest.mark.parametrize("listing", ["auto", "on", "off"])
+    @pytest.mark.parametrize("context_length,threshold_pct,listing_max_tokens", [
+        (1, 0, 200), (1000, 5, 4000), (1_000_000, 100, 60000),
+    ])
+    def test_legacy_listing_settings_do_not_change_bridge(
+        self, listing, context_length, threshold_pct, listing_max_tokens,
+    ):
+        from tools.tool_search import assemble_tool_defs, bridge_tool_schemas, ToolSearchConfig
+
+        self._register("mcp_stable_catalog_action")
         result = assemble_tool_defs(
-            defs, context_length=1000,
-            config=ToolSearchConfig.from_raw({"enabled": "on", "listing": "off"}),
+            [_td("mcp_stable_catalog_action", "A changing capability description.")],
+            context_length=context_length,
+            config=ToolSearchConfig.from_raw({
+                "enabled": "on", "listing": listing, "threshold_pct": threshold_pct,
+                "listing_max_tokens": listing_max_tokens,
+            }),
         )
         assert result.activated
-        search = next(t for t in result.tool_defs if t["function"]["name"] == "tool_search")
-        assert "mcp_x_0" not in search["function"]["description"]
+        assert result.tool_defs == bridge_tool_schemas(0)
+        assert result.listing_form == "none"
+
+    @pytest.mark.parametrize("listing_form", ["", "full", "names", "mixed", "groups"])
+    @pytest.mark.parametrize("connections_granted", [False, True])
+    def test_legacy_bridge_arguments_do_not_change_serialized_schemas(
+        self, listing_form, connections_granted,
+    ):
+        from tools.tool_search import bridge_tool_schemas
+
+        baseline = json.dumps(bridge_tool_schemas(0), ensure_ascii=False)
+        actual = bridge_tool_schemas(
+            987, listing="dynamic_server__temporary_action: Changed description",
+            listing_form=listing_form, connections_granted=connections_granted,
+        )
+        assert json.dumps(actual, ensure_ascii=False) == baseline
+
+    def test_connection_only_scope_uses_the_same_bridge(self):
+        from tools.tool_search import assemble_tool_defs, bridge_tool_schemas, ToolSearchConfig
+
+        direct = _td("manage_connections", "Manage account connections")
+        result = assemble_tool_defs([direct], config=ToolSearchConfig.from_raw({}))
+        assert result.activated
+        assert result.tool_defs == [direct] + bridge_tool_schemas(1)
+        assert result.deferred_count == 0
+        assert result.listing_form == "none"
+
+    def test_live_registry_changes_refresh_search_and_describe_without_changing_bridge(self):
+        import model_tools
+        from tools.registry import registry
+        from tools.tool_search import assemble_tool_defs, ToolSearchConfig
+
+        toolset = "mcp-stable-discovery-live"
+        old_name = "stable_discovery_retired"
+        current_name = "stable_discovery_current"
+
+        def register(name, description, properties):
+            registry.register(
+                name=name, toolset=toolset, handler=lambda args, **kw: "{}",
+                schema=_td(name, description, properties)["function"],
+            )
+
+        def current_defs():
+            return model_tools.get_tool_definitions(
+                enabled_toolsets=[toolset], quiet_mode=True, skip_tool_search_assembly=True,
+            )
+
+        def dispatch(name, args):
+            return json.loads(model_tools.handle_function_call(
+                function_name=name, function_args=args, enabled_toolsets=[toolset],
+            ))
+
+        config = ToolSearchConfig.from_raw({})
+        register(old_name, "Read retired vocabulary", {"old_field": {"type": "string"}})
+        try:
+            before = assemble_tool_defs(current_defs(), config=config)
+            old_search = dispatch("tool_search", {"queries": [old_name]})
+            assert old_search["results"][0]["matches"] == [old_name]
+            old_schema = dispatch("tool_describe", {"names": [old_name]})
+            assert "old_field" in old_schema["tools"][old_name]["parameters"]["properties"]
+
+            registry.deregister(old_name)
+            register(current_name, "Read current vocabulary", {"version": {"type": "integer"}})
+            after = assemble_tool_defs(current_defs(), config=config)
+            assert json.dumps(before.tool_defs) == json.dumps(after.tool_defs)
+            refreshed = dispatch("tool_search", {"queries": ["current vocabulary"]})
+            assert refreshed["results"][0]["matches"] == [current_name]
+            assert refreshed["tools"][current_name]["description"] == "Read current vocabulary"
+            described = dispatch("tool_describe", {"names": [old_name, current_name]})
+            assert described["not_found"] == [old_name]
+            assert described["tools"][current_name]["parameters"]["properties"] == {
+                "version": {"type": "integer"},
+            }
+
+            register(current_name, "Read revised vocabulary", {"revision": {"type": "string"}})
+            revised = assemble_tool_defs(current_defs(), config=config)
+            assert json.dumps(revised.tool_defs) == json.dumps(after.tool_defs)
+            searched = dispatch("tool_search", {"queries": ["revised vocabulary"]})
+            assert searched["tools"][current_name]["description"] == "Read revised vocabulary"
+            latest = dispatch("tool_describe", {"names": [current_name]})
+            assert latest["tools"][current_name]["parameters"]["properties"] == {
+                "revision": {"type": "string"},
+            }
+        finally:
+            registry.deregister(old_name)
+            registry.deregister(current_name)
 
 
 class TestDeferredCallSchemaProbe:
@@ -703,6 +793,28 @@ class TestDeferredCallSchemaProbe:
         assert "document_id" in parsed["error"]
         assert parsed["parameters"]["required"] == ["document_id"]
         assert "document_id" in parsed["parameters"]["properties"]
+
+    def test_missing_args_via_real_dispatch_requires_discovery_before_retry(self):
+        import model_tools
+
+        calls = []
+        name = "mcp_probe_refresh_before_retry"
+        self._register_schema(name, "mcp-probe-refresh", {
+            "type": "object", "properties": {"document_id": {"type": "string"}},
+            "required": ["document_id"],
+        }, calls)
+        result = json.loads(model_tools.handle_function_call(
+            function_name="tool_call", function_args={"calls": [{"name": name, "arguments": {}}]},
+            enabled_toolsets=["mcp-probe-refresh"],
+        ))
+
+        assert calls == []
+        assert result["constraint"] == "required"
+        assert result["parameters"]["required"] == ["document_id"]
+        hint = result["hint"]
+        assert hint.index("tool_search") < hint.index("tool_describe") < hint.index("retry tool_call")
+        assert "this Turn" in hint
+        assert "does not replace either step" in hint
 
 
     def test_validator_never_blocks_unvalidatable_tools(self):

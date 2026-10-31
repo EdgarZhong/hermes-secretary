@@ -566,6 +566,11 @@ def _refresh_mcp_tools_between_turns(agent: Any) -> None:
         if "tools.connectors.mcp" in sys.modules:
             from tools.connectors.mcp import adopt_late_connections
             adopt_late_connections(agent)
+        if (getattr(agent, "_secretary_notebook_read_enabled", False) is True
+                and getattr(agent, "_cached_system_prompt", None) is None):
+            # Registration can proceed, but a cold runtime must restore the durable
+            # declarations before any refresh may publish a replacement snapshot.
+            return
         # Import-cost gate: MCP tools are only registered by code that already imported
         # ``tools.mcp_tool`` (~0.4s); not in sys.modules => nothing to do.
         if not getattr(agent, "_skip_mcp_refresh", False) and "tools.mcp_tool" in sys.modules:
@@ -1172,6 +1177,8 @@ def build_turn_context(
     if agent._cached_system_prompt is None:
         restore_or_build_system_prompt(agent, system_message, conversation_history)
     synchronize_main_read_prompt(agent, system_message)
+    from agent.conversation_prefix import freeze_request_prefix
+    freeze_request_prefix(agent)
     remember_context_cache(agent)
     active_system_prompt = agent._cached_system_prompt
 
@@ -1197,6 +1204,8 @@ def build_turn_context(
 
     from secretary.reminders import persist_active_before_compaction
     persist_active_before_compaction(agent, user_message, messages, conversation_history, pending_cli_message)
+    from agent.conversation_capabilities import append_runtime_context, runtime_context_snapshot
+    previous_runtime_context = runtime_context_snapshot(messages)
     compaction = run_turn_start_compaction(
         agent, messages=messages, system_message=system_message,
         active_system_prompt=active_system_prompt, conversation_history=conversation_history,
@@ -1207,6 +1216,8 @@ def build_turn_context(
     active_system_prompt = compaction.active_system_prompt
     conversation_history = compaction.conversation_history
     current_turn_user_idx = compaction.current_turn_user_idx
+
+    append_runtime_context(agent, messages, previous_snapshot=previous_runtime_context)
 
     plugin_user_context = _collect_pre_llm_call_context(
         agent, effective_task_id=effective_task_id, turn_id=turn_id,

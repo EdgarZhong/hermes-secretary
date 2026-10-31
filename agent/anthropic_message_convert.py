@@ -711,26 +711,59 @@ def _convert_system_content(content: Any) -> Any:
     ]
 
 
+def _convert_runtime_system_message(content: Any) -> Dict[str, Any]:
+    """Keep a later system update at its history position using the existing control carrier.
+
+    Messages has no in-history system role: this user-side framework carrier conveys
+    runtime provenance, but cannot reproduce system-role instruction priority.
+    """
+    from agent.message_metadata import build_framework_message_wrapper
+
+    notice = "Runtime system update (runtime context, not a user message):"
+    if isinstance(content, str):
+        return _convert_user_message(build_framework_message_wrapper(f"{notice}\n\n{content}"))
+    converted = _convert_user_message(content)
+    blocks = converted["content"]
+    if not isinstance(blocks, list):
+        blocks = [_text_block(str(blocks))]
+    closing = "\n</framework-message>"
+    opening = str(build_framework_message_wrapper(notice)).removesuffix(closing)
+    return {"role": "user", "content": [_text_block(opening), *blocks, _text_block(closing)]}
+
+
 def convert_messages_to_anthropic(
     messages: List[Dict], base_url: str | None = None, model: str | None = None
 ) -> Tuple[Optional[Any], List[Dict]]:
     """Convert OpenAI-format messages to Anthropic format -> ``(system, messages)``. System is
     extracted into its own param (a string, or a block list when cache_control is present).
+    Later system messages stay in sequence as framework user-side runtime updates;
+    Anthropic cannot represent their original system-role priority.
     ``base_url``/``model`` drive thinking-signature policy — third-party endpoints strip signatures
     (proprietary, they 400 on them); Kimi-family endpoints/models keep unsigned
     reasoning_content-derived blocks, which Kimi requires even when empty."""
     system = None
+    has_system = False
+    has_runtime_system = False
     result: List[Dict[str, Any]] = []
     for m in messages:
         role = m.get("role", "user")
         if role == "system":
-            system = _convert_system_content(m.get("content", ""))
+            if not has_system:
+                system = _convert_system_content(m.get("content", ""))
+                has_system = True
+            else:
+                result.append(_convert_runtime_system_message(m.get("content", "")))
+                has_runtime_system = True
         elif role == "assistant":
             result.append(_convert_assistant_message(m))
         elif role == "tool":
             _convert_tool_message_to_result(result, m)
         else:
             result.append(_convert_user_message(m.get("content", "")))
+    if has_runtime_system:
+        # A control carrier and tool results can share the adjacent user turn.
+        # Merge before checking adjacency so the new carrier cannot orphan a pair.
+        result = _merge_consecutive_roles(result)
     _strip_orphaned_tool_blocks(result)
     result = _merge_consecutive_roles(result)
     _ensure_leading_user_turn(result)

@@ -536,3 +536,15 @@ class TestConfigAndSchema:
         describe_params = schemas["tool_describe"]["parameters"]
         assert describe_params["required"] == ["names"]
         assert describe_params["properties"]["names"]["type"] == "array"
+
+    def test_bridge_guidance_excludes_wrapper_from_direct_tool_exception(self):
+        from tools.tool_search import bridge_tool_schemas
+
+        schemas = {s["function"]["name"]: s["function"] for s in bridge_tool_schemas(3)}
+        search = schemas["tool_search"]["description"]
+        call = schemas["tool_call"]["description"]
+        assert "does not apply to the `tool_call` wrapper" in search
+        assert "both steps must succeed in this Turn" in search
+        assert "it is not exempt as a directly declared tool" in call
+        assert "Directory entries, earlier history and guessed arguments cannot replace either step" in call
+        assert call.index("tool_search") < call.index("tool_describe")

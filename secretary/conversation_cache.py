@@ -67,7 +67,18 @@ def _owned_cache_row(agent):
 
 
 def _fingerprint(row):
-    return row["id"], row.get("system_prompt"), row.get("tool_names")
+    saved = row.get("tool_names")
+    try:
+        pin = json.loads(saved)
+        if isinstance(pin, dict):
+            pin.pop("selection", None)  # historical provenance is not a request input
+            prefix = pin.get("request_prefix")
+            if isinstance(prefix, dict):
+                prefix.pop("runtime_context", None)  # ordinary tail state, not a head change
+            saved = json.dumps(pin, ensure_ascii=False, separators=(",", ":"))
+    except (TypeError, ValueError):
+        pass
+    return row["id"], row.get("system_prompt"), saved
 
 
 def remember_context_cache(agent):
@@ -118,6 +129,8 @@ def synchronize_context_cache(agent):
             return False
     from agent.system_prompt import invalidate_system_prompt
     invalidate_system_prompt(agent)
+    from agent.conversation_prefix import reset_request_prefix
+    reset_request_prefix(agent)
     if cleared and saved is not None:
         # Native late MCP discovery may publish a pin without a Turn lease after
         # the RPC's atomic clear. Under THIS Turn's lease, retire that late pin

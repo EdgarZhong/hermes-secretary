@@ -553,8 +553,13 @@ def _chat_messages_to_responses_input(
     messages: List[Dict[str, Any]], *, is_xai_responses: bool = False, is_github_responses: bool = False,
     replay_encrypted_reasoning: bool = True, current_issuer_kind: Optional[str] = None,
     current_issuer_model: Optional[str] = None, native_compaction_eligible: bool = False,
+    keep_initial_system: bool = False,
 ) -> List[Dict[str, Any]]:
     """Convert internal chat-style messages to Responses input items.
+
+    ``keep_initial_system``: the caller already separated the root instructions;
+    preserve even an initial history-system update. Otherwise only index zero's
+    system is the root header; all later system messages stay in sequence.
 
     ``is_xai_responses``: signature compatibility only (xAI DOES replay encrypted reasoning).
     ``replay_encrypted_reasoning``: per-session kill switch, threaded False by
@@ -608,14 +613,16 @@ def _chat_messages_to_responses_input(
     def emit(new_items: List[Dict[str, Any]], msg: Dict[str, Any]) -> None:
         items.extend(new_items)
         item_sources.extend([msg] * len(new_items))
-    for msg in messages:
+    for msg_index, msg in enumerate(messages):
         if not isinstance(msg, dict):
             continue
         role = msg.get("role")
+        if msg_index == 0 and role == "system" and not keep_initial_system:
+            continue
         if role == "tool":
             emit(_tool_output_items(msg, wire_ids=wire_ids), msg)
             continue
-        if role not in {"user", "assistant"}:
+        if role not in {"user", "assistant", "system"}:
             continue
         content = msg.get("content", "")
         content_parts = _chat_content_to_responses_parts(content, role=role)  # [] unless a list
@@ -626,7 +633,7 @@ def _chat_messages_to_responses_input(
         )
         def wire_content(value: Any) -> Any:
             return [{"type": text_type, "text": value}] if typed_text_only and isinstance(value, str) else value
-        if role == "user":
+        if role in {"user", "system"}:
             emit([_role_message_item(role, wire_content(content_parts or content_text))], msg)
             continue
         reasoning_items = [] if not replay_encrypted_reasoning else _replay_reasoning_items(
@@ -844,9 +851,9 @@ def _preflight_message(item: Dict[str, Any], idx: int, ctx: _PreflightCtx) -> Di
 
 
 def _preflight_role_message(item: Dict[str, Any], idx: int, ctx: _PreflightCtx) -> Dict[str, Any]:
-    """``user``/``assistant`` role message, typed or untyped; string content or Responses parts."""
+    """Conversation or history-system message, typed or untyped; string content or Responses parts."""
     role = item.get("role")
-    if role not in {"user", "assistant"}:
+    if role not in {"user", "assistant", "system"}:
         raise ValueError(
             f"Codex Responses input[{idx}] has unsupported item shape (type={item.get('type')!r}, role={role!r})."
         )

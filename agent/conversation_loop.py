@@ -734,6 +734,8 @@ def _restore_pinned_tools(agent, session_row) -> list:
         pin = None  # a pin hash whose row an older build's cleanup swept resolves to itself
     try:
         if pin:
+            from agent.conversation_prefix import restore_request_prefix
+            restore_request_prefix(agent, pin)
             restore_agent_tool_prefix(agent, pin)
         elif session_row is not None and not getattr(agent, "_persist_disabled", False):
             # No usable pin (swept row, a session from before pins): pin what this turn sends,
@@ -794,7 +796,8 @@ def _restore_or_build_system_prompt(agent, system_message, conversation_history)
 
     if stored_prompt and _stored_prompt_matches_runtime(agent, stored_prompt):
         # NULL/empty rows never reach this probe: they already rebuild below.
-        if _bot_chat_prompt_stale(agent, stored_prompt):
+        from agent.conversation_prefix import main_prefix_is_frozen
+        if not main_prefix_is_frozen(agent, session_row) and _bot_chat_prompt_stale(agent, stored_prompt):
             logger.info(
                 "Bot Chat capability epoch changed for session %s; rebuilding system prompt to "
                 "adopt the new capability surface (one-time prefix-cache break).",

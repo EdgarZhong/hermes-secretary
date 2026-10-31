@@ -8,6 +8,12 @@
 
 `.hermes_profiles/.snapshots/databases-current.zip`是每五分钟覆盖的云→Mac同步完成包，不是累积的历史备份；保留既有发布／同步链，不因数据库历史只留两套而删除它。实际保留版本、执行记录及释放空间见运维记录。
 
+## 工具／System Prompt变更后的缓存清理（2026-11-01用户确认）
+
+发布包含工具定义、Tool Search目录或System Prompt变更时，必须在新版本服务上线并核验后，通过已有认证热调试接口 `conversation.context_cache_clear` 对目标Profile的置顶Conversation清理上下文缓存。先从当前会话列表核实置顶身份及所属Profile，再显式传入 `profile` 和 `conversation_ref`；不靠历史Session ID猜目标，也不直接改库代替接口。
+
+仅在目标空闲且无冲突维护时调用；接口拒绝busy时等待自然空闲，不取消用户工作、不绕过租约。核回执 `status=cleared`（本已清空则为 `already_clear`）、当前tip的 `system_prompt`／`system_prompt_hash`／`tool_names` 已清空，以及历史、Notebook、排期和绑定保持。该接口同时清理root与完整工具pin，已有运行态在下一次正常Turn沿原构造／恢复owner失效并按新版重建；发布过程不人为触发模型Turn、Noting或改写历史。清理时间、目标、回执和保护数据核验记入运维记录，不能把“已清理”写成“已完成新模型请求验证”。
+
 ## 0. 首尔正式入口的认证运维
 
 首尔 Hermes 正式入口为 `hermes.edgarzhong.fyi`，使用 Authelia 双因素认证。旧 `test.edgarzhong.fyi` 已废弃，直接返回404。`eb-data.edgarzhong.fyi` 由 Caddy 反代 `127.0.0.1:8787`，保留 Ebbinghaus 原生 Bearer 鉴权，不套浏览器双因素跳转；`nmem.edgarzhong.fyi` 反代 `127.0.0.1:14242`，保留NM原生API令牌认证。三个域名均使用仅DNS的首尔A记录。

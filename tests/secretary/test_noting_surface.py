@@ -457,7 +457,7 @@ def test_actual_ephemeral_root_is_audited_without_polluting_native_resume(runtim
         result = cold.run_conversation(user_message="cold continuation", conversation_history=history,
                                        title_user_message="")
         assert result["completed"] is True
-        assert cold_seen[-1]["messages"][0]["content"] == native
+        assert cold_seen[-1]["messages"][0]["content"] == actual
     finally:
         if cold is not None:
             cold.close()

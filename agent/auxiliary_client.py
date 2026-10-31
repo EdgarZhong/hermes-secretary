@@ -1455,9 +1455,9 @@ class _CodexCompletionsAdapter:
         # encodes tool history as function_call/function_call_output).
         instructions = "You are a helpful assistant."
         replay_messages: List[Dict[str, Any]] = []
-        for msg in kwargs.get("messages", []):
+        for msg_index, msg in enumerate(kwargs.get("messages", [])):
             content = msg.get("content") or ""
-            if msg.get("role", "user") == "system":
+            if msg_index == 0 and msg.get("role", "user") == "system":
                 instructions = content if isinstance(content, str) else str(content)
                 continue
             # Replayed history names each tool the way THIS request declares it.
@@ -1479,7 +1479,7 @@ class _CodexCompletionsAdapter:
         input_items = _chat_messages_to_responses_input(
             replay_messages, is_github_responses=is_copilot,
             current_issuer_kind=issuer_kind,
-            current_issuer_model=wire_model, native_compaction_eligible=False,
+            current_issuer_model=wire_model, native_compaction_eligible=False, keep_initial_system=True,
         )
         resp_kwargs: Dict[str, Any] = {
             # Codex only knows the base slug; strip the Hermes ``-900k`` picker suffix.

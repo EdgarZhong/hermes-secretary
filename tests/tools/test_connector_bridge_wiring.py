@@ -36,18 +36,16 @@ def _tool_search_description(tool_defs):
                 if td["function"]["name"] == "tool_search")
 
 
-def test_tool_search_names_manage_connections_only_when_the_session_has_it():
-    """The model learns that connectors__ names belong to accounts managed by
-    manage_connections from the tool_search description, but only when that tool is in the
-    session. Signed out (or connectors off) the tool is absent and the description must not
-    name a tool the model cannot call."""
+def test_tool_search_connection_guidance_is_fixed_and_conditional():
+    """Connection scope changes live discovery, not the bridge prefix or permissions."""
     with_connections = _tool_search_description(_local_defs())
     assert "manage_connections" in with_connections
     assert "connectors__" in with_connections
+    assert "if `manage_connections` is directly available" in with_connections
 
     without = _tool_search_description(
         [td for td in _local_defs() if td["function"]["name"] != "manage_connections"])
-    assert "manage_connections" not in without
+    assert without == with_connections
 
 
 def _local_defs():

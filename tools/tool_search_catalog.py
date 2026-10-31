@@ -259,7 +259,8 @@ def hidden_declared_sources() -> List[Dict[str, Any]]:
 
 
 def build_catalog_listing_with_form(
-    deferrable: List[Dict[str, Any]], *, max_tokens: int = 4000) -> Tuple[Optional[str], str]:
+    deferrable: List[Dict[str, Any]], *, max_tokens: int = 4000,
+    unavailable_sources: Optional[List[Dict[str, Any]]] = None) -> Tuple[Optional[str], str]:
     """Render the deferred-catalog manifest: ``- name: short desc`` lines grouped per source.
     Returns ``(text, form)``; form is ``"full"``, ``"names"``, ``"mixed"`` (oversized servers
     collapsed to a name + count line), ``"groups"`` (every server summarized) or ``"none"``
@@ -274,7 +275,7 @@ def build_catalog_listing_with_form(
             # _classify_source gives ("other", "") when unregistered; the label of "" is "other".
             label = _listing_group_label(_classify_source(name)[1])
             groups.setdefault(label, []).append((name, _short_desc(fn.get("description", ""))))
-    unavailable = hidden_declared_sources()
+    unavailable = hidden_declared_sources() if unavailable_sources is None else unavailable_sources
     if not groups and not unavailable:
         return None, "none"
 

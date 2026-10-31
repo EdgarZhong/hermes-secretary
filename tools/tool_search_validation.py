@@ -68,7 +68,9 @@ def _validation_path(error: Any) -> str:
 def _validation_error(message: str, *, path: str, constraint: str, parameters: Any) -> str:
     return tool_error(
         message, path=path, constraint=constraint, parameters=parameters,
-        hint="Retry tool_call with 'arguments' matching the parameters schema above.")
+        hint="Use tool_search to refresh availability, then tool_describe to read the current "
+             "full schema in this Turn; only then retry tool_call with matching arguments. "
+             "This validation error does not replace either step.")
 
 
 def validate_deferred_call_args(name: str, args: Dict[str, Any]) -> Optional[str]:

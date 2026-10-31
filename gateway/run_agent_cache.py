@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from agent.interrupt_compat import _accepts_keyword
 from gateway.config import Platform
 from gateway.session import SessionSource, build_session_context_prompt
-from gateway.session_prompt_pin import PROMPT_PIN_VERSION, sanitize_prompt_pin
+from gateway.session_prompt_pin import PROMPT_PIN_VERSION, SessionContextPrompt, sanitize_prompt_pin
 from gateway.run_shutdown import _log_suppressed
 from hermes_cli.config import DEFAULT_CONFIG, cfg_get
 from hermes_cli.local_runtime.endpoint import LLAMACPP_ALIASES
@@ -721,11 +721,11 @@ class GatewayAgentCacheMixin:
         if _eph_pin is not None and _eph_pin[2] != redact_pii:
             _eph_pin = None
         if internal and _eph_pin is not None:
-            return _eph_pin[1]
+            return SessionContextPrompt(_eph_pin[1], context, redact_pii)
         _eph_key = self._ephemeral_change_key(context, redact_pii)
         if _eph_pin is not None and _eph_pin[0] == _eph_key:
-            return _eph_pin[1]
-        text = build_session_context_prompt(context, redact_pii=redact_pii)
+            return SessionContextPrompt(_eph_pin[1], context, redact_pii)
+        text = SessionContextPrompt(build_session_context_prompt(context, redact_pii=redact_pii), context, redact_pii)
         if session_key:
             self._session_state(session_key).conversation.ephemeral_pin = (_eph_key, text, redact_pii)
         return text

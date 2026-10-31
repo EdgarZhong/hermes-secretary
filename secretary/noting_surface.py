@@ -120,7 +120,11 @@ def apply_main_read_surface(agent):
             resolved.append({"type": "function", "function": copy.deepcopy(_read_schema(name))})
             names.add(name)
     from agent.secretary_prompt import apply_cron_schema_guidance
-    agent.tools = apply_cron_schema_guidance(_reconcile_catalog(agent, resolved), enabled=scheduler)
+    # A restored bridge is part of the durable request prefix, including its catalog.
+    # Rebuilding it from this surface's raw registry rewrites the prefix on every hop.
+    if resolved != tools or not notebook:
+        resolved = _reconcile_catalog(agent, resolved)
+    agent.tools = apply_cron_schema_guidance(resolved, enabled=scheduler)
     agent.valid_tool_names = ((set(getattr(agent, "valid_tool_names", set())) - removed)
                               | (desired & names)) - _NOTING_ONLY
     if refreshed:
@@ -143,10 +147,13 @@ def synchronize_main_read_prompt(agent, system_message=None):
     from agent.prompt_builder import (
         SECRETARY_MEMORY_APPROVAL, SECRETARY_SKILL_GATE, TASK_COMPLETION_GUIDANCE,
     )
+    from agent.conversation_prefix import SESSION_CONTEXT_GUIDANCE
     prompt = getattr(agent, "_cached_system_prompt", None)
     if not isinstance(prompt, str):
         return False
-    names = set(getattr(agent, "valid_tool_names", set()))
+    # The frozen declaration owns prompt guidance; current dispatch grants can be
+    # narrower on a different interface and must not trigger a root rebuild.
+    names = {_tool_name(tool) for tool in getattr(agent, "tools", ())}
     secretary = bool(
         getattr(agent, "_secretary_main_read_eligible", False)
         and getattr(agent, "_secretary_notebook_read_enabled", False)
@@ -164,6 +171,7 @@ def synchronize_main_read_prompt(agent, system_message=None):
         (TASK_COMPLETION_GUIDANCE, task_completion),
         (HISTORY_SEARCH_GUIDANCE, True),
         (SECRETARY_WORK_AND_NOTEBOOK_GUIDANCE, bool(getattr(agent, "_secretary_notebook_read_enabled", False))),
+        (SESSION_CONTEXT_GUIDANCE, bool(getattr(agent, "_secretary_notebook_read_enabled", False))),
         (SCHEDULER_GUIDANCE, bool(getattr(agent, "_secretary_scheduler_enabled", False)) and "scheduler" in names),
         (SECRETARY_SESSION_SEARCH_GUIDANCE, "session_search" in names),
         (SECRETARY_MEMORY_APPROVAL, memory),

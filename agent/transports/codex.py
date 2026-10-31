@@ -650,6 +650,7 @@ class ResponsesApiTransport(ProviderTransport):
             current_issuer_kind=self._resolve_issuer_kind(kwargs),
             current_issuer_model=self._last_issuer_model,
             native_compaction_eligible=_native_compaction_active(kwargs.get("context_management")),
+            keep_initial_system=bool(kwargs.get("keep_initial_system", False)),
         )
 
     def convert_tools(self, tools: Optional[list[dict[str, Any]]]) -> Any:
@@ -670,6 +671,8 @@ class ResponsesApiTransport(ProviderTransport):
         context_management, replay_encrypted_reasoning.
 
         params: instructions: str — system prompt (extracted from messages[0] if not given)
+        root_system_in_messages: bool — default True for complete-header lists;
+        set False for history-only lists whose initial system is a runtime update.
         reasoning_config: dict | None — {effort, enabled} session_id: str | None — transcript/session id;
         drives the Codex ``session_id`` header, and is the cache-scope fallback when no ``cache_scope_id``
         is given cache_scope_id: str | None — rotation-stable logical scope id (compression-lineage root;
@@ -687,8 +690,11 @@ class ResponsesApiTransport(ProviderTransport):
 
         instructions = params.get("instructions", "")
         payload_messages = messages
-        if not instructions and messages and messages[0].get("role") == "system":
-            instructions = str(messages[0].get("content") or "").strip()
+        # Existing callers pass the complete header even with explicit instructions.
+        # History-only callers must declare that shape; never infer ownership from text.
+        if params.get("root_system_in_messages", True) and messages and messages[0].get("role") == "system":
+            if not instructions:
+                instructions = str(messages[0].get("content") or "").strip()
             payload_messages = messages[1:]
         instructions = instructions or DEFAULT_AGENT_IDENTITY
 
@@ -725,6 +731,7 @@ class ResponsesApiTransport(ProviderTransport):
                 payload_messages, is_xai_responses=is_xai_responses, is_github_responses=is_github_responses,
                 replay_encrypted_reasoning=replay_encrypted_reasoning, base_url=params.get("base_url"),
                 is_codex_backend=is_codex_backend, context_management=context_management, model=wire_model,
+                keep_initial_system=True,
             ),
             "store": False,
         }

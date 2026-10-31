@@ -72,6 +72,10 @@ def _overlay_runtime_fields(durable, runtime):
 
 def publish_native_commit(agent, commit, prompt, request=None, *, restore_complete_context=False):
     """Called inside the existing native commit fence, before it is released."""
+    if commit.session_commit_succeeded:
+        from agent.conversation_prefix import freeze_request_prefix, reset_request_prefix
+        reset_request_prefix(agent, previous_session_id=getattr(commit, 'old_session_id', None))
+        freeze_request_prefix(agent)
     if (request is None and not restore_complete_context) or not commit.session_commit_succeeded:
         return commit.compressed
     from agent.context_compaction_request import _lock

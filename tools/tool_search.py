@@ -2,8 +2,8 @@
 event-triggered core tools are replaced in the model-visible array by three bridge tools —
 tool_search / tool_describe / tool_call. Invariants: core tools (``toolsets._HERMES_CORE_TOOLS``)
 and session-gated GUI toolsets never defer unless named in ``defer``; ANY deferrable tool
-activates the bridge (the listing scales with budget, not activation); the catalog is
-stateless — rebuilt from the live tool-defs every assembly (a session-keyed one drifts and
+activates the bridge; its schemas are fixed discovery entry points. The catalog is
+stateless — rebuilt from the live tool-defs for discovery calls (a session-keyed one drifts and
 silently drops tools); bridge calls route through ``model_tools.handle_function_call``."""
 
 from __future__ import annotations
@@ -42,13 +42,13 @@ _MAX_DESCRIBE_NAMES_PER_CALL = 10
 class ToolSearchConfig:
     """Resolved, validated tool-search configuration for a single assembly."""
     enabled: str  # "auto" | "on" | "off" — "auto" is an alias of "on" today
-    # Listing budget as % of context; does NOT gate activation, only bounds how much
-    # the embedded manifest may consume before it degrades (full -> names -> bare).
+    # Legacy listing settings remain parseable for configuration compatibility;
+    # they do not change the model-visible bridge schemas or gate activation.
     threshold_pct: float  # 0..100
     search_default_limit: int
     max_search_limit: int
-    listing: str = "auto"  # "auto"/"on" = embed the manifest when it fits; "off" = bare bridge
-    listing_max_tokens: int = 4000  # budget = min(this, threshold_pct% of context)
+    listing: str = "auto"
+    listing_max_tokens: int = 4000
     # None = curated default; an explicit list replaces it wholesale ([] = defer no core tools).
     defer_tools: Optional[frozenset] = None
 
@@ -210,8 +210,11 @@ def should_activate(config: ToolSearchConfig, deferrable_tokens: int,
 
 
 def listing_token_budget(config: ToolSearchConfig, context_length: Optional[int]) -> int:
-    """``min(listing_max_tokens, threshold_pct% of context)``; unknown context uses a 10K
-    percentage leg (5% of a typical 200K window)."""
+    """Legacy listing budget for diagnostics only, never a bridge schema input.
+
+    ``min(listing_max_tokens, threshold_pct% of context)``; unknown context uses a 10K
+    percentage leg (5% of a typical 200K window).
+    """
     pct_leg = (int(context_length * (config.threshold_pct / 100.0))
                if context_length and context_length > 0 else 10_000)
     return max(0, min(config.listing_max_tokens, pct_leg))
@@ -226,63 +229,49 @@ def _bridge_schema(name: str, description: str, properties: Dict[str, Any],
 
 
 _CONNECTIONS_HINT = (
-    " Names starting with `connectors__` are tools of remote connector accounts "
-    "(Gmail, Linear, Notion, ...); `manage_connections` checks whether an account "
-    "is connected and gets the authorization link when it is not.")
+    " Names starting with `connectors__` are tools of remote connector accounts"
+    "; if `manage_connections` is directly available, use it to check account "
+    "connections or obtain an authorization link when needed.")
 
 
-def _search_description(deferred_count: int, listing: Optional[str], listing_form: str,
-                        connections_granted: bool = False) -> str:
-    """tool_search bridge description with the listing embedded (framing per ``listing_form``).
-    ``connections_granted`` adds the one sentence that ties ``connectors__`` names to
-    ``manage_connections``; without that tool in the session the sentence would name a tool
-    the model cannot call."""
-    desc = (
-        (f"Search {deferred_count} additional tools that are loaded on demand. "
-         if deferred_count else "Search remote connector tools (email, calendars, issue trackers, and more). ")
-        + "Takes a list of queries searched in parallel against the same "
+def _search_description() -> str:
+    """Fixed discovery guidance; live capabilities belong in tool results."""
+    return (
+        "Discover additional tools loaded on demand. Depending on current "
+        "registrations and connections, capabilities may include files and code, "
+        "web search, communication, calendars and collaboration, or external data "
+        "and integrations; no particular tool is guaranteed. Registrations and "
+        "availability can change. In each Turn, before invoking additional tools, "
+        f"search again with `{TOOL_SEARCH_NAME}`, then use `{TOOL_DESCRIBE_NAME}` "
+        "to read their current full parameter schemas; both steps must succeed "
+        f"in this Turn before `{TOOL_CALL_NAME}`. Directory entries, earlier "
+        "history and guessed arguments cannot replace either step. "
+        "Takes a list of queries searched in parallel against the same "
         "catalog; send one query per distinct capability you need. Queries are "
         "keyword searches, not questions: the app or service name plus an action "
         "and object, no filler words (`gmail send email`, `nvidia driver status`, "
         "not `what's my GPU driver version?`); a word no tool contains makes the "
         "query return nothing. Returns "
         "matching tool names grouped per query plus a shared map with each "
-        "tool's description. Follow with "
-        f"`{TOOL_DESCRIBE_NAME}` to load full parameter schemas, "
-        f"then `{TOOL_CALL_NAME}` to invoke. Tools listed at the top of this "
-        "system prompt are already available and do not need to be searched."
-        + (_CONNECTIONS_HINT if connections_granted else ""))
-    if not listing:
-        return desc
-    if listing_form == "groups":
-        return desc + (
-            "\n\nThe servers below are connected and their tools ARE available "
-            "through this bridge. For any request in these domains, search "
-            "here FIRST — do not claim the capability is unavailable and do "
-            "not substitute a generic tool (terminal/browser) without "
-            "searching.\n\n" + listing)
-    desc += (
-        "\n\nEvery deferred capability is listed below. If a tool name "
-        "appears here, do NOT claim it is unavailable — load it with "
-        f"`{TOOL_DESCRIBE_NAME}` (skip `{TOOL_SEARCH_NAME}` when you "
-        "already see the exact name).")
-    if listing_form == "mixed":
-        desc += (
-            " For servers marked 'names not listed', the tools exist "
-            f"too — find them with `{TOOL_SEARCH_NAME}` before "
-            "concluding anything is missing.")
-    return desc + "\n\n" + listing
+        "tool's description, not full parameter schemas. Directly declared tools "
+        "can be called directly when authorized by the current runtime; a retained "
+        "declaration alone does not grant permission. This direct-tool exception "
+        f"does not apply to the `{TOOL_CALL_NAME}` wrapper: invoking it invokes "
+        "an additional tool and requires this Turn's search and describe steps."
+        + _CONNECTIONS_HINT)
 
 
 def bridge_tool_schemas(deferred_count: int, listing: Optional[str] = None,
                         listing_form: str = "", connections_granted: bool = False) -> List[Dict[str, Any]]:
-    """Bridge tool schemas injected in place of deferred tools; kept short — every byte is paid
-    every turn. ``listing`` is embedded in the tool_search description; per-tool forms say
-    "skip search when you see the exact name", "groups" says search is mandatory."""
+    """Fixed bridge schemas, independent of the live catalog and connections.
+
+    Legacy count/listing/connection arguments are accepted for caller compatibility,
+    but do not contribute to the model-visible discovery entry points.
+    """
     return [
         _bridge_schema(
             TOOL_SEARCH_NAME,
-            _search_description(deferred_count, listing, listing_form, connections_granted),
+            _search_description(),
             {
                 "queries": {
                     "type": "array",
@@ -299,7 +288,9 @@ def bridge_tool_schemas(deferred_count: int, listing: Optional[str] = None,
         _bridge_schema(
             TOOL_DESCRIBE_NAME,
             f"Load the full JSON schemas for tools returned by `{TOOL_SEARCH_NAME}`. "
-            f"Required before `{TOOL_CALL_NAME}` if a tool's parameters are unknown. "
+            "In each Turn, successfully search again and read the current schemas before "
+            f"invoking additional tools with `{TOOL_CALL_NAME}`, even if names "
+            "or schemas were known in an earlier Turn. "
             "Batch every schema you need into one call.",
             {
                 "names": {
@@ -312,7 +303,13 @@ def bridge_tool_schemas(deferred_count: int, listing: Optional[str] = None,
         ),
         _bridge_schema(
             TOOL_CALL_NAME,
-            "Invoke deferred tools. Takes `calls`, an array of {name, arguments} "
+            "Invoke deferred tools only after successful discovery with "
+            f"`{TOOL_SEARCH_NAME}` and reading their current full schemas with "
+            f"`{TOOL_DESCRIBE_NAME}` in this Turn. Calling this wrapper is an "
+            "additional-tool invocation; it is not exempt as a directly declared "
+            "tool. Directory entries, earlier history and guessed arguments cannot "
+            "replace either step. "
+            "Takes `calls`, an array of {name, arguments} "
             "— one entry per invocation; a single call is an array of one. "
             "Independent calls may be batched together. Local entries are split "
             "into individual tool calls by the agent and follow each tool's "
@@ -345,10 +342,10 @@ class AssemblyResult:
     activated: bool
     deferred_count: int = 0
     deferred_tokens: int = 0
-    threshold_tokens: int = 0
-    # 0 = passthrough; 1 = bridge + per-tool listing; 2 = bare bridge / server summary only.
+    threshold_tokens: int = 0  # legacy configured listing budget, not schema consumption
+    # 0 = passthrough; 2 = fixed bridge (1 was the retired embedded-listing tier).
     tier: int = 0
-    listing_form: str = "none"  # "full" | "names" | "mixed" | "groups" | "none"
+    listing_form: str = "none"  # no catalog is embedded in the fixed bridge
 
 
 def assemble_tool_defs(tool_defs: List[Dict[str, Any]], *, context_length: Optional[int] = None,
@@ -371,22 +368,15 @@ def assemble_tool_defs(tool_defs: List[Dict[str, Any]], *, context_length: Optio
             tool_defs=incoming, activated=False, deferred_count=len(deferrable),
             deferred_tokens=deferrable_tokens,
             threshold_tokens=int((context_length or 0) * (config.threshold_pct / 100.0)), tier=0)
-    listing, listing_form = None, "none"
     listing_budget = listing_token_budget(config, context_length)
-    if config.listing != "off":
-        listing, listing_form = build_catalog_listing_with_form(
-            deferrable, max_tokens=listing_budget)
-    bridge = bridge_tool_schemas(len(deferrable), listing=listing, listing_form=listing_form,
-                                 connections_granted=connections_granted)
-    tier = 1 if listing_form in ("full", "names", "mixed") else 2
+    bridge = bridge_tool_schemas(len(deferrable), connections_granted=connections_granted)
     logger.info(
-        "tool_search activated (tier %d): %d core/visible tools kept, %d deferred "
-        "(~%d tokens), listing %s (budget ~%d tokens)",
-        tier, len(visible), len(deferrable), deferrable_tokens, listing_form, listing_budget)
+        "tool_search activated (fixed bridge): %d core/visible tools kept, "
+        "%d deferred (~%d tokens)", len(visible), len(deferrable), deferrable_tokens)
     return AssemblyResult(
         tool_defs=visible + bridge, activated=True, deferred_count=len(deferrable),
         deferred_tokens=deferrable_tokens, threshold_tokens=listing_budget,
-        tier=tier, listing_form=listing_form)
+        tier=2, listing_form="none")
 
 
 def is_bridge_tool(name: str) -> bool:
@@ -405,8 +395,7 @@ def _clip_description(text: str, cap: int = 500) -> str:
 
 
 def _shared_tool_record(entry: CatalogEntry) -> Dict[str, Any]:
-    """One record for the shared ``tools`` map (per-query groups carry names only);
-    ``required`` lets the model attempt a trivial call without a ``tool_describe`` round-trip."""
+    """One discovery summary; ``required`` names are hints, not a full parameter schema."""
     try:
         required = entry.schema["function"]["parameters"]["required"]
     except (TypeError, KeyError, AttributeError):

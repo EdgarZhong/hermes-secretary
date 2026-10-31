@@ -64,7 +64,8 @@ def _drop_session_tools(agent, new_defs: list, new_names: set) -> tuple:
 
 def _publish_tool_snapshot(
     agent, new_defs: list, new_names: set, *, snapshot_generation: int,
-    staged_engine_names: set, content_aware: bool, prefix_registered: Optional[set]) -> Optional[set]:
+    staged_engine_names: set, content_aware: bool, prefix_registered: Optional[set],
+    freeze_main: bool = False) -> Optional[set]:
     """Single atomic read-diff-publish under ``_agent_tools_lock`` so ``added`` matches what
     was published and a stale (older-generation) rebuild can't overwrite a newer one. Returns
     the added names, or None when nothing was published (unchanged, or a newer snapshot won)."""
@@ -76,14 +77,21 @@ def _publish_tool_snapshot(
             return None  # a newer snapshot already won
         current_defs = _agent_tool_defs(agent)
         current = {_def_name(t) for t in current_defs}
-        if prefix_registered is not None:
+        if freeze_main:
+            # Runtime discovery changes the live bridge catalog, never the established
+            # top-level declarations. Execution grants may still shrink immediately.
+            new_names &= set(getattr(agent, "valid_tool_names", ())) & current
+            new_defs = current_defs
+        elif prefix_registered is not None:
             new_defs, new_names = _merge_preserving_prefix(current_defs, new_defs, prefix_registered)
-        new_defs, new_names = _drop_session_tools(agent, new_defs, new_names)
+        if not freeze_main:
+            new_defs, new_names = _drop_session_tools(agent, new_defs, new_names)
         # Record the generation even when unchanged so an in-flight older caller can't clobber.
         agent._tool_snapshot_generation = max(published_gen, snapshot_generation)
         # Same NAME set: no change for MCP-reload callers. Content-aware callers
         # (compaction boundary) also diff serialized bytes.
-        if new_names == current and not (content_aware and _tool_defs_content_changed(agent, new_defs)):
+        comparison = set(getattr(agent, "valid_tool_names", ())) if freeze_main else current
+        if new_names == comparison and not (content_aware and _tool_defs_content_changed(agent, new_defs)):
             return None
         agent.tools = new_defs
         agent.valid_tool_names = new_names
@@ -97,7 +105,7 @@ def _publish_tool_snapshot(
 
 def refresh_agent_mcp_tools(
     agent, *, enabled_override=None, disabled_override=None, quiet_mode: bool = True,
-    content_aware: bool = False, preserve_prefix: bool = False) -> set:
+    content_aware: bool = False, preserve_prefix: bool = False, initial_discovery: bool = False) -> set:
     """Re-derive an already-built agent's tool snapshot from the live registry; returns the
     newly-added tool names (empty when unchanged). The agent snapshots ``agent.tools`` at build
     time, so servers that connect later (slow OAuth, ``/reload-mcp``) are invisible until
@@ -111,9 +119,16 @@ def refresh_agent_mcp_tools(
     request prefix and any moved byte re-prefills the whole history — existing tools keep their
     slot (schemas still refresh), a still-registered tool whose ``check_fn`` merely flapped is
     carried forward (``check_fn`` gates exposure, never invocation), a deregistered tool is
-    dropped, new tools append at the tail. The caller owns the prompt-cache contract."""
+    dropped, new tools append at the tail. An eligible frozen Main instead keeps every
+    declaration byte; only execution grants shrink. Its bridge reads the live scoped
+    catalog, with changes announced in durable system history. Explicit reload/clear and
+    compaction adopt new declarations at their existing boundaries."""
     from model_tools import get_tool_definitions
     from tools.registry import registry
+    if initial_discovery and _has_persisted_main_prefix(agent):
+        return set()  # a fresh runtime's zero Turn count does not make its Conversation new
+    content_aware = content_aware or (not preserve_prefix
+                                     and getattr(agent, "_secretary_notebook_read_enabled", False) is True)
     enabled, disabled = _resolve_refresh_toolsets(agent, enabled_override, disabled_override)
     # Generation captured BEFORE the slow get_tool_definitions call (a slower caller holding an
     # OLDER set must not clobber a newer one); definitions computed OUTSIDE the lock.
@@ -133,11 +148,30 @@ def refresh_agent_mcp_tools(
             pass  # fail open to the plain rebuild
     added = _publish_tool_snapshot(
         agent, new_defs, new_names, snapshot_generation=snapshot_generation,
-        staged_engine_names=staged_engine_names, content_aware=content_aware, prefix_registered=prefix_registered)
+        staged_engine_names=staged_engine_names, content_aware=content_aware,
+        prefix_registered=prefix_registered,
+        freeze_main=preserve_prefix and getattr(agent, "_secretary_notebook_read_enabled", False) is True)
     if added is None:
         return set()
+    if content_aware and getattr(agent, "_secretary_main_read_eligible", False) is True:
+        from secretary.noting_surface import apply_main_read_surface
+        apply_main_read_surface(agent)
     persist_agent_tool_names(agent)  # re-pin so a rebuild after agent-cache eviction restores this order
     return added
+
+
+def _has_persisted_main_prefix(agent) -> bool:
+    if getattr(agent, "_secretary_notebook_read_enabled", False) is not True:
+        return False
+    db = getattr(agent, "_session_db", None)
+    if db is None:
+        return False
+    try:
+        row = db.get_session(agent.session_id)
+        return bool(row and row.get("system_prompt") and row.get("tool_names"))
+    except Exception:
+        logger.debug("Initial MCP discovery could not inspect the persisted Main prefix", exc_info=True)
+        return True  # discovery must not overwrite an established prefix on a read failure
 
 
 def reprobe_tool_availability() -> None:
@@ -167,7 +201,12 @@ def persist_agent_tool_names(agent) -> None:
     if not db or not session_id:
         return
     try:
-        db.update_session_tool_names(session_id, {"version": tool_pin_version(), "tools": _agent_tool_defs(agent)})
+        pin = {"version": tool_pin_version(), "tools": _agent_tool_defs(agent)}
+        from agent.conversation_prefix import request_prefix_for_pin
+        prefix = request_prefix_for_pin(agent)
+        if prefix is not None:
+            pin["request_prefix"] = prefix
+        db.update_session_tool_names(session_id, pin)
     except Exception:  # noqa: BLE001
         logger.debug("tool_names persist skipped", exc_info=True)
 
@@ -208,8 +247,20 @@ def restore_agent_tool_prefix(agent, saved) -> bool:
     from tools.registry import registry
     fresh_defs = _agent_tool_defs(agent)
     fresh = {_def_name(t): t for t in fresh_defs}
-    registered_names = {entry.name for entry in registry.get_all_entries()}
     same_code = version is not None and version == tool_pin_version()
+    frozen = (same_code and getattr(agent, "_secretary_notebook_read_enabled", False) is True
+              and all(isinstance(t, dict) for t in pinned))
+    if frozen:
+        # Declaration bytes and execution grants have different owners. A surface hop
+        # adopts the complete declaration snapshot, but may execute only what its fresh
+        # runtime authorized. Deferred calls retain their live toolset scope checks.
+        import copy
+        authorized = set(getattr(agent, "valid_tool_names", ()))
+        with _agent_tools_lock:
+            agent.tools = copy.deepcopy(pinned)
+            agent.valid_tool_names = authorized & {_def_name(t) for t in pinned}
+        return agent.tools != fresh_defs
+    registered_names = {entry.name for entry in registry.get_all_entries()}
 
     def _pinned_def(item):
         name = item if isinstance(item, str) else _def_name(item)

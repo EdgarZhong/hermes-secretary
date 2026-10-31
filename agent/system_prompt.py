@@ -302,8 +302,11 @@ def _secretary_conversation(agent: Any) -> bool:
 
 def _tool_guidance_block(agent: Any) -> Optional[str]:
     """Tool-aware behavioral guidance, injected only when the tools are loaded."""
-    names = agent.valid_tool_names
     secretary = _secretary_conversation(agent)
+    # A surface can have fewer execution grants than the frozen declarations.
+    # Build guidance from those declarations without changing dispatch authority.
+    names = ({tool.get("function", {}).get("name") for tool in agent.tools}
+             if secretary else agent.valid_tool_names)
     # With both memory stores disabled no store is built, so the full guidance
     # would steer the model at a tool that always answers "Memory is not
     # available"; with only USER.md enabled the narrower block is used.
@@ -610,6 +613,8 @@ def _guidance_parts(agent: Any) -> List[str]:
         parts.append(HISTORY_SEARCH_GUIDANCE)
         if getattr(agent, "_secretary_notebook_read_enabled", False):
             parts.append(SECRETARY_WORK_AND_NOTEBOOK_GUIDANCE)
+            from agent.conversation_prefix import SESSION_CONTEXT_GUIDANCE
+            parts.append(SESSION_CONTEXT_GUIDANCE)
         if (getattr(agent, "_secretary_scheduler_enabled", False)
                 and "scheduler" in agent.valid_tool_names):
             parts.append(SCHEDULER_GUIDANCE)

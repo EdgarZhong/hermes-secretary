@@ -1264,6 +1264,8 @@ class TurnRunner:
         # Must-deliver notes for THIS turn ride the current user message (api_content sidecar), never
         # the system prompt. Assigned unconditionally so a reused agent never replays a stale note.
         agent._gateway_turn_context_notes = "\n\n".join(runner._consume_pending_turn_sidecar_notes(ctx.session_key))
+        from gateway.session_prompt_pin import wire_session_context_turn
+        agent._gateway_turn_context_notes = wire_session_context_turn(self, agent, agent._gateway_turn_context_notes)
         # display.memory_notifications: off | on (generic "💾 Memory updated", default) | verbose.
         # `display:` present-but-null yields None, not the {} default (same `or {}` guard as
         # display_config.py / runtime_footer.py).
