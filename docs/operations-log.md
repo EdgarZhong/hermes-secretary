@@ -1,5 +1,17 @@
 # 运维记录
 
+## 2026-10-31 · 证据组描述／Main强制回查与遗留调试入口发布（已完成）
+
+用户明确要求按定稿两项实施、验证后上线，随后取消新增真实模型验证；自主执行套件为Agent自行选择，用户末段明确按已展开原计划完成再发布。独立产品Verification17项及Validation12场景／6旅程通过，真实Linux7文件111项／0失败、冻结十检查通过。已知R3旧oracle12项及catalog review.summary孤立事件均已基线复现，未冒称全分区全绿。遗留2026-10-25已授权单次manual Noting入口按所有工作树整合要求接收，不调用生产start。
+
+**实际发布：** 2026-10-31T10:09:58+08:00，正式Alex保持main，从ef9051f快进至`bf28ab565ae322965e3b8eb0797486e1d0cdbac7`；receipt为verified。Web与Gateway实际同bf28ab5、active／running、微信connected；先空闲预检及复检，无活动writer／compression／Noting，停两服务、三库SQLite backup、快进、重启、验真。仅后端更新，Secretary及Dashboard静态集合／SHA、配置／凭据／绑定与全部三库既有保护表前后一致。生产测试模型／manual Noting启动／外发均0；取消指令前3个隔离合成样本共6HTTP200保留，随后没有新增真实模型验证。
+
+**上线读验：** 正式认证WS的Profiles、Secretary状态／Notebook／Schedule及新noting_state通过，目标Notebook50789 UTF-8字节、UID／逐组描述字段可读，内部Task身份隐藏；HTTP入口6资源SHA匹配。已有旧UID组描述只读投影null，没有补写／转换历史或重跑Noting。新版Main指导及工具定义沿既有正常构造／恢复边界采用，不热改飞行中前缀、不改消息。发布前新代码只读核三Profile零写：Alex190历史item中132个现行UID链item／204组补null，58个更早非链历史item保持，17Snapshot不改；不把该检查冒称旧数据迁移。
+
+**恢复与收尾：** 云受限`~/.local/state/hermes-secretary/release-20261028/stage-20261031-evidence-recovery/`含receipt、RECOVERY、三库／配置备份、postrelease-readonly及backup-retention。新备份与前次force-completion两套三库逐SHA／integrity／FK通过，清理更旧maintenance备份及sidecar共9文件、212004864字节；运行库／WAL／SHM及databases-current.zip保持。首次保留检查因脚本自身末只读连接未释放而拒绝删除，显式关闭后原保护检查通过，未放宽门禁或多备份。Linux首次准备环境失败未进入产品测试，最终复用已有官方PM同锁测试环境通过，生产依赖／锁未修改。
+
+本地ignored证据统一`.hermes-dev/evidence-recovery-20261031/`；旧树按原树名留`.hermes-dev/worktree-retained-20261031/`。五旧树已逐dirty／分支／证据SHA收妥后移除，原目录已clean main；本轮工作树在最终报告接收后最后移除，最终清理事实另补下节。恢复时先读RECOVERY与实际新写入，禁止自动回盖运行三库。
+
 ## 2026-10-31 · Force完成边界／Pending恢复修复正式发布、0.1.10交付
 
 用户明确授权睡眠期间自主解决、前后端重新部署、新APK交付及子Agent；本轮索引`.autonomous/20261031-force-completion/`。双门禁后，BE `ef9051f2f5a51d2ed95e27c969848d0f9823992b`正常快进至origin/main，FE `6c132a44a56fab8a72ddc6d51354d9923e2b78cb`正常快进至origin/secretary，未触其它本地main工作区dirty。正式Alex于**01:24:38+08**在main发布verified：先检查Web／Gateway自然空闲、三库无有效writer／压缩锁／Noting，停止两专属服务、SQLite三库备份、快进代码、原子换静态、恢复服务并验真。没有取消用户工作，没有自动数据库回滚。
