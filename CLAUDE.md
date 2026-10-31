@@ -1,5 +1,9 @@
 # Hermes Secretary 当前状态
 
+## 2026-10-31 · 证据集描述与Main强制回查（实施与上线中）
+
+用户明确授权按已定稿规格／Prompt实施、验证后上线。隔离工作区`/Users/edgar/code/hermes-secretary-evidence-recovery`，分支`codex/evidence-recovery-20261031`，基于`c07b038d1c`（正式生产产品`ef9051f`已包含）。范围只含07顶部两项调优及配套接线、验证、部署；不混入其它重设计或原工作区dirty。旧证据组保留原文与UID，不自动补描述、重跑旧Noting或转换生产历史；本轮验证新建／修改组及旧组读取兼容。运行缓存沿已有调试接口在空闲时失效，下一次正常active构建新Prompt／工具；不改历史消息。实现→主会话亲审→独立Verification→独立Validation→空闲发布与终验，证据入口`.autonomous/20261031-evidence-recovery/`。当前尚未实施或发布。
+
 ## 2026-10-31 · Force 后 Main 完成交接故障（已完成并发布）
 
 用户授权立即救援、随后自主修复、前后端重新部署、新APK和子Agent。00:42只重启空闲Web完成救援；本轮产品BE `ef9051f`／FE `6c132a4`已于01:24:38+08正式main发布verified，两实际服务同源active、微信connected。原故障尾部13441／13442完整保留；439静态及HTTP六资源、保护表／配置／绑定、两套三库已核。0.1.10／1010原签名APK已交Downloads，SHA4f3c795f…bb063，32127165字节，439内置资源严格一致。运维细节统一见operations-log。

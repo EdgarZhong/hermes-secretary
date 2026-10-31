@@ -1,5 +1,44 @@
 # 07 · Secretary 改版实施契约：History、Scheduler、Notebook 与 Noting
 
+## 2026-10-31 · 证据集描述与Main强制回查（语义与Prompt已定稿，未实施）
+
+**用户已确认定稿：** 每组证据集增加一句话描述；Main回查提示采用类似Skill加载要求的强语气约束。证据集描述与条目description互补、仅概括本组消息，为Main提供证据轨迹历史概括以维护一致性。Main按下文条件与顺序核实原始依据；收尾采用“无法恢复则明确未知，不用猜测补空白”的简化文本，删除此前场景特化句及抽象替代句。用户明确本轮先定规格和Prompt，不启动实现或生产变更；具体工具字段接线和旧来源组处理范围见下文，不追溯改写旧来源链设计的历史状态。
+
+### A. 证据集描述（已定稿）
+
+- **用途与范围（用户确认）：** 每组证据增加一句话描述，与Notebook条目的description互补。Noting须明确该字段是给Main提供证据轨迹的历史概括，帮助Main理解此前说法、选择和变化，选择原文回读并维护一致性；描述只包含本组证据消息的内容，不混入其它组或后来的信息。
+- 描述忠实于该组证据，区分用户指定、助手建议、用户接受及实际完成；不把推断包装为原话。具体说明本组涉及的选择、原因、约束、修正或结果，不只写“相关对话／更新事项／用户确认”，也不把整条Notebook的当前进度复制进每组历史描述。
+- 保持每条目每Task一个来源节点、同Task反复编辑覆盖本槽、旧Task节点不改的生命周期；本Task节点的描述与完整UID集合一同提交／覆盖，避免说明与引用分离。描述按一句话写，不新增硬字符截断。
+- 来源节点包含描述和本组Message UID集合，可表示为`{description, message_uids}`；UID集合保持当前组内去重及来源授权检查，Evidence time继续只从该组UID派生，不解析描述来推断时间。确切字段名及工具输入形状属于后续接口接线细节，本次定稿不冒称已修改Schema。
+- 描述与对应UID、证据时间在Main／Noting读取、Framework注入和工具回执中保持一致，不能只存在人类详情页。Candidate直接消息来源沿同规则；Notebook引用式Candidate沿源条目读取，不制造空证据组。
+- 旧来源组如何补描述须另定范围和依据；本条不继承此前一次性生产转换的操作授权，不凭UID或时间猜造描述，不自行重跑旧Noting。
+
+**Noting Prompt定稿 · EN：**
+
+```text
+For each evidence group you create or revise, write one sentence summarizing only the content of that group's messages. This field complements the Notebook entry's description: it gives Main a historical overview of the evidence trail, helping Main maintain consistency with earlier statements, choices and changes and select the right originals to read. Identify the relevant statement, choice, reason, condition, correction or outcome; preserve who said or accepted it and any material uncertainty. Do not import information from other groups or later developments, use a generic label, or copy the entry's current status. Submit the description together with the group's complete message UIDs, and keep them aligned when revising that group.
+```
+
+中文含义：为本次建立／修改的每组证据写一句历史概括，只包含本组消息的内容，与Notebook条目的description互补。这个字段用于向Main提供证据轨迹的历史概括，帮助其维护与此前说法、选择及变化的一致性，并选择应回读的原文。忠实标明说了什么、谁提出／接受及必要的不确定性；不混入其它组或后来的信息，描述与UID集合共同维护。
+
+### B. Main回查触发与顺序（已定稿）
+
+以任务是否依赖既往原话、选择、原因、承诺或修正为触发，不再只以模型自感“上下文不足”为触发。命中后必须确认原始依据：相关原文已在当前可见上下文且足够时直接使用；否则必须沿相关Notebook条目的证据集描述选择来源并Read。仅在来源缺失、无法定位或读取后仍缺必要依据时补Get Meta／Search；证据足够即停，不展开所有条目或整个历史。简单、紧急、熟悉和能够写出合理答案均不是跳过依据核对的理由。
+
+**Main Prompt定稿 · EN：**
+
+```text
+Before answering or acting on a task that depends on earlier statements, choices, reasons, commitments or corrections in this Conversation, you MUST establish the relevant facts from the original messages. Do this even when the task seems simple, urgent or familiar, or you think you already know enough.
+
+First review the relevant Notebook entries and their evidence-group descriptions. If the necessary original messages are not already visible and sufficient, you MUST use conversation_history Read on the relevant referenced messages before proceeding. Use Get Meta or Search when those references are absent, cannot locate the needed evidence, or leave a material gap. Do not start with broad keyword guesses when a relevant evidence group is available. Stop once the necessary evidence is established; do not expand unrelated groups or reconstruct the whole history.
+
+Keep prior agreed wording, reasons and commitments consistent unless later user evidence changes them. If the necessary evidence cannot be recovered, state what remains unknown rather than filling the gap with an assumption.
+```
+
+中文含义：任务依赖既往原话、选择、原因、承诺或修正时，必须先落实原始依据，即使任务简单、紧急、熟悉；先检查相关条目和证据集描述，必要原文不在当前可见上下文时必须沿引用Read，索引不足再Get Meta／Search。保持此前已确认的措辞、原因和承诺一致，除非用户后续信息改变了它们。必要依据无法恢复时，明确哪些内容仍未知，不用猜测填补空白。
+
+**后续接线与验证：** Main的Conversation and History及Notebook指导应统一改稿，删除旧“主观觉得足够即可不查”的竞争口径，避免仅末尾追加一句；本段不改变Noting的按需取证策略。至少审查：原文已可见无需重复读取、相关组可用优先Read、依据缺失不能用猜测补齐、用户纠正后先查索引、索引不足才搜索、工具失败如实保留未知。涉及工具输入结构的实现、旧数据处理和真实模型验证均待后续授权，本轮仅完成规格与Prompt定稿。
+
 ## 2026-10-31 · Force 的 Main 完成边界与客户端交接
 
 用户再次明确：Main Turn结束后才触发Force，派生时Framework提示须立即注入并可见；后台Noting不能与Main运行状态混杂，也不能使已结束Main继续转圈、Composer持续恢复或禁用正常主按钮／Compact。用正式生命周期、消息身份及完成边界正向保证，不能靠临时过滤或放宽恢复证明。Main完成事实不受随后追加Framework影响；Framework保留在所属Conversation完整历史中且不启动新Main Turn。恢复及刷新后，已落盘的最后回复和Framework应能沿正式历史／恢复链路重新显示，不能因旧回执永久卡住。本条重申既定结束触发及前后台独立契约，不改变Force不可取消、冻结上下文／跨进程owner保护或普通联合入口语义。
