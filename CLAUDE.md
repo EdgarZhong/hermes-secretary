@@ -2,7 +2,7 @@
 
 ## 2026-10-31 · 证据集描述与Main强制回查（实施与上线中）
 
-用户明确授权按已定稿规格／Prompt实施、验证后上线。隔离工作区`/Users/edgar/code/hermes-secretary-evidence-recovery`，分支`codex/evidence-recovery-20261031`，基于`c07b038d1c`（正式生产产品`ef9051f`已包含）。范围只含07顶部两项调优及配套接线、验证、部署；不混入其它重设计或原工作区dirty。旧证据组保留原文与UID，不自动补描述、重跑旧Noting或转换生产历史；本轮验证新建／修改组及旧组读取兼容。运行缓存沿已有调试接口在空闲时失效，下一次正常active构建新Prompt／工具；不改历史消息。用户随后明确“不用真实模型验证”，取消后续真实调用；此前3个合成样本／6请求原件保留，纠正样本因测试漏带Conversation Ref不作Prompt失败证据。以正式构造、受控SDK、工具／真DB及独立门禁验证。实现→主会话亲审→独立Verification→独立Validation→空闲发布与终验，证据入口`.autonomous/20261031-evidence-recovery/`。数据／Prompt两个实现任务并行中。接口采用source_description与UID同传、provenance_descriptions逐槽对齐，旧组null只读兼容；根Main正常恢复接缝会采用新版指导／Schema并记录缓存变化，无需中途热改。用户追加所有本仓旧worktree的整合、清理及原目录回归main；先只读盘点独立改动、活动引用和证据保留，再执行收尾，不删除未保留内容。
+用户明确授权按已定稿规格／Prompt实施、验证后上线。隔离工作区`/Users/edgar/code/hermes-secretary-evidence-recovery`，分支`codex/evidence-recovery-20261031`，基于`c07b038d1c`（正式生产产品`ef9051f`已包含）。范围只含07顶部两项调优及配套接线、验证、部署；不混入其它重设计或原工作区dirty。旧证据组保留原文与UID，不自动补描述、重跑旧Noting或转换生产历史；本轮验证新建／修改组及旧组读取兼容。运行缓存沿已有调试接口在空闲时失效，下一次正常active构建新Prompt／工具；不改历史消息。用户随后明确“不用真实模型验证”，取消后续真实调用；此前3个合成样本／6请求原件保留，纠正样本因测试漏带Conversation Ref不作Prompt失败证据。以正式构造、受控SDK、工具／真DB及独立门禁验证。实现→主会话亲审→独立Verification→独立Validation→空闲发布与终验，证据入口`.autonomous/20261031-evidence-recovery/`。两调优已由主会话亲审并提交d6c0088，遗留manual Noting debug已窄接收a51a0bf（41项）。整合十检查通过，独立Verification进行中；随后独立Validation、空闲发布及所有本仓worktree收尾。接口采用source_description与UID同传、provenance_descriptions逐槽对齐，旧组null只读兼容；根Main正常恢复接缝会采用新版指导／Schema并记录缓存变化，无需中途热改。用户追加所有本仓旧worktree的整合、清理及原目录回归main；先只读盘点独立改动、活动引用和证据保留，再执行收尾，不删除未保留内容。
 
 ## 2026-10-31 · Notebook连续性调查结论（调优已进入本轮）
 
