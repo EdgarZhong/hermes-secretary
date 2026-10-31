@@ -1,5 +1,17 @@
 # 运维记录
 
+## 2026-11-01 · 跨平台请求前缀修复上线与置顶缓存清理
+
+用户授权核查、补正、验收及上线，不采用完整自主实现流程；算法文档由另一会话独立提交，本轮未修改。产品`8969e32b796fc40af16357ac9450ba05a3479e14`已推origin/main，正式机main从`bf28ab565ae322965e3b8eb0797486e1d0cdbac7`快进至该版本；北京时间01:49发布verified，Web／Gateway实际code SHA一致、微信connected、活动Turn为0。依赖／锁、配置、绑定及两套前端静态保持，未发布APK或触发生产测试模型请求。
+
+本轮固定Main上下文区间的root／工具声明／prefill，自动能力及渠道策略变化追加普通历史system；固定search／describe／call说明及重试指引，实时执行权限独立。补齐冷恢复、压缩、多warm实例、Bot Chat自动重建、目录scope／读取失败和Provider后继system传输边界。01:50按[部署SOP](cloud-deployment-sop.md)从当前列表核唯一Alex置顶目标，通过既有`conversation.context_cache_clear`获得`cleared`，当前tip三缓存列NULL；三库各22个消息／Secretary业务表，以及全部session非缓存字段、配置与绑定指纹一致。下一正常Turn自动重建，本轮没有为验证清缓存启动生产模型或Noting。清缓存辅助脚本首次在RPC前因嵌套事件循环退出，零缓存写；修正辅助脚本后重试成功，产品服务未受影响。
+
+验证复用与增量记录：本地传输622项、工具桥131项、核心111项及末次25项、Noting权限10项通过（有重叠，不相加）；Linux先后98／131／25项通过。冻结十检查9项通过，no-tmp唯一为未改历史报告`.autonomous/20261031-evidence-recovery/validation.md:20`，与初始基线同blob，未放宽门禁或改写原报告；最终28个Python文件health零阻断／零提示。隔离DeepSeek v4-pro共24次HTTP200：最初14请求暴露跳过发现步骤，修复提示冲突后8请求两自然任务按search→describe→call，覆盖新schema／新增工具及真实Gateway策略替换；最后2请求验证最终源码目录权限及读取失败策略承接。input282596／output1228，未使用本机K3.1凭据。
+
+请求内容证据为三组合成会话21／21相邻请求的root/tools与旧消息规范化前缀一致，数组顺序、内容和arguments字符串不变；部分冷建raw JSON对象键序不同，不冒称HTTP原字节完全相等。DeepSeek冷建缓存命中下降原因未证实，本轮不宣称Provider缓存命中率或费用提升已获证明。Anthropic缺少中途system角色，原位Framework Message不等同system优先级；原始历史Usage缺HTTP原件，仍不把13312指认为唯一故障位置。
+
+发布后只读Notebook／排期／状态RPC及6个HTTP入口资源通过。新三库备份及前一套`stage-20261031-evidence-recovery`逐库SHA／integrity／FK核验，保留这两套；清退更旧9个库／附属文件共212004864字节，运行库及`databases-current.zip`不动。证据在ignored `.hermes-dev/prefix-release-20261101/`：`release/readiness.json`、`release/receipt.json`、`release/pinned-cache-clear.json`、`release/postrelease-readonly.json`、`release/backup-retention.json`及`deepseek/final-review.json`；云端发布与恢复原件在`/home/ubuntu/.local/state/hermes-secretary/release-20261028/stage-20261101-prefix/`，回退按其中`RECOVERY.txt`，不自动回滚数据库。
+
 ## 2026-10-31 · Alex当前Main缓存显式清理（已完成）
 
 用户明确不补旧Noting，并指出已有热调试清缓存入口。此前仅确认持久root含新版定稿不足以证明所有热runtime已采用；本次按既有正式认证WebSocket调用`conversation.context_cache_clear`，于2026-10-31T10:58:16+08:00返回`cleared`，Profile Alex、Conversation `conv_a497994968694fe180ad6e4523afe9f2`、当前tip `20261021_200341_2ce088`。目标system_prompt／system_prompt_hash／tool_names均NULL；已有内存实例下一正常Turn沿原生同步失效并重建，不在RPC直接重建或触发模型。
