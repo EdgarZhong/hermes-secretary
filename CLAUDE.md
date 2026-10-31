@@ -1,8 +1,14 @@
 # Hermes Secretary 当前状态
 
-## 2026-10-31 · 证据集描述与Main强制回查（已上线，清理收尾）
+## 2026-10-31 · 证据集描述与Main强制回查（实施、上线及清理完成）
 
-用户明确授权按已定稿规格／Prompt实施、验证后上线。隔离工作区`/Users/edgar/code/hermes-secretary-evidence-recovery`，分支`codex/evidence-recovery-20261031`，基于`c07b038d1c`（正式生产产品`ef9051f`已包含）。范围只含07顶部两项调优及配套接线、验证、部署；不混入其它重设计或原工作区dirty。旧证据组保留原文与UID，不自动补描述、重跑旧Noting或转换生产历史；本轮验证新建／修改组及旧组读取兼容。运行缓存沿已有调试接口在空闲时失效，下一次正常active构建新Prompt／工具；不改历史消息。用户随后明确“不用真实模型验证”，取消后续真实调用；此前3个合成样本／6请求原件保留，纠正样本因测试漏带Conversation Ref不作Prompt失败证据。以正式构造、受控SDK、工具／真DB及独立门禁验证。实现→主会话亲审→独立Verification→独立Validation→空闲发布与终验，证据入口`.autonomous/20261031-evidence-recovery/`。两调优已由主会话亲审并提交d6c0088，遗留manual Noting debug已窄接收a51a0bf（41项）。整合十检查、真实Linux7文件111项通过；独立Verification17项产品符合、Validation12产品场景／6独立旅程通过，已于2026-10-31T10:09:58+08:00正式发布bf28ab5，receipt verified、双服务同源active、微信connected，数据／配置／静态保持，读验及两套三库轮换完成。原目录已clean main，旧证据归档校验完成，工作树删除在发布后收尾。用户明确未要求采用自主实现流程，本轮该流程由Agent自行选择；现按用户追加指令完成原已展开计划，不能倒称最初由用户要求自主实现。接口采用source_description与UID同传、provenance_descriptions逐槽对齐，旧组null只读兼容；根Main正常恢复接缝会采用新版指导／Schema并记录缓存变化，无需中途热改。用户追加所有本仓旧worktree的整合、清理及原目录回归main；先只读盘点独立改动、活动引用和证据保留，再执行收尾，不删除未保留内容。
+用户授权按定稿规格／Prompt实施两项调优、验证后上线，随后要求清理所有本仓worktree、整合分支并使原目录回归main。两项调优已提交d6c0088，已授权的遗留manual Noting调试RPC窄接收a51a0bf；于2026-10-31T10:09:58+08:00正式发布bf28ab5，receipt verified。Web／Gateway实际同源active、微信connected；三库业务数据、配置／凭据／绑定及两套前端静态均保持，认证只读RPC与HTTP六资源核验通过，两套完整三库备份已保留并清退更旧备份。
+
+source_description与UID共同维护、provenance_descriptions逐槽投影；描述仅含本组消息，与条目description互补，为Main提供证据历史概括以维护一致性。Main按定稿MUST先核历史依据，已有充分原文无需重复读，有相关引用先Read，不足才Meta／Search，失败保持未知。旧组缺描述只读为null，不回填、不转换生产历史或重跑旧Noting。新版Prompt／Schema沿正常Main构造／恢复边界生效，不热改运行中前缀，不需额外清缓存。
+
+验证完成：D1最终151项／Candidate62项／权限86项等、D2共33项、遗留RPC41项、冻结十检查、真实Linux7文件111项；独立Verification及Validation产品门禁通过，独立6完整旅程6/0，发布与清树事实补核见本轮两报告。用户“不用真实模型验证”后无新增真实调用；此前3个隔离合成样本／6请求原件保留，纠正样本漏Conversation Ref不作Prompt失败证据。生产测试模型、manual Noting启动及外发均0；受控SDK不证明未来模型必然服从。
+
+全部六个附加实体工作树已保全后移除，另清失效登记；13个本地功能分支经ancestor或补丁／blob等价核对后删除，非ancestor原件另有bundle。原目录`/Users/edgar/code/hermes-secretary`只剩唯一main工作树，原Python实体、stash、远端功能引用及独立前端仓库保持；只保留本地main和纯镜像hermes-upstream。旧dirty和证据归档在ignored `.hermes-dev/worktree-retained-20261031/`，本轮完整证据在`.hermes-dev/evidence-recovery-20261031/`。本轮索引、两报告及交付简报见`.autonomous/20261031-evidence-recovery/`，细节见operations-log。用户未要求自主实现流程，系Agent自行选择；后续按用户要求完成已展开计划，不倒称最初由用户要求自主实现。
 
 ## 2026-10-31 · Notebook连续性调查结论（调优已进入本轮）
 

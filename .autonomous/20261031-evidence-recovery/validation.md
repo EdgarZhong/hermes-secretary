@@ -6,6 +6,8 @@
 
 **产品 Validation 门禁通过：V01–V12全部通过，无产品失败、未执行或阻断。** 本Agent独立设计并实际执行六条完整旅程覆盖12场景，最终6 passed / 0 failed，5.2秒。主会话执行前已亲读并同意完整计划（原件保留于ignored `validation/plan-content.txt`）。V13是后续发布／清树实际事实，等待主会话收据，不阻断产品发布前门禁，不能据本报告宣称已经上线或整轮收尾完成。
 
+**2026-10-31发布／清理后补核：V13通过，13/13适用场景全部关闭，Validation门禁最终关闭。** 正式Alex于2026-10-31T10:09:58+08:00发布`bf28ab565ae322965e3b8eb0797486e1d0cdbac7`，相对已验a51产品代码无变化；最终原目录`main`为`913084338b76d9188e60dc5b10c7c15bb1cfb633`，检查时clean、只剩一个worktree。上段“V13等待”保留发布前历史时点，现已由实际收据关闭；详细补核见第4/6节。用户并非最初要求采用自主实现流程，是Agent自行选择；用户后续要求按已展开计划干完并上线，本报告不把流程选择冒称用户原始要求。
+
 用户E12明确取消真实模型验证：本次新增真实模型/API请求为0，生产操作、外发、UI操作为0。受控SDK仅控制外部回复，证明正式机制与可观察结果可用，**不证明模型自然选择工具、概括语义或未来必然遵从Prompt**。没有把这项已取消条件重新列为阻断。
 
 ## 2. 环境与准备
@@ -34,7 +36,7 @@
 | G5 §12.3：幂等及owner隔离 | V10 | 运行中重复→完成重复→异request→branch／Profile→物理轮转重复 | 同键同child；不同owner不借旧操作；跨压缩保持 | 通过，V09-V10-V12.json |
 | G5 §12.3：拒绝与无副作用 | V11 | busy／compression lock／空request→start；未知state；local关闭 | 错误可理解、零SDK、配置不变、不抢租约 | 通过，V11.json；全局等机制复用 |
 | G5 现行Note边界 | V12 | manual成功无即时Note→真实原生压缩→唯一Note receipt | 不额外Compact，不修改自动参与／Idle配置 | 通过，V09-V10-V12.json |
-| G6 E03/E08/E10：发布／清树收尾 | V13 | 发布及清树后实际收据 | 不把计划、代码通过当作已发布／已清理 | 待主会话后续收据；非发布前产品门禁 |
+| G6 E03/E08/E10：发布／清树收尾 | V13 | 发布及清树后实际收据 | 不把计划、代码通过当作已发布／已清理 | 通过；发布／清理后收据补核，见V13-final-receipt-review.json |
 
 场景从冻结用户目标独立导出，plan.md仅作范围线索。等价类覆盖新／旧组、同／跨Task、direct／refs、Main／Noting、有索引／可见充分／无索引／缺口／失败、正常／busy／禁用、首次／重复／跨owner。严格并发时序、全部非Main资格、租约故障、取消／替代和平台回归复用同指纹机制证据。没有用SDK预置选择宣称模型自然行为；无新增UI／Android能力，不将其作为本轮新条件。
 
@@ -68,6 +70,10 @@
 
 **V13。** 意图：确认最终上线与所有本仓工作树收尾。当前产品门禁时点未执行实际发布／清理，操作归root；待收正式版本、两服务实际健康、配置／业务／静态保护、两套三库、缓存恢复边界及清树归档/main收据后补核。当前不得据计划判已完成，无产品场景待执行。
 
+**V13发布／清理后实际补核（2026-10-31）：通过。** 本Agent只读现有收据及本地Git，不重跑产品、生产、模型或UI。`release/receipt.json`的phase=verified、target=bf28ab5，完成时间为10:09:58+08；Web实际commit与Gateway code_sha均为该版本，双服务active、gateway running、微信connected，发布前后均无活动工作。逐对象比较确认host/Alex/study各22张保护表行数、列结构及内容SHA完全一致；24份配置指纹、微信绑定、Secretary静态439文件与Dashboard静态67文件完全一致。`postrelease-readonly.json`再次核HTTP健康commit正确、三Profile、目标Notebook可读（来源描述字段可见且内部Task隐藏）、78条排期可读、manual state已注册并只读返回not_found、六HTTP入口资源通过，生产测试模型请求与noting_start均为0。既有Notebook只展示新增字段的兼容投影，不把它解释为旧组已有新描述：`readonly-compat.json`确认Alex190 item、17 Snapshot、204个旧组只读兼容、新描述0、58个更早来源形状原样保持，database_writes=0；16个来源代码／锁指纹与当前产品一致。正常服务重启及既有恢复边界用于采用新版Prompt/Schema，未为证明它额外发模型请求或重写历史。
+
+`backup-retention.json`实际保留20261031 evidence-recovery与force-completion两套，每套host/Alex/study三库均integrity及foreign_keys=ok；删除更旧maintenance-final的三库及WAL/SHM共9文件，运行库和当前同步zip未动。`cleanup-final.json`确认旧5个工作树及本轮工作树已删除，13个本地功能分支清理（10已合、3有等价证明并保bundle），仅main与官方镜像hermes-upstream保留；其它仓库及远端功能分支未触碰。当前本地只读git实证与收据相符：唯一worktree为原目录、main/HEAD/origin_main=9130843，报告修改前clean。旧五树保全目录和先前evidence_verified收据仍在 `.hermes-dev/worktree-retained-20261031/`；本轮原六份独立验收JSON逐SHA完整匹配，环境解释器实体及原stash保持。相对a51到正式bf28的diff只有文档/报告，无产品源码改动，已有产品旅程不复跑。完整计算结果和输入收据SHA保存在 `validation/V13-final-receipt-review.json`。
+
 ## 5. 问题、修复与复验
 
 | 问题编号 | 场景及完整触发序列 | 预期/实际与证据 | 影响和状态 | 修复版本 | 原场景及受影响路径复验 |
@@ -75,7 +81,7 @@
 | ENV-01 | 首命令向canonical runner传独立--basetemp参数 | 解析即退出，未进入测试，first.log | 命令准备错误，已关闭 | 无产品变更；改--basetemp=形式 | run1进入全部场景，最终run2有效 |
 | ENV-02 | V08续Turn省略当前显示history | root已更新，但未命中预期恢复计量，breaks=[]；run1.log | 验收调用方式错误，未当产品缺陷 | 专属turn helper传真实parent history | run2全旅程6/0，V08.json唯一break及历史不改 |
 | ENV-03 | V12仅在DB追加长历史，未刷新父active | 原生拒绝would_grow／Anchor不在父active，Note为0；run1.log | 合成准备不一致，原生保护正确，已关闭 | 长历史移至manual前合法起点，父active从DB重读 | run2真实压缩成功，V09-V10-V12.json唯一Note |
-| FINAL-01 | V13发布／清树事实 | 当前尚无最终执行收据 | 后续补核，不阻断产品发布前门禁 | 不适用 | root后续提供，不能以本表冒称完成 |
+| FINAL-01 | V13发布／清树事实 | 原产品门禁时点无最终收据；后续verified发布及cleanup-final实际收据已核 | 已关闭，V13通过，原等待时点保留 | 无产品修复；bf28ab5正式发布、9130843本地main | V13-final-receipt-review.json；第4节逐项补核 |
 
 没有发现范围内产品缺陷，没有修改产品源码、规格、门禁、完成条件或测试规则。旧R3同区间Note等12项和catalog review.summary孤立事件为已准确基线复现的独立测试债，本轮未改其语义、未将它们签成全绿。run1失效产物由run2同名JSON覆盖，原失败日志永久保留；有效产物SHA已在环境收据绑定。
 
@@ -84,3 +90,6 @@
 G1/G2：新／旧来源兼容、同／跨Task、Candidate与权限的实际工具／DB／Main链通过。G3/G4：强制回查定稿正确投递，压缩后合法精确Read、可见充分、无索引、缺口与失败的正式用户输入到输出链通过；正常恢复不改历史／工具且记录一次缓存变化。G5：manual RPC到真实child／提交／Main读取、重复查询、隔离、拒绝及后继唯一Note通过。以上12适用产品场景均关闭，**无须产品修复，产品Validation门禁通过，可按既有授权发布。** E12不要求新增真实模型，不以SDK脚本代表自然模型决策。
 
 G6／V13待实际发布和清树收据补核；无需等清树才发布，也不能据当前报告宣称V13完成。推荐复核入口为运维RPC start→state真实committed/snapshot→Main notebook_show完整读回来源描述；生产能力上线不代表授权实际补跑生产Noting，本轮不建议用户为验收额外触发。主要原件为ignored `validation/summary.json`及六个V*.json、`run2.log`。发布／最终目标结束由主会话结合后续实际收据判定。
+
+
+**第6节最终补充（2026-10-31）：** G6/V13实际发布、数据保护、只读可用性、两套三库及工作树收尾均已补核通过，原“待收据”属于发布前历史时点。当前V01–V13全部通过，无失败、未执行或阻断；Validation门禁最终关闭。上线版本bf28ab5与已验a51产品相同，原目录唯一main及证据保全已核。保留E12和受控SDK边界，仍不声称自然模型服从率、真实微信送达或新增生产manual整理已验；本轮未授权这些外发/调用，也无新增此类条件。最终交付判定由主会话汇总两门禁与已核实际事实完成。

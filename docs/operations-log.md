@@ -10,7 +10,7 @@
 
 **恢复与收尾：** 云受限`~/.local/state/hermes-secretary/release-20261028/stage-20261031-evidence-recovery/`含receipt、RECOVERY、三库／配置备份、postrelease-readonly及backup-retention。新备份与前次force-completion两套三库逐SHA／integrity／FK通过，清理更旧maintenance备份及sidecar共9文件、212004864字节；运行库／WAL／SHM及databases-current.zip保持。首次保留检查因脚本自身末只读连接未释放而拒绝删除，显式关闭后原保护检查通过，未放宽门禁或多备份。Linux首次准备环境失败未进入产品测试，最终复用已有官方PM同锁测试环境通过，生产依赖／锁未修改。
 
-本地ignored证据统一`.hermes-dev/evidence-recovery-20261031/`；旧树按原树名留`.hermes-dev/worktree-retained-20261031/`。五旧树已逐dirty／分支／证据SHA收妥后移除，原目录已clean main；本轮工作树在最终报告接收后最后移除，最终清理事实另补下节。恢复时先读RECOVERY与实际新写入，禁止自动回盖运行三库。
+本地ignored证据统一`.hermes-dev/evidence-recovery-20261031/`；旧树按原树名留`.hermes-dev/worktree-retained-20261031/`。全部六个附加实体工作树已逐dirty／分支／证据SHA收妥后移除，失效登记已prune；13个本地功能分支经ancestor或完整补丁／21文件blob等价确认后删除，非ancestor原件另有已verify的bundle。原目录仅剩唯一main工作树；清理收据时HEAD与origin/main同913084338b、工作区clean，随后只追加收尾文档提交。原Python3.14.7实体及SHA、stash保持；本地只留main／hermes-upstream，远端功能引用及独立前端仓库未动。最终收据见cleanup-final.json及保全目录final-cleanup-receipt.json。恢复时先读RECOVERY与实际新写入，禁止自动回盖运行三库。
 
 ## 2026-10-31 · Force完成边界／Pending恢复修复正式发布、0.1.10交付
 
