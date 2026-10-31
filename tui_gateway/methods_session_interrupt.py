@@ -54,7 +54,18 @@ def _(rid, params: dict) -> dict:
         session, err = _sess(params, rid)
         if err:
             return err
+        from secretary.adaptive_runtime import composer_cancel
+        adaptive_operation = None
+        try:
+            adaptive_operation = composer_cancel(session.get("agent"))
+        except Exception:
+            logger.debug("Adaptive Composer cancel observation unavailable", exc_info=True)
         _interrupt_session_turn(sid, session)
+        if adaptive_operation:
+            try:
+                composer_cancel(session.get("agent"), operation_id=adaptive_operation)
+            except Exception:
+                logger.debug("Adaptive Composer cancel settlement unavailable", exc_info=True)
         # Retire the crash-recovery marker NOW: until the run thread's finally, a backend exit looks like a crash
         # and session.resume auto-continues the turn the user just stopped (the extra key covers compression
         # rotating session_key mid-turn).

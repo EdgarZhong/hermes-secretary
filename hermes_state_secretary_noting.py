@@ -347,7 +347,11 @@ class SecretaryNotingMixin:
                 "WHERE conversation_ref=? AND updated_at=? AND trigger_produced_at IS NULL",
                 (float(now), time.time(), conversation_ref, state["updated_at"]),
             )
-            return "trigger" if cursor.rowcount == 1 else "stale_idle_period"
+            if cursor.rowcount == 1:
+                from secretary.adaptive_store import consume_plan_conn
+                consume_plan_conn(conn, conversation_ref, finished)
+                return "trigger"
+            return "stale_idle_period"
         return self._execute_write(claim)
 
     def noting_idle_state_conn(self, conn, conversation_ref):

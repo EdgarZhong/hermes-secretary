@@ -303,6 +303,8 @@ def _maybe_fire_tui_heartbeat_tick(sid: str, session: dict) -> None:
     try:
         if ui_mode and not _notif_prepare_ui_heartbeat_surface(sid, session):
             return
+        from secretary.adaptive_runtime import refresh_heartbeat_priority
+        refresh_heartbeat_priority(session.get("agent"))
         # Another UI driver may have completed between our initial read and idle claim.
         mgr = HeartbeatManager(session_id=sid_key)
         if not (prompt := mgr.due_prompt()):

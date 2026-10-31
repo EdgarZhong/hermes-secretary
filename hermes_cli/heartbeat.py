@@ -83,10 +83,11 @@ class HeartbeatState:
         return cls(**{name: coerce(data.get(name) or default) for name, (coerce, default) in _STATE_FIELDS.items()})
 
     def is_due(self, now: Optional[float] = None) -> bool:
-        if (self.status != "active" or self.interval_seconds <= 0
+        interval = getattr(self, "_adaptive_interval_seconds", self.interval_seconds)
+        if (self.status != "active" or interval is None or interval <= 0
                 or (not self.prompt and not getattr(self, "_conversation_heartbeat", False) and not ui_heartbeat_enabled())):
             return False
-        return (time.time() if now is None else now) - (self.last_fired_at or self.created_at) >= self.interval_seconds
+        return (time.time() if now is None else now) - (self.last_fired_at or self.created_at) >= interval
 
     def render_prompt(self, timestamp: Optional[float] = None) -> str:
         from secretary.heartbeat import render_heartbeat
@@ -201,10 +202,13 @@ class HeartbeatManager:
         s = self.state
         if s is None:
             return "No heartbeat. Set one with /heartbeat every <interval> <prompt>."
-        every = format_interval(s.interval_seconds)
+        effective = getattr(s, "_adaptive_interval_seconds", s.interval_seconds)
+        every = "∞" if effective is None else format_interval(effective)
         fired = f", fired {s.fire_count}×" if s.fire_count else ""
+        if s.status == "active" and getattr(s, "_adaptive_infinite", False):
+            return f"♥ Heartbeat (business ∞{fired}): {s.prompt}"
         if s.status == "active":
-            next_in = max(0, int((s.last_fired_at or s.created_at) + s.interval_seconds - time.time()))
+            next_in = max(0, int((s.last_fired_at or s.created_at) + effective - time.time()))
             return f"♥ Heartbeat (every {every}, next in ~{next_in}s{fired}): {s.prompt}"
         icon = "⏸ " if s.status == "paused" else ""
         return f"{icon}Heartbeat ({s.status}, every {every}{fired}): {s.prompt}"

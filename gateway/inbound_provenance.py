@@ -42,7 +42,7 @@ def wrap_inbound_origin(event: Any, text: str) -> str:
     return f'<gateway-message from="{label}">\n{text}\n</gateway-message>'
 
 
-def apply_message_timestamp(event: Any, message_text: Any) -> Tuple[Any, Optional[str], Optional[float]]:
+def apply_message_timestamp(event: Any, message_text: Any, *, owner=None) -> Tuple[Any, Optional[str], Optional[float]]:
     """Return ``(model_text, persist_text, persist_timestamp)`` for one inbound turn."""
     from gateway.run import _load_gateway_config, _message_timestamps_enabled
     from gateway.run_inbound import strip_discord_triggering_note
@@ -74,4 +74,6 @@ def apply_message_timestamp(event: Any, message_text: Any) -> Tuple[Any, Optiona
     message_text = wrap_inbound_origin(event, message_text)
     from agent.message_metadata import preserve_user_input_origin
     message_text = preserve_user_input_origin(event.text, message_text)
+    from secretary.adaptive_runtime import gateway_owned_input
+    message_text = gateway_owned_input(owner, event, message_text)
     return message_text, persist_user_message, persist_user_timestamp

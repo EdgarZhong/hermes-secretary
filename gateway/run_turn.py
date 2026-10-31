@@ -1462,7 +1462,7 @@ class GatewayTurnMixin:
     def _hmwa_apply_message_timestamp(self, event, message_text):
         """Thin delegator: the implementation lives in ``gateway/inbound_provenance.py``."""
         from gateway.inbound_provenance import apply_message_timestamp
-        return apply_message_timestamp(event, message_text)
+        return apply_message_timestamp(event, message_text, owner=self)
 
     async def _hmwa_stop_typing_for_turn(self, event, source):
         """Stop the typing indicator (never raises). Slack AI status is scoped to a thread/

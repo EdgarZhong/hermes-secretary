@@ -145,9 +145,13 @@ class GatewayGoalsMixin:
             session_id = current
             watch[quick_key] = (source, session_id)
         from secretary.heartbeat import ui_heartbeat_enabled
-        if ui_heartbeat_enabled():
-            return  # UI session-owner / serve host owns firing; never synthesize messaging ingress.
         adapter = self._delivery_adapter_for(source)
+        if ui_heartbeat_enabled():
+            from hermes_cli.goals import _get_session_db
+            from secretary.adaptive_observation import touch_gateway_session
+            if adapter is not None and adapter._message_handler:
+                touch_gateway_session(_get_session_db(), session_id)
+            return  # UI session-owner / serve host owns firing; never synthesize messaging ingress.
         if adapter is None or not adapter._message_handler:
             return
         if (

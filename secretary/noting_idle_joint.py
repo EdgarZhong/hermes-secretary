@@ -17,7 +17,8 @@ def request_idle_joint(parent, *, measurement=None, messages=None, now=None,
             route = db.resolve_conversation_route_conn(conn, ref)
         if not row or row.get("archived") or not route or route["id"] != parent.session_id:
             return rt._skip("not_main_owner")
-        settings = rt.settings_for_db(db)
+        from secretary.adaptive_runtime import idle_settings
+        settings = idle_settings(parent, rt.settings_for_db(db))
         if (not settings.enabled or not settings.idle_enabled
                 or not rt.noting_local_enabled(db, ref)):
             return rt.try_admit_idle(db, ref, settings=settings, now=now, expected_period=expected_period)
@@ -41,6 +42,6 @@ def request_idle_joint(parent, *, measurement=None, messages=None, now=None,
         return decision
     from secretary.noting_compact import request_parent_compaction
     result = request_parent_compaction(
-        parent, threshold_tokens=rt.settings_for_db(db).idle_threshold_tokens,
+        parent, threshold_tokens=settings.idle_threshold_tokens,
         expected_owner=(epoch, db, ref), wait_for_completion=False)
     return rt.replace(decision, reuse_status=("idle_compaction_requested" if result.ok else "skip:" + result.status))
