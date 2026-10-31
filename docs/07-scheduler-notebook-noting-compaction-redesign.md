@@ -6,6 +6,8 @@
 
 **实施授权更新：** 用户随后明确“按定稿的规格和 Prompt 开始实施并验证这两项调优。随后上线”；本轮仅落实本节两项及配套验证／发布，不将其它独立重设计带入。上段“先定规格和Prompt”为定稿当时范围，现已进入实施。用户另要求清理所有本仓worktree、合净分支、原目录回归main，按独立盘点与保留流程收尾。
 
+**验证授权更新：** 用户明确“不用真实模型验证”，不再安排新增真实模型调用；正式Prompt／工具构造、受控SDK全链、真DB、分支／拒绝回归、独立门禁及上线只读核验继续完成，不将采样作为本轮完成条件。
+
 **本轮增量接口接线：** Create／Update在现有`source_message_uids`旁增加`source_description`字符串；模型新建或实质修改直接证据组时须非空，并与该槽完整UID集合一同提交。存储和所有读取／回执投影以`provenance_descriptions`数组与`provenance`／`evidence_time`逐槽对齐；旧组缺字段时只读规范化为`null`，不回写、不猜造。描述纳入旧节点不可变／继承比较；同Task覆盖该槽描述和UID，后Task追加。refs式Candidate没有直接组，不制造空描述；直接来源转refs仍只允许本Task唯一未提交槽。可信Python调用保持新增参数可选的旧调用兼容，省略为未知；模型维护工具对非空直接UID强制非空描述，拒绝无副作用。实际无修改的update保持no-op，不为补来源描述单独续期／造版本。此处记录字段工程接线，不改变A/B定稿英文。
 
 ### A. 证据集描述（已定稿）
@@ -2169,6 +2171,10 @@ Additional prompt:
 | `conversation.context_cache_clear` | 必填`profile`、`conversation_ref` | `profile`、`conversation_ref`、实际`stored_session_id`、`status`（`cleared`或`already_clear`） |
 | `secretary.noting_recover` | `profile`可选（沿原生当前Profile）；必填`conversation_ref`、`failed_child_session_id`、`request_id`（非空、最长128字符） | 异步操作身份、状态、提交结果及材料来源，见下文 |
 | `secretary.noting_recovery_state` | 与启动恢复相同；查询必须复用相同三项身份参数及目标Profile | 不启动模型、不新建任务，只返回现有操作状态；不存在为`not_found` |
+| `secretary.noting_start` | 必填profile、conversation_ref、request_id（非空、最长128字符） | 对当前原生Main上下文发起一次新的manual Noting，返回实际admission_id／child_session_id／状态／提交见证；相同请求幂等 |
+| `secretary.noting_state` | 与单次启动相同的三项身份参数 | 仅查询该次manual Noting，不启动模型；不存在为not_found |
+
+**2026-10-25用户授权单次新Noting调试；2026-10-31按工作树整合要求接收遗留实现。** 原生Compact未伴随Noting时，可通过secretary.noting_start明确补跑一次；不同于恢复旧失败child，不借旧child或伪造失败记录代替当前整理。沿目标Profile原生resume／parent构造与完整工具表冻结、manual admission／child／Commit Gate及通知，不新建执行器、不额外Compact、不改自动参与／Idle配置。沿既有能力及参与门禁；忙时不抢Main租约，不绕原生压缩锁。committed及snapshot_id来自实际child提交见证，排队或模型结束不冒称提交；状态随当前child合法生命周期返回，含cancelled／superseded，被替代审计结果不是有效Snapshot。能力上线不代表本轮实际生产补跑授权。
 
 缓存清理遇原生正在运行的Turn或压缩锁返回`4010`，待该工作自然结束再调用；不打断运行Turn。未知Conversation返回`4001`，无效参数`4000`，存储不可用`5010`。示例：
 

@@ -12,11 +12,11 @@
 
 首尔 Hermes 正式入口为 `hermes.edgarzhong.fyi`，使用 Authelia 双因素认证。旧 `test.edgarzhong.fyi` 已废弃，直接返回404。`eb-data.edgarzhong.fyi` 由 Caddy 反代 `127.0.0.1:8787`，保留 Ebbinghaus 原生 Bearer 鉴权，不套浏览器双因素跳转；`nmem.edgarzhong.fyi` 反代 `127.0.0.1:14242`，保留NM原生API令牌认证。三个域名均使用仅DNS的首尔A记录。
 
-首尔 Hermes 使用 `ubuntu` 服务布局、Caddy 公网 HTTPS；`auth.edgarzhong.fyi` 仅提供认证门户。本节描述首尔入口；下文的 `/root`、`alex` 与 Cloudflare Tunnel／Access 布局属于既有部署模板，不直接套用到首尔机。当前迁移进展只记根 `CLAUDE.md`。
+首尔 Hermes 使用 `ubuntu` 服务布局、Caddy 公网 HTTPS；`auth.edgarzhong.fyi` 仅提供认证门户。本节描述现用首尔入口；下文的 `/root`、旧`alex` 与 Cloudflare Tunnel／Access 布局属于北京历史模板，不直接套用到首尔机。第二台首尔正式机的迁移按§0.1；当前迁移进展只记根 `CLAUDE.md`。
 
 首尔稳定布局：Hermes仓库 `/home/ubuntu/hermes-secretary`，控制根 `/home/ubuntu/.hermes`，两实体Home `/home/ubuntu/.hermes_profiles/{Alex,study}`，通过控制根的 `profiles/{alex,study}` 注册；保留原生default，不通过前端隐藏规避身份解析。Ebbinghaus位于 `/opt/ebbinghaus`；NM官方0.10.101运行程序保持 `/usr/lib/Nowledge Mem`，原生四数据根保持原路径，`nmem.service`以root运行、只监听本地14242，客户端ubuntu使用自己的受限官方连接配置。NM使用阿里云专属Host的 `/compatible-mode/v1`、`qwen3.7-text-embedding`／1024维，启动器从 `/etc/secrets/dashscope.key` 读取Key，不加载本地GGUF；更换模型后必须原生reindex，不能因维数相同跳过。
 
-日常SSH `alex`与同步专用Host `hermes-secretary-sync`均指正式首尔`43.128.131.30`／ubuntu，私钥`~/.ssh/alex_vps.pem`。workspace为首尔 `/home/ubuntu/workspace` ↔ Mac `/Users/edgar/Desktop/Alex` two-way-safe；配置只传8白名单文件；DB完成包由首尔 `.hermes_profiles/.snapshots/databases-current.zip` 单向传Mac，再由既有接收器核验后落冷库。首尔快照timer每五分钟独立发布，Mac离线不阻塞源发布；不得把rawDB改成双向同步。切换时暂停旧lane、核定当前源配置、预对齐后启用，按真实marker往返、配置SHA、自动快照落地验证，不能只看connected。实际版本和收据见根CLAUDE。
+同步专用Host `hermes-secretary-sync` 和日常`alex`均指正式首尔`43.128.131.30`／ubuntu，私钥为本机受限`~/.ssh/alex_vps.pem`；`seoul`为已废弃、待回收的原实验机入口，不作为生产／同步源。workspace为正式Alex `/home/ubuntu/workspace` ↔ Mac `/Users/edgar/Desktop/Alex` two-way-safe；配置只传8白名单文件；DB完成包由正式Alex `.hermes_profiles/.snapshots/databases-current.zip` 单向传Mac，再由既有接收器核验后落冷库。首尔快照timer每五分钟独立发布，Mac离线不阻塞源发布；不得把rawDB改成双向同步。切换时暂停旧lane、核定当前源配置、预对齐后启用，按真实marker往返、配置SHA、自动快照落地验证，不能只看connected。实际版本和收据见根CLAUDE。
 
 study使用原生`openai-codex`及ChatGPT订阅独立设备码授权，凭据只留实体Home的`auth.json`（0600），不在同步白名单、不导入Mac Codex登录态。默认`model.default: gpt-6-sol`、`agent.reasoning_effort: high`；`delegation.model: gpt-6.1-sol`同时覆盖普通子Agent与后台delegate_task，Provider／凭据及High沿原生继承。Noting按父冻结运行态继续使用主模型，不受delegation覆盖；已有Conversation仍遵循各自持久模型配置。当前部署版本在空命名Profile上首次`auth add`可能误报成功而未存凭据，首次授权优先使用`hermes -p study model --no-browser`中的订阅登录入口；最终须核Profile级凭据落盘、正式runtime解析与实际请求，不能只看成功提示。实际绕行与证据见运维记录。
 
@@ -129,7 +129,11 @@ Authelia现有“启用Redis前”的`rollback.sh`会切回内存会话并重新
 
 ## 1. 原北京部署模板与生产配置口径
 
-本节为原北京部署模板（首尔运行布局按§0），不是当前主机选择。模板服务用户为 `root`，HOME 为 `/root`，SSH 使用本机既有 alias `alex`。云端 Ubuntu 24.04 / x86_64；不要把本机虚拟环境复制上云。
+**§1–§8保留原北京部署／初次验收时的模板和证据语境，出现`/root`、`~/scrips`、旧`alex`、Tunnel及旧unit时不能作为第二台首尔的执行命令；首尔迁移执行以§0及§0.1的现场清单为准。** 下文仍有效的快照、权限、单写入端和验收契约继续沿用；历史“完成”不代表本轮完成。
+
+下方模型表保留初次部署模板；Alex默认及当时置顶Conversation于2026-10-24变更为`kimi-coding/k3.1-pro`，当时使用262144上下文、High、原生Chat路由。这里不把当时窗口冒称现值；后续实际变更、官方额度核对和回滚点见[运维记录](operations-log.md)。
+
+本节为原北京部署模板（首尔运行布局按§0），不是当前主机选择。模板服务用户为 `root`，HOME 为 `/root`，当时SSH alias为`alex`，现已回收；未来新首尔同名alias不能用于执行本节的北京路径命令。原机Ubuntu 24.04 / x86_64；不要把本机虚拟环境复制上云。
 
 | 用途 | 云端 | Mac |
 |---|---|---|

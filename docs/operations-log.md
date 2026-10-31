@@ -105,6 +105,16 @@ Secretary静态沿已审执行器原子交换，收据release-20261028/static-20
 **恢复边界：** 本次来源新结构与旧代码不兼容，禁止单独回退源码或自动回滚DB；先读RECOVERY.txt／receipt，核当前版本、新写入、兼容性及权限，优先保留现场向前修复。没有发生自动回退。混合UID辅助投影选择及Candidate本Task未提交槽转换属于独立审查认可的工程细化，仍明确记CLAUDE待用户追认，不冒称额外用户确认。最终覆盖及限制见[交付报告](../.autonomous/20261027-noting-provenance-history/final-delivery.md)。
 
 
+## 2026-10-27 17:21 · Alex K3.1 Pro补齐原生视觉声明
+
+**17:31按用户追加要求重启：** 用户反馈仍看不到图片，明确要求重启服务。执行`sudo -n systemctl restart hermes-secretary.service`及`systemctl --user restart hermes-gateway.service`成功；Web PID275422→652199、Gateway PID577976→652373，均Result=success／active。回环53446的`/api/health`返回ok／3426c0f，`/api/status`整体ok、gateway running、weixin connected／无错误、active_agents=0。Gateway退出时飞书MCP子进程SIGTERM超时后被清理，重启后仍有Nous辅助认证缺失warning；两项均未阻断本次服务及微信就绪。未代发生产图片，不将健康检查当作看图端到端验收。
+
+**授权与原因：** 用户明确要求立即修改正式Alex的K3.1 Pro视觉配置。实体Home `/home/ubuntu/.hermes_profiles/Alex/config.yaml`仅为旧`k3-256k`声明视觉能力，新`k3.1-pro`漏配；正式图片路由在原配置下判定能力未知、采用`text`。
+
+**变更与验证：** 经`ssh alex`使用正式`.hermes/bin/hermes -p alex config set`，以转义点号的配置键新增`providers.kimi-coding.models.k3.1-pro.supports_vision: true`。完整YAML语义比对与文本diff确认只新增此模型的两行声明；沿控制根激活官方PM依赖后切入Alex，原生`load_config_readonly`／`_lookup_supports_vision`／`decide_image_input_mode`实测`true`／`native`。文件0600，Web／Gateway均active，无重启、源码修改、额外视觉模型或生产图片请求；现有会话端到端看图尚未代测。旧模型声明、默认模型／Chat端点／262144窗口／High、其它Profile与业务数据保持。
+
+**备份与回滚：** 云受限目录`/home/ubuntu/.local/state/hermes-secretary/model-changes/alex-k31-vision-20261027-092150Z/`含`config.yaml.before`与`receipt.json`，目录0700、文件0600；新配置SHA256=`dfba2044ba9c633db1fc926d14175bd1d11e935a50a7375d2597ae5271241ffb`。如需回退，核当前配置后仅删除本次新增的`k3.1-pro.supports_vision`声明，不整份覆盖后续修改。前置独立探针因选错依赖作用域出现yaml／ruamel缺失，均未写配置；最终正式CLI写入及控制根PM作用域探针成功，未安装依赖。
+
 ## 2026-10-26 · Scheduler Tag切换修复、静态上线与0.1.8暂存
 
 用户明确问题是悬浮球已展开后，一级Tag→Scheduler二级卡顿，要求修复并重建0.1.8但先不交付，同时移出Alex同步区旧APK。根因不是点击处理器await请求，而是SecretaryOrb将层级变更及ResizeObserver数据尺寸变化都映射为整板opacity=0／pointer-events=none的360ms玻璃ghost；响应填充列表会再次隐藏／排队动画。前端`0947ed5f25fe9d412e25ab6ab6248aefcd64c55e`删除这两条遮挡路径，层级即时提交、仅140ms位移，不改变球本身展开／关闭动画；不增加预取／持久缓存，按需读取及恢复机制保持。
@@ -222,6 +232,58 @@ root实际Cnx隐藏页在正常载入一次后，阻断WS并延迟所有API4秒�
 发布收尾核验新fd57123及前次93d3b71两套完整三库的SHA、integrity和外键后保留6库，清理更旧2b6d5ec三库197316608字节；运行库／WAL／SHM和同步ZIP保持。自建线上核验隐藏页及临时回环SSH转发已关闭。
 
 Stop前进一步只读取证：该轮274.7秒停在首次模型流式请求构造工具调用阶段，有reasoning、generating／constructing，未出现tool.start／complete，数据库无本轮已提交调用／结果，尚未进入工具执行器。显式Stop先于stream_interrupt_abort及连接清理，随后记录interrupted_during_api_call；Stop清理共用的“stale stream”日志不能证明供应商先超时。现存证据缺工具名、参数长度及逐chunk时间，不能据界面“Skill Create”认定具体函数，亦不能区分持续慢生成与中途停滞；未找到Stop前超时、窗口／输出截断证据。不将这项证据缺口冒称已由恢复补丁解决。
+
+## 2026-10-26 · 正式Alex迁移早期步骤留档（已由上方完成记录收敛）
+
+**授权与范围：** 用户要求开始迁移、先安全关闭在线服务，并由Agent在目标就绪时通知用户手动改Cloudflare DNS。Hermes／NM／艾宾浩斯、认证、安全策略、监测／健康检查／小脚本及定时任务一并迁移；NM／艾宾浩斯原API token保留，Authelia用户／密码hash／TOTP及storage加密密钥保持，新机不导入旧Redis会话，旧登录须重新认证。新机SSH仅公钥／禁止root及密码登录，网络安全有效策略对齐源机，源云代理动态封禁身份不跨机覆盖；腾讯云TCP443由用户放行。
+
+**源停服：** 原生只读Web活动列表0、Gateway active_agents0／active_work空通过后，精确暂停三条Mutagen，停健康探针与snapshot timer。Caddy第一次停止命中原systemd停机超时，由systemd发SIGKILL退出，已如实告知用户；此时业务服务仍active，不记为全正常停服。随后仅加runtime停止超时无限等待覆盖，Gateway／Hermes Web／艾宾浩斯／NM／Authelia／Redis均inactive；NM、艾宾浩斯、认证与Redis退出0，Hermes Web按SIGTERM退出且systemd Result=success，未对数据服务强杀。关闭源自启并保留原enable状态回执，源业务／公网80、443监听消失，仅SSH及系统本地DNS保留。
+
+**复制与证据位置：** 所有本机中转、归档、脚本和收据都在仓库外`/Users/edgar/Library/Caches/alex-migration-20261026/`（0700）；源／目标受限归档目录`/var/backups/alex-migration-20261026/`。NM停服后直接复制四原生数据根、索引／附属文件，未调用NM导入／导出功能。data归档287,724,666字节、program归档1,638,105,365字节，两端SHA一致；目标恢复data已完成，程序／环境恢复进行中。源原生文件保留，不删源库。Mac中转过慢后改用临时受限SSH key（只能从新机读取本轮固定归档）；后确认两机内网10.8.0.3→10.8.0.13可达，改内网完成传输及SHA复核，源授权条目和目标临时私钥已撤销。新机原host keys／authorized_keys未覆盖。源码／配套静态按实际运行源文件迁移，不升级或替换为本机其它分支。
+
+**目标基础已核：** 新机账号组与源匹配，最小Redis及系统依赖安装完成且未升级其它包；默认Redis被阻止自启并disabled。SSH drop-in迁入后sshd语法检查／reload及独立新连接通过，完整sshd有效配置与源一致；UFWinactive、转发／userns策略与源保持，未增加全局放宽、Fail2ban或复制源云代理身份。用户已获告知业务服务仍未开放，最终就绪及DNS放行须待恢复／启动／认证／监听验证。
+
+## 2026-10-26 16:16–16:24 · 新Alex SSH配置与新旧首尔直连比较
+
+**用户确认与配置：** 用户确认下载目录中是私钥`alex_vps.pem`，已绑定新首尔`43.128.131.30`；要求尝试登录、配置SSH Alex并比较与现用首尔直连质量。将下载文件收紧0600、用`ssh-keygen`静默校验有效后移入`~/.ssh/alex_vps.pem`，迁移前后内容SHA一致，不输出私钥或生成额外副本。公钥指纹为RSA2048／`SHA256:A2oS0yGbzks+ZYYnr0ZMiIWrFQdeLESb4Ydo8fRmkxU`；`ubuntu`实际登录成功，Linux6.8.0-138-generic／x86_64。修改dotfiles源SSH配置并执行`sync-links.sh ssh`，`ssh alex`已成功；现用`seoul`／`hermes-secretary-sync`及其私钥、同步端点保持。新机ED25519主机密钥按首次信任加入known_hosts，并未从云控制台独立核对，后续严格校验保持开启。
+
+**直连核验：** 用户自行修改Clash配置；未代改Clash。运行中的mihomo服务通过用户专属Unix控制接口只读查询，两个目标22端口真实连接均`chains=[DIRECT]`，分别命中各自`IPCIDR`／32规则；配置文件亦有对应DIRECT规则。旧配置所列控制socket／9097不可用，之后按运行进程实际`-ext-ctl-unix`接口完成核验，未因旧接口失败就宣称已核。TUN接口存在本身不代表代理；裸TCP connect测得亚毫秒是本地接管，不当作网络RTT。
+
+**本机到两机同窗短测：** 初轮24包ICMP新59.86／现用65.00ms中位数，丢包4.2%／8.3%；延长100包新51.43／现用58.20ms、中位数新低约6.77ms，P90为104.85／108.43ms，丢包6%／4%。两轮丢包高低反转，不据短样本认定某台长期更差；延长ICMP与短传输同窗，也可能受共同本地链路／排队影响。SSH无复用各6次`true`均成功，整次连接中位数新1.005／现用1.004秒。每台交替顺序各2次2MiB下载、各2次1MiB上传，SSH禁压缩、生成零数据／远端丢弃、不读取业务文件：下载新8.06–11.09／现用6.36–10.40Mbit/s，上传新6.75–8.42／现用2.15–8.42Mbit/s；所有样本完整传输且退出0。速度包含SSH握手／认证，属于短文件有效吞吐，不是网卡／套餐峰值带宽或持久连接极限，少量样本不外推长期稳定性。结论：未测出新机网络明显劣于现用机，延迟略好、SSH相当、短传输同档；不能宣称零丢包或已完整网络验收。
+
+**证据与范围：** ignored `.hermes-dev/network-compare-20261026/{latency.json,throughput.json,clash-routing.json,*-ping*.txt}`。本轮只配置本机SSH并做少量网络／只读登录探测，没有停启服务、改新机系统hostname、迁移业务数据、切DNS或同步owner；原生SSH登录会留下正常系统日志。当前三服务仍运行现用临时首尔，迁移阶段见CLAUDE／SOP。未创建密码输入脚本，已有私钥直接复用OpenSSH；旧`sauth`只用于旧Cloudflare登录刷新，本轮未运行。
+
+## 2026-10-26 · 北京旧Alex本地回收与新首尔迁移准备
+
+**用户确认：** 北京旧Alex已关闭；现用首尔是临时机，第二台新购首尔为正式机并重新使用Alex名称。新机尚未配置连接信息，本轮先回收旧北京相关本地资源并梳理Hermes、NM、艾宾浩斯数据服务的迁移SOP，不执行生产迁移／停服／DNS切换。
+
+**本地回收已完成（15:47）：** 在`~/dotfiles/ssh/.ssh/config`精确移除旧`alex`／`alex-sync`块，经`sync-links.sh ssh`保留`~/.ssh/config`软链接；现用首尔`seoul`／`hermes-secretary-sync`仍指临时首尔机。删除北京独立`~/.ssh/alex_ed25519`密钥对、旧域名`ssh.edgarzhong.fyi`专属Access token／lock／url三文件及无活动引用的`~/scripts/hermes-cloudflared-no-ui.sh`，未备份私钥。`known_hosts`和既有`known_hosts.old`各去掉该域名3行，保留其它主机；SSH agent原本无identity。Cloudflare组织级缓存、通用SSH沙箱配置、其它后台服务和历史资料保持。删除前目标均为普通文件且无打开引用；未创建私钥副本，操作回执只存路径、计数和状态。
+
+**核验：** 现用`seoul_vps.pem`清理前后SHA一致；`ssh -G`解析两个现用别名的目标／用户保持，三条Mutagen ID及端点保持。最初workspace／profile-config两lane观测到beta unexpected EOF，未作修复或重启，稍后两端均自动恢复connected／watching；database-snapshot亦两端connected／watching。连接状态只为当时观测，不代替本轮新的marker／内容往返验收。回执在ignored `.hermes-dev/server-migration-20261026/beijing-cleanup-receipt.json`，权限0600；现有未提交工作保留，不commit／push。
+
+**边界与后续：** `alex`别名暂不配置，待用户提供新首尔IP／账号及新专用密钥后绑定；不能把临时机冒充新Alex。Cloudflare云端旧SSH Access应用、DNS、Tunnel及云厂商资源尚未核对／删除，本次本地清理不代表远端撤销，也不宣称关闭实例已销毁。北京历史资料／恢复包保留。三服务的新机盘点、停写快照、恢复校验、域名／同步切换和回滚顺序统一见[部署SOP](cloud-deployment-sop.md#01-第二台首尔正式服务器迁移sop)。
+
+**SOP与只读审查已完成：** 已新增现用临时首尔→第二台正式首尔的三服务清单／新机准备／预复制／停写最终快照／DNS及后台owner切换／三lane重建与验收／有无新写入两种回滚，README补稳定入口，旧北京模板加历史边界。子Agent只读审查与主会话定向复核确认NM四数据根、艾宾浩斯权威库和环境文件、Hermes系统Web／用户级Gateway作用域；首次普通用户stat艾宾浩斯目录被权限拒绝，后用既有sudo只读核元数据，未改权限。现场路径／权限／unit回执在同目录`source-metadata.txt`（0600），未输出凭据正文。已核艾宾浩斯客户端outbox／server_seq及云权威契约；NM当前真实程序版本／认证可移植性、Authelia完整storage、Caddy证书、所有写入消费者及完整容量仍为正式实施前检查项，不将旧记录冒充实时证据。本轮只读访问现用首尔，不停启服务／不改配置／不发模型或业务写入；文档检查不替代迁移验收。
+
+## 2026-10-26 · 早期测试Profile与临时环境清理（已完成）
+
+**用户意图与状态：** 用户先要求调查`.hermes-dev`哪些早期测试Profile可删，倾向只保留最近几组；收到具体清单、预计4.18GiB占用及不可原样复查旧测试库的说明后，明确回复“删吧”，已确认本批删除范围及保留3组方案。已完成；执行前复查活动文件、新增变化和软链接依赖，不停止任何服务、不扩大删除范围。
+
+**最终结果与材料入口：** 共删除清单内1,411个目录（16个旧独立测试环境／Home＋1,395个pytest临时子树），先将4,006个报告／日志／脚本移至`.hermes-dev/disk-audit-20261026/retained/<原.hermes-dev相对路径>`，逐文件SHA256在移动后和删除后均核验一致；保留文件约23MiB，不复制旧测试库。最近3组全部文件／软链接指纹一致，项目Python实文件SHA一致且`--version`为3.14.7；5174／53445／53446／53448原有服务继续监听。目录占用14,896,644→10,513,860KiB（约14.21→10.03GiB），净减4,382,784KiB（约4.18GiB）；执行窗口系统可用84,558,248→88,525,672KiB，观测增加约3.78GiB至约84.42GiB，物理净变化与du目录占用有差异，不将其它时间段磁盘变化归因本轮。完整执行回执`disk-audit-20261026/cleanup-receipt.json`状态verified，预案标executed_verified，原盘点不改写。旧测试数据库已获授权删除，不再作为可恢复／可原样重跑的原件；历史报告引用的被删路径仅证明当时执行，保留文本／日志按上述镜像路径查找。本轮不改源码／依赖／生产配置，不跑产品测试、不commit／push。
+
+**盘点与候选：** 目录约14.2GiB。16个旧独立测试Home／环境合计约2.99GiB：`round2-attachment-live`、`round2-runtime`、`dashboard-preview`、`round2-v16-runtime`、`round2-v16-live`、`round2-v16-observer`、`round2-completion-proof`、`v1.6-validation`、`v1.6-test-bedrock`、`v1.6-test-acp`、`v1.5-validation`、`v1.5-native-resume`、`v1.5-openai-resume`、`v1.5-probe`、`validation`、`tmp/round2-search`。其中附件测试三份大bin约954MiB；数套Home各自复制Python／Node等约344MiB。另在`v1.6-tests`、`round2-evidence`、`v1.6-evidence`、`round2-verification`中识别1,395个顶层`test_*`临时子树，合计约1.21GiB。两组候选互不重叠，总目录占用约4.21GiB；清理前须先保留其中报告／必要日志／脚本。预案不能按父目录整树删除四个evidence／tests轮次，以免误删保留的报告与来源；这里只清名单内test子树。目录占用不承诺等额物理释放，执行前重查新增文件、进程及软链接依赖。
+
+**已确认保留与排除：** 最近保留Web恢复`web-recovery-20261024/backend/validation-home`、`fixture-home`及Noting v2的`worktree-retained-20261026/noting-maintenance-v2/noting-maintenance-v2/e2e/run-r20-fresh-two-cycle-20261024-201158`共3组。按测试轮次而非文件mtime判断新旧：旧服务持续写日志会让旧Profile看似刚使用。共享`tools`约0.94GiB仍被项目`.venv/bin/python`依赖，不删；`chat-migration`约1.33GiB含实际导入与迁移原件、`model-view-probe`约423MiB及`failed-turn-20261021`等真实取证材料不当普通测试Profile删。冻结源码副本、APK、签名、既有文档证据均不纳入本批。
+
+**运行状态与证据：** 10月18–19日启动的本地服务仍监听5174、53445、53446、53448；分别使用validation-personal的UI日志、round3-runtime、validation-personal/runtime及product-intent-review本地Caddy材料。它们不在清理候选，本次不停止。候选在调查时无打开文件；旧`round2-v16-live`依赖`round2-v16-runtime`的Python软链接，二者作为同批候选，不能只删运行时留断链。只读扫描含1,576个数据库／配置目录候选，大多数是pytest临时目录，不等于1,576个人工Profile。本地清单`.hermes-dev/disk-audit-20261026/inventory.json`和`cleanup-proposal.json`记录各路径、占用、软链接、保留文件与预案状态，无凭据内容；未访问云端、未操作UI、未改源码或运行配置。
+
+## 2026-10-26 · 已合并Worktree与Android编译缓存清理
+
+**授权与范围：** 用户明确选择“按建议清理”。已移除完整合入当前main的`hermes-secretary-noting-v2`与前端`hermes-secretary-web-visual-polish`工作树，保留Git分支；Noting的ignored验收材料先原地迁到主目录`.hermes-dev/worktree-retained-20261026/noting-maintenance-v2/`。只删除前端`src-tauri/target/{debug,release,aarch64-linux-android}`可重建编译目录，保留`android-evidence`、APK、签名和其它生成资源。执行前两树tracked／普通untracked均干净、祖先检查通过，无打开文件；未发现cargo／rustc／gradle构建进程。
+
+**结果与验证：** Noting材料1,531文件迁移前后逐SHA256／软链接一致；Android证据、签名目录及APK outputs共230个文件逐SHA一致。两棵worktree正式注销，分支头保持`69cc865deb`／`002f7a27`，无需重复合并或改产品代码。扣除保留材料后，删除前目录占用合计6,128,900KiB（约5.85GiB）；清理窗口`df`可用空间24,432,908→29,467,000KiB，观测净增约4.80GiB，现约28.10GiB（文件系统共享块／并发写入下不将du占用视为必然等额释放）。target剩约795MiB，主要是保留的android-evidence。主仓仍2棵、前端仍3棵worktree；依赖实体及其它dirty保留，前端期间出现的两个测试dirty不属于本轮修改。完整本地回执`.hermes-dev/worktree-retained-20261026/cleanup-receipt.json`，状态verified；本轮仅目录清理与文档记录，不跑产品测试、不commit／push、不改运行版本。
+
+**保留与限制：** 当前主目录有既有文档dirty；`web-release`有正在推进的Noting调试代码／测试dirty，不能撤销或整树移除。Clarify及visual-design各2个未合并提交，visual-design另有截图与交接文档，全部保留，不为减少目录强行合并旧实现。主目录约14GiB的`.hermes-dev`未获本次删除授权，保留原始证据；不修改生产、不重启本地服务、不操作用户页面。Android下次构建需要重新编译。
 
 ## 2026-10-25 · Compact部分摘要保留及1000秒上线
 
@@ -473,6 +535,38 @@ inline顶层只有notebook_show，新工具仅在User任务之后、数组末尾
 **判断与停止条件：** 顶层注册可调用证明本次认证、模型、High及普通Schema可用，同Beta Header也可接受；所测inline消息形态被拒。泛化400仍不能进一步区分system角色与tool_addition块的具体拒绝点，不能穷尽所有扩展；不是原Chat的Token Limit错误。动态声明成功前提不成立，**N=38未发送**：仅用原固定生成器／原失败wire离线校验并准备Anthropic变体，保Root正文、152条合成父消息、26父工具、Noting任务与两Schema，按协议调整序列化及任务→声明顺序、max_tokens1／High。跨协议不称单变量JSON实验，不声称验证缓存命中或修复原超窗。
 
 完整脱敏报告与派生核验`.hermes-dev/kimi-anthropic-inline-20261024/report.md`、`verified-results.json`，原始受限请求／响应及初版回执均保留；派生核验明确区分“工具可达”与“动态注册成功”，顶层正对照不计动态成功。目录0700／文件0600，凭据不落盘；此前N38历史实验与报告保持原样。
+
+## 2026-10-24 · Alex 置顶 Conversation Heartbeat 周期核对
+
+用户明确要求每两小时一次。首尔生产只读核对唯一实际置顶 `20261021_200341_2ce088`／`conv_a497994968694fe180ad6e4523afe9f2`：持久Heartbeat已为active、7200秒、额外prompt为空；最近七次正式heartbeat消息自02:58至14:58均约两小时间隔，最近三次为10:58:37、12:58:41、14:58:42。实际触发与两小时配置一致，未发现一小时周期证据；保持现有设置，未重设计时锚点、触发模型或重启服务。此前旧Conversation的Heartbeat为cleared，未恢复。下次预计16:58左右，实际依空闲及服务运行条件。
+
+## 2026-10-24 10:55 · 北京旧机最终文稿回收
+
+**授权与范围：** 用户最初要求补收OpenClaw及文稿，随后明确取消OpenClaw新增数据库、记忆与技能的补备份，仅收取此前10月14日备份之后新增的文稿。旧两轮OpenClaw备份保留，不将被放弃的增量冒称已保存。
+
+**结果：** 通过原`ssh alex`从`/root/Documents/nmem-ingest/`只读收回10份Markdown，源内容合计105,171字节，包50,368字节。归档SHA256=`050d9d08d2a53f394a4cd43cb9361a29caa5d31a5170c965e6155be58df5f0e2`；gzip完整性、精确文件集合、全部源SHA及本机展开副本校验通过。收尾回执脚本曾因本机Python缺`hashlib.file_digest`失败；文件已完整落地，改为兼容SHA接口后独立重新验包并生成回执，无需重复下载。
+
+**留存与边界：** 私人工作区`/Users/edgar/Documents/Codex/2026-10-08/new-chat/outputs/server-final-recovery-2026-10-24/`含README、归档、展开documents、manifest、verification及SHA256SUMS；恢复只需取文稿，无须运行OpenClaw。未停止任何服务、未制作OpenClaw新快照、未改源文件或首尔业务、未销毁实例。按本轮核定范围资料回收完成，实例销毁仍由用户执行。
+
+## 2026-10-24 10:27 · Alex 现有置顶会话切换 K3.1 Pro
+
+**授权与目标：** 用户在默认值变更后追加明确要求，将当前置顶会话也切换为3.1 Pro。只读核实Alex唯一pinned stored=`20261021_200341_2ce088`，稳定ref=`conv_a497994968694fe180ad6e4523afe9f2`；正式`resolve_conversation_route`确认当前tip同stored，Web active_list中原runtime=`dabac338`、model=`k3-256k`、idle／running=false。
+
+**实施：** 为避开旧`/model`对Kimi Coding强制Anthropic的行为，使用正式Web RPC `session.close`释放目标runtime，原生`SessionDB.update_session_model`仅为目标写入`k3.1-pro`、provider=`kimi-coding`、base=`https://api.kimi.com/coding/v1`、mode=`chat_completions`，同时更新顶层与`gateway_runtime`两shape。原row原本未结束，close后通过原生`reopen_session`恢复开放状态，再对同stored执行`session.resume`（eager_build、omit_messages、close_on_disconnect=false），不新建Conversation。Profile的262144窗口及High不变，没有服务重启或其它Profile切换。
+
+**结果与证据：** eager恢复的新runtime=`8c66bc08`，正式返回info.model=`k3.1-pro`、reasoning_effort=`high`，running=false、无auto_continue；持久两shape均为预期Chat route。十张保护表（messages、排期、pending Reminder、Conversation绑定／别名、Heartbeat及Notebook四表）全行SHA前后一致。未额外启动生产模型Turn或渠道测试发送；完整业务请求沿用户下一次正常输入验证，不以构造成功冒称模型长上下文／完整业务验收。
+
+**回退材料：** 云受限`/home/ubuntu/.local/state/hermes-secretary/model-changes/pinned-k31-pro-20261024-102733/`含目标原row、原／新运行态白名单、保护表前后指纹和`receipt.json`，目录0700、文件0600。需回退时重新核唯一pinned及实际tip／空闲状态，沿同一原生回收→完整route writer将该目标改回`k3-256k`→恢复运行态；不覆盖整库、历史或后续业务配置。
+
+## 2026-10-24 10:22 · Alex 默认切换 K3.1 Pro，保留256K
+
+**授权与选择：** 用户要求 Alex 默认切换当日发布的 K3.1 Pro，核对订阅内1M／256K扣额差异，如不同选256K。核对[官方模型配置](https://www.kimi.com/code/docs/kimi-code/models.html)、[会员权益](https://www.kimi.com/code/docs/kimi-code/membership.html)和[官方Hermes配置指南](https://www.kimi.com/code/docs/en/third-party-tools/hermes.html)：当前K3.1 Pro只有普通`k3.1-pro`与`k3.1-pro-highspeed`，无独立`k3.1-pro-256k`；Plus／Moderato最高256K、Pro／Allegretto及以上最高1M，Highspeed约为普通版两倍扣额。旧K3的`k3`约为`k3-256k`两倍扣额不能推及K3.1 Pro，官方未公布后者按256K／1M独立折算的倍率；客户端窗口限制不是半价承诺。
+
+**变更：** 通过正式首尔Host `hermes-secretary-sync`，在实体Home `/home/ubuntu/.hermes_profiles/Alex` 调用原生`set_config_value('model.default', 'k3.1-pro')`。前后完整配置解析对比确认仅此字段语义变化；`kimi-coding`、`https://api.kimi.com/coding/v1`、`chat_completions`、`context_length:262144`和`agent.reasoning_effort:high`保持，文件0600。已有Conversation持久模型、历史、排期、绑定及其它Profile未修改；未重启服务。
+
+**验证：** 变更前用Alex自身受限`.env`凭据做一次虚构短文本Chat请求，`k3.1-pro`／High、输出cap128、无工具／重试，HTTP200、response.model=`k3.1-pro`、finish_reason=stop，input89／output43（含thinking27）／total132 tokens。该请求不含现有Conversation。变更后原生`load_config()`读回预期值；运行中回环`/api/model/info?profile=alex` HTTP200，model=`k3.1-pro`、provider=`kimi-coding`、配置及有效窗口均262144。system Web `hermes-secretary.service`与user `hermes-gateway.service`均active。未发送生产会话／渠道测试消息，未冒称长上下文、工具链或完整业务Turn验收。
+
+**备份与回滚：** 受限目录`/home/ubuntu/.local/state/hermes-secretary/model-changes/alex-k31-pro-20261024-102255/`（0700）含`config.yaml.before`与`receipt.json`（0600）；原配置SHA256=`681107bf187eb7d985d286db310d1592e5500e15657f838b2255a685ff60a97f`，新配置SHA256=`9858536940e036f21fc0d1fba14ea43368fa4b27a24898dabbfe6ee120adfbae`。需回退时先核当前配置，再用同一Profile的原生接口将`model.default`改回`k3-256k`，避免整份旧文件覆盖后续改动。
 
 ## 2026-10-23 · 并行修补主会话集成审查（本地，未部署）
 

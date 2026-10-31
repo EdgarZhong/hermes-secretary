@@ -104,3 +104,16 @@ Robolectric不能证明实际WebView生命周期与画面连续。未运行真�
 6. **接口影响与边界。** 仅改`HistoryImage.tsx`及对应test、新同职责reader sibling、App两处附件prop和`app-page-recovery.test.tsx`图片组；不碰Controller/PageRecovery／Context/cache／样式／原生。可选recovery保持旧调用兼容；重复URL依slot登记不互相覆盖。N04是本报告早期“不改App”范围后的主会话明确最小扩白名单，不能据此扩大其它App接线。其它dirty保持原样。
 
 7. **后续。** 主会话亲读可见性初次等待、stage/full/local采用、取消及URL所有权，复用匹配SHA的25项与typecheck证据；待兄弟N02/N03整包后统一候选，再全轮独立Verification及实际Web Validation。此报告是实现交回，不自行判N04门禁关闭，不派生、提交／push或部署。
+
+
+## 2026-10-25 · 切换会话卡顿与移动侧栏首帧调查／局部修补交回
+
+本次为用户真实0.1.5卡顿反馈的局部续修，不新开自主轮，不重开历史门禁。已读正式App菜单→Controller.openConversation/select→PageRecovery.startRecovery/retain→present→Chat投影/Markdown→reading需求观察路径。确认原App在同一click事件先setSidebarOpen(false)，随即同步进入Controller.select；其首个await前已经取消旧恢复并publish目标历史，present的深复制及随后React历史展示可能占用drawer关闭首帧。正式CSS已为drawer transform设置will-change，适合先让已有退出动画取得绘制机会。
+
+另确认adapter恢复冻结期间每publish执行cloneDisplay但staged从未被读取，commit还会先clone再令紧随publish重复隔离复制；这部分由frontend_recovery在其controller-page-recovery白名单独占修补，本包未改。现有MessageSlot memo与stableTimelineNodes已经保留，DOM扫描/深anchor算法仅作为后续线索，不泛化重构。
+
+本包只改App导航局部，增加components/sidebar-navigation.ts及core/app-navigation-performance.test.tsx。移动drawer打开／正在关闭时排队当前最新目标，先提交关闭，再经双requestAnimationFrame留出一次绘制机会，之后沿原openConversation/select真实读取入口执行；没有固定240/300ms导航等待。无drawer的桌面立即执行。快速连点只保最后一个；popstate、展示owner变化、重新打开drawer及卸载均取消未执行导航。缓存及后端完整请求／Socket-Turn交接机制不变。
+
+验证：2026-10-25 12:50:41执行npm test -- src/core/app-navigation-performance.test.tsx，8项通过。测试挂载真实App并点击正式菜单，以控制器选择边界spy验证调度：移动先关闭并等待一帧、桌面立即、快速连点、后退／owner变化／重开／卸载取消、NewChat同入口。jsdom无真实CSS动画，关闭portal可能立即卸载；首轮两个错误的“关闭DOM一定保留”假设失败，按实际环境修正断言后8项通过。未把受控rAF当真实帧率，不复跑其它全套/typecheck；统一typecheck由另一实现者执行。
+
+既有ignored样本复核：300节点detail恢复相邻采样最大gap263ms，input样本252/437ms；只是主线程／布局阻塞线索，不能独立定位唯一耗时函数或推成手机数据。源码SHA、样本SHA与统计保存在原工作区ignored `.hermes-dev/web-recovery-20261024/performance/sidebar-navigation-summary.json`。本子Agent未操作浏览器、用户tab、原生设备／模拟器、模型、生产或服务；真实隐藏IAB及最终判定由父会话执行，实际手机改善未量化。无commit/push。

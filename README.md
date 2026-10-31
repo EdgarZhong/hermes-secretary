@@ -101,6 +101,9 @@ Gateway入口 `hermes gateway`；Dashboard入口 `hermes dashboard --host 127.0.
 | 公开范围及旧规格明确保留部分 | [01](docs/01-personal-hermes-v1-first-fork-iteration.md)、[02](docs/02-noting-system-specification.md)、[04](docs/04-hermes-secretary-v1.5-implementation-spec.md) |
 | 部署、认证、同步与回滚SOP | [部署SOP](docs/cloud-deployment-sop.md) |
 | 部署与故障变更台账、证据入口 | [运维记录](docs/operations-log.md) |
+| 2026-10-28联合Noting／压缩中断的历史取证（后继实现另见07） | [问题报告](docs/noting-compaction-framework-interruption-20261028.md) |
+| 2026-10-20手机Web／微信、网络与Noting历史调查 | [调查报告](docs/mobile-web-investigation-20261020.md) |
+| 2026-10-21自适应Idle整理阈值算法讨论稿（未实现；当时配置不代表现值） | [算法方案](docs/adaptive-noting-threshold-proposal.md) |
 | 手机HTTP/2实测及残留问题 | [验收报告](docs/mobile-http2-acceptance-20261020.md)、[原任务书](docs/mobile-http2-retest-task.md) |
 | 手机Web／微信交替使用、网络与Noting故障取证 | [运维记录](docs/operations-log.md)中的10/20调查与证据入口 |
 | 移动端阶段一实施、验收与后续短网络实验任务书 | [任务包入口](docs/hermes-network-experiment-20261020/README.md)、[阶段一](docs/hermes-network-experiment-20261020/PHASE1-IMPLEMENTATION.md) |

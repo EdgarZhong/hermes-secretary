@@ -176,3 +176,19 @@ N06源码只改侧栏requireCoverage/proof/stage，不写HistoryWindows或Conver
 6. **接口／范围。** 经父明确批准仅扩到chat-presentation、presentation-signature、history-coverage及两个现有测试；源变更四文件，测试两文件。ReadingNodes是现有DOM身份适配，不作为业务投影或第二真值，不改消息／HTTP／恢复协议与任何对外prop。原sourceTimeline有live Thinking时已抑制重复deferredReasoning，继续复用其输出；未知／歧义持久identity不作假相容。未派生、提交、UI／网络／模型／服务操作；未build/APK／部署。
 
 7. **交回与后续。** 请主会话亲读四源文件最小diff，再在其原页面真实展开101确认Expanded detail 101、在正文已加载的深anchor重连确认同commit保展开与衔接，并沿已计划轻采样验证人工取消。此前首次Loading前置证据保留，不以本次jsdom通过替代真实用户效果；最终APK重建与交付仍由主会话决定，本包不关门禁，无待产品决策。
+
+## 0.1.5旧会话误退与adapter复制小修（main 2346a03后，2026-10-25）
+
+1. **条款与已证根因。** 本包为原恢复交付继续修补，依据R1/R5失败保画面／自动恢复、R6精确owner清理与R7不可变交接，不开启新轮次或门禁。父生产只读已核Today目标的真实列表id/profile与metadata id一致、metadata200，同id resume→latest200→activate曾complete=true；不能归为真实删除、错owner或虚假列表。具体手机哪个请求404仍无请求日志，不能宣称已定位手机唯一触发源。本地正式链已证实一个足以误退的缺陷：adapter全required.failed接任意RpcError404就删当前cache并select New Chat，readConversation.catch也把窗口／activate链404当删除；metadata自身反而依赖泛failed处理。原后端缺runtime码4001、缺stored码4007，未把它们伪称404来源。parent明确main合并完成可编辑后才改产品。
+
+2. **实际变更。** 仅controller-page-recovery.ts与其原测试。移除两个缺乏来源证明的404退回点，将删除判定放在attachConversation对当前context.owner精确metadata GET的catch，context.current且HTTP404才删该owner展示cache并安全退New Chat。窗口／详情等失败保留route与原画面、ready=false，沿已有1/2/5自动重试；若服务端确已删除，下一次metadata确认404照常退回，未取消真实删除保护。roster确认owner缺失的既有路径保留。并按父授权移除从未读出的staged字段及frozen present每publish整页clone；commit由紧接的同步publish→present只构造一次不可变新画面。commit清visible/sourceView后构造当前画面，避免把本次新Model／Thinking值错当尚待layout的背景更新；旧render快照不变。
+
+3. **正式路径／并发。** 原Controller.startRecovery→roster→精确metadata→resume／activate→有界REST／封套→required资源与finite cut→commit／layout不变。metadata catch保原错误抛出但仅有当前context具清理资格；过期同owner轮次不删新proof，导航后旧metadata404不影响新owner；首次metadata200但messages404不会立刻假定删除，下一轮重新走metadata获得事实。未加协调器、错误协议、恢复门槛或自动写重放。copy变更仍保retained隔离、同commit采用菜单及Context、认证清理、旧请求／owner资格和binding防原地修改的既有规则。
+
+4. **验证与精准证据。** 修前5项定向中3项失败（restore-404-copy-before.log）：metadata200后cards404或可见details404都真实变New Chat；5次冻结控制publish触发5次整页structuredClone。修后原7项目标行为（含原metadata404）通过；最终现有Controller/App两文件70项通过（restore-404-copy-final.log），typecheck与diff-check通过。新增7个行为场景含cards／visible facet错误保画面且无新gateway.ready自动重试、retry精确metadata确认真删除、旧cards404不删新同ownercache、实际select另一owner后旧metadata404不退当前route；copy用真实读取屏障及structuredClone观察点核5次冻结publish为0次副本、实际commit的history仅复制1次并与业务对象隔离，修改业务行不能倒灌已发布／旧快照。全套原N01菜单交错、N02缓存proof、N03 Context及App展开／handoff／图片等本次相关回归均在70项内，没有另跑无关大套。首次typecheck仅新增测试的unknown观察值类型标注出错，修正类型后通过；测试运行时逻辑未变化，初始日志保留。源码／测试／依赖／日志SHA见restore-404-copy-manifest.json。
+
+5. **边界／未验。** 本包不访问生产、网络、模型、手机／UI，不改数据库或重启；不构建APK、提交或部署。正式Controller反例运行原PageRecovery和REST／RPC读链，仅在外部HTTP／RPC响应供错误与屏障；现有App fixture用于受影响回归，不冒称真实用户APK已经修好。Android桥只读核：有效导航target调用select Conversation，完成ack只清target；epoch失效只撤观测，未见静态“自动退New Chat”分支。当前没有手机navigation／URL事件证据，故既不归因通知restore，也不排除其他运行期来源。父给的生产metadata200与本地404分类反例只证明补丁必要，不补写不存在的生产404路径。当前App.tsx与新sidebar-navigation／导航性能测试属兄弟包，未修改或纳为本包diff；依赖SHA仅记录实际测试时版本。
+
+6. **接口影响。** 无公共API／DTO／UI props变化；错误code、HTTP认证、PageRecovery状态机／定时器／协议、Profiles／Files归属、Android、版本、依赖均保持。新一轮exact metadata GET是原重试已有读取，不添加并行验证请求。只减少adapter重复复制，不把业务对象直接暴露给render；测试覆盖单次commit与既有菜单／Context交错，copy数量不冒称真实FPS指标。
+
+7. **交回／下一步。** 两文件产品／测试已稳定，不stage／commit／push；请父亲审精确metadata清理与旧context规则、commit同步publish复制点，合并其独占App性能包后按实际差异集成。生产具体手机失败请求仍是证据缺口，父可在修补版本／正式静态同版本后复查旧会话与其可见错误，需继续定位时应取得请求路径／状态与目标owner，不能以本地分类反例宣称生产缺陷已完全关闭。本包不新加全量审查、验收或发布门禁。

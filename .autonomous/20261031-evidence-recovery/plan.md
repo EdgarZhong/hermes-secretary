@@ -10,9 +10,9 @@
 |---|---|---|---|---|
 | E01/02/04/06 | D1 数据与工具：实现Agent；secretary/notebook_{contract,model,items,render,store}.py、secretary/noting_tools.py、对应tools Schema／state持久化必要接缝及tests中对应文件 | create/update→working→immutable version→Snapshot→Main/Noting/Framework/回执；保持旧组不变 | 真DB跨Task同槽覆盖／追加、旧节点拒绝改、UID／description同步、时间不读description、Candidate refs/direct、旧组可读、拒绝无副作用 | 新组描述正式链路可用且边界回归通过 |
 | E01/02/05/07 | D2 Prompt：实现Agent；agent/system_prompt.py、secretary/noting_prompts.py及专属tests | 实际root构造／restore／Noting task/control/continuation；依赖D1字段接口供集成 | visible原文无需读／indexed先Read／missing再Search／失败未知；非Main／开关权限／cache-prefix | 定稿逐字落运行常量，无竞争旧指引 |
-| E01–09 | I1 集成／主会话；根三文档、07、.autonomous本轮、ignored证据／模型脚本 | review两包、正式构造全Prompt、真实K3.1/high隔离调用及父子工具／前缀验证 | 多样Main回查分支＋Noting描述仅本组／跨Task；真实工具执行和最终输出 | 必要机制、模型样本及冻结十检查通过 |
+| E01–09 | I1 集成／主会话；根三文档、07、.autonomous本轮、ignored证据／模型脚本 | review两包、正式构造全Prompt、受控SDK正式入口及父子工具／前缀验证（用户取消后续真实模型） | 多样Main回查分支＋Noting描述仅本组／跨Task；真实工具执行和受控响应最终输出 | 必要机制及冻结十检查通过；不声称模型服从率 |
 | E01–09 | V1 独立Verification（只读产品，写verification.md） | 集成收敛后新无上下文Agent，先规格判据再实现；复用有效测试 | 全范围逐条矩阵与反证 | 无范围内违规／证据不足 |
-| E01–09 | V2 独立Validation（只读产品，写validation.md及ignored运行证据） | V1通过后新无上下文Agent，计划先交回、原生入口隔离真实模型操作 | 典型历史恢复／可见直接用／缺索引搜索／失败未知／Noting创建修改链 | 全适用场景通过 |
+| E01–09 | V2 独立Validation（只读产品，写validation.md及ignored运行证据） | V1通过后新无上下文Agent，计划先交回、原生入口隔离受控SDK操作；用户取消真实模型验证 | 典型历史恢复／可见直接用／缺索引搜索／失败未知／Noting创建修改链 | 全适用场景通过 |
 | E03/08/09 | R1 发布／主会话；operations-log、CLAUDE、README必要稳定事实、本轮final-delivery | 两门禁→提交push→main快进→Alex空闲预检复检／备份／正式既有执行器→缓存正常边界失效 | 真Linux目标测试、两服务实际版本、健康／微信connected、Notebook／Schedule数据保护、缓存清理回执 | receipt verified及上线核验，备份收尾，交付 |
 
 ## 3. 当前状态与编排
@@ -21,11 +21,13 @@ D1/D2并行，文件边界不交叉；主会话统一review、集成及提交。
 
 | 目标 | 机制 | 正式接线 | 定向验证 | 用户实际结果 |
 |---|---|---|---|---|
-| 证据组描述 | 待实施 | 待实施 | 待执行 | 待执行 |
-| Main核对 | 待实施 | 待实施 | 待执行 | 待执行 |
+| 证据组描述 | D1已交回并亲审 | 全链已接 | 151＋62及权限86等通过，独立门禁待核 | 按E12采用受控SDK，待独立Validation |
+| Main核对 | D2已交回并亲审 | 全Prompt与恢复已接 | 33项通过，真实模型后续已取消 | 待独立Validation |
 | 上线 | — | 待部署 | 待终验 | 待终验 |
 
 ## 4. 缺陷与整改、取舍与快照
+
+新增D3：移植已获授权manual Noting debug遗留包，仅七个代码／契约／测试文件及当前生命周期必要适配，报告manual-debug.md，不启动生产Noting。用户E12取消新真实模型验证，保留此前3样本／6HTTP200，不以缺采样阻断。
 
 新增W1：主会话按用户E10授权审计所有本仓worktree、整合未覆盖且已确认范围内改动，保留必要ignored证据后清理旧工作树，释放main占用，原目录检出最新main。独立审计Agent只读写worktree-audit.md，不能删除／切换／提交。
 

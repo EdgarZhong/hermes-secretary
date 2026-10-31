@@ -69,3 +69,7 @@ SessionList.requireCoverage只提高有限重读需求，不填真实pages。每
 ### Thinking 冷开／派生DOM身份接线小修（2026-10-24，b8f06ff后）
 
 Controller.hydrateDetails先选择当前key，避免冷document未经过select时HistoryDetails空owner而零GET。新增内部timelineReadingNodes枚举现有OrdinaryNode的HistoricalThinking DOM（parent.id+:thinking、kind thinking、text=reasoning，排列在message前），需求登记和visibleWindowCompatibility共用；facets／viewport字段、PageRecoveryPort及HTTP／恢复协议不变。展开正文由当前可见facet真实重取并同commit采用；collapsed不纳隐藏正文，unknown coverage仍unknown。75项相关测试／typecheck通过，真实页面展开与运动仍由主会话复核；细节与版本见frontend.md本次小修及ignored frontend/detail-source-manifest.json。
+
+### 0.1.5 404来源与adapter复制修补（2026-10-25）
+
+无接口变更。安全退New Chat只由当前owner精确metadata GET404确认；cards／可见详情或其它恢复资源404保route／retained、ready=false，沿原自动重试；下一轮metadata确认真删除仍清该ownercache并退回。过期context不具清理资格。adapter去掉未消费staged副本，commit由原同步publish→present构造一次不可变画面，不改PageRecovery或对外props。针对性70项、typecheck通过；生产手机实际404来源未获证，不能冒称其已定位／已修复，见frontend.md新增小包与ignored frontend/restore-404-copy-manifest.json。
