@@ -4,7 +4,7 @@
 
 用户授权按定稿规格／Prompt实施两项调优、验证后上线，随后要求清理所有本仓worktree、整合分支并使原目录回归main。两项调优已提交d6c0088，已授权的遗留manual Noting调试RPC窄接收a51a0bf；于2026-10-31T10:09:58+08:00正式发布bf28ab5，receipt verified。Web／Gateway实际同源active、微信connected；三库业务数据、配置／凭据／绑定及两套前端静态均保持，认证只读RPC与HTTP六资源核验通过，两套完整三库备份已保留并清退更旧备份。
 
-source_description与UID共同维护、provenance_descriptions逐槽投影；描述仅含本组消息，与条目description互补，为Main提供证据历史概括以维护一致性。Main按定稿MUST先核历史依据，已有充分原文无需重复读，有相关引用先Read，不足才Meta／Search，失败保持未知。旧组缺描述只读为null，不回填、不转换生产历史或重跑旧Noting。新版Prompt／Schema沿正常Main构造／恢复边界生效，不热改运行中前缀，不需额外清缓存。
+source_description与UID共同维护、provenance_descriptions逐槽投影；描述仅含本组消息，与条目description互补，为Main提供证据历史概括以维护一致性。Main按定稿MUST先核历史依据，已有充分原文无需重复读，有相关引用先Read，不足才Meta／Search，失败保持未知。旧组缺描述只读为null，不回填、不转换生产历史或重跑旧Noting。新版Prompt／Schema沿正常Main构造／恢复边界生效，不热改运行中前缀。用户后续明确不补旧Noting，并要求用已有热调试接口清缓存；已调用conversation.context_cache_clear返回cleared，目标三个持久缓存字段均NULL，下一正常Turn重建。目标13份历史Snapshot及23张业务表前后保持，无模型／Noting启动；见operations-log顶部。
 
 验证完成：D1最终151项／Candidate62项／权限86项等、D2共33项、遗留RPC41项、冻结十检查、真实Linux7文件111项；独立Verification及Validation产品门禁通过，独立6完整旅程6/0，发布与清树事实补核见本轮两报告。用户“不用真实模型验证”后无新增真实调用；此前3个隔离合成样本／6请求原件保留，纠正样本漏Conversation Ref不作Prompt失败证据。生产测试模型、manual Noting启动及外发均0；受控SDK不证明未来模型必然服从。
 

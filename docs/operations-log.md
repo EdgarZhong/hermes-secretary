@@ -1,5 +1,11 @@
 # 运维记录
 
+## 2026-10-31 · Alex当前Main缓存显式清理（已完成）
+
+用户明确不补旧Noting，并指出已有热调试清缓存入口。此前仅确认持久root含新版定稿不足以证明所有热runtime已采用；本次按既有正式认证WebSocket调用`conversation.context_cache_clear`，于2026-10-31T10:58:16+08:00返回`cleared`，Profile Alex、Conversation `conv_a497994968694fe180ad6e4523afe9f2`、当前tip `20261021_200341_2ce088`。目标system_prompt／system_prompt_hash／tool_names均NULL；已有内存实例下一正常Turn沿原生同步失效并重建，不在RPC直接重建或触发模型。
+
+清理前后23张业务表（messages、所有Secretary表及sessions排除目标三缓存字段）逐行hash完全相同，目标Conversation的13份历史Snapshot保留；本次生产模型请求、Noting启动均0，无服务重启或额外部署。旧格式当前Notebook及来源UID继续可读，缺描述保持null；历史Snapshot保持审计可查，Main notebook_show仍只读当前有效Snapshot，不扩大为任意历史选择。云端和本地本轮release目录`main-cache-clear-20261031.json`保留回执。不把清空完成冒称新模型请求已执行，也不再补跑旧Noting。
+
 ## 2026-10-31 · 证据组描述／Main强制回查与遗留调试入口发布（已完成）
 
 用户明确要求按定稿两项实施、验证后上线，随后取消新增真实模型验证；自主执行套件为Agent自行选择，用户末段明确按已展开原计划完成再发布。独立产品Verification17项及Validation12场景／6旅程通过，真实Linux7文件111项／0失败、冻结十检查通过。已知R3旧oracle12项及catalog review.summary孤立事件均已基线复现，未冒称全分区全绿。遗留2026-10-25已授权单次manual Noting入口按所有工作树整合要求接收，不调用生产start。
