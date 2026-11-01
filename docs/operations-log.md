@@ -1,5 +1,17 @@
 # 运维记录
 
+## 2026-11-01 · GPT订阅system角色兼容修复上线
+
+用户明确要求修复，产品`17bba65499b767c6cb8fc5e845fa579f5018a75a`已合main／push并上线。限定既有is_codex_backend路由：主请求、辅助请求及native replay统一将中途system原位映射为developer；root仍instructions，预检允许developer，原历史／正文／工具pin及其它Responses路由不变。无全量上游合并、无新Provider／代理／执行器、无默认模型变化。设计参考[OpenAI Text generation的developer指令用法](https://developers.openai.com/api/docs/guides/text)，订阅端兼容以本次真实请求为准，不从通用API文档推定私有订阅全部行为。
+
+4文件291项通过，覆盖root／旧前缀／提示cache key、文本及typed内容、中途多条指令、工具调用与结果配对、主aux一致、native replay及通用Responses／Chat Completions／Anthropic保留。ruff／health两项通过，4文件0阻断／0提示。改前测试复现订阅仍发system；初版aux测试未去除消费前会移除的私有字段、以及把既有typed input误断为字符串，两处测试按正式消费形状修正，未放宽生产校验或改消息内容。
+
+在服务器独立候选worktree、原生Alex凭据作用域／client／出站构造／预检下，仅1次真实gpt-6.1-terra／High合成短请求，response.status=completed、response.model=gpt-6.1-terra、指定CODEX_ROLE_OK正确；76输入＋8输出＝84tokens，SDK重试0，工具执行0，用户Conversation写入0。主与aux的input及instructions相同，历史副本不变。另仅本地进程只读转换用户目标34条真实历史，1条system→1条developer、10对工具call/output保持，未把这些内容发送给模型。没有重放用户失败消息，不把合成成功冒称真实长会话已生成成功。
+
+空闲预检后受限执行器完成停服三库备份、main快进、Web／Gateway启动与实际版本／微信connected验证，phase=verified；三库保护表／配置含共享GPT授权／绑定／双静态逐指纹一致。只改出站表示，未改Prompt正文／工具目录，无需清上下文缓存；APK无需重打。候选worktree已移除，保留最近两套完整有效三库，旧备份清理结果见backup-retention.json；运行库及当前同步包不动。
+
+本地ignored证据`.hermes-dev/codex-system-role-20261101/release/`与codex-system-role-{red,green,final,check}.log；云端`/home/ubuntu/.local/state/hermes-secretary/release-20261028/stage-20261101-codex-system-role/`留live-probe.json、actual-history-readonly.json、receipt.json、RECOVERY.txt及备份／保留收据（受限）。回退按收据在空闲维护窗口对main作已审反向提交、正常重启核验；不自动回滚数据库，亦不覆盖已轮换授权。
+
 ## 2026-11-01 · GPT-6.1 Terra首次调用HTTP400排查
 
 后续只读上游审计：git fetch --no-tags upstream main得到c627ec84664d43e0b18b95d9d86d8963747d56c7（提交时间2026-10-28），仅更新远端跟踪引用，未merge／改生产。blame确认adapter新增system角色、保留历史初始system开关及对应Codex测试均来自本地8969e32；最新上游转换／预检仍只接受user／assistant，中途system直接跳过，不能满足保留既有历史指令语义。本次有相关端点抽象／Responses接线重构0ae220ff4e、a4a992645b、5af8fda75f及UA修复68e4c2b31a，未见针对本错误的直接补丁。判断先修本地订阅适配并补真实订阅验证，上游同步另按依赖审查，不以全量合并替代修复，也不以删系统更新绕过。
