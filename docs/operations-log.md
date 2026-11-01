@@ -1,5 +1,11 @@
 # 运维记录
 
+## 2026-11-01 · 桌面胶囊最大宽度与左侧留白
+
+用户要求桌面胶囊缩短并增大左侧空白，窄Composer自适应空间。FE `ce5a70d185ea95c5ae10bec77d2da822a0abee7b`合本地main／origin/secretary并发布：最大30rem（默认480px）、右侧原位置保留、左侧预留随可用空间32–64px变化，超出最大宽度后的空间留左；不随轮播文字改变，移动端及提示触发条件不变。实际组件隐藏IAB 1400／1100／900／780／380px覆盖、文字定宽及中心对齐通过，生产构建通过；439静态文件逐SHA和6个HTTP资源verified，Web／Gateway PID、Dashboard、配置及绑定保持，零重启／数据库写／模型请求。本次仅Web CSS微调，未重打APK。
+
+本地证据ignored `.hermes-dev/ui-motion-20261101/width-release/`；云端收据与旧静态交换路径见`/home/ubuntu/.local/state/hermes-secretary/release-20261028/static-20261101-ce5a70d/receipt.json`。后端产品仍`1df27e5020`，两套历史数据库备份不变。
+
 ## 2026-11-01 · Composer统一动画、恢复提速与Web发布
 
 用户明确本轮合入前后端主线并上线Web。BE `1df27e502091caba64d59a1d12c97cd4dc6a7930`由main发布；FE `bb8596b87b47336c3beedba04729e7f2d832e5a6`快进本地main并推origin/secretary。北京时间10:53 Web静态发布verified，439文件逐SHA一致、6个HTTP资源通过；静态交换不重启服务、不改数据库／Dashboard。BE受限执行器完成空闲预检、三库备份、main快进及双服务实际版本／微信健康验证，配置／绑定及保护数据一致，无生产模型测试请求，未修改Prompt／工具表故不清Main缓存。
