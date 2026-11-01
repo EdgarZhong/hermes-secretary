@@ -1,5 +1,9 @@
 # Hermes Secretary 当前状态
 
+## 2026-11-01 · GPT订阅历史指令角色兼容修复（进行中）
+
+用户明确要求修复；主会话亲自实施，不派sub。限定ChatGPT订阅出站角色：root仍instructions，中途system保原文／位置映射developer，不改持久历史／默认模型，不重放失败用户消息，不全量merge上游。统一主请求、auxiliary与native replay转换，预检接受developer，其它Responses路由保持system。主／aux／native replay已接统一转换，root／旧消息前缀／工具配对和通用Responses不变；4文件291项通过。补真实gpt-6.1-terra合成最小请求后main上线；真实探针只在隔离运行态，无用户历史／工具执行。
+
 ## 2026-11-01 · GPT-6.1 Terra调用失败调查（已定位，适配修复未实施）
 
 用户反馈模型调用失败并要求检查原因。用户已自行将Alex置顶20261021_200341_2ce088切为openai-codex／gpt-6.1-terra／codex_responses／High；因此此前“暂停切换”仅为当时Agent未代执行，不再代表会话当前模型。22:55:24实际请求HTTP400 detail=System messages are not allowed，非目录缓存／上下文阈值问题，未自动重试生成。只读原生转换当前32条history，发现1条中途system，序列化后仍为system（位置3）；root instructions独立。现行adapter和runtime_system_transport测试同时保留并断言Codex backend历史system，缺少真实订阅端兼容证据。调查没有改源码、历史、Prompt或默认配置；后续须在实际订阅出站层保持文本／位置／root前缀，使用端点接受的指令角色，并覆盖main／aux／预检、其它Responses路由不变；尚未实施或宣称生成成功。服务器受限证据gpt-call-failure-20261101。 用户随后要求判断是否同步上游；已只读fetch upstream/main到c627ec84664d43e0b18b95d9d86d8963747d56c7，未merge／部署。blame确认发送中途system及相应预检／测试均由本地8969e32引入；最新上游仍仅接收user／assistant并跳过system，未提供保留这些历史指令且兼容订阅端的直接补丁。相关上游0ae220ff4e／a4a992645b／5af8fda75f为跨Provider端点抽象／Responses接线重构，68e4c2b31a为UA构造，不能当本错误现成修复。结论：先修本地订阅承载并补真实订阅证据，上游兼容按依赖另审；不能靠整批merge修本地回归，也不能恢复静默丢系统更新。
