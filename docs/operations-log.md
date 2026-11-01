@@ -1,5 +1,21 @@
 # 运维记录
 
+## 2026-11-01 · 恢复侧栏全局活动请求去重
+
+FE `bc3ba7058c25d0f8b4ed7a9baf76e15da97a6e1c`合本地main／origin/secretary并上线Web：活动状态由每Profile列表接收时各读一次改为列表批次后统一读，恢复owner原有严格读取及sessions.changed失效读取保持。正式构建通过保活SSH隧道读取真实服务，单次恢复全局activity由4→1，页面就绪约1109ms、成功无重试；只作实际接线证据，不以跨时段网络样本声称固定提速比例。三文件111项／typecheck通过，三TS相对af60634无新增健康问题；Android扩展54项中7失败在未修改af60634同样复现，保留原失败日志。
+
+439静态文件和6HTTP资源verified，后端`1df27e5020`、两服务PID／Dashboard／配置／绑定保持，零重启／数据库写。证据主仓`.hermes-dev/ui-motion-20261101/activity-release/`、前端`.archive/composer-motion-20261101/performance/activity-*`；云端`/home/ubuntu/.local/state/hermes-secretary/release-20261028/static-20261101-activity/receipt.json`含旧静态回退路径。未重打APK，当前af60634包只含动画修复；两套三库历史备份不变。隐藏页及测试进程已清理，未操作用户页面／设备。
+
+调查另发现恢复RPC的info.system_prompt约44288字节、当前客户端不读取；绑定和最终cut各传一次，52KB／65KB响应中占比明显（逻辑JSON，未测压缩后线上字节）。尚未改公共接口；后续须可选参数保持旧客户端默认语义，不把这项机会记为已经优化。生产构建其它正常样本1.1–2.8秒并含本地长任务；断隧道的失败样本明确排除，JSON await含传输时间，不当成纯解析CPU。此轮不能证明已经仅剩网络或达到传输下限。
+
+## 2026-11-01 · Composer统一动画性能回退修复
+
+FE `af606346128fc7e62e8a9b6a0853930a39b72a06`已合主线并发布Web，439静态文件／6个HTTP资源验证通过，零服务重启／数据库写，后端仍`1df27e5020`。逐帧继承CSS变量改为统一读取几何后使用原生height／transform／clipPath动画，保留320ms、反向承接、内部位置同步、减少动态效果及桌面420px上限。隐藏IAB同六次开合Style从154.95ms降至14.68ms，Layout17.12→14.15ms，Task339.7→148.43ms；这些是同浏览器样本，不是Android真机帧率承诺。移动端命令／文字／恢复26px开合及快速反向几何复验通过，5文件40项、typecheck与新增TS健康检查通过。
+
+新APK路径`/Users/edgar/code/hermes-secretary-web/.archive/composer-motion-20261101/performance/Hermes-Secretary-0.1.10-composer-perf-arm64.apk`：0.1.10／1010、32133441字节、SHA256 `e5e303b2552ffbf909c1c502d27cd0910ccc78578ab4c159151bf2b92d81a7ff`。原签名／v2／全ZIP CRC／16KB／439资源及交付副本严格验证通过；自动构建首次因生成dist/.DS_Store与资源集合不符被拒，只移出生成文件后验证通过，未放宽规则、未动源目录五个既有.DS_Store。未安装／控制真机，键盘黑块及最终流畅度仍待设备复验。
+
+证据：前端ignored `.archive/composer-motion-20261101/performance/`（baseline、native-properties、native-geometry、tests、APK验证），主仓`.hermes-dev/ui-motion-20261101/performance-release/receipt.json`；云端`/home/ubuntu/.local/state/hermes-secretary/release-20261028/static-20261101-composer-perf/receipt.json`含可交换旧静态路径。两套历史三库备份保持，无新增数据库备份。
+
 ## 2026-11-01 · 桌面胶囊最大宽度420px
 
 用户明确将上限由480px改为420px。FE `e5a3722e0d90c2f1e42d05ec0a4d8ab8c9385870`合本地main／origin/secretary并更新Web，样式26.25rem（默认420px），其余留白／自适应／动画规则不变。生产构建及439文件／6个HTTP资源校验通过，零服务重启／数据库写，移动端及后端产品不变；仅标量CSS变化，复用前版响应式证据，未另称新一轮真机／UI验收。证据`.hermes-dev/ui-motion-20261101/width-420-release/`；云端`static-20261101-width420/receipt.json`保存验证和旧静态恢复路径。
