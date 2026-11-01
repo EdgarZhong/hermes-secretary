@@ -162,9 +162,11 @@ def is_main_conversation_agent(agent: Any) -> bool:
     """
     if agent is None or getattr(agent, "_secretary_parent_closed", False):
         return False
-    if getattr(agent, "side_agent", False) or getattr(agent, "_persist_disabled", False):
+    from agent.title_context_preparation import is_detached_main_preparation
+    preparing = is_detached_main_preparation(agent)
+    if getattr(agent, "side_agent", False) or (getattr(agent, "_persist_disabled", False) and not preparing):
         return False
-    if getattr(agent, "_parent_session_id", None):
+    if getattr(agent, "_parent_session_id", None) and not preparing:
         return False
     if str(getattr(agent, "platform", None) or "").strip().lower() in _NON_MAIN_PLATFORMS:
         return False

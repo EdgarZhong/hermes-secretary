@@ -60,7 +60,8 @@ def bind_main_runtime(agent):
     """Remember a proven main runtime at its existing construction/Turn/Idle boundary."""
     from secretary.noting_runtime import is_main_conversation_agent
 
-    if getattr(agent, "_secretary_parent_closed", False) or not is_main_conversation_agent(agent):
+    if (getattr(agent, "_persist_disabled", False)
+            or getattr(agent, "_secretary_parent_closed", False) or not is_main_conversation_agent(agent)):
         return False
     db = agent._session_db
     ref = getattr(agent, "_secretary_conversation_ref", None)

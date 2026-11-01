@@ -36,6 +36,8 @@ Secretary只在Profile的`state.db`增加自有表，复用原生执行、存储
 
 启用Secretary的Main Conversation在同一上下文区间内固定root System Prompt、顶层工具声明与prefill，平台切换不改历史前缀；工具执行仍受当前入口权限约束。Tool Search／Describe／Call使用稳定能力说明，首次及后续工具变化以历史system消息追加一句折叠工具数量与重新发现提示，不附目录；额外渠道指令仅变化时发送必要的新指令，每Turn调用额外工具前重新search／describe当前schema。成功压缩、显式reload／清缓存及原生代码／模型路由重建沿既有边界；工具／Prompt发布后置顶会话的清缓存步骤见[部署SOP](docs/cloud-deployment-sop.md)。Chat Completions与Responses保留历史system；Anthropic不支持中途system角色，使用原位Framework Message承载，不能等同system优先级。
 
+`/ai-title`依据当前Main生效上下文只读命名，复用完整提示词、工具和prefill前缀。Turn空闲即可重复请求；缓存缺失或冷运行态沿原生owner准备，不要求先发送普通Turn。后台压缩无活动Turn时读取原子生效版本；真正活动Turn仍提示稍后重试。标题任务不执行工具或改写Main上下文，取材及命名写回边界见[06标题命令](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md)。
+
 ## 仓库与目录
 
 `origin` 为 [EdgarZhong/hermes-secretary](https://github.com/EdgarZhong/hermes-secretary)，`main` 为公开核心；`upstream` 为官方Hermes，`hermes-upstream` 为纯镜像。个人NM Provider独立于公开核心，独立前端在并列仓库 `../hermes-secretary-web`。

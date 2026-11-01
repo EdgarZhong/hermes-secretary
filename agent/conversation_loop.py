@@ -711,7 +711,7 @@ def _persist_system_prompt(agent, failure_message: str, *, persist_tools: bool =
     """Persist ``agent._cached_system_prompt`` to the session row; failures log at WARNING
     (with ``failure_message``) because the gateway path (fresh AIAgent per turn) reads
     this row every turn, so a silent failure breaks prefix-cache reuse."""
-    if not agent._session_db:
+    if not agent._session_db or getattr(agent, "_persist_disabled", False) is True:
         return
     try:
         agent._session_db.update_system_prompt(agent.session_id, agent._cached_system_prompt)
@@ -902,7 +902,8 @@ def _restore_or_build_system_prompt(agent, system_message, conversation_history)
     # session open, so this is idempotent (skips when _credits_state exists). Fail-open.
     try:
         from agent.credits_tracker import seed_credits_at_session_start
-        seed_credits_at_session_start(agent)
+        if getattr(agent, "_persist_disabled", False) is not True:
+            seed_credits_at_session_start(agent)
     except Exception:
         logger.debug("cold-start credits seed failed (fail-open)", exc_info=True)
 

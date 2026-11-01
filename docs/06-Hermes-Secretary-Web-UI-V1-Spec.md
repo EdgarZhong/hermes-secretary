@@ -750,6 +750,8 @@ Buttons MUST be driven by this precedence so a user can prepare attachments duri
 
 **用户确认取材范围（2026-10-24）：** `/ai-title`依据当前Main实际可见上下文命名，包括当前压缩摘要、Notebook及最近对话；不再从浏览器cards／live选择最早User＋末8条、逐条截前1200字符，不按屏幕滚动位置取样。Web只提交`template: conversation_title`及当前绑定session／profile，命名Prompt及上下文快照由后端负责，沿用当前Main模型。最近经微信运行的同一Conversation也必须识别真实上下文owner，不能将过期Web Agent或未补详情的浏览器历史冒充当前Main。无法取得可靠完整快照时明确失败，不静默回退到开场／限长摘录。标题任务只读、不继续原业务、工具执行硬拒绝，不改变父Main的Prompt、工具面、历史、Notebook或排期；原生首Turn自动标题的取材不因此改变。生成期间切换Conversation／Profile不得把旧结果写入新目标；空白浏览器历史本身不阻止后端命名。完整上下文命名沿用Main推理设置，总输出预算至少8192 tokens（包含推理）；旧客户端携带的256 tokens不再限制该新任务，标题正文仍要求简短。
 
+**用户补充空闲恢复（2026-11-01）：** `/ai-title`以当前生效上下文为依据并保持完整请求前缀复用；Turn空闲即可重新生成。清理上下文缓存、冷恢复或旧Web运行态缺少快照不能要求用户先发送普通Turn：已有有效native前缀原样复用，缺失部分沿现有Main恢复／构造owner在隔离只读标题请求中准备，不推进普通Turn、不写回Main缓存／历史或业务状态。真实活动Turn（含跨入口有效Turn lease）仍拒绝；此新口径覆盖旧“压缩期间一律拒绝”：后台压缩无活动Turn时，从同一SQLite读事务取得当前已生效的完整版本，不等压缩结束、不读取半提交状态。
+
 **用户确认忙时行为（2026-10-24）：** Main运行（包括另一入口持有同Conversation的Turn lease）或压缩期间，`/ai-title`不触发模型生成，提示稍后空闲重试；不等待、不排队、不使用旧上下文回退，现有标题保留。
 
 **User-confirmed slash completion (2026-10-13, R2-C76):** Composer supports Tab completion for slash commands. Each completion candidate presents the command and description in one text flow with unified wrapping, rather than separate text containers that wrap independently. Commands must not wrap prematurely while the candidate has sufficient available width.
