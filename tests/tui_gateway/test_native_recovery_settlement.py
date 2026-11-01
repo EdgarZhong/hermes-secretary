@@ -12,6 +12,7 @@ import openai
 import pytest
 
 from secretary.heartbeat import render_heartbeat
+from hermes_state import SessionDB
 from tests.agent.test_run_agent import _mock_response
 from tests.tui_gateway.test_pending_native_turn import TOOL
 from tests.tui_gateway.test_recovery_view import activate, request
@@ -109,6 +110,66 @@ def settle(runtime, gate):
     wait_all(runtime)
     assert not runtime.session["running"]
     return activate(request(runtime.db))
+
+
+@pytest.mark.parametrize("source", ["direct", "prompt.submit", "prompt.submit_idle"])
+def test_cross_process_lease_reload_freezes_receipt_after_admission(runtime, monkeypatch, source):
+    runtime.db.create_session("stored", source="desktop")
+    runtime.db.append_messages_batch("stored", [{"role": "user", "content": "Earlier question"},
+                                                {"role": "assistant", "content": "Earlier answer"}])
+    runtime.session["history"] = runtime.db.get_messages_as_conversation("stored", include_row_ids=True)
+    original = runtime.db.acquire_session_turn_lease
+    waits = []
+    with SessionDB(runtime.db.db_path) as other:
+        holder = "foreign-runtime-turn"
+        assert other.try_acquire_session_turn_lease("stored", holder)
+
+        def acquire(session_id, owner, **kwargs):
+            prior = kwargs["on_wait"]
+
+            def release_other(elapsed):
+                prior(elapsed)
+                if waits:
+                    return
+                waits.append(elapsed)
+                other.append_messages_batch("stored", [{"role": "user", "content": "Channel input"},
+                                                       {"role": "assistant", "content": "Channel answer"}],
+                                            turn_lease_holder=holder)
+                assert other.release_session_turn_lease("stored", holder)
+
+            kwargs["on_wait"] = release_other
+            return original(session_id, owner, **kwargs)
+
+        monkeypatch.setattr(runtime.db, "acquire_session_turn_lease", acquire)
+        gate = start(runtime, monkeypatch, source=source)
+        assert waits and activate(request(runtime.db))["complete"]
+        idle = settle(runtime, gate)
+    receipt = next(event["payload"]["persisted_turn"] for event in
+                   recovery_view.snapshot(runtime.session, "runtime")["events"] if event["type"] == "message.complete")
+    assert receipt["complete"] and receipt["source_boundary"]["prefix_unchanged"], receipt
+    assert idle["complete"] and not idle["running"], idle
+    assert not idle["state_snapshot"]["events"]
+    assert any(row["content"] == "Channel answer" for row in runtime.db.get_messages("stored"))
+    current_uid = receipt["source_messages"][0]["message_uid"]
+    assert sum(row.get("message_uid") == current_uid for row in runtime.agent._session_messages) == 1
+
+
+def test_admitted_receipt_prefix_cannot_be_rebased_by_repeated_source_callback(runtime, monkeypatch):
+    runtime.db.create_session("stored", source="desktop")
+    runtime.db.append_messages_batch("stored", [{"role": "user", "content": "Earlier question"},
+                                                {"role": "assistant", "content": "Earlier answer"}])
+    runtime.session["history"] = runtime.db.get_messages_as_conversation("stored", include_row_ids=True)
+    gate = start(runtime, monkeypatch)
+    messages = runtime.agent._session_messages
+    # Replace an admitted prefix address with a different real durable row.
+    # Repeating the observer must not make this rewritten prefix authoritative.
+    messages[0]["_row_id"] = messages[1]["_row_id"]
+    runtime.agent._on_turn_user_persisted(messages, runtime.agent._persist_user_message_idx)
+    view = settle(runtime, gate)
+    assert not view["complete"] and view["reason"] == "runtime_unavailable"
+    receipt = next(event["payload"]["persisted_turn"] for event in
+                   recovery_view.snapshot(runtime.session, "runtime")["events"] if event["type"] == "message.complete")
+    assert not receipt["complete"] and not receipt["source_boundary"]["prefix_unchanged"]
 
 
 @pytest.mark.parametrize("source", ["direct", "heartbeat", "prompt.submit", "prompt.submit_idle"])

@@ -32,6 +32,7 @@ def _observe_source(sid, session, agent, expected_token, messages, index):
     from tui_gateway import server
     if (server._sessions.get(sid) is not session or session.get("agent") is not agent
             or session.get("_closing") or session.get("_finalized")
+            or expected_token is None or token(session) is not expected_token
             or type(index) is not int or not 0 <= index < len(messages)):
         return
     row, db = messages[index], getattr(agent, "_session_db", None)
@@ -42,16 +43,20 @@ def _observe_source(sid, session, agent, expected_token, messages, index):
                                 (row["_row_id"],)).fetchone()
     if physical and physical["role"] == "user" and physical["message_uid"] == row["message_uid"]:
         with session["history_lock"]:
+            if token(session) is not expected_token:
+                return False
             remember_source(session, {
                 "db_path": str(Path(db.db_path).resolve()), "session_id": physical["session_id"],
                 "row_id": row["_row_id"], "message_uid": row["message_uid"], "message": row,
             }, expected_token)
+            return True
 
 
-def source_observer(sid, session, agent, expected_token, prior):
+def source_observer(sid, session, agent, expected_token, prior, *, on_source=None):
     def observe(messages, index):
         try:
-            _observe_source(sid, session, agent, expected_token, messages, index)
+            if _observe_source(sid, session, agent, expected_token, messages, index) and callable(on_source):
+                on_source(messages, index)
         except Exception:
             logger.debug("persistent Turn source observation unavailable", exc_info=True)
         if callable(prior):

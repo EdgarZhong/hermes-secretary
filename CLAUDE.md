@@ -1,5 +1,11 @@
 # Hermes Secretary 当前状态
 
+## 2026-11-02 · 网页／微信并发后恢复卡住（取证、临时恢复与修复）
+
+用户反馈并发发送后持续Retrying，要求先记录并封存原始物料、最小成本恢复Alex；随后明确根因清晰即可修复并上线。主会话独立处理，不代发消息、不切模型、不改历史。故障BE a36eb645b2／FE95ce4dffe9：REST持续200且健康，网页runtime29a4a8a1空闲、Web及微信活动均0、无Turn lease；独立WS最终恢复稳定runtime_unavailable。旧快照唯一未结算事件reasoning.available，完成receipt三条来源身份匹配且all_rows_committed=true，但prefix_unchanged=false／complete=false。真实租约争用回归定位：等待外部进程后原生重载历史，网页回执仍比较等待前基线；预写当前用户行又会被重载为旧历史、在角色修复时合并。修复仅在重载模型投影前按精确已受理UID排除此行，并在既有原生用户落库观察接缝冻结本轮回执历史；原文／模型Prompt／恢复与前缀／压缩校验不放宽。
+
+19份原始binding／activate／REST窗口、数据库read_view／session row、Web及Gateway活动状态、两小时双服务与Caddy日志、Alex／控制根agent日志及相关源码已封存到正式机受限`~/.local/state/hermes-secretary/reconnect-20261102/`（0700／0600、SHA清单），原始截图另补充。本地证据ignored `.hermes-dev/reconnect-20261102/`。02:10:07+08仅重启Web，PID2465000；Gateway PID2428119保持，同一会话三轮complete=true／matched_windows=1，Alex已临时恢复。初版两条失败及后继整改证据保留；最终原生结算70／租约18／投影4共92项通过，既有恢复63／发送31／回调及压缩等97项有效证据保留；Linux同锁官方PM环境5项通过。原11523已复现原生租约夹具1项、Instant来源4项旧失败，以及同一历史报告no-tmp失败，不篡改断言／历史或规则。十检查九项通过、7文件health0／0。发布候选已亲审，正在合main／空闲发布并验保护数据；当前尚未宣称产品上线完成。运维事实见operations-log顶部。
+
 ## 2026-11-02 · 6.1 Sol大窗口与切换确认修复（Web已上线）
 
 用户改定范围：不修改6 Sol配置，只修复6.1 Sol的900K选项，按账号目录500000默认／872000最大解析至872000；保留标准速度、不改变当前模型。随后要求立即修复置顶会话选择gpt-6-sol-900k时LARGE CONTEXT确认变成Error的问题。线上只读证实当时当前模型仍k3.1-pro，是真实跨模型切换，不冒称累计tokens误报。根因是Web把confirm_required直接抛Error，现复用Modal展示确认／取消，仅用户点击Switch model才带原生确认参数提交原owner；导航、取消、迟到响应、重复点击与4001 runtime恢复保持。

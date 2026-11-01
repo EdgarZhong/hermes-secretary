@@ -544,6 +544,7 @@ class _TurnRun:
     tts_queue: Any = None
     thinking_started: bool = False
     history: list = dataclasses.field(default_factory=list)
+    receipt_history: list | None = None
     history_version: int = 0
     compression_count: int | None = None
     run_kwargs: Any = None
@@ -553,6 +554,10 @@ class _TurnRun:
     marker_key: str = ""
     receipt_attempted: bool = False
     inflight_token: Any = None
+
+
+def _receipt_history(st: _TurnRun) -> list:
+    return st.receipt_history if st.receipt_history is not None else st.history
 
 
 def _adopt_out_of_band_turns(session: dict) -> None:
@@ -826,7 +831,7 @@ def _committed_turn_source_observer(sid, session, st, witness):
         from agent.pending_steer import native_source_boundary
         turn_id = getattr(st.agent, "_current_turn_id", None)
         ref = witness.receipt["before"].get("conversation_ref")
-        boundary = native_source_boundary(st.agent, messages, index, st.history, st.compression_count)
+        boundary = native_source_boundary(st.agent, messages, index, _receipt_history(st), st.compression_count)
         if not turn_id or not ref or boundary is None:
             return
         stored_session_id, message, source = read
@@ -907,15 +912,23 @@ def _invoke_agent(
     from agent.pending_steer import native_source_boundary
     prior_source_observer = vars(agent).get("_pending_steer_source_boundary")
     agent._pending_steer_source_boundary = lambda messages, start: native_source_boundary(
-        agent, messages, start, st.history, st.compression_count)
+        agent, messages, start, _receipt_history(st), st.compression_count)
     from secretary.reminders import active_admission_witness
     witness = active_admission_witness(text)
     prior_user_observer = vars(agent).get("_on_turn_user_persisted")
     if witness is not None:
         agent._on_turn_user_persisted = _committed_turn_source_observer(sid, session, st, witness)
+
+    def freeze_receipt_history(messages, index):
+        # Native admission may reload a foreign writer's history AFTER the host snapshot.
+        # Freeze only the first proved current source; later rewrites still fail the receipt.
+        if st.receipt_history is None:
+            st.receipt_history = [dict(message) for message in messages[:index]]
+
     from tui_gateway.turn_terminal import source_observer
     agent._on_turn_user_persisted = source_observer(
-        sid, session, agent, st.inflight_token, getattr(agent, "_on_turn_user_persisted", None))
+        sid, session, agent, st.inflight_token, getattr(agent, "_on_turn_user_persisted", None),
+        on_source=freeze_receipt_history)
     from tui_gateway.heartbeat_presentation import user_observer
     agent._on_turn_user_persisted = user_observer(
         sid, session, agent, st.inflight_token, text, agent._on_turn_user_persisted)
@@ -1038,6 +1051,7 @@ def _persisted_turn_receipt(st: _TurnRun, raw: Any, status: str) -> dict | None:
     from agent.pending_steer import native_source_boundary, native_source_suffix
 
     messages = _turn_receipt_messages(st.result, status)
+    history = _receipt_history(st)
     start = getattr(st.agent, "_persist_user_message_idx", None)
     if (not isinstance(messages, list) or type(start) is not int or not 0 <= start < len(messages)
             or messages[start].get("role") != "user"):
@@ -1050,7 +1064,7 @@ def _persisted_turn_receipt(st: _TurnRun, raw: Any, status: str) -> dict | None:
     tail = messages[start:]
     anchor_id = committed_id(tail[0])
     if any(before is tail[0] or (anchor_id is not None and anchor_id == committed_id(before))
-           for before in st.history):
+           for before in history):
         return None  # preflight returned the old transcript, not a new turn
     row_ids = [rid for message in tail if (rid := committed_id(message)) is not None]
     if not row_ids:
@@ -1063,14 +1077,14 @@ def _persisted_turn_receipt(st: _TurnRun, raw: Any, status: str) -> dict | None:
     if (status == "complete" and last.get("role") == "assistant" and not last.get("tool_calls")
             and last.get("content") == raw and (final_id := committed_id(last)) is not None):
         receipt["final_assistant_row_id"] = final_id
-    prefix_unchanged = start == len(st.history) and all(
+    prefix_unchanged = start == len(history) and all(
         committed_id(before) is not None and committed_id(before) == committed_id(after)
-        for before, after in zip(st.history, messages[:start]))
+        for before, after in zip(history, messages[:start]))
     compression_unchanged = (type(st.compression_count) is int
         and st.compression_count == getattr(getattr(st.agent, "context_compressor", None), "compression_count", None))
     try:
         source = native_source_suffix(messages, start)
-        boundary = native_source_boundary(st.agent, messages, start, st.history, st.compression_count)
+        boundary = native_source_boundary(st.agent, messages, start, history, st.compression_count)
     except Exception:  # health: allow BLE001 -- additive observation cannot veto the original completion receipt
         logger.debug("turn source projection unavailable", exc_info=True)
     else:

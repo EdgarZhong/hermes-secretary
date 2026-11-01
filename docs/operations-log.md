@@ -1,5 +1,15 @@
 # 运维记录
 
+## 2026-11-02 · 网页／微信并发后runtime_unavailable取证及临时恢复
+
+用户要求先封存现场、尽快恢复Alex，并随后授权根因明确即修复上线。目标置顶Conversation网页runtime29a4a8a1已idle、Web／Gateway活动均0、无有效Turn租约；HTTP正常且WS可响应，最终恢复却稳定complete=false／runtime_unavailable。原快照三条来源均已持久且身份匹配，all_rows_committed=true，prefix_unchanged=false／receipt.complete=false；唯一未结算事件为reasoning.available。02:05:29→02:05:32日志证明曾等待其它Hermes进程释放会话，原生随后重载历史；网页完成回执仍比较等待前基线，原生真实租约争用回归已精确复现两正式发送入口同类失败。微信已完成，不把失效快照解读为微信仍忙，也不归因于网络或Noting警告。
+
+恢复前19份原始物料与逐文件SHA封存在正式Alex受限`/home/ubuntu/.local/state/hermes-secretary/reconnect-20261102/`（目录0700、文件0600）：原始binding／activate响应及完整事件、REST窗口、数据库只读read_view及session row、双进程活动状态、两小时Web／Gateway／Caddy日志、Alex及控制根agent日志、当时相关源码与版本a36eb645b2；含敏感原文仅留服务器，不进Git。ignored本地取证脚本`.hermes-dev/reconnect-20261102/capture.py`，original文件不覆盖；追加temporary-recovery-result.json记录恢复。未新建全库备份或清退历史证据。
+
+02:10:07+08仅重启系统Web `hermes-secretary.service`，PID2428117→2465000；用户级Gateway PID2428119保持，未调用session.close／end或修改配置、模型、Notebook、消息、绑定。初次健康探测早于冷启动监听出现connection refused，随后原正式只读恢复连续三轮complete=true／matched_windows=1，最终对账约428–504ms。零生成／发送请求；该临时恢复清除失效内存，不冒称产品根因已修。后续修复限定既有原生用户落库观察接缝同步回执历史基线，保留恢复／前缀／压缩／权限校验；上线结果另行补记本节。
+
+正式修复同时补齐等待后精确已受理UID在模型重载前排除，避免角色修复将其并入旧用户输入；只改本次投影，不删改原文。回执基线在既有原生用户落库回调首次冻结，重复回调不能重置；原等待前表现层历史、压缩计数、恢复权限及前缀拒绝保护保持。最终原生结算70／租约18／历史投影4共92项通过；恢复63／正式发送31／回调及压缩等97项有效证据保留。原11523隔离复现租约夹具1项及Instant来源4项旧失败，不掩盖为全绿。Linux复用同lock／pyproject的官方PM测试环境，隔离候选5项通过（14.5秒、2workers、1次最终运行），无真实模型／渠道调用。冻结十检查九项通过、7文件health0／0；no-tmp命中未改历史validation.md第20行，在原11523同样复现。初版反例、修正过程与完整日志均保留ignored证据，不改检查规则或历史报告。原始截图已追加服务器受限目录，初始manifest不覆盖。
+
 ## 2026-11-02 · 6.1 Sol大窗口及Web模型切换确认修复上线
 
 用户确认不改6 Sol配置，只修复6.1 Sol的900K选项、保留标准速度／当前模型；随后急需修复长上下文切换报错。后端`a36eb645b2464450cb995c864f2cb6ad86df1a58`已从main上线：已eligible的显式-900k在目录给出max_context_window时按min(verified预算,max)解析，不再只认旧272K默认值；普通选项及无max回退保持。前端`95ce4dffe9febdc9684abc09a9bf7fd0a97dcadd`已合main／origin/secretary并发布：confirm_required显示原生Modal，只有点击Switch model才带确认参数重发同owner，取消不写。原阈值100000保持，未替用户确认／切当前模型、未发送模型请求。调查时目标仍Kimi，故不把本次跨模型确认本身判成误报。
