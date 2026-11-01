@@ -2089,6 +2089,7 @@ export interface ProfilesListParams {
 export interface ProfilesListResult {
   profiles?: ProfileRow[]
   bot_mode_protocol?: boolean
+  session_info_projection_version?: 1 | null
   install_id?: string
 }
 /** One roster row; the session fields are present only with ``include_sessions``. */
@@ -3266,6 +3267,7 @@ export interface SessionResumeParams {
   lazy?: boolean
   defer_history?: boolean
   omit_messages?: boolean
+  include_system_prompt?: boolean
   eager_build?: boolean
   close_on_disconnect?: boolean
   inline_images?: boolean
@@ -3350,6 +3352,7 @@ export interface SessionActivateParams {
   recovery_view?: Record<string, unknown> | null
   cols?: number | null
   omit_messages?: boolean
+  include_system_prompt?: boolean
 }
 export interface SessionActivateResult {
   session_id: string

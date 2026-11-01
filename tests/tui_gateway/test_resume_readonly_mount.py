@@ -207,3 +207,36 @@ def test_compute_host_child_turn_reopens_a_finalized_row(tmp_path, monkeypatch):
         server._sessions.pop("child-sid", None)
         host.close()
         db.close()
+
+
+@pytest.mark.parametrize("mode", ["cold", "deferred", "lazy"])
+@pytest.mark.parametrize("include_prompt", [None, True, False])
+def test_cold_mount_prompt_projection_keeps_history_and_readonly_state(tmp_path, monkeypatch, mode, include_prompt):
+    db, home = _finalized_db(tmp_path)
+    _mount(monkeypatch, db, home, tmp_path)
+    info = {"model": "fixture", "system_prompt": "cached original prompt"}
+    monkeypatch.setattr(server, "_lazy_resume_info", lambda *args, **kwargs: info)
+    params = {"session_id": "finalized", "source": "desktop", "lazy": mode == "lazy", "defer_history": mode == "deferred"}
+    if include_prompt is not None:
+        params["include_system_prompt"] = include_prompt
+    sid = None
+    try:
+        response = server.handle_request({"id": "project", "method": "session.resume", "params": params})
+        assert response is not None and "error" not in response, response
+        result = response["result"]
+        sid = result["session_id"]
+        session = server._sessions[sid]
+        if mode == "deferred":
+            assert session["resume_history_ready"].wait(5)
+        else:
+            assert len(result["messages"]) == 2
+        assert result["message_count"] == 2
+        assert ("system_prompt" in result["info"]) is (include_prompt is not False)
+        assert result["info"]["model"] == "fixture"
+        assert info["system_prompt"] == "cached original prompt"
+        assert len(session["history"]) == 2
+        assert db.get_session("finalized")["ended_at"] is not None
+    finally:
+        if sid is not None:
+            server._sessions.pop(sid, None)
+        db.close()

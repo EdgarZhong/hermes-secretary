@@ -842,6 +842,7 @@ def _resume_reuse_live_locked(ctx: _Resume, sid: str, session: dict) -> dict:
     payload = _live_session_payload(sid, session, cols=ctx.cols, touch=True, omit_messages=ctx.omit_messages,
                                     transport=current_transport() or _stdio_transport,
                                     inline_images=ctx.inline_images)
+    from tui_gateway.session_response import project_session_info
     payload["resumed"] = ctx.target
     if ctx.defer_history:
         payload.update(messages=[], hydrating=bool(session.get("resume_hydrating")),
@@ -849,7 +850,7 @@ def _resume_reuse_live_locked(ctx: _Resume, sid: str, session: dict) -> dict:
     # A lazy watch session never owns a run loop — overlay the child-run registry.
     if session.get("agent") is None and _child_run_active(ctx.target, ctx.profile_home):
         payload.update(running=True, status="streaming")
-    return _ok(ctx.rid, payload)
+    return _ok(ctx.rid, project_session_info(payload, getattr(ctx, "params", {})))
 
 
 def _resume_response(
@@ -857,20 +858,11 @@ def _resume_response(
     messages: list | None = None, message_count: int | None = None, running: bool = False,
     status: str = "idle", hydrating: bool | None = None, started_at=None, auto_continue=None,
 ) -> dict:
-    """Common resume payload; omit_messages counts ``count_source`` (client still learns the stored size)."""
-    if messages is None:
-        messages = ctx.messages(display)
-    if message_count is None:
-        message_count = len(count_source) if ctx.omit_messages else len(messages)
-    if not info.get("usage") and (usage := _session_usage_snapshot(record)):
-        info = {**info, "usage": usage}
-    payload = {"recovery_view_version": 1, "session_id": sid, "resumed": ctx.target, "message_count": message_count, "messages": messages,
-               **({"messages_omitted": ctx.omit_messages} if hydrating is None else {"hydrating": hydrating}),
-               "info": info, "inflight": None, "running": running, "session_key": ctx.target,
-               "started_at": record["created_at"] if started_at is None else started_at, "status": status}
-    if auto_continue is not None:
-        payload["auto_continue"] = auto_continue
-    return _ok(ctx.rid, _attach_todo_state(payload, record))
+    """Build the native response and its explicitly requested wire projection."""
+    from tui_gateway.session_response import resume_response
+    return resume_response(globals(), ctx, sid, record, info=info, display=display, count_source=count_source,
+                           messages=messages, message_count=message_count, running=running, status=status,
+                           hydrating=hydrating, started_at=started_at, auto_continue=auto_continue)
 
 
 def _resume_lazy(ctx: _Resume) -> dict:

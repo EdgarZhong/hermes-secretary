@@ -13,6 +13,7 @@ from pathlib import Path
 from hermes_state_recovery_view import RecoveryViewError, digest, project_view, read_view, selector
 from tui_gateway import event_replay
 from tui_gateway.inflight_output import snapshot
+from tui_gateway.session_response import project_session_info
 from tui_gateway.recovery_output_dependencies import active_output_dependencies, tool_occurrences as _tool_occurrences
 
 
@@ -630,9 +631,10 @@ def activate(server, rid, params, session):
             finally:
                 session["history_lock"].release()
     if recovery is None:
-        return server._ok(rid, server._live_session_payload(
-            sid, session, touch=True, omit_messages=server.is_truthy_value(params.get("omit_messages", False))))
+        payload = server._live_session_payload(
+            sid, session, touch=True, omit_messages=server.is_truthy_value(params.get("omit_messages", False)))
+        return server._ok(rid, project_session_info(payload, params))
     if not acquired:
         return server._ok(rid, {"session_id": sid, "messages": [], "message_count": 0, "info": {},
                                "recovery_view_version": 1, "recovery_view": _failure("history_busy", recovery, sid)})
-    return server._ok(rid, activate_payload(server, sid, session, recovery))
+    return server._ok(rid, project_session_info(activate_payload(server, sid, session, recovery), params))

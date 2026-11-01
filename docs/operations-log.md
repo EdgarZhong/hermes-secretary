@@ -1,5 +1,11 @@
 # 运维记录
 
+## 2026-11-01 · Composer布局与内容动画跨线程错位修复
+
+FE `edb66eb40230df0158181580956993ef4fad2fca`已合main／origin/secretary并上线Web。外框height与内部transform由单一rAF共同写入，取消独立WAAPI时钟，避免主线程停顿时按钮／输入区先上窜。退出内容以inert／aria-hidden临时副本裁剪收起，完成或重新出现时清理；仍按自然高度统一触发，320ms及胶囊既定样式保持。相关17项／typecheck／健康检查通过；真实Composer A/B绘制复现旧版约155px上窜，完整App含200条历史和五条命令在主线程停顿下录制151帧，207几何采样未复现错位；移动并发伸缩底边误差<0.5px。只属Mac隐藏Chromium证据，尚无Android设备复验。
+
+主线干净工作区单独构建，仅含表现层，不含未提交传输改动。439静态文件、6HTTP资源verified；后端`1df27e5020`、服务PID、Dashboard／配置／绑定保持，零服务重启／数据库写。证据主仓`.hermes-dev/ui-motion-20261101/unified-frame-release/`及前端performance/unified-*、full-final-*；云端`static-20261101-unified-frame/receipt.json`保存旧静态交换回退路径。
+
 ## 2026-11-01 · 恢复侧栏全局活动请求去重
 
 FE `bc3ba7058c25d0f8b4ed7a9baf76e15da97a6e1c`合本地main／origin/secretary并上线Web：活动状态由每Profile列表接收时各读一次改为列表批次后统一读，恢复owner原有严格读取及sessions.changed失效读取保持。正式构建通过保活SSH隧道读取真实服务，单次恢复全局activity由4→1，页面就绪约1109ms、成功无重试；只作实际接线证据，不以跨时段网络样本声称固定提速比例。三文件111项／typecheck通过，三TS相对af60634无新增健康问题；Android扩展54项中7失败在未修改af60634同样复现，保留原失败日志。

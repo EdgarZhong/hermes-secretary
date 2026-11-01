@@ -179,6 +179,7 @@ class ProfilesListResult(Result):
 
     profiles: list[ProfileRow] = Field(default_factory=list)
     bot_mode_protocol: bool = True
+    session_info_projection_version: Literal[1] | None = None
     install_id: str = ""
 
 

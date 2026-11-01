@@ -661,3 +661,44 @@ def test_local_turn_proof_uses_opaque_holder_equality_and_committed_source(nativ
     assert result['complete'] and result['running']
     assert result.get('live_output_available') is not False
     assert result['state_snapshot']['events']
+
+
+@pytest.mark.parametrize("include_prompt", [None, True, False])
+@pytest.mark.parametrize("reconcile", [False, True])
+def test_activate_optional_prompt_projection_preserves_native_recovery(native, monkeypatch, include_prompt, reconcile):
+    db, session, _home = native
+    info = {"model": "controlled", "system_prompt": "private prompt" * 4096}
+    monkeypatch.setattr(server, "_fallback_session_info", lambda _session: info)
+    params = {"session_id": "runtime", "omit_messages": True}
+    if reconcile:
+        params["recovery_view"] = request(db)
+    if include_prompt is not None:
+        params["include_system_prompt"] = include_prompt
+    SessionActivateParams.model_validate(params)
+    result = server._methods["session.activate"]("projection", params)["result"]
+    LiveSessionSnapshot.model_validate(result)
+    assert ("system_prompt" in result["info"]) is (include_prompt is not False)
+    assert result["info"]["model"] == "controlled"
+    assert info["system_prompt"] == "private prompt" * 4096
+    if reconcile:
+        assert result["recovery_view"]["complete"]
+        assert result["recovery_view"]["windows"][0]["matched"]
+    assert session["agent"].model == "controlled"
+
+
+@pytest.mark.parametrize("include_prompt", [None, True, False])
+def test_live_resume_optional_prompt_projection(native, monkeypatch, include_prompt):
+    db, session, _home = native
+    info = {"model": "controlled", "system_prompt": "private prompt" * 4096}
+    monkeypatch.setattr(server, "_fallback_session_info", lambda _session: info)
+    monkeypatch.setattr(server, "_profile_session_db", lambda _home: (db, False))
+    params = {"session_id": "stored", "profile": "default", "omit_messages": True, "defer_history": True}
+    if include_prompt is not None:
+        params["include_system_prompt"] = include_prompt
+    reply = server._methods["session.resume"]("resume-projection", params)
+    assert "error" not in reply, reply
+    result = reply["result"]
+    assert result["session_id"] == "runtime"
+    assert ("system_prompt" in result["info"]) is (include_prompt is not False)
+    assert info["system_prompt"] == "private prompt" * 4096
+    assert session["agent"].model == "controlled"
