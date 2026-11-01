@@ -12,6 +12,8 @@
 
 ## 2026-11-01 · Alex／study共用ChatGPT订阅授权
 
+用户后续反馈菜单找不到GPT-6.1 Terra，检查时Alex正式REST已含该模型，study尚为旧缓存；用户随后确认已看到，判断此前可能仅显示缓存目录。App配置可见demand本已在打开菜单时重读capabilities，初查只看ChatSelectors漏掉App接线，已向用户纠正。使用正式model.options对Alex／study各显式refresh一次，再各普通读取一次，四次均authenticated并含gpt-6.1-terra；受限picker-refresh.json留于同一授权收据目录。无Provider／前端源码修改、无新刷新入口／重复请求、无生成／会话切换／默认配置修改。
+
 用户确认复用study授权、允许Hermes公共凭据库共享并接受default也可用；通过服务器原生auth锁／writer迁移providers.openai-codex到`/home/ubuntu/.hermes/auth.json`，不设置root active_provider，移除study重复singleton，保留其active_provider及其它凭据。两文件0600，Alex auth原SHA保持；三份config逐SHA保持，默认Alex k3.1-pro／study gpt-6-sol／default deepseek-flash。三Profile正式`_config_profile_scope`内均解析公共源，原生刷新后仍共用同一源；实时账号目录包含gpt-6.1-terra，未发生成请求、未重启服务／改源码。初版只读探针直接把物理Home设HERMES_HOME误把它当控制根，且未带会话Token的REST返回401；已纠正为控制根进程＋原生Profile作用域，未据失败探针改凭据／代码。
 
 受限证据`/home/ubuntu/.local/state/hermes-secretary/alex-shared-gpt-20261101/`留migration.json、validation.json、final-validation.json、live-catalog.json和root／study原auth备份（目录0700、文件0600）；不下载或提交凭据。回退须在无新变更前提下按原生study→root锁序，把**当前**公共Codex授权移回study并移除root对应条目，保持其它条目；刷新后禁止用before备份覆盖轮换令牌。用户当前置顶会话切到GPT-6.1 Terra的要求随后被“等一下，先查上下文”暂停，未执行config.set／发送／模型切换。
