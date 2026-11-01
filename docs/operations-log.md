@@ -1,5 +1,13 @@
 # 运维记录
 
+## 2026-11-01 · 平台切换能力通知精简与计数
+
+用户最终确定能力通知仅一句“能力可能变化，当前 N 个折叠工具，调用前重新 search/describe。”。首次及后续均不附详细目录；N只计当前scope可发现的折叠工具，排除direct和Main不可执行的Noting工具。平台身份本身不作通知条件，真实工具变化仍去重；目录读失败不编造数量，明确渠道策略变化仍保留必要指令／撤销，旧root与历史不改写。
+
+main产品`0b43af0910e9c54b983d3c90037621163bed98c6`于北京时间09:48正式发布verified，Web／Gateway实际版本一致、微信connected；既有RPC对Alex唯一置顶Conversation返回cleared，三缓存字段NULL，三库业务表及全部session非缓存字段／配置／绑定一致。Notebook／排期／状态只读RPC及6个HTTP资源通过；保留当前及stage-20261101-prefix两套完整三库，新旧库SHA／integrity／FK通过，清退更旧9文件共212004864字节，运行库与同步完成包不动。没有生产测试模型请求。
+
+相关40项回归及首次／新增折叠计数专项通过，四项定向检查通过，health零阻断／零提示。最终隔离DeepSeek v4-pro 10请求完成库存、新增日程、新schema及渠道策略验证，提醒计数1→2，无目录正文；全部相邻root/tools与旧消息语义前缀一致，冷建对象键序差异仍保留。模型一次先沿用旧参数被原生校验拒绝，再describe后纠正；此精简提醒是指引，执行校验未变，不宣称模型始终按每Turn search/describe操作。前两个过渡文案的模型样本保留，不混称最终文案证据。证据：ignored `.hermes-dev/prefix-brief-20261101/`及云端`/home/ubuntu/.local/state/hermes-secretary/release-20261028/stage-20261101-prefix-brief/`，恢复入口RECOVERY.txt；不自动回滚数据库。
+
 ## 2026-11-01 · 跨平台请求前缀修复上线与置顶缓存清理
 
 用户授权核查、补正、验收及上线，不采用完整自主实现流程；算法文档由另一会话独立提交，本轮未修改。产品`8969e32b796fc40af16357ac9450ba05a3479e14`已推origin/main，正式机main从`bf28ab565ae322965e3b8eb0797486e1d0cdbac7`快进至该版本；北京时间01:49发布verified，Web／Gateway实际code SHA一致、微信connected、活动Turn为0。依赖／锁、配置、绑定及两套前端静态保持，未发布APK或触发生产测试模型请求。
