@@ -1,6 +1,6 @@
 # 运维记录
 
-## 2026-11-02 · 网页／微信并发后runtime_unavailable取证及临时恢复
+## 2026-11-02 · 网页／微信并发后runtime_unavailable取证、恢复及修复上线
 
 用户要求先封存现场、尽快恢复Alex，并随后授权根因明确即修复上线。目标置顶Conversation网页runtime29a4a8a1已idle、Web／Gateway活动均0、无有效Turn租约；HTTP正常且WS可响应，最终恢复却稳定complete=false／runtime_unavailable。原快照三条来源均已持久且身份匹配，all_rows_committed=true，prefix_unchanged=false／receipt.complete=false；唯一未结算事件为reasoning.available。02:05:29→02:05:32日志证明曾等待其它Hermes进程释放会话，原生随后重载历史；网页完成回执仍比较等待前基线，原生真实租约争用回归已精确复现两正式发送入口同类失败。微信已完成，不把失效快照解读为微信仍忙，也不归因于网络或Noting警告。
 
@@ -9,6 +9,10 @@
 02:10:07+08仅重启系统Web `hermes-secretary.service`，PID2428117→2465000；用户级Gateway PID2428119保持，未调用session.close／end或修改配置、模型、Notebook、消息、绑定。初次健康探测早于冷启动监听出现connection refused，随后原正式只读恢复连续三轮complete=true／matched_windows=1，最终对账约428–504ms。零生成／发送请求；该临时恢复清除失效内存，不冒称产品根因已修。后续修复限定既有原生用户落库观察接缝同步回执历史基线，保留恢复／前缀／压缩／权限校验；上线结果另行补记本节。
 
 正式修复同时补齐等待后精确已受理UID在模型重载前排除，避免角色修复将其并入旧用户输入；只改本次投影，不删改原文。回执基线在既有原生用户落库回调首次冻结，重复回调不能重置；原等待前表现层历史、压缩计数、恢复权限及前缀拒绝保护保持。最终原生结算70／租约18／历史投影4共92项通过；恢复63／正式发送31／回调及压缩等97项有效证据保留。原11523隔离复现租约夹具1项及Instant来源4项旧失败，不掩盖为全绿。Linux复用同lock／pyproject的官方PM测试环境，隔离候选5项通过（14.5秒、2workers、1次最终运行），无真实模型／渠道调用。冻结十检查九项通过、7文件health0／0；no-tmp命中未改历史validation.md第20行，在原11523同样复现。初版反例、修正过程与完整日志均保留ignored证据，不改检查规则或历史报告。原始截图已追加服务器受限目录，初始manifest不覆盖。
+
+产品`6c1d248692185176e77b024dac50053bc4176e1f`已合main／push，02:21:03+08受限执行器返回verified；云端始终main、无detached部署。Web PID2474096／Gateway2474098均运行此提交，微信connected；三库保护表、配置含授权、绑定、Secretary及Dashboard静态逐指纹保持。上线后同owner只读恢复连续三轮complete=true／matched_windows=1，resume46–49ms／cut293–305ms（loopback单样本，不声称公网浏览器耗时），零生产生成／消息重放。前端95ce4dffe9及APK保持，不以服务端核验冒称用户现有浏览器UI实测。
+
+云端发布／恢复收据`~/.local/state/hermes-secretary/release-20261028/stage-20261102-cross-process-recovery/{receipt.json,RECOVERY.txt,backup-retention.json}`；按收据在空闲窗口对main作已审反向提交回退代码，禁止自动回滚业务库／覆盖轮换授权。逐库SHA／integrity／FK验证后保留本轮与前轮Sol两套完整三库，清退更旧9文件、218656768字节；运行库及当前同步包保持。事故目录初始19文件逐SHA不变，supplement清单保存截图、过程日志、最终候选补丁与上线恢复探针；文件0600、目录0700，原始物料不清退。隔离Mac基线及Linux候选在证据保存、候选7产品／测试文件逐字节匹配线上后清理；用户未跟踪Huawei资料目录保持，不新增外发或个人配置写入。
 
 ## 2026-11-02 · 6.1 Sol大窗口及Web模型切换确认修复上线
 
