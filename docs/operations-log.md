@@ -1,5 +1,9 @@
 # 运维记录
 
+## 2026-11-01 · 桌面胶囊最大宽度420px
+
+用户明确将上限由480px改为420px。FE `e5a3722e0d90c2f1e42d05ec0a4d8ab8c9385870`合本地main／origin/secretary并更新Web，样式26.25rem（默认420px），其余留白／自适应／动画规则不变。生产构建及439文件／6个HTTP资源校验通过，零服务重启／数据库写，移动端及后端产品不变；仅标量CSS变化，复用前版响应式证据，未另称新一轮真机／UI验收。证据`.hermes-dev/ui-motion-20261101/width-420-release/`；云端`static-20261101-width420/receipt.json`保存验证和旧静态恢复路径。
+
 ## 2026-11-01 · 桌面胶囊最大宽度与左侧留白
 
 用户要求桌面胶囊缩短并增大左侧空白，窄Composer自适应空间。FE `ce5a70d185ea95c5ae10bec77d2da822a0abee7b`合本地main／origin/secretary并发布：最大30rem（默认480px）、右侧原位置保留、左侧预留随可用空间32–64px变化，超出最大宽度后的空间留左；不随轮播文字改变，移动端及提示触发条件不变。实际组件隐藏IAB 1400／1100／900／780／380px覆盖、文字定宽及中心对齐通过，生产构建通过；439静态文件逐SHA和6个HTTP资源verified，Web／Gateway PID、Dashboard、配置及绑定保持，零重启／数据库写／模型请求。本次仅Web CSS微调，未重打APK。
