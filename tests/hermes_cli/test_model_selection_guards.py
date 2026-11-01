@@ -1,6 +1,9 @@
 """Tests for the unified model-selection guard registry."""
 
+from types import SimpleNamespace
 from unittest.mock import patch
+
+import pytest
 
 from hermes_cli.model_selection_guards import (
     SelectionWarning,
@@ -93,3 +96,32 @@ def test_cost_guard_still_fires_through_registry():
         "pricey/model", provider="anthropic", model_info=info
     )
     assert any(w.kind == "cost" for w in warnings)
+
+
+@pytest.mark.parametrize("measured", [0, -1, None])
+def test_unknown_context_never_uses_cumulative_input_for_confirmation(measured):
+    from hermes_cli.model_selection_guards import selection_context_for_agent
+
+    agent = SimpleNamespace(
+        model="current/model", session_prompt_tokens=390494,
+        context_compressor=SimpleNamespace(last_prompt_tokens=measured))
+    context = selection_context_for_agent(agent)
+    assert context is None
+    assert selection_warnings("next/model", include_kinds=["context_cache"],
+                              selection_context=context) == []
+    assert agent.session_prompt_tokens == 390494
+
+
+@pytest.mark.parametrize("measured,asks", [(67067, False), (390494, True)])
+def test_context_confirmation_uses_current_reading_not_lifetime_total(measured, asks):
+    from hermes_cli.model_selection_guards import selection_context_for_agent
+
+    agent = SimpleNamespace(
+        model="current/model", session_prompt_tokens=25044309,
+        context_compressor=SimpleNamespace(last_prompt_tokens=measured))
+    context = selection_context_for_agent(agent)
+    assert context.context_tokens == measured
+    with patch("hermes_cli.model_selection_guards._context_cache_threshold", return_value=100000):
+        warnings = selection_warnings("next/model", include_kinds=["context_cache"],
+                                      selection_context=context)
+    assert bool(warnings) is asks

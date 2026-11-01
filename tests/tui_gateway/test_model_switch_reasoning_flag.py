@@ -62,3 +62,43 @@ def test_reasoning_flag_with_global_writes_config_and_drops_the_pin(_quiet_switc
 
     with pytest.raises(ValueError):
         server._apply_model_switch("sid", {"agent": _Agent()}, "new/model --reasoning turbo")
+
+
+def test_second_session_switch_after_meter_reset_does_not_gate_on_lifetime_input(
+    _quiet_switch, monkeypatch,
+):
+    from copy import deepcopy
+
+    agent = _Agent()
+    agent.context_compressor = SimpleNamespace(last_prompt_tokens=67067)
+    agent.session_prompt_tokens = 390494
+    history = [{"role": "user", "content": "Keep this conversation intact"}]
+    before = deepcopy(history)
+    session = {"agent": agent, "history": history}
+    targets = iter(["first/model", "second/model"])
+
+    def resolve(**_kw):
+        return SimpleNamespace(
+            success=True, new_model=next(targets), target_provider="nous", base_url="", api_key="key",
+            api_mode="chat_completions", warning_message="", model_info=None, error_message="",
+            runtime_capabilities=None)
+
+    def swap(**kw):
+        agent.model = kw["new_model"]
+        agent.context_compressor.last_prompt_tokens = 0
+
+    monkeypatch.setattr("hermes_cli.model_switch.switch_model", resolve)
+    monkeypatch.setattr(agent, "switch_model", swap)
+    monkeypatch.setattr(server, "_merge_preflight_warning", lambda *a: None)
+    first = server._apply_model_switch("sid", session, "first/model --provider nous --session")
+    assert first.get("confirm_required", False) is False
+    assert agent.model == "first/model"
+    assert agent.context_compressor.last_prompt_tokens == 0
+
+    second = server._apply_model_switch("sid", session, "second/model --provider nous --session")
+    assert second.get("confirm_required", False) is False
+    assert agent.model == "second/model"
+    assert session["model_override"]["model"] == "second/model"
+    assert agent.session_prompt_tokens == 390494
+    assert session["history"] == before
+    assert _quiet_switch == {}
