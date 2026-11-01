@@ -101,6 +101,7 @@ def test_new_mcp_is_live_through_search_describe_call_without_mutating_warm_or_c
     try:
         seen = _requests(warm)
         first = warm.run_conversation("first", title_user_message="")
+        assert _updates(first["messages"])[-1]["content"] == "能力可能变化，当前 49 个折叠工具，调用前重新 search/describe。"
         old = copy.deepcopy(seen[-1])
         name = register()
         warm._skip_mcp_refresh = False
@@ -111,6 +112,12 @@ def test_new_mcp_is_live_through_search_describe_call_without_mutating_warm_or_c
         assert seen[-1]["messages"][:len(old["messages"])] == old["messages"]
         assert name not in warm.valid_tool_names
         assert name in _snapshot(second["messages"])["catalog"]
+        notice = _updates(second["messages"])[-1]["content"]
+        assert notice == f"能力可能变化，当前 {_snapshot(second['messages'])['folded_count']} 个折叠工具，调用前重新 search/describe。"
+        assert _snapshot(second["messages"])["folded_count"] == 50  # 49 fixture tools plus the newly registered tool
+        assert name not in notice
+        assert "Direct tools" not in notice
+        assert len(notice) < 200
         search = _bridge(warm, "tool_search", {"queries": ["runtime probe lookup"]})
         assert name in search["tools"]
         described = _bridge(warm, "tool_describe", {"names": [name]})
@@ -290,6 +297,8 @@ def test_catalog_failure_keeps_directory_but_delivers_current_system_policy(runt
         assert seen[-1]["messages"][:len(original_request["messages"])] == original_request["messages"]
         update = seen[-1]["messages"][-1]
         assert update["role"] == "system"
+        assert original_snapshot["catalog"] not in update["content"]
+        assert "tool_search" not in update["content"]
         assert policy in update["content"] if policy else "no longer apply" in update["content"]
         count = len(_updates(second["messages"]))
         _wire_gateway(agent, "weixin", policy=policy)
