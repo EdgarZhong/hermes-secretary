@@ -1,5 +1,9 @@
 # Hermes Secretary 当前状态
 
+## 2026-11-01 · Alex共享GPT授权（已完成；置顶会话切换按用户要求暂停）
+
+用户明确确认复用study既有ChatGPT订阅授权，并允许迁入Hermes原生公共凭据库，接受default Profile也获得GPT能力；Alex默认Kimi及study默认GPT保持。主会话独立实施，服务器内原生锁／writer迁移单一openai-codex授权，避免复制旋转refresh token；不迁移其它凭据，不发模型消息，不重启服务。 已通过原生锁／writer将study的openai-codex单一授权迁入控制根auth.json并移除study重复条目，0600受限；三Profile原生作用域均读取同一源，Alex仍k3.1-pro、study仍gpt-6-sol，其余凭据保持。原生刷新及账号实时目录确认gpt-6.1-terra可用，零模型生成。用户进一步明确只把Alex当前置顶「Edgar 身心支持与就医跟进」切到GPT-6.1 Terra、不改默认；随后要求先暂停核对39万tokens警告。只读核验切换前最近有效usage_anchor输入67067＋输出155＝67222，Alex配置窗口512000（约13.1%）；当前stored model为kimi-for-coding而anchor为k3.1-pro，实时读数已标model_changed失效，不把0当真实占用。model_selection_guards直接用compressor.last_prompt_tokens并回退累计session_prompt_tokens，缺少现行anchor／有效性核验，存在明确误报路径；390494的精确内存来源尚未取证，不冒称已完全定位。保护未关闭、源码未改，按用户“等一下”尚未执行模型切换。受限收据／回滚说明见运维记录。
+
 ## 2026-11-01 · 真实Chrome性能复查（已合主线、Web已上线、APK已更新）
 
 **本轮用户进一步确认：** 当前Conversation切换／重新进入／重连的恢复优先，流量尽量只传变化、消除可避免串行等待和本地重复工作；侧栏约108KB允许后台整页刷新，当前不新增列表差量协议。侧栏与Conversation恢复及发送就绪解耦：先展示已有缓存，缓存会话项立即可点击切换，不等待列表核验／增量；目标会话仍独立核对存在性与自身权限。隐藏的移动侧栏不抢占当前聊天恢复；Usage／Context等附属读取不能阻塞当前聊天关键路径。这是明确用户确认，覆盖本轮此前“需为侧栏新增差量”的排查方向。

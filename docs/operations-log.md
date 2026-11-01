@@ -1,5 +1,13 @@
 # 运维记录
 
+## 2026-11-01 · Alex／study共用ChatGPT订阅授权
+
+用户确认复用study授权、允许Hermes公共凭据库共享并接受default也可用；通过服务器原生auth锁／writer迁移providers.openai-codex到`/home/ubuntu/.hermes/auth.json`，不设置root active_provider，移除study重复singleton，保留其active_provider及其它凭据。两文件0600，Alex auth原SHA保持；三份config逐SHA保持，默认Alex k3.1-pro／study gpt-6-sol／default deepseek-flash。三Profile正式`_config_profile_scope`内均解析公共源，原生刷新后仍共用同一源；实时账号目录包含gpt-6.1-terra，未发生成请求、未重启服务／改源码。初版只读探针直接把物理Home设HERMES_HOME误把它当控制根，且未带会话Token的REST返回401；已纠正为控制根进程＋原生Profile作用域，未据失败探针改凭据／代码。
+
+受限证据`/home/ubuntu/.local/state/hermes-secretary/alex-shared-gpt-20261101/`留migration.json、validation.json、final-validation.json、live-catalog.json和root／study原auth备份（目录0700、文件0600）；不下载或提交凭据。回退须在无新变更前提下按原生study→root锁序，把**当前**公共Codex授权移回study并移除root对应条目，保持其它条目；刷新后禁止用before备份覆盖轮换令牌。用户当前置顶会话切到GPT-6.1 Terra的要求随后被“等一下，先查上下文”暂停，未执行config.set／发送／模型切换。
+
+只读检查当前置顶`20261021_200341_2ce088`：切换前最近有效_usage_anchor为k3.1-pro输入67067／输出155，_usage_context=67222；Profile窗口512000（约13.1%）。stored model现为kimi-for-coding，与anchor不同，实际RPC显示context_invalidated=model_changed，不能把返回0当当前上下文。切换保护selection_context_for_agent直接读取compressor.last_prompt_tokens并在非正数时回退session_prompt_tokens；后者在turn_usage逐次累加，不是当前占用，确认存在误报路径。尚未取得弹框当时内存快照，不能断言390494的精确来源；未关闭保护、未做无授权部署。上下文只读收据context-before-switch.json仅服务器受限保存，无正文输出。
+
 ## 2026-11-01 · 真实Chrome复查、聊天恢复优先及最终交付
 
 FE最终`129b9a2a11f82b0047aed616b8e454f0c0d6c727`已合main／origin/secretary并上线Web；439静态文件逐SHA、6HTTP资源verified。BE产品保持main `2e287d73b69ff11ccd694bc71f2d9aa400b8eef0`，零服务重启／数据库写／模型请求，Dashboard／配置／绑定和服务PID保持。本轮没有业务库备份或删库，两套历史完整三库保留状态不变。云端`/home/ubuntu/.local/state/hermes-secretary/release-20261028/static-20261101-conversation-complete/receipt.json`保存旧静态交换回退目录；回退仅按该收据交换旧静态并重新校验，不回退业务库。

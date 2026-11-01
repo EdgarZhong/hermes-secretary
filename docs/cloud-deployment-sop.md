@@ -24,7 +24,7 @@
 
 同步专用Host `hermes-secretary-sync` 和日常`alex`均指正式首尔`43.128.131.30`／ubuntu，私钥为本机受限`~/.ssh/alex_vps.pem`；`seoul`为已废弃、待回收的原实验机入口，不作为生产／同步源。workspace为正式Alex `/home/ubuntu/workspace` ↔ Mac `/Users/edgar/Desktop/Alex` two-way-safe；配置只传8白名单文件；DB完成包由正式Alex `.hermes_profiles/.snapshots/databases-current.zip` 单向传Mac，再由既有接收器核验后落冷库。首尔快照timer每五分钟独立发布，Mac离线不阻塞源发布；不得把rawDB改成双向同步。切换时暂停旧lane、核定当前源配置、预对齐后启用，按真实marker往返、配置SHA、自动快照落地验证，不能只看connected。实际版本和收据见根CLAUDE。
 
-study使用原生`openai-codex`及ChatGPT订阅独立设备码授权，凭据只留实体Home的`auth.json`（0600），不在同步白名单、不导入Mac Codex登录态。默认`model.default: gpt-6-sol`、`agent.reasoning_effort: high`；`delegation.model: gpt-6.1-sol`同时覆盖普通子Agent与后台delegate_task，Provider／凭据及High沿原生继承。Noting按父冻结运行态继续使用主模型，不受delegation覆盖；已有Conversation仍遵循各自持久模型配置。当前部署版本在空命名Profile上首次`auth add`可能误报成功而未存凭据，首次授权优先使用`hermes -p study model --no-browser`中的订阅登录入口；最终须核Profile级凭据落盘、正式runtime解析与实际请求，不能只看成功提示。实际绕行与证据见运维记录。
+study使用原生`openai-codex`及ChatGPT订阅设备码授权；2026-11-01按用户确认，既有授权迁入控制根`/home/ubuntu/.hermes/auth.json`（0600），Alex／study／default通过原生公共回退共用单一刷新链，study实体Home不保留重复Codex条目。凭据不在同步白名单、不导入Mac Codex登录态；不因添加可选Provider修改任何Profile默认模型。默认`model.default: gpt-6-sol`、`agent.reasoning_effort: high`；`delegation.model: gpt-6.1-sol`同时覆盖普通子Agent与后台delegate_task，Provider／凭据及High沿原生继承。Noting按父冻结运行态继续使用主模型，不受delegation覆盖；已有Conversation仍遵循各自持久模型配置。当前部署版本在空命名Profile上首次`auth add`可能误报成功而未存凭据，首次授权优先使用`hermes -p study model --no-browser`中的订阅登录入口；最终须核Profile级凭据落盘、正式runtime解析与实际请求，不能只看成功提示。实际绕行与证据见运维记录。
 
 Authelia 使用官方二进制，`/etc/authelia/configuration.yml` 仅在 `session` 下增加：
 
