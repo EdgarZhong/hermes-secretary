@@ -66,6 +66,63 @@ def events(runtime):
     return [frame["params"] for frame in runtime.frames if frame.get("method") == "event"]
 
 
+@pytest.mark.parametrize("finalizer_fallback", [False, True])
+def test_codex_completion_commits_the_streamed_identity(runtime, monkeypatch, finalizer_fallback):
+    from agent import codex_runtime, relay_llm
+    from agent.codex_responses_adapter import _normalize_codex_response
+
+    text = "One complete synthetic Codex reply."
+    chunks = [SimpleNamespace(type="response.output_text.delta", delta=text),
+              SimpleNamespace(type="response.completed", response=SimpleNamespace(
+                  id="controlled-response", status="completed", usage=None, output=[],
+                  incomplete_details=None, error=None))]
+    client = SimpleNamespace(responses=SimpleNamespace(create=lambda **kwargs: iter(chunks)))
+    if finalizer_fallback:
+        consume = codex_runtime._consume_codex_event_stream
+
+        def terminal_missing(stream, **kwargs):
+            final = consume(stream, **kwargs)
+            # Relay has the assembled response even when the consumer reports no terminal.
+            stream.final_response = final
+            raise RuntimeError("controlled missing terminal")
+
+        monkeypatch.setattr(codex_runtime, "_consume_codex_event_stream", terminal_missing)
+        # The controlled fallback must not recurse through Relay's own finalizer.
+        monkeypatch.setattr(relay_llm, "stream", lambda kwargs, opener, **hooks: _fallback_stream(kwargs, opener, hooks))
+
+    with observe_outputs(runtime.agent, runtime.emit) as owner:
+        response = codex_runtime.run_codex_stream(runtime.agent, {"model": "fixture/model"}, client=client)
+        uid = owner.current.message["message_uid"]
+        message, finish_reason = _normalize_codex_response(response)
+        runtime.messages.append(runtime.agent._build_assistant_message(message, finish_reason))
+        assert runtime.agent._flush_messages_to_session_db(runtime.messages, [])
+        assert runtime.messages[-1]["message_uid"] == uid
+    assistants = [row for row in runtime.db.get_messages(runtime.agent.session_id) if row["role"] == "assistant"]
+    assert [(row["message_uid"], row["content"]) for row in assistants] == [(uid, text)]
+    typed = [event for event in events(runtime) if event["type"] == "message.output_delta"]
+    assert typed and all(event["payload"]["message_uid"] == uid for event in typed)
+    commits = [event for event in events(runtime) if event["type"] == "message.output_committed"]
+    assert len(commits) == 1 and commits[0]["payload"]["source_message"]["message_uid"] == uid
+    assert [event["payload"]["state"] for event in events(runtime)
+            if event["type"] == "message.output_state"] == ["open", "closed"]
+
+
+def _fallback_stream(kwargs, opener, hooks):
+    raw = opener(kwargs)
+    hooks["on_stream_created"](raw)
+
+    class Stream:
+        final_response = None
+
+        def __iter__(self):
+            return raw
+
+        def close(self):
+            pass
+
+    return Stream()
+
+
 @pytest.mark.parametrize("worker", [False, True])
 def test_partial_commits_observed_uid_once_and_terminal_has_no_durable_residual(runtime, worker):
     with observe_outputs(runtime.agent, runtime.emit) as owner:

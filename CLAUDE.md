@@ -1,5 +1,9 @@
 # Hermes Secretary 当前状态
 
+## 2026-11-01 · Codex回复重复与完成通知误恢复（修复中）
+
+用户要求立即修复发送后前端恢复及回复重复；主会话独立实施，不派sub。基线BE94852bb／线上17bba65、FE129b9a2。真实运行态355事件确认只调用模型一次、数据库仅一条成功回复，但Codex流式候选UID与持久回复UID不同；run_codex_stream两个成功返回分支遗漏既有accept_response接线。另普通session.info无条件启动整轮恢复，须保留真实配置／历史失效及断线恢复，正常完成沿既有历史重读。范围：补完整stream→normalize→builder→SQLite身份回归和前端完成／配置恢复回归，定向检查后合主线上线；不改默认模型、不重放用户消息、不删历史。原始事件仅留服务器0600受限证据gpt-output-recovery-20261101，不进Git。
+
 ## 2026-11-01 · GPT订阅历史指令角色兼容修复（已合main并上线）
 
 用户明确要求修复；主会话亲自实施，不派sub。限定ChatGPT订阅出站角色：root仍instructions，中途system保原文／位置映射developer，不改持久历史／默认模型，不重放失败用户消息，不全量merge上游。统一主请求、auxiliary与native replay转换，预检接受developer，其它Responses路由保持system。主／aux／native replay已接统一转换，预检允许developer；root／旧消息前缀／工具配对和通用Responses不变。4文件291项、ruff／health通过，零健康问题。产品17bba65499已push并从main上线，双服务实际版本一致、微信connected；三库保护数据／配置含授权／绑定／双静态保持。隔离候选运行态仅1次真实gpt-6.1-terra／High请求completed，按中途developer更新输出CODEX_ROLE_OK，76输入＋8输出tokens、零重试／工具执行／用户会话写；主／aux构造输入及root完全相同。目标真实历史只读转换34条，1system→1developer、10工具调用配对、原历史不变，未发送这些历史。未改Prompt正文或工具pin，无需清上下文缓存，未重放用户失败消息；候选worktree已清理，两套完整三库备份按规则保留，详见运维记录。
