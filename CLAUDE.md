@@ -1,5 +1,23 @@
 # Hermes Secretary 当前状态
 
+## 2026-11-02 · 6.1 Sol大窗口与切换警告修复（执行中）
+
+用户已改定范围：不修改6 Sol配置，只修复6.1 Sol的900K选项，使其按账号目录500000默认／872000最大解析至872000，保留标准速度、不改变当前模型。随后追加当前置顶「Edgar 身心支持与就医跟进」切到gpt-6-sol-900k时再次出现LARGE CONTEXT警告（约249717，阈值100000），要求立即修复。主会话亲查实际usage有效性、切换前后真实路由／wire身份和确认承载，不关闭阈值掩盖；独立实现子Agent sol_context_variant（gpt-6.1-sol/high，不再派生）仅修改agent/model_metadata.py与对应test_model_metadata.py，主会话负责切换警告、亲审、集成、定向验证及交付。基线main04323f90da，本地原CLAUDE调查dirty及未跟踪Huawei-Xian-2027-Evidence保留。尚未改生产配置／切会话／发生成。
+
+线上只读active_list确认目标当前仍k3.1-pro且idle，本次属于真实跨模型切换，不把提示本身冒称累计tokens误报。已定位独立前端ChatSelectors把confirm_required抛为Error、缺少确认入口；model_confirm_web子Agent（6.1-sol/high、不再派生）限定该组件／原生config.set可选确认参数传递及测试。后端大窗口机制已亲审：仅eligible显式-900k在目录给max时使用min(verified预算,max)，无max维持原规则；新目录反例改前17失败、改后test_model_metadata全文件148通过（17.8秒），ruff／health通过且零健康问题，日志.hermes-dev/sol-900k-20261102。准备阶段提交与上线，前端确认入口仍在收尾；不自动代用户确认或切换，不发模型请求。
+
+## 2026-11-02 · Alex两个Sol配置872K（用户要求暂停，未修改线上）
+
+用户原已明确确认将Alex中GPT-6 Sol与GPT-6.1 Sol都调整到最大可用872000上下文，保留标准速度，不改变当前模型；后续明确“等一下”，要求先确认菜单现有900K选项能否直接使用。配置修改已暂停，尚未写入任何线上配置／切换会话／调用模型，仅本地文档登记及只读调查。线上main04323f90的原生resolver核对：-900k是Hermes菜单别名，出站移除后缀；仅目录context_window恰为272000时扩到min(900000,max_context_window)。按已取得的账号目录，6 Sol-900k可解析872000；6.1 Sol-900k因目录已是500000而不触发扩窗，仍500000。该别名不设置Fast／service_tier。未获用户恢复前不继续原配置变更；不得将这次代码读取冒称已完成运行态切换／真实长输入验收。
+
+## 2026-11-02 · GPT订阅Sol上下文核查（历史调查）
+
+用户要求核查GPT-6 Sol／GPT-6.1 Sol经ChatGPT订阅在Hermes中是否支持百万上下文，并条件授权：仅在支持且不存在长上下文额外额度倍率时，将线上Alex的两个Sol型号调整为1M。此授权不是无条件扩窗、切换当前会话或修改Profile默认模型。
+
+通过`ssh alex`仅使用现有共享access token只读请求官方账号模型目录，HTTP200：gpt-6-sol的context_window=272000、max_context_window=872000；gpt-6.1-sol的context_window=500000、max_context_window=872000。官方模型页两者均标1050000总窗口，但不能等同订阅路由可配置1M输入。Hermes已有-900k别名且受目录max_context_window约束；旧实测注释不代替当前账号证据。当前不足以满足用户全部条件，未改云端配置／默认模型／会话／授权，未刷新token、重启服务或发模型生成。Alex默认仍kimi-coding／k3.1-pro／512000，study默认仍openai-codex／gpt-6-sol。若改为872K，需先收敛这一替代范围。
+
+用户进一步明确6.1 Sol速度不及6 Sol，要求继续核查6 Sol无倍率依据；没有确认只改6.1或接受872K。后续查到[官方企业token费率文档的Long-context pricing in Codex](https://help.openai.com/en/articles/20001415-chatgpt-rate-card-enterprise-token-based-pricing)：使用ChatGPT登录Codex时，任何Codex模型（any Codex model）均不适用长上下文倍率，包括超过272K输入的请求；下一句专门确认Enterprise此路径没有272K计价阈值。按首句通用表述涵盖6 Sol，纠正此前仅找到6.1专门保证的不完整结论。证据范围须如实保留：该页面整体面向Enterprise；[个人订阅定价](https://learn.chatgpt.com/docs/pricing)及[Work／Codex帮助](https://help.openai.com/en/articles/20001275-chatgpt-work-and-codex)仍只单独点名6.1 Sol的included allowance无长上下文附加倍率，不能冒称取得6 Sol个人订阅专属条款或真实额度对照实测。不把API阶梯价格套用于订阅；更多token本身仍耗额度，Fast／Ultrafast另有独立倍率。
+
 ## 2026-11-01 · Codex回复重复与完成通知误恢复（修复中）
 
 用户要求立即修复发送后前端恢复及回复重复；主会话独立实施，不派sub。基线BE94852bb／线上17bba65、FE129b9a2。真实运行态355事件确认只调用模型一次、数据库仅一条成功回复，但Codex流式候选UID与持久回复UID不同；run_codex_stream两个成功返回分支遗漏既有accept_response接线。另普通session.info无条件启动整轮恢复，须保留真实配置／历史失效及断线恢复，正常完成沿既有历史重读。范围：补完整stream→normalize→builder→SQLite身份回归和前端完成／配置恢复回归，定向检查后合主线上线；不改默认模型、不重放用户消息、不删历史。原始事件仅留服务器0600受限证据gpt-output-recovery-20261101，不进Git。
