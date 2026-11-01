@@ -1,8 +1,8 @@
 # Hermes Secretary 当前状态
 
-## 2026-11-01 · 空闲AI标题恢复修复（代码验收通过，实模验证中）
+## 2026-11-01 · 空闲AI标题恢复修复（已合main并上线）
 
-用户截图反馈`/ai-title`因完整native Main snapshot不可用而要求先跑普通Turn。最新确认：以当前生效上下文命名，复用完整Main前缀；Turn空闲就允许重新生成，不以已有缓存／旧Web runtime作为额外前提；后台压缩无活动Turn时读当前原子生效版本，不因维护标志一律拒绝（覆盖旧忙时压缩口径）。主会话审接线、DeepSeek隔离验证与发布；title_idle_fix（gpt-6.1-sol/high、不再派生）实现标题owner及正式RPC恢复、失败/并发回归。优先原生恢复owner，缓存缺失仅在隔离只读请求中构建；不得推进普通Turn、执行工具或改Main历史／业务状态。保护算法分支与APK原dirty，不使用完整autonomous-run。 9文件已由主会话亲审，157项相关测试及9项冻结检查通过；no-tmp为未改历史报告基线，health零阻断／零提示。首次DeepSeek Main确认及有效前缀标题已成功，harness全表BLOB序列化故障已保留，修脚本后在累计8请求上限内补4请求完整对照，未为此改产品。
+用户截图反馈`/ai-title`因完整native Main snapshot不可用而要求先跑普通Turn。最新确认：以当前生效上下文命名，复用完整Main前缀；Turn空闲就允许重新生成，不以已有缓存／旧Web runtime作为额外前提；后台压缩无活动Turn时读当前原子生效版本，不因维护标志一律拒绝（覆盖旧忙时压缩口径）。主会话审接线、DeepSeek隔离验证与发布；title_idle_fix（gpt-6.1-sol/high、不再派生）实现标题owner及正式RPC恢复、失败/并发回归。优先原生恢复owner，缓存缺失仅在隔离只读请求中构建；不得推进普通Turn、执行工具或改Main历史／业务状态。保护算法分支与APK原dirty，不使用完整autonomous-run。 9文件已由主会话亲审，157项相关测试及9项冻结检查通过；no-tmp为未改历史报告基线，health零阻断／零提示。隔离DeepSeek累计6请求（首2后的harness BLOB取证错误保留，修脚本后补4），有效前缀、全清缓存及cold空闲重复命名成功，当前目标/summary/Notebook完整；三次标题RPC前后45表、父缓存/工具/prefill、Main及session绑定一致，0工具执行。缺缓存时按当前原生配置重建，不宣称清缓存前后工具面恒同。产品`4bc3f2b4b802cdbeea0724d1c446a30ccbde349d`已push并从main发布，双服务实际版本及只读终验通过，保护数据/两套三库保持；Main System/工具文案未变，本次保留现有缓存。证据ignored `.hermes-dev/title-idle-20261101/`，具体发布事实见operations-log。
 
 ## 2026-11-01 · 平台切换通知精简（已上线）
 

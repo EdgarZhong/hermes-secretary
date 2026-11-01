@@ -1,5 +1,13 @@
 # 运维记录
 
+## 2026-11-01 · 空闲AI标题恢复修复
+
+用户截图`/ai-title`报完整native Main snapshot缺失，并确认当前生效上下文、完整前缀复用、Turn空闲允许重新生成；催促尽快合main。只读取证确认Alex置顶当时无活动Turn/压缩锁、root有效而tools snapshot缺失。产品`4bc3f2b4b802cdbeea0724d1c446a30ccbde349d`已推origin/main，于北京时间10:19从main发布verified，Web/Gateway实际SHA一致、微信connected，未变更前端/APK。已有完整Prelude及durable prefill原样复用；缺失、partial tools、cold/陈旧runtime沿既有Main factory/Prompt owner只读准备，不要求普通Turn，不改Main缓存或业务状态。当前tip/active历史/Prelude/完整父链在同一SQLite读事务捕获；后台压缩无活动Turn可读已生效版本，真实Turn及跨入口有效Turn lease仍拒绝。只读准备scope仅exact-fork临时生效，构造前side-agent隔离，禁Main登记、hook、credits、外部memory初始化、工具执行及DB写。
+
+本地10文件157项有效回归证据通过（标题37、Prompt恢复25、root/branch3及6文件92项）；初组合4个Prompt替身失败修复后定向25全过，未冒称初次全绿。冻结十检查9项通过，no-tmp仍为未改历史报告基线；9文件health零阻断/零提示。隔离DeepSeek v4-pro累计6次HTTP200：首Main确认及有效前缀标题后harness保存BLOB序列化失败，原件保留；修取证脚本后补4请求，三次正式标题RPC均指向最新珊瑚采样目标，包含summary/Notebook且不取旧浏览器片段。45张表逐次前后一致，父缓存/工具/prefill及全局Main/session绑定一致，cold后agent仍None，工具调用0；input64574/output57，凭据扫描0命中。models.dev探测被守卫阻断，无非DeepSeek出站，不用本机K3凭据或生产用户模型请求。有效cache原生请求root/tools/历史前缀复用；clear后root/历史相同、工具面按当前原生配置重建，不把显式清缓存前后不同工具面说成恒同。
+
+发布预检、三库备份SHA/integrity/FK、启动及Notebook/排期/状态只读RPC、6个HTTP资源通过；三库保护业务表、配置/绑定及静态集合保持。本次未改Main System Prompt/工具文案，保留现有缓存，不为标题补发普通Turn。保留当前及stage-20261101-prefix-brief两套完整三库，清退更旧9个库/附属文件共214966272字节，运行库及databases-current.zip不动。证据ignored `.hermes-dev/title-idle-20261101/`（evidence.json、final-review.json、live-rerun/checks.json及release回执）；云端恢复原件`/home/ubuntu/.local/state/hermes-secretary/release-20261028/stage-20261101-title-idle/RECOVERY.txt`，不自动回滚数据库。算法与APK原dirty未纳入。
+
 ## 2026-11-01 · 平台切换能力通知精简与计数
 
 用户最终确定能力通知仅一句“能力可能变化，当前 N 个折叠工具，调用前重新 search/describe。”。首次及后续均不附详细目录；N只计当前scope可发现的折叠工具，排除direct和Main不可执行的Noting工具。平台身份本身不作通知条件，真实工具变化仍去重；目录读失败不编造数量，明确渠道策略变化仍保留必要指令／撤销，旧root与历史不改写。
