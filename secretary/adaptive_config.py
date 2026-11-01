@@ -23,6 +23,8 @@ def from_config(config):
     block = noting.get("adaptive", {})
     if not isinstance(block, dict) or block.get("enabled") is not True:
         return None
+    if not isinstance(block.get("shadow_only", False), bool):
+        return None
     required = {"hot_interval_seconds": 60, "cache_ratio": 0, "output_ratio": 0,
                 "cache_ttl_seconds": 1}
     if any(not _number(block.get(key), minimum=minimum) for key, minimum in required.items()):

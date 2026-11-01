@@ -25,9 +25,10 @@ def clean_events(history, now, *, model_key=None):
         if not isinstance(event, dict) or event.get('verified') is not True:
             continue
         identity, at = event.get('event_id'), number(event.get('at'))
-        if not isinstance(identity, str) or not identity or at is None or at > now:
+        available = number(event.get('available_at', at))
+        if not isinstance(identity, str) or not identity or at is None or available is None or max(at, available) > now:
             continue
-        if model_key is not None and event.get('kind') in ('request', 'maintenance_end', 'turn_end'):
+        if model_key is not None and event.get('kind') in ('request', 'turn_end'):
             if event.get('model_key') != model_key:
                 continue
         if identity in unique and unique[identity] != event:
@@ -144,7 +145,7 @@ def arrival_model(events, now, timezone_name=None, *, history_start=None):
         previous = covered[index - 1] if index else None
         if previous is not None and any(start <= previous < at < end for start, end in spans):
             age_counts[bisect_right(AGE_EDGES, at - previous)] += 1
-    return {'exposure_seconds': exposure, 'count': len(covered), 'zone': zone,
+    return {'exposure_seconds': exposure, 'count': len(covered), 'zone': zone, 'spans': spans,
             'hour_exposure': hours, 'hour_count': counts,
             'age_exposure': ages, 'age_count': age_counts,
             'rate': len(covered) / exposure if exposure else None}
@@ -273,7 +274,9 @@ def build_features(snapshot, history, config):
     # describe. Never infer absence before the retained event window. Compute
     # this before model filtering: user exposure is provider-independent.
     retained_times = sorted(at for event in history if isinstance(event, dict)
-                            and (at := number(event.get('at'))) is not None and at <= now)[-MAX_EVENTS:]
+                            and (at := number(event.get('at'))) is not None and at <= now
+                            and (available := number(event.get('available_at', at))) is not None
+                            and available <= now)[-MAX_EVENTS:]
     history_start = retained_times[0] if retained_times else now
     events = clean_events(history, now, model_key=snapshot.get('model_key'))
     requests = [e for e in events if e.get('kind') == 'request']
@@ -286,13 +289,18 @@ def build_features(snapshot, history, config):
     output = [number(e.get('output_tokens')) for e in hb]
     output = [n for n in output if n is not None]
     users = [e['at'] for e in events if e.get('kind') == 'user_activity' and e.get('source') == 'user']
-    return {'events': events, 'warm_cache_fraction': warm_cache_fraction(events, config['cache_ttl_seconds']),
+    maintenance_events = [e for e in events if e.get('kind') != 'maintenance_end'
+                          or snapshot.get('model_key') is None or e.get('model_key') == snapshot['model_key']]
+    return {'events': events, 'model_key': snapshot.get('model_key'),
+            'warm_cache_fraction': warm_cache_fraction(events, config['cache_ttl_seconds']),
             'arrival': arrival_model(events, now, config.get('timezone'), history_start=history_start),
             'feedback': feedback(events), 'growth_tokens_per_second': context_growth(events),
-            'maintenance': maintenance_model(events, config['cache_ratio'], config['output_ratio']),
+            'maintenance': maintenance_model(maintenance_events, config['cache_ratio'], config['output_ratio']),
             'heartbeat_output_tokens': quantile(output, .8),
             'heartbeat_calls': quantile(list(heartbeat_calls.values()), .8),
             'last_user_at': max(users) if users else None,
+            'last_user_work_end': max((e['at'] for e in events if e.get('kind') == 'turn_end'
+                                      and e.get('source') == 'user'), default=None),
             'last_request_at': max((e['at'] for e in requests), default=None),
             'unknown_usage_requests': sum(request_cost(e, config['cache_ratio'], config['output_ratio'])
                                           is None for e in requests)}

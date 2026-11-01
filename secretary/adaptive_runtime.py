@@ -63,7 +63,7 @@ def record_event(db, ref, kind, *, source="unknown", verified=False, event_id=No
         return False
 
 
-def user_arrived(db, session_id, *, event_id=None, at=None, parent=None, ingress="unknown"):
+def user_arrived(db, session_id, *, event_id=None, at=None, parent=None, ingress="unknown", activity="submission"):
     """Called only by verified native user-input entrances, before queue/admission."""
     if db is None or not settings.for_db(db):
         return False
@@ -71,7 +71,7 @@ def user_arrived(db, session_id, *, event_id=None, at=None, parent=None, ingress
         ref = db.resolve_conversation_ref(session_id)
         moment = time.time() if at is None else at
         inserted = record_event(db, ref, "user_activity", source="user", verified=True,
-                                event_id=event_id, at=moment, ingress=ingress)
+                                event_id=event_id, at=moment, ingress=ingress, activity=activity)
         if inserted:
             db._execute_write(lambda conn: store.invalidate_conn(db, conn, ref, moment))
             if parent is not None:
@@ -93,6 +93,7 @@ def turn_started(parent, value, *, at=None):
     db, ref, _config = owner
     now = time.time() if at is None else at
     parent._adaptive_turn_source = origin(value)
+    parent._adaptive_turn_started_at = now
     parent._adaptive_turn_id = getattr(value, "_adaptive_event_id", None) or uuid.uuid4().hex
     def write(conn):
         store.invalidate_conn(db, conn, ref, now)
@@ -167,16 +168,19 @@ def finish_turn(parent, at, *, idle_allowed=True):
         db, ref, config = owner
         source = getattr(parent, "_adaptive_turn_source", "unknown")
         from agent.context_compaction_request import read_context_usage
+        started = getattr(parent, "_adaptive_turn_started_at", None)
+        duration = at - started if isinstance(started, (int, float)) and at >= started else None
         record_event(db, ref, "turn_end", source=source, verified=source != "unknown", at=at,
                      event_id="turn:" + getattr(parent, "_adaptive_turn_id", uuid.uuid4().hex),
                      context_tokens=read_context_usage(parent)[0] or None, model_key=model_key(parent),
-                     context_epoch=_epoch(db, ref), context_contract=context_contract(parent))
+                     context_epoch=_epoch(db, ref), context_contract=context_contract(parent), duration_seconds=duration)
         measured, history = snapshot(parent, db, ref, config, at)
         from secretary.adaptive_policy import decide
         decision = settings.validate_decision(decide(measured, history, config))
         record_event(db, ref, "decision", source="framework", verified=True, at=at,
-                     decision=decision, model_key=model_key(parent))
-        if decision.get("fallback") is True:
+                     decision=decision, model_key=model_key(parent), stage="proposed",
+                     shadow_only=config.get("shadow_only") is True)
+        if config.get("shadow_only") is True or decision.get("fallback") is True:
             db._execute_write(lambda conn: store.native_mode_conn(conn, ref))
             return None
         decision["model_key"] = model_key(parent)
@@ -272,7 +276,7 @@ def _maintenance(parent, registration, *, finished=False, trigger=None):
         measured, _history = snapshot(parent, db, ref, _config, now)
         from secretary.adaptive_policy import decide
         decision = settings.validate_decision(decide(measured, _history, _config))
-        if decision.get("fallback") is not True:
+        if _config.get("shadow_only") is not True and decision.get("fallback") is not True:
             db._execute_write(lambda conn: store.adopt_mode_conn(conn, ref, decision["mode"], _config))
         record_event(db, ref, "state_refresh", source="framework", verified=True,
                      context_tokens=measured["context_tokens"])
@@ -283,7 +287,7 @@ def cancelled(parent, operation_id, outcome):
     if owner is not None:
         db, ref, _config = owner
         user_arrived(db, parent.session_id, event_id=operation_id + ":user_cancel_activity",
-                     parent=parent, ingress="web_submit")
+                     parent=parent, ingress="web_submit", activity="cancel")
         record_event(db, ref, "cancel", source="user", verified=True,
                      event_id=operation_id + ":user_cancel:" + outcome, operation_id=operation_id, outcome=outcome,
                      trigger="idle" if _idle_operation(db, ref, operation_id) else "native")
@@ -304,7 +308,7 @@ def composer_cancel(parent, *, operation_id=None):
         owner = _owner(parent)
         if owner is not None:
             user_arrived(owner[0], parent.session_id, event_id="composer_cancel:" + uuid.uuid4().hex,
-                         parent=parent, ingress="web_submit")
+                         parent=parent, ingress="web_submit", activity="cancel")
     return identity
 
 

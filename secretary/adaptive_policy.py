@@ -10,6 +10,7 @@ from bisect import bisect_right
 import math
 
 from secretary.adaptive_features import arrival_rate, build_features, number
+from secretary.adaptive_forecast import from_events, predict
 
 
 @dataclass(frozen=True)
@@ -74,6 +75,7 @@ def _maintenance(features, cfg):
     if not cost > 0 or not 0 < duration <= 7200 or not 0 < ratio < .85:
         return None
     outcomes = [e.get('outcome') for e in features['events'] if e.get('kind') == 'maintenance_end'
+                and (features.get('model_key') is None or e.get('model_key') == features['model_key'])
                 and e.get('outcome') in ('completed', 'failed', 'cancelled', 'partial')]
     successes = sum(outcome == 'completed' for outcome in outcomes[-12:])
     success = (successes + 1) / (min(len(outcomes), 12) + 2)
@@ -140,7 +142,19 @@ def _read_price(context, gap, cfg):
     return context * (1 - retained * (1 - cfg['cache_ratio']))
 
 
+def _trajectory_ready(features):
+    trajectory = features.get('trajectory', {})
+    marks = trajectory.get('marks', {})
+    return trajectory.get('available') and all(number(marks.get(key)) is not None
+                for key in ('calls', 'growth_tokens', 'output_tokens', 'duration_seconds'))
+
+
 def _forecast(snapshot, features, cfg, mode, delay, profile, curve):
+    if _trajectory_ready(features):
+        from secretary.adaptive_rollout import forecast
+        background = _background_times(snapshot, cfg, mode, None, 0)
+        return forecast(snapshot, features, cfg, background, delay, profile,
+                        heartbeat_interval=_interval(mode, cfg))
     context = snapshot['context_tokens']
     step = cfg['forecast_step_seconds']
     duration = profile.duration if delay is not None else 0
@@ -228,9 +242,26 @@ def _eligible(snapshot, features, cfg, profile):
     return growth is None or growth <= cfg['max_growth_tokens_per_second']
 
 
+def _break_even(context, baseline, candidate, baseline_zero, candidate_zero, cfg):
+    """Solve the same conditional affine cost model, including both margins.
+
+    The zero-context evaluation supplies an algebraic intercept, not a proposed
+    maintenance action on an empty conversation. No old hazard/trajectory mix.
+    """
+    intercept = baseline_zero - candidate_zero
+    slope = ((baseline - candidate) - intercept) / context
+    relative_slope = slope - cfg['minimum_savings_fraction'] * (baseline - baseline_zero) / context
+    if min(slope, relative_slope) <= 0:
+        return None
+    absolute = (cfg['minimum_savings_tokens'] - intercept) / slope
+    relative = (cfg['minimum_savings_fraction'] * baseline_zero - intercept) / relative_slope
+    return math.ceil(max(cfg['min_context_tokens'], absolute, relative))
+
+
 def _candidates(snapshot, features, cfg, profile, curve, conservative):
     candidates = []
-    age = snapshot['now'] - features['last_user_at']
+    last_interaction = max(features['last_user_at'], features.get('last_user_work_end') or features['last_user_at'])
+    age = snapshot['now'] - last_interaction
     quiet = max(0, cfg['min_user_quiet_seconds'] - age)
     delays = sorted({quiet, max(quiet, 900), max(quiet, 1800), max(quiet, 3600)})
     fraction = features['feedback']['cancel_fraction']
@@ -253,19 +284,25 @@ def _candidates(snapshot, features, cfg, profile, curve, conservative):
                    for due in reminders):
                 continue
             collision, wait = _risk(conservative, delay, profile.duration, cfg['forecast_step_seconds'])
+            if features.get('trajectory', {}).get('available'):
+                from secretary.adaptive_rollout import collision_risk
+                path_risk = collision_risk(features['trajectory'], delay, profile.duration)
+                collision, wait = max(collision, path_risk[0]), max(wait, path_risk[1])
             if collision > allowance or wait > cfg['max_expected_wait_seconds']:
                 continue
             cost, terminal, reads = _forecast(snapshot, features, cfg, mode, delay, profile, curve)
             saved = baseline[0] - cost
-            paid = _survival(curve, delay, cfg['forecast_step_seconds']) * profile.cost
-            removable = snapshot['context_tokens'] * (1 - profile.retained)
-            weight = (saved + paid) / max(removable, 1)
-            threshold = math.ceil(snapshot['context_tokens'] * profile.retained + paid / max(weight, 1e-9))
             if reads == 0 or saved <= max(cfg['minimum_savings_tokens'], baseline[0] * cfg['minimum_savings_fraction']):
+                continue
+            intercept_snapshot = dict(snapshot, context_tokens=0)
+            base_zero = _forecast(intercept_snapshot, features, cfg, mode, None, profile, curve)[0]
+            candidate_zero = _forecast(intercept_snapshot, features, cfg, mode, delay, profile, curve)[0]
+            threshold = _break_even(snapshot['context_tokens'], baseline[0], cost, base_zero, candidate_zero, cfg)
+            if threshold is None or threshold > snapshot['context_tokens']:
                 continue
             candidates.append({'mode': mode, 'delay': delay, 'cost': cost, 'terminal': terminal,
                                'collision': collision, 'wait': wait,
-                               'threshold': min(snapshot['context_tokens'], max(cfg['min_context_tokens'], threshold))})
+                               'threshold': threshold})
     return candidates
 
 
@@ -285,6 +322,10 @@ def decide(snapshot: dict, history: list[dict], config: dict) -> dict:
     if snapshot.get('heartbeat_status') not in ('active', 'policy_disabled'):
         return _fallback(snapshot, 'manual_heartbeat_control')
     profile = _maintenance(features, cfg)
+    spans = features['arrival']['spans']
+    data = from_events(features['events'], spans)
+    features['trajectory'] = predict(data, snapshot['now'], horizon=cfg['horizon_seconds'],
+                                     timezone_name=cfg.get('timezone'))
     curve = _survival_curve(snapshot, features, cfg)
     conservative = _survival_curve(snapshot, features, cfg, conservative=True)
     candidates = _candidates(snapshot, features, cfg, profile, curve, conservative)
@@ -315,4 +356,9 @@ def decide(snapshot: dict, history: list[dict], config: dict) -> dict:
                             'verified_user_events': arrival['count'],
                             'feedback': features['feedback'],
                             'unknown_usage_requests': features['unknown_usage_requests'],
+                            'forecast_model': ('multi_return_trajectory' if _trajectory_ready(features)
+                                               else 'first_return_fallback'),
+                            'trajectory_training_windows': features['trajectory']['training_windows'],
+                            'behavior_forecast': features['trajectory'].get('horizons', {}),
+                            'counterfactual_status': 'conditional_model_not_causal_savings',
                             'effective_hot_cache_fraction': cfg['hot_cache_fraction']}}

@@ -131,3 +131,32 @@ def test_missing_usage_on_one_request_does_not_poison_later_receipt(owned):
     requests = [item for item in store.history(db, ref, time.time()) if item["kind"] == "request"]
     assert requests[0]["input_tokens"] is None
     assert requests[1]["input_tokens"] == 100 and requests[1]["cache_read_tokens"] == 90
+
+
+def test_completed_user_work_records_measured_busy_duration(owned):
+    parent, db, ref = owned
+    runtime.turn_started(parent, runtime.mark_input('work', 'user', 'timed'), at=100)
+    runtime.finish_turn(parent, 700)
+    finished = [e for e in store.history(db, ref, 1000) if e['kind'] == 'turn_end']
+    assert finished[-1]['duration_seconds'] == 600
+    assert finished[-1]['source'] == 'user'
+
+
+def test_composer_cancel_has_distinct_non_request_activity(owned):
+    parent, db, ref = owned
+    runtime.composer_cancel(parent)
+    rows = [e for e in store.history(db, ref, time.time()) if e['kind'] == 'user_activity']
+    assert rows[-1]['activity'] == 'cancel'
+
+
+def test_live_shadow_records_recommendation_without_adopting_it(owned, monkeypatch):
+    parent, db, ref = owned
+    config = for_db(db)
+    monkeypatch.setattr(runtime.settings, 'for_db', lambda _db: {**config, 'shadow_only': True})
+    monkeypatch.setattr('secretary.adaptive_policy.decide', lambda *args: dict(mode='hot',
+                        threshold_tokens=4000, delay_seconds=1800, fallback=False))
+    assert runtime.finish_turn(parent, time.time()) is None
+    with db._read_ctx() as conn:
+        assert conn.execute('SELECT COUNT(*) FROM secretary_adaptive_plans WHERE conversation_ref=?', (ref,)).fetchone()[0] == 0
+    decisions = [e for e in store.history(db, ref, time.time()) if e['kind'] == 'decision']
+    assert decisions[-1]['decision']['threshold_tokens'] == 4000

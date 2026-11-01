@@ -91,3 +91,14 @@ def test_heartbeat_tool_loop_calls_are_not_mistaken_for_single_request():
     features = build_features(dict(now=10), rows, dict(cache_ratio=.1, output_ratio=5, cache_ttl_seconds=1800))
     assert features['heartbeat_calls'] == 4
     assert features['heartbeat_output_tokens'] == 100
+
+
+def test_other_model_maintenance_keeps_closed_behavior_interval_without_price_mix():
+    rows = [event('start', 100, 'maintenance_start', operation_id='other', model_key='old'),
+            event('end', 700, 'maintenance_end', operation_id='other', model_key='old',
+                  duration_seconds=600, outcome='completed', context_before=100, context_after=20)]
+    features = build_features(dict(now=1000, model_key='new'), rows,
+                              dict(cache_ratio=.1, output_ratio=5, cache_ttl_seconds=1800))
+    from secretary.adaptive_forecast import maintenance_spans
+    assert maintenance_spans(features['events']) == [(100, 700)]
+    assert features['maintenance']['duration_samples'] == 0
