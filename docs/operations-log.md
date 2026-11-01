@@ -1,5 +1,17 @@
 # 运维记录
 
+## 2026-11-01 · Composer统一动画、恢复提速与Web发布
+
+用户明确本轮合入前后端主线并上线Web。BE `1df27e502091caba64d59a1d12c97cd4dc6a7930`由main发布；FE `bb8596b87b47336c3beedba04729e7f2d832e5a6`快进本地main并推origin/secretary。北京时间10:53 Web静态发布verified，439文件逐SHA一致、6个HTTP资源通过；静态交换不重启服务、不改数据库／Dashboard。BE受限执行器完成空闲预检、三库备份、main快进及双服务实际版本／微信健康验证，配置／绑定及保护数据一致，无生产模型测试请求，未修改Prompt／工具表故不清Main缓存。
+
+前端统一实际高度／内部位置320ms插值、桌面剩余空间固定宽胶囊横向伸缩、移动端底部26px胶囊纵向伸缩；IME保持完整WebView表面并暂停背景动态绘制。服务端每轮只读快照内复用身份排序TEMP索引，summary不传完整工具快照，前端并行草稿／历史／绑定读取。线上两轮：历史107–112ms（原约290–320ms），恢复对账226–231ms（原约760ms），summary1537字节（原83104）；分项计时不等同端到端／设备帧率保证。普通Conversation切换仍显示恢复提示，未擅自改成静默。
+
+验证与证据：前端恢复137、表现43、原生11项通过；后端六文件最终有效174项通过，冻结9检查通过、no-tmp为未改历史报告基线。TS14文件无新增健康问题。隐藏IAB真实组件逐帧验证各种内容增减、反向、内部工具栏同步、提示开合、桌面文字变化不改宽、中心对齐和减少动态效果。初次静态包因缺secretary目录前缀被严格校验拒绝，未交换线上目录；重新按规定打包后r2成功，未放宽校验，失败收据保留。
+
+APK：独立前端 `.archive/composer-motion-20261101/Hermes-Secretary-0.1.10-composer-smooth-arm64.apk`，0.1.10／1010、arm64、32132825字节，SHA256 `263f938fa2afcc6e3da62e181b57ee9081534dddd9db146427f0cd0378a09569`。原证书／v2签名、全ZIP CRC、ZIP／ELF 16KB、439前端文件和交付副本校验通过，verification.json及sha256同目录；仅移出生成的dist/.DS_Store，原未跟踪源文件保留。未安装或控制设备，真实键盘收起黑块／流畅度需新包复验，旧D包不作本轮交付。
+
+保留当前stage-20261101-composer及前一stage-20261101-title-idle两套完整三库，逐库SHA／integrity／FK通过，清退更旧9文件共214966272字节；运行库与databases-current.zip保持。证据ignored `.hermes-dev/ui-motion-20261101/release/`及前端`.archive/composer-motion-20261101/`；云端恢复入口`/home/ubuntu/.local/state/hermes-secretary/release-20261028/stage-20261101-composer/RECOVERY.txt`，静态收据及可交换旧目录在同根`static-20261101-bb8596b-r2/receipt.json`。不自动回滚数据库。
+
 ## 2026-11-01 · 空闲AI标题恢复修复
 
 用户截图`/ai-title`报完整native Main snapshot缺失，并确认当前生效上下文、完整前缀复用、Turn空闲允许重新生成；催促尽快合main。只读取证确认Alex置顶当时无活动Turn/压缩锁、root有效而tools snapshot缺失。产品`4bc3f2b4b802cdbeea0724d1c446a30ccbde349d`已推origin/main，于北京时间10:19从main发布verified，Web/Gateway实际SHA一致、微信connected，未变更前端/APK。已有完整Prelude及durable prefill原样复用；缺失、partial tools、cold/陈旧runtime沿既有Main factory/Prompt owner只读准备，不要求普通Turn，不改Main缓存或业务状态。当前tip/active历史/Prelude/完整父链在同一SQLite读事务捕获；后台压缩无活动Turn可读已生效版本，真实Turn及跨入口有效Turn lease仍拒绝。只读准备scope仅exact-fork临时生效，构造前side-agent隔离，禁Main登记、hook、credits、外部memory初始化、工具执行及DB写。
