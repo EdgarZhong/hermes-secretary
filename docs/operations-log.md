@@ -1,5 +1,11 @@
 # 运维记录
 
+## 2026-11-01 · GPT-6.1 Terra首次调用HTTP400排查
+
+用户在22:54:45已自行将Alex置顶会话切换到gpt-6.1-terra／openai-codex／codex_responses／High，原生日志确认模型窗口500000。22:55:24首次用户调用返回HTTP400 `System messages are not allowed`，标为不可重试format_error，失败内容保留；本次调查未发生成／重试、未改默认模型／历史／服务。原生只读history转换取证32条（8user／1system／13assistant／10tool），出站仍含1条中途system，位置3。主root由instructions单独承载，错误是历史system角色与ChatGPT订阅端点不兼容；现有tests/agent/test_runtime_system_transport.py也断言Codex保留system，不能把单测通过当真实Provider契约证明。
+
+日志及无正文计数收据只留服务器受限`/home/ubuntu/.local/state/hermes-secretary/gpt-call-failure-20261101/`（web.log／gateway.log／wire-shape.json，0600），不下载授权或正文。初次离线探针误用不存在的chat_to_codex_input，随后按正式_chat_messages_to_responses_input修正；没有额外网络生成。修复尚未实施；应在订阅出站适配中保留原文／相对位置／root前缀，采用服务端支持的指令角色，兼顾main／aux／预检及其它Responses路由，不通过删system消息／重写持久历史绕过。
+
 ## 2026-11-01 · 连续切换模型误用累计tokens的确认警告修复
 
 用户明确指出第一次切换令展示计数失效是正常行为，要求修复随后额外门禁。产品`54853241505fb556ad0c8124531464a111bb1f80`已push并从main上线。仅移除统一selection_context_for_agent对累计session_prompt_tokens的回退；有效当前计数保持，未知／0／负哨兵返回无当前上下文，不触发context-cache确认；保留原阈值、有效大上下文和成本／数据策略确认，不清累计账本／历史、不变默认模型。

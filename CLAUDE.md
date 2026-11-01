@@ -1,5 +1,9 @@
 # Hermes Secretary 当前状态
 
+## 2026-11-01 · GPT-6.1 Terra调用失败调查（已定位，适配修复未实施）
+
+用户反馈模型调用失败并要求检查原因。用户已自行将Alex置顶20261021_200341_2ce088切为openai-codex／gpt-6.1-terra／codex_responses／High；因此此前“暂停切换”仅为当时Agent未代执行，不再代表会话当前模型。22:55:24实际请求HTTP400 detail=System messages are not allowed，非目录缓存／上下文阈值问题，未自动重试生成。只读原生转换当前32条history，发现1条中途system，序列化后仍为system（位置3）；root instructions独立。现行adapter和runtime_system_transport测试同时保留并断言Codex backend历史system，缺少真实订阅端兼容证据。调查没有改源码、历史、Prompt或默认配置；后续须在实际订阅出站层保持文本／位置／root前缀，使用端点接受的指令角色，并覆盖main／aux／预检、其它Responses路由不变；尚未实施或宣称生成成功。服务器受限证据gpt-call-failure-20261101。
+
 ## 2026-11-01 · 连续模型切换误报修复（已合main并上线）
 
 用户澄清连续切换两次：第一次令旧模型展示计数失效是正常行为，不能因此拿累计输入量新增异常切换门禁；明确要求修复。范围仅统一selection_context_for_agent移除session_prompt_tokens回退，无有效当前计数则不触发context-cache确认，保留有效大上下文及其它既有guard；不改默认模型、不发生成、不自动执行暂停的会话切换。主会话独立实施。改前正式_apply_model_switch连续切换回归精确复现390494错误警告（连同未知计数共4项失败）；仅移除累计回退后6文件31项通过，历史与默认配置保持，有效大计数仍需确认。ruff／health检查通过，产品5485324150已push并从main发布；Web／Gateway实际版本一致、微信connected。云端只读复核0／−1／None计数均不弹确认，真实390494仍弹；保护数据、配置／授权、双静态逐指纹保持，零生成请求／会话切换。原置顶切换仍按用户暂停状态未执行，回退与两套三库备份入口见运维记录。
