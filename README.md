@@ -80,6 +80,8 @@ Gateway入口 `hermes gateway`；Dashboard入口 `hermes dashboard --host 127.0.
 
 ### Android APK
 
+键盘开合由Android Insets提供边界与系统曲线，网页以合成位移衔接Composer和实际正文位置，支持的页面保持完整WebView表面，仅在边界调整网页可用高度；Android 11+关闭系统额外缩窗／平移，APK根层固定且不参与滚动，正文仍可独立滚动。键盘开合期间保持背景画布尺寸并暂停背景绘制，结束后续播。Composer统一按实际内容尺寸进行320ms高度及内部位置过渡。连接／恢复提示采用中性灰胶囊，移动端顶满内宽并留左右间距；桌面位于工具栏主按钮左侧，按父容器剩余空间定宽、与左侧选项中心对齐，横向展开折叠，12px文字靠左、展开高度26px，暗色采用灰色填充且无描边；提示自身从固定底边伸缩，Composer同步移动，同阶段最多展示三个恢复对象，保留轮播和省略号，恢复操作资格不等待动画结束。
+
 独立前端的`src-tauri/`提供Tauri 2 Android壳，固定竖屏、内置网页，经正式HTTPS／Authelia连接同一API／WS。系统栏、通知和临时后台保护仅在APK生效；后台保护限已观察到的活动Turn，不保证系统挂起后仍通知。返回前台和网络恢复沿同一SPA自动重连并对账历史／Socket／Turn，不自动整页重载；冷启临时引导网络失败由内置SPA承接自动重试。顶栏支持用户主动下拉刷新，认证导航及自然进程冷启动保留；具体边界按[06 Android契约](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md#android-原生通知与临时后台保护用户最终确认2026-10-21)处理，保留登录、草稿和会话。
 
 在独立前端仓库设置 Android SDK／NDK／Java 环境后执行 `npm run android:build`，输出 `src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk`。当前目标为 Android 8.0+／arm64；release 非调试、使用本地签名，原件仅保存在 ignored `src-tauri/.android-signing/`，后续覆盖升级必须保留该密钥。应用图标由 `npm run android:icons` 复用现有 logo 与主题深色自动生成，release 构建会先刷新图标。`npm run android:debug` 仅供本地验收。 正式构建还需要 Python 3.11+（仅标准库），完成后自动检查 ZIP 全条目 CRC、原证书／v2 签名、版本／ABI、ZIP／ELF 16KB 对齐及内置前端与 dist 逐 SHA 一致。可单独运行 `npm run android:verify`；使用 `npm run android:verify -- --delivery <新文件路径.apk>` 仅在全部校验成功后原子生成交付副本，同时输出 `.sha256` 与 `.verification.json`，拒绝覆盖已有文件；`npm run android:test` 验证截断／CRC／签名／版本／资源等拒绝路径。产物校验不代替设备安装与生命周期验收。实际包版本、网络验证及限制统一记录在 [运维记录](docs/operations-log.md)。

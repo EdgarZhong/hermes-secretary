@@ -28,6 +28,18 @@ main产品`0b43af0910e9c54b983d3c90037621163bed98c6`于北京时间09:48正式�
 
 发布后只读Notebook／排期／状态RPC及6个HTTP入口资源通过。新三库备份及前一套`stage-20261031-evidence-recovery`逐库SHA／integrity／FK核验，保留这两套；清退更旧9个库／附属文件共212004864字节，运行库及`databases-current.zip`不动。证据在ignored `.hermes-dev/prefix-release-20261101/`：`release/readiness.json`、`release/receipt.json`、`release/pinned-cache-clear.json`、`release/postrelease-readonly.json`、`release/backup-retention.json`及`deepseek/final-review.json`；云端发布与恢复原件在`/home/ubuntu/.local/state/hermes-secretary/release-20261028/stage-20261101-prefix/`，回退按其中`RECOVERY.txt`，不自动回滚数据库。
 
+## 2026-10-31 · D方案与键盘弹飞修复APK（仅本地构建，待设备复验）
+
+用户最终选择四候选D：26px灰填充胶囊、无描边、12px左对齐文字。合入对真机视频所示整页弹飞的修复：API30+关闭系统额外窗口平移，APK固定根层，正文内部滚动保持。前端41项、原生10项、实际组件隐藏IAB开合／根滚动／双主题验证通过；不代表真实Android系统动画已复验。
+
+本地产物：独立前端 `.archive/composer-motion-20261031/revision3/Hermes-Secretary-0.1.10-composer-D-arm64.apk`，0.1.10／1010、arm64、32130749字节，SHA256 `7cbe8476b451c3cd6ed9f85982886448da366367087b9fffcfd7f2cc004897b1`。原证书／v2、CRC、ZIP／ELF 16KB、439前端文件及交付副本校验通过；同名verification.json／sha256保留。本轮dist/.DS_Store为唯一生成杂项，已移至证据目录，未动源文件或放宽校验。两仓修改未提交、未部署、未操作设备；此前v1／v2包只保留作历史记录，当前样式交付以此D包为准。
+
+## 2026-10-31 · Composer动画二次修订APK（仅本地构建，未部署／未安装）
+
+用户要求主会话亲自优化键盘卡顿、恢复框满宽留间距靠左、同步伸缩及无跳变闪动。本地产物位于独立前端 `.archive/composer-motion-20261031/revision2/Hermes-Secretary-0.1.10-composer-motion-v2-arm64.apk`：0.1.10／1010、arm64、32130505字节，SHA256 `040bfcb53bea4443ef26f56708cea3bb144b1247d9aa418586e38f4a3855a1f8`。原证书／v2签名、ZIP CRC、ZIP及ELF 16KB对齐、439前端文件和交付副本一致性通过，同名verification.json／sha256收据保留。仅移走构建生成的dist/.DS_Store以恢复严格资源集合相等，原未跟踪文件保持；未改变验证规则。
+
+源码未提交，云端服务及线上静态未变，不构成一次发布；不操作真实设备，浏览器受控逐帧验证与Robolectric不替代真机键盘帧率验收。前版 `composer-motion-arm64.apk` 保留，不再作为当前方案；当前证据与限制见根CLAUDE顶部和上述revision2目录。
+
 ## 2026-10-31 · Alex当前Main缓存显式清理（已完成）
 
 用户明确不补旧Noting，并指出已有热调试清缓存入口。此前仅确认持久root含新版定稿不足以证明所有热runtime已采用；本次按既有正式认证WebSocket调用`conversation.context_cache_clear`，于2026-10-31T10:58:16+08:00返回`cleared`，Profile Alex、Conversation `conv_a497994968694fe180ad6e4523afe9f2`、当前tip `20261021_200341_2ce088`。目标system_prompt／system_prompt_hash／tool_names均NULL；已有内存实例下一正常Turn沿原生同步失效并重建，不在RPC直接重建或触发模型。

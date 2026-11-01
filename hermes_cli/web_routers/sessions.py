@@ -234,6 +234,7 @@ def get_sessions(
                 s["pinned"] = bool(s.get("pinned"))
                 if summary:
                     s.pop("origin_json", None)
+                    s.pop("tool_names", None)
             if not full:
                 _strip_session_list_rows(sessions)
             # ``storage`` tells an empty page apart from an unreadable store (#72046); same
@@ -581,7 +582,7 @@ async def get_session_detail(session_id: str, profile: Optional[str] = None, sum
         if owned is not None:
             session["scheduler_owned"] = owned
         if summary:
-            for field in ("origin_json", "system_prompt", "model_config"):
+            for field in ("origin_json", "system_prompt", "model_config", "tool_names"):
                 session.pop(field, None)
         return session
 

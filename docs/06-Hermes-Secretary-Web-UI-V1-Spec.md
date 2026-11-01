@@ -1,5 +1,15 @@
 # Hermes Secretary Web UI V1 — Product, Native Interface & Implementation Specification
 
+## 2026-11-01 · Composer统一尺寸动画与恢复提速
+
+用户确认：Composer高度过渡统一由实际内容尺寸驱动，不能分别依赖附件、命令、选取器、文本或恢复事件。内层自然布局、外层统一插值，同时按测得的位置差同步内部区块，约320ms；快速反向承接当前高度，初始挂载不从0弹入，减少动态效果时直接采用终值。原附件独立高度过渡取消，避免双重插值。移动端恢复提示仍在底部，26px灰填充胶囊从固定底边伸缩，其他Composer内容同步移动；退出保留的文字只属于短暂表现，不保留恢复权限或影响真实waiting。
+
+桌面端胶囊移入工具栏、主按钮左侧的空位，宽度按父容器剩余空间确定，不随文字／轮播变化，长文字省略，左右留更大间距。视觉以左侧工具选项为参照，整行中心对齐；保持D方案26px、12px字、灰填充无描边，固定右侧从右往左展开、反向折叠。桌面提示开合不增加Composer高度。本节覆盖旧P02固定20px及全平台底部布局。
+
+正常网络恢复必须先优化真实等待，不以隐藏提示代替提速：本地草稿和网络恢复并行，同owner已授权历史窗口与元数据／runtime绑定并行，仍在原统一切点完成对账后交接，操作资格不提前放行；旧owner／取消／失败不能提交。服务端每次只读快照内可复用仅含身份／顺序的内存TEMP索引，事务退出即销毁，不跨恢复轮次缓存、不写主库、不省略D0／S／D1一致性验证。summary接口不返回界面不用的完整工具快照，完整详情接口仍保留。Conversation切换的恢复提示目前保留，待提速后的实际体验再决定，不隐藏真实故障。
+
+APK支持的页面保持完整WebView绘制表面，IME仅由网页合成位移及边界布局接管；收起不临时扩大原生表面，避免未绘制区域露出。无页面接收方沿原生Insets退路；动画期间背景保留最近已绘帧、结束后续播，草稿和同页恢复契约不变。模拟和包校验不代替Android真机黑块／流畅度复验。
+
 ## 2026-11-01 · 空闲维护取消与Compaction流式展示（用户确认）
 
 用户可以手动取消空闲整理；Compaction消息改为流式展示，让用户返回界面时看到当前已生成的内容/真实进展，自行选择继续等待或取消。此为已确认产品方向，不再作为是否提供的待定项；具体视觉、消息字段及接线另行设计，实施/验证状态见CLAUDE。沿既有同页恢复和operation身份契约，在进入/重连后恢复正确内容与运行状态；流式可见不等于已知完成百分比/精确剩余时间，未提交内容不能冒充最终压缩结果。
@@ -657,6 +667,10 @@ JS／原生单测不能证明实际WebView生命周期与画面连续。后续�
 **用户2026-10-26确认：冷刷新缓存性能。** 刷新后的首帧同样必须尽快显示同owner已缓存的可见正文／卡片外壳，不能仅以暖切换瞬时显示作为刷新验收。持久展示缓存不需要Thinking正文、工具参数或结果，不为这些折叠详情做读出、解析或复制；已有页面的document内存阅读状态仍沿既有契约保留。缓存读取、采纳、首次可见绘制分别计时，不能把网络读取完成当缓存命中，也不能以隐藏Load earlier按钮或空白占位掩盖无正文；完整后台恢复及动作权限证明保持。
 
 ### 1.6. Composer contents, layout and keyboard
+
+连接提示曾参考前端b33e428之前Composer的中性Notice；最终以2026-10-31用户所选D方案为准：顶满内宽并留左右间距、26px无描边灰填充胶囊、12px文字靠左。不恢复旧Notice的44px高度，也不沿用被否定的20px细描边条。
+
+**用户2026-10-31最终修订：APK键盘与恢复提示过渡。** 虚拟键盘唤出／收起要及时平滑响应，不能为动画逐帧重排WebView导致明显卡顿；保持系统真实键盘终值与原逻辑视口。用户进一步明确整个过程不得跳变或闪动：检查起止帧、快速反向、键盘与提示同时变化，以及正文／新聊天标题／输入框／背景的交接；真实设备流畅度须单列验证，不由浏览器几何采样冒签。恢复提示框顶满内宽并留左右间距，文字靠左，框体从固定底边原地展开高度，Composer同步上移；反向同步折叠，不以框先淡出／Composer后下降代替。此要求覆盖同日早先的内容宽度居中方案。用户随后查看四候选并最终选择D：12px字号、26px展开高度，无描边灰色填充胶囊；暗色背景#47433f／文字#c1b9b2，框内水平16px、框外左右及底部12px，圆弧与Composer协调。覆盖此前20px高度及历史深灰描边26px的中间选择。可在单行中多展示真实等待对象：同一Restoring或Retrying状态最多并列三个，保持3秒轮播与超宽省略号；完成项立即退出，不混淆未失败与已失败重试对象。连接模板、同源恢复资格保持，仅调整呈现，不延迟真实操作资格恢复；遵循减少动态效果设置。
 
 The Composer is a responsive, rounded multiline input with the approved controls: **Attach**, **Model**, **Reasoning**, and one state-dependent circular primary action (**Send / Steer / Stop / Interrupt / Cancel Send**). The visual AI may arrange the fixed controls ergonomically but may not remove, re-label semantically or replace their actions with unapproved flows.
 - **Bottom anchor (user-reaffirmed 2026-10-14):** New Chat and Conversation share the same Composer bottom-edge anchor. Content growth expands upward; changing between these screens does not move the Composer. Desktop Composer and the two bottom capsules use the same bottom-spacing arrangement as mobile.
