@@ -1,5 +1,21 @@
 # 运维记录
 
+## 2026-11-01 · 真实Chrome复查、聊天恢复优先及最终交付
+
+FE最终`129b9a2a11f82b0047aed616b8e454f0c0d6c727`已合main／origin/secretary并上线Web；439静态文件逐SHA、6HTTP资源verified。BE产品保持main `2e287d73b69ff11ccd694bc71f2d9aa400b8eef0`，零服务重启／数据库写／模型请求，Dashboard／配置／绑定和服务PID保持。本轮没有业务库备份或删库，两套历史完整三库保留状态不变。云端`/home/ubuntu/.local/state/hermes-secretary/release-20261028/static-20261101-conversation-complete/receipt.json`保存旧静态交换回退目录；回退仅按该收据交换旧静态并重新校验，不回退业务库。
+
+已修同commit反复布局ACK及整份缓存重写、局部显示源无谓复制、日期格式器重复构造、每次React提交强制几何布局。Composer仍按真实尺寸统一320ms动画，改由布局后ResizeObserver读取。真实Chrome原slash有85–129ms长任务／最高116ms帧间隔；修后两轮175帧无>50ms长任务、一次约32.4ms间隔。首次恢复显示仍约98–100ms本地长任务，不能把此样本当全流程无卡顿。
+
+按用户确认，侧栏缓存可立即点击／跨Profile导航；缓存不授予发送审批权限。列表、Usage／Context等附属项独立恢复，不阻塞聊天就绪，较重读取在共享最终cut之后才发起，关键pending／controls与最终cut并行；viewport supersede跟随共享替代cut。历史缓存写入签名只比较历史，避免统计抢先结束导致下次缓存缺失，capsule跟随实际显示ACK。New Chat不发无Conversation的controls恢复请求。未新增侧栏增量协议。
+
+实际Chrome200条增量窗口matched／complete，正文0条、thinking0条重传，无system_prompt；绑定约3.3KB＋最终cut22.1KB为逻辑JSON，约17.4KB是order／revision核验证明。侧栏Alex实测106891字节body／107191字节transfer未压缩，排在cut之后且其未完成时Send可用。同协议生产loopback全新连接permessage-deflate压缩收包：默认54479／54527字节，精简12049字节，约减少78%；只计绑定＋最终cut，不含TLS，不等同Chrome整轮抓包。旧同连接重复方案受压缩字典污染，已剔除；服务端只读最终cut仍232.23／233.03／245.87ms，不声称只剩网络瓶颈。断socket退避1.5–2.3秒沿原策略，未改。
+
+最终7文件232项、App专项4项、tsc／Vite及6产品TS健康比较通过。warm／active旧3个、Profile旧11个失败在未改5a02a9a基线复现，最终Profile仍相同11个，不冒称全套全绿。中途新增的NewChat无id恢复回归已修并补正式用例；历史写入与统计竞态修后113项及最终232项通过。生成dist/.DS_Store在打包前清理，未放宽严格验证，源五个既有文件保留。
+
+最终APK：`/Users/edgar/code/hermes-secretary-web/.archive/composer-motion-20261101/performance/Hermes-Secretary-0.1.10-conversation-recovery-arm64.apk`，0.1.10／1010、32135725字节，SHA256 `8b53d4f903916347bddc94819cbc2828457f81e30e1178017b90452fee133313`。原证书／v2／全ZIP CRC／16KB／arm64及439前端资源、交付副本通过；与Web438文件哈希完全一致，另一file-viewer/flyfish-viewer-assets.json仅copiedAt生成时间不同，内容资源一致。未安装真机，Android黑块及设备流畅度仍待复验。
+
+证据ignored `.hermes-dev/real-chrome-audit-20261101/`：complete-static收据／APK对照、compressed-fresh.jsonl、server-timing.json、observer-browser.json、priority-and-motion.json、health-complete.json及complete-browser-check.txt；前端performance/real-chrome-complete-*与APK verification。HAR含敏感信息，仅0600本地私存、不提交。真实Chrome只刷新用户授权的Edgar Profile目标页，另一页保持，未发送消息；最终加载index-5bzulIsK.js、恢复提示退出、输入可用、草稿空。临时基线worktree与自建空白页已移除；旧init句柄跨session失效，按CDP原注册ID清理后刷新确认probePresent=false，用户两页保留。
+
 ## 2026-11-01 · 恢复传输瘦身、并行元数据读取及最终APK
 
 表现层`edb66eb`先单独发布后，BE `2e287d73b69ff11ccd694bc71f2d9aa400b8eef0`从main上线；FE `5a02a9a1d1a94fab8fdbc4dd29c0c183b9676613`合main／origin/secretary并发布439静态文件，6HTTP资源一致。profiles.list声明可选能力，新客户端才对resume／activate请求省system_prompt；默认调用仍完整，未改模型Prompt／缓存／历史。显式Profile元数据与身份核验并行，成功／404都须等待当前身份确认；最终可见数据和Socket对账边界保持。
