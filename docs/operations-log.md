@@ -1,5 +1,15 @@
 # 运维记录
 
+## 2026-11-02 · 6.1 Sol大窗口及Web模型切换确认修复上线
+
+用户确认不改6 Sol配置，只修复6.1 Sol的900K选项、保留标准速度／当前模型；随后急需修复长上下文切换报错。后端`a36eb645b2464450cb995c864f2cb6ad86df1a58`已从main上线：已eligible的显式-900k在目录给出max_context_window时按min(verified预算,max)解析，不再只认旧272K默认值；普通选项及无max回退保持。前端`95ce4dffe9febdc9684abc09a9bf7fd0a97dcadd`已合main／origin/secretary并发布：confirm_required显示原生Modal，只有点击Switch model才带确认参数重发同owner，取消不写。原阈值100000保持，未替用户确认／切当前模型、未发送模型请求。调查时目标仍Kimi，故不把本次跨模型确认本身判成误报。
+
+验证：后端新目录反例改前17失败，修后metadata全文件148通过，ruff／health通过；前端新组件反例改前11失败，修后相关20通过、typecheck／生产构建通过。扩大测试的23项既有失败已在HEAD隔离快照全部同名复现，不改断言掩盖；3个TS产品文件按既有冻结度量无新增超限。主会话自建隐藏IAB实际ModelSelector验取消后无确认写、点击确认才提交原Conversation／Profile并更新选型；仅业务替身，不动用户页面／生产会话。未重打APK，旧APK内置前端不包含此修复，Web可先使用。
+
+发布：原有受限执行器空闲预检、停服三库备份、main快进、正常启动并验证两实际服务版本／微信connected、保护数据／配置含授权／绑定／双静态保持，phase=verified。随后静态原子交换，439文件及6个HTTP资源逐SHA一致，零额外服务重启／数据库写；发布包排除构建复制的.DS_Store，用户原件保留。线上原生Alex作用域只读目录验证6.1 Sol base500000／900k872000、6 Sol base272000／900k872000，config SHA不变、默认仍k3.1-pro、service_tier空（标准）；零模型请求／会话切换。核验保留最近两套完整三库后清退更旧9文件、218656768字节，不动运行库及当前同步包。
+
+本地ignored证据`.hermes-dev/sol-900k-20261102/`，前端`.archive/model-switch-confirm-20261102/`；云端受限`~/.local/state/hermes-secretary/release-20261028/stage-20261102-sol-900k/`含receipt、context-readonly、backup-retention及RECOVERY；静态收据`static-20261102-model-confirm/receipt.json`含旧目录交换恢复点。回退按收据在空闲窗口对main作已审反向提交并重验，前端可恢复旧静态目录；禁止自动回滚数据库或覆盖轮换授权。未进行真实872K输入生成，目录及正式解析结果不冒称长输入端到端已验。
+
 ## 2026-11-01 · GPT订阅system角色兼容修复上线
 
 用户明确要求修复，产品`17bba65499b767c6cb8fc5e845fa579f5018a75a`已合main／push并上线。限定既有is_codex_backend路由：主请求、辅助请求及native replay统一将中途system原位映射为developer；root仍instructions，预检允许developer，原历史／正文／工具pin及其它Responses路由不变。无全量上游合并、无新Provider／代理／执行器、无默认模型变化。设计参考[OpenAI Text generation的developer指令用法](https://developers.openai.com/api/docs/guides/text)，订阅端兼容以本次真实请求为准，不从通用API文档推定私有订阅全部行为。
