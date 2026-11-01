@@ -1,5 +1,15 @@
 # 运维记录
 
+## 2026-11-01 · 连续切换模型误用累计tokens的确认警告修复
+
+用户明确指出第一次切换令展示计数失效是正常行为，要求修复随后额外门禁。产品`54853241505fb556ad0c8124531464a111bb1f80`已push并从main上线。仅移除统一selection_context_for_agent对累计session_prompt_tokens的回退；有效当前计数保持，未知／0／负哨兵返回无当前上下文，不触发context-cache确认；保留原阈值、有效大上下文和成本／数据策略确认，不清累计账本／历史、不变默认模型。
+
+改前通过正式_apply_model_switch两次连续切换，精确复现当前计数清0后弹出390494警告，连同未知计数回归共4项失败；修后6文件31项通过，覆盖真实大计数仍确认、会话模型pin、历史／默认配置保持，以及延期确认、Profile作用域、冷恢复／标记。ruff／health共2项通过，0阻断／0提示。未取得用户弹框原始内存快照，精确数值来源由相同执行路径反证重现，不声称抓到了原快照。
+
+受限发布执行器空闲预检、停服备份／main快进／重启后verified，Web与Gateway实际版本5485324150、微信connected，三库保护表／配置含共享GPT授权／绑定／双静态逐指纹保持。零生产生成、零会话切换，暂停的置顶GPT-6.1 Terra选择未代执行。目标Linux原生函数复核读数0／−1／None不弹、67067不弹、390494仍弹；Alex／study／default均解析公共GPT授权，默认模型分别k3.1-pro／gpt-6-sol／deepseek-flash。仅后端修复，APK无需重打。
+
+本地ignored证据`.hermes-dev/model-switch-context-20261101/release/`及model-switch-context-{red,green,check}.log；云端`/home/ubuntu/.local/state/hermes-secretary/release-20261028/stage-20261101-model-switch-context/receipt.json`、context-readonly.json、RECOVERY.txt记录阶段及人工反向提交回退入口；不自动回滚数据库。发布后保留最近两套有效完整三库，旧备份清理结果见同目录backup-retention.json；运行库及databases-current.zip不动。
+
 ## 2026-11-01 · Alex／study共用ChatGPT订阅授权
 
 用户确认复用study授权、允许Hermes公共凭据库共享并接受default也可用；通过服务器原生auth锁／writer迁移providers.openai-codex到`/home/ubuntu/.hermes/auth.json`，不设置root active_provider，移除study重复singleton，保留其active_provider及其它凭据。两文件0600，Alex auth原SHA保持；三份config逐SHA保持，默认Alex k3.1-pro／study gpt-6-sol／default deepseek-flash。三Profile正式`_config_profile_scope`内均解析公共源，原生刷新后仍共用同一源；实时账号目录包含gpt-6.1-terra，未发生成请求、未重启服务／改源码。初版只读探针直接把物理Home设HERMES_HOME误把它当控制根，且未带会话Token的REST返回401；已纠正为控制根进程＋原生Profile作用域，未据失败探针改凭据／代码。
