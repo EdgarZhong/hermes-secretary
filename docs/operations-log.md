@@ -1,5 +1,15 @@
 # 运维记录
 
+## 2026-11-01 · 恢复传输瘦身、并行元数据读取及最终APK
+
+表现层`edb66eb`先单独发布后，BE `2e287d73b69ff11ccd694bc71f2d9aa400b8eef0`从main上线；FE `5a02a9a1d1a94fab8fdbc4dd29c0c183b9676613`合main／origin/secretary并发布439静态文件，6HTTP资源一致。profiles.list声明可选能力，新客户端才对resume／activate请求省system_prompt；默认调用仍完整，未改模型Prompt／缓存／历史。显式Profile元数据与身份核验并行，成功／404都须等待当前身份确认；最终可见数据和Socket对账边界保持。
+
+线上默认→精简→默认三轮完整窗口均complete／matched：resume JSON 47686→3379字节，activate 66388→22081字节，合计114074→25460，两个默认样本Prompt一致（未压缩JSON，不声称整个恢复耗时同比下降）。正式构建隐藏IAB进入当前会话，实际请求省Prompt且complete；再断开自建隧道后同页自动重连，239展示节点保留、document身份不变、提示退出／输入可用。未发送消息／模型请求。前端107＋112项及类型检查通过；后端投影、只读冷装载、Profile范围及句柄10项通过。review.summary目录孤项及旧Noting配置17个setup错误在0db380f93e基线同样复现；目标句柄测试的共享Event竞态已精确修正，关闭次数断言不变。源码ruff／health等5项通过，TS无新增健康超标。
+
+服务发布前空闲／三库备份，发布后Web／Gateway实际版本、业务数据库、配置／绑定、Dashboard与Secretary静态保护核验通过；旧备份清理9文件214966272字节，保留最近两套完整三库，运行库与当前同步包未动。云端`/home/ubuntu/.local/state/hermes-secretary/release-20261028/stage-20261101-transport/receipt.json`、`RECOVERY.txt`及`backup-retention.json`记录后端回退与保留；`static-20261101-transport/receipt.json`记录静态交换回退路径。本地证据`.hermes-dev/recovery-transport-20261101/`，前端performance/transport-*、full-final-*。
+
+最终APK：`/Users/edgar/code/hermes-secretary-web/.archive/composer-motion-20261101/performance/Hermes-Secretary-0.1.10-frame-recovery-arm64.apk`，0.1.10／1010、32134537字节，SHA256 `105bcd1df0499d19b717c840bd5b1b3b6979c6160d8452e922a6032c62db80d3`。原证书／v2签名／全ZIP CRC／16KB对齐／439前端资源与交付副本严格通过。首次TypeScript测试可选参数错误已修正并重新typecheck；自动校验遇旧Python缺file_digest，改用项目3.14运行原校验器，通过前仅移出生成dist/.DS_Store，不动源目录五个既有文件。未安装Android真机，动态设备验收仍待用户复验。
+
 ## 2026-11-01 · Composer布局与内容动画跨线程错位修复
 
 FE `edb66eb40230df0158181580956993ef4fad2fca`已合main／origin/secretary并上线Web。外框height与内部transform由单一rAF共同写入，取消独立WAAPI时钟，避免主线程停顿时按钮／输入区先上窜。退出内容以inert／aria-hidden临时副本裁剪收起，完成或重新出现时清理；仍按自然高度统一触发，320ms及胶囊既定样式保持。相关17项／typecheck／健康检查通过；真实Composer A/B绘制复现旧版约155px上窜，完整App含200条历史和五条命令在主线程停顿下录制151帧，207几何采样未复现错位；移动并发伸缩底边误差<0.5px。只属Mac隐藏Chromium证据，尚无Android设备复验。
