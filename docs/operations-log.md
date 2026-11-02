@@ -1,5 +1,17 @@
 # 运维记录
 
+## 2026-11-02 · 真实历史初始化遗漏补正（main已上线，目标已应用）
+
+用户指出旧真实历史没有接入线上、不能让既有会话重新累计8次/6小时，也不能因模型/窗口变化失去行为历史。main `921f788d698f7987796fefe234ce5ff99f0b80d7`已从正式main-only路径发布；Web/Gateway版本一致，微信connected。复用已有三库备份、依赖与静态保护，无Prompt/工具变更，不清缓存。仅数值coverage观测允许随正常运行更新，其余发布保护表及配置/凭据、绑定、双SPA保持。保留stage-20261102-adaptive-bootstrap与stage-20261102-adaptive-cold两套完整三库，核验后清退更旧9文件/241143808字节；运行库和同步完成包保持。
+
+23:47:50+08通过`scripts/adaptive_history_bootstrap.py apply`向Alex既定置顶目标应用`audited-existing-history-20261102-v1`。数值包文件SHA `c5a9c6bc5166bca342da4a5c6e558fca4b2d9e3a38320a7f39d49aa505de629d`，来源冻结SHA `d2046295632cbc9186edff4e99795b2cf2022e3fa367ca0b1542f3f2232347d1`；原Session哈希5574789581d6与实际目标绑定吻合。写入216用户时序＋375 checkpoints＋1条件存储范围＋313删失共905条训练记录、membership及单份收据；7条未知可知时间保持null且排除训练。另核原生role/活跃行/初始client-submission writer后恢复1条同owner真实活动，保原18:55:40发生时间和23:08查询可知上界，不制造新到来。应用前后仅允许目标adaptive事件/import三表变化，其它三库保护表、Idle/HB/计划、配置/凭据、绑定全部一致，0模型请求/0新Turn。
+
+23:47:59通过正式恢复info读取原生context_used400049、context_max872000、source=usage_anchor（带原生后续估计，非新API精确测量），结合真实配置/排期/Idle/已应用历史作只读决策预览：114个成熟30m窗口、58个已证提交／188893.38秒条件窗口并集；在线coverage仍约11844秒、覆盖内用户0，模型已ready、behavior_prediction_available=true、fallback=false，多次回归条件成本参与，当前推荐business/10800秒、threshold/delay=null。不是强设热档，也不证明已实现节费；跨模型未知工作量使用明示single-read/fixed-user-context费用代理，未知额外工作仍保留None。
+
+此时plan/mode表无采纳行，Heartbeat仍原生business；不调用finish_turn伪造采纳、不重锚空闲或Heartbeat。下一自然Turn结束沿已验证原接缝采纳历史驱动推荐，已不存在上线后重新等8次/6小时的资格屏障。正式链路102项、后继bootstrap/import39项、受影响预测/策略28项通过；主会话亲审发现并修复来源、冻结迁移和成本接线问题，主干UTF-8 operator1项复验通过。冻结10检查最终仅历史no-tmp原blob失败，相关ruff/health零阻断；没有全套全绿或生产采纳样本的扩大声明。
+
+本地证据：主仓ignored `.hermes-dev/adaptive-release-20261102/bootstrap-release/`（发布receipt、应用前后保护、真实preview及检查）；adaptive worktree `.hermes-dev/adaptive-bootstrap-20261102/`（21项独立来源复核、源码交接/测试、条件历史包）。云端受限发布/应用收据与回退说明：`~/.local/state/hermes-secretary/release-20261028/stage-20261102-adaptive-bootstrap/`；数值包不进Git。正文丢失问题仍按用户决定停止，不重开。
+
 ## 2026-11-02 · 自适应目标正式启用与原生冷窗口补正（已上线）
 
 后继主线`ade6cb2ab6`补Conversation级Idle覆盖；`e2d73b1293`修正无auth静态900K被当作精准冷合同的问题。原生带认证目录实际max为872000；新路径事务外只读认证catalog、事务内只消费同token/base有效原生缓存，缺失返回未知，保持原生pin/自定义窗口优先级，不新存凭据/窗口副本。定向24项、原生Codex61项及真实Alex只读证据通过，事务内HTTP=0，验证期间config/auth/context-cache SHA不变。两次后继main-only发布均verified，原有业务数据/配置/双SPA保护核验通过；未改Prompt/工具文案，不执行缓存清理。
