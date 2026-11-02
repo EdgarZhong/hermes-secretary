@@ -2,7 +2,7 @@
 
 ## 2026-11-02 · 自适应维护上线准备（进行中）
 
-用户已授权本轮上线，先整理前后端仓库确认其它bug补丁进入main；随后明确恢复Alex Heartbeat并交算法选择两档，替代今天早些时候暂停的状态。Kimi参数保热1740秒／业务10800秒；正式只读核实默认仍k3.1-pro，但置顶当前为openai-codex／gpt-6.1-sol-900k，实际Heartbeat仍paused／10800秒，未擅自恢复或套用Kimi价格/TTL。用户后继要求先设计模型配置与可选历史继承：与选择器Provider/模型项1∶1，长窗口独立选项不折叠，同项窗口修改继承原生有效值，不做阶梯计价；继续按Conversation自适应，迁移可显式继承历史。已写算法稿顶部，字段/导入动作等为方案建议，尚未实现或启用；不切用户模型。
+用户已授权本轮上线，先整理前后端仓库确认其它bug补丁进入main；随后明确恢复Alex Heartbeat并交算法选择两档，替代今天早些时候暂停的状态。Kimi参数保热1740秒／业务10800秒；正式只读核实默认仍k3.1-pro，但置顶当前为openai-codex／gpt-6.1-sol-900k，实际Heartbeat仍paused／10800秒，未擅自恢复或套用Kimi价格/TTL。用户后继要求先设计模型配置与可选历史继承：与选择器Provider/模型项1∶1，长窗口独立选项不折叠，同项窗口修改继承原生有效值，不做阶梯计价；继续按Conversation自适应，迁移可显式继承历史。二级字段已由用户明确命名为`adaptive_idle_token_saving`，完整路径`noting.adaptive_idle_token_saving`；用户随后以“其他的方面没有问题了”整体确认配置与显式冻结历史继承方案；尚未实现或启用，不切用户模型。当前按用户要求独立核定GPT订阅保热周期：主会话已核官方资料/费用口径，并亲审gpt_cache_evidence的只读数值包、脚本与usage生产者：253次GPT请求对账，29分39秒与2小时31分长空档均有近完整命中；可靠HB来源样本为0，实际HB输出仍未知。数值证据留ignored `.hermes-dev/gpt-cache-20261102/`；不发生产测试请求、不修改生产配置。已选GPT初始hot1740秒／business10800秒，TTL仅作1800秒估计；官方信用倍率1／0.05／5用于费用代理，不冒充套餐扣额公式，实测与适用边界补入算法稿。
 
 后端main c73b94ae2b、前端main dc40990（origin/secretary）与远端相同，最新Stop、Noting资格、GPT正文与跨进程恢复补丁已在主干。自适应分支两个产品提交56e25045／4c7f2dbd尚未合主干；参数文档d37b8e3已提交并push。主会话在既有adaptive worktree合入最新main，亲审接线并定向回归后再合主线/部署；branch_patch_audit已交四旧分支复核：后端旧固定平台/关闭提示被后继机制替代，前端Clarify与视觉已整包吸收；主会话已核报告/整合点，无需重合旧方案。合并后14文件142项自适应/Noting与3文件36项原生接线回归通过；冻结十检查九通过，唯一no-tmp仍为同blob旧历史报告，96文件health 0阻断/0提示。前端常用目录已回main且与origin/secretary相同，原web-toast工作树只转同提交detached并保留。Huawei资料、Finder文件及旧视觉证据保留。当前未部署、未改生产配置，保留原生Idle关闭避免500秒回退。新发布结果只记operations-log。
 
