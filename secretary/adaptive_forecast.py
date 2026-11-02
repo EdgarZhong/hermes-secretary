@@ -67,6 +67,7 @@ def signature(data, at, timezone_name='UTC'):
     clock = datetime.fromtimestamp(at, zone)
     phase = 2 * math.pi * (clock.hour + clock.minute / 60) / 24
     unknown = sum(left < at and right > at - 3600 for left, right in data.get('excluded', []))
+    unknown += int(data.get('work_features_unknown') is True)
     return [math.log1p(n) for n in counts] + [math.log1p((at - last) / 300),
             .5 * math.sin(phase), .5 * math.cos(phase),
             .25 * (clock.weekday() >= 5), .5 * math.log1p(growth / 10000), math.log1p(unknown)]
@@ -221,7 +222,8 @@ def _forecast_seed(data, now, horizon):
     return {'users': list(recent), 'work': [row for row in visible(data.get('work', []), now)
                                            if row['at'] > now - 3600],
             'excluded': [(left, min(right, now)) for left, right in data.get('excluded', []) if left < now],
-            'spans': [(now, now + horizon)], 'work_complete': True}
+            'spans': [(now, now + horizon)], 'work_complete': True,
+            'work_features_unknown': data.get('work_features_unknown', False)}
 
 
 def _extend_path(state, path, sample, marks, now, offset, width):
@@ -241,7 +243,7 @@ def _extend_path(state, path, sample, marks, now, offset, width):
                               'output_tokens': generated['output_tokens'], 'duration_seconds': generated['duration_seconds']})
 
 
-def predict(data, now, *, horizon=7200, timezone_name='UTC', method='analog'):
+def predict(data, now, *, horizon=7200, timezone_name='UTC', method='analog', qualified_prior_ready=False):
     """Learn short transitions, then propagate activity state over the cost horizon.
 
     No six-hour-complete-label selection is needed to estimate six-hour demand.
@@ -249,9 +251,15 @@ def predict(data, now, *, horizon=7200, timezone_name='UTC', method='analog'):
     """
     block = min(1800, horizon)
     examples = training_examples(data, now, block, timezone_name)
-    if len(examples) < 8 or not covered(now - 3600, now, data.get('spans', [])):
+    live_ready = covered(now - 3600, now, data.get('spans', []))
+    if len(examples) < 8 or not (live_ready or qualified_prior_ready):
         return {'available': False, 'reason': 'insufficient_mature_windows', 'training_windows': len(examples)}
+    if not live_ready:
+        data = {**data, 'excluded': [*data.get('excluded', []), [now - 3600, now]]}
     marks = work_marks(data, now)
+    if qualified_prior_ready:
+        data = {**data, 'work_features_unknown': any(marks.get(key) is None for key in
+                 ('calls', 'growth_tokens', 'output_tokens', 'duration_seconds'))}
     paths, samples = [], {str(width): [] for width in HORIZONS if width <= horizon}
     for index in range(32):
         state, path = _forecast_seed(data, now, horizon), []

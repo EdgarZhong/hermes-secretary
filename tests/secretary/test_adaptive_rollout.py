@@ -69,3 +69,13 @@ def test_collision_is_conditioned_on_plan_survival():
     data = features([40, 55])['trajectory']
     assert collision_risk(data, 20, 30) == (1, 10)
     assert collision_risk(data, 50, 30) == (1, 30)
+
+
+def test_timing_only_proxy_prices_each_return_without_fabricating_work():
+    data = features([50, 175])
+    for event in data['trajectory']['paths'][0]['events']:
+        event.update(calls=None, growth_tokens=None, output_tokens=None, duration_seconds=None)
+    assert forecast(SNAPSHOT, data, CFG, [], None, None, timing_only=True) == (1100, 1000, 0)
+    assert all(event['calls'] is None for event in data['trajectory']['paths'][0]['events'])
+    data['trajectory']['paths'][0]['events'][0]['calls'] = 0
+    assert forecast(SNAPSHOT, data, CFG, [], None, None, timing_only=True) == (1000, 1000, 0)

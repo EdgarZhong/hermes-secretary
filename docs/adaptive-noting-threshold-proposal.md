@@ -67,7 +67,19 @@ noting:
 
 为避免只启用一个Conversation却打开整个Profile的原生Idle，新增`noting.idle.conversations[conversation_ref]`，仅覆盖`enabled`、`delay_seconds`、`threshold_tokens`。未配置的Conversation继续继承Profile原值；总`noting.enabled`及Notebook local开关仍有效。它是原生回退配置，不是第四个算法决策量，也不新增计时器。算法snapshot、Turn结束、timer attach/恢复、联合入口、计划失效及owner回收使用同一目标设置；显式移除/关闭覆盖按原生关闭清理，不把其它会话开启。
 
-当前目标试用的人工回退初值为7200秒/700000 tokens，Profile `idle.enabled`仍false。可信来源不足8次用户到达或6小时观测暴露时，策略保持原生业务档3小时；不从旧`role=user`补齐标签，不宣称立即按29分钟运行。两小时回退与算法至少1800秒真人安静保护不是同一量。
+当前目标试用的人工回退初值为7200秒/700000 tokens，Profile `idle.enabled`仍false。没有足够成熟的既有行为先验、且可信实时来源不足8次用户到达或6小时观测暴露时，策略才保留原生路径。已使用很久的Conversation应接入现有可信历史，不能因上线、换模型／窗口而强制重新积累；模型合同变化仅让旧执行计划失效重算。两小时回退与算法至少1800秒真人安静保护不是同一量。
+
+### 既有Conversation的真实历史初始化（2026-11-02补正）
+
+此前已有历史只进入离线影子评测，没有进入正式采集表，造成置顶会话错误地从空历史运行；这不符合用户要求，本节替代“上线后统一重新等8次／6小时”的处理。行为历史的使用资格独立于Provider、模型选项及上下文窗口；当前计价、容量和模型工作量仍按当前合同解释。
+
+通过`scripts/adaptive_history_bootstrap.py preview|apply --profile NAME --target REF --input FILE --id ID`显式接入已审、同Conversation的有界纯数值包；可选`--snapshot FILE`对真实当前数值状态作只读决策预览。包保留原始事件／可知时间、source session与实际Conversation绑定、来源证明、缺口及未知标签。以现有`state.db`的import事件／membership／receipt持久化，不新增表、聊天原文副本或预测器；相同ID幂等，冲突和容量超限原子拒绝。应用不伪造用户到来、Turn finish，不改Idle／Heartbeat锚点、待执行计划或调用模型。
+
+旧资料只有受限持久提交序列的条件窗口，没有连续入口在线coverage。它以独立grade进入既有arrival先验和trajectory训练，保留unknown mask与成熟时间；不制造`kind=coverage`。至少8个成熟30分钟条件训练窗口可以建立历史就绪，当前在线计数／coverage仍单独报告原值；不能让既有历史再次被“当前一小时完整在线监测”挡掉。来源同一Conversation的最新已证用户提交可复核原生行身份和初始writer后恢复最后已知活动：保原发生时间，以当前读取时点作可知上界，不把旧活动记成刚到来。异Conversation迁移不得带走该实时恢复证据。
+
+预测出的多次回归路径实际进入Heartbeat／压缩候选费用比较。缺少当前模型完整工作量时，使用明确标注的timing-only／single-read条件代理：每次预测提交按当前context一次读取比较，未知额外调用、增长、输出和忙时仍为未知，不能把这些缺口当实测零或套用旧模型计费。这是固定上下文条件下的成本比较，不是完整费用／节省保证；完整当前工作量足够时保持原完整路径。
+
+初始化后的推荐沿下一自然Turn结束的原生接缝采纳，不为证明上线生效制造Turn。初始化训练数据可经已有显式Conversation历史继承冻结迁移；只迁移行为依据，不迁移当前上下文、活动／空闲计时、缓存、Heartbeat锚点或计划。已冻结快照不依赖原来源会话继续存在。当前在线观测仍滚动有界；独立冻结的bootstrap数据受2048原事件／32收据总容量约束并按原时间衰减，不冒充14天完整在线历史。
 
 同GPT900k/xhigh的独立手动Noting记录32请求：fresh817238、cache25160320、output40796（reasoning已含其中），按1/.05/5为2279234输入等价；实际1702秒。这不是完整Idle联合维护账本：父压缩成功218秒，另有未完成尝试/人工间隔，不能直接拼成联合p80。初始维护成本3000000、占用3600秒、压缩留存.25、恢复费50000均为明确人工保守先验，非保证上界；现有完整联合费用采集不足，不能声称会自动获得同操作全费用并取代先验。
 

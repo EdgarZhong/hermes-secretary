@@ -18,7 +18,16 @@ def _read(context, gap, cfg):
     return context * (1 - fraction * (1 - cfg['cache_ratio']))
 
 
-def _path_cost(snapshot, features, cfg, background, path, delay, profile, heartbeat_interval):
+def _user_work(event, marks, timing_only):
+    if timing_only:
+        # Conditional read-cost proxy only: these zeros are excluded unknown terms,
+        # never observed/trained work. Original marks and trajectory labels stay None.
+        return (0 if event.get('calls') == 0 else 1), 0, 0, 0
+    return tuple(_mark(event, marks, key, fallback) for key, fallback in
+                 (('calls', 1), ('growth_tokens', 0), ('output_tokens', 0), ('duration_seconds', 0)))
+
+
+def _path_cost(snapshot, features, cfg, background, path, delay, profile, heartbeat_interval, timing_only=False):
     now = snapshot['now']
     last = features['last_request_at']
     last = last - now if last is not None else -math.inf
@@ -50,12 +59,9 @@ def _path_cost(snapshot, features, cfg, background, path, delay, profile, heartb
         pending = False  # A Main turn invalidates the pending idle plan.
         actual = max(at, busy_until)
         if source == 'user':
-            calls = _mark(event, marks, 'calls', 1)
+            calls, growth, output, duration = _user_work(event, marks, timing_only)
             if calls == 0:
                 continue  # E.g. cancellation is a real return, not a model request.
-            growth = _mark(event, marks, 'growth_tokens', 0)
-            output = _mark(event, marks, 'output_tokens', 0)
-            duration = _mark(event, marks, 'duration_seconds', 0)
             # Prompt-span growth includes prior output/tool results; output is
             # billed separately but not added again to the growth proxy.
             cost += _read(context, actual - last, cfg) + growth + output * cfg['output_ratio']
@@ -80,10 +86,12 @@ def _path_cost(snapshot, features, cfg, background, path, delay, profile, heartb
     return cost, context, reads
 
 
-def forecast(snapshot, features, cfg, background, delay, profile, *, heartbeat_interval=None):
+def forecast(snapshot, features, cfg, background, delay, profile, *, heartbeat_interval=None, timing_only=False):
+    # timing_only prices learned arrivals under an explicit fixed-user-context
+    # single-read assumption; it does not impute model work from another model.
     totals = [0.0, 0.0, 0.0]
     for path in features['trajectory']['paths']:
-        values = _path_cost(snapshot, features, cfg, background, path['events'], delay, profile, heartbeat_interval)
+        values = _path_cost(snapshot, features, cfg, background, path['events'], delay, profile, heartbeat_interval, timing_only)
         for index, value in enumerate(values):
             totals[index] += path['weight'] * value
     return tuple(totals)
