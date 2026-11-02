@@ -1,5 +1,74 @@
 # 自适应提前整理阈值算法方案（初稿）
 
+## 模型参数与Conversation历史继承（2026-11-02，设计中）
+
+**用户已确认：** 自适应仍以Conversation为单位；新Conversation可以选择继承旧Conversation的真实使用历史。模型参数与原生模型选择器的选项1∶1对应：Provider下的基础型号、900k等独立选项视为独立模型配置项，不能按出站基础model名合并；在同一选项中修改窗口则仍为同一项。配置粒度到Provider／模型项为止，窗口等能从原生配置取得的数据不在算法配置重复手写。不考虑阶梯计价，每个配置项内输入、缓存读、输出采用固定倍率。用户已授权本轮上线及恢复Heartbeat交给算法，但本次新增范围先完成设计；尚未实现下述配置/导入机制或启用生产。
+
+### 数据归属与参数读取
+
+当前实现事实：`adaptive_config.for_db`从拥有DB的Profile的`config.yaml`读统一noting.adaptive参数；`adaptive_store`的events／plans／heartbeats三表按conversation_ref隔离。当前没有按模型参数表，也没有历史继承。模型选择器现有身份是provider行slug＋models中的选项字符串，非另一个自造UUID；算法必须沿原生选择/恢复来源保留这个身份，不能用转换后已去900k后缀的出站model代替。
+
+建议继续只用Profile已有`config.yaml`：正式Alex为`/home/ubuntu/.hermes_profiles/Alex/config.yaml`，由原生profile-aware路径解析，不硬编码服务器路径。模型参数表放`noting.adaptive.models`，Conversation开关与导入声明放`noting.adaptive.conversations`，键为稳定conversation_ref，不用UI标题、session_id或置顶序号。当前模型从该Conversation的实际选择读取，自动查对应配置项；这是确定性参数匹配，不是算法替用户选模型。跨平台／压缩轮转仍解析原conversation_ref，无需再导入。模型切换不会被配置操作代执行。
+
+| 数据 | 来源/规则 |
+|---|---|
+| Provider与模型选项身份 | 原生选择器/持久选择及恢复链；同名不同Provider隔离，长窗口独立选项不折叠 |
+| 有效context窗口、当前占用、原生压缩阈值、Force资格 | 当前原生resolver／compressor／measurement／policy；沿用生效值与来源，不抄Profile默认值覆盖Conversation实际值 |
+| API模式、reasoning、速度档及能力 | 原生有效运行配置；保留在观测与估计兼容性标签，不建立重复配置副本 |
+| hot/business两个周期 | 每个模型项的补充配置；业务可∞，已定Kimi为1740／10800秒 |
+| 费用 | ordinary input=1，cache read和output倍率；同计费口径可靠原生数据可继承，否则显式配置。API展示价格不能直接当订阅扣额，保留口径/来源；不引入长度阶梯 |
+| 缓存TTL估计 | 原生可信同路由数据优先；缺失才允许补充估计。周期与TTL不能互相推导，实际cache命中比例另行观测 |
+| 维护完整成本、占用时长、压缩残留/恢复开销 | 历史实测优先，缺口用明确保守先验；模型/推理/窗口标签控制兼容性，不把先验或TPS当完整实测 |
+| 短离开/频度/风险容忍等 | 独立通用策略配置，不逐模型复制；已确认用户约束不被模型配置覆盖 |
+
+修改同模型项窗口不改变选项身份，但有效配置版本变化，旧待执行计划失效；新决策读新窗口，已领取任务沿原执行合同结算。历史原值不改写，窗口相关样本分层，不把旧窗口的维护费用/压缩效果不加判断套到新窗口。未配置/缺可靠参数时记录缺口、保留原生安全行为，不借其它模型的参数冒充。
+
+### 配置形状建议（示意，尚不是现行可加载契约）
+
+以下展示归属与引用，不是完整启用配置；费用及维护先验仍需真实来源，不在示例填猜测数字。
+
+```yaml
+noting:
+  adaptive:
+    enabled: true
+    models:
+      kimi-coding:
+        k3.1-pro:
+          heartbeat:
+            hot_seconds: 1740
+            business_seconds: 10800
+          # billing: 输入=1，缓存读/输出倍率及口径；缺失不得按0计费
+          # cache_ttl_seconds: 原生不能提供时才补
+      # openai-codex下分别填写选择器中的实际选项，例如
+      # gpt-6.1-sol 和 gpt-6.1-sol-900k；不复制context_length
+    conversations:
+      "<目标conversation_ref>":
+        enabled: true
+        history_import:
+          id: "<本次导入唯一标识>"
+          from_conversation: "<来源conversation_ref>"
+          through: "<明确截止时间，带时区>"
+          # 不需要继承时省略整个history_import
+```
+
+模型参数修改经原生配置writer；本轮不新造外部配置目录、不把个人参数写入公开仓库。启用按Conversation显式配置，不因为同Profile中新增模型参数就自动启用所有会话。总开关与Conversation开关共同控制；暂停／清除Heartbeat继续尊重用户原生控制，启用算法不擅自创建或复活任务。本轮恢复目标是用户明确授权的Alex目标，不扩到其它Conversation。
+
+### 历史导入建议：显式声明、一次应用、冻结快照
+
+通过来源/目标conversation_ref、导入ID与截止时间明确指定。建议在现有配置管理/运维入口增加一次“应用历史导入”动作，先给出可用时间段、来源质量、条数、模型分布、缺口及排除项，再由一次事务生成目标拥有的有界数值快照和收据；只编辑声明不在普通Turn或配置读取时偷偷反复搬数据。具体CLI/RPC命名留实施确定，不冒称已有命令。初版优先同Profile；跨Profile需显式来源与权限校验，不隐式合并账号所有历史。
+
+- 复制可验证数值事件与coverage/缺口/维护排除区间，不复制聊天正文、Notebook或凭据。保留原origin Profile/Conversation/event身份、真实事件时间、可知时间、模型选项及有效配置标签；缺来源字段保留未知，不从role=user补造真人标签。当前存储只有有界2048条且采集开启才有记录，导入收据必须披露可用范围，不能宣称恢复了被淘汰或未采集的历史。
+- 截止之后来源新增活动不流入目标；来源删除或继续使用不改变已导入快照。重复同一ID应用幂等，内容冲突拒绝；要追加/替换用新ID并显式说明，原始事件身份去重，连续迁移不指数复制。目标现有记录不覆盖。
+- 到达时段、批次/连续性、短离开/取消等可作为使用习惯先验，但仍分原Conversation观测段；不把来源沉默当目标被持续观测，不跨迁移边界构造连续无人使用时段或训练标签。覆盖时间重叠不能重复累计为两倍暴露；没有跨来源去重证明的窗口不作精确到达率标签。
+- token工作量、cache、输出、耗时及维护效果带原Provider/模型项/窗口/推理等标签；只按已定义兼容规则使用，不能把Kimi token/TTL当GPT实测。用户取消倾向可作先验，原会话当天维护次数/冷却期不当目标当天状态。
+- 只继承训练证据，不继承当前context、last_user/live idle起点、cache冷热、m/T/δ、HB anchor/next_due/claim、未执行计划或原始排期。新会话运行态从自身真实事件开始；历史先验可以帮助预测，不授予新会话“已经安静足够久”的执行资格。
+- 原绝对时间不改成导入时间冒充近期事件；另记imported_at，使回放不能在导入之前看到这批历史。继承证据有界、随时间衰减，新会话新观测逐步占主导。保留的历史不是重新注入模型上下文，不改变Prompt或缓存前缀。
+- 同一conversation_ref仅换Session/轮转无需导入；新建/fork为新Conversation时默认不自动继承，按本次显式声明选择。不是全Profile永久共享模型。
+
+### 实施前应冻结与验证
+
+本节已确认的是粒度1∶1、原生配置继承、固定倍率、按Conversation自适应/可选历史继承；YAML字段名、导入动作入口、快照表及具体先验兼容规则仍为方案建议，尚未用户逐项定案或实现。最低验收：两个900k/普通选项分离，同项窗口改变实时反映且旧计划失效；缺项不误用另一模型；目标引用正确、跨Profile不越权；导入幂等/来源缺口/后续冻结/原事件去重/不捏造coverage；原生暂停、关闭、取消及已有Conversation轮转保持。先补当前三表/配置adapter与事件特征边界，不另建Agent Loop、通用调度器或第二套模型配置系统。
+
 ## Alex／k3.1 两档Heartbeat参数定案（2026-11-01）
 
 用户要求针对Alex置顶Conversation与默认k3.1选定上线前两档周期。本轮选择如下，仅落方案；未修改生产配置、Heartbeat状态或启用自适应。算法仍只选择模式，不连续优化周期；本节替代旧文中“两档具体值尚未选择”的当前待办，旧研究记录保留其当时结论。

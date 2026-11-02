@@ -7,8 +7,8 @@ values (``ResolvedContextWindow`` / ``HermesResolvedAutoCompactionThreshold``) a
 context figure read at an existing Hermes measurement seam.
 
 Force reserve arithmetic stays in integer tenths of a token, so the 1.20 multiplier never
-rounds across a stated boundary: 64K/66K/128K are exactly 64,000 / 66,000 / 128,000 tokens, the
-capability comparisons stay strict, and 128K is not a clamp.
+rounds across a stated boundary: 64K/66K are exactly 64,000 / 66,000 tokens, the threshold
+floor comparison stays strict, and reserve scales with the native window without a fixed ceiling.
 """
 
 import logging
@@ -20,14 +20,12 @@ logger = logging.getLogger(__name__)
 
 K_TOKENS = 1_000
 
-# 02 §4.6: exactly two capability failures, compared strictly against exact token counts (A23).
+# 07 large-window revision retains the exact 02 §4.6 threshold/reserve floors (A23).
 FORCE_THRESHOLD_FLOOR_TOKENS = 64 * K_TOKENS              # ForceNotingThreshold < 64K fails
 FORCE_RESERVE_FLOOR_TENTHS = 66 * K_TOKENS * 10           # max(…, 66K) floor, in tenths
-FORCE_RESERVE_CEILING_TENTHS = 128 * K_TOKENS * 10        # ForceNotingReserve > 128K fails
 FORCE_RESERVE_MULTIPLIER_NUM, FORCE_RESERVE_MULTIPLIER_DEN = 12, 10   # 1.20
 
 CAPABILITY_THRESHOLD_BELOW_64K = "threshold_below_64k"
-CAPABILITY_RESERVE_ABOVE_128K = "reserve_above_128k"
 
 # A Noting task has one execution profile; compaction belongs to the parent runtime.
 TASK_PROFILE_NOTING = "NOTING"
@@ -252,15 +250,12 @@ def force_thresholds(resolved_context_window: Any, hermes_auto_compaction_thresh
 def force_capability_failure(
     *, force_noting_reserve_tenths: int, force_noting_threshold_tenths: int
 ) -> Optional[str]:
-    """The exactly-two capability failures of 02 §4.6, compared strictly in tenths of a token.
+    """Keep the strict 64K threshold floor without capping the native-window-scaled reserve.
 
-    ``ForceNotingThreshold < 64,000`` and ``ForceNotingReserve > 128,000`` fail; exact equality
-    passes, and 128K never clamps the derived values.
+    The reserve argument remains accepted for existing callers; it no longer limits capability.
     """
     if force_noting_threshold_tenths < FORCE_THRESHOLD_FLOOR_TOKENS * 10:
         return CAPABILITY_THRESHOLD_BELOW_64K
-    if force_noting_reserve_tenths > FORCE_RESERVE_CEILING_TENTHS:
-        return CAPABILITY_RESERVE_ABOVE_128K
     return None
 
 
@@ -303,7 +298,6 @@ def configuration_guidance(reason: str) -> str:
     """User-visible actions for §4.6 capability failures and §4.12 conflicts."""
     return {
         CAPABILITY_THRESHOLD_BELOW_64K: "Noting cannot be enabled: increase the Context Window (Force threshold is below 64K).",
-        CAPABILITY_RESERVE_ABOVE_128K: "Noting cannot be enabled: reduce the Hermes Auto Compaction reserve / move the Hermes threshold later (Force reserve exceeds 128K).",
         "idle_compaction_conflict": "Noting is disabled: set compression.idle_compact_after_seconds to 0, or set noting.enabled to false; these idle mechanisms conflict.",
         "idle_compaction_config_unreadable": "Noting is disabled: correct compression.idle_compact_after_seconds.",
         "runtime_unresolved": "Noting is disabled until the Conversation's native Hermes context window and threshold have been resolved.",

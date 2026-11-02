@@ -102,6 +102,7 @@ class TurnFacadeMixin:
             admission = admit_durable_turn_lease(
                 self, session_id=session_id, relay_turn_id=relay_turn_id, task_context=task_context,
                 conversation_history=conversation_history,
+                user_message=persist_user_message if persist_user_message is not None else user_message,
             )
             if admission.early_result is not None:
                 carry_unadmitted_user_message(

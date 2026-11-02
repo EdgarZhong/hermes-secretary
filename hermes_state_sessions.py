@@ -1562,17 +1562,21 @@ class SessionSessionsMixin:
     def _session_lineage_root_to_tip(self, session_id: str) -> List[str]:
         if not session_id:
             return [session_id]
+        with self._read_ctx() as conn:
+            return self._session_lineage_root_to_tip_conn(conn, session_id)
+
+    def _session_lineage_root_to_tip_conn(self, conn, session_id: str) -> List[str]:
+        """Read the native attribution ancestry in the caller's existing transaction."""
         chain: List[str] = []
         current = session_id
-        with self._read_ctx() as conn:
-            while current and current not in chain and len(chain) < 100:
-                chain.append(current)
-                row = conn.execute(
-                    "SELECT parent_session_id FROM sessions WHERE id = ?", (current,),
-                ).fetchone()
-                if row is None:
-                    break
-                current = row[0]
+        while current and current not in chain and len(chain) < 100:
+            chain.append(current)
+            row = conn.execute(
+                "SELECT parent_session_id FROM sessions WHERE id = ?", (current,),
+            ).fetchone()
+            if row is None:
+                break
+            current = row[0]
         return list(reversed(chain)) or [session_id]
 
     def search_sessions(

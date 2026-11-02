@@ -204,6 +204,7 @@ class SessionResumeParams(SessionParams):
     lazy: bool = False
     defer_history: bool = False
     omit_messages: bool = False
+    include_system_prompt: bool = True
     eager_build: bool = False
     close_on_disconnect: bool = False
     # False: render image parts as "[image]" instead of their data URIs — a remote client reads a
@@ -223,6 +224,7 @@ class SessionActivateParams(SessionParams):
     recovery_view: dict[str, JsonValue] | None = None
     cols: int | None = None  # sent by the desktop; the handler keeps the session's current width
     omit_messages: bool = False
+    include_system_prompt: bool = True
 
 
 class SessionActivateResult(LiveSessionSnapshot):

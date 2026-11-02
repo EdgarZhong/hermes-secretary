@@ -1519,17 +1519,21 @@ class SessionMessagesMixin:
     def get_messages_as_conversation(self, session_id: str, include_ancestors: bool = False,
                                      include_inactive: bool = False, repair_alternation: bool = False,
                                      include_row_ids: bool = False,
-                                     include_compacted: bool = False) -> List[Dict[str, Any]]:
+                                     include_compacted: bool = False,
+                                     exclude_message_uid: Optional[str] = None) -> List[Dict[str, Any]]:
         """Load messages in OpenAI format. ``include_compacted`` (deduped display history) is for DISPLAY reads
         only: the model-fed restore must not regrow what compaction summarized away. ``repair_alternation``
         repairs the loaded list for LIVE REPLAY callers (a durable ``user;user`` pair would re-trigger the
         per-request repair forever), preserving summary markers before repair so derivative context
-        cannot merge with an original user turn; the stored transcript is never mutated."""
+        cannot merge with an original user turn; the stored transcript is never mutated.
+        ``exclude_message_uid`` omits an already-staged current input before replay repair."""
         rows = self._fetch_conversation_rows(
             self._resume_lineage_ids(session_id) if include_ancestors else [session_id],
             "" if include_compacted else self._active_clause(include_inactive, False), with_session_id=False)
         if include_compacted:
             rows = self._dedupe_display_generations(rows, include_inactive=include_inactive)
+        if exclude_message_uid:
+            rows = [row for row in rows if row["message_uid"] != exclude_message_uid]
         return self._rows_to_conversation(rows, session_id=session_id, include_ancestors=include_ancestors,
             repair_alternation=repair_alternation, include_row_ids=include_row_ids,
             include_summary_markers=repair_alternation)

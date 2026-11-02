@@ -2539,8 +2539,7 @@ def _make_agent(
     model_override: dict | str | None = None, provider_override: str | None = None,
     reasoning_config_override: dict | None = None, service_tier_override: str | None = None,
     platform_override: str | None = None, context_cwd_is_launch_artifact: bool | None = None,
-    cwd_override: str | None = None, auth_user_id: str | None = None, side_agent: bool = False):
-    # AC-4 test seam: dead unless armed by the isolated certify harness.
+    cwd_override: str | None = None, auth_user_id: str | None = None, side_agent: bool = False, detached_context: bool = False):
     from tui_gateway.synthetic_turn import maybe_build_synthetic_agent
     synthetic = maybe_build_synthetic_agent(session_id or key, model_override)
     if synthetic is not None:
@@ -2552,9 +2551,9 @@ def _make_agent(
         with contextlib.suppress(Exception):
             importlib.import_module(_mod).wait_for_mcp_discovery()
     cfg = _load_cfg()
-    # Load hooks alongside the same profile config used to construct this agent.
     from agent.shell_hooks import register_from_config
-    register_from_config(cfg)
+    if not detached_context:
+        register_from_config(cfg)
     system_prompt = _startup_system_prompt(cfg, session_id or key)
     model, runtime = _resolve_agent_model_runtime(model_override, provider_override)
     fallback_notice = runtime.pop("_fallback_notice", None)
@@ -2568,14 +2567,13 @@ def _make_agent(
         requested_provider=runtime.get("requested_provider"),
         base_url=runtime.get("base_url"), api_key=runtime.get("api_key"), api_mode=runtime.get("api_mode"),
         acp_command=runtime.get("command"), acp_args=runtime.get("args"),
-        credential_pool=runtime.get("credential_pool"), quiet_mode=True, side_agent=side_agent,
+        credential_pool=runtime.get("credential_pool"), quiet_mode=True, side_agent=side_agent or detached_context,
         verbose_logging=False,  # DEBUG agent logging; independent of tool_progress_mode
         reasoning_config=(
             reasoning_config_override if reasoning_config_override is not None else _load_reasoning_config(str(model or ""))),
         service_tier=service_tier_override if service_tier_override is not None else _load_service_tier(),
         enabled_toolsets=_load_enabled_toolsets(platform),
         disabled_toolsets=_load_disabled_toolsets(),
-        # OpenRouter provider_routing prefs (gateway + CLI parity).
         providers_allowed=_pr.get("only"), providers_ignored=_pr.get("ignore"), providers_order=_pr.get("order"),
         provider_sort=_pr.get("sort"), provider_require_parameters=_pr.get("require_parameters", False),
         provider_data_collection=_pr.get("data_collection"), platform=platform, session_id=session_id or key,
@@ -2586,10 +2584,11 @@ def _make_agent(
         session_db=session_db if session_db is not None else _get_db(), ephemeral_system_prompt=system_prompt or None,
         checkpoints_enabled=_resolve_checkpoints_enabled(cfg),
         pass_session_id=is_truthy_value(os.environ.get("HERMES_TUI_PASS_SESSION_ID")),
-        skip_context_files=ignore_rules, skip_memory=ignore_rules, fallback_model=_load_fallback_model(),
+        skip_context_files=ignore_rules, skip_memory=ignore_rules or detached_context,
+        skip_background_review=detached_context, fallback_model=_load_fallback_model(),
         # The resolved provider's request body (a custom entry's extra_body), as the CLI/cron/gateway pass it.
         request_overrides=runtime.get("request_overrides"),
-        prefill_messages=_load_prefill_messages() or None, **_agent_cbs(sid))
+        prefill_messages=_load_prefill_messages() or None, **({} if detached_context else _agent_cbs(sid)))
     from agent.context_compaction_request import trust_default_system_message
     trust_default_system_message(agent)
     if context_cwd_is_launch_artifact is None:
@@ -2598,7 +2597,8 @@ def _make_agent(
     if fallback_notice:
         # Emitted once on the first successful reply via _emit_pending_fallback_notice -> status_callback.
         agent._pending_fallback_notice = fallback_notice
-    return agent
+    from agent.title_context_preparation import finish_detached_context
+    return finish_detached_context(agent, ignore_rules, side_agent) if detached_context else agent
 
 
 def _hydrate_session_cwd(sid: str, key: str, session_db, profile_home: str | None) -> None:

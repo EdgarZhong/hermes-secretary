@@ -12,6 +12,7 @@ import openai
 import pytest
 
 from secretary.heartbeat import render_heartbeat
+from hermes_state import SessionDB
 from tests.agent.test_run_agent import _mock_response
 from tests.tui_gateway.test_pending_native_turn import TOOL
 from tests.tui_gateway.test_recovery_view import activate, request
@@ -57,11 +58,11 @@ def start(runtime, monkeypatch, *, source="prompt.submit_idle", steer=False, out
 
     def provider(kwargs):
         calls.append(kwargs)
+        if partial and len(calls) == (2 if steer else 1):
+            runtime.agent._claim_stream_writer()
+            runtime.agent.reasoning_callback("Partial native reasoning")
+            runtime.agent.tool_gen_callback(TOOL)
         if len(calls) == 1:
-            if partial:
-                runtime.agent._claim_stream_writer()
-                runtime.agent.reasoning_callback("Partial native reasoning")
-                runtime.agent.tool_gen_callback(TOOL)
             entered.set()
             assert release.wait(5)
             if steer:
@@ -109,6 +110,66 @@ def settle(runtime, gate):
     wait_all(runtime)
     assert not runtime.session["running"]
     return activate(request(runtime.db))
+
+
+@pytest.mark.parametrize("source", ["direct", "prompt.submit", "prompt.submit_idle"])
+def test_cross_process_lease_reload_freezes_receipt_after_admission(runtime, monkeypatch, source):
+    runtime.db.create_session("stored", source="desktop")
+    runtime.db.append_messages_batch("stored", [{"role": "user", "content": "Earlier question"},
+                                                {"role": "assistant", "content": "Earlier answer"}])
+    runtime.session["history"] = runtime.db.get_messages_as_conversation("stored", include_row_ids=True)
+    original = runtime.db.acquire_session_turn_lease
+    waits = []
+    with SessionDB(runtime.db.db_path) as other:
+        holder = "foreign-runtime-turn"
+        assert other.try_acquire_session_turn_lease("stored", holder)
+
+        def acquire(session_id, owner, **kwargs):
+            prior = kwargs["on_wait"]
+
+            def release_other(elapsed):
+                prior(elapsed)
+                if waits:
+                    return
+                waits.append(elapsed)
+                other.append_messages_batch("stored", [{"role": "user", "content": "Channel input"},
+                                                       {"role": "assistant", "content": "Channel answer"}],
+                                            turn_lease_holder=holder)
+                assert other.release_session_turn_lease("stored", holder)
+
+            kwargs["on_wait"] = release_other
+            return original(session_id, owner, **kwargs)
+
+        monkeypatch.setattr(runtime.db, "acquire_session_turn_lease", acquire)
+        gate = start(runtime, monkeypatch, source=source)
+        assert waits and activate(request(runtime.db))["complete"]
+        idle = settle(runtime, gate)
+    receipt = next(event["payload"]["persisted_turn"] for event in
+                   recovery_view.snapshot(runtime.session, "runtime")["events"] if event["type"] == "message.complete")
+    assert receipt["complete"] and receipt["source_boundary"]["prefix_unchanged"], receipt
+    assert idle["complete"] and not idle["running"], idle
+    assert not idle["state_snapshot"]["events"]
+    assert any(row["content"] == "Channel answer" for row in runtime.db.get_messages("stored"))
+    current_uid = receipt["source_messages"][0]["message_uid"]
+    assert sum(row.get("message_uid") == current_uid for row in runtime.agent._session_messages) == 1
+
+
+def test_admitted_receipt_prefix_cannot_be_rebased_by_repeated_source_callback(runtime, monkeypatch):
+    runtime.db.create_session("stored", source="desktop")
+    runtime.db.append_messages_batch("stored", [{"role": "user", "content": "Earlier question"},
+                                                {"role": "assistant", "content": "Earlier answer"}])
+    runtime.session["history"] = runtime.db.get_messages_as_conversation("stored", include_row_ids=True)
+    gate = start(runtime, monkeypatch)
+    messages = runtime.agent._session_messages
+    # Replace an admitted prefix address with a different real durable row.
+    # Repeating the observer must not make this rewritten prefix authoritative.
+    messages[0]["_row_id"] = messages[1]["_row_id"]
+    runtime.agent._on_turn_user_persisted(messages, runtime.agent._persist_user_message_idx)
+    view = settle(runtime, gate)
+    assert not view["complete"] and view["reason"] == "runtime_unavailable"
+    receipt = next(event["payload"]["persisted_turn"] for event in
+                   recovery_view.snapshot(runtime.session, "runtime")["events"] if event["type"] == "message.complete")
+    assert not receipt["complete"] and not receipt["source_boundary"]["prefix_unchanged"]
 
 
 @pytest.mark.parametrize("source", ["direct", "heartbeat", "prompt.submit", "prompt.submit_idle"])
@@ -421,6 +482,41 @@ def test_native_exceptional_finish_does_not_lend_old_output_to_the_next_turn(run
     assert result["complete"] and not result["running"], result
     next_gate = start(runtime, monkeypatch, ordinal=1)
     assert settle(runtime, next_gate)["complete"]
+
+
+@pytest.mark.parametrize("outcome", ["interrupted", "error"])
+def test_consumed_steer_then_partial_terminal_recovers(runtime, monkeypatch, outcome):
+    gate = start(runtime, monkeypatch, outcome=outcome, steer=True, partial=True)
+    assert activate(request(runtime.db))["complete"]
+    if outcome == "interrupted":
+        response = server.handle_request({"id": "stop", "method": "session.interrupt",
+                                          "params": {"session_id": "runtime"}})
+        assert response["result"]["status"] == "interrupted"
+    idle = settle(runtime, gate)
+    events = recovery_view.snapshot(runtime.session, "runtime")["events"]
+    assert any(event["type"] == "steer.consumed" for event in events)
+    assert events[-1]["payload"]["status"] == outcome
+    assert idle["complete"] and not idle["running"], idle
+    assert not idle["state_snapshot"]["events"]
+    next_gate = start(runtime, monkeypatch, ordinal=1)
+    assert settle(runtime, next_gate)["complete"]
+
+
+@pytest.mark.parametrize("damage", ["uid", "message", "turn"])
+def test_stopped_consumed_steer_requires_the_durable_input_owner(runtime, monkeypatch, damage):
+    gate = start(runtime, monkeypatch, outcome="interrupted", steer=True, partial=True)
+    server._interrupt_session_turn("runtime", runtime.session)
+    assert settle(runtime, gate)["complete"]
+    events = runtime.session["_inflight_output"]["events"]
+    payload = next(event["payload"] for event in events if event["type"] == "steer.consumed")
+    if damage == "uid":
+        payload["message_uid"] = "unknown-user"
+    elif damage == "message":
+        payload["message"]["message_uid"] = "different-user"
+    else:
+        payload["turn_id"] = "other-turn"
+    result = activate(request(runtime.db))
+    assert not result["complete"] and result["reason"] == "runtime_unavailable", result
 
 
 @pytest.mark.parametrize("source_method", ["prompt.submit", "prompt.submit_idle"])

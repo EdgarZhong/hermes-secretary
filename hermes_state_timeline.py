@@ -39,9 +39,13 @@ def _prompt_preview(db, content, display_kind, summary):
 
 
 @contextmanager
-def _snapshot(db):
+def _snapshot(db, *, memory_temp=False):
     # The count and page must see the same compaction/rewind generation.
     with db._read_ctx() as conn:
+        if memory_temp:
+            # Recovery uses a short-lived identity index. Keep that index in
+            # memory rather than creating a disk-backed TEMP database on cold reads.
+            conn.execute("PRAGMA temp_store=MEMORY")
         conn.execute("BEGIN")
         try:
             yield conn

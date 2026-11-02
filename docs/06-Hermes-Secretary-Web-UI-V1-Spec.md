@@ -1,5 +1,25 @@
 # Hermes Secretary Web UI V1 — Product, Native Interface & Implementation Specification
 
+## 2026-11-02 · 正常Stop恢复与GPT回复类型修复（用户授权）
+
+用户报告在切换至GPT后，模型思考并先以Assistant正文展示回复，随后该段回复突然成为Thinking卡片的一部分。约05:48的用户截图显示gpt-6.1-sol-900k／xhigh，Thinking内同时有英文思考标题及面向用户的中文回复，工具仍在执行。截图保留于本地ignored受限证据，不复制其中个人登录信息；“先正文后Thinking”的迁移过程依用户报告登记，不冒称截图完整录制了状态变化。该现象列为明确的回复类型／展示归属异常，待核对实际Provider输出类型、流式身份、持久投影及客户端恢复／合并路径后定位；当前不预判根因，也不以已有完成通知或历史相关修复证明本缺陷已关闭。用户随后明确要求立即修复，替代此前只登记口径。已核实Provider message／commentary在持久转换中被混入reasoning，且Web未完整采用原生commentary展示投影；修复须以Provider结构类型为准，工具前的Assistant commentary继续显示为Assistant，独立analysis／reasoning仍在Thinking，新旧历史均正确恢复，不以文本内容猜类型。
+
+正常Stop／Steer由后端原生运行态、已保存来源和终态统一决定；已消费输入通知不得否定已确定的停止终态。连接已建立但恢复读取失败时须明确显示失败原因和同页重试入口，继续自动恢复，成功或切换owner后清理旧错误；不以无限通用Retrying代替错误，不重放写操作，不以整页刷新恢复。
+
+## 2026-11-01 · 恢复传输瘦身兼容约束
+
+用户确认：减少恢复过程重复system prompt传输及可避免的串行等待，保持完整恢复及旧新客户端兼容。仅改变客户端响应投影，不修改模型可见Prompt、持久缓存或历史；默认调用保留完整响应，新Web/APK只在服务端明确支持时请求省略未消费的Prompt字段。只读预取可与身份确认重叠，但无效Profile／旧owner／旧轮次不得提交结果或绑定运行态；最终恢复仍由当前页面依赖及Socket有限切点完整对账判定。测试通过后合主线、上线Web并重建APK，主会话独立执行。
+
+## 2026-11-01 · Composer统一尺寸动画与恢复提速
+
+用户确认：Composer高度过渡统一由实际内容尺寸驱动，不能分别依赖附件、命令、选取器、文本或恢复事件。内层自然布局、外层统一插值，同时按测得的位置差同步内部区块，约320ms；快速反向承接当前高度，初始挂载不从0弹入，减少动态效果时直接采用终值。原附件独立高度过渡取消，避免双重插值。外框布局与内部位移须同一帧提交，不能让合成线程在主线程停顿时独立推进内部动画；读取几何与逐帧写入分开，不逐帧更新React或继承CSS变量。退出内容仅保留不可交互、无可访问状态的临时画面，裁剪退出后清理；新目标承接已绘状态，不提前清空。移动端恢复提示仍在底部，26px灰填充胶囊从固定底边伸缩，其他Composer内容同步移动；退出保留的文字只属于短暂表现，不保留恢复权限或影响真实waiting。
+
+桌面端胶囊移入工具栏、主按钮左侧的空位，宽度按父容器剩余空间确定，最大420px，右侧位置固定；左侧预留32–64px随可用宽度收缩，达到宽度上限后多余空间留左。不随文字／轮播变化，长文字省略，左右留更大间距。视觉以左侧工具选项为参照，整行中心对齐；保持D方案26px、12px字、灰填充无描边，固定右侧从右往左展开、反向折叠。桌面提示开合不增加Composer高度。本节覆盖旧P02固定20px及全平台底部布局。
+
+正常网络恢复必须先优化真实等待，不以隐藏提示代替提速：本地草稿和网络恢复并行，同owner已授权历史窗口与元数据／runtime绑定并行，仍在原统一切点完成对账后交接，操作资格不提前放行；旧owner／取消／失败不能提交。服务端每次只读快照内可复用仅含身份／顺序的内存TEMP索引，事务退出即销毁，不跨恢复轮次缓存、不写主库、不省略D0／S／D1一致性验证。summary接口不返回界面不用的完整工具快照，完整详情接口仍保留。Conversation切换的恢复提示目前保留，待提速后的实际体验再决定，不隐藏真实故障。
+
+APK支持的页面保持完整WebView绘制表面，IME仅由网页合成位移及边界布局接管；收起不临时扩大原生表面，避免未绘制区域露出。无页面接收方沿原生Insets退路；动画期间背景保留最近已绘帧、结束后续播，草稿和同页恢复契约不变。模拟和包校验不代替Android真机黑块／流畅度复验。
+
 ## 2026-11-01 · 空闲维护取消与Compaction流式展示（用户确认）
 
 用户可以手动取消空闲整理；Compaction消息改为流式展示，让用户返回界面时看到当前已生成的内容/真实进展，自行选择继续等待或取消。此为已确认产品方向，不再作为是否提供的待定项；具体视觉、消息字段及接线另行设计，实施/验证状态见CLAUDE。沿既有同页恢复和operation身份契约，在进入/重连后恢复正确内容与运行状态；流式可见不等于已知完成百分比/精确剩余时间，未提交内容不能冒充最终压缩结果。
@@ -8,6 +28,10 @@
 
 
 ## 2026-10-27 · 客户端缓存、增量同步与表现层契约
+
+### 2026-11-01 · Conversation恢复优先与侧栏解耦（用户确认）
+
+Conversation切换、重新进入和断线重连，先显示同owner缓存，并对当前所需正文／实时状态使用已核验游标增量对账；尽量降低该Conversation的恢复流量及可避免串行等待、本地重复工作。侧栏允许继续后台刷新摘要分页，本轮不新增列表差量协议：先展示缓存，会话条目立即可点击，导航不等列表核验；目标会话存在性与操作权限由其自身恢复核验。侧栏、Usage、Context等附属读取不得阻塞当前Conversation正文／实时恢复及发送就绪，侧栏和较重的Usage／Context读取排在最终对账之后，避免抢占共享通道；移动端隐藏侧栏按可见需求延后。缓存不授予发送／审批权限，但侧栏导航不属于需等待服务器确认的写操作。
 
 本节是本轮设计与后续验收的对照表，稳定编号用于区分设计遗漏和编码偏离。实施／验证状态只在CLAUDE及本轮报告中记录。本节优先于下文旧轮次“不以缓存减少请求／每次完整传输／不存详情／APK五秒强制重载”的冲突描述，其余产品语义保持；不得以旧技术实现反向否决本节。用户要求先查清恢复慢的原因，在main修独立问题，再在前后端同名分支实施，跳过Ask and Align；main独立修复豁免严格双门禁，新机制完成后完整Verification与Validation。主会话设计、集成、验收审查；子Agent6.1 sol只按方案实施。
 
@@ -415,6 +439,8 @@ A Conversation has **one** Timeline. It includes the original ordered persisted 
 
 **2026-10-15 用户确认 GPT Subscription 路径与摘要分段：** GPT Subscription 指 Hermes 的 `openai-codex` Provider，使用 ChatGPT／Codex OAuth 订阅认证，经 `codex_responses` 模式调用 Responses API。摘要请求、接收、流式传输与段落分隔直接复用 Hermes：推理开启时请求 `summary: "auto"`，上游摘要增量经既有回调和 `reasoning.delta` 进入前端 Thinking；Responses 摘要的 `summary_index` 变化时由 Hermes 插入 `\n\n`。前端按收到的文本顺序拼接并正常渲染 Markdown，保留已有空行，无需额外补换行，不按每次回调强行分段（回调可能只是一个摘要段的文本碎片）。此结论限定上述 Responses 路径，不泛化至所有第三方兼容接口；源码依据见 [Provider 路由](../hermes_cli/runtime_provider.py)、[摘要请求](../agent/transports/codex.py)、[摘要流与分段](../agent/codex_runtime.py)。本次核对未发起真实订阅请求，不作为运行验收通过证据。
 
+**2026-11-01 订阅历史指令兼容修正：** ChatGPT订阅端点不接受input中的system角色。主请求、辅助请求及原生回放通过统一出站转换，把中途system在原位置映射为developer，保留内容、相对顺序、工具配对与既有前缀；root仍独立放instructions，持久历史不改。通用Responses／Chat Completions原角色与其它Provider行为保持；不把订阅developer角色冒称原生system优先级。
+
 **Timeline time presentation contract:** Human-friendly date/time labels appear **only as Timeline reading aids** and **outside every message bubble**. They need not precede each message. The visual AI chooses ergonomic grouping, density, reveal timing, relative-vs-absolute style and placement; no per-message prefix rule is imposed. `<timestamp>ISO...</timestamp>` in ordinary native user-message content MUST be hidden from rendered text without modifying source data; grouped/merged Steers do not cause artificial timestamp rows. **2026-10-14 user clarification:** Reminder carriers remain collapsed by default; their inner timestamp is preserved on expansion, with no additional wrapper or timestamp-stripping treatment.
 
 Message ordering, Compaction lineage, framework carriers, UIDs and stream insertion are backend facts. Do not infer message kind from English content text; identify authoritative native wrappers/projection metadata. Use event/source timestamps accurately, format locally, and avoid manufacturing message creation times for temporary UI nodes. Long histories initially load 200 backend messages and load 200 more per Show More History action, counting native tool-call/result rows; they remain scroll-anchored; a reader examining older messages MUST NOT be forcibly jumped to the bottom by new live content. Streaming content expands **before** the Pending Steer tail. Streaming presentation must follow real native progress without an artificial playback speed cap or a growing backlog of already-completed output. Reuse the mature interaction/rendering foundation while preserving the user-approved custom visual layer. With a live WebSocket connection, a materialized Instant Reminder must become visible at its native position promptly, without waiting for the resulting Turn to finish or allowing later Thinking to appear while that triggering row is still withheld.
@@ -658,6 +684,10 @@ JS／原生单测不能证明实际WebView生命周期与画面连续。后续�
 
 ### 1.6. Composer contents, layout and keyboard
 
+连接提示曾参考前端b33e428之前Composer的中性Notice；最终以2026-10-31用户所选D方案为准：顶满内宽并留左右间距、26px无描边灰填充胶囊、12px文字靠左。不恢复旧Notice的44px高度，也不沿用被否定的20px细描边条。
+
+**用户2026-10-31最终修订：APK键盘与恢复提示过渡。** 虚拟键盘唤出／收起要及时平滑响应，不能为动画逐帧重排WebView导致明显卡顿；保持系统真实键盘终值与原逻辑视口。用户进一步明确整个过程不得跳变或闪动：检查起止帧、快速反向、键盘与提示同时变化，以及正文／新聊天标题／输入框／背景的交接；真实设备流畅度须单列验证，不由浏览器几何采样冒签。恢复提示框顶满内宽并留左右间距，文字靠左，框体从固定底边原地展开高度，Composer同步上移；反向同步折叠，不以框先淡出／Composer后下降代替。此要求覆盖同日早先的内容宽度居中方案。用户随后查看四候选并最终选择D：12px字号、26px展开高度，无描边灰色填充胶囊；暗色背景#47433f／文字#c1b9b2，框内水平16px、框外左右及底部12px，圆弧与Composer协调。覆盖此前20px高度及历史深灰描边26px的中间选择。可在单行中多展示真实等待对象：同一Restoring或Retrying状态最多并列三个，保持3秒轮播与超宽省略号；完成项立即退出，不混淆未失败与已失败重试对象。连接模板、同源恢复资格保持，仅调整呈现，不延迟真实操作资格恢复；遵循减少动态效果设置。
+
 The Composer is a responsive, rounded multiline input with the approved controls: **Attach**, **Model**, **Reasoning**, and one state-dependent circular primary action (**Send / Steer / Stop / Interrupt / Cancel Send**). The visual AI may arrange the fixed controls ergonomically but may not remove, re-label semantically or replace their actions with unapproved flows.
 - **Bottom anchor (user-reaffirmed 2026-10-14):** New Chat and Conversation share the same Composer bottom-edge anchor. Content growth expands upward; changing between these screens does not move the Composer. Desktop Composer and the two bottom capsules use the same bottom-spacing arrangement as mobile.
 
@@ -749,6 +779,8 @@ Buttons MUST be driven by this precedence so a user can prepare attachments duri
 **User-confirmed title split (2026-10-17; context scope superseded 2026-10-24).** `/title` remains the native read/set entry: `/title <name>` sets the given title and bare `/title` reads the current title. AI naming is a separate Web-local `/ai-title` command; it is not a `--ai` flag on `/title`, and it is not a native registry command. The Web command router advertises it locally, while official clients keep their native `/title` semantics. It invokes the existing `llm.oneshot` RPC and then applies the generated title through the same native write. A failed generation or rejected write leaves the existing title untouched and surfaces the native error.
 
 **用户确认取材范围（2026-10-24）：** `/ai-title`依据当前Main实际可见上下文命名，包括当前压缩摘要、Notebook及最近对话；不再从浏览器cards／live选择最早User＋末8条、逐条截前1200字符，不按屏幕滚动位置取样。Web只提交`template: conversation_title`及当前绑定session／profile，命名Prompt及上下文快照由后端负责，沿用当前Main模型。最近经微信运行的同一Conversation也必须识别真实上下文owner，不能将过期Web Agent或未补详情的浏览器历史冒充当前Main。无法取得可靠完整快照时明确失败，不静默回退到开场／限长摘录。标题任务只读、不继续原业务、工具执行硬拒绝，不改变父Main的Prompt、工具面、历史、Notebook或排期；原生首Turn自动标题的取材不因此改变。生成期间切换Conversation／Profile不得把旧结果写入新目标；空白浏览器历史本身不阻止后端命名。完整上下文命名沿用Main推理设置，总输出预算至少8192 tokens（包含推理）；旧客户端携带的256 tokens不再限制该新任务，标题正文仍要求简短。
+
+**用户补充空闲恢复（2026-11-01）：** `/ai-title`以当前生效上下文为依据并保持完整请求前缀复用；Turn空闲即可重新生成。清理上下文缓存、冷恢复或旧Web运行态缺少快照不能要求用户先发送普通Turn：已有有效native前缀原样复用，缺失部分沿现有Main恢复／构造owner在隔离只读标题请求中准备，不推进普通Turn、不写回Main缓存／历史或业务状态。真实活动Turn（含跨入口有效Turn lease）仍拒绝；此新口径覆盖旧“压缩期间一律拒绝”：后台压缩无活动Turn时，从同一SQLite读事务取得当前已生效的完整版本，不等压缩结束、不读取半提交状态。
 
 **用户确认忙时行为（2026-10-24）：** Main运行（包括另一入口持有同Conversation的Turn lease）或压缩期间，`/ai-title`不触发模型生成，提示稍后空闲重试；不等待、不排队、不使用旧上下文回退，现有标题保留。
 

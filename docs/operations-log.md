@@ -1,5 +1,193 @@
 # 运维记录
 
+## 2026-11-02 · Stop终态恢复、Noting大窗口及Assistant类型修复（已上线）
+
+用户明确要求立即修复三项。Stop现场14:09:50已保存interrupted、无lease且网络已连接；停止快照的已消费输入通知被终态恢复事件清单遗漏，导致稳定runtime_unavailable。新增原生Steer后部分生成／Stop与异常结束回归精确复现；修复按已持久来源及相同Turn确认通知归属，保留未知来源拒绝。线上原快照只读回放旧代码失败、新候选complete=true且残留0，原物料保持。前端连续实际失败明确原因、可展开详情及同页重试，自动恢复成功和owner／读取范围切换清理旧错误。
+
+Noting取消固定128K reserve资格上限，保留公式、66K／64K下限、配置和Prompt。GPT按Provider结构区分commentary与analysis；commentary沿原生sidecar及显示投影保留Assistant，已存旧行无需改写，source facet与同UID流式退役接通。原56行不进Git。验证：Stop204项、Noting61项、GPT后端181项／前端174项、错误提示56项加App3项，typecheck通过。冻结十检查九项通过，历史no-tmp失败在原HEAD不变；额外BE两条压缩trigger夹具、FE41项原集成及一条Steer快照失败原提交复现，未改规则或旧断言。本地证据stop-fixes-20261102、assistant-thinking-20261102及FE.archive对应目录。未发生产模型请求。
+
+**发布结果：** BE `ed9d564cc15b46b647872e10a62e671e3fe6744b`、FE `dc40990b7e546fc17ae9d30b6d81814d1ce67768`已合main并push；前端main原在web-toast干净工作区，原目录仍在同提交功能分支，未改其它工作区。14:36:50+08后端受限执行器verified，云端始终main；双服务实际新版本，配置／绑定／三库保护表／原静态保持。随后前端439文件及6HTTP资源全部SHA一致、静态发布verified，未额外重启服务／写库。首次静态包缺secretary目录前缀，在解包第一项即被拒绝且线上静态未切换；保留first-attempt-receipt，修正包结构后重发成功，未放宽校验。
+
+**恢复核验：** 同Conversation的新runtime连续三轮complete=true、running=false、matched_windows=1。用户授权的原Chrome标签只读确认Retrying消失、Send enabled、模型仍gpt-6.1-sol-900k、9字符草稿保持；上线前后performance.timeOrigin均1793600240975.4，证实同一document未刷新。前端新显示逻辑须页面下次加载新JS；当前旧页面已通过后端修复恢复。正式安装的872000／654000 policy返回usable=true／reserve261600／Force阈值610400；不冒称发起真实Noting或模型测试。未重打APK。
+
+**收据／回退：** 云端`~/.local/state/hermes-secretary/release-20261028/stage-20261102-stop-noting/{receipt.json,RECOVERY.txt,backup-retention.json}`及`static-20261102-stop-commentary/receipt.json`；旧静态保留在专属交换目录。回退仅在空闲窗口按RECOVERY对main作已审反向提交，并交换回已核旧静态，不自动回滚业务库／配置。验证两套完整三库后清退更旧9文件224169984字节，运行库／WAL／SHM与当前同步包保持。源故障证据保留。未跟踪Huawei资料与前端5个.DS_Store保持。
+
+## 2026-11-02 · 用户授权立即停止delegate并重启整个Hermes
+
+用户明确要求立即停止线上delegate，必要时直接重启整个Hermes。14:06:35+08已通过SSH停止系统级hermes-secretary.service和ubuntu用户级hermes-gateway.service，在启动前执行服务cgroup全进程SIGKILL清退兜底，再启动两服务。旧Web2474096／Gateway2474098替换为2812343／2812344，均active／running；此动作中断当时运行任务，不声称优雅结算。此前只调查原生delegate取消接口，未实际调用，不冒称单独取消成功。没有修改产品代码、模型、配置、历史或数据库，也未删除故障证据。后继只读核对旧进程、资源和HTTP／监听状态。
+
+14:06:44左右核验旧PID均不存在，停止日志出现`[subagent-0] Interrupted during API call`；新Web记录HERMES_DASHBOARD_READY，53446已监听、loopback首页HTTP200。内存used1896MiB／available1763MiB（此前available约120–206MiB），Swap0；Gateway新服务启动中且active／running。没有将HTTP核验扩大为用户页面或全部渠道验收。
+
+## 2026-11-02 · 运行中slash fork后恢复连接卡住（只读排查）
+
+用户报告运行中执行slash fork后卡住。13:56–13:59+08正式Alex两服务仍存活（Web2474096／Gateway2474098），尚未重启／中断／发送模型消息或修改产品。现场3.6GiB内存可用约120–130MiB、负载约15–20、Swap未使用；memory full avg60约33–40%，后台存在浏览器和make编译任务。13:54:54、13:55:11、13:55:48及13:57:52出现事件循环停顿，13:55:43数据库写锁等待20秒，随后WS ready／response发送失败。独立loopback首页约0.81秒返回，session.active_list等待超时；没有将首页可用等同会话恢复正常。
+
+受限原始gui／errors日志及最近会话元数据保存于`/home/ubuntu/.local/state/hermes-secretary/fork-reconnect-20261102/`，目录0700、文件0600。只读查询最近会话仅见13:52父会话派出的两子任务，未见用户slash fork新分叉，不冒称fork已成功或已确定根因。初次元数据查询错误使用created_at字段，失败后按实际started_at纠正，均未写库。重启会中断当前Turn及子任务，已询问用户恢复取舍，未确认前保持只读。当前未恢复／未判定修复完成。
+
+**自动恢复补核（14:01–14:02+08）：** 用户反馈已自行恢复；双服务PID、02:20:41启动时间均保持，NRestarts=0，未进行运维恢复动作。13:59:32.831原主Turn以complete／error_retained=False正常结束（618.4秒），14:00:48.197同runtime已受理新消息。14:01:08负载4.56（此前约15–20），可用内存206MiB，memory full avg60=11.90%（此前约33–40%）；只读session.active_list约7.998秒返回，新主Turnrunning。两子任务在14:01仍有工具完成日志，不能将恢复解释为全部子任务结束；浏览器调用此前曾耗时91／103秒，后继样本约1–6秒，只作时段改善证据。数据库锁告警原文owner为Web PID2474096持WAL write lock，缺具体线程／调用栈，不能认定fork死锁。最近两个子会话配置均_delegate_from、无_branched_from，未见本次fork落盘。结论为资源严重拥塞与后端停顿同期，压力缓解后原服务自动恢复；fork是否参与触发及具体阻塞调用未闭环，不称产品根因已修。恢复后gui／errors／agent日志、active结果及recovered-manifest.json保存在原受限目录（不覆盖原始文件），不再需要重启选择。
+
+## 2026-11-02 · Noting历史补跑完成、Framework延迟结论与Heartbeat暂停
+
+用户授权在新区间生效后补旧Noting，后续明确不因缓存命中与否中断，接受原生截断的有效落盘，但必须确认Framework接入。本次真实来源为旧区间14138至Anchor行15245，排除新摘要15246；原生解码去重复580条，原root及完整30工具保持，Responses转换后的工具数组与旧实际捕获一致。原接口不支持指定旧派生点，因此以受限一次性脚本调用既有manual admission／原生runner／Snapshot owner，仅本次登记真实旧来源；没有伪造失败child、修改长期128K门禁、Profile模型／配置或旧历史。任务-4／child noting_backfill_20261102_14138_15245正常finish_noting，32请求、累计cache_read_tokens=25160320（不据累计数冒称首请求命中）；有效Snapshot `snap_8966e252a31043d6b16cd506ba331006`已原子提交并成为有效指针。原始源、来源SHA、最终结果及通知回执只存正式Alex受限`~/.local/state/hermes-secretary/noting-backfill-20261102/`（目录0700、文件0600），本地ignored同名证据目录只放脚本／非敏感核对。
+
+**已查明延迟，非Snapshot事务分钟级等待：** 原生child消息15399发出finish_noting于06:14:09.462848+08，工具回执15400于06:14:09.476876；Snapshot于06:14:10.043082提交，工具回执到提交0.566206秒，result收据06:14:10.587落盘。首次通知06:14:10.922回执accepted=false，原因是一次性补跑父对象仍为side_agent，被正常Main发布资格拒绝；后续经原生Main短租约追加，在06:14:55.628回执确认成功，额外约45.6秒在本次运维补接及接续，不能推定正常产品链路也有相同延迟。Framework UID `f0c2efee02794d88bbdc49d9c4f0771e`，Note receipt精确指向新区间compaction:20261021_200341_2ce088:15246与该Snapshot；原生消息timestamp使用Snapshot创建时间，不能据UI时间反推实际追加时刻。用户随后确认接入成功。这里只登记结论，不改产品代码。
+
+Heartbeat按用户先设置10800秒、随后关闭的最新指令，已原生pause并重读paused／10800，保留定义、不自动恢复；原09:00计划已取消，不触发测试Heartbeat。两次状态收据在上述受限目录。用户明确128K设计缺陷与GPT正文转Thinking暂不修；后一问题的截图仅本地ignored受限保存，当前Main的56条原始消息行（BLOB原字节base64）封存在Alex受限`gpt-assistant-thinking-20261102/main-message-rows.json`，SHA923598b4d252975be0e40f7a061d5d1f7cd52946b3ba8d8ba24ec1f785bb391a，不抄个人原文进Git。
+
+## 2026-11-02 · 按最新线上WebDist重打同版本APK（已交付副本核验）
+
+用户先要求核对旧包，随后明确按最新WebDist重打、版本号不变。旧0.1.10 conversation-recovery包与当前线上各439实文件、435同名同SHA，主入口由index-5bzulIsK.js更新为index-DZaVwrOy.js；旧包list有440行、多列实际不存在的.DS_Store。最新线上439文件已取到前端ignored`.archive/apk-20261102-webdist/online-dist`并逐SHA核对；构建跳过Web重新编译，保留线上精确字节、原签名及0.1.10／1010。本轮只打包／验证，不修两项缺陷、不部署代码。最终交付`/Users/edgar/Downloads/Hermes-Secretary-0.1.10-webdist-95ce4df-arm64.apk`：0.1.10／1010、32136045字节，SHA256 `106ffbac6c4b89840b56ffa2e859d9e8edb1dbe30ddcb87bf0893c797a4ae102`；原证书449b5f36…、v2／完整ZIP CRC／ZIP及ELF 16KB／arm64／非debug／交付副本通过。包内439资源逐SHA与打包前后当前线上目录一致，secretary-files.txt正好439行、与实际集合完全一致，无旧.DS_Store清单残留；未安装Android真机，不冒称实际设备验收。构建、严格验证、源清单及final-proof收据在前端ignored`.archive/apk-20261102-webdist/`，Downloads旁保留verification.json与sha256；保留源目录既有五个.DS_Store及其它工作。
+
+## 2026-11-02 · 网页／微信并发后runtime_unavailable取证、恢复及修复上线
+
+用户要求先封存现场、尽快恢复Alex，并随后授权根因明确即修复上线。目标置顶Conversation网页runtime29a4a8a1已idle、Web／Gateway活动均0、无有效Turn租约；HTTP正常且WS可响应，最终恢复却稳定complete=false／runtime_unavailable。原快照三条来源均已持久且身份匹配，all_rows_committed=true，prefix_unchanged=false／receipt.complete=false；唯一未结算事件为reasoning.available。02:05:29→02:05:32日志证明曾等待其它Hermes进程释放会话，原生随后重载历史；网页完成回执仍比较等待前基线，原生真实租约争用回归已精确复现两正式发送入口同类失败。微信已完成，不把失效快照解读为微信仍忙，也不归因于网络或Noting警告。
+
+恢复前19份原始物料与逐文件SHA封存在正式Alex受限`/home/ubuntu/.local/state/hermes-secretary/reconnect-20261102/`（目录0700、文件0600）：原始binding／activate响应及完整事件、REST窗口、数据库只读read_view及session row、双进程活动状态、两小时Web／Gateway／Caddy日志、Alex及控制根agent日志、当时相关源码与版本a36eb645b2；含敏感原文仅留服务器，不进Git。ignored本地取证脚本`.hermes-dev/reconnect-20261102/capture.py`，original文件不覆盖；追加temporary-recovery-result.json记录恢复。未新建全库备份或清退历史证据。
+
+02:10:07+08仅重启系统Web `hermes-secretary.service`，PID2428117→2465000；用户级Gateway PID2428119保持，未调用session.close／end或修改配置、模型、Notebook、消息、绑定。初次健康探测早于冷启动监听出现connection refused，随后原正式只读恢复连续三轮complete=true／matched_windows=1，最终对账约428–504ms。零生成／发送请求；该临时恢复清除失效内存，不冒称产品根因已修。后续修复限定既有原生用户落库观察接缝同步回执历史基线，保留恢复／前缀／压缩／权限校验；上线结果另行补记本节。
+
+正式修复同时补齐等待后精确已受理UID在模型重载前排除，避免角色修复将其并入旧用户输入；只改本次投影，不删改原文。回执基线在既有原生用户落库回调首次冻结，重复回调不能重置；原等待前表现层历史、压缩计数、恢复权限及前缀拒绝保护保持。最终原生结算70／租约18／历史投影4共92项通过；恢复63／正式发送31／回调及压缩等97项有效证据保留。原11523隔离复现租约夹具1项及Instant来源4项旧失败，不掩盖为全绿。Linux复用同lock／pyproject的官方PM测试环境，隔离候选5项通过（14.5秒、2workers、1次最终运行），无真实模型／渠道调用。冻结十检查九项通过、7文件health0／0；no-tmp命中未改历史validation.md第20行，在原11523同样复现。初版反例、修正过程与完整日志均保留ignored证据，不改检查规则或历史报告。原始截图已追加服务器受限目录，初始manifest不覆盖。
+
+产品`6c1d248692185176e77b024dac50053bc4176e1f`已合main／push，02:21:03+08受限执行器返回verified；云端始终main、无detached部署。Web PID2474096／Gateway2474098均运行此提交，微信connected；三库保护表、配置含授权、绑定、Secretary及Dashboard静态逐指纹保持。上线后同owner只读恢复连续三轮complete=true／matched_windows=1，resume46–49ms／cut293–305ms（loopback单样本，不声称公网浏览器耗时），零生产生成／消息重放。前端95ce4dffe9及APK保持，不以服务端核验冒称用户现有浏览器UI实测。
+
+云端发布／恢复收据`~/.local/state/hermes-secretary/release-20261028/stage-20261102-cross-process-recovery/{receipt.json,RECOVERY.txt,backup-retention.json}`；按收据在空闲窗口对main作已审反向提交回退代码，禁止自动回滚业务库／覆盖轮换授权。逐库SHA／integrity／FK验证后保留本轮与前轮Sol两套完整三库，清退更旧9文件、218656768字节；运行库及当前同步包保持。事故目录初始19文件逐SHA不变，supplement清单保存截图、过程日志、最终候选补丁与上线恢复探针；文件0600、目录0700，原始物料不清退。隔离Mac基线及Linux候选在证据保存、候选7产品／测试文件逐字节匹配线上后清理；用户未跟踪Huawei资料目录保持，不新增外发或个人配置写入。
+
+## 2026-11-02 · 6.1 Sol大窗口及Web模型切换确认修复上线
+
+用户确认不改6 Sol配置，只修复6.1 Sol的900K选项、保留标准速度／当前模型；随后急需修复长上下文切换报错。后端`a36eb645b2464450cb995c864f2cb6ad86df1a58`已从main上线：已eligible的显式-900k在目录给出max_context_window时按min(verified预算,max)解析，不再只认旧272K默认值；普通选项及无max回退保持。前端`95ce4dffe9febdc9684abc09a9bf7fd0a97dcadd`已合main／origin/secretary并发布：confirm_required显示原生Modal，只有点击Switch model才带确认参数重发同owner，取消不写。原阈值100000保持，未替用户确认／切当前模型、未发送模型请求。调查时目标仍Kimi，故不把本次跨模型确认本身判成误报。
+
+验证：后端新目录反例改前17失败，修后metadata全文件148通过，ruff／health通过；前端新组件反例改前11失败，修后相关20通过、typecheck／生产构建通过。扩大测试的23项既有失败已在HEAD隔离快照全部同名复现，不改断言掩盖；3个TS产品文件按既有冻结度量无新增超限。主会话自建隐藏IAB实际ModelSelector验取消后无确认写、点击确认才提交原Conversation／Profile并更新选型；仅业务替身，不动用户页面／生产会话。未重打APK，旧APK内置前端不包含此修复，Web可先使用。
+
+发布：原有受限执行器空闲预检、停服三库备份、main快进、正常启动并验证两实际服务版本／微信connected、保护数据／配置含授权／绑定／双静态保持，phase=verified。随后静态原子交换，439文件及6个HTTP资源逐SHA一致，零额外服务重启／数据库写；发布包排除构建复制的.DS_Store，用户原件保留。线上原生Alex作用域只读目录验证6.1 Sol base500000／900k872000、6 Sol base272000／900k872000，config SHA不变、默认仍k3.1-pro、service_tier空（标准）；零模型请求／会话切换。核验保留最近两套完整三库后清退更旧9文件、218656768字节，不动运行库及当前同步包。
+
+本地ignored证据`.hermes-dev/sol-900k-20261102/`，前端`.archive/model-switch-confirm-20261102/`；云端受限`~/.local/state/hermes-secretary/release-20261028/stage-20261102-sol-900k/`含receipt、context-readonly、backup-retention及RECOVERY；静态收据`static-20261102-model-confirm/receipt.json`含旧目录交换恢复点。回退按收据在空闲窗口对main作已审反向提交并重验，前端可恢复旧静态目录；禁止自动回滚数据库或覆盖轮换授权。未进行真实872K输入生成，目录及正式解析结果不冒称长输入端到端已验。
+
+## 2026-11-01 · GPT订阅system角色兼容修复上线
+
+用户明确要求修复，产品`17bba65499b767c6cb8fc5e845fa579f5018a75a`已合main／push并上线。限定既有is_codex_backend路由：主请求、辅助请求及native replay统一将中途system原位映射为developer；root仍instructions，预检允许developer，原历史／正文／工具pin及其它Responses路由不变。无全量上游合并、无新Provider／代理／执行器、无默认模型变化。设计参考[OpenAI Text generation的developer指令用法](https://developers.openai.com/api/docs/guides/text)，订阅端兼容以本次真实请求为准，不从通用API文档推定私有订阅全部行为。
+
+4文件291项通过，覆盖root／旧前缀／提示cache key、文本及typed内容、中途多条指令、工具调用与结果配对、主aux一致、native replay及通用Responses／Chat Completions／Anthropic保留。ruff／health两项通过，4文件0阻断／0提示。改前测试复现订阅仍发system；初版aux测试未去除消费前会移除的私有字段、以及把既有typed input误断为字符串，两处测试按正式消费形状修正，未放宽生产校验或改消息内容。
+
+在服务器独立候选worktree、原生Alex凭据作用域／client／出站构造／预检下，仅1次真实gpt-6.1-terra／High合成短请求，response.status=completed、response.model=gpt-6.1-terra、指定CODEX_ROLE_OK正确；76输入＋8输出＝84tokens，SDK重试0，工具执行0，用户Conversation写入0。主与aux的input及instructions相同，历史副本不变。另仅本地进程只读转换用户目标34条真实历史，1条system→1条developer、10对工具call/output保持，未把这些内容发送给模型。没有重放用户失败消息，不把合成成功冒称真实长会话已生成成功。
+
+空闲预检后受限执行器完成停服三库备份、main快进、Web／Gateway启动与实际版本／微信connected验证，phase=verified；三库保护表／配置含共享GPT授权／绑定／双静态逐指纹一致。只改出站表示，未改Prompt正文／工具目录，无需清上下文缓存；APK无需重打。候选worktree已移除，保留最近两套完整有效三库，旧备份清理结果见backup-retention.json；运行库及当前同步包不动。
+
+本地ignored证据`.hermes-dev/codex-system-role-20261101/release/`与codex-system-role-{red,green,final,check}.log；云端`/home/ubuntu/.local/state/hermes-secretary/release-20261028/stage-20261101-codex-system-role/`留live-probe.json、actual-history-readonly.json、receipt.json、RECOVERY.txt及备份／保留收据（受限）。回退按收据在空闲维护窗口对main作已审反向提交、正常重启核验；不自动回滚数据库，亦不覆盖已轮换授权。
+
+## 2026-11-01 · GPT-6.1 Terra首次调用HTTP400排查
+
+后续只读上游审计：git fetch --no-tags upstream main得到c627ec84664d43e0b18b95d9d86d8963747d56c7（提交时间2026-10-28），仅更新远端跟踪引用，未merge／改生产。blame确认adapter新增system角色、保留历史初始system开关及对应Codex测试均来自本地8969e32；最新上游转换／预检仍只接受user／assistant，中途system直接跳过，不能满足保留既有历史指令语义。本次有相关端点抽象／Responses接线重构0ae220ff4e、a4a992645b、5af8fda75f及UA修复68e4c2b31a，未见针对本错误的直接补丁。判断先修本地订阅适配并补真实订阅验证，上游同步另按依赖审查，不以全量合并替代修复，也不以删系统更新绕过。
+
+用户在22:54:45已自行将Alex置顶会话切换到gpt-6.1-terra／openai-codex／codex_responses／High，原生日志确认模型窗口500000。22:55:24首次用户调用返回HTTP400 `System messages are not allowed`，标为不可重试format_error，失败内容保留；本次调查未发生成／重试、未改默认模型／历史／服务。原生只读history转换取证32条（8user／1system／13assistant／10tool），出站仍含1条中途system，位置3。主root由instructions单独承载，错误是历史system角色与ChatGPT订阅端点不兼容；现有tests/agent/test_runtime_system_transport.py也断言Codex保留system，不能把单测通过当真实Provider契约证明。
+
+日志及无正文计数收据只留服务器受限`/home/ubuntu/.local/state/hermes-secretary/gpt-call-failure-20261101/`（web.log／gateway.log／wire-shape.json，0600），不下载授权或正文。初次离线探针误用不存在的chat_to_codex_input，随后按正式_chat_messages_to_responses_input修正；没有额外网络生成。修复尚未实施；应在订阅出站适配中保留原文／相对位置／root前缀，采用服务端支持的指令角色，兼顾main／aux／预检及其它Responses路由，不通过删system消息／重写持久历史绕过。
+
+## 2026-11-01 · 连续切换模型误用累计tokens的确认警告修复
+
+用户明确指出第一次切换令展示计数失效是正常行为，要求修复随后额外门禁。产品`54853241505fb556ad0c8124531464a111bb1f80`已push并从main上线。仅移除统一selection_context_for_agent对累计session_prompt_tokens的回退；有效当前计数保持，未知／0／负哨兵返回无当前上下文，不触发context-cache确认；保留原阈值、有效大上下文和成本／数据策略确认，不清累计账本／历史、不变默认模型。
+
+改前通过正式_apply_model_switch两次连续切换，精确复现当前计数清0后弹出390494警告，连同未知计数回归共4项失败；修后6文件31项通过，覆盖真实大计数仍确认、会话模型pin、历史／默认配置保持，以及延期确认、Profile作用域、冷恢复／标记。ruff／health共2项通过，0阻断／0提示。未取得用户弹框原始内存快照，精确数值来源由相同执行路径反证重现，不声称抓到了原快照。
+
+受限发布执行器空闲预检、停服备份／main快进／重启后verified，Web与Gateway实际版本5485324150、微信connected，三库保护表／配置含共享GPT授权／绑定／双静态逐指纹保持。零生产生成、零会话切换，暂停的置顶GPT-6.1 Terra选择未代执行。目标Linux原生函数复核读数0／−1／None不弹、67067不弹、390494仍弹；Alex／study／default均解析公共GPT授权，默认模型分别k3.1-pro／gpt-6-sol／deepseek-flash。仅后端修复，APK无需重打。
+
+本地ignored证据`.hermes-dev/model-switch-context-20261101/release/`及model-switch-context-{red,green,check}.log；云端`/home/ubuntu/.local/state/hermes-secretary/release-20261028/stage-20261101-model-switch-context/receipt.json`、context-readonly.json、RECOVERY.txt记录阶段及人工反向提交回退入口；不自动回滚数据库。发布后保留最近两套有效完整三库，旧备份清理结果见同目录backup-retention.json；运行库及databases-current.zip不动。
+
+## 2026-11-01 · Alex／study共用ChatGPT订阅授权
+
+用户后续反馈菜单找不到GPT-6.1 Terra，检查时Alex正式REST已含该模型，study尚为旧缓存；用户随后确认已看到，判断此前可能仅显示缓存目录。App配置可见demand本已在打开菜单时重读capabilities，初查只看ChatSelectors漏掉App接线，已向用户纠正。使用正式model.options对Alex／study各显式refresh一次，再各普通读取一次，四次均authenticated并含gpt-6.1-terra；受限picker-refresh.json留于同一授权收据目录。无Provider／前端源码修改、无新刷新入口／重复请求、无生成／会话切换／默认配置修改。
+
+用户确认复用study授权、允许Hermes公共凭据库共享并接受default也可用；通过服务器原生auth锁／writer迁移providers.openai-codex到`/home/ubuntu/.hermes/auth.json`，不设置root active_provider，移除study重复singleton，保留其active_provider及其它凭据。两文件0600，Alex auth原SHA保持；三份config逐SHA保持，默认Alex k3.1-pro／study gpt-6-sol／default deepseek-flash。三Profile正式`_config_profile_scope`内均解析公共源，原生刷新后仍共用同一源；实时账号目录包含gpt-6.1-terra，未发生成请求、未重启服务／改源码。初版只读探针直接把物理Home设HERMES_HOME误把它当控制根，且未带会话Token的REST返回401；已纠正为控制根进程＋原生Profile作用域，未据失败探针改凭据／代码。
+
+受限证据`/home/ubuntu/.local/state/hermes-secretary/alex-shared-gpt-20261101/`留migration.json、validation.json、final-validation.json、live-catalog.json和root／study原auth备份（目录0700、文件0600）；不下载或提交凭据。回退须在无新变更前提下按原生study→root锁序，把**当前**公共Codex授权移回study并移除root对应条目，保持其它条目；刷新后禁止用before备份覆盖轮换令牌。用户当前置顶会话切到GPT-6.1 Terra的要求随后被“等一下，先查上下文”暂停，未执行config.set／发送／模型切换。
+
+只读检查当前置顶`20261021_200341_2ce088`：切换前最近有效_usage_anchor为k3.1-pro输入67067／输出155，_usage_context=67222；Profile窗口512000（约13.1%）。stored model现为kimi-for-coding，与anchor不同，实际RPC显示context_invalidated=model_changed，不能把返回0当当前上下文。切换保护selection_context_for_agent直接读取compressor.last_prompt_tokens并在非正数时回退session_prompt_tokens；后者在turn_usage逐次累加，不是当前占用，确认存在误报路径。尚未取得弹框当时内存快照，不能断言390494的精确来源；未关闭保护、未做无授权部署。上下文只读收据context-before-switch.json仅服务器受限保存，无正文输出。
+
+## 2026-11-01 · 真实Chrome复查、聊天恢复优先及最终交付
+
+FE最终`129b9a2a11f82b0047aed616b8e454f0c0d6c727`已合main／origin/secretary并上线Web；439静态文件逐SHA、6HTTP资源verified。BE产品保持main `2e287d73b69ff11ccd694bc71f2d9aa400b8eef0`，零服务重启／数据库写／模型请求，Dashboard／配置／绑定和服务PID保持。本轮没有业务库备份或删库，两套历史完整三库保留状态不变。云端`/home/ubuntu/.local/state/hermes-secretary/release-20261028/static-20261101-conversation-complete/receipt.json`保存旧静态交换回退目录；回退仅按该收据交换旧静态并重新校验，不回退业务库。
+
+已修同commit反复布局ACK及整份缓存重写、局部显示源无谓复制、日期格式器重复构造、每次React提交强制几何布局。Composer仍按真实尺寸统一320ms动画，改由布局后ResizeObserver读取。真实Chrome原slash有85–129ms长任务／最高116ms帧间隔；修后两轮175帧无>50ms长任务、一次约32.4ms间隔。首次恢复显示仍约98–100ms本地长任务，不能把此样本当全流程无卡顿。
+
+按用户确认，侧栏缓存可立即点击／跨Profile导航；缓存不授予发送审批权限。列表、Usage／Context等附属项独立恢复，不阻塞聊天就绪，较重读取在共享最终cut之后才发起，关键pending／controls与最终cut并行；viewport supersede跟随共享替代cut。历史缓存写入签名只比较历史，避免统计抢先结束导致下次缓存缺失，capsule跟随实际显示ACK。New Chat不发无Conversation的controls恢复请求。未新增侧栏增量协议。
+
+实际Chrome200条增量窗口matched／complete，正文0条、thinking0条重传，无system_prompt；绑定约3.3KB＋最终cut22.1KB为逻辑JSON，约17.4KB是order／revision核验证明。侧栏Alex实测106891字节body／107191字节transfer未压缩，排在cut之后且其未完成时Send可用。同协议生产loopback全新连接permessage-deflate压缩收包：默认54479／54527字节，精简12049字节，约减少78%；只计绑定＋最终cut，不含TLS，不等同Chrome整轮抓包。旧同连接重复方案受压缩字典污染，已剔除；服务端只读最终cut仍232.23／233.03／245.87ms，不声称只剩网络瓶颈。断socket退避1.5–2.3秒沿原策略，未改。
+
+最终7文件232项、App专项4项、tsc／Vite及6产品TS健康比较通过。warm／active旧3个、Profile旧11个失败在未改5a02a9a基线复现，最终Profile仍相同11个，不冒称全套全绿。中途新增的NewChat无id恢复回归已修并补正式用例；历史写入与统计竞态修后113项及最终232项通过。生成dist/.DS_Store在打包前清理，未放宽严格验证，源五个既有文件保留。
+
+最终APK：`/Users/edgar/code/hermes-secretary-web/.archive/composer-motion-20261101/performance/Hermes-Secretary-0.1.10-conversation-recovery-arm64.apk`，0.1.10／1010、32135725字节，SHA256 `8b53d4f903916347bddc94819cbc2828457f81e30e1178017b90452fee133313`。原证书／v2／全ZIP CRC／16KB／arm64及439前端资源、交付副本通过；与Web438文件哈希完全一致，另一file-viewer/flyfish-viewer-assets.json仅copiedAt生成时间不同，内容资源一致。未安装真机，Android黑块及设备流畅度仍待复验。
+
+证据ignored `.hermes-dev/real-chrome-audit-20261101/`：complete-static收据／APK对照、compressed-fresh.jsonl、server-timing.json、observer-browser.json、priority-and-motion.json、health-complete.json及complete-browser-check.txt；前端performance/real-chrome-complete-*与APK verification。HAR含敏感信息，仅0600本地私存、不提交。真实Chrome只刷新用户授权的Edgar Profile目标页，另一页保持，未发送消息；最终加载index-5bzulIsK.js、恢复提示退出、输入可用、草稿空。临时基线worktree与自建空白页已移除；旧init句柄跨session失效，按CDP原注册ID清理后刷新确认probePresent=false，用户两页保留。
+
+## 2026-11-01 · 恢复传输瘦身、并行元数据读取及最终APK
+
+表现层`edb66eb`先单独发布后，BE `2e287d73b69ff11ccd694bc71f2d9aa400b8eef0`从main上线；FE `5a02a9a1d1a94fab8fdbc4dd29c0c183b9676613`合main／origin/secretary并发布439静态文件，6HTTP资源一致。profiles.list声明可选能力，新客户端才对resume／activate请求省system_prompt；默认调用仍完整，未改模型Prompt／缓存／历史。显式Profile元数据与身份核验并行，成功／404都须等待当前身份确认；最终可见数据和Socket对账边界保持。
+
+线上默认→精简→默认三轮完整窗口均complete／matched：resume JSON 47686→3379字节，activate 66388→22081字节，合计114074→25460，两个默认样本Prompt一致（未压缩JSON，不声称整个恢复耗时同比下降）。正式构建隐藏IAB进入当前会话，实际请求省Prompt且complete；再断开自建隧道后同页自动重连，239展示节点保留、document身份不变、提示退出／输入可用。未发送消息／模型请求。前端107＋112项及类型检查通过；后端投影、只读冷装载、Profile范围及句柄10项通过。review.summary目录孤项及旧Noting配置17个setup错误在0db380f93e基线同样复现；目标句柄测试的共享Event竞态已精确修正，关闭次数断言不变。源码ruff／health等5项通过，TS无新增健康超标。
+
+服务发布前空闲／三库备份，发布后Web／Gateway实际版本、业务数据库、配置／绑定、Dashboard与Secretary静态保护核验通过；旧备份清理9文件214966272字节，保留最近两套完整三库，运行库与当前同步包未动。云端`/home/ubuntu/.local/state/hermes-secretary/release-20261028/stage-20261101-transport/receipt.json`、`RECOVERY.txt`及`backup-retention.json`记录后端回退与保留；`static-20261101-transport/receipt.json`记录静态交换回退路径。本地证据`.hermes-dev/recovery-transport-20261101/`，前端performance/transport-*、full-final-*。
+
+最终APK：`/Users/edgar/code/hermes-secretary-web/.archive/composer-motion-20261101/performance/Hermes-Secretary-0.1.10-frame-recovery-arm64.apk`，0.1.10／1010、32134537字节，SHA256 `105bcd1df0499d19b717c840bd5b1b3b6979c6160d8452e922a6032c62db80d3`。原证书／v2签名／全ZIP CRC／16KB对齐／439前端资源与交付副本严格通过。首次TypeScript测试可选参数错误已修正并重新typecheck；自动校验遇旧Python缺file_digest，改用项目3.14运行原校验器，通过前仅移出生成dist/.DS_Store，不动源目录五个既有文件。未安装Android真机，动态设备验收仍待用户复验。
+
+## 2026-11-01 · Composer布局与内容动画跨线程错位修复
+
+FE `edb66eb40230df0158181580956993ef4fad2fca`已合main／origin/secretary并上线Web。外框height与内部transform由单一rAF共同写入，取消独立WAAPI时钟，避免主线程停顿时按钮／输入区先上窜。退出内容以inert／aria-hidden临时副本裁剪收起，完成或重新出现时清理；仍按自然高度统一触发，320ms及胶囊既定样式保持。相关17项／typecheck／健康检查通过；真实Composer A/B绘制复现旧版约155px上窜，完整App含200条历史和五条命令在主线程停顿下录制151帧，207几何采样未复现错位；移动并发伸缩底边误差<0.5px。只属Mac隐藏Chromium证据，尚无Android设备复验。
+
+主线干净工作区单独构建，仅含表现层，不含未提交传输改动。439静态文件、6HTTP资源verified；后端`1df27e5020`、服务PID、Dashboard／配置／绑定保持，零服务重启／数据库写。证据主仓`.hermes-dev/ui-motion-20261101/unified-frame-release/`及前端performance/unified-*、full-final-*；云端`static-20261101-unified-frame/receipt.json`保存旧静态交换回退路径。
+
+## 2026-11-01 · 恢复侧栏全局活动请求去重
+
+FE `bc3ba7058c25d0f8b4ed7a9baf76e15da97a6e1c`合本地main／origin/secretary并上线Web：活动状态由每Profile列表接收时各读一次改为列表批次后统一读，恢复owner原有严格读取及sessions.changed失效读取保持。正式构建通过保活SSH隧道读取真实服务，单次恢复全局activity由4→1，页面就绪约1109ms、成功无重试；只作实际接线证据，不以跨时段网络样本声称固定提速比例。三文件111项／typecheck通过，三TS相对af60634无新增健康问题；Android扩展54项中7失败在未修改af60634同样复现，保留原失败日志。
+
+439静态文件和6HTTP资源verified，后端`1df27e5020`、两服务PID／Dashboard／配置／绑定保持，零重启／数据库写。证据主仓`.hermes-dev/ui-motion-20261101/activity-release/`、前端`.archive/composer-motion-20261101/performance/activity-*`；云端`/home/ubuntu/.local/state/hermes-secretary/release-20261028/static-20261101-activity/receipt.json`含旧静态回退路径。未重打APK，当前af60634包只含动画修复；两套三库历史备份不变。隐藏页及测试进程已清理，未操作用户页面／设备。
+
+调查另发现恢复RPC的info.system_prompt约44288字节、当前客户端不读取；绑定和最终cut各传一次，52KB／65KB响应中占比明显（逻辑JSON，未测压缩后线上字节）。尚未改公共接口；后续须可选参数保持旧客户端默认语义，不把这项机会记为已经优化。生产构建其它正常样本1.1–2.8秒并含本地长任务；断隧道的失败样本明确排除，JSON await含传输时间，不当成纯解析CPU。此轮不能证明已经仅剩网络或达到传输下限。
+
+## 2026-11-01 · Composer统一动画性能回退修复
+
+FE `af606346128fc7e62e8a9b6a0853930a39b72a06`已合主线并发布Web，439静态文件／6个HTTP资源验证通过，零服务重启／数据库写，后端仍`1df27e5020`。逐帧继承CSS变量改为统一读取几何后使用原生height／transform／clipPath动画，保留320ms、反向承接、内部位置同步、减少动态效果及桌面420px上限。隐藏IAB同六次开合Style从154.95ms降至14.68ms，Layout17.12→14.15ms，Task339.7→148.43ms；这些是同浏览器样本，不是Android真机帧率承诺。移动端命令／文字／恢复26px开合及快速反向几何复验通过，5文件40项、typecheck与新增TS健康检查通过。
+
+新APK路径`/Users/edgar/code/hermes-secretary-web/.archive/composer-motion-20261101/performance/Hermes-Secretary-0.1.10-composer-perf-arm64.apk`：0.1.10／1010、32133441字节、SHA256 `e5e303b2552ffbf909c1c502d27cd0910ccc78578ab4c159151bf2b92d81a7ff`。原签名／v2／全ZIP CRC／16KB／439资源及交付副本严格验证通过；自动构建首次因生成dist/.DS_Store与资源集合不符被拒，只移出生成文件后验证通过，未放宽规则、未动源目录五个既有.DS_Store。未安装／控制真机，键盘黑块及最终流畅度仍待设备复验。
+
+证据：前端ignored `.archive/composer-motion-20261101/performance/`（baseline、native-properties、native-geometry、tests、APK验证），主仓`.hermes-dev/ui-motion-20261101/performance-release/receipt.json`；云端`/home/ubuntu/.local/state/hermes-secretary/release-20261028/static-20261101-composer-perf/receipt.json`含可交换旧静态路径。两套历史三库备份保持，无新增数据库备份。
+
+## 2026-11-01 · 桌面胶囊最大宽度420px
+
+用户明确将上限由480px改为420px。FE `e5a3722e0d90c2f1e42d05ec0a4d8ab8c9385870`合本地main／origin/secretary并更新Web，样式26.25rem（默认420px），其余留白／自适应／动画规则不变。生产构建及439文件／6个HTTP资源校验通过，零服务重启／数据库写，移动端及后端产品不变；仅标量CSS变化，复用前版响应式证据，未另称新一轮真机／UI验收。证据`.hermes-dev/ui-motion-20261101/width-420-release/`；云端`static-20261101-width420/receipt.json`保存验证和旧静态恢复路径。
+
+## 2026-11-01 · 桌面胶囊最大宽度与左侧留白
+
+用户要求桌面胶囊缩短并增大左侧空白，窄Composer自适应空间。FE `ce5a70d185ea95c5ae10bec77d2da822a0abee7b`合本地main／origin/secretary并发布：最大30rem（默认480px）、右侧原位置保留、左侧预留随可用空间32–64px变化，超出最大宽度后的空间留左；不随轮播文字改变，移动端及提示触发条件不变。实际组件隐藏IAB 1400／1100／900／780／380px覆盖、文字定宽及中心对齐通过，生产构建通过；439静态文件逐SHA和6个HTTP资源verified，Web／Gateway PID、Dashboard、配置及绑定保持，零重启／数据库写／模型请求。本次仅Web CSS微调，未重打APK。
+
+本地证据ignored `.hermes-dev/ui-motion-20261101/width-release/`；云端收据与旧静态交换路径见`/home/ubuntu/.local/state/hermes-secretary/release-20261028/static-20261101-ce5a70d/receipt.json`。后端产品仍`1df27e5020`，两套历史数据库备份不变。
+
+## 2026-11-01 · Composer统一动画、恢复提速与Web发布
+
+用户明确本轮合入前后端主线并上线Web。BE `1df27e502091caba64d59a1d12c97cd4dc6a7930`由main发布；FE `bb8596b87b47336c3beedba04729e7f2d832e5a6`快进本地main并推origin/secretary。北京时间10:53 Web静态发布verified，439文件逐SHA一致、6个HTTP资源通过；静态交换不重启服务、不改数据库／Dashboard。BE受限执行器完成空闲预检、三库备份、main快进及双服务实际版本／微信健康验证，配置／绑定及保护数据一致，无生产模型测试请求，未修改Prompt／工具表故不清Main缓存。
+
+前端统一实际高度／内部位置320ms插值、桌面剩余空间固定宽胶囊横向伸缩、移动端底部26px胶囊纵向伸缩；IME保持完整WebView表面并暂停背景动态绘制。服务端每轮只读快照内复用身份排序TEMP索引，summary不传完整工具快照，前端并行草稿／历史／绑定读取。线上两轮：历史107–112ms（原约290–320ms），恢复对账226–231ms（原约760ms），summary1537字节（原83104）；分项计时不等同端到端／设备帧率保证。普通Conversation切换仍显示恢复提示，未擅自改成静默。
+
+验证与证据：前端恢复137、表现43、原生11项通过；后端六文件最终有效174项通过，冻结9检查通过、no-tmp为未改历史报告基线。TS14文件无新增健康问题。隐藏IAB真实组件逐帧验证各种内容增减、反向、内部工具栏同步、提示开合、桌面文字变化不改宽、中心对齐和减少动态效果。初次静态包因缺secretary目录前缀被严格校验拒绝，未交换线上目录；重新按规定打包后r2成功，未放宽校验，失败收据保留。
+
+APK：独立前端 `.archive/composer-motion-20261101/Hermes-Secretary-0.1.10-composer-smooth-arm64.apk`，0.1.10／1010、arm64、32132825字节，SHA256 `263f938fa2afcc6e3da62e181b57ee9081534dddd9db146427f0cd0378a09569`。原证书／v2签名、全ZIP CRC、ZIP／ELF 16KB、439前端文件和交付副本校验通过，verification.json及sha256同目录；仅移出生成的dist/.DS_Store，原未跟踪源文件保留。未安装或控制设备，真实键盘收起黑块／流畅度需新包复验，旧D包不作本轮交付。
+
+保留当前stage-20261101-composer及前一stage-20261101-title-idle两套完整三库，逐库SHA／integrity／FK通过，清退更旧9文件共214966272字节；运行库与databases-current.zip保持。证据ignored `.hermes-dev/ui-motion-20261101/release/`及前端`.archive/composer-motion-20261101/`；云端恢复入口`/home/ubuntu/.local/state/hermes-secretary/release-20261028/stage-20261101-composer/RECOVERY.txt`，静态收据及可交换旧目录在同根`static-20261101-bb8596b-r2/receipt.json`。不自动回滚数据库。
+
+## 2026-11-01 · 空闲AI标题恢复修复
+
+用户截图`/ai-title`报完整native Main snapshot缺失，并确认当前生效上下文、完整前缀复用、Turn空闲允许重新生成；催促尽快合main。只读取证确认Alex置顶当时无活动Turn/压缩锁、root有效而tools snapshot缺失。产品`4bc3f2b4b802cdbeea0724d1c446a30ccbde349d`已推origin/main，于北京时间10:19从main发布verified，Web/Gateway实际SHA一致、微信connected，未变更前端/APK。已有完整Prelude及durable prefill原样复用；缺失、partial tools、cold/陈旧runtime沿既有Main factory/Prompt owner只读准备，不要求普通Turn，不改Main缓存或业务状态。当前tip/active历史/Prelude/完整父链在同一SQLite读事务捕获；后台压缩无活动Turn可读已生效版本，真实Turn及跨入口有效Turn lease仍拒绝。只读准备scope仅exact-fork临时生效，构造前side-agent隔离，禁Main登记、hook、credits、外部memory初始化、工具执行及DB写。
+
+本地10文件157项有效回归证据通过（标题37、Prompt恢复25、root/branch3及6文件92项）；初组合4个Prompt替身失败修复后定向25全过，未冒称初次全绿。冻结十检查9项通过，no-tmp仍为未改历史报告基线；9文件health零阻断/零提示。隔离DeepSeek v4-pro累计6次HTTP200：首Main确认及有效前缀标题后harness保存BLOB序列化失败，原件保留；修取证脚本后补4请求，三次正式标题RPC均指向最新珊瑚采样目标，包含summary/Notebook且不取旧浏览器片段。45张表逐次前后一致，父缓存/工具/prefill及全局Main/session绑定一致，cold后agent仍None，工具调用0；input64574/output57，凭据扫描0命中。models.dev探测被守卫阻断，无非DeepSeek出站，不用本机K3凭据或生产用户模型请求。有效cache原生请求root/tools/历史前缀复用；clear后root/历史相同、工具面按当前原生配置重建，不把显式清缓存前后不同工具面说成恒同。
+
+发布预检、三库备份SHA/integrity/FK、启动及Notebook/排期/状态只读RPC、6个HTTP资源通过；三库保护业务表、配置/绑定及静态集合保持。本次未改Main System Prompt/工具文案，保留现有缓存，不为标题补发普通Turn。保留当前及stage-20261101-prefix-brief两套完整三库，清退更旧9个库/附属文件共214966272字节，运行库及databases-current.zip不动。证据ignored `.hermes-dev/title-idle-20261101/`（evidence.json、final-review.json、live-rerun/checks.json及release回执）；云端恢复原件`/home/ubuntu/.local/state/hermes-secretary/release-20261028/stage-20261101-title-idle/RECOVERY.txt`，不自动回滚数据库。算法与APK原dirty未纳入。
+
+## 2026-11-01 · 平台切换能力通知精简与计数
+
+用户最终确定能力通知仅一句“能力可能变化，当前 N 个折叠工具，调用前重新 search/describe。”。首次及后续均不附详细目录；N只计当前scope可发现的折叠工具，排除direct和Main不可执行的Noting工具。平台身份本身不作通知条件，真实工具变化仍去重；目录读失败不编造数量，明确渠道策略变化仍保留必要指令／撤销，旧root与历史不改写。
+
+main产品`0b43af0910e9c54b983d3c90037621163bed98c6`于北京时间09:48正式发布verified，Web／Gateway实际版本一致、微信connected；既有RPC对Alex唯一置顶Conversation返回cleared，三缓存字段NULL，三库业务表及全部session非缓存字段／配置／绑定一致。Notebook／排期／状态只读RPC及6个HTTP资源通过；保留当前及stage-20261101-prefix两套完整三库，新旧库SHA／integrity／FK通过，清退更旧9文件共212004864字节，运行库与同步完成包不动。没有生产测试模型请求。
+
+相关40项回归及首次／新增折叠计数专项通过，四项定向检查通过，health零阻断／零提示。最终隔离DeepSeek v4-pro 10请求完成库存、新增日程、新schema及渠道策略验证，提醒计数1→2，无目录正文；全部相邻root/tools与旧消息语义前缀一致，冷建对象键序差异仍保留。模型一次先沿用旧参数被原生校验拒绝，再describe后纠正；此精简提醒是指引，执行校验未变，不宣称模型始终按每Turn search/describe操作。前两个过渡文案的模型样本保留，不混称最终文案证据。证据：ignored `.hermes-dev/prefix-brief-20261101/`及云端`/home/ubuntu/.local/state/hermes-secretary/release-20261028/stage-20261101-prefix-brief/`，恢复入口RECOVERY.txt；不自动回滚数据库。
+
 ## 2026-11-01 · 跨平台请求前缀修复上线与置顶缓存清理
 
 用户授权核查、补正、验收及上线，不采用完整自主实现流程；算法文档由另一会话独立提交，本轮未修改。产品`8969e32b796fc40af16357ac9450ba05a3479e14`已推origin/main，正式机main从`bf28ab565ae322965e3b8eb0797486e1d0cdbac7`快进至该版本；北京时间01:49发布verified，Web／Gateway实际code SHA一致、微信connected、活动Turn为0。依赖／锁、配置、绑定及两套前端静态保持，未发布APK或触发生产测试模型请求。
@@ -11,6 +199,18 @@
 请求内容证据为三组合成会话21／21相邻请求的root/tools与旧消息规范化前缀一致，数组顺序、内容和arguments字符串不变；部分冷建raw JSON对象键序不同，不冒称HTTP原字节完全相等。DeepSeek冷建缓存命中下降原因未证实，本轮不宣称Provider缓存命中率或费用提升已获证明。Anthropic缺少中途system角色，原位Framework Message不等同system优先级；原始历史Usage缺HTTP原件，仍不把13312指认为唯一故障位置。
 
 发布后只读Notebook／排期／状态RPC及6个HTTP入口资源通过。新三库备份及前一套`stage-20261031-evidence-recovery`逐库SHA／integrity／FK核验，保留这两套；清退更旧9个库／附属文件共212004864字节，运行库及`databases-current.zip`不动。证据在ignored `.hermes-dev/prefix-release-20261101/`：`release/readiness.json`、`release/receipt.json`、`release/pinned-cache-clear.json`、`release/postrelease-readonly.json`、`release/backup-retention.json`及`deepseek/final-review.json`；云端发布与恢复原件在`/home/ubuntu/.local/state/hermes-secretary/release-20261028/stage-20261101-prefix/`，回退按其中`RECOVERY.txt`，不自动回滚数据库。
+
+## 2026-10-31 · D方案与键盘弹飞修复APK（仅本地构建，待设备复验）
+
+用户最终选择四候选D：26px灰填充胶囊、无描边、12px左对齐文字。合入对真机视频所示整页弹飞的修复：API30+关闭系统额外窗口平移，APK固定根层，正文内部滚动保持。前端41项、原生10项、实际组件隐藏IAB开合／根滚动／双主题验证通过；不代表真实Android系统动画已复验。
+
+本地产物：独立前端 `.archive/composer-motion-20261031/revision3/Hermes-Secretary-0.1.10-composer-D-arm64.apk`，0.1.10／1010、arm64、32130749字节，SHA256 `7cbe8476b451c3cd6ed9f85982886448da366367087b9fffcfd7f2cc004897b1`。原证书／v2、CRC、ZIP／ELF 16KB、439前端文件及交付副本校验通过；同名verification.json／sha256保留。本轮dist/.DS_Store为唯一生成杂项，已移至证据目录，未动源文件或放宽校验。两仓修改未提交、未部署、未操作设备；此前v1／v2包只保留作历史记录，当前样式交付以此D包为准。
+
+## 2026-10-31 · Composer动画二次修订APK（仅本地构建，未部署／未安装）
+
+用户要求主会话亲自优化键盘卡顿、恢复框满宽留间距靠左、同步伸缩及无跳变闪动。本地产物位于独立前端 `.archive/composer-motion-20261031/revision2/Hermes-Secretary-0.1.10-composer-motion-v2-arm64.apk`：0.1.10／1010、arm64、32130505字节，SHA256 `040bfcb53bea4443ef26f56708cea3bb144b1247d9aa418586e38f4a3855a1f8`。原证书／v2签名、ZIP CRC、ZIP及ELF 16KB对齐、439前端文件和交付副本一致性通过，同名verification.json／sha256收据保留。仅移走构建生成的dist/.DS_Store以恢复严格资源集合相等，原未跟踪文件保持；未改变验证规则。
+
+源码未提交，云端服务及线上静态未变，不构成一次发布；不操作真实设备，浏览器受控逐帧验证与Robolectric不替代真机键盘帧率验收。前版 `composer-motion-arm64.apk` 保留，不再作为当前方案；当前证据与限制见根CLAUDE顶部和上述revision2目录。
 
 ## 2026-10-31 · Alex当前Main缓存显式清理（已完成）
 

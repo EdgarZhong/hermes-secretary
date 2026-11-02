@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 from pathlib import Path
 
 import pytest
@@ -57,6 +58,39 @@ def test_latest_default_and_arbitrary_deep_anchor_are_bounded(store, monkeypatch
     assert [row["content"] for row in deep["messages"]] == [f"answer-{i}" for i in range(28,33)]
     assert deep["coverage"]["window"]["predecessor"]["position"] == 27
     assert deep["coverage"]["window"]["successor"]["position"] == 33
+
+
+def test_identity_index_is_snapshot_local_and_does_not_write_read_only_store(store):
+    db, _, _ = store
+    append(db, 250)
+    with SessionDB(db_path=db.db_path, read_only=True) as reader:
+        before = read_view(reader, "recovery", "default", [selector()], history_sync=True)
+        with reader._read_ctx() as conn:
+            assert not conn.execute("SELECT name FROM sqlite_temp_master WHERE name LIKE 'recovery_order%'").fetchall()
+            with pytest.raises(sqlite3.OperationalError, match="readonly"):
+                conn.execute("DELETE FROM messages")
+        db.append_message("recovery", "assistant", "new snapshot")
+        after = read_view(reader, "recovery", "default", [selector()], history_sync=True)
+        assert before["windows"][0]["window"]["total"] == 250
+        assert after["windows"][0]["window"]["total"] == 251
+        assert after["windows"][0]["messages"][-1]["content"] == "new snapshot"
+        with reader._read_ctx() as conn:
+            assert not conn.execute("SELECT name FROM sqlite_temp_master WHERE name LIKE 'recovery_order%'").fetchall()
+
+
+def test_summary_omits_tool_snapshot_but_full_detail_keeps_it(store):
+    db, client, _ = store
+    from hermes_cli.web_routers.sessions import list_router
+    client.app.include_router(list_router)
+    tools = json.dumps([{"name": "large_tool", "description": "schema" * 20000}])
+    db._write_sql("UPDATE sessions SET tool_names=? WHERE id='recovery'", (tools,))
+    summary = client.get("/api/sessions/recovery?summary=true").json()
+    full = client.get("/api/sessions/recovery").json()
+    assert "tool_names" not in summary
+    assert full["tool_names"] == tools
+    assert summary["id"] == full["id"] == "recovery"
+    listing = client.get("/api/sessions?summary=true").json()["sessions"]
+    assert all("tool_names" not in row for row in listing)
 
 
 def test_legacy_call_stays_unchanged_and_conflicts_rejected(store):

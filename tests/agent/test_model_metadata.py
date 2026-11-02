@@ -610,44 +610,45 @@ class TestCodexOAuthContextLength:
             )
         assert ctx == 272_000
 
-    def test_non_272k_advertisement_is_trusted_verbatim(self):
-        """Any advertised value other than the known-stale 272,000 — higher or
-        lower — is a real server-side change and must NOT be overridden, even
-        for an explicit ``-900k`` opt-in variant."""
+    @pytest.mark.parametrize("base", ["gpt-5.6-sol", "gpt-6.1-sol"])
+    def test_non_272k_advertisement_without_catalog_max_is_trusted_verbatim(self, base):
+        """Without a published max, only the known-stale 272K value may be
+        overridden for an explicit ``-900k`` opt-in variant."""
         from agent.model_metadata import get_model_context_length
 
-        for advertised in (372_000, 200_000, 1_050_000):
-            fake_response = MagicMock()
-            fake_response.status_code = 200
-            fake_response.json.return_value = {
-                "models": [{"slug": "gpt-5.6-sol", "context_window": advertised}]
-            }
+        for advertised in (372_000, 500_000, 200_000, 1_050_000):
+            fake_response = MagicMock(status_code=200)
+            fake_response.json.return_value = {"models": [{"slug": base, "context_window": advertised}]}
             import agent.model_metadata as mm
             mm._codex_oauth_context_cache = {}
             with patch("agent.model_metadata.model_metadata_http.get", return_value=fake_response), \
                  patch("agent.model_metadata.get_cached_context_length", return_value=None), \
                  patch("agent.model_metadata.save_context_length"):
                 ctx = get_model_context_length(
-                    model="gpt-5.6-sol-900k",
+                    model=f"{base}-900k",
                     base_url="https://chatgpt.com/backend-api/codex",
                     api_key=_codex_jwt("fake-token"),
                     provider="openai-codex",
                 )
             assert ctx == advertised, f"advertised {advertised} must be trusted"
 
-    @pytest.mark.parametrize("base", ["gpt-5.6-luna", "gpt-6.1-sol"])
-    @pytest.mark.parametrize("catalog_max,expected", [(872_000, 872_000), (None, 900_000), (1_050_000, 900_000)])
-    def test_opted_in_variant_capped_at_live_catalog_max(self, base, catalog_max, expected):
+    @pytest.mark.parametrize("base", ["gpt-5.6-luna", "gpt-6-sol", "gpt-6.1-sol", "openai/gpt-6.1-sol"])
+    @pytest.mark.parametrize("advertised,catalog_max,expected", [
+        (272_000, 872_000, 872_000), (272_000, None, 900_000),
+        (272_000, 1_050_000, 900_000), (500_000, 872_000, 872_000),
+        (500_000, None, 500_000), (500_000, 400_000, 400_000),
+        (500_000, 600_000, 600_000), (500_000, 1_050_000, 900_000),
+    ])
+    def test_opted_in_variant_capped_at_live_catalog_max(self, base, advertised, catalog_max, expected):
         """An explicit ``-900k`` opt-in resolves to min(900K, catalog ``max_context_window``):
-        gpt-5.6 advertises 272K with an 872K max (#105443); a catalog without the field or one
-        above the live-verified cap keeps 900K. The 900K table entry is only the fallback."""
+        the published maximum remains usable when the default advertisement changes.
+        Without a maximum, only the legacy 272K advertisement gets the verified bump."""
         from agent.model_metadata import get_model_context_length
 
-        item = {"slug": base, "context_window": 272_000}
+        item = {"slug": base.rsplit("/", 1)[-1], "context_window": advertised}
         if catalog_max is not None:
             item["max_context_window"] = catalog_max
-        fake_response = MagicMock()
-        fake_response.status_code = 200
+        fake_response = MagicMock(status_code=200)
         fake_response.json.return_value = {"models": [item]}
         with patch("agent.model_metadata.model_metadata_http.get", return_value=fake_response), \
              patch("agent.model_metadata.get_cached_context_length", return_value=None), \
@@ -660,43 +661,42 @@ class TestCodexOAuthContextLength:
             )
         assert ctx == expected
 
-    def test_base_slug_keeps_advertised_ctx_even_with_catalog_max(self):
+    @pytest.mark.parametrize("base,advertised", [("gpt-5.6-sol", 272_000), ("gpt-6-sol", 272_000), ("gpt-6.1-sol", 500_000)])
+    def test_base_slug_keeps_advertised_ctx_even_with_catalog_max(self, base, advertised):
         """The catalogue max never leaks into the base slug: extended context is
         opt-in via the ``-900k`` alias only (#105443)."""
         from agent.model_metadata import get_model_context_length
 
-        fake_response = MagicMock()
-        fake_response.status_code = 200
-        fake_response.json.return_value = {
-            "models": [{"slug": "gpt-5.6-sol", "context_window": 272_000, "max_context_window": 872_000}]
-        }
+        fake_response = MagicMock(status_code=200)
+        fake_response.json.return_value = {"models": [{"slug": base, "context_window": advertised, "max_context_window": 872_000}]}
         with patch("agent.model_metadata.model_metadata_http.get", return_value=fake_response), \
              patch("agent.model_metadata.get_cached_context_length", return_value=None), \
              patch("agent.model_metadata.save_context_length"):
             ctx = get_model_context_length(
-                model="gpt-5.6-sol",
+                model=base,
                 base_url="https://chatgpt.com/backend-api/codex",
                 api_key=_codex_jwt("fake-token"),
                 provider="openai-codex",
             )
-        assert ctx == 272_000
+        assert ctx == advertised
 
-    def test_failed_refresh_past_ttl_keeps_the_observed_catalog_cap(self):
+    @pytest.mark.parametrize("base,advertised", [("gpt-5.6-luna", 272_000), ("gpt-6-sol", 272_000), ("gpt-6.1-sol", 500_000)])
+    def test_failed_refresh_past_ttl_keeps_the_observed_catalog_cap(self, base, advertised):
         """A refresh that fails after the context TTL must not lift a cap the same token and
         endpoint already published: no newer evidence, so the -900k alias stays at the old max."""
         import agent.model_metadata as mm
 
         ok = MagicMock(status_code=200)
-        ok.json.return_value = {"models": [{"slug": "GPT-5.6-Luna", "context_window": 272_000, "max_context_window": 600_000}]}
+        ok.json.return_value = {"models": [{"slug": base.upper(), "context_window": advertised, "max_context_window": 600_000}]}
         route = dict(base_url="https://chatgpt.com/backend-api/codex", api_key=_codex_jwt("fake-token"), provider="openai-codex")
         with patch.object(mm, "_codex_oauth_context_cache", {}), patch.object(mm, "_codex_oauth_max_context_cache", {}), \
              patch("agent.model_metadata.get_cached_context_length", return_value=None), \
              patch("agent.model_metadata.save_context_length"):
             with patch("agent.model_metadata.model_metadata_http.get", return_value=ok):
-                assert mm.get_model_context_length(model="gpt-5.6-luna-900k", **route) == 600_000
+                assert mm.get_model_context_length(model=f"{base}-900k", **route) == 600_000
             with patch("agent.model_metadata.model_metadata_http.get", side_effect=OSError("catalog down")), \
                  patch("agent.model_metadata.time.time", return_value=time.time() + mm._CODEX_OAUTH_CONTEXT_CACHE_TTL + 1):
-                assert mm.get_model_context_length(model="gpt-5.6-luna-900k", **route) == 600_000
+                assert mm.get_model_context_length(model=f"{base}-900k", **route) == 600_000
 
     def test_a_probe_that_finds_no_catalog_is_not_repeated_within_the_negative_ttl(self):
         """Every context resolution (init, /status, aux, @-reference turns) used to re-probe a dead or

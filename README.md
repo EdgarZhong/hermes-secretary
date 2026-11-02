@@ -34,7 +34,9 @@ Secretary只在Profile的`state.db`增加自有表，复用原生执行、存储
 
 已认证后端提供按Profile／Conversation清空root和工具缓存、按失败child重建旧上下文及Notebook工作态并继续原生Noting的调试RPC；清缓存只在下次正常Turn重建，恢复不要求额外持久快照。接口与调用方式见[07 §12](docs/07-scheduler-notebook-noting-compaction-redesign.md#12-conversation-调试接口用户确认2026-10-21)。
 
-启用Secretary的Main Conversation在同一上下文区间内固定root System Prompt、顶层工具声明与prefill，平台切换不改历史前缀；工具执行仍受当前入口权限约束。Tool Search／Describe／Call使用稳定能力说明，首次及变化后的能力目录／额外渠道指令以历史system消息提供，每Turn调用额外工具前重新search／describe当前schema。成功压缩、显式reload／清缓存及原生代码／模型路由重建沿既有边界；工具／Prompt发布后置顶会话的清缓存步骤见[部署SOP](docs/cloud-deployment-sop.md)。Chat Completions与Responses保留历史system；Anthropic不支持中途system角色，使用原位Framework Message承载，不能等同system优先级。
+启用Secretary的Main Conversation在同一上下文区间内固定root System Prompt、顶层工具声明与prefill，平台切换不改历史前缀；工具执行仍受当前入口权限约束。Tool Search／Describe／Call使用稳定能力说明，首次及后续工具变化以历史system消息追加一句折叠工具数量与重新发现提示，不附目录；额外渠道指令仅变化时发送必要的新指令，每Turn调用额外工具前重新search／describe当前schema。成功压缩、显式reload／清缓存及原生代码／模型路由重建沿既有边界；工具／Prompt发布后置顶会话的清缓存步骤见[部署SOP](docs/cloud-deployment-sop.md)。Chat Completions与通用Responses保留历史system；ChatGPT订阅Responses将中途system在原位置映射为developer指令，root仍由instructions独立承载，持久历史不变；Anthropic不支持中途system角色，使用原位Framework Message承载，不能等同system优先级。
+
+`/ai-title`依据当前Main生效上下文只读命名，复用完整提示词、工具和prefill前缀。Turn空闲即可重复请求；缓存缺失或冷运行态沿原生owner准备，不要求先发送普通Turn。后台压缩无活动Turn时读取原子生效版本；真正活动Turn仍提示稍后重试。标题任务不执行工具或改写Main上下文，取材及命名写回边界见[06标题命令](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md)。
 
 ## 仓库与目录
 
@@ -77,6 +79,8 @@ Gateway入口 `hermes gateway`；Dashboard入口 `hermes dashboard --host 127.0.
 检查规则、测试范围、证据复用和自动push统一见 [AGENTS](AGENTS.md)。GitHub Actions保持关闭。完整Python套件仍用 `scripts/run_tests.sh`，仅在集成收敛后按规则安排。
 
 ### Android APK
+
+键盘开合由Android Insets提供边界与系统曲线，网页以合成位移衔接Composer和实际正文位置，支持的页面保持完整WebView表面，仅在边界调整网页可用高度；Android 11+关闭系统额外缩窗／平移，APK根层固定且不参与滚动，正文仍可独立滚动。键盘开合期间保持背景画布尺寸并暂停背景绘制，结束后续播。Composer统一按实际内容尺寸进行320ms高度及内部位置过渡。连接／恢复提示采用中性灰胶囊，移动端顶满内宽并留左右间距；桌面位于工具栏主按钮左侧，按父容器剩余空间定宽且最大420px、扩大左侧留白、与左侧选项中心对齐，横向展开折叠，12px文字靠左、展开高度26px，暗色采用灰色填充且无描边；提示自身从固定底边伸缩，Composer同步移动，同阶段最多展示三个恢复对象，保留轮播和省略号，恢复操作资格不等待动画结束。
 
 独立前端的`src-tauri/`提供Tauri 2 Android壳，固定竖屏、内置网页，经正式HTTPS／Authelia连接同一API／WS。系统栏、通知和临时后台保护仅在APK生效；后台保护限已观察到的活动Turn，不保证系统挂起后仍通知。返回前台和网络恢复沿同一SPA自动重连并对账历史／Socket／Turn，不自动整页重载；冷启临时引导网络失败由内置SPA承接自动重试。顶栏支持用户主动下拉刷新，认证导航及自然进程冷启动保留；具体边界按[06 Android契约](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md#android-原生通知与临时后台保护用户最终确认2026-10-21)处理，保留登录、草稿和会话。
 

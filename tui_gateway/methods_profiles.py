@@ -299,7 +299,7 @@ def _(rid, params: dict) -> dict:
     # session, so clients must not append it to SOUL.md. install_id (same value as /api/status)
     # lets a multi-connection client prove WHICH machine answered a routed list.
     from hermes_cli.install_identity import get_install_id
-    return _ok(rid, {"profiles": out, "bot_mode_protocol": True, "install_id": _try(lambda: get_install_id() or "", "")})
+    return _ok(rid, {"profiles": out, "bot_mode_protocol": True, "session_info_projection_version": 1, "install_id": _try(lambda: get_install_id() or "", "")})
 
 
 @method("profiles.create")

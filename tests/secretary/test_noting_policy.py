@@ -1,7 +1,7 @@
 """Pure trigger policy: the two-layer gate, Idle due, and the exact Force boundaries (02 §4.2–4.11).
 
-A23 fixes K = 1,000 tokens, so 64K/66K/128K are exactly 64,000 / 66,000 / 128,000. The
-capability comparisons are strict, 128K is never a clamp, and the 1.20 multiplier is applied in
+A23 fixes K = 1,000 tokens, so 64K/66K are exactly 64,000 / 66,000. The threshold floor
+comparison is strict, reserve has no fixed ceiling, and the 1.20 multiplier is applied in
 integer tenths so no rounding lands on a stated boundary.
 """
 
@@ -10,7 +10,6 @@ from types import SimpleNamespace
 import pytest
 
 from secretary.noting_policy import (
-    CAPABILITY_RESERVE_ABOVE_128K,
     CAPABILITY_THRESHOLD_BELOW_64K,
     ContextMeasurement,
     NotingSettings,
@@ -128,17 +127,17 @@ def test_trigger_boundary_66k_is_inclusive_and_reserve_floor_holds():
     assert scaled.force_noting_threshold == 228_000.0
 
 
-def test_reserve_ceiling_is_strict_and_never_clamps():
+def test_reserve_crosses_former_128k_ceiling_without_clamping_or_disabling():
     below = force_thresholds(300_000, 193_334)   # 106,666 * 1.20 = 127,999.2
     above = force_thresholds(300_000, 193_333)   # 106,667 * 1.20 = 128,000.4
 
     assert (below.force_noting_reserve, below.capability_failure) == (127_999.2, None)
     assert above.force_noting_reserve == 128_000.4
     assert above.force_noting_reserve_tenths == 1_280_004  # not clamped to 128K
-    assert above.capability_failure == CAPABILITY_RESERVE_ABOVE_128K
+    assert above.usable
 
 
-def test_exactly_two_capability_failures_with_exact_equality_passing():
+def test_only_threshold_floor_controls_capability_with_exact_equality_passing():
     assert force_capability_failure(
         force_noting_reserve_tenths=1_280_000, force_noting_threshold_tenths=640_000) is None
     assert force_capability_failure(
@@ -146,10 +145,24 @@ def test_exactly_two_capability_failures_with_exact_equality_passing():
         force_noting_threshold_tenths=639_999) == CAPABILITY_THRESHOLD_BELOW_64K
     assert force_capability_failure(
         force_noting_reserve_tenths=1_280_001,
-        force_noting_threshold_tenths=640_000) == CAPABILITY_RESERVE_ABOVE_128K
+        force_noting_threshold_tenths=640_000) is None
     assert force_capability_failure(
         force_noting_reserve_tenths=1_280_001,
         force_noting_threshold_tenths=639_999) == CAPABILITY_THRESHOLD_BELOW_64K
+
+
+@pytest.mark.parametrize("window,hermes,reserve,threshold", [
+    (500_000, 300_000, 240_000, 260_000),
+    (872_000, 654_000, 261_600, 610_400),
+    (872_000, 523_200, 418_560, 453_440),
+])
+def test_large_windows_keep_scaled_reserve_and_exact_force_trigger(window, hermes, reserve, threshold):
+    pair = force_thresholds(window, hermes)
+    assert pair.usable and pair.invariant_holds
+    assert pair.force_noting_reserve == reserve
+    assert pair.force_noting_threshold == threshold
+    assert not pair.measured_usage_triggers(threshold - 1)
+    assert pair.measured_usage_triggers(threshold)
 
 
 def test_threshold_stays_earlier_than_hermes_compaction_and_rejects_bad_inputs():

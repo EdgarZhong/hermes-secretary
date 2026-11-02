@@ -306,8 +306,10 @@ def native_source_message(message):
     """Observer-only identity/address, with no transcript or provider payload bytes."""
     from agent.context_compressor import _DB_PERSISTED_MARKER
     from agent.message_metadata import message_uid_or_none
+    from agent.history_commentary import _commentary_items
     result = {"message_uid": message_uid_or_none(message), "role": message.get("role", "unknown"),
-              "has_content": bool(message.get("content")),
+              "has_content": bool(message.get("content") or (
+                  message.get("role") == "assistant" and _commentary_items(message))),
               "has_reasoning": bool(message.get("reasoning") or message.get("reasoning_content"))}
     row_id = message.get("_row_id")
     if message.get(_DB_PERSISTED_MARKER) and type(row_id) is int and row_id > 0:

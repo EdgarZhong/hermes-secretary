@@ -1,5 +1,11 @@
 # Hermes Secretary 当前状态
 
+## 2026-11-02 · 自适应维护上线准备（进行中）
+
+用户已授权本轮上线，先整理前后端仓库确认其它bug补丁进入main；随后明确恢复Alex Heartbeat并交算法选择两档，替代今天早些时候暂停的状态。Kimi参数保热1740秒／业务10800秒；正式只读核实默认仍k3.1-pro，但置顶当前为openai-codex／gpt-6.1-sol-900k，实际Heartbeat仍paused／10800秒，未擅自恢复或套用Kimi价格/TTL。用户后继要求先设计模型配置与可选历史继承：与选择器Provider/模型项1∶1，长窗口独立选项不折叠，同项窗口修改继承原生有效值，不做阶梯计价；继续按Conversation自适应，迁移可显式继承历史。已写算法稿顶部，字段/导入动作等为方案建议，尚未实现或启用；不切用户模型。
+
+后端main c73b94ae2b、前端main dc40990（origin/secretary）与远端相同，最新Stop、Noting资格、GPT正文与跨进程恢复补丁已在主干。自适应分支两个产品提交56e25045／4c7f2dbd尚未合主干；参数文档d37b8e3已提交并push。主会话在既有adaptive worktree合入最新main，亲审接线并定向回归后再合主线/部署；branch_patch_audit已交四旧分支复核：后端旧固定平台/关闭提示被后继机制替代，前端Clarify与视觉已整包吸收；主会话已核报告/整合点，无需重合旧方案。合并后14文件142项自适应/Noting与3文件36项原生接线回归通过；冻结十检查九通过，唯一no-tmp仍为同blob旧历史报告，96文件health 0阻断/0提示。前端常用目录已回main且与origin/secretary相同，原web-toast工作树只转同提交detached并保留。Huawei资料、Finder文件及旧视觉证据保留。当前未部署、未改生产配置，保留原生Idle关闭避免500秒回退。新发布结果只记operations-log。
+
 ## 2026-11-01 · Alex／k3.1上线前Heartbeat参数已选择
 
 用户要求针对Alex置顶Conversation与默认k3.1定两档周期：保热1740秒（29分钟）；用户随后根据“大部分时间无所事事”的实际反馈，明确业务档由初步建议7200秒改为10800秒（3小时），Instant Reminder独立唤醒保持；费用模型TTL初始估计1800秒，不当保证。已只读核对正式唯一置顶/default均为kimi-coding／k3.1-pro，当前Heartbeat active／7200秒。依据、29/30分钟边界、频率代价、业务有效性证据不足与上线观察写入[算法稿顶部](docs/adaptive-noting-threshold-proposal.md)。本轮仅文档定参，未改生产或启用算法；独立分支保留，原main并行工作不动。原“两个周期待选择”已由此收敛；完整维护费用/时长先验和原生Idle安全回退仍待上线配置，不扩大为所有参数已齐。
@@ -47,6 +53,141 @@
 **交付判定与后续：** 已完成本轮初版实现、机制验证、算法效果模拟与本机资源测量；结论是可运行而优越性未证实，保持默认关闭。真实Provider周期选择、真实全维护费用/时长归账、语义质量、目标机测量、Compaction流式UI、算法效果下一版均为明确后续，不用未验内容推荐启用。已有Heartbeat定义缺失/手动暂停/清除时保留用户控制，不自动创建后台任务；业务∞是已有定义的无周期模式。局部Notebook/Idle关闭不禁止独立HB模式，总Noting关闭回原生。未触碰原main并行修改，未合main、未部署、未调用模型或生产会话。
 
 旧“仅讨论/未授权实现”是上一轮冻结状态，已被本次明确分支实施授权替代；已确认语义保持，参数未定不等于可对生产调参。Compaction流式UI完整交付仍另行处理，本轮只覆盖算法依赖的既有取消/受阻事件。
+
+## 2026-11-02 · Stop恢复卡死及两项已登记缺陷（已修复上线）
+
+用户明确要求立即修复：后端是运行状态权威，正常Stop／Steer不得因辅助通知残留让前端无限Retrying；同时授权修复此前登记的128K资格上限及Assistant正文转Thinking两项，替代此前暂不修口径。基线0536a8fd2d，分支codex/stop-and-noting-fixes-20261102；保护原文档dirty及Huawei资料。Stop现场：14:09:50主Turn已interrupted，无lease，浏览器connection=connected但Send禁用／Running陈旧；停止快照含steer.consumed，完成来源／终态／输出均已证明，辅助事件被停止恢复清单拒绝。离线只去该事件立即通过，不改线上原物料。主会话负责Stop修复、集成与正式验证；noting_cap负责资格上限，assistant_thinking负责Provider类型及Web投影，recovery_error_ui负责恢复失败提示；各分区独立修改后交回review，不在线上跑构建。用户确认续跑正常，不将其当缺陷；本轮不在线上编译或发送测试消息。
+
+当前验证：Stop原生结算72项、新增错误输入身份3项、恢复／在途输出／手动压缩129项通过；线上封存原快照旧代码runtime_unavailable、新候选完整返回空残留事件。Noting policy／runtime／冷暖配置61项通过。十项冻结检查九项通过，no-tmp仍命中原HEAD已存在的历史validation.md字面路径；不改历史报告或检查规则。正文类型BE181项／FE174项、错误提示组件及owner56项／App定向3项通过，typecheck通过；新增范围检查通过。旧基线另有BE两条压缩trigger夹具及FE41项既有集成失败与一条Steer快照失败，均在原提交复现，未篡改。实现已review接收，BE ed9d564cc1／FE dc40990已合正式主干并上线。14:36:50+08后端verified，静态439文件及6HTTP资源verified；同一会话恢复三轮complete=true、running=false。用户原Chrome页面timeOrigin保持1793600240975.4，Retrying消失、Send可用、9字符草稿保持；未刷新／发送消息。前端新增显示／错误详情由新页面加载，原已打开页面继续旧JS但后端恢复已生效。两套完整三库已核验保留并清退更旧9文件；运维／回退见operations-log顶部。旧APK内置前端未重打，不冒称真机或真实模型验收。证据ignored `.hermes-dev/stop-fixes-20261102/`。
+
+## 2026-11-02 · 用户要求立即停止delegate并重启整个Hermes（已执行）
+
+用户明确要求立即停止线上delegate，必要时重启整个Hermes；14:06:35+08已停止并重启系统级Web与用户级Gateway，旧Web2474096／Gateway2474098替换为2812343／2812344，两服务active／running。此前未实际执行delegate取消接口；本次通过整套服务重启中断运行任务，不冒称单独原生取消已成功。旧PID已退出，日志确认subagent Interrupted during API call；新Web监听53446、HTTP200，可用内存回升1763MiB。未改产品、模型、配置或历史，运维结果见operations-log顶部。
+
+## 2026-11-02 · 运行中 slash fork 后持续恢复连接（已自动恢复，根因未全闭）
+
+用户报告运行中执行slash fork后持续恢复连接。本轮仅只读取证，未重启／中断Turn／改产品代码。13:56–13:59正式机Web／Gateway仍存活；3.6GiB内存可用约120–130MiB、负载约15–20、memory full压力近一分钟约33–40%；13:54起事件循环多次停顿5–10秒，数据库写锁等待20秒及WS发送失败。独立首页约0.8秒返回，但活动会话RPC超时。最近数据库记录仅13:52父Turn派出的两子任务，未见该slash fork新分叉；不能据此判定fork根因。原始日志封存在Alex受限`~/.local/state/hermes-secretary/fork-reconnect-20261102/`。已询问用户保留任务继续排查或允许中断并重启Web，未答不操作；运维事实见operations-log顶部。
+
+用户随后报告自动恢复。复核双服务PID／启动时间保持、NRestarts=0；原主Turn13:59:32正常complete，14:00:48已受理新消息。14:01负载4.56、memory full avg60降至11.90%，活动会话RPC约8秒可返回。两个子任务仍在继续，不将恢复归因为全部任务结束；锁owner确为Web2474096，未定位具体线程。最近两子会话均_delegate_from且无_branched_from；未证slash fork成功。现场符合资源拥塞缓解后自动恢复，fork因果／具体锁调用仍未全闭；不再等待重启选择，不执行重启。恢复后日志、状态及SHA清单已补同一受限目录。
+
+## 2026-11-02 · 本轮收尾（已完成）
+
+- **Heartbeat：已暂停。** 用户先要求3小时、随后要求关闭；Alex置顶Conversation已原生pause并重读paused，保留10800秒定义，不自动恢复。
+- **Noting：已正常提交并接入Framework，用户已确认可见。** 单次补跑以旧区间14138至Anchor15245的580条消息、原root及完整30工具派生，新摘要15246排除；原生32请求后finish_noting，Snapshot `snap_8966e252a31043d6b16cd506ba331006`已生效，Framework UID `f0c2efee02794d88bbdc49d9c4f0771e`已在新区间追加。用户接受有效截断落盘，但本次实际为正常完成；不再重跑。
+- **延迟：已查明并登记。** 06:14:09.477 finish工具回执→06:14:10.043 Snapshot提交约0.57秒；Framework至06:14:55.628确认成功，额外约45.6秒发生在本次补跑父对象首次被发布器拒绝及后续补接，不是Snapshot事务分钟级等待。未据此判定正常产品链路有同样延迟，详operations-log。
+- **APK：已完成同版本重打与交付副本核验。** `/Users/edgar/Downloads/Hermes-Secretary-0.1.10-webdist-95ce4df-arm64.apk`，0.1.10／1010、32136045字节，SHA256 `106ffbac6c4b89840b56ffa2e859d9e8edb1dbe30ddcb87bf0893c797a4ae102`；沿用原签名，包内439文件及439行list与当前线上95ce4dffe9 WebDist精确一致，v2／CRC／16KB／交付副本通过。无产品代码修复或部署；未做真机安装验收。
+
+## 两项已登记问题（已获本轮修复授权）
+
+| 问题 | 现状与入口 |
+|---|---|
+| 大窗口128K资格上限设计缺陷 | 已移除固定128K上限并上线，61项回归通过；正式安装模块872K资格可用，见07顶部。 |
+| GPT Assistant正文转入Thinking | 已修复commentary类型、source facet及新旧历史投影并上线；截图和56条原始消息字段受限封存，不抄个人登录信息进Git；见06顶部。 |
+
+详细运维、延迟时间线及APK证据统一见[operations-log](docs/operations-log.md)。本轮不动既有未跟踪Huawei资料及前端五个.DS_Store，不做额外修复；同版本新APK交付已就绪，该次APK／Noting补跑已结束；后续Stop及两项缺陷修复以上方当前任务为准。
+
+## 2026-11-02 · 网页／微信并发后恢复卡住（已修复上线）
+
+用户反馈并发发送后持续Retrying，要求先记录并封存原始物料、最小成本恢复Alex；随后明确根因清晰即可修复并上线。主会话独立处理，不代发消息、不切模型、不改历史。故障BE a36eb645b2／FE95ce4dffe9：REST持续200且健康，网页runtime29a4a8a1空闲、Web及微信活动均0、无Turn lease；独立WS最终恢复稳定runtime_unavailable。旧快照唯一未结算事件reasoning.available，完成receipt三条来源身份匹配且all_rows_committed=true，但prefix_unchanged=false／complete=false。真实租约争用回归定位：等待外部进程后原生重载历史，网页回执仍比较等待前基线；预写当前用户行又会被重载为旧历史、在角色修复时合并。修复仅在重载模型投影前按精确已受理UID排除此行，并在既有原生用户落库观察接缝冻结本轮回执历史；原文／模型Prompt／恢复与前缀／压缩校验不放宽。
+
+19份原始binding／activate／REST窗口、数据库read_view／session row、Web及Gateway活动状态、两小时双服务与Caddy日志、Alex／控制根agent日志及相关源码已封存到正式机受限`~/.local/state/hermes-secretary/reconnect-20261102/`（0700／0600、SHA清单），原始截图及修复日志另补充，初始19文件逐SHA保持。本地证据ignored `.hermes-dev/reconnect-20261102/`。02:10:07+08先仅重启Web临时恢复，Gateway保持，同一会话三轮complete=true／matched_windows=1。最终产品`6c1d248692`已合main／push，于02:21:03+08从main发布verified；Web2474096／Gateway2474098均实际同版本、微信connected，三库保护表／配置／绑定／双静态保持。上线后同一会话三轮complete=true／matched_windows=1，cut293–305ms，零生产模型／消息测试。两套有效三库保留、清退更旧9文件；原始故障证据不属备份清退。初版失败及整改原证据保留；最终原生结算70／租约18／投影4共92项通过，恢复63／发送31／回调及压缩等97项有效证据保留；Linux同锁官方PM环境5项通过。原11523复现原生租约夹具1项、Instant来源4项旧失败，以及同一历史报告no-tmp失败，不篡改断言／历史或规则。十检查九项通过、7文件health0／0。不冒称全仓／用户现有浏览器UI已验，未重建前端／APK；本轮实现、取证与发布已完成。正式运维／回退入口见operations-log顶部。
+
+## 2026-11-02 · 6.1 Sol大窗口与切换确认修复（Web已上线）
+
+用户改定范围：不修改6 Sol配置，只修复6.1 Sol的900K选项，按账号目录500000默认／872000最大解析至872000；保留标准速度、不改变当前模型。随后要求立即修复置顶会话选择gpt-6-sol-900k时LARGE CONTEXT确认变成Error的问题。线上只读证实当时当前模型仍k3.1-pro，是真实跨模型切换，不冒称累计tokens误报。根因是Web把confirm_required直接抛Error，现复用Modal展示确认／取消，仅用户点击Switch model才带原生确认参数提交原owner；导航、取消、迟到响应、重复点击与4001 runtime恢复保持。
+
+sol_context_variant与model_confirm_web（均6.1-sol/high、不再派生）分区实现，主会话亲审并集成。后端a36eb645b2、前端95ce4dffe9已推正式主干并上线Web；148项后端、20项前端定向回归、typecheck／生产构建通过，ruff／health通过，3个TS产品文件按冻结度量无新增问题。主会话自建隐藏IAB实际ModelSelector已验确认／取消及原owner提交，业务RPC受控替身；非生产真实切换验收。上线后原生Alex作用域只读核实6.1 base500K／900k872K、6 base272K／900k872K；配置SHA保持，service_tier空（标准），零模型生成／会话切换。双服务正常、439静态／6HTTP资源verified，两套完整三库保留、清退更旧9文件。运维与回退统一见[运维记录顶部](docs/operations-log.md)，证据.hermes-dev/sol-900k-20261102/及前端.archive/model-switch-confirm-20261102/。未重打APK，旧APK内置前端未获本次修复；用户可先用已更新Web。保留原未跟踪资料／.DS_Store，不关闭阈值、不替用户确认或切模型。
+
+## 2026-11-02 · Alex两个Sol配置872K（历史讨论，已由上节替代）
+
+用户原已明确确认将Alex中GPT-6 Sol与GPT-6.1 Sol都调整到最大可用872000上下文，保留标准速度，不改变当前模型；后续明确“等一下”，要求先确认菜单现有900K选项能否直接使用。配置修改已暂停，尚未写入任何线上配置／切换会话／调用模型，仅本地文档登记及只读调查。线上main04323f90的原生resolver核对：-900k是Hermes菜单别名，出站移除后缀；仅目录context_window恰为272000时扩到min(900000,max_context_window)。按已取得的账号目录，6 Sol-900k可解析872000；6.1 Sol-900k因目录已是500000而不触发扩窗，仍500000。该别名不设置Fast／service_tier。未获用户恢复前不继续原配置变更；不得将这次代码读取冒称已完成运行态切换／真实长输入验收。
+
+## 2026-11-02 · GPT订阅Sol上下文核查（历史调查）
+
+用户要求核查GPT-6 Sol／GPT-6.1 Sol经ChatGPT订阅在Hermes中是否支持百万上下文，并条件授权：仅在支持且不存在长上下文额外额度倍率时，将线上Alex的两个Sol型号调整为1M。此授权不是无条件扩窗、切换当前会话或修改Profile默认模型。
+
+通过`ssh alex`仅使用现有共享access token只读请求官方账号模型目录，HTTP200：gpt-6-sol的context_window=272000、max_context_window=872000；gpt-6.1-sol的context_window=500000、max_context_window=872000。官方模型页两者均标1050000总窗口，但不能等同订阅路由可配置1M输入。Hermes已有-900k别名且受目录max_context_window约束；旧实测注释不代替当前账号证据。当前不足以满足用户全部条件，未改云端配置／默认模型／会话／授权，未刷新token、重启服务或发模型生成。Alex默认仍kimi-coding／k3.1-pro／512000，study默认仍openai-codex／gpt-6-sol。若改为872K，需先收敛这一替代范围。
+
+用户进一步明确6.1 Sol速度不及6 Sol，要求继续核查6 Sol无倍率依据；没有确认只改6.1或接受872K。后续查到[官方企业token费率文档的Long-context pricing in Codex](https://help.openai.com/en/articles/20001415-chatgpt-rate-card-enterprise-token-based-pricing)：使用ChatGPT登录Codex时，任何Codex模型（any Codex model）均不适用长上下文倍率，包括超过272K输入的请求；下一句专门确认Enterprise此路径没有272K计价阈值。按首句通用表述涵盖6 Sol，纠正此前仅找到6.1专门保证的不完整结论。证据范围须如实保留：该页面整体面向Enterprise；[个人订阅定价](https://learn.chatgpt.com/docs/pricing)及[Work／Codex帮助](https://help.openai.com/en/articles/20001275-chatgpt-work-and-codex)仍只单独点名6.1 Sol的included allowance无长上下文附加倍率，不能冒称取得6 Sol个人订阅专属条款或真实额度对照实测。不把API阶梯价格套用于订阅；更多token本身仍耗额度，Fast／Ultrafast另有独立倍率。
+
+## 2026-11-01 · Codex回复重复与完成通知误恢复（修复中）
+
+用户要求立即修复发送后前端恢复及回复重复；主会话独立实施，不派sub。基线BE94852bb／线上17bba65、FE129b9a2。真实运行态355事件确认只调用模型一次、数据库仅一条成功回复，但Codex流式候选UID与持久回复UID不同；run_codex_stream两个成功返回分支遗漏既有accept_response接线。另普通session.info无条件启动整轮恢复，须保留真实配置／历史失效及断线恢复，正常完成沿既有历史重读。范围：补完整stream→normalize→builder→SQLite身份回归和前端完成／配置恢复回归，定向检查后合主线上线；不改默认模型、不重放用户消息、不删历史。原始事件仅留服务器0600受限证据gpt-output-recovery-20261101，不进Git。
+
+## 2026-11-01 · GPT订阅历史指令角色兼容修复（已合main并上线）
+
+用户明确要求修复；主会话亲自实施，不派sub。限定ChatGPT订阅出站角色：root仍instructions，中途system保原文／位置映射developer，不改持久历史／默认模型，不重放失败用户消息，不全量merge上游。统一主请求、auxiliary与native replay转换，预检接受developer，其它Responses路由保持system。主／aux／native replay已接统一转换，预检允许developer；root／旧消息前缀／工具配对和通用Responses不变。4文件291项、ruff／health通过，零健康问题。产品17bba65499已push并从main上线，双服务实际版本一致、微信connected；三库保护数据／配置含授权／绑定／双静态保持。隔离候选运行态仅1次真实gpt-6.1-terra／High请求completed，按中途developer更新输出CODEX_ROLE_OK，76输入＋8输出tokens、零重试／工具执行／用户会话写；主／aux构造输入及root完全相同。目标真实历史只读转换34条，1system→1developer、10工具调用配对、原历史不变，未发送这些历史。未改Prompt正文或工具pin，无需清上下文缓存，未重放用户失败消息；候选worktree已清理，两套完整三库备份按规则保留，详见运维记录。
+
+## 2026-11-01 · GPT-6.1 Terra调用失败调查（历史调查，后续修复见上节）
+
+用户反馈模型调用失败并要求检查原因。用户已自行将Alex置顶20261021_200341_2ce088切为openai-codex／gpt-6.1-terra／codex_responses／High；因此此前“暂停切换”仅为当时Agent未代执行，不再代表会话当前模型。22:55:24实际请求HTTP400 detail=System messages are not allowed，非目录缓存／上下文阈值问题，未自动重试生成。只读原生转换当前32条history，发现1条中途system，序列化后仍为system（位置3）；root instructions独立。现行adapter和runtime_system_transport测试同时保留并断言Codex backend历史system，缺少真实订阅端兼容证据。调查没有改源码、历史、Prompt或默认配置；后续须在实际订阅出站层保持文本／位置／root前缀，使用端点接受的指令角色，并覆盖main／aux／预检、其它Responses路由不变；调查当时尚未实施或宣称生成成功；后续修复及真实验证见上节。服务器受限证据gpt-call-failure-20261101。 用户随后要求判断是否同步上游；已只读fetch upstream/main到c627ec84664d43e0b18b95d9d86d8963747d56c7，未merge／部署。blame确认发送中途system及相应预检／测试均由本地8969e32引入；最新上游仍仅接收user／assistant并跳过system，未提供保留这些历史指令且兼容订阅端的直接补丁。相关上游0ae220ff4e／a4a992645b／5af8fda75f为跨Provider端点抽象／Responses接线重构，68e4c2b31a为UA构造，不能当本错误现成修复。结论：先修本地订阅承载并补真实订阅证据，上游兼容按依赖另审；不能靠整批merge修本地回归，也不能恢复静默丢系统更新。
+
+## 2026-11-01 · 连续模型切换误报修复（已合main并上线）
+
+用户澄清连续切换两次：第一次令旧模型展示计数失效是正常行为，不能因此拿累计输入量新增异常切换门禁；明确要求修复。范围仅统一selection_context_for_agent移除session_prompt_tokens回退，无有效当前计数则不触发context-cache确认，保留有效大上下文及其它既有guard；不改默认模型、不发生成、不自动执行暂停的会话切换。主会话独立实施。改前正式_apply_model_switch连续切换回归精确复现390494错误警告（连同未知计数共4项失败）；仅移除累计回退后6文件31项通过，历史与默认配置保持，有效大计数仍需确认。ruff／health检查通过，产品5485324150已push并从main发布；Web／Gateway实际版本一致、微信connected。云端只读复核0／−1／None计数均不弹确认，真实390494仍弹；保护数据、配置／授权、双静态逐指纹保持，零生成请求／会话切换。原置顶切换仍按用户暂停状态未执行，回退与两套三库备份入口见运维记录。
+
+## 2026-11-01 · Alex共享GPT授权（已完成；置顶会话切换按用户要求暂停）
+
+用户明确确认复用study既有ChatGPT订阅授权，并允许迁入Hermes原生公共凭据库，接受default Profile也获得GPT能力；Alex默认Kimi及study默认GPT保持。主会话独立实施，服务器内原生锁／writer迁移单一openai-codex授权，避免复制旋转refresh token；不迁移其它凭据，不发模型消息，不重启服务。 已通过原生锁／writer将study的openai-codex单一授权迁入控制根auth.json并移除study重复条目，0600受限；三Profile原生作用域均读取同一源，Alex仍k3.1-pro、study仍gpt-6-sol，其余凭据保持。原生刷新及账号实时目录确认gpt-6.1-terra可用，零模型生成。用户进一步明确只把Alex当前置顶「Edgar 身心支持与就医跟进」切到GPT-6.1 Terra、不改默认；随后要求先暂停核对39万tokens警告。只读核验切换前最近有效usage_anchor输入67067＋输出155＝67222，Alex配置窗口512000（约13.1%）；当前stored model为kimi-for-coding而anchor为k3.1-pro，实时读数已标model_changed失效，不把0当真实占用。model_selection_guards直接用compressor.last_prompt_tokens并回退累计session_prompt_tokens，缺少现行anchor／有效性核验，存在明确误报路径；390494的精确内存来源尚未取证，不冒称已完全定位。授权迁移时保护未关闭、源码未改；随后连续切换误报已由上节修复，按用户“等一下”尚未执行目标会话切换。受限收据／回滚说明见运维记录。 用户随后反馈模型菜单找不到Terra，最后明确已看到，确认此前可能仅加载缓存目录。核对App菜单可见性已触发capabilities按需重读（早期只看组件而称重开不读不准确，已纠正）；Provider账号实时发现与Alex正式REST已含gpt-6.1-terra。经原生model.options显式刷新Alex／study后，各自普通缓存读取也含该模型；无需修改Provider、增加重复菜单请求／UI入口或重打包，未发送／切模型，证据服务器picker-refresh.json。
+
+## 2026-11-01 · 真实Chrome性能复查（已合主线、Web已上线、APK已更新）
+
+**本轮用户进一步确认：** 当前Conversation切换／重新进入／重连的恢复优先，流量尽量只传变化、消除可避免串行等待和本地重复工作；侧栏约108KB允许后台整页刷新，当前不新增列表差量协议。侧栏与Conversation恢复及发送就绪解耦：先展示已有缓存，缓存会话项立即可点击切换，不等待列表核验／增量；目标会话仍独立核对存在性与自身权限。隐藏的移动侧栏不抢占当前聊天恢复；Usage／Context等附属读取不能阻塞当前聊天关键路径。这是明确用户确认，覆盖本轮此前“需为侧栏新增差量”的排查方向。
+
+用户授权操作／刷新两个已打开的Hermes Chrome页面，覆盖本轮显示保护限制；主会话亲自实施，未派sub、未发送消息。FE最终`129b9a2`已合main／origin/secretary，Web439文件／6HTTP资源verified；后端产品仍main `2e287d73b6`，本轮静态更新零重启／数据库写。统一Composer尺寸动画移除每次React提交的同步测量，改为布局后的ResizeObserver；恢复布局ACK幂等、局部显示引用与历史缓存去重、日期格式器复用。原真实slash样本85–129ms长任务／最高116ms帧间隔；修后两轮175帧无>50ms长任务，仅一次约32ms间隔，不等同所有设备全流程零卡顿。
+
+侧栏缓存立即可导航（含Profile roster未返回时跨Profile缓存条目），不授予目标写权限；列表／Usage／Context不gate聊天发送就绪，较重读取在共享最终cut后启动，pending／controls与cut并行。viewport替代cut继续共享等待；已核验历史缓存写入不再被附属统计抢先更新取消，capsule取实际显示ACK快照。相关7文件232项、App专项4项及typecheck／生产构建通过，6产品TS相对基线无新增健康超标；旧warm／Profile失败在5a02a9a原样复现，未冒称全套全绿。
+
+真实Chrome增量恢复200条窗口重传正文0条／thinking0条，逻辑JSON绑定约3.3KB＋最终cut22.1KB，无system_prompt。REST侧栏约107KB仍允许后台传输，不冒称timeline流量；实测其请求在cut后发起且未完成时Send可用。同协议生产新连接压缩收包对照约54.5KB→12.0KB（约−78%，仅绑定＋最终cut、loopback传输层、不含TLS，并非精确Chrome整轮线速）；服务端最终对账仍232–246ms、首次显示仍约100ms，本轮不能称只剩网络或到达极限。
+
+最终0.1.10／1010 arm64 APK已严格核验原签名／v2／CRC／16KB／439资源及交付副本；Web／APK438文件逐SHA一致，另一资源清单仅copiedAt时间不同。APK路径、SHA、发布／回退收据和证据见[运维记录](docs/operations-log.md)。未安装Android真机，不冒称键盘黑块／设备流畅度已验；原用户两页保留，原草稿为空，无业务写入。
+## 2026-11-01 · 表现层动态错位修复（已合主线并发布Web）
+
+用户新录屏显示slash收起时列表先消失，工具栏／输入与外框未同步，出现空白和位置漂移；此前性能修复与组件几何验证不足以关闭实际表现问题。用户明确先把表现层优化做好，再做网络层优化。已按此顺序先完成表现层逐帧复现与修复并单独上线，再恢复传输优化；覆盖命令／附件／文本／选择器／恢复胶囊及快速反向，不以隐藏／取消动画替代。录屏证据ignored `.hermes-dev/recovery-transport-20261101/user-video-*`，不得把此前af60634标为已完成设备／实际入口验收。
+
+已确认准确问题：原视频3.25–3.45秒外框底边基本固定，但发送按钮从约989上窜到820像素再回落；低频连环图漏掉关键帧。A/B实际绘制录制复现旧WAAPI的布局／合成线程不同步：人为130ms／90ms主线程停顿下旧按钮上窜约155px，新版统一rAF写入高度／位移／裁剪后未重现。FE `edb66eb`已合main并完成Web的439文件／6HTTP资源核验，尺寸仍唯一触发、每帧无几何读取／React更新；退出内容保留不可交互的临时副本，支持反向及中途目标变化。3文件17项、typecheck／健康检查通过；正式App含200条历史、五条命令，连续三次开合129→381→129px，207几何帧底边距偏差<0.01px，151实际绘制帧另录视频。移动胶囊／文字并发底边误差<0.5px，窄屏无横向溢出。证据前端performance/full-final-*、composer-full-app-fixed.mp4、unified-*；Android真机仍未验，不把隐藏IAB等同用户Chrome真机最终验收。
+
+## 2026-11-01 · 恢复传输瘦身与串行等待优化（已合主线、上线并更新APK）
+
+用户明确授权继续省略重复system prompt、减少可避免串行等待，保持兼容与完整恢复，测好后前后端合主线、上线并更新APK；主会话亲自实施，禁止sub。基线BE `0db380f93e`／FE `bc3ba70`，主仓干净，前端仅五个既有未跟踪.DS_Store。方案：新服务端在现有Profile读取中声明可选投影能力，旧客户端默认完整响应，新客户端仅能力明确时省略Prompt；只读metadata与Profile确认并行，绑定和最终对账仍等身份及数据核验成功。验证覆盖旧新两端、失效owner／失败／冷启／重连和真实传输字节；不改模型Prompt／缓存内容，不派sub。 前端107项恢复链路与112项相关集成通过；后端原生恢复／只读冷装载的可选投影通过，默认完整返回且运行态Prompt不变。扩展发现review.summary目录孤项及旧Noting配置导致17个setup错误，均在0db380f93e隔离基线原样复现；句柄测试共享关闭Event竞态也在基线复现，已改为等待目标句柄自身信号，10项通过，保留关闭次数断言。BE `2e287d73b6`／FE `5a02a9a`已合主线并发布；Web439资源／6HTTP校验、服务版本／数据库／配置／绑定保护通过。生产只读三轮默认→精简→默认的恢复窗口均complete／matched，Prompt保持；绑定＋最终对账JSON响应114074→25460字节（未压缩），不等同总耗时下降。正式构建隐藏IAB实际选会话及断测试隧道重连通过：239展示节点保持、document不刷新、两次activate均省Prompt、最终complete并退出提示。最终0.1.10／1010 APK（SHA105bcd1d…）原签名／CRC／16KB／439前端资源和交付副本通过，Android真机黑块／流畅度仍未验；构建脚本调用到旧Python导致校验入口失败，已用项目3.14执行原校验器通过，未修改或放宽校验。完整收据与回退／备份保留记录见运维日志；基线工作区、隐藏页及测试连接收尾清理。
+
+## 2026-11-01 · 恢复传输链路调查与活动请求去重（已上线，后续机会已定位）
+
+用户明确优先恢复／传输在网络瓶颈下的效率：减少多余往返、重复传输及可避免的串行等待，前后端CPU优化适度，不追求极限。实际生产构建经隧道正常恢复样本仍有本地长任务，不能宣称只剩网络；已将三个Profile各自的全局活动读取收敛到批次统一对账，保留外部失效触发与完整恢复判定。FE `bc3ba70`已合主线／Web上线；正式构建实测4→1次，正文就绪约1109ms仅是单样本、不声称总时长固定改善。相关111项／typecheck／健康检查通过，Android扩展7项失败在改前af60634原样复现。主会话独立实施，隐藏页／两个Vite／SSH隧道已关闭。
+
+另已定位尚未实施的传输优化：绑定与最终对账各携带约44288字节system_prompt，当前Web/APK源码无消费；两次响应约52KB／65KB（逻辑JSON，非压缩后线上字节）。后续可增默认兼容的可选参数省略，不能直接删公共响应字段或冒称已省掉。仍有身份确认→元数据→绑定→最终对账的依赖，不宣称“只剩网络瓶颈”或带宽已充分利用。证据前端performance/activity-*、主仓activity-release；本次APK仍为af60634动画修复包，未把bc3ba70去重重打进APK。
+
+## 2026-11-01 · Composer统一高度动画性能回退修复（已上线，APK待真机复验）
+
+用户澄清所有原因触发的Composer高度动画都极其卡顿，而改造前attachment伸缩流畅。已移除逐帧继承CSS变量，改为一次读取几何、原生height／transform／clipPath同步动画；保留统一按实际高度驱动、内部内容同步、快速反向及减少动态效果。FE `af60634`已合主线并上线。隐藏IAB同六次开合Style由154.95ms降至14.68ms，Task由339.7ms降至148.43ms；5文件40项、typecheck及健康检查通过。移动端几何复验无明显跳变；新0.1.10 APK已严格核验，未安装真机，不把桌面结果冒称设备流畅度验收。证据前端`.archive/composer-motion-20261101/performance/`及主仓`.hermes-dev/ui-motion-20261101/performance-release/`。
+
+## 2026-11-01 · 桌面胶囊420px定稿（已上线）
+
+用户进一步确认最大宽度420px，替代此前480px；沿用右侧固定、左侧留白、自适应和轮播定宽规则，仅桌面CSS，FE `e5a3722`已合主线并上线，构建和439文件／6个HTTP资源校验通过。证据`.hermes-dev/ui-motion-20261101/width-420-release/`，前版480px记录只属当时版本。
+
+## 2026-11-01 · 桌面恢复胶囊宽度微调（已合主线并上线）
+
+用户要求桌面胶囊缩短、明显增大左侧留白：宽度设上限，窄Composer再自适应左侧空间，继续不随文字改变。沿已授权主线／Web发布收尾；实施值最大480px、右侧原位置不变、左预留按剩余列宽在32–64px之间收缩，达到最大宽度后多余空间留左。仅桌面CSS，移动端与恢复条件不变。FE `ce5a70d`已合本地main／origin/secretary并上线，构建及439文件／6个HTTP资源校验通过，零服务重启／数据库写。隐藏IAB宽1400／1100时胶囊480px，900／780时456／345px；长短文字宽度一致、中心偏差0，移动端保持330×26px（380px视口）。证据前端`.archive/composer-motion-20261101/width-cap-*`及主仓`.hermes-dev/ui-motion-20261101/width-release/`，实际组件图`desktop-width-cap.png`；隐藏页已关闭。
+
+## 2026-11-01 · Composer统一过渡与恢复提速（已合主线并上线，APK待真机复验）
+
+用户确认本轮前后端合主线并上线Web；主会话亲自实施，0 sub。Composer所有实际内容高度变化统一驱动320ms外框和内部区块过渡，覆盖附件、命令、选取器及文字增减，不按业务事件分别触发；快速反向承接当前位置，减少动态效果直接到终值。移动端恢复胶囊保持底部26px灰填充、12px左对齐、无描边、上下伸缩；桌面移入主按钮左侧，与左工具选项整行中心对齐，按父容器剩余空间定宽、不随文字或轮播变化，右侧固定横向展开折叠。保留用户所选D样式，覆盖此前全平台底部布局。
+
+键盘改为支持页面保持完整WebView绘制表面，避免收起临时扩面；原生仅传动画边界／系统曲线，动画中保留背景已绘帧、结束续播。草稿／历史／元数据读取并行，草稿离线仍可用、同次读取共享且不覆盖较新编辑。后端在单次只读事务内复用身份／顺序内存TEMP索引、退出销毁；summary去除界面不用的完整工具快照，完整详情不变。对账／权限边界不提前放行。
+
+验证：前端恢复137项、表现层43项、原生IME 11项通过，14个TS文件相对基线无新增健康问题；后端相关六文件最终有效174项通过，冻结检查9项通过、唯一no-tmp为未改历史报告基线。隐藏IAB逐帧覆盖文字／附件／命令增减、提示开合、快速反向及减少动态效果；桌面不同文字宽度相同并与左工具中心重合。统一高度初版曾发现内部工具栏先跳，已补位置差同步并逐帧复验；这些是浏览器真实组件／原生单测证据，不等同Android设备验收。
+
+产品BE `1df27e5020`在main并上线；FE `bb8596b`已快进本地main、推origin/secretary并上线439静态文件。线上两轮历史读取107–112ms、恢复对账226–231ms，改前分别约290–320ms和760ms；summary由83KB降至1.5KB，不把服务端分项计时等同用户端总耗时。APK已通过原签名／CRC／16KB／前端SHA及交付副本校验，设备黑块和最终流畅度仍待用户新包复验。普通Conversation切换**仍显示恢复胶囊**；已如实回答用户，建议正常切换静默、异常／重连／长等待再显示，但用户尚未确认该改动，本轮未实施。
+
+证据：前端ignored `.archive/composer-motion-20261101/`、主仓ignored `.hermes-dev/ui-motion-20261101/`；发布、测速、备份保留、APK路径／SHA及恢复入口见[运维记录](docs/operations-log.md)。隐藏验证页与Vite已关闭，未动用户页面／设备；前端原有五个未跟踪.DS_Store保留。
+
+## 2026-11-01 · 空闲AI标题恢复修复（已合main并上线）
+
+用户截图反馈`/ai-title`因完整native Main snapshot不可用而要求先跑普通Turn。最新确认：以当前生效上下文命名，复用完整Main前缀；Turn空闲就允许重新生成，不以已有缓存／旧Web runtime作为额外前提；后台压缩无活动Turn时读当前原子生效版本，不因维护标志一律拒绝（覆盖旧忙时压缩口径）。主会话审接线、DeepSeek隔离验证与发布；title_idle_fix（gpt-6.1-sol/high、不再派生）实现标题owner及正式RPC恢复、失败/并发回归。优先原生恢复owner，缓存缺失仅在隔离只读请求中构建；不得推进普通Turn、执行工具或改Main历史／业务状态。保护算法分支与APK原dirty，不使用完整autonomous-run。 9文件已由主会话亲审，157项相关测试及9项冻结检查通过；no-tmp为未改历史报告基线，health零阻断／零提示。隔离DeepSeek累计6请求（首2后的harness BLOB取证错误保留，修脚本后补4），有效前缀、全清缓存及cold空闲重复命名成功，当前目标/summary/Notebook完整；三次标题RPC前后45表、父缓存/工具/prefill、Main及session绑定一致，0工具执行。缺缓存时按当前原生配置重建，不宣称清缓存前后工具面恒同。产品`4bc3f2b4b802cdbeea0724d1c446a30ccbde349d`已push并从main发布，双服务实际版本及只读终验通过，保护数据/两套三库保持；Main System/工具文案未变，本次保留现有缓存。证据ignored `.hermes-dev/title-idle-20261101/`，具体发布事实见operations-log。
+
+## 2026-11-01 · 平台切换通知精简（已上线）
+
+用户要求取消或缩短频繁平台切换产生的目录更新。本轮首次及后续工具／权限／schema变化均仅提醒“能力可能变化，当前 N 个折叠工具，调用前重新 search/describe。”，N为当前可发现折叠工具数量；不重复目录和未变化的渠道指令，明确配置策略变化仍发送必要的新指令／撤销。root与既有历史不重写，完整快照仅留内部去重。主会话已完成40项相关回归、计数专项及footguns／lazy-deps／ruff／health检查，隔离DeepSeek最终10请求验证无详细目录仍能发现新增工具、正确计数1→2和新schema；提示仍为模型指引，实测曾先用旧参数被原生校验拒绝后纠正，不宣称硬性逐Turn发现保证。`0b43af0910e9c54b983d3c90037621163bed98c6`已从main上线，两服务／只读终验通过，按SOP清置顶缓存、保护数据一致、两套三库保持；运维事实见operations-log，算法与APK原改动保持。
 
 ## 2026-11-01 · 跨平台缓存前缀Bug验收与上线（已完成）
 
@@ -99,6 +240,38 @@
 
 已定位恢复工具pin后Secretary按当前平台raw目录重建bridge，以及Gateway追加平台相关ephemeral system；root hash相同不等于完整请求前缀相同。历史缺完整HTTP原件，不能断言13312精确边界或唯一原因。`platform_prefix_fix`（gpt-6.1-sol/high，不再派生）已交15文件修复与170+10项测试报告，**代码仍待主会话亲审/验收，不纳入本次文档提交**。需核旧pin首次变化、渠道策略冲突拒绝、claim/恢复及原生回归；no-tmp失败报告称已在HEAD复现，须核证，不冒称全绿。报告、原始前缀调查及验证日志在上述ignored目录；修复验收与Provider缓存存活研究分开。
 
+## 2026-10-31 · D方案与键盘弹飞修复（前版记录，已由11月1日版本替代）
+
+用户明确否定revision2效果，提供15.66秒真机录像：约8.7–9.1秒键盘唤出时Composer与顶栏过度上移再回落，9.8秒附近收起亦存在瞬时高度交接；状态框仍显细描边／嵌套输入栏，不符合期望。上轮隐藏浏览器模拟不覆盖系统焦点避让，不再作为真机问题已解决的证据。继续由主会话亲自处理，不派sub，不部署。
+
+样式需同时核灰底、描边、圆角和比例，不能只改留白。已复核b33e428之前Notice约44px单行高度、12px圆角、上下12px内边距；暗色灰底#2e2b29／边框#4f4b47。用户在四候选对照后最终明确采用D：26px灰色填充、无描边、胶囊圆角；暗色背景#47433f／文字#c1b9b2，保留12px字号、文字靠左、框内左右16px及框外左右12px间距。此选择覆盖此前短暂选择的历史描边26px方案，已落入产品样式。动画排查系统窗口避让、根文档滚动与网页合成位移叠加，原录像关键帧保留于前端ignored `.archive/composer-motion-20261031/revision3/`。保持真实恢复资格、草稿、同页恢复及安全区契约。
+
+已修复：API30+改为SOFT_INPUT_ADJUST_NOTHING，避免系统ViewRoot焦点平移与既有Insets owner叠加；API28兼容入口保留adjustResize。APK标记下html／body禁止根滚动、#root固定于窗口，普通网页不变。主会话隐藏IAB反证旧根层可额外滚动300px／顶栏−300px；修复后同请求scrollY=0／顶栏0，提前缩窗、开合全帧无根位移且Composer不越终点，内部时间线scrollTop=40仍可用，草稿保持。原生10项及Kotlin编译通过。四候选对照及用户最终D确认已落档。实际产品组件复验：0↔38px恢复区／0↔26px胶囊连续伸缩，暗色颜色／无描边／16px水平内边距与D预览一致；380×844隐藏IAB中提前缩窗并持续请求根滚动，键盘与恢复状态同时变化时scrollY及顶栏位置全程0，Composer底边在544↔844范围内，背景缓冲恒定299×601，草稿保持。深浅主题及减少动态效果已核；当前前端41项通过、原生10项通过，TS源码与上轮健康证据一致，typecheck／release构建通过。不冒称真实Android复验通过。
+
+交付为前端ignored `.archive/composer-motion-20261031/revision3/Hermes-Secretary-0.1.10-composer-D-arm64.apk`：0.1.10／1010、32130749字节，SHA256 `7cbe8476b451c3cd6ed9f85982886448da366367087b9fffcfd7f2cc004897b1`。原签名／v2／CRC／16KB／439资源和交付副本一致性通过；本轮生成dist/.DS_Store与此前同样移至证据目录，原未跟踪文件保持，严格校验不放宽。最终深浅截图、D-combined-motion逐帧数据、根层反证、回归／构建日志、源码manifest与收据均在revision3。临时隐藏验证页及开发服务已清理；两仓修改未提交／未push、无部署或真机安装，旧APK保留作历史证据，当前交付仅D方案包。
+
+## 2026-10-31 · 键盘动画卡顿与状态框二次修订（前版记录，见上节真机问题反馈）
+
+用户真机反馈前版键盘动画极卡，明确禁止派sub；本次修订全部由主会话独立修复、验证与构建。最新口径覆盖前版内容宽度／居中小框：提示顶满内宽但左右留间距，可用与Composer协调的胶囊；文字靠左，灰框自身从固定底边展开高度、Composer同步上移，反向同步折叠，不接受框先淡出再降Composer。保持12px／20px，同一Restoring或Retrying状态最多并列三个真实等待对象，3秒轮播及省略号保留。用户最后要求整个过程无跳变／闪动，作为目标；未取得真实Android帧率证据，不能宣称真机已完全解决。
+
+已移除IME progress逐帧updatePadding：原生只发送起止／取消，网页用系统曲线的合成位移／裁剪、边界调整真实高度；反向捕获当前视觉位置，过期回调忽略，原生结束与实际viewport同时到位才交还布局。查出并修复末帧矮屏规则缩短输入框、新聊天标题改排、短正文按全键盘距离移动后回弹的问题；正文按自然内容高度预测终值，提示／流式尺寸变化时更新目标；键盘期间固定背景表面尺寸，按表面而非外层viewport分配WebGL缓冲。恢复提示只改变展示，真实恢复资格不延迟。
+
+验证：前期相关7文件130项通过，最后增量5文件41项通过（IME9／恢复4／阅读22／背景6），typecheck、生产build及冻结TS健康基线比较通过；原生IME9通过，其余原生Viewport9／ForegroundRefresh36／SystemBarTheme1有效证据复用，Kotlin及release编译通过。API28兼容序列与API35 Activity接线由Robolectric验证，非真实设备。主会话隐藏IAB390×844受控采样覆盖新聊天、短正文、同时开合、反向及过期end：Composer终点高度一致，正文终点无额外回弹，草稿保留；最终背景缓冲开合全程306×601无重分配。恢复区0↔32px、框体展开20px／字号12px／宽340px／左右各13px，底边恒定，文字靠左，无淡出后移动。构建资源更新触发的开发页重载样本未采纳，最终连续采样已重取。
+
+签名交付APK为前端ignored `.archive/composer-motion-20261031/revision2/Hermes-Secretary-0.1.10-composer-motion-v2-arm64.apk`，版本0.1.10／1010、32130505字节、SHA256 `040bfcb53bea4443ef26f56708cea3bb144b1247d9aa418586e38f4a3855a1f8`；原证书／v2／CRC／16KB／439资源／交付副本一致性全通过。首次末端校验仅发现构建生成dist/.DS_Store，多余项已移至本轮证据目录，原五份未跟踪文件保留，校验未放宽。日志、逐帧JSON、深色预览、源码SHA及校验收据在同目录；运维记录列出本地产物。两仓修改未提交／未push，无云部署、设备安装或真实Android流畅度验收。前版APK保留为历史版本。
+
+## 2026-10-31 · APK键盘与Composer恢复提示过渡（前版记录，已由上节替代）
+
+用户要求：APK虚拟键盘唤出／收起平滑衔接，消除瞬时跳变；Composer下方恢复状态出现／消失同样平滑，恢复为底边居中小灰框，保留现有字号和单行高度，整体比旧版更紧凑。范围仅表现层，不改恢复资格、模板、请求或输入行为。依据06对应补充；前端基线6c132a4；两仓既有修改保留。
+
+用户补充连接提示样式须参考提交历史：已核b33e428之前的中性Notice灰底／边框／圆角；保留当前12px字号、20px高度，按本次明确要求内容宽度居中。编排：主会话处理恢复提示、规格同步、集成亲审与定向验证；独立实现Agent仅处理Android IME Insets动画接线及必要验证，不再派生。显示保护保持，仅自建隐藏IAB可做界面验证；真实Android键盘动画尚未验，不用桌面模拟冒称真机通过。本轮未获新增部署授权。
+
+已实现并亲审：Android单一IME padding owner在prepare后暂缓最终Insets、按progress真实高度更新，结束／取消收敛，旧动画及销毁后回调不覆盖；原生缩放／系统栏／恢复机制保持。恢复提示常驻可收缩容器，180ms高度／透明度过渡，消失时仅保留无障碍隐藏的退出视觉，操作资格即时恢复。前端5文件117项、types、生产build与冻结TS度量（无新增／恶化超限）通过；原生IME10＋Viewport9＋ForegroundRefresh36＋SystemBarTheme1共56项及Kotlin编译通过。API28为AndroidX独立View兼容帧验证，API35为正式Activity分发，不冒称真机。
+
+root自建隐藏IAB390×844实测：恢复区0↔32px连续中间帧，灰框20px／字体12px／宽约155px、居中偏差小于0.01px；开合与快速反转归零，草稿保持，退出动画未结束Send已可用；深浅主题和减少动态效果通过。期间Vite热更新干扰的首次收起样本未采纳，最终同document连续样本已重取。证据在前端ignored `.archive/composer-motion-20261031/`（browser-frames、两主题截图、TS度量、原生测试及构建日志）。产品修改尚未提交／部署；本轮不改变线上版本。
+
+原签名本地APK已完成：同目录`Hermes-Secretary-0.1.10-composer-motion-arm64.apk`，0.1.10／1010、32128253字节、SHA256 `de1558650339e4d28fd7305bab6eaac00f5de5dcf7e496c68ee3b159cf093d8d`；原证书／v2／ZIP CRC／16KB／439前端资源与交付副本全部通过，收据同名`.verification.json`。首次构建末端校验误用旧系统Python，改用主仓官方PM Python3.14后发现dist额外`.DS_Store`；仅将该生成杂项移到本轮证据目录保留，仓库原有五份未跟踪`.DS_Store`均保持，原校验规则不变。实际资源零缺失／零差异；无真实Android设备验收，不冒称真机流畅度通过。临时隐藏页面及开发服务已清理。
+
 ## 2026-10-31 · 证据集描述与Main强制回查（实施、上线及清理完成）
 
 用户授权按定稿规格／Prompt实施两项调优、验证后上线，随后要求清理所有本仓worktree、整合分支并使原目录回归main。两项调优已提交d6c0088，已授权的遗留manual Noting调试RPC窄接收a51a0bf；于2026-10-31T10:09:58+08:00正式发布bf28ab5，receipt verified。Web／Gateway实际同源active、微信connected；三库业务数据、配置／凭据／绑定及两套前端静态均保持，认证只读RPC与HTTP六资源核验通过，两套完整三库备份已保留并清退更旧备份。
@@ -122,8 +295,6 @@ source_description与UID共同维护、provenance_descriptions逐槽投影；描
 主会话已亲审，BE177项＋最终4／6、冻结十检查；FE273项、types／TS度量通过。独立Verification产品通过；独立Validation7适用场景通过、0失败，含真实隐藏IAB暖冷恢复、child活动时后继Send／Compact、断网期间child完成和Pending失败自动重试。最终发布及交付事实已独立补核，Verification12条全部符合／0缺口；本轮目标完成，最终简报已落盘。本轮索引／两报告／最终简报见`.autonomous/20261031-force-completion/`。原自主轮真机／外部验收边界独立保留，不冒称整个旧轮完成。两工作区原dirty及用户.DS_Store未动。
 
 ## 自主口径收敛 · 待用户追认
-
-- **Agent自主收敛／待追认：联合策略初版执行与风险边界。** 原空白为模式切换相位、三量计划生命周期与费用外约束。按本次自主实施授权，采用算法稿E1–E7：独立Heartbeat保留锚点、受理后不被策略抢占、有效Idle同到期先行、δ为剩余等待、计划绑定Idle周期/上下文且至多一次；业务∞用sidecar的null表示，无旧锚点首次有限模式从实际配置时刻算。默认关闭，坏配置/证据不足回退原生。真人回归只认已证入口和观测覆盖，不看role或把停机空白当无人使用。费用初版比较六小时及末态冷读压力两种边界；工程保护暂取真人离开30分钟、维护间隔4小时/每日最多2次、模型碰撞估计≤15%/预期阻塞≤30秒、收益余量10%，均为可配置假设，不是用户容忍值或统计保证。模拟后复核，不用这些代理宣称语义质量无损。已完成分支初版及模拟；效果优越性未证实、默认关闭。原生Force/auto保持，未合main/部署。
 
 - **Agent自主收敛／待追认：中文粗体兼容的inline兄弟范围。** 原空白：既有中文标点邻接`**`兼容仅能处理单text节点；合法链接／inline code把同一显示范围切开后，末端无空格紧接中文的星号仍为字面。决定：同段／标题／表格格内，保原source双星／转义／CJK外侧与标点内侧证明，允许兼容span包含完整已解析link／inlineCode／inlineMath兄弟；内部payload／地址不变，不在其中寻找星号，不跨换行／block／模糊嵌套。理由：消除AST分割造成的兼容不一致。影响：扩展现有非标准CommonMark的中文粗体兼容，不冒称标准本来支持或原截图同型回归；源消息／Copy／安全协议保持。已实施于ccd4cfa并上线，111项及实际N30／Copy复验通过，待用户追认，可局部回退。
 
@@ -232,7 +403,7 @@ U20详口径见07顶部及plan接线设计；旧“先Noting再压缩／FM结算
 
 本轮发布及迁移收尾已完成：Alex、study飞书MCP握手均仅notify，未发通知；Hermes恢复正常运行。旧实验首尔机废弃、待回收，未销毁实例。全局服务器规则已精简。具体版本、验证、备份与限制统一见[运维记录顶部](docs/operations-log.md)。20c9267旧APK原已交付并核SHA，用户本轮要求后已移出两端Alex工作同步区，新构建暂不交付。
 
-## 当前交付与运行版本
+## 前轮交付与运行版本快照（历史，当前以顶部为准）
 
 | 项目 | 已核结果 |
 |---|---|

@@ -1477,7 +1477,7 @@ class _CodexCompletionsAdapter:
         # Aux requests run their own model; stamp/filter reasoning provenance against it, not the main agent's.
         issuer_kind = _classify_responses_issuer(base_url=host, **route._asdict())
         input_items = _chat_messages_to_responses_input(
-            replay_messages, is_github_responses=is_copilot,
+            replay_messages, is_github_responses=is_copilot, is_codex_backend=route.is_codex_backend,
             current_issuer_kind=issuer_kind,
             current_issuer_model=wire_model, native_compaction_eligible=False, keep_initial_system=True,
         )

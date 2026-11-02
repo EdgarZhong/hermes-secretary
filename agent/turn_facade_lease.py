@@ -236,9 +236,21 @@ def _durable_session_exists(db, session_id: str) -> Optional[bool]:
         return None
 
 
+def _pending_user_reload_uid(agent, user_message):
+    """A prewritten current input is adopted later, never part of the admitted prior history."""
+    from agent.context_compressor import _DB_PERSISTED_MARKER
+    pending = getattr(agent, "_pending_cli_user_message", None)
+    if (isinstance(pending, dict) and pending.get("role") == "user" and pending.get(_DB_PERSISTED_MARKER)
+            and type(pending.get("_row_id")) is int and pending["_row_id"] > 0
+            and pending.get("content") == user_message
+            and isinstance(pending.get("message_uid"), str) and pending["message_uid"]):
+        return pending["message_uid"]
+    return None
+
+
 def admit_durable_turn_lease(
     agent, *, session_id: str, relay_turn_id: str, task_context: Dict[str, Any],
-    conversation_history: Optional[List[Dict[str, Any]]],
+    conversation_history: Optional[List[Dict[str, Any]]], user_message: Any = None,
 ) -> TurnLeaseAdmission:
     """Acquire the session turn lease (the row need not exist yet); build (not start) its threads.
 
@@ -318,9 +330,11 @@ def admit_durable_turn_lease(
             if latest_session_id:
                 agent.session_id = latest_session_id
                 task_context["session_id"] = latest_session_id
-            reloaded = db.get_messages_as_conversation(
-                agent.session_id, repair_alternation=True, include_row_ids=True
-            )
+            # Exclude before alternation repair can merge the current accepted row
+            # into a foreign user's input. The native prologue adopts it exactly once.
+            current_uid = _pending_user_reload_uid(agent, user_message)
+            reloaded = db.get_messages_as_conversation(agent.session_id, repair_alternation=True,
+                include_row_ids=True, **({"exclude_message_uid": current_uid} if current_uid else {}))
             # Decide on the stored rows alone: an unknown row that reloads nothing keeps the
             # caller's history, which already holds any carried input below.
             if durable or reloaded:

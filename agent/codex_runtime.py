@@ -16,6 +16,7 @@ from types import SimpleNamespace
 from typing import Any, Callable, Dict, List
 
 from agent.stream_single_writer import claim_stream_writer, stream_writer_is_current
+from agent.output_identity import accept_response
 from agent.transports.hermes_tools_mcp_server import HERMES_TOOLS_MCP_SERVER_NAME
 from agent.sdk_transform_bypass import bypass_sdk_request_transform
 from agent.stream_diag import buffer_connect_exhausted_notice
@@ -908,13 +909,10 @@ class _CodexResponseAssembler:
         delta_text = _event_field(event, "delta", "")
         if not delta_text:
             return
-        # Harmony commentary/analysis text is mid-turn narration, never the final answer: route to the
-        # reasoning callback, keep only the item for replay.
+        # Commentary owns its public message callback; analysis owns reasoning.
+        # Neither is part of the final answer accumulator.
         if self.active_message_phase == "commentary":
             self.commentary_text_deltas.append(delta_text)
-            # Legacy fallback when no first-class commentary consumer is installed.
-            if self.on_commentary_message is None:
-                self._safe(self.on_reasoning_delta, "on_reasoning_delta", delta_text)
         elif self.active_message_phase == "analysis":
             self._safe(self.on_reasoning_delta, "on_reasoning_delta", delta_text)
         else:
@@ -1065,8 +1063,8 @@ def _consume_codex_event_stream(
     terminal frame; ``model`` comes from kwargs).
 
     Callbacks: ``on_text_delta`` per output_text delta, suppressed once a function_call is seen;
-    ``on_reasoning_delta`` for reasoning and ``phase=analysis`` deltas (also commentary without a commentary
-    callback); ``on_commentary_message`` once per completed ``phase=commentary`` message, before any following
+    ``on_reasoning_delta`` for reasoning and ``phase=analysis`` deltas;
+    ``on_commentary_message`` once per completed ``phase=commentary`` message, before any following
     tool item; ``on_first_delta`` one-shot; ``on_event`` every event before any processing; ``interrupt_check()``
     True breaks the loop and may raise ``TimeoutError`` / ``InterruptedError`` for request retirement that
     must not become a partial final response."""
@@ -1362,7 +1360,7 @@ def run_codex_stream(agent, api_kwargs: dict, client: Any = None, on_first_delta
             except RuntimeError:
                 # "No terminal response"; Relay may still hold a finalizer-assembled response.
                 if event_stream is not None and event_stream.final_response is not None:
-                    return event_stream.final_response
+                    return accept_response(agent, event_stream.final_response, writer_token["value"])
                 raise
             except _APIConnectionError as exc:
                 # The SDK wraps every connect/receive failure (``raise APIConnectionError from err``), so the
@@ -1385,7 +1383,7 @@ def run_codex_stream(agent, api_kwargs: dict, client: Any = None, on_first_delta
                                "(incomplete_details=%s, error=%s, streamed_chars=%d). %s",
                                final.status, final.incomplete_details, final.error,
                                sum(len(p) for p in agent._codex_streamed_text_parts), agent._client_log_context())
-            return final
+            return accept_response(agent, final, writer_token["value"])
         finally:
             # relay_llm.stream is ManagedLlmStream, whose close() always owns the provider stream; only
             # when construction itself failed (event_stream None) may a raw stream be left to close here.

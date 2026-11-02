@@ -26985,6 +26985,19 @@
             "title": "Bot Mode Protocol",
             "type": "boolean"
           },
+          "session_info_projection_version": {
+            "anyOf": [
+              {
+                "const": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Session Info Projection Version"
+          },
           "install_id": {
             "default": "",
             "title": "Install Id",
@@ -31409,6 +31422,11 @@
             "default": false,
             "title": "Omit Messages",
             "type": "boolean"
+          },
+          "include_system_prompt": {
+            "default": true,
+            "title": "Include System Prompt",
+            "type": "boolean"
           }
         },
         "required": [
@@ -34518,6 +34536,11 @@
           "omit_messages": {
             "default": false,
             "title": "Omit Messages",
+            "type": "boolean"
+          },
+          "include_system_prompt": {
+            "default": true,
+            "title": "Include System Prompt",
             "type": "boolean"
           },
           "eager_build": {

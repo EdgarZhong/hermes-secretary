@@ -208,9 +208,18 @@ def _details(db, conn, sql, params, details):
 def read_view(db, requested_id, profile, selectors, *, details=(), proofs=(), identities=(),
               history_sync=False, native_source=None):
     """Raw D read: all owner, lineage, windows, details and lease on one conn."""
-    with _snapshot(db) as conn:
+    with _snapshot(db, memory_temp=True) as conn:
         lineage = _lineage(db, conn, requested_id, profile)
         sql, params = _display_sql(db, conn, lineage)
+        # Materialize only identity/order once within THIS read transaction.
+        # Every bounded window/proof/source query shares that same snapshot;
+        # rollback removes the TEMP table before this pooled connection returns.
+        # No message payload is copied and the main database remains mode=ro.
+        conn.execute("CREATE TEMP TABLE recovery_order AS " + sql + "SELECT * FROM ordered", params)
+        conn.execute("CREATE UNIQUE INDEX recovery_order_position ON recovery_order(position)")
+        conn.execute("CREATE UNIQUE INDEX recovery_order_row ON recovery_order(row_id)")
+        conn.execute("CREATE INDEX recovery_order_identity ON recovery_order(identity_key)")
+        sql = "WITH ordered AS (SELECT * FROM temp.recovery_order) "
         total = conn.execute(sql + "SELECT COUNT(*) FROM ordered", params).fetchone()[0]
         windows = [_read_window(db, conn, sql, params, item, total) for item in [*selectors, *proofs]]
         detail_rows = _details(db, conn, sql, params, details)

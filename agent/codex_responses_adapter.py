@@ -549,17 +549,23 @@ def _tool_output_items(msg: Dict[str, Any], *, wire_ids: Optional[_WireCallIds] 
     return [{"type": "function_call_output", "call_id": wire_call_id, "output": output_value}]
 
 
+def _responses_instruction_role(role: str, is_codex_backend: bool) -> str:
+    """The subscription endpoint accepts in-sequence instructions as developer, not system."""
+    return "developer" if is_codex_backend and role == "system" else role
+
+
 def _chat_messages_to_responses_input(
     messages: List[Dict[str, Any]], *, is_xai_responses: bool = False, is_github_responses: bool = False,
     replay_encrypted_reasoning: bool = True, current_issuer_kind: Optional[str] = None,
     current_issuer_model: Optional[str] = None, native_compaction_eligible: bool = False,
-    keep_initial_system: bool = False,
+    keep_initial_system: bool = False, is_codex_backend: bool = False,
 ) -> List[Dict[str, Any]]:
     """Convert internal chat-style messages to Responses input items.
 
     ``keep_initial_system``: the caller already separated the root instructions;
     preserve even an initial history-system update. Otherwise only index zero's
-    system is the root header; all later system messages stay in sequence.
+    system is the root header; later system messages stay in sequence, using developer
+    on the ChatGPT subscription endpoint and system on other Responses routes.
 
     ``is_xai_responses``: signature compatibility only (xAI DOES replay encrypted reasoning).
     ``replay_encrypted_reasoning``: per-session kill switch, threaded False by
@@ -634,7 +640,8 @@ def _chat_messages_to_responses_input(
         def wire_content(value: Any) -> Any:
             return [{"type": text_type, "text": value}] if typed_text_only and isinstance(value, str) else value
         if role in {"user", "system"}:
-            emit([_role_message_item(role, wire_content(content_parts or content_text))], msg)
+            emit([_role_message_item(
+                _responses_instruction_role(role, is_codex_backend), wire_content(content_parts or content_text))], msg)
             continue
         reasoning_items = [] if not replay_encrypted_reasoning else _replay_reasoning_items(
             msg, seen_item_ids=seen_item_ids, current_issuer_kind=current_issuer_kind,
@@ -726,7 +733,7 @@ def _native_responses_replay_items(
             replay_encrypted_reasoning=bool(getattr(agent, "_codex_reasoning_replay_enabled", True)),
             current_issuer_kind=_classify_responses_issuer(base_url=getattr(agent, "base_url", None), **route),
             current_issuer_model=_wire_model_identity(effective_model),
-            native_compaction_eligible=True,
+            native_compaction_eligible=True, is_codex_backend=route["is_codex_backend"],
         )
     except Exception:
         logger.debug(
@@ -851,9 +858,9 @@ def _preflight_message(item: Dict[str, Any], idx: int, ctx: _PreflightCtx) -> Di
 
 
 def _preflight_role_message(item: Dict[str, Any], idx: int, ctx: _PreflightCtx) -> Dict[str, Any]:
-    """Conversation or history-system message, typed or untyped; string content or Responses parts."""
+    """Conversation or instruction message, typed or untyped; string content or Responses parts."""
     role = item.get("role")
-    if role not in {"user", "assistant", "system"}:
+    if role not in {"user", "assistant", "system", "developer"}:
         raise ValueError(
             f"Codex Responses input[{idx}] has unsupported item shape (type={item.get('type')!r}, role={role!r})."
         )
@@ -1154,9 +1161,13 @@ class _OutputScan:
         message_text = _extract_responses_message_text(item)
         if not message_text:
             return
-        # commentary/analysis text is mid-turn narration, never the final answer: route it
-        # to the reasoning channel; the exact item is still preserved for replay/cache.
-        (self.reasoning_parts if is_commentary_phase else self.content_parts).append(message_text)
+        # Commentary is a public Assistant message, distinct from both private
+        # analysis and the final answer. Its exact item owns live/history display
+        # and replay; flattening it into reasoning changes its type after commit.
+        if normalized_phase == "analysis":
+            self.reasoning_parts.append(message_text)
+        elif normalized_phase != "commentary":
+            self.content_parts.append(message_text)
         item_id = getattr(item, "id", None)
         self.message_items_raw.append(_message_item(
             [{"type": "output_text", "text": message_text}], status=_normalize_responses_message_status(item_status),

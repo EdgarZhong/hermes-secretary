@@ -13,7 +13,6 @@ from hermes_constants import get_hermes_home
 from agent.context_compressor import SUMMARY_PREFIX, _SUMMARY_END_MARKER
 from secretary import noting_runtime as rt
 from secretary.noting_policy import (
-    CAPABILITY_RESERVE_ABOVE_128K,
     CAPABILITY_THRESHOLD_BELOW_64K,
     TASK_PROFILE_NOTING,
     ContextMeasurement,
@@ -25,7 +24,6 @@ from tests.hermes_state._secretary_noting_harness import add, make as _make, ope
 # Hermes-resolved pairs exercised below: reserve = max((window - threshold) * 1.20, 66K).
 FORCE_WINDOW, FORCE_HERMES = 130_000, 75_000          # reserve 66,000 -> Force threshold 64,000
 FLOOR_FAIL_WINDOW, FLOOR_FAIL_HERMES = 120_000, 75_000  # threshold 54,000 < 64K
-CEIL_FAIL_WINDOW, CEIL_FAIL_HERMES = 400_000, 240_000   # reserve 192,000 > 128K
 
 
 @pytest.fixture
@@ -245,19 +243,40 @@ def test_force_admission_boundaries_and_same_anchor_dedupe(db):
     assert _admission_count(db) == 1
 
 
-def test_force_capability_failures_skip_with_reason(db):
+def test_force_threshold_floor_failure_skips_with_reason(db):
     make(db, "floor")
     add(db, "floor", "turn", "m1")
-    make(db, "ceiling")
-    add(db, "ceiling", "turn", "m1")
 
     floor = rt.try_admit_force(
         db, ref_of(db, "floor"), _measurement(1_000_000, FLOOR_FAIL_WINDOW, FLOOR_FAIL_HERMES))
-    ceiling = rt.try_admit_force(
-        db, ref_of(db, "ceiling"), _measurement(1_000_000, CEIL_FAIL_WINDOW, CEIL_FAIL_HERMES))
     assert (floor.action, floor.reason) == ("skip", f"capability_failure:{CAPABILITY_THRESHOLD_BELOW_64K}")
-    assert (ceiling.action, ceiling.reason) == ("skip", f"capability_failure:{CAPABILITY_RESERVE_ABOVE_128K}")
     assert _admission_count(db) == 0
+
+
+@pytest.mark.parametrize("window,hermes,force_threshold", [
+    (400_000, 240_000, 208_000),
+    (872_000, 654_000, 610_400),
+    (872_000, 523_200, 453_440),
+])
+def test_large_window_allows_idle_and_force_through_same_runtime_gate(db, window, hermes, force_threshold):
+    make(db, "large")
+    add(db, "large", "turn", "m1")
+    ref = ref_of(db, "large")
+    agent = _agent(db, "large")
+    agent.context_compressor.context_length = window
+    agent.context_compressor.threshold_tokens = hermes
+    assert rt.noting_trigger_gate(db, ref) == (True, "")
+    assert rt.note_main_turn_finished(agent, at=1000.0)
+
+    idle = _idle(db, ref, measurement=_measurement(96_000, window, hermes), now=2000.0)
+    assert idle.action == "request" and idle.compaction_due
+    assert _admission_count(db) == 0
+    assert rt.try_admit_force(db, ref, _measurement(force_threshold - 1, window, hermes)).reason == "below_force_threshold"
+    force = rt.try_admit_force(db, ref, _measurement(force_threshold, window, hermes))
+    assert force.action == "admit"
+    assert (force.admission.kind, force.admission.anchor_message_uid) == ("force", "m1")
+    assert rt.try_admit_force(db, ref, _measurement(force_threshold, window, hermes)).reason == "force_interval_occupied"
+    assert _admission_count(db) == 1
 
 
 def test_force_occupation_requires_admission_not_snapshot_completion(db):

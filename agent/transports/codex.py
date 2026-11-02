@@ -651,6 +651,7 @@ class ResponsesApiTransport(ProviderTransport):
             current_issuer_model=self._last_issuer_model,
             native_compaction_eligible=_native_compaction_active(kwargs.get("context_management")),
             keep_initial_system=bool(kwargs.get("keep_initial_system", False)),
+            is_codex_backend=kwargs.get("is_codex_backend") is True,
         )
 
     def convert_tools(self, tools: Optional[list[dict[str, Any]]]) -> Any:

@@ -57,6 +57,20 @@ def test_repaired_load_is_stable_under_prerequest_repair(db):
     assert repair_message_sequence(None, messages) == 0
 
 
+def test_current_input_exclusion_precedes_repair_without_changing_durable_history(db):
+    _seed_wedged_session(db)
+    before = db.get_messages("s1")
+    current = next(row for row in before if row["content"] == "next turn")
+    default = db.get_messages_as_conversation("s1", repair_alternation=True)
+    assert "next turn" in default[2]["content"]
+    selected = db.get_messages_as_conversation("s1", repair_alternation=True,
+                                              exclude_message_uid=current["message_uid"])
+    assert selected[2]["content"] == "unanswered turn"
+    assert db.get_messages("s1") == before
+    assert db.get_messages_as_conversation("s1", repair_alternation=True,
+                                           exclude_message_uid="absent-current-input") == default
+
+
 
 
 # ---------------------------------------------------------------------------

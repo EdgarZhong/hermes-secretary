@@ -113,7 +113,7 @@ def test_anthropic_runtime_carrier_does_not_orphan_tool_pairs(update_before_resu
 
 @pytest.mark.parametrize("explicit_instructions", [False, True])
 @pytest.mark.parametrize("codex_backend", [False, True])
-def test_responses_final_kwargs_keep_runtime_system_role_and_prefix(explicit_instructions, codex_backend):
+def test_responses_final_kwargs_keep_runtime_instruction_role_and_prefix(explicit_instructions, codex_backend):
     transport = ResponsesApiTransport()
     params = {"is_codex_backend": codex_backend}
     if explicit_instructions:
@@ -127,7 +127,8 @@ def test_responses_final_kwargs_keep_runtime_system_role_and_prefix(explicit_ins
     assert after["tools"] == before["tools"]
     assert after["prompt_cache_key"] == before["prompt_cache_key"]
     assert normalized["input"][:2] == before["input"]
-    assert [item["role"] for item in normalized["input"]] == ["user", "assistant", "system", "user"]
+    instruction_role = "developer" if codex_backend else "system"
+    assert [item["role"] for item in normalized["input"]] == ["user", "assistant", instruction_role, "user"]
     assert _text(normalized["input"][2]["content"]) == UPDATE
     assert messages == original
 
@@ -156,7 +157,7 @@ def test_responses_rootless_native_history_keeps_runtime_system(build):
 def test_shared_converter_default_skips_only_root_for_estimators():
     items = _chat_messages_to_responses_input([*_history(), {"role": "system", "content": UPDATE}])
     assert [item["role"] for item in items] == ["user", "assistant", "system"]
-    assert items[-1]["content"] == UPDATE
+    assert _text(items[-1]["content"]) == UPDATE
     assert _chat_messages_to_responses_input(_history()) == [
         {"type": "message", "role": "user", "content": "first"},
         {"type": "message", "role": "assistant", "content": "answer"},
@@ -171,7 +172,7 @@ def test_native_estimator_uses_same_root_and_update_contract(monkeypatch):
     items = _native_responses_replay_items(agent, messages)
     assert items == _chat_messages_to_responses_input(messages)
     assert items[0]["content"] == "first"
-    assert items[-1]["content"] == UPDATE
+    assert _text(items[-1]["content"]) == UPDATE
 
 
 @pytest.mark.parametrize("model", ["deepseek-chat", "gpt-5.5"])
@@ -189,3 +190,56 @@ def test_native_anthropic_without_system_still_has_no_root():
     system, messages = convert_messages_to_anthropic([{"role": "user", "content": "first"}])
     assert system is None
     assert messages == [{"role": "user", "content": "first"}]
+
+
+@pytest.mark.parametrize("content", [UPDATE, [{"type": "text", "text": UPDATE}]])
+@pytest.mark.parametrize("backend", [False, True])
+def test_auxiliary_instruction_role_matches_the_actual_responses_endpoint(content, backend):
+    host = "https://chatgpt.com/backend-api/codex" if backend else "https://api.openai.com/v1"
+    messages = [*_history(), {"role": "system", "content": content}, {"role": "user", "content": "next"}]
+    original = deepcopy(messages)
+    adapter = _CodexCompletionsAdapter(SimpleNamespace(base_url=host), "gpt-6.1-terra")
+    auxiliary = adapter._build_responses_kwargs({"messages": messages, "tools": TOOLS})[0]
+    main = ResponsesApiTransport().build_kwargs(
+        "gpt-6.1-terra", messages, TOOLS, is_codex_backend=backend, base_url=host)
+    expected_role = "developer" if backend else "system"
+    assert auxiliary["instructions"] == main["instructions"] == ROOT
+    assert auxiliary["input"] == main["input"]
+    normalized = _preflight_codex_api_kwargs({key: value for key, value in auxiliary.items() if not key.startswith("_")})
+    assert normalized["input"][2]["role"] == expected_role
+    assert _text(normalized["input"][2]["content"]) == UPDATE
+    assert messages == original
+
+
+def test_subscription_history_only_instructions_keep_tool_pairs_and_multiple_updates():
+    history = [
+        {"role": "system", "content": UPDATE},
+        {"role": "assistant", "content": "", "tool_calls": [{
+            "id": "call_lookup", "type": "function",
+            "function": {"name": "lookup", "arguments": "{}"}}]},
+        {"role": "system", "content": "Second update"},
+        {"role": "tool", "tool_call_id": "call_lookup", "content": "found"},
+        {"role": "user", "content": "next"},
+    ]
+    before = deepcopy(history)
+    kwargs = ResponsesApiTransport().build_kwargs(
+        "gpt-6.1-terra", history, TOOLS, instructions=ROOT,
+        root_system_in_messages=False, is_codex_backend=True)
+    normalized = _preflight_codex_api_kwargs(kwargs)
+    items = normalized["input"]
+    assert normalized["instructions"] == ROOT
+    assert [item.get("role", item.get("type")) for item in items] == [
+        "developer", "function_call", "developer", "function_call_output", "user"]
+    assert _text(items[0]["content"]) == UPDATE and _text(items[2]["content"]) == "Second update"
+    assert items[1]["call_id"] == items[3]["call_id"]
+    assert history == before
+
+
+def test_native_subscription_replay_uses_the_same_instruction_role(monkeypatch):
+    monkeypatch.setattr("agent.native_compaction.native_compaction_context_management", lambda *a, **kw: [{"type": "compaction"}])
+    monkeypatch.setattr("agent.fast_mode.effective_request_overrides", lambda agent: {})
+    agent = SimpleNamespace(api_mode="codex_responses", provider="openai-codex",
+                            base_url="https://chatgpt.com/backend-api/codex", model="gpt-6.1-terra")
+    items = _native_responses_replay_items(agent, [*_history(), {"role": "system", "content": UPDATE}])
+    assert [item["role"] for item in items] == ["user", "assistant", "developer"]
+    assert _text(items[-1]["content"]) == UPDATE
