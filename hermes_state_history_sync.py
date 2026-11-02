@@ -166,7 +166,10 @@ def project_latest_thinking(raw, *, home=None):
             continue
         original = visible_detail(original)
         row = {key: original[key] for key in _IDENTITY_FIELDS if key in original}
-        row.update({key: original[key] for key in _REASONING_FIELDS if original.get(key)})
+        # Presence is authoritative for the public view: an explicit empty
+        # string prevents clients from falling back to legacy raw reasoning.
+        row.update({key: original[key] for key in _REASONING_FIELDS
+                    if original.get(key) or (key == "display_reasoning" and key in original)})
         terminal = (original.get("display_metadata") or {}).get("turn_terminal")
         if isinstance(terminal, dict):
             outputs = [item for item in terminal.get("outputs", [])

@@ -2,11 +2,11 @@
 
 ## 模型参数与Conversation历史继承（2026-11-02，已确认；实现已验证合main）
 
-**用户已确认：** 二级配置字段命名为`adaptive_idle_token_saving`，完整路径`noting.adaptive_idle_token_saving`。 自适应仍以Conversation为单位；新Conversation可以选择继承旧Conversation的真实使用历史。模型参数与原生模型选择器的选项1∶1对应：Provider下的基础型号、900k等独立选项视为独立模型配置项，不能按出站基础model名合并；在同一选项中修改窗口则仍为同一项。配置粒度到Provider／模型项为止，窗口等能从原生配置取得的数据不在算法配置重复手写。不考虑阶梯计价，每个配置项内输入、缓存读、输出采用固定倍率。用户已授权本轮上线及恢复Heartbeat交给算法，并以“其他的方面没有问题了”确认本节配置与历史继承方案；下述配置/导入机制已在独立分支补齐，正在集成验证，尚未合main或启用生产；用户随后明确按方案合main并托管完成，不启动完整自主实现流程。GPT订阅初值见下节。
+**用户已确认：** 二级配置字段命名为`adaptive_idle_token_saving`，完整路径`noting.adaptive_idle_token_saving`。 自适应仍以Conversation为单位；新Conversation可以选择继承旧Conversation的真实使用历史。模型参数与原生模型选择器的选项1∶1对应：Provider下的基础型号、900k等独立选项视为独立模型配置项，不能按出站基础model名合并；在同一选项中修改窗口则仍为同一项。配置粒度到Provider／模型项为止，窗口等能从原生配置取得的数据不在算法配置重复手写。不考虑阶梯计价，每个配置项内输入、缓存读、输出采用固定倍率。用户已授权本轮上线及恢复Heartbeat交给算法，并以“其他的方面没有问题了”确认本节配置与历史继承方案；下述配置/导入机制已补齐验证并合main `023f6264ce`，尚未启用生产；用户随后明确按方案合main并托管完成，不启动完整自主实现流程。GPT订阅初值见下节。
 
 ### 数据归属与参数读取
 
-当前分支实现：`adaptive_config.for_db(db, ref, parent=..., session_id=..., conn=...)`从拥有DB的Profile的`config.yaml`读取`noting.adaptive_idle_token_saving`，按显式Conversation开关及当前原生模型项匹配；旧未发布的`noting.adaptive`不保留别名。`adaptive_store`的events／plans／heartbeats及独立imports／import_events／import_members六表均按conversation_ref隔离；导入不写前三表。模型选择器现有身份是provider行slug＋models中的选项字符串，非另一个自造UUID；算法必须沿原生选择/恢复来源保留这个身份，不能用转换后已去900k后缀的出站model代替。
+当前实现：`adaptive_config.for_db(db, ref, parent=..., session_id=..., conn=...)`从拥有DB的Profile的`config.yaml`读取`noting.adaptive_idle_token_saving`，按显式Conversation开关及当前原生模型项匹配；旧未发布的`noting.adaptive`不保留别名。`adaptive_store`的events／plans／heartbeats及独立imports／import_events／import_members六表均按conversation_ref隔离；导入不写前三表。模型选择器现有身份是provider行slug＋models中的选项字符串，非另一个自造UUID；算法必须沿原生选择/恢复来源保留这个身份，不能用转换后已去900k后缀的出站model代替。
 
 继续只用Profile已有`config.yaml`：正式Alex为`/home/ubuntu/.hermes_profiles/Alex/config.yaml`，由原生profile-aware路径解析，不硬编码服务器路径。模型参数表放`noting.adaptive_idle_token_saving.models`，Conversation开关与导入声明放`noting.adaptive_idle_token_saving.conversations`，键为稳定conversation_ref，不用UI标题、session_id或置顶序号。当前模型从该Conversation的实际选择读取，自动查对应配置项；这是确定性参数匹配，不是算法替用户选模型。跨平台／压缩轮转仍解析原conversation_ref，无需再导入。模型切换不会被配置操作代执行。
 
@@ -79,7 +79,7 @@ noting:
 
 本节配置归属、字段形状与显式冻结历史导入方案已获用户整体确认，不再重复询问；命令/表与训练兼容细则见本节实现边界；当前已纳入main，不代表已部署或启用。最低验收：两个900k/普通选项分离，同项窗口改变实时反映且旧计划失效；缺项不误用另一模型；目标引用正确、跨Profile不越权；导入幂等/来源缺口/后续冻结/原事件去重/不捏造coverage；原生暂停、关闭、取消及已有Conversation轮转保持。先补当前三表/配置adapter与事件特征边界，不另建Agent Loop、通用调度器或第二套模型配置系统。
 
-### 导入证据与实时状态边界（用户2026-11-02明确，已接入分支）
+### 导入证据与实时状态边界（用户2026-11-02明确，已接入main）
 
 导入是本地算法训练证据，不是给GPT的新消息，不注入Prompt、不改变主会话历史前缀。使用时段、回归间隔、连续使用/平台阶段及已证受阻取消反馈可以学习；原始事件时间和可知时间保留，导入时间另作可见门控。每个来源独立生成训练窗口；先保留目标自己的观测，再对来源重叠区间去重，缺口及维护区间删失，不跨Conversation拼成一段“无人使用”。原始人数/暴露时长与衰减后的有效权重分别报告，不能把小数权重冒充真实事件数。
 

@@ -28,6 +28,38 @@ def seed(db, count=3):
          "reasoning": f"complete thought-{i}"} for i in range(count)]])
 
 
+def test_latest_thinking_retains_explicit_empty_public_view_after_tool_append(store):
+    db, client, _ = store
+    commentary = "I will inspect the next two sources."
+    db.append_messages_batch("recovery", [
+        {"role": "user", "content": "Inspect sources", "timestamp": 1},
+        {"role": "assistant", "content": "", "timestamp": 2,
+         "reasoning": commentary, "codex_message_items": [{
+             "type": "message", "role": "assistant", "phase": "commentary",
+             "content": [{"type": "output_text", "text": commentary}],
+         }]},
+    ])
+    first = page(client)
+    row = first["messages"][-1]
+    assert row["display_commentary"] == [commentary]
+    assert "reasoning" in row["deferred_details"]
+    # The public view is intentionally empty. Omitting it resurrects the
+    # original legacy reasoning when the client merges the latest detail.
+    assert first["sync"]["latest_thinking"]["rows"][0]["display_reasoning"] == ""
+    for index in range(2):
+        db.append_message("recovery", "tool", f"source-{index}", tool_call_id=f"call-{index}")
+        current = page(client, cursor=first["sync"]["cursor"])
+        assert current["sync"]["latest_thinking"]["order"] == [row["id"]]
+        cold = page(client)["sync"]["latest_thinking"]["rows"][0]
+        assert cold["display_reasoning"] == ""
+    details = client.get("/api/sessions/recovery/messages", params={
+        "history_sync": 1, "detail_row_ids": str(row["id"]),
+    }).json()["messages"][0]
+    assert details["display_reasoning"] == ""
+    assert details["display_commentary"] == [commentary]
+    assert db.get_messages("recovery")[1]["reasoning"] == commentary
+
+
 def test_snapshot_no_change_append_delete_and_authoritative_order(store):
     db, client, _ = store
     seed(db)
