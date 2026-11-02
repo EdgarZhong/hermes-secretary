@@ -1925,38 +1925,12 @@ def _cached_codex_catalog_max(access_token: str, base_url: str, slug: str) -> Op
     return published.get(_codex_catalog_key(published, slug))
 
 
-def _resolve_codex_oauth_context_length_with_source(model: str, access_token: str = "", base_url: str = "") -> Tuple[Optional[int], str]:
-    """``(context_length, source)`` for a Codex OAuth slug. source: "live" (fresh authenticated probe —
-    the only one eligible for persistent writes), "memory" (same-token in-process hit), "fallback"
-    (static table), or "" when unresolved."""
-    model_bare = _strip_provider_prefix(model).strip()
-    if not model_bare:
-        return None, ""
-    def _apply_verified_bump(ctx: int, source: str, catalog_max: Optional[int] = None) -> Tuple[int, str]:
-        """Use the verified budget capped by the catalog max for opted-in ``-900k`` variants only;
-        without a published max, only the known-stale 272K advertisement is overridden."""
-        bumped = _verified_codex_ctx_for_slug(model_bare)
-        if bumped is not None and (catalog_max is not None or ctx == _CODEX_OAUTH_STALE_ADVERTISED_CTX):
-            bumped = min(bumped, catalog_max) if catalog_max else bumped
-            logger.debug("Codex OAuth context for %s: advertised %d resolved to live-verified %d", model_bare, ctx, bumped)
-            return bumped, source
-        return ctx, source
-    # The Codex catalog only knows the base slug (no -900k, no vendor/).
-    # ``-900k`` variants are Hermes picker aliases — the Codex catalog only knows the base slug, so resolve
-    # against the stripped id. Also drop any ``vendor/`` namespace (``openai/gpt-5.6-sol-900k``): the
-    # main-agent path normalizes it away before reaching here, but display/auxiliary callers pass it through
-    # (#92797 review).
-    lookup_bare = _bare_codex_slug(strip_codex_context_variant_suffix(model_bare))
-    catalog_max = None
-    if access_token:
-        live, fresh_probe = _fetch_codex_oauth_context_lengths_with_source(access_token, base_url=base_url)
-        # Read after the fetch; a failed refresh past the TTL keeps the cap already observed.
-        catalog_max = _cached_codex_catalog_max(access_token, base_url, lookup_bare)
-        slug = _codex_catalog_key(live, lookup_bare)
-        if slug is not None:
-            return _apply_verified_bump(live[slug], "live" if fresh_probe else "memory", catalog_max)
-    hit = _longest_key_match(_CODEX_OAUTH_CONTEXT_FALLBACK, lookup_bare.lower())
-    return _apply_verified_bump(hit[1], "fallback", catalog_max) if hit else (None, "")
+def _resolve_codex_oauth_context_length_with_source(
+    model: str, access_token: str = "", base_url: str = "", *, allow_network: bool = True,
+) -> Tuple[Optional[int], str]:
+    """Native live/memory/fallback window; cache-only reads reject missing catalog evidence."""
+    from agent.model_metadata_codex_context import resolve_context
+    return resolve_context(model, access_token, base_url, allow_network=allow_network)
 
 
 def _resolve_nous_context_length(model: str, base_url: str = "", api_key: str = "") -> Tuple[Optional[int], str]:

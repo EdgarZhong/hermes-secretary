@@ -30,7 +30,7 @@ def _owner_signature(db, conversation_ref, config, model, runtime):
     return identity + (model,) + runtime_identity + (digest,)
 
 
-def _native_pair(db, session_id, config, model, runtime):
+def _native_pair(db, session_id, config, model, runtime, *, resolved_context_length=None):
     from agent.agent_init import _build_context_engine, _parse_compression_config, _resolve_context_length
     from run_agent import AIAgent
 
@@ -55,6 +55,12 @@ def _native_pair(db, session_id, config, model, runtime):
     agent.memory_manager = None
     settings = _parse_compression_config(agent, config)
     _pin, custom, effective, _model = _resolve_context_length(agent, config, agent.base_url)
+    if effective is None and resolved_context_length is not None:
+        # Preserve all native initialization and user-pin precedence. Only fill a
+        # missing metadata window, avoiding a new probe in the downstream factory.
+        from agent.model_metadata import _config_override_context_length
+        effective = (_config_override_context_length(model, agent.base_url, agent.provider, custom)
+                     or resolved_context_length)
     _build_context_engine(agent, config, settings, custom, effective, db)
     compressor = agent.context_compressor
     return compressor.context_length, compressor.threshold_tokens

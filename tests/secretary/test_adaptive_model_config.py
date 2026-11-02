@@ -24,7 +24,29 @@ def select(db, sid, model, provider='openai-codex'):
 
 
 @pytest.fixture
-def configured(tmp_path):
+def codex_catalog(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    from agent import model_metadata as metadata
+    state = {'token': 'test-catalog-' + tmp_path.name, 'base': 'https://catalog.test.invalid/codex',
+             'advertised': 500000, 'cap': 640000, 'http': [], 'auth_scopes': [], 'on_fetch': None}
+    def auth(*, read_only=False, **kwargs):
+        from hermes_constants import get_hermes_home
+        assert read_only
+        state['auth_scopes'].append(str(get_hermes_home()))
+        return {'provider': 'openai-codex', 'api_key': state['token'], 'base_url': state['base']}
+    def get(url, **kwargs):
+        state['http'].append(url)
+        if state['on_fetch']:
+            state['on_fetch']()
+        return SimpleNamespace(status_code=state.get('status', 200), json=lambda: {'models': [
+            {'slug': 'gpt-6.1-sol', 'context_window': state['advertised'], 'max_context_window': state['cap']}]})
+    monkeypatch.setattr('hermes_cli.auth.resolve_codex_runtime_credentials', auth)
+    monkeypatch.setattr(metadata.model_metadata_http, 'get', get)
+    return state
+
+
+@pytest.fixture
+def configured(tmp_path, codex_catalog):
     db = open_noting_db(tmp_path / 'state.db')
     make(db, 'normal')
     make(db, 'long')
@@ -277,3 +299,114 @@ def test_conversation_model_override_uses_its_native_custom_window_not_profile_d
     assert current['model_contract']['context_length'] == 128000
     assert current['model_contract']['threshold_tokens'] == 115200
     assert config['model']['context_length'] == 200000
+
+
+def test_authenticated_cap_replaces_unauthenticated_static_fallback(configured, codex_catalog):
+    from agent import model_metadata as metadata
+    db, refs, _ = configured
+    static, source = metadata._resolve_codex_oauth_context_length_with_source('gpt-6.1-sol-900k')
+    assert source == 'fallback' and static != codex_catalog['cap']
+    current = settings.for_db(db, refs['long'])
+    assert current['model_contract']['context_length'] == codex_catalog['cap']
+    assert current['model_contract']['threshold_tokens'] == int(codex_catalog['cap'] * .9)
+    assert codex_catalog['auth_scopes'] == [str(Path(db.db_path).parent)]
+    codex_catalog['token'] = None
+    assert settings.for_db(db, refs['long']) is None
+    assert settings.for_db(db, refs['normal']) is not None  # Native explicit pin needs no auth.
+
+
+def test_transaction_never_fetches_and_next_cold_read_recovers_expired_native_catalog(configured, codex_catalog):
+    from agent import model_metadata as metadata
+    db, refs, _ = configured
+    assert db._execute_write(lambda conn: settings.for_db(db, refs['long'], conn=conn)) is None
+    assert codex_catalog['http'] == []
+    before = settings.for_db(db, refs['long'])
+    assert len(codex_catalog['http']) == 1
+    cached = db._execute_write(lambda conn: settings.for_db(db, refs['long'], conn=conn))
+    assert cached['config_version'] == before['config_version']
+    assert len(codex_catalog['http']) == 1
+    key = metadata._codex_oauth_token_fingerprint(codex_catalog['token'], codex_catalog['base'])
+    values, _ = metadata._codex_oauth_context_cache[key]
+    metadata._codex_oauth_context_cache[key] = (values, metadata.time.time() - metadata._CODEX_OAUTH_CONTEXT_CACHE_TTL - 1)
+    codex_catalog['cap'] = 680000
+    assert db._execute_write(lambda conn: settings.for_db(db, refs['long'], conn=conn)) is None
+    assert len(codex_catalog['http']) == 1
+    after = settings.for_db(db, refs['long'])
+    assert after['model_contract']['context_length'] == 680000
+    assert after['config_version'] != before['config_version'] and len(codex_catalog['http']) == 2
+
+
+def test_native_scoped_pin_changes_win_over_catalog_and_do_not_read_auth(configured, codex_catalog, monkeypatch):
+    db, refs, config = configured
+    config['model']['default'] = 'gpt-6.1-sol-900k'
+    config['model']['context_length'] = 320000
+    write_config(db, config)
+    monkeypatch.setattr('hermes_cli.auth.resolve_codex_runtime_credentials',
+                        lambda **kwargs: pytest.fail('Explicit native pin must precede auth/catalog'))
+    before = settings.for_db(db, refs['long'])
+    assert before['model_contract']['context_length'] == 320000
+    config['model']['context_length'] = 360000
+    write_config(db, config)
+    after = db._execute_write(lambda conn: settings.for_db(db, refs['long'], conn=conn))
+    assert after['model_contract']['context_length'] == 360000
+    assert after['config_version'] != before['config_version'] and not codex_catalog['http']
+
+
+def test_native_custom_and_explicit_model_overrides_keep_their_priority(configured, codex_catalog):
+    db, refs, config = configured
+    db.patch_session_model_config('long', {'base_url': codex_catalog['base']})
+    config['custom_providers'] = [{'name': 'codex-window', 'base_url': codex_catalog['base'],
+        'models': {'gpt-6.1-sol-900k': {'context_length': 340000}}}]
+    write_config(db, config)
+    current = db._execute_write(lambda conn: settings.for_db(db, refs['long'], conn=conn))
+    assert current['model_contract']['context_length'] == 340000 and not codex_catalog['http']
+    config['model_overrides'] = {'openai-codex': {'gpt-6.1-sol-900k': {'context_window': 370000}}}
+    write_config(db, config)
+    current = settings.for_db(db, refs['long'])
+    assert current['model_contract']['context_length'] == 340000 and not codex_catalog['http']
+    from secretary.noting_capability import _native_pair
+    from secretary.noting_scope import owning_db_scope
+    route = {'provider': 'openai-codex', 'base_url': codex_catalog['base'], 'api_mode': 'codex_responses'}
+    with owning_db_scope(db):
+        native = _native_pair(None, 'long', config, 'gpt-6.1-sol-900k', route)
+        witnessed = _native_pair(None, 'long', config, 'gpt-6.1-sol-900k', route, resolved_context_length=800000)
+    assert native == witnessed == (340000, int(340000 * .9))
+
+
+def test_credential_route_and_token_catalog_never_cross_boundaries(configured, codex_catalog):
+    db, refs, _ = configured
+    assert settings.for_db(db, refs['long']) is not None
+    calls = len(codex_catalog['http'])
+    codex_catalog['token'] += '-other-account'
+    assert db._execute_write(lambda conn: settings.for_db(db, refs['long'], conn=conn)) is None
+    assert len(codex_catalog['http']) == calls
+    db.patch_session_model_config('long', {'base_url': 'https://other-route.test.invalid/codex'})
+    assert settings.for_db(db, refs['long']) is None
+    assert len(codex_catalog['http']) == calls
+    assert settings.for_db(db, 'not-opted-in') is None
+
+
+def test_configuration_changed_during_catalog_fetch_rejects_stale_contract(configured, codex_catalog):
+    db, refs, config = configured
+    def change():
+        config['model']['default'] = 'gpt-6.1-sol-900k'
+        config['model']['context_length'] = 330000
+        write_config(db, config)
+    codex_catalog['on_fetch'] = change
+    assert settings.for_db(db, refs['long']) is None
+    assert settings.for_db(db, refs['long'])['model_contract']['context_length'] == 330000
+
+
+def test_failed_authenticated_refresh_does_not_adopt_native_static_fallback(configured, codex_catalog):
+    from agent import model_metadata as metadata
+    db, refs, _ = configured
+    assert settings.for_db(db, refs['long']) is not None
+    key = metadata._codex_oauth_token_fingerprint(codex_catalog['token'], codex_catalog['base'])
+    values, _ = metadata._codex_oauth_context_cache[key]
+    metadata._codex_oauth_context_cache[key] = (
+        values, metadata.time.time() - metadata._CODEX_OAUTH_CONTEXT_CACHE_TTL - 1)
+    codex_catalog['status'] = 503
+    assert settings.for_db(db, refs['long']) is None
+    calls = len(codex_catalog['http'])
+    assert db._execute_write(lambda conn: settings.for_db(db, refs['long'], conn=conn)) is None
+    assert len(codex_catalog['http']) == calls

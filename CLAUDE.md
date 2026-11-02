@@ -19,9 +19,11 @@
 
 隔离真实GPT共3个短任务/9次模型请求（Luna一次、Terra两次），未改生产用户Conversation/默认模型/凭据。第三任务真实Thinking28字符→public295→工具→Thinking35→public190→第二工具→final；原生SDK、builder、SQLite、公开读取均保留两段正文且未进入reasoning。首样本SDK recorder漏捕获已披露，后两样本完整。真实事件与正式REST投影回放当前Controller/React App，包含第二工具active切点、cold及reconnect；线上显示开关/实际HTTP确认不是隐藏配置。当前仍无法定位用户具体丢失片段；确定修复不冒充其根因。隐藏IAB不可用，未回退外部浏览器，不把React DOM测试称实际浏览器验收。
 
-证据在adaptive worktree ignored `.hermes-dev/assistant-thinking-regression-20261102/`及前端`.archive/assistant-thinking-regression-20261102/`；原始真实模型记录只在Alex私有隔离目录，入测试夹具为等长脱敏文本/结构。确定修复94cc2b4cfb已从main上线；FE真实回放11项及typecheck通过，测试夹具a75f278已推正式分支，未改前端产品。用户原丢字现象继续保留为未闭问题。
+证据在adaptive worktree ignored `.hermes-dev/assistant-thinking-regression-20261102/`及前端`.archive/assistant-thinking-regression-20261102/`；原始真实模型记录只在Alex私有隔离目录，入测试夹具为等长脱敏文本/结构。后续再用同选择项Sol900k/xhigh补1个短隔离任务（3请求，合计4任务/12请求）；两段338/284字public在SDK、builder、SQLite和正式REST均保留，未复现，已停止付费样本。现存来源审计已结束：无持久Assistant事件journal，event_replay仅512帧/4MiB且重启消失，inflight仅当前/上一轮；14:36后只有15766/15788两条public落库候选，sidecar与公开读SHA一致，但发送侧只留15788脱敏93字快照，不能做原文hash证明。发布期间的重启已使当前runtime只剩恢复/状态事件；无法排除原现场“已发未落”，不补造发送证据、不再追加模型调用。确定修复94cc2b4cfb已从main上线；FE真实回放11项及typecheck通过，测试夹具a75f278已推正式分支，未改前端产品。用户原丢字现象继续保留为未闭问题。
 
 ## 2026-11-02 · 模型配置／历史继承已合main，正文回归与正式启用继续
+
+**启用前最新阻断：** ade6cb2ab6已发布并验证，Conversation级Idle隔离完成；activation在写配置/恢复Heartbeat之前因冷模型合同900000与此前原生/持久872000不一致而停止，当前仍未启用。已确认无auth静态900K不是当前权威值：原生带auth live catalog仍872K。已修为事务外原生只读认证catalog、事务内只用有效同token/route缓存；native pin优先、不新增永久缓存。23＋1定向与原生61项通过、真实Alex只读返回872000/697600且事务内HTTP=0，主会话亲审默认兼容及初始化优先级后纳入本次main提交；用户配置/HB待发布后启用。
 
 用户授权按设计合入main，并询问算法缓存、持久化和真实历史上限。基线adaptive `4bf8f9d2d0`、main `c73b94ae2b`；主目录Huawei未跟踪资料保持。本轮先补齐已确认的`noting.adaptive_idle_token_saving`模型项/Conversation配置与显式历史快照继承，再review/定向验证合入main；不把旧全Profile单参数实现冒充新方案完成。主会话负责范围/集成、历史与实时状态隔离、文档及实际存储说明；model_config负责配置与正式读取接线，history_import负责冻结导入持久机制/显式操作入口，各自限定文件，禁止子派生。继续复用既有有效178项证据，只对新变更与受影响接线定向回归。正式部署状态另报，不以合并替代启用。已补模型精确匹配、同Profile显式快照导入与独立训练接线；当前特征/预测/定性回归52项通过（含最终14项继承反例），7文件77项模型/导入/运行接线回归通过；冻结检查九项通过，唯一no-tmp为同blob历史报告基线，最终ruff/health通过（0阻断/0提示）。证据在ignored `.hermes-dev/adaptive-final-20261102/`，复用有效结果、不累计重复复测。交叉review发现并修复work mark可知时间丢失、混模型部分Turn冒充完整工作量、旧提前due残留和配置撤下后的HB claim结算；主会话已复核正式接线与差异，b449c7a299及之前算法提交纳入本次main合并；Thinking回归单独处理，线上尚未启用。用户随后报告Assistant正文落库后仍变Thinking，明确本轮一并修复；旧验收不覆盖本次复现。assistant_thinking_regression负责从真实流式→持久→重读链路复核与修复，限定非adaptive的BE消息类型/投影及对应FE文件，主会话审证据集成，不按旧测试已过宣称关闭。
 
