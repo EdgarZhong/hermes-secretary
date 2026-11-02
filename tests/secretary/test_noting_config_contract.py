@@ -67,7 +67,6 @@ def _construct(db, config, *, window=196000, ratio=.75, idle=0, enabled=True, lo
 
 @pytest.mark.parametrize("window,ratio,idle,reason,guidance", [
     (128000, .75, 0, "threshold_below_64k", "increase the Context Window"),
-    (500000, .60, 0, "reserve_above_128k", "move the Hermes threshold later"),
     (196000, .75, 300, "idle_compaction_conflict", "idle_compact_after_seconds to 0"),
 ])
 def test_actual_resolved_failure_closes_background_noting_but_preserves_main_reads(native_runtime, window, ratio, idle, reason, guidance, caplog):
@@ -95,28 +94,33 @@ def test_actual_resolved_failure_closes_background_noting_but_preserves_main_rea
         agent.close()
 
 
-@pytest.mark.parametrize("window,ratio", [(196000, .75), (130000, .75)])
+@pytest.mark.parametrize("window,ratio", [(196000, .75), (130000, .75), (500000, .60), (872000, .75), (872000, .60)])
 def test_legal_native_configuration_and_exact_threshold_floor(native_runtime, window, ratio):
     db, config = native_runtime
     agent, ref, _data = _construct(db, config, window=window, ratio=ratio)
     try:
+        before = config.read_text()
+        native_pair = (agent.context_compressor.context_length, agent.context_compressor.threshold_tokens)
+        assert native_pair == (window, int(window * ratio))
         assert noting_trigger_gate(db, ref) == (True, "")
         assert "notebook_show" in _names(agent.tools) & agent.valid_tool_names
         pair = force_thresholds(agent.context_compressor.context_length, agent.context_compressor.threshold_tokens)
         if window == 130000:
             assert pair.force_noting_threshold == 64000
         assert pair.usable
+        assert config.read_text() == before
+        assert native_pair == (agent.context_compressor.context_length, agent.context_compressor.threshold_tokens)
     finally:
         agent.close()
 
 
-def test_strict_reserve_equality_never_clamps():
+def test_large_reserve_does_not_disable_or_clamp_native_thresholds():
     assert force_capability_failure(force_noting_reserve_tenths=1280000, force_noting_threshold_tenths=2000000) is None
-    assert force_capability_failure(force_noting_reserve_tenths=1280001, force_noting_threshold_tenths=2000000) == "reserve_above_128k"
+    assert force_capability_failure(force_noting_reserve_tenths=1280001, force_noting_threshold_tenths=2000000) is None
     pair = force_thresholds(300000, 193333)
     assert pair.force_noting_reserve == 128000.4
-    assert pair.capability_failure == "reserve_above_128k"
-    assert "reduce" in configuration_guidance(pair.capability_failure)
+    assert pair.usable
+    assert pair.force_noting_threshold == 171999.6
 
 
 @pytest.mark.parametrize("enabled,local,idle", [(False, True, 300), (True, False, 0), (True, False, 300)])
@@ -146,7 +150,8 @@ def test_unknown_native_runtime_is_not_capability_proof(native_runtime):
     assert noting_trigger_gate(db, db.resolve_conversation_ref("cold")) == (False, "runtime_unresolved")
 
 
-@pytest.mark.parametrize("window,cap,expected", [(196000, None, ""), (128000, None, "threshold_below_64k"), (500000, 300000, "reserve_above_128k")])
+@pytest.mark.parametrize("window,cap,expected", [(196000, None, ""), (128000, None, "threshold_below_64k"),
+                                               (500000, 300000, ""), (872000, 654000, "")])
 def test_cold_native_factory_uses_same_resolved_pair_and_invalidates_config(native_runtime, window, cap, expected, caplog, monkeypatch):
     import hermes_yaml as yaml
     from secretary.noting_capability import prime_cold_main_capability

@@ -643,7 +643,7 @@ def test_run_codex_stream_returns_collected_items_when_stream_ends_without_termi
     assert response.output == [output_item]
 
 
-def test_consume_codex_stream_routes_commentary_phase_deltas_to_reasoning(monkeypatch):
+def test_consume_codex_stream_does_not_reclassify_commentary_without_a_consumer(monkeypatch):
     from agent.codex_runtime import _consume_codex_event_stream
 
     commentary_item = SimpleNamespace(
@@ -684,7 +684,7 @@ def test_consume_codex_stream_routes_commentary_phase_deltas_to_reasoning(monkey
     )
 
     assert streamed == []
-    assert reasoning_streamed == ["I’ll call the tool now."]
+    assert reasoning_streamed == []
     assert response.output == [commentary_item, function_item]
     assert response.output_text == ""
 
@@ -1923,7 +1923,7 @@ def test_normalize_codex_response_marks_commentary_only_message_as_incomplete(mo
 
     assert finish_reason == "incomplete"
     assert (assistant_message.content or "") == ""
-    assert "inspect the repository" in (assistant_message.reasoning or "")
+    assert assistant_message.reasoning is None
     assert assistant_message.codex_message_items
     assert assistant_message.codex_message_items[0]["phase"] == "commentary"
     assert "inspect the repository" in assistant_message.codex_message_items[0]["content"][0]["text"]
@@ -1940,7 +1940,7 @@ def test_normalize_codex_response_does_not_fallback_to_output_text_for_commentar
 
     assert finish_reason == "incomplete"
     assert (assistant_message.content or "") == ""
-    assert "call the tool" in (assistant_message.reasoning or "")
+    assert assistant_message.reasoning is None
     assert assistant_message.codex_message_items[0]["phase"] == "commentary"
 
 

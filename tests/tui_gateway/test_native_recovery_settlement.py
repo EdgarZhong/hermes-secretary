@@ -58,11 +58,11 @@ def start(runtime, monkeypatch, *, source="prompt.submit_idle", steer=False, out
 
     def provider(kwargs):
         calls.append(kwargs)
+        if partial and len(calls) == (2 if steer else 1):
+            runtime.agent._claim_stream_writer()
+            runtime.agent.reasoning_callback("Partial native reasoning")
+            runtime.agent.tool_gen_callback(TOOL)
         if len(calls) == 1:
-            if partial:
-                runtime.agent._claim_stream_writer()
-                runtime.agent.reasoning_callback("Partial native reasoning")
-                runtime.agent.tool_gen_callback(TOOL)
             entered.set()
             assert release.wait(5)
             if steer:
@@ -482,6 +482,41 @@ def test_native_exceptional_finish_does_not_lend_old_output_to_the_next_turn(run
     assert result["complete"] and not result["running"], result
     next_gate = start(runtime, monkeypatch, ordinal=1)
     assert settle(runtime, next_gate)["complete"]
+
+
+@pytest.mark.parametrize("outcome", ["interrupted", "error"])
+def test_consumed_steer_then_partial_terminal_recovers(runtime, monkeypatch, outcome):
+    gate = start(runtime, monkeypatch, outcome=outcome, steer=True, partial=True)
+    assert activate(request(runtime.db))["complete"]
+    if outcome == "interrupted":
+        response = server.handle_request({"id": "stop", "method": "session.interrupt",
+                                          "params": {"session_id": "runtime"}})
+        assert response["result"]["status"] == "interrupted"
+    idle = settle(runtime, gate)
+    events = recovery_view.snapshot(runtime.session, "runtime")["events"]
+    assert any(event["type"] == "steer.consumed" for event in events)
+    assert events[-1]["payload"]["status"] == outcome
+    assert idle["complete"] and not idle["running"], idle
+    assert not idle["state_snapshot"]["events"]
+    next_gate = start(runtime, monkeypatch, ordinal=1)
+    assert settle(runtime, next_gate)["complete"]
+
+
+@pytest.mark.parametrize("damage", ["uid", "message", "turn"])
+def test_stopped_consumed_steer_requires_the_durable_input_owner(runtime, monkeypatch, damage):
+    gate = start(runtime, monkeypatch, outcome="interrupted", steer=True, partial=True)
+    server._interrupt_session_turn("runtime", runtime.session)
+    assert settle(runtime, gate)["complete"]
+    events = runtime.session["_inflight_output"]["events"]
+    payload = next(event["payload"] for event in events if event["type"] == "steer.consumed")
+    if damage == "uid":
+        payload["message_uid"] = "unknown-user"
+    elif damage == "message":
+        payload["message"]["message_uid"] = "different-user"
+    else:
+        payload["turn_id"] = "other-turn"
+    result = activate(request(runtime.db))
+    assert not result["complete"] and result["reason"] == "runtime_unavailable", result
 
 
 @pytest.mark.parametrize("source_method", ["prompt.submit", "prompt.submit_idle"])

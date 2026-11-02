@@ -1,5 +1,37 @@
 # 运维记录
 
+## 2026-11-02 · Stop终态恢复、Noting大窗口及Assistant类型修复（发布准备）
+
+用户明确要求立即修复三项。Stop现场14:09:50已保存interrupted、无lease且网络已连接；停止快照的已消费输入通知被终态恢复事件清单遗漏，导致稳定runtime_unavailable。新增原生Steer后部分生成／Stop与异常结束回归精确复现；修复按已持久来源及相同Turn确认通知归属，保留未知来源拒绝。线上原快照只读回放旧代码失败、新候选complete=true且残留0，原物料保持。前端连续实际失败明确原因、可展开详情及同页重试，自动恢复成功和owner／读取范围切换清理旧错误。
+
+Noting取消固定128K reserve资格上限，保留公式、66K／64K下限、配置和Prompt。GPT按Provider结构区分commentary与analysis；commentary沿原生sidecar及显示投影保留Assistant，已存旧行无需改写，source facet与同UID流式退役接通。原56行不进Git。验证：Stop204项、Noting61项、GPT后端181项／前端174项、错误提示56项加App3项，typecheck通过。冻结十检查九项通过，历史no-tmp失败在原HEAD不变；额外BE两条压缩trigger夹具、FE41项原集成及一条Steer快照失败原提交复现，未改规则或旧断言。本地证据stop-fixes-20261102、assistant-thinking-20261102及FE.archive对应目录。未发生产模型请求。
+
+## 2026-11-02 · 用户授权立即停止delegate并重启整个Hermes
+
+用户明确要求立即停止线上delegate，必要时直接重启整个Hermes。14:06:35+08已通过SSH停止系统级hermes-secretary.service和ubuntu用户级hermes-gateway.service，在启动前执行服务cgroup全进程SIGKILL清退兜底，再启动两服务。旧Web2474096／Gateway2474098替换为2812343／2812344，均active／running；此动作中断当时运行任务，不声称优雅结算。此前只调查原生delegate取消接口，未实际调用，不冒称单独取消成功。没有修改产品代码、模型、配置、历史或数据库，也未删除故障证据。后继只读核对旧进程、资源和HTTP／监听状态。
+
+14:06:44左右核验旧PID均不存在，停止日志出现`[subagent-0] Interrupted during API call`；新Web记录HERMES_DASHBOARD_READY，53446已监听、loopback首页HTTP200。内存used1896MiB／available1763MiB（此前available约120–206MiB），Swap0；Gateway新服务启动中且active／running。没有将HTTP核验扩大为用户页面或全部渠道验收。
+
+## 2026-11-02 · 运行中slash fork后恢复连接卡住（只读排查）
+
+用户报告运行中执行slash fork后卡住。13:56–13:59+08正式Alex两服务仍存活（Web2474096／Gateway2474098），尚未重启／中断／发送模型消息或修改产品。现场3.6GiB内存可用约120–130MiB、负载约15–20、Swap未使用；memory full avg60约33–40%，后台存在浏览器和make编译任务。13:54:54、13:55:11、13:55:48及13:57:52出现事件循环停顿，13:55:43数据库写锁等待20秒，随后WS ready／response发送失败。独立loopback首页约0.81秒返回，session.active_list等待超时；没有将首页可用等同会话恢复正常。
+
+受限原始gui／errors日志及最近会话元数据保存于`/home/ubuntu/.local/state/hermes-secretary/fork-reconnect-20261102/`，目录0700、文件0600。只读查询最近会话仅见13:52父会话派出的两子任务，未见用户slash fork新分叉，不冒称fork已成功或已确定根因。初次元数据查询错误使用created_at字段，失败后按实际started_at纠正，均未写库。重启会中断当前Turn及子任务，已询问用户恢复取舍，未确认前保持只读。当前未恢复／未判定修复完成。
+
+**自动恢复补核（14:01–14:02+08）：** 用户反馈已自行恢复；双服务PID、02:20:41启动时间均保持，NRestarts=0，未进行运维恢复动作。13:59:32.831原主Turn以complete／error_retained=False正常结束（618.4秒），14:00:48.197同runtime已受理新消息。14:01:08负载4.56（此前约15–20），可用内存206MiB，memory full avg60=11.90%（此前约33–40%）；只读session.active_list约7.998秒返回，新主Turnrunning。两子任务在14:01仍有工具完成日志，不能将恢复解释为全部子任务结束；浏览器调用此前曾耗时91／103秒，后继样本约1–6秒，只作时段改善证据。数据库锁告警原文owner为Web PID2474096持WAL write lock，缺具体线程／调用栈，不能认定fork死锁。最近两个子会话配置均_delegate_from、无_branched_from，未见本次fork落盘。结论为资源严重拥塞与后端停顿同期，压力缓解后原服务自动恢复；fork是否参与触发及具体阻塞调用未闭环，不称产品根因已修。恢复后gui／errors／agent日志、active结果及recovered-manifest.json保存在原受限目录（不覆盖原始文件），不再需要重启选择。
+
+## 2026-11-02 · Noting历史补跑完成、Framework延迟结论与Heartbeat暂停
+
+用户授权在新区间生效后补旧Noting，后续明确不因缓存命中与否中断，接受原生截断的有效落盘，但必须确认Framework接入。本次真实来源为旧区间14138至Anchor行15245，排除新摘要15246；原生解码去重复580条，原root及完整30工具保持，Responses转换后的工具数组与旧实际捕获一致。原接口不支持指定旧派生点，因此以受限一次性脚本调用既有manual admission／原生runner／Snapshot owner，仅本次登记真实旧来源；没有伪造失败child、修改长期128K门禁、Profile模型／配置或旧历史。任务-4／child noting_backfill_20261102_14138_15245正常finish_noting，32请求、累计cache_read_tokens=25160320（不据累计数冒称首请求命中）；有效Snapshot `snap_8966e252a31043d6b16cd506ba331006`已原子提交并成为有效指针。原始源、来源SHA、最终结果及通知回执只存正式Alex受限`~/.local/state/hermes-secretary/noting-backfill-20261102/`（目录0700、文件0600），本地ignored同名证据目录只放脚本／非敏感核对。
+
+**已查明延迟，非Snapshot事务分钟级等待：** 原生child消息15399发出finish_noting于06:14:09.462848+08，工具回执15400于06:14:09.476876；Snapshot于06:14:10.043082提交，工具回执到提交0.566206秒，result收据06:14:10.587落盘。首次通知06:14:10.922回执accepted=false，原因是一次性补跑父对象仍为side_agent，被正常Main发布资格拒绝；后续经原生Main短租约追加，在06:14:55.628回执确认成功，额外约45.6秒在本次运维补接及接续，不能推定正常产品链路也有相同延迟。Framework UID `f0c2efee02794d88bbdc49d9c4f0771e`，Note receipt精确指向新区间compaction:20261021_200341_2ce088:15246与该Snapshot；原生消息timestamp使用Snapshot创建时间，不能据UI时间反推实际追加时刻。用户随后确认接入成功。这里只登记结论，不改产品代码。
+
+Heartbeat按用户先设置10800秒、随后关闭的最新指令，已原生pause并重读paused／10800，保留定义、不自动恢复；原09:00计划已取消，不触发测试Heartbeat。两次状态收据在上述受限目录。用户明确128K设计缺陷与GPT正文转Thinking暂不修；后一问题的截图仅本地ignored受限保存，当前Main的56条原始消息行（BLOB原字节base64）封存在Alex受限`gpt-assistant-thinking-20261102/main-message-rows.json`，SHA923598b4d252975be0e40f7a061d5d1f7cd52946b3ba8d8ba24ec1f785bb391a，不抄个人原文进Git。
+
+## 2026-11-02 · 按最新线上WebDist重打同版本APK（已交付副本核验）
+
+用户先要求核对旧包，随后明确按最新WebDist重打、版本号不变。旧0.1.10 conversation-recovery包与当前线上各439实文件、435同名同SHA，主入口由index-5bzulIsK.js更新为index-DZaVwrOy.js；旧包list有440行、多列实际不存在的.DS_Store。最新线上439文件已取到前端ignored`.archive/apk-20261102-webdist/online-dist`并逐SHA核对；构建跳过Web重新编译，保留线上精确字节、原签名及0.1.10／1010。本轮只打包／验证，不修两项缺陷、不部署代码。最终交付`/Users/edgar/Downloads/Hermes-Secretary-0.1.10-webdist-95ce4df-arm64.apk`：0.1.10／1010、32136045字节，SHA256 `106ffbac6c4b89840b56ffa2e859d9e8edb1dbe30ddcb87bf0893c797a4ae102`；原证书449b5f36…、v2／完整ZIP CRC／ZIP及ELF 16KB／arm64／非debug／交付副本通过。包内439资源逐SHA与打包前后当前线上目录一致，secretary-files.txt正好439行、与实际集合完全一致，无旧.DS_Store清单残留；未安装Android真机，不冒称实际设备验收。构建、严格验证、源清单及final-proof收据在前端ignored`.archive/apk-20261102-webdist/`，Downloads旁保留verification.json与sha256；保留源目录既有五个.DS_Store及其它工作。
+
 ## 2026-11-02 · 网页／微信并发后runtime_unavailable取证、恢复及修复上线
 
 用户要求先封存现场、尽快恢复Alex，并随后授权根因明确即修复上线。目标置顶Conversation网页runtime29a4a8a1已idle、Web／Gateway活动均0、无有效Turn租约；HTTP正常且WS可响应，最终恢复却稳定complete=false／runtime_unavailable。原快照三条来源均已持久且身份匹配，all_rows_committed=true，prefix_unchanged=false／receipt.complete=false；唯一未结算事件为reasoning.available。02:05:29→02:05:32日志证明曾等待其它Hermes进程释放会话，原生随后重载历史；网页完成回执仍比较等待前基线，原生真实租约争用回归已精确复现两正式发送入口同类失败。微信已完成，不把失效快照解读为微信仍忙，也不归因于网络或Noting警告。

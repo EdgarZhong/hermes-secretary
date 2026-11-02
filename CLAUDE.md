@@ -1,5 +1,37 @@
 # Hermes Secretary 当前状态
 
+## 2026-11-02 · Stop恢复卡死及两项已登记缺陷（实施中）
+
+用户明确要求立即修复：后端是运行状态权威，正常Stop／Steer不得因辅助通知残留让前端无限Retrying；同时授权修复此前登记的128K资格上限及Assistant正文转Thinking两项，替代此前暂不修口径。基线0536a8fd2d，分支codex/stop-and-noting-fixes-20261102；保护原文档dirty及Huawei资料。Stop现场：14:09:50主Turn已interrupted，无lease，浏览器connection=connected但Send禁用／Running陈旧；停止快照含steer.consumed，完成来源／终态／输出均已证明，辅助事件被停止恢复清单拒绝。离线只去该事件立即通过，不改线上原物料。主会话负责Stop修复、集成与正式验证；noting_cap负责资格上限，assistant_thinking负责Provider类型及Web投影，recovery_error_ui负责恢复失败提示；各分区独立修改后交回review，不在线上跑构建。用户确认续跑正常，不将其当缺陷；本轮不在线上编译或发送测试消息。
+
+当前验证：Stop原生结算72项、新增错误输入身份3项、恢复／在途输出／手动压缩129项通过；线上封存原快照旧代码runtime_unavailable、新候选完整返回空残留事件。Noting policy／runtime／冷暖配置61项通过。十项冻结检查九项通过，no-tmp仍命中原HEAD已存在的历史validation.md字面路径；不改历史报告或检查规则。正文类型BE181项／FE174项、错误提示组件及owner56项／App定向3项通过，typecheck通过；新增范围检查通过。旧基线另有BE两条压缩trigger夹具及FE41项既有集成失败与一条Steer快照失败，均在原提交复现，未篡改。实现已review接收，正在合主干／构建发布，尚未部署。证据ignored `.hermes-dev/stop-fixes-20261102/`。
+
+## 2026-11-02 · 用户要求立即停止delegate并重启整个Hermes（已执行）
+
+用户明确要求立即停止线上delegate，必要时重启整个Hermes；14:06:35+08已停止并重启系统级Web与用户级Gateway，旧Web2474096／Gateway2474098替换为2812343／2812344，两服务active／running。此前未实际执行delegate取消接口；本次通过整套服务重启中断运行任务，不冒称单独原生取消已成功。旧PID已退出，日志确认subagent Interrupted during API call；新Web监听53446、HTTP200，可用内存回升1763MiB。未改产品、模型、配置或历史，运维结果见operations-log顶部。
+
+## 2026-11-02 · 运行中 slash fork 后持续恢复连接（已自动恢复，根因未全闭）
+
+用户报告运行中执行slash fork后持续恢复连接。本轮仅只读取证，未重启／中断Turn／改产品代码。13:56–13:59正式机Web／Gateway仍存活；3.6GiB内存可用约120–130MiB、负载约15–20、memory full压力近一分钟约33–40%；13:54起事件循环多次停顿5–10秒，数据库写锁等待20秒及WS发送失败。独立首页约0.8秒返回，但活动会话RPC超时。最近数据库记录仅13:52父Turn派出的两子任务，未见该slash fork新分叉；不能据此判定fork根因。原始日志封存在Alex受限`~/.local/state/hermes-secretary/fork-reconnect-20261102/`。已询问用户保留任务继续排查或允许中断并重启Web，未答不操作；运维事实见operations-log顶部。
+
+用户随后报告自动恢复。复核双服务PID／启动时间保持、NRestarts=0；原主Turn13:59:32正常complete，14:00:48已受理新消息。14:01负载4.56、memory full avg60降至11.90%，活动会话RPC约8秒可返回。两个子任务仍在继续，不将恢复归因为全部任务结束；锁owner确为Web2474096，未定位具体线程。最近两子会话均_delegate_from且无_branched_from；未证slash fork成功。现场符合资源拥塞缓解后自动恢复，fork因果／具体锁调用仍未全闭；不再等待重启选择，不执行重启。恢复后日志、状态及SHA清单已补同一受限目录。
+
+## 2026-11-02 · 本轮收尾（已完成）
+
+- **Heartbeat：已暂停。** 用户先要求3小时、随后要求关闭；Alex置顶Conversation已原生pause并重读paused，保留10800秒定义，不自动恢复。
+- **Noting：已正常提交并接入Framework，用户已确认可见。** 单次补跑以旧区间14138至Anchor15245的580条消息、原root及完整30工具派生，新摘要15246排除；原生32请求后finish_noting，Snapshot `snap_8966e252a31043d6b16cd506ba331006`已生效，Framework UID `f0c2efee02794d88bbdc49d9c4f0771e`已在新区间追加。用户接受有效截断落盘，但本次实际为正常完成；不再重跑。
+- **延迟：已查明并登记。** 06:14:09.477 finish工具回执→06:14:10.043 Snapshot提交约0.57秒；Framework至06:14:55.628确认成功，额外约45.6秒发生在本次补跑父对象首次被发布器拒绝及后续补接，不是Snapshot事务分钟级等待。未据此判定正常产品链路有同样延迟，详operations-log。
+- **APK：已完成同版本重打与交付副本核验。** `/Users/edgar/Downloads/Hermes-Secretary-0.1.10-webdist-95ce4df-arm64.apk`，0.1.10／1010、32136045字节，SHA256 `106ffbac6c4b89840b56ffa2e859d9e8edb1dbe30ddcb87bf0893c797a4ae102`；沿用原签名，包内439文件及439行list与当前线上95ce4dffe9 WebDist精确一致，v2／CRC／16KB／交付副本通过。无产品代码修复或部署；未做真机安装验收。
+
+## 两项已登记问题（已获本轮修复授权）
+
+| 问题 | 现状与入口 |
+|---|---|
+| 大窗口128K资格上限设计缺陷 | 已移除固定128K上限并通过61项回归，待本轮发布，见07顶部。 |
+| GPT Assistant正文转入Thinking | 已修复commentary类型、source facet及新旧历史投影，待本轮发布；截图和56条原始消息字段受限封存，不抄个人登录信息进Git；见06顶部。 |
+
+详细运维、延迟时间线及APK证据统一见[operations-log](docs/operations-log.md)。本轮不动既有未跟踪Huawei资料及前端五个.DS_Store，不做额外修复；同版本新APK交付已就绪，该次APK／Noting补跑已结束；后续Stop及两项缺陷修复以上方当前任务为准。
+
 ## 2026-11-02 · 网页／微信并发后恢复卡住（已修复上线）
 
 用户反馈并发发送后持续Retrying，要求先记录并封存原始物料、最小成本恢复Alex；随后明确根因清晰即可修复并上线。主会话独立处理，不代发消息、不切模型、不改历史。故障BE a36eb645b2／FE95ce4dffe9：REST持续200且健康，网页runtime29a4a8a1空闲、Web及微信活动均0、无Turn lease；独立WS最终恢复稳定runtime_unavailable。旧快照唯一未结算事件reasoning.available，完成receipt三条来源身份匹配且all_rows_committed=true，但prefix_unchanged=false／complete=false。真实租约争用回归定位：等待外部进程后原生重载历史，网页回执仍比较等待前基线；预写当前用户行又会被重载为旧历史、在角色修复时合并。修复仅在重载模型投影前按精确已受理UID排除此行，并在既有原生用户落库观察接缝冻结本轮回执历史；原文／模型Prompt／恢复与前缀／压缩校验不放宽。
@@ -317,7 +349,7 @@ U20详口径见07顶部及plan接线设计；旧“先Noting再压缩／FM结算
 
 本轮发布及迁移收尾已完成：Alex、study飞书MCP握手均仅notify，未发通知；Hermes恢复正常运行。旧实验首尔机废弃、待回收，未销毁实例。全局服务器规则已精简。具体版本、验证、备份与限制统一见[运维记录顶部](docs/operations-log.md)。20c9267旧APK原已交付并核SHA，用户本轮要求后已移出两端Alex工作同步区，新构建暂不交付。
 
-## 当前交付与运行版本
+## 前轮交付与运行版本快照（历史，当前以顶部为准）
 
 | 项目 | 已核结果 |
 |---|---|

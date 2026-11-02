@@ -483,16 +483,35 @@ def _terminal_snapshot_accounted(state, d1, known):
         return False
     if not _terminal_output_frames(events, d1["lineage"]):
         return False
+    if not _settled_steer_frames_match(events, sources):
+        return False
     allowed = {"message.user_committed", "message.source_committed", "message.start", "message.complete",
                "message.delta", "reasoning.delta", "message.interim", "message.output_delta", "message.output_state",
                "message.output_committed", "tool.generating", "tool.start", "tool.complete", "tool.output",
-               "reasoning.available", "thinking.delta", "status.update"}
+               "reasoning.available", "thinking.delta", "status.update", "steer.consumed"}
     if any(event["type"] not in allowed for event in events):
         return False
     outcome = {"outputs": observed_output_events(events)}
     _reconcile_outputs(outcome, [row for row in known.values()
                                  if row.get("visible") and (row.get("active") or row.get("compacted"))])
     return outcome.get("outputs_complete", True) and digest(outcome.get("outputs", [])) == source.get("terminal_outputs_digest")
+
+
+def _settled_steer_frames_match(events, sources):
+    """Consumed input belongs to the durable suffix, including stopped Turns."""
+    users = {source["message_uid"] for source in sources if source.get("role") == "user"}
+    turn_id = next((event["payload"].get("turn_id") for event in events
+                    if event["type"] == "message.output_state"), None)
+    for event in events:
+        if event["type"] != "steer.consumed":
+            continue
+        payload = event.get("payload") or {}
+        message = payload.get("message") or {}
+        uid = payload.get("message_uid") or message.get("message_uid")
+        if (uid not in users or payload.get("turn_id") != turn_id
+                or (message and (message.get("message_uid") != uid or message.get("role") != "user"))):
+            return False
+    return True
 
 
 def _clean_snapshot(state, d1, *, running):

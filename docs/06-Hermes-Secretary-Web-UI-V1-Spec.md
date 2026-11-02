@@ -1,5 +1,11 @@
 # Hermes Secretary Web UI V1 — Product, Native Interface & Implementation Specification
 
+## 2026-11-02 · 正常Stop恢复与GPT回复类型修复（用户授权）
+
+用户报告在切换至GPT后，模型思考并先以Assistant正文展示回复，随后该段回复突然成为Thinking卡片的一部分。约05:48的用户截图显示gpt-6.1-sol-900k／xhigh，Thinking内同时有英文思考标题及面向用户的中文回复，工具仍在执行。截图保留于本地ignored受限证据，不复制其中个人登录信息；“先正文后Thinking”的迁移过程依用户报告登记，不冒称截图完整录制了状态变化。该现象列为明确的回复类型／展示归属异常，待核对实际Provider输出类型、流式身份、持久投影及客户端恢复／合并路径后定位；当前不预判根因，也不以已有完成通知或历史相关修复证明本缺陷已关闭。用户随后明确要求立即修复，替代此前只登记口径。已核实Provider message／commentary在持久转换中被混入reasoning，且Web未完整采用原生commentary展示投影；修复须以Provider结构类型为准，工具前的Assistant commentary继续显示为Assistant，独立analysis／reasoning仍在Thinking，新旧历史均正确恢复，不以文本内容猜类型。
+
+正常Stop／Steer由后端原生运行态、已保存来源和终态统一决定；已消费输入通知不得否定已确定的停止终态。连接已建立但恢复读取失败时须明确显示失败原因和同页重试入口，继续自动恢复，成功或切换owner后清理旧错误；不以无限通用Retrying代替错误，不重放写操作，不以整页刷新恢复。
+
 ## 2026-11-01 · 恢复传输瘦身兼容约束
 
 用户确认：减少恢复过程重复system prompt传输及可避免的串行等待，保持完整恢复及旧新客户端兼容。仅改变客户端响应投影，不修改模型可见Prompt、持久缓存或历史；默认调用保留完整响应，新Web/APK只在服务端明确支持时请求省略未消费的Prompt字段。只读预取可与身份确认重叠，但无效Profile／旧owner／旧轮次不得提交结果或绑定运行态；最终恢复仍由当前页面依赖及Socket有限切点完整对账判定。测试通过后合主线、上线Web并重建APK，主会话独立执行。

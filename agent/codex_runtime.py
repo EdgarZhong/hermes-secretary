@@ -909,13 +909,10 @@ class _CodexResponseAssembler:
         delta_text = _event_field(event, "delta", "")
         if not delta_text:
             return
-        # Harmony commentary/analysis text is mid-turn narration, never the final answer: route to the
-        # reasoning callback, keep only the item for replay.
+        # Commentary owns its public message callback; analysis owns reasoning.
+        # Neither is part of the final answer accumulator.
         if self.active_message_phase == "commentary":
             self.commentary_text_deltas.append(delta_text)
-            # Legacy fallback when no first-class commentary consumer is installed.
-            if self.on_commentary_message is None:
-                self._safe(self.on_reasoning_delta, "on_reasoning_delta", delta_text)
         elif self.active_message_phase == "analysis":
             self._safe(self.on_reasoning_delta, "on_reasoning_delta", delta_text)
         else:
@@ -1066,8 +1063,8 @@ def _consume_codex_event_stream(
     terminal frame; ``model`` comes from kwargs).
 
     Callbacks: ``on_text_delta`` per output_text delta, suppressed once a function_call is seen;
-    ``on_reasoning_delta`` for reasoning and ``phase=analysis`` deltas (also commentary without a commentary
-    callback); ``on_commentary_message`` once per completed ``phase=commentary`` message, before any following
+    ``on_reasoning_delta`` for reasoning and ``phase=analysis`` deltas;
+    ``on_commentary_message`` once per completed ``phase=commentary`` message, before any following
     tool item; ``on_first_delta`` one-shot; ``on_event`` every event before any processing; ``interrupt_check()``
     True breaks the loop and may raise ``TimeoutError`` / ``InterruptedError`` for request retirement that
     must not become a partial final response."""

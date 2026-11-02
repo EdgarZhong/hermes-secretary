@@ -134,8 +134,8 @@ class StreamDeliveryMixin:
     def _extract_codex_interim_visible_parts(self, assistant_msg: Dict[str, Any]) -> List[str]:
         """Visible Codex commentary (``phase=commentary`` items), one string per message item.
 
-        ``phase=analysis`` stays hidden (scratchpad); with ``display.show_commentary=false``
-        commentary stays on the reasoning channel.
+        ``phase=analysis`` stays hidden (scratchpad); ``display.show_commentary=false``
+        suppresses public commentary without reclassifying it as reasoning.
         """
         items = assistant_msg.get("codex_message_items") if getattr(self, "show_commentary", True) else None
         messages: List[str] = []

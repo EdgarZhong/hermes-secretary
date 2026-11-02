@@ -1161,9 +1161,13 @@ class _OutputScan:
         message_text = _extract_responses_message_text(item)
         if not message_text:
             return
-        # commentary/analysis text is mid-turn narration, never the final answer: route it
-        # to the reasoning channel; the exact item is still preserved for replay/cache.
-        (self.reasoning_parts if is_commentary_phase else self.content_parts).append(message_text)
+        # Commentary is a public Assistant message, distinct from both private
+        # analysis and the final answer. Its exact item owns live/history display
+        # and replay; flattening it into reasoning changes its type after commit.
+        if normalized_phase == "analysis":
+            self.reasoning_parts.append(message_text)
+        elif normalized_phase != "commentary":
+            self.content_parts.append(message_text)
         item_id = getattr(item, "id", None)
         self.message_items_raw.append(_message_item(
             [{"type": "output_text", "text": message_text}], status=_normalize_responses_message_status(item_status),

@@ -123,6 +123,77 @@ def _fallback_stream(kwargs, opener, hooks):
     return Stream()
 
 
+@pytest.mark.parametrize("with_final", [False, True])
+def test_codex_commentary_keeps_public_facet_through_stream_commit_and_history(runtime, with_final):
+    from agent.codex_runtime import run_codex_stream
+    from agent.codex_responses_adapter import _chat_messages_to_responses_input, _normalize_codex_response
+    from hermes_cli.web_routers.sessions import _project_for_display
+
+    commentary, reasoning, analysis, final = "I will check that first.", "Checking scope.", "Private analysis.", "The final answer."
+    def message(text, phase, item_id):
+        return SimpleNamespace(type="message", role="assistant", id=item_id, phase=phase,
+                               status="completed", content=[SimpleNamespace(type="output_text", text=text)])
+    items = [SimpleNamespace(type="reasoning", id="rs_test", status="completed",
+                summary=[SimpleNamespace(type="summary_text", text=reasoning)], encrypted_content="opaque"),
+             message(analysis, "analysis", "analysis_test"), message(commentary, "commentary", "commentary_test")]
+    if with_final:
+        items.append(message(final, "final_answer", "final_test"))
+    else:
+        items.append(SimpleNamespace(type="function_call", id="fc_test", call_id="call_test",
+                                    name="terminal", arguments="{}", status="completed"))
+    chunks = []
+    for item in items:
+        chunks.append(SimpleNamespace(type="response.output_item.added", item=item))
+        if item.type == "message":
+            chunks.append(SimpleNamespace(type="response.output_text.delta", delta=item.content[0].text))
+        chunks.append(SimpleNamespace(type="response.output_item.done", item=item))
+    chunks.append(SimpleNamespace(type="response.completed", response=SimpleNamespace(status="completed")))
+    client = SimpleNamespace(responses=SimpleNamespace(create=lambda **kwargs: iter(chunks)))
+    delivered = []
+    runtime.agent.interim_assistant_callback = lambda text, **kwargs: (
+        delivered.append(text), runtime.emit("message.interim", {"text": text, "already_streamed": False}))
+    with observe_outputs(runtime.agent, runtime.emit) as owner:
+        response = run_codex_stream(runtime.agent, {"model": "fixture/model"}, client=client)
+        uid = owner.current.message["message_uid"]
+        normalized, finish = _normalize_codex_response(response, issuer_kind="codex_backend")
+        assert normalized.reasoning == f"{reasoning}\n\n{analysis}"
+        assert normalized.content == (final if with_final else "")
+        assert finish == ("stop" if with_final else "tool_calls")
+        built = runtime.agent._build_assistant_message(normalized, finish)
+        runtime.messages.append(built)
+        assert runtime.agent._flush_messages_to_session_db(runtime.messages, [])
+        runtime.agent._emit_interim_assistant_message(built)
+    assert delivered == [commentary]
+    committed = [event["payload"]["source_message"] for event in events(runtime)
+                 if event["type"] == "message.output_committed"]
+    assert len(committed) == 1 and committed[0]["message_uid"] == uid
+    assert committed[0]["has_content"] is True and committed[0]["has_reasoning"] is True
+    rows = runtime.db.get_messages_as_conversation(runtime.agent.session_id)
+    row = next(message for message in rows if message["role"] == "assistant")
+    assert row["message_uid"] == uid
+    projected = _project_for_display([row])[0]
+    assert projected["display_commentary"] == [commentary]
+    assert projected["display_reasoning"] == f"{reasoning}\n\n{analysis}"
+    # Model replay preserves the exact phase item, separate from final content.
+    replay = _chat_messages_to_responses_input([row], current_issuer_kind="codex_backend")
+    public = [item for item in replay if item.get("phase") == "commentary"]
+    assert len(public) == 1 and public[0]["content"] == [{"type": "output_text", "text": commentary}]
+
+
+@pytest.mark.parametrize("phase,role,expected", [
+    ("commentary", "assistant", True), ("analysis", "assistant", False),
+    ("commentary", "user", False), ("final_answer", "assistant", False),
+])
+def test_public_source_facet_requires_the_typed_assistant_commentary(phase, role, expected):
+    from agent.pending_steer import native_source_message
+
+    message = {"role": role, "content": "", "codex_message_items": [{
+        "type": "message", "role": role, "phase": phase,
+        "content": [{"type": "output_text", "text": "Synthetic text."}],
+    }]}
+    assert native_source_message(message)["has_content"] is expected
+
+
 @pytest.mark.parametrize("worker", [False, True])
 def test_partial_commits_observed_uid_once_and_terminal_has_no_durable_residual(runtime, worker):
     with observe_outputs(runtime.agent, runtime.emit) as owner:
