@@ -1,8 +1,6 @@
 """Fail-safe observations and policy calls at existing native maintenance seams."""
 from __future__ import annotations
 
-import hashlib
-import json
 import logging
 import time
 import uuid
@@ -46,17 +44,20 @@ def _read_owner(parent):
     if not is_main_conversation_agent(parent):
         return None
     db, ref = parent._session_db, _main_conversation_ref(parent)
-    config = settings.for_db(db)
+    config = settings.for_db(db, ref, parent=parent)
     from secretary.noting_scope import settings_for_db
     return (db, ref, config) if ref and config and settings_for_db(db).enabled else None
 
 
-def record_event(db, ref, kind, *, source="unknown", verified=False, event_id=None, at=None, **values):
-    if not settings.for_db(db) or not ref:
+def record_event(db, ref, kind, *, source="unknown", verified=False, event_id=None, at=None, parent=None, config=None, **values):
+    config = config or settings.for_db(db, ref, parent=parent)
+    if not config or not ref:
         return False
     try:
         event = {"event_id": event_id or uuid.uuid4().hex, "at": time.time() if at is None else float(at),
-                 "kind": kind, "source": source, "verified": verified, **values}
+                 "kind": kind, "source": source, "verified": verified,
+                 "model_identity": config["model_identity"], "model_contract": config["model_contract"],
+                 "model_key": _contract_key(config["model_contract"]), **values}
         return db._execute_write(lambda conn: store.event_conn(conn, ref, event))
     except Exception:
         logger.debug("Adaptive event unavailable", exc_info=True)
@@ -65,13 +66,16 @@ def record_event(db, ref, kind, *, source="unknown", verified=False, event_id=No
 
 def user_arrived(db, session_id, *, event_id=None, at=None, parent=None, ingress="unknown", activity="submission"):
     """Called only by verified native user-input entrances, before queue/admission."""
-    if db is None or not settings.for_db(db):
+    if db is None:
         return False
     try:
         ref = db.resolve_conversation_ref(session_id)
+        config = settings.for_db(db, ref, parent=parent, session_id=session_id)
+        if config is None:
+            return False
         moment = time.time() if at is None else at
         inserted = record_event(db, ref, "user_activity", source="user", verified=True,
-                                event_id=event_id, at=moment, ingress=ingress, activity=activity)
+                                event_id=event_id, at=moment, ingress=ingress, activity=activity, config=config)
         if inserted:
             db._execute_write(lambda conn: store.invalidate_conn(db, conn, ref, moment))
             if parent is not None:
@@ -86,9 +90,21 @@ def user_arrived(db, session_id, *, event_id=None, at=None, parent=None, ingress
         return False
 
 
+def _settle_existing_heartbeat(parent, value):
+    from secretary.noting_runtime import is_main_conversation_agent, _main_conversation_ref
+    if origin(value) != "heartbeat" or not is_main_conversation_agent(parent):
+        return
+    db, ref = parent._session_db, _main_conversation_ref(parent)
+    if ref:
+        db._execute_write(lambda conn: store.settle_claim_conn(conn, ref))
+
+
 def turn_started(parent, value, *, at=None):
     owner = _owner(parent)
     if owner is None:
+        # A claim already accepted under its old contract still crosses the native
+        # admitted-Turn boundary when configuration has since been removed.
+        _settle_existing_heartbeat(parent, value)
         return
     db, ref, _config = owner
     now = time.time() if at is None else at
@@ -102,12 +118,14 @@ def turn_started(parent, value, *, at=None):
     db._execute_write(write)
 
 
+def _contract_key(contract):
+    from secretary.adaptive_model_config import digest
+    return digest(contract)
+
+
 def model_key(parent):
-    parts = {"provider": getattr(parent, "provider", None), "model": getattr(parent, "model", None),
-             "api_mode": getattr(parent, "api_mode", None),
-             "reasoning": getattr(parent, "reasoning_config", None),
-             "reasoning_effort": getattr(parent, "reasoning_effort", None)}
-    return hashlib.sha256(json.dumps(parts, sort_keys=True, default=str).encode()).hexdigest()
+    from secretary.adaptive_model_config import parent_contract
+    return _contract_key(parent_contract(parent))
 
 
 def context_contract(parent):
@@ -155,7 +173,8 @@ def snapshot(parent, db, ref, config, at):
              "model": getattr(parent, "model", None), "provider": getattr(parent, "provider", None),
              "model_key": model_key(parent), "context_epoch": _epoch(db, ref),
              "context_path": [parent.session_id, path_version[0]] if path_version else None,
-             "idle_config": [current.idle_enabled, current.idle_delay_seconds, current.idle_threshold_tokens]}
+             "idle_config": [current.idle_enabled, current.idle_delay_seconds, current.idle_threshold_tokens],
+             "historical_cohorts": store.imported_history(db, ref, at)}
     return value, history
 
 
@@ -170,14 +189,14 @@ def finish_turn(parent, at, *, idle_allowed=True):
         from agent.context_compaction_request import read_context_usage
         started = getattr(parent, "_adaptive_turn_started_at", None)
         duration = at - started if isinstance(started, (int, float)) and at >= started else None
-        record_event(db, ref, "turn_end", source=source, verified=source != "unknown", at=at,
+        record_event(db, ref, "turn_end", source=source, verified=source != "unknown", at=at, parent=parent,
                      event_id="turn:" + getattr(parent, "_adaptive_turn_id", uuid.uuid4().hex),
                      context_tokens=read_context_usage(parent)[0] or None, model_key=model_key(parent),
                      context_epoch=_epoch(db, ref), context_contract=context_contract(parent), duration_seconds=duration)
         measured, history = snapshot(parent, db, ref, config, at)
         from secretary.adaptive_policy import decide
         decision = settings.validate_decision(decide(measured, history, config))
-        record_event(db, ref, "decision", source="framework", verified=True, at=at,
+        record_event(db, ref, "decision", source="framework", verified=True, at=at, parent=parent,
                      decision=decision, model_key=model_key(parent), stage="proposed",
                      shadow_only=config.get("shadow_only") is True)
         if config.get("shadow_only") is True or decision.get("fallback") is True:
@@ -199,25 +218,51 @@ def finish_turn(parent, at, *, idle_allowed=True):
         return None
 
 
+def _idle_plan_valid(parent, original, config, plan, path, epoch):
+    return bool(config and path and plan["status"] == "pending"
+                and plan["config_version"] == config["config_version"]
+                and plan["decision"].get("context_path") == [parent.session_id, path[0]]
+                and plan["decision"]["context_epoch"] == epoch
+                and plan["decision"].get("model_key") == model_key(parent)
+                and plan["decision"].get("context_contract") == context_contract(parent)
+                and plan["decision"].get("idle_config") == [original.idle_enabled, original.idle_delay_seconds,
+                                                            original.idle_threshold_tokens])
+
+
+def _restore_native_idle(parent, db, ref, plan, period):
+    from secretary.noting_scope import is_current_main_runtime, settings_for_db
+    def recheck(conn, current_plan, _period):
+        if not is_current_main_runtime(parent):
+            return None
+        original = settings_for_db(db)
+        config = settings.for_db(db, ref, parent=parent, conn=conn)
+        path = conn.execute("SELECT rewind_count FROM sessions WHERE id=?", (parent.session_id,)).fetchone()
+        epoch = db.noting_compaction_interval_conn(conn, ref)
+        return (None if _idle_plan_valid(parent, original, config, current_plan, path, epoch)
+                else original.idle_delay_seconds)
+    return store.restore_native_idle(db, ref, expected_plan=plan, expected_period=period, recheck=recheck)
+
+
 def idle_settings(parent, original):
-    """Only adapt an exact, unconsumed plan. Native safety/eligibility stays authoritative."""
-    owner = _owner(parent)
-    if owner is None:
+    """Adapt an exact plan, or retire its early clock before returning native settings."""
+    db = getattr(parent, "_session_db", None)
+    ref = getattr(parent, "_secretary_conversation_ref", None)
+    if db is None or not ref:
         return original
-    db, ref, config = owner
+    owner = _owner(parent)
+    config = owner[2] if owner else None
     with db._read_ctx() as conn:
         plan = store.plan_conn(conn, ref)
         period = db.noting_idle_state_conn(conn, ref)
         path = conn.execute("SELECT rewind_count FROM sessions WHERE id=?", (parent.session_id,)).fetchone()
-        path_valid = bool(plan and path and plan["decision"].get("context_path") == [parent.session_id, path[0]])
     if not plan or not period or plan["finished_at"] != period["last_turn_finished_at"]:
         return original
-    valid = (path_valid and plan["status"] == "pending" and plan["config_version"] == config["config_version"]
-             and plan["decision"]["context_epoch"] == _epoch(db, ref)
-             and plan["decision"].get("model_key") == model_key(parent)
-             and plan["decision"].get("context_contract") == context_contract(parent)
-             and plan["decision"].get("idle_config") == [original.idle_enabled, original.idle_delay_seconds, original.idle_threshold_tokens])
-    return replace(original, idle_threshold_tokens=plan["decision"]["threshold_tokens"] if valid else None)
+    if plan["status"] != "pending":
+        return original if period["trigger_produced_at"] is None else replace(original, idle_threshold_tokens=None)
+    if _idle_plan_valid(parent, original, config, plan, path, _epoch(db, ref)):
+        return replace(original, idle_threshold_tokens=plan["decision"]["threshold_tokens"])
+    _restore_native_idle(parent, db, ref, plan, period)
+    return original
 
 
 def request_observed(parent, canonical_usage, unknown, *, failed=False):
@@ -233,7 +278,7 @@ def request_observed(parent, canonical_usage, unknown, *, failed=False):
     if total is not None and cache is not None and cache > total:
         values["input_tokens"] = values["cache_read_tokens"] = None
     record_event(db, ref, "request", source=getattr(parent, "_adaptive_turn_source", "unknown"),
-                 verified=True, outcome="failed" if failed else "observed", input_semantics="total",
+                 verified=True, parent=parent, outcome="failed" if failed else "observed", input_semantics="total",
                  model_key=model_key(parent), turn_id=getattr(parent, "_adaptive_turn_id", None),
                  cache_write_tokens=getattr(canonical_usage, "cache_write_tokens", None), **values)
 
@@ -262,7 +307,7 @@ def _maintenance(parent, registration, *, finished=False, trigger=None):
     partial = bool(getattr(getattr(registration.fence, "partial", None), "adopted", False))
     outcome = "partial" if finished and observation.state == "completed" and partial else observation.state
     record_event(db, ref, "maintenance_end" if finished else "maintenance_start", source="framework", verified=True,
-                 event_id=observation.operation_id + (":end" if finished else ":start"), at=now,
+                 parent=parent, event_id=observation.operation_id + (":end" if finished else ":start"), at=now,
                  operation_id=observation.operation_id, outcome=outcome, model_key=model_key(parent),
                  trigger="idle" if getattr(observation, "_adaptive_idle", False) else "native",
                  context_before=getattr(observation, "_adaptive_context_before", None),
@@ -278,7 +323,7 @@ def _maintenance(parent, registration, *, finished=False, trigger=None):
         decision = settings.validate_decision(decide(measured, _history, _config))
         if _config.get("shadow_only") is not True and decision.get("fallback") is not True:
             db._execute_write(lambda conn: store.adopt_mode_conn(conn, ref, decision["mode"], _config))
-        record_event(db, ref, "state_refresh", source="framework", verified=True,
+        record_event(db, ref, "state_refresh", source="framework", verified=True, parent=parent,
                      context_tokens=measured["context_tokens"])
 
 
@@ -334,7 +379,7 @@ def web_input(session, text, *, event_id=None):
     """Public prompt.submit only; synthesized host submissions must not call this."""
     parent = session.get("agent")
     db = getattr(parent, "_session_db", None)
-    if db is not None and settings.for_db(db):
+    if db is not None and settings.for_db(db, parent=parent):
         identity = event_id or uuid.uuid4().hex
         user_arrived(db, parent.session_id, event_id="web:" + identity, parent=parent, ingress="web_submit")
         return mark_input(text, "user", "web:" + identity)
@@ -342,7 +387,7 @@ def web_input(session, text, *, event_id=None):
         try:
             from tui_gateway import server
             with server._session_db(session) as db:
-                if db is not None and settings.for_db(db):
+                if db is not None and settings.for_db(db, session_id=session["session_key"]):
                     identity = event_id or uuid.uuid4().hex
                     user_arrived(db, session["session_key"], event_id="web:" + identity, ingress="web_submit")
                     return mark_input(text, "user", "web:" + identity)
@@ -353,7 +398,7 @@ def web_input(session, text, *, event_id=None):
 
 def gateway_input(db, session_id, value, event, source):
     """Original adapter event after native routing; internal/bot events never prove human."""
-    if (db is None or not settings.for_db(db) or getattr(event, "internal", True) is not False
+    if (db is None or not settings.for_db(db, session_id=session_id) or getattr(event, "internal", True) is not False
             or (getattr(event, "metadata", {}) or {}).get("synthetic_prompt")
             or (getattr(event, "metadata", {}) or {}).get("hermes_plugin_injection")
             or getattr(event, "allow_gateway_control", True) is not True
@@ -369,7 +414,7 @@ def gateway_queue_input(owner, session_key, event):
     """Observe the existing accepted queue, without creating another queue or lease."""
     try:
         db = getattr(getattr(owner, "_session_db", None), "_db", getattr(owner, "_session_db", None))
-        if db is None or not settings.for_db(db):
+        if db is None:
             return
         sid = owner._lookup_session_id_under_store_lock(owner.session_store, session_key)
         if sid:
@@ -383,7 +428,7 @@ def gateway_owned_input(owner, event, value):
         return value
     try:
         db = getattr(getattr(owner, "_session_db", None), "_db", getattr(owner, "_session_db", None))
-        if db is None or not settings.for_db(db):
+        if db is None:
             return value
         key = owner._session_key_for_source(event.source)
         sid = owner._lookup_session_id_under_store_lock(owner.session_store, key)
@@ -399,7 +444,7 @@ def refresh_heartbeat_priority(parent):
         return
     from agent.context_compaction_request import read_context_usage
     db, ref, _config = owner
-    record_event(db, ref, "context_read", source="framework", verified=True,
+    record_event(db, ref, "context_read", source="framework", verified=True, parent=parent,
                  context_tokens=read_context_usage(parent)[0], model_key=model_key(parent),
                  context_contract=context_contract(parent))
 

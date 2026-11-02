@@ -1,7 +1,6 @@
 """Opt-in configuration for the local adaptive maintenance seam."""
 from __future__ import annotations
 
-import hashlib
 import json
 import logging
 import math
@@ -15,43 +14,100 @@ def _number(value, *, minimum=0):
             and math.isfinite(value) and value >= minimum)
 
 
-def from_config(config):
-    """Invalid or incomplete settings retain native behavior; no provider assumptions."""
+def conversation_enabled(config, ref):
     noting = config.get("noting", {}) if isinstance(config, dict) else {}
     if not isinstance(noting, dict) or noting.get("enabled", True) is not True:
-        return None
-    block = noting.get("adaptive", {})
+        return False
+    block = noting.get("adaptive_idle_token_saving", {})
     if not isinstance(block, dict) or block.get("enabled") is not True:
+        return False
+    conversations = block.get("conversations", {})
+    selected = conversations.get(ref) if isinstance(conversations, dict) else None
+    return isinstance(selected, dict) and selected.get("enabled") is True
+
+
+def enabled_for_db(db, ref):
+    from hermes_cli.config import load_config_readonly
+    from secretary.noting_scope import owning_db_scope
+    try:
+        with owning_db_scope(db):
+            return conversation_enabled(load_config_readonly(), ref)
+    except Exception:
+        logger.debug("Adaptive Conversation switch unavailable", exc_info=True)
+        return False
+
+
+def from_config(config, ref=None, *, model_contract=None):
+    """Require explicit Conversation opt-in and its exact native picker identity."""
+    from secretary.adaptive_model_config import digest
+    if not model_contract or not conversation_enabled(config, ref):
+        return None
+    block = config["noting"]["adaptive_idle_token_saving"]
+    models = block.get("models", {})
+    provider, model = model_contract.get("provider"), model_contract.get("model")
+    items = models.get(provider, {}) if isinstance(models, dict) else {}
+    item = items.get(model) if isinstance(items, dict) else None
+    if not isinstance(item, dict):
+        return None
+    heartbeat, billing = item.get("heartbeat"), item.get("billing")
+    if not isinstance(heartbeat, dict) or not isinstance(billing, dict):
+        return None
+    required = ((heartbeat.get("hot_seconds"), 60), (item.get("cache_ttl_seconds"), 1),
+                (billing.get("cache_read"), 0), (billing.get("output"), 0))
+    if any(not _number(value, minimum=minimum) for value, minimum in required):
+        return None
+    if billing.get("input") != 1 or isinstance(billing.get("input"), bool):
+        return None
+    if not isinstance(billing.get("source"), str) or not billing["source"].strip():
+        return None
+    if "business_seconds" not in heartbeat:
+        return None
+    business = heartbeat["business_seconds"]
+    if business is not None and not _number(business, minimum=60):
         return None
     if not isinstance(block.get("shadow_only", False), bool):
         return None
-    required = {"hot_interval_seconds": 60, "cache_ratio": 0, "output_ratio": 0,
-                "cache_ttl_seconds": 1}
-    if any(not _number(block.get(key), minimum=minimum) for key, minimum in required.items()):
+    if not all(_number(model_contract.get(key), minimum=1) for key in ("context_length", "threshold_tokens")):
         return None
-    if "business_interval_seconds" not in block:
-        return None
-    business = block.get("business_interval_seconds")
-    if business is not None and not _number(business, minimum=60):
-        return None
-    result = dict(block)
-    result["history_limit"] = 2048
+    result = {key: value for key, value in block.items() if key not in {"models", "conversations"}}
+    result.update(hot_interval_seconds=heartbeat["hot_seconds"], business_interval_seconds=business,
+                  cache_ratio=billing["cache_read"], output_ratio=billing["output"],
+                  cache_ttl_seconds=item["cache_ttl_seconds"], billing=dict(billing),
+                  model_identity={"provider": provider, "model": model}, model_contract=model_contract,
+                  history_limit=2048)
     timezone = result.get("timezone")
     if timezone is not None:
         try:
             ZoneInfo(timezone)
         except (TypeError, ValueError, KeyError):
             return None
-    result["config_version"] = hashlib.sha256(json.dumps(result, sort_keys=True, allow_nan=False).encode()).hexdigest()
+    result["config_version"] = digest(result)
     return result
 
 
-def for_db(db):
+def for_db(db, ref=None, *, parent=None, session_id=None, conn=None):
     from hermes_cli.config import get_config_path, load_config_readonly
     from secretary.noting_scope import owning_db_scope
+    from secretary.adaptive_model_config import resolve_contract
     try:
+        if ref is None and parent is not None:
+            ref = getattr(parent, "_secretary_conversation_ref", None)
+        if ref is None and session_id is not None:
+            if conn is None:
+                ref = db.resolve_conversation_ref(session_id)
+            else:
+                row = conn.execute("SELECT conversation_ref FROM secretary_session_bindings WHERE session_id=?",
+                                   (session_id,)).fetchone()
+                ref = row[0] if row else None
+        if not ref:
+            return None
         with owning_db_scope(db):
-            config = from_config(load_config_readonly())
+            raw = load_config_readonly()
+            # No native capability construction for a disabled/unselected Conversation.
+            if not conversation_enabled(raw, ref):
+                return None
+            contract = resolve_contract(db, ref, raw, parent=parent, session_id=session_id, conn=conn)
+            config = from_config(raw, ref, model_contract=contract)
             if config is not None:
                 config["_configured_at"] = get_config_path().stat().st_mtime
             return config

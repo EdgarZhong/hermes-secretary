@@ -1,12 +1,12 @@
 # 自适应提前整理阈值算法方案（初稿）
 
-## 模型参数与Conversation历史继承（2026-11-02，已确认、待实现）
+## 模型参数与Conversation历史继承（2026-11-02，已确认；实现已验证待合main）
 
-**用户已确认：** 二级配置字段命名为`adaptive_idle_token_saving`，完整路径`noting.adaptive_idle_token_saving`。 自适应仍以Conversation为单位；新Conversation可以选择继承旧Conversation的真实使用历史。模型参数与原生模型选择器的选项1∶1对应：Provider下的基础型号、900k等独立选项视为独立模型配置项，不能按出站基础model名合并；在同一选项中修改窗口则仍为同一项。配置粒度到Provider／模型项为止，窗口等能从原生配置取得的数据不在算法配置重复手写。不考虑阶梯计价，每个配置项内输入、缓存读、输出采用固定倍率。用户已授权本轮上线及恢复Heartbeat交给算法，并以“其他的方面没有问题了”确认本节配置与历史继承方案；尚未实现下述配置/导入机制或启用生产。当前先独立核定GPT订阅保热参数。
+**用户已确认：** 二级配置字段命名为`adaptive_idle_token_saving`，完整路径`noting.adaptive_idle_token_saving`。 自适应仍以Conversation为单位；新Conversation可以选择继承旧Conversation的真实使用历史。模型参数与原生模型选择器的选项1∶1对应：Provider下的基础型号、900k等独立选项视为独立模型配置项，不能按出站基础model名合并；在同一选项中修改窗口则仍为同一项。配置粒度到Provider／模型项为止，窗口等能从原生配置取得的数据不在算法配置重复手写。不考虑阶梯计价，每个配置项内输入、缓存读、输出采用固定倍率。用户已授权本轮上线及恢复Heartbeat交给算法，并以“其他的方面没有问题了”确认本节配置与历史继承方案；下述配置/导入机制已在独立分支补齐，正在集成验证，尚未合main或启用生产；用户随后明确按方案合main并托管完成，不启动完整自主实现流程。GPT订阅初值见下节。
 
 ### 数据归属与参数读取
 
-当前实现事实：`adaptive_config.for_db`从拥有DB的Profile的`config.yaml`读旧字段`noting.adaptive`的统一参数（后续实现按用户定名替换）；`adaptive_store`的events／plans／heartbeats三表按conversation_ref隔离。当前没有按模型参数表，也没有历史继承。模型选择器现有身份是provider行slug＋models中的选项字符串，非另一个自造UUID；算法必须沿原生选择/恢复来源保留这个身份，不能用转换后已去900k后缀的出站model代替。
+当前分支实现：`adaptive_config.for_db(db, ref, parent=..., session_id=..., conn=...)`从拥有DB的Profile的`config.yaml`读取`noting.adaptive_idle_token_saving`，按显式Conversation开关及当前原生模型项匹配；旧未发布的`noting.adaptive`不保留别名。`adaptive_store`的events／plans／heartbeats及独立imports／import_events／import_members六表均按conversation_ref隔离；导入不写前三表。模型选择器现有身份是provider行slug＋models中的选项字符串，非另一个自造UUID；算法必须沿原生选择/恢复来源保留这个身份，不能用转换后已去900k后缀的出站model代替。
 
 继续只用Profile已有`config.yaml`：正式Alex为`/home/ubuntu/.hermes_profiles/Alex/config.yaml`，由原生profile-aware路径解析，不硬编码服务器路径。模型参数表放`noting.adaptive_idle_token_saving.models`，Conversation开关与导入声明放`noting.adaptive_idle_token_saving.conversations`，键为稳定conversation_ref，不用UI标题、session_id或置顶序号。当前模型从该Conversation的实际选择读取，自动查对应配置项；这是确定性参数匹配，不是算法替用户选模型。跨平台／压缩轮转仍解析原conversation_ref，无需再导入。模型切换不会被配置操作代执行。
 
@@ -23,9 +23,9 @@
 
 修改同模型项窗口不改变选项身份，但有效配置版本变化，旧待执行计划失效；新决策读新窗口，已领取任务沿原执行合同结算。历史原值不改写，窗口相关样本分层，不把旧窗口的维护费用/压缩效果不加判断套到新窗口。未配置/缺可靠参数时记录缺口、保留原生安全行为，不借其它模型的参数冒充。
 
-### 已确认配置形状（示意，尚不是现行可加载契约）
+### 已确认配置形状（当前分支契约）
 
-以下展示归属与引用，不是完整启用配置；费用及维护先验仍需真实来源，不在示例填猜测数字。
+以下展示归属与引用；Conversation ref需填写真实目标。价格口径与TTL要显式说明，通用风险/频度参数放同一adaptive block；缺完整维护费用/时长/保留率观测或显式先验时，不擅自假定整理免费/瞬时。
 
 ```yaml
 noting:
@@ -39,8 +39,18 @@ noting:
             business_seconds: 10800
           # billing: 输入=1，缓存读/输出倍率及口径；缺失不得按0计费
           # cache_ttl_seconds: 原生不能提供时才补
-      # openai-codex下分别填写选择器中的实际选项，例如
-      # gpt-6.1-sol 和 gpt-6.1-sol-900k；不复制context_length
+      openai-codex:
+        gpt-6.1-sol-900k:
+          heartbeat:
+            hot_seconds: 1740
+            business_seconds: 10800
+          billing:
+            input: 1
+            cache_read: 0.05
+            output: 5
+            source: "OpenAI Standard credit-equivalent proxy; not included-quota conversion"
+          cache_ttl_seconds: 1800  # 估计，不是订阅保证
+      # 普通gpt-6.1-sol如需参与另列同级项；不复制context_length
     conversations:
       "<目标conversation_ref>":
         enabled: true
@@ -55,7 +65,7 @@ noting:
 
 ### 历史导入：显式声明、一次应用、冻结快照
 
-通过来源/目标conversation_ref、导入ID与截止时间明确指定。在现有配置管理/运维入口增加一次“应用历史导入”动作，先给出可用时间段、来源质量、条数、模型分布、缺口及排除项，再由一次事务生成目标拥有的有界数值快照和收据；只编辑声明不在普通Turn或配置读取时偷偷反复搬数据。具体CLI/RPC命名留实施确定，不冒称已有命令。初版优先同Profile；跨Profile需显式来源与权限校验，不隐式合并账号所有历史。
+通过来源/目标conversation_ref、导入ID与截止时间明确指定。在现有配置管理/运维入口增加一次“应用历史导入”动作，先给出可用时间段、来源质量、条数、模型分布、缺口及排除项，再由一次事务生成目标拥有的有界数值快照和收据；只编辑声明不在普通Turn或配置读取时偷偷反复搬数据。当前显式入口为`.venv/bin/python scripts/adaptive_history_import.py preview|apply --profile NAME --target REF`；替换用新声明ID并在apply传`--replace-import-id OLD_ID`。初版只支持同Profile；跨Profile拒绝，不隐式合并账号所有历史。
 
 - 复制可验证数值事件与coverage/缺口/维护排除区间，不复制聊天正文、Notebook或凭据。保留原origin Profile/Conversation/event身份、真实事件时间、可知时间、模型选项及有效配置标签；缺来源字段保留未知，不从role=user补造真人标签。当前存储只有有界2048条且采集开启才有记录，导入收据必须披露可用范围，不能宣称恢复了被淘汰或未采集的历史。
 - 截止之后来源新增活动不流入目标；来源删除或继续使用不改变已导入快照。重复同一ID应用幂等，内容冲突拒绝；要追加/替换用新ID并显式说明，原始事件身份去重，连续迁移不指数复制。目标现有记录不覆盖。
@@ -67,7 +77,23 @@ noting:
 
 ### 实施前应冻结与验证
 
-本节配置归属、字段形状与显式冻结历史导入方案已获用户整体确认，不再重复询问；具体CLI/RPC命名、快照表及符合上述边界的先验兼容细则在实施时收敛。尚未实现，不能据本文宣称配置已可加载。最低验收：两个900k/普通选项分离，同项窗口改变实时反映且旧计划失效；缺项不误用另一模型；目标引用正确、跨Profile不越权；导入幂等/来源缺口/后续冻结/原事件去重/不捏造coverage；原生暂停、关闭、取消及已有Conversation轮转保持。先补当前三表/配置adapter与事件特征边界，不另建Agent Loop、通用调度器或第二套模型配置系统。
+本节配置归属、字段形状与显式冻结历史导入方案已获用户整体确认，不再重复询问；命令/表与训练兼容细则见本节实现边界；当前仅分支实现，不代表已部署。最低验收：两个900k/普通选项分离，同项窗口改变实时反映且旧计划失效；缺项不误用另一模型；目标引用正确、跨Profile不越权；导入幂等/来源缺口/后续冻结/原事件去重/不捏造coverage；原生暂停、关闭、取消及已有Conversation轮转保持。先补当前三表/配置adapter与事件特征边界，不另建Agent Loop、通用调度器或第二套模型配置系统。
+
+### 导入证据与实时状态边界（用户2026-11-02明确，已接入分支）
+
+导入是本地算法训练证据，不是给GPT的新消息，不注入Prompt、不改变主会话历史前缀。使用时段、回归间隔、连续使用/平台阶段及已证受阻取消反馈可以学习；原始事件时间和可知时间保留，导入时间另作可见门控。每个来源独立生成训练窗口；先保留目标自己的观测，再对来源重叠区间去重，缺口及维护区间删失，不跨Conversation拼成一段“无人使用”。原始人数/暴露时长与衰减后的有效权重分别报告，不能把小数权重冒充真实事件数。
+
+工作量路径只使用完整兼容Turn：Provider/模型选项、有效窗口/阈值、API/推理/速度等运行合同哈希严格一致。混模型Turn不能删掉异模型请求后把剩下半轮当完整调用；缺关联真人入口、被保留窗口/来源缺口截断的Turn不生成完整工作量标签。work mark可知时间取关联用户、请求与Turn结束证据的最大值，取消零调用mark也保留原可知时间；不得在过去决策中看到未来才取得的工作量。不同模型仍可提供可信用户时序/checkpoint，不提供该模型的token、输出及耗时样本。
+
+当前实现将来源到达统计按7天时间尺度衰减，轨迹历史权重沿同样近期衰减；每个目标合计保存最多2048条独立导入原事件，最多32份总导入收据（包含已替换收据），超限明确拒绝并回滚，不静默挤掉目标实时历史。初版不跨模型迁移维护费用/TTL；当前维护成本、缓存保留与实时增长仍取当前Conversation同模型数据或明确先验。导入不改变last_user/last_request、当前上下文、空闲起点、维护冷却/当日次数、Heartbeat锚点/claim/due、待执行计划或当前压缩区间。新会话没有自己的真实活动时仍回原生，不因旧会话安静了很久立即整理。
+
+### 缓存、持久化与历史容量
+
+没有常驻预测模型/结果缓存；每次Main结束决策按owner/time索引读取该Conversation的有界数值事件并重新计算，不扫描全库聊天正文。当前事件最多2048条；另读可选导入事件最多2048条，训练保留最多128个成熟窗口。当前计划和Heartbeat模式各一行。预测观测暴露最多回溯14天，还受事件保留量限制，**2048条不是2048个Turn、更不是保证14天完整历史**；每天1000条事件约两天，每天200条约十天，只是频率算术。采集关闭/参数不完整之前没有的数据不从role=user补造，已淘汰的历史不能通过导入恢复。
+
+进程内只有轻量的观测段状态（最多512个owner/scope/config组合）；连续在线区间每分钟更新同一记录，重启/超间隔断开，不每分钟新增事件。配置读取复用原生按文件签名失效的缓存；冷模型窗口沿原生context factory/metadata刷新，不另存永久窗口缓存。事件/导入收据及计划都在既有state.db的Secretary自有表；不另存原文副本或权重文件。滚动删行不等于SQLite文件立即缩小，空闲页会复用，WAL/SHM及整库高水位另计。
+
+2026-11-02本机构造测量（不是正式机或真实用量）：2047当前＋2047导入事件、完整模型标签，空六表57344字节，当前事件后1589248字节，加入导入后3350528字节（约3.2MiB）；不含原生核心表、WAL/SHM、完整真实收据内容及其它Conversation，不是硬字节上限。该构造下5次决策中位0.426秒，Python增量峰值1091652字节；已包含本轮模型边界与可知时间修补。脚本与数值在ignored `.hermes-dev/adaptive-final-20261102/`。
 
 ## GPT订阅保热参数选择（2026-11-02）
 

@@ -56,7 +56,7 @@ def test_plan_cas_rejects_intervening_main_period(owned):
     parent, db, ref = owned
     before = db.noting_idle_state(ref)
     db.noting_idle_turn_started(ref, 200)
-    config = runtime.settings.for_db(db)
+    config = runtime.settings.for_db(db, ref, parent=parent)
     assert not store.commit_plan(db, ref, at=100, expected_period=before, config=config,
                                  context_epoch="old", decision={"mode": "hot", "threshold_tokens": 1, "delay_seconds": 10})
     assert db.noting_idle_state(ref)["last_turn_started_at"] == 200
@@ -82,7 +82,7 @@ def test_infinite_business_to_hot_preserves_real_anchor_and_claim_refund(owned):
     parent, db, ref = owned
     hb = ConversationHeartbeatStore(db, "main")
     hb.save(HeartbeatState("", 600, created_at=1))
-    config = runtime.settings.for_db(db)
+    config = runtime.settings.for_db(db, ref, parent=parent)
     db._execute_write(lambda conn: store.adopt_mode_conn(conn, ref, "business", config))
     assert hb.load().status == "active" and hb.load()._adaptive_infinite
     assert hb.claim(1000) is None and due_conversations(db, now=1000) == []
@@ -102,7 +102,7 @@ def test_concurrent_connections_claim_once_and_pause_wins(owned):
     parent, db, ref = owned
     hb = ConversationHeartbeatStore(db, "main")
     hb.save(HeartbeatState("", 600, created_at=1))
-    config = runtime.settings.for_db(db)
+    config = runtime.settings.for_db(db, ref, parent=parent)
     db._execute_write(lambda conn: store.adopt_mode_conn(conn, ref, "hot", config))
     other = SessionDB(db.db_path)
     barrier = threading.Barrier(2)
@@ -136,7 +136,7 @@ def test_missing_historical_anchor_uses_first_configuration_clock_and_survives_r
     parent, db, ref = owned
     hb = ConversationHeartbeatStore(db, "main")
     hb.save(HeartbeatState("", 600, created_at=0))
-    config = runtime.settings.for_db(db)
+    config = runtime.settings.for_db(db, ref, parent=parent)
     config["_configured_at"] = 100
     db._execute_write(lambda conn: store.adopt_mode_conn(conn, ref, "business", config))
     db._execute_write(lambda conn: store.adopt_mode_conn(conn, ref, "hot", config))
@@ -157,7 +157,7 @@ def test_real_processes_share_one_heartbeat_claim(owned):
     parent, db, ref = owned
     hb = ConversationHeartbeatStore(db, "main")
     hb.save(HeartbeatState("", 600, created_at=1))
-    config = runtime.settings.for_db(db)
+    config = runtime.settings.for_db(db, ref, parent=parent)
     db._execute_write(lambda conn: store.adopt_mode_conn(conn, ref, "hot", config))
     script = """import sys
 from pathlib import Path
@@ -187,6 +187,7 @@ def test_restart_restores_absolute_idle_deadline_without_replanning(owned, monke
     reopened = SessionDB(db.db_path)
     try:
         resumed = _agent(reopened, "main")
+        resumed.model, resumed.provider, resumed.api_mode = parent.model, parent.provider, parent.api_mode
         armed = []
         monkeypatch.setattr("secretary.noting_timers.arm_idle_timer", lambda parent, handle, owner, due: armed.append(due))
         assert attach_idle_timer(resumed, reopened, ref, now=now + 1000) == "skip:timer_armed"
@@ -201,7 +202,7 @@ def test_first_native_claim_defers_mode_update_until_refund(owned):
     hb = ConversationHeartbeatStore(db, "main")
     hb.save(HeartbeatState("", 600, created_at=1))
     state, claim = hb.claim(1000)
-    config = runtime.settings.for_db(db)
+    config = runtime.settings.for_db(db, ref, parent=parent)
     db._execute_write(lambda conn: store.adopt_mode_conn(conn, ref, "business", config))
     assert hb.claim_is_current(claim) and hb.load()._adaptive_interval_seconds == 600
     assert hb.refund(claim)
@@ -224,7 +225,7 @@ def test_explicit_heartbeat_replacement_clears_old_policy_period(owned):
     parent, db, ref = owned
     hb = ConversationHeartbeatStore(db, "main")
     hb.save(HeartbeatState("", 600, created_at=1))
-    config = runtime.settings.for_db(db)
+    config = runtime.settings.for_db(db, ref, parent=parent)
     db._execute_write(lambda conn: store.adopt_mode_conn(conn, ref, "hot", config))
     assert hb.load().interval_seconds == 600 and hb.load()._adaptive_interval_seconds == 60
     hb.save(HeartbeatState("new explicit", 900, created_at=100))
@@ -238,11 +239,14 @@ def test_global_noting_off_ignores_existing_adaptive_heartbeat_sidecar(owned):
     parent, db, ref = owned
     hb = ConversationHeartbeatStore(db, "main")
     hb.save(HeartbeatState("", 600, created_at=1))
-    config = runtime.settings.for_db(db)
+    config = runtime.settings.for_db(db, ref, parent=parent)
     db._execute_write(lambda conn: store.adopt_mode_conn(conn, ref, "hot", config))
     assert hb.load().interval_seconds == 600 and hb.load()._adaptive_interval_seconds == 60
     path = Path(db.db_path).parent / "config.yaml"
-    path.write_text(path.read_text().replace("  enabled: true", "  enabled: false", 1))
-    assert runtime.settings.for_db(db) is None
+    import json
+    config = json.loads(path.read_text())
+    config["noting"]["enabled"] = False
+    path.write_text(json.dumps(config))
+    assert runtime.settings.for_db(db, ref, parent=parent) is None
     assert hb.load().interval_seconds == 600 and hb.load()._adaptive_interval_seconds == 600
     assert ref not in due_conversations(db, now=100) and hb.claim(100) is None

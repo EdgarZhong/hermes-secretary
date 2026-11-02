@@ -76,14 +76,16 @@ def test_model_change_rejects_unconsumed_old_plan(owned, monkeypatch):
     monkeypatch.setattr("secretary.adaptive_policy.decide", lambda *args: {"mode": "hot", "threshold_tokens": 1000, "delay_seconds": 10})
     assert noting.note_main_turn_finished(parent, at=100)
     parent.model = "changed-provider-model"
-    assert runtime.idle_settings(parent, noting.settings_for_db(db)).idle_threshold_tokens is None
+    assert runtime.idle_settings(parent, noting.settings_for_db(db)).idle_threshold_tokens == 1000
 
 
 def test_gate_off_remains_native_and_idle_off_can_still_adapt_mode(owned, monkeypatch):
     parent, db, ref = owned
     config = Path(db.db_path).parent / "config.yaml"
-    current = config.read_text()
-    config.write_text(current.replace("    enabled: true\n    delay_seconds", "    enabled: false\n    delay_seconds"))
+    import json
+    current = json.loads(config.read_text())
+    current["noting"]["idle"]["enabled"] = False
+    config.write_text(json.dumps(current))
     monkeypatch.setattr("secretary.adaptive_policy.decide", lambda *args: {"mode": "hot", "threshold_tokens": None, "delay_seconds": None})
     assert not noting.note_main_turn_finished(parent, at=100)
     assert db.noting_idle_state(ref) is None
@@ -119,7 +121,7 @@ def test_native_rewind_invalidates_old_context_plan(owned, monkeypatch):
     assert noting.note_main_turn_finished(parent, at=100)
     target = db._read_one("SELECT id FROM messages WHERE message_uid='u1'")[0]
     db.rewind_to_message("main", target)
-    assert runtime.idle_settings(parent, noting.settings_for_db(db)).idle_threshold_tokens is None
+    assert runtime.idle_settings(parent, noting.settings_for_db(db)).idle_threshold_tokens == 1000
 
 
 def test_stale_model_context_observation_does_not_hold_heartbeat(owned, monkeypatch):
@@ -133,7 +135,9 @@ def test_stale_model_context_observation_does_not_hold_heartbeat(owned, monkeypa
     parent.model = "new-model"
     runtime.record_event(db, ref, "context_read", at=101, verified=True, source="framework",
                          context_tokens=5000, model_key=runtime.model_key(parent))
-    assert hb.claim(101) is not None
+    # Unconfigured new model falls back to the native 600s definition, never the old hot plan.
+    assert hb.claim(101) is None
+    assert hb.claim(601) is not None
 
 
 def test_context_capacity_change_invalidates_old_plan_without_model_change(owned, monkeypatch):
@@ -141,4 +145,147 @@ def test_context_capacity_change_invalidates_old_plan_without_model_change(owned
     monkeypatch.setattr("secretary.adaptive_policy.decide", lambda *args: {"mode": "hot", "threshold_tokens": 4000, "delay_seconds": 10})
     assert noting.note_main_turn_finished(parent, at=100)
     parent.context_compressor.context_length = 140000
-    assert runtime.idle_settings(parent, noting.settings_for_db(db)).idle_threshold_tokens is None
+    assert runtime.idle_settings(parent, noting.settings_for_db(db)).idle_threshold_tokens == 1000
+
+
+@pytest.mark.parametrize('change', ['global', 'conversation', 'missing_model', 'window'])
+def test_invalidated_early_plan_restores_native_clock_before_formal_claim(owned, monkeypatch, change):
+    import json
+    parent, db, ref = owned
+    monkeypatch.setattr('secretary.adaptive_policy.decide', lambda *args: {
+        'mode': 'hot', 'threshold_tokens': 4000, 'delay_seconds': 10})
+    assert noting.note_main_turn_finished(parent, at=100)
+    before = db.noting_idle_state(ref)
+    assert before['due_at'] == 110
+    path = Path(db.db_path).parent / 'config.yaml'
+    config = json.loads(path.read_text())
+    block = config['noting']['adaptive_idle_token_saving']
+    native_delay = 700 if change == 'global' else 500
+    native_due = 100 + native_delay
+    config['noting']['idle']['delay_seconds'] = native_delay
+    if change == 'global':
+        block['enabled'] = False
+    elif change == 'conversation':
+        block['conversations'][ref]['enabled'] = False
+    elif change == 'missing_model':
+        block['models'] = {}
+    else:
+        parent.context_compressor.threshold_tokens_cap = 85000
+        parent.context_compressor.context_length = 140000
+    path.write_text(json.dumps(config))
+    measured = noting.ContextMeasurement(5000, 140000 if change == 'window' else 130000,
+                                          85000 if change == 'window' else 75000)
+    decision = noting._joint_trigger_decision(parent, db, ref, 'idle', measured, None, 110, before)
+    assert decision.action == 'skip' and not decision.compaction_due
+    current = db.noting_idle_state(ref)
+    assert current['last_turn_finished_at'] == 100 and current['due_at'] == native_due
+    assert current['trigger_produced_at'] is None
+    with db._read_ctx() as conn:
+        assert store.plan_conn(conn, ref)['status'] == 'invalidated'
+    # The original native claim cannot consume the former early deadline.
+    assert db.noting_idle_claim_event(ref, now=native_due - 1, delay_seconds=native_delay) == 'not_idle'
+    from secretary.noting_timers import attach_idle_timer
+    armed = []
+    monkeypatch.setattr('secretary.noting_timers.arm_idle_timer', lambda *args: armed.append(args[-1]))
+    assert attach_idle_timer(parent, db, ref, now=111) == 'skip:timer_armed'
+    assert armed == [native_due]
+    due = noting._joint_trigger_decision(parent, db, ref, 'idle', measured, None, native_due, current)
+    assert due.action == 'request' and due.compaction_due
+    assert db.noting_idle_state(ref)['trigger_produced_at'] == native_due
+    # A real new Main boundary creates its own native period, never reuses the old due.
+    assert noting.note_main_turn_started(parent, at=700)
+    if change != 'window':
+        assert noting.note_main_turn_finished(parent, at=800)
+        assert db.noting_idle_state(ref)['due_at'] == 800 + native_delay
+
+
+def test_native_global_close_never_compacts_or_rearms_consumed_adaptive_cycle(owned, monkeypatch):
+    import json
+    parent, db, ref = owned
+    monkeypatch.setattr('secretary.adaptive_policy.decide', lambda *args: {
+        'mode': 'hot', 'threshold_tokens': 4000, 'delay_seconds': 10})
+    assert noting.note_main_turn_finished(parent, at=100)
+    before = db.noting_idle_state(ref)
+    path = Path(db.db_path).parent / 'config.yaml'
+    config = json.loads(path.read_text())
+    config['noting']['enabled'] = False
+    path.write_text(json.dumps(config))
+    decision = noting._joint_trigger_decision(parent, db, ref, 'idle', noting.ContextMeasurement(5000,130000,75000),
+                                               None, 110, before)
+    assert decision.action == 'skip' and not decision.compaction_due
+    decision = noting._joint_trigger_decision(parent, db, ref, 'idle', None, None, 600, None)
+    assert decision.action == 'skip' and db.noting_idle_state(ref) is None
+
+
+def test_already_accepted_idle_is_not_restored_or_replayed_on_close(owned, monkeypatch):
+    import json
+    parent, db, ref = owned
+    monkeypatch.setattr('secretary.adaptive_policy.decide', lambda *args: {
+        'mode': 'hot', 'threshold_tokens': 4000, 'delay_seconds': 10})
+    assert noting.note_main_turn_finished(parent, at=100)
+    assert db.noting_idle_claim_event(ref, now=110, delay_seconds=500) == 'trigger'
+    accepted = db.noting_idle_state(ref)
+    path = Path(db.db_path).parent / 'config.yaml'
+    config = json.loads(path.read_text())
+    config['noting']['adaptive_idle_token_saving']['enabled'] = False
+    path.write_text(json.dumps(config))
+    runtime.idle_settings(parent, noting.settings_for_db(db))
+    assert db.noting_idle_state(ref) == accepted
+    with db._read_ctx() as conn:
+        assert store.plan_conn(conn, ref)['status'] == 'consumed'
+
+
+def test_late_invalidated_plan_cannot_overwrite_new_period_or_current_valid_contract(owned, monkeypatch):
+    parent, db, ref = owned
+    monkeypatch.setattr('secretary.adaptive_policy.decide', lambda *args: {
+        'mode': 'hot', 'threshold_tokens': 4000, 'delay_seconds': 10})
+    assert noting.note_main_turn_finished(parent, at=100)
+    period = db.noting_idle_state(ref)
+    with db._read_ctx() as conn:
+        plan = store.plan_conn(conn, ref)
+    # Even if an earlier observation rejected this plan, the in-transaction recheck
+    # must preserve it once the current runtime/config still matches its contract.
+    assert not runtime._restore_native_idle(parent, db, ref, plan, period)
+    assert db.noting_idle_state(ref) == period
+    assert noting.note_main_turn_finished(parent, at=200)
+    new_period = db.noting_idle_state(ref)
+    assert not store.restore_native_idle(db, ref, expected_plan=plan, expected_period=period,
+                                         recheck=lambda *args: 500)
+    assert db.noting_idle_state(ref) == new_period
+    with db._read_ctx() as conn:
+        assert store.plan_conn(conn, ref)['status'] == 'pending'
+
+
+@pytest.mark.parametrize('change', ['model_removed', 'noting_closed'])
+def test_claimed_heartbeat_settles_at_formal_turn_boundary_after_configuration_removed(owned, change):
+    import json
+    from secretary.heartbeat_store import ConversationHeartbeatStore
+    from hermes_cli.heartbeat import HeartbeatState
+    from secretary.noting_turn_boundary import observe_admitted_turn_started
+    parent, db, ref = owned
+    hb = ConversationHeartbeatStore(db, 'main')
+    hb.save(HeartbeatState('', 600, created_at=1))
+    config = runtime.settings.for_db(db, ref, parent=parent)
+    db._execute_write(lambda conn: store.adopt_mode_conn(conn, ref, 'hot', config))
+    claimed_state, claim = hb.claim(100)
+    path = Path(db.db_path).parent / 'config.yaml'
+    raw = json.loads(path.read_text())
+    if change == 'model_removed':
+        raw['noting']['adaptive_idle_token_saving']['models'] = {}
+    else:
+        raw['noting']['enabled'] = False
+    path.write_text(json.dumps(raw))
+    assert hb.claim_is_current(claim) and hb.load()._adaptive_interval_seconds == 60
+    from secretary.noting_scope import owning_db_scope
+    with owning_db_scope(db):
+        prompt = claimed_state.render_prompt(timestamp=100)
+    assert runtime.origin(prompt) == 'heartbeat'
+    if change == 'noting_closed':
+        from hermes_cli.heartbeat import HEARTBEAT_PROMPT_TEMPLATE
+        assert prompt == HEARTBEAT_PROMPT_TEMPLATE.format(interval='10m', prompt='')
+    observe_admitted_turn_started(parent, object(), user_message=prompt)
+    with db._read_ctx() as conn:
+        assert store.heartbeat_conn(conn, ref)['claim_revision'] is None
+    assert hb.load()._adaptive_interval_seconds == 600
+    if change == 'model_removed':
+        assert hb.claim(699) is None and hb.claim(700) is not None

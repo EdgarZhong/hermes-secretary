@@ -104,7 +104,7 @@ class ConversationHeartbeatStore:
             current = self._row(conn)
             from secretary.adaptive_config import for_db
             from secretary.adaptive_store import register_claim_conn
-            config = for_db(self.db)
+            config = for_db(self.db, self.conversation_ref, session_id=self.session_id, conn=conn)
             if config:
                 register_claim_conn(conn, self.conversation_ref, current["revision"], config, interval)
             return _state(current), HeartbeatClaim(current["revision"], row["last_fired_at"], row["fire_count"])
@@ -137,9 +137,9 @@ class ConversationHeartbeatStore:
 def _effective_interval(db, conn, ref, row):
     from secretary.adaptive_config import for_db
     from secretary.adaptive_store import heartbeat_conn
-    config = for_db(db)
-    adaptive = heartbeat_conn(conn, ref) if config else None
-    if adaptive and (adaptive["config_version"] == config["config_version"] or adaptive["claim_revision"] is not None):
+    config = for_db(db, ref, conn=conn)
+    adaptive = heartbeat_conn(conn, ref)
+    if adaptive and (adaptive["claim_revision"] is not None or config and adaptive["config_version"] == config["config_version"]):
         return adaptive["interval_seconds"]
     return row["interval_seconds"]
 
@@ -147,7 +147,7 @@ def _effective_interval(db, conn, ref, row):
 def _adaptive_idle_precedes(db, conn, ref, now, session_id):
     from secretary.adaptive_config import for_db
     from secretary.adaptive_store import plan_conn
-    config = for_db(db)
+    config = for_db(db, ref, conn=conn)
     if config is None:
         return False
     plan = plan_conn(conn, ref)
@@ -177,28 +177,17 @@ def _adaptive_idle_precedes(db, conn, ref, now, session_id):
 
 def due_conversations(db, *, now=None):
     moment = time.time() if now is None else now
-    from secretary.adaptive_config import for_db
-    config = for_db(db)
     with db._read_ctx() as conn:
-        if config is None:
-            return [row[0] for row in conn.execute(
-                "SELECT conversation_ref FROM secretary_heartbeats WHERE status='active' "
-                "AND ?-CASE WHEN last_fired_at=0 THEN created_at ELSE last_fired_at END>=interval_seconds",
-                (moment,)).fetchall()]
-        return [row[0] for row in conn.execute(
-            "SELECT h.conversation_ref FROM secretary_heartbeats h LEFT JOIN secretary_adaptive_heartbeats a "
-            "ON a.conversation_ref=h.conversation_ref WHERE h.status='active' AND "
-            "?-CASE WHEN h.last_fired_at=0 THEN CASE WHEN h.created_at=0 AND "
-            "(a.config_version=? OR a.claim_revision IS NOT NULL) THEN a.fallback_anchor ELSE h.created_at END "
-            "ELSE h.last_fired_at END >= "
-            "CASE WHEN a.config_version=? OR a.claim_revision IS NOT NULL THEN a.interval_seconds ELSE h.interval_seconds END",
-            (moment, config["config_version"], config["config_version"])).fetchall()]
+        rows = conn.execute("SELECT * FROM secretary_heartbeats WHERE status='active'").fetchall()
+        return [row["conversation_ref"] for row in rows
+                if (interval := _effective_interval(db, conn, row["conversation_ref"], row)) is not None
+                and moment - _effective_anchor(db, conn, row["conversation_ref"], row) >= interval]
 
 
 def _adaptive_priority_held(db, conn, ref, now, session_id):
     from secretary.adaptive_config import for_db
     from secretary.noting_scope import scheduler_settings_for_db
-    if for_db(db) is None:
+    if for_db(db, ref, session_id=session_id, conn=conn) is None:
         return False
     if scheduler_settings_for_db(db).enabled and conn.execute(
             "SELECT 1 FROM secretary_schedule_registry WHERE conversation_ref=? AND state='pending' "
@@ -214,8 +203,8 @@ def _effective_anchor(db, conn, ref, row):
         return anchor
     from secretary.adaptive_config import for_db
     from secretary.adaptive_store import heartbeat_conn
-    config = for_db(db)
-    mode = heartbeat_conn(conn, ref) if config else None
-    if mode and (mode["config_version"] == config["config_version"] or mode["claim_revision"] is not None):
+    config = for_db(db, ref, conn=conn)
+    mode = heartbeat_conn(conn, ref)
+    if mode and (mode["claim_revision"] is not None or config and mode["config_version"] == config["config_version"]):
         return mode["fallback_anchor"]
     return anchor

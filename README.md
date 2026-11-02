@@ -25,6 +25,8 @@ Secretary只在Profile的`state.db`增加自有表，复用原生执行、存储
 
 字段、权限、Prompt、触发分支和投递契约统一见[07](docs/07-scheduler-notebook-noting-compaction-redesign.md)，Web恢复见[06](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md)。
 
+可选自适应空闲省token使用Profile的`noting.adaptive_idle_token_saving`，按Conversation显式启用、按原生Provider/模型选项读取两档Heartbeat与固定费用倍率，窗口沿原生继承；默认关闭。历史继承通过`python scripts/adaptive_history_import.py preview|apply --profile NAME --target REF`显式冻结数值训练证据，不继承当前空闲/缓存/排期状态。配置、容量和评测限制见[算法方案](docs/adaptive-noting-threshold-proposal.md)。
+
 | 命令 | 行为 |
 |---|---|
 | `/notebook` | 人类查看当前Notebook与Snapshot时间 |

@@ -93,7 +93,11 @@ class HeartbeatState:
         from secretary.heartbeat import render_heartbeat
         if ui_heartbeat_enabled():
             return render_heartbeat(self.prompt, time.time() if timestamp is None else timestamp)
-        return HEARTBEAT_PROMPT_TEMPLATE.format(interval=format_interval(self.interval_seconds), prompt=self.prompt)
+        from secretary.adaptive_runtime import mark_input
+        # The official constructor proves the source even when the global switch
+        # changed after claim. Keep the native prompt text exactly as before.
+        return mark_input(HEARTBEAT_PROMPT_TEMPLATE.format(
+            interval=format_interval(self.interval_seconds), prompt=self.prompt), "heartbeat")
 
 
 def _get_session_db() -> Optional[Any]:

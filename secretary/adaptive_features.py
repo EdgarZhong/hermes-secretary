@@ -268,6 +268,30 @@ def warm_cache_fraction(events, ttl):
     return quantile(samples[-20:], .2) if len(samples) >= 3 else None
 
 
+def compatible_forecast_events(events, model_key, *, spans=None):
+    """A mixed-contract Turn is not a complete workload sample for either model."""
+    bad, bounds = set(), {}
+    for event in events:
+        if event.get('kind') not in ('request', 'turn_end'):
+            continue
+        identity = event.get('turn_id')
+        if event['kind'] == 'turn_end':
+            identity = identity or event['event_id'].removeprefix('turn:')
+        if identity:
+            bounds.setdefault(identity, []).append(event['at'])
+            if model_key is None or event.get('model_key') != model_key:
+                bad.add(identity)
+    if spans is not None:
+        for event in events:
+            if event.get('kind') == 'user_activity' and event['event_id'] in bounds:
+                bounds[event['event_id']].append(event['at'])
+        bad.update(identity for identity, times in bounds.items()
+                   if not any(lo <= min(times) and max(times) < hi for lo, hi in spans))
+    return [e for e in events if e.get('kind') != 'request'
+            or (model_key is not None and e.get('model_key') == model_key
+                and e.get('turn_id') not in bad)]
+
+
 def build_features(snapshot, history, config):
     now = float(snapshot['now'])
     # Coverage rows are updated in place and can outlive the activity rows they
@@ -291,7 +315,8 @@ def build_features(snapshot, history, config):
     users = [e['at'] for e in events if e.get('kind') == 'user_activity' and e.get('source') == 'user']
     maintenance_events = [e for e in events if e.get('kind') != 'maintenance_end'
                           or snapshot.get('model_key') is None or e.get('model_key') == snapshot['model_key']]
-    return {'events': events, 'model_key': snapshot.get('model_key'),
+    result = {'events': events, 'model_key': snapshot.get('model_key'),
+            'forecast_events': compatible_forecast_events(clean_events(history, now), snapshot.get('model_key')),
             'warm_cache_fraction': warm_cache_fraction(events, config['cache_ttl_seconds']),
             'arrival': arrival_model(events, now, config.get('timezone'), history_start=history_start),
             'feedback': feedback(events), 'growth_tokens_per_second': context_growth(events),
@@ -304,3 +329,7 @@ def build_features(snapshot, history, config):
             'last_request_at': max((e['at'] for e in requests), default=None),
             'unknown_usage_requests': sum(request_cost(e, config['cache_ratio'], config['output_ratio'])
                                           is None for e in requests)}
+    if snapshot.get('historical_cohorts'):
+        from secretary.adaptive_learning import extend_features
+        result = extend_features(result, snapshot, snapshot['historical_cohorts'], config)
+    return result

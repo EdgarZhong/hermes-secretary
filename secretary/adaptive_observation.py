@@ -22,12 +22,15 @@ MAX_TRACKED_OWNERS = 512
 def touch_gateway_session(db, session_id):
     """The caller has verified this session's live adapter handler."""
     try:
-        if db is None or not adaptive_config.for_db(db):
+        if db is None:
             return
         ref = db.resolve_conversation_ref(session_id)
+        config = adaptive_config.for_db(db, ref, session_id=session_id)
+        if config is None:
+            return
         if ref:
             touch(db, ref, scope='gateway_adapter', at=time.time(),
-                  monotonic=time.monotonic(), maximum_gap=20.0)
+                  monotonic=time.monotonic(), maximum_gap=20.0, config=config)
     except Exception:
         logger.debug('Adaptive gateway coverage unavailable', exc_info=True)
 
@@ -35,8 +38,7 @@ def touch_gateway_session(db, session_id):
 def touch_profile(db, *, scope, at=None, monotonic=None, maximum_gap=20.0):
     """Only the process owning an instrumented ingress may certify its scope."""
     try:
-        config = adaptive_config.for_db(db)
-        if not config or scope not in ('web_submit', 'gateway_adapter'):
+        if scope not in ('web_submit', 'gateway_adapter'):
             return
         now = time.time() if at is None else at
         clock = time.monotonic() if monotonic is None else monotonic
@@ -44,13 +46,16 @@ def touch_profile(db, *, scope, at=None, monotonic=None, maximum_gap=20.0):
             refs = [row[0] for row in conn.execute(
                 "SELECT conversation_ref FROM secretary_heartbeats WHERE status='active' LIMIT 512")]
         for ref in refs:
-            touch(db, ref, scope=scope, at=now, monotonic=clock, maximum_gap=maximum_gap)
+            config = adaptive_config.for_db(db, ref)
+            if not config:
+                continue
+            touch(db, ref, scope=scope, at=now, monotonic=clock, maximum_gap=maximum_gap, config=config)
     except Exception:
         logger.debug('Adaptive observation coverage unavailable', exc_info=True)
 
 
-def touch(db, ref, *, scope, at, monotonic, maximum_gap):
-    key = (str(getattr(db, 'db_path', id(db))), ref, scope)
+def touch(db, ref, *, scope, at, monotonic, maximum_gap, config=None):
+    key = (str(getattr(db, 'db_path', id(db))), ref, scope, config["config_version"] if config else None)
     with _lock:
         state = _segments.get(key)
         if state and (monotonic <= state['clock'] or monotonic - state['clock'] > maximum_gap
@@ -68,6 +73,8 @@ def touch(db, ref, *, scope, at, monotonic, maximum_gap):
             return
         event = dict(event_id=state['identity'], at=at, kind='coverage', source='user',
                      verified=True, scope=scope, start_at=state['start'], end_at=at)
+        if config:
+            event.update(model_identity=config["model_identity"], model_contract=config["model_contract"])
         def write(conn):
             payload = json.dumps(event, allow_nan=False, separators=(',', ':'))
             updated = conn.execute('UPDATE secretary_adaptive_events SET at=?,payload=? '

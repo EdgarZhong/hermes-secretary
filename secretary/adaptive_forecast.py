@@ -105,6 +105,15 @@ def outcome(data, at, horizon, *, now):
 
 def training_examples(data, now, horizon=7200, timezone_name='UTC'):
     """Chronological rolling-origin training, labels purged until fully mature."""
+    groups = [data, *data.get('training_cohorts', [])]
+    examples = []
+    for group in groups:
+        rows = _training_examples(group, now, horizon, timezone_name)
+        examples.extend({**row, '_cohort': group} for row in rows)
+    return sorted(examples, key=lambda row: row['at'])[-128:]
+
+
+def _training_examples(data, now, horizon, timezone_name):
     examples, prior = [], -math.inf
     for point in visible(data['checkpoints'], now):
         at = point['at']
@@ -167,7 +176,8 @@ def predict_direct(data, now, *, horizon=7200, timezone_name='UTC', method='anal
     for width in HORIZONS:
         if width > horizon:
             continue
-        samples = [(outcome(data, examples[i]['at'], width, now=now), weight) for i, weight in weights]
+        samples = [(outcome(examples[i]['_cohort'], examples[i]['at'], width, now=now), weight)
+                   for i, weight in weights]
         samples = [(row, weight) for row, weight in samples if row is not None]
         horizons[str(width)] = _aggregate(samples) if samples else None
     paths = [{'weight': weight, 'events': examples[i]['y']['path'], 'historical_at': examples[i]['at']}
@@ -288,6 +298,7 @@ def from_events(events, spans):
             users.append({'id': identity, 'at': at, 'available_at': event.get('available_at', at)})
             if event.get('activity') == 'cancel':
                 work.append({'id': 'activity:' + identity, 'at': at, 'user_id': identity,
+                             'available_at': event.get('available_at', at),
                              'calls': 0, 'growth_tokens': 0, 'output_tokens': 0, 'duration_seconds': 0})
         elif kind == 'request' and event.get('turn_id') and not event.get('operation_id'):
             requests.setdefault(event['turn_id'], []).append(event)
@@ -296,7 +307,9 @@ def from_events(events, spans):
             turn_id = event.get('turn_id') or identity.removeprefix('turn:')
             calls = requests.get(turn_id, [])
             if event.get('source') == 'user' and calls:
-                work.append(_runtime_mark(event, calls, turn_id, users))
+                mark = _runtime_mark(event, calls, turn_id, users)
+                if mark is not None:
+                    work.append(mark)
     return {'users': users, 'checkpoints': checkpoints, 'work': work, 'spans': spans,
             'excluded': maintenance_spans(events), 'work_complete': False}
 
@@ -323,7 +336,10 @@ def _runtime_mark(end, calls, turn_id, users):
     if all(n is not None for n in inputs) and all(a <= b for a, b in zip(inputs, inputs[1:])):
         growth = inputs[-1] - inputs[0]
     matched = [row for row in users if row['id'] == turn_id]
+    if len(matched) != 1:
+        return None  # A retained tail cannot certify the start of a complete user Turn.
     return {'id': end['event_id'], 'at': end['at'], 'calls': len(calls),
+            'available_at': max(e.get('available_at', e['at']) for e in [end, *calls, *matched]),
             'growth_tokens': growth, 'output_tokens': sum(outputs) if all(n is not None for n in outputs) else None,
             'duration_seconds': number(end.get('duration_seconds')),
-            'user_id': matched[0]['id'] if len(matched) == 1 else None}
+            'user_id': matched[0]['id']}

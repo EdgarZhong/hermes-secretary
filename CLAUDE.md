@@ -1,8 +1,23 @@
 # Hermes Secretary 当前状态
 
+## 自主口径收敛 · 待用户追认
+
+- **Agent自主收敛／待追认：导入训练容量与保守迁移。** 原空白：已确认有界历史继承但未定导入总容量、收据上限及首版兼容细则。决定：每目标导入原事件独立上限2048、总收据32（含已替换）；超限明确拒绝并回滚；不同模型只迁移可信行为时序，完整同合同Turn才学工作量，维护费用/缓存/当前增长暂仍取目标本地或显式先验。原因：保护当前滚动2048事件不被迁移挤掉，并避免混模型/无覆盖训练污染。影响：极多次迁移需后续显式管理收据，不自动无限累积；不注入Prompt、不迁移实时状态。分支已实现并验证，待合main；不等同改变用户已确认的历史归属与冻结语义。
+
+
+- **Agent自主收敛／待追认：中文粗体兼容的inline兄弟范围。** 原空白：既有中文标点邻接`**`兼容仅能处理单text节点；合法链接／inline code把同一显示范围切开后，末端无空格紧接中文的星号仍为字面。决定：同段／标题／表格格内，保原source双星／转义／CJK外侧与标点内侧证明，允许兼容span包含完整已解析link／inlineCode／inlineMath兄弟；内部payload／地址不变，不在其中寻找星号，不跨换行／block／模糊嵌套。理由：消除AST分割造成的兼容不一致。影响：扩展现有非标准CommonMark的中文粗体兼容，不冒称标准本来支持或原截图同型回归；源消息／Copy／安全协议保持。已实施于ccd4cfa并上线，111项及实际N30／Copy复验通过，待用户追认，可局部回退。
+
+- **Agent自主收敛／待追认：混合压缩载体的读取。** 原空白：一个native UID可同时承载压缩摘要与真人消息，而用户要求辅助开关能读取Compression且Get Meta仍仅四字段。决定：默认保留原真人视图；显式辅助允许同UID的system摘要视图，Get Meta／Search按语义部分分别返回，anchored Read允许现有roles参数选部分，默认锚点优先原非压缩部分；同UID同role的system内容合并为一个视图；不造UID、不放开Full／隐藏内容。理由：使明确要求在native混合载体下可操作。影响：Read新增可选roles适用位置，同UID可有不同语义投影。已实现，201项History接受测试及56项原生路径通过；独立Verification／Validation已通过，已上线；不改变Message Identity或Notebook新证据准入。
+- **Agent自主收敛／待追认：Candidate同Task来源形式切换。** 原空白：旧合法direct→refs操作与新旧Task节点不可删约束如何同时成立。决定：仅尚未提交且唯一节点属于本Task时，允许显式清空当前工作槽并切为合法refs；任何旧Task直接节点仍禁止删改。理由：继承原来源二选一操作并保持旧节点约束。影响：当前Task工作态边界，无迁移／旧节点特权。已实现，正式工具／恢复／原子失败98项通过；独立Verification／Validation已通过，已上线。
+
+
+## 2026-11-02 · 按已确认模型配置／历史继承方案合入main（进行中）
+
+用户授权按设计合入main，并询问算法缓存、持久化和真实历史上限。基线adaptive `4bf8f9d2d0`、main `c73b94ae2b`；主目录Huawei未跟踪资料保持。本轮先补齐已确认的`noting.adaptive_idle_token_saving`模型项/Conversation配置与显式历史快照继承，再review/定向验证合入main；不把旧全Profile单参数实现冒充新方案完成。主会话负责范围/集成、历史与实时状态隔离、文档及实际存储说明；model_config负责配置与正式读取接线，history_import负责冻结导入持久机制/显式操作入口，各自限定文件，禁止子派生。继续复用既有有效178项证据，只对新变更与受影响接线定向回归。正式部署状态另报，不以合并替代启用。已补模型精确匹配、同Profile显式快照导入与独立训练接线；当前特征/预测/定性回归52项通过（含最终14项继承反例），7文件77项模型/导入/运行接线回归通过；冻结检查九项通过，唯一no-tmp为同blob历史报告基线，最终ruff/health通过（0阻断/0提示）。证据在ignored `.hermes-dev/adaptive-final-20261102/`，复用有效结果、不累计重复复测。交叉review发现并修复work mark可知时间丢失、混模型部分Turn冒充完整工作量、旧提前due残留和配置撤下后的HB claim结算；主会话已复核正式接线与差异，准备提交合main；Thinking回归单独处理。用户随后报告Assistant正文落库后仍变Thinking，明确本轮一并修复；旧验收不覆盖本次复现。assistant_thinking_regression负责从真实流式→持久→重读链路复核与修复，限定非adaptive的BE消息类型/投影及对应FE文件，主会话审证据集成，不按旧测试已过宣称关闭。
+
 ## 2026-11-02 · 自适应维护上线准备（进行中）
 
-用户已授权本轮上线，先整理前后端仓库确认其它bug补丁进入main；随后明确恢复Alex Heartbeat并交算法选择两档，替代今天早些时候暂停的状态。Kimi参数保热1740秒／业务10800秒；正式只读核实默认仍k3.1-pro，但置顶当前为openai-codex／gpt-6.1-sol-900k，实际Heartbeat仍paused／10800秒，未擅自恢复或套用Kimi价格/TTL。用户后继要求先设计模型配置与可选历史继承：与选择器Provider/模型项1∶1，长窗口独立选项不折叠，同项窗口修改继承原生有效值，不做阶梯计价；继续按Conversation自适应，迁移可显式继承历史。二级字段已由用户明确命名为`adaptive_idle_token_saving`，完整路径`noting.adaptive_idle_token_saving`；用户随后以“其他的方面没有问题了”整体确认配置与显式冻结历史继承方案；尚未实现或启用，不切用户模型。当前按用户要求独立核定GPT订阅保热周期：主会话已核官方资料/费用口径，并亲审gpt_cache_evidence的只读数值包、脚本与usage生产者：253次GPT请求对账，29分39秒与2小时31分长空档均有近完整命中；可靠HB来源样本为0，实际HB输出仍未知。数值证据留ignored `.hermes-dev/gpt-cache-20261102/`；不发生产测试请求、不修改生产配置。已选GPT初始hot1740秒／business10800秒，TTL仅作1800秒估计；官方信用倍率1／0.05／5用于费用代理，不冒充套餐扣额公式，实测与适用边界补入算法稿。
+用户已授权本轮上线，先整理前后端仓库确认其它bug补丁进入main；随后明确恢复Alex Heartbeat并交算法选择两档，替代今天早些时候暂停的状态。Kimi参数保热1740秒／业务10800秒；正式只读核实默认仍k3.1-pro，但置顶当前为openai-codex／gpt-6.1-sol-900k，实际Heartbeat仍paused／10800秒，未擅自恢复或套用Kimi价格/TTL。用户后继要求先设计模型配置与可选历史继承：与选择器Provider/模型项1∶1，长窗口独立选项不折叠，同项窗口修改继承原生有效值，不做阶梯计价；继续按Conversation自适应，迁移可显式继承历史。二级字段已由用户明确命名为`adaptive_idle_token_saving`，完整路径`noting.adaptive_idle_token_saving`；用户随后以“其他的方面没有问题了”整体确认配置与显式冻结历史继承方案；模型配置与继承已在本轮实现验证、尚未正式启用，不切用户模型。当前按用户要求独立核定GPT订阅保热周期：主会话已核官方资料/费用口径，并亲审gpt_cache_evidence的只读数值包、脚本与usage生产者：253次GPT请求对账，29分39秒与2小时31分长空档均有近完整命中；可靠HB来源样本为0，实际HB输出仍未知。数值证据留ignored `.hermes-dev/gpt-cache-20261102/`；不发生产测试请求、不修改生产配置。已选GPT初始hot1740秒／business10800秒，TTL仅作1800秒估计；官方信用倍率1／0.05／5用于费用代理，不冒充套餐扣额公式，实测与适用边界补入算法稿。
 
 后端main c73b94ae2b、前端main dc40990（origin/secretary）与远端相同，最新Stop、Noting资格、GPT正文与跨进程恢复补丁已在主干。自适应分支两个产品提交56e25045／4c7f2dbd尚未合主干；参数文档d37b8e3已提交并push。主会话在既有adaptive worktree合入最新main，亲审接线并定向回归后再合主线/部署；branch_patch_audit已交四旧分支复核：后端旧固定平台/关闭提示被后继机制替代，前端Clarify与视觉已整包吸收；主会话已核报告/整合点，无需重合旧方案。合并后14文件142项自适应/Noting与3文件36项原生接线回归通过；冻结十检查九通过，唯一no-tmp仍为同blob旧历史报告，96文件health 0阻断/0提示。前端常用目录已回main且与origin/secretary相同，原web-toast工作树只转同提交detached并保留。Huawei资料、Finder文件及旧视觉证据保留。当前未部署、未改生产配置，保留原生Idle关闭避免500秒回退。新发布结果只记operations-log。
 
@@ -294,12 +309,6 @@ source_description与UID共同维护、provenance_descriptions逐槽投影；描
 
 主会话已亲审，BE177项＋最终4／6、冻结十检查；FE273项、types／TS度量通过。独立Verification产品通过；独立Validation7适用场景通过、0失败，含真实隐藏IAB暖冷恢复、child活动时后继Send／Compact、断网期间child完成和Pending失败自动重试。最终发布及交付事实已独立补核，Verification12条全部符合／0缺口；本轮目标完成，最终简报已落盘。本轮索引／两报告／最终简报见`.autonomous/20261031-force-completion/`。原自主轮真机／外部验收边界独立保留，不冒称整个旧轮完成。两工作区原dirty及用户.DS_Store未动。
 
-## 自主口径收敛 · 待用户追认
-
-- **Agent自主收敛／待追认：中文粗体兼容的inline兄弟范围。** 原空白：既有中文标点邻接`**`兼容仅能处理单text节点；合法链接／inline code把同一显示范围切开后，末端无空格紧接中文的星号仍为字面。决定：同段／标题／表格格内，保原source双星／转义／CJK外侧与标点内侧证明，允许兼容span包含完整已解析link／inlineCode／inlineMath兄弟；内部payload／地址不变，不在其中寻找星号，不跨换行／block／模糊嵌套。理由：消除AST分割造成的兼容不一致。影响：扩展现有非标准CommonMark的中文粗体兼容，不冒称标准本来支持或原截图同型回归；源消息／Copy／安全协议保持。已实施于ccd4cfa并上线，111项及实际N30／Copy复验通过，待用户追认，可局部回退。
-
-- **Agent自主收敛／待追认：混合压缩载体的读取。** 原空白：一个native UID可同时承载压缩摘要与真人消息，而用户要求辅助开关能读取Compression且Get Meta仍仅四字段。决定：默认保留原真人视图；显式辅助允许同UID的system摘要视图，Get Meta／Search按语义部分分别返回，anchored Read允许现有roles参数选部分，默认锚点优先原非压缩部分；同UID同role的system内容合并为一个视图；不造UID、不放开Full／隐藏内容。理由：使明确要求在native混合载体下可操作。影响：Read新增可选roles适用位置，同UID可有不同语义投影。已实现，201项History接受测试及56项原生路径通过；独立Verification／Validation已通过，已上线；不改变Message Identity或Notebook新证据准入。
-- **Agent自主收敛／待追认：Candidate同Task来源形式切换。** 原空白：旧合法direct→refs操作与新旧Task节点不可删约束如何同时成立。决定：仅尚未提交且唯一节点属于本Task时，允许显式清空当前工作槽并切为合法refs；任何旧Task直接节点仍禁止删改。理由：继承原来源二选一操作并保持旧节点约束。影响：当前Task工作态边界，无迁移／旧节点特权。已实现，正式工具／恢复／原子失败98项通过；独立Verification／Validation已通过，已上线。
 
 ## 上一轮自主目标状态：外部验收证据阻塞（本次故障另立目标）
 

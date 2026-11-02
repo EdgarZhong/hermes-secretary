@@ -19,9 +19,7 @@ def owned(tmp_path, monkeypatch):
 def test_unmocked_policy_reaches_atomic_native_plan_and_due_clock(owned, monkeypatch):
     parent, db, ref = owned
     path = Path(db.db_path).parent / 'config.yaml'
-    config = {'noting': {'enabled': True, 'idle': {'enabled': True, 'delay_seconds': 500,
-                                                  'threshold_tokens': 1000},
-                         'adaptive': dict(CONFIG, enabled=True)}}
+    config = test_adaptive_runtime.adaptive_config(ref, CONFIG)
     path.write_text(json.dumps(config), encoding='utf-8')  # JSON is a YAML subset.
     monkeypatch.setattr(runtime.time, 'time', lambda: NOW)
     from agent.context_compressor import ContextCompressor
@@ -40,7 +38,7 @@ def test_unmocked_policy_reaches_atomic_native_plan_and_due_clock(owned, monkeyp
     assert plan['decision']['diagnostics']['verified_user_events'] >= 8
     assert 32768 <= plan['decision']['threshold_tokens'] <= 330000
     assert plan['decision']['due_at'] == db.noting_idle_state(ref)['due_at']
-    measured, _ = runtime.snapshot(parent, db, ref, runtime.settings.for_db(db), NOW)
+    measured, _ = runtime.snapshot(parent, db, ref, runtime.settings.for_db(db, ref, parent=parent), NOW)
     assert mode['mode'] == 'hot' and measured['heartbeat_interval_seconds'] == 1740
     assert hb.load().interval_seconds == 7200  # Public definition remains the user's value.
     assert hb.load().created_at == NOW  # Mode did not reset the independent clock.
@@ -57,6 +55,11 @@ def test_unknown_dispatch_or_provider_semantics_cannot_become_exact_adaptive_usa
     parent, db, ref = owned
     parent.provider = 'minimax' if incompatible else 'openai'
     parent.api_mode = 'anthropic_messages' if incompatible else 'chat_completions'
+    path = Path(db.db_path).parent / 'config.yaml'
+    config = json.loads(path.read_text())
+    models = config['noting']['adaptive_idle_token_saving']['models']
+    models[parent.provider] = {'test/runtime': dict(models['openai']['test/runtime'])}
+    path.write_text(json.dumps(config))
     begin_main_turn_usage(parent, 't', has_prior_history=False)
     response = SimpleNamespace(usage={'input_tokens': 100, 'output_tokens': 2,
                                      'cache_read_input_tokens': 90})

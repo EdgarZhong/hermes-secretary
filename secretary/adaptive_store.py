@@ -16,6 +16,19 @@ CREATE TABLE IF NOT EXISTS secretary_adaptive_plans (
 CREATE TABLE IF NOT EXISTS secretary_adaptive_heartbeats (
  conversation_ref TEXT PRIMARY KEY, mode TEXT NOT NULL, interval_seconds REAL,
  config_version TEXT NOT NULL, claim_revision INTEGER, pending TEXT, fallback_anchor REAL NOT NULL);
+CREATE TABLE IF NOT EXISTS secretary_adaptive_imports (
+ conversation_ref TEXT NOT NULL, import_id TEXT NOT NULL, declaration TEXT NOT NULL,
+ imported_at REAL NOT NULL, receipt TEXT NOT NULL, replaced_by TEXT,
+ PRIMARY KEY(conversation_ref,import_id));
+CREATE TABLE IF NOT EXISTS secretary_adaptive_import_events (
+ conversation_ref TEXT NOT NULL, origin_profile TEXT NOT NULL,
+ origin_conversation TEXT NOT NULL, origin_event_id TEXT NOT NULL,
+ at REAL NOT NULL, available_at REAL NOT NULL, payload TEXT NOT NULL,
+ PRIMARY KEY(conversation_ref,origin_profile,origin_conversation,origin_event_id));
+CREATE TABLE IF NOT EXISTS secretary_adaptive_import_members (
+ conversation_ref TEXT NOT NULL, import_id TEXT NOT NULL, origin_profile TEXT NOT NULL,
+ origin_conversation TEXT NOT NULL, origin_event_id TEXT NOT NULL,
+ PRIMARY KEY(conversation_ref,import_id,origin_profile,origin_conversation,origin_event_id));
 """
 
 
@@ -51,6 +64,38 @@ def history(db, ref, now, *, limit=2048):
         rows = conn.execute("SELECT payload FROM secretary_adaptive_events WHERE conversation_ref=? "
                             "AND at<=? ORDER BY at DESC,id DESC LIMIT ?", (ref, now, min(2048, max(1, limit)))).fetchall()
     return [json.loads(row[0]) for row in reversed(rows)]
+
+
+def imported_history_conn(conn, ref, now):
+    """Frozen training cohorts only; never includes or changes live local history."""
+    rows = conn.execute(
+        "SELECT e.*,MIN(i.imported_at) AS imported_at FROM secretary_adaptive_import_events e "
+        "JOIN secretary_adaptive_import_members m USING "
+        "(conversation_ref,origin_profile,origin_conversation,origin_event_id) "
+        "JOIN secretary_adaptive_imports i USING (conversation_ref,import_id) "
+        "WHERE e.conversation_ref=? AND e.at<=? AND e.available_at<=? AND i.imported_at<=? "
+        "GROUP BY e.origin_profile,e.origin_conversation,e.origin_event_id ORDER BY e.at,e.origin_event_id",
+        (ref, now, now, now)).fetchall()
+    receipts = [json.loads(row[0]) for row in conn.execute(
+        "SELECT receipt FROM secretary_adaptive_imports WHERE conversation_ref=? AND imported_at<=? AND replaced_by IS NULL "
+        "ORDER BY imported_at,import_id", (ref, now))]
+    cohorts = {}
+    for row in rows:
+        key = row["origin_profile"], row["origin_conversation"]
+        cohort = cohorts.setdefault(key, dict(origin_profile=key[0], origin_conversation=key[1],
+                                               events=[], receipts=[], retained_start_at=row["at"]))
+        cohort["events"].append({**json.loads(row["payload"]), "origin_profile": key[0],
+                                 "origin_conversation": key[1], "origin_event_id": row["origin_event_id"],
+                                 "imported_at": row["imported_at"]})
+    for cohort in cohorts.values():
+        cohort["receipts"] = receipts
+    return list(cohorts.values())
+
+
+def imported_history(db, ref, now):
+    """Read source-separated frozen evidence, fenced by event and import knowability."""
+    with db._read_ctx() as conn:
+        return imported_history_conn(conn, ref, now)
 
 
 def plan_conn(conn, ref):
@@ -153,3 +198,28 @@ def register_claim_conn(conn, ref, revision, config, native_interval):
                      (native_interval, revision, ref))
     else:
         conn.execute("UPDATE secretary_adaptive_heartbeats SET claim_revision=? WHERE conversation_ref=?", (revision, ref))
+
+
+def restore_native_idle(db, ref, *, expected_plan, expected_period, recheck):
+    """Retire only the same unconsumed adaptive cycle, preserving its native clock.
+
+    recheck runs inside this transaction and returns the current native delay only
+    while the current contract still rejects this plan; None means leave it alone.
+    """
+    def write(conn):
+        plan, period = plan_conn(conn, ref), db.noting_idle_state_conn(conn, ref)
+        if (not plan or plan['status'] != 'pending' or not period
+                or plan['generation'] != expected_plan['generation']
+                or plan['config_version'] != expected_plan['config_version']
+                or period != expected_period or period['trigger_produced_at'] is not None
+                or plan['finished_at'] != period['last_turn_finished_at']):
+            return False
+        delay = recheck(conn, plan, period)
+        if delay is None:
+            return False
+        conn.execute("UPDATE secretary_adaptive_plans SET status='invalidated' WHERE conversation_ref=?",
+                     (ref,))
+        conn.execute('UPDATE secretary_noting_idle_state SET due_at=?,updated_at=? WHERE conversation_ref=?',
+                     (period['last_turn_finished_at'] + delay, time.time(), ref))
+        return True
+    return db._execute_write(write)

@@ -323,7 +323,8 @@ def decide(snapshot: dict, history: list[dict], config: dict) -> dict:
         return _fallback(snapshot, 'manual_heartbeat_control')
     profile = _maintenance(features, cfg)
     spans = features['arrival']['spans']
-    data = from_events(features['events'], spans)
+    data = from_events(features['forecast_events'], spans)
+    data['training_cohorts'] = features.get('training_cohorts', [])
     features['trajectory'] = predict(data, snapshot['now'], horizon=cfg['horizon_seconds'],
                                      timezone_name=cfg.get('timezone'))
     curve = _survival_curve(snapshot, features, cfg)
@@ -352,8 +353,11 @@ def decide(snapshot: dict, history: list[dict], config: dict) -> dict:
                             'expected_wait_seconds': chosen['wait'], 'candidates': len(candidates),
                             'maintenance_model': profile.provenance if profile else 'unavailable',
                             'quality_status': 'unmeasured_frequency_and_activity_guards_only',
-                            'coverage_seconds': arrival['exposure_seconds'],
-                            'verified_user_events': arrival['count'],
+                            'coverage_seconds': arrival.get('raw_exposure_seconds', arrival['exposure_seconds']),
+                            'verified_user_events': arrival.get('raw_count', arrival['count']),
+                            'effective_coverage_seconds': arrival['exposure_seconds'],
+                            'effective_user_events': arrival['count'],
+                            'inherited_training_cohorts': features.get('inherited_cohorts', 0),
                             'feedback': features['feedback'],
                             'unknown_usage_requests': features['unknown_usage_requests'],
                             'forecast_model': ('multi_return_trajectory' if _trajectory_ready(features)

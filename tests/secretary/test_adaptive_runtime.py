@@ -12,30 +12,36 @@ from tests.secretary.test_noting_runtime import _agent
 
 @pytest.fixture
 def owned(tmp_path, monkeypatch):
-    (tmp_path / "config.yaml").write_text("""noting:
-  enabled: true
-  idle:
-    enabled: true
-    delay_seconds: 500
-    threshold_tokens: 1000
-  adaptive:
-    enabled: true
-    hot_interval_seconds: 60
-    business_interval_seconds: null
-    cache_ratio: 0.1
-    output_ratio: 2
-    cache_ttl_seconds: 1800
-    timezone: Asia/Shanghai
-""")
     db = open_noting_db(tmp_path / "state.db")
     make(db, "main")
     add(db, "main", "hello", "u1")
     parent = _agent(db, "main")
+    parent.model, parent.provider, parent.api_mode = "test/runtime", "openai", "chat_completions"
+    db.patch_session_model_config("main", {"provider": "openai", "api_mode": "chat_completions"})
+    db._execute_write(lambda conn: conn.execute("UPDATE sessions SET model=? WHERE id='main'", (parent.model,)))
+    import json
+    config = adaptive_config(ref_of(db, "main"))
+    (tmp_path / "config.yaml").write_text(json.dumps(config))
     parent.tools = []
     parent.context_compressor.update_from_response({"prompt_tokens": 5000})
     monkeypatch.setattr("secretary.noting_timers.arm_idle_timer", lambda *args: None)
     yield parent, db, ref_of(db, "main")
     db.close()
+
+
+def adaptive_config(ref, policy=None):
+    policy = dict(policy or {})
+    item = {"heartbeat": {"hot_seconds": policy.pop("hot_interval_seconds", 60),
+                           "business_seconds": policy.pop("business_interval_seconds", None)},
+            "billing": {"input": 1, "cache_read": policy.pop("cache_ratio", .1),
+                        "output": policy.pop("output_ratio", 2), "source": "test fixed equivalent"},
+            "cache_ttl_seconds": policy.pop("cache_ttl_seconds", 1800)}
+    return {"model": {"default": "test/runtime", "provider": "openai", "context_length": 130000},
+            "compression": {"threshold": .75, "threshold_tokens": 75000},
+            "noting": {"enabled": True, "idle": {"enabled": True, "delay_seconds": 500, "threshold_tokens": 1000},
+                       "adaptive_idle_token_saving": {**policy, "enabled": True, "timezone": "Asia/Shanghai",
+                           "models": {"openai": {"test/runtime": item}},
+                           "conversations": {ref: {"enabled": True}}}}}
 
 
 def test_native_and_synthetic_user_roles_do_not_prove_human(owned):
@@ -151,8 +157,8 @@ def test_composer_cancel_has_distinct_non_request_activity(owned):
 
 def test_live_shadow_records_recommendation_without_adopting_it(owned, monkeypatch):
     parent, db, ref = owned
-    config = for_db(db)
-    monkeypatch.setattr(runtime.settings, 'for_db', lambda _db: {**config, 'shadow_only': True})
+    config = for_db(db, ref, parent=parent)
+    monkeypatch.setattr(runtime.settings, 'for_db', lambda _db, *args, **kwargs: {**config, 'shadow_only': True})
     monkeypatch.setattr('secretary.adaptive_policy.decide', lambda *args: dict(mode='hot',
                         threshold_tokens=4000, delay_seconds=1800, fallback=False))
     assert runtime.finish_turn(parent, time.time()) is None
