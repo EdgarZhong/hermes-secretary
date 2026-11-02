@@ -1,10 +1,10 @@
 # Hermes Secretary 当前状态
 
-## 2026-11-02 · Stop恢复卡死及两项已登记缺陷（实施中）
+## 2026-11-02 · Stop恢复卡死及两项已登记缺陷（已修复上线）
 
 用户明确要求立即修复：后端是运行状态权威，正常Stop／Steer不得因辅助通知残留让前端无限Retrying；同时授权修复此前登记的128K资格上限及Assistant正文转Thinking两项，替代此前暂不修口径。基线0536a8fd2d，分支codex/stop-and-noting-fixes-20261102；保护原文档dirty及Huawei资料。Stop现场：14:09:50主Turn已interrupted，无lease，浏览器connection=connected但Send禁用／Running陈旧；停止快照含steer.consumed，完成来源／终态／输出均已证明，辅助事件被停止恢复清单拒绝。离线只去该事件立即通过，不改线上原物料。主会话负责Stop修复、集成与正式验证；noting_cap负责资格上限，assistant_thinking负责Provider类型及Web投影，recovery_error_ui负责恢复失败提示；各分区独立修改后交回review，不在线上跑构建。用户确认续跑正常，不将其当缺陷；本轮不在线上编译或发送测试消息。
 
-当前验证：Stop原生结算72项、新增错误输入身份3项、恢复／在途输出／手动压缩129项通过；线上封存原快照旧代码runtime_unavailable、新候选完整返回空残留事件。Noting policy／runtime／冷暖配置61项通过。十项冻结检查九项通过，no-tmp仍命中原HEAD已存在的历史validation.md字面路径；不改历史报告或检查规则。正文类型BE181项／FE174项、错误提示组件及owner56项／App定向3项通过，typecheck通过；新增范围检查通过。旧基线另有BE两条压缩trigger夹具及FE41项既有集成失败与一条Steer快照失败，均在原提交复现，未篡改。实现已review接收，正在合主干／构建发布，尚未部署。证据ignored `.hermes-dev/stop-fixes-20261102/`。
+当前验证：Stop原生结算72项、新增错误输入身份3项、恢复／在途输出／手动压缩129项通过；线上封存原快照旧代码runtime_unavailable、新候选完整返回空残留事件。Noting policy／runtime／冷暖配置61项通过。十项冻结检查九项通过，no-tmp仍命中原HEAD已存在的历史validation.md字面路径；不改历史报告或检查规则。正文类型BE181项／FE174项、错误提示组件及owner56项／App定向3项通过，typecheck通过；新增范围检查通过。旧基线另有BE两条压缩trigger夹具及FE41项既有集成失败与一条Steer快照失败，均在原提交复现，未篡改。实现已review接收，BE ed9d564cc1／FE dc40990已合正式主干并上线。14:36:50+08后端verified，静态439文件及6HTTP资源verified；同一会话恢复三轮complete=true、running=false。用户原Chrome页面timeOrigin保持1793600240975.4，Retrying消失、Send可用、9字符草稿保持；未刷新／发送消息。前端新增显示／错误详情由新页面加载，原已打开页面继续旧JS但后端恢复已生效。两套完整三库已核验保留并清退更旧9文件；运维／回退见operations-log顶部。旧APK内置前端未重打，不冒称真机或真实模型验收。证据ignored `.hermes-dev/stop-fixes-20261102/`。
 
 ## 2026-11-02 · 用户要求立即停止delegate并重启整个Hermes（已执行）
 
@@ -27,8 +27,8 @@
 
 | 问题 | 现状与入口 |
 |---|---|
-| 大窗口128K资格上限设计缺陷 | 已移除固定128K上限并通过61项回归，待本轮发布，见07顶部。 |
-| GPT Assistant正文转入Thinking | 已修复commentary类型、source facet及新旧历史投影，待本轮发布；截图和56条原始消息字段受限封存，不抄个人登录信息进Git；见06顶部。 |
+| 大窗口128K资格上限设计缺陷 | 已移除固定128K上限并上线，61项回归通过；正式安装模块872K资格可用，见07顶部。 |
+| GPT Assistant正文转入Thinking | 已修复commentary类型、source facet及新旧历史投影并上线；截图和56条原始消息字段受限封存，不抄个人登录信息进Git；见06顶部。 |
 
 详细运维、延迟时间线及APK证据统一见[operations-log](docs/operations-log.md)。本轮不动既有未跟踪Huawei资料及前端五个.DS_Store，不做额外修复；同版本新APK交付已就绪，该次APK／Noting补跑已结束；后续Stop及两项缺陷修复以上方当前任务为准。
 

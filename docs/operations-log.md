@@ -1,10 +1,16 @@
 # 运维记录
 
-## 2026-11-02 · Stop终态恢复、Noting大窗口及Assistant类型修复（发布准备）
+## 2026-11-02 · Stop终态恢复、Noting大窗口及Assistant类型修复（已上线）
 
 用户明确要求立即修复三项。Stop现场14:09:50已保存interrupted、无lease且网络已连接；停止快照的已消费输入通知被终态恢复事件清单遗漏，导致稳定runtime_unavailable。新增原生Steer后部分生成／Stop与异常结束回归精确复现；修复按已持久来源及相同Turn确认通知归属，保留未知来源拒绝。线上原快照只读回放旧代码失败、新候选complete=true且残留0，原物料保持。前端连续实际失败明确原因、可展开详情及同页重试，自动恢复成功和owner／读取范围切换清理旧错误。
 
 Noting取消固定128K reserve资格上限，保留公式、66K／64K下限、配置和Prompt。GPT按Provider结构区分commentary与analysis；commentary沿原生sidecar及显示投影保留Assistant，已存旧行无需改写，source facet与同UID流式退役接通。原56行不进Git。验证：Stop204项、Noting61项、GPT后端181项／前端174项、错误提示56项加App3项，typecheck通过。冻结十检查九项通过，历史no-tmp失败在原HEAD不变；额外BE两条压缩trigger夹具、FE41项原集成及一条Steer快照失败原提交复现，未改规则或旧断言。本地证据stop-fixes-20261102、assistant-thinking-20261102及FE.archive对应目录。未发生产模型请求。
+
+**发布结果：** BE `ed9d564cc15b46b647872e10a62e671e3fe6744b`、FE `dc40990b7e546fc17ae9d30b6d81814d1ce67768`已合main并push；前端main原在web-toast干净工作区，原目录仍在同提交功能分支，未改其它工作区。14:36:50+08后端受限执行器verified，云端始终main；双服务实际新版本，配置／绑定／三库保护表／原静态保持。随后前端439文件及6HTTP资源全部SHA一致、静态发布verified，未额外重启服务／写库。首次静态包缺secretary目录前缀，在解包第一项即被拒绝且线上静态未切换；保留first-attempt-receipt，修正包结构后重发成功，未放宽校验。
+
+**恢复核验：** 同Conversation的新runtime连续三轮complete=true、running=false、matched_windows=1。用户授权的原Chrome标签只读确认Retrying消失、Send enabled、模型仍gpt-6.1-sol-900k、9字符草稿保持；上线前后performance.timeOrigin均1793600240975.4，证实同一document未刷新。前端新显示逻辑须页面下次加载新JS；当前旧页面已通过后端修复恢复。正式安装的872000／654000 policy返回usable=true／reserve261600／Force阈值610400；不冒称发起真实Noting或模型测试。未重打APK。
+
+**收据／回退：** 云端`~/.local/state/hermes-secretary/release-20261028/stage-20261102-stop-noting/{receipt.json,RECOVERY.txt,backup-retention.json}`及`static-20261102-stop-commentary/receipt.json`；旧静态保留在专属交换目录。回退仅在空闲窗口按RECOVERY对main作已审反向提交，并交换回已核旧静态，不自动回滚业务库／配置。验证两套完整三库后清退更旧9文件224169984字节，运行库／WAL／SHM与当前同步包保持。源故障证据保留。未跟踪Huawei资料与前端5个.DS_Store保持。
 
 ## 2026-11-02 · 用户授权立即停止delegate并重启整个Hermes
 
