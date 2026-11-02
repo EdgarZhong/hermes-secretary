@@ -754,6 +754,8 @@ def _(rid, params: dict) -> dict:
     requested_rebind_ids = (
         {r for r in raw_rebind_ids if isinstance(r, int) and not isinstance(r, bool)}
         if isinstance(raw_rebind_ids, list) else None)
+    from secretary.adaptive_runtime import web_submit_input
+    text = web_submit_input(session, text, params, internal_hosted_submit=internal_hosted_submit, turn_author=turn_author)
     err, survivor_fields = _submit_claim_with_busy_policy(
         rid, sid, session, text, params, has_truncation, requested_rebind_ids, hosted_task, display_kind,
         internal_hosted_submit=internal_hosted_submit, turn_author=turn_author, transport=t)

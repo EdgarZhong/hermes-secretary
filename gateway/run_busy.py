@@ -112,6 +112,8 @@ class GatewayBusySessionMixin:
         else:
             pending_slot[session_key] = queued_event
         queued_event._gateway_accepted = True
+        from secretary.adaptive_runtime import gateway_queue_input
+        gateway_queue_input(self, session_key, queued_event)
 
     def _promote_queued_event(
         self, session_key: str, adapter: Any, pending_event: Optional["MessageEvent"]
@@ -413,6 +415,8 @@ class GatewayBusySessionMixin:
                 merge_text=event.message_type == MessageType.TEXT,
             )
             event._gateway_accepted = True
+            from secretary.adaptive_runtime import gateway_queue_input
+            gateway_queue_input(self, session_key, event)
             return
 
         if self._queue_depth(session_key, adapter=adapter) >= self._BUSY_QUEUE_MAX_PENDING:

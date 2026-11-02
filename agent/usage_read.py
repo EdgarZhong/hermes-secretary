@@ -105,6 +105,8 @@ def observe_main_model_dispatch(agent):
                 with owner.lock:
                     turn.failed += 1
                     turn.reasons.add("failed_dispatch")
+                    from secretary.adaptive_runtime import request_observed
+                    request_observed(agent, None, _BUCKETS, failed=True)
             except Exception:
                 logger.debug("Main dispatch failure observation failed", exc_info=True)
         raise
@@ -199,6 +201,13 @@ def observe_main_canonical_usage(agent, response, canonical_usage):
                 if (str(getattr(agent, "provider", "") or "").lower() in {"minimax", "minimax-cn"}
                         and getattr(agent, "api_mode", None) == "anthropic_messages"):
                     turn.reasons.add("incompatible_cache_semantics")
+            from secretary.adaptive_runtime import request_observed
+            request_unknown = (_unknown_buckets(agent, response, canonical_usage)
+                               if canonical_usage is not None else set(_BUCKETS))
+            if turn.reasons & {"opaque_moa_calls", "opaque_external_dispatch", "unobserved_dispatch",
+                               "incompatible_cache_semantics"}:
+                request_unknown.update(_BUCKETS)
+            request_observed(agent, canonical_usage, request_unknown)
             owner.unknown.update(turn.unknown)
             owner.reasons.update(turn.reasons)
     except Exception:

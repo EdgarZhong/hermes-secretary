@@ -25,6 +25,8 @@ Secretary只在Profile的`state.db`增加自有表，复用原生执行、存储
 
 字段、权限、Prompt、触发分支和投递契约统一见[07](docs/07-scheduler-notebook-noting-compaction-redesign.md)，Web恢复见[06](docs/06-Hermes-Secretary-Web-UI-V1-Spec.md)。
 
+可选自适应空闲省token使用Profile的`noting.adaptive_idle_token_saving`，按Conversation显式启用、按原生Provider/模型选项读取两档Heartbeat与固定费用倍率，窗口沿原生继承；默认关闭。历史继承通过`python scripts/adaptive_history_import.py preview|apply --profile NAME --target REF`显式冻结数值训练证据，不继承当前空闲/缓存/排期状态。配置、容量和评测限制见[算法方案](docs/adaptive-noting-threshold-proposal.md)。
+
 | 命令 | 行为 |
 |---|---|
 | `/notebook` | 人类查看当前Notebook与Snapshot时间 |
@@ -109,7 +111,7 @@ Gateway入口 `hermes gateway`；Dashboard入口 `hermes dashboard --host 127.0.
 | 部署与故障变更台账、证据入口 | [运维记录](docs/operations-log.md) |
 | 2026-10-28联合Noting／压缩中断的历史取证（后继实现另见07） | [问题报告](docs/noting-compaction-framework-interruption-20261028.md) |
 | 2026-10-20手机Web／微信、网络与Noting历史调查 | [调查报告](docs/mobile-web-investigation-20261020.md) |
-| 自适应维护算法研究：已确认口径、待定执行/损失约束及历史统计（未实现；历史配置不代表现值） | [算法方案](docs/adaptive-noting-threshold-proposal.md) |
+| 自适应维护实验：默认关闭的联合决策/执行合同、历史影子评测与复跑、实盘影子配置、定性验收及局限；历史配置不代表现值 | [算法方案](docs/adaptive-noting-threshold-proposal.md) |
 | 手机HTTP/2实测及残留问题 | [验收报告](docs/mobile-http2-acceptance-20261020.md)、[原任务书](docs/mobile-http2-retest-task.md) |
 | 手机Web／微信交替使用、网络与Noting故障取证 | [运维记录](docs/operations-log.md)中的10/20调查与证据入口 |
 | 移动端阶段一实施、验收与后续短网络实验任务书 | [任务包入口](docs/hermes-network-experiment-20261020/README.md)、[阶段一](docs/hermes-network-experiment-20261020/PHASE1-IMPLEMENTATION.md) |

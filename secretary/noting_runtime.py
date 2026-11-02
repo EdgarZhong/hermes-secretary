@@ -349,13 +349,22 @@ def _record_main_turn_event(agent: Any, at: Optional[float], *, started: bool) -
             if not settings.idle_enabled or not noting_lifecycle_gate(db, ref, settings=settings)[0]:
                 if started and db.noting_idle_state(ref) is not None:
                     db.noting_idle_turn_started(ref, when)  # Cancel an existing period, never arm off.
+                if not started:
+                    from secretary.adaptive_runtime import finish_turn
+                    finish_turn(agent, when, idle_allowed=False)
                 return False
             if started:
                 db.noting_idle_turn_started(ref, when)
             else:
-                due_at = when + settings.idle_delay_seconds
-                db.noting_idle_turn_finished(ref, when, due_at=due_at)
-                arm_idle_timer(agent, db, ref, due_at)
+                from secretary.adaptive_runtime import finish_turn
+                adaptive = finish_turn(agent, when)
+                if adaptive is None:
+                    due_at = when + settings.idle_delay_seconds
+                    db.noting_idle_turn_finished(ref, when, due_at=due_at)
+                else:
+                    due_at = adaptive["due_at"]
+                if due_at is not None:
+                    arm_idle_timer(agent, db, ref, due_at)
             return True
     except Exception:
         logger.warning("Noting Idle timing write failed", exc_info=True)
@@ -654,7 +663,9 @@ def _joint_trigger_decision(parent, db, ref, trigger, measurement, source, now, 
             from agent.context_compaction_request import read_context_usage
             from secretary.noting_policy import measurement_from_agent
             return measurement_from_agent(parent, read_context_usage(parent)[0])
-        return try_admit_idle(db, ref, measurement=measurement, now=now, execution_source=source,
+        from secretary.adaptive_runtime import idle_settings
+        adaptive_settings = idle_settings(parent, settings_for_db(db))
+        return try_admit_idle(db, ref, measurement=measurement, settings=adaptive_settings, now=now, execution_source=source,
                               measurement_reader=read_measurement if measurement is None else None,
                               expected_period=expected_period)
     enabled, reason = noting_trigger_gate(db, ref)

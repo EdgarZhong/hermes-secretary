@@ -66,6 +66,8 @@ def scan_profile(home, *, stop=None):
     with server._session_profile_runtime_scope({"profile_home": str(home)}):
         db = acquire(home / "state.db")
         try:
+            from secretary.adaptive_observation import touch_profile
+            touch_profile(db, scope="web_submit")
             scan_heartbeats(db, home, stop=stop)
             enabled = schedules.default_enablement(db)
             if not enabled(None):

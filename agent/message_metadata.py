@@ -398,7 +398,9 @@ def build_user_wrapper(tag: str, body: Any, *, timestamp: Optional[float] = None
     source = wall_time() if timestamp is None else timestamp
     stamp = format_user_timestamp_marker(source).rstrip("\n")
     text = body if isinstance(body, str) else "" if body is None else str(body)
-    return trusted_user_input(f"<{tag}>\n{stamp}\n{text}\n</{tag}>", source_timestamp=source)
+    value = trusted_user_input(f"<{tag}>\n{stamp}\n{text}\n</{tag}>", source_timestamp=source)
+    value._adaptive_source = {"heartbeat": "heartbeat", "instant-reminder": "reminder"}.get(tag, "framework")
+    return value
 
 
 def build_noting_task_wrapper(body: Any, *, timestamp: Optional[float] = None) -> str:
@@ -419,7 +421,9 @@ def build_user_reminder_wrapper(body: Any, *, timestamp: Optional[float] = None)
 def build_unstamped_wrapper(tag: str, body: Any) -> str:
     """Runtime control carriers never receive the user-submission timestamp marker."""
     text = body if isinstance(body, str) else "" if body is None else str(body)
-    return trusted_user_input(f"<{tag}>\n{text}\n</{tag}>")
+    value = trusted_user_input(f"<{tag}>\n{text}\n</{tag}>")
+    value._adaptive_source = "framework"
+    return value
 
 
 def build_framework_message_wrapper(body: Any) -> str:
@@ -457,9 +461,14 @@ def trusted_user_input(text: str, *, source_timestamp: Optional[float] = None) -
 def preserve_user_input_origin(original: Any, sanitized: Any) -> Any:
     """String sanitization must preserve the internal source witness, not grant one to user text."""
     if not isinstance(original, TrustedUserInput):
+        if getattr(original, "_adaptive_source", None):
+            from secretary.adaptive_runtime import mark_input
+            return mark_input(sanitized, original._adaptive_source, getattr(original, "_adaptive_event_id", None))
         return sanitized
     value = trusted_user_input(sanitized, source_timestamp=original.source_timestamp)
     value._secretary_active_admission = getattr(original, "_secretary_active_admission", None)
+    value._adaptive_source = getattr(original, "_adaptive_source", "unknown")
+    value._adaptive_event_id = getattr(original, "_adaptive_event_id", None)
     return value
 
 

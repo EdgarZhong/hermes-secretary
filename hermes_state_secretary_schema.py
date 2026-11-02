@@ -82,6 +82,8 @@ def init_secretary_schema(cursor):
     for statement in SECRETARY_SCHEMA_SQL.split(";"):
         if statement.strip():
             cursor.execute(statement)
+    from secretary.adaptive_store import init_schema
+    init_schema(cursor)
     # A no-op INSERT still takes SQLite's write lock. Settled opens only probe.
     if cursor.execute(_MISSING_BRANCH_FREEZES_SQL + " LIMIT 1").fetchone() is not None:
         cursor.execute("INSERT OR IGNORE INTO secretary_branch_freezes " + _MISSING_BRANCH_FREEZES_SQL)

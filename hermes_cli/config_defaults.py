@@ -577,7 +577,7 @@ DEFAULT_CONFIG = {
     "scheduler": {"enabled": True},
     "noting": {
         "enabled": True,
-        "idle": {"enabled": False, "delay_seconds": 500, "threshold_tokens": None},
+        "idle": {"enabled": False, "delay_seconds": 500, "threshold_tokens": None}, "adaptive_idle_token_saving": {"enabled": False, "models": {}, "conversations": {}},
         "persistence_proposal": {"char_threshold": 12000, "entry_threshold": 60},
     },
 

@@ -293,6 +293,8 @@ class CompressionFacadeMixin:
                 fence_stack = vars(self).setdefault("_compression_commit_fence_stack", [])
                 fence_stack.append(registration)
                 self._active_compression_commit_fence = active_fence
+            from secretary.adaptive_runtime import maintenance
+            maintenance(self, registration, trigger=trigger)
 
             def _run(fence=None, target_messages=None, same_turn_fallback_recovery=False):
                 return compress_context(
@@ -345,6 +347,8 @@ class CompressionFacadeMixin:
                     self._active_compression_commit_fence = fence_stack[-1].fence
                 else:
                     vars(self).pop("_active_compression_commit_fence", None)
+            from secretary.adaptive_runtime import maintenance
+            maintenance(self, registration, finished=True)
             from secretary.noting_native_link import finish_native_joint
             finish_native_joint(self, registration)
             # Restore whatever the caller had, so a compaction never leaks its tag into the surrounding scope.

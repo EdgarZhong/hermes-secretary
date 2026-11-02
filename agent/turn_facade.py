@@ -119,7 +119,7 @@ class TurnFacadeMixin:
             self._relay_pending_turn_id = relay_turn_id
             with suppress(Exception):
                 from secretary.noting_turn_boundary import observe_admitted_turn_started
-                observe_admitted_turn_started(self, lease)
+                observe_admitted_turn_started(self, lease, user_message=user_message)
 
             relay_session_cwd, relay_turn_cwd = resolve_relay_scope_cwds(
                 self,

@@ -109,6 +109,10 @@ def _idle_submit_claim_error(rid, session):
     if not session.get("running"):
         return None
     if _idle_submit_requested():
+        from secretary.adaptive_runtime import blocked_send
+        parent = session.get("agent")
+        if parent is not None:
+            blocked_send(parent, _idle_submission_id.get() or str(rid))
         return _idle_submit_busy(rid)
     if session.get("_idle_only_running_claim"):
         return _idle_submit_retry

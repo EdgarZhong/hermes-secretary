@@ -19,7 +19,13 @@ def _compression_handler(server, rid, params, *, cancel=False):
     if server._session_uses_compute_host(session):
         return server._err(rid, 4010, "Compaction observation requires the owning compute host")
     agent = session.get("agent")
+    if cancel and agent is not None:
+        from secretary.adaptive_runtime import cancelled
+        cancelled(agent, params["operation_id"], "requested")
     result = cancel_compression(agent, params["operation_id"]) if cancel else compression_state(agent)
+    if cancel and agent is not None:
+        from secretary.adaptive_runtime import cancelled
+        cancelled(agent, params["operation_id"], result["outcome"])
     return server._ok(rid, result)
 
 

@@ -1,8 +1,10 @@
 """Observe Secretary Turns only inside an accepted native durable lease boundary."""
 
 
-def observe_admitted_turn_started(parent, lease):
+def observe_admitted_turn_started(parent, lease, *, user_message=None):
     if lease is not None:
+        from secretary.adaptive_runtime import turn_started
+        turn_started(parent, user_message)
         from secretary.noting_runtime import note_main_turn_started
         return note_main_turn_started(parent)
     return False
