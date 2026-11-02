@@ -137,6 +137,11 @@ def arrival_model(events, now, timezone_name=None, *, history_start=None):
     users = sorted({e['at'] for e in events if e.get('kind') == 'user_activity'
                     and e.get('source') == 'user'})
     covered = [at for at in users if any(start <= at < end for start, end in spans)]
+    return arrival_statistics(spans, covered, zone)
+
+
+def arrival_statistics(spans, covered, zone):
+    """Shared hazard statistics; callers declare the exposure's evidence grade."""
     exposure = sum(end - start for start, end in spans)
     hours, ages = _exposure(spans, covered, zone)
     counts, age_counts = [0] * 48, [0] * 4
@@ -332,4 +337,7 @@ def build_features(snapshot, history, config):
     if snapshot.get('historical_cohorts'):
         from secretary.adaptive_learning import extend_features
         result = extend_features(result, snapshot, snapshot['historical_cohorts'], config)
+    if snapshot.get('bootstrap_priors'):
+        from secretary.adaptive_learning import extend_bootstrap
+        result = extend_bootstrap(result, snapshot, config)
     return result

@@ -117,7 +117,12 @@ def _model_tags(event):
 
 def _project(event):
     """Whitelist native numeric measurements and bounded provenance labels, never text blobs."""
-    if not isinstance(event, dict) or event.get('kind') not in KINDS:
+    if not isinstance(event, dict):
+        return None
+    if event.get('bootstrap_schema'):
+        from secretary.adaptive_bootstrap import project_transfer
+        return project_transfer(event)
+    if event.get('kind') not in KINDS:
         return None
     if number(event.get('at')) is None:
         return None
@@ -173,8 +178,13 @@ def _candidates(conn, db, target, declaration, now):
             for row in local]
     for cohort in store.imported_history_conn(conn, source, now):
         rows.extend(cohort['events'])
+    from secretary.adaptive_bootstrap import export_conn
+    rows.extend(export_conn(conn, db, source, now))
     conflicts = set()
     for raw in rows:
+        if raw.get('bootstrap_receipt'):
+            excluded['bootstrap_frontier_is_local_state'] += 1
+            continue
         event = _project(raw)
         if event is None:
             excluded['unsupported_or_invalid_numeric_event'] += 1
@@ -198,6 +208,8 @@ def _candidates(conn, db, target, declaration, now):
         del candidates[key]
         excluded['conflicting_origin'] += 1
     ordered = sorted(candidates.values(), key=lambda event: (event['at'], _identity(event)))
+    if len(ordered) > MAX_IMPORT_EVENTS and any(event.get('bootstrap_schema') for event in ordered):
+        raise ValueError('source snapshot capacity would truncate a bootstrap training group')
     excluded['snapshot_event_bound'] += max(0, len(ordered) - MAX_IMPORT_EVENTS)
     return ordered[-MAX_IMPORT_EVENTS:], dict(excluded), len(local)
 

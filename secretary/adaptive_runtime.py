@@ -144,6 +144,8 @@ def snapshot(parent, db, ref, config, at):
     from agent.compression_read import compression_state
     usage, threshold = read_context_usage(parent)
     history = store.history(db, ref, at)
+    from secretary.adaptive_features import clean_events
+    known_history = clean_events(history, at)
     with db._read_ctx() as conn:
         hb = conn.execute("SELECT * FROM secretary_heartbeats WHERE conversation_ref=?", (ref,)).fetchone()
         mode = store.heartbeat_conn(conn, ref)
@@ -151,13 +153,14 @@ def snapshot(parent, db, ref, config, at):
     adaptive_current = bool(mode and (mode["config_version"] == config["config_version"] or mode["claim_revision"] is not None))
     anchor = (hb["last_fired_at"] or hb["created_at"] or (mode["fallback_anchor"] if adaptive_current else 0)) if hb else None
     interval = mode["interval_seconds"] if adaptive_current else hb["interval_seconds"] if hb else None
-    users = [event["at"] for event in history if event["kind"] == "user_activity"
+    users = [event["at"] for event in known_history if event["kind"] == "user_activity"
              and event.get("verified") is True and event.get("source") == "user"]
-    maintenance = [event["at"] for event in history if event["kind"] == "maintenance_end"]
+    maintenance = [event["at"] for event in known_history if event["kind"] == "maintenance_end"]
     from secretary.noting_scope import settings_for_db
     reminder_due, reminder_known = _next_reminder(db, ref, at)
     current = settings_for_db(db, ref)
     from secretary.noting_runtime import noting_local_enabled
+    from secretary.adaptive_bootstrap import read as read_bootstrap
     value = {"now": at, "conversation_ref": ref, "context_tokens": usage or None,
              "context_limit": getattr(getattr(parent, "context_compressor", None), "context_length", None),
              "native_threshold_tokens": threshold or None, "last_user_at": max(users) if users else None,
@@ -174,7 +177,8 @@ def snapshot(parent, db, ref, config, at):
              "model_key": model_key(parent), "context_epoch": _epoch(db, ref),
              "context_path": [parent.session_id, path_version[0]] if path_version else None,
              "idle_config": [current.idle_enabled, current.idle_delay_seconds, current.idle_threshold_tokens],
-             "historical_cohorts": store.imported_history(db, ref, at)}
+             "historical_cohorts": store.imported_history(db, ref, at),
+             "bootstrap_priors": read_bootstrap(db, ref, at)}
     return value, history
 
 

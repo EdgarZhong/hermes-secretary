@@ -74,10 +74,13 @@ def imported_history_conn(conn, ref, now):
         "(conversation_ref,origin_profile,origin_conversation,origin_event_id) "
         "JOIN secretary_adaptive_imports i USING (conversation_ref,import_id) "
         "WHERE e.conversation_ref=? AND e.at<=? AND e.available_at<=? AND i.imported_at<=? "
+        "AND COALESCE(json_extract(i.declaration,'$.kind'),'') != 'same_conversation_bootstrap' "
+        "AND json_extract(e.payload,'$.bootstrap_schema') IS NULL "
         "GROUP BY e.origin_profile,e.origin_conversation,e.origin_event_id ORDER BY e.at,e.origin_event_id",
         (ref, now, now, now)).fetchall()
     receipts = [json.loads(row[0]) for row in conn.execute(
         "SELECT receipt FROM secretary_adaptive_imports WHERE conversation_ref=? AND imported_at<=? AND replaced_by IS NULL "
+        "AND COALESCE(json_extract(declaration,'$.kind'),'') != 'same_conversation_bootstrap' "
         "ORDER BY imported_at,import_id", (ref, now))]
     cohorts = {}
     for row in rows:

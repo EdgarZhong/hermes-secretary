@@ -87,7 +87,7 @@ def _survival_curve(snapshot, features, cfg, *, conservative=False):
     step = cfg['forecast_step_seconds']
     count = math.ceil(cfg['horizon_seconds'] / step)
     curve = [1.0]
-    age = snapshot['now'] - features['last_user_at']
+    age = snapshot['now'] - (features['last_user_at'] if features['last_user_at'] is not None else snapshot['now'])
     for index in range(count):
         at = snapshot['now'] + (index + .5) * step
         rate = arrival_rate(features['arrival'], at, age + (index + .5) * step,
@@ -142,11 +142,16 @@ def _read_price(context, gap, cfg):
     return context * (1 - retained * (1 - cfg['cache_ratio']))
 
 
+def _work_marks_ready(features):
+    marks = features.get('trajectory', {}).get('marks', {})
+    return all(number(marks.get(key)) is not None
+               for key in ('calls', 'growth_tokens', 'output_tokens', 'duration_seconds'))
+
+
 def _trajectory_ready(features):
     trajectory = features.get('trajectory', {})
-    marks = trajectory.get('marks', {})
-    return trajectory.get('available') and all(number(marks.get(key)) is not None
-                for key in ('calls', 'growth_tokens', 'output_tokens', 'duration_seconds'))
+    return trajectory.get('available') and (_work_marks_ready(features)
+            or features.get('bootstrap_readiness', {}).get('qualified') is True)
 
 
 def _forecast(snapshot, features, cfg, mode, delay, profile, curve):
@@ -154,7 +159,7 @@ def _forecast(snapshot, features, cfg, mode, delay, profile, curve):
         from secretary.adaptive_rollout import forecast
         background = _background_times(snapshot, cfg, mode, None, 0)
         return forecast(snapshot, features, cfg, background, delay, profile,
-                        heartbeat_interval=_interval(mode, cfg))
+                        heartbeat_interval=_interval(mode, cfg), timing_only=not _work_marks_ready(features))
     context = snapshot['context_tokens']
     step = cfg['forecast_step_seconds']
     duration = profile.duration if delay is not None else 0
@@ -225,7 +230,7 @@ def _risk(curve, delay, duration, step):
 
 
 def _eligible(snapshot, features, cfg, profile):
-    if snapshot.get('next_reminder_known') is False:
+    if features['last_user_at'] is None or snapshot.get('next_reminder_known') is False:
         return False
     if profile is None or snapshot.get('idle_enabled') is not True:
         return False
@@ -260,7 +265,8 @@ def _break_even(context, baseline, candidate, baseline_zero, candidate_zero, cfg
 
 def _candidates(snapshot, features, cfg, profile, curve, conservative):
     candidates = []
-    last_interaction = max(features['last_user_at'], features.get('last_user_work_end') or features['last_user_at'])
+    last_user = features['last_user_at'] if features['last_user_at'] is not None else snapshot['now']
+    last_interaction = max(last_user, features.get('last_user_work_end') or last_user)
     age = snapshot['now'] - last_interaction
     quiet = max(0, cfg['min_user_quiet_seconds'] - age)
     delays = sorted({quiet, max(quiet, 900), max(quiet, 1800), max(quiet, 3600)})
@@ -316,7 +322,8 @@ def decide(snapshot: dict, history: list[dict], config: dict) -> dict:
     if observed_cache is not None:
         cfg['hot_cache_fraction'] = min(cfg['hot_cache_fraction'], observed_cache)
     arrival = features['arrival']
-    if (arrival['count'] < cfg['min_user_events'] or arrival['exposure_seconds'] < cfg['min_exposure_seconds']
+    bootstrap_ready = features.get('bootstrap_readiness', {}).get('qualified') is True
+    if not bootstrap_ready and (arrival['count'] < cfg['min_user_events'] or arrival['exposure_seconds'] < cfg['min_exposure_seconds']
             or features['last_user_at'] is None):
         return _fallback(snapshot, 'insufficient_verified_observation_coverage')
     if snapshot.get('heartbeat_status') not in ('active', 'policy_disabled'):
@@ -326,7 +333,7 @@ def decide(snapshot: dict, history: list[dict], config: dict) -> dict:
     data = from_events(features['forecast_events'], spans)
     data['training_cohorts'] = features.get('training_cohorts', [])
     features['trajectory'] = predict(data, snapshot['now'], horizon=cfg['horizon_seconds'],
-                                     timezone_name=cfg.get('timezone'))
+                                     timezone_name=cfg.get('timezone'), qualified_prior_ready=bootstrap_ready)
     curve = _survival_curve(snapshot, features, cfg)
     conservative = _survival_curve(snapshot, features, cfg, conservative=True)
     candidates = _candidates(snapshot, features, cfg, profile, curve, conservative)
@@ -345,7 +352,7 @@ def decide(snapshot: dict, history: list[dict], config: dict) -> dict:
     chosen = min(admissible, key=lambda c: (c['cost'], c['delay'] is not None,
                                           c['mode'] != current_mode)) if admissible else baseline
     return {'mode': chosen['mode'], 'threshold_tokens': chosen['threshold'],
-            'delay_seconds': chosen['delay'], 'fallback': native and not admissible,
+            'delay_seconds': chosen['delay'], 'fallback': native and not admissible and not bootstrap_ready,
             'reason': 'robust_cost_improvement' if admissible else 'retain_without_early_maintenance',
             'diagnostics': {'estimated_cost': chosen['cost'], 'baseline_cost': baseline['cost'],
                             'terminal_stress_cost': chosen['cost'] + chosen['terminal'],
@@ -358,10 +365,19 @@ def decide(snapshot: dict, history: list[dict], config: dict) -> dict:
                             'effective_coverage_seconds': arrival['exposure_seconds'],
                             'effective_user_events': arrival['count'],
                             'inherited_training_cohorts': features.get('inherited_cohorts', 0),
+                            'history_readiness': features.get('bootstrap_readiness', {}),
+                            'current_activity_known': features['last_user_at'] is not None,
+                            'behavior_prediction_available': features['trajectory'].get('available', False),
                             'feedback': features['feedback'],
                             'unknown_usage_requests': features['unknown_usage_requests'],
-                            'forecast_model': ('multi_return_trajectory' if _trajectory_ready(features)
+                            'forecast_model': ('multi_return_timing_only_single_read_proxy'
+                                               if _trajectory_ready(features) and not _work_marks_ready(features)
+                                               else 'multi_return_trajectory' if _trajectory_ready(features)
                                                else 'first_return_fallback'),
+                            'work_cost_assumption': ('one_current_context_read_per_predicted_submission; '
+                                'unknown_extra_calls_growth_output_busy_time_excluded_not_observed_zero'
+                                if _trajectory_ready(features) and not _work_marks_ready(features)
+                                else 'current_compatible_work_marks_or_first_return_cost_model'),
                             'trajectory_training_windows': features['trajectory']['training_windows'],
                             'behavior_forecast': features['trajectory'].get('horizons', {}),
                             'counterfactual_status': 'conditional_model_not_causal_savings',

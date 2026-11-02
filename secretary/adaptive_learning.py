@@ -99,3 +99,53 @@ def extend_features(features, snapshot, cohorts, config):
     # arrival.spans stays local: priors must not certify current target coverage.
     return {**features, 'arrival': arrival, 'feedback': observed,
             'training_cohorts': training, 'inherited_cohorts': len(training)}
+
+
+def extend_bootstrap(features, snapshot, config):
+    """Use mature conditional windows without certifying current online exposure."""
+    from secretary.adaptive_features import arrival_statistics
+    from secretary.adaptive_forecast import training_examples, visible
+    local = features['arrival']
+    arrival = {**local, **{key: list(local[key]) for key in
+                          ('hour_exposure', 'hour_count', 'age_exposure', 'age_count')}}
+    arrival.setdefault('raw_count', local['count'])
+    arrival.setdefault('raw_exposure_seconds', local['exposure_seconds'])
+    training = list(features.get('training_cohorts', []))
+    readiness = dict(qualified=False, grade='conditional_persisted_submission_sequence',
+                     runtime_monitoring_coverage=False, mature_windows=0,
+                     conditional_exposure_seconds=0, conditional_user_events=0,
+                     work_compatibility='timing_only_no_transferred_model_work')
+    for cohort in snapshot['bootstrap_priors'][:1]:
+        if (cohort.get('conversation_ref') != snapshot.get('conversation_ref')
+                or cohort.get('runtime_monitoring_coverage') is not False
+                or cohort.get('grade') != readiness['grade']
+                or number(cohort.get('imported_at')) is None or cohort['imported_at'] > snapshot['now']):
+            continue
+        data = cohort['dataset']
+        now = min(snapshot['now'], cohort['cutoff'])
+        examples = training_examples(data, now, 1800, config.get('timezone'))
+        readiness['mature_windows'] = len(examples)
+        if len(examples) < 8:
+            continue
+        spans = []
+        for row in examples:
+            lo, hi = row['at'], row['at'] + 1800
+            if spans and lo <= spans[-1][1]:
+                spans[-1] = (spans[-1][0], max(hi, spans[-1][1]))
+            else:
+                spans.append((lo, hi))
+        spans = subtract_spans(spans, local['spans'])
+        users = sorted({row['at'] for row in visible(data['users'], now)
+                        if any(lo < row['at'] <= hi for lo, hi in spans)})
+        prior = arrival_statistics(spans, users, local['zone'])
+        weight = math.exp(-max(0, snapshot['now'] - cohort['cutoff']) / (7 * 86400))
+        readiness.update(qualified=True, conditional_exposure_seconds=prior['exposure_seconds'],
+                         conditional_user_events=prior['count'], recency_weight=weight,
+                         receipt=cohort['receipt'])
+        training.append(data)
+        for key in ('exposure_seconds', 'count'):
+            arrival[key] += weight * prior[key]
+        for key in ('hour_exposure', 'hour_count', 'age_exposure', 'age_count'):
+            arrival[key] = [a + weight * b for a, b in zip(arrival[key], prior[key])]
+    arrival['rate'] = arrival['count'] / arrival['exposure_seconds'] if arrival['exposure_seconds'] else None
+    return {**features, 'arrival': arrival, 'training_cohorts': training, 'bootstrap_readiness': readiness}
