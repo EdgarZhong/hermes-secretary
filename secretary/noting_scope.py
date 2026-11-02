@@ -23,12 +23,38 @@ def owning_db_scope(db):
         reset_hermes_home_override(token)
 
 
-def settings_for_db(db):
-    from secretary.noting_policy import disabled_noting_settings, resolve_noting_settings
+def _conversation_idle_config(config, conversation_ref):
+    """Overlay only native Idle controls for one stable Conversation, before native validation."""
+    if conversation_ref is None or not isinstance(config, dict):
+        return config
+    noting = config.get("noting")
+    idle = noting.get("idle") if isinstance(noting, dict) else None
+    if not isinstance(idle, dict):
+        return config
+    overrides = idle.get("conversations", {})
+    if not isinstance(overrides, dict):
+        raise ValueError("noting.idle.conversations must be a mapping")
+    if conversation_ref not in overrides:
+        return config
+    selected = overrides[conversation_ref]
+    if not isinstance(selected, dict) or set(selected) - {"enabled", "delay_seconds", "threshold_tokens"}:
+        raise ValueError("Conversation Idle override permits only enabled, delay_seconds and threshold_tokens")
+    return {**config, "noting": {**noting, "idle": {**idle, **selected}}}
+
+
+def settings_for_db(db, conversation_ref=None):
+    from secretary.noting_policy import disabled_noting_settings, resolve_noting_settings, noting_settings_from_config
 
     try:
         with owning_db_scope(db):
-            return resolve_noting_settings()
+            if conversation_ref is None:
+                return resolve_noting_settings()
+            from hermes_cli.config import load_config_readonly
+            from hermes_cli.config_read_errors import FailedConfigRead
+            config = load_config_readonly()
+            if isinstance(config, FailedConfigRead):
+                return disabled_noting_settings()
+            return noting_settings_from_config(_conversation_idle_config(config, conversation_ref))
     except Exception:
         logger.debug("Owning-profile Noting policy unavailable", exc_info=True)
         return disabled_noting_settings()

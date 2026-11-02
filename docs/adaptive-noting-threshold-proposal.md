@@ -63,6 +63,16 @@ noting:
 
 模型参数修改经原生配置writer；本轮不新造外部配置目录、不把个人参数写入公开仓库。启用按Conversation显式配置，不因为同Profile中新增模型参数就自动启用所有会话。总开关与Conversation开关共同控制；暂停／清除Heartbeat继续尊重用户原生控制，启用算法不擅自创建或复活任务。本轮恢复目标是用户明确授权的Alex目标，不扩到其它Conversation。
 
+### Conversation级原生Idle与上线先验
+
+为避免只启用一个Conversation却打开整个Profile的原生Idle，新增`noting.idle.conversations[conversation_ref]`，仅覆盖`enabled`、`delay_seconds`、`threshold_tokens`。未配置的Conversation继续继承Profile原值；总`noting.enabled`及Notebook local开关仍有效。它是原生回退配置，不是第四个算法决策量，也不新增计时器。算法snapshot、Turn结束、timer attach/恢复、联合入口、计划失效及owner回收使用同一目标设置；显式移除/关闭覆盖按原生关闭清理，不把其它会话开启。
+
+当前目标试用的人工回退初值为7200秒/700000 tokens，Profile `idle.enabled`仍false。可信来源不足8次用户到达或6小时观测暴露时，策略保持原生业务档3小时；不从旧`role=user`补齐标签，不宣称立即按29分钟运行。两小时回退与算法至少1800秒真人安静保护不是同一量。
+
+同GPT900k/xhigh的独立手动Noting记录32请求：fresh817238、cache25160320、output40796（reasoning已含其中），按1/.05/5为2279234输入等价；实际1702秒。这不是完整Idle联合维护账本：父压缩成功218秒，另有未完成尝试/人工间隔，不能直接拼成联合p80。初始维护成本3000000、占用3600秒、压缩留存.25、恢复费50000均为明确人工保守先验，非保证上界；现有完整联合费用采集不足，不能声称会自动获得同操作全费用并取代先验。
+
+可靠GPT Heartbeat来源样本尚无。试用采用单请求初值（extra_calls=0）、预计热命中.95、fresh1024/output5000的明确费用代理；output5000是当前策略的保守下界，会被更大的实测值抬高，不会自动向下衰减，须后续按可靠Heartbeat样本校准。不能无证据将额外调用永久设为2再把命中率降为.9，否则输入读费本身便可能令热档恒劣，失去选档空间。模型固定两档仍1740/10800秒，TTL1800只是估计。
+
 ### 历史导入：显式声明、一次应用、冻结快照
 
 通过来源/目标conversation_ref、导入ID与截止时间明确指定。在现有配置管理/运维入口增加一次“应用历史导入”动作，先给出可用时间段、来源质量、条数、模型分布、缺口及排除项，再由一次事务生成目标拥有的有界数值快照和收据；只编辑声明不在普通Turn或配置读取时偷偷反复搬数据。当前显式入口为`.venv/bin/python scripts/adaptive_history_import.py preview|apply --profile NAME --target REF`；替换用新声明ID并在apply传`--replace-import-id OLD_ID`。初版只支持同Profile；跨Profile拒绝，不隐式合并账号所有历史。

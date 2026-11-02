@@ -44,7 +44,7 @@ def refresh_maintenance(parent):
     allowed, period = False, None
     if db is not None and ref and is_current_main_runtime(parent):
         try:
-            settings = settings_for_db(db)
+            settings = settings_for_db(db, ref)
             allowed = bool(settings.idle_enabled and noting_trigger_gate(db, ref, settings=settings)[0])
             row = db.get_session(parent.session_id)
             allowed = allowed and bool(row and not row.get("archived"))
@@ -199,7 +199,7 @@ def attach_idle_timer(parent, db, ref, *, now=None):
     from secretary.noting_scope import settings_for_db
 
     with conversation_timer_lock(db, ref):
-        settings = settings_for_db(db)
+        settings = settings_for_db(db, ref)
         enabled, reason = noting_lifecycle_gate(db, ref, settings=settings)
         if not settings.idle_enabled:
             db.noting_idle_claim_event(ref, now=time.time() if now is None else now,

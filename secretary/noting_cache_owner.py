@@ -68,7 +68,7 @@ def _retire_disabled_period(parent):
     if not is_current_main_runtime(parent):
         return  # A temporary owner loss must retain its due fact.
     db, ref = parent._session_db, parent._secretary_conversation_ref
-    settings = settings_for_db(db)
+    settings = settings_for_db(db, ref)
     if not settings.enabled or not settings.idle_enabled or not db.notebook_local_enabled(ref):
         db._execute_write(lambda conn: conn.execute(
             "DELETE FROM secretary_noting_idle_state WHERE conversation_ref=? AND trigger_produced_at IS NULL",

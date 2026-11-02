@@ -2,6 +2,8 @@
 
 ## 自主口径收敛 · 待用户追认
 
+- **Agent自主收敛／待追认：Idle的Conversation覆盖。** 上线检查发现原生Idle仅有Profile全局开关；打开它会超出“只为Alex目标启用”的范围。决定增加`noting.idle.conversations[conversation_ref]`，仅覆盖enabled/delay_seconds/threshold_tokens，复用原生校验和计时；无覆盖的其它Conversation保持原全局值，总Noting与Notebook局部开关仍生效。目标启用采用显式覆盖、全局Idle仍false；数据不足时按目标长空闲/高容量回退。model_config已实现并通过56项定向验证，主会话亲审接线及目标/其它会话隔离，待本次发布启用；这是范围隔离补齐，不改变三量决策或另建调度器。
+
 - **Agent自主收敛／待追认：导入训练容量与保守迁移。** 原空白：已确认有界历史继承但未定导入总容量、收据上限及首版兼容细则。决定：每目标导入原事件独立上限2048、总收据32（含已替换）；超限明确拒绝并回滚；不同模型只迁移可信行为时序，完整同合同Turn才学工作量，维护费用/缓存/当前增长暂仍取目标本地或显式先验。原因：保护当前滚动2048事件不被迁移挤掉，并避免混模型/无覆盖训练污染。影响：极多次迁移需后续显式管理收据，不自动无限累积；不注入Prompt、不迁移实时状态。已实现验证并纳入本次main合并；不等同改变用户已确认的历史归属与冻结语义。
 
 
@@ -17,7 +19,7 @@
 
 隔离真实GPT共3个短任务/9次模型请求（Luna一次、Terra两次），未改生产用户Conversation/默认模型/凭据。第三任务真实Thinking28字符→public295→工具→Thinking35→public190→第二工具→final；原生SDK、builder、SQLite、公开读取均保留两段正文且未进入reasoning。首样本SDK recorder漏捕获已披露，后两样本完整。真实事件与正式REST投影回放当前Controller/React App，包含第二工具active切点、cold及reconnect；线上显示开关/实际HTTP确认不是隐藏配置。当前仍无法定位用户具体丢失片段；确定修复不冒充其根因。隐藏IAB不可用，未回退外部浏览器，不把React DOM测试称实际浏览器验收。
 
-证据在adaptive worktree ignored `.hermes-dev/assistant-thinking-regression-20261102/`及前端`.archive/assistant-thinking-regression-20261102/`；原始真实模型记录只在Alex私有隔离目录，入测试夹具为等长脱敏文本/结构。待上线此确定修复，用户原丢字现象继续保留为未闭问题。
+证据在adaptive worktree ignored `.hermes-dev/assistant-thinking-regression-20261102/`及前端`.archive/assistant-thinking-regression-20261102/`；原始真实模型记录只在Alex私有隔离目录，入测试夹具为等长脱敏文本/结构。确定修复94cc2b4cfb已从main上线；FE真实回放11项及typecheck通过，测试夹具a75f278已推正式分支，未改前端产品。用户原丢字现象继续保留为未闭问题。
 
 ## 2026-11-02 · 模型配置／历史继承已合main，正文回归与正式启用继续
 

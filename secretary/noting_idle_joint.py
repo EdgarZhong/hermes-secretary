@@ -18,7 +18,7 @@ def request_idle_joint(parent, *, measurement=None, messages=None, now=None,
         if not row or row.get("archived") or not route or route["id"] != parent.session_id:
             return rt._skip("not_main_owner")
         from secretary.adaptive_runtime import idle_settings
-        settings = idle_settings(parent, rt.settings_for_db(db))
+        settings = idle_settings(parent, rt.settings_for_db(db, ref))
         if (not settings.enabled or not settings.idle_enabled
                 or not rt.noting_local_enabled(db, ref)):
             return rt.try_admit_idle(db, ref, settings=settings, now=now, expected_period=expected_period)

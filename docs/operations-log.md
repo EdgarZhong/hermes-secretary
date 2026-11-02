@@ -1,5 +1,16 @@
 # 运维记录
 
+## 2026-11-02 · 自适应维护代码及Thinking空值投影发布（代码已上线，目标启用另行完成）
+
+用户授权按已确认模型配置/历史继承方案合main并上线，恢复Alex目标Heartbeat由算法切换两档；追加授权隔离便宜GPT复现中间正文问题，不启动完整自主实现流程。算法及模型/继承`023f6264ce`、独立投影修复`94cc2b4cfb`已在main并push；2026-11-02 19:48:28+08后端从ed9d564cc1发布到94cc2b4cfb，Web/Gateway实际版本匹配、双服务active、微信connected。未修改生产配置/模型/Heartbeat，算法尚未启用；发现全局Idle开关范围过宽后另补Conversation级覆盖，不能把本次代码发布冒充已启用。
+
+空闲预检及服务停止后精确三库备份通过，原messages/Secretary业务表、配置/凭据指纹、微信绑定、双SPA静态集合保持；仅允许本轮六张adaptive新增空表。发布后目标三轮只读恢复complete=true、窗口matched；零生产用户测试消息。保留本次与上一stage-20261102-stop-fixes两套完整三库，逐库SHA/integrity/FK核验后清退旧9文件、225505280字节；运行库与同步完成包保持。
+
+GPT隔离3任务/9请求及真实事件回放未复现用户那次正文消失；确定修复仅是历史同步遗漏显式空display_reasoning。BE112项、FE定向11项、typecheck通过；FE测试夹具a75f278已推origin/secretary，没有前端产品变更或静态重发。现场原症状继续未闭，隐藏IAB不可用、不冒称浏览器实机验收。
+
+证据：本地主仓ignored `.hermes-dev/adaptive-release-20261102/release/`；云端`~/.local/state/hermes-secretary/release-20261028/stage-20261102-adaptive/{receipt.json,RECOVERY.txt,backup-retention.json}`。回滚必须在main上用已审反向提交并保留当前运行库；不回盖数据库或借回滚重放任务。真实GPT原件仅在Alex私有assistant-thinking-isolated目录。
+
+
 ## 2026-11-02 · Stop终态恢复、Noting大窗口及Assistant类型修复（已上线）
 
 用户明确要求立即修复三项。Stop现场14:09:50已保存interrupted、无lease且网络已连接；停止快照的已消费输入通知被终态恢复事件清单遗漏，导致稳定runtime_unavailable。新增原生Steer后部分生成／Stop与异常结束回归精确复现；修复按已持久来源及相同Turn确认通知归属，保留未知来源拒绝。线上原快照只读回放旧代码失败、新候选complete=true且残留0，原物料保持。前端连续实际失败明确原因、可展开详情及同页重试，自动恢复成功和owner／读取范围切换清理旧错误。

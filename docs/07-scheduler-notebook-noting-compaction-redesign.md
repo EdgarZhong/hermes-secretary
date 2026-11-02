@@ -1736,6 +1736,8 @@ noting:
 
 Idle默认关闭；开启时必须给正整数threshold_tokens，delay为非负秒数，采用500作为初始值。长度阈值不替用户定成某个实测“最优值”；Force安全线仍优先。旧auto_trigger_compaction_after_noting、auto_compact_after_force_noting_idle及旧idle配置入口删除，新配置校验遇到旧key明确给出替代位置，不静默产生另一种runtime profile。不做已有配置自动迁移。
 
+2026-11-02范围隔离补充：`noting.idle.conversations[conversation_ref]`可显式覆盖该Conversation的`enabled`、`delay_seconds`、`threshold_tokens`，仅这三个字段合法，沿同一原生校验器解析。未配置ref保持Profile值，总Noting及Notebook local门禁不绕过；Turn结束、Idle候选/领取、timer恢复、联合入口、owner回收与adaptive snapshot/计划失效统一读取目标设置。配置关闭/撤下不保留旧owner的提前执行权限。此项为只启用指定Conversation时的最小范围隔离，不增调度器，不改变默认500秒值；正式自适应目标另显式选择长空闲/高容量回退，见算法稿。
+
 原生“空闲回归后compact”与全局Noting保持既有互斥；Noting开时该原生选项不可用，Idle子开关才可用。Noting关时Idle子配置不生效，原生选项按其正常配置运行。坏配置仅令所属功能失败关闭并报告具体修法，不连带关闭History或另一个独立功能。
 
 ### 6.4 未来24小时instant空档提示（用户确认）

@@ -46,7 +46,7 @@ def _read_owner(parent):
     db, ref = parent._session_db, _main_conversation_ref(parent)
     config = settings.for_db(db, ref, parent=parent)
     from secretary.noting_scope import settings_for_db
-    return (db, ref, config) if ref and config and settings_for_db(db).enabled else None
+    return (db, ref, config) if ref and config and settings_for_db(db, ref).enabled else None
 
 
 def record_event(db, ref, kind, *, source="unknown", verified=False, event_id=None, at=None, parent=None, config=None, **values):
@@ -156,7 +156,7 @@ def snapshot(parent, db, ref, config, at):
     maintenance = [event["at"] for event in history if event["kind"] == "maintenance_end"]
     from secretary.noting_scope import settings_for_db
     reminder_due, reminder_known = _next_reminder(db, ref, at)
-    current = settings_for_db(db)
+    current = settings_for_db(db, ref)
     from secretary.noting_runtime import noting_local_enabled
     value = {"now": at, "conversation_ref": ref, "context_tokens": usage or None,
              "context_limit": getattr(getattr(parent, "context_compressor", None), "context_length", None),
@@ -234,7 +234,7 @@ def _restore_native_idle(parent, db, ref, plan, period):
     def recheck(conn, current_plan, _period):
         if not is_current_main_runtime(parent):
             return None
-        original = settings_for_db(db)
+        original = settings_for_db(db, ref)
         config = settings.for_db(db, ref, parent=parent, conn=conn)
         path = conn.execute("SELECT rewind_count FROM sessions WHERE id=?", (parent.session_id,)).fetchone()
         epoch = db.noting_compaction_interval_conn(conn, ref)

@@ -103,7 +103,7 @@ def noting_trigger_gate(
     db: Any, conversation_ref: str, *, settings: Optional[NotingSettings] = None,
 ) -> tuple[bool, str]:
     """``(enabled, reason)`` for global AND conversation-local Noting (02 §4.2, §6.6)."""
-    settings = settings_for_db(db) if settings is None else settings
+    settings = settings_for_db(db, conversation_ref) if settings is None else settings
     enabled, reason = noting_commit_gate(db, conversation_ref, settings=settings)
     if not enabled:
         return False, reason
@@ -115,7 +115,7 @@ def noting_trigger_gate(
 
 def noting_commit_gate(db, conversation_ref, *, settings=None):
     """An admitted frozen task still obeys participation, independently of its live parent."""
-    settings = settings_for_db(db) if settings is None else settings
+    settings = settings_for_db(db, conversation_ref) if settings is None else settings
     if not settings.enabled:
         if settings.configuration_failure:
             logger.warning("%s", configuration_guidance(settings.configuration_failure))
@@ -345,7 +345,7 @@ def _record_main_turn_event(agent: Any, at: Optional[float], *, started: bool) -
                         or getattr(agent, "_secretary_framework_messages", None)):
                     mark_framework_turn(agent, running=False)
             cancel_idle_timer(db, ref)
-            settings = settings_for_db(db)
+            settings = settings_for_db(db, ref)
             if not settings.idle_enabled or not noting_lifecycle_gate(db, ref, settings=settings)[0]:
                 if started and db.noting_idle_state(ref) is not None:
                     db.noting_idle_turn_started(ref, when)  # Cancel an existing period, never arm off.
@@ -401,12 +401,23 @@ def note_main_turn_finished(agent: Any, *, at: Optional[float] = None) -> bool:
 
 
 def idle_candidates(db: Any, *, settings: Optional[NotingSettings] = None, now: Optional[float] = None) -> list:
-    """Conversations whose Idle delay has elapsed with no newer main Turn (02 §4.5)."""
-    settings = settings_for_db(db) if settings is None else settings
-    if not settings.enabled or not settings.idle_enabled:
-        return []
+    """Read existing native periods with each Conversation's effective Idle controls."""
     now = time.time() if now is None else now
-    return db.noting_idle_due_conversations(now=now, delay_seconds=settings.idle_delay_seconds)
+    if settings is not None:
+        if not settings.enabled or not settings.idle_enabled:
+            return []
+        return db.noting_idle_due_conversations(now=now, delay_seconds=settings.idle_delay_seconds)
+    candidates = []
+    for ref in db.noting_idle_due_conversations(now=now, delay_seconds=0):
+        current = settings_for_db(db, ref)
+        period = db.noting_idle_state(ref)
+        if current.enabled and current.idle_enabled and period:
+            deadline = period["due_at"]
+            if deadline is None:
+                deadline = period["last_turn_finished_at"] + current.idle_delay_seconds
+            if deadline <= now:
+                candidates.append(ref)
+    return candidates
 
 
 def _freeze_and_admit(db: Any, conversation_ref: str, *, kind: str, frozen_identity=None,
@@ -463,7 +474,7 @@ def _force_decision(
     settings: Optional[NotingSettings],
     execution_source: Optional[str],
 ) -> NotingDecision:
-    settings = settings_for_db(db) if settings is None else settings
+    settings = settings_for_db(db, conversation_ref) if settings is None else settings
     enabled, reason = noting_trigger_gate(db, conversation_ref, settings=settings)
     if not enabled:
         return _skip(reason)
@@ -506,7 +517,7 @@ def _idle_decision(
     measurement_reader: Optional[Callable[[], Optional[ContextMeasurement]]] = None,
     expected_period=None,
 ) -> NotingDecision:
-    settings = settings_for_db(db) if settings is None else settings
+    settings = settings_for_db(db, conversation_ref) if settings is None else settings
     now = time.time() if now is None else now
     if not settings.enabled or not settings.idle_enabled:
         # A previously armed deadline gets one terminal cleanup even if the
@@ -664,7 +675,7 @@ def _joint_trigger_decision(parent, db, ref, trigger, measurement, source, now, 
             from secretary.noting_policy import measurement_from_agent
             return measurement_from_agent(parent, read_context_usage(parent)[0])
         from secretary.adaptive_runtime import idle_settings
-        adaptive_settings = idle_settings(parent, settings_for_db(db))
+        adaptive_settings = idle_settings(parent, settings_for_db(db, ref))
         return try_admit_idle(db, ref, measurement=measurement, settings=adaptive_settings, now=now, execution_source=source,
                               measurement_reader=read_measurement if measurement is None else None,
                               expected_period=expected_period)
