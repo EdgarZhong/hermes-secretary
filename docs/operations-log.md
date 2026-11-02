@@ -1,5 +1,18 @@
 # 运维记录
 
+## 2026-11-02 · 自适应目标正式启用与原生冷窗口补正（已上线）
+
+后继主线`ade6cb2ab6`补Conversation级Idle覆盖；`e2d73b1293`修正无auth静态900K被当作精准冷合同的问题。原生带认证目录实际max为872000；新路径事务外只读认证catalog、事务内只消费同token/base有效原生缓存，缺失返回未知，保持原生pin/自定义窗口优先级，不新存凭据/窗口副本。定向24项、原生Codex61项及真实Alex只读证据通过，事务内HTTP=0，验证期间config/auth/context-cache SHA不变。两次后继main-only发布均verified，原有业务数据/配置/双SPA保护核验通过；未改Prompt/工具文案，不执行缓存清理。
+
+2026-11-02 20:29:57+08经原生config writer合并目标参数，并调用正式Web `session.control`的`heartbeat.resume`，发出原生控制状态更新。只启用Alex当前置顶Conversation：Sol900k/xhigh保持，合同窗口872000、原生阈值697600；Heartbeat由paused/revision132恢复为active/revision133，10800秒，fire_count仍0，从恢复时刻重锚（初始next due为23:29:57+08）。未发送生产用户消息、未运行模型、未导入假历史。目标原生Idle覆盖enabled/7200秒/700000tokens，Profile全局仍关闭，读回其它Conversation Idle启用数0。
+
+算法两档1740/10800秒、TTL估计1800、信用等价倍率1/.05/5。维护成本3M输入等价、占用3600秒、留存.25、恢复费50000及HB fresh1024/output5000 floor/额外调用0/热命中.95是明确保守先验；同型号真实Noting单次2279234等价/1702秒只是部分证据，完整联合费用尚未自动归账。冷启动必须先有8次可信用户到达与6小时观测，当前仅2条coverage已正常进入数值表，不能称已自动切热档或已实现额度节省。
+
+最后三轮目标只读恢复complete/matched，Web/Gateway运行e2d73b1293、微信connected。保留stage-20261102-adaptive-cold与stage-20261102-adaptive-scope两套完整三库，校验后清退更旧9文件/241033216字节，运行库及当前同步完成包保持。主仓证据ignored `.hermes-dev/adaptive-release-20261102/{cold-release,activation}/`；云端发布回执在`~/.local/state/hermes-secretary/release-20261028/stage-20261102-adaptive-cold/`，启用前配置/进度/回执在`~/.local/state/hermes-secretary/adaptive-activation-20261102/`。最早启用脚本缺YAML兼容导入、随后窗口前提校验均在写配置前失败，已修脚本并最终verified，未绕过窗口断言。
+
+正文调查最终另补同选择项Sol900k/xhigh短任务，合计4隔离任务/12请求；两段338/284字从SDK到SQLite/正式REST保持，仍未复现。现存14:36后只有两条真实public候选且读取完整，但Assistant事件没有持久journal，内存回放在发布重启后丢失；旧93字脱敏帧不能当原文hash证据。故仅已上线确定的空display_reasoning投影修复，原现场正文消失继续未闭；不新增生产采集或继续付费试探。
+
+
 ## 2026-11-02 · 自适应维护代码及Thinking空值投影发布（代码已上线，目标启用另行完成）
 
 用户授权按已确认模型配置/历史继承方案合main并上线，恢复Alex目标Heartbeat由算法切换两档；追加授权隔离便宜GPT复现中间正文问题，不启动完整自主实现流程。算法及模型/继承`023f6264ce`、独立投影修复`94cc2b4cfb`已在main并push；2026-11-02 19:48:28+08后端从ed9d564cc1发布到94cc2b4cfb，Web/Gateway实际版本匹配、双服务active、微信connected。未修改生产配置/模型/Heartbeat，算法尚未启用；发现全局Idle开关范围过宽后另补Conversation级覆盖，不能把本次代码发布冒充已启用。

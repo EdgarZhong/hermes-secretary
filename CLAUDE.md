@@ -2,7 +2,7 @@
 
 ## 自主口径收敛 · 待用户追认
 
-- **Agent自主收敛／待追认：Idle的Conversation覆盖。** 上线检查发现原生Idle仅有Profile全局开关；打开它会超出“只为Alex目标启用”的范围。决定增加`noting.idle.conversations[conversation_ref]`，仅覆盖enabled/delay_seconds/threshold_tokens，复用原生校验和计时；无覆盖的其它Conversation保持原全局值，总Noting与Notebook局部开关仍生效。目标启用采用显式覆盖、全局Idle仍false；数据不足时按目标长空闲/高容量回退。model_config已实现并通过56项定向验证，主会话亲审接线及目标/其它会话隔离，待本次发布启用；这是范围隔离补齐，不改变三量决策或另建调度器。
+- **Agent自主收敛／待追认：Idle的Conversation覆盖。** 上线检查发现原生Idle仅有Profile全局开关；打开它会超出“只为Alex目标启用”的范围。决定增加`noting.idle.conversations[conversation_ref]`，仅覆盖enabled/delay_seconds/threshold_tokens，复用原生校验和计时；无覆盖的其它Conversation保持原全局值，总Noting与Notebook局部开关仍生效。目标启用采用显式覆盖、全局Idle仍false；数据不足时按目标长空闲/高容量回退。model_config已实现并通过56项定向验证，主会话亲审接线及目标/其它会话隔离，已从main发布并仅为目标启用；这是范围隔离补齐，不改变三量决策或另建调度器。 目标人工保守回退定7200秒/700000tokens；维护先验3M输入等价/3600秒/留存.25/恢复费50000，HB fresh1024/output5000（floor）/额外调用0/热命中.95，均已明确来源或未知，不冒充用户亲定或完整联合实测。
 
 - **Agent自主收敛／待追认：导入训练容量与保守迁移。** 原空白：已确认有界历史继承但未定导入总容量、收据上限及首版兼容细则。决定：每目标导入原事件独立上限2048、总收据32（含已替换）；超限明确拒绝并回滚；不同模型只迁移可信行为时序，完整同合同Turn才学工作量，维护费用/缓存/当前增长暂仍取目标本地或显式先验。原因：保护当前滚动2048事件不被迁移挤掉，并避免混模型/无覆盖训练污染。影响：极多次迁移需后续显式管理收据，不自动无限累积；不注入Prompt、不迁移实时状态。已实现验证并纳入本次main合并；不等同改变用户已确认的历史归属与冻结语义。
 
@@ -21,17 +21,17 @@
 
 证据在adaptive worktree ignored `.hermes-dev/assistant-thinking-regression-20261102/`及前端`.archive/assistant-thinking-regression-20261102/`；原始真实模型记录只在Alex私有隔离目录，入测试夹具为等长脱敏文本/结构。后续再用同选择项Sol900k/xhigh补1个短隔离任务（3请求，合计4任务/12请求）；两段338/284字public在SDK、builder、SQLite和正式REST均保留，未复现，已停止付费样本。现存来源审计已结束：无持久Assistant事件journal，event_replay仅512帧/4MiB且重启消失，inflight仅当前/上一轮；14:36后只有15766/15788两条public落库候选，sidecar与公开读SHA一致，但发送侧只留15788脱敏93字快照，不能做原文hash证明。发布期间的重启已使当前runtime只剩恢复/状态事件；无法排除原现场“已发未落”，不补造发送证据、不再追加模型调用。确定修复94cc2b4cfb已从main上线；FE真实回放11项及typecheck通过，测试夹具a75f278已推正式分支，未改前端产品。用户原丢字现象继续保留为未闭问题。
 
-## 2026-11-02 · 模型配置／历史继承已合main，正文回归与正式启用继续
+## 2026-11-02 · 自适应维护已上线启用，原正文现场未闭
 
-**启用前最新阻断：** ade6cb2ab6已发布并验证，Conversation级Idle隔离完成；activation在写配置/恢复Heartbeat之前因冷模型合同900000与此前原生/持久872000不一致而停止，当前仍未启用。已确认无auth静态900K不是当前权威值：原生带auth live catalog仍872K。已修为事务外原生只读认证catalog、事务内只用有效同token/route缓存；native pin优先、不新增永久缓存。23＋1定向与原生61项通过、真实Alex只读返回872000/697600且事务内HTTP=0，主会话亲审默认兼容及初始化优先级后纳入本次main提交；用户配置/HB待发布后启用。
+**最终状态：** main产品`e2d73b1293`已发布；2026-11-02 20:29:57+08通过原生config writer仅启用Alex置顶目标，并经正式`session.control: heartbeat.resume`恢复Heartbeat（active/10800秒、revision133、fire_count0，重锚无补发）。模型保持Sol900k/xhigh，真实原生合同872000/697600；冷读取已修为事务外原生只读认证目录、事务内同token/route有效缓存，缺口不当静态900K。23＋1定向、原生61项、真实Alex无写只读验证及集成检查通过。目标原生Idle覆盖7200秒/700000tokens，全局false、其它Conversation启用数0。两条真实coverage已采集，尚无新真人样本/算法推荐，不伪造历史、不触发测试消息；达到8次可信到达/6小时暴露后再开始策略选择。维护先验和HB输出floor的局限见算法稿与运维记录。
 
-用户授权按设计合入main，并询问算法缓存、持久化和真实历史上限。基线adaptive `4bf8f9d2d0`、main `c73b94ae2b`；主目录Huawei未跟踪资料保持。本轮先补齐已确认的`noting.adaptive_idle_token_saving`模型项/Conversation配置与显式历史快照继承，再review/定向验证合入main；不把旧全Profile单参数实现冒充新方案完成。主会话负责范围/集成、历史与实时状态隔离、文档及实际存储说明；model_config负责配置与正式读取接线，history_import负责冻结导入持久机制/显式操作入口，各自限定文件，禁止子派生。继续复用既有有效178项证据，只对新变更与受影响接线定向回归。正式部署状态另报，不以合并替代启用。已补模型精确匹配、同Profile显式快照导入与独立训练接线；当前特征/预测/定性回归52项通过（含最终14项继承反例），7文件77项模型/导入/运行接线回归通过；冻结检查九项通过，唯一no-tmp为同blob历史报告基线，最终ruff/health通过（0阻断/0提示）。证据在ignored `.hermes-dev/adaptive-final-20261102/`，复用有效结果、不累计重复复测。交叉review发现并修复work mark可知时间丢失、混模型部分Turn冒充完整工作量、旧提前due残留和配置撤下后的HB claim结算；主会话已复核正式接线与差异，b449c7a299及之前算法提交纳入本次main合并；Thinking回归单独处理，线上尚未启用。用户随后报告Assistant正文落库后仍变Thinking，明确本轮一并修复；旧验收不覆盖本次复现。assistant_thinking_regression负责从真实流式→持久→重读链路复核与修复，限定非adaptive的BE消息类型/投影及对应FE文件，主会话审证据集成，不按旧测试已过宣称关闭。
+用户授权按设计合入main，并询问算法缓存、持久化和真实历史上限。基线adaptive `4bf8f9d2d0`、main `c73b94ae2b`；主目录Huawei未跟踪资料保持。本轮先补齐已确认的`noting.adaptive_idle_token_saving`模型项/Conversation配置与显式历史快照继承，再review/定向验证合入main；不把旧全Profile单参数实现冒充新方案完成。主会话负责范围/集成、历史与实时状态隔离、文档及实际存储说明；model_config负责配置与正式读取接线，history_import负责冻结导入持久机制/显式操作入口，各自限定文件，禁止子派生。继续复用既有有效178项证据，只对新变更与受影响接线定向回归。正式部署/启用已完成，原症状仍未关闭；不把代码发布当作算法已实现省钱。已补模型精确匹配、同Profile显式快照导入与独立训练接线；当前特征/预测/定性回归52项通过（含最终14项继承反例），7文件77项模型/导入/运行接线回归通过；冻结检查九项通过，唯一no-tmp为同blob历史报告基线，最终ruff/health通过（0阻断/0提示）。证据在ignored `.hermes-dev/adaptive-final-20261102/`，复用有效结果、不累计重复复测。交叉review发现并修复work mark可知时间丢失、混模型部分Turn冒充完整工作量、旧提前due残留和配置撤下后的HB claim结算；主会话已复核正式接线与差异，b449c7a299及之前算法提交纳入本次main合并；Thinking回归单独处理，最终上线事实见本节顶部。用户随后报告Assistant正文落库后仍变Thinking，明确本轮一并修复；旧验收不覆盖本次复现。assistant_thinking_regression负责从真实流式→持久→重读链路复核与修复，限定非adaptive的BE消息类型/投影及对应FE文件，主会话审证据集成，不按旧测试已过宣称关闭。
 
-## 2026-11-02 · 自适应维护上线准备（进行中）
+## 2026-11-02 · 自适应维护上线准备（已完成；以下为当时过程）
 
 用户已授权本轮上线，先整理前后端仓库确认其它bug补丁进入main；随后明确恢复Alex Heartbeat并交算法选择两档，替代今天早些时候暂停的状态。Kimi参数保热1740秒／业务10800秒；正式只读核实默认仍k3.1-pro，但置顶当前为openai-codex／gpt-6.1-sol-900k，实际Heartbeat仍paused／10800秒，未擅自恢复或套用Kimi价格/TTL。用户后继要求先设计模型配置与可选历史继承：与选择器Provider/模型项1∶1，长窗口独立选项不折叠，同项窗口修改继承原生有效值，不做阶梯计价；继续按Conversation自适应，迁移可显式继承历史。二级字段已由用户明确命名为`adaptive_idle_token_saving`，完整路径`noting.adaptive_idle_token_saving`；用户随后以“其他的方面没有问题了”整体确认配置与显式冻结历史继承方案；模型配置与继承已在本轮实现验证、尚未正式启用，不切用户模型。当前按用户要求独立核定GPT订阅保热周期：主会话已核官方资料/费用口径，并亲审gpt_cache_evidence的只读数值包、脚本与usage生产者：253次GPT请求对账，29分39秒与2小时31分长空档均有近完整命中；可靠HB来源样本为0，实际HB输出仍未知。数值证据留ignored `.hermes-dev/gpt-cache-20261102/`；不发生产测试请求、不修改生产配置。已选GPT初始hot1740秒／business10800秒，TTL仅作1800秒估计；官方信用倍率1／0.05／5用于费用代理，不冒充套餐扣额公式，实测与适用边界补入算法稿。
 
-后端main c73b94ae2b、前端main dc40990（origin/secretary）与远端相同，最新Stop、Noting资格、GPT正文与跨进程恢复补丁已在主干。自适应分支产品提交56e25045／4c7f2dbd与配置继承b449c7a299已纳入本次main合并；参数文档d37b8e3已提交并push。主会话在既有adaptive worktree合入最新main，亲审接线并定向回归后再合主线/部署；branch_patch_audit已交四旧分支复核：后端旧固定平台/关闭提示被后继机制替代，前端Clarify与视觉已整包吸收；主会话已核报告/整合点，无需重合旧方案。合并后14文件142项自适应/Noting与3文件36项原生接线回归通过；冻结十检查九通过，唯一no-tmp仍为同blob旧历史报告，96文件health 0阻断/0提示。前端常用目录已回main且与origin/secretary相同，原web-toast工作树只转同提交detached并保留。Huawei资料、Finder文件及旧视觉证据保留。当前未部署、未改生产配置，保留原生Idle关闭避免500秒回退。新发布结果只记operations-log。
+后端main c73b94ae2b、前端main dc40990（origin/secretary）与远端相同，最新Stop、Noting资格、GPT正文与跨进程恢复补丁已在主干。自适应分支产品提交56e25045／4c7f2dbd与配置继承b449c7a299已纳入本次main合并；参数文档d37b8e3已提交并push。主会话在既有adaptive worktree合入最新main，亲审接线并定向回归后再合主线/部署；branch_patch_audit已交四旧分支复核：后端旧固定平台/关闭提示被后继机制替代，前端Clarify与视觉已整包吸收；主会话已核报告/整合点，无需重合旧方案。合并后14文件142项自适应/Noting与3文件36项原生接线回归通过；冻结十检查九通过，唯一no-tmp仍为同blob旧历史报告，96文件health 0阻断/0提示。前端常用目录已回main且与origin/secretary相同，原web-toast工作树只转同提交detached并保留。Huawei资料、Finder文件及旧视觉证据保留。准备阶段未部署/改生产配置，保留原生Idle关闭避免500秒回退；现已按顶部目标覆盖方案启用，最终发布回执见operations-log。
 
 ## 2026-11-01 · Alex／k3.1上线前Heartbeat参数已选择
 
