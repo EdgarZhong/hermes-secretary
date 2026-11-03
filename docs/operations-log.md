@@ -1,5 +1,15 @@
 # 运维记录
 
+## 2026-11-03 · 长空闲证据与风险／成本模型修复上线
+
+用户明确“上线一下吧”，产品`8b32bb31103e422e2ec6add1ff0f1b9b15131b53`已提交、自动push并快进合入main／push；23:42:31+08正式受限执行器返回verified（精确时间以receipt为准），云端保持main。Web／Gateway实际版本一致，双服务active／running、微信connected。发布复用已核同SHA源码的152项测试与9项检查通过证据；历史no-tmp失败不变，未降门禁。依赖／前端／Prompt／工具定义无变更，不重建APK、不清缓存、不改模型／阈值／生产参数。
+
+三库保护表、配置含凭据、微信绑定与双SPA静态集合逐指纹一致；只允许既有coverage观测正常推进。上线后原生目标恢复running=false，usage_anchor419470/872000；纯函数读取当前真实输入，fallback=false、business／不提前维护，10个候选含逐项拒因；已保留72053.30秒开放尾桶证据，9个有界HB样本用于联合费用。维护费用／占用仍显式先验，不能称已节费。重启间隔后当前coverage见证短暂陈旧，预览如实按未知当前年龄估计，未伪造连续无人覆盖；Web新coverage已恢复落盘，Gateway新段待自然host路径恢复。没有发送测试消息、触发维护或伪造finish_turn采纳；下一自然Turn结束沿正式入口重新决策。
+
+**预检插曲及处理：** 首次全库指纹预检期间23:40:49–51系统OOM，旧Gateway被系统终止后自动重启，绑定接口一度不可用；当时尚未执行发布停服／代码切换。旧执行器把全表序列化正文同时留在内存，预检Python进程约858MiB匿名RSS，与内存耗尽同期；后续改为逐行SHA256后仅排序摘要，仍覆盖所有行、重复数量和schema，保留相同coverage排除范围。顺序无关／内容变化／重复行／schema变化四项检查通过，重新预检及发布成功，未修改受保护工具weixin_bind.py。最终两服务NRestarts=0，可用内存约1.16GiB；不将本次运维OOM归因于新版产品代码。
+
+发布、预览、回退说明与备份收据位于云端受限`~/.local/state/hermes-secretary/release-20261028/stage-20261103-adaptive-idle/`，本地ignored `.hermes-dev/adaptive-fix-20261103/release/`留对应证据。逐库SHA／integrity／FK核验后保留本轮与stage-20261102-adaptive-bootstrap两套完整三库，清退更旧9文件／241143808字节；运行库及当前同步包保持。回退按RECOVERY在main作已审反向提交，空闲重启核验，不自动恢复业务数据库。未跟踪Huawei资料保持。
+
 ## 2026-11-02 · 真实历史初始化遗漏补正（main已上线，目标已应用）
 
 用户指出旧真实历史没有接入线上、不能让既有会话重新累计8次/6小时，也不能因模型/窗口变化失去行为历史。main `921f788d698f7987796fefe234ce5ff99f0b80d7`已从正式main-only路径发布；Web/Gateway版本一致，微信connected。复用已有三库备份、依赖与静态保护，无Prompt/工具变更，不清缓存。仅数值coverage观测允许随正常运行更新，其余发布保护表及配置/凭据、绑定、双SPA保持。保留stage-20261102-adaptive-bootstrap与stage-20261102-adaptive-cold两套完整三库，核验后清退更旧9文件/241143808字节；运行库和同步完成包保持。
