@@ -4,6 +4,7 @@ from __future__ import annotations
 import math
 import heapq
 from itertools import count
+from secretary.adaptive_cost import background_profile
 
 
 def _mark(event, defaults, key, fallback):
@@ -71,12 +72,11 @@ def _path_cost(snapshot, features, cfg, background, path, delay, profile, heartb
                 recovered = True
             context += growth
         else:
-            calls = max(1 + cfg['heartbeat_extra_calls'], features['heartbeat_calls'] or 1) if source == 'heartbeat' else 1
-            fresh = cfg['heartbeat_fresh_tokens']
-            output = max(cfg['heartbeat_output_tokens'], features['heartbeat_output_tokens'] or 0)
-            cost += _read(context, actual - last, cfg) + calls * (fresh + output * cfg['output_ratio'])
+            hb = background_profile(features, cfg, source)
+            calls = hb['calls']
+            cost += _read(context, actual - last, cfg) + hb['fresh'] + hb['output'] * cfg['output_ratio']
             cost += (calls - 1) * context * cfg['cache_ratio']
-            context += calls * (fresh + output)
+            context += hb['growth']
             duration = 0  # Unknown background busy time; do not fit it from user work.
         reads += calls if compacted else 0
         last, busy_until = actual + duration, actual + duration

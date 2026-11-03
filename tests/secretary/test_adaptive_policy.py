@@ -97,3 +97,29 @@ def test_actual_next_due_affects_cost_even_when_anchor_is_same():
     imminent = decide(snapshot(heartbeat_next_due=NOW + 1), history(), CONFIG)
     later = decide(snapshot(heartbeat_next_due=NOW + 7100), history(), CONFIG)
     assert imminent['diagnostics']['baseline_cost'] != later['diagnostics']['baseline_cost']
+
+
+def test_long_verified_silence_and_paid_future_reads_allow_hour_long_maintenance():
+    start = NOW - 14 * 86400
+    rows = [dict(event_id='coverage', at=NOW, kind='coverage', source='user', verified=True,
+                 start_at=start, end_at=NOW)]
+    rows += [dict(event_id=f'early-{index}', at=start + 100 + 100 * index,
+                  kind='user_activity', source='user', verified=True) for index in range(8)]
+    result = decide(snapshot(), rows, dict(CONFIG, maintenance_duration_seconds=3600))
+    assert result['threshold_tokens'] is not None
+    assert result['diagnostics']['collision_margin_estimate'] <= .15
+    assert result['diagnostics']['expected_wait_seconds'] <= 30
+    assert result['diagnostics']['estimated_cost'] < result['diagnostics']['baseline_cost']
+    assert 'no_long_run_optimality' in result['diagnostics']['economic_scope']
+
+
+def test_missing_age_evidence_has_serializable_rejection_not_policy_failure():
+    import json
+    from secretary.adaptive_config import validate_decision
+    result = decide(snapshot(), history(), dict(CONFIG, maintenance_duration_seconds=3600))
+    assert not result['fallback']
+    validate_decision(result)
+    json.dumps(result, allow_nan=False)
+    evaluations = result['diagnostics']['candidate_evaluations']
+    assert any('risk' in row for row in evaluations)
+    assert all('rejections' in row for row in evaluations)

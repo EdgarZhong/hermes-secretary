@@ -16,7 +16,7 @@ def quiet_history():
             key = f'hb-{day}-{hour}'
             events.append(dict(event_id=key, at=at, kind='request', source='heartbeat', verified=True,
                                turn_id=key, model_key='test', input_tokens=330000,
-                               cache_read_tokens=0, output_tokens=160))
+                               cache_read_tokens=0, output_tokens=160, outcome='observed'))
             events.append(dict(event_id='turn:' + key, at=at + 60, kind='turn_end',
                                source='heartbeat', verified=True, model_key='test',
                                context_epoch='epoch', context_tokens=330000, duration_seconds=60))
@@ -60,7 +60,11 @@ def test_expensive_or_slow_maintenance_is_not_easier_to_trigger():
 
 
 def test_expensive_heartbeat_output_discourages_hot_mode():
-    result = decide(snapshot(), quiet_history(), {**CFG, 'heartbeat_output_tokens': 20000})
+    rows = quiet_history()
+    for row in rows:
+        if row['kind'] == 'request' and row['source'] == 'heartbeat':
+            row['output_tokens'] = 20000
+    result = decide(snapshot(), rows, {**CFG, 'heartbeat_output_tokens': 20000})
     assert result['mode'] == 'business'
 
 

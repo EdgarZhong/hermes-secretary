@@ -79,3 +79,25 @@ def test_timing_only_proxy_prices_each_return_without_fabricating_work():
     assert all(event['calls'] is None for event in data['trajectory']['paths'][0]['events'])
     data['trajectory']['paths'][0]['events'][0]['calls'] = 0
     assert forecast(SNAPSHOT, data, CFG, [], None, None, timing_only=True) == (1000, 1000, 0)
+
+
+def test_common_finite_window_can_miss_payback_across_later_paid_reads():
+    # Explicit conditional cost experiment, not a longer production forecast:
+    # same external demand, one maintenance, and the same periodic read phases.
+    snapshot = dict(now=1000, context_tokens=400000)
+    profile = SimpleNamespace(cost=3000000, duration=3600, retained=.25, recovery=50000)
+    cfg = {**CFG, 'horizon_seconds': 48 * 3600}
+    data = features([])
+    period = 10800
+    def costs(hours):
+        scenario = {**cfg, 'horizon_seconds': hours * 3600}
+        background = [(at, 'heartbeat') for at in range(period, hours * 3600 + 1, period)]
+        before = forecast(snapshot, data, scenario, background, None, profile, heartbeat_interval=period)[0]
+        after = forecast(snapshot, data, scenario, background, 0, profile, heartbeat_interval=period)[0]
+        return before, after
+    short_before, short_after = costs(6)
+    long_before, long_after = costs(48)
+    assert short_after > short_before
+    assert long_after < long_before
+    # Both complete windows bill their own repeated output and exactly one rewrite.
+    assert long_after > profile.cost

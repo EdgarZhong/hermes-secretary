@@ -4,7 +4,7 @@ from __future__ import annotations
 import math
 
 from secretary.adaptive_features import (
-    arrival_model, clean_events, compatible_forecast_events, feedback, number,
+    activity_scopes, activity_uncertainties, arrival_model, clean_events, compatible_forecast_events, feedback, number,
 )
 from secretary.adaptive_forecast import from_events, maintenance_spans
 
@@ -29,7 +29,10 @@ def _source(cohort, snapshot, occupied, timezone):
     if not events:
         return None
     start = max(min(e['at'] for e in events), number(cohort.get('retained_start_at')) or 0)
-    model = arrival_model(events, now, timezone, history_start=start)
+    uncertainties = activity_uncertainties(rows, now)
+    scopes = activity_scopes(rows, now)
+    model = arrival_model(events, now, timezone, history_start=start, uncertainties=uncertainties,
+                          required_scopes=scopes)
     exclusions = []
     for event in events:
         if event['kind'] not in ('gap', 'coverage_gap', 'maintenance_exclusion', 'exclusion'):
@@ -47,7 +50,8 @@ def _source(cohort, snapshot, occupied, timezone):
         selected.append(dict(event_id=f'import-coverage:{index}', at=hi, kind='coverage',
                              source='user', verified=True, scope='all', start_at=lo, end_at=hi))
     selected.sort(key=lambda e: (e['at'], e['event_id']))
-    model = arrival_model(selected, now, timezone, history_start=start)
+    model = arrival_model(selected, now, timezone, history_start=start, uncertainties=uncertainties,
+                          required_scopes=scopes)
     if not model['exposure_seconds']:
         return None
     # User timing is portable. Work marks require the exact effective model contract.
@@ -66,9 +70,11 @@ def extend_features(features, snapshot, cohorts, config):
     """Pool independent historical priors; leave live ages/growth/limits untouched."""
     local = features['arrival']
     arrival = {**local, **{key: list(local[key]) for key in
-                          ('hour_exposure', 'hour_count', 'age_exposure', 'age_count')}}
+                          ('hour_exposure', 'hour_count', 'age_exposure', 'age_count',
+                           'age_censored_exposure', 'age_censored_count')}}
     arrival['raw_count'] = local['count']
     arrival['raw_exposure_seconds'] = local['exposure_seconds']
+    arrival['risk_age_cohorts'] = list(local['risk_age_cohorts'])
     occupied = list(local['spans'])
     training = []
     observed = dict(features['feedback'])
@@ -82,11 +88,15 @@ def extend_features(features, snapshot, cohorts, config):
         prior, data, prior_feedback, weight = source
         occupied.extend(prior['spans'])
         training.append(data)
+        arrival['risk_age_cohorts'].append(dict(
+            grade='verified_ingress_coverage', weight=weight,
+            **{key: list(prior[key]) for key in ('age_exposure', 'age_count', 'age_censored_exposure')}))
         arrival['raw_count'] += prior['count']
         arrival['raw_exposure_seconds'] += prior['exposure_seconds']
         for key in ('exposure_seconds', 'count'):
             arrival[key] += weight * prior[key]
-        for key in ('hour_exposure', 'hour_count', 'age_exposure', 'age_count'):
+        for key in ('hour_exposure', 'hour_count', 'age_exposure', 'age_count',
+                    'age_censored_exposure', 'age_censored_count'):
             arrival[key] = [a + weight * b for a, b in zip(arrival[key], prior[key])]
         for key in ('cancelled', 'tolerated'):
             observed[key] += prior_feedback[key]
@@ -107,9 +117,11 @@ def extend_bootstrap(features, snapshot, config):
     from secretary.adaptive_forecast import training_examples, visible
     local = features['arrival']
     arrival = {**local, **{key: list(local[key]) for key in
-                          ('hour_exposure', 'hour_count', 'age_exposure', 'age_count')}}
+                          ('hour_exposure', 'hour_count', 'age_exposure', 'age_count',
+                           'age_censored_exposure', 'age_censored_count')}}
     arrival.setdefault('raw_count', local['count'])
     arrival.setdefault('raw_exposure_seconds', local['exposure_seconds'])
+    arrival['risk_age_cohorts'] = list(local['risk_age_cohorts'])
     training = list(features.get('training_cohorts', []))
     readiness = dict(qualified=False, grade='conditional_persisted_submission_sequence',
                      runtime_monitoring_coverage=False, mature_windows=0,
@@ -143,9 +155,13 @@ def extend_bootstrap(features, snapshot, config):
                          conditional_user_events=prior['count'], recency_weight=weight,
                          receipt=cohort['receipt'])
         training.append(data)
+        arrival['risk_age_cohorts'].append(dict(
+            grade=readiness['grade'], weight=weight,
+            **{key: list(prior[key]) for key in ('age_exposure', 'age_count', 'age_censored_exposure')}))
         for key in ('exposure_seconds', 'count'):
             arrival[key] += weight * prior[key]
-        for key in ('hour_exposure', 'hour_count', 'age_exposure', 'age_count'):
+        for key in ('hour_exposure', 'hour_count', 'age_exposure', 'age_count',
+                    'age_censored_exposure', 'age_censored_count'):
             arrival[key] = [a + weight * b for a, b in zip(arrival[key], prior[key])]
     arrival['rate'] = arrival['count'] / arrival['exposure_seconds'] if arrival['exposure_seconds'] else None
     return {**features, 'arrival': arrival, 'training_cohorts': training, 'bootstrap_readiness': readiness}

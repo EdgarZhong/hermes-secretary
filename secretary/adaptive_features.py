@@ -92,6 +92,50 @@ def intersect_spans(left, right):
     return result
 
 
+def activity_uncertainties(history, now):
+    """Visible conflicting identities censor activity timing instead of proving zero."""
+    candidates = {}
+    for event in history:
+        if not isinstance(event, dict) or event.get('verified') is not True:
+            continue
+        identity, at = event.get('event_id'), number(event.get('at'))
+        available = number(event.get('available_at', at))
+        if not isinstance(identity, str) or not identity or at is None or available is None or max(at, available) > now:
+            continue
+        candidates.setdefault(identity, []).append(event)
+    intervals = []
+    for rows in candidates.values():
+        if any(row != rows[0] for row in rows[1:]) and any(
+                row.get('kind') == 'user_activity' and row.get('source') == 'user' for row in rows):
+            intervals.append((min(row['at'] for row in rows), max(row['at'] for row in rows)))
+    return intervals
+
+
+def activity_scopes(history, now):
+    """Conflicting activities still witness which ingress coverage is required."""
+    return {e['ingress'] for e in history if isinstance(e, dict) and e.get('verified') is True
+            and e.get('kind') == 'user_activity' and e.get('source') == 'user' and e.get('ingress')
+            and (at := number(e.get('at'))) is not None
+            and (available := number(e.get('available_at', at))) is not None and max(at, available) <= now}
+
+
+def censor_spans(spans, intervals):
+    """Remove uncertain intervals; a point still breaks exact age continuity."""
+    result = list(spans)
+    for left, right in sorted(intervals):
+        if left > right:
+            return []  # Contradictory exclusion bounds cannot certify silence.
+        pieces = []
+        for start, end in result:
+            if right < start or left > end:
+                pieces.append((start, end))
+            else:
+                pieces.extend((lo, hi) for lo, hi in ((start, min(end, left)), (max(start, right), end))
+                              if lo < hi)
+        result = pieces
+    return result
+
+
 def _bucket(at, zone):
     if zone is None:
         return 0
@@ -100,40 +144,54 @@ def _bucket(at, zone):
 
 
 def _exposure(spans, users, zone):
-    hours, ages = [0.0] * 48, [0.0] * 4
+    hours, ages, censored = [0.0] * 48, [0.0] * 4, [0.0] * 4
     for start, end in spans:
         cursor = start
         while cursor < end:
             index = bisect_right(users, cursor) - 1
             previous = users[index] if index >= 0 else None
             following = users[index + 1] if index + 1 < len(users) else end
+            exact = previous is not None and previous >= start
+            anchor = previous if exact else start
             local = datetime.fromtimestamp(cursor, zone) if zone else datetime.fromtimestamp(cursor, ZoneInfo('UTC'))
             hour_end = cursor + 3600 - local.minute * 60 - local.second - local.microsecond / 1e6
             boundaries = [end, cursor + 300, following, hour_end]
-            if previous is not None:
-                boundaries.extend(previous + edge for edge in AGE_EDGES if previous + edge > cursor)
+            boundaries.extend(anchor + edge for edge in AGE_EDGES if anchor + edge > cursor)
             stop = min(x for x in boundaries if x > cursor)
             hours[_bucket((cursor + stop) / 2, zone)] += stop - cursor
-            if previous is not None and previous >= start:
-                ages[bisect_right(AGE_EDGES, cursor - previous)] += stop - cursor
+            age = bisect_right(AGE_EDGES, cursor - anchor)
+            # Before the first witnessed arrival the age is left-censored:
+            # elapsed coverage is a lower bound, not an exact last-arrival age.
+            # Only the open final bucket contains every possible true age.
+            if exact or age == len(AGE_EDGES):
+                ages[age] += stop - cursor
+                if not exact:
+                    censored[age] += stop - cursor
             cursor = stop
-    return hours, ages
+    return hours, ages, censored
 
 
-def arrival_model(events, now, timezone_name=None, *, history_start=None):
+def arrival_model(events, now, timezone_name=None, *, history_start=None, uncertainties=(), required_scopes=()):
     """Exposure-normalized, shrinkage-smoothed arrival hazard; not a TTL model."""
     try:
         zone = ZoneInfo(timezone_name) if timezone_name else None
     except (ZoneInfoNotFoundError, ValueError, TypeError):
         zone = None
+    uncertainties = list(uncertainties)
     scopes = {e.get('ingress') for e in events if e.get('kind') == 'user_activity'
               and e.get('source') == 'user' and e.get('ingress')}
+    scopes.update(required_scopes)
     spans = coverage_intervals(events, now)
     for scope in scopes:
         spans = intersect_spans(spans, coverage_intervals(events, now, scope))
     if history_start is not None:
         spans = [(max(start, history_start), end) for start, end in spans
                  if end > history_start]
+    for event in events:
+        if event.get('kind') in ('gap', 'coverage_gap', 'maintenance_exclusion', 'exclusion'):
+            left, right = number(event.get('start_at')), number(event.get('end_at'))
+            uncertainties.append((left if left is not None else 0, right if right is not None else now))
+    spans = censor_spans(spans, uncertainties)
     users = sorted({e['at'] for e in events if e.get('kind') == 'user_activity'
                     and e.get('source') == 'user'})
     covered = [at for at in users if any(start <= at < end for start, end in spans)]
@@ -143,17 +201,42 @@ def arrival_model(events, now, timezone_name=None, *, history_start=None):
 def arrival_statistics(spans, covered, zone):
     """Shared hazard statistics; callers declare the exposure's evidence grade."""
     exposure = sum(end - start for start, end in spans)
-    hours, ages = _exposure(spans, covered, zone)
+    hours, ages, censored = _exposure(spans, covered, zone)
     counts, age_counts = [0] * 48, [0] * 4
+    censored_counts = [0] * 4
     for index, at in enumerate(covered):
         counts[_bucket(at, zone)] += 1
         previous = covered[index - 1] if index else None
         if previous is not None and any(start <= previous < at < end for start, end in spans):
             age_counts[bisect_right(AGE_EDGES, at - previous)] += 1
+        else:
+            start = next((start for start, end in spans if start <= at < end), None)
+            if start is not None and at - start >= AGE_EDGES[-1]:
+                age_counts[-1] += 1
+                censored_counts[-1] += 1
     return {'exposure_seconds': exposure, 'count': len(covered), 'zone': zone, 'spans': spans,
             'hour_exposure': hours, 'hour_count': counts,
             'age_exposure': ages, 'age_count': age_counts,
+            'age_censored_exposure': censored, 'age_censored_count': censored_counts,
+            # These raw local observations must not become decayed fractional
+            # counts or conditional historical evidence during prior pooling.
+            'live_age_exposure': list(ages), 'live_age_count': list(age_counts),
+            'live_age_censored_exposure': list(censored),
             'rate': len(covered) / exposure if exposure else None}
+
+
+def current_user_age(arrival, users, now):
+    """Report current age only when local coverage reaches the current instant."""
+    spans = arrival['spans']
+    end = spans[-1][1] if spans else None
+    start = spans[-1][0] if spans else None
+    previous = max((at for at in users if start is not None and start <= at <= end), default=None)
+    lower = end - (previous if previous is not None else start) if end is not None else None
+    current = end == now
+    return {'user_age_lower_bound_seconds': lower if current else None,
+            'user_age_exact': current and previous is not None,
+            'user_age_observed_at': end,
+            'user_age_observed_lower_bound_seconds': lower}
 
 
 def arrival_rate(model, at, user_age, *, conservative=False):
@@ -323,7 +406,9 @@ def build_features(snapshot, history, config):
     result = {'events': events, 'model_key': snapshot.get('model_key'),
             'forecast_events': compatible_forecast_events(clean_events(history, now), snapshot.get('model_key')),
             'warm_cache_fraction': warm_cache_fraction(events, config['cache_ttl_seconds']),
-            'arrival': arrival_model(events, now, config.get('timezone'), history_start=history_start),
+            'arrival': arrival_model(events, now, config.get('timezone'), history_start=history_start,
+                                     uncertainties=activity_uncertainties(history, now),
+                                     required_scopes=activity_scopes(history, now)),
             'feedback': feedback(events), 'growth_tokens_per_second': context_growth(events),
             'maintenance': maintenance_model(maintenance_events, config['cache_ratio'], config['output_ratio']),
             'heartbeat_output_tokens': quantile(output, .8),
@@ -334,6 +419,11 @@ def build_features(snapshot, history, config):
             'last_request_at': max((e['at'] for e in requests), default=None),
             'unknown_usage_requests': sum(request_cost(e, config['cache_ratio'], config['output_ratio'])
                                           is None for e in requests)}
+    result.update(current_user_age(result['arrival'], users, now))
+    result['arrival']['risk_age_cohorts'] = [dict(
+        grade='verified_ingress_coverage', weight=1.0,
+        **{key: list(result['arrival'][key]) for key in
+           ('age_exposure', 'age_count', 'age_censored_exposure')})]
     if snapshot.get('historical_cohorts'):
         from secretary.adaptive_learning import extend_features
         result = extend_features(result, snapshot, snapshot['historical_cohorts'], config)

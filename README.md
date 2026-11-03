@@ -29,6 +29,8 @@ Secretary只在Profile的`state.db`增加自有表，复用原生执行、存储
 
 既有Conversation可用`python scripts/adaptive_history_bootstrap.py preview|apply --profile NAME --target REF --input FILE --id ID`接入已审数值历史；成熟行为历史跨模型／窗口参与预测，无须重新累计上线后的活动量。初始化保留真实发生与可知时间，不制造新Turn或重锚计时；推荐沿下一自然Turn结束采纳。来源限定、条件费用代理和显式迁移边界见同一[算法方案](docs/adaptive-noting-threshold-proposal.md)。
 
+自适应模型保留连续覆盖能证明的长空闲年龄下界；风险证据分级、维护各项费用来源与逐候选拒因可追溯，Heartbeat使用有界Turn联合费用情景。可用`.venv/bin/python scripts/adaptive_idle_replay.py --input <数值包.json> --output <报告.json>`离线重放显式快照；`--source-root`可指定冻结源码，`--scenarios`读取显式假设场景。不访问生产，缺完整历史运行快照时只报告缺口，不伪造历史前推；统计假设、六小时比较和实测费用限制见[算法方案](docs/adaptive-noting-threshold-proposal.md)。
+
 | 命令 | 行为 |
 |---|---|
 | `/notebook` | 人类查看当前Notebook与Snapshot时间 |
