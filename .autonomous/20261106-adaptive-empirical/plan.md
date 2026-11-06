@@ -14,10 +14,10 @@
 ## 当前状态与编排
 | 任务 | 机制实现 | 正式接线 | 针对性验证 | 用户结果 | 当前安排 |
 |---|---|---|---|---|---|
-| D | 原件/特征与经验表已亲审接收，CLI实现中 | CLI复用decide | 9真实/3补充案例已冻结 | 候选尚未验 | /root/adaptive_audit；允许P/D运行候选后整段回放 |
+| D | 真实CLI和数据投影整包交回，root已亲审 | CLI逐时执行正式decide，自有HB/context/cache | 20项；v7九段、连续旅程、来源/费用/状态敏感性与首次维护对照 | root逐段判断落盘，G11/G12关闭后关联版本 | /root/adaptive_audit已交回；保全部负结果 |
 | P | 整包交回，root亲审正式路径/消融/时序修正及跨合同work-end | decide→经验特征/维护场景→同源evaluate；原接口保持 | 最新6文件89项；特征增轴对照与历史可知性证据；真实规模单次约0.5–0.6秒 | D连续旅程与费用敏感性待判 | /root/empirical_policy已交回；无上线 |
 | W | 10文件修订包已交回，root亲审接收G7整改 | 原生Compact/Noting采集及显式导入→snapshot→估计 | 首包13项、既有63项；轮转/干扰10项、partial1项、读取失败1项 | 整轮门禁未验 | /root/empirical_wiring已交回；待集成检查/门禁 |
-| I | 依据已冻结 | 未集成 | 尚未 | 未验 | root统筹 |
+| I | 依据已冻结，候选3bef2907已提交/推功能分支 | P/W/D已集成，G11/G12审查中 | 十检查一次及health定向整改；同版证据复用 | root-experience-review.md逐段判断；两独立门禁未开始 | root统筹，未上线 |
 
 共享接口初稿：同Secretary事件表kind=maintenance_sample，component=compaction/noting，at/available_at、model_identity/model_contract、operation_id、outcome、context_before/after、duration_seconds、block_seconds、usage四token桶、source/proof、verified。缺测保持None；费用由当前倍率从raw usage计价。Compaction与Noting真实有关联才称同操作完整账单；历史分项分布组合标条件模拟。最终字段由P/W共同明确记录，不变用户语义；D使用同schema导出，W提供显式本地可测导入路径。P不增独立调度器/路由，D不复制策略。
 
@@ -38,9 +38,11 @@
 | G6 | R1/R4/R5亲审 | 增长轴作用、恢复费用未知敏感性及模拟越原生容量阈值需闭环 | P1 | P | 特征作用/消融、费用来源与压力对照、共同容量责任边界证据 | 整改中 |
 | G7 | R3/R8正常Session轮转 | _sample_parent_matches严格旧session相等，正常压缩轮转后会提前return，丢after和state_refresh；首包测试未覆 | P1 | W | 本次commit observer+持久路径见证；真实compress_context/SessionDB轮转、分支/后继/rewind/runtime替换及读取失败证据在wiring/rotation-* | 实现关闭，root已亲审；待独立门禁 |
 | G8 | R1/R3/R6特征可知时间 | excluded裸区间参与origin向量，若仅结束后回填／导入可知则可能提前暴露维护缺口 | P1 | P | 原生feature_exclusion_events保可知时间，裸tuple仅成熟label；end1000/known1500不改500/1200特征、已知start300可改500，见policy/knowability-tests.log | 实现关闭，root已亲审；待独立门禁 |
-| G9 | R5/R6/R7连续经验判断 | v4 E06/E08已执行维护；E03/E07各自短截点费用负差，需区分结算截断与过早维护；不能独立片段重置旧大context冒连续行为 | P1 | D/root | 保原9段/预期/负结果；补E01→既有取证终点连续旅程、阶段投影及E03/E07共同终点对照；主会话逐段判定 | 补证中 |
-| G10 | R2/R8工作结束保护跨模型 | root实测E03的user end=1793765542.519，价格合同过滤后last_user_work_end却1793722340.320；v4 12:38:59维护距实际12:12:23结束仅26m36s | P1 | P/D | 同owner已知真人工作结束时间跨合同保留，工作量/费用仍分层；P最新89项含跨合同/迟到/外来历史隔离；D重验相应片段 | 机制关闭，真实回放补验中 |
+| G9 | R5/R6/R7连续经验判断 | v4 E06/E08已执行维护；E03/E07各自短截点费用负差，需区分结算截断与过早维护；不能独立片段重置旧大context冒连续行为 | P1 | D/root | 保原9段/预期/负结果；补E01→既有取证终点连续旅程、阶段投影及E03/E07共同终点对照；主会话逐段判定 | 主会话逐段判断已落盘，待G12最终缩减估计关联 |
+| G10 | R2/R8工作结束保护跨模型 | root实测E03的user end=1793765542.519，价格合同过滤后last_user_work_end却1793722340.320；v4 12:38:59维护距实际12:12:23结束仅26m36s | P1 | P/D | 同owner已知真人工作结束时间跨合同保留，工作量/费用仍分层；P最新89项含跨合同/迟到/外来历史隔离；D重验相应片段 | 实现及v7全实际维护计时已核，待独立门禁 |
 | Q1 | R9统一质量检查 | 首次十检查8项通过；本轮health HX011在轮转测试分派 | P2 | W/root | handler映射等价整改，6场景原断言保留并通过；root-health-recheck.log为0阻断/0提示 | 已关闭 |
+| G11 | R3/R8正常在线预测就绪 | D真实E08去bootstrap后11用户/161486秒覆盖，尾部仅滞后30秒即永久退化 | P1 | P/root | 统一current_activity_evidence，80秒/连续已证1h/scope交集；未知尾部不扩训练，gap/迟到/新活动反证；freshness-real-fixed.json与96项/迟到gap1项，root亲审及ruff/health通过 | 实现关闭，待最终真实回放版本关联与独立门禁 |
+| G12 | R3/R5/R7小context重复维护收益 | 连续旅程第二次91617按旧retained比率缩至约24021且支807987；GPT两条实测rough after约46K近固定，比例外推可能夸大可缩减量 | P1 | P/D/root | D只首维护的同需求同终点对照；P分析真实before/after量纲/关系及最小方案，禁止任意floor/提高阈值或删除贵样本 | 分析中 |
 
 检查范围说明：root统一检查执行于暂存31文件，日志`root-quality-check.log`；唯一剩余no-tmp指向未修改的`.autonomous/20261031-evidence-recovery/validation.md:20`，HEAD与冻结24fe50ff的blob均`35daf5563d97496728892feb281ba89f5a7eb724`。保留历史报告和冻结规则，不冒称十项整体通过；这是既有范围外失败，不是本轮新增豁免。质量检查后仅等价改测试并定向复测health。
 
@@ -52,3 +54,5 @@
 **新增只读证据：** root仅SSH取数值，gpt-noting-20261102-source.json、gpt-compaction-source.json、compression-boundaries-source.json在本轮ignored目录。GPT Noting32请求2.279M等价/1702秒来自778492首prompt规模；Compact11/2、11/4原生attempt218/292秒，native粗估749494→45997及430886→46745。GPT compact费用未留独立账单。11/6新compact在原16:09截点之后，不倒灌此前训练，仅后验留出。原始来源SHA保留，D须审可知性及代理范围。
 
 **经验里程碑已在候选运行0次时亲审冻结：** root完整读D三文并与先前逐事件取证核对，接受E01–E09/M01–M03。`experience-cases.json` SHA256 `449d078fdba53e7765306aa7649a5183daaccbe878fd4553ce0e9a0a33cd448a`；data-analysis.md `3fbf0ea3bc30d9f34f8d739818d7d0df9d123dbbc5a2f8f0c652d9164e420b31`。9份原件由input-manifest冻结。E06约21h及E08约46h为主要有收益机会验收，基础经验情景全程不维护须整改；高成本/慢尾部敏感性可拒绝，不能调整基础成本凑PASS。E03 173K/5h仅1HB、E09平台只作条件判断，不一概强压。E01/E02/E04/E07保护活跃/短返；E05背景不能冒真人。E01跨epoch初态用新epoch67817，旧464730不得混入。M02原basis指旧缺done，新telemetry已证cancel/failed须在后续覆盖，resolved不能双算失败。43组件当前投影SHA948c25b5ed6b61b9b46773e32483b55908b9070db030a43bd3ffa15720fbd86d，接口规范化可形成新投影但原件与经验预期不可按结果改。
+
+**root经验审查（v7，未作最终验收）：** ignored `root-experience-review.md`逐项对应冻结案例。E03/E05短截止未回本，连续/共同终点提供后续责任；E07保护与own-context符合，但独立309K起点共同末点仍亏121905，保留负结果，不事后新增每片段必盈利门槛。E06当前模型整账单压力亏1209569，不能称普遍稳健节费。仅首维护对照显示第二次在本条件下至终点边际省396178，但仍须核G12缩减外推；不靠次数或负片段定制参数。G11/G12未关闭，独立两门禁未开始。

@@ -229,3 +229,142 @@ def test_cancel_activity_survives_all_prediction_adapters_and_consumes_paid_bran
     settled = evaluate(dict(now=0, context_tokens=1000), features, dict(CFG, horizon_seconds=500), [], 0, p)
     assert settled['cost'] == 1560  # Stop invoice460 + cold original context1000 + growth50 + output50.
     assert settled['terminal'] == 1050  # The queued work starts after Stop, never discarded by it.
+
+
+@pytest.fixture
+def observation_owner(tmp_path, monkeypatch):
+    from tests.secretary.test_adaptive_bootstrap import owned
+    yield from owned.__wrapped__(tmp_path, monkeypatch)
+
+
+def _observed_snapshot(owned, lag, *, damage=None, recent=None):
+    import json
+    from pathlib import Path
+    from agent.context_compressor import ContextCompressor
+    from secretary import adaptive_runtime as runtime, adaptive_store as store
+    from secretary.adaptive_config import for_db
+    from tests.secretary.test_adaptive_bootstrap import NOW
+    from tests.secretary.test_adaptive_policy import CONFIG, NOW as OLD_NOW, history
+    from tests.secretary.test_adaptive_runtime import adaptive_config
+    parent, db, ref, package = owned
+    Path(db.db_path).parent.joinpath('config.yaml').write_text(json.dumps(adaptive_config(ref, CONFIG)))
+    parent.context_compressor = ContextCompressor(model='test/runtime', config_context_length=512000,
+        threshold_percent=.9, threshold_tokens_cap=440000, quiet_mode=True)
+    parent.context_compressor.update_from_response({'prompt_tokens': 330000})
+    config = for_db(db, ref, parent=parent)
+    rows = history()
+    for i, row in enumerate(rows):
+        row['at'] += NOW - OLD_NOW
+        if row['kind'] == 'coverage':
+            row.update(at=NOW - lag, start_at=row['start_at'] + NOW - OLD_NOW, end_at=NOW - lag)
+            if damage == 'missing_scope':
+                row['scope'] = 'gateway_adapter'
+        else:
+            row['ingress'] = 'web_submit' if i % 2 else 'gateway_adapter'
+    if damage in ('tail_gap', 'history_gap'):
+        rows.append(dict(event_id='known-gap', kind='coverage_gap', source='framework', verified=True,
+                         at=NOW - 1, start_at=NOW - (20 if damage == 'tail_gap' else 1800),
+                         end_at=None if damage == 'tail_gap' else NOW - 1700))
+    if recent == 'user':
+        rows.append(dict(event_id='known-new-user', kind='user_activity', source='user', verified=True,
+                         at=NOW - 5, ingress='web_submit'))
+    elif recent == 'work':
+        rows.append(dict(event_id='known-new-work-end', kind='turn_end', source='user', verified=True,
+                         at=NOW - 2, model_key='other-contract', duration_seconds=3600))
+    db._execute_write(lambda conn: [store.event_conn(conn, ref, row) for row in rows])
+    snapshot, history_rows = runtime.snapshot(parent, db, ref, config, NOW)
+    return snapshot, history_rows, config, package
+
+
+@pytest.mark.parametrize('lag', [0, 30, 80])
+def test_saved_coverage_tail_keeps_formal_snapshot_prediction_without_inventing_exposure(observation_owner, lag):
+    from secretary.adaptive_policy import decide
+    from tests.secretary.test_adaptive_bootstrap import NOW
+    snapshot, rows, config, _ = _observed_snapshot(observation_owner, lag)
+    assert not snapshot['bootstrap_priors']
+    features = build_features(snapshot, rows, _settings(config))
+    before = deepcopy(features['arrival'])
+    result = decide(snapshot, rows, config)
+    diagnostic = result['diagnostics']
+    observation = diagnostic['current_activity_evidence']
+    assert observation['ready'] and observation['witness_at'] == NOW - lag
+    assert observation['unobserved_tail_seconds'] == lag
+    assert observation['coverage_extended'] is observation['training_exposure_extended'] is False
+    assert diagnostic['behavior_prediction_live_ready']
+    assert diagnostic['behavior_prediction_available']
+    assert not diagnostic['behavior_prediction_qualified_prior']
+    assert diagnostic['forecast_model'] != 'first_return_fallback'
+    assert diagnostic['forecast_latest_label_end'] <= NOW - lag
+    after = build_features(snapshot, rows, _settings(config))
+    assert after['arrival'] == before
+    assert before['spans'][-1][1] == NOW - lag
+    assert diagnostic['coverage_seconds'] == sum(hi - lo for lo, hi in before['spans'])
+    assert diagnostic['activity_features']['current_observation_tail_unknown'] == bool(lag)
+
+
+def test_current_tail_metadata_never_changes_mature_training_features_or_labels(observation_owner):
+    snapshot, rows, config, _ = _observed_snapshot(observation_owner, 30)
+    features = build_features(snapshot, rows, _settings(config))
+    data = from_events(features['forecast_events'], features['arrival']['spans'])
+    current = dict(data, current_activity_evidence=features['current_activity_evidence'])
+    baseline = training_examples(data, snapshot['now'], 1800, config.get('timezone'))
+    tagged = training_examples(current, snapshot['now'], 1800, config.get('timezone'))
+    assert [(r['at'], r['x'], r['y']) for r in tagged] == [(r['at'], r['x'], r['y']) for r in baseline]
+    assert signature(current, snapshot['now'] - 7200) == signature(data, snapshot['now'] - 7200)
+    assert signature(current, snapshot['now']) != signature(data, snapshot['now'])
+
+
+def test_late_gap_receipt_cannot_change_current_qualification_before_available(observation_owner):
+    from secretary import adaptive_runtime as runtime, adaptive_store as store
+    from secretary.adaptive_policy import decide
+    from tests.secretary.test_adaptive_bootstrap import NOW
+    snapshot, rows, config, _ = _observed_snapshot(observation_owner, 30)
+    baseline = decide(snapshot, rows, config)
+    parent, db, ref, _ = observation_owner
+    gap = dict(event_id='later-known-tail-gap', kind='coverage_gap', source='framework', verified=True,
+               at=NOW - 1, available_at=NOW + 10, start_at=NOW - 20, end_at=None)
+    db._execute_write(lambda conn: store.event_conn(conn, ref, gap))
+    current, current_rows = runtime.snapshot(parent, db, ref, config, NOW)
+    assert decide(current, current_rows, config) == baseline
+    later, later_rows = runtime.snapshot(parent, db, ref, config, NOW + 10)
+    assert not build_features(later, later_rows, _settings(config))['current_activity_evidence']['ready']
+
+
+@pytest.mark.parametrize('damage,lag', [(None, 80.001), ('missing_scope', 30), ('history_gap', 30), ('tail_gap', 30)])
+def test_stale_scope_or_explicit_gap_is_not_a_normal_saved_tail(observation_owner, damage, lag):
+    from secretary.adaptive_policy import decide
+    snapshot, rows, config, _ = _observed_snapshot(observation_owner, lag, damage=damage)
+    features = build_features(snapshot, rows, _settings(config))
+    assert not features['current_activity_evidence']['ready']
+    result = decide(snapshot, rows, config)
+    assert result['threshold_tokens'] is result['delay_seconds'] is None
+    assert not result['diagnostics'].get('behavior_prediction_live_ready', False)
+
+
+@pytest.mark.parametrize('recent', ['user', 'work'])
+def test_known_activity_after_saved_witness_still_resets_departure_protection(observation_owner, recent):
+    from secretary.adaptive_policy import decide
+    snapshot, rows, config, _ = _observed_snapshot(observation_owner, 30, recent=recent)
+    result = decide(snapshot, rows, config)
+    diagnostic = result['diagnostics']
+    assert diagnostic['current_activity_evidence']['known_activity_after_witness']
+    assert diagnostic['behavior_prediction_live_ready']
+    delays = [r['delay'] for r in diagnostic['candidate_evaluations'] if isinstance(r['delay'], (int, float))]
+    assert delays and min(delays) >= (1795 if recent == 'user' else 1798)
+
+
+def test_bootstrap_readiness_cannot_certify_a_known_current_gap(observation_owner):
+    from secretary import adaptive_bootstrap as bootstrap, adaptive_runtime as runtime
+    from secretary.adaptive_policy import decide
+    from tests.secretary.test_adaptive_bootstrap import NOW
+    snapshot, rows, config, package = _observed_snapshot(observation_owner, 30, damage='tail_gap')
+    parent, db, ref, _ = observation_owner
+    bootstrap.apply(db, ref, package, bootstrap_id='conditional-prior', now=NOW)
+    snapshot, rows = runtime.snapshot(parent, db, ref, config, NOW)
+    result = decide(snapshot, rows, config)
+    assert result['diagnostics']['history_readiness']['qualified']
+    assert result['diagnostics']['behavior_prediction_available']  # Historical prediction remains labelled usable.
+    assert result['diagnostics']['behavior_prediction_qualified_prior']
+    assert not result['diagnostics']['behavior_prediction_live_ready']
+    assert not result['diagnostics']['current_activity_evidence']['ready']
+    assert result['threshold_tokens'] is result['delay_seconds'] is None

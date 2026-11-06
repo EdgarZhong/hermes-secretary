@@ -9,6 +9,8 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 MAX_EVENTS = 2048
 AGE_EDGES = (300.0, 1800.0, 7200.0)
+CURRENT_OBSERVATION_MAX_LAG_SECONDS = 80
+CURRENT_OBSERVATION_HISTORY_SECONDS = 3600
 
 
 def number(value, *, minimum=0.0):
@@ -239,6 +241,49 @@ def current_user_age(arrival, users, now):
             'user_age_observed_lower_bound_seconds': lower}
 
 
+def _known_tail_gap(events, uncertainties, witness, now):
+    if witness is None:
+        return False
+    if any(left <= now and right >= witness for left, right in uncertainties):
+        return True
+    for event in events:
+        if event.get('kind') not in ('gap', 'coverage_gap', 'maintenance_exclusion', 'exclusion'):
+            continue
+        left, right = number(event.get('start_at')), number(event.get('end_at'))
+        left, right = (left if left is not None else 0), (right if right is not None else now)
+        if left <= now and right >= witness:
+            return True
+    return False
+
+
+def current_activity_evidence(features, now, *, events=(), uncertainties=()):
+    """Current prediction permission, never an extension of observed exposure.
+
+    Reuse the existing 80s saved-witness allowance. The preceding model feature
+    hour must remain one certified interval; an explicit gap is not a flush tail.
+    """
+    spans = features.get('arrival', {}).get('spans', [])
+    witness = number(features.get('user_age_observed_at'))
+    tail = now - witness if witness is not None and witness <= now else None
+    fresh = tail is not None and tail <= CURRENT_OBSERVATION_MAX_LAG_SECONDS
+    continuous = witness is not None and any(
+        lo <= witness - CURRENT_OBSERVATION_HISTORY_SECONDS and witness <= hi for lo, hi in spans)
+    gap = _known_tail_gap(events, uncertainties, witness, now)
+    ready = fresh and continuous and not gap
+    user, work = features.get('last_user_at'), features.get('last_user_work_end')
+    return dict(as_of=now, ready=ready, witness_at=witness, unobserved_tail_seconds=tail,
+                freshness_limit_seconds=CURRENT_OBSERVATION_MAX_LAG_SECONDS,
+                observed_history_required_seconds=CURRENT_OBSERVATION_HISTORY_SECONDS,
+                continuous_observed_history=continuous, known_gap_in_tail=gap,
+                latest_known_user_at=user, latest_known_work_end_at=work,
+                known_activity_after_witness=witness is not None and any(
+                    value is not None and witness < value <= now for value in (user, work)),
+                source=('current_verified_coverage' if ready and tail == 0 else
+                        'bounded_unknown_saved_tail' if ready else 'current_observation_not_qualified'),
+                coverage_extended=False, training_exposure_extended=False,
+                unknown_tail_is_not_silence=True)
+
+
 def arrival_rate(model, at, user_age, *, conservative=False):
     pooled = model['rate']
     if pooled is None:
@@ -391,6 +436,7 @@ def build_features(snapshot, history, config):
                             and available <= now)[-MAX_EVENTS:]
     history_start = retained_times[0] if retained_times else now
     behavioral_events = clean_events(history, now)
+    uncertainties = activity_uncertainties(history, now)
     events = clean_events(history, now, model_key=snapshot.get('model_key'))
     requests = [e for e in events if e.get('kind') == 'request']
     hb = [e for e in requests if e.get('source') == 'heartbeat' and not e.get('operation_id')]
@@ -418,7 +464,7 @@ def build_features(snapshot, history, config):
             'forecast_events': compatible_forecast_events(behavioral_events, snapshot.get('model_key')),
             'warm_cache_fraction': warm_cache_fraction(events, config['cache_ttl_seconds']),
             'arrival': arrival_model(events, now, config.get('timezone'), history_start=history_start,
-                                     uncertainties=activity_uncertainties(history, now),
+                                     uncertainties=uncertainties,
                                      required_scopes=activity_scopes(history, now)),
             'feedback': feedback(events), 'growth_tokens_per_second': context_growth(events),
             'maintenance': maintenance_model(maintenance_events, config['cache_ratio'], config['output_ratio']),
@@ -433,6 +479,8 @@ def build_features(snapshot, history, config):
             'unknown_usage_requests': sum(request_cost(e, config['cache_ratio'], config['output_ratio'])
                                           is None for e in requests)}
     result.update(current_user_age(result['arrival'], users, now))
+    result['current_activity_evidence'] = current_activity_evidence(
+        result, now, events=behavioral_events, uncertainties=uncertainties)
     result['arrival']['risk_age_cohorts'] = [dict(
         grade='verified_ingress_coverage', weight=1.0,
         **{key: list(result['arrival'][key]) for key in

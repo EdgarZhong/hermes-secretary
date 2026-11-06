@@ -8,7 +8,7 @@ from __future__ import annotations
 from bisect import bisect_right
 import math
 
-from secretary.adaptive_features import arrival_rate, build_features, number
+from secretary.adaptive_features import arrival_rate, build_features, current_activity_evidence, number
 from secretary.adaptive_forecast import from_events, predict
 from secretary.adaptive_cost import Profile as Profile, maintenance_profile, heartbeat_profile, payback_scenarios, background_profile
 
@@ -221,8 +221,9 @@ def _eligibility_reasons(snapshot, features, cfg, profile):
     reasons = []
     if features['last_user_at'] is None or snapshot.get('next_reminder_known') is False:
         reasons.append('current_activity_or_reminder_unknown')
-    witness = number(features.get('user_age_observed_at'))
-    if witness is None or not 0 <= snapshot['now'] - witness <= 80:
+    observation = features.get('current_activity_evidence') or current_activity_evidence(
+        features, snapshot['now'], events=features.get('events', []))
+    if not observation['ready']:
         reasons.append('current_activity_evidence_stale_or_unknown')
     if profile is None or snapshot.get('idle_enabled') is not True:
         reasons.append('maintenance_evidence_missing_or_idle_disabled')
@@ -416,6 +417,7 @@ def decide(snapshot: dict, history: list[dict], config: dict) -> dict:
     spans = features['arrival']['spans']
     data = from_events(features['forecast_events'], spans)
     data['training_cohorts'] = features.get('training_cohorts', [])
+    data['current_activity_evidence'] = features['current_activity_evidence']
     from secretary.adaptive_empirical_features import state, growth_by_source
     features['activity_state'] = state(data, snapshot['now'], cfg.get('timezone'))
     features['growth_state'] = growth_by_source(features['events'], snapshot['now'])
@@ -474,7 +476,11 @@ def decide(snapshot: dict, history: list[dict], config: dict) -> dict:
                             'inherited_training_cohorts': features.get('inherited_cohorts', 0),
                             'history_readiness': features.get('bootstrap_readiness', {}),
                             'current_activity_known': features['last_user_at'] is not None,
+                            'current_activity_evidence': features['current_activity_evidence'],
                             'behavior_prediction_available': features['trajectory'].get('available', False),
+                            'behavior_prediction_live_ready': features['trajectory'].get('live_observation_ready', False),
+                            'behavior_prediction_qualified_prior': features['trajectory'].get('qualified_prior_ready', False),
+                            'forecast_latest_label_end': features['trajectory'].get('latest_label_end'),
                             'feedback': features['feedback'],
                             'unknown_usage_requests': features['unknown_usage_requests'],
                             'forecast_model': ('multi_return_timing_only_single_read_proxy'

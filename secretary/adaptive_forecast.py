@@ -232,6 +232,7 @@ def _forecast_seed(data, now, horizon):
             'feature_exclusion_events': [r for r in data.get('feature_exclusion_events', [])
                                          if r['at'] <= now and r.get('available_at', r['at']) <= now],
             'feature_exclusion_unknown': data.get('feature_exclusion_unknown', 'feature_exclusion_events' not in data),
+            'current_activity_evidence': data.get('current_activity_evidence'),
             'excluded': [(left, min(right, now)) for left, right in data.get('excluded', []) if left < now],
             'spans': [(now, now + horizon)], 'work_complete': True,
             'work_features_unknown': data.get('work_features_unknown', False)}
@@ -275,9 +276,13 @@ def predict(data, now, *, horizon=7200, timezone_name='UTC', method='analog', qu
         data = {**data, 'quiet_origins': False, 'training_cohorts': [dict(c, quiet_origins=False)
                                                                  for c in data.get('training_cohorts', [])]}
     examples = training_examples(data, now, block, timezone_name)
-    live_ready = covered(now - 3600, now, data.get('spans', []))
+    observation = data.get('current_activity_evidence')
+    live_ready = (observation.get('ready') is True and observation.get('as_of') == now
+                  if observation is not None else covered(now - 3600, now, data.get('spans', [])))
     if len(examples) < 8 or not (live_ready or qualified_prior_ready):
-        return {'available': False, 'reason': 'insufficient_mature_windows', 'training_windows': len(examples)}
+        return {'available': False, 'reason': 'insufficient_mature_windows', 'training_windows': len(examples),
+                'live_observation_ready': live_ready, 'qualified_prior_ready': qualified_prior_ready,
+                'current_activity_evidence': observation}
     if not live_ready:
         data = {**data, 'excluded': [*data.get('excluded', []), [now - 3600, now]]}
     marks = work_marks(data, now)
@@ -309,6 +314,8 @@ def predict(data, now, *, horizon=7200, timezone_name='UTC', method='analog', qu
                      for p in paths]
     no_return = sum(not any(e.get('source', 'user') == 'user' for e in p['events']) for p in paths)
     return {'available': True, 'version': VERSION, 'training_windows': len(examples),
+            'live_observation_ready': live_ready, 'qualified_prior_ready': qualified_prior_ready,
+            'current_activity_evidence': observation,
             'latest_label_end': max(e['y']['label_available_at'] for e in examples),
             'effective_samples': None, 'trajectory_particles': 32, 'transition_seconds': block,
             'horizons': horizons, 'paths': paths, 'marks': marks,

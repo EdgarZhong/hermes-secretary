@@ -59,6 +59,12 @@ def state(data, at, timezone_name=None, *, detailed=True):
     # Bare exclusion tuples are retrospective label/censor evidence. They no
     # longer carry knowledge time and must never become an origin feature.
     exclusion_unknown = data.get('feature_exclusion_unknown', 'feature_exclusion_events' not in data)
+    observation = data.get('current_activity_evidence') or {}
+    tail = observation.get('unobserved_tail_seconds')
+    # This is query uncertainty, not a historical zero-activity observation.
+    # The as-of guard prevents current metadata leaking into past origins.
+    current_tail_unknown = tail is not None and tail > 0 and at >= observation['as_of']
+    exclusion_unknown = exclusion_unknown or current_tail_unknown
     excluded = sum(at - 3600 < r['at'] <= at and r.get('available_at', r['at']) <= at
                    for r in data.get('feature_exclusion_events', []))
     vector = [math.log1p(n) for n in counts[:3]]
@@ -82,6 +88,7 @@ def state(data, at, timezone_name=None, *, detailed=True):
                 phase=phase, phase_duration_lower_bound_seconds=at - phase_since,
                 phase_duration_resolution_seconds=900,
                 semantic_task_end='unknown', exclusions_last_hour=excluded,
+                current_observation_tail_unknown=current_tail_unknown,
                 exclusion_feature_unknown=bool(exclusion_unknown))
 
 
