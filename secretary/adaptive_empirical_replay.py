@@ -374,7 +374,7 @@ class Replay:
             return
         elapsed = self.now - active["started_at"]
         cancellation = getattr(active["cancellation_profile"], "cancellation_scenarios", ())
-        paid, source = active["cost"], "unknown_fraction_full_paid_cost_upper_bound"
+        paid, source = active["cost"], "unknown_cancellation_cost_full_sampled_cost_proxy"
         if cancellation:
             nearest = min(cancellation, key=lambda p: (abs(p.duration - elapsed), -p.cost))
             helper = importlib.import_module("secretary.adaptive_rollout")._cancelled_cost
@@ -387,7 +387,7 @@ class Replay:
         self.busy_until = self.now
         self.actions.append(dict(kind="actual_user_cancel", at=self.now,
                                  operation_id=active["id"], paid_cost=paid,
-                                 full_cost_upper_bound=active["cost"], cancellation_cost_source=source,
+                                 sampled_completion_cost_reference=active["cost"], cancellation_cost_source=source,
                                  cumulative_cost=self.cost))
         self._finish_maintenance(0)
         # Native Stop releases already waiting work; do not keep it asleep until

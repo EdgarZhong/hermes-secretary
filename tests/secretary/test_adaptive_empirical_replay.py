@@ -205,7 +205,11 @@ def test_explicit_real_cancel_releases_main_and_preserves_paid_cost():
     assert result["counts"]["failed"] == 1
     assert result["final_context"] == 10000
     assert result["input_equivalent_cost"] == 100
-    assert any(a["kind"] == "actual_user_cancel" and a["at"] == 5 for a in result["actions"])
+    stop = next(a for a in result["actions"] if a["kind"] == "actual_user_cancel")
+    assert stop["at"] == 5 and stop["paid_cost"] == 100
+    assert stop["sampled_completion_cost_reference"] == 100
+    assert stop["cancellation_cost_source"] == "unknown_cancellation_cost_full_sampled_cost_proxy"
+    assert "full_cost_upper_bound" not in stop
 
 
 def test_real_arrival_counts_collision_before_main_admission_source_is_known():
@@ -216,18 +220,23 @@ def test_real_arrival_counts_collision_before_main_admission_source_is_known():
     assert result["max_wait_seconds"] == 7
 
 
-def test_actual_cancel_consumes_formal_historical_paid_receipt_branch():
+@pytest.mark.parametrize("paid_cost", [30, 150])
+def test_actual_cancel_consumes_formal_historical_paid_receipt_branch(paid_cost):
     class WithPaidCancel(ControlledMaintenance):
         def _maintenance(self, features, config):
-            return Profile(cancellation_scenarios=(Profile(cost=30, duration=3, diagnostics={"receipt": "paid-stop"}),))
+            return Profile(cancellation_scenarios=(Profile(cost=paid_cost, duration=3, diagnostics={"receipt": "paid-stop"}),))
     data = package()
     data["events"].append(dict(event_id="stop", kind="user_activity", source="user", verified=True,
                                 at=5, activity="cancel"))
     result = Replay(data, case(20), WithPaidCancel()).run()
     stop = next(a for a in result["actions"] if a["kind"] == "actual_user_cancel")
-    assert result["input_equivalent_cost"] == 30
+    assert result["input_equivalent_cost"] == paid_cost
+    assert stop["paid_cost"] == paid_cost and stop["cumulative_cost"] == paid_cost
+    assert stop["sampled_completion_cost_reference"] == 100
+    assert "full_cost_upper_bound" not in stop
     assert stop["cancellation_cost_source"] == {"receipt": "paid-stop"}
     assert result["final_context"] == 10000
+    assert result["counts"]["failed"] == 1
 
 
 def test_missing_target_metadata_cannot_default_to_this_historical_target():
