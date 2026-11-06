@@ -14,10 +14,10 @@
 ## 当前状态与编排
 | 任务 | 机制实现 | 正式接线 | 针对性验证 | 用户结果 | 当前安排 |
 |---|---|---|---|---|---|
-| D | CLI/数据投影及G16结算刷新已接收 | CLI逐时正式decide，自有HB/context/cache | 当前32项；v11九段/连续/边际/来源费用压力13矩阵 | root及初审独立逐段接收，保负结果 | adaptive_audit已交回，无新写入任务 |
-| P | 经验算法及G11–G17已由root接收 | 正式decide/同源evaluate | G17当前146项含独立反例通过 | v11有经验路径已接收；缺样本整改经全新Verification关闭 | retained_transfer_audit已交回；f7aecf8产品冻结，Verification通过 |
-| W | 观测/导入与轮转已接收 | Compact/Noting→snapshot→学习 | 正式DB/Loop、轮转干扰/失败/读取与关闭证据 | 初审相关条款符合 | 已交回；不重复无关测试 |
-| I | 当前产品c3017ac | P/W/D已集成 | r3全轮25符合/1违规；G17/G18关闭，G19修复中 | Validation首轮11通过/V10因G18失败，待复验 | root统筹G19修复→全新复审→Validation续验，不上线 |
+| D | CLI/数据投影及G16结算刷新已接收 | CLI逐时正式decide，自有HB/context/cache | 当前32项；v11九段/连续/边际/来源费用压力13矩阵 | root/r4/Validation逐段接收，保负结果 | adaptive_audit已交回，无新写入任务 |
+| P | 经验算法及G11–G19已由root接收 | 正式decide/同源evaluate | G19相关101项通过；G17有效证据保留 | v11有经验路径及G19影响证明已接收 | 3e08ea39cc，r4全轮26条符合/Validation全部通过 |
+| W | 观测/导入与轮转已接收 | Compact/Noting→snapshot→学习 | 正式DB/Loop、轮转干扰/失败/读取与关闭证据 | r4相关条款符合，Validation导入/恢复通过 | 已交回；不重复无关测试 |
+| I | 当前产品3e08ea39cc | P/W/D已集成 | r4全轮26符合/0违规/0证据不足，G17–G19关闭 | Validation当前12场景全通过；首轮失败保留 | root接收两门禁，最终交付，不上线 |
 
 共享接口初稿：同Secretary事件表kind=maintenance_sample，component=compaction/noting，at/available_at、model_identity/model_contract、operation_id、outcome、context_before/after、duration_seconds、block_seconds、usage四token桶、source/proof、verified。缺测保持None；费用由当前倍率从raw usage计价。Compaction与Noting真实有关联才称同操作完整账单；历史分项分布组合标条件模拟。最终字段由P/W共同明确记录，不变用户语义；D使用同schema导出，W提供显式本地可测导入路径。P不增独立调度器/路由，D不复制策略。
 
@@ -30,31 +30,33 @@
 ## 缺陷与整改
 | ID | 要求/触发 | 事实/影响 | 优先级 | owner | 关闭条件 | 状态 |
 |---|---|---|---|---|---|---|
-| G1 | R6/R7真实策略验收 | 旧历史仅预测分数、合成正例90K/600秒不对应线上 | P0 | D/root | 案例预期冻结＋真实逐时策略/闭环及人工判定 | root已接收实现与v11证据，Verification复审已核，待Validation |
-| G2 | R3/R4维护经验建模 | usage_complete=false与native注册范围导致费用/时长不学习 | P0 | W/P | 经验组件与正式后继采集均接入；新样本改变估计 | root已接收实现与v11证据，Verification复审已核，待Validation |
-| G3 | R1/R2/R4同源预测 | 无足够阶段工程及独立风险门持续否决 | P0 | P | 可解释特征作用、同源经验风险费用、实际反例关闭 | root已接收实现与v11证据，Verification复审已核，待Validation |
-| G4 | R5/R7长期延后 | 六小时反复拒绝且无真实整段验收 | P0 | P/D | 真实有收益机会可执行，过早/频繁维护反例保护 | root已接收实现与v11证据，Verification复审已核，待Validation |
-| G5 | R3–R6共同外部需求 | E06无真实用户操作却随机抽中explicit_interrupt，虚构Stop使重复维护；首版保留 | P1 | P/D | 明确用户取消随共同真实动作，内部失败继续采样，取消费用/未知/截尾不删除 | root已接收实现与v11证据，Verification复审已核，待Validation |
-| G6 | R1/R4/R5亲审 | 增长轴作用、恢复费用未知敏感性及模拟越原生容量阈值需闭环 | P1 | P | 特征作用/消融、费用来源与压力对照、共同容量责任边界证据 | root已接收实现与v11证据，Verification复审已核，待Validation |
-| G7 | R3/R8正常Session轮转 | _sample_parent_matches严格旧session相等，正常压缩轮转后会提前return，丢after和state_refresh；首包测试未覆 | P1 | W | 本次commit observer+持久路径见证；真实compress_context/SessionDB轮转、分支/后继/rewind/runtime替换及读取失败证据在wiring/rotation-* | 实现关闭，root已亲审；Verification复审已核，待Validation |
-| G8 | R1/R3/R6特征可知时间 | excluded裸区间参与origin向量，若仅结束后回填／导入可知则可能提前暴露维护缺口 | P1 | P | 原生feature_exclusion_events保可知时间，裸tuple仅成熟label；end1000/known1500不改500/1200特征、已知start300可改500，见policy/knowability-tests.log | 实现关闭，root已亲审；Verification复审已核，待Validation |
-| G9 | R5/R6/R7连续经验判断 | v4 E06/E08已执行维护；E03/E07各自短截点费用负差，需区分结算截断与过早维护；不能独立片段重置旧大context冒连续行为 | P1 | D/root | 保原9段/预期/负结果；补E01→既有取证终点连续旅程、阶段投影及E03/E07共同终点对照；主会话逐段判定 | 主会话v11逐段判断已落盘，保负结果；Verification复审已核，待Validation |
-| G10 | R2/R8工作结束保护跨模型 | root实测E03的user end=1793765542.519，价格合同过滤后last_user_work_end却1793722340.320；v4 12:38:59维护距实际12:12:23结束仅26m36s | P1 | P/D | 同owner已知真人工作结束时间跨合同保留，工作量/费用仍分层；P最新89项含跨合同/迟到/外来历史隔离；D重验相应片段 | 实现及v7全实际维护计时已核，Verification复审已核，待Validation |
+| G1 | R6/R7真实策略验收 | 旧历史仅预测分数、合成正例90K/600秒不对应线上 | P0 | D/root | 案例预期冻结＋真实逐时策略/闭环及人工判定 | 已关闭，当前3e08；r4 C01/C11/C12；V01–V07，具体证据见两门禁矩阵 |
+| G2 | R3/R4维护经验建模 | usage_complete=false与native注册范围导致费用/时长不学习 | P0 | W/P | 经验组件与正式后继采集均接入；新样本改变估计 | 已关闭，当前3e08；r4 C06/C07/C13；V08–V10，具体证据见两门禁矩阵 |
+| G3 | R1/R2/R4同源预测 | 无足够阶段工程及独立风险门持续否决 | P0 | P | 可解释特征作用、同源经验风险费用、实际反例关闭 | 已关闭，当前3e08；r4 C02/C06/C08；V02–V07，具体证据见两门禁矩阵 |
+| G4 | R5/R7长期延后 | 六小时反复拒绝且无真实整段验收 | P0 | P/D | 真实有收益机会可执行，过早/频繁维护反例保护 | 已关闭，当前3e08；r4 C09/C10/C12；V03–V05/V07，具体证据见两门禁矩阵 |
+| G5 | R3–R6共同外部需求 | E06无真实用户操作却随机抽中explicit_interrupt，虚构Stop使重复维护；首版保留 | P1 | P/D | 明确用户取消随共同真实动作，内部失败继续采样，取消费用/未知/截尾不删除 | 已关闭，当前3e08；r4 C06–C09/C22；V06/V10，具体证据见两门禁矩阵 |
+| G6 | R1/R4/R5亲审 | 增长轴作用、恢复费用未知敏感性及模拟越原生容量阈值需闭环 | P1 | P | 特征作用/消融、费用来源与压力对照、共同容量责任边界证据 | 已关闭，当前3e08；r4 C02/C09/C21；V07/V11，具体证据见两门禁矩阵 |
+| G7 | R3/R8正常Session轮转 | _sample_parent_matches严格旧session相等，正常压缩轮转后会提前return，丢after和state_refresh；首包测试未覆 | P1 | W | 本次commit observer+持久路径见证；真实compress_context/SessionDB轮转、分支/后继/rewind/runtime替换及读取失败证据在wiring/rotation-* | 已关闭，当前3e08；r4 C13/C23/C25；V08/V10，具体证据见两门禁矩阵 |
+| G8 | R1/R3/R6特征可知时间 | excluded裸区间参与origin向量，若仅结束后回填／导入可知则可能提前暴露维护缺口 | P1 | P | 原生feature_exclusion_events保可知时间，裸tuple仅成熟label；end1000/known1500不改500/1200特征、已知start300可改500，见policy/knowability-tests.log | 已关闭，当前3e08；r4 C04；V11，具体证据见两门禁矩阵 |
+| G9 | R5/R6/R7连续经验判断 | v4 E06/E08已执行维护；E03/E07各自短截点费用负差，需区分结算截断与过早维护；不能独立片段重置旧大context冒连续行为 | P1 | D/root | 保原9段/预期/负结果；补E01→既有取证终点连续旅程、阶段投影及E03/E07共同终点对照；主会话逐段判定 | 已关闭，当前3e08；r4 C09/C12；V03/V05，具体证据见两门禁矩阵 |
+| G10 | R2/R8工作结束保护跨模型 | root实测E03的user end=1793765542.519，价格合同过滤后last_user_work_end却1793722340.320；v4 12:38:59维护距实际12:12:23结束仅26m36s | P1 | P/D | 同owner已知真人工作结束时间跨合同保留，工作量/费用仍分层；P最新89项含跨合同/迟到/外来历史隔离；D重验相应片段 | 已关闭，当前3e08；r4 C05/C12；V02/V05，具体证据见两门禁矩阵 |
 | Q1 | R9统一质量检查 | 首次十检查8项通过；本轮health HX011在轮转测试分派 | P2 | W/root | handler映射等价整改，6场景原断言保留并通过；root-health-recheck.log为0阻断/0提示 | 已关闭 |
-| G11 | R3/R8正常在线预测就绪 | D真实E08去bootstrap后11用户/161486秒覆盖，尾部仅滞后30秒即永久退化 | P1 | P/root | current_activity_evidence共享来源，G15已拆当前资格80秒/scope与本地预测1h；未知尾部不扩训练，gap/迟到/新活动反证；freshness-real-fixed.json与96项/迟到gap1项，root亲审及ruff/health通过 | G15修正后116项/v11已关联，Verification复审已核，待Validation |
-| G12 | R3/R5/R7小context重复维护收益 | 连续旅程第二次91617按旧retained比率缩至约24021且支807987；GPT两条实测rough after约46K近固定，比例外推可能夸大可缩减量 | P1 | P/D/root | D只首维护的同需求同终点对照；P分析真实before/after量纲/关系及最小方案，禁止任意floor/提高阈值或删除贵样本 | 实现/亲审/v11实际回放已接收，Verification复审已核，待Validation |
-| G13 | R5/R8分段缩减后的执行阈值 | G12引入分段迁移，原_break_even零点割线仍冒affine精确边界且T直接进入计划；当前点合格不等于T处已验 | P1 | retained_transfer_audit/root | 候选阈值以同源路径/该规模费用与风险实际校验，有界搜索只返回已验可行数值，明确非全域最优；实际反例与资源证据 | 98项与root亲审、ruff/health及v11回放通过，Verification复审已核，待Validation |
-| G14 | R6正式CLI | 冻结源码加载前导入当下cost导致guard失败 | P1 | root | 延迟导入指定source-root helper，真实CLI子进程回归及v11运行 | Verification复审已核，待Validation |
-| G15 | R2/R3已qualified历史准入 | 完整1h要求误扩大为当前资格，漏高存量机会 | P1 | retained_transfer_audit | current/live拆分、原unknown轴、gap后保护，116项及v11反例 | Verification复审已核，待Validation |
-| G16 | R6/E6回放结算 | 漏维护后正式mode-only导致证据链不全 | P1 | D/root | 共decision owner补mode-only，32项及v11 26/26刷新 | Verification复审已核，待Validation |
-| G17 | R3无维护经验 | 零样本沿compatibility prior产生T32768/δ0 | P1 | retained_transfer_audit/root | 正式经验入口、缺口诊断/HB独立/native保护，146项及新独立全轮复审 | f7aecf8 Verification已关闭，Validation继续覆盖用户链路 |
-| G18 | R4/R5取消费用解释 | Validation外部Stop变体中paid1143046超过被误称上界的原完成draw778332；实际累计正确但字段语义错 | P2 | root | 仅改诊断参考字段/无收据代理标签，不改计费；高/低/无收据机制及原完整CLI取消复验，全新复审 | c3017ac在r3独立核实关闭，保原失败 |
-| G19 | R4实际Main阻挡/R3同源结果 | rollout用户先排队后Stop，wait仍原假想完成时刻；独立10%路径实际1秒却加权99.8秒而非0.1，错误风险拒绝 | P1 | retained_transfer_audit/root | 最早受维护阻挡的真人到来与最终维护终点结算；Stop自身零额外等待，保自然完成/费用/队列，正式risk门槛及真实路径影响核查 | 实现/root亲审接收，101项及增量质量通过；待新独立全轮复审 |
+| G11 | R3/R8正常在线预测就绪 | D真实E08去bootstrap后11用户/161486秒覆盖，尾部仅滞后30秒即永久退化 | P1 | P/root | current_activity_evidence共享来源，G15已拆当前资格80秒/scope与本地预测1h；未知尾部不扩训练，gap/迟到/新活动反证；freshness-real-fixed.json与96项/迟到gap1项，root亲审及ruff/health通过 | 已关闭，当前3e08；r4 C05/C13；V06/V11，具体证据见两门禁矩阵 |
+| G12 | R3/R5/R7小context重复维护收益 | 连续旅程第二次91617按旧retained比率缩至约24021且支807987；GPT两条实测rough after约46K近固定，比例外推可能夸大可缩减量 | P1 | P/D/root | D只首维护的同需求同终点对照；P分析真实before/after量纲/关系及最小方案，禁止任意floor/提高阈值或删除贵样本 | 已关闭，当前3e08；r4 C09/C10/C12；V03/V05/V07，具体证据见两门禁矩阵 |
+| G13 | R5/R8分段缩减后的执行阈值 | G12引入分段迁移，原_break_even零点割线仍冒affine精确边界且T直接进入计划；当前点合格不等于T处已验 | P1 | retained_transfer_audit/root | 候选阈值以同源路径/该规模费用与风险实际校验，有界搜索只返回已验可行数值，明确非全域最优；实际反例与资源证据 | 已关闭，当前3e08；r4 C10；V04/V05，具体证据见两门禁矩阵 |
+| G14 | R6正式CLI | 冻结源码加载前导入当下cost导致guard失败 | P1 | root | 延迟导入指定source-root helper，真实CLI子进程回归及v11运行 | 已关闭，当前3e08；r4 C11/C25；V01/V10，具体证据见两门禁矩阵 |
+| G15 | R2/R3已qualified历史准入 | 完整1h要求误扩大为当前资格，漏高存量机会 | P1 | retained_transfer_audit | current/live拆分、原unknown轴、gap后保护，116项及v11反例 | 已关闭，当前3e08；r4 C05/C12；V03/V06，具体证据见两门禁矩阵 |
+| G16 | R6/E6回放结算 | 漏维护后正式mode-only导致证据链不全 | P1 | D/root | 共decision owner补mode-only，32项及v11 26/26刷新 | 已关闭，当前3e08；r4 C17/C18/C20；V05/V10，具体证据见两门禁矩阵 |
+| G17 | R3无维护经验 | 零样本沿compatibility prior产生T32768/δ0 | P1 | retained_transfer_audit/root | 正式经验入口、缺口诊断/HB独立/native保护，146项及新独立全轮复审 | 已关闭，当前3e08；r4 C06/C13/C21；V10/V11，具体证据见两门禁矩阵 |
+| G18 | R4/R5取消费用解释 | Validation外部Stop变体中paid1143046超过被误称上界的原完成draw778332；实际累计正确但字段语义错 | P2 | root | 仅改诊断参考字段/无收据代理标签，不改计费；高/低/无收据机制及原完整CLI取消复验，全新复审 | 已关闭，当前3e08；r4 C09/C25；V10原CLI复验，具体证据见两门禁矩阵 |
+| G19 | R4实际Main阻挡/R3同源结果 | rollout用户先排队后Stop，wait仍原假想完成时刻；独立10%路径实际1秒却加权99.8秒而非0.1，错误风险拒绝 | P1 | retained_transfer_audit/root | 最早受维护阻挡的真人到来与最终维护终点结算；Stop自身零额外等待，保自然完成/费用/队列，正式risk门槛及真实路径影响核查 | 已关闭，当前3e08；r4 C07/C08/C25；V10/V12及31项独立反例，具体证据见两门禁矩阵 |
 
 
 检查范围说明：root统一检查执行于暂存31文件，日志`root-quality-check.log`；唯一剩余no-tmp指向未修改的`.autonomous/20261031-evidence-recovery/validation.md:20`，HEAD与冻结24fe50ff的blob均`35daf5563d97496728892feb281ba89f5a7eb724`。保留历史报告和冻结规则，不冒称十项整体通过；这是既有范围外失败，不是本轮新增豁免。质量检查后仅等价改测试并定向复测health。
 
 ## 取舍、快照与续接
+
+以下按原时点保留执行过程，含当时开放状态；当前状态以顶部看板、整改表及文末最终判定为准。
 24fe50ff为冻结依据（含本会话已写调查/确认）；baseline.txt此后纳入。README/AGENTS已在基线树无需空改。原Huawei目录未跟踪不碰。现有main工作树只含本会话文档修改，故原目录切开发分支，不另建worktree。hook与原件一致，冻结提交已推同名功能分支。仅标准库数值算法及本地隔离测试，无新付费模型需求。阶段报告不称上线或实测节费。gate报告待独立角色创建，不预填PASS。
 
 **root工程设计接收：** P使用多尺度真人/背景特征、可知历史片段/有证据quiet锚点、条件剩余空档与回归后工作，32条共同需求路径×最多12维护情景；风险与费用同源，15%/30秒/短离开与频度限制保留。共同比较窗口取历史支持长度、最多24h，另报6h/24h敏感性；不能只扩大窗口凑正例，须核共同终点/剩余责任。完整失败/慢样本、右删失、未知覆盖均保留，历史采样归一化有来源及消融。该数学实现为本轮授权范围内Agent工程取舍，非用户逐项亲定。
@@ -112,3 +114,11 @@ G17集成质量：root-g17-check.log，ruff/health两项通过，health相对442
 **G19实施编排：** root已完整读r3 26条矩阵及研讨，25符合/1违规准确接收。retained_transfer_audit独占adaptive_rollout及对应policy/rollout测试，按已评审方案修等待；原件/费用/seed/体验阈值不变。必要边界与正式候选反例、预测cancel路径影响审计见派遣与r3§6；root负责亲审/质量/阶段提交，必要真实重跑按影响协调D。无上线、无模型调用。
 
 **G19 root接收与候选冻结：** 亲读唯一产品diff、正式risk消费者、101项测试及g19-impact-audit完整支持集证明；另核from_events仅turn_end checkpoints、全局quiet格点、模型兼容只剔request、maintenance_spans在start裁剪后由end.duration重建，接受已列21份/43路径/2578决策的版本迁移复用（重叠记录非独立样本）。no-maint输入有cancel支持但无profile，不能混称全无cancel。真实声明Stop同刻end依730<2048上界保留，新增输入/裁剪边界不在证明内。原独立失败原件保留，修后正式candidate由99.8秒误拒改为0.1秒接受，费用/碰撞/30秒阈值不变。三文件SHA与交付一致；root-g19-check.log ruff/health通过，29文件0阻断0提示，范围外历史no-tmp不变。g19-resource.json为c301工作树含G19源码SHA：同E08无bootstrap249事件/43组件，wall单次0.192119秒、独立trace2.073341秒/Python峰1025839bytes；非服务器/RSS/统计上界，旧资源原件未覆盖。新全轮Verification通过前不接续Validation、不宣布完成；仅功能分支阶段提交，禁止上线。
+
+**r4全轮独立复审已启动：** 产品3e08ea39ccf1a1ea2814f2a3e7fb710f049c52e4与upstream一致；verification_empirical_r4为全新fork-none/gpt-6.1-sol/high，先按24fe50ff原文独立建立全轮判据再读实现，保r3原报告与反例。不只复测G19；只写verification.md及ignored verification-r4。root继续交付证据核对，产品冻结；通过后才接续Validation原场景/全部适用性，最终目标尚未完成。
+
+**r4接收／最终Validation接续：** root完整读26条冻结判据、证据矩阵、主动反证及关键研讨，接受全轮26符合/0违规/0不足，无新整改。G19原反例及30手算边界31项通过；独立核75源码/9原件/21报告支持集，原r3全文SHA843dd4fb…a4f3保留。原validation_empirical恢复全范围V01–V12：先续验计划交root过目，再原cancel-input公开CLI完整重跑与各场景依赖/版本适用性复核；只复用已证无影响路径，不将旧11通过直接改标当前通过。产品3e08冻结，root只维护动态文档及final-delivery草稿，目标active。
+
+## 最终接收与结束判定
+
+产品3e08ea39ccf1a1ea2814f2a3e7fb710f049c52e4；root完整读取当前r4 Verification六节/26条矩阵和Validation六节/V01–V12、原取消CLI比较脚本/结果与scope-final。Verification26符合/0违规/0不足，Validation12通过/0失败/0未执行/0阻塞，无新整改，G1–G19/Q1全部关闭。原cancel-input当前22.153秒完整CLI后paid1143046.3338、context275039、38HB/6Reminder/另1成功维护和总费3542399.3630保持；仅诊断名/实际计时规范后与原f7/g18全部results相等。产品操作已结束，safe_for_root_version_switch=true。原失败/负结果/条件假设及范围外历史no-tmp保留，未降低预期或门槛。最新完整修复→全轮复审→所有适用场景复验循环无新整改，达到本轮收敛条件；root判定本地重写与真实历史经验验收完成。最终交付见final-delivery.md；仅文档阶段收尾提交，不合main、不上线、不改生产，原Huawei资料保持。

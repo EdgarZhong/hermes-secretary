@@ -2,11 +2,19 @@
 
 ## 1. 结果概览
 
-验收者：独立 validation_empirical（全新上下文、无派生）；日期2026-11-06。Snapshot Index与baseline.txt均在本目录，冻结依据24fe50ffcf588e9846b1902b0ad0f6cf62520924；待测产品f7aecf8ec9b2eb71b56495603c95db32782a2cf5，禁止变更产品、提交、网络、模型、生产及UI操作。公开入口为scripts/adaptive_empirical_replay.py prepare/run和scripts/adaptive_empirical_import.py preview/apply。已读autonomous-run、real-user-acceptance及六节模板、根三文档、冻结U1–U3/R1–R10、历史继承/初始化/导入/隔离及E1–E7、07联合并发/取消/§8.15。Verification r2全轮通过，主会话已接收，进入条件成立。
+验收者：独立validation_empirical（原独立验收者接续，无派生）；本轮20261106-adaptive-empirical。冻结依据24fe50ffcf588e9846b1902b0ad0f6cf62520924，snapshot-index.md/baseline.txt与原U1–U3/R1–R10、继承及E/07合同不变。**当前产品3e08ea39ccf1a1ea2814f2a3e7fb710f049c52e4的Validation通过：V01–V12全部适用场景通过，0失败、0未执行、0阻塞。** root已亲读接收全新r4 Verification26符合/0违规/0不足后才进入续验；续验计划已在§4先落盘并经root完整过目，再运行原取消输入的公开CLI。
 
-完整计划先落盘并交回，root完整过目后授权执行。本次已完成全部V01–V12操作与必要同版本证据复核；11场景通过，V10因新发现G18诊断字段错误失败，**Validation门禁未关闭**。其余经验行为未发现新范围内反例。独立判定以人的工作连续性、真实空档的经济机会和完成后的持续可用性为主，不以自动audit.pass或既有报告结论替代。条件回放不能证明线上节费。
+当前结论来自原真实入口完整操作、逐场景版本/支持集适用性核查及原失败取消链路在当前版本的实际复验；不是把f7的11个通过直接重命名。G18原错误已实际关闭；G19的实际等待修正及对既有真实回放的无影响范围已核，原等待数值错误不被复用。六节报告及原场景预期保持，数值负结果和条件限制全部保留。最终目标交付判定由主会话负责，禁止上线继续有效。
+
+历史：f7aecf8当时确为11通过/V10因G18失败，门禁开放；完整原文逐字保存在ignored validation/validation-f7-original.md，SHA256 fe0daf294e490eb03669b4bdc2d245c53c171e98e6581a27606f854fec20e742，不能据当前通过改写历史。下文原场景详细结果明确标为f7，当前逐项结论见§3及§4续验表。
 
 ## 2. 环境与准备
+
+当前续验仍使用同一本地macOS-26.7-arm64与官方PM .venv Python3.14.7，产品HEAD固定3e08，公开入口scripts/adaptive_empirical_replay.py run，原cancel-input.json/原命令参数仅output改为validation/final/cancel-final.json。输入SHA5915218d3679bb032de7f30ff644c7fbbdb527b70b8a99d66b6d7b9fc7b436e9；实际CLI墙钟22.153秒，非单次决策性能。HERMES_HOME/runtime仍隔离validation/；新证据仅validation/final/，原f7/根g18/原输入未覆盖。原43样本隔离库以SessionDB(read_only=True)重开；全表语义与原拒绝后快照逐值相同。
+
+当前全部75份受审源与3e08提交树匹配；相对v11只policy（G17）、Replay（G18）、rollout（G19）三源差异，相对f7产品仅Replay/rollout。导入、准备、采集、DB、模型合同、原生owner依赖未变。G19的21报告/43保存路径/2578重叠决定支持集、可知时间、来源及裁剪证明逐项核SHA并独立重查候选origin；不是2578独立统计样本。相应31独立/101相关及G18的33机制证据按当前源码适用性复用，不重跑大型套件。
+
+以下保留首轮准备及其环境问题的原事实，供复现来源与历史审计：
 
 实际环境macOS-26.7-arm64（environment.json记录原始platform）、官方PM .venv Python3.14.7；保持当前产品HEAD及原9数据SHA只读。所有新证据、派生输入、临时脚本与隔离Profile/DB放ignored .hermes-dev/adaptive-empirical-20261106/validation/。HERMES_HOME/HERMES_RUNTIME_DIR显式指向此隔离目录；不启动宿主/模型/真实整理。真实CLI离线模拟符合本轮禁止上线及无需模型合同；真实网络、UI和生产效果不在范围。
 
@@ -25,13 +33,60 @@
 | G7 经济敏感性边界；R3/R5/R6 | V07 | 复用同版本现有费用/缓存/模型/慢尾矩阵 | 已证昂贵边界不重复13矩阵，负数保留 | 通过 |
 | G8 显式导入到后续可读；R8、来源/导入合同 | V08 | 原组件包→preview→apply→重读→重复 | 用户公开CLI完整主流程，原件只读 | 通过 |
 | G9 导入冲突/归属/隔离；R8、来源/隔离合同 | V09 | 已应用后同ID改内容；错误owner声明；另一ref/Profile | 幂等/原子拒绝，不能跨owner污染 | 通过 |
-| G10 无经验/失败取消恢复；R3/R8/R9、E3–E7、07取消 | V10 | 无维护经验派生包CLI；复用正式生命周期受控证据 | 禁固定prior偷渡，原生容量/HB不被抑制；真实取消无历史实例 | 失败（G18） |
+| G10 无经验/失败取消恢复；R3/R8/R9、E3–E7、07取消 | V10 | 无维护经验派生包CLI；复用正式生命周期受控证据 | 禁固定prior偷渡，原生容量/HB不被抑制；真实取消无历史实例 | 通过：当前原取消链实际复验关闭G18，原f7失败保留 |
 | G11 无未来读取/迟到信息；R5/R6、M01/M03 | V11 | 复用已证正式机制及保存决策知时审计 | 无完整真实无后读片段，不虚构历史 | 通过 |
 | G12 可重复/资源/不开启原生；R8–R10 | V12 | 重读所有产物/版本、原件SHA与DB实时表核对 | CLI结果可复核，范围外生产从未触碰 | 通过 |
 
 从“拿真实数据→准备→看每阶段策略→看跨阶段责任→改变证据可信度/失败→显式导入→再次读取”枚举完整旅程。九段逐条保留而非代表点代替；E01/E02/E04属保护等价类，E06/E08属机会类但分别验。压力仅选行为不同的缺口与失败，其他费用/缓存/模型边界引用依赖与版本匹配证据；关开/重启/并发沿已有正式时序机制补充；取消另增加声明外部Stop的实际CLI链路，不伪称真实历史或新UI验收。数据行为不确定时按冻结预期判断，不追加盈利容差。
 
 ## 4. 详细场景与执行结果
+
+### 续验计划与完成状态：3e08ea39（先于执行登记）
+
+原f7完整报告已逐字保存在ignored validation/validation-f7-original.md，SHA256 `fe0daf294e490eb03669b4bdc2d245c53c171e98e6581a27606f854fec20e742`，原“11通过/V10失败/门禁开放”不改写为当时通过。当前产品3e08ea39ccf1a1ea2814f2a3e7fb710f049c52e4；root已亲读接收全新r4 Verification26符合/0违规/0不足，进入条件成立。已恢复根AGENTS/CLAUDE、两Skill、索引/基线、冻结U/R与继承执行边界、当前plan/verification和原报告。下列为原十二场景的完整续验方法，预期与范围均不改；该计划在新CLI前登记，root完整过目接受后执行，现均已完成。
+
+| 原场景 | 当前预期/完整结果维持 | 本次方法与复用依据 | 执行状态 |
+|---|---|---|---|
+| V01 来源准备 | 9原件/43组件/8删失/原预期SHA不变，prepare不调用策略 | 重新核原件、prepared/raw/经验与原prepare命令/产物SHA；prepare/data/import依赖未变，重建结果原已逐字段等同，不重复准备 | 通过：已核、有效证据迁移 |
+| V02 密集/短返 | E01/E02/E04不抢工作，1800保护不变 | 重新读三段完整原实跑；核G19全支持集/知时/删失证明覆盖这些相同输入与全部保存决定，核依赖后迁移；不据actual Stop=0免责 | 通过：已核、有效证据迁移 |
+| V03 平台责任 | 保留E03/E05/E09原截止负数与同初态E03共同末点，不能换E01初态 | 核base与continuation E03/E07、压力产物原SHA及支持集；共同需求/初态/末点/负结果不变，G18仅取消动作诊断名不触本链 | 通过：已核、有效证据迁移 |
+| V04 主要长平台 | E06/E08基础各至少一次实际完成且有益，不过早/频 | 核原CLI完整actions/state/费用，确认当前G19支持集证明逐case覆盖；既有经验入口/价格/seed/缩减/执行器无变，有依据迁移数值 | 通过：已核、有效证据迁移 |
+| V05 连续恢复 | 自有context→回归1800保护→低存量不再维护，第二次独立边际收益 | 核journey、same-prefix仅首维护对照与mode-only/anchor机制；实际预测无有效Stop label的全程证明适用，不用独立片段冒连续 | 通过：已核、有效证据迁移 |
+| V06 缺口/失败 | 缺当前证明不提前维护；失败付费无缩减，后续可继续 | 原failure/raw输入与完整输出SHA/依赖核；G19审计明确覆盖，实际恢复不变，负差不删 | 通过：已核、有效证据迁移 |
+| V07 费用/模型压力 | 昂贵压力可拒绝、负数不掩；条件估计不当实测 | 核v11后仅policy/Replay/rollout三源差异；逐列21报告43路径2578重叠记录的版本迁移证明/原件/来源/裁剪边界，当前31独立+101机制证据替换旧等待主张 | 通过：已核、有效证据迁移 |
+| V08 导入主链 | preview无写→apply43→新进程可读→重复不倍增且实时状态不转移 | 导入CLI/import/store/samples/原生DB等依赖SHA全相同；复核原command/receipt/全表快照/新进程证据，允许从合法隔离库重读；不重新apply无变化证据 | 通过：已核、有效证据迁移 |
+| V09 冲突/隔离 | 内容冲突/无owner证明/跨Profile明确原子拒绝，其它ref/Profile无污染 | 与V08同未变依赖，重核原拒绝stderr、语义快照/owner绑定及隔离库当前只读结果，数值不受G19消费者影响 | 通过：已核、有效证据迁移 |
+| V10 原失败与取消恢复 | 新诊断名诚实；paid1143046.3338可大于reference778332.0856，context275039不缩，后续38HB/6Reminder/另1成功维护，负数保留 | **实际公开CLI**用原cancel-input.json/原cancel.command.json参数仅换output=cancel-final.json；核全部results除实测elapsed/single_decision_seconds与G18明确名映射后等同原f7/根g18结果。核无receipt标签现名与高低无receipt现有效33项，G19实际等待/正式候选反例31+101证据；无经验44决定另核“有cancel支持但无profile/started”不能混称无Stop | 通过：原输入实际CLI复验 |
+| V11 无后读/知时 | 非空维护经验却未来需求0时不为整理而整理；知时不泄漏 | 原M01 formal decide返回0费用/无维护的夹具和除policy/rollout外依赖未变；该路径无started所以G19 wait=0不变，核原1项证据与当前支持；613记录及新cancel逐时知时复核 | 通过：已核、有效证据迁移 |
+| V12 可复核与范围 | 原件/经验/隔离及版本未变，无生产/网络/UI/模型/提交；缺陷无隐去 | 对所有引用SHA/当前树/git及最终产物作范围审计，单次资源与长矩阵分开；修后各适用场景均符合才PASS | 通过：已核、有效证据迁移 |
+
+执行边界继续仅本报告与ignored validation/；不改原输入/产品/测试/其它报告/真实Profile；无网络/SSH/生产/模型/UI/提交/派生。只原取消完整run一次，必要受影响才定向补跑，不重跑13矩阵或31/101已有效机制。G19证明只限已列固定输入、cohort、起点、原生排除与730<2048边界；若SHA或边界不成立，保留为证据缺口并向root交回。原f7失败、g18产物和r3等待反例均不覆盖。
+
+
+### 当前十二场景逐项续验结果（3e08）
+
+证据前缀为ignored .hermes-dev/adaptive-empirical-20261106/validation/。共同版本/来源/支持集审计为final/current-applicability-audit.json，已核75源、9原件、经验/包SHA、21报告/43路径2578重叠记录及原始失败副本SHA。各行均回到原用户目标和完整结果判断；“迁移”明确指原实际操作证据在当前未受影响路径仍有效，不冒本次重新执行。
+
+| 场景 | 当前实际结果与用户目标判断 | 当前证据/适用性与结论 |
+|---|---|---|
+| V01 | 9原件/43组件/8删失/预期SHA未变，prepared仍与原包逐字段相同；准备入口/数据投影未变 | final/current-applicability-audit.json及原prepare-raw.command/compare；通过（迁移） |
+| V02 | E01/E02/E04全部0维护/0碰撞，持续增长与4分钟短返不抢工作；1800秒保护仍保 | 原base完整实跑和支持集各case覆盖，G19无有效Stop label进入等待变化；通过（迁移） |
+| V03 | E03原截止亏454484.72、E05亏23830.64、E09亏6775.92完整保留；同173613初态E03共同末点条件少2277454.61；非每平台必压或必盈利 | base与continuation-e03/e07原SHA核，未用E01的67817初态替代；通过（迁移，边界显式） |
+| V04 | E06/E08基础均1次实际完成、0碰撞，原截止分别条件少597664.01/2628378.29，未全程拖延；样本/价格/seed/门槛不变 | 原完整actions/states及每路径支持集成立，当前有经验scenarios/执行器未变；通过（迁移） |
+| V05 | 连续E01自67817起2次完成，末context123878.5；回归E07 phase94778→102767.5且0维护；同前缀第二次边际少194336.60，有独立收益 | journey/repeat及mode-only/anchor证据未受影响；E07独立同308921初态共同末点仍亏121905.21；通过（迁移） |
+| V06 | rawcoverage E08无维护，不能拿后见覆盖当当前无人；机械失败首费603446.87、context仍275039，之后38HB/6Reminder及合法新维护可恢复，费用亏1106461.40仍在 | failure/raw固定输入及支持集核，费用/执行/失败不在G19差异内；通过（迁移） |
+| V07 | 当前模型E06亏46227.40、当前模型整账单E06无维护且亏105734.98、E08压力仍有条件正结果，全部按原来源披露，不掩负数 | 21报告SHA与G17有经验分支/G18输出名/G19支持集证明闭合；31+101修正等待证据替代旧错误主张；通过（有边界迁移） |
+| V08 | 同43样本原preview→apply→重启读取→重复的收据链有效；当前以read_only重开仍43，实时/原生/计划/HB等全表与原快照完全相等 | final/import-final-reopen.json＋原import-summary/commands，全依赖未变；通过（原实操迁移＋当前重读） |
+| V09 | 原内容冲突/无owner证明/foreign Profile/不存在目标拒绝与全表不变仍成立；当前other ref与另一物理Profile无导入 | 同未变导入依赖、拒绝stderr与当前只读重开；通过（迁移＋重读） |
+| V10 | **原cancel输入当前完整CLI实际通过**：paid1143046.3337856613不截低，sampled_completion_cost_reference778332.0856089034可更低，取消context275039；后续38HB/6Reminder/另1成功，2次mode-only、不复活旧Idle；总费3542399.363008806、亏1646060.8680088043均保持 | final/cancel-final.command.json/json/md与cancel-comparison.json；完整results仅去实测时钟/映射G18名后与原f7及根g18逐字段相等；通过，G18关闭 |
+| V11 | 非空经验无后读机制仍business/无维护/费用0；原613记录和新46条decision知时无越界。无真实完整无后读片段，明确机制补充 | 该M01完整receipt无cancel需求且无started，G19等待分支不变；原1项有效证据/current依赖核，新cancel逐条核；通过（迁移＋当前知时核） |
+| V12 | 所有适用场景均有来源/当前依赖依据，原件/预期/失败未改；新CLI真实完成且当前树固定；无生产、模型、UI、网络、SSH或提交 | final/scope-final.json、current-applicability-audit及各命令；通过 |
+
+G19专项用户效果与影响判定：原声明“10% user2排队、Stop3释放，其余90%晚归”的真实维护等待应为0.1秒；r4当前正式evaluate观测0.1、collision0.1、cost199855、baseline1009750，candidate accepted且无拒因。原99.8错误不得沿用，30秒门槛/费用没有调低；31独立边界与101相关结果的当前源SHA已核，覆盖Stop-only、多排队、自然完成、后续长Main/HB等。该机制补充是用户输入→真实释放→后续可用性的不变量，不能用本次“Stop-only无排队”的实际CLI单独代替它。
+
+对原真实回放，独立核唯一真实cancel后的15.56335秒原生维护；能包含该cancel却避开删失的origin范围1793759422.4933662–1793759438.0567162内，原verified turn_end与全局1800格点均为0。仅两个可能origin的正式outcome均被维护删失。已知cancel的被审run都在相应维护end可知之后起步，不能生成更早origin；bootstrap/cohort无cancel token；严格较晚end与duration恢复防止保cancel丢exclusion。声明Stop/end同刻不靠排序臆断，实际两旧路径730<2048上界及新路径同动作/结果等值保证保留。无经验输入确可含cancel label，但44次无Profile/无started，改变等待分支不可能进入。故当前支持集内其余真实结果可迁移；新增输入/cohort/跨越该时间窗或触及裁剪边界不受该证明覆盖。
+
+### f7首轮详细场景结果（历史保留，非当前门禁状态）
 
 以下预期均在本次候选CLI运行前登记。所有场景产品版本固定f7aecf8；起点与历史由获授权包保留。以下保留执行前计划并附实际结果。
 
@@ -104,27 +159,36 @@
 
 ## 5. 问题、修复与复验
 
+**当前关闭结果：** G18已在3e08由本验收使用原输入实际完整CLI关闭，证据final/cancel-comparison.json；G19在当前等待/正式候选/后续队列结果及支持集影响核验下关闭，证据r4独立31项、当前101项与final/current-applicability-audit.json。没有新增缺陷或证据缺口。以下表中“尚无/待复验/门禁开放”为f7首次发现时的原状态，保原文并由上述当前证据追加关闭，不改写历史。
+
+| 当前问题编号 | 复验完整序列 | 预期/实际与证据 | 影响和状态 | 修复版本 | 原场景及受影响路径复验 |
+|---|---|---|---|---|---|
+| G18 / VAL-01 | 原cancel-input＋原命令仅换输出→取消→结算→后续38HB/6Reminder/成功维护 | 新参考名/未知代理名正确，paid>reference仍保原费用；完整results与旧规范后等值，final/cancel-comparison.json | 已关闭，V10通过；原失败保留 | c301诊断修复，当前3e08有效 | 当前真实CLI22秒级完整链，来源及无receipt33项机制适用性核 |
+| G19 / 原r3 V3-01 | user2排队→Stop3释放→按实际维护终点结算→正式候选判定；真实21报告影响核 | expected_wait99.8→0.1、cost/collision等值、candidate接受，31独立/101当前证据；支持集与SHA核见final/current-applicability-audit.json | 已关闭，未降低30秒门槛，无新增整改 | 3e08 | 原取消CLI当前完整复验；其余场景逐路径影响证明有效迁移，无无理由大套复跑 |
+
+首轮f7发现与准备问题原文：
+
 | 问题编号 | 场景及完整触发序列 | 预期/实际与证据 | 影响和状态 | 修复版本 | 原场景及受影响路径复验 |
 |---|---|---|---|---|---|
 | G18 / VAL-01 | f7原prepared→声明E06首维护+10秒真实外部Stop动作→公开CLI run→actual_user_cancel输出→结束后继续HB/Reminder/新维护 | 应准确表示历史取消付费与成功sample参考，实际paid1143046.3338 > full_cost_upper_bound778332.0856；cancel.json/command.json与源码:390 | R4/R5诊断解释错误，root已确认范围内；费用/状态正确也不能豁免，V10失败，门禁开放 | 尚无，root拟改名参考字段及无receipt源名，保持算法/paid/采样 | 待修补后原cancel输入CLI复验，核paid/context/动作不变及新字段语义，保留本原反例；相应Verification由root编排 |
 | PREP-01（非产品） | normalized组件包送prepare→KeyError censored | 实际应raw组件投影，root确认交接说明失配；prepare.stderr保留；raw SHA/43+8已核 | 输入准备纠正后关闭，无产品/预期修改 | 不适用 | prepare-raw成功，prepared与原包完全相同 |
 | HARNESS-01（非产品） | 隔离DB辅助全表快照/重读及新增机制测试定位 | WITHOUT ROWID/bytes/str Path/parents索引错误发生在验收脚本；新冷库首次FTS版本初始化独立保留 | 辅助脚本纠正并从新库完整重做；不冒产品失败，也不隐去初始日志 | 不适用 | 最终import-summary全真；no-future-tests1项通过，初错日志保留 |
 
-本验收未自行修改产品。G18方案仅为root待实施提案，不能作为关闭证据；本次原失败和全部数据保留。其余范围内未发现新缺陷；费用敏感性与原截止亏损不是改预期后的PASS，见逐场景说明。
+首轮当时：本验收未自行修改产品，G18方案尚为root提案，不能作当时关闭证据；当前关闭由上表新增实际复验支持。原失败和全部数据保留。其余范围内未发现新缺陷；费用敏感性与原截止亏损不是改预期后的PASS，见逐场景说明。
 
 ## 6. 验收结论与推荐复核
 
-**本次Validation未通过，门禁未关闭。** G1来源准备、G2连续性保护、G3分段机会/责任、G4主要长平台有益维护、G5连续恢复、G6缺口/失败压力、G7敏感性、G8/G9导入/隔离、G11无后读/知时、G12范围保护均通过；G10的无经验与取消释放行为已验证，但公开输出存在G18诊断错误，V10失败。无适用场景未执行或被默删；没有把旧报告或自动audit作为本次实际CLI替代。
+**当前3e08的Validation门禁通过：V01–V12全部通过，0失败/0未执行/0阻塞。** 原G18失败已用原输入实际CLI复验关闭；G19按实际释放修正等待、费用与风险同源，当前机制及真实数据支持集影响均有证据。逐目标结论见§3/§4，完整原f7当时11通过/V10失败报告及其SHA保留；旧PASS撤回/r3等待反例也保持原历史。
 
-主要经验结论：E01/E02/E04不抢工作；E06/E08基础分别一次完成、条件少597664/2628378输入等价；新epoch连续旅程两次完成且回归低context不再整理。E03/E05/E07/E09短截止亏损454485/23831/849495/6776保留；同初态E03共同终点才少2277455，E07共同终点仍亏121905。机械失败和声明Stop都保留高费用与后续恢复，不声称全部情景盈利。
+主要经验结论仍为：密集/短返不抢整理，E06/E08基础实际有益维护，连续旅程自有context回归且后续低存量不重复整理；无后读及缺证不为整理而整理，失败取消付费并恢复后续使用。所有有限负结果保留：E03/E05/E07/E09原截止约亏454485/23831/849495/6776；同初态E03共同终点才条件少2277455，E07共同终点仍亏121905；机械失败及声明Stop完整费用负差没有抹平。这不是“全部经济窗口盈利”或生产实测节费结论。
 
-推荐root或用户复核的完整入口与产物：
+推荐主要复核路径：
 
-1. 从9原件以prepare-raw.command.json重建prepared（原件SHA及预期不变），运行base.command.json，看base.md/E06/E08完整维护动作与上述负数。
-2. 按journey.command.json看67817起点直到共同终点的自有context；另查同173613起点continuation-e03-v11.json及repeat-maintenance-v11.json，不混用不同初态或把终值压力作实测收益。
-3. 读取validation/import-summary.json及对应command/stdout，复核43样本preview→apply→新进程重读→重复→冲突/owner拒绝，仅使用自建profile-import-v4，不把测试Profile作为生产导入指令。
-4. G18修复后用**原cancel-input.json**重跑cancel.command.json相同链路，确认费用仍1143046.3338、取消context仍275039、后续可用，且成功sample参考不再称费用上界；原f7产物不得覆盖。
+1. 本次当前实际完整取消链：validation/final/cancel-final.command.json→cancel-final.json/md→cancel-comparison.json。应见paid1143046.3338、sampled_completion_cost_reference778332.0856、取消context275039、38HB/6Reminder/另1成功维护、总费3542399.3630及负差1646060.8680；不是费用上界，不能为显示上界截低paid。
+2. 真实历史全段经验：原validation/base.json/md、journey.json/md及同173613初态continuation-e03-v11.json、repeat-maintenance-v11.json。当前版本迁移范围与逐SHA依据见validation/final/current-applicability-audit.json及G19原impact-evidence；不混初态、末点和末态压力收益。
+3. 显式导入完整链：原import-summary/commands/receipts和当前final/import-final-reopen.json，只读自建profile-import-v4及profile-b；应有43样本、全表不变与其它owner为空。不得把隔离Profile命令作为生产导入授权。
+4. 风险等待的声明机制：verification-r4/cancel-wait-counterexample.json及31边界/101相关证据。应见0.1秒而非99.8、collision=.1、费用不变、正式candidate接受；这些是机制反证，非真实历史取消统计。
 
-证据均在ignored .hermes-dev/adaptive-empirical-20261106/validation/；复用来源在其independent-audit.json.reuse逐SHA列明。本次没有重跑整13矩阵或大型套件，官方runner只新增1项非空经验无后读机制验证；旧32/146项及生命周期有效证据按当前依赖/正式路径复用。
+本次仅新运行原取消完整CLI，另做只读重开和依赖/支持集分析；原实跑证据在已证条件内迁移，没有重跑13矩阵或重复大型套件，没有把旧11通过直接换版本名。源3e08保持冻结直到本报告交回，最终scope-final.json将标product_operations_complete与safe_for_root_version_switch。主会话接收并亲审后决定目标交付，不由本报告授权上线。
 
-边界：历史coverage/Reminder排期重建、同源需求不受策略影响、费用固定倍率、跨模型组件、prefix缩放和缩减包络均为条件估计；完整同parent联合支持不足，不能声称线上实测收益、生产性能、Notebook内容质量或真实模型/界面取消效果。当前未上线、未合main、未改生产，原“禁止上线”持续有效。后续整改/复审/复验及最终目标结束由主会话负责。
+限制持续有效：跨模型组件、prefix费用缩放、绝对/比例缩减包络、coverage/Reminder重建、固定倍率与同源需求不随策略改变均是条件估计；完整同parent联合支持0及GPT Compact账单缺口仍在，非充分生产实测、Notebook内容质量、真实模型/UI取消或目标服务器性能验证。Agent自主工程收敛仍待用户追认；真实原件仅ignored本地，未合main/上线/改生产，禁止上线未撤销。冻结十检查仍保原no-tmp范围外历史失败，不能声称十项整体全绿。
