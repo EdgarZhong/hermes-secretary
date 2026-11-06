@@ -71,3 +71,7 @@
 **G15根因与批准修复：** root进一步核E09首decision：witness==now/tail0/no tailgap/qualified128窗口，但current.ready仅因前1h不连续false。原80秒当前资格被G11不当绑定到local预测1h资格，root接收判断有误。已批准最小拆分current-ready与live-prediction-ready；当前须fresh+scope交集真实span+无tailgap，local预测仍需连续1h，qualified bootstrap不冒live。安静年龄使用known user/work-end及witness当前连续span已证silence下界的更保守者，未知尾部不延长，近期gap不能偷计安静；当前特征未覆盖小时显式unknown且不污染过去origin。白名单features/forecast/empirical_features/policy及已有empirical policy测试，配置/门槛/价格不改。真实E09首快照、stale/scope/tailgap/new activity/历史特征不泄漏反证后整包交root，D随后定向真实更新。
 
 **G15实现接收：** root亲审四产品文件/同源features→predict→资格→quiet链路及真实E09首快照，已证scope当前span下界29.88466秒→delta1770.115337，prior=true/live=false，返回checked整数T147610。116项通过，root-current-readiness-check.log的ruff/health 0阻断0提示。D获准用v10更新受影响整段矩阵（含post-maintenance前1h unknown影响），不能据首快照声称E09盈利。
+
+**G16回放E1/E6维护后mode刷新遗漏（开放，D/root）：** root准备独立审查时亲读冻结E1/E6与adaptive_runtime._maintenance finished分支，发现正式结算后snapshot→decide→adopt_mode→state_refresh，不复活Idle；Replay._finish_maintenance只_schedule_hb，少了mode-only刷新，影响用户结果证据。已通知D暂停未启动v10矩阵，保存原件；扩其白名单仅replay及已有测试，按正式顺序复用决策记录/只采纳mode/写候选epoch的framework状态，保anchor、排队用户优先、不伪造Main结束/coverage/组件usage、不生成新Idle。成功/失败/Stop定向反证后root亲审，再冻新版回放。正式算法产品未因此改变，旧v9/v10不作为最终正式效果全证。
+
+**G16接收与下一版：** root亲审共同_decision owner/维护终态→mode-only→framework刷新→原anchor重算，与正式runtime一致；32项与root-mode-refresh-check.log的ruff/health通过0/0。D获准冻v11更新受影响矩阵，审计仅main_end_plan采纳T/delta，mode_only不复活Idle。v10完成13任务但缺此行为，保留为缺口版诊断而非最终证据。

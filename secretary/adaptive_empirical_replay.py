@@ -135,18 +135,24 @@ class Replay:
                     idle_enabled=True, last_maintenance_at=max((a["at"] for a in self.actions if a["kind"] == "maintenance_end"), default=None))
         return snap
 
-    def _plan(self):
+    def _decision(self, *, mode_only=False):
         snapshot, history = self._snapshot(), self._known_history()
         started = time.perf_counter()
         decision = self.policy.decide(snapshot, history, self.cfg)
         elapsed = time.perf_counter() - started
         self.seconds.append(elapsed)
         self.decisions.append(dict(at=self.now, context=self.context, decision=decision, elapsed_seconds=elapsed,
+                                   adoption="mode_only" if mode_only else "main_end_plan",
                                    visible_event_max=max((max(r["at"], r.get("available_at", r["at"])) for r in history), default=None)))
+        if not decision.get("fallback"):
+            self.mode = decision["mode"]
+        return snapshot, history, decision
+
+    def _plan(self):
+        snapshot, history, decision = self._decision()
         self.generation += 1
         self.pending = None
         if not decision.get("fallback"):
-            self.mode = decision["mode"]
             if decision.get("delay_seconds") is not None and decision.get("threshold_tokens") is not None:
                 cfg = self.policy._settings(self.cfg)
                 features = self.policy.build_features(snapshot, history, cfg)
@@ -341,9 +347,15 @@ class Replay:
                            context_before=active["before"], context_after=self.context,
                            duration_seconds=active["duration"], duration_scope="joint_main_block", usage_complete=False))
         self.running = None
+        # Match runtime._maintenance: settle first, refresh only the HB mode,
+        # then publish framework state. A consumed Idle never becomes a new plan.
+        self._decision(mode_only=True)
+        self._observe(dict(event_id=active["id"] + ":state_refresh", kind="state_refresh", source="framework",
+                           verified=True, at=self.now, context_tokens=self.context, context_epoch=self.epoch,
+                           model_key=self.snapshot_base.get("model_key")))
         self.states.append(dict(at=self.now, context=self.context, mode=self.mode, source="maintenance",
                                 cumulative_cost=self.cost))
-        # E1-E7: do not resurrect an already consumed Idle period on completion.
+        # Retain the original anchor; queued user/Reminder Main remains ahead of HB.
         self._schedule_hb()
 
     def _record_collision(self):

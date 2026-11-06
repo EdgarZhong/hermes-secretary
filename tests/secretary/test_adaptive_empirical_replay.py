@@ -326,3 +326,132 @@ def test_real_cli_loads_the_selected_source_root_before_policy_dependencies(tmp_
     assert result["source_root"] == str(frozen.resolve())
     assert "secretary/adaptive_policy.py" in result["source_sha256"]
     assert result["results"][0]["candidate"]["counts"]["maintenance"] == 0
+
+
+class RefreshingMaintenance(ControlledMaintenance):
+    def __init__(self, *, after_mode="hot", initial_mode="business", duration=10, outcome="completed", propose_idle=True, fallback=False):
+        self.after_mode, self.duration, self.outcome = after_mode, duration, outcome
+        self.initial_mode = initial_mode
+        self.propose_idle, self.fallback, self.calls = propose_idle, fallback, []
+
+    def decide(self, snapshot, history, config):
+        self.calls.append((deepcopy(snapshot), deepcopy(history)))
+        if not any(r["kind"] == "maintenance_end" for r in history):
+            return dict(super().decide(snapshot, history, config), mode=self.initial_mode)
+        return dict(mode=self.after_mode, threshold_tokens=1 if self.propose_idle else None,
+                    delay_seconds=0 if self.propose_idle else None, fallback=self.fallback, diagnostics={})
+
+    def _maintenance(self, features, config):
+        return Profile(duration=self.duration, diagnostics={"scenario": {"outcome": self.outcome}})
+
+
+def test_settlement_refresh_calls_formal_decide_after_new_context_without_fake_main_or_coverage():
+    from secretary import adaptive_policy
+
+    data = package()
+    data["events"].append(dict(event_id="future-coverage", kind="coverage", source="user", verified=True,
+                               at=1000, start_at=0, end_at=1000))
+    engine = Replay(data, case(20), ControlledMaintenance(), variant="raw_coverage_only")
+    engine._plan()
+    engine._start_maintenance(engine.generation)
+    calls = []
+
+    class ObservedFormal:
+        def decide(self, snapshot, history, config):
+            calls.append((deepcopy(snapshot), deepcopy(history)))
+            return adaptive_policy.decide(snapshot, history, config)
+
+    engine.policy = ObservedFormal()
+    engine.now = engine.busy_until
+    engine._finish_maintenance(0)
+    assert len(calls) == 1
+    snapshot, history = calls[0]
+    assert snapshot["context_tokens"] == 1000 and not snapshot["maintenance_running"]
+    assert snapshot["context_epoch"] == "replay-maintenance:1"
+    assert any(r["kind"] == "maintenance_end" and r["outcome"] == "completed" for r in history)
+    assert [r["event_id"] for r in history if r["kind"] == "turn_end"] == ["turn:old"]
+    assert not any(r["kind"] in ("coverage", "state_refresh") for r in history)
+    assert engine.decisions[-1]["adoption"] == "mode_only"
+    refresh = engine.history[-1]
+    assert refresh["kind"] == "state_refresh" and refresh["source"] == "framework"
+    assert refresh["context_tokens"] == 1000 and refresh["context_epoch"] == "replay-maintenance:1"
+    assert engine.pending is None
+
+
+@pytest.mark.parametrize("outcome,stop,expected_context", [
+    ("completed", False, 1000), ("failed", False, 10000), ("completed", True, 10000)])
+def test_success_failure_and_real_stop_refresh_mode_without_resurrecting_idle(outcome, stop, expected_context):
+    data = package()
+    if stop:
+        data["events"].append(dict(event_id="stop-refresh", kind="user_activity", source="user", verified=True,
+                                   at=5, activity="cancel"))
+    policy = RefreshingMaintenance(outcome=outcome)
+    engine = Replay(data, case(20), policy)
+    anchor = engine.anchor
+    result = engine.run()
+    assert len(policy.calls) == 2
+    assert policy.calls[-1][0]["context_tokens"] == expected_context
+    assert policy.calls[-1][0]["maintenance_running"] is False
+    assert engine.mode == "hot" and engine.anchor == anchor
+    assert engine.pending is None and engine.generation == 1 + int(stop)
+    assert result["counts"]["maintenance"] == 1 and result["counts"]["heartbeat"] == 0
+    assert result["input_equivalent_cost"] == 100
+    assert result["final_context"] == expected_context
+    assert [r["adoption"] for r in result["decisions"]] == ["main_end_plan", "mode_only"]
+    assert result["states"][-1]["mode"] == "hot"
+    assert sum(r["kind"] == "turn_end" for r in engine.history) == 1
+    assert engine.history[-1]["kind"] == "state_refresh"
+
+
+def test_mode_only_fallback_keeps_current_mode_anchor_and_consumed_idle():
+    engine = Replay(package(), case(20), RefreshingMaintenance(fallback=True))
+    anchor = engine.anchor
+    result = engine.run()
+    assert engine.mode == "business" and engine.anchor == anchor
+    assert engine.pending is None and result["counts"]["maintenance"] == 1
+    assert result["decisions"][-1]["decision"]["fallback"]
+
+
+@pytest.mark.parametrize("duration,expected_hb", [(100, 302), (400, 402)])
+def test_refresh_recomputes_due_from_original_anchor_without_catchup(duration, expected_hb):
+    policy = RefreshingMaintenance(after_mode="business", initial_mode="hot", duration=duration, propose_idle=False)
+    engine = Replay(package(), case(expected_hb+1), policy)
+    result = engine.run()
+    hb = [a for a in result["actions"] if a["kind"] == "main_start" and a["source"] == "heartbeat"]
+    assert len(hb) == 1 and hb[0]["at"] == expected_hb
+    assert engine.anchor == expected_hb
+    assert result["counts"]["maintenance"] == 1
+    assert engine.decisions[1]["adoption"] == "mode_only"
+
+
+def test_queued_user_and_reminder_keep_priority_over_newly_due_refreshed_heartbeat():
+    data = package()
+    data["events"].append(dict(event_id="queued-user", kind="user_activity", source="user", verified=True, at=4))
+    for source in ("user", "reminder"):
+        data["jobs"].append(dict(id="queued-"+source, source=source, start=4, end=6, duration=2, calls=1,
+                                 growth_tokens=0, first_suffix_tokens=10, output_tokens=1,
+                                 context_tokens=50000, epoch="old", first_input=50000))
+    engine = Replay(data, case(107), RefreshingMaintenance(duration=100, propose_idle=False))
+    result = engine.run()
+    main = [a for a in result["actions"] if a["kind"] == "main_start"]
+    assert [(a["source"], a["at"]) for a in main] == [("user", 102), ("reminder", 104), ("heartbeat", 106)]
+    assert engine.anchor == 106 and result["counts"]["maintenance"] == 1
+    refresh = next(r for r in result["decisions"] if r["adoption"] == "mode_only")
+    assert refresh["at"] == 102 and refresh["context"] == 1000
+
+
+def test_real_stop_releases_queued_user_before_a_preserved_periodic_due():
+    data = package()
+    data["config"]["hot_interval_seconds"] = 3
+    data["events"].extend([
+        dict(event_id="queued-stop", kind="user_activity", source="user", verified=True, at=4),
+        dict(event_id="stop-refresh", kind="user_activity", source="user", verified=True, at=5, activity="cancel")])
+    data["jobs"].append(dict(id="queued-stop", source="user", start=4, end=6, duration=2, calls=1,
+                             growth_tokens=0, first_suffix_tokens=10, output_tokens=1,
+                             context_tokens=50000, epoch="old", first_input=50000))
+    engine = Replay(data, case(8), RefreshingMaintenance(propose_idle=False))
+    result = engine.run()
+    main = [a for a in result["actions"] if a["kind"] == "main_start"]
+    assert [(a["source"], a["at"]) for a in main] == [("user", 5), ("heartbeat", 7)]
+    assert result["counts"]["failed"] == 1 and result["counts"]["maintenance"] == 1
+    assert result["total_wait_seconds"] == 1
