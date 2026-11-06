@@ -17,7 +17,7 @@
 | D | CLI/数据投影及G16结算刷新已接收 | CLI逐时正式decide，自有HB/context/cache | 当前32项；v11九段/连续/边际/来源费用压力13矩阵 | root及初审独立逐段接收，保负结果 | adaptive_audit已交回，无新写入任务 |
 | P | 经验算法及G11–G17已由root接收 | 正式decide/同源evaluate | G17当前146项含独立反例通过 | v11有经验路径已接收；缺样本整改经全新Verification关闭 | retained_transfer_audit已交回；f7aecf8产品冻结，Verification通过 |
 | W | 观测/导入与轮转已接收 | Compact/Noting→snapshot→学习 | 正式DB/Loop、轮转干扰/失败/读取与关闭证据 | 初审相关条款符合 | 已交回；不重复无关测试 |
-| I | 当前产品f7aecf8 | P/W/D已集成 | 复审26符合/0违规/0证据不足，G17关闭 | 经验判断已接收，Validation计划编制中 | root亲审Verification已通过，统筹Validation，不上线 |
+| I | 当前产品c3017ac | P/W/D已集成 | r3全轮25符合/1违规；G17/G18关闭，G19修复中 | Validation首轮11通过/V10因G18失败，待复验 | root统筹G19修复→全新复审→Validation续验，不上线 |
 
 共享接口初稿：同Secretary事件表kind=maintenance_sample，component=compaction/noting，at/available_at、model_identity/model_contract、operation_id、outcome、context_before/after、duration_seconds、block_seconds、usage四token桶、source/proof、verified。缺测保持None；费用由当前倍率从raw usage计价。Compaction与Noting真实有关联才称同操作完整账单；历史分项分布组合标条件模拟。最终字段由P/W共同明确记录，不变用户语义；D使用同schema导出，W提供显式本地可测导入路径。P不增独立调度器/路由，D不复制策略。
 
@@ -48,7 +48,8 @@
 | G15 | R2/R3已qualified历史准入 | 完整1h要求误扩大为当前资格，漏高存量机会 | P1 | retained_transfer_audit | current/live拆分、原unknown轴、gap后保护，116项及v11反例 | Verification复审已核，待Validation |
 | G16 | R6/E6回放结算 | 漏维护后正式mode-only导致证据链不全 | P1 | D/root | 共decision owner补mode-only，32项及v11 26/26刷新 | Verification复审已核，待Validation |
 | G17 | R3无维护经验 | 零样本沿compatibility prior产生T32768/δ0 | P1 | retained_transfer_audit/root | 正式经验入口、缺口诊断/HB独立/native保护，146项及新独立全轮复审 | f7aecf8 Verification已关闭，Validation继续覆盖用户链路 |
-| G18 | R4/R5取消费用解释 | Validation外部Stop变体中paid1143046超过被误称上界的原完成draw778332；实际累计正确但字段语义错 | P2 | root | 仅改诊断参考字段/无收据代理标签，不改计费；高/低/无收据机制及原完整CLI取消复验，全新复审 | 开放，当前f7冻结，待原审查者评审root最小提案 |
+| G18 | R4/R5取消费用解释 | Validation外部Stop变体中paid1143046超过被误称上界的原完成draw778332；实际累计正确但字段语义错 | P2 | root | 仅改诊断参考字段/无收据代理标签，不改计费；高/低/无收据机制及原完整CLI取消复验，全新复审 | c3017ac在r3独立核实关闭，保原失败 |
+| G19 | R4实际Main阻挡/R3同源结果 | rollout用户先排队后Stop，wait仍原假想完成时刻；独立10%路径实际1秒却加权99.8秒而非0.1，错误风险拒绝 | P1 | retained_transfer_audit/root | 最早受维护阻挡的真人到来与最终维护终点结算；Stop自身零额外等待，保自然完成/费用/队列，正式risk门槛及真实路径影响核查 | 实现/root亲审接收，101项及增量质量通过；待新独立全轮复审 |
 
 
 检查范围说明：root统一检查执行于暂存31文件，日志`root-quality-check.log`；唯一剩余no-tmp指向未修改的`.autonomous/20261031-evidence-recovery/validation.md:20`，HEAD与冻结24fe50ff的blob均`35daf5563d97496728892feb281ba89f5a7eb724`。保留历史报告和冻结规则，不冒称十项整体通过；这是既有范围外失败，不是本轮新增豁免。质量检查后仅等价改测试并定向复测health。
@@ -103,3 +104,11 @@ G17集成质量：root-g17-check.log，ruff/health两项通过，health相对442
 **Validation新发现G18：** 完整声明Stop链路实际取消/保context/后续HB与Reminder可恢复，但actual_user_cancel.full_cost_upper_bound误把原完成draw叫上界；独立取消收据可更高。root认定范围内解释缺陷，费用算法无须下调。拟仅更名sampled_completion_cost_reference及无receipt source为unknown_cancellation_cost_full_sampled_cost_proxy，原paid/累计/采样/状态不改，原完整CLI重验。当前Validation继续其余场景，产品f7保持冻结；verification_empirical_r2依据原判据评审并记录，之后root微小修补和全新全轮复审，不能交付完成。
 
 **G18 root微小修补完成：** Validation完整交回11通过/V10失败且产品操作停止后，按已评审方案只改Replay两处诊断名称；费用/状态/选样不改，rg核无产品消费者依赖旧字段。原paidreceipt机制扩30/150对100并补无receipt代理，整回放文件33项0.6秒通过。同一validation/cancel-input完整CLI到root g18-cancel.json，固定input SHA，排除实际执行计时并映射唯一诊断键后全部results逐字段相等；paid1143046.3338/reference778332.0856/总费用3542399.3630与恢复不变，原亏损保留。g18-evidence.json留源码/输入/五份无Stop路径SHA和复用边界。root-g18-check.log ruff/health通过0阻断0提示。新全轮复审后续Validation原取消复验与全部场景适用性复核；尚未闭门禁。
+
+**当前第三次Verification：** c3017acaa4d9dfb8db127cdf67969879033ff21d已提交并auto-push；全新verification_empirical_r3先冻结原文独立全轮建判据，再查旧发现/实际实现与证据，产品只读。G18既有失败/撤回PASS/原CLI保留，修补仅两处诊断。r3通过后续接Validation全部场景覆盖/原取消完整复验；此前11通过不是最终全部通过，目标active且禁止上线。
+
+**r3新发现G19：** 正式simulate_path在排队或Stop时预记原end剩余wait，Stop更新end/费用/队列却未重结算wait；verification-r3/cancel-wait-counterexample.json和官方runner失败保留。root提案常数空间保存最早被维护挡住的普通user到来，最终按真实完成或Stop终点计算路径最大维护等待；Stop仍算回归碰撞但自身不虚构剩余等待，不混后续Main自身busy。费用/样本/执行约束不变。须原反例、Stop-only/多排队/自然完成/后续使用及正式候选验证；真实回放影响检查采样预测中的cancel，不能仅凭actual_user_cancel为0免责。产品c301冻结待全轮r3整包及方案评审，不交付。
+
+**G19实施编排：** root已完整读r3 26条矩阵及研讨，25符合/1违规准确接收。retained_transfer_audit独占adaptive_rollout及对应policy/rollout测试，按已评审方案修等待；原件/费用/seed/体验阈值不变。必要边界与正式候选反例、预测cancel路径影响审计见派遣与r3§6；root负责亲审/质量/阶段提交，必要真实重跑按影响协调D。无上线、无模型调用。
+
+**G19 root接收与候选冻结：** 亲读唯一产品diff、正式risk消费者、101项测试及g19-impact-audit完整支持集证明；另核from_events仅turn_end checkpoints、全局quiet格点、模型兼容只剔request、maintenance_spans在start裁剪后由end.duration重建，接受已列21份/43路径/2578决策的版本迁移复用（重叠记录非独立样本）。no-maint输入有cancel支持但无profile，不能混称全无cancel。真实声明Stop同刻end依730<2048上界保留，新增输入/裁剪边界不在证明内。原独立失败原件保留，修后正式candidate由99.8秒误拒改为0.1秒接受，费用/碰撞/30秒阈值不变。三文件SHA与交付一致；root-g19-check.log ruff/health通过，29文件0阻断0提示，范围外历史no-tmp不变。g19-resource.json为c301工作树含G19源码SHA：同E08无bootstrap249事件/43组件，wall单次0.192119秒、独立trace2.073341秒/Python峰1025839bytes；非服务器/RSS/统计上界，旧资源原件未覆盖。新全轮Verification通过前不接续Validation、不宣布完成；仅功能分支阶段提交，禁止上线。

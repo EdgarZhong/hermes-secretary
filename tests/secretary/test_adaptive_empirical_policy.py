@@ -620,3 +620,28 @@ def test_only_winner_is_probed_and_full_probe_keeps_terminal_stress_gate(monkeyp
     result = policy._threshold_probe(667, state, features, cfg, curve, candidate)
     assert not result['feasible']
     assert 'no_robust_improvement_against_current_mode' in result['rejections']
+
+
+def test_stop_release_wait_reaches_formal_candidate_without_weakening_wait_limit():
+    from secretary.adaptive_policy import _evaluate_maintenance
+    receipt = Profile(150, 3, 1, 0, 'declared_paid_cancel')
+    profile = Profile(100, 1000, .1, 0, 'declared_complete', cancellation_scenarios=(receipt,))
+    def user(at):
+        return dict(offset=at, calls=1, growth_tokens=0, output_tokens=0, duration_seconds=0)
+    stop = dict(offset=3, activity='cancel', calls=0, growth_tokens=0, output_tokens=0, duration_seconds=0)
+    features = dict(last_request_at=None, trajectory=dict(available=True,
+        marks=dict(calls=1, growth_tokens=0, output_tokens=0, duration_seconds=0),
+        paths=[dict(weight=.1, events=[user(2), stop, user(1200)]), dict(weight=.9, events=[user(1200)])]))
+    snapshot = dict(now=0, context_tokens=1000000)
+    cfg = dict(CFG, horizon_seconds=21600, business_interval_seconds=None, hot_interval_seconds=1740,
+               cache_ttl_seconds=1800, hot_cache_fraction=.95, cache_ratio=.05, output_ratio=5,
+               max_expected_wait_seconds=30, minimum_savings_tokens=1000, minimum_savings_fraction=.1)
+    result = evaluate(snapshot, features, cfg, [], 0, profile)
+    baseline = evaluate(snapshot, features, cfg, [], None, profile)
+    candidate, row = _evaluate_maintenance(snapshot, features, cfg, profile, [], 'business', 0,
+                                           (baseline['cost'], baseline['terminal'], baseline['reads']), .15)
+    assert cfg['max_expected_wait_seconds'] == 30
+    assert result['collision'] == .1 and result['expected_wait_seconds'] == .1
+    assert result['cost'] == 199855 and baseline['cost'] == 1009750
+    assert candidate is not None and row['accepted'] and not row['rejections']
+    assert row['risk']['expected_wait_seconds'] == .1

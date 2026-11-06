@@ -49,7 +49,7 @@ def simulate_path(snapshot, features, cfg, background, path, delay, profile, hea
     last = last - now if last is not None else -math.inf
     context, cost, reads, busy_until = snapshot['context_tokens'], 0.0, 0.0, 0.0
     compacted, pending, recovered = False, delay is not None, False
-    started, collision, wait = False, False, 0.0
+    started, collision, first_blocked = False, False, math.inf
     native_count, native_unknown = 0, False
     maintenance_start, maintenance_end = None, None
     maintenance_before = None
@@ -86,7 +86,7 @@ def simulate_path(snapshot, features, cfg, background, path, delay, profile, hea
             continue  # One outstanding due survives; no backlog of periodic catch-up calls.
         if (source == 'user' and event.get('activity') == 'cancel' and started
                 and maintenance_start <= at < maintenance_end):
-            collision, wait = True, max(wait, maintenance_end - at)
+            collision = True
             cost += _cancelled_cost(profile, at - maintenance_start) - profile.cost
             context, busy_until, compacted = maintenance_before, at, False
             maintenance_end = at
@@ -95,7 +95,8 @@ def simulate_path(snapshot, features, cfg, background, path, delay, profile, hea
         if source == 'user' and at < busy_until:
             pending = False
             if started and maintenance_start <= at < maintenance_end:
-                collision, wait = True, max(wait, maintenance_end - at)
+                collision = True
+                first_blocked = min(first_blocked, event.get('_coalesced_due', at))
             event = dict(event, _coalesced_due=event.get('_coalesced_due', at))
             heapq.heappush(events, (busy_until, priority, order, source, event))
             continue
@@ -116,9 +117,6 @@ def simulate_path(snapshot, features, cfg, background, path, delay, profile, hea
                 last, busy_until, compacted = -math.inf, actual, True
                 native_count += 1
         if source == 'user':
-            if started and maintenance_start <= at < maintenance_end:
-                collision = True
-                wait = max(wait, maintenance_end - at)
             calls, growth, output, duration = _user_work(event, marks, timing_only)
             if calls == 0:
                 continue  # E.g. cancellation is a real return, not a model request.
@@ -142,6 +140,9 @@ def simulate_path(snapshot, features, cfg, background, path, delay, profile, hea
         if source == 'heartbeat' and heartbeat_interval is not None and actual + heartbeat_interval <= horizon:
             heapq.heappush(events, (actual + heartbeat_interval, 3, next(serial), 'heartbeat', {}))
     # Same liability boundary for all policies, including paths with user returns.
+    # Stop can shorten this release; queued users retain their original arrival.
+    # Later Main busy time is not part of this maintenance's blocking interval.
+    wait = max(0.0, (maintenance_end or 0.0) - first_blocked)
     return dict(cost=cost, terminal=context, reads=reads, started=started,
                 collision=collision, wait=wait, native_interventions=native_count,
                 native_cost_unknown=native_unknown)
