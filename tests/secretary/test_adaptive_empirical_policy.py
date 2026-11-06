@@ -3,7 +3,7 @@ from copy import deepcopy
 
 import pytest
 
-from secretary.adaptive_cost import Profile, maintenance_profile
+from secretary.adaptive_cost import Profile, maintenance_profile, payback_scenarios, post_maintenance_context
 from secretary.adaptive_empirical_features import growth_by_source
 from secretary.adaptive_features import build_features
 from secretary.adaptive_forecast import (_extend_path, _forecast_seed, from_events, outcome, signature, training_examples)
@@ -36,6 +36,58 @@ def test_joint_invoice_counts_both_components_but_not_noting_time_as_main_block(
     assert p.diagnostics['full_noting_duration_is_not_main_block']
 
 
+@pytest.mark.parametrize('context,after', [(1000, 100), (500, 100), (2000, 200), (50, 50)])
+@pytest.mark.parametrize('native', [False, True])
+def test_observed_scale_envelope_reaches_both_formal_rollout_consumers(context, after, native):
+    rows = [sample('compaction', block_seconds=10, context_after_source='native_post_compaction_rough',
+                   proof=dict(context_measurement='rough_full_request')), sample('noting')]
+    profile = maintenance_profile(dict(events=rows, pricing_context_tokens=1000, model_key='model'), CFG)
+    evidence = profile.scenarios[0].diagnostics['scenario']
+    assert (evidence['context_before'], evidence['context_after']) == (1000, 100)
+    assert evidence['context_measurement'] == 'rough_full_request'
+    assert evidence['context_after_source'] == 'native_post_compaction_rough'
+    features = dict(last_request_at=None, trajectory=dict(marks={}, paths=[
+        dict(weight=1, events=[dict(offset=20, calls=0)] if native else [])]))
+    result = evaluate(dict(now=0, context_tokens=context, native_threshold_tokens=context if native else None),
+                      features, dict(CFG, horizon_seconds=40), [], None if native else 0, profile)
+    assert result['terminal'] == after
+    assert result['cost'] == profile.cost  # C<=A does not waive the maintenance bill.
+    assert result['native_interventions'] == int(native)
+
+
+def test_aggregate_reduction_transforms_each_sample_before_weighting():
+    rows = [sample('compaction', event_id='small-after', context_after=100, noting_required=False),
+            sample('compaction', event_id='large-after', context_after=600, noting_required=False)]
+    profile = maintenance_profile(dict(events=rows, model_key='model'), CFG)
+    assert post_maintenance_context(500, profile) == 300  # (100 + 500)/2, not 500*mean(.1,.6).
+    assert payback_scenarios(500, profile, .1)['cold_reads'] == 3
+
+
+def test_native_rollout_transfers_at_grown_context_instead_of_snapshot_scale():
+    profile = maintenance_profile(dict(events=[sample('compaction'), sample('noting')],
+                                       pricing_context_tokens=500, model_key='model'), CFG)
+    features = dict(last_request_at=None, trajectory=dict(marks={}, paths=[dict(weight=1, events=[
+        dict(offset=10, calls=1, growth_tokens=300, output_tokens=0, duration_seconds=0),
+        dict(offset=20, calls=0)])]))
+    result = evaluate(dict(now=0, context_tokens=500, native_threshold_tokens=700), features,
+                      dict(CFG, horizon_seconds=40), [], None, profile)
+    assert result['native_interventions'] == 1
+    assert result['terminal'] == 100  # Actual start C=800: neither old ratio80 nor snapshot-adjusted ratio160.
+
+
+def test_legacy_profile_and_analytical_consumer_keep_compatible_behavior():
+    from secretary.adaptive_policy import _forecast
+    prior = Profile(100, 10, .1, 0, 'explicit_prior')
+    assert post_maintenance_context(50, prior) == 5
+    empirical = maintenance_profile(dict(events=[sample('compaction'), sample('noting')], model_key='model'), CFG)
+    features = dict(last_request_at=None)
+    cfg = dict(CFG, horizon_seconds=40, forecast_step_seconds=10,
+               business_interval_seconds=None, hot_interval_seconds=60)
+    snapshot = dict(now=0, context_tokens=50)
+    assert _forecast(snapshot, features, cfg, 'business', 0, empirical, [1]*5)[1] == 50
+    assert _forecast(snapshot, features, cfg, 'business', 0, prior, [1]*5)[1] == 5
+
+
 def test_prefix_normalization_preserves_entire_output_and_incremental_prompt_work():
     rows = [sample('compaction'), sample('noting', proof=dict(component_first_input_tokens=1000, calls=1))]
     p = maintenance_profile(dict(events=rows, model_key='model', pricing_context_tokens=500), CFG)
@@ -52,6 +104,7 @@ def test_failed_settlement_keeps_paid_cost_and_no_context_reduction(outcome):
     assert p.retained == 1
     assert p.cost == 880
     assert p.scenarios[0].diagnostics['scenario']['outcome'] == outcome
+    assert post_maintenance_context(500, p) == 500
 
 
 def test_unknown_invoice_stays_unknown_and_is_not_free():
@@ -201,6 +254,7 @@ def test_explicit_stop_is_a_censored_branch_not_a_six_second_natural_completion(
     assert all(s.duration == 200 for s in p.scenarios)
     assert p.cancellation_scenarios
     assert p.cancellation_scenarios[0].duration == 6
+    assert post_maintenance_context(500, p.cancellation_scenarios[0]) == 500
     assert p.diagnostics['explicit_cancellation_component_ids']
 
 
@@ -368,3 +422,131 @@ def test_bootstrap_readiness_cannot_certify_a_known_current_gap(observation_owne
     assert not result['diagnostics']['behavior_prediction_live_ready']
     assert not result['diagnostics']['current_activity_evidence']['ready']
     assert result['threshold_tokens'] is result['delay_seconds'] is None
+
+
+def threshold_fixture(context=1000):
+    from secretary import adaptive_policy as policy
+    usage = dict(input_tokens=100, cache_read_tokens=0, cache_write_tokens=0, output_tokens=0)
+    rows = [sample('compaction', context_before=1000, context_after=400, block_seconds=10, usage=usage),
+            sample('noting', usage=usage)]
+    cfg = policy._settings(dict(CFG, business_interval_seconds=None, hot_interval_seconds=60,
+                                horizon_seconds=1000, min_context_tokens=1,
+                                minimum_savings_fraction=0, minimum_savings_tokens=0))
+    snapshot = dict(now=10000, context_tokens=context, heartbeat_mode='business', idle_enabled=True)
+    features = dict(events=rows, model_key='model', pricing_context_tokens=context, last_request_at=None,
+                    last_user_at=0, current_activity_evidence=dict(ready=True),
+                    feedback=dict(cancel_fraction=0), trajectory=dict(available=True,
+                        marks=dict(calls=1, growth_tokens=0, output_tokens=0, duration_seconds=0),
+                        paths=[dict(weight=1, events=[dict(offset=500, calls=1, growth_tokens=0,
+                                                        output_tokens=0, duration_seconds=0)])]))
+    profile = maintenance_profile(features, cfg)
+    curve = [1]*10
+    baseline = policy._forecast(snapshot, features, cfg, 'business', None, profile, curve)
+    candidate, row = policy._evaluate_maintenance(snapshot, features, cfg, profile, curve, 'business', 0,
+                                                  baseline, .15)
+    assert candidate is not None and row['accepted']
+    retain = dict(mode='business', delay=None, cost=baseline[0], terminal=baseline[1], threshold=None,
+                  collision=0, wait=0)
+    features['candidate_evaluations'] = [dict(mode='business', delay=0, accepted=True),
+                                        dict(mode='business', delay=None, accepted=True)]
+    return snapshot, features, cfg, curve, candidate, retain
+
+
+def test_secant_infeasible_threshold_is_replaced_by_checked_integer_upper():
+    from secretary import adaptive_policy as policy
+    state, features, cfg, curve, candidate, retain = threshold_fixture()
+    # The real pair predicts400 and costs200 at C=1000. The zero secant
+    # proposes334, where maintenance cannot shrink C at all.
+    assert policy._threshold_seed(state, features, cfg, curve, candidate) == 334
+    assert not policy._threshold_probe(334, state, features, cfg, curve, candidate)['feasible']
+    chosen, _ = policy._checked_selection(state, features, cfg, curve, [candidate, retain], retain)
+    evidence = features['threshold_evidence']
+    assert chosen['threshold'] == 667
+    assert [p['context'] for p in evidence['probes']] == [334, 667, 500]
+    assert next(p for p in evidence['probes'] if p['context'] == chosen['threshold'])['feasible']
+
+
+@pytest.mark.parametrize('proposal', [None, 2000])
+def test_bad_secant_proposal_cannot_veto_verified_current_integer(monkeypatch, proposal):
+    from secretary import adaptive_policy as policy
+    state, features, cfg, curve, candidate, retain = threshold_fixture()
+    monkeypatch.setattr(policy, '_break_even', lambda *args: proposal)
+    chosen, _ = policy._checked_selection(state, features, cfg, curve, [candidate, retain], retain)
+    assert chosen['delay'] == 0
+    assert type(chosen['threshold']) is int and chosen['threshold'] <= state['context_tokens']
+    assert policy._threshold_probe(chosen['threshold'], state, features, cfg, curve, candidate)['feasible']
+
+
+@pytest.mark.parametrize('context,maintains', [(601.2, True), (600.2, False)])
+def test_fractional_floor_is_certified_or_winner_returns_to_retention(context, maintains):
+    from secretary import adaptive_policy as policy
+    from secretary.adaptive_config import validate_decision
+    state, features, cfg, curve, candidate, retain = threshold_fixture(context)
+    alternatives = [candidate, retain]
+    if not maintains:
+        alternatives.append(dict(retain, mode='hot', cost=retain['cost']-.1))
+    chosen, admitted = policy._checked_selection(state, features, cfg, curve, alternatives, retain)
+    floor = features['threshold_evidence']['probes'][0]
+    assert floor['context'] == int(context) and floor['feasible'] is maintains
+    if maintains:
+        assert admitted and type(chosen['threshold']) is int and chosen['threshold'] <= context
+        validate_decision(dict(mode=chosen['mode'], delay_seconds=chosen['delay'], threshold_tokens=chosen['threshold']))
+    else:
+        assert admitted and chosen['mode'] == 'hot' and chosen['delay'] is None and chosen['threshold'] is None
+        assert features['threshold_evidence']['rejection'] == 'fractional_context_floor_not_feasible'
+
+
+def test_threshold_probes_rebuild_context_profiles_on_same_fixed_paths(monkeypatch):
+    from secretary import adaptive_policy as policy
+    state, features, cfg, curve, candidate, retain = threshold_fixture()
+    maintenance, heartbeat = policy._maintenance, policy.heartbeat_profile
+    seen, backgrounds = [], []
+    def observe_profile(probe, config):
+        assert probe['trajectory'] is features['trajectory']
+        seen.append(probe['pricing_context_tokens'])
+        return maintenance(probe, config)
+    def observe_background(probe, config, **kw):
+        backgrounds.append((probe['pricing_context_tokens'], kw.get('source', 'heartbeat')))
+        return heartbeat(probe, config, **kw)
+    monkeypatch.setattr(policy, '_maintenance', observe_profile)
+    monkeypatch.setattr(policy, 'heartbeat_profile', observe_background)
+    monkeypatch.setattr(policy, 'predict', lambda *a, **kw: pytest.fail('threshold search must reuse fixed paths'))
+    policy._checked_selection(state, features, cfg, curve, [candidate, retain], retain)
+    assert seen == [0, 334, 667, 500]
+    assert backgrounds == [(c, source) for c in seen for source in ('heartbeat', 'reminder')]
+
+
+def test_nonmonotone_probe_results_never_return_an_unchecked_context(monkeypatch):
+    from secretary import adaptive_policy as policy
+    state, features, cfg, curve, candidate, _ = threshold_fixture()
+    monkeypatch.setattr(policy, '_threshold_seed', lambda *args: 250)
+    def controlled_predicate(context, *args):
+        # Disconnected feasible pocket200 is deliberately not explored. The
+        # search certifies its returned point, not all C above it or a minimum.
+        return dict(context=context, feasible=context in (200, 625), rejections=[])
+    monkeypatch.setattr(policy, '_threshold_probe', controlled_predicate)
+    threshold, evidence = policy._checked_threshold(state, features, cfg, curve, candidate)
+    assert threshold == 625
+    assert [p['context'] for p in evidence['probes']] == [250, 625, 437]
+    assert next(p for p in evidence['probes'] if p['context'] == threshold)['feasible']
+    assert evidence['scope'] == 'checked_point_only_not_minimum_or_monotone_boundary'
+
+
+def test_only_winner_is_probed_and_full_probe_keeps_terminal_stress_gate(monkeypatch):
+    from secretary import adaptive_policy as policy
+    state, features, cfg, curve, candidate, retain = threshold_fixture()
+    checker = policy._checked_threshold
+    calls = []
+    def observe_winner(*args):
+        calls.append(args[-1]['delay'])
+        return checker(*args)
+    monkeypatch.setattr(policy, '_checked_threshold', observe_winner)
+    alternative = dict(candidate, delay=30, cost=candidate['cost']+1)
+    policy._checked_selection(state, features, cfg, curve, [candidate, alternative, retain], retain)
+    assert calls == [0]
+    # The full probe must also apply the shared final incumbent/terminal gate,
+    # even when its same-mode cost/risk predicate already accepted this point.
+    monkeypatch.setattr(policy, '_robust_improvement', lambda *args: False)
+    result = policy._threshold_probe(667, state, features, cfg, curve, candidate)
+    assert not result['feasible']
+    assert 'no_robust_improvement_against_current_mode' in result['rejections']

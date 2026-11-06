@@ -41,6 +41,9 @@ def _legacy(events, cfg):
         before, after = number(row.get('context_before')), number(row.get('context_after'))
         result.append(dict(cost=total, block=block,
                            retained=after / before if before and after and after < before else None,
+                           context_before=before, context_after=after,
+                           context_measurement=row.get('context_measurement', (row.get('proof') or {}).get('context_measurement')),
+                           context_after_source=row.get('context_after_source'),
                            outcome=row['outcome'], at=row['at'], ids=[row['event_id']],
                            source='legacy_joint_operation', model_key=row.get('model_key'),
                            scale=before, complete=total is not None, duration=row.get('duration_seconds')))
@@ -81,6 +84,9 @@ def _component(row, cfg, context):
         cost_slope = 1.0 if context is not None else 0.0
     return dict(cost=invoice, block=block,
                 retained=after / before if before and after and after < before else None,
+                context_before=before, context_after=after,
+                context_measurement=row.get('context_measurement', proof.get('context_measurement')),
+                context_after_source=row.get('context_after_source', proof.get('context_after_source')),
                 outcome=row.get('outcome'), at=row['at'], ids=[row['event_id']],
                 source=row.get('source', 'maintenance_sample'), pricing=pricing, cost_slope=cost_slope,
                 model_key=row.get('parent_model_key') or row.get('model_key'),
@@ -192,6 +198,7 @@ def scenarios(features, cfg, profile_type):
                            normalization=row.get('noting_pricing', row.get('pricing', 'legacy_whole_invoice')),
                            main_block_scope=row.get('block_scope', 'legacy_explicit_scope'),
                            success_probability=float(row['outcome'] in ('completed', 'partial')),
+                           retention_transfer='per_sample_absolute_ratio_envelope_at_actual_start; engineering_assumption_not_measured_bound',
                            recovery='unidentified_not_observed_zero; excluded_from_conditional_base_and_stressed_separately')
         profiles.append(profile_type(row['cost'], row['block'], row['retained'], 0,
                                      row['source'], diagnostics))
@@ -204,6 +211,7 @@ def scenarios(features, cfg, profile_type):
                    normalization='first_prompt_prefix_conditional_only; whole_output_and_excess_preserved',
                    recovery='unidentified_not_observed_zero; excluded_from_conditional_base',
                    all_model_speed_samples_retained=True)
+    summary['retention_transfer'] = 'per_sample_absolute_ratio_envelope; aggregate_retained_is_historical_ratio_diagnostic_only'
     stopped_rows = cancellation if len(cancellation) <= 12 else [cancellation[round(i * (len(cancellation) - 1) / 11)]
                                                                for i in range(12)]
     summary['explicit_cancellation_receipts'] = stopped_rows

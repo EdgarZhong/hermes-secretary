@@ -4,7 +4,7 @@ from __future__ import annotations
 import math
 import heapq
 from itertools import count
-from secretary.adaptive_cost import background_profile
+from secretary.adaptive_cost import background_profile, post_maintenance_context
 
 
 def _mark(event, defaults, key, fallback):
@@ -75,7 +75,7 @@ def simulate_path(snapshot, features, cfg, background, path, delay, profile, hea
             if pending and busy_until <= at:
                 cost += profile.cost
                 maintenance_before = context
-                context *= profile.retained
+                context = post_maintenance_context(context, profile)
                 last, busy_until, compacted = -math.inf, at + profile.duration, True
                 started, maintenance_start, maintenance_end = True, at, at + profile.duration
             pending = False
@@ -111,7 +111,7 @@ def simulate_path(snapshot, features, cfg, background, path, delay, profile, hea
                 # forever and then claim its fictitious reads were avoidable.
                 slope = profile.diagnostics.get('scenario', {}).get('cost_slope', 0)
                 cost += max(0, profile.cost + slope * (context - snapshot['context_tokens']))
-                context *= profile.retained
+                context = post_maintenance_context(context, profile)
                 actual += profile.duration
                 last, busy_until, compacted = -math.inf, actual, True
                 native_count += 1

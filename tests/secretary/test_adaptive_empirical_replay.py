@@ -69,6 +69,50 @@ def test_divergent_context_is_not_overwritten_by_historical_endpoint():
     assert result["final_context"] != data["jobs"][-1]["context_tokens"]
 
 
+def test_replay_freezes_shared_scale_transfer_at_actual_maintenance_start():
+    from secretary.adaptive_cost import maintenance_profile
+    from tests.secretary.test_adaptive_empirical_policy import CFG, sample
+
+    class PairedMaintenance(ControlledMaintenance):
+        def decide(self, snapshot, history, config):
+            return dict(super().decide(snapshot, history, config), delay_seconds=18)
+
+        def _maintenance(self, features, config):
+            rows = [sample('compaction', context_before=20000, context_after=5000, block_seconds=10),
+                    sample('noting')]
+            return maintenance_profile(dict(events=rows, pricing_context_tokens=10000, model_key='model'), CFG)
+
+    engine = Replay(package(), case(100), PairedMaintenance())
+    engine._plan()
+    # Supply the changed runtime state at the entry boundary; no historical
+    # endpoint or decision-time estimate may overwrite this actual start scale.
+    engine.now, engine.context = 20, 12000
+    engine._start_maintenance(engine.generation)
+    assert engine.running['before'] == 12000
+    assert engine.running['after'] == 5000
+    assert engine.running['retained'] == pytest.approx(5000/12000)
+    # Finish uses the frozen start result, rather than applying a stale ratio a second time.
+    engine.context = 13000
+    engine.now = engine.busy_until
+    engine._finish_maintenance(0)
+    assert engine.context == 5000
+
+
+def test_replay_stop_discards_planned_reduction_but_preserves_paid_cost():
+    class PairedMaintenance(ControlledMaintenance):
+        def _maintenance(self, features, config):
+            return Profile(diagnostics={'scenario': dict(outcome='completed', context_before=20000,
+                                                         context_after=5000)})
+
+    data = package()
+    data['events'].append(dict(event_id='stop-paired', kind='user_activity', source='user', verified=True,
+                              at=5, activity='cancel'))
+    result = Replay(data, case(20), PairedMaintenance()).run()
+    assert result['input_equivalent_cost'] == 100
+    assert result['final_context'] == 10000
+    assert result['counts']['failed'] == 1
+
+
 def test_hb_is_generated_per_strategy_not_replayed_as_external_demand():
     data = package()
     hot = Replay(data, case(), FixedMode("hot")).run()
@@ -219,7 +263,8 @@ def test_stop_settles_actual_blocking_wait_and_releases_same_queued_work():
 def test_mechanical_failure_stress_retains_paid_cost_without_fake_reduction():
     class FailedComponent(ControlledMaintenance):
         def _maintenance(self, features, config):
-            failed = Profile(cost=55, duration=8, retained=1, diagnostics={"scenario": {"outcome": "failed"}})
+            failed = Profile(cost=55, duration=8, retained=1, diagnostics={"scenario": {
+                "outcome": "failed", "context_before": 20000, "context_after": 5000}})
             return Profile(scenarios=(Profile(), failed))
     result = Replay(package(), case(20), FailedComponent(), variant="mechanical_failure").run()
     assert result["counts"]["failed"] == 1

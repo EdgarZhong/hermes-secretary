@@ -13,6 +13,7 @@ from statistics import median
 import time
 
 from secretary.adaptive_empirical_replay_data import coverage_at, past_events
+from secretary.adaptive_cost import post_maintenance_context
 
 
 class Replay:
@@ -286,8 +287,10 @@ class Replay:
         duration = selected.duration * (2 if self.variant == "slow_block" else 1)
         expense = selected.cost * (2 if self.variant == "cost_double" else 1)
         outcome = selected.diagnostics.get("scenario", {}).get("outcome", "completed")
+        after = post_maintenance_context(self.context, selected)
+        retained = after / self.context if self.context > 0 else 1.0
         self.running = dict(id="replay-maintenance:" + str(self.operation_index), before=self.context,
-                            retained=selected.retained, outcome=outcome, cost=expense,
+                            retained=retained, after=after, outcome=outcome, cost=expense,
                             source=selected.diagnostics, duration=duration, started_at=self.now,
                             cancellation_profile=plan["profile"])
         self.cost += expense
@@ -295,7 +298,7 @@ class Replay:
         self.counts["maintenance"] += 1
         self.busy_until = self.now + duration
         self.actions.append(dict(kind="maintenance_start", at=self.now, context=self.context, duration=duration,
-                                 cost=expense, retained=selected.retained, outcome=outcome,
+                                 cost=expense, retained=retained, context_after=after, outcome=outcome,
                                  cumulative_cost=self.cost,
                                  experience_timing_guard=self._timing_guard(),
                                  source=selected.diagnostics))
@@ -324,7 +327,7 @@ class Replay:
             actual_wait = max(0, self.now-waiting["at"])
             self.waits[waiting["index"]] = actual_wait
             waiting["action"].update(wait_seconds=actual_wait, release_at=self.now, settled=True)
-        self.context *= active["retained"]
+        self.context = active["after"]
         self.epoch = active["id"]
         self.last_request = None
         self.recovery = recovery
@@ -366,7 +369,7 @@ class Replay:
                 paid *= 2
             source = nearest.diagnostics
             self.cost += paid - active["cost"]
-        active.update(outcome="cancelled", retained=1.0, duration=elapsed)
+        active.update(outcome="cancelled", retained=1.0, after=active["before"], duration=elapsed)
         self.busy_until = self.now
         self.actions.append(dict(kind="actual_user_cancel", at=self.now,
                                  operation_id=active["id"], paid_cost=paid,

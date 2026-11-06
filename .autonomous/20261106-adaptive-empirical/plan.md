@@ -15,7 +15,7 @@
 | 任务 | 机制实现 | 正式接线 | 针对性验证 | 用户结果 | 当前安排 |
 |---|---|---|---|---|---|
 | D | 真实CLI和数据投影整包交回，root已亲审 | CLI逐时执行正式decide，自有HB/context/cache | 20项；v7九段、连续旅程、来源/费用/状态敏感性与首次维护对照 | root逐段判断落盘，G11/G12关闭后关联版本 | /root/adaptive_audit已交回；保全部负结果 |
-| P | 整包交回，root亲审正式路径/消融/时序修正及跨合同work-end | decide→经验特征/维护场景→同源evaluate；原接口保持 | 最新6文件89项；特征增轴对照与历史可知性证据；真实规模单次约0.5–0.6秒 | D连续旅程与费用敏感性待判 | /root/empirical_policy已交回；无上线 |
+| P | 整包已接收；G11由root审入ff0a25d；G12收敛为独立小修复 | decide→经验特征/维护场景→同源evaluate；原接口保持 | 最新6文件89项；特征增轴对照与历史可知性证据；真实规模单次约0.5–0.6秒 | D连续旅程与费用敏感性待判 | /root/empirical_policy已交回；无上线 |
 | W | 10文件修订包已交回，root亲审接收G7整改 | 原生Compact/Noting采集及显式导入→snapshot→估计 | 首包13项、既有63项；轮转/干扰10项、partial1项、读取失败1项 | 整轮门禁未验 | /root/empirical_wiring已交回；待集成检查/门禁 |
 | I | 依据已冻结，候选3bef2907已提交/推功能分支 | P/W/D已集成，G11/G12审查中 | 十检查一次及health定向整改；同版证据复用 | root-experience-review.md逐段判断；两独立门禁未开始 | root统筹，未上线 |
 
@@ -42,7 +42,8 @@
 | G10 | R2/R8工作结束保护跨模型 | root实测E03的user end=1793765542.519，价格合同过滤后last_user_work_end却1793722340.320；v4 12:38:59维护距实际12:12:23结束仅26m36s | P1 | P/D | 同owner已知真人工作结束时间跨合同保留，工作量/费用仍分层；P最新89项含跨合同/迟到/外来历史隔离；D重验相应片段 | 实现及v7全实际维护计时已核，待独立门禁 |
 | Q1 | R9统一质量检查 | 首次十检查8项通过；本轮health HX011在轮转测试分派 | P2 | W/root | handler映射等价整改，6场景原断言保留并通过；root-health-recheck.log为0阻断/0提示 | 已关闭 |
 | G11 | R3/R8正常在线预测就绪 | D真实E08去bootstrap后11用户/161486秒覆盖，尾部仅滞后30秒即永久退化 | P1 | P/root | 统一current_activity_evidence，80秒/连续已证1h/scope交集；未知尾部不扩训练，gap/迟到/新活动反证；freshness-real-fixed.json与96项/迟到gap1项，root亲审及ruff/health通过 | 实现关闭，待最终真实回放版本关联与独立门禁 |
-| G12 | R3/R5/R7小context重复维护收益 | 连续旅程第二次91617按旧retained比率缩至约24021且支807987；GPT两条实测rough after约46K近固定，比例外推可能夸大可缩减量 | P1 | P/D/root | D只首维护的同需求同终点对照；P分析真实before/after量纲/关系及最小方案，禁止任意floor/提高阈值或删除贵样本 | 分析中 |
+| G12 | R3/R5/R7小context重复维护收益 | 连续旅程第二次91617按旧retained比率缩至约24021且支807987；GPT两条实测rough after约46K近固定，比例外推可能夸大可缩减量 | P1 | P/D/root | D只首维护的同需求同终点对照；P分析真实before/after量纲/关系及最小方案，禁止任意floor/提高阈值或删除贵样本 | 实现及亲审关闭；v8实际回放/门禁待验 |
+| G13 | R5/R8分段缩减后的执行阈值 | G12引入分段迁移，原_break_even零点割线仍冒affine精确边界且T直接进入计划；当前点合格不等于T处已验 | P1 | retained_transfer_audit/root | 候选阈值以同源路径/该规模费用与风险实际校验，有界搜索只返回已验可行数值，明确非全域最优；实际反例与资源证据 | 98项与root亲审、ruff/health通过；v8回放/门禁待验 |
 
 检查范围说明：root统一检查执行于暂存31文件，日志`root-quality-check.log`；唯一剩余no-tmp指向未修改的`.autonomous/20261031-evidence-recovery/validation.md:20`，HEAD与冻结24fe50ff的blob均`35daf5563d97496728892feb281ba89f5a7eb724`。保留历史报告和冻结规则，不冒称十项整体通过；这是既有范围外失败，不是本轮新增豁免。质量检查后仅等价改测试并定向复测health。
 
@@ -56,3 +57,9 @@
 **经验里程碑已在候选运行0次时亲审冻结：** root完整读D三文并与先前逐事件取证核对，接受E01–E09/M01–M03。`experience-cases.json` SHA256 `449d078fdba53e7765306aa7649a5183daaccbe878fd4553ce0e9a0a33cd448a`；data-analysis.md `3fbf0ea3bc30d9f34f8d739818d7d0df9d123dbbc5a2f8f0c652d9164e420b31`。9份原件由input-manifest冻结。E06约21h及E08约46h为主要有收益机会验收，基础经验情景全程不维护须整改；高成本/慢尾部敏感性可拒绝，不能调整基础成本凑PASS。E03 173K/5h仅1HB、E09平台只作条件判断，不一概强压。E01/E02/E04/E07保护活跃/短返；E05背景不能冒真人。E01跨epoch初态用新epoch67817，旧464730不得混入。M02原basis指旧缺done，新telemetry已证cancel/failed须在后续覆盖，resolved不能双算失败。43组件当前投影SHA948c25b5ed6b61b9b46773e32483b55908b9070db030a43bd3ffa15720fbd86d，接口规范化可形成新投影但原件与经验预期不可按结果改。
 
 **root经验审查（v7，未作最终验收）：** ignored `root-experience-review.md`逐项对应冻结案例。E03/E05短截止未回本，连续/共同终点提供后续责任；E07保护与own-context符合，但独立309K起点共同末点仍亏121905，保留负结果，不事后新增每片段必盈利门槛。E06当前模型整账单压力亏1209569，不能称普遍稳健节费。仅首维护对照显示第二次在本条件下至终点边际省396178，但仍须核G12缩减外推；不靠次数或负片段定制参数。G11/G12未关闭，独立两门禁未开始。
+
+**G12工程收敛与当前编排：** root亲读`policy/retained-transfer-review.md`及原生完整rough request/attempt-tail机制。21个截点前配对、1个留出分开，第二次实际缩减样本是旧Kimi147250→38608，不是GPT。采用逐成功样本`min(C,max(A,C*A/B))`的保守迁移包络，非实测上界；不改费用、时长、权重、分箱、seed、阈值或经验预期。`/root/empirical_policy`已停止以收敛任务；`/root/retained_transfer_audit`独占最小实现：adaptive_empirical_maintenance/cost/rollout/policy/empirical_replay及对应policy/replay/cost测试，维护实际起点共用数值helper，旧prior兼容。D待整包后定向真实回放；root亲审和质量检查后独立门禁。G11相关96项及迟到gap1项、真实freshness probe有效，ff0a25d已推功能分支。
+
+**G13最小设计批准：** 仅最终维护赢家验证整数T；旧割线改为提案，不能因无根/T>C否定已完整通过的当前动作。同一固定经验paths，按探测C重新构造依赖规模的维护/背景profile，复验费用、风险、可执行性、同mode及当前mode基线、已有末态压力；最多seed加两次整数中点，返回实际检查过的可行上端，不承诺单调或全域最优。当前C为小数则先验floor(C)，不可行时保留最佳不维护动作；不ceil越当前、不改整数接口或config。保持有界资源、定向反例及真实单次资源取证，真实矩阵统一由D更新。
+
+**最终候选接收：** root亲读G12/G13全部产品与消费点；四文件98项、费用/取消/失败/整数点认证证据接受，定向ruff/health 0阻断0提示，日志root-retention-threshold-check.log。最终七文件SHA见policy/threshold-implementation.json。D独占ignored v8源码副本/历史矩阵更新，产品暂冻；原件、经验、seed、价格、期限不变。v7未知coverage/Reminder保护分支等未受影响路径可精确关联复用，其他受缩减影响的base/连续/费用压力更新。尚未进入独立门禁。

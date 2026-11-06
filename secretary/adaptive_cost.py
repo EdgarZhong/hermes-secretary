@@ -20,9 +20,31 @@ class Profile:
     uncertainty_scenarios: tuple = ()
 
 
+def post_maintenance_context(context, profile):
+    """Transfer each observed pair conservatively at the actual start scale.
+
+    The absolute/ratio envelope is an engineering assumption, not a measured
+    upper bound. Profiles without paired scale evidence retain their old rule.
+    Aggregate profiles are diagnostic expectations over individual transforms.
+    """
+    if profile is None:
+        return context
+    scenarios = getattr(profile, 'scenarios', ())
+    if scenarios:
+        return sum(post_maintenance_context(context, item) * item.diagnostics.get('weight', 1 / len(scenarios))
+                   for item in scenarios)
+    row = profile.diagnostics.get('scenario', {})
+    if row.get('outcome') is not None and row['outcome'] not in ('completed', 'partial'):
+        return context
+    before, after = number(row.get('context_before')), number(row.get('context_after'))
+    if before and after is not None and 0 < after < before:
+        return min(context, max(after, context * after / before))
+    return context * profile.retained
+
+
 def payback_scenarios(context, profile, cache_ratio):
     """Liability disclosure, not a promise of future reads or a longer forecast."""
-    reduction = context * (1 - profile.retained) if profile else 0
+    reduction = context - post_maintenance_context(context, profile)
     if reduction <= 0:
         return dict(source='unidentified_or_no_expected_reduction')
     expense = profile.cost + profile.recovery
