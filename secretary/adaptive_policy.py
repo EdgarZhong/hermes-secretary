@@ -440,6 +440,11 @@ def _candidates(snapshot, features, cfg, profile, curve, conservative=None):
     last_user = features['last_user_at'] if features['last_user_at'] is not None else snapshot['now']
     last_interaction = max(last_user, features.get('last_user_work_end') or last_user)
     age = snapshot['now'] - last_interaction
+    observation = features.get('current_activity_evidence') or {}
+    observed_age = number(observation.get('silence_lower_bound_seconds',
+                                           features.get('user_age_observed_lower_bound_seconds')))
+    if observed_age is not None:
+        age = min(age, observed_age)  # No silence proof may bridge a gap or grow into an unknown saved tail.
     quiet = max(0, cfg['min_user_quiet_seconds'] - age)
     delays = sorted({quiet, max(quiet, 900), max(quiet, 1800), max(quiet, 3600)})
     allowance = _risk_allowance(features, cfg)

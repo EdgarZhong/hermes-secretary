@@ -342,6 +342,7 @@ def test_saved_coverage_tail_keeps_formal_snapshot_prediction_without_inventing_
     diagnostic = result['diagnostics']
     observation = diagnostic['current_activity_evidence']
     assert observation['ready'] and observation['witness_at'] == NOW - lag
+    assert observation['live_ready']
     assert observation['unobserved_tail_seconds'] == lag
     assert observation['coverage_extended'] is observation['training_exposure_extended'] is False
     assert diagnostic['behavior_prediction_live_ready']
@@ -384,7 +385,7 @@ def test_late_gap_receipt_cannot_change_current_qualification_before_available(o
     assert not build_features(later, later_rows, _settings(config))['current_activity_evidence']['ready']
 
 
-@pytest.mark.parametrize('damage,lag', [(None, 80.001), ('missing_scope', 30), ('history_gap', 30), ('tail_gap', 30)])
+@pytest.mark.parametrize('damage,lag', [(None, 80.001), ('missing_scope', 30), ('tail_gap', 30)])
 def test_stale_scope_or_explicit_gap_is_not_a_normal_saved_tail(observation_owner, damage, lag):
     from secretary.adaptive_policy import decide
     snapshot, rows, config, _ = _observed_snapshot(observation_owner, lag, damage=damage)
@@ -393,6 +394,75 @@ def test_stale_scope_or_explicit_gap_is_not_a_normal_saved_tail(observation_owne
     result = decide(snapshot, rows, config)
     assert result['threshold_tokens'] is result['delay_seconds'] is None
     assert not result['diagnostics'].get('behavior_prediction_live_ready', False)
+
+
+def test_history_gap_keeps_current_window_but_cannot_claim_local_prediction_hour(observation_owner):
+    from secretary.adaptive_policy import decide
+    snapshot, rows, config, _ = _observed_snapshot(observation_owner, 30, damage='history_gap')
+    observation = build_features(snapshot, rows, _settings(config))['current_activity_evidence']
+    assert observation['ready'] and not observation['live_ready']
+    assert not observation['continuous_observed_history'] and not observation['known_gap_in_tail']
+    result = decide(snapshot, rows, config)
+    assert not result['diagnostics']['behavior_prediction_live_ready']
+    assert not result['diagnostics']['behavior_prediction_available']
+    assert result['threshold_tokens'] is None
+
+
+def test_qualified_history_uses_fresh_short_window_and_gap_safe_quiet_bound(observation_owner):
+    from secretary import adaptive_bootstrap as bootstrap, adaptive_runtime as runtime
+    from secretary.adaptive_policy import decide
+    from tests.secretary.test_adaptive_bootstrap import NOW
+    snapshot, rows, config, package = _observed_snapshot(observation_owner, 30, damage='history_gap')
+    parent, db, ref, _ = observation_owner
+    bootstrap.apply(db, ref, package, bootstrap_id='qualified-short-window', now=NOW)
+    snapshot, rows = runtime.snapshot(parent, db, ref, config, NOW)
+    result = decide(snapshot, rows, config)
+    diagnostic = result['diagnostics']
+    observation = diagnostic['current_activity_evidence']
+    assert observation['ready'] and not observation['live_ready']
+    assert observation['current_span_start'] == NOW - 1700
+    assert observation['silence_lower_bound_seconds'] == 1670  # Excludes the saved30s unknown tail.
+    assert diagnostic['behavior_prediction_qualified_prior'] and diagnostic['behavior_prediction_available']
+    assert not diagnostic['behavior_prediction_live_ready']
+    assert diagnostic['activity_features']['current_history_unknown']
+    features = build_features(snapshot, rows, _settings(config))
+    data = from_events(features['forecast_events'], features['arrival']['spans'])
+    tagged = dict(data, current_activity_evidence=observation)
+    before = training_examples(data, NOW, 1800, config.get('timezone'))
+    after = training_examples(tagged, NOW, 1800, config.get('timezone'))
+    assert before and [(r['at'], r['x'], r['y']) for r in before] == [(r['at'], r['x'], r['y']) for r in after]
+    delays = [r['delay'] for r in diagnostic['candidate_evaluations'] if isinstance(r['delay'], (int, float))]
+    assert delays and min(delays) == 130  # 1800 protection, bounded by proven1670s rather than old user age.
+    assert result['delay_seconds'] is not None and result['delay_seconds'] >= 130
+
+
+@pytest.mark.parametrize('recent,minimum', [('user', 1795), ('work', 1798)])
+def test_new_activity_after_gap_overrides_older_silence_bound(observation_owner, recent, minimum):
+    from secretary import adaptive_bootstrap as bootstrap, adaptive_runtime as runtime
+    from secretary.adaptive_policy import decide
+    from tests.secretary.test_adaptive_bootstrap import NOW
+    snapshot, rows, config, package = _observed_snapshot(observation_owner, 30, damage='history_gap', recent=recent)
+    parent, db, ref, _ = observation_owner
+    bootstrap.apply(db, ref, package, bootstrap_id='qualified-new-activity', now=NOW)
+    snapshot, rows = runtime.snapshot(parent, db, ref, config, NOW)
+    result = decide(snapshot, rows, config)
+    observation = result['diagnostics']['current_activity_evidence']
+    assert observation['ready'] and not observation['live_ready']
+    assert observation['silence_lower_bound_seconds'] == 1670
+    delays = [r['delay'] for r in result['diagnostics']['candidate_evaluations'] if isinstance(r['delay'], (int, float))]
+    assert delays and min(delays) == minimum
+    assert result['delay_seconds'] is None or result['delay_seconds'] >= minimum
+
+
+def test_partial_current_hour_uses_existing_unknown_axis_without_touching_past_origins():
+    from secretary.adaptive_empirical_features import state
+    data = from_events([dict(event_id='known-user', kind='user_activity', source='user', at=500)], [(0, 2000)])
+    tagged = dict(data, current_activity_evidence=dict(as_of=1000, live_ready=False, unobserved_tail_seconds=0))
+    assert state(tagged, 1000)['current_history_unknown']
+    assert not state(tagged, 900)['current_history_unknown']
+    assert signature(tagged, 900) == signature(data, 900)
+    assert len(signature(tagged, 1000)) == len(signature(data, 1000)) == 17
+    assert signature(tagged, 1000)[-1] > signature(data, 1000)[-1]
 
 
 @pytest.mark.parametrize('recent', ['user', 'work'])

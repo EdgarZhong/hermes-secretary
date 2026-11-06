@@ -277,7 +277,7 @@ def predict(data, now, *, horizon=7200, timezone_name='UTC', method='analog', qu
                                                                  for c in data.get('training_cohorts', [])]}
     examples = training_examples(data, now, block, timezone_name)
     observation = data.get('current_activity_evidence')
-    live_ready = (observation.get('ready') is True and observation.get('as_of') == now
+    live_ready = (observation.get('live_ready') is True and observation.get('as_of') == now
                   if observation is not None else covered(now - 3600, now, data.get('spans', [])))
     if len(examples) < 8 or not (live_ready or qualified_prior_ready):
         return {'available': False, 'reason': 'insufficient_mature_windows', 'training_windows': len(examples),

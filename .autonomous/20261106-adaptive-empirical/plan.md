@@ -14,7 +14,7 @@
 ## 当前状态与编排
 | 任务 | 机制实现 | 正式接线 | 针对性验证 | 用户结果 | 当前安排 |
 |---|---|---|---|---|---|
-| D | 真实CLI和数据投影整包交回，root已亲审 | CLI逐时执行正式decide，自有HB/context/cache | 20项；v7九段、连续旅程、来源/费用/状态敏感性与首次维护对照 | root逐段判断落盘，G11/G12关闭后关联版本 | /root/adaptive_audit已交回；保全部负结果 |
+| D | 真实CLI和数据投影整包交回，root已亲审 | CLI逐时执行正式decide，自有HB/context/cache | 20项；v7九段、连续旅程、来源/费用/状态敏感性与首次维护对照 | root逐段判断落盘，v9已关联6c72bce；G15反例待修复 | /root/adaptive_audit已交回；保全部负结果 |
 | P | 整包已接收；G11由root审入ff0a25d；G12收敛为独立小修复 | decide→经验特征/维护场景→同源evaluate；原接口保持 | 最新6文件89项；特征增轴对照与历史可知性证据；真实规模单次约0.5–0.6秒 | D连续旅程与费用敏感性待判 | /root/empirical_policy已交回；无上线 |
 | W | 10文件修订包已交回，root亲审接收G7整改 | 原生Compact/Noting采集及显式导入→snapshot→估计 | 首包13项、既有63项；轮转/干扰10项、partial1项、读取失败1项 | 整轮门禁未验 | /root/empirical_wiring已交回；待集成检查/门禁 |
 | I | 依据已冻结，候选3bef2907已提交/推功能分支 | P/W/D已集成，G11/G12审查中 | 十检查一次及health定向整改；同版证据复用 | root-experience-review.md逐段判断；两独立门禁未开始 | root统筹，未上线 |
@@ -41,7 +41,7 @@
 | G9 | R5/R6/R7连续经验判断 | v4 E06/E08已执行维护；E03/E07各自短截点费用负差，需区分结算截断与过早维护；不能独立片段重置旧大context冒连续行为 | P1 | D/root | 保原9段/预期/负结果；补E01→既有取证终点连续旅程、阶段投影及E03/E07共同终点对照；主会话逐段判定 | 主会话逐段判断已落盘，待G12最终缩减估计关联 |
 | G10 | R2/R8工作结束保护跨模型 | root实测E03的user end=1793765542.519，价格合同过滤后last_user_work_end却1793722340.320；v4 12:38:59维护距实际12:12:23结束仅26m36s | P1 | P/D | 同owner已知真人工作结束时间跨合同保留，工作量/费用仍分层；P最新89项含跨合同/迟到/外来历史隔离；D重验相应片段 | 实现及v7全实际维护计时已核，待独立门禁 |
 | Q1 | R9统一质量检查 | 首次十检查8项通过；本轮health HX011在轮转测试分派 | P2 | W/root | handler映射等价整改，6场景原断言保留并通过；root-health-recheck.log为0阻断/0提示 | 已关闭 |
-| G11 | R3/R8正常在线预测就绪 | D真实E08去bootstrap后11用户/161486秒覆盖，尾部仅滞后30秒即永久退化 | P1 | P/root | 统一current_activity_evidence，80秒/连续已证1h/scope交集；未知尾部不扩训练，gap/迟到/新活动反证；freshness-real-fixed.json与96项/迟到gap1项，root亲审及ruff/health通过 | 实现关闭，待最终真实回放版本关联与独立门禁 |
+| G11 | R3/R8正常在线预测就绪 | D真实E08去bootstrap后11用户/161486秒覆盖，尾部仅滞后30秒即永久退化 | P1 | P/root | current_activity_evidence共享来源，G15已拆当前资格80秒/scope与本地预测1h；未知尾部不扩训练，gap/迟到/新活动反证；freshness-real-fixed.json与96项/迟到gap1项，root亲审及ruff/health通过 | 实现关闭，待最终真实回放版本关联与独立门禁 |
 | G12 | R3/R5/R7小context重复维护收益 | 连续旅程第二次91617按旧retained比率缩至约24021且支807987；GPT两条实测rough after约46K近固定，比例外推可能夸大可缩减量 | P1 | P/D/root | D只首维护的同需求同终点对照；P分析真实before/after量纲/关系及最小方案，禁止任意floor/提高阈值或删除贵样本 | 实现及亲审关闭；v8实际回放/门禁待验 |
 | G13 | R5/R8分段缩减后的执行阈值 | G12引入分段迁移，原_break_even零点割线仍冒affine精确边界且T直接进入计划；当前点合格不等于T处已验 | P1 | retained_transfer_audit/root | 候选阈值以同源路径/该规模费用与风险实际校验，有界搜索只返回已验可行数值，明确非全域最优；实际反例与资源证据 | 98项与root亲审、ruff/health通过；v8回放/门禁待验 |
 
@@ -62,6 +62,12 @@
 
 **G13最小设计批准：** 仅最终维护赢家验证整数T；旧割线改为提案，不能因无根/T>C否定已完整通过的当前动作。同一固定经验paths，按探测C重新构造依赖规模的维护/背景profile，复验费用、风险、可执行性、同mode及当前mode基线、已有末态压力；最多seed加两次整数中点，返回实际检查过的可行上端，不承诺单调或全域最优。当前C为小数则先验floor(C)，不可行时保留最佳不维护动作；不ceil越当前、不改整数接口或config。保持有界资源、定向反例及真实单次资源取证，真实矩阵统一由D更新。
 
-**最终候选接收：** root亲读G12/G13全部产品与消费点；四文件98项、费用/取消/失败/整数点认证证据接受，定向ruff/health 0阻断0提示，日志root-retention-threshold-check.log。最终七文件SHA见policy/threshold-implementation.json。D独占ignored v8源码副本/历史矩阵更新，产品暂冻；原件、经验、seed、价格、期限不变。v7未知coverage/Reminder保护分支等未受影响路径可精确关联复用，其他受缩减影响的base/连续/费用压力更新。尚未进入独立门禁。
+**最终候选接收：** root亲读G12/G13全部产品与消费点；四文件98项、费用/取消/失败/整数点认证证据接受，定向ruff/health 0阻断0提示，日志root-retention-threshold-check.log。最终七文件SHA见policy/threshold-implementation.json。D历史矩阵更新已交回v9，关联6c72bce；G15由retained_transfer_audit定向修复；原件、经验、seed、价格、期限不变。v7未知coverage/Reminder保护分支等未受影响路径可精确关联复用，其他受缩减影响的base/连续/费用压力更新。尚未进入独立门禁。
 
 **G14正式CLI加载修复：** D冻结v8后11任务在0次decide前因G12顶层cost导入触发防混版守卫，原日志保留。root微小接线修复为实际维护入口延迟从选定冻结包导入；旧root无helper时沿原ratio，不回退当前源码。新增真正子进程CLI/不同source-root回归，replay23项通过0.5秒，证据root-cli-source-test.log。D改用v9源码副本更新矩阵，v8失败不冒算法行为反例；守卫未改。
+
+**G15 v9 E09实际反例归因（开放，retained_transfer_audit/root）：** v9原截止亏414748，末态压力仍亏45969；root读逐时决策发现起点G11 current_activity_evidence需连续1h使维护全拒，至11:31下一business HB先支付413553冷读才维护，v7起点可计划。G11把本地预测live-ready与已有qualified bootstrap的当前维护准入绑成同ready，可能无意加强旧80秒资格；须核真实gap/scope/known user及当前窗口证据，区分成熟预测与当前可知性，不能用bootstrap伪造当前覆盖，也不能因新门槛错失已授权机会。当前只读最小诊断，未批准放宽。D v9全部原件及负结果保留。
+
+**G15根因与批准修复：** root进一步核E09首decision：witness==now/tail0/no tailgap/qualified128窗口，但current.ready仅因前1h不连续false。原80秒当前资格被G11不当绑定到local预测1h资格，root接收判断有误。已批准最小拆分current-ready与live-prediction-ready；当前须fresh+scope交集真实span+无tailgap，local预测仍需连续1h，qualified bootstrap不冒live。安静年龄使用known user/work-end及witness当前连续span已证silence下界的更保守者，未知尾部不延长，近期gap不能偷计安静；当前特征未覆盖小时显式unknown且不污染过去origin。白名单features/forecast/empirical_features/policy及已有empirical policy测试，配置/门槛/价格不改。真实E09首快照、stale/scope/tailgap/new activity/历史特征不泄漏反证后整包交root，D随后定向真实更新。
+
+**G15实现接收：** root亲审四产品文件/同源features→predict→资格→quiet链路及真实E09首快照，已证scope当前span下界29.88466秒→delta1770.115337，prior=true/live=false，返回checked整数T147610。116项通过，root-current-readiness-check.log的ruff/health 0阻断0提示。D获准用v10更新受影响整段矩阵（含post-maintenance前1h unknown影响），不能据首快照声称E09盈利。

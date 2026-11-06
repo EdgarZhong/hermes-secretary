@@ -257,21 +257,21 @@ def _known_tail_gap(events, uncertainties, witness, now):
 
 
 def current_activity_evidence(features, now, *, events=(), uncertainties=()):
-    """Current prediction permission, never an extension of observed exposure.
-
-    Reuse the existing 80s saved-witness allowance. The preceding model feature
-    hour must remain one certified interval; an explicit gap is not a flush tail.
-    """
+    """Separate a fresh current window from a complete local prediction hour."""
     spans = features.get('arrival', {}).get('spans', [])
     witness = number(features.get('user_age_observed_at'))
     tail = now - witness if witness is not None and witness <= now else None
     fresh = tail is not None and tail <= CURRENT_OBSERVATION_MAX_LAG_SECONDS
-    continuous = witness is not None and any(
-        lo <= witness - CURRENT_OBSERVATION_HISTORY_SECONDS and witness <= hi for lo, hi in spans)
+    current = next(((lo, hi) for lo, hi in reversed(spans) if witness is not None and lo <= witness <= hi), None)
+    continuous = current is not None and current[0] <= witness - CURRENT_OBSERVATION_HISTORY_SECONDS
     gap = _known_tail_gap(events, uncertainties, witness, now)
-    ready = fresh and continuous and not gap
+    ready = fresh and current is not None and not gap
     user, work = features.get('last_user_at'), features.get('last_user_work_end')
-    return dict(as_of=now, ready=ready, witness_at=witness, unobserved_tail_seconds=tail,
+    return dict(as_of=now, ready=ready, live_ready=ready and continuous,
+                witness_at=witness, unobserved_tail_seconds=tail,
+                current_span_start=current[0] if current else None,
+                current_span_end=current[1] if current else None,
+                silence_lower_bound_seconds=number(features.get('user_age_observed_lower_bound_seconds')) if current else None,
                 freshness_limit_seconds=CURRENT_OBSERVATION_MAX_LAG_SECONDS,
                 observed_history_required_seconds=CURRENT_OBSERVATION_HISTORY_SECONDS,
                 continuous_observed_history=continuous, known_gap_in_tail=gap,
