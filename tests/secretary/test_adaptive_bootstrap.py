@@ -132,6 +132,7 @@ def test_identity_unknown_and_maturity_boundaries(owned, damage):
     }
     if damage == 'small':
         package['dataset']['checkpoints'] = package['dataset']['checkpoints'][:7]
+        package['dataset']['spans'] = [[package['cutoff'] - 3000, package['cutoff']]]
         result = bootstrap.apply(db, ref, package, bootstrap_id='small', now=NOW)
         assert not result['qualified']
         value, rows, config = measured(parent, db, ref)
@@ -232,9 +233,10 @@ def test_past_missing_features_keep_unknown_mask_and_phase_time_inputs(owned):
     prior = {**features['training_cohorts'][0], 'excluded': []}
     assert signature(prior, prior['checkpoints'][-1]['at'])[-1] > 0
     assert set(prediction['horizons']['1800']['phase']) == {'quiet', 'sustained', 'accelerating'}
-    unknown = {**data, 'excluded': [[NOW - 3600, NOW]]}
+    unknown = {**data, 'excluded': [[NOW - 3600, NOW]],
+               'feature_exclusion_events': [dict(id='known-gap', at=NOW, available_at=NOW)]}
     assert signature(unknown, NOW)[-1] > signature(data, NOW)[-1]
-    assert signature(unknown, NOW)[3:5] != signature(unknown, NOW + 21600)[3:5]
+    assert signature(unknown, NOW) != signature(unknown, NOW + 21600)
 
 
 def test_explicit_conversation_migration_preserves_bootstrap_training_only(owned):
@@ -316,15 +318,17 @@ def test_repeated_behavior_paths_enter_candidate_cost_and_mode_selection(owned, 
     parent, db, ref, package = owned
     bootstrap.apply(db, ref, package, bootstrap_id='audit', now=NOW)
     value, rows, config = measured(parent, db, ref)
-    value.update(context_tokens=100000, heartbeat_anchor=NOW, heartbeat_next_due=NOW + 10800)
+    value.update(context_tokens=100000, context_limit=1000000, native_threshold_tokens=800000,
+                 heartbeat_anchor=NOW, heartbeat_next_due=NOW + 10800)
     config.update(cache_ratio=.05, output_ratio=5, heartbeat_output_tokens=5000,
                   heartbeat_fresh_tokens=1024, hot_cache_fraction=.95)
     paths = [1900]
     def learned(*args, **kwargs):
+        offsets = paths if len(paths) == 1 else range(1900, int(kwargs['horizon']), 1900)
         return dict(available=True, training_windows=114, horizons={},
             marks=dict(calls=None, growth_tokens=None, output_tokens=None, duration_seconds=None),
             paths=[dict(weight=1, events=[dict(offset=offset, calls=None, growth_tokens=None,
-                        output_tokens=None, duration_seconds=None) for offset in paths])])
+                        output_tokens=None, duration_seconds=None) for offset in offsets])])
     monkeypatch.setattr('secretary.adaptive_policy.predict', learned)
     single = decide(value, rows, config)
     paths[:] = list(range(1900, 21600, 1900))

@@ -78,6 +78,8 @@ def begin_main_turn_usage(agent, turn_id, *, has_prior_history):
 @contextmanager
 def observe_main_model_dispatch(agent):
     """Bracket the real native dispatch; SDK-internal HTTP retries remain opaque."""
+    from secretary.adaptive_samples import child_dispatch
+    child_dispatch(agent)
     owner = getattr(agent, "_main_usage_read", None)
     turn = None
     try:
@@ -100,6 +102,8 @@ def observe_main_model_dispatch(agent):
     try:
         yield receipt
     except BaseException:
+        from secretary.adaptive_samples import child_receipt
+        child_receipt(agent, failed=True)
         if turn is not None:
             try:
                 with owner.lock:
@@ -166,6 +170,8 @@ def _unknown_buckets(agent, response, canonical_usage):
 
 def observe_main_canonical_usage(agent, response, canonical_usage):
     """Observe exactly native recorded usage (after MoA folding), including no-usage calls."""
+    from secretary.adaptive_samples import child_receipt
+    child_receipt(agent, response, canonical_usage)
     try:
         owner = getattr(agent, "_main_usage_read", None)
         if owner is None or not _main(agent):

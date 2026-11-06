@@ -862,6 +862,11 @@ def run_noting_task(
     _bind_noting_commit_identity(child, admission_id, recovery_audit)
     child_session_id = child.session_id
     task_db = child._session_db
+    from secretary.adaptive_samples import start
+    child._adaptive_maintenance_collector = start(
+        parent, "noting", "noting:" + str(admission_id) + ":" + child_session_id,
+        joint_operation_id=admitted.get("operation_id") if recovery_audit is None else None,
+        db=task_db, ref=conversation_ref, admission_id=admission_id if recovery_audit is None else None)
     provider = state_provider or _default_state_provider
     outcome = NotingTaskOutcome(status="incomplete", child_session_id=child_session_id)
     try:
@@ -893,6 +898,9 @@ def run_noting_task(
         outcome.notice_error = str(exc)
         logger.error("Noting task %s failed: %s", admission_id, exc, exc_info=True)
     finally:
+        from secretary.adaptive_samples import finish
+        finish(child._adaptive_maintenance_collector, outcome.status,
+               block_seconds=0, block_scope="background_not_main_block")
         from secretary.noting_task_lifecycle import task_lifecycle
         lifecycle = task_lifecycle(child)
         if completion is not None:

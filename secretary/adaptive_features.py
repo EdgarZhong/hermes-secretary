@@ -390,6 +390,7 @@ def build_features(snapshot, history, config):
                             and (available := number(event.get('available_at', at))) is not None
                             and available <= now)[-MAX_EVENTS:]
     history_start = retained_times[0] if retained_times else now
+    behavioral_events = clean_events(history, now)
     events = clean_events(history, now, model_key=snapshot.get('model_key'))
     requests = [e for e in events if e.get('kind') == 'request']
     hb = [e for e in requests if e.get('source') == 'heartbeat' and not e.get('operation_id')]
@@ -403,8 +404,18 @@ def build_features(snapshot, history, config):
     users = [e['at'] for e in events if e.get('kind') == 'user_activity' and e.get('source') == 'user']
     maintenance_events = [e for e in events if e.get('kind') != 'maintenance_end'
                           or snapshot.get('model_key') is None or e.get('model_key') == snapshot['model_key']]
+    imported_maintenance = [e for c in snapshot.get('historical_cohorts', []) for e in c.get('events', [])
+                            if e.get('kind') == 'maintenance_sample'
+                            and number(e.get('imported_at')) is not None and e['imported_at'] <= now]
+    # Maintenance imports need no ingress coverage: they are component
+    # receipts, not evidence that the target was observed to be quiet.
+    maintenance_history = [e for e in history if isinstance(e, dict)
+                           and (e.get('kind') in ('maintenance_sample', 'maintenance_start', 'maintenance_end')
+                                or e.get('kind') == 'request' and e.get('operation_id'))]
+    maintenance = clean_events([*maintenance_history, *imported_maintenance], now)
     result = {'events': events, 'model_key': snapshot.get('model_key'),
-            'forecast_events': compatible_forecast_events(clean_events(history, now), snapshot.get('model_key')),
+            'now': now, 'maintenance_events': maintenance,
+            'forecast_events': compatible_forecast_events(behavioral_events, snapshot.get('model_key')),
             'warm_cache_fraction': warm_cache_fraction(events, config['cache_ttl_seconds']),
             'arrival': arrival_model(events, now, config.get('timezone'), history_start=history_start,
                                      uncertainties=activity_uncertainties(history, now),
@@ -414,7 +425,9 @@ def build_features(snapshot, history, config):
             'heartbeat_output_tokens': quantile(output, .8),
             'heartbeat_calls': quantile(list(heartbeat_calls.values()), .8),
             'last_user_at': max(users) if users else None,
-            'last_user_work_end': max((e['at'] for e in events if e.get('kind') == 'turn_end'
+            # Target-local mechanical completion is behavioral evidence, not
+            # model-priced workload. A contract switch cannot erase this time.
+            'last_user_work_end': max((e['at'] for e in behavioral_events if e.get('kind') == 'turn_end'
                                       and e.get('source') == 'user'), default=None),
             'last_request_at': max((e['at'] for e in requests), default=None),
             'unknown_usage_requests': sum(request_cost(e, config['cache_ratio'], config['output_ratio'])

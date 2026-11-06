@@ -15,6 +15,9 @@ class Profile:
     recovery: float
     provenance: str
     diagnostics: dict = field(default_factory=dict)
+    scenarios: tuple = ()
+    cancellation_scenarios: tuple = ()
+    uncertainty_scenarios: tuple = ()
 
 
 def payback_scenarios(context, profile, cache_ratio):
@@ -31,6 +34,13 @@ def payback_scenarios(context, profile, cache_ratio):
 
 
 def maintenance_profile(features, cfg):
+    from secretary.adaptive_empirical_maintenance import scenarios
+    empirical, evidence = scenarios(features, cfg, Profile)
+    if empirical is not None:
+        return empirical
+    if any(e.get('kind') == 'maintenance_sample' for e in features.get('maintenance_events', features.get('events', []))):
+        features['maintenance_unknown'] = evidence
+        return None
     events = [e for e in features['events'] if features.get('model_key') is None
               or e.get('model_key') == features['model_key']]
     ends = [e for e in events if e.get('kind') == 'maintenance_end']
@@ -99,16 +109,16 @@ def _heartbeat_sample(end, rows, events, earliest, features, cfg):
                 repeated_growth=sum(value - inputs[0] for value in inputs) - (inputs[-1] - inputs[0]), at=end['at'])
 
 
-def heartbeat_profile(features, cfg):
+def heartbeat_profile(features, cfg, *, source='heartbeat'):
     """Use one bounded native Turn scenario; do not multiply unrelated quantiles."""
     events = features.get('events', [])
     requests, samples = {}, []
     earliest = min((e['at'] for e in events), default=float('inf'))
     for event in events:
-        if event.get('kind') == 'request' and event.get('source') == 'heartbeat' and not event.get('operation_id'):
+        if event.get('kind') == 'request' and event.get('source') == source and not event.get('operation_id'):
             requests.setdefault(event.get('turn_id'), []).append(event)
     for end in events:
-        if end.get('kind') != 'turn_end' or end.get('source') != 'heartbeat':
+        if end.get('kind') != 'turn_end' or end.get('source') != source:
             continue
         identity = end.get('turn_id') or end['event_id'].removeprefix('turn:')
         rows = requests.get(identity, [])
@@ -116,8 +126,9 @@ def heartbeat_profile(features, cfg):
         if sample is not None:
             samples.append(sample)
     if len(samples) < 3:
-        calls = max(1 + cfg['heartbeat_extra_calls'], features.get('heartbeat_calls') or 1)
-        return dict(calls=calls, output=calls * max(cfg['heartbeat_output_tokens'], features.get('heartbeat_output_tokens') or 0),
+        calls = max(1 + cfg['heartbeat_extra_calls'], features.get('heartbeat_calls') or 1) if source == 'heartbeat' else 1
+        observed_output = features.get('heartbeat_output_tokens') if source == 'heartbeat' else None
+        return dict(calls=calls, output=calls * max(cfg['heartbeat_output_tokens'], observed_output or 0),
                     fresh=calls * cfg['heartbeat_fresh_tokens'],
                     growth=calls * (cfg['heartbeat_fresh_tokens'] + cfg['heartbeat_output_tokens']),
                     source='explicit_per_request_prior', samples=len(samples), growth_source='explicit_prior')
@@ -139,6 +150,4 @@ def heartbeat_profile(features, cfg):
 def background_profile(features, cfg, source):
     if source == 'heartbeat':
         return features.get('heartbeat_model') or heartbeat_profile(features, cfg)
-    return dict(calls=1, fresh=cfg['heartbeat_fresh_tokens'], output=cfg['heartbeat_output_tokens'],
-                growth=cfg['heartbeat_fresh_tokens'] + cfg['heartbeat_output_tokens'],
-                source='explicit_single_request_background_proxy')
+    return features.get('reminder_model') or heartbeat_profile(features, cfg, source='reminder')

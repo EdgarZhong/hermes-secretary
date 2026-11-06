@@ -69,7 +69,9 @@ def test_duplicate_conflicts_are_not_last_writer_labels():
 def test_shadow_keeps_chronological_predictions_and_never_claims_policy_savings():
     data = history()
     data['checkpoints'] = data['checkpoints'][-4:]
-    # Deliberately insufficient past decision origins cannot invent burn-in.
+    # Neither sparse Turn origins nor insufficient observed time can invent
+    # burn-in. Long real coverage now also supplies legitimate quiet origins.
+    data['spans'] = [(149000, 150000)]
     result = evaluate(data, cutoff=150000)
     assert result['counterfactual_savings'] is None
     assert not result['rows']

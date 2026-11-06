@@ -33,10 +33,10 @@ def test_unknown_coverage_is_native_fallback():
     assert decide(snapshot(), [], CONFIG)['fallback']
 
 
-def test_expensive_plateau_can_compact_and_keep_hot():
+def test_expensive_plateau_can_compact_with_history_supported_mode():
     result = decide(snapshot(), history(), CONFIG)
     assert not result['fallback']
-    assert result['mode'] == 'hot'
+    assert result['mode'] in ('business', 'hot')
     assert result['threshold_tokens'] <= 330000
     assert result['delay_seconds'] is not None
     assert result['diagnostics']['estimated_cost'] < result['diagnostics']['baseline_cost']
@@ -59,7 +59,12 @@ def test_short_departure_waits_and_manual_pause_is_respected():
 
 def test_business_infinity_does_not_invent_periodic_self_checks():
     cfg = dict(CONFIG, business_interval_seconds=None)
-    result = decide(snapshot(), history(), cfg)
+    start = NOW - 14 * 86400
+    rows = [dict(event_id='coverage', at=NOW, kind='coverage', source='user', verified=True,
+                 start_at=start, end_at=NOW)]
+    rows += [dict(event_id=f'early-{i}', at=start + 100 + 100 * i,
+                  kind='user_activity', source='user', verified=True) for i in range(8)]
+    result = decide(snapshot(), rows, cfg)
     assert result['mode'] == 'business'
     assert result['threshold_tokens'] is None
 

@@ -11,7 +11,6 @@ import math
 from secretary.adaptive_features import arrival_rate, build_features, number
 from secretary.adaptive_forecast import from_events, predict
 from secretary.adaptive_cost import Profile as Profile, maintenance_profile, heartbeat_profile, payback_scenarios, background_profile
-from secretary.adaptive_risk import evidence_model, maintenance_risk
 
 
 def _fallback(snapshot, reason):
@@ -123,16 +122,34 @@ def _work_marks_ready(features):
 
 def _trajectory_ready(features):
     trajectory = features.get('trajectory', {})
-    return trajectory.get('available') and (_work_marks_ready(features)
-            or features.get('bootstrap_readiness', {}).get('qualified') is True)
+    return trajectory.get('available') is True
+
+
+def _comparison_scope(features, cfg):
+    """Long holding responsibility supported by observed transition exposure.
+
+    This composes observed half-hour transitions; it never claims to have a
+    fully observed future day or to have identified a causal long-run optimum.
+    """
+    exposure = features['arrival'].get('raw_exposure_seconds', features['arrival']['exposure_seconds'])
+    exposure += features.get('bootstrap_readiness', {}).get('conditional_exposure_seconds', 0)
+    supported = min(86400, max(21600, math.floor(exposure / 2 / 21600) * 21600))
+    horizon = max(cfg['horizon_seconds'], supported)
+    return min(86400, horizon), dict(observed_exposure_seconds=exposure,
+                                    supported_composition_seconds=supported,
+                                    rule='at_least_two_comparison_windows_of_observed_transition_exposure',
+                                    model='half_hour_empirical_transition_composition',
+                                    no_long_run_optimality=True)
 
 
 def _forecast(snapshot, features, cfg, mode, delay, profile, curve):
     if _trajectory_ready(features):
-        from secretary.adaptive_rollout import forecast
+        from secretary.adaptive_rollout import evaluate
         background = _background_times(snapshot, cfg, mode, None, 0)
-        return forecast(snapshot, features, cfg, background, delay, profile,
-                        heartbeat_interval=_interval(mode, cfg), timing_only=not _work_marks_ready(features))
+        result = evaluate(snapshot, features, cfg, background, delay, profile,
+                          heartbeat_interval=_interval(mode, cfg), timing_only=not _work_marks_ready(features))
+        features['last_forecast_native'] = {key: result[key] for key in ('native_interventions', 'native_cost_unknown')}
+        return result['cost'], result['terminal'], result['reads']
     context = snapshot['context_tokens']
     step = cfg['forecast_step_seconds']
     duration = profile.duration if delay is not None else 0
@@ -204,6 +221,9 @@ def _eligibility_reasons(snapshot, features, cfg, profile):
     reasons = []
     if features['last_user_at'] is None or snapshot.get('next_reminder_known') is False:
         reasons.append('current_activity_or_reminder_unknown')
+    witness = number(features.get('user_age_observed_at'))
+    if witness is None or not 0 <= snapshot['now'] - witness <= 80:
+        reasons.append('current_activity_evidence_stale_or_unknown')
     if profile is None or snapshot.get('idle_enabled') is not True:
         reasons.append('maintenance_evidence_missing_or_idle_disabled')
     if snapshot.get('maintenance_running') or snapshot['context_tokens'] < cfg['min_context_tokens']:
@@ -215,7 +235,7 @@ def _eligibility_reasons(snapshot, features, cfg, profile):
                  and e['at'] > snapshot['now'] - 86400 for e in features['events'])
     if recent >= cfg['max_maintenance_per_day']:
         reasons.append('maintenance_daily_limit')
-    growth = features['growth_tokens_per_second']
+    growth = features.get('normal_growth_tokens_per_second')
     if growth is not None and growth > cfg['max_growth_tokens_per_second']:
         reasons.append('high_context_growth')
     return reasons
@@ -254,10 +274,26 @@ def _execution_reasons(snapshot, cfg, mode, delay, duration):
 
 
 def _evaluate_maintenance(snapshot, features, cfg, profile, curve, mode, delay, baseline, allowance):
-    row = dict(mode=mode, delay=delay, accepted=False, rejections=_execution_reasons(snapshot, cfg, mode, delay, profile.duration))
+    maximum_block = max((p.duration for p in profile.scenarios), default=profile.duration)
+    row = dict(mode=mode, delay=delay, accepted=False, rejections=_execution_reasons(snapshot, cfg, mode, delay, maximum_block))
     if row['rejections']:
         return None, row
-    risk = maintenance_risk(snapshot, features, delay, profile.duration, model=features['risk_model'])
+    if features.get('trajectory', {}).get('available'):
+        from secretary.adaptive_rollout import evaluate
+        background = _background_times(snapshot, cfg, mode, None, 0)
+        path_result = evaluate(snapshot, features, cfg, background, delay, profile,
+                               heartbeat_interval=_interval(mode, cfg), timing_only=not _work_marks_ready(features))
+        risk = {key: path_result[key] for key in ('collision', 'expected_wait_seconds', 'source',
+                                                'started', 'path_evaluations', 'unconditional_collision',
+                                                'native_interventions', 'native_cost_unknown')}
+        cost, terminal, reads = (path_result[key] for key in ('cost', 'terminal', 'reads'))
+        if not path_result['started']:
+            row['rejections'].append('no_empirical_path_can_execute_plan')
+    else:
+        # Sparse evidence retains native operation instead of manufacturing a
+        # second, independent probability model that can veto indefinitely.
+        risk = dict(collision=None, expected_wait_seconds=None, source='empirical_paths_unavailable')
+        cost, terminal, reads = _forecast(snapshot, features, cfg, mode, delay, profile, curve)
     row['risk'] = risk
     if risk['collision'] is None:
         row['rejections'].append('insufficient_age_risk_evidence')
@@ -266,7 +302,6 @@ def _evaluate_maintenance(snapshot, features, cfg, profile, curve, mode, delay, 
             row['rejections'].append('collision_limit')
         if risk['expected_wait_seconds'] > cfg['max_expected_wait_seconds']:
             row['rejections'].append('expected_wait_limit')
-    cost, terminal, reads = _forecast(snapshot, features, cfg, mode, delay, profile, curve)
     saved = baseline[0] - cost
     row.update(cost=cost, terminal=terminal, baseline_cost=baseline[0], savings=saved, reads=reads)
     if reads == 0:
@@ -276,9 +311,10 @@ def _evaluate_maintenance(snapshot, features, cfg, profile, curve, mode, delay, 
     if row['rejections']:
         return None, row
     zero = dict(snapshot, context_tokens=0)
+    zero_profile = _maintenance(dict(features, pricing_context_tokens=0), cfg) if profile.scenarios else profile
     threshold = _break_even(snapshot['context_tokens'], baseline[0], cost,
                            _forecast(zero, features, cfg, mode, None, profile, curve)[0],
-                           _forecast(zero, features, cfg, mode, delay, profile, curve)[0], cfg)
+                           _forecast(zero, features, cfg, mode, delay, zero_profile, curve)[0], cfg)
     if threshold is None or threshold > snapshot['context_tokens']:
         row['rejections'].append('context_below_break_even')
         return None, row
@@ -298,12 +334,14 @@ def _candidates(snapshot, features, cfg, profile, curve, conservative=None):
     allowance = cfg['max_collision_probability'] / (1 + 2 * (fraction or 0))
     evaluations = features.setdefault('candidate_evaluations', [])
     eligibility = _eligibility_reasons(snapshot, features, cfg, profile)
-    features['risk_model'] = evidence_model(features)
+    features['risk_model'] = dict(source='same_empirical_paths_as_cost',
+                                  independent_poisson_veto=False)
     for mode in ('business', 'hot'):
         baseline = _forecast(snapshot, features, cfg, mode, None, profile, curve)
         candidates.append({'mode': mode, 'delay': None, 'cost': baseline[0], 'terminal': baseline[1],
                            'collision': 0.0, 'wait': 0.0, 'threshold': None})
-        evaluations.append(dict(mode=mode, delay=None, accepted=True, rejections=[], cost=baseline[0], terminal=baseline[1]))
+        evaluations.append(dict(mode=mode, delay=None, accepted=True, rejections=[], cost=baseline[0], terminal=baseline[1],
+                                native=features.get('last_forecast_native', {})))
         if eligibility:
             evaluations.append(dict(mode=mode, delay='all', accepted=False, rejections=eligibility))
             continue
@@ -315,6 +353,46 @@ def _candidates(snapshot, features, cfg, profile, curve, conservative=None):
     return candidates
 
 
+def _sensitivity(snapshot, features, cfg, profile, curve, chosen, current_mode):
+    eligible = [r for r in features['candidate_evaluations'] if r.get('accepted') and number(r.get('delay')) is not None]
+    target = chosen if chosen['delay'] is not None else min(eligible, key=lambda r: r['cost'], default=None)
+    if target is None:
+        return []
+    rows = []
+    for horizon in sorted({21600, cfg['horizon_seconds'], 86400}):
+        setting = dict(cfg, horizon_seconds=horizon)
+        baseline = _forecast(snapshot, features, setting, current_mode, None, profile, curve)
+        candidate = _forecast(snapshot, features, setting, target['mode'], target['delay'], profile, curve)
+        rows.append(dict(horizon_seconds=horizon, mode=target['mode'], delay_seconds=target['delay'],
+                         baseline_cost=baseline[0], candidate_cost=candidate[0], savings=baseline[0] - candidate[0],
+                         support='supported_transition_composition' if horizon <= cfg['horizon_seconds'] else 'extrapolation_stress_only',
+                         pricing='empirical_components_and_declared_proxies'))
+    if profile and profile.scenarios:
+        setting = dict(cfg, _maintenance_scale_mode='whole_invoice')
+        raw = _maintenance(features, setting)
+        candidate = _forecast(snapshot, features, setting, target['mode'], target['delay'], raw, curve)
+        baseline = _forecast(snapshot, features, setting, current_mode, None, raw, curve)
+        rows.append(dict(horizon_seconds=cfg['horizon_seconds'], mode=target['mode'], delay_seconds=target['delay'],
+                         baseline_cost=baseline[0], candidate_cost=candidate[0], savings=baseline[0] - candidate[0],
+                         pricing='whole_historical_noting_invoice_no_prefix_scale_stress'))
+        if cfg.get('recovery_cost'):
+            from dataclasses import replace
+            stressed = replace(profile, scenarios=tuple(replace(p, recovery=cfg['recovery_cost']) for p in profile.scenarios))
+            candidate = _forecast(snapshot, features, cfg, target['mode'], target['delay'], stressed, curve)
+            rows.append(dict(horizon_seconds=cfg['horizon_seconds'], mode=target['mode'], delay_seconds=target['delay'],
+                             candidate_cost=candidate[0], pricing='configured_unidentified_recovery_cost_stress',
+                             recovery_cost=cfg['recovery_cost'], source='configuration_not_empirical_measurement'))
+        if profile.uncertainty_scenarios:
+            from dataclasses import replace
+            unknown = max(profile.uncertainty_scenarios, key=lambda p: p.cost)
+            stressed = replace(profile, scenarios=(replace(unknown, duration=max(unknown.duration, profile.duration)),))
+            candidate = _forecast(snapshot, features, cfg, target['mode'], target['delay'], stressed, curve)
+            rows.append(dict(horizon_seconds=cfg['horizon_seconds'], mode=target['mode'], delay_seconds=target['delay'],
+                             candidate_cost=candidate[0], pricing='unclassified_stop_no_reduction_pressure',
+                             source='unknown_cause_not_natural_duration_or_failure_probability'))
+    return rows
+
+
 def decide(snapshot: dict, history: list[dict], config: dict) -> dict:
     """Pure function. fallback means retain native settings, NOT suppress native Idle."""
     cfg = _settings(config)
@@ -323,6 +401,7 @@ def decide(snapshot: dict, history: list[dict], config: dict) -> dict:
     features = build_features(snapshot, history, cfg)
     features['pricing_context_tokens'] = snapshot['context_tokens']
     features['heartbeat_model'] = heartbeat_profile(features, cfg)
+    features['reminder_model'] = heartbeat_profile(features, cfg, source='reminder')
     observed_cache = features['warm_cache_fraction']
     if observed_cache is not None:
         cfg['hot_cache_fraction'] = min(cfg['hot_cache_fraction'], observed_cache)
@@ -337,10 +416,17 @@ def decide(snapshot: dict, history: list[dict], config: dict) -> dict:
     spans = features['arrival']['spans']
     data = from_events(features['forecast_events'], spans)
     data['training_cohorts'] = features.get('training_cohorts', [])
+    from secretary.adaptive_empirical_features import state, growth_by_source
+    features['activity_state'] = state(data, snapshot['now'], cfg.get('timezone'))
+    features['growth_state'] = growth_by_source(features['events'], snapshot['now'])
+    features['normal_growth_tokens_per_second'] = features['growth_state']['normal_growth_tokens_per_second']
+    cfg['horizon_seconds'], features['comparison_support'] = _comparison_scope(features, cfg)
     features['trajectory'] = predict(data, snapshot['now'], horizon=cfg['horizon_seconds'],
                                      timezone_name=cfg.get('timezone'), qualified_prior_ready=bootstrap_ready)
     curve = _survival_curve(snapshot, features, cfg)
     candidates = _candidates(snapshot, features, cfg, profile, curve)
+    if any(r.get('native', {}).get('native_cost_unknown', 0) > 0 for r in features['candidate_evaluations']):
+        return _fallback(snapshot, 'native_capacity_path_requires_unknown_maintenance_cost')
     current_mode = snapshot.get('heartbeat_mode', 'business')
     baseline = next(c for c in candidates if c['mode'] == current_mode and c['delay'] is None)
     native = snapshot.get('current_mode_native') is True
@@ -369,10 +455,16 @@ def decide(snapshot: dict, history: list[dict], config: dict) -> dict:
                             'maintenance_model': profile.provenance if profile else 'unavailable',
                             'maintenance_evidence': profile.diagnostics if profile else {},
                             'heartbeat_evidence': features['heartbeat_model'],
+                            'reminder_evidence': features['reminder_model'],
                             'risk_evidence': features['risk_model'],
                             'candidate_evaluations': features['candidate_evaluations'],
-                            'economic_scope': 'finite_common_window_and_one_cold_read_terminal_stress; '
+                            'economic_scope': 'history_supported_common_window_and_one_cold_read_terminal_stress; '
                                               'no_long_run_optimality_or_automatic_age_deadline',
+                            'comparison_horizon_seconds': cfg['horizon_seconds'],
+                            'comparison_support': features['comparison_support'],
+                            'sensitivity': _sensitivity(snapshot, features, cfg, profile, curve, chosen, current_mode),
+                            'activity_features': features['activity_state'],
+                            'context_growth_features': features['growth_state'],
                             'maintenance_payback_scenarios': payback_scenarios(snapshot['context_tokens'], profile, cfg['cache_ratio']),
                             'quality_status': 'unmeasured_frequency_and_activity_guards_only',
                             'coverage_seconds': arrival.get('raw_exposure_seconds', arrival['exposure_seconds']),
@@ -395,5 +487,6 @@ def decide(snapshot: dict, history: list[dict], config: dict) -> dict:
                                 else 'current_compatible_work_marks_or_first_return_cost_model'),
                             'trajectory_training_windows': features['trajectory']['training_windows'],
                             'behavior_forecast': features['trajectory'].get('horizons', {}),
+                            'conditional_remaining_idle': features['trajectory'].get('remaining_idle', {}),
                             'counterfactual_status': 'conditional_model_not_causal_savings',
                             'effective_hot_cache_fraction': cfg['hot_cache_fraction']}}

@@ -14,7 +14,7 @@ MAX_IMPORT_EVENTS = 2048
 MAX_IMPORT_RECEIPTS = 32
 KINDS = frozenset(('user_activity', 'turn_end', 'request', 'coverage', 'maintenance_start',
                    'maintenance_end', 'cancel', 'blocked_send', 'gap', 'coverage_gap',
-                   'maintenance_exclusion', 'exclusion'))
+                   'maintenance_exclusion', 'exclusion', 'maintenance_sample'))
 NUMBER_FIELDS = frozenset(('at', 'available_at', 'start_at', 'end_at', 'input_tokens',
                           'cache_read_tokens', 'cache_write_tokens', 'output_tokens',
                           'context_tokens', 'context_before', 'context_after', 'duration_seconds',
@@ -119,6 +119,12 @@ def _project(event):
     """Whitelist native numeric measurements and bounded provenance labels, never text blobs."""
     if not isinstance(event, dict):
         return None
+    if event.get('kind') == 'maintenance_sample':
+        from secretary.adaptive_samples import normalize_sample
+        try:
+            return normalize_sample(event)
+        except ValueError:
+            return None
     if event.get('bootstrap_schema'):
         from secretary.adaptive_bootstrap import project_transfer
         return project_transfer(event)
@@ -189,6 +195,10 @@ def _candidates(conn, db, target, declaration, now):
         if event is None:
             excluded['unsupported_or_invalid_numeric_event'] += 1
             continue
+        if (event['kind'] == 'maintenance_sample' and event.get('source_kind') == 'conversation'
+                and event.get('source_conversation_ref') != target
+                and event.get('ownership') in ('verified_native_owner', 'same_target_verified')):
+            event['ownership'] = 'other_conversation_verified'
         if max(event['at'], event['available_at']) > min(cutoff, now):
             excluded['after_cutoff_or_not_yet_known'] += 1
             continue
@@ -227,7 +237,7 @@ def _model_label(event):
 def _summary(events, excluded, local_count):
     times = [event['at'] for event in events]
     model_counts = Counter(_model_label(event) for event in events
-                           if event['kind'] in ('request', 'turn_end', 'maintenance_end'))
+                           if event['kind'] in ('request', 'turn_end', 'maintenance_end', 'maintenance_sample'))
     cohorts = {}
     for event in events:
         key = event['origin_profile'], event['origin_conversation']
@@ -355,3 +365,97 @@ def apply(db, target_ref, *, replace_import_id=None, now=None):
         _freeze(conn, target_ref, declaration, events, receipt, now)
         return receipt
     return db._execute_write(write)
+
+
+def _sample_source(target_ref, events, source_kind, source_conversation, source_sha256):
+    if source_kind == 'component_pool':
+        if source_conversation is not None or any(row.get('origin_conversation') is not None for row in events):
+            raise ValueError('component pool cannot claim Conversation ownership')
+        return dict(source_kind='component_pool', ownership='unproven_historical_component_pool',
+                    source_conversation=None, origin_key='numeric-package:' + source_sha256)
+    if source_kind != 'conversation':
+        raise ValueError('source_kind must be component_pool or conversation')
+    _text(source_conversation, 'explicit source Conversation')
+    for row in events:
+        proof = row.get('proof', {})
+        if (not isinstance(proof, dict) or proof.get('owner_verified') is not True
+                or proof.get('owner_conversation_ref') != source_conversation):
+            raise ValueError('Conversation source requires explicit matching owner proof for every sample')
+        if row.get('origin_conversation', source_conversation) != source_conversation:
+            raise ValueError('source Conversation conflicts with the explicit declaration')
+        if row.get('source_conversation_ref', source_conversation) != source_conversation:
+            raise ValueError('sample owner conflicts with the explicit source declaration')
+    return dict(source_kind='conversation', ownership=('same_target_verified' if source_conversation == target_ref
+                                                      else 'other_conversation_verified'),
+                source_conversation=source_conversation, origin_key=source_conversation)
+
+
+def import_samples(db, target_ref, events, *, import_id, source_sha256, now=None, apply=False,
+                   source_kind='component_pool', source_conversation=None):
+    """Explicit same-owner numeric maintenance freeze; preview is read-only.
+
+    The source package remains untouched. This writes only existing import sidecars,
+    never native usage, Conversation state, Idle clocks, or the live event buffer.
+    """
+    from hashlib import sha256
+    from secretary.adaptive_config import enabled_for_db
+    from secretary.adaptive_samples import normalize_sample
+    _text(import_id, 'import id')
+    _text(target_ref, 'target conversation_ref')
+    if (not isinstance(source_sha256, str) or len(source_sha256) != 64
+            or any(char not in '0123456789abcdef' for char in source_sha256)):
+        raise ValueError('source_sha256 must be an explicit SHA256 digest')
+    now = time.time() if now is None else number(now)
+    if now is None or not enabled_for_db(db, target_ref):
+        raise ValueError('target Conversation is not explicitly enabled in its owning Profile')
+    if not isinstance(events, list) or not 0 < len(events) <= MAX_IMPORT_EVENTS:
+        raise ValueError('bounded nonempty maintenance sample list required')
+    if any(not isinstance(event, dict) for event in events):
+        raise ValueError('invalid sample')
+    source = _sample_source(target_ref, events, source_kind, source_conversation, source_sha256)
+    projected, identities = [], set()
+    for raw in events:
+        if raw.get('origin_profile', _profile(db)) != _profile(db):
+            raise ValueError('cross-Profile maintenance import denied')
+        sample = normalize_sample(raw)
+        if not sample['verified'] or max(sample['at'], sample['available_at']) > now:
+            raise ValueError('unverified or not-yet-known maintenance sample')
+        if sample['event_id'] in identities:
+            raise ValueError('duplicate sample identity in package')
+        identities.add(sample['event_id'])
+        sample.update(source_kind=source['source_kind'], ownership=source['ownership'])
+        if source_conversation is not None:
+            sample['source_conversation_ref'] = source_conversation
+        else:
+            sample.pop('source_conversation_ref', None)
+        projected.append({**sample, 'origin_profile': _profile(db), 'origin_conversation': source['origin_key'],
+                          'origin_event_id': sample['event_id']})
+    declaration = dict(id=import_id, kind='empirical_maintenance', from_conversation=target_ref,
+                       source_sha256=source_sha256, source=source,
+                       payload_sha256=sha256(_json(projected).encode()).hexdigest())
+
+    def run(conn):
+        _validate_refs(conn, target_ref, target_ref)
+        if source['source_kind'] == 'conversation':
+            _validate_refs(conn, target_ref, source_conversation)
+        # Recheck opt-in before the transaction writes; no route/network resolution.
+        if not enabled_for_db(db, target_ref):
+            raise ValueError('target Conversation was disabled')
+        prior = _existing_receipt(conn, target_ref, declaration)
+        if prior:
+            return {**prior, 'already_applied': True}
+        receipt = dict(target_conversation=target_ref, declaration=declaration, imported_at=now,
+                       already_applied=False, **_summary(projected, {}, 0))
+        receipt.update(quality='explicit_numeric_maintenance_samples_no_live_state_transfer',
+                       source_kind=source['source_kind'], ownership=source['ownership'],
+                       limitations=['Import binding is to this local Profile; historical source ownership follows the explicit source declaration.',
+                                    'Component-pool samples do not prove target Conversation experience or a linked joint invoice.',
+                                    'Event knowability and import receipt time are both required before training.',
+                                    'No coverage, current activity, native usage, or scheduling state is transferred.'])
+        if apply:
+            _freeze(conn, target_ref, declaration, projected, receipt, now)
+        return {**receipt, 'applied': apply}
+    if apply:
+        return db._execute_write(run)
+    with db._read_ctx() as conn:
+        return run(conn)

@@ -28,38 +28,97 @@ def _user_work(event, marks, timing_only):
                  (('calls', 1), ('growth_tokens', 0), ('output_tokens', 0), ('duration_seconds', 0)))
 
 
-def _path_cost(snapshot, features, cfg, background, path, delay, profile, heartbeat_interval, timing_only=False):
+def _cancelled_cost(profile, elapsed):
+    samples = profile.cancellation_scenarios
+    if not samples:
+        return profile.cost  # Unknown spent fraction is not a zero invoice.
+    nearest = min(samples, key=lambda p: (abs(p.duration - elapsed), -p.cost))
+    return nearest.cost
+
+
+def _release_background(events, at):
+    released = [(at if e.get('_coalesced_due', math.inf) <= at < when else when, priority, serial, source, e)
+                for when, priority, serial, source, e in events]
+    heapq.heapify(released)
+    return released
+
+
+def simulate_path(snapshot, features, cfg, background, path, delay, profile, heartbeat_interval, timing_only=False):
     now = snapshot['now']
     last = features['last_request_at']
     last = last - now if last is not None else -math.inf
     context, cost, reads, busy_until = snapshot['context_tokens'], 0.0, 0.0, 0.0
     compacted, pending, recovered = False, delay is not None, False
+    started, collision, wait = False, False, 0.0
+    native_count, native_unknown = 0, False
+    maintenance_start, maintenance_end = None, None
+    maintenance_before = None
     marks = features['trajectory']['marks']
     serial = count()
-    events = [(at, 2, next(serial), source, {}) for at, source in background if source != 'heartbeat']
+    events = [(at, 1, next(serial), source, {}) for at, source in background if source != 'heartbeat']
     heartbeats = [at for at, source in background if source == 'heartbeat']
     if heartbeats:
         events.append((min(heartbeats), 3, next(serial), 'heartbeat', {}))
-    events += [(e['offset'], 0, next(serial), 'user', e) for e in path]
+    projected = [(e['offset'], 0 if e.get('source', 'user') == 'user' else 1, next(serial),
+                  e.get('source', 'user'), e) for e in path]
+    known = [at for at, source in background if source == 'reminder']
+    # A known schedule replaces its sampled occurrence; never charge both.
+    events += [row for row in projected if row[3] == 'user' or not any(abs(row[0] - at) < 900 for at in known)]
     if delay is not None:
-        events.append((delay, 1, next(serial), 'maintenance', {}))
+        events.append((delay, 2, next(serial), 'maintenance', {}))
     horizon = cfg.get('horizon_seconds', max((row[0] for row in events), default=0))
+    events = [row for row in events if 0 <= row[0] <= horizon]
     heapq.heapify(events)
     while events:
-        at, priority, _, source, event = heapq.heappop(events)
+        at, priority, order, source, event = heapq.heappop(events)
         if source == 'maintenance':
             if pending and busy_until <= at:
                 cost += profile.cost
+                maintenance_before = context
                 context *= profile.retained
                 last, busy_until, compacted = -math.inf, at + profile.duration, True
+                started, maintenance_start, maintenance_end = True, at, at + profile.duration
             pending = False
             continue
         if source != 'user' and at < busy_until:
-            heapq.heappush(events, (busy_until, priority, next(serial), source, event))
+            event = dict(event, _coalesced_due=event.get('_coalesced_due', at))
+            heapq.heappush(events, (busy_until, priority, order, source, event))
             continue  # One outstanding due survives; no backlog of periodic catch-up calls.
+        if (source == 'user' and event.get('activity') == 'cancel' and started
+                and maintenance_start <= at < maintenance_end):
+            collision, wait = True, max(wait, maintenance_end - at)
+            cost += _cancelled_cost(profile, at - maintenance_start) - profile.cost
+            context, busy_until, compacted = maintenance_before, at, False
+            maintenance_end = at
+            events = _release_background(events, at)
+            continue
+        if source == 'user' and at < busy_until:
+            pending = False
+            if started and maintenance_start <= at < maintenance_end:
+                collision, wait = True, max(wait, maintenance_end - at)
+            event = dict(event, _coalesced_due=event.get('_coalesced_due', at))
+            heapq.heappush(events, (busy_until, priority, order, source, event))
+            continue
         pending = False  # A Main turn invalidates the pending idle plan.
         actual = max(at, busy_until)
+        threshold = snapshot.get('native_threshold_tokens')
+        if threshold is not None and context >= threshold:
+            if profile is None:
+                native_unknown = True
+            else:
+                # The same maintenance draw also governs compulsory native
+                # maintenance. A retention policy cannot grow past capacity
+                # forever and then claim its fictitious reads were avoidable.
+                slope = profile.diagnostics.get('scenario', {}).get('cost_slope', 0)
+                cost += max(0, profile.cost + slope * (context - snapshot['context_tokens']))
+                context *= profile.retained
+                actual += profile.duration
+                last, busy_until, compacted = -math.inf, actual, True
+                native_count += 1
         if source == 'user':
+            if started and maintenance_start <= at < maintenance_end:
+                collision = True
+                wait = max(wait, maintenance_end - at)
             calls, growth, output, duration = _user_work(event, marks, timing_only)
             if calls == 0:
                 continue  # E.g. cancellation is a real return, not a model request.
@@ -83,7 +142,39 @@ def _path_cost(snapshot, features, cfg, background, path, delay, profile, heartb
         if source == 'heartbeat' and heartbeat_interval is not None and actual + heartbeat_interval <= horizon:
             heapq.heappush(events, (actual + heartbeat_interval, 3, next(serial), 'heartbeat', {}))
     # Same liability boundary for all policies, including paths with user returns.
-    return cost, context, reads
+    return dict(cost=cost, terminal=context, reads=reads, started=started,
+                collision=collision, wait=wait, native_interventions=native_count,
+                native_cost_unknown=native_unknown)
+
+
+def _path_cost(snapshot, features, cfg, background, path, delay, profile, heartbeat_interval, timing_only=False):
+    row = simulate_path(snapshot, features, cfg, background, path, delay, profile, heartbeat_interval, timing_only)
+    return row['cost'], row['terminal'], row['reads']
+
+
+def evaluate(snapshot, features, cfg, background, delay, profile, *, heartbeat_interval=None, timing_only=False):
+    """One empirical joint distribution supplies cost, execution and risk."""
+    from dataclasses import replace
+    profiles = (profile.scenarios or (profile,)) if profile is not None else (None,)
+    total = dict(cost=0.0, terminal=0.0, reads=0.0, started=0.0, collision=0.0, wait=0.0,
+                 native_interventions=0.0, native_cost_unknown=0.0)
+    for item in profiles:
+        if item is not None and profile.cancellation_scenarios:
+            item = replace(item, cancellation_scenarios=profile.cancellation_scenarios)
+        scenario_weight = item.diagnostics.get('weight', 1 / len(profiles)) if item is not None else 1.0
+        for path in features['trajectory']['paths']:
+            row = simulate_path(snapshot, features, cfg, background, path['events'], delay, item,
+                                heartbeat_interval, timing_only)
+            weight = path['weight'] * scenario_weight
+            for key in total:
+                total[key] += row[key] * weight
+    started = total['started']
+    total['unconditional_collision'] = total['collision']
+    total['collision'] = total['collision'] / started if started else 0.0
+    total['expected_wait_seconds'] = total['wait'] / started if started else 0.0
+    total['source'] = 'same_empirical_demand_and_maintenance_paths_as_cost'
+    total['path_evaluations'] = len(profiles) * len(features['trajectory']['paths'])
+    return total
 
 
 def forecast(snapshot, features, cfg, background, delay, profile, *, heartbeat_interval=None, timing_only=False):
@@ -101,7 +192,7 @@ def collision_risk(trajectory, delay, duration):
     """Conditional on this idle plan surviving until its execution time."""
     eligible, collision, wait = 0.0, 0.0, 0.0
     for path in trajectory['paths']:
-        first = min((event['offset'] for event in path['events']), default=math.inf)
+        first = min((event['offset'] for event in path['events'] if event.get('source', 'user') == 'user'), default=math.inf)
         if first <= delay:
             continue
         weight = path['weight']

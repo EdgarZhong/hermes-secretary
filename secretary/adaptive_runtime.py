@@ -296,31 +296,41 @@ def maintenance(parent, registration, *, finished=False, trigger=None):
 
 def _maintenance(parent, registration, *, finished=False, trigger=None):
     owner = _owner(parent)
-    if owner is None:
-        return
-    db, ref, _config = owner
     observation = registration.observation
     now = time.time()
+    partial = bool(getattr(getattr(registration.fence, "partial", None), "adopted", False))
+    outcome = "partial" if finished and observation.state == "completed" and partial else observation.state
+    collector = getattr(observation, "_adaptive_collector", None)
+    if finished and collector is not None and collector.enabled and not _sample_parent_matches(parent, collector):
+        _settle_maintenance_sample(parent, observation, outcome, now)
+        return
+    if owner is None:
+        if finished:
+            _settle_maintenance_sample(parent, observation, outcome, now)
+        return
+    db, ref, _config = owner
     if not finished:
         observation._adaptive_started_at = now
         observation._adaptive_idle = trigger == "noting_joint_idle"
         from agent.context_compaction_request import read_context_usage
         observation._adaptive_context_before = read_context_usage(parent)[0]
+        from secretary.adaptive_samples import start
+        observation._adaptive_collector = start(parent, "compaction", observation.operation_id,
+                                               joint_operation_id=observation.operation_id)
     started = getattr(observation, "_adaptive_started_at", None)
     from agent.context_compaction_request import read_context_usage
-    partial = bool(getattr(getattr(registration.fence, "partial", None), "adopted", False))
-    outcome = "partial" if finished and observation.state == "completed" and partial else observation.state
     record_event(db, ref, "maintenance_end" if finished else "maintenance_start", source="framework", verified=True,
                  parent=parent, event_id=observation.operation_id + (":end" if finished else ":start"), at=now,
                  operation_id=observation.operation_id, outcome=outcome, model_key=model_key(parent),
                  trigger="idle" if getattr(observation, "_adaptive_idle", False) else "native",
                  context_before=getattr(observation, "_adaptive_context_before", None),
-                 context_after=read_context_usage(parent)[0] if finished else None, usage_complete=False,
+                 context_after=(read_context_usage(parent)[0] or None) if finished else None, usage_complete=False,
                  idle=getattr(observation, "_adaptive_idle", False),
                  duration_seconds=now - started if finished and started is not None else None,
                  duration_scope="native_compaction_registration",
                  cancel_requested=observation.cancel_requested)
     if finished:
+        _settle_maintenance_sample(parent, observation, outcome, now)
         # Refresh audit state only: an already consumed Idle cycle is never rearmed.
         measured, _history = snapshot(parent, db, ref, _config, now)
         from secretary.adaptive_policy import decide
@@ -329,6 +339,32 @@ def _maintenance(parent, registration, *, finished=False, trigger=None):
             db._execute_write(lambda conn: store.adopt_mode_conn(conn, ref, decision["mode"], _config))
         record_event(db, ref, "state_refresh", source="framework", verified=True, parent=parent,
                      context_tokens=measured["context_tokens"])
+
+
+def _sample_parent_matches(parent, collector):
+    return collector.matches_parent(parent)
+
+
+def _settle_maintenance_sample(parent, observation, outcome, now):
+    collector = getattr(observation, "_adaptive_collector", None)
+    if collector is None or not collector.enabled:
+        return
+    from agent.context_compaction_request import read_context_usage
+    same_owner = (_sample_parent_matches(parent, collector)
+                  and getattr(parent, "context_compressor", None) is collector.compressor)
+    after = (read_context_usage(parent)[0] or None) if same_owner else None
+    # A reset real-usage anchor is invalid; the native post-compaction estimate
+    # is separately labelled and never borrowed from a replacement owner.
+    after_source = "native_usage" if after else None
+    if same_owner and after is None and outcome in {"completed", "partial"}:
+        after = getattr(getattr(parent, "context_compressor", None), "last_compression_rough_tokens", 0) or None
+        after_source = "native_post_compaction_rough" if after else None
+    from secretary.adaptive_samples import finish
+    started = getattr(observation, "_adaptive_started_at", None)
+    finish(collector, outcome, context_before=getattr(observation, "_adaptive_context_before", None),
+           context_after=after, context_after_source=after_source,
+           block_seconds=now - started if started is not None else None,
+           block_scope="native_compaction_registration")
 
 
 def cancelled(parent, operation_id, outcome):

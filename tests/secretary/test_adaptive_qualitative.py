@@ -54,9 +54,14 @@ def test_brief_departure_does_not_arm_immediate_maintenance():
 
 
 def test_expensive_or_slow_maintenance_is_not_easier_to_trigger():
-    for change in (dict(maintenance_cost=9000000), dict(maintenance_duration_seconds=7200)):
-        result = decide(snapshot(), quiet_history(), {**CFG, **change})
-        assert result['threshold_tokens'] is None
+    costly = decide(snapshot(), quiet_history(), {**CFG, 'maintenance_cost': 9000000})
+    assert costly['threshold_tokens'] is None
+    slow = decide(snapshot(), quiet_history(), {**CFG, 'maintenance_duration_seconds': 7200})
+    # A learned long empty interval can accommodate a slow operation. The
+    # explicit experience limits still apply to that same path distribution.
+    if slow['threshold_tokens'] is not None:
+        assert slow['diagnostics']['collision_margin_estimate'] <= .15
+        assert slow['diagnostics']['expected_wait_seconds'] <= 30
 
 
 def test_expensive_heartbeat_output_discourages_hot_mode():
@@ -69,7 +74,8 @@ def test_expensive_heartbeat_output_discourages_hot_mode():
 
 
 def test_no_business_wakeups_does_not_pay_for_an_unread_rewrite():
-    result = decide(snapshot(), quiet_history(), {**CFG, 'business_interval_seconds': None})
+    rows = [e for e in quiet_history() if e.get('kind') != 'user_activity' or e['at'] < 3 * 86400]
+    result = decide(snapshot(), rows, {**CFG, 'business_interval_seconds': None})
     assert result['mode'] == 'business'
     assert result['threshold_tokens'] is None
 

@@ -36,6 +36,26 @@ R10 权限：本地分支实现及范围内阶段提交，按仓库hook自动pus
 
 旧正文描述旧实现／历史证据；冲突以本节和本轮Snapshot Index为准。具体数学方法属于获授权工程设计，须在计划与证据说明并接受本轮全范围验收，不冒称用户逐项指定。
 
+### V2本地候选机制与复跑入口（实施说明，验收中）
+
+候选沿原`decide(snapshot, history, config)`入口实现。行为样本区分真人、Heartbeat和Reminder；15分钟／1小时／4小时活动、距真人输入及机械工作结束的时间、时段、真人与背景端点增长参与相似历史选择。24小时计数、阶段标签和阶段持续下界另作分析，不能称所有展示指标均已入模；机械Turn结束不等于语义任务完成。工作结束时间按同Conversation已知行为保留，不能因模型／费用合同变化被过滤；工作量及计价继续分层。
+
+在有来源的观测时间内采样安静时点，保留没有回归的成熟片段；用最多128个历史起点生成32条有状态的需求路径。费用、能否执行、回归碰撞及等待来自同一组路径与最多12个维护情景。比较窗口由历史支持决定、最多24小时，另列6小时及末态冷读压力；维护、缓存、后台周期和原生容量责任按各策略重算，不追回沉没费用，也不增加到期强压规则。
+
+维护优先使用已证同操作账单，否则明确使用历史组件条件组合。Noting总费用参与计价，Main阻挡取Compact已证阶段；缺Compact账单时的单辅助调用冷读／压后输出估计、Noting首prompt规模迁移、跨模型借用及粗估留存均是条件假设。整张历史账单、当前模型组件、同目标来源、慢阻挡及未知恢复费用分别对照。明确用户Stop是外部取消条件分支，保留已付费用与截尾时间；内部失败仍参与自然执行分布，不在没有用户操作的真实空档伪造Stop。
+
+正常运行通过既有Compact原生注册／发布和Noting原生用量回执采集组件；collector失败不阻断主流程。缺测不记成零，后继操作不能补写旧操作，合法Session轮转沿本次原生提交见证结算到原Conversation。历史组件可显式导入，收据与原始可知时间同时约束训练，不转移当前Idle／Heartbeat／缓存状态。
+
+本地入口：
+
+```bash
+.venv/bin/python scripts/adaptive_empirical_import.py preview --profile NAME --target REF --input FILE --import-id ID
+.venv/bin/python scripts/adaptive_empirical_replay.py prepare --input-dir DIR --manifest MANIFEST --components COMPONENTS --experience-cases CASES --output INPUT
+.venv/bin/python scripts/adaptive_empirical_replay.py run --input INPUT --output REPORT
+```
+
+导入的`apply`是显式写入操作，本轮仅在隔离测试库验证；没有对生产执行。回放CLI只读指定数值包，核原件SHA，支持冻结源码`--source-root`、`--cases`、费用／缓存／排期`--variant`及来源`--component-pool`对照。真实私人原件与逐时报告留ignored目录；本轮索引和当前完成状态见根CLAUDE及`.autonomous/20261106-adaptive-empirical/`。条件回放结果不等于实际节费，当前尚未完成整轮验收，不得上线。
+
 ## 2026-11-06 用户重申：历史采样与轻量模拟应驱动策略
 
 用户明确质疑并否定Agent自行设置300万输入等价／3600秒假设作为长期维护决策依据，重申“使用历史数据，然后做轻量模拟，在一定程度上预测用户回归时间，再决定策略”。此为原目标的再次明确，不是同意新增固定期限／强制压缩规则。下文先验及实现记录是当前／历史事实，不代表用户认可；现网尚未修改。
