@@ -14,10 +14,10 @@
 ## 当前状态与编排
 | 任务 | 机制实现 | 正式接线 | 针对性验证 | 用户结果 | 当前安排 |
 |---|---|---|---|---|---|
-| D | 真实CLI和数据投影整包交回，root已亲审 | CLI逐时执行正式decide，自有HB/context/cache | 20项；v7九段、连续旅程、来源/费用/状态敏感性与首次维护对照 | root逐段判断落盘，v9已关联6c72bce；G15反例待修复 | /root/adaptive_audit已交回；保全部负结果 |
-| P | 整包已接收；G11由root审入ff0a25d；G12收敛为独立小修复 | decide→经验特征/维护场景→同源evaluate；原接口保持 | 最新6文件89项；特征增轴对照与历史可知性证据；真实规模单次约0.5–0.6秒 | D连续旅程与费用敏感性待判 | /root/empirical_policy已交回；无上线 |
-| W | 10文件修订包已交回，root亲审接收G7整改 | 原生Compact/Noting采集及显式导入→snapshot→估计 | 首包13项、既有63项；轮转/干扰10项、partial1项、读取失败1项 | 整轮门禁未验 | /root/empirical_wiring已交回；待集成检查/门禁 |
-| I | 依据已冻结，候选3bef2907已提交/推功能分支 | P/W/D已集成，G11/G12审查中 | 十检查一次及health定向整改；同版证据复用 | root-experience-review.md逐段判断；两独立门禁未开始 | root统筹，未上线 |
+| D | CLI/数据投影及G16结算刷新已接收 | CLI逐时正式decide，自有HB/context/cache | 当前32项；v11九段/连续/边际/来源费用压力13矩阵 | root及初审独立逐段接收，保负结果 | adaptive_audit已交回，无新写入任务 |
+| P | 经验算法及G11–G15已接收；G17修复中 | 正式decide/同源evaluate | 当前116项及独立反例G17待修 | v11有经验路径已接收；缺样本边界违规 | retained_transfer_audit独占G17白名单，root亲审后提交 |
+| W | 观测/导入与轮转已接收 | Compact/Noting→snapshot→学习 | 正式DB/Loop、轮转干扰/失败/读取与关闭证据 | 初审相关条款符合 | 已交回；不重复无关测试 |
+| I | 当前产品1ae2b0f2 | P/W/D已集成 | 初审31符合/1违规；G17开放 | 经验判断已接收，Validation未开始 | root统筹修复→全新全轮复审→Validation，不上线 |
 
 共享接口初稿：同Secretary事件表kind=maintenance_sample，component=compaction/noting，at/available_at、model_identity/model_contract、operation_id、outcome、context_before/after、duration_seconds、block_seconds、usage四token桶、source/proof、verified。缺测保持None；费用由当前倍率从raw usage计价。Compaction与Noting真实有关联才称同操作完整账单；历史分项分布组合标条件模拟。最终字段由P/W共同明确记录，不变用户语义；D使用同schema导出，W提供显式本地可测导入路径。P不增独立调度器/路由，D不复制策略。
 
@@ -30,20 +30,20 @@
 ## 缺陷与整改
 | ID | 要求/触发 | 事实/影响 | 优先级 | owner | 关闭条件 | 状态 |
 |---|---|---|---|---|---|---|
-| G1 | R6/R7真实策略验收 | 旧历史仅预测分数、合成正例90K/600秒不对应线上 | P0 | D/root | 案例预期冻结＋真实逐时策略/闭环及人工判定 | 开放 |
-| G2 | R3/R4维护经验建模 | usage_complete=false与native注册范围导致费用/时长不学习 | P0 | W/P | 经验组件与正式后继采集均接入；新样本改变估计 | 开放 |
-| G3 | R1/R2/R4同源预测 | 无足够阶段工程及独立风险门持续否决 | P0 | P | 可解释特征作用、同源经验风险费用、实际反例关闭 | 开放 |
-| G4 | R5/R7长期延后 | 六小时反复拒绝且无真实整段验收 | P0 | P/D | 真实有收益机会可执行，过早/频繁维护反例保护 | 开放 |
-| G5 | R3–R6共同外部需求 | E06无真实用户操作却随机抽中explicit_interrupt，虚构Stop使重复维护；首版保留 | P1 | P/D | 明确用户取消随共同真实动作，内部失败继续采样，取消费用/未知/截尾不删除 | 整改中 |
-| G6 | R1/R4/R5亲审 | 增长轴作用、恢复费用未知敏感性及模拟越原生容量阈值需闭环 | P1 | P | 特征作用/消融、费用来源与压力对照、共同容量责任边界证据 | 整改中 |
+| G1 | R6/R7真实策略验收 | 旧历史仅预测分数、合成正例90K/600秒不对应线上 | P0 | D/root | 案例预期冻结＋真实逐时策略/闭环及人工判定 | root已接收实现与v11证据，待独立门禁 |
+| G2 | R3/R4维护经验建模 | usage_complete=false与native注册范围导致费用/时长不学习 | P0 | W/P | 经验组件与正式后继采集均接入；新样本改变估计 | root已接收实现与v11证据，待独立门禁 |
+| G3 | R1/R2/R4同源预测 | 无足够阶段工程及独立风险门持续否决 | P0 | P | 可解释特征作用、同源经验风险费用、实际反例关闭 | root已接收实现与v11证据，待独立门禁 |
+| G4 | R5/R7长期延后 | 六小时反复拒绝且无真实整段验收 | P0 | P/D | 真实有收益机会可执行，过早/频繁维护反例保护 | root已接收实现与v11证据，待独立门禁 |
+| G5 | R3–R6共同外部需求 | E06无真实用户操作却随机抽中explicit_interrupt，虚构Stop使重复维护；首版保留 | P1 | P/D | 明确用户取消随共同真实动作，内部失败继续采样，取消费用/未知/截尾不删除 | root已接收实现与v11证据，待独立门禁 |
+| G6 | R1/R4/R5亲审 | 增长轴作用、恢复费用未知敏感性及模拟越原生容量阈值需闭环 | P1 | P | 特征作用/消融、费用来源与压力对照、共同容量责任边界证据 | root已接收实现与v11证据，待独立门禁 |
 | G7 | R3/R8正常Session轮转 | _sample_parent_matches严格旧session相等，正常压缩轮转后会提前return，丢after和state_refresh；首包测试未覆 | P1 | W | 本次commit observer+持久路径见证；真实compress_context/SessionDB轮转、分支/后继/rewind/runtime替换及读取失败证据在wiring/rotation-* | 实现关闭，root已亲审；待独立门禁 |
 | G8 | R1/R3/R6特征可知时间 | excluded裸区间参与origin向量，若仅结束后回填／导入可知则可能提前暴露维护缺口 | P1 | P | 原生feature_exclusion_events保可知时间，裸tuple仅成熟label；end1000/known1500不改500/1200特征、已知start300可改500，见policy/knowability-tests.log | 实现关闭，root已亲审；待独立门禁 |
-| G9 | R5/R6/R7连续经验判断 | v4 E06/E08已执行维护；E03/E07各自短截点费用负差，需区分结算截断与过早维护；不能独立片段重置旧大context冒连续行为 | P1 | D/root | 保原9段/预期/负结果；补E01→既有取证终点连续旅程、阶段投影及E03/E07共同终点对照；主会话逐段判定 | 主会话逐段判断已落盘，待G12最终缩减估计关联 |
+| G9 | R5/R6/R7连续经验判断 | v4 E06/E08已执行维护；E03/E07各自短截点费用负差，需区分结算截断与过早维护；不能独立片段重置旧大context冒连续行为 | P1 | D/root | 保原9段/预期/负结果；补E01→既有取证终点连续旅程、阶段投影及E03/E07共同终点对照；主会话逐段判定 | 主会话v11逐段判断已落盘，保负结果；待独立门禁 |
 | G10 | R2/R8工作结束保护跨模型 | root实测E03的user end=1793765542.519，价格合同过滤后last_user_work_end却1793722340.320；v4 12:38:59维护距实际12:12:23结束仅26m36s | P1 | P/D | 同owner已知真人工作结束时间跨合同保留，工作量/费用仍分层；P最新89项含跨合同/迟到/外来历史隔离；D重验相应片段 | 实现及v7全实际维护计时已核，待独立门禁 |
 | Q1 | R9统一质量检查 | 首次十检查8项通过；本轮health HX011在轮转测试分派 | P2 | W/root | handler映射等价整改，6场景原断言保留并通过；root-health-recheck.log为0阻断/0提示 | 已关闭 |
-| G11 | R3/R8正常在线预测就绪 | D真实E08去bootstrap后11用户/161486秒覆盖，尾部仅滞后30秒即永久退化 | P1 | P/root | current_activity_evidence共享来源，G15已拆当前资格80秒/scope与本地预测1h；未知尾部不扩训练，gap/迟到/新活动反证；freshness-real-fixed.json与96项/迟到gap1项，root亲审及ruff/health通过 | 实现关闭，待最终真实回放版本关联与独立门禁 |
-| G12 | R3/R5/R7小context重复维护收益 | 连续旅程第二次91617按旧retained比率缩至约24021且支807987；GPT两条实测rough after约46K近固定，比例外推可能夸大可缩减量 | P1 | P/D/root | D只首维护的同需求同终点对照；P分析真实before/after量纲/关系及最小方案，禁止任意floor/提高阈值或删除贵样本 | 实现及亲审关闭；v8实际回放/门禁待验 |
-| G13 | R5/R8分段缩减后的执行阈值 | G12引入分段迁移，原_break_even零点割线仍冒affine精确边界且T直接进入计划；当前点合格不等于T处已验 | P1 | retained_transfer_audit/root | 候选阈值以同源路径/该规模费用与风险实际校验，有界搜索只返回已验可行数值，明确非全域最优；实际反例与资源证据 | 98项与root亲审、ruff/health通过；v8回放/门禁待验 |
+| G11 | R3/R8正常在线预测就绪 | D真实E08去bootstrap后11用户/161486秒覆盖，尾部仅滞后30秒即永久退化 | P1 | P/root | current_activity_evidence共享来源，G15已拆当前资格80秒/scope与本地预测1h；未知尾部不扩训练，gap/迟到/新活动反证；freshness-real-fixed.json与96项/迟到gap1项，root亲审及ruff/health通过 | G15修正后116项/v11已关联，待独立门禁 |
+| G12 | R3/R5/R7小context重复维护收益 | 连续旅程第二次91617按旧retained比率缩至约24021且支807987；GPT两条实测rough after约46K近固定，比例外推可能夸大可缩减量 | P1 | P/D/root | D只首维护的同需求同终点对照；P分析真实before/after量纲/关系及最小方案，禁止任意floor/提高阈值或删除贵样本 | 实现/亲审/v11实际回放已接收，待独立门禁 |
+| G13 | R5/R8分段缩减后的执行阈值 | G12引入分段迁移，原_break_even零点割线仍冒affine精确边界且T直接进入计划；当前点合格不等于T处已验 | P1 | retained_transfer_audit/root | 候选阈值以同源路径/该规模费用与风险实际校验，有界搜索只返回已验可行数值，明确非全域最优；实际反例与资源证据 | 98项与root亲审、ruff/health及v11回放通过，待独立门禁 |
 
 检查范围说明：root统一检查执行于暂存31文件，日志`root-quality-check.log`；唯一剩余no-tmp指向未修改的`.autonomous/20261031-evidence-recovery/validation.md:20`，HEAD与冻结24fe50ff的blob均`35daf5563d97496728892feb281ba89f5a7eb724`。保留历史报告和冻结规则，不冒称十项整体通过；这是既有范围外失败，不是本轮新增豁免。质量检查后仅等价改测试并定向复测health。
 
@@ -75,3 +75,17 @@
 **G16回放E1/E6维护后mode刷新遗漏（开放，D/root）：** root准备独立审查时亲读冻结E1/E6与adaptive_runtime._maintenance finished分支，发现正式结算后snapshot→decide→adopt_mode→state_refresh，不复活Idle；Replay._finish_maintenance只_schedule_hb，少了mode-only刷新，影响用户结果证据。已通知D暂停未启动v10矩阵，保存原件；扩其白名单仅replay及已有测试，按正式顺序复用决策记录/只采纳mode/写候选epoch的framework状态，保anchor、排队用户优先、不伪造Main结束/coverage/组件usage、不生成新Idle。成功/失败/Stop定向反证后root亲审，再冻新版回放。正式算法产品未因此改变，旧v9/v10不作为最终正式效果全证。
 
 **G16接收与下一版：** root亲审共同_decision owner/维护终态→mode-only→framework刷新→原anchor重算，与正式runtime一致；32项与root-mode-refresh-check.log的ruff/health通过0/0。D获准冻v11更新受影响矩阵，审计仅main_end_plan采纳T/delta，mode_only不复活Idle。v10完成13任务但缺此行为，保留为缺口版诊断而非最终证据。
+
+## 当前整轮门禁（v11接收后）
+
+主会话已完整读取v11报告/执行审计并更新ignored `root-experience-review.md`逐段判定，接受预登记行为预期；不是保证每个有限窗口盈利，不抹E07/E09及费用/失败压力负差。G1–G16的实现/本地接线/实际反例补证由root接收，最终关闭仍以独立门禁证据为准。当前产品1ae2b0f2，75份源码一致；27执行/26维护/26mode-only、1401HB检查、最短quiet1800、0碰撞；13矩阵408.459秒。当前final-resource.json：同E08无bootstrap249事件/43组件，单次wall0.185113秒，独立tracemalloc峰值1025839bytes；非RSS/服务器/统计延迟保证。
+
+`/root/verification_empirical_r1`全轮初审已交回：先仅冻结原文建判据，31符合/1违规(G17)/0证据不足。原判据接受root最小修复方向；retained_transfer_audit负责正式经验入口与相关测试，root负责亲审/文档/提交。修后全新独立全轮复审，通过后另派Validation；现在未完成目标，不合main、不上线。
+
+**G17空维护样本仍走固定prior（开放，初审已独立复现，修复中）：** root核最终说明时亲读adaptive_cost.maintenance_profile及policy._maintenance，发现无maintenance_sample且无完整legacy样本时仍返回explicit_prior。现有tests/test_adaptive_policy的90K/600s/.18声明夹具实际decide：0维护事件→business/T32768/delta0/robust_cost_improvement，费用/时长/缩减样本全0；证据root-empty-maintenance-prior-probe.json。这不是新真实历史回放，也不能据此否定v11经验路径结果，但R3的无任意固定维护假设边界尚未闭合。产品保持1ae2b0f冻结，先交独立判据评审；root拟最小修法为正式经验入口缺经验时明确无维护证据/只保原生，不让compatibility helper的explicit_prior进入新主动决策，保持历史完整legacy可读。需改依赖合成prior的旧测试为来源明确的样本或明确兼容测试，不用旧90K正例免责。尚未实施，不改变冻结规格或生产。
+
+**G17修复编排：** verification.md §5–6为独立发现、root提案与评审链。白名单policy/cost及相关policy/empirical/cost/learning/bootstrap/wiring测试；证据仅ignored policy/g17-*。完整legacy保留，None分支不得禁用HB或免费计原生干预；补原反例、prior不敏感性、不完整/完整经验、正常学习恢复和原生保护。旧兼容helper测试与新正式策略测试分开；不改价格/seed/预期，按依赖证明v11复用或定向补跑。整包交回后root亲审、质量检查、提交，再全新Verification。
+
+**G17 root接收：** 亲读全部diff及上下游_forecast/None分支、原失败测试和g17-reuse-audit脚本。正式_maintenance直取原scenarios，缺经验诊断与HB独立候选保留；分析式退化分支新加无profile容量未知回退，未改原生执行/Force。7文件146项一次通过；1919保存记录分支审计+同E08完整decision等值，仅支持v11有经验路径版本迁移，不称重跑。源码SHA与g17-implementation逐项一致；完整legacy/current组件及导入前None→导入后→自然回执再更新已覆盖。root接收机制修复，最终关闭待新独立全轮复审；质量与提交随后记录。
+
+G17集成质量：root-g17-check.log，ruff/health两项通过，health相对44228df552的28文件0阻断/0提示；git diff --cached --check通过，五份改动源码/测试SHA与交回清单一致。仅提交本轮明确九文件，原Huawei目录不跟踪；原no-tmp历史范围外状态不变。

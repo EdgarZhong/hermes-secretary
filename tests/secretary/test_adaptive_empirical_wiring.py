@@ -306,18 +306,19 @@ def test_local_import_cli_preserves_source_and_reaches_policy_snapshot(owned, mo
 def test_imported_then_native_receipts_update_formal_maintenance_estimate(real_parent, db, monkeypatch):
     from agent.auxiliary_hooks import run_with_aux_hooks
     from secretary.adaptive_features import build_features
-    from secretary.adaptive_cost import maintenance_profile
+    from secretary.adaptive_policy import _maintenance
     parent, ref = real_parent, real_parent._secretary_conversation_ref
     compact = _sample("historical-compact", context_after=250, joint_operation_id="historical-joint",
                       usage=dict(input_tokens=1000, cache_read_tokens=0, cache_write_tokens=0, output_tokens=0))
     noting = _sample("historical-noting", component="noting", joint_operation_id="historical-joint",
                      block_seconds=0, block_scope="background_not_main_block",
                      usage=dict(input_tokens=500, cache_read_tokens=0, cache_write_tokens=0, output_tokens=0))
-    import_samples(db, ref, [compact, noting], import_id="learning", source_sha256="d" * 64, now=200, apply=True)
     config = runtime.settings.for_db(db, ref, parent=parent)
     def estimate():
         measured, history = runtime.snapshot(parent, db, ref, config, time.time())
-        return maintenance_profile(build_features(measured, history, config), config)
+        return _maintenance(build_features(measured, history, config), config)
+    assert estimate() is None
+    import_samples(db, ref, [compact, noting], import_id="learning", source_sha256="d" * 64, now=200, apply=True)
     before = estimate()
     assert before is not None
     def execute(agent, messages, system, **kwargs):

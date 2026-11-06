@@ -10,7 +10,7 @@ import math
 
 from secretary.adaptive_features import arrival_rate, build_features, current_activity_evidence, number
 from secretary.adaptive_forecast import from_events, predict
-from secretary.adaptive_cost import (Profile as Profile, maintenance_profile, heartbeat_profile,
+from secretary.adaptive_cost import (Profile as Profile, heartbeat_profile,
                                      payback_scenarios, background_profile, post_maintenance_context)
 
 
@@ -53,7 +53,13 @@ def _settings(config):
 
 
 def _maintenance(features, cfg):
-    return maintenance_profile(features, cfg)
+    """V2 authorizes only traceable scenarios; the compatibility prior stays outside policy."""
+    from secretary.adaptive_empirical_maintenance import scenarios
+    profile, evidence = scenarios(features, cfg, Profile)
+    if profile is None:
+        features['maintenance_unknown'] = dict(evidence, reason='missing_empirical_maintenance_scenarios',
+                                                compatibility_prior_allowed=False)
+    return profile
 
 
 def _survival_curve(snapshot, features, cfg, *, conservative=False):
@@ -143,6 +149,11 @@ def _comparison_scope(features, cfg):
                                     no_long_run_optimality=True)
 
 
+def _unpriced_native_capacity(snapshot, profile, context):
+    threshold = number(snapshot.get('native_threshold_tokens'))
+    return int(profile is None and threshold is not None and context >= threshold)
+
+
 def _forecast(snapshot, features, cfg, mode, delay, profile, curve):
     if _trajectory_ready(features):
         from secretary.adaptive_rollout import evaluate
@@ -200,6 +211,8 @@ def _forecast(snapshot, features, cfg, mode, delay, profile, curve):
                 price += profile.recovery
         cost += mass * price
     terminal = curve[-1] * ((shortened if finish <= cfg['horizon_seconds'] else context) + growth)
+    features['last_forecast_native'] = dict(native_interventions=0,
+        native_cost_unknown=_unpriced_native_capacity(snapshot, profile, context + growth))
     return cost, terminal, reads
 
 
@@ -543,7 +556,9 @@ def decide(snapshot: dict, history: list[dict], config: dict) -> dict:
     curve = _survival_curve(snapshot, features, cfg)
     candidates = _candidates(snapshot, features, cfg, profile, curve)
     if any(r.get('native', {}).get('native_cost_unknown', 0) > 0 for r in features['candidate_evaluations']):
-        return _fallback(snapshot, 'native_capacity_path_requires_unknown_maintenance_cost')
+        return dict(_fallback(snapshot, 'native_capacity_path_requires_unknown_maintenance_cost'), diagnostics=dict(
+            maintenance_model='unavailable', maintenance_evidence=features.get('maintenance_unknown', {}),
+            candidate_evaluations=features['candidate_evaluations']))
     current_mode = snapshot.get('heartbeat_mode', 'business')
     baseline = next(c for c in candidates if c['mode'] == current_mode and c['delay'] is None)
     native = snapshot.get('current_mode_native') is True
@@ -557,7 +572,7 @@ def decide(snapshot: dict, history: list[dict], config: dict) -> dict:
                             'collision_margin_estimate': chosen['collision'],
                             'expected_wait_seconds': chosen['wait'], 'candidates': len(candidates),
                             'maintenance_model': profile.provenance if profile else 'unavailable',
-                            'maintenance_evidence': profile.diagnostics if profile else {},
+                            'maintenance_evidence': profile.diagnostics if profile else features.get('maintenance_unknown', {}),
                             'heartbeat_evidence': features['heartbeat_model'],
                             'reminder_evidence': features['reminder_model'],
                             'risk_evidence': features['risk_model'],

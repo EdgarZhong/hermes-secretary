@@ -1,4 +1,4 @@
-"""Whole-operation evidence and whole-Turn invoices must not be fabricated."""
+"""Cost helper compatibility priors are not V2 policy authorization."""
 import pytest
 
 from secretary.adaptive_cost import heartbeat_profile, maintenance_profile
@@ -17,6 +17,8 @@ def test_absent_outcomes_do_not_invent_fifty_percent_failure():
     assert profile.cost == 3000000
     assert profile.diagnostics['success_source'] == 'conditional_success_prior'
     assert profile.diagnostics['outcome_samples'] == 0
+    from secretary.adaptive_policy import _maintenance
+    assert _maintenance(dict(events=[], model_key='test'), CFG) is None
 
 
 def test_duration_and_retention_can_learn_without_fake_complete_cost():
@@ -32,6 +34,8 @@ def test_duration_and_retention_can_learn_without_fake_complete_cost():
     for event in events:
         event['duration_scope'] = 'native_compaction_registration'
     assert maintenance_profile(dict(events=events, model_key='test'), CFG).duration == 3600
+    from secretary.adaptive_policy import _maintenance
+    assert _maintenance(dict(events=events, model_key='test'), CFG) is None
 
 
 def heartbeat_events():

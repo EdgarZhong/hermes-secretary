@@ -201,8 +201,8 @@ def test_current_request_window_cannot_evict_independent_imported_maintenance_re
 def test_long_user_work_end_retains_short_departure_protection_across_contracts(completed_contract):
     from secretary.adaptive_empirical_features import state
     from secretary.adaptive_policy import decide
-    from tests.secretary.test_adaptive_policy import CONFIG, NOW, history, snapshot
-    rows = history() + [
+    from tests.secretary.test_adaptive_policy import CONFIG, NOW, empirical_history, snapshot
+    rows = empirical_history() + [
         dict(event_id='long-input', kind='user_activity', source='user', at=NOW - 3600, verified=True),
         dict(event_id='foreign-request', kind='request', source='user', at=NOW - 60, verified=True,
              model_key=completed_contract, turn_id='long-input', input_tokens=10000000, cache_read_tokens=0, output_tokens=1000000),
@@ -298,7 +298,7 @@ def _observed_snapshot(owned, lag, *, damage=None, recent=None):
     from secretary import adaptive_runtime as runtime, adaptive_store as store
     from secretary.adaptive_config import for_db
     from tests.secretary.test_adaptive_bootstrap import NOW
-    from tests.secretary.test_adaptive_policy import CONFIG, NOW as OLD_NOW, history
+    from tests.secretary.test_adaptive_policy import CONFIG, NOW as OLD_NOW, empirical_history
     from tests.secretary.test_adaptive_runtime import adaptive_config
     parent, db, ref, package = owned
     Path(db.db_path).parent.joinpath('config.yaml').write_text(json.dumps(adaptive_config(ref, CONFIG)))
@@ -306,7 +306,7 @@ def _observed_snapshot(owned, lag, *, damage=None, recent=None):
         threshold_percent=.9, threshold_tokens_cap=440000, quiet_mode=True)
     parent.context_compressor.update_from_response({'prompt_tokens': 330000})
     config = for_db(db, ref, parent=parent)
-    rows = history()
+    rows = empirical_history()
     for i, row in enumerate(rows):
         row['at'] += NOW - OLD_NOW
         if row['kind'] == 'coverage':
