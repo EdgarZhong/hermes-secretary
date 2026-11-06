@@ -13,7 +13,6 @@ from statistics import median
 import time
 
 from secretary.adaptive_empirical_replay_data import coverage_at, past_events
-from secretary.adaptive_cost import post_maintenance_context
 
 
 class Replay:
@@ -287,7 +286,10 @@ class Replay:
         duration = selected.duration * (2 if self.variant == "slow_block" else 1)
         expense = selected.cost * (2 if self.variant == "cost_double" else 1)
         outcome = selected.diagnostics.get("scenario", {}).get("outcome", "completed")
-        after = post_maintenance_context(self.context, selected)
+        cost_module = importlib.import_module("secretary.adaptive_cost")
+        transfer = getattr(cost_module, "post_maintenance_context", None)
+        # Older frozen policy roots retain their original ratio semantics.
+        after = transfer(self.context, selected) if transfer else self.context * selected.retained
         retained = after / self.context if self.context > 0 else 1.0
         self.running = dict(id="replay-maintenance:" + str(self.operation_index), before=self.context,
                             retained=retained, after=after, outcome=outcome, cost=expense,

@@ -63,3 +63,5 @@
 **G13最小设计批准：** 仅最终维护赢家验证整数T；旧割线改为提案，不能因无根/T>C否定已完整通过的当前动作。同一固定经验paths，按探测C重新构造依赖规模的维护/背景profile，复验费用、风险、可执行性、同mode及当前mode基线、已有末态压力；最多seed加两次整数中点，返回实际检查过的可行上端，不承诺单调或全域最优。当前C为小数则先验floor(C)，不可行时保留最佳不维护动作；不ceil越当前、不改整数接口或config。保持有界资源、定向反例及真实单次资源取证，真实矩阵统一由D更新。
 
 **最终候选接收：** root亲读G12/G13全部产品与消费点；四文件98项、费用/取消/失败/整数点认证证据接受，定向ruff/health 0阻断0提示，日志root-retention-threshold-check.log。最终七文件SHA见policy/threshold-implementation.json。D独占ignored v8源码副本/历史矩阵更新，产品暂冻；原件、经验、seed、价格、期限不变。v7未知coverage/Reminder保护分支等未受影响路径可精确关联复用，其他受缩减影响的base/连续/费用压力更新。尚未进入独立门禁。
+
+**G14正式CLI加载修复：** D冻结v8后11任务在0次decide前因G12顶层cost导入触发防混版守卫，原日志保留。root微小接线修复为实际维护入口延迟从选定冻结包导入；旧root无helper时沿原ratio，不回退当前源码。新增真正子进程CLI/不同source-root回归，replay23项通过0.5秒，证据root-cli-source-test.log。D改用v9源码副本更新矩阵，v8失败不冒算法行为反例；守卫未改。

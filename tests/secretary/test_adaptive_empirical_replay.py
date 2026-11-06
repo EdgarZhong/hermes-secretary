@@ -302,3 +302,27 @@ def test_unreconstructed_coverage_sensitivity_does_not_relabel_future_witness():
     engine = Replay(data, case(100), FixedMode("business"), variant="raw_coverage_only")
     engine.now = 50
     assert not any(row["kind"] == "coverage" for row in engine._known_history())
+
+
+def test_real_cli_loads_the_selected_source_root_before_policy_dependencies(tmp_path):
+    import shutil
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[2]
+    frozen = tmp_path / "frozen-source"
+    (frozen / "secretary").mkdir(parents=True)
+    for source in (root / "secretary").glob("adaptive_*.py"):
+        shutil.copyfile(source, frozen / "secretary" / source.name)
+    data = dict(package(), cases=[case(20)], version="cli-test", experience_sha256="fixture", assumptions=[])
+    input_path, output_path = tmp_path / "input.json", tmp_path / "result.json"
+    input_path.write_text(json.dumps(data), encoding="utf-8")
+    completed = subprocess.run([sys.executable, str(root / "scripts/adaptive_empirical_replay.py"),
+                                "run", "--input", str(input_path), "--output", str(output_path),
+                                "--source-root", str(frozen)], capture_output=True, text=True, timeout=30)
+    assert completed.returncode == 0, completed.stderr
+    result = json.loads(output_path.read_text(encoding="utf-8"))
+    assert result["source_root"] == str(frozen.resolve())
+    assert "secretary/adaptive_policy.py" in result["source_sha256"]
+    assert result["results"][0]["candidate"]["counts"]["maintenance"] == 0
