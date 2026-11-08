@@ -1,5 +1,22 @@
 # 运维记录
 
+## 2026-11-09 · V3自适应维护、Kimi登记与历史接入（已上线）
+
+用户已明确授权在原算法分支完成实现、真实历史验证后上线，并要求主会话亲做核心算法与定性判断、最后独立子Agent按场景表复验及一轮研讨。产品`ca98f7f4ad`在原分支完成，合main为`2b7b706b05816283797c21e57e2ea68262e6877a`。01:56:26+08受限backend-only发布器verified，云端保持main且clean，Web／Gateway实际同版active，微信connected；三库原28张保护表保持，仅新增两张空Secretary自有伴随表，配置／绑定／双SPA资源保持。无依赖或Prompt／工具定义变化，不清上下文缓存。
+
+主会话亲审9个真实窗口、连续两日及预定6h／24h／3天／14天权重；独立gpt-6-astra重放关键长闲／下午窗口、核原9源件与代码SHA并完成16类复验研讨，无范围内阻断。连续条件回放新版108HB／1整理／5.297M输入等价，对旧线上108HB／0整理／8.518M节省37.8%；比V2加短离开规则多0.517M，E05夜截窗、6h E06/E08及E03 24h负结果明确保留，不称费用全面领先或实际账单节省。分支25文件414测试通过，main集成后的Noting接续／collector／正式入口6文件100通过；Ruff/health与相关冻结检查通过，no-tmp只命中main已有历史报告旧命令，未改历史或放宽检查。
+
+01:57:15在Alex原生配置写入路径新增`kimi-coding/k3.1-pro`登记，保持现有512000窗口／409600容量阈值、GPT登记、唯一Conversation开关和模型路由。hot1740秒／business10800秒，input1/cache-read0.1/output5来自官方同型号系列美元API条件代理，Code订阅实价未知；写价省略，非零write缺价必须hot暂缓。TTL1800秒是已有工程估计，非Code保证。明确删除旧maintenance_cost3000000／duration3600／retained.25／recovery50000四项弃用常量，其余配置语义保持；配置SHA由509a83e4…到收据记录的新值。未重设原生HB定义、created_at或last_fired。
+
+01:57:59沿正式`adaptive_empirical_import`导入45条数值维护组件（43历史＋11/8两条），保原组件池归属限制、available_at及收据；包含完整约2927.61秒forced Noting的50请求原生用量，不能视为49分钟Main阻挡或严格联合配对。旧行为bootstrap保持。01:59正式for_db与HeartbeatStore核Kimi登记有效、两档1740/10800，当前effective1740/hot；冷态缺当前context可信读数时暂缓主动维护，正常下一Main结束再评估。原生定义10800和created_at1793570404.6631577保持，最后自然触发01:47:49，下一hot约02:16:49；后继实际运行见下段。
+
+**自然运行后继已核：** 02:16:55自然高频领取，计数208→209、created_at与原生10800秒保持；02:17:05正常结束，Kimi请求187189输入／186880缓存读／0写／30输出，request与turn_end身份一致。context补齐后ready=true、missing=[]，refresh4/4已评估，正常结束实际选择hot1740、short_departure_hot_observation，无主动整理预约及在途Noting。不是人工触发的测试请求。证据在主算法工作区ignored `kimi-config/online-followthrough.{md,json}`。
+
+受限云收据`~/.local/state/hermes-secretary/release-20261028/stage-20261109-adaptive-v3/`包含发布、配置、导入、实际读取及回退说明；本地主算法工作区ignored `.hermes-dev/adaptive-stage-20261108/`的`replay/final-report.md`、`review/review.md`、`release/`保完整数据／证据。回退按main反向代码及精准配置delta，不回盖业务库或清除用户历史。已核并保留本次＋stage-20261108-capability-english两套完整三库；仅清退stage-20261108-notebook-count登记的9个数据库及附属文件，259309568字节。两套SHA／integrity／FK、运行库inode及当前同步包保持；配置备份不在清退范围。
+
+
+
+
 ## 2026-11-03 · 长空闲证据与风险／成本模型修复上线
 
 用户明确“上线一下吧”，产品`8b32bb31103e422e2ec6add1ff0f1b9b15131b53`已提交、自动push并快进合入main／push；23:42:31+08正式受限执行器返回verified（精确时间以receipt为准），云端保持main。Web／Gateway实际版本一致，双服务active／running、微信connected。发布复用已核同SHA源码的152项测试与9项检查通过证据；历史no-tmp失败不变，未降门禁。依赖／前端／Prompt／工具定义无变更，不重建APK、不清缓存、不改模型／阈值／生产参数。
