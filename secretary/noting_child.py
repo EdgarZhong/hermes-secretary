@@ -33,7 +33,9 @@ from types import SimpleNamespace
 from agent.message_metadata import build_noting_task_wrapper
 from agent.turn_failure_copy import is_max_iteration_handoff
 from hermes_state_secretary_notebook import RUNTIME_PROFILES, TRIGGER_TYPES
-from secretary.noting_prompts import DEFAULT_NOTING_TASK_INSTRUCTION, NOTING_CONTINUATION_INSTRUCTION
+from secretary.noting_prompts import (
+    DEFAULT_NOTING_TASK_INSTRUCTION, NOTING_CONTINUATION_INSTRUCTION, NOTING_ITERATION_CONTINUATION_INSTRUCTION,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -973,17 +975,9 @@ def _run_child_turns(
                 or isinstance(result, dict) and result.get("failure_reason") == "context_overflow"):
             _force_task_close(child, runtime_profile, outcome, termination_type="context_overflow")
             return
-        if is_max_iteration_handoff(result) and not result.get("error") and not result.get("failure_reason"):
-            if getattr(child, "_secretary_noting_terminal_action_done", False):
-                outcome.status = "completed"
-            else:
-                _force_task_close(child, runtime_profile, outcome)
-                outcome.termination_summary = (
-                    "The native per-Turn iteration budget ended; the current legal Notebook working state "
-                    "was committed with unfinished work possible."
-                )
-            return
-        if not _turn_completed(result):
+        budget_handoff = (is_max_iteration_handoff(result)
+                          and not result.get("error") and not result.get("failure_reason"))
+        if not budget_handoff and not _turn_completed(result):
             outcome.status = "failed"
             outcome.error = str(
                 result.get("turn_exit_reason") if isinstance(result, dict) else result
@@ -995,9 +989,15 @@ def _run_child_turns(
             return
         if outcome.turns >= _NOTING_TURN_LIMIT:
             _force_task_close(child, runtime_profile, outcome)
+            outcome.termination_summary = (
+                "The Noting task reached its five-Turn limit; the current legal Notebook working state "
+                "was committed with unfinished work possible."
+            )
             return
+        continuation = (NOTING_ITERATION_CONTINUATION_INSTRUCTION if budget_handoff
+                        else NOTING_CONTINUATION_INSTRUCTION)
         wrapper = build_noting_task_wrapper(
-            NOTING_CONTINUATION_INSTRUCTION + "\n\n" + _working_control(child),
+            continuation + "\n\n" + _working_control(child),
             timestamp=admission_timestamp,
         )
         history = _continuation_history(child, prefix)

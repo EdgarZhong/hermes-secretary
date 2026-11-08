@@ -1,5 +1,6 @@
 """Task-bound Notebook service; each task keeps its own base and complete view."""
 
+from contextlib import contextmanager
 from copy import deepcopy
 from threading import RLock
 
@@ -123,6 +124,26 @@ class NotebookStore:
         with self._db._read_ctx() as conn:
             return _source_validator_conn(self._db, conn, self.conversation_ref)(source)
 
+    @contextmanager
+    def _operation_sources(self):
+        """Reuse one lazy preflight path, never the transaction's write authority."""
+        with self.lock:
+            previous = self._state._validate_source_identity
+            valid_identity = None
+
+            def valid_source(source):
+                nonlocal valid_identity
+                if valid_identity is None:
+                    with self._db._read_ctx() as conn:
+                        valid_identity = _source_validator_conn(self._db, conn, self.conversation_ref)
+                return valid_identity(source)
+
+            self._state._validate_source_identity = valid_source
+            try:
+                yield
+            finally:
+                self._state._validate_source_identity = previous
+
     def _inherited_sources(self, entry):
         with self._db._read_ctx() as conn:
             return _inherited_sources_conn(conn, self.conversation_ref, entry)
@@ -132,7 +153,8 @@ class NotebookStore:
         with self._db._read_ctx() as conn:
             return derive_evidence_time(self._db, conn, self.conversation_ref, uids)
 
-    def _insert_version_conn(self, conn, entry, previous_version_id, *, relation_cleanup=False):
+    def _insert_version_conn(self, conn, entry, previous_version_id, *, relation_cleanup=False,
+                             valid_identity=None):
         from secretary.notebook_contract import provenance_prefix
         from secretary.notebook_evidence import derive_evidence_time
         from secretary.notebook_items import insert_item_conn, item_entry, item_row_conn, source_basis_conn
@@ -145,7 +167,8 @@ class NotebookStore:
                                       allow_relation_removal=relation_cleanup, mutable_task_id=self._state.task_id)
         inherited = (0 if basis is None else provenance_prefix(
             item_entry(item_row_conn(conn, str(basis)), self.conversation_ref), entry))
-        valid_identity = _source_validator_conn(self._db, conn, self.conversation_ref)
+        if valid_identity is None:
+            valid_identity = _source_validator_conn(self._db, conn, self.conversation_ref)
         for group in entry["provenance"][inherited:]:
             if not all(valid_identity({"conversation_ref": self.conversation_ref, "message_uid": uid}) for uid in group):
                 raise NotebookValidationError(
@@ -164,10 +187,13 @@ class NotebookStore:
     def _insert_versions(self, changes):
         # Only archive invokes this batch: its first version is the archive and
         # subsequent versions remove auxiliary relations, without changing claims.
-        return self._db._execute_write(lambda conn: [
-            self._insert_version_conn(conn, entry, previous_id, relation_cleanup=index > 0)
-            for index, (entry, previous_id) in enumerate(changes)
-        ])
+        def insert(conn):
+            valid_identity = _source_validator_conn(self._db, conn, self.conversation_ref)
+            return [self._insert_version_conn(conn, entry, previous_id, relation_cleanup=index > 0,
+                                              valid_identity=valid_identity)
+                    for index, (entry, previous_id) in enumerate(changes)]
+
+        return self._db._execute_write(insert)
 
     def snapshot_state(self):
         return self._state.snapshot_state()
@@ -189,19 +215,23 @@ class NotebookStore:
                source_message_uids=SOURCE_NOT_PROVIDED, schedule_suggestion=None,
                source_time_ranges=SOURCE_NOT_PROVIDED, status=SOURCE_NOT_PROVIDED,
                source_description=SOURCE_NOT_PROVIDED):
-        return self._state.create(entry_type, fields, done=done, status=status, relations=relations,
-                                  source_message_identities=source_message_identities, source_time_range=source_time_range,
-                                  source_message_uids=source_message_uids, schedule_suggestion=schedule_suggestion,
-                                  source_time_ranges=source_time_ranges, source_description=source_description)
+        with self._operation_sources():
+            return self._state.create(entry_type, fields, done=done, status=status, relations=relations,
+                                      source_message_identities=source_message_identities, source_time_range=source_time_range,
+                                      source_message_uids=source_message_uids, schedule_suggestion=schedule_suggestion,
+                                      source_time_ranges=source_time_ranges, source_description=source_description)
 
     def update(self, entry_id, changes):
-        return self._state.update(entry_id, changes)
+        with self._operation_sources():
+            return self._state.update(entry_id, changes)
 
     def archive(self, entry_id, reason):
-        return self._state.archive(entry_id, reason)
+        with self._operation_sources():
+            return self._state.archive(entry_id, reason)
 
     def maintain(self, args):
-        return self._state.maintain(args)
+        with self._operation_sources():
+            return self._state.maintain(args)
 
     def freeze(self):
         return self._state.freeze()

@@ -327,20 +327,24 @@ def test_native_text_completion_continues_five_turns_same_prefix(native_parent, 
 
 @pytest.mark.parametrize("trigger", ["idle", "force", "manual", "auto_compaction"])
 @pytest.mark.parametrize("changed", [False, True])
-def test_native_iteration_limit_commits_legal_work_for_every_trigger(
+def test_native_five_turn_iteration_limit_commits_legal_work_for_every_trigger(
     native_parent, database, monkeypatch, trigger, changed,
 ):
     parent, client = native_parent
     monkeypatch.setattr("secretary.noting_child.NOTING_MAX_ITERATIONS", 1)
     first = tool_response("notebook_create", create_args(database)) if changed else tool_response("notebook_show", {})
-    client.chat.completions.create.side_effect = [first, response("Work remains after the iteration budget.")]
+    client.chat.completions.create.side_effect = [first, response("Work remains after the iteration budget.")] + [
+        item for index in range(4)
+        for item in (tool_response("notebook_show", {}, f"show-{index}"), response("Work remains after the iteration budget."))
+    ]
     admission = database.noting_admit(ref(database), "m2", kind=trigger)
     outcome = run_noting_task(
         parent, admission_id=admission, conversation_ref=ref(database), anchor_message_uid="m2",
         trigger_type=trigger, runtime_profile="NOTING", task_instruction=DEFAULT_NOTING_TASK_INSTRUCTION,
     )
     assert outcome.committed and outcome.status == "completed", outcome
-    assert outcome.turns == 1 and outcome.termination == {"type": "forced"}
+    assert outcome.turns == 5 and outcome.termination == {"type": "forced"}
+    assert "five-Turn" in outcome.termination_summary
     snapshot = database.notebook_current(ref(database))
     assert len(snapshot["payload"]["work"]) == int(changed)
     assert database.notebook_snapshot_audit(outcome.snapshot_id)["termination"] == {"type": "forced"}
@@ -349,9 +353,8 @@ def test_native_iteration_limit_commits_legal_work_for_every_trigger(
                if (row.get("display_metadata") or {}).get("noting_run_output")]
     assert len(notices) == 1
     assert "Termination: forced" in notices[0]["content"]
-    assert "iteration" in notices[0]["content"]
+    assert "execution budget" in notices[0]["content"]
     assert "may remain unfinished" in notices[0]["content"]
-    assert "five-Turn" not in notices[0]["content"]
     assert active_noting_task_count() == 0
 
 

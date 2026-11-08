@@ -73,3 +73,8 @@ CURRENT_NOTING_CONTROL = """CURRENT NOTING CONTROL
 For this Noting task, notebook_create, notebook_update, notebook_archive and finish_noting are enabled. Use only conversation_history, notebook_show, notebook_create, notebook_update, notebook_archive and finish_noting; no other advertised tool is authorized. History is bound to the parent Conversation shown below, regardless of any inherited cross-Conversation capability. The complete current working Notebook follows. Use it and successful per-entry results when sufficient; notebook_show is available when you need to inspect the full current working view."""
 
 NOTING_CONTINUATION_INSTRUCTION = """The previous native Turn ended without a successful finish_noting request. Continue the same Noting task from the working Notebook supplied below; prior tool results and changes remain in effect. Review what remains of the complete task, make only necessary corrections, then call finish_noting as the final standalone tool action. Plain text completion does not finish this task. Only conversation_history, notebook_show, notebook_create, notebook_update, notebook_archive and finish_noting are authorized for this task; the frozen parent prefix remains historical evidence."""
+
+NOTING_ITERATION_CONTINUATION_INSTRUCTION = (
+    "The previous native Turn reached its iteration limit. The preceding summary records progress, "
+    "not a new user request. Do not repeat completed tool actions.\n\n" + NOTING_CONTINUATION_INSTRUCTION
+)

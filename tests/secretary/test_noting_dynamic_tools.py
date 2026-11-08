@@ -145,10 +145,11 @@ def test_native_summary_retry_uses_same_boundary_after_parent_normalization(kimi
     parent._session_messages.insert(1, row)
     monkeypatch.setattr("secretary.noting_child.NOTING_MAX_ITERATIONS", 1)
     sdk.side_effect = [tool_response("notebook_create", maintain(), "write"), response(""),
-                       response("Work remains after the iteration limit.")]
+                       response("Work remains after the iteration limit."),
+                       tool_response("finish_noting", {"reason": "Reviewed the continued work."})]
     outcome = run_task(parent)
-    assert outcome.committed and outcome.termination == {"type": "forced"}, outcome
-    assert len(wires) == 3
+    assert outcome.committed and outcome.turns == 2 and outcome.termination["type"] == "finish_noting", outcome
+    assert len(wires) == 4
     assert_requests(parent, wires, children[0])
     assert wires[0]["messages"][3]["content"].startswith("<noting-task>")
     assert wires[1]["messages"] == wires[2]["messages"]
@@ -337,10 +338,11 @@ def test_no_missing_tools_summary_keeps_prefix_without_empty_declaration(kimi_pa
     parent.valid_tool_names = {tool["function"]["name"] for tool in parent.tools}
     parent._session_messages.insert(1, {"role": "user", "content": "Adjacent parent evidence"})
     monkeypatch.setattr("secretary.noting_child.NOTING_MAX_ITERATIONS", 1)
-    sdk.side_effect = [tool_response("notebook_show", {}, "show"), response("Summary after the budget.")]
+    sdk.side_effect = [tool_response("notebook_show", {}, "show"), response("Summary after the budget."),
+                       tool_response("finish_noting", {"reason": "Reviewed after the budget handoff."})]
     outcome = run_task(parent)
-    assert outcome.committed and outcome.termination == {"type": "forced"}, outcome
-    assert len(wires) == 2
+    assert outcome.committed and outcome.turns == 2 and outcome.termination["type"] == "finish_noting", outcome
+    assert len(wires) == 3
     assert all("tools" not in row for wire in wires for row in wire["messages"])
     assert wires[0]["messages"][:3] == wires[1]["messages"][:3]
     assert all(wire["messages"][3]["content"].startswith("<noting-task>") for wire in wires)

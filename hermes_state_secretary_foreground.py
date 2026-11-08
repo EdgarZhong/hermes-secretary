@@ -10,6 +10,17 @@ from agent.context_compressor import (
 from hermes_state_secretary_identity import ConversationIdentityError
 
 
+_PROJECTION_COLUMNS = (
+    "id", "session_id", "role", "content", "tool_call_id", "tool_calls", "tool_name", "timestamp",
+    "message_uid", "active", "compacted", "_compressed_summary", "display_kind", "display_metadata",
+)
+
+
+def _source_columns(projection_only, *, alias=None):
+    prefix = f"{alias}." if alias else ""
+    return ", ".join(prefix + name for name in _PROJECTION_COLUMNS) if projection_only else prefix + "*"
+
+
 def _foreground_winners(rows):
     """The same latest physical generation and validity for every projection."""
     winners = {}
@@ -129,11 +140,12 @@ class SecretaryForegroundMixin:
         paths.sort(key=lambda path: conn.execute("SELECT started_at FROM sessions WHERE id = ?", (path[0],)).fetchone()[0])
         return [sid for path in paths for sid in path]
 
-    def _foreground_source_rows_conn(self, conn, conversation_ref):
+    def _foreground_source_rows_conn(self, conn, conversation_ref, *, projection_only=False):
         """Frozen branch references plus live path rows; no copied transcript content."""
         rows = []
         inherited = conn.execute(
-            "SELECT m.*, b.is_compaction AS inherited_compaction, b.coverage_position AS inherited_coverage_position "
+            f"SELECT {_source_columns(projection_only, alias='m')}, "
+            "b.is_compaction AS inherited_compaction, b.coverage_position AS inherited_coverage_position "
             "FROM secretary_branch_messages b "
             "JOIN messages m ON m.id = b.message_id WHERE b.conversation_ref = ? "
             "AND NOT EXISTS(SELECT 1 FROM secretary_branch_exclusions x "
@@ -149,7 +161,8 @@ class SecretaryForegroundMixin:
         frozen_by_uid = {row["message_uid"]: row for row in rows}
         boundary_seen = False
         for sid in self._foreground_sessions_conn(conn, conversation_ref):
-            for row in conn.execute("SELECT * FROM messages WHERE session_id = ? ORDER BY id", (sid,)):
+            for row in conn.execute(
+                    f"SELECT {_source_columns(projection_only)} FROM messages WHERE session_id = ? ORDER BY id", (sid,)):
                 item = dict(row)
                 projected = self._project_foreground_row(item, conversation_ref, full=True)
                 boundary_seen = boundary_seen or bool(projected and projected["is_compaction"] and (row["active"] or row["compacted"]))
@@ -285,8 +298,9 @@ class SecretaryForegroundMixin:
             "display_kind": row.get("display_kind"), "display_metadata": metadata,
         }
 
-    def _foreground_conn(self, conn, conversation_ref, *, full):
-        rows = self._foreground_source_rows_conn(conn, conversation_ref)
+    def _foreground_conn(self, conn, conversation_ref, *, full, source_rows=None):
+        rows = (self._foreground_source_rows_conn(conn, conversation_ref)
+                if source_rows is None else source_rows)
         # The most recent physical generation decides validity AND path position:
         # a surviving tail follows its compaction boundary, and retired copies do not revive.
         carrier_sources = {}
@@ -302,7 +316,8 @@ class SecretaryForegroundMixin:
             override = row.get("_branch_live_override") or (row if source is not row else None)
             original = self._project_foreground_row(source, conversation_ref, full=full)
             carrier = full and original is not None and original["is_compaction"]
-            projected = original if carrier else self._project_foreground_row(override or row, conversation_ref, full=full)
+            projected = (original if carrier or override is None else
+                         self._project_foreground_row(override, conversation_ref, full=full))
             if projected is not None:
                 projected["path_position"] = len(result)
                 result.append(projected)

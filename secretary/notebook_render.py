@@ -69,12 +69,13 @@ def model_notebook_data(value):
 
 
 def _evidence_coverage_conn(db, conn, conversation_ref, anchor_uid, profile_home):
-    positions = db._notebook_anchor_positions_conn(conn, conversation_ref)
+    rows = db._foreground_source_rows_conn(conn, conversation_ref, projection_only=True)
+    positions = db._notebook_anchor_positions_conn(conn, conversation_ref, source_rows=rows)
     if anchor_uid not in positions:
         raise ValueError("The covered history is unavailable")
     covered = {uid: position for uid, position in positions.items() if position <= positions[anchor_uid]}
     sources = {}
-    for row in db._foreground_source_rows_conn(conn, conversation_ref):
+    for row in rows:
         if row.get("message_uid") in covered:
             sources.setdefault(row["message_uid"], row)
     first = sources[min(covered, key=covered.get)]

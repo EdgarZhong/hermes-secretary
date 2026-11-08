@@ -155,7 +155,7 @@ def test_schema_accepts_flat_parameters_and_refuses_wrapper_and_readonly_input()
     create_properties = NOTEBOOK_CREATE_SCHEMA["parameters"]["properties"]
     update_properties = NOTEBOOK_UPDATE_SCHEMA["parameters"]["properties"]
     assert (create_properties.keys() & update_properties.keys()) == {
-        "fields", "done", "relations", "schedule_suggestion", "source_message_uids"}
+        "fields", "done", "relations", "schedule_suggestion", "source_message_uids", "source_description"}
     validator = Draft7Validator(NOTEBOOK_UPDATE_SCHEMA["parameters"])
     assert list(validator.iter_errors({"entry_id": "1"}))
     for patch in ({"changes": {"done": True}}, {"status": "paused"}, {"action": "update"}, {"entry_type": "matter"},
