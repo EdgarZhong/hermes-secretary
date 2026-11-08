@@ -1,13 +1,5 @@
 # Hermes Secretary 当前状态
 
-## 2026-11-08 · 后端性能统一整改与Noting预算接续（本地已实现，验收待补，未上线）
-
-主会话统一接手History结果写回长停顿、Noting工具慢、同机代理资源压力；性能分支基于main9ac80966，隔离原算法及前端工作。服务器仅按用户明确授权把既有4GiB swap的swappiness0调60并持久化，未重启／部署产品；运行事实与回滚记原主仓operations-log。root负责anchor／coverage窄读取，notebook_validation_fix负责单操作／事务来源谓词复用，performance_audit已交只读报告后接早期watchdog假正文P2修复；文件范围互斥，主会话亲审／统一验证。原9ac回执证据不冒性能已修或P2已关闭。
-
-用户本轮确认仅Noting单Turn50次耗尽后继续下一Turn并注入系统提示，总任务仍最多5Turn，第5轮才forced保存／收尾；沿原child／冻结前缀／工作态，不重放或扩权限，已实现并亲审。新正式测试41项及独立反证7项通过，含原生50次、同child2Turn／52受控请求正常finish。性能反例及前后量测、backoff假正文修复均已亲审；源码／日志入口见ignored [交付记录](.hermes-dev/backend-performance-20261108/report.md)。冻结十检查9项通过，no-tmp仅原历史同blob；17项既有Note／observer等基线失败保留，不称全套全绿。
-
-Linux标准runner因运行环境无pytest自动准备后在依赖锁校验失败，未执行测试；随后SSH握手阻塞，真实模型复验0请求、凭据未解析，未补签实际模型／Linux验收。远端环境后继复核也未完成，不称生产一切未变。已准备6请求／180秒有界合成脚本，连接恢复后补证。代码未上线；禁止混入旧算法、前端或越权生产业务写／停服／部署。main工作区核心文档dirty属于前端会话，当前分支不覆盖，不冒称已合main。
-
 ## 自主口径收敛 · 待用户追认
 
 - **Agent自主收敛／待追认：既有会话历史初始化的证据等级。** 用户已明确要求旧真实数据实际驱动线上，而原包仅有受限持久提交序列、没有连续在线coverage。采用显式同Conversation bootstrap：条件历史窗口进入既有行为先验与trajectory训练，并独立报告条件性及缺口，不伪造在线coverage；充足成熟历史可满足预测就绪，不重新等上线后8次/6小时。同目标最近已证持久用户提交可保原发生时间、以本次查询为可知上界恢复最后已知活动，不能迁移他Conversation状态、制造新到来或重锚Idle/Heartbeat。当前未知特征显式标缺，不当零活动；未充分了解当前活动时仍不授权提前维护。已实现、独立来源复核并上线应用；跨模型未知工作量采用明示single-read条件成本代理，不冒充完整实测费用，非新增预测器/调度器。
@@ -24,6 +16,15 @@ Linux标准runner因运行环境无pytest自动准备后在依赖锁校验失败
 - **Agent自主收敛／待追认：混合压缩载体的读取。** 原空白：一个native UID可同时承载压缩摘要与真人消息，而用户要求辅助开关能读取Compression且Get Meta仍仅四字段。决定：默认保留原真人视图；显式辅助允许同UID的system摘要视图，Get Meta／Search按语义部分分别返回，anchored Read允许现有roles参数选部分，默认锚点优先原非压缩部分；同UID同role的system内容合并为一个视图；不造UID、不放开Full／隐藏内容。理由：使明确要求在native混合载体下可操作。影响：Read新增可选roles适用位置，同UID可有不同语义投影。已实现，201项History接受测试及56项原生路径通过；独立Verification／Validation已通过，已上线；不改变Message Identity或Notebook新证据准入。
 - **Agent自主收敛／待追认：Candidate同Task来源形式切换。** 原空白：旧合法direct→refs操作与新旧Task节点不可删约束如何同时成立。决定：仅尚未提交且唯一节点属于本Task时，允许显式清空当前工作槽并切为合法refs；任何旧Task直接节点仍禁止删改。理由：继承原来源二选一操作并保持旧节点约束。影响：当前Task工作态边界，无迁移／旧节点特权。已实现，正式工具／恢复／原子失败98项通过；独立Verification／Validation已通过，已上线。
 
+
+
+## 2026-11-08 · 后端性能统一整改与Noting预算接续（本地已实现，验收待补，未上线）
+
+主会话统一接手History结果写回长停顿、Noting工具慢、同机代理资源压力；性能分支基于main9ac80966，隔离原算法及前端工作。服务器仅按用户明确授权把既有4GiB swap的swappiness0调60并持久化，未重启／部署产品；运行事实与回滚记原主仓operations-log。root完成anchor／coverage窄读取，两个实现包分别完成单操作／事务来源谓词复用及早期watchdog假正文P2修复，预算包亦已接收；分区互斥、主会话亲审／统一接线。9ac本身只修静默回执，当前分支已补P2；生产长停顿仍未签关闭。
+
+用户本轮确认仅Noting单Turn50次耗尽后继续下一Turn并注入系统提示，总任务仍最多5Turn，第5轮才forced保存／收尾；沿原child／冻结前缀／工作态，不重放或扩权限，已实现并亲审。新正式测试41项及独立反证7项通过，含原生50次、同child2Turn／52受控请求正常finish。性能反例及前后量测、backoff假正文修复均已亲审；源码／日志入口见ignored [交付记录](.hermes-dev/backend-performance-20261108/report.md)。冻结十检查9项通过，no-tmp仅原历史同blob；17项既有Note／observer等基线失败保留，不称全套全绿。
+
+Linux标准runner因运行环境无pytest自动准备后在依赖锁校验失败，未执行测试；随后SSH握手阻塞，真实模型复验0请求、凭据未解析，未补签实际模型／Linux验收。远端环境后继复核也未完成，不称生产一切未变。已准备6请求／180秒有界合成脚本，连接恢复后补证。代码未上线；禁止混入旧算法、前端或越权生产业务写／停服／部署。main工作区核心文档dirty属于前端会话，当前分支不覆盖，不冒称已合main。
 
 ## 2026-11-03 · 长空闲证据与风险／成本模型修复（已合main并上线）
 
