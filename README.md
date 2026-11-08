@@ -106,6 +106,7 @@ Gateway入口 `hermes gateway`；Dashboard入口 `hermes dashboard --host 127.0.
 | 通用规则、开发测试SOP | [AGENTS](AGENTS.md) |
 | 当前阶段、未关闭事项 | [CLAUDE](CLAUDE.md) |
 | 已审Notebook语义 | [白板](docs/notebook-ontology-whiteboard.html) |
+| Notebook清退完整性与上下文开销调优讨论稿（非现行契约） | [2026-11-08提案](docs/notebook-retirement-tuning-proposal-20261108.md) |
 | History / Noting / Scheduler / Prompt实施契约 | [07](docs/07-scheduler-notebook-noting-compaction-redesign.md) |
 | Conversation缓存清理、失败恢复与单次新Noting调试RPC | [07 §12](docs/07-scheduler-notebook-noting-compaction-redesign.md#12-conversation-调试接口用户确认2026-10-21) |
 | Conversation级Heartbeat、英文模板与UI后台唤醒 | [07 §8.15](docs/07-scheduler-notebook-noting-compaction-redesign.md#815-heartbeat-形态与-ui-唤醒用户确认2026-10-21) |
