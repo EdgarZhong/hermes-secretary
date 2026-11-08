@@ -1,5 +1,11 @@
 # 运维记录
 
+## 2026-11-08 · Alex提案提醒阈值调整（用户明确确认，已应用）
+
+用户确认由12000字符／60条改为100000字符／100条。13:09:09+08在Alex原生Profile作用域使用`hermes_cli.config.set_config_value`写入`noting.persistence_proposal.char_threshold`和`entry_threshold`；原文件两键缺省，继承默认12000／60，新显式覆盖100000／100。语义diff仅这两键，原热配置缓存、settings_for_db及目标Conversation设置读取均已核新值。配置路径`/home/ubuntu/.hermes/profiles/alex/config.yaml`，0600及原uid/gid保持；其它Profile未写、服务未重启、业务DB未打开、模型／Noting未触发。旧Framework提示不改写，新生成通知按新阈值判断；这不是token上限或自动持久化授权。
+
+原件受限备份在`~/.local/state/hermes-secretary/backend-performance-20261108/proposal-threshold/config-before-20261108T050909Z.yaml`（目录0700、文件0600）；回滚在同Alex作用域原生unset这两个新增override，恢复继承，保其它当前配置，不整份回盖。本地脱敏收据在性能工作区ignored `.hermes-dev/backend-performance-20261108/proposal-threshold/receipt.json`。配置沿既有同步链自然传播，未另行手工反写Mac。
+
 ## 2026-11-08 · Notebook提案通知归档计数修复（已上线）
 
 用户要求核查实际模型Notebook，发现`completion_body`正文走`public_state`排除归档，但提示条数直接统计audit payload。最小修复复用同一public_state计数，不改字符阈值、审计数据、历史已注入carrier或正文；新增6项与既有通知链路6项通过，ruff/health通过。13:02:36+08受限backend-only执行器verified，main `d241273d98e50edb83009aa796da294053a1f895`，Web／Gateway实际同版active、微信connected，前端889c6e8／APK0.1.11保持。

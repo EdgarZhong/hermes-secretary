@@ -27,7 +27,7 @@
 
 用户明确确认仅Noting每Turn50次后注入预算续跑control，沿同child／Task／工作态进入下一Turn，整个任务最多5Turn；第5次才forced保存／收尾，Main／失败／取消／overflow不改。新增正式测试41项和独立反证7项通过，含原生50次边界、2Turn／52受控请求正常finish、同prefix／tools、一个Snapshot。相关旧回归17项Note／observer等失败已在9ac基线逐项复现，不称全套绿；旧恢复夹具缺source_description及schema旧字段集合已补，相关83项通过。冻结十检查9过、health15文件0阻断0提示；no-tmp仅未改历史同blob35daf556…eb724。产品树与被审候选逐SHA核对复用有效证据，不为merge重跑大套。
 
-**后继明确缺陷修复：** Noting结果的条数错误统计审计payload归档项，而正文已正确过滤。计数改复用同一public_state，12项针对性／通知链路测试通过、ruff/health通过；不会改变独立字符阈值，不改历史已注入消息。小修d241273已发布，Web／Gateway同版active。实际正文审查完成：归档内容未注入，当前有效条目确有清退，已读证据内未确认新事实矛盾；字符统计包含大量来源／时间格式。token时间线已区分原生粗估与Provider实测，详细私密证据仅在性能工作区ignored notebook-capacity，不入Git。已向用户提出100000字符／100条提醒配置选项，等待确认，尚未修改阈值。
+**后继明确缺陷修复：** Noting结果的条数错误统计审计payload归档项，而正文已正确过滤。计数改复用同一public_state，12项针对性／通知链路测试通过、ruff/health通过；不会改变独立字符阈值，不改历史已注入消息。小修d241273已发布，Web／Gateway同版active。实际正文审查完成：归档内容未注入，当前有效条目确有清退，已读证据内未确认新事实矛盾；字符统计包含大量来源／时间格式。token时间线已区分原生粗估与Provider实测，详细私密证据仅在性能工作区ignored notebook-capacity，不入Git。用户已明确确认仅Alex提案提醒改为100000字符／100条；13:09:09已通过原生set_config_value应用；原热配置／settings_for_db及目标Conversation读取均为100000／100，仅两键变化，未重启／触发模型或Noting；保存、审批、归档语义与旧carrier保持。
 
 **Linux内存归因已完成：** 合成1000×8KiB历史、8条目，已定位create/update/archive来源校验、Show coverage及公共结果writeback共享foreground行物化／typed正文解码。候选23次操作完成，额外Python峰值17.57–18.24MiB，未明显降低单次峰值；create History37→2次、update33→2次，主要收益为减少重复。GC后Python总保留约0.169MiB（含报告），malloc_trim归还16.47MiB RSS；未见本样本持续单调对象增长，不证明全面无泄漏，也不能将正式1.7GiB归给单工具。旧版78秒有界退出，archive/append/final trim未测，不冒称完整对照。生产Git/uv.lock/解释器复核正常，pytest仍不存在，无事前完整venv指纹。进一步元数据／正文惰性分离仅为后续建议，本轮不加入未验证实现。
 
