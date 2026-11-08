@@ -17,6 +17,53 @@
 - **Agent自主收敛／待追认：Candidate同Task来源形式切换。** 原空白：旧合法direct→refs操作与新旧Task节点不可删约束如何同时成立。决定：仅尚未提交且唯一节点属于本Task时，允许显式清空当前工作槽并切为合法refs；任何旧Task直接节点仍禁止删改。理由：继承原来源二选一操作并保持旧节点约束。影响：当前Task工作态边界，无迁移／旧节点特权。已实现，正式工具／恢复／原子失败98项通过；独立Verification／Validation已通过，已上线。
 
 
+## 2026-11-08 · Timeline辅助消息分组折叠（本地完成，未部署）
+
+本地实现与主会话亲审完成：逐条正文保留、active与尾段保护、控件同Agent正文列宽、刷新／同事件重放缓存及阅读锚点交接均已验。独立R1/R3/R4反例已修：native typed首帧证明区分同UID多段、混合压缩正文统一参与阅读投影、已证Turn输入保住Steer前段；唯一来源live→部分／完整历史保选择和DOM，不用UID猜歧义段。最后131项及原4反例通过；root实际隐藏IAB三正文两组false/true重载重放保持，宽度差<0.01px。旧无typed证明且同UID歧义仅保document选择，不错误持久映射。证据UI ignored `.archive/timeline-folding-20261108/review-alias.md`及`root-native-replay.json/jpg`。
+
+本轮最终集成：19文件503项中482通过、21项已证旧manual-command夹具失败；未跳过／放宽断言，和用户指定已修的原三项incremental不同。末次工具展开等价抽取后33项通过；最终typecheck／build和21个变更TS文件冻结健康0阻断／0提示。7项Composer／capability与2项reconciliation旧失败另留基线证据。最终主会话报告及源码指纹在UI ignored `.archive/frontend-final-20261108/`。Android真机与生产未验，本轮未部署。前端最终`baed6c4`已合本地main并成功推送`origin/secretary`（含恢复基础`9daf9f7`、背景`aae76b3`）；仅原五个.DS_Store未跟踪文件保留。
+
+用户明确每条User／Assistant正文保留，仅两条正文之间的辅助消息默认成组折叠；活动Turn全部照常流式展示，结束后启用折叠，尾部尚无后继正文的辅助段保持展开。控件小号英文、旋转箭头与半透明细线，只占Agent输出区；位于下一正文时间戳之上。展开状态前端按稳定身份持久化并和视口恢复对齐，口径已立即写06顶部。主会话负责Timeline／阅读状态实现及亲审；Noting动画Agent仅App Secretary局部及indicators，Compaction Agent仅core恢复，避免修改范围交叉。背景包已本地完成，后端调查已移交，不扩大部署权限。
+
+## 2026-11-08 · Noting展开动画与压缩完成误恢复（本地完成，未部署）
+
+Noting产品包已完成主会话亲审：既有owner点球即预取、失败保一级可重试；running计时进入首开真实几何；统一OrbMorph承接打开／两级往返／尺寸变化和快速反向。实际首轮发现301ms缺帧吞掉余程，已改按实际绘制增量推进；v2隐藏IAB注入299.4ms停顿后继续完整余程，首开与两级交接高度差均0.0078125px；减少动态效果Expand／Collapse通过。27项行为／App受控请求、8项相关表现层、typecheck／build及冻结健康通过，Android真机和减少动态效果首开未单独验。证据UI ignored `.archive/noting-panel-motion-20261108/delivery.json`。
+
+Compaction包已修原生compression lineage延续识别及当前history proof与旧binding snapshot分离；真实Controller通知先到／history先到／连续两次压缩反例、8文件277项通过，身份／epoch／非压缩历史变化仍必要恢复。root实际App隐藏IAB连续验证通知先到／history先到两种顺序，恢复／fullcut／胶囊新增均0，summary0→1→2、下一条草稿及Usage／Context保持。另移除已确认终态且必要依赖仍在途时的重复statepoll；实际持有history时计数6→6，放行后正常显示。局部失败仍核原生operation后重试；证据UI ignored `.archive/compaction-live-update-20261108/{report.md,ui/report.md}`。
+
+用户确认Schedule Table在悬浮球打开时异步预取；一级／二级展开先准备真实目标布局再播放完整动画，running计时须计入初始目标高度。可接受必要数据就绪前短暂等待，不能吞动画、展开空白或结束后高度跳变。实施前已确认原一级计时受open门控、二级仅140ms内容位移，现按上述真实布局／统一动画修正；口径已写06顶部。修改限App的Secretary接线、indicators及对应motion helper／样式／定向测试，未改背景实现。
+
+用户另报告持续连接时Compaction完成通知先到，压缩消息进入Timeline瞬间闪恢复胶囊。这一准确事件顺序及原生压缩Session延续已单独验证，不以此前Send／Steer通过替代。背景已本地完成，History性能和中断残留已交接，未部署。
+
+## 2026-11-08 · 并行History工具批次静默中断（静默终态已修，耗时归因未闭）
+
+**用户最新分工确认：** conversation_history超时与新出现的Hermes工具普遍极慢统一转交同工作区会话「检查 Alex 定制会话状态」（`01a1b942-80a7-7f71-bc01-8517615dc6ba`）。已发送旧712秒报告、9ac8096真实修复边界、测试／计时证据及工作区保护要求；该会话接续新现场内存压力／锁等待／420秒超时的因果调查。本会话仅收尾前端及既有9ac8096的只读复核，不重复开展后端性能实现，不把静默回执修复冒称耗时根因已闭。
+
+
+后端修复`9ac8096`已在隔离工作区合main并成功推送`origin/main`，未部署；首次自动push及普通重试曾遇GitHub TLS错误，收尾正常重试已成功（root-main-push-final.log）。真实watchdog系统中断保interrupted事实并显式failed/error，经原失败Turn提交点形成human_only的真实failed_turn回执；保已完成工具结果与后续未执行标记，用户Stop／旧观察否决不升级失败，不伪造模型正文或重放。160项定向回归、最后增量16项、staged ruff／health通过；ACP两项因可选依赖缺失未验。主会话已亲审正式工具提交／finalizer／实时终态／RPC与REST冷读接线；独立复核确认主批次修复成立，但早期retry/backoff系统中断仍将框架说明落成普通Assistant并进入模型上下文（P2，真实Agent／SQLite已复现）。该残留及独立报告已追加交给后端负责会话统一修复，9ac8096不得作为完整通过包直接发布。证据在隔离工作区ignored `.hermes-dev/tool-batch-interrupt-20261108/report.md`。现场712秒阻塞耗时根因仍未证实，合成200／2000条历史未重现，不擅改Notebook／state或调大timeout。
+
+用户提供正式机`/home/ubuntu/workspace/问题报告/Hermes_工具结果写回卡顿与看门狗中断_2026-11-08.md`并要求一并修复，随后明确重点：一次并行conversation_history调用中，看门狗返回结果后直接结束Turn且用户未见明确原因；不能预设Notebook为根因。报告显示工具本体完成后712秒触发系统中断、response_len=0，单帧栈仅为当时写回位置，不证明耗时归因。先复现工具批次→系统interrupt→后端终态→前端提示；区分工具错误、未执行skipped、提交完成与系统强制终止，保用户取消语义、未执行标记及写入不重放。仅有证据后修正式接线，不调大watchdog阈值、不擅改Notebook业务语义，不生产试发／重启／部署。
+
+独立工作区`../hermes-secretary-tool-batch-interrupt-20261108`从本地main `44228df552`起分支`codex/tool-batch-interrupt-20261108`，隔离当前算法工作区及dirty文档；主会话抓后端/前端接线与亲审，后端实现包负责复现、必要最小修复和定向验证。报告原件本地ignored `.hermes-dev/send-recovery-20261108/tool-writeback-incident.md`；不读取NM内容或私人完整历史作为复现材料。
+
+## 2026-11-08 · 最小必要恢复整改（前端本地完成，未部署）
+
+恢复实现已由主会话亲审及独立复审接收：正常Send／Steer／原生完成不再整页恢复或重复activate；未知外部来源保必要局部cut，外部终态更新真实Usage／Context；只核验latest与可见依赖，保已加载画面和自然滚回范围。三项原incremental失败已处理：Compaction被慢历史阻塞属正式接线缺陷；另两项旧断言按现行读取调度与owner隔离契约修订并加强。最终未过滤8文件261/261、独立反例4/4通过，构建及冻结健康度量通过；11文件指纹与独立审查一致。证据在UI ignored `.archive/minimal-live-sync-20261108/{three-failures.md,implementation-review.md,verified-tests-final.log,source-sha256.json}`。主会话隐藏IAB实际App／受控网络已验慢历史下Send→Steer→完成新增整页／activate／cut／胶囊均0，同／异epoch断线补外部消息且草稿保持；最终增量滚回验证为真实Controller渲染源，不冒浏览器像素滚位、Android真机或生产网络已验。未上线，主仓算法分支与其它任务改动不混入发布。
+
+背景补修已由主会话亲审并提交UI `aae76b3`（正常恢复基础包为`9daf9f7`）：保原配色／流动／浓度，低分辨率半浮点场与模糊后一次末端合成及亚码值抖动，避免透明8位多次量化。13项生命周期／分配失败测试、typecheck、build通过；冻结TS度量无新增／增长超标。主会话隐藏IAB深浅色与390×844窄屏无损对照及context lost/restored通过，暖区等色平台P95深28→8px、浅26→8px；低频均差不足一个码值。原场GPU1.34ms不含CSS blur，候选四步3.56ms，稳定帧间隔中位均33.3ms，不称总GPU更快；unorm8降级有更多残余相关，Android真机未验。完整证据UI ignored `.archive/ambient-banding-20261108/delivery.json`；未发布。后续Noting动画不改该背景实现。
+
+用户追加确认：相关验证中三项已在基线复现的incremental失败也须本轮查清并处理，不以“旧失败”排除交付。逐项区分真实时序缺陷与过时断言，保留用户行为要求，未过滤通过后再交付；另一个未改manual compaction夹具的21项基线失败不混称本轮三项。
+
+用户明确要求修正反复影响体验的后台对账，只保留真正必要的部分；授权本地实现和验证，不仅修单次提示。口径已立即写入06顶部及根AGENTS：正常连续业务更新由原生回执／事件与后端权威状态保证，局部读取受影响页面范围；真正断线／owner切换／覆盖缺口等仍完整恢复。禁止隐藏胶囊、吞失败、减少数据完整性或移除归属校验达标。
+
+主会话负责全链路触发审查、规格、亲审与集成；前端实现包负责普通同步／完整恢复边界及正式接线／定向回归，后续独立审查。前端基线ccd264e，产品与正式dc40990一致；后端660b5a63包含禁止上线的算法分支，本轮不混入／发布。保留原文档dirty、Huawei资料与UI五个.DS_Store。完成条件：普通Send／Steer／正常通知不启动整页恢复、避免重复激活与无关读取；原生流、持久历史、跨渠道变化及时完整；慢／失败局部处理，断线／epoch／owner／历史破坏性变化恢复不退化。先定向证据，再必要构建；无生产消息／模型／部署授权扩展。
+
+## 2026-11-08 · 发送／Steer触发恢复胶囊（前序调查记录，后续整改见上文）
+
+用户报告网络无波动时，每次点击发送新Turn或Steer都会短暂卡顿并出现恢复胶囊，随后恢复；已明确浏览器Web与Android APK两边都有。本轮先定位正常发送与恢复状态的共同触发，主会话核后端通知／正式机只读日志，send_recovery_audit独立只读审前端及最小反例，不改产品或部署、不试发生产消息、不调用模型。保护当前未上线算法分支、原文档dirty及Huawei资料。
+
+10:03+08正式后端仍8b32bb31，Web／Gateway均active、NRestarts=0；最近Alex日志未见今天WS／事件循环错误，不能据此证明客户端绝无断线。前端基线ccd264e（最近产品dc40990）；后端Turn状态广播sessions.changed、前端发送回执／Steer消费均有历史刷新路径，正在核验是否错误撤销连续状态。用户补充胶囊文字未看清、似乎未明显停留Connecting，作为不确定观察保留。前端9项隔离审查已完成：健康Send／Steer及广播无等待；实际Controller.send受控首次cut返回runtime_unavailable时54ms进入ready=false、1024ms恢复，Socket全程connected。主会话已亲读夹具及日志，失败为受控注入，不冒生产现场捕获；产品路径与发布dc40990无差异。放大点是普通后台读失败被归为RecoveryAuthorityError并撤销连续状态，随后至少1秒重试；正在核后端正式受理过渡。证据前端ignored `.archive/send-recovery-audit-20261108/{audit.test.ts,results.log}`。后端admission_snapshot_audit以真实RPC／SQLite／原生Loop及受控provider完成4项反例／对照，主会话亲审接收：普通submit／submit_idle成功ACK后、原生worker取得lease／Turn ID前，已有持久用户来源而recovery_view返回runtime_unavailable；自然Steer接力reservation亦然，进入provider／结算后恢复complete。当前Turn内正常消费Steer未落库对照仍complete，不能把所有Steer都归因该窗口。核心后端文件与生产8b32bb31无差异；本地agent另有未上线算法差异，本测试关闭相关Noting／compression，不冒线上实跑。前后端共13项通过，机制链已证，但缺真实客户端请求与窗口时间对齐、当前Turn内每次Steer卡顿的具体原因。建议修正合法受理／接力阶段的恢复契约与连续连接下后台对账失败的分类，不隐藏胶囊、放宽真正owner／epoch／历史失配保护或调网络超时。未改产品／正式测试／配置／服务、未提交／部署，当前轮调查到此交接；后端ignored `.hermes-dev/send-recovery-20261108/`含临时测试、四份阶段JSON及最终日志。详见运维记录同日调查。
+
 ## 2026-11-03 · 长空闲证据与风险／成本模型修复（已合main并上线）
 
 **用户确认：** 按现场调查方向修复，先解决长空闲证据丢失，再校准风险和成本模型；用11/3真实数据验证，不以降低阈值代替修复。用户随后明确“上线一下吧”，授权将当前已验证修复提交、合入main并发布正式机；保持既有生产参数，完成服务及算法只读核验。本地基线`883a68c3`（正式运行版本`921f788d`），分支`codex/adaptive-idle-calibration-20261103`；保留前轮两份文档修改与Huawei未跟踪资料。
