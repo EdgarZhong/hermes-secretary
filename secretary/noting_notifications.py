@@ -1,6 +1,7 @@
 """Render a committed Noting result; never read a pointer or publish on its own."""
 
 from hermes_cli.cli_secretary_commands import PERSISTENCE_PROPOSAL_INSTRUCTION
+from secretary.notebook_contract import public_state
 from secretary.notebook_render import render_notebook
 
 
@@ -19,7 +20,7 @@ def completion_body(snapshot, *, termination, summary, settings, profile_home, d
     """Count the exact injected Notebook body, excluding the notification wrapper."""
     body = render_notebook(snapshot, profile_home=profile_home, db=db, conn=conn, model_visible=True)
     char_count = len(body)
-    entry_count = sum(len(entries) for entries in snapshot["payload"].values())
+    entry_count = sum(len(entries) for entries in public_state(snapshot["payload"]).values())
     kind = termination["type"]
     if kind == "forced":
         summary += (" Notebook maintenance did not finish normally: the Noting execution budget ended; "

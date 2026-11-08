@@ -1,5 +1,17 @@
 # 运维记录
 
+## 2026-11-08 · 性能修复与前端0.1.11联合发布（已完成）
+
+用户明确授权精简自主完成性能优化、合并另一会话前端并上线、交付递增版本APK。2026-11-08T12:48:43.498004+08:00受限发布器返回verified：后端main `2c0cb173294c813cf92c37ee1233ad4474d7dbc5`（性能／Noting产品0ab162f，集成c58e42a），前端`889c6e866b8790d330c84f1c56348f7dba959038`（产品baed6c4），APK0.1.11／1011。云端保持main且clean，Web／Gateway实际版本一致、active，微信connected。未包含原算法工作区未发布改动。
+
+发布前无活动Turn／Noting，沿既有PM及原锁，正常停止两专属服务、三库一致备份后快进主干，Secretary静态目录原子交换。三库受保护表、配置含凭据、微信绑定与Dashboard资源保持；新Secretary439文件逐SHA匹配，实际HTTP JS／CSS／字体三项200且字节匹配。旧静态位于`~/.local/share/hermes-secretary/static/secretary.release-stage-20261108-performance-ui-011`。回滚先核receipt和新增写入，在main提交反向代码并恢复配套静态，不自动回写业务库。发布未改Main root Prompt／顶层工具schema，不清用户上下文缓存，不触发用户模型Turn／Noting。
+
+性能修复减少Notebook来源重复History重建、coverage及公共写回不再加载无关Full审计；保来源事务fresh与最终Snapshot再验。Linux合成候选23操作GC后Python保留约0.169MiB，trim归还16.47MiB；单操作额外峰值仍17.57–18.24MiB，不能称峰值已根治或证明正式1.7GiB单工具泄漏。旧版78秒限退出，archive/append未测，不冒称完整对照。Noting仅50次预算后续下Turn，最多5Turn；真实隔离模型样本3请求／18.504秒、同child两Turn正常finish、1事项／1Snapshot；原生预算摘要请求无工具，正式Noting请求工具表保持。生产无测试消息。
+
+APK交付`/Users/edgar/Downloads/Hermes-Secretary-0.1.11-889c6e8-arm64.apk`，SHA256 `203edc0e124228c26e2e94050dc1d67939289b8ded73dc5798030fafddf9be60`；原签名／包名、非调试、arm64、16KB、ZIP CRC和439内置资源均核验。手机安装／生产浏览器交互未验，既有隐藏IAB同产品证据复用。
+
+清理已核最近两套完整三库：本轮＋`stage-20261103-adaptive-idle`；仅删除旧`stage-20261102-adaptive-bootstrap`登记的9个备份及附属文件，共241143808字节。两套SHA／完整性／FK通过，运行库inode及当前同步zip保持。线上受限收据在`~/.local/state/hermes-secretary/release-20261028/stage-20261108-performance-ui-011/`；本地完整证据在main工作区ignored `.hermes-dev/backend-performance-20261108/deployment-plan/deployed-final/`，脱敏包`closeout-redacted.tar.gz`。Linuxpytest套因既有release缺pytest未执行，相关本地测试／独立反证与Linux真实组件测量证据详见CLAUDE，未降低门禁。
+
 ## 2026-11-08 · 启用更积极的swap策略（用户明确授权）
 
 用户将History结果写回超时、Hermes工具极慢及代理不稳统一交本会话排查，并明确先让既有4GiB swap发挥作用。11:54:01+08核实`/swap.img`2084564992字节、`/swap-extra.img`2210402304字节均已启用、used0；现有`/etc/sysctl.d/90-local-memory-policy.conf`明确设`vm.swappiness = 0`，文件root:root／0644。

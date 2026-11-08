@@ -17,9 +17,9 @@
 - **Agent自主收敛／待追认：Candidate同Task来源形式切换。** 原空白：旧合法direct→refs操作与新旧Task节点不可删约束如何同时成立。决定：仅尚未提交且唯一节点属于本Task时，允许显式清空当前工作槽并切为合法refs；任何旧Task直接节点仍禁止删改。理由：继承原来源二选一操作并保持旧节点约束。影响：当前Task工作态边界，无迁移／旧节点特权。已实现，正式工具／恢复／原子失败98项通过；独立Verification／Validation已通过，已上线。
 
 
-## 2026-11-08 · 性能优化与前后端联合发布（用户已授权，执行中）
+## 2026-11-08 · 性能优化与前后端联合发布（已上线，Notebook容量调查继续）
 
-**最新用户确认：** 继续完成一轮性能／开销优化，将另一会话前端修复一起上线，交付递增版本新版APK；自主完成，但不使用完整自主实现套件。本轮走定向实现／亲审／有效证据复用／部署验证。后端main已合并并推送`c58e42a43c`；UI基线`baed6c4`，版本与构建由独立Agent负责，主会话负责集成与上线。内存Agent完成Linux有界归因，发布审查Agent只读核环境与既有发布器；不混入算法分支。
+**最新交付与后继任务：** 用户明确授权精简自主优化、前端联合上线和递增版本APK。BE main `2c0cb173294c813cf92c37ee1233ad4474d7dbc5`＋FE `889c6e866b8790d330c84f1c56348f7dba959038`已发布，受限执行器verified，Web／Gateway同版本active且微信connected。APK0.1.11／1011已产出并通过原签名、包身份、439资源及16KB校验；发布保护和清理收据见operations-log。未混入算法分支。用户后继要求检查长期提案提示、最近Notebook冗余及压缩／Framework注入后到当前110多K的变化，只读调查中；未确认新上限，不先改阈值。注入疑问先后更正，未人工续跑或重复写入。
 
 用户将History结果写回长停顿、Noting工具极慢与同机代理不稳统一交本会话处理，后继明确先修改swap，再追问具体哪些工具使内存暴涨／是否泄漏，要求先给准确归因。12:28:57只读复核swappiness60、swap920MiB、available1497MiB，SSH重新可用；先前握手阻塞及Linux环境失败保持原时点证据，不称代理长期稳定。
 
@@ -27,11 +27,13 @@
 
 用户明确确认仅Noting每Turn50次后注入预算续跑control，沿同child／Task／工作态进入下一Turn，整个任务最多5Turn；第5次才forced保存／收尾，Main／失败／取消／overflow不改。新增正式测试41项和独立反证7项通过，含原生50次边界、2Turn／52受控请求正常finish、同prefix／tools、一个Snapshot。相关旧回归17项Note／observer等失败已在9ac基线逐项复现，不称全套绿；旧恢复夹具缺source_description及schema旧字段集合已补，相关83项通过。冻结十检查9过、health15文件0阻断0提示；no-tmp仅未改历史同blob35daf556…eb724。产品树与被审候选逐SHA核对复用有效证据，不为merge重跑大套。
 
-**工具内存归因进行中：** 已证高开销为notebook_archive、update/create逐来源／条目反复全History，Show coverage重复全源，以及conversation_history完成后的公共结果写回再做Full审计。此前合成累计解码约831／987MB不是同时峰值，不能把1.7GiB全归单工具。原生trim归还818152KiB（约799MiB）说明可释放分配器保留参与，尚未证永久泄漏；现安排只读源码＋Linux受限合成逐工具RSS／tracemalloc／重复后GC和trim量测，不读用户历史做fixture；后继优化及部署按顶部最新授权执行。
+**后继明确缺陷修复：** Noting结果的条数错误统计审计payload归档项，而正文已正确过滤。计数改复用同一public_state，12项针对性／通知链路测试通过、ruff/health通过；不会改变独立字符阈值，不改历史已注入消息。最新现场正文内容与压缩／注入token时间线继续核查，未调整提醒阈值。
 
-既有Linux标准runner因release环境无pytest自动准备后在锁校验失败而未执行，真实模型0请求／凭据未解析；后继正式环境复核与Prompt样本仍待补。完整实现、独立报告、指纹、限制在`../hermes-secretary-backend-performance-20261108/.hermes-dev/backend-performance-20261108/report.md`，新内存归因另存同目录memory-attribution；运维和回滚仅记operations-log。前端main baed6c4与后端待本轮联合部署，完成状态以发布收据为准。
+**Linux内存归因已完成：** 合成1000×8KiB历史、8条目，已定位create/update/archive来源校验、Show coverage及公共结果writeback共享foreground行物化／typed正文解码。候选23次操作完成，额外Python峰值17.57–18.24MiB，未明显降低单次峰值；create History37→2次、update33→2次，主要收益为减少重复。GC后Python总保留约0.169MiB（含报告），malloc_trim归还16.47MiB RSS；未见本样本持续单调对象增长，不证明全面无泄漏，也不能将正式1.7GiB归给单工具。旧版78秒有界退出，archive/append/final trim未测，不冒称完整对照。生产Git/uv.lock/解释器复核正常，pytest仍不存在，无事前完整venv指纹。进一步元数据／正文惰性分离仅为后续建议，本轮不加入未验证实现。
 
-## 2026-11-08 · Timeline辅助消息分组折叠（本地完成，未部署）
+既有Linux标准runner因release环境无pytest自动准备后在锁校验失败而未执行。后继生产Git／锁／PM选择复核正常；真实隔离Noting样本3请求18.504秒，两个Turn create→budget summary→finish，单item／Snapshot，正式Turn工具表及全部父prefix保持。第2请求是原生无工具摘要，全HTTP工具表相等断言不适用，原始incomplete保留并由独立assessment解释；未在用户会话发测试消息。完整实现、独立报告、指纹、限制在`../hermes-secretary-backend-performance-20261108/.hermes-dev/backend-performance-20261108/report.md`，新内存归因另存同目录memory-attribution；运维和回滚仅记operations-log。前端baed6c4产品已随889c6e8版本提交联合上线，实际部署以收据绑定为准。
+
+## 2026-11-08 · Timeline辅助消息分组折叠（已随0.1.11联合上线；下文验证为原实施记录）
 
 本地实现与主会话亲审完成：逐条正文保留、active与尾段保护、控件同Agent正文列宽、刷新／同事件重放缓存及阅读锚点交接均已验。独立R1/R3/R4反例已修：native typed首帧证明区分同UID多段、混合压缩正文统一参与阅读投影、已证Turn输入保住Steer前段；唯一来源live→部分／完整历史保选择和DOM，不用UID猜歧义段。最后131项及原4反例通过；root实际隐藏IAB三正文两组false/true重载重放保持，宽度差<0.01px。旧无typed证明且同UID歧义仅保document选择，不错误持久映射。证据UI ignored `.archive/timeline-folding-20261108/review-alias.md`及`root-native-replay.json/jpg`。
 
@@ -39,7 +41,7 @@
 
 用户明确每条User／Assistant正文保留，仅两条正文之间的辅助消息默认成组折叠；活动Turn全部照常流式展示，结束后启用折叠，尾部尚无后继正文的辅助段保持展开。控件小号英文、旋转箭头与半透明细线，只占Agent输出区；位于下一正文时间戳之上。展开状态前端按稳定身份持久化并和视口恢复对齐，口径已立即写06顶部。主会话负责Timeline／阅读状态实现及亲审；Noting动画Agent仅App Secretary局部及indicators，Compaction Agent仅core恢复，避免修改范围交叉。背景包已本地完成，后端调查已移交，不扩大部署权限。
 
-## 2026-11-08 · Noting展开动画与压缩完成误恢复（本地完成，未部署）
+## 2026-11-08 · Noting展开动画与压缩完成误恢复（已随0.1.11联合上线；下文验证为原实施记录）
 
 Noting产品包已完成主会话亲审：既有owner点球即预取、失败保一级可重试；running计时进入首开真实几何；统一OrbMorph承接打开／两级往返／尺寸变化和快速反向。实际首轮发现301ms缺帧吞掉余程，已改按实际绘制增量推进；v2隐藏IAB注入299.4ms停顿后继续完整余程，首开与两级交接高度差均0.0078125px；减少动态效果Expand／Collapse通过。27项行为／App受控请求、8项相关表现层、typecheck／build及冻结健康通过，Android真机和减少动态效果首开未单独验。证据UI ignored `.archive/noting-panel-motion-20261108/delivery.json`。
 
@@ -60,7 +62,7 @@ Compaction包已修原生compression lineage延续识别及当前history proof�
 
 独立工作区`../hermes-secretary-tool-batch-interrupt-20261108`从本地main `44228df552`起分支`codex/tool-batch-interrupt-20261108`，隔离当前算法工作区及dirty文档；主会话抓后端/前端接线与亲审，后端实现包负责复现、必要最小修复和定向验证。报告原件本地ignored `.hermes-dev/send-recovery-20261108/tool-writeback-incident.md`；不读取NM内容或私人完整历史作为复现材料。
 
-## 2026-11-08 · 最小必要恢复整改（前端本地完成，未部署）
+## 2026-11-08 · 最小必要恢复整改（已随0.1.11联合上线；下文验证为原实施记录）
 
 恢复实现已由主会话亲审及独立复审接收：正常Send／Steer／原生完成不再整页恢复或重复activate；未知外部来源保必要局部cut，外部终态更新真实Usage／Context；只核验latest与可见依赖，保已加载画面和自然滚回范围。三项原incremental失败已处理：Compaction被慢历史阻塞属正式接线缺陷；另两项旧断言按现行读取调度与owner隔离契约修订并加强。最终未过滤8文件261/261、独立反例4/4通过，构建及冻结健康度量通过；11文件指纹与独立审查一致。证据在UI ignored `.archive/minimal-live-sync-20261108/{three-failures.md,implementation-review.md,verified-tests-final.log,source-sha256.json}`。主会话隐藏IAB实际App／受控网络已验慢历史下Send→Steer→完成新增整页／activate／cut／胶囊均0，同／异epoch断线补外部消息且草稿保持；最终增量滚回验证为真实Controller渲染源，不冒浏览器像素滚位、Android真机或生产网络已验。未上线，主仓算法分支与其它任务改动不混入发布。
 
