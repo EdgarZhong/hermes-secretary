@@ -101,7 +101,7 @@ def test_new_mcp_is_live_through_search_describe_call_without_mutating_warm_or_c
     try:
         seen = _requests(warm)
         first = warm.run_conversation("first", title_user_message="")
-        assert _updates(first["messages"])[-1]["content"] == "能力可能变化，当前 49 个折叠工具，调用前重新 search/describe。"
+        assert _updates(first["messages"])[-1]["content"] == "Tool capabilities may have changed: 49 deferred tools. Search/describe again before use."
         old = copy.deepcopy(seen[-1])
         name = register()
         warm._skip_mcp_refresh = False
@@ -113,7 +113,7 @@ def test_new_mcp_is_live_through_search_describe_call_without_mutating_warm_or_c
         assert name not in warm.valid_tool_names
         assert name in _snapshot(second["messages"])["catalog"]
         notice = _updates(second["messages"])[-1]["content"]
-        assert notice == f"能力可能变化，当前 {_snapshot(second['messages'])['folded_count']} 个折叠工具，调用前重新 search/describe。"
+        assert notice == f"Tool capabilities may have changed: {_snapshot(second['messages'])['folded_count']} deferred tools. Search/describe again before use."
         assert _snapshot(second["messages"])["folded_count"] == 50  # 49 fixture tools plus the newly registered tool
         assert name not in notice
         assert "Direct tools" not in notice

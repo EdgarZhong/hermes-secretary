@@ -39,6 +39,31 @@
 
 最终预算摘要承认“全局一致性检查和剩余旧条目处理未全部完成”，但没有剩余清单。因此：**能证实有未完成收尾，不能准确声称其中多少条纯粹由本次中断导致，更不能将56条全部归为中断遗留。**
 
+### 2.2.1 已完成的Snapshot提交链探查（下次直接复用）
+
+取证范围为同一指定Conversation最近六份已提交Snapshot；原始ID、完整payload与当前pointer位于私密`notebook-capacity/target-snapshots-private.json`。下表时间均为Asia/Shanghai；这是取样时点证据，不把未来新提交当作异常，也不要为了恢复上下文重复拉全库。
+
+| 提交时间 | Snapshot短标识 | 终止方式 | 审计总条目 | 已归档 | 模型当前条目 |
+|---|---|---|---:|---:|---:|
+| 10-31 22:57:00 | 89476d4aed56 | finish_noting | 59 | 12 | 47 |
+| 11-01 20:29:18 | b84b2dcd8005 | finish_noting | 62 | 19 | 43 |
+| 11-02 06:14:10 | 8966e252a310 | finish_noting | 66 | 20 | 46 |
+| 11-04 11:31:31 | 5ee99bc06280 | finish_noting | 78 | 20 | 58 |
+| 11-06 17:53:46 | ef1d7d2a7836 | finish_noting | 86 | 20 | 66 |
+| 11-08 12:00:09 | 1c3bf966a4d7 | forced | 89 | 33 | 56 |
+
+最新任务的合法工作态在12:00:09.822726提交Snapshot并成为当前pointer，12:00:13.478430任务committed/completed；`completed`是运行任务结束，不证明正常finish或全篇维护完成。最终Snapshot包含13条已归档旧项与3条新项，未发生因预算而回退全部成功编辑。
+
+持久Framework载体消息17404的时间字段取Snapshot created_at，不能据它单独证明append墙钟时刻。实际正文75096字符，56个primary entry_id与未归档集合逐项相等；89条只是已修的通知统计错误。当前压缩区间内仅这一份完整Notebook载体active；旧载体已compacted，不能重复算进当前上下文。
+
+**不可变版本留存反证：** 稳定条目112→版本131、127→132、181→181、202→202，在上述六份Snapshot中都未变；214→214、215→215，自11-01起五份Snapshot未变。这些是“稳定entry_id→不可变version_id”，不是把两个ID混为一谈。前几轮正常finish仍保留，本次也没有针对六条的直接写操作，因此不能将长期积压全部归因最后一次forced。实际私人内容及逐版本JSON只留在受限证据，不在公开文档展开。
+
+当前done=true为60、127、202、341；60被Candidate72引用，341被Candidate342引用；127、202无当前入引用。引用情况只证明结构依赖，不能自动证明语义上应该长期保留。时间派生不是失效原因：相关旧证据时间仍为原始10月底／11月初日期，没有因本轮处理被刷新。
+
+原始调用轨迹初始消息17295逐字包含现行默认Noting任务全文；旧六条既存在初始工作态，也在后继Show可见。唯一参数拒绝为update88缺完整UID，下一调用修正；archive271超时后还有13次调用，Show及最终Snapshot确认其已归档。末尾17402是50次预算提示，17403是未调用finish的模型总结，明确全局检查及旧项处理未全完但没有列剩余集合。
+
+完整链条与取证脚本：`retirement-trace/{report.md,child-trace-private.json,read-child.py}`；可见集合与跨轮增减：`notebook-capacity/{review-summary.json,target-snapshots-private.json,actual-carrier-17404-private.json}`。先读这些文件；仅当用户要求当前新状态或证据文件不可用时，再按目标Snapshot／消息做窄查询，不重新全历史探查。
+
 ### 2.3 时间与清退机制
 
 - `evidence_time`由原始消息时间推导，按来源组保存；不是Notebook操作时间。重点旧条目的时间并未被本轮刷新成今天。

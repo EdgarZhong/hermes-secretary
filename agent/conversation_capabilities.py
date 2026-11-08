@@ -78,7 +78,8 @@ def _render_update(snapshot, previous):
     if snapshot.get("folded_count") is not None and any(
             snapshot.get(key) != previous.get(key)
             for key in ("catalog", "schemas", "bridge", "direct_tools", "folded_count")):
-        parts.append(f"能力可能变化，当前 {snapshot['folded_count']} 个折叠工具，调用前重新 search/describe。")
+        parts.append(f"Tool capabilities may have changed: {snapshot['folded_count']} deferred tools. "
+                     "Search/describe again before use.")
     if snapshot["system_policy"] != previous.get("system_policy", ""):
         parts.append("Current additional configured channel system instructions: " + (
             snapshot["system_policy"] or "No additional configured channel system instructions apply; "
