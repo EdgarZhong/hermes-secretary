@@ -1,5 +1,11 @@
 # 运维记录
 
+## 2026-11-08 · Notebook提案通知归档计数修复（已上线）
+
+用户要求核查实际模型Notebook，发现`completion_body`正文走`public_state`排除归档，但提示条数直接统计audit payload。最小修复复用同一public_state计数，不改字符阈值、审计数据、历史已注入carrier或正文；新增6项与既有通知链路6项通过，ruff/health通过。13:02:36+08受限backend-only执行器verified，main `d241273d98e50edb83009aa796da294053a1f895`，Web／Gateway实际同版active、微信connected，前端889c6e8／APK0.1.11保持。
+
+沿原PM、lock与已审发布器，无活动任务时切换；三库各28张保护表、配置／绑定／双SPA指纹保持，Secretary439资源及HTTP三样本匹配。未触模型、清缓存、重复Noting或重写消息。新通知计数修正不表示旧提示已改，也不取消独立字符阈值触发。保留新count＋performance-ui两套完整三库，精确清理11/3旧备份9文件243908608字节，运行库inode和当前同步zip保持。收据位于云端`~/.local/state/hermes-secretary/release-20261028/stage-20261108-notebook-count/`与本地main工作区ignored `.hermes-dev/backend-performance-20261108/notebook-count-release/`；回滚按同main反向提交及数据保护规则，不恢复旧业务库。
+
 ## 2026-11-08 · 性能修复与前端0.1.11联合发布（已完成）
 
 用户明确授权精简自主完成性能优化、合并另一会话前端并上线、交付递增版本APK。2026-11-08T12:48:43.498004+08:00受限发布器返回verified：后端main `2c0cb173294c813cf92c37ee1233ad4474d7dbc5`（性能／Noting产品0ab162f，集成c58e42a），前端`889c6e866b8790d330c84f1c56348f7dba959038`（产品baed6c4），APK0.1.11／1011。云端保持main且clean，Web／Gateway实际版本一致、active，微信connected。未包含原算法工作区未发布改动。
