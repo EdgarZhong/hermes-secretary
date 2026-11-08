@@ -178,13 +178,17 @@ def test_run_conversation_flushes_assistant_tool_call_before_execution():
     assert result["final_response"] == "done"
 
 
-def test_interim_assistant_is_durable_before_ui_projection_on_abnormal_exit(tmp_path):
+def test_interim_assistant_is_durable_before_ui_projection_on_abnormal_exit(tmp_path, monkeypatch):
     """A visible interim assistant row must survive an immediate process exit.
 
     ``GeneratorExit`` models an uncatchable turn interruption at the UI bridge:
     no turn finalizer or graceful shutdown persistence is allowed to rescue the
     row after the callback observes it.
     """
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("HERMES_HOME", str(tmp_path))
+    # This native persistence contract has no Notebook prelude dependency.
+    (tmp_path / "config.yaml").write_text("noting:\n  enabled: false\n")
     agent = _make_agent()
     db_path = tmp_path / "state.db"
     session_id = "interim-abnormal-exit"

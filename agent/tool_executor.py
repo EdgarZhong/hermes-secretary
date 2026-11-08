@@ -1149,7 +1149,7 @@ def _commit_tool_result(
 
     agent._current_tool = None
     _status_suffix = " (error)" if is_error else ""
-    agent._touch_activity(f"tool completed: {function_name} ({tool_duration:.1f}s){_status_suffix}")
+    agent._touch_activity(f"persisting tool result: {function_name} ({tool_duration:.1f}s){_status_suffix}")
 
     # Trusted runtime identity, never tool arguments or a model-selected profile.
     noting_feedback = (getattr(agent, "_secretary_noting_child", False)
@@ -1197,6 +1197,7 @@ def _commit_tool_result(
     messages.append(tool_message)
     if not _flush_session_db_after_tool_progress(agent, messages, stage=f"tool result {function_name}"):
         return None
+    agent._touch_activity(f"tool result committed: {function_name}{_status_suffix}")
 
     if not blocked:
         # ``tool.completed`` projects AFTER the canonical append + flush so resume can
@@ -1943,6 +1944,8 @@ def _execute_tool_calls_sequential(agent, assistant_message, messages: list, eff
         )
         if not _publish_sequential_result(agent, messages, ref, managed, tool_duration=tool_duration, index=i,
                                           budget=_tool_budget, transform_applied=dispatch.transform_applied):
+            _append_skipped_tool_results(agent, messages, tool_calls[i:], effective_task_id,
+                content="[Tool execution skipped — {name} was not started. A previous result could not be persisted.]")
             return
 
         if agent._interrupt_requested and i < len(tool_calls):

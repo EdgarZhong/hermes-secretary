@@ -1861,6 +1861,9 @@ def _close_durable_failed_turn(agent, result: Any) -> None:
     tail (``SessionDB.latest_conversation_role``), so a redelivery or a tail already closed by
     another writer is a no-op, and the gateway's own closer then no-ops in turn.
     """
+    from agent.turn_abort_receipt import close_system_aborted_turn
+    if close_system_aborted_turn(agent, result, _failed_turn_display_metadata):
+        return
     try:
         if not isinstance(result, dict) or result.get("completed") is True:
             return

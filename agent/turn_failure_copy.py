@@ -18,7 +18,7 @@ from hermes_constants import display_hermes_home
 # Failure codes minted by loop sites that are not provider verdicts (see module docstring).
 SITE_FAILURE_CODES = frozenset({
     "context_overflow", "truncated", "invalid_response", "empty_response", "loop_error",
-    "interpreter_shutdown", "session_busy",
+    "interpreter_shutdown", "session_busy", "turn_liveness_timeout",
 })
 
 
@@ -46,6 +46,26 @@ PARTIAL_FAILED_TURN_NOTICE = (
 # ``messages.display_kind`` of that row: display-only (stripped before every provider request),
 # so renderers show a Hermes notice and room pollers never read it as the model's reply.
 FAILED_TURN_DISPLAY_KIND = "failed_turn"
+
+TURN_STALL_NOTICE = (
+    "Hermes stopped this turn because it stopped making progress. Some actions may already "
+    "have run; review their results before continuing or resending."
+)
+_STALL_EXITS = frozenset({
+    "interrupted_by_system(turn_liveness_watchdog)",
+    "interrupted_during_api_call(turn_liveness_watchdog)",
+})
+
+
+def system_abort_notice(result: Any) -> Optional[str]:
+    """Only an accepted, attributed watchdog interrupt is a failed system termination.
+
+    Neither an observational warning, a user's cancellation nor an arbitrary lifecycle
+    interrupt is evidence that the system failed this Turn.
+    """
+    if isinstance(result, dict) and result.get("interrupted") and result.get("turn_exit_reason") in _STALL_EXITS:
+        return TURN_STALL_NOTICE
+    return None
 
 
 def untyped_failed_turn_display_kind(role: Any, content: Any) -> Optional[str]:
@@ -134,9 +154,13 @@ def invalid_response_failure_reason(response: Any) -> str:
         return "invalid_response"
 
 
-def exit_reason_failure(turn_exit_reason: Any) -> Optional[ExitFailure]:
+def exit_reason_failure(turn_exit_reason: Any, *, interrupted: bool = False) -> Optional[ExitFailure]:
     """:class:`ExitFailure` for a loop exit that carries a failure verdict, else None."""
     reason = str(turn_exit_reason or "")
+    if reason in _STALL_EXITS:
+        return ExitFailure("turn_liveness_timeout", True)
+    if interrupted:
+        return None
     for prefix, code, retryable, fails_turn in _EXIT_REASON_FAILURES:
         if reason.startswith(prefix):
             return ExitFailure(code, retryable, fails_turn)

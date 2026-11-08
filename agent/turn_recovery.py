@@ -1379,13 +1379,15 @@ def abort_turn_on_interrupt(
     agent._drop_trailing_empty_response_scaffolding(messages)
     close_interrupted_tool_sequence(messages, interrupt_text)
     agent._persist_session(messages, conversation_history)
+    from agent.turn_abort_receipt import retain_system_abort
+    result = retain_system_abort(agent, {
+        "final_response": interrupt_text, "messages": messages, "api_calls": api_call_count,
+        "completed": False, "interrupted": True,
+    })
     # The turn was stopped, not rebuilt: a pending steer was aimed at this turn's next
     # tool iteration, which will no longer happen — drop it (hard-cancel semantics).
     agent.clear_interrupt(hard_cancel=True)
-    return {
-        "final_response": interrupt_text, "messages": messages, "api_calls": api_call_count,
-        "completed": False, "interrupted": True,
-    }
+    return result
 
 
 def interruptible_backoff_sleep(

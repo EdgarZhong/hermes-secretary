@@ -15,6 +15,7 @@ from typing import Any
 # Provider-layer failure codes → (title, hint). Codes are ``agent.error_classifier.FailoverReason``
 # values carried in ``error_surface.code``; anything unlisted falls back on the layer table.
 _TURN_ERROR_CODE_COPY: dict[str, tuple[str, str]] = {
+    "turn_liveness_timeout": ("Hermes stopped a stalled turn", "Review completed actions before continuing or retrying."),
     "auth": ("The model provider rejected the API key", "Fix the key with /model, then /retry."),
     "auth_permanent": ("The model provider rejected the API key", "Fix the key with /model, then /retry."),
     "billing": ("The model provider reports no credit left", "Top up the account or switch with /model."),

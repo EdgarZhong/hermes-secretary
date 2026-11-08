@@ -16,6 +16,7 @@ from agent.codex_responses_adapter import _summarize_user_message_for_log
 from agent.delegation_context import is_dispatcher_owned_worker_context
 from agent.interrupt_control import interrupted_during_api_call_reason
 from agent.turn_failure_copy import FAILED_TURN_DISPLAY_KIND, exit_reason_failure, stamp_failure
+from agent.turn_abort_receipt import persistence_failed, resolve_system_abort, terminal_failure_text
 from agent.context_compressor import _DB_PERSISTED_MARKER
 from agent.message_content import flatten_message_text
 from agent.message_metadata import append_message, stamp_message_timestamp
@@ -692,6 +693,7 @@ def _resolve_pending_tool_result(agent, final_response, interrupted, failed, mes
     """Explain an unfinished native tool tail; accepted Noting Finish is already complete."""
     if (
         not controlled_completion
+        and not failed
         and not final_response
         and not interrupted
         and messages
@@ -732,6 +734,7 @@ def finalize_turn(
     noting_completed = controlled_finish(agent, _turn_exit_reason)
     if noting_completed and agent.is_interrupted:
         interrupted, _turn_exit_reason = True, interrupt_reason(agent)
+    interrupted, _turn_exit_reason = resolve_system_abort(agent, interrupted, _turn_exit_reason)
 
     final_response, _turn_exit_reason, preserved_verification_fallback, interrupted = _resolve_budget_fallback(
         agent, final_response=final_response, api_call_count=api_call_count,
@@ -752,7 +755,7 @@ def finalize_turn(
     # ``turn_exit_reason`` collapsed to code="unknown", retryable=True on every surface.
     # Advisory verdicts (``fails_turn=False``) only add the code: ``failed``/``completed`` keep
     # the loop's values so cron, kanban and transcript persistence behave as before.
-    _exit_failure = None if interrupted else exit_reason_failure(_turn_exit_reason)
+    _exit_failure = exit_reason_failure(_turn_exit_reason, interrupted=interrupted)
     if _exit_failure is not None and _exit_failure.fails_turn:
         failed = True
 
@@ -904,7 +907,7 @@ def finalize_turn(
     # Persistence failures already set failed=True; also stamp `error` so the gateway
     # surfaces status="error" (desktop can toast) instead of a quiet complete frame, plus
     # the machine-readable cause 'session_persistence_failed:<locked|compression|...>'.
-    if failed and str(_turn_exit_reason) == "session_persistence_failed":
+    if persistence_failed(agent, failed, str(_turn_exit_reason)):
         from hermes_constants import profile_cli_selector
 
         # Never rebind final_response here: the memory sync and the background-review gate
@@ -917,7 +920,7 @@ def finalize_turn(
         result["failure_reason"] = "session_persistence_failed:" + (_cause or "unknown")
     elif _exit_failure is not None:
         if failed:
-            result["error"] = final_response or str(_turn_exit_reason)
+            result["error"] = terminal_failure_text(result)
         stamp_failure(result, _exit_failure.reason, _exit_failure.retryable)
     # Cleanup failures are surfaced, but the response is returned either way (#8049).
     if _cleanup_errors:

@@ -356,7 +356,8 @@ def _commit_turn_history(
 
 def _result_status(result: dict) -> str:
     return (
-        "interrupted" if result.get("interrupted")
+        "error" if result.get("failed") and result.get("error")
+        else "interrupted" if result.get("interrupted")
         else "error" if result.get("error") else "complete")
 
 
@@ -366,19 +367,15 @@ def _turn_outcome(result: Any, error_surface: dict | None = None) -> tuple[Any, 
         return str(result), "complete", None
     raw = result.get("final_response", "")
     status = _result_status(result)
+    # Cancellation metadata is never model prose, including a watchdog-interrupted API call.
+    if result.get("interrupted") and isinstance(raw, str) and raw.strip().startswith(
+            INTERRUPT_WAITING_FOR_MODEL_PREFIX):
+        raw = ""
     # No visible response AND a real error: the assistant slot carries a plain account of the
     # failure (title from ``error_surface``, raw provider detail on a ``Details:`` line, next
     # step) rather than the bare provider body.  An empty successful turn still renders as empty.
     if (not raw) and result.get("error") and (result.get("failed") or result.get("partial")):
         raw = turn_error_text(result.get("error"), error_surface)
-    # "Operation interrupted: waiting for model response (…)" is cancellation
-    # metadata, not assistant prose (gateway/run.py and ACP suppress it too).
-    # "Operation interrupted: waiting for model response (…)" is cancellation metadata, not assistant prose.
-    # gateway/run.py and the ACP adapter already suppress this sentinel; without this the desktop paints it
-    # as the agent's reply whenever a stop/steer lands mid-request (#7921).
-    if status == "interrupted" and isinstance(raw, str) and raw.strip().startswith(
-            INTERRUPT_WAITING_FOR_MODEL_PREFIX):
-        raw = ""
     lr = result.get("last_reasoning")
     last_reasoning = lr.strip() if isinstance(lr, str) and lr.strip() else None
     return raw, status, last_reasoning

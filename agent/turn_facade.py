@@ -189,8 +189,8 @@ class TurnFacadeMixin:
                         lease.stop_refresher()
             terminal = result if isinstance(result, dict) else {}
             relay_outcome = (
-                "cancelled" if terminal.get("interrupted") is True
-                else "failed" if terminal.get("failed") is True
+                "failed" if terminal.get("failed") is True
+                else "cancelled" if terminal.get("interrupted") is True
                 else "success"
             )
             relay_runtime.SESSION_COORDINATOR.finish_logical_calls(relay_turn, outcome=relay_outcome)
