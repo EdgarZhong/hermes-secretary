@@ -69,7 +69,9 @@ def test_duplicate_conflicts_are_not_last_writer_labels():
 def test_shadow_keeps_chronological_predictions_and_never_claims_policy_savings():
     data = history()
     data['checkpoints'] = data['checkpoints'][-4:]
-    # Deliberately insufficient past decision origins cannot invent burn-in.
+    # Neither sparse Turn origins nor insufficient observed time can invent
+    # burn-in. Long real coverage now also supplies legitimate quiet origins.
+    data['spans'] = [(149000, 150000)]
     result = evaluate(data, cutoff=150000)
     assert result['counterfactual_savings'] is None
     assert not result['rows']
@@ -91,7 +93,7 @@ def test_recent_quiet_and_active_histories_produce_different_forecasts():
 def test_real_policy_consumes_the_multi_return_forecast():
     from secretary.adaptive_policy import decide
     data = history()
-    now = 120000
+    now = 121000
     events = [dict(event_id='coverage', kind='coverage', source='user', verified=True,
                    at=now, start_at=10000, end_at=now)]
     for user in data['users']:
@@ -112,6 +114,13 @@ def test_real_policy_consumes_the_multi_return_forecast():
     config = dict(hot_interval_seconds=1740, business_interval_seconds=7200, cache_ratio=.1,
                   output_ratio=5, cache_ttl_seconds=1860, maintenance_cost=90000,
                   maintenance_duration_seconds=600, post_compaction_ratio=.18, timezone='UTC')
+    from tests.secretary.test_adaptive_policy import heartbeat_receipt, legacy_maintenance_receipt, NOW
+    for row in heartbeat_receipt() + legacy_maintenance_receipt():
+        row = dict(row, at=row['at'] + now - NOW, model_key='model')
+        # Keep complete receipts within this test's explicitly observed past.
+        if row['at'] < 10000:
+            row['at'] = 10000 + (100 if row['kind'] == 'maintenance_end' else 10)
+        events.append(row)
     result = decide(snapshot, events, config)
     assert result['diagnostics']['forecast_model'] == 'multi_return_trajectory'
     assert result['diagnostics']['behavior_forecast']['7200']['count'] > 1

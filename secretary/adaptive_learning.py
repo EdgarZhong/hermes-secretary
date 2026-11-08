@@ -21,7 +21,7 @@ def subtract_spans(spans, occupied):
     return result
 
 
-def _source(cohort, snapshot, occupied, timezone):
+def _source(cohort, snapshot, occupied, timezone, recency_timescale_days=7):
     now = snapshot['now']
     rows = [e for e in cohort.get('events', []) if isinstance(e, dict)
             and (imported := number(e.get('imported_at'))) is not None and imported <= now]
@@ -62,7 +62,7 @@ def _source(cohort, snapshot, occupied, timezone):
     # Exclusions have already cut the coverage. An end at the right edge must
     # not become a fabricated end-only (-infinity, end) exclusion a second time.
     data['excluded'] = []
-    weight = math.exp(-(now - max(hi for _, hi in spans)) / (7 * 86400))
+    weight = math.exp(-(now - max(hi for _, hi in spans)) / (recency_timescale_days * 86400))
     return model, data, feedback(feedback_events), weight
 
 
@@ -82,7 +82,7 @@ def extend_features(features, snapshot, cohorts, config):
     # Deterministic ownership of overlaps. Target evidence always wins.
     ordered = sorted(cohorts, key=lambda c: (str(c.get('origin_profile')), str(c.get('origin_conversation'))))
     for cohort in ordered:
-        source = _source(cohort, snapshot, occupied, config.get('timezone'))
+        source = _source(cohort, snapshot, occupied, config.get('timezone'), config.get('recency_timescale_days', 7))
         if source is None:
             continue
         prior, data, prior_feedback, weight = source
@@ -137,7 +137,7 @@ def extend_bootstrap(features, snapshot, config):
         now = min(snapshot['now'], cohort['cutoff'])
         examples = training_examples(data, now, 1800, config.get('timezone'))
         readiness['mature_windows'] = len(examples)
-        if len(examples) < 8:
+        if not examples:
             continue
         spans = []
         for row in examples:
@@ -150,7 +150,7 @@ def extend_bootstrap(features, snapshot, config):
         users = sorted({row['at'] for row in visible(data['users'], now)
                         if any(lo < row['at'] <= hi for lo, hi in spans)})
         prior = arrival_statistics(spans, users, local['zone'])
-        weight = math.exp(-max(0, snapshot['now'] - cohort['cutoff']) / (7 * 86400))
+        weight = math.exp(-max(0, snapshot['now'] - cohort['cutoff']) / (config.get('recency_timescale_days', 7) * 86400))
         readiness.update(qualified=True, conditional_exposure_seconds=prior['exposure_seconds'],
                          conditional_user_events=prior['count'], recency_weight=weight,
                          receipt=cohort['receipt'])

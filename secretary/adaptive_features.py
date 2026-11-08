@@ -7,8 +7,10 @@ import math
 from statistics import median
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-MAX_EVENTS = 2048
+MAX_EVENTS = 65536
 AGE_EDGES = (300.0, 1800.0, 7200.0)
+CURRENT_OBSERVATION_MAX_LAG_SECONDS = 80
+CURRENT_OBSERVATION_HISTORY_SECONDS = 3600
 
 
 def number(value, *, minimum=0.0):
@@ -38,16 +40,16 @@ def clean_events(history, now, *, model_key=None):
                   key=lambda e: (e['at'], e['event_id']))[-MAX_EVENTS:]
 
 
-def request_cost(event, cache_ratio, output_ratio):
+def request_cost(event, cache_ratio, output_ratio, cache_write_ratio=None):
     """input_tokens is total prompt INCLUDING cache. Missing usage is not zero."""
-    if event.get('cache_write_tokens', 0) != 0:
-        return None  # No cache-write price in this version's three-rate contract.
     total = number(event.get('input_tokens'))
     cached = number(event.get('cache_read_tokens'))
+    written = number(event.get('cache_write_tokens', 0))
     output = number(event.get('output_tokens'))
-    if total is None or cached is None or output is None or cached > total:
+    if (any(v is None for v in (total, cached, written, output)) or cached + written > total
+            or written and number(cache_write_ratio) is None):
         return None
-    return total - cached + cache_ratio * cached + output_ratio * output
+    return total - cached - written + cache_ratio * cached + (cache_write_ratio or 0) * written + output_ratio * output
 
 
 def quantile(values, fraction):
@@ -67,7 +69,7 @@ def coverage_intervals(events, now, scope=None):
         start, end = number(event.get('start_at')), number(event.get('end_at'))
         if start is None or end is None or not start < end <= now:
             continue
-        spans.append((max(start, now - 14 * 86400), end))
+        spans.append((start, end))
     merged = []
     for start, end in sorted(spans):
         if start >= end:
@@ -239,6 +241,49 @@ def current_user_age(arrival, users, now):
             'user_age_observed_lower_bound_seconds': lower}
 
 
+def _known_tail_gap(events, uncertainties, witness, now):
+    if witness is None:
+        return False
+    if any(left <= now and right >= witness for left, right in uncertainties):
+        return True
+    for event in events:
+        if event.get('kind') not in ('gap', 'coverage_gap', 'maintenance_exclusion', 'exclusion'):
+            continue
+        left, right = number(event.get('start_at')), number(event.get('end_at'))
+        left, right = (left if left is not None else 0), (right if right is not None else now)
+        if left <= now and right >= witness:
+            return True
+    return False
+
+
+def current_activity_evidence(features, now, *, events=(), uncertainties=()):
+    """Separate a fresh current window from a complete local prediction hour."""
+    spans = features.get('arrival', {}).get('spans', [])
+    witness = number(features.get('user_age_observed_at'))
+    tail = now - witness if witness is not None and witness <= now else None
+    fresh = tail is not None and tail <= CURRENT_OBSERVATION_MAX_LAG_SECONDS
+    current = next(((lo, hi) for lo, hi in reversed(spans) if witness is not None and lo <= witness <= hi), None)
+    continuous = current is not None and current[0] <= witness - CURRENT_OBSERVATION_HISTORY_SECONDS
+    gap = _known_tail_gap(events, uncertainties, witness, now)
+    ready = fresh and current is not None and not gap
+    user, work = features.get('last_user_at'), features.get('last_user_work_end')
+    return dict(as_of=now, ready=ready, live_ready=ready and continuous,
+                witness_at=witness, unobserved_tail_seconds=tail,
+                current_span_start=current[0] if current else None,
+                current_span_end=current[1] if current else None,
+                silence_lower_bound_seconds=number(features.get('user_age_observed_lower_bound_seconds')) if current else None,
+                freshness_limit_seconds=CURRENT_OBSERVATION_MAX_LAG_SECONDS,
+                observed_history_required_seconds=CURRENT_OBSERVATION_HISTORY_SECONDS,
+                continuous_observed_history=continuous, known_gap_in_tail=gap,
+                latest_known_user_at=user, latest_known_work_end_at=work,
+                known_activity_after_witness=witness is not None and any(
+                    value is not None and witness < value <= now for value in (user, work)),
+                source=('current_verified_coverage' if ready and tail == 0 else
+                        'bounded_unknown_saved_tail' if ready else 'current_observation_not_qualified'),
+                coverage_extended=False, training_exposure_extended=False,
+                unknown_tail_is_not_silence=True)
+
+
 def arrival_rate(model, at, user_age, *, conservative=False):
     pooled = model['rate']
     if pooled is None:
@@ -390,6 +435,8 @@ def build_features(snapshot, history, config):
                             and (available := number(event.get('available_at', at))) is not None
                             and available <= now)[-MAX_EVENTS:]
     history_start = retained_times[0] if retained_times else now
+    behavioral_events = clean_events(history, now)
+    uncertainties = activity_uncertainties(history, now)
     events = clean_events(history, now, model_key=snapshot.get('model_key'))
     requests = [e for e in events if e.get('kind') == 'request']
     hb = [e for e in requests if e.get('source') == 'heartbeat' and not e.get('operation_id')]
@@ -403,23 +450,37 @@ def build_features(snapshot, history, config):
     users = [e['at'] for e in events if e.get('kind') == 'user_activity' and e.get('source') == 'user']
     maintenance_events = [e for e in events if e.get('kind') != 'maintenance_end'
                           or snapshot.get('model_key') is None or e.get('model_key') == snapshot['model_key']]
+    imported_maintenance = [e for c in snapshot.get('historical_cohorts', []) for e in c.get('events', [])
+                            if e.get('kind') == 'maintenance_sample'
+                            and number(e.get('imported_at')) is not None and e['imported_at'] <= now]
+    # Maintenance imports need no ingress coverage: they are component
+    # receipts, not evidence that the target was observed to be quiet.
+    maintenance_history = [e for e in history if isinstance(e, dict)
+                           and (e.get('kind') in ('maintenance_sample', 'maintenance_start', 'maintenance_end')
+                                or e.get('kind') == 'request' and e.get('operation_id'))]
+    maintenance = clean_events([*maintenance_history, *imported_maintenance], now)
     result = {'events': events, 'model_key': snapshot.get('model_key'),
-            'forecast_events': compatible_forecast_events(clean_events(history, now), snapshot.get('model_key')),
+            'now': now, 'maintenance_events': maintenance,
+            'forecast_events': compatible_forecast_events(behavioral_events, snapshot.get('model_key')),
             'warm_cache_fraction': warm_cache_fraction(events, config['cache_ttl_seconds']),
             'arrival': arrival_model(events, now, config.get('timezone'), history_start=history_start,
-                                     uncertainties=activity_uncertainties(history, now),
+                                     uncertainties=uncertainties,
                                      required_scopes=activity_scopes(history, now)),
             'feedback': feedback(events), 'growth_tokens_per_second': context_growth(events),
             'maintenance': maintenance_model(maintenance_events, config['cache_ratio'], config['output_ratio']),
             'heartbeat_output_tokens': quantile(output, .8),
             'heartbeat_calls': quantile(list(heartbeat_calls.values()), .8),
             'last_user_at': max(users) if users else None,
-            'last_user_work_end': max((e['at'] for e in events if e.get('kind') == 'turn_end'
+            # Target-local mechanical completion is behavioral evidence, not
+            # model-priced workload. A contract switch cannot erase this time.
+            'last_user_work_end': max((e['at'] for e in behavioral_events if e.get('kind') == 'turn_end'
                                       and e.get('source') == 'user'), default=None),
             'last_request_at': max((e['at'] for e in requests), default=None),
-            'unknown_usage_requests': sum(request_cost(e, config['cache_ratio'], config['output_ratio'])
+            'unknown_usage_requests': sum(request_cost(e, config['cache_ratio'], config['output_ratio'], config.get('cache_write_ratio'))
                                           is None for e in requests)}
     result.update(current_user_age(result['arrival'], users, now))
+    result['current_activity_evidence'] = current_activity_evidence(
+        result, now, events=behavioral_events, uncertainties=uncertainties)
     result['arrival']['risk_age_cohorts'] = [dict(
         grade='verified_ingress_coverage', weight=1.0,
         **{key: list(result['arrival'][key]) for key in

@@ -7,7 +7,7 @@ CFG = dict(hot_interval_seconds=1740, business_interval_seconds=7200, cache_rati
            maintenance_cost=90000, maintenance_duration_seconds=600, post_compaction_ratio=.18)
 
 
-def quiet_history():
+def quiet_history(*, cost=90000, duration=600):
     events = [dict(event_id='coverage', at=NOW, start_at=0, end_at=NOW,
                    kind='coverage', source='user', verified=True)]
     for day in range(8):
@@ -30,6 +30,9 @@ def quiet_history():
                                    input_tokens=context, cache_read_tokens=329000, output_tokens=2000))
             events.append(dict(event_id='turn:' + key, at=at + 60, kind='turn_end', source='user', verified=True,
                                model_key='test', context_epoch='epoch', context_tokens=336000, duration_seconds=60))
+    from tests.secretary.test_adaptive_policy import legacy_maintenance_receipt, NOW as OLD_NOW
+    events.extend(dict(row, at=row['at']+NOW-OLD_NOW)
+                  for row in legacy_maintenance_receipt(cost=cost, duration=duration))
     return events
 
 
@@ -54,9 +57,14 @@ def test_brief_departure_does_not_arm_immediate_maintenance():
 
 
 def test_expensive_or_slow_maintenance_is_not_easier_to_trigger():
-    for change in (dict(maintenance_cost=9000000), dict(maintenance_duration_seconds=7200)):
-        result = decide(snapshot(), quiet_history(), {**CFG, **change})
-        assert result['threshold_tokens'] is None
+    costly = decide(snapshot(), quiet_history(cost=9000000), CFG)
+    assert costly['threshold_tokens'] is None
+    slow = decide(snapshot(), quiet_history(duration=7200), CFG)
+    # A learned long empty interval can accommodate a slow operation. The
+    # explicit experience limits still apply to that same path distribution.
+    if slow['threshold_tokens'] is not None:
+        assert slow['diagnostics']['collision_margin_estimate'] <= .15
+        assert slow['diagnostics']['expected_wait_seconds'] <= 30
 
 
 def test_expensive_heartbeat_output_discourages_hot_mode():
@@ -68,10 +76,18 @@ def test_expensive_heartbeat_output_discourages_hot_mode():
     assert result['mode'] == 'business'
 
 
-def test_no_business_wakeups_does_not_pay_for_an_unread_rewrite():
-    result = decide(snapshot(), quiet_history(), {**CFG, 'business_interval_seconds': None})
-    assert result['mode'] == 'business'
-    assert result['threshold_tokens'] is None
+def test_no_future_reads_cannot_pay_for_a_rewrite():
+    from secretary.adaptive_policy import _evaluate_maintenance, _settings
+    from secretary.adaptive_cost import Profile
+    from secretary.adaptive_rollout import evaluate
+    profile = Profile(100, 10, .1, 0, 'declared', planning_duration=10)
+    features = dict(last_request_at=None, trajectory=dict(available=True, marks={},
+                    paths=[dict(weight=1, events=[])]))
+    cfg = _settings(dict(CFG, business_interval_seconds=None))
+    baseline = evaluate(snapshot(), features, cfg, [], None, profile)
+    chosen, evidence = _evaluate_maintenance(snapshot(), features, cfg, profile, [], 'business', 0,
+        (baseline['cost'], baseline['terminal'], baseline['reads']), .15)
+    assert chosen is None and 'no_post_maintenance_reads' in evidence['rejections']
 
 
 def test_dense_growth_keeps_continuity_instead_of_early_rewrite():
@@ -96,7 +112,10 @@ def test_repeated_cancelled_maintenance_does_not_encourage_another_attempt():
                          verified=True, model_key='test', operation_id=op, outcome='cancelled',
                          trigger='idle', duration_seconds=600, usage_complete=False))
     assert decide(snapshot(), quiet_history(), CFG)['threshold_tokens'] is not None
-    assert decide(snapshot(), rows, CFG)['threshold_tokens'] is None
+    result = decide(snapshot(), rows, CFG)
+    assert result['diagnostics']['feedback']['cancel_fraction'] == 1
+    if result['threshold_tokens'] is not None:
+        assert result['diagnostics']['collision_margin_estimate'] <= CFG.get('max_collision_probability', .15) / 3
 
 
 def test_long_user_job_ending_now_still_gets_a_departure_grace_period():

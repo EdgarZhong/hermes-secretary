@@ -1,4 +1,4 @@
-"""Whole-operation evidence and whole-Turn invoices must not be fabricated."""
+"""Cost helper compatibility priors are not V2 policy authorization."""
 import pytest
 
 from secretary.adaptive_cost import heartbeat_profile, maintenance_profile
@@ -17,6 +17,8 @@ def test_absent_outcomes_do_not_invent_fifty_percent_failure():
     assert profile.cost == 3000000
     assert profile.diagnostics['success_source'] == 'conditional_success_prior'
     assert profile.diagnostics['outcome_samples'] == 0
+    from secretary.adaptive_policy import _maintenance
+    assert _maintenance(dict(events=[], model_key='test'), CFG) is None
 
 
 def test_duration_and_retention_can_learn_without_fake_complete_cost():
@@ -32,6 +34,8 @@ def test_duration_and_retention_can_learn_without_fake_complete_cost():
     for event in events:
         event['duration_scope'] = 'native_compaction_registration'
     assert maintenance_profile(dict(events=events, model_key='test'), CFG).duration == 3600
+    from secretary.adaptive_policy import _maintenance
+    assert _maintenance(dict(events=events, model_key='test'), CFG) is None
 
 
 def heartbeat_events():
@@ -69,8 +73,8 @@ def test_partial_and_other_model_heartbeat_cannot_replace_prior():
     rows[-1]['model_key'] = 'other'
     hb = heartbeat_profile(dict(events=rows, model_key='test', heartbeat_calls=1,
                                heartbeat_output_tokens=None), CFG)
-    assert hb['source'] == 'explicit_per_request_prior'
-    assert hb['output'] == 5000
+    assert hb['source'] == 'recent_bounded_turn_p80_conditional_scenario'
+    assert hb['samples'] == 2 and hb['output'] == 100
 
 
 @pytest.mark.parametrize('change', [dict(at=1000), dict(outcome='failed'), dict(cache_read_tokens=None),
@@ -81,7 +85,7 @@ def test_invalid_heartbeat_request_does_not_calibrate_a_complete_turn(change):
     hb = heartbeat_profile(dict(events=rows, model_key='test', heartbeat_calls=1,
                                heartbeat_output_tokens=None), CFG)
     assert hb['samples'] == 2
-    assert hb['source'] == 'explicit_per_request_prior'
+    assert hb['source'] == 'recent_bounded_turn_p80_conditional_scenario'
 
 
 def test_a_single_known_failure_is_not_erased_by_small_sample_threshold():

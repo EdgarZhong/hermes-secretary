@@ -28,9 +28,11 @@ Secretary只在Profile的`state.db`增加自有表，复用原生执行、存储
 
 可选自适应空闲省token使用Profile的`noting.adaptive_idle_token_saving`，按Conversation显式启用、按原生Provider/模型选项读取两档Heartbeat与固定费用倍率，窗口沿原生继承；默认关闭。历史继承通过`python scripts/adaptive_history_import.py preview|apply --profile NAME --target REF`显式冻结数值训练证据，不继承当前空闲/缓存/排期状态。配置、容量和评测限制见[算法方案](docs/adaptive-noting-threshold-proposal.md)。 原生Idle可用`noting.idle.conversations[conversation_ref]`仅覆盖目标的开关、等待及容量门槛，其它会话保留Profile设置。
 
-既有Conversation可用`python scripts/adaptive_history_bootstrap.py preview|apply --profile NAME --target REF --input FILE --id ID`接入已审数值历史；成熟行为历史跨模型／窗口参与预测，无须重新累计上线后的活动量。初始化保留真实发生与可知时间，不制造新Turn或重锚计时；推荐沿下一自然Turn结束采纳。来源限定、条件费用代理和显式迁移边界见同一[算法方案](docs/adaptive-noting-threshold-proposal.md)。
+既有Conversation可用`python scripts/adaptive_history_bootstrap.py preview|apply --profile NAME --target REF --input FILE --id ID`接入已审数值历史；成熟行为历史跨模型／窗口参与预测，无须重新累计上线后的活动量。初始化保留真实发生与可知时间，不制造新Turn或重锚计时；导入后立即沿既有owner重评，忙态沿原生结束边界、冷态沿已有恢复／tick补偿，不另等新用户消息。来源限定、条件费用代理和显式迁移边界见同一[算法方案](docs/adaptive-noting-threshold-proposal.md)。
 
-自适应模型保留连续覆盖能证明的长空闲年龄下界；风险证据分级、维护各项费用来源与逐候选拒因可追溯，Heartbeat使用有界Turn联合费用情景。可用`.venv/bin/python scripts/adaptive_idle_replay.py --input <数值包.json> --output <报告.json>`离线重放显式快照；`--source-root`可指定冻结源码，`--scenarios`读取显式假设场景。不访问生产，缺完整历史运行快照时只报告缺口，不伪造历史前推；统计假设、六小时比较和实测费用限制见[算法方案](docs/adaptive-noting-threshold-proposal.md)。
+维护组件数值可用`.venv/bin/python scripts/adaptive_empirical_import.py preview|apply --profile NAME --target REF --input FILE --import-id ID`显式导入既有Secretary历史表。默认作为未证会话归属的组件池；`--source-kind conversation --source-conversation REF`要求逐样本提供匹配的owner证明。保留原始费用桶、发生／可知时间、导入收据及缺测，不迁移来源Idle、Heartbeat或原生使用量；输入文件保持只读。导入成功会通知既有owner重评自适应策略，采纳当前目标的心跳档位与未消费Idle周期，不迁移来源当前状态。
+
+自适应模型保留连续覆盖能证明的长空闲年龄下界；风险证据分级、维护各项费用来源与逐候选拒因可追溯，Heartbeat使用有界Turn联合费用情景。可用`.venv/bin/python scripts/adaptive_idle_replay.py --input <数值包.json> --output <报告.json>`离线重放显式快照；`--source-root`可指定冻结源码，`--scenarios`读取显式假设场景。不访问生产，缺完整历史运行快照时只报告缺口，不伪造历史前推；统计假设、共同窗口比较和实测费用限制见[算法方案](docs/adaptive-noting-threshold-proposal.md)。
 
 | 命令 | 行为 |
 |---|---|

@@ -297,14 +297,16 @@ class CompressionFacadeMixin:
             maintenance(self, registration, trigger=trigger)
 
             def _run(fence=None, target_messages=None, same_turn_fallback_recovery=False):
-                return compress_context(
-                    self, target_messages if target_messages is not None else messages, system_message,
-                    approx_tokens=approx_tokens, task_id=task_id, focus_topic=focus_topic, force=force,
-                    bypass_cooldown=bypass_cooldown or same_turn_fallback_recovery,
-                    defer_context_engine_notification=(defer_context_engine_notification), commit_fence=fence,
-                    verbatim_tail=verbatim_tail, trigger=trigger, snapshot_is_current=snapshot_is_current,
-                    admission_receipt=admission_receipt, native_request=native_request,
-                )
+                from secretary.adaptive_samples import scope
+                with scope(getattr(registration.observation, "_adaptive_collector", None)):
+                    return compress_context(
+                        self, target_messages if target_messages is not None else messages, system_message,
+                        approx_tokens=approx_tokens, task_id=task_id, focus_topic=focus_topic, force=force,
+                        bypass_cooldown=bypass_cooldown or same_turn_fallback_recovery,
+                        defer_context_engine_notification=(defer_context_engine_notification), commit_fence=fence,
+                        verbatim_tail=verbatim_tail, trigger=trigger, snapshot_is_current=snapshot_is_current,
+                        admission_receipt=admission_receipt, native_request=native_request,
+                    )
 
             # Callers that already own a progress-aware wait (gateway session
             # hygiene) pass commit_fence and must not be double-wrapped.

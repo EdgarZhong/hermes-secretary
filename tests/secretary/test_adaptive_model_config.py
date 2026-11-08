@@ -410,3 +410,74 @@ def test_failed_authenticated_refresh_does_not_adopt_native_static_fallback(conf
     calls = len(codex_catalog['http'])
     assert db._execute_write(lambda conn: settings.for_db(db, refs['long'], conn=conn)) is None
     assert len(codex_catalog['http']) == calls
+
+
+def _kimi_registration(config):
+    """Code billing stays an explicitly labelled proxy; cache-write price is unknown."""
+    item = {'heartbeat': {'hot_seconds': 1740, 'business_seconds': 10800},
+            'billing': {'input': 1, 'cache_read': .1, 'output': 5,
+                        'source': 'K3.1 Pro official USD API proxy; not Code subscription quota'},
+            'cache_ttl_seconds': 1800}
+    config['noting']['adaptive_idle_token_saving']['models']['kimi-coding'] = {'k3.1-pro': item}
+    config['model'] = {'default': 'k3.1-pro', 'provider': 'kimi-coding',
+                       'base_url': 'https://api.kimi.com/coding/v1', 'context_length': 512000}
+    config['compression'] = {'enabled': True, 'threshold': .8}
+    return item
+
+
+def test_registered_kimi_uses_native_pin_compression_and_explicit_two_cadences(configured):
+    db, refs, config = configured
+    gpt = deepcopy(config['noting']['adaptive_idle_token_saving']['models']['openai-codex'])
+    _kimi_registration(config)
+    select(db, 'normal', 'k3.1-pro', provider='kimi-coding')
+    db.patch_session_model_config('normal', {'base_url': 'https://api.kimi.com/coding/v1',
+                                            'api_mode': 'chat_completions'})
+    write_config(db, config)
+    current = db._execute_write(lambda conn: settings.for_db(db, refs['normal'], conn=conn))
+    assert current['model_identity'] == {'provider': 'kimi-coding', 'model': 'k3.1-pro'}
+    assert current['model_contract']['context_length'] == 512000
+    assert current['model_contract']['threshold_tokens'] == 409600
+    assert (current['hot_interval_seconds'], current['business_interval_seconds']) == (1740, 10800)
+    assert (current['cache_ratio'], current['output_ratio']) == (.1, 5)
+    assert current['cache_write_ratio'] is None
+    assert config['noting']['adaptive_idle_token_saving']['models']['openai-codex'] == gpt
+    assert settings.for_db(db, 'not-opted-in') is None
+
+
+def test_kimi_missing_data_can_adopt_hot_and_unregistered_switch_restores_native_anchor(configured):
+    from secretary.adaptive_policy import decide
+    db, refs, config = configured
+    _kimi_registration(config)
+    select(db, 'normal', 'k3.1-pro', provider='kimi-coding')
+    db.patch_session_model_config('normal', {'base_url': 'https://api.kimi.com/coding/v1',
+                                            'api_mode': 'chat_completions'})
+    write_config(db, config)
+    current = settings.for_db(db, refs['normal'])
+    decision = decide({'now': 1000, 'context_tokens': 176496, 'heartbeat_status': 'active',
+                       'heartbeat_mode': 'business'}, [], current)
+    assert decision['mode'] == 'hot' and decision['fallback'] is False
+    assert decision['threshold_tokens'] is None and decision['delay_seconds'] is None
+    heartbeat = ConversationHeartbeatStore(db, 'normal')
+    heartbeat.save(HeartbeatState('', 10800, created_at=1, last_fired_at=10, fire_count=7))
+    db._execute_write(lambda conn: store.adopt_mode_conn(conn, refs['normal'], decision['mode'], current))
+    assert heartbeat.load()._adaptive_interval_seconds == 1740
+    select(db, 'normal', 'unregistered', provider='kimi-coding')
+    assert settings.for_db(db, refs['normal']) is None
+    native = heartbeat.load()
+    assert native._adaptive_interval_seconds == 10800
+    assert (native.created_at, native.last_fired_at, native.fire_count) == (1, 10, 7)
+
+
+@pytest.mark.parametrize('missing', ['hot_seconds', 'business_seconds', 'billing_source', 'cache_ttl_seconds'])
+def test_incomplete_kimi_registration_fails_closed(configured, missing):
+    db, refs, config = configured
+    item = _kimi_registration(config)
+    if missing in item['heartbeat']:
+        del item['heartbeat'][missing]
+    elif missing == 'billing_source':
+        del item['billing']['source']
+    else:
+        del item[missing]
+    select(db, 'normal', 'k3.1-pro', provider='kimi-coding')
+    write_config(db, config)
+    assert settings.for_db(db, refs['normal']) is None

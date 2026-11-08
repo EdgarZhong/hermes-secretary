@@ -227,11 +227,19 @@ def run_with_aux_hooks(
     ``post_auxiliary_call``; the exception (if any) is reported in ``post`` and re-raised."""
     hooks = _hooks_or_none(aux_task=aux_task, metadata=metadata, client=client, kwargs=kwargs,
                            provider=provider, model=model, api_mode=api_mode, streaming=streaming)
+    from secretary.adaptive_samples import auxiliary_dispatch
+    auxiliary_dispatch(aux_task)
     try:
         response = call()
     except BaseException as exc:
+        from secretary.adaptive_samples import auxiliary_receipt
+        auxiliary_receipt(error=exc, aux_task=aux_task, provider=provider, model=model,
+                          api_mode=api_mode, streaming=streaming)
         _post_safely(hooks, error=exc)
         raise
+    from secretary.adaptive_samples import auxiliary_receipt
+    auxiliary_receipt(response, aux_task=aux_task, provider=provider, model=model,
+                      api_mode=api_mode, streaming=streaming)
     _post_safely(hooks, response=response)
     return response
 
@@ -243,10 +251,18 @@ async def arun_with_aux_hooks(
     """Async twin of :func:`run_with_aux_hooks`."""
     hooks = _hooks_or_none(aux_task=aux_task, metadata=metadata, client=client, kwargs=kwargs,
                            provider=provider, model=model, api_mode=api_mode, streaming=False)
+    from secretary.adaptive_samples import auxiliary_dispatch
+    auxiliary_dispatch(aux_task)
     try:
         response = await call()
     except BaseException as exc:
+        from secretary.adaptive_samples import auxiliary_receipt
+        auxiliary_receipt(error=exc, aux_task=aux_task, provider=provider, model=model,
+                          api_mode=api_mode, streaming=False)
         _post_safely(hooks, error=exc)
         raise
+    from secretary.adaptive_samples import auxiliary_receipt
+    auxiliary_receipt(response, aux_task=aux_task, provider=provider, model=model,
+                      api_mode=api_mode, streaming=False)
     _post_safely(hooks, response=response)
     return response

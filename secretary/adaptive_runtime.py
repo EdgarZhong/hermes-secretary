@@ -58,7 +58,11 @@ def record_event(db, ref, kind, *, source="unknown", verified=False, event_id=No
                  "kind": kind, "source": source, "verified": verified,
                  "model_identity": config["model_identity"], "model_contract": config["model_contract"],
                  "model_key": _contract_key(config["model_contract"]), **values}
-        return db._execute_write(lambda conn: store.event_conn(conn, ref, event))
+        inserted = db._execute_write(lambda conn: store.event_conn(conn, ref, event))
+        if inserted and kind == "maintenance_sample":
+            from secretary.adaptive_refresh import refresh
+            refresh(db, ref, parent=parent)
+        return inserted
     except Exception:
         logger.debug("Adaptive event unavailable", exc_info=True)
         return False
@@ -139,10 +143,20 @@ def _epoch(db, ref):
     return row[0] if row else db._execute_write(lambda conn: db.noting_compaction_interval_conn(conn, ref))
 
 
+def _context_path(parent, db):
+    with db._read_ctx() as conn:
+        row = conn.execute("SELECT rewind_count FROM sessions WHERE id=?", (parent.session_id,)).fetchone()
+    return [parent.session_id, row[0]] if row else None
+
+
 def snapshot(parent, db, ref, config, at):
     from agent.context_compaction_request import read_context_usage
     from agent.compression_read import compression_state
     usage, threshold = read_context_usage(parent)
+    # Capture knowability before any separate history/cohort reads. A concurrent
+    # import then fails the commit revision check instead of being acknowledged unseen.
+    with db._read_ctx() as conn:
+        refresh = store.refresh_conn(conn, ref)
     history = store.history(db, ref, at)
     from secretary.adaptive_features import clean_events
     known_history = clean_events(history, at)
@@ -161,7 +175,7 @@ def snapshot(parent, db, ref, config, at):
     current = settings_for_db(db, ref)
     from secretary.noting_runtime import noting_local_enabled
     from secretary.adaptive_bootstrap import read as read_bootstrap
-    value = {"now": at, "conversation_ref": ref, "context_tokens": usage or None,
+    value = {"now": at, "conversation_ref": ref, "evidence_revision": refresh["revision"] if refresh else 0, "context_tokens": usage or None,
              "context_limit": getattr(getattr(parent, "context_compressor", None), "context_length", None),
              "native_threshold_tokens": threshold or None, "last_user_at": max(users) if users else None,
              "last_maintenance_at": max(maintenance) if maintenance else None,
@@ -196,7 +210,8 @@ def finish_turn(parent, at, *, idle_allowed=True):
         record_event(db, ref, "turn_end", source=source, verified=source != "unknown", at=at, parent=parent,
                      event_id="turn:" + getattr(parent, "_adaptive_turn_id", uuid.uuid4().hex),
                      context_tokens=read_context_usage(parent)[0] or None, model_key=model_key(parent),
-                     context_epoch=_epoch(db, ref), context_contract=context_contract(parent), duration_seconds=duration)
+                     context_epoch=_epoch(db, ref), context_contract=context_contract(parent),
+                     context_path=_context_path(parent, db), duration_seconds=duration)
         measured, history = snapshot(parent, db, ref, config, at)
         from secretary.adaptive_policy import decide
         decision = settings.validate_decision(decide(measured, history, config))
@@ -214,7 +229,8 @@ def finish_turn(parent, at, *, idle_allowed=True):
             db._execute_write(lambda conn: store.adopt_mode_conn(conn, ref, decision["mode"], config))
             return None
         if not store.commit_plan(db, ref, at=at, expected_period=measured["idle_period"],
-                                 decision=decision, config=config, context_epoch=_epoch(db, ref)):
+                                 decision=decision, config=config, context_epoch=_epoch(db, ref),
+                                 expected_revision=measured["evidence_revision"]):
             return None
         return {"due_at": at + decision["delay_seconds"] if decision["delay_seconds"] is not None else None}
     except Exception:
@@ -284,7 +300,8 @@ def request_observed(parent, canonical_usage, unknown, *, failed=False):
     record_event(db, ref, "request", source=getattr(parent, "_adaptive_turn_source", "unknown"),
                  verified=True, parent=parent, outcome="failed" if failed else "observed", input_semantics="total",
                  model_key=model_key(parent), turn_id=getattr(parent, "_adaptive_turn_id", None),
-                 cache_write_tokens=getattr(canonical_usage, "cache_write_tokens", None), **values)
+                 cache_write_tokens=(getattr(canonical_usage, "cache_write_tokens", None)
+                                     if "cache_write_tokens" not in unknown else None), **values)
 
 
 def maintenance(parent, registration, *, finished=False, trigger=None):
@@ -296,31 +313,41 @@ def maintenance(parent, registration, *, finished=False, trigger=None):
 
 def _maintenance(parent, registration, *, finished=False, trigger=None):
     owner = _owner(parent)
-    if owner is None:
-        return
-    db, ref, _config = owner
     observation = registration.observation
     now = time.time()
+    partial = bool(getattr(getattr(registration.fence, "partial", None), "adopted", False))
+    outcome = "partial" if finished and observation.state == "completed" and partial else observation.state
+    collector = getattr(observation, "_adaptive_collector", None)
+    if finished and collector is not None and collector.enabled and not _sample_parent_matches(parent, collector):
+        _settle_maintenance_sample(parent, observation, outcome, now)
+        return
+    if owner is None:
+        if finished:
+            _settle_maintenance_sample(parent, observation, outcome, now)
+        return
+    db, ref, _config = owner
     if not finished:
         observation._adaptive_started_at = now
         observation._adaptive_idle = trigger == "noting_joint_idle"
         from agent.context_compaction_request import read_context_usage
         observation._adaptive_context_before = read_context_usage(parent)[0]
+        from secretary.adaptive_samples import start
+        observation._adaptive_collector = start(parent, "compaction", observation.operation_id,
+                                               joint_operation_id=observation.operation_id)
     started = getattr(observation, "_adaptive_started_at", None)
     from agent.context_compaction_request import read_context_usage
-    partial = bool(getattr(getattr(registration.fence, "partial", None), "adopted", False))
-    outcome = "partial" if finished and observation.state == "completed" and partial else observation.state
     record_event(db, ref, "maintenance_end" if finished else "maintenance_start", source="framework", verified=True,
                  parent=parent, event_id=observation.operation_id + (":end" if finished else ":start"), at=now,
                  operation_id=observation.operation_id, outcome=outcome, model_key=model_key(parent),
                  trigger="idle" if getattr(observation, "_adaptive_idle", False) else "native",
                  context_before=getattr(observation, "_adaptive_context_before", None),
-                 context_after=read_context_usage(parent)[0] if finished else None, usage_complete=False,
+                 context_after=(read_context_usage(parent)[0] or None) if finished else None, usage_complete=False,
                  idle=getattr(observation, "_adaptive_idle", False),
                  duration_seconds=now - started if finished and started is not None else None,
                  duration_scope="native_compaction_registration",
                  cancel_requested=observation.cancel_requested)
     if finished:
+        _settle_maintenance_sample(parent, observation, outcome, now)
         # Refresh audit state only: an already consumed Idle cycle is never rearmed.
         measured, _history = snapshot(parent, db, ref, _config, now)
         from secretary.adaptive_policy import decide
@@ -329,6 +356,32 @@ def _maintenance(parent, registration, *, finished=False, trigger=None):
             db._execute_write(lambda conn: store.adopt_mode_conn(conn, ref, decision["mode"], _config))
         record_event(db, ref, "state_refresh", source="framework", verified=True, parent=parent,
                      context_tokens=measured["context_tokens"])
+
+
+def _sample_parent_matches(parent, collector):
+    return collector.matches_parent(parent)
+
+
+def _settle_maintenance_sample(parent, observation, outcome, now):
+    collector = getattr(observation, "_adaptive_collector", None)
+    if collector is None or not collector.enabled:
+        return
+    from agent.context_compaction_request import read_context_usage
+    same_owner = (_sample_parent_matches(parent, collector)
+                  and getattr(parent, "context_compressor", None) is collector.compressor)
+    after = (read_context_usage(parent)[0] or None) if same_owner else None
+    # A reset real-usage anchor is invalid; the native post-compaction estimate
+    # is separately labelled and never borrowed from a replacement owner.
+    after_source = "native_usage" if after else None
+    if same_owner and after is None and outcome in {"completed", "partial"}:
+        after = getattr(getattr(parent, "context_compressor", None), "last_compression_rough_tokens", 0) or None
+        after_source = "native_post_compaction_rough" if after else None
+    from secretary.adaptive_samples import finish
+    started = getattr(observation, "_adaptive_started_at", None)
+    finish(collector, outcome, context_before=getattr(observation, "_adaptive_context_before", None),
+           context_after=after, context_after_source=after_source,
+           block_seconds=now - started if started is not None else None,
+           block_scope="native_compaction_registration")
 
 
 def cancelled(parent, operation_id, outcome):
@@ -450,7 +503,8 @@ def refresh_heartbeat_priority(parent):
     db, ref, _config = owner
     record_event(db, ref, "context_read", source="framework", verified=True, parent=parent,
                  context_tokens=read_context_usage(parent)[0], model_key=model_key(parent),
-                 context_contract=context_contract(parent))
+                 context_contract=context_contract(parent), context_epoch=_epoch(db, ref),
+                 context_path=_context_path(parent, db))
 
 
 def web_submit_input(session, text, params, *, internal_hosted_submit=False, turn_author=None):

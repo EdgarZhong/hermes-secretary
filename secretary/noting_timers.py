@@ -195,10 +195,12 @@ def main_turn_running(parent):
 
 def attach_idle_timer(parent, db, ref, *, now=None):
     """Host ticks attach/recover the deadline once; they never produce periodic events."""
+    from secretary.adaptive_refresh import refresh
     from secretary.noting_runtime import _run_idle_event, noting_lifecycle_gate
     from secretary.noting_scope import settings_for_db
 
     with conversation_timer_lock(db, ref):
+        refresh(db, ref, parent=parent, now=now)
         settings = settings_for_db(db, ref)
         enabled, reason = noting_lifecycle_gate(db, ref, settings=settings)
         if not settings.idle_enabled:

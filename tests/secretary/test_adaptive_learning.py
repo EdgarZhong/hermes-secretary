@@ -111,8 +111,9 @@ def test_import_cannot_authorize_a_target_without_any_real_user_activity():
     local = [e for e in local if e['kind'] == 'coverage']
     snapshot.update(historical_cohorts=[cohort()])
     result = decide(snapshot, local, config)
-    assert result['fallback']
-    assert result['reason'] == 'insufficient_verified_observation_coverage'
+    assert not result['fallback'] and result['mode'] == 'hot'
+    assert result['threshold_tokens'] is None
+    assert 'current_activity_evidence' in result['diagnostics']['readiness']['missing']
 
 
 def test_old_evidence_decays_and_expired_coverage_is_not_rejuvenated():
@@ -122,7 +123,9 @@ def test_old_evidence_decays_and_expired_coverage_is_not_rejuvenated():
     raw_users = sum(e['kind'] == 'user_activity' for e in old['events'])
     assert 1 < result['arrival']['count'] < raw_users + 1
     later = dict(snapshot, now=2000000, historical_cohorts=[old])
-    assert build_features(later, local, config)['inherited_cohorts'] == 0
+    older = build_features(later, local, config)
+    assert older['inherited_cohorts'] == 1
+    assert older['arrival']['count'] < result['arrival']['count']
 
 
 def test_cancellation_prior_does_not_add_target_maintenance_cooldown():

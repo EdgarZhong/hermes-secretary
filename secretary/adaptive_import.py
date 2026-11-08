@@ -14,7 +14,7 @@ MAX_IMPORT_EVENTS = 2048
 MAX_IMPORT_RECEIPTS = 32
 KINDS = frozenset(('user_activity', 'turn_end', 'request', 'coverage', 'maintenance_start',
                    'maintenance_end', 'cancel', 'blocked_send', 'gap', 'coverage_gap',
-                   'maintenance_exclusion', 'exclusion'))
+                   'maintenance_exclusion', 'exclusion', 'maintenance_sample'))
 NUMBER_FIELDS = frozenset(('at', 'available_at', 'start_at', 'end_at', 'input_tokens',
                           'cache_read_tokens', 'cache_write_tokens', 'output_tokens',
                           'context_tokens', 'context_before', 'context_after', 'duration_seconds',
@@ -119,6 +119,12 @@ def _project(event):
     """Whitelist native numeric measurements and bounded provenance labels, never text blobs."""
     if not isinstance(event, dict):
         return None
+    if event.get('kind') == 'maintenance_sample':
+        from secretary.adaptive_samples import normalize_sample
+        try:
+            return normalize_sample(event)
+        except ValueError:
+            return None
     if event.get('bootstrap_schema'):
         from secretary.adaptive_bootstrap import project_transfer
         return project_transfer(event)
@@ -171,11 +177,9 @@ def _payload(event):
 def _candidates(conn, db, target, declaration, now):
     source, cutoff = declaration['from_conversation'], declaration['through']
     excluded, candidates = Counter(), {}
-    local = conn.execute('SELECT payload FROM secretary_adaptive_events WHERE conversation_ref=? '
-                         'ORDER BY at,id', (source,)).fetchall()
-    rows = [{**json.loads(row[0]), 'origin_profile': _profile(db),
-             'origin_conversation': source, 'origin_event_id': json.loads(row[0]).get('event_id')}
-            for row in local]
+    local = store.history_conn(conn, source, now)
+    rows = [{**event, 'origin_profile': _profile(db),
+             'origin_conversation': source, 'origin_event_id': event.get('event_id')} for event in local]
     for cohort in store.imported_history_conn(conn, source, now):
         rows.extend(cohort['events'])
     from secretary.adaptive_bootstrap import export_conn
@@ -189,6 +193,10 @@ def _candidates(conn, db, target, declaration, now):
         if event is None:
             excluded['unsupported_or_invalid_numeric_event'] += 1
             continue
+        if (event['kind'] == 'maintenance_sample' and event.get('source_kind') == 'conversation'
+                and event.get('source_conversation_ref') != target
+                and event.get('ownership') in ('verified_native_owner', 'same_target_verified')):
+            event['ownership'] = 'other_conversation_verified'
         if max(event['at'], event['available_at']) > min(cutoff, now):
             excluded['after_cutoff_or_not_yet_known'] += 1
             continue
@@ -211,7 +219,79 @@ def _candidates(conn, db, target, declaration, now):
     if len(ordered) > MAX_IMPORT_EVENTS and any(event.get('bootstrap_schema') for event in ordered):
         raise ValueError('source snapshot capacity would truncate a bootstrap training group')
     excluded['snapshot_event_bound'] += max(0, len(ordered) - MAX_IMPORT_EVENTS)
-    return ordered[-MAX_IMPORT_EVENTS:], dict(excluded), len(local)
+    return _representative(ordered, MAX_IMPORT_EVENTS), dict(excluded), len(local)
+
+
+def _representative(events, limit):
+    """Retain cross-day evidence, explicitly censoring any discarded interval.
+
+    The fixed public import capacity remains unchanged. Per-day suffixes retain
+    complete adjacent activity rather than letting a dense newest day consume
+    the whole snapshot. Gaps describe selection, never original online silence.
+    """
+    if len(events) <= limit:
+        return events
+    if limit < 128:
+        return _sparse_censored(events, limit)
+    groups = {}
+    for index, event in enumerate(events):
+        key = (*_identity(event)[:2], int(event['at'] // 86400))
+        groups.setdefault(key, []).append(index)
+    buckets = list(groups.values())
+    if len(buckets) > 32:
+        buckets = [buckets[round(i * (len(buckets) - 1) / 31)] for i in range(32)]
+    quota = max(1, (limit - 96) // len(buckets))
+    selected = {index for bucket in buckets for index in bucket[-quota:]}
+    result = [event for index, event in enumerate(events) if index in selected]
+    result.extend(_selection_gaps(events, selected))
+    if len(result) > limit:
+        return _sparse_censored(events, limit)
+    return sorted(result, key=lambda event: (event['at'], _identity(event)))
+
+
+def _selection_gaps(events, selected):
+    from hashlib import sha256
+    cohorts = {}
+    for index, event in enumerate(events):
+        cohorts.setdefault(_identity(event)[:2], []).append((index, event))
+    gaps = []
+    for origin, rows in cohorts.items():
+        previous, omitted = None, []
+        for index, event in rows + [(None, None)]:
+            if index is not None and index not in selected:
+                omitted.append(event)
+                continue
+            if omitted:
+                start = previous['at'] if previous else omitted[0]['at']
+                end = event['at'] if event else omitted[-1]['at']
+                identity = 'selection-gap:' + sha256(_json([origin, start, end]).encode()).hexdigest()
+                gaps.append(dict(event_id=identity, origin_event_id=identity, origin_profile=origin[0],
+                                 origin_conversation=origin[1], kind='coverage_gap', source='framework',
+                                 verified=True, at=end, available_at=max(e['available_at'] for e in omitted),
+                                 start_at=start, end_at=end, reason='representative_snapshot_omission'))
+                omitted = []
+            if event is not None:
+                previous = event
+    return gaps
+
+
+def _sparse_censored(events, limit):
+    # When an extreme cap cannot preserve intervals, return only explicit
+    # censor records. Older imports from the same origin cannot bridge holes.
+    gaps = _selection_gaps(events, set())
+    if len(gaps) <= limit:
+        return gaps
+    return [gaps[round(i * (len(gaps) - 1) / max(1, limit - 1))] for i in range(limit)]
+
+
+def _notify(db, ref, now):
+    # Receipt is already committed. Notification failure must not misreport its outcome.
+    try:
+        from secretary.adaptive_refresh import refresh
+        refresh(db, ref, now=now)
+    except Exception:
+        import logging
+        logging.getLogger(__name__).debug("Adaptive import notification deferred", exc_info=True)
 
 
 def _model_label(event):
@@ -227,7 +307,7 @@ def _model_label(event):
 def _summary(events, excluded, local_count):
     times = [event['at'] for event in events]
     model_counts = Counter(_model_label(event) for event in events
-                           if event['kind'] in ('request', 'turn_end', 'maintenance_end'))
+                           if event['kind'] in ('request', 'turn_end', 'maintenance_end', 'maintenance_sample'))
     cohorts = {}
     for event in events:
         key = event['origin_profile'], event['origin_conversation']
@@ -250,7 +330,7 @@ def _summary(events, excluded, local_count):
         cohort['coverage_missing'] = not any(item['verified'] and item['source'] == 'user'
                                              for item in cohort['coverage_intervals'])
     return dict(event_count=len(events), available_range=[min(times), max(times)] if times else None,
-                source_local_retained=local_count, source_local_limit=2048,
+                source_local_retained=local_count, source_local_limit=store.MAX_HISTORY_EVENTS,
                 target_import_event_limit=MAX_IMPORT_EVENTS, target_receipt_limit=MAX_IMPORT_RECEIPTS,
                 verified_events=sum(event['verified'] for event in events),
                 unknown_source_events=sum(event['source'] == 'unknown' for event in events),
@@ -327,10 +407,11 @@ def _freeze(conn, target, declaration, events, receipt, now):
     conn.execute('INSERT INTO secretary_adaptive_imports '
                  '(conversation_ref,import_id,declaration,imported_at,receipt) VALUES (?,?,?,?,?)',
                  (target, declaration['id'], _json(declaration), now, _json(receipt)))
+    store.request_refresh_conn(conn, target, now)
 
 
 def apply(db, target_ref, *, replace_import_id=None, now=None):
-    """Explicit one-transaction freeze; local events/plans/HB/Idle are never written."""
+    """Freeze evidence and its refresh revision together, then notify the current owner."""
     now = time.time() if now is None else now
     if number(now) is None:
         raise ValueError('invalid import time')
@@ -354,4 +435,102 @@ def apply(db, target_ref, *, replace_import_id=None, now=None):
             _remove_import(conn, target_ref, replace_import_id, declaration['id'])
         _freeze(conn, target_ref, declaration, events, receipt, now)
         return receipt
-    return db._execute_write(write)
+    result = db._execute_write(write)
+    _notify(db, target_ref, now)
+    return result
+
+
+def _sample_source(target_ref, events, source_kind, source_conversation, source_sha256):
+    if source_kind == 'component_pool':
+        if source_conversation is not None or any(row.get('origin_conversation') is not None for row in events):
+            raise ValueError('component pool cannot claim Conversation ownership')
+        return dict(source_kind='component_pool', ownership='unproven_historical_component_pool',
+                    source_conversation=None, origin_key='numeric-package:' + source_sha256)
+    if source_kind != 'conversation':
+        raise ValueError('source_kind must be component_pool or conversation')
+    _text(source_conversation, 'explicit source Conversation')
+    for row in events:
+        proof = row.get('proof', {})
+        if (not isinstance(proof, dict) or proof.get('owner_verified') is not True
+                or proof.get('owner_conversation_ref') != source_conversation):
+            raise ValueError('Conversation source requires explicit matching owner proof for every sample')
+        if row.get('origin_conversation', source_conversation) != source_conversation:
+            raise ValueError('source Conversation conflicts with the explicit declaration')
+        if row.get('source_conversation_ref', source_conversation) != source_conversation:
+            raise ValueError('sample owner conflicts with the explicit source declaration')
+    return dict(source_kind='conversation', ownership=('same_target_verified' if source_conversation == target_ref
+                                                      else 'other_conversation_verified'),
+                source_conversation=source_conversation, origin_key=source_conversation)
+
+
+def import_samples(db, target_ref, events, *, import_id, source_sha256, now=None, apply=False,
+                   source_kind='component_pool', source_conversation=None):
+    """Explicit same-owner numeric maintenance freeze; preview is read-only.
+
+    The source package remains untouched. This writes only existing import sidecars,
+    never native usage, Conversation state, Idle clocks, or the live event buffer.
+    """
+    from hashlib import sha256
+    from secretary.adaptive_config import enabled_for_db
+    from secretary.adaptive_samples import normalize_sample
+    _text(import_id, 'import id')
+    _text(target_ref, 'target conversation_ref')
+    if (not isinstance(source_sha256, str) or len(source_sha256) != 64
+            or any(char not in '0123456789abcdef' for char in source_sha256)):
+        raise ValueError('source_sha256 must be an explicit SHA256 digest')
+    now = time.time() if now is None else number(now)
+    if now is None or not enabled_for_db(db, target_ref):
+        raise ValueError('target Conversation is not explicitly enabled in its owning Profile')
+    if not isinstance(events, list) or not 0 < len(events) <= MAX_IMPORT_EVENTS:
+        raise ValueError('bounded nonempty maintenance sample list required')
+    if any(not isinstance(event, dict) for event in events):
+        raise ValueError('invalid sample')
+    source = _sample_source(target_ref, events, source_kind, source_conversation, source_sha256)
+    projected, identities = [], set()
+    for raw in events:
+        if raw.get('origin_profile', _profile(db)) != _profile(db):
+            raise ValueError('cross-Profile maintenance import denied')
+        sample = normalize_sample(raw)
+        if not sample['verified'] or max(sample['at'], sample['available_at']) > now:
+            raise ValueError('unverified or not-yet-known maintenance sample')
+        if sample['event_id'] in identities:
+            raise ValueError('duplicate sample identity in package')
+        identities.add(sample['event_id'])
+        sample.update(source_kind=source['source_kind'], ownership=source['ownership'])
+        if source_conversation is not None:
+            sample['source_conversation_ref'] = source_conversation
+        else:
+            sample.pop('source_conversation_ref', None)
+        projected.append({**sample, 'origin_profile': _profile(db), 'origin_conversation': source['origin_key'],
+                          'origin_event_id': sample['event_id']})
+    declaration = dict(id=import_id, kind='empirical_maintenance', from_conversation=target_ref,
+                       source_sha256=source_sha256, source=source,
+                       payload_sha256=sha256(_json(projected).encode()).hexdigest())
+
+    def run(conn):
+        _validate_refs(conn, target_ref, target_ref)
+        if source['source_kind'] == 'conversation':
+            _validate_refs(conn, target_ref, source_conversation)
+        # Recheck opt-in before the transaction writes; no route/network resolution.
+        if not enabled_for_db(db, target_ref):
+            raise ValueError('target Conversation was disabled')
+        prior = _existing_receipt(conn, target_ref, declaration)
+        if prior:
+            return {**prior, 'already_applied': True}
+        receipt = dict(target_conversation=target_ref, declaration=declaration, imported_at=now,
+                       already_applied=False, **_summary(projected, {}, 0))
+        receipt.update(quality='explicit_numeric_maintenance_samples_no_live_state_transfer',
+                       source_kind=source['source_kind'], ownership=source['ownership'],
+                       limitations=['Import binding is to this local Profile; historical source ownership follows the explicit source declaration.',
+                                    'Component-pool samples do not prove target Conversation experience or a linked joint invoice.',
+                                    'Event knowability and import receipt time are both required before training.',
+                                    'No coverage, current activity, native usage, or scheduling state is transferred.'])
+        if apply:
+            _freeze(conn, target_ref, declaration, projected, receipt, now)
+        return {**receipt, 'applied': apply}
+    if apply:
+        result = db._execute_write(run)
+        _notify(db, target_ref, now)
+        return result
+    with db._read_ctx() as conn:
+        return run(conn)

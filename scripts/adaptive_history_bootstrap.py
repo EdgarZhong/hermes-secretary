@@ -32,7 +32,7 @@ def main(argv=None):
         package = json.loads(args.input.read_text(encoding='utf-8-sig'))
         operation = bootstrap.apply if args.action == 'apply' else bootstrap.preview
         result = operation(db, args.target, package, bootstrap_id=args.bootstrap_id)
-        result['adoption'] = 'next_natural_turn_boundary_only'
+        result['adoption'] = 'immediate_if_idle_otherwise_next_native_boundary'
         if args.snapshot:
             from secretary.adaptive_config import for_db
             from secretary.adaptive_policy import decide
