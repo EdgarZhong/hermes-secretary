@@ -1,5 +1,19 @@
 # 运维记录
 
+## 2026-11-08 · 英文能力变化通知与上线覆盖核对（已完成）
+
+用户明确要求工具能力变化提示改英文，并核前几轮完成变更均已上线、Snapshot链调查留档。仅`agent/conversation_capabilities.py:_render_update`改为`Tool capabilities may have changed: {count} deferred tools. Search/describe again before use.`。这是追加runtime_context系统消息的措辞；触发、去重、权限、失败恢复及冻结前缀保持，不改root System Prompt／工具schema，不改旧中文历史、不清缓存，不主动触发生产Turn造新通知。
+
+25项正式行为测试通过，ruff／health无阻断。独立合成真实模型1请求8.077秒，实际wire含最终文案并正确解释工具数量与重新发现要求，无工具执行，验证仅限语言理解；完整请求输入703／输出32tokens。单句中文26／英文22仅为原生粗估。首个样本夹具断言失败在模型请求前，0请求记录保留。
+
+13:37:14+08受限backend-only发布器verified：云main `636ec9d33b65815d167f19e1d79e4b65db1ebb56`、checkout clean，Web／Gateway实际同版active、微信connected。三库各28张保护表、配置、绑定及双SPA资源保持；前端889c6e8的439资源与3项实际HTTP字节匹配，APK0.1.11无需重打。保留英文提示＋计数修复两套完整三库，精确清退旧联合发布备份9文件259309568字节，运行库inode与当前同步zip保持。
+
+覆盖审计已核9ac／0ab／c58e／d241产品祖先及17个相关源码SHA；FE9daf／aae／baed／889祖先与manifest、APK原SHA一致；swappiness运行／持久60，Alex配置磁盘、正式config.get热读取及native settings均100000字符／100条。本会话及已交接前端范围没有遗漏的已完成产品；原算法开发分支和Noting调优提案不在发布范围。后继文档提交不等于新部署。
+
+Snapshot六轮提交链、终止方式、审计／当前条数、不可变版本留存反证与carrier时间已记入提案§2.2.1，私人正文仅在ignored受限证据中。下次先复用该记录，不重跑全史、发布、模型样本或Noting。
+
+云端收据：`~/.local/state/hermes-secretary/release-20261028/stage-20261108-capability-english/`；本地main工作区ignored `.hermes-dev/{capability-english-release-20261108,release-coverage-20261108,capability-notice-english-20261108}/`；真实模型样本在性能工作区ignored `backend-performance-20261108/capability-prompt/`。回滚沿main反向提交并保护当前业务库，不回写Mac冷库。
+
 ## 2026-11-08 · Alex提案提醒阈值调整（用户明确确认，已应用）
 
 用户确认由12000字符／60条改为100000字符／100条。13:09:09+08在Alex原生Profile作用域使用`hermes_cli.config.set_config_value`写入`noting.persistence_proposal.char_threshold`和`entry_threshold`；原文件两键缺省，继承默认12000／60，新显式覆盖100000／100。语义diff仅这两键，原热配置缓存、settings_for_db及目标Conversation设置读取均已核新值。配置路径`/home/ubuntu/.hermes/profiles/alex/config.yaml`，0600及原uid/gid保持；其它Profile未写、服务未重启、业务DB未打开、模型／Noting未触发。旧Framework提示不改写，新生成通知按新阈值判断；这不是token上限或自动持久化授权。
