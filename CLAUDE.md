@@ -17,7 +17,9 @@
 - **Agent自主收敛／待追认：Candidate同Task来源形式切换。** 原空白：旧合法direct→refs操作与新旧Task节点不可删约束如何同时成立。决定：仅尚未提交且唯一节点属于本Task时，允许显式清空当前工作槽并切为合法refs；任何旧Task直接节点仍禁止删改。理由：继承原来源二选一操作并保持旧节点约束。影响：当前Task工作态边界，无迁移／旧节点特权。已实现，正式工具／恢复／原子失败98项通过；独立Verification／Validation已通过，已上线。
 
 
-## 2026-11-08 · 后端性能修复集成与工具内存归因（未部署，归因调查继续）
+## 2026-11-08 · 性能优化与前后端联合发布（用户已授权，执行中）
+
+**最新用户确认：** 继续完成一轮性能／开销优化，将另一会话前端修复一起上线，交付递增版本新版APK；自主完成，但不使用完整自主实现套件。本轮走定向实现／亲审／有效证据复用／部署验证。后端main已合并并推送`c58e42a43c`；UI基线`baed6c4`，版本与构建由独立Agent负责，主会话负责集成与上线。内存Agent完成Linux有界归因，发布审查Agent只读核环境与既有发布器；不混入算法分支。
 
 用户将History结果写回长停顿、Noting工具极慢与同机代理不稳统一交本会话处理，后继明确先修改swap，再追问具体哪些工具使内存暴涨／是否泄漏，要求先给准确归因。12:28:57只读复核swappiness60、swap920MiB、available1497MiB，SSH重新可用；先前握手阻塞及Linux环境失败保持原时点证据，不称代理长期稳定。
 
@@ -25,9 +27,9 @@
 
 用户明确确认仅Noting每Turn50次后注入预算续跑control，沿同child／Task／工作态进入下一Turn，整个任务最多5Turn；第5次才forced保存／收尾，Main／失败／取消／overflow不改。新增正式测试41项和独立反证7项通过，含原生50次边界、2Turn／52受控请求正常finish、同prefix／tools、一个Snapshot。相关旧回归17项Note／observer等失败已在9ac基线逐项复现，不称全套绿；旧恢复夹具缺source_description及schema旧字段集合已补，相关83项通过。冻结十检查9过、health15文件0阻断0提示；no-tmp仅未改历史同blob35daf556…eb724。产品树与被审候选逐SHA核对复用有效证据，不为merge重跑大套。
 
-**工具内存归因进行中：** 已证高开销为notebook_archive、update/create逐来源／条目反复全History，Show coverage重复全源，以及conversation_history完成后的公共结果写回再做Full审计。此前合成累计解码约831／987MB不是同时峰值，不能把1.7GiB全归单工具。原生trim归还818152KiB（约799MiB）说明可释放分配器保留参与，尚未证永久泄漏；现安排只读源码＋Linux受限合成逐工具RSS／tracemalloc／重复后GC和trim量测，不读用户历史做fixture、不追加产品优化或生产模型／停服／部署。
+**工具内存归因进行中：** 已证高开销为notebook_archive、update/create逐来源／条目反复全History，Show coverage重复全源，以及conversation_history完成后的公共结果写回再做Full审计。此前合成累计解码约831／987MB不是同时峰值，不能把1.7GiB全归单工具。原生trim归还818152KiB（约799MiB）说明可释放分配器保留参与，尚未证永久泄漏；现安排只读源码＋Linux受限合成逐工具RSS／tracemalloc／重复后GC和trim量测，不读用户历史做fixture；后继优化及部署按顶部最新授权执行。
 
-既有Linux标准runner因release环境无pytest自动准备后在锁校验失败而未执行，真实模型0请求／凭据未解析；后继正式环境复核与Prompt样本仍待补。完整实现、独立报告、指纹、限制在`../hermes-secretary-backend-performance-20261108/.hermes-dev/backend-performance-20261108/report.md`，新内存归因另存同目录memory-attribution；运维和回滚仅记operations-log。前端main baed6c4保持未部署，后端本轮也不部署。
+既有Linux标准runner因release环境无pytest自动准备后在锁校验失败而未执行，真实模型0请求／凭据未解析；后继正式环境复核与Prompt样本仍待补。完整实现、独立报告、指纹、限制在`../hermes-secretary-backend-performance-20261108/.hermes-dev/backend-performance-20261108/report.md`，新内存归因另存同目录memory-attribution；运维和回滚仅记operations-log。前端main baed6c4与后端待本轮联合部署，完成状态以发布收据为准。
 
 ## 2026-11-08 · Timeline辅助消息分组折叠（本地完成，未部署）
 
