@@ -150,10 +150,11 @@ def test_retention_does_not_recover_evicted_early_silence():
     assert features['arrival']['age_exposure'] == [0] * 4
 
 
-def test_fourteen_day_limit_censors_the_beginning_of_the_age():
+def test_long_verified_history_is_retained_instead_of_fourteen_day_clipping():
     model = arrival_model([coverage('c', 0, 2000000), activity('u', 0)], 2000000)
-    assert model['spans'] == [(2000000 - 14 * 86400, 2000000)]
-    assert model['age_censored_exposure'][-1] == 14 * 86400 - 7200
+    assert model['spans'] == [(0, 2000000)]
+    assert model['age_censored_exposure'][-1] == 0
+    assert model['age_exposure'][-1] == 2000000 - 7200
 
 
 def test_imported_long_silence_is_a_prior_and_never_current_target_age():

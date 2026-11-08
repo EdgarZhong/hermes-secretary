@@ -18,6 +18,21 @@ class Profile:
     scenarios: tuple = ()
     cancellation_scenarios: tuple = ()
     uncertainty_scenarios: tuple = ()
+    planning_duration: float | None = None
+
+
+def read_price(context, gap, cfg, model=None):
+    """Disjoint prompt buckets; cache state follows elapsed reads, not HB mode.
+
+    Write share is a same-contract measured conditional workload proxy. A
+    missing write price is never silently converted into ordinary fresh input.
+    """
+    cached = cfg['hot_cache_fraction'] if 0 <= gap < cfg['cache_ttl_seconds'] else 0
+    written = min(1 - cached, (model or {}).get('cache_write_fraction', 0))
+    if written and number(cfg.get('cache_write_ratio')) is None:
+        raise ValueError('Cache-write workload requires its configured price')
+    return context * (1 - cached - written + cached * cfg['cache_ratio']
+                      + written * (cfg.get('cache_write_ratio') or 0))
 
 
 def post_maintenance_context(context, profile):
@@ -73,7 +88,7 @@ def maintenance_profile(features, cfg):
     costs, durations, ratios = [], [], []
     for event in ends:
         calls = requests.get(event.get('operation_id'), [])
-        invoices = [request_cost(e, cfg['cache_ratio'], cfg['output_ratio']) for e in calls]
+        invoices = [request_cost(e, cfg['cache_ratio'], cfg['output_ratio'], cfg.get('cache_write_ratio')) for e in calls]
         if event.get('usage_complete') is True and invoices and all(n is not None for n in invoices):
             costs.append(sum(invoices))
         # Native registration is a real measured segment, not the complete
@@ -115,7 +130,8 @@ def _heartbeat_sample(end, rows, events, earliest, features, cfg):
         return None
     start = end['at'] - duration
     if any(not start <= row['at'] <= end['at'] or row.get('available_at', row['at']) > end['at']
-           or row.get('outcome') != 'observed' or request_cost(row, cfg['cache_ratio'], cfg['output_ratio']) is None for row in rows):
+           or row.get('outcome') != 'observed' or request_cost(row, cfg['cache_ratio'], cfg['output_ratio'],
+                                                            cfg.get('cache_write_ratio')) is None for row in rows):
         return None
     if features.get('model_key') is not None and any(e.get('model_key') != features['model_key'] for e in [end, *rows]):
         return None
@@ -127,7 +143,11 @@ def _heartbeat_sample(end, rows, events, earliest, features, cfg):
     outputs = [number(e.get('output_tokens')) for e in rows]
     if any(value is None for value in inputs + outputs) or any(a > b for a, b in zip(inputs, inputs[1:])):
         return None
-    return dict(calls=len(rows), output=sum(outputs), prompt_span=inputs[-1] - inputs[0],
+    total = sum(inputs)
+    return dict(calls=len(rows), output=sum(outputs), duration=duration, prompt_span=inputs[-1] - inputs[0],
+                cache_write_fraction=sum(r.get('cache_write_tokens', 0) for r in rows) / total if total else 0,
+                cache_read_fraction=sum(r['cache_read_tokens'] for r in rows) / total if total else 0,
+                source_ids=[end['event_id'], *(r['event_id'] for r in rows)],
                 repeated_growth=sum(value - inputs[0] for value in inputs) - (inputs[-1] - inputs[0]), at=end['at'])
 
 
@@ -147,13 +167,14 @@ def heartbeat_profile(features, cfg, *, source='heartbeat'):
         sample = _heartbeat_sample(end, rows, events, earliest, features, cfg)
         if sample is not None:
             samples.append(sample)
-    if len(samples) < 3:
+    if not samples:
         calls = max(1 + cfg['heartbeat_extra_calls'], features.get('heartbeat_calls') or 1) if source == 'heartbeat' else 1
         observed_output = features.get('heartbeat_output_tokens') if source == 'heartbeat' else None
         return dict(calls=calls, output=calls * max(cfg['heartbeat_output_tokens'], observed_output or 0),
                     fresh=calls * cfg['heartbeat_fresh_tokens'],
                     growth=calls * (cfg['heartbeat_fresh_tokens'] + cfg['heartbeat_output_tokens']),
-                    source='explicit_per_request_prior', samples=len(samples), growth_source='explicit_prior')
+                    source='explicit_per_request_prior', samples=len(samples), growth_source='explicit_prior',
+                    cache_write_fraction=0, cache_read_fraction=None)
     # Evaluate a complete, recent sample using the current context. This retains
     # correlations between API count, output and the prompt-footprint proxy.
     context = features.get('pricing_context_tokens', 0)
@@ -162,9 +183,11 @@ def heartbeat_profile(features, cfg, *, source='heartbeat'):
     selected = ordered[min(len(ordered) - 1, math.ceil(.8 * len(ordered)) - 1)]
     fresh = cfg['heartbeat_fresh_tokens'] * (1 + (selected['calls'] - 1) * cfg['cache_ratio'])
     fresh += selected['prompt_span'] + selected['repeated_growth'] * cfg['cache_ratio']
-    return dict(calls=selected['calls'], output=selected['output'], fresh=fresh,
+    return dict(calls=selected['calls'], output=selected['output'], duration=selected['duration'], fresh=fresh,
                 growth=cfg['heartbeat_fresh_tokens'] + selected['prompt_span'],
                 source='recent_bounded_turn_p80_conditional_scenario', samples=len(samples),
+                source_ids=selected['source_ids'],
+                cache_write_fraction=selected['cache_write_fraction'], cache_read_fraction=selected['cache_read_fraction'],
                 completeness='retained_native_turn_end_same_epoch_known_usage; independent_expected_call_count_unavailable',
                 growth_source='same_turn_prompt_span_plus_explicit_first_suffix; final_tail_unknown')
 

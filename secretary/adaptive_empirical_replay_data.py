@@ -112,6 +112,11 @@ def prepare(input_dir, manifest_path, components_path, cases_path):
                 mechanism_supplements=cases["mechanism_supplements"],
                 cutoff=raw["at"], config=snapshot["config"], snapshot=snapshot["result"]["snapshot"],
                 events=raw["events"], jobs=_jobs(raw["events"]), maintenance_samples=components,
+                reminder_schedule=[dict(schedule_id=job["id"], due_at=job["start"],
+                                        available_at=min(case["start"] for case in cases["cases"]),
+                                        source="declared_retrospective_known_schedule_condition_not_registration_receipt")
+                                   for job in _jobs(raw["events"]) if job["source"] == "reminder"],
+                reminder_schedule_known_from=min(case["start"] for case in cases["cases"]),
                 job_exclusions=[dict(event_id=r["event_id"], reason="missing_turn_duration_or_start")
                                 for r in raw["events"] if r["kind"] == "turn_end"
                                 and (r.get("duration_seconds") is None or r["duration_seconds"] < 0)],
@@ -156,3 +161,18 @@ def past_events(package, at):
     result.extend(deepcopy(row) for row in package["maintenance_samples"]
                   if max(row["at"], row.get("available_at", row["at"])) <= at)
     return sorted(result, key=lambda row: (row["at"], row["event_id"]))
+
+
+def known_reminders(package, at):
+    """Read as-of schedule witnesses, independently of the future demand queue."""
+    visible = [deepcopy(row) for row in package.get("reminder_schedule", [])
+               if max(row.get("at", row["available_at"]), row["available_at"]) <= at]
+    latest = {}
+    for row in sorted(visible, key=lambda row: row["available_at"]):
+        latest[row["schedule_id"]] = row
+    due = sorted({row["due_at"] for row in latest.values()
+                  if row.get("enabled", True) and row.get("due_at") is not None and row["due_at"] >= at})
+    known_from = package.get("reminder_schedule_known_from")
+    return dict(known=bool(visible) or (known_from is not None and known_from <= at),
+                due_times=due, witnesses=list(latest.values()),
+                contract="as_of_schedule_witnesses_not_future_jobs")

@@ -31,12 +31,22 @@ def legacy_maintenance_receipt(*, cost=90000, duration=600):
     return [dict(common, event_id='fixture-joint:request', kind='request', at=at-duration/2,
                  input_tokens=cost, cache_read_tokens=0, output_tokens=0, outcome='observed'),
             dict(common, event_id='fixture-joint:end', kind='maintenance_end', at=at,
-                 duration_seconds=duration, duration_scope='joint_main_block', outcome='completed',
+                 duration_seconds=duration, duration_scope='joint_operation', outcome='completed',
                  context_before=330000, context_after=59400, usage_complete=True)]
 
 
+def heartbeat_receipt(*, output=9):
+    at = NOW - 3600
+    common = dict(verified=True, source='heartbeat', model_key='test', context_epoch='stable', turn_id='hb')
+    return [dict(common, event_id='hb:request', kind='request', at=at-10,
+                 input_tokens=330000, cache_read_tokens=329000, cache_write_tokens=0,
+                 output_tokens=output, outcome='observed'),
+            dict(common, event_id='turn:hb', kind='turn_end', at=at,
+                 duration_seconds=20, context_tokens=330000)]
+
+
 def empirical_history(**values):
-    return history() + legacy_maintenance_receipt(**values)
+    return history() + legacy_maintenance_receipt(**values) + heartbeat_receipt()
 
 
 def snapshot(**extra):
@@ -48,8 +58,11 @@ def snapshot(**extra):
     return result
 
 
-def test_unknown_coverage_is_native_fallback():
-    assert decide(snapshot(), [], CONFIG)['fallback']
+def test_unknown_coverage_keeps_hot_and_defers_maintenance():
+    result = decide(snapshot(), [], CONFIG)
+    assert not result['fallback'] and result['mode'] == 'hot'
+    assert result['delay_seconds'] is result['threshold_tokens'] is None
+    assert 'current_activity_evidence' in result['diagnostics']['readiness']['missing']
 
 
 def test_expensive_plateau_can_compact_with_history_supported_mode():
@@ -72,7 +85,7 @@ def test_missing_maintenance_cost_never_assumes_free_fast_compression():
 def test_short_departure_waits_and_manual_pause_is_respected():
     rows = empirical_history() + [dict(event_id='recent', at=NOW - 60, kind='user_activity', source='user', verified=True)]
     result = decide(snapshot(), rows, CONFIG)
-    assert result['delay_seconds'] is None or result['delay_seconds'] >= 1740
+    assert result['mode'] == 'hot' and result['delay_seconds'] is None
     assert decide(snapshot(heartbeat_status='paused'), rows, CONFIG)['fallback']
 
 
@@ -83,20 +96,20 @@ def test_business_infinity_does_not_invent_periodic_self_checks():
                  start_at=start, end_at=NOW)]
     rows += [dict(event_id=f'early-{i}', at=start + 100 + 100 * i,
                   kind='user_activity', source='user', verified=True) for i in range(8)]
-    result = decide(snapshot(), rows, cfg)
+    result = decide(snapshot(), rows + legacy_maintenance_receipt() + heartbeat_receipt(), cfg)
     assert result['mode'] == 'business'
     assert result['threshold_tokens'] is None
 
 
 def test_long_maintenance_and_recent_maintenance_prevent_proactive_work():
-    long = decide(snapshot(), empirical_history(duration=7200), CONFIG)
+    long = decide(snapshot(), empirical_history(duration=50000), CONFIG)
     assert long['threshold_tokens'] is None
     recent = decide(snapshot(last_maintenance_at=NOW - 600), empirical_history(), CONFIG)
     assert recent['threshold_tokens'] is None
 
 
 def test_high_output_keepalive_can_lose_to_business_mode():
-    result = decide(snapshot(context_tokens=60000), history(),
+    result = decide(snapshot(context_tokens=60000), history() + legacy_maintenance_receipt(cost=1000000) + heartbeat_receipt(output=20000),
                     dict(CONFIG, heartbeat_output_tokens=20000, maintenance_cost=1000000))
     assert result['mode'] == 'business'
     assert result['threshold_tokens'] is None
@@ -111,25 +124,20 @@ def test_future_evidence_does_not_change_decision():
 
 def test_native_two_hour_baseline_is_not_mistaken_for_infinite_business():
     current = snapshot(current_mode_native=True, heartbeat_interval_seconds=7200)
-    result = decide(current, history(), dict(CONFIG, business_interval_seconds=None))
+    result = decide(current, empirical_history(cost=10000000), dict(CONFIG, business_interval_seconds=None))
     assert not result['fallback']
     assert result['mode'] == 'business'
     assert result['diagnostics']['baseline_cost'] > result['diagnostics']['estimated_cost']
 
 
 def test_actual_next_due_affects_cost_even_when_anchor_is_same():
-    imminent = decide(snapshot(heartbeat_next_due=NOW + 1), history(), CONFIG)
-    later = decide(snapshot(heartbeat_next_due=NOW + 7100), history(), CONFIG)
+    imminent = decide(snapshot(heartbeat_next_due=NOW + 1), empirical_history(cost=10000000), CONFIG)
+    later = decide(snapshot(heartbeat_next_due=NOW + 7100), empirical_history(cost=10000000), CONFIG)
     assert imminent['diagnostics']['baseline_cost'] != later['diagnostics']['baseline_cost']
 
 
-def test_long_verified_silence_and_paid_future_reads_allow_hour_long_maintenance():
-    start = NOW - 14 * 86400
-    rows = [dict(event_id='coverage', at=NOW, kind='coverage', source='user', verified=True,
-                 start_at=start, end_at=NOW)]
-    rows += [dict(event_id=f'early-{index}', at=start + 100 + 100 * index,
-                  kind='user_activity', source='user', verified=True) for index in range(8)]
-    result = decide(snapshot(), rows + legacy_maintenance_receipt(duration=3600), CONFIG)
+def test_long_verified_silence_uses_independent_long_departures():
+    result = decide(snapshot(), empirical_history(duration=3600), CONFIG)
     assert result['threshold_tokens'] is not None
     assert result['diagnostics']['collision_margin_estimate'] <= .15
     assert result['diagnostics']['expected_wait_seconds'] <= 30
@@ -205,7 +213,7 @@ def test_complete_current_components_enter_formal_cost_risk_and_threshold():
                        block_scope='native_compaction_registration', usage=usage(70000)),
                   dict(common, component='noting', event_id='declared-noting', operation_id='declared-noting',
                        duration_seconds=2000, block_seconds=0, block_scope='background_not_main_block', usage=usage(20000))]
-    result = decide(snapshot(), history()+components, CONFIG)
+    result = decide(snapshot(), history()+components+heartbeat_receipt(), CONFIG)
     assert result['threshold_tokens'] is not None and result['delay_seconds'] is not None
     evidence = result['diagnostics']['maintenance_evidence']
     assert evidence['costs'] == [90000] and evidence['main_block_seconds'] == [600]
@@ -215,13 +223,12 @@ def test_complete_current_components_enter_formal_cost_risk_and_threshold():
 
 
 @pytest.mark.parametrize('trajectory_available', [True, False])
-def test_unpriced_native_capacity_returns_to_native_without_inventing_prior_cost(monkeypatch, trajectory_available):
+def test_unpriced_native_capacity_defers_only_proactive_work_and_keeps_hot(monkeypatch, trajectory_available):
     if not trajectory_available:
         monkeypatch.setattr('secretary.adaptive_policy.predict', lambda *args, **kwargs:
                             dict(available=False, training_windows=0))
     result = decide(snapshot(native_threshold_tokens=330001), history(), CONFIG)
-    assert result['fallback']
+    assert not result['fallback'] and result['mode'] == 'hot'
     assert result['threshold_tokens'] is result['delay_seconds'] is None
-    assert result['reason'] == 'native_capacity_path_requires_unknown_maintenance_cost'
+    assert result['reason'] == 'insufficient_data_hot_observation'
     assert result['diagnostics']['maintenance_evidence']['reason'] == 'missing_empirical_maintenance_scenarios'
-    assert any(row.get('native', {}).get('native_cost_unknown') for row in result['diagnostics']['candidate_evaluations'])

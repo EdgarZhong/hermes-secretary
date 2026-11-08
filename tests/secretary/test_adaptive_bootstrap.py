@@ -65,7 +65,7 @@ def measured(parent, db, ref, now=NOW):
     return snapshot, history, config
 
 
-def test_real_bootstrap_snapshot_policy_and_natural_turn_adoption(owned):
+def test_real_bootstrap_snapshot_policy_and_immediate_adoption(owned):
     parent, db, ref, package = owned
     before_idle = db.noting_idle_state(ref)
     assert bootstrap.preview(db, ref, package, bootstrap_id='audit', now=NOW)['qualified']
@@ -76,7 +76,7 @@ def test_real_bootstrap_snapshot_policy_and_natural_turn_adoption(owned):
     assert db.noting_idle_state(ref) == before_idle
     with db._read_ctx() as conn:
         assert store.plan_conn(conn, ref) is None
-        assert store.heartbeat_conn(conn, ref) is None
+        assert store.heartbeat_conn(conn, ref)['mode'] == 'hot'
     value, rows, config = measured(parent, db, ref)
     assert not rows and value['last_user_at'] is None
     assert store.imported_history(db, ref, NOW) == []
@@ -86,10 +86,11 @@ def test_real_bootstrap_snapshot_policy_and_natural_turn_adoption(owned):
     diagnostic = decision['diagnostics']
     assert diagnostic['verified_user_events'] == diagnostic['coverage_seconds'] == 0
     assert diagnostic['history_readiness']['qualified']
-    assert diagnostic['behavior_prediction_available']
-    assert diagnostic['trajectory_training_windows'] >= 8
-    assert diagnostic['behavior_forecast']['1800']['any'] > 0
-    # Only the actual native end-of-Turn seam adopts; apply and preview did not.
+    assert not diagnostic['readiness']['ready']
+    assert 'current_activity_evidence' in diagnostic['readiness']['missing']
+    assert decision['mode'] == 'hot'
+    assert diagnostic['history_support']['independent_episodes'] > 0
+    # Apply already adopts the mode; the actual native end still creates its own period.
     from secretary.noting_runtime import note_main_turn_finished
     assert note_main_turn_finished(parent, at=NOW + 1)
     with db._read_ctx() as conn:
@@ -136,7 +137,9 @@ def test_identity_unknown_and_maturity_boundaries(owned, damage):
         result = bootstrap.apply(db, ref, package, bootstrap_id='small', now=NOW)
         assert not result['qualified']
         value, rows, config = measured(parent, db, ref)
-        assert decide(value, rows, config)['fallback']
+        decision = decide(value, rows, config)
+        assert not decision['fallback'] and decision['mode'] == 'hot'
+        assert decision['delay_seconds'] is None
         return
     mutations[damage]()
     with pytest.raises(ValueError):
@@ -179,7 +182,10 @@ def test_current_frontier_restores_original_time_not_idle_or_turn(owned):
     db.noting_idle_turn_finished(ref, NOW - 100, due_at=NOW + 400)
     before = db.noting_idle_state(ref)
     bootstrap.apply(db, ref, package, bootstrap_id='audit', now=NOW)
-    assert db.noting_idle_state(ref) == before
+    after = db.noting_idle_state(ref)
+    assert after['last_turn_finished_at'] == before['last_turn_finished_at']
+    assert after['last_turn_started_at'] == before['last_turn_started_at']
+    assert after['trigger_produced_at'] == NOW
     value, rows, cfg = measured(parent, db, ref)
     assert value['last_user_at'] == NOW - 5000
     assert rows[0]['available_at'] == NOW - 10 and rows[0]['original_available_at'] is None
@@ -211,7 +217,8 @@ def test_behavior_history_survives_model_window_and_config_changes(owned):
     result = decide(changed, changed_rows, changed_cfg)
     assert not result['fallback']
     assert result['diagnostics']['history_readiness'] == original['diagnostics']['history_readiness']
-    assert result['diagnostics']['behavior_forecast'] == original['diagnostics']['behavior_forecast']
+    assert result['diagnostics']['history_support'] == original['diagnostics']['history_support']
+    assert result['mode'] == 'hot'
     features = build_features(changed, changed_rows, _settings(changed_cfg))
     assert features['growth_tokens_per_second'] is None
     assert features['heartbeat_output_tokens'] is None
@@ -270,7 +277,8 @@ def test_explicit_conversation_migration_preserves_bootstrap_training_only(owned
     value.update(heartbeat_status='active', heartbeat_anchor=NOW, heartbeat_next_due=NOW + 10800,
                  heartbeat_interval_seconds=10800)
     result = decide(value, rows, cfg)
-    assert not result['fallback'] and result['diagnostics']['behavior_prediction_available']
+    assert not result['fallback'] and result['mode'] == 'hot'
+    assert result['diagnostics']['history_readiness']['qualified']
     assert value['last_user_at'] is None
     assert value['idle_period'] is None
     assert result['diagnostics']['history_readiness']['mature_windows'] >= 8
@@ -322,6 +330,12 @@ def test_repeated_behavior_paths_enter_candidate_cost_and_mode_selection(owned, 
                  heartbeat_anchor=NOW, heartbeat_next_due=NOW + 10800)
     config.update(cache_ratio=.05, output_ratio=5, heartbeat_output_tokens=5000,
                   heartbeat_fresh_tokens=1024, hot_cache_fraction=.95)
+    from tests.secretary.test_adaptive_policy import heartbeat_receipt, legacy_maintenance_receipt, NOW as OLD_NOW
+    rows += [dict(event_id='live-covered', kind='coverage', verified=True, source='user',
+                  at=NOW, start_at=NOW-8000, end_at=NOW),
+             dict(event_id='live-user', kind='user_activity', verified=True, source='user', at=NOW-5000)]
+    rows += [dict(row, at=row['at']+NOW-OLD_NOW, model_key=value['model_key'])
+             for row in heartbeat_receipt(output=5000) + legacy_maintenance_receipt(cost=10000000)]
     paths = [1900]
     def learned(*args, **kwargs):
         offsets = paths if len(paths) == 1 else range(1900, int(kwargs['horizon']), 1900)
@@ -336,7 +350,9 @@ def test_repeated_behavior_paths_enter_candidate_cost_and_mode_selection(owned, 
     assert repeated['diagnostics']['forecast_model'] == 'multi_return_timing_only_single_read_proxy'
     assert repeated['diagnostics']['baseline_cost'] > single['diagnostics']['baseline_cost']
     assert single['mode'] == 'business' and repeated['mode'] == 'hot'
-    assert repeated['diagnostics']['estimated_cost'] < repeated['diagnostics']['baseline_cost']
+    business = next(r for r in repeated['diagnostics']['candidate_evaluations']
+                    if r['mode'] == 'business' and r['delay'] is None)
+    assert repeated['diagnostics']['estimated_cost'] < business['cost']
     assert 'not_observed_zero' in repeated['diagnostics']['work_cost_assumption']
 
 
@@ -350,7 +366,7 @@ def test_numeric_capacity_rejection_is_atomic(owned):
         assert conn.execute('SELECT COUNT(*) FROM secretary_adaptive_import_events').fetchone()[0] == 0
 
 
-def test_operator_script_preview_then_apply_never_adopts_a_plan(owned, monkeypatch, capsys, tmp_path):
+def test_operator_script_preview_then_apply_adopts_mode_without_inventing_idle_period(owned, monkeypatch, capsys, tmp_path):
     from types import SimpleNamespace
     from scripts.adaptive_history_bootstrap import main
     parent, db, ref, package = owned
@@ -369,10 +385,10 @@ def test_operator_script_preview_then_apply_never_adopts_a_plan(owned, monkeypat
     main(['apply', *common])
     result = json.loads(capsys.readouterr().out)
     assert not result['decision_preview']['fallback']
-    assert result['adoption'] == 'next_natural_turn_boundary_only'
+    assert result['adoption'] == 'immediate_if_idle_otherwise_next_native_boundary'
     with db._read_ctx() as conn:
         assert store.plan_conn(conn, ref) is None
-        assert store.heartbeat_conn(conn, ref) is None
+        assert store.heartbeat_conn(conn, ref)['mode'] == 'hot'
 
 
 def test_standard_import_rejects_tail_truncation_across_bootstrap_group(owned):

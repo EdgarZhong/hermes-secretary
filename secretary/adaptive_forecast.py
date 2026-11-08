@@ -192,8 +192,8 @@ def predict_direct(data, now, *, horizon=7200, timezone_name='UTC', method='anal
             'horizons': horizons, 'paths': paths, 'marks': work_marks(data, now)}
 
 
-def _transition_weights(examples, x, now, method):
-    pooled = [math.exp(-(now - row['at']) / (7 * 86400)) for row in examples]
+def _transition_weights(examples, x, now, method, recency_timescale_days=7):
+    pooled = [math.exp(-max(0, now - row['at']) / (recency_timescale_days * 86400)) for row in examples]
     total = sum(pooled)
     pooled = [weight / total for weight in pooled]
     if method == 'pooled':
@@ -265,7 +265,8 @@ def _extend_path(state, path, sample, marks, now, offset, width):
                                                     source='reminder', growth_tokens=event['growth_tokens']))
 
 
-def predict(data, now, *, horizon=7200, timezone_name='UTC', method='analog', qualified_prior_ready=False):
+def predict(data, now, *, horizon=7200, timezone_name='UTC', method='analog', qualified_prior_ready=False,
+            recency_timescale_days=7):
     """Learn short transitions, then propagate activity state over the cost horizon.
 
     No six-hour-complete-label selection is needed to estimate six-hour demand.
@@ -279,7 +280,7 @@ def predict(data, now, *, horizon=7200, timezone_name='UTC', method='analog', qu
     observation = data.get('current_activity_evidence')
     live_ready = (observation.get('live_ready') is True and observation.get('as_of') == now
                   if observation is not None else covered(now - 3600, now, data.get('spans', [])))
-    if len(examples) < 8 or not (live_ready or qualified_prior_ready):
+    if not examples or not (live_ready or qualified_prior_ready or observation and observation.get('ready')):
         return {'available': False, 'reason': 'insufficient_mature_windows', 'training_windows': len(examples),
                 'live_observation_ready': live_ready, 'qualified_prior_ready': qualified_prior_ready,
                 'current_activity_evidence': observation}
@@ -295,7 +296,7 @@ def predict(data, now, *, horizon=7200, timezone_name='UTC', method='analog', qu
         offset, step = 0, 0
         while offset < horizon:
             x = signature(state, now + offset, timezone_name)
-            weights = _transition_weights(examples, x, now, method)
+            weights = _transition_weights(examples, x, now, method, recency_timescale_days)
             # Fixed stratified quantiles: reproducible, without refitting on future labels.
             quantile = ((index + .5) / 32 + step * .618033988749895) % 1
             selected = examples[_draw_index(weights, quantile)]['y']
@@ -325,6 +326,7 @@ def predict(data, now, *, horizon=7200, timezone_name='UTC', method='analog', qu
                                    source='same_conditioned_empirical_transition_paths',
                                    empty_mature_blocks='right_censored_at_block_boundary_not_dropped'),
             'feature_contract': 'occurrence_and_knowledge_time; wall_clock_quiet_origins; multi_scale_activity_work',
+            'recency_timescale_days': recency_timescale_days,
             'background_source': 'observed_reminder_origins_in_same_historical_transition_blocks'}
 
 

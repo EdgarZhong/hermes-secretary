@@ -340,11 +340,13 @@ def test_actual_retention_and_import_selection_disclose_missing_old_history(owne
     db._execute_write(write)
     configure(db, target, source, through=4000)
     report = imports.preview(db, target, now=4500)
-    assert report['source_local_retained'] == 2048
-    assert report['event_count'] == 2048 and report['available_range'] == [3, 2050]
-    assert report['excluded']['snapshot_event_bound'] == 1
+    assert report['source_local_retained'] == 2050
+    assert report['source_local_limit'] == 65536
+    assert report['event_count'] <= 2048 and report['available_range'] == [0, 2050]
+    assert report['excluded']['snapshot_event_bound'] == 3
     assert report['cohorts'][0]['coverage_missing'] is True
     imports.apply(db, target, now=4500)
-    assert len(imported(db, target, now=5000)) == 2048
-    assert len(store.history(db, source, 5000)) == 2048
+    assert len(imported(db, target, now=5000)) == report['event_count']
+    assert any(e['kind'] == 'coverage_gap' for e in imported(db, target, now=5000))
+    assert len(store.history(db, source, 5000)) == 2050
     assert len(imported(db, source, now=5000)) == 1

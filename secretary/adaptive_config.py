@@ -56,6 +56,8 @@ def from_config(config, ref=None, *, model_contract=None):
                 (billing.get("cache_read"), 0), (billing.get("output"), 0))
     if any(not _number(value, minimum=minimum) for value, minimum in required):
         return None
+    if "cache_write" in billing and not _number(billing["cache_write"]):
+        return None
     if billing.get("input") != 1 or isinstance(billing.get("input"), bool):
         return None
     if not isinstance(billing.get("source"), str) or not billing["source"].strip():
@@ -72,9 +74,14 @@ def from_config(config, ref=None, *, model_contract=None):
     result = {key: value for key, value in block.items() if key not in {"models", "conversations"}}
     result.update(hot_interval_seconds=heartbeat["hot_seconds"], business_interval_seconds=business,
                   cache_ratio=billing["cache_read"], output_ratio=billing["output"],
+                  cache_write_ratio=billing.get("cache_write"),
                   cache_ttl_seconds=item["cache_ttl_seconds"], billing=dict(billing),
                   model_identity={"provider": provider, "model": model}, model_contract=model_contract,
-                  history_limit=2048)
+                  history_limit=65536)
+    result.setdefault("horizon_seconds", 86400)
+    result.setdefault("recency_timescale_days", 7)
+    if not all(_number(result[key], minimum=1) for key in ("horizon_seconds", "recency_timescale_days")):
+        return None
     timezone = result.get("timezone")
     if timezone is not None:
         try:

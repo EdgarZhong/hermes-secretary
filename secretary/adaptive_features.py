@@ -7,7 +7,7 @@ import math
 from statistics import median
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-MAX_EVENTS = 2048
+MAX_EVENTS = 65536
 AGE_EDGES = (300.0, 1800.0, 7200.0)
 CURRENT_OBSERVATION_MAX_LAG_SECONDS = 80
 CURRENT_OBSERVATION_HISTORY_SECONDS = 3600
@@ -40,16 +40,16 @@ def clean_events(history, now, *, model_key=None):
                   key=lambda e: (e['at'], e['event_id']))[-MAX_EVENTS:]
 
 
-def request_cost(event, cache_ratio, output_ratio):
+def request_cost(event, cache_ratio, output_ratio, cache_write_ratio=None):
     """input_tokens is total prompt INCLUDING cache. Missing usage is not zero."""
-    if event.get('cache_write_tokens', 0) != 0:
-        return None  # No cache-write price in this version's three-rate contract.
     total = number(event.get('input_tokens'))
     cached = number(event.get('cache_read_tokens'))
+    written = number(event.get('cache_write_tokens', 0))
     output = number(event.get('output_tokens'))
-    if total is None or cached is None or output is None or cached > total:
+    if (any(v is None for v in (total, cached, written, output)) or cached + written > total
+            or written and number(cache_write_ratio) is None):
         return None
-    return total - cached + cache_ratio * cached + output_ratio * output
+    return total - cached - written + cache_ratio * cached + (cache_write_ratio or 0) * written + output_ratio * output
 
 
 def quantile(values, fraction):
@@ -69,7 +69,7 @@ def coverage_intervals(events, now, scope=None):
         start, end = number(event.get('start_at')), number(event.get('end_at'))
         if start is None or end is None or not start < end <= now:
             continue
-        spans.append((max(start, now - 14 * 86400), end))
+        spans.append((start, end))
     merged = []
     for start, end in sorted(spans):
         if start >= end:
@@ -476,7 +476,7 @@ def build_features(snapshot, history, config):
             'last_user_work_end': max((e['at'] for e in behavioral_events if e.get('kind') == 'turn_end'
                                       and e.get('source') == 'user'), default=None),
             'last_request_at': max((e['at'] for e in requests), default=None),
-            'unknown_usage_requests': sum(request_cost(e, config['cache_ratio'], config['output_ratio'])
+            'unknown_usage_requests': sum(request_cost(e, config['cache_ratio'], config['output_ratio'], config.get('cache_write_ratio'))
                                           is None for e in requests)}
     result.update(current_user_age(result['arrival'], users, now))
     result['current_activity_evidence'] = current_activity_evidence(

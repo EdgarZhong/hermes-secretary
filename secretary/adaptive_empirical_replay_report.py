@@ -79,3 +79,26 @@ def summarize(report):
     lines += ["", "自动失败保留；没有维护不通过合成正例豁免。高成本、慢占用、缓存与来源子集敏感性应分别报告，不能替换本报告基础情景。", "", "## 声明条件"]
     lines += ["", *["- " + item for item in report["assumptions"]]]
     return "\n".join(lines) + "\n"
+
+
+class SimpleStage:
+    """Declared ablation: hot during quiet protection, then unchanged V2 economics.
+
+    The wrapper has no conditional-survival estimate, recency learning or bridge
+    optimization. It is a deliberately simple comparator, never V3's substitute.
+    """
+    def __init__(self, policy):
+        self.policy = policy
+
+    def __getattr__(self, name):
+        return getattr(self.policy, name)
+
+    def decide(self, snapshot, history, config):
+        now = snapshot["now"]
+        work = [r["at"] for r in history if r.get("verified") and r.get("source") == "user"
+                and r.get("kind") in ("user_activity", "turn_end")
+                and max(r["at"], r.get("available_at", r["at"])) <= now]
+        if work and now-max(work) < config.get("min_user_quiet_seconds", 1800):
+            return dict(mode="hot", threshold_tokens=None, delay_seconds=None, fallback=False,
+                        reason="simple_stage_quiet_protection", diagnostics={"comparator": "hot_then_V2"})
+        return self.policy.decide(snapshot, history, config)

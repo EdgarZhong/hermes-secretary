@@ -177,11 +177,9 @@ def _payload(event):
 def _candidates(conn, db, target, declaration, now):
     source, cutoff = declaration['from_conversation'], declaration['through']
     excluded, candidates = Counter(), {}
-    local = conn.execute('SELECT payload FROM secretary_adaptive_events WHERE conversation_ref=? '
-                         'ORDER BY at,id', (source,)).fetchall()
-    rows = [{**json.loads(row[0]), 'origin_profile': _profile(db),
-             'origin_conversation': source, 'origin_event_id': json.loads(row[0]).get('event_id')}
-            for row in local]
+    local = store.history_conn(conn, source, now)
+    rows = [{**event, 'origin_profile': _profile(db),
+             'origin_conversation': source, 'origin_event_id': event.get('event_id')} for event in local]
     for cohort in store.imported_history_conn(conn, source, now):
         rows.extend(cohort['events'])
     from secretary.adaptive_bootstrap import export_conn
@@ -221,7 +219,79 @@ def _candidates(conn, db, target, declaration, now):
     if len(ordered) > MAX_IMPORT_EVENTS and any(event.get('bootstrap_schema') for event in ordered):
         raise ValueError('source snapshot capacity would truncate a bootstrap training group')
     excluded['snapshot_event_bound'] += max(0, len(ordered) - MAX_IMPORT_EVENTS)
-    return ordered[-MAX_IMPORT_EVENTS:], dict(excluded), len(local)
+    return _representative(ordered, MAX_IMPORT_EVENTS), dict(excluded), len(local)
+
+
+def _representative(events, limit):
+    """Retain cross-day evidence, explicitly censoring any discarded interval.
+
+    The fixed public import capacity remains unchanged. Per-day suffixes retain
+    complete adjacent activity rather than letting a dense newest day consume
+    the whole snapshot. Gaps describe selection, never original online silence.
+    """
+    if len(events) <= limit:
+        return events
+    if limit < 128:
+        return _sparse_censored(events, limit)
+    groups = {}
+    for index, event in enumerate(events):
+        key = (*_identity(event)[:2], int(event['at'] // 86400))
+        groups.setdefault(key, []).append(index)
+    buckets = list(groups.values())
+    if len(buckets) > 32:
+        buckets = [buckets[round(i * (len(buckets) - 1) / 31)] for i in range(32)]
+    quota = max(1, (limit - 96) // len(buckets))
+    selected = {index for bucket in buckets for index in bucket[-quota:]}
+    result = [event for index, event in enumerate(events) if index in selected]
+    result.extend(_selection_gaps(events, selected))
+    if len(result) > limit:
+        return _sparse_censored(events, limit)
+    return sorted(result, key=lambda event: (event['at'], _identity(event)))
+
+
+def _selection_gaps(events, selected):
+    from hashlib import sha256
+    cohorts = {}
+    for index, event in enumerate(events):
+        cohorts.setdefault(_identity(event)[:2], []).append((index, event))
+    gaps = []
+    for origin, rows in cohorts.items():
+        previous, omitted = None, []
+        for index, event in rows + [(None, None)]:
+            if index is not None and index not in selected:
+                omitted.append(event)
+                continue
+            if omitted:
+                start = previous['at'] if previous else omitted[0]['at']
+                end = event['at'] if event else omitted[-1]['at']
+                identity = 'selection-gap:' + sha256(_json([origin, start, end]).encode()).hexdigest()
+                gaps.append(dict(event_id=identity, origin_event_id=identity, origin_profile=origin[0],
+                                 origin_conversation=origin[1], kind='coverage_gap', source='framework',
+                                 verified=True, at=end, available_at=max(e['available_at'] for e in omitted),
+                                 start_at=start, end_at=end, reason='representative_snapshot_omission'))
+                omitted = []
+            if event is not None:
+                previous = event
+    return gaps
+
+
+def _sparse_censored(events, limit):
+    # When an extreme cap cannot preserve intervals, return only explicit
+    # censor records. Older imports from the same origin cannot bridge holes.
+    gaps = _selection_gaps(events, set())
+    if len(gaps) <= limit:
+        return gaps
+    return [gaps[round(i * (len(gaps) - 1) / max(1, limit - 1))] for i in range(limit)]
+
+
+def _notify(db, ref, now):
+    # Receipt is already committed. Notification failure must not misreport its outcome.
+    try:
+        from secretary.adaptive_refresh import refresh
+        refresh(db, ref, now=now)
+    except Exception:
+        import logging
+        logging.getLogger(__name__).debug("Adaptive import notification deferred", exc_info=True)
 
 
 def _model_label(event):
@@ -260,7 +330,7 @@ def _summary(events, excluded, local_count):
         cohort['coverage_missing'] = not any(item['verified'] and item['source'] == 'user'
                                              for item in cohort['coverage_intervals'])
     return dict(event_count=len(events), available_range=[min(times), max(times)] if times else None,
-                source_local_retained=local_count, source_local_limit=2048,
+                source_local_retained=local_count, source_local_limit=store.MAX_HISTORY_EVENTS,
                 target_import_event_limit=MAX_IMPORT_EVENTS, target_receipt_limit=MAX_IMPORT_RECEIPTS,
                 verified_events=sum(event['verified'] for event in events),
                 unknown_source_events=sum(event['source'] == 'unknown' for event in events),
@@ -337,10 +407,11 @@ def _freeze(conn, target, declaration, events, receipt, now):
     conn.execute('INSERT INTO secretary_adaptive_imports '
                  '(conversation_ref,import_id,declaration,imported_at,receipt) VALUES (?,?,?,?,?)',
                  (target, declaration['id'], _json(declaration), now, _json(receipt)))
+    store.request_refresh_conn(conn, target, now)
 
 
 def apply(db, target_ref, *, replace_import_id=None, now=None):
-    """Explicit one-transaction freeze; local events/plans/HB/Idle are never written."""
+    """Freeze evidence and its refresh revision together, then notify the current owner."""
     now = time.time() if now is None else now
     if number(now) is None:
         raise ValueError('invalid import time')
@@ -364,7 +435,9 @@ def apply(db, target_ref, *, replace_import_id=None, now=None):
             _remove_import(conn, target_ref, replace_import_id, declaration['id'])
         _freeze(conn, target_ref, declaration, events, receipt, now)
         return receipt
-    return db._execute_write(write)
+    result = db._execute_write(write)
+    _notify(db, target_ref, now)
+    return result
 
 
 def _sample_source(target_ref, events, source_kind, source_conversation, source_sha256):
@@ -456,6 +529,8 @@ def import_samples(db, target_ref, events, *, import_id, source_sha256, now=None
             _freeze(conn, target_ref, declaration, projected, receipt, now)
         return {**receipt, 'applied': apply}
     if apply:
-        return db._execute_write(run)
+        result = db._execute_write(run)
+        _notify(db, target_ref, now)
+        return result
     with db._read_ctx() as conn:
         return run(conn)

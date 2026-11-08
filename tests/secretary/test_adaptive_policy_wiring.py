@@ -8,7 +8,7 @@ from hermes_cli.heartbeat import HeartbeatState
 from secretary import adaptive_runtime as runtime, adaptive_store as store, noting_runtime as noting
 from secretary.heartbeat_store import ConversationHeartbeatStore
 from tests.secretary import test_adaptive_runtime
-from tests.secretary.test_adaptive_policy import CONFIG, NOW, history
+from tests.secretary.test_adaptive_policy import CONFIG, NOW, empirical_history
 
 
 @pytest.fixture
@@ -29,7 +29,9 @@ def test_unmocked_policy_reaches_atomic_native_plan_and_due_clock(owned, monkeyp
     parent.context_compressor.update_from_response({'prompt_tokens': 330000})
     hb = ConversationHeartbeatStore(db, 'main')
     hb.save(HeartbeatState('', 7200, created_at=NOW))
-    db._execute_write(lambda conn: [store.event_conn(conn, ref, event) for event in history()])
+    rows = [dict(row, model_key=runtime.model_key(parent)) if row.get('model_key') else row
+            for row in empirical_history()]
+    db._execute_write(lambda conn: [store.event_conn(conn, ref, event) for event in rows])
     runtime.turn_started(parent, runtime.mark_input('background', 'heartbeat'), at=NOW - 60)
     assert noting.note_main_turn_finished(parent, at=NOW)
     with db._read_ctx() as conn:

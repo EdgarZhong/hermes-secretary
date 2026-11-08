@@ -62,8 +62,9 @@ def test_plan_cas_rejects_intervening_main_period(owned):
     assert db.noting_idle_state(ref)["last_turn_started_at"] == 200
 
 
-def test_bounded_history_filters_future_before_tail_and_restart(owned):
+def test_bounded_history_filters_future_before_tail_and_restart(owned, monkeypatch):
     parent, db, ref = owned
+    monkeypatch.setattr(store, "MAX_HISTORY_EVENTS", 2048)
     def write(conn):
         for i in range(2053):
             store.event_conn(conn, ref, {"event_id": str(i), "at": i, "kind": "turn_end", "source": "unknown", "verified": False})

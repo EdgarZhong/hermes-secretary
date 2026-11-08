@@ -16,11 +16,12 @@ def _invoice(row, cfg):
         return None
     values = [number(usage.get(k)) for k in
               ('input_tokens', 'cache_read_tokens', 'cache_write_tokens', 'output_tokens')]
-    if any(v is None for v in values) or values[2] != 0:
+    if any(v is None for v in values) or values[2] and number(cfg.get('cache_write_ratio')) is None:
         return None
     if row.get('input_semantics', usage.get('input_semantics')) == 'fresh':
-        return values[0] + values[1] * cfg['cache_ratio'] + values[3] * cfg['output_ratio']
-    return request_cost(usage, cfg['cache_ratio'], cfg['output_ratio'])
+        return (values[0] + values[1] * cfg['cache_ratio'] + values[2] * (cfg.get('cache_write_ratio') or 0)
+                + values[3] * cfg['output_ratio'])
+    return request_cost(usage, cfg['cache_ratio'], cfg['output_ratio'], cfg.get('cache_write_ratio'))
 
 
 def _legacy(events, cfg):
@@ -32,7 +33,7 @@ def _legacy(events, cfg):
         if (row.get('kind') != 'maintenance_end' or row.get('outcome') not in OUTCOMES
                 or number(row.get('at')) is None or not row.get('event_id')):
             continue
-        bills = [request_cost(e, cfg['cache_ratio'], cfg['output_ratio'])
+        bills = [request_cost(e, cfg['cache_ratio'], cfg['output_ratio'], cfg.get('cache_write_ratio'))
                  for e in requests.get(row.get('operation_id'), [])]
         total = sum(bills) if bills and all(v is not None for v in bills) and row.get('usage_complete') else None
         block = number(row.get('block_seconds'))
@@ -46,7 +47,8 @@ def _legacy(events, cfg):
                            context_after_source=row.get('context_after_source'),
                            outcome=row['outcome'], at=row['at'], ids=[row['event_id']],
                            source='legacy_joint_operation', model_key=row.get('model_key'),
-                           scale=before, complete=total is not None, duration=row.get('duration_seconds')))
+                           scale=before, complete=total is not None, duration=number(row.get('duration_seconds')),
+                           planning_scope=row.get('duration_scope')))
     return result
 
 
@@ -64,13 +66,17 @@ def _component(row, cfg, context):
     calls = number(proof.get('calls', proof.get('requests')))
     if row.get('component') == 'noting' and invoice is not None and scale and calls and context is not None:
         usage = row.get('usage', row)
-        total = usage['input_tokens'] + usage['cache_read_tokens']
+        fresh = usage['input_tokens'] if row.get('input_semantics') == 'fresh' else (
+            usage['input_tokens'] - usage['cache_read_tokens'] - usage['cache_write_tokens'])
+        total = fresh + usage['cache_read_tokens'] + usage['cache_write_tokens']
+        input_cost = (fresh + usage['cache_read_tokens'] * cfg['cache_ratio']
+                      + usage['cache_write_tokens'] * (cfg.get('cache_write_ratio') or 0))
         excess = max(0, total - scale * calls)
         factor = (context * calls + excess) / total if total else 1
         if cfg.get('_maintenance_scale_mode') != 'whole_invoice':
-            invoice = factor * (usage['input_tokens'] + usage['cache_read_tokens'] * cfg['cache_ratio'])
+            invoice = factor * input_cost
             invoice += usage['output_tokens'] * cfg['output_ratio']
-            cost_slope = calls * (usage['input_tokens'] + usage['cache_read_tokens'] * cfg['cache_ratio']) / total if total else 0
+            cost_slope = calls * input_cost / total if total else 0
             pricing = 'conditional_first_prompt_prefix_replaced_preserve_excess_and_all_output'
     proxy_output = after or cfg.get('_compaction_output_proxy')
     if (invoice is None and row.get('component') == 'compaction' and proxy_output is not None
@@ -93,7 +99,8 @@ def _component(row, cfg, context):
                 model_identity=row.get('parent_model_identity') or row.get('model_identity'),
                 model_contract=row.get('parent_model_contract') or row.get('model_contract'),
                 scale=before or scale, complete=row.get('usage_complete') is True,
-                duration=row.get('duration_seconds'), block_scope=row.get('block_scope'), proof=row.get('proof'),
+                duration=number(row.get('duration_seconds')), block_scope=row.get('block_scope'), proof=row.get('proof'),
+                planning_scope=row.get('duration_scope'),
                 source_kind=row.get('source_kind'), ownership=row.get('ownership'),
                 source_conversation_ref=row.get('source_conversation_ref'),
                 stopping_reason=('explicit_user_stop' if proof.get('failure_class') == 'explicit_interrupt'
@@ -113,7 +120,9 @@ def _combine(compact, noting, *, linked):
                 noting_source_kind=noting.get('source_kind'), noting_ownership=noting.get('ownership'),
                 noting_source_conversation_ref=noting.get('source_conversation_ref'),
                 noting_pricing=noting.get('pricing'),
-                duration=max(compact['duration'] or 0, noting['duration'] or 0),
+                duration=(max(compact['duration'], noting['duration'])
+                          if compact['duration'] is not None and noting['duration'] is not None else None),
+                planning_scope='paired_full_components' if linked else 'conditional_full_component_combination',
                 conditional=not linked, complete=cost is not None)
 
 
@@ -142,6 +151,12 @@ def scenarios(features, cfg, profile_type):
     for row in candidates:
         outcome = row.get('outcome')
         retained = row['retained'] if outcome in ('completed', 'partial') else 1.0
+        # Main block alone cannot prove completion of the longer background task.
+        planning = number(row.get('duration'))
+        if row.get('source') == 'legacy_joint_operation' and row.get('planning_scope') not in (
+                'joint_operation', 'joint_full_operation'):
+            planning = None
+        row = dict(row, planning_duration=planning)
         if row['cost'] is None or row['block'] is None or retained is None or outcome not in OUTCOMES:
             incomplete.append(dict(ids=row['ids'], reason='invoice_block_reduction_or_settlement_unknown', outcome=outcome))
             continue
@@ -170,7 +185,7 @@ def scenarios(features, cfg, profile_type):
         current_identity = cfg.get('model_identity')
         if current_identity and row.get('noting_model_identity') == current_identity:
             row['weight'] *= 4
-        row['weight'] *= math.exp(-max(0, reference - row['at']) / (14 * 86400))
+        row['weight'] *= math.exp(-max(0, reference - row['at']) / (cfg.get('recency_timescale_days', 7) * 86400))
     # Bounded deterministic stratification includes endpoints (slow/failure),
     # rather than filtering them in favour of a favourable p80 combination.
     complete.sort(key=lambda r: (r['at'], r['ids']))
@@ -201,10 +216,11 @@ def scenarios(features, cfg, profile_type):
                            retention_transfer='per_sample_absolute_ratio_envelope_at_actual_start; engineering_assumption_not_measured_bound',
                            recovery='unidentified_not_observed_zero; excluded_from_conditional_base_and_stressed_separately')
         profiles.append(profile_type(row['cost'], row['block'], row['retained'], 0,
-                                     row['source'], diagnostics))
+                                     row['source'], diagnostics, planning_duration=row['planning_duration']))
     summary = dict(source='empirical_joint_or_traceable_component_scenarios', samples=len(profiles),
                    unknown=incomplete[-24:], costs=[p.cost for p in profiles],
                    main_block_seconds=[p.duration for p in profiles], retained=[p.retained for p in profiles],
+                   planning_duration_seconds=[p.planning_duration for p in profiles],
                    source_ids=[p.diagnostics['scenario']['ids'] for p in profiles],
                    full_noting_duration_is_not_main_block=True,
                    scale_support=[r['scale'] for r in complete if r.get('scale')],
@@ -222,8 +238,9 @@ def scenarios(features, cfg, profile_type):
     # The representative fields keep old callers compatible; policy simulation
     # consumes every scenario and its own weight instead of this average.
     average = lambda key: sum(getattr(p, key) * p.diagnostics['weight'] for p in profiles)
+    planning = average('planning_duration') if all(p.planning_duration is not None for p in profiles) else None
     result = profile_type(average('cost'), average('duration'), average('retained'), average('recovery'),
-                          summary['source'], summary)
+                          summary['source'], summary, planning_duration=planning)
     stopped = tuple(profile_type(r['cost'], r['block'], 1, 0, 'external_stop_conditioned_receipt',
                                  dict(scenario=r, duration='elapsed_lower_bound_not_completion')) for r in stopped_rows)
     unknown = tuple(profile_type(r['cost'], r['block'], 1, 0, 'unclassified_stop_pressure_receipt',

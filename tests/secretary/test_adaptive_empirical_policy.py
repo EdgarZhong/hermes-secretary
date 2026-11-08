@@ -217,9 +217,8 @@ def test_long_user_work_end_retains_short_departure_protection_across_contracts(
         assert data['work'] == []  # Completion timing never imports another contract's workload.
     result = decide(snapshot(), rows, CONFIG)
     assert not result['fallback']
-    delays = [r['delay'] for r in result['diagnostics']['candidate_evaluations'] if isinstance(r['delay'], (int, float))]
-    assert delays and min(delays) >= 1800
-    assert result['delay_seconds'] is None or result['delay_seconds'] >= 1800
+    assert result['mode'] == 'hot' and result['delay_seconds'] is None
+    assert result['diagnostics']['stage']['quiet_age_seconds'] == 0
 
 
 def test_work_end_knowledge_time_cannot_protect_before_it_is_known():
@@ -315,6 +314,8 @@ def _observed_snapshot(owned, lag, *, damage=None, recent=None):
                 row['scope'] = 'gateway_adapter'
         else:
             row['ingress'] = 'web_submit' if i % 2 else 'gateway_adapter'
+            if row.get('model_key') == 'test':
+                row['model_key'] = runtime.model_key(parent)
     if damage in ('tail_gap', 'history_gap'):
         rows.append(dict(event_id='known-gap', kind='coverage_gap', source='framework', verified=True,
                          at=NOW - 1, start_at=NOW - (20 if damage == 'tail_gap' else 1800),
@@ -422,8 +423,9 @@ def test_qualified_history_uses_fresh_short_window_and_gap_safe_quiet_bound(obse
     assert observation['ready'] and not observation['live_ready']
     assert observation['current_span_start'] == NOW - 1700
     assert observation['silence_lower_bound_seconds'] == 1670  # Excludes the saved30s unknown tail.
-    assert diagnostic['behavior_prediction_qualified_prior'] and diagnostic['behavior_prediction_available']
-    assert not diagnostic['behavior_prediction_live_ready']
+    assert diagnostic['behavior_prediction_qualified_prior']
+    assert result['mode'] == 'hot' and result['delay_seconds'] is None
+    assert not diagnostic['current_activity_evidence']['live_ready']
     assert diagnostic['activity_features']['current_history_unknown']
     features = build_features(snapshot, rows, _settings(config))
     data = from_events(features['forecast_events'], features['arrival']['spans'])
@@ -431,9 +433,8 @@ def test_qualified_history_uses_fresh_short_window_and_gap_safe_quiet_bound(obse
     before = training_examples(data, NOW, 1800, config.get('timezone'))
     after = training_examples(tagged, NOW, 1800, config.get('timezone'))
     assert before and [(r['at'], r['x'], r['y']) for r in before] == [(r['at'], r['x'], r['y']) for r in after]
-    delays = [r['delay'] for r in diagnostic['candidate_evaluations'] if isinstance(r['delay'], (int, float))]
-    assert delays and min(delays) == 130  # 1800 protection, bounded by proven1670s rather than old user age.
-    assert result['delay_seconds'] is not None and result['delay_seconds'] >= 130
+    assert diagnostic['stage']['quiet_age_seconds'] == 1670
+    assert result['delay_seconds'] is None  # Do not reserve maintenance at protection expiry.
 
 
 @pytest.mark.parametrize('recent,minimum', [('user', 1795), ('work', 1798)])
@@ -449,9 +450,8 @@ def test_new_activity_after_gap_overrides_older_silence_bound(observation_owner,
     observation = result['diagnostics']['current_activity_evidence']
     assert observation['ready'] and not observation['live_ready']
     assert observation['silence_lower_bound_seconds'] == 1670
-    delays = [r['delay'] for r in result['diagnostics']['candidate_evaluations'] if isinstance(r['delay'], (int, float))]
-    assert delays and min(delays) == minimum
-    assert result['delay_seconds'] is None or result['delay_seconds'] >= minimum
+    assert result['mode'] == 'hot' and result['delay_seconds'] is None
+    assert result['diagnostics']['stage']['quiet_age_seconds'] == 1800 - minimum
 
 
 def test_partial_current_hour_uses_existing_unknown_axis_without_touching_past_origins():
@@ -472,9 +472,9 @@ def test_known_activity_after_saved_witness_still_resets_departure_protection(ob
     result = decide(snapshot, rows, config)
     diagnostic = result['diagnostics']
     assert diagnostic['current_activity_evidence']['known_activity_after_witness']
-    assert diagnostic['behavior_prediction_live_ready']
-    delays = [r['delay'] for r in diagnostic['candidate_evaluations'] if isinstance(r['delay'], (int, float))]
-    assert delays and min(delays) >= (1795 if recent == 'user' else 1798)
+    assert diagnostic['current_activity_evidence']['live_ready']
+    assert result['mode'] == 'hot' and result['delay_seconds'] is None
+    assert diagnostic['stage']['quiet_age_seconds'] == (5 if recent == 'user' else 2)
 
 
 def test_bootstrap_readiness_cannot_certify_a_known_current_gap(observation_owner):
@@ -487,7 +487,8 @@ def test_bootstrap_readiness_cannot_certify_a_known_current_gap(observation_owne
     snapshot, rows = runtime.snapshot(parent, db, ref, config, NOW)
     result = decide(snapshot, rows, config)
     assert result['diagnostics']['history_readiness']['qualified']
-    assert result['diagnostics']['behavior_prediction_available']  # Historical prediction remains labelled usable.
+    assert result['diagnostics']['behavior_prediction_qualified_prior']
+    assert result['mode'] == 'hot' and result['delay_seconds'] is None
     assert result['diagnostics']['behavior_prediction_qualified_prior']
     assert not result['diagnostics']['behavior_prediction_live_ready']
     assert not result['diagnostics']['current_activity_evidence']['ready']
@@ -498,7 +499,7 @@ def threshold_fixture(context=1000):
     from secretary import adaptive_policy as policy
     usage = dict(input_tokens=100, cache_read_tokens=0, cache_write_tokens=0, output_tokens=0)
     rows = [sample('compaction', context_before=1000, context_after=400, block_seconds=10, usage=usage),
-            sample('noting', usage=usage)]
+            sample('noting', usage=usage, duration_seconds=20)]
     cfg = policy._settings(dict(CFG, business_interval_seconds=None, hot_interval_seconds=60,
                                 horizon_seconds=1000, min_context_tokens=1,
                                 minimum_savings_fraction=0, minimum_savings_tokens=0))
@@ -625,7 +626,7 @@ def test_only_winner_is_probed_and_full_probe_keeps_terminal_stress_gate(monkeyp
 def test_stop_release_wait_reaches_formal_candidate_without_weakening_wait_limit():
     from secretary.adaptive_policy import _evaluate_maintenance
     receipt = Profile(150, 3, 1, 0, 'declared_paid_cancel')
-    profile = Profile(100, 1000, .1, 0, 'declared_complete', cancellation_scenarios=(receipt,))
+    profile = Profile(100, 1000, .1, 0, 'declared_complete', cancellation_scenarios=(receipt,), planning_duration=1000)
     def user(at):
         return dict(offset=at, calls=1, growth_tokens=0, output_tokens=0, duration_seconds=0)
     stop = dict(offset=3, activity='cancel', calls=0, growth_tokens=0, output_tokens=0, duration_seconds=0)

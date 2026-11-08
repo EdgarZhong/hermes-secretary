@@ -29,6 +29,8 @@ def touch_gateway_session(db, session_id):
         if config is None:
             return
         if ref:
+            from secretary.adaptive_refresh import refresh
+            refresh(db, ref)
             touch(db, ref, scope='gateway_adapter', at=time.time(),
                   monotonic=time.monotonic(), maximum_gap=20.0, config=config)
     except Exception:
@@ -49,6 +51,8 @@ def touch_profile(db, *, scope, at=None, monotonic=None, maximum_gap=20.0):
             config = adaptive_config.for_db(db, ref)
             if not config:
                 continue
+            from secretary.adaptive_refresh import refresh
+            refresh(db, ref, now=now)
             touch(db, ref, scope=scope, at=now, monotonic=clock, maximum_gap=maximum_gap, config=config)
     except Exception:
         logger.debug('Adaptive observation coverage unavailable', exc_info=True)
@@ -82,5 +86,8 @@ def touch(db, ref, *, scope, at, monotonic, maximum_gap, config=None):
                                    (at, payload, ref, state['identity'])).rowcount
             if not updated:
                 adaptive_store.event_conn(conn, ref, event)
+                # A new monitored segment can repair an evidence gap. Merely
+                # extending its tail is not another policy decision boundary.
+                adaptive_store.request_refresh_conn(conn, ref, at)
         db._execute_write(write)
         state['flushed'] = at

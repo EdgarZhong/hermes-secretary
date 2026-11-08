@@ -169,7 +169,9 @@ def test_real_policy_is_called_with_only_visible_numeric_inputs():
             return adaptive_policy.decide(snapshot, history, config)
     result = Replay(package(), case(20), Observed()).run()
     assert len(result["decisions"]) == 1
-    assert result["decisions"][0]["decision"]["fallback"]
+    decision = result["decisions"][0]["decision"]
+    assert not decision["fallback"] and decision["mode"] == "hot"
+    assert decision["delay_seconds"] is None
 
 
 def test_negative_prompt_jump_is_unknown_not_observed_zero_growth():

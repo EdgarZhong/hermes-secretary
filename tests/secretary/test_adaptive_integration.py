@@ -115,6 +115,46 @@ def test_policy_receives_current_turn_and_next_actual_instant_due(owned, monkeyp
     assert any(event["kind"] == "turn_end" and event["at"] == now and event["context_tokens"] == 5000 for event in history)
 
 
+def test_host_tick_observes_history_import_from_another_process(owned):
+    """An importer cannot notify the in-process Main owner directly."""
+    import subprocess
+    import sys
+
+    from hermes_cli.heartbeat import HeartbeatState
+    from secretary.heartbeat_store import ConversationHeartbeatStore
+
+    parent, db, ref = owned
+    heartbeat = ConversationHeartbeatStore(db, "main")
+    heartbeat.save(HeartbeatState("", 10800, created_at=100))
+    worker = """
+from pathlib import Path
+import sys
+from hermes_state import SessionDB
+from secretary.adaptive_import import import_samples
+from tests.secretary.test_adaptive_empirical_wiring import _sample
+db = SessionDB(Path(sys.argv[1]))
+try:
+    receipt = import_samples(db, sys.argv[2], [_sample()], import_id='external-worker',
+                             source_sha256='c' * 64, apply=True, now=200)
+    assert receipt['applied']
+finally:
+    db.close()
+"""
+    assert db.try_acquire_session_turn_lease("main", "active-host-turn")
+    try:
+        subprocess.run([sys.executable, "-c", worker, str(db.db_path), ref], check=True, timeout=30)
+        assert heartbeat.load()._adaptive_interval_seconds == 10800
+    finally:
+        db.release_session_turn_lease("main", "active-host-turn")
+    # This is the normal recovery tick. No new user submission or Main Turn
+    # has ended in the owning process since the import.
+    noting.maybe_run_idle_noting(parent, db, ref, now=201)
+    state = heartbeat.load()
+    assert state._adaptive_interval_seconds == 60
+    assert state.created_at == 100 and state.last_fired_at == 0 and state.fire_count == 0
+    assert db.noting_idle_state(ref) is None
+
+
 def test_native_rewind_invalidates_old_context_plan(owned, monkeypatch):
     parent, db, ref = owned
     monkeypatch.setattr("secretary.adaptive_policy.decide", lambda *args: {"mode": "hot", "threshold_tokens": 4000, "delay_seconds": 10})

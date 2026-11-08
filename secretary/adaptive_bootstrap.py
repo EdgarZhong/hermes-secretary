@@ -192,7 +192,7 @@ def preview(db, ref, package, *, bootstrap_id, now=None):
         prior = _prior_receipt(conn, db, ref, package, bootstrap_id)
         receipt = prior or _prepare(conn, db, ref, package, bootstrap_id, now)[3]
     return {**(prior or receipt), 'already_applied': prior is not None,
-            'adoption': 'next_natural_turn_boundary_only'}
+            'adoption': 'immediate_if_idle_otherwise_next_native_boundary'}
 
 
 def apply(db, ref, package, *, bootstrap_id, now=None):
@@ -211,7 +211,10 @@ def apply(db, ref, package, *, bootstrap_id, now=None):
         if frontier:
             _recover_frontier(conn, ref, frontier)
         return receipt
-    return db._execute_write(write)
+    result = db._execute_write(write)
+    from secretary.adaptive_import import _notify
+    _notify(db, ref, now)
+    return result
 
 
 def _recover_frontier(conn, ref, event):
