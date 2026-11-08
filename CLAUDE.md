@@ -17,6 +17,18 @@
 - **Agent自主收敛／待追认：Candidate同Task来源形式切换。** 原空白：旧合法direct→refs操作与新旧Task节点不可删约束如何同时成立。决定：仅尚未提交且唯一节点属于本Task时，允许显式清空当前工作槽并切为合法refs；任何旧Task直接节点仍禁止删改。理由：继承原来源二选一操作并保持旧节点约束。影响：当前Task工作态边界，无迁移／旧节点特权。已实现，正式工具／恢复／原子失败98项通过；独立Verification／Validation已通过，已上线。
 
 
+## 2026-11-08 · 后端性能修复集成与工具内存归因（未部署，归因调查继续）
+
+用户将History结果写回长停顿、Noting工具极慢与同机代理不稳统一交本会话处理，后继明确先修改swap，再追问具体哪些工具使内存暴涨／是否泄漏，要求先给准确归因。12:28:57只读复核swappiness60、swap920MiB、available1497MiB，SSH重新可用；先前握手阻塞及Linux环境失败保持原时点证据，不称代理长期稳定。
+
+`codex/backend-performance-20261108`产品0ab162f／收尾34c92ab已亲审并沿SOP合入当前main候选，基于前端文档收尾ac49928；根三文档先恢复main再人工吸收本节与README预算事实，前端AGENTS／06及全部最新状态保留，未混原算法分支或个人资料。性能：anchor／coverage同正式路径一次窄读取，去无关Full审计payload／Prelude，Store单操作及同写事务复用source谓词、写事务fresh及Snapshot最终再验保留。P2：早期watchdog框架banner不再普通Assistant落库或作模型final，真实partial、工具结果、hidden闭合与原human_only失败回执保留。
+
+用户明确确认仅Noting每Turn50次后注入预算续跑control，沿同child／Task／工作态进入下一Turn，整个任务最多5Turn；第5次才forced保存／收尾，Main／失败／取消／overflow不改。新增正式测试41项和独立反证7项通过，含原生50次边界、2Turn／52受控请求正常finish、同prefix／tools、一个Snapshot。相关旧回归17项Note／observer等失败已在9ac基线逐项复现，不称全套绿；旧恢复夹具缺source_description及schema旧字段集合已补，相关83项通过。冻结十检查9过、health15文件0阻断0提示；no-tmp仅未改历史同blob35daf556…eb724。产品树与被审候选逐SHA核对复用有效证据，不为merge重跑大套。
+
+**工具内存归因进行中：** 已证高开销为notebook_archive、update/create逐来源／条目反复全History，Show coverage重复全源，以及conversation_history完成后的公共结果写回再做Full审计。此前合成累计解码约831／987MB不是同时峰值，不能把1.7GiB全归单工具。原生trim归还818152KiB（约799MiB）说明可释放分配器保留参与，尚未证永久泄漏；现安排只读源码＋Linux受限合成逐工具RSS／tracemalloc／重复后GC和trim量测，不读用户历史做fixture、不追加产品优化或生产模型／停服／部署。
+
+既有Linux标准runner因release环境无pytest自动准备后在锁校验失败而未执行，真实模型0请求／凭据未解析；后继正式环境复核与Prompt样本仍待补。完整实现、独立报告、指纹、限制在`../hermes-secretary-backend-performance-20261108/.hermes-dev/backend-performance-20261108/report.md`，新内存归因另存同目录memory-attribution；运维和回滚仅记operations-log。前端main baed6c4保持未部署，后端本轮也不部署。
+
 ## 2026-11-08 · Timeline辅助消息分组折叠（本地完成，未部署）
 
 本地实现与主会话亲审完成：逐条正文保留、active与尾段保护、控件同Agent正文列宽、刷新／同事件重放缓存及阅读锚点交接均已验。独立R1/R3/R4反例已修：native typed首帧证明区分同UID多段、混合压缩正文统一参与阅读投影、已证Turn输入保住Steer前段；唯一来源live→部分／完整历史保选择和DOM，不用UID猜歧义段。最后131项及原4反例通过；root实际隐藏IAB三正文两组false/true重载重放保持，宽度差<0.01px。旧无typed证明且同UID歧义仅保document选择，不错误持久映射。证据UI ignored `.archive/timeline-folding-20261108/review-alias.md`及`root-native-replay.json/jpg`。
@@ -40,7 +52,7 @@ Compaction包已修原生compression lineage延续识别及当前history proof�
 **用户最新分工确认：** conversation_history超时与新出现的Hermes工具普遍极慢统一转交同工作区会话「检查 Alex 定制会话状态」（`01a1b942-80a7-7f71-bc01-8517615dc6ba`）。已发送旧712秒报告、9ac8096真实修复边界、测试／计时证据及工作区保护要求；该会话接续新现场内存压力／锁等待／420秒超时的因果调查。本会话仅收尾前端及既有9ac8096的只读复核，不重复开展后端性能实现，不把静默回执修复冒称耗时根因已闭。
 
 
-后端修复`9ac8096`已在隔离工作区合main并成功推送`origin/main`，未部署；首次自动push及普通重试曾遇GitHub TLS错误，收尾正常重试已成功（root-main-push-final.log）。真实watchdog系统中断保interrupted事实并显式failed/error，经原失败Turn提交点形成human_only的真实failed_turn回执；保已完成工具结果与后续未执行标记，用户Stop／旧观察否决不升级失败，不伪造模型正文或重放。160项定向回归、最后增量16项、staged ruff／health通过；ACP两项因可选依赖缺失未验。主会话已亲审正式工具提交／finalizer／实时终态／RPC与REST冷读接线；独立复核确认主批次修复成立，但早期retry/backoff系统中断仍将框架说明落成普通Assistant并进入模型上下文（P2，真实Agent／SQLite已复现）。该残留及独立报告已追加交给后端负责会话统一修复，9ac8096不得作为完整通过包直接发布。证据在隔离工作区ignored `.hermes-dev/tool-batch-interrupt-20261108/report.md`。现场712秒阻塞耗时根因仍未证实，合成200／2000条历史未重现，不擅改Notebook／state或调大timeout。
+后端修复`9ac8096`已在隔离工作区合main并成功推送`origin/main`，未部署；首次自动push及普通重试曾遇GitHub TLS错误，收尾正常重试已成功（root-main-push-final.log）。真实watchdog系统中断保interrupted事实并显式failed/error，经原失败Turn提交点形成human_only的真实failed_turn回执；保已完成工具结果与后续未执行标记，用户Stop／旧观察否决不升级失败，不伪造模型正文或重放。160项定向回归、最后增量16项、staged ruff／health通过；ACP两项因可选依赖缺失未验。主会话已亲审正式工具提交／finalizer／实时终态／RPC与REST冷读接线；独立复核确认主批次修复成立，但早期retry/backoff系统中断仍将框架说明落成普通Assistant并进入模型上下文（P2，真实Agent／SQLite已复现）。交接后该P2已由后端负责会话在0ab162f修复并随本轮集成；9ac8096本身仍不作为完整通过包，性能归因和真实模型／Linux验收限制见顶部后端段。证据在隔离工作区ignored `.hermes-dev/tool-batch-interrupt-20261108/report.md`。现场712秒阻塞耗时根因仍未证实，合成200／2000条历史未重现，不擅改Notebook／state或调大timeout。
 
 用户提供正式机`/home/ubuntu/workspace/问题报告/Hermes_工具结果写回卡顿与看门狗中断_2026-11-08.md`并要求一并修复，随后明确重点：一次并行conversation_history调用中，看门狗返回结果后直接结束Turn且用户未见明确原因；不能预设Notebook为根因。报告显示工具本体完成后712秒触发系统中断、response_len=0，单帧栈仅为当时写回位置，不证明耗时归因。先复现工具批次→系统interrupt→后端终态→前端提示；区分工具错误、未执行skipped、提交完成与系统强制终止，保用户取消语义、未执行标记及写入不重放。仅有证据后修正式接线，不调大watchdog阈值、不擅改Notebook业务语义，不生产试发／重启／部署。
 

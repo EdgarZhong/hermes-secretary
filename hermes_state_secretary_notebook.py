@@ -168,15 +168,17 @@ class SecretaryNotebookMixin:
                         (conversation_ref,)).fetchone() is None:
             raise NotebookError("Unknown Conversation Ref")
 
-    def _notebook_anchor_positions_conn(self, conn, conversation_ref):
+    def _notebook_anchor_positions_conn(self, conn, conversation_ref, *, source_rows=None):
+        sources = (self._foreground_source_rows_conn(conn, conversation_ref, projection_only=True)
+                   if source_rows is None else source_rows)
         anchors = {row["message_uid"]
-                   for row in self.get_full_foreground_conn(conn, conversation_ref)
+                   for row in self._foreground_conn(conn, conversation_ref, full=True, source_rows=sources)
                    if row.get("message_identity") and not row.get("is_compaction") and row.get("message_uid")
                    and (row.get("display_metadata") or {}).get("noting_run_output") is not True}
         positions = {}
         # Compaction carries the same logical message into a later physical row.
         # Its display position changes, but its frozen coverage does not advance.
-        for index, row in enumerate(self._foreground_source_rows_conn(conn, conversation_ref)):
+        for index, row in enumerate(sources):
             if row["message_uid"] in anchors:
                 positions.setdefault(row["message_uid"], row.get("_notebook_coverage_position", index))
         return positions

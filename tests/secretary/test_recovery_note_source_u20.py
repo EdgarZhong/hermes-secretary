@@ -85,7 +85,8 @@ def failed_carried_task(runtime, monkeypatch):
         if len(calls) == 1:
             return _tool_response("notebook_create", {"entry_type": "matter", "fields": {
                 "description": "Valid work from the carried source", "completion_condition": "Reviewed"},
-                "source_message_uids": [admissions(db)[-1]["anchor_message_uid"]]}, "create")
+                "source_message_uids": [admissions(db)[-1]["anchor_message_uid"]],
+                "source_description": "The carried source establishes this synthetic unfinished work."}, "create")
         raise reject()
     client.chat.completions.create.side_effect = failing_provider
     def failed_summary(messages, **kwargs):

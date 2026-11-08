@@ -1,5 +1,33 @@
 # 运维记录
 
+## 2026-11-08 · 启用更积极的swap策略（用户明确授权）
+
+用户将History结果写回超时、Hermes工具极慢及代理不稳统一交本会话排查，并明确先让既有4GiB swap发挥作用。11:54:01+08核实`/swap.img`2084564992字节、`/swap-extra.img`2210402304字节均已启用、used0；现有`/etc/sysctl.d/90-local-memory-policy.conf`明确设`vm.swappiness = 0`，文件root:root／0644。
+
+11:54:30仅将该已有文件及其说明改为swappiness60，并执行定向`sysctl -w vm.swappiness=60`；运行值／持久文件均重读60，未执行全量sysctl reload、swapoff／mkswap、服务重启、OOM策略或其它配置修改。修改前原件保存在Alex受限`/home/ubuntu/.local/state/hermes-secretary/swap-20261108/90-local-memory-policy.conf.before`，目录0700、备份0600；回滚可恢复原件并定向将运行值设回0，不关闭swap。
+
+变更后即时available516MiB、Swap used0（策略调整不强制立即写出页面）；Web3652784、Gateway2129043、sing-box3197均active，重启计数分别0／1／0且PID保持。该时点压力下降不能全归因swap：变更前11:53:31原生`mem_trim`已将Web RSS1726940→908788KiB，匿名内存1718216→899636KiB，818152KiB（约799MiB）归还；11:53:41 Noting的notebook_show在218.84秒后返回。既有malloc_trim前后证据支持继续核大对象分配／分配器保留和重复全历史读取，不据此认定永久泄漏或已修性能根因。用户Clash故障报告也指同机资源紧张及代理握手/DNS超时，报告内建议不自动转为执行授权；本次不修改代理、客户端DNS或模型配置。
+
+11:55:24复核Swap used3MiB／available407MiB；11:55:53进一步used87MiB／available416MiB，memory full PSI avg10=0.56%／avg60=5.11%，策略已实际换出页面。Noting自然继续，最近更新17.95／22.41秒、归档18.57秒（仍偏慢，不冒称代码性能已修或代理全链恢复已验）。内核journal证实10:52:19全局OOM杀Gateway旧PID3652786，与此前watchdog故障同窗口；不能把该OOM误称Web被杀或本次重启。
+
+12:02:22进一步available1555MiB／swap921MiB，memory full avg10=0／avg60=.15%，三个服务未人工重启。本机原7897代理访问gstatic单次HTTP204／0.316551秒，不冒称长期／全部站点稳定。12:02:54只读库确认：Noting在50次预算上限后沿原生forced收尾，12:00:09.822726已提交`snap_1c3bf966a4d749df855ffc561ebbe1d3`并成为current pointer，12:00:13.478430任务committed/completed，child随后agent_close；未收到正常finish_noting，不能据此称全部整理内容已完整验收。本轮没有人工中断或再次触发整理。
+
+**后继验收限制：** 在受限候选source目录尝试标准Linux测试入口时，正式运行环境缺pytest，runner自动进入环境准备并在resvg-py缺publish-time的依赖锁校验失败，测试未执行；未重试安装／修锁。随后完整SSH握手反复超时，物理网卡TCP22约51ms且能收到真实banner、8443约97ms；无法完成远端环境／服务后继复核，不冒称正式环境经证明完全无变化。候选源码留在`/home/ubuntu/.local/state/hermes-secretary/backend-performance-20261108/source`，原生真实模型样本未执行、凭据未解析。已记录这一环境与连接限制，不把它归成产品测试失败或宣称代理长期稳定。
+
+## 2026-11-08 · Noting长时未结束与服务器内存拥塞（只读调查）
+
+用户报告Alex置顶定制Conversation的Noting跨过下一次Heartbeat仍未结束。11:45–11:50+08通过`ssh alex`只读核验，正式仓库仍main `8b32bb31`，Web PID3652784／NRestarts0；Gateway当时PID2129043／NRestarts1，不能沿用早上双服务均0的旧结论。本轮未停止任务、重启、写生产库／配置、调用模型或发布代码。
+
+目标Noting为manual任务-7／child `noting_7442a4dbcf90459f`，11:11:26开始，模型gpt-6.1-sol-900k／high；在核对已发生外部写入的Conversation证据，更新和归档来源条目及Candidate。Main原生压缩于11:16:28已经提交（303.204秒、613→1消息），不是等待本次压缩结束。11:39:28下一次Heartbeat确实被claim，11:40:54进入Main Turn，后续调用Scheduler；后台Noting仍并行，不能把Heartbeat开始视为Noting完成条件。
+
+Noting模型请求前期约5–30秒且近完整缓存命中，本地Notebook操作却从6–20秒增至84.30／124.04／149.29／138.88／137.19秒。11:38:25归档Candidate271，11:45:25工具等待超过420秒返回timeout；该回执不是Noting任务终态，也不能证明后台工作线程已经退出。11:50:00 child再次调用notebook_show；11:50:19只读库仍为38次API、76条消息、ended_at=NULL、task running/admitted、snapshot_id=NULL。没有成功finish_noting或最终Snapshot提交证据。
+
+11:50:19服务器内存3659MiB、available52MiB，Swap4096MiB但used0；load17.01/14.61/9.71，memory PSI some avg60=60.44%、full avg60=53.25%，CPU PSI some avg60=3.86%。Web RSS1720140KiB、NM588868KiB、Gateway390296KiB。11:43起事件循环反复停顿5–20秒，11:45:43报Web持state.db WAL写锁且等待超过20秒，11:47:30 WS发送失败并断开。已证严重内存争用／停顿与Notebook分钟级操作及Web退化同期，不能归因纯模型慢或纯前端计时残留；尚无现场具体worker栈／分配轨迹，不能认定某一Notebook函数、死锁或内存泄漏为最终代码根因。代码可见每次变更涉及全工作态来源校验及History读取，仅作后续定位线索，不冒称已证瓶颈。
+
+建议恢复优先于继续等待：如用户授权，先封存现场并停止本轮Noting；停止无法释放工作线程／内存时再考虑正常重启。中断可能丢失尚未提交Snapshot的工作态，因此本次检查不擅自执行。保护现有算法、UI及History中断修复并行工作，不混入本次调查。
+
+
+
 ## 2026-11-03 · 长空闲证据与风险／成本模型修复上线
 
 用户明确“上线一下吧”，产品`8b32bb31103e422e2ec6add1ff0f1b9b15131b53`已提交、自动push并快进合入main／push；23:42:31+08正式受限执行器返回verified（精确时间以receipt为准），云端保持main。Web／Gateway实际版本一致，双服务active／running、微信connected。发布复用已核同SHA源码的152项测试与9项检查通过证据；历史no-tmp失败不变，未降门禁。依赖／前端／Prompt／工具定义无变更，不重建APK、不清缓存、不改模型／阈值／生产参数。

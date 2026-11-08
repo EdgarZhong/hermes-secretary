@@ -1370,20 +1370,28 @@ def abort_turn_on_interrupt(
     agent: Any, messages: List[Dict[str, Any]], conversation_history: Any, api_call_count: int, *,
     abort_message: str, interrupt_text: str,
 ) -> Dict[str, Any]:
-    """Announce ``abort_message``, close any open tool sequence with ``interrupt_text``,
-    persist, clear the interrupt and return the ``interrupted`` result dict."""
+    """Persist an interrupted recovery exit without turning framework copy into model output."""
     _vlines(agent, f"⚡ {abort_message}")
     # Empty-response recovery can leave a synthetic assistant+nudge pair after an
     # already-executed tool result. Strip only that request-local scaffold before
     # closing, so this exit owner can persist its specific interrupt reason.
     agent._drop_trailing_empty_response_scaffolding(messages)
-    close_interrupted_tool_sequence(messages, interrupt_text)
-    agent._persist_session(messages, conversation_history)
     from agent.turn_abort_receipt import retain_system_abort
     result = retain_system_abort(agent, {
         "final_response": interrupt_text, "messages": messages, "api_calls": api_call_count,
         "completed": False, "interrupted": True,
     })
+    if result.get("failed"):
+        # This caller owns interrupt_text as framework copy. The typed failed-Turn
+        # closer supplies its human-only notice; only real delivered text is a reply.
+        result["final_response"] = settle_delivered_partial(
+            agent, messages, getattr(agent, "_persist_user_message_idx", None))
+        if result["final_response"]:
+            result["partial"] = True
+        close_interrupted_tool_sequence(messages)
+    else:
+        close_interrupted_tool_sequence(messages, interrupt_text)
+    agent._persist_session(messages, conversation_history)
     # The turn was stopped, not rebuilt: a pending steer was aimed at this turn's next
     # tool iteration, which will no longer happen — drop it (hard-cancel semantics).
     agent.clear_interrupt(hard_cancel=True)
