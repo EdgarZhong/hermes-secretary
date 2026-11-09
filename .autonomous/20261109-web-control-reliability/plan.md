@@ -20,9 +20,9 @@
 
 ## 3. 当前状态与编排
 
-**当前版本及复审：** FE0d6ad1a15a4cf30eb14ea3a7863d2a11abdb4a94与BE产品3c07ea66420c8a52da4cb8784cd0bb615fb65883均已root亲审/提交推送。D35/D36六前端接缝和原生三可选Context事实完整接线；14完整643绿/零跳过，BE按影响复用53及最后37绿，类型/冻结health/指纹通过。原scope/草稿/迟到/菜单/真实DTO/Provider红均保留，V4固定75e仍98符合/4违规/4后继缺证，不回写历史；新候选等待fresh全轮独立复审。
+**当前版本及复审：** FE79ccd36886e26a84b37f2b02b96b4cfbd088e695已提交推送，BE产品3c07保持。D37五产品/一测试由root亲审，14完整文件684通过；最终App149定向复验、type/冻结health通过，382源指纹核实。V5固定BE322/FE0d6的70项66符合/1违规/3后继缺证及FAIL保留；新候选尚待全新V6整轮复审，不用工程接收替代独立判定。
 
-**当前分工与依赖：** D35/D36整包已接收，root将启动fresh无上文全轮Verification；apk_finish已恢复按0d6ad1重建，旧75e归档。技术问题关闭后另独立Validation，实际静态实例/故障转发仍在ignored web-control-validation-20261110（59883/84/85），需按最终BE HEAD重启并绑定新静态再验。main联合发布、V4自然运行、最近两套三库及root交付均未完成；线上9270933/cd5/0.1.13未变，目标工具paused事实保留、按用户继续执行。
+**当前分工与依赖：** frontend_finish整包已交回；apk_finish恢复79ccd的0.1.14/1014构建，先完整归档0d6，保既有四目录。V6全新独立审查先原文判据再实现，root负责全局覆盖、证据接收、后继独立Validation和发布。当前原生静态实例PID63343/BE322/FE0d6的root UI证据按影响复用，最终候选须更新静态/重启隔离原生服务后补受影响实际入口。main联合发布、V4自然运行、两套三库及最终交付仍待完成，生产9270933/cd5/0.1.13未变。
 
 **21:18当前执行事实：** B1正式Lock／D18包已由root亲审；D20排序包已接收，49传输／52身份回放／4stdio证据有效，root核hook、Tee、旧子类和健康端credit接线。root两行旧字符串queue兼容修正获3项绿；protocol另两失败在未改12e同源基线复现（`root-protocol-baseline-two.log`），不算本轮新回归。F1 R5（37源清单15bcb…）285项／type／health及真实网络lost-ACK链已交；root实IAB终态Stop通过，D24异步owner反例补验中。新joint lab使用当前B1＋D20及修正后的真实streaming返回探针，frontend_control_resume独占联调动作，补维护／API返回至terminal连续链；root不并发操纵。apk_release_prepare仅五版本文件及ignored构建证据，待最终源冻结后打0.1.14。尚未独立双门禁、main合并或发布；旧表的调查描述保留为发现时点，当前状态以本段和后续闭合证据为准。
 
@@ -99,6 +99,10 @@ D36菜单后继：实际Reasoning点击证setter后再裸ensureBinding，迟到�
 
 D36联调契约：14文件630绿后补原生真实Context.model得两持续Retry红，分版本保留。root选择原生快照提供3optional事实model_switch_pending/context_model/context_provider，覆盖冷开/重连/连续pending，避免仅记ACK旧值的局部补丁。backend_control白名单session_usage统一纯投影、server两info facade、methods_session._resume_live_unpersisted/_cwd_info、model_switch._lazy_info_route、contracts/common、对应正式tests及官方生成的apps/shared两合同文件；不改原模型写/应用/数据库/依赖。frontend_finish在已准配置/Context接缝接入，额外仅controller-event-effects.sessionInfoRecoveryReason纳入3字段真实变化；不变/省略不假变更。已证pending源对应但目标不兼容或身份未知保退休/unknown并成功读；完整身份匹配才恢复数值，真实源矛盾继续错；原630与新红不互相覆盖。V4讨论见§6，两个包仍待root亲审、新完整审查和Validation。
 
+D37：V5按06 §0.7第6条从正式App复现/model、/reasoning遇4001仅1写/0恢复，两原红保持。root方案与V5评审为共享Controller.setSessionConfig/writeOwnedSessionConfig和命令boundary，合法fresh回调仅原操作继承；第二次失败真实可见/保稿，confirm_required保稿/原native提示，不假已应用；unknown/非4001不重放。reasoning原显示词与effort别名按原优先级仅规范本地echo，raw写不变。
+
+D37实施又证fresh已安装、第二ACK未返时真实beginEdit/输入触发旧bound缓存，activate旧runtime4001，UI卡在Rewind确认前；根与V5认可集中binding安装点失效旧bound/selection/在途结果，既有当前可见有限对账、legacy不重复承担，初次/同runtime不自退、后台A不扰B。原runtime-cache-red稳定WIP源两红2.42s；后继需真正走完accepted Rewind再放旧ACK，不把前置卡住称为后置已验。fresh谱系/epoch合法失败边界不人为复活。root原生隐藏IAB的pending模型＋强制4107＋同doc恢复/草稿/Steer接续证据在root-d35-d36-ui，绑定0d6，不能关闭D37。
+
 **后继事实（用户追问关闭与抽象提示）：** 用户明确20:42同页面发送后没有关闭页面操作。closed不是server主动关闭的同义；该1005来自原ASGI WebSocketDisconnect而非日志默认值，RFC定义需与实际服务栈确认；close_origin_audit只读调查主动关闭入口/重连调度/观察者异常隔离，不改F1产品。20:44有重新接入不等于同页自动恢复成功。unknown提示由项目Web初始27c5cb4已有，原身份受理查询ad7e484/9fabcdd于10/21加入，非Hermes原生错误，非本轮新增。用户批评抽象红错与失去控制，F1将沿已授权自动查询语义改为明确待确认状态，确认后自动退休；不新增盲重放或常驻门禁。
 
 U13实现期诊断辅助`stream_control_diagnosis`已委派（gpt-6.1-sol/high、fork none、无派生），仅线上同源main12e工作区ignored探针；只读正式后端，调查OutputIdentity/消息持久与终态、连续内部Turn/recovery证明。不是独立Verification门禁，不改产品／根文档／生产，整包交回root。B1与F1仍为唯一对应实现owner。
@@ -128,3 +132,5 @@ Stop接口收口：旧`session.interrupt`默认保持；新Web可选`input_polic
 发布准备仅本地ignored目录`.hermes-dev/web-control-reliability-20261109/release/`：沿旧已审remote_release/retention原字节，独立stage-20261109-web-control-014；expected_old=9270933、新包0.1.14/1014，尚未运行prepare／上传／发布。发布时按实际manifest核资源集合，不以旧439数量代替内容验真；保新批次和013、核验后清退012旧数据库集合。
 
 快照：12e2b45冻结；2e91189纳入V4、核心文档保护与27模块指纹核；25baafb计划、63bd98f编排更新。新控制首版实施中，尚未整包亲审或独立验收。生产模型／排期／数据／凭据不作测试；原算法dirty与Huawei目录保持。
+
+D37工程接收（79ccd）：正式配置写共用原setter/helper；bindingInstalled统一旧bound/selection/在途资格交接、保自身合法source读取，有限cut后新runtime对账；reasoning仅本地echo规范化，raw RPC不变。root核真实accepted Rewind后的迟到ACK草稿与通知不变、旧读取退休、同runtime/初次/后台不自退及合法4001一次/第二失败/确认/unknown边界。14完整文件684通过、最终App149/类型/health有效，原两slash红及两cache红保留。该项等待V6独立关闭。

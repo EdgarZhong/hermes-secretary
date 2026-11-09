@@ -26,17 +26,21 @@
 
 ## 2026-11-09 · 故障全面复核与Web输入运行归属（新授权）
 
-**当前阶段：D35/D36前后端整包已由root亲审、提交并推送，等待fresh全轮复审。** FE `0d6ad1a15a4cf30eb14ea3a7863d2a11abdb4a94`，BE产品 `3c07ea66420c8a52da4cb8784cd0bb615fb65883`。命令精确boundary贯穿实际发起、临时结果、后继写与草稿消费；两个设置菜单移除独立绑定，共享原setter/配置恢复及合法4001后继资格，保原确认与反馈。配置域共享权威绑定读取，旧Promise/owner/epoch/round不能提交；没有新增运行态owner/输入门禁/写重放。
+**当前阶段：D37已由root亲审并提交，准备全新V6整轮独立复审。** FE `79ccd36886e26a84b37f2b02b96b4cfbd088e695` 已推送；BE产品仍 `3c07ea66420c8a52da4cb8784cd0bb615fb65883`。slash model/reasoning共用原生4001一次恢复管线，实际binding安装集中退休旧读取；初次/同runtime不自退、后台A不扰B、合法fresh仍须有限cut确认，确认未应用与真实失败保稿。root已亲读五产品/一测试diff、上下游及382源清单，14完整文件684通过；仅测试夹具类型/复杂度整理后App149再验，类型及冻结health通过。真实accepted Rewind后迟到ACK、scope/ABA/epoch及fresh缓存反例已覆盖。证据FE ignored d37/report.md、source-manifest.json（a8f02be5…8abee），不冒真实IAB或独立验收。
+
+V5固定0d6的70项66符合/1违规/3后继缺证及技术FAIL原样保留，D37工程接收不回写旧判定。apk_finish已恢复按79ccd重建0.1.14/1014，0d6及更旧APK均不可发布。全新V6先仅原规格建立全范围判据，再读实现证据；通过后独立Validation，最后main联合发布及V4自然运行核验。
 
 原生SessionLiveInfo新增可选model_switch_pending/context_model/context_provider，后两项与既有Context计算身份同源，cold不冒物理运行模型。前端区分源事实矛盾、合法pending目标不同和明确未知：合法过渡保退休/unknown并结算成功，无伪Retry，不把旧占用灌入新选择；完整已知匹配才恢复数值。三字段真实变化沿原局部配置失效，省略不当false。真实DTO补齐后发现的持续Retry及同名跨Provider反例均保原件；不把630中间绿回填为当时真实pending已过。
 
-root已亲读FE六产品/五测试差异、正式生命周期/失败处理及分类；14完整文件643通过、零跳过/排除，类型/冻结health通过，382源逐SHA核对。BE五产品/三测试/两官方生成件已亲审，相关53项及最后两个完整文件37项按影响复用，原全局emitter inventory旧orphan单独排除/披露；未冒全仓全绿。脱敏异常保真实traceback，unknown Provider不伪精确身份，无新增健康豁免。证据为FE ignored d35-d36/report.md与manifest（5dbc148a…6957），BE ignored deferred-model-context/report.md与manifest（af80bbc6…c5fe）。V4固定75e的106条98符合/4违规/4后继缺证及全部研讨原判定保留；D34已被该次复核关闭，本次实现接收不代替新独立门禁。APK负责人已恢复按0d6ad1重建0.1.14/1014，旧75e包必须归档且不可发。
+root已亲读FE六产品/五测试差异、正式生命周期/失败处理及分类；14完整文件643通过、零跳过/排除，类型/冻结health通过，382源逐SHA核对。BE五产品/三测试/两官方生成件已亲审，相关53项及最后两个完整文件37项按影响复用，原全局emitter inventory旧orphan单独排除/披露；未冒全仓全绿。脱敏异常保真实traceback，unknown Provider不伪精确身份，无新增健康豁免。证据为FE ignored d35-d36/report.md与manifest（5dbc148a…6957），BE ignored deferred-model-context/report.md与manifest（af80bbc6…c5fe）。V4固定75e的106条98符合/4违规/4后继缺证及全部研讨原判定保留；D34已被该次复核关闭，本次实现接收不代替新独立门禁。0d6旧APK构建已完成，现归档后按79ccd重建；旧候选均不可发。
+
+root实际隐藏IAB已在最终0d6静态＋新BE322源验证：活动Main选择待应用lab/summary，真实info selected新/Context旧且无Retry；强制4107关闭后同document自动恢复，timeOrigin三次均1794260887428.4，草稿保留，Enter Steer受理，后继真实新模型Turn完成、旧组保持折叠，最后Context 5%/无Receiving。两次provider均为本地受控模型；两client_connection_id、一次故障关闭、两个明确prompt和一次config写，无自动写重放。初始只读4010及11次被fixture拦截的外部元数据尝试如实记录；不冒自然网络/独立Validation/无错误全绿。证据ignored root-d35-d36-ui/verification.json，启动46源/实际新bundle已绑定；不证明尚未修的slash4001。
 
 D32/D33的3产品/5测试已亲审，12完整536项零失败/跳过/排除，类型/冻结health通过；旧13红逐项按当前合同修正合法夹具，真gap保留。root真实隐藏IAB附件Enter/Stop/Interrupt零上传、原Pending-only后继、草稿/旧展开保持；Orb预取和43帧双向曲线通过，产品SHA稳定。FE ignored d32-d33/report.md及BE ignored root-d32-d33-ui为证据，不把旧失败报告改成通过。
 
 D31已完成后端成功发布点锁外通知、39正式测试、真实完整App/WS/native链；root追加真正隐藏IAB：首读unavailable后仅释放exact元数据，source/rows保持即可自动gateway，新条目结束前逐条显示，外部结束后Web Enter/Stop可用，旧手动展开保持。actor exit0，证据ignored `root-d31-ui/verification.json`；不是独立Validation或自然移动网络验收。此前八Turn连续链与D29原现场复验有效，按影响复用。
 
-0.1.14/1014正在按已提交0d6ad1重建；旧75e/71340be/edbdd/9f包均非当前候选，不可发布。生产PM只读入口已核，Alex Noting/Adaptive及1目标开启；V4尚未上线，自然运行事实待发布后核。当前线上仍9270933/cd5/0.1.13；main合并、联合发布与最终双门禁均未完成。
+0.1.14/1014正在按已提交79ccd重建；旧0d6/75e/71340be/edbdd/9f包均非当前候选，不可发布。生产PM只读入口已核，Alex Noting/Adaptive及1目标开启；V4尚未上线，自然运行事实待发布后核。当前线上仍9270933/cd5/0.1.13；main合并、联合发布与最终双门禁均未完成。
 
 **前序9f候选冻结记录（后被D29反例阻断）：** BE `93c3b6d0bd0b91c110760c15f8063aec2d3b9a22`、FE `9f525d33a328740490337f065c225f2462b576d9`已提交推送。B1/D20/D25/D28/U15后端与F1 R7已由root亲审正式接线；最终47项FE源指纹零漂移。F1真实连续控制链包含自然维护提交后waiting续跑，103次DOM提交保旧fold；Gateway两起点逐条持久跟随、外部结束折叠及释放后真实Web Send/Stop通过；纯idle HB/Reminder另有原cd5红／候选绿。12文件354项通过，4项旧夹具失败单独保留并核实性质，不能以基线失败自动豁免。IAB实际界面与独立双门禁尚未完成，不称整轮验收通过。
 
