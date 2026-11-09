@@ -20,9 +20,9 @@
 
 ## 3. 当前状态与编排
 
-**当前版本及复审：** BE `5edc3f6805566f97241383401d74094a92e044ce`、FE `edbddb6bcdef356ff83c71323d0fdbb6da201f8e`已提交推送。fresh全轮Verification独立建立43条判据后发现D32活动Main附件动作被controlled入口改成提交、D33按旧10/26条款错误回退11/8 Schedule面板预取/动画合同；两项均确认成立，尚未通过技术阶段。root已评审方案，frontend_finish按最新原文修复，暂不发布edbdd构建。此前583绿及Scheduler浏览器现象不证明D32/D33合规，原证据保留。
+**当前版本及复审：** BE产品5edc3f6（docs3f9b033）、FE71340be已提交推送。v2报告45条38符合/4违规/3后继事实缺证原结论保留；D32/D33现在均已按原合同修复并由root亲审接收。8文件3产品/5测试，12完整文件536通过、零失败/跳过/排除，类型/冻结health通过。原13红逐项映射并保基线/原失败，真gap恢复测试完整；不凭旧版同红豁免。root实际隐藏IAB附件零上传、Pending-only后继与Orb预取/43帧双向过渡已补，3产品源前后零漂移。
 
-**当前分工与依赖：** root完成D31真隐藏IAB：强制首读unavailable，exact metadata公布后source/rows仍不变即可同页gateway；新持久row结束前出现、外部结束后真实Web Enter/Stop、首组手动展开保持；actor exit0，详见ignored `root-d31-ui/verification.json`。F1整包修D32/D33并补正式入口/最新条款红绿；verification_integrated_v2继续全范围调查，产品修后fresh全轮复审再独立Validation。APK0.1.14旧edbdd产物核验有效但不得发布，待最终源重新构建。root后续main合并、联合发布、V4自然运行与两套备份；线上仍9270933/cd5/0.1.13，无生产变更。目标工具仍paused事实不冒称恢复，按用户明确继续执行。以下段落为历史取证记录。
+**当前分工与依赖：** 新fresh全轮Verification按原文先建立判据，再核本次产品及全部保留范围；随后另一独立Validation。APK子Agent按FE71340be重建0.1.14原证书包，edbdd历史包不可发布。root维护全局亲审、后续main合并、联合发布、V4自然运行与两套备份；线上仍9270933/cd5/0.1.13，无生产变更。目标工具仍paused事实不冒称恢复，按用户明确继续执行。以下段落为历史取证记录。
 
 **21:18当前执行事实：** B1正式Lock／D18包已由root亲审；D20排序包已接收，49传输／52身份回放／4stdio证据有效，root核hook、Tee、旧子类和健康端credit接线。root两行旧字符串queue兼容修正获3项绿；protocol另两失败在未改12e同源基线复现（`root-protocol-baseline-two.log`），不算本轮新回归。F1 R5（37源清单15bcb…）285项／type／health及真实网络lost-ACK链已交；root实IAB终态Stop通过，D24异步owner反例补验中。新joint lab使用当前B1＋D20及修正后的真实streaming返回探针，frontend_control_resume独占联调动作，补维护／API返回至terminal连续链；root不并发操纵。apk_release_prepare仅五版本文件及ignored构建证据，待最终源冻结后打0.1.14。尚未独立双门禁、main合并或发布；旧表的调查描述保留为发现时点，当前状态以本段和后续闭合证据为准。
 
@@ -85,8 +85,8 @@
 | D29 | 过期viewport读取遗留无owner replaying，终态连续帧已到却被held；另查到consumed Pending半提交、Secretary首次读取通知遗漏 | root结构方案经Verification第6节接受。F1五产品接缝修正，最终15文件510绿/1原可选wire未启；E1–E4完整绿。root真实IAB八Turn原路径及HB/Reminder/Steer/Stop通过，同connection1/recovery2、cursor189、八唯一Assistant/无held或Receiving、reading anchor与manual choice保持（root-final-ui/fixed-ui-verification.json）。完整旧App52红已分类，18文件583通过；其中D30 Scheduler期待后被fresh复查确认为旧规格回退，单列D33修正，不抵销D29有效证据。 |
 | D30 | 52项旧App逐项分类；root曾按10/26旧Scheduler条款调整App四处 | 历史583绿和Orb零预取证据保留；fresh复查确认该期待违反11/8用户确认，转D33整改，不能作为当前合规证据。 |
 | D31 | lease首通知早于exact owner metadata约28ms，身份成功公布后缺后继hint，source未写期间页面停合法unavailable | root已亲审接收锁外/真变化后原history hint；39正式测试＋真实App/WS/native8Turn→两Gateway强制窗口绿，source/row不变下约2.3秒自动gateway/samecut uncommitted，同Socket/round/runtime与fold保持、后续Web Send/Stop通过。原红保留、无FE修改。完整证据d31-research/implementation-report.md；待fresh全轮Verification/Validation，不把分区绿冒整轮通过。 |
-| D32 | 活动Main+附件的controlledAction返回Steer，公开Controller.steer绕过原附件资格，Enter可能上传提交未准备附件；违反06§1.8及本轮保留附件限制 | F1修复，root/Verification已条件性评审；真实活动Main+附件保Stop/Interrupt与完整草稿，Enter不触发取消；无Main维护Send等待/E01及idle上传后Main启动竞态保持。完成须正式Composer/Controller两附件/有无Pending红绿与最终指纹。 |
-| D33 | D30 root按10/26旧合同回退11/8明确Orb立即异步预取及二级先准备几何后展开要求 | F1修复，root承认旧依据优先级错误；恢复Orb预取、缺二级数据留一级准备/失败Retry、目标就绪再动画，晚响应/返回/owner/减少动画保持。保旧证据，按最新条款实际App/IAB复验。 |
+| D32 | 活动Main+附件的controlledAction返回Steer，公开Controller.steer绕过原附件资格，Enter可能上传提交未准备附件；违反06§1.8及本轮保留附件限制 | 已实施并root亲审，FE71340be；30正式App附件用例、真实App/native四组合及两上传竞态、root IAB两个组合均通过，3源指纹一致；无Main维护/E01保持。等待fresh独立复审关闭，见FE d32-d33/report.md。 |
+| D33 | D30 root按10/26旧合同回退11/8明确Orb立即异步预取及二级先准备几何后展开要求 | 已实施并root亲审，FE71340be；恢复Orb预取、一级准备/失败Retry、目标就绪再动画，正式App含running/慢/失败/owner/降动效通过，root IAB预取及43帧正常双向过渡通过。root旧依据错误及原证据保留；等待fresh独立复审关闭。 |
 
 **后继事实（用户追问关闭与抽象提示）：** 用户明确20:42同页面发送后没有关闭页面操作。closed不是server主动关闭的同义；该1005来自原ASGI WebSocketDisconnect而非日志默认值，RFC定义需与实际服务栈确认；close_origin_audit只读调查主动关闭入口/重连调度/观察者异常隔离，不改F1产品。20:44有重新接入不等于同页自动恢复成功。unknown提示由项目Web初始27c5cb4已有，原身份受理查询ad7e484/9fabcdd于10/21加入，非Hermes原生错误，非本轮新增。用户批评抽象红错与失去控制，F1将沿已授权自动查询语义改为明确待确认状态，确认后自动退休；不新增盲重放或常驻门禁。
 
