@@ -26,9 +26,15 @@
 
 ## 2026-11-09 · 故障全面复核与Web输入运行归属（新授权）
 
-**当前整合候选已冻结，进入独立审查：** BE `93c3b6d0bd0b91c110760c15f8063aec2d3b9a22`、FE `9f525d33a328740490337f065c225f2462b576d9`已提交推送。B1/D20/D25/D28/U15后端与F1 R7已由root亲审正式接线；最终47项FE源指纹零漂移。F1真实连续控制链包含自然维护提交后waiting续跑，103次DOM提交保旧fold；Gateway两起点逐条持久跟随、外部结束折叠及释放后真实Web Send/Stop通过；纯idle HB/Reminder另有原cd5红／候选绿。12文件354项通过，4项旧夹具失败单独保留并核实性质，不能以基线失败自动豁免。IAB实际界面与独立双门禁尚未完成，不称整轮验收通过。
+**当前阶段：实现整合收口，准备fresh全轮独立复审。** FE `edbddb6bcdef356ff83c71323d0fdbb6da201f8e`已提交推送：18文件583通过、1项原有可选wire fixture未启用；原52项App旧红逐项分类后全部通过，完整App62＋Composer4绿，未以基线同红豁免。root亲审六产品接缝，真实隐藏IAB完成8 Turn连续manual/Steer/Stop/HB/Reminder链（同connection1/recovery2、cursor189、8唯一Assistant、无held或Receiving、历史阅读锚点与手动展开保持），并完成Scheduler按需读取与正常Gateway三条逐条持久跟随→结束→Web Send/Stop。对应证据root-final-ui/fixed-ui-verification.json与root-gateway-ui/{scheduler-ui,third-gateway-ui}.json。
 
-**当前编排：** frontend_finish补交四项旧失败的逐项适用性说明；gateway_display_backend整包已接收并提交。apk_finish已获最终FE提交，开始0.1.14/1014原证书APK与静态包构建。全新无上文verification_final按冻结U01–U15/E01原文先建立判据，再核正式接线与证据；通过后另派独立Validation。root补最终隐藏IAB、统一质量检查、main合并和授权发布。算法远端分支已只读核实仍为b232defac7，27模块已合入候选且未改公式。线上仍9270933/cd5/0.1.13，本轮未部署；目标工具仍paused、当前按用户继续指令执行，未冒称目标工具已active。
+D31独立反例确认：native lease可见后约28ms才公布exact host metadata，首次watch通知与input读取落在间隙，返回合法unavailable；metadata成功公布后没有后继hint，页面持续旧状态而即时RPC已gateway。F1已在`hermes_cli/active_sessions.py`成功发布提交点补锁外、identity真变化才发的既有history hint，root亲审通过；两正式文件39项全绿、ruff/冻结health通过。完整App/真实WS/native链强制首读unavailable后，source/rows不变也在原2秒trailing内自动gateway，同connection/round/runtime、8旧fold与选择保持；连续两个external owner及后续Web Send/Stop通过。旧Verification的方案条件已逐项取证；整轮fresh独立复审/Validation仍待执行，不冒称旧门禁已通过。FE保持冻结，不加轮询或放宽权限。旧root actor1 stdin EOF/actor2受控300s超时仅为夹具失败，未计通过；第三actor正常完整链exit0单列。
+
+新版0.1.14/1014已按edbddb6重建，APK SHA `2e37b3ed207f9bd41a2902aeb5590a62c4d3605261a251f26071c30b353eaafb`，原证书/439实际资源/16KB等通过；旧9f包完整归档且不得发布。生产PM正确只读入口已核，现有Alex Noting/Adaptive及1目标均开启；新V4尚未上线、自然运行事实待发布后核。当前线上仍9270933/cd5/0.1.13；fresh全轮Verification、独立Validation、main合并及联合发布均未完成。
+
+**前序9f候选冻结记录（后被D29反例阻断）：** BE `93c3b6d0bd0b91c110760c15f8063aec2d3b9a22`、FE `9f525d33a328740490337f065c225f2462b576d9`已提交推送。B1/D20/D25/D28/U15后端与F1 R7已由root亲审正式接线；最终47项FE源指纹零漂移。F1真实连续控制链包含自然维护提交后waiting续跑，103次DOM提交保旧fold；Gateway两起点逐条持久跟随、外部结束折叠及释放后真实Web Send/Stop通过；纯idle HB/Reminder另有原cd5红／候选绿。12文件354项通过，4项旧夹具失败单独保留并核实性质，不能以基线失败自动豁免。IAB实际界面与独立双门禁尚未完成，不称整轮验收通过。
+
+**前序9f阶段编排（已由上文接续）：** frontend_finish补交四项旧失败的逐项适用性说明；gateway_display_backend整包已接收并提交。apk_finish已获最终FE提交，开始0.1.14/1014原证书APK与静态包构建。全新无上文verification_final按冻结U01–U15/E01原文先建立判据，再核正式接线与证据；通过后另派独立Validation。root补最终隐藏IAB、统一质量检查、main合并和授权发布。算法远端分支已只读核实仍为b232defac7，27模块已合入候选且未改公式。线上仍9270933/cd5/0.1.13，本轮未部署；目标工具仍paused、当前按用户继续指令执行，未冒称目标工具已active。
 
 **归因边界：** D20线上同源编号／入队逆序、D28同步展示观察者截断重连调度均有正式反例；D25是候选早写custody错误进入显示，不能解释旧版所有折叠现场。20:42已证输入持久受理后约127ms出现1005，原ID可查accepted；具体客户端关闭入口仍缺自然记录，不归网络。unknown现在沿原ID自动确认／退休，当前控制不会被Cancel Send遮住。Gateway只限制确实由它占用的写控制，页面仍按同一有限恢复快照跟随持久条目；不新增控制broker或第二writer。完整证据入口：FE `.archive/web-control-reliability-20261109/frontend-report.md` R7、`verification.r7.json`；BE `.hermes-dev/web-control-reliability-20261109/gateway-display/report.md`及本轮plan。以下按时间保留既往调查过程，不代表当前未完成清单。
 

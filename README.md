@@ -19,7 +19,8 @@ Secretary只在Profile的`state.db`增加自有表，复用原生执行、存储
 - History提供Get Meta／Search／Read，默认只当前Conversation的真实用户和Assistant；跨域、辅助消息分别显式开启。Notebook来源按Task保存UID链及逐组历史描述，真实编辑与本Task完整UID／描述同传，Evidence time逐节点只读派生；Main处理依赖历史的任务时先核原文，相关引用可用时先Read，见07顶部。
 - 手动、Idle及未提前派出Force的原生自动压缩共用并发联合入口；压缩不等待Noting，取消只联合撤销对应未提交工作，已提交Notebook保留。Force只在Main Turn结束检查、不可取消并封住当前区间后续整理；成功压缩解除。Note按合法来源独立沿原FM推送，活跃Turn等待既有间隙。具体契约见[07顶部](docs/07-scheduler-notebook-noting-compaction-redesign.md)。Noting开启且合格Main的full compaction默认将旧尾部纳入摘要，真正达到原生阈值的自动压缩及显式`/compress here N`保留原生保尾。
 - Main完成回执以原生最终输出身份封闭，随后Framework继续保留于Conversation历史，不扩大主Turn的完成边界。
-- Web可跨进程读取Main及Noting完整生命周期状态；Gateway没有实时输出直连时仍能读取最新持久历史，落库／结束经既有Socket通知恢复。Context读数绑定当前压缩边界并计入后续内容，旧runtime不能覆盖新读数。
+- Web沿当前原生运行实例原子处理普通输入、Steer与维护等待，内部唤起保持相同控制入口；空闲维护的Stop保留已接收等待输入，Main Stop清理未消费输入。真实Gateway占用时保只读状态，已持久消息和外部Turn结束沿既有Socket通知、有限快照局部对账，历史折叠与展开选择由同一显示owner保持。
+- Web可跨进程读取Main及Noting生命周期；Context读数绑定当前压缩边界并计入后续内容，旧runtime不能覆盖新读数。连接与页面读取各自有明确owner，旧读取失效后移交已收到事件，完整与局部显示提交均先完成当前可见数据和有限事件后缀的对账。
 - Web同一document优先保留内存画面及阅读状态；刷新／冷启使用同owner持久正文及完整已取详情过渡，正文按最近500条消息统一计数；未取旧详情保持懒取，未核验的半截详情不持久化。正常连续交互沿原生回执／事件和当前可见范围局部读取；冷启、真实重连及身份／覆盖依据失效时完整恢复当前页面所需数据和Socket／Turn。两层缓存均不提供运行状态或操作权限；读取和衔接契约见06。
 - Heartbeat沿目标Profile唤醒所属Conversation，是自查提醒；需要用户对接的事项在用户回归时汇报。开启Noting时使用带时间戳的`<heartbeat>`，额外prompt可省略；开关、冷恢复及隔离见[07](docs/07-scheduler-notebook-noting-compaction-redesign.md)。
 - 微信回复走原生adapter；Redirect、Framework与其它入口的触达边界见07。入口识别保留原生来源切换notice，不在root System Prompt注入当前Platform身份。

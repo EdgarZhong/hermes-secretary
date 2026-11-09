@@ -20,9 +20,9 @@
 
 ## 3. 当前状态与编排
 
-**整合收敛状态：** BE93c3b6d0bd0b91c110760c15f8063aec2d3b9a22、FE9f525d33a328740490337f065c225f2462b576d9已推送。root已亲审正式接线和最终R7（47源指纹185501ac34435759708ed340d0fb7d85ca68c17c99c6a5b3d936d81856090661），D01–D28已有实现及相应机制证据，待独立判定，不把历史现场未明原因当已关闭。F1最终真实网络链103次DOM稳定、Gateway两起点24次DOM稳定且释放后Web Send/Stop、纯idle HB/Reminder原版红／候选绿；具体证据和旧失败边界见R7最终七项报告及verification.r7.json。4项旧FE测试失败由frontend_finish只读澄清适用性，未跳过产品缺陷。root实际浏览器最终链待验。
+**当前已固定部分：** BE主体93c3b6d0＋D31单文件通知修正已亲审接收，FE edbddb6bcdef356ff83c71323d0fdbb6da201f8e已提交推送；D29恢复hold／local commit与Pending/Secretary竞态、D30 Scheduler接线已亲审。18文件583通过/1原有可选wire未启，旧52App红已按合同逐项转绿。root真实隐藏IAB八Turn链、阅读锚点/手动展开、Scheduler按需读取、正常Gateway逐条persist→结束→Web Send/Stop均通过。D31另有真实28ms发布竞态，不能用正常链抵销。
 
-**当前分工与依赖：** 独立verification_final（gpt-6.1-sol/high、fork none）按U01–U15/E01与全部适用原文先落盘判据，再查代码／证据；产品只读。apk_finish从最终FE构建0.1.14/1014及正式manifest，原证书不变。root统一最终相关检查、隐藏IAB、亲审门禁及main发布；Verification通过后另派独立Validation。原算法远端b232defac7已核，V4仍在候选且保持原公式。未在生产测试模型／改用户配置。线上尚未更新，目标工具paused事实保留但用户继续授权有效。以下进度段落为历史取证记录，当前状态以本段及两独立报告为准。
+**当前分工与依赖：** F1仅active_sessions.py公共成功发布点修正已交：39正式测试绿、真实完整watcher链在source不变的强制窗口自动更新，两个external owner及后续Web控制通过；root已亲审，追加staged相关质量检查。旧Verification已评审方案，非通过整轮。APK子任务已按edbddb6重建并核原证书/真实439资源，旧9f产物归档；同时确认正式PM只读算法核验入口及现有开关。root待D31整包亲审与源码提交后，派fresh全范围Verification→独立Validation，然后保护核心文档合main、联合发布、核V4自然运行和两套备份。目标工具仍paused事实不冒称恢复，当前按用户明确继续执行；线上仍9270933/cd5/0.1.13，尚未变更。以下段落为历史取证记录。
 
 **21:18当前执行事实：** B1正式Lock／D18包已由root亲审；D20排序包已接收，49传输／52身份回放／4stdio证据有效，root核hook、Tee、旧子类和健康端credit接线。root两行旧字符串queue兼容修正获3项绿；protocol另两失败在未改12e同源基线复现（`root-protocol-baseline-two.log`），不算本轮新回归。F1 R5（37源清单15bcb…）285项／type／health及真实网络lost-ACK链已交；root实IAB终态Stop通过，D24异步owner反例补验中。新joint lab使用当前B1＋D20及修正后的真实streaming返回探针，frontend_control_resume独占联调动作，补维护／API返回至terminal连续链；root不并发操纵。apk_release_prepare仅五版本文件及ignored构建证据，待最终源冻结后打0.1.14。尚未独立双门禁、main合并或发布；旧表的调查描述保留为发现时点，当前状态以本段和后续闭合证据为准。
 
@@ -82,6 +82,9 @@
 | D26 | F1真实联合Gateway/Controller＋TimelineMessages：同epoch重连后Idle维护→两同文waiting→按op撤回其一→Stop维护保另一→新Turn流式，三次DOM提交历史folds=[]、终态恢复；当时连接ready且身份/控制正确 | F1/BE已共同定位completedMark恰为已withdraw的第一条waiting custody UID；owner/runtime/epoch未变，删除该错误前沿后retained/completed均失效。先修D25正式投影并重跑原真实链，暂不新增FE下游补丁；若仍失效再修通用owner。严格逐DOM提交断言保红证据 |
 | D27 | root实际隐藏IAB Stop后Thinking从正文前移动到后；原始row7 turn_terminal保reasoning residual，row8同Assistant UID仅正文。F1已核terminal-history把所有residual锚到suffix尾，且先retire已见live | F1按真实source/native UID、typed facet及已见顺序修既有terminal-history／projection；保正文/工具残留与冷恢复缺证明的诚实fallback，不按文本或时间猜顺序，补真实链反例及跨Turn回归 |
 | D28 | close_origin_audit在原Gateway＋正式Controller注册链复现：同步state观察者异常穿透endConnection，连接已退役而retry未安装；ready后置heartbeat/Promise也受观察者影响。无20:42自然throw记录，不称现场关闭原因 | close_origin_audit实现唯一连接owner先提交ready/退休/重试，再隔离通知；F1接明确delivery failure到既有恢复。健康Socket不因渲染失败关闭，任何意外关闭统一恢复；4100固定对端原因仅诊断不决定重连。界面/原生测试及陌生关闭原因、回调重入、旧owner、自然WS恢复交叉验证 |
+| D29 | 过期viewport读取遗留无owner replaying，终态连续帧已到却被held；另查到consumed Pending半提交、Secretary首次读取通知遗漏 | root结构方案经Verification第6节接受。F1五产品接缝修正，最终15文件510绿/1原可选wire未启；E1–E4完整绿。root真实IAB八Turn原路径及HB/Reminder/Steer/Stop通过，同connection1/recovery2、cursor189、八唯一Assistant/无held或Receiving、reading anchor与manual choice保持（root-final-ui/fixed-ui-verification.json）。完整旧App52红尚待F1分类／合法fixture复验，不因基线同红豁免；之后fresh全范围Verification→Validation与新包重构建。 |
+| D30 | 52项旧App逐项分类后，Scheduler打开Orb即读详情、进入却等ready才挂载导致不可返回loading | root修既有App四处接线；完整App62＋Composer4全绿，总相关18文件583通过/1原可选wire未启。root真实IAB开Orb详情0读、进入后真实row可见且可返回；分类及红证据保留，产品仅App新增。 |
+| D31 | lease首通知早于exact owner metadata约28ms，身份成功公布后缺后继hint，source未写期间页面停合法unavailable | root已亲审接收锁外/真变化后原history hint；39正式测试＋真实App/WS/native8Turn→两Gateway强制窗口绿，source/row不变下约2.3秒自动gateway/samecut uncommitted，同Socket/round/runtime与fold保持、后续Web Send/Stop通过。原红保留、无FE修改。完整证据d31-research/implementation-report.md；待fresh全轮Verification/Validation，不把分区绿冒整轮通过。 |
 
 **后继事实（用户追问关闭与抽象提示）：** 用户明确20:42同页面发送后没有关闭页面操作。closed不是server主动关闭的同义；该1005来自原ASGI WebSocketDisconnect而非日志默认值，RFC定义需与实际服务栈确认；close_origin_audit只读调查主动关闭入口/重连调度/观察者异常隔离，不改F1产品。20:44有重新接入不等于同页自动恢复成功。unknown提示由项目Web初始27c5cb4已有，原身份受理查询ad7e484/9fabcdd于10/21加入，非Hermes原生错误，非本轮新增。用户批评抽象红错与失去控制，F1将沿已授权自动查询语义改为明确待确认状态，确认后自动退休；不新增盲重放或常驻门禁。
 

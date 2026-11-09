@@ -206,3 +206,55 @@ def test_unknown_external_holder_never_claims_gateway_or_allows_second_writer(li
         assert denied["error"]["data"] == {"accepted": False, "reason": "owner_unavailable"}
     finally:
         live.db.release_session_turn_lease("stored", "unclassified-live-owner")
+
+
+def test_owner_publication_after_lease_notice_reaches_trailing_watch_without_new_rows(live, monkeypatch):
+    """The first read may fail closed; successful native publication must wake it again."""
+    from types import SimpleNamespace
+    from hermes_cli import active_sessions
+
+    slot, error = active_sessions.try_acquire_active_session(
+        session_id="publication-route", surface="gateway", config={}, registry_home=live.home,
+        metadata={"runtime_host_kind": "gateway", "live_session_id": "publication-route"},
+    )
+    assert slot is not None and error is None
+    owner = SimpleNamespace(_session_db=live.db, session_id="stored", _gateway_session_key="publication-route",
+                            _active_session_turn_lease_holder="opaque-publication-owner", _current_turn_id="publication-turn")
+    monkeypatch.setattr(server, "_watcher_home", lambda: live.home)
+    monkeypatch.setattr(server, "_served_profile_homes", [])
+    for name in ("_change_sigs", "_change_checked_at", "_change_broadcast_at", "_sessions_broadcast_scope"):
+        monkeypatch.setattr(server, name, {})
+    monkeypatch.setattr(server, "_broadcast_secretary_if_changed", lambda: None)
+    monkeypatch.setattr(server, "_CHANGE_WATCHES", {"sessions.changed": (0.5, server._sessions_sig, lambda: {})})
+    notices = []
+    monkeypatch.setattr(server, "_broadcast_global_event", lambda event, payload: notices.append((event, payload)))
+    before = live.db.get_messages("stored")
+    try:
+        server._broadcast_watched_changes(now=100)
+        assert live.db.try_acquire_session_turn_lease("stored", owner._active_session_turn_lease_holder)
+        server._broadcast_watched_changes(now=100.5)
+        assert len(notices) == 1
+        assert rpc("session.input_state")["result"]["phase"] == "unavailable"
+        active_sessions.observe_native_turn_owner(owner)
+        assert live.db.get_messages("stored") == before
+        server._broadcast_watched_changes(now=101)
+        assert len(notices) == 1  # The existing two-second floor retains the changed signature.
+        server._broadcast_watched_changes(now=102.5)
+        assert len(notices) == 2 and notices[-1][0] == "sessions.changed"
+        state = rpc("session.input_state")["result"]
+        assert state["phase"] == "gateway" and state["running"] and state["turn_id"] == "publication-turn"
+        assert not state["can_submit"] and not state["can_stop"]
+        active_sessions.observe_native_turn_owner(owner)
+        assert live.db.refresh_session_turn_lease("stored", owner._active_session_turn_lease_holder)
+        server._broadcast_watched_changes(now=105)
+        assert len(notices) == 2  # Same identity plus renewal does not create a refresh loop.
+        owner._current_turn_id = "publication-next-turn"
+        active_sessions.observe_native_turn_owner(owner)
+        server._broadcast_watched_changes(now=107)
+        assert len(notices) == 3
+        assert rpc("session.input_state")["result"]["turn_id"] == "publication-next-turn"
+        assert live.db.get_messages("stored") == before
+    finally:
+        live.db.release_session_turn_lease("stored", owner._active_session_turn_lease_holder)
+        slot.release()
+    assert rpc("session.input_state")["result"]["phase"] == "idle"

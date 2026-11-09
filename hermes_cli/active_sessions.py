@@ -752,6 +752,10 @@ def observe_native_turn_owner(agent) -> None:
     home = Path(db.db_path).resolve().parent
     state_path, lock_path = _lease_paths(registry_home=home)
     gateway_key = getattr(agent, "_gateway_session_key", None)
+    identity = {"native_session_id": session_id, "native_turn_holder": holder,
+                "native_db_path": str(Path(db.db_path).resolve()),
+                "native_turn_id": getattr(agent, "_current_turn_id", None)}
+    published = False
     with _FileLock(lock_path):
         entries = _read_entries(state_path, strict=True)
         for entry in entries:
@@ -762,13 +766,20 @@ def observe_native_turn_owner(agent) -> None:
             matches = (host == "gateway" and gateway_key and metadata.get("live_session_id") == gateway_key
                        or host == "ui" and metadata.get("native_session_id") == session_id)
             if matches:
-                metadata.update(native_session_id=session_id, native_turn_holder=holder,
-                                native_db_path=str(Path(db.db_path).resolve()),
-                                native_turn_id=getattr(agent, "_current_turn_id", None))
+                published = any(metadata.get(field) != value for field, value in identity.items())
+                metadata.update(identity)
                 entry["metadata"] = metadata
                 entry["updated_at"] = time.time()
                 _write_entries(state_path, entries)
-                return
+                break
+    if published:
+        # Publish before invalidating, outside the registry lock: the hint can
+        # make a reader immediately take both the registry and native DB locks.
+        try:
+            from hermes_state_history_notifications import notify_history_changed
+            notify_history_changed(db, session_id=session_id)
+        except Exception:
+            logger.debug("Native owner publication hint unavailable", exc_info=True)
 
 
 @contextmanager
