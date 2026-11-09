@@ -202,6 +202,10 @@ def _external_turn_holder(session, raw):
     return holder
 
 
+def _same_external_turn_owner(server, session, external, observed):
+    return external is None or observed == server._web_external_owner_state(session)
+
+
 def _capture(server, sid, session, request, selections, ids):
     lock = session["history_lock"]
     if not lock.acquire(timeout=0.25):
@@ -228,6 +232,7 @@ def _capture(server, sid, session, request, selections, ids):
             maintenance = _manual_maintenance(session, d0, db.db_path)
             source = None if maintenance else _native_source(session, db, d0)
             external = _external_turn_holder(session, d0)
+            turn_owner = server._web_external_owner_state(session) if external else None
             state = None if external else snapshot(session, sid, include_internal=True)
             running = bool(session.get("running")) or bool(external)
             # Snapshot S's watermark is also meaningful for confirmed idle with no
@@ -239,10 +244,12 @@ def _capture(server, sid, session, request, selections, ids):
                 if not external and not maintenance and (running or session.get("inflight_turn")):
                     raise RecoveryViewError("runtime_unavailable")
             d1 = read_view(db, request["stored_id"], actual_profile, selections, details=ids,
-                           proofs=_proofs(d0), identities=[*_references(state), *manual_refs, *([source] if source else [])], **sync_args)
+                           proofs=_proofs(d0), identities=[*_references(state), *manual_refs, *([source] if source else [])],
+                           turn_owner=turn_owner, **sync_args)
             if (context != _turn_context(session) or maintenance != _manual_maintenance(session, d1, db.db_path)
                     or (not maintenance and source != _native_source(session, db, d1))
                     or external != _external_turn_holder(session, d1)
+                    or not _same_external_turn_owner(server, session, external, turn_owner)
                     or server._session_lookup_key(session, fallback=sid) != d1["tip_id"]):
                 raise RecoveryViewError("view_changed")
         runtime = {"running": running, "status": "working" if external else server._session_live_status(sid, session),
@@ -592,6 +599,7 @@ def _envelope(server, sid, session, request, selections, receipts, ids):
                                                        "events": suffix["events"], "truncated": False},
             "running": runtime["running"], "status": runtime["status"],
             **({"live_output_available": False} if runtime.get("external_holder") else {}),
+            **({"turn_source": d1["turn_source"]} if runtime.get("external_holder") and "turn_source" in d1 else {}),
             "turn_started_at": runtime["turn_started_at"],
             **({"inflight": runtime["inflight"]} if runtime["inflight"] else {}),
             **({"queued": runtime["queued"]} if runtime["queued"] else {})}

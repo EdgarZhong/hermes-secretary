@@ -763,7 +763,8 @@ def observe_native_turn_owner(agent) -> None:
                        or host == "ui" and metadata.get("native_session_id") == session_id)
             if matches:
                 metadata.update(native_session_id=session_id, native_turn_holder=holder,
-                                native_db_path=str(Path(db.db_path).resolve()))
+                                native_db_path=str(Path(db.db_path).resolve()),
+                                native_turn_id=getattr(agent, "_current_turn_id", None))
                 entry["metadata"] = metadata
                 entry["updated_at"] = time.time()
                 _write_entries(state_path, entries)

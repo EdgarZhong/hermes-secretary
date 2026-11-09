@@ -34,19 +34,24 @@ def _web_notify_accepted_pending(params, response):
 
 
 def _web_external_owner(session):
+    return _web_external_owner_state(session)["kind"]
+
+
+def _web_external_owner_state(session):
     """A Gateway classification needs both live host metadata and the exact native lease."""
+    unavailable = {"kind": "owner_unavailable", "turn_id": None}
     from hermes_cli.active_sessions import active_session_registry_snapshot
     try:
         with _session_db(session) as db:
             if db is None:
-                return "owner_unavailable"
+                return unavailable
             key = _submit_row_target_key(session)
             with db._read_ctx() as conn:
                 lease_key = db._session_turn_lease_key_on_conn(conn, key)
                 lease = conn.execute("SELECT holder FROM session_turn_leases WHERE conversation_id=? AND expires_at>?",
                                      (lease_key, time.time())).fetchone()
             if lease is None or lease["holder"] == getattr(session.get("agent"), "_active_session_turn_lease_holder", None):
-                return None
+                return {"kind": None, "turn_id": None}
             entries = active_session_registry_snapshot(Path(db.db_path).resolve().parent, strict=True)
             for entry in entries:
                 metadata = entry.get("metadata") or {}
@@ -55,11 +60,13 @@ def _web_external_owner(session):
                         and metadata.get("runtime_host_kind") == "gateway"
                         and metadata.get("native_session_id")
                         and db.resolve_conversation_ref(metadata["native_session_id"]) == db.resolve_conversation_ref(key)):
-                    return "gateway"
-            return "owner_unavailable"
+                    turn_id = metadata.get("native_turn_id")
+                    return {"kind": "gateway", "turn_id": turn_id if isinstance(turn_id, str) and turn_id.strip() else None,
+                            "holder": lease["holder"]}
+            return unavailable
     except Exception:
         logger.debug("Exact input owner observation unavailable", exc_info=True)
-        return "owner_unavailable"
+        return unavailable
 
 
 def _web_maintenance_active(session):
@@ -296,15 +303,16 @@ def _web_input_state(rid, params):
         session["_web_control_enabled"] = True
         _web_bind_pending(params["session_id"], session)
         phase = _web_input_phase(session)
-        external = _web_external_owner(session)
+        owner = _web_external_owner_state(session)
+        external = owner["kind"]
         if external:
             phase = "gateway" if external == "gateway" else "unavailable"
         queue = ([session["queued_prompt"]] if session.get("queued_prompt") else []) + list(session.get("queued_prompts") or [])
         waiting = [{"receipt": _web_lookup_receipt(session, item["_web_operation_id"])[0],
                     "text": item["text"], "image_paths": item.get("image_paths", [])}
                    for item in queue if item.get("_web_operation_id")]
-        return _ok(rid, {"phase": phase, "running": bool(session.get("running") and not session.get("_manual_compress_active")),
-                         "turn_id": getattr(session.get("agent"), "_pending_steer_native_active_turn", None),
+        return _ok(rid, {"phase": phase, "running": external == "gateway" or bool(session.get("running") and not session.get("_manual_compress_active")),
+                         "turn_id": owner["turn_id"] if external else getattr(session.get("agent"), "_pending_steer_native_active_turn", None),
                          "can_submit": not external, "can_stop": not external and phase != "idle",
                          "waiting": waiting, "unresolved": _web_unresolved_inputs(session), "reason": external})
 
