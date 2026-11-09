@@ -24,7 +24,7 @@
 |---|---|---|---|---|
 | 0.1.12/13连接／Thinking／Enter修复 | 已有 | 已发布 | 有同版证据 | 不能证明全部历史断连已归因 |
 | 折叠边界 | 已复现未修 | 待F1 | root组件反例 | 需同页恢复无需刷新 |
-| 内部运行完整控制 | 未实现 | 待B1/F1 | 待 | 0.1.13不合新合同 |
+| 内部运行完整控制 | B1首版／正式接口已交 | F1已接实际App，补回归中 | 初版机制与App定向测试，待整包亲审 | 0.1.13仍不合新合同，新候选未发布 |
 | V4 R4 | 已合隔离分支 | 新控制待联验 | 27模块源相同、旧证据有效 | 尚未线上生效 |
 | 联合发布 | 未开始 | 未开始 | 未开始 | 线上仍9270933/cd5d12f/0.1.13 |
 
@@ -40,6 +40,10 @@
 | D04 | accepted=false／本地phase拒绝诊断不足 | B1/F1沿新协议补最小枚举，复用脱敏桥，不记录正文 |
 | D05 | 维护Stop后waiting输入去向待用户回答 | root待收口；仅相关转换暂停，答复后补二级依据并实施，其余独立工作继续 |
 | D06 | root亲读Controller.cancelCompaction发现refresh省略捕获的profile；ACK等待中切Profile后readCompaction默认借当前Profile；cancelNativeCompaction异常分支未按operation明确查询 | F1已接收；取消ACK丢／Profile切换／同runtime ID跨Profile实际入口反例，保原操作身份、不重放取消 |
+| D07 | B1接口里程碑亲审：先入queue后写durable witness，ensure False／DB throw未清envelope，可能5071 accepted:false后仍执行；持久成功后的通知失败亦须区别受理结果 | B1整改；正式drain验证拒绝零副作用、已受理可查、同operation零重复；连同idle native晚期4009只能由真Gateway证明 |
+| D08 | B1里程碑删除scheduler_host的Gateway来源筛选，而Gateway仍独立claim，可能使既有通道Reminder宿主／出站语义取决于扫描竞争 | B1核查并保原路由边界；历史source不作为Web输入拒绝依据，不等于可任意接管投递；必要方案须root先亲审 |
+| D09 | 重启受理见证保留，但首版input_state只列RAM queue、operation_status不带原输入，需证明冷启可恢复文本／附件与显式再操作 | B1/F1接口整改；不能只显示中断却找不到输入，未知已执行不得冒称未执行 |
+| D10 | Turn内auto compaction期间接收的文本不能仅留maintenance队列直到整Turn结束；第一个安全边界应为压缩发布后当前native Pending再次可用 | B1闭合阶段转换；正式auto compaction→下一API反例，不把Idle或假flag测试冒充；附件沿原下一Turn完整输入 |
 | E01 | 15:05:43未知1006缺client_connection_id；旧13:41刷新前停顿无现场时序 | 历史证据边界，不强归网络／代码；后续依双端日志归因 |
 | E02 | adb devices为空 | 不把包校验/IAB冒充真机，交付如实标安装／自然网络／实导限制 |
 
@@ -53,4 +57,4 @@ F1白名单工程补充：`src/App.tsx`和`src/core/command-actions.ts`的实际
 
 发布准备仅本地ignored目录`.hermes-dev/web-control-reliability-20261109/release/`：沿旧已审remote_release/retention原字节，独立stage-20261109-web-control-014；expected_old=9270933、新包0.1.14/1014，尚未运行prepare／上传／发布。发布时按实际manifest核资源集合，不以旧439数量代替内容验真；保新批次和013、核验后清退012旧数据库集合。
 
-快照：12e2b45冻结；2e91189纳入V4、核心文档保护与27模块指纹核。新控制尚未实现，不称整轮验收。生产模型／排期／数据／凭据不作测试；原算法dirty与Huawei目录保持。
+快照：12e2b45冻结；2e91189纳入V4、核心文档保护与27模块指纹核；25baafb计划、63bd98f编排更新。新控制首版实施中，尚未整包亲审或独立验收。生产模型／排期／数据／凭据不作测试；原算法dirty与Huawei目录保持。

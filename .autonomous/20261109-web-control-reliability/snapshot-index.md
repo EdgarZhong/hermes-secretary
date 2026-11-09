@@ -8,7 +8,7 @@
 |---|---|---|
 | 用户需求 | `docs/06-Hermes-Secretary-Web-UI-V1-Spec.md`顶部11/9Web归属、C1–C8、11/8整组折叠；11/1维护取消／流式与已有恢复／操作契约 | 二级 |
 | 权威规格 | `docs/notebook-ontology-whiteboard.html`全篇；`docs/07-scheduler-notebook-noting-compaction-redesign.md`全篇（本轮主涉身份／并行／取消／Heartbeat／Scheduler／Framework，最新覆盖旧）；`docs/02-noting-system-specification.md`未替换的身份、单writer、原生ingress、ACK与cache-prefix；`docs/04-hermes-secretary-v1.5-implementation-spec.md`未覆盖增量；`docs/01-personal-hermes-v1-first-fork-iteration.md`仅保留Hermes-first／原生边界，不扩大个人化范围；`docs/08-profile-scheduler-files-clarification.md`；`docs/06-Hermes-Secretary-Web-UI-V1-Spec.md`；`docs/adaptive-noting-threshold-proposal.md`V4及明确保留V3合同 | 二级 |
-| 编码指导 | 根`AGENTS.md`；`README.md`稳定目录／运行环境／文档索引；`CONTRIBUTING.md`环境参考，规则以根AGENTS冻结为准；独立前端仓根`AGENTS.md`／`README.md`仅其现有接口环境，不能新增审批／门禁 | 二级 |
+| 编码指导 | 根`AGENTS.md`；`README.md`稳定目录／运行环境／文档索引；`CONTRIBUTING.md`环境参考，规则以根AGENTS冻结为准；独立前端仓`../hermes-secretary-web/AGENTS.md`按cd5d12f版本（blob 708f40eb120682607cd61de0d30a33b550a0447f）仅供其现有接口环境参考，不能新增审批／门禁 | 二级 |
 | 会话确认口径 | 本索引“口径与决策”表；授权原文登记于06顶部及CLAUDE新目标段 | 二级 |
 
 ## 口径与决策
@@ -31,5 +31,7 @@
 ### 明确不做及待决边界
 
 不改Reminder排期语义、Heartbeat原生起点、Provider／Prompt、通用调度／admission体系；不偷改算法公式或体验阈值，不建立跨进程Gateway控制broker，不操控生产会话做模型测试；不触碰用户现有浏览器或桌面，UI仅自建隐藏IAB。
+
+索引勘误：前端仓库本来没有README；移除初稿该无效文件引用并固定实际AGENTS的版本和blob。此为路径／证据定位更正，未修改任何U条款或扩大规则、权限和完成条件，根README仍为稳定环境索引。
 
 既有原生Steer附件限制和受理后重启处理按现有持久事实与明确可查询状态实现，不默丢附件或盲重放；必要局部工程细化在CLAUDE待追认中登记。维护Stop后已等待输入的具体处置已另发一个窄问题，尚未回答；该点不得擅定，不阻断不依赖它的owner、输入受理、折叠与算法集成。答案到达后按二级授权补充本索引和06，再实现该转换。最终交付前必须关闭此缺口。
