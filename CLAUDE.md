@@ -32,6 +32,10 @@ root负责合同、接口、亲审集成、构建／发布准备和最终判定�
 
 后继分支`codex/steer-owner-ready-20261109`／`codex/steer-busy-20261109`由backend_connection_audit和frontend_connection_audit完成，connection_final_review独立修改API，不交叉；root亲审并核最终源SHA，独立steer_hotfix_review无阻断。BE4文件70项／FE7文件190项／API3文件48项有效证据及完整typecheck、相关ruff/health通过，不相加为独立覆盖。产品BEa4257ea／FEd7b242a已合main9270933／cd5d12f并push，14:14:58正式apply verified；14:15实际版本、两服务与微信、439静态／HTTP抽样、双ID／ping及两套三库收尾通过。最新APK `/Users/edgar/Downloads/Hermes-Secretary-0.1.13-d7b242a-arm64.apk`原签名／nondebuggable／16KB／439资源已核并交付，旧产物保留。自然移动网络／实机安装／ADB导出待用户后续使用，未知责任比例不推断。具体发布／回退见operations-log顶部；独立报告与收据在连接工作区ignored`.hermes-dev/steer-busy-20261109/{review.md,candidate.json,release/}`。
 
+**保留现场·整组折叠（用户要求暂缓）：** 用户明确当时所有整组折叠都消失，手动刷新后恢复；不是自行恢复，根因尚未确认，未因恢复而标修复。用户随后表示重要性较低、当前已恢复，要求先整理整体状态；本项停止扩展排查／不实施改动。发布包仍含原组件／样式，只读证据保留；后续若再现再结合当前Turn边界／页面状态定位。
+
+**当前未关闭边界：** 新APK真实安装／自然移动数据与WiFi稳定性、ADB实机导出及双端责任占比尚未验；已有代码修复不等于所有断连／静默停顿均已唯一归因。普通活动Turn的Enter误路由已修，native owner刚启动尚未就绪时仍拒绝并保草稿，不新增自动排队。Reminder调度产品规则未改，按用户前序要求不在本次扩展。折叠问题按上述明确暂缓保留。
+
 ## 2026-11-09 · V3算法实现、历史验收及上线闭环完成
 
 用户最新授权：在原`codex/adaptive-empirical-20261106`分支完成实现与真实历史回放，实际情景符合预期后合main并上线。按用户要求采用轻量托管流程，复用既有依据和证据，不执行完整autonomous-run文档／双门禁流程。核心算法与逐场景定性判断由主会话亲自完成，不委派6.1 Sol；辅助Agent只完成运行接线及定向机制测试。最后另派独立Agent按规划表定性场景重新验收，与主会话完成一轮审阅研讨，主会话保留最终判断。
