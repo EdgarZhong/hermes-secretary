@@ -2,7 +2,7 @@
 
 ## 自主口径收敛 · 待用户追认
 
-- **Agent自主收敛／待追认：连接诊断保留与导出。** 本轮用户已授权APK可ADB导出及双端归因；按8MiB（4×2MiB）滚动、正常健康60秒摘要、固定仅shell/root可读ContentProvider导出ZIP收敛。不收正文／凭据，不扩远程调试或通用私有文件访问；参数可回退，已实现并通过独立整包复核，13:57正式发布；无ADB真机，导出实测待连接设备。
+- **Agent自主收敛／待追认：连接诊断保留与导出。** 本轮用户已授权APK可ADB导出及双端归因；按8MiB（4×2MiB）滚动、正常健康60秒摘要、固定仅shell/root可读ContentProvider导出ZIP收敛。不收正文／凭据，不扩远程调试或通用私有文件访问；参数可回退，已实现并通过独立整包复核，已随0.1.12首包及0.1.13补丁发布；无ADB真机，导出实测待连接设备。
 
 - **Agent自主收敛／待追认：V3数值方法初始选择。** 用户已授权本地开工、要求长历史近期加权；先以24h共同费用窗口、6h与共同末点对照，指数近期权重初始7天时间尺度、3／14天敏感性，按活动／空档段条件采样避免唯17维黑箱。均为可审工程参数，不是用户亲定或维护成本先验；原体验门槛保持。已在原算法分支完成并于11/9从main上线；结果按冻结真实情景验证，不为PASS事后改窗。
 
@@ -22,13 +22,15 @@
 
 
 
-## 2026-11-09 · 连接可靠性与APK双端诊断（已发布；Steer busy后继修复中）
+## 2026-11-09 · 连接可靠性与APK双端诊断（0.1.13已发布；等待自然使用日志）
 
 用户要求深入解决已调查的断连／Thinking重复／相关Steer故障，并在正式APK加入方便ADB导出的本地日志；后续自然使用后与服务器日志对照。范围与C1–C8合同见06顶部。后端隔离于`../hermes-secretary-connection-20261109`／`codex/connection-reliability-20261109`（基线main74a2d1de）；前端同名功能分支基于889c6e8，原算法分支dirty／资料与前端.DS_Store保留。不改变模型／Prompt／业务数据库或依赖锁。
 
 root负责合同、接口、亲审集成、构建／发布准备和最终判定；backend_connection_audit接后端正式实现，frontend_connection_audit接前端流式恢复与JS诊断，android_connection_logs接原生日志／ADB只读导出，修改范围不相交、均不派生。完成后统一独立审查与实际入口验收；三个实现包和root接线补修完成后，独立整包复核发现R1：同Socket其它owner缓存前缀分片让锁可能被后发事件超越。已修为其它owner前缀原子持锁发送、仅本Fanout批次公平分片，独立红例已固化并转绿，前缀失败／重挂／心跳定向通过；新独立审查者已按全C1–C8复审通过，三owner独立探针1046帧完整有序，R1关闭。BE产品129f353b7c／FE产品be4cb04已阶段提交并推送，已合main并于13:57:20从main发布：BE53f652c5／FE994a00d，发布器verified；主会话追加实际版本／439静态及HTTP抽样、生产回环双ID／3次ping、两套完整三库保留均通过。原服务端／代理现场与缺陷探针证据复用。后端真实回环双端各1200条事件完整有序；前端Unknown 30typed片段保持单卡及同Turn下一API/History归并、Steerowner与不确定回执已验证；Android限额/冷启/权限/导出及诊断异常隔离已验证。APK0.1.12/1012正式构建完成，原签名、非debuggable、16KB与439内置资源校验通过；无ADB设备，实机自然网络后续待验。证据入口：实现工作区ignored `.hermes-dev/connection-reliability-20261109/{final-review.md,candidate-r2.json}`及前端`.archive/connection-reliability-20261109/`。根十检查九过，no-tmp只命中与74a2d1de同blob的旧历史验证报告，未放宽规则；前端扩展旧套及Android TV lint历史缺口保留在报告。
 
-**最新用户反证与后继修复：** 用户明确关闭Reminder后，自己Send启动Turn，再尝试Steer仍报`Session busy`。先前将该错误归因每分钟Reminder的结论撤回；只能确认busy是业务拒绝，实际拒绝入口待证。用户已要求先上线Thinking／连接包，13:57已执行；本次发布不声称修好该busy。frontend_connection_audit调查实际Composer→Controller路由并定向修复，backend_connection_audit只读核后端入口／owner；主会话亲审与集成，禁止把所有busy盲重发Steer，不改Reminder调度规则。 已在本地正式后端入口复现：普通Send受理并message.start后，原生Steer owner尚未完成时Pending可返回active=false，owner完成又缺pending_changed通知；这构成不需要Reminder的状态交接缺口，实际App＋ChatComposer＋Controller＋Gateway已复现按钮／Enter双路径：该false错误撤销Main活动导致第二次prompt.submit_idle收到4009；修后改走session.steer_pending。此为同症状受控复现，不冒称取得用户现场完整请求记录。后端在`codex/steer-owner-ready-20261109`补既有owner就绪通知，前端`codex/steer-busy-20261109`独立修活动状态与Pending资格分离。connection_final_review仅补src/api的心跳超时立即退休连接／不等onclose及发送前拒绝诊断，与core/Composer不交叉；root统一亲审、定向验证后再发布，不改已交0.1.12产物。
+**最新用户反证及修复交付：** 用户确认关闭Reminder、自己Send启动Turn后，再按Enter仍报`Session busy`；先前Reminder归因已撤回。正式后端及实际App＋Composer＋Controller＋Gateway已复现同症状：message.start后Pending owner尚未就绪返回false，被前端误当Main空闲，第二次输入走submit_idle而收到4009。没有用户当次完整RPC录制，不冒称唯一现场原因已捕获。首包0.1.12未包含此修复；后继0.1.13已分开Main活动与Steer资格、补native owner就绪通知，并补心跳失败不等close回调及发送前拒绝诊断。真实启动窗内owner尚未就绪仍明确拒绝保草稿，就绪后需新的显式操作；没有4009盲重发或新排队。
+
+后继分支`codex/steer-owner-ready-20261109`／`codex/steer-busy-20261109`由backend_connection_audit和frontend_connection_audit完成，connection_final_review独立修改API，不交叉；root亲审并核最终源SHA，独立steer_hotfix_review无阻断。BE4文件70项／FE7文件190项／API3文件48项有效证据及完整typecheck、相关ruff/health通过，不相加为独立覆盖。产品BEa4257ea／FEd7b242a已合main9270933／cd5d12f并push，14:14:58正式apply verified；14:15实际版本、两服务与微信、439静态／HTTP抽样、双ID／ping及两套三库收尾通过。最新APK `/Users/edgar/Downloads/Hermes-Secretary-0.1.13-d7b242a-arm64.apk`原签名／nondebuggable／16KB／439资源已核并交付，旧产物保留。自然移动网络／实机安装／ADB导出待用户后续使用，未知责任比例不推断。具体发布／回退见operations-log顶部；独立报告与收据在连接工作区ignored`.hermes-dev/steer-busy-20261109/{review.md,candidate.json,release/}`。
 
 ## 2026-11-09 · V3算法实现、历史验收及上线闭环完成
 

@@ -1,5 +1,15 @@
 # 运维记录
 
+## 2026-11-09 · Enter误走Send／Steer就绪通知与0.1.13已上线
+
+用户明确关闭Reminder、自己Send启动Turn后再按Enter仍报`Session busy`，撤回先前Reminder归因。正式后端Loop／SessionDB已证明message.start先于native Steer owner就绪；早期Pending.active=false只代表当前不可Steer，旧前端却误将Main判idle，后续Enter／按钮再走submit_idle而收到4009。实际App＋Composer＋Controller＋Gateway两入口同症状反例改前红、改后绿；没有用户当次RPC完整录制，不能冒称唯一现场归因。产品仅分开Main活动与Steer资格、native owner就绪后锁外发既有pending_changed；另补心跳失败立即退休旧连接、不等close回调和拒发RPC诊断。无4009盲重发／新排队，启动瞬间确无Steer身份仍明确拒绝并保草稿，ready后需新的显式操作。
+
+14:14:58+08，`stage-20261109-steer-013`正式apply verified：BE产品a4257ea合main `92709335e94bdc4437ecad5fb3b34a963a851182`，FE产品d7b242a合main `cd5d12f63d118b7c94a55e74d1aca9f0858cc59c`。14:15:07追加核验云main/clean、Web和Gateway实际同版active、微信connected、439精确静态及HTTP JS/CSS/font SHA通过；三Profile各30张保护表、配置／绑定／Dashboard保持。生产回环WS ready两端ID、accepted/ready/health/closed完整对应，3次ping约1.970/0.917/1.583ms；未向用户会话发模型测试请求，不能当手机外网验收。正式网页需刷新一次加载新JS，不自动操作用户页面。
+
+APK0.1.13/1013已交`/Users/edgar/Downloads/Hermes-Secretary-0.1.13-d7b242a-arm64.apk`，32158409字节，SHA256 `b958fd7e976ebef6ff38c0a704bf0c22c18bf4b788f1b5ec4284539c2d85dc85`。原签名、nondebuggable、arm64、ZIP/ELF16KB和439内置资源完整核验；保留0.1.12，未覆盖旧产物。双端日志及8MiB本地滚动／ADB导出沿首包；无设备连接，真实安装／自然网络／ADB导出仍待用户后续使用，不能据机制测试统计移动网络责任比例。
+
+主会话亲审并按独立`steer_hotfix_review`逐SHA核对最终合入tree：BE4文件70项、FE7文件190项、API3文件48项有效证据与全前端typecheck、相关ruff/health通过；不相加为独立覆盖。范围内无阻断，未改门禁或原生busy语义。14:15:43收尾保留本次及`stage-20261109-connection-012-retry2`两套完整三库，清理更旧adaptive-v3批次9个库及附属文件共262426624字节；运行库inode和当前同步ZIP保持。云受限收据在对应release批次；本地ignored连接工作区`.hermes-dev/steer-busy-20261109/{review.md,candidate.json,release/}`、后端`.hermes-dev/steer-owner-ready-20261109/`、前端`.archive/steer-busy-20261109/`保复现／验证／签名与回退证据。发布回退沿main反向代码及原子静态交换，不自动回盖数据库。
+
 ## 2026-11-09 · 连接／Thinking修复已发布，Steer busy追加反证
 
 13:57:20+08，第三批`stage-20261109-connection-012-retry2`正式apply verified。BE main `53f652c5c5c0ad2f00c1f5560cb871f4177b886b`、FE main `994a00dcc301ff92d708ec5241318836aa65438f`，产品129f353b／be4cb04；服务重启成功、发布器版本／保护数据／439静态资源校验通过。13:57:34追加核验main/clean、两实际服务同53f652、微信connected、439精确集合和HTTP JS/CSS/font SHA通过；三Profile各30张保护表及配置／绑定／Dashboard保持。生产Linux回环真实WS核accepted/ready/health/closed两端ID一致，3次ping约1.261/0.545/0.607ms；不冒称手机外网验收。13:58:16已核保留本次及stage-20261109-adaptive-v3两套完整三库，清理更旧English批次9个数据库及附属文件共259309568字节，运行库inode及当前同步ZIP保持。APK0.1.12/1012已构建到`/Users/edgar/Downloads/Hermes-Secretary-0.1.12-be4cb04-arm64.apk`，SHA256 `bd1a210d698482056e1d2182fa34dabb947695d3fb2f3d067968e769d8edeb09`；原签名／nondebuggable／439资源／16KB通过，尚无真机安装／自然使用／ADB导出证据。正式前端刷新一次加载新资源；不自动整页刷新用户页面。私有收据与回退说明在上述release批次，本地完整证据在连接工作区ignored `.hermes-dev/connection-reliability-20261109/release/`。
