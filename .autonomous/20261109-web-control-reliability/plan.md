@@ -38,13 +38,15 @@
 | D02 | 实际App idle-only rejection仍确认4009保草稿，启动／维护／终态拒非Gateway输入 | B1/F1待修，一次显式请求原子受理与对应结果 |
 | D03 | 4→6→5探针可能丢5，当前controller只拒旧seq未验证覆盖，需核真实scope | F1调查；真实缺口则诊断／统一恢复，不误判合法过滤，不以Socket有流量冒称数据连续 |
 | D04 | accepted=false／本地phase拒绝诊断不足 | B1/F1沿新协议补最小枚举，复用脱敏桥，不记录正文 |
-| D05 | 维护Stop后waiting输入去向 | root按U05及根AGENTS收为E01工程选择／待追认：仅取消维护、保留输入到安全边界；不把未答当批准。B1/F1实现和竞态验证中，不再暂停 |
+| D05 | 维护Stop后waiting输入去向 | 用户已后继明确确认“取消维护，继续处理已接收的消息”；原E01工程收敛现获追认。B1/F1实现和竞态验证中 |
 | D06 | root亲读Controller.cancelCompaction发现refresh省略捕获的profile；ACK等待中切Profile后readCompaction默认借当前Profile；cancelNativeCompaction异常分支未按operation明确查询 | F1已接收；取消ACK丢／Profile切换／同runtime ID跨Profile实际入口反例，保原操作身份、不重放取消 |
 | D07 | B1接口里程碑亲审：先入queue后写durable witness，ensure False／DB throw未清envelope，可能5071 accepted:false后仍执行；持久成功后的通知失败亦须区别受理结果 | B1整改；正式drain验证拒绝零副作用、已受理可查、同operation零重复；连同idle native晚期4009只能由真Gateway证明 |
 | D08 | B1里程碑删除scheduler_host的Gateway来源筛选，而Gateway仍独立claim，可能使既有通道Reminder宿主／出站语义取决于扫描竞争 | B1核查并保原路由边界；历史source不作为Web输入拒绝依据，不等于可任意接管投递；必要方案须root先亲审 |
 | D09 | 重启受理见证保留，但首版input_state只列RAM queue、operation_status不带原输入，需证明冷启可恢复文本／附件与显式再操作 | B1/F1接口整改；不能只显示中断却找不到输入，未知已执行不得冒称未执行 |
 | D10 | Turn内auto compaction期间接收的文本不能仅留maintenance队列直到整Turn结束；第一个安全边界应为压缩发布后当前native Pending再次可用 | B1闭合阶段转换；正式auto compaction→下一API反例，不把Idle或假flag测试冒充；附件沿原下一Turn完整输入 |
 | D11 | Stop等待compression commit fence期间可能跨Turn；仅RPC前比turn_id不足，锁外abort请求／线程／child传播亦可能命中新Turn | B1在原interrupt owner增可选身份fence，真实barrier＋新Turn接管验证；旧默认和hard_interrupt兼容语义保持，拒绝不得有清队列／cancel／信号副作用 |
+| D12 | root亲审StopReceipts发现unknown仅按runtime/epoch/页面存，旧T1未知会吞掉用户对新T2显式Stop；旧启动target为空时可能一直只查询，旧query还可能覆盖新目标状态 | F1整改；按精确目标/动作世代隔离，允许新已证目标的新显式Stop，同目标未知不自动重放；实际Controller/App及交错查询反例 |
+| D13 | U02现有审批/澄清恢复补查：3种内部source同epoch重连后q0选择丢为stages={}，Confirm disabled；当前retain直接requests=[]导致 | F1正式反例approval-recovery-counterexample.log；窄修ControllerPageRecovery/ServerRequests同owner同epoch草稿保留及needsCheck。须当前open_requests对账才允许确认；owner/epoch/认证/请求payload变化及已结束不复活 |
 | E01 | 15:05:43未知1006缺client_connection_id；旧13:41刷新前停顿无现场时序 | 历史证据边界，不强归网络／代码；后续依双端日志归因 |
 | E02 | adb devices为空 | 不把包校验/IAB冒充真机，交付如实标安装／自然网络／实导限制 |
 
@@ -57,6 +59,8 @@ root基线反证：main12e2b45、相关6个test／实现blob与2e91189一致，�
 B1白名单工程补充：root亲读后允许`agent/auxiliary_chat_stream.py`在现有compression capture作用域通知实际Chat摘要增量，observer在累积锁外且不影响原模型流／超时／进度语义；无capture保持原生。`tui_gateway/ws.py`、`entry.py`仅增可选能力声明。此为既有维护流式要求的必要接线，不扩大产品范围。Responses已有observer不得重复发布。
 
 F1白名单工程补充：`src/App.tsx`和`src/core/command-actions.ts`的实际Chat／Composer／Timeline控制接线；不改无关布局。仅Controller修改不能覆盖真实Enter／主按钮，必须一并接入。维护可Send和可Stop独立，不能因存在草稿就消失取消入口。FE无README为既有事实，不新建平行文档。
+
+完整控制权包含既有工具审批／用户确认响应：root要求补核内部Turn→晚进入／重连→合法响应和旧owner拒绝；允许F1在现有ServerRequests恢复owner接缝修已复现D13，不新增审批语义／权限。B1对应核同一Agent/Fanout/原生open_requests及正式响应，已有同版证据可复用。
 
 Stop接口收口：旧`session.interrupt`默认保持；新Web可选`input_policy=web_controlled`，`operation_id`指维护目标、`turn_id`指Main目标，均不是本次Stop动作的幂等id。服务端在原owner边界按真实Main／维护状态判断，目标变化不停止后来的run；ACK未知只查原目标，不能以自然结束反推Stop成功。允许B1在`agent/interrupt_control.py`及原`turn_context.py`身份绑定点追加可选target fence，沿既有锁，禁止引入新gate／锁体系或在history/pending锁中等待commit。
 

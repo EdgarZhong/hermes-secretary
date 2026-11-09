@@ -2,8 +2,6 @@
 
 ## 自主口径收敛 · 待用户追认
 
-- **Agent自主收敛／待追认：维护Stop保留已接收输入。** 用户已确认Send接收等待、另按Stop取消维护；额外询问是否同时撤回等待输入尚未回答。root按现有意图选择无活动Main的Idle／手动维护Stop只取消维护，等待输入在取消／提交安全边界后处理；Turn内auto的主Stop仍停止Main并取消未消费Pending／queue，独立取消压缩仅撤销维护。保留已接收的发送意图，选择可回退，不将未答当批准；B1/F1据此实施测试，后续用户否决再调整。
-
 - **Agent自主收敛／待追认：受理输入的进程重启边界。** 用户要求持续Web控制、不能busy拒收和不能丢意图；沿现有原生持久queued witness保留接收事实，不新增重放器。重启后未消费RAM队列／Pending不自动执行，查询须明确interrupted或真实unknown并能恢复原文本／附件，由用户显式决定再次发送；不能把未知已执行冒称未执行。理由：保持原生重启语义及写操作不盲重放，防重复外部动作；B1/F1正在实现和验证，尚未交付。
 
 - **Agent自主收敛／待追认：连接诊断保留与导出。** 本轮用户已授权APK可ADB导出及双端归因；按8MiB（4×2MiB）滚动、正常健康60秒摘要、固定仅shell/root可读ContentProvider导出ZIP收敛。不收正文／凭据，不扩远程调试或通用私有文件访问；参数可回退，已实现并通过独立整包复核，已随0.1.12首包及0.1.13补丁发布；无ADB真机，导出实测待连接设备。
@@ -30,7 +28,7 @@
 
 用户要求先逐项复核本轮所有反馈是否有明确原因／是否解决，再解决Instant Reminder与Heartbeat触发Turn能否及时Steer、能否共用runtime的接线。最新明确硬约束：网页端仅当目标Conversation确由Gateway运行时，才允许因Session busy拒绝发送；Web运行实例内普通Turn、Instant Reminder、Heartbeat不得仅因running拒绝。按真实owner判定，不把触发来源／连接名字当运行归属。用户进一步明确这不仅是新消息发送，而是完整网页控制权：Instant Reminder、Heartbeat、Delegation返回、空闲自动压缩／整理及其它内部运行启动后，WebSocket仍应连接／绑定实际runtime，实时状态和对应Steer／停止／中断／取消等控制不能丢。此要求替代前轮“启动窗可拒绝保草稿／Reminder问题暂不改”的当前实施边界，历史报告保原时点，不倒写已验结果。
 
-root已完成Thinking、断连／静默停顿、Send／Steer／Interrupt、折叠与双端诊断首轮复核，开始runtime／输入接线；不以隐藏错误、4009盲重发、新建第二个writer或破坏已有输入身份／受理回执达标。原算法分支dirty与个人资料保持，不修改Gateway运行中的会话，不触发生产模型测试。用户已明确“给自己挂个目标”：旧故障复查并修复、完整控制权、最新自适应算法合main联合发布及线上生效验证纳入同一active goal。采用autonomous-run轮次，算法候选b232defac7（V4 R4）已纳入隔离集成分支2e91189，27模块指纹与原验收一致，尚未合main／发布；原文档dirty保持。维护期间Send已确认先接收等待，取消由用户另按Stop。用户指定的internal_turn_runtime_design设计包已交回；backend_control负责后端完整接线、frontend_control负责折叠与实际App接线，均gpt-6.1-sol/high、无上文、不再派生、禁止流水账。root负责覆盖、协议协调、亲审与最终判定，计划快照25baafb。维护Stop保留等待输入已按本轮E01工程收敛并解除实现等待，尚未得到额外用户答复，不冒称已确认。具体边界见06顶部及本轮plan。
+root已完成Thinking、断连／静默停顿、Send／Steer／Interrupt、折叠与双端诊断首轮复核，开始runtime／输入接线；不以隐藏错误、4009盲重发、新建第二个writer或破坏已有输入身份／受理回执达标。原算法分支dirty与个人资料保持，不修改Gateway运行中的会话，不触发生产模型测试。用户已明确“给自己挂个目标”：旧故障复查并修复、完整控制权、最新自适应算法合main联合发布及线上生效验证纳入同一active goal。采用autonomous-run轮次，算法候选b232defac7（V4 R4）已纳入隔离集成分支2e91189，27模块指纹与原验收一致，尚未合main／发布；原文档dirty保持。维护期间Send已确认先接收等待，取消由用户另按Stop。用户指定的internal_turn_runtime_design设计包已交回；backend_control负责后端完整接线、frontend_control负责折叠与实际App接线，均gpt-6.1-sol/high、无上文、不再派生、禁止流水账。root负责覆盖、协议协调、亲审与最终判定，计划快照25baafb。维护Stop只取消维护、继续处理已接收消息，现已由用户异步答复明确确认（E01），不再待追认。具体边界见06顶部及本轮plan。
 
 
 本轮索引：`.autonomous/20261109-web-control-reliability/snapshot-index.md`。root完成旧故障首轮复核，设计包已交回：内部来源大多已共享TUI Session／Agent，改造重点是既有owner生命周期、原子输入去向、查询回执及维护控制投影，不新建通用调度器或跨进程Gateway代理。将使用b232 V4接缝作为实现基线；算法核心不在控制权实现子Agent白名单。生产只读窗口14:14:49—15:31:30的86条诊断未见queue_overflow/send_timeout/send_error，仍有15:05:43一条1006且缺client_connection_id，无法归因客户端版本或网络；不宣布全部断连已治愈。当前没有ADB设备。
