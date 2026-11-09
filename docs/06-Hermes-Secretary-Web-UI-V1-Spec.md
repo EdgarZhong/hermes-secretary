@@ -2,6 +2,8 @@
 
 ## 2026-11-09 · Web输入与运行归属（用户最新确认）
 
+- 用户后继明确本轮处理顺序：先解耦并排查连接／控制层（真实Socket、事件顺序与覆盖、运行身份／状态、连续Turn及恢复交接），排除该层混乱后再处理表现层；必要时允许Timeline渲染逻辑重构，不能以无证大改代替联调。验收以手动Turn→Steer→收尾中或收尾后立即Heartbeat／Instant Reminder→后续流式Turn的连续使用为主，不要求用户等待时机或刷新；静态历史正常不证明流式链路稳定。
+- 用户最新现场包括所有历史折叠消失又出现、重复message、同段Thinking增殖、滚动抖动、卡顿或停止实时更新直到Turn结束、末尾持续转圈。用户后来指出重复可在无断连时自行消失，怀疑最后文本delta至API结束／Turn结束的延迟窗口；这只是待验证时序线索，不作为Kimi特例或已定根因。用户明确目前问题基本集中流式期间及多个Turn的流式边界，静态历史未见同类现象。
 - 网页端因`Session busy`拒绝发送，只允许目标Conversation当前确由Gateway运行这一种占用情形。Web运行实例内的普通Turn、Instant Reminder和Heartbeat不能仅因running而拒绝用户输入；按真实运行owner判断，不按触发名称猜测。
 - 这不仅是发送新消息：用户要求WebSocket能连接并绑定正在运行的实例，持续取得实时状态及全部对应控制权，包括Steer、停止／中断、取消空闲维护等。范围包括Instant Reminder、Heartbeat、Delegation返回、空闲自动压缩／整理及其它系统内部运行，不因上一Turn来源丢控制权。
 - 用户要求先由主会话本人复核已报告故障的原因／修复覆盖，runtime接线改造方案交一个subagent研究，先不实施；复核后再处理内部触发运行的完整控制权。范围不包含改Reminder触发计划、Heartbeat周期或另建Agent Loop；运行归属与提交仍沿正式owner及既有原生机制。

@@ -20,6 +20,8 @@
 
 ## 3. 当前状态与编排
 
+用户恢复目标后新增U13前置顺序：先完成连接／控制层真实连续Turn联调，取得Socket、seq、native身份、recovery_view及控制快照证据并修复该层已证缺陷，再亲审Timeline必要结构调整。B1准备真实WebServer/WS/nativeLoop＋受控外部Provider/barrier，F1先诊断Gateway→ControllerPageRecovery，root亲查生产只读元数据。已做R4折叠候选保留但不当作整体通过；静态历史、独立单Turn及JSDOM理想顺序不足以证明连续使用稳定。
+
 | 目标 | 机制 | 正式接线 | 针对性证据 | 用户结果 |
 |---|---|---|---|---|
 | 0.1.12/13连接／Thinking／Enter修复 | 已有 | 已发布 | 有同版证据 | 不能证明全部历史断连已归因 |
@@ -52,6 +54,9 @@
 | D16 | 新controlled 5071明确accepted:false仍被前端一概视为5xxx未知事务，保草稿但阻塞后续输入 | B1保证false无执行残留，F1区分明确拒绝与真实未知；同code有/无受理事实两支实际入口验证，旧端仍保守 |
 | D17 | controlled提交事件/input_changed只查询phase unknown；RPC ACK迟迟不settle时，已收到精确受理见证仍submitting挡后续输入 | F1按同owner/op事件或input_state见证立即只读query并退役已接收事务；ACK一直pending仍可第二次输入，迟到ACK不改新草稿/重复执行 |
 | D18 | root亲审等待queue drain摘head后、generation复核前的Stop窗口：旧恢复分支可能把已Stop输入重新放回queue，再被poller执行 | B1优先真实barrier反例；明确Main Stop不得复活已claim输入，保其它原生generation变化恢复语义；红→绿与receipt／零后继Provider证据待交 |
+| D19 | B1真实网络harness准备发现候选重复获取history锁；测试live fixture为RLock，正式_init_session为Lock，掩盖idle claim／active通知／Stop cleanup死锁。root已亲读确认idle嵌套锁接缝 | B1发布阻断整改：保正式Lock，沿原owner拆已持锁段、通知移锁外、cleanup只持一次；受影响旧RLock证据不能证明正式链路，必须正式构造＋有界RPC反例重验。未上线，不能归因用户线上现场 |
+
+U13实现期诊断辅助`stream_control_diagnosis`已委派（gpt-6.1-sol/high、fork none、无派生），仅线上同源main12e工作区ignored探针；只读正式后端，调查OutputIdentity/消息持久与终态、连续内部Turn/recovery证明。不是独立Verification门禁，不改产品／根文档／生产，整包交回root。B1与F1仍为唯一对应实现owner。
 | E01 | 15:05:43未知1006缺client_connection_id；旧13:41刷新前停顿无现场时序 | 历史证据边界，不强归网络／代码；后续依双端日志归因 |
 | E02 | adb devices为空 | 不把包校验/IAB冒充真机，交付如实标安装／自然网络／实导限制 |
 
