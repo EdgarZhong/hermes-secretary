@@ -26,11 +26,13 @@
 
 ## 2026-11-09 · 故障全面复核与Web输入运行归属（新授权）
 
-**当前阶段：D32/D33已修并亲审接收，准备fresh全轮复审与新包构建。** 后端产品仍`5edc3f6`（当前docs `3f9b033`），前端`71340be`已提交推送。fresh v2报告保留45条/38符合/4违规/3后继缺证的原判定；其D32/D33已按原合同修复：活动Main附件主按钮Stop/Interrupt，Enter与公开Steer均保草稿，维护等待与idle上传竞态仍原子接收；Orb恢复立即预取，数据/目标就绪后完整展开。root亲审8文件（3产品/5测试），12完整文件536通过、零失败/跳过/排除，类型/冻结health/diff通过，旧13失败逐项核为合法夹具/现行预期修正，真gap恢复保留。root实际隐藏IAB两种附件组合零上传、文本Pending-only后继及双向43帧面板过渡通过，同connection1/recovery1、草稿/旧展开保持；产品3源与真实App/native及536测试证据零漂移。入口：FE ignored `d32-d33/report.md`、`thirteen-classification.md`；BE ignored `root-d32-d33-ui/verification.json`。下一步新无上文全轮审查再另一独立Validation；不把v2改写为已通过。
+**当前阶段：fresh v3发现D34跨Profile slash导航归属，继续窄修，未发布。** BE01e160a8（产品5edc3f6）、FE71340be的fresh v3全96条已交回：90符合、2违规（同D34）、4后继事实缺证，技术阶段不通过；正式/resume与/sessions选中跨Profile列表B行后select(id)仍默认当前A，唯一ID会404、同ID可开错Conversation。root亲读原文和现有侧栏openConversation提交点，提复用该入口而不改id/title匹配规则；独立v3按U07/W19接受方案并保持当前候选违规，F1实施/验证真实Controller归属、同ID/草稿隔离和零业务副作用。该问题不以预存豁免，修复后须fresh全轮复审再独立Validation。
+
+D32/D33的3产品/5测试已亲审，12完整536项零失败/跳过/排除，类型/冻结health通过；旧13红逐项按当前合同修正合法夹具，真gap保留。root真实隐藏IAB附件Enter/Stop/Interrupt零上传、原Pending-only后继、草稿/旧展开保持；Orb预取和43帧双向曲线通过，产品SHA稳定。FE ignored d32-d33/report.md及BE ignored root-d32-d33-ui为证据，不把旧失败报告改成通过。
 
 D31已完成后端成功发布点锁外通知、39正式测试、真实完整App/WS/native链；root追加真正隐藏IAB：首读unavailable后仅释放exact元数据，source/rows保持即可自动gateway，新条目结束前逐条显示，外部结束后Web Enter/Stop可用，旧手动展开保持。actor exit0，证据ignored `root-d31-ui/verification.json`；不是独立Validation或自然移动网络验收。此前八Turn连续链与D29原现场复验有效，按影响复用。
 
-0.1.14/1014 edbdd APK仅历史候选，已要求按最终71340be重建；旧包不得发布。生产PM只读入口已核，Alex Noting/Adaptive及1目标开启；V4尚未上线，自然运行事实待发布后核。当前线上仍9270933/cd5/0.1.13；main合并、联合发布与最终双门禁均未完成。
+0.1.14/1014已按71340be重建核验，SHA77fa7bc1…91bfd；D34修改后仍须最终重建，当前候选及更旧包都不得发布。生产PM只读入口已核，Alex Noting/Adaptive及1目标开启；V4尚未上线，自然运行事实待发布后核。当前线上仍9270933/cd5/0.1.13；main合并、联合发布与最终双门禁均未完成。
 
 **前序9f候选冻结记录（后被D29反例阻断）：** BE `93c3b6d0bd0b91c110760c15f8063aec2d3b9a22`、FE `9f525d33a328740490337f065c225f2462b576d9`已提交推送。B1/D20/D25/D28/U15后端与F1 R7已由root亲审正式接线；最终47项FE源指纹零漂移。F1真实连续控制链包含自然维护提交后waiting续跑，103次DOM提交保旧fold；Gateway两起点逐条持久跟随、外部结束折叠及释放后真实Web Send/Stop通过；纯idle HB/Reminder另有原cd5红／候选绿。12文件354项通过，4项旧夹具失败单独保留并核实性质，不能以基线失败自动豁免。IAB实际界面与独立双门禁尚未完成，不称整轮验收通过。
 

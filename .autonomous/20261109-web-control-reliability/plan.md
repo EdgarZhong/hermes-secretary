@@ -20,9 +20,9 @@
 
 ## 3. 当前状态与编排
 
-**当前版本及复审：** BE产品5edc3f6（docs3f9b033）、FE71340be已提交推送。v2报告45条38符合/4违规/3后继事实缺证原结论保留；D32/D33现在均已按原合同修复并由root亲审接收。8文件3产品/5测试，12完整文件536通过、零失败/跳过/排除，类型/冻结health通过。原13红逐项映射并保基线/原失败，真gap恢复测试完整；不凭旧版同红豁免。root实际隐藏IAB附件零上传、Pending-only后继与Orb预取/43帧双向过渡已补，3产品源前后零漂移。
+**当前版本及复审：** BE01e160a8（产品5edc3f6）、FE71340be固定版fresh v3整包已交：96条90符合/2违规（同D34）/4后继缺证，技术不通过。D34跨Profile导航丢owner：/resume和/sessions从跨Profile列表命中B行，却select默认A Profile，造成404或同ID错误Conversation。root亲读原文与Controller现有入口，提复用openConversation(match)，独立评审接受但保持固定候选违规；F1已接窄修与完整Controller正式读取反例。D32/D33已按原合同亲审关闭，536项无跳过与root IAB有效证据保留；D34不以预存而豁免。
 
-**当前分工与依赖：** 新fresh全轮Verification按原文先建立判据，再核本次产品及全部保留范围；随后另一独立Validation。APK子Agent按FE71340be重建0.1.14原证书包，edbdd历史包不可发布。root维护全局亲审、后续main合并、联合发布、V4自然运行与两套备份；线上仍9270933/cd5/0.1.13，无生产变更。目标工具仍paused事实不冒称恢复，按用户明确继续执行。以下段落为历史取证记录。
+**当前分工与依赖：** verification_integrated_v3全96条报告已由root核对正式路径、证据与讨论，固定版D34仍开放；frontend_finish仅command-actions导航及正式相关测试，保既有匹配规则、Profile/草稿边界和零业务副作用。71340be原证书0.1.14 APK/439资源构建已核，但D34后须最终重建，不能发旧候选。root准备正式构建静态资源的独立原生Web验收实例（ignored web-control-validation-20261110），后续按新提交重新绑定；仍须fresh全轮复审→独立Validation→main联合发布、V4自然运行及两套备份。线上9270933/cd5/0.1.13未变。目标工具paused事实保留，按用户继续执行。
 
 **21:18当前执行事实：** B1正式Lock／D18包已由root亲审；D20排序包已接收，49传输／52身份回放／4stdio证据有效，root核hook、Tee、旧子类和健康端credit接线。root两行旧字符串queue兼容修正获3项绿；protocol另两失败在未改12e同源基线复现（`root-protocol-baseline-two.log`），不算本轮新回归。F1 R5（37源清单15bcb…）285项／type／health及真实网络lost-ACK链已交；root实IAB终态Stop通过，D24异步owner反例补验中。新joint lab使用当前B1＋D20及修正后的真实streaming返回探针，frontend_control_resume独占联调动作，补维护／API返回至terminal连续链；root不并发操纵。apk_release_prepare仅五版本文件及ignored构建证据，待最终源冻结后打0.1.14。尚未独立双门禁、main合并或发布；旧表的调查描述保留为发现时点，当前状态以本段和后续闭合证据为准。
 
@@ -87,6 +87,7 @@
 | D31 | lease首通知早于exact owner metadata约28ms，身份成功公布后缺后继hint，source未写期间页面停合法unavailable | root已亲审接收锁外/真变化后原history hint；39正式测试＋真实App/WS/native8Turn→两Gateway强制窗口绿，source/row不变下约2.3秒自动gateway/samecut uncommitted，同Socket/round/runtime与fold保持、后续Web Send/Stop通过。原红保留、无FE修改。完整证据d31-research/implementation-report.md；待fresh全轮Verification/Validation，不把分区绿冒整轮通过。 |
 | D32 | 活动Main+附件的controlledAction返回Steer，公开Controller.steer绕过原附件资格，Enter可能上传提交未准备附件；违反06§1.8及本轮保留附件限制 | 已实施并root亲审，FE71340be；30正式App附件用例、真实App/native四组合及两上传竞态、root IAB两个组合均通过，3源指纹一致；无Main维护/E01保持。等待fresh独立复审关闭，见FE d32-d33/report.md。 |
 | D33 | D30 root按10/26旧合同回退11/8明确Orb立即异步预取及二级先准备几何后展开要求 | 已实施并root亲审，FE71340be；恢复Orb预取、一级准备/失败Retry、目标就绪再动画，正式App含running/慢/失败/owner/降动效通过，root IAB预取及43帧正常双向过渡通过。root旧依据错误及原证据保留；等待fresh独立复审关闭。 |
+| D34 | 正式/resume或/sessions跨Profile列表选B row后仅select(id)，默认仍A；唯一ID错误404，同ID可显示错误Conversation | root提案复用现有openConversation(match)统一侧栏选择owner，独立v3按U07/W19接受；F1窄修及真实Controller/REST/activate B归属、同ID/草稿隔离/零创建发送中断等反例。保持命令匹配规则，不新设Profile门禁。固定71340be仍违规，修复后fresh全轮复审。 |
 
 **后继事实（用户追问关闭与抽象提示）：** 用户明确20:42同页面发送后没有关闭页面操作。closed不是server主动关闭的同义；该1005来自原ASGI WebSocketDisconnect而非日志默认值，RFC定义需与实际服务栈确认；close_origin_audit只读调查主动关闭入口/重连调度/观察者异常隔离，不改F1产品。20:44有重新接入不等于同页自动恢复成功。unknown提示由项目Web初始27c5cb4已有，原身份受理查询ad7e484/9fabcdd于10/21加入，非Hermes原生错误，非本轮新增。用户批评抽象红错与失去控制，F1将沿已授权自动查询语义改为明确待确认状态，确认后自动退休；不新增盲重放或常驻门禁。
 
