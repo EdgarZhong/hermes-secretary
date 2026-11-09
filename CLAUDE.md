@@ -26,9 +26,11 @@
 
 ## 2026-11-09 · 故障全面复核与Web输入运行归属（新授权）
 
-**当前阶段：D37已由root亲审并提交，准备全新V6整轮独立复审。** FE `79ccd36886e26a84b37f2b02b96b4cfbd088e695` 已推送；BE产品仍 `3c07ea66420c8a52da4cb8784cd0bb615fb65883`。slash model/reasoning共用原生4001一次恢复管线，实际binding安装集中退休旧读取；初次/同runtime不自退、后台A不扰B、合法fresh仍须有限cut确认，确认未应用与真实失败保稿。root已亲读五产品/一测试diff、上下游及382源清单，14完整文件684通过；仅测试夹具类型/复杂度整理后App149再验，类型及冻结health通过。真实accepted Rewind后迟到ACK、scope/ABA/epoch及fresh缓存反例已覆盖。证据FE ignored d37/report.md、source-manifest.json（a8f02be5…8abee），不冒真实IAB或独立验收。
+**当前阶段：V6固定79ccd候选发现D38 Thinking重复，前端已恢复修复，候选暂不可发。** 原生真实AIAgent的两段reasoning在legacy与typed之间合法插入status.update；FE每事件清nativePair，下一chunk回滚再追加得到两个同render id Thinking，无需断线。root亲读原生序列/正式reduceEvent反例后接受缺陷；V6全轮已交58项：54符合/2违规/2后继缺证，技术FAIL；两违规都源自D38，D37当前关闭。root已亲审六节报告/来源及原红，不回写旧判定。root方案经V6按原W08/W13/W16认可：既有projection内按runtime/epoch/scope/Turn/输出owner/source_event_seq保精确贡献认领，非内容通知不断开见证，typed迟到只补该贡献身份，不回滚后继或复制render id；真输出/工具/User/Steer/Turn边界及无typed fallback保持，有界退休。frontend_finish白名单native-output/projection及直接必要sibling/对应正式测试，不动连接层/后端/算法/规则。新实现后须root亲审与fresh全轮复审，不回写V6原失败。
 
-V5固定0d6的70项66符合/1违规/3后继缺证及技术FAIL原样保留，D37工程接收不回写旧判定。apk_finish已恢复按79ccd重建0.1.14/1014，0d6及更旧APK均不可发布。全新V6先仅原规格建立全范围判据，再读实现证据；通过后独立Validation，最后main联合发布及V4自然运行核验。
+root真实隐藏IAB又证D38会触发assistant-ui同ID消息树异常并整页白屏，0WS关闭、同document；直接序列与截图在ignored root-d38-ui。新增两处仅epoch参数接线已亲审准许；产品待修，不能用全页重载或catch隐藏异常结案。
+
+D37已由root亲审并提交FE `79ccd36886e26a84b37f2b02b96b4cfbd088e695`；BE产品 `3c07ea66420c8a52da4cb8784cd0bb615fb65883`、文档HEAD `00a6b08df7efb04c03df7ac6a6d9221ea791e376`。14完整文件684通过、最终App149/type/冻结health通过，仅证明其各自范围，不能关闭D38。79ccd APK0.1.14/1014构建与root四产物SHA核对完成，439资源/382源码绑定；当前不可发布，待D38新源后归档重建。V5固定0d6的70项66符合/1违规/3后继缺证及FAIL保留。独立Validation、main联合发布及V4自然运行仍未完成。
 
 原生SessionLiveInfo新增可选model_switch_pending/context_model/context_provider，后两项与既有Context计算身份同源，cold不冒物理运行模型。前端区分源事实矛盾、合法pending目标不同和明确未知：合法过渡保退休/unknown并结算成功，无伪Retry，不把旧占用灌入新选择；完整已知匹配才恢复数值。三字段真实变化沿原局部配置失效，省略不当false。真实DTO补齐后发现的持续Retry及同名跨Provider反例均保原件；不把630中间绿回填为当时真实pending已过。
 
@@ -40,7 +42,7 @@ D32/D33的3产品/5测试已亲审，12完整536项零失败/跳过/排除，类
 
 D31已完成后端成功发布点锁外通知、39正式测试、真实完整App/WS/native链；root追加真正隐藏IAB：首读unavailable后仅释放exact元数据，source/rows保持即可自动gateway，新条目结束前逐条显示，外部结束后Web Enter/Stop可用，旧手动展开保持。actor exit0，证据ignored `root-d31-ui/verification.json`；不是独立Validation或自然移动网络验收。此前八Turn连续链与D29原现场复验有效，按影响复用。
 
-0.1.14/1014正在按已提交79ccd重建；旧0d6/75e/71340be/edbdd/9f包均非当前候选，不可发布。生产PM只读入口已核，Alex Noting/Adaptive及1目标开启；V4尚未上线，自然运行事实待发布后核。当前线上仍9270933/cd5/0.1.13；main合并、联合发布与最终双门禁均未完成。
+79ccd的0.1.14/1014构建完成但被D38阻断；旧0d6/75e/71340be/edbdd/9f包同样不可发布。生产PM只读入口已核，Alex Noting/Adaptive及1目标开启；V4尚未上线，自然运行事实待发布后核。当前线上仍9270933/cd5/0.1.13；main合并、联合发布与最终双门禁均未完成。
 
 **前序9f候选冻结记录（后被D29反例阻断）：** BE `93c3b6d0bd0b91c110760c15f8063aec2d3b9a22`、FE `9f525d33a328740490337f065c225f2462b576d9`已提交推送。B1/D20/D25/D28/U15后端与F1 R7已由root亲审正式接线；最终47项FE源指纹零漂移。F1真实连续控制链包含自然维护提交后waiting续跑，103次DOM提交保旧fold；Gateway两起点逐条持久跟随、外部结束折叠及释放后真实Web Send/Stop通过；纯idle HB/Reminder另有原cd5红／候选绿。12文件354项通过，4项旧夹具失败单独保留并核实性质，不能以基线失败自动豁免。IAB实际界面与独立双门禁尚未完成，不称整轮验收通过。
 

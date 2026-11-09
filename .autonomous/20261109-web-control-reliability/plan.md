@@ -20,9 +20,9 @@
 
 ## 3. 当前状态与编排
 
-**当前版本及复审：** FE79ccd36886e26a84b37f2b02b96b4cfbd088e695已提交推送，BE产品3c07保持。D37五产品/一测试由root亲审，14完整文件684通过；最终App149定向复验、type/冻结health通过，382源指纹核实。V5固定BE322/FE0d6的70项66符合/1违规/3后继缺证及FAIL保留；新候选尚待全新V6整轮复审，不用工程接收替代独立判定。
+**当前版本及复审：** V6固定BE00a6b08/FE79ccd发现D38：原生合法status.update夹在legacy reasoning/typed之间，下一chunk导致两个同id Thinking，连接正常。原红已落independent-verification-v6；旧D37 684/149绿与APK439/382绑定不覆盖此交错。V6全轮已交58项54符合/2违规/2后继缺证；两个违规都为D38，D37关闭，root已接收完整报告。产品快照用固定blob隔离，不能回写原失败。
 
-**当前分工与依赖：** frontend_finish整包已交回；apk_finish恢复79ccd的0.1.14/1014构建，先完整归档0d6，保既有四目录。V6全新独立审查先原文判据再实现，root负责全局覆盖、证据接收、后继独立Validation和发布。当前原生静态实例PID63343/BE322/FE0d6的root UI证据按影响复用，最终候选须更新静态/重启隔离原生服务后补受影响实际入口。main联合发布、V4自然运行、两套三库及最终交付仍待完成，生产9270933/cd5/0.1.13未变。
+**当前分工与依赖：** frontend_finish恢复D38，root亲审和机制提案、V6按原判据评审。方案在原native-output/projection按精确native身份记录贡献与认领，非内容通知不退见证、迟到typed不回滚后继；多presentation/并发tool/child relay/owner与epoch终止/fallback有界生命周期一并覆盖。白名单FE native-output.ts/projection.ts及必要直接sibling和对应正式测试，禁止改连接/后端/算法/阈值/规则。79ccd APK已完成但暂不可发，apk_finish等待新最终源再归档重建；root隔离实例BE00a6b08/PID83869/静态79ccd已就绪，旧tab8已关。fresh全轮复审及独立Validation后才main发布，生产仍9270933/cd5/0.1.13。
 
 **21:18当前执行事实：** B1正式Lock／D18包已由root亲审；D20排序包已接收，49传输／52身份回放／4stdio证据有效，root核hook、Tee、旧子类和健康端credit接线。root两行旧字符串queue兼容修正获3项绿；protocol另两失败在未改12e同源基线复现（`root-protocol-baseline-two.log`），不算本轮新回归。F1 R5（37源清单15bcb…）285项／type／health及真实网络lost-ACK链已交；root实IAB终态Stop通过，D24异步owner反例补验中。新joint lab使用当前B1＋D20及修正后的真实streaming返回探针，frontend_control_resume独占联调动作，补维护／API返回至terminal连续链；root不并发操纵。apk_release_prepare仅五版本文件及ignored构建证据，待最终源冻结后打0.1.14。尚未独立双门禁、main合并或发布；旧表的调查描述保留为发现时点，当前状态以本段和后续闭合证据为准。
 
@@ -134,3 +134,7 @@ Stop接口收口：旧`session.interrupt`默认保持；新Web可选`input_polic
 快照：12e2b45冻结；2e91189纳入V4、核心文档保护与27模块指纹核；25baafb计划、63bd98f编排更新。新控制首版实施中，尚未整包亲审或独立验收。生产模型／排期／数据／凭据不作测试；原算法dirty与Huawei目录保持。
 
 D37工程接收（79ccd）：正式配置写共用原setter/helper；bindingInstalled统一旧bound/selection/在途资格交接、保自身合法source读取，有限cut后新runtime对账；reasoning仅本地echo规范化，raw RPC不变。root核真实accepted Rewind后的迟到ACK草稿与通知不变、旧读取退休、同runtime/初次/后台不自退及合法4001一次/第二失败/确认/unknown边界。14完整文件684通过、最终App149/类型/health有效，原两slash红及两cache红保留。该项等待V6独立关闭。
+
+D38（V6新技术阻断）：06 C1/C2/U13原生合法通知夹在legacy/typed帧之间，single-slot配对被清除，第二reasoning chunk回滚/追加造成两个同ID Thinking。root与V6研讨见verification §5/6；front end按既有投影owner内精确贡献认领机制修复，不能status特判、后端禁交错、文本去重、增加REST等待/连接关闭。关闭需真实两chunk原红、child relay实际序列→正式Controller/App、多legacy迟到typed/重复/边界/epoch/Turn、终态归并及旧fold/阅读锚点；范围内仍未关闭。
+
+D38正式接线补充：root亲读后准许reduceEvent新增可选内部epoch，Controller.reduceProjection传gateway.epoch，PageRecovery.installCut传已核等于当前epoch且context.current的snapshot.epoch；仅两个表达式，不增连接owner/协议。root真实隐藏IAB固定79ccd复现session.usage seq14插在legacy13/typed15之间，下一chunk令assistant-ui MessageRepository抛同ID异常、整页白屏；timeOrigin1794266267104.7不变/0WS close。原件ignored root-d38-ui/red-verification.json、red-console.json、red-page.jpg；本地受控Provider，全部gate已释放、tab9已关闭。此是D38影响补证，不代独立Validation。
