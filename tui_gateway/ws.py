@@ -19,7 +19,7 @@ from tui_gateway import server
 from agent.message_sanitization import _sanitize_surrogates
 from tui_gateway.event_replay import replay_epoch
 from tui_gateway.transport import serialize_frame
-from tui_gateway.connection_diagnostics import ConnectionDiagnostics, ensure_loop_probe
+from tui_gateway.connection_diagnostics import ConnectionDiagnostics, close_initiator, ensure_loop_probe, peer_reported_initiator
 
 _log = logging.getLogger(__name__)
 
@@ -371,6 +371,7 @@ async def handle_ws(ws: Any, *, auth_identity: dict | None = None, subprotocol: 
     messages = parse_errors = dispatch_crashes = send_failures = 0
     disconnect_reason = "not_connected"
     disconnect_code = None
+    peer_initiator = None
 
     async def _reply(frame: dict, reason: str, msg: str, *args: Any) -> None:
         """write_async; on failure record *reason*, log *msg* and end the read loop."""
@@ -479,6 +480,7 @@ async def handle_ws(ws: Any, *, auth_identity: dict | None = None, subprotocol: 
                 raise
             except _WebSocketDisconnect as exc:
                 disconnect_code = getattr(exc, "code", None)
+                peer_initiator = peer_reported_initiator(disconnect_code, getattr(exc, "reason", None))
                 disconnect_reason = f"client_disconnect(code={disconnect_code})"
                 break
             except Exception:
@@ -526,7 +528,8 @@ async def handle_ws(ws: Any, *, auth_identity: dict | None = None, subprotocol: 
             transport.diagnostics.health(force=True)
             reason = transport._close_reason or ("server_shutdown" if shutting_down else "disconnect_observed")
             transport.diagnostics.log("closed", reason=reason,
-                                      initiator="server" if transport._close_reason or shutting_down else "unknown",
+                                      initiator=close_initiator(bool(transport._close_reason or shutting_down), peer_initiator),
+                                      peer_reported_initiator=peer_initiator,
                                       code=transport._close_code or disconnect_code or (1001 if shutting_down else None), messages=messages,
                                       parse_errors=parse_errors, dispatch_crashes=dispatch_crashes,
                                       send_failures=send_failures)
