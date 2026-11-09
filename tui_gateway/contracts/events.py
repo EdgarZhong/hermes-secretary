@@ -57,6 +57,8 @@ class GatewayReadyPayload(Payload):
     change_events: bool
     replay_epoch: str
     heartbeat: bool | None = None  # WebSocket transport only
+    connection_id: str | None = None  # Server-generated diagnostic identity, never authority.
+    client_connection_id: str | None = None  # Validated untrusted per-attempt client correlation.
 
 
 event("gateway.ready", GatewayReadyPayload,

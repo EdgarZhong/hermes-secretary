@@ -23,7 +23,7 @@ class _StalledWS:
     async def send_text(self, line: str) -> None:
         await self._release.wait()
 
-    async def close(self, code: int = 1000) -> None:
+    async def close(self, code: int = 1000, reason: str = "") -> None:
         self.closed_with.append(code)
         self._release.set()
 

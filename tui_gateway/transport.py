@@ -18,6 +18,8 @@ import json
 import logging
 import os
 import threading
+import time
+from itertools import chain
 from typing import Any, Callable, Optional, Protocol, runtime_checkable
 
 # Errno values that mean "the peer is gone" rather than "the host has a real I/O problem". Anything
@@ -134,7 +136,13 @@ class StdioTransport:
 class _FanoutPeer:
     transport: Transport
     pending: deque = field(default_factory=deque)
+    inflight: list = field(default_factory=list)
     pending_bytes: int = 0
+    pending_frames: int = 0
+    oldest_at: float = 0.0
+    large_key: tuple | None = None
+    large_frames: int = 0
+    large_bytes: int = 0
     writing: bool = False
     attached: bool = True
     generation: int = 0
@@ -151,7 +159,11 @@ class FanoutTransport:
     Other sockets are unaffected. A write already in the OS cannot be revoked.
     """
 
-    _MAX_PENDING_FRAMES = 256
+    # Capacity counts encoded batches, not individual token notifications. The
+    # original byte budget stays unchanged; descriptor count is independently bounded.
+    _MAX_PENDING_BATCHES = 256
+    _BATCH_FRAMES = 64
+    _BATCH_BYTES = 64 * 1024
     _MAX_PENDING_BYTES = 4 * 1024 * 1024
 
     def __init__(self, *transports: Transport) -> None:
@@ -181,7 +193,11 @@ class FanoutTransport:
         # a later attachment of the same transport.
         peer.attached = False
         peer.pending.clear()
+        peer.inflight = []
         peer.pending_bytes = 0
+        peer.pending_frames = 0
+        peer.oldest_at = 0.0
+        peer.large_key, peer.large_frames, peer.large_bytes = None, 0, 0
         if not peer.writing and peer in self._peers:
             self._peers.remove(peer)
 
@@ -213,36 +229,56 @@ class FanoutTransport:
                         self._remove(peer)
                     return
                 generation = peer.generation
-                frame, size = peer.pending.popleft()
-                peer.pending_bytes -= size
+                batch = peer.pending.popleft()
+                peer.inflight = batch
             try:
                 from tui_gateway.ws import WSTransport
                 if isinstance(peer.transport, WSTransport):
-                    # write() acknowledges buffered tokens/timeouts, not socket
-                    # progress. Await the real send so WS cannot move an
-                    # unbounded backlog underneath this bounded mailbox.
                     from agent.async_utils import safe_schedule_threadsafe
                     future = safe_schedule_threadsafe(
-                        peer.transport.write_async(frame), peer.transport._loop)
+                        peer.transport.write_lines_async([item[0] for item in batch],
+                                                         queued_at=batch[0][3],
+                                                         is_current=lambda: peer.attached and peer.generation == generation),
+                        peer.transport._loop)
                     ok = future is not None and future.result()
                 else:
-                    ok = peer.transport.write(frame)
+                    ok = True
+                    for item in batch:
+                        if not peer.attached or peer.generation != generation:
+                            break
+                        if not peer.transport.write(json.loads(item[0])):
+                            ok = False
+                            break
             except Exception:
                 logger.debug("fanout write failed; pruning peer", exc_info=True)
                 ok = False
-            if not ok:
-                with self._lock:
-                    if peer.generation != generation:
-                        continue
+            with self._lock:
+                if peer.generation != generation:
+                    continue
+                if not peer.attached or not ok:
                     peer.writing = False
                     self._remove(peer)
-                return
+                    return
+                # Include in-flight bytes until the actual socket send completes.
+                peer.pending_bytes -= sum(item[1] for item in batch)
+                peer.pending_frames -= len(batch)
+                peer.oldest_at = peer.pending[0][0][3] if peer.pending else 0.0
+                for item in batch:
+                    if item[4] == peer.large_key:
+                        peer.large_frames -= 1
+                        peer.large_bytes -= item[1]
+                peer.inflight = []
+                if not peer.large_frames:
+                    peer.large_key = None
 
-    def _signal_overflow_detach(self, transport: Transport) -> None:
+    def _signal_overflow_detach(self, transport: Transport, details: dict) -> None:
         # Outside the fanout lock: abort()/close() may re-enter contains/detach, and
         # a WS close must not stall the emit turn or other subscribers. WSTransport
         # aborts (1011 socket close, off-loop safe); other transports just close.
         try:
+            diagnostics = getattr(transport, "diagnostics", None)
+            if diagnostics is not None:
+                diagnostics.log("queue_overflow", **details, reason="fanout_overflow")
             abort = getattr(transport, "abort", None)
             (abort or transport.close)()
         except Exception:
@@ -253,28 +289,95 @@ class FanoutTransport:
         # guard as the single-peer transports: an unserializable frame reaches every peer as -32603.
         encoded = serialize_frame(obj, "fanout", logger)
         size = len(encoded.encode("utf-8", errors="surrogatepass"))
-        frame = json.loads(encoded)
-        overflowed: list[Transport] = []
+        from tui_gateway.connection_diagnostics import event_type
+        now = time.monotonic()
+        large_key = self._large_group(obj)
+        item = (encoded, size, event_type(obj), now, large_key)
+        overflowed = []
         with self._lock:
             for peer in list(self._peers):
                 if not peer.attached:
                     continue
-                if (len(peer.pending) >= self._MAX_PENDING_FRAMES
-                        or peer.pending_bytes + size > self._MAX_PENDING_BYTES):
+                if not self._can_enqueue(peer, item, large_key):
+                    oldest = peer.oldest_at or now
+                    details = dict(event_type=item[2], frame_bytes=size, pending_frames=peer.pending_frames,
+                                   pending_bytes=peer.pending_bytes, pending_batches=len(peer.pending),
+                                   normal_pending_bytes=peer.pending_bytes - peer.large_bytes,
+                                   large_pending_bytes=peer.large_bytes, large_pending_frames=peer.large_frames,
+                                   queue_wait_ms=round((now - oldest) * 1000, 3))
                     logger.warning("fanout subscriber backlog full; detaching peer")
-                    overflowed.append(peer.transport)
+                    overflowed.append((peer.transport, details))
                     self._remove(peer)
                     continue
-                peer.pending.append((frame, size))
+                self._append_batch(peer, item)
+                if not peer.pending_frames:
+                    peer.oldest_at = now
                 peer.pending_bytes += size
+                peer.pending_frames += 1
+                if peer.large_key == large_key:
+                    peer.large_frames += 1
+                    peer.large_bytes += size
+                diagnostics = getattr(peer.transport, "diagnostics", None)
+                if diagnostics is not None:
+                    diagnostics.queued(peer.pending_frames, peer.pending_bytes, len(peer.pending))
                 if not peer.writing:
                     peer.writing = True
                     threading.Thread(target=self._drain, args=(peer,),
                                      name="tui-fanout", daemon=True).start()
             remaining = any(peer.attached for peer in self._peers)
-        for transport in overflowed:
-            self._signal_overflow_detach(transport)
+        for transport, details in overflowed:
+            self._signal_overflow_detach(transport, details)
         return remaining
+
+    @staticmethod
+    def _large_group(obj):
+        # One existing large logical event may have its additive typed twin.
+        # Neither is copied per subscriber, truncated, or assigned a new size limit.
+        params = obj.get("params")
+        params = params if isinstance(params, dict) else {}
+        payload = params.get("payload")
+        payload = payload if isinstance(payload, dict) else {}
+        sequence = payload.get("source_event_seq") if params.get("type") in {
+            "message.output_delta", "tool.output"} else params.get("seq")
+        return (params.get("session_id"), sequence) if type(sequence) is int else (object(),)
+
+    def _can_enqueue(self, peer, item, large_key):
+        size = item[1]
+        normal_full = peer.pending_bytes - peer.large_bytes + size > self._MAX_PENDING_BYTES
+        if normal_full and not peer.large_frames:
+            self._reserve_large_event(peer, item, large_key)
+        in_large_slot = peer.large_key == large_key
+        if in_large_slot and peer.large_frames >= 2:
+            return False
+        if not in_large_slot and normal_full:
+            return False
+        needs_batch = (not peer.pending or len(peer.pending[-1]) >= self._BATCH_FRAMES
+                       or sum(entry[1] for entry in peer.pending[-1]) + size > self._BATCH_BYTES)
+        return not needs_batch or len(peer.pending) < self._MAX_PENDING_BATCHES
+
+    def _reserve_large_event(self, peer, item, key):
+        if item[1] > self._MAX_PENDING_BYTES:
+            peer.large_key = key
+            return
+        # A 2.5MiB legacy + 2.5MiB typed twin is one logical large event too.
+        # Promote its existing first frame rather than letting the duplicate
+        # payload poison every healthy subscriber at the 4MiB ordinary budget.
+        pairs = {"message.output_delta": {"message.delta", "reasoning.delta", "message.interim"},
+                 "tool.output": {"tool.start", "tool.complete", "tool.generating"}}
+        expected = pairs.get(item[2], ())
+        if not expected:
+            return
+        for prior in chain(peer.inflight, chain.from_iterable(peer.pending)):
+            if prior[4] == key and prior[2] in expected:
+                peer.large_key, peer.large_frames, peer.large_bytes = key, 1, prior[1]
+                return
+
+    def _append_batch(self, peer, item):
+        if (peer.pending and len(peer.pending[-1]) < self._BATCH_FRAMES
+                and sum(entry[1] for entry in peer.pending[-1]) + item[1] <= self._BATCH_BYTES):
+            peer.pending[-1].append(item)
+        else:
+            peer.pending.append([item])
 
     def close(self) -> None:
         """Detach without closing sockets owned by the connection handlers."""
