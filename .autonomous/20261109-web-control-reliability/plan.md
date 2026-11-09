@@ -6,7 +6,7 @@
 
 优先完成纵向链：App输入→正式RPC原子受理→真实runtime/Pending/维护→流式／回执／控制结果。稳定operation、owner、commit fence先于展示。沿现有Session、原生lease、Pending和队列持久事实，不建新通用gate、writer、调度器或对话存储。旧默认接口保持，Web capability opt-in；首选既有prompt.submit增加input_policy=web_controlled，名称可在正式协议交接时沿现有类型风格收口。
 
-完成条件：U01–U13正式接线和针对性证据、root亲审、独立Verification再独立Validation通过；main实际服务／静态／APK版本及原签名一致；V4自然运行可核；范围内缺陷清空。无ADB真实手机的现场边界明确，不伪称完成运营商归因。
+完成条件：U01–U14正式接线和针对性证据、root亲审、独立Verification再独立Validation通过；main实际服务／静态／APK版本及原签名一致；V4自然运行可核；范围内缺陷清空。无ADB真实手机的现场边界明确，不伪称完成运营商归因。
 
 ## 2. 覆盖与任务表
 
@@ -77,6 +77,7 @@
 | D25 | root真实隐藏IAB受控last-delta时Enter Steer，待消费custody witness被正式history提前画成普通You，同时Pending显示同输入两份，当前Assistant被挪到该早写row之后；terminal/followup后早写行才消失 | stream_order_resume改BE正式display可见谓词及session_history内存投影同owner；SQL计数/分页/coverage/turn_start一致排除明确Web queued custody，保durable receipt/原始active/原生队列和legacy语义。先正式read/recovery红→绿再联合实UI |
 | D26 | F1真实联合Gateway/Controller＋TimelineMessages：同epoch重连后Idle维护→两同文waiting→按op撤回其一→Stop维护保另一→新Turn流式，三次DOM提交历史folds=[]、终态恢复；当时连接ready且身份/控制正确 | F1/BE已共同定位completedMark恰为已withdraw的第一条waiting custody UID；owner/runtime/epoch未变，删除该错误前沿后retained/completed均失效。先修D25正式投影并重跑原真实链，暂不新增FE下游补丁；若仍失效再修通用owner。严格逐DOM提交断言保红证据 |
 | D27 | root实际隐藏IAB Stop后Thinking从正文前移动到后；原始row7 turn_terminal保reasoning residual，row8同Assistant UID仅正文。F1已核terminal-history把所有residual锚到suffix尾，且先retire已见live | F1按真实source/native UID、typed facet及已见顺序修既有terminal-history／projection；保正文/工具残留与冷恢复缺证明的诚实fallback，不按文本或时间猜顺序，补真实链反例及跨Turn回归 |
+| D28 | close_origin_audit在原Gateway＋正式Controller注册链复现：同步state观察者异常穿透endConnection，连接已退役而retry未安装；ready后置heartbeat/Promise也受观察者影响。无20:42自然throw记录，不称现场关闭原因 | close_origin_audit实现唯一连接owner先提交ready/退休/重试，再隔离通知；F1接明确delivery failure到既有恢复。健康Socket不因渲染失败关闭，任何意外关闭统一恢复；4100固定对端原因仅诊断不决定重连。界面/原生测试及陌生关闭原因、回调重入、旧owner、自然WS恢复交叉验证 |
 
 **后继事实（用户追问关闭与抽象提示）：** 用户明确20:42同页面发送后没有关闭页面操作。closed不是server主动关闭的同义；该1005来自原ASGI WebSocketDisconnect而非日志默认值，RFC定义需与实际服务栈确认；close_origin_audit只读调查主动关闭入口/重连调度/观察者异常隔离，不改F1产品。20:44有重新接入不等于同页自动恢复成功。unknown提示由项目Web初始27c5cb4已有，原身份受理查询ad7e484/9fabcdd于10/21加入，非Hermes原生错误，非本轮新增。用户批评抽象红错与失去控制，F1将沿已授权自动查询语义改为明确待确认状态，确认后自动退休；不新增盲重放或常驻门禁。
 
