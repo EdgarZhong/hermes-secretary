@@ -6,7 +6,7 @@
 
 优先完成纵向链：App输入→正式RPC原子受理→真实runtime/Pending/维护→流式／回执／控制结果。稳定operation、owner、commit fence先于展示。沿现有Session、原生lease、Pending和队列持久事实，不建新通用gate、writer、调度器或对话存储。旧默认接口保持，Web capability opt-in；首选既有prompt.submit增加input_policy=web_controlled，名称可在正式协议交接时沿现有类型风格收口。
 
-完成条件：U01–U14正式接线和针对性证据、root亲审、独立Verification再独立Validation通过；main实际服务／静态／APK版本及原签名一致；V4自然运行可核；范围内缺陷清空。无ADB真实手机的现场边界明确，不伪称完成运营商归因。
+完成条件：U01–U15正式接线和针对性证据、root亲审、独立Verification再独立Validation通过；main实际服务／静态／APK版本及原签名一致；V4自然运行可核；范围内缺陷清空。无ADB真实手机的现场边界明确，不伪称完成运营商归因。
 
 ## 2. 覆盖与任务表
 
@@ -19,6 +19,8 @@
 | R 联合发布 | U08/U10–U12 | root；main合并、0.1.14版本、构建／部署与运维记录 | 门禁通过，稳定源码，原签名，服务安全空闲 | 原生main发布器、439静态manifest/HTTP、APK签名/ZIP/ELF/资源、双端ID；保最近两套三库；无ADB实机不冒称实导，脚本和格式仍交付 |
 
 ## 3. 当前状态与编排
+
+**最新暂停后恢复：** 用户再次明确继续并恢复subagent。旧活动树已消失，frontend_finish按原F1未提交代码与R6证据收尾D24/D27/D28/unknown提示、纯idle系统唤起与U15前端；gateway_display_backend负责U15正式持久提交→跨进程通知／只读状态接缝，两者仓库范围分离。root亲审D28已交API/BE诊断包并做整合集成；APK五版本字段已0.1.14但尚未正式构建，待最终源。U15只读Gateway展示与真正写控制分开，不新增第二writer／token流代理。目标工具仍返回paused，当前按用户继续指令执行，工具不能自行恢复开关，不冒称自动目标已active。算法b232/V4在集成候选，用户再次要求今晚与修复一起合main上线，未撤销。
 
 **21:18当前执行事实：** B1正式Lock／D18包已由root亲审；D20排序包已接收，49传输／52身份回放／4stdio证据有效，root核hook、Tee、旧子类和健康端credit接线。root两行旧字符串queue兼容修正获3项绿；protocol另两失败在未改12e同源基线复现（`root-protocol-baseline-two.log`），不算本轮新回归。F1 R5（37源清单15bcb…）285项／type／health及真实网络lost-ACK链已交；root实IAB终态Stop通过，D24异步owner反例补验中。新joint lab使用当前B1＋D20及修正后的真实streaming返回探针，frontend_control_resume独占联调动作，补维护／API返回至terminal连续链；root不并发操纵。apk_release_prepare仅五版本文件及ignored构建证据，待最终源冻结后打0.1.14。尚未独立双门禁、main合并或发布；旧表的调查描述保留为发现时点，当前状态以本段和后续闭合证据为准。
 

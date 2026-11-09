@@ -26,6 +26,8 @@
 
 ## 2026-11-09 · 故障全面复核与Web输入运行归属（新授权）
 
+**暂停后已按用户指令继续：** 原子会话已不在活动树，恢复为frontend_finish与gateway_display_backend；root复核D28连接owner已交包并整合。最新U15：Gateway真实运行时仅运行控制受限，Web仍逐条跟随新落库消息／外部Turn终态并稳定呈现与collapse，不把读权限/显示与runtime控制混为一体；纯idle系统唤起单独验。用户再次确认今晚修复＋算法V4一起main发布，算法候选已合隔离分支且保持原公式，未漏项。当前目标工具仍paused但用户已明确继续，当前会话工作已恢复，工具无恢复开关能力；尚未独立审查／实际验收／正式0.1.14构建或发布。
+
 **当前最后收口：** D25已提交89d0d142d8，D26联合链90次DOM提交不再丢旧fold，正式输入各只写一次；D27终态facet顺序与unknown提示/当前Stop可达由F1处理。关闭专项只读证实20:42为Mac Chrome所用连接、实际服务栈1005与TCP失联1006区别；具体本地主动入口仍缺客户端事实，不归网络。D28原Gateway/Controller同步观察者可截断retry已确定复现，close_origin_audit改统一连接owner先结算再通知、F1接业务恢复；4100固定原因仅诊断，绝不作重连白名单。用户再次强调正向机制与所有意外断开自动恢复，已登记U14。原server/F1通信白名单分离，APK等待最终源；开发证据不代替独立审查与实际验收，尚未发布。
 
 **最新联调与用户追问：** D25公共投影修复5项定向绿；重启联合版后F1严格真实链90个DOM提交均保旧fold，D26同因关闭且未加FE特例；普通Steer为单Pending/零custody正文，Instant Reminder与Heartbeat均实际触发并可Steer/Stop，11条original input各仅一次写。D24额外New Chat旧事务覆盖目标新事务两反例已修；D27终态residual Thinking顺序尚在收口。用户明确20:42同页未主动关闭，追问unknown机制是否过度防御；root已按Git核对为项目后加提示/查询而非Hermes原生错误，交F1改成自动确认状态而非手工排障红错。close_origin_audit独立只读核真实1005来源、前端close入口与恢复调度，尚不把网络／具体调用当现场已证原因。0.1.14打包继续等最终FE，独立双门禁未开始，线上仍0.1.13。
