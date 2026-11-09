@@ -20,9 +20,9 @@
 
 ## 3. 当前状态与编排
 
-**当前已固定部分：** BE主体93c3b6d0＋D31单文件通知修正已亲审接收，FE edbddb6bcdef356ff83c71323d0fdbb6da201f8e已提交推送；D29恢复hold／local commit与Pending/Secretary竞态、D30 Scheduler接线已亲审。18文件583通过/1原有可选wire未启，旧52App红已按合同逐项转绿。root真实隐藏IAB八Turn链、阅读锚点/手动展开、Scheduler按需读取、正常Gateway逐条persist→结束→Web Send/Stop均通过。D31另有真实28ms发布竞态，不能用正常链抵销。
+**当前版本及复审：** BE `5edc3f6805566f97241383401d74094a92e044ce`、FE `edbddb6bcdef356ff83c71323d0fdbb6da201f8e`已提交推送。fresh全轮Verification独立建立43条判据后发现D32活动Main附件动作被controlled入口改成提交、D33按旧10/26条款错误回退11/8 Schedule面板预取/动画合同；两项均确认成立，尚未通过技术阶段。root已评审方案，frontend_finish按最新原文修复，暂不发布edbdd构建。此前583绿及Scheduler浏览器现象不证明D32/D33合规，原证据保留。
 
-**当前分工与依赖：** F1仅active_sessions.py公共成功发布点修正已交：39正式测试绿、真实完整watcher链在source不变的强制窗口自动更新，两个external owner及后续Web控制通过；root已亲审，追加staged相关质量检查。旧Verification已评审方案，非通过整轮。APK子任务已按edbddb6重建并核原证书/真实439资源，旧9f产物归档；同时确认正式PM只读算法核验入口及现有开关。root待D31整包亲审与源码提交后，派fresh全范围Verification→独立Validation，然后保护核心文档合main、联合发布、核V4自然运行和两套备份。目标工具仍paused事实不冒称恢复，当前按用户明确继续执行；线上仍9270933/cd5/0.1.13，尚未变更。以下段落为历史取证记录。
+**当前分工与依赖：** root完成D31真隐藏IAB：强制首读unavailable，exact metadata公布后source/rows仍不变即可同页gateway；新持久row结束前出现、外部结束后真实Web Enter/Stop、首组手动展开保持；actor exit0，详见ignored `root-d31-ui/verification.json`。F1整包修D32/D33并补正式入口/最新条款红绿；verification_integrated_v2继续全范围调查，产品修后fresh全轮复审再独立Validation。APK0.1.14旧edbdd产物核验有效但不得发布，待最终源重新构建。root后续main合并、联合发布、V4自然运行与两套备份；线上仍9270933/cd5/0.1.13，无生产变更。目标工具仍paused事实不冒称恢复，按用户明确继续执行。以下段落为历史取证记录。
 
 **21:18当前执行事实：** B1正式Lock／D18包已由root亲审；D20排序包已接收，49传输／52身份回放／4stdio证据有效，root核hook、Tee、旧子类和健康端credit接线。root两行旧字符串queue兼容修正获3项绿；protocol另两失败在未改12e同源基线复现（`root-protocol-baseline-two.log`），不算本轮新回归。F1 R5（37源清单15bcb…）285项／type／health及真实网络lost-ACK链已交；root实IAB终态Stop通过，D24异步owner反例补验中。新joint lab使用当前B1＋D20及修正后的真实streaming返回探针，frontend_control_resume独占联调动作，补维护／API返回至terminal连续链；root不并发操纵。apk_release_prepare仅五版本文件及ignored构建证据，待最终源冻结后打0.1.14。尚未独立双门禁、main合并或发布；旧表的调查描述保留为发现时点，当前状态以本段和后续闭合证据为准。
 
@@ -82,9 +82,11 @@
 | D26 | F1真实联合Gateway/Controller＋TimelineMessages：同epoch重连后Idle维护→两同文waiting→按op撤回其一→Stop维护保另一→新Turn流式，三次DOM提交历史folds=[]、终态恢复；当时连接ready且身份/控制正确 | F1/BE已共同定位completedMark恰为已withdraw的第一条waiting custody UID；owner/runtime/epoch未变，删除该错误前沿后retained/completed均失效。先修D25正式投影并重跑原真实链，暂不新增FE下游补丁；若仍失效再修通用owner。严格逐DOM提交断言保红证据 |
 | D27 | root实际隐藏IAB Stop后Thinking从正文前移动到后；原始row7 turn_terminal保reasoning residual，row8同Assistant UID仅正文。F1已核terminal-history把所有residual锚到suffix尾，且先retire已见live | F1按真实source/native UID、typed facet及已见顺序修既有terminal-history／projection；保正文/工具残留与冷恢复缺证明的诚实fallback，不按文本或时间猜顺序，补真实链反例及跨Turn回归 |
 | D28 | close_origin_audit在原Gateway＋正式Controller注册链复现：同步state观察者异常穿透endConnection，连接已退役而retry未安装；ready后置heartbeat/Promise也受观察者影响。无20:42自然throw记录，不称现场关闭原因 | close_origin_audit实现唯一连接owner先提交ready/退休/重试，再隔离通知；F1接明确delivery failure到既有恢复。健康Socket不因渲染失败关闭，任何意外关闭统一恢复；4100固定对端原因仅诊断不决定重连。界面/原生测试及陌生关闭原因、回调重入、旧owner、自然WS恢复交叉验证 |
-| D29 | 过期viewport读取遗留无owner replaying，终态连续帧已到却被held；另查到consumed Pending半提交、Secretary首次读取通知遗漏 | root结构方案经Verification第6节接受。F1五产品接缝修正，最终15文件510绿/1原可选wire未启；E1–E4完整绿。root真实IAB八Turn原路径及HB/Reminder/Steer/Stop通过，同connection1/recovery2、cursor189、八唯一Assistant/无held或Receiving、reading anchor与manual choice保持（root-final-ui/fixed-ui-verification.json）。完整旧App52红尚待F1分类／合法fixture复验，不因基线同红豁免；之后fresh全范围Verification→Validation与新包重构建。 |
-| D30 | 52项旧App逐项分类后，Scheduler打开Orb即读详情、进入却等ready才挂载导致不可返回loading | root修既有App四处接线；完整App62＋Composer4全绿，总相关18文件583通过/1原可选wire未启。root真实IAB开Orb详情0读、进入后真实row可见且可返回；分类及红证据保留，产品仅App新增。 |
+| D29 | 过期viewport读取遗留无owner replaying，终态连续帧已到却被held；另查到consumed Pending半提交、Secretary首次读取通知遗漏 | root结构方案经Verification第6节接受。F1五产品接缝修正，最终15文件510绿/1原可选wire未启；E1–E4完整绿。root真实IAB八Turn原路径及HB/Reminder/Steer/Stop通过，同connection1/recovery2、cursor189、八唯一Assistant/无held或Receiving、reading anchor与manual choice保持（root-final-ui/fixed-ui-verification.json）。完整旧App52红已分类，18文件583通过；其中D30 Scheduler期待后被fresh复查确认为旧规格回退，单列D33修正，不抵销D29有效证据。 |
+| D30 | 52项旧App逐项分类；root曾按10/26旧Scheduler条款调整App四处 | 历史583绿和Orb零预取证据保留；fresh复查确认该期待违反11/8用户确认，转D33整改，不能作为当前合规证据。 |
 | D31 | lease首通知早于exact owner metadata约28ms，身份成功公布后缺后继hint，source未写期间页面停合法unavailable | root已亲审接收锁外/真变化后原history hint；39正式测试＋真实App/WS/native8Turn→两Gateway强制窗口绿，source/row不变下约2.3秒自动gateway/samecut uncommitted，同Socket/round/runtime与fold保持、后续Web Send/Stop通过。原红保留、无FE修改。完整证据d31-research/implementation-report.md；待fresh全轮Verification/Validation，不把分区绿冒整轮通过。 |
+| D32 | 活动Main+附件的controlledAction返回Steer，公开Controller.steer绕过原附件资格，Enter可能上传提交未准备附件；违反06§1.8及本轮保留附件限制 | F1修复，root/Verification已条件性评审；真实活动Main+附件保Stop/Interrupt与完整草稿，Enter不触发取消；无Main维护Send等待/E01及idle上传后Main启动竞态保持。完成须正式Composer/Controller两附件/有无Pending红绿与最终指纹。 |
+| D33 | D30 root按10/26旧合同回退11/8明确Orb立即异步预取及二级先准备几何后展开要求 | F1修复，root承认旧依据优先级错误；恢复Orb预取、缺二级数据留一级准备/失败Retry、目标就绪再动画，晚响应/返回/owner/减少动画保持。保旧证据，按最新条款实际App/IAB复验。 |
 
 **后继事实（用户追问关闭与抽象提示）：** 用户明确20:42同页面发送后没有关闭页面操作。closed不是server主动关闭的同义；该1005来自原ASGI WebSocketDisconnect而非日志默认值，RFC定义需与实际服务栈确认；close_origin_audit只读调查主动关闭入口/重连调度/观察者异常隔离，不改F1产品。20:44有重新接入不等于同页自动恢复成功。unknown提示由项目Web初始27c5cb4已有，原身份受理查询ad7e484/9fabcdd于10/21加入，非Hermes原生错误，非本轮新增。用户批评抽象红错与失去控制，F1将沿已授权自动查询语义改为明确待确认状态，确认后自动退休；不新增盲重放或常驻门禁。
 

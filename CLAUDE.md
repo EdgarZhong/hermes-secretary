@@ -26,11 +26,11 @@
 
 ## 2026-11-09 · 故障全面复核与Web输入运行归属（新授权）
 
-**当前阶段：实现整合收口，准备fresh全轮独立复审。** FE `edbddb6bcdef356ff83c71323d0fdbb6da201f8e`已提交推送：18文件583通过、1项原有可选wire fixture未启用；原52项App旧红逐项分类后全部通过，完整App62＋Composer4绿，未以基线同红豁免。root亲审六产品接缝，真实隐藏IAB完成8 Turn连续manual/Steer/Stop/HB/Reminder链（同connection1/recovery2、cursor189、8唯一Assistant、无held或Receiving、历史阅读锚点与手动展开保持），并完成Scheduler按需读取与正常Gateway三条逐条持久跟随→结束→Web Send/Stop。对应证据root-final-ui/fixed-ui-verification.json与root-gateway-ui/{scheduler-ui,third-gateway-ui}.json。
+**当前阶段：fresh全轮独立复查发现D32/D33，继续修复，未进入发布。** BE `5edc3f6805566f97241383401d74094a92e044ce`、FE `edbddb6bcdef356ff83c71323d0fdbb6da201f8e`已提交推送。独立verification_integrated_v2先建立全范围判据，再核实现；发现活动Main准备附件被controlled入口作为Steer提交，以及root在D30按10/26旧条款误撤11/8明确要求的Orb预取/完整面板准备。root亲读最新原文确认两项成立，frontend_finish按原动作及最新面板合同修正并补正式路径证据。旧583绿和Scheduler浏览器观察不代表最新规格通过，原失败与错误期待证据保留；修后重新fresh复审再独立Validation。
 
-D31独立反例确认：native lease可见后约28ms才公布exact host metadata，首次watch通知与input读取落在间隙，返回合法unavailable；metadata成功公布后没有后继hint，页面持续旧状态而即时RPC已gateway。F1已在`hermes_cli/active_sessions.py`成功发布提交点补锁外、identity真变化才发的既有history hint，root亲审通过；两正式文件39项全绿、ruff/冻结health通过。完整App/真实WS/native链强制首读unavailable后，source/rows不变也在原2秒trailing内自动gateway，同connection/round/runtime、8旧fold与选择保持；连续两个external owner及后续Web Send/Stop通过。旧Verification的方案条件已逐项取证；整轮fresh独立复审/Validation仍待执行，不冒称旧门禁已通过。FE保持冻结，不加轮询或放宽权限。旧root actor1 stdin EOF/actor2受控300s超时仅为夹具失败，未计通过；第三actor正常完整链exit0单列。
+D31已完成后端成功发布点锁外通知、39正式测试、真实完整App/WS/native链；root追加真正隐藏IAB：首读unavailable后仅释放exact元数据，source/rows保持即可自动gateway，新条目结束前逐条显示，外部结束后Web Enter/Stop可用，旧手动展开保持。actor exit0，证据ignored `root-d31-ui/verification.json`；不是独立Validation或自然移动网络验收。此前八Turn连续链与D29原现场复验有效，按影响复用。
 
-新版0.1.14/1014已按edbddb6重建，APK SHA `2e37b3ed207f9bd41a2902aeb5590a62c4d3605261a251f26071c30b353eaafb`，原证书/439实际资源/16KB等通过；旧9f包完整归档且不得发布。生产PM正确只读入口已核，现有Alex Noting/Adaptive及1目标均开启；新V4尚未上线、自然运行事实待发布后核。当前线上仍9270933/cd5/0.1.13；fresh全轮Verification、独立Validation、main合并及联合发布均未完成。
+0.1.14/1014 edbdd APK原证书/439实际资源/16KB等核验有效，但D32/D33修复后必须按最终源码重建，旧包不得发布。生产PM只读入口已核，Alex Noting/Adaptive及1目标开启；V4尚未上线，自然运行事实待发布后核。当前线上仍9270933/cd5/0.1.13；main合并、联合发布与最终双门禁均未完成。
 
 **前序9f候选冻结记录（后被D29反例阻断）：** BE `93c3b6d0bd0b91c110760c15f8063aec2d3b9a22`、FE `9f525d33a328740490337f065c225f2462b576d9`已提交推送。B1/D20/D25/D28/U15后端与F1 R7已由root亲审正式接线；最终47项FE源指纹零漂移。F1真实连续控制链包含自然维护提交后waiting续跑，103次DOM提交保旧fold；Gateway两起点逐条持久跟随、外部结束折叠及释放后真实Web Send/Stop通过；纯idle HB/Reminder另有原cd5红／候选绿。12文件354项通过，4项旧夹具失败单独保留并核实性质，不能以基线失败自动豁免。IAB实际界面与独立双门禁尚未完成，不称整轮验收通过。
 
