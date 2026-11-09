@@ -44,6 +44,7 @@
 | D08 | B1里程碑删除scheduler_host的Gateway来源筛选，而Gateway仍独立claim，可能使既有通道Reminder宿主／出站语义取决于扫描竞争 | B1核查并保原路由边界；历史source不作为Web输入拒绝依据，不等于可任意接管投递；必要方案须root先亲审 |
 | D09 | 重启受理见证保留，但首版input_state只列RAM queue、operation_status不带原输入，需证明冷启可恢复文本／附件与显式再操作 | B1/F1接口整改；不能只显示中断却找不到输入，未知已执行不得冒称未执行 |
 | D10 | Turn内auto compaction期间接收的文本不能仅留maintenance队列直到整Turn结束；第一个安全边界应为压缩发布后当前native Pending再次可用 | B1闭合阶段转换；正式auto compaction→下一API反例，不把Idle或假flag测试冒充；附件沿原下一Turn完整输入 |
+| D11 | Stop等待compression commit fence期间可能跨Turn；仅RPC前比turn_id不足，锁外abort请求／线程／child传播亦可能命中新Turn | B1在原interrupt owner增可选身份fence，真实barrier＋新Turn接管验证；旧默认和hard_interrupt兼容语义保持，拒绝不得有清队列／cancel／信号副作用 |
 | E01 | 15:05:43未知1006缺client_connection_id；旧13:41刷新前停顿无现场时序 | 历史证据边界，不强归网络／代码；后续依双端日志归因 |
 | E02 | adb devices为空 | 不把包校验/IAB冒充真机，交付如实标安装／自然网络／实导限制 |
 
@@ -51,9 +52,13 @@ root复核证据：BE ignored .hermes-dev/control-recheck-20261109/，FE .archiv
 
 no-tmp旧历史报告、旧Timeline测试及Android TV lint缺口保持原时点，不关闭门禁；新代码影响证据时定向补证。官方PM .venv，Python只用HERMES_PYTHON="$PWD/.venv/bin/python" scripts/run_tests.sh。最终大型检查由root在集成收敛并派独立门禁后统一一次，日常只相关分区／正式机制／竞态。
 
+root基线反证：main12e2b45、相关6个test／实现blob与2e91189一致，官方runner仅执行hidden_row_receipt与gateway_enabled_branch两项，均失败（各1.31／1.02秒）；证据`baseline-two-failures-12e2b45.log`。允许B1窄修fake签名透传accept_metadata，并将“禁止查找adapter”改为证明“零实际handle_message／模型派发／claim”，保原durable内容、display_kind、fire_count与Profile断言；不改产品迁就fake，不隐藏原失败。生成完整性中的review.summary为旧基线项，本轮compaction_delta须真实literal emitter通过，不能造假的emit或改扫描规则。
+
 B1白名单工程补充：root亲读后允许`agent/auxiliary_chat_stream.py`在现有compression capture作用域通知实际Chat摘要增量，observer在累积锁外且不影响原模型流／超时／进度语义；无capture保持原生。`tui_gateway/ws.py`、`entry.py`仅增可选能力声明。此为既有维护流式要求的必要接线，不扩大产品范围。Responses已有observer不得重复发布。
 
 F1白名单工程补充：`src/App.tsx`和`src/core/command-actions.ts`的实际Chat／Composer／Timeline控制接线；不改无关布局。仅Controller修改不能覆盖真实Enter／主按钮，必须一并接入。维护可Send和可Stop独立，不能因存在草稿就消失取消入口。FE无README为既有事实，不新建平行文档。
+
+Stop接口收口：旧`session.interrupt`默认保持；新Web可选`input_policy=web_controlled`，`operation_id`指维护目标、`turn_id`指Main目标，均不是本次Stop动作的幂等id。服务端在原owner边界按真实Main／维护状态判断，目标变化不停止后来的run；ACK未知只查原目标，不能以自然结束反推Stop成功。允许B1在`agent/interrupt_control.py`及原`turn_context.py`身份绑定点追加可选target fence，沿既有锁，禁止引入新gate／锁体系或在history/pending锁中等待commit。
 
 发布准备仅本地ignored目录`.hermes-dev/web-control-reliability-20261109/release/`：沿旧已审remote_release/retention原字节，独立stage-20261109-web-control-014；expected_old=9270933、新包0.1.14/1014，尚未运行prepare／上传／发布。发布时按实际manifest核资源集合，不以旧439数量代替内容验真；保新批次和013、核验后清退012旧数据库集合。
 
