@@ -81,7 +81,8 @@ def _cold_snapshot(db, ref, config, facts, now):
                 heartbeat_status=hb['status'], next_reminder_at=reminder, next_reminder_known=known,
                 idle_enabled=current.idle_enabled and noting_local_enabled(db, ref), maintenance_running=False,
                 idle_period=facts['period'], timezone=config.get('timezone'), model=contract['model'],
-                provider=contract['provider'], model_key=model_key, context_epoch=facts['epoch'],
+                provider=contract['provider'], model_key=model_key, cache_contract=config.get('cache_contract'),
+                context_epoch=facts['epoch'],
                 context_path=[facts['route']['id'], facts['route']['rewind_count']],
                 idle_config=[current.idle_enabled, current.idle_delay_seconds, current.idle_threshold_tokens],
                 historical_cohorts=store.imported_history(db, ref, now), bootstrap_priors=read(db, ref, now)), history
@@ -93,8 +94,17 @@ def _refresh(db, ref, parent, now):
     from secretary.noting_scope import settings_for_db
     with db._read_ctx() as conn:
         config = settings.for_db(db, ref, parent=parent, conn=conn)
+        from secretary.adaptive_model_config import selection_is_current
+        selection_current = selection_is_current(db, ref, parent, conn=conn)
         facts = _facts(conn, db, ref, parent, now) if config else None
         mode = store.heartbeat_conn(conn, ref)
+    if not selection_current:
+        from secretary.adaptive_runtime import idle_settings
+        idle_settings(parent, settings_for_db(db, ref))
+        return False
+    if config is None:
+        from secretary.adaptive_cache_runtime import refresh_unpriced
+        return refresh_unpriced(db, ref, parent, now)
     if not facts or config.get('shadow_only') is True or not _needed(facts, mode, config):
         return False
     if not settings_for_db(db, ref).enabled:
@@ -125,7 +135,7 @@ def _refresh(db, ref, parent, now):
     revision = facts['refresh']['revision'] if facts['refresh'] else 0
 
     def guard(conn):
-        current = settings.for_db(db, ref, parent=parent, conn=conn)
+        current = settings.plan_for_db(db, ref, parent=parent, conn=conn)
         idle = settings_for_db(db, ref)
         return bool(idle.enabled and [idle.idle_enabled, idle.idle_delay_seconds, idle.idle_threshold_tokens]
                     == measured['idle_config'] and current and current['config_version'] == config['config_version']
@@ -133,6 +143,9 @@ def _refresh(db, ref, parent, now):
 
     adopted = store.refresh_plan(db, ref, at=now, expected_period=facts['period'], decision=decision,
                                  config=config, context_epoch=measured['context_epoch'], revision=revision, guard=guard)
+    if not adopted and parent is not None:
+        from secretary.adaptive_runtime import idle_settings
+        idle_settings(parent, settings_for_db(db, ref))
     if adopted and parent is not None:
         from secretary.noting_timers import arm_idle_timer, cancel_idle_timer
         with db._read_ctx() as conn:

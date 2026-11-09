@@ -127,3 +127,85 @@ def resolve_contract(db, ref, config, *, parent=None, session_id=None, conn=None
             return None
         actual = _parent_contract(db, ref, current, parent)
     return actual or result
+
+
+def cache_contract(contract, *, base_url=None):
+    """Cache identity excludes prices/capacity and never exposes route credentials."""
+    value = {key: contract.get(key) for key in
+             ('provider', 'model', 'api_mode', 'reasoning_config', 'reasoning_effort')}
+    if base_url:
+        from hermes_cli.route_identity import normalize_route_base_url
+        value['route_fingerprint'] = digest(normalize_route_base_url(str(base_url)))
+    elif contract.get('route_fingerprint'):
+        value['route_fingerprint'] = contract['route_fingerprint']
+    return value
+
+
+def resolve_cache_contract(db, ref, *, parent=None, session_id=None, conn):
+    """Read the current native selection without capability lookup or network I/O."""
+    row = _target(db, ref, session_id, conn)
+    if not row:
+        return None
+    if parent is not None:
+        actual = _parent_contract(db, ref, row, parent)
+        return cache_contract(actual, base_url=getattr(parent, 'base_url', None)) if actual else None
+    from hermes_state_sessions import _parse_model_config
+    raw = _parse_model_config(row.get('model_config'))
+    route = db.session_gateway_runtime(row)
+    model = row.get('model') or raw.get('model')
+    provider = route.get('requested_provider') or route.get('provider')
+    if not model or not provider or raw.get('follow_profile_config') or raw.get('room_plumbing'):
+        return None
+    value = dict(provider=provider, model=model, api_mode=route.get('api_mode') or 'chat_completions',
+                 reasoning_config=raw.get('reasoning_config'), reasoning_effort=raw.get('reasoning_effort'))
+    # Persisted settings are authoritative for an upcoming HB. A live runtime
+    # that has not adopted them cannot lend its older cache identity.
+    return cache_contract(value, base_url=route.get('base_url'))
+
+
+def selection_is_current(db, ref, parent, *, conn):
+    """Reject known persisted selection changes when adopting runtime plans.
+
+    This does not relabel actual request receipts, construct a runtime, or gate
+    ordinary Main work. Missing historical route metadata is not a change.
+    """
+    if parent is None:
+        return True
+    stored = resolve_cache_contract(db, ref, conn=conn)
+    actual = resolve_cache_contract(db, ref, parent=parent, conn=conn)
+    if stored is None:
+        # An old row may lack a routable provider while still carrying a known
+        # model/effort change. Missing fields are not evidence of compatibility.
+        row = _target(db, ref, None, conn)
+        if not row:
+            return False
+        from hermes_state_sessions import _parse_model_config
+        raw = _parse_model_config(row.get('model_config'))
+        if raw.get('follow_profile_config') or raw.get('room_plumbing'):
+            return True
+        route = db.session_gateway_runtime(row)
+        stored = cache_contract(dict(provider=route.get('requested_provider') or route.get('provider'),
+                                     model=row.get('model') or raw.get('model'), api_mode=route.get('api_mode'),
+                                     reasoning_config=raw.get('reasoning_config'),
+                                     reasoning_effort=raw.get('reasoning_effort')), base_url=route.get('base_url'))
+    if actual is None:
+        return False
+    from hermes_cli.config import load_config_readonly
+    from hermes_constants import resolve_reasoning_config
+    from secretary.noting_scope import owning_db_scope
+    with owning_db_scope(db):
+        default = resolve_reasoning_config(load_config_readonly(), stored['model']) if stored.get('model') else None
+    # Native resume inherits defaults only for None; {} is a real persisted
+    # override and must not silently inherit an enabled profile effort.
+    def normalized(contract):
+        value = dict(contract)
+        reasoning = value.get('reasoning_config')
+        value['reasoning_config'] = (default if reasoning is None else reasoning) or None
+        value['reasoning_effort'] = value.get('reasoning_effort') or None
+        return value
+    stored, actual = normalized(stored), normalized(actual)
+    keys = ('provider', 'model', 'api_mode')
+    return (all(stored.get(key) is None or stored[key] == actual.get(key) for key in keys)
+            and all(stored.get(key) == actual.get(key) for key in ('reasoning_config', 'reasoning_effort'))
+            and (not stored.get('route_fingerprint')
+                 or stored['route_fingerprint'] == actual.get('route_fingerprint')))

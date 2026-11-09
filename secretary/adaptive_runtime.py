@@ -31,26 +31,30 @@ def origin(value):
     return source if source in {"user", "heartbeat", "reminder", "framework"} else "unknown"
 
 
-def _owner(parent):
+def _owner(parent, *, heartbeat_only=False):
     try:
-        return _read_owner(parent)
+        return _read_owner(parent, heartbeat_only=heartbeat_only)
     except Exception:
         logger.debug("Adaptive owner unavailable", exc_info=True)
         return None
 
 
-def _read_owner(parent):
+def _read_owner(parent, *, heartbeat_only=False):
     from secretary.noting_runtime import is_main_conversation_agent, _main_conversation_ref
     if not is_main_conversation_agent(parent):
         return None
     db, ref = parent._session_db, _main_conversation_ref(parent)
-    config = settings.for_db(db, ref, parent=parent)
+    config = (settings.heartbeat_for_db if heartbeat_only else settings.for_db)(db, ref, parent=parent)
     from secretary.noting_scope import settings_for_db
     return (db, ref, config) if ref and config and settings_for_db(db, ref).enabled else None
 
 
+def _observation_config(db, ref=None, **kwargs):
+    return settings.heartbeat_for_db(db, ref, **kwargs)
+
+
 def record_event(db, ref, kind, *, source="unknown", verified=False, event_id=None, at=None, parent=None, config=None, **values):
-    config = config or settings.for_db(db, ref, parent=parent)
+    config = config or _observation_config(db, ref, parent=parent)
     if not config or not ref:
         return False
     try:
@@ -74,7 +78,7 @@ def user_arrived(db, session_id, *, event_id=None, at=None, parent=None, ingress
         return False
     try:
         ref = db.resolve_conversation_ref(session_id)
-        config = settings.for_db(db, ref, parent=parent, session_id=session_id)
+        config = _observation_config(db, ref, parent=parent, session_id=session_id)
         if config is None:
             return False
         moment = time.time() if at is None else at
@@ -104,7 +108,12 @@ def _settle_existing_heartbeat(parent, value):
 
 
 def turn_started(parent, value, *, at=None):
-    owner = _owner(parent)
+    if parent is None:
+        return
+    parent._adaptive_turn_source = origin(value)
+    parent._adaptive_turn_dispatched = False
+    parent._adaptive_request_witness = None
+    owner = _owner(parent, heartbeat_only=True)
     if owner is None:
         # A claim already accepted under its old contract still crosses the native
         # admitted-Turn boundary when configuration has since been removed.
@@ -115,6 +124,8 @@ def turn_started(parent, value, *, at=None):
     parent._adaptive_turn_source = origin(value)
     parent._adaptive_turn_started_at = now
     parent._adaptive_turn_id = getattr(value, "_adaptive_event_id", None) or uuid.uuid4().hex
+    parent._adaptive_turn_witness = _request_witness(parent, db, ref, _config)
+    parent._adaptive_request_witness = None
     def write(conn):
         store.invalidate_conn(db, conn, ref, now)
         if parent._adaptive_turn_source == "heartbeat":
@@ -188,7 +199,8 @@ def snapshot(parent, db, ref, config, at):
              "idle_enabled": current.idle_enabled and noting_local_enabled(db, ref), "maintenance_running": compression_state(parent)["active"],
              "idle_period": db.noting_idle_state(ref), "timezone": config.get("timezone"),
              "model": getattr(parent, "model", None), "provider": getattr(parent, "provider", None),
-             "model_key": model_key(parent), "context_epoch": _epoch(db, ref),
+             "model_key": model_key(parent), "cache_contract": config.get("cache_contract"),
+             "context_epoch": _epoch(db, ref),
              "context_path": [parent.session_id, path_version[0]] if path_version else None,
              "idle_config": [current.idle_enabled, current.idle_delay_seconds, current.idle_threshold_tokens],
              "historical_cohorts": store.imported_history(db, ref, at),
@@ -199,7 +211,7 @@ def snapshot(parent, db, ref, config, at):
 def finish_turn(parent, at, *, idle_allowed=True):
     """Return adopted deadline/disabled marker, or None to retain the native path."""
     try:
-        owner = _owner(parent)
+        owner = _owner(parent, heartbeat_only=True)
         if owner is None:
             return None
         db, ref, config = owner
@@ -212,9 +224,20 @@ def finish_turn(parent, at, *, idle_allowed=True):
                      context_tokens=read_context_usage(parent)[0] or None, model_key=model_key(parent),
                      context_epoch=_epoch(db, ref), context_contract=context_contract(parent),
                      context_path=_context_path(parent, db), duration_seconds=duration)
+        with db._read_ctx() as conn:
+            current = _plan_adoption_current(db, ref, parent, config, conn)
+        if not current:
+            from secretary.noting_scope import settings_for_db
+            idle_settings(parent, settings_for_db(db, ref))
+            return None
         measured, history = snapshot(parent, db, ref, config, at)
         from secretary.adaptive_policy import decide
-        decision = settings.validate_decision(decide(measured, history, config))
+        if config.get('_heartbeat_only'):
+            from secretary.adaptive_cache_runtime import heartbeat_only_decision
+            raw_decision = heartbeat_only_decision(measured, history, config)
+        else:
+            raw_decision = decide(measured, history, config)
+        decision = settings.validate_decision(raw_decision)
         record_event(db, ref, "decision", source="framework", verified=True, at=at, parent=parent,
                      decision=decision, model_key=model_key(parent), stage="proposed",
                      shadow_only=config.get("shadow_only") is True)
@@ -226,16 +249,29 @@ def finish_turn(parent, at, *, idle_allowed=True):
         decision["context_contract"] = context_contract(parent)
         decision["idle_config"] = measured["idle_config"]
         if not idle_allowed:
-            db._execute_write(lambda conn: store.adopt_mode_conn(conn, ref, decision["mode"], config))
+            db._execute_write(lambda conn: store.adopt_mode_conn(conn, ref, decision["mode"], config)
+                              if _plan_adoption_current(db, ref, parent, config, conn) else None)
             return None
         if not store.commit_plan(db, ref, at=at, expected_period=measured["idle_period"],
                                  decision=decision, config=config, context_epoch=_epoch(db, ref),
-                                 expected_revision=measured["evidence_revision"]):
+                                 expected_revision=measured["evidence_revision"],
+                                 guard=lambda conn: _plan_adoption_current(db, ref, parent, config, conn)):
+            from secretary.noting_scope import settings_for_db
+            idle_settings(parent, settings_for_db(db, ref))
             return None
         return {"due_at": at + decision["delay_seconds"] if decision["delay_seconds"] is not None else None}
     except Exception:
         logger.warning("Adaptive policy failed; retaining native maintenance", exc_info=True)
         return None
+
+
+def _plan_adoption_current(db, ref, parent, config, conn):
+    from secretary.adaptive_model_config import selection_is_current
+    from secretary.noting_scope import is_current_main_runtime
+    current = settings.heartbeat_for_db(db, ref, parent=parent, conn=conn)
+    return bool(is_current_main_runtime(parent) and current
+                and current['config_version'] == config['config_version']
+                and selection_is_current(db, ref, parent, conn=conn))
 
 
 def _idle_plan_valid(parent, original, config, plan, path, epoch):
@@ -255,7 +291,7 @@ def _restore_native_idle(parent, db, ref, plan, period):
         if not is_current_main_runtime(parent):
             return None
         original = settings_for_db(db, ref)
-        config = settings.for_db(db, ref, parent=parent, conn=conn)
+        config = settings.plan_for_db(db, ref, parent=parent, conn=conn)
         path = conn.execute("SELECT rewind_count FROM sessions WHERE id=?", (parent.session_id,)).fetchone()
         epoch = db.noting_compaction_interval_conn(conn, ref)
         return (None if _idle_plan_valid(parent, original, config, current_plan, path, epoch)
@@ -272,6 +308,8 @@ def idle_settings(parent, original):
     owner = _owner(parent)
     config = owner[2] if owner else None
     with db._read_ctx() as conn:
+        if config:
+            config = settings.plan_for_db(db, ref, parent=parent, conn=conn)
         plan = store.plan_conn(conn, ref)
         period = db.noting_idle_state_conn(conn, ref)
         path = conn.execute("SELECT rewind_count FROM sessions WHERE id=?", (parent.session_id,)).fetchone()
@@ -285,11 +323,67 @@ def idle_settings(parent, original):
     return original
 
 
+def _request_witness(parent, db, ref, config):
+    import copy
+    from pathlib import Path
+    return dict(_owner_ref=ref, _owner_db_key=_contract_key(str(Path(db.db_path).resolve())),
+                _source=getattr(parent, '_adaptive_turn_source', 'unknown'),
+                model_key=model_key(parent), model_contract=copy.deepcopy(config['model_contract']),
+                model_identity=dict(config['model_identity']), cache_contract=copy.deepcopy(config.get('cache_contract')),
+                context_epoch=_epoch(db, ref), context_path=_context_path(parent, db))
+
+
+def request_started(parent):
+    """Freeze identity at the existing physical Main dispatch, before a slow call."""
+    try:
+        parent._adaptive_request_witness = None
+        parent._adaptive_request_capture_attempted = True
+        owner = _owner(parent, heartbeat_only=True)
+        if owner is not None:
+            db, ref, config = owner
+            from secretary.adaptive_cache_runtime import block_first_heartbeat_dispatch
+            if block_first_heartbeat_dispatch(parent, db, ref, config):
+                parent.interrupt(tool_reason='heartbeat_cache_guard')
+                return False
+        parent._adaptive_turn_dispatched = True
+        if owner is not None:
+            db, ref, config = owner
+            witness = _request_witness(parent, db, ref, config)
+            values = {key: value for key, value in witness.items() if not key.startswith('_')}
+            started = record_event(db, ref, 'request_start', config=config, source=witness['_source'],
+                                   verified=True, actual_dispatch=True,
+                                   turn_id=getattr(parent, '_adaptive_turn_id', None), **values)
+            if started:
+                parent._adaptive_request_witness = witness
+    except Exception:
+        parent._adaptive_turn_dispatched = True
+        logger.debug('Adaptive dispatch identity unavailable', exc_info=True)
+
+
 def request_observed(parent, canonical_usage, unknown, *, failed=False):
-    owner = _owner(parent)
+    owner = _owner(parent, heartbeat_only=True)
     if owner is None:
         return
     db, ref, _config = owner
+    if getattr(parent, '_adaptive_request_capture_attempted', False):
+        witness = getattr(parent, '_adaptive_request_witness', None)
+        if witness is None:
+            return  # A marked dispatch without identity cannot borrow an old Turn or current settings.
+    else:
+        witness = (getattr(parent, '_adaptive_turn_witness', None)
+                   or _request_witness(parent, db, ref, _config))
+    witness = dict(witness)
+    from pathlib import Path
+    if (witness.pop('_owner_ref', None) != ref
+            or witness.pop('_owner_db_key', None) != _contract_key(str(Path(db.db_path).resolve()))):
+        return  # A late receipt cannot be moved into a replacement Conversation.
+    path = witness.get('context_path')
+    with db._read_ctx() as conn:
+        binding = conn.execute('SELECT conversation_ref FROM secretary_session_bindings WHERE session_id=?',
+                               (path[0],)).fetchone() if path else None
+    if binding is None or binding[0] != ref:
+        return
+    source = witness.pop('_source', 'unknown')
     values = {key: getattr(canonical_usage, key, None) if canonical_usage is not None and key not in unknown else None
               for key in ("input_tokens", "cache_read_tokens", "output_tokens")}
     if canonical_usage is not None and "input_tokens" not in unknown:
@@ -297,9 +391,9 @@ def request_observed(parent, canonical_usage, unknown, *, failed=False):
     total, cache = values["input_tokens"], values["cache_read_tokens"]
     if total is not None and cache is not None and cache > total:
         values["input_tokens"] = values["cache_read_tokens"] = None
-    record_event(db, ref, "request", source=getattr(parent, "_adaptive_turn_source", "unknown"),
+    record_event(db, ref, "request", source=source,
                  verified=True, parent=parent, outcome="failed" if failed else "observed", input_semantics="total",
-                 model_key=model_key(parent), turn_id=getattr(parent, "_adaptive_turn_id", None),
+                 config=_config, **witness, turn_id=getattr(parent, "_adaptive_turn_id", None),
                  cache_write_tokens=(getattr(canonical_usage, "cache_write_tokens", None)
                                      if "cache_write_tokens" not in unknown else None), **values)
 
@@ -312,7 +406,7 @@ def maintenance(parent, registration, *, finished=False, trigger=None):
 
 
 def _maintenance(parent, registration, *, finished=False, trigger=None):
-    owner = _owner(parent)
+    owner = _owner(parent, heartbeat_only=True)
     observation = registration.observation
     now = time.time()
     partial = bool(getattr(getattr(registration.fence, "partial", None), "adopted", False))
@@ -327,6 +421,10 @@ def _maintenance(parent, registration, *, finished=False, trigger=None):
         return
     db, ref, _config = owner
     if not finished:
+        import copy
+        observation._adaptive_origin = dict(model_key=model_key(parent),
+            model_contract=copy.deepcopy(_config['model_contract']), model_identity=dict(_config['model_identity']),
+            cache_contract=copy.deepcopy(_config.get('cache_contract')))
         observation._adaptive_started_at = now
         observation._adaptive_idle = trigger == "noting_joint_idle"
         from agent.context_compaction_request import read_context_usage
@@ -336,12 +434,20 @@ def _maintenance(parent, registration, *, finished=False, trigger=None):
                                                joint_operation_id=observation.operation_id)
     started = getattr(observation, "_adaptive_started_at", None)
     from agent.context_compaction_request import read_context_usage
+    after = (read_context_usage(parent)[0] or None) if finished else None
+    after_source = 'native_usage' if after else None
+    if finished and after is None and outcome in {'completed', 'partial'}:
+        after = getattr(getattr(parent, 'context_compressor', None), 'last_compression_rough_tokens', None) or None
+        after_source = 'native_post_compaction_rough' if after else None
     record_event(db, ref, "maintenance_end" if finished else "maintenance_start", source="framework", verified=True,
                  parent=parent, event_id=observation.operation_id + (":end" if finished else ":start"), at=now,
-                 operation_id=observation.operation_id, outcome=outcome, model_key=model_key(parent),
+                 operation_id=observation.operation_id, outcome=outcome,
+                 **getattr(observation, "_adaptive_origin", dict(model_key=model_key(parent),
+                       cache_contract=_config.get("cache_contract"))),
                  trigger="idle" if getattr(observation, "_adaptive_idle", False) else "native",
                  context_before=getattr(observation, "_adaptive_context_before", None),
-                 context_after=(read_context_usage(parent)[0] or None) if finished else None, usage_complete=False,
+                 context_after=after, context_after_source=after_source, usage_complete=False,
+                 context_epoch=_epoch(db, ref), context_path=_context_path(parent, db),
                  idle=getattr(observation, "_adaptive_idle", False),
                  duration_seconds=now - started if finished and started is not None else None,
                  duration_scope="native_compaction_registration",
@@ -351,7 +457,11 @@ def _maintenance(parent, registration, *, finished=False, trigger=None):
         # Refresh audit state only: an already consumed Idle cycle is never rearmed.
         measured, _history = snapshot(parent, db, ref, _config, now)
         from secretary.adaptive_policy import decide
-        decision = settings.validate_decision(decide(measured, _history, _config))
+        if _config.get('_heartbeat_only'):
+            from secretary.adaptive_cache_runtime import heartbeat_only_decision
+            decision = heartbeat_only_decision(measured, _history, _config)
+        else:
+            decision = settings.validate_decision(decide(measured, _history, _config))
         if _config.get("shadow_only") is not True and decision.get("fallback") is not True:
             db._execute_write(lambda conn: store.adopt_mode_conn(conn, ref, decision["mode"], _config))
         record_event(db, ref, "state_refresh", source="framework", verified=True, parent=parent,
@@ -436,7 +546,7 @@ def web_input(session, text, *, event_id=None):
     """Public prompt.submit only; synthesized host submissions must not call this."""
     parent = session.get("agent")
     db = getattr(parent, "_session_db", None)
-    if db is not None and settings.for_db(db, parent=parent):
+    if db is not None and _observation_config(db, parent=parent):
         identity = event_id or uuid.uuid4().hex
         user_arrived(db, parent.session_id, event_id="web:" + identity, parent=parent, ingress="web_submit")
         return mark_input(text, "user", "web:" + identity)
@@ -444,7 +554,7 @@ def web_input(session, text, *, event_id=None):
         try:
             from tui_gateway import server
             with server._session_db(session) as db:
-                if db is not None and settings.for_db(db, session_id=session["session_key"]):
+                if db is not None and _observation_config(db, session_id=session["session_key"]):
                     identity = event_id or uuid.uuid4().hex
                     user_arrived(db, session["session_key"], event_id="web:" + identity, ingress="web_submit")
                     return mark_input(text, "user", "web:" + identity)
@@ -455,7 +565,7 @@ def web_input(session, text, *, event_id=None):
 
 def gateway_input(db, session_id, value, event, source):
     """Original adapter event after native routing; internal/bot events never prove human."""
-    if (db is None or not settings.for_db(db, session_id=session_id) or getattr(event, "internal", True) is not False
+    if (db is None or not _observation_config(db, session_id=session_id) or getattr(event, "internal", True) is not False
             or (getattr(event, "metadata", {}) or {}).get("synthetic_prompt")
             or (getattr(event, "metadata", {}) or {}).get("hermes_plugin_injection")
             or getattr(event, "allow_gateway_control", True) is not True

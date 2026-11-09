@@ -115,7 +115,7 @@ def test_policy_receives_current_turn_and_next_actual_instant_due(owned, monkeyp
     assert any(event["kind"] == "turn_end" and event["at"] == now and event["context_tokens"] == 5000 for event in history)
 
 
-def test_host_tick_observes_history_import_from_another_process(owned):
+def test_host_tick_observes_history_import_from_another_process(owned, monkeypatch):
     """An importer cannot notify the in-process Main owner directly."""
     import subprocess
     import sys
@@ -126,6 +126,12 @@ def test_host_tick_observes_history_import_from_another_process(owned):
     parent, db, ref = owned
     heartbeat = ConversationHeartbeatStore(db, "main")
     heartbeat.save(HeartbeatState("", 10800, created_at=100))
+    from secretary.adaptive_policy import decide as real_decide
+    evaluations = []
+    def observe_decide(snapshot, history, config):
+        evaluations.append(snapshot)
+        return real_decide(snapshot, history, config)
+    monkeypatch.setattr('secretary.adaptive_policy.decide', observe_decide)
     worker = """
 from pathlib import Path
 import sys
@@ -143,7 +149,15 @@ finally:
     assert db.try_acquire_session_turn_lease("main", "active-host-turn")
     try:
         subprocess.run([sys.executable, "-c", worker, str(db.db_path), ref], check=True, timeout=30)
-        assert heartbeat.load()._adaptive_interval_seconds == 10800
+        # V4's default hot is already visible. A live native lease still prevents
+        # adoption/dispatch; the persistent refresh receipt proves the later tick.
+        assert heartbeat.load()._adaptive_interval_seconds == 60
+        assert heartbeat.load().interval_seconds == 10800 and heartbeat.claim(200) is None
+        assert evaluations == []
+        with db._read_ctx() as conn:
+            pending = store.refresh_conn(conn, ref)
+            assert pending['revision'] == 1 and pending['evaluated_revision'] == 0
+            assert store.heartbeat_conn(conn, ref) is None
     finally:
         db.release_session_turn_lease("main", "active-host-turn")
     # This is the normal recovery tick. No new user submission or Main Turn
@@ -153,6 +167,12 @@ finally:
     assert state._adaptive_interval_seconds == 60
     assert state.created_at == 100 and state.last_fired_at == 0 and state.fire_count == 0
     assert db.noting_idle_state(ref) is None
+    assert len(evaluations) == 1
+    assert evaluations[0]['historical_cohorts'][0]['events'][0]['kind'] == 'maintenance_sample'
+    with db._read_ctx() as conn:
+        adopted = store.refresh_conn(conn, ref)
+        assert adopted['revision'] == adopted['evaluated_revision'] == 1
+        assert store.heartbeat_conn(conn, ref)['mode'] == 'hot'
 
 
 def test_native_rewind_invalidates_old_context_plan(owned, monkeypatch):
@@ -165,19 +185,61 @@ def test_native_rewind_invalidates_old_context_plan(owned, monkeypatch):
 
 
 def test_stale_model_context_observation_does_not_hold_heartbeat(owned, monkeypatch):
+    from agent.usage_pricing import CanonicalUsage
+    from agent.usage_read import (begin_main_turn_usage, observe_main_model_dispatch,
+                                 observe_main_canonical_usage, finish_main_turn_usage)
     from hermes_cli.heartbeat import HeartbeatState
     from secretary.heartbeat_store import ConversationHeartbeatStore
     parent, db, ref = owned
+    clock = [99.0]
+    monkeypatch.setattr('secretary.heartbeat_store.time.time', lambda: clock[0])
     hb = ConversationHeartbeatStore(db, "main")
     hb.save(HeartbeatState("", 600, created_at=1))
+
+    def actual_response(identity):
+        assert db.try_acquire_session_turn_lease('main', identity, ttl_seconds=60)
+        try:
+            runtime.turn_started(parent, runtime.mark_input('normal work', 'user', identity))
+            begin_main_turn_usage(parent, identity, has_prior_history=True)
+            response = SimpleNamespace(usage=SimpleNamespace(prompt_tokens=100, completion_tokens=2,
+                                        prompt_tokens_details=SimpleNamespace(cached_tokens=90)))
+            with observe_main_model_dispatch(parent) as receipt:
+                receipt[0] = response
+            observe_main_canonical_usage(parent, response, CanonicalUsage(input_tokens=10, cache_read_tokens=90, output_tokens=2))
+            finish_main_turn_usage(parent, identity, {})
+        finally:
+            db.release_session_turn_lease('main', identity)
+
+    actual_response('old-model-use')
     monkeypatch.setattr("secretary.adaptive_policy.decide", lambda *args: {"mode": "hot", "threshold_tokens": 4000, "delay_seconds": 0})
     assert noting.note_main_turn_finished(parent, at=100)
     parent.model = "new-model"
-    runtime.record_event(db, ref, "context_read", at=101, verified=True, source="framework",
-                         context_tokens=5000, model_key=runtime.model_key(parent))
-    # Unconfigured new model falls back to the native 600s definition, never the old hot plan.
-    assert hb.claim(101) is None
-    assert hb.claim(601) is not None
+    db._execute_write(lambda conn: conn.execute("UPDATE sessions SET model='new-model' WHERE id='main'"))
+    clock[0] = 101
+    assert runtime.record_event(db, ref, 'context_read', parent=parent, at=101, verified=True,
+        source='framework', context_tokens=5000, model_key=runtime.model_key(parent),
+        context_contract=runtime.context_contract(parent), context_epoch=runtime._epoch(db, ref),
+        context_path=['main', 0], cache_contract=runtime.settings.heartbeat_for_db(db, ref, parent=parent)['cache_contract'])
+    assert hb.load()._adaptive_mode == 'standby' and hb.claim(101) is None
+    clock[0] = 601
+    assert hb.claim(601) is None  # No fallback to the former native 600-second definition.
+    clock[0] = 602
+    actual_response('new-model-use')
+    # A late old-model usage observation must not hold the new warm HB behind
+    # the old early-Idle plan. Only real requests established the current cache.
+    prior_request = next(e for e in store.history(db, ref, 602)
+                         if e['kind'] == 'request' and e['cache_contract']['model'] == 'test/runtime')
+    runtime.record_event(db, ref, 'context_read', at=602, verified=True, source='framework',
+                         context_tokens=5000, model_key=prior_request['model_key'],
+                         model_identity=prior_request['model_identity'], model_contract=prior_request['model_contract'],
+                         cache_contract=prior_request['cache_contract'], context_contract=runtime.context_contract(parent),
+                         context_epoch=prior_request['context_epoch'], context_path=prior_request['context_path'])
+    with db._read_ctx() as conn:
+        old_plan = store.plan_conn(conn, ref)
+        assert old_plan['status'] == 'invalidated' and old_plan['finished_at'] == 100
+    state, claim = hb.claim(602)
+    assert state.created_at == 1 and state.last_fired_at == 602 and state.fire_count == 1
+    assert hb.claim_is_current(claim, now=602)
 
 
 def test_context_capacity_change_invalidates_old_plan_without_model_change(owned, monkeypatch):
@@ -236,7 +298,20 @@ def test_invalidated_early_plan_restores_native_clock_before_formal_claim(owned,
     assert noting.note_main_turn_started(parent, at=700)
     if change != 'window':
         assert noting.note_main_turn_finished(parent, at=800)
-        assert db.noting_idle_state(ref)['due_at'] == 800 + native_delay
+        renewed = db.noting_idle_state(ref)
+        assert renewed['last_turn_started_at'] == 700 and renewed['last_turn_finished_at'] == 800
+        if change == 'missing_model':
+            # V4 keeps this enabled target in heartbeat-only mode. Missing price
+            # cannot create another early-maintenance cycle at the new Main end.
+            assert renewed['due_at'] is None and renewed['trigger_produced_at'] == 800
+            with db._read_ctx() as conn:
+                plan = store.plan_conn(conn, ref)
+                assert plan['status'] == 'disabled' and plan['finished_at'] == 800
+                assert plan['decision']['threshold_tokens'] is None and plan['decision']['delay_seconds'] is None
+                assert plan['decision']['diagnostics']['maintenance_deferred'] == 'missing_priced_model_configuration'
+                assert conn.execute('SELECT 1 FROM secretary_heartbeats WHERE conversation_ref=?', (ref,)).fetchone() is None
+        else:
+            assert renewed['due_at'] == 800 + native_delay
 
 
 def test_native_global_close_never_compacts_or_rearms_consumed_adaptive_cycle(owned, monkeypatch):
@@ -297,35 +372,191 @@ def test_late_invalidated_plan_cannot_overwrite_new_period_or_current_valid_cont
 
 
 @pytest.mark.parametrize('change', ['model_removed', 'noting_closed'])
-def test_claimed_heartbeat_settles_at_formal_turn_boundary_after_configuration_removed(owned, change):
+def test_claimed_heartbeat_settles_at_formal_turn_boundary_after_configuration_removed(owned, monkeypatch, change):
     import json
-    from secretary.heartbeat_store import ConversationHeartbeatStore
+    from secretary.heartbeat_store import ConversationHeartbeatStore, enabled_for_db
     from hermes_cli.heartbeat import HeartbeatState
-    from secretary.noting_turn_boundary import observe_admitted_turn_started
+    from secretary.noting_turn_boundary import observe_admitted_turn_started, observe_admitted_turn_finished
     parent, db, ref = owned
+    clock = [100.0]
+    monkeypatch.setattr('secretary.heartbeat_store.time.time', lambda: clock[0])
     hb = ConversationHeartbeatStore(db, 'main')
     hb.save(HeartbeatState('', 600, created_at=1))
     config = runtime.settings.for_db(db, ref, parent=parent)
     db._execute_write(lambda conn: store.adopt_mode_conn(conn, ref, 'hot', config))
     claimed_state, claim = hb.claim(100)
+    assert hb.claim_is_current(claim, now=100)
+    # The native lease was accepted under the old contract; only its observing
+    # callback is delayed. This is not permission to submit a newly stale claim.
+    assert db.try_acquire_session_turn_lease('main', 'accepted-before-setting-change', ttl_seconds=60)
+    try:
+        path = Path(db.db_path).parent / 'config.yaml'
+        raw = json.loads(path.read_text())
+        if change == 'model_removed':
+            raw['noting']['adaptive_idle_token_saving']['models'] = {}
+        else:
+            raw['noting']['enabled'] = False
+        path.write_text(json.dumps(raw))
+        assert not hb.claim_is_current(claim, now=100)
+        assert hb.load()._adaptive_interval_seconds == (60 if change == 'model_removed' else 600)
+        with db._read_ctx() as conn:
+            assert store.heartbeat_conn(conn, ref)['claim_revision'] == claim.revision
+        from secretary.noting_scope import owning_db_scope
+        with owning_db_scope(db):
+            prompt = claimed_state.render_prompt(timestamp=100)
+        assert runtime.origin(prompt) == 'heartbeat'
+        if change == 'noting_closed':
+            from hermes_cli.heartbeat import HEARTBEAT_PROMPT_TEMPLATE
+            assert prompt == HEARTBEAT_PROMPT_TEMPLATE.format(interval='10m', prompt='')
+        observe_admitted_turn_started(parent, object(), user_message=prompt)
+        with db._read_ctx() as conn:
+            assert store.heartbeat_conn(conn, ref)['claim_revision'] is None
+        assert not hb.refund(claim) and not hb.claim_is_current(claim, now=100)
+        clock[0] = 101
+        observe_admitted_turn_finished(parent, object())
+    finally:
+        db.release_session_turn_lease('main', 'accepted-before-setting-change')
+    assert hb.load().last_fired_at == 100 and hb.load().fire_count == 1
+    if change == 'model_removed':
+        assert hb.load()._adaptive_interval_seconds == 60
+        assert hb.claim(159) is None and hb.claim(160) is not None
+    else:
+        assert not enabled_for_db(db) and hb.load()._adaptive_interval_seconds == 600
+
+
+@pytest.mark.parametrize('changed', ['reasoning', 'model', 'route'])
+def test_persisted_selection_retires_live_old_plan_and_cannot_be_readopted(owned, monkeypatch, changed):
+    from secretary.adaptive_refresh import refresh
+    from tests.secretary.test_adaptive_policy_wiring import _prepare_paid_history
+    from tests.secretary.test_adaptive_policy import NOW
+    parent, db, ref = owned
+    parent.base_url = 'https://old-route.test.invalid/v1'
+    db.patch_session_model_config('main', {'base_url': parent.base_url})
+    hb = _prepare_paid_history(parent, db, ref, monkeypatch)
+    runtime.turn_started(parent, runtime.mark_input('background', 'heartbeat'), at=NOW - 60)
+    assert noting.note_main_turn_finished(parent, at=NOW)
+    native = noting.settings_for_db(db, ref)
+    with db._read_ctx() as conn:
+        before = store.plan_conn(conn, ref)
+    period = db.noting_idle_state(ref)
+    assert before['status'] == 'pending' and before['decision']['threshold_tokens'] != native.idle_threshold_tokens
+    if changed == 'reasoning':
+        db.patch_session_model_config('main', {'reasoning_config': {'effort': 'high'}})
+    elif changed == 'model':
+        db._execute_write(lambda conn: conn.execute("UPDATE sessions SET model='new-unregistered-model' WHERE id='main'"))
+    else:
+        db.patch_session_model_config('main', {'base_url': 'https://new-route.test.invalid/v1'})
+    assert hb.load()._adaptive_mode == 'standby'
+    assert runtime.idle_settings(parent, native) == native
+    with db._read_ctx() as conn:
+        retired = store.plan_conn(conn, ref)
+    restored = db.noting_idle_state(ref)
+    assert retired['status'] == 'invalidated' and retired['generation'] == before['generation']
+    assert restored['last_turn_finished_at'] == period['last_turn_finished_at'] == NOW
+    assert restored['due_at'] == NOW + native.idle_delay_seconds
+    assert restored['trigger_produced_at'] is None
+    db._execute_write(lambda conn: store.request_refresh_conn(conn, ref, NOW + 1))
+    assert not refresh(db, ref, parent=parent, now=NOW + 1)
+    with db._read_ctx() as conn:
+        assert store.plan_conn(conn, ref) == retired
+    assert db.noting_idle_state(ref) == restored
+    # The naturally finishing old runtime may report its actual work, but cannot
+    # adopt a new early plan against the already changed persisted selection.
+    assert noting.note_main_turn_finished(parent, at=NOW + 2)
+    with db._read_ctx() as conn:
+        assert store.plan_conn(conn, ref) == retired
+    assert db.noting_idle_state(ref)['due_at'] == NOW + 2 + native.idle_delay_seconds
+    assert hb.load().created_at == NOW and hb.load().last_fired_at == 0
+    actual_end = [e for e in store.history(db, ref, NOW + 2) if e['kind'] == 'turn_end'][-1]
+    assert actual_end['model_contract']['model'] == parent.model == 'test/runtime'
+    assert actual_end['model_contract']['reasoning_config'] is None
+
+
+@pytest.mark.parametrize('entry', ['finish', 'refresh'])
+def test_persisted_selection_change_during_evaluation_is_fenced_at_commit(owned, monkeypatch, entry):
+    from secretary.adaptive_refresh import refresh
+    from secretary.adaptive_policy import decide as real_decide
+    from tests.secretary.test_adaptive_policy_wiring import _prepare_paid_history
+    from tests.secretary.test_adaptive_policy import NOW
+    parent, db, ref = owned
+    _prepare_paid_history(parent, db, ref, monkeypatch)
+    runtime.turn_started(parent, runtime.mark_input('background', 'heartbeat'), at=NOW - 60)
+    assert noting.note_main_turn_finished(parent, at=NOW)
+    with db._read_ctx() as conn:
+        prior, mode = store.plan_conn(conn, ref), store.heartbeat_conn(conn, ref)
+        assert prior['status'] == 'pending'
+    def change_after_decision(*args):
+        decision = real_decide(*args)
+        assert decision['threshold_tokens'] is not None
+        db.patch_session_model_config('main', {'reasoning_config': {'effort': 'new-persisted-selection'}})
+        return decision
+    monkeypatch.setattr('secretary.adaptive_policy.decide', change_after_decision)
+    if entry == 'finish':
+        assert noting.note_main_turn_finished(parent, at=NOW + 1)
+        assert db.noting_idle_state(ref)['due_at'] == NOW + 1 + noting.settings_for_db(db, ref).idle_delay_seconds
+    else:
+        db._execute_write(lambda conn: store.request_refresh_conn(conn, ref, NOW))
+        assert not refresh(db, ref, parent=parent, now=NOW)
+    with db._read_ctx() as conn:
+        current = store.plan_conn(conn, ref)
+        assert current['status'] == 'invalidated' and current['generation'] == prior['generation']
+        assert current['finished_at'] == prior['finished_at'] == NOW
+        assert store.heartbeat_conn(conn, ref) == mode
+
+
+def test_plan_selection_uses_native_default_reasoning_and_explicit_empty_override(owned):
+    import json
+    from secretary.adaptive_model_config import selection_is_current
+    parent, db, ref = owned
     path = Path(db.db_path).parent / 'config.yaml'
     raw = json.loads(path.read_text())
-    if change == 'model_removed':
-        raw['noting']['adaptive_idle_token_saving']['models'] = {}
-    else:
-        raw['noting']['enabled'] = False
+    raw['agent'] = {'reasoning_effort': 'high'}
     path.write_text(json.dumps(raw))
-    assert hb.claim_is_current(claim) and hb.load()._adaptive_interval_seconds == 60
-    from secretary.noting_scope import owning_db_scope
-    with owning_db_scope(db):
-        prompt = claimed_state.render_prompt(timestamp=100)
-    assert runtime.origin(prompt) == 'heartbeat'
-    if change == 'noting_closed':
-        from hermes_cli.heartbeat import HEARTBEAT_PROMPT_TEMPLATE
-        assert prompt == HEARTBEAT_PROMPT_TEMPLATE.format(interval='10m', prompt='')
-    observe_admitted_turn_started(parent, object(), user_message=prompt)
+    parent.reasoning_config = {'enabled': True, 'effort': 'high'}
     with db._read_ctx() as conn:
-        assert store.heartbeat_conn(conn, ref)['claim_revision'] is None
-    assert hb.load()._adaptive_interval_seconds == 600
-    if change == 'model_removed':
-        assert hb.claim(699) is None and hb.claim(700) is not None
+        assert selection_is_current(db, ref, parent, conn=conn)
+    db.patch_session_model_config('main', {'reasoning_config': {}})
+    with db._read_ctx() as conn:
+        assert not selection_is_current(db, ref, parent, conn=conn)
+    parent.reasoning_config = {}
+    with db._read_ctx() as conn:
+        assert selection_is_current(db, ref, parent, conn=conn)
+    # Native normalized endpoint identity does not invalidate an unchanged route.
+    parent.base_url = 'https://same-route.test.invalid/v1/'
+    db.patch_session_model_config('main', {'base_url': 'https://same-route.test.invalid/v1'})
+    with db._read_ctx() as conn:
+        assert selection_is_current(db, ref, parent, conn=conn)
+
+
+@pytest.mark.parametrize('boundary', ['finish', 'refresh'])
+def test_stale_live_selection_is_retired_at_boundary_without_prior_idle_read(owned, monkeypatch, boundary):
+    from secretary.adaptive_refresh import refresh
+    from tests.secretary.test_adaptive_policy_wiring import _prepare_paid_history
+    from tests.secretary.test_adaptive_policy import NOW
+    parent, db, ref = owned
+    _prepare_paid_history(parent, db, ref, monkeypatch)
+    runtime.turn_started(parent, runtime.mark_input('background', 'heartbeat'), at=NOW - 60)
+    assert noting.note_main_turn_finished(parent, at=NOW)
+    with db._read_ctx() as conn:
+        assert store.plan_conn(conn, ref)['status'] == 'pending'
+    db.patch_session_model_config('main', {'reasoning_config': {'effort': 'high'}})
+    if boundary == 'finish':
+        assert noting.note_main_turn_finished(parent, at=NOW + 1)
+        native_anchor = NOW + 1
+    else:
+        assert not refresh(db, ref, parent=parent, now=NOW + 1)
+        native_anchor = NOW
+    with db._read_ctx() as conn:
+        assert store.plan_conn(conn, ref)['status'] == 'invalidated'
+    assert db.noting_idle_state(ref)['due_at'] == native_anchor + noting.settings_for_db(db, ref).idle_delay_seconds
+
+
+def test_missing_route_metadata_does_not_hide_a_known_model_selection_change(owned):
+    from secretary.adaptive_model_config import selection_is_current
+    parent, db, ref = owned
+    db.patch_session_model_config('main', {'provider': None, 'api_mode': None})
+    with db._read_ctx() as conn:
+        assert selection_is_current(db, ref, parent, conn=conn)
+    db._execute_write(lambda conn: conn.execute("UPDATE sessions SET model='new-model' WHERE id='main'"))
+    with db._read_ctx() as conn:
+        assert not selection_is_current(db, ref, parent, conn=conn)

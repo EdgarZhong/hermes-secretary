@@ -5,6 +5,34 @@ from secretary.adaptive_forecast import outcome, predict, visible
 from secretary.adaptive_shadow import evaluate
 
 
+def test_cancel_only_history_does_not_make_ordinary_work_free():
+    from secretary.adaptive_forecast import from_events, work_marks
+    from secretary.adaptive_policy import _settings
+    from secretary.adaptive_rollout import simulate_path
+    data = from_events([dict(event_id='arbitrary-stop-id', kind='user_activity', source='user',
+                             activity='cancel', at=100)], [(0, 200)])
+    marks = work_marks(data, 200)
+    assert all(value is None for value in marks.values())
+    cancel = outcome(data, 0, 200, now=200)['path'][0]
+    assert cancel['calls'] == 0 and cancel['activity'] == 'cancel'
+    path = [dict(offset=10, activity='submission'), dict(cancel, offset=20)]
+    cfg = _settings(dict(cache_ratio=.1, output_ratio=5, cache_ttl_seconds=1800,
+                         hot_interval_seconds=1740, business_interval_seconds=10800))
+    result = simulate_path(dict(now=200, context_tokens=1000),
+                           dict(last_request_at=None, trajectory=dict(marks=marks)),
+                           cfg, [], path, None, None, None, timing_only=True)
+    assert result['cost'] == 1000  # Unknown submission gets the existing single-read proxy; Stop stays free.
+
+
+def test_cancel_work_does_not_shift_ordinary_workload_median():
+    from secretary.adaptive_forecast import from_events, work_marks
+    data = from_events([dict(event_id=f'opaque-{i}', kind='user_activity', source='user',
+                             activity='cancel', at=100+i) for i in range(5)], [])
+    data['work'].append(dict(id='complete-turn', user_id='submission', at=110,
+                             calls=3, growth_tokens=400, output_tokens=200, duration_seconds=30))
+    assert work_marks(data, 200) == dict(calls=3, growth_tokens=400, output_tokens=200, duration_seconds=30)
+
+
 def history():
     rows, work, points = [], [], []
     for hour in range(36):

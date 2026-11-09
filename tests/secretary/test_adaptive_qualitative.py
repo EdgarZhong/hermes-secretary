@@ -33,6 +33,16 @@ def quiet_history(*, cost=90000, duration=600):
     from tests.secretary.test_adaptive_policy import legacy_maintenance_receipt, NOW as OLD_NOW
     events.extend(dict(row, at=row['at']+NOW-OLD_NOW)
                   for row in legacy_maintenance_receipt(cost=cost, duration=duration))
+    # This scenario starts with an actually warm prefix. The old two-hour
+    # samples alone describe an expired cache and now correctly enter standby.
+    events.extend([
+        dict(event_id='current-hb-request', at=NOW-1, kind='request', source='heartbeat',
+             verified=True, turn_id='current-hb', model_key='test', input_tokens=330000,
+             cache_read_tokens=329000, output_tokens=160, outcome='observed'),
+        dict(event_id='turn:current-hb', at=NOW, kind='turn_end', source='heartbeat',
+             verified=True, model_key='test', context_epoch='epoch', context_tokens=330000,
+             duration_seconds=1),
+    ])
     return events
 
 
@@ -67,13 +77,14 @@ def test_expensive_or_slow_maintenance_is_not_easier_to_trigger():
         assert slow['diagnostics']['expected_wait_seconds'] <= 30
 
 
-def test_expensive_heartbeat_output_discourages_hot_mode():
+def test_expensive_heartbeat_output_alone_does_not_disable_warm_heartbeat():
     rows = quiet_history()
     for row in rows:
         if row['kind'] == 'request' and row['source'] == 'heartbeat':
             row['output_tokens'] = 20000
     result = decide(snapshot(), rows, {**CFG, 'heartbeat_output_tokens': 20000})
-    assert result['mode'] == 'business'
+    assert result['mode'] == 'hot'
+    assert result['diagnostics']['cache']['status'] == 'warm'
 
 
 def test_no_future_reads_cannot_pay_for_a_rewrite():

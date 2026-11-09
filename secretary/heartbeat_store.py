@@ -31,6 +31,8 @@ class HeartbeatClaim:
     revision: int
     last_fired_at: float
     fire_count: int
+    config_version: str | None = None
+    context_signature: str | None = None
 
 
 class ConversationHeartbeatStore:
@@ -48,7 +50,12 @@ class ConversationHeartbeatStore:
             row = self._row(conn)
             state = _state(row)
             if state is not None:
-                interval = _effective_interval(self.db, conn, self.conversation_ref, row)
+                from secretary.adaptive_cache_runtime import inspect_conn, interval as cache_interval
+                result = inspect_conn(self.db, conn, self.conversation_ref, row)
+                interval = cache_interval(result) if result else row["interval_seconds"]
+                if result:
+                    state._adaptive_mode = result[1]["mode"]
+                    state._adaptive_reason = result[1]["reason"]
                 state._adaptive_interval_seconds = interval
                 state._adaptive_infinite = interval is None
                 if not state.created_at:
@@ -90,27 +97,43 @@ class ConversationHeartbeatStore:
         moment = time.time() if now is None else now
         def update(conn):
             row = self._row(conn)
-            interval = _effective_interval(self.db, conn, self.conversation_ref, row) if row else None
-            if (row is None or row["status"] != "active" or interval is None
-                    or moment - _effective_anchor(self.db, conn, self.conversation_ref, row) < interval):
+            from secretary.adaptive_cache_runtime import inspect_conn, interval as cache_interval
+            from secretary.adaptive_store import heartbeat_conn, adopt_mode_conn
+            adaptive = heartbeat_conn(conn, self.conversation_ref)
+            if _claim_still_held(self.db, conn, self.conversation_ref, self.session_id, row, adaptive, moment):
+                return None
+            result = inspect_conn(self.db, conn, self.conversation_ref, row, now=moment, at=moment,
+                                  initialize_epoch=True) if row and row["status"] == "active" else None
+            interval = cache_interval(result) if result else row['interval_seconds'] if row else None
+            if row is None or row["status"] != "active":
+                return None
+            if result and interval is None:
+                adopt_mode_conn(conn, self.conversation_ref, "standby", result[0])
+                return None
+            if interval is None or moment - _effective_anchor(self.db, conn, self.conversation_ref, row) < interval:
+                return None
+            if result and _main_busy(self.db, conn, self.session_id, moment):
                 return None
             if _adaptive_priority_held(self.db, conn, self.conversation_ref, moment, self.session_id):
                 return None
             route = heartbeat_route_conn(self.db, conn, self.conversation_ref)
             if route is None or route["id"] != self.session_id:
                 return None
+            if result:
+                adopt_mode_conn(conn, self.conversation_ref, result[1]['mode'], result[0])
             conn.execute("UPDATE secretary_heartbeats SET last_fired_at=?,fire_count=fire_count+1,revision=revision+1 "
                          "WHERE conversation_ref=?", (moment, self.conversation_ref))
             current = self._row(conn)
-            from secretary.adaptive_config import for_db
             from secretary.adaptive_store import register_claim_conn
-            config = for_db(self.db, self.conversation_ref, session_id=self.session_id, conn=conn)
+            config = result[0] if result else None
             if config:
                 register_claim_conn(conn, self.conversation_ref, current["revision"], config, interval)
-            return _state(current), HeartbeatClaim(current["revision"], row["last_fired_at"], row["fire_count"])
+            return _state(current), HeartbeatClaim(current["revision"], row["last_fired_at"], row["fire_count"],
+                                                  config['config_version'] if config else None,
+                                                  result[1].get('context_signature') if result else None)
         return self.db._execute_write(update)
 
-    def claim_is_current(self, claim):
+    def claim_is_current(self, claim, *, now=None):
         from secretary.heartbeat_route import heartbeat_route_conn
 
         with self.db._read_ctx() as conn:
@@ -118,10 +141,32 @@ class ConversationHeartbeatStore:
             if not row or row["status"] != "active" or row["revision"] != claim.revision:
                 return False
             route = heartbeat_route_conn(self.db, conn, self.conversation_ref)
-            return bool(route and route["id"] == self.session_id)
+            if not route or route['id'] != self.session_id:
+                return False
+            from secretary.adaptive_cache_runtime import inspect_conn
+            moment = time.time() if now is None else now
+            result = inspect_conn(self.db, conn, self.conversation_ref, row, now=moment, at=moment)
+            if result:
+                from secretary.adaptive_store import heartbeat_conn
+                active = heartbeat_conn(conn, self.conversation_ref)
+                if not active or active['claim_revision'] != claim.revision:
+                    return False
+                from secretary.adaptive_features import number
+                period = number(active['interval_seconds'], minimum=60)
+                if period is not None and moment >= row['last_fired_at'] + period:
+                    return False
+                config, evidence = result
+                return bool(config['config_version'] == claim.config_version and evidence['mode'] == 'hot'
+                            and evidence.get('context_signature') == claim.context_signature)
+            return claim.config_version is None
 
     def refund(self, claim):
         def update(conn):
+            if claim.config_version is not None:
+                from secretary.adaptive_store import heartbeat_conn
+                active = heartbeat_conn(conn, self.conversation_ref)
+                if not active or active['claim_revision'] != claim.revision:
+                    return False  # Admitted/settled claims cannot rewind actual use.
             cursor = conn.execute(
                 "UPDATE secretary_heartbeats SET last_fired_at=?,fire_count=?,revision=revision+1 "
                 "WHERE conversation_ref=? AND status='active' AND revision=?",
@@ -134,14 +179,37 @@ class ConversationHeartbeatStore:
 
 
 
-def _effective_interval(db, conn, ref, row):
-    from secretary.adaptive_config import for_db
-    from secretary.adaptive_store import heartbeat_conn
-    config = for_db(db, ref, conn=conn)
-    adaptive = heartbeat_conn(conn, ref)
-    if adaptive and (adaptive["claim_revision"] is not None or config and adaptive["config_version"] == config["config_version"]):
-        return adaptive["interval_seconds"]
-    return row["interval_seconds"]
+def _effective_interval(db, conn, ref, row, *, now=None):
+    from secretary.adaptive_cache_runtime import inspect_conn, interval
+    result = inspect_conn(db, conn, ref, row, now=now)
+    return interval(result) if result else row['interval_seconds']
+
+
+def _claim_still_held(db, conn, ref, session_id, row, adaptive, now):
+    """Recover only an elapsed native claim cycle, never a live Main lease."""
+    from secretary.adaptive_features import number
+    from secretary.adaptive_store import settle_claim_conn
+    if not adaptive or adaptive['claim_revision'] is None:
+        return False
+    revision = adaptive['claim_revision']
+    if row is None or row['revision'] != revision or row['status'] != 'active':
+        settle_claim_conn(conn, ref, revision)
+        return False
+    period = number(adaptive['interval_seconds'], minimum=60)
+    if period is None or now < row['last_fired_at'] + period or _main_busy(db, conn, session_id, now):
+        return True
+    # last_fired_at/fire_count/revision are not refunded. A late holder loses
+    # its claim fence; the normal current cache/phase checks decide next work.
+    settle_claim_conn(conn, ref, revision)
+    return False
+
+
+def _main_busy(db, conn, session_id, now):
+    key = db._session_turn_lease_key_on_conn(conn, session_id)
+    return bool(conn.execute('SELECT 1 FROM session_turn_leases WHERE conversation_id=? AND expires_at>?',
+                             (key, now)).fetchone()
+                or conn.execute('SELECT 1 FROM compression_locks WHERE session_id=? AND expires_at>?',
+                                (session_id, now)).fetchone())
 
 
 def _adaptive_idle_precedes(db, conn, ref, now, session_id):
@@ -180,14 +248,14 @@ def due_conversations(db, *, now=None):
     with db._read_ctx() as conn:
         rows = conn.execute("SELECT * FROM secretary_heartbeats WHERE status='active'").fetchall()
         return [row["conversation_ref"] for row in rows
-                if (interval := _effective_interval(db, conn, row["conversation_ref"], row)) is not None
+                if (interval := _effective_interval(db, conn, row["conversation_ref"], row, now=moment)) is not None
                 and moment - _effective_anchor(db, conn, row["conversation_ref"], row) >= interval]
 
 
 def _adaptive_priority_held(db, conn, ref, now, session_id):
-    from secretary.adaptive_config import for_db
+    from secretary.adaptive_config import heartbeat_for_db
     from secretary.noting_scope import scheduler_settings_for_db
-    if for_db(db, ref, session_id=session_id, conn=conn) is None:
+    if heartbeat_for_db(db, ref, session_id=session_id, conn=conn) is None:
         return False
     if scheduler_settings_for_db(db).enabled and conn.execute(
             "SELECT 1 FROM secretary_schedule_registry WHERE conversation_ref=? AND state='pending' "
@@ -201,10 +269,10 @@ def _effective_anchor(db, conn, ref, row):
     anchor = row["last_fired_at"] or row["created_at"]
     if anchor:
         return anchor
-    from secretary.adaptive_config import for_db
+    from secretary.adaptive_config import heartbeat_for_db
     from secretary.adaptive_store import heartbeat_conn
-    config = for_db(db, ref, conn=conn)
+    config = heartbeat_for_db(db, ref, conn=conn)
     mode = heartbeat_conn(conn, ref)
-    if mode and (mode["claim_revision"] is not None or config and mode["config_version"] == config["config_version"]):
-        return mode["fallback_anchor"]
-    return anchor
+    if mode and config:
+        return mode['fallback_anchor']
+    return config.get('_configured_at', anchor) if config else anchor

@@ -36,7 +36,7 @@ def legacy_maintenance_receipt(*, cost=90000, duration=600):
 
 
 def heartbeat_receipt(*, output=9):
-    at = NOW - 3600
+    at = NOW - 10
     common = dict(verified=True, source='heartbeat', model_key='test', context_epoch='stable', turn_id='hb')
     return [dict(common, event_id='hb:request', kind='request', at=at-10,
                  input_tokens=330000, cache_read_tokens=329000, cache_write_tokens=0,
@@ -65,6 +65,29 @@ def test_unknown_coverage_keeps_hot_and_defers_maintenance():
     assert 'current_activity_evidence' in result['diagnostics']['readiness']['missing']
 
 
+@pytest.mark.parametrize('fraction', [.998, .4])
+def test_observed_warm_prefix_can_raise_or_lower_the_configured_estimate(fraction):
+    rows = empirical_history(cost=10000000)
+    for row in rows:
+        if row['kind'] == 'request' and row.get('source') == 'heartbeat':
+            row['cache_read_tokens'] = int(row['input_tokens'] * fraction)
+    for i in range(4):
+        rows.append(dict(event_id=f'warm-{i}', at=NOW-3000+i*600, kind='request',
+                         verified=True, model_key='test', source='heartbeat', turn_id=f'warm-{i}',
+                         input_tokens=330000, cache_read_tokens=int(330000*fraction),
+                         output_tokens=21, outcome='observed'))
+        rows.append(dict(event_id=f'foreign-{i}', at=NOW-2990+i*600, kind='request',
+                         verified=True, model_key='other', source='heartbeat', turn_id=f'foreign-{i}',
+                         input_tokens=330000, cache_read_tokens=330000, output_tokens=21, outcome='observed'))
+    result = decide(snapshot(), rows, dict(CONFIG, hot_cache_fraction=.95))
+    assert result['diagnostics']['effective_hot_cache_fraction'] == pytest.approx(fraction)
+
+
+def test_insufficient_warm_samples_keep_the_configured_estimate():
+    result = decide(snapshot(), empirical_history(cost=10000000), dict(CONFIG, hot_cache_fraction=.95))
+    assert result['diagnostics']['effective_hot_cache_fraction'] == .95
+
+
 def test_expensive_plateau_can_compact_with_history_supported_mode():
     result = decide(snapshot(), empirical_history(), CONFIG)
     assert not result['fallback']
@@ -89,7 +112,7 @@ def test_short_departure_waits_and_manual_pause_is_respected():
     assert decide(snapshot(heartbeat_status='paused'), rows, CONFIG)['fallback']
 
 
-def test_business_infinity_does_not_invent_periodic_self_checks():
+def test_legacy_infinite_business_setting_does_not_disable_warm_high_frequency():
     cfg = dict(CONFIG, business_interval_seconds=None)
     start = NOW - 14 * 86400
     rows = [dict(event_id='coverage', at=NOW, kind='coverage', source='user', verified=True,
@@ -97,8 +120,8 @@ def test_business_infinity_does_not_invent_periodic_self_checks():
     rows += [dict(event_id=f'early-{i}', at=start + 100 + 100 * i,
                   kind='user_activity', source='user', verified=True) for i in range(8)]
     result = decide(snapshot(), rows + legacy_maintenance_receipt() + heartbeat_receipt(), cfg)
-    assert result['mode'] == 'business'
-    assert result['threshold_tokens'] is None
+    assert result['mode'] == 'hot'
+    assert all(row['mode'] == 'hot' for row in result['diagnostics']['candidate_evaluations'])
 
 
 def test_long_maintenance_and_recent_maintenance_prevent_proactive_work():
@@ -108,10 +131,10 @@ def test_long_maintenance_and_recent_maintenance_prevent_proactive_work():
     assert recent['threshold_tokens'] is None
 
 
-def test_high_output_keepalive_can_lose_to_business_mode():
+def test_high_output_does_not_add_a_non_cache_shutdown_rule():
     result = decide(snapshot(context_tokens=60000), history() + legacy_maintenance_receipt(cost=1000000) + heartbeat_receipt(output=20000),
                     dict(CONFIG, heartbeat_output_tokens=20000, maintenance_cost=1000000))
-    assert result['mode'] == 'business'
+    assert result['mode'] == 'hot'
     assert result['threshold_tokens'] is None
 
 
@@ -122,18 +145,19 @@ def test_future_evidence_does_not_change_decision():
     assert decide(snapshot(), rows, CONFIG) == baseline
 
 
-def test_native_two_hour_baseline_is_not_mistaken_for_infinite_business():
+def test_old_business_interval_is_not_a_v4_policy_candidate():
     current = snapshot(current_mode_native=True, heartbeat_interval_seconds=7200)
     result = decide(current, empirical_history(cost=10000000), dict(CONFIG, business_interval_seconds=None))
     assert not result['fallback']
-    assert result['mode'] == 'business'
-    assert result['diagnostics']['baseline_cost'] > result['diagnostics']['estimated_cost']
+    assert result['mode'] == 'hot'
+    assert result == decide(current, empirical_history(cost=10000000), dict(CONFIG, business_interval_seconds=10800))
 
 
-def test_actual_next_due_affects_cost_even_when_anchor_is_same():
-    imminent = decide(snapshot(heartbeat_next_due=NOW + 1), empirical_history(cost=10000000), CONFIG)
-    later = decide(snapshot(heartbeat_next_due=NOW + 7100), empirical_history(cost=10000000), CONFIG)
-    assert imminent['diagnostics']['baseline_cost'] != later['diagnostics']['baseline_cost']
+def test_actual_hot_due_is_rechecked_before_a_read_can_become_cold():
+    imminent = decide(snapshot(heartbeat_mode='hot', heartbeat_next_due=NOW + 1), empirical_history(cost=10000000), CONFIG)
+    later = decide(snapshot(heartbeat_mode='hot', heartbeat_next_due=NOW + 7100), empirical_history(cost=10000000), CONFIG)
+    assert imminent['mode'] == 'hot'
+    assert later['mode'] == 'standby' and later['reason'] == 'next_heartbeat_cache_expired'
 
 
 def test_long_verified_silence_uses_independent_long_departures():

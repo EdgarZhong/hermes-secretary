@@ -136,4 +136,37 @@ def afternoon_counterfactual(historical, afternoon, expected):
     value["events"].append(dict(kind="coverage", event_id="afternoon-declared-coverage", source="user", verified=True,
                                at=value["cutoff"], start_at=start, end_at=value["cutoff"],
                                evidence_level="declared_continuous_host_condition_not_observed_full_coverage"))
+    return project_declared_contract(value)
+
+
+def project_declared_contract(package):
+    """Complete the already declared target projection without rewriting facts.
+
+    Only the observed afternoon workload proxy is projected. Ordinary historical
+    events keep their real contracts; the returned package is a new derivative.
+    """
+    from secretary.adaptive_model_config import digest
+    from secretary.adaptive_empirical_replay_data import _jobs
+    from secretary.adaptive_features import number
+    value = deepcopy(package)
+    contract = value['config']['model_contract']
+    identity = {key: contract[key] for key in ('provider', 'model')}
+    key = digest(contract)
+    projected = [r for r in value['events'] if r.get('evidence_level') == 'observed_Kimi_buckets_target_contract_proxy']
+    turns = {r['turn_id'] for r in projected}
+    ends = {r.get('turn_id') for r in value['events'] if r.get('kind') == 'turn_end'}
+    for row in projected:
+        if row['turn_id'] not in ends or any(number(row.get(k)) is None for k in
+                ('input_tokens', 'cache_read_tokens', 'cache_write_tokens', 'output_tokens')):
+            raise ValueError('Declared workload projection lacks its completed Turn or observed usage')
+        row.setdefault('outcome', 'observed')
+    for row in value['events']:
+        if row.get('turn_id') in turns and row['kind'] in ('request', 'turn_end'):
+            row.update(model_key=key, model_contract=deepcopy(contract), model_identity=identity,
+                       contract_provenance='declared_counterfactual_target_not_original_Kimi_identity')
+    value['snapshot']['model_key'] = key
+    value['jobs'] = _jobs(value['events'])
+    value['contract_projection'] = dict(source='observed_Kimi_buckets_target_contract_proxy',
+        projected_turns=len(turns), target_identity=identity,
+        changes='complete_request_outcome_and_consistent_request_turn_contract; times_and_usage_unchanged')
     return value

@@ -78,6 +78,9 @@ def begin_main_turn_usage(agent, turn_id, *, has_prior_history):
 @contextmanager
 def observe_main_model_dispatch(agent):
     """Bracket the real native dispatch; SDK-internal HTTP retries remain opaque."""
+    from secretary.adaptive_runtime import request_started
+    if request_started(agent) is False:
+        raise InterruptedError('Heartbeat would cold-start its current configuration')
     from secretary.adaptive_samples import child_dispatch
     child_dispatch(agent)
     owner = getattr(agent, "_main_usage_read", None)

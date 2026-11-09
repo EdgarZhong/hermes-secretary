@@ -79,24 +79,25 @@ def test_bounded_history_filters_future_before_tail_and_restart(owned, monkeypat
         other.close()
 
 
-def test_infinite_business_to_hot_preserves_real_anchor_and_claim_refund(owned):
+def test_legacy_business_is_ignored_and_hot_preserves_real_anchor_and_claim_refund(owned):
     parent, db, ref = owned
     hb = ConversationHeartbeatStore(db, "main")
     hb.save(HeartbeatState("", 600, created_at=1))
     config = runtime.settings.for_db(db, ref, parent=parent)
     db._execute_write(lambda conn: store.adopt_mode_conn(conn, ref, "business", config))
-    assert hb.load().status == "active" and hb.load()._adaptive_infinite
-    assert hb.claim(1000) is None and due_conversations(db, now=1000) == []
+    assert hb.load().status == "active" and hb.load()._adaptive_interval_seconds == 60
+    assert ref in due_conversations(db, now=1000)
     db._execute_write(lambda conn: store.adopt_mode_conn(conn, ref, "hot", config))
     assert hb.load().created_at == 1
     result = hb.claim(1000)
     assert result is not None
     state, claim = result
     db._execute_write(lambda conn: store.adopt_mode_conn(conn, ref, "business", config))
-    assert hb.claim_is_current(claim)
+    assert hb.claim_is_current(claim, now=1000)
     assert hb.refund(claim)
     assert hb.load().fire_count == 0 and hb.load().created_at == 1
-    assert hb.claim(1001) is None
+    assert hb.load()._adaptive_interval_seconds == 60
+    assert hb.claim(1001) is not None
 
 
 def test_concurrent_connections_claim_once_and_pause_wins(owned):
@@ -198,16 +199,16 @@ def test_restart_restores_absolute_idle_deadline_without_replanning(owned, monke
         reopened.close()
 
 
-def test_first_native_claim_defers_mode_update_until_refund(owned):
+def test_first_hot_claim_defers_persisted_legacy_mode_update_until_refund(owned):
     parent, db, ref = owned
     hb = ConversationHeartbeatStore(db, "main")
     hb.save(HeartbeatState("", 600, created_at=1))
     state, claim = hb.claim(1000)
     config = runtime.settings.for_db(db, ref, parent=parent)
     db._execute_write(lambda conn: store.adopt_mode_conn(conn, ref, "business", config))
-    assert hb.claim_is_current(claim) and hb.load()._adaptive_interval_seconds == 600
+    assert hb.claim_is_current(claim, now=1000) and hb.load()._adaptive_interval_seconds == 60
     assert hb.refund(claim)
-    assert hb.load()._adaptive_infinite and hb.load().fire_count == 0
+    assert hb.load()._adaptive_interval_seconds == 60 and hb.load().fire_count == 0
 
 
 def test_conflicting_event_identity_becomes_unknown_instead_of_first_writer_truth(owned):
@@ -230,7 +231,7 @@ def test_explicit_heartbeat_replacement_clears_old_policy_period(owned):
     db._execute_write(lambda conn: store.adopt_mode_conn(conn, ref, "hot", config))
     assert hb.load().interval_seconds == 600 and hb.load()._adaptive_interval_seconds == 60
     hb.save(HeartbeatState("new explicit", 900, created_at=100))
-    assert hb.load().interval_seconds == 900 and hb.claim(200) is None
+    assert hb.load().interval_seconds == 900 and hb.claim(159) is None
     with db._read_ctx() as conn:
         assert store.heartbeat_conn(conn, ref) is None
 
