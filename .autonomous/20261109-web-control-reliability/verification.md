@@ -251,6 +251,9 @@
 | V-GATES（后继完成事实） | U12；autonomous-run整轮门禁/交付 | 当前D34使技术门禁不通过；另独立Validation与root最终delivery尚无当前完整收据 | 不能称整轮完成或双门禁通过；不是要求在本报告前先Validation | 修复后新审查者重新全范围判据/复核，包括D34影响，保本版有效证据；技术阻断全部关闭再独立真实入口Validation和root最终亲审 | **开放** |
 | V-QUALITY（检查状态保留） | 冻结检查契约；E/root-final-checks.log | 9过/no-tmp失败；历史20261031报告原命令路径原字节未改，本次未执行新大套，不把它改绿 | 交付不得写“全检查通过”。这是明确未通过的检查事实；不能用它作为新产品机制红的豁免，也不授权改规则/历史证据 | root最终交付如实披露并依原冻结规则处理；本报告不新增例外、不改阈值、不篡改历史证据 | **未伪关闭**，非新增产品缺陷 |
 
+
+| D34草稿生命周期补充（沿原D34，非新门禁） | 原U07/Profile隔离、W06/W12草稿恢复与W19原命令成功消费；FE Controller.releaseInactiveViews:472、acceptedDraft:884、consumeCommandDraft:1805、adoptDraftScope:1868、capture/releaseTemporaryBoundary:2465；command-actions dispatch/finally | F1一行openConversation已使真实App B history/activate/binding正确，但两命令×unique-id/同ID unique-title四组合回A丢附件/model/provider/reasoning。select(B)先清退A draftScopes/Values/Versions，而route IDB已被canonical adoption退休；随后consume(Akey)读空route并写回空route，覆盖canonical草稿的后继选择。38绿/4红及只读consume包装证据保留 | 修复D34不能以导航B正确为由丢弃原A未消费内容；需要让原命令结算所需scope/value/revision活到结算。原固定71340be结论与90/2/4计数不变，当前dirty并未通过门禁 | root提案将仍活temporaryAnchors.key加入现有草稿/route数据retained集合，精确releaseTemporaryBoundary删除后调用原清退；不扩views/runtime retained，不提前消费、不加busy/门禁/新存储/重放。独立评审接受；关闭条件见§6补充 | **方案接受，尚未实现/复审关闭**；F/d34/draft-retirement-blocker.md、draft-proof/resume-draft-retirement.json、green-complete.log |
+
 范围外新产品发现：无。D34属于本轮要求的全部现行Web合同，虽未由D32/D33增量引入，仍不能转成范围外。旧自然1005/1006原因/责任比例未知、无ADB/真实移动网络、旧并行join限制与Linux-only skip按§4保留，不据正常样本外推全部现场。
 
 ## 6. 修复与独立复审
@@ -266,6 +269,18 @@
 | D33 | 最新11/8要求Orb立即预取、实际目标就绪再过渡，edb按10/26旧测试回退成二级才读/空loading | root承认四处App回退无授权，提恢复预取与真实target几何生命周期；独立要求慢失败/关闭迟到/owner/running/反向/reduced motion，不得降标成旧loading | 71340be open demand预取、showSchedules等数据，原OrbMorph实际目标测量；完整App上述分支、root IAB schedule0→1且Expand/Collapse不增、43帧曲线/ghost退休；439当前资源已入新APK | **关闭**；本次最新原文优先，旧失败与旧报告保留 |
 | D34 | 初始U07所有owner隔离、W19实际slash导航语义。调查发现routeNavigation找跨Profile row却丢owner；最小隔离正式命令入口反证确认 | root亲读后提仅把已选SessionRow交现有`owner.openConversation(match)`，复用侧栏提交点，不改id/title匹配/权限/其他命令。独立评审接受原判据下工程细化，要求真实Controller/B读取/同ID/草稿及零业务副作用，不仅mock参数。未变规格、无新增用户审批 | 固定71340be仍原代码，方案未算实现；本次反证首次漏draftReady未进入正式路径失败另存，修fixture后合法.perform确认错误选择参数，非产品修复测试。root将自行安排修复与fresh全轮审查 | **开放/技术阻断**，本报告不等待或审未来dirty |
 | N07解释澄清 | 初始N07旧global pointer泛化可能拒合法Note源，旧v2 I03也带过时Idle串行措辞 | 审查者回原07顶部10/28:100–125，而非采用root实现解释；当前Note资格与Snapshot pointer分开，普通联合并行按最新原文。初始判据原字节不改 | 当前noting_notes.select/qualified/check_note_delivery同资格四点，Snapshot atomic gate仍保；§2完整记来源与修正理由。无产品语义变更 | **澄清后符合**，不得改历史报告解释成它当时已正确 |
+
+
+D34必要草稿生命周期方案评审补充（2026-11-10，按root专项委派，非新一轮Verification）：独立亲读F`d34/draft-retirement-blocker.md`、`draft-proof/resume-draft-retirement.json`及`green-complete.log`，并回正式Controller与command-actions路径核对。`acceptedDraft`只应消费传入命令文字（captured attachments=[]，未含model/provider/reasoning），保留同owner草稿其它字段；当前清退却使它失去canonical scope、最新值和revision，继而从已退休route读emptyDraft。只读包装确实看到consume前scope/value缺失与空route；38绿4红支持“B归属已修、A剩余草稿未保”，不支持整体关闭。
+
+root为提议方：把仍活`temporaryAnchors`的key纳入现有`releaseInactiveViews`草稿/route数据retained集合，`releaseTemporaryBoundary(id)`精确删除后调用既有清退；沿命令在catalog/导航前capture、最外层finally释放的现有生命周期保留原A canonical scope/value/revision。Verification评审：**接受，忠于原判据的必要生命周期细化，无产品语义变更，无需另增用户审批**。它不扩大views/runtime存活，不把暂时draft归属当运行控制资格，不借B草稿结算A，不提前消费可能失败的命令，不加pendingBusy/额外gate/存储/重放。现有递归alias共用parentBoundary，只有最外层finally释放，仍应保持；同key多个boundary由尚存map项自然共同保留，不能释放一个就清掉另一个的草稿。现有编辑/rewind对旧temporary anchor的显式失效不能被保留逻辑复活，临时结果呈现的owner/epoch/runtime判定也不放宽。
+
+独立关闭条件（非将方案冒充实现）：①四个原真实App失败完整深匹配转绿，B history/activate/binding正确且无A误读写，回A仅消费原命令text，原附件occurrence/model/provider/reasoning和B草稿完整；②同key双boundary释放一个仍保scope/value/revision，最后一个释放后按原资格清退，current/transaction/operation等其它owner仍按既有规则保留，重复/未知id释放安全；③catalog/未知或不可用Profile/导航失败、旧owner或epoch变化、迟到读取均最终释放，失败不消费，较新输入按原revision保留，清退后不从空route覆盖canonical值；④不扩runtime/visible histories保留、不造成旧临时结果或rewind已淘汰anchor复活；⑤原command/draft retirement与canonical adoption失败回滚等回归保留，遵冻结health不增长既有超标指标。只看mock的select参数或删四个草稿断言不能关闭。此处仅评审方案，没有复跑上述测试、没有审未来dirty、没有修改原固定71340be门禁。原90符合/2违规/4后继缺证与D34开放保持。
+
+
+D34已退休boundary补充条件评审（同日，仅方案）：root指出现有`Controller.acceptPrompt`在acceptedEdit时会按`retainedTemporaryIds`直接删除旧`temporaryAnchors`（约1616），而`routeNavigation`等待返回后目前不检查boundary便`consume(Akey)`。独立复核确认这是实际正式失效接缝，不是假设；此前“活boundary保留草稿至结算”不能替已经被原生编辑语义退休的boundary继续保留结算资格。root补充提案在导航成功等待返回后、消费原命令前，沿现有`temporaryResultExists(boundary)`核有效性：正常成功导航即使当前已为B，仍可按捕获的A key/revision结算；原boundary已退休则不再写A草稿，finally仍精确release并调用既有清退。Verification：**接受，此条件是原U07/草稿owner与旧结果不可复活的不变量所需，不改变规格**。不得改用含`current()`的`ownsResult`把合法跨owner成功导航的消费一并禁止；也不得重新创建被acceptedEdit淘汰的anchor、保活失效结果或新增存储/API/用户gate。
+
+补充关闭证据须沿合法正式acceptedEdit路径退休真实命令boundary，让原慢导航随后完成：观测无后继`consumeCommandDraft`/空route回写、不损坏A较新草稿或B草稿，不复活旧temporary结果，最外层finally释放及其它同key仍活boundary保留/最后清退保持；正向正常跨Profile导航仍只消费原A命令文字。不得以测试直接delete私有map代替唯一正式因果链；定向失效操作可作辅助观察。这里只评审方案，未声称当前dirty实现或新增反例已通过；固定71340be的D34开放、门禁不通过、90/2/4计数均不变。
 
 本次只有D34需新的工程收敛，已由root提出、Verification评审；没有共同制定迁就实现的标准，也没有代root设计或实现。供root最终delivery与面向用户摘要的实质事项：D29恢复hold责任、D31成功owner元数据后继通知、D32附件动作边界、D33最新面板预取/真实几何及本次D34跨Profile slash导航；算法需同时保留399.6s留一段负例、部分窗更贵与线上自然生效待证。旧退回/补证过程按上表及原v2原件保留，不以新整绿覆盖旧报告。
 
