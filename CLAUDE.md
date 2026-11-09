@@ -26,11 +26,11 @@
 
 ## 2026-11-09 · 故障全面复核与Web输入运行归属（新授权）
 
-**暂停后已按用户指令继续：** 原子会话已不在活动树，恢复为frontend_finish与gateway_display_backend；root复核D28连接owner已交包并整合。最新U15：Gateway真实运行时仅运行控制受限，Web仍逐条跟随新落库消息／外部Turn终态并稳定呈现与collapse，不把读权限/显示与runtime控制混为一体；纯idle系统唤起单独验。用户再次确认今晚修复＋算法V4一起main发布，算法候选已合隔离分支且保持原公式，未漏项。当前目标工具仍paused但用户已明确继续，当前会话工作已恢复，工具无恢复开关能力；尚未独立审查／实际验收／正式0.1.14构建或发布。
+**当前整合候选已冻结，进入独立审查：** BE `93c3b6d0bd0b91c110760c15f8063aec2d3b9a22`、FE `9f525d33a328740490337f065c225f2462b576d9`已提交推送。B1/D20/D25/D28/U15后端与F1 R7已由root亲审正式接线；最终47项FE源指纹零漂移。F1真实连续控制链包含自然维护提交后waiting续跑，103次DOM提交保旧fold；Gateway两起点逐条持久跟随、外部结束折叠及释放后真实Web Send/Stop通过；纯idle HB/Reminder另有原cd5红／候选绿。12文件354项通过，4项旧夹具失败单独保留并核实性质，不能以基线失败自动豁免。IAB实际界面与独立双门禁尚未完成，不称整轮验收通过。
 
-**当前最后收口：** D25已提交89d0d142d8，D26联合链90次DOM提交不再丢旧fold，正式输入各只写一次；D27终态facet顺序与unknown提示/当前Stop可达由F1处理。关闭专项只读证实20:42为Mac Chrome所用连接、实际服务栈1005与TCP失联1006区别；具体本地主动入口仍缺客户端事实，不归网络。D28原Gateway/Controller同步观察者可截断retry已确定复现，close_origin_audit改统一连接owner先结算再通知、F1接业务恢复；4100固定原因仅诊断，绝不作重连白名单。用户再次强调正向机制与所有意外断开自动恢复，已登记U14。原server/F1通信白名单分离，APK等待最终源；开发证据不代替独立审查与实际验收，尚未发布。
+**当前编排：** frontend_finish补交四项旧失败的逐项适用性说明；gateway_display_backend整包已接收并提交。apk_finish已获最终FE提交，开始0.1.14/1014原证书APK与静态包构建。全新无上文verification_final按冻结U01–U15/E01原文先建立判据，再核正式接线与证据；通过后另派独立Validation。root补最终隐藏IAB、统一质量检查、main合并和授权发布。算法远端分支已只读核实仍为b232defac7，27模块已合入候选且未改公式。线上仍9270933/cd5/0.1.13，本轮未部署；目标工具仍paused、当前按用户继续指令执行，未冒称目标工具已active。
 
-**最新联调与用户追问：** D25公共投影修复5项定向绿；重启联合版后F1严格真实链90个DOM提交均保旧fold，D26同因关闭且未加FE特例；普通Steer为单Pending/零custody正文，Instant Reminder与Heartbeat均实际触发并可Steer/Stop，11条original input各仅一次写。D24额外New Chat旧事务覆盖目标新事务两反例已修；D27终态residual Thinking顺序尚在收口。用户明确20:42同页未主动关闭，追问unknown机制是否过度防御；root已按Git核对为项目后加提示/查询而非Hermes原生错误，交F1改成自动确认状态而非手工排障红错。close_origin_audit独立只读核真实1005来源、前端close入口与恢复调度，尚不把网络／具体调用当现场已证原因。0.1.14打包继续等最终FE，独立双门禁未开始，线上仍0.1.13。
+**归因边界：** D20线上同源编号／入队逆序、D28同步展示观察者截断重连调度均有正式反例；D25是候选早写custody错误进入显示，不能解释旧版所有折叠现场。20:42已证输入持久受理后约127ms出现1005，原ID可查accepted；具体客户端关闭入口仍缺自然记录，不归网络。unknown现在沿原ID自动确认／退休，当前控制不会被Cancel Send遮住。Gateway只限制确实由它占用的写控制，页面仍按同一有限恢复快照跟随持久条目；不新增控制broker或第二writer。完整证据入口：FE `.archive/web-control-reliability-20261109/frontend-report.md` R7、`verification.r7.json`；BE `.hermes-dev/web-control-reliability-20261109/gateway-display/report.md`及本轮plan。以下按时间保留既往调查过程，不代表当前未完成清单。
 
 **21:31实际入口继续发现：** BE阶段快照330bb14e48已推送、未上线。root自建隐藏IAB独立59874/75后端＋59876前端，无reload，完成last delta→真正streaming API返回→durable/terminal→idle、第二Turn Enter Steer→native followup→Stop。普通边界Assistant单份、旧fold保留、Stop最终disabled Send；但Steer的受理custody row被当普通You提前画入history，与Pending两份且挤动当前输出（D25），BE正式DISPLAY_VISIBLE_SQL／recovery.turn_start已证收错对象，stream_order_resume接正式投影修复。F1联合维护／重连链又抓到新Turn三个DOM提交旧fold全部消失（D26），授权限定Timeline/恢复接缝修复并与D25协调；D24切owner三个红例已转绿。未以这些局部通过交付整体稳定，APK等待最终源，双门禁尚未启动。
 

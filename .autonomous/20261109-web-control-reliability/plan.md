@@ -16,11 +16,13 @@
 | F1 前端故障与控制 | U01–U09/U12；06顶部、C1–C8、11/8折叠及恢复／局部更新／维护合同；07相关维护／Force／Heartbeat | frontend_control；独立FE src/api、src/core/controller及siblings、timeline-folding、ChatComposer与压缩展示、相关测试和正式生成协议；必要既有Android诊断白名单兼容，不改Gradle／依赖／版本／签名／根文档 | 先修折叠并审seq覆盖，后按B1正式协议接实际Controller/App；不以mock-only代替接线，不busy后自动retry | 同页未知→已证边界恢复旧组，active展开／用户展开保持；各phase Enter/button/Stop、查询回执、ACK未知／owner切换、维护部分摘要恢复；正常事件零整页恢复。seq必须核真实作用域，不能把合法全局跳号误判缺口；C2 Unknown/typed回归。UI仅自建隐藏IAB |
 | A1 V4整合 | U10；算法V4 C01–C23、D1–D4与保留V3合同 | root；merge／文档／微小跨包接线，算法公式不委派控制权子Agent | b232已合入2e91189，27模块与原验收SHA一致；控制输入与adaptive接缝待联验 | 复用32文件556机制和独立23场景同版证据；补控制输入×冷HBguard／当前配置／首读许可／维护提交取消。线上只读核配置和自然request/decision，不制造生产模型测试 |
 | V/Va 两独立门禁 | U01–U12全部适用条款 | 各全新无上文独立Agent，产品只读，分别report与ignored证据 | 集成收敛及root亲审后，先Verification，阻断清零再Validation | 按冻结原文先建矩阵；实际产品入口与隔离数据；同版证据复用，必要反证真实运行 |
-| R 联合发布 | U08/U10–U12 | root；main合并、0.1.14版本、构建／部署与运维记录 | 门禁通过，稳定源码，原签名，服务安全空闲 | 原生main发布器、439静态manifest/HTTP、APK签名/ZIP/ELF/资源、双端ID；保最近两套三库；无ADB实机不冒称实导，脚本和格式仍交付 |
+| R 联合发布 | U08/U10–U12 | root；main合并、0.1.14版本、构建／部署与运维记录 | 门禁通过，稳定源码，原签名，服务安全空闲 | 原生main发布器、实际资源清单manifest/HTTP、APK签名/ZIP/ELF/资源、双端ID；保最近两套三库；无ADB实机不冒称实导，脚本和格式仍交付 |
 
 ## 3. 当前状态与编排
 
-**最新暂停后恢复：** 用户再次明确继续并恢复subagent。旧活动树已消失，frontend_finish按原F1未提交代码与R6证据收尾D24/D27/D28/unknown提示、纯idle系统唤起与U15前端；gateway_display_backend负责U15正式持久提交→跨进程通知／只读状态接缝，两者仓库范围分离。root亲审D28已交API/BE诊断包并做整合集成；APK五版本字段已0.1.14但尚未正式构建，待最终源。U15只读Gateway展示与真正写控制分开，不新增第二writer／token流代理。目标工具仍返回paused，当前按用户继续指令执行，工具不能自行恢复开关，不冒称自动目标已active。算法b232/V4在集成候选，用户再次要求今晚与修复一起合main上线，未撤销。
+**整合收敛状态：** BE93c3b6d0bd0b91c110760c15f8063aec2d3b9a22、FE9f525d33a328740490337f065c225f2462b576d9已推送。root已亲审正式接线和最终R7（47源指纹185501ac34435759708ed340d0fb7d85ca68c17c99c6a5b3d936d81856090661），D01–D28已有实现及相应机制证据，待独立判定，不把历史现场未明原因当已关闭。F1最终真实网络链103次DOM稳定、Gateway两起点24次DOM稳定且释放后Web Send/Stop、纯idle HB/Reminder原版红／候选绿；具体证据和旧失败边界见R7最终七项报告及verification.r7.json。4项旧FE测试失败由frontend_finish只读澄清适用性，未跳过产品缺陷。root实际浏览器最终链待验。
+
+**当前分工与依赖：** 独立verification_final（gpt-6.1-sol/high、fork none）按U01–U15/E01与全部适用原文先落盘判据，再查代码／证据；产品只读。apk_finish从最终FE构建0.1.14/1014及正式manifest，原证书不变。root统一最终相关检查、隐藏IAB、亲审门禁及main发布；Verification通过后另派独立Validation。原算法远端b232defac7已核，V4仍在候选且保持原公式。未在生产测试模型／改用户配置。线上尚未更新，目标工具paused事实保留但用户继续授权有效。以下进度段落为历史取证记录，当前状态以本段及两独立报告为准。
 
 **21:18当前执行事实：** B1正式Lock／D18包已由root亲审；D20排序包已接收，49传输／52身份回放／4stdio证据有效，root核hook、Tee、旧子类和健康端credit接线。root两行旧字符串queue兼容修正获3项绿；protocol另两失败在未改12e同源基线复现（`root-protocol-baseline-two.log`），不算本轮新回归。F1 R5（37源清单15bcb…）285项／type／health及真实网络lost-ACK链已交；root实IAB终态Stop通过，D24异步owner反例补验中。新joint lab使用当前B1＋D20及修正后的真实streaming返回探针，frontend_control_resume独占联调动作，补维护／API返回至terminal连续链；root不并发操纵。apk_release_prepare仅五版本文件及ignored构建证据，待最终源冻结后打0.1.14。尚未独立双门禁、main合并或发布；旧表的调查描述保留为发现时点，当前状态以本段和后续闭合证据为准。
 
