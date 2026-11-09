@@ -281,7 +281,7 @@ D34同时核Owner和命令草稿整个生命周期：原routeNavigation丢真实
 | D33（历史） | W02；App Schedule/OrbMorph | 旧10/26两级点击才读的回退实现不符最新11/8预取/目标geometry | 当时阻断现行明确用户合同 | Orb开即预取、未齐一级、实际target动画；完整App及root43帧/单次read | 当前关闭；不能以旧规格或夹具预期放过 |
 | D34（历史及本次复审） | U07/W16/W17/W21/G01；command-actions/controller | 原跨Profile命令先去A；一行修后原A草稿scope/value/revision退休又被consume空写；acceptedEdit退休后旧导航仍consume | 原v3技术不通过；丢owner和完整草稿，非仅URL错误 | 整行openConversation＋活boundary仅保draft、最后释放、消费前精确资格；205完整App、字节绑定与root最终包双ProfileIAB | 当前关闭；讨论与原红全保§6 |
 | D35（本次新发现） | U07/W16/W17；FE command-actions.ts:215–226/304–309；Controller.acceptedDraft:889–908、readNotebook:1880–1894 | 合法/notebook真实RPC挂起→真实beginEdit→Composer Send→红色Rewind确认→prompt.submit_idle受理，两个原boundary均正式退休→用户新草稿“/notebook newly typed after accepted edit”→旧Notebook返回。内层present因退休不显示，外层consume()无boundary仍调用；实际新草稿变“ newly typed after accepted edit”、revision增加 | P1范围内草稿破坏，退休旧结果不可消费新输入；现D34只导航传boundary不足，阻断技术门禁 | root已提全部consume必需同boundary/唯一提交点方案，独立有条件认可（§6）；须保合法跨Profile结算并保证检查至草稿变更无未守护await；原反例仍待新版本关闭 | 当前已证未关闭；V/notebook-retired-command.json、command-owner-probe-actual.log（1红） |
-| D36（本次新发现） | U07/W17/W22；FE command-actions.ts:46–56；Controller.ensureBinding:1087–1160 | A default/recovery-fixture通过真实Composer发/model default-native-model或/reasoning high，原config.set正确捕获A后挂起；用户正常切other/b-only；旧ACK返回后ensureBinding(A stored ID)省profile默认other。实际发起session.resume(other,recovery-fixture)并读取无当前需求的B同ID，并产生该B同ID的events.since与activate读取；最终选中B-only未被覆盖、旧临时binding正常清退，这限制了实际影响但不消除错误范围的读取 | P2范围内异步owner错配/额外读取原生runtime，当前页面虽仍B-only，不可据此判没有缺陷；两命令同机制，阻断技术门禁 | root已提捕获原owner/epoch/recovery代次、ACK前校验后显式原Profile方案，独立有条件认可（§6）；须保连接有效和刷新后提交资格，原A成功事实不反转/重发 | 当前已证未关闭；V/model-late-profile.json、reasoning-late-profile.json、command-owner-probe-actual.log（2红） |
+| D36（本次新发现） | U07/W17/W22；FE command-actions.ts:46–56；Controller.ensureBinding:1087–1160 | A default/recovery-fixture通过真实Composer发/model default-native-model或/reasoning high，原config.set正确捕获A后挂起；用户正常切other/b-only；旧ACK返回后ensureBinding(A stored ID)省profile默认other。实际发起session.resume(other,recovery-fixture)并读取无当前需求的B同ID，并产生该B同ID的events.since与activate读取；最终选中B-only未被覆盖、旧临时binding正常清退，这限制了实际影响但不消除错误范围的读取 | P2范围内异步owner错配/额外读取原生runtime，当前页面虽仍B-only，不可据此判没有缺陷；两命令同机制，阻断技术门禁 | root后继在有效ACK后走startRecovery(configuration-changed)，continuous配置成功清bindingReads并以cache Promise身份相交原context，原compaction reader确认权威binding后读Context，独立认可方向及§6条件；须证无info deferred、同owner新setting/在途ABA不越代，原A成功事实不反转/重发 | 当前已证未关闭；V/model-late-profile.json、reasoning-late-profile.json、command-owner-probe-actual.log（2红） |
 | Q01（历史范围外质量问题） | 冻结no-tmp检查；.autonomous/20261031-evidence-recovery/validation.md:20 | root-final-checks十项九过，旧报告literal /tmp被原规则报红；health93文件0blocking/1advisory（Fanout原thread） | 不属于本轮产品新违规；仍阻断“冻结检查全部通过/完整交付完成”声明，不能因基线红忽略 | 不改规则/历史报告求绿；由root按既有冻结规则与历史保存约束处理并披露，本Verifier不擅改 | 未关闭，保持原失败；本技术符合性不冒质量全绿 |
 | L01（现场证据边界） | U01/U08/C5–C8；原1005/1006、ADB/自然网络 | 代码内close/observer原因已可留证；自然旧诱因无同窗双端日志，无真实Android/运营商场景 | 无证不能归责网络、Kimi或宣称设备已治；该自然断连现场暂无已证因果反例，D35/D36另列 | 用新release日志随后继自然现场取证；不要求Verifier制造现场/先上线 | 未取得现场证据，诚实保留；非技术机制豁免 |
 | L02（历史未定因） | U05/N08；maintenance并行join | 原并行join5s线程仍alive失败留存；隔离相同源及实际自然finish→commit→consumed通过 | 两类证据不能互相覆盖，不能称旧并行根因已治 | 对已证路径限界，若后继再现保栈与owner；不为review重复大套/改timeout求绿 | 现场原因未知；当前无独立已证同机制新反例 |
@@ -331,3 +331,130 @@ root提案：D35把现有consume(boundary)的token改为必需，导航、picker
 必要关闭证据：原三个独立反例不改业务断言后通过，另外补root所列ABA/epoch/同当前成功/失败保稿/A-B完整草稿/alias及各消费分支，验证没有多余create/prompt/interrupt/upload/业务写重放；完整相关文件复用/定向检查，后继新版本由全新独立审查者全轮复审，并重新绑定受影响源码和构建。只证明未来方案可满足原判据，不替代新源review/运行/构建或另一Validation。
 
 当前状态：D35/D36方案有上述实现约束地认可，允许root安排实现；**当前固定75e技术门禁仍不通过**，3红/2.19s原证据保持。本次只读当前源确认异步/轮次语义并记录方案研讨，没有修产品、改正式测试、复跑旧套件或新建子Agent。供final-delivery摘要：统一命令boundary应同时约束“结果是否仍有消费资格”，模型/推理ACK则还需完整原owner及恢复代次，不能用局部导航修复代表所有异步命令。
+
+
+D35/D36 · 后继6红与配置恢复接缝细化评审（2026-11-09T20:06:09.228Z，保留前次研讨原时点）：
+
+已读取F/d35-d36/valid-red.log及valid-red/下三个新增JSON，并对照实际App用例的合法外部响应延迟、真实openConversation和真实accepted Rewind步骤。source-before.json所列4产品文件与git show固定75e989a逐字节一致；核验摘要在V/d35-d36-additional-red-review.json。该次为6失败/41未选原例、测试2.456s/runner2.83s，不冒全文件通过或由本Verifier复跑。原独立3红仍在V，FE原3红、扩展夹具红和6红原件不改。
+
+新增三事实：①有效config ACK后旧ensureBinding已经发出session.activate，随后A→B→A进入新generation，旧合法shape binding响应迟到把当前binding.info.model从controlled覆盖为obsolete binding after owner ABA；当前草稿仍保留，说明实际损坏是旧binding提交越代次，不应夸成草稿已丢。②/title读取期间真实accepted Rewind退休旧boundary后，旧标题仍被新temporary展示，并消费新/title前缀草稿。③/ai-title生成期间同样退休，旧llm.oneshot响应后仍新增一次session.title写（Obsolete generated title），且消费新/ai-title前缀草稿。以上外部模型/服务端数值和DTO为受控合法响应，不是生产现场或新增真实模型调用。三事实属于既有D35/D36及U07/W16/W17/W22反例，不新增条款、缺陷数量或改106统计；仍98符合/4违规/4后继不足。
+
+root细化提案：不扩大ensureBinding资格或让它承接配置专用恢复；原A config.set一次，ACK后原owner/runtime/connection/epoch/recovery/boundary仍有效才调用既有owner.startRecovery(configuration-changed)。正式Controller.setSessionConfig已用该接缝；ControllerPageRecovery.start在committed continuous时局部刷新compaction/capabilities/reasoning，真正失效才完整恢复；后续读/提交由PageRecovery context.current守轮次。失效旧ACK跳过旧读但不反转成功设置、不重发；D35及title/AI-title/noting以原boundary守每个必要await。实际App须证当前成功模型/推理/Context更新，以及恢复读已开始后再ABA/epoch仍不能覆盖新页。root不选plain conversation refresh，因其可能复用binding而不读model。
+
+独立评审：**认可改用现有配置恢复owner的方向，允许实施；它比在通用ensureBinding上扩大调用/资格更贴合原W03/W08/W22。新反例也证明仅在ACK后、读发起前检查一次不足，必须守到实际提交。** 此细化替代前次方案中ensureBinding作为配置ACK后刷新调用的选择，前次评审/原反例不回写；没有变更用户产品语义、模型切换时机、缓存/Provider路由或增加忙锁。
+
+仍须落实的接线条件（均源自原判据）：
+
+- startRecovery的调用必须沿本次原配置命令活资格，且原A写已成功才驱动；对ACK丢失/失败/退休/离开/断连/ABA不得写重放。恢复开始后读取context、menu提交、binding事实与Context资格都依现有PageRecovery当前owner/连接/轮次复核，不能把函数返回true或读已发出当成功显示更新。现固定源码start:333–350确有continuous局部分支，PageRecovery的读/accept有current守卫；这可支撑方向，不替代修后正式链证据。
+
+- **单纯调用startRecovery还不能据代码推定三个数据都已更新。** 固定75e的capabilities/reasoning资源在Conversation且无相应demand时，read本身分别于controller-page-recovery.ts:900/915直接返回空patch；configuration-changed虽列出这两个refresh ID，也不能自动证明已调用model.options/config.get。Context读取还有当前binding.info模型/Provider相容性检查。因此修后必须说明并以实际App证实：菜单关闭的正常/model和/reasoning命令，权威模型选项/推理显示及新Context身份的数据究竟由合法原生事件、对应可见需求或既有配置恢复读取哪一路到达；不能靠测试手塞state、只断言startRecovery调用、把新模型值仅写入响应却未提交，或扩大为所有会话后台绑定。需要的有界需求/事件接线属既有工程细化，root负责提出/落实具体方式，不需用户新增语义授权。
+
+- D35的token必须覆盖迟到结果之后的每个新副作用：/title不再展示退休旧结果；/ai-title在生成返回后、发起rename前复核，退休后不能再发新的title写；/noting在refreshHistory后开始readSecretary前核原owner和Profile。已经在退休前正式提交的原写事实不得假回滚，取消资格只阻后继未发生动作/旧显示/旧消费。alias应复用父boundary，不重新造token绕过退休。
+
+- 继续区分两种资格：消费原命令草稿依精确活boundary，保D34合法跨Profile导航结算原A；新读取/新写/临时展示则还需其本来的owner/连接/epoch/运行及页面代次有效。仅“boundary还活着＋当前key又相等”不能自行推出A→B→A的新页面可以接受旧读结果；若复用既有context/current代次，可据此证明，不要求新建另一套业务状态。消费提交前无未守护await的上一轮条件继续有效，不能因本次改恢复owner就遗漏。
+
+关闭证据仍是修后实际App/Controller/PageRecovery的完整接线：六个原红不改业务断言后通过；当前A合法成功（菜单关闭）模型/推理/Context实际值及原native写恰一次；ACK前跨Profile/ABA、ACK后读取在途再ABA/epoch、精确Rewind退休、失败保稿及A/B完整草稿；真正断连恢复和普通配置局部更新分开，旧模型/Context不在新页复活。原生事件/DTO必须合法且与真实handler合同相符，模型属性不能只塞给测试以掩盖未读/未提交。相关完整文件/质量检查由root统一安排，不要求本Verifier复跑旧套件。
+
+当前结论不变：以上是方案接缝评审及三个新增旧版事实核查，尚未评审未来修后实现/绿色日志，不据此关闭D35/D36。固定BE dd7db970/FE75e989a门禁仍FAIL、98/4/4；本次没有改产品、正式测试、规则、依赖或复跑测试，也未操作任何现有实例/UI。供final-delivery摘要应说明：缺陷不仅是“迟到ACK选错Profile”，还包括ACK后已开始读取的旧提交，以及退休后仍启动title写；统一恢复owner和边界资格必须贯穿到最终副作用。
+
+
+D36 · 无session.info的deferred配置与bound缓存责任细化（2026-11-09T20:12:30.594Z，仍为方案评审）：
+
+后继事实：已读F/d35-d36/deferred-red.log及deferred-red/deferred-model-without-info.json。该次是后继局部方案下的受控完整App用例，1失败/68未选原例，测试883ms/runner1.39s；Context已经2048/8192、25%，但实际render binding.info.model及Model按钮仍controlled，未显示native-deferred-pick。所记ACK后RPC仅compaction_state/context_breakdown/model.options/commands.catalog，不能用这些读取发生就推定binding信息已更新。**此红针对后继配置恢复接缝，不宣称固定75e原routePicker也走该新路径，不回写固定75e的原反例、原统计或来源指纹。** 未读取未来绿色结论作为关闭证据、没有复跑。该受控场景不冒充真实compute-host进程/模型运行。
+
+原生依据已亲读BE methods_config_set.py:73–91/108–124：_stash_pending_model_switch写pending_model_switch.display_model/display_provider并返回deferred；该分支没有_emit_session_info，compute-host不论idle/busy均沿此分支，running亦defer。server.py:2284–2305的_session_info按pending pick展示，原live agent可仍旧模型，下一Turn才实际应用。因此测试不发session.info具有真实handler依据；不能修前端夹具去伪造必有事件，也不能把deferred ACK解释为已经对运行中agent换模。Context数值/来源仍必须服从原生真实状态，不因pending显示新pick就凭空改实际窗口/运行模型或清退活流。
+
+root本次提案：保原config.set一次及前次ACK owner/连接/epoch/recovery/boundary资格；在既有ControllerPageRecovery.start(configuration-changed)的continuous分支清已有bindingReads，使原compaction reader经bound→attachConversation，以原Profile metadata及原runtime activate确认权威info，再读Context。reasoning及有原生事件路径也共用一次确认，不加resource/owner/API、history读取或整页恢复。bound所用shared.current再与当前cache Promise身份相交，clear后的同owner旧读立即失效；原roundContext继续承担owner/连接/页面轮次及epoch恢复隔离。
+
+独立结论：**认可这项最小接缝细化，允许root按此实施；它正面补齐前次已指出的“恢复调用不等于权威模型信息已参与提交”缺口，未改变产品语义。** 固定75e源码bound:764–774目前按[owner,recoveryId]缓存Promise、shared仅roundContext，continuous配置分支:337–339只刷新三个resource而不清该缓存；同owner连续配置不会自然更换recoveryId，故明确使旧binding读失效是必要机制。attachConversation:1002–1041现已有原Profile metadata检验、runtime activate/合法恢复以及await后的current检查，随后才observe/confirm Context identity和提交binding，能够作为权威确认的既有接缝；不需在通用ensureBinding另加一条配置恢复路由。
+
+实现与关闭条件（保留此前所有条件）：
+
+- cache Promise身份是**原roundContext资格的相交项**，不能替换原owner/连接/轮次/取消判断；旧catch/finally只能删除仍由它自己占有的Map槽，不能删新配置的Promise。clear只使旧读失去提交资格，不凭空假装原服务端请求已撤销或成功，不借此抹掉真实失败。同owner新setting必须在旧metadata等待和旧activate等待两处都使旧读无权提交。
+
+- 多个当前resource可共享同一新的bound Promise；旧读在等待期间被清掉后，不得再写metadataReads、binding、Context identity/退休状态或页面缺失判定。现attachConversation在metadata和activate之后都有current守卫，shared.current加入Promise身份须真实到达这些守卫；在其最终同步identity/binding提交之后，后续Context/menu资源仍由各自context.current及资源版本/Context revision守住新setting、ABA、断连/epoch。仅让bound返回新Promise、却未把实际提交检查与该Promise相交，不满足方案。
+
+- 新配置的原compaction reader必须实际触发一次有界权威metadata＋原runtime确认，再用该binding info核Context身份。读取结果应更新真正render/Model/Reasoning/Context，而非仅某缓存或请求计数；菜单关闭、无session.info deferred idle与running必须实测。pending pick展示和真正运行模型/缓存/Context状态沿原生合同区分，不提前实施模型切换或假造新的Context事实。前次capabilities/reasoning demand门控的参与证明仍需保留，本次新binding确认不自动代签其它两个资源。
+
+- 有原生info事件、普通reasoning及无事件deferred都沿同一配置成功失效/确认入口去重共享；正常stream delta、普通history hint不得顺带清bindingReads或激活runtime。持续权限有效时不请求history、不换recoveryId、不remount/整页恢复，不重建writer/模型执行器；真正owner/coverage/连接资格失效时才沿原完整恢复。metadata/activate暂时失败应由现局部resource失败/Retry责任收敛，保无关已知状态、草稿、fold与流式；精确当前metadata404的原不存在语义不被放宽。
+
+必要证据：原6红及后继deferred红分别保原时点；当前成功closed-menu model/reasoning/Context、compute-host idle/running无info、原信息事件有/无、读开始后新setting/ABA/epoch，以及metadata/activate失败后Retry；断言原A config写仅一次，权威确认共享而非三resource各自重复，全程无额外history/写重放，旧fold/用户选择/实时输出保持。具体正式DTO和事件须与BE真实handler一致，不改原生emit行为或为绿虚造事件。新候选需独立源码/运行证据指纹和后继全范围复审，本方案评审不能当修复已关闭。
+
+当前固定版本结论仍BE dd7db970/FE75e989a **FAIL，98符合/4违规/4后继不足**。本次只记录后继局部方案反例与原接缝权威读取失效/提交责任的工程细化；未改产品/正式测试/规则/依赖、未运行测试或操作实例/UI。供final-delivery的实质收敛：deferred配置原本可无session.info，恢复必须有同owner的新权威binding确认；读的cache身份与页面/连接/Context提交资格需共同守到最终状态，不能只换一个恢复函数名。
+
+
+D36 · 正式Model/Reasoning菜单与公共setter归属细化评审（2026-11-09T20:39:30.068Z）：
+
+已读F/d35-d36/menu-owner-red.log、menu-ABA-red.log及各自JSON，核对真实Reasoning菜单Button点击→公共setter→实际导航/ACK释放的用例，未跑测试。menu-owner红：A的菜单config请求挂起，正常切other/b-only后释放ACK，旧组件又对default/recovery-fixture发resume、两次activate及events.since；B草稿及选中owner仍保，不能夸为B草稿已损。menu-ABA红：真实A→A-only→A新round后旧ACK仍触发两次activate、Context读取及一条“Thinking effort changed to / High”通知；新A草稿仍保。各1失败/83或84未选原例，runner1.32s/1.46s，原件保留。两项是后继统一配置修复影响审查的正式菜单证据，不把它们伪装成本Verifier新增运行或回填固定75e的运行快照。
+
+固定75e源码也能直接看到同类未收口接线：ChatSelectors.tsx:68和147–151分别在公共setSessionConfig之后再ensureBinding；Reasoning组件无捕获owner/轮次的异步收尾保护，Model已有serial/currentRequest但只以modelOwner(profile/route)为条件。Controller.setSessionConfig:1157–1171只在key相等时驱动配置恢复/Reasoning toast；相同key不能辨ABA轮次。原生写则由profiles.ts:114–132的writeOwnedSessionConfig捕获原binding/profile/route并保留明确4001恢复一次。后续必须同时审这几处，不能仅slash分支带了新守卫就称所有设置入口已统一。
+
+root提案：移除两Selector独立ensureBinding；公共setter捕原profile/key/runtime/connection/epoch/公开recoveryId，只有其完成资格仍有效才发起统一配置恢复及Toast。组件本地close/error同owner/代次保护，Model保原serial，防旧回调关闭新B菜单；原config写、4001合法恢复路径、expensive确认、失败原语义和新Chat draft分支保留，不回滚已成功A、不写重放，不建新全局owner。
+
+独立评审：**认可由公共setter统一配置完成后的权威恢复，移除组件重复ensureBinding的方向，允许在以下约束落实后实施；其中4001与runtime校验的关系必须明确，不能只机械加入旧runtime相等判断。** 此扩及菜单属于原U07/W03/W08/W22的同类入口复用，不新增用户语义/审批，不将对所有入口的要求缩为slash专用补丁。
+
+1. 公共setter拥有原写的完成/恢复/通知资格，组件只处理自己这次仍有效的交互收尾；不能删了组件ensureBinding却保公共setter仅key相等的旧逻辑。owner/profile/runtime、连接、epoch及恢复代次在成功ACK后的新恢复/Toast前真实复核；旧owner、ABA、epoch/连接变更时仅跳过旧完成副作用，不否认已成功的A设置、不补偿写或重放。原配置恢复bound/cache-Promise提交责任及无info deferred读取条件继续有效，普通菜单一次设置不能因为setter和组件各恢复一次而重复activate。
+
+2. **必须明确保留4001路径的合法身份演进。** 当前writeOwnedSessionConfig遇明确4001会沿原(profile,stored)恢复binding，再将同一个已知未应用设置发送给该新runtime；这与未知ACK的盲重放不同，原合同要求保留。若setter只捕初始旧runtime，并在helper完成后无条件要求当前runtime仍等于它，合法4001恢复可能已把当前A换为新runtime，于是本来正确完成的配置被误当失效，尤其无session.info的deferred模式会再失去必要显示确认。方案需以既有原scope合法恢复见证识别这种授权内演进，并仍能分辨用户离开/ABA/连接轮次变化；不能把任何不同runtime一律接受，也不能一律拒绝正常4001完成。root负责落实具体接线，不需要另建全局owner或改变原生错误码/重试语义。关闭证据须含当前A明确4001→原A新runtime→一次实际应用→正确model/reasoning/Context显示，及该路径中切owner后旧完成仍不影响新页。
+
+3. 组件的close/error/confirmation/busy收尾也要属于原本交互代次。Model保留既有serial并与owner/页面代次相交，旧catch/finally不能清新request的busy、关闭新菜单或弹旧错误；Reasoning不能仅靠render时state闭包。若完成期间新B或新A代菜单已打开，旧请求不得关它。正常当前成功仍应有原关闭/错误流程，不引全局忙锁，也不把配置自身合法恢复的代次交接等同用户ABA而让交互永远悬挂。新Chat未绑定时的setDraft语义继续原样，不为该分支无故建立runtime。
+
+4. Expensive确认仍按原native confirm_required/confirm_message及显式第二次Switch操作；旧请求不得把确认对话框转给新owner/新代次，也不能把新页点击解释成确认原A。已发出的原设置或已成功原A不能假回滚；确认取消/失败保原显示与草稿，原Model serial/confirmationRef清理保持。正常4001的已知拒绝恢复与用户确认流程各自保留，不能借统一恢复取消其权限约束。
+
+5. 对实际菜单验证正式组件→setter→原gateway→配置恢复→渲染的完整链，不以直接调用helper代替：当前Model/Reasoning成功（菜单可见/关闭后的正确值）、迟到跨Profile、A→A-only→A/跨ProfileABA、epoch/重连、在途新设置、失败不关新菜单、不弹旧Toast、原高费确认/取消与4001流程。模型/Context及原生deferred事实沿真实handler，权威metadata/activate确认共享一次、不增加history/无写重放，完整A/B草稿和fold/流式保持。Model/Reasoning两个组件都需覆盖，不能由Reasoning的一条红推定另一组件全部已测。
+
+结论边界：上述是同D36的后继菜单缺口事实与方案评审，未验修后代码或绿色证据，未改变已审固定BE dd7db970/FE75e989a **FAIL及98符合/4违规/4后继不足**。旧报告、原红、前几次方案及其当时评审均保留。无本次产品/正式测试/规则/依赖修改，无测试复跑、无UI/实例操作。供最终交付摘要：配置完成的权威责任必须由slash和正式菜单共同复用，组件不能另起绑定确认；完整owner/代次保护亦不能破坏原生明确4001下同scope合法runtime恢复。
+
+
+D36 · Reasoning反馈对象与原生pending Context观察合同（2026-11-09T21:20:43.795Z，合并评审两项后继提案）：
+
+A. Reasoning反馈生命周期。root补充的同一pick对象方案与原判据一致，**认可方向，可实施**。固定75e observeReasoningChange在匹配effort/8秒内把reasoningPick直接设null，setter ACK又新建对象；若只新增===pick保护而不处理这条event→ACK交接，正常事件先到会让原ACK失去本对象资格并吞掉原反馈。保持同一既有对象至原ACK、对象带原owner纯资格，匹配event仅抑制重复，ACK仅在仍为本对象且原资格有效时发原Toast，之后保已确认对象用于ACK→event抑制，能守住两种顺序和较新pick替换。它不是新业务ledger/计数，不改变配置写或通知内容。
+
+必须保持：原8000ms匹配窗口及其既有起点/ACK后更新规则不扩大；失效scope/runtime/连接/epoch/页面代次的pick不得吞新owner的真实通知，旧ACK/catch只可碰自己而不能清较新pick。事件相同effort并不等于任意全局去重，不改原通知owner/source资格；正常event→ACK、ACK→event各一次反馈，new-pick替换、ABA/epoch、超窗及失败按原native-notices和实际菜单证明。不得把“保对象”误实现成永不退休的抑制器，也不能因后继对象同value而允许旧ACK发新Toast。前次菜单close/error/confirmation/busy与4001原scope合法runtime演进条件继续有效。
+
+B. 新的真实Context DTO反例。已读F/d35-d36/deferred-native-context-red/run.log、retry.log、deferred-native-context-retry-red/summary.json及idle/running两份JSON、来源manifest。此前14文件630绿的fixture漏了原生Context.model，故不能证明这条身份分支；补agent/context_breakdown.py:208的真实model后，idle/running两红，原即刻断言失败，等待1200ms后仍有Context observation has an incompatible identity、各2次context_breakdown和Retrying context。页面committed/ready且model按钮已经native-deferred-pick，但Context保持model_changed退休；这是数据已安全隔离却把合法pending过渡当可重试故障的问题，不能靠灌回旧2048或删除身份校验求绿。
+
+这两次记录明确是后继dirty候选（source manifest虽head75e，产品SHA已不同于固定75e，不能以head标签冒同版），不是本Verifier运行或固定75e新增回放。原绿、补真实DTO的红及retry红均保原件，不改旧报告为从前已覆盖；固定98/4/4不变。原生源码已核：compute_session_context_breakdown返回已建agent.model；_stash_pending_model_switch仅保存pending display pick、不发session.info；_session_info优先pending display_model。因而可出现权威显示pick为新、同runtime实际Context.model仍旧的合法状态。
+
+root提案：在原SessionLiveInfo增两个可选观察字段model_switch_pending/context_model，前者只据真实pending_model_switch，后者与原Context breakdown的model同源，已建agent取agent.model，cold保原事实/未知；server facade＋session_usage sibling共用构造。原model/provider显示、原写及实际应用时机不变，所有activate/resume/live事件/冷读取一致。FE只在当前owner/runtime/epoch/read代次的权威info明确pending，且raw Context.model精确等于info.context_model、又不同于选中model时，保model_changed退休、不把旧值灌新pick，把此读取结算成功而不Retry；其它未知不匹配保原错误。真正新Context匹配选中模型后才解除退休，不靠浏览器本次ACK/固定时间。
+
+独立结论：**认可由原生提供可恢复观察事实、再由FE识别合法过渡的正向合同方向；不认可仅缓存本次ACK旧model的局部豁免。** 原U07要求冷启/重连完整对账，W18要求模型/Provider身份相容及未知/退休语义，W22要求原生模型/推理行为兼容。原生字段能覆盖冷启/ACK丢失/重连/同Turn连续pending pick，而本地ACK记忆不能。增可选字段属于既有范围内观察合同细化，不是新模型路由/切模机制、调度器/状态库，也不需新增用户语义授权。
+
+实施必须守以下界限：
+
+1. producer需只有一处同源事实构造，agent已建/compute-host镜像或cold分支应与实际context_breakdown走同一选择语义，不能把pending display_model误充context_model。未知为空/省略，不能猜旧模型；model_switch_pending缺失/非true不得视为有证明。SessionLiveInfo及生成API/事件类型是增量可选，旧调用/字段/model/provider/错误码/原Agent行为保持；不能只给本次slash响应附字段，activate/resume/事件/冷读取必须同真值。构造与读取失败不反向阻塞原native写/Turn。
+
+2. 两个观察字段只能与本轮权威binding、同owner/runtime/epoch/读取代次联合使用。config写、pending变化及真实应用期间的迟到info/raw Context不得跨代拼成一份证明；连续两次pick不从第一次ACK继承许可。此前bindingReads/cache Promise/current/Context revision及4001合法新runtime见证继续有效，不因新增schema就弱化。
+
+3. 仅将已证合法pending过渡结算为“读取成功，但Context仍退休/未知”，清的是本resource错误/重试责任，不能补造0、新window/旧2048百分比，也不能为等实际应用不停轮询模型或重做配置。原context_available=false/context_invalidated及cold未知事实继续原语义。真正未证明的model不匹配/原Provider不相容必须保原错误；pending=true不是任意身份错配免检开关。真正应用后的权威Context与当前选择身份相容才可解除退休，不能用pending消失本身或墙钟到期代替。
+
+4. **需补明确同名模型跨Provider的合法pending边界。** 当前提案中“raw.model不同于选中model”的特判只直接覆盖异名模型；原W18同时保护Provider。合法/model可换Provider而model字符串相同，native raw Context目前不带provider，不能仅因raw.model等于选中model就解除此前Provider变化造成的model_changed退休、把旧Provider数值算给新pick。应保持原Provider不相容/未知保护，直到有足够权威身份事实；可沿既有身份与pending退休机制收敛，不要求为此必新增第三字段，但不能遗漏该分支或用模型名相等代替完整合同。关闭证据应包含此合法输入，判断依据仍是原W18/G01，而非新产品要求。
+
+5. 真实DTO纠正后的预期应明确区分：pending old模型的Context被隔离且无伪Retry，与真正应用后新模型的合法数值正常恢复。前一阶段原先期待2048可见并不符合身份合同，不能为保此旧夹具期望去灌旧数值；保留原失败及修改依据，并在后一阶段验证真实数值，而非只删掉数字断言。补普通pending=false、缺字段/伪pending/真实错误不匹配、实际old、连续pick、cold/重连无本次ACK、应用后新值、同名跨Provider、owner/epoch迟到、cold unavailable以及原菜单/Reasoning两顺序。14文件630旧证据仅按字节与路径有效范围复用，必要影响定向补测；本Verifier不复跑。
+
+当前结论：两个提案均有符合原目标的机制方向，Reasoning对象方案认可；原生pending观察合同按上述约束可实施，其中同名跨Provider退休边界须明确补齐。没有关闭D35/D36，也没有接受未来修后绿或原生字段为已实现事实。固定BE dd7db970/FE75e989a仍**FAIL、98符合/4违规/4后继不足**；本次没有产品/正式测试/规则/依赖修改、没有模型调用或测试/UI/实例操作。供最终交付摘要：原生pending pick与实际Context模型是两种事实，安全恢复既要阻旧值污染，也要识别有证明的合法过渡以免永久重试；通知反馈亦需一个原owner对象贯穿事件与ACK。
+
+
+D36 · 第三观察字段、实际应用事件与pending unknown结算（2026-11-09T21:26:24.053Z，合并本次root补充）：
+
+root接受同名跨Provider条件，补第三可选context_provider，与context_model同为现有Context计算配置身份；已建Agent取实际model/provider并沿原profile-aware归一化，cold沿既有_live_session_identity tuple，明确不冒物理运行模型。两个明确不同Provider即使model同名也保合法pending退休；未知/一般错误不因pending一概豁免。root另提将model_switch_pending/context_model/context_provider三字段的权威实际变化接入sessionInfoRecoveryReason的configuration-changed局部失效；selected model/provider/reasoning可能不变，实际pending应用仍必须使已开始旧Context reader退休，取得新匹配读取。不变info不新增读取/计数/owner/写。
+
+root进一步明确unknown：info明确pending且raw.model精确等于context_model时，异名model已足够证过渡不相容，不要求凭空补Provider；同名model而context_provider仍未知，不能解除原Provider退休或接受数字，但这是读取已完成、身份未知的pending状态，不伪失败循环Retry。保退休/unknown并结算该resource成功，待真实原生配置事实变化再局部失效；只有完整已知身份匹配才解除Provider退休/接收数值。普通非pending或不能证明raw/Context源一致的不匹配仍原错误。
+
+独立评审：**认可第三字段及真实字段变化事件接缝；认可把已证pending下的未知身份与读取失败分开，并允许按这些条件实施。** 这闭合前次W18同名跨Provider问题以及U07/06C3未知不等失败的要求，没有新增产品语义、轮询策略、写权限或模型切换时机。cold tuple只能标注原Context计算所用身份/可用性，不能转述为真实Agent已运行新Provider；原context_available/invalidated仍有独立权威。
+
+正式事件责任不可省：固定75e sessionInfoRecoveryReason只比较model/provider/reasoning_effort及wire值，前后selected值相同不能发现实际模型应用；需要比较三项新观察事实的**真实值变化**。原Controller仅对fresh、当前scope的session.info触发恢复，新增字段须仍沿这条原序列/owner/连接/epoch资格，而非下游轮询或用本地ACK猜应用。必须在旧Context响应的最终提交之前使原compaction资源版本/bound Promise资格失效；只让下次读拿新值、却仍允许旧读在后面重写退休态，不符合方案。现有round/context/current、cache Promise和Context revision仍共同守资格；不要求新增计数。比较前后值时不能先merge payload再比较导致变化永远消失。
+
+兼容与unknown的实现边界：
+
+- 新字段均可选，旧生产者/旧客户端仍走原普通匹配路径。事件未携某可选字段只是“这次没有该观察”，不能当pending=false、空model或空Provider触发配置清退；显式false是真值变化，不能被truthy判断漏掉。若权威值确实从已知变未知，producer/现有失效协议应能明确表达（例如schema允许的显式未知），不能让部分事件的省略与清空旧事实混用，从而黏住旧context_provider。具体序列化须与生成类型/实际消息一致，避免新字段每次同值仍引激活回路。
+
+- pending合法过渡需要info当前且明确true、raw.model和info.context_model均有可用精确身份并相等，仍受owner/runtime/epoch/read代次保护。异名model可直接保退休，即使Provider未知；同名模型下已证context_provider不同于pending目标Provider，正是已接受的合法过渡，不应再伪Retry。同名模型的Provider身份未知则保原退休或真实unknown，不造model_changed历史、零值/窗口或数值ready；读取成功只解除该resource错误/Retry责任，不等于Context数字可用。
+
+- root所说“具体Provider矛盾仍错误”在本评审中指**源事实彼此矛盾或不属于已证合法pending过渡**，不能把context_provider与pending selectedProvider明确不同又重新当一般错误；后者正是本次第三字段要表达的正常过渡。raw/Info源身份不能对上、context_model缺失而需要pending豁免、非pending真正不匹配等，均不得借pending通用免检。新字段缺失不应无故破坏原本已相容的legacy普通读取。只有原模型/Provider完整相容证明达到时才解除Provider退休/接收数值；pending消失本身、8秒或任意时间、菜单关闭/本次ACK都不是这种证明。
+
+- 已开始的pending旧读跨实际应用时，新session.info三字段变化应立刻使其原current无效；新reader按原权威binding确认获得实际配置并继续Context，原连续页面/recoveryId、fold/草稿/流式不因这种局部更新重置。真实非pending新数据可正常解除退休；对读已成功但Provider未知的pending，不用定时重试凑身份，后续真实信息变化、原重连/当前页恢复等既有入口仍可对账。
+
+必要定向证据：同名模型不同明确Provider、Provider未知pending保持unknown且无Retry、异名model/未知Provider正常退休、缺字段legacy普通匹配、显式false及已知→未知、真正源矛盾仍错误；pending应用后selected不变而三观察字段变化的真实session.info，在旧Context响应已在途时立即失效旧提交并接受新值；连续两次pending pick、应用后新model/Provider、冷启/重连无本次ACK、迟到owner/epoch、重复完全不变info零额外请求。正式原生handler及事件必须有真实字段来源；不能仅helper字符串/条件断言或手写一个永远正确的新DTO代替实际构造/恢复/提交链。原14文件630绿和补真实Context.model后的两红继续按原时点保存，后继定向证据不回填旧绿覆盖范围。
+
+本次只评审方案与既有正式接缝，未审未来新版本是否已符合，未改产品/正式测试/规则/依赖、未跑测试或操作UI/实例。固定BE dd7db970/FE75e989a仍**FAIL、98符合/4违规/4后继不足**。供最终交付摘要：pending显示选择、Context计算身份和实际应用事件分别有原生事实，Provider未知保未知；局部恢复必须既防数字污染，也防把合法unknown变成失败重试，并在真实应用后退休所有旧读。

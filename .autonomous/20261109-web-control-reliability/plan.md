@@ -20,9 +20,9 @@
 
 ## 3. 当前状态与编排
 
-**当前版本及复审：** FE75e989ab1387bf8457b2e642735c96da9faabdd4已提交推送；BE产品仍5edc3f6。D34的真实Profile导航、命令原canonical草稿存活、acceptedEdit已退休boundary结算已修，root亲审5文件2产品/3测试；8完整205全绿无跳过/排除，类型/冻结health/diff通过。原scope与草稿/迟到消费反例全部保留；四个旧fixture仅按原合同修合法输入和真实RPC职责，未弱化断言。v3固定71340be仍96条90符合/2违规/4后继缺证，原判定不回写。
+**当前版本及复审：** FE0d6ad1a15a4cf30eb14ea3a7863d2a11abdb4a94与BE产品3c07ea66420c8a52da4cb8784cd0bb615fb65883均已root亲审/提交推送。D35/D36六前端接缝和原生三可选Context事实完整接线；14完整643绿/零跳过，BE按影响复用53及最后37绿，类型/冻结health/指纹通过。原scope/草稿/迟到/菜单/真实DTO/Provider红均保留，V4固定75e仍98符合/4违规/4后继缺证，不回写历史；新候选等待fresh全轮独立复审。
 
-**当前分工与依赖：** fresh V4按原文独立106条完整审查，98符合/4违规/4后继缺证，技术不通过。frontend_finish已恢复修D35/D36，白名单command-actions与对应正式测试；root复核全部报告、亲审整包，随后新全轮Verification及另一独立Validation。75e989a原证书0.1.14包已完成但不可发，须保留旧原件后按最终源重建。root准备的实际发布静态实例+可控故障转发在ignored web-control-validation-20261110（59883/84/85），双Profile导航实际入口已验；最终源变更后重新绑定静态和实际后端HEAD再交Validation。后续main联合发布、V4自然运行、最近两套三库及root交付仍未完成。线上9270933/cd5/0.1.13未变，目标工具paused事实保留、按用户继续执行。
+**当前分工与依赖：** D35/D36整包已接收，root将启动fresh无上文全轮Verification；apk_finish已恢复按0d6ad1重建，旧75e归档。技术问题关闭后另独立Validation，实际静态实例/故障转发仍在ignored web-control-validation-20261110（59883/84/85），需按最终BE HEAD重启并绑定新静态再验。main联合发布、V4自然运行、最近两套三库及root交付均未完成；线上9270933/cd5/0.1.13未变，目标工具paused事实保留、按用户继续执行。
 
 **21:18当前执行事实：** B1正式Lock／D18包已由root亲审；D20排序包已接收，49传输／52身份回放／4stdio证据有效，root核hook、Tee、旧子类和健康端credit接线。root两行旧字符串queue兼容修正获3项绿；protocol另两失败在未改12e同源基线复现（`root-protocol-baseline-two.log`），不算本轮新回归。F1 R5（37源清单15bcb…）285项／type／health及真实网络lost-ACK链已交；root实IAB终态Stop通过，D24异步owner反例补验中。新joint lab使用当前B1＋D20及修正后的真实streaming返回探针，frontend_control_resume独占联调动作，补维护／API返回至terminal连续链；root不并发操纵。apk_release_prepare仅五版本文件及ignored构建证据，待最终源冻结后打0.1.14。尚未独立双门禁、main合并或发布；旧表的调查描述保留为发现时点，当前状态以本段和后续闭合证据为准。
 
@@ -92,6 +92,12 @@
 | D36 | /model及/reasoning原A config.set ACK迟到，切other后ensureBinding仅传原stored ID，实际resume/activate other的同ID错误范围 | frontend_finish按原Profile/stored/runtime/key/epoch/recovery/活boundary约束回执补读，显式原Profile；不回滚已成功设置或重发。两原App反例、ABA/epoch/正常成功/失败隔离验证后root亲审；当前未修，技术阻断。 |
 
 V4当前复核关闭D29/D31/D32/D33/D34；上表的阶段“待复审”属于当时交回记录，当前未关闭产品项为D35/D36。报告106条98符合/4违规/4后继缺证，不以已绑定APK字节代合格产品。
+
+D35/D36后继工程收敛：原三红扩至六红（title迟到展示、AI-title退休后仍写、已开始activate后ABA覆盖model）；统一boundary守消费／展示／后继写。设置ACK有效后沿既有configuration-changed，不裸ensureBinding；后继局部方案又证deferred model无session.info时Model仍旧，原红单独保留不回填75e。root扩白名单到controller-page-recovery的start/bound，配置成功失效既有bindingReads，由compaction reader共享一次metadata/activate与Context权威确认，Promise身份与原context相交防旧读提交；不新增resource／owner或history读取，普通reasoning同一次确认。V4两轮方案评审与条件见verification§6，FE仍须实际App正常成功、菜单关闭、deferred idle/running、新setting／ABA／epoch／失败Retry及原完整路径证据，不能只spy恢复调用。无阈值／产品语义变化。
+
+D36菜单后继：实际Reasoning点击证setter后再裸ensureBinding，迟到切B仍读A、同owner ABA旧Toast；Model菜单也重复。root批准ChatSelectors两个菜单移除独立绑定并守旧close/error/busy/确认收尾；Controller.setSessionConfig及原reasoningPick沿同一对象/纯owner资格，保两种event/ACK次序正常一次反馈、较新选择和失败隔离。可在既有profiles.ts共享纯helper，不新增全局状态/计数/队列；原4001合法原A runtime后继须可继续，不能靠初始runtime硬相等一概拒绝。V4方向评审见§6；原menu-owner/menu-ABA及deferred方案红均保留，后继完整验证未完成。相关manual compaction/incremental fixture22红已合法收口两文件144绿，不替代最终整包。
+
+D36联调契约：14文件630绿后补原生真实Context.model得两持续Retry红，分版本保留。root选择原生快照提供3optional事实model_switch_pending/context_model/context_provider，覆盖冷开/重连/连续pending，避免仅记ACK旧值的局部补丁。backend_control白名单session_usage统一纯投影、server两info facade、methods_session._resume_live_unpersisted/_cwd_info、model_switch._lazy_info_route、contracts/common、对应正式tests及官方生成的apps/shared两合同文件；不改原模型写/应用/数据库/依赖。frontend_finish在已准配置/Context接缝接入，额外仅controller-event-effects.sessionInfoRecoveryReason纳入3字段真实变化；不变/省略不假变更。已证pending源对应但目标不兼容或身份未知保退休/unknown并成功读；完整身份匹配才恢复数值，真实源矛盾继续错；原630与新红不互相覆盖。V4讨论见§6，两个包仍待root亲审、新完整审查和Validation。
 
 **后继事实（用户追问关闭与抽象提示）：** 用户明确20:42同页面发送后没有关闭页面操作。closed不是server主动关闭的同义；该1005来自原ASGI WebSocketDisconnect而非日志默认值，RFC定义需与实际服务栈确认；close_origin_audit只读调查主动关闭入口/重连调度/观察者异常隔离，不改F1产品。20:44有重新接入不等于同页自动恢复成功。unknown提示由项目Web初始27c5cb4已有，原身份受理查询ad7e484/9fabcdd于10/21加入，非Hermes原生错误，非本轮新增。用户批评抽象红错与失去控制，F1将沿已授权自动查询语义改为明确待确认状态，确认后自动退休；不新增盲重放或常驻门禁。
 
