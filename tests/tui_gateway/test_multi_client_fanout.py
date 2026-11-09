@@ -47,8 +47,8 @@ def _await_frame_count(transport, count, timeout=2.0):
 
 def _overflow_slow_peer(fan, healthy, slow):
     """Emit non-streaming frames (a WS peer blocks on each) until the slow mailbox overflows."""
-    for n in range(FanoutTransport._MAX_PENDING_FRAMES + 64):
-        frame = {"params": {"type": "tool.progress", "n": n}}
+    for n in range(128):
+        frame = {"params": {"type": "tool.progress", "n": n, "text": "x" * (64 * 1024)}}
         assert fan.write(frame)
         _await_frame_count(healthy, n + 1)
         if not fan.contains(slow):
@@ -103,7 +103,7 @@ class _SocketWS:
             await asyncio.Event().wait()
         await self.client.send_text(payload)
 
-    async def close(self, code=1000):
+    async def close(self, code=1000, reason=""):
         self.close_codes.append(code)
 
 
@@ -274,7 +274,7 @@ def test_backpressure_never_blocks_later_frames_or_other_subscribers(slow_first,
             # Exhaust only the slow peer's bounded backlog; pace the healthy
             # reader by receipts so scheduler latency cannot make it overflow.
             for n in range(1024):
-                frame = {"params": {"type": "message.delta", "n": n}}
+                frame = {"params": {"type": "message.delta", "n": n, "text": "x" * (64 * 1024)}}
                 assert fan.write(frame)
                 assert healthy.receive() == frame
                 if not fan.contains(slow):

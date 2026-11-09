@@ -1,5 +1,25 @@
 # 运维记录
 
+## 2026-11-09 · APK0.1.11频繁断连与Thinking重复（调查完成，未修复）
+
+用户明确现场为11/8升级0.1.11后，APK前台亮屏、无操作时移动数据／WiFi均出现断连，同一Thinking多卡及Steer连接失败。本轮仅经SSH只读日志、限定时段消息长度元数据及当前版本／资源状态，辅以前后端源码审查与本地最小探针；无产品修改、服务重启、部署、生产模型请求或数据库写入。当前云main2b7b706、FE889c6e8，11/9 01:56发布后两服务NRestarts均0；本次即时available1438MiB、memory PSI avg10/60/300均0不能替代昨天现场证据。
+
+**已证主动断线：** 11/8 Alex gui.log有34条`fanout subscriber backlog full; detaching peer`、31条1011关闭，30条关闭发生在溢出告警2秒内；其余1006等不能一并归因。14:43:01／07／15连续溢出，Caddy时间与User-Agent证明Mac Chrome和Android WebView同窗关闭；后两批新连接仅约3.8–6.1秒即断。不能将这批事件归咎5G必然掉线、手机省电或独立Gateway进程故障。该Turn14:42:46开始，单次API／无当轮工具，14:43:21落盘正文1582bytes、reasoning4780bytes；工具调用不是必要条件。全13:40–15:00该Session117条消息最大content109535bytes、tool_calls2478bytes，但消息落库长度不能证明实时全部事件帧大小。上午OOM／长loop stall属于另一个已知故障窗，午后无同类>5秒告警不排除较短调度停顿。
+
+
+**后继按APK计数：** 仅针对11/8 13:40–15:00已取证窗口，按Caddy结束时间／Android WebView User-Agent与后端关闭记录关联，27条APK关闭中16条1011（59.3%）、10条1006及1条response发送失败（后两类合计40.7%，上游原因未知）。这是连接关闭记录、并非27个独立用户感知故障，也不代表全天／整月比例。59.3%描述服务端主动关闭机制，不能等同59.3%完全由代码独立造成；现有证据无法统计真实网络抖动／移动网络切换占比。用户要求后续按双端关联证据区分原因及比例，已写06顶部；尚未实施采集。
+
+**后端机制与限制：** `FanoutTransport`按订阅者256帧／4MiB判满，立即detach并`WSTransport.abort()`关闭整个Socket（1011）。排空每帧跨线程调度并等待实际发送，绕过普通`write()`的33ms流式缓冲；legacy＋typed又可能令一逻辑delta占两帧。真实类＋即时成功假Socket的5项本地探针通过：短突发257小帧即可在约1ms内关闭健康连接，直连WSTransport同257帧全部发送；4MiB单工具结果形成超限帧、空队列也关闭双健康订阅者。证明短突发误断及单大帧风险，不冒称已重现生产具体入队分布。现场日志缺pending帧数／字节数、event类型、发送／占锁耗时，尚不能唯一确定每次是帧数、字节数或其它背压触发。8b32bb31→2c0cb17→2b7b706相关transport/ws/output_identity/tool_progress未变，中午性能发布未修此机制。
+
+**前端确定缺陷：** 正式Controller保留`recoveryError`时，每事件调用`unavailableLive`把running节点置unknown；`appendStreamText`仅追加running尾节点，因此每reasoning chunk新建一张卡。typed sidecar又因active不为true无法识别归并。实际Controller恢复失败／30个带typed增量探针得到31张Unknown Thinking，成功snapshot恢复后合为1张；现行PageRecovery可设置同一错误字段。用户所述“undo”对应源码标签Unknown的可能性高，但未取得手机画面确认。缺原现场事件序列，不能断言这是现场全部重复形态的唯一原因，未做Android实机绘制验收。
+
+**Steer与诊断：** Steer使用相同Web JSON-RPC连接，先读Pending、再提交；断线可直接触发Gateway disconnected，不代表另一个Gateway服务不可达。已有发送后不确定结果保operation_id，不能盲目重发。前端onclose丢code/reason/wasClean；服务端_close_socket未传已有reason；APK只有JS存活／navigator.onLine状态，没有每次网络切换／关闭的持久关联记录。用户要求补诊断已写06顶部。
+
+**建议实施顺序（尚未实施）：** 先对既有Fanout做有界批量排空，保事件顺序／seq／typed对应和慢端隔离，消除每帧跨线程往返及健康突发误断，另处理单大帧；不只提高容量或取消保护。前端分开运行权限未知与文本片段身份，按正式身份合并，不按相似文本去重。同步补无正文／凭据的connection id、close发起方／原因、队列量／触发事件、ping RTT／发送与loop延迟，APK记录前后台和真实网络变更；用真实输出节奏、多端、恢复并发、工具大结果验收，不以逐帧等回执的测试代替。
+
+脱敏线上事件、消息长度摘要及探针已汇集主工作区ignored `.hermes-dev/mobile-disconnect-audit-20261109/`；后端5项由backend_connection_audit通过官方runner执行，前端1项由frontend_connection_audit通过Vitest4.1.11执行，主会话亲读代码、探针和结果并关联生产日志，未重复大套。原工作区全部既有dirty与资料保持，未commit／push。
+
+
 ## 2026-11-09 · V3自适应维护、Kimi登记与历史接入（已上线）
 
 用户已明确授权在原算法分支完成实现、真实历史验证后上线，并要求主会话亲做核心算法与定性判断、最后独立子Agent按场景表复验及一轮研讨。产品`ca98f7f4ad`在原分支完成，合main为`2b7b706b05816283797c21e57e2ea68262e6877a`。01:56:26+08受限backend-only发布器verified，云端保持main且clean，Web／Gateway实际同版active，微信connected；三库原28张保护表保持，仅新增两张空Secretary自有伴随表，配置／绑定／双SPA资源保持。无依赖或Prompt／工具定义变化，不清上下文缓存。
