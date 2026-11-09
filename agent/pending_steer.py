@@ -277,6 +277,9 @@ def note_native_turn_started(agent, turn_id):
     if owner is not None:
         with agent._pending_steer_lock:
             owner.start(turn_id)
+    # A prior snapshot may have subscribed before native identity was ready.
+    # Publish only after that identity/epoch is installed, outside its lock.
+    notify(agent, payload={"turn_id": turn_id})
 
 
 def finish_native_turn(agent, *, failed=False):

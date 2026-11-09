@@ -15,6 +15,44 @@ def setup_owner():
     return agent, owner
 
 
+def test_native_ready_notice_follows_rebuilt_epoch_outside_pending_lock():
+    agent, owner = setup_owner()
+    old = submit(agent, owner, "old-operation", "retained receipt")
+    with agent._pending_steer_lock:
+        owner.withdraw("native-turn", old["pending_id"])
+    finish_native_turn(agent)
+    observed = []
+
+    def notified(event, payload):
+        acquired = agent._pending_steer_lock.acquire(blocking=False)
+        try:
+            observed.append((event, payload, acquired, owner.turn_id, owner.current.active))
+        finally:
+            if acquired:
+                agent._pending_steer_lock.release()
+
+    agent._pending_steer_notify = notified
+    note_native_turn_started(agent, "next-turn")
+    assert observed == [("steer.pending_changed", {"turn_id": "next-turn"}, True, "next-turn", True)]
+    retry = owner.submit("native-turn", "old-operation", "retained receipt")
+    assert retry["accepted"] and retry["pending_id"] == old["pending_id"] and retry["state"] == "withdrawn"
+
+
+def test_native_ready_notice_failure_cannot_reverse_started_epoch():
+    agent, owner = setup_owner()
+    attempts = []
+
+    def unavailable(event, payload):
+        attempts.append((event, payload))
+        raise OSError("notification unavailable")
+
+    agent._pending_steer_notify = unavailable
+    note_native_turn_started(agent, "next-turn")
+    assert attempts == [("steer.pending_changed", {"turn_id": "next-turn"})]
+    assert agent._pending_steer_native_active_turn == owner.turn_id == "next-turn"
+    assert owner.current.active is True
+
+
 def submit(agent, owner, operation, text):
     with agent._pending_steer_lock:
         return owner.submit(owner.turn_id, operation, text)

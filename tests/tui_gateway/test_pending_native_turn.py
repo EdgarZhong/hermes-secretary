@@ -140,6 +140,56 @@ def settled(live):
         assert not thread.is_alive()
 
 
+def test_ordinary_idle_send_publishes_pending_owner_ready_after_start_window(live, monkeypatch):
+    start_seen, continue_start = threading.Event(), threading.Event()
+    provider_entered, continue_provider = threading.Event(), threading.Event()
+    ready_seen = threading.Event()
+    live.releases.extend([continue_start, continue_provider])
+    phases, ready_notices, early = [], [], []
+    original_emit = server._emit
+
+    def observe(kind, sid, payload=None):
+        original_emit(kind, sid, payload)
+        if kind == "message.start" and not start_seen.is_set():
+            phases.append("message.start")
+            early.append(rpc("session.steer_pending_snapshot")["result"])
+            start_seen.set()
+            assert continue_start.wait(5)
+        elif kind == "steer.pending_changed" and payload.get("turn_id"):
+            phases.append("native.ready")
+            ready_notices.append(dict(payload))
+            ready_seen.set()
+
+    def provider(kwargs):
+        phases.append("provider.entered")
+        provider_entered.set()
+        assert continue_provider.wait(5)
+        return _mock_response(content="finished", finish_reason="stop")
+
+    monkeypatch.setattr(server, "_emit", observe)
+    monkeypatch.setattr(live.agent, "_interruptible_api_call", provider)
+    accepted = rpc("prompt.submit_idle", text="ordinary manual turn")
+    assert accepted["result"]["status"] == "streaming" and start_seen.wait(5)
+    assert live.session["running"] is True
+    assert early[0]["active"] is False and early[0]["turn_id"] is None
+    assert not getattr(live.agent, "_pending_steer_native_active_turn", None)
+    continue_start.set()
+    assert provider_entered.wait(5)
+    assert ready_seen.wait(.2)
+    ready = rpc("session.steer_pending_snapshot")["result"]
+    assert ready["active"] is True and ready_notices[0] == {"turn_id": ready["turn_id"]}
+    assert phases[:3] == ["message.start", "native.ready", "provider.entered"]
+    pending = submit(ready["turn_id"], "uncertain-operation", "active correction")
+    retry = submit(ready["turn_id"], "uncertain-operation", "active correction")
+    assert pending["accepted"] and retry["pending_id"] == pending["pending_id"]
+    continue_provider.set()
+    for _ in range(3):
+        settled(live)
+    late = submit(ready["turn_id"], "uncertain-operation", "active correction")
+    assert late["accepted"] and late["pending_id"] == pending["pending_id"]
+    assert rpc("session.steer_pending_snapshot")["result"]["active"] is False
+
+
 def test_rpc_consume_withdraw_and_one_real_persisted_row(live, monkeypatch):
     gate = begin(live, monkeypatch, tools=True)
     one = submit(gate.turn, "a", "same")
