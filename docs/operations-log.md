@@ -1,5 +1,18 @@
 # 运维记录
 
+## 2026-11-09 · 连接／Thinking修复已发布，Steer busy追加反证
+
+13:57:20+08，第三批`stage-20261109-connection-012-retry2`正式apply verified。BE main `53f652c5c5c0ad2f00c1f5560cb871f4177b886b`、FE main `994a00dcc301ff92d708ec5241318836aa65438f`，产品129f353b／be4cb04；服务重启成功、发布器版本／保护数据／439静态资源校验通过。13:57:34追加核验main/clean、两实际服务同53f652、微信connected、439精确集合和HTTP JS/CSS/font SHA通过；三Profile各30张保护表及配置／绑定／Dashboard保持。生产Linux回环真实WS核accepted/ready/health/closed两端ID一致，3次ping约1.261/0.545/0.607ms；不冒称手机外网验收。13:58:16已核保留本次及stage-20261109-adaptive-v3两套完整三库，清理更旧English批次9个数据库及附属文件共259309568字节，运行库inode及当前同步ZIP保持。APK0.1.12/1012已构建到`/Users/edgar/Downloads/Hermes-Secretary-0.1.12-be4cb04-arm64.apk`，SHA256 `bd1a210d698482056e1d2182fa34dabb947695d3fb2f3d067968e769d8edeb09`；原签名／nondebuggable／439资源／16KB通过，尚无真机安装／自然使用／ADB导出证据。正式前端刷新一次加载新资源；不自动整页刷新用户页面。私有收据与回退说明在上述release批次，本地完整证据在连接工作区ignored `.hermes-dev/connection-reliability-20261109/release/`。
+
+用户最新明确反证：关闭Reminder后，自己Send启动Turn，再尝试Steer仍得到`Session busy`。撤回先前将本次busy归因Reminder抢占的结论；该现象不由此前Reminder假设解释，也不能归为网络。普通手动Turn内Steer实际路由与后端拒绝入口另行调查／修复；本次已发包不冒称该问题已关闭。用户明确先发布Thinking／连接修复，不等待Reminder调度规则设计。
+
+## 2026-11-09 · 连接修复发布暂缓与新桌面现场（13:43只读取证）
+
+BE main53f652c5／FE main994a00d已集成并push，产品分别129f353b/be4cb04；独立C1–C8复审通过，APK0.1.12/1012原签名、nondebuggable、16KB及439资源校验完成。正式线上仍BE2b7b706／FE889c6e8：13:36:50和13:40:45两次apply均在内部preflight发现新活动Turn而拒绝，events=[]、未停服务／切源码或静态／建立数据库备份。原拒绝收据保留，新retry2批次仅上传，尚未apply。
+
+用户13:42左右新增报告旧版桌面Chrome/WiFi输出停住，尝试发送时出现未记住的error，后手动刷新。13:43:18只读取证：双服务PID2520382/2520384、NRestarts0保持，available1220MiB、memory PSI三个窗口均0；近12分钟无Fanout溢出、发送失败或>5秒loop stall。13:41:51.553的1001与用户确认的刷新对应，13:41:51.754重新接入，不能把这条正常换连接当作服务器主动踢线或刷新前卡住的原因。13:41:54及13:42:32后端Turn正常结束。缺浏览器原错误和事件时序，刷新前原因仍未知，不归为网络，也不以本轮已修代码冒称该新现场已闭。追加只读审新版是否覆盖发送前本地拒绝／错误诊断；证据在连接工作区ignored `fresh-desktop-incident.json`。
+
+
 ## 2026-11-09 · APK0.1.11频繁断连与Thinking重复（调查完成，未修复）
 
 用户明确现场为11/8升级0.1.11后，APK前台亮屏、无操作时移动数据／WiFi均出现断连，同一Thinking多卡及Steer连接失败。本轮仅经SSH只读日志、限定时段消息长度元数据及当前版本／资源状态，辅以前后端源码审查与本地最小探针；无产品修改、服务重启、部署、生产模型请求或数据库写入。当前云main2b7b706、FE889c6e8，11/9 01:56发布后两服务NRestarts均0；本次即时available1438MiB、memory PSI avg10/60/300均0不能替代昨天现场证据。
