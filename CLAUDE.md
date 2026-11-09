@@ -26,13 +26,15 @@
 
 ## 2026-11-09 · 故障全面复核与Web输入运行归属（新授权）
 
-**当前阶段：D34整包已亲审并固定FE75e989ab1387bf8457b2e642735c96da9faabdd4，准备fresh全轮复审。** 后端产品仍5edc3f6，近期BE只更新文档。D34正式/resume与/sessions统一走openConversation(row)保真实Profile；命令活boundary保原canonical草稿scope/value/revision直至有效结算，最后释放清退，不扩views/runtime；acceptedEdit已退休boundary禁止迟到consume。root亲审5文件（2产品/3测试）和完整App原反例/失败/迟到/多boundary/真实Rewind路径；8完整文件205全绿、零跳过/排除，类型/冻结health/diff通过。Controller CC28→27、2500→2499行是同函数等价清退合并，未改规则。额外四旧红按合法finitecut/服务端cwd/last_active/各RPC职责修正，原红与断言目标保留。FE ignored d34/report.md和source-manifest（174f6588…d273）为入口，382源与实际提交逐SHA一致。v3的96条90符合/2违规/4后继缺证原报告及方案评审保留，不改写为旧版已通过。下一步新无上文全轮复审，再独立Validation。
+**当前阶段：全轮Verification V4不通过，正在修复D35/D36。** 固定FE75e989ab1387bf8457b2e642735c96da9faabdd4／BE dd7db970的106条为98符合、4违规、4后继缺证。正式App三反例已证：退休的/notebook迟到仍消费新草稿；/model与/reasoning旧回执以新Profile补读原stored ID。frontend_finish已恢复，限定command-actions及相关正式测试，所有消费统一绑定精确有效boundary，设置回执只在原owner/runtime/epoch/recovery仍有效时补读；不新增输入门禁或写重放。root复核完整报告并接收整包，修复后重新全轮审查，再独立Validation；当前75e包不可发布。
+
+D34导航自身已由V4复核关闭。后端产品仍5edc3f6，近期BE只更新文档。正式/resume与/sessions走openConversation(row)保真实Profile，活boundary保原canonical草稿scope/value/revision至有效结算，最后清退，不扩views/runtime；导航路径的已退休boundary禁止迟到consume，但此前没有覆盖所有命令。root亲审5文件（2产品/3测试），8完整文件205全绿无跳过/排除，类型/冻结health/diff通过；Controller CC28→27、2500→2499为同函数等价清退合并。四旧fixture红按合法finitecut/服务端cwd/last_active/各RPC职责修正，原件保留。FE ignored d34/report.md和source-manifest（174f6588…d273）及BE root-d34-ui实际原生双Profile导航/草稿证据有效，不替代新发现或独立Validation。v3原96条报告及V4原失败保持。
 
 D32/D33的3产品/5测试已亲审，12完整536项零失败/跳过/排除，类型/冻结health通过；旧13红逐项按当前合同修正合法夹具，真gap保留。root真实隐藏IAB附件Enter/Stop/Interrupt零上传、原Pending-only后继、草稿/旧展开保持；Orb预取和43帧双向曲线通过，产品SHA稳定。FE ignored d32-d33/report.md及BE ignored root-d32-d33-ui为证据，不把旧失败报告改成通过。
 
 D31已完成后端成功发布点锁外通知、39正式测试、真实完整App/WS/native链；root追加真正隐藏IAB：首读unavailable后仅释放exact元数据，source/rows保持即可自动gateway，新条目结束前逐条显示，外部结束后Web Enter/Stop可用，旧手动展开保持。actor exit0，证据ignored `root-d31-ui/verification.json`；不是独立Validation或自然移动网络验收。此前八Turn连续链与D29原现场复验有效，按影响复用。
 
-0.1.14/1014将按最终75e989a重建，旧71340be/edbdd/9f包及原证据归档，均不可发布。生产PM只读入口已核，Alex Noting/Adaptive及1目标开启；V4尚未上线，自然运行事实待发布后核。当前线上仍9270933/cd5/0.1.13；main合并、联合发布与最终双门禁均未完成。
+0.1.14/1014的75e989a APK已完成构建和439资源／签名／16KB核验，但绑定的是D35/D36未修版本，须归档并按最终源重建；旧71340be/edbdd/9f包同样不可发布。生产PM只读入口已核，Alex Noting/Adaptive及1目标开启；V4尚未上线，自然运行事实待发布后核。当前线上仍9270933/cd5/0.1.13；main合并、联合发布与最终双门禁均未完成。
 
 **前序9f候选冻结记录（后被D29反例阻断）：** BE `93c3b6d0bd0b91c110760c15f8063aec2d3b9a22`、FE `9f525d33a328740490337f065c225f2462b576d9`已提交推送。B1/D20/D25/D28/U15后端与F1 R7已由root亲审正式接线；最终47项FE源指纹零漂移。F1真实连续控制链包含自然维护提交后waiting续跑，103次DOM提交保旧fold；Gateway两起点逐条持久跟随、外部结束折叠及释放后真实Web Send/Stop通过；纯idle HB/Reminder另有原cd5红／候选绿。12文件354项通过，4项旧夹具失败单独保留并核实性质，不能以基线失败自动豁免。IAB实际界面与独立双门禁尚未完成，不称整轮验收通过。
 
