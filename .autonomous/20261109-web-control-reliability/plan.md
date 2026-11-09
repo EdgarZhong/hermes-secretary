@@ -23,7 +23,7 @@
 | 目标 | 机制 | 正式接线 | 针对性证据 | 用户结果 |
 |---|---|---|---|---|
 | 0.1.12/13连接／Thinking／Enter修复 | 已有 | 已发布 | 有同版证据 | 不能证明全部历史断连已归因 |
-| 折叠边界 | 已复现未修 | 待F1 | root组件反例 | 需同页恢复无需刷新 |
+| 折叠边界 | fallback永久保留已有候选修复，最新活动Turn全展开反证仍待闭合 | F1追加实际App交接 | root组件反例及用户最新现场 | 已证历史组在Steer／新Turn交接始终保折叠，当前Turn展开 |
 | 内部运行完整控制 | B1首版／正式接口已交 | F1已接实际App，补回归中 | 初版机制与App定向测试，待整包亲审 | 0.1.13仍不合新合同，新候选未发布 |
 | V4 R4 | 已合隔离分支 | 新控制待联验 | 27模块源相同、旧证据有效 | 尚未线上生效 |
 | 联合发布 | 未开始 | 未开始 | 未开始 | 线上仍9270933/cd5d12f/0.1.13 |
@@ -34,7 +34,7 @@
 
 | ID | 缺口与证据 | owner／状态／关闭标准 |
 |---|---|---|
-| D01 | activeStart fallback0被错误retained：idle2fold→active未知0→已证仍0→同状态remount1。FE .archive/control-recheck-20261109/fold-probe.* | F1待修，正式组件同页确认边界后恢复，实际App补验 |
+| D01 | activeStart fallback0被错误retained：idle2fold→active未知0→已证仍0→同状态remount1。FE .archive/control-recheck-20261109/fold-probe.*。用户最新再次确认active时所有旧折叠消失，疑似Steer接续但不排除其它入口 | F1已有knownness候选，追加真实Controller→App普通Steer／Interrupt接续／自然followup／native ID先于checkpoint／Unknown交接反例；保已证结束历史与用户选择，不误折当前Turn，不靠remount |
 | D02 | 实际App idle-only rejection仍确认4009保草稿，启动／维护／终态拒非Gateway输入 | B1/F1待修，一次显式请求原子受理与对应结果 |
 | D03 | 4→6→5探针可能丢5，当前controller只拒旧seq未验证覆盖，需核真实scope | F1调查；真实缺口则诊断／统一恢复，不误判合法过滤，不以Socket有流量冒称数据连续 |
 | D04 | accepted=false／本地phase拒绝诊断不足 | B1/F1沿新协议补最小枚举，复用脱敏桥，不记录正文 |
@@ -47,6 +47,11 @@
 | D11 | Stop等待compression commit fence期间可能跨Turn；仅RPC前比turn_id不足，锁外abort请求／线程／child传播亦可能命中新Turn | B1在原interrupt owner增可选身份fence，真实barrier＋新Turn接管验证；旧默认和hard_interrupt兼容语义保持，拒绝不得有清队列／cancel／信号副作用 |
 | D12 | root亲审StopReceipts发现unknown仅按runtime/epoch/页面存，旧T1未知会吞掉用户对新T2显式Stop；旧启动target为空时可能一直只查询，旧query还可能覆盖新目标状态 | F1整改；按精确目标/动作世代隔离，允许新已证目标的新显式Stop，同目标未知不自动重放；实际Controller/App及交错查询反例 |
 | D13 | U02现有审批/澄清恢复补查：3种内部source同epoch重连后q0选择丢为stages={}，Confirm disabled；当前retain直接requests=[]导致 | F1正式反例approval-recovery-counterexample.log；窄修ControllerPageRecovery/ServerRequests同owner同epoch草稿保留及needsCheck。须当前open_requests对账才允许确认；owner/epoch/认证/请求payload变化及已结束不复活 |
+| D14 | CompactionViews与CompactionUpdates两个读取owner都publish完整phase；旧A终态/changed读取可能覆盖普通读取已证的新B活动状态；同op确认取消后旧unknown notice亦需清理 | F1统一当前operation/phase提交owner和cut，exact旧操作查询不得覆盖新；两个读交错的Controller反例，普通delta零RPC保持 |
+| D15 | E01维护Stop保queue后，waiting消息只有展示、没有显式撤回，会使误发等待输入无法阻止 | B1/F1补现有Prompt operation撤回，沿原queue/Pending/witness，不取消维护、不影响其它输入；consume竞态、已消费too_late、未知ACK只读恢复 |
+| D16 | 新controlled 5071明确accepted:false仍被前端一概视为5xxx未知事务，保草稿但阻塞后续输入 | B1保证false无执行残留，F1区分明确拒绝与真实未知；同code有/无受理事实两支实际入口验证，旧端仍保守 |
+| D17 | controlled提交事件/input_changed只查询phase unknown；RPC ACK迟迟不settle时，已收到精确受理见证仍submitting挡后续输入 | F1按同owner/op事件或input_state见证立即只读query并退役已接收事务；ACK一直pending仍可第二次输入，迟到ACK不改新草稿/重复执行 |
+| D18 | root亲审等待queue drain摘head后、generation复核前的Stop窗口：旧恢复分支可能把已Stop输入重新放回queue，再被poller执行 | B1优先真实barrier反例；明确Main Stop不得复活已claim输入，保其它原生generation变化恢复语义；红→绿与receipt／零后继Provider证据待交 |
 | E01 | 15:05:43未知1006缺client_connection_id；旧13:41刷新前停顿无现场时序 | 历史证据边界，不强归网络／代码；后续依双端日志归因 |
 | E02 | adb devices为空 | 不把包校验/IAB冒充真机，交付如实标安装／自然网络／实导限制 |
 
@@ -63,6 +68,8 @@ F1白名单工程补充：`src/App.tsx`和`src/core/command-actions.ts`的实际
 完整控制权包含既有工具审批／用户确认响应：root要求补核内部Turn→晚进入／重连→合法响应和旧owner拒绝；允许F1在现有ServerRequests恢复owner接缝修已复现D13，不新增审批语义／权限。B1对应核同一Agent/Fanout/原生open_requests及正式响应，已有同版证据可复用。
 
 Stop接口收口：旧`session.interrupt`默认保持；新Web可选`input_policy=web_controlled`，`operation_id`指维护目标、`turn_id`指Main目标，均不是本次Stop动作的幂等id。服务端在原owner边界按真实Main／维护状态判断，目标变化不停止后来的run；ACK未知只查原目标，不能以自然结束反推Stop成功。允许B1在`agent/interrupt_control.py`及原`turn_context.py`身份绑定点追加可选target fence，沿既有锁，禁止引入新gate／锁体系或在history/pending锁中等待commit。
+
+上述“不重放”约束指故障恢复不能自动重发旧动作；新的用户显式Stop仍必须有真实停止能力，不能被旧unknown记录永久改成仅查询。当前目标fence与动作世代保护新的动作，旧ACK/query不得清除或覆盖它。自动恢复只读原目标，不把自然终态冒称Stop成功。
 
 发布准备仅本地ignored目录`.hermes-dev/web-control-reliability-20261109/release/`：沿旧已审remote_release/retention原字节，独立stage-20261109-web-control-014；expected_old=9270933、新包0.1.14/1014，尚未运行prepare／上传／发布。发布时按实际manifest核资源集合，不以旧439数量代替内容验真；保新批次和013、核验后清退012旧数据库集合。
 

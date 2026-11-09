@@ -26,6 +26,8 @@
 
 ## 2026-11-09 · 故障全面复核与Web输入运行归属（新授权）
 
+**最新现场反证：** 用户再次确认活动Turn中“所有的折叠都消失掉了”，怀疑Steer接续／新Turn交接，但不排除其它入口。线上仍0.1.13，候选未发布；F1追加真实Controller→App交接反例，不能仅以fallback不再永久保留或刷新恢复关闭缺陷。B1整包已交，root亲审正式接线中，并补真实前后端隔离联验准备；尚未进入独立双门禁。
+
 用户要求先逐项复核本轮所有反馈是否有明确原因／是否解决，再解决Instant Reminder与Heartbeat触发Turn能否及时Steer、能否共用runtime的接线。最新明确硬约束：网页端仅当目标Conversation确由Gateway运行时，才允许因Session busy拒绝发送；Web运行实例内普通Turn、Instant Reminder、Heartbeat不得仅因running拒绝。按真实owner判定，不把触发来源／连接名字当运行归属。用户进一步明确这不仅是新消息发送，而是完整网页控制权：Instant Reminder、Heartbeat、Delegation返回、空闲自动压缩／整理及其它内部运行启动后，WebSocket仍应连接／绑定实际runtime，实时状态和对应Steer／停止／中断／取消等控制不能丢。此要求替代前轮“启动窗可拒绝保草稿／Reminder问题暂不改”的当前实施边界，历史报告保原时点，不倒写已验结果。
 
 root已完成Thinking、断连／静默停顿、Send／Steer／Interrupt、折叠与双端诊断首轮复核，开始runtime／输入接线；不以隐藏错误、4009盲重发、新建第二个writer或破坏已有输入身份／受理回执达标。原算法分支dirty与个人资料保持，不修改Gateway运行中的会话，不触发生产模型测试。用户已明确“给自己挂个目标”：旧故障复查并修复、完整控制权、最新自适应算法合main联合发布及线上生效验证纳入同一active goal。采用autonomous-run轮次，算法候选b232defac7（V4 R4）已纳入隔离集成分支2e91189，27模块指纹与原验收一致，尚未合main／发布；原文档dirty保持。维护期间Send已确认先接收等待，取消由用户另按Stop。用户指定的internal_turn_runtime_design设计包已交回；backend_control负责后端完整接线、frontend_control负责折叠与实际App接线，均gpt-6.1-sol/high、无上文、不再派生、禁止流水账。root负责覆盖、协议协调、亲审与最终判定，计划快照25baafb。维护Stop只取消维护、继续处理已接收消息，现已由用户异步答复明确确认（E01），不再待追认。具体边界见06顶部及本轮plan。
