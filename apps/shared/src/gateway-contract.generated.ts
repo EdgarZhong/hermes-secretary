@@ -517,6 +517,9 @@ export interface ConfigSetResult {
 export interface SessionLiveInfo {
   model?: string
   provider?: string
+  model_switch_pending?: boolean | null
+  context_model?: string | null
+  context_provider?: string | null
   reasoning_effort?: string
   reasoning_effort_wire?: string
   service_tier?: string
@@ -3661,6 +3664,9 @@ export interface SessionCwdSetParams {
 export interface SessionCwdSetResult {
   model?: string
   provider?: string
+  model_switch_pending?: boolean | null
+  context_model?: string | null
+  context_provider?: string | null
   reasoning_effort?: string
   reasoning_effort_wire?: string
   service_tier?: string

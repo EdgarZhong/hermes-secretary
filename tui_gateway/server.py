@@ -2299,7 +2299,7 @@ def _session_info(agent, session: dict | None = None) -> dict:
         reasoning_effort_wire = str(clamp_effort(reasoning_effort, route_supported_efforts(
             pending_provider or provider, model, getattr(agent, "api_mode", None))) or "")
     info: dict = {
-        "model": model,
+        "model": model, **_session_context_model_info(agent, sess),
         "provider": pending_provider or provider,
         "reasoning_effort": reasoning_effort, "reasoning_effort_wire": reasoning_effort_wire,
         "service_tier": service_tier,
@@ -2962,7 +2962,7 @@ def _find_live_session_by_key(session_key: str, profile_home=_ANY_PROFILE) -> tu
 def _fallback_session_info(session: dict) -> dict:
     agent = session.get("agent")
     if agent is not None:
-        return _session_info(agent)
+        return _session_info(agent, session)
     # The SESSION's own workspace, not the launch dir (wrong project in the desktop Files pane). `branch` is
     # always emitted ("" outside git) so a stale label clears; `desktop_contract` missing reads as "out of date".
     # Reporting `_default_session_cwd()` here told a lazily-resumed session's client that its workspace was

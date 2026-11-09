@@ -78,6 +78,29 @@ def test_unknown_id_still_404s(home):
     assert out.get("error", {}).get("code") == 4007
 
 
+def test_unpersisted_host_pending_identity_matches_native_cold_context(live_lazy_session, home):
+    import threading
+    from tui_gateway.contracts.common import SessionLiveInfo
+    sid, record = live_lazy_session
+    record.update(agent=None, _compute_host_active=True, history_lock=threading.Lock(), cwd=str(home))
+    srv._apply_compute_host_metadata_mirror(record, {
+        "session_info": {"model": "host-current", "provider": "custom:host-route"}})
+    selected = srv.handle_request({"id": "pick", "method": "config.set", "params": {
+        "session_id": sid, "key": "model", "value": "host-next --provider anthropic",
+        "confirm_expensive_model": True}})
+    assert selected["result"]["deferred"] is True
+    out = _resume({"profile": "ops", "session_id": record["session_key"], "omit_messages": True})
+    context = srv.handle_request({"id": "context", "method": "session.context_breakdown",
+                                  "params": {"session_id": sid}})
+    assert "error" not in out and "error" not in context
+    assert out["result"]["session_id"] == sid
+    info = SessionLiveInfo.model_validate(out["result"]["info"])
+    assert info.model_switch_pending is True
+    assert info.model == info.context_model == context["result"]["model"] == "host-next"
+    assert info.provider == info.context_provider == "anthropic"
+    assert record["agent"] is None
+
+
 class _Agent:
     model = "claude-opus-5-5[1m]"
     provider = "claude-subscription-directsdk-experimental"

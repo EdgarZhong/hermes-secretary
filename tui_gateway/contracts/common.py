@@ -69,6 +69,12 @@ class SessionLiveInfo(OpenModel):
 
     model: str = ""
     provider: str = ""
+    # Selected/display model above may be a deferred pick. These observations do not apply it.
+    model_switch_pending: bool | None = None
+    # Same model as session.context_breakdown; cold identity does not prove model execution.
+    context_model: str | None = None
+    # Configuration identity used by that Context read; None when the native provider is unknown.
+    context_provider: str | None = None
     reasoning_effort: str = ""
     # The level the route's entry clamp actually sends for ``reasoning_effort`` ("" when unset/none;
     # equal when verbatim). Lets clients label a clamped Hermes step ("ultra sends max on this route").

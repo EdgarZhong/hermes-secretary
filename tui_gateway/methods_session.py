@@ -111,7 +111,7 @@ def _cwd_info(session: dict, cwd: str, branch=None) -> dict:
     if (agent := session.get("agent")) is not None:
         return _session_info(agent, session)
     return {"cwd": cwd, "branch": git_probe.branch(cwd) if branch is None else branch,
-            "project": _project_info_for_cwd(cwd), "lazy": True,
+            "project": _project_info_for_cwd(cwd), "lazy": True, **_session_context_model_info(None, session),
             "desktop_contract": DESKTOP_BACKEND_CONTRACT}
 
 
@@ -693,7 +693,7 @@ def _resume_live_unpersisted(ctx: _Resume, live_sid: str, live: dict) -> dict:
     return _ok(ctx.rid, _attach_todo_state({
         "recovery_view_version": 1, "session_id": live_sid, "stored_session_id": str(live.get("session_key") or ""),
         "message_count": len(messages), "messages": messages,
-        "info": {"model": model, "provider": provider, "lazy": True,
+        "info": {"model": model, "provider": provider, "lazy": True, **_session_context_model_info(live.get("agent"), live),
                  "desktop_contract": DESKTOP_BACKEND_CONTRACT,
                  "profile_name": profile_name_for_home(live.get("profile_home")) or _response_profile_name(ctx.profile)}}, live))
 

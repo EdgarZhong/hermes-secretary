@@ -33806,6 +33806,42 @@
             "title": "Provider",
             "type": "string"
           },
+          "model_switch_pending": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Model Switch Pending"
+          },
+          "context_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Context Model"
+          },
+          "context_provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Context Provider"
+          },
           "reasoning_effort": {
             "default": "",
             "title": "Reasoning Effort",
@@ -34803,6 +34839,42 @@
             "default": "",
             "title": "Provider",
             "type": "string"
+          },
+          "model_switch_pending": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Model Switch Pending"
+          },
+          "context_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Context Model"
+          },
+          "context_provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Context Provider"
           },
           "reasoning_effort": {
             "default": "",

@@ -65,6 +65,49 @@ def test_cold_context_honors_current_session_model_override(homes):
     }
 
 
+@pytest.mark.parametrize("shape", ["override", "mirror", "mirror_pending", "mirror_unknown", "mirror_unknown_sentinel"])
+def test_cold_context_identity_observations_follow_existing_rpc(homes, monkeypatch, shape):
+    import threading
+    from tui_gateway.contracts.common import SessionLiveInfo
+    launch, _target, launch_home, _target_home = homes
+    session = _session(history_lock=threading.Lock(), profile_home=None, cwd=str(launch_home),
+                       created_at=1, running=False, model_override={"model": "model-a"})
+    monkeypatch.setattr(server, "_sessions", {"cold-runtime": session})
+    monkeypatch.setattr("hermes_cli.model_catalog._fetch_manifest", lambda *a, **kw: None)
+    if shape.startswith("mirror"):
+        session["_compute_host_active"] = True
+        provider = {"mirror_unknown": "auto", "mirror_unknown_sentinel": "unknown"}.get(shape, "custom:host-route")
+        server._apply_compute_host_metadata_mirror(session, {
+            "session_info": {"model": "model-a", "provider": provider}})
+    if shape == "mirror_pending":
+        response = server.handle_request({"id": "pick", "method": "config.set", "params": {
+            "session_id": "cold-runtime", "key": "model", "value": "model-b --provider anthropic",
+            "confirm_expensive_model": True}})
+        assert response["result"]["deferred"] is True
+    def read(method, **params):
+        response = server.handle_request({"id": method, "method": method, "params": {
+            "session_id": "cold-runtime", **params}})
+        assert "error" not in response, response
+        return response["result"]
+    before = launch.get_messages("same-id")
+    context = read("session.context_breakdown")
+    expected = ("model-b", "anthropic") if shape == "mirror_pending" else (
+        "model-a", "custom:host-route" if shape == "mirror" else None)
+    assert context["model"] == expected[0]
+    infos = [server._session_info(None, session), server._fallback_session_info(session),
+             server._cwd_info(session, str(launch_home)), server._compute_host_session_info(session),
+             read("session.activate", omit_messages=True)["info"],
+             read("session.resume", session_id="same-id", omit_messages=True)["info"]]
+    if shape == "mirror_unknown_sentinel":
+        assert infos[0]["provider"] == infos[3]["provider"] == "unknown"  # selected/native display stays verbatim
+    for info in infos:
+        typed = SessionLiveInfo.model_validate(info)
+        assert (typed.context_model, typed.context_provider) == expected
+        assert typed.model_switch_pending is (shape == "mirror_pending")
+    assert session["agent"] is None  # metadata observation cannot create a second Agent
+    assert launch.get_messages("same-id") == before
+
+
 def _persist_reading(db, session_id="same-id"):
     db.append_message(session_id, "user", "same text")
     history = db.get_messages_as_conversation(session_id)
