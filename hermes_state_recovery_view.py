@@ -116,7 +116,7 @@ def _display_sql(db, conn, lineage):
         FROM messages m LEFT JOIN generations latest ON latest.message_uid=m.message_uid
         LEFT JOIN messages generation ON generation.id=latest.newest
         WHERE m.session_id IN ({marks}) AND (m.active=1 OR m.compacted=1)
-          {DISPLAY_VISIBLE_SQL.replace('display_metadata', 'm.display_metadata')}
+          {DISPLAY_VISIBLE_SQL.replace('display_metadata', 'm.display_metadata').replace('role', 'm.role')}
           AND (NULLIF(m.message_uid,'') IS NULL OR generation.active=1 OR generation.compacted=1)
       ), ranked AS (
         SELECT id, identity_key, MIN(first_order) OVER (PARTITION BY identity_key) AS sort_id,

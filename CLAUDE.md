@@ -26,6 +26,10 @@
 
 ## 2026-11-09 · 故障全面复核与Web输入运行归属（新授权）
 
+**最新联调与用户追问：** D25公共投影修复5项定向绿；重启联合版后F1严格真实链90个DOM提交均保旧fold，D26同因关闭且未加FE特例；普通Steer为单Pending/零custody正文，Instant Reminder与Heartbeat均实际触发并可Steer/Stop，11条original input各仅一次写。D24额外New Chat旧事务覆盖目标新事务两反例已修；D27终态residual Thinking顺序尚在收口。用户明确20:42同页未主动关闭，追问unknown机制是否过度防御；root已按Git核对为项目后加提示/查询而非Hermes原生错误，交F1改成自动确认状态而非手工排障红错。close_origin_audit独立只读核真实1005来源、前端close入口与恢复调度，尚不把网络／具体调用当现场已证原因。0.1.14打包继续等最终FE，独立双门禁未开始，线上仍0.1.13。
+
+**21:31实际入口继续发现：** BE阶段快照330bb14e48已推送、未上线。root自建隐藏IAB独立59874/75后端＋59876前端，无reload，完成last delta→真正streaming API返回→durable/terminal→idle、第二Turn Enter Steer→native followup→Stop。普通边界Assistant单份、旧fold保留、Stop最终disabled Send；但Steer的受理custody row被当普通You提前画入history，与Pending两份且挤动当前输出（D25），BE正式DISPLAY_VISIBLE_SQL／recovery.turn_start已证收错对象，stream_order_resume接正式投影修复。F1联合维护／重连链又抓到新Turn三个DOM提交旧fold全部消失（D26），授权限定Timeline/恢复接缝修复并与D25协调；D24切owner三个红例已转绿。未以这些局部通过交付整体稳定，APK等待最终源，双门禁尚未启动。
+
 **21:18联合收口：** 目标控件已恢复active。D20正式transport编号／准入排序包已交，root亲审可选能力兼容、双锁队列和锁外hook；当前真实联调进程已重启载入B1＋D20，F1补真实streaming API返回／terminal及维护控制链。R5已交285项、TypeScript与health通过；root隐藏IAB复验终态Stop退役、旧折叠保留。root另发现未知提交检查在慢history读取后缺owner复核，交F1定向反例／窄修（D24），未扩大Timeline重构。root修旧Stop字符串queue兼容，3项通过；额外两项protocol失败已在生产同源12e基线复现，保原证据不迁就fixture。0.1.14构建准备并行，等待最终源码后正式打包；仍未上线／未进入独立双门禁。
 
 **20:46后接续：** 后台目标曾因平台usageLimited中断，用户明确要求恢复，root当前会话已重新执行；原子Agent已不在活动树，改由frontend_control_resume与stream_order_resume沿既有未提交候选收口，不重做／覆盖旧包。B1正式Lock/D18已交67项与真实WS普通/Heartbeat控制证据；维护及联合版本网络复验仍需收尾。root实际隐藏IAB抓到controlled请求误携legacy字段（已窄修）及后端idle后主Stop仍滞留（F1整改）。用户20:42截图另经生产只读核实：20:42:39.387输入持久受理、约127ms后1005关闭、20:44:05重连；20:53原生status查询仍明确accepted。仅受理确认链已证，具体关闭诱因未知；不重放原输入。候选尚未上线。

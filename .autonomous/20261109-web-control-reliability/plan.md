@@ -74,6 +74,11 @@
 | D22 | 同次真实IAB，Stop后后端running=false/native_active_turn=null/phase=idle，网页Receiving response及侧栏Running消失，但主按钮仍Stop | F1接续已取得无input_changed终态的红→绿，补实际IAB同页复验与状态owner审查；不能只改按钮标签 |
 | D23 | 20:42用户真实输入已durable受理，约127ms后WS1005关闭；20:44重连，截图仍unknown且离线点取消再报错；原生submission_status可证明accepted | F1接续核legacy/controlled原ID自动查询、离线cancel/check、同／新runtime重连事务与对应通知退休；不重发、不假撤销，关闭诱因仍未知 |
 | D24 | root亲审R5 inspectSubmission：refreshHistory前检查owner，但await后到草稿迁移／select未再检查；慢读期间用户切owner可能被旧检查导航回来 | F1定向实际Controller反例；若复现按原owner／generation覆盖异步边界，保原事务后台受理查询，不借屏蔽所有错误或禁止切页规避 |
+| D25 | root真实隐藏IAB受控last-delta时Enter Steer，待消费custody witness被正式history提前画成普通You，同时Pending显示同输入两份，当前Assistant被挪到该早写row之后；terminal/followup后早写行才消失 | stream_order_resume改BE正式display可见谓词及session_history内存投影同owner；SQL计数/分页/coverage/turn_start一致排除明确Web queued custody，保durable receipt/原始active/原生队列和legacy语义。先正式read/recovery红→绿再联合实UI |
+| D26 | F1真实联合Gateway/Controller＋TimelineMessages：同epoch重连后Idle维护→两同文waiting→按op撤回其一→Stop维护保另一→新Turn流式，三次DOM提交历史folds=[]、终态恢复；当时连接ready且身份/控制正确 | F1/BE已共同定位completedMark恰为已withdraw的第一条waiting custody UID；owner/runtime/epoch未变，删除该错误前沿后retained/completed均失效。先修D25正式投影并重跑原真实链，暂不新增FE下游补丁；若仍失效再修通用owner。严格逐DOM提交断言保红证据 |
+| D27 | root实际隐藏IAB Stop后Thinking从正文前移动到后；原始row7 turn_terminal保reasoning residual，row8同Assistant UID仅正文。F1已核terminal-history把所有residual锚到suffix尾，且先retire已见live | F1按真实source/native UID、typed facet及已见顺序修既有terminal-history／projection；保正文/工具残留与冷恢复缺证明的诚实fallback，不按文本或时间猜顺序，补真实链反例及跨Turn回归 |
+
+**后继事实（用户追问关闭与抽象提示）：** 用户明确20:42同页面发送后没有关闭页面操作。closed不是server主动关闭的同义；该1005来自原ASGI WebSocketDisconnect而非日志默认值，RFC定义需与实际服务栈确认；close_origin_audit只读调查主动关闭入口/重连调度/观察者异常隔离，不改F1产品。20:44有重新接入不等于同页自动恢复成功。unknown提示由项目Web初始27c5cb4已有，原身份受理查询ad7e484/9fabcdd于10/21加入，非Hermes原生错误，非本轮新增。用户批评抽象红错与失去控制，F1将沿已授权自动查询语义改为明确待确认状态，确认后自动退休；不新增盲重放或常驻门禁。
 
 U13实现期诊断辅助`stream_control_diagnosis`已委派（gpt-6.1-sol/high、fork none、无派生），仅线上同源main12e工作区ignored探针；只读正式后端，调查OutputIdentity/消息持久与终态、连续内部Turn/recovery证明。不是独立Verification门禁，不改产品／根文档／生产，整包交回root。B1与F1仍为唯一对应实现owner。
 
