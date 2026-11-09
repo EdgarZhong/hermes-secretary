@@ -18,6 +18,17 @@ def _read(context, gap, cfg, model=None):
     return read_price(context, gap, cfg, model)
 
 
+def _rewrite(profile, context, last):
+    after = post_maintenance_context(context, profile)
+    changed = after < context
+    return after, -math.inf if changed else last, changed
+
+
+def _cold_heartbeat(source, at, last, cfg):
+    return bool(cfg.get('_heartbeat_cache_guard') and source == 'heartbeat'
+                and math.isfinite(last) and at-last >= cfg['cache_ttl_seconds'])
+
+
 def _user_work(event, marks, timing_only):
     if timing_only:
         # Conditional read-cost proxy only: these zeros are excluded unknown terms,
@@ -53,12 +64,29 @@ def _switch_heartbeat(events, switch, at, anchor, horizon, serial):
     return events, interval
 
 
+def _next_heartbeat(events, source, actual, busy_until, anchor, horizon, serial, interval, paused):
+    if interval is None:
+        return anchor, paused
+    if source == 'heartbeat':
+        anchor = actual
+        due = actual + interval
+    elif paused:
+        paused = False
+        due = max(busy_until, anchor + interval)
+    else:
+        return anchor, paused
+    if due <= horizon:
+        heapq.heappush(events, (due, 3, next(serial), 'heartbeat', {}))
+    return anchor, paused
+
+
 def simulate_path(snapshot, features, cfg, background, path, delay, profile, heartbeat_interval, timing_only=False):
     now = snapshot['now']
     last = features['last_request_at']
     last = last - now if last is not None else -math.inf
     context, cost, reads, busy_until = snapshot['context_tokens'], 0.0, 0.0, 0.0
     compacted, pending, recovered = False, delay is not None, False
+    heartbeat_paused = False
     started, collision, first_blocked = False, False, math.inf
     native_count, native_unknown = 0, False
     maintenance_start, maintenance_end = None, None
@@ -93,8 +121,8 @@ def simulate_path(snapshot, features, cfg, background, path, delay, profile, hea
             if pending and busy_until <= at:
                 cost += profile.cost
                 maintenance_before = context
-                context = post_maintenance_context(context, profile)
-                last, busy_until, compacted = -math.inf, at + profile.duration, True
+                context, last, compacted = _rewrite(profile, context, last)
+                busy_until = at + profile.duration
                 started, maintenance_start, maintenance_end = True, at, at + profile.duration
                 planning_end = at + (profile.planning_duration if profile.planning_duration is not None else profile.duration)
             pending = False
@@ -128,6 +156,9 @@ def simulate_path(snapshot, features, cfg, background, path, delay, profile, hea
             continue
         pending = False  # A Main turn invalidates the pending idle plan.
         actual = max(at, busy_until)
+        if _cold_heartbeat(source, actual, last, cfg):
+            heartbeat_paused = True
+            continue
         threshold = snapshot.get('native_threshold_tokens')
         if threshold is not None and context >= threshold:
             if profile is None:
@@ -163,9 +194,8 @@ def simulate_path(snapshot, features, cfg, background, path, delay, profile, hea
             context += hb['growth']
         reads += calls if compacted else 0
         last, busy_until = actual + duration, actual + duration
-        if source == 'heartbeat' and heartbeat_interval is not None and actual + heartbeat_interval <= horizon:
-            hb_anchor = actual
-            heapq.heappush(events, (actual + heartbeat_interval, 3, next(serial), 'heartbeat', {}))
+        hb_anchor, heartbeat_paused = _next_heartbeat(events, source, actual, busy_until, hb_anchor,
+            horizon, serial, heartbeat_interval, heartbeat_paused)
     # Same liability boundary for all policies, including paths with user returns.
     # Stop can shorten this release; queued users retain their original arrival.
     # Later Main busy time is not part of this maintenance's blocking interval.

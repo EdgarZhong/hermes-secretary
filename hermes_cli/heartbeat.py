@@ -210,7 +210,8 @@ class HeartbeatManager:
         every = "∞" if effective is None else format_interval(effective)
         fired = f", fired {s.fire_count}×" if s.fire_count else ""
         if s.status == "active" and getattr(s, "_adaptive_infinite", False):
-            return f"♥ Heartbeat (business ∞{fired}): {s.prompt}"
+            mode = "standby" if getattr(s, "_adaptive_mode", None) == "standby" else "business ∞"
+            return f"♥ Heartbeat ({mode}{fired}): {s.prompt}"
         if s.status == "active":
             next_in = max(0, int((s.last_fired_at or s.created_at) + effective - time.time()))
             return f"♥ Heartbeat (every {every}, next in ~{next_in}s{fired}): {s.prompt}"

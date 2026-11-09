@@ -331,7 +331,10 @@ def predict(data, now, *, horizon=7200, timezone_name='UTC', method='analog', qu
 
 
 def work_marks(data, now):
-    rows = visible(data.get('work', []), now)[-64:]
+    cancelled = {r['id'] for r in visible(data.get('users', []), now) if r.get('activity') == 'cancel'}
+    # Stop remains a real zero-call event in its own trajectory. It cannot
+    # supply ordinary-submission workload defaults when that workload is unknown.
+    rows = [r for r in visible(data.get('work', []), now) if r.get('user_id') not in cancelled][-64:]
     result = {}
     for key in ('calls', 'growth_tokens', 'output_tokens', 'duration_seconds'):
         values = [r[key] for r in rows if number(r.get(key)) is not None]
@@ -342,7 +345,7 @@ def work_marks(data, now):
 def from_events(events, spans):
     """Runtime adapter. Prompt span is a proxy, not fresh tokens or latent demand."""
     users, checkpoints, work, requests, background = [], [], [], {}, []
-    context_marks, feature_exclusions, work_ends, previous = [], [], [], None
+    context_marks, feature_exclusions, work_ends, reminder_ends, previous = [], [], [], [], None
     model_keys = {r.get('model_key') for r in events if r.get('kind') == 'request'}
     for event in events:
         kind, at = event.get('kind'), event['at']
@@ -361,6 +364,9 @@ def from_events(events, spans):
         elif kind == 'request' and event.get('turn_id') and not event.get('operation_id'):
             requests.setdefault(event['turn_id'], []).append(event)
         elif kind == 'turn_end':
+            if event.get('source') == 'reminder':
+                # Behavioral completion timing survives model/workload changes.
+                reminder_ends.append(dict(id=identity, at=at, available_at=event.get('available_at', at)))
             if event.get('source') == 'user':
                 # Preserve completion timing across model contracts without
                 # transferring request count, tokens, output or speed marks.
@@ -388,6 +394,7 @@ def from_events(events, spans):
                                            growth_tokens=growth))
     return {'users': users, 'checkpoints': checkpoints, 'work': work, 'spans': spans,
             'background': background, 'context_marks': context_marks, 'work_end_events': work_ends,
+            'reminder_end_events': reminder_ends,
             'feature_exclusion_events': feature_exclusions, 'feature_exclusion_unknown': False,
             'excluded': maintenance_spans(events), 'work_complete': False}
 

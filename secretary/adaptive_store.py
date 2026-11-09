@@ -210,7 +210,9 @@ def heartbeat_conn(conn, ref):
 
 
 def adopt_mode_conn(conn, ref, mode, config):
-    interval = config["hot_interval_seconds"] if mode == "hot" else config.get("business_interval_seconds")
+    interval = config["hot_interval_seconds"] if mode == "hot" else (
+        None if mode == "standby" else config.get("business_interval_seconds"))
+    remember_heartbeat_config_conn(conn, ref, config)
     current = heartbeat_conn(conn, ref)
     payload = json.dumps({"mode": mode, "interval_seconds": interval, "config_version": config["config_version"]})
     if current and current["claim_revision"] is not None:
@@ -244,10 +246,10 @@ def invalidate_conn(db, conn, ref, at):
     return True
 
 
-def commit_plan(db, ref, *, at, expected_period, decision, config, context_epoch, expected_revision=None):
+def commit_plan(db, ref, *, at, expected_period, decision, config, context_epoch, expected_revision=None, guard=None):
     """Three outputs, matching Idle period and mode are one native write transaction."""
     def write(conn):
-        if db.noting_idle_state_conn(conn, ref) != expected_period:
+        if db.noting_idle_state_conn(conn, ref) != expected_period or (guard is not None and not guard(conn)):
             return False
         refresh = refresh_conn(conn, ref)
         if expected_revision is not None and (refresh["revision"] if refresh else 0) != expected_revision:
@@ -330,3 +332,18 @@ def restore_native_idle(db, ref, *, expected_plan, expected_period, recheck):
                      (period['last_turn_finished_at'] + delay, time.time(), ref))
         return True
     return db._execute_write(write)
+
+
+def remember_heartbeat_config_conn(conn, ref, config):
+    """Freeze only a target's configured numeric period, on existing writes."""
+    from secretary.adaptive_features import number
+    hot = number(config.get('hot_interval_seconds'), minimum=60)
+    source = config.get('_hot_interval_source')
+    if hot is None or not source:
+        return
+    event_conn(conn, ref, dict(event_id='heartbeat-config:' + config['config_version'],
+                               at=config.get('_configured_at', time.time()), kind='heartbeat_config',
+                               source='framework', verified=True, hot_interval_seconds=hot,
+                               provenance=source, config_version=config['config_version'],
+                               model_identity=config.get('model_identity'),
+                               model_contract=config.get('model_contract')))

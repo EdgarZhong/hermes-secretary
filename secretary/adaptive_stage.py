@@ -14,7 +14,8 @@ def inspect(snapshot, features, data, cfg, profile):
     observed = number(observation.get('silence_lower_bound_seconds'))
     if observed is not None:
         age = min(age, observed)
-    support = remaining_gaps(data, now, age, recency_timescale_days=cfg['recency_timescale_days'])
+    support = remaining_gaps(data, now, age, recency_timescale_days=cfg['recency_timescale_days'],
+                             timezone_name=cfg.get('timezone'))
     missing = []
     if not support['available']:
         missing.append('conditional_behavior_episodes')

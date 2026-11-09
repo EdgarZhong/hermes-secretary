@@ -16,8 +16,7 @@ def owned(tmp_path, monkeypatch):
     yield from test_adaptive_runtime.owned.__wrapped__(tmp_path, monkeypatch)
 
 
-def test_unmocked_policy_reaches_atomic_native_plan_and_due_clock(owned, monkeypatch):
-    parent, db, ref = owned
+def _prepare_paid_history(parent, db, ref, monkeypatch):
     path = Path(db.db_path).parent / 'config.yaml'
     config = test_adaptive_runtime.adaptive_config(ref, CONFIG)
     path.write_text(json.dumps(config), encoding='utf-8')  # JSON is a YAML subset.
@@ -31,7 +30,18 @@ def test_unmocked_policy_reaches_atomic_native_plan_and_due_clock(owned, monkeyp
     hb.save(HeartbeatState('', 7200, created_at=NOW))
     rows = [dict(row, model_key=runtime.model_key(parent)) if row.get('model_key') else row
             for row in empirical_history()]
+    actual = runtime.settings.for_db(db, ref, parent=parent)
+    for row in rows:
+        if row['kind'] in ('request', 'turn_end') and not row.get('operation_id'):
+            row.update(context_epoch=runtime._epoch(db, ref), context_path=['main', 0],
+                       model_contract=actual['model_contract'], cache_contract=actual['cache_contract'])
     db._execute_write(lambda conn: [store.event_conn(conn, ref, event) for event in rows])
+    return hb
+
+
+def test_unmocked_policy_reaches_atomic_native_plan_and_due_clock(owned, monkeypatch):
+    parent, db, ref = owned
+    hb = _prepare_paid_history(parent, db, ref, monkeypatch)
     runtime.turn_started(parent, runtime.mark_input('background', 'heartbeat'), at=NOW - 60)
     assert noting.note_main_turn_finished(parent, at=NOW)
     with db._read_ctx() as conn:
@@ -46,6 +56,37 @@ def test_unmocked_policy_reaches_atomic_native_plan_and_due_clock(owned, monkeyp
     assert hb.load().created_at == NOW  # Mode did not reset the independent clock.
     runtime.user_arrived(db, 'main', at=NOW + 1, event_id='actual-user', ingress='web_submit')
     assert runtime.idle_settings(parent, noting.settings_for_db(db)).idle_threshold_tokens is None
+
+
+def test_high_context_standby_return_warms_then_maintains_at_a_suitable_boundary(owned, monkeypatch):
+    from agent.usage_pricing import CanonicalUsage
+    parent, db, ref = owned
+    hb = _prepare_paid_history(parent, db, ref, monkeypatch)
+    returned_at = NOW + 2000  # Real cache expiry, with the priced history still applicable.
+    monkeypatch.setattr(runtime.time, 'time', lambda: returned_at)
+    assert hb.load()._adaptive_mode == 'standby' and hb.claim(returned_at) is None
+    original_anchor = hb.load().created_at
+    usage = CanonicalUsage(input_tokens=1000, cache_read_tokens=329000, output_tokens=9)
+    for offset, source in ((0, 'user'), (1740, 'heartbeat'), (3480, 'heartbeat')):
+        at = returned_at + offset
+        monkeypatch.setattr(runtime.time, 'time', lambda at=at: at)
+        runtime.record_event(db, ref, 'coverage', event_id=f'host:{offset}', at=at,
+                             source='user', verified=True, start_at=NOW, end_at=at)
+        if source == 'user':
+            runtime.user_arrived(db, 'main', event_id='normal-return', at=at, ingress='web_submit')
+        runtime.turn_started(parent, runtime.mark_input('normal work', source), at=at)
+        runtime.request_started(parent)
+        runtime.request_observed(parent, usage, set())
+        assert noting.note_main_turn_finished(parent, at=at)
+        with db._read_ctx() as conn:
+            plan = store.plan_conn(conn, ref)
+        assert hb.load()._adaptive_mode == 'hot'
+        if offset < 1800:
+            assert plan['decision']['threshold_tokens'] is None
+    assert plan['status'] == 'pending', (plan['decision']['reason'], plan['decision']['diagnostics'].get('readiness'))
+    assert plan['decision']['threshold_tokens'] <= 330000
+    assert plan['decision']['due_at'] == db.noting_idle_state(ref)['due_at']
+    assert hb.load().created_at == original_anchor
 
 
 @pytest.mark.parametrize('incompatible', [False, True])

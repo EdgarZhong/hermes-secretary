@@ -14,6 +14,7 @@ from secretary.adaptive_cost import (Profile as Profile, heartbeat_profile,
                                      payback_scenarios, background_profile, post_maintenance_context, read_price)
 from secretary.adaptive_stage import hot_decision, inspect, reminder_offset
 from secretary.adaptive_stage_history import condition_paths
+from secretary.adaptive_cache import assess as assess_cache, standby_decision
 
 
 def _fallback(snapshot, reason):
@@ -53,6 +54,7 @@ def _settings(config):
     if any(result[key] > 1 for key in ('hot_cache_fraction', 'max_collision_probability',
                                      'minimum_savings_fraction')):
         return None
+    result['_heartbeat_cache_guard'] = True
     return result
 
 
@@ -464,7 +466,7 @@ def _candidates(snapshot, features, cfg, profile, curve, conservative=None):
         eligibility.append('stage_does_not_authorize_maintenance')
     features['risk_model'] = dict(source='same_empirical_paths_as_cost',
                                   independent_poisson_veto=False)
-    for mode in ('business', 'hot'):
+    for mode in ('hot',):
         baseline = _forecast(snapshot, features, cfg, mode, None, profile, curve)
         candidates.append({'mode': mode, 'delay': None, 'cost': baseline[0], 'terminal': baseline[1],
                            'collision': 0.0, 'wait': 0.0, 'threshold': None})
@@ -490,7 +492,7 @@ def _reminder_bridge(snapshot, features, cfg, profile, curve):
         features['reminder_bridge'] = dict(available=False, reason='no_currently_known_instant_in_window')
         return None
     options = []
-    for after in ('hot', 'business'):
+    for after in ('hot',):
         setting = dict(cfg, _heartbeat_switch=(due, _interval(after, cfg)))
         cost, terminal, _ = _forecast(snapshot, features, setting, 'hot', None, profile, curve)
         options.append(dict(mode='hot', delay=None, threshold=None, collision=0, wait=0,
@@ -548,12 +550,22 @@ def _sensitivity(snapshot, features, cfg, profile, curve, chosen, current_mode):
 
 def decide(snapshot: dict, history: list[dict], config: dict) -> dict:
     """Pure function. fallback means retain native settings, NOT suppress native Idle."""
+    if snapshot.get('heartbeat_status') not in ('active', 'policy_disabled'):
+        return _fallback(snapshot, 'manual_heartbeat_control')
+    cache = assess_cache(snapshot, history, config)
+    if cache['mode'] == 'standby':
+        return standby_decision(cache)
+    # Heartbeat continuity is decided from cache evidence, not from the
+    # predicted absence length or a small hot/business cost difference.
+    snapshot = dict(snapshot, heartbeat_mode='hot', current_mode_native=False,
+                    previous_heartbeat_mode=snapshot.get('heartbeat_mode'),
+                    heartbeat_next_due=cache.get('next_heartbeat_at'))
     cfg = _settings(config)
     if cfg is None or number(snapshot.get('now')) is None:
-        return _fallback(snapshot, 'invalid_or_missing_inputs')
+        return hot_decision('maintenance_pricing_or_inputs_unknown', dict(cache=cache))
     if number(snapshot.get('context_tokens')) is None:
         if snapshot.get('heartbeat_status') in ('active', 'policy_disabled'):
-            return hot_decision('insufficient_data_hot_observation', dict(readiness=dict(
+            return hot_decision('insufficient_data_hot_observation', dict(cache=cache, readiness=dict(
                 ready=False, missing=['current_context_tokens'])))
         return _fallback(snapshot, 'manual_heartbeat_control')
     features = build_features(snapshot, history, cfg)
@@ -562,7 +574,9 @@ def decide(snapshot: dict, history: list[dict], config: dict) -> dict:
     features['reminder_model'] = heartbeat_profile(features, cfg, source='reminder')
     observed_cache = features['warm_cache_fraction']
     if observed_cache is not None:
-        cfg['hot_cache_fraction'] = min(cfg['hot_cache_fraction'], observed_cache)
+        # Configuration supplies the cold-start estimate, not a ceiling on
+        # the existing same-contract, bounded lower-quantile observations.
+        cfg['hot_cache_fraction'] = observed_cache
     arrival = features['arrival']
     bootstrap_ready = features.get('bootstrap_readiness', {}).get('qualified') is True
     if snapshot.get('heartbeat_status') not in ('active', 'policy_disabled'):
@@ -579,7 +593,7 @@ def decide(snapshot: dict, history: list[dict], config: dict) -> dict:
     cfg['horizon_seconds'], features['comparison_support'] = _comparison_scope(features, cfg)
     stage, readiness, support = inspect(snapshot, features, data, cfg, profile)
     features.update(stage=stage, readiness=readiness, history_support=support)
-    base_diagnostics = dict(stage=stage, readiness=readiness, history_support=support,
+    base_diagnostics = dict(cache=cache, stage=stage, readiness=readiness, history_support=support,
                             planning=dict(duration_seconds=profile.planning_duration if profile else None,
                                           main_block_seconds=profile.duration if profile else None),
                             maintenance_model=profile.provenance if profile else 'unavailable',

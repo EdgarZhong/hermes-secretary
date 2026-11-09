@@ -98,7 +98,8 @@ def test_profile_default_never_substitutes_missing_model_or_conversation(configu
     write_config(db, config)
     assert settings.for_db(db, refs['long']) is None
     assert settings.for_db(db, session_id='normal') is not None
-    assert not runtime.user_arrived(db, 'long', event_id='not-opted')
+    assert runtime.user_arrived(db, 'long', event_id='enabled-but-unpriced')
+    assert settings.heartbeat_for_db(db, refs['long'])['_heartbeat_only']
     block['conversations'][refs['normal']]['enabled'] = False
     write_config(db, config)
     assert settings.for_db(db, refs['normal']) is None
@@ -133,7 +134,7 @@ def test_model_item_requires_explicit_billing_source_and_ttl(configured):
     assert settings.for_db(db, refs['normal']) is None
 
 
-def test_due_scan_is_per_conversation_and_paused_infinity_stays_native(configured):
+def test_due_scan_is_per_conversation_and_pause_wins_over_default_hot(configured):
     db, refs, _ = configured
     normal, long = (ConversationHeartbeatStore(db, sid) for sid in ('normal', 'long'))
     for hb in (normal, long):
@@ -148,10 +149,11 @@ def test_due_scan_is_per_conversation_and_paused_infinity_stays_native(configure
     config = settings.for_db(db, refs['long'])
     db._execute_write(lambda conn: store.adopt_mode_conn(conn, refs['long'], 'business', config))
     long.set_status('active')
-    assert long.load()._adaptive_infinite and long.claim(10000) is None
+    assert long.load()._adaptive_interval_seconds == 120
+    assert long.claim(10000) is not None
 
 
-def test_claim_keeps_contract_until_refund_even_after_exact_item_removed(configured):
+def test_changed_registration_invalidates_claim_but_exact_refund_preserves_anchor(configured):
     db, refs, config = configured
     ref = refs['normal']
     hb = ConversationHeartbeatStore(db, 'normal')
@@ -165,10 +167,11 @@ def test_claim_keeps_contract_until_refund_even_after_exact_item_removed(configu
     db._execute_write(lambda conn: store.adopt_mode_conn(conn, ref, 'business', current))
     del config['noting']['adaptive_idle_token_saving']['models']['openai-codex']['gpt-6.1-sol']
     write_config(db, config)
-    assert hb.claim_is_current(claim)
+    assert not hb.claim_is_current(claim, now=100)
     assert hb.load()._adaptive_interval_seconds == 60
     assert hb.refund(claim)
-    assert hb.load()._adaptive_interval_seconds == 600
+    assert hb.load()._adaptive_interval_seconds == 60
+    assert hb.load().created_at == 1 and hb.load().fire_count == 0
 
 
 def test_coverage_and_ingress_only_collect_explicit_conversations(configured):
@@ -444,7 +447,7 @@ def test_registered_kimi_uses_native_pin_compression_and_explicit_two_cadences(c
     assert settings.for_db(db, 'not-opted-in') is None
 
 
-def test_kimi_missing_data_can_adopt_hot_and_unregistered_switch_restores_native_anchor(configured):
+def test_kimi_unknown_cache_keeps_target_hot_without_borrowing_native_or_other_model_prices(configured):
     from secretary.adaptive_policy import decide
     db, refs, config = configured
     _kimi_registration(config)
@@ -464,11 +467,11 @@ def test_kimi_missing_data_can_adopt_hot_and_unregistered_switch_restores_native
     select(db, 'normal', 'unregistered', provider='kimi-coding')
     assert settings.for_db(db, refs['normal']) is None
     native = heartbeat.load()
-    assert native._adaptive_interval_seconds == 10800
+    assert native._adaptive_interval_seconds == 1740
     assert (native.created_at, native.last_fired_at, native.fire_count) == (1, 10, 7)
 
 
-@pytest.mark.parametrize('missing', ['hot_seconds', 'business_seconds', 'billing_source', 'cache_ttl_seconds'])
+@pytest.mark.parametrize('missing', ['hot_seconds', 'billing_source', 'cache_ttl_seconds'])
 def test_incomplete_kimi_registration_fails_closed(configured, missing):
     db, refs, config = configured
     item = _kimi_registration(config)
@@ -481,3 +484,18 @@ def test_incomplete_kimi_registration_fails_closed(configured, missing):
     select(db, 'normal', 'k3.1-pro', provider='kimi-coding')
     write_config(db, config)
     assert settings.for_db(db, refs['normal']) is None
+
+
+def test_v4_hot_only_registration_accepts_price_and_ignores_legacy_business_requirement(configured):
+    db, refs, raw = configured
+    item = raw['noting']['adaptive_idle_token_saving']['models']['openai-codex']['gpt-6.1-sol']
+    before = settings.for_db(db, refs['normal'])
+    assert 'business_interval_seconds' in before
+    del item['heartbeat']['business_seconds']
+    write_config(db, raw)
+    current = settings.for_db(db, refs['normal'])
+    assert current is not None and current['hot_interval_seconds'] == 60
+    assert current['business_interval_seconds'] is None and current['cache_ratio'] == before['cache_ratio']
+    hb = ConversationHeartbeatStore(db, 'normal')
+    hb.save(HeartbeatState('', 10800, created_at=1))
+    assert hb.load()._adaptive_interval_seconds == 60
