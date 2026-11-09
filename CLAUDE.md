@@ -22,6 +22,15 @@
 
 
 
+## 2026-11-09 · 故障全面复核与Web输入运行归属（新授权）
+
+用户要求先逐项复核本轮所有反馈是否有明确原因／是否解决，再解决Instant Reminder与Heartbeat触发Turn能否及时Steer、能否共用runtime的接线。最新明确硬约束：网页端仅当目标Conversation确由Gateway运行时，才允许因Session busy拒绝发送；Web运行实例内普通Turn、Instant Reminder、Heartbeat不得仅因running拒绝。按真实owner判定，不把触发来源／连接名字当运行归属。用户进一步明确这不仅是新消息发送，而是完整网页控制权：Instant Reminder、Heartbeat、Delegation返回、空闲自动压缩／整理及其它内部运行启动后，WebSocket仍应连接／绑定实际runtime，实时状态和对应Steer／停止／中断／取消等控制不能丢。此要求替代前轮“启动窗可拒绝保草稿／Reminder问题暂不改”的当前实施边界，历史报告保原时点，不倒写已验结果。
+
+当前先复核Thinking、断连／静默停顿、Send／Steer／Interrupt、折叠与双端诊断。核实后再实施runtime／输入接线；不以隐藏错误、4009盲重发、新建第二个writer或破坏已有输入身份／受理回执达标。原算法分支dirty与个人资料保持，不修改Gateway运行中的会话，不触发生产模型测试。用户已明确“给自己挂个目标”：旧故障复查并修复、完整控制权、最新自适应算法合main联合发布及线上生效验证纳入同一active goal。采用autonomous-run轮次，算法候选b232defac7（V4 R4）已在原分支提交，产品无dirty，未合main／发布；原文档dirty保持。维护期间Send已确认先接收等待，取消由用户另按Stop。用户明确分工：root本人先复查旧问题；internal_turn_runtime_design（gpt-6.1-sol/high、无上文、禁止再派生）仅研究内部触发完整控制权的runtime接线方案，先不实现。root负责覆盖、口径、亲审与最终判定。具体边界见06顶部最新用户约束。
+
+
+本轮索引：`.autonomous/20261109-web-control-reliability/snapshot-index.md`。root完成旧故障首轮复核，设计包已交回：内部来源大多已共享TUI Session／Agent，改造重点是既有owner生命周期、原子输入去向、查询回执及维护控制投影，不新建通用调度器或跨进程Gateway代理。将使用b232 V4接缝作为实现基线；算法核心不在控制权实现子Agent白名单。生产只读窗口14:14:49—15:31:30的86条诊断未见queue_overflow/send_timeout/send_error，仍有15:05:43一条1006且缺client_connection_id，无法归因客户端版本或网络；不宣布全部断连已治愈。当前没有ADB设备。
+
 ## 2026-11-09 · 连接可靠性与APK双端诊断（0.1.13已发布；等待自然使用日志）
 
 用户要求深入解决已调查的断连／Thinking重复／相关Steer故障，并在正式APK加入方便ADB导出的本地日志；后续自然使用后与服务器日志对照。范围与C1–C8合同见06顶部。后端隔离于`../hermes-secretary-connection-20261109`／`codex/connection-reliability-20261109`（基线main74a2d1de）；前端同名功能分支基于889c6e8，原算法分支dirty／资料与前端.DS_Store保留。不改变模型／Prompt／业务数据库或依赖锁。
@@ -32,9 +41,9 @@ root负责合同、接口、亲审集成、构建／发布准备和最终判定�
 
 后继分支`codex/steer-owner-ready-20261109`／`codex/steer-busy-20261109`由backend_connection_audit和frontend_connection_audit完成，connection_final_review独立修改API，不交叉；root亲审并核最终源SHA，独立steer_hotfix_review无阻断。BE4文件70项／FE7文件190项／API3文件48项有效证据及完整typecheck、相关ruff/health通过，不相加为独立覆盖。产品BEa4257ea／FEd7b242a已合main9270933／cd5d12f并push，14:14:58正式apply verified；14:15实际版本、两服务与微信、439静态／HTTP抽样、双ID／ping及两套三库收尾通过。最新APK `/Users/edgar/Downloads/Hermes-Secretary-0.1.13-d7b242a-arm64.apk`原签名／nondebuggable／16KB／439资源已核并交付，旧产物保留。自然移动网络／实机安装／ADB导出待用户后续使用，未知责任比例不推断。具体发布／回退见operations-log顶部；独立报告与收据在连接工作区ignored`.hermes-dev/steer-busy-20261109/{review.md,candidate.json,release/}`。
 
-**保留现场·整组折叠（用户要求暂缓）：** 用户明确当时所有整组折叠都消失，手动刷新后恢复；不是自行恢复，根因尚未确认，未因恢复而标修复。用户随后表示重要性较低、当前已恢复，要求先整理整体状态；本项停止扩展排查／不实施改动。发布包仍含原组件／样式，只读证据保留；后续若再现再结合当前Turn边界／页面状态定位。
+**整组折叠后继复核（纳入新目标）：** 用户先前曾暂缓；后继“全部复查修复”已纳入本轮。root已用真实FoldedTimeline复现：活动Turn边界未知时fallback=0被当作已知边界保留，后续checkpoint证实新边界也不能恢复历史组折叠；同状态remount恢复。机制与用户刷新后恢复现象相符，但无当次状态录制，不称唯一现场原因。证据在前端ignored `.archive/control-recheck-20261109/fold-probe.log`；尚未修复。
 
-**当前未关闭边界：** 新APK真实安装／自然移动数据与WiFi稳定性、ADB实机导出及双端责任占比尚未验；已有代码修复不等于所有断连／静默停顿均已唯一归因。普通活动Turn的Enter误路由已修，native owner刚启动尚未就绪时仍拒绝并保草稿，不新增自动排队。Reminder调度产品规则未改，按用户前序要求不在本次扩展。折叠问题按上述明确暂缓保留。
+**当前未关闭边界：** 新APK真实安装／自然移动数据与WiFi稳定性、ADB实机导出及双端责任占比尚未验；已有代码修复不等于所有断连／静默停顿均已唯一归因。0.1.13普通Enter误路由已修，但启动／维护及idle-read竞态拒绝输入不符合最新合同，须由本轮统一接线处理；Reminder排期语义不变。折叠机制已复现，纳入本轮。
 
 ## 2026-11-09 · V3算法实现、历史验收及上线闭环完成
 
