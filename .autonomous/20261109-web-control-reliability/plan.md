@@ -6,7 +6,7 @@
 
 优先完成纵向链：App输入→正式RPC原子受理→真实runtime/Pending/维护→流式／回执／控制结果。稳定operation、owner、commit fence先于展示。沿现有Session、原生lease、Pending和队列持久事实，不建新通用gate、writer、调度器或对话存储。旧默认接口保持，Web capability opt-in；首选既有prompt.submit增加input_policy=web_controlled，名称可在正式协议交接时沿现有类型风格收口。
 
-完成条件：U01–U12正式接线和针对性证据、root亲审、独立Verification再独立Validation通过；main实际服务／静态／APK版本及原签名一致；V4自然运行可核；范围内缺陷清空。无ADB真实手机的现场边界明确，不伪称完成运营商归因。
+完成条件：U01–U13正式接线和针对性证据、root亲审、独立Verification再独立Validation通过；main实际服务／静态／APK版本及原签名一致；V4自然运行可核；范围内缺陷清空。无ADB真实手机的现场边界明确，不伪称完成运营商归因。
 
 ## 2. 覆盖与任务表
 
@@ -20,7 +20,21 @@
 
 ## 3. 当前状态与编排
 
+**21:18当前执行事实：** B1正式Lock／D18包已由root亲审；D20排序包已接收，49传输／52身份回放／4stdio证据有效，root核hook、Tee、旧子类和健康端credit接线。root两行旧字符串queue兼容修正获3项绿；protocol另两失败在未改12e同源基线复现（`root-protocol-baseline-two.log`），不算本轮新回归。F1 R5（37源清单15bcb…）285项／type／health及真实网络lost-ACK链已交；root实IAB终态Stop通过，D24异步owner反例补验中。新joint lab使用当前B1＋D20及修正后的真实streaming返回探针，frontend_control_resume独占联调动作，补维护／API返回至terminal连续链；root不并发操纵。apk_release_prepare仅五版本文件及ignored构建证据，待最终源冻结后打0.1.14。尚未独立双门禁、main合并或发布；旧表的调查描述保留为发现时点，当前状态以本段和后续闭合证据为准。
+
 用户恢复目标后新增U13前置顺序：先完成连接／控制层真实连续Turn联调，取得Socket、seq、native身份、recovery_view及控制快照证据并修复该层已证缺陷，再亲审Timeline必要结构调整。B1准备真实WebServer/WS/nativeLoop＋受控外部Provider/barrier，F1先诊断Gateway→ControllerPageRecovery，root亲查生产只读元数据。已做R4折叠候选保留但不当作整体通过；静态历史、独立单Turn及JSDOM理想顺序不足以证明连续使用稳定。
+
+连接／控制前置检查按既有U条款展开，不是新增产品语义或独立门禁：
+
+| 观察边界 | 应证明的不变量 | 当前证据／缺口 |
+|---|---|---|
+| Socket→事件接收 | 同runtime/epoch事件覆盖有序；真断线与页面恢复区分；健康流式不主动误断 | 旧有界Fanout同源证据；root18:47线上40事件seq39123–39162连续；连续Turn隔离实测待补 |
+| 原生Turn→控制通知 | 同一真实生命周期的身份／开始／结束一致，不误开新轮，不让旧终态或清理覆盖下一轮 | 启动通知重复与running释放后的清理窗口正在正式同源探针验证，不静态定案 |
+| 控制RPC→原生owner | 正式Lock下启动／活动／维护／收尾均及时受理或精确拒绝；Stop／撤回只作用原目标，无复活输入 | D18红→绿待root整包审；D19正式Lock整改前的RLock证据不证明这条 |
+| REST窗口＋WS恢复cut | 活动期可在有限一致cut交接；普通局部变化不反复整页恢复，不等Turn结束才获得可用控制与实时输出 | root5次active＋8次idle正式读取完整；真正连续边界及客户端commit状态仍待实测 |
+| ACK／失败／重连 | 已受理输入可查且不自动重放；未知保持诚实，新显式用户动作有控制；旧owner回调不覆盖新状态 | 原B1/F1反例与窄修已交，正式Lock和真实网络联验后再接收 |
+
+前置已证缺陷闭合后，才扩Timeline渲染结构：同一消息单份显示、流式连续、旧折叠和用户选择稳定、正确spinner、稳定阅读锚点；用同一连续链验证，不用静态历史替代。
 
 | 目标 | 机制 | 正式接线 | 针对性证据 | 用户结果 |
 |---|---|---|---|---|
@@ -55,8 +69,17 @@
 | D17 | controlled提交事件/input_changed只查询phase unknown；RPC ACK迟迟不settle时，已收到精确受理见证仍submitting挡后续输入 | F1按同owner/op事件或input_state见证立即只读query并退役已接收事务；ACK一直pending仍可第二次输入，迟到ACK不改新草稿/重复执行 |
 | D18 | root亲审等待queue drain摘head后、generation复核前的Stop窗口：旧恢复分支可能把已Stop输入重新放回queue，再被poller执行 | B1优先真实barrier反例；明确Main Stop不得复活已claim输入，保其它原生generation变化恢复语义；红→绿与receipt／零后继Provider证据待交 |
 | D19 | B1真实网络harness准备发现候选重复获取history锁；测试live fixture为RLock，正式_init_session为Lock，掩盖idle claim／active通知／Stop cleanup死锁。root已亲读确认idle嵌套锁接缝 | B1发布阻断整改：保正式Lock，沿原owner拆已持锁段、通知移锁外、cleanup只持一次；受影响旧RLock证据不能证明正式链路，必须正式构造＋有界RPC反例重验。未上线，不能归因用户线上现场 |
+| D20 | 线上同源原生流＋真实Steer并发：_native_write已stamp/replay后，Fanout锁外serialize被超越；健康Peer收到5,6,8,7,9(source7)，replay仍有序完整，无断线也破坏live事件合同 | root亲审接收原报告／反例，stream_control_diagnosis续派正式排序修复，F1承接真实乱序trace核客户端影响；旧健康传输测试没有覆盖stamp→enqueue窗口，必须红→绿及真实WS/多端/慢端回归 |
+| D21 | root实际隐藏IAB New Chat Enter，controlled prompt.submit携client_submission_id被正式schema拒收，原mock未拦非法字段 | root已窄修prompt-submit新分支剔除旧字段，原operation_id/legacy submit_idle保持；真实IAB已Send/Steer/Interrupt/Stop走通，F1补正式契约回归与指纹 |
+| D22 | 同次真实IAB，Stop后后端running=false/native_active_turn=null/phase=idle，网页Receiving response及侧栏Running消失，但主按钮仍Stop | F1接续已取得无input_changed终态的红→绿，补实际IAB同页复验与状态owner审查；不能只改按钮标签 |
+| D23 | 20:42用户真实输入已durable受理，约127ms后WS1005关闭；20:44重连，截图仍unknown且离线点取消再报错；原生submission_status可证明accepted | F1接续核legacy/controlled原ID自动查询、离线cancel/check、同／新runtime重连事务与对应通知退休；不重发、不假撤销，关闭诱因仍未知 |
+| D24 | root亲审R5 inspectSubmission：refreshHistory前检查owner，但await后到草稿迁移／select未再检查；慢读期间用户切owner可能被旧检查导航回来 | F1定向实际Controller反例；若复现按原owner／generation覆盖异步边界，保原事务后台受理查询，不借屏蔽所有错误或禁止切页规避 |
 
 U13实现期诊断辅助`stream_control_diagnosis`已委派（gpt-6.1-sol/high、fork none、无派生），仅线上同源main12e工作区ignored探针；只读正式后端，调查OutputIdentity/消息持久与终态、连续内部Turn/recovery证明。不是独立Verification门禁，不改产品／根文档／生产，整包交回root。B1与F1仍为唯一对应实现owner。
+
+该诊断已整包交回并由root亲审：4个实际native stream/SQLite/正式Session普通Lock探针；D20为明确缺陷，last chunk/finish/EOF/SQLite提交窗口5次完整恢复、普通Steer→真实到期HB链6次完整恢复为有限负结果。公共通知双start已观察、真实到期HB只一次；旧tail重叠样本没有破坏新native owner，不将它们直接定因。原件在main工作区ignored `.hermes-dev/stream-control-diagnosis-20261109/`。
+
+root续派`stream_control_diagnosis`为D20实现owner（不是独立门禁）：集成worktree白名单`output_identity.py`、`transport.py`、`event_replay.py`及对应tests；追加`ws.py`仅WSTransport.write附近内部write_ordered接缝，和B1 ready字段有效隔离，不碰其它控制文件。沿已有Fanout/stdio输出锁、WS token锁统一prepare(编号/replay/inflight)＋serialize＋队列/任务准入；网络等待留锁外、announce/hosted hook留锁外，旧Transport兼容、不加无界queue/全局等待锁。新证据在ignored `.hermes-dev/stream-order-fix-20261109/`。不得改UID/epoch/coverage或靠FE丢帧掩盖；根亲审后与B1/F1整合。
 | E01 | 15:05:43未知1006缺client_connection_id；旧13:41刷新前停顿无现场时序 | 历史证据边界，不强归网络／代码；后续依双端日志归因 |
 | E02 | adb devices为空 | 不把包校验/IAB冒充真机，交付如实标安装／自然网络／实导限制 |
 

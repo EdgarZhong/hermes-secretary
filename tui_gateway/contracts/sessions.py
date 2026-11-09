@@ -14,6 +14,7 @@ from .common import (OpenModel, PendingApproval, ProfileParams, SessionLiveInfo,
                      Usage)
 from .connectors_operation import ConnectionRequestPayload
 from .registry import method
+from .web_read import CompactionCancelResult
 
 
 # ── shared live-session snapshot ──────────────────────────────────────────────────────────────
@@ -629,6 +630,9 @@ method("session.compress", params=SessionCompressParams, result=SessionCompressR
 
 
 class SessionInterruptParams(SessionParams):
+    input_policy: Literal["web_controlled"] | None = None
+    operation_id: str | None = None
+    turn_id: str | None = None
     expected_hosted_task_id: str | None = None  # only interrupt if this hosted task is the running one
 
 
@@ -637,10 +641,19 @@ class InterruptStatus(WireEnum):
     not_interrupted = "not_interrupted"
 
 
+class SessionInterruptTarget(Result):
+    kind: Literal["main", "maintenance", "none"]
+    turn_id: str | None = None
+    operation_id: str | None = None
+
+
 class SessionInterruptResult(Result):
     status: InterruptStatus
     interrupted: bool | None = None
     turn_isolation: bool | None = None
+    maintenance: "CompactionCancelResult | None" = None
+    target: SessionInterruptTarget | None = None
+    target_state: Literal["stop_requested", "not_active", "unknown"] | None = None
 
 
 method("session.interrupt", params=SessionInterruptParams, result=SessionInterruptResult,

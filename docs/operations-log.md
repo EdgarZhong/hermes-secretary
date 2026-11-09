@@ -1,5 +1,17 @@
 # 运维记录
 
+## 2026-11-09 · 20:42已受理输入／未知提交现场（只读取证）
+
+用户截图显示提交未知、Connecting，用户确认输入已发送且点击取消后另报错；两张可见截图为同一unknown提示，未获得第二错误原文。20:46读取正式诊断：20:42:39.513583旧WS关闭code1005，initiator unknown，无send_failures／dispatch_crashes／parse_errors；20:44:05.958164新连接建立，不能把此现场混同18点持续WS采样，也不能由1005断言网络或客户端根因。
+
+限定20:40–20:46只读持久元数据核实：20:42:39.386936已写入一条匹配截图草稿长度的真人输入，带稳定client_submission_id，随后同Conversation产生assistant/tool行。20:53:18正式`prompt.submission_status`以原提交身份返回accepted及同一row/UID，无重发、无模型测试、无Stop或业务写入。持久受理约早于close127ms；ACK具体未确认在哪一层仍未知，但服务端确有可查询见证。前端须恢复后自动按原ID对账并退休未知事务／对应提示，离线取消不得假撤销或制造二次连接错误。原始内容未输出，证据在连接工作区ignored `.hermes-dev/control-recheck-20261109/{live-incident-latest.json,submission-2042.json,submission-status-2042.json}`。线上仍9270933/cd5d12f/0.1.13，候选未发布。
+
+## 2026-11-09 · 流式期间恢复／渲染异常追加只读取证（未发布变更）
+
+用户报告发送后恢复提示或无提示停止实时更新，Turn结束才恢复，连续Steer／HB／Reminder时折叠、重复消息、spinner和滚动异常；后继明确先查连接／控制层。18:20正式只读日志显示17:55:38同一客户端WS持续发至18:20:04，未见该连接关闭、queue overflow或发送超时；服务自14:14:40运行、NRestarts0。线上仍main9270933／FEcd5d12f／APK0.1.13，无本轮部署或重启。
+
+18:47对已有活动runtime执行只读active_list、200条cards及coverage配对的activate recovery_view：5次完整成功，覆盖等待输出→Thinking流式；18:48–18:49另8次idle完整成功，未捕到终态紧邻下一Turn，不足以排除交界缺陷。仅本机回环读取，零模型消息／Stop／配置写入；token只存内存，产物只存事件身份／seq／状态／长度／耗时。root探针正常关闭单列，不算用户故障。证据在连接工作区ignored `.hermes-dev/control-recheck-20261109/{root-audit.md,live-incident-1849.json,live-recovery-probe-1.json,live-recovery-probe-2.json}`；早期采集双日志重复／分类误匹配已在root-audit说明，禁止用于归因。新控制候选与Timeline修复仍未发布，继续隔离真实联调。
+
 ## 2026-11-09 · Enter误走Send／Steer就绪通知与0.1.13已上线
 
 用户明确关闭Reminder、自己Send启动Turn后再按Enter仍报`Session busy`，撤回先前Reminder归因。正式后端Loop／SessionDB已证明message.start先于native Steer owner就绪；早期Pending.active=false只代表当前不可Steer，旧前端却误将Main判idle，后续Enter／按钮再走submit_idle而收到4009。实际App＋Composer＋Controller＋Gateway两入口同症状反例改前红、改后绿；没有用户当次RPC完整录制，不能冒称唯一现场归因。产品仅分开Main活动与Steer资格、native owner就绪后锁外发既有pending_changed；另补心跳失败立即退休旧连接、不等close回调和拒发RPC诊断。无4009盲重发／新排队，启动瞬间确无Steer身份仍明确拒绝并保草稿，ready后需新的显式操作。

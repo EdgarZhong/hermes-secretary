@@ -36,7 +36,10 @@ def _pending_enable_locked(sid, session):
     agent = session["agent"]
     if (_sessions.get(sid) is not session or session.get("_closing") or session.get("_finalized")):
         return None
-    agent._pending_steer_notify = lambda event, payload: _pending_publish(sid, event, payload)
+    if session.get("_web_control_enabled"):
+        _web_bind_pending(sid, session)
+    else:
+        agent._pending_steer_notify = lambda event, payload: _pending_publish(sid, event, payload)
     return enable_locked(agent)
 
 
@@ -202,14 +205,15 @@ def _pending_complete_settlement(session):
         notify(agent)
 
 
-def _pending_cancel_handoff(session, reason):
+def _pending_cancel_handoff(session, reason, *, notify_owner=True):
     from agent.pending_steer import buffer_for, notify
     agent = session.get("agent")
     owner = buffer_for(agent) if agent is not None else None
     if owner is not None:
         with agent._pending_steer_lock:
             owner.reject(reason, include_reserved=True)
-        notify(agent)
+        if notify_owner:
+            notify(agent)
 
 
 def _pending_dispatch_handoff(sid, session):
@@ -238,6 +242,9 @@ def _pending_dispatch_handoff(sid, session):
             _set_session_running(session, False)
             return True
         text = "\n".join(entry.text for entry in entries)
+        if any(entry.operation_id for entry in entries):
+            from secretary.adaptive_runtime import mark_input
+            text = mark_input(text, "user", "web-handoff:" + op["operation_id"])
         op.update(state="dispatching", _dispatch_claimed=True,
                   followup={"session_id": sid, "stored_session_id": str(getattr(agent, "session_id", "")
                                                                         or session.get("session_key") or ""),

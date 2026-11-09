@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 import pytest
 
-from hermes_state import SessionDB
+from hermes_state_registry import acquire, live_shared_session_dbs, release as release_db
 from run_agent import AIAgent
 from tests.agent.test_run_agent import _mock_response
 from tools.registry import registry
@@ -25,6 +25,7 @@ registry.register(name=TOOL, toolset="utility", schema={"name": TOOL, "descripti
 
 @pytest.fixture
 def live(monkeypatch, tmp_path):
+    prior_threads = set(threading.enumerate())
     network_attempts = []
     def forbidden_connect(sock, address):
         network_attempts.append(address)
@@ -38,7 +39,11 @@ def live(monkeypatch, tmp_path):
                                      "model:\n  default: test/model\n  base_url: http://invalid.local/v1\n  context_length: 256000\n")
     monkeypatch.setenv("HERMES_HOME", str(home))
     monkeypatch.setattr(server, "_hermes_home", home)
-    db = SessionDB(home / "state.db")
+    # Production holds the registry reference throughout the native runtime.
+    # RPC reads borrow it instead of reopening/scanning host fds on every call.
+    db = acquire(home / "state.db")
+    monkeypatch.setattr(server, "_db", db)  # host owns one ref; the supplied Agent borrows it
+    monkeypatch.setattr(server, "_db_error", None)
     schema = {"type": "function", "function": {"name": TOOL, "description": "probe",
               "parameters": {"type": "object", "properties": {}}}}
     with (patch("model_tools.get_tool_definitions", return_value=[schema]),
@@ -55,10 +60,11 @@ def live(monkeypatch, tmp_path):
     agent.save_trajectories = False
     agent.tool_delay = 0
     session = {"agent": agent, "session_key": "stored", "source": "tui", "profile_home": str(home),
-               "history": [], "history_lock": threading.RLock(), "history_version": 0, "running": False,
+               "history": [], "history_lock": threading.Lock(), "history_version": 0, "running": False,
                "attached_images": [], "image_counter": 0, "cols": 80, "slash_worker": None,
                "show_reasoning": False, "tool_progress_mode": "all", "inflight_turn": None,
                "transport": None, "created_at": 1, "close_on_disconnect": False}
+    assert type(session["history_lock"]) is type(threading.Lock())
     monkeypatch.setattr(server, "_sessions", {"runtime": session})
     frames = []
     monkeypatch.setattr(server, "_emit", lambda kind, sid, payload=None: frames.append((kind, sid, payload)))
@@ -85,7 +91,27 @@ def live(monkeypatch, tmp_path):
     if thread:
         thread.join(5)
         assert not thread.is_alive()
-    db.close()
+    # First-submit Git enrichment can outlive a rejected storage operation.
+    # Join only this fixture's real worker before asserting registry retirement.
+    for worker in threading.enumerate():
+        if worker not in prior_threads and worker.name == "git-meta":
+            worker.join(5)
+            assert not worker.is_alive()
+    assert agent._owns_session_db is False  # supplied reference belongs to this fixture
+    if server._sessions.get("runtime") is session:
+        server._close_session_by_id("runtime", end_reason="test_cleanup")
+    else:
+        server._teardown_session(session, end_reason="test_cleanup")
+    # The real post-turn GoalManager owns its own cached registry reference.
+    # Retire only this test Profile's cache entry before releasing the host ref.
+    from hermes_cli import goals
+    with goals._DB_BOOTSTRAP_LOCK:
+        cached = goals._DB_CACHE.pop(str(home), None)
+    if cached is not None:
+        assert cached is db
+        assert release_db(cached)
+    assert release_db(db)
+    assert db not in live_shared_session_dbs()
     assert network_attempts == []
 
 
@@ -94,7 +120,7 @@ def rpc(name, **params):
                                   "params": {"session_id": "runtime", **params}})
 
 
-def begin(live, monkeypatch, *, tools=False, on_first=None, activate=True, pause_second=False):
+def begin(live, monkeypatch, *, tools=False, on_first=None, activate=True, pause_second=False, provider_wait=5):
     entered, release, completed = threading.Event(), threading.Event(), threading.Event()
     calls = []
     live.releases.append(release)
@@ -105,7 +131,7 @@ def begin(live, monkeypatch, *, tools=False, on_first=None, activate=True, pause
         calls.append(kwargs)
         if len(calls) == 1:
             entered.set()
-            assert release.wait(5)
+            assert release.wait(provider_wait)
             if on_first:
                 on_first()
             if tools:
@@ -491,7 +517,9 @@ def test_unused_new_path_global_off_keeps_native_string_and_old_return(live, mon
 
 
 def test_rpc_capacity_retries_do_not_mutate_occurrence_inventory(live, monkeypatch):
-    gate = begin(live, monkeypatch)
+    # Keep the external provider paused throughout all 256 real RPC admissions;
+    # this is a scheduling barrier, not a model timeout or a latency assertion.
+    gate = begin(live, monkeypatch, provider_wait=30)
     ids = [submit(gate.turn, str(index), "same")["pending_id"] for index in range(256)]
     before = rpc("session.steer_pending_snapshot")["result"]
     assert len(set(ids)) == 256

@@ -103,13 +103,20 @@ async def test_gateway_enabled_branch_never_claims_or_calls_adapter(cold):
     async def warm(*args):
         pass
     runner._warm_goals_session_db = warm
-    runner._delivery_adapter_for = lambda source: pytest.fail("Messaging ingress must not run")
+    from unittest.mock import Mock
+    handler = Mock(side_effect=AssertionError("Messaging ingress must not run"))
+    adapter = SimpleNamespace(_message_handler=handler, handle_message=handler)
+    runner._delivery_adapter_for = lambda source: adapter
+    runner._claim_active_session_slot = Mock(side_effect=AssertionError("Gateway must not claim the UI heartbeat"))
     token = set_hermes_home_override(cold.homes[1])
     try:
         await runner._heartbeat_poll_watch({"route": (SimpleNamespace(), "stored")}, "route", SimpleNamespace(), "stored")
     finally:
         reset_hermes_home_override(token)
     assert state(cold.dbs[1]).fire_count == 0
+    handler.assert_not_called()
+    runner._claim_active_session_slot.assert_not_called()
+    assert not cold.calls
 
 
 @pytest.mark.parametrize("failure", ["refused", "raised"])

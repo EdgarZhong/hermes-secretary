@@ -59,14 +59,26 @@ class PartialCapture:
         self._reader = None
         self.adopted = False
         self._text, self._reasoning, self._refusal = [], [], []
+        self.observer = None
+        self.reset_observer = None
 
     def register(self, reader):
         with self._lock:
             self._reader = reader
             self._text, self._reasoning, self._refusal = [], [], []
+        self.reset_display()
+
+    def reset_display(self):
+        if callable(self.reset_observer):
+            try:
+                self.reset_observer()
+            except Exception:
+                logger.debug('Partial summary display reset unavailable', exc_info=True)
 
     def observe(self, event):
         kind, delta = field(event, 'type', ''), field(event, 'delta')
+        if kind in {'response.created', 'message_start'}:
+            self.reset_display()
         with self._lock:
             if kind in {'response.output_text.delta', 'response.refusal.delta', 'response.reasoning_summary_text.delta'}:
                 target = self._refusal if 'refusal' in kind else self._reasoning if 'reasoning' in kind else self._text
@@ -77,6 +89,15 @@ class PartialCapture:
                     value = field(delta, key)
                     if isinstance(value, str):
                         target.append(value)
+        text = delta if kind == 'response.output_text.delta' else field(delta, 'text', '') if kind == 'content_block_delta' else ''
+        self.observe_text(text)
+
+    def observe_text(self, text):
+        if text and callable(self.observer):
+            try:
+                self.observer(text)
+            except Exception:
+                logger.debug('Partial summary display observation unavailable', exc_info=True)
 
     def freeze(self):
         with self._lock:
@@ -114,6 +135,12 @@ def observe_stream_event(event):
     capture = _CAPTURE.get()
     if capture is not None:
         capture.observe(event)
+
+
+def observe_chat_stream_text(text):
+    capture = _CAPTURE.get()
+    if capture is not None:
+        capture.observe_text(text)
 
 
 def response_after_timeout(exc):

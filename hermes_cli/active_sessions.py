@@ -742,6 +742,34 @@ def active_session_registry_snapshot(
     return entries
 
 
+def observe_native_turn_owner(agent) -> None:
+    """Attach exact native lease identity to an already held host slot, observer only."""
+    db = getattr(agent, "_session_db", None)
+    holder = getattr(agent, "_active_session_turn_lease_holder", None)
+    session_id = getattr(agent, "session_id", None)
+    if db is None or not holder or not session_id:
+        return
+    home = Path(db.db_path).resolve().parent
+    state_path, lock_path = _lease_paths(registry_home=home)
+    gateway_key = getattr(agent, "_gateway_session_key", None)
+    with _FileLock(lock_path):
+        entries = _read_entries(state_path, strict=True)
+        for entry in entries:
+            metadata = entry.get("metadata") or {}
+            host = metadata.get("runtime_host_kind")
+            if entry.get("pid") != os.getpid():
+                continue
+            matches = (host == "gateway" and gateway_key and metadata.get("live_session_id") == gateway_key
+                       or host == "ui" and metadata.get("native_session_id") == session_id)
+            if matches:
+                metadata.update(native_session_id=session_id, native_turn_holder=holder,
+                                native_db_path=str(Path(db.db_path).resolve()))
+                entry["metadata"] = metadata
+                entry["updated_at"] = time.time()
+                _write_entries(state_path, entries)
+                return
+
+
 @contextmanager
 def active_session_liveness_guard(
     session_id: str, *, registry_home: str | Path | None = None,

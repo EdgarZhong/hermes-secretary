@@ -24,6 +24,7 @@ from . import (  # noqa: F401
     tools_commands,
     tools_mcp_plugins,
     usage_read,
+    web_control,
     web_read,
 )
 from .base import JsonValue, Params, Payload, Result, WireEnum

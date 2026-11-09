@@ -125,34 +125,39 @@ class WSTransport:
             return False
 
     def write(self, obj: dict) -> bool:
-        if self._closed:
-            return False
-        line = serialize_frame(obj, self._peer, _log)
+        return self.write_ordered(obj)
+
+    def write_ordered(self, obj: dict, prepare=None) -> bool:
+        """Commit seq/projection and token/batch admission under the existing token owner.
+
+        Preparation only records replay/inflight metadata; all socket waiting stays outside.
+        """
         on_loop = self._on_loop()
         # Streamed token: buffer it and arm the flush timer; the worker returns immediately.
         # call_soon_threadsafe is safe from a worker or the loop.
-        params = obj.get("params") if isinstance(obj, dict) else None
-        if isinstance(params, dict) and params.get("type") in _STREAMING_EVENT_TYPES:
-            with self._token_lock:
+        with self._token_lock:
+            if prepare is not None:
+                prepare()
+            # A closed peer still records the native event for recovery through prepare.
+            if self._closed:
+                return False
+            line = serialize_frame(obj, self._peer, _log)
+            params = obj.get("params") if isinstance(obj, dict) else None
+            if isinstance(params, dict) and params.get("type") in _STREAMING_EVENT_TYPES:
                 self._pending_tokens.append(line)
                 if not self._token_flush_armed:
                     self._token_flush_armed = True
                     self._loop.call_soon_threadsafe(self._arm_token_flush)
-            return not self._closed
-        # Non-streaming frame: append behind any buffered tokens and flush the whole batch NOW so it
-        # can never overtake them. The send is scheduled INSIDE the lock so wire order matches buffer
-        # order even if the coalesce timer fires on the loop at the same moment.
-        from agent.async_utils import safe_schedule_threadsafe
-        with self._token_lock:
+                return not self._closed
+            # Non-streaming frames flush the buffered prefix in the same admission order.
+            # Schedule inside the lock so the timer cannot overtake this batch.
             self._pending_tokens.append(line)
             batch, self._pending_tokens = self._pending_tokens, []
-            if on_loop:
-                self._loop.create_task(self._safe_send_many(batch))
-                return True
-            fut = safe_schedule_threadsafe(self._safe_send_many(batch), self._loop)
+            fut = self._schedule_send_many(batch)
             if fut is None:
-                self._closed = True
                 return False
+            if on_loop:
+                return True
         try:
             fut.result(timeout=_WS_WRITE_TIMEOUT_S)
             return not self._closed
@@ -170,6 +175,18 @@ class WSTransport:
         if not self._closed:
             self._token_flush_handle = self._loop.call_later(_TOKEN_COALESCE_S, self._flush_tokens)
 
+    def _schedule_send_many(self, lines, **kwargs):
+        """Called under the token lock: one FIFO callback path for workers and loop callers.
+
+        Creating a task directly on the loop could overtake a worker callback that has been
+        admitted but has not yet created its task. No network IO or waiting happens here.
+        """
+        from agent.async_utils import safe_schedule_threadsafe
+        future = safe_schedule_threadsafe(self._safe_send_many(lines, **kwargs), self._loop)
+        if future is None:
+            self._closed = True
+        return future
+
     def _flush_tokens(self) -> None:
         """Timer callback (loop thread): send buffered tokens as one batch, scheduled under the lock so
         wire order is fixed relative to a concurrent ``write``."""
@@ -178,7 +195,7 @@ class WSTransport:
             self._token_flush_armed = False
             batch, self._pending_tokens = self._pending_tokens, []
             if batch and not self._closed:
-                self._loop.create_task(self._safe_send_many(batch))
+                self._schedule_send_many(batch)
 
     @property
     def closed(self) -> bool:
@@ -192,7 +209,9 @@ class WSTransport:
         with self._token_lock:
             batch, self._pending_tokens = self._pending_tokens, []
             batch.append(serialize_frame(obj, self._peer, _log))
-        await self._safe_send_many(batch)
+            future = self._schedule_send_many(batch)
+        if future is not None:
+            await asyncio.wrap_future(future)
         return not self._closed
 
     async def write_lines_async(self, lines: list[str], *, queued_at: float, is_current=None) -> bool:
@@ -201,17 +220,24 @@ class WSTransport:
             return False
         with self._token_lock:
             prefix, self._pending_tokens = self._pending_tokens, []
+            # The first batch shares direct writes' FIFO scheduling boundary, including
+            # an old direct write already stamped when its session became a fanout.
+            first = prefix or lines[:16]
+            future = (self._schedule_send_many(first, queued_at=None if prefix else queued_at,
+                                              is_current=None if prefix else is_current) if first else None)
         # Other direct-session owners have already admitted this prefix. Flush
         # it atomically under one lock tenure, with no fanout membership fence:
         # releasing midway lets their later non-token write overtake its tail.
-        if prefix:
-            await self._safe_send_many(prefix)
-            if self._closed:
-                return False
+        if future is not None:
+            await asyncio.wrap_future(future)
+        if self._closed:
+            return False
+        if not prefix and first:
+            await asyncio.sleep(0)
         # The fanout owner has only one in-flight batch per session/peer. Slice
         # its lock tenure so unrelated RPC/heartbeat replies get a fair turn,
         # without another worker↔loop handoff or reordering that session's events.
-        for offset in range(0, len(lines), 16):
+        for offset in range(0 if prefix else 16, len(lines), 16):
             await self._safe_send_many(lines[offset:offset + 16], queued_at=queued_at, is_current=is_current)
             if self._closed:
                 return False
@@ -417,6 +443,7 @@ async def handle_ws(ws: Any, *, auth_identity: dict | None = None, subprotocol: 
                 "skin": skin_payload, "change_events": True, "heartbeat": True, "replay_epoch": replay_epoch(),
                 "connection_id": transport.diagnostics.connection_id,
                 "client_connection_id": transport.diagnostics.client_connection_id,
+                "web_controlled_input": 1,
             }},
         })
         if ready_ok:

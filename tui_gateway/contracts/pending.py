@@ -55,6 +55,7 @@ class PendingOccurrence(Result):
     order: int
     state: Literal["pending", "handoff_reserved"]
     withdrawable: bool
+    operation_id: str | None = None
 
 
 class PendingReceipt(Result):
@@ -62,6 +63,7 @@ class PendingReceipt(Result):
     state: Literal["consumed", "withdrawn", "rejected"]
     message_uid: str | None
     reason: str | None
+    operation_id: str | None = None
 
 
 class SteerPendingSnapshotResult(Result):

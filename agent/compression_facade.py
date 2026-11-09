@@ -28,10 +28,10 @@ class _CommitFenceRegistration:
 
     __slots__ = ("fence", "observation")
 
-    def __init__(self, fence) -> None:
+    def __init__(self, fence, operation_id=None) -> None:
         self.fence = fence
         from agent.compression_read import CompressionObservation
-        self.observation = CompressionObservation()
+        self.observation = CompressionObservation(operation_id)
         fence._secretary_joint_registration = self
 
 
@@ -171,6 +171,8 @@ def _run_under_progress_timeout(
         # it on the slot hard_interrupt() reads, but only while this attempt still owns the
         # top registration. A later attempt's live fence must not be clobbered.
         retry_fence = CompressionCommitFence()
+        retry_fence.partial.observer = lambda text: registration.observation.append(agent, text) if registration.fence is retry_fence else None
+        retry_fence.partial.reset_observer = lambda: registration.observation.reset_partial(agent) if registration.fence is retry_fence else None
         retry_fence._secretary_joint_registration = registration
         if native_request is not None:
             native_request.bind_fence(retry_fence)
@@ -286,13 +288,17 @@ class CompressionFacadeMixin:
         if native_request is not None:
             native_request.bind_fence(active_fence)
         fence_registration_lock = vars(self).setdefault("_compression_commit_fence_lock", threading.RLock())
-        registration = _CommitFenceRegistration(active_fence)
+        registration = _CommitFenceRegistration(active_fence, native_request.publication_id if native_request is not None else None)
+        active_fence.partial.observer = lambda text: registration.observation.append(self, text) if registration.fence is active_fence else None
+        active_fence.partial.reset_observer = lambda: registration.observation.reset_partial(self) if registration.fence is active_fence else None
         observation_failed = True
         try:
             with fence_registration_lock:
                 fence_stack = vars(self).setdefault("_compression_commit_fence_stack", [])
                 fence_stack.append(registration)
                 self._active_compression_commit_fence = active_fence
+            from agent.compression_read import notify_compression
+            notify_compression(self, payload={"operation_id": registration.observation.operation_id})
             from secretary.adaptive_runtime import maintenance
             maintenance(self, registration, trigger=trigger)
 
@@ -351,6 +357,8 @@ class CompressionFacadeMixin:
                     vars(self).pop("_active_compression_commit_fence", None)
             from secretary.adaptive_runtime import maintenance
             maintenance(self, registration, finished=True)
+            from agent.compression_read import notify_compression
+            notify_compression(self, payload={"operation_id": registration.observation.operation_id})
             from secretary.noting_native_link import finish_native_joint
             finish_native_joint(self, registration)
             # Restore whatever the caller had, so a compaction never leaks its tag into the surrounding scope.

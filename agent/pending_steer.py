@@ -210,10 +210,12 @@ class PendingSteerBuffer:
         for entry in epoch.entries.values():
             if entry.state in {"pending", "claimed", "reserved"}:
                 pending.append({"pending_id": entry.pending_id, "text": entry.text, "order": entry.order,
-                                "state": wire_state(entry), "withdrawable": entry.state != "reserved"})
+                                "state": wire_state(entry), "withdrawable": entry.state != "reserved",
+                                **({"operation_id": entry.operation_id} if entry.operation_id is not None else {})})
             else:
                 receipts.append({"pending_id": entry.pending_id, "state": entry.state,
-                                 "message_uid": entry.message_uid, "reason": entry.reason})
+                                 "message_uid": entry.message_uid, "reason": entry.reason,
+                                 **({"operation_id": entry.operation_id} if entry.operation_id is not None else {})})
         return {"turn_id": epoch.turn_id, "active": epoch.active, "pending": pending,
                 "receipts": receipts, "operation": public_operation(self.handoff)}
 

@@ -322,6 +322,18 @@ def test_second_unrelated_large_event_cannot_accumulate_behind_slow_peer():
         text = "x" * (5 * 1024 * 1024)
         assert fan.write(event(0, text=text))
         await drained(fan, [healthy], 1)
+        # FakeWS.frames.append happens before wait_for(send_text) completes. A second
+        # unrelated large event is eligible only once the first actual send has
+        # completed and its in-flight credit has returned; the slow peer still owns it.
+        async with asyncio.timeout(5):
+            while True:
+                with fan._lock:
+                    healthy_pending = next(p.pending_frames for p in fan._peers if p.transport is peers[0])
+                    slow_pending = next(p.pending_frames for p in fan._peers if p.transport is peers[1])
+                if not healthy_pending:
+                    break
+                await asyncio.sleep(0)
+        assert slow_pending == 1
         assert fan.write(event(2, text=text))
         await drained(fan, [healthy], 2)
         await asyncio.sleep(.01)
