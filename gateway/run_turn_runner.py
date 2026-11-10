@@ -1640,7 +1640,10 @@ class TurnRunner:
         # user turn. Restricted to resume_pending sessions so caption-less image turns are untouched.
         if isinstance(ctx.message, str) and not ctx.message.strip() and resume_pending:
             ctx.message = build_resume_recovery_note(resume_reason, "", interactive=self._resume_note_interactive())
-        return persist_override, ctx.persist_user_timestamp
+        # Recovery guidance changes the model copy only. The ingress may already
+        # have separated clean text from a channel/voice envelope; keep that value.
+        clean = ctx.persist_user_message if ctx.persist_user_message is not None else persist_override
+        return clean, ctx.persist_user_timestamp
 
     def _native_image_run_message(self):
         """Wrap the user turn as an OpenAI-style multimodal content list when

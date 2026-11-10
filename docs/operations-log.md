@@ -1,5 +1,15 @@
 # 运维记录
 
+## 2026-11-10 · Web控制／流式修复及V4联合发布（10:41）
+
+正式main `7d6f619973619198a7f914811585016a46f11f31`已从main发布，Web/Gateway实际版本一致、active，微信connected；前端构建`655ecf56fb3ff082d5a84db810388c32d420f9b0`，UI main `9097f19`。439静态资源与APK内置一致，HTTP JS/CSS/font逐SHA通过；三Profile各30保护表、配置/绑定/原Dashboard保持。发布未向用户会话发送模型测试。stage014保留与stage013两套完整三库，清退更旧9文件265412608字节，运行库inode及当前同步ZIP保持。
+
+0.1.14/1014原签名APK已放`/Users/edgar/Downloads/Hermes-Secretary-0.1.14-655ecf5-arm64.apk`，32181021字节，SHA256 `833db90fb1bdb330193ff65cf52f375475e96f3db4235c49dff19a6e98303449`；393源码前后不变，签名/非debug/arm64/ZIP和ELF16KiB通过。固定React未捕获渲染类别接入既有脱敏滚动日志，ADB设备数0，未冒真机/自然移动网络已验。
+
+root亲审全部修复，最后原生消息身份交错在旧79ccd静态真实IAB造成duplicate-id白屏/0WS断开；655ecf5同页6个受控模型请求覆盖交错、Steer、Heartbeat Stop、Instant Reminder Steer和强制4107后恢复，timeOrigin不变/消息唯一/console错误0/旧展开保持。历史测试总数不混算；各包与实际证据在连接工作区ignored `.hermes-dev/web-control-reliability-20261109/`和UI `.archive/web-control-reliability-20261109/`。用户明确未授权完整自主实现流程而仍要求认真审查，后续采用必要review/定向验证/实际反例复验，不再追加整轮门禁；旧FAIL保原版本。
+
+V4 b232的27核心逐SHA保持，线上配置启用/有价格合同、当前warm/hot/effective1740秒；10:43第一次只读探针发布后新事件0，不冒称已观察新模型派发。旧20:42关闭发起方仍未知，不据1005/1006编造网络责任比例。后继用户报告Gateway XML显示差异已单独复现并修复候选，尚待补丁发布，不把本次发布当作该后继项已关闭。
+
 ## 2026-11-09 · 20:42已受理输入／未知提交现场（只读取证）
 
 用户截图显示提交未知、Connecting，用户确认输入已发送且点击取消后另报错；两张可见截图为同一unknown提示，未获得第二错误原文。20:46读取正式诊断：20:42:39.513583旧WS关闭code1005，initiator unknown，无send_failures／dispatch_crashes／parse_errors；20:44:05.958164新连接建立，不能把此现场混同18点持续WS采样，也不能由1005断言网络或客户端根因。

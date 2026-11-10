@@ -13,6 +13,7 @@ prefixes and the Discord triggering note; only in-context rendering is gated by
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any, Optional, Tuple
 
 logger = logging.getLogger(__name__)
@@ -20,6 +21,37 @@ logger = logging.getLogger(__name__)
 # Messaging channels whose model-facing body gets an explicit XML source envelope.
 # Extend this mapping for another gateway platform; Web UI never passes through here.
 _INBOUND_ORIGIN_LABELS = {"weixin": "微信"}
+
+
+def project_inbound_origin_for_display(message: dict) -> dict:
+    """Read-only compatibility for recovery rows that persisted the model envelope.
+
+    Require the native ingress/Turn witness and the same complete envelope in the
+    recovery sidecar. Authored/nested XML, examples and unproved rows stay intact.
+    The stored row and exact model replay bytes are never changed.
+    """
+    metadata = message.get("display_metadata")
+    if (message.get("role") != "user" or message.get("_compressed_summary")
+            or "display_content" in message or not isinstance(metadata, dict)
+            or not metadata.get("gateway_input_owner")):
+        return message
+    source = metadata.get("turn_source")
+    if not isinstance(source, dict) or not message.get("message_uid") or source.get("message_uid") != message["message_uid"]:
+        return message
+    content, api = message.get("content"), message.get("api_content")
+    if not isinstance(content, str) or not isinstance(api, str):
+        return message
+    match = re.fullmatch(
+        r'(?P<prefix>\s*(?:<timestamp>[^<]*</timestamp>\s*)?)'
+        r'(?P<carrier><gateway-message from="(?P<label>[^"\r\n]+)">\n'
+        r'(?P<body>[\s\S]*)\n</gateway-message>)(?P<suffix>\s*)', content)
+    if (not match or match["label"] not in _INBOUND_ORIGIN_LABELS.values()
+            or content.count("<gateway-message") != 1 or api.count("<gateway-message") != 1):
+        return message
+    at = api.find(match["carrier"])
+    if at < 0 or "[System note:" not in api[:at]:
+        return message
+    return {**message, "display_content": match["prefix"] + match["body"] + match["suffix"]}
 
 
 def wrap_inbound_origin(event: Any, text: str) -> str:
