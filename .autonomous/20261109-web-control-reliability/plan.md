@@ -1,5 +1,7 @@
 # 实施计划 · 20261109-web-control-reliability
 
+**2026-11-10收尾：** 本轮已审查、复验、合main并上线，当前交付及现场边界见[交付记录](final-delivery.md)。下文保留前序实施计划和缺陷发现时点；其中“待修／待发布／待门禁”不是当前未完成清单。用户已明确取消完整自主流程前置，后续采用必要review、定向验证和实际反例复验，旧报告不倒写。
+
 ## 1. 目标与依据
 
 依据snapshot-index.md与baseline.txt（12e2b45）；产品起点BE main b4ed135、FE cd5d12f，集成V4候选b232后BE为2e91189。先复核旧故障，再沿同一原生运行实例实现完整Web控制，最后main联合发布／确认V4实际生效。root已完成旧故障首轮复核，尚未解决项不冒称完成。
@@ -15,8 +17,8 @@
 | B1 后端完整控制 | U02–U08/U10；白板K1–K8、N0–N4、P1–P5、D6/D8；07顶部21–39、87–128，§3约680–715、§6 1641–1771、§8.1 1826–1845、§8.13–8.15 1999–2091；02身份、3.11–3.12、5.4–5.11，04原生边界／cache，08全篇，06最新合同 | backend_control；tui_gateway既有Session/owner、prompt、Pending、recovery、通知／scheduler_host、interrupt、web_read及contracts和对应siblings；agent/pending_steer、turn_context、compression_read/partial/observation及registration接缝；必要active_sessions元数据与gateway/run_busy claim接缝；对应tests。禁止改算法公式、Prompt、锁仲裁、原生schema、部署或核心文档 | 已集成V4；交F1原子受理能力、control快照、可查询输入receipt、maintenance快照／delta。先交可实际接线的协议和状态转换表作为一次完整里程碑，之后整包交回。维护Stop按本轮E01仅取消维护、保留已受理输入 | 真RPC＋nativeLoop＋SQLite，受控外部Provider；覆盖启动／冷建／结束／idle竞态／各内部来源／维护提交取消／Force／双窗口／tip／跨Profile／重启／ACK丢／真正Gateway及旧wechat误判。V4冷HB零API时已受理真人不丢、不改source绕guard；真人观察一次、无假blocked_send，原claim退款和Reminder ACK保持 |
 | F1 前端故障与控制 | U01–U09/U12；06顶部、C1–C8、11/8折叠及恢复／局部更新／维护合同；07相关维护／Force／Heartbeat | frontend_control；独立FE src/api、src/core/controller及siblings、timeline-folding、ChatComposer与压缩展示、相关测试和正式生成协议；必要既有Android诊断白名单兼容，不改Gradle／依赖／版本／签名／根文档 | 先修折叠并审seq覆盖，后按B1正式协议接实际Controller/App；不以mock-only代替接线，不busy后自动retry | 同页未知→已证边界恢复旧组，active展开／用户展开保持；各phase Enter/button/Stop、查询回执、ACK未知／owner切换、维护部分摘要恢复；正常事件零整页恢复。seq必须核真实作用域，不能把合法全局跳号误判缺口；C2 Unknown/typed回归。UI仅自建隐藏IAB |
 | A1 V4整合 | U10；算法V4 C01–C23、D1–D4与保留V3合同 | root；merge／文档／微小跨包接线，算法公式不委派控制权子Agent | b232已合入2e91189，27模块与原验收SHA一致；控制输入与adaptive接缝待联验 | 复用32文件556机制和独立23场景同版证据；补控制输入×冷HBguard／当前配置／首读许可／维护提交取消。线上只读核配置和自然request/decision，不制造生产模型测试 |
-| V/Va 两独立门禁 | U01–U12全部适用条款 | 各全新无上文独立Agent，产品只读，分别report与ignored证据 | 集成收敛及root亲审后，先Verification，阻断清零再Validation | 按冻结原文先建矩阵；实际产品入口与隔离数据；同版证据复用，必要反证真实运行 |
-| R 联合发布 | U08/U10–U12 | root；main合并、0.1.14版本、构建／部署与运维记录 | 门禁通过，稳定源码，原签名，服务安全空闲 | 原生main发布器、实际资源清单manifest/HTTP、APK签名/ZIP/ELF/资源、双端ID；保最近两套三库；无ADB实机不冒称实导，脚本和格式仍交付 |
+| V/Va 前序安排（后被用户明确取消） | U01–U12全部适用条款 | 各全新无上文独立Agent，产品只读，分别report与ignored证据 | 集成收敛及root亲审后，先Verification，阻断清零再Validation | 按冻结原文先建矩阵；实际产品入口与隔离数据；同版证据复用，必要反证真实运行 |
+| R 联合发布 | U08/U10–U12 | root；main合并、0.1.14版本、构建／部署与运维记录 | 必要review及实际复验通过，稳定源码，原签名，服务安全空闲 | 原生main发布器、实际资源清单manifest/HTTP、APK签名/ZIP/ELF/资源、双端ID；保最近两套三库；无ADB实机不冒称实导，脚本和格式仍交付 |
 
 ## 3. 当前状态与编排
 

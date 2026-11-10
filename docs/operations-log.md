@@ -1,5 +1,17 @@
 # 运维记录
 
+## 2026-11-10 · Gateway XML恢复路径修复及本轮收尾（11:24）
+
+用户确认同页昨晚微信正文干净、今早显示`<gateway-message from="微信">`。只读对照原行18091/18156证明后者content已带XML且api_content含原生pending-tool中断恢复提示；TurnRunner恢复分支覆盖入口干净persist override为模型副本。修复产品`34892dab69`保入口正文优先，并在Web/Socket共享历史投影为具备原生身份、同一恢复载体及完整非嵌套包裹的旧行提供display_content；不改原文、模型副本及普通XML。原两恢复反例失败、新版通过；57针对性+101读取回归（22 Windows限定跳过）、ruff/health及隔离真实页面通过。root亲审后合main。
+
+11:24:27+08发布verified，云main `72d5d1e8909cd3eaca6309e590a38879799b7912`、clean，Web/Gateway实际同版active、微信connected。前端仍655ecf5、APK仍0.1.14；发布执行器重新安装字节相同439静态文件，不能将backend_only=false收据写成物理未写静态。11:28追加核正式HTTP JS/CSS/font SHA、三Profile各30保护表、配置/绑定/旧Dashboard保持；正式消息API两条均无显示XML，18091显示70字符、18156显示52字符，content/api_content SHA与发布前一致。校验不输出用户正文或token。Linux回环WS两端编号/版本及accepted、ready、health、closed对应，三ping1.311/0.516/0.390ms，零业务RPC/模型测试；非手机自然网络证明。
+
+V4自然运行已核：10:41首发后11:07:23自然Heartbeat派发、11:07:32正常结束并记录hot/short_departure_hot_observation，输入177506/缓存读177152/输出34，计数255→256，原始interval10800不变、有效1740秒。11:28只读检查配置/计价/route仍有效，缓存warm；没有修改生产配置、制造模型请求或伪造采纳。计划disabled意为本轮没有提前维护，非算法关闭。算法27核心与b232保持；不扩大为已证明所有情景节省或必然缓存命中。
+
+11:29已验证仅保本次`stage-20261110-gateway-wrapper-014`及首发`stage-20261109-web-control-014`两套完整三库，精确清退旧stage013九文件266309632字节，运行库inode和当前同步ZIP保持。正式收据位于`~/.local/state/hermes-secretary/release-20261028/stage-20261110-gateway-wrapper-014/`；本地连接工作区ignored `.hermes-dev/web-control-reliability-20261109/gateway-wrapper-regression/`保存原反例、正式API投影、实际页面和release收据。回退沿main反向代码及原子静态交换，不回盖业务库。
+
+本轮所有已复现产品阻断已修复并发布；用户明确取消完整自主流程前置，保留认真review和必要实测，旧FAIL仅对应旧候选。交付APK在Downloads，实际安装/自然网络/ADB导出因设备0未验；历史1005关闭发起方与网络责任比例仍未知，不能以本轮回归通过冒充归因。此后文档收尾提交不部署、不使生产Git与运行源码漂移。
+
 ## 2026-11-10 · Web控制／流式修复及V4联合发布（10:41）
 
 正式main `7d6f619973619198a7f914811585016a46f11f31`已从main发布，Web/Gateway实际版本一致、active，微信connected；前端构建`655ecf56fb3ff082d5a84db810388c32d420f9b0`，UI main `9097f19`。439静态资源与APK内置一致，HTTP JS/CSS/font逐SHA通过；三Profile各30保护表、配置/绑定/原Dashboard保持。发布未向用户会话发送模型测试。stage014保留与stage013两套完整三库，清退更旧9文件265412608字节，运行库inode及当前同步ZIP保持。

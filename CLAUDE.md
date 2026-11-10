@@ -2,9 +2,9 @@
 
 ## 自主口径收敛 · 待用户追认
 
-- **Agent自主收敛／待追认：受理输入的进程重启边界。** 用户要求持续Web控制、不能busy拒收和不能丢意图；沿现有原生持久queued witness保留接收事实，不新增重放器。重启后未消费RAM队列／Pending不自动执行，查询须明确interrupted或真实unknown并能恢复原文本／附件，由用户显式决定再次发送；不能把未知已执行冒称未执行。理由：保持原生重启语义及写操作不盲重放，防重复外部动作；B1/F1正在实现和验证，尚未交付。
+- **Agent自主收敛／待追认：受理输入的进程重启边界。** 用户要求持续Web控制、不能busy拒收和不能丢意图；沿现有原生持久queued witness保留接收事实，不新增重放器。重启后未消费RAM队列／Pending不自动执行，查询须明确interrupted或真实unknown并能恢复原文本／附件，由用户显式决定再次发送；不能把未知已执行冒称未执行。理由：保持原生重启语义及写操作不盲重放，防重复外部动作；B1/F1已实现、验证并随0.1.14发布；重启后不盲重放的边界保留，待用户追认。
 
-- **Agent自主收敛／待追认：连接诊断保留与导出。** 本轮用户已授权APK可ADB导出及双端归因；按8MiB（4×2MiB）滚动、正常健康60秒摘要、固定仅shell/root可读ContentProvider导出ZIP收敛。不收正文／凭据，不扩远程调试或通用私有文件访问；参数可回退，已实现并通过独立整包复核，已随0.1.12首包及0.1.13补丁发布；无ADB真机，导出实测待连接设备。
+- **Agent自主收敛／待追认：连接诊断保留与导出。** 本轮用户已授权APK可ADB导出及双端归因；按8MiB（4×2MiB）滚动、正常健康60秒摘要、固定仅shell/root可读ContentProvider导出ZIP收敛。不收正文／凭据，不扩远程调试或通用私有文件访问；参数可回退，已实现并通过独立整包复核，已随0.1.12首包、0.1.13及0.1.14补丁发布；0.1.14另记录固定React渲染故障类别。无ADB真机，导出实测待连接设备。
 
 - **Agent自主收敛／待追认：V3数值方法初始选择。** 用户已授权本地开工、要求长历史近期加权；先以24h共同费用窗口、6h与共同末点对照，指数近期权重初始7天时间尺度、3／14天敏感性，按活动／空档段条件采样避免唯17维黑箱。均为可审工程参数，不是用户亲定或维护成本先验；原体验门槛保持。已在原算法分支完成并于11/9从main上线；结果按冻结真实情景验证，不为PASS事后改窗。
 
@@ -24,51 +24,25 @@
 
 
 
-## 2026-11-09 · 故障全面复核与Web输入运行归属（新授权）
+## 2026-11-09 · 故障全面复核与Web输入运行归属（已发布）
 
-**11/10后继Gateway XML显示回归：** 用户明确是`<gateway-message from="微信">`，同页昨晚干净/今早露出。只读对照证明今早持久content已含XML、api_content有原生pending-tool中断恢复提示；昨晚仅api_content含XML。TurnRunner恢复分支把既有干净persist override覆盖为模型副本是明确根因。当前候选保入口干净正文优先；Web/Socket两历史读口对具备Gateway/Turn身份、同一API恢复载体、完整非嵌套包裹的旧行提供display_content，不改数据库原文/API副本，不泛剥普通XML/例子。57项针对性、101项读口回归通过（22项Windows限定跳过），原版本两恢复反例失败/新版本通过；ruff/health通过。现场两原行只读应用新投影后均无显示XML且源hash不变。已审代码，隔离实际页面已确认正文可见/XML不显示/console错误0；待后端补丁发布，不启动完整自主流程。
+**当前结果（2026-11-10）：** 连接／控制／流式渲染修复、最新b232自适应V4及Gateway XML后继修复均已合main并发布。云main实际`72d5d1e8909cd3eaca6309e590a38879799b7912`，Web／Gateway同版active、微信connected；前端构建`655ecf56fb3ff082d5a84db810388c32d420f9b0`（UI main `9097f19`）。0.1.14/1014原签名APK已放Downloads，SHA256 `833db90fb1bdb330193ff65cf52f375475e96f3db4235c49dff19a6e98303449`。发布及回退、两套备份、全部证据入口统一见[运维记录](docs/operations-log.md)。后续仅文档提交不改变实际部署版本。
 
+**已确认产品口径与完成项：** 仅目标Conversation确由独立Gateway运行时允许占用拒写，Web仍跟随逐条持久消息及外部Turn结束；普通Turn、Heartbeat、Instant Reminder、Delegation返回及其它内部运行复用实际runtime和完整控制入口。空闲维护Send先接收等待，Stop只取消维护并继续已收输入；Main Stop沿父Turn语义清理未消费输入。按真实owner、稳定operation及持久回执处理，不按历史微信来源拒绝，不添加第二writer或通用控制代理。原维护Stop口径E01已由用户明确确认，不是待追认。
 
-**当前阶段：D38与渲染诊断已完成主会话代码审查，FE655ecf56fb3ff082d5a84db810388c32d420f9b0已提交，最终候选构建及原真实页面反例复验均已通过，准备main联合发布。** D38把legacy/typed邻接假设改为同一投影owner内的精确贡献认领，保稳定render ID、真实边界和有界见证；root亲读六产品及正式接线、测试调整，419项有效相关回归/type/health及原真实assistant-ui红→绿证据已核，未用测试替代源码审查。原79ccd实际IAB白屏反例保留；655ecf5实际同页完成合法usage交错、手动/Steer接续、Heartbeat Stop、独立Instant Reminder Enter Steer及强制4107后恢复。timeOrigin1794277226742.8保持、节点唯一/console错误0，6次本地受控Provider请求，4次显式prompt/1次Stop，无自动写重放；旧手动展开与终态阅读锚点保持，第一长阅读样本超过原20秒active恢复窗口不作永久锚点证据。证据ignored root-d38-ui/fixed-verification.json。诊断五产品已亲审：React未捕获异常仅记录固定枚举及观察时当前连接，无当前attempt不借退休连接；原错误仍报告一次，root六浏览器案例通过。源指纹25条路径无漂移，当前原签名APK0.1.14/1014已由root构建，393源无漂移/439资源一致，APK SHA833db90f…3449。
+连接层统一编号／有序发送和退休／重试owner；观察者异常、未知关闭码不再截断意外关闭后的恢复。正常局部更新与完整页面恢复分离，恢复以有限一致快照交接，不等Turn结束、不自动重放写操作。已受理而ACK未知按原ID自动对账，不误称发送失败或假撤销。具体旧关闭发起方缺现场证据仍保未知。
 
-**用户2026-11-10明确纠正执行方式：没有授权启动完整自主实现流程，仍要求认真审查。** 任务继续，不再以新一轮完整Verification/Validation、模板或全套门禁作为发布前置；保留已有审查/反例与测试，按当前改动认真review、必要定向验证、原现场复验后合main发布。此前自行扩大为完整autonomous-run流程的安排已撤销，旧报告仅保历史事实，不改写旧FAIL。源码审查已完成不等于发布或实际页面复验完成；生产仍9270933/cd5/0.1.13。
+表现层已修复custody早显导致双份输入及错误fold前沿、过期读取遗留replay hold、Thinking终态顺序和旧组展开丢失。D38最后实际反例是legacy/typed之间合法状态事件打断旧邻接配对，产生重复render ID并触发assistant-ui白屏，Socket并未关闭；现在同投影owner精确认领贡献、保持稳定身份。无按正文猜重复或整页刷新兜底。最后root实际同页六个受控模型请求覆盖交错、手动/Steer、Heartbeat Stop、独立Reminder Enter Steer和4107后恢复；document不变、消息唯一、console错误0、旧手动展开及终态阅读锚点保持。长阅读首样本超过原20秒active自动跟随窗口，不冒永久锚点证据。
 
-原生SessionLiveInfo新增可选model_switch_pending/context_model/context_provider，后两项与既有Context计算身份同源，cold不冒物理运行模型。前端区分源事实矛盾、合法pending目标不同和明确未知：合法过渡保退休/unknown并结算成功，无伪Retry，不把旧占用灌入新选择；完整已知匹配才恢复数值。三字段真实变化沿原局部配置失效，省略不当false。真实DTO补齐后发现的持续Retry及同名跨Provider反例均保原件；不把630中间绿回填为当时真实pending已过。
+**Gateway XML后继回归已关闭：** 同页昨晚干净／今早露出的原因是TurnRunner中断恢复覆盖了入口的干净persist正文，转而保存模型XML副本。新写入保入口正文；Web/Socket读口为有原生来源与同一API恢复载体证明的旧行提供干净display_content，不改数据库原文/API副本或普通用户XML。原版本两恢复反例红、新版绿；57项针对性及101项读取回归通过（22项Windows限定跳过），ruff/health零阻断；隔离真实页面通过。11:28线上正式接口核昨晚18091／今早18156两行均无显示XML，原content/api_content SHA与发布前一致。新后端发布完成，不把10:41首发误写成已含该修复。
 
-root已亲读FE六产品/五测试差异、正式生命周期/失败处理及分类；14完整文件643通过、零跳过/排除，类型/冻结health通过，382源逐SHA核对。BE五产品/三测试/两官方生成件已亲审，相关53项及最后两个完整文件37项按影响复用，原全局emitter inventory旧orphan单独排除/披露；未冒全仓全绿。脱敏异常保真实traceback，unknown Provider不伪精确身份，无新增健康豁免。证据为FE ignored d35-d36/report.md与manifest（5dbc148a…6957），BE ignored deferred-model-context/report.md与manifest（af80bbc6…c5fe）。V4固定75e的106条98符合/4违规/4后继缺证及全部研讨原判定保留；D34已被该次复核关闭，本次实现接收不代替新独立门禁。0d6旧APK构建已完成，现归档后按79ccd重建；旧候选均不可发。
+**审查与验证：** root已亲读各实现包及正式上下游/失败路径/测试修改；最后D38有效419项、渲染诊断62项及native Schema/Provider各自证据、相关type/health通过，不混算重复执行。实际浏览器复验和原红保留于ignored `root-d38-ui`，诊断六真实浏览器案例保原异常仅报告一次且不改变Socket。正式Linux回环WS三次ping及accepted/ready/health/closed两端ID、版本一致；不能当手机外网验收。393构建源前后无漂移，439静态/APK资源一致、原签名/非debug/arm64/16KiB通过。
 
-root实际隐藏IAB已在最终0d6静态＋新BE322源验证：活动Main选择待应用lab/summary，真实info selected新/Context旧且无Retry；强制4107关闭后同document自动恢复，timeOrigin三次均1794260887428.4，草稿保留，Enter Steer受理，后继真实新模型Turn完成、旧组保持折叠，最后Context 5%/无Receiving。两次provider均为本地受控模型；两client_connection_id、一次故障关闭、两个明确prompt和一次config写，无自动写重放。初始只读4010及11次被fixture拦截的外部元数据尝试如实记录；不冒自然网络/独立Validation/无错误全绿。证据ignored root-d35-d36-ui/verification.json，启动46源/实际新bundle已绑定；不证明尚未修的slash4001。
+**V4已在线生效：** 原算法最新b232的27核心模块逐SHA一致，已合main；正式配置启用且计价合同可读。11:07自然Heartbeat计数255→256，request_start→request→turn_end→decision完整；177506输入/177152缓存读/34输出，实际决策hot、short_departure_hot_observation，缓存warm/effective1740秒。既有配置/Heartbeat原生起点不变，未为验收人工触发生产模型。该记录证明接线和自然采纳，不证明未来必然命中缓存或所有情景更省；原算法反例/条件性限制保持。
 
-D32/D33的3产品/5测试已亲审，12完整536项零失败/跳过/排除，类型/冻结health通过；旧13红逐项按当前合同修正合法夹具，真gap保留。root真实隐藏IAB附件Enter/Stop/Interrupt零上传、原Pending-only后继、草稿/旧展开保持；Orb预取和43帧双向曲线通过，产品SHA稳定。FE ignored d32-d33/report.md及BE ignored root-d32-d33-ui为证据，不把旧失败报告改成通过。
+**剩余现场边界：** 当前ADB设备0，0.1.14实际安装、自然WiFi/5G连续使用及ADB导出待用户后续连接设备；APK已含8MiB滚动/双端编号/网络生命周期/固定渲染异常诊断和正式导出脚本。旧20:42输入受理早于1005约127ms已证，但关闭发起方未知；不能给出网络／代码百分比，也不宣称每次历史卡住都同一原因。无已知尚未修复的本轮可复现产品阻断。
 
-D31已完成后端成功发布点锁外通知、39正式测试、真实完整App/WS/native链；root追加真正隐藏IAB：首读unavailable后仅释放exact元数据，source/rows保持即可自动gateway，新条目结束前逐条显示，外部结束后Web Enter/Stop可用，旧手动展开保持。actor exit0，证据ignored `root-d31-ui/verification.json`；不是独立Validation或自然移动网络验收。此前八Turn连续链与D29原现场复验有效，按影响复用。
-
-79ccd的0.1.14/1014构建完成但被D38阻断；旧0d6/75e/71340be/edbdd/9f包同样不可发布。生产PM只读入口已核，Alex Noting/Adaptive及1目标开启；V4尚未上线，自然运行事实待发布后核。当前线上仍9270933/cd5/0.1.13；main合并、联合发布与最终双门禁均未完成。
-
-**前序9f候选冻结记录（后被D29反例阻断）：** BE `93c3b6d0bd0b91c110760c15f8063aec2d3b9a22`、FE `9f525d33a328740490337f065c225f2462b576d9`已提交推送。B1/D20/D25/D28/U15后端与F1 R7已由root亲审正式接线；最终47项FE源指纹零漂移。F1真实连续控制链包含自然维护提交后waiting续跑，103次DOM提交保旧fold；Gateway两起点逐条持久跟随、外部结束折叠及释放后真实Web Send/Stop通过；纯idle HB/Reminder另有原cd5红／候选绿。12文件354项通过，4项旧夹具失败单独保留并核实性质，不能以基线失败自动豁免。IAB实际界面与独立双门禁尚未完成，不称整轮验收通过。
-
-**前序9f阶段编排（已由上文接续）：** frontend_finish补交四项旧失败的逐项适用性说明；gateway_display_backend整包已接收并提交。apk_finish已获最终FE提交，开始0.1.14/1014原证书APK与静态包构建。全新无上文verification_final按冻结U01–U15/E01原文先建立判据，再核正式接线与证据；通过后另派独立Validation。root补最终隐藏IAB、统一质量检查、main合并和授权发布。算法远端分支已只读核实仍为b232defac7，27模块已合入候选且未改公式。线上仍9270933/cd5/0.1.13，本轮未部署；目标工具仍paused、当前按用户继续指令执行，未冒称目标工具已active。
-
-**归因边界：** D20线上同源编号／入队逆序、D28同步展示观察者截断重连调度均有正式反例；D25是候选早写custody错误进入显示，不能解释旧版所有折叠现场。20:42已证输入持久受理后约127ms出现1005，原ID可查accepted；具体客户端关闭入口仍缺自然记录，不归网络。unknown现在沿原ID自动确认／退休，当前控制不会被Cancel Send遮住。Gateway只限制确实由它占用的写控制，页面仍按同一有限恢复快照跟随持久条目；不新增控制broker或第二writer。完整证据入口：FE `.archive/web-control-reliability-20261109/frontend-report.md` R7、`verification.r7.json`；BE `.hermes-dev/web-control-reliability-20261109/gateway-display/report.md`及本轮plan。以下按时间保留既往调查过程，不代表当前未完成清单。
-
-**21:31实际入口继续发现：** BE阶段快照330bb14e48已推送、未上线。root自建隐藏IAB独立59874/75后端＋59876前端，无reload，完成last delta→真正streaming API返回→durable/terminal→idle、第二Turn Enter Steer→native followup→Stop。普通边界Assistant单份、旧fold保留、Stop最终disabled Send；但Steer的受理custody row被当普通You提前画入history，与Pending两份且挤动当前输出（D25），BE正式DISPLAY_VISIBLE_SQL／recovery.turn_start已证收错对象，stream_order_resume接正式投影修复。F1联合维护／重连链又抓到新Turn三个DOM提交旧fold全部消失（D26），授权限定Timeline/恢复接缝修复并与D25协调；D24切owner三个红例已转绿。未以这些局部通过交付整体稳定，APK等待最终源，双门禁尚未启动。
-
-**21:18联合收口：** 目标控件已恢复active。D20正式transport编号／准入排序包已交，root亲审可选能力兼容、双锁队列和锁外hook；当前真实联调进程已重启载入B1＋D20，F1补真实streaming API返回／terminal及维护控制链。R5已交285项、TypeScript与health通过；root隐藏IAB复验终态Stop退役、旧折叠保留。root另发现未知提交检查在慢history读取后缺owner复核，交F1定向反例／窄修（D24），未扩大Timeline重构。root修旧Stop字符串queue兼容，3项通过；额外两项protocol失败已在生产同源12e基线复现，保原证据不迁就fixture。0.1.14构建准备并行，等待最终源码后正式打包；仍未上线／未进入独立双门禁。
-
-**20:46后接续：** 后台目标曾因平台usageLimited中断，用户明确要求恢复，root当前会话已重新执行；原子Agent已不在活动树，改由frontend_control_resume与stream_order_resume沿既有未提交候选收口，不重做／覆盖旧包。B1正式Lock/D18已交67项与真实WS普通/Heartbeat控制证据；维护及联合版本网络复验仍需收尾。root实际隐藏IAB抓到controlled请求误携legacy字段（已窄修）及后端idle后主Stop仍滞留（F1整改）。用户20:42截图另经生产只读核实：20:42:39.387输入持久受理、约127ms后1005关闭、20:44:05重连；20:53原生status查询仍明确accepted。仅受理确认链已证，具体关闭诱因未知；不重放原输入。候选尚未上线。
-
-**恢复执行与最新优先级：** 用户短暂暂停后已恢复active，明确继续复现／排查／修复，先解耦检查连接＋控制层，再决定Timeline必要重构。正常连续Turn／Steer／紧邻HB与Reminder是验收主链，不能以静态历史或孤立Turn通过交付。18:20生产只读窗口发现17:55:38同WS持续发送至18:20:04，没有该连接关闭／溢出／发送超时；用户对提示文字回忆不确定，故只把该窗口与“页面恢复／表现停滞”分开，不断言全部现场无断连。B1恢复D18与真实联调harness，F1先交连接控制诊断，再扩渲染实现；新候选仍未上线。
-
-**连接层已证新缺陷D20：** 线上同源正式native流＋Steer并发可在编号与Fanout入队间逆序，接收5/6/8/7/9而replay仍完整；root亲读原件接收，安排stream_control_diagnosis沿既有transport锁统一有序提交，F1承接真实trace核客户端影响。B1新候选另有D19正式Lock重入死锁，旧RLock fixture掩盖，正在正式构造下修复重验；该项尚未上线，不能解释用户原现场。两个实现包白名单已隔离，先闭合连接／控制再扩表现层；未进入独立双门禁。
-
-**最新现场反证：** 用户再次确认活动Turn中“所有的折叠都消失掉了”，怀疑Steer接续／新Turn交接，但不排除其它入口。线上仍0.1.13，候选未发布；F1追加真实Controller→App交接反例，不能仅以fallback不再永久保留或刷新恢复关闭缺陷。B1整包已交，root亲审正式接线中，并补真实前后端隔离联验准备；尚未进入独立双门禁。
-
-用户要求先逐项复核本轮所有反馈是否有明确原因／是否解决，再解决Instant Reminder与Heartbeat触发Turn能否及时Steer、能否共用runtime的接线。最新明确硬约束：网页端仅当目标Conversation确由Gateway运行时，才允许因Session busy拒绝发送；Web运行实例内普通Turn、Instant Reminder、Heartbeat不得仅因running拒绝。按真实owner判定，不把触发来源／连接名字当运行归属。用户进一步明确这不仅是新消息发送，而是完整网页控制权：Instant Reminder、Heartbeat、Delegation返回、空闲自动压缩／整理及其它内部运行启动后，WebSocket仍应连接／绑定实际runtime，实时状态和对应Steer／停止／中断／取消等控制不能丢。此要求替代前轮“启动窗可拒绝保草稿／Reminder问题暂不改”的当前实施边界，历史报告保原时点，不倒写已验结果。
-
-root已完成Thinking、断连／静默停顿、Send／Steer／Interrupt、折叠与双端诊断首轮复核，开始runtime／输入接线；不以隐藏错误、4009盲重发、新建第二个writer或破坏已有输入身份／受理回执达标。原算法分支dirty与个人资料保持，不修改Gateway运行中的会话，不触发生产模型测试。用户已明确“给自己挂个目标”：旧故障复查并修复、完整控制权、最新自适应算法合main联合发布及线上生效验证纳入同一active goal。采用autonomous-run轮次，算法候选b232defac7（V4 R4）已纳入隔离集成分支2e91189，27模块指纹与原验收一致，尚未合main／发布；原文档dirty保持。维护期间Send已确认先接收等待，取消由用户另按Stop。用户指定的internal_turn_runtime_design设计包已交回；backend_control负责后端完整接线、frontend_control负责折叠与实际App接线，均gpt-6.1-sol/high、无上文、不再派生、禁止流水账。root负责覆盖、协议协调、亲审与最终判定，计划快照25baafb。维护Stop只取消维护、继续处理已接收消息，现已由用户异步答复明确确认（E01），不再待追认。具体边界见06顶部及本轮plan。
-
-
-本轮索引：`.autonomous/20261109-web-control-reliability/snapshot-index.md`。root完成旧故障首轮复核，设计包已交回：内部来源大多已共享TUI Session／Agent，改造重点是既有owner生命周期、原子输入去向、查询回执及维护控制投影，不新建通用调度器或跨进程Gateway代理。将使用b232 V4接缝作为实现基线；算法核心不在控制权实现子Agent白名单。生产只读窗口14:14:49—15:31:30的86条诊断未见queue_overflow/send_timeout/send_error，仍有15:05:43一条1006且缺client_connection_id，无法归因客户端版本或网络；不宣布全部断连已治愈。当前没有ADB设备。
+**执行方式：** 用户11/10明确未授权完整自主实现流程、仍要求认真审查。已停止新增整轮Verification/Validation和模板轮转；按认真review、必要定向验证、实际反例复验、授权发布核对完成。旧V6对79ccd的FAIL及旧阶段证据不改写；后继655修复与发布事实分别记录。原算法工作区dirty、个人资料及前端五个.DS_Store保留。各子Agent实现已交回并由root接收；不再等待旧阶段门禁。前序详细编排/发现时点保存在Git `72d5d1e8:CLAUDE.md`及本轮plan，当前状态以本节及[交付记录](.autonomous/20261109-web-control-reliability/final-delivery.md)为准。
 
 ## 2026-11-09 · 连接可靠性与APK双端诊断（0.1.13已发布；等待自然使用日志）
 
