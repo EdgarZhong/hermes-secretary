@@ -2959,6 +2959,42 @@
       }
     },
     {
+      "name": "prompt.operation_status",
+      "summary": "Query an opt-in input's persisted receipt without replaying the write.",
+      "params": [
+        {
+          "name": "params",
+          "schema": {
+            "$ref": "#/components/schemas/InputOperationParams"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/InputOperationResult"
+        }
+      }
+    },
+    {
+      "name": "prompt.operation_withdraw",
+      "summary": "Withdraw the exact waiting input, or delegate to its native Pending owner.",
+      "params": [
+        {
+          "name": "params",
+          "schema": {
+            "$ref": "#/components/schemas/InputOperationParams"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/InputWithdrawResult"
+        }
+      }
+    },
+    {
       "name": "prompt.submission_status",
       "summary": "Read the exact persisted idle submission receipt. Unknown never authorizes resubmission.",
       "params": [
@@ -3639,6 +3675,24 @@
         "name": "result",
         "schema": {
           "$ref": "#/components/schemas/SessionHistoryResult"
+        }
+      }
+    },
+    {
+      "name": "session.input_state",
+      "summary": "Read this runtime's authoritative input phase and waiting native queue.",
+      "params": [
+        {
+          "name": "params",
+          "schema": {
+            "$ref": "#/components/schemas/SessionParams"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/InputStateResult"
         }
       }
     },
@@ -8865,6 +8919,83 @@
         "title": "CompactionCancelResult",
         "type": "object"
       },
+      "CompactionChangedPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "operation_id": {
+            "title": "Operation Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "operation_id"
+        ],
+        "title": "CompactionChangedPayload",
+        "type": "object"
+      },
+      "CompactionDeltaPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "operation_id": {
+            "title": "Operation Id",
+            "type": "string"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "start_offset": {
+            "title": "Start Offset",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "operation_id",
+          "revision",
+          "start_offset",
+          "text"
+        ],
+        "title": "CompactionDeltaPayload",
+        "type": "object"
+      },
+      "CompactionPartial": {
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "start_offset": {
+            "title": "Start Offset",
+            "type": "integer"
+          },
+          "end_offset": {
+            "title": "End Offset",
+            "type": "integer"
+          },
+          "truncated": {
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "text",
+          "revision",
+          "start_offset",
+          "end_offset",
+          "truncated"
+        ],
+        "title": "CompactionPartial",
+        "type": "object"
+      },
       "CompactionStateParams": {
         "additionalProperties": false,
         "properties": {
@@ -8884,6 +9015,18 @@
             ],
             "default": null,
             "title": "Profile"
+          },
+          "operation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Operation Id"
           }
         },
         "required": [
@@ -8939,6 +9082,17 @@
             ],
             "title": "State",
             "type": "string"
+          },
+          "partial": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CompactionPartial"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
           }
         },
         "required": [
@@ -15591,6 +15745,18 @@
             ],
             "default": null,
             "title": "Client Connection Id"
+          },
+          "web_controlled_input": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Web Controlled Input"
           }
         },
         "required": [
@@ -17828,6 +17994,25 @@
         "title": "InflightTurn",
         "type": "object"
       },
+      "InputChangedPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "operation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Operation Id"
+          }
+        },
+        "title": "InputChangedPayload",
+        "type": "object"
+      },
       "InputDetectDropParams": {
         "additionalProperties": false,
         "properties": {
@@ -17975,6 +18160,267 @@
           "matched"
         ],
         "title": "InputDetectDropResult",
+        "type": "object"
+      },
+      "InputOperationParams": {
+        "additionalProperties": false,
+        "properties": {
+          "session_id": {
+            "title": "Session Id",
+            "type": "string"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Profile"
+          },
+          "operation_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Operation Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "operation_id"
+        ],
+        "title": "InputOperationParams",
+        "type": "object"
+      },
+      "InputOperationResult": {
+        "additionalProperties": false,
+        "properties": {
+          "receipt": {
+            "$ref": "#/components/schemas/InputReceipt"
+          },
+          "input": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReceivedInput"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "receipt"
+        ],
+        "title": "InputOperationResult",
+        "type": "object"
+      },
+      "InputReceipt": {
+        "additionalProperties": false,
+        "properties": {
+          "operation_id": {
+            "title": "Operation Id",
+            "type": "string"
+          },
+          "accepted": {
+            "title": "Accepted",
+            "type": "boolean"
+          },
+          "state": {
+            "enum": [
+              "submitted",
+              "waiting",
+              "pending",
+              "consumed",
+              "withdrawn",
+              "cancelled",
+              "failed",
+              "interrupted",
+              "unknown"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "destination": {
+            "anyOf": [
+              {
+                "enum": [
+                  "turn",
+                  "steer",
+                  "startup",
+                  "followup",
+                  "maintenance"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Destination"
+          },
+          "turn_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Turn Id"
+          },
+          "pending_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Pending Id"
+          },
+          "message_uid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Message Uid"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "operation_id",
+          "accepted",
+          "state"
+        ],
+        "title": "InputReceipt",
+        "type": "object"
+      },
+      "InputStateResult": {
+        "additionalProperties": false,
+        "properties": {
+          "phase": {
+            "enum": [
+              "idle",
+              "starting",
+              "running",
+              "settling",
+              "maintenance",
+              "gateway",
+              "unavailable"
+            ],
+            "title": "Phase",
+            "type": "string"
+          },
+          "running": {
+            "title": "Running",
+            "type": "boolean"
+          },
+          "turn_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Turn Id"
+          },
+          "can_submit": {
+            "title": "Can Submit",
+            "type": "boolean"
+          },
+          "can_stop": {
+            "title": "Can Stop",
+            "type": "boolean"
+          },
+          "waiting": {
+            "items": {
+              "$ref": "#/components/schemas/WaitingInput"
+            },
+            "title": "Waiting",
+            "type": "array"
+          },
+          "unresolved": {
+            "items": {
+              "$ref": "#/components/schemas/WaitingInput"
+            },
+            "title": "Unresolved",
+            "type": "array"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "phase",
+          "running",
+          "can_submit",
+          "can_stop",
+          "waiting"
+        ],
+        "title": "InputStateResult",
+        "type": "object"
+      },
+      "InputWithdrawResult": {
+        "additionalProperties": false,
+        "properties": {
+          "outcome": {
+            "enum": [
+              "withdrawn",
+              "too_late",
+              "not_found",
+              "unknown"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "receipt": {
+            "$ref": "#/components/schemas/InputReceipt"
+          }
+        },
+        "required": [
+          "outcome",
+          "receipt"
+        ],
+        "title": "InputWithdrawResult",
         "type": "object"
       },
       "InsightsGetParams": {
@@ -22609,6 +23055,18 @@
           "withdrawable": {
             "title": "Withdrawable",
             "type": "boolean"
+          },
+          "operation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Operation Id"
           }
         },
         "required": [
@@ -22698,6 +23156,18 @@
               }
             ],
             "title": "Reason"
+          },
+          "operation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Operation Id"
           }
         },
         "required": [
@@ -28759,6 +29229,49 @@
             "default": "",
             "title": "Text"
           },
+          "input_policy": {
+            "anyOf": [
+              {
+                "const": "web_controlled",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Input Policy"
+          },
+          "operation_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "pattern": "\\S",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Operation Id"
+          },
+          "image_paths": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Image Paths"
+          },
           "display_kind": {
             "anyOf": [
               {
@@ -29019,6 +29532,28 @@
             ],
             "default": null,
             "title": "Turn Isolation"
+          },
+          "receipt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InputReceipt"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "accepted_user": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MessageUserCommittedPayload"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
           }
         },
         "title": "PromptSubmitResult",
@@ -29274,6 +29809,27 @@
           "session_id"
         ],
         "title": "ReadRangeRequestParams",
+        "type": "object"
+      },
+      "ReceivedInput": {
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "image_paths": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Image Paths",
+            "type": "array"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "ReceivedInput",
         "type": "object"
       },
       "RecordRepoItem": {
@@ -33250,6 +33806,42 @@
             "title": "Provider",
             "type": "string"
           },
+          "model_switch_pending": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Model Switch Pending"
+          },
+          "context_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Context Model"
+          },
+          "context_provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Context Provider"
+          },
           "reasoning_effort": {
             "default": "",
             "title": "Reasoning Effort",
@@ -33918,6 +34510,43 @@
             "default": null,
             "title": "Profile"
           },
+          "input_policy": {
+            "anyOf": [
+              {
+                "const": "web_controlled",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Input Policy"
+          },
+          "operation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Operation Id"
+          },
+          "turn_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Turn Id"
+          },
           "expected_hosted_task_id": {
             "anyOf": [
               {
@@ -33966,12 +34595,94 @@
             ],
             "default": null,
             "title": "Turn Isolation"
+          },
+          "maintenance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CompactionCancelResult"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "target": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SessionInterruptTarget"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "target_state": {
+            "anyOf": [
+              {
+                "enum": [
+                  "stop_requested",
+                  "not_active",
+                  "unknown"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Target State"
           }
         },
         "required": [
           "status"
         ],
         "title": "SessionInterruptResult",
+        "type": "object"
+      },
+      "SessionInterruptTarget": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "enum": [
+              "main",
+              "maintenance",
+              "none"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "turn_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Turn Id"
+          },
+          "operation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Operation Id"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "SessionInterruptTarget",
         "type": "object"
       },
       "SessionListParams": {
@@ -34128,6 +34839,42 @@
             "default": "",
             "title": "Provider",
             "type": "string"
+          },
+          "model_switch_pending": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Model Switch Pending"
+          },
+          "context_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Context Model"
+          },
+          "context_provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Context Provider"
           },
           "reasoning_effort": {
             "default": "",
@@ -43030,6 +43777,31 @@
         "title": "WaitBarrierUntil",
         "type": "object"
       },
+      "WaitingInput": {
+        "additionalProperties": false,
+        "properties": {
+          "receipt": {
+            "$ref": "#/components/schemas/InputReceipt"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "image_paths": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Image Paths",
+            "type": "array"
+          }
+        },
+        "required": [
+          "receipt",
+          "text"
+        ],
+        "title": "WaitingInput",
+        "type": "object"
+      },
       "WakeControlParams": {
         "additionalProperties": false,
         "properties": {
@@ -44634,6 +45406,30 @@
       ]
     },
     {
+      "name": "session.compaction_changed",
+      "summary": "The exact native compression operation changed phase.",
+      "params": [
+        {
+          "name": "payload",
+          "schema": {
+            "$ref": "#/components/schemas/CompactionChangedPayload"
+          }
+        }
+      ]
+    },
+    {
+      "name": "session.compaction_delta",
+      "summary": "Bounded native summary text, scoped to one operation and offset.",
+      "params": [
+        {
+          "name": "payload",
+          "schema": {
+            "$ref": "#/components/schemas/CompactionDeltaPayload"
+          }
+        }
+      ]
+    },
+    {
       "name": "session.control.update",
       "summary": "Persisted goal / loop / heartbeat state changed.",
       "params": [
@@ -44653,6 +45449,18 @@
           "name": "payload",
           "schema": {
             "$ref": "#/components/schemas/SessionLiveInfo"
+          }
+        }
+      ]
+    },
+    {
+      "name": "session.input_changed",
+      "summary": "Input custody changed; locally refetch the same runtime's input state or receipt.",
+      "params": [
+        {
+          "name": "payload",
+          "schema": {
+            "$ref": "#/components/schemas/InputChangedPayload"
           }
         }
       ]

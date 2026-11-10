@@ -1043,6 +1043,8 @@ def _wire_session_agent(sid: str, key: str, agent) -> bool:
         notify_registered = True
         load_permanent_allowlist()
     _wire_callbacks(sid)
+    if (session := _sessions.get(sid)) is not None:
+        _web_bind_compression(sid, session, agent)
     with contextlib.suppress(Exception):  # bare agents without the attribute must not break startup
         agent.memory_notifications = _load_memory_notifications()
     return notify_registered
@@ -2297,7 +2299,7 @@ def _session_info(agent, session: dict | None = None) -> dict:
         reasoning_effort_wire = str(clamp_effort(reasoning_effort, route_supported_efforts(
             pending_provider or provider, model, getattr(agent, "api_mode", None))) or "")
     info: dict = {
-        "model": model,
+        "model": model, **_session_context_model_info(agent, sess),
         "provider": pending_provider or provider,
         "reasoning_effort": reasoning_effort, "reasoning_effort_wire": reasoning_effort_wire,
         "service_tier": service_tier,
@@ -2954,13 +2956,13 @@ def _find_live_session_by_key(session_key: str, profile_home=_ANY_PROFILE) -> tu
         if (not session.get("_finalized") and _session_lookup_key(session, fallback=sid) == session_key
                 and _live_profile_matches(session, profile_home)):
             return sid, session
-    return None
+    return _find_live_compression_owner(session_key, profile_home)
 
 
 def _fallback_session_info(session: dict) -> dict:
     agent = session.get("agent")
     if agent is not None:
-        return _session_info(agent)
+        return _session_info(agent, session)
     # The SESSION's own workspace, not the launch dir (wrong project in the desktop Files pane). `branch` is
     # always emitted ("" outside git) so a stale label clears; `desktop_contract` missing reads as "out of date".
     # Reporting `_default_session_cwd()` here told a lazily-resumed session's client that its workspace was
@@ -3536,7 +3538,9 @@ from . import (  # noqa: E402
     methods_connectors as _methods_connectors, methods_connectors_account as _methods_connectors_account,
     methods_display as _methods_display, methods_display_watch as _methods_display_watch,
     methods_onboarding as _methods_onboarding, methods_i18n as _methods_i18n, methods_usage_read as _methods_usage_read,
-    methods_shared_metrics as _methods_shared_metrics, methods_pending as _methods_pending, methods_web_read as _methods_web_read)
+    methods_shared_metrics as _methods_shared_metrics, methods_pending as _methods_pending, methods_web_read as _methods_web_read,
+    web_input_receipts as _web_input_receipts, methods_web_control as _methods_web_control,
+    web_stop_control as _web_stop_control)
 
 for _m in (
     _session_usage, _session_transports, _session_reaper, _session_lifecycle, _session_workdir, _compute_host_bridge, _model_switch,
@@ -3548,6 +3552,7 @@ for _m in (
     _methods_bot_relay, _prompt_turn, _billing_view, _methods_projects, _methods_session_foreign,
     _methods_session_control, _methods_session_state, _methods_subagents, _methods_vault, _methods_free_tier, _methods_connectors,
     _methods_connectors_account, _methods_display, _methods_display_watch, _methods_onboarding,
-    _methods_i18n, _methods_shared_metrics, _methods_pending, _methods_web_read, _methods_usage_read):
+    _methods_i18n, _methods_shared_metrics, _methods_pending, _methods_web_read, _methods_usage_read,
+    _web_input_receipts, _methods_web_control, _web_stop_control):
     _m.register(sys.modules[__name__])
 del _m

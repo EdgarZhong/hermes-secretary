@@ -61,10 +61,34 @@ _SESSION_OWNERSHIP_UNAVAILABLE = "Hermes could not safely reserve this session. 
 _AUTOMATIC_SESSION_END_REASONS = frozenset({"ws_orphan_reap", "ws_disconnect", "idle_timeout", "lru_evict", "tui_shutdown"})
 
 
-def _lease_metadata(live_session_id: str) -> dict:
+def _lease_metadata(live_session_id: str, native_session_id: str = "") -> dict:
     """Writer identity for a lease: ``live_session_id`` is half of ``_is_same_writer``; the delivery flag is
     what Bot Chat gates live delivery on (session_notifications)."""
-    return {"live_session_id": live_session_id, "bot_live_delivery_consumer": True}
+    return {"live_session_id": live_session_id, "bot_live_delivery_consumer": True,
+            "runtime_host_kind": "ui", "native_session_id": native_session_id}
+
+
+def _find_live_compression_owner(session_key, profile_home):
+    """Reuse a live parent only through a proved native compression continuation."""
+    for sid, session in list(_sessions.items()):
+        if (session.get("_finalized") or session.get("_closing")
+                or not _live_profile_matches(session, profile_home)):
+            continue
+        with _session_db(session) as db:
+            if db is None:
+                continue
+            for _attempt in range(2):
+                current = _session_lookup_key(session, fallback=sid)
+                tip = db.get_compression_tip(session_key)
+                if tip != current:
+                    if current != _session_lookup_key(session, fallback=sid):
+                        continue
+                    break
+                if db.resolve_conversation_ref(session_key) != db.resolve_conversation_ref(current):
+                    break
+                if current == _session_lookup_key(session, fallback=sid):
+                    return sid, session
+    return None
 
 
 def _claim_active_session_slot(
@@ -74,7 +98,7 @@ def _claim_active_session_slot(
         from hermes_cli.active_sessions import try_acquire_active_session
         return try_acquire_active_session(
             session_id=session_key, surface=surface, config=_load_cfg(), registry_home=profile_home,
-            metadata=_lease_metadata(live_session_id),
+            metadata=_lease_metadata(live_session_id, session_key),
             track_liveness=str(surface or "").strip().lower() == "desktop")
     except Exception as exc:
         logger.warning("Failed to claim active session slot: %s", exc)
@@ -174,7 +198,7 @@ def _take_over_detached_runtime_lease(sid: str, session: dict, key: str) -> bool
             return False
         other_sid, other = found
         lease = other["active_session_lease"]
-        if not transfer_active_session(lease, session_id=key, metadata=_lease_metadata(sid)):
+        if not transfer_active_session(lease, session_id=key, metadata=_lease_metadata(sid, key)):
             return False
         del other["active_session_lease"]
         other["_lease_taken_over"] = True
@@ -286,7 +310,7 @@ def _transfer_active_session_slot(sid: str, session: dict, *, new_session_id: st
         return True
     try:
         from hermes_cli.active_sessions import transfer_active_session
-        if transfer_active_session(lease, session_id=new_session_id, metadata=_lease_metadata(sid)):
+        if transfer_active_session(lease, session_id=new_session_id, metadata=_lease_metadata(sid, new_session_id)):
             return True
     except Exception:
         logger.debug("Failed to transfer active session slot", exc_info=True)
@@ -693,6 +717,7 @@ def _ws_session_is_orphaned(session: dict | None) -> bool:
 def _interrupt_session_turn(
     sid: str, session: dict, *, request_id: str | None = None, orphan: bool = False,
     preserve_pending_handoff: bool = False,
+    expected_turn_id: str | None = None, expected_start_token=None, before_interrupt=None,
 ) -> bool:
     """Apply the shared ``session.interrupt`` contract to one claimed session; returns whether the compute-host control
     channel was used. The WS orphan reaper reuses this so a dead client gets the same partial-history/queue semantics.
@@ -714,34 +739,66 @@ def _interrupt_session_turn(
     else:
         run_thread_alive = (rt := session.get("_run_thread")) is not None and rt.is_alive()
     with session["history_lock"]:
+        from tui_gateway.turn_terminal import token
+        if ((expected_turn_id is not None and expected_turn_id != getattr(
+                session.get("agent"), "_pending_steer_native_active_turn", None))
+                or expected_start_token is not None and token(session) is not expected_start_token):
+            raise _SessionStopTargetChanged()
+        if callable(before_interrupt):
+            before_interrupt()
         session["_turn_cancel_requested"] = True
+        if expected_start_token is not None and expected_turn_id is None:
+            session["_web_start_stop_token"] = expected_start_token
         if not preserve_pending_handoff:
+            _web_fail_staged(sid, session, "stopped", cancelled=True)
+            _web_cancel_queued(sid, session)
             session["queued_prompt"] = None
             session.pop("queued_prompts", None)
+            from agent.pending_steer import buffer_for
+            if buffer_for(session.get("agent")) is not None:
+                _pending_cancel_handoff(session, "stopped", notify_owner=False)
         session["_queued_prompt_generation"] = int(session.get("_queued_prompt_generation", 0)) + 1
-    from agent.pending_steer import buffer_for
+        if not preserve_pending_handoff:
+            session["_queued_prompt_stop_generation"] = session["_queued_prompt_generation"]
     if not preserve_pending_handoff and buffer_for(session.get("agent")) is not None:
-        _pending_cancel_handoff(session, "stopped")
-    if should_interrupt:
-        # Sibling of gateway/run_agent_cache.py::_interrupt_and_clear_session: a user-initiated stop of a
-        # live TUI/desktop turn is the same "loop is gone" event for plugins holding per-turn external
-        # resources. Observer-only; dispatch failures never break the interrupt.
-        # Every caller (session.interrupt RPC, orphan/idle reapers, lease takeover) is off-turn, so bind the
-        # SESSION's profile as _finalize_session does or an observer's get_hermes_home() names the launch
-        # profile (#125063). hydrate_secrets=False: observer-only, /stop must stay fast.
-        try:
-            from hermes_cli.plugins import invoke_hook as _invoke_hook
-            with _session_profile_runtime_scope(session, hydrate_secrets=False):
-                _invoke_hook(
-                    "agent_loop_stopped", session_key=session.get("session_key", ""), platform="tui",
-                    reason="user_stop", invalidation_reason="session_interrupt",
-                )
-        except Exception:
-            logger.debug("agent_loop_stopped hook dispatch failed", exc_info=True)
+        from agent.pending_steer import notify
+        notify(session["agent"])
+    if should_interrupt and expected_start_token is None and expected_turn_id is None:
+        _notify_session_interrupt(session)
     if not use_compute_host:
         if should_interrupt:
             from agent.interrupt_compat import request_hard_interrupt
-            request_hard_interrupt(session.get("agent"))
+            native_target = expected_turn_id or (getattr(session.get("agent"), "_pending_steer_native_active_turn", None)
+                                                  if expected_start_token is not None else None)
+            if expected_start_token is not None and native_target is None:
+                pass  # The same startup latch is honored at native identity publication.
+            elif native_target is None:
+                request_hard_interrupt(session.get("agent"))
+            elif session["agent"].hard_interrupt(require_turn_id=native_target) is False:
+                raise _SessionStopTargetChanged()
+    with _web_stop_cleanup_scope(session, expected_turn_id, expected_start_token) as still_owned:
+        if still_owned:
+            if should_interrupt and (expected_start_token is not None or expected_turn_id is not None):
+                _notify_session_interrupt(session)
+            _finish_session_interrupt(sid, session, use_compute_host, run_thread_alive, compressing, orphan,
+                history_locked=expected_turn_id is not None or expected_start_token is not None)
+    return use_compute_host
+
+
+def _notify_session_interrupt(session):
+    """Observe a native loop stop under its own Profile, never block the interrupt on plugin failures."""
+    try:
+        from hermes_cli.plugins import invoke_hook
+        with _session_profile_runtime_scope(session, hydrate_secrets=False):
+            invoke_hook("agent_loop_stopped", session_key=session.get("session_key", ""), platform="tui",
+                        reason="user_stop", invalidation_reason="session_interrupt")
+    except Exception:
+        logger.debug("agent_loop_stopped hook dispatch failed", exc_info=True)
+
+
+def _finish_session_interrupt(sid, session, use_compute_host, run_thread_alive, compressing, orphan, *, history_locked=False):
+    """Session-wide cleanup must not touch a later Turn after a targeted native Stop."""
+    if not use_compute_host:
         # Background delegations are detached from the turn's interrupt fan-out; a stop ends them too
         # (own UI sid + spawner id only — a viewer tab must not kill gateway work). Each returns as an
         # interrupted completion with its partial output.
@@ -751,7 +808,7 @@ def _interrupt_session_turn(
                 origin_ui_session_id=_lifecycle_own_sid(session, sid), reason="user_stop",
                 parent_session_id=str(getattr(session.get("agent"), "session_id", "") or ""))
         if not run_thread_alive and not compressing:
-            with session["history_lock"]:
+            with (contextlib.nullcontext() if history_locked else session["history_lock"]):
                 if session.get("running"):
                     _set_session_running(session, False)
                     _clear_inflight_turn(session)
@@ -777,7 +834,6 @@ def _interrupt_session_turn(
         _announce_cancelled_gateway_approvals(session, reason, session_id=sid)
         from tools.approval import resolve_gateway_approval
         resolve_gateway_approval(session["session_key"], "deny", resolve_all=True)
-    return use_compute_host
 
 
 def _session_has_active_delegations(sid: str, session: dict | None = None) -> bool:

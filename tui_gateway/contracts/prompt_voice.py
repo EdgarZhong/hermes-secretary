@@ -7,11 +7,15 @@ and voice / wake-word control (``methods_voice.py``).
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import Field
 
 from .base import JsonValue, Params, Result, WireEnum
 from .common import OpenModel, PendingApproval, SessionParams
 from .registry import method
+from .events import MessageUserCommittedPayload
+from .web_control import InputReceipt
 
 # ── prompt.submit ─────────────────────────────────────────────────────────────────────────────
 
@@ -30,6 +34,9 @@ class PromptSubmitParams(SessionParams):
     ``truncate_before_message_id``, or the legacy ``truncate_before_user_ordinal``)."""
 
     text: JsonValue = ""
+    input_policy: Literal["web_controlled"] | None = None
+    operation_id: str | None = Field(default=None, min_length=1, max_length=128, pattern=r"\S")
+    image_paths: list[str] | None = None
     display_kind: str | None = None  # only "hidden" is honoured; anything else renders as a user row
     interrupted: bool | None = None  # client-side barge-in: the turn's model message carries the note
     queued: bool | None = None  # client queue drain — the busy path must hold it, never redirect/steer
@@ -72,6 +79,8 @@ class PromptSubmitResult(Result):
     survivor_user_row_ids: list[int | None] | None = None
     survivor_row_id_map: dict[str, int | None] | None = None
     turn_isolation: bool | None = None
+    receipt: InputReceipt | None = None
+    accepted_user: MessageUserCommittedPayload | None = None
 
 
 method("prompt.submit", params=PromptSubmitParams, result=PromptSubmitResult,

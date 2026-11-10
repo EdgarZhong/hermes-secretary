@@ -78,7 +78,8 @@ def test_real_bootstrap_snapshot_policy_and_immediate_adoption(owned):
         assert store.plan_conn(conn, ref) is None
         assert store.heartbeat_conn(conn, ref)['mode'] == 'hot'
     value, rows, config = measured(parent, db, ref)
-    assert not rows and value['last_user_at'] is None
+    assert all(row['kind'] == 'heartbeat_config' for row in rows)
+    assert value['last_user_at'] is None
     assert store.imported_history(db, ref, NOW) == []
     decision = decide(value, rows, config)
     assert not decision['fallback']
@@ -188,7 +189,8 @@ def test_current_frontier_restores_original_time_not_idle_or_turn(owned):
     assert after['trigger_produced_at'] == NOW
     value, rows, cfg = measured(parent, db, ref)
     assert value['last_user_at'] == NOW - 5000
-    assert rows[0]['available_at'] == NOW - 10 and rows[0]['original_available_at'] is None
+    frontier = next(row for row in rows if row['kind'] == 'user_activity')
+    assert frontier['available_at'] == NOW - 10 and frontier['original_available_at'] is None
     assert measured(parent, db, ref, NOW - 11)[0]['last_user_at'] is None
     runtime.record_event(db, ref, 'user_activity', source='user', verified=True, at=NOW - 5, event_id='live')
     assert measured(parent, db, ref)[0]['last_user_at'] == NOW - 5
@@ -322,12 +324,12 @@ def test_frontier_requires_actual_native_user_provenance(owned, damage):
     assert bootstrap.read(db, ref, NOW) == []
 
 
-def test_repeated_behavior_paths_enter_candidate_cost_and_mode_selection(owned, monkeypatch):
+def test_repeated_behavior_paths_enter_cost_without_disabling_warm_heartbeat(owned, monkeypatch):
     parent, db, ref, package = owned
     bootstrap.apply(db, ref, package, bootstrap_id='audit', now=NOW)
     value, rows, config = measured(parent, db, ref)
     value.update(context_tokens=100000, context_limit=1000000, native_threshold_tokens=800000,
-                 heartbeat_anchor=NOW, heartbeat_next_due=NOW + 10800)
+                 heartbeat_anchor=NOW, heartbeat_next_due=NOW + 1740)
     config.update(cache_ratio=.05, output_ratio=5, heartbeat_output_tokens=5000,
                   heartbeat_fresh_tokens=1024, hot_cache_fraction=.95)
     from tests.secretary.test_adaptive_policy import heartbeat_receipt, legacy_maintenance_receipt, NOW as OLD_NOW
@@ -336,6 +338,10 @@ def test_repeated_behavior_paths_enter_candidate_cost_and_mode_selection(owned, 
              dict(event_id='live-user', kind='user_activity', verified=True, source='user', at=NOW-5000)]
     rows += [dict(row, at=row['at']+NOW-OLD_NOW, model_key=value['model_key'])
              for row in heartbeat_receipt(output=5000) + legacy_maintenance_receipt(cost=10000000)]
+    for row in rows:
+        if row['kind'] in ('request', 'turn_end') and not row.get('operation_id'):
+            row.update(context_epoch=value['context_epoch'], context_path=value['context_path'],
+                       model_contract=config['model_contract'], cache_contract=config['cache_contract'])
     paths = [1900]
     def learned(*args, **kwargs):
         offsets = paths if len(paths) == 1 else range(1900, int(kwargs['horizon']), 1900)
@@ -349,10 +355,8 @@ def test_repeated_behavior_paths_enter_candidate_cost_and_mode_selection(owned, 
     repeated = decide(value, rows, config)
     assert repeated['diagnostics']['forecast_model'] == 'multi_return_timing_only_single_read_proxy'
     assert repeated['diagnostics']['baseline_cost'] > single['diagnostics']['baseline_cost']
-    assert single['mode'] == 'business' and repeated['mode'] == 'hot'
-    business = next(r for r in repeated['diagnostics']['candidate_evaluations']
-                    if r['mode'] == 'business' and r['delay'] is None)
-    assert repeated['diagnostics']['estimated_cost'] < business['cost']
+    assert single['mode'] == repeated['mode'] == 'hot'
+    assert all(r['mode'] == 'hot' for r in repeated['diagnostics']['candidate_evaluations'])
     assert 'not_observed_zero' in repeated['diagnostics']['work_cost_assumption']
 
 

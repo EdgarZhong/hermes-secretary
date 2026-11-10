@@ -116,7 +116,7 @@ def _display_sql(db, conn, lineage):
         FROM messages m LEFT JOIN generations latest ON latest.message_uid=m.message_uid
         LEFT JOIN messages generation ON generation.id=latest.newest
         WHERE m.session_id IN ({marks}) AND (m.active=1 OR m.compacted=1)
-          {DISPLAY_VISIBLE_SQL.replace('display_metadata', 'm.display_metadata')}
+          {DISPLAY_VISIBLE_SQL.replace('display_metadata', 'm.display_metadata').replace('role', 'm.role')}
           AND (NULLIF(m.message_uid,'') IS NULL OR generation.active=1 OR generation.compacted=1)
       ), ranked AS (
         SELECT id, identity_key, MIN(first_order) OVER (PARTITION BY identity_key) AS sort_id,
@@ -205,8 +205,28 @@ def _details(db, conn, sql, params, details):
     return [db._row_to_message_dict(row, warn_context="recovery details", summary_flag=True) for row in rows]
 
 
+def _read_turn_source(conn, sql, params, lease, owner):
+    """One external Turn's display boundary, from the SAME cut as the visible windows."""
+    if owner is None:
+        return None
+    turn_id = owner.get("turn_id")
+    unknown = {"state": "unknown", "turn_id": turn_id}
+    if (owner.get("kind") != "gateway" or not turn_id or not lease
+            or lease["holder"] != owner.get("holder") or lease["expires_at"] <= time.time()):
+        return unknown
+    marker_turn = _sql_json_extract("m.display_metadata", "$.turn_source.turn_id")
+    marker_uid = _sql_json_extract("m.display_metadata", "$.turn_source.message_uid")
+    rows = conn.execute(sql + "SELECT o.*,m.message_uid FROM ordered o JOIN messages m ON m.id=o.row_id "
+                        f"WHERE m.role='user' AND {marker_turn}=:native_turn AND {marker_uid}=m.message_uid "
+                        "ORDER BY o.position LIMIT 2", {**params, "native_turn": turn_id}).fetchall()
+    if len(rows) > 1:
+        return unknown
+    return {"state": "committed", "turn_id": turn_id, "source": _identity(rows[0])} if rows else {
+        "state": "uncommitted", "turn_id": turn_id}
+
+
 def read_view(db, requested_id, profile, selectors, *, details=(), proofs=(), identities=(),
-              history_sync=False, native_source=None):
+              history_sync=False, native_source=None, turn_owner=None):
     """Raw D read: all owner, lineage, windows, details and lease on one conn."""
     with _snapshot(db, memory_temp=True) as conn:
         lineage = _lineage(db, conn, requested_id, profile)
@@ -226,6 +246,7 @@ def read_view(db, requested_id, profile, selectors, *, details=(), proofs=(), id
         lease_key = db._session_turn_lease_key_on_conn(conn, lineage[-1]["id"])
         lease = conn.execute("SELECT holder,expires_at FROM session_turn_leases WHERE conversation_id=?",
                              (lease_key,)).fetchone()
+        turn_source = _read_turn_source(conn, sql, params, lease, turn_owner)
         refs = _read_identities(conn, sql, params, lineage, identities)
         tail = conn.execute(sql + "SELECT m.id,m.message_uid,m.role,m.timestamp FROM ordered o "
                             "JOIN messages m ON m.id=o.row_id WHERE m.role='user' ORDER BY o.position DESC LIMIT 1", params).fetchone()
@@ -243,7 +264,8 @@ def read_view(db, requested_id, profile, selectors, *, details=(), proofs=(), id
             "rewind": [(row["id"], row.get("rewind_count", 0)) for row in lineage],
             "windows": windows, "details": detail_rows, "identities": refs,
             "turn_start": dict(tail) if tail else None,
-            "lease": dict(lease) if lease and lease["expires_at"] > time.time() else None, **extra}
+            "lease": dict(lease) if lease and lease["expires_at"] > time.time() else None,
+            **({"turn_source": turn_source} if turn_source is not None else {}), **extra}
 
 
 def _read_identities(conn, sql, params, lineage, identities):

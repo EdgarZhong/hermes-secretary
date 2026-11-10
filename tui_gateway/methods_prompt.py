@@ -621,6 +621,8 @@ def _run_after_agent_ready(
     if token(session) is not expected_token:
         return
     if err:
+        _web_fail_staged(sid, session, "agent_init_failed")
+        _web_fail_waiting(sid, session, "agent_init_failed")
         # Terminal frame + retained snapshot (not a bare "error" event): the snapshot is
         # the only way resume shows this to a disconnected client.
         _emit_terminal_turn_error(
@@ -634,6 +636,7 @@ def _run_after_agent_ready(
         return
     with session["history_lock"]:
         if session.get("_turn_cancel_requested") or not session.get("running"):
+            _web_fail_staged(sid, session, "stopped", cancelled=bool(session.get("_turn_cancel_requested")))
             _set_session_running(session, False)
             _clear_inflight_turn(session)
             # Without this emit the turn vanishes silently after {"status": "streaming"}.
@@ -652,11 +655,12 @@ _TRUNCATION_PARAMS = (
 
 
 def _lock_in_submit_turn(
-    rid, sid, session, text, params, has_truncation, requested_rebind_ids, hosted_task, display_kind):
+    rid, sid, session, text, params, has_truncation, requested_rebind_ids, hosted_task, display_kind,
+    *, admission_held=False):
     """Under ``history_lock``: refuse watch-child races / malformed truncation, apply the
     cut, mark the turn running + in flight.  Returns ``(err, survivor_fields)``."""
     fields = {}
-    with _session_turn_admission(session) as admitted:
+    with (contextlib.nullcontext(True) if admission_held else _session_turn_admission(session)) as admitted:
         if not admitted:
             return _err(rid, 5035, "backend is retiring; reconnect to continue"), fields
         if (error := _idle_submit_claim_error(rid, session)) is not None:
@@ -686,8 +690,7 @@ def _lock_in_submit_turn(
 _CLIENT_SURFACES = frozenset({"hud", "voice-live"})
 
 
-@method("prompt.submit")
-def _(rid, params: dict) -> dict:
+def _native_prompt_submit_handler(rid, params: dict) -> dict:
     from hermes_cli.input_sanitize import sanitize_user_prompt_text
     image_paths = _submit_request_images(params)
     sid = params.get("session_id", "")
@@ -802,18 +805,16 @@ def _(rid, params: dict) -> dict:
     # A completed FAILED build must not wedge the session: rebuild, don't replay it.
     if not _restart_completed_failed_agent_build(sid, session, session.get("agent_ready")):
         _start_agent_build(sid, session)
-    run_thread = threading.Thread(
+    from agent.memory_provider import spawn_context_thread
+    run_thread = spawn_context_thread(
         target=lambda: _run_after_agent_ready(
             rid, sid, session, text, display_kind, display_metadata, hosted_terminal_callback, turn_author,
             image_paths=image_paths),
-        daemon=True)
+        name=f"prompt-ready-{sid}")
     # Handle lets session.interrupt tell a live turn from a stuck `running` flag.
     session["_run_thread"] = run_thread
     run_thread.start()
     return _ok(rid, {"status": "streaming", **survivor_fields})
-
-
-_native_prompt_submit_handler = _
 
 
 @method("clipboard.paste")

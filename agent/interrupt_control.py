@@ -122,12 +122,27 @@ def _ic_signal_tool_workers(agent, active: bool, **kw) -> None:
             pass
 
 
+def _ic_interrupt_for_turn(agent, turn_id, apply):
+    # Waiting for an old commit must not reserve a later Turn's cancellation.
+    fence = vars(agent).get("_active_compression_commit_fence")
+    _fence_cancel_before_commit(fence, when_in_flight=True,
+                               failure_log="Targeted compression fence wait failed")
+    with _ic_lock(agent, "_pending_redirect_lock"):
+        if (getattr(agent, "_current_turn_id", None) != turn_id
+                or getattr(agent, "_pending_steer_native_active_turn", None) != turn_id):
+            return False
+        # Keep this SAME identity lock through request abort, tool-thread signals
+        # and child propagation. The next Turn binds its identity under it too.
+        return apply()
+
+
 class InterruptControlMixin:
     """interrupt()/hard_interrupt()/clear_interrupt()/steer()/redirect() (see module docstring)."""
 
     def interrupt(
         self, message: Optional[str] = None, *, hard_cancel: bool = False,
         tool_reason: Optional[str] = None, require_generation: Optional[int] = None,
+        require_turn_id: Optional[str] = None, _redirect_lock_held: bool = False,
     ) -> bool:
         """Request the agent to interrupt its current tool-calling loop (call from another thread).
 
@@ -136,6 +151,10 @@ class InterruptControlMixin:
         generation claim — published only if the turn's generation still matches at the final mutation edge;
         returns False if the turn resumed meanwhile.
         """
+        if require_turn_id is not None:
+            return _ic_interrupt_for_turn(self, require_turn_id, lambda: InterruptControlMixin.interrupt(
+                self, message, hard_cancel=hard_cancel, tool_reason=tool_reason,
+                require_generation=require_generation, _redirect_lock_held=True))
         if require_generation is not None:
             # RESERVE the claim under the SAME lock `_touch_activity` stamps with; real progress invalidates
             # it and it is CONSUMED at the final mutation edge, so a resumed turn abandons the abort.
@@ -171,7 +190,7 @@ class InterruptControlMixin:
         # accidentally turn itself into a retry. The blocking in-flight-commit wait runs BEFORE the atomic
         # claim edge (redirect lock still held); the destructive pending-commit cancel runs AFTER the claim
         # survives (#99758 P1).
-        with _ic_lock(self, "_pending_redirect_lock"):
+        with (contextlib.nullcontext() if _redirect_lock_held else _ic_lock(self, "_pending_redirect_lock")):
             _fence_cancel_before_commit(
                 _fence(), when_in_flight=True, failure_log="Compression hard-cancel fence wait failed"
             )
@@ -230,11 +249,15 @@ class InterruptControlMixin:
             print("\n⚡ Interrupt requested" + (f": '{message[:40]}...'" if message and len(message) > 40 else f": '{message}'" if message else ""))
         return True
 
-    def hard_interrupt(self, message: Optional[str] = None, *, tool_reason: Optional[str] = None) -> None:
+    def hard_interrupt(self, message: Optional[str] = None, *, tool_reason: Optional[str] = None,
+                       require_turn_id: Optional[str] = None) -> Optional[bool]:
         """Explicit stop preserving the ``interrupt()`` ABI (frontends feature-detect this and fall back to
         legacy ``interrupt()`` for third-party agents). Bypasses dynamic dispatch: legacy subclasses may
         override interrupt(message=None) without hard_cancel."""
-        InterruptControlMixin.interrupt(self, message, hard_cancel=True, tool_reason=tool_reason)
+        result = InterruptControlMixin.interrupt(self, message, hard_cancel=True, tool_reason=tool_reason,
+                                                require_turn_id=require_turn_id)
+        if require_turn_id is not None:
+            return result
 
     def clear_interrupt(self, *, preserve_redirect: bool = False, hard_cancel: bool = False,
                         before_clear: Optional[Callable[[], None]] = None) -> bool:

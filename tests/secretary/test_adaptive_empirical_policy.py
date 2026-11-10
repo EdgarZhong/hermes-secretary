@@ -316,6 +316,10 @@ def _observed_snapshot(owned, lag, *, damage=None, recent=None):
             row['ingress'] = 'web_submit' if i % 2 else 'gateway_adapter'
             if row.get('model_key') == 'test':
                 row['model_key'] = runtime.model_key(parent)
+                if row['kind'] in ('request', 'turn_end'):
+                    row.update(context_epoch=runtime._epoch(db, ref),
+                               context_path=runtime._context_path(parent, db),
+                               model_contract=config['model_contract'], cache_contract=config['cache_contract'])
     if damage in ('tail_gap', 'history_gap'):
         rows.append(dict(event_id='known-gap', kind='coverage_gap', source='framework', verified=True,
                          at=NOW - 1, start_at=NOW - (20 if damage == 'tail_gap' else 1800),

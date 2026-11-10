@@ -12,6 +12,9 @@ from datetime import datetime, timezone
 _log = logging.getLogger("hermes_cli.web_server")
 _INSTANCE = uuid.uuid4().hex
 _ID = re.compile(r"[0-9a-fA-F]{32}\Z")
+_PEER_INITIATORS = frozenset({"ping_timeout", "ping_error", "connect_timeout", "socket_error",
+                              "bootstrap_error", "authentication", "stop"})
+_PEER_CLOSE_REASONS = {f"hermes:{value}": value for value in _PEER_INITIATORS}
 _FIELDS = frozenset({
     "code", "initiator", "reason", "event_type", "frame_bytes", "pending_frames", "pending_bytes",
     "pending_batches", "queue_wait_ms", "send_ms", "loop_lag_ms", "sent_frames", "sent_bytes",
@@ -29,6 +32,17 @@ _REASONS = frozenset({"fanout_overflow", "frame_too_large", "send_deadline", "se
 
 def valid_connection_id(value) -> str | None:
     return value.lower() if isinstance(value, str) and _ID.fullmatch(value) else None
+
+
+def peer_reported_initiator(code, reason) -> str | None:
+    """Untrusted close metadata only; never an authorization or recovery decision."""
+    return _PEER_CLOSE_REASONS.get(reason) if code == 4100 and isinstance(reason, str) else None
+
+
+def close_initiator(server_requested: bool, peer_reported: str | None) -> str:
+    if server_requested:
+        return "server"
+    return "peer" if peer_reported else "unknown"
 
 
 def event_type(obj: dict) -> str:
@@ -86,6 +100,8 @@ class ConnectionDiagnostics:
                 safe["reason"] = fields["reason"]
             if fields.get("initiator") in {"server", "peer", "unknown"}:
                 safe["initiator"] = fields["initiator"]
+            if fields.get("peer_reported_initiator") in _PEER_INITIATORS:
+                safe["peer_reported_initiator"] = fields["peer_reported_initiator"]
             if "event_type" in fields:
                 from tui_gateway.contracts.registry import EVENTS
                 kind = fields["event_type"]

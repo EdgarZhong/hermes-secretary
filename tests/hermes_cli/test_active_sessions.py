@@ -775,3 +775,160 @@ def test_snapshot_prunes_after_lock_release_and_keeps_concurrent_lease(tmp_path,
     assert [e["lease_id"] for e in live] == ["live-1"]
     persisted = active_sessions._read_entries(state_path, strict=True)
     assert sorted(e["lease_id"] for e in persisted) == ["live-1", "new-1"]
+
+
+@pytest.fixture
+def native_owner(tmp_path):
+    from types import SimpleNamespace
+    from hermes_state import SessionDB
+
+    home = tmp_path / "target-profile"
+    home.mkdir()
+    db = SessionDB(home / "state.db")
+    db.create_session("native-stored", source="telegram")
+    assert db.try_acquire_session_turn_lease("native-stored", "opaque-first")
+    slot, error = active_sessions.try_acquire_active_session(
+        session_id="gateway-route", surface="gateway", config={}, registry_home=home,
+        metadata={"runtime_host_kind": "gateway", "live_session_id": "gateway-route"},
+    )
+    assert slot is not None and error is None
+    agent = SimpleNamespace(_session_db=db, session_id="native-stored", _gateway_session_key="gateway-route",
+                            _active_session_turn_lease_holder="opaque-first", _current_turn_id="native-first")
+    try:
+        yield agent, slot, home
+    finally:
+        db.release_session_turn_lease(agent.session_id, agent._active_session_turn_lease_holder or "opaque-first")
+        slot.release()
+        db.close()
+
+
+def test_native_owner_publication_notifies_after_registry_lock_in_target_profile(native_owner, tmp_path, monkeypatch):
+    from contextlib import contextmanager
+
+    agent, _, home = native_owner
+    other_home = tmp_path / "launch-profile"
+    monkeypatch.setenv("HERMES_HOME", str(other_home))
+    original_lock = active_sessions._FileLock
+    depth = 0
+    calls = []
+
+    @contextmanager
+    def tracked_lock(path):
+        nonlocal depth
+        with original_lock(path):
+            depth += 1
+            try:
+                yield
+            finally:
+                depth -= 1
+
+    def notified(db, session_id=None):
+        assert depth == 0
+        assert db is agent._session_db and Path(db.db_path).resolve().parent == home
+        assert session_id == agent.session_id
+        metadata = active_sessions.active_session_registry_snapshot(home, strict=True)[0]["metadata"]
+        assert metadata["native_session_id"] == agent.session_id
+        assert metadata["native_db_path"] == str(Path(db.db_path).resolve())
+        assert metadata["native_turn_holder"] == "opaque-first"
+        assert metadata["native_turn_id"] == "native-first"
+        calls.append(session_id)
+
+    monkeypatch.setattr(active_sessions, "_FileLock", tracked_lock)
+    monkeypatch.setattr("hermes_state_history_notifications.notify_history_changed", notified)
+    active_sessions.observe_native_turn_owner(agent)
+    assert calls == ["native-stored"]
+    assert not active_sessions._state_path(other_home).exists()
+
+
+@pytest.mark.parametrize("host", ["gateway", "ui"])
+def test_native_owner_identity_changes_notify_once_but_heartbeat_does_not(native_owner, monkeypatch, host):
+    agent, _, home = native_owner
+    state_path = active_sessions._state_path(home)
+    entries = active_sessions._read_entries(state_path, strict=True)
+    entries[0]["metadata"].update(runtime_host_kind=host, native_session_id=agent.session_id)
+    active_sessions._write_entries(state_path, entries)
+    calls = []
+    monkeypatch.setattr("hermes_state_history_notifications.notify_history_changed",
+                        lambda db, session_id=None: calls.append((session_id, agent._active_session_turn_lease_holder, agent._current_turn_id)))
+    active_sessions.observe_native_turn_owner(agent)
+    active_sessions.observe_native_turn_owner(agent)
+    assert calls == [("native-stored", "opaque-first", "native-first")]
+    agent._session_db.release_session_turn_lease(agent.session_id, "opaque-first")
+    assert agent._session_db.try_acquire_session_turn_lease(agent.session_id, "opaque-next")
+    calls.clear()  # Exclude the native lease-release hint from owner-publication assertions.
+    agent._active_session_turn_lease_holder = "opaque-next"
+    active_sessions.observe_native_turn_owner(agent)
+    agent._current_turn_id = "native-next"
+    active_sessions.observe_native_turn_owner(agent)
+    active_sessions.observe_native_turn_owner(agent)
+    assert calls == [("native-stored", "opaque-next", "native-first"),
+                     ("native-stored", "opaque-next", "native-next")]
+
+
+@pytest.mark.parametrize("missing", ["matching-host", "native-lease"])
+def test_native_owner_without_matching_publication_never_notifies(native_owner, monkeypatch, missing):
+    agent, _, _ = native_owner
+    if missing == "matching-host":
+        agent._gateway_session_key = "another-route"
+    else:
+        agent._active_session_turn_lease_holder = None
+    calls = []
+    monkeypatch.setattr("hermes_state_history_notifications.notify_history_changed", lambda *a, **k: calls.append(k))
+    active_sessions.observe_native_turn_owner(agent)
+    assert calls == []
+
+
+def test_native_owner_registry_write_failure_never_emits_publication(native_owner, monkeypatch):
+    agent, _, home = native_owner
+    before = active_sessions._state_path(home).read_bytes()
+    calls = []
+
+    def fail_write(*args):
+        raise OSError("controlled registry write failure")
+
+    monkeypatch.setattr(active_sessions, "_write_entries", fail_write)
+    monkeypatch.setattr("hermes_state_history_notifications.notify_history_changed", lambda *a, **k: calls.append(k))
+    with pytest.raises(OSError, match="registry write failure"):
+        active_sessions.observe_native_turn_owner(agent)
+    assert active_sessions._state_path(home).read_bytes() == before and calls == []
+    monkeypatch.undo()
+
+
+def test_native_owner_hint_failure_keeps_published_identity_and_lease(native_owner, monkeypatch):
+    agent, _, home = native_owner
+
+    def fail_hint(*args, **kwargs):
+        raise OSError("controlled hint failure")
+
+    monkeypatch.setattr("hermes_state_history_notifications.notify_history_changed", fail_hint)
+    active_sessions.observe_native_turn_owner(agent)
+    entry = active_sessions.active_session_registry_snapshot(home, strict=True)[0]
+    assert entry["metadata"]["native_turn_id"] == agent._current_turn_id
+    assert agent._session_db.refresh_session_turn_lease(agent.session_id, agent._active_session_turn_lease_holder)
+    monkeypatch.undo()  # Native lease cleanup has its own notification, outside this fault injection.
+
+
+def test_native_owner_publication_signal_stays_with_database_profile(native_owner, tmp_path, monkeypatch):
+    from hermes_state import SessionDB
+    from hermes_state_history_notifications import notification_path
+
+    agent, _, home = native_owner
+    other_home = tmp_path / "launch-profile"
+    other_home.mkdir()
+    other = SessionDB(other_home / "state.db")
+    try:
+        other.create_session(agent.session_id, source="telegram")
+        target_marker = notification_path(agent._session_db.db_path)
+        other_marker = notification_path(other.db_path)
+        before_other = other_marker.read_bytes() if other_marker.exists() else None
+        monkeypatch.setenv("HERMES_HOME", str(other_home))
+        active_sessions.observe_native_turn_owner(agent)
+        assert target_marker.exists()
+        published = target_marker.read_bytes()
+        active_sessions.observe_native_turn_owner(agent)
+        assert target_marker.read_bytes() == published
+        assert (other_marker.read_bytes() if other_marker.exists() else None) == before_other
+        assert active_sessions.active_session_registry_snapshot(home, strict=True)[0]["metadata"]["native_turn_id"] == "native-first"
+        assert not active_sessions._state_path(other_home).exists()
+    finally:
+        other.close()

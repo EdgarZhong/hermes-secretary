@@ -39,6 +39,8 @@ class Replay:
         changed = bool(last and first and last["epoch"] != first["epoch"])
         self.context = first["first_input"] if changed else last["context_tokens"] if last else self.snapshot_base["context_tokens"]
         self.epoch = first["epoch"] if changed else last["epoch"] if last else "replay-initial"
+        if last and last.get('terminal_event', {}).get('context_path') is not None:
+            self.snapshot_base['context_path'] = last['terminal_event']['context_path']
         self.last_request = max((r["at"] for r in self.history if r["kind"] == "request"), default=None)
         self.template_pool = {s: [j for j in previous if j["source"] == s][-12:]
                               for s in ("user", "heartbeat", "reminder", "unknown")}
@@ -146,6 +148,8 @@ class Replay:
         self._schedule_hb()
 
     def _interval(self):
+        if self.mode == 'standby':
+            return None
         key = "hot_interval_seconds" if self.mode == "hot" else "business_interval_seconds"
         return self.cfg.get(key)
 
@@ -199,7 +203,11 @@ class Replay:
                                    known_reminder_evidence=known_reminders(self.package, self.now),
                                    visible_event_max=max((max(r["at"], r.get("available_at", r["at"])) for r in history), default=None)))
         if not decision.get("fallback"):
+            prior_mode = self.mode
             self.mode = decision["mode"]
+            if self.mode != prior_mode:
+                self.actions.append(dict(kind='heartbeat_mode_change', at=self.now, before=prior_mode,
+                                         after=self.mode, reason=decision.get('reason')))
         return snapshot, history, decision
 
     def _plan(self):
@@ -263,7 +271,8 @@ class Replay:
                 raise ValueError("Native capacity reached; cannot claim an uncompressed counterfactual past this boundary")
             self.maximum_context = max(self.maximum_context, prompt)
             gap = at - previous if previous is not None else math.inf
-            fraction = self.cfg["hot_cache_fraction"] if 0 <= gap < self.cfg["cache_ttl_seconds"] else 0
+            observed_environment = self.package.get('environment_hot_cache_fraction', self.cfg['hot_cache_fraction'])
+            fraction = observed_environment if 0 <= gap < self.cfg["cache_ttl_seconds"] else 0
             cache = max(0, min(prompt, (start_context if index == 0 else prompt) * fraction))
             cost = prompt - cache + cache * self.cfg["cache_ratio"] + output / calls * self.cfg["output_ratio"]
             self.cost += cost
@@ -274,7 +283,9 @@ class Replay:
                              kind="request", source=job["source"], verified=True, outcome="observed",
                              input_tokens=prompt, cache_read_tokens=cache, cache_write_tokens=0,
                              output_tokens=output / calls, input_semantics="total", turn_id=job["id"],
-                             model_key=self.snapshot_base.get("model_key")))
+                             model_key=self.snapshot_base.get("model_key"), model_contract=self.cfg.get('model_contract'),
+                             context_epoch=self.epoch, context_path=self.snapshot_base.get('context_path'),
+                             cache_state='warm' if fraction > 0 else 'cold'))
             previous = at
         self.context += suffix + growth
         self.maximum_context = max(self.maximum_context, self.context)
@@ -306,6 +317,11 @@ class Replay:
                                  cost=self.cost-before_cost, cumulative_cost=self.cost,
                                  requests=requests, mode=self.mode,
                                  template_source=job.get("template_source"), source_job_id=job.get("source_job_id"),
+                                 recovery_operation_id=job.get('recovery_operation_id'),
+                                 recovery_first_read_cost=(requests[0]['input_tokens'] - requests[0]['cache_read_tokens']
+                                     + requests[0]['cache_read_tokens'] * self.cfg['cache_ratio']
+                                     + requests[0]['output_tokens'] * self.cfg['output_ratio'])
+                                     if requests and job.get('recovery_operation_id') else 0,
                                  template_comparability=job.get("comparability"),
                                  unknown_template_fields=job.get("unknown_template_fields", []),
                                  unknown_work_fields=[key for key in values if job.get(key) is None]))
@@ -316,7 +332,8 @@ class Replay:
         self.history.extend(value["requests"])
         self._observe(dict(kind="turn_end", source=job["source"], verified=True, at=self.now,
                            event_id="turn:" + job["id"], context_tokens=self.context, context_epoch=self.epoch,
-                           model_key=self.snapshot_base.get("model_key"), duration_seconds=values["duration"]))
+                           model_key=self.snapshot_base.get("model_key"), model_contract=self.cfg.get('model_contract'),
+                           context_path=self.snapshot_base.get('context_path'), duration_seconds=values["duration"]))
         # Generated work teaches the policy through its receipts, but does not
         # manufacture fresh observations for the counterfactual workload sampler.
         if job.get("template_source") != "past_completed_whole_turn_deterministic_draw":
@@ -421,14 +438,17 @@ class Replay:
             self.waits[waiting["index"]] = actual_wait
             waiting["action"].update(wait_seconds=actual_wait, release_at=self.now, settled=True)
         self.context = active["after"]
-        self.epoch = active["id"]
-        self.last_request = None
+        if active['outcome'] in ('completed', 'partial') and self.context < active['before']:
+            self.epoch = active["id"]
+            self.last_request = None
         self.recovery = recovery
         key = "completed" if active["outcome"] in ("completed", "partial") else "failed"
         self.counts[key] += 1
         self.actions.append(dict(kind="maintenance_end", at=self.now, context=self.context, outcome=active["outcome"]))
         self._observe(dict(event_id=active["id"] + ":end", kind="maintenance_end", source="framework",
                            verified=True, at=self.now, operation_id=active["id"], outcome=active["outcome"],
+                           model_key=self.snapshot_base.get('model_key'), model_contract=self.cfg.get('model_contract'),
+                           context_epoch=self.epoch, context_path=self.snapshot_base.get('context_path'),
                            context_before=active["before"], context_after=self.context,
                            duration_seconds=active["duration"], duration_scope="joint_main_block", usage_complete=False,
                            planning_duration_seconds=active["planning_duration"],
@@ -454,6 +474,34 @@ class Replay:
         self.actions.append(action)
         self.waiting_collisions.setdefault(self.running["id"], []).append(
             dict(at=self.now, index=index, action=action))
+
+    def _heartbeat(self):
+        guard = getattr(self.policy, 'assess_cache', None)
+        evidence = guard(self._snapshot(), self._known_history(), self.cfg, at=self.now) if guard else {}
+        if evidence.get('mode') == 'standby':
+            self.mode = 'standby'
+            self.hb_generation += 1
+            self.actions.append(dict(kind='heartbeat_standby', at=self.now, cache=evidence))
+            self.states.append(dict(at=self.now, context=self.context, mode=self.mode, source='heartbeat_guard',
+                                    cumulative_cost=self.cost))
+            return
+        self.anchor = self.now
+        job = self._template('heartbeat')
+        if evidence.get('recovery_first_read'):
+            job['recovery_operation_id'] = evidence.get('recovery_operation_id')
+        self._start_job(job)
+
+    def _configuration_event(self, event):
+        """An explicit as-of setting change is not a model request or user Turn."""
+        contract = event.get('model_contract')
+        if event.get('kind') != 'configuration_change' or not contract:
+            return
+        self.cfg['model_contract'] = deepcopy(contract)
+        self.cfg['model_identity'] = {key: contract.get(key) for key in ('provider', 'model')}
+        self.snapshot_base.update(model_key=event['model_key'], context_limit=contract.get('context_length'),
+                                  native_threshold_tokens=contract.get('threshold_tokens'))
+        self.actions.append(dict(kind='configuration_change', at=self.now, event_id=event['event_id'],
+                                 model_key=event['model_key'], model_request=False))
 
     def _cancel_running(self):
         active = self.running
@@ -497,6 +545,7 @@ class Replay:
                 self.colliding_arrivals.add(value["event_id"])
                 self._record_collision()
         elif kind == "knowledge_refresh":
+            self._configuration_event(value)
             self._observe(deepcopy(value))
             self.generation += 1
             self.pending = None
@@ -523,8 +572,7 @@ class Replay:
             if self.now < self.busy_until:
                 self._push(self.busy_until, "heartbeat", value)
             else:
-                self.anchor = self.now
-                self._start_job(self._template("heartbeat"))
+                self._heartbeat()
 
     def run(self):
         started = time.perf_counter()

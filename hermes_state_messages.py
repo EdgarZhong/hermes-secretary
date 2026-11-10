@@ -11,7 +11,7 @@ import time
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from agent.context_compressor import (
-    _DB_PERSISTED_MARKER as _DB_PERSISTED_MARKER_KEY, MODEL_ONLY_DISPLAY_METADATA_KEY, _is_checkpoint_item,
+    _DB_PERSISTED_MARKER as _DB_PERSISTED_MARKER_KEY, _is_checkpoint_item,
     _newest_checkpoint_carrier, split_user_originated_turn)
 from agent.memory_manager import sanitize_context
 from agent.message_metadata import (
@@ -24,6 +24,7 @@ from hermes_state_common import (
     _json_or, _legacy_reset_child_sql, _placeholders, _sql_json_extract)
 from hermes_state_identity import (
     _absorbed_uids_json, _restore_identity_columns, _stable_tool_key, _tool_call_uid_map, _tool_call_uid_or_none, _tool_call_uids_json)
+from hermes_state_display_legacy import DISPLAY_VISIBLE_SQL, display_filter_sql, is_display_excluded
 
 logger = logging.getLogger("hermes_state")  # caplog tests pin the origin module's name
 
@@ -58,9 +59,6 @@ _DISPLAY_GENERATION_SQL = """ AND (NULLIF({owner}.message_uid, '') IS NULL OR (
     SELECT generation.active = 1 OR generation.compacted = 1 FROM messages AS generation
     WHERE generation.session_id = {owner}.session_id AND generation.message_uid = {owner}.message_uid
       AND generation.id >= {owner}.id ORDER BY generation.id DESC LIMIT 1))"""
-# Model-only rows never enter display; unqualified SQL binds to the innermost messages alias.
-DISPLAY_VISIBLE_SQL = (
-    f" AND COALESCE({_sql_json_extract('display_metadata', '$.' + MODEL_ONLY_DISPLAY_METADATA_KEY)}, 0) = 0")
 _DISPLAY_META_ROW_SQL = "SELECT display_metadata FROM messages WHERE id = ? AND session_id IN ({ids})" + _DISPLAY_ACTIVE_CLAUSE
 # A display row is indexed only when both halves are set; the read path backfills before projecting, so
 # the in-transaction delete fence must refuse (not project) any session this probe still matches.
@@ -1218,7 +1216,7 @@ class SessionMessagesMixin:
 
     def _is_model_only_row(self, row) -> bool:
         """Python twin of :data:`DISPLAY_VISIBLE_SQL`."""
-        return bool((self._decode_display_metadata(row["display_metadata"]) or {}).get(MODEL_ONLY_DISPLAY_METADATA_KEY))
+        return is_display_excluded(row["role"], self._decode_display_metadata(row["display_metadata"]))
 
     @staticmethod
     def _display_identity(key: Tuple[Any, ...]) -> bytes:
@@ -1388,12 +1386,14 @@ class SessionMessagesMixin:
 
     def get_messages(self, session_id: str, include_inactive: bool = False, include_compacted: bool = False,
                      limit: Optional[int] = None, offset: int = 0, latest: bool = False,
-                     after_id: Optional[int] = None, include_ancestors: bool = False) -> List[Dict[str, Any]]:
+                     after_id: Optional[int] = None, include_ancestors: bool = False,
+                     display_only: bool = False) -> List[Dict[str, Any]]:
         """Load messages in insertion order (id, never timestamp: clocks regress). ``include_inactive``:
         rewind rows too; ``include_compacted``: compaction-archived display history (not rewind rows).
         ``latest`` pages back from the newest but returns chronological order; ``after_id``: keyset paging.
         ``include_ancestors``: also load the compression lineage (root → tip, branch sessions exempt),
-        mirroring ``get_messages_as_conversation(include_ancestors=True)`` — after a compression rotation
+        ``display_only`` excludes non-display rows before paging; raw reads default unchanged.
+        Mirroring ``get_messages_as_conversation(include_ancestors=True)`` — after a compression rotation
         the full transcript spans parent sessions, not just the child continuation (#51058)."""
         if after_id is not None and (latest or offset):
             raise ValueError("after_id is incompatible with latest/offset paging")
@@ -1425,7 +1425,7 @@ class SessionMessagesMixin:
             rows = self._legacy_display_page(
                 session_id, active_clause=active_clause, limit=limit, offset=offset, latest=latest)
         else:
-            sql = (f"SELECT * FROM messages WHERE session_id = ?{active_clause}"
+            sql = (f"SELECT * FROM messages WHERE session_id = ?{active_clause}{display_filter_sql(display_only)}"
                 f"{' AND id > ?' if after_id is not None else ''} ORDER BY id {'DESC' if latest else 'ASC'}")
             params: list = [session_id] if after_id is None else [session_id, after_id]
             if limit is not None or offset:

@@ -86,7 +86,15 @@ class _ChatStreamAccumulator:
 
     def feed(self, chunk: Any) -> bool:
         with self._partial_lock:
-            return self._feed(chunk)
+            before = len(self.content_parts)
+            progress = self._feed(chunk)
+            text = "".join(self.content_parts[before:])
+        # Display observers may read compression/runtime state; never call one
+        # under the accumulator lock used by timeout partial freezing.
+        if text:
+            from agent.compression_partial import observe_chat_stream_text
+            observe_chat_stream_text(text)
+        return progress
 
     def _feed(self, chunk: Any) -> bool:
         from agent import auxiliary_client as aux

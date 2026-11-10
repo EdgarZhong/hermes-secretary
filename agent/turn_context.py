@@ -13,7 +13,7 @@ import sys
 import threading
 import time
 import uuid
-from contextlib import suppress
+from contextlib import nullcontext, suppress
 from dataclasses import dataclass
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
@@ -601,7 +601,13 @@ def _bind_turn_identity(
         f"{agent.session_id or 'session'}:{effective_task_id}:{uuid.uuid4().hex[:8]}"
     )
     agent._relay_pending_turn_id = None
-    agent._current_turn_id = turn_id
+    with getattr(agent, "_pending_redirect_lock", nullcontext()):
+        agent._current_turn_id = turn_id
+    try:
+        from hermes_cli.active_sessions import observe_native_turn_owner
+        observe_native_turn_owner(agent)
+    except Exception:
+        logger.debug("Native host ownership observation unavailable", exc_info=True)
     from agent.pending_steer import note_native_turn_started
     note_native_turn_started(agent, turn_id)
     agent._current_api_request_id = ""

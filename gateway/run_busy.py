@@ -248,6 +248,7 @@ class GatewayBusySessionMixin:
                 surface=f"gateway:{platform}",
                 config=getattr(self, "config", None),
                 metadata={
+                    "runtime_host_kind": "gateway",
                     "platform": platform,
                     "chat_id": getattr(source, "chat_id", "") or "",
                     "user_id": getattr(source, "user_id", "") or "",

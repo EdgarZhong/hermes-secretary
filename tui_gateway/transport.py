@@ -97,6 +97,16 @@ def serialize_frame(obj: dict, peer: str, log: logging.Logger) -> str:
         return json.dumps(fallback, ensure_ascii=False)
 
 
+def ordered_writer(transport):
+    """Optional internal capability; an older subclass's write override remains authoritative."""
+    for owner in type(transport).__mro__:
+        if callable(owner.__dict__.get("write_ordered")):
+            return transport.write_ordered
+        if "write" in owner.__dict__:
+            return None
+    return None
+
+
 class StdioTransport:
     """Writes JSON frames to a stream (usually ``sys.stdout``) resolved via a callable, so runtime
     monkey-patches of the stream keep working."""
@@ -109,24 +119,36 @@ class StdioTransport:
 
     def write(self, obj: dict) -> bool:
         """Return ``True`` on success, ``False`` ONLY when the peer is gone (see :func:`_raise_unless_peer_gone`)."""
-        # Serialization is OUTSIDE the lock so a large payload can't block other threads' frames.
-        line = serialize_frame(obj, "stdio", logger) + "\n"
+        return self.write_ordered(obj)
+
+    def write_ordered(self, obj: dict, prepare=None, *, mirror=None) -> bool:
+        """Prepare the session seq inside the existing output owner, before serializing/writing.
+
+        ``mirror`` is the PTY's nonblocking sidecar admission, after primary IO in the same order.
+        Neither callback runs under the global replay lock.
+        """
         with self._lock:
+            if prepare is not None:
+                prepare()
+            line = serialize_frame(obj, "stdio", logger) + "\n"
             stream = self._stream_getter()
+            ok = True
             try:
                 stream.write(line)
-            except Exception as e:
+            except (OSError, ValueError) as e:
                 _raise_unless_peer_gone(e, "write")
-                return False
+                ok = False
             # A flush that *raises* peer-gone means the dispatcher should exit cleanly; one that *hangs*
             # on a half-closed pipe holds the lock until it returns — ``_DISABLE_FLUSH`` skips it entirely.
-            if not _DISABLE_FLUSH:
+            if ok and not _DISABLE_FLUSH:
                 try:
                     stream.flush()
-                except Exception as e:
+                except (OSError, ValueError) as e:
                     _raise_unless_peer_gone(e, "flush")
-                    return False
-        return True
+                    ok = False
+            if mirror is not None:
+                mirror()
+        return ok
 
     def close(self) -> None:
         return None
@@ -168,6 +190,9 @@ class FanoutTransport:
 
     def __init__(self, *transports: Transport) -> None:
         self._lock = threading.Lock()
+        # Producers serialize numbering + frame freezing + queue admission. Consumers keep
+        # using the short membership lock, so encoding a large frame cannot delay drain credit.
+        self._admission_lock = threading.Lock()
         self._peers: list[_FanoutPeer] = []
         for transport in transports:
             self.attach(transport)
@@ -285,14 +310,28 @@ class FanoutTransport:
             logger.debug("fanout overflow close failed; membership already dropped", exc_info=True)
 
     def write(self, obj: dict) -> bool:
+        return self.write_ordered(obj)
+
+    def write_ordered(self, obj: dict, prepare=None) -> bool:
         # Freeze the queued frame so a caller cannot mutate it after admission. Same serialization
         # guard as the single-peer transports: an unserializable frame reaches every peer as -32603.
-        encoded = serialize_frame(obj, "fanout", logger)
-        size = len(encoded.encode("utf-8", errors="surrogatepass"))
         from tui_gateway.connection_diagnostics import event_type
-        now = time.monotonic()
-        large_key = self._large_group(obj)
-        item = (encoded, size, event_type(obj), now, large_key)
+        with self._admission_lock:
+            # This is queue admission only. Draining/sockets and overflow closure stay outside.
+            if prepare is not None:
+                prepare()
+            encoded = serialize_frame(obj, "fanout", logger)
+            size = len(encoded.encode("utf-8", errors="surrogatepass"))
+            now = time.monotonic()
+            large_key = self._large_group(obj)
+            item = (encoded, size, event_type(obj), now, large_key)
+            remaining, overflowed = self._admit_frame(item, large_key)
+        for transport, details in overflowed:
+            self._signal_overflow_detach(transport, details)
+        return remaining
+
+    def _admit_frame(self, item, large_key):
+        encoded, size, _event, now, _key = item
         overflowed = []
         with self._lock:
             for peer in list(self._peers):
@@ -325,9 +364,7 @@ class FanoutTransport:
                     threading.Thread(target=self._drain, args=(peer,),
                                      name="tui-fanout", daemon=True).start()
             remaining = any(peer.attached for peer in self._peers)
-        for transport, details in overflowed:
-            self._signal_overflow_detach(transport, details)
-        return remaining
+        return remaining, overflowed
 
     @staticmethod
     def _large_group(obj):
@@ -400,10 +437,23 @@ class TeeTransport:
     def write(self, obj: dict) -> bool:
         # Primary first so a slow sidecar (WS publisher) never delays Ink/stdio.
         ok = self._primary.write(obj)
+        self._mirror(obj)
+        return ok
+
+    def _mirror(self, obj: dict) -> None:
         for sec in self._secondaries:
             with contextlib.suppress(Exception):
                 sec.write(obj)
-        return ok
+
+    def write_ordered(self, obj: dict, prepare=None) -> bool:
+        # The production PTY primary is stdio; its existing lock also orders the bounded
+        # WsPublisherTransport queue. Keep custom primary transports' old write contract.
+        ordered = ordered_writer(self._primary)
+        if getattr(ordered, "__func__", None) is StdioTransport.write_ordered:
+            return ordered(obj, prepare, mirror=lambda: self._mirror(obj))
+        if prepare is not None:
+            prepare()
+        return self.write(obj)
 
     def close(self) -> None:
         try:

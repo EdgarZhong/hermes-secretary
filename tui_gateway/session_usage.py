@@ -6,6 +6,32 @@ Helpers are rebound onto server.py, preserving the facade's public/patchable sea
 from .method_ctx import bind_module
 
 
+def _session_context_model_info(agent, session: dict) -> dict:
+    """Observe native pending selection and the existing Context response's model identity.
+
+    A built Agent's Context uses agent.model, even while the picker displays a pending target.
+    With no local Agent, Context follows the native cold identity (including a host mirror or
+    pending pick); that cold readout is not evidence that a model has actually executed.
+    """
+    info = {"model_switch_pending": bool(session.get("pending_model_switch")),
+            "context_model": None, "context_provider": None}
+    try:
+        if agent is None:
+            model, provider = _live_session_identity(session)
+        else:
+            model, provider = getattr(agent, "model", ""), getattr(agent, "provider", "")
+        info["context_model"] = model or None
+        if agent is not None and provider == "custom":
+            with _profile_build_scope(session.get("profile_home") or _hermes_home):
+                provider = _runtime_model_config(agent).get("provider", provider)
+        # Native unresolved selectors are not a precise Provider identity.
+        info["context_provider"] = provider if provider and provider.lower() not in {"auto", "custom", "unknown"} else None
+    except Exception as exc:
+        logger.debug("native context identity observation unavailable", exc_info=(
+            RuntimeError, RuntimeError("Private configuration exception details redacted"), exc.__traceback__))
+    return info
+
+
 def _retain_context_breakdown_estimate(agent, payload: dict, *, messages=None) -> dict:
     """Keep an existing native rough readout for restart recovery without changing its response."""
     try:

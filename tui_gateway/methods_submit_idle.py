@@ -56,7 +56,7 @@ def _idle_submit_scope(submission_id=None):
 
 def _idle_submit_metadata():
     identity = _idle_submission_id.get() if _idle_submit_requested() else None
-    return {"client_submission_id": identity} if identity else None
+    return {"client_submission_id": identity, **_web_accept_metadata()} if identity else None
 
 
 def _idle_submission_identity_error(rid, identity, *, required=False):
@@ -67,7 +67,7 @@ def _idle_submission_identity_error(rid, identity, *, required=False):
     return None
 
 
-def _idle_submission_receipt(session, identity):
+def _idle_submission_receipt(session, identity, *, conversation_ref=None):
     """Read an acceptance fact in this Profile/Conversation, including retired row copies."""
     if not identity:
         return None
@@ -75,13 +75,15 @@ def _idle_submission_receipt(session, identity):
         if db is None:
             return None
         owner = _submit_row_target_key(session)
+        scope = ("b.conversation_ref=?" if conversation_ref is not None else
+                 "b.conversation_ref=(SELECT conversation_ref FROM secretary_session_bindings WHERE session_id=?)")
         row = db._read_one(
             "SELECT m.id,m.session_id,m.role,m.content,m.timestamp,m.message_uid,m.display_kind,m.display_metadata "
             "FROM messages m JOIN secretary_session_bindings b ON b.session_id=m.session_id "
-            "WHERE b.conversation_ref=(SELECT conversation_ref FROM secretary_session_bindings WHERE session_id=?) "
+            "WHERE " + scope + " "
             "AND m.role='user' AND json_valid(m.display_metadata) "
             "AND json_extract(m.display_metadata,'$.client_submission_id')=? "
-            "ORDER BY m.id DESC LIMIT 1", (owner, identity))
+            "ORDER BY m.id DESC LIMIT 1", (conversation_ref if conversation_ref is not None else owner, identity))
         if row is None or not row["message_uid"]:
             return None
         message = {key: row[key] for key in ("role", "content", "timestamp", "message_uid")}
@@ -150,6 +152,9 @@ def _submit_claim_with_busy_policy(
     *, internal_hosted_submit=False, turn_author=None, transport=None,
 ):
     """Native busy behavior, with an idle-only branch and new/legacy claim retry."""
+    if _web_accept_metadata():
+        return _web_native_claim(rid, sid, session, text, params, has_truncation,
+                                 requested_rebind_ids, hosted_task, display_kind)
     # New requests have one authoritative decision, inside native admission.
     if _idle_submit_requested():
         return _lock_in_submit_turn(
@@ -218,6 +223,15 @@ def _submit_persist_with_receipt(rid, sid, session, text, display_kind, fields, 
     if error is not None:
         return error
     staged = session.get("_submit_user_row") or {}
+    if _web_accept_metadata() and (staged is previous or not isinstance(staged.get("_row_id"), int)):
+        # Legacy may proceed after a best-effort user-row write. An opted-in
+        # input needs its existing durable witness before starting the worker.
+        with session["history_lock"]:
+            _set_session_running(session, False)
+            session.pop("_submit_user_row", None)
+            _clear_inflight_turn(session)
+            _release_active_session_slot(session)
+        return _err(rid, 5071, "input was not saved", {"accepted": False, "reason": "storage_unavailable"})
     if isinstance(staged.get("_row_id"), int):
         fields["user_row_id"] = staged["_row_id"]
     if not _idle_submit_requested() or staged is previous:

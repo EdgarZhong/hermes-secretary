@@ -677,6 +677,7 @@ def _project_for_display(messages: list, *, home=None, inline_images: bool = Tru
     from agent.history_commentary import project_history_commentary
     from agent.prompt_builder import STEER_DISPLAY_KIND
     from agent.turn_failure_copy import untyped_failed_turn_display_kind
+    from hermes_state_display_legacy import without_web_input_custody
 
     # inline_images=False (#116511): render content through the gateway's ``_coerce_message_text``
     # projection so a data-URI image part becomes ``[image]`` — the same branch session.resume's
@@ -691,7 +692,7 @@ def _project_for_display(messages: list, *, home=None, inline_images: bool = Tru
             return message
 
     projected_messages = []
-    for message in messages:
+    for message in without_web_input_custody(messages):
         message = _with_tool_call_labels(message)
         if coerce is not None:
             message = coerce(message)
@@ -840,7 +841,7 @@ async def get_session_messages(
         # (#51058).
         return sid, _limit, db.get_messages(
             sid, limit=_limit, offset=offset, latest=latest_page,
-            include_compacted=include_compacted, include_ancestors=True)
+            include_compacted=include_compacted, include_ancestors=True, display_only=True)
 
     result = await asyncio.to_thread(_with_db, profile, _read, read_only=True)
     if result is None:

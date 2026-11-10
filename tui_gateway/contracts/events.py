@@ -59,6 +59,7 @@ class GatewayReadyPayload(Payload):
     heartbeat: bool | None = None  # WebSocket transport only
     connection_id: str | None = None  # Server-generated diagnostic identity, never authority.
     client_connection_id: str | None = None  # Validated untrusted per-attempt client correlation.
+    web_controlled_input: int | None = None
 
 
 event("gateway.ready", GatewayReadyPayload,

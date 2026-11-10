@@ -146,7 +146,7 @@ def _ac_inflight_original(session: dict) -> str:
 
 
 def _enqueue_prompt(session: dict, text: Any, transport: Any, image_paths: list[str] | None = None,
-                    turn_author: dict | None = None) -> dict | None:
+                    turn_author: dict | None = None, operation_id: str | None = None) -> dict | None:
     """Queue a message for the next turn. Text-only arrivals share a slot and merge losslessly (like the
     consecutive-user merge in ``repair_message_sequence``); image-bearing and authored ones stay separate
     envelopes so attachment chronology and the sender survive. ``transport`` is pinned so the drained turn
@@ -156,15 +156,18 @@ def _enqueue_prompt(session: dict, text: Any, transport: Any, image_paths: list[
     # Scrub live-turn self-duplicates first so the text merge below can't glue "{original}\n\n{later}" and re-fire the
     # original after a correction settles.
     # See #84417.
-    _drop_queued_duplicates_of_inflight_user(session)
+    if operation_id is None:
+        _drop_queued_duplicates_of_inflight_user(session)
     text_only = not image_paths and isinstance(text, str)
     # A text-only self-copy of the live prompt would restart it on drain; an authored copy is another sender's message.
-    if text_only and not turn_author and text.strip() == _ac_inflight_original(session) != "":
+    if operation_id is None and text_only and not turn_author and text.strip() == _ac_inflight_original(session) != "":
         return None
     queued = {"text": text, "transport": transport, **({"image_paths": image_paths} if image_paths else {}),
-              **({"turn_author": turn_author} if turn_author else {})}
+              **({"turn_author": turn_author} if turn_author else {}),
+              **({"_web_operation_id": operation_id} if operation_id else {})}
     existing = session.get("queued_prompt")
-    if (existing and text_only and not turn_author and isinstance(existing.get("text"), str)
+    if (operation_id is None and existing and not existing.get("_web_operation_id")
+            and text_only and not turn_author and isinstance(existing.get("text"), str)
             and not existing.get("image_paths") and not existing.get("turn_author")
             and not session.get("queued_prompts")):
         prev = existing["text"]
@@ -188,6 +191,8 @@ def _sanitize_queued_entry_vs_inflight_user(entry: Any, original: str) -> dict |
     """
     if not isinstance(entry, dict):
         return None
+    if entry.get("_web_operation_id"):
+        return entry
     text = entry.get("text")
     if not original or entry.get("image_paths") or entry.get("turn_author") or not isinstance(text, str):
         return entry
@@ -368,11 +373,17 @@ def _replace_queued_user_row_for_turn(session: dict, queued: dict, is_dispatchin
     # still-queued envelopes keep the never-drained marker (#125577) so a restart between drains
     # retires the row rather than gluing the never-run prompt into the previous turn.
     if is_dispatching:
-        _persist_submit_user_row(session, queued.get("text"), queued.get("_queued_display_kind"))
+        metadata = ({"client_submission_id": queued["_web_operation_id"],
+                     "web_input": {**queued["_web_input"], "state": "submitted", "destination": "turn"}}
+                    if queued.get("_web_input") else None)
+        _persist_submit_user_row(session, queued.get("text"), queued.get("_queued_display_kind"),
+                                 accept_metadata=metadata, image_paths=queued.get("image_paths"))
     else:
         from hermes_state_common import QUEUED_PROMPT_METADATA_KEY
         _persist_submit_user_row(session, queued.get("text"), queued.get("_queued_display_kind"),
-                                 accept_metadata={QUEUED_PROMPT_METADATA_KEY: True})
+                                 accept_metadata={QUEUED_PROMPT_METADATA_KEY: True,
+                                     **({"client_submission_id": queued["_web_operation_id"], "web_input": queued["_web_input"]}
+                                        if queued.get("_web_input") else {})}, image_paths=queued.get("image_paths"))
     fresh = session.get("_submit_user_row")
     if not (isinstance(fresh, dict) and isinstance(fresh.get("_row_id"), int)):
         return None  # re-append wrote nothing: keep the accept-time row active
@@ -457,11 +468,24 @@ def _drain_queued_prompt(rid, sid: str, session: dict) -> bool:
     """Fire a queued next-turn prompt if one is waiting and the session is idle. True when dispatched: the caller
     skips lower-priority follow-ups this cycle (the user's message wins)."""
     with _session_turn_admission(session) as admitted:
-        if not admitted or session.get("_closing") or not (queued := session.get("queued_prompt")) or session.get("running"):
+        if (not admitted or session.get("_closing") or not (queued := session.get("queued_prompt"))
+                or session.get("running") or session.get("_web_control_enabled") and _web_maintenance_active(session)):
             return False
         queue_generation = int(session.get("_queued_prompt_generation", 0))
         _ac_set_queue(session, session.get("queued_prompts") or [])
+        if _web_queued_input_stopped(session, queued, queue_generation):
+            _web_update_receipt(session, queued["_web_operation_id"], state="cancelled", reason="stopped")
+            _web_input_notice(sid, queued["_web_operation_id"])
+            return True
+        from tui_gateway.turn_terminal import token
+        claim_token = token(session)
         _set_session_running(session, True)
+        if queued.get("_web_operation_id"):
+            session["_turn_cancel_requested"] = False
+            # Native admission claimed this envelope. A concurrent operation
+            # withdraw must observe a started Turn, never an absent waiting slot.
+            _web_update_receipt(session, queued["_web_operation_id"], state="submitted", destination="turn")
+            _web_input_notice(sid, queued["_web_operation_id"])
         queued_transport = queued.get("transport")
         # The queuer's transport is pinned so the drained turn reaches the client that sent it — but
         # ATTACHED, not rebound: a mid-turn prompt from a second client used to silence the first for the
@@ -475,9 +499,16 @@ def _drain_queued_prompt(rid, sid: str, session: dict) -> bool:
             # Generation bump cancelled the claim (Stop, compress re-anchor, …): don't dispatch, but restore the
             # envelope (claimed head first, then whatever advanced into the slot) so a legitimate follow-up isn't dropped.
             # See #84417.
-            advanced = session.get("queued_prompt")
-            _ac_set_queue(session, [queued, *([advanced] if advanced else []), *(session.get("queued_prompts") or [])])
-            _set_session_running(session, False)
+            stopped = _web_queued_input_stopped(session, queued, queue_generation)
+            if not stopped:
+                advanced = session.get("queued_prompt")
+                _ac_set_queue(session, [queued, *([advanced] if advanced else []), *(session.get("queued_prompts") or [])])
+            if queued.get("_web_operation_id"):
+                _web_update_receipt(session, queued["_web_operation_id"], state="cancelled" if stopped else "waiting",
+                                    destination=queued["_web_input"]["destination"], reason="stopped" if stopped else None)
+                _web_input_notice(sid, queued["_web_operation_id"])
+            if not queued.get("_web_operation_id") or token(session) is claim_token:
+                _set_session_running(session, False)
             return True
     kwargs: dict = {"queued_prompt_generation": queue_generation}
     if queued.get("image_paths"):
@@ -500,6 +531,9 @@ def _drain_queued_prompt(rid, sid: str, session: dict) -> bool:
             session["_submit_user_row"] = dispatch_row
         else:
             session.pop("_submit_user_row", None)
+        if identity := queued.get("_web_operation_id"):
+            _web_update_receipt(session, identity, state="submitted", destination="turn")
+            _web_input_notice(sid, identity)
     # The compute-host frame has no author field, so only the inline runner receives it.
     author_kwargs = {"turn_author": queued["turn_author"]} if queued.get("turn_author") else {}
     dispatch_failed = False

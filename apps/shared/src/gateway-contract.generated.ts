@@ -517,6 +517,9 @@ export interface ConfigSetResult {
 export interface SessionLiveInfo {
   model?: string
   provider?: string
+  model_switch_pending?: boolean | null
+  context_model?: string | null
+  context_provider?: string | null
   reasoning_effort?: string
   reasoning_effort_wire?: string
   service_tier?: string
@@ -1988,12 +1991,14 @@ export interface PendingOccurrence {
   order: number
   state: 'pending' | 'handoff_reserved'
   withdrawable: boolean
+  operation_id?: string | null
 }
 export interface PendingReceipt {
   pending_id: string
   state: 'consumed' | 'withdrawn' | 'rejected'
   message_uid: string | null
   reason: string | null
+  operation_id?: string | null
 }
 export interface InterruptPendingResult {
   operation_id: string
@@ -2802,11 +2807,56 @@ export interface PetScaleResult {
   ok: boolean
   scale: number
 }
+export interface InputOperationParams {
+  session_id: string
+  profile?: string | null
+  operation_id: string
+}
+export interface InputOperationResult {
+  receipt: InputReceipt
+  input?: ReceivedInput | null
+}
+export interface InputReceipt {
+  operation_id: string
+  accepted: boolean
+  state: 'submitted' | 'waiting' | 'pending' | 'consumed' | 'withdrawn' | 'cancelled' | 'failed' | 'interrupted' | 'unknown'
+  destination?: 'turn' | 'steer' | 'startup' | 'followup' | 'maintenance' | null
+  turn_id?: string | null
+  pending_id?: string | null
+  message_uid?: string | null
+  reason?: string | null
+}
+export interface ReceivedInput {
+  text: string
+  image_paths?: string[]
+}
+export interface InputWithdrawResult {
+  outcome: 'withdrawn' | 'too_late' | 'not_found' | 'unknown'
+  receipt: InputReceipt
+}
+export interface InputStateResult {
+  phase: 'idle' | 'starting' | 'running' | 'settling' | 'maintenance' | 'gateway' | 'unavailable'
+  running: boolean
+  turn_id?: string | null
+  can_submit: boolean
+  can_stop: boolean
+  waiting: WaitingInput[]
+  unresolved?: WaitingInput[]
+  reason?: string | null
+}
+export interface WaitingInput {
+  receipt: InputReceipt
+  text: string
+  image_paths?: string[]
+}
 /** ``text`` is normally a string; the relay / hosted paths may hand a structured (parts list) payload, and the busy path renders it. Truncation (rewind / edit / regenerate) needs explicit consent: ``confirm_truncate`` plus one durable target (``truncate_before_row_id`` preferred, ``truncate_before_message_id``, or the legacy ``truncate_before_user_ordinal``). */
 export interface PromptSubmitParams {
   session_id: string
   profile?: string | null
   text?: unknown
+  input_policy?: 'web_controlled' | null
+  operation_id?: string | null
+  image_paths?: string[] | null
   display_kind?: string | null
   interrupted?: boolean | null
   queued?: boolean | null
@@ -2829,8 +2879,26 @@ export interface PromptSubmitResult {
   survivor_user_row_ids?: (number | null)[] | null
   survivor_row_id_map?: Record<string, number | null> | null
   turn_isolation?: boolean | null
+  receipt?: InputReceipt | null
+  accepted_user?: MessageUserCommittedPayload | null
 }
 export type PromptSubmitStatus = 'streaming' | 'queued' | 'steered' | 'redirected'
+/** A normal Web idle submit's actual persisted user row, before its worker starts. */
+export interface MessageUserCommittedPayload {
+  stored_session_id: string
+  message: CommittedUserSource
+  client_submission_id?: string | null
+}
+/** The one actually committed driving row; no API sidecar or synthetic display kind. */
+export interface CommittedUserSource {
+  message_uid: string
+  row_id: number
+  role: 'user'
+  content: string
+  timestamp: number
+  display_kind?: string | null
+  display_metadata?: unknown | null
+}
 export interface ClipboardPasteParams {
   session_id: string
   profile?: string | null
@@ -3177,6 +3245,108 @@ export interface WakeFeedResult {
   reason?: string | null
   fed: boolean
 }
+export interface CompactionStateParams {
+  session_id: string
+  profile?: string | null
+  operation_id?: string | null
+}
+export interface CompactionStateResult {
+  active: boolean
+  operation_id: string | null
+  phase: 'idle' | 'computing' | 'committing' | 'committed' | 'cancelled' | 'finished' | 'unknown'
+  cancelable: boolean
+  state: 'idle' | 'running' | 'completed' | 'cancelled' | 'no_change' | 'error' | 'unknown'
+  partial?: CompactionPartial | null
+}
+export interface CompactionPartial {
+  text: string
+  revision: number
+  start_offset: number
+  end_offset: number
+  truncated: boolean
+}
+export interface CompactionCancelParams {
+  session_id: string
+  profile?: string | null
+  operation_id: string
+}
+export interface CompactionCancelResult {
+  operation_id: string
+  outcome: 'cancelled' | 'too_late' | 'no_active' | 'already_finished'
+}
+export interface SecretaryReadParams {
+  stored_session_id: string
+  profile: string
+}
+export interface SecretaryStateResult {
+  stored_session_id: string
+  profile: string
+  profile_home: string
+  conversation_ref: string | null
+  availability: 'available' | 'unavailable'
+  global_enabled: boolean | null
+  local_enabled: boolean | null
+  task_state: 'active' | 'idle' | 'unknown'
+  tasks: ActiveTask[]
+  next_idle: IdleEstimate
+  observed_at: string
+  current_snapshot_id?: string | null
+  schedule_count?: number | null
+}
+export interface ActiveTask {
+  task_id: string
+  started_at?: string | null
+}
+export interface IdleEstimate {
+  state: 'scheduled' | 'absent' | 'unknown'
+  at: string | null
+}
+export interface NotebookReadResult {
+  stored_session_id: string
+  profile: string
+  profile_home: string
+  availability: 'available' | 'unavailable'
+  exists: boolean
+  output: string
+  created_at: string | null
+}
+export interface SchedulesReadResult {
+  stored_session_id: string
+  profile: string
+  profile_home: string
+  conversation_ref: string | null
+  availability: 'available' | 'unavailable'
+  observed_at: string
+  schedules: ScheduleEntry[]
+  count: number
+  hidden_count?: number
+}
+/** One Schedule Table row, field-for-field with the runtime's ``schedule_public_conn``. */
+export interface ScheduleEntry {
+  schedule_id: string
+  name?: string | null
+  content: string
+  expression: string
+  canonical_schedule: ScheduleCanonical
+  timezone: string | null
+  delivery_mode: 'instant' | 'deferred'
+  state: 'active' | 'paused' | 'completed'
+  next_due_at: string | null
+  pending_count: number
+  last_delivery: ScheduleDelivery | null
+}
+/** Core-owned canonical schedule; ``kind`` selects the one populated field. */
+export interface ScheduleCanonical {
+  kind: 'once' | 'interval' | 'cron'
+  run_at?: string | null
+  minutes?: number | null
+  expr?: string | null
+  display?: string | null
+}
+export interface ScheduleDelivery {
+  timestamp: string
+  outcome: string
+}
 export interface SessionCreateParams {
   profile?: string | null
   cols?: number | null
@@ -3494,6 +3664,9 @@ export interface SessionCwdSetParams {
 export interface SessionCwdSetResult {
   model?: string
   provider?: string
+  model_switch_pending?: boolean | null
+  context_model?: string | null
+  context_provider?: string | null
   reasoning_effort?: string
   reasoning_effort_wire?: string
   service_tier?: string
@@ -3701,14 +3874,25 @@ export interface CompressionSummary {
 export interface SessionInterruptParams {
   session_id: string
   profile?: string | null
+  input_policy?: 'web_controlled' | null
+  operation_id?: string | null
+  turn_id?: string | null
   expected_hosted_task_id?: string | null
 }
 export interface SessionInterruptResult {
   status: InterruptStatus
   interrupted?: boolean | null
   turn_isolation?: boolean | null
+  maintenance?: CompactionCancelResult | null
+  target?: SessionInterruptTarget | null
+  target_state?: 'stop_requested' | 'not_active' | 'unknown' | null
 }
 export type InterruptStatus = 'interrupted' | 'not_interrupted'
+export interface SessionInterruptTarget {
+  kind: 'main' | 'maintenance' | 'none'
+  turn_id?: string | null
+  operation_id?: string | null
+}
 export interface SessionCorrectionParams {
   session_id: string
   profile?: string | null
@@ -3832,22 +4016,6 @@ export interface SubmitIdleResult {
   survivor_row_id_map?: Record<string, number | null> | null
   turn_isolation?: boolean | null
   accepted_user?: MessageUserCommittedPayload | null
-}
-/** A normal Web idle submit's actual persisted user row, before its worker starts. */
-export interface MessageUserCommittedPayload {
-  stored_session_id: string
-  message: CommittedUserSource
-  client_submission_id?: string | null
-}
-/** The one actually committed driving row; no API sidecar or synthetic display kind. */
-export interface CommittedUserSource {
-  message_uid: string
-  row_id: number
-  role: 'user'
-  content: string
-  timestamp: number
-  display_kind?: string | null
-  display_metadata?: unknown | null
 }
 export interface SubmissionStatusParams {
   session_id: string
@@ -4694,99 +4862,6 @@ export interface CompletedTurnUsage {
   scope: 'completed_main_turn'
   completed_at: string
 }
-export interface CompactionStateParams {
-  session_id: string
-  profile?: string | null
-}
-export interface CompactionStateResult {
-  active: boolean
-  operation_id: string | null
-  phase: 'idle' | 'computing' | 'committing' | 'committed' | 'cancelled' | 'finished' | 'unknown'
-  cancelable: boolean
-  state: 'idle' | 'running' | 'completed' | 'cancelled' | 'no_change' | 'error' | 'unknown'
-}
-export interface CompactionCancelParams {
-  session_id: string
-  profile?: string | null
-  operation_id: string
-}
-export interface CompactionCancelResult {
-  operation_id: string
-  outcome: 'cancelled' | 'too_late' | 'no_active' | 'already_finished'
-}
-export interface SecretaryReadParams {
-  stored_session_id: string
-  profile: string
-}
-export interface SecretaryStateResult {
-  stored_session_id: string
-  profile: string
-  profile_home: string
-  conversation_ref: string | null
-  availability: 'available' | 'unavailable'
-  global_enabled: boolean | null
-  local_enabled: boolean | null
-  task_state: 'active' | 'idle' | 'unknown'
-  tasks: ActiveTask[]
-  next_idle: IdleEstimate
-  observed_at: string
-  current_snapshot_id?: string | null
-  schedule_count?: number | null
-}
-export interface ActiveTask {
-  task_id: string
-  started_at?: string | null
-}
-export interface IdleEstimate {
-  state: 'scheduled' | 'absent' | 'unknown'
-  at: string | null
-}
-export interface NotebookReadResult {
-  stored_session_id: string
-  profile: string
-  profile_home: string
-  availability: 'available' | 'unavailable'
-  exists: boolean
-  output: string
-  created_at: string | null
-}
-export interface SchedulesReadResult {
-  stored_session_id: string
-  profile: string
-  profile_home: string
-  conversation_ref: string | null
-  availability: 'available' | 'unavailable'
-  observed_at: string
-  schedules: ScheduleEntry[]
-  count: number
-  hidden_count?: number
-}
-/** One Schedule Table row, field-for-field with the runtime's ``schedule_public_conn``. */
-export interface ScheduleEntry {
-  schedule_id: string
-  name?: string | null
-  content: string
-  expression: string
-  canonical_schedule: ScheduleCanonical
-  timezone: string | null
-  delivery_mode: 'instant' | 'deferred'
-  state: 'active' | 'paused' | 'completed'
-  next_due_at: string | null
-  pending_count: number
-  last_delivery: ScheduleDelivery | null
-}
-/** Core-owned canonical schedule; ``kind`` selects the one populated field. */
-export interface ScheduleCanonical {
-  kind: 'once' | 'interval' | 'cron'
-  run_at?: string | null
-  minutes?: number | null
-  expr?: string | null
-  display?: string | null
-}
-export interface ScheduleDelivery {
-  timestamp: string
-  outcome: string
-}
 /** ``answers`` rides only on a reconnect replay (locks the server already accepted; null = skipped). */
 export interface ClarifyRequestParams {
   session_id: string
@@ -4964,6 +5039,7 @@ export interface GatewayReadyPayload {
   heartbeat?: boolean | null
   connection_id?: string | null
   client_connection_id?: string | null
+  web_controlled_input?: number | null
 }
 /** ``tui_gateway/change_watcher.py::resolve_skin`` — the resolved active skin (``HermesSkin``). ``{}`` when the skin engine failed to load. Colour maps are token → colour string. */
 export interface SkinPayload {
@@ -5441,6 +5517,18 @@ export interface ConsumedSteerMessage {
   display_content: string
   timestamp?: number | null
 }
+export interface InputChangedPayload {
+  operation_id?: string | null
+}
+export interface CompactionChangedPayload {
+  operation_id: string
+}
+export interface CompactionDeltaPayload {
+  operation_id: string
+  revision: number
+  start_offset: number
+  text: string
+}
 export interface SecretaryChangedPayload {
   profile_home: string
   conversation_ref: string | null
@@ -5779,6 +5867,10 @@ export interface RpcMethods {
   'prompt.background': { params: SideAgentParams; result: TaskIdResult }
   /** Side question over a snapshot of the live conversation; the answer arrives as btw.complete. */
   'prompt.btw': { params: SideAgentParams; result: TaskIdResult }
+  /** Query an opt-in input's persisted receipt without replaying the write. */
+  'prompt.operation_status': { params: InputOperationParams; result: InputOperationResult }
+  /** Withdraw the exact waiting input, or delegate to its native Pending owner. */
+  'prompt.operation_withdraw': { params: InputOperationParams; result: InputWithdrawResult }
   /** Read the exact persisted idle submission receipt. Unknown never authorizes resubmission. */
   'prompt.submission_status': { params: SubmissionStatusParams; result: SubmissionStatusResult }
   /** Send a user turn to a live session; busy sessions queue / steer / redirect instead of refusing. */
@@ -5846,6 +5938,8 @@ export interface RpcMethods {
   'session.foreign.preview': { params: SessionForeignIdParams; result: SessionForeignPreviewResult }
   /** The durable display transcript (ancestors included, row ids attached). */
   'session.history': { params: SessionHistoryParams; result: SessionHistoryResult }
+  /** Read this runtime's authoritative input phase and waiting native queue. */
+  'session.input_state': { params: SessionParams; result: InputStateResult }
   /** Stop the running turn (and streaming TTS); retires the crash-recovery marker. */
   'session.interrupt': { params: SessionInterruptParams; result: SessionInterruptResult }
   /** Atomically reserve remaining steer occurrences, stop, and admit one pending-only followup. */
@@ -6154,6 +6248,8 @@ export const RPC_METHODS = [
   'projects.update',
   'prompt.background',
   'prompt.btw',
+  'prompt.operation_status',
+  'prompt.operation_withdraw',
   'prompt.submission_status',
   'prompt.submit',
   'prompt.submit_idle',
@@ -6192,6 +6288,7 @@ export const RPC_METHODS = [
   'session.foreign.list',
   'session.foreign.preview',
   'session.history',
+  'session.input_state',
   'session.interrupt',
   'session.interrupt_pending',
   'session.interrupt_pending_status',
@@ -6420,10 +6517,16 @@ export interface BackendGatewayEventMap {
   /** Background review of the last turn finished. */
   'review.summary': ReviewSummaryPayload
   'secretary.changed': SecretaryChangedPayload
+  /** The exact native compression operation changed phase. */
+  'session.compaction_changed': CompactionChangedPayload
+  /** Bounded native summary text, scoped to one operation and offset. */
+  'session.compaction_delta': CompactionDeltaPayload
   /** Persisted goal / loop / heartbeat state changed. */
   'session.control.update': SessionControlUpdatePayload
   /** Live session settings snapshot (``server._session_info``); also the ``info`` of create/resume/activate. */
   'session.info': SessionLiveInfo
+  /** Input custody changed; locally refetch the same runtime's input state or receipt. */
+  'session.input_changed': InputChangedPayload
   /** The backend reclaimed a live session out from under its clients. */
   'session.reclaimed': SessionReclaimedPayload
   /** Deferred resume hydration progress. */
@@ -6541,8 +6644,11 @@ export const GATEWAY_EVENT_TYPES = [
   'request.cancel',
   'review.summary',
   'secretary.changed',
+  'session.compaction_changed',
+  'session.compaction_delta',
   'session.control.update',
   'session.info',
+  'session.input_changed',
   'session.reclaimed',
   'session.resume_progress',
   'session.title',

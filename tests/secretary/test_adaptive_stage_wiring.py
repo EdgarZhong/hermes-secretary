@@ -83,7 +83,7 @@ def test_busy_cross_process_lease_defers_until_existing_tick(owned, monkeypatch)
     try:
         assert other.try_acquire_session_turn_lease('main', 'other-process', ttl_seconds=100)
         apply(other, ref, now=time.time())
-        assert hb.load()._adaptive_interval_seconds == 10800
+        assert hb.load()._adaptive_interval_seconds == 60
         request = row(db, ref, 'secretary_adaptive_refresh')
         assert request['evaluated_revision'] == 0
         other.release_session_turn_lease('main', 'other-process')
@@ -100,7 +100,7 @@ def test_busy_main_normal_finish_uses_import_and_acknowledges_request(owned, mon
     parent._secretary_main_turn_running = True
     monkeypatch.setattr('secretary.adaptive_policy.decide', hot)
     apply(db, ref)
-    assert hb.load()._adaptive_interval_seconds == 10800
+    assert hb.load()._adaptive_interval_seconds == 60
     runtime.finish_turn(parent, 1001)
     assert hb.load()._adaptive_interval_seconds == 60
     request = row(db, ref, 'secretary_adaptive_refresh')
@@ -128,7 +128,7 @@ def test_inflight_heartbeat_claim_keeps_revision_anchor_and_pending_mode(owned, 
     monkeypatch.setattr('secretary.adaptive_policy.decide', hot)
     apply(db, ref, now=20001)
     assert row(db, ref, 'secretary_heartbeats') == before
-    assert hb.claim_is_current(claim)
+    assert hb.claim_is_current(claim, now=20001)
     assert json.loads(row(db, ref, 'secretary_adaptive_heartbeats')['pending'])['mode'] == 'hot'
     assert hb.refund(claim)
     assert hb.load()._adaptive_interval_seconds == 60 and hb.load().last_fired_at == 10
@@ -212,8 +212,9 @@ def test_registered_model_switch_keeps_behavior_and_uses_new_cost_contract(owned
     assert any(e['event_id'] == 'real-user' for e in seen[0][1])
     parent.model = 'unregistered'
     db._execute_write(lambda conn: conn.execute("UPDATE sessions SET model='unregistered' WHERE id='main'"))
-    assert not refresh.refresh(db, ref, parent=parent, now=1002)
-    assert hb.load()._adaptive_interval_seconds == 10800
+    assert refresh.refresh(db, ref, parent=parent, now=1002)
+    assert hb.load()._adaptive_interval_seconds == 120
+    assert runtime.settings.for_db(db, ref, parent=parent) is None
 
 
 def test_race_after_decision_does_not_ack_or_overwrite_new_turn(owned, monkeypatch):
@@ -226,7 +227,7 @@ def test_race_after_decision_does_not_ack_or_overwrite_new_turn(owned, monkeypat
     monkeypatch.setattr('secretary.adaptive_policy.decide', race)
     try:
         apply(db, ref)
-        assert hb.load()._adaptive_interval_seconds == 10800
+        assert hb.load()._adaptive_interval_seconds == 60
         assert row(db, ref, 'secretary_adaptive_refresh')['evaluated_revision'] == 0
         assert db.noting_idle_state(ref)['last_turn_started_at'] == 1001
     finally:
@@ -316,7 +317,7 @@ def test_claim_pending_and_idle_repeated_ticks_do_not_repeat_decision(owned, mon
     apply(db, ref, now=20001)
     for now in range(20002, 20006):
         assert not refresh.refresh(db, ref, parent=parent, now=now)
-    assert len(decisions) == 1 and hb.claim_is_current(claim)
+    assert len(decisions) == 1 and hb.claim_is_current(claim, now=20006)
     assert hb.refund(claim)
     assert not refresh.refresh(db, ref, parent=parent, now=20006)
 
@@ -344,7 +345,7 @@ def test_failed_or_shadow_policy_keeps_native_and_import_revision_pending(owned,
         raise RuntimeError('controlled policy failure')
     monkeypatch.setattr('secretary.adaptive_policy.decide', broken)
     assert apply(db, ref)['applied']
-    assert hb.load()._adaptive_interval_seconds == 10800
+    assert hb.load()._adaptive_interval_seconds == 60
     assert row(db, ref, 'secretary_adaptive_refresh')['evaluated_revision'] == 0
     path = Path(db.db_path).parent / 'config.yaml'
     config = json.loads(path.read_text())

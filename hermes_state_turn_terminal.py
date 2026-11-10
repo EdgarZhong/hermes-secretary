@@ -5,6 +5,9 @@ Uses the existing message metadata writer/transaction; no message, schema or eve
 from __future__ import annotations
 
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def persist_turn_source(db, session_id, row_id, marker, *, turn_lease_holder=None, compression_lock_holder=None):
@@ -20,24 +23,33 @@ def persist_turn_source(db, session_id, row_id, marker, *, turn_lease_holder=Non
         source = conn.execute("SELECT role,message_uid FROM messages WHERE id=? "
                               f"AND session_id IN ({marks})", (row_id, *lineage)).fetchone()
         if source is None or tuple(source) != ("user", uid):
-            return False
+            return False, False
         generation = conn.execute("SELECT active,compacted FROM messages WHERE message_uid=? "
                                   f"AND session_id IN ({marks}) ORDER BY id DESC LIMIT 1", (uid, *lineage)).fetchone()
         if generation is None or not (generation[0] or generation[1]):
-            return False
+            return False, False
         row = conn.execute("SELECT id,display_metadata FROM messages WHERE role='user' AND message_uid=? "
                            f"AND session_id IN ({marks}) AND (active=1 OR compacted=1) "
                            "ORDER BY active DESC,id DESC LIMIT 1", (uid, *lineage)).fetchone()
         if row is None:
-            return False
+            return False, False
         metadata = db._decode_display_metadata(row["display_metadata"]) or {}
         if metadata.get("turn_source") == marker:
-            return True
+            return True, False
         metadata["turn_source"] = dict(marker)
         conn.execute("UPDATE messages SET display_metadata=? WHERE id=?",
                      (db._encode_display_metadata(metadata), row["id"]))
-        return True
-    return db._execute_write(write, patience_s=0.0)
+        return True, True
+    accepted, changed = db._execute_write(write, patience_s=0.0)
+    if changed:
+        try:
+            from hermes_state_history_notifications import notify_history_changed
+            notify_history_changed(db, session_id=session_id)
+        except Exception:
+            # The native source is already committed. A display wake-up cannot
+            # turn that success into a failed input or block the native Turn.
+            logger.debug("Native Turn source wake-up unavailable", exc_info=True)
+    return accepted
 
 
 def _reconcile_outputs(outcome, rows):

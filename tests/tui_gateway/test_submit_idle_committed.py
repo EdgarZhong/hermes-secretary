@@ -190,8 +190,9 @@ def test_hidden_row_receipt_preserves_real_display_kind(live, monkeypatch):
     monkeypatch.setattr(server, "_run_after_agent_ready", lambda *a, **k: None)
     original = server._persist_submit_user_row
 
-    def persist(session, text, display_kind):
-        original(session, text, display_kind, accept_metadata={"title_preview": "durable preview"})
+    def persist(session, text, display_kind, **kwargs):
+        metadata = kwargs.pop("accept_metadata", None) or {}
+        original(session, text, display_kind, accept_metadata={**metadata, "title_preview": "durable preview"}, **kwargs)
         session["_submit_user_row"]["content"] = "forged staging content is not authoritative"
 
     monkeypatch.setattr(server, "_persist_submit_user_row", persist)

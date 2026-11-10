@@ -132,10 +132,21 @@ _SESSION_SIGNATURE_FIELDS = (
 # normal 0.5 s watch pass stat-only; SQLite is read only after another process
 # actually commits.
 _sessions_db_sig_cache: dict[str, tuple[int | None, tuple | None]] = {}
+_sessions_db_lease_deadlines: dict[str, float] = {}
 _sessions_db_scope_cache: dict[str, tuple | None] = {}
 _sessions_probe_scope: dict[str, tuple] = {}
 _sessions_broadcast_scope: dict[str, tuple] = {}
 _secretary_wake_sigs: dict[str, int | None] = {}
+
+
+def _session_watch_turn_leases(conn):
+    """Observe native activity identity only; a renewal is not a new activity event."""
+    present = conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='session_turn_leases'").fetchone()
+    if not present:
+        return {}, float("inf")
+    rows = conn.execute("SELECT conversation_id,holder,expires_at FROM session_turn_leases WHERE expires_at>?",
+                        (time.time(),)).fetchall()
+    return {row[0]: row[1] for row in rows}, min((row[2] for row in rows), default=float("inf"))
 
 
 def _session_db_content_sig(db_path: Path):
@@ -151,7 +162,7 @@ def _session_db_content_sig(db_path: Path):
     cache_key = str(db_path)
     cached = _sessions_db_sig_cache.get(cache_key)
 
-    if cached is not None and cached[0] == mtime:
+    if cached is not None and cached[0] == mtime and time.time() < _sessions_db_lease_deadlines.get(cache_key, float("inf")):
         return cached[1]
     if not db_path.exists():
         _sessions_db_sig_cache[cache_key] = (mtime, None)
@@ -167,6 +178,7 @@ def _session_db_content_sig(db_path: Path):
         conn = _connect_tracked_db(read_only_db_uri(db_path), tracking_path=db_path,
                                    uri=True, timeout=0.05)
         conn.execute("BEGIN")
+        turn_leases, lease_deadline = _session_watch_turn_leases(conn)
         available = {row[1] for row in conn.execute("PRAGMA table_info(sessions)")}
         fields = tuple(field for field in _SESSION_SIGNATURE_FIELDS if field in available)
         row_scope = {} if set(_SESSION_SIGNATURE_FIELDS).issubset(available) else None
@@ -184,7 +196,7 @@ def _session_db_content_sig(db_path: Path):
             rows = conn.execute(f"SELECT {columns}, {reference} FROM sessions s{join}{order}")
             digest = hashlib.blake2b(digest_size=16)
             for row in rows:
-                encoded = repr(tuple(row[:-1])).encode("utf-8", "backslashreplace")
+                encoded = repr((*row[:-1], turn_leases.get(row[0]))).encode("utf-8", "backslashreplace")
                 digest.update(encoded)
                 digest.update(b"\0")
                 if row_scope is not None:
@@ -196,6 +208,7 @@ def _session_db_content_sig(db_path: Path):
                         row_scope[identity] = (hashlib.blake2b(encoded, digest_size=16).digest(), ref)
             signature = (fields, digest.digest())
         _sessions_db_scope_cache[cache_key] = tuple(sorted(row_scope.items())) if row_scope is not None else None
+        _sessions_db_lease_deadlines[cache_key] = lease_deadline
     except Exception:  # noqa: BLE001 - preserve the old wake-up signal if the read probe cannot run
         _sessions_db_scope_cache[cache_key] = None
         # A busy/locked read after a good one keeps the last digest and leaves the cached mtime

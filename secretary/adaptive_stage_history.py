@@ -32,6 +32,8 @@ def _bounded(rows, limit):
 def _episodes(data, now, cohort, timescale):
     users = visible(data.get('users', []), now)
     ends = visible(data.get('work_end_events', []), now)
+    reminders = visible(data.get('reminder_end_events', []), now)
+    reminder_times = [r['at'] for r in reminders]
     work = {r.get('user_id'): r for r in visible(data.get('work', []), now) if r.get('user_id')}
     user_times, end_times = [r['at'] for r in users], [r['at'] for r in ends]
     spans = list(data.get('spans', []))
@@ -54,6 +56,7 @@ def _episodes(data, now, cohort, timescale):
                                    seconds=stop - anchor, complete=row['id'] is not None,
                                    left_censored=anchor_id is None, current_tail=stop == now and row['id'] is None,
                                    grade=data.get('grade', 'verified_or_declared_coverage'),
+                                   reminders=reminders[bisect_left(reminder_times, anchor):bisect_left(reminder_times, stop)],
                                    source_ids=[key for key in (anchor_id, row['id']) if key], weight=weight,
                                    return_event=_return_event(row, work.get(row['id'])) if row['id'] else None))
             previous, start_id = stop, row['id']
@@ -112,20 +115,24 @@ def _residual_samples(eligible, rows, age):
                          unidentified=survival > 1e-12 and rate is None)
 
 
-def remaining_gaps(data, now, age, *, recency_timescale_days=7):
+def remaining_gaps(data, now, age, *, recency_timescale_days=7, timezone_name=None):
     """Condition on attained idle age, retaining censoring and tail uncertainty."""
     rows = []
     for i, group in enumerate([data, *data.get('training_cohorts', [])]):
         rows.extend(_episodes(group, now, i, recency_timescale_days))
     independent = [r for r in rows if not r['left_censored'] and not r['current_tail']]
-    eligible = [r for r in independent if r['seconds'] >= age]
+    from secretary.adaptive_reminder_history import condition
+    conditioned, attained, reminder = condition(independent, data, now, age, timezone_name)
+    eligible = [{k: v for k, v in r.items() if k != 'reminders'}
+                for r in conditioned if r['seconds'] >= attained]
     bounded = [dict(r, weight=r.get('mass', r['weight'])) for r in _bounded(eligible, 128)]
-    samples, tail = _residual_samples(bounded, independent, age)
+    samples, tail = _residual_samples(bounded, conditioned, attained)
     total = sum(r['weight'] for r in samples)
     support = [dict(r, weight=r['weight'] / total) for r in samples] if total else []
     squared = sum(r['weight'] ** 2 for r in eligible)
-    return dict(source='independent_work_end_to_return_or_coverage_end_episodes',
+    return dict(source=reminder.get('source', 'independent_work_end_to_return_or_coverage_end_episodes'),
                 available=bool(support) and not tail['unidentified'], age_seconds=age,
+                reminder_conditioning=reminder, conditioning_age_seconds=attained,
                 recency_timescale_days=recency_timescale_days,
                 independent_episodes=len(independent), conditional_independent_episodes=len(eligible),
                 complete_episodes=sum(r['complete'] for r in eligible),

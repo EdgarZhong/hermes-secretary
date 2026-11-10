@@ -45,34 +45,48 @@ def _(rid, params: dict) -> dict:
                     resume_wake = False
                     return _ok(rid, {"status": "not_interrupted", "interrupted": False})
         sid = str(params.get("session_id") or "")
+        response, target_fields = _web_prepare_stop(rid, params, sid, session)
+        expected_start_token = target_fields.pop("_expected_start_token", None)
+        if response is not None:
+            return response
         if _session_uses_compute_host(session):
             try:
                 _interrupt_session_turn(sid, session, request_id=f"interrupt-{rid}")
             except Exception as exc:  # health: allow BLE001 -- the bridge raises transport-specific errors unknown here; surfaced verbatim to the client, never swallowed
                 return _err(rid, 5019, f"compute-host interrupt failed: {exc}")
-            return _ok(rid, {"status": "interrupted", "turn_isolation": True})
-        session, err = _sess(params, rid)
-        if err:
-            return err
+            return _ok(rid, {"status": "interrupted", "turn_isolation": True, **target_fields})
         from secretary.adaptive_runtime import composer_cancel
         adaptive_operation = None
-        try:
-            adaptive_operation = composer_cancel(session.get("agent"))
-        except Exception:
-            logger.debug("Adaptive Composer cancel observation unavailable", exc_info=True)
-        _interrupt_session_turn(sid, session)
-        if adaptive_operation:
+
+        def observe_cancel():
+            nonlocal adaptive_operation
             try:
-                composer_cancel(session.get("agent"), operation_id=adaptive_operation)
+                adaptive_operation = composer_cancel(session.get("agent"))
             except Exception:
-                logger.debug("Adaptive Composer cancel settlement unavailable", exc_info=True)
+                logger.debug("Adaptive Composer cancel observation unavailable", exc_info=True)
+
+        if not target_fields:
+            observe_cancel()
+        try:
+            _interrupt_session_turn(sid, session, expected_start_token=expected_start_token,
+                                    expected_turn_id=(target_fields.get("target") or {}).get("turn_id"),
+                                    before_interrupt=observe_cancel if target_fields else None)
+        except _SessionStopTargetChanged:
+            return _ok(rid, {"status": "not_interrupted", "interrupted": False,
+                             **target_fields, "target_state": "not_active"})
         # Retire the crash-recovery marker NOW: until the run thread's finally, a backend exit looks like a crash
         # and session.resume auto-continues the turn the user just stopped (the extra key covers compression
         # rotating session_key mid-turn).
-        with session["history_lock"]:
-            active_marker_key = str(session.pop("_active_turn_marker_key", "") or "")
+        with _web_stop_cleanup_scope(session, (target_fields.get("target") or {}).get("turn_id"),
+                                     expected_start_token, lock_legacy=True) as still_owned:
+            if adaptive_operation and still_owned:
+                try:
+                    composer_cancel(session.get("agent"), operation_id=adaptive_operation)
+                except Exception:
+                    logger.debug("Adaptive Composer cancel settlement unavailable", exc_info=True)
+            active_marker_key = str(session.pop("_active_turn_marker_key", "") or "") if still_owned else ""
         _retire_turn_marker(session, active_marker_key)
-        return _ok(rid, {"status": "interrupted"})
+        return _ok(rid, {"status": "interrupted", **target_fields})
     finally:
         if resume_wake:
             try:

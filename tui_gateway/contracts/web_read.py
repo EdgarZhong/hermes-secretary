@@ -10,6 +10,15 @@ from .registry import event, method
 class CompactionStateParams(Params):
     session_id: str = Field(min_length=1)
     profile: str | None = None
+    operation_id: str | None = None
+
+
+class CompactionPartial(Result):
+    text: str
+    revision: int
+    start_offset: int
+    end_offset: int
+    truncated: bool
 
 
 class CompactionStateResult(Result):
@@ -18,6 +27,22 @@ class CompactionStateResult(Result):
     phase: Literal["idle", "computing", "committing", "committed", "cancelled", "finished", "unknown"]
     cancelable: bool
     state: Literal["idle", "running", "completed", "cancelled", "no_change", "error", "unknown"]
+    partial: CompactionPartial | None = None
+
+
+class CompactionChangedPayload(Payload):
+    operation_id: str
+
+
+class CompactionDeltaPayload(Payload):
+    operation_id: str
+    revision: int
+    start_offset: int
+    text: str
+
+
+event("session.compaction_changed", CompactionChangedPayload, doc="The exact native compression operation changed phase.")
+event("session.compaction_delta", CompactionDeltaPayload, doc="Bounded native summary text, scoped to one operation and offset.")
 
 
 class CompactionCancelParams(CompactionStateParams):

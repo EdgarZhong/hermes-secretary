@@ -158,7 +158,8 @@ def _notif_claim_turn(session: dict) -> bool:
     After the user's Stop no automatic turn starts: the cancel latch holds notifications
     (requeued by the callers) until the next user prompt clears it."""
     with _session_turn_admission(session) as admitted:
-        if not admitted or session.get("running") or session.get("_turn_cancel_requested"):
+        if (not admitted or session.get("running") or session.get("_turn_cancel_requested")
+                or session.get("_web_control_enabled") and (_web_maintenance_active(session) or session.get("queued_prompt"))):
             return False
         _set_session_running(session, True)
         return True
@@ -925,6 +926,10 @@ def _notification_poller_scoped_loop(stop_event: threading.Event, sid: str, sess
     last_kanban_poll = last_loop_poll = last_bot_poll = 0.0
     while not stop_event.is_set() and not session.get("_finalized"):
         now = time.monotonic()
+        if (session.get("_web_control_enabled") and _web_can_poll_waiting(session)
+                and _web_input_phase(session) == "idle"):
+            _start_session_work(lambda: _drain_queued_prompt("__web_waiting__", sid, session),
+                                name=f"web-waiting-{sid}", session=session)
         # Completions whose owner process died after this one started (#97202); throttled per profile home.
         async_delegation.maybe_sweep_orphaned_completions(queue)
         if now - last_bot_poll >= _BOT_DELIVERY_POLL_SECONDS:  # bot DM → live-owner delivery latency ≤ 5 s

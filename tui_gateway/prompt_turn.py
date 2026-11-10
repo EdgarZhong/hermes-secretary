@@ -136,7 +136,8 @@ def _admit_prompt_turn(
     with session["history_lock"]:
         if session.get("_closing") or (
             queued_prompt_generation is not None
-            and int(session.get("_queued_prompt_generation", 0)) != queued_prompt_generation):
+            and int(session.get("_queued_prompt_generation", 0)) != queued_prompt_generation
+        ) or (session.get("_web_control_enabled") and session.get("_turn_cancel_requested")):
             _set_session_running(session, False)
             session.pop("_submit_user_row", None)
             if session.get("_closing") and session.get("active_session_lease") is not held_lease:
@@ -155,12 +156,16 @@ def _admit_prompt_turn(
             _start_inflight_turn(
                 session, text, display_kind=display_kind, display_metadata=display_metadata)
         agent = session["agent"]
+        if session.get("_web_control_enabled"):
+            _web_bind_pending(sid, session)
         if agent is None:
             _set_session_running(session, False)
         else:
             with contextlib.suppress(Exception):
                 agent.clear_interrupt()
     if agent is None:
+        _web_fail_staged(sid, session, "agent_init_failed")
+        _web_fail_waiting(sid, session, "agent_init_failed")
         # A deferred build can finish without attaching an agent (its record was replaced or closed
         # mid-build: ``agent_ready`` set, ``agent`` None, see ``_start_agent_build``).  Every turn source
         # crosses this gate, so refuse here with a retryable frame: the turn body used to dereference the
@@ -899,6 +904,7 @@ def _invoke_agent(
         run_kwargs["persist_user_display_metadata"] = display_metadata
     if turn_author and "turn_author" in run_params:
         run_kwargs["turn_author"] = turn_author
+    web_operation_id = _web_staged_operation(session)
     _adopt_submit_user_row(session, agent, run_kwargs["persist_user_message"], text, image_paths=images)
     # Live-rename hook: auto-titling fires inside the turn prologue.
     _title_key = session.get("session_key") or sid
@@ -915,6 +921,9 @@ def _invoke_agent(
     prior_user_observer = vars(agent).get("_on_turn_user_persisted")
     if witness is not None:
         agent._on_turn_user_persisted = _committed_turn_source_observer(sid, session, st, witness)
+    if web_operation_id:
+        agent._on_turn_user_persisted = _web_source_observer(
+            sid, session, web_operation_id, getattr(agent, "_on_turn_user_persisted", None))
 
     def freeze_receipt_history(messages, index):
         # Native admission may reload a foreign writer's history AFTER the host snapshot.
@@ -1378,6 +1387,7 @@ def _run_prompt_submit(
                 # A stale interim closure must not fire during a later turn.
                 st.agent.interim_assistant_callback = None
                 with session["history_lock"]:
+                    session["_turn_settling"] = True
                     _set_session_running(session, False)
                     session["last_active"] = time.time()
                     if not st.error_retained:
@@ -1419,6 +1429,8 @@ def _run_prompt_submit(
         with notification_policy_snapshot(agent, "tui", notification_config), notification_turn(agent, muted=muted, session_id=sid):
             followup = run_body()
         from agent.pending_steer import buffer_for
+        with session["history_lock"]:
+            session.pop("_turn_settling", None)
         if buffer_for(agent) is not None:
             _pending_complete_settlement(session)
             if _pending_dispatch_handoff(sid, session):

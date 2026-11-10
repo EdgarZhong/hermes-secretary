@@ -295,10 +295,11 @@ def _history_to_messages(history: list[dict], *, profile_home=None, image_urls: 
     """``image_urls=False`` is the ``inline_images=false`` projection (#116511): image parts render ``[image]``
     so a remote client's history read stays kilobytes instead of re-transmitting every stored attachment."""
     from agent.history_commentary import project_history_commentary
+    from hermes_state_display_legacy import without_web_input_custody
 
     messages = []
     tool_call_args = {}
-    for m in history:
+    for m in without_web_input_custody(history):
         if not isinstance(m, dict):
             continue
         m = project_compaction_message_for_display(m)

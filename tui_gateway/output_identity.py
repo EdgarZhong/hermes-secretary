@@ -14,22 +14,54 @@ _LEGACY = frozenset({"message.delta", "reasoning.delta", "message.interim",
 _PAIRED = frozenset({"message.output_delta", "tool.output"})
 
 
+class _TransportChanged(Exception):
+    """An old captured transport lost routing before its queue-admission boundary."""
+
+
 def _native_write(obj, sessions, current_transport, stdio_transport, display_identity=None):
     # This is the former server.write_json body, with unchanged routing/return semantics.
     from tui_gateway.event_replay import _stamp_event
     from tui_gateway.hosted_room_member_activity import project_room_member_activity
+    from tui_gateway.transport import ordered_writer
     params = obj.get("params")
     sid = params.get("session_id") if isinstance(params, dict) else None
-    session = sessions.get(sid) if sid else None
     from tui_gateway.inflight_output import record
-    _stamp_event(obj, observe=(lambda stamped: record(session, stamped, display_identity)
-                              if display_identity else record(session, stamped)) if session is not None else None)
-    if obj.get("method") == "event" or (isinstance(obj.get("id"), str) and "method" in obj):
-        project_room_member_activity(obj, sessions)
-        sid = ((params or {}).get("session_id")) if isinstance(params, dict) else ""
-        if sid and (transport := (sessions.get(sid) or {}).get("transport")) is not None:
-            return transport.write(obj)
-    return (current_transport() or stdio_transport).write(obj)
+    project = obj.get("method") == "event" or (isinstance(obj.get("id"), str) and "method" in obj)
+
+    def route():
+        if project and sid and (target := (sessions.get(sid) or {}).get("transport")) is not None:
+            return target
+        return current_transport() or stdio_transport
+
+    while True:
+        target = route()
+        prepared = False
+
+        def prepare():
+            nonlocal prepared
+            # A direct peer can have become a Fanout while this writer awaited its old lock.
+            # Retry before assigning any seq; the shared subscriber then keeps its old mailbox.
+            if route() is not target:
+                raise _TransportChanged
+            session = sessions.get(sid) if sid else None
+            _stamp_event(obj, observe=(lambda stamped: record(session, stamped, display_identity)
+                                      if display_identity else record(session, stamped)) if session is not None else None)
+            prepared = True
+
+        try:
+            ordered = ordered_writer(target)
+            if ordered is not None:
+                return ordered(obj, prepare)
+            # Third-party transports keep their original protocol and return/exception semantics.
+            prepare()
+            return target.write(obj)
+        except _TransportChanged:
+            continue
+        finally:
+            if prepared and project:
+                # Hooks may emit recursively. Preserve the stamped seq, outside all transport locks,
+                # including when the peer is gone or its actual IO raised.
+                project_room_member_activity(obj, sessions)
 
 
 def _frame(event, sid, payload):
