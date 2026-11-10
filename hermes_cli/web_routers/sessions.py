@@ -678,6 +678,7 @@ def _project_for_display(messages: list, *, home=None, inline_images: bool = Tru
     from agent.prompt_builder import STEER_DISPLAY_KIND
     from agent.turn_failure_copy import untyped_failed_turn_display_kind
     from hermes_state_display_legacy import without_web_input_custody
+    from gateway.inbound_provenance import project_inbound_origin_for_display
 
     # inline_images=False (#116511): render content through the gateway's ``_coerce_message_text``
     # projection so a data-URI image part becomes ``[image]`` — the same branch session.resume's
@@ -693,6 +694,7 @@ def _project_for_display(messages: list, *, home=None, inline_images: bool = Tru
 
     projected_messages = []
     for message in without_web_input_custody(messages):
+        message = project_inbound_origin_for_display(message)
         message = _with_tool_call_labels(message)
         if coerce is not None:
             message = coerce(message)

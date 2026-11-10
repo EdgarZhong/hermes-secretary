@@ -296,12 +296,14 @@ def _history_to_messages(history: list[dict], *, profile_home=None, image_urls: 
     so a remote client's history read stays kilobytes instead of re-transmitting every stored attachment."""
     from agent.history_commentary import project_history_commentary
     from hermes_state_display_legacy import without_web_input_custody
+    from gateway.inbound_provenance import project_inbound_origin_for_display
 
     messages = []
     tool_call_args = {}
     for m in without_web_input_custody(history):
         if not isinstance(m, dict):
             continue
+        m = project_inbound_origin_for_display(m)
         m = project_compaction_message_for_display(m)
         if m is None:
             continue
@@ -309,9 +311,10 @@ def _history_to_messages(history: list[dict], *, profile_home=None, image_urls: 
         # display_kind="hidden": model-facing scaffolding the "[System:" sniff does not catch.
         if role not in _HISTORY_ROLES or m.get("display_kind") == "hidden":
             continue
-        content_text = _user_image_display_text(m.get("content")) if role == "user" else None
+        visible_content = m.get("display_content", m.get("content"))
+        content_text = _user_image_display_text(visible_content) if role == "user" else None
         if content_text is None:
-            content_text = _coerce_message_text(m.get("content"), image_urls=image_urls)
+            content_text = _coerce_message_text(visible_content, image_urls=image_urls)
         if _is_display_hidden_marker(role, content_text):
             continue
         if role == "user":

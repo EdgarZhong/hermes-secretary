@@ -26,6 +26,9 @@
 
 ## 2026-11-09 · 故障全面复核与Web输入运行归属（新授权）
 
+**11/10后继Gateway XML显示回归：** 用户明确是`<gateway-message from="微信">`，同页昨晚干净/今早露出。只读对照证明今早持久content已含XML、api_content有原生pending-tool中断恢复提示；昨晚仅api_content含XML。TurnRunner恢复分支把既有干净persist override覆盖为模型副本是明确根因。当前候选保入口干净正文优先；Web/Socket两历史读口对具备Gateway/Turn身份、同一API恢复载体、完整非嵌套包裹的旧行提供display_content，不改数据库原文/API副本，不泛剥普通XML/例子。57项针对性、101项读口回归通过（22项Windows限定跳过），原版本两恢复反例失败/新版本通过；ruff/health通过。现场两原行只读应用新投影后均无显示XML且源hash不变。已审代码，隔离实际页面已确认正文可见/XML不显示/console错误0；待后端补丁发布，不启动完整自主流程。
+
+
 **当前阶段：D38与渲染诊断已完成主会话代码审查，FE655ecf56fb3ff082d5a84db810388c32d420f9b0已提交，最终候选构建及原真实页面反例复验均已通过，准备main联合发布。** D38把legacy/typed邻接假设改为同一投影owner内的精确贡献认领，保稳定render ID、真实边界和有界见证；root亲读六产品及正式接线、测试调整，419项有效相关回归/type/health及原真实assistant-ui红→绿证据已核，未用测试替代源码审查。原79ccd实际IAB白屏反例保留；655ecf5实际同页完成合法usage交错、手动/Steer接续、Heartbeat Stop、独立Instant Reminder Enter Steer及强制4107后恢复。timeOrigin1794277226742.8保持、节点唯一/console错误0，6次本地受控Provider请求，4次显式prompt/1次Stop，无自动写重放；旧手动展开与终态阅读锚点保持，第一长阅读样本超过原20秒active恢复窗口不作永久锚点证据。证据ignored root-d38-ui/fixed-verification.json。诊断五产品已亲审：React未捕获异常仅记录固定枚举及观察时当前连接，无当前attempt不借退休连接；原错误仍报告一次，root六浏览器案例通过。源指纹25条路径无漂移，当前原签名APK0.1.14/1014已由root构建，393源无漂移/439资源一致，APK SHA833db90f…3449。
 
 **用户2026-11-10明确纠正执行方式：没有授权启动完整自主实现流程，仍要求认真审查。** 任务继续，不再以新一轮完整Verification/Validation、模板或全套门禁作为发布前置；保留已有审查/反例与测试，按当前改动认真review、必要定向验证、原现场复验后合main发布。此前自行扩大为完整autonomous-run流程的安排已撤销，旧报告仅保历史事实，不改写旧FAIL。源码审查已完成不等于发布或实际页面复验完成；生产仍9270933/cd5/0.1.13。
