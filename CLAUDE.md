@@ -26,11 +26,9 @@
 
 ## 2026-11-09 · 故障全面复核与Web输入运行归属（新授权）
 
-**当前阶段：V6固定79ccd候选发现D38 Thinking重复，前端已恢复修复，候选暂不可发。** 原生真实AIAgent的两段reasoning在legacy与typed之间合法插入status.update；FE每事件清nativePair，下一chunk回滚再追加得到两个同render id Thinking，无需断线。root亲读原生序列/正式reduceEvent反例后接受缺陷；V6全轮已交58项：54符合/2违规/2后继缺证，技术FAIL；两违规都源自D38，D37当前关闭。root已亲审六节报告/来源及原红，不回写旧判定。root方案经V6按原W08/W13/W16认可：既有projection内按runtime/epoch/scope/Turn/输出owner/source_event_seq保精确贡献认领，非内容通知不断开见证，typed迟到只补该贡献身份，不回滚后继或复制render id；真输出/工具/User/Steer/Turn边界及无typed fallback保持，有界退休。frontend_finish白名单native-output/projection及直接必要sibling/对应正式测试，不动连接层/后端/算法/规则。新实现后须root亲审与fresh全轮复审，不回写V6原失败。
+**当前阶段：D38与渲染诊断已完成主会话代码审查，FE655ecf56fb3ff082d5a84db810388c32d420f9b0已提交，正在构建最终候选与原真实页面反例复验。** D38把legacy/typed邻接假设改为同一投影owner内的精确贡献认领，保稳定render ID、真实边界和有界见证；root亲读六产品及正式接线、测试调整，419项有效相关回归/type/health及原真实assistant-ui红→绿证据已核，未用测试替代源码审查。原79ccd实际IAB白屏反例保留，修复后IAB仍待当前构建完成。诊断五产品已亲审：React未捕获异常仅记录固定枚举及观察时当前连接，无当前attempt不借退休连接；原错误仍报告一次，root六浏览器案例通过。源指纹25条路径无漂移，当前原签名APK0.1.14/1014由root直接构建。
 
-root真实隐藏IAB又证D38会触发assistant-ui同ID消息树异常并整页白屏，0WS关闭、同document；直接序列与截图在ignored root-d38-ui。新增两处仅epoch参数接线已亲审准许；产品待修，不能用全页重载或catch隐藏异常结案。
-
-D37已由root亲审并提交FE `79ccd36886e26a84b37f2b02b96b4cfbd088e695`；BE产品 `3c07ea66420c8a52da4cb8784cd0bb615fb65883`、文档HEAD `00a6b08df7efb04c03df7ac6a6d9221ea791e376`。14完整文件684通过、最终App149/type/冻结health通过，仅证明其各自范围，不能关闭D38。79ccd APK0.1.14/1014构建与root四产物SHA核对完成，439资源/382源码绑定；当前不可发布，待D38新源后归档重建。V5固定0d6的70项66符合/1违规/3后继缺证及FAIL保留。独立Validation、main联合发布及V4自然运行仍未完成。
+**用户2026-11-10明确纠正执行方式：没有授权启动完整自主实现流程，仍要求认真审查。** 任务继续，不再以新一轮完整Verification/Validation、模板或全套门禁作为发布前置；保留已有审查/反例与测试，按当前改动认真review、必要定向验证、原现场复验后合main发布。此前自行扩大为完整autonomous-run流程的安排已撤销，旧报告仅保历史事实，不改写旧FAIL。源码审查已完成不等于发布或实际页面复验完成；生产仍9270933/cd5/0.1.13。
 
 原生SessionLiveInfo新增可选model_switch_pending/context_model/context_provider，后两项与既有Context计算身份同源，cold不冒物理运行模型。前端区分源事实矛盾、合法pending目标不同和明确未知：合法过渡保退休/unknown并结算成功，无伪Retry，不把旧占用灌入新选择；完整已知匹配才恢复数值。三字段真实变化沿原局部配置失效，省略不当false。真实DTO补齐后发现的持续Retry及同名跨Provider反例均保原件；不把630中间绿回填为当时真实pending已过。
 

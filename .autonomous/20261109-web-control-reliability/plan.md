@@ -6,7 +6,7 @@
 
 优先完成纵向链：App输入→正式RPC原子受理→真实runtime/Pending/维护→流式／回执／控制结果。稳定operation、owner、commit fence先于展示。沿现有Session、原生lease、Pending和队列持久事实，不建新通用gate、writer、调度器或对话存储。旧默认接口保持，Web capability opt-in；首选既有prompt.submit增加input_policy=web_controlled，名称可在正式协议交接时沿现有类型风格收口。
 
-完成条件：U01–U15正式接线和针对性证据、root亲审、独立Verification再独立Validation通过；main实际服务／静态／APK版本及原签名一致；V4自然运行可核；范围内缺陷清空。无ADB真实手机的现场边界明确，不伪称完成运营商归因。
+完成条件（按用户2026-11-10执行方式纠正）：U01–U15正式接线和针对性证据、root认真审查与实际故障复验通过；main实际服务／静态／APK版本及原签名一致；V4自然运行可核；范围内缺陷清空。无ADB真实手机的现场边界明确，不伪称完成运营商归因。
 
 ## 2. 覆盖与任务表
 
@@ -20,9 +20,9 @@
 
 ## 3. 当前状态与编排
 
-**当前版本及复审：** V6固定BE00a6b08/FE79ccd发现D38：原生合法status.update夹在legacy reasoning/typed之间，下一chunk导致两个同id Thinking，连接正常。原红已落independent-verification-v6；旧D37 684/149绿与APK439/382绑定不覆盖此交错。V6全轮已交58项54符合/2违规/2后继缺证；两个违规都为D38，D37关闭，root已接收完整报告。产品快照用固定blob隔离，不能回写原失败。
+**当前状态：** root已完成D38和诊断两包实际代码/正式接线/失败路径/测试调整及25源指纹审查；FE655ecf5已提交推送，正构建0.1.14/1014。419项D38相关回归、62项诊断前端、native Schema8/受影响1与Provider6复用及root六浏览器日志案例按各自范围有效。原白屏修复后实际IAB待最终dist；通过后直接main联合发布并核V4自然事实。没有宣布已上线。
 
-**当前分工与依赖：** frontend_finish恢复D38，root亲审和机制提案、V6按原判据评审。方案在原native-output/projection按精确native身份记录贡献与认领，非内容通知不退见证、迟到typed不回滚后继；多presentation/并发tool/child relay/owner与epoch终止/fallback有界生命周期一并覆盖。白名单FE native-output.ts/projection.ts及必要直接sibling和对应正式测试，禁止改连接/后端/算法/阈值/规则。79ccd APK已完成但暂不可发，apk_finish等待新最终源再归档重建；root隔离实例BE00a6b08/PID83869/静态79ccd已就绪，旧tab8已关。fresh全轮复审及独立Validation后才main发布，生产仍9270933/cd5/0.1.13。
+**执行方式纠正（用户明确）：** 挂目标、持续推进与恢复子Agent并非授权完整自主实现流程；用户要求保留认真审查、灵活执行。停止新的整轮门禁/模板轮转，采用必要代码审查、针对性测试、实际反例复验和发布核对。既有V6固定79的58项54符合/2违规/2后继不足及原D38红保留历史，不强改绿；后继以真实修复/复验事实关闭当前问题，不再要求新一轮全套报告。
 
 **21:18当前执行事实：** B1正式Lock／D18包已由root亲审；D20排序包已接收，49传输／52身份回放／4stdio证据有效，root核hook、Tee、旧子类和健康端credit接线。root两行旧字符串queue兼容修正获3项绿；protocol另两失败在未改12e同源基线复现（`root-protocol-baseline-two.log`），不算本轮新回归。F1 R5（37源清单15bcb…）285项／type／health及真实网络lost-ACK链已交；root实IAB终态Stop通过，D24异步owner反例补验中。新joint lab使用当前B1＋D20及修正后的真实streaming返回探针，frontend_control_resume独占联调动作，补维护／API返回至terminal连续链；root不并发操纵。apk_release_prepare仅五版本文件及ignored构建证据，待最终源冻结后打0.1.14。尚未独立双门禁、main合并或发布；旧表的调查描述保留为发现时点，当前状态以本段和后续闭合证据为准。
 
@@ -138,3 +138,5 @@ D37工程接收（79ccd）：正式配置写共用原setter/helper；bindingInst
 D38（V6新技术阻断）：06 C1/C2/U13原生合法通知夹在legacy/typed帧之间，single-slot配对被清除，第二reasoning chunk回滚/追加造成两个同ID Thinking。root与V6研讨见verification §5/6；front end按既有投影owner内精确贡献认领机制修复，不能status特判、后端禁交错、文本去重、增加REST等待/连接关闭。关闭需真实两chunk原红、child relay实际序列→正式Controller/App、多legacy迟到typed/重复/边界/epoch/Turn、终态归并及旧fold/阅读锚点；范围内仍未关闭。
 
 D38正式接线补充：root亲读后准许reduceEvent新增可选内部epoch，Controller.reduceProjection传gateway.epoch，PageRecovery.installCut传已核等于当前epoch且context.current的snapshot.epoch；仅两个表达式，不增连接owner/协议。root真实隐藏IAB固定79ccd复现session.usage seq14插在legacy13/typed15之间，下一chunk令assistant-ui MessageRepository抛同ID异常、整页白屏；timeOrigin1794266267104.7不变/0WS close。原件ignored root-d38-ui/red-verification.json、red-console.json、red-page.jpg；本地受控Provider，全部gate已释放、tab9已关闭。此是D38影响补证，不代独立Validation。
+
+D38诊断补齐：root发现React异步commit异常仅在console，原APK桥接未收录；V6按原U08/C5/C6接受固定render_failure/uncaught记录。apk_finish白名单main.tsx、api/connection-diagnostics.ts、api/client.ts仅当前attempt诊断接线、一个可选专责sibling/对应tests及Android DiagnosticSchema两文件；与D38投影修复不交叉。不保存异常正文/stack/componentStack/凭据；无当前attempt不得借退休diagnosticOwner；保React原报告恰好一次、桥接失败不改业务，不新增ErrorBoundary/reload/Socket动作。真实React异步异常/敏感排除/当前与退休切换/桥接失败/native严格schema需验证，现仅实施中；最终两包root统一亲审再commit/build，原V6固定FAIL不变。

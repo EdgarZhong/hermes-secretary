@@ -191,3 +191,15 @@ D38研讨链：
 供final-delivery及用户最终摘要的实质事项：①合法事件有序不等于身份帧相邻，client必须保持真实贡献生命周期，本轮发现该缺口造成无断线裂Thinking和重复render id；②D37的合法fresh配置写与页面读取owner/草稿资格已贯通，但不扩大迟到操作权限；③Context数值/高亮/Latest Usage分清，合法pending unknown不伪失败；④V4完整历史限定结果和留一段399.616秒负例、真机/自然现场未知均须保留；⑤固定79包完整但含D38，main/自然算法/独立Validation/root完成事实仍未闭合。
 
 补充证据接收：本V6新增D38先由独立原生序列＋fixed79 reducer失败建立；root随后提供fixed79实际隐藏IAB白屏结果，独立核source字段、9文件SHA、关键seq及截图后采纳为影响补强。root已释放所有gate；未改变判据、58项状态或原红。
+
+
+**D38后继窄观测提案独立评审（未实施验收）：** root提出在正式React createRoot的onUncaughtError将未捕获渲染/commit失败记为固定render_failure/uncaught事件，沿既有桥接落盘，不保存错误对象/message/stack/componentStack。这属于原W18–W21及06 C5/C6/C8的客户端代码故障可归因范围：原C5的枚举名单不是禁止补充同范围固定枚举的封闭产品列表。方向接受；不改变D38原通过判据，不将观察代替正确显示或故障恢复，也不将固定79报告改绿。
+
+- 正式入口是fixed79 src/main.tsx的createRoot；当前未配置onUncaughtError。固定依赖react-dom 19.2.0已安装production源码中defaultOnUncaughtError调用reportGlobalError，自定义选项会替换该默认行为。新增回调应在best-effort诊断之后仍恰好一次沿现有环境的reportError/原等效错误上报；诊断桥接抛错、不可用、被限速或native拒绝均不能阻止原错误上报。不得用ErrorBoundary/catch恢复、preventDefault、reload、断Socket、撤owner或触发新读取来假修白屏。不扩大到caught/recoverable/全局console代理或任意错误正文采集。
+- 当前Gateway.diagnostic使用attempt?.diagnostics ?? diagnosticOwner，后者可属已退休attempt；因此render_failure不能原样调用该回退当“当前连接”。有当前attempt才关联其合法attemptId及该attempt已知connectionId；没有当前attempt必须沿原脱敏记录器发不带两个ID的固定记录，不生成attempt、不取旧connectionId。这仅是错误被观察时的连接上下文，不证明错误由该连接/某帧引起；若异步错误所属旧来源未知，不能冒称因果。
+- TS和native严格schema只增固定event及固定uncaught枚举，不透传error/errorInfo或自由文本，不记录component名字、堆栈、消息、正文、RPC参数、query或凭据；原默认错误输出不进入新增桥接包。保可信top-frame、合法ID形状、4096字符消息上限及4×2MiB滚动容量、既有频率/写失败/裁剪可见性和只读导出权限，不改阈值、不加新通用日志owner/监听器。
+- 必要新证据应从真实React createRoot触发异步render/commit未捕获异常，而非直接调用回调，验证脱敏包穿过正式gateway/recordConnectionDiagnostic桥；分别覆盖当前attempt及真实connectionId、bootstrap尚无connectionId、已退休无当前attempt、切换后时间关联不冒充旧帧因果。用含敏感sentinel的Error及componentStack作输入，证明新增包全无该内容；不靠字符串化/读取error属性生成分类。
+- 同一真实异常应保原错误上报且只记一类render_failure，不冒delivery_failure/WS close；桥接throw/不可用、限流/native拒绝不能吞原错误或改变连接/控制/恢复。沿现有限速可抑制事件时须如实保留丢弃/抑制语义，不能承诺每次异常必定持久化，也不为此放宽限额。
+- native接收测试须真parse合法固定事件并能进入原异步store，未知枚举/字段及任意文本仍拒绝，旧schema事件兼容；保现有容量/权限/导出测试适用证据。真实手机未验仍明确未验；新候选构建须重新绑定改变的JS/native源及APK资源/签名。此hook不覆盖root创建前模块加载失败、未捕获异步Promise或全部JS故障，交付不得称全域崩溃捕获。
+
+本补充只评研讨边界，不执行产品修改或测试、不新增条款或改58项数量/状态。D38根因仍由frontend_finish修复；后继fresh全轮Verification须独立审实际实现与新增证据。
